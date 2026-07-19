@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import ChallengeTime from "@/components/challenge/ChallengeTime";
+import { projectChallengeFinancialState, projectChallengeLifecycle } from "@/lib/challengeLifecycle";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +17,8 @@ type MoneyRow = {
   amount: number;
   tone: "refund" | "treasury";
   side: "left" | "right" | "system";
+  state?: string;
+  txHash?: string | null;
 };
 
 function playerName(user: {
@@ -96,6 +100,12 @@ function statusLabel(status: string, leftName: string, rightName: string) {
     case "cancelled":
     case "canceled":
       return "Cancelled";
+    case "expired":
+      return "Expired";
+    case "funding_expired":
+      return "Funding expired";
+    case "play_expired":
+      return "Play window expired";
     default:
       return status.replace(/_/g, " ");
   }
@@ -124,8 +134,33 @@ function buildMoneyRows(input: {
   rightName: string;
   wager: number;
   guarantee: number;
+  settlements: Array<{
+    id: number;
+    action: string;
+    status: string;
+    amountWolo: number;
+    txHash: string | null;
+  }>;
 }) {
   const rows: MoneyRow[] = [];
+
+  if (input.settlements.length > 0) {
+    return input.settlements.map((settlement) => ({
+      label: settlement.action.replace(/_/g, " "),
+      amount: settlement.amountWolo,
+      tone: settlement.action.includes("treasury") ? "treasury" : "refund",
+      side: settlement.action.startsWith("left")
+        ? "left"
+        : settlement.action.startsWith("right")
+          ? "right"
+          : "system",
+      state:
+        settlement.status === "executed" && settlement.txHash
+          ? "Confirmed"
+          : settlement.status.replace(/_/g, " "),
+      txHash: settlement.txHash,
+    })) satisfies MoneyRow[];
+  }
 
   function refund(label: string, amount: number, side: MoneyRow["side"]) {
     if (amount <= 0) return;
@@ -159,6 +194,28 @@ function buildMoneyRows(input: {
   }
 
   return rows;
+}
+
+function safeMetadata(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const allowed = new Set([
+    "amountWolo",
+    "txHash",
+    "settlementAction",
+    "settlementRunId",
+    "requestId",
+    "proofUrl",
+    "scheduledAt",
+    "acceptanceExpiresAt",
+    "previousStatus",
+    "refundRequired",
+    "linkedSessionKey",
+    "mapName",
+  ]);
+  const entries = Object.entries(metadata as Record<string, unknown>).filter(([key]) =>
+    allowed.has(key)
+  );
+  return entries.length ? Object.fromEntries(entries) : null;
 }
 
 function metadataUrl(metadata: unknown, key: string) {
@@ -253,9 +310,17 @@ export default async function ChallengeDetailPage({
           },
         },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 200,
       },
       settlements: {
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 100,
+      },
+      _count: {
+        select: {
+          activities: true,
+          settlements: true,
+        },
       },
     },
   });
@@ -264,17 +329,48 @@ export default async function ChallengeDetailPage({
     notFound();
   }
 
+  const settlementTxCount = match._count.settlements > match.settlements.length
+    ? await prisma.scheduledMatchSettlement.count({
+        where: {
+          scheduledMatchId: match.id,
+          txHash: { not: null },
+        },
+      })
+    : match.settlements.filter((row) => row.txHash).length;
+
   const leftName = playerName(match.challenger);
   const rightName = playerName(match.challenged);
   const totalEach = match.wagerAmountWolo + match.guaranteeAmountWolo;
-  const headline = statusLabel(match.status, leftName, rightName);
+  const lifecycle = projectChallengeLifecycle({
+    status: match.status,
+    scheduleMode: match.scheduleMode,
+    scheduledAt: match.scheduledAt,
+    acceptanceExpiresAt: match.acceptanceExpiresAt,
+    fundingExpiresAt: match.fundingExpiresAt,
+    playExpiresAt: match.playExpiresAt,
+    acceptedAt: match.acceptedAt,
+    challengerFundedAt: match.challengerFundedAt,
+    challengedFundedAt: match.challengedFundedAt,
+  });
+  const financial = projectChallengeFinancialState({
+    lifecycleStatus: lifecycle.lifecycleState,
+    totalFundingWolo: totalEach,
+    challengerFunded: Boolean(match.challengerFundedAt),
+    challengedFunded: Boolean(match.challengedFundedAt),
+    settlements: match.settlements,
+  });
+  const headline = ["refunded", "refund_processing", "refund_failed"].includes(financial.state)
+    ? financial.label
+    : statusLabel(lifecycle.lifecycleState, leftName, rightName);
   const moneyRows = buildMoneyRows({
     status: match.status,
     leftName,
     rightName,
     wager: match.wagerAmountWolo,
     guarantee: match.guaranteeAmountWolo,
+    settlements: match.settlements,
   });
+  const chronologicalActivities = [...match.activities].reverse();
 
   const extreme = view === "extreme";
   const basic = view === "basic";
@@ -351,7 +447,19 @@ export default async function ChallengeDetailPage({
                   {fmtWolo(totalEach)} WOLO each
                 </span>
                 <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-slate-300">
-                  {fmtDate(match.scheduledAt)}
+                  {match.scheduledAt ? (
+                    <ChallengeTime value={match.scheduledAt} compact />
+                  ) : lifecycle.deadlineAt ? (
+                    <span className="inline-flex flex-wrap items-center gap-1">
+                      {lifecycle.deadlineKind === "acceptance" ? "Accept by" : lifecycle.deadlineKind === "funding" ? "Fund by" : "Play by"}
+                      <ChallengeTime value={lifecycle.deadlineAt} compact />
+                    </span>
+                  ) : (
+                    "Play anytime"
+                  )}
+                </span>
+                <span className="rounded-full border border-emerald-200/12 bg-emerald-300/[0.05] px-3 py-1.5 text-xs font-bold text-emerald-50/90">
+                  {financial.label}
                 </span>
               </div>
 
@@ -411,7 +519,7 @@ export default async function ChallengeDetailPage({
 
                 {moneyRows.length === 0 ? (
                   <p className="mt-4 rounded-[1rem] border border-white/10 bg-white/[0.035] p-4 text-sm text-slate-400">
-                    No settlement consequence recorded yet.
+                    {financial.detail}
                   </p>
                 ) : (
                   <div className="mt-4 grid gap-2.5">
@@ -428,8 +536,13 @@ export default async function ChallengeDetailPage({
                           <div>
                             <div className="font-serif text-[0.98rem] font-semibold tracking-[-0.015em] text-amber-50/84">{row.label}</div>
                             <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
-                              {row.tone === "treasury" ? "Treasury route" : "Refund due"}
+                              {row.state || (row.tone === "treasury" ? "Treasury route" : "Expected transfer")}
                             </div>
+                            {row.txHash ? (
+                              <div className="mt-1 break-all font-mono text-[10px] text-emerald-200/70">
+                                tx {row.txHash}
+                              </div>
+                            ) : null}
                           </div>
 
                           <div className="rounded-full border border-amber-100/14 bg-amber-100/[0.06] px-3 py-1 text-xs font-black text-amber-50">
@@ -453,7 +566,7 @@ export default async function ChallengeDetailPage({
               </p>
 
               <div className="mt-4 grid gap-3">
-                {match.activities.map((activity) => {
+                {chronologicalActivities.map((activity) => {
                   const proofUrl = metadataUrl(activity.metadata, "proofUrl");
                   const actorName = activity.actor ? playerName(activity.actor) : null;
 
@@ -542,6 +655,59 @@ export default async function ChallengeDetailPage({
               Open Extreme War Room →
             </Link>
           </section>
+        ) : null}
+
+        {!basic ? (
+          <details
+            id="raw"
+            className="mt-6 rounded-[2rem] border border-cyan-200/10 bg-[#040914]/92 p-5 shadow-[0_25px_90px_rgba(0,0,0,0.38)]"
+          >
+            <summary className="cursor-pointer list-none text-[10px] font-black uppercase tracking-[0.3em] text-cyan-100/65">
+              RAW · {match._count.activities} events · {settlementTxCount + Number(Boolean(match.challengerFundingTxHash)) + Number(Boolean(match.challengedFundingTxHash))} chain txs
+            </summary>
+            <p className="mt-3 max-w-3xl text-xs leading-5 text-slate-500">
+              Persisted audit evidence. Expected UI projections are excluded; private server configuration and secrets are never exposed.
+              {match._count.activities > match.activities.length
+                ? ` Showing the latest ${match.activities.length} of ${match._count.activities} lifecycle events.`
+                : ""}
+              {match._count.settlements > match.settlements.length
+                ? ` Showing the latest ${match.settlements.length} of ${match._count.settlements} settlement transfers.`
+                : ""}
+            </p>
+
+            <div className="mt-5 grid gap-4 xl:grid-cols-2">
+              <div className="space-y-2">
+                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Lifecycle events</div>
+                {chronologicalActivities.map((activity) => {
+                  const metadata = safeMetadata(activity.metadata);
+                  return (
+                    <div key={`raw-event-${activity.id}`} className="rounded-xl border border-white/8 bg-black/25 p-3 font-mono text-[11px] leading-5 text-slate-400">
+                      <div className="text-cyan-100/75">#{activity.id} · {activity.eventType} · {activity.createdAt.toISOString()}</div>
+                      <div>{activity.detail || "No detail"}</div>
+                      {metadata ? <pre className="mt-2 overflow-x-auto whitespace-pre-wrap text-[10px] text-slate-500">{JSON.stringify(metadata, null, 2)}</pre> : null}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Settlement transfers</div>
+                {match.settlements.length ? match.settlements.map((settlement) => (
+                  <div key={`raw-settlement-${settlement.id}`} className="rounded-xl border border-white/8 bg-black/25 p-3 font-mono text-[11px] leading-5 text-slate-400">
+                    <div className="text-amber-100/75">#{settlement.id} · {settlement.action} · {settlement.status}</div>
+                    <div>{fmtWolo(settlement.amountWolo)} WOLO</div>
+                    <div className="break-all">request {settlement.requestId}</div>
+                    {settlement.txHash ? <div className="break-all text-emerald-200/70">tx {settlement.txHash}</div> : null}
+                    {settlement.status === "failed" ? (
+                      <div className="text-rose-200/70">Failure recorded. Operator retry is available.</div>
+                    ) : null}
+                  </div>
+                )) : (
+                  <div className="rounded-xl border border-white/8 bg-black/25 p-3 text-xs text-slate-500">No persisted settlement transfer rows.</div>
+                )}
+              </div>
+            </div>
+          </details>
         ) : null}
       </section>
     </main>

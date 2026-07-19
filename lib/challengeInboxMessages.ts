@@ -1,4 +1,5 @@
 export type ChallengeInboxNoticeState =
+  | "issued"
   | "scheduled"
   | "accepted"
   | "terms_accepted"
@@ -9,7 +10,15 @@ export type ChallengeInboxNoticeState =
   | "result_ready"
   | "declined"
   | "cancelled"
-  | "rescheduled";
+  | "rescheduled"
+  | "time_proposed"
+  | "time_confirmed"
+  | "expired"
+  | "funding_expired"
+  | "play_expired"
+  | "refund_processing"
+  | "refunded"
+  | "refund_failed";
 
 export type ChallengeInboxNotice = {
   state: ChallengeInboxNoticeState;
@@ -18,7 +27,12 @@ export type ChallengeInboxNotice = {
   matchup: string | null;
   scheduledLabel: string | null;
   scheduledAtIso: string | null;
+  acceptanceLabel: string | null;
+  acceptanceAtIso: string | null;
+  fundingDeadlineLabel: string | null;
+  fundingDeadlineAtIso: string | null;
   fundingLabel: string | null;
+  refundLabel: string | null;
   statusLabel: string | null;
   titleStakesLabel: string | null;
   titleRuleLabel: string | null;
@@ -33,6 +47,10 @@ export const CHALLENGE_NOTICE_HEADLINES: Record<
     compactHeadline: string;
   }
 > = {
+  "Challenge issued": {
+    state: "issued",
+    compactHeadline: "New challenge",
+  },
   "Challenge scheduled": {
     state: "scheduled",
     compactHeadline: "Scheduled game",
@@ -76,6 +94,38 @@ export const CHALLENGE_NOTICE_HEADLINES: Record<
   "Challenge rescheduled": {
     state: "rescheduled",
     compactHeadline: "Game rescheduled",
+  },
+  "Challenge time proposed": {
+    state: "time_proposed",
+    compactHeadline: "Time proposed",
+  },
+  "Challenge time confirmed": {
+    state: "time_confirmed",
+    compactHeadline: "Time confirmed",
+  },
+  "Challenge expired": {
+    state: "expired",
+    compactHeadline: "Challenge expired",
+  },
+  "Challenge funding expired": {
+    state: "funding_expired",
+    compactHeadline: "Funding expired",
+  },
+  "Challenge play window expired": {
+    state: "play_expired",
+    compactHeadline: "Play window expired",
+  },
+  "Challenge refund processing": {
+    state: "refund_processing",
+    compactHeadline: "Refund processing",
+  },
+  "Challenge refunded": {
+    state: "refunded",
+    compactHeadline: "Refund confirmed",
+  },
+  "Challenge refund failed": {
+    state: "refund_failed",
+    compactHeadline: "Refund needs attention",
   },
 };
 
@@ -168,11 +218,30 @@ export function summarizeChallengeInboxMessage(
     lines[1] && !lines[1].includes(":")
       ? lines[1]
       : null;
-  const scheduledLabel = readPrefixedLine(lines, ["Start:", "New start:"]);
+  const scheduledLabel = readPrefixedLine(lines, [
+    "Match time:",
+    "Proposed time:",
+    "Start:",
+    "New start:",
+  ]);
   const scheduledAtIso =
-    readPrefixedLine(lines, ["Start ISO:", "New start ISO:"]) ||
+    readPrefixedLine(lines, [
+      "Match time ISO:",
+      "Proposed time ISO:",
+      "Start ISO:",
+      "New start ISO:",
+    ]) ||
     coerceServerScheduledLabelToIso(scheduledLabel);
+  const acceptanceLabel = readPrefixedLine(lines, ["Accept by:"]);
+  const acceptanceAtIso =
+    readPrefixedLine(lines, ["Accept by ISO:"]) ||
+    coerceServerScheduledLabelToIso(acceptanceLabel);
+  const fundingDeadlineLabel = readPrefixedLine(lines, ["Fund by:"]);
+  const fundingDeadlineAtIso =
+    readPrefixedLine(lines, ["Fund by ISO:"]) ||
+    coerceServerScheduledLabelToIso(fundingDeadlineLabel);
   const fundingLabel = readPrefixedLine(lines, ["Funding:"]);
+  const refundLabel = readPrefixedLine(lines, ["Refund:"]);
   const statusLabel = readPrefixedLine(lines, ["Status:"]);
   const titleStakesLabel = readPrefixedLine(lines, ["Title Stakes:"]);
   const titleRuleLabel = readPrefixedLine(lines, ["Title Rule:"]);
@@ -183,7 +252,10 @@ export function summarizeChallengeInboxMessage(
     descriptor.compactHeadline,
     matchup,
     scheduledLabel,
+    acceptanceLabel,
+    fundingDeadlineLabel,
     fundingLabel,
+    refundLabel,
     statusLabel,
     titleStakesLabel,
     titleRuleLabel,
@@ -197,7 +269,12 @@ export function summarizeChallengeInboxMessage(
     matchup,
     scheduledLabel,
     scheduledAtIso,
+    acceptanceLabel,
+    acceptanceAtIso,
+    fundingDeadlineLabel,
+    fundingDeadlineAtIso,
     fundingLabel,
+    refundLabel,
     statusLabel,
     titleStakesLabel,
     titleRuleLabel,
@@ -213,6 +290,8 @@ export function isChallengeInboxNoticeBody(body: string | null | undefined) {
       (summary.challengeId ||
         summary.matchup ||
         summary.scheduledLabel ||
+        summary.acceptanceLabel ||
+        summary.fundingDeadlineLabel ||
         summary.statusLabel ||
         summary.note)
   );

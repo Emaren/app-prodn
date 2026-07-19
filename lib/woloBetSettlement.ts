@@ -2132,12 +2132,14 @@ export async function verifyChallengeFundingTransfer(input: {
     };
   }
 
-  return verifyWoloTransfer({
-    txHash: normalizedTxHash,
-    fromAddress: normalizedSender,
-    toAddress: escrowAddress,
-    expectedAmountWolo: totalFundingWolo,
-  });
+  // A generic bank-send proves only sender/recipient/amount. It does not prove
+  // the structured Challenge id, participant side, wager bucket, or guarantee
+  // bucket, so it is never sufficient custody evidence for this rail.
+  return {
+    verified: false,
+    detail:
+      "Structured WoloChain Challenge verification is unavailable. Funding was not recorded; retry when the settlement verifier is healthy.",
+  };
 }
 
 export async function verifyWoloTransfer(input: {

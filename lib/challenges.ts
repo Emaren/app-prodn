@@ -6,6 +6,13 @@ import {
   type ScheduledMatchEconomySurface,
   type ScheduledMatchPersistedStatus,
 } from "@/lib/challengeEconomy";
+import {
+  projectChallengeFinancialState,
+  projectChallengeLifecycle,
+  type ChallengeDeadlineKind,
+  type ChallengeFinancialState,
+  type ChallengeScheduleMode,
+} from "@/lib/challengeLifecycle";
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
 import { buildClaimedPlayerHref } from "@/lib/publicPlayers";
@@ -20,14 +27,12 @@ import {
 } from "@/lib/woloChain";
 
 const CHALLENGE_ONLINE_WINDOW_MS = 2 * 60 * 1000;
-const CHALLENGE_LOOKAHEAD_MS = 7 * 24 * 60 * 60 * 1000;
-const CHALLENGE_HISTORY_LOOKBACK_MS = 12 * 60 * 60 * 1000;
 const CHALLENGE_RECENT_LINGER_MS = 15 * 60 * 1000;
 const CHALLENGE_START_GRACE_MS = 60 * 1000;
 const SESSION_MATCH_LOOKBACK_MS = 45 * 60 * 1000;
 const SESSION_MATCH_LOOKAHEAD_MS = 8 * 60 * 60 * 1000;
-const CHALLENGE_LEDGER_LOOKBACK_MS = 45 * 24 * 60 * 60 * 1000;
 const CHALLENGE_ACTIVITY_LIMIT = 40;
+const CHALLENGE_HISTORY_PAGE_SIZE = 12;
 const TROPHY_DAY_MS = 24 * 60 * 60 * 1000;
 const ACTIVE_SCHEDULED_STATUSES = [
   "pending",
@@ -41,6 +46,20 @@ const ACTIVE_SCHEDULED_STATUSES = [
   "right_checked_in",
   "ready",
   "live_confirmed",
+] as const;
+const RESOLVED_SCHEDULED_STATUSES = [
+  "completed",
+  "forfeited",
+  "declined",
+  "cancelled",
+  "canceled",
+  "no_show_left",
+  "no_show_right",
+  "double_no_show",
+  "refunded",
+  "expired",
+  "funding_expired",
+  "play_expired",
 ] as const;
 
 function projectedChallengeTrophyBounty(trophy: {
@@ -73,7 +92,19 @@ type ChallengeUserRow = {
 type ScheduledMatchRow = {
   id: number;
   status: string;
-  scheduledAt: Date;
+  scheduleMode: string;
+  scheduledAt: Date | null;
+  acceptanceExpiresAt: Date | null;
+  fundingExpiresAt: Date | null;
+  playExpiresAt: Date | null;
+  expiredAt: Date | null;
+  fundingExpiredAt: Date | null;
+  playExpiredAt: Date | null;
+  proposedMatchAt: Date | null;
+  proposedMatchByUserId: number | null;
+  timeProposedAt: Date | null;
+  timeConfirmedAt: Date | null;
+  lifecycleVersion: number;
   createdAt: Date;
   updatedAt: Date;
   acceptedAt: Date | null;
@@ -99,6 +130,20 @@ type ScheduledMatchRow = {
   challengeNote: string | null;
   challenger: ChallengeUserRow;
   challenged: ChallengeUserRow;
+  settlements: Array<{
+    id: number;
+    status: string;
+    action: string;
+    amountWolo: number;
+    requestId: string;
+    txHash: string | null;
+    errorDetail: string | null;
+    executedAt: Date | null;
+    updatedAt: Date;
+  }>;
+  _count: {
+    activities: number;
+  };
   trophyChallenges: Array<{
     id: number;
     status: string;
@@ -117,6 +162,7 @@ type ScheduledMatchRow = {
 type ComparableSession = {
   id: number;
   sessionKey: string;
+  playedOn: string | null;
   updatedAt: string;
   completedAt: string | null;
   mapName: string | null;
@@ -141,7 +187,34 @@ export type ScheduledMatchTile = {
   id: number;
   status: ScheduledMatchPersistedStatus;
   displayState: ScheduledMatchDisplayState;
-  scheduledAt: string;
+  scheduleMode: ChallengeScheduleMode;
+  scheduledAt: string | null;
+  acceptanceExpiresAt: string | null;
+  fundingExpiresAt: string | null;
+  playExpiresAt: string | null;
+  proposedMatchAt: string | null;
+  proposedMatchByUserId: number | null;
+  proposedMatchByUid: string | null;
+  timeProposedAt: string | null;
+  timeConfirmedAt: string | null;
+  lifecycleVersion: number;
+  lifecycleState: string;
+  currentHeadline: string;
+  currentDetail: string;
+  active: boolean;
+  deadlineKind: ChallengeDeadlineKind;
+  deadlineAt: string | null;
+  financialState: ChallengeFinancialState;
+  financial: {
+    state: ChallengeFinancialState;
+    label: string;
+    detail: string;
+    fundedLiabilityWolo: number;
+    executedWolo: number;
+    confirmedTransferCount: number;
+  };
+  eventCount: number;
+  chainTxCount: number;
   createdAt: string;
   acceptedAt: string | null;
   declinedAt: string | null;
@@ -224,6 +297,7 @@ export type ChallengeHubSnapshot = {
   candidates: ChallengePlayerSurface[];
   scheduledMatches: ScheduledMatchTile[];
   historyMatches: ScheduledMatchTile[];
+  historyNextCursor: number | null;
   activities: ChallengeActivityItem[];
   record: ChallengeRecordSummary;
   fundingRail: ChallengeFundingRailSurface;
@@ -255,7 +329,19 @@ const CHALLENGE_PLAYER_SELECT = {
 const SCHEDULED_MATCH_SELECT = {
   id: true,
   status: true,
+  scheduleMode: true,
   scheduledAt: true,
+  acceptanceExpiresAt: true,
+  fundingExpiresAt: true,
+  playExpiresAt: true,
+  expiredAt: true,
+  fundingExpiredAt: true,
+  playExpiredAt: true,
+  proposedMatchAt: true,
+  proposedMatchByUserId: true,
+  timeProposedAt: true,
+  timeConfirmedAt: true,
+  lifecycleVersion: true,
   createdAt: true,
   updatedAt: true,
   acceptedAt: true,
@@ -284,6 +370,28 @@ const SCHEDULED_MATCH_SELECT = {
   },
   challenged: {
     select: CHALLENGE_PLAYER_SELECT,
+  },
+  settlements: {
+    orderBy: [
+      { createdAt: "asc" },
+      { id: "asc" },
+    ] as Prisma.ScheduledMatchSettlementOrderByWithRelationInput[],
+    select: {
+      id: true,
+      status: true,
+      action: true,
+      amountWolo: true,
+      requestId: true,
+      txHash: true,
+      errorDetail: true,
+      executedAt: true,
+      updatedAt: true,
+    },
+  },
+  _count: {
+    select: {
+      activities: true,
+    },
   },
   trophyChallenges: {
     select: {
@@ -457,10 +565,11 @@ function buildSyntheticChallengeActivities(rows: ScheduledMatchRow[]): Challenge
     items.push({
       id: row.id * 10_000 + 1,
       scheduledMatchId: row.id,
-      eventType: "scheduled",
+      eventType: "challenge_created",
       detail: [
-        `Scheduled for ${challengerName} vs ${challengedName}.`,
+        `${challengerName} challenged ${challengedName}.`,
         termsSummary,
+        row.scheduledAt ? `Exact match time proposed for ${row.scheduledAt.toISOString()}.` : "Open challenge.",
         row.challengeNote ? `Note: ${row.challengeNote}` : null,
       ]
         .filter(Boolean)
@@ -469,7 +578,9 @@ function buildSyntheticChallengeActivities(rows: ScheduledMatchRow[]): Challenge
       actorName: challengePlayerName(row.challenger),
       createdAt: row.createdAt.toISOString(),
       metadata: {
-        scheduledAt: row.scheduledAt.toISOString(),
+        scheduleMode: row.scheduleMode,
+        scheduledAt: row.scheduledAt?.toISOString() ?? null,
+        acceptanceExpiresAt: row.acceptanceExpiresAt?.toISOString() ?? null,
         wagerAmountWolo: row.wagerAmountWolo,
         guaranteeAmountWolo: row.guaranteeAmountWolo,
       },
@@ -485,7 +596,9 @@ function buildSyntheticChallengeActivities(rows: ScheduledMatchRow[]): Challenge
             ? `Terms accepted. Creator funding is next for ${formatChallengeWolo(
                 row.wagerAmountWolo + row.guaranteeAmountWolo
               )} WOLO.`
-            : `Accepted for ${row.scheduledAt.toLocaleString()}.`,
+            : row.scheduledAt
+              ? `Accepted for ${row.scheduledAt.toLocaleString()}.`
+              : "Open challenge accepted.",
         actorUid: row.challenged.uid,
         actorName: challengePlayerName(row.challenged),
         createdAt: row.acceptedAt.toISOString(),
@@ -627,7 +740,7 @@ function buildSyntheticChallengeActivities(rows: ScheduledMatchRow[]): Challenge
         id: row.id * 10_000 + 12,
         scheduledMatchId: row.id,
         eventType: "no_show_left",
-        detail: `${challengerName} missed check-in. The missed-side Match Guarantee routes to Community Treasury.`,
+        detail: `${challengerName} missed check-in. The missed-side Match Guarantee is awarded to ${challengedName}.`,
         actorUid: null,
         actorName: null,
         createdAt: row.resultAt.toISOString(),
@@ -640,7 +753,7 @@ function buildSyntheticChallengeActivities(rows: ScheduledMatchRow[]): Challenge
         id: row.id * 10_000 + 13,
         scheduledMatchId: row.id,
         eventType: "no_show_right",
-        detail: `${challengedName} missed check-in. The missed-side Match Guarantee routes to Community Treasury.`,
+        detail: `${challengedName} missed check-in. The missed-side Match Guarantee is awarded to ${challengerName}.`,
         actorUid: null,
         actorName: null,
         createdAt: row.resultAt.toISOString(),
@@ -669,7 +782,7 @@ function buildSyntheticChallengeActivities(rows: ScheduledMatchRow[]): Challenge
   return items.slice(0, CHALLENGE_ACTIVITY_LIMIT);
 }
 
-async function loadChallengeActivityRows(
+export async function loadChallengeActivityRows(
   prisma: PrismaClient,
   rows: ScheduledMatchRow[]
 ): Promise<ChallengeActivityItem[]> {
@@ -693,8 +806,10 @@ async function loadChallengeActivityRows(
     .slice(0, CHALLENGE_ACTIVITY_LIMIT);
 }
 
-function readSessionTime(session: Pick<ComparableSession, "updatedAt" | "completedAt">) {
-  const raw = session.completedAt || session.updatedAt;
+function readSessionTime(
+  session: Pick<ComparableSession, "playedOn" | "updatedAt" | "completedAt">
+) {
+  const raw = session.playedOn || session.completedAt || session.updatedAt;
   const parsed = new Date(raw).getTime();
   return Number.isFinite(parsed) ? parsed : 0;
 }
@@ -705,12 +820,29 @@ function sessionMatchesScheduledPlayers(
   challenged: ChallengeUserRow
 ) {
   const names = session.players.map((player) => normalizeNameKey(player.name)).filter(Boolean);
-  const challengerAliases = playerAliases(challenger);
-  const challengedAliases = playerAliases(challenged);
+  if (names.length !== 2 || new Set(names).size !== 2) return false;
 
-  const includesAlias = (aliases: string[]) => aliases.some((alias) => names.includes(alias));
+  const replayAliases = (
+    user: Pick<ChallengeUserRow, "inGameName" | "steamPersonaName">
+  ) => Array.from(
+    new Set(
+      [user.inGameName, user.steamPersonaName]
+        .map((value) => normalizeNameKey(value))
+        .filter(Boolean)
+    )
+  );
+  const challengerAliases = replayAliases(challenger);
+  const challengedAliases = replayAliases(challenged);
+  if (challengerAliases.length === 0 || challengedAliases.length === 0) return false;
+  if (challengerAliases.some((alias) => challengedAliases.includes(alias))) return false;
 
-  return includesAlias(challengerAliases) && includesAlias(challengedAliases);
+  const challengerMatches = names.filter((name) => challengerAliases.includes(name));
+  const challengedMatches = names.filter((name) => challengedAliases.includes(name));
+  return (
+    challengerMatches.length === 1 &&
+    challengedMatches.length === 1 &&
+    challengerMatches[0] !== challengedMatches[0]
+  );
 }
 
 function findLinkedSession(
@@ -718,9 +850,32 @@ function findLinkedSession(
   row: ScheduledMatchRow,
   usedSessionKeys: Set<string>
 ) {
-  const scheduledAt = row.scheduledAt.getTime();
-  let bestMatch: ComparableSession | null = null;
-  let bestDelta = Number.POSITIVE_INFINITY;
+  if (row.linkedSessionKey) {
+    if (usedSessionKeys.has(row.linkedSessionKey)) return null;
+    const pinned = sessions.find(
+      (session) =>
+        session.sessionKey === row.linkedSessionKey &&
+        sessionMatchesScheduledPlayers(session, row.challenger, row.challenged)
+    );
+    return pinned ?? null;
+  }
+
+  const fullyFundedAt =
+    row.challengerFundedAt && row.challengedFundedAt
+      ? new Date(
+          Math.max(row.challengerFundedAt.getTime(), row.challengedFundedAt.getTime())
+        )
+      : null;
+  const anchor = row.scheduledAt ?? fullyFundedAt;
+  if (!anchor) return null;
+  const anchorTime = anchor.getTime();
+  const earliestMatchAt = row.scheduledAt
+    ? anchorTime - SESSION_MATCH_LOOKBACK_MS
+    : anchorTime - 5 * 60 * 1000;
+  const latestMatchAt = row.scheduledAt
+    ? anchorTime + SESSION_MATCH_LOOKAHEAD_MS
+    : row.playExpiresAt?.getTime() ?? anchorTime + 30 * 24 * 60 * 60 * 1000;
+  const candidates: ComparableSession[] = [];
 
   for (const session of sessions) {
     if (usedSessionKeys.has(session.sessionKey)) {
@@ -728,18 +883,14 @@ function findLinkedSession(
     }
 
     const sessionTime = readSessionTime(session);
-    if (sessionTime < scheduledAt - SESSION_MATCH_LOOKBACK_MS) continue;
-    if (sessionTime > scheduledAt + SESSION_MATCH_LOOKAHEAD_MS) continue;
+    if (sessionTime < earliestMatchAt) continue;
+    if (sessionTime > latestMatchAt) continue;
     if (!sessionMatchesScheduledPlayers(session, row.challenger, row.challenged)) continue;
 
-    const delta = Math.abs(sessionTime - scheduledAt);
-    if (delta < bestDelta) {
-      bestMatch = session;
-      bestDelta = delta;
-    }
+    candidates.push(session);
   }
 
-  return bestMatch;
+  return candidates.length === 1 ? candidates[0] : null;
 }
 
 function buildActivityAt(row: ScheduledMatchRow, displayState: ScheduledMatchDisplayState) {
@@ -760,10 +911,10 @@ function buildActivityAt(row: ScheduledMatchRow, displayState: ScheduledMatchDis
   ].filter((value): value is Date => value instanceof Date);
 
   if (displayState === "proposed" || displayState === "terms_accepted") {
-    return row.scheduledAt > row.createdAt ? row.scheduledAt : row.createdAt;
+    return row.createdAt;
   }
 
-  return timestamps[0] ?? row.scheduledAt;
+  return timestamps[0] ?? row.createdAt;
 }
 
 function buildScheduledMatchTile(
@@ -779,6 +930,7 @@ function buildScheduledMatchTile(
     {
       status: linkedSessionState === "live" ? "live_confirmed" : linkedSessionState === "completed" ? "completed" : row.status,
       scheduledAt: row.scheduledAt,
+      scheduleMode: row.scheduleMode,
       acceptedAt: row.acceptedAt,
       resultAt: row.resultAt,
       liveConfirmedAt: row.liveConfirmedAt,
@@ -796,14 +948,85 @@ function buildScheduledMatchTile(
     },
     now
   );
-  const displayState = linkedSessionState === "live" ? "live" : linkedSessionState === "completed" ? "completed" : surface.displayState;
+  const lifecycle = projectChallengeLifecycle(
+    {
+      status:
+        linkedSessionState === "live"
+          ? "live_confirmed"
+          : linkedSessionState === "completed"
+            ? "completed"
+            : row.status,
+      scheduleMode: row.scheduleMode,
+      scheduledAt: row.scheduledAt,
+      acceptanceExpiresAt: row.acceptanceExpiresAt,
+      fundingExpiresAt: row.fundingExpiresAt,
+      playExpiresAt: row.playExpiresAt,
+      acceptedAt: row.acceptedAt,
+      challengerFundedAt: row.challengerFundedAt,
+      challengedFundedAt: row.challengedFundedAt,
+    },
+    now
+  );
+  const financial = projectChallengeFinancialState({
+    lifecycleStatus: lifecycle.lifecycleState,
+    totalFundingWolo: row.wagerAmountWolo + row.guaranteeAmountWolo,
+    challengerFunded: Boolean(row.challengerFundedAt),
+    challengedFunded: Boolean(row.challengedFundedAt),
+    settlements: row.settlements,
+  });
+  const displayState =
+    linkedSessionState === "live"
+      ? "live"
+      : linkedSessionState === "completed"
+        ? "completed"
+        : (["expired", "funding_expired", "play_expired"].includes(lifecycle.lifecycleState)
+            ? lifecycle.lifecycleState
+            : surface.displayState) as ScheduledMatchDisplayState;
   const activityAt = buildActivityAt(row, displayState);
+  const chainTxCount = new Set(
+    [
+      row.challengerFundingTxHash,
+      row.challengedFundingTxHash,
+      ...row.settlements.map((settlement) => settlement.txHash),
+    ].filter((value): value is string => Boolean(value?.trim()))
+  ).size;
 
   return {
     id: row.id,
     status: normalizeChallengeStatusForTile(row.status),
     displayState,
-    scheduledAt: row.scheduledAt.toISOString(),
+    scheduleMode: lifecycle.scheduleMode,
+    scheduledAt: row.scheduledAt?.toISOString() ?? null,
+    acceptanceExpiresAt: row.acceptanceExpiresAt?.toISOString() ?? null,
+    fundingExpiresAt: row.fundingExpiresAt?.toISOString() ?? null,
+    playExpiresAt: row.playExpiresAt?.toISOString() ?? null,
+    proposedMatchAt: row.proposedMatchAt?.toISOString() ?? null,
+    proposedMatchByUserId: row.proposedMatchByUserId,
+    proposedMatchByUid:
+      row.proposedMatchByUserId === row.challenger.id
+        ? row.challenger.uid
+        : row.proposedMatchByUserId === row.challenged.id
+          ? row.challenged.uid
+          : null,
+    timeProposedAt: row.timeProposedAt?.toISOString() ?? null,
+    timeConfirmedAt: row.timeConfirmedAt?.toISOString() ?? null,
+    lifecycleVersion: row.lifecycleVersion,
+    lifecycleState: lifecycle.lifecycleState,
+    currentHeadline:
+      financial.state === "refunded" || financial.state === "refund_failed" || financial.state === "refund_processing"
+        ? financial.label
+        : lifecycle.headline,
+    currentDetail:
+      financial.state === "refunded" || financial.state === "refund_failed" || financial.state === "refund_processing"
+        ? financial.detail
+        : lifecycle.detail,
+    active: lifecycle.active,
+    deadlineKind: lifecycle.deadlineKind,
+    deadlineAt: lifecycle.deadlineAt?.toISOString() ?? null,
+    financialState: financial.state,
+    financial,
+    eventCount: row._count.activities,
+    chainTxCount,
     createdAt: row.createdAt.toISOString(),
     acceptedAt: row.acceptedAt?.toISOString() ?? null,
     declinedAt: row.declinedAt?.toISOString() ?? null,
@@ -878,7 +1101,10 @@ function rowAlreadyFinalized(row: ScheduledMatchRow) {
     "no_show_right",
     "double_no_show",
     "refunded",
-  ].includes(row.status) && row.resultAt !== null;
+    "expired",
+    "funding_expired",
+    "play_expired",
+  ].includes(row.status);
 }
 
 function rowsMatchLinkedSession(row: ScheduledMatchRow, session: ComparableSession | null) {
@@ -899,6 +1125,15 @@ function rowsMatchLinkedSession(row: ScheduledMatchRow, session: ComparableSessi
   );
 }
 
+function isUniqueConstraintConflict(error: unknown) {
+  return Boolean(
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    String(error.code) === "P2002"
+  );
+}
+
 async function recordAutoScheduledMatchActivity(
   prisma: PrismaClient,
   input: {
@@ -907,16 +1142,28 @@ async function recordAutoScheduledMatchActivity(
     detail: string;
     createdAt: Date;
     metadata?: Record<string, unknown> | null;
+    eventKey?: string;
   }
 ) {
-  await prisma.scheduledMatchActivity.create({
-    data: {
+  const eventKey = (
+    input.eventKey || `auto:${input.eventType}:${input.createdAt.toISOString()}`
+  ).slice(0, 128);
+  await prisma.scheduledMatchActivity.upsert({
+    where: {
+      scheduledMatchId_eventKey: {
+        scheduledMatchId: input.scheduledMatchId,
+        eventKey,
+      },
+    },
+    create: {
       scheduledMatchId: input.scheduledMatchId,
       eventType: input.eventType.slice(0, 32),
+      eventKey,
       detail: input.detail.slice(0, 255),
       metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
       createdAt: input.createdAt,
     },
+    update: {},
   });
 }
 
@@ -1114,8 +1361,23 @@ async function persistScheduledMatchResults(
   const updatedRows: ScheduledMatchRow[] = [];
   const matchedActiveSessionKeys = new Set<string>();
   const matchedCompletedSessionKeys = new Set<string>();
+  const unresolvedPairCounts = new Map<string, number>();
+  for (const row of rows) {
+    if (rowAlreadyFinalized(row)) continue;
+    const pairKey = [row.challenger.id, row.challenged.id]
+      .sort((left, right) => left - right)
+      .join(":");
+    unresolvedPairCounts.set(pairKey, (unresolvedPairCounts.get(pairKey) ?? 0) + 1);
+  }
 
   for (const row of rows) {
+    // Terminal lifecycle truth cannot be reopened by a later fuzzy player/time
+    // match. In particular, a refunded or canceled Challenge must never be
+    // rewritten as completed because the same two people play again later.
+    if (rowAlreadyFinalized(row)) {
+      updatedRows.push(row);
+      continue;
+    }
     const surface = buildChallengeEconomySurface(
       {
         status: row.status,
@@ -1138,20 +1400,31 @@ async function persistScheduledMatchResults(
       now
     );
     const hasTerms = surface.economy.hasTerms;
-    const canLinkSessions = hasTerms
-      ? surface.displayState === "ready" || row.status === "live_confirmed" || row.status === "completed"
-      : row.status === "accepted" || row.status === "completed";
+    const bothFunded = Boolean(row.challengerFundedAt && row.challengedFundedAt);
+    const pairKey = [row.challenger.id, row.challenged.id]
+      .sort((left, right) => left - right)
+      .join(":");
+    const uniqueUnresolvedPair = (unresolvedPairCounts.get(pairKey) ?? 0) <= 1;
+    const canLinkSessions = uniqueUnresolvedPair && (
+      hasTerms
+        ? bothFunded || row.status === "live_confirmed" || row.status === "completed"
+        : row.status === "accepted" || row.status === "completed"
+    );
 
     if (canLinkSessions) {
-      const completedSession = findLinkedSession(
-        recentlyCompletedSessions,
+      const linkedSession = findLinkedSession(
+        [...recentlyCompletedSessions, ...activeSessions],
         row,
-        matchedCompletedSessionKeys
+        new Set([...matchedCompletedSessionKeys, ...matchedActiveSessionKeys])
       );
 
-      if (completedSession) {
-        matchedCompletedSessionKeys.add(completedSession.sessionKey);
-        const completedAt = new Date(completedSession.completedAt || completedSession.updatedAt);
+      if (linkedSession?.state === "completed") {
+        const completedSession = linkedSession;
+        const completedAt = new Date(
+          completedSession.playedOn ||
+          completedSession.completedAt ||
+          completedSession.updatedAt
+        );
         const nextRow = {
           ...row,
           status: "completed",
@@ -1162,21 +1435,40 @@ async function persistScheduledMatchResults(
           linkedMapName: completedSession.mapName ?? null,
           linkedWinner: completedSession.winner ?? null,
           linkedDurationSeconds: completedSession.durationSeconds ?? null,
+          lifecycleVersion: row.lifecycleVersion + 1,
         } satisfies ScheduledMatchRow;
 
-        await prisma.scheduledMatch.update({
-          where: { id: row.id },
-          data: {
-            status: "completed",
-            liveConfirmedAt: row.liveConfirmedAt ?? completedAt,
-            resultAt: completedAt,
-            settlementReadyAt: row.settlementReadyAt ?? completedAt,
-            linkedSessionKey: completedSession.sessionKey,
-            linkedMapName: completedSession.mapName,
-            linkedWinner: completedSession.winner,
-            linkedDurationSeconds: completedSession.durationSeconds,
-          },
-        });
+        let completedClaim: { count: number };
+        try {
+          completedClaim = await prisma.scheduledMatch.updateMany({
+            where: {
+              id: row.id,
+              status: row.status,
+              lifecycleVersion: row.lifecycleVersion,
+              linkedSessionKey: row.linkedSessionKey,
+            },
+            data: {
+              status: "completed",
+              liveConfirmedAt: row.liveConfirmedAt ?? completedAt,
+              resultAt: completedAt,
+              settlementReadyAt: row.settlementReadyAt ?? completedAt,
+              linkedSessionKey: completedSession.sessionKey,
+              linkedMapName: completedSession.mapName,
+              linkedWinner: completedSession.winner,
+              linkedDurationSeconds: completedSession.durationSeconds,
+              lifecycleVersion: { increment: 1 },
+            },
+          });
+        } catch (error) {
+          if (!isUniqueConstraintConflict(error)) throw error;
+          completedClaim = { count: 0 };
+        }
+
+        if (completedClaim.count !== 1) {
+          updatedRows.push(row);
+          continue;
+        }
+        matchedCompletedSessionKeys.add(completedSession.sessionKey);
 
         if (row.status !== "completed") {
           await recordAutoScheduledMatchActivity(prisma, {
@@ -1211,23 +1503,41 @@ async function persistScheduledMatchResults(
         continue;
       }
 
-      const activeSession = findLinkedSession(activeSessions, row, matchedActiveSessionKeys);
-
-      if (activeSession) {
-        matchedActiveSessionKeys.add(activeSession.sessionKey);
-        const liveConfirmedAt = row.liveConfirmedAt ?? new Date(activeSession.updatedAt);
+      if (linkedSession?.state === "live") {
+        const activeSession = linkedSession;
+        const liveConfirmedAt = row.liveConfirmedAt ?? new Date(
+          activeSession.playedOn || activeSession.updatedAt
+        );
         if (!rowsMatchLinkedSession(row, activeSession) || row.status !== "live_confirmed") {
-          await prisma.scheduledMatch.update({
-            where: { id: row.id },
-            data: {
-              status: "live_confirmed",
-              liveConfirmedAt,
-              linkedSessionKey: activeSession.sessionKey,
-              linkedMapName: activeSession.mapName,
-              linkedWinner: activeSession.winner,
-              linkedDurationSeconds: activeSession.durationSeconds,
-            },
-          });
+          let liveClaim: { count: number };
+          try {
+            liveClaim = await prisma.scheduledMatch.updateMany({
+              where: {
+                id: row.id,
+                status: row.status,
+                lifecycleVersion: row.lifecycleVersion,
+                linkedSessionKey: row.linkedSessionKey,
+              },
+              data: {
+                status: "live_confirmed",
+                liveConfirmedAt,
+                linkedSessionKey: activeSession.sessionKey,
+                linkedMapName: activeSession.mapName,
+                linkedWinner: activeSession.winner,
+                linkedDurationSeconds: activeSession.durationSeconds,
+                lifecycleVersion: { increment: 1 },
+              },
+            });
+          } catch (error) {
+            if (!isUniqueConstraintConflict(error)) throw error;
+            liveClaim = { count: 0 };
+          }
+
+          if (liveClaim.count !== 1) {
+            updatedRows.push(row);
+            continue;
+          }
+          matchedActiveSessionKeys.add(activeSession.sessionKey);
 
           if (row.status !== "live_confirmed") {
             await recordAutoScheduledMatchActivity(prisma, {
@@ -1243,6 +1553,8 @@ async function persistScheduledMatchResults(
               },
             });
           }
+        } else {
+          matchedActiveSessionKeys.add(activeSession.sessionKey);
         }
 
         updatedRows.push({
@@ -1253,6 +1565,10 @@ async function persistScheduledMatchResults(
           linkedMapName: activeSession.mapName ?? null,
           linkedWinner: activeSession.winner ?? null,
           linkedDurationSeconds: activeSession.durationSeconds ?? null,
+          lifecycleVersion:
+            !rowsMatchLinkedSession(row, activeSession) || row.status !== "live_confirmed"
+              ? row.lifecycleVersion + 1
+              : row.lifecycleVersion,
         });
         continue;
       }
@@ -1261,12 +1577,13 @@ async function persistScheduledMatchResults(
     if (hasTerms) {
       const desiredStatus = surface.persistedStatus;
       const terminalNoShow =
+        Boolean(row.scheduledAt) && (
         desiredStatus === "no_show_left" ||
         desiredStatus === "no_show_right" ||
-        desiredStatus === "double_no_show";
+        desiredStatus === "double_no_show");
 
       if (terminalNoShow && row.status !== desiredStatus) {
-        const resolvedAt = new Date(row.scheduledAt);
+        const resolvedAt = new Date(row.scheduledAt as Date);
         const nextRow = {
           ...row,
           status: desiredStatus,
@@ -1276,10 +1593,15 @@ async function persistScheduledMatchResults(
           linkedMapName: null,
           linkedWinner: null,
           linkedDurationSeconds: null,
+          lifecycleVersion: row.lifecycleVersion + 1,
         } satisfies ScheduledMatchRow;
 
-        await prisma.scheduledMatch.update({
-          where: { id: row.id },
+        const noShowClaim = await prisma.scheduledMatch.updateMany({
+          where: {
+            id: row.id,
+            status: row.status,
+            lifecycleVersion: row.lifecycleVersion,
+          },
           data: {
             status: desiredStatus,
             resultAt: row.resultAt ?? resolvedAt,
@@ -1288,17 +1610,23 @@ async function persistScheduledMatchResults(
             linkedMapName: null,
             linkedWinner: null,
             linkedDurationSeconds: null,
+            lifecycleVersion: { increment: 1 },
           },
         });
+
+        if (noShowClaim.count !== 1) {
+          updatedRows.push(row);
+          continue;
+        }
 
         await recordAutoScheduledMatchActivity(prisma, {
           scheduledMatchId: row.id,
           eventType: desiredStatus,
           detail:
             desiredStatus === "no_show_left"
-              ? `${challengePlayerName(row.challenger)} missed check-in. Missed-side Match Guarantee routes to Community Treasury.`
+              ? `${challengePlayerName(row.challenger)} missed check-in. Missed-side Match Guarantee is awarded to ${challengePlayerName(row.challenged)}.`
               : desiredStatus === "no_show_right"
-                ? `${challengePlayerName(row.challenged)} missed check-in. Missed-side Match Guarantee routes to Community Treasury.`
+                ? `${challengePlayerName(row.challenged)} missed check-in. Missed-side Match Guarantee is awarded to ${challengePlayerName(row.challenger)}.`
                 : "Both players missed the check-in lock.",
           createdAt: resolvedAt,
         });
@@ -1308,16 +1636,27 @@ async function persistScheduledMatchResults(
       }
 
       if (desiredStatus !== row.status && !rowAlreadyFinalized(row)) {
-        await prisma.scheduledMatch.update({
-          where: { id: row.id },
+        const statusClaim = await prisma.scheduledMatch.updateMany({
+          where: {
+            id: row.id,
+            status: row.status,
+            lifecycleVersion: row.lifecycleVersion,
+          },
           data: {
             status: desiredStatus,
+            lifecycleVersion: { increment: 1 },
           },
         });
+
+        if (statusClaim.count !== 1) {
+          updatedRows.push(row);
+          continue;
+        }
 
         updatedRows.push({
           ...row,
           status: desiredStatus,
+          lifecycleVersion: row.lifecycleVersion + 1,
         });
         continue;
       }
@@ -1326,12 +1665,12 @@ async function persistScheduledMatchResults(
       continue;
     }
 
-    if (rowAlreadyFinalized(row)) {
+    if (row.status !== "accepted") {
       updatedRows.push(row);
       continue;
     }
 
-    if (row.status !== "accepted") {
+    if (!row.scheduledAt) {
       updatedRows.push(row);
       continue;
     }
@@ -1346,10 +1685,15 @@ async function persistScheduledMatchResults(
         linkedMapName: null,
         linkedWinner: null,
         linkedDurationSeconds: null,
+        lifecycleVersion: row.lifecycleVersion + 1,
       } satisfies ScheduledMatchRow;
 
-      await prisma.scheduledMatch.update({
-        where: { id: row.id },
+      const forfeitClaim = await prisma.scheduledMatch.updateMany({
+        where: {
+          id: row.id,
+          status: row.status,
+          lifecycleVersion: row.lifecycleVersion,
+        },
         data: {
           status: "forfeited",
           resultAt: forfeitedAt,
@@ -1358,8 +1702,14 @@ async function persistScheduledMatchResults(
           linkedMapName: null,
           linkedWinner: null,
           linkedDurationSeconds: null,
+          lifecycleVersion: { increment: 1 },
         },
       });
+
+      if (forfeitClaim.count !== 1) {
+        updatedRows.push(row);
+        continue;
+      }
 
       updatedRows.push(nextRow);
       continue;
@@ -1407,6 +1757,9 @@ function compareScheduledTileOrder(left: ScheduledMatchTile, right: ScheduledMat
         return 11;
       case "cancelled":
       case "canceled":
+      case "expired":
+      case "funding_expired":
+      case "play_expired":
         return 12;
       default:
         return 13;
@@ -1417,8 +1770,8 @@ function compareScheduledTileOrder(left: ScheduledMatchTile, right: ScheduledMat
     return priority(left) - priority(right);
   }
 
-  const leftScheduledAt = new Date(left.scheduledAt).getTime();
-  const rightScheduledAt = new Date(right.scheduledAt).getTime();
+  const leftScheduledAt = new Date(left.deadlineAt || left.scheduledAt || left.activityAt).getTime();
+  const rightScheduledAt = new Date(right.deadlineAt || right.scheduledAt || right.activityAt).getTime();
 
   if (
     [
@@ -1473,6 +1826,9 @@ function isResolvedChallengeDisplayState(displayState: ScheduledMatchTile["displ
     "no_show_right",
     "double_no_show",
     "refunded",
+    "expired",
+    "funding_expired",
+    "play_expired",
   ].includes(displayState);
 }
 
@@ -1535,17 +1891,11 @@ async function loadScheduledMatchRows(
   }
 ) {
   const now = Date.now();
-  const earliest = new Date(now - CHALLENGE_HISTORY_LOOKBACK_MS);
-  const latest = new Date(now + CHALLENGE_LOOKAHEAD_MS);
   const recentResolvedCutoff = new Date(now - CHALLENGE_RECENT_LINGER_MS);
   const statusFilters = [
     {
       status: {
         in: [...ACTIVE_SCHEDULED_STATUSES],
-      },
-      scheduledAt: {
-        gte: earliest,
-        lte: latest,
       },
     },
     {
@@ -1588,6 +1938,10 @@ async function loadScheduledMatchRows(
               gte: recentResolvedCutoff,
             },
           },
+          {
+            status: { in: ["expired", "funding_expired", "play_expired"] },
+            updatedAt: { gte: recentResolvedCutoff },
+          },
         ]
       : []),
   ];
@@ -1622,42 +1976,54 @@ async function loadScheduledMatchRows(
     where: {
       AND: [{ OR: statusFilters }, ...participantFilters],
     },
-    orderBy: [{ scheduledAt: "asc" }, { createdAt: "desc" }],
+    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
     select: SCHEDULED_MATCH_SELECT,
   });
 }
 
-async function loadChallengeHistoryRows(
+async function loadActiveChallengeRows(
   prisma: PrismaClient,
   viewerUserId: number
 ) {
-  const lookbackCutoff = new Date(Date.now() - CHALLENGE_LEDGER_LOOKBACK_MS);
-
   return prisma.scheduledMatch.findMany({
     where: {
-      AND: [
-        {
-          OR: [
-            { challengerUserId: viewerUserId },
-            { challengedUserId: viewerUserId },
-          ],
-        },
-        {
-          OR: [
-            { createdAt: { gte: lookbackCutoff } },
-            { scheduledAt: { gte: lookbackCutoff } },
-            { acceptedAt: { gte: lookbackCutoff } },
-            { declinedAt: { gte: lookbackCutoff } },
-            { cancelledAt: { gte: lookbackCutoff } },
-            { resultAt: { gte: lookbackCutoff } },
-          ],
-        },
+      status: { in: [...ACTIVE_SCHEDULED_STATUSES] },
+      OR: [
+        { challengerUserId: viewerUserId },
+        { challengedUserId: viewerUserId },
       ],
     },
-    orderBy: [{ scheduledAt: "desc" }, { createdAt: "desc" }],
-    take: 120,
+    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
     select: SCHEDULED_MATCH_SELECT,
   });
+}
+
+async function loadResolvedChallengeHistoryRows(
+  prisma: PrismaClient,
+  viewerUserId: number,
+  options?: { cursor?: number | null; limit?: number }
+) {
+  const limit = Math.max(1, Math.min(options?.limit ?? CHALLENGE_HISTORY_PAGE_SIZE, 24));
+  const cursor = options?.cursor && options.cursor > 0 ? options.cursor : null;
+  const rows = await prisma.scheduledMatch.findMany({
+    where: {
+      status: { in: [...RESOLVED_SCHEDULED_STATUSES] },
+      OR: [
+        { challengerUserId: viewerUserId },
+        { challengedUserId: viewerUserId },
+      ],
+    },
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    take: limit + 1,
+    select: SCHEDULED_MATCH_SELECT,
+  });
+  const hasMore = rows.length > limit;
+  const pageRows = hasMore ? rows.slice(0, limit) : rows;
+  return {
+    rows: pageRows,
+    nextCursor: hasMore ? pageRows.at(-1)?.id ?? null : null,
+  };
 }
 
 export function deriveScheduledMatchTiles(
@@ -1693,7 +2059,7 @@ function deriveChallengeHistoryTiles(
     .sort(compareHistoryTileOrder);
 }
 
-function buildChallengeRecordSummary(
+export function buildChallengeRecordSummary(
   rows: ScheduledMatchRow[],
   viewer: Pick<ChallengeUserRow, "id" | "uid" | "inGameName" | "steamPersonaName">
 ): ChallengeRecordSummary {
@@ -1730,6 +2096,9 @@ function buildChallengeRecordSummary(
         break;
       case "cancelled":
       case "canceled":
+      case "expired":
+      case "funding_expired":
+      case "play_expired":
         summary.cancelled += 1;
         break;
       case "completed":
@@ -1753,6 +2122,51 @@ function buildChallengeRecordSummary(
     }
   }
 
+  return summary;
+}
+
+async function loadLifetimeChallengeRecordSummary(
+  prisma: PrismaClient,
+  viewer: Pick<ChallengeUserRow, "id" | "uid" | "inGameName" | "steamPersonaName">
+) {
+  const participantWhere = {
+    OR: [{ challengerUserId: viewer.id }, { challengedUserId: viewer.id }],
+  };
+  const [groups, completedRows] = await Promise.all([
+    prisma.scheduledMatch.groupBy({
+      by: ["status"],
+      where: participantWhere,
+      _count: { _all: true },
+    }),
+    prisma.scheduledMatch.findMany({
+      where: { ...participantWhere, status: "completed" },
+      select: { linkedWinner: true },
+    }),
+  ]);
+  const summary = emptyChallengeRecord();
+  const aliases = new Set(playerAliases(viewer));
+
+  for (const group of groups) {
+    const count = group._count._all;
+    const status = normalizeChallengeStatusForTile(group.status);
+    summary.total += count;
+    if (["proposed", "pending"].includes(status)) summary.pending += count;
+    else if (["accepted", "terms_accepted"].includes(status)) summary.accepted += count;
+    else if (["creator_funded", "opponent_funded", "funded", "left_checked_in", "right_checked_in"].includes(status)) summary.funded += count;
+    else if (["ready", "live_confirmed"].includes(status)) summary.ready += count;
+    else if (status === "declined") summary.declined += count;
+    else if (["canceled", "expired", "funding_expired", "play_expired", "refunded"].includes(status)) summary.cancelled += count;
+    else if (status === "completed") summary.completed += count;
+    else if (status === "forfeited") summary.forfeited += count;
+    else if (["no_show_left", "no_show_right", "double_no_show"].includes(status)) summary.noShows += count;
+  }
+
+  for (const row of completedRows) {
+    const winner = normalizeNameKey(row.linkedWinner);
+    if (!winner) continue;
+    if (aliases.has(winner)) summary.wins += 1;
+    else summary.losses += 1;
+  }
   return summary;
 }
 
@@ -1820,9 +2234,59 @@ export async function loadChallengeThreadTile(
   return tiles[0] ?? null;
 }
 
+export async function loadChallengeHistoryPage(
+  prisma: PrismaClient,
+  viewerUid: string,
+  options?: { cursor?: number | null; limit?: number }
+) {
+  const viewer = await prisma.user.findUnique({
+    where: { uid: viewerUid },
+    select: { id: true },
+  });
+  if (!viewer) {
+    return { historyMatches: [] as ScheduledMatchTile[], historyNextCursor: null };
+  }
+
+  const page = await loadResolvedChallengeHistoryRows(prisma, viewer.id, options);
+  const preferenceRows = page.rows.length
+    ? await prisma.scheduledMatchUserPreference.findMany({
+        where: {
+          userId: viewer.id,
+          scheduledMatchId: { in: page.rows.map((row) => row.id) },
+        },
+        select: {
+          scheduledMatchId: true,
+          favorite: true,
+          bookmarked: true,
+          colorTag: true,
+          updatedAt: true,
+        },
+      })
+    : [];
+  const preferenceByMatchId = new Map(
+    preferenceRows.map((row) => [
+      row.scheduledMatchId,
+      normalizeScheduledMatchViewerPreference(row),
+    ])
+  );
+
+  return {
+    historyMatches: page.rows.map((row) =>
+      buildScheduledMatchTile(
+        row,
+        null,
+        new Date(),
+        preferenceByMatchId.get(row.id) ?? EMPTY_SCHEDULED_MATCH_VIEWER_PREFERENCE
+      )
+    ),
+    historyNextCursor: page.nextCursor,
+  };
+}
+
 export async function loadChallengeHubSnapshot(
   prisma: PrismaClient,
-  viewerUid: string | null
+  viewerUid: string | null,
+  options?: { focusId?: number | null }
 ): Promise<ChallengeHubSnapshot> {
   const nowIso = new Date().toISOString();
 
@@ -1832,6 +2296,7 @@ export async function loadChallengeHubSnapshot(
       candidates: [],
       scheduledMatches: [],
       historyMatches: [],
+      historyNextCursor: null,
       activities: [],
       record: emptyChallengeRecord(),
       fundingRail: buildChallengeFundingRailSurface(),
@@ -1851,6 +2316,7 @@ export async function loadChallengeHubSnapshot(
       candidates: [],
       scheduledMatches: [],
       historyMatches: [],
+      historyNextCursor: null,
       activities: [],
       record: emptyChallengeRecord(),
       fundingRail: buildChallengeFundingRailSurface(),
@@ -1859,7 +2325,7 @@ export async function loadChallengeHubSnapshot(
     };
   }
 
-  const [candidateRows, historyRows, sessionSnapshot] = await Promise.all([
+  const [candidateRows, activeRows, historyPage, focusRow, sessionSnapshot] = await Promise.all([
     prisma.user.findMany({
       where: {
         uid: {
@@ -1873,9 +2339,26 @@ export async function loadChallengeHubSnapshot(
       orderBy: [{ lastSeen: "desc" }, { verificationLevel: "desc" }, { createdAt: "desc" }],
       take: 80,
     }),
-    loadChallengeHistoryRows(prisma, viewer.id),
+    loadActiveChallengeRows(prisma, viewer.id),
+    loadResolvedChallengeHistoryRows(prisma, viewer.id),
+    options?.focusId
+      ? prisma.scheduledMatch.findFirst({
+          where: {
+            id: options.focusId,
+            OR: [{ challengerUserId: viewer.id }, { challengedUserId: viewer.id }],
+          },
+          select: SCHEDULED_MATCH_SELECT,
+        })
+      : Promise.resolve(null),
     loadLiveSessionSnapshot(prisma),
   ]);
+  const historyRows = Array.from(
+    new Map(
+      [focusRow, ...activeRows, ...historyPage.rows]
+        .filter((row): row is ScheduledMatchRow => Boolean(row))
+        .map((row) => [row.id, row])
+    ).values()
+  );
 
   const reconciledRows = await persistScheduledMatchResults(
     prisma,
@@ -1927,15 +2410,18 @@ export async function loadChallengeHubSnapshot(
     new Set(tiles.map((tile) => tile.id))
   );
 
-  const activities = await loadChallengeActivityRows(prisma, reconciledRows);
-  const record = buildChallengeRecordSummary(reconciledRows, viewer);
+  // The Hall is record-first now. Per-event history is loaded only on the
+  // challenge detail route, so avoid a second activity query and a duplicate
+  // 40-row payload on every Hall refresh.
+  const record = await loadLifetimeChallengeRecordSummary(prisma, viewer);
 
   return {
     viewer: buildPlayerSurface(viewer),
     candidates: candidateRows.map((candidate) => buildPlayerSurface(candidate)),
     scheduledMatches: tiles.map(attachPreference),
     historyMatches: historyMatches.map(attachPreference),
-    activities,
+    historyNextCursor: historyPage.nextCursor,
+    activities: [],
     record,
     fundingRail: buildChallengeFundingRailSurface(),
     serverNow: nowIso,

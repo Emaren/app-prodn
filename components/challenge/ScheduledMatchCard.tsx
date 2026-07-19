@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import {
   Bookmark,
   CalendarClock,
@@ -43,6 +43,7 @@ export type ScheduledMatchCardActionKind =
   | "decline"
   | "cancel"
   | "reschedule"
+  | "confirm_time"
   | "fund"
   | "check_in";
 
@@ -76,6 +77,7 @@ type ScheduledMatchCardProps = {
       guaranteeAmountWolo: number;
     }
   ) => void | Promise<void>;
+  onConfirmTime?: (challengeId: number) => void | Promise<void>;
   onFund?: (
     challengeId: number,
     payload: {
@@ -103,7 +105,44 @@ type ScheduledMatchCardProps = {
   allowExpand?: boolean;
 };
 
-function toLocalDateTimeValue(value: string) {
+type ChallengeFinancialProjection =
+  | string
+  | {
+      state?: string | null;
+      label?: string | null;
+      summary?: string | null;
+      detail?: string | null;
+      amountWolo?: number | null;
+    }
+  | null;
+
+type ChallengeCardProjection = {
+  scheduleMode?: string | null;
+  scheduledAt?: string | null;
+  acceptanceExpiresAt?: string | null;
+  fundingExpiresAt?: string | null;
+  playExpiresAt?: string | null;
+  financialState?: ChallengeFinancialProjection;
+  financialSummary?: ChallengeFinancialProjection;
+  financial?: {
+    state?: string | null;
+    label?: string | null;
+    detail?: string | null;
+  } | null;
+  currentHeadline?: string | null;
+  currentDetail?: string | null;
+  deadlineKind?: string | null;
+  deadlineAt?: string | null;
+  eventCount?: number | null;
+  chainTxCount?: number | null;
+};
+
+function projectedMatch(match: ScheduledMatchTile) {
+  return match as unknown as ChallengeCardProjection;
+}
+
+function toLocalDateTimeValue(value: string | null | undefined) {
+  if (!value) return "";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) {
     return "";
@@ -111,6 +150,55 @@ function toLocalDateTimeValue(value: string) {
 
   const local = new Date(parsed.getTime() - parsed.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
+}
+
+function humanizeState(value: string) {
+  return value
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+function financialProjectionLabel(match: ScheduledMatchTile) {
+  const projection = projectedMatch(match);
+  if (projection.financial?.label?.trim()) return projection.financial.label.trim();
+  const financial = projection.financialState ?? projection.financialSummary;
+  if (!financial) return null;
+  if (typeof financial === "string") return humanizeState(financial);
+  return (
+    financial.summary?.trim() ||
+    financial.label?.trim() ||
+    (financial.state ? humanizeState(financial.state) : null) ||
+    financial.detail?.trim() ||
+    null
+  );
+}
+
+function challengeDeadline(match: ScheduledMatchTile) {
+  const projection = projectedMatch(match);
+  if (projection.deadlineKind && projection.deadlineAt) {
+    const label =
+      projection.deadlineKind === "acceptance"
+        ? "Accept by"
+        : projection.deadlineKind === "funding"
+          ? "Fund by"
+          : projection.deadlineKind === "play"
+            ? "Play by"
+            : "Due";
+    return { label, value: projection.deadlineAt };
+  }
+  if (["issued", "proposed", "pending", "creator_funded"].includes(match.displayState)) {
+    return { label: "Accept by", value: projection.acceptanceExpiresAt ?? null };
+  }
+  if (["terms_accepted", "accepted", "opponent_funded"].includes(match.displayState)) {
+    return { label: "Fund by", value: projection.fundingExpiresAt ?? null };
+  }
+  return { label: "Play by", value: projection.playExpiresAt ?? null };
+}
+
+function isExactSchedule(match: ScheduledMatchTile) {
+  const projection = projectedMatch(match);
+  if (projection.scheduleMode) return projection.scheduleMode === "exact";
+  return Boolean(projection.scheduledAt);
 }
 
 function formatWolo(value: number) {
@@ -132,6 +220,24 @@ function formatRelativeDuration(diffMs: number) {
 }
 
 function formatCountdownLabel(match: ScheduledMatchTile, nowMs: number) {
+  const projection = projectedMatch(match);
+  const exactSchedule = isExactSchedule(match);
+
+  if (match.displayState === "completed") return "Final";
+  if (isResolvedState(match.displayState)) return "Resolved";
+
+  if (!exactSchedule) {
+    const deadline = challengeDeadline(match).value;
+    if (deadline) {
+      const deadlineMs = new Date(deadline).getTime();
+      if (Number.isFinite(deadlineMs)) {
+        if (deadlineMs <= nowMs) return `${challengeDeadline(match).label} passed`;
+        return `${challengeDeadline(match).label} · ${formatRelativeDuration(deadlineMs - nowMs)}`;
+      }
+    }
+    return "Play anytime";
+  }
+
   if (match.economy.countdownTargetAt) {
     const targetMs = new Date(match.economy.countdownTargetAt).getTime();
     const diff = targetMs - nowMs;
@@ -143,23 +249,10 @@ function formatCountdownLabel(match: ScheduledMatchTile, nowMs: number) {
     }
   }
 
-  const scheduledMs = new Date(match.scheduledAt).getTime();
+  const scheduledMs = projection.scheduledAt ? new Date(projection.scheduledAt).getTime() : Number.NaN;
+  if (!Number.isFinite(scheduledMs)) return "Exact time pending";
   const untilStart = scheduledMs - nowMs;
   const sinceStart = nowMs - scheduledMs;
-
-  if (match.displayState === "completed") {
-    return "Final";
-  }
-
-  if (
-    match.displayState === "no_show_left" ||
-    match.displayState === "no_show_right" ||
-    match.displayState === "double_no_show" ||
-    match.displayState === "refunded" ||
-    match.displayState === "forfeited"
-  ) {
-    return "Resolved";
-  }
 
   if (match.displayState === "live") {
     return `Live ${formatRelativeDuration(sinceStart)}`;
@@ -185,8 +278,9 @@ function fundingWorkflowLabel(state: FundingWorkflowState, totalFundingWolo: num
   }
 }
 
-function accentClasses(displayState: ScheduledMatchTile["displayState"]) {
+function accentClasses(displayState: ScheduledMatchTile["displayState"] | string) {
   switch (displayState) {
+    case "issued":
     case "proposed":
     case "pending":
     case "creator_funded":
@@ -256,6 +350,9 @@ function isResolvedState(displayState: ScheduledMatchTile["displayState"]) {
     "double_no_show",
     "forfeited",
     "declined",
+    "expired",
+    "funding_expired",
+    "play_expired",
     "cancelled",
     "canceled",
     "refunded",
@@ -481,30 +578,16 @@ function AdvancedRow({
 
 export function CompactScheduledMatchHistoryRow({
   match,
-  viewerUid,
 }: {
   match: ScheduledMatchTile;
   viewerUid?: string | null;
 }) {
   const winner = match.linkedWinner || null;
-  const viewerWon = Boolean(
-    winner &&
-      viewerUid &&
-      (winner.toLowerCase() === match.challenger.name.toLowerCase() ||
-        winner.toLowerCase() === match.challenged.name.toLowerCase()) &&
-      ((viewerUid === match.challenger.uid && winner.toLowerCase() === match.challenger.name.toLowerCase()) ||
-        (viewerUid === match.challenged.uid && winner.toLowerCase() === match.challenged.name.toLowerCase()))
-  );
   const resultLabel =
     match.displayState === "completed" && winner
       ? `${winner} won`
       : match.economy.resolution.label || match.economy.statusLabel;
-  const amountLabel =
-    match.displayState === "completed" && winner
-      ? `${viewerWon ? "+" : ""}${formatWolo(match.terms.wagerAmountWolo * 2)} WOLO`
-      : match.displayState.includes("no_show")
-        ? "Guarantee"
-        : match.economy.statusLabel;
+  const amountLabel = financialProjectionLabel(match) || match.economy.statusLabel;
   const href = `/challenge/${match.id}`;
 
   return (
@@ -536,6 +619,7 @@ export default function ScheduledMatchCard({
   onDecline,
   onCancel,
   onReschedule,
+  onConfirmTime,
   onFund,
   onCheckIn,
   onPreferenceChange,
@@ -543,7 +627,6 @@ export default function ScheduledMatchCard({
   preferenceBusy = false,
   compact = false,
   stacked = false,
-  localTimePrimary = false,
   serverNow = null,
   viewMode,
   defaultViewMode,
@@ -551,22 +634,42 @@ export default function ScheduledMatchCard({
 }: ScheduledMatchCardProps) {
   const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
   const { timeClockMode, browserTimeZone } = useLobbyAppearance();
+  const projection = projectedMatch(match);
+  const scheduledAtValue = projection.scheduledAt ?? null;
+  const exactSchedule = isExactSchedule(match);
+  const financialStateLabel = financialProjectionLabel(match);
+  const projectedDeadline = challengeDeadline(match);
   const [mounted, setMounted] = useState(false);
   const [nowMs, setNowMs] = useState(() => (serverNow ? new Date(serverNow).getTime() : 0));
   const [internalViewMode, setInternalViewMode] = useState<ScheduledMatchCardViewMode>(() =>
     defaultCardViewMode({ compact, defaultViewMode })
+  );
+  const activeViewMode = viewMode ?? internalViewMode;
+  const canChangeView = allowExpand && !viewMode;
+  const resolved = isResolvedState(match.displayState);
+  const shouldTickCountdown = Boolean(
+    !compact &&
+      activeViewMode !== "summary" &&
+      !resolved &&
+      (match.economy.countdownTargetAt || scheduledAtValue || projectedDeadline.value)
   );
   const [showRescheduleForm, setShowRescheduleForm] = useState(false);
   const [showFundingForm, setShowFundingForm] = useState(false);
   const [fundingWorkflow, setFundingWorkflow] = useState<FundingWorkflowState>("idle");
   const [fundingError, setFundingError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [rescheduledAt, setRescheduledAt] = useState(() => toLocalDateTimeValue(match.scheduledAt));
+  const [rescheduledAt, setRescheduledAt] = useState(() => toLocalDateTimeValue(scheduledAtValue));
   const [rescheduleNote, setRescheduleNote] = useState(match.challengeNote ?? "");
   const [wagerAmount, setWagerAmount] = useState(String(match.terms.wagerAmountWolo));
   const [guaranteeAmount, setGuaranteeAmount] = useState(String(match.terms.guaranteeAmountWolo));
   const [fundingTxHash, setFundingTxHash] = useState("");
   const [fundingWalletAddress, setFundingWalletAddress] = useState("");
+  const pendingFundingRef = useRef<{
+    matchId: number;
+    side: "left" | "right";
+    fundingTxHash: string;
+    walletAddress: string;
+  } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -574,12 +677,14 @@ export default function ScheduledMatchCard({
     const baseServerMs = serverNow ? new Date(serverNow).getTime() : Date.now();
 
     setNowMs(baseServerMs);
+    if (!shouldTickCountdown) return;
+
     const interval = window.setInterval(() => {
       setNowMs(baseServerMs + (Date.now() - mountedAt));
     }, 1_000);
 
     return () => window.clearInterval(interval);
-  }, [serverNow]);
+  }, [serverNow, shouldTickCountdown]);
 
   useEffect(() => {
     setInternalViewMode(defaultCardViewMode({ compact, defaultViewMode }));
@@ -591,7 +696,7 @@ export default function ScheduledMatchCard({
     setFundingWorkflow("idle");
     setFundingError(null);
     setActionError(null);
-    setRescheduledAt(toLocalDateTimeValue(match.scheduledAt));
+    setRescheduledAt(toLocalDateTimeValue(scheduledAtValue));
     setRescheduleNote(match.challengeNote ?? "");
     setWagerAmount(String(match.terms.wagerAmountWolo));
     setGuaranteeAmount(String(match.terms.guaranteeAmountWolo));
@@ -599,14 +704,11 @@ export default function ScheduledMatchCard({
     setFundingWalletAddress("");
   }, [
     match.id,
-    match.scheduledAt,
+    scheduledAtValue,
     match.challengeNote,
     match.terms.guaranteeAmountWolo,
     match.terms.wagerAmountWolo,
   ]);
-
-  const activeViewMode = viewMode ?? internalViewMode;
-  const canChangeView = allowExpand && !viewMode;
 
   function setCardViewMode(nextViewMode: ScheduledMatchCardViewMode) {
     if (!canChangeView) return;
@@ -640,20 +742,23 @@ export default function ScheduledMatchCard({
   const hasCheckInOnFile = Boolean(match.economy.leftCheckedInAt || match.economy.rightCheckedInAt);
   const currentActionKind = actionState?.challengeId === match.id ? actionState.kind : null;
   const cardBusy = Boolean(currentActionKind) || fundingWorkflow === "confirming_chain" || fundingWorkflow === "recording";
-  const countdownLabel = mounted ? formatCountdownLabel(match, nowMs) : "Scheduled";
+  const countdownLabel = mounted
+    ? formatCountdownLabel(match, nowMs)
+    : exactSchedule
+      ? "Exact time"
+      : "Play anytime";
   const watcherStatus = useMemo(() => buildWatcherStatus(match), [match]);
-  const resolved = isResolvedState(match.displayState);
 
   const canDecline = Boolean(
     onDecline &&
       viewerIsChallenged &&
-      ["proposed", "pending", "creator_funded"].includes(match.displayState)
+      ["issued", "proposed", "pending", "creator_funded"].includes(match.displayState)
   );
   const canAcceptAndFund = Boolean(
     onAccept &&
       viewerIsChallenged &&
       ((match.economy.hasTerms && creatorFunded && ["creator_funded"].includes(match.displayState)) ||
-        (!match.economy.hasTerms && ["proposed", "pending"].includes(match.displayState)))
+        (!match.economy.hasTerms && ["issued", "proposed", "pending"].includes(match.displayState)))
   );
   const canCancel = Boolean(
     onCancel &&
@@ -662,6 +767,7 @@ export default function ScheduledMatchCard({
       match.displayState !== "live" &&
       !resolved &&
       [
+        "issued",
         "proposed",
         "pending",
         "terms_accepted",
@@ -679,6 +785,7 @@ export default function ScheduledMatchCard({
       match.displayState !== "live" &&
       !resolved &&
       [
+        "issued",
         "proposed",
         "pending",
         "terms_accepted",
@@ -689,6 +796,16 @@ export default function ScheduledMatchCard({
         "checkin_open",
       ].includes(match.displayState)
   );
+  const canConfirmTime = Boolean(
+    onConfirmTime &&
+      viewerIsParticipant &&
+      bothFunded &&
+      match.proposedMatchAt &&
+      match.proposedMatchByUid &&
+      match.proposedMatchByUid !== viewerUid &&
+      !hasCheckInOnFile &&
+      !resolved
+  );
   const canFund = Boolean(
     onFund &&
       viewerIsParticipant &&
@@ -696,7 +813,18 @@ export default function ScheduledMatchCard({
       !viewerAlreadyFunded &&
       !resolved &&
       !["declined", "cancelled", "canceled"].includes(match.displayState) &&
-      (!mounted || new Date(match.scheduledAt).getTime() > nowMs)
+      (!mounted ||
+        !(
+          projection.fundingExpiresAt ||
+          projection.acceptanceExpiresAt ||
+          scheduledAtValue
+        ) ||
+        new Date(
+          projection.fundingExpiresAt ||
+            projection.acceptanceExpiresAt ||
+            scheduledAtValue ||
+            0
+        ).getTime() > nowMs)
   );
   const canCheckIn = Boolean(
     onCheckIn &&
@@ -716,15 +844,17 @@ export default function ScheduledMatchCard({
   const primaryActionLabel = useMemo(() => {
     if (canAcceptAndFund) return `Accept + Fund ${formatWolo(match.terms.totalFundingWolo)}`;
     if (canFund) return fundingWorkflowLabel(fundingWorkflow, match.terms.totalFundingWolo);
+    if (canConfirmTime) return "Confirm Proposed Time";
     if (canCheckIn) return "Check In";
     if (statsHref) return match.displayState === "completed" ? "View Result" : "Watch Live";
-    if (viewerIsChallenger && ["proposed", "pending"].includes(match.displayState) && !creatorFunded) {
+    if (viewerIsChallenger && ["issued", "proposed", "pending"].includes(match.displayState) && !creatorFunded) {
       return `Fund ${formatWolo(match.terms.totalFundingWolo)} WOLO`;
     }
-    return "Open Thread";
+    return "Open Record";
   }, [
     canAcceptAndFund,
     canCheckIn,
+    canConfirmTime,
     canFund,
     creatorFunded,
     fundingWorkflow,
@@ -755,7 +885,9 @@ export default function ScheduledMatchCard({
       : bothFunded
         ? "Locked"
         : match.economy.statusLabel;
-  const summaryStateLabel = resolved || bothFunded ? match.economy.statusLabel : counterpartFundingSummary;
+  const summaryStateLabel =
+    projection.currentHeadline ||
+    (resolved || bothFunded ? match.economy.statusLabel : counterpartFundingSummary);
   const summaryCanExpand = canChangeView && activeViewMode === "summary";
 
   async function runAction(action: () => void | Promise<void>) {
@@ -832,15 +964,26 @@ export default function ScheduledMatchCard({
       setFundingWorkflow("awaiting_wallet");
       const walletAddress = connectedWalletAddress || (await connectKeplr());
 
+      const side = viewerIsChallenger ? "left" : "right";
+      const pending = pendingFundingRef.current;
       setFundingWorkflow("confirming_chain");
-      const result = await fundChallengeEscrow({
-        challengeId: match.id,
-        wagerAmountWolo: match.terms.wagerAmountWolo,
-        guaranteeAmountWolo: match.terms.guaranteeAmountWolo,
-        participantSide: viewerIsChallenger ? "left" : "right",
-        escrowAddress: match.fundingRail.escrowAddress,
-        fallbackWalletAddress: walletAddress,
-      });
+      const result =
+        pending?.matchId === match.id && pending.side === side
+          ? pending
+          : await fundChallengeEscrow({
+              challengeId: match.id,
+              wagerAmountWolo: match.terms.wagerAmountWolo,
+              guaranteeAmountWolo: match.terms.guaranteeAmountWolo,
+              participantSide: side,
+              escrowAddress: match.fundingRail.escrowAddress,
+              fallbackWalletAddress: walletAddress,
+            });
+      pendingFundingRef.current = {
+        matchId: match.id,
+        side,
+        fundingTxHash: result.fundingTxHash,
+        walletAddress: result.walletAddress,
+      };
 
       setFundingWorkflow("recording");
       await onFund(match.id, {
@@ -848,6 +991,7 @@ export default function ScheduledMatchCard({
         fundingWalletAddress: result.walletAddress,
       });
 
+      pendingFundingRef.current = null;
       setFundingWorkflow("verified");
       setShowFundingForm(false);
     } catch (error) {
@@ -884,21 +1028,32 @@ export default function ScheduledMatchCard({
 
       await onAccept(match.id);
 
+      const pending = pendingFundingRef.current;
       setFundingWorkflow("confirming_chain");
-      const result = await fundChallengeEscrow({
-        challengeId: match.id,
-        wagerAmountWolo: match.terms.wagerAmountWolo,
-        guaranteeAmountWolo: match.terms.guaranteeAmountWolo,
-        participantSide: "right",
-        escrowAddress: match.fundingRail.escrowAddress,
-        fallbackWalletAddress: walletAddress,
-      });
+      const result =
+        pending?.matchId === match.id && pending.side === "right"
+          ? pending
+          : await fundChallengeEscrow({
+              challengeId: match.id,
+              wagerAmountWolo: match.terms.wagerAmountWolo,
+              guaranteeAmountWolo: match.terms.guaranteeAmountWolo,
+              participantSide: "right",
+              escrowAddress: match.fundingRail.escrowAddress,
+              fallbackWalletAddress: walletAddress,
+            });
+      pendingFundingRef.current = {
+        matchId: match.id,
+        side: "right",
+        fundingTxHash: result.fundingTxHash,
+        walletAddress: result.walletAddress,
+      };
 
       setFundingWorkflow("recording");
       await onFund(match.id, {
         fundingTxHash: result.fundingTxHash,
         fundingWalletAddress: result.walletAddress,
       });
+      pendingFundingRef.current = null;
       setFundingWorkflow("verified");
     } catch (error) {
       setFundingWorkflow("failed");
@@ -925,6 +1080,20 @@ export default function ScheduledMatchCard({
         <button type="button" onClick={() => void fundNow()} disabled={cardBusy} className={buttonClass}>
           <Wallet className="h-4 w-4" />
           {currentActionKind === "fund" ? "Recording" : primaryActionLabel}
+        </button>
+      );
+    }
+
+    if (canConfirmTime) {
+      return (
+        <button
+          type="button"
+          onClick={() => void runAction(() => onConfirmTime?.(match.id))}
+          disabled={cardBusy}
+          className={buttonClass}
+        >
+          <CalendarClock className="h-4 w-4" />
+          {currentActionKind === "confirm_time" ? "Confirming" : primaryActionLabel}
         </button>
       );
     }
@@ -970,61 +1139,152 @@ export default function ScheduledMatchCard({
       if (target?.closest("a, button, [role='button']")) return;
       setCardViewMode("detail");
     };
-    const summaryContent = (
+    const exactLocalLabel = formatDateTime(
+      scheduledAtValue,
+      {
+        timeDisplayMode: "local",
+        timeClockMode,
+        timezoneOverride: browserTimeZone,
+      },
+      { browserTimeZone, includeZone: true }
+    );
+    const exactUtcLabel = formatDateTime(
+      scheduledAtValue,
+      { timeDisplayMode: "utc", timeClockMode, timezoneOverride: null },
+      { includeZone: false }
+    );
+    const deadlineLocalLabel = formatDateTime(
+      projectedDeadline.value,
+      {
+        timeDisplayMode: "local",
+        timeClockMode,
+        timezoneOverride: browserTimeZone,
+      },
+      { browserTimeZone, includeZone: true }
+    );
+    const deadlineUtcLabel = formatDateTime(
+      projectedDeadline.value,
+      { timeDisplayMode: "utc", timeClockMode, timezoneOverride: null },
+      { includeZone: false }
+    );
+    const hasAuditCounts =
+      typeof projection.eventCount === "number" || typeof projection.chainTxCount === "number";
+
+    return (
       <div
         onClick={summaryCanExpand ? expandSummary : undefined}
-        className={`flex min-w-0 flex-1 items-center gap-2 overflow-hidden whitespace-nowrap text-[11px] text-slate-200 sm:text-xs ${
+        className={`relative isolate min-w-0 overflow-hidden rounded-[1.25rem] border p-4 ${accent.shell} ${
           summaryCanExpand ? "cursor-pointer" : ""
         }`}
       >
-        <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 ${accent.badge}`}>
-          <CalendarClock className="h-3 w-3" />
-          Scheduled
-        </span>
-        <span className="truncate font-semibold text-white">
-          {match.challenger.name} vs {match.challenged.name}
-        </span>
-        <span className="shrink-0 text-slate-600">·</span>
-        <span className="shrink-0 text-slate-300">
-          {formatWolo(match.terms.totalFundingWolo)} WOLO each
-        </span>
-        <span className="shrink-0 text-slate-600">·</span>
-        <TimeDisplayText
-          value={match.scheduledAt}
-          includeZone={false}
-          className="shrink-0 text-slate-300"
-          bubbleClassName="max-w-[14rem] text-center"
-        />
-        <span className="shrink-0 text-slate-600">·</span>
-        <span className="shrink-0 text-slate-300">{viewerFundingSummary}</span>
-        <span className="shrink-0 text-slate-600">·</span>
-        <span className="truncate text-slate-300">{summaryStateLabel}</span>
-      </div>
-    );
+        <div className="pointer-events-none absolute inset-x-5 top-0 h-px bg-gradient-to-r from-transparent via-emerald-50/70 to-transparent" />
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${accent.badge}`}>
+                {exactSchedule ? <CalendarClock className="h-3 w-3" /> : <Swords className="h-3 w-3" />}
+                {exactSchedule ? "Exact time" : "Play anytime"}
+              </span>
+              <span className="text-[11px] font-semibold text-slate-300">Challenge #{match.id}</span>
+            </div>
+            <h3 className="mt-2 truncate text-lg font-semibold text-white sm:text-xl">
+              {match.challenger.name} <span className="text-amber-100/55">vs</span> {match.challenged.name}
+            </h3>
+          </div>
+          <span className="rounded-full border border-white/10 bg-black/20 px-3 py-1 text-[11px] font-semibold text-slate-200">
+            {summaryStateLabel}
+          </span>
+        </div>
 
-    return (
-      <div className={`min-w-0 rounded-full border px-3 py-2 ${accent.shell}`}>
-        <div className="flex min-w-0 items-center gap-2">
-          <div className="min-w-0 flex-1">{summaryContent}</div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+          <div className="rounded-xl border border-amber-200/14 bg-amber-300/[0.07] px-3 py-2 text-xs text-slate-300">
+            <span className="font-black text-amber-50">{formatWolo(match.terms.totalFundingWolo)} WOLO</span> total lock each
+          </div>
+          <div className="min-w-0 rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-xs">
+            {match.proposedMatchAt ? (
+              <div className="flex min-w-0 flex-wrap gap-x-2 gap-y-1">
+                <span className="font-semibold text-amber-50">
+                  Proposed {formatDateTime(
+                    match.proposedMatchAt,
+                    {
+                      timeDisplayMode: "local",
+                      timeClockMode,
+                      timezoneOverride: browserTimeZone,
+                    },
+                    { browserTimeZone, includeZone: true }
+                  )}
+                </span>
+                <span className="text-slate-500">
+                  UTC {formatDateTime(
+                    match.proposedMatchAt,
+                    { timeDisplayMode: "utc", timeClockMode, timezoneOverride: null },
+                    { includeZone: false }
+                  )}
+                </span>
+                <span className="text-slate-400">
+                  {canConfirmTime ? "Your confirmation is needed" : "Awaiting the other player"}
+                </span>
+              </div>
+            ) : exactSchedule && scheduledAtValue ? (
+              <div className="flex min-w-0 flex-wrap gap-x-2 gap-y-1">
+                <span className="font-semibold text-white">{exactLocalLabel}</span>
+                <span className="text-slate-500">UTC {exactUtcLabel}</span>
+              </div>
+            ) : (
+              <div className="flex min-w-0 flex-wrap gap-x-2 gap-y-1">
+                <span className="font-semibold text-white">Play anytime after funding</span>
+                {projectedDeadline.value ? (
+                  <>
+                    <span className="text-slate-400">{projectedDeadline.label} {deadlineLocalLabel}</span>
+                    <span className="text-slate-500">UTC {deadlineUtcLabel}</span>
+                  </>
+                ) : null}
+              </div>
+            )}
+          </div>
+        </div>
 
-          {summaryCanExpand ? (
-            <button
-              type="button"
-              title="Details"
-              aria-label="Open scheduled match details"
-              onClick={() => setCardViewMode("detail")}
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-slate-300 transition hover:border-white/25 hover:text-white"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-            </button>
-          ) : null}
-          <Link
-            href={threadHref}
-            title="Open thread"
-            className="hidden shrink-0 rounded-full border border-white/12 bg-white/[0.05] px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-white transition hover:border-white/25 hover:bg-white/[0.08] sm:inline-flex"
-          >
-            Open
-          </Link>
+        <div className="mt-3 flex min-w-0 flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 text-[11px] text-slate-300">
+            <span>{viewerFundingSummary}</span>
+            {financialStateLabel ? (
+              <span className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.07] px-2.5 py-1 text-cyan-50">
+                {financialStateLabel}
+              </span>
+            ) : null}
+            {typeof projection.eventCount === "number" ? <span>{projection.eventCount} events</span> : null}
+            {typeof projection.chainTxCount === "number" ? <span>{projection.chainTxCount} chain tx</span> : null}
+            {hasAuditCounts ? (
+              <Link href={`${threadHref}#raw`} className="font-black uppercase tracking-[0.15em] text-amber-100/75 hover:text-amber-50">
+                RAW
+              </Link>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {renderPrimaryAction()}
+            {canDecline ? (
+              <button
+                type="button"
+                onClick={() => void runAction(() => onDecline?.(match.id))}
+                disabled={cardBusy}
+                className="inline-flex min-h-10 items-center rounded-full border border-rose-300/24 bg-rose-500/[0.08] px-3 py-2 text-sm font-semibold text-rose-50 transition hover:bg-rose-500/15 disabled:opacity-60"
+              >
+                Decline
+              </button>
+            ) : null}
+            {summaryCanExpand ? (
+              <button
+                type="button"
+                title="Details"
+                aria-label="Open challenge details"
+                onClick={() => setCardViewMode("detail")}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] text-slate-300 transition hover:border-white/25 hover:text-white"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     );
@@ -1040,7 +1300,7 @@ export default function ScheduledMatchCard({
         <div className="min-w-0">
           <div className={`flex items-center gap-2 text-[10px] uppercase tracking-[0.24em] ${accent.eyebrow}`}>
             <Swords className="h-3.5 w-3.5" />
-            Scheduled match
+            {exactSchedule ? "Exact-time challenge" : "Open challenge"}
           </div>
           <div className={`${compact ? "mt-1 text-base" : "mt-2 text-xl"} break-words font-semibold text-white`}>
             {match.challenger.name} vs {match.challenged.name}
@@ -1109,6 +1369,17 @@ export default function ScheduledMatchCard({
         />
       </div>
 
+      {financialStateLabel || typeof projection.eventCount === "number" || typeof projection.chainTxCount === "number" ? (
+        <div className={`${compact ? "mt-3" : "mt-4"} flex min-w-0 flex-wrap items-center gap-2 rounded-[0.95rem] border border-cyan-200/12 bg-cyan-300/[0.055] px-3 py-2.5 text-[11px] text-slate-300`}>
+          {financialStateLabel ? <span className="font-semibold text-cyan-50">{financialStateLabel}</span> : null}
+          {typeof projection.eventCount === "number" ? <span>{projection.eventCount} events</span> : null}
+          {typeof projection.chainTxCount === "number" ? <span>{projection.chainTxCount} chain tx</span> : null}
+          <Link href={`${threadHref}#raw`} className="ml-auto font-black uppercase tracking-[0.15em] text-amber-100/75 hover:text-amber-50">
+            RAW
+          </Link>
+        </div>
+      ) : null}
+
       {match.titleStakes.length > 0 ? (
         <div className={`${compact ? "mt-3" : "mt-4"} rounded-[1rem] border border-emerald-200/18 bg-[linear-gradient(135deg,rgba(251,191,36,0.12),rgba(6,78,59,0.05))] p-3`}>
           <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-emerald-100/70">
@@ -1173,9 +1444,11 @@ export default function ScheduledMatchCard({
         />
         <StatusDot
           icon={<CalendarClock className="h-4 w-4" />}
-          label="Check-in"
+          label={exactSchedule ? "Check-in" : "Timing"}
           value={
-            match.economy.checkInWindowState === "open"
+            !exactSchedule
+              ? "Play anytime"
+              : match.economy.checkInWindowState === "open"
               ? "Open"
               : match.economy.checkInWindowState === "upcoming"
                 ? "Soon"
@@ -1183,7 +1456,7 @@ export default function ScheduledMatchCard({
                   ? "Closed"
                   : "Later"
           }
-          active={match.economy.checkInWindowState === "open" || match.displayState === "ready"}
+          active={!exactSchedule || match.economy.checkInWindowState === "open" || match.displayState === "ready"}
         />
         <StatusDot
           icon={<Radio className="h-4 w-4" />}
@@ -1205,24 +1478,54 @@ export default function ScheduledMatchCard({
             <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-medium ${accent.badge}`}>
               {countdownLabel}
             </span>
-            <span className="text-xs text-slate-400">
-              {localTimePrimary ? (
-                formatDateTime(
-                  match.scheduledAt,
-                  {
-                    timeDisplayMode: "local",
-                    timeClockMode,
-                    timezoneOverride: browserTimeZone,
-                  },
-                  {
-                    browserTimeZone,
-                    includeZone: true,
-                  }
-                )
-              ) : (
-                <TimeDisplayText value={match.scheduledAt} includeZone className="text-slate-300" />
-              )}
-            </span>
+            {exactSchedule && scheduledAtValue ? (
+              <>
+                <span className="text-xs font-semibold text-slate-200">
+                  {formatDateTime(
+                    scheduledAtValue,
+                    {
+                      timeDisplayMode: "local",
+                      timeClockMode,
+                      timezoneOverride: browserTimeZone,
+                    },
+                    { browserTimeZone, includeZone: true }
+                  )}
+                </span>
+                <span className="text-xs text-slate-500">
+                  UTC {formatDateTime(
+                    scheduledAtValue,
+                    { timeDisplayMode: "utc", timeClockMode, timezoneOverride: null },
+                    { includeZone: false }
+                  )}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="text-xs font-semibold text-slate-200">Play anytime after funding</span>
+                {projectedDeadline.value ? (
+                  <>
+                    <span className="text-xs text-slate-400">
+                      {projectedDeadline.label} {formatDateTime(
+                        projectedDeadline.value,
+                        {
+                          timeDisplayMode: "local",
+                          timeClockMode,
+                          timezoneOverride: browserTimeZone,
+                        },
+                        { browserTimeZone, includeZone: true }
+                      )}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      UTC {formatDateTime(
+                        projectedDeadline.value,
+                        { timeDisplayMode: "utc", timeClockMode, timezoneOverride: null },
+                        { includeZone: false }
+                      )}
+                    </span>
+                  </>
+                ) : null}
+              </>
+            )}
           </div>
           {actionError || fundingError ? (
             <div className="mt-2 max-w-xl text-xs leading-5 text-emerald-100">
@@ -1233,13 +1536,13 @@ export default function ScheduledMatchCard({
 
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {renderPrimaryAction()}
-          {primaryActionLabel !== "Open Thread" ? (
+          {primaryActionLabel !== "Open Record" ? (
             <Link
               href={threadHref}
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/15 bg-emerald-950/[0.16] px-3 py-2 text-sm font-semibold text-white/85 transition hover:border-white/30 hover:text-white"
             >
               <ExternalLink className="h-4 w-4" />
-              Thread
+              Record
             </Link>
           ) : null}
           {canDecline ? (
@@ -1264,7 +1567,13 @@ export default function ScheduledMatchCard({
               className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-sky-300/28 bg-sky-400/10 px-3 py-2 text-sm font-semibold text-sky-100 transition hover:bg-sky-400/15 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <CalendarClock className="h-4 w-4" />
-              {showRescheduleForm ? "Close Time" : "Edit Time"}
+              {showRescheduleForm
+                ? "Close Time"
+                : bothFunded
+                  ? "Propose Time"
+                  : exactSchedule
+                    ? "Edit Time"
+                    : "Set Time"}
             </button>
           ) : null}
           {canCancel ? (
@@ -1394,34 +1703,45 @@ export default function ScheduledMatchCard({
             </div>
 
             <div className="rounded-[0.95rem] border border-white/10 bg-white/[0.035] px-3 py-2">
-              <AdvancedRow
-                label="Check-in open"
-                value={<TimeDisplayText value={match.economy.checkInOpensAt} includeZone={false} />}
-              />
-              <AdvancedRow
-                label="Start lock"
-                value={<TimeDisplayText value={match.economy.checkInClosesAt} includeZone={false} />}
-              />
-              <AdvancedRow
-                label="Creator in"
-                value={
-                  match.economy.leftCheckedInAt ? (
-                    <TimeDisplayText value={match.economy.leftCheckedInAt} includeZone={false} />
-                  ) : (
-                    "-"
-                  )
-                }
-              />
-              <AdvancedRow
-                label="Opponent in"
-                value={
-                  match.economy.rightCheckedInAt ? (
-                    <TimeDisplayText value={match.economy.rightCheckedInAt} includeZone={false} />
-                  ) : (
-                    "-"
-                  )
-                }
-              />
+              {exactSchedule ? (
+                <>
+                  <AdvancedRow
+                    label="Check-in open"
+                    value={<TimeDisplayText value={match.economy.checkInOpensAt} includeZone={false} />}
+                  />
+                  <AdvancedRow
+                    label="Start lock"
+                    value={<TimeDisplayText value={match.economy.checkInClosesAt} includeZone={false} />}
+                  />
+                  <AdvancedRow
+                    label="Creator in"
+                    value={
+                      match.economy.leftCheckedInAt ? (
+                        <TimeDisplayText value={match.economy.leftCheckedInAt} includeZone={false} />
+                      ) : (
+                        "-"
+                      )
+                    }
+                  />
+                  <AdvancedRow
+                    label="Opponent in"
+                    value={
+                      match.economy.rightCheckedInAt ? (
+                        <TimeDisplayText value={match.economy.rightCheckedInAt} includeZone={false} />
+                      ) : (
+                        "-"
+                      )
+                    }
+                  />
+                </>
+              ) : (
+                <>
+                  <AdvancedRow label="Timing" value="Play anytime after funding" />
+                  <AdvancedRow label="Accept by" value={<TimeDisplayText value={projection.acceptanceExpiresAt} includeZone={false} />} />
+                  <AdvancedRow label="Fund by" value={<TimeDisplayText value={projection.fundingExpiresAt} includeZone={false} />} />
+                  <AdvancedRow label="Play by" value={<TimeDisplayText value={projection.playExpiresAt} includeZone={false} />} />
+                </>
+              )}
             </div>
           </div>
 
@@ -1460,7 +1780,13 @@ export default function ScheduledMatchCard({
               href={threadHref}
               className="rounded-full border border-white/15 px-4 py-2 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
             >
-              Thread
+              Record
+            </Link>
+            <Link
+              href={`${threadHref}#raw`}
+              className="rounded-full border border-amber-200/18 bg-amber-300/[0.06] px-4 py-2 text-sm font-semibold text-amber-100/80 transition hover:border-amber-200/30 hover:text-amber-50"
+            >
+              RAW proof
             </Link>
             <Link
               href={spotlightPlayer.href}

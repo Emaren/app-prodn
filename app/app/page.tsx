@@ -36,7 +36,9 @@ type LiveSummaryPayload = {
 type ScheduledMatchSummary = {
   id: number;
   displayState: string;
-  scheduledAt: string;
+  scheduledAt: string | null;
+  deadlineAt?: string | null;
+  scheduleMode?: "open" | "exact";
   terms: {
     totalFundingWolo: number;
   };
@@ -127,7 +129,11 @@ function pickNextMatch(matches: ScheduledMatchSummary[] | undefined) {
   if (!matches?.length) return null;
   const active = matches
     .filter((match) => ACTIVE_MATCH_STATES.has(match.displayState))
-    .sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt));
+    .sort(
+      (a, b) =>
+        Date.parse(a.deadlineAt || a.scheduledAt || "9999-12-31") -
+        Date.parse(b.deadlineAt || b.scheduledAt || "9999-12-31")
+    );
 
   return active[0] ?? matches[0] ?? null;
 }
@@ -390,14 +396,20 @@ export default function InstalledAppPage() {
                     {formatWolo(nextMatch.terms.totalFundingWolo)} WOLO each
                   </span>
                   <span>·</span>
-                  <span>{formatLocalDate(nextMatch.scheduledAt)}</span>
+                  <span>
+                    {nextMatch.scheduledAt
+                      ? formatLocalDate(nextMatch.scheduledAt)
+                      : nextMatch.deadlineAt
+                        ? `Open until ${formatLocalDate(nextMatch.deadlineAt)}`
+                        : "Play anytime"}
+                  </span>
                   <span>·</span>
                   <span>{matchFundingLabel(nextMatch, uid)}</span>
                   <span>·</span>
                   <span>{compactState(nextMatch.displayState)}</span>
                 </div>
               ) : (
-                <div className="text-sm text-slate-400">Challenge a player and lock the time.</div>
+                <div className="text-sm text-slate-400">Challenge a player and set the terms.</div>
               )}
             </div>
           </div>

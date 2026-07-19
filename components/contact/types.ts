@@ -5,6 +5,7 @@ export type ContactChallengeActionKind =
   | "decline"
   | "cancel"
   | "reschedule"
+  | "confirm_time"
   | "fund"
   | "check_in";
 

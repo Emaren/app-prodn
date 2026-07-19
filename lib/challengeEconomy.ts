@@ -22,7 +22,10 @@ export type ScheduledMatchPersistedStatus =
   | "no_show_right"
   | "double_no_show"
   | "refunded"
-  | "canceled";
+  | "canceled"
+  | "expired"
+  | "funding_expired"
+  | "play_expired";
 
 export type ScheduledMatchDisplayState =
   | "pending"
@@ -45,7 +48,10 @@ export type ScheduledMatchDisplayState =
   | "no_show_right"
   | "double_no_show"
   | "refunded"
-  | "canceled";
+  | "canceled"
+  | "expired"
+  | "funding_expired"
+  | "play_expired";
 
 export type ScheduledMatchResolutionSurface = {
   label: string | null;
@@ -69,8 +75,8 @@ export type ScheduledMatchEconomySurface = {
   opponentFundingWalletAddress: string | null;
   leftCheckedInAt: string | null;
   rightCheckedInAt: string | null;
-  checkInOpensAt: string;
-  checkInClosesAt: string;
+  checkInOpensAt: string | null;
+  checkInClosesAt: string | null;
   checkInWindowState: "disabled" | "upcoming" | "open" | "closed";
   countdownMode: "opens_in" | "closes_in" | null;
   countdownTargetAt: string | null;
@@ -81,7 +87,8 @@ export type ScheduledMatchEconomySurface = {
 
 type ChallengeEconomyInput = {
   status: string;
-  scheduledAt: Date;
+  scheduledAt: Date | null;
+  scheduleMode?: string | null;
   acceptedAt?: Date | null;
   resultAt?: Date | null;
   liveConfirmedAt?: Date | null;
@@ -177,8 +184,9 @@ export function buildChallengeEconomySurface(
   const totalFundingWolo = wagerAmountWolo + guaranteeAmountWolo;
   const hasTerms = totalFundingWolo > 0;
   const rawStatus = normalizeScheduledMatchStatus(input.status);
-  const checkInOpensAt = buildCheckInOpenAt(input.scheduledAt);
-  const checkInClosesAt = input.scheduledAt;
+  const exactSchedule = input.scheduledAt instanceof Date ? input.scheduledAt : null;
+  const checkInOpensAt = exactSchedule ? buildCheckInOpenAt(exactSchedule) : null;
+  const checkInClosesAt = exactSchedule;
   const creatorFunded = Boolean(input.challengerFundedAt);
   const opponentFunded = Boolean(input.challengedFundedAt);
   const bothFunded = creatorFunded && opponentFunded;
@@ -189,7 +197,10 @@ export function buildChallengeEconomySurface(
     rawStatus === "no_show_left" ||
     rawStatus === "no_show_right" ||
     rawStatus === "double_no_show" ||
-    rawStatus === "refunded";
+    rawStatus === "refunded" ||
+    rawStatus === "expired" ||
+    rawStatus === "funding_expired" ||
+    rawStatus === "play_expired";
 
   if (!hasTerms) {
     const legacyDisplayState: ScheduledMatchDisplayState =
@@ -248,8 +259,8 @@ export function buildChallengeEconomySurface(
         opponentFundingWalletAddress: null,
         leftCheckedInAt: null,
         rightCheckedInAt: null,
-        checkInOpensAt: checkInOpensAt.toISOString(),
-        checkInClosesAt: checkInClosesAt.toISOString(),
+        checkInOpensAt: checkInOpensAt?.toISOString() ?? null,
+        checkInClosesAt: checkInClosesAt?.toISOString() ?? null,
         checkInWindowState: "disabled",
         countdownMode: null,
         countdownTargetAt: null,
@@ -265,12 +276,14 @@ export function buildChallengeEconomySurface(
     };
   }
 
-  const timeUntilCheckInOpen = checkInOpensAt.getTime() - now.getTime();
-  const checkInWindowState: ScheduledMatchEconomySurface["checkInWindowState"] = !bothFunded
+  const timeUntilCheckInOpen = checkInOpensAt
+    ? checkInOpensAt.getTime() - now.getTime()
+    : Number.POSITIVE_INFINITY;
+  const checkInWindowState: ScheduledMatchEconomySurface["checkInWindowState"] = !bothFunded || !checkInOpensAt || !exactSchedule
     ? "disabled"
     : now.getTime() < checkInOpensAt.getTime()
       ? "upcoming"
-      : now.getTime() < input.scheduledAt.getTime()
+      : now.getTime() < exactSchedule.getTime()
         ? "open"
         : "closed";
 
@@ -292,6 +305,12 @@ export function buildChallengeEconomySurface(
     displayState = "double_no_show";
   } else if (rawStatus === "refunded") {
     displayState = "refunded";
+  } else if (rawStatus === "expired") {
+    displayState = "expired";
+  } else if (rawStatus === "funding_expired") {
+    displayState = "funding_expired";
+  } else if (rawStatus === "play_expired") {
+    displayState = "play_expired";
   } else if (leftCheckedIn && rightCheckedIn) {
     displayState = "ready";
   } else if (checkInWindowState === "open" && leftCheckedIn) {
@@ -312,7 +331,7 @@ export function buildChallengeEconomySurface(
     displayState = "proposed";
   }
 
-  if (checkInWindowState === "closed" && bothFunded && rawStatus !== "completed" && rawStatus !== "live_confirmed") {
+  if (exactSchedule && checkInWindowState === "closed" && bothFunded && rawStatus !== "completed" && rawStatus !== "live_confirmed") {
     if (leftCheckedIn && rightCheckedIn) {
       displayState = "ready";
     } else if (leftCheckedIn) {
@@ -340,9 +359,9 @@ export function buildChallengeEconomySurface(
 
   const countdownTargetAt =
     countdownMode === "opens_in"
-      ? checkInOpensAt.toISOString()
+      ? checkInOpensAt?.toISOString() ?? null
       : countdownMode === "closes_in"
-        ? input.scheduledAt.toISOString()
+        ? exactSchedule?.toISOString() ?? null
         : null;
 
   let statusLabel = "Creator funding required";
@@ -368,8 +387,10 @@ export function buildChallengeEconomySurface(
       statusDetail = `Opponent locked ${formatWolo(totalFundingWolo)} WOLO.`;
       break;
     case "funded":
-      statusLabel = "Funded";
-      statusDetail = "Check-in opens exactly 10 minutes before start.";
+      statusLabel = exactSchedule ? "Funded" : "Match Ready";
+      statusDetail = exactSchedule
+        ? "Check-in opens exactly 10 minutes before start."
+        : "Both deposits are verified. Play anytime or propose an exact time.";
       break;
     case "checkin_open":
       statusLabel = "Check-in open";
@@ -418,9 +439,9 @@ export function buildChallengeEconomySurface(
       statusDetail = "Opponent checked in. Creator missed the lock.";
       resolution = {
         label: "Creator no-show",
-        guarantee: "Opponent Match Guarantee returns; creator Match Guarantee goes to Community Treasury.",
+        guarantee: "Opponent Match Guarantee returns; creator Match Guarantee is awarded to the opponent.",
         wager: "Both Wolo Wagers release because no match was played.",
-        treasury: "Community Treasury",
+        treasury: null,
       };
       break;
     case "no_show_right":
@@ -428,9 +449,9 @@ export function buildChallengeEconomySurface(
       statusDetail = "Creator checked in. Opponent missed the lock.";
       resolution = {
         label: "Opponent no-show",
-        guarantee: "Creator Match Guarantee returns; opponent Match Guarantee goes to Community Treasury.",
+        guarantee: "Creator Match Guarantee returns; opponent Match Guarantee is awarded to the creator.",
         wager: "Both Wolo Wagers release because no match was played.",
-        treasury: "Community Treasury",
+        treasury: null,
       };
       break;
     case "double_no_show":
@@ -461,6 +482,18 @@ export function buildChallengeEconomySurface(
         treasury: null,
       };
       break;
+    case "expired":
+      statusLabel = "Expired";
+      statusDetail = "The opponent did not accept before the invitation closed.";
+      break;
+    case "funding_expired":
+      statusLabel = "Funding expired";
+      statusDetail = "Acceptance was recorded, but the matching deposit was not completed.";
+      break;
+    case "play_expired":
+      statusLabel = "Play window expired";
+      statusDetail = "No verified match arrived during the play-anytime window.";
+      break;
     default:
       break;
   }
@@ -483,8 +516,8 @@ export function buildChallengeEconomySurface(
       opponentFundingWalletAddress: input.challengedFundingWalletAddress?.trim() || null,
       leftCheckedInAt: input.challengerCheckedInAt?.toISOString() ?? null,
       rightCheckedInAt: input.challengedCheckedInAt?.toISOString() ?? null,
-      checkInOpensAt: checkInOpensAt.toISOString(),
-      checkInClosesAt: checkInClosesAt.toISOString(),
+      checkInOpensAt: checkInOpensAt?.toISOString() ?? null,
+      checkInClosesAt: checkInClosesAt?.toISOString() ?? null,
       checkInWindowState,
       countdownMode,
       countdownTargetAt,

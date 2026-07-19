@@ -295,9 +295,21 @@ function challengeNoticeTone(
   }
 
   switch (summary.state) {
+    case "issued":
+    case "scheduled":
+    case "rescheduled":
+    case "time_proposed":
+    case "time_confirmed":
+    case "refund_processing":
+      return {
+        summary,
+        shell:
+          "border-amber-300/18 bg-amber-400/10 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.08)]",
+      };
     case "accepted":
     case "terms_accepted":
     case "ready":
+    case "refunded":
       return {
         summary,
         shell:
@@ -305,8 +317,6 @@ function challengeNoticeTone(
       };
     case "funding":
     case "checkin":
-    case "scheduled":
-    case "rescheduled":
     case "result_ready":
       return {
         summary,
@@ -316,6 +326,10 @@ function challengeNoticeTone(
     case "no_show":
     case "declined":
     case "cancelled":
+    case "expired":
+    case "funding_expired":
+    case "play_expired":
+    case "refund_failed":
       return {
         summary,
         shell:
@@ -332,7 +346,15 @@ function ChallengeSystemMessageLine({
   compactNotice: NonNullable<ReturnType<typeof challengeNoticeTone>>;
 }) {
   const summary = compactNotice.summary;
-  const isInvite = summary.state === "scheduled" || summary.state === "rescheduled";
+  const isInvite = ["issued", "scheduled", "rescheduled", "time_proposed"].includes(
+    summary.state
+  );
+  const primaryTimeIso = summary.scheduledAtIso ?? summary.acceptanceAtIso;
+  const primaryTimeLabel = summary.scheduledAtIso
+    ? "Battle time"
+    : summary.acceptanceAtIso || summary.acceptanceLabel
+      ? "Accept by"
+      : "Battle time";
 
   return (
     <div className="flex justify-center">
@@ -366,18 +388,18 @@ function ChallengeSystemMessageLine({
             <div className="rounded-xl border border-current/10 bg-black/15 px-3 py-2.5">
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] opacity-65">
                 <CalendarClock className="h-3.5 w-3.5" />
-                Battle time
+                {primaryTimeLabel}
               </div>
               <div className="mt-1 text-sm font-semibold text-white">
-                {summary.scheduledAtIso ? (
+                {primaryTimeIso ? (
                   <TimeDisplayText
-                    value={summary.scheduledAtIso}
+                    value={primaryTimeIso}
                     includeZone
                     className="text-white"
                     bubbleClassName="w-max max-w-[18rem] text-center"
                   />
                 ) : (
-                  summary.scheduledLabel || "Timing pending"
+                  summary.scheduledLabel || summary.acceptanceLabel || "Play anytime"
                 )}
               </div>
             </div>
@@ -493,6 +515,9 @@ function ChallengeThreadStrip({
             wagerAmountWolo: payload.wagerAmountWolo,
             guaranteeAmountWolo: payload.guaranteeAmountWolo,
           })
+        }
+        onConfirmTime={(challengeId) =>
+          onChallengeAction?.({ challengeId, action: "confirm_time" })
         }
         onFund={(challengeId, payload) =>
           onChallengeAction?.({

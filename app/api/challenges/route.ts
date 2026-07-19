@@ -6,7 +6,6 @@ import {
 } from "@/lib/challengeConfig";
 import {
   loadChallengeHubSnapshot,
-  loadChallengeThreadTile,
   normalizeChallengeNote,
   parseScheduledMatchDate,
 } from "@/lib/challenges";
@@ -15,6 +14,7 @@ import {
   validateChallengeTermsAmounts,
 } from "@/lib/challengeEconomy";
 import { postChallengeInboxNotice } from "@/lib/contactInbox";
+import { publishDirectMessageEvent } from "@/lib/directMessageEvents";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import {
@@ -28,8 +28,41 @@ import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 const SCHEDULE_WINDOW_MIN_MS = 2 * 60 * 1000;
-const SCHEDULE_WINDOW_MAX_MS = 7 * 24 * 60 * 60 * 1000;
+const SCHEDULE_WINDOW_MAX_MS = 30 * DAY_MS;
+const DEFAULT_ACCEPTANCE_WINDOW_HOURS = 72;
+const ACCEPTANCE_WINDOW_HOURS = new Set([24, 72, 7 * 24, 30 * 24]);
+const CHALLENGE_PAIR_LOCK_NAMESPACE = 752028;
+const CHALLENGE_TROPHY_LOCK_NAMESPACE = 752029;
+const ACTIVE_CHALLENGE_PAIR_STATUSES = [
+  "pending",
+  "accepted",
+  "proposed",
+  "terms_accepted",
+  "creator_funded",
+  "opponent_funded",
+  "funded",
+  "left_checked_in",
+  "right_checked_in",
+  "ready",
+  "live_confirmed",
+  "live",
+  "result_pending",
+] as const;
+
+class ChallengeCreationError extends Error {
+  status: number;
+  existingChallengeId?: number;
+
+  constructor(message: string, status = 409, existingChallengeId?: number) {
+    super(message);
+    this.name = "ChallengeCreationError";
+    this.status = status;
+    this.existingChallengeId = existingChallengeId;
+  }
+}
 
 const VIEWER_SELECT = {
   id: true,
@@ -77,6 +110,7 @@ function buildChallengeInviteMessage({
   challengerName,
   challengedName,
   scheduledAt,
+  acceptanceExpiresAt,
   challengeNote,
   wagerAmountWolo,
   guaranteeAmountWolo,
@@ -84,7 +118,8 @@ function buildChallengeInviteMessage({
 }: {
   challengerName: string;
   challengedName: string;
-  scheduledAt: Date;
+  scheduledAt: Date | null;
+  acceptanceExpiresAt: Date;
   challengeNote: string | null;
   wagerAmountWolo: number;
   guaranteeAmountWolo: number;
@@ -92,10 +127,16 @@ function buildChallengeInviteMessage({
 }) {
   const totalFundingWolo = wagerAmountWolo + guaranteeAmountWolo;
   const lines = [
-    "Challenge scheduled",
+    "Challenge issued",
     `${challengerName} vs ${challengedName}`,
-    `Start: ${formatScheduledAtForInbox(scheduledAt)}`,
-    `Start ISO: ${scheduledAt.toISOString()}`,
+    `Accept by: ${formatScheduledAtForInbox(acceptanceExpiresAt)}`,
+    `Accept by ISO: ${acceptanceExpiresAt.toISOString()}`,
+    ...(scheduledAt
+      ? [
+          `Match time: ${formatScheduledAtForInbox(scheduledAt)}`,
+          `Match time ISO: ${scheduledAt.toISOString()}`,
+        ]
+      : ["Match time: Play anytime after both players fund"]),
     `Wolo Wager: ${formatWolo(wagerAmountWolo)} WOLO`,
     `Match Guarantee: ${formatWolo(guaranteeAmountWolo)} WOLO`,
     `Funding: ${formatWolo(totalFundingWolo)} WOLO each`,
@@ -114,18 +155,33 @@ function buildChallengeInviteMessage({
   return lines.join("\n");
 }
 
-function validateScheduledAtWindow(scheduledAt: Date) {
-  const now = Date.now();
+function validateScheduledAtWindow(scheduledAt: Date, now = new Date()) {
+  const nowMs = now.getTime();
 
-  if (scheduledAt.getTime() < now + SCHEDULE_WINDOW_MIN_MS) {
+  if (scheduledAt.getTime() < nowMs + SCHEDULE_WINDOW_MIN_MS) {
     return "Schedule the game at least two minutes ahead.";
   }
 
-  if (scheduledAt.getTime() > now + SCHEDULE_WINDOW_MAX_MS) {
-    return "Keep scheduled matches inside the next seven days for now.";
+  if (scheduledAt.getTime() > nowMs + SCHEDULE_WINDOW_MAX_MS) {
+    return "Keep exact match times inside the next 30 days.";
   }
 
   return null;
+}
+
+function normalizeRequestId(value: unknown) {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  if (!normalized) return null;
+  return normalized.slice(0, 128);
+}
+
+function parseAcceptanceWindowHours(value: unknown) {
+  if (value === undefined || value === null || value === "") {
+    return DEFAULT_ACCEPTANCE_WINDOW_HOURS;
+  }
+  const parsed = typeof value === "number" ? value : Number(String(value));
+  return Number.isFinite(parsed) && ACCEPTANCE_WINDOW_HOURS.has(parsed) ? parsed : null;
 }
 
 async function requireViewer(request: NextRequest) {
@@ -151,7 +207,10 @@ export async function GET(request: NextRequest) {
   try {
     const prisma = getPrisma();
     const viewerUid = await getSessionUid(request);
-    const payload = await loadChallengeHubSnapshot(prisma, viewerUid);
+    const requestedFocusId = Number.parseInt(request.nextUrl.searchParams.get("focus") || "", 10);
+    const payload = await loadChallengeHubSnapshot(prisma, viewerUid, {
+      focusId: Number.isFinite(requestedFocusId) && requestedFocusId > 0 ? requestedFocusId : null,
+    });
     return NextResponse.json(payload);
   } catch (error) {
     console.error("Failed to load challenge hub:", error);
@@ -170,6 +229,10 @@ export async function POST(request: NextRequest) {
     const payload = (await request.json().catch(() => ({}))) as {
       challengedUid?: string;
       scheduledAt?: string;
+      scheduleMode?: string;
+      acceptanceWindowHours?: string | number | null;
+      creationRequestId?: string | null;
+      requestId?: string | null;
       challengeNote?: string;
       wagerAmountWolo?: string | number | null;
       guaranteeAmountWolo?: string | number | null;
@@ -179,7 +242,45 @@ export async function POST(request: NextRequest) {
 
     const challengedUid =
       typeof payload.challengedUid === "string" ? payload.challengedUid.trim() : "";
-    const scheduledAt = parseScheduledMatchDate(payload.scheduledAt);
+    const createdAt = new Date();
+    if (
+      payload.scheduleMode !== undefined &&
+      payload.scheduleMode !== "open" &&
+      payload.scheduleMode !== "exact"
+    ) {
+      return NextResponse.json(
+        { detail: "Schedule mode must be open or exact." },
+        { status: 400 }
+      );
+    }
+    const scheduleMode = payload.scheduleMode === "exact" ? "exact" : "open";
+    const scheduledAt = scheduleMode === "exact"
+      ? parseScheduledMatchDate(payload.scheduledAt)
+      : null;
+    const acceptanceWindowHours = parseAcceptanceWindowHours(payload.acceptanceWindowHours);
+    const creationRequestId = normalizeRequestId(
+      payload.creationRequestId || payload.requestId || request.headers.get("Idempotency-Key")
+    );
+    if (creationRequestId) {
+      const existingRequest = await prisma.scheduledMatch.findUnique({
+        where: { creationRequestId },
+        select: { id: true, challengerUserId: true },
+      });
+      if (existingRequest) {
+        if (existingRequest.challengerUserId !== viewer.id) {
+          return NextResponse.json(
+            { detail: "That creation request id is already in use." },
+            { status: 409 }
+          );
+        }
+        const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
+        return NextResponse.json({
+          ...refreshed,
+          createdChallengeId: existingRequest.id,
+          idempotentReplay: true,
+        });
+      }
+    }
     const challengeNote = normalizeChallengeNote(payload.challengeNote);
     const wagerAmountWolo =
       normalizeChallengeWoloAmount(payload.wagerAmountWolo) ?? CHALLENGE_DEFAULT_WAGER_WOLO;
@@ -199,8 +300,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Challenge another player, not yourself." }, { status: 400 });
     }
 
-    if (!scheduledAt) {
-      return NextResponse.json({ detail: "Choose a valid start time." }, { status: 400 });
+    if (acceptanceWindowHours === null) {
+      return NextResponse.json(
+        { detail: "Choose an acceptance window of 24 hours, 3 days, 7 days, or 30 days." },
+        { status: 400 }
+      );
+    }
+
+    if (scheduleMode === "exact" && !scheduledAt) {
+      return NextResponse.json({ detail: "Choose a valid exact match time." }, { status: 400 });
     }
 
     const termsError = validateChallengeTermsAmounts(wagerAmountWolo, guaranteeAmountWolo);
@@ -208,10 +316,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: termsError }, { status: 400 });
     }
 
-    const scheduledAtWindowError = validateScheduledAtWindow(scheduledAt);
-    if (scheduledAtWindowError) {
-      return NextResponse.json({ detail: scheduledAtWindowError }, { status: 400 });
+    if (scheduledAt) {
+      const scheduledAtWindowError = validateScheduledAtWindow(scheduledAt, createdAt);
+      if (scheduledAtWindowError) {
+        return NextResponse.json({ detail: scheduledAtWindowError }, { status: 400 });
+      }
     }
+
+    const requestedAcceptanceExpiresAt = new Date(
+      createdAt.getTime() + acceptanceWindowHours * HOUR_MS
+    );
+    const acceptanceExpiresAt = scheduledAt && scheduledAt < requestedAcceptanceExpiresAt
+      ? scheduledAt
+      : requestedAcceptanceExpiresAt;
 
     const challenged = await prisma.user.findUnique({
       where: { uid: challengedUid },
@@ -229,10 +346,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ detail: "Challenged player not found." }, { status: 404 });
     }
 
-    const existingActiveMatch = await loadChallengeThreadTile(prisma, viewer.id, challenged.id);
-    const duplicateWarning = existingActiveMatch
-      ? `You already have another match with ${playerName(challenged)}. Scheduling anyway.`
-      : null;
+    const pairWhere = {
+      status: { in: [...ACTIVE_CHALLENGE_PAIR_STATUSES] },
+      OR: [
+        { challengerUserId: viewer.id, challengedUserId: challenged.id },
+        { challengerUserId: challenged.id, challengedUserId: viewer.id },
+      ],
+    };
+    const existingActiveMatch = await prisma.scheduledMatch.findFirst({
+      where: pairWhere,
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      select: { id: true },
+    });
+    if (existingActiveMatch) {
+      return NextResponse.json(
+        {
+          detail: `You and ${playerName(challenged)} already have active challenge #${existingActiveMatch.id}. Finish or cancel it before issuing another.`,
+          existingChallengeId: existingActiveMatch.id,
+        },
+        { status: 409 }
+      );
+    }
+    const duplicateWarning = null;
 
     const challengerName = playerName(viewer);
     const challengedName = playerName(challenged);
@@ -413,20 +548,80 @@ export async function POST(request: NextRequest) {
     let linkedTrophyChallengeId: number | null = null;
     const linkedTrophyChallengeIds: number[] = [];
     const titleStakeNames = titleStakePlans.map((plan) => plan.trophy.displayName);
+    let idempotentReplay = false;
 
-    await prisma.$transaction(async (tx) => {
-      const createdMatch = await tx.scheduledMatch.create({
+    try {
+      await prisma.$transaction(async (tx) => {
+        const pairKey = `${Math.min(viewer.id, challenged.id)}:${Math.max(viewer.id, challenged.id)}`;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${CHALLENGE_PAIR_LOCK_NAMESPACE}, hashtext(${pairKey}))`;
+
+        if (creationRequestId) {
+          const replay = await tx.scheduledMatch.findUnique({
+            where: { creationRequestId },
+            select: { id: true, challengerUserId: true },
+          });
+          if (replay) {
+            if (replay.challengerUserId !== viewer.id) {
+              throw new ChallengeCreationError(
+                "That creation request id is already in use."
+              );
+            }
+            createdChallengeId = replay.id;
+            idempotentReplay = true;
+            return;
+          }
+        }
+
+        const activePair = await tx.scheduledMatch.findFirst({
+          where: pairWhere,
+          orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+          select: { id: true },
+        });
+        if (activePair) {
+          throw new ChallengeCreationError(
+            `You and ${challengedName} already have active challenge #${activePair.id}. Finish or cancel it before issuing another.`,
+            409,
+            activePair.id
+          );
+        }
+
+        for (const titleStake of [...titleStakePlans].sort(
+          (left, right) => left.trophy.id - right.trophy.id
+        )) {
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(${CHALLENGE_TROPHY_LOCK_NAMESPACE}, ${titleStake.trophy.id})`;
+          const activeTitle = await tx.trophyChallenge.findFirst({
+            where: {
+              trophyId: titleStake.trophy.id,
+              scheduledMatchId: { not: null },
+              status: { notIn: ["cancelled", "canceled", "disputed", "settled"] },
+            },
+            select: { scheduledMatchId: true },
+          });
+          if (activeTitle) {
+            throw new ChallengeCreationError(
+              `${titleStake.trophy.displayName} is already attached to active challenge #${activeTitle.scheduledMatchId}.`,
+              409,
+              activeTitle.scheduledMatchId ?? undefined
+            );
+          }
+        }
+
+        const createdMatch = await tx.scheduledMatch.create({
         data: {
           challengerUserId: viewer.id,
           challengedUserId: challenged.id,
+          scheduleMode,
           scheduledAt,
+          acceptanceExpiresAt,
+          creationRequestId,
+          lifecycleVersion: 1,
           challengeNote,
           status: "proposed",
           wagerAmountWolo,
           guaranteeAmountWolo,
         },
-      });
-      createdChallengeId = createdMatch.id;
+        });
+        createdChallengeId = createdMatch.id;
 
       for (const titleStake of titleStakePlans) {
         const title = titleStake.trophy;
@@ -496,16 +691,27 @@ export async function POST(request: NextRequest) {
         data: {
           scheduledMatchId: createdMatch.id,
           actorUserId: viewer.id,
-          eventType: "scheduled",
+          eventType: "challenge_created",
+          eventKey: creationRequestId
+            ? `challenge_created:${creationRequestId}`.slice(0, 128)
+            : "challenge_created:v2",
           detail: [
-            `Scheduled for ${challengerName} vs ${challengedName}.`,
+            `Challenge issued: ${challengerName} vs ${challengedName}.`,
+            scheduledAt
+              ? `Exact match time ${formatScheduledAtForInbox(scheduledAt)}.`
+              : "Play anytime after both players fund.",
+            `Accept by ${formatScheduledAtForInbox(acceptanceExpiresAt)}.`,
             `Funding ${formatWolo(totalFundingWolo)} WOLO each.`,
             challengeNote ? `Note: ${challengeNote}` : null,
           ]
             .filter(Boolean)
             .join(" "),
           metadata: {
-            scheduledAt: scheduledAt.toISOString(),
+            scheduleMode,
+            scheduledAt: scheduledAt?.toISOString() ?? null,
+            acceptanceExpiresAt: acceptanceExpiresAt.toISOString(),
+            acceptanceWindowHours,
+            creationRequestId,
             wagerAmountWolo,
             guaranteeAmountWolo,
             totalFundingWolo,
@@ -523,6 +729,7 @@ export async function POST(request: NextRequest) {
           challengerName,
           challengedName,
           scheduledAt,
+          acceptanceExpiresAt,
           challengeNote,
           wagerAmountWolo,
           guaranteeAmountWolo,
@@ -539,7 +746,9 @@ export async function POST(request: NextRequest) {
           challengeId: createdMatch.id,
           role: "challenger",
           opponentUid: challenged.uid,
-          scheduledAt: scheduledAt.toISOString(),
+          scheduleMode,
+          scheduledAt: scheduledAt?.toISOString() ?? null,
+          acceptanceExpiresAt: acceptanceExpiresAt.toISOString(),
           challengeNote,
           wagerAmountWolo,
           guaranteeAmountWolo,
@@ -559,7 +768,9 @@ export async function POST(request: NextRequest) {
           challengeId: createdMatch.id,
           role: "challenged",
           opponentUid: viewer.uid,
-          scheduledAt: scheduledAt.toISOString(),
+          scheduleMode,
+          scheduledAt: scheduledAt?.toISOString() ?? null,
+          acceptanceExpiresAt: acceptanceExpiresAt.toISOString(),
           challengeNote,
           wagerAmountWolo,
           guaranteeAmountWolo,
@@ -569,6 +780,29 @@ export async function POST(request: NextRequest) {
         },
         dedupeWithinSeconds: 5,
       });
+      });
+    } catch (error) {
+      const errorCode =
+        typeof error === "object" && error && "code" in error
+          ? String(error.code)
+          : null;
+      if (!creationRequestId || errorCode !== "P2002") {
+        throw error;
+      }
+      const existingRequest = await prisma.scheduledMatch.findUnique({
+        where: { creationRequestId },
+        select: { id: true, challengerUserId: true },
+      });
+      if (!existingRequest || existingRequest.challengerUserId !== viewer.id) {
+        throw error;
+      }
+      createdChallengeId = existingRequest.id;
+      idempotentReplay = true;
+    }
+
+    publishDirectMessageEvent(challenged.uid, {
+      type: "message",
+      targetUid: viewer.uid,
     });
 
     const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
@@ -579,9 +813,29 @@ export async function POST(request: NextRequest) {
       linkedTrophyChallengeIds,
       titleStakeNames,
       duplicateWarning,
+      idempotentReplay,
     });
   } catch (error) {
     console.error("Failed to create scheduled match:", error);
+    if (error instanceof ChallengeCreationError) {
+      return NextResponse.json(
+        {
+          detail: error.message,
+          existingChallengeId: error.existingChallengeId,
+        },
+        { status: error.status }
+      );
+    }
+    const errorCode =
+      typeof error === "object" && error && "code" in error
+        ? String(error.code)
+        : null;
+    if (errorCode === "P2002") {
+      return NextResponse.json(
+        { detail: "An active Challenge already owns this player pair, title, request, or replay proof." },
+        { status: 409 }
+      );
+    }
     const detail = error instanceof Error ? error.message : "Challenge could not be scheduled.";
     return NextResponse.json({ detail }, { status: 500 });
   }

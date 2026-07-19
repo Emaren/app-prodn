@@ -14,8 +14,10 @@ import {
   normalizeChallengeWoloAmount,
   validateChallengeTermsAmounts,
 } from "@/lib/challengeEconomy";
+import { projectChallengeLifecycle } from "@/lib/challengeLifecycle";
 import { Prisma } from "@/lib/generated/prisma";
 import { postChallengeInboxNotice } from "@/lib/contactInbox";
+import { publishDirectMessageEvent } from "@/lib/directMessageEvents";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { recordUserActivity } from "@/lib/userExperience";
@@ -24,8 +26,14 @@ import { verifyChallengeFundingTransfer } from "@/lib/woloBetSettlement";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 const SCHEDULE_WINDOW_MIN_MS = 2 * 60 * 1000;
-const SCHEDULE_WINDOW_MAX_MS = 7 * 24 * 60 * 60 * 1000;
+const SCHEDULE_WINDOW_MAX_MS = 30 * DAY_MS;
+const FUNDING_WINDOW_MS = HOUR_MS;
+const OPEN_PLAY_WINDOW_MS = 30 * DAY_MS;
+const CHALLENGE_LIFECYCLE_LOCK_NAMESPACE = 752026;
+const CHALLENGE_FUNDING_PROOF_LOCK_NAMESPACE = 752027;
 const FUNDABLE_STATUSES = new Set([
   "proposed",
   "pending",
@@ -46,6 +54,16 @@ const MANAGEABLE_DISPLAY_STATES = new Set([
   "checkin_open",
 ]);
 
+class ChallengeActionError extends Error {
+  status: number;
+
+  constructor(message: string, status = 409) {
+    super(message);
+    this.name = "ChallengeActionError";
+    this.status = status;
+  }
+}
+
 const VIEWER_SELECT = {
   id: true,
   uid: true,
@@ -57,7 +75,19 @@ const VIEWER_SELECT = {
 const SCHEDULED_MATCH_SELECT = {
   id: true,
   status: true,
+  scheduleMode: true,
   scheduledAt: true,
+  acceptanceExpiresAt: true,
+  fundingExpiresAt: true,
+  playExpiresAt: true,
+  expiredAt: true,
+  fundingExpiredAt: true,
+  playExpiredAt: true,
+  proposedMatchAt: true,
+  proposedMatchByUserId: true,
+  timeProposedAt: true,
+  timeConfirmedAt: true,
+  lifecycleVersion: true,
   challengeNote: true,
   acceptedAt: true,
   declinedAt: true,
@@ -122,18 +152,50 @@ function buildChallengeLabel({
   return `${challengerName} vs ${challengedName}`;
 }
 
-function validateScheduledAtWindow(scheduledAt: Date) {
-  const now = Date.now();
+function validateScheduledAtWindow(scheduledAt: Date, now = new Date()) {
+  const nowMs = now.getTime();
 
-  if (scheduledAt.getTime() < now + SCHEDULE_WINDOW_MIN_MS) {
+  if (scheduledAt.getTime() < nowMs + SCHEDULE_WINDOW_MIN_MS) {
     return "Schedule the game at least two minutes ahead.";
   }
 
-  if (scheduledAt.getTime() > now + SCHEDULE_WINDOW_MAX_MS) {
-    return "Keep scheduled matches inside the next seven days for now.";
+  if (scheduledAt.getTime() > nowMs + SCHEDULE_WINDOW_MAX_MS) {
+    return "Keep exact match times inside the next 30 days.";
   }
 
   return null;
+}
+
+function normalizeRequestId(value: unknown) {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  return normalized ? normalized.slice(0, 96) : null;
+}
+
+function actionEventKey(input: {
+  action: string;
+  requestId: string | null;
+  viewerId: number;
+  scheduledAt?: string;
+  fundingTxHash?: string;
+  linkedSessionKey?: string;
+}) {
+  const suffix = input.requestId
+    || input.fundingTxHash?.trim().toUpperCase()
+    || [
+      input.viewerId,
+      input.scheduledAt?.trim(),
+      input.linkedSessionKey?.trim(),
+    ].filter(Boolean).join(":");
+  return `${input.action}:${suffix}`.slice(0, 128);
+}
+
+function isAtOrPast(deadline: Date | null, now: Date) {
+  return Boolean(deadline && now.getTime() >= deadline.getTime());
+}
+
+function sameNullableDate(left: Date | null, right: Date | null) {
+  return left?.getTime() === right?.getTime();
 }
 
 async function requireViewer(request: NextRequest) {
@@ -158,7 +220,8 @@ async function requireViewer(request: NextRequest) {
 function computeChallengeSurface(
   scheduledMatch: {
     status: string;
-    scheduledAt: Date;
+    scheduleMode: string;
+    scheduledAt: Date | null;
     acceptedAt: Date | null;
     resultAt: Date | null;
     liveConfirmedAt: Date | null;
@@ -176,6 +239,76 @@ function computeChallengeSurface(
   },
   now = new Date()
 ) {
+  if (scheduledMatch.scheduleMode !== "exact" || !scheduledMatch.scheduledAt) {
+    const rawStatus = scheduledMatch.status.toLowerCase();
+    const terminalStatuses = new Set([
+      "declined",
+      "expired",
+      "funding_expired",
+      "play_expired",
+      "canceled",
+      "cancelled",
+      "completed",
+      "forfeited",
+      "no_show_left",
+      "no_show_right",
+      "double_no_show",
+      "refunded",
+    ]);
+    const bothFunded = Boolean(
+      scheduledMatch.challengerFundedAt && scheduledMatch.challengedFundedAt
+    );
+    const oneFunded = Boolean(
+      scheduledMatch.challengerFundedAt || scheduledMatch.challengedFundedAt
+    );
+    const displayState = terminalStatuses.has(rawStatus)
+      ? rawStatus
+      : rawStatus === "live_confirmed"
+        ? "live"
+        : ["live", "ready", "result_pending"].includes(rawStatus)
+          ? rawStatus
+      : bothFunded
+          ? "funded"
+          : oneFunded
+            ? scheduledMatch.challengerFundedAt
+              ? "creator_funded"
+              : "opponent_funded"
+            : scheduledMatch.acceptedAt
+              ? "terms_accepted"
+              : rawStatus === "pending"
+                ? "pending"
+                : "proposed";
+    const statusLabels: Record<string, string> = {
+      proposed: "Awaiting response",
+      pending: "Awaiting response",
+      terms_accepted: "Funding window open",
+      creator_funded: "Waiting on opponent funding",
+      opponent_funded: "Waiting on creator funding",
+      funded: "Match ready",
+      canceled: "Cancelled",
+      cancelled: "Cancelled",
+      declined: "Declined",
+      expired: "Expired",
+      funding_expired: "Funding expired",
+      play_expired: "Play window expired",
+      completed: "Completed",
+      refunded: "Refunded",
+      live: "Live proof detected",
+      ready: "Match ready",
+      result_pending: "Result pending",
+    };
+    return {
+      persistedStatus: displayState,
+      displayState,
+      economy: {
+        statusLabel: statusLabels[displayState] || displayState.replaceAll("_", " "),
+        statusDetail: statusLabels[displayState] || displayState.replaceAll("_", " "),
+        checkInWindowState: "later" as const,
+        resolution: { label: null as string | null },
+      },
+    };
+  }
+
   return buildChallengeEconomySurface(
     {
       status: scheduledMatch.status,
@@ -206,18 +339,29 @@ function totalFundingWolo(scheduledMatch: {
   return scheduledMatch.wagerAmountWolo + scheduledMatch.guaranteeAmountWolo;
 }
 
+function optionalMatchTimeLines(scheduledAt: Date | null) {
+  return scheduledAt
+    ? [
+        `Match time: ${formatScheduledAtForInbox(scheduledAt)}`,
+        `Match time ISO: ${scheduledAt.toISOString()}`,
+      ]
+    : ["Match time: Play anytime after both players fund"];
+}
+
 function buildTermsAcceptedMessage(input: {
   challengerName: string;
   challengedName: string;
-  scheduledAt: Date;
+  scheduledAt: Date | null;
+  fundingExpiresAt: Date;
   totalFundingWolo: number;
   nextStatus: string;
 }) {
   return [
     "Challenge terms accepted",
     `${input.challengerName} vs ${input.challengedName}`,
-    `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
-    `Start ISO: ${input.scheduledAt.toISOString()}`,
+    ...optionalMatchTimeLines(input.scheduledAt),
+    `Fund by: ${formatScheduledAtForInbox(input.fundingExpiresAt)}`,
+    `Fund by ISO: ${input.fundingExpiresAt.toISOString()}`,
     `Funding: ${formatWolo(input.totalFundingWolo)} WOLO each`,
     `Status: ${input.nextStatus}`,
   ].join("\n");
@@ -226,34 +370,35 @@ function buildTermsAcceptedMessage(input: {
 function buildDeclineMessage(input: {
   challengerName: string;
   challengedName: string;
-  scheduledAt: Date;
+  scheduledAt: Date | null;
+  refundPending?: boolean;
 }) {
-  return [
+  const lines = [
     "Challenge declined",
     `${input.challengerName} vs ${input.challengedName}`,
-    `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
-    `Start ISO: ${input.scheduledAt.toISOString()}`,
+    ...optionalMatchTimeLines(input.scheduledAt),
     "Status: Terms declined",
-  ].join("\n");
+  ];
+  if (input.refundPending) lines.push("Refund: Processing on the verified settlement rail");
+  return lines.join("\n");
 }
 
 function buildCancellationMessage(input: {
   challengerName: string;
   challengedName: string;
-  scheduledAt: Date;
+  scheduledAt: Date | null;
   cancelledByName: string;
   refundPending?: boolean;
 }) {
   const lines = [
     "Challenge cancelled",
     `${input.challengerName} vs ${input.challengedName}`,
-    `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
-    `Start ISO: ${input.scheduledAt.toISOString()}`,
+    ...optionalMatchTimeLines(input.scheduledAt),
     `Status: Cancelled by ${input.cancelledByName}`,
   ];
 
   if (input.refundPending) {
-    lines.push("Refund: Pending operator review");
+    lines.push("Refund: Processing on the verified settlement rail");
   }
 
   return lines.join("\n");
@@ -290,7 +435,7 @@ function buildRescheduleMessage(input: {
 function buildFundingMessage(input: {
   challengerName: string;
   challengedName: string;
-  scheduledAt: Date;
+  scheduledAt: Date | null;
   actorName: string;
   totalFundingWolo: number;
   statusLabel: string;
@@ -298,10 +443,38 @@ function buildFundingMessage(input: {
   return [
     "Challenge funding recorded",
     `${input.challengerName} vs ${input.challengedName}`,
-    `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
-    `Start ISO: ${input.scheduledAt.toISOString()}`,
+    ...optionalMatchTimeLines(input.scheduledAt),
     `Funding: ${input.actorName} locked ${formatWolo(input.totalFundingWolo)} WOLO`,
     `Status: ${input.statusLabel}`,
+  ].join("\n");
+}
+
+function buildTimeProposalMessage(input: {
+  challengerName: string;
+  challengedName: string;
+  proposedAt: Date;
+  proposedByName: string;
+}) {
+  return [
+    "Challenge time proposed",
+    `${input.challengerName} vs ${input.challengedName}`,
+    `Proposed time: ${formatScheduledAtForInbox(input.proposedAt)}`,
+    `Proposed time ISO: ${input.proposedAt.toISOString()}`,
+    `Status: Waiting for the other player to confirm ${input.proposedByName}'s proposal`,
+  ].join("\n");
+}
+
+function buildTimeConfirmedMessage(input: {
+  challengerName: string;
+  challengedName: string;
+  scheduledAt: Date;
+}) {
+  return [
+    "Challenge time confirmed",
+    `${input.challengerName} vs ${input.challengedName}`,
+    `Match time: ${formatScheduledAtForInbox(input.scheduledAt)}`,
+    `Match time ISO: ${input.scheduledAt.toISOString()}`,
+    "Status: Exact time confirmed by both players",
   ].join("\n");
 }
 
@@ -349,6 +522,7 @@ async function recordChallengeActivity(
     scheduledMatchId: number;
     actorUserId?: number | null;
     eventType: string;
+    eventKey: string;
     detail?: string | null;
     metadata?: Record<string, unknown> | null;
     createdAt?: Date;
@@ -359,11 +533,103 @@ async function recordChallengeActivity(
       scheduledMatchId: input.scheduledMatchId,
       actorUserId: input.actorUserId ?? undefined,
       eventType: input.eventType.slice(0, 32),
+      eventKey: input.eventKey.slice(0, 128),
       detail: input.detail?.slice(0, 255) || undefined,
       metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
       createdAt: input.createdAt,
     },
   });
+}
+
+async function hasActionEvent(
+  prisma: ReturnType<typeof getPrisma>,
+  scheduledMatchId: number,
+  eventKey: string
+) {
+  return Boolean(
+    await prisma.scheduledMatchActivity.findFirst({
+      where: { scheduledMatchId, eventKey },
+      select: { id: true },
+    })
+  );
+}
+
+async function lockExpectedChallengeVersion(
+  tx: Prisma.TransactionClient,
+  challengeId: number,
+  expectedVersion: number,
+  action?: "cancel" | "check_in" | "resolve_no_show",
+  viewerUserId?: number
+) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${CHALLENGE_LIFECYCLE_LOCK_NAMESPACE}, ${challengeId})`;
+  const locked = await tx.scheduledMatch.findUnique({
+    where: { id: challengeId },
+    select: SCHEDULED_MATCH_SELECT,
+  });
+  if (!locked || locked.lifecycleVersion !== expectedVersion) {
+    throw new ChallengeActionError(
+      "This Challenge changed while the action was in flight. Refresh and try once more."
+    );
+  }
+  const lockedAt = new Date();
+  const projected = projectChallengeLifecycle(locked, lockedAt);
+  if (["expired", "funding_expired", "play_expired"].includes(projected.lifecycleState)) {
+    throw new ChallengeActionError(
+      "This Challenge's deadline has elapsed. Expiry and any required refund are reconciling now."
+    );
+  }
+
+  const surface = computeChallengeSurface(locked, lockedAt);
+  if (action === "cancel") {
+    const hasAnyCheckIn = Boolean(
+      locked.challengerCheckedInAt || locked.challengedCheckedInAt
+    );
+    if (
+      hasAnyCheckIn ||
+      surface.displayState === "live" ||
+      !MANAGEABLE_DISPLAY_STATES.has(surface.displayState)
+    ) {
+      throw new ChallengeActionError(
+        "This Challenge has crossed its match lock and can no longer be cancelled as a full refund."
+      );
+    }
+  }
+
+  if (action === "check_in") {
+    const viewerIsChallenger = viewerUserId === locked.challengerUserId;
+    const viewerIsChallenged = viewerUserId === locked.challengedUserId;
+    if (!viewerIsChallenger && !viewerIsChallenged) {
+      throw new ChallengeActionError("Only match participants can check in.", 403);
+    }
+    if (
+      locked.scheduleMode !== "exact" ||
+      !locked.scheduledAt ||
+      surface.economy.checkInWindowState !== "open"
+    ) {
+      throw new ChallengeActionError(
+        "Check-in is no longer open for this Challenge. Refresh for the authoritative match state."
+      );
+    }
+    if (
+      (viewerIsChallenger && locked.challengerCheckedInAt) ||
+      (viewerIsChallenged && locked.challengedCheckedInAt)
+    ) {
+      throw new ChallengeActionError("This participant's check-in is already on file.");
+    }
+  }
+
+  if (
+    action === "resolve_no_show" &&
+    !["no_show_left", "no_show_right", "double_no_show"].includes(
+      surface.persistedStatus
+    )
+  ) {
+    throw new ChallengeActionError(
+      "This Challenge is not in an authoritative no-show resolution state."
+    );
+  }
+
+  return { locked, lockedAt, surface };
 }
 
 export async function PATCH(
@@ -386,6 +652,7 @@ export async function PATCH(
 
     const payload = (await request.json().catch(() => ({}))) as {
       action?: string;
+      requestId?: string | null;
       scheduledAt?: string;
       challengeNote?: string;
       wagerAmountWolo?: string | number | null;
@@ -420,18 +687,50 @@ export async function PATCH(
     const currentSurface = computeChallengeSurface(scheduledMatch);
     const fundingTotal = totalFundingWolo(scheduledMatch);
     const viewerRole = viewerIsChallenger ? "challenger" : viewerIsChallenged ? "challenged" : "admin";
+    const bothFunded = Boolean(
+      scheduledMatch.challengerFundedAt && scheduledMatch.challengedFundedAt
+    );
+    const requestId = normalizeRequestId(
+      payload.requestId || request.headers.get("Idempotency-Key")
+    );
+
+    if (!payload.action) {
+      return NextResponse.json({ detail: "Choose a challenge action." }, { status: 400 });
+    }
+
+    const eventKey = actionEventKey({
+      action: payload.action,
+      requestId,
+      viewerId: viewer.id,
+      scheduledAt:
+        payload.scheduledAt ||
+        (payload.action === "confirm_time"
+          ? scheduledMatch.proposedMatchAt?.toISOString()
+          : scheduledMatch.scheduledAt?.toISOString()
+            || scheduledMatch.acceptanceExpiresAt?.toISOString()
+            || undefined),
+      fundingTxHash: payload.fundingTxHash,
+      linkedSessionKey: payload.linkedSessionKey,
+    });
 
     if (
       payload.action !== "accept" &&
       payload.action !== "decline" &&
       payload.action !== "cancel" &&
       payload.action !== "reschedule" &&
+      payload.action !== "propose_time" &&
+      payload.action !== "confirm_time" &&
       payload.action !== "fund" &&
       payload.action !== "check_in" &&
       payload.action !== "resolve_no_show" &&
       payload.action !== "mark_completed"
     ) {
       return NextResponse.json({ detail: "Unknown challenge action." }, { status: 400 });
+    }
+
+    if (await hasActionEvent(prisma, challengeId, eventKey)) {
+      const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
+      return NextResponse.json({ ...refreshed, idempotentReplay: true });
     }
 
     if (payload.action === "accept") {
@@ -450,6 +749,19 @@ export async function PATCH(
       }
 
       const acceptedAt = new Date();
+      if (isAtOrPast(scheduledMatch.acceptanceExpiresAt, acceptedAt)) {
+        return NextResponse.json(
+          { detail: "This challenge's acceptance window has expired." },
+          { status: 409 }
+        );
+      }
+      const fullFundingExpiresAt = new Date(acceptedAt.getTime() + FUNDING_WINDOW_MS);
+      const fundingExpiresAt =
+        scheduledMatch.scheduleMode === "exact" &&
+        scheduledMatch.scheduledAt &&
+        scheduledMatch.scheduledAt < fullFundingExpiresAt
+          ? scheduledMatch.scheduledAt
+          : fullFundingExpiresAt;
       const nextStatus =
         fundingTotal > 0
           ? scheduledMatch.challengerFundedAt && !scheduledMatch.challengedFundedAt
@@ -457,13 +769,20 @@ export async function PATCH(
             : "terms_accepted"
           : "accepted";
       await prisma.$transaction(async (tx) => {
+        await lockExpectedChallengeVersion(tx, challengeId, scheduledMatch.lifecycleVersion);
         await tx.scheduledMatch.update({
           where: { id: challengeId },
           data: {
             status: nextStatus,
             acceptedAt,
+            fundingExpiresAt,
+            timeConfirmedAt:
+              scheduledMatch.scheduleMode === "exact"
+                ? scheduledMatch.timeConfirmedAt ?? acceptedAt
+                : scheduledMatch.timeConfirmedAt,
             declinedAt: null,
             cancelledAt: null,
+            lifecycleVersion: { increment: 1 },
           },
         });
         await tx.trophyChallenge.updateMany({
@@ -479,6 +798,7 @@ export async function PATCH(
         await recordChallengeActivity(tx, {
           scheduledMatchId: challengeId,
           actorUserId: viewer.id,
+          eventKey,
           eventType: fundingTotal > 0 ? "terms_accepted" : "accepted",
           detail:
             fundingTotal > 0 && scheduledMatch.challengerFundedAt
@@ -487,7 +807,8 @@ export async function PATCH(
               ? `Terms accepted. Creator funding is next for ${formatWolo(fundingTotal)} WOLO.`
               : "Accepted and ready to lock.",
           metadata: {
-            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+            scheduledAt: scheduledMatch.scheduledAt?.toISOString() ?? null,
+            fundingExpiresAt: fundingExpiresAt.toISOString(),
             totalFundingWolo: fundingTotal,
           },
           createdAt: acceptedAt,
@@ -501,6 +822,7 @@ export async function PATCH(
             challengerName,
             challengedName,
             scheduledAt: scheduledMatch.scheduledAt,
+            fundingExpiresAt,
             totalFundingWolo: fundingTotal,
             nextStatus: scheduledMatch.challengerFundedAt
               ? "Opponent funding next"
@@ -518,7 +840,8 @@ export async function PATCH(
             challengeId,
             role: "challenger",
             acceptedByUid: viewer.uid,
-            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+            scheduledAt: scheduledMatch.scheduledAt?.toISOString() ?? null,
+            fundingExpiresAt: fundingExpiresAt.toISOString(),
             totalFundingWolo: fundingTotal,
           },
         });
@@ -532,7 +855,8 @@ export async function PATCH(
             challengeId,
             role: "challenged",
             acceptedByUid: viewer.uid,
-            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+            scheduledAt: scheduledMatch.scheduledAt?.toISOString() ?? null,
+            fundingExpiresAt: fundingExpiresAt.toISOString(),
             totalFundingWolo: fundingTotal,
           },
         });
@@ -547,7 +871,7 @@ export async function PATCH(
         );
       }
 
-      if (!["proposed", "pending"].includes(currentSurface.displayState)) {
+      if (!["proposed", "pending", "creator_funded"].includes(currentSurface.displayState)) {
         return NextResponse.json(
           { detail: "This challenge is no longer awaiting terms acceptance." },
           { status: 409 }
@@ -555,12 +879,20 @@ export async function PATCH(
       }
 
       const declinedAt = new Date();
+      const hasAnyFunding = Boolean(
+        scheduledMatch.challengerFundedAt || scheduledMatch.challengedFundedAt
+      );
       await prisma.$transaction(async (tx) => {
+        await lockExpectedChallengeVersion(tx, challengeId, scheduledMatch.lifecycleVersion);
         await tx.scheduledMatch.update({
           where: { id: challengeId },
           data: {
             status: "declined",
             declinedAt,
+            settlementReadyAt: hasAnyFunding
+              ? scheduledMatch.settlementReadyAt ?? declinedAt
+              : scheduledMatch.settlementReadyAt,
+            lifecycleVersion: { increment: 1 },
           },
         });
         await tx.trophyChallenge.updateMany({
@@ -577,10 +909,37 @@ export async function PATCH(
         await recordChallengeActivity(tx, {
           scheduledMatchId: challengeId,
           actorUserId: viewer.id,
+          eventKey,
           eventType: "declined",
-          detail: "Challenge declined.",
+          detail: hasAnyFunding
+            ? "Challenge declined. Verified deposits are ready for refund processing."
+            : "Challenge declined.",
+          metadata: hasAnyFunding
+            ? {
+                refundPending: true,
+                challengerFunded: Boolean(scheduledMatch.challengerFundedAt),
+                challengedFunded: Boolean(scheduledMatch.challengedFundedAt),
+              }
+            : undefined,
           createdAt: declinedAt,
         });
+
+        if (hasAnyFunding) {
+          await recordChallengeActivity(tx, {
+            scheduledMatchId: challengeId,
+            actorUserId: viewer.id,
+            eventKey: `refund-request:${requestId || eventKey}`.slice(0, 128),
+            eventType: "refund_requested",
+            detail: "Verified deposits queued for deterministic refund processing.",
+            metadata: {
+              terminalStatus: "declined",
+              challengerFunded: Boolean(scheduledMatch.challengerFundedAt),
+              challengedFunded: Boolean(scheduledMatch.challengedFundedAt),
+              totalFundingWolo: fundingTotal,
+            },
+            createdAt: declinedAt,
+          });
+        }
 
         await postChallengeInboxNotice(tx, {
           senderUserId: viewer.id,
@@ -590,6 +949,7 @@ export async function PATCH(
             challengerName,
             challengedName,
             scheduledAt: scheduledMatch.scheduledAt,
+            refundPending: hasAnyFunding,
           }),
           now: declinedAt,
         });
@@ -603,7 +963,8 @@ export async function PATCH(
             challengeId,
             role: "challenger",
             declinedByUid: viewer.uid,
-            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+            scheduledAt: scheduledMatch.scheduledAt?.toISOString() ?? null,
+            refundPending: hasAnyFunding,
           },
         });
 
@@ -616,7 +977,8 @@ export async function PATCH(
             challengeId,
             role: "challenged",
             declinedByUid: viewer.uid,
-            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+            scheduledAt: scheduledMatch.scheduledAt?.toISOString() ?? null,
+            refundPending: hasAnyFunding,
           },
         });
       });
@@ -647,15 +1009,26 @@ export async function PATCH(
         ? scheduledMatch.challengedUserId
         : scheduledMatch.challengerUserId;
       const cancelDetail = hasAnyFunding
-        ? `${challengeLabel} · cancelled · refund pending operator review`
+        ? `${challengeLabel} · cancelled · verified deposits queued for refund processing`
         : `${challengeLabel} · cancelled`;
 
       await prisma.$transaction(async (tx) => {
+        await lockExpectedChallengeVersion(
+          tx,
+          challengeId,
+          scheduledMatch.lifecycleVersion,
+          "cancel",
+          viewer.id
+        );
         await tx.scheduledMatch.update({
           where: { id: challengeId },
           data: {
             status: "canceled",
             cancelledAt,
+            settlementReadyAt: hasAnyFunding
+              ? scheduledMatch.settlementReadyAt ?? cancelledAt
+              : scheduledMatch.settlementReadyAt,
+            lifecycleVersion: { increment: 1 },
           },
         });
         await tx.trophyChallenge.updateMany({
@@ -672,6 +1045,7 @@ export async function PATCH(
         await recordChallengeActivity(tx, {
           scheduledMatchId: challengeId,
           actorUserId: viewer.id,
+          eventKey,
           eventType: "canceled",
           detail: cancelDetail,
           metadata: hasAnyFunding
@@ -684,6 +1058,23 @@ export async function PATCH(
             : undefined,
           createdAt: cancelledAt,
         });
+
+        if (hasAnyFunding) {
+          await recordChallengeActivity(tx, {
+            scheduledMatchId: challengeId,
+            actorUserId: viewer.id,
+            eventKey: `refund-request:${requestId || eventKey}`.slice(0, 128),
+            eventType: "refund_requested",
+            detail: "Verified deposits queued for deterministic refund processing.",
+            metadata: {
+              terminalStatus: "canceled",
+              challengerFunded: Boolean(scheduledMatch.challengerFundedAt),
+              challengedFunded: Boolean(scheduledMatch.challengedFundedAt),
+              totalFundingWolo: fundingTotal,
+            },
+            createdAt: cancelledAt,
+          });
+        }
 
         if (viewerIsChallenger || viewerIsChallenged) {
           await postChallengeInboxNotice(tx, {
@@ -710,7 +1101,7 @@ export async function PATCH(
             challengeId,
             cancelledByUid: viewer.uid,
             role: viewerRole,
-            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+            scheduledAt: scheduledMatch.scheduledAt?.toISOString() ?? null,
             refundPending: hasAnyFunding,
           },
         });
@@ -724,18 +1115,203 @@ export async function PATCH(
             challengeId,
             cancelledByUid: viewer.uid,
             role: viewerRole === "challenger" ? "challenged" : viewerRole === "challenged" ? "challenger" : "admin",
-            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
+            scheduledAt: scheduledMatch.scheduledAt?.toISOString() ?? null,
             refundPending: hasAnyFunding,
           },
         });
       });
     }
 
-    if (payload.action === "reschedule") {
+    if (payload.action === "propose_time" || (payload.action === "reschedule" && bothFunded)) {
+      if (!viewerIsChallenger && !viewerIsChallenged) {
+        return NextResponse.json(
+          { detail: "Only the two players can propose a match time." },
+          { status: 403 }
+        );
+      }
+      if (!bothFunded) {
+        return NextResponse.json(
+          { detail: "Both players must fund before using mutual time proposals." },
+          { status: 409 }
+        );
+      }
+      if (
+        scheduledMatch.challengerCheckedInAt ||
+        scheduledMatch.challengedCheckedInAt ||
+        currentSurface.displayState === "live" ||
+        ["live", "completed", "canceled", "cancelled", "declined", "expired", "funding_expired", "play_expired"].includes(
+          scheduledMatch.status.toLowerCase()
+        )
+      ) {
+        return NextResponse.json(
+          { detail: "This challenge can no longer accept a new time proposal." },
+          { status: 409 }
+        );
+      }
+
+      const proposedMatchAt = parseScheduledMatchDate(payload.scheduledAt);
+      if (!proposedMatchAt) {
+        return NextResponse.json({ detail: "Choose a valid proposed match time." }, { status: 400 });
+      }
+      const proposedAt = new Date();
+      const proposalWindowError = validateScheduledAtWindow(proposedMatchAt, proposedAt);
+      if (proposalWindowError) {
+        return NextResponse.json({ detail: proposalWindowError }, { status: 400 });
+      }
+      if (
+        scheduledMatch.playExpiresAt &&
+        proposedMatchAt.getTime() > scheduledMatch.playExpiresAt.getTime()
+      ) {
+        return NextResponse.json(
+          { detail: "Choose a time inside this challenge's play window." },
+          { status: 400 }
+        );
+      }
+
+      const targetUserId = viewerIsChallenger
+        ? scheduledMatch.challengedUserId
+        : scheduledMatch.challengerUserId;
+      await prisma.$transaction(async (tx) => {
+        await lockExpectedChallengeVersion(tx, challengeId, scheduledMatch.lifecycleVersion);
+        await tx.scheduledMatch.update({
+          where: { id: challengeId },
+          data: {
+            status: "funded",
+            proposedMatchAt,
+            proposedMatchByUserId: viewer.id,
+            timeProposedAt: proposedAt,
+            lifecycleVersion: { increment: 1 },
+          },
+        });
+        await recordChallengeActivity(tx, {
+          scheduledMatchId: challengeId,
+          actorUserId: viewer.id,
+          eventKey,
+          eventType: "time_proposed",
+          detail: `${playerName(viewer)} proposed ${formatScheduledAtForInbox(proposedMatchAt)}.`,
+          metadata: {
+            proposedMatchAt: proposedMatchAt.toISOString(),
+            proposedByUserId: viewer.id,
+          },
+          createdAt: proposedAt,
+        });
+        await postChallengeInboxNotice(tx, {
+          senderUserId: viewer.id,
+          targetUserId,
+          challengeId,
+          body: buildTimeProposalMessage({
+            challengerName,
+            challengedName,
+            proposedAt: proposedMatchAt,
+            proposedByName: playerName(viewer),
+          }),
+          now: proposedAt,
+        });
+      });
+    }
+
+    if (payload.action === "confirm_time") {
+      if (!viewerIsChallenger && !viewerIsChallenged) {
+        return NextResponse.json(
+          { detail: "Only the two players can confirm a match time." },
+          { status: 403 }
+        );
+      }
+      if (!bothFunded || !scheduledMatch.proposedMatchAt || !scheduledMatch.proposedMatchByUserId) {
+        return NextResponse.json(
+          { detail: "There is no funded time proposal to confirm." },
+          { status: 409 }
+        );
+      }
+      if (
+        scheduledMatch.challengerCheckedInAt ||
+        scheduledMatch.challengedCheckedInAt ||
+        currentSurface.displayState === "live" ||
+        ["completed", "canceled", "cancelled", "declined", "expired", "funding_expired", "play_expired"].includes(
+          scheduledMatch.status.toLowerCase()
+        )
+      ) {
+        return NextResponse.json(
+          { detail: "This challenge can no longer confirm a different match time." },
+          { status: 409 }
+        );
+      }
+      if (scheduledMatch.proposedMatchByUserId === viewer.id) {
+        return NextResponse.json(
+          { detail: "The other player must confirm your proposed time." },
+          { status: 409 }
+        );
+      }
+      const confirmedMatchAt = scheduledMatch.proposedMatchAt;
+      const proposedByUserId = scheduledMatch.proposedMatchByUserId;
+      const confirmedAt = new Date();
+      if (confirmedMatchAt.getTime() < confirmedAt.getTime() + SCHEDULE_WINDOW_MIN_MS) {
+        return NextResponse.json(
+          { detail: "That proposed time has passed or is too close. Propose a new time." },
+          { status: 409 }
+        );
+      }
+      const targetUserId = proposedByUserId;
+      await prisma.$transaction(async (tx) => {
+        await lockExpectedChallengeVersion(tx, challengeId, scheduledMatch.lifecycleVersion);
+        await tx.scheduledMatch.update({
+          where: { id: challengeId },
+          data: {
+            status: "funded",
+            scheduleMode: "exact",
+            scheduledAt: confirmedMatchAt,
+            playExpiresAt: null,
+            proposedMatchAt: null,
+            proposedMatchByUserId: null,
+            timeProposedAt: null,
+            timeConfirmedAt: confirmedAt,
+            challengerCheckedInAt: null,
+            challengedCheckedInAt: null,
+            lifecycleVersion: { increment: 1 },
+          },
+        });
+        await recordChallengeActivity(tx, {
+          scheduledMatchId: challengeId,
+          actorUserId: viewer.id,
+          eventKey,
+          eventType: "time_confirmed",
+          detail: `Both players confirmed ${formatScheduledAtForInbox(confirmedMatchAt)}.`,
+          metadata: {
+            scheduledAt: confirmedMatchAt.toISOString(),
+            proposedByUserId,
+            confirmedByUserId: viewer.id,
+          },
+          createdAt: confirmedAt,
+        });
+        await postChallengeInboxNotice(tx, {
+          senderUserId: viewer.id,
+          targetUserId,
+          challengeId,
+          body: buildTimeConfirmedMessage({
+            challengerName,
+            challengedName,
+            scheduledAt: confirmedMatchAt,
+          }),
+          now: confirmedAt,
+        });
+      });
+    }
+
+    if (payload.action === "reschedule" && !bothFunded) {
       const hasAnyFunding =
         Boolean(scheduledMatch.challengerFundedAt) || Boolean(scheduledMatch.challengedFundedAt);
       const hasAnyCheckIn =
         Boolean(scheduledMatch.challengerCheckedInAt) || Boolean(scheduledMatch.challengedCheckedInAt);
+
+      if (hasAnyFunding || scheduledMatch.acceptedAt) {
+        return NextResponse.json(
+          {
+            detail:
+              "Accepted or funded Challenges cannot be moved unilaterally. Finish funding, then propose a time for the other player to confirm.",
+          },
+          { status: 409 }
+        );
+      }
 
       if (hasAnyCheckIn || currentSurface.displayState === "live") {
         return NextResponse.json(
@@ -777,12 +1353,19 @@ export async function PATCH(
       }
 
       const rescheduledAt = new Date();
+      const resetAcceptanceExpiresAt = new Date(
+        Math.min(
+          rescheduledAt.getTime() + 72 * HOUR_MS,
+          nextScheduledAt.getTime()
+        )
+      );
       const targetUserId = viewerIsChallenger
         ? scheduledMatch.challengedUserId
         : scheduledMatch.challengerUserId;
       const nextFundingTotal = wagerAmountWolo + guaranteeAmountWolo;
       const nextShape = {
         ...scheduledMatch,
+        scheduleMode: "exact",
         scheduledAt: nextScheduledAt,
         challengeNote: nextChallengeNote,
         wagerAmountWolo,
@@ -793,21 +1376,36 @@ export async function PATCH(
         : null;
 
       await prisma.$transaction(async (tx) => {
+        await lockExpectedChallengeVersion(tx, challengeId, scheduledMatch.lifecycleVersion);
         await tx.scheduledMatch.update({
           where: { id: challengeId },
           data: hasAnyFunding
             ? {
                 status: nextSurface?.persistedStatus ?? scheduledMatch.status,
+                scheduleMode: "exact",
                 scheduledAt: nextScheduledAt,
                 challengeNote: nextChallengeNote,
                 wagerAmountWolo,
                 guaranteeAmountWolo,
                 declinedAt: null,
                 cancelledAt: null,
+                proposedMatchAt: null,
+                proposedMatchByUserId: null,
+                timeProposedAt: null,
+                timeConfirmedAt: null,
+                lifecycleVersion: { increment: 1 },
               }
             : {
                 status: "proposed",
+                scheduleMode: "exact",
                 scheduledAt: nextScheduledAt,
+                acceptanceExpiresAt: resetAcceptanceExpiresAt,
+                fundingExpiresAt: null,
+                playExpiresAt: null,
+                proposedMatchAt: null,
+                proposedMatchByUserId: null,
+                timeProposedAt: null,
+                timeConfirmedAt: null,
                 challengeNote: nextChallengeNote,
                 wagerAmountWolo,
                 guaranteeAmountWolo,
@@ -829,12 +1427,14 @@ export async function PATCH(
                 linkedMapName: null,
                 linkedWinner: null,
                 linkedDurationSeconds: null,
+                lifecycleVersion: { increment: 1 },
               },
         });
 
         await recordChallengeActivity(tx, {
           scheduledMatchId: challengeId,
           actorUserId: viewer.id,
+          eventKey,
           eventType: "rescheduled",
           detail: `${challengeLabel} · moved to ${formatScheduledAtForInbox(nextScheduledAt)}${
             hasAnyFunding ? " · funding preserved" : ""
@@ -845,6 +1445,9 @@ export async function PATCH(
             guaranteeAmountWolo,
             totalFundingWolo: nextFundingTotal,
             fundingPreserved: hasAnyFunding,
+            acceptanceExpiresAt: hasAnyFunding
+              ? scheduledMatch.acceptanceExpiresAt?.toISOString() ?? null
+              : resetAcceptanceExpiresAt.toISOString(),
           },
           createdAt: rescheduledAt,
         });
@@ -915,9 +1518,9 @@ export async function PATCH(
         return NextResponse.json({ detail: "This match is not open for funding." }, { status: 409 });
       }
 
-      if (viewerIsChallenged && ["proposed", "pending"].includes(scheduledMatch.status.toLowerCase())) {
+      if (viewerIsChallenged && !scheduledMatch.acceptedAt) {
         return NextResponse.json(
-          { detail: "Wait for creator funding, then accept and fund." },
+          { detail: "Accept the challenge before funding your side." },
           { status: 409 }
         );
       }
@@ -933,8 +1536,31 @@ export async function PATCH(
         );
       }
 
-      if (scheduledMatch.scheduledAt.getTime() <= Date.now()) {
-        return NextResponse.json({ detail: "Funding closed when the scheduled start locked." }, { status: 409 });
+      const fundingAttemptAt = new Date();
+      if (
+        !scheduledMatch.acceptedAt &&
+        isAtOrPast(scheduledMatch.acceptanceExpiresAt, fundingAttemptAt)
+      ) {
+        return NextResponse.json(
+          { detail: "Funding closed when the invitation expired." },
+          { status: 409 }
+        );
+      }
+      if (
+        scheduledMatch.acceptedAt &&
+        isAtOrPast(scheduledMatch.fundingExpiresAt, fundingAttemptAt)
+      ) {
+        return NextResponse.json(
+          { detail: "This challenge's funding window has expired." },
+          { status: 409 }
+        );
+      }
+      if (
+        scheduledMatch.scheduleMode === "exact" &&
+        scheduledMatch.scheduledAt &&
+        scheduledMatch.scheduledAt.getTime() <= fundingAttemptAt.getTime()
+      ) {
+        return NextResponse.json({ detail: "Funding closed when the exact match time locked." }, { status: 409 });
       }
 
       if (viewerIsChallenger && scheduledMatch.challengerFundedAt) {
@@ -984,46 +1610,139 @@ export async function PATCH(
       }
 
       const verifiedFundingTxHash = fundingVerification.txHash || fundingTxHash;
-      const fundedAt = new Date();
-      const nextShape = {
-        ...scheduledMatch,
-        challengerFundedAt: viewerIsChallenger ? fundedAt : scheduledMatch.challengerFundedAt,
-        challengerFundingTxHash: viewerIsChallenger
-          ? verifiedFundingTxHash
-          : scheduledMatch.challengerFundingTxHash,
-        challengerFundingWalletAddress: viewerIsChallenger
-          ? fundingWalletAddress
-          : scheduledMatch.challengerFundingWalletAddress,
-        challengedFundedAt: viewerIsChallenged ? fundedAt : scheduledMatch.challengedFundedAt,
-        challengedFundingTxHash: viewerIsChallenged
-          ? verifiedFundingTxHash
-          : scheduledMatch.challengedFundingTxHash,
-        challengedFundingWalletAddress: viewerIsChallenged
-          ? fundingWalletAddress
-          : scheduledMatch.challengedFundingWalletAddress,
-      };
-      const nextSurface = computeChallengeSurface(nextShape, fundedAt);
+      const fundedAt = fundingAttemptAt;
       const targetUserId = viewerIsChallenger
         ? scheduledMatch.challengedUserId
         : scheduledMatch.challengerUserId;
 
       await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${CHALLENGE_LIFECYCLE_LOCK_NAMESPACE}, ${challengeId})`;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(${CHALLENGE_FUNDING_PROOF_LOCK_NAMESPACE}, hashtext(${verifiedFundingTxHash}))`;
+        const lockedMatch = await tx.scheduledMatch.findUnique({
+          where: { id: challengeId },
+          select: SCHEDULED_MATCH_SELECT,
+        });
+        if (!lockedMatch || !FUNDABLE_STATUSES.has(lockedMatch.status.toLowerCase())) {
+          throw new ChallengeActionError("This match is no longer open for funding.");
+        }
+        const fundingBasisChanged =
+          lockedMatch.lifecycleVersion !== scheduledMatch.lifecycleVersion ||
+          lockedMatch.wagerAmountWolo !== scheduledMatch.wagerAmountWolo ||
+          lockedMatch.guaranteeAmountWolo !== scheduledMatch.guaranteeAmountWolo ||
+          lockedMatch.scheduleMode !== scheduledMatch.scheduleMode ||
+          !sameNullableDate(lockedMatch.scheduledAt, scheduledMatch.scheduledAt) ||
+          !sameNullableDate(lockedMatch.acceptedAt, scheduledMatch.acceptedAt) ||
+          !sameNullableDate(
+            lockedMatch.acceptanceExpiresAt,
+            scheduledMatch.acceptanceExpiresAt
+          ) ||
+          !sameNullableDate(lockedMatch.fundingExpiresAt, scheduledMatch.fundingExpiresAt);
+        if (fundingBasisChanged) {
+          throw new ChallengeActionError(
+            "Challenge terms changed while WoloChain verified this deposit. The proof was not attached to stale terms; refresh and use the funding recovery path before sending anything again."
+          );
+        }
+        if (
+          (!lockedMatch.acceptedAt && isAtOrPast(lockedMatch.acceptanceExpiresAt, fundedAt)) ||
+          (lockedMatch.acceptedAt && isAtOrPast(lockedMatch.fundingExpiresAt, fundedAt))
+        ) {
+          throw new ChallengeActionError("This challenge's funding window has expired.");
+        }
+
+        const existingSideHash = viewerIsChallenger
+          ? lockedMatch.challengerFundingTxHash
+          : lockedMatch.challengedFundingTxHash;
+        const existingSideFundedAt = viewerIsChallenger
+          ? lockedMatch.challengerFundedAt
+          : lockedMatch.challengedFundedAt;
+        if (existingSideFundedAt) {
+          if (existingSideHash?.toUpperCase() === verifiedFundingTxHash.toUpperCase()) {
+            return;
+          }
+          throw new ChallengeActionError("Funding is already recorded for this participant.");
+        }
+
+        const oppositeSideHash = viewerIsChallenger
+          ? lockedMatch.challengedFundingTxHash
+          : lockedMatch.challengerFundingTxHash;
+        if (oppositeSideHash?.toUpperCase() === verifiedFundingTxHash.toUpperCase()) {
+          throw new ChallengeActionError(
+            "That funding tx is already attached to the other participant in this Challenge."
+          );
+        }
+
+        const duplicateProof = await tx.scheduledMatch.findFirst({
+          where: {
+            OR: [
+              { challengerFundingTxHash: verifiedFundingTxHash },
+              { challengedFundingTxHash: verifiedFundingTxHash },
+            ],
+          },
+          select: { id: true },
+        });
+        if (duplicateProof) {
+          throw new ChallengeActionError(
+            `That funding tx is already attached to challenge #${duplicateProof.id}.`
+          );
+        }
+
+        const nextShape = {
+          ...lockedMatch,
+          challengerFundedAt: viewerIsChallenger ? fundedAt : lockedMatch.challengerFundedAt,
+          challengerFundingTxHash: viewerIsChallenger
+            ? verifiedFundingTxHash
+            : lockedMatch.challengerFundingTxHash,
+          challengerFundingWalletAddress: viewerIsChallenger
+            ? fundingWalletAddress
+            : lockedMatch.challengerFundingWalletAddress,
+          challengedFundedAt: viewerIsChallenged ? fundedAt : lockedMatch.challengedFundedAt,
+          challengedFundingTxHash: viewerIsChallenged
+            ? verifiedFundingTxHash
+            : lockedMatch.challengedFundingTxHash,
+          challengedFundingWalletAddress: viewerIsChallenged
+            ? fundingWalletAddress
+            : lockedMatch.challengedFundingWalletAddress,
+        };
+        const nextBothFunded = Boolean(
+          nextShape.challengerFundedAt && nextShape.challengedFundedAt
+        );
+        const nextStatus = nextBothFunded
+          ? "funded"
+          : nextShape.challengerFundedAt
+            ? "creator_funded"
+            : "opponent_funded";
+        const playExpiresAt =
+          nextBothFunded && lockedMatch.scheduleMode === "open"
+            ? lockedMatch.playExpiresAt ?? new Date(fundedAt.getTime() + OPEN_PLAY_WINDOW_MS)
+            : lockedMatch.playExpiresAt;
+        const nextSurface = computeChallengeSurface(
+          { ...nextShape, status: nextStatus },
+          fundedAt
+        );
+
         await tx.scheduledMatch.update({
           where: { id: challengeId },
           data: {
-            status: nextSurface.persistedStatus,
+            status: nextStatus,
+            playExpiresAt,
+            timeConfirmedAt:
+              nextBothFunded && lockedMatch.scheduleMode === "exact"
+                ? lockedMatch.timeConfirmedAt ?? fundedAt
+                : lockedMatch.timeConfirmedAt,
             challengerFundedAt: viewerIsChallenger ? fundedAt : undefined,
             challengerFundingTxHash: viewerIsChallenger ? verifiedFundingTxHash : undefined,
             challengerFundingWalletAddress: viewerIsChallenger ? fundingWalletAddress : undefined,
             challengedFundedAt: viewerIsChallenged ? fundedAt : undefined,
             challengedFundingTxHash: viewerIsChallenged ? verifiedFundingTxHash : undefined,
             challengedFundingWalletAddress: viewerIsChallenged ? fundingWalletAddress : undefined,
+            lifecycleVersion: { increment: 1 },
           },
         });
 
         await recordChallengeActivity(tx, {
           scheduledMatchId: challengeId,
           actorUserId: viewer.id,
+          eventKey,
           eventType: viewerIsChallenger ? "creator_funded" : "opponent_funded",
           detail: `${playerName(viewer)} locked ${formatWolo(fundingTotal)} WOLO.`,
           metadata: {
@@ -1032,6 +1751,8 @@ export async function PATCH(
             totalFundingWolo: fundingTotal,
             proofUrl: fundingVerification.proofUrl ?? null,
             verifiedBy: "wolochain",
+            bothFunded: nextBothFunded,
+            playExpiresAt: playExpiresAt?.toISOString() ?? null,
           },
           createdAt: fundedAt,
         });
@@ -1043,10 +1764,14 @@ export async function PATCH(
           body: buildFundingMessage({
             challengerName,
             challengedName,
-            scheduledAt: scheduledMatch.scheduledAt,
+            scheduledAt: lockedMatch.scheduledAt,
             actorName: playerName(viewer),
             totalFundingWolo: fundingTotal,
-            statusLabel: nextSurface.economy.statusLabel,
+            statusLabel: nextBothFunded
+              ? lockedMatch.scheduleMode === "open"
+                ? "Match ready · play anytime"
+                : "Match ready"
+              : nextSurface.economy.statusLabel,
           }),
           now: fundedAt,
         });
@@ -1086,6 +1811,15 @@ export async function PATCH(
         return NextResponse.json({ detail: "Only match participants can check in." }, { status: 403 });
       }
 
+      const exactScheduledAt =
+        scheduledMatch.scheduleMode === "exact" ? scheduledMatch.scheduledAt : null;
+      if (!exactScheduledAt) {
+        return NextResponse.json(
+          { detail: "Play-anytime challenges do not use check-in. Propose and confirm an exact time first." },
+          { status: 409 }
+        );
+      }
+
       if (currentSurface.economy.checkInWindowState !== "open") {
         return NextResponse.json(
           { detail: "Check-in opens exactly 10 minutes before the scheduled start and closes at start." },
@@ -1113,18 +1847,27 @@ export async function PATCH(
         : scheduledMatch.challengerUserId;
 
       await prisma.$transaction(async (tx) => {
+        await lockExpectedChallengeVersion(
+          tx,
+          challengeId,
+          scheduledMatch.lifecycleVersion,
+          "check_in",
+          viewer.id
+        );
         await tx.scheduledMatch.update({
           where: { id: challengeId },
           data: {
             status: nextSurface.persistedStatus,
             challengerCheckedInAt: viewerIsChallenger ? checkedInAt : undefined,
             challengedCheckedInAt: viewerIsChallenged ? checkedInAt : undefined,
+            lifecycleVersion: { increment: 1 },
           },
         });
 
         await recordChallengeActivity(tx, {
           scheduledMatchId: challengeId,
           actorUserId: viewer.id,
+          eventKey,
           eventType: viewerIsChallenger ? "left_checked_in" : "right_checked_in",
           detail: `${playerName(viewer)} checked in before the lock.`,
           createdAt: checkedInAt,
@@ -1137,7 +1880,7 @@ export async function PATCH(
           body: buildCheckInMessage({
             challengerName,
             challengedName,
-            scheduledAt: scheduledMatch.scheduledAt,
+            scheduledAt: exactScheduledAt,
             actorName: playerName(viewer),
             statusLabel: nextSurface.economy.statusLabel,
           }),
@@ -1177,6 +1920,15 @@ export async function PATCH(
         return NextResponse.json({ detail: "Only participants or admins can resolve no-show state." }, { status: 403 });
       }
 
+      const exactScheduledAt =
+        scheduledMatch.scheduleMode === "exact" ? scheduledMatch.scheduledAt : null;
+      if (!exactScheduledAt) {
+        return NextResponse.json(
+          { detail: "Open play-anytime challenges cannot resolve as no-shows." },
+          { status: 409 }
+        );
+      }
+
       const resolvedSurface = computeChallengeSurface(scheduledMatch, new Date());
       if (
         resolvedSurface.persistedStatus !== "no_show_left" &&
@@ -1186,20 +1938,29 @@ export async function PATCH(
         return NextResponse.json({ detail: "This match is not in a no-show resolution state." }, { status: 409 });
       }
 
-      const resolvedAt = new Date(scheduledMatch.scheduledAt);
+      const resolvedAt = new Date(exactScheduledAt);
       await prisma.$transaction(async (tx) => {
+        await lockExpectedChallengeVersion(
+          tx,
+          challengeId,
+          scheduledMatch.lifecycleVersion,
+          "resolve_no_show",
+          viewer.id
+        );
         await tx.scheduledMatch.update({
           where: { id: challengeId },
           data: {
             status: resolvedSurface.persistedStatus,
             resultAt: scheduledMatch.resultAt ?? resolvedAt,
             settlementReadyAt: scheduledMatch.settlementReadyAt ?? resolvedAt,
+            lifecycleVersion: { increment: 1 },
           },
         });
 
         await recordChallengeActivity(tx, {
           scheduledMatchId: challengeId,
           actorUserId: viewerIsChallenger || viewerIsChallenged ? viewer.id : undefined,
+          eventKey,
           eventType: resolvedSurface.persistedStatus,
           detail: resolvedSurface.economy.statusDetail,
           createdAt: resolvedAt,
@@ -1215,7 +1976,7 @@ export async function PATCH(
             body: buildNoShowMessage({
               challengerName,
               challengedName,
-              scheduledAt: scheduledMatch.scheduledAt,
+              scheduledAt: exactScheduledAt,
               resolutionLabel: resolvedSurface.economy.resolution.label,
               statusDetail: resolvedSurface.economy.statusDetail,
             }),
@@ -1233,7 +1994,7 @@ export async function PATCH(
         );
       }
 
-      if (!["ready", "live"].includes(currentSurface.displayState)) {
+      if (!["funded", "ready", "live"].includes(currentSurface.displayState)) {
         return NextResponse.json(
           { detail: "Only ready or live-confirmed matches can move to result-ready." },
           { status: 409 }
@@ -1241,15 +2002,45 @@ export async function PATCH(
       }
 
       const completedAt = new Date();
-      const linkedSessionKey = payload.linkedSessionKey?.trim() || null;
-      const linkedMapName = payload.linkedMapName?.trim() || null;
-      const linkedWinner = payload.linkedWinner?.trim() || null;
+      const requestedLinkedSessionKey = payload.linkedSessionKey?.trim() || null;
+      if (
+        scheduledMatch.linkedSessionKey &&
+        requestedLinkedSessionKey &&
+        requestedLinkedSessionKey !== scheduledMatch.linkedSessionKey
+      ) {
+        return NextResponse.json(
+          { detail: "A durable replay link cannot be replaced through generic completion." },
+          { status: 409 }
+        );
+      }
+      const linkedSessionKey =
+        scheduledMatch.linkedSessionKey ?? requestedLinkedSessionKey;
+      if (linkedSessionKey) {
+        const existingReplayClaim = await prisma.scheduledMatch.findFirst({
+          where: {
+            id: { not: challengeId },
+            linkedSessionKey,
+          },
+          select: { id: true },
+        });
+        if (existingReplayClaim) {
+          return NextResponse.json(
+            { detail: `That replay is already durable proof for challenge #${existingReplayClaim.id}.` },
+            { status: 409 }
+          );
+        }
+      }
+      const linkedMapName =
+        payload.linkedMapName?.trim() || scheduledMatch.linkedMapName || null;
+      const linkedWinner =
+        payload.linkedWinner?.trim() || scheduledMatch.linkedWinner || null;
       const linkedDurationSeconds =
         typeof payload.linkedDurationSeconds === "number" && Number.isFinite(payload.linkedDurationSeconds)
           ? Math.max(0, Math.floor(payload.linkedDurationSeconds))
-          : null;
+          : scheduledMatch.linkedDurationSeconds;
 
       await prisma.$transaction(async (tx) => {
+        await lockExpectedChallengeVersion(tx, challengeId, scheduledMatch.lifecycleVersion);
         await tx.scheduledMatch.update({
           where: { id: challengeId },
           data: {
@@ -1261,11 +2052,13 @@ export async function PATCH(
             linkedMapName,
             linkedWinner,
             linkedDurationSeconds,
+            lifecycleVersion: { increment: 1 },
           },
         });
 
         await recordChallengeActivity(tx, {
           scheduledMatchId: challengeId,
+          eventKey,
           eventType: "completed",
           detail: linkedWinner ? `Completed. Winner: ${linkedWinner}.` : "Completed and stored.",
           metadata: {
@@ -1279,11 +2072,38 @@ export async function PATCH(
       });
     }
 
+    publishDirectMessageEvent(scheduledMatch.challenger.uid, {
+      type: "message",
+      targetUid: scheduledMatch.challenged.uid,
+    });
+    publishDirectMessageEvent(scheduledMatch.challenged.uid, {
+      type: "message",
+      targetUid: scheduledMatch.challenger.uid,
+    });
     const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
     return NextResponse.json(refreshed);
   } catch (error) {
     console.error("Failed to update scheduled match:", error);
+    const errorCode =
+      typeof error === "object" && error && "code" in error
+        ? String(error.code)
+        : null;
     const detail = error instanceof Error ? error.message : "Challenge update failed.";
-    return NextResponse.json({ detail }, { status: 500 });
+    return NextResponse.json(
+      {
+        detail:
+          errorCode === "P2002"
+            ? "That request, funding proof, activity, or replay link is already attached to another Challenge."
+            : detail,
+      },
+      {
+        status:
+          error instanceof ChallengeActionError
+            ? error.status
+            : errorCode === "P2002"
+              ? 409
+              : 500,
+      }
+    );
   }
 }

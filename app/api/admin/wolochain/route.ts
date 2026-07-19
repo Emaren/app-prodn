@@ -232,7 +232,7 @@ async function loadBalance(
 function toChallengeRun(row: {
   id: number;
   status: string;
-  scheduledAt: Date;
+  scheduledAt: Date | null;
   challengeNote: string | null;
   wagerAmountWolo: number;
   guaranteeAmountWolo: number;
@@ -278,7 +278,7 @@ function toChallengeRun(row: {
     statusDetail: surface.economy.statusDetail,
     challengerName,
     challengedName,
-    scheduledAt: row.scheduledAt.toISOString(),
+    scheduledAt: row.scheduledAt?.toISOString() ?? null,
     updatedAt: row.updatedAt.toISOString(),
     resultAt: row.resultAt?.toISOString() ?? null,
     settlementReadyAt: surface.economy.settlementReadyAt,

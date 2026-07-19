@@ -4,11 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { FormEvent, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpRight,
   CalendarClock,
-  Clock3,
   Crown,
   Gem,
   MessageSquareMore,
@@ -26,7 +25,6 @@ import ScheduledMatchCard, {
   type ScheduledMatchCardActionState,
 } from "@/components/challenge/ScheduledMatchCard";
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
-import TimeDisplayText from "@/components/time/TimeDisplayText";
 import SteamLoginButton from "@/components/SteamLoginButton";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -44,7 +42,7 @@ import {
   REPRESENTED_COUNTRIES,
   type RepresentedCountry,
 } from "@/lib/champions/titles";
-import type { ChallengeActivityItem, ChallengeHubSnapshot } from "@/lib/challenges";
+import type { ChallengeHubSnapshot } from "@/lib/challenges";
 import type {
   ScheduledMatchColorTag,
   ScheduledMatchViewerPreference,
@@ -57,6 +55,7 @@ const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
   candidates: [],
   scheduledMatches: [],
   historyMatches: [],
+  historyNextCursor: null,
   activities: [],
   record: {
     wins: 0,
@@ -108,7 +107,6 @@ type PublicTrophyTarget = {
   imageUri: string | null;
 };
 
-type ScheduleMode = "basic" | "advanced" | "extreme";
 type ChallengeHallView = "basic" | "advanced" | "extreme";
 
 function parseChallengeHallView(value: string | null): ChallengeHallView {
@@ -169,6 +167,7 @@ function ChallengeHallBaEToggle({
 
 
 const ACTIVE_RUNWAY_STATES: string[] = [
+  "issued",
   "proposed",
   "pending",
   "terms_accepted",
@@ -182,8 +181,6 @@ const ACTIVE_RUNWAY_STATES: string[] = [
   "ready",
   "live",
 ] as const;
-
-type ActivityMatch = ChallengeHubSnapshot["scheduledMatches"][number];
 
 function defaultScheduledAtValue() {
   const next = new Date(Date.now() + 60 * 60 * 1000);
@@ -220,350 +217,6 @@ function parseLocalDateTimeInputValue(value: string | null | undefined) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function formatActivityTitle(activity: ChallengeActivityItem) {
-  switch (activity.eventType) {
-    case "scheduled":
-      return "Challenge scheduled";
-    case "accepted":
-      return "Challenge accepted";
-    case "terms_accepted":
-      return "Terms accepted";
-    case "creator_funded":
-      return "Creator funded";
-    case "opponent_funded":
-      return "Opponent funded";
-    case "left_checked_in":
-    case "right_checked_in":
-      return "Check-in recorded";
-    case "live_confirmed":
-      return "Live confirmed";
-    case "no_show_left":
-    case "no_show_right":
-    case "double_no_show":
-      return "No-show resolved";
-    case "declined":
-      return "Challenge declined";
-    case "cancelled":
-    case "canceled":
-      return "Challenge cancelled";
-    case "rescheduled":
-      return "Challenge rescheduled";
-    case "completed":
-      return "Match completed";
-    case "refund_due":
-      return "Refund due";
-    case "refund_sent":
-      return "Refund sent";
-    case "guarantee_awarded": {
-      const amount = metadataNumber(activity, "amountWolo");
-      const txHash = metadataString(activity, "txHash");
-      return `Guarantee awarded${amount ? ` · ${amount.toLocaleString()} WOLO` : ""}${txHash ? ` · tx ${shortHash(txHash)}` : ""}`;
-    }
-    case "guarantee_forfeited_to_treasury":
-      return "Guarantee routed to Treasury";
-    case "scheduled_settlement_completed":
-      return "Escrow settlement completed";
-    case "scheduled_settlement_failed":
-      return "Escrow settlement failed";
-    case "forfeited":
-      return "Match forfeited";
-    default:
-      return activity.eventType.replace(/_/g, " ");
-  }
-}
-
-function metadataNumber(activity: ChallengeActivityItem, key: string) {
-  const value = activity.metadata?.[key];
-  return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function metadataString(activity: ChallengeActivityItem, key: string) {
-  const value = activity.metadata?.[key];
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function shortHash(value: string) {
-  if (value.length <= 16) return value;
-  return `${value.slice(0, 8)}...${value.slice(-6)}`;
-}
-
-function buildSyntheticSettlementActivities(matches: ActivityMatch[]): ChallengeActivityItem[] {
-  const rows: ChallengeActivityItem[] = [];
-
-  for (const match of matches) {
-    const noShowLeft = match.displayState === "no_show_left";
-    const noShowRight = match.displayState === "no_show_right";
-    const doubleNoShow = match.displayState === "double_no_show";
-
-    if (!noShowLeft && !noShowRight && !doubleNoShow) {
-      continue;
-    }
-
-    const baseTime = new Date(
-      match.economy.settlementReadyAt || match.activityAt || match.scheduledAt || match.createdAt
-    );
-    const baseMs = Number.isNaN(baseTime.getTime()) ? Date.now() : baseTime.getTime();
-
-    function pushRow(input: {
-      offset: number;
-      eventType: string;
-      actorUid: string | null;
-      actorName: string | null;
-      detail: string;
-      amountWolo: number;
-      participantName: string;
-      bucket: "wager" | "guarantee";
-      settlementTarget: "refund" | "treasury";
-    }) {
-      if (input.amountWolo <= 0) return;
-
-      rows.push({
-        id: match.id * 100_000 + 900 + input.offset,
-        scheduledMatchId: match.id,
-        eventType: input.eventType,
-        detail: input.detail,
-        actorUid: input.actorUid,
-        actorName: input.actorName,
-        createdAt: new Date(baseMs + input.offset * 1000).toISOString(),
-        metadata: {
-          amountWolo: input.amountWolo,
-          participantName: input.participantName,
-          bucket: input.bucket,
-          settlementTarget: input.settlementTarget,
-          synthetic: true,
-        },
-      });
-    }
-
-    const left = match.challenger;
-    const right = match.challenged;
-
-    if (noShowLeft || doubleNoShow) {
-      pushRow({
-        offset: 1,
-        eventType: "refund_due",
-        actorUid: left.uid,
-        actorName: left.name,
-        detail: `${left.name} Wolo Wager refund due · ${match.terms.wagerAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.wagerAmountWolo,
-        participantName: left.name,
-        bucket: "wager",
-        settlementTarget: "refund",
-      });
-
-      pushRow({
-        offset: 2,
-        eventType: "guarantee_forfeited_to_treasury",
-        actorUid: left.uid,
-        actorName: left.name,
-        detail: `${left.name} Match Guarantee → Treasury · ${match.terms.guaranteeAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.guaranteeAmountWolo,
-        participantName: left.name,
-        bucket: "guarantee",
-        settlementTarget: "treasury",
-      });
-    } else {
-      pushRow({
-        offset: 1,
-        eventType: "refund_due",
-        actorUid: left.uid,
-        actorName: left.name,
-        detail: `${left.name} Wolo Wager refund due · ${match.terms.wagerAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.wagerAmountWolo,
-        participantName: left.name,
-        bucket: "wager",
-        settlementTarget: "refund",
-      });
-
-      pushRow({
-        offset: 2,
-        eventType: "refund_due",
-        actorUid: left.uid,
-        actorName: left.name,
-        detail: `${left.name} Match Guarantee refund due · ${match.terms.guaranteeAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.guaranteeAmountWolo,
-        participantName: left.name,
-        bucket: "guarantee",
-        settlementTarget: "refund",
-      });
-    }
-
-    if (noShowRight || doubleNoShow) {
-      pushRow({
-        offset: 3,
-        eventType: "refund_due",
-        actorUid: right.uid,
-        actorName: right.name,
-        detail: `${right.name} Wolo Wager refund due · ${match.terms.wagerAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.wagerAmountWolo,
-        participantName: right.name,
-        bucket: "wager",
-        settlementTarget: "refund",
-      });
-
-      pushRow({
-        offset: 4,
-        eventType: "guarantee_forfeited_to_treasury",
-        actorUid: right.uid,
-        actorName: right.name,
-        detail: `${right.name} Match Guarantee → Treasury · ${match.terms.guaranteeAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.guaranteeAmountWolo,
-        participantName: right.name,
-        bucket: "guarantee",
-        settlementTarget: "treasury",
-      });
-    } else {
-      pushRow({
-        offset: 3,
-        eventType: "refund_due",
-        actorUid: right.uid,
-        actorName: right.name,
-        detail: `${right.name} Wolo Wager refund due · ${match.terms.wagerAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.wagerAmountWolo,
-        participantName: right.name,
-        bucket: "wager",
-        settlementTarget: "refund",
-      });
-
-      pushRow({
-        offset: 4,
-        eventType: "refund_due",
-        actorUid: right.uid,
-        actorName: right.name,
-        detail: `${right.name} Match Guarantee refund due · ${match.terms.guaranteeAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.guaranteeAmountWolo,
-        participantName: right.name,
-        bucket: "guarantee",
-        settlementTarget: "refund",
-      });
-    }
-  }
-
-  return rows;
-}
-
-function formatActivityCompact(activity: ChallengeActivityItem, match?: ActivityMatch) {
-  const totalLabel = match ? `${match.terms.totalFundingWolo.toLocaleString()} WOLO` : "WOLO";
-  const matchLabel = match
-    ? `${match.challenger.name} vs ${match.challenged.name}`
-    : `Match #${activity.scheduledMatchId}`;
-
-  switch (activity.eventType) {
-    case "scheduled":
-      return match
-        ? `Scheduled · ${matchLabel} · ${totalLabel} each`
-        : `${formatActivityTitle(activity)} · Match #${activity.scheduledMatchId}`;
-    case "accepted":
-      return match
-        ? `Accepted · ${matchLabel}`
-        : `${formatActivityTitle(activity)} · Match #${activity.scheduledMatchId}`;
-    case "terms_accepted":
-      return match
-        ? `Terms accepted · opponent funding next`
-        : `${formatActivityTitle(activity)} · Match #${activity.scheduledMatchId}`;
-    case "rescheduled":
-      return match
-        ? `Rescheduled · ${matchLabel}`
-        : `${formatActivityTitle(activity)} · Match #${activity.scheduledMatchId}`;
-    case "creator_funded":
-      return match
-        ? `${match.challenger.name} locked ${totalLabel}`
-        : `Creator locked ${totalLabel}`;
-    case "opponent_funded":
-      return match
-        ? `${match.challenged.name} locked ${totalLabel}`
-        : `Opponent locked ${totalLabel}`;
-    case "left_checked_in":
-    case "right_checked_in":
-      return `${activity.actorName || "Player"} checked in`;
-    case "live_confirmed":
-      return match ? `Live confirmed · ${matchLabel}` : `Game detected · Match #${activity.scheduledMatchId}`;
-    case "completed":
-      return match ? `Completed · ${match.economy.resolution.label || matchLabel}` : "Match completed";
-    case "refund_due": {
-      const amount = metadataNumber(activity, "amountWolo");
-      const participantName = metadataString(activity, "participantName");
-      const bucket = metadataString(activity, "bucket");
-      const target = metadataString(activity, "settlementTarget");
-      const label =
-        bucket === "guarantee"
-          ? target === "treasury"
-            ? "Match Guarantee → Treasury"
-            : "Match Guarantee refund due"
-          : "Wolo Wager refund due";
-      return `${participantName ? `${participantName} ` : ""}${label}${amount ? ` · ${amount.toLocaleString()} WOLO` : ""}`;
-    }
-    case "refund_sent": {
-      const amount = metadataNumber(activity, "amountWolo");
-      const txHash = metadataString(activity, "txHash");
-      return `Refund sent${amount ? ` · ${amount.toLocaleString()} WOLO` : ""}${txHash ? ` · tx ${shortHash(txHash)}` : ""}`;
-    }
-    case "guarantee_forfeited_to_treasury": {
-      const amount = metadataNumber(activity, "amountWolo");
-      const txHash = metadataString(activity, "txHash");
-      const participantName = metadataString(activity, "participantName");
-      return `${participantName ? `${participantName} ` : ""}Match Guarantee → Treasury${amount ? ` · ${amount.toLocaleString()} WOLO` : ""}${txHash ? ` · tx ${shortHash(txHash)}` : ""}`;
-    }
-    case "scheduled_settlement_completed":
-      return `Escrow settled · Match #${activity.scheduledMatchId}`;
-    case "scheduled_settlement_failed":
-      return activity.detail || `Escrow settlement failed · Match #${activity.scheduledMatchId}`;
-    case "declined":
-      return `Declined · Match #${activity.scheduledMatchId}`;
-    case "cancelled":
-    case "canceled":
-      return `Cancelled · Match #${activity.scheduledMatchId}`;
-    case "no_show_left":
-      return match
-        ? `${match.challenger.name} missed check-in`
-        : `No-show · Match #${activity.scheduledMatchId}`;
-    case "no_show_right":
-      return match
-        ? `${match.challenged.name} missed check-in`
-        : `No-show · Match #${activity.scheduledMatchId}`;
-    case "double_no_show":
-      return match ? `Double no-show · ${matchLabel}` : `Double no-show · Match #${activity.scheduledMatchId}`;
-    case "forfeited":
-      return `Forfeited · Match #${activity.scheduledMatchId}`;
-    default:
-      return match ? `${matchLabel} · ${formatActivityTitle(activity)}` : `${formatActivityTitle(activity)} · Match #${activity.scheduledMatchId}`;
-  }
-}
-
-function formatActivityBadge(activity: ChallengeActivityItem) {
-  switch (activity.eventType) {
-    case "scheduled":
-      return "Scheduled";
-    case "accepted":
-      return "Accepted";
-    case "terms_accepted":
-      return "Terms";
-    case "creator_funded":
-      return "Creator funded";
-    case "opponent_funded":
-      return "Opponent funded";
-    case "left_checked_in":
-    case "right_checked_in":
-      return "Checked in";
-    case "live_confirmed":
-      return "Live";
-    case "no_show_left":
-    case "no_show_right":
-    case "double_no_show":
-      return "No-show";
-    case "scheduled_settlement_completed":
-      return "Settled";
-    case "scheduled_settlement_failed":
-      return "Settlement failed";
-    case "refund_sent":
-      return "Refund";
-    case "guarantee_forfeited_to_treasury":
-      return "Treasury";
-    default:
-      return formatActivityTitle(activity);
-  }
-}
-
 type ChallengeWorkspaceProps = {
   initialFocusId?: number | null;
 };
@@ -573,7 +226,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   const searchParams = useSearchParams();
   const router = useRouter();
   const { status: walletStatus, address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
-  const { timeDisplayMode, setTimeDisplayMode, timeClockMode, browserTimeZone } = useLobbyAppearance();
+  const { timeClockMode, browserTimeZone } = useLobbyAppearance();
   const scheduleFormId = "schedule-game";
   const [snapshot, setSnapshot] = useState<ChallengeHubSnapshot>(EMPTY_SNAPSHOT);
   const [loading, setLoading] = useState(true);
@@ -588,8 +241,11 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   const [notice, setNotice] = useState<string | null>(null);
   const [challengedUid, setChallengedUid] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
+  const [useExactSchedule, setUseExactSchedule] = useState(false);
+  const [acceptanceWindowHours, setAcceptanceWindowHours] = useState(72);
   const [challengeNote, setChallengeNote] = useState("");
-  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("extreme");
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [routePrefillApplied, setRoutePrefillApplied] = useState(false);
   const [trophyTarget, setTrophyTarget] = useState<PublicTrophyTarget | null>(null);
   const [trophies, setTrophies] = useState<PublicTrophyTarget[]>([]);
@@ -598,13 +254,18 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   const [guaranteeAmountWolo, setGuaranteeAmountWolo] = useState(
     String(CHALLENGE_DEFAULT_GUARANTEE_WOLO)
   );
-  const [focusedMatchId, setFocusedMatchId] = useState<number | null>(null);
+  const creationAttemptRef = useRef<{
+    requestId: string;
+    challengeId: number | null;
+    fundingResult: { fundingTxHash: string; walletAddress: string } | null;
+  } | null>(null);
   const requestedTitle = searchParams.get("title");
   const requestedKind = searchParams.get("kind");
   const requestedCountry = searchParams.get("country");
   const requestedFocusId = Number.parseInt(searchParams.get("focus") || "", 10);
   const challengeHallView = parseChallengeHallView(searchParams.get("view"));
   const challengeHallExtreme = challengeHallView === "extreme";
+  const challengeHallAdvanced = challengeHallView !== "basic";
   const routeFocusId =
     typeof initialFocusId === "number" && Number.isFinite(initialFocusId) && initialFocusId > 0
       ? initialFocusId
@@ -719,8 +380,11 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   }, [authLoading, effectiveFocusId, isAuthenticated]);
 
   useEffect(() => {
-    setScheduledAt(defaultScheduledAtValue());
-  }, []);
+    if (challengeHallView === "basic") {
+      setUseExactSchedule(false);
+      setAcceptanceWindowHours(72);
+    }
+  }, [challengeHallView]);
 
   useEffect(() => {
     if (routePrefillApplied || loading || authLoading || trophyTargetLoading) {
@@ -767,7 +431,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   const pendingIncomingCount = useMemo(
     () =>
       snapshot.scheduledMatches.filter(
-        (match) => ["proposed", "pending"].includes(match.displayState) && match.challenged.uid === uid
+        (match) => ["issued", "proposed", "pending"].includes(match.displayState) && match.challenged.uid === uid
       ).length,
     [snapshot.scheduledMatches, uid]
   );
@@ -779,14 +443,6 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     [snapshot.scheduledMatches]
   );
 
-  const fundedCount = useMemo(
-    () =>
-      snapshot.scheduledMatches.filter((match) =>
-        ["creator_funded", "opponent_funded", "funded", "checkin_open"].includes(match.displayState)
-      ).length,
-    [snapshot.scheduledMatches]
-  );
-
   const readyCount = useMemo(
     () =>
       snapshot.scheduledMatches.filter((match) =>
@@ -795,45 +451,29 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     [snapshot.scheduledMatches]
   );
 
-  const activeRunwayMatches = useMemo(
-    () => snapshot.scheduledMatches.filter((match) => ACTIVE_RUNWAY_STATES.includes(match.displayState)),
-    [snapshot.scheduledMatches]
+  const activeRunwayMatches = useMemo(() => {
+    const attentionStates = new Set(["issued", "proposed", "pending", "creator_funded", "terms_accepted"]);
+    return snapshot.scheduledMatches
+      .filter((match) => ACTIVE_RUNWAY_STATES.includes(match.displayState))
+      .sort((left, right) => {
+        const leftNeedsViewer = left.challenged.uid === uid && attentionStates.has(left.displayState);
+        const rightNeedsViewer = right.challenged.uid === uid && attentionStates.has(right.displayState);
+        if (leftNeedsViewer !== rightNeedsViewer) return leftNeedsViewer ? -1 : 1;
+        if (left.displayState === "live" && right.displayState !== "live") return -1;
+        if (right.displayState === "live" && left.displayState !== "live") return 1;
+        return new Date(right.activityAt).getTime() - new Date(left.activityAt).getTime();
+      });
+  }, [snapshot.scheduledMatches, uid]);
+
+  const historyMatches = useMemo(
+    () => snapshot.historyMatches.slice(0, historyExpanded ? snapshot.historyMatches.length : 3),
+    [historyExpanded, snapshot.historyMatches]
   );
 
-  const historyMatches = useMemo(() => snapshot.historyMatches.slice(0, 8), [snapshot.historyMatches]);
-
-  const visibleMatchTiles = useMemo(() => {
-    const byId = new Map<number, ActivityMatch>();
-    for (const match of [...activeRunwayMatches, ...snapshot.historyMatches]) {
-      byId.set(match.id, match);
-    }
-    return Array.from(byId.values());
-  }, [activeRunwayMatches, snapshot.historyMatches]);
-
-  const recentActivities = useMemo(() => {
-    const syntheticSettlementRows = buildSyntheticSettlementActivities(snapshot.historyMatches);
-    const seen = new Set<string>();
-
-    return [...snapshot.activities, ...syntheticSettlementRows]
-      .filter((activity) => {
-        const key = `${activity.scheduledMatchId}:${activity.eventType}:${activity.actorUid || "system"}:${metadataString(activity, "bucket") || ""}:${metadataString(activity, "settlementTarget") || ""}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      })
-      .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
-      .slice(0, 12);
-  }, [snapshot.activities, snapshot.historyMatches]);
-
-  const activityMatchById = useMemo(() => {
-    const matches = new Map<number, ActivityMatch>();
-    for (const match of [...snapshot.scheduledMatches, ...snapshot.historyMatches]) {
-      matches.set(match.id, match);
-    }
-    return matches;
-  }, [snapshot.historyMatches, snapshot.scheduledMatches]);
-
-  const scheduledPreview = useMemo(() => parseLocalDateTimeInputValue(scheduledAt), [scheduledAt]);
+  const scheduledPreview = useMemo(
+    () => (useExactSchedule ? parseLocalDateTimeInputValue(scheduledAt) : null),
+    [scheduledAt, useExactSchedule]
+  );
   const schedulePreviewLocal = useMemo(
     () =>
       formatDateTime(
@@ -906,48 +546,13 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     ? "Escrow Not Wired"
     : savingPhase === "connecting"
       ? "Connecting..."
-      : walletStatus !== "connected"
-        ? "Connect Wallet"
-        : savingPhase === "creating"
+      : savingPhase === "creating"
           ? "Creating..."
           : savingPhase === "funding"
             ? "Sign Escrow"
             : savingPhase === "recording"
               ? "Recording..."
-              : `Create + Fund ${totalFundingPreview.toLocaleString()} WOLO`;
-  const focusedMatch = useMemo(
-    () => visibleMatchTiles.find((match) => match.id === focusedMatchId) || visibleMatchTiles[0] || null,
-    [focusedMatchId, visibleMatchTiles]
-  );
-  const focusedCounterpart = useMemo(() => {
-    if (!focusedMatch || !uid) {
-      return null;
-    }
-
-    return focusedMatch.challenger.uid === uid ? focusedMatch.challenged : focusedMatch.challenger;
-  }, [focusedMatch, uid]);
-
-  useEffect(() => {
-    if (visibleMatchTiles.length === 0) {
-      setFocusedMatchId(null);
-      return;
-    }
-
-    if (effectiveFocusId && visibleMatchTiles.some((match) => match.id === effectiveFocusId)) {
-      setFocusedMatchId(effectiveFocusId);
-      return;
-    }
-
-    setFocusedMatchId((current) =>
-      current && visibleMatchTiles.some((match) => match.id === current)
-        ? current
-        : visibleMatchTiles[0].id
-    );
-  }, [effectiveFocusId, visibleMatchTiles]);
-
-  function toggleSiteTimePreference() {
-    setTimeDisplayMode(timeDisplayMode === "local" ? "utc" : "local");
-  }
+              : `Send Challenge · ${totalFundingPreview.toLocaleString()} WOLO`;
 
   function setQuickSchedule(minutesFromNow: number) {
     const next = new Date(Date.now() + minutesFromNow * 60_000);
@@ -988,13 +593,22 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     setNotice(null);
 
     try {
+      const requestId = [
+        action,
+        challengeId,
+        extra?.fundingTxHash || extra?.scheduledAt || uid || "viewer",
+      ]
+        .join(":")
+        .slice(0, 128);
       const response = await fetch(`/api/challenges/${challengeId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          "Idempotency-Key": requestId,
         },
         body: JSON.stringify({
           action,
+          requestId,
           ...extra,
         }),
       });
@@ -1083,6 +697,40 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     }
   }
 
+  async function loadOlderHistory() {
+    if (!snapshot.historyNextCursor || historyLoading) return;
+    setHistoryLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `/api/challenges/history?cursor=${snapshot.historyNextCursor}&limit=12`,
+        { cache: "no-store" }
+      );
+      const payload = (await response.json().catch(() => null)) as
+        | Pick<ChallengeHubSnapshot, "historyMatches" | "historyNextCursor">
+        | { detail?: string }
+        | null;
+      if (!response.ok || !payload || !("historyMatches" in payload)) {
+        throw new Error(payload && "detail" in payload ? payload.detail : "Could not load older records.");
+      }
+      setSnapshot((current) => {
+        const matches = new Map(
+          [...current.historyMatches, ...payload.historyMatches].map((match) => [match.id, match])
+        );
+        return {
+          ...current,
+          historyMatches: Array.from(matches.values()),
+          historyNextCursor: payload.historyNextCursor,
+        };
+      });
+      setHistoryExpanded(true);
+    } catch (historyError) {
+      setError(historyError instanceof Error ? historyError.message : "Could not load older records.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
   async function submitChallenge(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
@@ -1110,9 +758,11 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
       return;
     }
 
-    const parsedScheduledAt = parseLocalDateTimeInputValue(scheduledAt);
-    if (!parsedScheduledAt) {
-      setError("Choose a valid start time.");
+    const parsedScheduledAt = useExactSchedule
+      ? parseLocalDateTimeInputValue(scheduledAt)
+      : null;
+    if (useExactSchedule && !parsedScheduledAt) {
+      setError("Choose a valid exact match time, or switch back to Play Anytime.");
       setSaving(false);
       setSavingPhase("idle");
       return;
@@ -1128,14 +778,29 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     try {
       const parsedWagerAmountWolo = Number.parseInt(wagerAmountWolo, 10);
       const parsedGuaranteeAmountWolo = Number.parseInt(guaranteeAmountWolo, 10);
+      const attempt =
+        creationAttemptRef.current ??
+        {
+          requestId:
+            typeof crypto !== "undefined" && "randomUUID" in crypto
+              ? crypto.randomUUID()
+              : `challenge-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+          challengeId: null,
+          fundingResult: null,
+        };
+      creationAttemptRef.current = attempt;
       const response = await fetch("/api/challenges", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Idempotency-Key": attempt.requestId,
         },
         body: JSON.stringify({
+          creationRequestId: attempt.requestId,
           challengedUid,
-          scheduledAt: parsedScheduledAt.toISOString(),
+          scheduleMode: useExactSchedule ? "exact" : "open",
+          acceptanceWindowHours,
+          ...(parsedScheduledAt ? { scheduledAt: parsedScheduledAt.toISOString() } : {}),
           challengeNote,
           wagerAmountWolo: parsedWagerAmountWolo,
           guaranteeAmountWolo: parsedGuaranteeAmountWolo,
@@ -1158,25 +823,41 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
       if (!createdChallengeId || !Number.isFinite(createdChallengeId)) {
         throw new Error("Challenge created, but the funding rail did not return a match id.");
       }
+      attempt.challengeId = createdChallengeId;
+
+      const createdTile = [...payload.scheduledMatches, ...payload.historyMatches].find(
+        (match) => match.id === createdChallengeId
+      );
+      if (createdTile?.economy.creatorFundedAt) {
+        creationAttemptRef.current = null;
+        router.push(`/challenge/${createdChallengeId}`);
+        setNotice("Challenge already funded. Opponent can accept + fund.");
+        return;
+      }
 
       setSavingPhase("funding");
-      const fundingResult = await fundChallengeEscrow({
-        challengeId: createdChallengeId,
-        wagerAmountWolo: parsedWagerAmountWolo,
-        guaranteeAmountWolo: parsedGuaranteeAmountWolo,
-        participantSide: "left",
-        escrowAddress: snapshot.fundingRail.escrowAddress,
-        fallbackWalletAddress: connectedWalletAddress,
-      });
+      const fundingResult =
+        attempt.fundingResult ??
+        (await fundChallengeEscrow({
+          challengeId: createdChallengeId,
+          wagerAmountWolo: parsedWagerAmountWolo,
+          guaranteeAmountWolo: parsedGuaranteeAmountWolo,
+          participantSide: "left",
+          escrowAddress: payload.fundingRail.escrowAddress,
+          fallbackWalletAddress: connectedWalletAddress,
+        }));
+      attempt.fundingResult = fundingResult;
 
       setSavingPhase("recording");
       const fundResponse = await fetch(`/api/challenges/${createdChallengeId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          "Idempotency-Key": `fund:${fundingResult.fundingTxHash}`,
         },
         body: JSON.stringify({
           action: "fund",
+          requestId: `fund:${fundingResult.fundingTxHash}`,
           fundingTxHash: fundingResult.fundingTxHash,
           fundingWalletAddress: fundingResult.walletAddress,
         }),
@@ -1191,7 +872,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
       }
 
       setSnapshot(fundedPayload);
-      setFocusedMatchId(createdChallengeId);
+      creationAttemptRef.current = null;
       router.push(`/challenge/${createdChallengeId}`);
       setNotice(
         duplicateWarning
@@ -1202,7 +883,9 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
       );
       setChallengedUid("");
       setChallengeNote("");
-      setScheduledAt(defaultScheduledAtValue());
+      setScheduledAt("");
+      setUseExactSchedule(false);
+      setAcceptanceWindowHours(72);
       setWagerAmountWolo(String(CHALLENGE_DEFAULT_WAGER_WOLO));
       setGuaranteeAmountWolo(String(CHALLENGE_DEFAULT_GUARANTEE_WOLO));
     } catch (submitError) {
@@ -1232,7 +915,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                   : "max-w-3xl text-4xl font-semibold leading-[1.02] text-white sm:text-5xl"
               }`}
             >
-              Schedule Matches
+              Challenge Hall
             </h1>
             {challengeHallExtreme ? (
               <p className="max-w-3xl font-serif text-base italic tracking-[0.08em] text-amber-100/56 sm:text-lg">
@@ -1257,9 +940,9 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                   <Plus className="h-4 w-4" />
                 </span>
                 <span className="text-left">
-                  <span className="block text-sm font-semibold text-white">+ Game</span>
+                  <span className="block text-sm font-semibold text-white">Send a Challenge</span>
                   <span className="block text-[11px] uppercase tracking-[0.2em] text-amber-100/70">
-                    Start a scheduled duel
+                    Rival · terms · one clean send
                   </span>
                 </span>
                 <ArrowUpRight className="h-4 w-4 text-amber-50/80 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -1285,23 +968,16 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-4 lg:grid-cols-2">
-            <StatCard label="Your Runway" value={String(activeRunwayCount)} />
-            <StatCard label="Incoming" value={String(pendingIncomingCount)} />
-            <StatCard label="Funded" value={String(fundedCount)} helper="Money locked on the rail" />
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+            <StatCard label="Active" value={String(activeRunwayCount)} />
+            <StatCard label="Awaiting you" value={String(pendingIncomingCount)} />
             <StatCard label="Ready" value={String(readyCount)} live helper="Checked in or live" />
           </div>
         </div>
       </section>
 
-      <section
-        className={`${
-          challengeHallExtreme
-            ? "grid min-w-0 gap-6 xl:grid-cols-[minmax(32rem,0.74fr)_minmax(0,1.26fr)] 2xl:grid-cols-[minmax(34rem,0.68fr)_minmax(0,1.32fr)]"
-            : "grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(24rem,0.92fr)] 2xl:grid-cols-[minmax(0,1.12fr)_minmax(27rem,0.88fr)]"
-        }`}
-      >
-        <section className={`${challengeHallExtreme ? "xl:order-2" : ""} min-w-0 space-y-6`}>
+      <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.12fr)_minmax(30rem,0.88fr)]">
+        <section className="order-2 min-w-0 space-y-6">
           <section
             id={scheduleFormId}
             className="relative overflow-hidden rounded-[2rem] border border-amber-200/16 bg-[radial-gradient(circle_at_8%_0%,rgba(251,191,36,0.16),transparent_32%),radial-gradient(circle_at_95%_90%,rgba(34,211,238,0.10),transparent_28%),linear-gradient(160deg,rgba(12,19,34,0.98),rgba(2,6,23,0.98))] p-5 shadow-[0_32px_80px_rgba(0,0,0,0.28)] sm:p-7"
@@ -1312,9 +988,10 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-amber-200/70">
                     <Swords className="h-4 w-4" />
-                    New match
+                    Build a Challenge
                   </div>
-</div>
+                  <h2 className="mt-2 text-2xl font-semibold text-white">One rival. Clear terms. Done.</h2>
+                </div>
                 <div
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${
                     challengeEscrowReady
@@ -1323,35 +1000,18 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                   }`}
                 >
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  {challengeEscrowReady ? "" : "Escrow unavailable"}
+                  {challengeEscrowReady ? "WoloChain ready" : "Escrow unavailable"}
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-3 gap-1 rounded-[1.2rem] border border-white/10 bg-black/25 p-1.5">
-                {([
-                  ["basic", "Basic", "Fast"],
-                  ["advanced", "Advanced", "Control"],
-                  ["extreme", "Extreme", "Smart + fun"],
-                ] as const).map(([mode, label, helper]) => {
-                  const active = scheduleMode === mode;
-                  return (
-                    <button
-                      key={mode}
-                      type="button"
-                      onClick={() => setScheduleMode(mode)}
-                      className={`rounded-[0.9rem] px-2 py-2.5 text-center transition sm:px-4 ${
-                        active
-                          ? "bg-[linear-gradient(135deg,rgba(251,191,36,0.24),rgba(245,158,11,0.10))] text-white shadow-[inset_0_0_0_1px_rgba(253,230,138,0.24)]"
-                          : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
-                      }`}
-                    >
-                      <span className="block text-xs font-bold sm:text-sm">{label}</span>
-                      <span className="mt-0.5 hidden text-[10px] uppercase tracking-[0.15em] opacity-60 sm:block">
-                        {helper}
-                      </span>
-                    </button>
-                  );
-                })}
+              <div className="mt-6 flex items-center justify-between gap-3 rounded-[1.1rem] border border-white/10 bg-black/25 px-4 py-3">
+                <div>
+                  <div className="text-sm font-bold capitalize text-white">{challengeHallView} invitation</div>
+                  <div className="mt-0.5 text-[11px] text-slate-400">The Hall mode controls this entire flow.</div>
+                </div>
+                <span className="rounded-full border border-amber-200/18 bg-amber-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-amber-100">
+                  {challengeHallView}
+                </span>
               </div>
 
               {authLoading || loading ? (
@@ -1390,7 +1050,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                         </option>
                       ))}
                     </select>
-                    {scheduleMode === "extreme" ? (
+                    {challengeHallExtreme ? (
                       <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                         {snapshot.candidates.slice(0, 8).map((candidate) => {
                           const active = candidate.uid === challengedUid;
@@ -1443,41 +1103,104 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
                         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-300 text-[11px] font-black text-slate-950">2</span>
-                        Pick the hour
+                        Accept within
                       </div>
-                      <button type="button" onClick={toggleSiteTimePreference} className="text-[11px] text-slate-400 transition hover:text-white">
-                        {timeDisplayMode === "local" ? "Show UTC sitewide" : "Show local sitewide"}
-                      </button>
+                      <div className="text-xs font-bold text-amber-100">
+                        {acceptanceWindowHours === 24 ? "24 hours" : `${acceptanceWindowHours / 24} days`}
+                      </div>
                     </div>
-                    <div className="mt-3 grid grid-cols-4 gap-2">
-                      {[
-                        ["30 min", 30],
-                        ["1 hour", 60],
-                        ["2 hours", 120],
-                        ["Tomorrow", 24 * 60],
-                      ].map(([label, minutes]) => (
+
+                    {challengeHallAdvanced ? (
+                      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {[
+                          ["24 hours", 24],
+                          ["3 days", 72],
+                          ["7 days", 168],
+                          ["30 days", 720],
+                        ].map(([label, hours]) => {
+                          const active = acceptanceWindowHours === Number(hours);
+                          return (
+                            <button
+                              key={String(label)}
+                              type="button"
+                              onClick={() => setAcceptanceWindowHours(Number(hours))}
+                              className={`rounded-xl border px-2 py-2.5 text-xs font-semibold transition ${
+                                active
+                                  ? "border-amber-200/30 bg-amber-300/14 text-amber-50"
+                                  : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:text-white"
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="mt-3 rounded-xl border border-amber-200/15 bg-amber-300/[0.07] px-3 py-3 text-sm text-slate-200">
+                        Your rival gets three days to accept. No calendar negotiation required.
+                      </div>
+                    )}
+
+                    {challengeHallAdvanced ? (
+                      <div className="mt-4 border-t border-white/10 pt-4">
                         <button
-                          key={String(label)}
                           type="button"
-                          onClick={() => setQuickSchedule(Number(minutes))}
-                          className="rounded-xl border border-white/10 bg-white/[0.045] px-2 py-2.5 text-xs font-semibold text-slate-200 transition hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-white"
+                          onClick={() => {
+                            setUseExactSchedule((current) => {
+                              if (!current && !scheduledAt) setScheduledAt(defaultScheduledAtValue());
+                              return !current;
+                            });
+                          }}
+                          className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-3 text-left transition ${
+                            useExactSchedule
+                              ? "border-cyan-200/25 bg-cyan-300/[0.08] text-white"
+                              : "border-white/10 bg-white/[0.035] text-slate-300 hover:border-white/20 hover:text-white"
+                          }`}
                         >
-                          {label}
+                          <span>
+                            <span className="block text-sm font-semibold">Set an exact match time</span>
+                            <span className="mt-0.5 block text-[11px] text-slate-400">Optional · otherwise both players can play anytime after funding.</span>
+                          </span>
+                          <span className="rounded-full border border-current/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.15em]">
+                            {useExactSchedule ? "Exact" : "Play anytime"}
+                          </span>
                         </button>
-                      ))}
-                    </div>
-                    <input
-                      type="datetime-local"
-                      value={scheduledAt}
-                      onChange={(event) => setScheduledAt(event.target.value)}
-                      className="mt-3 w-full rounded-2xl border border-white/12 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
-                    />
-                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                      <CalendarClock className="h-4 w-4 text-cyan-200/70" />
-                      <span className="font-semibold text-white">{schedulePreviewLocal === "—" ? "Pick a start time" : schedulePreviewLocal}</span>
-                      <span className="text-slate-600">·</span>
-                      <span>{schedulePreviewUtc === "—" ? "UTC pending" : `UTC ${schedulePreviewUtcCompact}`}</span>
-                    </div>
+
+                        {useExactSchedule ? (
+                          <div className="mt-3 rounded-[1rem] border border-cyan-200/14 bg-slate-950/65 p-3">
+                            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                              {[
+                                ["30 min", 30],
+                                ["1 hour", 60],
+                                ["2 hours", 120],
+                                ["Tomorrow", 24 * 60],
+                              ].map(([label, minutes]) => (
+                                <button
+                                  key={String(label)}
+                                  type="button"
+                                  onClick={() => setQuickSchedule(Number(minutes))}
+                                  className="rounded-xl border border-white/10 bg-white/[0.045] px-2 py-2.5 text-xs font-semibold text-slate-200 transition hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-white"
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                            <input
+                              type="datetime-local"
+                              value={scheduledAt}
+                              onChange={(event) => setScheduledAt(event.target.value)}
+                              className="mt-3 w-full rounded-xl border border-white/12 bg-slate-950 px-4 py-3 text-white outline-none focus:border-amber-300/50"
+                            />
+                            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                              <CalendarClock className="h-4 w-4 text-cyan-200/70" />
+                              <span className="font-semibold text-white">{schedulePreviewLocal === "—" ? "Pick a local start time" : schedulePreviewLocal}</span>
+                              <span className="text-slate-600">·</span>
+                              <span>{schedulePreviewUtc === "—" ? "UTC pending" : `UTC ${schedulePreviewUtcCompact}`}</span>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </section>
 
                   <section className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4 sm:p-5">
@@ -1486,9 +1209,12 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-300 text-[11px] font-black text-slate-950">3</span>
                         Set the stakes
                       </div>
-                      <div className="text-sm font-black text-amber-100">{totalFundingPreview.toLocaleString()} WOLO each</div>
+                      <div className="text-right">
+                        <div className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-100/55">Total lock each</div>
+                        <div className="mt-0.5 text-sm font-black text-amber-100">{totalFundingPreview.toLocaleString()} WOLO</div>
+                      </div>
                     </div>
-                    {scheduleMode !== "basic" ? (
+                    {challengeHallAdvanced ? (
                       <>
                         <div className="mt-3 grid grid-cols-3 gap-2">
                           {[
@@ -1532,9 +1258,13 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                         Smart default: {wagerAmountWolo} wager + {guaranteeAmountWolo} guarantee. You can tune both in Advanced.
                       </div>
                     )}
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200/14 bg-amber-300/[0.065] px-3 py-3 text-xs">
+                      <span className="text-slate-300">{wagerAmountWolo || "0"} wager + {guaranteeAmountWolo || "0"} show-up guarantee</span>
+                      <span className="font-black text-amber-50">You lock {totalFundingPreview.toLocaleString()} WOLO</span>
+                    </div>
                   </section>
 
-                  {scheduleMode === "extreme" ? (
+                  {challengeHallExtreme ? (
                     <section className="overflow-hidden rounded-[1.4rem] border border-amber-200/18 bg-[linear-gradient(135deg,rgba(120,53,15,0.18),rgba(15,23,42,0.48))] p-4 sm:p-5">
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -1576,13 +1306,12 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                     </section>
                   ) : null}
 
-                  {scheduleMode !== "basic" ? (
-                    <section className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4 sm:p-5">
+                  <section className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4 sm:p-5">
                       <div className="flex items-center justify-between gap-3">
-                        <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Make the callout</div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Callout <span className="normal-case tracking-normal text-slate-600">· optional</span></div>
                         <MessageSquareMore className="h-4 w-4 text-cyan-200/70" />
                       </div>
-                      {scheduleMode === "extreme" ? (
+                      {challengeHallExtreme ? (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {[
                             "You. Me. One clean set. Winner owns the room.",
@@ -1601,13 +1330,12 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                         maxRows={4}
                         maxLength={CHALLENGE_NOTE_MAX_CHARS}
                         className="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm leading-6 text-white outline-none focus:border-amber-300/50"
-                        placeholder="Name the battlefield. Set the hour. Let war decide."
+                        placeholder="One clean set. Let war decide."
                       />
                       <div className="mt-1.5 text-right text-[10px] uppercase tracking-[0.16em] text-slate-500">{challengeNote.length}/{CHALLENGE_NOTE_MAX_CHARS}</div>
-                    </section>
-                  ) : null}
+                  </section>
 
-                  {scheduleMode === "extreme" ? (
+                  {challengeHallExtreme ? (
 
                     <section className="rounded-[1.5rem] border border-amber-200/20 bg-[radial-gradient(circle_at_80%_0%,rgba(251,191,36,0.16),transparent_38%),linear-gradient(135deg,rgba(30,41,59,0.88),rgba(2,6,23,0.92))] p-4 sm:p-5">
                       <div className="flex items-center justify-between gap-3">
@@ -1646,7 +1374,9 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                       </div>
 
                       <div className="mt-3 flex flex-wrap justify-center gap-2 text-[11px] text-slate-300">
-                        <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">{schedulePreviewLocal}</span>
+                        <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">
+                          {useExactSchedule ? schedulePreviewLocal : `Play anytime · accept within ${acceptanceWindowHours === 24 ? "24h" : `${acceptanceWindowHours / 24}d`}`}
+                        </span>
                         <span className="rounded-full border border-amber-200/15 bg-amber-300/10 px-3 py-1 text-amber-50">{totalFundingPreview.toLocaleString()} WOLO each</span>
                         {automaticTitleStakes.length > 0 ? <span className="rounded-full border border-violet-200/15 bg-violet-300/10 px-3 py-1 text-violet-50">{automaticTitleStakes.length} title {automaticTitleStakes.length === 1 ? "stake" : "stakes"}</span> : null}
                       </div>
@@ -1678,124 +1408,16 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
             </div>
           </section>
 
-          {focusedMatch ? (
-            <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-4 sm:p-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">
-                  Coordination Rail
-                </div>
-                <h2 className="mt-2 text-xl font-semibold text-white">Scheduling Line</h2>
-              </div>
-              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                Match #{focusedMatch.id}
-              </div>
-            </div>
-
-            {visibleMatchTiles.length > 1 ? (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {visibleMatchTiles.map((match) => {
-                  const counterpart =
-                    uid && match.challenger.uid === uid ? match.challenged : match.challenger;
-                  const active = focusedMatch.id === match.id;
-                  return (
-                    <button
-                      key={`focus-${match.id}`}
-                      type="button"
-                      onClick={() => setFocusedMatchId(match.id)}
-                      className={`rounded-full px-3 py-1.5 text-left text-xs transition ${
-                        active
-                          ? "border border-amber-300/22 bg-amber-400/10 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.14)]"
-                          : "border border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:text-white"
-                      }`}
-                    >
-                      <span className="font-semibold">{counterpart.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            ) : null}
-
-            <div className="mt-4 flex flex-wrap items-center gap-2 rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-3 py-3 text-xs text-slate-300">
-              <Clock3 className="h-4 w-4 shrink-0 text-cyan-100/70" />
-              <span className="min-w-0 truncate font-semibold text-white">
-                {focusedMatch.challenger.name} vs {focusedMatch.challenged.name}
-              </span>
-              <span className="text-slate-600">·</span>
-              <span>{focusedMatch.terms.totalFundingWolo.toLocaleString()} WOLO each</span>
-              <span className="text-slate-600">·</span>
-              <span>
-                {formatDateTime(
-                  focusedMatch.scheduledAt,
-                  {
-                    timeDisplayMode: "local",
-                    timeClockMode,
-                    timezoneOverride: browserTimeZone,
-                  },
-                  {
-                    browserTimeZone,
-                    includeZone: false,
-                  }
-                )}
-              </span>
-              <span className="text-slate-600">·</span>
-              <span>{focusedMatch.economy.statusLabel}</span>
-              {focusedMatch.challengeNote ? (
-                <>
-                  <span className="text-slate-600">·</span>
-                  <span className="min-w-0 truncate text-slate-400">{focusedMatch.challengeNote}</span>
-                </>
-              ) : null}
-              {focusedCounterpart ? (
-                <Link
-                  href={`/challenge/${focusedMatch.id}`}
-                  className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-full border border-white/12 bg-white/[0.05] px-3 py-1.5 text-[11px] font-medium text-white transition hover:border-white/25 hover:bg-white/[0.08]"
-                >
-                  <MessageSquareMore className="h-3.5 w-3.5" />
-                  Thread
-                </Link>
-              ) : null}
-            </div>
-            </section>
-          ) : null}
-
-          <section className="min-w-0 overflow-hidden rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="text-xs uppercase tracking-[0.35em] text-slate-300/70">
-                  Challenge Record
-                </div>
-                <h2 className="mt-2 break-words text-2xl font-semibold text-white">Your Numbers</h2>
-              </div>
-              <div className="shrink-0 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                {snapshot.record.total} total
-              </div>
-            </div>
-
-            <div className="mt-5 grid grid-cols-2 gap-2.5 sm:gap-3">
-              <StatCard label="Wins" value={String(snapshot.record.wins)} />
-              <StatCard label="Losses" value={String(snapshot.record.losses)} />
-              <StatCard label="Pending" value={String(snapshot.record.pending)} />
-              <StatCard label="Accepted" value={String(snapshot.record.accepted)} />
-              <StatCard label="Funded" value={String(snapshot.record.funded)} />
-              <StatCard label="Ready" value={String(snapshot.record.ready)} />
-              <StatCard label="Completed" value={String(snapshot.record.completed)} />
-              <StatCard label="No-show" value={String(snapshot.record.noShows)} />
-              <StatCard label="Forfeited" value={String(snapshot.record.forfeited)} />
-              <StatCard label="Declined" value={String(snapshot.record.declined)} />
-              <StatCard label="Canceled" value={String(snapshot.record.cancelled)} />
-            </div>
-          </section>
         </section>
 
-        <section className={`${challengeHallExtreme ? "min-w-0 space-y-6 xl:contents" : "min-w-0 space-y-6"}`}>
+        <section className="order-1 min-w-0 space-y-6">
           <section
-            className={`${challengeHallExtreme ? "xl:order-2 xl:col-start-2" : ""} min-w-0 overflow-hidden rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6`}
+            className="min-w-0 overflow-hidden rounded-[1.8rem] border border-amber-100/14 bg-[radial-gradient(circle_at_10%_0%,rgba(251,191,36,0.09),transparent_28%),rgba(2,6,23,0.82)] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:p-6"
           >
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <div className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">Your Runway</div>
-                <h2 className="mt-2 break-words text-2xl font-semibold text-white">Active Match Tiles</h2>
+                <div className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">Needs attention first</div>
+                <h2 className="mt-2 break-words text-2xl font-semibold text-white">Your Challenges</h2>
               </div>
               <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
                 {activeRunwayMatches.length} active
@@ -1805,7 +1427,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
             <div className="mt-5 min-w-0 space-y-4">
               {activeRunwayMatches.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
-                  No active scheduled matches.
+                  No active challenges. Pick a rival and send one clean invitation.
                 </div>
               ) : (
                 activeRunwayMatches.map((match) => (
@@ -1813,7 +1435,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                     key={match.id}
                     match={match}
                     viewerUid={uid}
-                    defaultViewMode="detail"
+                    defaultViewMode="summary"
                     stacked
                     localTimePrimary
                     serverNow={snapshot.serverNow}
@@ -1821,6 +1443,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                     onDecline={(challengeId) => updateMatch(challengeId, "decline")}
                     onCancel={(challengeId) => updateMatch(challengeId, "cancel")}
                     onReschedule={(challengeId, payload) => updateMatch(challengeId, "reschedule", payload)}
+                    onConfirmTime={(challengeId) => updateMatch(challengeId, "confirm_time")}
                     onFund={(challengeId, payload) => updateMatch(challengeId, "fund", payload)}
                     onCheckIn={(challengeId) => updateMatch(challengeId, "check_in")}
                     onPreferenceChange={updatePreference}
@@ -1833,68 +1456,19 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
           </section>
 
           <section
-            className={`${challengeHallExtreme ? "xl:order-1 xl:col-span-2 rounded-[2rem] border-amber-100/14 bg-[radial-gradient(circle_at_10%_0%,rgba(251,191,36,0.10),transparent_28%),radial-gradient(circle_at_95%_80%,rgba(14,165,233,0.08),transparent_26%),rgba(2,6,23,0.82)] shadow-[0_30px_110px_rgba(0,0,0,0.34)]" : "rounded-[1.8rem] border-white/10 bg-slate-950/75"} min-w-0 overflow-hidden border p-5 sm:p-6`}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <div className="text-xs uppercase tracking-[0.35em] text-amber-100/45">
-                  Challenge Activity
-                </div>
-                <h3 className={`${challengeHallExtreme ? "font-serif text-3xl font-semibold tracking-[-0.035em] text-amber-50/90 sm:text-4xl" : "text-xl font-semibold text-white"} mt-2`}>
-                  Recent Challenge Activity
-                </h3>
-              </div>
-              <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                {recentActivities.length} shown
-              </div>
-            </div>
-
-            <div className="mt-5 space-y-3">
-              {recentActivities.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
-                  Challenge activity will land here as the ledger fills out.
-                </div>
-              ) : (
-                recentActivities.map((activity) => (
-                  <Link
-                    key={`${activity.scheduledMatchId}-${activity.id}`}
-                    href={`/challenge/${activity.scheduledMatchId}`}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-[1rem] border border-white/10 bg-white/[0.04] px-3 py-2.5 transition hover:border-amber-100/22 hover:bg-white/[0.065]"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold text-white">
-                        {formatActivityCompact(activity, activityMatchById.get(activity.scheduledMatchId))}
-                      </div>
-                      <div className="mt-1 text-[11px] uppercase tracking-[0.18em] text-slate-500">
-                        Match #{activity.scheduledMatchId}
-                        {activity.actorName ? ` · ${activity.actorName}` : ""}
-                        {" · "}
-                        <TimeDisplayText value={activity.createdAt} className="text-slate-400" />
-                      </div>
-                    </div>
-                    <div className="shrink-0 rounded-full border border-amber-100/12 bg-amber-100/[0.045] px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-100/72">
-                      {formatActivityBadge(activity)}
-                    </div>
-                  </Link>
-                ))
-              )}
-            </div>
-          </section>
-
-          <section
-            className={`${challengeHallExtreme ? "xl:order-3 xl:col-span-2 rounded-[2rem] border-white/10 bg-slate-950/66" : "rounded-[1.8rem] border-white/10 bg-slate-950/75"} min-w-0 overflow-hidden border p-5 sm:p-6`}
+            className="min-w-0 overflow-hidden rounded-[1.8rem] border border-white/10 bg-slate-950/70 p-5 sm:p-6"
           >
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.35em] text-slate-300/70">
-                  Challenge History
+                  The record
                 </div>
-                <h3 className={`${challengeHallExtreme ? "font-serif text-3xl font-semibold tracking-[-0.035em] text-amber-50/86 sm:text-4xl" : "text-xl font-semibold text-white"} mt-2`}>
-                  Past Scheduled Matches
+                <h3 className="mt-2 text-xl font-semibold text-white">
+                  Challenge History
                 </h3>
               </div>
               <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
-                {snapshot.historyMatches.length} tracked
+                {snapshot.record.total} total
               </div>
             </div>
 
@@ -1915,6 +1489,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                     onDecline={(challengeId) => updateMatch(challengeId, "decline")}
                     onCancel={(challengeId) => updateMatch(challengeId, "cancel")}
                     onReschedule={(challengeId, payload) => updateMatch(challengeId, "reschedule", payload)}
+                    onConfirmTime={(challengeId) => updateMatch(challengeId, "confirm_time")}
                     onFund={(challengeId, payload) => updateMatch(challengeId, "fund", payload)}
                     onCheckIn={(challengeId) => updateMatch(challengeId, "check_in")}
                     onPreferenceChange={updatePreference}
@@ -1926,6 +1501,29 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                 ))
               )}
             </div>
+            {snapshot.historyMatches.length > 3 || snapshot.historyNextCursor ? (
+              <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setHistoryExpanded((current) => !current)}
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm font-semibold text-slate-300 transition hover:border-white/20 hover:bg-white/[0.06] hover:text-white"
+                >
+                  {historyExpanded
+                    ? "Fold history"
+                    : `Show ${Math.max(0, snapshot.historyMatches.length - 3)} more`}
+                </button>
+                {historyExpanded && snapshot.historyNextCursor ? (
+                  <button
+                    type="button"
+                    onClick={() => void loadOlderHistory()}
+                    disabled={historyLoading}
+                    className="w-full rounded-xl border border-amber-200/15 bg-amber-300/[0.06] px-4 py-3 text-sm font-semibold text-amber-50 transition hover:border-amber-200/25 hover:bg-amber-300/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {historyLoading ? "Loading records..." : "Load older records"}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
           </section>
         </section>
       </section>

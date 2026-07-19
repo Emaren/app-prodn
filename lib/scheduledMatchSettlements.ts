@@ -18,6 +18,10 @@ const ADVISORY_LOCK_NAMESPACE = 752006;
 const SETTLEMENT_STATUSES = new Set([
   "canceled",
   "cancelled",
+  "declined",
+  "expired",
+  "funding_expired",
+  "play_expired",
   "double_no_show",
   "no_show_left",
   "no_show_right",
@@ -91,7 +95,7 @@ type ScheduledMatchSettlementDbClient = PrismaClient | Prisma.TransactionClient;
 
 type ParticipantSide = "left" | "right";
 type TransferBucket = "wager" | "guarantee" | "combined";
-type TransferReason = "refund" | "treasury" | "award";
+type TransferReason = "refund" | "return" | "treasury" | "award";
 
 type ParticipantPlan = {
   side: ParticipantSide;
@@ -104,6 +108,7 @@ type ParticipantPlan = {
   fundedAt: string | null;
   userWalletAddress: string | null;
   funded: boolean;
+  fundingProofComplete: boolean;
 };
 
 export type ScheduledMatchSettlementTransfer = {
@@ -119,7 +124,12 @@ export type ScheduledMatchSettlementTransfer = {
   amountWolo: number;
   requestId: string;
   memo: string;
-  eventType: "refund_sent" | "guarantee_forfeited_to_treasury" | "guarantee_awarded";
+  eventType:
+    | "refund_sent"
+    | "guarantee_returned"
+    | "guarantee_forfeited_to_treasury"
+    | "guarantee_awarded"
+    | "wager_awarded";
   sourceWalletAddress: string | null;
   fundingTxHash: string | null;
   fundingWalletAddress: string | null;
@@ -147,7 +157,7 @@ export type ScheduledMatchSettlementPlan = {
     | "funding_recorded";
   stateLabel: string;
   stateDetail: string;
-  scheduledAt: string;
+  scheduledAt: string | null;
   updatedAt: string;
   resultAt: string | null;
   settlementReadyAt: string | null;
@@ -237,6 +247,14 @@ function settlementSlug(status: string) {
     case "cancelled":
     case "canceled":
       return "canceled";
+    case "declined":
+      return "declined";
+    case "expired":
+      return "expired";
+    case "funding_expired":
+      return "funding-expired";
+    case "play_expired":
+      return "play-expired";
     case "double_no_show":
       return "double-noshow";
     case "no_show_left":
@@ -244,7 +262,7 @@ function settlementSlug(status: string) {
     case "no_show_right":
       return "no-show-right";
     case "completed":
-      return "completed-review";
+      return "completed";
     default:
       return "review";
   }
@@ -275,6 +293,9 @@ function buildParticipant(
   const fundingWalletAddress = funding.fundingWalletAddress?.trim() || null;
   const fundedAt = funding.fundedAt?.toISOString() ?? null;
   const funded = Boolean(fundedAt || fundingTxHash || fundingWalletAddress);
+  const fundingProofComplete = Boolean(
+    fundedAt && fundingTxHash && fundingWalletAddress
+  );
 
   return {
     side,
@@ -287,7 +308,87 @@ function buildParticipant(
     fundedAt,
     userWalletAddress: user.walletAddress?.trim() || null,
     funded,
+    fundingProofComplete,
   };
+}
+
+function normalizeExactWinnerIdentity(value: string | null | undefined) {
+  return (value || "").trim().toLowerCase();
+}
+
+function exactParticipantWinnerKeys(
+  user: ScheduledMatchSettlementRow["challenger"]
+) {
+  return new Set(
+    [user.uid, user.inGameName, user.steamPersonaName]
+      .map(normalizeExactWinnerIdentity)
+      .filter(Boolean)
+  );
+}
+
+function resolveCompletedWinner(
+  row: ScheduledMatchSettlementRow,
+  left: ParticipantPlan,
+  right: ParticipantPlan
+): { winner: ParticipantPlan | null; reviewReason: string | null } {
+  if (
+    !Number.isInteger(row.wagerAmountWolo) ||
+    row.wagerAmountWolo < 1 ||
+    !Number.isInteger(row.guaranteeAmountWolo) ||
+    row.guaranteeAmountWolo < 1
+  ) {
+    return {
+      winner: null,
+      reviewReason:
+        "Completed settlement requires positive integer wager and guarantee terms.",
+    };
+  }
+
+  if (!left.fundingProofComplete || !right.fundingProofComplete) {
+    return {
+      winner: null,
+      reviewReason:
+        "Completed settlement requires funded-at time, verified funding tx hash, and funding wallet address for both participants.",
+    };
+  }
+
+  if (
+    left.fundingTxHash &&
+    right.fundingTxHash &&
+    left.fundingTxHash.toLowerCase() === right.fundingTxHash.toLowerCase()
+  ) {
+    return {
+      winner: null,
+      reviewReason:
+        "Completed settlement is blocked because both participants reference the same funding transaction.",
+    };
+  }
+
+  const winnerKey = normalizeExactWinnerIdentity(row.linkedWinner);
+  if (!winnerKey) {
+    return {
+      winner: null,
+      reviewReason:
+        "Completed settlement requires a replay-linked winner before WOLO can move.",
+    };
+  }
+
+  const matches = [
+    exactParticipantWinnerKeys(row.challenger).has(winnerKey) ? left : null,
+    exactParticipantWinnerKeys(row.challenged).has(winnerKey) ? right : null,
+  ].filter((participant): participant is ParticipantPlan => Boolean(participant));
+
+  if (matches.length !== 1) {
+    return {
+      winner: null,
+      reviewReason:
+        matches.length > 1
+          ? "Replay winner identity matches both participants; completed settlement requires operator review."
+          : "Replay winner identity does not exactly match either Challenge participant; completed settlement requires operator review.",
+    };
+  }
+
+  return { winner: matches[0], reviewReason: null };
 }
 
 function transferRequestId(matchId: number, action: string) {
@@ -385,6 +486,7 @@ function buildRawTransfers(input: {
   row: ScheduledMatchSettlementRow;
   left: ParticipantPlan;
   right: ParticipantPlan;
+  completedWinner: ParticipantPlan | null;
   sourceWalletAddress: string | null;
   treasuryAddress: string | null;
   existingMap: Map<string, ScheduledMatchSettlementTransfer["existingSettlement"]>;
@@ -460,7 +562,52 @@ function buildRawTransfers(input: {
     });
   };
 
-  if (status === "canceled" || status === "cancelled") {
+  const returnCompletedGuarantee = (participant: ParticipantPlan) => {
+    addTransfer(transfers, input.row, input.existingMap, {
+      action: `${participant.side}_guarantee_return`,
+      label: `${participant.side} match guarantee return`,
+      participant,
+      participantSide: participant.side,
+      bucket: "guarantee",
+      reason: "return",
+      recipientAddress: participant.fundingWalletAddress,
+      recipientLabel: participant.name,
+      amountWolo: guarantee,
+      eventType: "guarantee_returned",
+      sourceWalletAddress: input.sourceWalletAddress,
+    });
+  };
+
+  const awardCompletedWager = (
+    sourceParticipant: ParticipantPlan,
+    winner: ParticipantPlan
+  ) => {
+    addTransfer(transfers, input.row, input.existingMap, {
+      action: `${sourceParticipant.side}_wager_awarded_to_${winner.side}`,
+      label: `${sourceParticipant.side} wager awarded to ${winner.side} winner`,
+      participant: sourceParticipant,
+      participantSide: winner.side,
+      bucket: "wager",
+      reason: "award",
+      recipientAddress: winner.fundingWalletAddress,
+      recipientLabel: winner.name,
+      amountWolo: wager,
+      eventType: "wager_awarded",
+      sourceWalletAddress: input.sourceWalletAddress,
+    });
+  };
+
+  if (status === "completed") {
+    if (!input.completedWinner) return transfers;
+
+    returnCompletedGuarantee(input.left);
+    returnCompletedGuarantee(input.right);
+    awardCompletedWager(input.left, input.completedWinner);
+    awardCompletedWager(input.right, input.completedWinner);
+    return transfers;
+  }
+
+  if (["canceled", "cancelled", "declined", "expired", "funding_expired", "play_expired"].includes(status)) {
     if (input.left.funded) {
       refundParticipant(input.left, total, "left_full_refund", "left full refund", "combined");
     }
@@ -571,12 +718,16 @@ function determinePlanState(input: {
   fundedCount: number;
   transfers: ScheduledMatchSettlementTransfer[];
   blockers: string[];
+  completedReviewReason: string | null;
 }) {
-  if (normalizeStatus(input.status) === "completed") {
+  if (
+    normalizeStatus(input.status) === "completed" &&
+    input.completedReviewReason
+  ) {
     return {
       state: "review_only" as const,
       stateLabel: "Review only",
-      stateDetail: "Completed scheduled matches are result-ready, but winner payout logic is not auto-settled here yet.",
+      stateDetail: input.completedReviewReason,
     };
   }
 
@@ -656,10 +807,15 @@ export function buildScheduledMatchSettlementPlan(
     fundedAt: row.challengedFundedAt,
   });
   const fundedParticipants = [left, right].filter((participant) => participant.funded);
+  const completedResolution =
+    normalizeStatus(row.status) === "completed"
+      ? resolveCompletedWinner(row, left, right)
+      : { winner: null, reviewReason: null };
   const transfers = buildRawTransfers({
     row,
     left,
     right,
+    completedWinner: completedResolution.winner,
     sourceWalletAddress,
     treasuryAddress,
     existingMap,
@@ -674,6 +830,7 @@ export function buildScheduledMatchSettlementPlan(
     fundedCount: fundedParticipants.length,
     transfers,
     blockers,
+    completedReviewReason: completedResolution.reviewReason,
   });
   const plannedTransferWolo = transfers.reduce((sum, transfer) => sum + transfer.amountWolo, 0);
   const executedWolo = transfers
@@ -687,7 +844,7 @@ export function buildScheduledMatchSettlementPlan(
     state: planState.state,
     stateLabel: planState.stateLabel,
     stateDetail: planState.stateDetail,
-    scheduledAt: row.scheduledAt.toISOString(),
+    scheduledAt: row.scheduledAt?.toISOString() ?? null,
     updatedAt: row.updatedAt.toISOString(),
     resultAt: row.resultAt?.toISOString() ?? null,
     settlementReadyAt: row.settlementReadyAt?.toISOString() ?? null,
@@ -865,7 +1022,7 @@ export async function loadScheduledMatchSettlementPlans(
         ? { id: { in: ids } }
         : {
             OR: [
-              { status: { in: ["canceled", "cancelled", "double_no_show", "no_show_left", "no_show_right", "completed"] } },
+              { status: { in: ["canceled", "cancelled", "declined", "expired", "funding_expired", "play_expired", "double_no_show", "no_show_left", "no_show_right", "completed"] } },
               { settlementReadyAt: { not: null } },
               { challengerFundedAt: { not: null } },
               { challengedFundedAt: { not: null } },
@@ -945,7 +1102,7 @@ function assertExecutablePlan(plan: ScheduledMatchSettlementPlan) {
   }
   if (plan.state === "review_only") {
     throw new ScheduledMatchSettlementError(
-      "Completed scheduled matches are review-only until winner payout logic is explicitly wired.",
+      plan.stateDetail,
       { status: 409, code: "COMPLETED_REVIEW_ONLY" }
     );
   }
@@ -1077,16 +1234,29 @@ async function createSettlementActivity(
     eventType: string;
     detail: string;
     metadata: Record<string, unknown>;
+    eventKey?: string;
   }
 ) {
-  await tx.scheduledMatchActivity.create({
-    data: {
+  const eventKey = (
+    input.eventKey ||
+    `settlement:${input.eventType}:${String(input.metadata.requestId || input.metadata.settlementRunId || "event")}`
+  ).slice(0, 128);
+  await tx.scheduledMatchActivity.upsert({
+    where: {
+      scheduledMatchId_eventKey: {
+        scheduledMatchId: input.scheduledMatchId,
+        eventKey,
+      },
+    },
+    create: {
       scheduledMatchId: input.scheduledMatchId,
       actorUserId: input.actorUserId ?? undefined,
       eventType: input.eventType.slice(0, 32),
+      eventKey,
       detail: input.detail.slice(0, 255),
       metadata: input.metadata as Prisma.InputJsonValue,
     },
+    update: {},
   });
 }
 
@@ -1094,7 +1264,7 @@ async function recordExecutionResult(
   prisma: PrismaClient,
   plan: ScheduledMatchSettlementPlan,
   execution: SettlementRunResult,
-  adminUserId: number
+  actorUserId: number | null
 ): Promise<ScheduledMatchSettlementPlan> {
   const payoutByRequestId = resultByRequestId(execution);
 
@@ -1147,7 +1317,7 @@ async function recordExecutionResult(
       if (succeeded && previous?.status !== "executed") {
         await createSettlementActivity(tx, {
           scheduledMatchId: plan.id,
-          actorUserId: adminUserId,
+          actorUserId,
           eventType: transfer.eventType,
           detail: transferDetail(transfer, txHash || ""),
           metadata: {
@@ -1178,7 +1348,7 @@ async function recordExecutionResult(
     if (failedTransfers.length > 0) {
       await createSettlementActivity(tx, {
         scheduledMatchId: plan.id,
-        actorUserId: adminUserId,
+        actorUserId,
         eventType: "scheduled_settlement_failed",
         detail:
           execution.detail ||
@@ -1205,7 +1375,7 @@ async function recordExecutionResult(
       if (!existingCompleted) {
         await createSettlementActivity(tx, {
           scheduledMatchId: plan.id,
-          actorUserId: adminUserId,
+          actorUserId,
           eventType: "scheduled_settlement_completed",
           detail: `Scheduled-match settlement completed · ${plan.liability.plannedTransferWolo.toLocaleString()} WOLO.`,
           metadata: {
@@ -1235,7 +1405,7 @@ async function recordExecutionResult(
 async function recordExecutionFailure(
   prisma: PrismaClient,
   plan: ScheduledMatchSettlementPlan,
-  adminUserId: number,
+  actorUserId: number | null,
   detail: string
 ) {
   await prisma.$transaction(async (tx) => {
@@ -1251,7 +1421,7 @@ async function recordExecutionFailure(
     });
     await createSettlementActivity(tx, {
       scheduledMatchId: plan.id,
-      actorUserId: adminUserId,
+      actorUserId,
       eventType: "scheduled_settlement_failed",
       detail,
       metadata: {
@@ -1267,7 +1437,7 @@ async function recordExecutionFailure(
 export async function executeScheduledMatchSettlement(
   prisma: PrismaClient,
   matchId: number,
-  adminUserId: number
+  actorUserId: number | null = null
 ): Promise<ScheduledMatchSettlementExecutionResult> {
   const markedPlan = await markSettlementExecutionStarted(prisma, matchId);
 
@@ -1275,7 +1445,7 @@ export async function executeScheduledMatchSettlement(
     await requireExecutableEscrowDryRun(markedPlan);
     const execution = await executeWoloEscrowSettlementRun(buildSettlementRunInput(markedPlan));
     const guardedExecution = enforceEscrowRunSource(markedPlan, execution) ?? execution;
-    const plan = await recordExecutionResult(prisma, markedPlan, guardedExecution, adminUserId);
+    const plan = await recordExecutionResult(prisma, markedPlan, guardedExecution, actorUserId);
     return {
       ok: guardedExecution.ok,
       plan,
@@ -1284,7 +1454,7 @@ export async function executeScheduledMatchSettlement(
   } catch (error) {
     const detail =
       error instanceof Error ? error.message : "Scheduled-match settlement execution failed.";
-    await recordExecutionFailure(prisma, markedPlan, adminUserId, detail);
+    await recordExecutionFailure(prisma, markedPlan, actorUserId, detail);
     throw new ScheduledMatchSettlementError(detail, {
       status: 502,
       code: "EXECUTION_FAILED",

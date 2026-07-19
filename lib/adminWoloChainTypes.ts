@@ -18,7 +18,7 @@ export type WoloChainAdminChallengeRun = {
   statusDetail: string;
   challengerName: string;
   challengedName: string;
-  scheduledAt: string;
+  scheduledAt: string | null;
   updatedAt: string;
   resultAt: string | null;
   settlementReadyAt: string | null;
@@ -38,8 +38,8 @@ export type WoloChainAdminChallengeRun = {
   checkIn: {
     challengerCheckedInAt: string | null;
     challengedCheckedInAt: string | null;
-    opensAt: string;
-    closesAt: string;
+    opensAt: string | null;
+    closesAt: string | null;
     state: "disabled" | "upcoming" | "open" | "closed";
   };
   disposition: {

@@ -45,3 +45,26 @@ test("parses title stakes into the rich challenge invitation contract", () => {
   );
   assert.match(summary.compactLine, /Canada Champion/);
 });
+
+test("parses a play-anytime challenge with a distinct acceptance deadline", () => {
+  const summary = summarizeChallengeInboxMessage(
+    [
+      "Challenge issued",
+      "Jim vs Zodiac",
+      "Challenge ID: #24",
+      "Match time: Play anytime after both players fund",
+      "Accept by: Jul 21, 11:00 AM",
+      "Accept by ISO: 2026-07-21T17:00:00.000Z",
+      "Funding: 1,010 WOLO each",
+      "Status: Waiting for Zodiac to accept",
+    ].join("\n")
+  );
+
+  assert.ok(summary);
+  assert.equal(summary.state, "issued");
+  assert.equal(summary.challengeId, 24);
+  assert.equal(summary.scheduledAtIso, null);
+  assert.equal(summary.acceptanceAtIso, "2026-07-21T17:00:00.000Z");
+  assert.match(summary.compactLine, /New challenge/);
+  assert.match(summary.compactLine, /Play anytime/);
+});

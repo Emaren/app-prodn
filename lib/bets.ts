@@ -883,7 +883,7 @@ function inferWinnerSideFromChallenge(match: ScheduledMatchTile): BetSide | null
 
 function buildChallengeMarketSeeds(scheduledMatches: ScheduledMatchTile[]) {
   const challengeMatches = scheduledMatches.filter((match) =>
-    [
+    Boolean(match.scheduledAt) && [
       "proposed",
       "pending",
       "accepted",
@@ -944,7 +944,7 @@ function buildChallengeMarketSeeds(scheduledMatches: ScheduledMatchTile[]) {
       rightHref: match.challenged.href,
       seedLeftWolo: 0,
       seedRightWolo: 0,
-      closeAt: new Date(match.scheduledAt),
+      closeAt: new Date(match.scheduledAt as string),
       settledAt:
         match.displayState === "completed" ||
         match.displayState === "forfeited" ||
