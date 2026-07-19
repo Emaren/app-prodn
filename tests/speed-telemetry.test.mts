@@ -25,9 +25,9 @@ test("the same-origin Speed relay owns trusted identity and build enrichment", (
   assert.doesNotMatch(route, /user_uid: body\./);
 });
 
-test("the flight recorder is wired globally but exposes no Speed UI", () => {
+test("the flight recorder remains globally wired with Speed Proof layered on top", () => {
   const shell = readFileSync(new URL("../app/AppShell.tsx", import.meta.url), "utf8");
   assert.match(shell, /<SpeedRuntime \/>/);
   assert.match(shell, /<SpeedWebVitals \/>/);
-  assert.doesNotMatch(shell, /<SpeedProof \/>/);
+  assert.match(shell, /<SpeedProof \/>/);
 });

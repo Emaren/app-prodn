@@ -46,7 +46,7 @@ test("Bets does not claim authoritative ready until its board fetch resolves", (
   assert.match(bets, /<SpeedReadyMarker route="\/bets" ready={!loadingBoard} \/>/);
 });
 
-test("SPEED III still exposes no public Speed Proof UI", () => {
+test("SPEED III authoritative readiness remains globally wired", () => {
   const shell = source("app/AppShell.tsx");
-  assert.doesNotMatch(shell, /<SpeedProof \/>/);
+  assert.match(shell, /<SpeedRuntime \/>/);
 });

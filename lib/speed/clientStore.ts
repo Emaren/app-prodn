@@ -4,6 +4,8 @@ import type { SpeedSample } from "@/lib/speed/types";
 const RECENT_KEY = "aoe2hdbets:speed-recent-samples";
 const MAX_RECENT = 20;
 
+export const SPEED_SAMPLE_UPDATED_EVENT = "aoe2war:speed-sample-updated";
+
 const samples = new Map<string, SpeedSample>();
 let initialSampleId: string | null = null;
 const pendingVitals: Partial<Pick<SpeedSample, "ttfb_ms" | "fcp_ms" | "lcp_ms" | "inp_ms" | "cls">> = {};
@@ -22,6 +24,13 @@ function persistRecent(sample: SpeedSample) {
   }
 }
 
+function publishSampleUpdate(sample: SpeedSample) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<SpeedSample>(SPEED_SAMPLE_UPDATED_EVENT, { detail: sample }),
+  );
+}
+
 export function createSpeedSampleId() {
   const randomPart =
     typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -35,6 +44,7 @@ export function registerSpeedSample(sample: SpeedSample, options?: { initial?: b
   samples.set(next.sample_id, next);
   if (options?.initial) initialSampleId = next.sample_id;
   persistRecent(next);
+  publishSampleUpdate(next);
   void postSpeedSample(next);
   return next;
 }
@@ -49,6 +59,7 @@ export function patchSpeedSample(
   const next = { ...existing, ...patch };
   samples.set(sampleId, next);
   persistRecent(next);
+  publishSampleUpdate(next);
   void postSpeedSample(options?.includeDetails ? next : { ...next, details: undefined });
   return next;
 }
