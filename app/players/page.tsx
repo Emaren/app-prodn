@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { getPrisma } from "@/lib/prisma";
 import {
   loadPublicPlayerDirectory,
@@ -22,6 +23,7 @@ export default async function PlayersDirectoryPage() {
 
   return (
     <main className="space-y-5 py-5 text-white sm:space-y-6 sm:py-6">
+      <SpeedReadyMarker route="/players" />
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.16),_transparent_30%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#020617)] p-6 sm:p-8">
         <div className="grid gap-7 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
           <div className="space-y-5">

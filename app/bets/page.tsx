@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import BetsViewToggle from "@/components/bets/BetsViewToggle";
 import ResultCard from "@/components/bets/ResultCard";
 import YourBookSection from "@/components/bets/YourBookSection";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 
 import FounderBonusChips from "@/components/bets/FounderBonusChips";
 import FounderBonusModal from "@/components/bets/FounderBonusModal";
@@ -1906,6 +1907,7 @@ export default function BetsPage() {
       data-bets-view={betsView}
       className="space-y-5 overflow-x-hidden py-4 text-white sm:space-y-6 sm:py-5"
     >
+      <SpeedReadyMarker route="/bets" ready={!loadingBoard} />
       <BetsMutedToggleCss />
 
       <BettingHallImageHero />

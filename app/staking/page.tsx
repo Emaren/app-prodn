@@ -52,6 +52,7 @@ import StakingActionTile from "./StakingActionTile";
 import StakingAdvancedTrigger from "./StakingAdvancedTrigger";
 import StakingPayoutSchedule from "./StakingPayoutSchedule";
 import TreasuryActions from "./TreasuryActions";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -617,6 +618,7 @@ export default async function StakingPage({
 
   return (
     <main className="space-y-6 overflow-x-hidden py-3 text-white sm:space-y-7 sm:py-4">
+      <SpeedReadyMarker route="/staking" />
       <style>{`
         @keyframes stakingActivityGlow {
           0% {

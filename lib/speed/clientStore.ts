@@ -39,13 +39,17 @@ export function registerSpeedSample(sample: SpeedSample, options?: { initial?: b
   return next;
 }
 
-export function patchSpeedSample(sampleId: string, patch: Partial<SpeedSample>) {
+export function patchSpeedSample(
+  sampleId: string,
+  patch: Partial<SpeedSample>,
+  options?: { includeDetails?: boolean },
+) {
   const existing = samples.get(sampleId);
   if (!existing) return null;
   const next = { ...existing, ...patch };
   samples.set(sampleId, next);
   persistRecent(next);
-  void postSpeedSample({ ...next, details: undefined });
+  void postSpeedSample(options?.includeDetails ? next : { ...next, details: undefined });
   return next;
 }
 

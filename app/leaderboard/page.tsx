@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { ModernLeaderboardPage } from "@/components/leaderboard/ModernLeaderboardPage";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { getPrisma } from "@/lib/prisma";
 
@@ -24,5 +25,10 @@ export default async function LeaderboardPage() {
     console.error("Failed to render HD leaderboard:", error);
   }
 
-  return <ModernLeaderboardPage initialLeaderboard={initialLeaderboard} />;
+  return (
+    <>
+      <SpeedReadyMarker route="/leaderboard" />
+      <ModernLeaderboardPage initialLeaderboard={initialLeaderboard} />
+    </>
+  );
 }

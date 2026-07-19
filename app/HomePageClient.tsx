@@ -18,6 +18,7 @@ import { WoloMarketTile } from "@/components/lobby/WoloMarketTile";
 import { HeroCarousel } from "@/components/hero/HeroCarousel";
 import Aoe2ShortsTile from "@/components/home/Aoe2ShortsTile";
 import HeroTakeoverSlot from "@/components/home/HeroTakeoverSlot";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { buildChatItems } from "@/components/lobby/utils";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -1841,6 +1842,7 @@ return () => {
 
 return (
     <div className="space-y-4 overflow-x-hidden py-2 text-white sm:space-y-6 sm:py-3">
+      <SpeedReadyMarker route="/" />
       {shouldShowShowcaseLobby ? (
         <>
           {isExtremeLobby ? (

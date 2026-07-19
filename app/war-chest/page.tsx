@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
+
 import { getPrisma } from "@/lib/prisma";
 import { loadWarChestSnapshot, normalizeWarChestMode, type WarChestMode } from "@/lib/warChest";
 import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
@@ -118,6 +120,7 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
 
   return (
     <main className="space-y-6 overflow-x-hidden py-3 text-white sm:space-y-7 sm:py-4">
+      <SpeedReadyMarker route="/war-chest" />
       <section className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.18),_transparent_22%),radial-gradient(circle_at_78%_16%,_rgba(59,130,246,0.16),_transparent_24%),radial-gradient(circle_at_60%_82%,_rgba(16,185,129,0.14),_transparent_22%),linear-gradient(135deg,_#07101d,_#0b1425_50%,_#040812)] p-6 shadow-[0_40px_120px_rgba(2,6,23,0.42)] sm:p-8 lg:p-10">
         <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,transparent,rgba(255,255,255,0.035),transparent)]" />
 

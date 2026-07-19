@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import BasicRivalriesView from "@/components/rivalries/BasicRivalriesView";
 import RivalriesViewShell from "@/components/rivalries/RivalriesViewShell";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import {
   AdvancedRivalriesView,
   ExtremeRivalriesView,
@@ -153,6 +154,7 @@ export default async function RivalriesPage({ searchParams }: RivalriesPageProps
 
   return (
     <div className="space-y-4">
+      <SpeedReadyMarker route="/rivalries" />
       <RivalryPagination
         page={page}
         totalPages={totalPages}

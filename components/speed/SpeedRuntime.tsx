@@ -4,7 +4,12 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
 import { getTrafficCorrelationIds } from "@/lib/speed/clientIds";
-import { createSpeedSampleId, registerSpeedSample } from "@/lib/speed/clientStore";
+import { createSpeedSampleId, patchSpeedSample, registerSpeedSample } from "@/lib/speed/clientStore";
+import {
+  readExplicitSpeedReady,
+  SPEED_READY_EVENT,
+  type SpeedReadySignal,
+} from "@/lib/speed/readiness";
 import { sanitizeSpeedPath } from "@/lib/speed/routeSanitizer";
 import type {
   SpeedLongTask,
@@ -25,6 +30,18 @@ type PendingNavigation = {
   timeOriginMs: number;
   source: SpeedNavigationStartSource;
   navigationKind: SpeedNavigationKind;
+};
+
+type ActiveMeasurement = {
+  route: string;
+  sampleId: string;
+  startEpochMs: number;
+  startPerfMs: number;
+  isInitialDocumentSample: boolean;
+  visibilityTainted: boolean;
+  missingIntent: boolean;
+  registered: boolean;
+  explicitReadyAtEpochMs: number | null;
 };
 
 type NetworkInformationLike = {
@@ -198,6 +215,7 @@ export default function SpeedRuntime() {
   const measurementTokenRef = useRef(0);
   const longTasksRef = useRef<SpeedLongTask[]>([]);
   const inMemoryPendingRef = useRef<PendingNavigation | null>(null);
+  const activeMeasurementRef = useRef<ActiveMeasurement | null>(null);
   const hiddenDuringPendingRef = useRef(false);
 
   useEffect(() => {
@@ -251,19 +269,100 @@ export default function SpeedRuntime() {
     };
 
     const handleVisibility = () => {
-      if (document.visibilityState !== "visible" && inMemoryPendingRef.current) {
-        hiddenDuringPendingRef.current = true;
+      if (document.visibilityState !== "visible") {
+        if (inMemoryPendingRef.current) hiddenDuringPendingRef.current = true;
+        if (activeMeasurementRef.current) {
+          activeMeasurementRef.current.visibilityTainted = true;
+        }
       }
+    };
+
+    const applyExplicitReady = (signal: SpeedReadySignal) => {
+      const active = activeMeasurementRef.current;
+      if (!active || signal.route !== active.route) return;
+      if (signal.atEpochMs < active.startEpochMs) return;
+
+      active.explicitReadyAtEpochMs = signal.atEpochMs;
+      if (!active.registered) return;
+
+      const readyMs = roundMetric(signal.atEpochMs - active.startEpochMs);
+      if (readyMs === null || readyMs < 0 || readyMs >= 600_000) return;
+
+      const endPerfMs = Math.max(
+        active.startPerfMs,
+        Math.min(performance.now(), signal.atEpochMs - performance.timeOrigin),
+      );
+      const resources = collectResources(active.startPerfMs, endPerfMs);
+      const tasks = longTasksRef.current.filter(
+        (task) =>
+          task.start_ms >= Math.max(0, active.startPerfMs) &&
+          task.start_ms <= endPerfMs,
+      );
+      const longTaskDurations = tasks.map((task) => task.duration_ms);
+      const visibilityTainted =
+        active.visibilityTainted || document.visibilityState !== "visible";
+      const validForAggregation = !visibilityTainted && !active.missingIntent;
+      const invalidReason = visibilityTainted
+        ? "visibility_tainted"
+        : active.missingIntent
+          ? "missing_navigation_intent"
+          : "";
+      const details =
+        readyMs >= SLOW_DETAIL_THRESHOLD_MS
+          ? {
+              top_resources: resources.topResources,
+              top_api_requests: resources.topApiRequests,
+              navigation_timing: active.isInitialDocumentSample
+                ? navigationTimingDetail(navigationTiming())
+                : {},
+              long_tasks: tasks.slice(0, 10),
+            }
+          : undefined;
+
+      patchSpeedSample(
+        active.sampleId,
+        {
+          ready_source: "explicit",
+          ready_ms: readyMs,
+          resource_count: resources.resourceCount,
+          transfer_bytes: resources.transferBytes,
+          api_request_count: resources.apiRequestCount,
+          slowest_api_path: resources.slowestApiPath,
+          slowest_api_ms: resources.slowestApiMs,
+          long_task_count: tasks.length,
+          long_task_max_ms: longTaskDurations.length
+            ? roundMetric(Math.max(...longTaskDurations))
+            : 0,
+          long_task_total_ms: roundMetric(
+            longTaskDurations.reduce((total, value) => total + value, 0),
+          ),
+          valid_for_aggregation: validForAggregation,
+          invalid_reason: invalidReason,
+          visibility_tainted: visibilityTainted,
+          ...(details ? { details } : {}),
+        },
+        { includeDetails: Boolean(details) },
+      );
+    };
+
+    const handleExplicitReady = (event: Event) => {
+      const signal = (event as CustomEvent<SpeedReadySignal>).detail;
+      if (!signal || typeof signal.route !== "string" || typeof signal.atEpochMs !== "number") {
+        return;
+      }
+      applyExplicitReady(signal);
     };
 
     document.addEventListener("click", handleClick, { capture: true });
     window.addEventListener("popstate", handlePopState);
+    window.addEventListener(SPEED_READY_EVENT, handleExplicitReady);
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       observer?.disconnect();
       document.removeEventListener("click", handleClick, { capture: true });
       window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener(SPEED_READY_EVENT, handleExplicitReady);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, []);
@@ -307,23 +406,47 @@ export default function SpeedRuntime() {
       : isInitialDocumentSample
         ? "document"
         : "route_commit";
-    const readySource = isInitialDocumentSample ? "initial_hydration" : "route_paint";
+    const fallbackReadySource = isInitialDocumentSample ? "initial_hydration" : "route_paint";
     const startedHidden = document.visibilityState !== "visible";
     const pendingWasHidden = Boolean(
       sameDocumentPending &&
         inMemoryPendingRef.current?.startedAtEpochMs === matchingPending?.startedAtEpochMs &&
         hiddenDuringPendingRef.current,
     );
+    const missingIntent = !isInitialDocumentSample && !matchingPending;
+    const sampleId = createSpeedSampleId();
+    const preMarkedReady = readExplicitSpeedReady(route, startEpochMs);
+    activeMeasurementRef.current = {
+      route,
+      sampleId,
+      startEpochMs,
+      startPerfMs,
+      isInitialDocumentSample,
+      visibilityTainted: startedHidden || pendingWasHidden,
+      missingIntent,
+      registered: false,
+      explicitReadyAtEpochMs: preMarkedReady?.atEpochMs ?? null,
+    };
 
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         if (measurementTokenRef.current !== token) return;
 
-        const endPerfMs = performance.now();
-        const readyMs = roundMetric(absoluteNow() - startEpochMs);
+        const active = activeMeasurementRef.current;
+        if (!active || active.sampleId !== sampleId || active.route !== route) return;
+
+        const explicitReadyAtEpochMs = active.explicitReadyAtEpochMs;
+        const endEpochMs = explicitReadyAtEpochMs ?? absoluteNow();
+        const endPerfMs = explicitReadyAtEpochMs
+          ? Math.max(
+              startPerfMs,
+              Math.min(performance.now(), explicitReadyAtEpochMs - performance.timeOrigin),
+            )
+          : performance.now();
+        const readyMs = roundMetric(endEpochMs - startEpochMs);
+        const readySource = explicitReadyAtEpochMs ? "explicit" : fallbackReadySource;
         const visibilityTainted =
-          startedHidden || pendingWasHidden || document.visibilityState !== "visible";
-        const missingIntent = !isInitialDocumentSample && !matchingPending;
+          active.visibilityTainted || document.visibilityState !== "visible";
         const validForAggregation =
           !visibilityTainted && !missingIntent && readyMs !== null && readyMs >= 0 && readyMs < 600_000;
         const invalidReason = visibilityTainted
@@ -340,7 +463,7 @@ export default function SpeedRuntime() {
         const slowEnoughForDetails = (readyMs || 0) >= SLOW_DETAIL_THRESHOLD_MS;
 
         const sample: SpeedSample = {
-          sample_id: createSpeedSampleId(),
+          sample_id: sampleId,
           occurred_at: new Date().toISOString(),
           route,
           traffic_visitor_id: ids.trafficVisitorId,
@@ -378,6 +501,9 @@ export default function SpeedRuntime() {
         };
 
         registerSpeedSample(sample, { initial: isInitialDocumentSample });
+        if (activeMeasurementRef.current?.sampleId === sampleId) {
+          activeMeasurementRef.current.registered = true;
+        }
         inMemoryPendingRef.current = null;
         hiddenDuringPendingRef.current = false;
       });

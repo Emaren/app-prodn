@@ -32,6 +32,7 @@ import ScheduledMatchCard, {
 } from "@/components/challenge/ScheduledMatchCard";
 import { displayName } from "@/components/lobby/utils";
 import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { battleLoopForSeed } from "@/lib/battleLoopClips";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -692,6 +693,7 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
       className="space-y-4 py-2 text-white sm:space-y-6 sm:py-3"
       data-live-games-view={viewMode}
     >
+      <SpeedReadyMarker route="/live-games" />
       <LiveBoardHeader
         snapshot={snapshot}
         mounted={mounted}
