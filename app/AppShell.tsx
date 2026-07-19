@@ -4,7 +4,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Bot, Castle, Crown, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Store, Target, UsersRound, X } from "lucide-react";
+import { BarChart3, Bot, Castle, Crown, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Store, Target, UsersRound, X, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import SpeedProof from "@/components/speed/SpeedProof";
@@ -61,6 +61,7 @@ const KINGDOM_LINKS = [
   { href: "/game-stats", label: "Parser Observatory", icon: BarChart3, body: "Replay corpus, coverage, and unknowns" },
   { href: "/traffic", label: "Traffic Observatory", icon: Globe2, body: "Traffic, suspected humans, and confirmed humans" },
   { href: "/statistics", label: "Kingdom Statistics", icon: BarChart3, body: "WOLO, users, bets, games, watchers, and growth" },
+  { href: "/speed", label: "Speed", icon: Zap, body: "Your live performance and readiness measurements" },
 ] as const;
 
 const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
@@ -110,6 +111,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/lobby", title: "Tournament Lobby" },
   { prefix: "/traffic", title: "Traffic Observatory" },
   { prefix: "/statistics", title: "Kingdom Statistics" },
+  { prefix: "/speed", title: "Speed Observatory" },
 ];
 
 function getPageHeading(pathname: string | null) {
