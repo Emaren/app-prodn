@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
@@ -128,6 +129,12 @@ export default function SpeedProof() {
           <div className="mt-2 border-t border-white/8 pt-2 text-[11px] text-white/40">
             {navigationLabel(sample.navigation_kind)} · {route}
           </div>
+          <Link
+            href="/speed"
+            className="mt-3 inline-flex text-xs font-medium text-amber-100/75 transition hover:text-amber-50"
+          >
+            Open my Speed Observatory →
+          </Link>
         </div>
       ) : null}
 

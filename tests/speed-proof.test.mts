@@ -39,7 +39,7 @@ test("Speed Proof receives idempotent sample upgrades from the recorder", () => 
   assert.match(proof, /addEventListener\(SPEED_SAMPLE_UPDATED_EVENT/);
 });
 
-test("Speed Proof is globally wired while the personal Speed Observatory remains a later phase", () => {
+test("Speed Proof remains globally wired alongside the personal Speed Observatory", () => {
   assert.match(shell, /import SpeedProof from "@\/components\/speed\/SpeedProof"/);
   assert.match(shell, /<SpeedProof \/>/);
   assert.doesNotMatch(shell, /href="\/speed"/);
