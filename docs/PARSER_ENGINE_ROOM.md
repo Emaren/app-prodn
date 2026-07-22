@@ -274,3 +274,83 @@ after a terminal event must fail. Roll the transaction back.
 - never drop history tables or triggers as an application rollback;
 - never use Engine Room rollback to reverse a wager, payout, claim, refund, or
   chain transaction.
+
+<!-- AOE2WAR:SCREENSHOT_EVIDENCE_PASS_20260722:START -->
+## Screenshot Evidence Pass — 2026-07-22
+
+The Engine Room now stores human-supplied postgame screenshots as immutable, content-addressed evidence.
+
+### Evidence model
+
+`ReplayEvidenceArtifact` stores immutable evidence bytes and metadata.
+
+`ReplayEvidenceLink` is the append-only provenance edge.
+
+A link may target:
+
+- `gameStatsId`
+- `parseRunId`
+- `observationId`
+- `resultAdjudicationId`
+
+Migration:
+
+`20260722183000_add_replay_evidence_game_target`
+
+The direct `gameStatsId` relationship allows screenshot evidence to be attached to a battle before a screenshot-analysis run or human adjudication exists.
+
+### Screenshot storage
+
+Protected storage:
+
+- `/mnt/HC_Volume_105319120/aoe2-parser-engine/evidence/review-screenshots`
+- `/mnt/HC_Volume_105319120/aoe2-parser-engine/evidence/vision-analysis`
+
+The web service systemd sandbox grants write access only to the Engine Room `jobs` and `evidence` trees.
+
+### Screenshot parser pass
+
+The evidence-assisted screenshot parser currently records:
+
+- parser name: `aoe2war.screenshot_vision`
+- parser version: `1.0.0`
+- pass name: `postgame_evidence`
+- pass version: `1`
+- schema version: `2026-07-22.1`
+- default model: `gpt-5.6`
+- `candidateOnly = true`
+- `affectsPublicAggregates = false`
+
+The model may be overridden with:
+
+`AOE2WAR_SCREENSHOT_VISION_MODEL`
+
+The OpenAI secret is supplied through:
+
+`OPENAI_API_KEY_FILE=/etc/aoe2hdbets/openai.key`
+
+The secret itself must never be committed to Git or printed in diagnostics.
+
+### Evidence-assisted run identity
+
+The screenshot pass identity includes the relevant replay/base-run context, evidence hashes, model, and parser configuration.
+
+Submitting the exact same evidence and configuration is idempotent and must not create a duplicate immutable pass.
+
+### Independence from replay-only parsing
+
+Screenshot-derived confidence is not merged into or represented as replay-only parser confidence.
+
+The Evidence Pass may corroborate:
+
+- teams;
+- winner / loser;
+- score;
+- military;
+- economy;
+- technology;
+- society;
+- timeline.
+
+It remains a separate evidence source and does not directly settle wagers, execute payouts, or mutate chain history.
+<!-- AOE2WAR:SCREENSHOT_EVIDENCE_PASS_20260722:END -->

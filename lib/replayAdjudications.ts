@@ -1,5 +1,8 @@
 import { normalizePublicReplayText } from "./unresolvedWatcherResult.ts";
-import type { Prisma } from "./generated/prisma/index.js";
+import type {
+  Prisma,
+  PrismaClient,
+} from "./generated/prisma/index.js";
 import {
   applyReplayResultAdjudication,
   type EffectiveReplayResultAdjudication,
@@ -190,4 +193,87 @@ export function applyReplayAdjudicationsToGameStatsRows<T extends object>(
   rows: T[]
 ): T[] {
   return rows.map((row) => applyReplayAdjudicationToGameStats(row));
+}
+
+
+type ReplayAdjudicationHydrationPrisma = PrismaClient;
+
+function replayGameStatsId(value: unknown) {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+  }
+
+  return null;
+}
+
+/**
+ * Backend /api/game_stats responses are plain JSON and cannot contain
+ * local Prisma relations. Public projection needs the latest accepted
+ * durable adjudication attached before applyReplayAdjudicationToGameStats()
+ * can project reviewed winner truth.
+ *
+ * This helper enriches rows only. It never mutates parser evidence,
+ * markets, wagers, claims, settlements, or chain state.
+ */
+export async function hydrateEffectiveReplayResultAdjudications<
+  T extends object
+>(
+  prisma: ReplayAdjudicationHydrationPrisma,
+  rows: T[]
+): Promise<T[]> {
+  const ids = [
+    ...new Set(
+      rows
+        .map((row) =>
+          replayGameStatsId(
+            (row as Record<string, unknown>)["id"]
+          )
+        )
+        .filter((id): id is number => id !== null)
+    ),
+  ];
+
+  if (ids.length === 0) return rows;
+
+  const hydrated = await prisma.gameStats.findMany({
+    where: {
+      id: {
+        in: ids,
+      },
+    },
+    select: {
+      id: true,
+      replayResultAdjudications:
+        EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
+    },
+  });
+
+  const adjudicationsByGameId = new Map(
+    hydrated.map((entry) => [
+      entry.id,
+      entry.replayResultAdjudications,
+    ])
+  );
+
+  return rows.map((row) => {
+    const source = row as Record<string, unknown>;
+    const id = replayGameStatsId(source["id"]);
+
+    if (id === null) return row;
+
+    const replayResultAdjudications =
+      adjudicationsByGameId.get(id);
+
+    if (!replayResultAdjudications) return row;
+
+    return {
+      ...source,
+      replayResultAdjudications,
+    } as T;
+  });
 }

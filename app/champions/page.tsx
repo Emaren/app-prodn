@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 
 import { getPrisma } from "@/lib/prisma";
-import { avatarCardUrlForName, avatarCardUrlForUser } from "@/lib/avatarAssets";
+import { avatarCardUrlForName, featuredAvatarCardUrlForUser } from "@/lib/avatarAssets";
 import {
   designationTitles,
   eloTitles,
@@ -104,7 +104,7 @@ function avatarForPlayerName(name: string) {
   const uid = knownPlayerUidForName(name);
 
   if (uid) {
-    return avatarCardUrlForUser(uid, name);
+    return featuredAvatarCardUrlForUser(uid, name);
   }
 
   return avatarCardUrlForName(name);
@@ -115,7 +115,7 @@ function avatarForHolder(holder: ChampionTitleDefinition["holders"][number]) {
   const uid = holder.uid || uidFromPlayerHref(holder.href) || knownPlayerUidForName(holder.name);
 
   if (uid) {
-    return avatarCardUrlForUser(uid, holder.name);
+    return featuredAvatarCardUrlForUser(uid, holder.name);
   }
 
   return avatarForPlayerName(holder.name);

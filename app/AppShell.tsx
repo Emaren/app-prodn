@@ -424,12 +424,22 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isMediaManagerSurface = pathname?.startsWith("/admin/media-assets");
   const isHeroStudioSurface = pathname?.startsWith("/admin/hero-studio");
   const isObservatorySurface =
-    pathname === "/traffic" || pathname === "/statistics";
+    pathname === "/traffic" ||
+    pathname === "/statistics" ||
+    pathname === "/speed";
   const isAcademySurface = pathname?.startsWith("/academy");
   const isClanSurface = pathname?.startsWith("/clans");
   const isNationalChampionsSurface = pathname?.startsWith("/national-champions");
   const isBetsSurface = pathname === "/bets";
   const isBetDetailSurface = Boolean(pathname?.match(/^\/bets\/[^/]+/));
+
+  const isGameStatsReviewSurface =
+    Boolean(
+      pathname?.match(
+        /^\/game-stats\/\d+\/review(?:\/|$)/
+      )
+    );
+
   const isChampionsSurface = pathname === "/champions" || Boolean(pathname?.startsWith("/champions/"));
   const isFullWidthPrestigeSurface =
     isBetsSurface ||
@@ -455,6 +465,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   );
   const isRivalriesSurface =
     pathname === "/rivalries";
+  const isDownloadSurface =
+    pathname === "/download";
+  const downloadWatcherViewMode = getTileViewMode(
+    tileViewPreferences,
+    "download_watcher"
+  );
   React.useEffect(() => {
     if (!isContactPage) {
       setContactViewportHeight(null);
@@ -509,6 +525,13 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       : activeSurfaceViewMode === "advanced"
         ? "max-w-[75rem]"
         : "max-w-[65rem]";
+
+  const downloadShellMaxWidth =
+    downloadWatcherViewMode === "extreme"
+      ? "max-w-[96rem]"
+      : downloadWatcherViewMode === "advanced"
+        ? "max-w-[82rem]"
+        : "max-w-6xl";
   const headerTitle = getPageHeading(pathname);
   const headerSkin = getLobbyHeaderSkin(themeKey);
   const headerTone = React.useMemo(
@@ -825,13 +848,17 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             ? "max-w-none px-3 sm:px-4 2xl:px-6"
             : isHeroStudioSurface
               ? "max-w-none px-1 sm:px-2 2xl:px-3"
+            : isGameStatsReviewSurface
+              ? "max-w-none px-3 sm:px-4 2xl:px-6"
             : isObservatorySurface
               ? "max-w-none px-0"
             : `px-3 sm:px-4 ${
-                isLobbySurface || isLiveGamesSurface || isForumSurface || isRivalriesSurface
-                  ? immersiveShellMaxWidth
-                  : isFullWidthPrestigeSurface || isClanSurface
-                    ? "max-w-[90rem]"
+                isDownloadSurface
+                  ? downloadShellMaxWidth
+                  : isLobbySurface || isLiveGamesSurface || isForumSurface || isRivalriesSurface
+                    ? immersiveShellMaxWidth
+                    : isFullWidthPrestigeSurface || isClanSurface
+                      ? "max-w-[90rem]"
                     : isNationalChampionsSurface || isBetDetailSurface
                       ? "max-w-[96rem]"
                       : isExtremePlayerProfileSurface ? "max-w-[90rem]" : "max-w-6xl"

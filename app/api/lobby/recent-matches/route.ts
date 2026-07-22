@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { loadLobbyRecentMatches } from "@/lib/lobbyRecentMatches";
+import {
+  hydrateLobbyHumanEvidenceMarkers,
+} from "@/lib/lobbyHumanEvidence";
+import type {
+  LobbyMatchRow,
+} from "@/lib/lobby";
+import {
+  getPrisma,
+} from "@/lib/prisma";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 
 export const runtime = "nodejs";
@@ -84,12 +93,30 @@ export async function GET(request: NextRequest) {
     limit: limit + 13,
   });
 
-  const matches = cleanPublicGameRows(rows, {
-    includeReview: true,
-    includeLive: false,
-  })
-    .filter(isLobbyWorthyMatch)
-    .slice(0, limit);
+  const visibleMatches =
+    cleanPublicGameRows(
+      rows,
+      {
+        includeReview:
+          true,
+
+        includeLive:
+          false,
+      }
+    )
+      .filter(
+        isLobbyWorthyMatch
+      )
+      .slice(
+        0,
+        limit
+      ) as LobbyMatchRow[];
+
+  const matches =
+    await hydrateLobbyHumanEvidenceMarkers(
+      getPrisma(),
+      visibleMatches
+    );
 
   return NextResponse.json(
     {

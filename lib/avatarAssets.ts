@@ -205,6 +205,34 @@ function managedAvatarCardUrlWithFallbackTargets(
 function kingdomChronicleAvatarTargetsForName(name: string | null | undefined) {
   const normalized = normalizeName(name);
 
+  if (normalized === "maxi") {
+    return ["maxi"];
+  }
+
+  if (normalized === "tekki") {
+    return ["tekki"];
+  }
+
+  if (normalized === "betiko") {
+    return ["betiko"];
+  }
+
+  if (
+    normalized === "legend_sultan" ||
+    normalized === "legend sultan" ||
+    normalized === "legend-sultan"
+  ) {
+    return ["legend-sultan"];
+  }
+
+  if (
+    normalized === "scavanger_ab" ||
+    normalized === "scavanger ab" ||
+    normalized === "scavanger-ab"
+  ) {
+    return ["scavanger-ab"];
+  }
+
   if (normalized === "emaren") {
     return ["warrior2", "emaren"];
   }
@@ -334,6 +362,24 @@ export function featuredAvatarCardUrlForUser(
     `user-${normalizedUid}-featured`,
     profileFallback,
     { size: "card" }
+  );
+}
+
+export function featuredAvatarThumbUrlForUser(
+  uid: string | null | undefined,
+  name: string | null | undefined
+) {
+  const normalizedUid = slugifyAvatarTarget(uid);
+  const profileFallback = avatarThumbUrlForUser(uid, name);
+
+  if (!normalizedUid) {
+    return profileFallback;
+  }
+
+  return managedAvatarUrl(
+    `user-${normalizedUid}-featured`,
+    profileFallback,
+    { size: "thumb" }
   );
 }
 

@@ -9,6 +9,7 @@ import { loadLiveGamesSnapshot } from "@/lib/liveGames";
 import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
 import { resolveReplayWinnerTruth } from "@/lib/unresolvedWatcherResult";
 import {
+  normalizeReplayPlayerName,
   normalizeReplayPlayers,
   isTerminalVoidedMarketStatus,
   resolveReplayTeams,
@@ -703,6 +704,213 @@ function resolveMarketSideTransfer(
   return null;
 }
 
+function readMarketTruthObject(
+  value: unknown
+): Record<string, unknown> {
+  if (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value)
+  ) {
+    return value as Record<string, unknown>;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        !Array.isArray(parsed)
+      ) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return {};
+    }
+  }
+
+  return {};
+}
+
+function truthyMarketValue(value: unknown) {
+  return (
+    value === true ||
+    value === 1 ||
+    value === "1" ||
+    value === "true"
+  );
+}
+
+function trustedStructuredMarketWinningPlayers(
+  keyEvents: unknown,
+  players: ReturnType<typeof normalizeReplayPlayers>
+) {
+  const events = readMarketTruthObject(keyEvents);
+  const result = readMarketTruthObject(
+    events.result_resolution
+  );
+  const teamResolution = readMarketTruthObject(
+    events.team_resolution
+  );
+
+  const provenance = String(
+    result.result_provenance ?? ""
+  )
+    .trim()
+    .toLowerCase();
+
+  const allowlistedProvenance = new Set([
+    "complete_losing_team_resignation",
+    "postgame_winner_flags",
+    "scoreboard_winner_flags",
+    "postgame_single_team_winner_flags",
+    "scoreboard_single_team_winner_flags",
+  ]);
+
+  if (
+    !truthyMarketValue(result.result_trusted) ||
+    String(result.result_status ?? "").toLowerCase() !==
+      "resolved" ||
+    !allowlistedProvenance.has(provenance) ||
+    String(teamResolution.status ?? "").toLowerCase() !==
+      "resolved" ||
+    String(teamResolution.confidence ?? "").toLowerCase() !==
+      "high"
+  ) {
+    return null;
+  }
+
+  const winningPlayerKeys = new Set(
+    (
+      Array.isArray(result.winning_player_keys)
+        ? result.winning_player_keys
+        : []
+    )
+      .map((value) => String(value ?? "").trim())
+      .filter(Boolean)
+  );
+
+  const winningNames = new Set(
+    (
+      Array.isArray(result.winning_player_names)
+        ? result.winning_player_names
+        : []
+    )
+      .map((value) => normalizeReplayPlayerName(value))
+      .filter(Boolean)
+  );
+
+  if (
+    winningPlayerKeys.size < 2 &&
+    winningNames.size < 2
+  ) {
+    return null;
+  }
+
+  const isWinner = (
+    player: (typeof players)[number]
+  ) =>
+    (
+      winningPlayerKeys.size > 0 &&
+      winningPlayerKeys.has(player.stablePlayerKey)
+    ) ||
+    winningNames.has(player.normalizedName);
+
+  // A trusted structured result is converted into a complete
+  // winner/loser projection only inside the frozen-market
+  // validation path.
+  const enriched = players.map((player) => ({
+    ...player,
+    winner: isWinner(player),
+  }));
+
+  const enrichedWinnerCount = enriched.filter(
+    (player) => player.winner
+  ).length;
+
+  const expectedWinnerCount = Math.max(
+    winningPlayerKeys.size,
+    winningNames.size
+  );
+
+  if (enrichedWinnerCount !== expectedWinnerCount) {
+    return null;
+  }
+
+  // Never allow structured truth to contradict an explicit
+  // true winner flag belonging to the other side.
+  if (
+    players.some(
+      (player) =>
+        player.winner === true &&
+        !isWinner(player)
+    )
+  ) {
+    return null;
+  }
+
+  const resolution = resolveReplayTeams(
+    enriched,
+    { final: true }
+  );
+
+  if (
+    resolution.status !== "resolved" ||
+    resolution.confidence !== "high" ||
+    resolveWinningTeamIndex(
+      enriched,
+      resolution
+    ) === null
+  ) {
+    return null;
+  }
+
+  return enriched;
+}
+
+function buildFinalMarketTruth(game: {
+  winner: string | null;
+  players: unknown;
+  parse_reason?: string | null;
+  key_events?: unknown;
+}) {
+  const players = normalizeReplayPlayers(
+    game.players
+  );
+
+  const structuredPlayers =
+    trustedStructuredMarketWinningPlayers(
+      game.key_events,
+      players
+    );
+
+  if (structuredPlayers) {
+    return {
+      players: structuredPlayers,
+      // Do not compare a team label like "A / B" against one
+      // individual member of the winning roster.
+      winner: null,
+      bettingEligible: true,
+    };
+  }
+
+  const winnerTruth = resolveReplayWinnerTruth({
+    winner: game.winner,
+    players,
+    parseReason: game.parse_reason,
+    keyEvents: game.key_events,
+  });
+
+  return {
+    players,
+    winner: winnerTruth.winner,
+    bettingEligible: winnerTruth.bettingEligible,
+  };
+}
+
+
 function evaluateFinalMarketIntegrity(
   market: {
     leftLabel: string;
@@ -718,20 +926,15 @@ function evaluateFinalMarketIntegrity(
     key_events?: unknown;
   }
 ) {
-  const players = normalizeReplayPlayers(game.players);
-  const winnerTruth = resolveReplayWinnerTruth({
-    winner: game.winner,
-    players,
-    parseReason: game.parse_reason,
-    keyEvents: game.key_events,
-  });
+  const finalTruth = buildFinalMarketTruth(game);
+
   return validateMarketFinalIntegrity({
     propositionHash: market.propositionHash,
     leftRosterSnapshot: market.leftRosterSnapshot,
     rightRosterSnapshot: market.rightRosterSnapshot,
-    finalPlayers: players,
-    finalWinner: winnerTruth.winner,
-    finalBettingEligible: winnerTruth.bettingEligible,
+    finalPlayers: finalTruth.players,
+    finalWinner: finalTruth.winner,
+    finalBettingEligible: finalTruth.bettingEligible,
   });
 }
 
@@ -1133,20 +1336,15 @@ async function assertSettlementWinnerTruthGate(
     );
   }
 
-  const players = normalizeReplayPlayers(game.players);
-  const winnerTruth = resolveReplayWinnerTruth({
-    winner: game.winner,
-    players,
-    parseReason: game.parse_reason,
-    keyEvents: game.key_events,
-  });
+  const finalTruth = buildFinalMarketTruth(game);
+
   const integrity = validateMarketFinalIntegrity({
     propositionHash: market.propositionHash,
     leftRosterSnapshot: market.leftRosterSnapshot,
     rightRosterSnapshot: market.rightRosterSnapshot,
-    finalPlayers: players,
-    finalWinner: winnerTruth.winner,
-    finalBettingEligible: winnerTruth.bettingEligible,
+    finalPlayers: finalTruth.players,
+    finalWinner: finalTruth.winner,
+    finalBettingEligible: finalTruth.bettingEligible,
   });
   if (!integrity.ok || integrity.winningSide !== winningSide) {
     throw new Error(

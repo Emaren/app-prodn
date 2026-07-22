@@ -382,3 +382,55 @@ profiles.
 
 See `docs/RIVALRIES_AND_WAR_VAULT.md`.
 <!-- AOE2WAR:REPLAY_HISTORY_ROUTES:END -->
+
+<!-- AOE2WAR:PUBLIC_PARSER_OBSERVATORY_20260722:START -->
+## Public Parser Observatory and screenshot evidence
+
+AoE2WAR exposes replay provenance as a public read-only product surface.
+
+Routes:
+
+- `/game-stats/[id]` — public battle detail with collapsed Verdict Trail.
+- `/game-stats/[id]/review` — full public Parser Observatory.
+
+Public read APIs:
+
+- `GET /api/replay-results/[id]/adjudications`
+- `GET /api/replay-results/[id]/parser-trail`
+- `GET /api/replay-results/[id]/evidence`
+- `GET /api/replay-results/[id]/evidence/[artifactId]`
+
+Protected admin operations:
+
+- `POST /api/replay-results/[id]/adjudications`
+- `POST /api/replay-results/[id]/evidence`
+- `POST /api/replay-results/[id]/evidence/analyze`
+- `POST /api/replay-results/[id]/reparse`
+
+Public Observatory access never implies write authority. Mutation routes must remain authenticated and admin-gated server-side.
+
+Screenshot evidence is stored under the protected parser Engine Room and analyzed as a separate candidate-only Evidence Pass. It never silently becomes replay-parser confidence or settlement truth.
+
+Production OpenAI configuration:
+
+`OPENAI_API_KEY_FILE=/etc/aoe2hdbets/openai.key`
+
+Optional model override:
+
+`AOE2WAR_SCREENSHOT_VISION_MODEL=<model>`
+
+Never commit or print the OpenAI key.
+
+Required web-service writable Engine Room paths:
+
+- `/mnt/HC_Volume_105319120/aoe2-parser-engine/jobs`
+- `/mnt/HC_Volume_105319120/aoe2-parser-engine/evidence`
+
+Recent Parsed Games distinguishes:
+
+- `Human verdict`
+- `Human-supplied evidence`
+- `Human verdict and human-supplied evidence`
+
+Human-supplied screenshot evidence is provenance, not an assertion that a human adjudicated the battle.
+<!-- AOE2WAR:PUBLIC_PARSER_OBSERVATORY_20260722:END -->

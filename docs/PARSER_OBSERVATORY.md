@@ -160,3 +160,84 @@ rail now accounts for 113 checkpoints linked to 98 recorded candidates while 89
 remain unlinked. The frontier is safe reconciliation of remaining candidate
 improvements, confidence scoring for experimental action fields, and semantic
 advanced-stat derivation; continuation identity itself is never result truth.
+
+<!-- AOE2WAR:PUBLIC_VERDICT_TRAIL_20260722:START -->
+## Public Verdict Trail and Evidence Passes — 2026-07-22
+
+The Parser Observatory now has two connected public surfaces:
+
+- `/game-stats/[id]` — public battle record with one collapsed Verdict Trail.
+- `/game-stats/[id]/review` — full public read-only Parser Observatory.
+
+Both surfaces use the canonical `ReplayVerdictTrail` presentation.
+
+The newest immutable assessment may be:
+
+- a replay-only parser pass;
+- a screenshot Evidence Pass;
+- or an explicit human adjudication in the provenance history.
+
+These sources remain distinct.
+
+### Battle #18714 production proof
+
+The current newest immutable assessment for battle `#18714` is:
+
+- Evidence Pass `#2391`
+- parser `aoe2war.screenshot_vision`
+- parser version `1.0.0`
+- pass `postgame_evidence`
+- pass version `1`
+- status `completed`
+- 73 observations
+- six human-supplied screenshots
+- eight of eight assessment categories observed
+- `candidateOnly = true`
+- `affectsPublicAggregates = false`
+
+Assessment confidence:
+
+- Team Composition: 96.5%
+- Winner / Loser: 96%
+- Score: 99%
+- Military: 99%
+- Economy: 99%
+- Technology: 99%
+- Society: 99%
+- Timeline: 98.6%
+
+### Public inspection contract
+
+Anonymous visitors may inspect:
+
+- battle result context;
+- replay parser history;
+- screenshot Evidence Passes;
+- category confidence;
+- screenshot evidence;
+- full provenance history.
+
+Anonymous visitors cannot:
+
+- assign teams;
+- choose a winner;
+- write decision notes;
+- lock or correct a result;
+- upload screenshots;
+- run screenshot analysis;
+- run the replay parser.
+
+Public visibility does not confer authority.
+
+### Human participation marker
+
+The small human marker reports provenance participation:
+
+- `Human verdict`
+- `Human-supplied evidence`
+- `Human verdict and human-supplied evidence`
+
+Uploading screenshots does not create a human adjudication.
+
+Battle `#18714` currently has six human-supplied evidence artifacts and no requirement to mislabel them as a human verdict.
+<!-- AOE2WAR:PUBLIC_VERDICT_TRAIL_20260722:END -->

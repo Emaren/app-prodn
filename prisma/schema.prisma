@@ -154,6 +154,7 @@ model GameStats {
   replayParseAttempts         ReplayParseAttempt[]         @relation("GameStatsParseAttempts")
   replayResultAdjudications   ReplayResultAdjudication[]
   replayParseRuns             ReplayParseRun[]             @relation("ReplayParseRunGameStats")
+  replayEvidenceLinks         ReplayEvidenceLink[]         @relation("ReplayEvidenceLinkGameStats")
   replayObservationPromotions ReplayObservationPromotion[] @relation("ReplayObservationPromotionGameStats")
   trophyEvents                TrophyEvent[]
   trophyChallenges            TrophyChallenge[]
@@ -423,6 +424,7 @@ model ReplayEvidenceArtifact {
 model ReplayEvidenceLink {
   id                   Int      @id @default(autoincrement())
   evidenceArtifactId   Int      @map("evidence_artifact_id")
+  gameStatsId          Int?     @map("game_stats_id")
   parseRunId           Int?     @map("parse_run_id")
   observationId        Int?     @map("observation_id")
   resultAdjudicationId Int?     @map("result_adjudication_id")
@@ -432,11 +434,13 @@ model ReplayEvidenceLink {
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   evidenceArtifact   ReplayEvidenceArtifact    @relation(fields: [evidenceArtifactId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  gameStats          GameStats?                @relation("ReplayEvidenceLinkGameStats", fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   parseRun           ReplayParseRun?           @relation(fields: [parseRunId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   observation        ReplayObservation?        @relation(fields: [observationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   resultAdjudication ReplayResultAdjudication? @relation("ReplayEvidenceLinkAdjudication", fields: [resultAdjudicationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([evidenceArtifactId, createdAt], map: "ix_replay_evidence_links_artifact")
+  @@index([gameStatsId], map: "ix_replay_evidence_links_game_stats")
   @@index([parseRunId], map: "ix_replay_evidence_links_parse_run")
   @@index([observationId], map: "ix_replay_evidence_links_observation")
   @@index([resultAdjudicationId], map: "ix_replay_evidence_links_adjudication")

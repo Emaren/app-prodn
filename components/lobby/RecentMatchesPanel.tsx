@@ -2,6 +2,7 @@
 
 import { formatLobbyMoment } from "@/components/lobby/utils";
 import Link from "next/link";
+import { UserRound } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   getLobbyPresentationTone,
@@ -151,6 +152,7 @@ function matchRenderFingerprint(
       candidate.parse_reason ||
       candidate.parseReason ||
       "",
+    reviewedResult: readLobbyResultReview(match),
     playedAt: pickLobbyMatchPlayedAt(match),
   });
 }
@@ -509,6 +511,146 @@ function normalizeLobbyWinnerName(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
 }
 
+function readLobbyRecord(value: unknown): Record<string, unknown> | null {
+  if (
+    value &&
+    typeof value === "object" &&
+    !Array.isArray(value)
+  ) {
+    return value as Record<string, unknown>;
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+
+      if (
+        parsed &&
+        typeof parsed === "object" &&
+        !Array.isArray(parsed)
+      ) {
+        return parsed as Record<string, unknown>;
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
+function readLobbyResultReview(
+  match: LobbyMatchRow
+) {
+  const candidate =
+    match as LobbyMatchRow & {
+      replayResultAdjudication?:
+        unknown;
+
+      key_events?:
+        unknown;
+
+      keyEvents?:
+        unknown;
+
+      parseReason?:
+        unknown;
+
+      humanSuppliedEvidence?:
+        unknown;
+
+      humanSuppliedEvidenceCount?:
+        unknown;
+    };
+
+  const keyEvents =
+    readLobbyRecord(
+      candidate.key_events ??
+        candidate.keyEvents
+    );
+
+  const directEvidence =
+    readLobbyRecord(
+      candidate
+        .replayResultAdjudication
+    );
+
+  const replayEvidence =
+    readLobbyRecord(
+      keyEvents
+        ?.replay_result_adjudication
+    );
+
+  const commissionerEvidence =
+    readLobbyRecord(
+      keyEvents
+        ?.commissioner_adjudication
+    );
+
+  const adjudicationEvidence =
+    directEvidence ||
+    replayEvidence ||
+    commissionerEvidence;
+
+  const reviewedBy =
+    normalizeLobbyWinnerName(
+      adjudicationEvidence
+        ?.adjudicated_by
+    );
+
+  const parseReason =
+    normalizeLobbyWinnerName(
+      candidate.parse_reason ||
+        candidate.parseReason
+    ).toLowerCase();
+
+  const hasHumanVerdict =
+    Boolean(
+      adjudicationEvidence
+    ) ||
+    parseReason ===
+      "manual_result_adjudication" ||
+    parseReason ===
+      "manual_recovery";
+
+  const evidenceCount =
+    typeof candidate
+      .humanSuppliedEvidenceCount ===
+      "number" &&
+    Number.isFinite(
+      candidate
+        .humanSuppliedEvidenceCount
+    )
+      ? candidate
+          .humanSuppliedEvidenceCount
+      : 0;
+
+  const hasHumanSuppliedEvidence =
+    candidate
+      .humanSuppliedEvidence ===
+      true ||
+    evidenceCount > 0;
+
+  const reviewLabel =
+    hasHumanVerdict &&
+    hasHumanSuppliedEvidence
+      ? "Human verdict and human-supplied evidence"
+      : hasHumanVerdict
+        ? "Human verdict"
+        : hasHumanSuppliedEvidence
+          ? "Human-supplied evidence"
+          : "";
+
+  return {
+    reviewed:
+      hasHumanVerdict ||
+      hasHumanSuppliedEvidence,
+
+    reviewedBy,
+
+    reviewLabel,
+  };
+}
 function readLobbyMatchPlayers(match: LobbyMatchRow) {
   const value = (match as { players?: unknown }).players;
 
@@ -640,11 +782,12 @@ const MatchCard = memo(function MatchCard({
 
   const playedAt = pickLobbyMatchPlayedAt(match);
   const resultDisplay = getLobbyMatchResultDisplay(match);
+  const resultReview = readLobbyResultReview(match);
 
   return (
     <Link
       href={`/game-stats/${match.id}`}
-      className={`block rounded-2xl border px-4 py-4 transition-colors duration-150 ${tone.card} ${tone.cardHover}`}
+      className={`relative block rounded-2xl border px-4 py-4 transition-colors duration-150 ${tone.card} ${tone.cardHover}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
@@ -654,7 +797,7 @@ const MatchCard = memo(function MatchCard({
           </div>
         </div>
 
-        <div className="shrink-0 space-y-2 text-right">
+        <div className="shrink-0 text-right">
           <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
             {resultDisplay.headline}
           </div>
@@ -665,6 +808,26 @@ const MatchCard = memo(function MatchCard({
         <div className="mt-3 text-xs text-slate-400">
           {formatLobbyMoment(playedAt)}
         </div>
+      ) : null}
+
+      {resultReview.reviewed ? (
+        <span
+          className="absolute bottom-4 right-4 inline-flex text-slate-400/35"
+          title={
+            resultReview.reviewLabel ||
+            "Human reviewed"
+          }
+          aria-label={
+            resultReview.reviewLabel ||
+            "Human reviewed"
+          }
+        >
+          <UserRound
+            aria-hidden="true"
+            className="h-[9px] w-[9px]"
+            strokeWidth={1.5}
+          />
+        </span>
       ) : null}
     </Link>
   );

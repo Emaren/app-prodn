@@ -877,48 +877,174 @@ export function replayResultAdjudicationDto<T extends { marketSnapshot: unknown 
 
 export async function loadReplayResultReviewState(
   prisma: PrismaClient,
-  viewerUid: string,
+  viewerUid: string | null,
   gameStatsId: number
 ) {
-  const { viewer, access } = await requireReplayResultReviewAccess(prisma, viewerUid, gameStatsId);
-  const [game, adjudications] = await Promise.all([
-    prisma.gameStats.findUnique({ where: { id: gameStatsId }, select: REVIEWABLE_GAME_SELECT }),
+  const viewer = viewerUid
+    ? await prisma.user.findUnique({
+        where: {
+          uid: viewerUid,
+        },
+        select: {
+          id: true,
+          uid: true,
+          isAdmin: true,
+          canReviewOwnReplayResults: true,
+          inGameName: true,
+          steamPersonaName: true,
+        },
+      })
+    : null;
+
+  const [
+    game,
+    adjudications,
+  ] = await Promise.all([
+    prisma.gameStats.findUnique({
+      where: {
+        id: gameStatsId,
+      },
+      select:
+        REVIEWABLE_GAME_SELECT,
+    }),
+
     prisma.replayResultAdjudication.findMany({
-      where: { gameStatsId },
-      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      where: {
+        gameStatsId,
+      },
+      orderBy: [
+        {
+          createdAt:
+            "desc",
+        },
+        {
+          id:
+            "desc",
+        },
+      ],
     }),
   ]);
-  if (!game) fail(404, "game_not_found", "Replay game not found.");
-  const marketState = await buildMarketSnapshot(prisma, gameStatsId, [
-    game.original_filename,
-    game.replay_file,
-  ]);
-  const players = canonicalPlayers(game.players);
-  const sourceRosterHash = buildRosterHash(players);
-  const effectiveAdjudication = adjudications.find(
-    (entry) => entry.decisionStatus === REPLAY_RESULT_ACCEPTED
-  ) ?? null;
-  const effectiveGame = applyReplayResultAdjudication(game, effectiveAdjudication);
-  const includeFinancialSnapshot = viewer.isAdmin;
+
+  if (!game) {
+    fail(
+      404,
+      "game_not_found",
+      "Replay game not found."
+    );
+  }
+
+  const access:
+    ReplayResultReviewAccess = {
+      /*
+       * Public read authority.
+       *
+       * Write authority is represented exclusively by
+       * isAdmin and independently enforced by every
+       * mutation route and the adjudication domain layer.
+       */
+      allowed: true,
+
+      role:
+        viewer?.isAdmin
+          ? "site_admin"
+          : null,
+
+      isAdmin:
+        Boolean(
+          viewer?.isAdmin
+        ),
+
+      hasReviewerCapability:
+        Boolean(
+          viewer
+            ?.canReviewOwnReplayResults
+        ),
+
+      hasVerifiedSubmission:
+        false,
+    };
+
+  const marketState =
+    await buildMarketSnapshot(
+      prisma,
+      gameStatsId,
+      [
+        game.original_filename,
+        game.replay_file,
+      ]
+    );
+
+  const players =
+    canonicalPlayers(
+      game.players
+    );
+
+  const sourceRosterHash =
+    buildRosterHash(
+      players
+    );
+
+  const effectiveAdjudication =
+    adjudications.find(
+      (entry) =>
+        entry.decisionStatus ===
+        REPLAY_RESULT_ACCEPTED
+    ) ?? null;
+
+  const effectiveGame =
+    applyReplayResultAdjudication(
+      game,
+      effectiveAdjudication
+    );
+
+  /*
+   * Public viewers may inspect provenance.
+   * Protected financial snapshots remain admin-only.
+   */
+  const includeFinancialSnapshot =
+    Boolean(
+      viewer?.isAdmin
+    );
 
   return {
     access: {
       ...access,
-      ownerMarketCorrectionsRequireAdminApproval: true,
+      ownerMarketCorrectionsRequireAdminApproval:
+        true,
     },
+
     game: {
       ...game,
       sourceRosterHash,
-      canonicalRoster: players,
+      canonicalRoster:
+        players,
     },
+
     effectiveGame,
-    currentAdjudication: effectiveAdjudication
-      ? replayResultAdjudicationDto(effectiveAdjudication, { includeFinancialSnapshot })
-      : null,
-    adjudications: adjudications.map((entry) =>
-      replayResultAdjudicationDto(entry, { includeFinancialSnapshot })
-    ),
-    linkedMarkets: marketState.summary,
+
+    currentAdjudication:
+      effectiveAdjudication
+        ? replayResultAdjudicationDto(
+            effectiveAdjudication,
+            {
+              includeFinancialSnapshot,
+            }
+          )
+        : null,
+
+    adjudications:
+      adjudications.map(
+        (entry) =>
+          replayResultAdjudicationDto(
+            entry,
+            {
+              includeFinancialSnapshot,
+            }
+          )
+      ),
+
+    linkedMarkets:
+      marketState.summary,
   };
 }
 
@@ -938,11 +1064,27 @@ export async function submitReplayResultAdjudication(input: {
 }) {
   const { prisma, viewerUid, gameStatsId, payload } = input;
   const { viewer, access } = await requireReplayResultReviewAccess(prisma, viewerUid, gameStatsId);
+
+  if (!access.isAdmin) {
+    fail(
+      403,
+      "result_admin_required",
+      "Only a site admin can lock or correct a battle result."
+    );
+  }
+
   let expectedInputHash: string | null = null;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(${gameStatsId})`;
+      // pg_advisory_xact_lock() returns PostgreSQL void. Selecting that
+      // value directly makes the Prisma PostgreSQL adapter attempt to
+      // deserialize an unsupported void column. Invoke the lock function
+      // from FROM and project only a supported integer instead.
+      await tx.$queryRaw<Array<{ lock_acquired: number }>>`
+        SELECT 1::int AS lock_acquired
+        FROM pg_advisory_xact_lock(${gameStatsId})
+      `;
       const game = await tx.gameStats.findUnique({
         where: { id: gameStatsId },
         select: REVIEWABLE_GAME_SELECT,

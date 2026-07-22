@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 import { getPrisma } from "@/lib/prisma";
 import { loadPublicLiveGamesSnapshot } from "@/lib/liveGamesPublicSnapshot";
 
@@ -70,7 +71,15 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   try {
-    const publicSnapshot = await loadPublicLiveGamesSnapshot(getPrisma());
+    const prisma = getPrisma();
+
+    // The live board polls continuously. Wake the existing
+    // throttled reconciler so an eligible replay proposition
+    // becomes a market without requiring a separate /bets visit.
+    queueBetMarketEnsure(prisma, 0);
+
+    const publicSnapshot =
+      await loadPublicLiveGamesSnapshot(prisma);
     const snapshot = withLiveProofCounts(publicSnapshot as Record<string, unknown>);
     const headers = {
       "Cache-Control": "no-store, max-age=0",

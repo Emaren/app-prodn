@@ -280,36 +280,50 @@ function trustedStructuredTeamWinners(
   keyEvents: Record<string, unknown>,
   flaggedWinners: string[]
 ) {
-  if (flaggedWinners.length < 2) return null;
   const result = readKeyEvents(keyEvents.result_resolution);
   const teams = readKeyEvents(keyEvents.team_resolution);
-  const winningNames = (Array.isArray(result.winning_player_names)
-    ? result.winning_player_names
-    : []
+
+  const winningNames = (
+    Array.isArray(result.winning_player_names)
+      ? result.winning_player_names
+      : []
   )
     .map(normalizePublicReplayText)
     .filter((name): name is string => Boolean(name));
-  const flaggedKeys = new Set(flaggedWinners.map((name) => name.toLowerCase()));
-  const resultKeys = new Set(winningNames.map((name) => name.toLowerCase()));
-  const provenance = textValue(result.result_provenance).toLowerCase();
+
+  const winningKeys = new Set(
+    winningNames.map((name) => name.toLowerCase())
+  );
+
+  const flaggedKeys = new Set(
+    flaggedWinners.map((name) => name.toLowerCase())
+  );
+
+  const provenance =
+    textValue(result.result_provenance).toLowerCase();
+
   const allowlistedProvenance = new Set([
     "complete_losing_team_resignation",
     "postgame_winner_flags",
     "scoreboard_winner_flags",
+    "postgame_single_team_winner_flags",
+    "scoreboard_single_team_winner_flags",
   ]);
+
   if (
     !truthBoolean(result.result_trusted) ||
     textValue(result.result_status).toLowerCase() !== "resolved" ||
     !allowlistedProvenance.has(provenance) ||
     textValue(teams.status).toLowerCase() !== "resolved" ||
     textValue(teams.confidence).toLowerCase() !== "high" ||
-    winningNames.length !== flaggedWinners.length ||
-    resultKeys.size !== flaggedKeys.size ||
-    [...flaggedKeys].some((key) => !resultKeys.has(key))
+    winningNames.length < 2 ||
+    winningKeys.size !== winningNames.length ||
+    [...flaggedKeys].some((key) => !winningKeys.has(key))
   ) {
     return null;
   }
-  return flaggedWinners;
+
+  return winningNames;
 }
 
 function missingWinnerProofReasons(
@@ -381,6 +395,85 @@ function recoveredWinnerReason(parseReason: string) {
   );
 }
 
+function coherentTeamFlagDisplayCandidate(
+  keyEvents: Record<string, unknown>
+) {
+  const resultResolution = readKeyEvents(
+    keyEvents.result_resolution
+  );
+
+  const resultEvidence = readKeyEvents(
+    resultResolution.result_evidence
+  );
+
+  const teamResolution = readKeyEvents(
+    keyEvents.team_resolution
+  );
+
+  if (
+    !truthBoolean(
+      resultEvidence.winner_flags_coherent
+    )
+  ) {
+    return null;
+  }
+
+  const winningTeamId =
+    resultEvidence.winner_flag_team_id;
+
+  if (
+    winningTeamId === null ||
+    winningTeamId === undefined ||
+    String(winningTeamId).trim() === ""
+  ) {
+    return null;
+  }
+
+  const teams = Array.isArray(teamResolution.teams)
+    ? teamResolution.teams
+    : [];
+
+  const winningTeam = teams
+    .filter(
+      (value): value is Record<string, unknown> =>
+        Boolean(value) &&
+        typeof value === "object" &&
+        !Array.isArray(value)
+    )
+    .find(
+      (team) =>
+        String(team.team_id) ===
+        String(winningTeamId)
+    );
+
+  if (!winningTeam) {
+    return null;
+  }
+
+  const names = (
+    Array.isArray(winningTeam.players)
+      ? winningTeam.players
+      : []
+  )
+    .map(normalizePublicReplayText)
+    .filter(
+      (name): name is string =>
+        Boolean(name)
+    );
+
+  // This rail is deliberately team-game only.
+  // Existing 1v1 truth rules remain untouched.
+  if (names.length < 2) {
+    return null;
+  }
+
+  return {
+    names,
+    label: names.join(" / "),
+  };
+}
+
+
 export function resolveReplayWinnerTruth(
   input: ReplayWinnerTruthInput
 ): ReplayWinnerTruth {
@@ -393,6 +486,8 @@ export function resolveReplayWinnerTruth(
     keyEvents,
     flaggedWinners
   );
+  const coherentTeamFlagCandidate =
+    coherentTeamFlagDisplayCandidate(keyEvents);
   const structuredResult = readKeyEvents(keyEvents.result_resolution);
   const structuredTeamResolution = readKeyEvents(keyEvents.team_resolution);
   const structuredResultClaimsTeam =
@@ -465,6 +560,44 @@ export function resolveReplayWinnerTruth(
   }
 
   // Canonical team-result contract outranks the legacy scalar winner field.
+  // AOE2WAR_DISPLAY_ONLY_COHERENT_TEAM_RESULT
+  //
+  // Full-team winner flags are useful presentation evidence,
+  // but the parser contract deliberately does not accept them
+  // alone as financial settlement proof.
+  //
+  // Show the detected side while keeping official stats and
+  // betting truth locked.
+  if (coherentTeamFlagCandidate && !structuredTeamWinners) {
+    const truthReasons =
+      missingWinnerProofReasons(
+        keyEvents,
+        eventTypes,
+        false
+      );
+
+    truthReasons.unshift(
+      "insufficient_final_signal"
+    );
+
+    return {
+      winner: null,
+      candidateWinner:
+        coherentTeamFlagCandidate.label,
+      confidence: "inferred_low_confidence",
+      truthReasons,
+      publicLabel:
+        `${coherentTeamFlagCandidate.label} · result detected`,
+      statsEligible: false,
+      bettingEligible: false,
+      diagnosticSummary:
+        `Winning side detected from coherent team-wide replay flags: ${coherentTeamFlagCandidate.label}. ` +
+        "Settlement remains locked until decisive final proof is available.",
+      neededEvidence:
+        neededWinnerEvidence(truthReasons),
+    };
+  }
+
   // A review_required/untrusted structured team result must never be resurrected
   // into a win merely because mgz exposed coherent player winner flags.
   if (structuredTeamResultRejected) {
@@ -516,7 +649,7 @@ export function resolveReplayWinnerTruth(
     };
   }
 
-  if (storedWinner) {
+  if (storedWinner && !structuredTeamWinners) {
     const truthReasons: ReplayWinnerTruthReason[] = ["stored_winner_field"];
     if (
       reliableFlagWinner &&

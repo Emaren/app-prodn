@@ -1345,8 +1345,12 @@ return () => {
     [leaderboardLane, setLeaderboardLane]
   );
   const featuredWarriors = useMemo(
-    () => buildFeaturedWarriorPool(leaderboard.entries),
-    [leaderboard.entries]
+    () =>
+      buildFeaturedWarriorPool([
+        ...leaderboard.entries,
+        ...(lobby?.featuredWarriorEntries ?? []),
+      ]),
+    [leaderboard.entries, lobby?.featuredWarriorEntries]
   );
   const onlineUsers = lobby?.onlineUsers ?? [];
   const recentMatches = lobby?.recentMatches ?? [];

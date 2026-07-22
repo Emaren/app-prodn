@@ -242,3 +242,60 @@ Rollback posture:
 - do not delete raw replay artifacts;
 - do not reverse payouts, claims, refunds, or chain history as part of an app
   rollback.
+
+<!-- AOE2WAR:SCREENSHOT_EVIDENCE_LAYER_20260722:START -->
+## Screenshot evidence layer — 2026-07-22
+
+Postgame screenshots are now a first-class but independent evidence source in the AoE2WAR replay truth pipeline.
+
+The evidence layers must not be silently collapsed into one confidence value.
+
+Canonical conceptual order:
+
+1. immutable raw replay bytes;
+2. replay-only parser runs;
+3. replay-only observations;
+4. human-supplied screenshot evidence;
+5. screenshot Evidence Pass observations;
+6. explicit human adjudication when required;
+7. effective public or financial truth under existing promotion and settlement rules.
+
+### Screenshot evidence rules
+
+A screenshot Evidence Pass may corroborate:
+
+- Team Composition
+- Winner / Loser
+- Score
+- Military
+- Economy
+- Technology
+- Society
+- Timeline
+
+It remains:
+
+- candidate-only;
+- non-mutating to public aggregates;
+- independent from replay-only confidence;
+- non-authoritative for settlement by itself.
+
+### Human participation
+
+A human uploading screenshots establishes human participation in provenance.
+
+It does not automatically establish:
+
+- a human verdict;
+- a commissioner adjudication;
+- settlement authority;
+- financial truth.
+
+Human adjudication remains an explicit append-only decision.
+
+### Public presentation
+
+The public Verdict Trail may display replay parser passes, Evidence Passes, and human adjudications in one chronological provenance surface.
+
+That unified presentation does not erase the source distinction between them.
+<!-- AOE2WAR:SCREENSHOT_EVIDENCE_LAYER_20260722:END -->

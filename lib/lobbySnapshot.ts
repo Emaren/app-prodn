@@ -1,4 +1,5 @@
 import { PrismaClient } from "@/lib/generated/prisma";
+import { getPrisma } from "@/lib/prisma";
 import { ensureBetMarkets } from "@/lib/bets";
 import { getEmptyAoe2HdPulseSnapshot, loadAoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
@@ -20,6 +21,12 @@ import {
 } from "@/lib/lobby";
 import { getLobbyMatchPlayedAtMs } from "@/lib/lobbyMatchTime";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
+import {
+  hydrateEffectiveReplayResultAdjudications,
+} from "@/lib/replayAdjudications";
+import {
+  hydrateLobbyHumanEvidenceMarkers,
+} from "@/lib/lobbyHumanEvidence";
 import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { loadWoloMarketSnapshot } from "@/lib/woloMarket";
@@ -66,7 +73,13 @@ async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
     const payload = (await response.json()) as LobbyMatchRow[] | unknown;
     if (!Array.isArray(payload)) return [];
 
-    const publicRows = cleanPublicGameRows(payload, {
+    const hydratedRows =
+      await hydrateEffectiveReplayResultAdjudications(
+        getPrisma(),
+        payload
+      );
+
+    const publicRows = cleanPublicGameRows(hydratedRows, {
       includeReview: true,
       includeLive: false,
     }) as LobbyMatchRow[];
@@ -155,6 +168,13 @@ async function loadLobbySnapshotFresh(
       entries: leaderboard.entries.slice(0, 32),
     };
 
+    const featuredWarriorEntries = leaderboard.entries.filter(
+      (entry) =>
+        entry.claimed &&
+        Boolean(entry.uid) &&
+        Boolean(entry.hasFeaturedAvatar)
+    );
+
     const visibleWoloEarners =
       woloEarners && Array.isArray(woloEarners.entries)
         ? {
@@ -163,17 +183,26 @@ async function loadLobbySnapshotFresh(
           }
         : woloEarners;
 
-    const recentMatches = cleanPublicGameRows(
-      mergeCompletedSessionsIntoLobbyMatches(
-        baseRecentMatches,
-        liveSessionSnapshot.recentlyCompletedSessions,
-        LOBBY_RECENT_MATCH_INITIAL_LIMIT
-      ),
-      {
-        includeReview: true,
-        includeLive: false,
-      }
-    ) as LobbyMatchRow[];
+    const recentMatches =
+      await hydrateLobbyHumanEvidenceMarkers(
+        prisma,
+
+        cleanPublicGameRows(
+          mergeCompletedSessionsIntoLobbyMatches(
+            baseRecentMatches,
+            liveSessionSnapshot
+              .recentlyCompletedSessions,
+            LOBBY_RECENT_MATCH_INITIAL_LIMIT
+          ),
+          {
+            includeReview:
+              true,
+
+            includeLive:
+              false,
+          }
+        ) as LobbyMatchRow[]
+      );
     const liveTicker = await loadLiveTickerSnapshot(prisma, {
       tournament,
       leaderboard,
@@ -195,6 +224,7 @@ async function loadLobbySnapshotFresh(
       onlineUsers,
       recentMatches,
       leaderboard: visibleLeaderboard,
+      featuredWarriorEntries,
       wolo,
       woloEarners: visibleWoloEarners,
       aoe2hdPulse,
@@ -208,11 +238,23 @@ async function loadLobbySnapshotFresh(
       tournament: getFallbackTournament(false),
       messages: [],
       onlineUsers: [],
-      recentMatches: cleanPublicGameRows(await loadRecentMatches(), {
-        includeReview: true,
-        includeLive: false,
-      }) as LobbyMatchRow[],
+      recentMatches:
+        await hydrateLobbyHumanEvidenceMarkers(
+          prisma,
+
+          cleanPublicGameRows(
+            await loadRecentMatches(),
+            {
+              includeReview:
+                true,
+
+              includeLive:
+                false,
+            }
+          ) as LobbyMatchRow[]
+        ),
       leaderboard: getFallbackLeaderboard(),
+      featuredWarriorEntries: [],
       wolo,
       woloEarners: getFallbackWoloEarnersBoard(),
       aoe2hdPulse: getEmptyAoe2HdPulseSnapshot(),

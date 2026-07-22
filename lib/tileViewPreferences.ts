@@ -12,6 +12,9 @@ export const TILE_VIEW_KEYS = [
   "forum",
   "kingdom_chronicle",
   "rivalries",
+  "speed",
+  "academy_hero",
+  "download_watcher",
 ] as const;
 
 export const TILE_VIEW_MODES = ["basic", "advanced", "extreme"] as const;
@@ -28,6 +31,9 @@ const DEFAULT_TILE_VIEW_MODES: TileViewPreferences = {
   forum: "extreme",
   kingdom_chronicle: "extreme",
   rivalries: "extreme",
+  speed: "extreme",
+  academy_hero: "extreme",
+  download_watcher: "extreme",
 };
 
 export function isTileViewKey(value: string | null | undefined): value is TileViewKey {

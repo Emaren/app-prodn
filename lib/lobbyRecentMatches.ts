@@ -1,10 +1,16 @@
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getPrisma } from "@/lib/prisma";
+import {
+  hydrateLobbyHumanEvidenceMarkers,
+} from "@/lib/lobbyHumanEvidence";
 import type { LobbyMatchRow } from "@/lib/lobby";
 import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
 import { getLobbyMatchPlayedAtMs } from "@/lib/lobbyMatchTime";
 import { mergeCompletedSessionsIntoLobbyMatches } from "@/lib/liveCompletedMatchSurface";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
+import {
+  hydrateEffectiveReplayResultAdjudications,
+} from "@/lib/replayAdjudications";
 
 export type LoadLobbyRecentMatchesOptions = {
   offset?: number;
@@ -26,7 +32,13 @@ export async function loadLobbyRecentMatches({
     const payload = (await response.json()) as unknown;
     if (!Array.isArray(payload)) return [];
 
-    const publicRows = cleanPublicGameRows(payload, {
+    const hydratedRows =
+      await hydrateEffectiveReplayResultAdjudications(
+        getPrisma(),
+        payload
+      );
+
+    const publicRows = cleanPublicGameRows(hydratedRows, {
       includeReview: true,
       includeLive: false,
     }) as LobbyMatchRow[];
@@ -44,10 +56,27 @@ export async function loadLobbyRecentMatches({
       safeOffset + safeLimit
     );
 
-    return cleanPublicGameRows(mergedRows, {
-      includeReview: true,
-      includeLive: false,
-    }).slice(safeOffset, safeOffset + safeLimit) as LobbyMatchRow[];
+    const visibleRows =
+      cleanPublicGameRows(
+        mergedRows,
+        {
+          includeReview:
+            true,
+
+          includeLive:
+            false,
+        }
+      )
+        .slice(
+          safeOffset,
+          safeOffset +
+            safeLimit
+        ) as LobbyMatchRow[];
+
+    return hydrateLobbyHumanEvidenceMarkers(
+      getPrisma(),
+      visibleRows
+    );
   } catch (error) {
     console.warn("Failed to load lobby recent matches:", error);
     return [];

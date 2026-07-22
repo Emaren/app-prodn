@@ -93,6 +93,7 @@ function sortChampionBeacons(beacons: NationalBeacon[]) {
   const order = new Map([
     ["canada", 0],
     ["us", 1],
+    ["mexico", 2],
   ]);
   return [...beacons].sort((left, right) => {
     const leftRank = order.get(left.id) ?? 50;
@@ -382,8 +383,8 @@ export default function NationalChampionsPage() {
   const litBeacons = sortChampionBeacons(nationalBeacons.filter((beacon) => beacon.champion));
   const vacantBeacons = nationalBeacons.filter((beacon) => !beacon.champion);
   const totalBounty = nationalBeacons.reduce((sum, beacon) => sum + beacon.bountyWolo, 0);
-  const headlineChampions = litBeacons.slice(0, 2);
-  const priorityChampionIds = new Set(["canada", "us"]);
+  const headlineChampions = litBeacons;
+  const priorityChampionIds = new Set(["canada", "us", "mexico"]);
 
   return (
     <main className="mx-auto w-full max-w-[96rem] space-y-8 overflow-x-hidden px-3 py-4 text-white sm:px-5 sm:py-6">

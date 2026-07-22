@@ -417,3 +417,144 @@ keyboard focus treatment and accessible labels.
 
 See `docs/RIVALRIES_AND_WAR_VAULT.md`.
 <!-- AOE2WAR:REPLAY_RIVALRY_ARCHITECTURE:END -->
+
+<!-- AOE2WAR:REPLAY_EVIDENCE_ARCHITECTURE_20260722:START -->
+## Replay Evidence and Public Parser Observatory — 2026-07-22
+
+### Independent truth layers
+
+AoE2WAR keeps three deliberately separate replay-result evidence layers:
+
+1. **Replay parser evidence**
+   - immutable `ReplayParseRun` and `ReplayObservation` records
+   - replay-only confidence
+   - candidate-only by default
+
+2. **Screenshot evidence**
+   - immutable content-addressed `ReplayEvidenceArtifact` bytes
+   - append-only `ReplayEvidenceLink` provenance
+   - separate `aoe2war.screenshot_vision` Evidence Pass
+   - never represented as replay-only confidence
+
+3. **Human adjudication**
+   - append-only `ReplayResultAdjudication` records
+   - explicit human authority
+   - corrections append rather than rewrite history
+
+A human uploading screenshots is human participation in the evidence chain, but is not itself a human adjudication.
+
+### Evidence relational model
+
+`ReplayEvidenceLink` may target:
+
+- `gameStatsId`
+- `parseRunId`
+- `observationId`
+- `resultAdjudicationId`
+
+Migration:
+
+`20260722183000_add_replay_evidence_game_target`
+
+The direct `gameStatsId` target allows screenshot evidence to attach to a battle before a screenshot-analysis parser run or human adjudication exists.
+
+### Screenshot-analysis pipeline
+
+    human selects postgame screenshots
+        -> client-side staging and validation
+        -> content-addressed evidence storage
+        -> direct GameStats evidence links
+        -> ensure base replay parser run
+        -> OpenAI image analysis
+        -> strict structured evidence
+        -> immutable candidate-only ReplayParseRun
+        -> immutable ReplayObservations
+        -> evidence links to the Evidence Pass
+        -> public Verdict Trail
+
+Current screenshot pass:
+
+- parser: `aoe2war.screenshot_vision`
+- parser version: `1.0.0`
+- pass: `postgame_evidence`
+- pass version: `1`
+- schema: `2026-07-22.1`
+- default model: `gpt-5.6`
+
+Identical evidence/base-run/model/config identity is idempotent.
+
+### Public-read / admin-write boundary
+
+The Parser Observatory is public to inspect.
+
+Public reads include:
+
+- battle detail
+- Review Desk / Observatory
+- sanitized adjudication history
+- parser trail
+- evidence catalog
+- relationally linked evidence image bytes
+
+Admin-only writes include:
+
+- result adjudication or correction
+- team assignment and winner selection
+- screenshot upload
+- screenshot analysis
+- replay parser execution
+
+The authority boundary is enforced server-side. Hidden UI controls are secondary defense only.
+
+### Recent Parsed Games provenance
+
+`lib/lobbyHumanEvidence.ts` hydrates recent matches from direct `replay_review_screenshot:*` evidence links after public replay cleaning.
+
+It exposes:
+
+- `humanSuppliedEvidence`
+- `humanSuppliedEvidenceCount`
+
+The lobby combines these with adjudication evidence to derive one truthful human-participation marker.
+
+### Engine Room filesystem
+
+Protected roots:
+
+- `/mnt/HC_Volume_105319120/aoe2-replay-archive`
+- `/mnt/HC_Volume_105319120/aoe2-parser-engine`
+- `/mnt/HC_Volume_105319120/aoe2-parser-engine/evidence/review-screenshots`
+- `/mnt/HC_Volume_105319120/aoe2-parser-engine/evidence/vision-analysis`
+
+The web service retains `ProtectSystem=strict` and `ProtectHome=true`.
+
+The parser-engine systemd drop-in grants write access only to:
+
+- `/mnt/HC_Volume_105319120/aoe2-parser-engine/jobs`
+- `/mnt/HC_Volume_105319120/aoe2-parser-engine/evidence`
+
+### OpenAI service configuration
+
+The OpenAI secret is not stored in Git.
+
+Production uses:
+
+`OPENAI_API_KEY_FILE=/etc/aoe2hdbets/openai.key`
+
+The key file is `0640`, owned by `root:tony`.
+
+The path is outside `/home` because `ProtectHome=true` prevents the web service from reading the historical home-directory fallback.
+
+`AOE2WAR_SCREENSHOT_VISION_MODEL` may override the default screenshot model.
+
+### Storage state
+
+The mounted Hetzner volume was expanded to approximately 100 GB and ext4 was grown online.
+
+At the 2026-07-22 seal:
+
+- root filesystem: approximately 7.1 GB free
+- mounted volume: approximately 27 GB free
+
+A runaway API debug trace was disabled and rotated before the expansion.
+<!-- AOE2WAR:REPLAY_EVIDENCE_ARCHITECTURE_20260722:END -->

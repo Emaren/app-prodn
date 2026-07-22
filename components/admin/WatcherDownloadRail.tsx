@@ -391,7 +391,9 @@ export function WatcherDownloadRail({ analytics }: WatcherDownloadRailProps) {
                   </span>
 
                   <span className="inline-flex rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-slate-300">
-                    {runtimeConfirmationLabel(event.confirmation)}
+                    {event.isCurrentRelease
+                      ? runtimeConfirmationLabel(event.confirmation)
+                      : `Update to ${runtimeVersions.currentRelease}`}
                   </span>
                 </div>
 
@@ -410,7 +412,11 @@ export function WatcherDownloadRail({ analytics }: WatcherDownloadRailProps) {
                   ) : null}
 
                   <span>
-                    {event.eventType.replaceAll("_", " ")}
+                    {event.isCurrentRelease
+                      ? event.eventType === "watcher_update_not_available"
+                        ? "watcher up to date"
+                        : event.eventType.replaceAll("_", " ")
+                      : "watcher update available"}
                   </span>
                 </div>
               </article>

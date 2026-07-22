@@ -347,16 +347,64 @@ function recentMatchMap(match: RecentMatch) {
 
 function recentMatchPlayers(match: RecentMatch) {
   if (!Array.isArray(match.players)) return [];
+
   const reliableWinner = resolveReliableReplayWinner({
     winner: match.winner,
     parseReason: match.parse_reason,
   });
-  return match.players
+
+  const normalizedPlayers = match.players
     .map((player) => ({
-      name: normalizePublicReplayText(player?.name) ?? "",
-      winner: Boolean(reliableWinner && player?.winner === true),
+      name:
+        normalizePublicReplayText(
+          player?.name
+        ) ?? "",
+      winnerFlag:
+        player?.winner === true
+          ? true
+          : player?.winner === false
+            ? false
+            : null,
     }))
     .filter((player) => player.name);
+
+  const winnerFlagCount = normalizedPlayers.filter(
+    (player) => player.winnerFlag === true
+  ).length;
+
+  const loserFlagCount = normalizedPlayers.filter(
+    (player) => player.winnerFlag === false
+  ).length;
+
+  const isCompleteBalancedTeamFlagSplit =
+    [4, 6, 8].includes(normalizedPlayers.length) &&
+    winnerFlagCount >= 2 &&
+    winnerFlagCount === loserFlagCount &&
+    winnerFlagCount + loserFlagCount ===
+      normalizedPlayers.length;
+
+  // Display evidence only.
+  //
+  // This can visually identify the apparent winning side in
+  // Recent Outcomes when every player in a 2v2/3v3/4v4 has a
+  // complete balanced true/false winner split.
+  //
+  // It does NOT make the replay settlement-eligible and does
+  // not alter resolveReliableReplayWinner().
+  const showDisplayOnlyCandidate =
+    !reliableWinner &&
+    isCompleteBalancedTeamFlagSplit;
+
+  return normalizedPlayers.map((player) => ({
+    name: player.name,
+    winner: Boolean(
+      player.winnerFlag === true &&
+      (
+        reliableWinner ||
+        showDisplayOnlyCandidate
+      )
+    ),
+  }));
 }
 
 function recentMatchTitle(match: RecentMatch) {

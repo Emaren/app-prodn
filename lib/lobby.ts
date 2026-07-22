@@ -38,6 +38,17 @@ export type LobbyMatchRow = {
   parse_reason?: string | null;
   original_filename?: string | null;
   replay_file?: string | null;
+
+  /**
+   * Public provenance summary.
+   *
+   * True when a human deliberately supplied postgame
+   * screenshot evidence for this replay.
+   *
+   * This does not imply that a human adjudicated the result.
+   */
+  humanSuppliedEvidence?: boolean;
+  humanSuppliedEvidenceCount?: number;
 };
 
 export type LobbyTournamentEntrant = {
@@ -235,6 +246,7 @@ export type LobbySnapshot = {
   recentMatches: LobbyMatchRow[];
   messages: LobbyMessage[];
   leaderboard: LobbyLeaderboardSummary;
+  featuredWarriorEntries?: LobbyLeaderboardEntry[];
   wolo: LobbyWoloSnapshot | null;
   woloEarners: LobbyWoloEarnersBoard;
   aoe2hdPulse: Aoe2HdPulseSnapshot;

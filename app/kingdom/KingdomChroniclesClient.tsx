@@ -196,7 +196,13 @@ function getChronicleAvatarClass(
   }
 
   if (item.id === "scribe-enters") {
-    return `object-contain object-right-bottom ${strongOpacity} scale-[1.04] translate-y-1 saturate-[0.98] origin-bottom-right`;
+    const scribeOpacity = actor.includes("scribe")
+      ? view === "e"
+        ? "opacity-[0.62]"
+        : "opacity-[0.50]"
+      : strongOpacity;
+
+    return `object-contain object-right-bottom ${scribeOpacity} scale-[1.04] translate-y-1 saturate-[0.98] origin-bottom-right`;
   }
 
   if (actor.includes("dil")) {
@@ -279,7 +285,14 @@ function ChronicleCard({
   const href = chronicleHref(item);
   const locked = item.kind === "locked";
   const questActor = getQuestActor(item);
-  const avatarActors = getAvatarActors(item);
+  const isLoneFire = item.id === "lone-fire";
+  const isFirstCoin = item.title === "The First Coin";
+  const isWoloChronicles = item.title === "The Wolo Chronicles";
+  const isFirstSpectatorBet = item.title === "First Spectator Bet";
+  const isThreeInADay = item.id === "three-in-a-day-2026-07-12";
+  const avatarActors = isFirstCoin
+    ? ["Jim", "Sniper", "Julio Alvarez"]
+    : getAvatarActors(item);
   const chronicleAvatarMask = getChronicleAvatarMask(item, view);
 
   const content = (
@@ -292,11 +305,28 @@ function ChronicleCard({
             : "border-white/10 bg-white/[0.045] hover:-translate-y-0.5 hover:border-amber-100/22 hover:bg-white/[0.065]"
       }`}
     >
+      {isLoneFire ? (
+        <>
+          <Image
+            src="/kingdom/wolo-fire.png"
+            alt=""
+            fill
+            aria-hidden="true"
+            sizes="(max-width: 1024px) 100vw, 900px"
+            className="pointer-events-none absolute inset-0 select-none object-cover object-[50%_58%] opacity-[0.24] brightness-[0.68] saturate-[0.90] contrast-[1.08]"
+          />
+
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(15,26,46,0.80)_0%,rgba(15,26,46,0.64)_38%,rgba(15,26,46,0.38)_64%,rgba(15,26,46,0.48)_100%)]" />
+
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_64%,rgba(245,158,11,0.075),transparent_28%)]" />
+        </>
+      ) : null}
+
       <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/30 to-transparent opacity-0 transition group-hover:opacity-100" />
 
       {showQuestLabel && questActor ? (
         <div
-          className="kingdom-chronicle-quest-label pointer-events-none absolute right-7 top-5 z-20 max-w-[48%] overflow-hidden text-ellipsis whitespace-nowrap text-right text-[10px] font-semibold tracking-[0.18em] text-slate-400/45 sm:right-8 sm:max-w-[44%]"
+          className={`kingdom-chronicle-quest-label pointer-events-none absolute right-7 ${isThreeInADay ? "top-5 z-0" : "top-5 z-20"} max-w-[48%] overflow-hidden text-ellipsis whitespace-nowrap text-right text-[10px] font-semibold tracking-[0.18em] text-slate-400/45 sm:right-8 sm:max-w-[44%]`}
           style={
             showAvatars
               ? {
@@ -314,9 +344,59 @@ function ChronicleCard({
         </div>
       ) : null}
 
+      {isFirstCoin && showAvatars ? (
+        <div
+          className="pointer-events-none absolute left-1/2 top-1/2 z-0 hidden h-[10.75rem] w-[10.75rem] -translate-x-1/2 -translate-y-1/2 lg:block"
+          aria-hidden="true"
+        >
+          <Image
+            src="/legacy/wolo-logo-transparent.webp"
+            alt=""
+            fill
+            sizes="172px"
+            className="select-none object-contain opacity-[0.13] brightness-[1.02] saturate-[0.95] drop-shadow-[0_12px_22px_rgba(0,0,0,0.24)]"
+          />
+        </div>
+      ) : null}
+
+      {isWoloChronicles ? (
+        <div
+          className="pointer-events-none absolute right-5 top-1/2 z-20 hidden -translate-y-1/2 sm:block"
+          aria-hidden="true"
+        >
+          <div className="relative h-24 w-40 overflow-hidden rounded-[0.7rem] bg-black/5 shadow-[0_10px_24px_rgba(0,0,0,0.24)]">
+            <Image
+              src="/uploads/managed-assets/background/hero-chain-1783900681110-790uqb-1783900686992-b7c63a29.png"
+              alt=""
+              fill
+              sizes="160px"
+              className={`select-none object-contain object-center ${
+                view === "e" ? "opacity-[0.76]" : "opacity-[0.68]"
+              } brightness-[1.08] saturate-[0.96] contrast-[1.12]`}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {isFirstSpectatorBet ? (
+        <div
+          className="pointer-events-none absolute right-7 top-1/2 z-20 hidden -translate-y-1/2 sm:grid"
+          aria-hidden="true"
+        >
+          <div className="grid h-24 w-24 place-items-center text-[4.8rem] leading-none opacity-[0.80] drop-shadow-[0_14px_28px_rgba(0,0,0,0.58)]">
+            💸
+          </div>
+        </div>
+      ) : null}
+
       {showAvatars && avatarActors.length ? (
         <div
-          className="pointer-events-none absolute inset-y-0 right-0 z-0 hidden w-[11.5rem] overflow-hidden sm:block lg:right-0 lg:w-[14rem]"
+          className={[
+            "pointer-events-none absolute inset-y-0 right-0 z-10 hidden overflow-hidden sm:block lg:right-0",
+            avatarActors.length === 3
+              ? "w-[18rem] lg:w-[22rem]"
+              : "w-[11.5rem] lg:w-[14rem]",
+          ].join(" ")}
           style={{
             WebkitMaskImage: chronicleAvatarMask,
             maskImage: chronicleAvatarMask,
@@ -326,11 +406,17 @@ function ChronicleCard({
             <div
               key={`${item.id}-${actorName}`}
               className={
-                avatarActors.length > 1
+                avatarActors.length === 3
                   ? actorIndex === 0
-                    ? "absolute inset-y-0 right-[5rem] w-[9.5rem] lg:right-[6.6rem] lg:w-[10.75rem]"
-                    : "absolute inset-y-0 right-0 w-[9.5rem] lg:w-[10.75rem]"
-                  : "absolute inset-y-0 right-0 w-full"
+                    ? "absolute inset-y-0 right-[9.2rem] w-[8.5rem] lg:right-[11.5rem] lg:w-[9.75rem]"
+                    : actorIndex === 1
+                      ? "absolute inset-y-0 right-[4.6rem] w-[8.5rem] lg:right-[5.75rem] lg:w-[9.75rem]"
+                      : "absolute inset-y-0 right-0 w-[8.5rem] lg:w-[9.75rem]"
+                  : avatarActors.length > 1
+                    ? actorIndex === 0
+                      ? "absolute inset-y-0 right-[5rem] w-[9.5rem] lg:right-[6.6rem] lg:w-[10.75rem]"
+                      : "absolute inset-y-0 right-0 w-[9.5rem] lg:w-[10.75rem]"
+                    : "absolute inset-y-0 right-0 w-full"
               }
             >
               <Image
@@ -409,6 +495,7 @@ function ChronicleCard({
           >
             <ChronicleIcon kind={item.kind} />
           </div>
+
           {href ? <ExternalLink className="h-4 w-4 text-slate-500 transition group-hover:text-amber-100" /> : null}
         </div>
       </div>
@@ -739,6 +826,21 @@ export default function KingdomChroniclesClient() {
             <Link href="/zodiac" className="hover:text-amber-100">
               Zodiac
             </Link>
+            <Link href="/players/by-name/Maxi" className="hover:text-amber-100">
+              Maxi
+            </Link>
+            <Link href="/players/by-name/Tekki" className="hover:text-amber-100">
+              Tekki
+            </Link>
+            <Link href="/players/by-name/BeTiKo" className="hover:text-amber-100">
+              BeTiKo
+            </Link>
+            <Link href="/players/by-name/LeGenD_Sultan" className="hover:text-amber-100">
+              LeGenD_Sultan
+            </Link>
+            <Link href="/players/by-name/Scavanger_Ab" className="hover:text-amber-100">
+              Scavanger_Ab
+            </Link>
           </div>
         </div>
 
@@ -764,13 +866,13 @@ export default function KingdomChroniclesClient() {
               <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
                 Citizens
               </div>
-              <div className="mt-1 text-lg font-black text-white">8</div>
+              <div className="mt-1 text-lg font-black text-white">18</div>
             </div>
             <div className="border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
               <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
                 Joined the quest
               </div>
-              <div className="mt-1 text-lg font-black text-white">13</div>
+              <div className="mt-1 text-lg font-black text-white">18</div>
             </div>
           </div>
         </div>

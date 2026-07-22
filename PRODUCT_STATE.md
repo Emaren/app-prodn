@@ -352,3 +352,98 @@ Still wanted:
   the stored winner and sole reliable player winner flag agree.
 - Full detail lives in `docs/RIVALRIES_AND_WAR_VAULT.md`.
 <!-- AOE2WAR:RIVALRIES_WAR_VAULT:END -->
+
+<!-- AOE2WAR:PUBLIC_PARSER_OBSERVATORY_20260722:START -->
+## Public Parser Observatory and Evidence Lab — 2026-07-22
+
+The replay-result review system is now a shipped public product surface.
+
+### Public battle intelligence
+
+- `/game-stats/[id]` remains the public battle record and includes the canonical collapsed `Verdict Trail`.
+- `/game-stats/[id]/review` is the full public Parser Observatory.
+- Anonymous visitors may inspect replay-parser passes, screenshot Evidence Passes, confidence assessments, stored screenshot evidence, and provenance history.
+- Public visitors cannot assign teams, select winners, edit notes, lock or correct results, upload evidence, run screenshot analysis, or launch replay-parser passes.
+- Admins receive the operational `Review Result` action.
+- Public visitors receive the single `Open Verdict Trail` action.
+
+### Public-read / admin-write contract
+
+Public anonymous reads:
+
+- `GET /api/replay-results/[id]/adjudications`
+- `GET /api/replay-results/[id]/parser-trail`
+- `GET /api/replay-results/[id]/evidence`
+- `GET /api/replay-results/[id]/evidence/[artifactId]`
+
+Admin-only mutation:
+
+- human adjudication or correction
+- screenshot evidence upload
+- screenshot Evidence Pass execution
+- replay parser execution
+
+Battle `#18714` was production-proven with HTTP `200` for all public read surfaces while anonymous mutation attempts returned HTTP `401`.
+
+Protected financial market snapshots remain admin-only.
+
+### Screenshot Evidence Lab
+
+The Verdict Trail accepts up to six AoE2 HD postgame screenshots.
+
+- PNG, JPEG, or WebP
+- maximum 8 MB per file
+- maximum 30 MB per batch
+
+Screenshots are immutable content-addressed `ReplayEvidenceArtifact` records linked through append-only `ReplayEvidenceLink` provenance.
+
+The screenshot-analysis pass is:
+
+- parser: `aoe2war.screenshot_vision`
+- parser version: `1.0.0`
+- pass: `postgame_evidence`
+- pass version: `1`
+- default model: `gpt-5.6`
+- `candidateOnly = true`
+- `affectsPublicAggregates = false`
+
+Screenshot evidence never silently becomes replay-only confidence and does not directly mutate betting, payouts, chain history, or public aggregate truth.
+
+### Production validation — battle #18714
+
+Evidence Pass `#2391`:
+
+- six human-supplied screenshots
+- 73 material observations
+- eight of eight assessment areas observed
+- Team Composition: 96.5%
+- Winner / Loser: 96%
+- Score: 99%
+- Military: 99%
+- Economy: 99%
+- Technology: 99%
+- Society: 99%
+- Timeline: 98.6%
+
+The pass remains candidate-only and non-authoritative for settlement by itself.
+
+### Human participation semantics
+
+The small human marker means participation in the provenance chain, not automatically human adjudication.
+
+- adjudication only: `Human verdict`
+- human-uploaded screenshots only: `Human-supplied evidence`
+- both: `Human verdict and human-supplied evidence`
+
+Recent Parsed Games is now hydrated from direct replay-review screenshot evidence. Battle `#18714` reports `humanSuppliedEvidence = true` with six screenshots.
+
+### Review Desk presentation
+
+The Review Desk supports Basic, Advanced, and Extreme modes.
+
+- Extreme is the default for a new preference state.
+- Selection persists locally.
+- Basic remains compact.
+- Advanced expands the workspace.
+- Extreme provides the widest evidence and provenance layout.
+<!-- AOE2WAR:PUBLIC_PARSER_OBSERVATORY_20260722:END -->

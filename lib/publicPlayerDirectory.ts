@@ -299,7 +299,6 @@ async function loadPublicPlayerDirectoryFresh(
         { verifiedAt: "desc" },
         { createdAt: "desc" },
       ],
-      take: 250,
     }),
 
     prisma.gameStats.findMany({

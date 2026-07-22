@@ -57,6 +57,85 @@ type AdminMediaUser = {
 const KIND_OPTIONS = ["avatar", "belt", "artifact", "logo", "background", "motion", "other"] as const;
 type MediaKind = (typeof KIND_OPTIONS)[number];
 
+const COUNTRY_OPTIONS = [
+  "Afghanistan",
+  "Albania",
+  "Algeria",
+  "Argentina",
+  "Armenia",
+  "Australia",
+  "Austria",
+  "Bahamas",
+  "Bangladesh",
+  "Belarus",
+  "Belgium",
+  "Bolivia",
+  "Brazil",
+  "Bulgaria",
+  "Cambodia",
+  "Canada",
+  "Chile",
+  "China",
+  "Colombia",
+  "Croatia",
+  "Czech Republic",
+  "Denmark",
+  "Ecuador",
+  "Egypt",
+  "England",
+  "Finland",
+  "France",
+  "Georgia",
+  "Germany",
+  "Greece",
+  "Hong Kong",
+  "Hungary",
+  "India",
+  "Indonesia",
+  "Iran",
+  "Ireland",
+  "Israel",
+  "Italy",
+  "Japan",
+  "Kazakhstan",
+  "Kosovo",
+  "Laos",
+  "Malaysia",
+  "Mexico",
+  "Mongolia",
+  "Morocco",
+  "Netherlands",
+  "New Zealand",
+  "Norway",
+  "Pakistan",
+  "Palestine",
+  "Peru",
+  "Philippines",
+  "Poland",
+  "Portugal",
+  "Romania",
+  "Russia",
+  "Scotland",
+  "Serbia",
+  "Singapore",
+  "Slovakia",
+  "Slovenia",
+  "South Africa",
+  "South Korea",
+  "Spain",
+  "Sweden",
+  "Switzerland",
+  "Taiwan",
+  "Thailand",
+  "Turkey",
+  "Ukraine",
+  "United Arab Emirates",
+  "United Kingdom",
+  "United States",
+  "Vietnam",
+  "Wales",
+] as const;
+
 const CATEGORY_LABELS: Record<MediaKind, string> = {
   avatar: "Avatars",
   belt: "Belts",
@@ -178,6 +257,8 @@ export default function AdminMediaAssetsPage() {
   const [userQuery, setUserQuery] = useState("");
   const [selectedUserUid, setSelectedUserUid] = useState("");
   const [selectedAssetIds, setSelectedAssetIds] = useState<number[]>([]);
+  const [representedCountryDraft, setRepresentedCountryDraft] = useState("");
+  const [savingIdentity, setSavingIdentity] = useState(false);
 
   const [files, setFiles] = useState<File[]>([]);
   const [uploadLabel, setUploadLabel] = useState("");
@@ -196,6 +277,15 @@ export default function AdminMediaAssetsPage() {
     () => users.find((user) => user.uid === selectedUserUid) || null,
     [selectedUserUid, users]
   );
+
+  useEffect(() => {
+    setRepresentedCountryDraft(
+      selectedUser?.representedCountry || ""
+    );
+  }, [
+    selectedUser?.representedCountry,
+    selectedUserUid,
+  ]);
 
   const globalAssets = useMemo(
     () => assets.filter((asset) => asset.kind === category && !isUserTarget(asset.target)),
@@ -475,6 +565,68 @@ export default function AdminMediaAssetsPage() {
       setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveRepresentedCountry() {
+    if (!selectedUser?.uid) {
+      setError("Choose a registered warrior first.");
+      return;
+    }
+
+    setSavingIdentity(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const response = await fetch(
+        "/api/admin/media-assets/user-profile",
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            uid: selectedUser.uid,
+            displayName: selectedUser.displayName,
+            representedCountry:
+              representedCountryDraft.trim(),
+            genderDivision:
+              selectedUser.genderDivision || "Man",
+          }),
+        }
+      );
+
+      const payload =
+        (await response.json().catch(() => ({}))) as {
+          detail?: string;
+          user?: {
+            representedCountry?: string | null;
+          };
+        };
+
+      if (!response.ok) {
+        throw new Error(
+          payload.detail ||
+            "Could not update warrior country."
+        );
+      }
+
+      setNotice(
+        representedCountryDraft.trim()
+          ? `${selectedUser.displayName} now represents ${representedCountryDraft.trim()}.`
+          : `${selectedUser.displayName}'s represented country was cleared.`
+      );
+
+      await loadUsers(userQuery);
+    } catch (saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Could not update warrior country."
+      );
+    } finally {
+      setSavingIdentity(false);
     }
   }
 
@@ -902,6 +1054,82 @@ export default function AdminMediaAssetsPage() {
                 );
               })}
             </div>
+          </section>
+
+          <section className="rounded-[1.65rem] border border-emerald-200/14 bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.10),transparent_42%),linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.018))] p-4 shadow-[0_26px_90px_rgba(0,0,0,0.26)]">
+            <div className="text-xs uppercase tracking-[0.22em] text-emerald-100/70">
+              Warrior Identity
+            </div>
+
+            {selectedUser ? (
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-2xl border border-white/10 bg-black/18 px-3 py-3">
+                  <div className="text-xs text-slate-500">
+                    Selected warrior
+                  </div>
+
+                  <div className="mt-1 text-lg font-semibold text-white">
+                    {selectedUser.displayName}
+                  </div>
+
+                  <div className="mt-1 text-xs text-slate-400">
+                    Current country:{" "}
+                    <span className="font-semibold text-slate-200">
+                      {selectedUser.representedCountry || "Not set"}
+                    </span>
+                  </div>
+                </div>
+
+                <label className="grid gap-2">
+                  <span className="text-sm font-semibold text-slate-200">
+                    Represented country
+                  </span>
+
+                  <input
+                    list="aoe2war-admin-country-options"
+                    value={representedCountryDraft}
+                    onChange={(event) =>
+                      setRepresentedCountryDraft(
+                        event.target.value
+                      )
+                    }
+                    placeholder="Choose or type a country"
+                    className="w-full rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-300/40"
+                  />
+
+                  <datalist id="aoe2war-admin-country-options">
+                    {COUNTRY_OPTIONS.map((country) => (
+                      <option key={country} value={country} />
+                    ))}
+                  </datalist>
+
+                  <span className="text-[11px] leading-5 text-slate-500">
+                    Admin-provisional. The player may later set their own represented country.
+                    Clear the field to leave nationality unset.
+                  </span>
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    void saveRepresentedCountry()
+                  }
+                  disabled={
+                    savingIdentity ||
+                    !selectedUser.uid
+                  }
+                  className="rounded-full bg-emerald-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {savingIdentity
+                    ? "Saving..."
+                    : "Save country"}
+                </button>
+              </div>
+            ) : (
+              <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-black/18 px-3 py-4 text-sm text-slate-500">
+                Choose a warrior above to set their represented country.
+              </div>
+            )}
           </section>
         </aside>
 

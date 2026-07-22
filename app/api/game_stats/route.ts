@@ -3,6 +3,10 @@ import { type NextRequest } from "next/server";
 
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
+import {
+  hydrateEffectiveReplayResultAdjudications,
+} from "@/lib/replayAdjudications";
+import { getPrisma } from "@/lib/prisma";
 
 function parsePositiveInt(value: string | null, fallback: number, max: number) {
   const parsed = Number.parseInt(String(value ?? ""), 10);
@@ -40,7 +44,16 @@ export async function GET(request: NextRequest) {
   const data = await res.json();
 
   const publicData = Array.isArray(data)
-    ? cleanPublicGameRows(data, { includeReview: true, includeLive: false })
+    ? cleanPublicGameRows(
+        await hydrateEffectiveReplayResultAdjudications(
+          getPrisma(),
+          data
+        ),
+        {
+          includeReview: true,
+          includeLive: false,
+        }
+      )
     : data;
 
   if (Array.isArray(publicData) && hasSlice) {

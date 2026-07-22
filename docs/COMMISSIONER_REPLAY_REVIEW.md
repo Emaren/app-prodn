@@ -214,3 +214,57 @@ Useful private diagnostics include:
 
 These details support review. They do not establish public or betting truth by
 themselves.
+
+<!-- AOE2WAR:PUBLIC_READ_ADMIN_WRITE_20260722:START -->
+## Public inspection and admin authority — 2026-07-22
+
+The replay Review Desk is now a public read-only Observatory while operational authority remains admin-only.
+
+### Public reads
+
+- `GET /api/replay-results/[id]/adjudications`
+- `GET /api/replay-results/[id]/parser-trail`
+- `GET /api/replay-results/[id]/evidence`
+- `GET /api/replay-results/[id]/evidence/[artifactId]`
+
+The public adjudication state excludes protected financial market snapshots.
+
+### Admin-only mutation
+
+- `POST /api/replay-results/[id]/adjudications`
+- `POST /api/replay-results/[id]/evidence`
+- `POST /api/replay-results/[id]/evidence/analyze`
+- `POST /api/replay-results/[id]/reparse`
+
+The adjudication domain layer independently rejects non-admin result mutation.
+
+The server-side authority boundary is canonical. UI control visibility is not a substitute for authorization.
+
+### Human verdict versus human-supplied evidence
+
+These are separate provenance facts.
+
+A `ReplayResultAdjudication` represents an explicit human decision.
+
+Human-uploaded postgame screenshots represent deliberate human contribution to the evidence chain, but do not themselves constitute an adjudication.
+
+The UI therefore distinguishes:
+
+- `Human verdict`
+- `Human-supplied evidence`
+- `Human verdict and human-supplied evidence`
+
+### Public and admin actions
+
+On `/game-stats/[id]`:
+
+- admins receive one `Review Result` action;
+- public visitors receive one `Open Verdict Trail` action.
+
+Both lead to `/game-stats/[id]/review`.
+
+Inside the Review Desk:
+
+- admins receive the operational controls;
+- public visitors receive the same evidence and provenance presentation without mutation controls.
+<!-- AOE2WAR:PUBLIC_READ_ADMIN_WRITE_20260722:END -->

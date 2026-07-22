@@ -376,6 +376,34 @@ export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
   }
 
   const truth = publicReplayWinnerTruth(row);
+
+  if (truth.statsEligible && truth.winner) {
+    const next: Record<string, unknown> = {
+      ...publicRow,
+    };
+
+    // The canonical replay winner resolver may recover stronger
+    // result truth than the legacy scalar winner field contains.
+    //
+    // This is especially important for team games, where the
+    // stored scalar historically represented only one member of
+    // the winning side while resolveReplayWinnerTruth() returns
+    // the complete trusted winning team.
+    //
+    // This changes presentation only. Betting eligibility remains
+    // independently governed by truth.bettingEligible.
+    next["winner"] = truth.winner;
+    next["winnerProof"] = truth.truthReasons.includes(
+      "trusted_team_result"
+    )
+      ? "trusted_structured_result"
+      : "replay_winner_truth";
+    next["reviewNeeded"] = false;
+    next["unresolvedResult"] = null;
+
+    return next as T;
+  }
+
   if (truth.statsEligible) return publicRow;
 
   const noCapturedWinnerReason = readString(row, "parse_reason", "parseReason") || "";

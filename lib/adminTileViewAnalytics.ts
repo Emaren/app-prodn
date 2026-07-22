@@ -17,6 +17,8 @@ export const ADMIN_TILE_VIEW_SURFACES = [
   { tileKey: "forum", label: "Forum" },
   { tileKey: "kingdom_chronicle", label: "Kingdom Chronicle" },
   { tileKey: "rivalries", label: "Rivalries" },
+  { tileKey: "academy_hero", label: "Academy Hero" },
+  { tileKey: "download_watcher", label: "Download Watcher" },
 ] as const satisfies ReadonlyArray<{ tileKey: TileViewKey; label: string }>;
 
 type UserWithTileViewPreferences = {

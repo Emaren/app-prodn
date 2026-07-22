@@ -1,10 +1,19 @@
 "use client";
 
+import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
+
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
 import { ArrowRight, Flame, Orbit, Shield, Sparkles } from "lucide-react";
+import { Cinzel_Decorative } from "next/font/google";
+
+const academyWarTitleFont = Cinzel_Decorative({
+  subsets: ["latin"],
+  weight: ["700", "900"],
+  display: "swap",
+});
 
 type AcademyHeroVariant = "a" | "b" | "e";
 
@@ -43,6 +52,18 @@ const HERO_VARIANTS: Array<{
 ];
 
 const CYCLE_ORDER: AcademyHeroVariant[] = ["e", "b", "a"];
+
+const ACADEMY_HERO_TO_TILE_VIEW = {
+  b: "basic",
+  a: "advanced",
+  e: "extreme",
+} as const;
+
+const TILE_VIEW_TO_ACADEMY_HERO = {
+  basic: "b",
+  advanced: "a",
+  extreme: "e",
+} as const;
 
 const isHeroVariant = (value: unknown): value is AcademyHeroVariant =>
   value === "a" || value === "b" || value === "e";
@@ -97,16 +118,42 @@ function sendAcademyHeroPreference(
 }
 
 export default function AcademyHero() {
+  const {
+    appearanceLoaded,
+    tileViewPreferences,
+    setTileViewPreference,
+  } = useLobbyAppearance();
+
   const [heroVariant, setHeroVariant] = useState<AcademyHeroVariant>(
     DEFAULT_ACADEMY_HERO_VARIANT,
   );
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(ACADEMY_HERO_STORAGE_KEY);
-    if (isHeroVariant(stored)) {
-      setHeroVariant(stored);
+    if (!appearanceLoaded) return;
+
+    const accountView = tileViewPreferences.academy_hero;
+
+    if (accountView) {
+      setHeroVariant(TILE_VIEW_TO_ACADEMY_HERO[accountView]);
+      return;
     }
-  }, []);
+
+    const legacyVariant = window.localStorage.getItem(
+      ACADEMY_HERO_STORAGE_KEY,
+    );
+
+    if (isHeroVariant(legacyVariant)) {
+      setHeroVariant(legacyVariant);
+      setTileViewPreference(
+        "academy_hero",
+        ACADEMY_HERO_TO_TILE_VIEW[legacyVariant],
+      );
+    }
+  }, [
+    appearanceLoaded,
+    setTileViewPreference,
+    tileViewPreferences.academy_hero,
+  ]);
 
   const currentVariant =
     HERO_VARIANTS.find((variant) => variant.key === heroVariant) ??
@@ -138,14 +185,27 @@ export default function AcademyHero() {
     nextVariant: AcademyHeroVariant,
     source: "hero-click" | "toggle",
   ) => {
-    setHeroVariant((previousVariant) => {
-      if (previousVariant === nextVariant) return previousVariant;
+    if (heroVariant === nextVariant) return;
 
-      window.localStorage.setItem(ACADEMY_HERO_STORAGE_KEY, nextVariant);
-      sendAcademyHeroPreference(nextVariant, source, previousVariant);
+    const previousVariant = heroVariant;
 
-      return nextVariant;
-    });
+    setHeroVariant(nextVariant);
+
+    window.localStorage.setItem(
+      ACADEMY_HERO_STORAGE_KEY,
+      nextVariant,
+    );
+
+    setTileViewPreference(
+      "academy_hero",
+      ACADEMY_HERO_TO_TILE_VIEW[nextVariant],
+    );
+
+    sendAcademyHeroPreference(
+      nextVariant,
+      source,
+      previousVariant,
+    );
   };
 
   const cycleHeroVariant = () => {
@@ -236,8 +296,13 @@ export default function AcademyHero() {
         <div className="mt-auto max-w-[42rem] pb-2">
           {heroVariant === "b" ? (
             <>
-              <h1 className="mt-16 font-serif text-5xl font-medium leading-[0.92] tracking-[-0.048em] text-transparent drop-shadow-[0_18px_42px_rgba(0,0,0,0.42)] sm:text-7xl">
-                <span className="bg-[linear-gradient(180deg,#f1e6bf_0%,#d8bd79_34%,#b7bec8_58%,#ead9aa_78%,#8f6b3e_100%)] bg-clip-text">
+              <h1
+                className={[
+                  academyWarTitleFont.className,
+                  "mt-16 text-5xl font-black leading-[0.88] tracking-[-0.065em] text-transparent sm:text-7xl lg:text-[5.35rem]",
+                ].join(" ")}
+              >
+                <span className="bg-[linear-gradient(180deg,#f5e4b8_0%,#c9953d_18%,#7b451f_45%,#d2a755_66%,#5f321b_84%,#d3a85c_100%)] bg-clip-text drop-shadow-[0_3px_0_rgba(33,14,7,0.88)] [filter:drop-shadow(0_14px_28px_rgba(0,0,0,0.58))]">
                   The Academy
                 </span>
               </h1>
@@ -267,10 +332,10 @@ export default function AcademyHero() {
                   priority
                   sizes="(max-width: 640px) 92vw, (max-width: 1024px) 36rem, 38rem"
                   className={[
-                    "absolute left-[-0.5rem] top-[47%] h-auto w-full -translate-y-1/2 select-none object-contain drop-shadow-[0_12px_26px_rgba(0,0,0,0.5)] sm:left-[-0.82rem] lg:left-[-0.96rem]",
+                    "absolute left-[-0.5rem] top-[47%] h-auto w-full -translate-y-1/2 select-none object-contain sm:left-[-0.82rem] lg:left-[-0.96rem]",
                     heroVariant === "e"
-                      ? "opacity-[0.86] brightness-[0.86] saturate-[1.12] sepia-[0.12] contrast-[1.08]"
-                      : "opacity-[0.9] brightness-[0.9] saturate-[1.24] sepia-[0.18] contrast-[1.16]",
+                      ? "opacity-[0.84] brightness-[0.80] saturate-[1.22] sepia-[0.24] contrast-[1.06] drop-shadow-[0_10px_22px_rgba(0,0,0,0.34)]"
+                      : "opacity-[0.9] brightness-[0.9] saturate-[1.24] sepia-[0.18] contrast-[1.16] drop-shadow-[0_12px_26px_rgba(0,0,0,0.5)]",
                   ].join(" ")}
                 />
 
@@ -278,7 +343,7 @@ export default function AcademyHero() {
                   aria-hidden="true"
                   className={[
                     "pointer-events-none absolute left-[-0.5rem] top-[47%] h-full w-full -translate-y-1/2 mix-blend-soft-light sm:left-[-0.82rem] lg:left-[-0.96rem]",
-                    heroVariant === "e" ? "opacity-[0.12]" : "opacity-[0.18]",
+                    heroVariant === "e" ? "opacity-[0.10]" : "opacity-[0.18]",
                   ].join(" ")}
                   style={{
                     background:
@@ -298,7 +363,7 @@ export default function AcademyHero() {
                   aria-hidden="true"
                   className={[
                     "pointer-events-none absolute left-[-0.5rem] top-[47%] h-full w-full -translate-y-1/2 mix-blend-multiply sm:left-[-0.82rem] lg:left-[-0.96rem]",
-                    heroVariant === "e" ? "opacity-[0.16]" : "opacity-[0.12]",
+                    heroVariant === "e" ? "opacity-[0.28]" : "opacity-[0.12]",
                   ].join(" ")}
                   style={{
                     backgroundImage: `url('${
@@ -326,11 +391,11 @@ export default function AcademyHero() {
             </>
           )}
 
-          <p className="mt-5 max-w-[34rem] text-base font-medium leading-7 text-slate-200/76 sm:text-lg">
+          <p className="mt-5 max-w-[34rem] text-base font-medium leading-7 text-[#d8d0c2]/[0.74] sm:text-lg">
             Read the field. Move with intent. Raise your ELO.
           </p>
 
-          <p className="mt-3 max-w-[37rem] text-sm leading-6 text-slate-400/68">
+          <p className="mt-3 max-w-[37rem] text-sm leading-6 text-slate-400/[0.58]">
             Replay study, battlefield judgment, and proven advice from real players.
             A cleaner war school for players who want to improve before they wager.
           </p>
@@ -338,15 +403,15 @@ export default function AcademyHero() {
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <Link
               href="#advisors"
-              className="group/meet inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-amber-100/26 bg-[linear-gradient(135deg,rgba(92,64,18,0.28),rgba(3,7,18,0.52))] px-5 py-2.5 text-xs font-semibold text-amber-50/88 shadow-[0_16px_42px_rgba(0,0,0,0.32)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-100/40 hover:bg-amber-100/[0.075]"
+              className="group/meet inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#9c8159]/[0.16] bg-[linear-gradient(135deg,rgba(92,64,18,0.18),rgba(3,7,18,0.54))] px-5 py-2.5 text-xs font-semibold text-[#d2c6b1]/[0.76] shadow-[0_16px_42px_rgba(0,0,0,0.32)] backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-100/40 hover:bg-amber-100/[0.075]"
             >
               Meet the advisors
-              <ArrowRight className="h-3.5 w-3.5 text-amber-100/75 transition group-hover/meet:translate-x-1" />
+              <ArrowRight className="h-3.5 w-3.5 text-[#ab9369]/[0.56] transition group-hover/meet:translate-x-1" />
             </Link>
 
             <Link
               href="/zodiac"
-              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-white/12 bg-black/20 px-5 py-2.5 text-xs font-semibold text-slate-300/84 backdrop-blur-md transition hover:-translate-y-0.5 hover:border-violet-100/28 hover:bg-violet-300/[0.07] hover:text-slate-100"
+              className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-[#948777]/[0.10] bg-black/20 px-5 py-2.5 text-xs font-semibold text-[#bbb3a8]/[0.68] backdrop-blur-md transition hover:-translate-y-0.5 hover:border-violet-100/28 hover:bg-violet-300/[0.07] hover:text-slate-100"
             >
               Train under the Zodiac
               <Sparkles className="h-3.5 w-3.5 text-violet-200/75" />
@@ -354,21 +419,21 @@ export default function AcademyHero() {
           </div>
         </div>
 
-        <div className="absolute bottom-6 right-6 hidden grid-cols-3 overflow-hidden rounded-[1.1rem] border border-amber-100/13 bg-black/24 text-left shadow-[0_18px_46px_rgba(0,0,0,0.28)] backdrop-blur-md lg:grid">
-          <div className="border-r border-white/8 px-4 py-3">
+        <div className="absolute bottom-6 right-6 hidden grid-cols-3 overflow-hidden rounded-[1.1rem] border border-[#8f7555]/[0.10] bg-black/22 text-left shadow-[0_18px_46px_rgba(0,0,0,0.28)] backdrop-blur-md lg:grid">
+          <div className="border-r border-[#8d7b66]/[0.08] px-4 py-3">
             <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-slate-500">
               Doctrine
             </div>
-            <div className="mt-1 text-sm font-bold text-amber-50/88">
+            <div className="mt-1 text-sm font-bold text-[#c8bca8]/[0.72]">
               Field reads
             </div>
           </div>
 
-          <div className="border-r border-white/8 px-4 py-3">
+          <div className="border-r border-[#8d7b66]/[0.08] px-4 py-3">
             <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-slate-500">
               Command
             </div>
-            <div className="mt-1 text-sm font-bold text-amber-50/88">
+            <div className="mt-1 text-sm font-bold text-[#c8bca8]/[0.72]">
               Timing
             </div>
           </div>
@@ -377,7 +442,7 @@ export default function AcademyHero() {
             <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-slate-500">
               Proof
             </div>
-            <div className="mt-1 text-sm font-bold text-amber-50/88">
+            <div className="mt-1 text-sm font-bold text-[#c8bca8]/[0.72]">
               Replay war
             </div>
           </div>

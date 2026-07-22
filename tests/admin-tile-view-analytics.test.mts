@@ -169,3 +169,48 @@ test("rivalries BAE defaults to Extreme and tracks explicit choices", () => {
     preferredMode: "extreme",
   });
 });
+
+
+test("download watcher BAE defaults to Extreme and tracks explicit choices", () => {
+  const breakdown =
+    buildAdminTileViewBreakdown([
+      {
+        appearance: {
+          tileViewPreferences: {},
+        },
+      },
+      {
+        appearance: {
+          tileViewPreferences: {
+            download_watcher: "basic",
+          },
+        },
+      },
+      {
+        appearance: {
+          tileViewPreferences: {
+            download_watcher: "advanced",
+          },
+        },
+      },
+    ]);
+
+  const downloadWatcher = breakdown.find(
+    (entry) =>
+      entry.tileKey === "download_watcher"
+  );
+
+  assert.deepEqual(downloadWatcher, {
+    tileKey: "download_watcher",
+    label: "Download Watcher",
+    basicCount: 1,
+    advancedCount: 1,
+    extremeCount: 1,
+    basicPercent: 33,
+    advancedPercent: 33,
+    extremePercent: 34,
+    explicitCount: 2,
+    defaultCount: 1,
+    preferredMode: "extreme",
+  });
+});

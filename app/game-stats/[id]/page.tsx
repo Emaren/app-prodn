@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
-import type { ReactNode } from "react";
+import type {
+  ComponentProps,
+  ReactNode,
+} from "react";
 
 import FounderBonusChips from "@/components/bets/FounderBonusChips";
+import ReplayVerdictTrail from "@/components/game-stats/ReplayVerdictTrail";
 import ReviewReplayResultButton from "@/components/game-stats/ReviewReplayResultButton";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
@@ -124,9 +128,85 @@ export default async function GameStatsDetailPage({
   );
 
   const game = applyReplayAdjudicationToGameStats(rawGame);
-  const commissionerVerified = Boolean(
-    (game as Record<string, unknown>).replayResultAdjudication
-  );
+
+  const replayResultEvidence =
+    (game as Record<string, unknown>).replayResultAdjudication;
+
+  const reviewedResult =
+    replayResultEvidence &&
+    typeof replayResultEvidence === "object" &&
+    !Array.isArray(replayResultEvidence)
+      ? (replayResultEvidence as Record<string, unknown>)
+      : null;
+
+  const reviewedResultVerified = Boolean(reviewedResult);
+
+  const reviewedBy =
+    typeof reviewedResult?.adjudicated_by === "string"
+      ? reviewedResult.adjudicated_by.trim()
+      : "";
+
+  const reviewedAt =
+    typeof reviewedResult?.created_at === "string"
+      ? reviewedResult.created_at
+      : null;
+
+  const reviewedReason =
+    typeof reviewedResult?.reason === "string"
+      ? reviewedResult.reason.trim()
+      : "";
+
+  const verdictHistory = reviewedResultVerified
+    ? await prisma.replayResultAdjudication.findMany({
+        where: {
+          gameStatsId: game.id,
+          decisionStatus: "accepted",
+        },
+        orderBy: [
+          { createdAt: "desc" },
+          { id: "desc" },
+        ],
+        select: {
+          id: true,
+          decisionStatus: true,
+          actorDisplayNameSnapshot: true,
+          actorRole: true,
+          teamAssignments: true,
+          winningTeamKey: true,
+          reason: true,
+          createdAt: true,
+        },
+      })
+    : [];
+
+  const verdictTrailAdjudications =
+    verdictHistory.map((entry) => ({
+      id:
+        entry.id,
+
+      decisionStatus:
+        entry.decisionStatus,
+
+      actorDisplayNameSnapshot:
+        entry.actorDisplayNameSnapshot,
+
+      actorRole:
+        entry.actorRole,
+
+      teamAssignments:
+        entry.teamAssignments,
+
+      winningTeamKey:
+        entry.winningTeamKey,
+
+      reason:
+        entry.reason,
+
+      createdAt:
+        entry.createdAt.toISOString(),
+    })) as ComponentProps<
+      typeof ReplayVerdictTrail
+    >["adjudications"];
 
   const parseAttempts = await prisma.replayParseAttempt.findMany({
     where: {
@@ -447,19 +527,152 @@ export default async function GameStatsDetailPage({
             </div>
             <div className="flex flex-wrap gap-2">
               <Tag>{publicWinnerLabel ? `${publicWinnerLabel} victorious` : "Battle filed"}</Tag>
-              {commissionerVerified ? <Tag>Commissioner verified</Tag> : null}
+              {reviewedResultVerified ? (
+                <Tag>
+                  Reviewed Result{reviewedBy ? ` · ${reviewedBy}` : ""}
+                </Tag>
+              ) : null}
               <Tag>HD replay</Tag>
               <Tag>{game.is_final ? "final replay" : "battle capture"}</Tag>
               {outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
             </div>
             <FounderBonusChips bonuses={founderBonuses} />
+
+            {reviewedResultVerified ? (
+              <details
+                className="hidden group rounded-[1.5rem] border border-amber-200/15 bg-[linear-gradient(135deg,rgba(251,191,36,0.07),rgba(255,255,255,0.018))] [&>summary::-webkit-details-marker]:hidden"
+                data-reviewed-result-provenance
+              >
+                <summary className="flex min-h-[3.25rem] cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 select-none sm:px-5">
+                  <div className="text-[10px] uppercase tracking-[0.3em] text-white/45">
+                    Verdict Trail
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-2 whitespace-nowrap text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                    <span>Human confirmed</span>
+                    <span className="text-white/20">·</span>
+                    <span>
+                      {verdictHistory.length} {verdictHistory.length === 1 ? "entry" : "entries"}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="ml-1 text-sm leading-none text-slate-500 transition-transform duration-200 group-open:rotate-90"
+                    >
+                      ›
+                    </span>
+                  </div>
+                </summary>
+
+                <div className="border-t border-white/8 px-4 pb-4 pt-4 sm:px-5 sm:pb-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-[11px] uppercase tracking-[0.32em] text-amber-200/65">
+                      Reviewed Result
+                    </div>
+                    <div className="mt-2 break-words text-lg font-semibold text-amber-50 sm:text-xl">
+                      {publicWinnerLabel
+                        ? `${publicWinnerLabel} victorious`
+                        : "Battle result verified"}
+                    </div>
+                  </div>
+
+                  <Tag>
+                    {reviewedBy
+                      ? `Verified by ${reviewedBy}`
+                      : "Verified result"}
+                  </Tag>
+                </div>
+
+                <div className="mt-3 text-sm leading-6 text-slate-300">
+                  Result verified
+                  {reviewedBy ? (
+                    <>
+                      {" "}by{" "}
+                      <span className="font-semibold text-slate-100">
+                        {reviewedBy}
+                      </span>
+                    </>
+                  ) : null}
+                  {reviewedAt ? (
+                    <> · {formatDateTime(reviewedAt)}</>
+                  ) : null}
+                </div>
+
+                {reviewedReason ? (
+                  <p className="mt-2 text-sm leading-6 text-slate-400">
+                    {reviewedReason}
+                  </p>
+                ) : null}
+
+                {verdictHistory.length > 0 ? (
+                  <div className="mt-5 border-t border-white/8 pt-4">
+                    <div className="text-[11px] uppercase tracking-[0.28em] text-white/40">
+                      Verdict History ({verdictHistory.length})
+                    </div>
+
+                    <div className="mt-3 space-y-2">
+                      {verdictHistory.map((entry, index) => {
+                        const winningTeamLabel =
+                          readAdjudicationWinningTeamLabel(
+                            entry.teamAssignments,
+                            entry.winningTeamKey
+                          );
+
+                        return (
+                          <div
+                            key={entry.id}
+                            className="rounded-xl border border-white/8 bg-black/15 px-3 py-3"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="text-sm font-medium text-slate-100">
+                                #{entry.id} · {entry.actorDisplayNameSnapshot}
+                              </div>
+
+                              <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                                {index === 0
+                                  ? "Current Verdict"
+                                  : "Prior Verdict"}
+                              </div>
+                            </div>
+
+                            {winningTeamLabel ? (
+                              <div className="mt-2 text-sm text-amber-100/90">
+                                {winningTeamLabel} victorious
+                              </div>
+                            ) : null}
+
+                            <p className="mt-1 text-xs leading-5 text-slate-400">
+                              {entry.reason}
+                            </p>
+
+                            <div className="mt-2 text-[10px] text-slate-600">
+                              {formatDateTime(entry.createdAt)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
+                              </div>
+              </details>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <ReviewReplayResultButton
-              gameStatsId={game.id}
-              submitterUids={resultReviewSubmitterUids}
-            />
+            {viewer?.isAdmin ? (
+              <ReviewReplayResultButton
+                gameStatsId={game.id}
+                submitterUids={resultReviewSubmitterUids}
+              />
+            ) : (
+              <Link
+                href={`/game-stats/${game.id}/review`}
+                className="w-full rounded-full border border-cyan-200/20 bg-cyan-300/[0.06] px-5 py-3 text-center text-sm font-semibold text-cyan-50/85 transition hover:border-cyan-200/35 hover:bg-cyan-300/[0.1] sm:w-auto"
+              >
+                Open Verdict Trail
+              </Link>
+            )}
             {rivalryHref ? (
               <Link
                 href={rivalryHref}
@@ -529,6 +742,14 @@ export default async function GameStatsDetailPage({
             </div>
           ) : null}
         </div>
+      </section>
+
+      <section className="min-w-0">
+        <ReplayVerdictTrail
+          gameStatsId={game.id}
+          isAdmin={false}
+          adjudications={verdictTrailAdjudications}
+        />
       </section>
 
       <section className={detailGridClassName}>
@@ -731,6 +952,65 @@ export default async function GameStatsDetailPage({
       </section>
     </main>
   );
+}
+
+function readAdjudicationWinningTeamLabel(
+  teamAssignments: unknown,
+  winningTeamKey: string
+) {
+  if (!Array.isArray(teamAssignments)) return null;
+
+  const winningTeam = teamAssignments.find((entry) => {
+    if (
+      !entry ||
+      typeof entry !== "object" ||
+      Array.isArray(entry)
+    ) {
+      return false;
+    }
+
+    return (
+      String(
+        (entry as Record<string, unknown>).teamKey || ""
+      ) === winningTeamKey
+    );
+  });
+
+  if (
+    !winningTeam ||
+    typeof winningTeam !== "object" ||
+    Array.isArray(winningTeam)
+  ) {
+    return null;
+  }
+
+  const rawPlayers =
+    (winningTeam as Record<string, unknown>).players;
+
+  if (!Array.isArray(rawPlayers)) return null;
+
+  const names = rawPlayers
+    .map((player) => {
+      if (
+        !player ||
+        typeof player !== "object" ||
+        Array.isArray(player)
+      ) {
+        return "";
+      }
+
+      const name =
+        (player as Record<string, unknown>).name;
+
+      return typeof name === "string"
+        ? name.trim()
+        : "";
+    })
+    .filter(Boolean);
+
+  return names.length > 0
+    ? names.join(" / ")
+    : null;
 }
 
 function ReplayDetailViewToggle({
