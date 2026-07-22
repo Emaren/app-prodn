@@ -147,6 +147,12 @@ export type ParserLabSnapshot = {
     playedOn: string | null;
     uploader: string | null;
     latestAdjudicationStatus: string | null;
+    latestDesyncIncident: {
+      id: number;
+      desyncOccurred: boolean;
+      settlementDisposition: string;
+      createdAt: string;
+    } | null;
     runs: Array<{
       id: number;
       status: string;
@@ -640,6 +646,16 @@ async function loadEngineRoom(prisma: PrismaClient) {
           take: 1,
           select: { decisionStatus: true },
         },
+        replayDesyncIncidents: {
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          take: 1,
+          select: {
+            id: true,
+            desyncOccurred: true,
+            settlementDisposition: true,
+            createdAt: true,
+          },
+        },
         replayParseRuns: {
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: RECENT_RUNS_PER_GAME,
@@ -810,6 +826,15 @@ async function loadEngineRoom(prisma: PrismaClient) {
         cleanPrivateText(game.userUid, 100),
       latestAdjudicationStatus:
         cleanPrivateText(game.replayResultAdjudications[0]?.decisionStatus, 32) ?? null,
+      latestDesyncIncident: game.replayDesyncIncidents[0]
+        ? {
+            id: game.replayDesyncIncidents[0].id,
+            desyncOccurred: game.replayDesyncIncidents[0].desyncOccurred,
+            settlementDisposition:
+              game.replayDesyncIncidents[0].settlementDisposition,
+            createdAt: game.replayDesyncIncidents[0].createdAt.toISOString(),
+          }
+        : null,
       runs: game.replayParseRuns.map((run) => ({
         id: run.id,
         status: run.status,

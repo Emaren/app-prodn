@@ -14,7 +14,7 @@
     "lint": "next lint",
     "test:mainnet-staking": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/mainnet-staking-visibility.test.mts tests/mainnet-settlement-activity.test.mts tests/wolo-market.test.mts",
     "test:staking-reserve": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/staking-reserve-classification.test.mts",
-    "test:challenge": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/challenge-flow.test.mts tests/challenge-lifecycle.test.mts",
+    "test:challenge": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/challenge-flow.test.mts tests/challenge-lifecycle.test.mts tests/challenge-title-policy.test.mts tests/challenge-history-ledger.test.mts",
     "test:replay-truth": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/hd-replay-truth.test.mts",
     "test:kingdom-expansion": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/kingdom-expansion-surfaces.test.mts",
     "test:zodiac": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/zodiac-training.test.mts",

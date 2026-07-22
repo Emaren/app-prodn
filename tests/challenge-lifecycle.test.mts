@@ -22,10 +22,11 @@ test("defaults acceptance window to 72 hours", () => {
 });
 
 test("supports only the published acceptance windows", () => {
+  assert.equal(normalizeAcceptanceWindowHours(1), 1);
   assert.equal(normalizeAcceptanceWindowHours(24), 24);
   assert.equal(normalizeAcceptanceWindowHours(72), 72);
   assert.equal(normalizeAcceptanceWindowHours(168), 168);
-  assert.equal(normalizeAcceptanceWindowHours(720), 720);
+  assert.equal(normalizeAcceptanceWindowHours(720), 72);
   assert.equal(normalizeAcceptanceWindowHours(12), 72);
 });
 
@@ -213,4 +214,37 @@ test("no-show guarantee copy matches the settlement rail", () => {
   assert.equal(noShow.displayState, "no_show_right");
   assert.match(noShow.economy.resolution.guarantee || "", /awarded to the creator who showed/);
   assert.equal(noShow.economy.resolution.treasury, null);
+});
+
+test("human-confirmed desync is an active hold, never a completed result", () => {
+  const lifecycle = deriveChallengeLifecycle({
+    status: "desync_review",
+    timingMode: "scheduled",
+    createdAt: new Date(now.getTime() - 24 * 60 * 60 * 1000),
+    acceptedAt: new Date(now.getTime() - 23 * 60 * 60 * 1000),
+    matchTime: new Date(now.getTime() - 60 * 60 * 1000),
+    resultAt: new Date(now.getTime() - 30 * 60 * 1000),
+    challengerFundedAt: new Date(now.getTime() - 22 * 60 * 60 * 1000),
+    challengedFundedAt: new Date(now.getTime() - 22 * 60 * 60 * 1000),
+  }, now);
+  assert.equal(lifecycle.phase, "desync_review");
+  assert.equal(lifecycle.terminal, false);
+  assert.equal(lifecycle.deadlineAt, null);
+
+  const economy = buildChallengeEconomySurface({
+    status: "desync_review",
+    scheduledAt: new Date(now.getTime() - 60 * 60 * 1000),
+    timingMode: "scheduled",
+    matchTime: new Date(now.getTime() - 60 * 60 * 1000),
+    resultAt: new Date(now.getTime() - 30 * 60 * 1000),
+    settlementReadyAt: new Date(now.getTime() - 30 * 60 * 1000),
+    wagerAmountWolo: 25,
+    guaranteeAmountWolo: 10,
+    challengerFundedAt: new Date(now.getTime() - 22 * 60 * 60 * 1000),
+    challengedFundedAt: new Date(now.getTime() - 22 * 60 * 60 * 1000),
+  }, now);
+  assert.equal(economy.displayState, "desync_review");
+  assert.equal(economy.economy.statusLabel, "DESYNCED");
+  assert.equal(economy.economy.readyForSettlement, false);
+  assert.match(economy.economy.statusDetail, /winner payout.*halted/i);
 });

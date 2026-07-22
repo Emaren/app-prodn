@@ -12,7 +12,10 @@ export async function GET(request: NextRequest) {
   if (!uid) return NextResponse.json({ detail: "No active session" }, { status: 401 });
 
   const prisma = getPrisma();
-  const viewer = await prisma.user.findUnique({ where: { uid }, select: { id: true } });
+  const viewer = await prisma.user.findUnique({
+    where: { uid },
+    select: { id: true, isAdmin: true },
+  });
   if (!viewer) return NextResponse.json({ detail: "Viewer not found" }, { status: 404 });
 
   const url = new URL(request.url);
@@ -20,9 +23,14 @@ export async function GET(request: NextRequest) {
   const parsedCursor = Number.parseInt(url.searchParams.get("cursor") || "", 10);
   const cursor = Number.isFinite(parsedCursor) && parsedCursor > 0 ? parsedCursor : null;
 
-  const page = await loadChallengeHistoryPage(prisma, viewer.id, { cursor, limit });
+  const page = await loadChallengeHistoryPage(prisma, viewer.id, {
+    cursor,
+    limit,
+    includeGlobal: viewer.isAdmin,
+  });
   return NextResponse.json({
     rows: page.tiles,
+    activities: page.activities,
     page: { hasMore: page.hasMore, nextCursor: page.nextCursor },
   });
 }

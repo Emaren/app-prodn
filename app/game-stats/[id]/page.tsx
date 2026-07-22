@@ -7,8 +7,13 @@ import type {
 } from "react";
 
 import FounderBonusChips from "@/components/bets/FounderBonusChips";
+import ConfirmedDesyncBanner from "@/components/game-stats/ConfirmedDesyncBanner";
 import ReplayVerdictTrail from "@/components/game-stats/ReplayVerdictTrail";
 import ReviewReplayResultButton from "@/components/game-stats/ReviewReplayResultButton";
+import {
+  currentConfirmedDesync,
+  type ReplayDesyncIncidentView,
+} from "@/components/game-stats/desyncIncidentView";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import {
   formatDurationLabel,
@@ -55,6 +60,7 @@ import {
   getReplayAchievementGroups,
   type ReplayAchievementGroup,
 } from "@/lib/replayAchievementMetrics";
+import { loadReplayDesyncIncidentProvenance } from "@/lib/replayDesyncIncidents";
 
 export const dynamic = "force-dynamic";
 
@@ -208,6 +214,24 @@ export default async function GameStatsDetailPage({
       typeof ReplayVerdictTrail
     >["adjudications"];
 
+  const desyncProvenance = await loadReplayDesyncIncidentProvenance(
+    prisma,
+    game.id
+  );
+  const verdictTrailDesyncIncidents = desyncProvenance.desyncIncidents.map(
+    (incident) => ({
+      ...incident,
+      competitiveResultStatus:
+        incident.competitiveResultStatus as ReplayDesyncIncidentView["competitiveResultStatus"],
+      settlementDisposition:
+        incident.settlementDisposition as ReplayDesyncIncidentView["settlementDisposition"],
+      machineEvidence:
+        incident.machineEvidence as ReplayDesyncIncidentView["machineEvidence"],
+      createdAt: incident.createdAt.toISOString(),
+    })
+  );
+  const confirmedDesync = currentConfirmedDesync(verdictTrailDesyncIncidents);
+
   const parseAttempts = await prisma.replayParseAttempt.findMany({
     where: {
       OR: [
@@ -351,16 +375,22 @@ export default async function GameStatsDetailPage({
     keyEvents: game.key_events,
     eventTypes,
   });
-  const outcomeLabel = reliableWinner
+  const outcomeLabel = !confirmedDesync && reliableWinner
     ? outcomeBadgeLabel(game.parse_reason, game.winner)
     : null;
   const winningPlayerNames = players
     .filter((player) => player.winner === true || player.winner === "true" || player.winner === 1)
     .map((player) => displayPlayerName(player));
   const publicWinnerLabel =
-    winningPlayerNames.length > 0 ? winningPlayerNames.join(" / ") : reliableWinner;
+    confirmedDesync
+      ? null
+      : winningPlayerNames.length > 0
+        ? winningPlayerNames.join(" / ")
+        : reliableWinner;
   const suppressPlayerWinnerState =
-    game.parse_reason === "hd_early_exit_under_60s" || !reliableWinner;
+    Boolean(confirmedDesync) ||
+    game.parse_reason === "hd_early_exit_under_60s" ||
+    !reliableWinner;
   const rivalryMatchCountLabel = rivalrySummary
     ? rivalrySummary.totalMatches === 1
       ? "1 replay-backed meeting"
@@ -526,11 +556,19 @@ export default async function GameStatsDetailPage({
               )}
             </div>
             <div className="flex flex-wrap gap-2">
-              <Tag>{publicWinnerLabel ? `${publicWinnerLabel} victorious` : "Battle filed"}</Tag>
-              {reviewedResultVerified ? (
+              <Tag>
+                {confirmedDesync
+                  ? "DESYNCED · result unresolved"
+                  : publicWinnerLabel
+                    ? `${publicWinnerLabel} victorious`
+                    : "Battle filed"}
+              </Tag>
+              {reviewedResultVerified && !confirmedDesync ? (
                 <Tag>
                   Reviewed Result{reviewedBy ? ` · ${reviewedBy}` : ""}
                 </Tag>
+              ) : reviewedResultVerified ? (
+                <Tag>Prior result preserved in provenance</Tag>
               ) : null}
               <Tag>HD replay</Tag>
               <Tag>{game.is_final ? "final replay" : "battle capture"}</Tag>
@@ -538,7 +576,7 @@ export default async function GameStatsDetailPage({
             </div>
             <FounderBonusChips bonuses={founderBonuses} />
 
-            {reviewedResultVerified ? (
+            {reviewedResultVerified && !confirmedDesync ? (
               <details
                 className="hidden group rounded-[1.5rem] border border-amber-200/15 bg-[linear-gradient(135deg,rgba(251,191,36,0.07),rgba(255,255,255,0.018))] [&>summary::-webkit-details-marker]:hidden"
                 data-reviewed-result-provenance
@@ -659,6 +697,10 @@ export default async function GameStatsDetailPage({
             ) : null}
           </div>
 
+          {confirmedDesync ? (
+            <ConfirmedDesyncBanner incident={confirmedDesync} />
+          ) : null}
+
           <div className="flex flex-wrap gap-3">
             {viewer?.isAdmin ? (
               <ReviewReplayResultButton
@@ -749,6 +791,7 @@ export default async function GameStatsDetailPage({
           gameStatsId={game.id}
           isAdmin={false}
           adjudications={verdictTrailAdjudications}
+          desyncIncidents={verdictTrailDesyncIncidents}
         />
       </section>
 
@@ -757,7 +800,12 @@ export default async function GameStatsDetailPage({
           <Panel title="Replay Summary" eyebrow="Overview">
             <dl className={summaryGridClassName}>
               <StatRow label="Replay ID" value={`#${game.id}`} />
-              {publicWinnerLabel ? (
+              {confirmedDesync ? (
+                <StatRow
+                  label="Competitive Result"
+                  value="Unresolved — human-confirmed desync"
+                />
+              ) : publicWinnerLabel ? (
                 <StatRow label="Winner" value={publicWinnerLabel} />
               ) : (
                 <StatRow label="Archive Status" value="Battle preserved" />

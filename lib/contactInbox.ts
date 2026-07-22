@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 
-import { AI_CONCIERGE_UID } from "@/lib/aiConciergeConfig";
+import { AI_CONCIERGE_UID, isAiPersonaUid } from "@/lib/aiConciergeConfig";
 import { ensureAiConciergeUser } from "@/lib/aiConcierge";
 import { getAiThreadKind } from "@/lib/aiPersonaInbox";
 import {
@@ -22,7 +22,6 @@ import {
   DIRECT_MESSAGE_TYPING_WINDOW_MS,
 } from "@/lib/contactInboxConfig";
 import { recordUserActivity } from "@/lib/userExperience";
-import { isPublicZodiacTrainingContactUid } from "@/lib/zodiacTraining";
 
 export type InboxCounterpart = {
   uid: string;
@@ -205,6 +204,11 @@ type DirectInboxWriteClient = Pick<
   PrismaClient,
   "directConversation" | "directConversationParticipant" | "directMessage"
 >;
+
+const COMMISSIONER_NOTICE_LOCK_NAMESPACE = 752_009;
+const COMMISSIONER_NOTICE_DELIVERED_EVENT = "commissioner_notice_delivered";
+const PROTOCOL_NOTICE_DELIVERED_EVENT = "protocol_notice_delivered";
+const CHALLENGE_PROTOCOL_UID = "challenge-protocol";
 
 type ChallengeNoticeMessageRow = {
   id: number;
@@ -606,58 +610,35 @@ export async function getOrCreateConversationByUsers(
 ) {
   const pairKey = buildPairKey(leftUserId, rightUserId);
 
-  const existing = await prisma.directConversation.findUnique({
+  // `skipDuplicates` compiles to ON CONFLICT DO NOTHING on PostgreSQL.  Unlike
+  // catching P2002, this remains safe inside the interactive transactions used
+  // by challenge actions: a simultaneous first message cannot abort the whole
+  // acceptance/funding/check-in transaction.
+  await prisma.directConversation.createMany({
+    data: [{ pairKey }],
+    skipDuplicates: true,
+  });
+  const conversation = await prisma.directConversation.findUnique({
     where: { pairKey },
-    include: {
-      participants: true,
-    },
+    select: { id: true },
+  });
+  if (!conversation) {
+    throw new Error("Direct conversation could not be created.");
+  }
+
+  await prisma.directConversationParticipant.createMany({
+    data: [
+      { conversationId: conversation.id, userId: leftUserId },
+      { conversationId: conversation.id, userId: rightUserId },
+    ],
+    skipDuplicates: true,
   });
 
-  if (existing) {
-    return prisma.directConversation.update({
-      where: { pairKey },
-      data: {
-        updatedAt: new Date(),
-      },
-      include: {
-        participants: true,
-      },
-    });
-  }
-
-  try {
-    return await prisma.directConversation.create({
-      data: {
-        pairKey,
-        participants: {
-          create: [{ userId: leftUserId }, { userId: rightUserId }],
-        },
-      },
-      include: {
-        participants: true,
-      },
-    });
-  } catch (error) {
-    const isUniquePairKeyRace =
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code?: string }).code === "P2002";
-
-    if (!isUniquePairKeyRace) {
-      throw error;
-    }
-
-    return prisma.directConversation.update({
-      where: { pairKey },
-      data: {
-        updatedAt: new Date(),
-      },
-      include: {
-        participants: true,
-      },
-    });
-  }
+  return prisma.directConversation.update({
+    where: { pairKey },
+    data: { updatedAt: new Date() },
+    include: { participants: true },
+  });
 }
 
 export async function postDirectInboxMessage(
@@ -752,29 +733,23 @@ export async function postChallengeInboxNotice(
     sameChallengeNotice ||
     pickLatestChallengeNotice(existingNotices.filter((notice) => notice.challengeId === null));
 
-  const message = existingNotice
-    ? await prisma.directMessage.update({
-        where: { id: existingNotice.id },
-        data: {
-          senderUserId,
-          body: normalizedBody,
-          createdAt: now,
-        },
-        select: {
-          id: true,
-        },
-      })
-    : await prisma.directMessage.create({
-        data: {
-          conversationId: conversation.id,
-          senderUserId,
-          body: normalizedBody,
-          createdAt: now,
-        },
-        select: {
-          id: true,
-        },
-      });
+  // Replace an updated Challenge card with a fresh message id. Message history
+  // paginates by id, so mutating an old row's createdAt could otherwise make an
+  // unread update invisible from the latest page.
+  const message = await prisma.directMessage.create({
+    data: {
+      conversationId: conversation.id,
+      senderUserId,
+      body: normalizedBody,
+      createdAt: now,
+    },
+    select: {
+      id: true,
+    },
+  });
+  if (existingNotice) {
+    await prisma.directMessage.delete({ where: { id: existingNotice.id } });
+  }
 
   if (sameChallengeNotice === null && existingNotice?.challengeId === null && challengeId) {
     const legacyIds = existingNotices
@@ -812,6 +787,275 @@ export async function postChallengeInboxNotice(
   });
 
   return conversation;
+}
+
+/**
+ * Deliver a reserved Challenge Protocol card to both duelists. The activity
+ * receipt makes retries idempotent; ordinary chat authors cannot forge the
+ * recognized card headline because the message route rejects it.
+ */
+export async function postChallengeProtocolNoticeToParticipants(
+  prisma: PrismaClient,
+  input: {
+    challengeId: number;
+    body: string;
+    deliveryKey: string;
+    now?: Date;
+  }
+) {
+  if (!Number.isSafeInteger(input.challengeId) || input.challengeId <= 0) {
+    return [];
+  }
+  if (!summarizeChallengeInboxMessage(input.body)) {
+    throw new Error("Challenge Protocol notice body is not recognized.");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(
+        ${COMMISSIONER_NOTICE_LOCK_NAMESPACE},
+        ${input.challengeId}
+      )
+    `;
+
+    const match = await tx.scheduledMatch.findUnique({
+      where: { id: input.challengeId },
+      select: {
+        challengerUserId: true,
+        challengedUserId: true,
+      },
+    });
+    if (!match) return [];
+
+    const protocolSender =
+      (await tx.user.findUnique({
+        where: { uid: CHALLENGE_PROTOCOL_UID },
+        select: { id: true },
+      })) ??
+      (await tx.user.upsert({
+        where: { uid: CHALLENGE_PROTOCOL_UID },
+        update: {},
+        create: {
+          uid: CHALLENGE_PROTOCOL_UID,
+          verified: true,
+          lockName: true,
+          verificationLevel: 1,
+          verificationMethod: "system",
+          steamPersonaName: "Challenge Protocol",
+        },
+        select: { id: true },
+      }));
+
+    const delivered: number[] = [];
+    for (const targetUserId of [
+      match.challengerUserId,
+      match.challengedUserId,
+    ]) {
+      const recipientDeliveryKey = `${input.deliveryKey}:${targetUserId}`;
+      const existing = await tx.scheduledMatchActivity.findFirst({
+        where: {
+          scheduledMatchId: input.challengeId,
+          eventType: PROTOCOL_NOTICE_DELIVERED_EVENT,
+          metadata: {
+            path: ["deliveryKey"],
+            equals: recipientDeliveryKey,
+          },
+        },
+        select: { id: true },
+      });
+      if (existing) continue;
+
+      await postChallengeInboxNotice(tx, {
+        senderUserId: protocolSender.id,
+        targetUserId,
+        challengeId: input.challengeId,
+        body: input.body,
+        now: input.now ?? new Date(),
+      });
+      await tx.scheduledMatchActivity.create({
+        data: {
+          scheduledMatchId: input.challengeId,
+          eventType: PROTOCOL_NOTICE_DELIVERED_EVENT,
+          detail: "Challenge Protocol notice delivered to a duelist.",
+          metadata: {
+            deliveryKey: recipientDeliveryKey,
+            targetUserId,
+            source: "challenge_protocol",
+          },
+          createdAt: input.now,
+        },
+      });
+      delivered.push(targetUserId);
+    }
+
+    return delivered;
+  });
+}
+
+export async function postChallengeCommissionerNotice(
+  prisma: PrismaClient,
+  challengeId: number
+) {
+  if (!Number.isSafeInteger(challengeId) || challengeId <= 0) {
+    return null;
+  }
+
+  const configuredCommissionerUid = process.env.CHALLENGE_COMMISSIONER_UID?.trim() || null;
+  return prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(
+        ${COMMISSIONER_NOTICE_LOCK_NAMESPACE},
+        ${challengeId}
+      )
+    `;
+
+    const admins = await tx.user.findMany({
+      where: configuredCommissionerUid
+        ? { uid: configuredCommissionerUid, isAdmin: true }
+        : { isAdmin: true },
+      select: {
+        id: true,
+        uid: true,
+        inGameName: true,
+        steamPersonaName: true,
+      },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    });
+    const commissioner =
+      (configuredCommissionerUid
+        ? admins[0]
+        : admins.find((admin) =>
+            [admin.inGameName, admin.steamPersonaName]
+              .filter(Boolean)
+              .some((value) => value?.trim().toLowerCase() === "emaren")
+          )) ?? null;
+
+    if (!commissioner) {
+      return null;
+    }
+
+    const protocolSender =
+      (await tx.user.findUnique({
+        where: { uid: CHALLENGE_PROTOCOL_UID },
+        select: { id: true },
+      })) ??
+      (await tx.user.upsert({
+        where: { uid: CHALLENGE_PROTOCOL_UID },
+        update: {},
+        create: {
+          uid: CHALLENGE_PROTOCOL_UID,
+          verified: true,
+          lockName: true,
+          verificationLevel: 1,
+          verificationMethod: "system",
+          steamPersonaName: "Challenge Protocol",
+        },
+        select: { id: true },
+      }));
+
+    const match = await tx.scheduledMatch.findUnique({
+      where: { id: challengeId },
+      select: {
+        status: true,
+        wagerAmountWolo: true,
+        guaranteeAmountWolo: true,
+        updatedAt: true,
+        challengerUserId: true,
+        challengedUserId: true,
+        challenger: { select: { uid: true, inGameName: true, steamPersonaName: true } },
+        challenged: { select: { uid: true, inGameName: true, steamPersonaName: true } },
+      },
+    });
+    if (
+      !match ||
+      commissioner.id === match.challengerUserId ||
+      commissioner.id === match.challengedUserId
+    ) {
+      return null;
+    }
+
+    const deliveryKey = [
+      match.updatedAt.toISOString(),
+      match.status,
+      commissioner.uid,
+    ].join("|");
+    const existingDelivery = await tx.scheduledMatchActivity.findFirst({
+      where: {
+        scheduledMatchId: challengeId,
+        eventType: COMMISSIONER_NOTICE_DELIVERED_EVENT,
+        metadata: {
+          path: ["deliveryKey"],
+          equals: deliveryKey,
+        },
+      },
+      select: { id: true },
+    });
+    if (existingDelivery) {
+      return null;
+    }
+
+    const normalizedStatus = match.status.trim().toLowerCase();
+    const headline =
+      normalizedStatus === "desync_review"
+        ? "Challenge desync confirmed"
+        : normalizedStatus === "declined"
+        ? "Challenge declined"
+        : ["cancelled", "canceled"].includes(normalizedStatus)
+          ? "Challenge cancelled"
+          : normalizedStatus === "expired"
+            ? "Challenge expired"
+            : normalizedStatus === "funding_expired"
+              ? "Challenge funding expired"
+              : normalizedStatus === "refunded"
+                ? "Challenge refunded"
+                : ["no_show_left", "no_show_right", "double_no_show"].includes(normalizedStatus)
+                  ? "Challenge no-show resolved"
+                  : normalizedStatus === "completed"
+                    ? "Challenge result ready"
+                    : ["left_checked_in", "right_checked_in"].includes(normalizedStatus)
+                      ? "Challenge check-in recorded"
+                      : ["funded", "ready", "live_confirmed"].includes(normalizedStatus)
+                        ? "Challenge ready"
+                        : ["terms_accepted", "accepted"].includes(normalizedStatus)
+                          ? "Challenge terms accepted"
+                          : ["creator_funded", "opponent_funded"].includes(normalizedStatus)
+                            ? "Challenge funding recorded"
+                            : "Challenge issued";
+    const challengerName = displayNameForUser(match.challenger);
+    const challengedName = displayNameForUser(match.challenged);
+    const totalWolo = match.wagerAmountWolo + match.guaranteeAmountWolo;
+    const body = [
+      headline,
+      `${challengerName} vs ${challengedName}`,
+      `Funding: ${totalWolo.toLocaleString("en-US")} WOLO each`,
+      `Status: Commissioner update · ${normalizedStatus.replaceAll("_", " ")}`,
+    ].join("\n");
+
+    const conversation = await postChallengeInboxNotice(tx, {
+      senderUserId: protocolSender.id,
+      targetUserId: commissioner.id,
+      challengeId,
+      body,
+      now: match.updatedAt,
+    });
+
+    await tx.scheduledMatchActivity.create({
+      data: {
+        scheduledMatchId: challengeId,
+        actorUserId: null,
+        eventType: COMMISSIONER_NOTICE_DELIVERED_EVENT,
+        detail: `Commissioner notice delivered to ${commissioner.uid}.`.slice(0, 255),
+        metadata: {
+          deliveryKey,
+          matchUpdatedAt: match.updatedAt.toISOString(),
+          matchStatus: match.status,
+          commissionerUid: commissioner.uid,
+        },
+      },
+    });
+
+    return conversation;
+  });
 }
 
 function resolveCounterpartParticipant(
@@ -985,43 +1229,66 @@ async function loadHonorSummaryMap(
 }
 
 async function loadConversationSummaries(prisma: PrismaClient, viewerUserId: number) {
-  const memberships = await prisma.directConversationParticipant.findMany({
-    where: { userId: viewerUserId },
-    select: {
-      conversationId: true,
-      lastReadAt: true,
-      conversation: {
-        select: {
-          participants: {
-            select: {
-              userId: true,
-              user: {
-                select: {
-                  id: true,
-                  uid: true,
-                  isAdmin: true,
-                  inGameName: true,
-                  steamPersonaName: true,
+  const [memberships, directoryUsers] = await Promise.all([
+    prisma.directConversationParticipant.findMany({
+      where: { userId: viewerUserId },
+      select: {
+        conversationId: true,
+        lastReadAt: true,
+        conversation: {
+          select: {
+            participants: {
+              select: {
+                userId: true,
+                user: {
+                  select: {
+                    id: true,
+                    uid: true,
+                    isAdmin: true,
+                    inGameName: true,
+                    steamPersonaName: true,
+                  },
                 },
               },
             },
-          },
-          messages: {
-            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-            take: 1,
-            select: {
-              body: true,
-              attachmentKind: true,
-              createdAt: true,
+            messages: {
+              orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+              take: 1,
+              select: {
+                body: true,
+                attachmentKind: true,
+                createdAt: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    prisma.user.findMany({
+      where: {
+        id: { not: viewerUserId },
+        verificationMethod: { not: "system" },
+      },
+      select: {
+        id: true,
+        uid: true,
+        isAdmin: true,
+        inGameName: true,
+        steamPersonaName: true,
+        lastSeen: true,
+        createdAt: true,
+      },
+      orderBy: [{ lastSeen: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+    }),
+  ]);
+
+  // AI personas remain opt-in/system-managed threads. Every real signed-in
+  // person is discoverable immediately without pre-creating an O(n^2) set of
+  // empty conversations.
+  const availableHumanUsers = directoryUsers.filter((user) => !isAiPersonaUid(user.uid));
 
   const counterpartLastReadAt = new Map<number, Date | null>();
-  const counterpartIds = memberships
+  const existingCounterpartIds = memberships
     .map((membership) => {
       const counterpartParticipant = resolveCounterpartParticipant(membership, viewerUserId);
       if (!counterpartParticipant) {
@@ -1031,9 +1298,12 @@ async function loadConversationSummaries(prisma: PrismaClient, viewerUserId: num
       return counterpartParticipant.userId;
     })
     .filter((value): value is number => typeof value === "number");
+  const communityUserIds = Array.from(
+    new Set([...existingCounterpartIds, ...availableHumanUsers.map((user) => user.id)])
+  );
 
   const [communityMap, unreadMessageCountMap, honorSummaryMap] = await Promise.all([
-    loadUserCommunitySummaries(prisma, counterpartIds),
+    loadUserCommunitySummaries(prisma, communityUserIds),
     loadUnreadMessageCounts(prisma, viewerUserId, memberships),
     loadHonorSummaryMap(prisma, viewerUserId, counterpartLastReadAt),
   ]);
@@ -1084,8 +1354,33 @@ async function loadConversationSummaries(prisma: PrismaClient, viewerUserId: num
     } satisfies InboxSummary;
   });
 
-  return summaries
-    .filter((summary): summary is NonNullable<typeof summary> => summary !== null)
+  const existingSummaries = summaries.filter(
+    (summary): summary is NonNullable<typeof summary> => summary !== null
+  );
+  const existingCounterpartIdSet = new Set(existingCounterpartIds);
+  const availableSummaries = availableHumanUsers
+    .filter((user) => !existingCounterpartIdSet.has(user.id))
+    .map((user) => {
+      const community = communityMap.get(user.id) ?? {
+        badges: [],
+        gifts: [],
+        giftedWolo: 0,
+      };
+
+      return {
+        targetUid: user.uid,
+        displayName: displayNameForUser(user),
+        threadKind: "direct" as const,
+        isAdmin: user.isAdmin,
+        unreadCount: 0,
+        lastMessageAt: null,
+        lastMessageSnippet: null,
+        badges: community.badges,
+        giftedWolo: community.giftedWolo,
+      } satisfies InboxSummary;
+    });
+
+  return [...existingSummaries, ...availableSummaries]
     .sort((left, right) => {
       if (left.unreadCount !== right.unreadCount) {
         return right.unreadCount - left.unreadCount;
@@ -1447,7 +1742,7 @@ export async function resolveInboxTargetForViewer(
   prisma: PrismaClient,
   viewer: ViewerUser,
   targetUid: string | null | undefined
-) {
+): Promise<ViewerUser | null> {
   if (!targetUid) {
     return null;
   }
@@ -1460,6 +1755,7 @@ export async function resolveInboxTargetForViewer(
       isAdmin: true,
       inGameName: true,
       steamPersonaName: true,
+      verificationMethod: true,
     },
   });
 
@@ -1469,8 +1765,7 @@ export async function resolveInboxTargetForViewer(
 
   if (
     viewer.isAdmin ||
-    targetUser.isAdmin ||
-    isPublicZodiacTrainingContactUid(targetUser.uid)
+    (targetUser.verificationMethod !== "system" && !isAiPersonaUid(targetUser.uid))
   ) {
     return targetUser;
   }
@@ -1493,6 +1788,7 @@ export async function loadInboxPayload(
     summaryOnly?: boolean;
     beforeMessageId?: number | null;
     messageLimit?: number;
+    challengeId?: number | null;
   }
 ): Promise<InboxPayload> {
   const viewer = await findViewer(prisma, viewerUid);
@@ -1563,7 +1859,12 @@ export async function loadInboxPayload(
     activeTargetUser &&
     activeTargetUser.id !== viewer.id &&
     activeTargetUser.uid !== AI_CONCIERGE_UID
-      ? await loadChallengeThreadTile(prisma, viewer.id, activeTargetUser.id)
+      ? await loadChallengeThreadTile(
+          prisma,
+          viewer.id,
+          activeTargetUser.id,
+          options?.challengeId
+        )
       : null;
 
   if (options?.summaryOnly || !activeTargetUser || activeTargetUser.id === viewer.id) {

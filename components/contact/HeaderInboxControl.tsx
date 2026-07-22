@@ -6,6 +6,10 @@ import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
 
 import ContactInboxPanel from "@/components/contact/ContactInboxPanel";
+import {
+  mergeContactInboxPayload,
+  type MergeContactInboxPayloadOptions,
+} from "@/components/contact/contactInboxPayload";
 import type {
   ContactChallengeActionKind,
   ContactChallengeActionState,
@@ -152,19 +156,30 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   }, []);
 
   const applyInboxPayload = useCallback(
-    (payload: ContactInboxPayload) => {
-      if (payload.activeTargetUid) {
-        panelCacheRef.current.set(payload.activeTargetUid, payload);
-      }
-      setPanelData(payload);
+    (
+      payload: ContactInboxPayload,
+      options: MergeContactInboxPayloadOptions = {}
+    ) => {
+      const targetUid = payload.activeTargetUid;
+      const cachedPayload = targetUid
+        ? panelCacheRef.current.get(targetUid) ?? null
+        : null;
+      const cachePayload = mergeContactInboxPayload(cachedPayload, payload, options);
+      if (targetUid) panelCacheRef.current.set(targetUid, cachePayload);
+      setPanelData((current) => {
+        const base = current?.activeTargetUid === targetUid ? current : cachePayload;
+        const nextPayload = mergeContactInboxPayload(base, payload, options);
+        if (targetUid) panelCacheRef.current.set(targetUid, nextPayload);
+        return nextPayload;
+      });
       setSummary(payload);
-      applySelectedTargetUid(payload.activeTargetUid);
-      if (payload.activeTargetUid && draftHydratedTargetRef.current !== payload.activeTargetUid) {
-        draftHydratedTargetRef.current = payload.activeTargetUid;
+      applySelectedTargetUid(targetUid);
+      if (targetUid && draftHydratedTargetRef.current !== targetUid) {
+        draftHydratedTargetRef.current = targetUid;
         setBody(payload.draft?.body ?? "");
         setReplyingTo(
           payload.draft?.replyToMessageId
-            ? (payload.messages.find((message): message is ContactTextMessage => message.kind === "text" && message.messageId === payload.draft?.replyToMessageId) ?? null)
+            ? (cachePayload.messages.find((message): message is ContactTextMessage => message.kind === "text" && message.messageId === payload.draft?.replyToMessageId) ?? null)
             : null
         );
       }
@@ -321,6 +336,31 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     return () => window.clearTimeout(timer);
   }, [body, replyingTo?.messageId]);
 
+  const sendTypingState = useCallback(
+    async (isTyping: boolean) => {
+      const targetUid = selectedTargetUidRef.current;
+      if (!uid || !targetUid) return;
+
+      try {
+        await fetch("/api/contact-emaren", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "set_typing",
+            targetUid,
+            isTyping,
+          }),
+        });
+        typingActiveRef.current = isTyping;
+      } catch (typingError) {
+        console.warn("Nav typing state failed:", typingError);
+      }
+    },
+    [uid]
+  );
+
   useEffect(() => {
     return () => {
       panelAbortRef.current?.abort();
@@ -333,7 +373,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
         void sendTypingState(false);
       }
     };
-  }, []);
+  }, [sendTypingState]);
 
   const unreadCount = summary?.totalUnreadCount ?? 0;
   const openPageHref = useMemo(() => {
@@ -396,28 +436,6 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
     [refreshPanel]
   );
 
-
-  async function sendTypingState(isTyping: boolean) {
-    const targetUid = selectedTargetUidRef.current;
-    if (!uid || !targetUid) return;
-
-    try {
-      await fetch("/api/contact-emaren", {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "set_typing",
-          targetUid,
-          isTyping,
-        }),
-      });
-      typingActiveRef.current = isTyping;
-    } catch (typingError) {
-      console.warn("Nav typing state failed:", typingError);
-    }
-  }
 
   function scheduleTypingState(nextBody: string) {
     if (typingTimerRef.current) {
@@ -539,7 +557,14 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                     }
 
                     panelRequestIdRef.current += 1;
-                    applyInboxPayload(payload as ContactInboxPayload);
+                    const removedMessageId =
+                      action.action === "delete_message" && typeof action.messageId === "number"
+                        ? action.messageId
+                        : null;
+                    applyInboxPayload(payload as ContactInboxPayload, {
+                      mode: "refresh",
+                      removeMessageIds: removedMessageId ? [removedMessageId] : undefined,
+                    });
                   } catch (actionError) {
                     setError(
                       actionError instanceof Error ? actionError.message : "Inbox action failed."
@@ -613,7 +638,10 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                     setReplyingTo(null);
                     void sendTypingState(false);
                     panelRequestIdRef.current += 1;
-                    applyInboxPayload(payload as ContactInboxPayload);
+                    applyInboxPayload(payload as ContactInboxPayload, {
+                      mode: "refresh",
+                      dropOptimistic: true,
+                    });
                   } catch (sendError) {
                     setError(sendError instanceof Error ? sendError.message : "Message failed.");
                     setPanelData((current) => current ? { ...current, messages: current.messages.map((message) => message.kind === "text" && message.optimisticKey === optimisticKey ? { ...message, receipt: { status: "failed", deliveredAt: null, readAt: null } } : message) } : current);
@@ -662,13 +690,16 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                   const current = panelData ?? summary;
                   const before = current?.messagePage.beforeMessageId;
                   const target = selectedTargetUidRef.current;
-                  if (!before || !target) return;
+                  if (!before || !target) return false;
                   const older = await requestInbox(target, false, before);
-                  setPanelData((latest) => {
-                    if (!latest || latest.activeTargetUid !== target) return latest;
-                    const known = new Set(latest.messages.map((message) => message.id));
-                    return { ...latest, messages: [...older.messages.filter((message) => !known.has(message.id)), ...latest.messages], messagePage: older.messagePage };
-                  });
+                  if (
+                    selectedTargetUidRef.current !== target ||
+                    older.activeTargetUid !== target
+                  ) {
+                    return false;
+                  }
+                  applyInboxPayload(older, { mode: "prepend" });
+                  return true;
                 }}
                 onRefresh={() => refreshPanel(undefined, { silent: true }).then(() => undefined)}
                 replyingTo={replyingTo}

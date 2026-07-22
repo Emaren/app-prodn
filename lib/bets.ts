@@ -3,6 +3,13 @@ import {
   loadScheduledMatchTilesForLiveBoard,
   type ScheduledMatchTile,
 } from "@/lib/challenges";
+import {
+  acquireChallengeDesyncAdvisoryLock,
+  assertOrdinaryBetMarketWinnerPayoutAllowedFromDb,
+  ChallengeDesyncError,
+  loadDesyncIncidentsForSettlement,
+  planBetMarketDesyncReview,
+} from "@/lib/desyncChallenge";
 import { parsePlayers, readMapName } from "@/lib/gameStatsView";
 import { loadLiveSessionSnapshot, type LiveGameSession } from "@/lib/liveSessionSnapshot";
 import { loadLiveGamesSnapshot } from "@/lib/liveGames";
@@ -1271,10 +1278,45 @@ type SettlementWinnerTruthMarket = {
   leftLabel: string;
   rightLabel: string;
   linkedGameStatsId: number | null;
+  scheduledMatchId: number | null;
   propositionHash: string | null;
   leftRosterSnapshot: unknown;
   rightRosterSnapshot: unknown;
 };
+
+async function assertLockedOrdinaryMarketWinnerPayoutAllowed(
+  prisma: PrismaClient,
+  market: SettlementWinnerTruthMarket & { winnerSide: string | null }
+) {
+  if (market.winnerSide !== "left" && market.winnerSide !== "right") return;
+
+  await prisma.$transaction(async (tx) => {
+    if (market.scheduledMatchId) {
+      await acquireChallengeDesyncAdvisoryLock(tx, market.scheduledMatchId);
+    }
+    const preliminaryIncidents = await loadDesyncIncidentsForSettlement(tx, {
+      gameStatsId: market.linkedGameStatsId,
+      scheduledMatchId: market.scheduledMatchId,
+    });
+    const replayLockIds = Array.from(
+      new Set(
+        [market.linkedGameStatsId, ...preliminaryIncidents.map((incident) => incident.gameStatsId)]
+          .filter((id): id is number => typeof id === "number" && id > 0)
+      )
+    ).sort((left, right) => left - right);
+    for (const replayLockId of replayLockIds) {
+      await tx.$queryRaw<Array<{ lock_acquired: number }>>`
+        SELECT 1::int AS lock_acquired
+        FROM pg_advisory_xact_lock(${replayLockId})
+      `;
+    }
+
+    await assertOrdinaryBetMarketWinnerPayoutAllowedFromDb({
+      prisma: tx,
+      market,
+    });
+  });
+}
 
 function settlementTruthName(value: string | null | undefined) {
   return normalizeName(value).toLowerCase();
@@ -2006,6 +2048,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
       leftLabel: true,
       rightLabel: true,
       linkedGameStatsId: true,
+      scheduledMatchId: true,
       propositionHash: true,
       leftRosterSnapshot: true,
       rightRosterSnapshot: true,
@@ -2053,9 +2096,18 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
         : null;
 
     try {
+      await assertLockedOrdinaryMarketWinnerPayoutAllowed(prisma, market);
       await assertSettlementWinnerTruthGate(prisma, market, winningSide);
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
+      if (error instanceof ChallengeDesyncError) {
+        await prisma.betMarket.update({
+          where: { id: market.id },
+          data: planBetMarketDesyncReview(),
+        });
+        console.warn(`Blocked winner payout for market #${market.id} (${error.code}): ${detail}`);
+        continue;
+      }
       await markMarketUnderIntegrityReview(prisma, {
         marketId: market.id,
         title: market.title,

@@ -96,6 +96,7 @@ model User {
   forumThreadBookmarks           ForumThreadBookmark[]
   forumThreadReactions           ForumThreadReaction[]
   replayResultAdjudications      ReplayResultAdjudication[]      @relation("ReplayResultAdjudicationActor")
+  replayDesyncIncidents          ReplayDesyncIncident[]          @relation("ReplayDesyncIncidentReviewer")
   replaySubmissions              ReplaySubmission[]              @relation("ReplaySubmissionSubmitter")
   replayObservationPromotions    ReplayObservationPromotion[]    @relation("ReplayObservationPromotionActor")
   replayReprocessJobs            ReplayReprocessJob[]            @relation("ReplayReprocessJobCreator")
@@ -153,6 +154,7 @@ model GameStats {
   tournamentMatchProof        TournamentMatch?             @relation("TournamentMatchProof")
   replayParseAttempts         ReplayParseAttempt[]         @relation("GameStatsParseAttempts")
   replayResultAdjudications   ReplayResultAdjudication[]
+  replayDesyncIncidents       ReplayDesyncIncident[]
   replayParseRuns             ReplayParseRun[]             @relation("ReplayParseRunGameStats")
   replayEvidenceLinks         ReplayEvidenceLink[]         @relation("ReplayEvidenceLinkGameStats")
   replayObservationPromotions ReplayObservationPromotion[] @relation("ReplayObservationPromotionGameStats")
@@ -237,6 +239,44 @@ model ReplayResultAdjudication {
   @@index([supersedesId], map: "ix_replay_result_adjudications_supersedes")
   @@index([sourceReplayHash], map: "ix_replay_result_adjudications_replay_hash")
   @@map("replay_result_adjudications")
+}
+
+/// Append-only human ground truth about whether a replay desynced.
+/// This ledger is deliberately independent of winner adjudication and settlement.
+/// Corrections append a row linked through supersedesId; rows are never edited or deleted.
+model ReplayDesyncIncident {
+  id                          Int      @id @default(autoincrement())
+  gameStatsId                 Int      @map("game_stats_id")
+  scheduledMatchId            Int?     @map("scheduled_match_id")
+  reviewerUserId              Int      @map("reviewer_user_id")
+  supersedesId                Int?     @unique(map: "uq_replay_desync_incidents_supersedes") @map("supersedes_id")
+  idempotencyKey              String   @unique(map: "uq_replay_desync_incidents_idempotency") @map("idempotency_key") @db.VarChar(128)
+  inputHash                   String   @map("input_hash") @db.VarChar(64)
+  desyncOccurred              Boolean  @map("desync_occurred")
+  competitiveResultStatus     String   @default("unresolved") @map("competitive_result_status") @db.VarChar(24)
+  settlementDisposition       String   @default("commissioner_review") @map("settlement_disposition") @db.VarChar(32)
+  reviewerUidSnapshot         String   @map("reviewer_uid_snapshot") @db.VarChar(100)
+  reviewerDisplayNameSnapshot String   @map("reviewer_display_name_snapshot") @db.VarChar(100)
+  note                        String?  @db.Text
+  sourceReplayHash            String   @map("source_replay_hash") @db.VarChar(64)
+  sourceParseIteration        Int      @map("source_parse_iteration")
+  parserDesyncCandidate       Boolean  @default(false) @map("parser_desync_candidate")
+  machineEvidence             Json     @map("machine_evidence")
+  createdAt                   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  gameStats      GameStats             @relation(fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  scheduledMatch ScheduledMatch?       @relation(fields: [scheduledMatchId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  reviewer       User                  @relation("ReplayDesyncIncidentReviewer", fields: [reviewerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersedes     ReplayDesyncIncident? @relation("ReplayDesyncIncidentSupersession", fields: [supersedesId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersededBy   ReplayDesyncIncident? @relation("ReplayDesyncIncidentSupersession")
+
+  @@index([gameStatsId, createdAt], map: "ix_replay_desync_incidents_game_created")
+  @@index([scheduledMatchId, createdAt], map: "ix_replay_desync_incidents_match_created")
+  @@index([reviewerUserId, createdAt], map: "ix_replay_desync_incidents_reviewer_created")
+  @@index([desyncOccurred, createdAt], map: "ix_replay_desync_incidents_truth_created")
+  @@index([parserDesyncCandidate, desyncOccurred], map: "ix_replay_desync_incidents_parser_ground_truth")
+  @@index([sourceReplayHash], map: "ix_replay_desync_incidents_replay_hash")
+  @@map("replay_desync_incidents")
 }
 
 /// Immutable content-addressed AoE2HD source bytes. A new storage fact is a new row;
@@ -625,6 +665,7 @@ model ScheduledMatch {
   settlements                    ScheduledMatchSettlement[]
   fundingProofs                  ScheduledMatchFundingProof[]
   trophyChallenges               TrophyChallenge[]
+  replayDesyncIncidents          ReplayDesyncIncident[]
 
   challenger User       @relation("ScheduledMatchChallenger", fields: [challengerUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   challenged User       @relation("ScheduledMatchChallenged", fields: [challengedUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)

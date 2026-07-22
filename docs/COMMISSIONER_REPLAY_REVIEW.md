@@ -16,6 +16,11 @@ the original parser row remains intact.
 See [HD Replay Truth Pipeline](./HD_REPLAY_TRUTH_PIPELINE.md) for ingestion,
 archive, parser, backfill, and deployment operations.
 
+Human-confirmed replay desyncs use a separate append-only incident ledger and
+must not be represented as a winning result. See
+[Human-Confirmed Desync Protocol](./DESYNC_INCIDENT_PROTOCOL.md) for its three
+independent truth axes, Challenge projection, and settlement/title guards.
+
 ## Surfaces and access
 
 - `/game-stats/[id]/review` is the neutral per-game result editor. **Review

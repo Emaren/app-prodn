@@ -5,6 +5,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import ContactInboxPanel from "@/components/contact/ContactInboxPanel";
 import ContactRichComposer from "@/components/contact/ContactRichComposer";
+import {
+  mergeContactInboxPayload,
+  type MergeContactInboxPayloadOptions,
+} from "@/components/contact/contactInboxPayload";
 import type {
   ContactChallengeActionKind,
   ContactChallengeActionState,
@@ -106,6 +110,7 @@ async function requestInbox(
   targetUid?: string | null,
   summaryOnly?: boolean,
   beforeMessageId?: number | null,
+  challengeId?: number | null,
   signal?: AbortSignal
 ) {
   const params = new URLSearchParams();
@@ -116,6 +121,9 @@ async function requestInbox(
     params.set("summary", "1");
   }
   if (beforeMessageId) params.set("before", String(beforeMessageId));
+  if (challengeId && Number.isSafeInteger(challengeId) && challengeId > 0) {
+    params.set("challenge", String(challengeId));
+  }
 
   const response = await fetch(`/api/contact-emaren${params.size > 0 ? `?${params.toString()}` : ""}`, {
     cache: "no-store",
@@ -133,11 +141,26 @@ async function requestInbox(
   return payload as ContactInboxPayload;
 }
 
-export default function ContactEmarenWorkspace() {
+type ContactEmarenWorkspaceProps = {
+  forcedTargetUid?: string | null;
+  syncUrl?: boolean;
+  focused?: boolean;
+  forcedChallengeId?: number | null;
+};
+
+export default function ContactEmarenWorkspace({
+  forcedTargetUid,
+  syncUrl = true,
+  focused = false,
+  forcedChallengeId = null,
+}: ContactEmarenWorkspaceProps = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const requestedUser = searchParams?.get("user") ?? null;
+  const requestedUser =
+    forcedTargetUid !== undefined
+      ? forcedTargetUid
+      : searchParams?.get("user") ?? null;
   const { uid, isAuthenticated, loading } = useUserAuth();
   const [summaryData, setSummaryData] = useState<ContactInboxPayload | null>(null);
   const [panelData, setPanelData] = useState<ContactInboxPayload | null>(null);
@@ -169,6 +192,7 @@ export default function ContactEmarenWorkspace() {
   const summaryRequestIdRef = useRef(0);
   const panelAbortRef = useRef<AbortController | null>(null);
   const summaryAbortRef = useRef<AbortController | null>(null);
+  const forcedChallengeTileRef = useRef<ContactInboxPayload["activeChallenge"]>(null);
 
   const clearAttachment = useCallback(() => {
     setAttachment((current) => {
@@ -181,6 +205,7 @@ export default function ContactEmarenWorkspace() {
 
   const syncThreadUrl = useCallback(
     (targetUid: string | null) => {
+      if (!syncUrl) return;
       const params = new URLSearchParams(searchParams?.toString() ?? "");
       if (targetUid) {
         params.set("user", targetUid);
@@ -192,18 +217,77 @@ export default function ContactEmarenWorkspace() {
       const nextHref = nextQuery ? `${pathname}?${nextQuery}` : pathname;
       router.replace(nextHref, { scroll: false });
     },
-    [pathname, router, searchParams]
+    [pathname, router, searchParams, syncUrl]
   );
 
   const applySelectedTargetUid = useCallback(
     (targetUid: string | null, options?: { syncUrl?: boolean }) => {
       selectedTargetUidRef.current = targetUid;
       setSelectedTargetUid(targetUid);
-      if (options?.syncUrl !== false) {
+      if (syncUrl && options?.syncUrl !== false) {
         syncThreadUrl(targetUid);
       }
     },
-    [syncThreadUrl]
+    [syncThreadUrl, syncUrl]
+  );
+
+  const normalizeForcedChallengePayload = useCallback(
+    (payload: ContactInboxPayload) => {
+      if (!forcedChallengeId) return payload;
+      if (payload.activeChallenge?.id === forcedChallengeId) {
+        forcedChallengeTileRef.current = payload.activeChallenge;
+        return payload;
+      }
+      if (forcedChallengeTileRef.current?.id === forcedChallengeId) {
+        return {
+          ...payload,
+          activeChallenge: forcedChallengeTileRef.current,
+        };
+      }
+      return payload;
+    },
+    [forcedChallengeId]
+  );
+
+  const applyInboxPayload = useCallback(
+    (
+      incomingPayload: ContactInboxPayload,
+      options: MergeContactInboxPayloadOptions = {}
+    ) => {
+      const payload = normalizeForcedChallengePayload(incomingPayload);
+      const targetUid = payload.activeTargetUid;
+      const cachedPayload = targetUid
+        ? panelCacheRef.current.get(targetUid) ?? null
+        : null;
+      const cachePayload = mergeContactInboxPayload(cachedPayload, payload, options);
+      if (targetUid) panelCacheRef.current.set(targetUid, cachePayload);
+
+      setPanelData((current) => {
+        const base = current?.activeTargetUid === targetUid ? current : cachePayload;
+        const nextPayload = mergeContactInboxPayload(base, payload, options);
+        if (targetUid) panelCacheRef.current.set(targetUid, nextPayload);
+        return nextPayload;
+      });
+      setSummaryData(payload);
+      applySelectedTargetUid(targetUid, { syncUrl: true });
+
+      if (targetUid && draftHydratedTargetRef.current !== targetUid) {
+        draftHydratedTargetRef.current = targetUid;
+        setBody(payload.draft?.body ?? "");
+        setReplyingTo(
+          payload.draft?.replyToMessageId
+            ? (cachePayload.messages.find(
+                (message): message is ContactTextMessage =>
+                  message.kind === "text" &&
+                  message.messageId === payload.draft?.replyToMessageId
+              ) ?? null)
+            : null
+        );
+      }
+
+      return cachePayload;
+    },
+    [applySelectedTargetUid, normalizeForcedChallengePayload]
   );
 
   const refreshSummary = useCallback(
@@ -221,7 +305,13 @@ export default function ContactEmarenWorkspace() {
         setError(null);
       }
       try {
-        const payload = await requestInbox(nextTargetUid, true, undefined, controller.signal);
+        const payload = await requestInbox(
+          nextTargetUid,
+          true,
+          undefined,
+          forcedChallengeId,
+          controller.signal
+        );
         if (summaryRequestIdRef.current !== requestId) return null;
         setSummaryData(payload);
         applySelectedTargetUid(payload.activeTargetUid, { syncUrl: true });
@@ -237,7 +327,7 @@ export default function ContactEmarenWorkspace() {
         if (summaryRequestIdRef.current === requestId) summaryAbortRef.current = null;
       }
     },
-    [applySelectedTargetUid, uid]
+    [applySelectedTargetUid, forcedChallengeId, uid]
   );
 
   const refreshPanel = useCallback(
@@ -259,24 +349,15 @@ export default function ContactEmarenWorkspace() {
         setError(null);
       }
       try {
-        const payload = await requestInbox(nextTargetUid, false, undefined, controller.signal);
+        const payload = await requestInbox(
+          nextTargetUid,
+          false,
+          undefined,
+          forcedChallengeId,
+          controller.signal
+        );
         if (panelRequestIdRef.current !== requestId) return null;
-        if (payload.activeTargetUid) {
-          panelCacheRef.current.set(payload.activeTargetUid, payload);
-        }
-        setPanelData(payload);
-        setSummaryData(payload);
-        applySelectedTargetUid(payload.activeTargetUid, { syncUrl: true });
-        if (payload.activeTargetUid && draftHydratedTargetRef.current !== payload.activeTargetUid) {
-          draftHydratedTargetRef.current = payload.activeTargetUid;
-          setBody(payload.draft?.body ?? "");
-          setReplyingTo(
-            payload.draft?.replyToMessageId
-              ? (payload.messages.find((message): message is ContactTextMessage => message.kind === "text" && message.messageId === payload.draft?.replyToMessageId) ?? null)
-              : null
-          );
-        }
-        return payload;
+        return applyInboxPayload(payload, { mode: "refresh" });
       } catch (fetchError) {
         if (fetchError instanceof DOMException && fetchError.name === "AbortError") return null;
         setError(fetchError instanceof Error ? fetchError.message : "Inbox failed.");
@@ -288,7 +369,7 @@ export default function ContactEmarenWorkspace() {
         if (panelRequestIdRef.current === requestId) panelAbortRef.current = null;
       }
     },
-    [applySelectedTargetUid, uid]
+    [applyInboxPayload, forcedChallengeId, uid]
   );
 
   useEffect(() => {
@@ -493,12 +574,14 @@ export default function ContactEmarenWorkspace() {
     }
 
     const nextPayload = payload as ContactInboxPayload;
-    if (nextPayload.activeTargetUid) {
-      panelCacheRef.current.set(nextPayload.activeTargetUid, nextPayload);
-    }
-    setPanelData(nextPayload);
-    setSummaryData(nextPayload);
-    applySelectedTargetUid(nextPayload.activeTargetUid, { syncUrl: true });
+    const removedMessageId =
+      action.action === "delete_message" && typeof action.messageId === "number"
+        ? action.messageId
+        : null;
+    applyInboxPayload(nextPayload, {
+      mode: "refresh",
+      removeMessageIds: removedMessageId ? [removedMessageId] : undefined,
+    });
     return payload;
   }
 
@@ -636,12 +719,10 @@ export default function ContactEmarenWorkspace() {
       setReplyingTo(null);
       clearAttachment();
       const nextPayload = payload as ContactInboxPayload;
-      if (nextPayload.activeTargetUid) {
-        panelCacheRef.current.set(nextPayload.activeTargetUid, nextPayload);
-      }
-      setPanelData(nextPayload);
-      setSummaryData(nextPayload);
-      applySelectedTargetUid(nextPayload.activeTargetUid, { syncUrl: true });
+      applyInboxPayload(nextPayload, {
+        mode: "refresh",
+        dropOptimistic: true,
+      });
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : "Message failed.");
       setPanelData((current) => current ? { ...current, messages: current.messages.map((message) => message.kind === "text" && message.optimisticKey === optimisticKey ? { ...message, receipt: { status: "failed", deliveredAt: null, readAt: null } } : message) } : current);
@@ -653,13 +734,18 @@ export default function ContactEmarenWorkspace() {
   async function handleLoadOlder() {
     const before = panelData?.messagePage.beforeMessageId;
     const target = selectedTargetUidRef.current;
-    if (!before || !target) return;
-    const older = await requestInbox(target, false, before);
-    setPanelData((current) => {
-      if (!current || current.activeTargetUid !== target) return current;
-      const known = new Set(current.messages.map((message) => message.id));
-      return { ...current, messages: [...older.messages.filter((message) => !known.has(message.id)), ...current.messages], messagePage: older.messagePage };
-    });
+    if (!before || !target) return false;
+    const older = await requestInbox(
+      target,
+      false,
+      before,
+      forcedChallengeId
+    );
+    if (selectedTargetUidRef.current !== target || older.activeTargetUid !== target) {
+      return false;
+    }
+    applyInboxPayload(older, { mode: "prepend" });
+    return true;
   }
 
   async function handleChallengeAction(payload: {
@@ -713,7 +799,20 @@ export default function ContactEmarenWorkspace() {
     }
   }
 
-  const displayData = panelData ?? summaryData;
+  const unfilteredDisplayData = panelData ?? summaryData;
+  const focusedTargetUid =
+    forcedTargetUid ?? unfilteredDisplayData?.activeTargetUid ?? selectedTargetUid;
+  const displayData =
+    focused && unfilteredDisplayData
+      ? {
+          ...unfilteredDisplayData,
+          summaries: focusedTargetUid
+            ? unfilteredDisplayData.summaries.filter(
+                (summary) => summary.targetUid === focusedTargetUid
+              )
+            : [],
+        }
+      : unfilteredDisplayData;
 
   if (loading) {
     return (

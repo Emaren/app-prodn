@@ -1,4 +1,11 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
+import {
+  acquireChallengeDesyncAdvisoryLock,
+  assertWinnerSettlementAllowed,
+  ChallengeDesyncError,
+  loadDesyncIncidentsForSettlement,
+} from "@/lib/desyncChallenge";
+import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
 import { resolveCommunityTreasuryAddressConfig } from "@/lib/woloCommunityTreasury";
 import { getWoloBetEscrowRuntime } from "@/lib/woloChain";
 import {
@@ -36,6 +43,7 @@ const SCHEDULED_MATCH_SETTLEMENT_SELECT = {
   cancelledAt: true,
   resultAt: true,
   settlementReadyAt: true,
+  linkedSessionKey: true,
   challengerFundingTxHash: true,
   challengerFundingWalletAddress: true,
   challengerFundedAt: true,
@@ -232,6 +240,12 @@ function displayUserName(user: {
 
 function normalizeStatus(value: string | null | undefined) {
   return (value || "").trim().toLowerCase();
+}
+
+export function scheduledMatchSettlementRequiresWinnerDesyncGuard(
+  status: string | null | undefined
+) {
+  return normalizeStatus(status) === "completed";
 }
 
 function normalizeIdentity(value: string | null | undefined) {
@@ -1064,12 +1078,80 @@ function isRecentExecuting(transfer: ScheduledMatchSettlementTransfer) {
   return Number.isFinite(updatedAt) && Date.now() - updatedAt < EXECUTION_STALE_MS;
 }
 
+async function assertLockedWinnerSettlementAllowed(
+  tx: Prisma.TransactionClient,
+  matchId: number
+) {
+  await acquireChallengeDesyncAdvisoryLock(tx, matchId);
+  const match = await tx.scheduledMatch.findUnique({
+    where: { id: matchId },
+    select: {
+      status: true,
+      linkedSessionKey: true,
+    },
+  });
+  if (!match || !scheduledMatchSettlementRequiresWinnerDesyncGuard(match.status)) return;
+
+  const gameStatsId = match.linkedSessionKey
+    ? await resolveFinalGameStatsIdForSessionKey(tx, match.linkedSessionKey)
+    : null;
+  const preliminaryIncidents = await loadDesyncIncidentsForSettlement(tx, {
+    gameStatsId,
+    scheduledMatchId: matchId,
+  });
+  const replayLockIds = Array.from(
+    new Set(
+      [gameStatsId, ...preliminaryIncidents.map((incident) => incident.gameStatsId)]
+        .filter((id): id is number => typeof id === "number" && id > 0)
+    )
+  ).sort((left, right) => left - right);
+
+  for (const replayLockId of replayLockIds) {
+    await tx.$queryRaw<Array<{ lock_acquired: number }>>`
+      SELECT 1::int AS lock_acquired
+      FROM pg_advisory_xact_lock(${replayLockId})
+    `;
+  }
+
+  const [incidents, candidate] = await Promise.all([
+    loadDesyncIncidentsForSettlement(tx, {
+      gameStatsId,
+      scheduledMatchId: matchId,
+    }),
+    gameStatsId
+      ? tx.gameStats.findUnique({
+          where: { id: gameStatsId },
+          select: { createdAt: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  try {
+    assertWinnerSettlementAllowed({
+      incidents,
+      competitiveCandidate: {
+        gameStatsId,
+        observedAt: candidate?.createdAt ?? null,
+      },
+    });
+  } catch (error) {
+    if (error instanceof ChallengeDesyncError) {
+      throw new ScheduledMatchSettlementError(error.message, {
+        status: error.status,
+        code: "DESYNC_WINNER_SETTLEMENT_BLOCKED",
+      });
+    }
+    throw error;
+  }
+}
+
 async function markSettlementExecutionStarted(
   prisma: PrismaClient,
   matchId: number
 ): Promise<ScheduledMatchSettlementPlan> {
   return prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(${ADVISORY_LOCK_NAMESPACE}, ${matchId})`;
+    await assertLockedWinnerSettlementAllowed(tx, matchId);
     const plan = await loadSingleSettlementPlan(tx, matchId);
     if (!plan) {
       throw new ScheduledMatchSettlementError("Scheduled match not found.", {

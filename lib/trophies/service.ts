@@ -920,6 +920,8 @@ export async function loadTrophyCommandSnapshot(
     "watcher_pending",
     "replay_uploaded",
     "verification_pending",
+    "commissioner_review",
+    "forfeit_pending_commissioner",
     "settlement_dry_run",
     "settling",
   ]);

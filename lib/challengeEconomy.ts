@@ -18,6 +18,7 @@ export type ScheduledMatchPersistedStatus =
   | "right_checked_in"
   | "ready"
   | "live_confirmed"
+  | "desync_review"
   | "no_show_left"
   | "no_show_right"
   | "double_no_show"
@@ -43,6 +44,7 @@ export type ScheduledMatchDisplayState =
   | "right_checked_in"
   | "ready"
   | "live"
+  | "desync_review"
   | "no_show_left"
   | "no_show_right"
   | "double_no_show"
@@ -205,7 +207,9 @@ export function buildChallengeEconomySurface(
 
   if (!hasTerms) {
     const legacyDisplayState: ScheduledMatchDisplayState =
-      rawStatus === "accepted"
+      rawStatus === "desync_review"
+        ? "desync_review"
+        : rawStatus === "accepted"
         ? "accepted"
         : rawStatus === "declined"
           ? "declined"
@@ -226,7 +230,9 @@ export function buildChallengeEconomySurface(
                         : "pending";
 
     const legacyStatusLabel =
-      legacyDisplayState === "accepted"
+      legacyDisplayState === "desync_review"
+        ? "DESYNCED"
+        : legacyDisplayState === "accepted"
         ? "Accepted"
         : legacyDisplayState === "completed"
           ? "Completed"
@@ -246,7 +252,9 @@ export function buildChallengeEconomySurface(
                         ? "Cancelled"
                         : "Awaiting acceptance";
     const legacyStatusDetail =
-      legacyDisplayState === "accepted"
+      legacyDisplayState === "desync_review"
+        ? "Human-confirmed desync. Competitive result and settlement are unresolved pending commissioner disposition."
+        : legacyDisplayState === "accepted"
         ? "Legacy scheduled match without economy terms."
         : legacyDisplayState === "completed"
           ? "Legacy result stored."
@@ -295,7 +303,9 @@ export function buildChallengeEconomySurface(
           wager: null,
           treasury: null,
         },
-        readyForSettlement: legacyDisplayState === "completed" || legacyDisplayState === "forfeited",
+        readyForSettlement:
+          legacyDisplayState !== "desync_review" &&
+          (legacyDisplayState === "completed" || legacyDisplayState === "forfeited"),
         settlementReadyAt: input.settlementReadyAt?.toISOString() ?? null,
       },
     };
@@ -312,7 +322,9 @@ export function buildChallengeEconomySurface(
 
   let displayState: ScheduledMatchDisplayState;
 
-  if (rawStatus === "expired") {
+  if (rawStatus === "desync_review") {
+    displayState = "desync_review";
+  } else if (rawStatus === "expired") {
     displayState = "expired";
   } else if (rawStatus === "funding_expired") {
     displayState = "funding_expired";
@@ -352,7 +364,14 @@ export function buildChallengeEconomySurface(
     displayState = "proposed";
   }
 
-  if (hasExactSchedule && checkInWindowState === "closed" && bothFunded && rawStatus !== "completed" && rawStatus !== "live_confirmed") {
+  if (
+    hasExactSchedule &&
+    checkInWindowState === "closed" &&
+    bothFunded &&
+    rawStatus !== "completed" &&
+    rawStatus !== "live_confirmed" &&
+    rawStatus !== "desync_review"
+  ) {
     if (leftCheckedIn && rightCheckedIn) {
       displayState = "ready";
     } else if (leftCheckedIn) {
@@ -395,6 +414,17 @@ export function buildChallengeEconomySurface(
   };
 
   switch (displayState) {
+    case "desync_review":
+      statusLabel = "DESYNCED";
+      statusDetail =
+        "Human-confirmed desync. Competitive result, winner payout, and title movement are halted pending commissioner disposition.";
+      resolution = {
+        label: "Commissioner resolution required",
+        guarantee: "Match Guarantees remain locked until Rematch or Void & Refund is recorded.",
+        wager: "No winner payout may execute from this replay.",
+        treasury: null,
+      };
+      break;
     case "terms_accepted":
       statusLabel = "Awaiting creator funding";
       statusDetail = `${formatWolo(totalFundingWolo)} WOLO creator funding required.`;
@@ -540,12 +570,13 @@ export function buildChallengeEconomySurface(
       countdownTargetAt,
       resolution,
       readyForSettlement:
-        readyForSettlement ||
+        displayState !== "desync_review" &&
+        (readyForSettlement ||
         displayState === "completed" ||
         displayState === "no_show_left" ||
         displayState === "no_show_right" ||
         displayState === "double_no_show" ||
-        displayState === "refunded",
+        displayState === "refunded"),
       settlementReadyAt: input.settlementReadyAt?.toISOString() ?? null,
     },
   };

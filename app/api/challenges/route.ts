@@ -25,7 +25,11 @@ import {
   validateExactMatchTime,
   type ChallengeTimingMode,
 } from "@/lib/challengeLifecycle";
-import { postChallengeInboxNotice } from "@/lib/contactInbox";
+import {
+  buildTitleChallengeAcceptBy,
+  TERMINAL_TITLE_CHALLENGE_STATUSES,
+} from "@/lib/challengeTitlePolicy";
+import { postChallengeCommissionerNotice, postChallengeInboxNotice } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import {
@@ -47,6 +51,15 @@ const VIEWER_SELECT = {
   walletAddress: true,
   representedCountry: true,
 } as const;
+
+const TITLE_CHALLENGE_LOCK_NAMESPACE = 752_008;
+
+class TitleChallengeConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "TitleChallengeConflictError";
+  }
+}
 
 function playerName(user: {
   uid: string;
@@ -120,7 +133,9 @@ function buildChallengeInviteMessage({
 
   if (titleStakeNames.length > 0) {
     lines.push(`Title Stakes: ${titleStakeNames.join(", ")}`);
-    lines.push("Title Rule: Eligible app-side titles move only after verified watcher or replay proof.");
+    lines.push(
+      "Title Rule: Verified watcher or replay proof proposes the result; the commissioner approves or vetoes title custody."
+    );
   }
 
   if (challengeNote) {
@@ -155,11 +170,32 @@ async function requireViewer(request: NextRequest) {
   return { prisma, viewer };
 }
 
+async function retryChallengeCommissionerNotices(
+  prisma: ReturnType<typeof getPrisma>,
+  challengeIds: Iterable<number>
+) {
+  const uniqueChallengeIds = [...new Set(challengeIds)]
+    .filter((challengeId) => Number.isSafeInteger(challengeId) && challengeId > 0)
+    .slice(0, 30);
+
+  await Promise.all(
+    uniqueChallengeIds.map(async (challengeId) => {
+      await postChallengeCommissionerNotice(prisma, challengeId).catch((error) => {
+        console.error(`Failed to retry commissioner notice for challenge #${challengeId}:`, error);
+      });
+    })
+  );
+}
+
 export async function GET(request: NextRequest) {
   try {
     const prisma = getPrisma();
     const viewerUid = await getSessionUid(request);
     const payload = await loadChallengeHubSnapshot(prisma, viewerUid);
+    await retryChallengeCommissionerNotices(prisma, [
+      ...payload.scheduledMatches.map((match) => match.id),
+      ...payload.historyMatches.map((match) => match.id),
+    ]);
     return NextResponse.json(payload);
   } catch (error) {
     console.error("Failed to load challenge hub:", error);
@@ -200,11 +236,11 @@ export async function POST(request: NextRequest) {
       ? parseScheduledMatchDate(payload.matchTime ?? payload.scheduledAt)
       : null;
     const requestedAcceptBy = buildChallengeAcceptBy(now, acceptanceWindowHours);
-    const acceptBy =
+    let acceptBy =
       matchTime && matchTime.getTime() < requestedAcceptBy.getTime()
         ? new Date(matchTime)
         : requestedAcceptBy;
-    const scheduledAt = matchTime ?? acceptBy; // legacy compatibility shadow; v2 uses acceptBy/matchTime.
+    let scheduledAt = matchTime ?? acceptBy; // legacy compatibility shadow; v2 uses acceptBy/matchTime.
     const creationRequestId =
       normalizeCreationRequestId(payload.creationRequestId) ??
       `challenge-v2:${viewer.id}:${randomUUID()}`;
@@ -268,6 +304,7 @@ export async function POST(request: NextRequest) {
         if (existingRequest.challengerUserId !== viewer.id) {
           return NextResponse.json({ detail: "Challenge request ID is already in use." }, { status: 409 });
         }
+        await retryChallengeCommissionerNotices(prisma, [existingRequest.id]);
         const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
         return NextResponse.json({
           ...refreshed,
@@ -290,6 +327,8 @@ export async function POST(request: NextRequest) {
       | Awaited<ReturnType<typeof prisma.trophy.findUnique>>
       | null = null;
     let challengerRating: number | null = null;
+    let titleContender: typeof viewer | typeof challenged = viewer;
+    let titleOpponent: typeof viewer | typeof challenged = challenged;
 
     if (trophyKey) {
       await ensureTrophySeedData(prisma);
@@ -311,7 +350,15 @@ export async function POST(request: NextRequest) {
           { status: 409 }
         );
       }
-      if (expectedDefenderId && expectedDefenderId !== challenged.id) {
+      const viewerIsCurrentCustodian = expectedDefenderId === viewer.id;
+      titleContender = viewerIsCurrentCustodian ? challenged : viewer;
+      titleOpponent = viewerIsCurrentCustodian ? viewer : challenged;
+
+      if (
+        expectedDefenderId &&
+        expectedDefenderId !== challenged.id &&
+        expectedDefenderId !== viewer.id
+      ) {
         const targetName =
           targetTrophy.currentHolderDisplayName ||
           targetTrophy.guardianHolderDisplayName ||
@@ -323,10 +370,15 @@ export async function POST(request: NextRequest) {
       }
 
       if (targetTrophy.family === "national") {
-        if (!countriesEligibilityMatch(viewer.representedCountry, targetTrophy.eligibleNationality)) {
+        if (
+          !countriesEligibilityMatch(
+            titleContender.representedCountry,
+            targetTrophy.eligibleNationality
+          )
+        ) {
           return NextResponse.json(
             {
-              detail: `Set Representing Country to ${targetTrophy.eligibleNationality} before challenging for this belt.`,
+              detail: `${playerName(titleContender)} must set Representing Country to ${targetTrophy.eligibleNationality} before challenging for this belt.`,
             },
             { status: 400 }
           );
@@ -334,7 +386,7 @@ export async function POST(request: NextRequest) {
       } else if (targetTrophy.family === "elo") {
         const trophyUsers = await loadTrophyUsers(prisma);
         challengerRating =
-          trophyUsers.find((user) => user.id === viewer.id)?.rating ?? null;
+          trophyUsers.find((user) => user.id === titleContender.id)?.rating ?? null;
         const meetsMaximum =
           targetTrophy.eloBandMax === null ||
           (challengerRating !== null && challengerRating <= targetTrophy.eloBandMax);
@@ -353,7 +405,7 @@ export async function POST(request: NextRequest) {
           trophyId: targetTrophy.id,
           scheduledMatchId: { not: null },
           status: {
-            notIn: ["cancelled", "canceled", "disputed", "settled"],
+            notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES],
           },
         },
         select: { id: true, scheduledMatchId: true },
@@ -366,6 +418,9 @@ export async function POST(request: NextRequest) {
           { status: 409 }
         );
       }
+
+      acceptBy = buildTitleChallengeAcceptBy(now, matchTime);
+      scheduledAt = matchTime ?? acceptBy;
     }
 
     const titleStakePlans: Array<{
@@ -373,88 +428,15 @@ export async function POST(request: NextRequest) {
       challenger: typeof viewer | typeof challenged;
       opponent: typeof viewer | typeof challenged;
       challengerRating: number | null;
-      automatic: boolean;
     }> = [];
 
     if (targetTrophy) {
       titleStakePlans.push({
         trophy: targetTrophy,
-        challenger: viewer,
-        opponent: challenged,
+        challenger: titleContender,
+        opponent: titleOpponent,
         challengerRating,
-        automatic: false,
       });
-    } else {
-      const participantIds = [viewer.id, challenged.id];
-      const heldTitles = await prisma.trophy.findMany({
-        where: {
-          OR: [
-            { currentHolderUserId: { in: participantIds } },
-            { guardianHolderUserId: { in: participantIds } },
-          ],
-        },
-        orderBy: [{ kind: "asc" }, { displayName: "asc" }],
-      });
-      const trophyUsers = heldTitles.some((trophy) => trophy.family === "elo")
-        ? await loadTrophyUsers(prisma)
-        : [];
-      const activeTitleChallenges =
-        heldTitles.length > 0
-          ? await prisma.trophyChallenge.findMany({
-              where: {
-                trophyId: { in: heldTitles.map((trophy) => trophy.id) },
-                scheduledMatchId: { not: null },
-                status: {
-                  notIn: ["cancelled", "canceled", "disputed", "settled"],
-                },
-              },
-              select: { trophyId: true },
-            })
-          : [];
-      const busyTitleIds = new Set(
-        activeTitleChallenges.map((challenge) => challenge.trophyId)
-      );
-      const ratingByUserId = new Map(
-        trophyUsers.map((user) => [user.id, user.rating] as const)
-      );
-
-      for (const trophy of heldTitles) {
-        if (busyTitleIds.has(trophy.id)) continue;
-        const custodianId =
-          trophy.currentHolderUserId ?? trophy.guardianHolderUserId;
-        const automaticChallenger =
-          custodianId === challenged.id
-            ? viewer
-            : custodianId === viewer.id
-              ? challenged
-              : null;
-        const automaticOpponent =
-          custodianId === challenged.id
-            ? challenged
-            : custodianId === viewer.id
-              ? viewer
-              : null;
-        if (!automaticChallenger || !automaticOpponent) continue;
-
-        const automaticRating =
-          ratingByUserId.get(automaticChallenger.id) ?? null;
-        const eligible =
-          trophy.family === "national"
-            ? countriesEligibilityMatch(automaticChallenger.representedCountry, trophy.eligibleNationality)
-            : trophy.family === "elo"
-              ? automaticRating !== null &&
-                (trophy.eloBandMax === null || automaticRating <= trophy.eloBandMax)
-              : true;
-        if (!eligible) continue;
-
-        titleStakePlans.push({
-          trophy,
-          challenger: automaticChallenger,
-          opponent: automaticOpponent,
-          challengerRating: automaticRating,
-          automatic: true,
-        });
-      }
     }
 
     let createdChallengeId: number | null = null;
@@ -464,6 +446,42 @@ export async function POST(request: NextRequest) {
 
     try {
       await prisma.$transaction(async (tx) => {
+        if (targetTrophy) {
+          await tx.$executeRaw`
+            SELECT pg_advisory_xact_lock(
+              ${TITLE_CHALLENGE_LOCK_NAMESPACE},
+              ${targetTrophy.id}
+            )
+          `;
+
+          const competingTitleChallenge = await tx.trophyChallenge.findFirst({
+            where: {
+              trophyId: targetTrophy.id,
+              scheduledMatchId: { not: null },
+              status: {
+                notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES],
+              },
+            },
+            select: {
+              scheduledMatchId: true,
+              scheduledMatch: {
+                select: {
+                  creationRequestId: true,
+                  challengerUserId: true,
+                },
+              },
+            },
+          });
+          const isSameIdempotentRequest =
+            competingTitleChallenge?.scheduledMatch?.creationRequestId === creationRequestId &&
+            competingTitleChallenge.scheduledMatch.challengerUserId === viewer.id;
+          if (competingTitleChallenge && !isSameIdempotentRequest) {
+            throw new TitleChallengeConflictError(
+              `${targetTrophy.displayName} is already attached to active challenge #${competingTitleChallenge.scheduledMatchId}.`
+            );
+          }
+        }
+
       const createdMatch = await tx.scheduledMatch.create({
         data: {
           challengerUserId: viewer.id,
@@ -514,9 +532,7 @@ export async function POST(request: NextRequest) {
               challengerCountry: titleStake.challenger.representedCountry,
               challengerRating: titleStake.challengerRating,
               capturedAt: new Date().toISOString(),
-              source: titleStake.automatic
-                ? "scheduled_match_auto_stakes"
-                : "public_challenge_flow",
+              source: "public_challenge_flow",
             },
             status: "proposed",
             scheduledMatchId: createdMatch.id,
@@ -532,8 +548,12 @@ export async function POST(request: NextRequest) {
             eventType: "CHALLENGE_CREATED",
             actorUserId: viewer.id,
             actorRole:
-              titleStake.challenger.id === viewer.id ? "challenger" : "system",
-            initiatedBy: titleStake.automatic ? "system" : "user",
+              titleStake.challenger.id === viewer.id
+                ? "challenger"
+                : title.currentHolderUserId === viewer.id
+                  ? "defender"
+                  : "guardian",
+            initiatedBy: "user",
             toHolderUserId:
               title.currentHolderUserId ??
               title.guardianHolderUserId,
@@ -543,7 +563,7 @@ export async function POST(request: NextRequest) {
               scheduledMatchId: createdMatch.id,
               trophyTitleId: payload.trophyTitleId || null,
               trophyCountry: payload.trophyCountry || null,
-              automatic: titleStake.automatic,
+              automatic: false,
             },
           },
         });
@@ -649,6 +669,7 @@ export async function POST(request: NextRequest) {
           select: { id: true, challengerUserId: true },
         });
         if (existingRequest?.challengerUserId === viewer.id) {
+          await retryChallengeCommissionerNotices(prisma, [existingRequest.id]);
           const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
           return NextResponse.json({
             ...refreshed,
@@ -660,6 +681,11 @@ export async function POST(request: NextRequest) {
       throw error;
     }
 
+    if (createdChallengeId) {
+      await postChallengeCommissionerNotice(prisma, createdChallengeId).catch((error) => {
+        console.error(`Failed to notify commissioner for challenge #${createdChallengeId}:`, error);
+      });
+    }
     const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
     return NextResponse.json({
       ...refreshed,
@@ -670,6 +696,9 @@ export async function POST(request: NextRequest) {
       duplicateWarning,
     });
   } catch (error) {
+    if (error instanceof TitleChallengeConflictError) {
+      return NextResponse.json({ detail: error.message }, { status: 409 });
+    }
     console.error("Failed to create scheduled match:", error);
     const detail = error instanceof Error ? error.message : "Challenge could not be scheduled.";
     return NextResponse.json({ detail }, { status: 500 });

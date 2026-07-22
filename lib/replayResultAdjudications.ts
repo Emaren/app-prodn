@@ -7,6 +7,7 @@ import {
   normalizeReplayPlayers,
   type CanonicalReplayPlayer,
 } from "./teamResolution.ts";
+import { loadReplayDesyncIncidentProvenance } from "./replayDesyncIncidents.ts";
 
 export const REPLAY_RESULT_ACCEPTED = "accepted" as const;
 export const REPLAY_RESULT_PENDING_ADMIN = "pending_admin_approval" as const;
@@ -899,6 +900,7 @@ export async function loadReplayResultReviewState(
   const [
     game,
     adjudications,
+    desyncProvenance,
   ] = await Promise.all([
     prisma.gameStats.findUnique({
       where: {
@@ -923,6 +925,11 @@ export async function loadReplayResultReviewState(
         },
       ],
     }),
+
+    loadReplayDesyncIncidentProvenance(
+      prisma,
+      gameStatsId
+    ),
   ]);
 
   if (!game) {
@@ -1043,6 +1050,8 @@ export async function loadReplayResultReviewState(
           )
       ),
 
+    ...desyncProvenance,
+
     linkedMarkets:
       marketState.summary,
   };
@@ -1111,6 +1120,19 @@ export async function submitReplayResultAdjudication(input: {
           return { adjudication: existingIdempotent, created: false };
         }
         fail(409, "idempotency_conflict", "That idempotency key was already used for another verdict.");
+      }
+
+      const currentDesyncIncident = await tx.replayDesyncIncident.findFirst({
+        where: { gameStatsId },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        select: { desyncOccurred: true },
+      });
+      if (currentDesyncIncident?.desyncOccurred) {
+        fail(
+          409,
+          "desync_result_lock_paused",
+          "Winner locking is paused for this desynced replay. Resolve the Challenge through rematch or void/refund, or append a no-desync correction."
+        );
       }
 
       const previous = await tx.replayResultAdjudication.findFirst({

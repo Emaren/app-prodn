@@ -19,6 +19,7 @@ import {
   Wallet,
   Wrench,
   XCircle,
+  Zap,
 } from "lucide-react";
 
 import TimeDisplayText from "@/components/time/TimeDisplayText";
@@ -51,7 +52,9 @@ export type ScheduledMatchCardActionKind =
   | "reschedule"
   | "confirm_time"
   | "fund"
-  | "check_in";
+  | "check_in"
+  | "desync_rematch"
+  | "desync_void_refund";
 
 export type ScheduledMatchCardActionState = {
   challengeId: number | null;
@@ -140,6 +143,10 @@ function formatRelativeDuration(diffMs: number) {
 }
 
 function formatCountdownLabel(match: ScheduledMatchTile, nowMs: number) {
+  if (match.displayState === "desync_review") {
+    return "Commissioner review";
+  }
+
   if (["completed", "no_show_left", "no_show_right", "double_no_show", "refunded", "forfeited", "declined", "cancelled", "canceled", "expired", "funding_expired"].includes(match.displayState)) {
     return match.money.state === "refunded" ? "Refunded" : "Resolved";
   }
@@ -196,6 +203,13 @@ function fundingWorkflowLabel(state: FundingWorkflowState, totalFundingWolo: num
 
 function accentClasses(displayState: ScheduledMatchTile["displayState"]) {
   switch (displayState) {
+    case "desync_review":
+      return {
+        shell: "border-fuchsia-200/32 bg-[radial-gradient(circle_at_16%_0%,rgba(232,121,249,0.25),transparent_30%),radial-gradient(circle_at_86%_12%,rgba(251,146,60,0.18),transparent_34%),linear-gradient(135deg,rgba(88,28,135,0.82),rgba(49,16,70,0.84)_45%,rgba(2,6,23,0.92)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_34px_rgba(217,70,239,0.18),0_22px_70px_rgba(0,0,0,0.42)]",
+        badge: "border-fuchsia-100/38 bg-fuchsia-300/14 text-fuchsia-50 shadow-[0_0_20px_rgba(232,121,249,0.15)]",
+        icon: "border-orange-100/28 bg-orange-300/12 text-orange-50",
+        eyebrow: "text-fuchsia-50/90 drop-shadow-[0_0_12px_rgba(232,121,249,0.22)]",
+      };
     case "proposed":
     case "pending":
     case "creator_funded":
@@ -307,6 +321,13 @@ function defaultCardViewMode({
 }
 
 function buildWatcherStatus(match: ScheduledMatchTile) {
+  if (match.displayState === "desync_review") {
+    return {
+      label: "Replay linked · result quarantined",
+      ready: false,
+    };
+  }
+
   if (match.linkedSessionKey || match.displayState === "live" || match.displayState === "completed") {
     return {
       label: match.displayState === "completed" ? "Result linked" : "Game detected",
@@ -677,20 +698,31 @@ export default function ScheduledMatchCard({
   const countdownLabel = mounted ? formatCountdownLabel(match, nowMs) : "Scheduled";
   const watcherStatus = useMemo(() => buildWatcherStatus(match), [match]);
   const resolved = isResolvedState(match.displayState);
+  const desyncHold = match.displayState === "desync_review";
 
   const canDecline = Boolean(
     onDecline &&
+      !desyncHold &&
       viewerIsChallenged &&
       ["proposed", "pending", "creator_funded"].includes(match.displayState)
   );
+  const canAcceptOnly = Boolean(
+    onAccept &&
+      !desyncHold &&
+      viewerIsChallenged &&
+      ["proposed", "pending"].includes(match.displayState)
+  );
   const canAcceptAndFund = Boolean(
     onAccept &&
+      !desyncHold &&
       viewerIsChallenged &&
-      ((match.economy.hasTerms && creatorFunded && ["creator_funded"].includes(match.displayState)) ||
-        (!match.economy.hasTerms && ["proposed", "pending"].includes(match.displayState)))
+      match.economy.hasTerms &&
+      creatorFunded &&
+      match.displayState === "creator_funded"
   );
   const canCancel = Boolean(
     onCancel &&
+      !desyncHold &&
       viewerIsParticipant &&
       !hasCheckInOnFile &&
       match.displayState !== "live" &&
@@ -708,6 +740,7 @@ export default function ScheduledMatchCard({
   );
   const canReschedule = Boolean(
     onReschedule &&
+      !desyncHold &&
       viewerIsParticipant &&
       !hasCheckInOnFile &&
       match.displayState !== "live" &&
@@ -725,6 +758,7 @@ export default function ScheduledMatchCard({
   );
   const canConfirmTime = Boolean(
     onConfirmTime &&
+      !desyncHold &&
       viewerIsParticipant &&
       match.acceptedAt &&
       match.matchTime &&
@@ -737,6 +771,7 @@ export default function ScheduledMatchCard({
   );
   const canFund = Boolean(
     onFund &&
+      !desyncHold &&
       viewerIsParticipant &&
       match.economy.hasTerms &&
       !viewerAlreadyFunded &&
@@ -747,6 +782,7 @@ export default function ScheduledMatchCard({
   );
   const canCheckIn = Boolean(
     onCheckIn &&
+      !desyncHold &&
       viewerIsParticipant &&
       viewerAlreadyFunded &&
       !viewerAlreadyCheckedIn &&
@@ -755,25 +791,32 @@ export default function ScheduledMatchCard({
 
   const spotlightPlayer = viewerIsChallenged ? match.challenger : match.challenged;
   const threadHref = `/challenge/${match.id}`;
-  const statsHref =
-    (match.displayState === "completed" || match.displayState === "live") && match.linkedSessionKey
+  const statsHref = match.desyncIncident
+    ? `/game-stats/${match.desyncIncident.gameStatsId}`
+    : (match.displayState === "completed" || match.displayState === "live") && match.linkedSessionKey
       ? `/game-stats/live/${encodeURIComponent(match.linkedSessionKey)}`
       : null;
 
   const primaryActionLabel = useMemo(() => {
+    if (canAcceptOnly) return "Accept Challenge";
     if (canAcceptAndFund) return `Accept + Fund ${formatWolo(match.terms.totalFundingWolo)}`;
     if (canFund) return fundingWorkflowLabel(fundingWorkflow, match.terms.totalFundingWolo);
     if (canCheckIn) return "Check In";
-    if (statsHref) return match.displayState === "completed" ? "View Result" : "Watch Live";
+    if (statsHref) {
+      if (desyncHold) return "Review DESYNC Proof";
+      return match.displayState === "completed" ? "View Result" : "Watch Live";
+    }
     if (viewerIsChallenger && ["proposed", "pending"].includes(match.displayState) && !creatorFunded) {
       return `Fund ${formatWolo(match.terms.totalFundingWolo)} WOLO`;
     }
     return "Open Thread";
   }, [
+    canAcceptOnly,
     canAcceptAndFund,
     canCheckIn,
     canFund,
     creatorFunded,
+    desyncHold,
     fundingWorkflow,
     match.displayState,
     match.terms.totalFundingWolo,
@@ -783,11 +826,13 @@ export default function ScheduledMatchCard({
   const viewerFundingSummary = viewerIsParticipant
     ? viewerAlreadyFunded
       ? "You funded"
-      : canAcceptAndFund
-        ? "Accept + fund"
-        : canFund
-          ? "You pending"
-          : "You waiting"
+      : canAcceptOnly
+        ? "Accept challenge"
+        : canAcceptAndFund
+          ? "Accept + fund"
+          : canFund
+            ? "You pending"
+            : "You waiting"
     : bothFunded
       ? "Funded"
       : "Funding open";
@@ -1002,6 +1047,20 @@ export default function ScheduledMatchCard({
   function renderPrimaryAction() {
     const buttonClass =
       "inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-yellow-100/36 bg-[linear-gradient(180deg,#fff1a6_0%,#e8bc4f_32%,#a66a18_100%)] px-4 py-2 text-sm font-black text-[#130d04] shadow-[inset_0_1px_0_rgba(255,255,255,0.60),0_0_22px_rgba(234,179,8,0.18)] transition hover:border-yellow-50/65 hover:text-black hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.72),0_0_30px_rgba(234,179,8,0.26)] disabled:cursor-not-allowed disabled:opacity-60";
+
+    if (canAcceptOnly) {
+      return (
+        <button
+          type="button"
+          onClick={() => void runAction(() => onAccept?.(match.id))}
+          disabled={cardBusy}
+          className={buttonClass}
+        >
+          <CheckCircle2 className="h-4 w-4" />
+          {currentActionKind === "accept" ? "Accepting" : primaryActionLabel}
+        </button>
+      );
+    }
 
     if (canAcceptAndFund) {
       return (
@@ -1248,9 +1307,56 @@ export default function ScheduledMatchCard({
             ))}
           </div>
           <div className="mt-2 text-[11px] leading-5 text-emerald-100/60">
-            Belts move automatically after verified match proof. Artifact records still require their metric proof.
+            {desyncHold
+              ? "Title, belt, and artifact movement is halted. No machine winner can move custody during commissioner review."
+              : "Belts move automatically after verified match proof. Artifact records still require their metric proof."}
           </div>
         </div>
+      ) : null}
+
+      {desyncHold && match.desyncIncident ? (
+        <section
+          data-challenge-desync-incident
+          className={`${compact ? "mt-3" : "mt-4"} overflow-hidden rounded-[1.15rem] border border-fuchsia-200/28 bg-[linear-gradient(135deg,rgba(126,34,206,0.18),rgba(234,88,12,0.08),rgba(2,6,23,0.5))] p-4 shadow-[0_0_34px_rgba(217,70,239,0.10)]`}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-fuchsia-100/78">
+                <Zap className="h-3.5 w-3.5 fill-current" />
+                Human incident truth
+              </div>
+              <div className="mt-2 text-lg font-black text-white">⚡ DESYNCED! ⚡</div>
+              <p className="mt-1 text-xs leading-5 text-fuchsia-50/70">
+                Confirmed by {match.desyncIncident.reviewerDisplayName} · {new Date(match.desyncIncident.createdAt).toLocaleString()}
+              </p>
+            </div>
+            <Link
+              href={`/game-stats/${match.desyncIncident.gameStatsId}`}
+              className="rounded-full border border-fuchsia-100/24 bg-fuchsia-100/[0.08] px-3 py-1.5 text-xs font-bold text-fuchsia-50 transition hover:bg-fuchsia-100/[0.13]"
+            >
+              Replay provenance ↗
+            </Link>
+          </div>
+
+          <div className="mt-4 grid gap-2 sm:grid-cols-3">
+            {[
+              ["Desync occurred", "Yes · human confirmed"],
+              ["Competitive result", "Unresolved · no winner"],
+              ["Settlement", "Commissioner review"],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-white/10 bg-black/24 px-3 py-2.5">
+                <div className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-400">{label}</div>
+                <div className="mt-1 text-xs font-bold text-white">{value}</div>
+              </div>
+            ))}
+          </div>
+
+          {match.desyncIncident.note ? (
+            <p className="mt-3 border-l-2 border-fuchsia-200/36 pl-3 text-xs leading-5 text-slate-300">
+              {match.desyncIncident.note}
+            </p>
+          ) : null}
+        </section>
       ) : null}
 
       <div className={`${compact ? "mt-3 gap-2" : "mt-4 gap-3"} grid ${stacked ? "grid-cols-1 min-[430px]:grid-cols-2" : "sm:grid-cols-2"}`}>
@@ -1299,7 +1405,7 @@ export default function ScheduledMatchCard({
           icon={<Swords className="h-4 w-4" />}
           label="State"
           value={match.economy.statusLabel}
-          active={["ready", "live", "completed"].includes(match.displayState)}
+          active={["ready", "live", "completed", "desync_review"].includes(match.displayState)}
         />
       </div>
 
@@ -1556,7 +1662,10 @@ export default function ScheduledMatchCard({
               href={match.linkedSessionKey ? `/game-stats/live/${encodeURIComponent(match.linkedSessionKey)}` : null}
             />
             <AdvancedRow label="Map" value={match.linkedMapName || "-"} />
-            <AdvancedRow label="Winner" value={match.linkedWinner || "-"} />
+            <AdvancedRow
+              label="Competitive result"
+              value={desyncHold ? "Unresolved — machine winner quarantined" : match.linkedWinner || "-"}
+            />
             <AdvancedRow label="Resolution" value={match.economy.resolution.label || match.economy.statusLabel} />
           </div>
 

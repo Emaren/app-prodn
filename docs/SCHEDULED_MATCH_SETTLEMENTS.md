@@ -49,19 +49,29 @@ The scheduled-match executor only handles funded Challenge escrow rows from `sch
 
 - `canceled`: refund each funded participant their `wagerAmountWolo + guaranteeAmountWolo`.
 - `double_no_show`: refund each funded participant their wager; route funded guarantees to Community Treasury.
-- `no_show_left`: refund the left/challenger wager, refund the right/challenged wager plus guarantee, and route the left/challenger guarantee to Community Treasury.
-- `no_show_right`: refund the right/challenged wager, refund the left/challenger wager plus guarantee, and route the right/challenged guarantee to Community Treasury.
-- `completed`: review-only until winner payout logic is explicitly wired for scheduled matches.
+- `no_show_left`: refund both wagers, return the right/challenged guarantee, and award the left/challenger missed guarantee to the right/challenged player who checked in.
+- `no_show_right`: refund both wagers, return the left/challenger guarantee, and award the right/challenged missed guarantee to the left/challenger player who checked in.
+- `completed`: return both guarantees and award both wagers to the verified winner.
 
-Title custody is separate from WOLO settlement. Eligible app-side belts held by
-either participant are attached automatically when the match is scheduled. A
-verified watcher/replay result transfers an `app_only` belt in the app custody
-ledger and creates any dethrone bounty as a pending operator payout. Chain-backed
-title custody remains a chain intent. Artifacts attach to the proof rail but stop
-at `artifact_proof_review` until their configured metric is verified; match winner
+Title custody is separate from WOLO settlement. Only an explicitly selected title
+is attached to a scheduled challenge. Verified watcher/replay proof records the
+winner and proposes a title disposition, but custody and dethrone bounty state do
+not move until the commissioner settles or vetoes the review. Chain-backed title
+custody remains a chain intent. Artifacts attach to the proof rail but stop
+at `commissioner_review` until their configured metric is verified; match winner
 alone is not artifact proof.
 
 This is Challenge escrow settlement, not staking.
+
+## Desync safety gate
+
+A current human-confirmed desync blocks the `completed` winner-transfer branch.
+It also blocks ordinary winner-market payouts and title/belt/artifact custody at
+their own server call sites. The commissioner must append either a rematch or a
+void/refund disposition; a rematch requires a distinct later `GameStats` record.
+The void/refund action may enter the canceled refund branch, but is described as
+paid only after the existing ledger and WoloChain proof record successful
+execution. See [Human-Confirmed Desync Protocol](./DESYNC_INCIDENT_PROTOCOL.md).
 
 ## Ledger
 
@@ -102,7 +112,7 @@ Execute one match after reviewing the plan:
 POST /api/admin/wolochain/scheduled-settlements/:id/execute
 ```
 
-Execution is admin-only, records `refund_sent`, `guarantee_forfeited_to_treasury`, `scheduled_settlement_completed`, and `scheduled_settlement_failed` activity rows, and refuses execution when funding, recipients, settlement config, or Bet Escrow signer verification are missing.
+Execution is admin-only, records `refund_sent`, `guarantee_awarded`, `guarantee_forfeited_to_treasury`, `wager_awarded`, `scheduled_settlement_completed`, and `scheduled_settlement_failed` activity rows, and refuses execution when funding, recipients, settlement config, or Bet Escrow signer verification are missing.
 
 ## Current Backfill Targets
 

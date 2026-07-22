@@ -13,6 +13,18 @@ import {
   type ChallengeMoneyState,
   type ChallengeTimingMode,
 } from "@/lib/challengeLifecycle";
+import {
+  TERMINAL_TITLE_CHALLENGE_STATUSES,
+  TITLE_RESULT_REVIEW_SETTLEMENT_STATUS,
+  TITLE_RESULT_REVIEW_STATUS,
+} from "@/lib/challengeTitlePolicy";
+import {
+  acquireChallengeDesyncAdvisoryLock,
+  assertTitleTransferAllowed,
+  assertWinnerSettlementAllowed,
+  ChallengeDesyncError,
+  loadDesyncIncidentsForSettlement,
+} from "@/lib/desyncChallenge";
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
 import { buildClaimedPlayerHref } from "@/lib/publicPlayers";
@@ -21,6 +33,10 @@ import {
   normalizeScheduledMatchViewerPreference,
   type ScheduledMatchViewerPreference,
 } from "@/lib/scheduledMatchPreferences";
+import {
+  executeScheduledMatchSettlement,
+  ScheduledMatchSettlementError,
+} from "@/lib/scheduledMatchSettlements";
 import {
   WOLO_CHAIN_ID,
   WOLO_CHALLENGE_ESCROW_ADDRESS,
@@ -33,9 +49,17 @@ const CHALLENGE_RECENT_LINGER_MS = 15 * 60 * 1000;
 const CHALLENGE_START_GRACE_MS = 60 * 1000;
 const SESSION_MATCH_LOOKBACK_MS = 45 * 60 * 1000;
 const SESSION_MATCH_LOOKAHEAD_MS = 8 * 60 * 60 * 1000;
-const CHALLENGE_LEDGER_LOOKBACK_MS = 45 * 24 * 60 * 60 * 1000;
-const CHALLENGE_ACTIVITY_LIMIT = 40;
-const TROPHY_DAY_MS = 24 * 60 * 60 * 1000;
+const INITIAL_CHALLENGE_HISTORY_LIMIT = 24;
+const EXPECTED_AUTOMATIC_SETTLEMENT_SKIP_CODES = new Set([
+  "ALREADY_SETTLED",
+  "PLAN_BLOCKED",
+  "SETTLEMENT_UNCONFIGURED",
+  "EXECUTION_IN_PROGRESS",
+  "NO_FUNDING",
+  "NO_TRANSFERS",
+  "SETTLEMENT_REVIEW_ONLY",
+  "DESYNC_WINNER_SETTLEMENT_BLOCKED",
+]);
 const ACTIVE_SCHEDULED_STATUSES = [
   "pending",
   "accepted",
@@ -48,6 +72,7 @@ const ACTIVE_SCHEDULED_STATUSES = [
   "right_checked_in",
   "ready",
   "live_confirmed",
+  "desync_review",
 ] as const;
 const RESOLVED_SCHEDULED_STATUSES = [
   "completed",
@@ -63,22 +88,6 @@ const RESOLVED_SCHEDULED_STATUSES = [
   "refunded",
 ] as const;
 
-function projectedChallengeTrophyBounty(trophy: {
-  currentBountyWolo: number;
-  bountyGrowthWolo: number;
-  holderSince: Date | null;
-  status: string;
-}) {
-  if (!trophy.holderSince || !["held", "active", "guardian_held"].includes(trophy.status)) {
-    return trophy.currentBountyWolo;
-  }
-  const elapsedDays = Math.max(
-    0,
-    Math.floor((Date.now() - trophy.holderSince.getTime()) / TROPHY_DAY_MS)
-  );
-  return trophy.currentBountyWolo + elapsedDays * trophy.bountyGrowthWolo;
-}
-
 type ChallengeUserRow = {
   id: number;
   uid: string;
@@ -88,6 +97,7 @@ type ChallengeUserRow = {
   verificationLevel: number;
   lastSeen: Date | null;
   walletAddress: string | null;
+  isAdmin: boolean;
 };
 
 type ScheduledMatchRow = {
@@ -148,6 +158,21 @@ type ScheduledMatchRow = {
     amountWolo: number;
     txHash: string | null;
     executedAt: Date | null;
+  }>;
+  replayDesyncIncidents: Array<{
+    id: number;
+    gameStatsId: number;
+    supersedesId: number | null;
+    desyncOccurred: boolean;
+    competitiveResultStatus: string;
+    settlementDisposition: string;
+    reviewerUidSnapshot: string;
+    reviewerDisplayNameSnapshot: string;
+    note: string | null;
+    sourceReplayHash: string;
+    sourceParseIteration: number;
+    parserDesyncCandidate: boolean;
+    createdAt: Date;
   }>;
 };
 
@@ -224,6 +249,21 @@ export type ScheduledMatchTile = {
   linkedMapName: string | null;
   linkedWinner: string | null;
   durationSeconds: number | null;
+  desyncIncident: {
+    id: number;
+    gameStatsId: number;
+    supersedesId: number | null;
+    desyncOccurred: boolean;
+    competitiveResultStatus: string;
+    settlementDisposition: string;
+    reviewerUid: string;
+    reviewerDisplayName: string;
+    note: string | null;
+    sourceReplayHash: string;
+    sourceParseIteration: number;
+    parserDesyncCandidate: boolean;
+    createdAt: string;
+  } | null;
   fundingRail: ChallengeFundingRailSurface;
   titleStakes: Array<{
     challengeId: number;
@@ -283,6 +323,11 @@ export type ChallengeRecordSummary = {
 
 export type ChallengeHubSnapshot = {
   viewer: ChallengePlayerSurface | null;
+  historyScope: "global" | "participant";
+  historyPage: {
+    hasMore: boolean;
+    nextCursor: number | null;
+  };
   candidates: ChallengePlayerSurface[];
   scheduledMatches: ScheduledMatchTile[];
   historyMatches: ScheduledMatchTile[];
@@ -312,6 +357,7 @@ const CHALLENGE_PLAYER_SELECT = {
   verificationLevel: true,
   lastSeen: true,
   walletAddress: true,
+  isAdmin: true,
 } as const;
 
 const SCHEDULED_MATCH_SELECT = {
@@ -388,6 +434,25 @@ const SCHEDULED_MATCH_SELECT = {
     orderBy: {
       id: "asc",
     },
+  },
+  replayDesyncIncidents: {
+    select: {
+      id: true,
+      gameStatsId: true,
+      supersedesId: true,
+      desyncOccurred: true,
+      competitiveResultStatus: true,
+      settlementDisposition: true,
+      reviewerUidSnapshot: true,
+      reviewerDisplayNameSnapshot: true,
+      note: true,
+      sourceReplayHash: true,
+      sourceParseIteration: true,
+      parserDesyncCandidate: true,
+      createdAt: true,
+    },
+    orderBy: { id: "desc" },
+    take: 1,
   },
 } as const;
 
@@ -487,7 +552,6 @@ async function loadPersistedChallengeActivityRows(
       },
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: CHALLENGE_ACTIVITY_LIMIT,
     select: {
       id: true,
       scheduledMatchId: true,
@@ -711,7 +775,7 @@ function buildSyntheticChallengeActivities(rows: ScheduledMatchRow[]): Challenge
         id: row.id * 10_000 + 12,
         scheduledMatchId: row.id,
         eventType: "no_show_left",
-        detail: `${challengerName} missed check-in. The missed-side Match Guarantee routes to Community Treasury.`,
+        detail: `${challengerName} missed check-in. ${challengedName} is owed both Match Guarantees; both Wolo Wagers are queued to return.`,
         actorUid: null,
         actorName: null,
         createdAt: row.resultAt.toISOString(),
@@ -724,7 +788,7 @@ function buildSyntheticChallengeActivities(rows: ScheduledMatchRow[]): Challenge
         id: row.id * 10_000 + 13,
         scheduledMatchId: row.id,
         eventType: "no_show_right",
-        detail: `${challengedName} missed check-in. The missed-side Match Guarantee routes to Community Treasury.`,
+        detail: `${challengedName} missed check-in. ${challengerName} is owed both Match Guarantees; both Wolo Wagers are queued to return.`,
         actorUid: null,
         actorName: null,
         createdAt: row.resultAt.toISOString(),
@@ -737,7 +801,7 @@ function buildSyntheticChallengeActivities(rows: ScheduledMatchRow[]): Challenge
         id: row.id * 10_000 + 14,
         scheduledMatchId: row.id,
         eventType: "double_no_show",
-        detail: "Both players missed the check-in lock. Match Guarantees route to Community Treasury.",
+        detail: "Both players missed the check-in lock. Match Guarantees are owed to Community Treasury; both Wolo Wagers are queued to return.",
         actorUid: null,
         actorName: null,
         createdAt: row.resultAt.toISOString(),
@@ -750,7 +814,7 @@ function buildSyntheticChallengeActivities(rows: ScheduledMatchRow[]): Challenge
     (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
   );
 
-  return items.slice(0, CHALLENGE_ACTIVITY_LIMIT);
+  return items;
 }
 
 async function loadChallengeActivityRows(
@@ -773,8 +837,7 @@ async function loadChallengeActivityRows(
   return Array.from(merged.values())
     .sort(
       (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
-    )
-    .slice(0, CHALLENGE_ACTIVITY_LIMIT);
+    );
 }
 
 function readSessionTime(session: Pick<ComparableSession, "updatedAt" | "completedAt">) {
@@ -966,12 +1029,24 @@ function buildScheduledMatchTile(
   now = new Date(),
   viewerPreference: ScheduledMatchViewerPreference = EMPTY_SCHEDULED_MATCH_VIEWER_PREFERENCE
 ): ScheduledMatchTile {
+  const latestDesyncIncident = row.replayDesyncIncidents[0] ?? null;
+  const desyncReviewActive = Boolean(
+    row.status === "desync_review" &&
+      latestDesyncIncident?.desyncOccurred &&
+      latestDesyncIncident.settlementDisposition === "commissioner_review"
+  );
   const linkedSessionState =
     linkedSession?.state ??
     (row.status === "completed" ? "completed" : row.status === "live_confirmed" ? "live" : null);
   const surface = buildChallengeEconomySurface(
     {
-      status: linkedSessionState === "live" ? "live_confirmed" : linkedSessionState === "completed" ? "completed" : row.status,
+      status: desyncReviewActive
+        ? "desync_review"
+        : linkedSessionState === "live"
+          ? "live_confirmed"
+          : linkedSessionState === "completed"
+            ? "completed"
+            : row.status,
       scheduledAt: row.scheduledAt,
       timingMode: row.timingMode,
       matchTime: row.matchTime,
@@ -994,7 +1069,13 @@ function buildScheduledMatchTile(
   );
   const lifecycle = deriveChallengeLifecycle(
     {
-      status: linkedSessionState === "live" ? "live_confirmed" : linkedSessionState === "completed" ? "completed" : row.status,
+      status: desyncReviewActive
+        ? "desync_review"
+        : linkedSessionState === "live"
+          ? "live_confirmed"
+          : linkedSessionState === "completed"
+            ? "completed"
+            : row.status,
       timingMode: row.timingMode,
       createdAt: row.createdAt,
       acceptBy: row.acceptBy,
@@ -1015,11 +1096,13 @@ function buildScheduledMatchTile(
     },
     now
   );
-  const displayState = linkedSessionState === "live"
-    ? "live"
-    : linkedSessionState === "completed"
-      ? "completed"
-      : lifecycle.phase === "expired"
+  const displayState = desyncReviewActive
+    ? "desync_review"
+    : linkedSessionState === "live"
+      ? "live"
+      : linkedSessionState === "completed"
+        ? "completed"
+        : lifecycle.phase === "expired"
         ? "expired"
         : lifecycle.phase === "funding_expired"
           ? "funding_expired"
@@ -1070,21 +1153,31 @@ function buildScheduledMatchTile(
     economy: {
       ...surface.economy,
       statusLabel:
-        linkedSessionState === "live"
+        desyncReviewActive
+          ? "DESYNCED"
+          : linkedSessionState === "live"
           ? "Live confirmed"
           : linkedSessionState === "completed"
             ? "Completed"
             : surface.economy.statusLabel,
       statusDetail:
-        linkedSessionState === "live"
+        desyncReviewActive
+          ? "Human-confirmed desync. Competitive result, winner payout, and title movement are halted pending commissioner disposition."
+          : linkedSessionState === "live"
           ? "The match session is linked and underway."
           : linkedSessionState === "completed"
             ? "Result is ready for Match Guarantee return and Wolo Wager settlement."
             : surface.economy.statusDetail,
       readyForSettlement:
-        linkedSessionState === "completed" ? true : surface.economy.readyForSettlement,
+        desyncReviewActive
+          ? false
+          : linkedSessionState === "completed"
+            ? true
+            : surface.economy.readyForSettlement,
       settlementReadyAt:
-        linkedSessionState === "completed"
+        desyncReviewActive
+          ? null
+          : linkedSessionState === "completed"
           ? row.settlementReadyAt?.toISOString() ?? row.resultAt?.toISOString() ?? null
           : surface.economy.settlementReadyAt,
     },
@@ -1093,8 +1186,27 @@ function buildScheduledMatchTile(
     linkedSessionKey: linkedSession?.sessionKey ?? row.linkedSessionKey ?? null,
     linkedSessionState,
     linkedMapName: linkedSession?.mapName ?? row.linkedMapName ?? null,
-    linkedWinner: linkedSession?.winner ?? row.linkedWinner ?? null,
+    // The parser/watcher's winner remains in storage as machine evidence, but
+    // it must never be projected as competitive truth during human desync review.
+    linkedWinner: desyncReviewActive ? null : linkedSession?.winner ?? row.linkedWinner ?? null,
     durationSeconds: linkedSession?.durationSeconds ?? row.linkedDurationSeconds ?? null,
+    desyncIncident: latestDesyncIncident
+      ? {
+          id: latestDesyncIncident.id,
+          gameStatsId: latestDesyncIncident.gameStatsId,
+          supersedesId: latestDesyncIncident.supersedesId,
+          desyncOccurred: latestDesyncIncident.desyncOccurred,
+          competitiveResultStatus: latestDesyncIncident.competitiveResultStatus,
+          settlementDisposition: latestDesyncIncident.settlementDisposition,
+          reviewerUid: latestDesyncIncident.reviewerUidSnapshot,
+          reviewerDisplayName: latestDesyncIncident.reviewerDisplayNameSnapshot,
+          note: latestDesyncIncident.note,
+          sourceReplayHash: latestDesyncIncident.sourceReplayHash,
+          sourceParseIteration: latestDesyncIncident.sourceParseIteration,
+          parserDesyncCandidate: latestDesyncIncident.parserDesyncCandidate,
+          createdAt: latestDesyncIncident.createdAt.toISOString(),
+        }
+      : null,
     fundingRail: buildChallengeFundingRailSurface(),
     titleStakes: row.trophyChallenges.map((challenge) => ({
       challengeId: challenge.id,
@@ -1153,7 +1265,7 @@ function rowsMatchLinkedSession(row: ScheduledMatchRow, session: ComparableSessi
 }
 
 async function recordAutoScheduledMatchActivity(
-  prisma: PrismaClient,
+  prisma: PrismaClient | Prisma.TransactionClient,
   input: {
     scheduledMatchId: number;
     eventType: string;
@@ -1173,7 +1285,41 @@ async function recordAutoScheduledMatchActivity(
   });
 }
 
-async function settleVerifiedScheduledMatchTitleStakes(
+async function loadLockedScheduledMatchDesyncIncidents(
+  tx: Prisma.TransactionClient,
+  input: {
+    scheduledMatchId: number;
+    gameStatsId: number;
+  }
+) {
+  // Serialize replay-result projection against both commissioner Challenge
+  // actions and append-only incident writes. The incident writer uses this
+  // same single-key replay lock; the Challenge protocol uses the namespaced
+  // match lock.
+  await acquireChallengeDesyncAdvisoryLock(tx, input.scheduledMatchId);
+  const preliminaryIncidents = await loadDesyncIncidentsForSettlement(tx, {
+    gameStatsId: input.gameStatsId,
+    scheduledMatchId: input.scheduledMatchId,
+  });
+  const replayLockIds = Array.from(
+    new Set([
+      input.gameStatsId,
+      ...preliminaryIncidents.map((incident) => incident.gameStatsId),
+    ])
+  ).sort((left, right) => left - right);
+  for (const replayLockId of replayLockIds) {
+    await tx.$queryRaw<Array<{ lock_acquired: number }>>`
+      SELECT 1::int AS lock_acquired
+      FROM pg_advisory_xact_lock(${replayLockId})
+    `;
+  }
+  return loadDesyncIncidentsForSettlement(tx, {
+    gameStatsId: input.gameStatsId,
+    scheduledMatchId: input.scheduledMatchId,
+  });
+}
+
+async function recordVerifiedScheduledMatchTitleResults(
   prisma: PrismaClient,
   row: ScheduledMatchRow,
   session: ComparableSession,
@@ -1194,7 +1340,7 @@ async function settleVerifiedScheduledMatchTitleStakes(
       scheduledMatchId: row.id,
       winnerUserId: null,
       status: {
-        notIn: ["cancelled", "canceled", "disputed", "settled"],
+        notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES],
       },
     },
     include: {
@@ -1211,75 +1357,60 @@ async function settleVerifiedScheduledMatchTitleStakes(
         (value): value is number => typeof value === "number"
       )
     );
-    if (currentCustodianId && !expectedCustodianIds.has(currentCustodianId)) {
-      await prisma.trophyChallenge.update({
-        where: { id: titleChallenge.id },
-        data: {
-          status: "disputed",
-          settlementStatus: "stale_custody_blocked",
-          errorState:
-            "Title custody changed before this scheduled result settled. Operator review required.",
-        },
-      });
-      continue;
-    }
-
     const challengerWon = titleChallenge.challengerUserId === winner.id;
     const isArtifact = titleChallenge.trophy.kind === "artifact";
-    const appOnly = titleChallenge.trophy.chainStatus === "app_only";
-    const challengeStatus = isArtifact
-      ? "replay_uploaded"
-      : appOnly
-        ? "settled"
-        : challengerWon
-          ? "verified_challenger_win"
-          : "verified_defender_win";
-    const settlementStatus = isArtifact
-      ? "artifact_proof_review"
-      : appOnly
-        ? "app_only_auto_settled"
-        : "chain_intent_required";
-    const dethroneBountyWolo =
-      challengerWon && !isArtifact
-        ? projectedChallengeTrophyBounty(titleChallenge.trophy)
-        : 0;
+    const staleCustody = Boolean(
+      currentCustodianId && !expectedCustodianIds.has(currentCustodianId)
+    );
+    const proposedDisposition = isArtifact
+      ? "artifact_metric_review"
+      : challengerWon
+        ? "transfer_to_challenger"
+        : "retain_current_holder";
+    const settlementStatus = staleCustody
+      ? "stale_custody_commissioner_review"
+      : TITLE_RESULT_REVIEW_SETTLEMENT_STATUS;
 
     await prisma.$transaction(async (tx) => {
+      const incidents = await loadLockedScheduledMatchDesyncIncidents(tx, {
+        scheduledMatchId: row.id,
+        gameStatsId: session.id,
+      });
+      assertTitleTransferAllowed({
+        incidents,
+        competitiveCandidate: {
+          gameStatsId: session.id,
+          observedAt: completedAt,
+        },
+      });
+
       const claimedSettlement = await tx.trophyChallenge.updateMany({
         where: {
           id: titleChallenge.id,
           winnerUserId: null,
+          status: {
+            notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES],
+          },
         },
         data: {
           winnerUserId: winner.id,
           replayId: session.id,
           gameId: session.id,
           watcherSessionId: session.sessionKey,
-          status: challengeStatus,
+          status: TITLE_RESULT_REVIEW_STATUS,
           settlementStatus,
-          verificationSummary: isArtifact
-            ? `Replay #${session.id} attached automatically. Artifact metric proof still requires review before custody moves.`
-            : `Scheduled match #${row.id} matched replay #${session.id}; ${challengePlayerName(winner)} verified as winner.`,
-          errorState: null,
+          verificationSummary: [
+            `Scheduled match #${row.id} matched replay #${session.id}; ${challengePlayerName(winner)} verified as winner.`,
+            isArtifact
+              ? "Artifact metric proof and custody require commissioner review."
+              : `Proposed title disposition: ${proposedDisposition.replaceAll("_", " ")}. Commissioner approval is required before custody or bounty changes.`,
+          ].join(" "),
+          errorState: staleCustody
+            ? "Title custody changed before this result was recorded. Commissioner review is required."
+            : null,
         },
       });
       if (claimedSettlement.count === 0) return;
-
-      if (challengerWon && appOnly && !isArtifact) {
-        await tx.trophy.update({
-          where: { id: titleChallenge.trophyId },
-          data: {
-            currentHolderUserId: winner.id,
-            currentHolderDisplayName: challengePlayerName(winner),
-            currentHolderWoloAddress: winner.walletAddress,
-            status: "held",
-            currentBountyWolo: 0,
-            holderSince: completedAt,
-            forfeitureNeeded: false,
-            eligibilityNote: "Transferred automatically after verified scheduled-match proof.",
-          },
-        });
-      }
 
       await tx.trophyEvent.create({
         data: {
@@ -1294,66 +1425,66 @@ async function settleVerifiedScheduledMatchTitleStakes(
           gameId: session.id,
           replayId: session.id,
           challengeId: titleChallenge.id,
-          status: isArtifact ? "attention_required" : "recorded",
+          status: "attention_required",
           rawResponse: {
             scheduledMatchId: row.id,
             watcherSessionId: session.sessionKey,
             winner: session.winner,
             challengerWon,
+            completedAt: completedAt.toISOString(),
+            commissionerReviewRequired: true,
+            proposedDisposition,
+            staleCustody,
             settlementStatus,
           },
         },
       });
-
-      if (!isArtifact && appOnly) {
-        await tx.trophyEvent.create({
-          data: {
+      await tx.scheduledMatchActivity.create({
+        data: {
+          scheduledMatchId: row.id,
+          eventType: "title_result_pending_review",
+          detail: `${titleChallenge.trophy.displayName}: watcher result recorded for commissioner review.`.slice(
+            0,
+            255
+          ),
+          metadata: {
+            trophyChallengeId: titleChallenge.id,
             trophyId: titleChallenge.trophyId,
-            eventType: challengerWon
-              ? "CHALLENGE_SETTLED_HOLDER_CHANGED"
-              : "CHALLENGE_SETTLED_DEFENSE",
-            actorRole: "system",
-            initiatedBy: "system",
-            fromHolderUserId:
-              titleChallenge.trophy.currentHolderUserId ??
-              titleChallenge.trophy.guardianHolderUserId,
-            toHolderUserId: challengerWon
-              ? winner.id
-              : titleChallenge.trophy.currentHolderUserId ??
-                titleChallenge.trophy.guardianHolderUserId,
-            gameId: session.id,
-            replayId: session.id,
-            challengeId: titleChallenge.id,
-            status: "recorded",
-            rawResponse: {
-              mode: "app_only",
-              automatic: true,
-              scheduledMatchId: row.id,
-            },
+            trophyName: titleChallenge.trophy.displayName,
+            winnerUserId: winner.id,
+            watcherSessionId: session.sessionKey,
+            proposedDisposition,
+            custodyChanged: false,
+            commissionerReviewRequired: true,
           },
-        });
-      }
-
-      if (challengerWon && dethroneBountyWolo > 0) {
-        await tx.trophyPayout.create({
-          data: {
-            trophyId: titleChallenge.trophyId,
-            recipientUserId: winner.id,
-            recipientDisplayName: challengePlayerName(winner),
-            recipientWoloAddress: winner.walletAddress,
-            amountWolo: dethroneBountyWolo,
-            payoutKind: "dethrone_bounty",
-            status: "pending",
-            rawRequest: {
-              challengeId: titleChallenge.id,
-              scheduledMatchId: row.id,
-              settlementMode: appOnly ? "app_only_auto" : "chain_intent",
-              fundingTruth: "Operator payout remains required.",
-            },
-          },
-        });
-      }
+          createdAt: completedAt,
+        },
+      });
     });
+  }
+}
+
+async function attemptAutomaticScheduledMatchSettlement(
+  prisma: PrismaClient,
+  scheduledMatchId: number
+) {
+  try {
+    await executeScheduledMatchSettlement(prisma, scheduledMatchId, null);
+  } catch (error) {
+    if (
+      error instanceof ScheduledMatchSettlementError &&
+      EXPECTED_AUTOMATIC_SETTLEMENT_SKIP_CODES.has(error.code)
+    ) {
+      console.warn(
+        `Automatic settlement skipped for scheduled match #${scheduledMatchId} (${error.code}): ${error.message}`
+      );
+      return;
+    }
+
+    console.error(
+      `Automatic settlement failed for scheduled match #${scheduledMatchId}:`,
+      error
+    );
   }
 }
 
@@ -1400,6 +1531,14 @@ async function persistScheduledMatchResults(
   }
 
   for (const row of rows) {
+    // A late watcher result must never reopen a challenge that already reached
+    // a refund/no-show/expiry verdict. Completed rows stay eligible below so a
+    // previously failed title-review write can still be retried idempotently.
+    if (row.status !== "completed" && rowAlreadyFinalized(row)) {
+      updatedRows.push(row);
+      continue;
+    }
+
     const surface = buildChallengeEconomySurface(
       {
         status: row.status,
@@ -1464,37 +1603,77 @@ async function persistScheduledMatchResults(
           linkedDurationSeconds: completedSession.durationSeconds ?? null,
         } satisfies ScheduledMatchRow;
 
-        await prisma.scheduledMatch.update({
-          where: { id: row.id },
-          data: {
-            status: "completed",
-            liveConfirmedAt: row.liveConfirmedAt ?? completedAt,
-            resultAt: completedAt,
-            settlementReadyAt: row.settlementReadyAt ?? completedAt,
-            linkedSessionKey: completedSession.sessionKey,
-            linkedMapName: completedSession.mapName,
-            linkedWinner: completedSession.winner,
-            linkedDurationSeconds: completedSession.durationSeconds,
-          },
-        });
+        const completedData = {
+          status: "completed" as const,
+          liveConfirmedAt: row.liveConfirmedAt ?? completedAt,
+          resultAt: completedAt,
+          settlementReadyAt: row.settlementReadyAt ?? completedAt,
+          linkedSessionKey: completedSession.sessionKey,
+          linkedMapName: completedSession.mapName,
+          linkedWinner: completedSession.winner,
+          linkedDurationSeconds: completedSession.durationSeconds,
+        };
+        let transitionedToCompleted = false;
+        try {
+          transitionedToCompleted = await prisma.$transaction(async (tx) => {
+            const incidents = await loadLockedScheduledMatchDesyncIncidents(tx, {
+              scheduledMatchId: row.id,
+              gameStatsId: completedSession.id,
+            });
+            assertWinnerSettlementAllowed({
+              incidents,
+              competitiveCandidate: {
+                gameStatsId: completedSession.id,
+                observedAt: completedAt,
+              },
+            });
 
-        if (row.status !== "completed") {
-          await recordAutoScheduledMatchActivity(prisma, {
-            scheduledMatchId: row.id,
-            eventType: "completed",
-            detail: completedSession.winner
-              ? `Completed. Winner: ${completedSession.winner}.`
-              : "Completed and stored.",
-            createdAt: completedAt,
-            metadata: {
-              linkedSessionKey: completedSession.sessionKey,
-              mapName: completedSession.mapName ?? null,
-            },
+            if (row.status === "completed") {
+              await tx.scheduledMatch.update({
+                where: { id: row.id },
+                data: completedData,
+              });
+              return false;
+            }
+
+            const transition = await tx.scheduledMatch.updateMany({
+              where: { id: row.id, status: row.status },
+              data: completedData,
+            });
+            if (transition.count === 0) return false;
+
+            await recordAutoScheduledMatchActivity(tx, {
+              scheduledMatchId: row.id,
+              eventType: "completed",
+              detail: completedSession.winner
+                ? `Completed. Winner: ${completedSession.winner}.`
+                : "Completed and stored.",
+              createdAt: completedAt,
+              metadata: {
+                linkedSessionKey: completedSession.sessionKey,
+                mapName: completedSession.mapName ?? null,
+              },
+            });
+            return true;
           });
+        } catch (error) {
+          if (error instanceof ChallengeDesyncError) {
+            console.warn(
+              `Watcher result held for scheduled match #${row.id} (${error.code}): ${error.message}`
+            );
+            updatedRows.push(row);
+            continue;
+          }
+          throw error;
+        }
+
+        if (row.status !== "completed" && !transitionedToCompleted) {
+          updatedRows.push(row);
+          continue;
         }
 
         try {
-          await settleVerifiedScheduledMatchTitleStakes(
+          await recordVerifiedScheduledMatchTitleResults(
             prisma,
             row,
             completedSession,
@@ -1502,9 +1681,13 @@ async function persistScheduledMatchResults(
           );
         } catch (error) {
           console.error(
-            `Failed to settle title stakes for scheduled match #${row.id}:`,
+            `Failed to record title results for scheduled match #${row.id}:`,
             error
           );
+        }
+
+        if (transitionedToCompleted) {
+          await attemptAutomaticScheduledMatchSettlement(prisma, row.id);
         }
 
         updatedRows.push(nextRow);
@@ -1580,8 +1763,13 @@ async function persistScheduledMatchResults(
           linkedDurationSeconds: null,
         } satisfies ScheduledMatchRow;
 
-        await prisma.scheduledMatch.update({
-          where: { id: row.id },
+        const noShowTransition = await prisma.scheduledMatch.updateMany({
+          where: {
+            id: row.id,
+            status: row.status,
+            challengerCheckedInAt: row.challengerCheckedInAt,
+            challengedCheckedInAt: row.challengedCheckedInAt,
+          },
           data: {
             status: desiredStatus,
             resultAt: row.resultAt ?? resolvedAt,
@@ -1592,18 +1780,24 @@ async function persistScheduledMatchResults(
             linkedDurationSeconds: null,
           },
         });
+        if (noShowTransition.count === 0) {
+          updatedRows.push(row);
+          continue;
+        }
 
         await recordAutoScheduledMatchActivity(prisma, {
           scheduledMatchId: row.id,
           eventType: desiredStatus,
           detail:
             desiredStatus === "no_show_left"
-              ? `${challengePlayerName(row.challenger)} missed check-in. Missed-side Match Guarantee routes to Community Treasury.`
+              ? `${challengePlayerName(row.challenger)} missed check-in. ${challengePlayerName(row.challenged)} is owed both Match Guarantees; both Wolo Wagers are queued to return.`
               : desiredStatus === "no_show_right"
-                ? `${challengePlayerName(row.challenged)} missed check-in. Missed-side Match Guarantee routes to Community Treasury.`
-                : "Both players missed the check-in lock.",
+                ? `${challengePlayerName(row.challenged)} missed check-in. ${challengePlayerName(row.challenger)} is owed both Match Guarantees; both Wolo Wagers are queued to return.`
+                : "Both players missed the check-in lock. Match Guarantees are owed to Community Treasury; both Wolo Wagers are queued to return.",
           createdAt: resolvedAt,
         });
+
+        await attemptAutomaticScheduledMatchSettlement(prisma, row.id);
 
         updatedRows.push(nextRow);
         continue;
@@ -1676,12 +1870,14 @@ async function persistScheduledMatchResults(
 function compareScheduledTileOrder(left: ScheduledMatchTile, right: ScheduledMatchTile) {
   const priority = (tile: ScheduledMatchTile) => {
     switch (tile.displayState) {
-      case "live":
+      case "desync_review":
         return 0;
-      case "ready":
+      case "live":
         return 1;
-      case "checkin_open":
+      case "ready":
         return 2;
+      case "checkin_open":
+        return 3;
       case "left_checked_in":
       case "right_checked_in":
         return 3;
@@ -1735,6 +1931,7 @@ function compareScheduledTileOrder(left: ScheduledMatchTile, right: ScheduledMat
       "left_checked_in",
       "right_checked_in",
       "ready",
+      "desync_review",
     ].includes(left.displayState)
   ) {
     return leftScheduledAt - rightScheduledAt;
@@ -1744,7 +1941,7 @@ function compareScheduledTileOrder(left: ScheduledMatchTile, right: ScheduledMat
 }
 
 function compareHistoryTileOrder(left: ScheduledMatchTile, right: ScheduledMatchTile) {
-  return new Date(right.activityAt).getTime() - new Date(left.activityAt).getTime();
+  return right.id - left.id;
 }
 
 function isActiveChallengeDisplayState(displayState: ScheduledMatchTile["displayState"]) {
@@ -1761,6 +1958,7 @@ function isActiveChallengeDisplayState(displayState: ScheduledMatchTile["display
     "right_checked_in",
     "ready",
     "live",
+    "desync_review",
   ].includes(displayState);
 }
 
@@ -1835,6 +2033,7 @@ async function loadScheduledMatchRows(
   options?: {
     viewerUserId?: number | null;
     counterpartUserId?: number | null;
+    challengeId?: number | null;
     includeResolved?: boolean;
   }
 ) {
@@ -1843,6 +2042,9 @@ async function loadScheduledMatchRows(
   const latest = new Date(now + CHALLENGE_LOOKAHEAD_MS);
   const recentResolvedCutoff = new Date(now - CHALLENGE_RECENT_LINGER_MS);
   const statusFilters = [
+    // Commissioner review is an explicit hold and must remain visible even
+    // when the original match time has fallen outside the active runway.
+    { status: "desync_review" },
     {
       status: {
         in: [...ACTIVE_SCHEDULED_STATUSES],
@@ -1938,9 +2140,13 @@ async function loadScheduledMatchRows(
         : [];
 
   return prisma.scheduledMatch.findMany({
-    where: {
-      AND: [{ OR: statusFilters }, ...participantFilters],
-    },
+    where: options?.challengeId
+      ? {
+          AND: [{ id: options.challengeId }, ...participantFilters],
+        }
+      : {
+          AND: [{ OR: statusFilters }, ...participantFilters],
+        },
     orderBy: [{ scheduledAt: "asc" }, { createdAt: "desc" }],
     select: SCHEDULED_MATCH_SELECT,
   });
@@ -1948,26 +2154,26 @@ async function loadScheduledMatchRows(
 
 async function loadChallengeHistoryRows(
   prisma: PrismaClient,
-  viewerUserId: number
+  viewerUserId: number,
+  includeGlobal: boolean
 ) {
-  const lookbackCutoff = new Date(Date.now() - CHALLENGE_LEDGER_LOOKBACK_MS);
-  const participantFilter: Prisma.ScheduledMatchWhereInput = {
-    OR: [
-      { challengerUserId: viewerUserId },
-      { challengedUserId: viewerUserId },
-    ],
-  };
+  const visibilityFilter: Prisma.ScheduledMatchWhereInput = includeGlobal
+    ? {}
+    : {
+        OR: [
+          { challengerUserId: viewerUserId },
+          { challengedUserId: viewerUserId },
+        ],
+      };
 
   // Active/actionable challenges must never disappear merely because a user has
   // more than one page of history. Bound the active runway separately from the
   // initial folded-history page, then lazy-load older terminal records.
-  const [activeRows, recentResolvedRows] = await Promise.all([
+  const [activeRows, resolvedRows] = await Promise.all([
     prisma.scheduledMatch.findMany({
       where: {
-        AND: [
-          participantFilter,
-          { status: { in: [...ACTIVE_SCHEDULED_STATUSES] } },
-        ],
+        ...visibilityFilter,
+        status: { in: [...ACTIVE_SCHEDULED_STATUSES] },
       },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take: 100,
@@ -1975,62 +2181,66 @@ async function loadChallengeHistoryRows(
     }),
     prisma.scheduledMatch.findMany({
       where: {
-        AND: [
-          participantFilter,
-          { status: { in: [...RESOLVED_SCHEDULED_STATUSES] } },
-          {
-            OR: [
-              { createdAt: { gte: lookbackCutoff } },
-              { scheduledAt: { gte: lookbackCutoff } },
-              { acceptedAt: { gte: lookbackCutoff } },
-              { declinedAt: { gte: lookbackCutoff } },
-              { cancelledAt: { gte: lookbackCutoff } },
-              { resultAt: { gte: lookbackCutoff } },
-              { acceptBy: { gte: lookbackCutoff } },
-              { fundBy: { gte: lookbackCutoff } },
-              { playBy: { gte: lookbackCutoff } },
-              { matchTime: { gte: lookbackCutoff } },
-              { expiredAt: { gte: lookbackCutoff } },
-            ],
-          },
-        ],
+        ...visibilityFilter,
+        status: { in: [...RESOLVED_SCHEDULED_STATUSES] },
       },
       orderBy: [{ id: "desc" }],
-      take: 24,
+      take: INITIAL_CHALLENGE_HISTORY_LIMIT + 1,
       select: SCHEDULED_MATCH_SELECT,
     }),
   ]);
 
+  const hasMore = resolvedRows.length > INITIAL_CHALLENGE_HISTORY_LIMIT;
+  const initialResolvedRows = resolvedRows.slice(0, INITIAL_CHALLENGE_HISTORY_LIMIT);
+
   const byId = new Map<number, ScheduledMatchRow>();
-  for (const row of [...activeRows, ...recentResolvedRows]) {
+  for (const row of [...activeRows, ...initialResolvedRows]) {
     byId.set(row.id, row);
   }
-  return Array.from(byId.values());
+  return {
+    rows: Array.from(byId.values()).sort((left, right) => right.id - left.id),
+    page: {
+      hasMore,
+      nextCursor: hasMore
+        ? initialResolvedRows[initialResolvedRows.length - 1]?.id ?? null
+        : null,
+    },
+  };
 }
 
 export async function loadChallengeHistoryPage(
   prisma: PrismaClient,
   viewerUserId: number,
-  options?: { cursor?: number | null; limit?: number }
+  options?: { cursor?: number | null; limit?: number; includeGlobal?: boolean }
 ) {
   const limit = Math.max(1, Math.min(options?.limit ?? 20, 50));
+  const visibilityFilter: Prisma.ScheduledMatchWhereInput = options?.includeGlobal
+    ? {}
+    : {
+        OR: [
+          { challengerUserId: viewerUserId },
+          { challengedUserId: viewerUserId },
+        ],
+      };
   const rows = await prisma.scheduledMatch.findMany({
     where: {
-      OR: [{ challengerUserId: viewerUserId }, { challengedUserId: viewerUserId }],
+      ...visibilityFilter,
       status: {
         in: [...RESOLVED_SCHEDULED_STATUSES],
       },
+      ...(options?.cursor ? { id: { lt: options.cursor } } : {}),
     },
     orderBy: [{ id: "desc" }],
-    ...(options?.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),
     take: limit + 1,
     select: SCHEDULED_MATCH_SELECT,
   });
   const hasMore = rows.length > limit;
   const pageRows = rows.slice(0, limit);
   const tiles = buildComparableChallengeTiles(pageRows).sort(compareHistoryTileOrder);
+  const activities = await loadChallengeActivityRows(prisma, pageRows);
   return {
     tiles,
+    activities,
     hasMore,
     nextCursor: hasMore ? pageRows[pageRows.length - 1]?.id ?? null : null,
   };
@@ -2099,6 +2309,7 @@ function buildChallengeRecordSummary(
       case "right_checked_in":
       case "ready":
       case "live":
+      case "desync_review":
         summary.ready += 1;
         break;
       case "declined":
@@ -2173,29 +2384,65 @@ export async function loadScheduledMatchTilesForLiveBoard(
 export async function loadChallengeThreadTile(
   prisma: PrismaClient,
   viewerUserId: number,
-  counterpartUserId: number
+  counterpartUserId: number,
+  challengeId?: number | null
 ): Promise<ScheduledMatchTile | null> {
   const [rows, sessionSnapshot] = await Promise.all([
     loadScheduledMatchRows(prisma, {
       viewerUserId,
       counterpartUserId,
+      challengeId,
       includeResolved: true,
     }),
     loadLiveSessionSnapshot(prisma),
   ]);
 
+  const reconciledRows = await persistScheduledMatchResults(
+    prisma,
+    rows,
+    sessionSnapshot.activeSessions,
+    sessionSnapshot.recentlyCompletedSessions
+  );
+
+  // An embedded Match Room names an exact ledger record, including terminal
+  // matches. Do not let the active-runway filter silently substitute another
+  // challenge from the same pair or hide a resolved one.
+  if (challengeId) {
+    return buildComparableChallengeTiles(reconciledRows).find(
+      (tile) => tile.id === challengeId
+    ) ?? null;
+  }
+
   const { tiles } = deriveScheduledMatchTiles(
-    await persistScheduledMatchResults(
-      prisma,
-      rows,
-      sessionSnapshot.activeSessions,
-      sessionSnapshot.recentlyCompletedSessions
-    ),
+    reconciledRows,
     sessionSnapshot.activeSessions,
     sessionSnapshot.recentlyCompletedSessions
   );
 
   return tiles[0] ?? null;
+}
+
+/** Load one exact ledger tile after the caller has enforced participant/admin access. */
+export async function loadChallengeTileById(
+  prisma: PrismaClient,
+  challengeId: number
+): Promise<ScheduledMatchTile | null> {
+  const [rows, sessionSnapshot] = await Promise.all([
+    loadScheduledMatchRows(prisma, {
+      challengeId,
+      includeResolved: true,
+    }),
+    loadLiveSessionSnapshot(prisma),
+  ]);
+  const reconciledRows = await persistScheduledMatchResults(
+    prisma,
+    rows,
+    sessionSnapshot.activeSessions,
+    sessionSnapshot.recentlyCompletedSessions
+  );
+  return buildComparableChallengeTiles(reconciledRows).find(
+    (tile) => tile.id === challengeId
+  ) ?? null;
 }
 
 export async function loadChallengeHubSnapshot(
@@ -2207,6 +2454,8 @@ export async function loadChallengeHubSnapshot(
   if (!viewerUid) {
     return {
       viewer: null,
+      historyScope: "participant",
+      historyPage: { hasMore: false, nextCursor: null },
       candidates: [],
       scheduledMatches: [],
       historyMatches: [],
@@ -2226,6 +2475,8 @@ export async function loadChallengeHubSnapshot(
   if (!viewer) {
     return {
       viewer: null,
+      historyScope: "participant",
+      historyPage: { hasMore: false, nextCursor: null },
       candidates: [],
       scheduledMatches: [],
       historyMatches: [],
@@ -2237,27 +2488,27 @@ export async function loadChallengeHubSnapshot(
     };
   }
 
-  const [candidateRows, historyRows, sessionSnapshot] = await Promise.all([
+  const [candidateRows, historySnapshot, sessionSnapshot] = await Promise.all([
     prisma.user.findMany({
       where: {
         uid: {
           not: viewerUid,
         },
-        steamId: {
-          not: null,
+        verificationMethod: {
+          not: "system",
         },
       },
       select: CHALLENGE_PLAYER_SELECT,
       orderBy: [{ lastSeen: "desc" }, { verificationLevel: "desc" }, { createdAt: "desc" }],
       take: 80,
     }),
-    loadChallengeHistoryRows(prisma, viewer.id),
+    loadChallengeHistoryRows(prisma, viewer.id, viewer.isAdmin),
     loadLiveSessionSnapshot(prisma),
   ]);
 
   const reconciledRows = await persistScheduledMatchResults(
     prisma,
-    historyRows,
+    historySnapshot.rows,
     sessionSnapshot.activeSessions,
     sessionSnapshot.recentlyCompletedSessions
   );
@@ -2306,10 +2557,15 @@ export async function loadChallengeHubSnapshot(
   );
 
   const activities = await loadChallengeActivityRows(prisma, reconciledRows);
-  const record = buildChallengeRecordSummary(reconciledRows, viewer);
+  const viewerRows = reconciledRows.filter(
+    (row) => row.challenger.id === viewer.id || row.challenged.id === viewer.id
+  );
+  const record = buildChallengeRecordSummary(viewerRows, viewer);
 
   return {
     viewer: buildPlayerSurface(viewer),
+    historyScope: viewer.isAdmin ? "global" : "participant",
+    historyPage: historySnapshot.page,
     candidates: candidateRows.map((candidate) => buildPlayerSurface(candidate)),
     scheduledMatches: tiles.map(attachPreference),
     historyMatches: historyMatches.map(attachPreference),

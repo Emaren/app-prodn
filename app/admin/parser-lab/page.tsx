@@ -611,10 +611,10 @@ export default async function AdminParserLabPage() {
                       </div>
                     </div>
                     <Link
-                      href={`/admin/replay-review?gameId=${game.id}`}
-                      className="rounded-full border border-amber-300/16 bg-amber-400/[0.05] px-3 py-1.5 text-xs text-amber-100 transition hover:bg-amber-400/[0.10]"
+                      href={`/game-stats/${game.id}/review`}
+                      className="rounded-full border border-fuchsia-300/20 bg-[linear-gradient(90deg,rgba(190,24,93,0.12),rgba(234,88,12,0.08))] px-3 py-1.5 text-xs font-semibold text-fuchsia-100 transition hover:border-fuchsia-200/35 hover:bg-fuchsia-400/[0.12]"
                     >
-                      Review result
+                      Result / Desync Desk
                     </Link>
                   </div>
                   <div className="mt-4 grid gap-2 text-xs text-slate-400 sm:grid-cols-3">
@@ -631,6 +631,25 @@ export default async function AdminParserLabPage() {
                       <strong className="mt-1 block text-slate-200">{humanize(game.parseSource)}</strong>
                     </div>
                   </div>
+                  {game.latestDesyncIncident?.desyncOccurred ? (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-fuchsia-200/22 bg-[linear-gradient(90deg,rgba(190,24,93,0.13),rgba(234,88,12,0.08))] px-3 py-2.5">
+                      <div>
+                        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-fuchsia-100">
+                          ⚡ Human · Desync Confirmed
+                        </div>
+                        <div className="mt-1 text-[10px] text-slate-400">
+                          Incident #{game.latestDesyncIncident.id} · competitive result unresolved
+                        </div>
+                      </div>
+                      <span className="rounded-full border border-white/[0.08] bg-black/20 px-2.5 py-1 text-[9px] uppercase tracking-[0.14em] text-amber-100/80">
+                        {humanize(game.latestDesyncIncident.settlementDisposition)}
+                      </span>
+                    </div>
+                  ) : game.latestDesyncIncident ? (
+                    <div className="mt-3 rounded-xl border border-cyan-200/12 bg-cyan-300/[0.035] px-3 py-2 text-[10px] text-cyan-100/65">
+                      Desync correction #{game.latestDesyncIncident.id} is the current human provenance entry.
+                    </div>
+                  ) : null}
                   <div className="mt-4 space-y-2">
                     {game.runs.map((run) => (
                       <div key={run.id} className="rounded-xl border border-white/[0.06] bg-slate-950/40 p-3">

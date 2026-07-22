@@ -1,6 +1,12 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 import {
+  acquireChallengeDesyncAdvisoryLock,
+  assertTitleTransferAllowed,
+  ChallengeDesyncError,
+  loadDesyncIncidentsForSettlement,
+} from "@/lib/desyncChallenge";
+import {
   executePendingTrophyTributePayouts,
   projectedTrophyBounty,
   recordNationalityChange,
@@ -91,6 +97,64 @@ async function getUser(prisma: PrismaClient, userId: number | null) {
   return user;
 }
 
+async function assertTrophyChallengeDesyncAllowsTitleMutation(
+  tx: Prisma.TransactionClient,
+  challenge: {
+    scheduledMatchId: number | null;
+    replayId: number | null;
+  }
+) {
+  if (challenge.scheduledMatchId) {
+    await acquireChallengeDesyncAdvisoryLock(tx, challenge.scheduledMatchId);
+  }
+
+  const preliminaryIncidents = await loadDesyncIncidentsForSettlement(tx, {
+    gameStatsId: challenge.replayId,
+    scheduledMatchId: challenge.scheduledMatchId,
+  });
+  const replayLockIds = Array.from(
+    new Set(
+      [challenge.replayId, ...preliminaryIncidents.map((incident) => incident.gameStatsId)]
+        .filter((id): id is number => typeof id === "number" && id > 0)
+    )
+  ).sort((left, right) => left - right);
+
+  for (const replayLockId of replayLockIds) {
+    await tx.$queryRaw<Array<{ lock_acquired: number }>>`
+      SELECT 1::int AS lock_acquired
+      FROM pg_advisory_xact_lock(${replayLockId})
+    `;
+  }
+
+  const [incidents, candidate] = await Promise.all([
+    loadDesyncIncidentsForSettlement(tx, {
+      gameStatsId: challenge.replayId,
+      scheduledMatchId: challenge.scheduledMatchId,
+    }),
+    challenge.replayId
+      ? tx.gameStats.findUnique({
+          where: { id: challenge.replayId },
+          select: { createdAt: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  try {
+    assertTitleTransferAllowed({
+      incidents,
+      competitiveCandidate: {
+        gameStatsId: challenge.replayId,
+        observedAt: candidate?.createdAt ?? null,
+      },
+    });
+  } catch (error) {
+    if (error instanceof ChallengeDesyncError) {
+      throw new TrophyActionError(error.message, error.status);
+    }
+    throw error;
+  }
+}
+
 function eligibilityForUser(
   trophy: {
     family: string;
@@ -162,6 +226,46 @@ async function recordEvent(
       rawRequest: input.rawRequest,
       rawResponse: input.rawResponse,
       errorMessage: input.errorMessage ?? null,
+    },
+  });
+}
+
+async function recordScheduledTitleActivity(
+  prisma: PrismaClient | Prisma.TransactionClient,
+  challenge: {
+    id: number;
+    scheduledMatchId: number | null;
+    trophyId: number;
+    trophy: { displayName: string };
+  },
+  actor: AdminActor,
+  input: {
+    eventType: string;
+    detail: string;
+    status: string;
+    winnerUserId?: number | null;
+    custodyChanged?: boolean;
+    settlementMode?: string | null;
+  }
+) {
+  if (!challenge.scheduledMatchId) return;
+
+  await prisma.scheduledMatchActivity.create({
+    data: {
+      scheduledMatchId: challenge.scheduledMatchId,
+      actorUserId: actor.id,
+      eventType: input.eventType.slice(0, 32),
+      detail: input.detail.slice(0, 255),
+      metadata: jsonValue({
+        trophyChallengeId: challenge.id,
+        trophyId: challenge.trophyId,
+        trophyName: challenge.trophy.displayName,
+        titleStatus: input.status,
+        winnerUserId: input.winnerUserId ?? null,
+        custodyChanged: input.custodyChanged ?? false,
+        settlementMode: input.settlementMode ?? null,
+        commissionerAction: true,
+      }),
     },
   });
 }
@@ -521,9 +625,16 @@ async function updateChallenge(
   if (!challenge) throw new TrophyActionError("Challenge not found.", 404);
   const operation = stringValue(payload.operation, 40);
 
+  if (challenge.status === "commissioner_vetoed") {
+    throw new TrophyActionError(
+      "Commissioner veto is terminal. This title challenge cannot be reopened by a stale action.",
+      409
+    );
+  }
+
   if (operation === "approve") {
     await prisma.trophyChallenge.update({
-      where: { id: challenge.id },
+      where: { id: challenge.id, status: { not: "commissioner_vetoed" } },
       data: { status: "accepted", errorState: null },
     });
     await recordEvent(prisma, {
@@ -535,18 +646,75 @@ async function updateChallenge(
     return;
   }
 
-  if (operation === "cancel" || operation === "dispute") {
-    const nextStatus = operation === "cancel" ? "cancelled" : "disputed";
-    await prisma.trophyChallenge.update({
-      where: { id: challenge.id },
-      data: { status: nextStatus, errorState: nullableString(payload.reason, 255) },
-    });
-    await recordEvent(prisma, {
-      trophyId: challenge.trophyId,
-      eventType: operation === "cancel" ? "CHALLENGE_CANCELLED" : "CHALLENGE_DISPUTED",
-      actor,
-      challengeId: challenge.id,
-      status: operation === "dispute" ? "attention_required" : "recorded",
+  if (operation === "cancel" || operation === "dispute" || operation === "veto") {
+    if (
+      operation === "veto" &&
+      ![
+        "commissioner_review",
+        "forfeit_pending_commissioner",
+        "settlement_dry_run",
+      ].includes(challenge.status)
+    ) {
+      throw new TrophyActionError(
+        "Only a pending commissioner review or dry-run can be vetoed.",
+        409
+      );
+    }
+    const nextStatus =
+      operation === "cancel"
+        ? "cancelled"
+        : operation === "veto"
+          ? "commissioner_vetoed"
+          : "disputed";
+    const reason =
+      nullableString(payload.reason, 255) ||
+      (operation === "veto"
+        ? "Commissioner vetoed the proposed title disposition. Custody remains unchanged."
+        : null);
+    const titleEventType =
+      operation === "cancel"
+        ? "CHALLENGE_CANCELLED"
+        : operation === "veto"
+          ? "COMMISSIONER_TITLE_VETOED"
+          : "CHALLENGE_DISPUTED";
+    const matchEventType =
+      operation === "cancel"
+        ? "title_cancelled"
+        : operation === "veto"
+          ? "title_vetoed"
+          : "title_disputed";
+    await prisma.$transaction(async (tx) => {
+      await tx.trophyChallenge.update({
+        where: { id: challenge.id, status: { not: "commissioner_vetoed" } },
+        data: {
+          status: nextStatus,
+          settlementStatus:
+            operation === "veto" ? "commissioner_vetoed" : challenge.settlementStatus,
+          errorState: reason,
+        },
+      });
+      await recordEvent(tx as PrismaClient, {
+        trophyId: challenge.trophyId,
+        eventType: titleEventType,
+        actor,
+        challengeId: challenge.id,
+        status: operation === "dispute" ? "attention_required" : "recorded",
+        rawResponse: jsonValue({
+          reason,
+          winnerUserId: challenge.winnerUserId,
+          winnerPreserved: Boolean(challenge.winnerUserId),
+          custodyChanged: false,
+        }),
+      });
+      await recordScheduledTitleActivity(tx, challenge, actor, {
+        eventType: matchEventType,
+        detail:
+          reason ||
+          `${challenge.trophy.displayName} challenge ${nextStatus}; title custody remains unchanged.`,
+        status: nextStatus,
+        winnerUserId: challenge.winnerUserId,
+        custodyChanged: false,
+      });
     });
     return;
   }
@@ -557,7 +725,7 @@ async function updateChallenge(
     const replay = await prisma.gameStats.findUnique({ where: { id: replayId } });
     if (!replay) throw new TrophyActionError("Replay not found.", 404);
     await prisma.trophyChallenge.update({
-      where: { id: challenge.id },
+      where: { id: challenge.id, status: { not: "commissioner_vetoed" } },
       data: {
         replayId,
         gameId: replay.id,
@@ -596,26 +764,40 @@ async function updateChallenge(
       throw new TrophyActionError("Winner must be the challenger, defender, or Guardian.");
     }
     const challengerWon = winnerUserId === challenge.challengerUserId;
-    await prisma.trophyChallenge.update({
-      where: { id: challenge.id },
-      data: {
+    const verificationSummary =
+      nullableString(payload.verificationSummary, 2000) ||
+      `Admin-reviewed result. ${challengerWon ? "Challenger" : "Defender/Guardian"} verified as winner.`;
+    const verifiedStatus = challengerWon
+      ? "verified_challenger_win"
+      : "verified_defender_win";
+    await prisma.$transaction(async (tx) => {
+      await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
+      await tx.trophyChallenge.update({
+        where: { id: challenge.id, status: { not: "commissioner_vetoed" } },
+        data: {
+          winnerUserId,
+          status: verifiedStatus,
+          verificationSummary,
+          settlementStatus: "ready_for_dry_run",
+          errorState: null,
+        },
+      });
+      await recordEvent(tx as PrismaClient, {
+        trophyId: challenge.trophyId,
+        eventType: "REPLAY_VERIFIED",
+        actor,
+        challengeId: challenge.id,
+        replayId: challenge.replayId,
+        toHolderUserId: winnerUserId,
+        rawResponse: jsonValue({ challengerWon }),
+      });
+      await recordScheduledTitleActivity(tx, challenge, actor, {
+        eventType: "title_result_verified",
+        detail: `${challenge.trophy.displayName}: ${verificationSummary}`,
+        status: verifiedStatus,
         winnerUserId,
-        status: challengerWon ? "verified_challenger_win" : "verified_defender_win",
-        verificationSummary:
-          nullableString(payload.verificationSummary, 2000) ||
-          `Admin-reviewed result. ${challengerWon ? "Challenger" : "Defender/Guardian"} verified as winner.`,
-        settlementStatus: "ready_for_dry_run",
-        errorState: null,
-      },
-    });
-    await recordEvent(prisma, {
-      trophyId: challenge.trophyId,
-      eventType: "REPLAY_VERIFIED",
-      actor,
-      challengeId: challenge.id,
-      replayId: challenge.replayId,
-      toHolderUserId: winnerUserId,
-      rawResponse: jsonValue({ challengerWon }),
+        custodyChanged: false,
+      });
     });
     return;
   }
@@ -626,8 +808,9 @@ async function updateChallenge(
     const bounty = challengerWon ? projectedTrophyBounty(challenge.trophy) : 0;
     const winner = await getUser(prisma, challenge.winnerUserId);
     await prisma.$transaction(async (tx) => {
+      await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
       await tx.trophyChallenge.update({
-        where: { id: challenge.id },
+        where: { id: challenge.id, status: { not: "commissioner_vetoed" } },
         data: { status: "settlement_dry_run", settlementStatus: "dry_run_ready" },
       });
       if (bounty > 0 && winner) {
@@ -662,6 +845,15 @@ async function updateChallenge(
           mode: challenge.trophy.chainStatus === "app_only" ? "app_only" : "chain_intent",
         }),
       });
+      await recordScheduledTitleActivity(tx, challenge, actor, {
+        eventType: "title_settlement_dry_run",
+        detail: `${challenge.trophy.displayName} settlement preview recorded. No title custody changed.`,
+        status: "settlement_dry_run",
+        winnerUserId: challenge.winnerUserId,
+        custodyChanged: false,
+        settlementMode:
+          challenge.trophy.chainStatus === "app_only" ? "app_only" : "chain_intent",
+      });
     });
     return;
   }
@@ -683,12 +875,13 @@ async function updateChallenge(
       challenge.trophy.chainStatus !== "app_only";
 
     if (chainBacked) {
-      await prisma.$transaction([
-        prisma.trophyChallenge.update({
-          where: { id: challenge.id },
+      await prisma.$transaction(async (tx) => {
+        await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
+        await tx.trophyChallenge.update({
+          where: { id: challenge.id, status: { not: "commissioner_vetoed" } },
           data: { status: "settling", settlementStatus: "chain_intent_recorded" },
-        }),
-        prisma.trophyEvent.create({
+        });
+        await tx.trophyEvent.create({
           data: {
             trophyId: challenge.trophyId,
             challengeId: challenge.id,
@@ -705,8 +898,16 @@ async function updateChallenge(
               note: "Chain execution intentionally stubbed in app-prodn.",
             },
           },
-        }),
-      ]);
+        });
+        await recordScheduledTitleActivity(tx, challenge, actor, {
+          eventType: "title_chain_intent",
+          detail: `${challenge.trophy.displayName} chain transfer intent recorded; custody has not changed yet.`,
+          status: "settling",
+          winnerUserId: challenge.winnerUserId,
+          custodyChanged: false,
+          settlementMode: "chain_intent",
+        });
+      });
       return;
     }
 
@@ -716,6 +917,7 @@ async function updateChallenge(
 
     const bounty = challengerWon ? projectedTrophyBounty(challenge.trophy) : 0;
     await prisma.$transaction(async (tx) => {
+      await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
       if (challengerWon) {
         await tx.trophy.update({
           where: { id: challenge.trophyId },
@@ -732,7 +934,7 @@ async function updateChallenge(
         });
       }
       await tx.trophyChallenge.update({
-        where: { id: challenge.id },
+        where: { id: challenge.id, status: { not: "commissioner_vetoed" } },
         data: {
           status: "settled",
           settlementStatus: "app_only_settled",
@@ -773,13 +975,23 @@ async function updateChallenge(
           bountyIsEscrowed: false,
         }),
       });
+      await recordScheduledTitleActivity(tx, challenge, actor, {
+        eventType: "title_settled",
+        detail: challengerWon
+          ? `${challenge.trophy.displayName} transferred after commissioner-approved result settlement.`
+          : `${challenge.trophy.displayName} defense settled; the current holder retains custody.`,
+        status: "settled",
+        winnerUserId: challenge.winnerUserId,
+        custodyChanged: challengerWon,
+        settlementMode: "app_only",
+      });
     });
     return;
   }
 
   if (operation === "retry") {
     await prisma.trophyChallenge.update({
-      where: { id: challenge.id },
+      where: { id: challenge.id, status: { not: "commissioner_vetoed" } },
       data: { status: "settlement_dry_run", settlementStatus: "retry_requested", errorState: null },
     });
     await recordEvent(prisma, {

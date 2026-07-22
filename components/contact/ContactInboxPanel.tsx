@@ -89,7 +89,7 @@ type ContactInboxPanelProps = {
   richComposer?: ReactNode;
   openPageHref?: string;
   onOpenFullPage?: () => void;
-  onLoadOlder?: () => Promise<void>;
+  onLoadOlder?: () => Promise<boolean>;
   onRefresh?: () => void | Promise<void>;
   replyingTo?: ContactTextMessage | null;
   onReply?: (message: ContactTextMessage) => void;
@@ -110,6 +110,17 @@ type TimelineRow =
       showTail: boolean;
       message: ContactInboxMessage;
     };
+
+type HistoryPrependAnchor = {
+  requestedBeforeMessageId: number | null;
+  rowKey: string | null;
+  rowOffset: number;
+  viewportScrollHeight: number;
+  viewportScrollTop: number;
+  documentScrollHeight: number;
+  windowScrollY: number;
+  usesDocumentScroll: boolean;
+};
 
 const MESSAGE_URL_PATTERN = /(?:https?:\/\/|www\.)[^\s<>]+/gi;
 
@@ -295,6 +306,12 @@ function challengeNoticeTone(
   }
 
   switch (summary.state) {
+    case "issued":
+      return {
+        summary,
+        shell:
+          "border-amber-200/24 bg-amber-300/10 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.10)]",
+      };
     case "accepted":
     case "terms_accepted":
     case "ready":
@@ -316,10 +333,24 @@ function challengeNoticeTone(
     case "no_show":
     case "declined":
     case "cancelled":
+    case "expired":
+    case "funding_expired":
       return {
         summary,
         shell:
           "border-rose-300/18 bg-rose-500/10 text-rose-50 shadow-[inset_0_0_0_1px_rgba(251,113,133,0.08)]",
+      };
+    case "desync":
+      return {
+        summary,
+        shell:
+          "border-fuchsia-200/28 bg-[linear-gradient(135deg,rgba(190,24,93,0.18),rgba(234,88,12,0.11))] text-fuchsia-50 shadow-[inset_0_0_0_1px_rgba(244,114,182,0.10),0_0_28px_rgba(190,24,93,0.10)]",
+      };
+    case "refunded":
+      return {
+        summary,
+        shell:
+          "border-cyan-200/18 bg-cyan-300/10 text-cyan-50 shadow-[inset_0_0_0_1px_rgba(103,232,249,0.08)]",
       };
   }
 }
@@ -332,7 +363,10 @@ function ChallengeSystemMessageLine({
   compactNotice: NonNullable<ReturnType<typeof challengeNoticeTone>>;
 }) {
   const summary = compactNotice.summary;
-  const isInvite = summary.state === "scheduled" || summary.state === "rescheduled";
+  const isInvite =
+    summary.state === "issued" ||
+    summary.state === "scheduled" ||
+    summary.state === "rescheduled";
 
   return (
     <div className="flex justify-center">
@@ -417,10 +451,10 @@ function ChallengeSystemMessageLine({
             </div>
             {summary.challengeId ? (
               <Link
-                href={`/challenge?focus=${summary.challengeId}`}
+                href={`/challenge/${summary.challengeId}`}
                 className="inline-flex items-center gap-1.5 rounded-full border border-current/20 bg-black/15 px-3 py-1.5 text-[11px] font-semibold text-white transition hover:bg-black/25"
               >
-                Open challenge
+                Open match room
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             ) : null}
@@ -469,8 +503,29 @@ function ChallengeThreadStrip({
   const challenge = data.activeChallenge;
   const counterpart = data.activeCounterpart;
 
-  if (!challenge || !counterpart || counterpart.threadKind !== "direct") {
+  if (!counterpart || counterpart.threadKind !== "direct") {
     return null;
+  }
+
+  if (!challenge) {
+    return (
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-amber-200/12 bg-amber-300/[0.045] px-3 py-2.5 sm:px-4">
+        <div className="min-w-0">
+          <div className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-100/48">
+            Match challenge
+          </div>
+          <div className="truncate text-xs text-slate-300">
+            Put terms in front of {counterpart.displayName}.
+          </div>
+        </div>
+        <Link
+          href={`/challenge?opponent=${encodeURIComponent(counterpart.uid)}#schedule-game`}
+          className="shrink-0 rounded-full border border-amber-200/20 bg-amber-300/12 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-amber-50 transition hover:border-amber-200/35 hover:bg-amber-300/18"
+        >
+          Challenge
+        </Link>
+      </div>
+    );
   }
 
   return (
@@ -1486,6 +1541,10 @@ export default function ContactInboxPanel({
   );
   const timelineViewportRef = useRef<HTMLDivElement | null>(null);
   const timelineContentRef = useRef<HTMLDivElement | null>(null);
+  const historySentinelRef = useRef<HTMLDivElement | null>(null);
+  const historyLoadInFlightRef = useRef(false);
+  const historyPrependAnchorRef = useRef<HistoryPrependAnchor | null>(null);
+  const suppressAutoBottomForCommitRef = useRef(false);
   const lastAutoScrolledTargetUidRef = useRef<string | null>(null);
   const shouldStickToBottomRef = useRef(true);
   const lastTimelineScrollTopRef = useRef(0);
@@ -1496,6 +1555,8 @@ export default function ContactInboxPanel({
   const [typingHudMode, setTypingHudMode] = useState<"steady" | "pulse">("steady");
   const [ownTypingPulse, setOwnTypingPulse] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const [automaticHistoryFailed, setAutomaticHistoryFailed] = useState(false);
+  const [automaticHistorySupported, setAutomaticHistorySupported] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [pinsOpen, setPinsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1576,7 +1637,7 @@ export default function ContactInboxPanel({
           ? "bg-white/[0.055] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
           : "bg-[#0a1220] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]";
 
-  function pulseOwnTypingHud() {
+  const pulseOwnTypingHud = useCallback(() => {
     if (typeof window === "undefined") return;
     if (typingHudMode !== "pulse") return;
 
@@ -1590,7 +1651,7 @@ export default function ContactInboxPanel({
       setOwnTypingPulse(false);
       ownTypingPulseTimerRef.current = null;
     }, 1150);
-  }
+  }, [typingHudMode]);
 
   function toggleTypingHudMode() {
     setTypingHudMode((current) => {
@@ -1660,28 +1721,85 @@ export default function ContactInboxPanel({
     scheduleTimelineJumpUpdate();
   }
 
-  async function loadOlderMessages() {
-    if (!onLoadOlder || loadingOlder) return;
+  const captureHistoryPrependAnchor = useCallback((
+    requestedBeforeMessageId: number | null
+  ): HistoryPrependAnchor | null => {
     const viewport = timelineViewportRef.current;
-    const previousHeight = viewport?.scrollHeight ?? 0;
-    const previousTop = viewport?.scrollTop ?? 0;
-    const usesDocumentScroll = Boolean(mode === "page" && viewport && viewport.scrollHeight <= viewport.clientHeight + 1);
-    const previousDocumentHeight = document.documentElement.scrollHeight;
-    const previousWindowY = window.scrollY;
-    setLoadingOlder(true);
-    try {
-      await onLoadOlder();
-      window.requestAnimationFrame(() => {
-        if (usesDocumentScroll) {
-          window.scrollTo({ top: previousWindowY + (document.documentElement.scrollHeight - previousDocumentHeight), behavior: "auto" });
-        } else if (viewport) {
-          viewport.scrollTop = previousTop + (viewport.scrollHeight - previousHeight);
+    const content = timelineContentRef.current;
+    if (!viewport || !content) return null;
+
+    const usesDocumentScroll = mode === "page" && viewport.scrollHeight <= viewport.clientHeight + 1;
+    const viewportRect = viewport.getBoundingClientRect();
+    const visibleTop = usesDocumentScroll ? 0 : viewportRect.top;
+    const visibleBottom = usesDocumentScroll ? window.innerHeight : viewportRect.bottom;
+    const allRows = Array.from(
+      content.querySelectorAll<HTMLElement>("[data-contact-timeline-row]")
+    );
+    const findFirstVisible = (rows: HTMLElement[]) =>
+      rows.find((row) => {
+        const rect = row.getBoundingClientRect();
+        return rect.bottom > visibleTop + 1 && rect.top < visibleBottom - 1;
+      }) ?? null;
+    // Message rows are a stronger anchor than a date divider: prepending more
+    // messages from the same day can leave the divider fixed while moving the
+    // actual conversation the reader was looking at.
+    const firstVisibleRow =
+      findFirstVisible(
+        allRows.filter((row) => row.dataset.contactTimelineMessage === "true")
+      ) ?? findFirstVisible(allRows);
+
+    return {
+      requestedBeforeMessageId,
+      rowKey: firstVisibleRow?.dataset.contactTimelineRow ?? null,
+      rowOffset: firstVisibleRow ? firstVisibleRow.getBoundingClientRect().top - visibleTop : 0,
+      viewportScrollHeight: viewport.scrollHeight,
+      viewportScrollTop: viewport.scrollTop,
+      documentScrollHeight: document.documentElement.scrollHeight,
+      windowScrollY: window.scrollY,
+      usesDocumentScroll,
+    };
+  }, [mode]);
+
+  const loadOlderMessages = useCallback(
+    async (trigger: "auto" | "manual" = "manual") => {
+      if (
+        !onLoadOlder ||
+        !data?.messagePage.hasMore ||
+        historyLoadInFlightRef.current
+      ) {
+        return;
+      }
+
+      shouldStickToBottomRef.current = false;
+      historyLoadInFlightRef.current = true;
+      historyPrependAnchorRef.current = captureHistoryPrependAnchor(
+        data.messagePage.beforeMessageId
+      );
+      setLoadingOlder(true);
+      if (trigger === "manual") setAutomaticHistoryFailed(false);
+
+      try {
+        const historyChanged = await onLoadOlder();
+        if (!historyChanged) {
+          historyPrependAnchorRef.current = null;
+          historyLoadInFlightRef.current = false;
+          setLoadingOlder(false);
         }
-      });
-    } finally {
-      setLoadingOlder(false);
-    }
-  }
+      } catch (historyError) {
+        console.warn("Older direct-message history failed:", historyError);
+        historyPrependAnchorRef.current = null;
+        historyLoadInFlightRef.current = false;
+        setLoadingOlder(false);
+        setAutomaticHistoryFailed(true);
+      }
+    },
+    [
+      captureHistoryPrependAnchor,
+      data?.messagePage.beforeMessageId,
+      data?.messagePage.hasMore,
+      onLoadOlder,
+    ]
+  );
 
   async function runSearch() {
     if (!activeTargetUid || searchQuery.trim().length < 2) return;
@@ -1747,7 +1865,7 @@ export default function ContactInboxPanel({
         setOwnTypingPulse(false);
       }
     }
-  }, [body, typingHudMode]);
+  }, [body, pulseOwnTypingHud, typingHudMode]);
 
   useEffect(() => {
     if (mode !== "page") return;
@@ -1768,12 +1886,83 @@ export default function ContactInboxPanel({
     };
   }, []);
 
+  useEffect(() => {
+    setAutomaticHistorySupported(typeof IntersectionObserver !== "undefined");
+  }, []);
+
+  useLayoutEffect(() => {
+    historyLoadInFlightRef.current = false;
+    historyPrependAnchorRef.current = null;
+    suppressAutoBottomForCommitRef.current = false;
+    setLoadingOlder(false);
+    setAutomaticHistoryFailed(false);
+  }, [activeTargetUid]);
+
+  useLayoutEffect(() => {
+    const anchor = historyPrependAnchorRef.current;
+    const viewport = timelineViewportRef.current;
+    const content = timelineContentRef.current;
+    if (!anchor || !viewport || !content) return;
+    // A live/SSE refresh may land while the history request is in flight. Keep
+    // the original reader anchor until that exact cursor advances.
+    if (data?.messagePage.beforeMessageId === anchor.requestedBeforeMessageId) return;
+
+    let restoredWithRow = false;
+    if (anchor.rowKey) {
+      const anchoredRow = Array.from(
+        content.querySelectorAll<HTMLElement>("[data-contact-timeline-row]")
+      ).find((row) => row.dataset.contactTimelineRow === anchor.rowKey);
+      if (anchoredRow) {
+        const visibleTop = anchor.usesDocumentScroll
+          ? 0
+          : viewport.getBoundingClientRect().top;
+        const offsetDelta =
+          anchoredRow.getBoundingClientRect().top - visibleTop - anchor.rowOffset;
+        if (anchor.usesDocumentScroll) {
+          window.scrollBy({ top: offsetDelta, behavior: "auto" });
+        } else {
+          viewport.scrollTop += offsetDelta;
+        }
+        restoredWithRow = true;
+      }
+    }
+
+    if (!restoredWithRow) {
+      if (anchor.usesDocumentScroll) {
+        window.scrollTo({
+          top:
+            anchor.windowScrollY +
+            (document.documentElement.scrollHeight - anchor.documentScrollHeight),
+          behavior: "auto",
+        });
+      } else {
+        viewport.scrollTop =
+          anchor.viewportScrollTop +
+          (viewport.scrollHeight - anchor.viewportScrollHeight);
+      }
+    }
+
+    lastTimelineScrollTopRef.current = viewport.scrollTop;
+    shouldStickToBottomRef.current = false;
+    suppressAutoBottomForCommitRef.current = true;
+    historyPrependAnchorRef.current = null;
+    historyLoadInFlightRef.current = false;
+    setLoadingOlder(false);
+    updateTimelineJumpButton();
+  }, [data?.messagePage.beforeMessageId, timelineRows.length, updateTimelineJumpButton]);
+
   useLayoutEffect(() => {
     if (typeof window === "undefined") return;
     if (!timelineRows.length) return;
 
     const viewport = timelineViewportRef.current;
     if (!viewport) return;
+
+    if (suppressAutoBottomForCommitRef.current) {
+      suppressAutoBottomForCommitRef.current = false;
+      return;
+    }
+    if (historyLoadInFlightRef.current || historyPrependAnchorRef.current) return;
 
     const targetChanged = lastAutoScrolledTargetUidRef.current !== activeTargetUid;
     const usesDocumentScroll = mode === "page" && viewport.scrollHeight <= viewport.clientHeight + 1;
@@ -1804,15 +1993,71 @@ export default function ContactInboxPanel({
   }, [activeTargetUid, chatViewMode, latestTimelineKey, loading, mode, timelineRows.length, updateTimelineJumpButton]);
 
   useEffect(() => {
+    const sentinel = historySentinelRef.current;
+    const viewport = timelineViewportRef.current;
+    if (
+      !sentinel ||
+      !viewport ||
+      !onLoadOlder ||
+      !data?.messagePage.hasMore ||
+      automaticHistoryFailed ||
+      !automaticHistorySupported ||
+      typeof IntersectionObserver === "undefined"
+    ) {
+      return;
+    }
+
+    const usesDocumentScroll =
+      mode === "page" && viewport.scrollHeight <= viewport.clientHeight + 1;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (
+          entries.some((entry) => entry.isIntersecting) &&
+          lastAutoScrolledTargetUidRef.current === activeTargetUid &&
+          !historyLoadInFlightRef.current
+        ) {
+          void loadOlderMessages("auto");
+        }
+      },
+      {
+        root: usesDocumentScroll ? null : viewport,
+        rootMargin: "320px 0px 0px",
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [
+    activeTargetUid,
+    automaticHistoryFailed,
+    automaticHistorySupported,
+    data?.messagePage.beforeMessageId,
+    data?.messagePage.hasMore,
+    loadOlderMessages,
+    mode,
+    onLoadOlder,
+  ]);
+
+  useEffect(() => {
     const viewport = timelineViewportRef.current;
     const content = timelineContentRef.current;
     if (!viewport || !content || typeof ResizeObserver === "undefined") return;
 
     const observer = new ResizeObserver(() => {
-      if (!shouldStickToBottomRef.current || timelineResizeFrameRef.current !== null) return;
+      if (
+        !shouldStickToBottomRef.current ||
+        historyLoadInFlightRef.current ||
+        historyPrependAnchorRef.current ||
+        timelineResizeFrameRef.current !== null
+      ) return;
       timelineResizeFrameRef.current = window.requestAnimationFrame(() => {
         timelineResizeFrameRef.current = null;
-        if (!shouldStickToBottomRef.current) return;
+        if (
+          !shouldStickToBottomRef.current ||
+          historyLoadInFlightRef.current ||
+          historyPrependAnchorRef.current
+        ) return;
         if (mode === "page" && viewport.scrollHeight <= viewport.clientHeight + 1) {
           window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "auto" });
         } else {
@@ -1941,12 +2186,16 @@ export default function ContactInboxPanel({
               ref={timelineViewportRef}
               onScroll={handleTimelineScroll}
               onLoadCapture={() => {
-                if (shouldStickToBottomRef.current) {
+                if (
+                  shouldStickToBottomRef.current &&
+                  !historyLoadInFlightRef.current &&
+                  !historyPrependAnchorRef.current
+                ) {
                   window.requestAnimationFrame(() => scrollTimelineToBottom("auto"));
                 }
               }}
               data-contact-chat-scroll={mode}
-              className={`h-full min-h-0 min-w-0 w-full transform-gpu scroll-smooth overflow-x-hidden overflow-y-auto overscroll-contain [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [will-change:scroll-position] ${isLineView ? "px-2 py-2 sm:px-3" : isObsidianView ? "px-3 py-3 sm:px-5 sm:py-4" : "px-3 py-3 sm:px-4 sm:py-4"}`}
+              className={`h-full min-h-0 min-w-0 w-full transform-gpu overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:none] [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [will-change:scroll-position] ${isLineView ? "px-2 py-2 sm:px-3" : isObsidianView ? "px-3 py-3 sm:px-5 sm:py-4" : "px-3 py-3 sm:px-4 sm:py-4"}`}
             >
             {loading ? (
               <div className="rounded-[1.35rem] bg-white/[0.045] px-4 py-5 text-sm text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">
@@ -1966,42 +2215,62 @@ export default function ContactInboxPanel({
               </div>
             ) : (
               <div ref={timelineContentRef} className={isLineView ? "space-y-0.5" : isObsidianView ? "space-y-4" : "space-y-3"}>
-                {data?.messagePage.hasMore ? (
-                  <div className="flex justify-center pb-2"><button type="button" onClick={() => void loadOlderMessages()} disabled={loadingOlder} className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 transition hover:bg-white/[0.08] disabled:opacity-50">{loadingOlder ? "Loading history…" : "Load older messages"}</button></div>
+                <div ref={historySentinelRef} className="h-px w-full" aria-hidden="true" />
+                {data?.messagePage.hasMore &&
+                (automaticHistoryFailed || !automaticHistorySupported) ? (
+                  <div className="flex justify-center pb-2">
+                    <button
+                      type="button"
+                      onClick={() => void loadOlderMessages("manual")}
+                      disabled={loadingOlder}
+                      className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 transition hover:bg-white/[0.08] disabled:opacity-50"
+                    >
+                      {loadingOlder ? "Loading history…" : "Load older messages"}
+                    </button>
+                  </div>
                 ) : null}
-                {timelineRows.map((row) =>
-                  row.type === "date" ? (
-                    mode === "page" ? (
-                      <DateDivider key={row.key} label={row.label} viewMode={chatViewMode} />
-                    ) : null
-                  ) : row.message.kind === "text" ? (
-                    <TextMessageBubble
+                {timelineRows.map((row) => {
+                  if (row.type === "date" && mode !== "page") return null;
+
+                  return (
+                    <div
                       key={row.key}
-                      message={row.message}
-                      viewerUid={data?.viewer.uid || ""}
-                      viewerIsAdmin={Boolean(data?.viewer.isAdmin)}
-                      mode={mode}
-                      viewMode={chatViewMode}
-                      showMeta={row.showMeta}
-                      showReceipt={row.message.messageId === latestOutgoingMessageId}
-                      onInboxAction={onInboxAction}
-                      onToggleReaction={onToggleReaction}
-                      reactingMessageId={reactingMessageId}
-                      onReply={onReply}
-                      onRefresh={onRefresh}
-                      onRetryOptimistic={onRetryOptimistic}
-                      translationLanguage={translationLanguage}
-                    />
-                  ) : (
-                    <HonorEventCard
-                      key={row.key}
-                      message={row.message}
-                      viewerUid={data?.viewer.uid || ""}
-                      viewerIsAdmin={Boolean(data?.viewer.isAdmin)}
-                      onInboxAction={onInboxAction}
-                    />
-                  )
-                )}
+                      data-contact-timeline-row={row.key}
+                      data-contact-timeline-message={
+                        row.type === "message" ? "true" : undefined
+                      }
+                      className="min-w-0"
+                    >
+                      {row.type === "date" ? (
+                        <DateDivider label={row.label} viewMode={chatViewMode} />
+                      ) : row.message.kind === "text" ? (
+                        <TextMessageBubble
+                          message={row.message}
+                          viewerUid={data?.viewer.uid || ""}
+                          viewerIsAdmin={Boolean(data?.viewer.isAdmin)}
+                          mode={mode}
+                          viewMode={chatViewMode}
+                          showMeta={row.showMeta}
+                          showReceipt={row.message.messageId === latestOutgoingMessageId}
+                          onInboxAction={onInboxAction}
+                          onToggleReaction={onToggleReaction}
+                          reactingMessageId={reactingMessageId}
+                          onReply={onReply}
+                          onRefresh={onRefresh}
+                          onRetryOptimistic={onRetryOptimistic}
+                          translationLanguage={translationLanguage}
+                        />
+                      ) : (
+                        <HonorEventCard
+                          message={row.message}
+                          viewerUid={data?.viewer.uid || ""}
+                          viewerIsAdmin={Boolean(data?.viewer.isAdmin)}
+                          onInboxAction={onInboxAction}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
                 {streamTypingLabel ? (
                   <div className="mt-1 flex justify-start px-1">
                     <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.18em] text-emerald-100/62">

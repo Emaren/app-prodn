@@ -1,4 +1,4 @@
-export const CHALLENGE_ACCEPTANCE_WINDOW_OPTIONS_HOURS = [24, 72, 168, 720] as const;
+export const CHALLENGE_ACCEPTANCE_WINDOW_OPTIONS_HOURS = [1, 24, 72, 168] as const;
 export const CHALLENGE_DEFAULT_ACCEPTANCE_WINDOW_HOURS = 72;
 export const CHALLENGE_FUNDING_WINDOW_MS = 60 * 60 * 1000;
 export const CHALLENGE_PLAY_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
@@ -17,6 +17,7 @@ export type ChallengeLifecyclePhase =
   | "checkin_open"
   | "ready"
   | "live"
+  | "desync_review"
   | "result_pending"
   | "completed"
   | "declined"
@@ -144,6 +145,25 @@ export function deriveChallengeLifecycle(
       timingMode,
       terminal: true,
       active: false,
+      awaitingActor: null,
+      deadlineAt: null,
+      shouldExpireAcceptance: false,
+      shouldExpireFunding: false,
+      shouldExpirePlayWindow: false,
+      exactTime,
+      canPlayAnytime: false,
+    };
+  }
+
+  // A human-confirmed desync is an active commissioner hold, not a match
+  // result and not a terminal settlement state. Keep every deadline quiet
+  // until the commissioner explicitly orders a rematch or void/refund.
+  if (status === "desync_review") {
+    return {
+      phase: "desync_review",
+      timingMode,
+      terminal: false,
+      active: true,
       awaitingActor: null,
       deadlineAt: null,
       shouldExpireAcceptance: false,

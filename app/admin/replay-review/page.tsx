@@ -383,10 +383,10 @@ function ReviewCard({
                 className="inline-flex min-h-10 items-center gap-2 rounded-full bg-amber-200 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-amber-100"
               >
                 {entry.pendingProposalCount > 0
-                  ? "Review & Approve Proposal"
+                  ? "Review Proposal / Incident Desk"
                   : entry.reviewHistoryCount > 0 || entry.adjudication
-                    ? "Append Corrected Result"
-                    : "Set Teams & Winner"}
+                    ? "Result / Desync Desk"
+                    : "Set Result / Report Desync"}
                 <ExternalLink className="h-3.5 w-3.5" />
               </Link>
               <span className="rounded-full border border-white/[0.07] bg-white/[0.025] px-3 py-2 text-[10px] uppercase tracking-[0.14em] text-slate-500">

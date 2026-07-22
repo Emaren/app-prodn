@@ -9,6 +9,7 @@ export type ChallengeInboxNoticeState =
   | "funding"
   | "checkin"
   | "ready"
+  | "desync"
   | "no_show"
   | "result_ready"
   | "declined"
@@ -84,6 +85,10 @@ export const CHALLENGE_NOTICE_HEADLINES: Record<
   "Challenge result ready": {
     state: "result_ready",
     compactHeadline: "Result ready",
+  },
+  "Challenge desync confirmed": {
+    state: "desync",
+    compactHeadline: "⚡ DESYNCED",
   },
   "Challenge declined": {
     state: "declined",
@@ -235,15 +240,11 @@ export function summarizeChallengeInboxMessage(
 }
 
 export function isChallengeInboxNoticeBody(body: string | null | undefined) {
-  const summary = summarizeChallengeInboxMessage(body);
-  return Boolean(
-    summary &&
-      (summary.challengeId ||
-        summary.matchup ||
-        summary.scheduledLabel ||
-        summary.statusLabel ||
-        summary.note)
-  );
+  // The first-line headline is the system-card discriminator in the renderer.
+  // Reserving only cards with additional parsed fields would still let a user
+  // forge a one-line "Challenge issued" card, so every recognized headline is
+  // protected regardless of which optional lines follow it.
+  return Boolean(summarizeChallengeInboxMessage(body));
 }
 
 export function addChallengeIdToInboxNotice(body: string, challengeId: number | null | undefined) {

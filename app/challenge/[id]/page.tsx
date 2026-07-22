@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import ChallengeRoomControls from "@/components/challenge/ChallengeRoomControls";
+import ChallengeRoomConversation from "@/components/challenge/ChallengeRoomConversation";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -80,10 +82,40 @@ function eventLabel(eventType: string) {
       return "Refund sent";
     case "guarantee_forfeited_to_treasury":
       return "Treasury";
+    case "guarantee_awarded":
+      return "Guarantee awarded";
     case "scheduled_settlement_completed":
       return "Settled";
     case "scheduled_settlement_failed":
       return "Settlement failed";
+    case "title_vetoed":
+      return "Commissioner veto";
+    case "title_disputed":
+      return "Title disputed";
+    case "title_cancelled":
+      return "Title cancelled";
+    case "title_result_verified":
+      return "Title result verified";
+    case "title_result_pending_review":
+      return "Title result pending review";
+    case "title_settlement_dry_run":
+      return "Title settlement preview";
+    case "title_chain_intent":
+      return "Title transfer pending chain";
+    case "title_settled":
+      return "Title settled";
+    case "commissioner_notice_delivered":
+      return "Commissioner notified";
+    case "desync_human_confirmed":
+      return "⚡ DESYNCED confirmed";
+    case "desync_human_corrected":
+      return "Desync correction appended";
+    case "desync_rematch_reopened":
+      return "Desync rematch ordered";
+    case "desync_void_refund_requested":
+      return "Desync void & refund";
+    case "challenge_protocol_notice_delivered":
+      return "Players notified";
     default:
       return eventType.replace(/_/g, " ");
   }
@@ -114,12 +146,18 @@ function statusLabel(status: string, leftName: string, rightName: string) {
       return "Funding expired";
     case "refunded":
       return "Refunded";
+    case "desync_review":
+      return "⚡ DESYNCED! ⚡";
     default:
       return status.replace(/_/g, " ");
   }
 }
 
 function statusTone(status: string) {
+  if (status === "desync_review") {
+    return "border-fuchsia-200/32 bg-fuchsia-400/[0.13] text-fuchsia-50 shadow-[0_0_48px_rgba(217,70,239,0.16)]";
+  }
+
   if (status.includes("no_show")) {
     return "border-rose-200/22 bg-rose-500/[0.11] text-rose-50 shadow-[0_0_45px_rgba(244,63,94,0.12)]";
   }
@@ -286,6 +324,13 @@ export default async function ChallengeDetailPage({
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
         take: 50,
       },
+      trophyChallenges: {
+        select: { status: true, settlementStatus: true },
+      },
+      replayDesyncIncidents: {
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 20,
+      },
     },
   });
 
@@ -296,6 +341,12 @@ export default async function ChallengeDetailPage({
   const leftName = playerName(match.challenger);
   const rightName = playerName(match.challenged);
   const totalEach = match.wagerAmountWolo + match.guaranteeAmountWolo;
+  const latestDesyncIncident = match.replayDesyncIncidents[0] ?? null;
+  const activeDesync = Boolean(
+    match.status === "desync_review" &&
+      latestDesyncIncident?.desyncOccurred &&
+      latestDesyncIncident.settlementDisposition === "commissioner_review"
+  );
   const headline = statusLabel(match.status, leftName, rightName);
   const moneyRows = buildMoneyRows({
     status: match.status,
@@ -317,15 +368,106 @@ export default async function ChallengeDetailPage({
   const fundedSides = Number(Boolean(match.challengerFundedAt)) + Number(Boolean(match.challengedFundedAt));
   const expectedRefundWolo = refundTerminal ? fundedSides * totalEach : 0;
   const refundConfirmed = expectedRefundWolo > 0 && executedSettlementWolo >= expectedRefundWolo;
-  const settlementHeadline = refundConfirmed
-    ? `${fmtWolo(executedSettlementWolo)} WOLO returned`
-    : match.settlements.some((settlement) => settlement.status === "failed")
-      ? "Settlement needs attention"
-      : match.settlements.length > 0
-        ? "Settlement in progress"
-        : refundTerminal && expectedRefundWolo > 0
-          ? `${fmtWolo(expectedRefundWolo)} WOLO refund due`
-          : "No settlement consequence recorded yet";
+  const noShowResult = ["no_show_left", "no_show_right", "double_no_show"].includes(match.status);
+  const totalIsPositive = totalEach > 0;
+  const expectedSettlementTransfers = ["canceled", "cancelled", "expired", "funding_expired"].includes(match.status)
+    ? totalIsPositive
+      ? fundedSides
+      : 0
+    : match.status === "completed"
+      ? (match.guaranteeAmountWolo > 0 ? 2 : 0) + (match.wagerAmountWolo > 0 ? 1 : 0)
+      : match.status === "double_no_show"
+        ? (match.wagerAmountWolo > 0 ? fundedSides : 0) + (match.guaranteeAmountWolo > 0 && fundedSides > 0 ? 1 : 0)
+        : ["no_show_left", "no_show_right"].includes(match.status)
+          ? (match.wagerAmountWolo > 0 ? fundedSides : 0) + (match.guaranteeAmountWolo > 0 ? 2 : 0)
+          : 0;
+  const settlementComplete =
+    expectedSettlementTransfers > 0 &&
+    match.settlements.length >= expectedSettlementTransfers &&
+    match.settlements.every(
+      (settlement) => settlement.status === "executed" && Boolean(settlement.txHash)
+    );
+  const settlementHeadline = activeDesync
+    ? "Halted · commissioner disposition required"
+    : refundConfirmed
+      ? `${fmtWolo(executedSettlementWolo)} WOLO returned`
+      : settlementComplete
+        ? `${fmtWolo(executedSettlementWolo)} WOLO settlement confirmed`
+        : match.settlements.some((settlement) => settlement.status === "failed")
+          ? "Settlement needs attention"
+          : match.settlements.length > 0
+            ? "Settlement in progress"
+            : refundTerminal && expectedRefundWolo > 0
+              ? `${fmtWolo(expectedRefundWolo)} WOLO refund due`
+              : "No settlement consequence recorded yet";
+  const terminalTitleStates = new Set([
+    "settled",
+    "commissioner_vetoed",
+    "disputed",
+    "cancelled",
+    "canceled",
+  ]);
+  const titleDecisionComplete =
+    match.trophyChallenges.length > 0 &&
+    match.trophyChallenges.every((challenge) => terminalTitleStates.has(challenge.status));
+  const protocolStopped = [
+    "declined",
+    "cancelled",
+    "canceled",
+    "expired",
+    "funding_expired",
+  ].includes(match.status);
+  const protocolSteps = activeDesync
+    ? [
+        { label: "Challenge issued", done: true },
+        { label: "Terms accepted", done: Boolean(match.acceptedAt) },
+        {
+          label: "Both rails funded",
+          done: Boolean(match.challengerFundedAt && match.challengedFundedAt),
+        },
+        {
+          label: "10-minute check-in",
+          done: Boolean(match.challengerCheckedInAt && match.challengedCheckedInAt),
+        },
+        { label: "DESYNC incident confirmed", done: true },
+        { label: "Commissioner disposition", done: false },
+        { label: "WOLO / title settlement", done: false },
+      ]
+    : [
+        { label: "Challenge issued", done: true },
+        { label: "Terms accepted", done: Boolean(match.acceptedAt) },
+        {
+          label: "Both rails funded",
+          done: Boolean(match.challengerFundedAt && match.challengedFundedAt),
+        },
+        {
+          label: "10-minute check-in",
+          done:
+            noShowResult ||
+            Boolean(match.challengerCheckedInAt && match.challengedCheckedInAt),
+        },
+        {
+          label: noShowResult ? "Check-in verdict" : "Watcher result proof",
+          done:
+            noShowResult ||
+            Boolean(
+              match.status === "completed" &&
+              match.resultAt &&
+              match.linkedSessionKey &&
+              match.linkedWinner
+            ),
+        },
+        {
+          label: "WOLO settlement",
+          done: settlementComplete,
+        },
+        ...(match.trophyChallenges.length > 0
+          ? [{ label: "Commissioner title decision", done: titleDecisionComplete }]
+          : []),
+      ];
+  const currentProtocolStep = protocolStopped
+    ? -1
+    : protocolSteps.findIndex((step) => !step.done);
 
   const extreme = view === "extreme";
   const basic = view === "basic";
@@ -356,6 +498,61 @@ export default async function ChallengeDetailPage({
             Match #{match.id}
           </div>
         </div>
+
+        {activeDesync && latestDesyncIncident ? (
+          <section
+            data-challenge-desync-banner
+            className="mb-6 overflow-hidden rounded-[2rem] border border-fuchsia-200/30 bg-[radial-gradient(circle_at_8%_0%,rgba(232,121,249,0.25),transparent_31%),radial-gradient(circle_at_94%_15%,rgba(251,146,60,0.18),transparent_32%),linear-gradient(135deg,rgba(88,28,135,0.56),rgba(31,12,46,0.84)_48%,rgba(3,7,17,0.94))] p-5 shadow-[0_0_65px_rgba(217,70,239,0.13),0_24px_90px_rgba(0,0,0,0.42)] sm:p-7"
+          >
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[0.34em] text-fuchsia-100/70">
+                  Human-confirmed incident · Match #{match.id}
+                </div>
+                <h2 className="mt-2 text-3xl font-black tracking-[-0.04em] text-white sm:text-4xl">
+                  ⚡ DESYNCED! ⚡
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-fuchsia-50/76">
+                  Recorded by {latestDesyncIncident.reviewerDisplayNameSnapshot} on {fmtDate(latestDesyncIncident.createdAt)}.
+                  This does not declare a winner. The watcher/parser result remains machine evidence only.
+                </p>
+              </div>
+              <Link
+                href={`/game-stats/${latestDesyncIncident.gameStatsId}`}
+                className="rounded-full border border-fuchsia-100/24 bg-fuchsia-100/[0.08] px-4 py-2 text-sm font-black text-fuchsia-50 transition hover:bg-fuchsia-100/[0.14]"
+              >
+                Open replay provenance ↗
+              </Link>
+            </div>
+
+            <div className="mt-5 grid gap-3 md:grid-cols-3">
+              <div className="rounded-[1.1rem] border border-white/11 bg-black/26 p-4">
+                <div className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">Desync occurred</div>
+                <div className="mt-2 text-base font-black text-fuchsia-50">Yes · human confirmed</div>
+              </div>
+              <div className="rounded-[1.1rem] border border-white/11 bg-black/26 p-4">
+                <div className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">Competitive result</div>
+                <div className="mt-2 text-base font-black text-white">Unresolved · no winner</div>
+              </div>
+              <div className="rounded-[1.1rem] border border-white/11 bg-black/26 p-4">
+                <div className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">Settlement disposition</div>
+                <div className="mt-2 text-base font-black text-orange-50">Commissioner review</div>
+              </div>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-[1fr_auto]">
+              {latestDesyncIncident.note ? (
+                <p className="rounded-[1rem] border border-white/10 bg-black/22 px-4 py-3 text-sm leading-6 text-slate-300">
+                  “{latestDesyncIncident.note}”
+                </p>
+              ) : <div />}
+              <div className="rounded-[1rem] border border-white/10 bg-black/22 px-4 py-3 text-xs leading-5 text-slate-400">
+                Machine candidate: {latestDesyncIncident.parserDesyncCandidate ? "yes" : "no"}<br />
+                Human truth: confirmed
+              </div>
+            </div>
+          </section>
+        ) : null}
 
         <section className="relative overflow-hidden rounded-[2.7rem] border border-amber-100/18 bg-[#070b16]/92 shadow-[0_44px_160px_rgba(0,0,0,0.68)]">
           <div
@@ -467,7 +664,11 @@ export default async function ChallengeDetailPage({
                 <div className="mt-4 rounded-[1rem] border border-amber-100/14 bg-amber-100/[0.055] p-4">
                   <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-100/55">Current truth</div>
                   <div className="mt-1 text-lg font-black text-amber-50">{settlementHeadline}</div>
-                  {refundConfirmed ? (
+                  {activeDesync ? (
+                    <div className="mt-1 text-xs leading-5 text-fuchsia-100/75">
+                      Winner payout, belts, titles, and artifacts are blocked. Existing funding remains locked until Rematch or authenticated Void &amp; Refund.
+                    </div>
+                  ) : refundConfirmed ? (
                     <div className="mt-1 text-xs text-emerald-100/75">Net financial impact of the cancelled challenge: 0 WOLO.</div>
                   ) : null}
                 </div>
@@ -518,11 +719,108 @@ export default async function ChallengeDetailPage({
           </div>
         </section>
 
+        {match.replayDesyncIncidents.length > 0 ? (
+          <section className="mt-6 rounded-[2rem] border border-fuchsia-200/16 bg-slate-950/76 p-5 shadow-[0_25px_90px_rgba(0,0,0,0.38)]">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-fuchsia-100/46">
+                  Append-only incident provenance
+                </p>
+                <h2 className="mt-2 font-serif text-2xl font-semibold text-white">
+                  DESYNC decision chain
+                </h2>
+              </div>
+              <div className="text-xs text-slate-400">Newest decision first · no row is rewritten</div>
+            </div>
+            <div className="mt-4 grid gap-3">
+              {match.replayDesyncIncidents.map((incident) => (
+                <div key={incident.id} className="rounded-[1.1rem] border border-white/10 bg-white/[0.035] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-black text-white">
+                        Incident #{incident.id} · {incident.desyncOccurred ? "DESYNC confirmed" : "No-desync correction"}
+                      </div>
+                      <div className="mt-1 text-xs text-slate-400">
+                        {incident.reviewerDisplayNameSnapshot} · {fmtDate(incident.createdAt)}
+                        {incident.supersedesId ? ` · supersedes #${incident.supersedesId}` : " · root decision"}
+                      </div>
+                    </div>
+                    <Link
+                      href={`/game-stats/${incident.gameStatsId}`}
+                      className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-slate-200 hover:text-white"
+                    >
+                      Replay #{incident.gameStatsId} ↗
+                    </Link>
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    <div className="text-xs text-slate-300">Desync: <strong>{incident.desyncOccurred ? "yes" : "no"}</strong></div>
+                    <div className="text-xs text-slate-300">Competitive: <strong>{incident.competitiveResultStatus.replace(/_/g, " ")}</strong></div>
+                    <div className="text-xs text-slate-300">Settlement: <strong>{incident.settlementDisposition.replace(/_/g, " ")}</strong></div>
+                  </div>
+                  {incident.note ? <p className="mt-3 text-xs leading-5 text-slate-400">{incident.note}</p> : null}
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section className="mt-6 rounded-[2rem] border border-white/10 bg-slate-950/72 p-5 shadow-[0_25px_90px_rgba(0,0,0,0.38)]">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-100/44">
+                Match protocol
+              </p>
+              <h2 className="mt-2 font-serif text-2xl font-semibold text-amber-50/90">
+                One room, one visible next step
+              </h2>
+            </div>
+            <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-300">
+              Match #{match.id}
+            </div>
+          </div>
+          <div className="mt-5 grid gap-2 sm:grid-cols-3 xl:grid-cols-7">
+            {protocolSteps.map((step, index) => {
+              const current = index === currentProtocolStep && !step.done;
+              return (
+                <div
+                  key={step.label}
+                  className={`rounded-[1rem] border px-3 py-3 ${
+                    step.done
+                      ? "border-emerald-200/16 bg-emerald-300/[0.07] text-emerald-50"
+                      : current
+                        ? "border-amber-200/28 bg-amber-300/[0.10] text-amber-50 shadow-[0_0_28px_rgba(245,158,11,0.09)]"
+                        : "border-white/8 bg-white/[0.025] text-slate-500"
+                  }`}
+                >
+                  <div className="text-[9px] font-black uppercase tracking-[0.2em] opacity-60">
+                    {step.done ? "Complete" : current ? "Next" : protocolStopped ? "Not reached" : `Step ${index + 1}`}
+                  </div>
+                  <div className="mt-1 text-xs font-bold leading-5">{step.label}</div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="mt-6">
+          <ChallengeRoomControls challengeId={match.id} />
+        </section>
+
+        <section className="mt-6">
+          <ChallengeRoomConversation
+            challengeId={match.id}
+            challengerUid={match.challenger.uid}
+            challengedUid={match.challenged.uid}
+            challengerName={leftName}
+            challengedName={rightName}
+          />
+        </section>
+
         {!basic ? (
           <section className={`mt-6 grid gap-6 ${extreme ? "xl:grid-cols-[1.15fr_0.85fr]" : "xl:grid-cols-[1fr_0.8fr]"}`}>
             <div className="rounded-[2rem] border border-white/10 bg-slate-950/72 p-5 shadow-[0_25px_90px_rgba(0,0,0,0.38)]">
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-100/38">
-                Proof Trail · RAW
+                Match action log · latest first
               </p>
 
               <div className="mt-4 grid gap-3">
@@ -581,6 +879,15 @@ export default async function ChallengeDetailPage({
                     className="rounded-[1rem] border border-emerald-200/16 bg-emerald-300/[0.07] p-4 text-sm font-black text-emerald-50 transition hover:bg-emerald-300/[0.11]"
                   >
                     Open live proof / replay →
+                  </Link>
+                ) : null}
+
+                {latestDesyncIncident ? (
+                  <Link
+                    href={`/game-stats/${latestDesyncIncident.gameStatsId}`}
+                    className="rounded-[1rem] border border-fuchsia-200/16 bg-fuchsia-300/[0.07] p-4 text-sm font-black text-fuchsia-50 transition hover:bg-fuchsia-300/[0.11]"
+                  >
+                    Open DESYNC incident provenance →
                   </Link>
                 ) : null}
 

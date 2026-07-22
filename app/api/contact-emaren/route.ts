@@ -25,6 +25,7 @@ import { publishDirectMessageEvent } from "@/lib/directMessageEvents";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { LOBBY_ROOM_SLUG, normalizeChatBody } from "@/lib/lobby";
+import { isChallengeInboxNoticeBody } from "@/lib/challengeInboxMessages";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -184,10 +185,16 @@ export async function GET(request: NextRequest) {
     const summaryOnly = request.nextUrl.searchParams.get("summary") === "1";
     const targetUid = request.nextUrl.searchParams.get("user");
     const beforeMessageId = Number(request.nextUrl.searchParams.get("before")) || null;
+    const requestedChallengeId = Number(request.nextUrl.searchParams.get("challenge"));
+    const challengeId =
+      Number.isSafeInteger(requestedChallengeId) && requestedChallengeId > 0
+        ? requestedChallengeId
+        : null;
     const payload = await loadInboxPayload(prisma, sessionUid, {
       summaryOnly,
       targetUid,
       beforeMessageId,
+      challengeId,
     });
     if (!summaryOnly && payload.activeTargetUid) {
       publishDirectMessageEvent(payload.activeTargetUid, {
@@ -225,6 +232,12 @@ export async function POST(request: NextRequest) {
     if (payload.body.length < 1 && !payload.attachment) {
       return NextResponse.json(
         { detail: "Message cannot be empty unless you attach a screenshot or voice note." },
+        { status: 400 }
+      );
+    }
+    if (isChallengeInboxNoticeBody(payload.body)) {
+      return NextResponse.json(
+        { detail: "Challenge record formatting is reserved for verified match events." },
         { status: 400 }
       );
     }
@@ -823,6 +836,7 @@ export async function PATCH(request: NextRequest) {
           select: {
             id: true,
             senderUserId: true,
+            body: true,
             attachmentKind: true,
             sharedLobbyMessageId: true,
           },
@@ -835,10 +849,22 @@ export async function PATCH(request: NextRequest) {
         if (!canManageDirectMessage(viewer, message.senderUserId)) {
           return NextResponse.json({ detail: "Forbidden." }, { status: 403 });
         }
+        if (isChallengeInboxNoticeBody(message.body)) {
+          return NextResponse.json(
+            { detail: "Challenge record entries are immutable." },
+            { status: 403 }
+          );
+        }
 
         const nextBody = normalizeInboxMessageBody(payload.body || "");
         if (!nextBody && !message.attachmentKind) {
           return NextResponse.json({ detail: "Message cannot be empty." }, { status: 400 });
+        }
+        if (isChallengeInboxNoticeBody(nextBody)) {
+          return NextResponse.json(
+            { detail: "Challenge record formatting is reserved for verified match events." },
+            { status: 400 }
+          );
         }
 
         if (message.sharedLobbyMessageId) {
@@ -907,6 +933,7 @@ export async function PATCH(request: NextRequest) {
           select: {
             id: true,
             senderUserId: true,
+            body: true,
             attachmentDataUrl: true,
             sharedLobbyMessageId: true,
           },
@@ -918,6 +945,12 @@ export async function PATCH(request: NextRequest) {
 
         if (!canManageDirectMessage(viewer, message.senderUserId)) {
           return NextResponse.json({ detail: "Forbidden." }, { status: 403 });
+        }
+        if (isChallengeInboxNoticeBody(message.body)) {
+          return NextResponse.json(
+            { detail: "Challenge record entries are immutable." },
+            { status: 403 }
+          );
         }
 
         await prisma.$transaction([

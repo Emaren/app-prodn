@@ -8,6 +8,7 @@ import {
 } from "../lib/clientChallengeFundingRetry.ts";
 
 import {
+  isChallengeInboxNoticeBody,
   summarizeChallengeInboxMessage,
 } from "../lib/challengeInboxMessages.ts";
 import {
@@ -37,7 +38,7 @@ test("parses title stakes into the rich challenge invitation contract", () => {
       "Funding: 35 WOLO each",
       "Status: Awaiting terms acceptance",
       "Title Stakes: Canada Champion, Relic Baron",
-      "Title Rule: Eligible app-side titles move only after verified watcher or replay proof.",
+      "Title Rule: Verified watcher or replay proof proposes the result; the commissioner approves or vetoes title custody.",
       "Note: One clean set. Winner owns the room.",
     ].join("\n")
   );
@@ -47,7 +48,7 @@ test("parses title stakes into the rich challenge invitation contract", () => {
   assert.equal(summary.titleStakesLabel, "Canada Champion, Relic Baron");
   assert.equal(
     summary.titleRuleLabel,
-    "Eligible app-side titles move only after verified watcher or replay proof."
+    "Verified watcher or replay proof proposes the result; the commissioner approves or vetoes title custody."
   );
   assert.match(summary.compactLine, /Canada Champion/);
 });
@@ -73,6 +74,15 @@ test("parses open Challenge v2 invitation with acceptance deadline and play-anyt
   assert.equal(summary.scheduledAtIso, "2026-07-21T17:00:00.000Z");
   assert.match(summary.compactLine, /Challenge issued/);
   assert.match(summary.compactLine, /35 WOLO each/);
+});
+
+test("reserves every recognized challenge-card headline from user-authored chat", () => {
+  assert.equal(isChallengeInboxNoticeBody("Challenge issued"), true);
+  assert.equal(
+    isChallengeInboxNoticeBody("Challenge issued\nFunding: 35 WOLO each"),
+    true
+  );
+  assert.equal(isChallengeInboxNoticeBody("I issued a challenge yesterday"), false);
 });
 
 test("parses proposed and confirmed exact-time notices without confusing them with acceptance", () => {

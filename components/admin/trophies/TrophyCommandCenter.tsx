@@ -1199,6 +1199,11 @@ function ChallengeCard({
     challenge.defenderUserId && challenge.defenderName ? { id: challenge.defenderUserId, name: challenge.defenderName } : null,
     challenge.guardianUserId && challenge.guardianName ? { id: challenge.guardianUserId, name: challenge.guardianName } : null,
   ].filter((value): value is { id: number; name: string } => Boolean(value));
+  const needsCommissionerReview = [
+    "commissioner_review",
+    "forfeit_pending_commissioner",
+    "settlement_dry_run",
+  ].includes(challenge.status);
   return (
     <article className="min-w-0 rounded-[1.7rem] border border-white/10 bg-black/22 p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1254,9 +1259,11 @@ function ChallengeCard({
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button disabled={busy} onClick={() => void onAction({ action: "challenge_action", challengeId: challenge.id, operation: "approve" }, "Challenge approved.")}>
-          Approve
-        </Button>
+        {!needsCommissionerReview ? (
+          <Button disabled={busy} onClick={() => void onAction({ action: "challenge_action", challengeId: challenge.id, operation: "approve" }, "Challenge approved.")}>
+            Approve
+          </Button>
+        ) : null}
         <Button disabled={busy || !replayId} onClick={() => void onAction({ action: "challenge_action", challengeId: challenge.id, operation: "attach_replay", replayId: Number(replayId) }, "Replay proof attached.")}>
           Attach replay
         </Button>
@@ -1275,11 +1282,22 @@ function ChallengeCard({
         <Button tone="danger" disabled={busy} onClick={() => void onAction({ action: "challenge_action", challengeId: challenge.id, operation: "dispute" }, "Challenge marked disputed.")}>
           Dispute
         </Button>
-        <Button tone="danger" disabled={busy} onClick={() => void onAction({ action: "challenge_action", challengeId: challenge.id, operation: "cancel" }, "Challenge cancelled.")}>
-          Cancel
-        </Button>
+        {needsCommissionerReview ? (
+          <Button tone="danger" disabled={busy} onClick={() => void onAction({ action: "challenge_action", challengeId: challenge.id, operation: "veto" }, "Commissioner veto recorded; title custody remains unchanged.")}>
+            Veto title change
+          </Button>
+        ) : (
+          <Button tone="danger" disabled={busy} onClick={() => void onAction({ action: "challenge_action", challengeId: challenge.id, operation: "cancel" }, "Challenge cancelled.")}>
+            Cancel
+          </Button>
+        )}
       </div>
 
+      {needsCommissionerReview ? (
+        <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-300/8 px-3 py-2 text-xs leading-5 text-amber-100">
+          Commissioner decision required. Verify the preserved winner or forfeit disposition, then use dry-run and Settle to approve it. Veto title change keeps custody untouched; Dispute holds questionable proof. Match-result money is handled on its separate settlement rail.
+        </div>
+      ) : null}
       {challenge.verificationSummary ? <div className="mt-3 rounded-xl border border-white/8 px-3 py-2 text-xs leading-5 text-slate-400">{challenge.verificationSummary}</div> : null}
       {challenge.errorState ? <div className="mt-3 rounded-xl border border-rose-300/18 bg-rose-400/8 px-3 py-2 text-xs text-rose-100">{challenge.errorState}</div> : null}
       <div className="mt-3">

@@ -59,6 +59,11 @@ import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 
 const EMPTY_SNAPSHOT: ChallengeHubSnapshot = {
   viewer: null,
+  historyScope: "participant",
+  historyPage: {
+    hasMore: false,
+    nextCursor: null,
+  },
   candidates: [],
   scheduledMatches: [],
   historyMatches: [],
@@ -347,161 +352,6 @@ function shortHash(value: string) {
   return `${value.slice(0, 8)}...${value.slice(-6)}`;
 }
 
-function buildSyntheticSettlementActivities(matches: ActivityMatch[]): ChallengeActivityItem[] {
-  const rows: ChallengeActivityItem[] = [];
-
-  for (const match of matches) {
-    const noShowLeft = match.displayState === "no_show_left";
-    const noShowRight = match.displayState === "no_show_right";
-    const doubleNoShow = match.displayState === "double_no_show";
-
-    if (!noShowLeft && !noShowRight && !doubleNoShow) {
-      continue;
-    }
-
-    const baseTime = new Date(
-      match.economy.settlementReadyAt || match.activityAt || match.scheduledAt || match.createdAt
-    );
-    const baseMs = Number.isNaN(baseTime.getTime()) ? Date.now() : baseTime.getTime();
-
-    function pushRow(input: {
-      offset: number;
-      eventType: string;
-      actorUid: string | null;
-      actorName: string | null;
-      detail: string;
-      amountWolo: number;
-      participantName: string;
-      bucket: "wager" | "guarantee";
-      settlementTarget: "refund" | "treasury";
-    }) {
-      if (input.amountWolo <= 0) return;
-
-      rows.push({
-        id: match.id * 100_000 + 900 + input.offset,
-        scheduledMatchId: match.id,
-        eventType: input.eventType,
-        detail: input.detail,
-        actorUid: input.actorUid,
-        actorName: input.actorName,
-        createdAt: new Date(baseMs + input.offset * 1000).toISOString(),
-        metadata: {
-          amountWolo: input.amountWolo,
-          participantName: input.participantName,
-          bucket: input.bucket,
-          settlementTarget: input.settlementTarget,
-          synthetic: true,
-        },
-      });
-    }
-
-    const left = match.challenger;
-    const right = match.challenged;
-
-    if (noShowLeft || doubleNoShow) {
-      pushRow({
-        offset: 1,
-        eventType: "refund_due",
-        actorUid: left.uid,
-        actorName: left.name,
-        detail: `${left.name} Wolo Wager refund due · ${match.terms.wagerAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.wagerAmountWolo,
-        participantName: left.name,
-        bucket: "wager",
-        settlementTarget: "refund",
-      });
-
-      pushRow({
-        offset: 2,
-        eventType: "guarantee_forfeited_to_treasury",
-        actorUid: left.uid,
-        actorName: left.name,
-        detail: `${left.name} Match Guarantee → Treasury · ${match.terms.guaranteeAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.guaranteeAmountWolo,
-        participantName: left.name,
-        bucket: "guarantee",
-        settlementTarget: "treasury",
-      });
-    } else {
-      pushRow({
-        offset: 1,
-        eventType: "refund_due",
-        actorUid: left.uid,
-        actorName: left.name,
-        detail: `${left.name} Wolo Wager refund due · ${match.terms.wagerAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.wagerAmountWolo,
-        participantName: left.name,
-        bucket: "wager",
-        settlementTarget: "refund",
-      });
-
-      pushRow({
-        offset: 2,
-        eventType: "refund_due",
-        actorUid: left.uid,
-        actorName: left.name,
-        detail: `${left.name} Match Guarantee refund due · ${match.terms.guaranteeAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.guaranteeAmountWolo,
-        participantName: left.name,
-        bucket: "guarantee",
-        settlementTarget: "refund",
-      });
-    }
-
-    if (noShowRight || doubleNoShow) {
-      pushRow({
-        offset: 3,
-        eventType: "refund_due",
-        actorUid: right.uid,
-        actorName: right.name,
-        detail: `${right.name} Wolo Wager refund due · ${match.terms.wagerAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.wagerAmountWolo,
-        participantName: right.name,
-        bucket: "wager",
-        settlementTarget: "refund",
-      });
-
-      pushRow({
-        offset: 4,
-        eventType: "guarantee_forfeited_to_treasury",
-        actorUid: right.uid,
-        actorName: right.name,
-        detail: `${right.name} Match Guarantee → Treasury · ${match.terms.guaranteeAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.guaranteeAmountWolo,
-        participantName: right.name,
-        bucket: "guarantee",
-        settlementTarget: "treasury",
-      });
-    } else {
-      pushRow({
-        offset: 3,
-        eventType: "refund_due",
-        actorUid: right.uid,
-        actorName: right.name,
-        detail: `${right.name} Wolo Wager refund due · ${match.terms.wagerAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.wagerAmountWolo,
-        participantName: right.name,
-        bucket: "wager",
-        settlementTarget: "refund",
-      });
-
-      pushRow({
-        offset: 4,
-        eventType: "refund_due",
-        actorUid: right.uid,
-        actorName: right.name,
-        detail: `${right.name} Match Guarantee refund due · ${match.terms.guaranteeAmountWolo.toLocaleString()} WOLO.`,
-        amountWolo: match.terms.guaranteeAmountWolo,
-        participantName: right.name,
-        bucket: "guarantee",
-        settlementTarget: "refund",
-      });
-    }
-  }
-
-  return rows;
-}
-
 function formatActivityCompact(activity: ChallengeActivityItem, match?: ActivityMatch) {
   const totalLabel = match ? `${match.terms.totalFundingWolo.toLocaleString()} WOLO` : "WOLO";
   const matchLabel = match
@@ -639,7 +489,6 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("extreme");
   const [routePrefillApplied, setRoutePrefillApplied] = useState(false);
   const [trophyTarget, setTrophyTarget] = useState<PublicTrophyTarget | null>(null);
-  const [trophies, setTrophies] = useState<PublicTrophyTarget[]>([]);
   const [trophyTargetLoading, setTrophyTargetLoading] = useState(Boolean(searchParams.get("title")));
   const [wagerAmountWolo, setWagerAmountWolo] = useState(String(CHALLENGE_DEFAULT_WAGER_WOLO));
   const [guaranteeAmountWolo, setGuaranteeAmountWolo] = useState(
@@ -647,11 +496,20 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   );
   const [focusedMatchId, setFocusedMatchId] = useState<number | null>(null);
   const [olderHistoryMatches, setOlderHistoryMatches] = useState<ChallengeHubSnapshot["historyMatches"]>([]);
-  const [historyHasMore, setHistoryHasMore] = useState(true);
+  const [olderHistoryActivities, setOlderHistoryActivities] = useState<ChallengeActivityItem[]>([]);
+  const [historyHasMore, setHistoryHasMore] = useState(false);
+  const [historyNextCursor, setHistoryNextCursor] = useState<number | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyAutoLoadFailed, setHistoryAutoLoadFailed] = useState(false);
+  const historyLoadingRef = useRef(false);
+  const activityScrollRef = useRef<HTMLDivElement | null>(null);
+  const activitySentinelRef = useRef<HTMLDivElement | null>(null);
+  const historyScrollRef = useRef<HTMLDivElement | null>(null);
+  const historySentinelRef = useRef<HTMLDivElement | null>(null);
   const requestedTitle = searchParams.get("title");
   const requestedKind = searchParams.get("kind");
   const requestedCountry = searchParams.get("country");
+  const requestedOpponentUid = searchParams.get("opponent")?.trim() || "";
   const requestedFocusId = Number.parseInt(searchParams.get("focus") || "", 10);
   const challengeHallView = parseChallengeHallView(searchParams.get("view"));
   const challengeHallExtreme = challengeHallView === "extreme";
@@ -672,6 +530,15 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     const params = searchParams.toString();
     return params ? `/challenge?${params}` : "/challenge";
   }, [searchParams]);
+
+  const replaceSnapshot = useCallback((payload: ChallengeHubSnapshot) => {
+    setSnapshot(payload);
+    setOlderHistoryMatches([]);
+    setOlderHistoryActivities([]);
+    setHistoryHasMore(payload.historyPage.hasMore);
+    setHistoryNextCursor(payload.historyPage.nextCursor);
+    setHistoryAutoLoadFailed(false);
+  }, []);
 
   const buildNationalChallengeNote = useCallback((country: RepresentedCountry | "") => {
     const countryLabel = country || requestedCountry || "my nation";
@@ -701,12 +568,10 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
             }) ?? null
           : null;
         if (!cancelled) {
-          setTrophies(nextTrophies);
           setTrophyTarget(target);
         }
       } catch {
         if (!cancelled) {
-          setTrophies([]);
           setTrophyTarget(null);
         }
       } finally {
@@ -746,7 +611,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
 
         if (!cancelled && payload) {
           setError(null);
-          setSnapshot(payload);
+          replaceSnapshot(payload);
         }
       } catch (loadError) {
         if (!cancelled) {
@@ -766,7 +631,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     return () => {
       cancelled = true;
     };
-  }, [authLoading, effectiveFocusId, isAuthenticated]);
+  }, [authLoading, effectiveFocusId, isAuthenticated, replaceSnapshot]);
 
   useEffect(() => {
     setScheduledAt(defaultScheduledAtValue());
@@ -777,7 +642,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
       return;
     }
 
-    if (!isNationalChallengeFlow && !trophyTarget) {
+    if (!isNationalChallengeFlow && !trophyTarget && !requestedOpponentUid) {
       setRoutePrefillApplied(true);
       return;
     }
@@ -786,12 +651,30 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
       setSelectedNationalCountry(initialNationalCountry);
     }
 
+    const viewerOwnsTarget = Boolean(
+      trophyTarget &&
+      uid &&
+      [trophyTarget.currentHolderUid, trophyTarget.guardianHolderUid].includes(uid)
+    );
     const note = trophyTarget
-      ? `Challenge for ${trophyTarget.displayName}: scheduled against ${trophyTarget.currentHolder || trophyTarget.guardianHolder || "the current custodian"} and settled only after verified watcher or replay proof.`
-      : buildNationalChallengeNote(initialNationalCountry);
-    setChallengeNote((current) => current || note.slice(0, CHALLENGE_NOTE_MAX_CHARS));
+      ? viewerOwnsTarget
+        ? `Defending ${trophyTarget.displayName}: the selected opponent must pass title eligibility, and the commissioner approves or vetoes custody after verified proof.`
+        : `Challenge for ${trophyTarget.displayName}: scheduled against ${trophyTarget.currentHolder || trophyTarget.guardianHolder || "the current custodian"}; the commissioner approves or vetoes custody after verified proof.`
+      : isNationalChallengeFlow
+        ? buildNationalChallengeNote(initialNationalCountry)
+        : "";
+    if (note) {
+      setChallengeNote((current) => current || note.slice(0, CHALLENGE_NOTE_MAX_CHARS));
+    }
     setChallengedUid((current) => {
       if (current) return current;
+      if (requestedOpponentUid) {
+        const requestedOpponent = snapshot.candidates.find(
+          (candidate) => candidate.uid === requestedOpponentUid && candidate.uid !== uid
+        );
+        if (requestedOpponent) return requestedOpponent.uid;
+      }
+      if (viewerOwnsTarget) return current;
       const targetName = trophyTarget?.currentHolder || trophyTarget?.guardianHolder;
       if (!targetName) return current;
       const normalizedTarget = targetName.trim().toLowerCase();
@@ -809,9 +692,11 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     isNationalChallengeFlow,
     loading,
     routePrefillApplied,
+    requestedOpponentUid,
     snapshot.candidates,
     trophyTarget,
     trophyTargetLoading,
+    uid,
   ]);
 
   const pendingIncomingCount = useMemo(
@@ -853,41 +738,39 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   const historyMatches = useMemo(() => {
     const byId = new Map<number, ChallengeHubSnapshot["historyMatches"][number]>();
     for (const match of [...snapshot.historyMatches, ...olderHistoryMatches]) byId.set(match.id, match);
-    return Array.from(byId.values()).sort(
-      (left, right) => new Date(right.activityAt).getTime() - new Date(left.activityAt).getTime()
-    );
+    return Array.from(byId.values()).sort((left, right) => right.id - left.id);
   }, [olderHistoryMatches, snapshot.historyMatches]);
 
   const visibleMatchTiles = useMemo(() => {
     const byId = new Map<number, ActivityMatch>();
-    for (const match of [...activeRunwayMatches, ...snapshot.historyMatches]) {
+    for (const match of [...activeRunwayMatches, ...historyMatches]) {
       byId.set(match.id, match);
     }
-    return Array.from(byId.values());
-  }, [activeRunwayMatches, snapshot.historyMatches]);
+    return Array.from(byId.values()).sort((left, right) => right.id - left.id);
+  }, [activeRunwayMatches, historyMatches]);
 
   const recentActivities = useMemo(() => {
-    const syntheticSettlementRows = buildSyntheticSettlementActivities(snapshot.historyMatches);
     const seen = new Set<string>();
 
-    return [...snapshot.activities, ...syntheticSettlementRows]
+    // Settlement events enter the ledger only after the real executor records
+    // transaction-backed activity. Planned amounts stay on the money surface.
+    return [...snapshot.activities, ...olderHistoryActivities]
       .filter((activity) => {
-        const key = `${activity.scheduledMatchId}:${activity.eventType}:${activity.actorUid || "system"}:${metadataString(activity, "bucket") || ""}:${metadataString(activity, "settlementTarget") || ""}`;
+        const key = `${activity.scheduledMatchId}:${activity.eventType}:${activity.createdAt}:${metadataString(activity, "bucket") || ""}:${metadataString(activity, "settlementTarget") || ""}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
       })
-      .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
-      .slice(0, 12);
-  }, [snapshot.activities, snapshot.historyMatches]);
+      .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime());
+  }, [olderHistoryActivities, snapshot.activities]);
 
   const activityMatchById = useMemo(() => {
     const matches = new Map<number, ActivityMatch>();
-    for (const match of [...snapshot.scheduledMatches, ...snapshot.historyMatches]) {
+    for (const match of [...snapshot.scheduledMatches, ...historyMatches]) {
       matches.set(match.id, match);
     }
     return matches;
-  }, [snapshot.historyMatches, snapshot.scheduledMatches]);
+  }, [historyMatches, snapshot.scheduledMatches]);
 
   const recentChallengeRecords = useMemo(() => {
     const grouped = new Map<number, ChallengeActivityItem[]>();
@@ -903,17 +786,13 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
           (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
         ),
       }))
-      .sort(
-        (left, right) =>
-          new Date(right.activities[0]?.createdAt ?? 0).getTime() -
-          new Date(left.activities[0]?.createdAt ?? 0).getTime()
-      )
-      .slice(0, 12);
+      .sort((left, right) => right.challengeId - left.challengeId);
   }, [recentActivities]);
 
+  const effectiveAcceptanceWindowHours = trophyTarget ? 168 : acceptanceWindowHours;
   const acceptanceDeadlinePreview = useMemo(
-    () => new Date(Date.now() + acceptanceWindowHours * 60 * 60 * 1000),
-    [acceptanceWindowHours]
+    () => new Date(Date.now() + effectiveAcceptanceWindowHours * 60 * 60 * 1000),
+    [effectiveAcceptanceWindowHours]
   );
   const acceptancePreviewLocal = useMemo(
     () => formatDateTime(acceptanceDeadlinePreview, {
@@ -988,18 +867,10 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     () => snapshot.candidates.find((candidate) => candidate.uid === challengedUid) ?? null,
     [challengedUid, snapshot.candidates]
   );
-  const automaticTitleStakes = useMemo(() => {
-    if (!challengedUid || !uid) return trophyTarget ? [trophyTarget] : [];
-    const participantUids = new Set([uid, challengedUid]);
-    const titleRows = trophies.filter((trophy) =>
-      participantUids.has(trophy.currentHolderUid || "") ||
-      participantUids.has(trophy.guardianHolderUid || "")
-    );
-    if (trophyTarget && !titleRows.some((trophy) => trophy.trophyId === trophyTarget.trophyId)) {
-      titleRows.unshift(trophyTarget);
-    }
-    return titleRows;
-  }, [challengedUid, trophies, trophyTarget, uid]);
+  const selectedTitleStakes = useMemo(
+    () => (trophyTarget ? [trophyTarget] : []),
+    [trophyTarget]
+  );
   const createButtonLabel = !challengeEscrowReady
     ? "Escrow Not Wired"
     : savingPhase === "connecting"
@@ -1157,7 +1028,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
         throw new Error(payload?.detail || "Challenge update failed.");
       }
 
-      setSnapshot(confirmedPayload);
+      replaceSnapshot(confirmedPayload);
       setNotice(
         action === "accept"
           ? "Terms accepted."
@@ -1183,29 +1054,107 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     }
   }
 
-  async function loadOlderHistory() {
-    if (historyLoading || !historyHasMore) return;
-    const all = [...snapshot.historyMatches, ...olderHistoryMatches];
-    const cursor = all.length > 0 ? Math.min(...all.map((match) => match.id)) : null;
+  const loadOlderHistory = useCallback(async () => {
+    if (historyLoadingRef.current || !historyHasMore) return;
+
+    if (!historyNextCursor) {
+      setHistoryAutoLoadFailed(true);
+      return;
+    }
+
+    historyLoadingRef.current = true;
     setHistoryLoading(true);
     try {
-      const params = new URLSearchParams({ limit: "20" });
-      if (cursor) params.set("cursor", String(cursor));
-      const response = await fetch(`/api/challenges/history?${params.toString()}`, { cache: "no-store" });
+      const params = new URLSearchParams({
+        limit: "20",
+        cursor: String(historyNextCursor),
+      });
+      const response = await fetch(`/api/challenges/history?${params.toString()}`, {
+        cache: "no-store",
+      });
       const payload = (await response.json().catch(() => null)) as {
         rows?: ChallengeHubSnapshot["historyMatches"];
+        activities?: ChallengeActivityItem[];
         page?: { hasMore?: boolean; nextCursor?: number | null };
         detail?: string;
       } | null;
-      if (!response.ok || !payload) throw new Error(payload?.detail || "Challenge history unavailable.");
-      setOlderHistoryMatches((current) => [...current, ...(payload.rows ?? [])]);
-      setHistoryHasMore(Boolean(payload.page?.hasMore));
+      if (!response.ok || !payload) {
+        throw new Error(payload?.detail || "Challenge history unavailable.");
+      }
+
+      setOlderHistoryMatches((current) => {
+        const byId = new Map(current.map((match) => [match.id, match]));
+        for (const match of payload.rows ?? []) byId.set(match.id, match);
+        return Array.from(byId.values()).sort((left, right) => right.id - left.id);
+      });
+      setOlderHistoryActivities((current) => {
+        const byKey = new Map(
+          current.map((activity) => [
+            `${activity.scheduledMatchId}:${activity.eventType}:${activity.createdAt}`,
+            activity,
+          ])
+        );
+        for (const activity of payload.activities ?? []) {
+          byKey.set(
+            `${activity.scheduledMatchId}:${activity.eventType}:${activity.createdAt}`,
+            activity
+          );
+        }
+        return Array.from(byKey.values());
+      });
+
+      const hasMore = Boolean(payload.page?.hasMore);
+      const nextCursor = payload.page?.nextCursor ?? null;
+      setError(null);
+      setHistoryHasMore(hasMore);
+      setHistoryNextCursor(nextCursor);
+      setHistoryAutoLoadFailed(hasMore && !nextCursor);
     } catch (historyError) {
-      setError(historyError instanceof Error ? historyError.message : "Challenge history unavailable.");
+      setHistoryAutoLoadFailed(true);
+      setError(
+        historyError instanceof Error ? historyError.message : "Challenge history unavailable."
+      );
     } finally {
+      historyLoadingRef.current = false;
       setHistoryLoading(false);
     }
-  }
+  }, [historyHasMore, historyNextCursor]);
+
+  useEffect(() => {
+    if (!historyHasMore || historyAutoLoadFailed) return;
+
+    if (!historyNextCursor) {
+      setHistoryAutoLoadFailed(true);
+      return;
+    }
+
+    if (typeof IntersectionObserver === "undefined") {
+      setHistoryAutoLoadFailed(true);
+      return;
+    }
+
+    const observers: IntersectionObserver[] = [];
+    const observe = (root: HTMLDivElement | null, target: HTMLDivElement | null) => {
+      if (!root || !target) return;
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) {
+            void loadOlderHistory();
+          }
+        },
+        { root, rootMargin: "0px 0px 240px 0px", threshold: 0.01 }
+      );
+      observer.observe(target);
+      observers.push(observer);
+    };
+
+    observe(activityScrollRef.current, activitySentinelRef.current);
+    observe(historyScrollRef.current, historySentinelRef.current);
+
+    return () => {
+      for (const observer of observers) observer.disconnect();
+    };
+  }, [historyAutoLoadFailed, historyHasMore, historyNextCursor, loadOlderHistory]);
 
   async function updatePreference(
     challengeId: number,
@@ -1361,7 +1310,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
         throw new Error(payload?.detail || "Unable to schedule the game.");
       }
 
-      setSnapshot(payload);
+      replaceSnapshot(payload);
       const duplicateWarning = payload.duplicateWarning;
       const createdChallengeId = payload.createdChallengeId;
       if (!createdChallengeId || !Number.isFinite(createdChallengeId)) {
@@ -1458,7 +1407,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
         throw new Error("Challenge funding state could not be confirmed.");
       }
 
-      setSnapshot(fundedPayload);
+      replaceSnapshot(fundedPayload);
       setFocusedMatchId(createdChallengeId);
       router.push(`/challenge/${createdChallengeId}`);
       setNotice(
@@ -1724,21 +1673,23 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
 
                     <div className="mt-3 grid grid-cols-4 gap-2">
                       {[
+                        ["1 hour", 1],
                         ["24 hours", 24],
                         ["3 days", 72],
                         ["7 days", 168],
-                        ["30 days", 720],
                       ].map(([label, hours]) => {
-                        const active = acceptanceWindowHours === Number(hours);
+                        const active = effectiveAcceptanceWindowHours === Number(hours);
+                        const disabled = Boolean(trophyTarget) && Number(hours) !== 168;
                         return (
                           <button
                             key={String(label)}
                             type="button"
                             onClick={() => setAcceptanceWindowHours(Number(hours))}
+                            disabled={disabled}
                             className={`rounded-xl border px-2 py-2.5 text-xs font-semibold transition ${
                               active
                                 ? "border-amber-200/30 bg-amber-300/14 text-amber-50"
-                                : "border-white/10 bg-white/[0.045] text-slate-200 hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-white"
+                                : "border-white/10 bg-white/[0.045] text-slate-200 hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
                             }`}
                           >
                             {label}
@@ -1752,6 +1703,11 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                         {selectedOpponent?.name || "Your rival"} has until {acceptancePreviewLocal} to accept.
                       </div>
                       <div className="mt-1 text-xs text-slate-400">UTC {acceptancePreviewUtc}</div>
+                      {trophyTarget ? (
+                        <div className="mt-1 text-xs text-amber-100/70">
+                          Title protocol locks the response window to seven days; an earlier exact match time still wins.
+                        </div>
+                      ) : null}
                     </div>
 
                     {scheduleMode !== "basic" ? (
@@ -1870,15 +1826,15 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                         <div>
                           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-amber-100/70">
                             <Crown className="h-4 w-4" />
-                            Automatic title stakes
+                            Commissioner-controlled title stake
                           </div>
-                          <div className="mt-1 text-sm text-slate-300">The rules engine puts eligible belts and artifacts on the table for you.</div>
+                          <div className="mt-1 text-sm text-slate-300">Only the title explicitly selected for this challenge is attached. Eligibility and final custody remain audited.</div>
                         </div>
                         <Sparkles className="h-5 w-5 shrink-0 text-amber-200" />
                       </div>
-                      {automaticTitleStakes.length > 0 ? (
+                      {selectedTitleStakes.length > 0 ? (
                         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                          {automaticTitleStakes.map((title) => (
+                          {selectedTitleStakes.map((title) => (
                             <div key={title.trophyId} className="flex min-w-0 items-center gap-3 rounded-[1rem] border border-amber-100/15 bg-black/20 p-3">
                               <div className="relative h-14 w-20 shrink-0">
                                 {title.imageUri ? (
@@ -1890,7 +1846,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                               <div className="min-w-0">
                                 <div className="truncate text-sm font-bold text-white">{title.displayName}</div>
                                 <div className="mt-1 text-[11px] text-amber-100/65">
-                                  {title.kind === "artifact" ? "Metric proof required" : "Moves on verified win"}
+                                  {title.kind === "artifact" ? "Metric proof required" : "Commissioner decision after verified result"}
                                   {title.currentBountyWolo > 0 ? ` · ${title.currentBountyWolo.toLocaleString()} WOLO bounty` : ""}
                                 </div>
                               </div>
@@ -1900,7 +1856,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                       ) : (
                         <div className="mt-4 flex items-center gap-3 rounded-[1rem] border border-white/10 bg-black/15 p-3 text-sm text-slate-300">
                           <Gem className="h-5 w-5 text-violet-200/70" />
-                          No eligible title detected yet. This one is for WOLO, pride, and the permanent record.
+                          No title is attached. This match is for WOLO, pride, and the permanent record.
                         </div>
                       )}
                     </section>
@@ -1978,7 +1934,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                       <div className="mt-3 flex flex-wrap justify-center gap-2 text-[11px] text-slate-300">
                         <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">{schedulePreviewLocal}</span>
                         <span className="rounded-full border border-amber-200/15 bg-amber-300/10 px-3 py-1 text-amber-50">{totalFundingPreview.toLocaleString()} WOLO each</span>
-                        {automaticTitleStakes.length > 0 ? <span className="rounded-full border border-violet-200/15 bg-violet-300/10 px-3 py-1 text-violet-50">{automaticTitleStakes.length} title {automaticTitleStakes.length === 1 ? "stake" : "stakes"}</span> : null}
+                        {selectedTitleStakes.length > 0 ? <span className="rounded-full border border-violet-200/15 bg-violet-300/10 px-3 py-1 text-violet-50">{selectedTitleStakes.length} title stake</span> : null}
                       </div>
                     </section>
                   ) : null}
@@ -2180,7 +2136,10 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
               </div>
             </div>
 
-            <div className="mt-5 space-y-3">
+            <div
+              ref={activityScrollRef}
+              className="mt-5 max-h-[36rem] space-y-3 overflow-y-auto overscroll-contain scroll-smooth pr-1"
+            >
               {recentChallengeRecords.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
                   Challenge activity will land here as the ledger fills out.
@@ -2222,6 +2181,22 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                   );
                 })
               )}
+              {historyLoading ? (
+                <div className="py-2 text-center text-xs text-slate-500">
+                  Loading older challenge activity…
+                </div>
+              ) : null}
+              <div ref={activitySentinelRef} aria-hidden className="h-px w-full" />
+              {historyHasMore && historyAutoLoadFailed ? (
+                <button
+                  type="button"
+                  onClick={() => void loadOlderHistory()}
+                  disabled={historyLoading}
+                  className="w-full cursor-pointer rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm font-semibold text-slate-300 transition hover:border-amber-100/20 hover:text-white disabled:cursor-wait disabled:opacity-60"
+                >
+                  {historyLoading ? "Loading older activity…" : "Load older activity"}
+                </button>
+              ) : null}
             </div>
           </section>
 
@@ -2242,7 +2217,10 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
               </div>
             </div>
 
-            <div className="mt-5 min-w-0 space-y-4">
+            <div
+              ref={historyScrollRef}
+              className="mt-5 max-h-[36rem] min-w-0 space-y-4 overflow-y-auto overscroll-contain scroll-smooth pr-1"
+            >
               {historyMatches.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
                   No older challenge history yet.
@@ -2270,7 +2248,13 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                   />
                 ))
               )}
-              {historyHasMore ? (
+              {historyLoading ? (
+                <div className="py-2 text-center text-xs text-slate-500">
+                  Loading older challenges…
+                </div>
+              ) : null}
+              <div ref={historySentinelRef} aria-hidden className="h-px w-full" />
+              {historyHasMore && historyAutoLoadFailed ? (
                 <button
                   type="button"
                   onClick={() => void loadOlderHistory()}

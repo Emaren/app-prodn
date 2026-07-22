@@ -6,6 +6,7 @@ import {
 } from "@/lib/challengeConfig";
 import {
   loadChallengeHubSnapshot,
+  loadChallengeTileById,
   normalizeChallengeNote,
   parseScheduledMatchDate,
 } from "@/lib/challenges";
@@ -19,7 +20,10 @@ import {
   buildChallengeFundBy,
   buildChallengePlayBy,
 } from "@/lib/challengeLifecycle";
-import { postChallengeInboxNotice } from "@/lib/contactInbox";
+import { ChallengeDesyncError } from "@/lib/desyncChallenge";
+import { resolveChallengeDesyncDisposition } from "@/lib/desyncChallengeProtocol";
+import { TERMINAL_TITLE_CHALLENGE_STATUSES } from "@/lib/challengeTitlePolicy";
+import { postChallengeCommissionerNotice, postChallengeInboxNotice } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { recordUserActivity } from "@/lib/userExperience";
@@ -409,6 +413,49 @@ async function recordChallengeActivity(
   });
 }
 
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  try {
+    const viewerState = await requireViewer(request);
+    if ("error" in viewerState) return viewerState.error;
+    const { prisma, viewer } = viewerState;
+    const { id } = await context.params;
+    const challengeId = Number.parseInt(id, 10);
+    if (!Number.isSafeInteger(challengeId) || challengeId <= 0) {
+      return NextResponse.json({ detail: "Challenge id is invalid." }, { status: 400 });
+    }
+
+    const access = await prisma.scheduledMatch.findUnique({
+      where: { id: challengeId },
+      select: { challengerUserId: true, challengedUserId: true },
+    });
+    if (!access) {
+      return NextResponse.json({ detail: "Scheduled match not found." }, { status: 404 });
+    }
+    if (
+      !viewer.isAdmin &&
+      viewer.id !== access.challengerUserId &&
+      viewer.id !== access.challengedUserId
+    ) {
+      return NextResponse.json({ detail: "You are not part of this scheduled match." }, { status: 403 });
+    }
+
+    const match = await loadChallengeTileById(prisma, challengeId);
+    if (!match) {
+      return NextResponse.json({ detail: "Scheduled match not found." }, { status: 404 });
+    }
+    await postChallengeCommissionerNotice(prisma, challengeId).catch((error) => {
+      console.error(`Failed to retry commissioner notice for challenge #${challengeId}:`, error);
+    });
+    return NextResponse.json({ match, serverNow: new Date().toISOString() });
+  } catch (error) {
+    console.error("Failed to load scheduled match room:", error);
+    return NextResponse.json({ detail: "Challenge room unavailable." }, { status: 500 });
+  }
+}
+
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -440,6 +487,10 @@ export async function PATCH(
       linkedMapName?: string;
       linkedWinner?: string;
       linkedDurationSeconds?: number;
+      desyncIncidentId?: number;
+      idempotencyKey?: string;
+      rematchAt?: string;
+      note?: string;
     };
 
     const scheduledMatch = await prisma.scheduledMatch.findUnique({
@@ -474,9 +525,67 @@ export async function PATCH(
       payload.action !== "fund" &&
       payload.action !== "check_in" &&
       payload.action !== "resolve_no_show" &&
-      payload.action !== "mark_completed"
+      payload.action !== "mark_completed" &&
+      payload.action !== "desync_rematch" &&
+      payload.action !== "desync_void_refund"
     ) {
       return NextResponse.json({ detail: "Unknown challenge action." }, { status: 400 });
+    }
+
+    if (
+      payload.action === "desync_rematch" ||
+      payload.action === "desync_void_refund"
+    ) {
+      if (!viewer.isAdmin) {
+        return NextResponse.json(
+          { detail: "Only a site admin can resolve a confirmed desync." },
+          { status: 403 }
+        );
+      }
+
+      const desyncIncidentId = Number(payload.desyncIncidentId);
+      if (!Number.isSafeInteger(desyncIncidentId) || desyncIncidentId <= 0) {
+        return NextResponse.json(
+          { detail: "Choose the confirmed desync incident to resolve." },
+          { status: 400 }
+        );
+      }
+
+      const idempotencyKey = payload.idempotencyKey?.trim() || "";
+      if (!idempotencyKey || idempotencyKey.length > 128) {
+        return NextResponse.json(
+          { detail: "A valid idempotency key is required for commissioner disposition." },
+          { status: 400 }
+        );
+      }
+
+      const action = payload.action === "desync_rematch" ? "rematch" : "void_refund";
+      const rematchAt = action === "rematch" ? parseScheduledMatchDate(payload.rematchAt) : null;
+      if (action === "rematch") {
+        if (!rematchAt) {
+          return NextResponse.json(
+            { detail: "Choose a valid future time for the rematch." },
+            { status: 400 }
+          );
+        }
+        const scheduledAtWindowError = validateScheduledAtWindow(rematchAt);
+        if (scheduledAtWindowError) {
+          return NextResponse.json({ detail: scheduledAtWindowError }, { status: 400 });
+        }
+      }
+
+      const desyncResolution = await resolveChallengeDesyncDisposition({
+        prisma,
+        viewerUid: viewer.uid,
+        challengeId,
+        incidentId: desyncIncidentId,
+        action,
+        idempotencyKey,
+        rematchAt,
+        note: payload.note?.trim().slice(0, 1_000) || null,
+      });
+      const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
+      return NextResponse.json({ ...refreshed, desyncResolution });
     }
 
     if (payload.action === "accept") {
@@ -539,7 +648,7 @@ export async function PATCH(
         await tx.trophyChallenge.updateMany({
           where: {
             scheduledMatchId: challengeId,
-            status: { notIn: ["settled", "cancelled", "canceled", "disputed"] },
+            status: { notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES] },
           },
           data: {
             status: "accepted",
@@ -640,7 +749,7 @@ export async function PATCH(
         await tx.trophyChallenge.updateMany({
           where: {
             scheduledMatchId: challengeId,
-            status: { notIn: ["settled", "cancelled", "canceled", "disputed"] },
+            status: { notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES] },
           },
           data: {
             status: "cancelled",
@@ -737,7 +846,7 @@ export async function PATCH(
         await tx.trophyChallenge.updateMany({
           where: {
             scheduledMatchId: challengeId,
-            status: { notIn: ["settled", "cancelled", "canceled", "disputed"] },
+            status: { notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES] },
           },
           data: {
             status: "cancelled",
@@ -1550,12 +1659,21 @@ export async function PATCH(
       });
     }
 
+    await postChallengeCommissionerNotice(prisma, challengeId).catch((error) => {
+      console.error(`Failed to notify commissioner for challenge #${challengeId}:`, error);
+    });
     const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
     return NextResponse.json(refreshed);
   } catch (error) {
     console.error("Failed to update scheduled match:", error);
     if (error instanceof ChallengeConflictError) {
       return NextResponse.json({ detail: error.message }, { status: error.status });
+    }
+    if (error instanceof ChallengeDesyncError) {
+      return NextResponse.json(
+        { detail: error.message, code: error.code },
+        { status: error.status }
+      );
     }
     const detail = error instanceof Error ? error.message : "Challenge update failed.";
     return NextResponse.json({ detail }, { status: 500 });

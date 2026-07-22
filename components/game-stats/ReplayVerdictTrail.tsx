@@ -13,6 +13,11 @@ import {
   useState,
 } from "react";
 
+import {
+  desyncIncidentHeading,
+  type ReplayDesyncIncidentView,
+} from "@/components/game-stats/desyncIncidentView";
+
 type TeamAssignment = {
   teamKey: string;
   players: Array<{
@@ -768,10 +773,12 @@ export default function ReplayVerdictTrail({
   gameStatsId,
   isAdmin,
   adjudications,
+  desyncIncidents = [],
 }: {
   gameStatsId: number;
   isAdmin: boolean;
   adjudications: HumanAdjudication[];
+  desyncIncidents?: ReplayDesyncIncidentView[];
 }) {
   const detailsRef =
     useRef<HTMLDetailsElement>(
@@ -1022,9 +1029,21 @@ export default function ReplayVerdictTrail({
           })
         );
 
+      const desyncEvents =
+        desyncIncidents.map(
+          (incident) => ({
+            kind:
+              "desync" as const,
+            createdAt:
+              incident.createdAt,
+            incident,
+          })
+        );
+
       return [
         ...parserEvents,
         ...humanEvents,
+        ...desyncEvents,
       ].sort(
         (
           left,
@@ -1039,6 +1058,7 @@ export default function ReplayVerdictTrail({
       );
     }, [
       adjudications,
+      desyncIncidents,
       trail,
     ]);
 
@@ -1058,6 +1078,9 @@ export default function ReplayVerdictTrail({
       : latestEvent?.kind ===
           "human"
         ? `Human Verdict #${latestEvent.entry.id}`
+        : latestEvent?.kind ===
+            "desync"
+          ? desyncIncidentHeading(latestEvent.incident)
         : "Original Parser State";
 
   const latestCategories =
@@ -1578,6 +1601,97 @@ export default function ReplayVerdictTrail({
     );
   }
 
+  function renderDesyncIncident(
+    incident: ReplayDesyncIncidentView,
+    current = false
+  ) {
+    const machineSignal =
+      incident.machineEvidence.disconnectDetected ||
+      /desync|disconnect/i.test(
+        `${incident.machineEvidence.parseReason} ${incident.machineEvidence.parseSource}`
+      );
+
+    return (
+      <div
+        data-desync-provenance-entry={incident.id}
+        className={
+          incident.desyncOccurred
+            ? current
+              ? "relative overflow-hidden rounded-2xl border border-fuchsia-200/30 bg-[radial-gradient(circle_at_85%_0%,rgba(249,115,22,0.2),transparent_38%),linear-gradient(145deg,rgba(190,24,93,0.2),rgba(15,23,42,0.72))] p-3.5 shadow-[0_18px_55px_rgba(190,24,93,0.15)]"
+              : "rounded-xl border border-fuchsia-200/20 bg-fuchsia-300/[0.055] p-3"
+            : current
+              ? "rounded-2xl border border-cyan-200/18 bg-cyan-300/[0.045] p-3.5"
+              : "rounded-xl border border-white/[0.08] bg-white/[0.025] p-3"
+        }
+      >
+        {incident.desyncOccurred ? (
+          <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-rose-100/80 to-transparent" />
+        ) : null}
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div>
+            <div
+              className={`text-sm font-black ${
+                incident.desyncOccurred ? "text-fuchsia-50" : "text-cyan-50"
+              }`}
+            >
+              {desyncIncidentHeading(incident)}
+            </div>
+            {incident.desyncOccurred ? (
+              <div className="mt-1 text-lg font-black tracking-[0.08em] text-rose-100">
+                ⚡ DESYNCED
+              </div>
+            ) : (
+              <div className="mt-1 text-xs font-semibold text-cyan-100/80">
+                No-desync correction appended
+              </div>
+            )}
+          </div>
+          <div className="rounded-full border border-white/[0.09] bg-black/20 px-2 py-1 text-[8px] uppercase tracking-[0.15em] text-slate-400">
+            Incident #{incident.id}
+          </div>
+        </div>
+
+        <div className="mt-2 text-[10px] leading-5 text-slate-400">
+          {incident.reviewerDisplayName}
+          {incident.scheduledMatchId
+            ? ` · Match #${incident.scheduledMatchId}`
+            : ""}
+          {incident.supersedesId
+            ? ` · supersedes incident #${incident.supersedesId}`
+            : ""}
+        </div>
+
+        {incident.note ? (
+          <p className="mt-1 text-[10px] leading-5 text-slate-400">
+            {incident.note}
+          </p>
+        ) : null}
+
+        <div className="mt-2 flex flex-wrap gap-1.5 text-[8px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+          <span className="rounded-full border border-white/[0.07] bg-black/15 px-2 py-1">
+            Competitive result · {incident.competitiveResultStatus.replaceAll("_", " ")}
+          </span>
+          <span className="rounded-full border border-white/[0.07] bg-black/15 px-2 py-1">
+            Settlement · {incident.settlementDisposition.replaceAll("_", " ")}
+          </span>
+        </div>
+
+        <div className="mt-2 rounded-lg border border-white/[0.06] bg-black/15 px-2.5 py-2 text-[9px] leading-4 text-slate-500">
+          <span className="font-semibold text-slate-400">Machine evidence · </span>
+          {machineSignal ? "candidate signal preserved" : "no candidate signal recorded"}
+          {" · "}
+          {incident.machineEvidence.parseSource}
+          {" · "}
+          {incident.machineEvidence.parseReason}
+        </div>
+
+        <div className="mt-2 text-[9px] text-slate-600">
+          {formatDate(incident.createdAt)} · replay iteration {incident.sourceParseIteration}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <details
       ref={
@@ -1644,23 +1758,24 @@ export default function ReplayVerdictTrail({
 
         <div className="flex shrink-0 items-center gap-2">
           {adjudications.length > 0 ||
+          desyncIncidents.length > 0 ||
           evidence.length > 0 ? (
             <span
               className="inline-flex text-slate-400/45"
               title={
-                adjudications.length > 0 &&
+                (adjudications.length > 0 || desyncIncidents.length > 0) &&
                 evidence.length > 0
                   ? "Human verdict and human-supplied evidence"
-                  : adjudications.length > 0
-                    ? "Human verdict"
+                  : adjudications.length > 0 || desyncIncidents.length > 0
+                    ? "Human provenance"
                     : "Human-supplied evidence"
               }
               aria-label={
-                adjudications.length > 0 &&
+                (adjudications.length > 0 || desyncIncidents.length > 0) &&
                 evidence.length > 0
                   ? "Human verdict and human-supplied evidence"
-                  : adjudications.length > 0
-                    ? "Human verdict"
+                  : adjudications.length > 0 || desyncIncidents.length > 0
+                    ? "Human provenance"
                     : "Human-supplied evidence"
               }
             >
@@ -1956,6 +2071,12 @@ export default function ReplayVerdictTrail({
                 latestEvent.entry,
                 true
               )
+            ) : latestEvent?.kind ===
+              "desync" ? (
+              renderDesyncIncident(
+                latestEvent.incident,
+                true
+              )
             ) : trail ? (
               <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-3.5">
                 <div className="flex items-center justify-between gap-2">
@@ -2063,7 +2184,7 @@ export default function ReplayVerdictTrail({
               {events.length ===
               0 ? (
                 <div className="rounded-xl border border-white/[0.06] p-3 text-[10px] text-slate-600">
-                  No later passes or human verdicts filed.
+                  No later passes, human verdicts, or incident confirmations filed.
                 </div>
               ) : (
                 events.map(
@@ -2077,12 +2198,21 @@ export default function ReplayVerdictTrail({
                           event.run
                         )}
                       </div>
-                    ) : (
+                    ) : event.kind ===
+                      "human" ? (
                       <div
                         key={`human-${event.entry.id}`}
                       >
                         {renderHuman(
                           event.entry
+                        )}
+                      </div>
+                    ) : (
+                      <div
+                        key={`desync-${event.incident.id}`}
+                      >
+                        {renderDesyncIncident(
+                          event.incident
                         )}
                       </div>
                     )

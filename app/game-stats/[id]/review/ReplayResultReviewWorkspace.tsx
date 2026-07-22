@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import ReplayVerdictTrail from "@/components/game-stats/ReplayVerdictTrail";
+import {
+  currentConfirmedDesync,
+  type ReplayDesyncIncidentView,
+} from "@/components/game-stats/desyncIncidentView";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type ReviewDeskViewMode =
@@ -230,6 +234,8 @@ type ReviewState = {
   };
   adjudications: Adjudication[];
   currentAdjudication: Adjudication | null;
+  desyncIncidents: ReplayDesyncIncidentView[];
+  currentDesyncIncident: ReplayDesyncIncidentView | null;
   linkedMarkets: Array<{
     id: number;
     title: string;
@@ -385,6 +391,9 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
   const [evidenceNote, setEvidenceNote] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [desyncSaving, setDesyncSaving] = useState(false);
+  const [desyncArmed, setDesyncArmed] = useState<"confirm" | "correct" | null>(null);
+  const [desyncNote, setDesyncNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -427,7 +436,8 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
       !state ||
       !state.access.isAdmin ||
       !complete ||
-      !winningTeam
+      !winningTeam ||
+      currentConfirmedDesync(state.desyncIncidents)
     ) {
       return;
     }
@@ -497,6 +507,83 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
     }
   }
 
+  async function submitDesyncIncident(desyncOccurred: boolean) {
+    if (!state?.access.isAdmin || desyncSaving) return;
+
+    const latest = state.desyncIncidents[0] ?? null;
+    setDesyncSaving(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const response = await fetch(
+        `/api/replay-results/${gameStatsId}/desync-incidents`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            idempotencyKey: `desync:${gameStatsId}:${crypto.randomUUID()}`,
+            sourceReplayHash: state.game.replayHash,
+            sourceParseIteration: state.game.parse_iteration,
+            desyncOccurred,
+            competitiveResultStatus: desyncOccurred
+              ? "unresolved"
+              : "not_applicable",
+            settlementDisposition: desyncOccurred
+              ? "commissioner_review"
+              : "not_applicable",
+            note: desyncNote.trim() || null,
+            supersedesId: latest?.id ?? null,
+          }),
+        }
+      );
+      const payload = (await response.json().catch(() => null)) as
+        | { incident?: ReplayDesyncIncidentView; detail?: string }
+        | null;
+
+      if (!response.ok) {
+        throw new Error(
+          messageFromPayload(payload, "The desync incident could not be recorded.")
+        );
+      }
+
+      const incident = payload?.incident;
+      if (!incident?.id) {
+        throw new Error(
+          "The server did not return a durable desync incident ID. No confirmation was received."
+        );
+      }
+
+      const refreshedState = await load();
+      const durableConfirmation =
+        refreshedState?.desyncIncidents.some((entry) => entry.id === incident.id) ??
+        false;
+
+      if (!durableConfirmation) {
+        setNotice(
+          `Incident #${incident.id} was saved, but the Verdict Trail could not be refreshed. Reload before submitting again.`
+        );
+        return;
+      }
+
+      setDesyncArmed(null);
+      setDesyncNote("");
+      setNotice(
+        desyncOccurred
+          ? `Desync incident #${incident.id} is locked into the permanent battle record. No winner was created.`
+          : `Correction #${incident.id} was appended. The original desync incident remains in provenance.`
+      );
+    } catch (nextError) {
+      setError(
+        nextError instanceof Error
+          ? nextError.message
+          : "The desync incident could not be recorded."
+      );
+    } finally {
+      setDesyncSaving(false);
+    }
+  }
+
   if (loading) {
     return <main className="py-10 text-white"><div className="rounded-[2rem] border border-white/10 bg-slate-950/80 p-8 text-slate-300">Opening the battle record…</div></main>;
   }
@@ -515,6 +602,8 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
 
   const latest = state.adjudications[0] ?? null;
   const canAdminister = state.access.isAdmin;
+  const confirmedDesync = currentConfirmedDesync(state.desyncIncidents);
+  const resultWritePaused = Boolean(confirmedDesync);
 
   const primaryAction =
     canAdminister &&
@@ -644,7 +733,7 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
               active={winningTeam === "gold"}
               onWinner={() => setWinningTeam("gold")}
               tone="gold"
-              canSetWinner={canAdminister}
+              canSetWinner={canAdminister && !resultWritePaused}
             />
 
             <TeamPanel
@@ -653,9 +742,22 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
               active={winningTeam === "blue"}
               onWinner={() => setWinningTeam("blue")}
               tone="blue"
-              canSetWinner={canAdminister}
+              canSetWinner={canAdminister && !resultWritePaused}
             />
           </div>
+
+          {canAdminister ? (
+            <DesyncIncidentControl
+              currentIncident={state.currentDesyncIncident}
+              confirmedIncident={confirmedDesync}
+              armed={desyncArmed}
+              note={desyncNote}
+              saving={desyncSaving}
+              onArm={setDesyncArmed}
+              onNoteChange={setDesyncNote}
+              onSubmit={submitDesyncIncident}
+            />
+          ) : null}
 
           {canAdminister ? (
             <div className="rounded-[1.7rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6">
@@ -664,9 +766,10 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
             <label className="mt-4 block text-xs uppercase tracking-[0.28em] text-white/50">Supporting note (optional)</label>
             <textarea value={evidenceNote} onChange={(event) => setEvidenceNote(event.target.value)} rows={2} placeholder="End-screen screenshot, player confirmation, replay observation…" className="mt-3 w-full rounded-2xl border border-white/12 bg-black/25 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-amber-200/40" />
             {teamPlayers.unassigned.length > 0 ? <div className="mt-4 text-sm font-semibold text-amber-100">Assign all {teamPlayers.unassigned.length} remaining warrior{teamPlayers.unassigned.length === 1 ? "" : "s"} to lock the result.</div> : null}
+            {resultWritePaused ? <div className="mt-4 rounded-xl border border-fuchsia-200/20 bg-fuchsia-300/[0.07] px-4 py-3 text-sm font-semibold text-fuchsia-50">Winner locking is paused while this replay has a current human-confirmed desync. Append a no-desync correction or resolve competition through the linked rematch protocol first.</div> : null}
             {notice ? <div className="mt-4 rounded-xl border border-emerald-200/20 bg-emerald-300/10 px-4 py-3 text-sm font-semibold text-emerald-100">{notice}</div> : null}
             {error ? <div className="mt-4 rounded-xl border border-rose-200/20 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
-              <button type="button" disabled={!complete || reason.trim().length < 8 || saving} onClick={() => void submit()} className="mt-5 w-full rounded-full bg-amber-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-40">{saving ? "Locking battle record…" : primaryAction}</button>
+              <button type="button" disabled={resultWritePaused || !complete || reason.trim().length < 8 || saving} onClick={() => void submit()} className="mt-5 w-full rounded-full bg-amber-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-40">{resultWritePaused ? "Winner Lock Paused — Desync Review" : saving ? "Locking battle record…" : primaryAction}</button>
             </div>
           ) : null}
         </div>
@@ -677,10 +780,152 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
             gameStatsId={gameStatsId}
             isAdmin={canAdminister}
             adjudications={state.adjudications}
+            desyncIncidents={state.desyncIncidents}
           />
         </aside>
       </section>
     </main>
+  );
+}
+
+function DesyncIncidentControl({
+  currentIncident,
+  confirmedIncident,
+  armed,
+  note,
+  saving,
+  onArm,
+  onNoteChange,
+  onSubmit,
+}: {
+  currentIncident: ReplayDesyncIncidentView | null;
+  confirmedIncident: ReplayDesyncIncidentView | null;
+  armed: "confirm" | "correct" | null;
+  note: string;
+  saving: boolean;
+  onArm: (next: "confirm" | "correct" | null) => void;
+  onNoteChange: (next: string) => void;
+  onSubmit: (desyncOccurred: boolean) => Promise<void>;
+}) {
+  const correcting = armed === "correct";
+
+  return (
+    <section
+      data-admin-desync-control
+      className="relative overflow-hidden rounded-[1.7rem] border border-fuchsia-300/25 bg-[radial-gradient(circle_at_15%_0%,rgba(244,63,94,0.24),transparent_38%),radial-gradient(circle_at_90%_20%,rgba(249,115,22,0.18),transparent_32%),linear-gradient(145deg,rgba(39,4,28,0.96),rgba(8,8,20,0.98))] p-5 shadow-[0_25px_70px_rgba(190,24,93,0.12)] sm:p-6"
+    >
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-200/70 to-transparent" />
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="max-w-2xl">
+          <div className="text-[10px] font-black uppercase tracking-[0.34em] text-fuchsia-100/65">
+            Catastrophic Incident Rail
+          </div>
+          <h2 className="mt-2 text-2xl font-black tracking-[-0.025em] text-white">
+            {confirmedIncident ? "⚡ DESYNCED — human confirmed" : "Was this battle desynced?"}
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            This is independent from choosing a winner. It records append-only human
+            ground truth and moves linked competition and settlement into commissioner
+            resolution without manufacturing a victorious side.
+          </p>
+        </div>
+
+        {confirmedIncident ? (
+          <div className="rounded-2xl border border-rose-200/25 bg-rose-300/[0.09] px-4 py-3 text-right">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-100">
+              Human · Desync Confirmed
+            </div>
+            <div className="mt-1 text-xs text-rose-100/70">
+              #{confirmedIncident.id} · {confirmedIncident.reviewerDisplayName}
+            </div>
+          </div>
+        ) : currentIncident ? (
+          <div className="rounded-2xl border border-slate-200/12 bg-white/[0.04] px-4 py-3 text-right">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-300">
+              Latest entry is a correction
+            </div>
+            <div className="mt-1 text-xs text-slate-500">Incident #{currentIncident.id}</div>
+          </div>
+        ) : null}
+      </div>
+
+      {armed ? (
+        <div className="mt-5 rounded-2xl border border-rose-200/20 bg-black/30 p-4">
+          <div className="text-sm font-black text-rose-50">
+            {correcting
+              ? "Append a correction that this replay did not desync?"
+              : "Confirm this replay DESYNCED?"}
+          </div>
+          <p className="mt-2 text-xs leading-5 text-slate-400">
+            {correcting
+              ? "The confirmed incident remains visible forever; this adds a newer correction to the trail."
+              : "This does not pick a winner or pay a wager. Linked protocol activity will require commissioner resolution."}
+          </p>
+          <label className="mt-4 block text-[10px] font-bold uppercase tracking-[0.2em] text-white/45">
+            Reviewer note (optional)
+          </label>
+          <textarea
+            value={note}
+            onChange={(event) => onNoteChange(event.target.value)}
+            rows={2}
+            maxLength={2000}
+            placeholder={
+              correcting
+                ? "Why the earlier incident should no longer be current…"
+                : "What players, watcher, replay, or spectator evidence confirmed the desync…"
+            }
+            className="mt-2 w-full rounded-xl border border-white/10 bg-black/35 px-3 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-fuchsia-200/35"
+          />
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void onSubmit(!correcting)}
+              className="group relative inline-flex min-h-11 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-rose-100/35 bg-[linear-gradient(90deg,#be123c,#db2777,#ea580c)] px-6 text-sm font-black uppercase tracking-[0.12em] text-white shadow-[0_0_35px_rgba(225,29,72,0.24)] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_0_48px_rgba(236,72,153,0.36)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transform-none"
+            >
+              <span className="transition group-hover:animate-pulse motion-reduce:animate-none">
+                {saving
+                  ? "Writing immutable incident…"
+                  : correcting
+                    ? "Append No-Desync Correction"
+                    : "⚡ Confirm DESYNCED ⚡"}
+              </span>
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => onArm(null)}
+              className="cursor-pointer rounded-full border border-white/12 bg-white/[0.04] px-5 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/[0.08] hover:text-white disabled:opacity-45"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : confirmedIncident ? (
+        <button
+          type="button"
+          onClick={() => onArm("correct")}
+          className="mt-5 cursor-pointer rounded-full border border-white/12 bg-white/[0.035] px-4 py-2 text-xs font-bold text-slate-300 transition hover:border-white/25 hover:text-white"
+        >
+          Append a correction
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => onArm("confirm")}
+          className="group relative mt-5 inline-flex min-h-14 w-full cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-fuchsia-100/35 bg-[linear-gradient(100deg,#9f1239,#c026d3,#ea580c)] px-6 text-lg font-black uppercase tracking-[0.16em] text-white shadow-[0_0_35px_rgba(219,39,119,0.2)] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.005] hover:shadow-[0_0_55px_rgba(244,63,94,0.34)] active:translate-y-0 motion-reduce:transform-none"
+        >
+          <span aria-hidden="true" className="absolute inset-y-0 -left-1/3 w-1/3 skew-x-[-18deg] bg-white/15 blur-sm transition-transform duration-700 group-hover:translate-x-[430%]" />
+          <span className="relative transition group-hover:animate-pulse motion-reduce:animate-none">⚡ DESYNCED! ⚡</span>
+        </button>
+      )}
+
+      <div className="mt-4 grid gap-2 text-[10px] uppercase tracking-[0.14em] text-slate-500 sm:grid-cols-3">
+        <div className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2">Incident · independent truth</div>
+        <div className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2">Winner · unchanged</div>
+        <div className="rounded-xl border border-white/[0.07] bg-black/20 px-3 py-2">Settlement · commissioner review</div>
+      </div>
+    </section>
   );
 }
 

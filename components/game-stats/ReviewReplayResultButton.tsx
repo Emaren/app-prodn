@@ -25,7 +25,7 @@ export default function ReviewReplayResultButton({
       href={`/game-stats/${gameStatsId}/review`}
       className="w-full rounded-full border border-amber-200/35 bg-amber-300 px-5 py-3 text-center text-sm font-black text-slate-950 transition hover:bg-amber-200 sm:w-auto"
     >
-      Review Result
+      Review Result / Desync
     </Link>
   );
 }

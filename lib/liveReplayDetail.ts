@@ -338,7 +338,7 @@ function serializeGame(row: ReplayRow) {
 }
 
 export async function resolveFinalGameStatsIdForSessionKey(
-  prisma: PrismaClient,
+  prisma: Pick<PrismaClient, "gameStats">,
   rawSessionKey: string
 ) {
   const platformMatchId = readPlatformMatchId(rawSessionKey);
