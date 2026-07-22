@@ -766,7 +766,7 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
             <label className="mt-4 block text-xs uppercase tracking-[0.28em] text-white/50">Supporting note (optional)</label>
             <textarea value={evidenceNote} onChange={(event) => setEvidenceNote(event.target.value)} rows={2} placeholder="End-screen screenshot, player confirmation, replay observation…" className="mt-3 w-full rounded-2xl border border-white/12 bg-black/25 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-amber-200/40" />
             {teamPlayers.unassigned.length > 0 ? <div className="mt-4 text-sm font-semibold text-amber-100">Assign all {teamPlayers.unassigned.length} remaining warrior{teamPlayers.unassigned.length === 1 ? "" : "s"} to lock the result.</div> : null}
-            {resultWritePaused ? <div className="mt-4 rounded-xl border border-fuchsia-200/20 bg-fuchsia-300/[0.07] px-4 py-3 text-sm font-semibold text-fuchsia-50">Winner locking is paused while this replay has a current human-confirmed desync. Append a no-desync correction or resolve competition through the linked rematch protocol first.</div> : null}
+            {resultWritePaused ? <div className="mt-4 rounded-xl border border-amber-300/20 bg-[linear-gradient(90deg,rgba(69,10,10,0.40),rgba(15,23,42,0.72))] px-4 py-3 text-sm font-semibold text-amber-50">Winner locking is paused while this replay has a current human-confirmed desync. Append a no-desync correction or resolve competition through the linked rematch protocol first.</div> : null}
             {notice ? <div className="mt-4 rounded-xl border border-emerald-200/20 bg-emerald-300/10 px-4 py-3 text-sm font-semibold text-emerald-100">{notice}</div> : null}
             {error ? <div className="mt-4 rounded-xl border border-rose-200/20 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">{error}</div> : null}
               <button type="button" disabled={resultWritePaused || !complete || reason.trim().length < 8 || saving} onClick={() => void submit()} className="mt-5 w-full rounded-full bg-amber-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-40">{resultWritePaused ? "Winner Lock Paused — Desync Review" : saving ? "Locking battle record…" : primaryAction}</button>
@@ -809,15 +809,59 @@ function DesyncIncidentControl({
 }) {
   const correcting = armed === "correct";
 
+  if (
+    confirmedIncident &&
+    !armed
+  ) {
+    return (
+      <section
+        data-admin-desync-control
+        className="relative overflow-hidden rounded-2xl border border-amber-300/20 bg-[radial-gradient(circle_at_10%_0%,rgba(127,29,29,0.30),transparent_36%),linear-gradient(100deg,rgba(34,7,12,0.98),rgba(7,17,35,0.99)_65%,rgba(31,22,8,0.96))] px-4 py-3 shadow-[0_16px_45px_rgba(0,0,0,0.28)]"
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/55 to-transparent"
+        />
+
+        <div className="flex items-center gap-3 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <span className="shrink-0 text-sm font-black uppercase tracking-[0.1em] text-amber-100">
+            ⚡ DESYNCED — human confirmed
+          </span>
+
+          <span
+            aria-hidden="true"
+            className="h-4 w-px shrink-0 bg-amber-300/25"
+          />
+
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
+            Incident #{confirmedIncident.id} · {confirmedIncident.reviewerDisplayName}
+          </span>
+
+          <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-500">
+            Winner unchanged · Settlement commissioner review
+          </span>
+
+          <button
+            type="button"
+            onClick={() => onArm("correct")}
+            className="ml-auto shrink-0 cursor-pointer rounded-full border border-amber-300/20 bg-amber-300/[0.06] px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-amber-100 transition hover:border-amber-200/40 hover:bg-amber-300/[0.11]"
+          >
+            Append correction
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
       data-admin-desync-control
-      className="relative overflow-hidden rounded-[1.7rem] border border-fuchsia-300/25 bg-[radial-gradient(circle_at_15%_0%,rgba(244,63,94,0.24),transparent_38%),radial-gradient(circle_at_90%_20%,rgba(249,115,22,0.18),transparent_32%),linear-gradient(145deg,rgba(39,4,28,0.96),rgba(8,8,20,0.98))] p-5 shadow-[0_25px_70px_rgba(190,24,93,0.12)] sm:p-6"
+      className="relative overflow-hidden rounded-[1.7rem] border border-amber-300/20 bg-[radial-gradient(circle_at_15%_0%,rgba(127,29,29,0.34),transparent_38%),radial-gradient(circle_at_90%_20%,rgba(161,98,7,0.11),transparent_30%),linear-gradient(145deg,rgba(29,7,12,0.98),rgba(6,15,30,0.99))] p-5 shadow-[0_25px_70px_rgba(0,0,0,0.30)] sm:p-6"
     >
-      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-fuchsia-200/70 to-transparent" />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/55 to-transparent" />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-2xl">
-          <div className="text-[10px] font-black uppercase tracking-[0.34em] text-fuchsia-100/65">
+          <div className="text-[10px] font-black uppercase tracking-[0.34em] text-amber-200/60">
             Catastrophic Incident Rail
           </div>
           <h2 className="mt-2 text-2xl font-black tracking-[-0.025em] text-white">
@@ -831,11 +875,11 @@ function DesyncIncidentControl({
         </div>
 
         {confirmedIncident ? (
-          <div className="rounded-2xl border border-rose-200/25 bg-rose-300/[0.09] px-4 py-3 text-right">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-rose-100">
+          <div className="rounded-2xl border border-amber-300/20 bg-[linear-gradient(135deg,rgba(127,29,29,0.25),rgba(15,23,42,0.62))] px-4 py-3 text-right">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-100">
               Human · Desync Confirmed
             </div>
-            <div className="mt-1 text-xs text-rose-100/70">
+            <div className="mt-1 text-xs text-amber-100/55">
               #{confirmedIncident.id} · {confirmedIncident.reviewerDisplayName}
             </div>
           </div>
@@ -850,8 +894,8 @@ function DesyncIncidentControl({
       </div>
 
       {armed ? (
-        <div className="mt-5 rounded-2xl border border-rose-200/20 bg-black/30 p-4">
-          <div className="text-sm font-black text-rose-50">
+        <div className="mt-5 rounded-2xl border border-amber-300/18 bg-slate-950/55 p-4">
+          <div className="text-sm font-black text-amber-50">
             {correcting
               ? "Append a correction that this replay did not desync?"
               : "Confirm this replay DESYNCED?"}
@@ -874,14 +918,14 @@ function DesyncIncidentControl({
                 ? "Why the earlier incident should no longer be current…"
                 : "What players, watcher, replay, or spectator evidence confirmed the desync…"
             }
-            className="mt-2 w-full rounded-xl border border-white/10 bg-black/35 px-3 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-fuchsia-200/35"
+            className="mt-2 w-full rounded-xl border border-white/10 bg-black/35 px-3 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-amber-300/35"
           />
           <div className="mt-4 flex flex-wrap gap-2">
             <button
               type="button"
               disabled={saving}
               onClick={() => void onSubmit(!correcting)}
-              className="group relative inline-flex min-h-11 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-rose-100/35 bg-[linear-gradient(90deg,#be123c,#db2777,#ea580c)] px-6 text-sm font-black uppercase tracking-[0.12em] text-white shadow-[0_0_35px_rgba(225,29,72,0.24)] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_0_48px_rgba(236,72,153,0.36)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transform-none"
+              className="group relative inline-flex min-h-11 cursor-pointer items-center justify-center overflow-hidden rounded-full border border-amber-200/35 bg-[linear-gradient(105deg,#4c0d18_0%,#7f1d1d_36%,#172033_72%,#8a6116_100%)] px-6 text-sm font-black uppercase tracking-[0.12em] text-amber-50 shadow-[0_0_32px_rgba(127,29,29,0.22)] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:border-amber-200/55 hover:shadow-[0_0_48px_rgba(180,83,9,0.24)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-45 motion-reduce:transform-none"
             >
               <span className="transition group-hover:animate-pulse motion-reduce:animate-none">
                 {saving
@@ -913,9 +957,9 @@ function DesyncIncidentControl({
         <button
           type="button"
           onClick={() => onArm("confirm")}
-          className="group relative mt-5 inline-flex min-h-14 w-full cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-fuchsia-100/35 bg-[linear-gradient(100deg,#9f1239,#c026d3,#ea580c)] px-6 text-lg font-black uppercase tracking-[0.16em] text-white shadow-[0_0_35px_rgba(219,39,119,0.2)] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.005] hover:shadow-[0_0_55px_rgba(244,63,94,0.34)] active:translate-y-0 motion-reduce:transform-none"
+          className="group relative mt-5 inline-flex min-h-14 w-full cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-amber-200/35 bg-[linear-gradient(105deg,#3f0b14_0%,#7f1d1d_38%,#172033_72%,#8a6116_100%)] px-6 text-lg font-black uppercase tracking-[0.16em] text-amber-50 shadow-[0_0_34px_rgba(127,29,29,0.20)] transition duration-200 hover:-translate-y-0.5 hover:scale-[1.005] hover:border-amber-200/55 hover:shadow-[0_0_52px_rgba(180,83,9,0.25)] active:translate-y-0 motion-reduce:transform-none"
         >
-          <span aria-hidden="true" className="absolute inset-y-0 -left-1/3 w-1/3 skew-x-[-18deg] bg-white/15 blur-sm transition-transform duration-700 group-hover:translate-x-[430%]" />
+          <span aria-hidden="true" className="absolute inset-y-0 -left-1/3 w-1/3 skew-x-[-18deg] bg-amber-100/10 blur-sm transition-transform duration-700 group-hover:translate-x-[430%]" />
           <span className="relative transition group-hover:animate-pulse motion-reduce:animate-none">⚡ DESYNCED! ⚡</span>
         </button>
       )}

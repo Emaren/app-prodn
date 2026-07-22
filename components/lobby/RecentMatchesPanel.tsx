@@ -80,6 +80,18 @@ function normalizeTruthWinner(value: unknown) {
   return winner;
 }
 
+function readLobbyHumanConfirmedDesync(
+  match: LobbyMatchRow
+) {
+  return (
+    match as {
+      humanConfirmedDesync?:
+        unknown;
+    }
+  ).humanConfirmedDesync ===
+    true;
+}
+
 function matchTruthScore(match: LobbyMatchRow) {
   const candidate = match as LobbyMatchRow & {
     winnerProof?: unknown;
@@ -138,6 +150,7 @@ function matchRenderFingerprint(
     winnerProof?: unknown;
     reviewNeeded?: unknown;
     unresolvedResult?: unknown;
+    humanConfirmedDesync?: unknown;
     parseReason?: unknown;
   };
 
@@ -148,6 +161,8 @@ function matchRenderFingerprint(
     winnerProof: candidate.winnerProof,
     reviewNeeded: candidate.reviewNeeded,
     unresolvedResult: candidate.unresolvedResult,
+    humanConfirmedDesync:
+      candidate.humanConfirmedDesync,
     parseReason:
       candidate.parse_reason ||
       candidate.parseReason ||
@@ -173,6 +188,40 @@ function mergeMatchLists(
     }
 
     const current = byId.get(match.id)!;
+
+    /*
+     * The first list is the authoritative/fresher page in every
+     * same-ID merge path. Never let an older cached row restore
+     * or erase a desync marker merely because its winner score
+     * happens to be stronger.
+     */
+    const currentDesyncMarker =
+      (
+        current as {
+          humanConfirmedDesync?:
+            unknown;
+        }
+      ).humanConfirmedDesync;
+
+    const incomingDesyncMarker =
+      (
+        match as {
+          humanConfirmedDesync?:
+            unknown;
+        }
+      ).humanConfirmedDesync;
+
+    if (
+      typeof currentDesyncMarker ===
+        "boolean" &&
+      typeof incomingDesyncMarker ===
+        "boolean" &&
+      currentDesyncMarker !==
+        incomingDesyncMarker
+    ) {
+      continue;
+    }
+
     const currentScore = matchTruthScore(current);
     const incomingScore = matchTruthScore(match);
 
@@ -714,6 +763,20 @@ function readOldWatcherInferredOpponentWinner(match: LobbyMatchRow) {
 }
 
 function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
+  if (
+    readLobbyHumanConfirmedDesync(
+      match
+    )
+  ) {
+    return {
+      headline:
+        "DESYNCED",
+
+      pill:
+        null,
+    };
+  }
+
   const rawWinner = normalizeLobbyWinnerName(match.winner);
   const markedPlayerWinner = readMarkedPlayerWinner(match);
   const oldWatcherWinner = readOldWatcherInferredOpponentWinner(match);
@@ -783,6 +846,10 @@ const MatchCard = memo(function MatchCard({
   const playedAt = pickLobbyMatchPlayedAt(match);
   const resultDisplay = getLobbyMatchResultDisplay(match);
   const resultReview = readLobbyResultReview(match);
+  const humanConfirmedDesync =
+    readLobbyHumanConfirmedDesync(
+      match
+    );
 
   return (
     <Link
@@ -798,7 +865,13 @@ const MatchCard = memo(function MatchCard({
         </div>
 
         <div className="shrink-0 text-right">
-          <div className="text-xs uppercase tracking-[0.25em] text-slate-400">
+          <div
+            className={`text-xs uppercase tracking-[0.25em] ${
+              humanConfirmedDesync
+                ? "font-black text-amber-200 drop-shadow-[0_0_12px_rgba(217,119,6,0.2)]"
+                : "text-slate-400"
+            }`}
+          >
             {resultDisplay.headline}
           </div>
         </div>

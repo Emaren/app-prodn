@@ -155,3 +155,31 @@ test("commissioner desync actions are two-step, admin-only, and idempotent", () 
   assert.match(route, /idempotencyKey/);
   assert.match(route, /resolveChallengeDesyncDisposition/);
 });
+
+test("main lobby match cards project current human-confirmed desync truth", () => {
+  const panel = readFileSync(
+    new URL("../components/lobby/RecentMatchesPanel.tsx", import.meta.url),
+    "utf8"
+  );
+  const loader = readFileSync(
+    new URL("../lib/lobbyRecentMatches.ts", import.meta.url),
+    "utf8"
+  );
+  const desyncHydrator = readFileSync(
+    new URL("../lib/lobbyDesync.ts", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(loader, /hydrateLobbyDesyncMarkers/);
+  assert.match(loader, /return hydrateLobbyDesyncMarkers/);
+
+  assert.match(desyncHydrator, /replayDesyncIncident\.findMany/);
+  assert.match(desyncHydrator, /orderBy:/);
+  assert.match(desyncHydrator, /createdAt:/);
+  assert.match(desyncHydrator, /desyncOccurred/);
+  assert.match(desyncHydrator, /humanConfirmedDesync/);
+
+  assert.match(panel, /readLobbyHumanConfirmedDesync/);
+  assert.match(panel, /headline:\s*"DESYNCED"/);
+  assert.match(panel, /humanConfirmedDesync/);
+});

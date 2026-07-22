@@ -49,6 +49,15 @@ export type LobbyMatchRow = {
    */
   humanSuppliedEvidence?: boolean;
   humanSuppliedEvidenceCount?: number;
+
+  /**
+   * Effective current append-only human desync truth.
+   *
+   * TRUE means the newest desync incident confirms a desync.
+   * FALSE means no current human-confirmed desync, including
+   * when a later no-desync correction supersedes confirmation.
+   */
+  humanConfirmedDesync?: boolean;
 };
 
 export type LobbyTournamentEntrant = {

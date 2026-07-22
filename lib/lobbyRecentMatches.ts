@@ -3,6 +3,9 @@ import { getPrisma } from "@/lib/prisma";
 import {
   hydrateLobbyHumanEvidenceMarkers,
 } from "@/lib/lobbyHumanEvidence";
+import {
+  hydrateLobbyDesyncMarkers,
+} from "@/lib/lobbyDesync";
 import type { LobbyMatchRow } from "@/lib/lobby";
 import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
 import { getLobbyMatchPlayedAtMs } from "@/lib/lobbyMatchTime";
@@ -73,9 +76,18 @@ export async function loadLobbyRecentMatches({
             safeLimit
         ) as LobbyMatchRow[];
 
-    return hydrateLobbyHumanEvidenceMarkers(
-      getPrisma(),
-      visibleRows
+    const prisma =
+      getPrisma();
+
+    const evidenceRows =
+      await hydrateLobbyHumanEvidenceMarkers(
+        prisma,
+        visibleRows
+      );
+
+    return hydrateLobbyDesyncMarkers(
+      prisma,
+      evidenceRows
     );
   } catch (error) {
     console.warn("Failed to load lobby recent matches:", error);
