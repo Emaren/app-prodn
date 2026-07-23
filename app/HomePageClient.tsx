@@ -1955,7 +1955,14 @@ return (
             surface={isExtremeLobby ? "extreme" : "standard"}
           />
           <HeroTakeoverSlot>
-            <HeroCarousel playlist={initialHeroPlaylist} />
+            <HeroCarousel
+              playlist={initialHeroPlaylist}
+              presentation={
+                isAdvancedLobby
+                  ? "advanced"
+                  : "default"
+              }
+            />
           </HeroTakeoverSlot>
           <Aoe2ShortsTile />
           <WatchAndChatHero

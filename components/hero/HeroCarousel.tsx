@@ -52,9 +52,11 @@ function motionState(
 export function HeroCarousel({
   playlist,
   preview = false,
+  presentation = "default",
 }: {
   playlist: HeroPlaylistView;
   preview?: boolean;
+  presentation?: "default" | "advanced";
 }) {
   const reducedMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
@@ -67,8 +69,21 @@ export function HeroCarousel({
   const hasMultiple = items.length > 1;
   const current = items[index] || items[0];
   const settings = playlist.playlist;
-  const imageFit = current?.screen.config.imageFit === "contain" ? "contain" : "cover";
-  const paused = interactionPaused || documentHidden || Boolean(reducedMotion);
+  const imageFit =
+    presentation === "advanced" ||
+    current?.screen.config.imageFit === "contain"
+      ? "contain"
+      : "cover";
+
+  const paused =
+    interactionPaused ||
+    documentHidden ||
+    Boolean(reducedMotion);
+
+  const frameClassName =
+    presentation === "advanced"
+      ? "relative min-h-[30rem] overflow-hidden rounded-[2.15rem] bg-black shadow-[0_32px_105px_rgba(0,0,0,0.48)] sm:aspect-[3/2] sm:min-h-0"
+      : "relative min-h-[46rem] overflow-hidden rounded-[2.35rem] bg-black shadow-[0_38px_130px_rgba(0,0,0,0.52)] sm:min-h-[48rem] xl:min-h-[51rem]";
 
   useEffect(() => {
     if (index >= items.length) setIndex(0);
@@ -141,7 +156,7 @@ export function HeroCarousel({
   return (
     <section
       {...pauseForInteraction}
-      className="relative min-h-[46rem] overflow-hidden rounded-[2.35rem] bg-black shadow-[0_38px_130px_rgba(0,0,0,0.52)] sm:min-h-[48rem] xl:min-h-[51rem]"
+      className={frameClassName}
       aria-roledescription="carousel"
       aria-label="AoE2WAR Main Stage"
       onPointerDown={(event) => {

@@ -665,6 +665,19 @@ function buildStreakLabel(entry: EnrichedLeaderboardEntry, games: PreparedLeader
   return direction ? `${direction}${count}` : null;
 }
 
+function populateLeaderboardStreaks(
+  entries: EnrichedLeaderboardEntry[],
+  games: PreparedLeaderboardGame[]
+) {
+  for (const entry of entries) {
+    entry.streakLabel =
+      buildStreakLabel(entry, games);
+
+    entry.streakScore =
+      streakSortScore(entry.streakLabel);
+  }
+}
+
 function buildPrimaryRatingLabel(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
   const value = getPrimaryRatingValue(entry, lane);
   return value === null ? "Pending" : String(Math.round(value));
@@ -936,11 +949,21 @@ async function loadLobbyLeaderboardFresh(
   }
   buildArenaElo(candidates, preparedGames);
 
-  for (const candidate of candidates) {
-    candidate.streakLabel =
-      buildStreakLabel(candidate, recentGames);
-    candidate.streakScore =
-      streakSortScore(candidate.streakLabel);
+  const requestedSortKey =
+    normalizeLeaderboardSortKey(
+      options.sortKey
+    );
+
+  // Global streak ordering genuinely requires streak truth
+  // for every candidate before pagination.
+  //
+  // Every other leaderboard view can paginate first and
+  // calculate streak labels only for the rows being returned.
+  if (requestedSortKey === "streak") {
+    populateLeaderboardStreaks(
+      candidates,
+      recentGames
+    );
   }
 
   const {
@@ -952,6 +975,13 @@ async function loadLobbyLeaderboardFresh(
     candidates,
     options
   );
+
+  if (requestedSortKey !== "streak") {
+    populateLeaderboardStreaks(
+      selectedEntries,
+      recentGames
+    );
+  }
 
   return {
     title: lane === "dm" ? "Deathmatch Leaderboard" : "Ranked Match Leaderboard",

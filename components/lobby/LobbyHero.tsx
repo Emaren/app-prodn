@@ -943,7 +943,7 @@ export function LobbyHero({
           </div>
         </section>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div className={`rounded-2xl border px-4 py-4 ${tone.insetPanel}`}>
             <div className={`text-[10px] uppercase tracking-[0.26em] ${tone.eyebrow}`}>
               Board
@@ -966,12 +966,6 @@ export function LobbyHero({
                 : "Awaiting a rated contender"}
             </div>
           </div>
-          <LeaderboardLaneToggle
-            lane={leaderboardLane}
-            loading={leaderboardLaneLoading}
-            onChange={onLeaderboardLaneChange}
-            variant="card"
-          />
         </div>
 
         <div data-ignore-tile-toggle="true">
@@ -984,6 +978,7 @@ export function LobbyHero({
             leaderboardLane={leaderboardLane}
             leaderboardLaneLoading={leaderboardLaneLoading}
             onLeaderboardLaneChange={onLeaderboardLaneChange}
+            laneToggleVariant="compact"
             surface={showExtremeStats ? "extreme" : "standard"}
           />
         </div>

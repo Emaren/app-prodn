@@ -34,6 +34,7 @@ type LeaderboardPanelProps = {
   leaderboardLane: LeaderboardLane;
   leaderboardLaneLoading: boolean;
   onLeaderboardLaneChange: (lane: LeaderboardLane) => void;
+  laneToggleVariant?: "card" | "compact";
   surface?: "standard" | "extreme";
 };
 
@@ -101,6 +102,7 @@ export function LeaderboardPanel({
   leaderboardLane,
   leaderboardLaneLoading,
   onLeaderboardLaneChange,
+  laneToggleVariant = "card",
   surface = "standard",
 }: LeaderboardPanelProps) {
   const router = useRouter();
@@ -343,6 +345,7 @@ export function LeaderboardPanel({
                   lane={leaderboardLane}
                   loading={leaderboardLaneLoading}
                   onChange={onLeaderboardLaneChange}
+                  variant={laneToggleVariant}
                 />
               </div>
             </div>
