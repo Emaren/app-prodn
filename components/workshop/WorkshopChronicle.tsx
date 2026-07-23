@@ -301,8 +301,8 @@ export default function WorkshopChronicle({
           </h2>
 
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-400">
-            The story of how Emaren, AI, and the Kingdom are forging AoE2WAR —
-            newest work first, one build at a time.
+            The story of how Emaren, AI, players, and the Kingdom are forging
+            AoE2WAR — newest verified work first, one build at a time.
           </p>
         </header>
 

@@ -27,7 +27,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "The Workshop",
   description:
-    "Watch AoE2WAR being forged through curated build notes, parser discoveries, AI discussions, and deployments.",
+    "Follow AoE2WAR's current production state: battle truth, public Match Chronicles, challenge custody, DESYNC handling, settlement, speed proof, and the Parser Observatory.",
 };
 
 type Entry = PublicWorkshop["entries"][number];
@@ -156,7 +156,7 @@ export default async function WorkshopPage() {
       <section className="relative overflow-hidden rounded-[2.35rem] border border-amber-100/14 bg-[radial-gradient(circle_at_16%_0%,rgba(251,146,60,0.22),transparent_31%),radial-gradient(circle_at_83%_8%,rgba(34,211,238,0.13),transparent_29%),linear-gradient(145deg,#1a0d08,#07111b_54%,#04070c)] px-6 py-9 shadow-[0_30px_120px_rgba(0,0,0,0.34)] sm:px-11 sm:py-12">
         <div className="pointer-events-none absolute -left-16 bottom-[-8rem] h-72 w-72 rounded-full bg-orange-400/10 blur-3xl" />
         <div className="pointer-events-none absolute right-[8%] top-[-8rem] h-72 w-72 rounded-full bg-cyan-300/8 blur-3xl" />
-        <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)] lg:items-end">
+        <div className="relative grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(22rem,0.9fr)] lg:items-center">
           <div>
             <div className="inline-flex items-center gap-3 rounded-full border border-amber-100/16 bg-amber-300/[0.07] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.3em] text-amber-50">
               <span
@@ -167,12 +167,6 @@ export default async function WorkshopPage() {
             <div className="mt-6 text-xs font-bold uppercase tracking-[0.44em] text-orange-100/55">
               AoE2WAR · Live Build Culture
             </div>
-            <h1 className="mt-4 max-w-5xl font-serif text-5xl leading-[0.95] sm:text-7xl lg:text-[5.6rem]">
-              The strange machine is forged in public.
-            </h1>
-            <p className="mt-6 max-w-3xl text-base leading-7 text-slate-300 sm:text-lg">
-              {data.status.description}
-            </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link
                 href="#workbench"
@@ -190,10 +184,10 @@ export default async function WorkshopPage() {
           </div>
           <div className="rounded-[1.7rem] border border-white/10 bg-black/28 p-6 backdrop-blur-sm">
             <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-100/55">
-              Now on the workbench
+              Current production state
             </div>
             <div className="mt-3 text-2xl font-semibold">
-              {data.status.currentProject || "Published kingdom work"}
+              Challenge Protocol · Public Match Rooms · Battle Truth
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <SignalMetric
@@ -234,138 +228,140 @@ export default async function WorkshopPage() {
               </div>
 
               <span className="rounded-full border border-amber-200/16 bg-amber-300/[0.07] px-3 py-1 text-[9px] font-bold uppercase tracking-[0.2em] text-amber-100/75">
-                Campaign IV · Parser Front
+                Current Front · War Protocol
               </span>
             </div>
 
             <h2 className="mt-5 font-serif text-5xl leading-[0.92] text-white sm:text-6xl lg:text-7xl">
-              Into the Fog.
+              The War Protocol.
             </h2>
 
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Campaign III conquered artifact classification. Every preserved
-              Engine Room artifact now has a latest candidate disposition.
-              The question has changed. We are no longer asking whether the
-              archive can be classified. We are asking what battle truth the
-              surviving evidence can actually prove.
+              Battle truth, human evidence, challenge custody, settlement, and
+              public match history now meet in one production protocol. Replay
+              candidates remain separate from public and financial truth.
+              Human-confirmed DESYNC incidents are append-only. Every Challenge
+              now owns a public Match Chronicle where player negotiation can flow
+              chronologically through acceptance, funding, check-in, watcher
+              proof, result, payout, and belt or artifact consequences. Live
+              battles can carry an independent YES/NO DESYNC market, while the
+              Speed Observatory measures real navigation instead of synthetic claims.
             </p>
 
             <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <CampaignMetric
-                label="Artifacts accounted"
-                value={`${observatory.parser.frontier.completed.toLocaleString()} / ${observatory.parser.frontier.artifacts.toLocaleString()}`}
-                note="Frozen Engine Room candidate frontier."
-              />
-
-              <CampaignMetric
-                label="Current candidate failures"
-                value={observatory.parser.frontier.failed.toLocaleString()}
-                note="Historical failed runs remain preserved."
-              />
-
-              <CampaignMetric
-                label="Effective results"
+                label="Effective replay results"
                 value={observatory.corpus.resolvedResults.toLocaleString()}
                 note="Current public final replay-record grain."
               />
 
               <CampaignMetric
-                label="Battles in the fog"
-                value={observatory.corpus.unresolvedResults.toLocaleString()}
-                note="No decisive trustworthy result yet."
+                label="Result coverage"
+                value={`${(observatory.corpus.resultCoverageBps / 100).toFixed(1)}%`}
+                note={`${observatory.corpus.unresolvedResults.toLocaleString()} replay records still lack decisive trustworthy result truth.`}
                 alert={observatory.corpus.unresolvedResults > 0}
               />
 
               <CampaignMetric
-                label="Result coverage"
-                value={`${(observatory.corpus.resultCoverageBps / 100).toFixed(1)}%`}
-                note="Effective resolved result coverage."
+                label="Evidence Lab"
+                value="8 / 8"
+                note="Evidence Pass #2391 reached all eight screenshot evidence areas for replay #18714."
               />
 
               <CampaignMetric
-                label="Unlinked checkpoints"
-                value="89"
-                note="Campaign III sealed continuation frontier."
+                label="Challenge protocol"
+                value="Live"
+                note="Acceptance, funding, check-in, watcher proof, settlement, and title consequences share one lifecycle."
+              />
+
+              <CampaignMetric
+                label="DESYNC truth"
+                value="Append-only"
+                note="Human-confirmed incidents quarantine winner, payout, belt, and artifact consequences until disposition."
                 alert
+              />
+
+              <CampaignMetric
+                label="Public Match Rooms"
+                value="Live"
+                note="Every Challenge owns a public Chronicle. Duelists and the Commissioner write; spectators read."
               />
             </div>
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link
-                href="/game-stats"
+                href="/challenge"
                 className="inline-flex min-h-11 items-center gap-2 rounded-full bg-cyan-100 px-5 text-sm font-bold text-slate-950 transition hover:bg-white"
               >
                 <ShieldCheck className="h-4 w-4" />
-                Enter the Parser Observatory
+                Open the Challenge Hall
               </Link>
 
-              <div className="text-xs leading-5 text-slate-500">
-                Live Observatory totals refresh independently from the curated Chronicle.
-              </div>
+              <Link
+                href="/game-stats"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-cyan-100/18 bg-cyan-300/[0.06] px-5 text-sm font-semibold text-cyan-50 transition hover:bg-cyan-300/10"
+              >
+                Parser Observatory
+              </Link>
+
+              <Link
+                href="/speed"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-5 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.07]"
+              >
+                Speed Observatory
+              </Link>
             </div>
           </div>
 
           <aside className="rounded-[1.7rem] border border-amber-100/12 bg-black/28 p-6 sm:p-7">
             <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-amber-100/55">
-              Campaign III · Sealed
+              Current Production State
             </div>
 
             <h3 className="mt-3 font-serif text-3xl text-white">
-              The Engine Room
+              The observable war machine
             </h3>
 
             <div className="mt-6 space-y-4">
-              <div className="border-b border-white/8 pb-4">
-                <div className="text-2xl font-semibold text-white">
-                  {observatory.parser.frontier.recordedGameCandidates.toLocaleString()}
+              {[
+                ["Parser Observatory", "Public"],
+                ["Screenshot Evidence Lab", "Candidate-only"],
+                ["Human DESYNC incidents", "Append-only"],
+                ["Challenge custody & settlement", "Live"],
+                ["Public Match Chronicle", "Live"],
+                ["Independent DESYNC market", "YES / NO"],
+                ["Speed Observatory", "Real navigation"],
+              ].map(([label, value]) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-4 border-b border-white/8 pb-4 last:border-b-0 last:pb-0"
+                >
+                  <div className="text-sm leading-5 text-slate-300">
+                    {label}
+                  </div>
+                  <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100/75">
+                    {value}
+                  </div>
                 </div>
-                <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-slate-500">
-                  recorded-game candidates
-                </div>
-              </div>
-
-              <div className="border-b border-white/8 pb-4">
-                <div className="text-2xl font-semibold text-white">
-                  {observatory.parser.frontier.savedSnapshots.toLocaleString()}
-                </div>
-                <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-slate-500">
-                  non-final saved checkpoints
-                </div>
-              </div>
-
-              <div className="border-b border-white/8 pb-4">
-                <div className="text-2xl font-semibold text-emerald-100">
-                  {observatory.parser.frontier.effectiveResultCorrections.toLocaleString()}
-                </div>
-                <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-slate-500">
-                  safe effective corrections
-                </div>
-              </div>
-
-              <div>
-                <div className="text-2xl font-semibold text-amber-100">
-                  113 → 98
-                </div>
-                <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-slate-500">
-                  checkpoints linked to recorded candidates
-                </div>
-              </div>
+              ))}
             </div>
 
             <p className="mt-6 text-xs leading-6 text-slate-500">
-              Candidate completion never becomes automatic public or financial
-              truth. Saved checkpoints remain non-final and settlement-ineligible.
-              Continuation identity does not import a later result.
+              Replay parsing, human evidence, adjudication, DESYNC provenance,
+              challenge state, settlement, and public conversation remain distinct
+              authority layers. No candidate-only evidence silently becomes public
+              or financial truth.
             </p>
           </aside>
         </div>
 
         <div className="relative mt-7 rounded-2xl border border-white/8 bg-black/20 px-5 py-4 text-xs leading-6 text-slate-500">
           <span className="font-semibold text-slate-300">Truth boundary:</span>{" "}
-          the live result counters above describe final watcher/upload records,
-          not a deduplicated count of logical battles. Saved, rehosted, aborted,
-          checkpoint-only, and otherwise unprovable sessions may correctly remain
-          in the fog.
+          replay candidates and screenshot evidence remain candidate-only unless
+          explicitly promoted by the appropriate authority. Human adjudications and
+          DESYNC provenance are append-only. Settlement and title rails consume
+          authenticated effective truth. Public Match Room messages belong only to
+          their exact Challenge and never import or expose private DM history.
         </div>
       </section>
 
@@ -502,8 +498,8 @@ export default async function WorkshopPage() {
             Selected collaboration can become canon.
           </h2>
           <p className="mt-4 text-sm leading-7 text-slate-300">
-            Tony may publish a chosen Scribe, Grimer, or Codex exchange as a
-            curated AI Discussion. Private chats are never mirrored
+            Tony may publish a chosen Scribe, Grimer, or AI build exchange as
+            a curated AI Discussion. Private chats are never mirrored
             automatically; each public excerpt is a separate app record.
           </p>
           <Link
@@ -525,9 +521,10 @@ export default async function WorkshopPage() {
           </h2>
           <p className="mt-4 text-sm leading-7 text-slate-300">
             No terminal output, credentials, environment values, database URLs,
-            private messages, security findings, signer material, raw prompts,
-            or financial secrets can enter this page without an operator
-            creating and publishing a sanitized Workshop record.
+            private DMs, security findings, signer material, raw prompts, or financial
+            secrets can enter this page without an operator creating and publishing a
+            sanitized Workshop record. Public Match Rooms are separate Challenge-scoped
+            records and contain only their own participant conversation and protocol history.
           </p>
         </div>
       </section>
