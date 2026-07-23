@@ -491,6 +491,7 @@ export async function PATCH(
       idempotencyKey?: string;
       rematchAt?: string;
       note?: string;
+      message?: string;
     };
 
     const scheduledMatch = await prisma.scheduledMatch.findUnique({
@@ -527,9 +528,44 @@ export async function PATCH(
       payload.action !== "resolve_no_show" &&
       payload.action !== "mark_completed" &&
       payload.action !== "desync_rematch" &&
-      payload.action !== "desync_void_refund"
+      payload.action !== "desync_void_refund" &&
+      payload.action !== "room_message"
     ) {
       return NextResponse.json({ detail: "Unknown challenge action." }, { status: 400 });
+    }
+
+    if (payload.action === "room_message") {
+      const message =
+        typeof payload.message === "string"
+          ? payload.message.trim()
+          : "";
+
+      if (!message) {
+        return NextResponse.json(
+          { detail: "Write a Match Room message first." },
+          { status: 400 }
+        );
+      }
+
+      if (message.length > 2_000) {
+        return NextResponse.json(
+          { detail: "Match Room messages must be 2,000 characters or shorter." },
+          { status: 413 }
+        );
+      }
+
+      await recordChallengeActivity(prisma, {
+        scheduledMatchId: challengeId,
+        actorUserId: viewer.id,
+        eventType: "room_message",
+        metadata: {
+          message,
+          publicMatchRoom: true,
+        },
+        createdAt: new Date(),
+      });
+
+      return NextResponse.json({ ok: true });
     }
 
     if (

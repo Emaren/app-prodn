@@ -234,6 +234,12 @@ function metadataUrl(metadata: unknown, key: string) {
   return typeof value === "string" && value.startsWith("http") ? value : null;
 }
 
+function metadataText(metadata: unknown, key: string) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return null;
+  const value = (metadata as Record<string, unknown>)[key];
+  return typeof value === "string" ? value : null;
+}
+
 function roomHref(id: number, view: RoomView) {
   return view === "extreme" ? `/challenge/${id}` : `/challenge/${id}?view=${view}`;
 }
@@ -318,7 +324,7 @@ export default async function ChallengeDetailPage({
           },
         },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        take: 100,
+        take: 500,
       },
       settlements: {
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -813,6 +819,17 @@ export default async function ChallengeDetailPage({
             challengedUid={match.challenged.uid}
             challengerName={leftName}
             challengedName={rightName}
+            entries={[...match.activities].reverse().map((activity) => ({
+              id: activity.id,
+              eventType: activity.eventType,
+              label: eventLabel(activity.eventType),
+              detail: activity.detail,
+              message: metadataText(activity.metadata, "message"),
+              proofUrl: metadataUrl(activity.metadata, "proofUrl"),
+              actorUid: activity.actor?.uid ?? null,
+              actorName: activity.actor ? playerName(activity.actor) : null,
+              createdAt: activity.createdAt.toISOString(),
+            }))}
           />
         </section>
 
@@ -820,11 +837,13 @@ export default async function ChallengeDetailPage({
           <section className={`mt-6 grid gap-6 ${extreme ? "xl:grid-cols-[1.15fr_0.85fr]" : "xl:grid-cols-[1fr_0.8fr]"}`}>
             <div className="rounded-[2rem] border border-white/10 bg-slate-950/72 p-5 shadow-[0_25px_90px_rgba(0,0,0,0.38)]">
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-100/38">
-                Match action log · latest first
+                Protocol ledger · system audit
               </p>
 
               <div className="mt-4 grid gap-3">
-                {match.activities.map((activity) => {
+                {match.activities
+                  .filter((activity) => activity.eventType !== "room_message")
+                  .map((activity) => {
                   const proofUrl = metadataUrl(activity.metadata, "proofUrl");
                   const actorName = activity.actor ? playerName(activity.actor) : null;
 
