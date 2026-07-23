@@ -36,9 +36,9 @@ const ogRoute = readFileSync(
   "utf8",
 );
 
-const trueOg = readFileSync(
+const ogBoard = readFileSync(
   new URL(
-    "../components/leaderboard/TrueOgLeaderboardPanel.tsx",
+    "../components/leaderboard/OgBoardPage.tsx",
     import.meta.url,
   ),
   "utf8",
@@ -94,7 +94,7 @@ test(
   "OG user can deliberately switch back to Modern",
   () => {
     assert.match(
-      ogRoute,
+      ogBoard,
       /href="\/leaderboard\?view=modern"/,
     );
 
@@ -106,51 +106,56 @@ test(
 );
 
 test(
-  "OG route uses current leaderboard truth, not chronological battle archive",
+  "OG route is the chronological parsed-games board",
   () => {
     assert.match(
+      ogRoute,
+      /loadOgBoardPage/,
+    );
+
+    assert.match(
+      ogRoute,
+      /OgBoardPage/,
+    );
+
+    assert.doesNotMatch(
       ogRoute,
       /loadLobbyLeaderboard/,
     );
 
     assert.doesNotMatch(
       ogRoute,
-      /loadOgBoardPage/,
-    );
-
-    assert.doesNotMatch(
-      ogRoute,
-      /OgBoardPage/,
+      /TrueOgLeaderboardPanel/,
     );
   },
 );
 
 test(
-  "restored OG component contains original leaderboard fingerprints",
+  "OG board preserves parsed-game archive presentation",
   () => {
     assert.match(
-      trueOg,
-      /Competition/,
+      ogBoard,
+      /AoE2WAR battle archive/,
     );
 
     assert.match(
-      trueOg,
-      /Replay-backed standings built from real parsed matches/,
+      ogBoard,
+      /The first board\. Every battle remembered\./,
     );
 
     assert.match(
-      trueOg,
-      /Last replay/,
+      ogBoard,
+      /OgBattleCard/,
     );
 
     assert.match(
-      trueOg,
-      /MetricPill/,
+      ogBoard,
+      /latest=\{index === 0\}/,
     );
 
     assert.match(
-      trueOg,
-      /SteamLinkedBadge/,
+      ogBoard,
+      /Final HD replays will appear here newest first/,
     );
   },
 );
@@ -181,7 +186,7 @@ test(
 );
 
 test(
-  "sort state no longer causes the generic load effect to recreate itself",
+  "sort state no longer causes generic load effect recreation",
   () => {
     assert.doesNotMatch(
       modernPage,

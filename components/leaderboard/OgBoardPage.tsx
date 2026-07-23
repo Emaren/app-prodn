@@ -68,7 +68,7 @@ export function OgBoardPage({ initialPage }: { initialPage: OgBoardPageData | nu
               <h1 className="mt-2 font-serif text-4xl font-semibold text-amber-100 sm:text-5xl">OG Board</h1>
               <p className="mt-2 text-sm text-slate-400">The first board. Every battle remembered.</p>
             </div>
-            <LeaderboardViewLink from="og" to="modern" href="/leaderboard">Modern Board</LeaderboardViewLink>
+            <LeaderboardViewLink from="og" to="modern" href="/leaderboard?view=modern">Modern Board</LeaderboardViewLink>
           </div>
         </header>
 

@@ -34,6 +34,12 @@ import {
 } from "@/lib/lobby";
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
 import {
+  loadLeaderboardLaneCached,
+  prefetchLeaderboardLane,
+  readLeaderboardLaneCache,
+  seedLeaderboardLaneCache,
+} from "@/lib/leaderboardLaneClientCache";
+import {
   avatarCardUrlForUser,
   avatarUrlForName,
   featuredAvatarCardUrlForUser,
@@ -52,6 +58,8 @@ const SLADK0ESHKA_UID = "u_73b78fcddb90417180495c1468937049";
 const AI_SCRIBE_UID = AI_CONCIERGE_UID;
 const GRIMER_UID = AI_GRIMER_UID;
 const MOOSE_UID = "aoe2hd-moose";
+
+const LEADERBOARD_LANE_PREFETCH_SIZE = 64;
 
 const FEATURED_WARRIOR_SLOT_COUNT = 4;
 const FEATURED_WARRIOR_ROTATE_MS = 3800;
@@ -1287,63 +1295,149 @@ return () => {
     laneLeaderboard?.lane === leaderboardLane ? laneLeaderboard : baseLeaderboard;
 
   useEffect(() => {
-    if (leaderboardLane !== "rm") return;
+    // The live lobby snapshot is already our warm RM lane.
+    // Keep it in the shared client cache.
+    seedLeaderboardLaneCache(
+      baseLeaderboard,
+    );
 
-    setLaneLeaderboard(baseLeaderboard);
-    setLeaderboardLaneLoading(false);
-  }, [baseLeaderboard, leaderboardLane]);
-
-  useEffect(() => {
-    if (leaderboardLane !== "dm") return;
-
-    const controller = new AbortController();
-    setLeaderboardLaneLoading(true);
-
-    async function loadSelectedLeaderboard() {
-      try {
-        const params = new URLSearchParams({
-          lane: leaderboardLane,
-          offset: "0",
-          limit: "600",
-        });
-        const response = await fetch(`/api/lobby/leaderboard?${params.toString()}`, {
-          cache: "no-store",
-          signal: controller.signal,
-        });
-        const payload = (await response.json().catch(() => ({}))) as
-          | LobbyLeaderboardSummary
-          | { detail?: string };
-
-        if (!response.ok || !("entries" in payload)) {
-          throw new Error("Leaderboard lane unavailable");
-        }
-
-        setLaneLeaderboard(payload);
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          console.warn("Failed to load selected leaderboard lane:", error);
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLeaderboardLaneLoading(false);
-        }
-      }
+    if (
+      leaderboardLane ===
+      baseLeaderboard.lane
+    ) {
+      setLaneLeaderboard(
+        baseLeaderboard,
+      );
     }
 
-    void loadSelectedLeaderboard();
+    const alternateLane:
+      LeaderboardLane =
+      leaderboardLane === "rm"
+        ? "dm"
+        : "rm";
+
+    // Warm the opposite lane immediately after paint.
+    // Only the first visible chunk is needed; the panel's
+    // existing infinite loader owns subsequent pages.
+    void prefetchLeaderboardLane(
+      alternateLane,
+      LEADERBOARD_LANE_PREFETCH_SIZE,
+    ).then((summary) => {
+      if (
+        summary &&
+        summary.lane ===
+          leaderboardLane
+      ) {
+        setLaneLeaderboard(
+          summary,
+        );
+      }
+    });
+  }, [
+    baseLeaderboard,
+    leaderboardLane,
+  ]);
+
+  useEffect(() => {
+    const cached =
+      readLeaderboardLaneCache(
+        leaderboardLane,
+      );
+
+    if (cached) {
+      setLaneLeaderboard(
+        cached,
+      );
+
+      setLeaderboardLaneLoading(
+        false,
+      );
+
+      return;
+    }
+
+    let cancelled = false;
+
+    // Do not disable the RM / DM control while this
+    // background fallback request runs.
+    setLeaderboardLaneLoading(
+      false,
+    );
+
+    void loadLeaderboardLaneCached(
+      leaderboardLane,
+      {
+        limit:
+          LEADERBOARD_LANE_PREFETCH_SIZE,
+        force: true,
+      },
+    )
+      .then((summary) => {
+        if (!cancelled) {
+          setLaneLeaderboard(
+            summary,
+          );
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          console.warn(
+            "Failed to load selected leaderboard lane:",
+            error,
+          );
+        }
+      });
 
     return () => {
-      controller.abort();
+      cancelled = true;
     };
   }, [leaderboardLane]);
 
-  const handleLeaderboardLaneChange = useCallback(
-    (lane: LeaderboardLane) => {
-      if (lane === leaderboardLane) return;
-      setLeaderboardLane(lane);
-    },
-    [leaderboardLane, setLeaderboardLane]
-  );
+  const handleLeaderboardLaneChange =
+    useCallback(
+      (
+        lane:
+          LeaderboardLane,
+      ) => {
+        if (
+          lane ===
+          leaderboardLane
+        ) {
+          return;
+        }
+
+        const cached =
+          readLeaderboardLaneCache(
+            lane,
+          );
+
+        // Apply the already-prefetched lane before the
+        // state flip paints, making RM / DM a true tab.
+        if (cached) {
+          setLaneLeaderboard(
+            cached,
+          );
+        }
+
+        setLeaderboardLaneLoading(
+          false,
+        );
+
+        setLeaderboardLane(
+          lane,
+        );
+
+        // Warm the lane we just left as well.
+        void prefetchLeaderboardLane(
+          leaderboardLane,
+          LEADERBOARD_LANE_PREFETCH_SIZE,
+        );
+      },
+      [
+        leaderboardLane,
+        setLeaderboardLane,
+      ],
+    );
   const featuredWarriors = useMemo(
     () =>
       buildFeaturedWarriorPool([

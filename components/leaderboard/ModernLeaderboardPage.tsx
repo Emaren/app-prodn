@@ -13,6 +13,11 @@ import {
   type LeaderboardLane,
 } from "@/lib/leaderboardLane";
 import {
+  prefetchLeaderboardLane,
+  readLeaderboardLaneCache,
+  seedLeaderboardLaneCache,
+} from "@/lib/leaderboardLaneClientCache";
+import {
   nextLeaderboardSort,
   sortLeaderboardEntries,
   type LeaderboardSortKey,
@@ -91,6 +96,27 @@ export function ModernLeaderboardPage({
   const requestId = useRef(0);
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLButtonElement | null>(null);
+  const skipNextLaneReloadRef = useRef(false);
+
+  useEffect(() => {
+    seedLeaderboardLaneCache(
+      initialLeaderboard,
+    );
+
+    const activeLane =
+      lane;
+
+    const alternateLane:
+      LeaderboardLane =
+      activeLane === "rm"
+        ? "dm"
+        : "rm";
+
+    void prefetchLeaderboardLane(
+      alternateLane,
+      PAGE_SIZE,
+    );
+  }, [initialLeaderboard, lane]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setQuery(searchInput.trim()), 280);
@@ -103,11 +129,13 @@ export function ModernLeaderboardPage({
       offset = 0,
       preserveRows = false,
       sortOverride,
+      laneOverride,
     }: {
       reset: boolean;
       offset?: number;
       preserveRows?: boolean;
       sortOverride?: LeaderboardSortState;
+      laneOverride?: LeaderboardLane;
     }) => {
       if (
         !reset &&
@@ -133,11 +161,16 @@ export function ModernLeaderboardPage({
       setError(null);
 
       try {
-        const params = new URLSearchParams({
-          lane,
-          offset: String(offset),
-          limit: String(PAGE_SIZE),
-        });
+        const requestedLane =
+          laneOverride ??
+          lane;
+
+        const params =
+          new URLSearchParams({
+            lane: requestedLane,
+            offset: String(offset),
+            limit: String(PAGE_SIZE),
+          });
         if (query) {
           params.set("q", query);
         }
@@ -173,10 +206,46 @@ export function ModernLeaderboardPage({
         }
         if (activeRequest !== requestId.current) return;
 
-        setEntries((current) => (reset ? payload.entries! : mergeEntries(current, payload.entries!)));
-        setTrackedPlayers(typeof payload.trackedPlayers === "number" ? payload.trackedPlayers : payload.entries.length);
-        setNextOffset(typeof payload.nextOffset === "number" ? payload.nextOffset : offset + payload.entries.length);
-        setHasMore(Boolean(payload.hasMore));
+        setEntries((current) =>
+          reset
+            ? payload.entries!
+            : mergeEntries(
+                current,
+                payload.entries!,
+              ),
+        );
+
+        setTrackedPlayers(
+          typeof payload.trackedPlayers ===
+            "number"
+            ? payload.trackedPlayers
+            : payload.entries.length,
+        );
+
+        setNextOffset(
+          typeof payload.nextOffset ===
+            "number"
+            ? payload.nextOffset
+            : offset +
+              payload.entries.length,
+        );
+
+        setHasMore(
+          Boolean(payload.hasMore),
+        );
+
+        if (
+          reset &&
+          offset === 0 &&
+          !query &&
+          !activeSort.key &&
+          payload.lane ===
+            requestedLane
+        ) {
+          seedLeaderboardLaneCache(
+            payload as LobbyLeaderboardSummary,
+          );
+        }
       } catch {
         if (activeRequest !== requestId.current) return;
         setError(reset ? "The ranked board is temporarily unavailable." : "Older ranks could not be loaded. Try again.");
@@ -205,7 +274,18 @@ export function ModernLeaderboardPage({
       }
       return;
     }
-    void loadPage({ reset: true });
+
+    if (
+      skipNextLaneReloadRef.current
+    ) {
+      skipNextLaneReloadRef.current =
+        false;
+      return;
+    }
+
+    void loadPage({
+      reset: true,
+    });
   }, [initialLeaderboard, lane, query, loadPage]);
 
   useEffect(() => {
@@ -224,12 +304,86 @@ export function ModernLeaderboardPage({
     return () => observer.disconnect();
   }, [hasMore, loadPage, loading, loadingMore, nextOffset]);
 
-  const changeLane = (
-    nextLane: LeaderboardLane
-  ) => {
-    writeStoredLeaderboardLane(nextLane);
-    setLane(nextLane);
-  };
+  const changeLane = useCallback(
+    (
+      nextLane:
+        LeaderboardLane,
+    ) => {
+      if (nextLane === lane) {
+        return;
+      }
+
+      const cached =
+        readLeaderboardLaneCache(
+          nextLane,
+        );
+
+      writeStoredLeaderboardLane(
+        nextLane,
+      );
+
+      // Prevent the generic lane effect from performing
+      // a second blocking reset after this explicit switch.
+      skipNextLaneReloadRef.current =
+        true;
+
+      // Invalidate an older in-flight page request.
+      requestId.current += 1;
+
+      setLane(nextLane);
+
+      // The opposite lane is normally already prefetched.
+      // Apply it synchronously before React paints again.
+      if (
+        cached &&
+        !query &&
+        !sortRef.current.key
+      ) {
+        setEntries(
+          cached.entries,
+        );
+
+        setTrackedPlayers(
+          cached.trackedPlayers,
+        );
+
+        setNextOffset(
+          cached.entries.length,
+        );
+
+        setHasMore(
+          cached.entries.length <
+            cached.trackedPlayers,
+        );
+
+        setLoading(false);
+        setLoadingMore(false);
+        loadingMoreRef.current =
+          false;
+        setError(null);
+      }
+
+      // Revalidate quietly against authoritative server
+      // truth. Never blank the table into skeletons.
+      void loadPage({
+        reset: true,
+        preserveRows: true,
+        laneOverride:
+          nextLane,
+      });
+
+      // Keep the opposite lane warm for the next flip.
+      void prefetchLeaderboardLane(
+        lane,
+        PAGE_SIZE,
+      );
+    },
+    [
+      lane,
+      loadPage,
+      query,
+    ],
+  );
 
   const changeSort = useCallback(
     (key: LeaderboardSortKey) => {
