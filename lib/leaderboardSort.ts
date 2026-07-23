@@ -1,3 +1,5 @@
+import type { LobbyLeaderboardEntry } from "@/lib/lobby";
+
 export const LEADERBOARD_SORT_KEYS = [
   "rank",
   "rating",
@@ -99,4 +101,162 @@ export function streakSortScore(
   }
 
   return match[1] === "W" ? count : -count;
+}
+
+function resolvedWinRate(
+  entry: LobbyLeaderboardEntry,
+) {
+  const resolved =
+    entry.wins + entry.losses;
+
+  return resolved > 0
+    ? entry.wins / resolved
+    : null;
+}
+
+function compareLocalNullableNumber(
+  left: number | null,
+  right: number | null,
+  direction: LeaderboardSortDirection,
+) {
+  if (
+    left === null &&
+    right === null
+  ) {
+    return 0;
+  }
+
+  // Missing values stay at the bottom in either direction.
+  if (left === null) {
+    return 1;
+  }
+
+  if (right === null) {
+    return -1;
+  }
+
+  return direction === "asc"
+    ? left - right
+    : right - left;
+}
+
+export function sortLeaderboardEntries(
+  entries: LobbyLeaderboardEntry[],
+  state: LeaderboardSortState,
+) {
+  if (
+    !state.key ||
+    !state.direction
+  ) {
+    return [...entries].sort(
+      (left, right) =>
+        left.rank - right.rank,
+    );
+  }
+
+  const direction =
+    state.direction;
+
+  return [...entries].sort(
+    (left, right) => {
+      let comparison = 0;
+
+      switch (state.key) {
+        case "rank":
+          comparison =
+            compareLocalNullableNumber(
+              left.rank,
+              right.rank,
+              direction,
+            );
+          break;
+
+        case "rating":
+          comparison =
+            compareLocalNullableNumber(
+              left.primaryRating,
+              right.primaryRating,
+              direction,
+            );
+          break;
+
+        case "warrior":
+          comparison =
+            left.name.localeCompare(
+              right.name,
+              undefined,
+              {
+                numeric: true,
+                sensitivity: "base",
+              },
+            );
+
+          if (
+            direction === "desc"
+          ) {
+            comparison *= -1;
+          }
+
+          break;
+
+        case "win_rate":
+          comparison =
+            compareLocalNullableNumber(
+              resolvedWinRate(left),
+              resolvedWinRate(right),
+              direction,
+            );
+          break;
+
+        case "wins":
+          comparison =
+            compareLocalNullableNumber(
+              left.wins,
+              right.wins,
+              direction,
+            );
+          break;
+
+        case "losses":
+          comparison =
+            compareLocalNullableNumber(
+              left.losses,
+              right.losses,
+              direction,
+            );
+          break;
+
+        case "games":
+          comparison =
+            compareLocalNullableNumber(
+              left.totalMatches,
+              right.totalMatches,
+              direction,
+            );
+          break;
+
+        case "streak":
+          comparison =
+            compareLocalNullableNumber(
+              streakSortScore(
+                left.streakLabel,
+              ),
+              streakSortScore(
+                right.streakLabel,
+              ),
+              direction,
+            );
+          break;
+      }
+
+      if (comparison !== 0) {
+        return comparison;
+      }
+
+      return (
+        left.rank -
+        right.rank
+      );
+    },
+  );
 }

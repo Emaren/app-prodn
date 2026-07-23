@@ -14,6 +14,7 @@ import {
 } from "@/lib/leaderboardLane";
 import {
   nextLeaderboardSort,
+  sortLeaderboardEntries,
   type LeaderboardSortKey,
   type LeaderboardSortState,
 } from "@/lib/leaderboardSort";
@@ -83,6 +84,10 @@ export function ModernLeaderboardPage({
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(initialLeaderboard ? null : "The ranked board is temporarily unavailable.");
   const firstEffect = useRef(true);
+  const sortRef = useRef<LeaderboardSortState>({
+    key: null,
+    direction: null,
+  });
   const requestId = useRef(0);
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLButtonElement | null>(null);
@@ -93,11 +98,35 @@ export function ModernLeaderboardPage({
   }, [searchInput]);
 
   const loadPage = useCallback(
-    async ({ reset, offset = 0 }: { reset: boolean; offset?: number }) => {
-      if (!reset && loadingMoreRef.current) return;
-      const activeRequest = ++requestId.current;
-      if (reset) setLoading(true);
-      else {
+    async ({
+      reset,
+      offset = 0,
+      preserveRows = false,
+      sortOverride,
+    }: {
+      reset: boolean;
+      offset?: number;
+      preserveRows?: boolean;
+      sortOverride?: LeaderboardSortState;
+    }) => {
+      if (
+        !reset &&
+        loadingMoreRef.current
+      ) {
+        return;
+      }
+
+      const activeRequest =
+        ++requestId.current;
+
+      if (reset) {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+
+        if (!preserveRows) {
+          setLoading(true);
+        }
+      } else {
         loadingMoreRef.current = true;
         setLoadingMore(true);
       }
@@ -113,9 +142,23 @@ export function ModernLeaderboardPage({
           params.set("q", query);
         }
 
-        if (sort.key && sort.direction) {
-          params.set("sort", sort.key);
-          params.set("dir", sort.direction);
+        const activeSort =
+          sortOverride ??
+          sortRef.current;
+
+        if (
+          activeSort.key &&
+          activeSort.direction
+        ) {
+          params.set(
+            "sort",
+            activeSort.key,
+          );
+
+          params.set(
+            "dir",
+            activeSort.direction,
+          );
         }
 
         const response = await fetch(
@@ -148,8 +191,6 @@ export function ModernLeaderboardPage({
     [
       lane,
       query,
-      sort.key,
-      sort.direction,
     ]
   );
 
@@ -192,14 +233,32 @@ export function ModernLeaderboardPage({
 
   const changeSort = useCallback(
     (key: LeaderboardSortKey) => {
-      setSort((current) =>
+      const next =
         nextLeaderboardSort(
+          sortRef.current,
+          key,
+        );
+
+      sortRef.current = next;
+      setSort(next);
+
+      // Immediate response for the rows already in memory.
+      setEntries((current) =>
+        sortLeaderboardEntries(
           current,
-          key
-        )
+          next,
+        ),
       );
+
+      // Quietly replace them with the authoritative
+      // full-board server ordering. Do not show skeletons.
+      void loadPage({
+        reset: true,
+        preserveRows: true,
+        sortOverride: next,
+      });
     },
-    []
+    [loadPage],
   );
 
   return (
