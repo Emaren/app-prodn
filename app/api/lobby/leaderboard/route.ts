@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { normalizeLeaderboardLane } from "@/lib/leaderboardLane";
+import {
+  normalizeLeaderboardSortDirection,
+  normalizeLeaderboardSortKey,
+} from "@/lib/leaderboardSort";
 import { getPrisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -26,6 +30,14 @@ export async function GET(request: NextRequest) {
   );
   const lane = normalizeLeaderboardLane(request.nextUrl.searchParams.get("lane"));
   const query = request.nextUrl.searchParams.get("q")?.trim().slice(0, 64) || null;
+  const sortKey = normalizeLeaderboardSortKey(
+    request.nextUrl.searchParams.get("sort")
+  );
+  const sortDirection = sortKey
+    ? normalizeLeaderboardSortDirection(
+        request.nextUrl.searchParams.get("dir")
+      )
+    : null;
 
   const leaderboard = await loadLobbyLeaderboard(getPrisma(), {
     offset,
@@ -33,6 +45,8 @@ export async function GET(request: NextRequest) {
     includePendingClaimed: false,
     lane,
     query,
+    sortKey,
+    sortDirection,
   });
 
   // The leaderboard helper may enrich a selection with additional

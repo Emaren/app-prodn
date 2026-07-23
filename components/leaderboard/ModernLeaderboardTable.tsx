@@ -1,11 +1,20 @@
 "use client";
 
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronsUpDown,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { KeyboardEvent, MouseEvent } from "react";
 
 import type { LobbyLeaderboardEntry } from "@/lib/lobby";
 import { calculateResolvedWinRate } from "@/lib/leaderboardPage";
+import type {
+  LeaderboardSortDirection,
+  LeaderboardSortKey,
+} from "@/lib/leaderboardSort";
 
 function winRate(entry: LobbyLeaderboardEntry) {
   return calculateResolvedWinRate(entry.wins, entry.losses);
@@ -37,13 +46,98 @@ function WinRate({ entry, compact = false }: { entry: LobbyLeaderboardEntry; com
   );
 }
 
+function SortableHeader({
+  label,
+  column,
+  sortKey,
+  sortDirection,
+  onSort,
+  align = "left",
+  className = "",
+}: {
+  label: string;
+  column: LeaderboardSortKey;
+  sortKey: LeaderboardSortKey | null;
+  sortDirection: LeaderboardSortDirection | null;
+  onSort: (column: LeaderboardSortKey) => void;
+  align?: "left" | "right";
+  className?: string;
+}) {
+  const active =
+    sortKey === column &&
+    sortDirection !== null;
+
+  const nextAction =
+    !active
+      ? "descending"
+      : sortDirection === "desc"
+        ? "ascending"
+        : "default order";
+
+  return (
+    <th
+      className={`${className} p-0 font-semibold`}
+      aria-sort={
+        active
+          ? sortDirection === "desc"
+            ? "descending"
+            : "ascending"
+          : "none"
+      }
+    >
+      <button
+        type="button"
+        onClick={() => onSort(column)}
+        title={`Sort ${label} ${nextAction}`}
+        aria-label={`Sort ${label} ${nextAction}`}
+        className={`group flex w-full cursor-pointer items-center gap-1.5 px-4 py-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100 transition hover:bg-amber-200/[0.055] hover:text-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-200/45 ${
+          align === "right"
+            ? "justify-end text-right"
+            : "justify-start text-left"
+        }`}
+      >
+        <span>{label}</span>
+
+        {active ? (
+          sortDirection === "desc" ? (
+            <ArrowDown
+              className="h-3.5 w-3.5 text-amber-200"
+              aria-hidden="true"
+            />
+          ) : (
+            <ArrowUp
+              className="h-3.5 w-3.5 text-amber-200"
+              aria-hidden="true"
+            />
+          )
+        ) : (
+          <ChevronsUpDown
+            className="h-3.5 w-3.5 text-slate-600 transition group-hover:text-amber-100/65"
+            aria-hidden="true"
+          />
+        )}
+      </button>
+    </th>
+  );
+}
+
 function isInteractiveTarget(target: EventTarget | null) {
   return target instanceof HTMLElement
     ? Boolean(target.closest("a,button,input,textarea,select,label,[role='button']"))
     : false;
 }
 
-export function ModernLeaderboardTable({ entries }: { entries: LobbyLeaderboardEntry[] }) {
+export function ModernLeaderboardTable({
+  entries,
+  sortKey,
+  sortDirection,
+  onSort,
+}: {
+  entries: LobbyLeaderboardEntry[];
+  sortKey: LeaderboardSortKey | null;
+  sortDirection: LeaderboardSortDirection | null;
+  onSort: (column: LeaderboardSortKey) => void;
+}) {
   const router = useRouter();
 
   const openRow = (entry: LobbyLeaderboardEntry, event: MouseEvent<HTMLTableRowElement>) => {
@@ -66,14 +160,74 @@ export function ModernLeaderboardTable({ entries }: { entries: LobbyLeaderboardE
         <table className="w-full border-collapse text-left">
           <thead className="sticky top-0 z-10 bg-[#0b1424]/98 text-[11px] uppercase tracking-[0.18em] text-amber-100 shadow-[0_1px_0_rgba(251,191,36,0.28)] backdrop-blur">
             <tr>
-              <th className="w-20 px-5 py-4 font-semibold">Rank</th>
-              <th className="w-28 px-4 py-4 text-right font-semibold">Rating</th>
-              <th className="px-5 py-4 font-semibold">Warrior</th>
-              <th className="w-44 px-5 py-4 font-semibold">Win Rate</th>
-              <th className="w-24 px-4 py-4 text-right font-semibold">Wins</th>
-              <th className="w-24 px-4 py-4 text-right font-semibold">Losses</th>
-              <th className="w-28 px-4 py-4 text-right font-semibold">Games</th>
-              <th className="w-24 px-5 py-4 text-right font-semibold">Streak</th>
+              <SortableHeader
+                label="Rank"
+                column="rank"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={onSort}
+                className="w-20"
+              />
+              <SortableHeader
+                label="Rating"
+                column="rating"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={onSort}
+                align="right"
+                className="w-28"
+              />
+              <SortableHeader
+                label="Warrior"
+                column="warrior"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={onSort}
+              />
+              <SortableHeader
+                label="Win Rate"
+                column="win_rate"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={onSort}
+                className="w-44"
+              />
+              <SortableHeader
+                label="Wins"
+                column="wins"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={onSort}
+                align="right"
+                className="w-24"
+              />
+              <SortableHeader
+                label="Losses"
+                column="losses"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={onSort}
+                align="right"
+                className="w-24"
+              />
+              <SortableHeader
+                label="Games"
+                column="games"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={onSort}
+                align="right"
+                className="w-28"
+              />
+              <SortableHeader
+                label="Streak"
+                column="streak"
+                sortKey={sortKey}
+                sortDirection={sortDirection}
+                onSort={onSort}
+                align="right"
+                className="w-24"
+              />
             </tr>
           </thead>
           <tbody>

@@ -12,6 +12,11 @@ import {
   writeStoredLeaderboardLane,
   type LeaderboardLane,
 } from "@/lib/leaderboardLane";
+import {
+  nextLeaderboardSort,
+  type LeaderboardSortKey,
+  type LeaderboardSortState,
+} from "@/lib/leaderboardSort";
 
 const PAGE_SIZE = 50;
 
@@ -25,9 +30,32 @@ function mergeEntries(
   current: LobbyLeaderboardSummary["entries"],
   incoming: LobbyLeaderboardSummary["entries"]
 ) {
-  const entries = new Map(current.map((entry) => [entry.key, entry]));
-  for (const entry of incoming) entries.set(entry.key, entry);
-  return Array.from(entries.values()).sort((left, right) => left.rank - right.rank);
+  const merged = [...current];
+  const indexByKey = new Map(
+    merged.map((entry, index) => [
+      entry.key,
+      index,
+    ])
+  );
+
+  for (const entry of incoming) {
+    const existingIndex =
+      indexByKey.get(entry.key);
+
+    if (existingIndex === undefined) {
+      indexByKey.set(
+        entry.key,
+        merged.length
+      );
+      merged.push(entry);
+    } else {
+      merged[existingIndex] = entry;
+    }
+  }
+
+  // The server owns the requested ordering.
+  // Preserve page order while infinite scrolling appends rows.
+  return merged;
 }
 
 export function ModernLeaderboardPage({
@@ -35,7 +63,14 @@ export function ModernLeaderboardPage({
 }: {
   initialLeaderboard: LobbyLeaderboardSummary | null;
 }) {
-  const [lane, setLane] = useState<LeaderboardLane>(initialLeaderboard?.lane ?? "rm");
+  const [lane, setLane] = useState<LeaderboardLane>(
+    initialLeaderboard?.lane ?? "rm"
+  );
+  const [sort, setSort] =
+    useState<LeaderboardSortState>({
+      key: null,
+      direction: null,
+    });
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [entries, setEntries] = useState(initialLeaderboard?.entries ?? []);
@@ -74,8 +109,21 @@ export function ModernLeaderboardPage({
           offset: String(offset),
           limit: String(PAGE_SIZE),
         });
-        if (query) params.set("q", query);
-        const response = await fetch(`/api/lobby/leaderboard?${params}`, { cache: "no-store" });
+        if (query) {
+          params.set("q", query);
+        }
+
+        if (sort.key && sort.direction) {
+          params.set("sort", sort.key);
+          params.set("dir", sort.direction);
+        }
+
+        const response = await fetch(
+          `/api/lobby/leaderboard?${params}`,
+          {
+            cache: "no-store",
+          }
+        );
         const payload = (await response.json().catch(() => ({}))) as Partial<LeaderboardResponse>;
         if (!response.ok || !Array.isArray(payload.entries)) {
           throw new Error("leaderboard unavailable");
@@ -97,7 +145,12 @@ export function ModernLeaderboardPage({
         }
       }
     },
-    [lane, query]
+    [
+      lane,
+      query,
+      sort.key,
+      sort.direction,
+    ]
   );
 
   useEffect(() => {
@@ -130,10 +183,24 @@ export function ModernLeaderboardPage({
     return () => observer.disconnect();
   }, [hasMore, loadPage, loading, loadingMore, nextOffset]);
 
-  const changeLane = (nextLane: LeaderboardLane) => {
+  const changeLane = (
+    nextLane: LeaderboardLane
+  ) => {
     writeStoredLeaderboardLane(nextLane);
     setLane(nextLane);
   };
+
+  const changeSort = useCallback(
+    (key: LeaderboardSortKey) => {
+      setSort((current) =>
+        nextLeaderboardSort(
+          current,
+          key
+        )
+      );
+    },
+    []
+  );
 
   return (
     <main className="space-y-5 py-3 text-white sm:py-6">
@@ -188,7 +255,12 @@ export function ModernLeaderboardPage({
           ) : entries.length === 0 ? (
             <div className="border border-white/10 bg-white/[0.04] px-5 py-10 text-center text-slate-300">No ranked warriors yet. Final HD replays will raise the first names onto this board.</div>
           ) : (
-            <ModernLeaderboardTable entries={entries} />
+            <ModernLeaderboardTable
+              entries={entries}
+              sortKey={sort.key}
+              sortDirection={sort.direction}
+              onSort={changeSort}
+            />
           )}
 
           {error ? (

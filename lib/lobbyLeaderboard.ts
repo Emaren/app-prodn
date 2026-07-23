@@ -22,6 +22,13 @@ import {
   type LeaderboardLane,
 } from "@/lib/leaderboardLane";
 import {
+  normalizeLeaderboardSortDirection,
+  normalizeLeaderboardSortKey,
+  streakSortScore,
+  type LeaderboardSortDirection,
+  type LeaderboardSortKey,
+} from "@/lib/leaderboardSort";
+import {
   matchesLeaderboardSearch,
   normalizeLeaderboardSearch,
 } from "@/lib/leaderboardPage";
@@ -53,6 +60,8 @@ export type LoadLobbyLeaderboardOptions = {
   includePendingClaimed?: boolean;
   lane?: LeaderboardLane;
   query?: string | null;
+  sortKey?: LeaderboardSortKey | null;
+  sortDirection?: LeaderboardSortDirection | null;
 };
 
 type PreparedLeaderboardGame = Omit<ReplayPlayerResultGame, "players"> & {
@@ -85,6 +94,8 @@ type EnrichedLeaderboardEntry = PublicPlayerDirectoryEntry & {
   arenaElo: number;
   pendingWoloClaimCount: number;
   pendingWoloClaimAmount: number;
+  streakLabel: string | null;
+  streakScore: number;
 };
 
 function normalizeLeaderboardKey(value: string | null | undefined) {
@@ -116,6 +127,8 @@ function buildEnrichedEntry(entry: PublicPlayerDirectoryEntry): EnrichedLeaderbo
     arenaElo: BASE_ARENA_ELO,
     pendingWoloClaimCount: entry.pendingWoloClaimCount || 0,
     pendingWoloClaimAmount: entry.pendingWoloClaimAmount || 0,
+    streakLabel: null,
+    streakScore: 0,
   };
 }
 
@@ -194,18 +207,155 @@ function compareLeaderboardEntries(
 
 const LOBBY_LEADERBOARD_INITIAL_ENTRY_LIMIT = 600;
 
-function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[], options: LoadLobbyLeaderboardOptions = {}) {
+function compareNullableSortNumber(
+  left: number | null,
+  right: number | null,
+  direction: LeaderboardSortDirection
+) {
+  if (left === null && right === null) {
+    return 0;
+  }
+
+  // Missing values always stay at the bottom regardless of direction.
+  if (left === null) {
+    return 1;
+  }
+
+  if (right === null) {
+    return -1;
+  }
+
+  return direction === "asc"
+    ? left - right
+    : right - left;
+}
+
+function compareRequestedLeaderboardSort(
+  left: EnrichedLeaderboardEntry,
+  right: EnrichedLeaderboardEntry,
+  sortKey: LeaderboardSortKey,
+  direction: LeaderboardSortDirection,
+  lane: LeaderboardLane,
+  rankByKey: Map<string, number>
+) {
+  let comparison = 0;
+
+  switch (sortKey) {
+    case "rank":
+      comparison = compareNullableSortNumber(
+        rankByKey.get(left.key) ?? null,
+        rankByKey.get(right.key) ?? null,
+        direction
+      );
+      break;
+
+    case "rating":
+      comparison = compareNullableSortNumber(
+        getPrimaryRatingValue(left, lane),
+        getPrimaryRatingValue(right, lane),
+        direction
+      );
+      break;
+
+    case "warrior":
+      comparison = left.name.localeCompare(
+        right.name,
+        undefined,
+        {
+          numeric: true,
+          sensitivity: "base",
+        }
+      );
+
+      if (direction === "desc") {
+        comparison *= -1;
+      }
+      break;
+
+    case "win_rate":
+      comparison = compareNullableSortNumber(
+        left.resolvedMatches > 0 ? left.winRate : null,
+        right.resolvedMatches > 0 ? right.winRate : null,
+        direction
+      );
+      break;
+
+    case "wins":
+      comparison = compareNullableSortNumber(
+        left.wins,
+        right.wins,
+        direction
+      );
+      break;
+
+    case "losses":
+      comparison = compareNullableSortNumber(
+        left.losses,
+        right.losses,
+        direction
+      );
+      break;
+
+    case "games":
+      comparison = compareNullableSortNumber(
+        left.totalMatches,
+        right.totalMatches,
+        direction
+      );
+      break;
+
+    case "streak":
+      comparison = compareNullableSortNumber(
+        left.streakScore,
+        right.streakScore,
+        direction
+      );
+      break;
+  }
+
+  if (comparison !== 0) {
+    return comparison;
+  }
+
+  // Every alternate sort gets a deterministic canonical-rank tie breaker.
+  const rankComparison =
+    (rankByKey.get(left.key) ?? Number.MAX_SAFE_INTEGER) -
+    (rankByKey.get(right.key) ?? Number.MAX_SAFE_INTEGER);
+
+  if (rankComparison !== 0) {
+    return rankComparison;
+  }
+
+  return compareLeaderboardEntries(left, right, lane);
+}
+
+function buildLeaderboardSelection(
+  entries: EnrichedLeaderboardEntry[],
+  options: LoadLobbyLeaderboardOptions = {}
+) {
   const lane = normalizeLeaderboardLane(options.lane);
+
   const eligibleEntries = entries
-    .filter((entry) => entry.totalMatches >= LOBBY_LEADERBOARD_MIN_MATCHES)
-    .sort((left, right) => compareLeaderboardEntries(left, right, lane));
+    .filter(
+      (entry) =>
+        entry.totalMatches >= LOBBY_LEADERBOARD_MIN_MATCHES
+    )
+    .sort((left, right) =>
+      compareLeaderboardEntries(left, right, lane)
+    );
 
   const rankedEntries = entries
     .filter((entry) => entry.totalMatches > 0)
-    .sort((left, right) => compareLeaderboardEntries(left, right, lane));
+    .sort((left, right) =>
+      compareLeaderboardEntries(left, right, lane)
+    );
 
   const pendingClaimedEntries = entries
-    .filter((entry) => entry.claimed && entry.totalMatches === 0)
+    .filter(
+      (entry) =>
+        entry.claimed &&
+        entry.totalMatches === 0
+    )
     .sort((left, right) => {
       if (left.isOnline !== right.isOnline) {
         return Number(right.isOnline) - Number(left.isOnline);
@@ -233,24 +383,98 @@ function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[], options:
       )
     );
 
-  const safeOffset = Math.max(0, Math.floor(options.offset ?? 0));
+  // Rank is always canonical. Sorting another column changes row order,
+  // never the warrior's actual ladder rank.
+  const rankByKey = new Map<string, number>();
+
+  rankedEntries.forEach((entry, index) => {
+    rankByKey.set(entry.key, index + 1);
+  });
+
+  pendingClaimedEntries.forEach((entry, index) => {
+    if (!rankByKey.has(entry.key)) {
+      rankByKey.set(
+        entry.key,
+        rankedEntries.length + index + 1
+      );
+    }
+  });
+
+  const safeOffset = Math.max(
+    0,
+    Math.floor(options.offset ?? 0)
+  );
+
   const safeLimit = Math.max(
     1,
-    Math.min(2500, Math.floor(options.limit ?? LOBBY_LEADERBOARD_INITIAL_ENTRY_LIMIT))
+    Math.min(
+      2500,
+      Math.floor(
+        options.limit ??
+          LOBBY_LEADERBOARD_INITIAL_ENTRY_LIMIT
+      )
+    )
   );
-  const includePendingClaimed = options.includePendingClaimed ?? true;
-  const orderedEntries = [...rankedEntries, ...pendingClaimedEntries];
-  const normalizedQuery = normalizeLeaderboardSearch(options.query);
-  const searchableEntries = normalizedQuery
-    ? orderedEntries.filter((entry) => matchesLeaderboardSearch(entry.aliasKeys, normalizedQuery))
-    : orderedEntries;
-  const selectedByKey = new Map<string, EnrichedLeaderboardEntry>();
 
-  for (const entry of searchableEntries.slice(safeOffset, safeOffset + safeLimit)) {
+  const includePendingClaimed =
+    options.includePendingClaimed ?? true;
+
+  const defaultOrderedEntries = [
+    ...rankedEntries,
+    ...pendingClaimedEntries,
+  ];
+
+  const normalizedQuery =
+    normalizeLeaderboardSearch(options.query);
+
+  const filteredEntries = normalizedQuery
+    ? defaultOrderedEntries.filter((entry) =>
+        matchesLeaderboardSearch(
+          entry.aliasKeys,
+          normalizedQuery
+        )
+      )
+    : defaultOrderedEntries;
+
+  const sortKey =
+    normalizeLeaderboardSortKey(options.sortKey);
+
+  const sortDirection = sortKey
+    ? normalizeLeaderboardSortDirection(
+        options.sortDirection
+      )
+    : null;
+
+  const searchableEntries =
+    sortKey && sortDirection
+      ? [...filteredEntries].sort((left, right) =>
+          compareRequestedLeaderboardSort(
+            left,
+            right,
+            sortKey,
+            sortDirection,
+            lane,
+            rankByKey
+          )
+        )
+      : filteredEntries;
+
+  const selectedByKey =
+    new Map<string, EnrichedLeaderboardEntry>();
+
+  for (
+    const entry of searchableEntries.slice(
+      safeOffset,
+      safeOffset + safeLimit
+    )
+  ) {
     selectedByKey.set(entry.key, entry);
   }
 
-  if (includePendingClaimed && !normalizedQuery) {
+  if (
+    includePendingClaimed &&
+    !normalizedQuery
+  ) {
     for (const entry of pendingClaimedEntries) {
       selectedByKey.set(entry.key, entry);
     }
@@ -262,22 +486,10 @@ function buildLeaderboardSelection(entries: EnrichedLeaderboardEntry[], options:
     }
   }
 
-  const selectedEntries = Array.from(selectedByKey.values());
-  const rankByKey = new Map<string, number>();
-
-  rankedEntries.forEach((entry, index) => {
-    rankByKey.set(entry.key, index + 1);
-  });
-
-  pendingClaimedEntries.forEach((entry, index) => {
-    if (!rankByKey.has(entry.key)) {
-      rankByKey.set(entry.key, rankedEntries.length + index + 1);
-    }
-  });
-
   return {
     eligibleEntries,
-    selectedEntries,
+    selectedEntries:
+      Array.from(selectedByKey.values()),
     rankByKey,
     fullEntryCount: searchableEntries.length,
   };
@@ -481,7 +693,6 @@ function buildSecondaryRatingLabel(entry: EnrichedLeaderboardEntry, lane: Leader
 function toLobbyLeaderboardEntry(
   entry: EnrichedLeaderboardEntry,
   rank: number,
-  games: PreparedLeaderboardGame[],
   lane: LeaderboardLane
 ): LobbyLeaderboardEntry {
   return {
@@ -502,7 +713,7 @@ function toLobbyLeaderboardEntry(
     wins: entry.wins,
     losses: entry.losses,
     unknowns: entry.unknowns,
-    streakLabel: buildStreakLabel(entry, games),
+    streakLabel: entry.streakLabel,
     verified: entry.verified,
     verificationLevel: entry.verificationLevel,
     isOnline: entry.isOnline,
@@ -611,6 +822,8 @@ function buildDiscoveredLeaderboardEntries(
           : null,
         pendingWoloClaimAmount: 0,
         pendingWoloClaimCount: 0,
+        streakLabel: null,
+        streakScore: 0,
         lastSteamSyncAt: null,
       } as unknown as EnrichedLeaderboardEntry);
     }
@@ -723,14 +936,33 @@ async function loadLobbyLeaderboardFresh(
   }
   buildArenaElo(candidates, preparedGames);
 
-  const { eligibleEntries, selectedEntries, rankByKey, fullEntryCount } = buildLeaderboardSelection(candidates, options);
+  for (const candidate of candidates) {
+    candidate.streakLabel =
+      buildStreakLabel(candidate, recentGames);
+    candidate.streakScore =
+      streakSortScore(candidate.streakLabel);
+  }
+
+  const {
+    eligibleEntries,
+    selectedEntries,
+    rankByKey,
+    fullEntryCount,
+  } = buildLeaderboardSelection(
+    candidates,
+    options
+  );
 
   return {
     title: lane === "dm" ? "Deathmatch Leaderboard" : "Ranked Match Leaderboard",
     lane,
     statusLabel: lane.toUpperCase(),
     entries: selectedEntries.map((entry) =>
-      toLobbyLeaderboardEntry(entry, rankByKey.get(entry.key) ?? 1, recentGames, lane)
+      toLobbyLeaderboardEntry(
+        entry,
+        rankByKey.get(entry.key) ?? 1,
+        lane
+      )
     ),
     activePlayers: directory.activeClaimed.length,
     matchesToday,
@@ -762,6 +994,13 @@ function buildLeaderboardCacheKey(
     includePendingClaimed:
       options.includePendingClaimed ?? true,
     query: normalizeLeaderboardSearch(options.query),
+    sortKey: normalizeLeaderboardSortKey(
+      options.sortKey
+    ),
+    sortDirection:
+      normalizeLeaderboardSortDirection(
+        options.sortDirection
+      ),
   });
 }
 
