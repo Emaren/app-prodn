@@ -985,20 +985,20 @@ function DesyncMarketSwitch({
   onToggle: () => void;
 }) {
   return (
-    <div className="relative z-20 mb-5 flex justify-end">
+    <div className="flex justify-end">
       <button
         type="button"
         onClick={onToggle}
         aria-pressed={active}
-        className={`group inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.13em] transition duration-200 ${
+        className={`group inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] transition duration-200 ${
           active
-            ? "border-amber-200/35 bg-[linear-gradient(105deg,rgba(92,20,28,0.88),rgba(15,23,42,0.96),rgba(120,83,20,0.72))] text-amber-50 shadow-[0_0_34px_rgba(127,29,29,0.20)]"
-            : "border-red-300/20 bg-[linear-gradient(105deg,rgba(69,10,10,0.78),rgba(15,23,42,0.94),rgba(92,62,15,0.58))] text-amber-100 shadow-[0_0_28px_rgba(127,29,29,0.16)] hover:-translate-y-0.5 hover:border-amber-200/45 hover:shadow-[0_0_40px_rgba(180,83,9,0.20)]"
+            ? "border-amber-200/[0.14] bg-white/[0.045] text-amber-100/80 hover:bg-white/[0.065]"
+            : "border-white/[0.08] bg-white/[0.035] text-slate-300 hover:border-white/[0.14] hover:bg-white/[0.055] hover:text-slate-200"
         }`}
       >
         <span
           aria-hidden="true"
-          className="text-base text-amber-300"
+          className="text-sm text-amber-200/65"
         >
           ⚡
         </span>
@@ -2125,24 +2125,21 @@ export default function BetsPage() {
                 />
               </div>
 
-              {!loadingBoard && spotlightDesyncMarket ? (
-                <DesyncMarketSwitch
-                  active={showingDesyncMarket}
-                  onToggle={() =>
-                    setShowingDesyncMarket(
-                      (current) =>
-                        !current
-                    )
-                  }
-                />
-              ) : null}
-
               {loadingBoard ? (
                 <LoadingMarket />
               ) : activeSpotlightMarket ? (
                 <>
                   <MarketFeature
                     market={activeSpotlightMarket}
+                desyncSwitchActive={showingDesyncMarket}
+                onToggleDesync={
+                  spotlightDesyncMarket
+                    ? () =>
+                        setShowingDesyncMarket(
+                          (current) => !current
+                        )
+                    : undefined
+                }
                     eyebrowLabel={
                     showingDesyncMarket
                       ? "Desync Side Market"
@@ -2344,23 +2341,20 @@ export default function BetsPage() {
             className="relative min-w-0 w-full max-w-full overflow-hidden rounded-[2.2rem] border border-white/[0.055] bg-[radial-gradient(circle_at_8%_8%,rgba(245,158,11,0.08),transparent_28%),radial-gradient(circle_at_92%_12%,rgba(56,189,248,0.08),transparent_28%),linear-gradient(180deg,rgba(10,17,31,0.99),rgba(6,11,20,0.99))] px-4 py-7 shadow-[0_34px_100px_rgba(2,6,23,0.4)] sm:px-8 sm:py-9 lg:px-10 lg:py-11"
           >
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/25 to-transparent" />
-            {!loadingBoard && spotlightDesyncMarket ? (
-              <DesyncMarketSwitch
-                active={showingDesyncMarket}
-                onToggle={() =>
-                  setShowingDesyncMarket(
-                    (current) =>
-                      !current
-                  )
-                }
-              />
-            ) : null}
-
             {loadingBoard ? (
               <LoadingMarket />
             ) : activeSpotlightMarket ? (
               <MarketFeature
                 market={activeSpotlightMarket}
+                desyncSwitchActive={showingDesyncMarket}
+                onToggleDesync={
+                  spotlightDesyncMarket
+                    ? () =>
+                        setShowingDesyncMarket(
+                          (current) => !current
+                        )
+                    : undefined
+                }
                 eyebrowLabel={
                     showingDesyncMarket
                       ? "Desync Side Market"
@@ -2556,23 +2550,20 @@ export default function BetsPage() {
                 />
               </div>
 
-              {!loadingBoard && spotlightDesyncMarket ? (
-                <DesyncMarketSwitch
-                  active={showingDesyncMarket}
-                  onToggle={() =>
-                    setShowingDesyncMarket(
-                      (current) =>
-                        !current
-                    )
-                  }
-                />
-              ) : null}
-
               {loadingBoard ? (
                 <LoadingMarket />
               ) : activeSpotlightMarket ? (
                 <MarketFeature
                   market={activeSpotlightMarket}
+                desyncSwitchActive={showingDesyncMarket}
+                onToggleDesync={
+                  spotlightDesyncMarket
+                    ? () =>
+                        setShowingDesyncMarket(
+                          (current) => !current
+                        )
+                    : undefined
+                }
                   eyebrowLabel={
                     showingDesyncMarket
                       ? "Desync Side Market"
@@ -3959,6 +3950,8 @@ function MarketFeature({
   onStakeChange,
   onLock,
   onClear,
+  desyncSwitchActive = false,
+  onToggleDesync,
   onOpenFounderBonus,
 }: {
   market: BetBoardMarket;
@@ -3976,6 +3969,8 @@ function MarketFeature({
   onStakeChange: (stake: number) => void;
   onLock: () => void;
   onClear: () => void;
+  desyncSwitchActive?: boolean;
+  onToggleDesync?: () => void;
   onOpenFounderBonus: (market: BetBoardMarket, bonusType: FounderBonusType) => void;
 }) {
   const activeSelection = selection && selection.marketId === market.id ? selection : null;
@@ -4110,6 +4105,14 @@ function MarketFeature({
               </>
             ) : null}
             <MarketStatusPill market={market} />
+            {onToggleDesync ? (
+              <div className="basis-full flex justify-end pt-1.5">
+                <DesyncMarketSwitch
+                  active={desyncSwitchActive}
+                  onToggle={onToggleDesync}
+                />
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -4235,8 +4238,8 @@ function MarketFeature({
 
   return (
     <div className="relative">
-      <div className="flex flex-wrap items-start justify-end gap-3">
-        <div>
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+        <div className="min-w-0 max-w-3xl">
           <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">{eyebrowLabel}</div>
           {marketHistoryHref ? (
             <Link
@@ -4268,7 +4271,7 @@ function MarketFeature({
           )}
           <MarketTimingRail market={market} nowMs={nowMs} />
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end lg:pt-0.5">
           {marketHistoryHref ? (
             <Link
               href={marketHistoryHref}
@@ -4304,6 +4307,14 @@ function MarketFeature({
             </>
           ) : null}
           <MarketStatusPill market={market} />
+          {onToggleDesync ? (
+            <div className="basis-full flex justify-end pt-1.5">
+              <DesyncMarketSwitch
+                active={desyncSwitchActive}
+                onToggle={onToggleDesync}
+              />
+            </div>
+          ) : null}
         </div>
       </div>
 

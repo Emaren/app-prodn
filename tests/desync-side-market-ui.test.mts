@@ -142,16 +142,26 @@ test(
 
 
 test(
-  "all three page modes expose the companion switch",
+  "all three page modes wire the companion switch into MarketFeature",
   () => {
-    const switches =
+    const bindings =
       page.match(
-        /<DesyncMarketSwitch/g
+        /desyncSwitchActive=\{showingDesyncMarket\}/g
       ) ?? [];
 
     assert.equal(
-      switches.length,
+      bindings.length,
       3
+    );
+
+    const nestedControls =
+      page.match(
+        /basis-full flex justify-end pt-1\.5/g
+      ) ?? [];
+
+    assert.equal(
+      nestedControls.length,
+      2
     );
   }
 );
