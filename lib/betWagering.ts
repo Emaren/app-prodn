@@ -5,6 +5,9 @@ import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
 import { getWoloBetEscrowRuntime } from "@/lib/woloChain";
 import {
+  isDesyncSideMarketType,
+} from "@/lib/desyncSideMarket";
+import {
   validateWoloAddress,
   verifyStakeTransfer,
 } from "@/lib/woloBetSettlement";
@@ -340,23 +343,57 @@ function assertBetMarketPreflight(
     throw new BetWagerError(409, "This book is closed.");
   }
 
+  const desyncSideMarket =
+    isDesyncSideMarketType(
+      context.market.marketType
+    );
+
   if (
-    context.market.integrityStatus !== "verified" ||
-    context.market.teamResolutionStatus !== "resolved" ||
-    context.market.teamConfidence !== "high" ||
+    context.market.integrityStatus !==
+      "verified" ||
     !context.market.propositionHash ||
-    !Array.isArray(context.market.leftRosterSnapshot) ||
-    !Array.isArray(context.market.rightRosterSnapshot) ||
-    context.market.leftRosterSnapshot.length === 0 ||
-    context.market.rightRosterSnapshot.length === 0
+    (
+      !desyncSideMarket &&
+      (
+        context.market.teamResolutionStatus !==
+          "resolved" ||
+        context.market.teamConfidence !==
+          "high" ||
+        !Array.isArray(
+          context.market.leftRosterSnapshot
+        ) ||
+        !Array.isArray(
+          context.market.rightRosterSnapshot
+        ) ||
+        context.market.leftRosterSnapshot.length ===
+          0 ||
+        context.market.rightRosterSnapshot.length ===
+          0
+      )
+    )
   ) {
     throw new BetWagerError(
       409,
-      "Betting unavailable — both teams must be verified before WOLO can enter this market."
+      desyncSideMarket
+        ? "Desync betting unavailable — this battle proposition is not verified."
+        : "Betting unavailable — both teams must be verified before WOLO can enter this market."
     );
   }
 
-  const forcedSide = resolveViewerMatchSide(input.viewer, context.market);
+  /*
+   * Competitive winner books prevent a participant from betting
+   * against themselves.
+   *
+   * The desync proposition is independent incident truth. A
+   * participant may honestly predict either NO or YES.
+   */
+  const forcedSide =
+    desyncSideMarket
+      ? null
+      : resolveViewerMatchSide(
+          input.viewer,
+          context.market
+        );
   if (forcedSide && input.side !== forcedSide) {
     const forcedLabel =
       forcedSide === "left" ? context.market.leftLabel : context.market.rightLabel;
@@ -565,11 +602,25 @@ export async function placePooledBetWager(
       const lockResult = await tx.betMarket.updateMany({
         where: {
           id: input.marketId,
-          status: { in: ["open", "closing", "live"] },
+          status: {
+            in: isDesyncSideMarketType(
+              market.marketType
+            )
+              ? ["open", "live"]
+              : ["open", "closing", "live"],
+          },
           integrityStatus: "verified",
-          teamResolutionStatus: "resolved",
-          teamConfidence: "high",
           propositionHash: market.propositionHash,
+          ...(isDesyncSideMarketType(
+            market.marketType
+          )
+            ? {}
+            : {
+                teamResolutionStatus:
+                  "resolved",
+                teamConfidence:
+                  "high",
+              }),
         },
         data: {
           bettingLockedAt: lockedAt,

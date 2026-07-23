@@ -11,6 +11,21 @@ import {
   planBetMarketDesyncReview,
 } from "@/lib/desyncChallenge";
 import { parsePlayers, readMapName } from "@/lib/gameStatsView";
+import {
+  DEFAULT_DESYNC_MARKET_REVIEW_GRACE_MINUTES,
+  DESYNC_SIDE_MARKET_LEFT_LABEL,
+  DESYNC_SIDE_MARKET_RIGHT_LABEL,
+  DESYNC_SIDE_MARKET_TYPE,
+  WINNER_MARKET_TYPE,
+  buildDesyncSideMarketSlug,
+  desyncReviewDeadlineMs,
+  isDesyncSideMarketType,
+  resolveDesyncSideMarketWinner,
+  winnerSlugFromDesyncSideMarketSlug,
+} from "@/lib/desyncSideMarket";
+import {
+  loadReplayDesyncIncidentProvenance,
+} from "@/lib/replayDesyncIncidents";
 import { loadLiveSessionSnapshot, type LiveGameSession } from "@/lib/liveSessionSnapshot";
 import { loadLiveGamesSnapshot } from "@/lib/liveGames";
 import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
@@ -136,6 +151,7 @@ export type BetBoardMarket = {
   slug: string;
   title: string;
   eventLabel: string;
+  marketType: string;
   href: string | null;
   linkedSessionKey: string | null;
   linkedGameStatsId: number | null;
@@ -287,6 +303,15 @@ const RECONCILABLE_WATCHER_STATUSES: BetStatus[] = [
 const WATCHER_FINAL_PROOF_GRACE_MINUTES = Math.max(
   5,
   Number.parseInt(process.env.WATCHER_FINAL_PROOF_GRACE_MINUTES || "20", 10) || 20
+);
+
+const DESYNC_MARKET_REVIEW_GRACE_MINUTES = Math.max(
+  1,
+  Number.parseInt(
+    process.env.DESYNC_MARKET_REVIEW_GRACE_MINUTES ||
+      String(DEFAULT_DESYNC_MARKET_REVIEW_GRACE_MINUTES),
+    10
+  ) || DEFAULT_DESYNC_MARKET_REVIEW_GRACE_MINUTES
 );
 const CHALLENGE_MARKET_SLUG_PREFIX = "challenge-runway-";
 const WATCHER_MARKET_SLUG_PREFIX = "watcher-live-";
@@ -459,6 +484,9 @@ type MarketSeed = {
   slug: string;
   title: string;
   eventLabel: string;
+  marketType:
+    | typeof WINNER_MARKET_TYPE
+    | typeof DESYNC_SIDE_MARKET_TYPE;
   status: BetStatus;
   featured: boolean;
   sortOrder: number;
@@ -492,6 +520,7 @@ function marketSeedCreateData(seed: MarketSeed) {
     slug: seed.slug,
     title: seed.title,
     eventLabel: seed.eventLabel,
+    marketType: seed.marketType,
     status: seed.status,
     featured: seed.featured,
     sortOrder: seed.sortOrder,
@@ -596,6 +625,7 @@ function marketSeedUpdateData(
     linkedSessionKey: seed.linkedSessionKey,
     title: propositionLocked ? existing?.title ?? seed.title : seed.title,
     eventLabel: seed.eventLabel,
+    marketType: seed.marketType,
     status: keepSettledWinnerLatch ? "settled" : seed.status,
     featured: keepSettledWinnerLatch ? false : seed.featured,
     sortOrder: seed.sortOrder,
@@ -642,6 +672,114 @@ function clampDbText(value: string, max: number) {
   if (max <= 1) return value.slice(0, max);
   return `${value.slice(0, max - 1).trimEnd()}…`;
 }
+
+function buildDesyncSideMarketSeed(
+  parent: MarketSeed
+): MarketSeed | null {
+  /*
+   * Only an actually live battle gets a desync proposition.
+   *
+   * It must also have a stable watcher session and proposition
+   * identity so the side market can never float between games.
+   */
+  if (
+    parent.marketType !== WINNER_MARKET_TYPE ||
+    parent.status !== "live" ||
+    !normalizeName(parent.linkedSessionKey) ||
+    !parent.propositionHash
+  ) {
+    return null;
+  }
+
+  return {
+    ...parent,
+
+    /*
+     * scheduledMatchId is unique on bet_markets.
+     * The competitive winner market remains canonical.
+     */
+    scheduledMatchId: null,
+
+    slug:
+      buildDesyncSideMarketSlug(
+        parent.slug
+      ),
+
+    title:
+      "Will this battle desync?",
+
+    eventLabel:
+      clampDbText(
+        `${parent.eventLabel} • Desync Market`,
+        180
+      ),
+
+    marketType:
+      DESYNC_SIDE_MARKET_TYPE,
+
+    featured:
+      false,
+
+    sortOrder:
+      parent.sortOrder + 1,
+
+    leftLabel:
+      DESYNC_SIDE_MARKET_LEFT_LABEL,
+
+    rightLabel:
+      DESYNC_SIDE_MARKET_RIGHT_LABEL,
+
+    leftHref:
+      null,
+
+    rightHref:
+      null,
+
+    seedLeftWolo:
+      0,
+
+    seedRightWolo:
+      0,
+
+    closeAt:
+      null,
+
+    settledAt:
+      null,
+
+    winnerSide:
+      null,
+
+    /*
+     * This proposition is NO / YES, not Team A / Team B.
+     * propositionHash remains inherited to freeze battle identity.
+     */
+    teamFormat:
+      null,
+
+    teamResolutionStatus:
+      null,
+
+    teamResolutionProvenance:
+      null,
+
+    teamConfidence:
+      null,
+
+    leftRosterSnapshot:
+      [],
+
+    rightRosterSnapshot:
+      [],
+
+    integrityStatus:
+      "verified",
+
+    integrityReason:
+      null,
+  };
+}
+
 
 function clampNullableDbText(value: string | null | undefined, max: number) {
   if (!value) return null;
@@ -981,6 +1119,7 @@ function buildSessionMarketSeed(
     slug: buildSessionMarketSlug(session, leftLabel, rightLabel),
     title,
     eventLabel: buildSessionEventLabel(session),
+    marketType: WINNER_MARKET_TYPE,
     status: session.state === "completed" ? "settled" : "live",
     featured,
     sortOrder: index,
@@ -1143,6 +1282,7 @@ function buildChallengeMarketSeeds(scheduledMatches: ScheduledMatchTile[]) {
       slug: `${CHALLENGE_MARKET_SLUG_PREFIX}${match.id}`,
       title: `${match.challenger.name} vs ${match.challenged.name}`,
       eventLabel: match.linkedMapName ? `Scheduled Match • ${match.linkedMapName}` : "Scheduled Match",
+      marketType: WINNER_MARKET_TYPE,
       status: marketStatusFromScheduledMatch(match.displayState),
       featured:
         featuredChallengeIndex >= 0
@@ -2045,6 +2185,9 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
       id: true,
       title: true,
       eventLabel: true,
+      marketType: true,
+      slug: true,
+      linkedSessionKey: true,
       leftLabel: true,
       rightLabel: true,
       linkedGameStatsId: true,
@@ -2096,8 +2239,28 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
         : null;
 
     try {
-      await assertLockedOrdinaryMarketWinnerPayoutAllowed(prisma, market);
-      await assertSettlementWinnerTruthGate(prisma, market, winningSide);
+      if (
+        isDesyncSideMarketType(
+          market.marketType
+        )
+      ) {
+        await assertDesyncSideMarketSettlementTruthGate(
+          prisma,
+          market,
+          winningSide
+        );
+      } else {
+        await assertLockedOrdinaryMarketWinnerPayoutAllowed(
+          prisma,
+          market
+        );
+
+        await assertSettlementWinnerTruthGate(
+          prisma,
+          market,
+          winningSide
+        );
+      }
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       if (error instanceof ChallengeDesyncError) {
@@ -2125,6 +2288,22 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
           .filter((wager) => wager.side === winningSide)
           .reduce((sum, wager) => sum + wager.amountWolo, 0)
       : 0;
+    /*
+     * A NO / YES side market has no human/player beneficiary
+     * analogous to an ordinary winner bounty.
+     *
+     * If the factual winning side has zero backers, preserve the
+     * market result but refund every submitted stake exactly.
+     * This prevents WOLO from becoming financially unassigned.
+     */
+    const desyncNoWinnerRefund =
+      Boolean(winningSide) &&
+      isDesyncSideMarketType(
+        market.marketType
+      ) &&
+      winningUserPool === 0 &&
+      market.wagers.length > 0;
+
     const losingSidePool =
       winningSide === "left"
         ? market.seedRightWolo +
@@ -2139,7 +2318,9 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
         : 0;
     const settledUserPool = market.wagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
     const bettingFeePoolWolo =
-      winningSide && settledUserPool > 0
+      winningSide &&
+      settledUserPool > 0 &&
+      !desyncNoWinnerRefund
         ? Math.round((settledUserPool * BETTING_FEE_RATE_BPS) / BPS_DENOMINATOR)
         : 0;
     const feeByWinningWagerId = allocateBettingFeeByWagerId(
@@ -2155,7 +2336,10 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
         let payoutWolo: number;
         let bettingFeeWolo = 0;
 
-        if (!winningSide) {
+        if (
+          !winningSide ||
+          desyncNoWinnerRefund
+        ) {
           nextStatus = "void";
           payoutWolo = wager.amountWolo;
         } else if (wager.side !== winningSide) {
@@ -2241,7 +2425,12 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
       }
     });
 
-    if (winningSide) {
+    if (
+      winningSide &&
+      !isDesyncSideMarketType(
+        market.marketType
+      )
+    ) {
       const winningWagers = market.wagers.filter((wager) => wager.side === winningSide);
       const losingWagers = market.wagers.filter((wager) => wager.side !== winningSide);
       const grossWinnerBountyWolo = losingWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
@@ -2782,6 +2971,7 @@ async function voidExpiredWatcherMarkets(prisma: PrismaClient) {
   const now = new Date();
   const expired = await prisma.betMarket.findMany({
     where: {
+      marketType: WINNER_MARKET_TYPE,
       status: "awaiting_final_proof",
       proofDeadlineAt: { lte: now },
     },
@@ -2838,6 +3028,7 @@ async function voidExpiredWatcherMarkets(prisma: PrismaClient) {
 async function linkLateFinalEvidence(prisma: PrismaClient) {
   const voidedMarkets = await prisma.betMarket.findMany({
     where: {
+      marketType: WINNER_MARKET_TYPE,
       status: "voided",
       linkedSessionKey: { not: null },
       lateFinalGameStatsId: null,
@@ -2949,6 +3140,31 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
     seeds.push(seed);
   });
 
+  /*
+   * Every current live winner proposition gets exactly one
+   * independent NO / YES desync sibling.
+   */
+  const desyncSeeds =
+    seeds
+      .map(
+        buildDesyncSideMarketSeed
+      )
+      .filter(
+        (
+          seed
+        ): seed is MarketSeed =>
+          Boolean(seed)
+      );
+
+  for (const seed of desyncSeeds) {
+    if (seenSlugs.has(seed.slug)) {
+      continue;
+    }
+
+    seenSlugs.add(seed.slug);
+    seeds.push(seed);
+  }
+
   return {
     seeds,
     visibleSessionKeys,
@@ -3010,6 +3226,7 @@ async function reconcileDetachedWatcherMarkets(
 ) {
   const markets = await prisma.betMarket.findMany({
     where: {
+      marketType: WINNER_MARKET_TYPE,
       status: { in: RECONCILABLE_WATCHER_STATUSES },
       scheduledMatchId: null,
       linkedSessionKey: { not: null },
@@ -3377,6 +3594,595 @@ async function reconcileChallengeSessionShadowMarkets(
   }
 }
 
+async function findWinnerMarketForDesyncSideMarket(
+  prisma: PrismaClient,
+  market: {
+    slug: string;
+    linkedSessionKey: string | null;
+  }
+) {
+  const parentSelect = {
+    id: true,
+    slug: true,
+    marketType: true,
+    scheduledMatchId: true,
+    linkedSessionKey: true,
+    linkedGameStatsId: true,
+    status: true,
+    winnerSide: true,
+    settledAt: true,
+    proofDeadlineAt: true,
+  } as const;
+
+  const sessionKey =
+    normalizeName(
+      market.linkedSessionKey
+    );
+
+  if (sessionKey) {
+    const scheduledCanonical =
+      await prisma.betMarket.findFirst({
+        where: {
+          marketType:
+            WINNER_MARKET_TYPE,
+
+          linkedSessionKey:
+            sessionKey,
+
+          scheduledMatchId: {
+            not:
+              null,
+          },
+        },
+
+        orderBy: {
+          id:
+            "asc",
+        },
+
+        select:
+          parentSelect,
+      });
+
+    if (scheduledCanonical) {
+      return scheduledCanonical;
+    }
+  }
+
+  const winnerSlug =
+    winnerSlugFromDesyncSideMarketSlug(
+      market.slug
+    );
+
+  if (winnerSlug) {
+    const exact =
+      await prisma.betMarket.findUnique({
+        where: {
+          slug:
+            winnerSlug,
+        },
+
+        select:
+          parentSelect,
+      });
+
+    if (
+      exact?.marketType ===
+      WINNER_MARKET_TYPE
+    ) {
+      return exact;
+    }
+  }
+
+  if (!sessionKey) {
+    return null;
+  }
+
+  return prisma.betMarket.findFirst({
+    where: {
+      marketType:
+        WINNER_MARKET_TYPE,
+
+      linkedSessionKey:
+        sessionKey,
+    },
+
+    orderBy: {
+      id:
+        "asc",
+    },
+
+    select:
+      parentSelect,
+  });
+}
+
+
+async function reconcileDesyncSideMarkets(
+  prisma: PrismaClient
+) {
+  const markets =
+    await prisma.betMarket.findMany({
+      where: {
+        marketType:
+          DESYNC_SIDE_MARKET_TYPE,
+
+        status: {
+          in: [
+            "open",
+            "closing",
+            "live",
+            "awaiting_final_proof",
+            "under_review",
+          ],
+        },
+      },
+
+      select: {
+        id:
+          true,
+
+        slug:
+          true,
+
+        linkedSessionKey:
+          true,
+
+        linkedGameStatsId:
+          true,
+
+        status:
+          true,
+      },
+    });
+
+  for (const market of markets) {
+    const parent =
+      await findWinnerMarketForDesyncSideMarket(
+        prisma,
+        market
+      );
+
+    const sessionKey =
+      normalizeName(
+        market.linkedSessionKey
+      );
+
+    let gameStatsId =
+      market.linkedGameStatsId ??
+      parent?.linkedGameStatsId ??
+      null;
+
+    if (
+      !gameStatsId &&
+      sessionKey
+    ) {
+      gameStatsId =
+        await resolveFinalGameStatsIdForSessionKey(
+          prisma,
+          sessionKey
+        );
+    }
+
+    const truth =
+      gameStatsId
+        ? await loadReplayDesyncIncidentProvenance(
+            prisma,
+            gameStatsId
+          )
+        : null;
+
+    const now =
+      new Date();
+
+    const winningSide =
+      resolveDesyncSideMarketWinner({
+        desyncOccurred:
+          truth?.desyncOccurred ??
+          false,
+
+        parentStatus:
+          parent?.status ??
+          null,
+
+        parentWinnerSide:
+          parent?.winnerSide ??
+          null,
+
+        parentSettledAtMs:
+          parent?.settledAt?.getTime() ??
+          null,
+
+        nowMs:
+          now.getTime(),
+
+        reviewGraceMinutes:
+          DESYNC_MARKET_REVIEW_GRACE_MINUTES,
+      });
+
+    if (winningSide) {
+      await prisma.betMarket.updateMany({
+        where: {
+          id:
+            market.id,
+
+          status: {
+            in: [
+              "open",
+              "closing",
+              "live",
+              "awaiting_final_proof",
+              "under_review",
+            ],
+          },
+        },
+
+        data: {
+          status:
+            "settled",
+
+          featured:
+            false,
+
+          closeAt:
+            null,
+
+          settledAt:
+            now,
+
+          winnerSide:
+            winningSide,
+
+          linkedGameStatsId:
+            gameStatsId,
+
+          proofDeadlineAt:
+            null,
+
+          commissionerReviewState:
+            null,
+
+          resolutionReason:
+            winningSide ===
+              "right"
+              ? "human_confirmed_desync"
+              : "review_window_closed_no_desync",
+        },
+      });
+
+      continue;
+    }
+
+    if (
+      parent?.status ===
+        "settled" &&
+      (
+        parent.winnerSide ===
+          "left" ||
+        parent.winnerSide ===
+          "right"
+      ) &&
+      parent.settledAt
+    ) {
+      const deadline =
+        new Date(
+          desyncReviewDeadlineMs(
+            parent.settledAt.getTime(),
+            DESYNC_MARKET_REVIEW_GRACE_MINUTES
+          )
+        );
+
+      await prisma.betMarket.updateMany({
+        where: {
+          id:
+            market.id,
+
+          status: {
+            in: [
+              "open",
+              "closing",
+              "live",
+              "awaiting_final_proof",
+              "under_review",
+            ],
+          },
+        },
+
+        data: {
+          status:
+            "closing",
+
+          featured:
+            false,
+
+          closeAt:
+            deadline,
+
+          proofDeadlineAt:
+            deadline,
+
+          linkedGameStatsId:
+            gameStatsId,
+
+          winnerSide:
+            null,
+
+          commissionerReviewState:
+            "desync_review_window",
+
+          resolutionReason:
+            "desync_review_window_open",
+        },
+      });
+
+      continue;
+    }
+
+    if (
+      parent?.status ===
+      "awaiting_final_proof"
+    ) {
+      await prisma.betMarket.updateMany({
+        where: {
+          id:
+            market.id,
+
+          status: {
+            in: [
+              "open",
+              "closing",
+              "live",
+              "awaiting_final_proof",
+            ],
+          },
+        },
+
+        data: {
+          status:
+            "awaiting_final_proof",
+
+          featured:
+            false,
+
+          closeAt:
+            now,
+
+          proofDeadlineAt:
+            parent.proofDeadlineAt,
+
+          linkedGameStatsId:
+            gameStatsId,
+
+          winnerSide:
+            null,
+
+          resolutionReason:
+            "desync_final_replay_pending",
+        },
+      });
+
+      continue;
+    }
+
+    if (
+      parent?.status ===
+      "under_review"
+    ) {
+      await prisma.betMarket.updateMany({
+        where: {
+          id:
+            market.id,
+
+          status: {
+            in: [
+              "open",
+              "closing",
+              "live",
+              "awaiting_final_proof",
+            ],
+          },
+        },
+
+        data: {
+          status:
+            "under_review",
+
+          featured:
+            false,
+
+          closeAt:
+            now,
+
+          linkedGameStatsId:
+            gameStatsId,
+
+          winnerSide:
+            null,
+
+          commissionerReviewState:
+            "desync_side_market_review",
+
+          resolutionReason:
+            "competitive_result_under_review",
+        },
+      });
+
+      continue;
+    }
+
+    if (
+      parent?.status ===
+      "voided"
+    ) {
+      await prisma.betMarket.updateMany({
+        where: {
+          id:
+            market.id,
+
+          status: {
+            in: [
+              "open",
+              "closing",
+              "live",
+              "awaiting_final_proof",
+              "under_review",
+            ],
+          },
+        },
+
+        data: {
+          status:
+            "voided",
+
+          featured:
+            false,
+
+          closeAt:
+            null,
+
+          settledAt:
+            now,
+
+          voidedAt:
+            now,
+
+          winnerSide:
+            null,
+
+          linkedGameStatsId:
+            gameStatsId,
+
+          refundStatus:
+            "queued",
+
+          resolutionReason:
+            "desync_truth_unprovable",
+        },
+      });
+
+      continue;
+    }
+
+    if (
+      !parent &&
+      gameStatsId
+    ) {
+      await prisma.betMarket.updateMany({
+        where: {
+          id:
+            market.id,
+
+          status: {
+            in: [
+              "open",
+              "closing",
+              "live",
+              "awaiting_final_proof",
+            ],
+          },
+        },
+
+        data: {
+          status:
+            "under_review",
+
+          featured:
+            false,
+
+          closeAt:
+            now,
+
+          linkedGameStatsId:
+            gameStatsId,
+
+          winnerSide:
+            null,
+
+          commissionerReviewState:
+            "desync_side_market_review",
+
+          resolutionReason:
+            "desync_parent_market_unresolved",
+        },
+      });
+    }
+  }
+}
+
+
+async function assertDesyncSideMarketSettlementTruthGate(
+  prisma: PrismaClient,
+  market: {
+    slug: string;
+    linkedSessionKey: string | null;
+    linkedGameStatsId: number | null;
+  },
+  winningSide: BetSide | null
+) {
+  if (!winningSide) {
+    return;
+  }
+
+  if (!market.linkedGameStatsId) {
+    throw new Error(
+      "Desync side-market payout blocked: final replay evidence is not linked."
+    );
+  }
+
+  const [
+    truth,
+    parent,
+  ] =
+    await Promise.all([
+      loadReplayDesyncIncidentProvenance(
+        prisma,
+        market.linkedGameStatsId
+      ),
+
+      findWinnerMarketForDesyncSideMarket(
+        prisma,
+        market
+      ),
+    ]);
+
+  const expectedWinner =
+    resolveDesyncSideMarketWinner({
+      desyncOccurred:
+        truth.desyncOccurred,
+
+      parentStatus:
+        parent?.status ??
+        null,
+
+      parentWinnerSide:
+        parent?.winnerSide ??
+        null,
+
+      parentSettledAtMs:
+        parent?.settledAt?.getTime() ??
+        null,
+
+      nowMs:
+        Date.now(),
+
+      reviewGraceMinutes:
+        DESYNC_MARKET_REVIEW_GRACE_MINUTES,
+    });
+
+  if (
+    expectedWinner !==
+    winningSide
+  ) {
+    throw new Error(
+      `Desync side-market payout blocked: current truth expects ${
+        expectedWinner ??
+        "no settled side"
+      }, not ${winningSide}.`
+    );
+  }
+}
+
+
 async function archiveLowConfidenceZeroPotMarkets(prisma: PrismaClient) {
   const openMarkets = await prisma.betMarket.findMany({
     where: {
@@ -3509,6 +4315,7 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
       slugs.length > 0
         ? {
             slug: { notIn: slugs },
+            marketType: WINNER_MARKET_TYPE,
             status: { in: OPEN_STATUSES },
             updatedAt: { lt: staleMarketCutoff },
             wagers: {
@@ -3525,6 +4332,7 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
             },
           }
         : {
+            marketType: WINNER_MARKET_TYPE,
             status: { in: OPEN_STATUSES },
             updatedAt: { lt: staleMarketCutoff },
             wagers: {
@@ -3549,9 +4357,10 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
     },
   });
 
+  await reconcileBetMarketStatsLinks(prisma);
+  await reconcileDesyncSideMarkets(prisma);
   await settleResolvedMarketWagers(prisma);
   await settleMarketIntegrityCorrections(prisma);
-  await reconcileBetMarketStatsLinks(prisma);
   await settleFounderBonuses(prisma);
 }
 
@@ -3627,6 +4436,7 @@ function buildMarketCard(
     slug: market.slug,
     title: market.title,
     eventLabel: market.eventLabel,
+    marketType: market.marketType,
     href: buildBetMarketHref(market.id),
     linkedSessionKey,
     linkedGameStatsId: market.linkedGameStatsId ?? null,
@@ -3742,11 +4552,25 @@ async function loadMarketsByStatus(prisma: PrismaClient, statuses: BetStatus[]) 
 
   return markets.filter(
     (market) =>
-      isConfidentBetMarket(market) &&
-      market.integrityStatus === "verified" &&
-      market.teamResolutionStatus === "resolved" &&
-      market.teamConfidence === "high" &&
-      Boolean(market.propositionHash)
+      isConfidentBetMarket(
+        market
+      ) &&
+      market.integrityStatus ===
+        "verified" &&
+      Boolean(
+        market.propositionHash
+      ) &&
+      (
+        isDesyncSideMarketType(
+          market.marketType
+        ) ||
+        (
+          market.teamResolutionStatus ===
+            "resolved" &&
+          market.teamConfidence ===
+            "high"
+        )
+      )
   );
 }
 
@@ -3762,6 +4586,7 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
   const [settledMarketsRaw, sessionSnapshot] = await Promise.all([
     prisma.betMarket.findMany({
       where: {
+        marketType: WINNER_MARKET_TYPE,
         status: { in: ["settled", "voided", "under_review"] },
       },
       orderBy: [{ settledAt: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
@@ -4492,12 +5317,23 @@ export async function loadBetBoardSnapshot(
       ),
     };
   });
+  const primaryOpenMarkets =
+    openMarkets.filter(
+      (market) =>
+        !isDesyncSideMarketType(
+          market.marketType
+        )
+    );
+
   const liveWatcherMarket =
-    openMarkets.find((market) => market.status === "live" && Boolean(market.linkedSessionKey)) ||
-    openMarkets.find((market) => market.status === "closing" && Boolean(market.linkedSessionKey));
+    primaryOpenMarkets.find((market) => market.status === "live" && Boolean(market.linkedSessionKey)) ||
+    primaryOpenMarkets.find((market) => market.status === "closing" && Boolean(market.linkedSessionKey));
 
   const featuredMarket =
-    liveWatcherMarket || openMarkets.find((market) => market.featured) || openMarkets[0] || null;
+    liveWatcherMarket ||
+    primaryOpenMarkets.find((market) => market.featured) ||
+    primaryOpenMarkets[0] ||
+    null;
 
   const activeOpenWagers = openMarkets
     .filter((market) => market.viewerWager)
@@ -4542,7 +5378,7 @@ export async function loadBetBoardSnapshot(
   );
   const openWagers = [...activeOpenWagers, ...recentClosedWagers];
 
-  const bestReturn = openMarkets.reduce<{
+  const bestReturn = primaryOpenMarkets.reduce<{
     label: string;
     returnMultiplier: number;
   } | null>((current, market) => {
@@ -4563,7 +5399,7 @@ export async function loadBetBoardSnapshot(
     return current;
   }, null);
 
-  const biggestPot = [...openMarkets.map((market) => ({
+  const biggestPot = [...primaryOpenMarkets.map((market) => ({
     label: market.title,
     potWolo: market.totalPotWolo,
   })), ...settledResults.map((result) => ({
@@ -4644,7 +5480,7 @@ export async function loadBetBoardSnapshot(
     heat: {
       biggestPot,
       bestReturn,
-      liveCount: openMarkets.filter((market) => market.status === "live").length,
+      liveCount: primaryOpenMarkets.filter((market) => market.status === "live").length,
     },
   };
 }

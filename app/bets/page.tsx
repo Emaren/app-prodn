@@ -35,6 +35,10 @@ import {
 } from "@/lib/broadcastPresentation";
 import { battleLoopForSeed } from "@/lib/battleLoopClips";
 import {
+  DESYNC_SIDE_MARKET_TYPE,
+  buildDesyncSideMarketSlug,
+} from "@/lib/desyncSideMarket";
+import {
   WOLO_BASE_DENOM,
   WOLO_CHAIN_ID,
   WOLO_DEFAULT_GAS_PRICE,
@@ -121,6 +125,7 @@ type BetBoardMarket = {
   slug: string;
   title: string;
   eventLabel: string;
+  marketType: string;
   href: string | null;
   linkedSessionKey: string | null;
   linkedGameStatsId: number | null;
@@ -972,6 +977,47 @@ function BetsMutedToggleCss() {
 }
 
 
+function DesyncMarketSwitch({
+  active,
+  onToggle,
+}: {
+  active: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <div className="relative z-20 mb-5 flex justify-end">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-pressed={active}
+        className={`group inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.13em] transition duration-200 ${
+          active
+            ? "border-amber-200/35 bg-[linear-gradient(105deg,rgba(92,20,28,0.88),rgba(15,23,42,0.96),rgba(120,83,20,0.72))] text-amber-50 shadow-[0_0_34px_rgba(127,29,29,0.20)]"
+            : "border-red-300/20 bg-[linear-gradient(105deg,rgba(69,10,10,0.78),rgba(15,23,42,0.94),rgba(92,62,15,0.58))] text-amber-100 shadow-[0_0_28px_rgba(127,29,29,0.16)] hover:-translate-y-0.5 hover:border-amber-200/45 hover:shadow-[0_0_40px_rgba(180,83,9,0.20)]"
+        }`}
+      >
+        <span
+          aria-hidden="true"
+          className="text-base text-amber-300"
+        >
+          ⚡
+        </span>
+
+        {active
+          ? "Back to Winner Market"
+          : "Bet on Desync"}
+
+        {!active ? (
+          <span className="rounded-full border border-white/[0.08] bg-black/20 px-2 py-0.5 text-[9px] tracking-[0.16em] text-slate-300">
+            NO / YES
+          </span>
+        ) : null}
+      </button>
+    </div>
+  );
+}
+
+
 export default function BetsPage() {
   const { isAdmin, isAuthenticated, loading, loginWithSteam, user } = useUserAuth();
   const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
@@ -1115,7 +1161,13 @@ export default function BetsPage() {
   const featuredMarket = board?.featuredMarket ?? null;
 
   const orderedBookMarkets = useMemo(() => {
-    const rawMarkets = [...(board?.openMarkets || [])];
+    const rawMarkets =
+      [...(board?.openMarkets || [])]
+        .filter(
+          (market) =>
+            market.marketType !==
+            DESYNC_SIDE_MARKET_TYPE
+        );
 
     if (featuredMarket && !rawMarkets.some((market) => market.id === featuredMarket.id)) {
       rawMarkets.unshift(featuredMarket);
@@ -1182,6 +1234,80 @@ export default function BetsPage() {
     () => orderedBookMarkets.filter((market) => !spotlightMarket || market.id !== spotlightMarket.id),
     [orderedBookMarkets, spotlightMarket]
   );
+
+  const spotlightDesyncMarket =
+    useMemo(
+      () => {
+        if (!spotlightMarket) {
+          return null;
+        }
+
+        const expectedSlug =
+          buildDesyncSideMarketSlug(
+            spotlightMarket.slug
+          );
+
+        return (
+          board?.openMarkets.find(
+            (market) =>
+              market.marketType ===
+                DESYNC_SIDE_MARKET_TYPE &&
+              (
+                market.slug ===
+                  expectedSlug ||
+                (
+                  Boolean(
+                    spotlightMarket.linkedSessionKey
+                  ) &&
+                  market.linkedSessionKey ===
+                    spotlightMarket.linkedSessionKey
+                )
+              )
+          ) ??
+          null
+        );
+      },
+      [
+        board?.openMarkets,
+        spotlightMarket,
+      ]
+    );
+
+  const [
+    showingDesyncMarket,
+    setShowingDesyncMarket,
+  ] =
+    useState(false);
+
+  useEffect(
+    () => {
+      setShowingDesyncMarket(
+        false
+      );
+    },
+    [
+      spotlightMarket?.id,
+    ]
+  );
+
+  useEffect(
+    () => {
+      if (!spotlightDesyncMarket) {
+        setShowingDesyncMarket(
+          false
+        );
+      }
+    },
+    [
+      spotlightDesyncMarket,
+    ]
+  );
+
+  const activeSpotlightMarket =
+    showingDesyncMarket &&
+    spotlightDesyncMarket
+      ? spotlightDesyncMarket
+      : spotlightMarket;
 
   const totalBookPot = useMemo(
     () => {
@@ -1999,13 +2125,31 @@ export default function BetsPage() {
                 />
               </div>
 
+              {!loadingBoard && spotlightDesyncMarket ? (
+                <DesyncMarketSwitch
+                  active={showingDesyncMarket}
+                  onToggle={() =>
+                    setShowingDesyncMarket(
+                      (current) =>
+                        !current
+                    )
+                  }
+                />
+              ) : null}
+
               {loadingBoard ? (
                 <LoadingMarket />
-              ) : spotlightMarket ? (
+              ) : activeSpotlightMarket ? (
                 <>
                   <MarketFeature
-                    market={spotlightMarket}
-                    eyebrowLabel={spotlightMarket.featured ? "Featured Market" : "Current Book"}
+                    market={activeSpotlightMarket}
+                    eyebrowLabel={
+                    showingDesyncMarket
+                      ? "Desync Side Market"
+                      : spotlightMarket?.featured
+                        ? "Featured Market"
+                        : "Current Book"
+                  }
                     detailMode="basic"
                     selection={selection}
                     workingKey={workingKey}
@@ -2018,15 +2162,15 @@ export default function BetsPage() {
                     onSelect={handleSelect}
                     onStakeChange={(stake) =>
                       setSelection((current) =>
-                        current && current.marketId === spotlightMarket.id ? { ...current, stake } : current
+                        current && current.marketId === activeSpotlightMarket.id ? { ...current, stake } : current
                       )
                     }
-                    onLock={() => handleLock(spotlightMarket)}
-                    onClear={() => handleClear(spotlightMarket.id)}
+                    onLock={() => handleLock(activeSpotlightMarket)}
+                    onClear={() => handleClear(activeSpotlightMarket.id)}
                     onOpenFounderBonus={openFounderComposer}
                   />
                   <WarTape
-                    rows={spotlightMarket.warTape.slice(0, 5)}
+                    rows={activeSpotlightMarket.warTape.slice(0, 5)}
                     emptyLabel="Slips and payout proof will stamp in here as the game moves."
                   />
                 </>
@@ -2200,12 +2344,30 @@ export default function BetsPage() {
             className="relative min-w-0 w-full max-w-full overflow-hidden rounded-[2.2rem] border border-white/[0.055] bg-[radial-gradient(circle_at_8%_8%,rgba(245,158,11,0.08),transparent_28%),radial-gradient(circle_at_92%_12%,rgba(56,189,248,0.08),transparent_28%),linear-gradient(180deg,rgba(10,17,31,0.99),rgba(6,11,20,0.99))] px-4 py-7 shadow-[0_34px_100px_rgba(2,6,23,0.4)] sm:px-8 sm:py-9 lg:px-10 lg:py-11"
           >
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/25 to-transparent" />
+            {!loadingBoard && spotlightDesyncMarket ? (
+              <DesyncMarketSwitch
+                active={showingDesyncMarket}
+                onToggle={() =>
+                  setShowingDesyncMarket(
+                    (current) =>
+                      !current
+                  )
+                }
+              />
+            ) : null}
+
             {loadingBoard ? (
               <LoadingMarket />
-            ) : spotlightMarket ? (
+            ) : activeSpotlightMarket ? (
               <MarketFeature
-                market={spotlightMarket}
-                eyebrowLabel={spotlightMarket.featured ? "Featured Market" : "Current Book"}
+                market={activeSpotlightMarket}
+                eyebrowLabel={
+                    showingDesyncMarket
+                      ? "Desync Side Market"
+                      : spotlightMarket?.featured
+                        ? "Featured Market"
+                        : "Current Book"
+                  }
                 detailMode="extreme"
                 selection={selection}
                 workingKey={workingKey}
@@ -2218,13 +2380,13 @@ export default function BetsPage() {
                 onSelect={handleSelect}
                 onStakeChange={(stake) =>
                   setSelection((current) =>
-                    current && current.marketId === spotlightMarket.id
+                    current && current.marketId === activeSpotlightMarket.id
                       ? { ...current, stake }
                       : current
                   )
                 }
-                onLock={() => handleLock(spotlightMarket)}
-                onClear={() => handleClear(spotlightMarket.id)}
+                onLock={() => handleLock(activeSpotlightMarket)}
+                onClear={() => handleClear(activeSpotlightMarket.id)}
                 onOpenFounderBonus={openFounderComposer}
               />
             ) : recentResults.length ? (
@@ -2394,12 +2556,30 @@ export default function BetsPage() {
                 />
               </div>
 
+              {!loadingBoard && spotlightDesyncMarket ? (
+                <DesyncMarketSwitch
+                  active={showingDesyncMarket}
+                  onToggle={() =>
+                    setShowingDesyncMarket(
+                      (current) =>
+                        !current
+                    )
+                  }
+                />
+              ) : null}
+
               {loadingBoard ? (
                 <LoadingMarket />
-              ) : spotlightMarket ? (
+              ) : activeSpotlightMarket ? (
                 <MarketFeature
-                  market={spotlightMarket}
-                  eyebrowLabel={spotlightMarket.featured ? "Featured Market" : "Current Book"}
+                  market={activeSpotlightMarket}
+                  eyebrowLabel={
+                    showingDesyncMarket
+                      ? "Desync Side Market"
+                      : spotlightMarket?.featured
+                        ? "Featured Market"
+                        : "Current Book"
+                  }
                   detailMode="advanced"
                   selection={selection}
                   workingKey={workingKey}
@@ -2412,11 +2592,11 @@ export default function BetsPage() {
                   onSelect={handleSelect}
                   onStakeChange={(stake) =>
                     setSelection((current) =>
-                      current && current.marketId === spotlightMarket.id ? { ...current, stake } : current
+                      current && current.marketId === activeSpotlightMarket.id ? { ...current, stake } : current
                     )
                   }
-                  onLock={() => handleLock(spotlightMarket)}
-                  onClear={() => handleClear(spotlightMarket.id)}
+                  onLock={() => handleLock(activeSpotlightMarket)}
+                  onClear={() => handleClear(activeSpotlightMarket.id)}
                   onOpenFounderBonus={openFounderComposer}
                 />
               ) : recentResults.length ? (
@@ -3856,7 +4036,11 @@ function MarketFeature({
   const gameStatsHref = buildBetGameStatsHref(market);
   const gameStatsLabel = market.status === "live" ? "Live Stats" : "Game Stats";
 
-  if (detailMode === "extreme" && extremeRoster.isBalancedTeamGame) {
+  if (
+    detailMode === "extreme" &&
+    market.marketType !== DESYNC_SIDE_MARKET_TYPE &&
+    extremeRoster.isBalancedTeamGame
+  ) {
     return (
       <div className="relative">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
@@ -4067,10 +4251,21 @@ function MarketFeature({
             </h2>
           )}
           <div className="mt-2 text-sm text-slate-400">{market.eventLabel}</div>
-          <FounderBonusChips
-            bonuses={market.founderBonuses}
-            variant={detailMode === "basic" ? "micro" : "full"}
-          />
+          {market.marketType !== DESYNC_SIDE_MARKET_TYPE ? (
+            <FounderBonusChips
+              bonuses={market.founderBonuses}
+              variant={detailMode === "basic" ? "micro" : "full"}
+            />
+          ) : (
+            <div className="mt-3">
+              <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-200/55">
+                Independent incident market · human desync truth
+              </div>
+              <div className="mt-1.5 text-xs leading-5 text-slate-400">
+                YES settles on confirmed desync · NO after final-result review window
+              </div>
+            </div>
+          )}
           <MarketTimingRail market={market} nowMs={nowMs} />
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -4090,7 +4285,7 @@ function MarketFeature({
               {gameStatsLabel}
             </Link>
           ) : null}
-          {isAdmin ? (
+          {isAdmin && market.marketType !== DESYNC_SIDE_MARKET_TYPE ? (
             <>
               <button
                 type="button"
@@ -4153,7 +4348,7 @@ function MarketFeature({
           </div>
           <div className="text-right">
             <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500" title="Projected book return if this side wins right now.">
-              If Right
+              {market.marketType === DESYNC_SIDE_MARKET_TYPE ? "If YES" : "If Right"}
             </div>
             <div className="mt-2 text-xl font-semibold text-white">
               {activeSelection ? `${formatCompact(projectedReturn)} WOLO` : "Pick a side"}
