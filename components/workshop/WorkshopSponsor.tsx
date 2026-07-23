@@ -1,7 +1,7 @@
 "use client";
 
-import { Check, Copy, Hammer, ShieldCheck, WalletCards } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Check, Hammer, Send, WalletCards } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { payWoloOnChain } from "@/lib/clientMarketplacePayment";
 import { WOLO_CHAIN_ID, woloChainConfig } from "@/lib/woloChain";
@@ -16,25 +16,11 @@ type SponsorRequest = {
   sponsorTxHash: string | null;
   paymentStatus: string;
   status: string;
-  sponsoredAt: string | null;
-  submittedAt: string | null;
-  acceptedAt: string | null;
-  startedAt: string | null;
-  completedAt: string | null;
-  declinedAt: string | null;
-  refundedAt: string | null;
-  refundStatus: string;
-  developmentValueWolo: number | null;
-  createdAt: string;
 };
 
 type SponsorSnapshot = {
   ok: boolean;
   ready: boolean;
-  treasury: {
-    label: string;
-    address: string | null;
-  };
   sponsorAmountWolo: number;
   latestRequest: SponsorRequest | null;
 };
@@ -81,7 +67,6 @@ async function connectKeplrAddress() {
   await browser.keplr.enable?.(WOLO_CHAIN_ID);
 
   const key = await browser.keplr.getKey?.(WOLO_CHAIN_ID);
-
   const address = key?.bech32Address?.trim().toLowerCase() || "";
 
   if (!/^wolo1[0-9a-z]{20,90}$/.test(address)) {
@@ -91,57 +76,14 @@ async function connectKeplrAddress() {
   return address;
 }
 
-function shortAddress(address: string | null) {
-  if (!address) {
-    return "Not configured";
-  }
-
-  if (address.length <= 20) {
-    return address;
-  }
-
-  return `${address.slice(0, 12)}…${address.slice(-8)}`;
-}
-
-function statusLabel(request: SponsorRequest | null) {
-  if (!request) {
-    return "Ready for a patron";
-  }
-
-  switch (request.status) {
-    case "awaiting_payment":
-      return "Awaiting sponsorship";
-    case "awaiting_request":
-      return "Payment confirmed";
-    case "submitted":
-      return "Submitted";
-    case "accepted":
-      return "Accepted";
-    case "on_anvil":
-      return "On the Anvil";
-    case "live":
-      return "Live";
-    case "declined":
-      return "Declined";
-    default:
-      return request.status.replace(/_/g, " ");
-  }
-}
-
 export default function WorkshopSponsor() {
   const [snapshot, setSnapshot] = useState<SponsorSnapshot | null>(null);
-
-  const [activeRequest, setActiveRequest] = useState<SponsorRequest | null>(
-    null,
-  );
-
+  const [activeRequest, setActiveRequest] =
+    useState<SponsorRequest | null>(null);
   const [requestText, setRequestText] = useState("");
-
   const [working, setWorking] = useState(false);
-
   const [error, setError] = useState<string | null>(null);
-
-  const [copied, setCopied] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -151,9 +93,7 @@ export default function WorkshopSponsor() {
     })
       .then((response) => responseJson<SponsorSnapshot>(response))
       .then((payload) => {
-        if (cancelled) {
-          return;
-        }
+        if (cancelled) return;
 
         setSnapshot(payload);
         setActiveRequest(payload.latestRequest);
@@ -163,13 +103,13 @@ export default function WorkshopSponsor() {
         }
       })
       .catch((loadError) => {
-        if (!cancelled) {
-          setError(
-            loadError instanceof Error
-              ? loadError.message
-              : "The Workshop Treasury could not be loaded.",
-          );
-        }
+        if (cancelled) return;
+
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "The Workshop patronage rail could not be loaded.",
+        );
       });
 
     return () => {
@@ -178,38 +118,14 @@ export default function WorkshopSponsor() {
   }, []);
 
   const amountWolo = snapshot?.sponsorAmountWolo ?? 100;
-
-  const treasuryAddress = snapshot?.treasury.address ?? null;
-
+  const paymentBroadcast = activeRequest?.paymentStatus === "broadcast";
   const paymentConfirmed = activeRequest?.paymentStatus === "confirmed";
+  const requestLocked = paymentBroadcast || paymentConfirmed;
 
-  const submitted =
-    activeRequest?.status === "submitted" ||
-    activeRequest?.status === "accepted" ||
-    activeRequest?.status === "on_anvil" ||
-    activeRequest?.status === "live";
-
-  const canSponsor = Boolean(snapshot?.ready) && !working;
-
-  const outcome = useMemo(() => {
-    if (!activeRequest) {
-      return null;
-    }
-
-    if (
-      activeRequest.status === "live" &&
-      activeRequest.developmentValueWolo != null
-    ) {
-      const delta =
-        activeRequest.developmentValueWolo - activeRequest.sponsorAmountWolo;
-
-      return delta >= 0
-        ? `KINGDOM WON · +${delta.toLocaleString()} WOLO VALUE`
-        : "WORKSHOP WON · QUICK BUILD";
-    }
-
-    return null;
-  }, [activeRequest]);
+  const canSend =
+    Boolean(snapshot?.ready) &&
+    requestText.trim().length >= 3 &&
+    !working;
 
   async function verifyPaymentProof(
     intent: SponsorRequest,
@@ -217,7 +133,7 @@ export default function WorkshopSponsor() {
     fromAddress: string,
   ) {
     for (let attempt = 0; attempt < 12; attempt += 1) {
-      const verifyResponse = await fetch("/api/workshop/sponsor", {
+      const response = await fetch("/api/workshop/sponsor", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -230,7 +146,7 @@ export default function WorkshopSponsor() {
         }),
       });
 
-      const payload = (await verifyResponse.json().catch(() => ({}))) as {
+      const payload = (await response.json().catch(() => ({}))) as {
         request?: SponsorRequest;
         pending?: boolean;
         detail?: string;
@@ -240,31 +156,69 @@ export default function WorkshopSponsor() {
         setActiveRequest(payload.request);
       }
 
-      if (verifyResponse.ok && payload.request) {
+      if (response.ok && payload.request) {
         return payload.request;
       }
 
-      if (verifyResponse.status === 202 && payload.pending) {
+      if (response.status === 202 && payload.pending) {
         await new Promise((resolve) => setTimeout(resolve, 1_000));
-
         continue;
       }
 
       throw new Error(
-        payload.detail || "The Workshop could not verify the WOLO sponsorship.",
+        payload.detail ||
+          "The Workshop could not verify the WOLO payment.",
       );
     }
 
     throw new Error(
-      "The 100 WOLO payment was broadcast, but the Workshop indexer has not confirmed it yet. Your transaction proof has been saved. Try verification again shortly; do not send another payment.",
+      "Your 100 WOLO payment was broadcast, but WoloChain has not indexed it yet. Your request and transaction proof are saved. Use Verify & Send Request shortly; do not pay again.",
     );
   }
 
-  async function beginSponsorship() {
+  async function submitPaidRequest(
+    request: SponsorRequest,
+    text: string,
+  ) {
+    const response = await fetch("/api/workshop/sponsor", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        action: "submit",
+        publicId: request.publicId,
+        requestText: text,
+      }),
+    });
+
+    const payload = await responseJson<{
+      request: SponsorRequest;
+    }>(response);
+
+    setSuccess(
+      `Feature request #${payload.request.publicId.slice(0, 8)} sent privately to Emaren.`,
+    );
+
+    // The durable request remains in the database and Emaren's inbox.
+    // The public Patronage composer immediately becomes ready for another idea.
+    setActiveRequest(null);
+    setRequestText("");
+  }
+
+  async function sendFeatureRequest() {
+    const typedText = requestText.trim();
+
+    if (typedText.length < 3) {
+      return;
+    }
+
     setWorking(true);
     setError(null);
+    setSuccess(null);
 
     try {
+      // Recover a transaction that was already broadcast without paying again.
       if (
         activeRequest?.paymentStatus === "broadcast" &&
         activeRequest.sponsorTxHash
@@ -275,12 +229,27 @@ export default function WorkshopSponsor() {
           activeRequest.requesterAddress,
         );
 
-        setActiveRequest(confirmed);
+        await submitPaidRequest(
+          confirmed,
+          confirmed.requestText || activeRequest.requestText || typedText,
+        );
+
+        return;
+      }
+
+      // Recover a payment that was confirmed before the final inbox delivery.
+      if (activeRequest?.paymentStatus === "confirmed") {
+        await submitPaidRequest(
+          activeRequest,
+          activeRequest.requestText || typedText,
+        );
+
         return;
       }
 
       const walletAddress = await connectKeplrAddress();
 
+      // Persist the feature text before Keplr opens the payment transaction.
       const intentResponse = await fetch("/api/workshop/sponsor", {
         method: "POST",
         headers: {
@@ -289,6 +258,7 @@ export default function WorkshopSponsor() {
         body: JSON.stringify({
           action: "intent",
           walletAddress,
+          requestText: typedText,
         }),
       });
 
@@ -297,7 +267,6 @@ export default function WorkshopSponsor() {
       }>(intentResponse);
 
       const intent = intentPayload.request;
-
       setActiveRequest(intent);
 
       const payment = await payWoloOnChain({
@@ -307,9 +276,11 @@ export default function WorkshopSponsor() {
         fallbackWalletAddress: walletAddress,
       });
 
-      if (payment.walletAddress.trim().toLowerCase() !== walletAddress) {
+      if (
+        payment.walletAddress.trim().toLowerCase() !== walletAddress
+      ) {
         throw new Error(
-          "Keplr changed accounts during the Workshop sponsorship. No request was submitted.",
+          "Keplr changed accounts during the Workshop payment. The feature request was not submitted.",
         );
       }
 
@@ -319,65 +290,19 @@ export default function WorkshopSponsor() {
         payment.walletAddress,
       );
 
-      setActiveRequest(confirmed);
-    } catch (sponsorError) {
+      await submitPaidRequest(
+        confirmed,
+        confirmed.requestText || typedText,
+      );
+    } catch (sendError) {
       setError(
-        sponsorError instanceof Error
-          ? sponsorError.message
-          : "The Workshop sponsorship could not be completed.",
+        sendError instanceof Error
+          ? sendError.message
+          : "The feature request could not be sent.",
       );
     } finally {
       setWorking(false);
     }
-  }
-
-  async function submitRequest() {
-    if (!activeRequest) {
-      return;
-    }
-
-    setWorking(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/workshop/sponsor", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "submit",
-          publicId: activeRequest.publicId,
-          requestText,
-        }),
-      });
-
-      const payload = await responseJson<{
-        request: SponsorRequest;
-      }>(response);
-
-      setActiveRequest(payload.request);
-    } catch (submitError) {
-      setError(
-        submitError instanceof Error
-          ? submitError.message
-          : "The feature idea could not be submitted.",
-      );
-    } finally {
-      setWorking(false);
-    }
-  }
-
-  async function copyTreasury() {
-    if (!treasuryAddress) {
-      return;
-    }
-
-    await navigator.clipboard.writeText(treasuryAddress);
-
-    setCopied(true);
-
-    window.setTimeout(() => setCopied(false), 1_500);
   }
 
   return (
@@ -385,175 +310,100 @@ export default function WorkshopSponsor() {
       id="sponsor-a-feature"
       className="overflow-hidden rounded-[2rem] border border-amber-100/12 bg-[radial-gradient(circle_at_15%_0%,rgba(251,191,36,0.10),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.92),rgba(2,6,23,0.96))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.24)] sm:p-7"
     >
-      <div className="grid gap-7 lg:grid-cols-[1.15fr_0.85fr]">
-        <div>
-          <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-amber-100/60">
-            <Hammer className="h-4 w-4" />
-            Patronage
-          </div>
-
-          <h2 className="mt-3 font-serif text-3xl text-white sm:text-4xl">
-            Sponsor a Feature
-          </h2>
-
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
-            Ask the Kingdom to build something. Sponsoring a request costs{" "}
-            <span className="font-semibold text-amber-100">
-              {amountWolo} WOLO
-            </span>
-            . Sponsorship pays for consideration, not guaranteed delivery. A
-            declined request is eligible for refund through the Workshop
-            Treasury.
-          </p>
-
-          <div className="mt-6 rounded-[1.35rem] border border-white/8 bg-black/20 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-slate-500">
-                  Workshop Treasury
-                </div>
-
-                <div className="mt-1 font-mono text-sm text-slate-200">
-                  {shortAddress(treasuryAddress)}
-                </div>
-              </div>
-
-              {treasuryAddress ? (
-                <button
-                  type="button"
-                  onClick={() => void copyTreasury()}
-                  className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs text-slate-300 transition hover:bg-white/[0.05] hover:text-white"
-                >
-                  {copied ? (
-                    <Check className="h-3.5 w-3.5" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                  )}
-                  {copied ? "Copied" : "Copy address"}
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          {!paymentConfirmed ? (
-            <button
-              type="button"
-              disabled={!canSponsor}
-              onClick={() => void beginSponsorship()}
-              className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full border border-amber-100/20 bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              <WalletCards className="h-4 w-4" />
-              {working
-                ? activeRequest?.paymentStatus === "broadcast"
-                  ? "Verifying payment…"
-                  : "Opening Keplr…"
-                : activeRequest?.paymentStatus === "broadcast"
-                  ? "Verify sponsorship"
-                  : `Sponsor a Feature · ${amountWolo} WOLO`}
-            </button>
-          ) : null}
-
-          {paymentConfirmed && !submitted ? (
-            <div className="mt-6">
-              <div className="flex items-center gap-2 text-sm font-semibold text-emerald-200">
-                <ShieldCheck className="h-4 w-4" />
-                Sponsorship confirmed on WoloChain
-              </div>
-
-              <label className="mt-5 block">
-                <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
-                  What should we build?
-                </span>
-
-                <textarea
-                  value={requestText}
-                  onChange={(event) => setRequestText(event.target.value)}
-                  maxLength={4_000}
-                  rows={5}
-                  placeholder="Tell the Workshop what would make AoE2WAR better…"
-                  className="mt-2 w-full resize-y rounded-[1.25rem] border border-white/10 bg-black/25 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-slate-600 focus:border-amber-200/25"
-                />
-              </label>
-
-              <button
-                type="button"
-                disabled={working || requestText.trim().length < 3}
-                onClick={() => void submitRequest()}
-                className="mt-3 cursor-pointer rounded-full border border-white/12 bg-white/[0.06] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/[0.10] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {working
-                  ? "Sending to the Workshop…"
-                  : "Submit to the Workshop"}
-              </button>
-            </div>
-          ) : null}
-
-          {submitted ? (
-            <div className="mt-6 rounded-[1.25rem] border border-emerald-300/15 bg-emerald-400/[0.06] p-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-emerald-100">
-                <Check className="h-4 w-4" />
-                Your feature is in the Workshop
-              </div>
-
-              <p className="mt-2 text-sm leading-6 text-slate-400">
-                It now has its own durable request record and payment proof.
-                Accepted work can move onto the Anvil and eventually into the
-                Workshop Chronicle.
-              </p>
-            </div>
-          ) : null}
-
-          {error ? (
-            <p className="mt-4 text-sm leading-6 text-rose-300">{error}</p>
-          ) : null}
+      <div className="mx-auto max-w-4xl">
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.3em] text-amber-100/60">
+          <Hammer className="h-4 w-4" />
+          Patronage
         </div>
 
-        <aside className="rounded-[1.5rem] border border-white/8 bg-black/20 p-5">
-          <div className="text-[9px] font-bold uppercase tracking-[0.26em] text-slate-500">
-            Patron Record
+        <h2 className="mt-3 font-serif text-3xl text-white sm:text-4xl">
+          Sponsor a Feature
+        </h2>
+
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400">
+          Describe something you want to see built on AoE2WAR. Sending the
+          request costs{" "}
+          <span className="font-semibold text-amber-100">
+            {amountWolo} WOLO
+          </span>
+          . Your payment is verified on WoloChain and the request is delivered
+          privately to Emaren.
+        </p>
+
+        <label className="mt-6 block">
+          <span className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">
+            Describe your feature
+          </span>
+
+          <textarea
+            value={requestText}
+            onChange={(event) => {
+              setRequestText(event.target.value);
+              setSuccess(null);
+            }}
+            disabled={working || requestLocked}
+            maxLength={4_000}
+            rows={5}
+            placeholder="What would make AoE2WAR better?"
+            className="mt-2 w-full resize-y rounded-[1.35rem] border border-white/10 bg-black/25 px-4 py-4 text-sm leading-6 text-white outline-none transition placeholder:text-slate-600 focus:border-amber-200/30 disabled:cursor-not-allowed disabled:opacity-65"
+          />
+        </label>
+
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="text-xs leading-5 text-slate-500">
+            One private feature request · {amountWolo} WOLO
           </div>
 
-          <div className="mt-4 font-serif text-2xl text-white">
-            {statusLabel(activeRequest)}
+          <button
+            type="button"
+            disabled={!canSend}
+            onClick={() => void sendFeatureRequest()}
+            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-amber-100/20 bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {working ? (
+              <>
+                <WalletCards className="h-4 w-4" />
+                Processing…
+              </>
+            ) : paymentBroadcast ? (
+              <>
+                <Check className="h-4 w-4" />
+                Verify &amp; Send Request
+              </>
+            ) : paymentConfirmed ? (
+              <>
+                <Send className="h-4 w-4" />
+                Finish Sending Request
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4" />
+                Send Feature Request · {amountWolo} WOLO
+              </>
+            )}
+          </button>
+        </div>
+
+        {paymentBroadcast ? (
+          <p className="mt-4 text-sm leading-6 text-amber-100/75">
+            Your payment was already broadcast. The feature text and transaction
+            proof are saved. Verify the payment to finish sending it—do not pay
+            again.
+          </p>
+        ) : null}
+
+        {success ? (
+          <div className="mt-5 flex items-center gap-2 rounded-[1.15rem] border border-emerald-300/15 bg-emerald-400/[0.06] px-4 py-3 text-sm font-semibold text-emerald-100">
+            <Check className="h-4 w-4" />
+            {success}
           </div>
+        ) : null}
 
-          {activeRequest ? (
-            <div className="mt-5 space-y-3 text-sm">
-              <div className="flex justify-between gap-4 border-b border-white/6 pb-3">
-                <span className="text-slate-500">Sponsorship</span>
-                <span className="font-semibold text-amber-100">
-                  {activeRequest.sponsorAmountWolo.toLocaleString()} WOLO
-                </span>
-              </div>
-
-              <div className="flex justify-between gap-4 border-b border-white/6 pb-3">
-                <span className="text-slate-500">Payment</span>
-                <span className="text-right text-slate-300">
-                  {activeRequest.paymentStatus === "confirmed"
-                    ? "Confirmed"
-                    : "Awaiting"}
-                </span>
-              </div>
-
-              <div className="flex justify-between gap-4">
-                <span className="text-slate-500">Request</span>
-                <span className="font-mono text-xs text-slate-400">
-                  {activeRequest.publicId.slice(0, 8)}
-                </span>
-              </div>
-
-              {outcome ? (
-                <div className="mt-4 rounded-full border border-amber-200/15 bg-amber-300/[0.06] px-3 py-2 text-center text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100">
-                  {outcome}
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <p className="mt-4 text-sm leading-6 text-slate-500">
-              Connect Keplr and become the first patron of the Workshop.
-            </p>
-          )}
-        </aside>
+        {error ? (
+          <p className="mt-4 text-sm leading-6 text-rose-300">
+            {error}
+          </p>
+        ) : null}
       </div>
     </section>
   );

@@ -6,6 +6,7 @@ import {
   getOrCreateConversationByUsers,
   resolvePrimaryAdminContact,
 } from "@/lib/contactInbox";
+import { buildFeatureRequestInboxMessage } from "@/lib/featureRequestInboxMessage";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { recordUserActivity } from "@/lib/userExperience";
@@ -229,6 +230,9 @@ export async function GET(request: NextRequest) {
       const latest = await prisma.featureRequest.findFirst({
         where: {
           requesterUserId: viewer.id,
+          status: {
+            in: ["awaiting_payment", "awaiting_request"],
+          },
         },
         orderBy: [
           {
@@ -313,6 +317,21 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      const requestText = normalizeRequestText(body.requestText);
+
+      if (!requestText) {
+        return NextResponse.json(
+          {
+            detail:
+              "Describe the feature you want to sponsor before opening the WoloChain payment.",
+          },
+          {
+            status: 400,
+            headers: NO_STORE_HEADERS,
+          },
+        );
+      }
+
       const reuseAfter = new Date(Date.now() - 30 * 60 * 1000);
 
       let intent = await prisma.featureRequest.findFirst({
@@ -344,6 +363,7 @@ export async function POST(request: NextRequest) {
             requesterUserId: viewer.id,
             requesterUidSnapshot: viewer.uid,
             requesterDisplayNameSnapshot: displayName(viewer),
+            requestText,
             requesterAddress,
             sponsorAmountWolo: runtime.amountWolo,
             sponsorAmountUwolo: runtime.amountUwolo,
@@ -355,6 +375,28 @@ export async function POST(request: NextRequest) {
           },
           select: REQUEST_SELECT,
         });
+      }
+
+      if (
+        intent.paymentStatus === "awaiting_payment" &&
+        intent.requestText !== requestText
+      ) {
+        await prisma.featureRequest.updateMany({
+          where: {
+            publicId: intent.publicId,
+            requesterUserId: viewer.id,
+            paymentStatus: "awaiting_payment",
+            status: "awaiting_payment",
+          },
+          data: {
+            requestText,
+          },
+        });
+
+        intent = {
+          ...intent,
+          requestText,
+        };
       }
 
       return NextResponse.json(
@@ -624,7 +666,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const firstSubmission = existing.status !== "submitted";
+      const firstSubmission = existing.submittedAt == null;
 
       const submitted = await prisma.featureRequest.update({
         where: {
@@ -653,16 +695,13 @@ export async function POST(request: NextRequest) {
               data: {
                 conversationId: conversation.id,
                 senderUserId: viewer.id,
-                body: [
-                  "🔨 WORKSHOP FEATURE SPONSORSHIP",
-                  "",
-                  `${displayName(viewer)} sponsored a feature with ${submitted.sponsorAmountWolo} WOLO.`,
-                  "",
+                body: buildFeatureRequestInboxMessage({
+                  requester: displayName(viewer),
+                  amountWolo: submitted.sponsorAmountWolo,
+                  requestId: submitted.publicId,
+                  payment: submitted.sponsorTxHash || "verified",
                   requestText,
-                  "",
-                  `Request: ${submitted.publicId}`,
-                  `Payment: ${submitted.sponsorTxHash || "verified"}`,
-                ].join("\n"),
+                }),
               },
             });
           }

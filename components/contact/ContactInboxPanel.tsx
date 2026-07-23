@@ -8,6 +8,7 @@ import {
   CalendarClock,
   ChevronDown,
   Coins,
+  Hammer,
   LayoutList,
   MessageCirclePlus,
   MessageSquare,
@@ -46,6 +47,10 @@ import {
   type ClanProtocolMessage,
 } from "@/lib/clanProtocolMessages";
 import { summarizeChallengeInboxMessage } from "@/lib/challengeInboxMessages";
+import {
+  parseFeatureRequestInboxMessage,
+  type FeatureRequestInboxMessage,
+} from "@/lib/featureRequestInboxMessage";
 import {
   UNIVERSAL_LANGUAGES,
   findUniversalLanguage,
@@ -489,6 +494,60 @@ function ClanProtocolSystemLine({
   );
 }
 
+
+function FeatureRequestMessageCard({
+  message,
+  request,
+}: {
+  message: Extract<ContactInboxMessage, { kind: "text" }>;
+  request: FeatureRequestInboxMessage;
+}) {
+  return (
+    <div className="flex justify-center py-1">
+      <div className="w-full max-w-2xl overflow-hidden rounded-[1.45rem] border border-amber-200/20 bg-[radial-gradient(circle_at_10%_0%,rgba(251,191,36,0.12),transparent_36%),linear-gradient(145deg,rgba(38,24,8,0.92),rgba(8,15,25,0.96))] shadow-[0_20px_55px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.05)]">
+        <div className="px-4 py-4 sm:px-5 sm:py-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-amber-100/70">
+                <Hammer className="h-3.5 w-3.5" />
+                Feature Request
+              </div>
+
+              <div className="mt-2 text-base font-bold text-white">
+                {request.requester || message.sender.displayName}
+              </div>
+            </div>
+
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/15 bg-emerald-300/[0.08] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-100">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Payment verified
+            </div>
+          </div>
+
+          <div className="mt-4 whitespace-pre-wrap rounded-[1.1rem] border border-white/8 bg-black/20 px-4 py-4 text-sm leading-6 text-slate-100 [overflow-wrap:anywhere]">
+            {request.requestText}
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+            <div className="flex items-center gap-2">
+              <Coins className="h-3.5 w-3.5 text-amber-200/70" />
+              <span>{request.amountWolo.toLocaleString()} WOLO</span>
+              <span>·</span>
+              <span>Private Workshop request</span>
+            </div>
+
+            <div title={request.requestId}>
+              Request #{request.requestId.slice(0, 8)}
+              {" · "}
+              {formatBubbleTime(message.createdAt)}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ChallengeThreadStrip({
   data,
   mode,
@@ -913,6 +972,7 @@ function TextMessageBubble({
     isPersisted && message.sender.uid === AI_CONCIERGE_UID && !message.attachment && message.body.trim().length > 0;
   const clanProtocolMessage = parseClanProtocolMessage(message.body);
   const compactChallengeNotice = message.body ? challengeNoticeTone(summarizeChallengeInboxMessage(message.body)) : null;
+  const featureRequest = parseFeatureRequestInboxMessage(message.body);
   const [trayPinnedOpen, setTrayPinnedOpen] = useState(false);
   const [trayPlacement, setTrayPlacement] = useState<"above" | "below">("above");
   const [reactionMoreOpen, setReactionMoreOpen] = useState(false);
@@ -1114,6 +1174,15 @@ function TextMessageBubble({
 
   if (compactChallengeNotice) {
     return <ChallengeSystemMessageLine message={message} compactNotice={compactChallengeNotice} />;
+  }
+
+  if (featureRequest) {
+    return (
+      <FeatureRequestMessageCard
+        message={message}
+        request={featureRequest}
+      />
+    );
   }
 
   const trayVisible = trayPinnedOpen;
