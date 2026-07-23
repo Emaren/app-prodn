@@ -1009,7 +1009,7 @@ function DesyncMarketSwitch({
 
         {!active ? (
           <span className="rounded-full border border-white/[0.08] bg-black/20 px-2 py-0.5 text-[9px] tracking-[0.16em] text-slate-300">
-            NO / YES
+            YES / NO
           </span>
         ) : null}
       </button>

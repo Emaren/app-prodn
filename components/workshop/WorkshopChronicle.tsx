@@ -212,6 +212,15 @@ export default function WorkshopChronicle({
     return ordered;
   }, [entries]);
 
+  const alignmentByPublicId = useMemo(() => {
+    return new Map<string, "left" | "right">(
+      entries.map((entry, index) => [
+        entry.publicId,
+        index % 2 === 0 ? "left" : "right",
+      ]),
+    );
+  }, [entries]);
+
   const loadOlder = useCallback(async () => {
     if (loading || !hasMore || !nextCursor) return;
 
@@ -310,11 +319,11 @@ export default function WorkshopChronicle({
                 </div>
 
                 <div className="space-y-5">
-                  {group.entries.map((entry, index) => (
+                  {group.entries.map((entry) => (
                     <ChronicleEntry
                       key={entry.publicId}
                       entry={entry}
-                      align={index % 2 === 0 ? "left" : "right"}
+                      align={alignmentByPublicId.get(entry.publicId) ?? "left"}
                     />
                   ))}
                 </div>

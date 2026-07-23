@@ -103,7 +103,7 @@ test(
 
     assert.match(
       page,
-      /NO \/ YES/
+      /YES \/ NO/
     );
   }
 );
