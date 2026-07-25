@@ -14,6 +14,7 @@ import {
   DIRECT_MESSAGE_REACTIONS,
   MAX_DIRECT_AUDIO_BYTES,
   MAX_DIRECT_IMAGE_BYTES,
+  MAX_DIRECT_IMAGE_LABEL,
 } from "@/lib/contactInboxConfig";
 import {
   encodeLegacyAttachmentDataUrl,
@@ -86,7 +87,7 @@ async function readAttachmentInput(
   }
 
   if (kind === "image" && file.size > MAX_DIRECT_IMAGE_BYTES) {
-    throw new Error("Screenshots must be 2.5MB or smaller.");
+    throw new Error(`Screenshots must be ${MAX_DIRECT_IMAGE_LABEL} or smaller.`);
   }
 
   if (kind === "audio" && file.size > MAX_DIRECT_AUDIO_BYTES) {

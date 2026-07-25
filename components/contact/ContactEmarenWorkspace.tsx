@@ -17,6 +17,10 @@ import type {
 } from "@/components/contact/types";
 import { useUserAuth } from "@/context/UserAuthContext";
 import SteamLoginButton from "@/components/SteamLoginButton";
+import {
+  MAX_DIRECT_IMAGE_BYTES,
+  MAX_DIRECT_IMAGE_LABEL,
+} from "@/lib/contactInboxConfig";
 
 type ComposerAttachment = {
   file: File;
@@ -590,6 +594,12 @@ export default function ContactEmarenWorkspace({
 
     clearAttachment();
     const preparedFile = await optimizeScreenshotAttachment(file);
+    if (preparedFile.size > MAX_DIRECT_IMAGE_BYTES) {
+      setError(`Screenshots must be ${MAX_DIRECT_IMAGE_LABEL} or smaller.`);
+      return;
+    }
+
+    setError(null);
     const previewUrl = URL.createObjectURL(preparedFile);
     setAttachment({
       file: preparedFile,
