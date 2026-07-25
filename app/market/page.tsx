@@ -16,6 +16,7 @@ import {
   Swords,
 } from "lucide-react";
 
+import MarketplaceExpansionStreets from "@/components/market/MarketplaceExpansionStreets";
 import {
   AvatarCommissionScroll,
   MarketplaceDeliveryRail,
@@ -469,6 +470,8 @@ export default function MarketPage() {
           <ArrowRight className="h-4 w-4" />
         </Link>
       </section>
+      <MarketplaceExpansionStreets />
+
     </main>
   );
 }

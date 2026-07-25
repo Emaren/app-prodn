@@ -2,18 +2,43 @@
 
 type FounderBonusType = "participants" | "winner";
 
-function previewCopy(bonusType: FounderBonusType, amountWolo: number) {
+function previewCopy(
+  bonusType: FounderBonusType,
+  amountWolo: number,
+  participantCount: number
+) {
   if (bonusType === "winner") {
     return `Founders Win ${amountWolo.toLocaleString()} WOLO -> ${amountWolo.toLocaleString()} to winner`;
   }
 
-  const splitAmount = Math.floor(amountWolo / 2);
-  return `Founders Bonus ${amountWolo.toLocaleString()} WOLO -> ${splitAmount.toLocaleString()} each`;
+  const safeParticipantCount =
+    Math.max(
+      2,
+      participantCount
+    );
+
+  if (
+    amountWolo > 0 &&
+    amountWolo %
+      safeParticipantCount !==
+      0
+  ) {
+    return `Founders Bonus ${amountWolo.toLocaleString()} WOLO -> ${safeParticipantCount} players · total must divide evenly`;
+  }
+
+  const splitAmount =
+    safeParticipantCount > 0
+      ? amountWolo /
+        safeParticipantCount
+      : 0;
+
+  return `Founders Bonus ${amountWolo.toLocaleString()} WOLO -> ${splitAmount.toLocaleString()} each x ${safeParticipantCount} players`;
 }
 
 export default function FounderBonusModal({
   open,
   marketTitle,
+  participantCount,
   bonusType,
   amountValue,
   noteValue,
@@ -27,6 +52,7 @@ export default function FounderBonusModal({
 }: {
   open: boolean;
   marketTitle: string;
+  participantCount: number;
   bonusType: FounderBonusType;
   amountValue: string;
   noteValue: string;
@@ -76,7 +102,9 @@ export default function FounderBonusModal({
             }`}
           >
             <div className="text-sm font-semibold">Founders Bonus</div>
-            <div className="mt-1 text-xs text-slate-400">Split evenly between both participants.</div>
+            <div className="mt-1 text-xs text-slate-400">
+              Split evenly between every player in the match.
+            </div>
           </button>
 
           <button
@@ -123,7 +151,11 @@ export default function FounderBonusModal({
         </div>
 
         <div className="mt-4 rounded-[1.2rem] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
-          {previewCopy(bonusType, safeAmountWolo)}
+          {previewCopy(
+            bonusType,
+            safeAmountWolo,
+            participantCount
+          )}
         </div>
 
         {error ? (

@@ -7,9 +7,9 @@ export const REPLAY_ENGINE_MAX_ATTEMPTS_PER_ARTIFACT = 10;
 export const HD_REPLAY_PARSER_CONTRACT = {
   parserName: "aoe2war.mgz_hd",
   parserVersion: "1.8.51",
-  schemaVersion: "2026-07-16.4",
+  schemaVersion: "2026-07-24.1",
   passName: "hd_deterministic_evidence",
-  passVersion: "6",
+  passVersion: "7",
 } as const;
 
 export const REPLAY_ENGINE_APPEND_ONLY_TABLES = [

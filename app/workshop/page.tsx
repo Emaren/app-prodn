@@ -187,7 +187,7 @@ export default async function WorkshopPage() {
               Current production state
             </div>
             <div className="mt-3 text-2xl font-semibold">
-              Challenge Protocol · Public Match Rooms · Battle Truth
+              Pass 7 · Live Betting · Human Review
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <SignalMetric
@@ -228,24 +228,26 @@ export default async function WorkshopPage() {
               </div>
 
               <span className="rounded-full border border-amber-200/16 bg-amber-300/[0.07] px-3 py-1 text-[9px] font-bold uppercase tracking-[0.2em] text-amber-100/75">
-                Current Front · War Protocol
+                Current Front · Deterministic Evidence
               </span>
             </div>
 
             <h2 className="mt-5 font-serif text-5xl leading-[0.92] text-white sm:text-6xl lg:text-7xl">
-              The War Protocol.
+              Deterministic Evidence.
             </h2>
 
+            {/* AOE2WAR_WORKSHOP_DETERMINISTIC_EVIDENCE_20260724 */}
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Battle truth, human evidence, challenge custody, settlement, and
-              public match history now meet in one production protocol. Replay
-              candidates remain separate from public and financial truth.
-              Human-confirmed DESYNC incidents are append-only. Every Challenge
-              now owns a public Match Chronicle where player negotiation can flow
-              chronologically through acceptance, funding, check-in, watcher
-              proof, result, payout, and belt or artifact consequences. Live
-              battles can carry an independent YES/NO DESYNC market, while the
-              Speed Observatory measures real navigation instead of synthetic claims.
+              Pass 6 mapped the unresolved frontier without weakening result
+              gates. Pass 7 now preserves exact uneven two-team structure inside
+              the private Engine Room, while degraded metadata fragments remain
+              fail-closed. Candidate runs still cannot rewrite public results,
+              markets, wagers, or settlement. The human Review Desk remains the
+              command tower for adjudication, DESYNC truth, corrections, and
+              supersession. Automatic recovery is live, 111 exact rosters crossed
+              a zero-result-authority bridge, and open winner markets now drive
+              the Bet live action without allowing DESYNC markets to hijack the
+              battle card.
             </p>
 
             <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -263,28 +265,27 @@ export default async function WorkshopPage() {
               />
 
               <CampaignMetric
-                label="Evidence Lab"
-                value="8 / 8"
-                note="Evidence Pass #2391 reached all eight screenshot evidence areas for replay #18714."
-              />
-
-              <CampaignMetric
-                label="Challenge protocol"
+                label="Pass 7 identity"
                 value="Live"
-                note="Acceptance, funding, check-in, watcher proof, settlement, and title consequences share one lifecycle."
+                note="mgz 1.8.51 · schema 2026-07-24.1 · deterministic evidence pass 7."
               />
 
               <CampaignMetric
-                label="DESYNC truth"
-                value="Append-only"
-                note="Human-confirmed incidents quarantine winner, payout, belt, and artifact consequences until disposition."
-                alert
+                label="Automatic recovery"
+                value="1 min"
+                note="Final recordings enter a candidate-only worker with no public or financial authority."
               />
 
               <CampaignMetric
-                label="Public Match Rooms"
-                value="Live"
-                note="Every Challenge owns a public Chronicle. Duelists and the Commissioner write; spectators read."
+                label="Human Review Desk"
+                value="Preserved"
+                note="Reviewers retain adjudication, DESYNC, correction, and supersession authority."
+              />
+
+              <CampaignMetric
+                label="Live winner market"
+                value="Bet live"
+                note="Open or live winner markets drive the primary CTA; DESYNC markets remain separate."
               />
             </div>
 
@@ -324,13 +325,13 @@ export default async function WorkshopPage() {
 
             <div className="mt-6 space-y-4">
               {[
-                ["Parser Observatory", "Public"],
-                ["Screenshot Evidence Lab", "Candidate-only"],
-                ["Human DESYNC incidents", "Append-only"],
-                ["Challenge custody & settlement", "Live"],
-                ["Public Match Chronicle", "Live"],
-                ["Independent DESYNC market", "YES / NO"],
-                ["Speed Observatory", "Real navigation"],
+                ["Pass 7 candidate recovery", "Active"],
+                ["Exact uneven teams", "Private only"],
+                ["Metadata fragments", "Fail-closed"],
+                ["Human Review Desk", "Preserved"],
+                ["Winner-market live CTA", "Deployed"],
+                ["DESYNC market separation", "Protected"],
+                ["Settlement authority", "Unchanged"],
               ].map(([label, value]) => (
                 <div
                   key={label}
@@ -347,21 +348,22 @@ export default async function WorkshopPage() {
             </div>
 
             <p className="mt-6 text-xs leading-6 text-slate-500">
-              Replay parsing, human evidence, adjudication, DESYNC provenance,
-              challenge state, settlement, and public conversation remain distinct
-              authority layers. No candidate-only evidence silently becomes public
-              or financial truth.
+              The machine now arrives at the Review Desk with stronger structured
+              evidence. It does not remove the reviewer. Candidate evidence, human
+              adjudication, DESYNC provenance, public projection, betting, and
+              settlement remain distinct authority layers.
             </p>
           </aside>
         </div>
 
         <div className="relative mt-7 rounded-2xl border border-white/8 bg-black/20 px-5 py-4 text-xs leading-6 text-slate-500">
           <span className="font-semibold text-slate-300">Truth boundary:</span>{" "}
-          replay candidates and screenshot evidence remain candidate-only unless
-          explicitly promoted by the appropriate authority. Human adjudications and
-          DESYNC provenance are append-only. Settlement and title rails consume
-          authenticated effective truth. Public Match Room messages belong only to
-          their exact Challenge and never import or expose private DM history.
+          Pass 7 observations remain candidate-only unless an explicit,
+          append-only promotion grants a narrower authority. The human Review Desk
+          remains available even as machine evidence improves. Winner markets may
+          become visible during live play, but no live CTA grants result, payout, or
+          settlement authority. DESYNC truth, adjudication, corrections, and
+          supersession remain independently preserved.
         </div>
       </section>
 

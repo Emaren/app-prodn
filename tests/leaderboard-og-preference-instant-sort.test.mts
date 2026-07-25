@@ -131,16 +131,16 @@ test(
 );
 
 test(
-  "OG board preserves parsed-game archive presentation",
+  "OG route preserves the original parsed-game presentation",
   () => {
     assert.match(
       ogBoard,
-      /AoE2WAR battle archive/,
+      /Game Stats/,
     );
 
     assert.match(
       ogBoard,
-      /The first board\. Every battle remembered\./,
+      /No game stats available\./,
     );
 
     assert.match(
@@ -153,9 +153,14 @@ test(
       /latest=\{index === 0\}/,
     );
 
-    assert.match(
+    assert.doesNotMatch(
       ogBoard,
-      /Final HD replays will appear here newest first/,
+      /AoE2WAR battle archive/,
+    );
+
+    assert.doesNotMatch(
+      ogBoard,
+      /The first board\. Every battle remembered\./,
     );
   },
 );

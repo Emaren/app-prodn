@@ -34,6 +34,9 @@ import { displayName } from "@/components/lobby/utils";
 import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { battleLoopForSeed } from "@/lib/battleLoopClips";
+import {
+  isBettableLiveWinnerMarket,
+} from "@/lib/liveBetMarketPolicy";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { useUserAuth } from "@/context/UserAuthContext";
 import type { LiveGamesSnapshot } from "@/lib/liveGames";
@@ -223,11 +226,19 @@ function sessionTitle(session: LiveSession) {
   return session.originalFilename || "HD battle record";
 }
 
+// AOE2WAR_LIVE_WINNER_MARKET_PROJECTION
 function liveMarketHref(session: LiveSession) {
-  const marketId = session.reviewMarket?.id;
+  const market =
+    session.reviewMarket;
+
+  const marketId =
+    market?.id;
+
   if (
     session.state === "completed" ||
-    !resolvedReplayTeamTitle(session) ||
+    !isBettableLiveWinnerMarket(
+      market
+    ) ||
     marketId === null ||
     marketId === undefined
   ) {
@@ -256,8 +267,9 @@ function liveSessionPrimaryActionLabel(session: LiveSession) {
   return session.state === "completed" ? "Open final stats" : "Watch live stats";
 }
 
+// AOE2WAR_SINGLE_LIVE_BET_CTA_20260724
 function liveSessionStatusLabel(session: LiveSession) {
-  if (hasLiveBetMarket(session)) return "Bet live";
+  if (hasLiveBetMarket(session)) return "Betting open";
   if (session.disposition === "saved_rehost") return "Saved / rehosted";
   return session.state === "completed" ? "Final stored" : "Live parse";
 }
@@ -1025,7 +1037,7 @@ function ClassicBoard({
     setArchiveLoading(true);
 
     try {
-      const response = await fetch(`/api/game_stats?limit=12&offset=${archiveOffset}`, {
+      const response = await fetch(`/api/game_stats?archive=1&limit=12&offset=${archiveOffset}`, {
         cache: "no-store",
       });
 
@@ -2021,7 +2033,7 @@ function PremiumClassicLiveSessionCard({
         {canReviewResult ? (
           <Link
             href={replayReviewHref(session)}
-            className="absolute right-4 top-4 z-30 rounded-full bg-amber-200 px-3 py-2 text-[11px] font-bold text-amber-950 shadow-lg transition hover:bg-amber-100"
+            className="absolute right-4 top-4 z-30 inline-flex min-h-9 items-center justify-center overflow-hidden rounded-full border border-amber-200/35 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.25),transparent_58%),linear-gradient(135deg,rgba(69,26,3,0.98),rgba(120,53,15,0.90)_52%,rgba(15,23,42,0.98))] px-4 py-2 text-[11px] font-bold text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_28px_rgba(120,53,15,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-100/60 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_16px_34px_rgba(180,83,9,0.34)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60"
           >
             Review Result
           </Link>
@@ -2330,14 +2342,14 @@ function ClassicLiveSessionCard({
         {isCompleted && canReviewResult ? (
           <Link
             href={replayReviewHref(session)}
-            className="rounded-full bg-amber-200 px-4 py-2 text-sm font-semibold text-amber-950 transition hover:bg-amber-100"
+            className="relative inline-flex min-h-10 items-center justify-center overflow-hidden rounded-full border border-amber-200/35 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.26),transparent_58%),linear-gradient(135deg,rgba(69,26,3,0.98),rgba(120,53,15,0.88)_52%,rgba(15,23,42,0.98))] px-5 py-2 text-sm font-bold tracking-[-0.01em] text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_28px_rgba(120,53,15,0.28)] transition-all duration-200 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-amber-100/80 before:to-transparent hover:-translate-y-0.5 hover:border-amber-100/60 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_16px_36px_rgba(180,83,9,0.34)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60"
           >
             Review Result
           </Link>
         ) : null}
         <Link
           href={watchHref}
-          className="rounded-full bg-sky-300 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-200"
+          className="relative inline-flex min-h-10 items-center justify-center overflow-hidden rounded-full border border-sky-200/30 bg-[radial-gradient(circle_at_50%_0%,rgba(125,211,252,0.24),transparent_58%),linear-gradient(135deg,rgba(3,18,36,0.98),rgba(8,47,73,0.94)_48%,rgba(15,23,42,0.98))] px-5 py-2 text-sm font-bold tracking-[-0.01em] text-sky-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_12px_28px_rgba(2,132,199,0.22)] transition-all duration-200 before:pointer-events-none before:absolute before:inset-x-4 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-sky-100/75 before:to-transparent hover:-translate-y-0.5 hover:border-sky-100/55 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.20),0_16px_36px_rgba(14,165,233,0.30)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200/55"
         >
           Watch Theatre
         </Link>
@@ -2353,14 +2365,6 @@ function ClassicLiveSessionCard({
         >
           Open Lobby
         </Link>
-        {liveMarketHref(session) ? (
-          <Link
-            href={liveMarketHref(session) as string}
-            className="rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm text-amber-100 transition hover:bg-amber-400/15"
-          >
-            Bet live
-          </Link>
-        ) : null}
       </div>
     </div>
   );
@@ -2948,11 +2952,9 @@ function LiveSessionCard({
               {/* COMPLETED_DUAL_WATCHER_PROOF */}
               <DualWatcherProofStack uploaders={(session as { uploaders?: DualWatcherProofUploader[] | null }).uploaders} />
 
-              {hasLiveBetMarket(session)
-                  ? "Bet live"
-                  : isCompleted
-                    ? liveSessionStatusLabel(session)
-                    : "Watcher live"}
+              {isCompleted || hasLiveBetMarket(session)
+                ? liveSessionStatusLabel(session)
+                : "Watcher live"}
             </span>
           </div>
 
@@ -3010,7 +3012,7 @@ function LiveSessionCard({
         {isCompleted && canReviewResult ? (
           <Link
             href={replayReviewHref(session)}
-            className="inline-flex min-h-9 flex-1 items-center justify-center rounded-full bg-amber-200 px-4 py-2 text-center text-xs font-bold text-amber-950 transition hover:bg-amber-100"
+            className="relative inline-flex min-h-9 flex-1 items-center justify-center overflow-hidden rounded-full border border-amber-200/35 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.24),transparent_58%),linear-gradient(135deg,rgba(69,26,3,0.98),rgba(120,53,15,0.88)_52%,rgba(15,23,42,0.98))] px-4 py-2 text-center text-xs font-bold text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_10px_24px_rgba(120,53,15,0.24)] transition-all duration-200 hover:-translate-y-0.5 hover:border-amber-100/60 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.20),0_14px_30px_rgba(180,83,9,0.30)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/60"
           >
             Review Result
           </Link>
@@ -3032,16 +3034,6 @@ function LiveSessionCard({
           >
             Watch video
           </Link>
-        ) : null}
-        {!isBasic && !isExtreme ? (
-          liveMarketHref(session) ? (
-            <Link
-              href={liveMarketHref(session) as string}
-              className="inline-flex min-h-9 items-center justify-center rounded-full border border-amber-200/18 bg-amber-300/8 px-4 py-2 text-center text-xs font-semibold text-amber-100 transition hover:bg-amber-300/14"
-            >
-              Bet live
-            </Link>
-          ) : null
         ) : null}
       </div>
     </article>

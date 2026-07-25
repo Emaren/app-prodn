@@ -755,6 +755,314 @@ function buildBestGames(games: PlayerProfileGameRow[], currentPlayer: PublicPlay
   return best;
 }
 
+
+function sameProfilePlayerNameMultiset(
+  left: string[],
+  right: string[]
+) {
+  const normalize =
+    (values: string[]) =>
+      values
+        .map(
+          (value) =>
+            value
+              .trim()
+              .toLowerCase()
+        )
+        .filter(Boolean)
+        .sort();
+
+  const normalizedLeft =
+    normalize(left);
+
+  const normalizedRight =
+    normalize(right);
+
+  return (
+    normalizedLeft.length ===
+      normalizedRight.length &&
+    normalizedLeft.every(
+      (value, index) =>
+        value ===
+        normalizedRight[index]
+    )
+  );
+}
+
+function playerProfileRosterNames(
+  players: Array<
+    Record<string, unknown>
+  >
+) {
+  return players
+    .map(
+      (player) =>
+        normalizePublicReplayText(
+          displayPlayerName(
+            player
+          )
+        )
+    )
+    .filter(
+      (
+        name
+      ): name is string =>
+        Boolean(name)
+    );
+}
+
+function playerProfilePlayersLabel(
+  game: PlayerProfileGameRow,
+  players: Array<
+    Record<string, unknown>
+  >
+) {
+  const fallbackNames =
+    playerProfileRosterNames(
+      players
+    );
+
+  const fallback = () => {
+    if (
+      fallbackNames.length >=
+      2
+    ) {
+      return fallbackNames.join(
+        " vs "
+      );
+    }
+
+    if (
+      fallbackNames.length ===
+      1
+    ) {
+      return fallbackNames[0];
+    }
+
+    return "Replay roster preserved";
+  };
+
+  const keyEvents =
+    readProfileKeyEvents(
+      game.key_events
+    );
+
+  const teamResolution =
+    readProfileKeyEvents(
+      keyEvents.team_resolution
+    );
+
+  const rawTeams =
+    Array.isArray(
+      teamResolution.teams
+    )
+      ? teamResolution.teams
+      : [];
+
+  const resolvedTeams =
+    rawTeams
+      .map(
+        (value, index) => {
+          const team =
+            readProfileKeyEvents(
+              value
+            );
+
+          const names =
+            Array.isArray(
+              team.players
+            )
+              ? team.players
+                  .map(
+                    (name) =>
+                      normalizePublicReplayText(
+                        name
+                      )
+                  )
+                  .filter(
+                    (
+                      name
+                    ): name is string =>
+                      Boolean(name)
+                  )
+              : [];
+
+          return {
+            index,
+            teamId:
+              team.team_id,
+            names,
+          };
+        }
+      )
+      .filter(
+        (team) =>
+          team.names.length >
+          0
+      );
+
+  /*
+   * Trust the stored parser team contract only when it contains
+   * exactly two complete sides covering the displayed roster.
+   */
+  if (
+    resolvedTeams.length ===
+    2
+  ) {
+    const resolvedNames =
+      resolvedTeams.flatMap(
+        (team) =>
+          team.names
+      );
+
+    if (
+      sameProfilePlayerNameMultiset(
+        resolvedNames,
+        fallbackNames
+      )
+    ) {
+      return resolvedTeams
+        .map(
+          (team) =>
+            team.names.join(
+              " / "
+            )
+        )
+        .join(
+          " vs "
+        );
+    }
+  }
+
+  /*
+   * Older rows may lack key_events.team_resolution while every
+   * player still carries an explicit team_id.
+   */
+  const explicitGroups =
+    new Map<
+      string,
+      string[]
+    >();
+
+  let completeTeamIds =
+    fallbackNames.length >
+    0;
+
+  for (
+    const player
+    of players
+  ) {
+    const name =
+      normalizePublicReplayText(
+        displayPlayerName(
+          player
+        )
+      );
+
+    const rawTeamId =
+      player.team_id ??
+      player.teamId;
+
+    if (
+      !name ||
+      rawTeamId === null ||
+      rawTeamId === undefined ||
+      String(rawTeamId)
+        .trim() === ""
+    ) {
+      completeTeamIds =
+        false;
+
+      break;
+    }
+
+    const teamId =
+      String(rawTeamId);
+
+    const names =
+      explicitGroups.get(
+        teamId
+      ) ??
+      [];
+
+    names.push(
+      name
+    );
+
+    explicitGroups.set(
+      teamId,
+      names
+    );
+  }
+
+  if (
+    completeTeamIds &&
+    explicitGroups.size ===
+      2
+  ) {
+    const groupedTeams =
+      [...explicitGroups.entries()]
+        .sort(
+          (
+            [leftId],
+            [rightId]
+          ) => {
+            const leftNumber =
+              Number(leftId);
+
+            const rightNumber =
+              Number(rightId);
+
+            if (
+              Number.isFinite(
+                leftNumber
+              ) &&
+              Number.isFinite(
+                rightNumber
+              )
+            ) {
+              return (
+                leftNumber -
+                rightNumber
+              );
+            }
+
+            return leftId
+              .localeCompare(
+                rightId
+              );
+          }
+        )
+        .map(
+          ([, names]) =>
+            names
+        );
+
+    const groupedNames =
+      groupedTeams.flat();
+
+    if (
+      sameProfilePlayerNameMultiset(
+        groupedNames,
+        fallbackNames
+      )
+    ) {
+      return groupedTeams
+        .map(
+          (names) =>
+            names.join(
+              " / "
+            )
+        )
+        .join(
+          " vs "
+        );
+    }
+  }
+
+  return fallback();
+}
+
 function toMatchItem(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef): PlayerProfileMatchItem {
   game = applyReplayAdjudicationToGameStats(game);
   const players = parsePlayers(game.players);
@@ -766,14 +1074,11 @@ function toMatchItem(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef)
     id: game.id,
     href: `/game-stats/${game.id}`,
     mapName: publicReplayMapLabel(game.map),
-    playersLabel: (() => {
-      const names = players
-        .map((entry) => normalizePublicReplayText(entry.name))
-        .filter((name): name is string => Boolean(name));
-      if (names.length >= 2) return names.join(" vs ");
-      if (names.length === 1) return names[0];
-      return "Replay roster preserved";
-    })(),
+    playersLabel:
+      playerProfilePlayersLabel(
+        game,
+        players
+      ),
     winnerLabel: playerProfileWinnerLabel(game),
     outcomeLabel: playerProfileOutcomeLabel(game),
     parseLabel:
@@ -842,6 +1147,50 @@ function playerProfileReliableWinner(game: PlayerProfileGameRow) {
   const manualWinner = trustedManualProfileWinner(game, storedWinner);
   if (manualWinner) return manualWinner;
 
+  const winnerProof =
+    String(
+      game.winnerProof ??
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  const parseReason =
+    String(
+      game.parse_reason ??
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  const parseSource =
+    String(
+      game.parse_source ??
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  /*
+   * The row reaches this function only after
+   * applyReplayAdjudicationToGameStats().
+   *
+   * Trust the projected winner for presentation when all three
+   * durable adjudication markers agree. This does not grant any
+   * betting or settlement authority.
+   */
+  if (
+    winnerProof ===
+      "replay_result_adjudication" &&
+    parseReason ===
+      "manual_result_adjudication" &&
+    parseSource ===
+      "replay_result_review" &&
+    storedWinner
+  ) {
+    return storedWinner;
+  }
+
   if (game.winnerProof === "historical_inferred_fallback" && storedWinner) {
     return storedWinner;
   }
@@ -853,6 +1202,10 @@ function playerProfileReliableWinner(game: PlayerProfileGameRow) {
     parseSource: game.parse_source,
     keyEvents: game.key_events,
     eventTypes: game.event_types,
+    isFinal:
+      game.is_final === true,
+    disconnectDetected:
+      game.disconnect_detected === true,
   });
 }
 
@@ -871,7 +1224,19 @@ function playerProfileWinnerLabel(game: PlayerProfileGameRow) {
 
 function playerProfileOutcomeLabel(game: PlayerProfileGameRow) {
   if (!playerProfileReliableWinner(game)) return null;
-  if (game.winnerProof === "historical_inferred_fallback" && playerProfileReliableWinner(game)) return null;
+  if (
+    (
+      game.winnerProof ===
+        "historical_inferred_fallback" ||
+      game.winnerProof ===
+        "replay_result_adjudication"
+    ) &&
+    playerProfileReliableWinner(
+      game
+    )
+  ) {
+    return null;
+  }
   return outcomeBadgeLabel(game.parse_reason, game.winner);
 }
 

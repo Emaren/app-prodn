@@ -305,10 +305,30 @@ type LockWorkflow = {
 type FounderComposerState = {
   marketId: number;
   marketTitle: string;
+  participantCount: number;
   bonusType: FounderBonusType;
   amountValue: string;
   noteValue: string;
 };
+
+function defaultFounderParticipantAmount(
+  participantCount: number
+) {
+  const count =
+    Math.max(
+      2,
+      participantCount
+    );
+
+  return String(
+    Math.max(
+      count,
+      Math.floor(
+        200 / count
+      ) * count
+    )
+  );
+}
 
 type KeplrKey = {
   bech32Address?: string;
@@ -456,6 +476,38 @@ function fromUWoloAmount(raw?: string | null) {
 function resolveStakeMax(balanceRaw?: string | null) {
   const walletCap = fromUWoloAmount(balanceRaw);
   return walletCap > 0 ? Math.min(walletCap, 50_000) : 50_000;
+}
+
+function isBettingSettlementRailPaused(
+  snapshot: BetBoardSnapshot | null | undefined
+) {
+  const wolo = snapshot?.wolo;
+
+  const onchainBetEscrowRequired =
+    wolo?.onchainEscrowRequired ??
+    false;
+
+  const settlementExecutionMode =
+    wolo?.settlementExecutionMode ||
+    "unconfigured";
+
+  const groupedRunCapability =
+    wolo?.groupedRunCapability ||
+    "not_configured";
+
+  return (
+    onchainBetEscrowRequired &&
+    (
+      settlementExecutionMode ===
+        "unconfigured" ||
+      (
+        settlementExecutionMode ===
+          "settlement_service" &&
+        groupedRunCapability ===
+          "unknown"
+      )
+    )
+  );
 }
 
 function validateStakeAmount(stake: number, maxStake: number) {
@@ -1335,9 +1387,9 @@ export default function BetsPage() {
   const settlementSurfaceWarnings = board?.wolo.settlementSurfaceWarnings || [];
   const settlementSurfaceDetail = board?.wolo.settlementSurfaceDetail ?? null;
   const bettingPaused =
-    onchainBetEscrowRequired &&
-    (settlementExecutionMode === "unconfigured" ||
-      (settlementExecutionMode === "settlement_service" && groupedRunCapability === "unknown"));
+    isBettingSettlementRailPaused(
+      board
+    );
   const publicSettlementNotice = buildPublicRailNotice(
     settlementSurfaceDetail,
     settlementSurfaceWarnings
@@ -1345,8 +1397,11 @@ export default function BetsPage() {
   const publicEscrowConfig = publicEscrowConfigMessage(runtimeBetEscrowConfigError);
   const unresolvedStakeIntents = board?.recovery.unresolvedStakeIntents || [];
   const maxStakeWolo = useMemo(
-    () => (bettingPaused ? 0 : resolveStakeMax(rawWalletBalance)),
-    [bettingPaused, rawWalletBalance]
+    () =>
+      resolveStakeMax(
+        rawWalletBalance
+      ),
+    [rawWalletBalance]
   );
 
   const refreshBoard = useCallback(async (nextPayload?: BetBoardSnapshot) => {
@@ -1362,13 +1417,35 @@ export default function BetsPage() {
     setBoard(payload);
   }, [loadBoard]);
 
-  function openFounderComposer(market: BetBoardMarket, bonusType: FounderBonusType) {
+  function openFounderComposer(
+    market: BetBoardMarket,
+    bonusType: FounderBonusType
+  ) {
+    const roster =
+      buildExtremeMarketRoster(
+        market
+      );
+
+    const participantCount =
+      Math.max(
+        2,
+        roster.players.length
+      );
+
     setFounderBonusError(null);
+
     setFounderComposer({
       marketId: market.id,
       marketTitle: market.title,
+      participantCount,
       bonusType,
-      amountValue: bonusType === "participants" ? "200" : "300",
+      amountValue:
+        bonusType ===
+        "participants"
+          ? defaultFounderParticipantAmount(
+              participantCount
+            )
+          : "300",
       noteValue: "",
     });
   }
@@ -1820,6 +1897,52 @@ export default function BetsPage() {
 
     if (!selection || selection.marketId !== market.id) return;
     if (!requireSignIn()) return;
+
+    /*
+     * Settlement capability is operational readiness,
+     * not a stake-balance limit.
+     *
+     * Never turn a transient "unknown" capability into
+     * "Max 0 WOLO".
+     *
+     * If the board previously observed an uncertain rail,
+     * refresh the authoritative board immediately before
+     * beginning any wallet or escrow action.
+     */
+    if (bettingPaused) {
+      try {
+        const freshBoard =
+          await loadBoard(true);
+
+        if (!freshBoard) {
+          toast.error(
+            "Betting rail is refreshing. No WOLO moved. Try again in a moment."
+          );
+          return;
+        }
+
+        setBoard(
+          freshBoard
+        );
+
+        if (
+          isBettingSettlementRailPaused(
+            freshBoard
+          )
+        ) {
+          toast.error(
+            "Betting settlement is temporarily unavailable. No WOLO moved."
+          );
+          return;
+        }
+      } catch {
+        toast.error(
+          "Betting rail could not be verified. No WOLO moved. Try again in a moment."
+        );
+        return;
+      }
+    }
+
     const stakeValidation = validateStakeAmount(selection.stake, maxStakeWolo);
     if (stakeValidation) {
       toast.error(stakeValidation);
@@ -2648,6 +2771,7 @@ export default function BetsPage() {
       <FounderBonusModal
         open={Boolean(founderComposer)}
         marketTitle={founderComposer?.marketTitle || "Market"}
+        participantCount={founderComposer?.participantCount || 2}
         bonusType={founderComposer?.bonusType || "participants"}
         amountValue={founderComposer?.amountValue || ""}
         noteValue={founderComposer?.noteValue || ""}
@@ -2666,7 +2790,14 @@ export default function BetsPage() {
               ? {
                   ...current,
                   bonusType: value,
-                  amountValue: value === "participants" ? "200" : current.amountValue || "300",
+                  amountValue:
+                    value ===
+                    "participants"
+                      ? defaultFounderParticipantAmount(
+                          current.participantCount
+                        )
+                      : current.amountValue ||
+                        "300",
                 }
               : current
           )

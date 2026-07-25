@@ -11,13 +11,12 @@ import {
 } from "@/components/lobby/lobbyPresentation";
 import {
   outcomeBadgeLabel,
-  parsePlayers as parseReplayPlayers,
   winnerLabel,
 } from "@/lib/gameStatsView";
 import type { LobbyMatchRow } from "@/lib/lobby";
 import { pickLobbyMatchPlayedAt } from "@/lib/lobbyMatchTime";
+import { formatReplayTeamMatchup } from "@/lib/replayTeamDisplay";
 import {
-  normalizePublicReplayText,
   publicReplayMapLabel,
 } from "@/lib/unresolvedWatcherResult";
 
@@ -792,15 +791,41 @@ function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
   const acceptedPublicFallback =
     winnerProof === "historical_inferred_fallback";
 
+  const parseReason =
+    normalizeLobbyWinnerName(
+      match.parse_reason
+    ).toLowerCase();
+
+  const acceptedAdjudicatedWinner =
+    winnerProof ===
+      "replay_result_adjudication" ||
+    parseReason ===
+      "manual_result_adjudication";
+
   if (resolvedWinner) {
-    // The public replay sanitizer has already made the product-level
-    // decision to expose this historical fallback winner. Do not run
-    // that accepted public result back through the stricter settlement
-    // validator, which intentionally rejects inference-only evidence.
-    if (acceptedPublicFallback) {
+    /*
+     * These rows have already crossed an authoritative product-level
+     * truth boundary.
+     *
+     * Do not run them back through resolveReliableReplayWinner(),
+     * whose job is to judge raw replay/parser evidence.
+     *
+     * - historical_inferred_fallback was explicitly accepted by the
+     *   public replay sanitizer.
+     * - replay_result_adjudication was explicitly accepted by the
+     *   durable result-review ledger.
+     */
+    if (
+      acceptedPublicFallback ||
+      acceptedAdjudicatedWinner
+    ) {
       return {
-        headline: resolvedWinner,
-        pill: "Replay result",
+        headline:
+          resolvedWinner,
+        pill:
+          acceptedAdjudicatedWinner
+            ? "Reviewed result"
+            : "Replay result",
       };
     }
 
@@ -839,9 +864,46 @@ const MatchCard = memo(function MatchCard({
   viewMode: LobbyViewMode;
 }) {
   const tone = getLobbyPresentationTone(themeKey, viewMode);
-  const players = parseReplayPlayers(match.players)
-    .map((player) => normalizePublicReplayText(player.name) ?? "")
-    .filter(Boolean);
+  const playersLabel =
+    formatReplayTeamMatchup(
+      match,
+      "HD battle record"
+    );
+
+  const matchupSides =
+    playersLabel.split(
+      " vs "
+    );
+
+  const leftMatchupSide =
+    matchupSides[0] ??
+    playersLabel;
+
+  const rightMatchupSide =
+    matchupSides[1] ??
+    "";
+
+  const hasTwoMatchupSides =
+    matchupSides.length === 2 &&
+    Boolean(
+      leftMatchupSide &&
+      rightMatchupSide
+    );
+
+  const leftMatchupPlayers =
+    leftMatchupSide
+      .split(" / ")
+      .filter(Boolean);
+
+  const rightMatchupPlayers =
+    rightMatchupSide
+      .split(" / ")
+      .filter(Boolean);
+
+  const isOneVOne =
+    hasTwoMatchupSides &&
+    leftMatchupPlayers.length === 1 &&
+    rightMatchupPlayers.length === 1;
 
   const playedAt = pickLobbyMatchPlayedAt(match);
   const resultDisplay = getLobbyMatchResultDisplay(match);
@@ -854,28 +916,94 @@ const MatchCard = memo(function MatchCard({
   return (
     <Link
       href={`/game-stats/${match.id}`}
-      className={`relative block rounded-2xl border px-4 py-4 transition-colors duration-150 ${tone.card} ${tone.cardHover}`}
+      className={`relative block rounded-2xl border px-4 py-4 transition-colors duration-150 ${
+        isOneVOne
+          ? ""
+          : "min-h-[112px]"
+      } ${tone.card} ${tone.cardHover}`}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="font-medium text-white">{publicReplayMapLabel(match.map)}</div>
-          <div className="mt-1 truncate text-sm text-slate-300">
-            {players.length > 0 ? players.join(" vs ") : "HD battle record"}
-          </div>
-        </div>
+      {isOneVOne ? (
+        /*
+         * Exact legacy 1v1 presentation:
+         *
+         * MAP                          WINNER
+         * Player vs Player
+         */
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="font-medium text-white">
+              {publicReplayMapLabel(
+                match.map
+              )}
+            </div>
 
-        <div className="shrink-0 text-right">
-          <div
-            className={`text-xs uppercase tracking-[0.25em] ${
-              humanConfirmedDesync
-                ? "font-black text-amber-200 drop-shadow-[0_0_12px_rgba(217,119,6,0.2)]"
-                : "text-slate-400"
-            }`}
-          >
-            {resultDisplay.headline}
+            <div className="mt-1 truncate text-sm text-slate-300">
+              {playersLabel}
+            </div>
+          </div>
+
+          <div className="shrink-0 text-right">
+            <div
+              className={`text-xs uppercase tracking-[0.25em] ${
+                humanConfirmedDesync
+                  ? "font-black text-amber-200 drop-shadow-[0_0_12px_rgba(217,119,6,0.2)]"
+                  : "text-slate-400"
+              }`}
+            >
+              {resultDisplay.headline}
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        /*
+         * Premium team presentation:
+         *
+         * MAP                          WINNER
+         *
+         * TEAM / TEAM       VS       TEAM / TEAM
+         */
+        <>
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 font-medium text-white">
+              {publicReplayMapLabel(
+                match.map
+              )}
+            </div>
+
+            <div className="max-w-[48%] shrink-0 text-right">
+              <div
+                className={`text-xs uppercase tracking-[0.25em] ${
+                  humanConfirmedDesync
+                    ? "font-black text-amber-200 drop-shadow-[0_0_12px_rgba(217,119,6,0.2)]"
+                    : "text-slate-400"
+                }`}
+              >
+                {resultDisplay.headline}
+              </div>
+            </div>
+          </div>
+
+          {hasTwoMatchupSides ? (
+            <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2 text-[11px] leading-[1.45] text-slate-300 sm:text-xs">
+              <div className="min-w-0 [overflow-wrap:anywhere]">
+                {leftMatchupSide}
+              </div>
+
+              <div className="pt-px text-[9px] font-semibold uppercase tracking-[0.22em] text-slate-500">
+                vs
+              </div>
+
+              <div className="min-w-0 text-right [overflow-wrap:anywhere]">
+                {rightMatchupSide}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-2 text-[11px] leading-[1.45] text-slate-300 [overflow-wrap:anywhere] sm:text-xs">
+              {playersLabel}
+            </div>
+          )}
+        </>
+      )}
 
       {playedAt ? (
         <div className="mt-3 text-xs text-slate-400">

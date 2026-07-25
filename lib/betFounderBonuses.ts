@@ -44,6 +44,8 @@ type FounderResolutionMarket = {
   title: string;
   leftLabel: string;
   rightLabel: string;
+  leftRosterSnapshot?: unknown;
+  rightRosterSnapshot?: unknown;
   winnerSide: string | null;
   scheduledMatch: {
     challenger: WalletLinkedFounderUser;
@@ -118,6 +120,195 @@ function uniqueFounderNames(values: Array<string | null | undefined>) {
   }
 
   return result;
+}
+
+type FounderParticipantMarket = {
+  leftLabel: string;
+  rightLabel: string;
+  leftRosterSnapshot?: unknown;
+  rightRosterSnapshot?: unknown;
+};
+
+function founderSnapshotRosterNames(
+  snapshot: unknown
+) {
+  if (!Array.isArray(snapshot)) {
+    return [];
+  }
+
+  return uniqueFounderNames(
+    snapshot.map((entry) => {
+      if (typeof entry === "string") {
+        return entry;
+      }
+
+      if (
+        entry &&
+        typeof entry === "object" &&
+        "name" in entry
+      ) {
+        const value =
+          (entry as {
+            name?: unknown;
+          }).name;
+
+        return typeof value ===
+          "string"
+          ? value
+          : null;
+      }
+
+      return null;
+    })
+  );
+}
+
+function splitFounderSideLabel(
+  label: string | null | undefined
+) {
+  return uniqueFounderNames(
+    String(label ?? "")
+      .split(
+        /\s*\/\s*|\s+\+\s+/
+      )
+  );
+}
+
+function founderSideParticipantNames(
+  market: FounderParticipantMarket,
+  side: "left" | "right"
+) {
+  const snapshot =
+    side === "left"
+      ? market.leftRosterSnapshot
+      : market.rightRosterSnapshot;
+
+  const snapshotNames =
+    founderSnapshotRosterNames(
+      snapshot
+    );
+
+  if (
+    snapshotNames.length > 0
+  ) {
+    return snapshotNames;
+  }
+
+  return splitFounderSideLabel(
+    side === "left"
+      ? market.leftLabel
+      : market.rightLabel
+  );
+}
+
+function founderParticipantNames(
+  market: FounderParticipantMarket
+) {
+  return uniqueFounderNames([
+    ...founderSideParticipantNames(
+      market,
+      "left"
+    ),
+    ...founderSideParticipantNames(
+      market,
+      "right"
+    ),
+  ]);
+}
+
+function founderParticipantCount(
+  market: FounderParticipantMarket
+) {
+  return founderParticipantNames(
+    market
+  ).length;
+}
+
+function buildFounderParticipantTargets(
+  market: FounderParticipantMarket,
+  totalAmountWolo: number
+) {
+  const leftPlayers =
+    founderSideParticipantNames(
+      market,
+      "left"
+    );
+
+  const rightPlayers =
+    founderSideParticipantNames(
+      market,
+      "right"
+    );
+
+  const participantCount =
+    leftPlayers.length +
+    rightPlayers.length;
+
+  if (
+    participantCount < 2 ||
+    totalAmountWolo %
+      participantCount !==
+      0
+  ) {
+    return [];
+  }
+
+  const amountWolo =
+    totalAmountWolo /
+    participantCount;
+
+  /*
+   * Preserve original claim-group
+   * identity for ordinary 1v1.
+   *
+   * Team games get one stable group
+   * per roster member.
+   */
+  if (
+    leftPlayers.length === 1 &&
+    rightPlayers.length === 1
+  ) {
+    return [
+      {
+        playerName:
+          leftPlayers[0],
+        amountWolo,
+        targetKey: "left",
+      },
+      {
+        playerName:
+          rightPlayers[0],
+        amountWolo,
+        targetKey: "right",
+      },
+    ];
+  }
+
+  return [
+    ...leftPlayers.map(
+      (
+        playerName,
+        index
+      ) => ({
+        playerName,
+        amountWolo,
+        targetKey:
+          `left:${index}`,
+      })
+    ),
+
+    ...rightPlayers.map(
+      (
+        playerName,
+        index
+      ) => ({
+        playerName,
+        amountWolo,
+        targetKey:
+          `right:${index}`,
+      })
+    ),
+  ];
 }
 
 function pickExactFounderUserMatch(
@@ -358,6 +549,8 @@ export async function resolveFounderClaimTargetUser(
           title: true,
           leftLabel: true,
           rightLabel: true,
+          leftRosterSnapshot: true,
+          rightRosterSnapshot: true,
           winnerSide: true,
           scheduledMatch: {
             select: {
@@ -621,6 +814,8 @@ export async function settleFounderBonuses(
           eventLabel: true,
           leftLabel: true,
           rightLabel: true,
+          leftRosterSnapshot: true,
+          rightRosterSnapshot: true,
           winnerSide: true,
           status: true,
           linkedGameStatsId: true,
@@ -721,20 +916,85 @@ export async function settleFounderBonuses(
       continue;
     }
 
+    if (
+      bonusType ===
+      "participants"
+    ) {
+      const participantCount =
+        founderParticipantCount(
+          bonus.market
+        );
+
+      if (
+        participantCount < 2
+      ) {
+        await prisma.betMarketFounderBonus.update({
+          where: {
+            id: bonus.id,
+          },
+          data: {
+            status: "failed",
+            failureReason:
+              "Founders Bonus blocked: market participant roster could not be resolved.",
+          },
+        });
+
+        continue;
+      }
+
+      if (
+        bonus.totalAmountWolo %
+          participantCount !==
+        0
+      ) {
+        await prisma.betMarketFounderBonus.update({
+          where: {
+            id: bonus.id,
+          },
+          data: {
+            status: "failed",
+            failureReason:
+              `Founders Bonus ${bonus.totalAmountWolo} WOLO cannot split evenly across ${participantCount} players.`,
+          },
+        });
+
+        continue;
+      }
+
+      const hasLegacySideClaims =
+        participantCount > 2 &&
+        bonus.claims.some(
+          (claim) =>
+            claim.claimGroupKey ===
+              `founder:${bonus.id}:left` ||
+            claim.claimGroupKey ===
+              `founder:${bonus.id}:right`
+        );
+
+      if (
+        hasLegacySideClaims
+      ) {
+        await prisma.betMarketFounderBonus.update({
+          where: {
+            id: bonus.id,
+          },
+          data: {
+            status: "failed",
+            failureReason:
+              "Legacy team Founder Bonus has side-level claims and requires operator review before any new payout.",
+          },
+        });
+
+        continue;
+      }
+    }
+
     const targets =
       bonusType === "participants"
-        ? [
-            {
-              playerName: bonus.market.leftLabel,
-              amountWolo: Math.floor(bonus.totalAmountWolo / 2),
-              targetKey: "left",
-            },
-            {
-              playerName: bonus.market.rightLabel,
-              amountWolo: Math.ceil(bonus.totalAmountWolo / 2),
-              targetKey: "right",
-            },
-          ]
+        ? buildFounderParticipantTargets(
+            bonus.market,
+            bonus.totalAmountWolo
+          )
         : [
             {
               playerName:
@@ -891,21 +1151,51 @@ export async function createFounderBonus(
     throw new FounderBonusError(400, "Founder bonus amount must be a whole number of WOLO.");
   }
 
-  if (bonusType === "participants" && amountWolo % 2 !== 0) {
-    throw new FounderBonusError(400, "Founders Bonus must be an even WOLO amount so it can split evenly.");
-  }
-
   const market = await prisma.betMarket.findUnique({
     where: { id: input.marketId },
     select: {
       id: true,
       title: true,
       status: true,
+      leftLabel: true,
+      rightLabel: true,
+      leftRosterSnapshot: true,
+      rightRosterSnapshot: true,
     },
   });
 
   if (!market) {
     throw new FounderBonusError(404, "Market not found.");
+  }
+
+  if (
+    bonusType ===
+    "participants"
+  ) {
+    const participantCount =
+      founderParticipantCount(
+        market
+      );
+
+    if (
+      participantCount < 2
+    ) {
+      throw new FounderBonusError(
+        400,
+        "Founders Bonus requires a resolved player roster."
+      );
+    }
+
+    if (
+      amountWolo %
+        participantCount !==
+      0
+    ) {
+      throw new FounderBonusError(
+        400,
+        `Founders Bonus must divide evenly across all ${participantCount} players.`
+      );
+    }
   }
 
   const created = await prisma.betMarketFounderBonus.create({

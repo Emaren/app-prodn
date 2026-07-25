@@ -4,6 +4,9 @@ import { type PrismaClient } from "@/lib/generated/prisma";
 import { type LobbyMatchRow, type LobbyTournamentMatch } from "@/lib/lobby";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import {
+  isPublicBattleArchiveRow,
+} from "@/lib/publicBattleArchiveEligibility";
+import {
   type LiveGameSession,
   loadLiveSessionSnapshot,
   normalizeSessionKey,
@@ -17,7 +20,10 @@ import {
   normalizeReplayPlayers,
   resolveReplayTeams,
 } from "@/lib/teamResolution";
-import { loadReplayReviewMarketSummaryMap } from "@/lib/replayReviewQueue";
+import {
+  loadLiveBetMarketSummaryMap,
+  loadReplayReviewMarketSummaryMap,
+} from "@/lib/replayReviewQueue";
 import { toWatchStreamPayload, type WatchStreamPayload } from "@/lib/watchStreams";
 import { EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION } from "@/lib/replayAdjudications";
 
@@ -184,7 +190,12 @@ async function loadRecentMatches(
         { createdAt: "desc" },
         { id: "desc" },
       ],
-      take: 160,
+      /*
+       * The complete visible archive is needed so the filed total,
+       * initial cards and client pagination share one coordinate space.
+       * Current corpus size is safely below this bounded ceiling.
+       */
+      take: 5000,
       select: {
         id: true,
         replayHash: true,
@@ -204,16 +215,20 @@ async function loadRecentMatches(
       },
     });
 
-  const cleaned = cleanPublicGameRows(
-    rows,
-    {
-      includeReview: true,
-      includeLive: false,
-    }
-  ).slice(
-    0,
-    LIVE_GAMES_RECENT_MATCH_LIMIT
-  );
+  const cleaned =
+    cleanPublicGameRows(
+      rows,
+      {
+        includeReview:
+          true,
+
+        includeLive:
+          false,
+      }
+    )
+      .filter(
+        isPublicBattleArchiveRow
+      );
 
   return cleaned.map((row) => ({
     id: row.id,
@@ -391,17 +406,26 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
     tournament,
     recentMatches,
     sessionSnapshot,
-    archiveTotal,
   ] = await Promise.all([
-    getFeaturedTournament(prisma),
-    loadRecentMatches(prisma),
-    loadLiveSessionSnapshot(prisma),
-    prisma.gameStats.count({
-      where: {
-        is_final: true,
-      },
-    }),
+    getFeaturedTournament(
+      prisma
+    ),
+
+    loadRecentMatches(
+      prisma
+    ),
+
+    loadLiveSessionSnapshot(
+      prisma
+    ),
   ]);
+
+  /*
+   * recentMatches is already public-cleaned and archive-filtered.
+   * Its length is therefore the exact number represented by "filed".
+   */
+  const archiveTotal =
+    recentMatches.length;
 
   const activeSessions = dedupeActiveLiveIterations(sessionSnapshot.activeSessions);
   const { recentlyCompletedSessions } = sessionSnapshot;
@@ -490,7 +514,8 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
     prisma,
     displayedCompletedSessionsBase
   );
-  const activeMarketSummaries = await loadReplayReviewMarketSummaryMap(
+  // AOE2WAR_LIVE_WINNER_MARKET_PROJECTION
+  const activeMarketSummaries = await loadLiveBetMarketSummaryMap(
     prisma,
     streamedActiveSessions.map((session) => ({ id: session.id, sessionKey: session.sessionKey }))
   ).catch((error) => {

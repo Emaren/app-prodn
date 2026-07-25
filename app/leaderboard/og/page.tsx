@@ -6,12 +6,14 @@ import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { loadOgBoardPage } from "@/lib/ogBoard";
 import { getPrisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
+export const dynamic =
+  "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "OG Board · AoE2WAR",
+  title:
+    "Game Stats · AoE2WAR",
   description:
-    "AoE2WAR's chronological Age of Empires II HD battle board.",
+    "Chronological parsed Age of Empires II HD games with detected players and winners.",
 };
 
 export default async function OgLeaderboardPage() {
@@ -28,7 +30,7 @@ export default async function OgLeaderboardPage() {
       );
   } catch (error) {
     console.error(
-      "Failed to render OG leaderboard:",
+      "Failed to render parsed game stats:",
       error,
     );
   }
@@ -44,7 +46,9 @@ export default async function OgLeaderboardPage() {
       />
 
       <OgBoardPage
-        initialPage={initialPage}
+        initialPage={
+          initialPage
+        }
       />
     </>
   );

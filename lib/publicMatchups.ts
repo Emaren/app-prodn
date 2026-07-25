@@ -1,3 +1,7 @@
+import {
+  isPublicBattleArchiveRow,
+} from "@/lib/publicBattleArchiveEligibility";
+
 import { publicReplayIdentity } from "@/lib/publicReplayTruth";
 import type { PrismaClient } from "@/lib/generated/prisma";
 
@@ -2133,28 +2137,30 @@ export async function loadPublicBattleArchive(
     take?: number;
   }
 ) {
-  const take = Math.max(
-    1,
-    Math.min(
-      options?.take ?? 120,
-      500
-    )
-  );
+  const take =
+    Math.max(
+      1,
+      Math.min(
+        options?.take ??
+          120,
+        500
+      )
+    );
 
-  const [
-    candidateMatches,
-    total,
-  ] = await Promise.all([
-    loadRecentFinalMatchupRows(
-      prisma,
-      take
-    ),
-    prisma.gameStats.count({
-      where: {
-        is_final: true,
-      },
-    }),
-  ]);
+  /*
+   * Load the bounded final corpus before filtering so the archive total
+   * and newest-page entries represent the same visible battle set.
+   */
+  const candidateMatches =
+    (
+      await loadRecentFinalMatchupRows(
+        prisma,
+        5000
+      )
+    )
+      .filter(
+        isPublicBattleArchiveRow
+      );
 
   const entries =
     await buildRecentRivalryActivity(
@@ -2165,7 +2171,9 @@ export async function loadPublicBattleArchive(
 
   return {
     entries,
-    total,
+
+    total:
+      candidateMatches.length,
   };
 }
 

@@ -100,6 +100,8 @@ type ReviewableGame = {
 export type EffectiveReplayResultAdjudication = {
   id: number;
   decisionStatus: string;
+  affectsStats: boolean;
+  affectsBets: boolean;
   actorDisplayNameSnapshot: string;
   actorRole: string;
   teamAssignments: Prisma.JsonValue;
@@ -569,6 +571,18 @@ export function applyReplayResultAdjudication<T extends object>(
     winning_player_keys: [...winningPlayerKeys],
     adjudicated_by: adjudication.actorDisplayNameSnapshot,
     actor_role: adjudication.actorRole,
+
+    /*
+     * Preserve the authority contract inside the projected evidence.
+     *
+     * Public statistics truth may trust only an accepted verdict that
+     * explicitly affects statistics. Betting authority remains explicit
+     * and independently false for statistics-only adjudications.
+     */
+    decision_status: adjudication.decisionStatus,
+    affects_stats: adjudication.affectsStats,
+    affects_bets: adjudication.affectsBets,
+
     reason: adjudication.reason,
     source_replay_hash: adjudication.sourceReplayHash,
     source_parse_iteration: adjudication.sourceParseIteration,
@@ -590,6 +604,8 @@ export function applyReplayResultAdjudication<T extends object>(
     winnerPlayers: winningNames,
     winningPlayerKeys: [...winningPlayerKeys],
     winningTeamKey: adjudication.winningTeamKey,
+    winnerProof: "replay_result_adjudication",
+    reviewNeeded: false,
     players: projectedPlayers,
     parse_reason: "manual_result_adjudication",
     parseReason: "manual_result_adjudication",

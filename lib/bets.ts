@@ -1,3 +1,7 @@
+import {
+  applyReplayAdjudicationToGameStats,
+  EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
+} from "@/lib/replayAdjudications";
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import {
   loadScheduledMatchTilesForLiveBoard,
@@ -1108,11 +1112,37 @@ function buildSessionMarketSeed(
   const rightNames = sides.rightNames;
   const title = sides.title;
   const settledAtRaw = session.completedAt || session.updatedAt || session.createdAt;
+
+  /*
+   * "completed" is also used by the legacy completed-live compatibility
+   * surface. A watcher_live row may therefore look completed before the
+   * canonical is_final replay row exists.
+   *
+   * That distinction is harmless for presentation but critical for money.
+   * Only a completed session sourced beyond watcher_live may seed a settled
+   * winner market. The payout rail independently requires a linked is_final
+   * GameStats row before any winner money can move.
+   */
+  const hasCanonicalFinalReplay =
+    session.state === "completed" &&
+    session.parseSource !== "watcher_live";
+
   const resolvedWinnerSide =
-    session.state === "completed" ? inferWinnerSideFromSession(session) : null;
-  // Completed team games without one coherent winning team are evidence for review,
-  // never an implicitly voided or settled betting proposition.
-  if (session.state === "completed" && !resolvedWinnerSide) return null;
+    hasCanonicalFinalReplay
+      ? inferWinnerSideFromSession(session)
+      : null;
+
+  // Canonical completed team games without one coherent winning team are
+  // evidence for review, never an implicitly voided betting proposition.
+  if (hasCanonicalFinalReplay && !resolvedWinnerSide) return null;
+
+  const watcherMarketStatus: BetStatus =
+    session.state !== "completed"
+      ? "live"
+      : hasCanonicalFinalReplay
+        ? "settled"
+        : "awaiting_final_proof";
+
   const seed = {
     scheduledMatchId: null,
     linkedSessionKey: session.sessionKey || session.originalFilename || null,
@@ -1120,7 +1150,7 @@ function buildSessionMarketSeed(
     title,
     eventLabel: buildSessionEventLabel(session),
     marketType: WINNER_MARKET_TYPE,
-    status: session.state === "completed" ? "settled" : "live",
+    status: watcherMarketStatus,
     featured,
     sortOrder: index,
     source: "session",
@@ -1137,8 +1167,8 @@ function buildSessionMarketSeed(
     seedLeftWolo: 0,
     seedRightWolo: 0,
     closeAt: null,
-    settledAt: session.state === "completed" ? new Date(settledAtRaw) : null,
-    winnerSide: resolvedWinnerSide,
+    settledAt: hasCanonicalFinalReplay ? new Date(settledAtRaw) : null,
+    winnerSide: hasCanonicalFinalReplay ? resolvedWinnerSide : null,
     teamFormat: resolution.format,
     teamResolutionStatus: resolution.status,
     teamResolutionProvenance: resolution.provenance,
@@ -1497,18 +1527,61 @@ function settlementTruthPlayerName(value: unknown) {
 }
 
 async function assertSettlementWinnerTruthGate(
-  prisma: Pick<PrismaClient, "gameStats">,
+  prisma: Pick<
+    PrismaClient,
+    "gameStats" |
+      "replayResultAdjudication"
+  >,
   market: SettlementWinnerTruthMarket,
   winningSide: BetSide | null
 ) {
-  if (!market.linkedGameStatsId || !winningSide) return;
+  if (!winningSide) return;
 
-  const game = await prisma.gameStats.findUnique({
-    where: { id: market.linkedGameStatsId },
-    select: { id: true, winner: true, players: true, parse_reason: true, key_events: true },
-  });
+  /*
+   * A scheduled match has its own durable winner/desync settlement
+   * contract in assertLockedOrdinaryMarketWinnerPayoutAllowed().
+   *
+   * A watcher market does not. For watcher-backed winner markets,
+   * absence of a linked final replay is a blocker, never permission
+   * to settle from provisional live winner flags.
+   */
+  if (!market.linkedGameStatsId) {
+    if (market.scheduledMatchId) {
+      return;
+    }
 
-  if (!game) {
+    throw new Error(
+      `FINAL_REPLAY_REQUIRED: market ${market.id} winner payout blocked until a final replay row is linked`
+    );
+  }
+
+  const rawGame =
+    await prisma.gameStats.findUnique({
+      where: {
+        id:
+          market.linkedGameStatsId,
+      },
+      select: {
+        id:
+          true,
+        is_final:
+          true,
+        replayHash:
+          true,
+        winner:
+          true,
+        players:
+          true,
+        parse_reason:
+          true,
+        key_events:
+          true,
+        replayResultAdjudications:
+          EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
+      },
+    });
+
+  if (!rawGame) {
     throw new Error(
       "WINNER_TRUTH_MISMATCH: market " +
         market.id +
@@ -1518,7 +1591,51 @@ async function assertSettlementWinnerTruthGate(
     );
   }
 
-  const finalTruth = buildFinalMarketTruth(game);
+  if (!rawGame.is_final) {
+    throw new Error(
+      `FINAL_REPLAY_REQUIRED: market ${market.id} linked game_stats ${rawGame.id} is not final`
+    );
+  }
+
+  const automaticAdjudication =
+    await prisma.replayResultAdjudication.findFirst({
+      where: {
+        gameStatsId:
+          market.linkedGameStatsId,
+        decisionStatus:
+          "accepted",
+        idempotencyKey: {
+          startsWith:
+            "evidence:auto:",
+        },
+      },
+      orderBy: [
+        {
+          createdAt:
+            "desc",
+        },
+        {
+          id:
+            "desc",
+        },
+      ],
+      select: {
+        id:
+          true,
+      },
+    });
+
+  const game =
+    automaticAdjudication
+      ? applyReplayAdjudicationToGameStats(
+          rawGame
+        )
+      : rawGame;
+
+  const finalTruth =
+    buildFinalMarketTruth(
+      game
+    );
 
   const integrity = validateMarketFinalIntegrity({
     propositionHash: market.propositionHash,
@@ -1688,10 +1805,80 @@ function claimKindTargetScope(claimKind: string) {
   return null;
 }
 
+function marketSnapshotRosterNames(snapshot: unknown) {
+  if (!Array.isArray(snapshot)) {
+    return [];
+  }
+
+  const seen = new Set<string>();
+  const names: string[] = [];
+
+  for (const entry of snapshot) {
+    let rawName = "";
+
+    if (typeof entry === "string") {
+      rawName = entry;
+    } else if (entry && typeof entry === "object" && "name" in entry) {
+      const value = (entry as { name?: unknown }).name;
+      rawName = typeof value === "string" ? value : "";
+    }
+
+    const clean = normalizeName(rawName);
+    const key = clean.toLowerCase();
+
+    if (!clean || seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    names.push(clean);
+  }
+
+  return names;
+}
+
+function splitMarketRosterLabel(label: string | null | undefined) {
+  return normalizeName(label)
+    .split(/\s*\/\s*|\s+\+\s+/)
+    .map((value) => normalizeName(value))
+    .filter(Boolean)
+    .filter((value) => !/^\d+\s+more$/i.test(value));
+}
+
+function marketFounderParticipantCount(market: {
+  leftLabel: string;
+  rightLabel: string;
+  leftRosterSnapshot?: unknown;
+  rightRosterSnapshot?: unknown;
+}) {
+  const leftSnapshot =
+    marketSnapshotRosterNames(market.leftRosterSnapshot);
+
+  const rightSnapshot =
+    marketSnapshotRosterNames(market.rightRosterSnapshot);
+
+  const left =
+    leftSnapshot.length > 0
+      ? leftSnapshot
+      : splitMarketRosterLabel(market.leftLabel);
+
+  const right =
+    rightSnapshot.length > 0
+      ? rightSnapshot
+      : splitMarketRosterLabel(market.rightLabel);
+
+  return Math.max(
+    2,
+    left.length + right.length
+  );
+}
+
 function buildMarketWarTapeRows(
   market: {
     leftLabel: string;
     rightLabel: string;
+    leftRosterSnapshot?: unknown;
+    rightRosterSnapshot?: unknown;
     wagers: Array<{
       id: number;
       side: string;
@@ -1780,11 +1967,24 @@ function buildMarketWarTapeRows(
 
   const founderRows = market.founderBonuses.map((bonus) => {
     const actorName = displayMarketActorName(bonus.createdBy);
-    const evenSplit = Math.round(bonus.totalAmountWolo / 2);
+    const participantCount =
+      marketFounderParticipantCount(market);
+
+    const dividesEvenly =
+      participantCount > 0 &&
+      bonus.totalAmountWolo % participantCount === 0;
+
+    const perPlayerWolo =
+      dividesEvenly
+        ? bonus.totalAmountWolo / participantCount
+        : null;
+
     const note =
       bonus.bonusType === "winner"
         ? `${actorName} added ${bonus.totalAmountWolo} WOLO -> winner`
-        : `${actorName} added ${bonus.totalAmountWolo} WOLO -> ${evenSplit} each`;
+        : perPlayerWolo !== null
+          ? `${actorName} added ${bonus.totalAmountWolo} WOLO -> ${perPlayerWolo} each x ${participantCount} players`
+          : `${actorName} added ${bonus.totalAmountWolo} WOLO -> ${participantCount} players · legacy total not evenly divisible`;
 
     return {
       id: `founder-${bonus.id}`,
@@ -1824,6 +2024,129 @@ function buildMarketWarTapeRows(
       return rightMs - leftMs;
     })
     .slice(0, 8);
+}
+
+function mergeWarTapeRows(
+  primaryRows: BetWarTapeRow[],
+  additionalRows: BetWarTapeRow[]
+) {
+  const byId = new Map<string, BetWarTapeRow>();
+
+  for (const row of [
+    ...primaryRows,
+    ...additionalRows,
+  ]) {
+    byId.set(row.id, row);
+  }
+
+  return [...byId.values()]
+    .sort(
+      (left, right) =>
+        new Date(right.createdAt).getTime() -
+        new Date(left.createdAt).getTime()
+    )
+    .slice(0, 8);
+}
+
+function attachDesyncWarTapeToWinnerMarkets(
+  markets: BetBoardMarket[]
+): BetBoardMarket[] {
+  const desyncByWinnerSlug =
+    new Map<string, BetBoardMarket>();
+
+  const desyncBySession =
+    new Map<string, BetBoardMarket>();
+
+  for (const market of markets) {
+    if (
+      !isDesyncSideMarketType(
+        market.marketType
+      )
+    ) {
+      continue;
+    }
+
+    const winnerSlug =
+      winnerSlugFromDesyncSideMarketSlug(
+        market.slug
+      );
+
+    if (winnerSlug) {
+      desyncByWinnerSlug.set(
+        winnerSlug,
+        market
+      );
+    }
+
+    const sessionKey =
+      market.linkedSessionKey?.trim();
+
+    if (sessionKey) {
+      desyncBySession.set(
+        sessionKey,
+        market
+      );
+    }
+  }
+
+  return markets.map((market) => {
+    if (
+      isDesyncSideMarketType(
+        market.marketType
+      )
+    ) {
+      return market;
+    }
+
+    const sessionKey =
+      market.linkedSessionKey?.trim();
+
+    const sibling =
+      desyncByWinnerSlug.get(
+        market.slug
+      ) ??
+      (
+        sessionKey
+          ? desyncBySession.get(
+              sessionKey
+            )
+          : undefined
+      );
+
+    if (!sibling) {
+      return market;
+    }
+
+    const desyncWagerRows =
+      sibling.warTape
+        .filter((row) =>
+          row.id.startsWith(
+            "wager-"
+          )
+        )
+        .map((row) => ({
+          ...row,
+          label: "Desync Bet",
+          note: row.note
+            ? `${row.note} · desync market`
+            : "desync market",
+        }));
+
+    if (
+      desyncWagerRows.length === 0
+    ) {
+      return market;
+    }
+
+    return {
+      ...market,
+      warTape:
+        mergeWarTapeRows(
+          market.warTape,
+          desyncWagerRows
+        ),
+    };
+  });
 }
 
 type MarketSettlementClaimPlan = {
@@ -4238,6 +4561,235 @@ async function archiveLowConfidenceZeroPotMarkets(prisma: PrismaClient) {
   });
 }
 
+async function reconcileAutomaticScreenshotVerdictMarkets(
+  prisma: PrismaClient
+) {
+  const markets =
+    await prisma.betMarket.findMany({
+      where: {
+        linkedGameStatsId: {
+          not:
+            null,
+        },
+        marketType:
+          WINNER_MARKET_TYPE,
+        status: {
+          in: [
+            "open",
+            "closing",
+            "live",
+            "awaiting_final_proof",
+            "settled",
+          ],
+        },
+      },
+      select: {
+        id:
+          true,
+        linkedGameStatsId:
+          true,
+        status:
+          true,
+        winnerSide:
+          true,
+        leftLabel:
+          true,
+        rightLabel:
+          true,
+        propositionHash:
+          true,
+        leftRosterSnapshot:
+          true,
+        rightRosterSnapshot:
+          true,
+        settledAt:
+          true,
+        voidedAt:
+          true,
+        refundStatus:
+          true,
+        settlementExecutedAt:
+          true,
+      },
+    });
+
+  for (
+    const market of
+    markets
+  ) {
+    if (
+      !market.linkedGameStatsId ||
+      market.winnerSide ===
+        "left" ||
+      market.winnerSide ===
+        "right" ||
+      market.voidedAt ||
+      market.refundStatus ||
+      market.settlementExecutedAt
+    ) {
+      continue;
+    }
+
+    /*
+     * Only the explicit high-confidence screenshot policy
+     * authorizes this bridge. Historical/manual adjudications
+     * retain their existing operator-review financial posture.
+     */
+    const automaticAdjudication =
+      await prisma.replayResultAdjudication.findFirst({
+        where: {
+          gameStatsId:
+            market.linkedGameStatsId,
+          decisionStatus:
+            "accepted",
+          idempotencyKey: {
+            startsWith:
+              "evidence:auto:",
+          },
+        },
+        orderBy: [
+          {
+            createdAt:
+              "desc",
+          },
+          {
+            id:
+              "desc",
+          },
+        ],
+        select: {
+          id:
+            true,
+        },
+      });
+
+    if (
+      !automaticAdjudication
+    ) {
+      continue;
+    }
+
+    const rawGame =
+      await prisma.gameStats.findUnique({
+        where: {
+          id:
+            market.linkedGameStatsId,
+        },
+        select: {
+          id:
+            true,
+          replayHash:
+            true,
+          winner:
+            true,
+          players:
+            true,
+          parse_reason:
+            true,
+          key_events:
+            true,
+          timestamp:
+            true,
+          createdAt:
+            true,
+          replayResultAdjudications:
+            EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
+        },
+      });
+
+    if (!rawGame) {
+      continue;
+    }
+
+    const game =
+      applyReplayAdjudicationToGameStats(
+        rawGame
+      );
+
+    const finalTruth =
+      buildFinalMarketTruth(
+        game
+      );
+
+    /*
+     * The existing frozen-proposition integrity validator is
+     * the authority for mapping effective final replay truth
+     * onto the market's left/right sides.
+     *
+     * Do not introduce a second winner-side inference path.
+     */
+    const integrity =
+      validateMarketFinalIntegrity({
+        propositionHash:
+          market.propositionHash,
+        leftRosterSnapshot:
+          market.leftRosterSnapshot,
+        rightRosterSnapshot:
+          market.rightRosterSnapshot,
+        finalPlayers:
+          finalTruth.players,
+        finalWinner:
+          finalTruth.winner,
+        finalBettingEligible:
+          finalTruth.bettingEligible,
+      });
+
+    const winningSide =
+      integrity.winningSide;
+
+    if (
+      !integrity.ok ||
+      (
+        winningSide !==
+          "left" &&
+        winningSide !==
+          "right"
+      )
+    ) {
+      console.warn(
+        "Screenshot adjudication market integrity blocked",
+        {
+          marketId:
+            market.id,
+          gameStatsId:
+            market.linkedGameStatsId,
+          reasonCodes:
+            integrity.reasonCodes,
+        }
+      );
+
+      continue;
+    }
+
+    await prisma.betMarket.updateMany({
+      where: {
+        id:
+          market.id,
+        winnerSide:
+          null,
+        voidedAt:
+          null,
+      },
+      data: {
+        status:
+          "settled",
+        featured:
+          false,
+        closeAt:
+          null,
+        settledAt:
+          market.settledAt ??
+          rawGame.timestamp ??
+          rawGame.createdAt,
+        winnerSide:
+          winningSide,
+        resolutionReason:
+          "screenshot_evidence_adjudication",
+      },
+    });
+  }
+}
+
 async function runBetMarketEnsure(prisma: PrismaClient) {
   await archiveLowConfidenceZeroPotMarkets(prisma);
   const { seeds, visibleSessionKeys } = await buildOpenMarketSeeds(prisma);
@@ -4358,6 +4910,7 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
   });
 
   await reconcileBetMarketStatsLinks(prisma);
+  await reconcileAutomaticScreenshotVerdictMarkets(prisma);
   await reconcileDesyncSideMarkets(prisma);
   await settleResolvedMarketWagers(prisma);
   await settleMarketIntegrityCorrections(prisma);
@@ -5285,7 +5838,7 @@ export async function loadBetBoardSnapshot(
     loadWatchStreamsBySession(prisma, broadcastSessionKeys),
     loadBetBroadcastPreviewMap(),
   ]);
-  const openMarkets = openMarketsWithoutFeeds.map((market) => ({
+  const openMarketsWithFeeds = openMarketsWithoutFeeds.map((market) => ({
     ...market,
     broadcastFeeds: buildBroadcastFeedsForMatch({
       streams: market.linkedSessionKey
@@ -5299,6 +5852,12 @@ export async function loadBetBoardSnapshot(
       broadcastPreviewsByKey
     ),
   }));
+
+  const openMarkets =
+    attachDesyncWarTapeToWinnerMarkets(
+      openMarketsWithFeeds
+    );
+
   const settledResults = settledResultsRaw.map((result) => {
     const { leftName, rightName } = splitBetTitlePlayers(result.title);
 

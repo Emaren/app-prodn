@@ -11,8 +11,8 @@ import { type PublicPlayerRef, publicPlayerMatchesName } from "@/lib/publicPlaye
 import { applyReplayAdjudicationToGameStats } from "@/lib/replayAdjudications";
 import {
   normalizePublicReplayText,
-  resolveReliableReplayWinner,
 } from "@/lib/unresolvedWatcherResult";
+import { resolveReplayResultForPlayer } from "@/lib/replayPlayerResult";
 
 type PerformanceGame = {
   id?: number | string | null;
@@ -25,6 +25,10 @@ type PerformanceGame = {
   key_events?: unknown;
   parse_reason?: string | null;
   parse_source?: string | null;
+  is_final?: boolean | null;
+  isFinal?: boolean | null;
+  disconnect_detected?: boolean | null;
+  disconnectDetected?: boolean | null;
   played_on?: Date | string | null;
   timestamp?: Date | string | null;
 };
@@ -66,10 +70,6 @@ function readCivilization(player: Record<string, unknown>) {
   }
 
   return null;
-}
-
-function playerWinnerFlagIsTrue(value: unknown) {
-  return value === true || value === "true" || value === 1 || value === "1";
 }
 
 export function buildPlayerPerformanceStats(
@@ -143,23 +143,24 @@ export function buildPlayerPerformanceStats(
       ratedMatches += 1;
     }
 
-    const winner = resolveReliableReplayWinner({
-      winner: match.winner,
-      players,
-      parseReason: match.parse_reason,
-      parseSource: match.parse_source,
-      keyEvents: match.key_events,
-      eventTypes: match.event_types,
-    });
-    if (winner) {
-      if (
-        playerWinnerFlagIsTrue(currentRecord?.winner) ||
-        publicPlayerMatchesName(currentPlayer, winner)
-      ) {
-        wins += 1;
-      } else {
-        losses += 1;
-      }
+    const result =
+      resolveReplayResultForPlayer(
+        match,
+        (player) =>
+          publicPlayerMatchesName(
+            currentPlayer,
+            player.name
+          )
+      );
+
+    if (
+      result === "win"
+    ) {
+      wins += 1;
+    } else if (
+      result === "loss"
+    ) {
+      losses += 1;
     } else {
       unknowns += 1;
     }

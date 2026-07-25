@@ -1,3 +1,7 @@
+import {
+  resolveExplicitUnevenTeamStats,
+} from "./replayExplicitTeamStats.ts";
+
 export const UNRESOLVED_WATCHER_RESULT_CODES = [
   "roster_missing",
   "winner_missing",
@@ -50,6 +54,7 @@ export const REPLAY_WINNER_TRUTH_REASON_CODES = [
   "no_completion_signal",
   "conflicting_winner_flags",
   "insufficient_final_signal",
+  "coherent_final_team_winner_flags",
 ] as const;
 
 export type ReplayWinnerTruthReason =
@@ -75,6 +80,7 @@ export type ReplayWinnerTruthInput = {
   keyEvents?: unknown;
   eventTypes?: unknown;
   disconnectDetected?: boolean | null;
+  isFinal?: boolean | null;
 };
 
 type UnresolvedWatcherResultInput = {
@@ -86,6 +92,8 @@ type UnresolvedWatcherResultInput = {
   parseReason?: string | null;
   parseSource?: string | null;
   keyEvents?: unknown;
+  eventTypes?: unknown;
+  isFinal?: boolean | null;
   eventType?: string | null;
   finalityStatus?: string | null;
   unparsedFinal?: boolean | null;
@@ -280,45 +288,284 @@ function trustedStructuredTeamWinners(
   keyEvents: Record<string, unknown>,
   flaggedWinners: string[]
 ) {
-  const result = readKeyEvents(keyEvents.result_resolution);
-  const teams = readKeyEvents(keyEvents.team_resolution);
+  const result =
+    readKeyEvents(
+      keyEvents
+        .result_resolution
+    );
 
-  const winningNames = (
-    Array.isArray(result.winning_player_names)
-      ? result.winning_player_names
-      : []
-  )
-    .map(normalizePublicReplayText)
-    .filter((name): name is string => Boolean(name));
+  const teams =
+    readKeyEvents(
+      keyEvents
+        .team_resolution
+    );
 
-  const winningKeys = new Set(
-    winningNames.map((name) => name.toLowerCase())
-  );
+  const winningNames =
+    (
+      Array.isArray(
+        result
+          .winning_player_names
+      )
+        ? result
+            .winning_player_names
+        : []
+    )
+      .map(
+        normalizePublicReplayText
+      )
+      .filter(
+        (
+          name
+        ): name is string =>
+          Boolean(name)
+      );
 
-  const flaggedKeys = new Set(
-    flaggedWinners.map((name) => name.toLowerCase())
-  );
+  const normalizedWinningNames =
+    new Set(
+      winningNames.map(
+        (name) =>
+          name.toLowerCase()
+      )
+    );
+
+  const flaggedKeys =
+    new Set(
+      flaggedWinners.map(
+        (name) =>
+          name.toLowerCase()
+      )
+    );
+
+  const winningPlayerKeys =
+    (
+      Array.isArray(
+        result
+          .winning_player_keys
+      )
+        ? result
+            .winning_player_keys
+        : []
+    )
+      .map(
+        textValue
+      )
+      .filter(Boolean);
+
+  const normalizedWinningPlayerKeys =
+    new Set(
+      winningPlayerKeys.map(
+        (key) =>
+          key.toLowerCase()
+      )
+    );
+
+  const winningTeamId =
+    textValue(
+      result
+        .winning_team_id
+    )
+      .toLowerCase();
 
   const provenance =
-    textValue(result.result_provenance).toLowerCase();
+    textValue(
+      result
+        .result_provenance
+    )
+      .toLowerCase();
 
-  const allowlistedProvenance = new Set([
-    "complete_losing_team_resignation",
-    "postgame_winner_flags",
-    "scoreboard_winner_flags",
-    "postgame_single_team_winner_flags",
-    "scoreboard_single_team_winner_flags",
-  ]);
+  const allowlistedProvenance =
+    new Set([
+      "complete_losing_team_resignation",
+      "postgame_winner_flags",
+      "scoreboard_winner_flags",
+      "postgame_single_team_winner_flags",
+      "scoreboard_single_team_winner_flags",
+    ]);
+
+  const rawTeams =
+    Array.isArray(
+      teams.teams
+    )
+      ? teams.teams
+      : [];
+
+  const teamEntries =
+    rawTeams
+      .filter(
+        (
+          value
+        ): value is Record<
+          string,
+          unknown
+        > =>
+          Boolean(value) &&
+          typeof value ===
+            "object" &&
+          !Array.isArray(value)
+      )
+      .map(
+        (team) => {
+          const names =
+            (
+              Array.isArray(
+                team.players
+              )
+                ? team.players
+                : []
+            )
+              .map(
+                normalizePublicReplayText
+              )
+              .filter(
+                (
+                  name
+                ): name is string =>
+                  Boolean(name)
+              );
+
+          const playerKeys =
+            (
+              Array.isArray(
+                team.player_keys
+              )
+                ? team.player_keys
+                : []
+            )
+              .map(
+                textValue
+              )
+              .filter(Boolean);
+
+          return {
+            teamId:
+              textValue(
+                team.team_id
+              )
+                .toLowerCase(),
+
+            names,
+
+            normalizedNames:
+              new Set(
+                names.map(
+                  (name) =>
+                    name.toLowerCase()
+                )
+              ),
+
+            playerKeys,
+
+            normalizedPlayerKeys:
+              new Set(
+                playerKeys.map(
+                  (key) =>
+                    key.toLowerCase()
+                )
+              ),
+          };
+        }
+      );
+
+  const sameSet =
+    (
+      left: Set<string>,
+      right: Set<string>
+    ) =>
+      left.size ===
+        right.size &&
+      [...left].every(
+        (value) =>
+          right.has(value)
+      );
+
+  const matchingTeams =
+    teamEntries.filter(
+      (team) =>
+        (
+          normalizedWinningNames
+            .size >
+            0 &&
+          sameSet(
+            normalizedWinningNames,
+            team.normalizedNames
+          )
+        ) ||
+        (
+          normalizedWinningPlayerKeys
+            .size >
+            0 &&
+          sameSet(
+            normalizedWinningPlayerKeys,
+            team.normalizedPlayerKeys
+          )
+        ) ||
+        (
+          Boolean(
+            winningTeamId
+          ) &&
+          (
+            team.teamId ===
+              winningTeamId ||
+            team.normalizedPlayerKeys
+              .has(
+                winningTeamId
+              )
+          )
+        )
+    );
+
+  const isOneVsOne =
+    teamEntries.length ===
+      2 &&
+    teamEntries.every(
+      (team) =>
+        team.names.length ===
+          1 ||
+        team.playerKeys.length ===
+          1
+    );
 
   if (
-    !truthBoolean(result.result_trusted) ||
-    textValue(result.result_status).toLowerCase() !== "resolved" ||
-    !allowlistedProvenance.has(provenance) ||
-    textValue(teams.status).toLowerCase() !== "resolved" ||
-    textValue(teams.confidence).toLowerCase() !== "high" ||
-    winningNames.length < 2 ||
-    winningKeys.size !== winningNames.length ||
-    [...flaggedKeys].some((key) => !winningKeys.has(key))
+    !truthBoolean(
+      result
+        .result_trusted
+    ) ||
+    textValue(
+      result
+        .result_status
+    )
+      .toLowerCase() !==
+      "resolved" ||
+    !allowlistedProvenance.has(
+      provenance
+    ) ||
+    textValue(
+      teams.status
+    )
+      .toLowerCase() !==
+      "resolved" ||
+    textValue(
+      teams.confidence
+    )
+      .toLowerCase() !==
+      "high" ||
+    winningNames.length <
+      1 ||
+    normalizedWinningNames
+      .size !==
+      winningNames.length ||
+    matchingTeams.length !==
+      1 ||
+    (
+      winningNames.length ===
+        1 &&
+      !isOneVsOne
+    ) ||
+    [...flaggedKeys].some(
+      (key) =>
+        !normalizedWinningNames
+          .has(key)
+    )
   ) {
     return null;
   }
@@ -470,7 +717,359 @@ function coherentTeamFlagDisplayCandidate(
   return {
     names,
     label: names.join(" / "),
+    teamId: String(winningTeamId),
   };
+}
+
+
+
+function explicitReplayWinnerFlag(
+  value: unknown
+): boolean | null {
+  if (
+    value === true ||
+    value === "true" ||
+    value === 1 ||
+    value === "1"
+  ) {
+    return true;
+  }
+
+  if (
+    value === false ||
+    value === "false" ||
+    value === 0 ||
+    value === "0"
+  ) {
+    return false;
+  }
+
+  return null;
+}
+
+function sameNameSet(
+  left: Set<string>,
+  right: Set<string>
+) {
+  return (
+    left.size === right.size &&
+    [...left].every(
+      (value) =>
+        right.has(value)
+    )
+  );
+}
+
+function coherentFinalTeamFlagStatsCandidate(
+  input: ReplayWinnerTruthInput,
+  keyEvents: Record<string, unknown>,
+  candidate:
+    | ReturnType<
+        typeof coherentTeamFlagDisplayCandidate
+      >
+    | null
+) {
+  if (!candidate) {
+    return null;
+  }
+
+  const parseSource =
+    textValue(
+      input.parseSource
+    ).toLowerCase();
+
+  /*
+   * Callers that know database finality pass isFinal explicitly.
+   * Older/direct callers may fall back to watcher_final.
+   *
+   * An explicit isFinal=false always wins and fails closed.
+   */
+  const finalReplay =
+    input.isFinal === true ||
+    (
+      input.isFinal == null &&
+      parseSource ===
+        "watcher_final"
+    );
+
+  if (!finalReplay) {
+    return null;
+  }
+
+  const teamResolution =
+    readKeyEvents(
+      keyEvents.team_resolution
+    );
+
+  if (
+    textValue(
+      teamResolution.status
+    ).toLowerCase() !==
+      "resolved" ||
+    textValue(
+      teamResolution.confidence
+    ).toLowerCase() !==
+      "high" ||
+    textValue(
+      teamResolution.provenance
+    ).toLowerCase() !==
+      "explicit_final_team_ids"
+  ) {
+    return null;
+  }
+
+  const rawTeams =
+    Array.isArray(
+      teamResolution.teams
+    )
+      ? teamResolution.teams
+      : [];
+
+  const teams =
+    rawTeams
+      .filter(
+        (
+          value
+        ): value is Record<
+          string,
+          unknown
+        > =>
+          Boolean(value) &&
+          typeof value ===
+            "object" &&
+          !Array.isArray(value)
+      )
+      .map((team) => {
+        const names = (
+          Array.isArray(
+            team.players
+          )
+            ? team.players
+            : []
+        )
+          .map(
+            normalizePublicReplayText
+          )
+          .filter(
+            (
+              name
+            ): name is string =>
+              Boolean(name)
+          )
+          .map(
+            (name) =>
+              name.toLowerCase()
+          );
+
+        return {
+          teamId:
+            String(
+              team.team_id
+            ),
+          names,
+        };
+      });
+
+  if (
+    teams.length !== 2 ||
+    teams.some(
+      (team) =>
+        team.names.length <
+        1
+    )
+  ) {
+    return null;
+  }
+
+  const winningTeam =
+    teams.find(
+      (team) =>
+        team.teamId ===
+        candidate.teamId
+    );
+
+  const losingTeam =
+    teams.find(
+      (team) =>
+        team.teamId !==
+        candidate.teamId
+    );
+
+  if (
+    !winningTeam ||
+    !losingTeam
+  ) {
+    return null;
+  }
+
+  const completeRoster =
+    [
+      ...winningTeam.names,
+      ...losingTeam.names,
+    ];
+
+  const completeRosterSet =
+    new Set(
+      completeRoster
+    );
+
+  /*
+   * Duplicate normalized names are ambiguous without stable
+   * player keys at this resolver layer. Fail closed.
+   */
+  if (
+    completeRosterSet.size !==
+    completeRoster.length
+  ) {
+    return null;
+  }
+
+  const players =
+    Array.isArray(
+      input.players
+    )
+      ? input.players
+      : [];
+
+  if (
+    players.length !==
+    completeRoster.length
+  ) {
+    return null;
+  }
+
+  const winnerNames =
+    new Set<string>();
+
+  const loserNames =
+    new Set<string>();
+
+  const observedNames =
+    new Set<string>();
+
+  for (
+    const player
+    of players
+  ) {
+    const name =
+      normalizePublicReplayText(
+        player?.name
+      )?.toLowerCase();
+
+    const winner =
+      explicitReplayWinnerFlag(
+        player?.winner
+      );
+
+    if (
+      !name ||
+      winner === null ||
+      observedNames.has(
+        name
+      )
+    ) {
+      return null;
+    }
+
+    observedNames.add(
+      name
+    );
+
+    if (winner) {
+      winnerNames.add(
+        name
+      );
+    } else {
+      loserNames.add(
+        name
+      );
+    }
+  }
+
+  if (
+    !sameNameSet(
+      observedNames,
+      completeRosterSet
+    )
+  ) {
+    return null;
+  }
+
+  const expectedWinners =
+    new Set(
+      winningTeam.names
+    );
+
+  const expectedLosers =
+    new Set(
+      losingTeam.names
+    );
+
+  if (
+    !sameNameSet(
+      winnerNames,
+      expectedWinners
+    ) ||
+    !sameNameSet(
+      loserNames,
+      expectedLosers
+    )
+  ) {
+    return null;
+  }
+
+  const resultResolution =
+    readKeyEvents(
+      keyEvents.result_resolution
+    );
+
+  const resultEvidence =
+    readKeyEvents(
+      resultResolution.result_evidence
+    );
+
+  if (
+    !truthBoolean(
+      resultEvidence
+        .winner_flags_coherent
+    ) ||
+    String(
+      resultEvidence
+        .winner_flag_team_id
+    ) !==
+      candidate.teamId ||
+    truthBoolean(
+      resultEvidence
+        .resignation_result_conflict
+    )
+  ) {
+    return null;
+  }
+
+  /*
+   * A conflicting explicit structured winner is not eligible
+   * for this fallback.
+   */
+  const structuredWinningTeamId =
+    resultResolution
+      .winning_team_id;
+
+  if (
+    structuredWinningTeamId !==
+      null &&
+    structuredWinningTeamId !==
+      undefined &&
+    String(
+      structuredWinningTeamId
+    ).trim() !== "" &&
+    String(
+      structuredWinningTeamId
+    ) !== candidate.teamId
+  ) {
+    return null;
+  }
+
+  return candidate;
 }
 
 
@@ -488,6 +1087,31 @@ export function resolveReplayWinnerTruth(
   );
   const coherentTeamFlagCandidate =
     coherentTeamFlagDisplayCandidate(keyEvents);
+
+  const coherentFinalTeamStatsCandidate =
+    coherentFinalTeamFlagStatsCandidate(
+      input,
+      keyEvents,
+      coherentTeamFlagCandidate
+    );
+
+  const explicitUnevenTeamStatsCandidate =
+    resolveExplicitUnevenTeamStats({
+      winner:
+        input.winner,
+
+      players:
+        input.players,
+
+      keyEvents:
+        input.keyEvents,
+
+      isFinal:
+        input.isFinal,
+
+      disconnectDetected:
+        input.disconnectDetected,
+    });
   const structuredResult = readKeyEvents(keyEvents.result_resolution);
   const structuredTeamResolution = readKeyEvents(keyEvents.team_resolution);
   const structuredResultClaimsTeam =
@@ -556,6 +1180,103 @@ export function resolveReplayWinnerTruth(
         ? `Candidate ${candidateWinner} was rejected because the replay carries disconnect/desync evidence.`
         : "Replay carries disconnect/desync evidence and cannot establish a canonical winner.",
       neededEvidence: ["a clean final replay or commissioner adjudication"],
+    };
+  }
+
+  /*
+   * Unequal explicit teams are valid AoE2 games, but they are
+   * intentionally recovered for statistics only.
+   *
+   * Requirements are deliberately stronger than a scalar winner:
+   * complete true/false flags, exactly one fully resigned team,
+   * zero resignations on the opposite team, no disconnect and no
+   * conflicting structured result.
+   */
+  if (
+    explicitUnevenTeamStatsCandidate
+  ) {
+    const winnerLabel =
+      explicitUnevenTeamStatsCandidate
+        .winningPlayerNames
+        .join(" / ");
+
+    return {
+      winner:
+        winnerLabel,
+
+      candidateWinner:
+        winnerLabel,
+
+      confidence:
+        "recovered",
+
+      truthReasons: [
+        "coherent_final_team_winner_flags",
+        "recorded_resignation",
+      ],
+
+      publicLabel:
+        winnerLabel,
+
+      statsEligible:
+        true,
+
+      bettingEligible:
+        false,
+
+      diagnosticSummary:
+        `Winning side ${winnerLabel} was recovered for statistics from complete unequal-team winner flags and one complete losing-team resignation.`,
+
+      neededEvidence:
+        [],
+    };
+  }
+
+  /*
+   * A final replay with a complete explicit team roster and
+   * complete coherent true/false winner flags is sufficient
+   * for statistical W/L truth.
+   *
+   * It is deliberately NOT standalone financial settlement
+   * proof. Betting stays on its stronger frozen-roster,
+   * finality, desync, and settlement gates.
+   */
+  if (
+    coherentFinalTeamStatsCandidate &&
+    !structuredTeamWinners
+  ) {
+    const winnerLabel =
+      coherentFinalTeamStatsCandidate
+        .label;
+
+    return {
+      winner:
+        winnerLabel,
+
+      candidateWinner:
+        winnerLabel,
+
+      confidence:
+        "recovered",
+
+      truthReasons: [
+        "coherent_final_team_winner_flags",
+      ],
+
+      publicLabel:
+        winnerLabel,
+
+      statsEligible:
+        true,
+
+      bettingEligible:
+        false,
+
+      diagnosticSummary:
+        `Winning team ${winnerLabel} was recovered for statistics from a final replay whose complete explicit roster and winner flags agree.`,
+
+      neededEvidence:
+        [],
     };
   }
 
@@ -783,6 +1504,8 @@ export function classifyUnresolvedWatcherResult(
     parseReason: input.parseReason,
     parseSource: input.parseSource,
     keyEvents: input.keyEvents,
+    eventTypes: input.eventTypes,
+    isFinal: input.isFinal,
     disconnectDetected: input.disconnectDetected,
   });
 

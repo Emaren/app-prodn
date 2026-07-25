@@ -425,7 +425,7 @@ export function ModernLeaderboardPage({
               <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-amber-100 sm:text-5xl">HD Leaderboard</h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">Real HD ratings, replay-backed records, and the warriors ruling the ladder now.</p>
             </div>
-            <LeaderboardViewLink from="modern" to="og" href="/leaderboard/og">Open the OG Board</LeaderboardViewLink>
+            <LeaderboardViewLink from="modern" to="og" href="/leaderboard/og">Open Game Stats</LeaderboardViewLink>
           </div>
         </div>
 

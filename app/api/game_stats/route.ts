@@ -4,6 +4,9 @@ import { type NextRequest } from "next/server";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import {
+  isPublicBattleArchiveRow,
+} from "@/lib/publicBattleArchiveEligibility";
+import {
   hydrateEffectiveReplayResultAdjudications,
 } from "@/lib/replayAdjudications";
 import { getPrisma } from "@/lib/prisma";
@@ -27,13 +30,47 @@ export async function GET(request: NextRequest) {
   const limitRaw = searchParams.get("limit") || searchParams.get("take");
   const offsetRaw = searchParams.get("offset") || searchParams.get("skip");
 
-  const hasSlice = Boolean(limitRaw || offsetRaw);
-  const publicLimit = parsePositiveInt(limitRaw, 12, 500);
-  const offset = parseOffset(offsetRaw);
+  const archiveMode =
+    searchParams.get(
+      "archive"
+    ) ===
+    "1";
 
-  const upstreamLimit = hasSlice
-    ? Math.min(5000, offset + publicLimit + 12)
-    : null;
+  const hasSlice =
+    Boolean(
+      limitRaw ||
+      offsetRaw
+    );
+
+  const publicLimit =
+    parsePositiveInt(
+      limitRaw,
+      12,
+      archiveMode
+        ? 5000
+        : 500
+    );
+
+  const offset =
+    parseOffset(
+      offsetRaw
+    );
+
+  /*
+   * Archive offsets refer to visible public battles, not raw upstream
+   * rows. Pull the bounded archive corpus before filtering and slicing.
+   */
+  const upstreamLimit =
+    archiveMode
+      ? 5000
+      : hasSlice
+        ? Math.min(
+            5000,
+            offset +
+              publicLimit +
+              12
+          )
+        : null;
 
   const upstreamUrl = new URL(`${base}/api/game_stats`);
   if (upstreamLimit !== null) {
@@ -56,11 +93,40 @@ export async function GET(request: NextRequest) {
       )
     : data;
 
-  if (Array.isArray(publicData) && hasSlice) {
-    return Response.json(publicData.slice(offset, offset + publicLimit), {
-      status: res.status,
-    });
+  const visiblePublicData =
+    Array.isArray(
+      publicData
+    ) &&
+    archiveMode
+      ? publicData.filter(
+          isPublicBattleArchiveRow
+        )
+      : publicData;
+
+  if (
+    Array.isArray(
+      visiblePublicData
+    ) &&
+    hasSlice
+  ) {
+    return Response.json(
+      visiblePublicData.slice(
+        offset,
+        offset +
+          publicLimit
+      ),
+      {
+        status:
+          res.status,
+      }
+    );
   }
 
-  return Response.json(publicData, { status: res.status });
+  return Response.json(
+    visiblePublicData,
+    {
+      status:
+        res.status,
+    }
+  );
 }

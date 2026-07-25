@@ -6,12 +6,25 @@ import { defineConfig } from "prisma/config";
 loadEnv({ path: ".env.local", override: false });
 loadEnv();
 
+function normalizePrismaCliDatabaseUrl(
+  raw: string | undefined,
+): string | undefined {
+  if (!raw) {
+    return raw;
+  }
+
+  return raw.replace(
+    /^postgresql\+asyncpg:\/\//,
+    "postgresql://",
+  );
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: normalizePrismaCliDatabaseUrl(process.env["DATABASE_URL"]),
   },
 });

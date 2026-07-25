@@ -274,6 +274,9 @@ function buildSessionFromRow(
     parseSource: row.parse_source,
     keyEvents: row.key_events,
     eventTypes: row.event_types,
+    isFinal: state === "completed",
+    disconnectDetected:
+      row.disconnect_detected,
   });
   const winner = winnerTruth.winner;
   const hasExplicitWinnerFlags = parsedPlayers.some((player) => player.winner !== null);
@@ -296,6 +299,10 @@ function buildSessionFromRow(
     parseReason: row.parse_reason,
     parseSource: row.parse_source,
     keyEvents: row.key_events,
+    eventTypes: row.event_types,
+    isFinal: state === "completed",
+    disconnectDetected:
+      row.disconnect_detected,
     watcherCount: uploaders.length,
   });
   const disposition = classifyReplaySessionDisposition({

@@ -786,6 +786,37 @@ function ProfilePageContent() {
         newWatcherKey={newWatcherKey}
         latestWatcherKey={latestWatcherKey}
         canUseApprenticeshipAdmin={canUseApprenticeshipAdmin}
+        status={status}
+        moneyRows={moneyRows}
+        moneyLoading={moneyLoading}
+        moneyHasMore={moneyHasMore}
+        onMoneyScroll={handleMoneyScroll}
+        onLoadMoreMoney={() => void loadMoreMoneyRows()}
+        scheduledMatches={challengeSnapshot?.scheduledMatches ?? []}
+        serverNow={challengeSnapshot?.serverNow ?? null}
+        recentChallengeHistory={recentChallengeHistory}
+        challengeStats={challengeStats}
+        representedCountryDraft={representedCountryDraft}
+        setRepresentedCountryDraft={setRepresentedCountryDraft}
+        genderDivisionDraft={genderDivisionDraft}
+        setGenderDivisionDraft={setGenderDivisionDraft}
+        savingTitleIdentity={savingTitleIdentity}
+        onSaveTitleIdentity={() => void saveTitleIdentity()}
+        emailDraft={emailDraft}
+        setEmailDraft={setEmailDraft}
+        savingEmail={savingEmail}
+        onSaveEmail={() => void saveNotificationEmail()}
+        twitchDraft={twitchDraft}
+        setTwitchDraft={setTwitchDraft}
+        savingTwitch={savingTwitch}
+        onSaveTwitch={() => void saveTwitchStream()}
+        streamSessionKey={streamSessionKey}
+        streamTitle={streamTitle}
+        watcherStreamIntent={watcherStreamIntent}
+        claimStatusMessage={claimStatusMessage}
+        claimingWolo={claimingWolo}
+        onClaimPending={() => void claimPendingWolo()}
+        onLogout={() => void logout()}
       />
     );
   }
@@ -1727,17 +1758,54 @@ function ExtremeProfileView({
   newWatcherKey,
   latestWatcherKey,
   canUseApprenticeshipAdmin,
+  status,
+  moneyRows,
+  moneyLoading,
+  moneyHasMore,
+  onMoneyScroll,
+  onLoadMoreMoney,
+  scheduledMatches,
+  serverNow,
+  recentChallengeHistory,
+  challengeStats,
+  representedCountryDraft,
+  setRepresentedCountryDraft,
+  genderDivisionDraft,
+  setGenderDivisionDraft,
+  savingTitleIdentity,
+  onSaveTitleIdentity,
+  emailDraft,
+  setEmailDraft,
+  savingEmail,
+  onSaveEmail,
+  twitchDraft,
+  setTwitchDraft,
+  savingTwitch,
+  onSaveTwitch,
+  streamSessionKey,
+  streamTitle,
+  watcherStreamIntent,
+  claimStatusMessage,
+  claimingWolo,
+  onClaimPending,
+  onLogout,
 }: {
   profile: ProfileResponse | null;
   uid?: string | null;
   displayName: string;
   confirmedName: string;
   profileViewMode: ProfileViewMode;
-  setProfileViewMode: (value: ProfileViewMode) => void;
+  setProfileViewMode: (
+    value: ProfileViewMode
+  ) => void;
   avatarUploading: boolean;
   avatarSavingTarget: string | null;
-  onPreset: (target: string) => void;
-  onUpload: (file: File | null) => void;
+  onPreset: (
+    target: string
+  ) => void;
+  onUpload: (
+    file: File | null
+  ) => void;
   mintingWatcherKey: boolean;
   onPairWatcher: () => void;
   onMintKey: () => void;
@@ -1745,145 +1813,1666 @@ function ExtremeProfileView({
   newWatcherKey: string | null;
   latestWatcherKey: WatcherKeyRow | null;
   canUseApprenticeshipAdmin: boolean;
+  status: string;
+  moneyRows: WoloTransactionRow[];
+  moneyLoading: boolean;
+  moneyHasMore: boolean;
+  onMoneyScroll: (
+    event: UIEvent<HTMLDivElement>
+  ) => void;
+  onLoadMoreMoney: () => void;
+  scheduledMatches:
+    ChallengeHubSnapshot["scheduledMatches"];
+  serverNow: string | null;
+  recentChallengeHistory:
+    ChallengeHubSnapshot["historyMatches"];
+  challengeStats: Array<{
+    label: string;
+    value: number;
+  }>;
+  representedCountryDraft:
+    | RepresentedCountry
+    | "";
+  setRepresentedCountryDraft: (
+    value:
+      | RepresentedCountry
+      | ""
+  ) => void;
+  genderDivisionDraft:
+    GenderDivision;
+  setGenderDivisionDraft: (
+    value: GenderDivision
+  ) => void;
+  savingTitleIdentity: boolean;
+  onSaveTitleIdentity: () => void;
+  emailDraft: string;
+  setEmailDraft: (
+    value: string
+  ) => void;
+  savingEmail: boolean;
+  onSaveEmail: () => void;
+  twitchDraft: string;
+  setTwitchDraft: (
+    value: string
+  ) => void;
+  savingTwitch: boolean;
+  onSaveTwitch: () => void;
+  streamSessionKey: string;
+  streamTitle: string;
+  watcherStreamIntent: boolean;
+  claimStatusMessage: string;
+  claimingWolo: boolean;
+  onClaimPending: () => void;
+  onLogout: () => void;
 }) {
-  const avatarUrl = profile?.avatarUrl || "/champions/players/silhouette.webp";
-  const avatarOptions = profile?.avatarOptions ?? [];
-  const visibleOptions = avatarOptions.slice(0, 10);
-  const steamId = (profile as { steamId?: string } | null)?.steamId;
-  const verificationLevel = profile?.verificationLevel ?? 0;
-  const earningWoloPerDay = profile?.earningWoloPerDay ?? 0;
-  const proofLabel = profile?.inGameName ? "Replay proof" : "Needs replay";
-  const latestKeyLabel = newWatcherKey || latestWatcherKey?.prefix || "No key";
-  const profileTitle = earningWoloPerDay > 0 ? "Active tribute" : "Unranked tribute";
+  const avatarUrl =
+    profile?.avatarUrl ||
+    "/champions/players/silhouette.webp";
+
+  const avatarOptions =
+    profile?.avatarOptions ??
+    [];
+
+  const visibleOptions =
+    avatarOptions.slice(
+      0,
+      10
+    );
+
+  const verificationLevel =
+    profile?.verificationLevel ??
+    0;
+
+  const earningWoloPerDay =
+    profile?.earningWoloPerDay ??
+    0;
+
+  const featuredBelt =
+    profile?.belts?.[0] ??
+    null;
+
+  const profileTitle =
+    featuredBelt?.shortName ||
+    (
+      earningWoloPerDay > 0
+        ? "Active tribute"
+        : "Unranked"
+    );
+
+  const steamLabel =
+    profile?.steamPersonaName ||
+    (
+      profile?.steamId
+        ? "Linked"
+        : "Not linked"
+    );
+
+  const latestKeyLabel =
+    newWatcherKey ||
+    latestWatcherKey?.prefix ||
+    "Ready";
 
   return (
-    <div className="mx-auto w-full max-w-[96rem] space-y-5 py-6 text-white">
-      <section className="relative isolate overflow-hidden rounded-[2.35rem] border border-amber-200/15 bg-slate-950 shadow-[0_28px_120px_rgba(0,0,0,0.38)]">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_18%_8%,rgba(251,191,36,0.18),transparent_28%),radial-gradient(circle_at_82%_0%,rgba(59,130,246,0.20),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.98)_54%,rgba(0,0,0,0.96))]" />
-        <div className="absolute inset-x-0 top-0 -z-10 h-44 bg-gradient-to-b from-white/[0.055] to-transparent" />
-        <div className="absolute bottom-0 right-0 -z-10 h-72 w-72 rounded-full bg-amber-300/10 blur-3xl" />
+    <div className="mx-auto w-full max-w-[96rem] space-y-6 py-6 text-white">
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-6">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="grid h-9 w-9 place-items-center rounded-2xl border border-amber-200/20 bg-amber-300/10 text-amber-100">
-              <Crown className="h-4 w-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] font-black uppercase tracking-[0.32em] text-amber-100/60">Extreme Profile</div>
-              <div className="truncate text-sm font-semibold text-white/92">Warrior identity</div>
-            </div>
+      {/* =====================================================
+          EXTREME PROFILE HEADER
+          ===================================================== */}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-white/10 bg-slate-950/64 px-5 py-4 shadow-[0_18px_70px_rgba(0,0,0,0.24)] backdrop-blur">
+        <div>
+          <div className="text-[9px] font-black uppercase tracking-[0.42em] text-amber-100/55">
+            Extreme Profile
           </div>
 
-          <ProfileModeToggle value={profileViewMode} onChange={setProfileViewMode} />
+          <div className="mt-1 text-sm font-semibold text-white">
+            Warrior command center
+          </div>
         </div>
 
-        <div className="grid gap-0 xl:grid-cols-[minmax(0,1.08fr)_minmax(24rem,0.55fr)]">
-          <div className="grid min-w-0 gap-0 lg:grid-cols-[minmax(20rem,0.46fr)_minmax(0,0.54fr)]">
-            <ExtremeAvatarStage
-              avatarUrl={avatarUrl}
-              displayName={displayName}
-              options={visibleOptions}
-              uploading={avatarUploading}
-              savingTarget={avatarSavingTarget}
-              onPreset={onPreset}
-              onUpload={onUpload}
-            />
+        <ProfileModeToggle
+          value={profileViewMode}
+          onChange={
+            setProfileViewMode
+          }
+        />
+      </div>
 
-            <div className="flex min-w-0 flex-col justify-between border-t border-white/10 p-5 sm:p-7 lg:border-l lg:border-t-0">
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <ExtremeChip icon={BadgeCheck} label={proofLabel} tone="emerald" />
-                  <ExtremeChip icon={ShieldCheck} label={`Lv ${verificationLevel}`} tone="blue" />
-                  <ExtremeChip icon={Coins} label={`${earningWoloPerDay} / day`} tone="amber" />
+      {/* =====================================================
+          IDENTITY STAGE
+          ===================================================== */}
+
+      <section className="relative isolate overflow-hidden rounded-[2.8rem] border border-amber-100/16 bg-slate-950 shadow-[0_44px_150px_rgba(0,0,0,0.46)]">
+        <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_8%_0%,rgba(251,191,36,0.17),transparent_29%),radial-gradient(circle_at_91%_2%,rgba(37,99,235,0.16),transparent_32%),linear-gradient(135deg,#11141d_0%,#070b14_53%,#02050c_100%)]" />
+
+        <div className="absolute inset-x-20 top-0 -z-10 h-px bg-gradient-to-r from-transparent via-amber-100/65 to-transparent" />
+
+        <div className="grid min-w-0 xl:grid-cols-[minmax(20rem,0.72fr)_minmax(27rem,1.18fr)_minmax(21rem,0.72fr)]">
+
+          {/* AVATAR */}
+
+          <ExtremeAvatarStage
+            avatarUrl={
+              avatarUrl
+            }
+            displayName={
+              displayName
+            }
+            options={
+              visibleOptions
+            }
+            uploading={
+              avatarUploading
+            }
+            savingTarget={
+              avatarSavingTarget
+            }
+            onPreset={
+              onPreset
+            }
+            onUpload={
+              onUpload
+            }
+          />
+
+          {/* IDENTITY */}
+
+          <div className="flex min-w-0 flex-col border-t border-white/8 p-6 sm:p-8 xl:border-l xl:border-t-0">
+            <div className="flex flex-wrap gap-2">
+              <ExtremeChip
+                icon={
+                  BadgeCheck
+                }
+                label={
+                  profile?.inGameName
+                    ? "Replay verified"
+                    : "Needs replay"
+                }
+                tone="emerald"
+              />
+
+              <ExtremeChip
+                icon={
+                  ShieldCheck
+                }
+                label={`Lv ${verificationLevel}`}
+                tone="blue"
+              />
+
+              <ExtremeChip
+                icon={
+                  Coins
+                }
+                label={`${earningWoloPerDay} WOLO/day`}
+                tone="amber"
+              />
+            </div>
+
+            <h1 className="mt-7 break-words text-5xl font-black tracking-[-0.055em] text-white sm:text-6xl 2xl:text-7xl">
+              {displayName}
+            </h1>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-xs font-semibold text-slate-200">
+                {confirmedName}
+              </span>
+
+              <span className="rounded-full border border-white/10 bg-black/24 px-3 py-1.5 font-mono text-[11px] text-slate-400">
+                UID{" "}
+                {uid
+                  ? truncateUid(
+                      uid
+                    )
+                  : "—"}
+              </span>
+            </div>
+
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <ExtremeStat
+                icon={Trophy}
+                label="Title"
+                value={
+                  profileTitle
+                }
+              />
+
+              <ExtremeStat
+                icon={Monitor}
+                label="Steam"
+                value={
+                  steamLabel
+                }
+              />
+
+              <ExtremeStat
+                icon={
+                  ShieldCheck
+                }
+                label="Watcher"
+                value={
+                  latestWatcherKey
+                    ? "Paired"
+                    : "Ready"
+                }
+              />
+
+              <ExtremeStat
+                icon={Coins}
+                label="Pending"
+                value={`${profile?.pendingClaimAmountWolo ?? 0} WOLO`}
+              />
+            </div>
+
+            {/* WARRIOR REGISTRY */}
+
+            <div className="mt-auto pt-8">
+              <div className="border-t border-white/8 pt-6">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <div className="text-[9px] font-black uppercase tracking-[0.3em] text-amber-100/50">
+                      Warrior Registry
+                    </div>
+
+                    <div className="mt-1 text-sm text-slate-500">
+                      Country · division
+                    </div>
+                  </div>
+
+                  <Link
+                    href="/champions"
+                    className="text-xs font-semibold text-amber-100/65 transition hover:text-amber-100"
+                  >
+                    Champions →
+                  </Link>
                 </div>
 
-                <h1 className="mt-6 break-words text-5xl font-black tracking-[-0.055em] text-white sm:text-6xl xl:text-7xl">
-                  {displayName}
-                </h1>
+                <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                  <select
+                    value={
+                      representedCountryDraft
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setRepresentedCountryDraft(
+                        event.target
+                          .value as
+                          | RepresentedCountry
+                          | ""
+                      )
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white outline-none transition focus:border-amber-200/35"
+                  >
+                    <option value="">
+                      Country
+                    </option>
 
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1.5 text-xs font-semibold text-slate-200">
-                    {confirmedName}
-                  </span>
-                  <span className="rounded-full border border-white/10 bg-black/24 px-3 py-1.5 font-mono text-[11px] text-slate-300">
-                    UID {uid ? truncateUid(uid) : "—"}
-                  </span>
+                    {REPRESENTED_COUNTRIES.map(
+                      (
+                        country
+                      ) => (
+                        <option
+                          key={
+                            country
+                          }
+                          value={
+                            country
+                          }
+                        >
+                          {
+                            country
+                          }
+                        </option>
+                      )
+                    )}
+                  </select>
+
+                  <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-black/30 p-1">
+                    {GENDER_DIVISIONS.map(
+                      (
+                        division
+                      ) => (
+                        <button
+                          key={
+                            division
+                          }
+                          type="button"
+                          onClick={() =>
+                            setGenderDivisionDraft(
+                              division
+                            )
+                          }
+                          className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                            genderDivisionDraft ===
+                            division
+                              ? "bg-amber-300 text-slate-950"
+                              : "text-slate-400 hover:bg-white/[0.06] hover:text-white"
+                          }`}
+                        >
+                          {
+                            division
+                          }
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={
+                      onSaveTitleIdentity
+                    }
+                    disabled={
+                      savingTitleIdentity
+                    }
+                    className="rounded-full bg-amber-300 px-5 py-2.5 text-xs font-bold text-slate-950 transition hover:bg-amber-200 disabled:opacity-50"
+                  >
+                    {savingTitleIdentity
+                      ? "Saving..."
+                      : "Save"}
+                  </button>
                 </div>
-
-                <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <ExtremeStat icon={Trophy} label="Title" value={profileTitle} />
-                  <ExtremeStat icon={Monitor} label="Steam" value={steamId ? "Linked" : "Open"} />
-                  <ExtremeStat icon={KeyRound} label="Key" value={latestKeyLabel} mono />
-                  <ExtremeStat icon={Gem} label="WOLO" value={`${earningWoloPerDay}`} />
-                </div>
-              </div>
-
-              <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <ExtremeAction icon={Link2} label={mintingWatcherKey ? "Pairing" : "Pair"} onClick={onPairWatcher} primary disabled={mintingWatcherKey} />
-                <ExtremeAction icon={KeyRound} label="Mint" onClick={onMintKey} disabled={mintingWatcherKey} />
-                <ExtremeAction icon={Download} label="App" href="/download" />
-                <ExtremeAction icon={Upload} label="Replay" href="/upload" />
               </div>
             </div>
           </div>
 
-          <aside className="grid gap-4 border-t border-white/10 p-5 sm:p-6 xl:border-l xl:border-t-0">
-            <ExtremePrestigeCard earningWoloPerDay={earningWoloPerDay} proofLabel={proofLabel} />
+          {/* WATCHER */}
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <ExtremeCompactCard icon={ShieldCheck} title="Watcher" value={watcherPairIntent ? "Pairing" : latestKeyLabel} />
-              <ExtremeCompactCard icon={Monitor} title="Steam" value={steamId ? steamId : "Not linked"} mono={Boolean(steamId)} />
-            </div>
+          <aside className="border-t border-white/8 p-6 sm:p-7 xl:border-l xl:border-t-0">
+            <div className="flex min-h-full flex-col rounded-[2rem] border border-sky-100/12 bg-[radial-gradient(circle_at_100%_0%,rgba(56,189,248,0.11),transparent_38%),rgba(2,8,18,0.58)] p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.32em] text-sky-100/55">
+                  <ShieldCheck className="h-4 w-4" />
+                  Watcher
+                </div>
 
-            <div className="rounded-[1.35rem] border border-white/10 bg-black/20 p-4">
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.25em] text-cyan-100/70">
-                <Languages className="h-4 w-4" />
-                Language
+                <span className="rounded-full border border-emerald-200/15 bg-emerald-300/[0.07] px-3 py-1 text-[9px] font-bold uppercase tracking-[0.17em] text-emerald-100">
+                  {latestWatcherKey
+                    ? "Paired"
+                    : "Auto-pair ready"}
+                </span>
               </div>
-              <ProfileLanguagePreference compact />
-            </div>
 
-            {canUseApprenticeshipAdmin ? (
-              <ApprenticeshipAdminTile currentAvatarUrl={avatarUrl} />
-            ) : null}
+              <h2 className="mt-6 font-serif text-3xl text-white">
+                Pair once.
+                <br />
+                Play normally.
+              </h2>
+
+              <p className="mt-4 text-sm leading-6 text-slate-400">
+                Pairing is automatic
+                when possible.
+              </p>
+
+              <div className="mt-5 rounded-2xl border border-white/8 bg-black/24 p-4">
+                <div className="text-[9px] font-black uppercase tracking-[0.23em] text-slate-600">
+                  Watcher Key
+                </div>
+
+                <div className="mt-2 break-all font-mono text-xs text-slate-300">
+                  {
+                    latestKeyLabel
+                  }
+                </div>
+
+                <div className="mt-3 text-[11px] leading-5 text-slate-600">
+                  Manual setup: mint
+                  a key here and paste
+                  it into the Watcher.
+                </div>
+              </div>
+
+              {watcherPairIntent ? (
+                <div className="mt-3 rounded-xl border border-emerald-200/15 bg-emerald-300/[0.06] px-3 py-2 text-xs text-emerald-100">
+                  Pairing request open.
+                </div>
+              ) : null}
+
+              {newWatcherKey ? (
+                <div className="mt-3 rounded-xl border border-amber-200/15 bg-amber-300/[0.06] px-3 py-3">
+                  <div className="text-[9px] uppercase tracking-[0.22em] text-amber-100/55">
+                    Fresh key
+                  </div>
+
+                  <div className="mt-2 break-all font-mono text-xs text-white">
+                    {
+                      newWatcherKey
+                    }
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-6 grid grid-cols-2 gap-2">
+                <ExtremeAction
+                  icon={Link2}
+                  label={
+                    mintingWatcherKey
+                      ? "Pairing"
+                      : "Pair"
+                  }
+                  onClick={
+                    onPairWatcher
+                  }
+                  disabled={
+                    mintingWatcherKey
+                  }
+                  primary
+                />
+
+                <ExtremeAction
+                  icon={
+                    KeyRound
+                  }
+                  label="Mint"
+                  onClick={
+                    onMintKey
+                  }
+                  disabled={
+                    mintingWatcherKey
+                  }
+                />
+
+                <ExtremeAction
+                  icon={
+                    Download
+                  }
+                  label="App"
+                  href="/download"
+                />
+
+                <ExtremeAction
+                  icon={Upload}
+                  label="Replay"
+                  href="/upload"
+                />
+              </div>
+
+              {canUseApprenticeshipAdmin ? (
+                <div className="mt-5 border-t border-white/8 pt-5">
+                  <ApprenticeshipAdminTile
+                    currentAvatarUrl={
+                      avatarUrl
+                    }
+                  />
+                </div>
+              ) : null}
+            </div>
           </aside>
         </div>
+
+        {status ? (
+          <div className="border-t border-sky-200/10 bg-sky-300/[0.045] px-6 py-3 text-sm text-sky-100">
+            {status}
+          </div>
+        ) : null}
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,0.95fr)_minmax(22rem,0.45fr)]">
-        <div className="rounded-[2rem] border border-white/10 bg-slate-950/72 p-5 shadow-[0_22px_70px_rgba(0,0,0,0.28)] sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.28em] text-amber-100/70">
-              <Trophy className="h-4 w-4" />
-              Title lanes
-            </div>
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
-              eligibility
-            </span>
-          </div>
+      {/* =====================================================
+          THE ARMORY
+          ===================================================== */}
 
-          <div className="mt-4">
-            <ProfileTitleInventory profile={profile} />
-          </div>
+      <ExtremeProfileArmory
+        profile={profile}
+        avatarUrl={
+          avatarUrl
+        }
+      />
+
+      {/* =====================================================
+          MONEY + UPCOMING BATTLES
+          ===================================================== */}
+
+      <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.75fr)]">
+        <ExtremeProfileLedger
+          rows={
+            moneyRows
+          }
+          loading={
+            moneyLoading
+          }
+          hasMore={
+            moneyHasMore
+          }
+          onScroll={
+            onMoneyScroll
+          }
+          onLoadMore={
+            onLoadMoreMoney
+          }
+        />
+
+        <ExtremeUpcomingBattles
+          matches={
+            scheduledMatches
+          }
+          viewerUid={
+            uid
+          }
+          serverNow={
+            serverNow
+          }
+        />
+      </section>
+
+      {/* =====================================================
+          CAREER
+          ===================================================== */}
+
+      <ExtremeCareerRecord
+        stats={
+          challengeStats
+        }
+        history={
+          recentChallengeHistory
+        }
+        viewerUid={
+          uid
+        }
+      />
+
+      {/* =====================================================
+          YOUR ROOM
+          ===================================================== */}
+
+      <ExtremeProfileRoom
+        emailDraft={
+          emailDraft
+        }
+        setEmailDraft={
+          setEmailDraft
+        }
+        savingEmail={
+          savingEmail
+        }
+        onSaveEmail={
+          onSaveEmail
+        }
+        onLogout={
+          onLogout
+        }
+      />
+
+      {/* =====================================================
+          BROADCAST + CLAIM
+          ===================================================== */}
+
+      <ExtremeBroadcastAndClaim
+        profile={profile}
+        confirmedName={
+          confirmedName
+        }
+        twitchDraft={
+          twitchDraft
+        }
+        setTwitchDraft={
+          setTwitchDraft
+        }
+        savingTwitch={
+          savingTwitch
+        }
+        onSaveTwitch={
+          onSaveTwitch
+        }
+        streamSessionKey={
+          streamSessionKey
+        }
+        streamTitle={
+          streamTitle
+        }
+        watcherStreamIntent={
+          watcherStreamIntent
+        }
+        claimStatusMessage={
+          claimStatusMessage
+        }
+        claimingWolo={
+          claimingWolo
+        }
+        onClaimPending={
+          onClaimPending
+        }
+      />
+
+      {/* =====================================================
+          WALLET RAIL
+          ===================================================== */}
+
+      <section className="rounded-[2rem] border border-white/10 bg-slate-950/72 p-5 sm:p-6">
+        <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.32em] text-amber-100/55">
+          <Coins className="h-4 w-4" />
+          Wallet Rail
         </div>
 
-        <div className="rounded-[2rem] border border-white/10 bg-slate-950/72 p-5 shadow-[0_22px_70px_rgba(0,0,0,0.28)] sm:p-6">
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.28em] text-emerald-100/70">
-            <Coins className="h-4 w-4" />
-            Wallet rail
-          </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <ExtremeRailLink
+            href="/wallet"
+            icon={Coins}
+            label="Wallet"
+            value="Open"
+          />
 
-          <div className="mt-5 grid gap-3">
-            <ExtremeRailLink href="/wallet" icon={Coins} label="Wallet" value="Open" />
-            <ExtremeRailLink href="/staking" icon={Gem} label="Staking" value="Rewards" />
-            <ExtremeRailLink href="/players" icon={UserRound} label="Players" value="Board" />
-            <ExtremeRailLink href="/war-chest" icon={Trophy} label="War Chest" value="WOLO" />
-          </div>
+          <ExtremeRailLink
+            href="/staking"
+            icon={Gem}
+            label="Staking"
+            value="Rewards"
+          />
+
+          <ExtremeRailLink
+            href="/war-chest"
+            icon={Trophy}
+            label="War Chest"
+            value="WOLO"
+          />
+
+          <ExtremeRailLink
+            href="/bounties"
+            icon={Crown}
+            label="Bounties"
+            value="Board"
+          />
         </div>
       </section>
     </div>
   );
 }
+
+
+/* ============================================================
+   EXTREME PROFILE — ARMORY
+   ============================================================ */
+
+function ExtremeProfileArmory({
+  profile,
+  avatarUrl,
+}: {
+  profile: ProfileResponse | null;
+  avatarUrl: string;
+}) {
+  const belts =
+    profile?.belts ??
+    [];
+
+  const artifacts =
+    profile?.artifacts ??
+    [];
+
+  const featuredBelt =
+    belts[0] ??
+    null;
+
+  return (
+    <section className="relative overflow-hidden rounded-[2.6rem] border border-amber-100/14 bg-[radial-gradient(circle_at_8%_0%,rgba(251,191,36,0.11),transparent_30%),linear-gradient(145deg,rgba(16,13,9,0.96),rgba(3,7,14,0.99))] p-6 shadow-[0_32px_110px_rgba(0,0,0,0.36)] sm:p-8">
+      <div className="absolute inset-x-20 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/55 to-transparent" />
+
+      <div className="relative">
+        <div className="text-[9px] font-black uppercase tracking-[0.42em] text-amber-100/55">
+          The Armory
+        </div>
+
+        <h2 className="mt-2 font-serif text-4xl text-white sm:text-5xl">
+          Belts and artifacts.
+        </h2>
+      </div>
+
+      <div className="relative mt-7 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(23rem,0.9fr)]">
+
+        {/* BELTS */}
+
+        <div className="min-w-0">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-amber-100/55">
+              <Crown className="h-4 w-4" />
+              Championship Belts
+            </div>
+
+            <span className="text-xs text-slate-600">
+              {belts.length} held
+            </span>
+          </div>
+
+          {featuredBelt &&
+          profile ? (
+            <>
+              <ProfileChampionShowcase
+                holding={
+                  featuredBelt
+                }
+                avatarUrl={
+                  avatarUrl
+                }
+              />
+
+              {belts.length >
+              1 ? (
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  {belts
+                    .slice(1)
+                    .map(
+                      (
+                        holding
+                      ) => (
+                        <ProfileHoldingCard
+                          key={
+                            holding.id
+                          }
+                          holding={
+                            holding
+                          }
+                        />
+                      )
+                    )}
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <div className="flex min-h-[28rem] flex-col items-center justify-center rounded-[1.9rem] border border-dashed border-amber-100/12 bg-black/20 px-8 text-center">
+              <Crown className="h-10 w-10 text-amber-100/15" />
+
+              <div className="mt-5 font-serif text-3xl text-slate-300">
+                No championship held
+              </div>
+
+              <div className="mt-2 text-sm text-slate-600">
+                Victory will fill
+                this hall.
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ARTIFACTS */}
+
+        <div className="min-w-0">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-violet-100/55">
+              <Gem className="h-4 w-4" />
+              Artifacts
+            </div>
+
+            <span className="text-xs text-slate-600">
+              {artifacts.length} held
+            </span>
+          </div>
+
+          {artifacts.length >
+          0 ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {artifacts.map(
+                (
+                  holding
+                ) => (
+                  <Link
+                    key={
+                      holding.id
+                    }
+                    href={
+                      holding.routeHref
+                    }
+                    className="group flex min-h-[14rem] flex-col overflow-hidden rounded-[1.7rem] border border-violet-100/12 bg-[radial-gradient(circle_at_50%_0%,rgba(139,92,246,0.13),transparent_38%),rgba(3,7,15,0.94)] p-5 transition hover:-translate-y-1 hover:border-violet-100/26"
+                  >
+                    <div className="flex flex-1 items-center justify-center">
+                      <img
+                        src={
+                          holding.assetUrl
+                        }
+                        alt={
+                          holding.displayName
+                        }
+                        className="max-h-36 max-w-full object-contain drop-shadow-[0_20px_40px_rgba(0,0,0,0.75)] transition duration-500 group-hover:scale-[1.035]"
+                      />
+                    </div>
+
+                    <div className="mt-4 border-t border-white/8 pt-3">
+                      <div className="text-sm font-semibold text-white">
+                        {
+                          holding.shortName
+                        }
+                      </div>
+
+                      <div className="mt-1 text-xs text-slate-500">
+                        {
+                          holding.displayName
+                        }
+                      </div>
+                    </div>
+                  </Link>
+                )
+              )}
+            </div>
+          ) : (
+            <div className="grid min-h-[28rem] grid-cols-2 gap-3">
+              {[0, 1, 2, 3].map(
+                (
+                  slot
+                ) => (
+                  <div
+                    key={
+                      slot
+                    }
+                    className="flex min-h-[11rem] flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-violet-100/10 bg-black/16 px-4 text-center"
+                  >
+                    <Gem className="h-7 w-7 text-violet-100/12" />
+
+                    <div className="mt-3 text-xs text-slate-700">
+                      Empty relic case
+                    </div>
+                  </div>
+                )
+              )}
+
+              <div className="col-span-2 text-center text-sm text-slate-600">
+                The vault waits for
+                the first relic.
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+
+/* ============================================================
+   EXTREME PROFILE — WOLO LEDGER
+   ============================================================ */
+
+function ExtremeProfileLedger({
+  rows,
+  loading,
+  hasMore,
+  onScroll,
+  onLoadMore,
+}: {
+  rows: WoloTransactionRow[];
+  loading: boolean;
+  hasMore: boolean;
+  onScroll: (
+    event: UIEvent<HTMLDivElement>
+  ) => void;
+  onLoadMore: () => void;
+}) {
+  const [
+    filter,
+    setFilter,
+  ] = useState<
+    "all" | "in" | "out"
+  >("all");
+
+  const visibleRows =
+    filter === "all"
+      ? rows
+      : rows.filter(
+          (
+            row
+          ) =>
+            row.direction ===
+            filter
+        );
+
+  return (
+    <section className="min-w-0 rounded-[2.2rem] border border-emerald-100/12 bg-[radial-gradient(circle_at_0%_0%,rgba(16,185,129,0.08),transparent_32%),rgba(3,8,16,0.94)] p-6 sm:p-7">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="text-[9px] font-black uppercase tracking-[0.36em] text-emerald-100/55">
+            Money In · Money Out
+          </div>
+
+          <h2 className="mt-2 font-serif text-4xl text-white">
+            WOLO Ledger
+          </h2>
+        </div>
+
+        <div className="inline-flex rounded-full border border-white/8 bg-black/25 p-1">
+          {[
+            {
+              key: "all",
+              label: "All",
+            },
+            {
+              key: "in",
+              label:
+                "Money In",
+            },
+            {
+              key: "out",
+              label:
+                "Money Out",
+            },
+          ].map(
+            (
+              item
+            ) => (
+              <button
+                key={
+                  item.key
+                }
+                type="button"
+                onClick={() =>
+                  setFilter(
+                    item.key as
+                      | "all"
+                      | "in"
+                      | "out"
+                  )
+                }
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                  filter ===
+                  item.key
+                    ? "bg-emerald-300/12 text-emerald-100"
+                    : "text-slate-500 hover:text-white"
+                }`}
+              >
+                {
+                  item.label
+                }
+              </button>
+            )
+          )}
+        </div>
+      </div>
+
+      <div
+        className="mt-6 max-h-[34rem] space-y-2 overflow-y-auto pr-1 [scrollbar-width:thin]"
+        onScroll={
+          onScroll
+        }
+      >
+        {visibleRows.length ===
+        0 ? (
+          <div className="rounded-2xl border border-white/8 bg-white/[0.025] px-4 py-8 text-center text-sm text-slate-500">
+            No transactions in this
+            lane.
+          </div>
+        ) : (
+          visibleRows.map(
+            (
+              row
+            ) => (
+              <WoloTransactionLine
+                key={
+                  row.id
+                }
+                row={
+                  row
+                }
+              />
+            )
+          )
+        )}
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <span className="text-[10px] uppercase tracking-[0.2em] text-slate-600">
+          Personal ledger · newest
+          first
+        </span>
+
+        {hasMore ? (
+          <button
+            type="button"
+            onClick={
+              onLoadMore
+            }
+            disabled={
+              loading
+            }
+            className="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-slate-400 transition hover:border-white/20 hover:text-white disabled:opacity-50"
+          >
+            {loading
+              ? "Loading..."
+              : "Load older"}
+          </button>
+        ) : rows.length >
+          0 ? (
+          <span className="text-[10px] uppercase tracking-[0.2em] text-slate-700">
+            Complete
+          </span>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
+
+/* ============================================================
+   EXTREME PROFILE — UPCOMING BATTLES
+   ============================================================ */
+
+function ExtremeUpcomingBattles({
+  matches,
+  viewerUid,
+  serverNow,
+}: {
+  matches:
+    ChallengeHubSnapshot["scheduledMatches"];
+  viewerUid?: string | null;
+  serverNow: string | null;
+}) {
+  return (
+    <section className="min-w-0 rounded-[2.2rem] border border-sky-100/12 bg-[radial-gradient(circle_at_100%_0%,rgba(56,189,248,0.08),transparent_32%),rgba(3,8,16,0.94)] p-6 sm:p-7">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <div className="text-[9px] font-black uppercase tracking-[0.36em] text-sky-100/55">
+            Scheduled Games
+          </div>
+
+          <h2 className="mt-2 font-serif text-4xl text-white">
+            Upcoming Battles
+          </h2>
+        </div>
+
+        <Link
+          href="/challenge"
+          className="text-xs font-semibold text-sky-100/65 transition hover:text-sky-100"
+        >
+          Challenge Hub →
+        </Link>
+      </div>
+
+      <div className="mt-6 space-y-3">
+        {matches.length ===
+        0 ? (
+          <div className="flex min-h-[16rem] items-center justify-center rounded-[1.5rem] border border-dashed border-sky-100/10 bg-black/16 px-5 text-center text-sm text-slate-600">
+            No upcoming battles.
+          </div>
+        ) : (
+          matches.map(
+            (
+              match
+            ) => (
+              <ScheduledMatchCard
+                key={`profile-extreme-${match.id}`}
+                match={
+                  match
+                }
+                viewerUid={
+                  viewerUid
+                }
+                serverNow={
+                  serverNow
+                }
+                compact
+                defaultViewMode="summary"
+              />
+            )
+          )
+        )}
+      </div>
+    </section>
+  );
+}
+
+
+/* ============================================================
+   EXTREME PROFILE — CAREER RECORD
+   ============================================================ */
+
+function ExtremeCareerRecord({
+  stats,
+  history,
+  viewerUid,
+}: {
+  stats: Array<{
+    label: string;
+    value: number;
+  }>;
+  history:
+    ChallengeHubSnapshot["historyMatches"];
+  viewerUid?: string | null;
+}) {
+  return (
+    <section className="rounded-[2.1rem] border border-white/10 bg-slate-950/72 p-6 sm:p-7">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className="text-[9px] font-black uppercase tracking-[0.34em] text-amber-100/45">
+            Career Record
+          </div>
+
+          <h2 className="mt-2 font-serif text-3xl text-white">
+            What the ledger says
+          </h2>
+        </div>
+
+        <Link
+          href="/challenge"
+          className="text-xs font-semibold text-slate-500 transition hover:text-white"
+        >
+          Full record →
+        </Link>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {stats.map(
+          (
+            item
+          ) => (
+            <div
+              key={
+                item.label
+              }
+              className="rounded-[1.3rem] border border-white/8 bg-white/[0.025] px-4 py-4"
+            >
+              <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-600">
+                {
+                  item.label
+                }
+              </div>
+
+              <div className="mt-2 text-2xl font-semibold text-white">
+                {
+                  item.value
+                }
+              </div>
+            </div>
+          )
+        )}
+      </div>
+
+      {history.length >
+      0 ? (
+        <div className="mt-5 grid gap-3 lg:grid-cols-2">
+          {history.map(
+            (
+              match
+            ) => (
+              <CompactScheduledMatchHistoryRow
+                key={
+                  match.id
+                }
+                match={
+                  match
+                }
+                viewerUid={
+                  viewerUid
+                }
+              />
+            )
+          )}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+
+/* ============================================================
+   EXTREME PROFILE — YOUR ROOM
+   ============================================================ */
+
+function ExtremeProfileRoom({
+  emailDraft,
+  setEmailDraft,
+  savingEmail,
+  onSaveEmail,
+  onLogout,
+}: {
+  emailDraft: string;
+  setEmailDraft: (
+    value: string
+  ) => void;
+  savingEmail: boolean;
+  onSaveEmail: () => void;
+  onLogout: () => void;
+}) {
+  const {
+    themeKey,
+    setThemeKey,
+    tileThemeKey,
+    setTileThemeKey,
+    viewMode,
+    setViewMode,
+    textColor,
+    setTextColor,
+    timeDisplayMode,
+    setTimeDisplayMode,
+    timeClockMode,
+    setTimeClockMode,
+    browserTimeZone,
+    presentationTone,
+  } = useLobbyAppearance();
+
+  return (
+    <section className={`rounded-[2.2rem] border p-6 sm:p-8 ${presentationTone.panelShell}`}>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <div className={`text-[9px] font-black uppercase tracking-[0.38em] ${presentationTone.eyebrow}`}>
+            Preferences
+          </div>
+
+          <h2 className="mt-2 font-serif text-4xl text-white">
+            Your Room
+          </h2>
+        </div>
+
+        <span className={`rounded-full border px-3 py-1.5 text-xs ${presentationTone.neutralPill}`}>
+          Account + device
+        </span>
+      </div>
+
+      <div className="mt-6 grid gap-4 xl:grid-cols-3">
+
+        {/* APPEARANCE */}
+
+        <div className={`rounded-[1.7rem] border p-5 ${presentationTone.insetPanel}`}>
+          <div className="text-[9px] font-black uppercase tracking-[0.27em] text-slate-500">
+            Appearance
+          </div>
+
+          <div className="mt-5 space-y-5">
+            <div>
+              <div className="text-sm font-semibold text-white">
+                Theme
+              </div>
+
+              <LobbyThemePicker
+                themeKey={
+                  themeKey
+                }
+                onThemeChange={
+                  setThemeKey
+                }
+                tone={
+                  presentationTone
+                }
+                size="sm"
+                className="mt-3"
+              />
+            </div>
+
+            <div>
+              <div className="text-sm font-semibold text-white">
+                Tile color
+              </div>
+
+              <LobbyThemePicker
+                themeKey={
+                  tileThemeKey
+                }
+                onThemeChange={
+                  setTileThemeKey
+                }
+                tone={
+                  presentationTone
+                }
+                size="sm"
+                className="mt-3"
+              />
+            </div>
+
+            <div>
+              <div className="text-sm font-semibold text-white">
+                Tile skin
+              </div>
+
+              <LobbyViewToggle
+                viewMode={
+                  viewMode
+                }
+                onViewModeChange={
+                  setViewMode
+                }
+                tone={
+                  presentationTone
+                }
+                className="mt-3"
+              />
+            </div>
+
+            <div>
+              <div className="text-sm font-semibold text-white">
+                Text
+              </div>
+
+              <LobbyTextColorPicker
+                textColor={
+                  textColor
+                }
+                onTextColorChange={
+                  setTextColor
+                }
+                tone={
+                  presentationTone
+                }
+                className="mt-3"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* LOCALE */}
+
+        <div className={`rounded-[1.7rem] border p-5 ${presentationTone.insetPanel}`}>
+          <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.27em] text-slate-500">
+            <Clock3 className="h-4 w-4" />
+            Locale
+          </div>
+
+          <div className="mt-5 flex flex-col gap-4">
+            <TimeDisplayModeToggle
+              value={
+                timeDisplayMode
+              }
+              onChange={
+                setTimeDisplayMode
+              }
+            />
+
+            <TimeClockModeToggle
+              value={
+                timeClockMode
+              }
+              onChange={
+                setTimeClockMode
+              }
+            />
+
+            <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-3 text-xs text-slate-500">
+              <TimeDisplayText
+                value={
+                  new Date()
+                }
+                className="text-slate-300"
+              />
+
+              {browserTimeZone
+                ? ` · ${browserTimeZone}`
+                : ""}
+            </div>
+
+            <div className="border-t border-white/8 pt-4">
+              <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.27em] text-slate-500">
+                <Languages className="h-4 w-4" />
+                Language
+              </div>
+
+              <ProfileLanguagePreference
+                compact
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* NOTIFICATIONS */}
+
+        <div className={`rounded-[1.7rem] border p-5 ${presentationTone.insetPanel}`}>
+          <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.27em] text-slate-500">
+            <Bell className="h-4 w-4" />
+            Notifications
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {[
+              "Challenges",
+              "Scheduled games",
+              "Tournaments",
+            ].map(
+              (
+                label
+              ) => (
+                <span
+                  key={
+                    label
+                  }
+                  className="rounded-full border border-white/8 bg-white/[0.025] px-3 py-1.5 text-xs text-slate-400"
+                >
+                  {
+                    label
+                  }
+                </span>
+              )
+            )}
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-white/8 bg-white/[0.025] px-3 py-1.5 text-xs text-slate-500">
+              10 min
+            </span>
+
+            <span className="rounded-full border border-emerald-200/12 bg-emerald-300/[0.06] px-3 py-1.5 text-xs text-emerald-100">
+              30 min
+            </span>
+
+            <span className="rounded-full border border-white/8 bg-white/[0.025] px-3 py-1.5 text-xs text-slate-500">
+              1 hr
+            </span>
+          </div>
+
+          <div className="mt-5">
+            <input
+              type="email"
+              value={
+                emailDraft
+              }
+              onChange={(
+                event
+              ) =>
+                setEmailDraft(
+                  event.target
+                    .value
+                )
+              }
+              placeholder="you@example.com"
+              className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-700 focus:border-amber-200/30"
+            />
+
+            <button
+              type="button"
+              onClick={
+                onSaveEmail
+              }
+              disabled={
+                savingEmail
+              }
+              className="mt-3 w-full rounded-full bg-amber-300 px-4 py-2.5 text-xs font-bold text-slate-950 transition hover:bg-amber-200 disabled:opacity-50"
+            >
+              {savingEmail
+                ? "Saving..."
+                : "Save Email"}
+            </button>
+
+            <div className="mt-3 text-xs text-slate-700">
+              SMS not wired.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap justify-end gap-3 border-t border-white/8 pt-5">
+        <Link
+          href="/"
+          className="rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-slate-400 transition hover:border-white/20 hover:text-white"
+        >
+          Back to Lobby
+        </Link>
+
+        <button
+          type="button"
+          onClick={
+            onLogout
+          }
+          className="inline-flex items-center gap-2 rounded-full border border-rose-200/10 px-4 py-2 text-xs font-semibold text-rose-200/60 transition hover:border-rose-200/20 hover:text-rose-100"
+        >
+          <LogOut className="h-4 w-4" />
+          Log Out
+        </button>
+      </div>
+    </section>
+  );
+}
+
+
+/* ============================================================
+   EXTREME PROFILE — BROADCAST + CLAIM
+   ============================================================ */
+
+function ExtremeBroadcastAndClaim({
+  profile,
+  confirmedName,
+  twitchDraft,
+  setTwitchDraft,
+  savingTwitch,
+  onSaveTwitch,
+  streamSessionKey,
+  streamTitle,
+  watcherStreamIntent,
+  claimStatusMessage,
+  claimingWolo,
+  onClaimPending,
+}: {
+  profile: ProfileResponse | null;
+  confirmedName: string;
+  twitchDraft: string;
+  setTwitchDraft: (
+    value: string
+  ) => void;
+  savingTwitch: boolean;
+  onSaveTwitch: () => void;
+  streamSessionKey: string;
+  streamTitle: string;
+  watcherStreamIntent: boolean;
+  claimStatusMessage: string;
+  claimingWolo: boolean;
+  onClaimPending: () => void;
+}) {
+  const hasPendingClaim =
+    (
+      profile
+        ?.pendingClaimAmountWolo ??
+      0
+    ) > 0;
+
+  return (
+    <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(23rem,0.8fr)]">
+
+      <div className="min-w-0 space-y-4">
+        <BrowserStreamStudio
+          sessionKey={
+            streamSessionKey ||
+            undefined
+          }
+          title={
+            streamTitle ||
+            (
+              confirmedName
+                ? `${confirmedName} live`
+                : "AoE2WAR live"
+            )
+          }
+          playerLabel={
+            confirmedName
+          }
+          watcherIntent={
+            watcherStreamIntent
+          }
+        />
+
+        <div className="rounded-[1.7rem] border border-white/10 bg-slate-950/72 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-[0.3em] text-sky-100/55">
+                External Fallback
+              </div>
+
+              <div className="mt-1 text-lg font-semibold text-white">
+                Twitch channel
+              </div>
+            </div>
+
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-400">
+              {profile
+                ?.twitchStreamUrl
+                ? "Saved"
+                : "Optional"}
+            </span>
+          </div>
+
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <input
+              type="url"
+              value={
+                twitchDraft
+              }
+              onChange={(
+                event
+              ) =>
+                setTwitchDraft(
+                  event.target
+                    .value
+                )
+              }
+              placeholder="https://www.twitch.tv/channel"
+              className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-sm text-white outline-none placeholder:text-slate-700 focus:border-sky-200/30"
+            />
+
+            <button
+              type="button"
+              onClick={
+                onSaveTwitch
+              }
+              disabled={
+                savingTwitch
+              }
+              className="rounded-full border border-sky-200/18 bg-sky-300/[0.07] px-5 py-3 text-sm font-semibold text-sky-100 transition hover:bg-sky-300/12 disabled:opacity-50"
+            >
+              {savingTwitch
+                ? "Saving..."
+                : "Save"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-hidden rounded-[2rem] border border-emerald-200/14 bg-[radial-gradient(circle_at_100%_0%,rgba(16,185,129,0.12),transparent_36%),linear-gradient(145deg,rgba(5,24,20,0.95),rgba(3,9,16,0.98))] p-6">
+        <div className="text-[9px] font-black uppercase tracking-[0.32em] text-emerald-100/55">
+          Claim WOLO
+        </div>
+
+        <div className="mt-4 text-4xl font-semibold text-white">
+          {profile
+            ?.pendingClaimAmountWolo ??
+            0}{" "}
+          WOLO
+        </div>
+
+        <p className="mt-3 text-sm leading-6 text-emerald-50/65">
+          {hasPendingClaim
+            ? claimStatusMessage
+            : "Nothing waiting right now."}
+        </p>
+
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <span className="text-xs text-slate-500">
+            {profile
+              ?.pendingClaimCount ??
+              0}{" "}
+            pending
+          </span>
+
+          <button
+            type="button"
+            onClick={
+              onClaimPending
+            }
+            disabled={
+              claimingWolo ||
+              !hasPendingClaim
+            }
+            className="rounded-full bg-amber-300 px-5 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {claimingWolo
+              ? "Claiming..."
+              : hasPendingClaim
+                ? "Claim WOLO"
+                : "Clear"}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 
 function ProfileLanguagePreference({ compact = false }: { compact?: boolean }) {
   const {
@@ -2097,69 +3686,6 @@ function ExtremeAction({
     <button type="button" onClick={onClick} disabled={disabled} className={className}>
       {content}
     </button>
-  );
-}
-
-function ExtremePrestigeCard({
-  earningWoloPerDay,
-  proofLabel,
-}: {
-  earningWoloPerDay: number;
-  proofLabel: string;
-}) {
-  return (
-    <div className="relative overflow-hidden rounded-[1.7rem] border border-amber-200/18 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.18),transparent_38%),linear-gradient(145deg,rgba(255,255,255,0.055),rgba(255,255,255,0.02))] p-5">
-      <div className="absolute -right-10 -top-12 h-40 w-40 rounded-full bg-amber-300/10 blur-3xl" />
-      <div className="relative flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.28em] text-amber-100/70">
-          <Trophy className="h-4 w-4" />
-          Prestige
-        </div>
-        <Crown className="h-5 w-5 text-amber-200" />
-      </div>
-
-      <div className="relative mt-6">
-        <div className="text-4xl font-black tracking-[-0.045em] text-white">
-          {earningWoloPerDay > 0 ? `${earningWoloPerDay}` : "—"}
-        </div>
-        <div className="mt-1 text-[10px] font-black uppercase tracking-[0.26em] text-amber-100/62">WOLO / day</div>
-      </div>
-
-      <div className="relative mt-5 grid grid-cols-2 gap-2">
-        <div className="rounded-2xl border border-white/10 bg-black/24 p-3">
-          <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Proof</div>
-          <div className="mt-1 text-sm font-semibold text-white">{proofLabel}</div>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-black/24 p-3">
-          <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Mode</div>
-          <div className="mt-1 text-sm font-semibold text-amber-100">Extreme</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ExtremeCompactCard({
-  icon: Icon,
-  title,
-  value,
-  mono = false,
-}: {
-  icon: LucideIcon;
-  title: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div className="rounded-[1.35rem] border border-white/10 bg-white/[0.04] p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">
-          <Icon className="h-4 w-4" />
-          {title}
-        </div>
-      </div>
-      <div className={`mt-3 truncate text-sm font-semibold text-white ${mono ? "font-mono" : ""}`}>{value}</div>
-    </div>
   );
 }
 

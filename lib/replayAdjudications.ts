@@ -43,6 +43,8 @@ export const EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION = {
   select: {
     id: true,
     decisionStatus: true,
+    affectsStats: true,
+    affectsBets: true,
     actorDisplayNameSnapshot: true,
     actorRole: true,
     teamAssignments: true,

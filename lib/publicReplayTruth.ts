@@ -139,16 +139,263 @@ export function publicReplayIsFinal(row: PublicGameStatsLike) {
   return row.is_final === true || row.isFinal === true;
 }
 
+function durableAdjudicatedPublicWinnerTruth(
+  row: PublicGameStatsLike
+) {
+  const adjudicated =
+    applyReplayAdjudicationToGameStats(
+      row
+    );
+
+  const source =
+    adjudicated as
+      Record<string, unknown>;
+
+  const adjudication =
+    readRecord(
+      source
+        .replayResultAdjudication
+    );
+
+  const winnerProof =
+    readString(
+      adjudicated,
+      "winnerProof",
+      "winner_proof"
+    )
+      .trim()
+      .toLowerCase();
+
+  const parseReason =
+    readString(
+      adjudicated,
+      "parse_reason",
+      "parseReason"
+    )
+      .trim()
+      .toLowerCase();
+
+  const decisionStatus =
+    String(
+      adjudication
+        .decisionStatus ??
+      adjudication
+        .decision_status ??
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+  const affectsStats =
+    adjudication
+      .affectsStats ===
+      true ||
+    adjudication
+      .affects_stats ===
+      true;
+
+  /*
+   * This branch accepts only the durable result-review ledger.
+   *
+   * A scalar winner or manual parse reason alone is insufficient.
+   * The explicit adjudication marker must be present, accepted,
+   * statistics-authorized and projected onto a final replay.
+   */
+  if (
+    !publicReplayIsFinal(
+      adjudicated
+    ) ||
+    winnerProof !==
+      "replay_result_adjudication" ||
+    parseReason !==
+      "manual_result_adjudication" ||
+    decisionStatus !==
+      "accepted" ||
+    !affectsStats
+  ) {
+    return null;
+  }
+
+  const explicitWinnerPlayers =
+    (
+      Array.isArray(
+        source.winnerPlayers
+      )
+        ? source
+            .winnerPlayers
+        : []
+    )
+      .map(
+        normalizePublicReplayText
+      )
+      .filter(
+        (
+          name
+        ): name is string =>
+          Boolean(name)
+      );
+
+  const projectedFlagWinners =
+    readPlayers(
+      adjudicated.players
+    )
+      .filter(
+        (player) =>
+          publicWinnerFlagIsTrue(
+            player.winner
+          )
+      )
+      .map(
+        (player) =>
+          normalizePublicReplayText(
+            player.name
+          )
+      )
+      .filter(
+        (
+          name
+        ): name is string =>
+          Boolean(name)
+      );
+
+  const rawWinningNames =
+    explicitWinnerPlayers.length >
+      0
+      ? explicitWinnerPlayers
+      : projectedFlagWinners;
+
+  const winningNames =
+    rawWinningNames.filter(
+      (
+        name,
+        index,
+        values
+      ) =>
+        values.findIndex(
+          (candidate) =>
+            candidate
+              .toLowerCase() ===
+            name.toLowerCase()
+        ) ===
+        index
+    );
+
+  const storedWinner =
+    normalizePublicReplayText(
+      readString(
+        adjudicated,
+        "winner",
+        "winnerName",
+        "winner_name"
+      )
+    );
+
+  const winner =
+    winningNames.length >
+      0
+      ? winningNames.join(
+          " / "
+        )
+      : storedWinner;
+
+  if (!winner) {
+    return null;
+  }
+
+  return {
+    winner,
+
+    candidateWinner:
+      winner,
+
+    confidence:
+      "recovered" as const,
+
+    truthReasons: [
+      "replay_result_adjudication",
+    ],
+
+    publicLabel:
+      winner,
+
+    statsEligible:
+      true,
+
+    /*
+     * Durable result adjudication is a statistics and presentation
+     * authority only. It never becomes settlement evidence here.
+     */
+    bettingEligible:
+      false,
+
+    diagnosticSummary:
+      `Winning side ${winner} was accepted through the durable replay-result adjudication ledger.`,
+
+    neededEvidence:
+      [],
+  };
+}
+
 export function publicReplayWinnerTruth(row: PublicGameStatsLike) {
+  const adjudicatedTruth =
+    durableAdjudicatedPublicWinnerTruth(
+      row
+    );
+
+  if (adjudicatedTruth) {
+    return adjudicatedTruth;
+  }
+
+  const adjudicated =
+    applyReplayAdjudicationToGameStats(
+      row
+    );
+
   return resolveReplayWinnerTruth({
-    winner: row.winner,
-    players: readPlayers(row.players),
-    parseReason: readString(row, "parse_reason", "parseReason") || null,
-    parseSource: readString(row, "parse_source", "parseSource") || null,
-    keyEvents: row.key_events ?? row.keyEvents,
-    eventTypes: row.event_types ?? row.eventTypes,
+    winner:
+      adjudicated.winner,
+
+    players:
+      readPlayers(
+        adjudicated.players
+      ),
+
+    parseReason:
+      readString(
+        adjudicated,
+        "parse_reason",
+        "parseReason"
+      ) ||
+      null,
+
+    parseSource:
+      readString(
+        adjudicated,
+        "parse_source",
+        "parseSource"
+      ) ||
+      null,
+
+    keyEvents:
+      adjudicated.key_events ??
+      adjudicated.keyEvents,
+
+    eventTypes:
+      adjudicated.event_types ??
+      adjudicated.eventTypes,
+
+    isFinal:
+      publicReplayIsFinal(
+        adjudicated
+      ),
+
     disconnectDetected:
-      row.disconnect_detected === true || row.disconnectDetected === true,
+      adjudicated
+        .disconnect_detected ===
+        true ||
+      adjudicated
+        .disconnectDetected ===
+        true,
   });
 }
 

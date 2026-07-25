@@ -106,6 +106,7 @@ model User {
   bountyClaims            BountyClaim[]     @relation("BountyClaimUser")
 
   @@map("users")
+  replayRosterPromotions ReplayRosterPromotion[] @relation("ReplayRosterPromotionActor")
 }
 
 model ApiKey {
@@ -168,6 +169,7 @@ model GameStats {
   @@index([replayHash, parse_iteration], map: "ix_replay_hash_iteration")
   @@index([replay_file, parse_iteration], map: "ix_replay_iteration")
   @@map("game_stats")
+  replayRosterPromotions ReplayRosterPromotion[] @relation("ReplayRosterPromotionGameStats")
 }
 
 model ReplayParseAttempt {
@@ -404,6 +406,7 @@ model ReplayObservation {
   @@index([observationKind, createdAt], map: "ix_replay_observations_kind_created")
   @@index([valueHash], map: "ix_replay_observations_value_hash")
   @@map("replay_observations")
+  rosterPromotions ReplayRosterPromotion[] @relation("ReplayRosterPromotionObservation")
 }
 
 /// Append-only acceptance of a parser candidate into the private Engine Room catalog.
@@ -2538,3 +2541,41 @@ model WorkshopStream {
 model alembic_version {
   version_num String @id(map: "alembic_version_pkc") @db.VarChar(32)
 }
+
+/// Append-only authority for projecting exact replay participant rosters publicly.
+/// This ledger grants participation/team authority only. It can never grant result,
+/// betting, payout or settlement authority.
+model ReplayRosterPromotion {
+  id                      Int      @id @default(autoincrement())
+  observationId           Int      @map("observation_id")
+  gameStatsId             Int      @map("game_stats_id")
+  promotedByUserId        Int?     @map("promoted_by_user_id")
+  idempotencyKey          String   @unique(map: "uq_replay_roster_promotions_idempotency") @map("idempotency_key") @db.VarChar(128)
+  promotionKey            String   @map("promotion_key") @db.VarChar(255)
+  decisionHash            String   @map("decision_hash") @db.VarChar(64)
+  policyVersion           String   @map("policy_version") @db.VarChar(64)
+  replayHash              String   @map("replay_hash") @db.VarChar(64)
+  previousPlayersHash     String   @map("previous_players_hash") @db.VarChar(64)
+  projectedPlayersHash    String   @map("projected_players_hash") @db.VarChar(64)
+  format                  String   @db.VarChar(16)
+  playerCount             Int      @map("player_count")
+  previousPlayers         Json     @map("previous_players")
+  projectedPlayers        Json     @map("projected_players")
+  reason                  String   @db.Text
+  affectsPublicAggregates Boolean  @default(true) @map("affects_public_aggregates")
+  affectsResults          Boolean  @default(false) @map("affects_results")
+  affectsBets             Boolean  @default(false) @map("affects_bets")
+  settlementAuthority     Boolean  @default(false) @map("settlement_authority")
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  observation ReplayObservation @relation("ReplayRosterPromotionObservation", fields: [observationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  gameStats   GameStats         @relation("ReplayRosterPromotionGameStats", fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  promotedBy  User?             @relation("ReplayRosterPromotionActor", fields: [promotedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([observationId, promotionKey], map: "uq_replay_roster_promotions_observation_key")
+  @@unique([gameStatsId, promotionKey], map: "uq_replay_roster_promotions_game_key")
+  @@index([gameStatsId, createdAt], map: "ix_replay_roster_promotions_game_created")
+  @@index([promotedByUserId, createdAt], map: "ix_replay_roster_promotions_actor_created")
+  @@map("replay_roster_promotions")
+}
+

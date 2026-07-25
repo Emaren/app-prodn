@@ -74,7 +74,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/admin", title: "Operator Command" },
   { prefix: "/staking/stakers", title: "Staking Hall" },
   { prefix: "/staking", title: "WOLO Staking" },
-  { prefix: "/leaderboard/og", title: "OG Board" },
+  { prefix: "/leaderboard/og", title: "Game Stats" },
   { prefix: "/leaderboard", title: "HD Leaderboard" },
   { prefix: "/national-champions", title: "National Champions" },
   { prefix: "/clans", title: "Clan Halls" },
@@ -418,6 +418,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
   const [requestCount, setRequestCount] = React.useState(0);
   const [workshopLive, setWorkshopLive] = React.useState(false);
+  // AOE2WAR_CONTACT_PINCH_ZOOM_REFLOW_20260725
   const isContactPage = pathname?.startsWith("/contact-emaren");
   const [contactViewportHeight, setContactViewportHeight] = React.useState<number | null>(null);
   const isLobbySurface = pathname === "/" || pathname?.startsWith("/lobby");
@@ -459,6 +460,11 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isLiveGamesSurface = pathname?.startsWith("/live-games");
   const forumViewMode = getTileViewMode(tileViewPreferences, "forum");
   const isForumSurface = pathname?.startsWith("/forum");
+  const bountiesViewMode = getTileViewMode(
+    tileViewPreferences,
+    "bounties"
+  );
+  const isBountiesSurface = pathname === "/bounties";
   const rivalriesViewMode = getTileViewMode(
     tileViewPreferences,
     "rivalries"
@@ -532,6 +538,14 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       : downloadWatcherViewMode === "advanced"
         ? "max-w-[82rem]"
         : "max-w-6xl";
+
+  const bountyShellMaxWidth =
+    bountiesViewMode === "extreme"
+      ? "max-w-[96rem]"
+      : bountiesViewMode === "advanced"
+        ? "max-w-[82rem]"
+        : "max-w-6xl";
+
   const headerTitle = getPageHeading(pathname);
   const headerSkin = getLobbyHeaderSkin(themeKey);
   const headerTone = React.useMemo(
@@ -603,7 +617,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`${isAcademySurface ? "academy-route-shell" : ""} flex w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${isContactPage ? "h-[100dvh] min-h-0 max-h-[100dvh] overflow-y-hidden" : "min-h-screen"}`}
+      className={`${isAcademySurface ? "academy-route-shell" : ""} flex w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${isContactPage ? "h-[100dvh] min-h-[44rem] max-h-none overflow-y-auto overscroll-contain sm:min-h-[56rem]" : "min-h-screen"}`}
       onWheel={handleContactShellWheel}
       style={
         isObservatorySurface
@@ -628,7 +642,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
           : {
               ...pageStyle,
               ...(isContactPage && contactViewportHeight
-                ? { height: `${contactViewportHeight}px`, maxHeight: `${contactViewportHeight}px` }
+                ? { height: `${contactViewportHeight}px` }
                 : {}),
             }
       }
@@ -853,15 +867,21 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             : isObservatorySurface
               ? "max-w-none px-0"
             : `px-3 sm:px-4 ${
-                isDownloadSurface
-                  ? downloadShellMaxWidth
-                  : isLobbySurface || isLiveGamesSurface || isForumSurface || isRivalriesSurface
+                isBountiesSurface
+                  ? bountyShellMaxWidth
+                  : isDownloadSurface
+                    ? downloadShellMaxWidth
+                    : isLobbySurface || isLiveGamesSurface || isForumSurface || isRivalriesSurface
                     ? immersiveShellMaxWidth
                     : isFullWidthPrestigeSurface || isClanSurface
                       ? "max-w-[90rem]"
                     : isNationalChampionsSurface || isBetDetailSurface
                       ? "max-w-[96rem]"
-                      : isExtremePlayerProfileSurface ? "max-w-[90rem]" : "max-w-6xl"
+                      : pathname === "/profile"
+                        ? "max-w-[96rem]"
+                        : isExtremePlayerProfileSurface
+                          ? "max-w-[90rem]"
+                          : "max-w-6xl"
               }`
         } ${isAcademySurface ? "academy-shell-skin" : ""} ${
           isContactPage ? "!py-2 !pb-2 overflow-hidden sm:!py-3 sm:!pb-3" : isMediaManagerSurface || isHeroStudioSurface ? "overflow-x-visible" : "overflow-x-hidden"

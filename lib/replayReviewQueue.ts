@@ -1,5 +1,8 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import {
+  selectPrimaryLiveWinnerMarket,
+} from "@/lib/liveBetMarketPolicy";
+import {
   getReplayAdjudicationForGameStatsId,
   listReplayAdjudications,
   type ReplayAdjudication,
@@ -27,6 +30,7 @@ export type ReplayReviewMoneyState =
 export type ReplayReviewMarketSummary = {
   id: number;
   title: string;
+  marketType: string;
   status: string;
   settlementStatus: string | null;
   winnerSide: string | null;
@@ -122,6 +126,7 @@ type MarketRow = {
   linkedGameStatsId: number | null;
   linkedSessionKey: string | null;
   title: string;
+  marketType: string;
   status: string;
   settlementStatus: string | null;
   settlementFailureCode: string | null;
@@ -440,6 +445,7 @@ function marketSummary(market: MarketRow | null, claims: ClaimRow[]) {
   return {
     id: market.id,
     title: market.title,
+    marketType: market.marketType,
     status: market.status,
     settlementStatus: market.settlementStatus,
     winnerSide: market.winnerSide,
@@ -496,6 +502,7 @@ async function loadMarkets(
       linkedGameStatsId: true,
       linkedSessionKey: true,
       title: true,
+      marketType: true,
       status: true,
       settlementStatus: true,
       settlementFailureCode: true,
@@ -549,6 +556,84 @@ export async function loadReplayReviewMarketSummaryMap(
 
   return result;
 }
+
+// AOE2WAR_LIVE_WINNER_MARKET_PROJECTION
+export async function loadLiveBetMarketSummaryMap(
+  prisma: PrismaClient,
+  sessions: Array<{
+    id: number;
+    sessionKey: string;
+  }>
+) {
+  const gameIds = sessions
+    .map((session) => session.id)
+    .filter(
+      (id) =>
+        Number.isSafeInteger(id) &&
+        id > 0
+    );
+
+  const sessionKeys = sessions
+    .map((session) => session.sessionKey)
+    .filter(Boolean);
+
+  const markets =
+    await loadMarkets(
+      prisma,
+      gameIds,
+      sessionKeys
+    );
+
+  const claimsByMarket =
+    await loadClaimsByMarketId(
+      prisma,
+      markets.map(
+        (market) => market.id
+      )
+    );
+
+  const result =
+    new Map<
+      number,
+      ReplayReviewMarketSummary
+    >();
+
+  for (const session of sessions) {
+    const matchingMarkets =
+      markets.filter(
+        (market) =>
+          market.linkedGameStatsId ===
+            session.id ||
+          market.linkedSessionKey ===
+            session.sessionKey
+      );
+
+    const market =
+      selectPrimaryLiveWinnerMarket(
+        matchingMarkets
+      );
+
+    const summary =
+      marketSummary(
+        market,
+        market
+          ? claimsByMarket.get(
+              market.id
+            ) ?? []
+          : []
+      );
+
+    if (summary) {
+      result.set(
+        session.id,
+        summary
+      );
+    }
+  }
+
+  return result;
+}
+
 
 function eventTypeValues(value: unknown) {
   if (Array.isArray(value)) {

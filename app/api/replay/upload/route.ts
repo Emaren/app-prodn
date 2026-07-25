@@ -133,6 +133,11 @@ export async function POST(request: NextRequest) {
       "x-parse-reason",
       "x-watcher-id",
       "x-watcher-session-id",
+      "x-watcher-version",
+      "x-watcher-platform",
+      "x-watcher-architecture",
+      "x-file-role",
+      "x-client-sha256",
       "x-replay-fingerprint",
       "x-file-size-bytes",
       "x-file-mtime-ms",
@@ -202,8 +207,34 @@ export async function POST(request: NextRequest) {
           parseSource: readHeader(request, "x-parse-source"),
           parseReason: readHeader(request, "x-parse-reason"),
           watcherId: readHeader(request, "x-watcher-id"),
-          watcherSessionId: readHeader(request, "x-watcher-session-id"),
-          replayFingerprint: readHeader(request, "x-replay-fingerprint"),
+          watcherSessionId: readHeader(
+            request,
+            "x-watcher-session-id"
+          ),
+          watcherVersion: readHeader(
+            request,
+            "x-watcher-version"
+          ),
+          watcherPlatform: readHeader(
+            request,
+            "x-watcher-platform"
+          ),
+          watcherArchitecture: readHeader(
+            request,
+            "x-watcher-architecture"
+          ),
+          fileRole: readHeader(
+            request,
+            "x-file-role"
+          ),
+          clientSha256: readHeader(
+            request,
+            "x-client-sha256"
+          ),
+          replayFingerprint: readHeader(
+            request,
+            "x-replay-fingerprint"
+          ),
           finalityStatus:
             typeof upstreamPayload?.finality_status === "string"
               ? upstreamPayload.finality_status
