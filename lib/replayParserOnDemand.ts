@@ -56,7 +56,10 @@ function workerDetail(execution: WorkerExecution) {
   return detail.slice(-3000);
 }
 
-function executeWorker(args: string[]): Promise<WorkerExecution> {
+function executeWorker(
+  args: string[],
+  timeoutMs = 300_000
+): Promise<WorkerExecution> {
   return new Promise((resolve) => {
     execFile(
       PYTHON,
@@ -69,7 +72,7 @@ function executeWorker(args: string[]): Promise<WorkerExecution> {
           PYTHONUNBUFFERED: "1",
         },
         encoding: "utf8",
-        timeout: 300_000,
+        timeout: timeoutMs,
         maxBuffer: 4 * 1024 * 1024,
       },
       (error, stdout, stderr) => {
@@ -152,8 +155,16 @@ async function locateArchiveReplay(
 export async function runLatestReplayParserForGame(
   prisma: PrismaClient,
   gameStatsId: number,
-  requestedByUid: string
+  requestedByUid: string,
+  options: {
+    workerTimeoutMs?: number;
+  } = {}
 ) {
+  const workerTimeoutMs =
+    Number.isSafeInteger(options.workerTimeoutMs) &&
+    (options.workerTimeoutMs ?? 0) >= 5_000
+      ? Math.min(options.workerTimeoutMs as number, 300_000)
+      : 300_000;
   const game = await prisma.gameStats.findUnique({
     where: { id: gameStatsId },
     select: {
@@ -264,11 +275,14 @@ export async function runLatestReplayParserForGame(
   ];
 
   // Reconciliation first. Strictly read-only.
-  const plan = await executeWorker([
-    ...commonArgs,
-    "--mode",
-    "plan",
-  ]);
+  const plan = await executeWorker(
+    [
+      ...commonArgs,
+      "--mode",
+      "plan",
+    ],
+    workerTimeoutMs
+  );
 
   if (plan.exitCode !== 0) {
     throw new ReplayParserOnDemandError(
@@ -280,13 +294,16 @@ export async function runLatestReplayParserForGame(
   }
 
   // Candidate mode remains private/candidate-only by worker contract.
-  const candidate = await executeWorker([
-    ...commonArgs,
-    "--mode",
-    "candidate",
-    "--requested-by-uid",
-    requestedByUid,
-  ]);
+  const candidate = await executeWorker(
+    [
+      ...commonArgs,
+      "--mode",
+      "candidate",
+      "--requested-by-uid",
+      requestedByUid,
+    ],
+    workerTimeoutMs
+  );
 
   const afterRuns = await prisma.replayParseRun.findMany({
     where: { gameStatsId },

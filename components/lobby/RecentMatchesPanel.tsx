@@ -732,33 +732,20 @@ function readMarkedPlayerWinner(match: LobbyMatchRow) {
   return normalizeLobbyWinnerName(winner?.name);
 }
 
-function readOldWatcherInferredOpponentWinner(match: LobbyMatchRow) {
-  const parseReason = normalizeLobbyWinnerName(match.parse_reason).toLowerCase();
+function isSavedReplayCheckpoint(match: LobbyMatchRow) {
+  const candidate = match as LobbyMatchRow & {
+    original_filename?: unknown;
+    replay_file?: unknown;
+  };
 
-  if (parseReason !== "watcher_inferred_opponent_win_on_incomplete_1v1") {
-    return "";
-  }
-
-  const players = readLobbyMatchPlayers(match);
-  const namedPlayers = players
-    .map((player) => normalizeLobbyWinnerName(player.name))
-    .filter(Boolean);
-
-  if (namedPlayers.length !== 2) return "";
-
-  const ownerName =
-    normalizeLobbyWinnerName((match as { ownerPlayerName?: unknown }).ownerPlayerName) ||
-    normalizeLobbyWinnerName((match as { owner_player_name?: unknown }).owner_player_name) ||
-    normalizeLobbyWinnerName((match as { ownerDisplayName?: unknown }).ownerDisplayName);
-
-  if (ownerName) {
-    const ownerLower = ownerName.toLowerCase();
-    const opponent = namedPlayers.find((name) => name.toLowerCase() !== ownerLower);
-    if (opponent) return opponent;
-  }
-
-  const emarenOpponent = namedPlayers.find((name) => name.toLowerCase() !== "emaren");
-  return emarenOpponent || "";
+  return [
+    candidate.original_filename,
+    candidate.replay_file,
+  ].some((value) =>
+    normalizeLobbyWinnerName(value)
+      .toLowerCase()
+      .endsWith(".aoe2mpgame")
+  );
 }
 
 function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
@@ -778,11 +765,8 @@ function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
 
   const rawWinner = normalizeLobbyWinnerName(match.winner);
   const markedPlayerWinner = readMarkedPlayerWinner(match);
-  const oldWatcherWinner = readOldWatcherInferredOpponentWinner(match);
   const truthResult = readReplayTruthResult(match);
   const reviewNeeded = readReplayTruthReviewNeeded(match, truthResult);
-  const resolvedWinner =
-    rawWinner || markedPlayerWinner || oldWatcherWinner;
 
   const winnerProof = normalizeLobbyWinnerName(
     (match as { winnerProof?: unknown }).winnerProof
@@ -795,6 +779,19 @@ function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
     normalizeLobbyWinnerName(
       match.parse_reason
     ).toLowerCase();
+
+  const rejectedLegacyInference =
+    parseReason ===
+      "watcher_inferred_opponent_win_on_incomplete_1v1" ||
+    parseReason ===
+      "watcher_inferred_opponent_win_on_incomplete";
+
+  const resolvedWinner =
+    rejectedLegacyInference &&
+    winnerProof !==
+      "replay_result_adjudication"
+      ? ""
+      : rawWinner || markedPlayerWinner;
 
   const acceptedAdjudicatedWinner =
     winnerProof ===
@@ -843,13 +840,20 @@ function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
 
   if (!reviewNeeded) {
     return {
-      headline: truthResult?.label || "Completed",
+      headline:
+        truthResult?.label ||
+        (isSavedReplayCheckpoint(match)
+          ? "Saved checkpoint"
+          : "Result unproven"),
       pill: null,
     };
   }
 
   return {
-    headline: "Battle filed",
+    headline:
+      isSavedReplayCheckpoint(match)
+        ? "Saved checkpoint"
+        : "Result under review",
     pill: null,
   };
 }

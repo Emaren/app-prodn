@@ -42,6 +42,7 @@ export const EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION = {
   take: 1,
   select: {
     id: true,
+    idempotencyKey: true,
     decisionStatus: true,
     affectsStats: true,
     affectsBets: true,
@@ -51,6 +52,7 @@ export const EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION = {
     winningTeamKey: true,
     winningPlayerKeys: true,
     reason: true,
+    evidence: true,
     sourceReplayHash: true,
     sourceParseIteration: true,
     sourceRosterHash: true,

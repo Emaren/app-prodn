@@ -100,13 +100,16 @@ model User {
   replaySubmissions              ReplaySubmission[]              @relation("ReplaySubmissionSubmitter")
   replayObservationPromotions    ReplayObservationPromotion[]    @relation("ReplayObservationPromotionActor")
   replayReprocessJobs            ReplayReprocessJob[]            @relation("ReplayReprocessJobCreator")
+  replayPlayerSnapshots          ReplayPlayerSnapshot[]          @relation("ReplayPlayerSnapshotUser")
+  replayPlayerMetricAggregates   ReplayPlayerMetricAggregate[]   @relation("ReplayPlayerMetricAggregateUser")
+  replayStatProjections          ReplayStatProjection[]          @relation("ReplayStatProjectionActor")
 
-  featureRequests         FeatureRequest[]  @relation("FeatureRequestRequester")
-  bountyValuationsChanged BountyValuation[] @relation("BountyValuationChangedBy")
-  bountyClaims            BountyClaim[]     @relation("BountyClaimUser")
+  featureRequests         FeatureRequest[]        @relation("FeatureRequestRequester")
+  bountyValuationsChanged BountyValuation[]       @relation("BountyValuationChangedBy")
+  bountyClaims            BountyClaim[]           @relation("BountyClaimUser")
+  replayRosterPromotions  ReplayRosterPromotion[] @relation("ReplayRosterPromotionActor")
 
   @@map("users")
-  replayRosterPromotions ReplayRosterPromotion[] @relation("ReplayRosterPromotionActor")
 }
 
 model ApiKey {
@@ -150,17 +153,23 @@ model GameStats {
   parse_reason        String    @default("unspecified") @db.VarChar(50)
   original_filename   String?   @db.VarChar(255)
 
-  user                        User?                        @relation(fields: [userUid], references: [uid], onDelete: NoAction, onUpdate: NoAction)
-  linkedBetMarkets            BetMarket[]                  @relation("BetMarketLinkedGameStats")
-  tournamentMatchProof        TournamentMatch?             @relation("TournamentMatchProof")
-  replayParseAttempts         ReplayParseAttempt[]         @relation("GameStatsParseAttempts")
+  user                        User?                         @relation(fields: [userUid], references: [uid], onDelete: NoAction, onUpdate: NoAction)
+  linkedBetMarkets            BetMarket[]                   @relation("BetMarketLinkedGameStats")
+  tournamentMatchProof        TournamentMatch?              @relation("TournamentMatchProof")
+  replayParseAttempts         ReplayParseAttempt[]          @relation("GameStatsParseAttempts")
   replayResultAdjudications   ReplayResultAdjudication[]
   replayDesyncIncidents       ReplayDesyncIncident[]
-  replayParseRuns             ReplayParseRun[]             @relation("ReplayParseRunGameStats")
-  replayEvidenceLinks         ReplayEvidenceLink[]         @relation("ReplayEvidenceLinkGameStats")
-  replayObservationPromotions ReplayObservationPromotion[] @relation("ReplayObservationPromotionGameStats")
+  replayParseRuns             ReplayParseRun[]              @relation("ReplayParseRunGameStats")
+  replayEvidenceLinks         ReplayEvidenceLink[]          @relation("ReplayEvidenceLinkGameStats")
+  replayObservationPromotions ReplayObservationPromotion[]  @relation("ReplayObservationPromotionGameStats")
+  replayStatProjections       ReplayStatProjection[]
+  replayPlayerSnapshots       ReplayPlayerSnapshot[]
+  replayPlayerMetrics         ReplayPlayerMetric[]
+  replayGameMetrics           ReplayGameMetric[]
+  replayPlayerMetricBests     ReplayPlayerMetricAggregate[] @relation("ReplayPlayerMetricAggregateBestGame")
   trophyEvents                TrophyEvent[]
   trophyChallenges            TrophyChallenge[]
+  replayRosterPromotions      ReplayRosterPromotion[]       @relation("ReplayRosterPromotionGameStats")
 
   @@unique([replayHash, is_final], map: "uq_replay_final")
   @@index([createdAt], map: "ix_game_stats_created_at")
@@ -169,7 +178,6 @@ model GameStats {
   @@index([replayHash, parse_iteration], map: "ix_replay_hash_iteration")
   @@index([replay_file, parse_iteration], map: "ix_replay_iteration")
   @@map("game_stats")
-  replayRosterPromotions ReplayRosterPromotion[] @relation("ReplayRosterPromotionGameStats")
 }
 
 model ReplayParseAttempt {
@@ -371,6 +379,7 @@ model ReplayParseRun {
   evidenceLinks           ReplayEvidenceLink[]
   outputEvidenceArtifacts ReplayEvidenceArtifact[]  @relation("ReplayEvidenceSourceOutput")
   jobEvents               ReplayReprocessJobEvent[]
+  statProjections         ReplayStatProjection[]
 
   @@unique([artifactId, runIdentityHash], map: "uq_replay_parse_runs_artifact_identity")
   @@index([artifactId, createdAt], map: "ix_replay_parse_runs_artifact_created")
@@ -397,16 +406,16 @@ model ReplayObservation {
   affectsPublicAggregates Boolean  @default(false) @map("affects_public_aggregates")
   createdAt               DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
-  parseRun      ReplayParseRun               @relation(fields: [parseRunId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  promotions    ReplayObservationPromotion[]
-  evidenceLinks ReplayEvidenceLink[]
+  parseRun         ReplayParseRun               @relation(fields: [parseRunId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  promotions       ReplayObservationPromotion[]
+  evidenceLinks    ReplayEvidenceLink[]
+  rosterPromotions ReplayRosterPromotion[]      @relation("ReplayRosterPromotionObservation")
 
   @@unique([parseRunId, observationKey], map: "uq_replay_observations_run_key")
   @@index([parseRunId, fieldPath], map: "ix_replay_observations_run_field")
   @@index([observationKind, createdAt], map: "ix_replay_observations_kind_created")
   @@index([valueHash], map: "ix_replay_observations_value_hash")
   @@map("replay_observations")
-  rosterPromotions ReplayRosterPromotion[] @relation("ReplayRosterPromotionObservation")
 }
 
 /// Append-only acceptance of a parser candidate into the private Engine Room catalog.
@@ -438,6 +447,208 @@ model ReplayObservationPromotion {
   @@index([resultAdjudicationId], map: "ix_replay_promotions_adjudication")
   @@index([promotedByUserId, createdAt], map: "ix_replay_promotions_actor_created")
   @@map("replay_observation_promotions")
+}
+
+/// Immutable normalization receipt over one replay and one source state.
+/// Candidate projections remain private. Only explicitly accepted projections
+/// may feed public statistics, and no projection can alter results or money.
+model ReplayStatProjection {
+  id                      Int      @id @default(autoincrement())
+  gameStatsId             Int      @map("game_stats_id")
+  parseRunId              Int?     @map("parse_run_id")
+  supersedesId            Int?     @unique(map: "uq_replay_stat_projections_supersedes") @map("supersedes_id")
+  projectedByUserId       Int?     @map("projected_by_user_id")
+  projectedByUidSnapshot  String?  @map("projected_by_uid_snapshot") @db.VarChar(100)
+  idempotencyKey          String   @unique(map: "uq_replay_stat_projections_idempotency") @map("idempotency_key") @db.VarChar(128)
+  projectionIdentityHash  String   @map("projection_identity_hash") @db.VarChar(64)
+  inputHash               String   @map("input_hash") @db.VarChar(64)
+  projectionHash          String   @map("projection_hash") @db.VarChar(64)
+  sourceKind              String   @map("source_kind") @db.VarChar(32)
+  sourceIdentity          String   @map("source_identity") @db.VarChar(160)
+  sourceHash              String   @map("source_hash") @db.VarChar(64)
+  parserName              String?  @map("parser_name") @db.VarChar(64)
+  parserVersion           String?  @map("parser_version") @db.VarChar(64)
+  passName                String?  @map("pass_name") @db.VarChar(64)
+  passVersion             String?  @map("pass_version") @db.VarChar(64)
+  schemaVersion           String   @map("schema_version") @db.VarChar(64)
+  metricDictionaryVersion String   @map("metric_dictionary_version") @db.VarChar(64)
+  projectionPolicyVersion String   @map("projection_policy_version") @db.VarChar(64)
+  projectionStatus        String   @default("candidate") @map("projection_status") @db.VarChar(24)
+  statEligibility         String   @default("eligible") @map("stat_eligibility") @db.VarChar(24)
+  statEligibilityReason   String?  @map("stat_eligibility_reason") @db.VarChar(160)
+  resultEligibility       String   @default("unresolved") @map("result_eligibility") @db.VarChar(24)
+  resultEligibilityReason String?  @map("result_eligibility_reason") @db.VarChar(160)
+  playerCount             Int      @default(0) @map("player_count")
+  playerMetricCount       Int      @default(0) @map("player_metric_count")
+  gameMetricCount         Int      @default(0) @map("game_metric_count")
+  provenance              Json
+  affectsPublicAggregates Boolean  @default(false) @map("affects_public_aggregates")
+  affectsResults          Boolean  @default(false) @map("affects_results")
+  affectsBets             Boolean  @default(false) @map("affects_bets")
+  settlementAuthority     Boolean  @default(false) @map("settlement_authority")
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  gameStats       GameStats              @relation(fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  parseRun        ReplayParseRun?        @relation(fields: [parseRunId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersedes      ReplayStatProjection?  @relation("ReplayStatProjectionSupersession", fields: [supersedesId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersededBy    ReplayStatProjection?  @relation("ReplayStatProjectionSupersession")
+  projectedBy     User?                  @relation("ReplayStatProjectionActor", fields: [projectedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  playerSnapshots ReplayPlayerSnapshot[]
+  playerMetrics   ReplayPlayerMetric[]
+  gameMetrics     ReplayGameMetric[]
+
+  @@unique([gameStatsId, projectionIdentityHash], map: "uq_replay_stat_projections_game_identity")
+  @@index([gameStatsId, projectionStatus, createdAt], map: "ix_replay_stat_projections_game_status")
+  @@index([parseRunId], map: "ix_replay_stat_projections_parse_run")
+  @@index([projectedByUserId, createdAt], map: "ix_replay_stat_projections_actor")
+  @@index([sourceKind, createdAt], map: "ix_replay_stat_projections_source")
+  @@map("replay_stat_projections")
+}
+
+/// One player identity and eligibility snapshot within an immutable projection.
+/// Result eligibility is deliberately independent from statistical eligibility.
+model ReplayPlayerSnapshot {
+  id                Int      @id @default(autoincrement())
+  projectionId      Int      @map("projection_id")
+  gameStatsId       Int      @map("game_stats_id")
+  userId            Int?     @map("user_id")
+  idempotencyKey    String   @unique(map: "uq_replay_player_snapshots_idempotency") @map("idempotency_key") @db.VarChar(128)
+  playerKey         String   @map("player_key") @db.VarChar(160)
+  displayName       String   @map("display_name") @db.VarChar(100)
+  normalizedName    String   @map("normalized_name") @db.VarChar(100)
+  steamId           String?  @map("steam_id") @db.VarChar(32)
+  playerSlot        Int?     @map("player_slot")
+  teamKey           String?  @map("team_key") @db.VarChar(64)
+  civilizationId    Int?     @map("civilization_id")
+  civilizationName  String?  @map("civilization_name") @db.VarChar(100)
+  statEligible      Boolean  @default(true) @map("stat_eligible")
+  resultEligible    Boolean  @default(false) @map("result_eligible")
+  resultStatus      String   @default("unresolved") @map("result_status") @db.VarChar(24)
+  eligibilityReason Json?    @map("eligibility_reason")
+  exact             Boolean  @default(true)
+  confidenceBps     Int?     @map("confidence_bps")
+  provenance        Json
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  projection ReplayStatProjection @relation(fields: [projectionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  gameStats  GameStats            @relation(fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  user       User?                @relation("ReplayPlayerSnapshotUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  metrics    ReplayPlayerMetric[]
+
+  @@unique([projectionId, playerKey], map: "uq_replay_player_snapshots_projection_player")
+  @@index([playerKey, createdAt], map: "ix_replay_player_snapshots_player_created")
+  @@index([userId, createdAt], map: "ix_replay_player_snapshots_user_created")
+  @@index([gameStatsId, playerKey], map: "ix_replay_player_snapshots_game_player")
+  @@map("replay_player_snapshots")
+}
+
+/// Typed, immutable per-player metric. Exactly one typed value column is set.
+/// A stored numeric zero is a real value; unavailable metrics have no row.
+model ReplayPlayerMetric {
+  id                Int      @id @default(autoincrement())
+  projectionId      Int      @map("projection_id")
+  playerSnapshotId  Int      @map("player_snapshot_id")
+  gameStatsId       Int      @map("game_stats_id")
+  idempotencyKey    String   @unique(map: "uq_replay_player_metrics_idempotency") @map("idempotency_key") @db.VarChar(128)
+  metricKey         String   @map("metric_key") @db.VarChar(160)
+  metricGroup       String   @map("metric_group") @db.VarChar(32)
+  valueType         String   @map("value_type") @db.VarChar(16)
+  numericValue      Decimal? @map("numeric_value") @db.Decimal(30, 6)
+  textValue         String?  @map("text_value") @db.VarChar(500)
+  booleanValue      Boolean? @map("boolean_value")
+  unit              String   @db.VarChar(32)
+  aggregationMethod String   @map("aggregation_method") @db.VarChar(24)
+  resultDependency  String   @default("none") @map("result_dependency") @db.VarChar(24)
+  statEligible      Boolean  @default(true) @map("stat_eligible")
+  exact             Boolean  @default(true)
+  confidenceBps     Int?     @map("confidence_bps")
+  sourceKind        String   @map("source_kind") @db.VarChar(32)
+  sourcePath        String   @map("source_path") @db.VarChar(255)
+  provenance        Json
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  projection     ReplayStatProjection @relation(fields: [projectionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  playerSnapshot ReplayPlayerSnapshot @relation(fields: [playerSnapshotId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  gameStats      GameStats            @relation(fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([playerSnapshotId, metricKey], map: "uq_replay_player_metrics_snapshot_key")
+  @@index([gameStatsId, metricKey], map: "ix_replay_player_metrics_game_key")
+  @@index([metricKey, statEligible, createdAt], map: "ix_replay_player_metrics_key_eligible")
+  @@index([projectionId], map: "ix_replay_player_metrics_projection")
+  @@map("replay_player_metrics")
+}
+
+/// Typed, immutable game-level metric using the same value contract as player metrics.
+model ReplayGameMetric {
+  id                Int      @id @default(autoincrement())
+  projectionId      Int      @map("projection_id")
+  gameStatsId       Int      @map("game_stats_id")
+  idempotencyKey    String   @unique(map: "uq_replay_game_metrics_idempotency") @map("idempotency_key") @db.VarChar(128)
+  metricKey         String   @map("metric_key") @db.VarChar(160)
+  metricGroup       String   @map("metric_group") @db.VarChar(32)
+  valueType         String   @map("value_type") @db.VarChar(16)
+  numericValue      Decimal? @map("numeric_value") @db.Decimal(30, 6)
+  textValue         String?  @map("text_value") @db.VarChar(500)
+  booleanValue      Boolean? @map("boolean_value")
+  unit              String   @db.VarChar(32)
+  aggregationMethod String   @map("aggregation_method") @db.VarChar(24)
+  statEligible      Boolean  @default(true) @map("stat_eligible")
+  exact             Boolean  @default(true)
+  confidenceBps     Int?     @map("confidence_bps")
+  sourceKind        String   @map("source_kind") @db.VarChar(32)
+  sourcePath        String   @map("source_path") @db.VarChar(255)
+  provenance        Json
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  projection ReplayStatProjection @relation(fields: [projectionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  gameStats  GameStats            @relation(fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([projectionId, metricKey], map: "uq_replay_game_metrics_projection_key")
+  @@index([gameStatsId, metricKey], map: "ix_replay_game_metrics_game_key")
+  @@index([metricKey, statEligible, createdAt], map: "ix_replay_game_metrics_key_eligible")
+  @@map("replay_game_metrics")
+}
+
+/// Append-only materialized numeric aggregate. Coverage counts keep missing
+/// observations distinct from real zeroes and resolved-result scope explicit.
+model ReplayPlayerMetricAggregate {
+  id                      Int      @id @default(autoincrement())
+  userId                  Int?     @map("user_id")
+  bestGameStatsId         Int?     @map("best_game_stats_id")
+  idempotencyKey          String   @unique(map: "uq_replay_player_metric_aggregates_idempotency") @map("idempotency_key") @db.VarChar(128)
+  buildKey                String   @map("build_key") @db.VarChar(128)
+  inputHash               String   @map("input_hash") @db.VarChar(64)
+  playerKey               String   @map("player_key") @db.VarChar(160)
+  metricKey               String   @map("metric_key") @db.VarChar(160)
+  metricGroup             String   @map("metric_group") @db.VarChar(32)
+  unit                    String   @db.VarChar(32)
+  schemaVersion           String   @map("schema_version") @db.VarChar(64)
+  metricDictionaryVersion String   @map("metric_dictionary_version") @db.VarChar(64)
+  aggregateVersion        String   @map("aggregate_version") @db.VarChar(64)
+  scopeKey                String   @default("career") @map("scope_key") @db.VarChar(64)
+  dimension               Json
+  dimensionHash           String   @map("dimension_hash") @db.VarChar(64)
+  resultScope             String   @default("all_stat_eligible") @map("result_scope") @db.VarChar(32)
+  sourceProjectionCount   Int      @map("source_projection_count")
+  totalGameCount          Int      @map("total_game_count")
+  statEligibleGameCount   Int      @map("stat_eligible_game_count")
+  resultEligibleGameCount Int      @map("result_eligible_game_count")
+  metricGameCount         Int      @map("metric_game_count")
+  coverageBps             Int      @map("coverage_bps")
+  numericSum              Decimal  @map("numeric_sum") @db.Decimal(30, 6)
+  numericAverage          Decimal  @map("numeric_average") @db.Decimal(30, 6)
+  numericMinimum          Decimal  @map("numeric_minimum") @db.Decimal(30, 6)
+  numericMaximum          Decimal  @map("numeric_maximum") @db.Decimal(30, 6)
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user     User?      @relation("ReplayPlayerMetricAggregateUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  bestGame GameStats? @relation("ReplayPlayerMetricAggregateBestGame", fields: [bestGameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([buildKey, playerKey, metricKey, scopeKey, dimensionHash, resultScope], map: "uq_replay_player_metric_aggregates_build_target")
+  @@index([playerKey, metricKey, createdAt], map: "ix_replay_player_metric_aggregates_player_key")
+  @@index([userId, metricKey, createdAt], map: "ix_replay_player_metric_aggregates_user_key")
+  @@index([buildKey], map: "ix_replay_player_metric_aggregates_build")
+  @@map("replay_player_metric_aggregates")
 }
 
 /// Immutable content-addressed screenshot, trace, OCR, or operator evidence object.

@@ -99,6 +99,7 @@ type ReviewableGame = {
 
 export type EffectiveReplayResultAdjudication = {
   id: number;
+  idempotencyKey?: string;
   decisionStatus: string;
   affectsStats: boolean;
   affectsBets: boolean;
@@ -108,12 +109,48 @@ export type EffectiveReplayResultAdjudication = {
   winningTeamKey: string;
   winningPlayerKeys: Prisma.JsonValue;
   reason: string;
+  evidence?: Prisma.JsonValue | null;
   sourceReplayHash: string;
   sourceParseIteration: number;
   sourceRosterHash: string;
   sourcePropositionHash: string;
   createdAt: Date | string;
 };
+
+export function replayResultAdjudicationAuthorizesBets(
+  adjudication:
+    | Pick<
+        EffectiveReplayResultAdjudication,
+        "decisionStatus" | "affectsBets"
+      > & {
+        idempotencyKey?: string | null;
+      }
+    | null
+    | undefined
+) {
+  if (
+    !adjudication ||
+    adjudication.decisionStatus !==
+      REPLAY_RESULT_ACCEPTED
+  ) {
+    return false;
+  }
+
+  if (
+    adjudication.idempotencyKey?.startsWith(
+      "evidence:auto:"
+    ) === true
+  ) {
+    return true;
+  }
+
+  return (
+    adjudication.affectsBets === true &&
+    adjudication.idempotencyKey?.startsWith(
+      "financial-authority:"
+    ) === true
+  );
+}
 
 type MarketSnapshotPrisma = Pick<PrismaClient, "betMarket" | "pendingWoloClaim">;
 

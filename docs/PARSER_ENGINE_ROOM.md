@@ -14,8 +14,39 @@ The foundation lives in:
 - `prisma/migrations/20260714190000_add_replay_engine_room_foundation/migration.sql`
 - `lib/replayEngineRoom.ts`
 
-The operator cockpit is `/admin/parser-lab`. Worker implementation and exact
-commands live in `api-prodn/docs/REPLAY_ENGINE_ROOM_WORKER.md`.
+The operator cockpit is `/admin/parser-lab`. Its Replay Operations Command
+Center keeps inventory, candidate planning, result/financial review, and job
+receipts as visibly separate actions. Worker implementation and exact commands
+live in `api-prodn/docs/REPLAY_ENGINE_ROOM_WORKER.md`.
+
+## Web command-center boundary
+
+The admin web controls are bounded operator rails. The web process does not
+parse replay bytes itself; an explicit candidate launch delegates a frozen
+one-replay manifest to the private API-host worker:
+
+| Endpoint | Mode | Bound |
+|---|---|---|
+| `GET /api/admin/replay-operations/inventory` | Read-only | Indexed database counts; never walks the mounted archive |
+| `POST /api/admin/replay-operations/candidate-plan` | Dry-run only | Explicit cohort, 1–100 artifacts |
+| `POST /api/admin/replay-operations/run-candidates` | Candidate-only | Explicit confirmation, at most 3 game-linked artifacts, serial execution |
+| `GET /api/admin/replay-operations/review-queue` | Read-only | 1–100 returned review cases |
+| `GET /api/admin/replay-operations/job-receipts` | Read-only | 1–50 recent immutable job receipts |
+
+Every response carries an explicit safety envelope: no public aggregate,
+winner, wager, claim, settlement, or chain write. Candidate planning rejects
+requests that do not send `dryRun: true`; it previews catalog rows but does not
+create a job or invoke Python. Candidate execution separately requires
+`candidateOnly: true` plus the exact server-defined confirmation string. It
+re-verifies canonical archive bytes, runs serially, and writes only private
+candidate receipts/observations.
+
+A full archive inventory must still be generated on the API host with
+`scripts/reconcile_replay_corpus.py`. Candidate execution remains a later,
+separately authorized invocation of `run_replay_engine_room_job.py` against a
+reviewed frozen manifest. The three-game button is an operator canary, not a
+replacement for the full-corpus worker. Opening a replay review case likewise
+does not authorize settlement.
 
 ## Data contract
 
@@ -56,9 +87,9 @@ The first producer contract is fixed as:
 ```text
 parser: aoe2war.mgz_hd
 mgz: 1.8.51
-schema: 2026-07-16.4
+schema: 2026-07-25.1
 pass: hd_deterministic_evidence
-pass version: 6
+pass version: 8
 ```
 
 Its candidate document contains sorted field observations plus the complete
@@ -79,6 +110,59 @@ runs may omit an output; completed runs cannot.
 `source_candidate_output_hash`. A database insert guard rejects a mismatched
 hash, so screenshots, OCR, excerpts, differential traces, and later evidence can
 retain an unambiguous link to the candidate output they were derived from.
+
+### Pass 8 exact action observations
+
+Schema `2026-07-25.1` / pass `8` exposes the action evidence already preserved
+in the candidate document as queryable per-player observations:
+
+- recorded packet total and recorded type/command-family counts;
+- first and last recorded command time;
+- active recorded minutes, peak recorded packets in one minute, and largest
+  recorded command gap;
+- age-up research, market, and tribute command counts.
+
+Exact count lanes preserve numeric zero. If an action stream or field is not
+available, its observation is absent/null-provenance; consumers must not display
+or aggregate that absence as `0`. Packet-rate and first-resignation derivatives
+remain diagnostic and are not automatically accepted as exact career metrics.
+
+## Normalized statistics projection
+
+Replay observations are evidence candidates, not a stable public analytics
+contract. The normalized layer adds append-only, versioned records:
+
+| Record | Purpose |
+|---|---|
+| `ReplayStatProjection` | One content-addressed receipt for a game/source/parser/policy state |
+| `ReplayPlayerSnapshot` | Stable player identity, slot/team, and result scope for that projection |
+| `ReplayPlayerMetric` | Typed per-player fact with metric dictionary version, source path, exactness, and provenance |
+| `ReplayGameMetric` | Typed replay-level fact with the same provenance contract |
+| `ReplayPlayerMetricAggregate` | Versioned career aggregate over accepted projections, with coverage counts |
+
+All five tables are append-only. Corrections append a projection that
+supersedes an earlier accepted projection; historical metric rows are not
+rewritten. Candidate projections never affect public aggregates. An accepted
+projection may affect public statistics only, while database constraints force
+`affects_results = false`, `affects_bets = false`, and
+`settlement_authority = false`.
+
+The v1 dictionary normalizes available postgame score, military, economy,
+technology, and society achievements; exact pass-8 action metrics; and selected
+game-level duration/action/chat/map metrics. It does not manufacture missing
+postgame tables. Experimental identity-normalized rate fields remain outside
+the accepted exact dictionary.
+
+Statistic eligibility, result eligibility, and betting eligibility are
+independent. A final, parsed replay with real stat evidence may contribute
+statistics while its winner remains unresolved. Result-dependent aggregates
+must use resolved-result scope; result-independent aggregates may use every
+accepted statistically eligible projection.
+
+The projection CLI does not rebuild career aggregates implicitly. Aggregate
+builders accept only the current accepted projection set and reject duplicate
+active projections for one game; a separate reviewed aggregate job/admin action
+must call the build/persist helpers with a versioned build key.
 
 ## Idempotency
 

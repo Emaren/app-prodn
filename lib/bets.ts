@@ -2,6 +2,9 @@ import {
   applyReplayAdjudicationToGameStats,
   EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
 } from "@/lib/replayAdjudications";
+import {
+  replayResultAdjudicationAuthorizesBets,
+} from "@/lib/replayResultAdjudications";
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import {
   loadScheduledMatchTilesForLiveBoard,
@@ -1597,36 +1600,15 @@ async function assertSettlementWinnerTruthGate(
     );
   }
 
-  const automaticAdjudication =
-    await prisma.replayResultAdjudication.findFirst({
-      where: {
-        gameStatsId:
-          market.linkedGameStatsId,
-        decisionStatus:
-          "accepted",
-        idempotencyKey: {
-          startsWith:
-            "evidence:auto:",
-        },
-      },
-      orderBy: [
-        {
-          createdAt:
-            "desc",
-        },
-        {
-          id:
-            "desc",
-        },
-      ],
-      select: {
-        id:
-          true,
-      },
-    });
+  const effectiveAdjudication =
+    rawGame
+      .replayResultAdjudications[0] ??
+    null;
 
   const game =
-    automaticAdjudication
+    replayResultAdjudicationAuthorizesBets(
+      effectiveAdjudication
+    )
       ? applyReplayAdjudicationToGameStats(
           rawGame
         )
@@ -4561,7 +4543,59 @@ async function archiveLowConfidenceZeroPotMarkets(prisma: PrismaClient) {
   });
 }
 
-async function reconcileAutomaticScreenshotVerdictMarkets(
+function financialAuthorityIncidentIds(
+  adjudication: {
+    affectsBets?: boolean;
+    idempotencyKey?: string | null;
+    evidence?: unknown;
+  } | null
+) {
+  if (
+    !adjudication?.affectsBets ||
+    !adjudication.idempotencyKey
+      ?.startsWith(
+        "financial-authority:"
+      ) ||
+    !adjudication.evidence ||
+    typeof adjudication.evidence !==
+      "object" ||
+    Array.isArray(
+      adjudication.evidence
+    )
+  ) {
+    return [];
+  }
+
+  const raw = (
+    adjudication.evidence as Record<
+      string,
+      unknown
+    >
+  )
+    .recoverableIntegrityIncidentIds;
+
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+
+  return [
+    ...new Set(
+      raw.filter(
+        (
+          id
+        ): id is number =>
+          typeof id ===
+            "number" &&
+          Number.isSafeInteger(
+            id
+          ) &&
+          id > 0
+      )
+    ),
+  ];
+}
+
+async function reconcileAuthorizedReplayVerdictMarkets(
   prisma: PrismaClient
 ) {
   const markets =
@@ -4579,6 +4613,7 @@ async function reconcileAutomaticScreenshotVerdictMarkets(
             "closing",
             "live",
             "awaiting_final_proof",
+            "under_review",
             "settled",
           ],
         },
@@ -4630,45 +4665,6 @@ async function reconcileAutomaticScreenshotVerdictMarkets(
       continue;
     }
 
-    /*
-     * Only the explicit high-confidence screenshot policy
-     * authorizes this bridge. Historical/manual adjudications
-     * retain their existing operator-review financial posture.
-     */
-    const automaticAdjudication =
-      await prisma.replayResultAdjudication.findFirst({
-        where: {
-          gameStatsId:
-            market.linkedGameStatsId,
-          decisionStatus:
-            "accepted",
-          idempotencyKey: {
-            startsWith:
-              "evidence:auto:",
-          },
-        },
-        orderBy: [
-          {
-            createdAt:
-              "desc",
-          },
-          {
-            id:
-              "desc",
-          },
-        ],
-        select: {
-          id:
-            true,
-        },
-      });
-
-    if (
-      !automaticAdjudication
-    ) {
-      continue;
-    }
-
     const rawGame =
       await prisma.gameStats.findUnique({
         where: {
@@ -4698,6 +4694,32 @@ async function reconcileAutomaticScreenshotVerdictMarkets(
       });
 
     if (!rawGame) {
+      continue;
+    }
+
+    /*
+     * Financial authority belongs to the effective (latest accepted)
+     * adjudication itself. An older automatic or approved verdict can
+     * never lend betting authority to a newer statistics-only correction.
+     */
+    const effectiveAdjudication =
+      rawGame
+        .replayResultAdjudications[0] ??
+      null;
+    const explicitFinancialAuthority =
+      effectiveAdjudication
+        ?.affectsBets === true &&
+      effectiveAdjudication
+        .idempotencyKey
+        ?.startsWith(
+          "financial-authority:"
+        ) === true;
+
+    if (
+      !replayResultAdjudicationAuthorizesBets(
+        effectiveAdjudication
+      )
+    ) {
       continue;
     }
 
@@ -4747,7 +4769,7 @@ async function reconcileAutomaticScreenshotVerdictMarkets(
       )
     ) {
       console.warn(
-        "Screenshot adjudication market integrity blocked",
+        "Authorized replay adjudication market integrity blocked",
         {
           marketId:
             market.id,
@@ -4773,6 +4795,21 @@ async function reconcileAutomaticScreenshotVerdictMarkets(
       data: {
         status:
           "settled",
+        ...(explicitFinancialAuthority
+          ? {
+              integrityStatus:
+                "verified",
+              /*
+               * The immutable idempotency key contains the exact
+               * approved 64-hex plan fingerprint.
+               */
+              integrityReason:
+                effectiveAdjudication
+                  ?.idempotencyKey,
+              commissionerReviewState:
+                "financial_authority_approved",
+            }
+          : {}),
         featured:
           false,
         closeAt:
@@ -4784,9 +4821,43 @@ async function reconcileAutomaticScreenshotVerdictMarkets(
         winnerSide:
           winningSide,
         resolutionReason:
-          "screenshot_evidence_adjudication",
+          explicitFinancialAuthority
+            ? "admin_financial_authority"
+            : "screenshot_evidence_adjudication",
       },
     });
+
+    const recoverableIncidentIds =
+      financialAuthorityIncidentIds(
+        effectiveAdjudication
+      );
+
+    if (
+      explicitFinancialAuthority &&
+      recoverableIncidentIds.length >
+        0
+    ) {
+      await prisma.betMarketIntegrityIncident.updateMany({
+        where: {
+          id: {
+            in:
+              recoverableIncidentIds,
+          },
+          marketId:
+            market.id,
+          status:
+            "open",
+          incidentType:
+            "settlement_integrity_blocked",
+        },
+        data: {
+          status:
+            "resolved",
+          resolvedAt:
+            new Date(),
+        },
+      });
+    }
   }
 }
 
@@ -4859,8 +4930,14 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
 
   await reconcileChallengeSessionShadowMarkets(prisma, seeds);
   await reconcileDetachedWatcherMarkets(prisma, visibleSessionKeys);
-  await voidExpiredWatcherMarkets(prisma);
   await linkLateFinalEvidence(prisma);
+  /*
+   * An explicitly authorized final result is trusted proof. Apply it before
+   * the stale-proof grace worker can void an awaiting_final_proof market.
+   * Terminal void/refund guards inside the reconciler remain authoritative.
+   */
+  await reconcileAuthorizedReplayVerdictMarkets(prisma);
+  await voidExpiredWatcherMarkets(prisma);
 
   await prisma.betMarket.updateMany({
     where:
@@ -4910,7 +4987,6 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
   });
 
   await reconcileBetMarketStatsLinks(prisma);
-  await reconcileAutomaticScreenshotVerdictMarkets(prisma);
   await reconcileDesyncSideMarkets(prisma);
   await settleResolvedMarketWagers(prisma);
   await settleMarketIntegrityCorrections(prisma);
@@ -4934,6 +5010,26 @@ export async function ensureBetMarkets(prisma: PrismaClient) {
   });
   betMarketEnsurePromise = run;
   return run;
+}
+
+/**
+ * Reconcile state that was committed immediately before this call.
+ *
+ * `ensureBetMarkets` is intentionally process-wide single-flight because the
+ * settlement rail can submit chain transactions. Merely joining an older pass
+ * is not sufficient for a newly committed financial-authority verdict: that
+ * pass may already have moved beyond replay-result reconciliation. Capture and
+ * await any pre-existing pass, then require a pass whose start is after this
+ * function was called. Any pass we join in the second step necessarily began
+ * after the caller's commit.
+ */
+export async function ensureBetMarketsAfterCommit(prisma: PrismaClient) {
+  const preExistingPass = betMarketEnsurePromise;
+  if (preExistingPass) {
+    await preExistingPass;
+  }
+
+  await ensureBetMarkets(prisma);
 }
 
 function buildMarketCard(

@@ -53,14 +53,21 @@ The canonical contract is:
 ```text
 parser: aoe2war.mgz_hd
 mgz: 1.8.51
-schema: 2026-07-16.4
+schema: 2026-07-25.1
 pass: hd_deterministic_evidence
-pass version: 6
+pass version: 8
 ```
 
 The isolated `mgz 1.8.27` lane remains compatibility evidence. It never became
 the production parser. The Observatory pins its contract tile to
 `HD_REPLAY_PARSER_CONTRACT`, rather than whichever run finished most recently.
+
+Pass 8 adds exact queryable per-player recorded-action observations while
+retaining the complete candidate action stream. Numeric zero remains an
+observation; unavailable evidence remains absent. Statistic eligibility is
+separate from result and betting eligibility, so an unresolved final may still
+display accepted result-independent metrics without becoming winner or money
+truth.
 
 ## Effective result projection
 

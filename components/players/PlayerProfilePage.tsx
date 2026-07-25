@@ -17,6 +17,10 @@ import type {
   PlayerProfileViewMode,
   PlayerResourceStats,
 } from "@/lib/playerProfile";
+import type {
+  PlayerNormalizedMetricSummary,
+  PlayerNormalizedStats,
+} from "@/lib/playerNormalizedStats";
 
 type PlayerProfilePageProps = {
   profile: PlayerProfile;
@@ -200,6 +204,8 @@ function PlayerProfileExtreme({
                 <ResourceVault resources={profile.resources} />
               </Panel>
 
+              <NormalizedStatsPanel stats={profile.normalizedStats} />
+
               <Panel eyebrow="Best Games" title="Personal highlight reel" count={String(profile.bestGames.length)}>
                 <BestGamesGrid games={profile.bestGames} />
               </Panel>
@@ -286,6 +292,8 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
           <Panel eyebrow="Economy Vault" title="Resource command" count={profile.resources.visibleGames > 0 ? `${profile.resources.visibleGames} tables` : "HD archive"}>
             <ResourceVault resources={profile.resources} />
           </Panel>
+
+          <NormalizedStatsPanel stats={profile.normalizedStats} />
 
           <section className="grid gap-5 lg:grid-cols-2">
             <Panel eyebrow="Civilizations" title="Civ matrix" count={String(profile.charts.civs.length)}>
@@ -404,6 +412,8 @@ function ClaimedBasicProfile({ profile }: { profile: PlayerProfile }) {
               ) : null}
             </div>
           </Panel>
+
+          <NormalizedStatsPanel stats={profile.normalizedStats} />
 
           <Panel eyebrow="Profile" title="Identity">
             <dl className="grid gap-4">
@@ -537,6 +547,8 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
               </div>
             ) : null}
           </section>
+
+          <NormalizedStatsPanel stats={profile.normalizedStats} />
 
           <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
             <div className="text-xs uppercase tracking-[0.35em] text-white/45">Why Claim It</div>
@@ -1040,6 +1052,156 @@ function FormChart({ points }: { points: PlayerFormPoint[] }) {
   );
 }
 
+function normalizedMetricLabel(metric: PlayerNormalizedMetricSummary) {
+  const withoutGroup = metric.metricKey.startsWith(
+    `${metric.metricGroup}.`
+  )
+    ? metric.metricKey.slice(metric.metricGroup.length + 1)
+    : metric.metricKey;
+  return withoutGroup
+    .replaceAll(".", " · ")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function formatNormalizedMetricValue(
+  value: number,
+  unit: string
+) {
+  if (!Number.isFinite(value)) return "—";
+  if (unit === "seconds") {
+    return formatDurationLabel(Math.max(0, Math.round(value)));
+  }
+  if (unit === "milliseconds") {
+    return formatDurationLabel(Math.max(0, Math.round(value / 1000)));
+  }
+  if (unit === "percent") {
+    return `${value.toLocaleString(undefined, {
+      maximumFractionDigits: 1,
+    })}%`;
+  }
+  return value.toLocaleString(undefined, {
+    maximumFractionDigits:
+      Number.isInteger(value) ? 0 : 1,
+  });
+}
+
+function normalizedMetricHeadline(metric: PlayerNormalizedMetricSummary) {
+  if (metric.aggregationMethod === "average") {
+    return formatNormalizedMetricValue(
+      metric.numericAverage,
+      metric.unit
+    );
+  }
+  if (metric.aggregationMethod === "maximum") {
+    return formatNormalizedMetricValue(
+      metric.numericMaximum,
+      metric.unit
+    );
+  }
+  if (metric.aggregationMethod === "minimum") {
+    return formatNormalizedMetricValue(
+      metric.numericMinimum,
+      metric.unit
+    );
+  }
+  return formatNormalizedMetricValue(metric.numericSum, metric.unit);
+}
+
+function NormalizedStatsPanel({
+  stats,
+}: {
+  stats: PlayerNormalizedStats;
+}) {
+  if (stats.visibleGames === 0 || stats.metrics.length === 0) {
+    return null;
+  }
+  const groups = [...new Set(stats.metrics.map((metric) => metric.metricGroup))];
+
+  return (
+    <Panel
+      eyebrow="Deep Replay Vault"
+      title="Exact normalized statistics"
+      count={`${stats.metricCount} metrics · ${stats.visibleGames} games`}
+    >
+      <div className="space-y-5">
+        <div className="rounded-[1rem] border border-emerald-300/12 bg-emerald-400/[0.045] px-4 py-3 text-xs leading-5 text-emerald-50/80">
+          Accepted replay facts only. Unknown winners remain unknown; their exact
+          economy, military, technology, society, and action evidence can still
+          count here. Missing values are never converted to zero.
+        </div>
+        {groups.map((group) => {
+          const metrics = stats.metrics.filter(
+            (metric) => metric.metricGroup === group
+          );
+          return (
+            <section key={group}>
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-xs font-bold uppercase tracking-[0.24em] text-slate-400">
+                  {group}
+                </h3>
+                <span className="text-[10px] text-slate-600">
+                  {metrics.length} metric{metrics.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {metrics.map((metric) => (
+                  <div
+                    key={metric.metricKey}
+                    className="rounded-[1.15rem] border border-white/[0.075] bg-white/[0.035] px-4 py-4"
+                  >
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      {normalizedMetricLabel(metric)}
+                    </div>
+                    <div className="mt-2 text-2xl font-semibold text-white">
+                      {normalizedMetricHeadline(metric)}
+                    </div>
+                    <div className="mt-2 text-[11px] leading-5 text-slate-400">
+                      {metric.metricGameCount} game
+                      {metric.metricGameCount === 1 ? "" : "s"} ·{" "}
+                      {(metric.coverageBps / 100).toFixed(0)}% coverage
+                    </div>
+                    <div className="mt-1 text-[10px] text-slate-600">
+                      avg{" "}
+                      {formatNormalizedMetricValue(
+                        metric.numericAverage,
+                        metric.unit
+                      )}{" "}
+                      · range{" "}
+                      {formatNormalizedMetricValue(
+                        metric.numericMinimum,
+                        metric.unit
+                      )}{" "}
+                      –{" "}
+                      {formatNormalizedMetricValue(
+                        metric.numericMaximum,
+                        metric.unit
+                      )}
+                    </div>
+                    {metric.bestGameStatsId ? (
+                      <Link
+                        href={`/game-stats/${metric.bestGameStatsId}`}
+                        className="mt-3 inline-flex text-[11px] font-semibold text-sky-200 transition hover:text-sky-100"
+                      >
+                        Open best replay →
+                      </Link>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+        <div className="text-[10px] leading-5 text-slate-600">
+          Schema {stats.schemaVersion ?? "versioned"} · dictionary{" "}
+          {stats.metricDictionaryVersion ?? "versioned"}
+          {stats.truncated ? " · recent 5,000 replay snapshots shown" : ""}
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
 function ResourceVault({ resources }: { resources: PlayerResourceStats }) {
   const visibleResources = RESOURCE_LABELS.filter(
     (resource) => typeof resources.totals[resource] === "number"
@@ -1127,7 +1289,7 @@ function BreakdownBars({ rows, accent }: { rows: PlayerBreakdownRow[]; accent: "
 
 function BestGamesGrid({ games }: { games: PlayerBestGame[] }) {
   if (games.length === 0) {
-    return <EmptyPanel message="Highlight reel unlocks when score, EAPM, and duration stats appear." />;
+    return <EmptyPanel message="Highlight reel unlocks when score and duration stats appear." />;
   }
 
   return (

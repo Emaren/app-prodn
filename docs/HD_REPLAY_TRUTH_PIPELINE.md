@@ -29,7 +29,8 @@ Treat each state as a separate fact. Do not collapse them into one â€œsuccess.â€
 | Uploaded | `final_submission_received` or live receipt | Bytes reached the API | No parser internals |
 | Archived | `raw_replay_archived`, `artifact_archived`, `artifact_accepted` | Content-addressed source bytes are durable | Battle/replay filed |
 | Parsed | `parse_completed` | A parser pass completed, even if some fields were absent | Show extracted battle facts |
-| Result-ready | `result_resolved`, `stats_eligible` | A coherent winner projection exists | Show the full winning player/team set |
+| Stats-ready | `statistics_available`, `stats_eligible` | A final parsed replay contains real statistics; zero is valid evidence | Show/aggregate only present facts, even if the result is unresolved |
+| Result-ready | `result_resolved`, `result_trusted` | A coherent winner projection exists | Show the full winning player/team set |
 | Review-routed | `final_recorded*` with no trusted automatic result | Artifact/candidate is preserved for authorized correction | Present the battle, not parser uncertainty |
 | Betting-eligible | `result_trusted`, `betting_eligible`, `should_settle` | Direct result proof plus team integrity allow settlement | Existing betting lifecycle applies |
 
@@ -37,6 +38,26 @@ Treat each state as a separate fact. Do not collapse them into one â€œsuccess.â€
 upload-durability signals. `final_recorded`, `final_recorded_duplicate`, and
 `final_recorded_refreshed` are successful preservation outcomes and must not be
 counted as failed uploads or trusted finals.
+
+### Single, watcher, and package upload parity
+
+`/api/replay/upload` and `/api/replay/upload-package` now classify the same
+independent storage, parser, team, result, statistics, and financial stages.
+Their post-ingest coordinator derives a stable SHA-256 receipt identity, so a
+transport retry can be correlated without treating filename or upload order as
+game identity.
+
+Package ingestion reconciles tournament proof and markets at most once per
+batch. Market reconciliation runs only when at least one receipt is a trusted,
+settlement-ready result. An archived or parsed unknown-result replay is routed
+to review and cannot open the financial rail. Single/watcher ingestion retains
+its existing tournament-proof refresh behavior, but uses the same trusted-result
+gate for markets.
+
+Tournament and market stages fail independently after accepted bytes have been
+preserved. Their error receipts must be shown to operators and retried through
+the idempotent reconciler; a downstream reconciliation failure must not be
+reported as loss of the uploaded replay.
 
 Trusted team settlement requires exactly two complete explicit replay teams, a
 coherent complete winning team, and direct result evidence such as postgame or
@@ -103,11 +124,18 @@ duration, and player identity were identical across both versions. Production is
 therefore pinned to 1.8.51 while retaining the HD `game_type_id=9`
 compatibility shim. Future promotions must repeat the same differential gate.
 
-Campaign III retains that canonical `mgz 1.8.51` identity while advancing the
-evidence schema to `2026-07-16.4` / pass `6`. Targeted canonical recovery lanes
+Campaign III retained that canonical `mgz 1.8.51` identity. The current parser
+contract advances the evidence schema to `2026-07-25.1` / pass `8`. Targeted canonical recovery lanes
 now cover header fragments, metadata fragments, one trailing body stream, and
 HD saved-game checkpoints. The latest candidate disposition is complete for
 all 2,025 frozen artifacts; older failed runs remain immutable history.
+
+Pass 8 also emits exact per-player recorded-action observations for packet
+counts, type and command-family counts, first/last command time, active minutes,
+peak packets per minute, largest command gap, and age-up/market/tribute command
+counts. It preserves a real `0`; an unavailable field stays absent. Derived
+packet-rate and resignation-time observations remain diagnostic until their
+semantics are explicitly promoted.
 
 Saved checkpoints are not parser failures and are not final battles. Even when
 roster/map/initial state is decoded, they remain result-unknown and
@@ -141,10 +169,15 @@ Backfill in risk and value order, never by overwriting the active corpus:
 3. Reprocess parsed games whose public result still needs review.
 4. Classify parser misses by exact container/extension/failure signature before
    retrying them. Keep `.aoe2record` and `.aoe2mpgame` cohorts separate.
-5. Route remaining result decisions to Emaren and the verified submitter.
-6. Promote accepted candidates in bounded cohorts and recompute affected player,
-   rivalry, leaderboard, and archive projections.
-7. Reconcile totals, hashes, effective results, and money-linked exceptions
+5. Build normalized-stat projections in `plan` and then private `candidate`
+   mode. Review metric coverage and reject regressions.
+6. Accept exact, result-independent statistics in bounded cohorts. This changes
+   no winner or financial state; unresolved results remain unresolved.
+7. Route remaining result decisions to Emaren and the verified submitter.
+8. Promote effective-result candidates only through their stricter,
+   separately authorized projector, then recompute affected player, rivalry,
+   leaderboard, and archive projections.
+9. Reconcile totals, hashes, effective results, and money-linked exceptions
    before starting the next cohort.
 
 Jim's full 2,025-artifact pass and the deterministic recovery frontier are
@@ -170,13 +203,17 @@ For ingestion or watcher reports:
 
 For a reparse/backfill:
 
-1. Run a no-write/dry-run candidate pass.
-2. Compare roster, teams, winner set, evidence, map, duration, and advanced stats
+1. Freeze the corpus manifest and run the API worker in no-write `plan` mode.
+2. Run a small private candidate canary, measure database/WAL and candidate
+   volume growth, then resume the same immutable job.
+3. Compare roster, teams, winner set, evidence, map, duration, and advanced stats
    field by field.
-3. Flag proposition or terminal-money differences before promotion.
-4. Promote the smallest verified cohort.
-5. Smoke public projections and private operator history.
-6. Record before/after counts and preserve the run manifest.
+4. Project normalized stats in `plan`, then private `candidate` mode. Accept
+   only exact reviewed metrics and never treat result absence as stat absence.
+5. Flag proposition or terminal-money differences before any result promotion.
+6. Promote the smallest verified result cohort on its separate authority rail.
+7. Smoke public projections and private operator history.
+8. Record before/after counts and preserve the run manifest and receipts.
 
 ## Deployment and migration checklist
 

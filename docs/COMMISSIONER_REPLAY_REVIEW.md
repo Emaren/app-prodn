@@ -70,7 +70,9 @@ Keep these layers separate in code, operator language, and incident reports.
 4. **Betting and settlement history**
    - Frozen proposition, stakes, slips, payout attempts, claims, refunds,
      integrity incidents, and chain breadcrumbs.
-   - Never rewritten by the replay-adjudication ledger.
+   - Never rewritten by an ordinary replay verdict. A separate admin-only
+     financial-authority row may authorize the existing reconciliation rail
+     after the frozen financial state is re-verified.
 
 ## Append-only verdict contract
 
@@ -110,10 +112,18 @@ Database triggers reject update, delete, and truncate on the verdict ledger.
 The application owner therefore cannot bypass append-only history with a table
 truncate; corrections remain new rows linked through `supersedes_id`.
 
-`affectsBets` is database-constrained to `false`. The review API never mutates a
-market, wager, claim, refund, payout, or chain record. A money-linked correction
-sets `financialDisposition = operator_review_required` and sends the operator
-to the existing market-integrity or settlement rail.
+Ordinary verdicts are database-constrained to `affectsBets = false`. The result
+review POST never mutates a market, wager, claim, refund, payout, or chain
+record. A money-linked correction sets
+`financialDisposition = operator_review_required`.
+
+The one exception is a separate admin-only financial-authority workflow after
+an accepted complete verdict exists. Its database constraint requires an
+accepted site-admin row that supersedes the reviewed verdict, has a linked
+market, retains `operator_review_required`, uses a
+`financial-authority:` idempotency key, and explicitly sets
+`affectsBets = true`. That row does not invent a new result; it authorizes the
+already-reviewed exact result for the existing betting reconciler.
 
 ## Public presentation versus private evidence
 
@@ -143,7 +153,8 @@ Recommended public phrases include **Battle filed**, **Replay preserved**, and
 
 ## Betting and repair policy
 
-The result editor corrects game truth; it does not settle or repair money.
+The ordinary result editor corrects game truth; it does not settle or repair
+money.
 
 - If no market is linked, an accepted verdict may update only the effective
   public/stats projection.
@@ -158,6 +169,24 @@ The result editor corrects game truth; it does not settle or repair money.
 - A late final remains evidence only for a terminal void/refund and cannot
   resurrect the market.
 - Retry failed/retryable payouts only from the existing settlement rail.
+
+For a non-terminal winner market, the admin review page exposes **Run Financial
+Dry Run** only after an accepted verdict. The server rechecks:
+
+- final replay hash, parse iteration, and canonical roster hash;
+- no active human-confirmed desync;
+- exactly two complete adjudicated teams and one winning team;
+- every linked winner market's frozen roster/proposition and integrity state;
+- wager status, stake/payout breadcrumbs, seed exposure, pending claims, and
+  terminal-money blockers.
+
+The plan returns a SHA-256 fingerprint, exact WOLO exposure, per-market winning
+side, and blockers. Approval requires the unchanged fingerprint plus the exact
+phrase `AUTHORIZE FINANCIAL RECONCILIATION`. Under an advisory lock, the server
+re-runs the plan, appends a superseding immutable authority verdict, and invokes
+`ensureBetMarkets`. If reconciliation fails after the authority row commits,
+the route returns a retryable partial result; it never pretends the append-only
+authority rolled back.
 
 Use [Team Market Integrity](./MARKET_TEAM_INTEGRITY.md) for financial incidents.
 One-time market repairs must retain their existing dry-run, exact-precondition,
@@ -180,8 +209,12 @@ backup, audit, and explicit-confirmation safeguards.
    edit or delete an earlier verdict.
 8. Confirm that the accepted public projection shows every winning teammate and
    that the raw parser row remains unchanged.
-9. If money action is required, leave the adjudication ledger and follow the
-   appropriate market-integrity/refund/settlement workflow.
+9. If a linked ordinary winner market is still eligible, run the separate
+   Financial Dry Run, review every blocker/exposure row, type the exact
+   confirmation phrase, and authorize only the unchanged fingerprint.
+10. For proposition conflicts, terminal money, desyncs, voids, refunds, or
+   failed payout retries, use the appropriate market-integrity/refund/settlement
+   workflow instead.
 
 For a historical Engine Room pass, begin in `/admin/parser-lab` and keep the
 candidate boundary explicit:

@@ -17,6 +17,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import ReplayOperationsCommandCenter from "@/components/admin/ReplayOperationsCommandCenter";
 import { loadAdminParserLab, type ParserLabJobState } from "@/lib/adminParserLab";
 import { getPrisma } from "@/lib/prisma";
 
@@ -199,6 +200,8 @@ export default async function AdminParserLabPage() {
             </div>
           </div>
         </div>
+
+        <ReplayOperationsCommandCenter />
 
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <MetricCard

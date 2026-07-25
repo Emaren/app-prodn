@@ -27,6 +27,7 @@ The public leaderboard now has two dedicated routes: `/leaderboard` for the mode
 - [docs/BOUNTY_BOARD.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/BOUNTY_BOARD.md)
 - [docs/RADIO_WOLO.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/RADIO_WOLO.md)
 - [docs/PARSER_OBSERVATORY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/PARSER_OBSERVATORY.md)
+- [docs/REPLAY_STATS_OPERATIONS_RELEASE_2026-07-25.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/REPLAY_STATS_OPERATIONS_RELEASE_2026-07-25.md)
 
 ## Stack
 

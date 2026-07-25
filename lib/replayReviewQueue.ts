@@ -3,6 +3,10 @@ import {
   selectPrimaryLiveWinnerMarket,
 } from "@/lib/liveBetMarketPolicy";
 import {
+  REPLAY_REVIEW_QUEUE_SOURCE_LIMIT,
+  replayReviewSourceCoverage,
+} from "@/lib/replayOperationsContracts";
+import {
   getReplayAdjudicationForGameStatsId,
   listReplayAdjudications,
   type ReplayAdjudication,
@@ -115,6 +119,11 @@ export type ReplayReviewQueueData = {
   generatedAt: string;
   storageReady: true;
   storageNotice: string;
+  sourceCoverage: {
+    rowLimit: number;
+    rowsScanned: number;
+    hasMore: boolean;
+  };
   pendingCount: number;
   adjudicatedCount: number;
   proposalCount: number;
@@ -681,7 +690,7 @@ export async function loadReplayReviewQueue(
   const adjudicatedGameIds = listReplayAdjudications().map(
     (adjudication) => adjudication.gameStatsId
   );
-  const rows = await prisma.gameStats.findMany({
+  const sourceRows = await prisma.gameStats.findMany({
     where: {
       is_final: true,
       OR: [
@@ -694,7 +703,7 @@ export async function loadReplayReviewQueue(
       ],
     },
     orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { id: "desc" }],
-    take: 1000,
+    take: REPLAY_REVIEW_QUEUE_SOURCE_LIMIT + 1,
     select: {
       id: true,
       replay_file: true,
@@ -749,6 +758,13 @@ export async function loadReplayReviewQueue(
       },
     },
   });
+  const sourceCoverage = replayReviewSourceCoverage(
+    sourceRows.length
+  );
+  const rows = sourceRows.slice(
+    0,
+    REPLAY_REVIEW_QUEUE_SOURCE_LIMIT
+  );
 
   const unresolvedRows = rows.flatMap((row) => {
     const players = readPlayers(row.players);
@@ -908,6 +924,7 @@ export async function loadReplayReviewQueue(
     storageReady: true,
     storageNotice:
       "Result reviews are written to an append-only audit ledger. Accepted verdicts project effective teams and winners without rewriting parser evidence or directly mutating market, wager, claim, or settlement history.",
+    sourceCoverage,
     pendingCount: entries.filter((entry) => !entry.adjudication).length,
     adjudicatedCount: entries.filter((entry) => Boolean(entry.adjudication)).length,
     proposalCount: entries.reduce(

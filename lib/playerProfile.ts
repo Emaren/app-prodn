@@ -21,6 +21,10 @@ import {
   type PendingWoloClaimSummary,
 } from "@/lib/pendingWoloClaims";
 import { buildPlayerPerformanceStats } from "@/lib/playerPerformance";
+import {
+  loadPlayerNormalizedStats,
+  type PlayerNormalizedStats,
+} from "@/lib/playerNormalizedStats";
 import { buildRivalSummaries, type RivalSummary } from "@/lib/publicMatchups";
 import {
   applyPendingWoloClaimSummary,
@@ -138,6 +142,7 @@ export type PlayerProfile = {
   performance: ReturnType<typeof buildPlayerPerformanceStats>;
   command: PlayerCommandStats;
   resources: PlayerResourceStats;
+  normalizedStats: PlayerNormalizedStats;
   watcher: PlayerWatcherStats;
   wolo: PlayerWoloStats;
   charts: {
@@ -394,10 +399,6 @@ function readPlayerScore(player: Record<string, unknown> | undefined) {
   return player ? readNumber(player.score) : null;
 }
 
-function readPlayerEapm(player: Record<string, unknown> | undefined) {
-  return player ? readNumber(player.eapm) : null;
-}
-
 function readPlayerResource(player: Record<string, unknown> | undefined, resource: keyof typeof RESOURCE_KEYS) {
   if (!player) return null;
 
@@ -532,7 +533,6 @@ function buildCommandStats(games: PlayerProfileGameRow[], currentPlayer: PublicP
   const civCounts = new Map<string, number>();
   const mapCounts = new Map<string, number>();
   const scores: number[] = [];
-  const eapms: number[] = [];
 
   let wins = 0;
   let losses = 0;
@@ -557,13 +557,13 @@ function buildCommandStats(games: PlayerProfileGameRow[], currentPlayer: PublicP
     const mapName = normalizePublicReplayText(readMapName(game.map));
     if (mapName) mapCounts.set(mapName, (mapCounts.get(mapName) ?? 0) + 1);
 
-    if (result !== "unknown") {
-      const score = readPlayerScore(player);
-      if (score !== null && score > 0) scores.push(score);
-
-      const eapm = readPlayerEapm(player);
-      if (eapm !== null && eapm > 0) eapms.push(eapm);
-    }
+    /*
+     * Statistics and competitive-result truth are separate contracts. A
+     * preserved final may have exact player measurements even when the winner
+     * still needs review, so those measurements remain profile-eligible.
+     */
+    const score = readPlayerScore(player);
+    if (score !== null && score > 0) scores.push(score);
 
     const playedAt = readPlayedAt(game);
     const playedIso = toIso(playedAt);
@@ -611,8 +611,10 @@ function buildCommandStats(games: PlayerProfileGameRow[], currentPlayer: PublicP
     manualBackfillMatches,
     averageScore: scores.length ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length) : null,
     bestScore: scores.length ? Math.max(...scores) : null,
-    averageEapm: eapms.length ? Math.round((eapms.reduce((sum, value) => sum + value, 0) / eapms.length) * 10) / 10 : null,
-    bestEapm: eapms.length ? Math.round(Math.max(...eapms) * 10) / 10 : null,
+    // The legacy `player.eapm` field is an unvalidated packet-rate estimate,
+    // not effective actions. Exact action facts live in the normalized rail.
+    averageEapm: null,
+    bestEapm: null,
     mostPlayedCivilization: Array.from(civCounts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
     favoriteMap: Array.from(mapCounts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null,
   };
@@ -634,15 +636,13 @@ function buildResourceStats(games: PlayerProfileGameRow[], currentPlayer: Public
   const visibleGameIds = new Set<number>();
 
   for (const game of games) {
-    if (gameResult(game, currentPlayer) === "unknown") continue;
-
     const player = currentPlayerRecord(game, currentPlayer);
     const playedAt = toIso(readPlayedAt(game));
     const mapName = readMapName(game.map);
 
     for (const resource of Object.keys(RESOURCE_KEYS) as Array<keyof typeof RESOURCE_KEYS>) {
       const value = readPlayerResource(player, resource);
-      if (value === null || value <= 0) continue;
+      if (value === null || value < 0) continue;
       visibleGameIds.add(game.id);
       totals[resource] = (totals[resource] ?? 0) + value;
       if (!best[resource] || value > best[resource]!.value) {
@@ -707,23 +707,14 @@ function buildCharts(games: PlayerProfileGameRow[], currentPlayer: PublicPlayerR
 function buildBestGames(games: PlayerProfileGameRow[], currentPlayer: PublicPlayerRef): PlayerBestGame[] {
   const best: PlayerBestGame[] = [];
   let highestScore: { game: PlayerProfileGameRow; value: number } | null = null;
-  let highestEapm: { game: PlayerProfileGameRow; value: number } | null = null;
   let longestGame: { game: PlayerProfileGameRow; value: number } | null = null;
   let fastestWin: { game: PlayerProfileGameRow; value: number } | null = null;
 
   for (const game of games) {
     const player = currentPlayerRecord(game, currentPlayer);
-    const result = gameResult(game, currentPlayer);
-    if (result !== "unknown") {
-      const score = readPlayerScore(player);
-      if (score !== null && score > 0 && (!highestScore || score > highestScore.value)) {
-        highestScore = { game, value: score };
-      }
-
-      const eapm = readPlayerEapm(player);
-      if (eapm !== null && eapm > 0 && (!highestEapm || eapm > highestEapm.value)) {
-        highestEapm = { game, value: eapm };
-      }
+    const score = readPlayerScore(player);
+    if (score !== null && score > 0 && (!highestScore || score > highestScore.value)) {
+      highestScore = { game, value: score };
     }
 
     const duration = normalizeDurationSeconds(game.duration ?? game.game_duration ?? null);
@@ -748,7 +739,6 @@ function buildBestGames(games: PlayerProfileGameRow[], currentPlayer: PublicPlay
   };
 
   if (highestScore) pushBest("score", "Highest score", Math.round(highestScore.value).toLocaleString(), highestScore.game);
-  if (highestEapm) pushBest("eapm", "Peak EAPM", String(Math.round(highestEapm.value * 10) / 10), highestEapm.game);
   if (fastestWin) pushBest("fastest-win", "Fastest win", formatDurationLabel(fastestWin.value), fastestWin.game);
   if (longestGame) pushBest("marathon", "Longest game", formatDurationLabel(longestGame.value), longestGame.game);
 
@@ -1102,7 +1092,9 @@ function toMatchItem(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef)
     ],
     result,
     score: readPlayerScore(player),
-    eapm: readPlayerEapm(player),
+    // Retain the response field for older clients without publishing a
+    // diagnostic packet-rate estimate as validated EAPM.
+    eapm: null,
   };
 }
 
@@ -1257,6 +1249,7 @@ function buildTickerItems(profile: {
   watcher: PlayerWatcherStats;
   wolo: PlayerWoloStats;
   resources: PlayerResourceStats;
+  normalizedStats: PlayerNormalizedStats;
   stream: PlayerProfile["stream"];
 }) {
   const items = [
@@ -1267,6 +1260,9 @@ function buildTickerItems(profile: {
     profile.command.mostPlayedCivilization ? `Most played civ: ${profile.command.mostPlayedCivilization}` : null,
     profile.watcher.watcherBackedMatches > 0 ? `${profile.watcher.watcherBackedMatches} watcher-backed proofs` : null,
     profile.resources.visibleGames > 0 ? `${profile.resources.visibleGames} games with economy tables visible` : "Economy vault expanding with every replay",
+    profile.normalizedStats.visibleGames > 0
+      ? `${profile.normalizedStats.metricCount} exact metrics across ${profile.normalizedStats.visibleGames} games`
+      : null,
     profile.wolo.totalFlexWolo > 0 ? `${profile.wolo.totalFlexWolo} WOLO profile flex` : null,
     profile.stream.twitchUrl ? `Twitch rail linked${profile.stream.twitchChannel ? `: ${profile.stream.twitchChannel}` : ""}` : null,
   ].filter((item): item is string => Boolean(item));
@@ -1898,11 +1894,15 @@ async function buildProfileFromPlayer(
   const charts = buildCharts(matchedGames, currentPlayer);
   const bestGames = buildBestGames(matchedGames, currentPlayer);
 
-  const [watcher, wolo, stream, rivalries] = await Promise.all([
+  const [watcher, wolo, stream, rivalries, normalizedStats] = await Promise.all([
     loadWatcherStats(prisma, input.user, matchedGames, input.user?.verificationLevel ?? 0),
     loadWoloStats(prisma, input.aliases, input.user ? { id: input.user.id } : null, community.giftedWolo),
     loadStreamStats(prisma, input.user?.twitchStreamUrl ?? null, matchedGames),
     buildRivalSummaries(prisma, matchedGames.slice(0, 60), currentPlayer),
+    loadPlayerNormalizedStats(prisma, {
+      userId: input.user?.id ?? null,
+      aliases: input.aliases,
+    }),
   ]);
 
   // Replay-built identities use the canonical name-based pending-claim
@@ -1930,6 +1930,7 @@ async function buildProfileFromPlayer(
     watcher,
     wolo: projectedWolo,
     resources,
+    normalizedStats,
     stream,
   };
 
@@ -1969,6 +1970,7 @@ async function buildProfileFromPlayer(
     performance,
     command,
     resources,
+    normalizedStats,
     watcher,
     wolo: projectedWolo,
     charts,

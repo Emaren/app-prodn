@@ -108,7 +108,49 @@ Retry guardrails:
 - Maximum 20 failed Challenge retries per reconciliation pass.
 - One failed transfer cannot starve later rows.
 - The automatic worker is restricted to Challenge V2 rows with a non-null `creation_request_id`. Migrated legacy rows intentionally keep `creation_request_id = NULL`, so the first reconciliation pass cannot silently expire or refund old historical Challenges.
-- The automatic worker intentionally does **not** sweep arbitrary legacy cancelled Challenges with no settlement rows. Legacy financial repairs, including historical Challenge #24, remain operator-reviewed to prevent double refunds.
+- The automatic worker intentionally does **not** sweep arbitrary legacy cancelled Challenges with no settlement rows. Historical Challenge repairs remain operator-reviewed and idempotent to prevent double refunds.
+
+## Legacy terminal preparation
+
+Rows with `creation_request_id = NULL` remain outside automatic V2 expiry. Use
+the guarded preparation rail one Challenge at a time:
+
+```bash
+npm run challenge:legacy-prepare -- --id=<scheduled-match-id>
+```
+
+The default invocation is read-only. It reports the exact participants, current
+and proposed terminal status, deadlines, wager/guarantee terms, funded sides,
+funding proofs, exact potential refund liability, linked settlements/title
+Challenges/market exposure, blockers, a SHA-256 funding fingerprint, and the
+row-specific confirmation string.
+
+Apply is allowed only by repeating every assertion printed by that pre-flight:
+
+```bash
+npm run challenge:legacy-prepare -- \
+  --id=<scheduled-match-id> \
+  --apply \
+  --expected-status=<exact-status> \
+  --expected-left-uid=<exact-uid> \
+  --expected-right-uid=<exact-uid> \
+  --expected-wager-wolo=<exact-integer> \
+  --expected-guarantee-wolo=<exact-integer> \
+  --expected-funding-fingerprint=<sha256:fingerprint> \
+  --confirm=<row-specific-confirmation>
+```
+
+The prepare command takes an advisory lock, re-reads every asserted field, and
+appends one immutable `legacy_terminal_prepared` activity while transitioning
+only that exact stale row. A repeated identical invocation is idempotent.
+Changed funding, linked exposure, participant, terms, status, or deadline truth
+blocks the write.
+
+Preparation is deliberately database-only. It never calls WoloChain and never
+moves funds. If tx-backed liability exists, review the prepared row in
+`/admin/wolochain`, run the scheduled-settlement dry-run, verify the exact
+recipient and amount again, and execute through the existing idempotent escrow
+settlement rail. Never replace either stage with an ad-hoc wallet send.
 
 ## Reconciliation runner
 
@@ -193,9 +235,11 @@ The Challenge Hall must not load every historical event or RAW record in initial
 
 Measure `/challenge` before/after deployment and watch HTML size, TTFB and total transfer size.
 
-## Jim / Zodiac legacy challenge #24 operator repair
+## Jim / Zodiac legacy challenge #24 verification rail
 
-Legacy challenge #24 is deliberately excluded from automated V2 reconciliation because migrated rows have no `creation_request_id`. Its refund remains an explicit operator-reviewed repair.
+Legacy challenge #24 is deliberately excluded from automated V2 reconciliation
+because migrated rows have no `creation_request_id`. Its historical refund uses
+an explicit operator-reviewed, idempotent verification/repair command.
 
 Use the exact guarded audit/settlement command only after the Challenge V2 migration and production build are live:
 
@@ -206,3 +250,7 @@ npm run challenge:jim24
 ```
 
 The script refuses to execute unless production truth still resolves challenge #24 uniquely to Jim vs Zodiac, the terms remain 1,000 WOLO wager + 10 WOLO guarantee, exactly Jim is tx-backed as funded, the total outstanding liability is exactly 1,010 WOLO, the plan contains exactly one 1,010 WOLO refund, no treasury transfer is planned, and the escrow dry-run is green. Existing executed settlement proof is treated as already complete rather than paid again.
+
+The July 25 production audit found existing executed settlement proof for #24.
+The command is therefore now a verification/idempotency rail unless a later
+audit disproves that state; it must never create a second refund.

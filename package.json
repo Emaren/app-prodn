@@ -14,7 +14,7 @@
     "lint": "next lint",
     "test:mainnet-staking": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/mainnet-staking-visibility.test.mts tests/mainnet-settlement-activity.test.mts tests/wolo-market.test.mts",
     "test:staking-reserve": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/staking-reserve-classification.test.mts",
-    "test:challenge": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/challenge-flow.test.mts tests/challenge-lifecycle.test.mts tests/challenge-title-policy.test.mts tests/challenge-history-ledger.test.mts",
+    "test:challenge": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/challenge-flow.test.mts tests/challenge-lifecycle.test.mts tests/challenge-title-policy.test.mts tests/challenge-history-ledger.test.mts tests/legacy-challenge-preparation.test.mts",
     "test:replay-truth": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/hd-replay-truth.test.mts",
     "test:kingdom-expansion": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/kingdom-expansion-surfaces.test.mts",
     "test:zodiac": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/zodiac-training.test.mts",
@@ -26,7 +26,9 @@
     "prisma:studio": "prisma studio",
     "trophy:tributes:queue": "node scripts/run-trophy-tribute-queue.mjs",
     "challenge:reconcile": "node scripts/run-challenge-reconciliation.mjs",
-    "challenge:jim24": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/audit-settle-jim-challenge-24.mts"
+    "challenge:jim24": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/audit-settle-jim-challenge-24.mts",
+    "challenge:legacy-prepare": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/prepare-legacy-challenge.mts",
+    "replay:stats:project": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/project-normalized-replay-stats.mts"
   },
   "dependencies": {
     "@cosmjs/amino": "^0.33.1",

@@ -61,6 +61,7 @@ import {
   type ReplayAchievementGroup,
 } from "@/lib/replayAchievementMetrics";
 import { loadReplayDesyncIncidentProvenance } from "@/lib/replayDesyncIncidents";
+import { normalizeReplayPlayer } from "@/lib/teamResolution";
 
 export const dynamic = "force-dynamic";
 
@@ -113,6 +114,85 @@ export default async function GameStatsDetailPage({
           },
         },
       },
+      replayStatProjections: {
+        where: {
+          projectionStatus: "accepted",
+          affectsPublicAggregates: true,
+          supersededBy: null,
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 1,
+        select: {
+          id: true,
+          schemaVersion: true,
+          metricDictionaryVersion: true,
+          parserName: true,
+          parserVersion: true,
+          passName: true,
+          passVersion: true,
+          statEligibility: true,
+          resultEligibility: true,
+          playerMetricCount: true,
+          gameMetricCount: true,
+          createdAt: true,
+          playerSnapshots: {
+            where: { statEligible: true },
+            orderBy: [{ playerSlot: "asc" }, { id: "asc" }],
+            select: {
+              playerKey: true,
+              displayName: true,
+              normalizedName: true,
+              playerSlot: true,
+              teamKey: true,
+              civilizationName: true,
+              resultEligible: true,
+              resultStatus: true,
+              metrics: {
+                where: {
+                  statEligible: true,
+                  exact: true,
+                },
+                orderBy: [
+                  { metricGroup: "asc" },
+                  { metricKey: "asc" },
+                ],
+                select: {
+                  metricKey: true,
+                  metricGroup: true,
+                  numericValue: true,
+                  textValue: true,
+                  booleanValue: true,
+                  unit: true,
+                  sourceKind: true,
+                  sourcePath: true,
+                  confidenceBps: true,
+                },
+              },
+            },
+          },
+          gameMetrics: {
+            where: {
+              statEligible: true,
+              exact: true,
+            },
+            orderBy: [
+              { metricGroup: "asc" },
+              { metricKey: "asc" },
+            ],
+            select: {
+              metricKey: true,
+              metricGroup: true,
+              numericValue: true,
+              textValue: true,
+              booleanValue: true,
+              unit: true,
+              sourceKind: true,
+              sourcePath: true,
+              confidenceBps: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -134,6 +214,8 @@ export default async function GameStatsDetailPage({
   );
 
   const game = applyReplayAdjudicationToGameStats(rawGame);
+  const normalizedStatsProjection =
+    rawGame.replayStatProjections[0] ?? null;
 
   const replayResultEvidence =
     (game as Record<string, unknown>).replayResultAdjudication;
@@ -387,6 +469,20 @@ export default async function GameStatsDetailPage({
       : winningPlayerNames.length > 0
         ? winningPlayerNames.join(" / ")
         : reliableWinner;
+  const replayFilename = displayReplayFilename(
+    game.original_filename,
+    game.replay_file
+  );
+  const isSavedCheckpoint = replayFilename
+    .toLowerCase()
+    .endsWith(".aoe2mpgame");
+  const unresolvedBattleLabel = confirmedDesync
+    ? "Desynced · result unresolved"
+    : isSavedCheckpoint
+      ? "Saved checkpoint · not final proof"
+      : game.is_final
+        ? "Result under review"
+        : "Battle capture · result not final";
   const suppressPlayerWinnerState =
     Boolean(confirmedDesync) ||
     game.parse_reason === "hd_early_exit_under_60s" ||
@@ -561,7 +657,7 @@ export default async function GameStatsDetailPage({
                   ? "DESYNCED · result unresolved"
                   : publicWinnerLabel
                     ? `${publicWinnerLabel} victorious`
-                    : "Battle filed"}
+                    : unresolvedBattleLabel}
               </Tag>
               {reviewedResultVerified && !confirmedDesync ? (
                 <Tag>
@@ -571,7 +667,13 @@ export default async function GameStatsDetailPage({
                 <Tag>Prior result preserved in provenance</Tag>
               ) : null}
               <Tag>HD replay</Tag>
-              <Tag>{game.is_final ? "final replay" : "battle capture"}</Tag>
+              <Tag>
+                {isSavedCheckpoint
+                  ? "saved checkpoint"
+                  : game.is_final
+                    ? "final replay"
+                    : "battle capture"}
+              </Tag>
               {outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
             </div>
             <FounderBonusChips bonuses={founderBonuses} />
@@ -808,7 +910,7 @@ export default async function GameStatsDetailPage({
               ) : publicWinnerLabel ? (
                 <StatRow label="Winner" value={publicWinnerLabel} />
               ) : (
-                <StatRow label="Archive Status" value="Battle preserved" />
+                <StatRow label="Result Status" value={unresolvedBattleLabel} />
               )}
               {outcomeLabel ? <StatRow label="Victory Type" value={outcomeLabel} /> : null}
               {readMapName(game.map) !== "Map unavailable" ? <StatRow label="Map" value={readMapName(game.map)} /> : null}
@@ -828,6 +930,18 @@ export default async function GameStatsDetailPage({
                 value={displayReplayFilename(game.original_filename, game.replay_file)}
               />
               <StatRow label="Replay Hash" value={shortHash(game.replayHash, 20)} />
+              {normalizedStatsProjection ? (
+                <StatRow
+                  label="Deep Stat Vault"
+                  value={`${normalizedStatsProjection.playerMetricCount} player · ${normalizedStatsProjection.gameMetricCount} game metrics`}
+                />
+              ) : null}
+              {normalizedStatsProjection ? (
+                <StatRow
+                  label="Stat / Result Eligibility"
+                  value={`${normalizedStatsProjection.statEligibility} / ${normalizedStatsProjection.resultEligibility}`}
+                />
+              ) : null}
             </dl>
 
             {game.tournamentMatchProof ? (
@@ -854,6 +968,39 @@ export default async function GameStatsDetailPage({
                   const hasEapm = typeof player.eapm === "number" && Number.isFinite(player.eapm);
                   const hasPosition = Array.isArray(player.position) && player.position.length === 2;
                   const hasScore = typeof player.score === "number" && Number.isFinite(player.score);
+                  const canonicalPlayer = normalizeReplayPlayer(player);
+                  const normalizedPlayerSnapshots =
+                    normalizedStatsProjection?.playerSnapshots ?? [];
+                  const stableKeyMatch = canonicalPlayer
+                    ? normalizedPlayerSnapshots.find(
+                        (snapshot) =>
+                          snapshot.playerKey ===
+                          canonicalPlayer.stablePlayerKey
+                      ) ?? null
+                    : null;
+                  const slotMatches =
+                    canonicalPlayer?.playerNumber === null ||
+                    canonicalPlayer?.playerNumber === undefined
+                      ? []
+                      : normalizedPlayerSnapshots.filter(
+                          (snapshot) =>
+                            snapshot.playerSlot ===
+                            canonicalPlayer.playerNumber
+                        );
+                  const nameMatches = canonicalPlayer
+                    ? normalizedPlayerSnapshots.filter(
+                        (snapshot) =>
+                          snapshot.normalizedName ===
+                          canonicalPlayer.normalizedName
+                      )
+                    : [];
+                  const normalizedPlayerSnapshot =
+                    stableKeyMatch ??
+                    (slotMatches.length === 1
+                      ? slotMatches[0]
+                      : nameMatches.length === 1
+                        ? nameMatches[0]
+                        : null);
                   const hasPlayerMetrics = Boolean(
                     steamId || rmRating !== null || dmRating !== null || hasEapm || hasPosition || hasScore
                   );
@@ -896,7 +1043,12 @@ export default async function GameStatsDetailPage({
                           label="DM Rating"
                           value={formatRatingMetric(dmRating)}
                         /> : null}
-                        {hasEapm ? <PlayerMetric label="EAPM" value={formatPrimitive(player.eapm)} /> : null}
+                        {hasEapm ? (
+                          <PlayerMetric
+                            label="Recorded packets / min"
+                            value={`${formatPrimitive(player.eapm)} · diagnostic`}
+                          />
+                        ) : null}
                         {hasPosition ? <PlayerMetric
                           label="Starting Position"
                           value={formatPositionValue(player.position)}
@@ -905,8 +1057,15 @@ export default async function GameStatsDetailPage({
                       </dl> : null}
 
                       <div className="mt-5 space-y-4">
-                        {getReplayAchievementGroups(player).map((group) =>
-                          renderAchievementGroup(group)
+                        {normalizedPlayerSnapshot &&
+                        normalizedPlayerSnapshot.metrics.length > 0 ? (
+                          <NormalizedReplayMetricGroups
+                            metrics={normalizedPlayerSnapshot.metrics}
+                          />
+                        ) : (
+                          getReplayAchievementGroups(player).map((group) =>
+                            renderAchievementGroup(group)
+                          )
                         )}
                       </div>
 
@@ -924,6 +1083,50 @@ export default async function GameStatsDetailPage({
         </div>
 
         <div className="space-y-6">
+          {normalizedStatsProjection ? (
+            <Panel
+              title="Normalized Stat Receipt"
+              eyebrow="Exact Replay Evidence"
+            >
+              <div className="rounded-2xl border border-emerald-300/14 bg-emerald-400/[0.05] px-4 py-4 text-xs leading-5 text-emerald-50/80">
+                Accepted statistics are versioned independently from the battle
+                verdict. This receipt cannot decide a winner, settle a bet, or
+                authorize a chain transfer.
+              </div>
+              {normalizedStatsProjection.gameMetrics.length > 0 ? (
+                <div className="mt-4">
+                  <NormalizedReplayMetricGroups
+                    metrics={normalizedStatsProjection.gameMetrics}
+                  />
+                </div>
+              ) : null}
+              <dl className="mt-4 grid gap-3">
+                <StatRow
+                  label="Schema"
+                  value={normalizedStatsProjection.schemaVersion}
+                  compact
+                />
+                <StatRow
+                  label="Metric Dictionary"
+                  value={normalizedStatsProjection.metricDictionaryVersion}
+                  compact
+                />
+                <StatRow
+                  label="Parser Pass"
+                  value={[
+                    normalizedStatsProjection.parserName,
+                    normalizedStatsProjection.parserVersion,
+                    normalizedStatsProjection.passName,
+                    normalizedStatsProjection.passVersion,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "Legacy exact projection"}
+                  compact
+                />
+              </dl>
+            </Panel>
+          ) : null}
+
           {(publicSettingsEntries.length > 0 || showAdminDiagnostics) ? <Panel
             title={showAdminDiagnostics ? "Parse Signals" : "Battle Settings"}
             eyebrow={showAdminDiagnostics ? "Admin Diagnostics" : "Match Setup"}
@@ -1211,6 +1414,111 @@ function RivalryHeroSide({
   }
 
   return <div className={sideClassName}>{content}</div>;
+}
+
+type NormalizedReplayMetricRow = {
+  metricKey: string;
+  metricGroup: string;
+  numericValue:
+    | number
+    | string
+    | { toString(): string }
+    | null;
+  textValue: string | null;
+  booleanValue: boolean | null;
+  unit: string;
+  sourceKind: string;
+  sourcePath: string;
+  confidenceBps: number | null;
+};
+
+function normalizedReplayMetricLabel(metric: NormalizedReplayMetricRow) {
+  const localKey = metric.metricKey.startsWith(`${metric.metricGroup}.`)
+    ? metric.metricKey.slice(metric.metricGroup.length + 1)
+    : metric.metricKey;
+  return localKey
+    .replaceAll(".", " · ")
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function normalizedReplayMetricValue(metric: NormalizedReplayMetricRow) {
+  if (metric.numericValue !== null) {
+    const numeric = Number(metric.numericValue);
+    if (Number.isFinite(numeric)) {
+      if (metric.unit === "seconds") {
+        return formatDurationLabel(Math.max(0, Math.round(numeric)));
+      }
+      if (metric.unit === "milliseconds") {
+        return formatDurationLabel(
+          Math.max(0, Math.round(numeric / 1000))
+        );
+      }
+      if (metric.unit === "percent") {
+        return `${numeric.toLocaleString(undefined, {
+          maximumFractionDigits: 1,
+        })}%`;
+      }
+      return numeric.toLocaleString(undefined, {
+        maximumFractionDigits: Number.isInteger(numeric) ? 0 : 2,
+      });
+    }
+  }
+  if (metric.textValue) return metric.textValue;
+  if (metric.booleanValue !== null) {
+    return metric.booleanValue ? "Yes" : "No";
+  }
+  return "Unavailable";
+}
+
+function NormalizedReplayMetricGroups({
+  metrics,
+}: {
+  metrics: NormalizedReplayMetricRow[];
+}) {
+  const groups = [
+    ...new Set(metrics.map((metric) => metric.metricGroup)),
+  ];
+  return (
+    <div className="space-y-4">
+      {groups.map((group) => (
+        <section key={group}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-100/55">
+              {group}
+            </div>
+            <div className="text-[9px] uppercase tracking-[0.15em] text-slate-600">
+              exact
+            </div>
+          </div>
+          <dl className="mt-2 grid gap-2 sm:grid-cols-2">
+            {metrics
+              .filter((metric) => metric.metricGroup === group)
+              .map((metric) => (
+                <div
+                  key={metric.metricKey}
+                  className="min-w-0 rounded-[0.9rem] border border-white/[0.065] bg-slate-950/35 px-3 py-3"
+                  title={`${metric.sourceKind}: ${metric.sourcePath}`}
+                >
+                  <dt className="text-[9px] uppercase tracking-[0.13em] text-slate-500">
+                    {normalizedReplayMetricLabel(metric)}
+                  </dt>
+                  <dd className="mt-1 break-words text-sm font-semibold text-slate-100">
+                    {normalizedReplayMetricValue(metric)}
+                  </dd>
+                  <div className="mt-1 truncate text-[9px] text-slate-700">
+                    {metric.sourcePath}
+                    {metric.confidenceBps !== null
+                      ? ` · ${Math.round(metric.confidenceBps / 100)}%`
+                      : ""}
+                  </div>
+                </div>
+              ))}
+          </dl>
+        </section>
+      ))}
+    </div>
+  );
 }
 
 

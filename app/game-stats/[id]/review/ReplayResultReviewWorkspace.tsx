@@ -15,6 +15,8 @@ type ReviewDeskViewMode =
 
 const REVIEW_DESK_VIEW_STORAGE_KEY =
   "aoe2war.reviewDesk.bae.v1";
+const FINANCIAL_AUTHORITY_CONFIRMATION =
+  "AUTHORIZE FINANCIAL RECONCILIATION";
 
 const reviewDeskViews: Array<{
   value: ReviewDeskViewMode;
@@ -207,13 +209,64 @@ type TeamAssignment = {
 
 type Adjudication = {
   id: number;
+  idempotencyKey: string;
   decisionStatus: string;
+  affectsBets: boolean;
   actorDisplayNameSnapshot: string;
   actorRole: string;
   teamAssignments: TeamAssignment[];
   winningTeamKey: string;
   reason: string;
   createdAt: string;
+};
+
+type FinancialAuthorityPlan = {
+  ready: boolean;
+  alreadyAuthorized: boolean;
+  fingerprint: string;
+  confirmationPhrase: string;
+  adjudication: {
+    id: number | null;
+    actor: string | null;
+    affectsBets: boolean;
+  };
+  exposure: {
+    marketCount: number;
+    wagerCount: number;
+    activeWagerCount: number;
+    totalWolo: number;
+    activeWolo: number;
+    seedWolo: number;
+    pendingClaimWolo: number;
+  };
+  markets: Array<{
+    id: number;
+    title: string;
+    status: string;
+    integrityStatus: string;
+    propositionHash: string | null;
+    leftLabel: string;
+    rightLabel: string;
+    winningSide: "left" | "right" | null;
+    wagerCount: number;
+    activeWagerCount: number;
+    totalWolo: number;
+    activeWolo: number;
+    seedWolo: number;
+    wagers: Array<{
+      id: number;
+      side: string;
+      amountWolo: number;
+      status: string;
+      executionMode: string;
+      stakeTxHash: string | null;
+    }>;
+  }>;
+  blockers: Array<{
+    code: string;
+    message: string;
+    marketId?: number;
+  }>;
 };
 
 type ReviewState = {
@@ -772,6 +825,38 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
               <button type="button" disabled={resultWritePaused || !complete || reason.trim().length < 8 || saving} onClick={() => void submit()} className="mt-5 w-full rounded-full bg-amber-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-40">{resultWritePaused ? "Winner Lock Paused — Desync Review" : saving ? "Locking battle record…" : primaryAction}</button>
             </div>
           ) : null}
+
+          {canAdminister &&
+          latest?.decisionStatus ===
+            "accepted" &&
+          state.linkedMarkets.length >
+            0 ? (
+            <FinancialAuthorityControl
+              gameStatsId={
+                gameStatsId
+              }
+              alreadyAuthorized={
+                latest.idempotencyKey
+                  .startsWith(
+                    "evidence:auto:"
+                  ) ||
+                (
+                  latest.affectsBets ===
+                    true &&
+                  latest.idempotencyKey
+                    .startsWith(
+                      "financial-authority:"
+                    )
+                )
+              }
+              authorizationKey={
+                latest.idempotencyKey
+              }
+              onComplete={
+                load
+              }
+            />
+          ) : null}
         </div>
 
         <aside className="min-w-0 space-y-4">
@@ -785,6 +870,573 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
         </aside>
       </section>
     </main>
+  );
+}
+
+function formatWolo(
+  value: number
+) {
+  return `${value.toLocaleString()} WOLO`;
+}
+
+function FinancialAuthorityControl({
+  gameStatsId,
+  alreadyAuthorized,
+  authorizationKey,
+  onComplete,
+}: {
+  gameStatsId: number;
+  alreadyAuthorized: boolean;
+  authorizationKey: string;
+  onComplete: () => Promise<ReviewState | null>;
+}) {
+  const [
+    plan,
+    setPlan,
+  ] =
+    useState<FinancialAuthorityPlan | null>(
+      null
+    );
+  const [
+    confirmation,
+    setConfirmation,
+  ] =
+    useState("");
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(false);
+  const [
+    approving,
+    setApproving,
+  ] =
+    useState(false);
+  const [
+    error,
+    setError,
+  ] =
+    useState<string | null>(
+      null
+    );
+  const [
+    notice,
+    setNotice,
+  ] =
+    useState<string | null>(
+      null
+    );
+
+  useEffect(() => {
+    setPlan(null);
+    setConfirmation("");
+    setError(null);
+    setNotice(null);
+  }, [
+    gameStatsId,
+  ]);
+
+  const authorizedFingerprint =
+    authorizationKey.match(
+      /^financial-authority:\d+:([a-f0-9]{64})$/
+    )?.[1] ?? null;
+
+  async function dryRun() {
+    setLoading(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const response =
+        await fetch(
+          `/api/admin/replay-results/${gameStatsId}/financial-authority`,
+          {
+            cache:
+              "no-store",
+          }
+        );
+      const payload =
+        await response
+          .json()
+          .catch(
+            () =>
+              null
+          ) as
+          | {
+              plan?:
+                FinancialAuthorityPlan;
+              detail?:
+                string;
+            }
+          | null;
+
+      if (!response.ok) {
+        throw new Error(
+          messageFromPayload(
+            payload,
+            "The financial dry run failed."
+          )
+        );
+      }
+
+      if (!payload?.plan) {
+        throw new Error(
+          "The server did not return a financial plan."
+        );
+      }
+
+      setPlan(
+        payload.plan
+      );
+      setConfirmation(
+        ""
+      );
+    } catch (nextError) {
+      setError(
+        nextError instanceof
+          Error
+          ? nextError.message
+          : "The financial dry run failed."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function approve() {
+    if (
+      !plan?.ready ||
+      confirmation !==
+        plan.confirmationPhrase
+    ) {
+      return;
+    }
+
+    setApproving(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const response =
+        await fetch(
+          `/api/admin/replay-results/${gameStatsId}/financial-authority`,
+          {
+            method:
+              "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                expectedFingerprint:
+                  plan.fingerprint,
+                confirmation,
+              }),
+          }
+        );
+      const payload =
+        await response
+          .json()
+          .catch(
+            () =>
+              null
+          ) as
+          | {
+              adjudication?: {
+                id?: number;
+              };
+              reconciliation?: {
+                status?:
+                  string;
+                detail?:
+                  string;
+              };
+              detail?:
+                string;
+            }
+          | null;
+
+      if (!response.ok) {
+        throw new Error(
+          messageFromPayload(
+            payload,
+            "Financial authority could not be recorded."
+          )
+        );
+      }
+
+      const authorityId =
+        payload?.adjudication
+          ?.id;
+
+      if (!authorityId) {
+        throw new Error(
+          "The server did not return an immutable financial-authority verdict ID."
+        );
+      }
+
+      await onComplete();
+      setPlan(null);
+      setConfirmation("");
+      setNotice(
+        payload.reconciliation
+          ?.status ===
+          "failed"
+          ? `Authority #${authorityId} is permanent, but reconciliation needs a retry. ${payload.reconciliation.detail ?? ""}`.trim()
+          : `Authority #${authorityId} was appended and the existing betting reconciliation rail completed.`
+      );
+    } catch (nextError) {
+      setError(
+        nextError instanceof
+          Error
+          ? nextError.message
+          : "Financial authority could not be recorded."
+      );
+    } finally {
+      setApproving(false);
+    }
+  }
+
+  async function retryReconciliation() {
+    if (!authorizedFingerprint) {
+      return;
+    }
+
+    setApproving(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const response =
+        await fetch(
+          `/api/admin/replay-results/${gameStatsId}/financial-authority`,
+          {
+            method:
+              "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body:
+              JSON.stringify({
+                expectedFingerprint:
+                  authorizedFingerprint,
+                confirmation:
+                  FINANCIAL_AUTHORITY_CONFIRMATION,
+              }),
+          }
+        );
+      const payload =
+        await response
+          .json()
+          .catch(
+            () =>
+              null
+          ) as
+          | {
+              adjudication?: {
+                id?: number;
+              };
+              reconciliation?: {
+                status?:
+                  string;
+                detail?:
+                  string;
+              };
+              detail?:
+                string;
+            }
+          | null;
+
+      if (!response.ok) {
+        throw new Error(
+          messageFromPayload(
+            payload,
+            "Betting reconciliation could not be retried."
+          )
+        );
+      }
+
+      const status =
+        payload?.reconciliation
+          ?.status;
+      setNotice(
+        status === "failed"
+          ? `The immutable authority is intact, but reconciliation still needs attention. ${payload?.reconciliation?.detail ?? ""}`.trim()
+          : "A fresh post-authority betting reconciliation pass completed."
+      );
+      await onComplete();
+    } catch (nextError) {
+      setError(
+        nextError instanceof
+          Error
+          ? nextError.message
+          : "Betting reconciliation could not be retried."
+      );
+    } finally {
+      setApproving(false);
+    }
+  }
+
+  if (
+    alreadyAuthorized
+  ) {
+    return (
+      <section
+        data-financial-authority-control
+        className="rounded-[1.7rem] border border-emerald-200/20 bg-emerald-300/[0.07] p-5 sm:p-6"
+      >
+        <div className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-100/65">
+          Financial Authority
+        </div>
+        <h2 className="mt-2 text-xl font-black text-emerald-50">
+          Explicit betting authority recorded
+        </h2>
+        <p className="mt-2 text-sm leading-6 text-emerald-100/70">
+          This latest accepted verdict passed the separate operator authority rail. Its immutable evidence identifies the exact dry-run fingerprint.
+        </p>
+        {notice ? (
+          <div className="mt-4 rounded-xl border border-emerald-200/20 bg-emerald-300/10 px-4 py-3 text-sm font-semibold text-emerald-100">
+            {notice}
+          </div>
+        ) : null}
+        {error ? (
+          <div className="mt-4 rounded-xl border border-rose-200/20 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
+            {error}
+          </div>
+        ) : null}
+        {authorizedFingerprint ? (
+          <button
+            type="button"
+            disabled={approving}
+            onClick={() =>
+              void retryReconciliation()
+            }
+            className="mt-5 w-full rounded-full border border-emerald-200/30 bg-emerald-300/12 px-5 py-3 text-sm font-black text-emerald-50 transition hover:bg-emerald-300/20 disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {approving
+              ? "Running fresh reconciliation…"
+              : "Retry Betting Reconciliation"}
+          </button>
+        ) : null}
+      </section>
+    );
+  }
+
+  return (
+    <section
+      data-financial-authority-control
+      className="rounded-[1.7rem] border border-violet-200/18 bg-[radial-gradient(circle_at_10%_0%,rgba(139,92,246,0.13),transparent_34%),rgba(2,6,23,0.82)] p-5 sm:p-6"
+    >
+      <div className="text-[10px] font-black uppercase tracking-[0.3em] text-violet-200/65">
+        Separate Financial Authority
+      </div>
+      <h2 className="mt-2 text-2xl font-black text-white">
+        Preview before money reconciliation
+      </h2>
+      <p className="mt-2 text-sm leading-6 text-slate-300">
+        The result above remains statistics-only. This rail rechecks the final replay hash, complete roster, active desync truth, every frozen market proposition, and exact wager exposure. Approval appends a new immutable verdict and then runs the existing settlement safeguards.
+      </p>
+
+      {!plan ? (
+        <button
+          type="button"
+          disabled={
+            loading
+          }
+          onClick={() =>
+            void dryRun()
+          }
+          className="mt-5 w-full rounded-full border border-violet-200/30 bg-violet-300/12 px-5 py-3 text-sm font-black text-violet-50 transition hover:bg-violet-300/20 disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          {loading
+            ? "Rechecking immutable state…"
+            : "Run Financial Dry Run"}
+        </button>
+      ) : (
+        <div className="mt-5 space-y-4">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl border border-white/9 bg-black/25 p-4">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                Active stake
+              </div>
+              <div className="mt-2 text-xl font-black text-white">
+                {formatWolo(
+                  plan.exposure
+                    .activeWolo
+                )}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/9 bg-black/25 p-4">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                Wagers
+              </div>
+              <div className="mt-2 text-xl font-black text-white">
+                {
+                  plan.exposure
+                    .activeWagerCount
+                }{" "}
+                active
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/9 bg-black/25 p-4">
+              <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                Markets
+              </div>
+              <div className="mt-2 text-xl font-black text-white">
+                {
+                  plan.exposure
+                    .marketCount
+                }
+              </div>
+            </div>
+          </div>
+
+          {plan.markets.map(
+            (market) => (
+              <div
+                key={
+                  market.id
+                }
+                className="rounded-2xl border border-white/9 bg-black/25 p-4"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="font-bold text-white">
+                      Market #{market.id} · {market.title}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-400">
+                      {market.leftLabel} vs {market.rightLabel} · approved side {market.winningSide ?? "blocked"}
+                    </div>
+                  </div>
+                  <span className="rounded-full border border-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-slate-300">
+                    {market.status} · {market.integrityStatus}
+                  </span>
+                </div>
+                <div className="mt-3 text-xs text-slate-400">
+                  {market.activeWagerCount} active of {market.wagerCount} wagers · {formatWolo(market.activeWolo)} active · {formatWolo(market.seedWolo)} seeded
+                </div>
+                <div className="mt-3 space-y-1">
+                  {market.wagers.map(
+                    (wager) => (
+                      <div
+                        key={
+                          wager.id
+                        }
+                        className="flex flex-wrap justify-between gap-2 rounded-lg border border-white/[0.06] px-3 py-2 text-[11px] text-slate-400"
+                      >
+                        <span>
+                          Wager #{wager.id} · {wager.side} · {wager.status}
+                        </span>
+                        <span>
+                          {formatWolo(wager.amountWolo)} · {wager.executionMode}
+                        </span>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            )
+          )}
+
+          <div className="rounded-xl border border-white/10 bg-black/25 px-4 py-3 font-mono text-[11px] text-slate-400">
+            Fingerprint {plan.fingerprint}
+          </div>
+
+          {plan.blockers.length >
+          0 ? (
+            <div className="rounded-2xl border border-rose-200/20 bg-rose-300/[0.08] p-4">
+              <div className="text-sm font-black text-rose-100">
+                Authorization blocked
+              </div>
+              <ul className="mt-2 space-y-2 text-sm text-rose-100/75">
+                {plan.blockers.map(
+                  (
+                    blocker
+                  ) => (
+                    <li
+                      key={`${blocker.code}:${blocker.marketId ?? "game"}`}
+                    >
+                      {blocker.message}
+                    </li>
+                  )
+                )}
+              </ul>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-amber-200/20 bg-amber-300/[0.07] p-4">
+              <div className="text-sm font-black text-amber-50">
+                This approval can settle wagers and invoke configured WOLO payout execution.
+              </div>
+              <label className="mt-4 block text-[10px] font-black uppercase tracking-[0.2em] text-amber-100/60">
+                Type exactly: {plan.confirmationPhrase}
+              </label>
+              <input
+                value={
+                  confirmation
+                }
+                onChange={(
+                  event
+                ) =>
+                  setConfirmation(
+                    event
+                      .target
+                      .value
+                  )
+                }
+                autoComplete="off"
+                spellCheck={
+                  false
+                }
+                className="mt-2 w-full rounded-xl border border-amber-200/20 bg-black/35 px-4 py-3 font-mono text-sm text-white outline-none focus:border-amber-200/45"
+              />
+              <button
+                type="button"
+                disabled={
+                  approving ||
+                  confirmation !==
+                    plan.confirmationPhrase
+                }
+                onClick={() =>
+                  void approve()
+                }
+                className="mt-4 w-full rounded-full bg-amber-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {approving
+                  ? "Appending authority and reconciling…"
+                  : `Authorize ${formatWolo(plan.exposure.activeWolo)}`}
+              </button>
+            </div>
+          )}
+
+          <button
+            type="button"
+            disabled={
+              loading ||
+              approving
+            }
+            onClick={() =>
+              void dryRun()
+            }
+            className="w-full rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-slate-300 transition hover:border-white/20 hover:text-white disabled:opacity-40"
+          >
+            Re-run dry check
+          </button>
+        </div>
+      )}
+
+      {notice ? (
+        <div className="mt-4 rounded-xl border border-emerald-200/20 bg-emerald-300/10 px-4 py-3 text-sm font-semibold text-emerald-100">
+          {notice}
+        </div>
+      ) : null}
+      {error ? (
+        <div className="mt-4 rounded-xl border border-rose-200/20 bg-rose-300/10 px-4 py-3 text-sm text-rose-100">
+          {error}
+        </div>
+      ) : null}
+    </section>
   );
 }
 

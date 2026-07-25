@@ -6,8 +6,12 @@ import { promisify } from "node:util";
 import { NextRequest, NextResponse } from "next/server";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getPrisma } from "@/lib/prisma";
+import {
+  classifyReplayIngestReceipt,
+  coordinateReplayPostIngest,
+  type ReplayIngestReceipt,
+} from "@/lib/replayPostIngest";
 import { getSessionUid } from "@/lib/session";
-import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
 import { recordUserActivity } from "@/lib/userExperience";
 
 export const runtime = "nodejs";
@@ -36,9 +40,16 @@ type PackageUploadResult = {
   gameId?: unknown;
   archived: boolean;
   parsed: boolean;
+  teamsReady: boolean;
+  resultResolved: boolean;
+  resultTrusted: boolean;
   resultReady: boolean;
+  statisticsComplete: boolean;
+  statsEligible: boolean;
+  financialEligible: boolean;
   reviewRouted: boolean;
   duplicate: boolean;
+  stages: ReplayIngestReceipt;
 };
 
 type PackageSkippedEntry = {
@@ -80,59 +91,14 @@ function parseJsonBody(value: string, contentType: string | null) {
   }
 }
 
-function isTruthyPayloadFlag(value: unknown) {
-  return value === true || value === "true" || value === 1 || value === "1";
-}
-
-function classifyBackendReplayReceipt(
-  payload: Record<string, unknown> | null,
-  responseOk: boolean
-) {
-  const finalityStatus = String(
-    payload?.finality_status || payload?.finalityStatus || ""
-  ).trim();
-  const pendingParse = isTruthyPayloadFlag(payload?.pending_parse ?? payload?.pendingParse);
-  const unparsedFinal = isTruthyPayloadFlag(payload?.unparsed_final ?? payload?.unparsedFinal);
-  const explicitParseCompleted = payload?.parse_completed ?? payload?.parseCompleted;
-  const parsed =
-    explicitParseCompleted === undefined || explicitParseCompleted === null
-      ? Boolean(finalityStatus) &&
-        !pendingParse &&
-        !unparsedFinal &&
-        !["live_pending_parse", "final_unparsed_proof"].includes(finalityStatus)
-      : isTruthyPayloadFlag(explicitParseCompleted);
-  const trustedFinalStatuses = new Set([
-    "trusted_final",
-    "trusted_final_duplicate",
-    "trusted_final_refreshed",
-    "reviewed_match_duplicate",
-    "reviewed_match_refreshed",
-  ]);
-  const resultReady = Boolean(
-    responseOk &&
-      (isTruthyPayloadFlag(payload?.final_accepted ?? payload?.finalAccepted) ||
-        isTruthyPayloadFlag(payload?.should_settle ?? payload?.shouldSettle) ||
-        trustedFinalStatuses.has(finalityStatus))
-  );
-  const duplicate = finalityStatus.endsWith("_duplicate");
-
-  return {
-    finalityStatus,
-    archived: Boolean(
-      responseOk &&
-        isTruthyPayloadFlag(payload?.raw_replay_archived ?? payload?.rawReplayArchived)
-    ),
-    parsed: Boolean(responseOk && parsed),
-    resultReady,
-    reviewRouted: Boolean(responseOk && !resultReady),
-    duplicate,
-  };
-}
-
-function receiptMessage(receipt: ReturnType<typeof classifyBackendReplayReceipt>) {
-  if (receipt.resultReady) return "Result ready and filed.";
-  if (receipt.parsed) return "Replay parsed and secured for private result review.";
-  if (receipt.archived) return "Replay secured for private result review.";
+function receiptMessage(receipt: ReplayIngestReceipt) {
+  if (receipt.result.ready) return "Result ready and filed.";
+  if (receipt.parser.completed) {
+    return "Replay parsed and secured for private result review.";
+  }
+  if (receipt.storage.archived) {
+    return "Replay secured for private result review.";
+  }
   return "Replay received for private result review.";
 }
 
@@ -195,7 +161,7 @@ async function uploadReplayBufferToBackend(options: {
   const contentType = response.headers.get("content-type") || "application/json";
   const body = await response.text();
   const payload = parseJsonBody(body, contentType);
-  const receipt = classifyBackendReplayReceipt(payload, response.ok);
+  const receipt = classifyReplayIngestReceipt(payload, response.ok);
 
   const result: PackageUploadResult = {
     filename: options.filename,
@@ -208,12 +174,19 @@ async function uploadReplayBufferToBackend(options: {
         : undefined,
     detail: typeof payload?.detail === "string" ? payload.detail : undefined,
     finalityStatus: receipt.finalityStatus || undefined,
-    gameId: payload?.game_id || payload?.gameId || payload?.id,
-    archived: receipt.archived,
-    parsed: receipt.parsed,
-    resultReady: receipt.resultReady,
+    gameId: receipt.gameId,
+    archived: receipt.storage.archived,
+    parsed: receipt.parser.completed,
+    teamsReady: receipt.teams.reliable === true,
+    resultResolved: receipt.result.resolved,
+    resultTrusted: receipt.result.trusted,
+    resultReady: receipt.result.ready,
+    statisticsComplete: receipt.statistics.complete,
+    statsEligible: receipt.statistics.eligible,
+    financialEligible: receipt.financial.eligible,
     reviewRouted: receipt.reviewRouted,
     duplicate: receipt.duplicate,
+    stages: receipt,
   };
 
   if (!response.ok && !result.detail) {
@@ -359,9 +332,16 @@ export async function POST(request: NextRequest) {
           detail: error instanceof Error ? error.message : "Replay upload failed.",
           archived: false,
           parsed: false,
+          teamsReady: false,
+          resultResolved: false,
+          resultTrusted: false,
           resultReady: false,
+          statisticsComplete: false,
+          statsEligible: false,
+          financialEligible: false,
           reviewRouted: false,
           duplicate: false,
+          stages: classifyReplayIngestReceipt(null, false),
         });
       }
     }
@@ -370,17 +350,38 @@ export async function POST(request: NextRequest) {
     const uploaded = received.filter((result) => !result.duplicate);
     const archived = received.filter((result) => result.archived);
     const parsed = received.filter((result) => result.parsed);
+    const teamsReady = received.filter((result) => result.teamsReady);
+    const resultResolved = received.filter((result) => result.resultResolved);
+    const resultTrusted = received.filter((result) => result.resultTrusted);
     const resultReady = received.filter((result) => result.resultReady);
+    const statisticsComplete = received.filter(
+      (result) => result.statisticsComplete
+    );
+    const statsEligible = received.filter((result) => result.statsEligible);
+    const financialEligible = received.filter(
+      (result) => result.financialEligible
+    );
     const reviewRouted = received.filter((result) => result.reviewRouted);
     const duplicates = received.filter((result) => result.duplicate);
     const failed = results.filter((result) => !result.ok);
 
-    if (resultReady.length > 0) {
-      try {
-        await reconcileTournamentMatchProofs(prisma, { force: true });
-      } catch (error) {
-        console.warn("Replay pack upload succeeded but tournament proof reconciliation failed:", error);
-      }
+    const postIngest = await coordinateReplayPostIngest({
+      prisma,
+      receipts: results.map((result) => result.stages),
+      source: "package_upload",
+    });
+
+    if (postIngest.financial.tournament.error) {
+      console.warn(
+        "Replay pack upload succeeded but tournament proof reconciliation failed:",
+        postIngest.financial.tournament.error
+      );
+    }
+    if (postIngest.financial.markets.error) {
+      console.warn(
+        "Replay pack upload succeeded but bet market reconciliation failed:",
+        postIngest.financial.markets.error
+      );
     }
 
     if (received.length > 0) {
@@ -396,12 +397,22 @@ export async function POST(request: NextRequest) {
           uploadedCount: uploaded.length,
           archivedCount: archived.length,
           parsedCount: parsed.length,
+          teamsReadyCount: teamsReady.length,
+          resultResolvedCount: resultResolved.length,
+          resultTrustedCount: resultTrusted.length,
           resultReadyCount: resultReady.length,
+          statisticsCompleteCount: statisticsComplete.length,
+          statsEligibleCount: statsEligible.length,
+          financialEligibleCount: financialEligible.length,
           reviewRoutedCount: reviewRouted.length,
           duplicateCount: duplicates.length,
           failedCount: failed.length,
           skippedCount: skipped.length,
           filenames: uploaded.map((result) => result.filename).slice(0, 30),
+          postIngestIdempotencyKey: postIngest.idempotencyKey,
+          tournamentReconciled:
+            postIngest.financial.tournament.succeeded,
+          marketsReconciled: postIngest.financial.markets.succeeded,
         },
         dedupeWithinSeconds: 5,
       });
@@ -423,7 +434,13 @@ export async function POST(request: NextRequest) {
         uploaded: uploaded.length,
         archived: archived.length,
         parsed: parsed.length,
+        teamsReady: teamsReady.length,
+        resultResolved: resultResolved.length,
+        resultTrusted: resultTrusted.length,
         resultReady: resultReady.length,
+        statisticsComplete: statisticsComplete.length,
+        statsEligible: statsEligible.length,
+        financialEligible: financialEligible.length,
         reviewRouted: reviewRouted.length,
         duplicates: duplicates.length,
         failed: failed.length,
@@ -431,6 +448,7 @@ export async function POST(request: NextRequest) {
         maxFiles: MAX_REPLAY_PACK_FILES,
         results,
         skippedEntries: skipped,
+        postIngest,
       },
       { status: received.length > 0 ? 207 : 400 }
     );

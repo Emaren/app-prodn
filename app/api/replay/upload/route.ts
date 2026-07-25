@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
-import { ensureBetMarkets } from "@/lib/bets";
 import { getSessionUid } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
-import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
+import {
+  classifyReplayIngestReceipt,
+  coordinateReplayPostIngest,
+  type ReplayPostIngestReport,
+} from "@/lib/replayPostIngest";
 import { recordUserActivity } from "@/lib/userExperience";
 
 export const runtime = "nodejs";
@@ -46,25 +49,6 @@ function parseJsonBody(value: string, contentType: string | null) {
   } catch {
     return null;
   }
-}
-
-function shouldSettleReplayUpload(payload: Record<string, unknown> | null) {
-  if (!payload) {
-    return false;
-  }
-
-  if (payload.should_settle === true || payload.shouldSettle === true) {
-    return true;
-  }
-
-  const finalityStatus = String(payload.finality_status || payload.finalityStatus || "");
-  return [
-    "trusted_final",
-    "trusted_final_duplicate",
-    "trusted_final_refreshed",
-    "reviewed_match_duplicate",
-    "reviewed_match_refreshed",
-  ].includes(finalityStatus);
 }
 
 export async function POST(request: NextRequest) {
@@ -164,23 +148,36 @@ export async function POST(request: NextRequest) {
   const upstreamContentType = upstreamResponse.headers.get("content-type") || "application/json";
   const upstreamBody = await upstreamResponse.text();
   const upstreamPayload = parseJsonBody(upstreamBody, upstreamContentType);
-  const shouldSettle = shouldSettleReplayUpload(upstreamPayload);
+  const ingestReceipt = classifyReplayIngestReceipt(
+    upstreamPayload,
+    upstreamResponse.ok
+  );
+  const shouldSettle = ingestReceipt.result.ready;
+  let postIngest: ReplayPostIngestReport | null = null;
 
   if (upstreamResponse.ok) {
-    try {
-      if (!isFinalUpload || shouldSettle) {
-        await reconcileTournamentMatchProofs(prisma, { force: true });
-      }
-    } catch (error) {
-      console.warn("Replay upload succeeded but tournament proof reconciliation failed:", error);
-    }
+    postIngest = await coordinateReplayPostIngest({
+      prisma,
+      receipts: [ingestReceipt],
+      source: isWatcherProxyUpload ? "watcher" : "single_upload",
+      // Preserve the existing single-upload behavior: non-final/live receipts
+      // also refresh tournament proof links, while market reconciliation still
+      // requires a trusted settlement-ready final.
+      reconcileTournamentForAcceptedUpload: !isFinalUpload,
+      reconcileMarketsForReadyResult: isFinalUpload,
+    });
 
-    if (isFinalUpload && shouldSettle) {
-      try {
-        await ensureBetMarkets(prisma);
-      } catch (error) {
-        console.warn("Replay upload succeeded but bet market reconciliation failed:", error);
-      }
+    if (postIngest.financial.tournament.error) {
+      console.warn(
+        "Replay upload succeeded but tournament proof reconciliation failed:",
+        postIngest.financial.tournament.error
+      );
+    }
+    if (postIngest.financial.markets.error) {
+      console.warn(
+        "Replay upload succeeded but bet market reconciliation failed:",
+        postIngest.financial.markets.error
+      );
     }
 
     const activityUser =
@@ -240,13 +237,25 @@ export async function POST(request: NextRequest) {
               ? upstreamPayload.finality_status
               : null,
           shouldSettle,
+          postIngestIdempotencyKey: postIngest.idempotencyKey,
+          tournamentReconciled:
+            postIngest.financial.tournament.succeeded,
+          marketsReconciled: postIngest.financial.markets.succeeded,
         },
         dedupeWithinSeconds: 5,
       });
     }
   }
 
-  return new NextResponse(upstreamBody, {
+  const responseBody =
+    postIngest && upstreamPayload
+      ? JSON.stringify({
+          ...upstreamPayload,
+          post_ingest: postIngest,
+        })
+      : upstreamBody;
+
+  return new NextResponse(responseBody, {
     status: upstreamResponse.status,
     headers: {
       "content-type": upstreamContentType,
