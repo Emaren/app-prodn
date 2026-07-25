@@ -1,10 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { OgBattleCard } from "@/components/leaderboard/OgBattleCard";
 import { Button } from "@/components/ui/button";
+import {
+  trackLeaderboardEvent,
+} from "@/lib/leaderboardTelemetry";
+import {
+  writeStoredLeaderboardView,
+} from "@/lib/leaderboardViewPreference";
 import type { OgBoardPage as OgBoardPageData } from "@/lib/ogBoard";
 
 const PAGE_SIZE = 24;
@@ -152,12 +159,23 @@ export function OgBoardPage({
           ⬅️ Back to Home
         </Button>
 
-        <Button
-          className="bg-gray-700 px-6 py-3 font-semibold text-white hover:bg-gray-600"
-          onClick={() => router.push("/leaderboard?view=modern")}
+        <Link
+          href="/leaderboard?view=modern"
+          onClick={() => {
+            writeStoredLeaderboardView("modern");
+
+            trackLeaderboardEvent({
+              type: "leaderboard_switch_view",
+              metadata: {
+                from: "og",
+                to: "modern",
+              },
+            });
+          }}
+          className="inline-flex items-center justify-center rounded-md bg-gray-700 px-6 py-3 font-semibold text-white transition hover:bg-gray-600"
         >
           🏆 Leaderboard
-        </Button>
+        </Link>
       </div>
 
       <h2 className="mb-6 text-center text-3xl font-bold text-gray-400">

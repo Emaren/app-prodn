@@ -573,6 +573,82 @@ function trustedStructuredTeamWinners(
   return winningNames;
 }
 
+
+/**
+ * Stats-only fallback for a complete trusted structured team result.
+ *
+ * This deliberately does not create betting or settlement proof. It only
+ * permits a resolved team winner into public statistics when the structured
+ * result is trusted and the replay winner flags match the complete winning
+ * roster exactly.
+ */
+function trustedStructuredTeamStatsWinners(
+  keyEvents: Record<string, unknown>,
+  flaggedWinners: string[]
+) {
+  const result = readKeyEvents(
+    keyEvents.result_resolution
+  );
+
+  const teams = readKeyEvents(
+    keyEvents.team_resolution
+  );
+
+  const winningNames = (
+    Array.isArray(result.winning_player_names)
+      ? result.winning_player_names
+      : []
+  )
+    .map(normalizePublicReplayText)
+    .filter(
+      (name): name is string =>
+        Boolean(name)
+    );
+
+  const winningKeys = new Set(
+    winningNames.map(
+      (name) =>
+        name.toLowerCase()
+    )
+  );
+
+  const flaggedKeys = new Set(
+    flaggedWinners.map(
+      (name) =>
+        name.toLowerCase()
+    )
+  );
+
+  const exactWinningRoster =
+    winningNames.length >= 2 &&
+    winningKeys.size === winningNames.length &&
+    flaggedKeys.size === winningKeys.size &&
+    [...winningKeys].every(
+      (key) =>
+        flaggedKeys.has(key)
+    );
+
+  if (
+    textValue(
+      result.result_status
+    ).toLowerCase() !== "resolved" ||
+    !truthBoolean(
+      result.result_trusted
+    ) ||
+    textValue(
+      teams.status
+    ).toLowerCase() !== "resolved" ||
+    textValue(
+      teams.confidence
+    ).toLowerCase() !== "high" ||
+    !exactWinningRoster
+  ) {
+    return null;
+  }
+
+  return winningNames;
+}
+
 function missingWinnerProofReasons(
   keyEvents: Record<string, unknown>,
   eventTypes: Set<string>,
@@ -1081,10 +1157,15 @@ export function resolveReplayWinnerTruth(
   const parseReason = textValue(input.parseReason).toLowerCase();
   const storedWinner = normalizeResolvedWinner(input.winner);
   const flaggedWinners = winnerFlagNames(input.players);
-  const structuredTeamWinners = trustedStructuredTeamWinners(
-    keyEvents,
-    flaggedWinners
-  );
+  const structuredTeamWinners =
+    trustedStructuredTeamWinners(
+      keyEvents,
+      flaggedWinners
+    ) ??
+    trustedStructuredTeamStatsWinners(
+      keyEvents,
+      flaggedWinners
+    );
   const coherentTeamFlagCandidate =
     coherentTeamFlagDisplayCandidate(keyEvents);
 

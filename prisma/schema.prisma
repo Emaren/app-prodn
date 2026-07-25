@@ -2578,4 +2578,3 @@ model ReplayRosterPromotion {
   @@index([promotedByUserId, createdAt], map: "ix_replay_roster_promotions_actor_created")
   @@map("replay_roster_promotions")
 }
-
