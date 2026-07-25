@@ -5,6 +5,7 @@ import { getPrisma } from "@/lib/prisma";
 import {
   buildReplayNormalizedStatProjection,
   persistReplayNormalizedStatProjection,
+  ReplayNormalizedStatsError,
   REPLAY_METRIC_DICTIONARY_VERSION,
   REPLAY_STAT_PROJECTION_POLICY_VERSION,
   REPLAY_STATS_SCHEMA_VERSION,
@@ -224,47 +225,64 @@ async function main() {
         userIdByPlayerKey[player.stablePlayerKey] = linkedUserId;
       }
     }
-    const normalized = buildReplayNormalizedStatProjection({
-      gameStatsId: game.id,
-      replayHash: game.replayHash,
-      parseRunId: parseRun?.id,
-      supersedesId: mode === "accept" ? current?.id : null,
-      projectedByUserId: mode === "accept" ? operator?.id : null,
-      projectedByUidSnapshot:
-        mode === "accept" ? operator?.uid : null,
-      sourceKind: parseRun ? "parse_run" : "game_stats",
-      sourceIdentity,
-      sourceHash: parseRun?.candidateOutputHash ?? game.replayHash,
-      parserName: parseRun?.parserName,
-      parserVersion: parseRun?.parserVersion,
-      passName: parseRun?.passName,
-      passVersion: parseRun?.passVersion,
-      schemaVersion: REPLAY_STATS_SCHEMA_VERSION,
-      metricDictionaryVersion: REPLAY_METRIC_DICTIONARY_VERSION,
-      projectionPolicyVersion: REPLAY_STAT_PROJECTION_POLICY_VERSION,
-      projectionStatus:
-        mode === "accept" ? "accepted" : "candidate",
-      affectsPublicAggregates: mode === "accept",
-      statEligibility: "eligible",
-      resultEligibility: result.resultEligibility,
-      resultEligibilityReason:
-        result.resultEligibility === "resolved"
-          ? "effective_replay_result"
-          : "result_not_required_for_statistics",
-      winningPlayerKeys: result.winningPlayerKeys,
-      userIdByPlayerKey,
-      players: game.players,
-      keyEvents: game.key_events,
-      durationSeconds: game.duration ?? game.game_duration,
-      observations: parseRun?.observations,
-      provenance: {
-        command: "project-normalized-replay-stats",
-        replay_file: game.replay_file,
-        parse_source: game.parse_source,
-        parse_reason: game.parse_reason,
-        source_parser_schema_version: parseRun?.schemaVersion ?? null,
-      },
-    });
+    let normalized:
+      ReturnType<
+        typeof buildReplayNormalizedStatProjection
+      >;
+    try {
+      normalized = buildReplayNormalizedStatProjection({
+        gameStatsId: game.id,
+        replayHash: game.replayHash,
+        parseRunId: parseRun?.id,
+        supersedesId: mode === "accept" ? current?.id : null,
+        projectedByUserId: mode === "accept" ? operator?.id : null,
+        projectedByUidSnapshot:
+          mode === "accept" ? operator?.uid : null,
+        sourceKind: parseRun ? "parse_run" : "game_stats",
+        sourceIdentity,
+        sourceHash: parseRun?.candidateOutputHash ?? game.replayHash,
+        parserName: parseRun?.parserName,
+        parserVersion: parseRun?.parserVersion,
+        passName: parseRun?.passName,
+        passVersion: parseRun?.passVersion,
+        schemaVersion: REPLAY_STATS_SCHEMA_VERSION,
+        metricDictionaryVersion: REPLAY_METRIC_DICTIONARY_VERSION,
+        projectionPolicyVersion: REPLAY_STAT_PROJECTION_POLICY_VERSION,
+        projectionStatus:
+          mode === "accept" ? "accepted" : "candidate",
+        affectsPublicAggregates: mode === "accept",
+        statEligibility: "eligible",
+        resultEligibility: result.resultEligibility,
+        resultEligibilityReason:
+          result.resultEligibility === "resolved"
+            ? "effective_replay_result"
+            : "result_not_required_for_statistics",
+        winningPlayerKeys: result.winningPlayerKeys,
+        userIdByPlayerKey,
+        players: game.players,
+        keyEvents: game.key_events,
+        durationSeconds: game.duration ?? game.game_duration,
+        observations: parseRun?.observations,
+        provenance: {
+          command: "project-normalized-replay-stats",
+          replay_file: game.replay_file,
+          parse_source: game.parse_source,
+          parse_reason: game.parse_reason,
+          source_parser_schema_version: parseRun?.schemaVersion ?? null,
+        },
+      });
+    } catch (error) {
+      if (!(error instanceof ReplayNormalizedStatsError)) {
+        throw error;
+      }
+      report.push({
+        gameStatsId: game.id,
+        outcome: `skipped_${error.code}`,
+        sourceIdentity,
+        detail: error.message,
+      });
+      continue;
+    }
 
     const totalMetricCount =
       normalized.receipt.playerMetricCount +
