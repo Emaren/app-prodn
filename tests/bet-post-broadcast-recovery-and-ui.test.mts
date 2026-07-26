@@ -386,3 +386,40 @@ test(
     );
   }
 );
+
+test(
+  "migration backfill avoids target-table alias join scope",
+  () => {
+    const source =
+      readFileSync(
+        "prisma/migrations/"
+          + "20260726025500_fence_post_broadcast_bet_recovery/"
+          + "migration.sql",
+        "utf8"
+      );
+
+    assert.equal(
+      (
+        source.match(
+          /UPDATE "bet_stake_intents" AS intent/g
+        ) || []
+      ).length,
+      2
+    );
+
+    assert.match(
+      source,
+      /FROM "bet_markets" AS market[\s\S]*WHERE intent\."market_id" = market\."id"/
+    );
+
+    assert.match(
+      source,
+      /FROM "bet_wagers" AS wager[\s\S]*WHERE wager\."stake_intent_id" = intent\."id"/
+    );
+
+    assert.doesNotMatch(
+      source,
+      /LEFT JOIN "bet_wagers" AS wager[\s\S]*ON wager\."stake_intent_id" = intent\."id"/
+    );
+  }
+);

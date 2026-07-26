@@ -9,19 +9,27 @@ ON "bet_stake_intents"(
   "status"
 );
 
--- Existing accepted wagers may safely backfill the proposition
--- and broadcast time from their already-recorded market/slip.
+-- Existing recorded intents may safely inherit the immutable
+-- proposition from their already-recorded market.
 UPDATE "bet_stake_intents" AS intent
 SET
-  "proposition_hash" = market."proposition_hash",
+  "proposition_hash" =
+    market."proposition_hash"
+FROM "bet_markets" AS market
+WHERE intent."market_id" = market."id"
+  AND intent."status" = 'recorded';
+
+-- Existing recorded intents with an attached wager may safely
+-- inherit the already-recorded stake time. Intents without a
+-- wager remain NULL and cannot enter automatic recovery.
+UPDATE "bet_stake_intents" AS intent
+SET
   "broadcast_submitted_at" = COALESCE(
     intent."broadcast_submitted_at",
     wager."stake_locked_at",
     intent."verified_at",
     intent."recorded_at"
   )
-FROM "bet_markets" AS market
-LEFT JOIN "bet_wagers" AS wager
-  ON wager."stake_intent_id" = intent."id"
-WHERE intent."market_id" = market."id"
+FROM "bet_wagers" AS wager
+WHERE wager."stake_intent_id" = intent."id"
   AND intent."status" = 'recorded';
