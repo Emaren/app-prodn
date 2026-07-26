@@ -101,6 +101,12 @@ final game. Result-dependent statistics still require resolved-result scope.
 Aggregate rows record both denominator and metric coverage, so partial corpus
 coverage is visible rather than silently averaged away.
 
+Bounded projection campaigns quarantine a replay-local normalization contract
+failure (for example, duplicate canonical player keys in one malformed legacy
+roster) as an explicit `skipped_<code>` receipt and continue from the durable
+game cursor. Infrastructure/database failures still stop the campaign. This
+keeps one bad archive row visible without sacrificing the rest of the corpus.
+
 Projection does not rebuild aggregate rows implicitly. The aggregate
 build/persist helpers require only the current accepted projection set, reject
 duplicate active projections for one game, and must be invoked by a separate
