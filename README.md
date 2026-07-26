@@ -1,5 +1,16 @@
 # app-prodn
 
+## Verified production seal — 2026-07-26
+
+- source: clean `main` at `22232a0bcc038a567acd052f432883e70482a3f9`;
+- deployed build: `20260726054351-9b5a6fcd0b` on `aoe2hdbets-web.service` / `127.0.0.1:3030`;
+- replay API: clean `main` at `d2d68646b1aff3ffb9e647ee0fe4deaa143b2c6e` on `127.0.0.1:3330`;
+- Wolo source: clean `wolo-1-mainnet-prep` at `d5dea8d6f1a2b0b57489a5e468dd21e34246891e`;
+- Watcher release: `1.5.6` across update manifests and platform artifacts;
+- database: 71 applied source migrations, zero incomplete;
+- detailed evidence and remaining operations debt: `docs/PRODUCTION_PARITY_2026-07-26.md`.
+
+
 Watcher-linked betting lifecycle configuration: `WATCHER_FINAL_PROOF_GRACE_MINUTES` defaults to 20. Team books obey **no confident teams, no market; no matching final roster, no settlement**. Team ID `0` is valid, player order is never membership, the first stake freezes the structured proposition, and integrity failures enter commissioner review before fees, bonuses, or payouts. See [docs/MARKET_TEAM_INTEGRITY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/MARKET_TEAM_INTEGRITY.md). Deploy the accompanying Prisma migration before restarting. Production repair work must dry-run the evidence-locked script, verify every precondition, apply once, then invoke/verify the ordinary reconciliation rail; never delete financial history or auto-claw back a wallet.
 
 Production Next.js frontend for AoE2HDBets.

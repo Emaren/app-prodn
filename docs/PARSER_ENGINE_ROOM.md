@@ -438,3 +438,32 @@ The Evidence Pass may corroborate:
 
 It remains a separate evidence source and does not directly settle wagers, execute payouts, or mutate chain history.
 <!-- AOE2WAR:SCREENSHOT_EVIDENCE_PASS_20260722:END -->
+
+## Production parity seal — 2026-07-26
+
+The live Parser Engine Room was verified against schema `2026-07-25.1`, deterministic evidence pass `8`.
+
+Database and corpus facts at the seal:
+
+- 71 source migrations applied, zero incomplete;
+- `game_stats`: 19,129 rows;
+- `replay_artifacts`: 2,064 rows;
+- `replay_submissions`: 2,065 rows;
+- `replay_parse_runs`: 4,746 rows;
+- `replay_parse_attempts`: 43,925 rows;
+- `replay_observations`: 678,804 rows;
+- `replay_stat_projections`: 5,964 rows;
+- `replay_player_snapshots`: 28,076 rows;
+- `replay_player_metrics`: 141,561 rows;
+- `replay_game_metrics`: 24,125 rows;
+- `replay_roster_promotions`: 111 rows;
+- `replay_result_adjudications`: 31 rows;
+- `replay_desync_incidents`: 3 rows.
+
+The mounted replay archive held approximately 8.0 GB / 7,925 files. The restricted parser-engine root held approximately 4.9 GB / 4,946 files. The latest protected backup set includes the July 26 post-broadcast bet-recovery deployment receipt, before-migration dump and checksums, and authority snapshots before/after migration and activation. Pass-8 candidate, accepted, cohort, duplicate-logical-game, and full-vault manifest reports are preserved under the protected reports root.
+
+These counts prove that candidate and normalized-stat infrastructure is populated. They do not grant settlement authority. `affects_public_aggregates`, `affects_results`, `settlement_authority`, result eligibility, and explicit adjudication/financial-disposition fields remain separate gates.
+
+### Post-seal recovery verification
+
+After 1.00 GiB of regenerable root data was reclaimed, the automatic recovery rail processed the one eligible candidate successfully. `game_stats` 19794 produced parser run 4747 with `status=completed`, `candidateOnly=true`, and `affectsPublicAggregates=false`. The endpoint reported zero failed candidates, zero `game_stats` changes, zero market changes, and no betting or settlement authority. The next timer-fired invocation also completed successfully.

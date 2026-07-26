@@ -34,6 +34,19 @@ It does not own:
 
 ## Runtime shape
 
+### Verified production authority split — 2026-07-26
+
+The live architecture is intentionally split across independently versioned authorities:
+
+- **Web/application authority:** `/var/www/AoE2HDBets/app-prodn` at `22232a0bcc038a567acd052f432883e70482a3f9`; deployed build `20260726054351-9b5a6fcd0b`; systemd service `aoe2hdbets-web.service`; loopback bind `127.0.0.1:3030`.
+- **Replay parse/finality authority:** `/var/www/AoE2HDBets/api-prodn` at `d2d68646b1aff3ffb9e647ee0fe4deaa143b2c6e`; systemd service `aoe2hdbets-api.service`; loopback bind `127.0.0.1:3330`.
+- **WoloChain source authority:** `/var/www/WoloChain-wolo-1` on `wolo-1-mainnet-prep` at `d5dea8d6f1a2b0b57489a5e468dd21e34246891e`.
+- **Consensus binary:** `/usr/local/bin/wolochaind-mainnet-node-prewartrophy`, commit `d3bd62414a047a492a3814b7d3baa2717d64db2e`. This preserved pre-War-Trophy binary is the deliberate mainnet node runtime and must not be replaced merely because the checkout advanced.
+- **Settlement binary:** `/usr/local/bin/wolochaind-mainnet`, commit `d5dea8d6f1a2b0b57489a5e468dd21e34246891e`, used by Bet settlement on `8092` and Founder Rewards settlement on `8093`.
+
+The node/settlement binary difference is an explicit compatibility boundary, not drift. Consensus truth comes from the running node binary and `wolo-1` state; settlement behavior comes from the current settlement binary and its loopback-only authenticated services.
+
+
 - framework: Next.js App Router
 - local dev entrypoint: `npm run dev`
 - production start command: `npm run start`
@@ -551,10 +564,13 @@ The path is outside `/home` because `ProtectHome=true` prevents the web service 
 
 The mounted Hetzner volume was expanded to approximately 100 GB and ext4 was grown online.
 
-At the 2026-07-22 seal:
+At the 2026-07-26 production seal:
 
-- root filesystem: approximately 7.1 GB free
-- mounted volume: approximately 27 GB free
+- root filesystem: approximately 2.4 GB free, 94% used; this is a P1 capacity risk and should stay above a documented safety floor;
+- mounted volume: approximately 22 GB free, 78% used;
+- replay archive: approximately 8.0 GB / 7,925 files;
+- parser-engine root: approximately 4.9 GB / 4,946 files;
+- watcher downloads: approximately 2.5 GB / 69 files.
 
-A runaway API debug trace was disabled and rotated before the expansion.
+No kernel OOM, no-space, or filesystem-corruption signal appeared in the seven-day inspection. A runaway API debug trace had already been disabled and rotated before the volume expansion.
 <!-- AOE2WAR:REPLAY_EVIDENCE_ARCHITECTURE_20260722:END -->

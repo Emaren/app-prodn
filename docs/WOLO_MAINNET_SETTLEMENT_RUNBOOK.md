@@ -5,6 +5,20 @@ keys, signer funding, and settlement truth.
 
 ## Current mainnet service shape
 
+### Verified source and binary split — 2026-07-26
+
+- active checkout: `/var/www/WoloChain-wolo-1`, branch `wolo-1-mainnet-prep`, clean at `d5dea8d6f1a2b0b57489a5e468dd21e34246891e`;
+- mainnet node service: `wolochaind-mainnet.service`;
+- node executable: `/usr/local/bin/wolochaind-mainnet-node-prewartrophy`, commit `d3bd62414a047a492a3814b7d3baa2717d64db2e`, SHA-256 `4b77f622191db7550cb87cafb8f1886a0aadebee3eb6565f9f90036f809e61d3`;
+- Bet settlement service: `wolochain-mainnet-settlement.service`, loopback port `8092`;
+- Founder Rewards settlement service: `wolochain-founder-rewards-settlement.service`, loopback port `8093`;
+- settlement executable: `/usr/local/bin/wolochaind-mainnet`, commit `d5dea8d6f1a2b0b57489a5e468dd21e34246891e`, SHA-256 `f0e199b8988ced2cbbd6e899406f550280b6da548cf2be340456ea8d818b01b0`.
+
+The consensus node is deliberately pinned to the pre-War-Trophy binary while settlement uses the newer isolated-market binary. Treat this as an intentional compatibility boundary. Never replace the node executable merely to make its commit equal the source checkout.
+
+At inspection, `wolo-1` was synchronized (`catching_up=false`). Bet settlement reported approximately 499,955.25 WOLO payout balance and 522,045.75 WOLO escrow balance against 250,000 and 100 WOLO minimums. Founder Rewards settlement reported approximately 364,837.24 WOLO payout balance against a 1,000 WOLO minimum. Both services were loopback-only with auth tokens configured.
+
+
 - Settlement URL: `http://127.0.0.1:8092`
 - Chain ID: `wolo-1`
 - Bet Payout signer: `wolo1zfa9ssu2gpgqg7yzvhmjt4w66mza07qr2a4rwu`

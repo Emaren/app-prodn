@@ -57,6 +57,22 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 ## Recent deployment notes
 
+### 2026-07-26 production parity seal
+
+The inspected production deployment is tied to exact identities:
+
+- app source `22232a0bcc038a567acd052f432883e70482a3f9` on clean `main`, equal to `origin/main`;
+- API source `d2d68646b1aff3ffb9e647ee0fe4deaa143b2c6e` on clean `main`;
+- active Wolo source `d5dea8d6f1a2b0b57489a5e468dd21e34246891e` on clean `wolo-1-mainnet-prep`, equal to its remote;
+- web build `20260726054351-9b5a6fcd0b` started after the build completed;
+- Watcher release `1.5.6` is present in Windows installer/direct EXE, Apple Silicon DMG, Linux AppImage, direct ZIP, and update manifests;
+- live database: 71 applied source migrations, zero incomplete; all six July 22–26 gates applied.
+
+A deploy is not health-green solely because source parity passes. At this seal, `aoe2hdbets-replay-auto-recovery.timer` was enabled but `active (elapsed)` with `NextElapse=infinity`, and root storage was 94% used. Post-seal remediation changed the timer to schedule from activation and prior service completion, reclaimed 1.00 GiB of regenerable root data, completed replay candidate recovery successfully, and verified a subsequent recurring run with `Result=success`. Root then had 3.33 GiB free: above the parser's 3 GiB safety reserve but still below the preferred 6 GiB deployment floor. Do not run a large build or package operation until more root capacity is reclaimed or build caches are moved off `/`.
+
+The Wolo mainnet node intentionally runs `/usr/local/bin/wolochaind-mainnet-node-prewartrophy` at `d3bd62414a047a492a3814b7d3baa2717d64db2e` while both settlement services run `/usr/local/bin/wolochaind-mainnet` at `d5dea8d6f1a2b0b57489a5e468dd21e34246891e`. Never rebuild or replace the consensus binary as a routine app deploy step.
+
+
 ### 2026-07-18 Challenge lifecycle v2
 
 - Challenge creation now defaults to a 72-hour open acceptance window and Play Anytime after both sides fund; exact match times are optional and use browser-local display with UTC as secondary truth.

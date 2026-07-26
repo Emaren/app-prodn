@@ -1,8 +1,22 @@
 # Watcher Telemetry
 
-## v1.5.3 truth rails
+## Production release identity — 2026-07-26
 
-A fresh heartbeat means connected only. Monitor state comes independently from heartbeat `monitorAttached`/`isWatching`, start/ready/stop events, server replay receipts, and watchdog events. v1.5.2 and earlier show `Limited diagnostics · upgrade watcher to v1.5.3` rather than being judged for missing fields.
+The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. Current manifests report `version: 1.5.6` for Windows, macOS, and Linux.
+
+Verified release artifact SHA-256 values:
+
+- Linux AppImage: `b3719db0b8de8a3b291fe52deb3e079a5a93f49a2fdacd42ede1df0b5ead4558`;
+- Apple Silicon DMG: `fd1610461ecec643294bc0eed2cf69ac0443ff917a152eba2551c4c5a61f217f`;
+- Windows direct EXE: `fa034f5dbf4aa165640a012f05ffdac508a484cd81821ca3dca370e0901330db`;
+- Windows installer: `85ebcf9e6e6309cf17a518b8714eb3907790e44234edb1550aaddcd6727a14c9`.
+
+The staged `watcher-1.5.6` artifacts match the public release hashes. Older 1.5.5/1.5.4/1.5.3 files remain historical download inventory and must not be mistaken for the advertised current release.
+
+
+## v1.5.6 truth rails
+
+A fresh heartbeat means connected only. Monitor state comes independently from heartbeat `monitorAttached`/`isWatching`, start/ready/stop events, server replay receipts, and watchdog events. Production update manifests currently advertise `1.5.6`. Older clients may lack newer recovery and telemetry fields and should be surfaced as upgrade candidates rather than judged for fields their release never emitted.
 
 Heartbeat metadata may include folder kind/validity and basename, folder/replay activity timestamps, active replay basename/size/change time, upload status/queue, batch/stream state, version/platform, and watcher/session IDs. Full private paths and replay contents are excluded.
 
@@ -18,7 +32,7 @@ Watcher analytics now separates noisy package pulls from confirmed watcher behav
 
 `game_stats` remains the historical fallback for confirmed watcher usage. Rows with `parse_source in ('watcher_live', 'watcher_final')` prove that a watcher-submitted game reached the app, even if no `app_open` telemetry existed yet.
 
-Watcher v1.5.0 uses watcher-native streaming plus rolling AoE2WAR playback and a faster final-candidate contract. Stream telemetry now includes source kind, capture mode, bitrate, one-second chunk cadence, chunk size, upload queue length, upload latency, dropped slices, heartbeat retries, display-capture guidance, and early-stop errors so support can tell whether a user is streaming a window, a full display, a slow network, or a failing capture source. A final upload is settlement-safe only when the upload response includes `should_settle = true` or a trusted finality status. Header-only or unparsed proof can be preserved for diagnostics, but it must not be read as final winner, score, postgame resource, or betting truth.
+The Watcher 1.5.x streaming line uses watcher-native streaming plus rolling AoE2WAR playback and a faster final-candidate contract. Stream telemetry now includes source kind, capture mode, bitrate, one-second chunk cadence, chunk size, upload queue length, upload latency, dropped slices, heartbeat retries, display-capture guidance, and early-stop errors so support can tell whether a user is streaming a window, a full display, a slow network, or a failing capture source. A final upload is settlement-safe only when the upload response includes `should_settle = true` or a trusted finality status. Header-only or unparsed proof can be preserved for diagnostics, but it must not be read as final winner, score, postgame resource, or betting truth.
 
 Watcher upload bytes are not transformed client-side. Team evidence originates in the server replay parser and must remain in canonical `game_stats.players`; the watcher needs no version change for the team-integrity release. `betting_eligible` for a team final additionally requires two complete explicit replay teams and one coherent winning team. A trusted final can remain valid replay evidence while still being ineligible to settle a team market.
 

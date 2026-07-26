@@ -336,3 +336,18 @@ The public Verdict Trail may display replay parser passes, Evidence Passes, and 
 
 That unified presentation does not erase the source distinction between them.
 <!-- AOE2WAR:SCREENSHOT_EVIDENCE_LAYER_20260722:END -->
+
+## Live authority and migration seal — 2026-07-26
+
+The live database directly confirmed the following migrations as applied:
+
+- `20260722183000_add_replay_evidence_game_target`;
+- `20260722203000_add_replay_desync_incidents`;
+- `20260724163500_add_public_replay_roster_promotions`;
+- `20260725200000_add_normalized_replay_stats`;
+- `20260725213000_allow_replay_financial_authority`;
+- `20260726025500_fence_post_broadcast_bet_recovery`.
+
+Migration history contains 73 records: 71 applied, zero incomplete, and two historical rolled-back attempts. Prisma reports the 71 source migrations up to date.
+
+The authority-sensitive schema remains fail-closed. Roster and stat promotions expose separate `affects_public_aggregates`, `affects_results`, and `settlement_authority` fields. Player snapshots preserve result eligibility/status; stat projections preserve result eligibility and reason; adjudications preserve explicit financial disposition. A parser pass, screenshot pass, normalized stat projection, or public roster promotion cannot become financial truth merely because it exists.

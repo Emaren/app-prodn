@@ -33,3 +33,25 @@ AoE2HDBets deploys should restart only required AoE2HDBets services. Do not rest
 
 Do not write secrets into docs, logs, telemetry metadata, admin UI, commits, or shell history. Watcher API keys are sent to the telemetry endpoint only as `x-api-key` headers for server-side identity resolution and are never stored in `watcher_client_events`.
 
+## Production credential and hardening findings — 2026-07-26
+
+The parity inspection identified two credential incidents without recording secret values in this document:
+
+1. a deploy-hook credential is embedded in tracked `api-prodn/package.json`;
+2. a database connection error printed the production database URL into an operator terminal/chat transcript.
+
+Required remediation:
+
+- revoke and rotate the deploy hook;
+- remove the credential from tracked source and replace it with an environment/operator deployment mechanism;
+- clean reachable Git history where practical and add a secret-scan gate;
+- rotate the `aoe2hd_user` database password;
+- update every production environment file that consumes that password;
+- restart only the affected AoE2WAR web/API services and verify database, Prisma, and API health afterward;
+- never paste the old values into tickets, docs, commits, or future diagnostics.
+
+Sensitive file modes were otherwise appropriately restrictive at inspection: web and Wolo settlement environment files were mode `0600`; the API environment was mode `0600`; the OpenAI key file was mode `0640` owned by `root:tony` so the hardened web service can read it.
+
+Systemd hardening is uneven. The web service uses `ProtectSystem=strict`, `ProtectHome=true`, `PrivateTmp=true`, and `NoNewPrivileges=true`. The replay API and both settlement services lacked equivalent containment at the seal. Harden them through tested unit drop-ins with explicit writable paths; do not apply broad hardening blindly to signer/keyring services.
+
+The root filesystem was 94% used with about 2.4 GB free. Capacity cleanup must preserve raw replay archives, parser evidence, database backups, settlement state, release artifacts, and incident receipts.

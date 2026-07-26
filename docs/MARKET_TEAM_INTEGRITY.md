@@ -61,3 +61,13 @@ The ordinary correction rail returns only `amount_still_owed_wolo` from the conf
 8. Re-run the audit and preserve both reports.
 
 Never run `prisma migrate reset`, delete financial history, rewrite an on-chain description, or reopen a voided market automatically when late final evidence arrives.
+
+## Post-broadcast recovery fence — production seal 2026-07-26
+
+Migration `20260726025500_fence_post_broadcast_bet_recovery` is applied in production. Its deployment evidence is preserved under:
+
+`/mnt/HC_Volume_105319120/aoe2-parser-engine/backups/aoe2war-bet-recovery-live-deploy-20260726T055122Z`
+
+The protected set includes a pre-migration database dump and checksum, authority snapshots before migration, after migration, and after activation, plus a deployment receipt. The application checkout and live build correspond to commit `22232a0bcc038a567acd052f432883e70482a3f9`, which corrected the recovery migration backfill SQL.
+
+Production contained 463 `bet_stake_intents`, 31 replay result adjudications, 111 replay roster promotions, and 3 replay desync incidents at the seal. These counts are operational inventory only; ordinary adjudication, replay promotion, and financial authority remain distinct contracts.
