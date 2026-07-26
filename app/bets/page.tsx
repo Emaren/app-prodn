@@ -39,6 +39,9 @@ import {
   buildDesyncSideMarketSlug,
 } from "@/lib/desyncSideMarket";
 import {
+  buildBetStakeMemo,
+} from "@/lib/betStakeMemo";
+import {
   WOLO_BASE_DENOM,
   WOLO_CHAIN_ID,
   WOLO_DEFAULT_GAS_PRICE,
@@ -1872,7 +1875,7 @@ export default function BetsPage() {
         runtimeBetEscrowAddress,
         [{ amount: toUwoLoAmount(amountWolo), denom: WOLO_BASE_DENOM }],
         "auto",
-        `AoE2HDBets bet stake · market ${market.id}`
+        buildBetStakeMemo(market.id)
       );
 
       return {

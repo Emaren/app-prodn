@@ -25,6 +25,8 @@ export type StakeVerificationResult = {
   txHash?: string;
   proofUrl?: string | null;
   txFeeWolo?: number | null;
+  txTimestamp?: string | null;
+  memo?: string | null;
 };
 
 export type PayoutExecutionResult = {
@@ -340,6 +342,8 @@ type SettlementEscrowVerifyPayload = {
     tx_hash?: string;
     tx_success?: boolean;
     matched_expected?: boolean;
+    timestamp?: string;
+    memo?: string;
     canonical_tx_lookup?: string;
     canonical_tx_lookup_preferred?: string;
     canonical_tx_lookup_internal?: string;
@@ -1165,6 +1169,7 @@ async function verifyStakeTransferViaSettlementService(input: {
   txHash: string;
   fromAddress: string;
   expectedAmountWolo: number;
+  expectedMemo: string;
 }): Promise<StakeVerificationResult | null> {
   if (!WOLO_SETTLEMENT_URL) {
     return null;
@@ -1195,32 +1200,77 @@ async function verifyStakeTransferViaSettlementService(input: {
     };
   }
 
-  const matchedProofUrl = selectPreferredProofUrl(payload.lookup || {});
+  const matchedProofUrl =
+    selectPreferredProofUrl(
+      payload.lookup || {}
+    );
+
+  const expectedMemo =
+    input.expectedMemo.trim();
+
+  const txMemo =
+    payload.lookup?.memo?.trim() ||
+    null;
+
+  const memoMatches =
+    Boolean(
+      txMemo &&
+      txMemo === expectedMemo
+    );
+
   if (
     response.ok &&
     payload.ok &&
     payload.deposit_found &&
     payload.lookup?.found &&
     payload.lookup?.tx_success &&
-    payload.lookup?.matched_expected
+    payload.lookup?.matched_expected &&
+    memoMatches
   ) {
     return {
       verified: true,
-      detail: payload.detail?.trim() || "Stake tx verified by WoloChain escrow service.",
-      txHash: payload.lookup.tx_hash?.trim() || normalizeTxHash(input.txHash),
-      proofUrl: matchedProofUrl,
+      detail:
+        payload.detail?.trim() ||
+        "Stake tx verified by WoloChain escrow service.",
+      txHash:
+        payload.lookup.tx_hash?.trim() ||
+        normalizeTxHash(input.txHash),
+      proofUrl:
+        matchedProofUrl,
+      txTimestamp:
+        payload.lookup.timestamp?.trim() ||
+        null,
+      memo:
+        txMemo,
     };
   }
+
+  const memoMismatchDetail =
+    payload.lookup?.found &&
+    payload.lookup?.tx_success &&
+    payload.lookup?.matched_expected &&
+    !memoMatches
+      ? `Stake tx memo must exactly equal "${expectedMemo}".`
+      : null;
 
   return {
     verified: false,
     detail:
+      memoMismatchDetail ||
       payload.detail?.trim() ||
       payload.failure_code?.trim() ||
       payload.lookup?.detail?.trim() ||
       "Stake tx could not be verified by the WOLO settlement escrow service.",
-    txHash: payload.lookup?.tx_hash?.trim() || normalizeTxHash(input.txHash),
-    proofUrl: matchedProofUrl,
+    txHash:
+      payload.lookup?.tx_hash?.trim() ||
+      normalizeTxHash(input.txHash),
+    proofUrl:
+      matchedProofUrl,
+    txTimestamp:
+      payload.lookup?.timestamp?.trim() ||
+      null,
+    memo:
+      txMemo,
   };
 }
 
@@ -1976,6 +2026,7 @@ export async function verifyStakeTransfer(input: {
   txHash: string;
   fromAddress: string;
   expectedAmountWolo: number;
+  expectedMemo: string;
 }): Promise<StakeVerificationResult> {
   const escrowRuntime = getWoloBetEscrowRuntime();
   const normalizedTxHash = normalizeTxHash(input.txHash);
@@ -2021,8 +2072,52 @@ export async function verifyStakeTransfer(input: {
     };
   }
 
-  const expectedAmount = `${toUwoLoAmount(input.expectedAmountWolo)}${WOLO_BASE_DENOM}`;
-  const transfers = extractTransferEvents(payload);
+  const tx =
+    asRecord(
+      asRecord(payload)?.tx
+    );
+
+  const body =
+    asRecord(tx?.body);
+
+  const expectedMemo =
+    input.expectedMemo.trim();
+
+  const txMemo =
+    getStringField(
+      body || {},
+      "memo"
+    );
+
+  if (
+    !expectedMemo ||
+    txMemo !== expectedMemo
+  ) {
+    return {
+      verified: false,
+      detail:
+        `Stake tx memo must exactly equal "${expectedMemo}".`,
+      txHash:
+        normalizedTxHash,
+      proofUrl:
+        buildWoloRestTxLookupUrl(
+          normalizedTxHash
+        ),
+      txTimestamp:
+        getStringField(
+          txResponse,
+          "timestamp"
+        ) || null,
+      memo:
+        txMemo || null,
+    };
+  }
+
+  const expectedAmount =
+    `${toUwoLoAmount(input.expectedAmountWolo)}${WOLO_BASE_DENOM}`;
+
+  const transfers =
+    extractTransferEvents(payload);
   const matched = transfers.some((event) =>
     normalizeAddress(event.sender) === normalizeAddress(input.fromAddress) &&
     normalizeAddress(event.recipient) === normalizeAddress(escrowRuntime.escrowAddress) &&
@@ -2038,10 +2133,23 @@ export async function verifyStakeTransfer(input: {
 
   return {
     verified: true,
-    detail: "Stake tx verified via WOLO REST fallback.",
-    txHash: normalizedTxHash,
-    proofUrl: buildWoloRestTxLookupUrl(normalizedTxHash),
-    txFeeWolo: txNetworkFeeWolo(payload),
+    detail:
+      "Stake tx verified via WOLO REST fallback.",
+    txHash:
+      normalizedTxHash,
+    proofUrl:
+      buildWoloRestTxLookupUrl(
+        normalizedTxHash
+      ),
+    txFeeWolo:
+      txNetworkFeeWolo(payload),
+    txTimestamp:
+      getStringField(
+        txResponse,
+        "timestamp"
+      ) || null,
+    memo:
+      txMemo,
   };
 }
 

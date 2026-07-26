@@ -567,6 +567,7 @@ function marketSeedUpdateData(
     rightHref: string | null;
     propositionHash: string | null;
     firstStakeAcceptedAt: Date | null;
+    closeAt: Date | null;
   } | null
 ) {
   const existingWinnerSide =
@@ -603,7 +604,9 @@ function marketSeedUpdateData(
       status: "under_review",
       featured: false,
       sortOrder: seed.sortOrder,
-      closeAt: new Date(),
+      closeAt:
+        existing.closeAt ??
+        new Date(),
       settledAt: existing.settledAt,
       winnerSide: null,
     };
@@ -4881,6 +4884,7 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
       rightHref: true,
       propositionHash: true,
       firstStakeAcceptedAt: true,
+      closeAt: true,
     },
   });
   const existingBySlug = new Map(existingMarkets.map((market) => [market.slug, market] as const));

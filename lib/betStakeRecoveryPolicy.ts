@@ -10,11 +10,27 @@ export const POST_BROADCAST_RECOVERY_INTENT_STATUSES = [
   "orphaned",
 ] as const;
 
-export const POST_BROADCAST_RECOVERY_RESERVATION_MS =
-  5 * 60 * 1000;
+/*
+ * A chain block timestamp may trail the browser broadcast by
+ * a few seconds. This is clock and block-production tolerance,
+ * not a general late-betting window.
+ */
+export const POST_BROADCAST_RECOVERY_CHAIN_GRACE_MS =
+  30 * 1000;
 
-export const POST_BROADCAST_RECOVERY_BROADCAST_GRACE_MS =
-  90 * 1000;
+function readTimestamp(
+  value: Date | string | null
+) {
+  if (value instanceof Date) {
+    return value.getTime();
+  }
+
+  if (typeof value === "string") {
+    return Date.parse(value);
+  }
+
+  return Number.NaN;
+}
 
 export function isPostBroadcastStakeRecovery(input: {
   intentStatus: string;
@@ -26,7 +42,8 @@ export function isPostBroadcastStakeRecovery(input: {
   marketPropositionHash: string | null;
   intentCreatedAt: Date;
   broadcastSubmittedAt: Date | null;
-  marketBettingLockedAt: Date | null;
+  txTimestamp: string | null;
+  marketCloseAt: Date | null;
   marketStatus: string;
   winnerSide: string | null;
   settledAt: Date | null;
@@ -50,22 +67,25 @@ export function isPostBroadcastStakeRecovery(input: {
   const intentWallet =
     (input.intentWalletAddress || "").trim();
 
-  const lockedAt =
-    input.marketBettingLockedAt?.getTime() ??
-    Number.NaN;
-
   const createdAt =
-    input.intentCreatedAt.getTime();
+    readTimestamp(
+      input.intentCreatedAt
+    );
 
   const broadcastAt =
-    input.broadcastSubmittedAt?.getTime() ??
-    Number.NaN;
+    readTimestamp(
+      input.broadcastSubmittedAt
+    );
 
-  const reservationAge =
-    lockedAt - createdAt;
+  const txAt =
+    readTimestamp(
+      input.txTimestamp
+    );
 
-  const broadcastDelay =
-    broadcastAt - lockedAt;
+  const closeAt =
+    readTimestamp(
+      input.marketCloseAt
+    );
 
   const propositionMatches =
     Boolean(
@@ -74,6 +94,24 @@ export function isPostBroadcastStakeRecovery(input: {
       input.intentPropositionHash ===
         input.marketPropositionHash
     );
+
+  const intentPredatesClose =
+    createdAt <= closeAt;
+
+  const txBelongsToIntentWindow =
+    txAt >=
+      createdAt -
+        POST_BROADCAST_RECOVERY_CHAIN_GRACE_MS;
+
+  const txPredatesClose =
+    txAt <=
+      closeAt +
+        POST_BROADCAST_RECOVERY_CHAIN_GRACE_MS;
+
+  const broadcastFollowsChainProof =
+    broadcastAt >=
+      txAt -
+        POST_BROADCAST_RECOVERY_CHAIN_GRACE_MS;
 
   return (
     POST_BROADCAST_RECOVERY_INTENT_STATUSES.includes(
@@ -89,14 +127,14 @@ export function isPostBroadcastStakeRecovery(input: {
     Boolean(requestedWallet) &&
     requestedWallet === intentWallet &&
     propositionMatches &&
-    Number.isFinite(lockedAt) &&
     Number.isFinite(createdAt) &&
     Number.isFinite(broadcastAt) &&
-    reservationAge >= 0 &&
-    reservationAge <=
-      POST_BROADCAST_RECOVERY_RESERVATION_MS &&
-    broadcastDelay <=
-      POST_BROADCAST_RECOVERY_BROADCAST_GRACE_MS &&
+    Number.isFinite(txAt) &&
+    Number.isFinite(closeAt) &&
+    intentPredatesClose &&
+    txBelongsToIntentWindow &&
+    txPredatesClose &&
+    broadcastFollowsChainProof &&
     input.winnerSide === null &&
     input.settledAt === null &&
     input.voidedAt === null &&

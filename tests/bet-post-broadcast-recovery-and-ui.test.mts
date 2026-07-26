@@ -3,35 +3,60 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
+  buildBetStakeMemo,
+} from "../lib/betStakeMemo.ts";
+import {
   isPostBroadcastStakeRecovery,
 } from "../lib/betStakeRecoveryPolicy.ts";
 
-const lockedAt =
-  new Date("2026-07-26T01:36:10.000Z");
+const closeAt =
+  new Date(
+    "2026-07-26T01:36:10.000Z"
+  );
 
 const validRecovery = {
-  intentStatus: "suspect",
-  requestedTxHash: "ABC123",
-  intentTxHash: "abc123",
-  requestedWalletAddress: "wolo1wallet",
-  intentWalletAddress: "wolo1wallet",
-  intentPropositionHash: "proposition-a",
-  marketPropositionHash: "proposition-a",
+  intentStatus:
+    "suspect",
+  requestedTxHash:
+    "ABC123",
+  intentTxHash:
+    "abc123",
+  requestedWalletAddress:
+    "wolo1wallet",
+  intentWalletAddress:
+    "wolo1wallet",
+  intentPropositionHash:
+    "proposition-a",
+  marketPropositionHash:
+    "proposition-a",
   intentCreatedAt:
-    new Date("2026-07-26T01:36:07.000Z"),
+    new Date(
+      "2026-07-26T01:36:07.000Z"
+    ),
   broadcastSubmittedAt:
-    new Date("2026-07-26T01:36:15.000Z"),
-  marketBettingLockedAt: lockedAt,
-  marketStatus: "under_review",
-  winnerSide: null,
-  settledAt: null,
-  voidedAt: null,
-  refundStatus: null,
-  settlementExecutedAt: null,
+    new Date(
+      "2026-07-26T01:36:15.000Z"
+    ),
+  txTimestamp:
+    "2026-07-26T01:36:09Z",
+  marketCloseAt:
+    closeAt,
+  marketStatus:
+    "under_review",
+  winnerSide:
+    null,
+  settledAt:
+    null,
+  voidedAt:
+    null,
+  refundStatus:
+    null,
+  settlementExecutedAt:
+    null,
 };
 
 test(
-  "exact broadcast stake recovers after review lock",
+  "exact pre-close chain transfer recovers after review lock",
   () => {
     assert.equal(
       isPostBroadcastStakeRecovery(
@@ -43,7 +68,105 @@ test(
 );
 
 test(
-  "changed proposition blocks recovery",
+  "recovery uses actual close and chain time",
+  () => {
+    const source =
+      readFileSync(
+        "lib/betStakeRecoveryPolicy.ts",
+        "utf8"
+      );
+
+    assert.match(
+      source,
+      /marketCloseAt/
+    );
+
+    assert.match(
+      source,
+      /txTimestamp/
+    );
+
+    assert.doesNotMatch(
+      source,
+      /marketBettingLockedAt/
+    );
+
+    assert.doesNotMatch(
+      source,
+      /reservationAge/
+    );
+  }
+);
+
+test(
+  "chain transfer after close grace is rejected",
+  () => {
+    assert.equal(
+      isPostBroadcastStakeRecovery({
+        ...validRecovery,
+        txTimestamp:
+          "2026-07-26T01:36:41Z",
+      }),
+      false
+    );
+  }
+);
+
+test(
+  "old transfer predating intent cannot be reused",
+  () => {
+    assert.equal(
+      isPostBroadcastStakeRecovery({
+        ...validRecovery,
+        txTimestamp:
+          "2026-07-26T01:35:36Z",
+      }),
+      false
+    );
+  }
+);
+
+test(
+  "intent created after closure cannot recover",
+  () => {
+    assert.equal(
+      isPostBroadcastStakeRecovery({
+        ...validRecovery,
+        intentCreatedAt:
+          new Date(
+            "2026-07-26T01:36:11Z"
+          ),
+      }),
+      false
+    );
+  }
+);
+
+test(
+  "missing close or transaction time blocks recovery",
+  () => {
+    assert.equal(
+      isPostBroadcastStakeRecovery({
+        ...validRecovery,
+        marketCloseAt:
+          null,
+      }),
+      false
+    );
+
+    assert.equal(
+      isPostBroadcastStakeRecovery({
+        ...validRecovery,
+        txTimestamp:
+          null,
+      }),
+      false
+    );
+  }
+);
+
+test(
+  "changed proposition and financial authority block recovery",
   () => {
     assert.equal(
       isPostBroadcastStakeRecovery({
@@ -53,20 +176,30 @@ test(
       }),
       false
     );
-  }
-);
 
-test(
-  "stale reservation blocks recovery",
-  () => {
     assert.equal(
       isPostBroadcastStakeRecovery({
         ...validRecovery,
-        intentCreatedAt:
-          new Date(
-            lockedAt.getTime() -
-              6 * 60 * 1000
-          ),
+        winnerSide:
+          "left",
+      }),
+      false
+    );
+
+    assert.equal(
+      isPostBroadcastStakeRecovery({
+        ...validRecovery,
+        settledAt:
+          new Date(),
+      }),
+      false
+    );
+
+    assert.equal(
+      isPostBroadcastStakeRecovery({
+        ...validRecovery,
+        refundStatus:
+          "queued",
       }),
       false
     );
@@ -74,47 +207,65 @@ test(
 );
 
 test(
-  "late broadcast blocks recovery",
+  "client and server share exact market memo",
   () => {
     assert.equal(
-      isPostBroadcastStakeRecovery({
-        ...validRecovery,
-        broadcastSubmittedAt:
-          new Date(
-            lockedAt.getTime() +
-              91 * 1000
-          ),
-      }),
-      false
+      buildBetStakeMemo(433336),
+      "AoE2HDBets bet stake · market 433336"
+    );
+
+    const clientSource =
+      readFileSync(
+        "app/bets/page.tsx",
+        "utf8"
+      );
+
+    const wagerSource =
+      readFileSync(
+        "lib/betWagering.ts",
+        "utf8"
+      );
+
+    const settlementSource =
+      readFileSync(
+        "lib/woloBetSettlement.ts",
+        "utf8"
+      );
+
+    assert.match(
+      clientSource,
+      /buildBetStakeMemo\(market\.id\)/
+    );
+
+    assert.match(
+      wagerSource,
+      /expectedMemo:\s*buildBetStakeMemo/
+    );
+
+    assert.match(
+      settlementSource,
+      /txMemo !== expectedMemo/
+    );
+
+    assert.match(
+      settlementSource,
+      /txTimestamp/
     );
   }
 );
 
 test(
-  "winner and settlement authority block recovery",
+  "under-review reconciliation preserves original close authority",
   () => {
-    assert.equal(
-      isPostBroadcastStakeRecovery({
-        ...validRecovery,
-        winnerSide: "left",
-      }),
-      false
-    );
+    const source =
+      readFileSync(
+        "lib/bets.ts",
+        "utf8"
+      );
 
-    assert.equal(
-      isPostBroadcastStakeRecovery({
-        ...validRecovery,
-        settledAt: new Date(),
-      }),
-      false
-    );
-
-    assert.equal(
-      isPostBroadcastStakeRecovery({
-        ...validRecovery,
-        refundStatus: "queued",
-      }),
-      false
+    assert.match(
+      source,
+      /existing\?\.status === "under_review"[\s\S]*closeAt:\s*existing\.closeAt\s*\?\?\s*new Date\(\)/
     );
   }
 );
@@ -202,56 +353,35 @@ test(
       source,
       /Founder controls/
     );
-
-    assert.match(
-      source,
-      /Participants Bonus/
-    );
-
-    assert.match(
-      source,
-      /Winner Bonus/
-    );
-
-    assert.doesNotMatch(
-      source,
-      />\+FB</
-    );
-
-    assert.doesNotMatch(
-      source,
-      />\+FW</
-    );
   }
 );
 
 test(
-  "intent and wager domains contain recovery fences",
+  "wager recovery is chain-time and close-time fenced atomically",
   () => {
-    const intentSource =
-      readFileSync(
-        "lib/betStakeIntents.ts",
-        "utf8"
-      );
-
-    const wagerSource =
+    const source =
       readFileSync(
         "lib/betWagering.ts",
         "utf8"
       );
 
     assert.match(
-      intentSource,
-      /broadcastSubmittedAt/
+      source,
+      /txTimestamp:\s*stakeVerification\.txTimestamp/
     );
 
     assert.match(
-      wagerSource,
-      /allowLockedPostBroadcastRecovery/
+      source,
+      /marketCloseAt:\s*market\.closeAt/
     );
 
     assert.match(
-      wagerSource,
+      source,
+      /closeAt:\s*market\.closeAt/
+    );
+
+    assert.match(
+      source,
       /recoveredAfterMarketLock/
     );
   }

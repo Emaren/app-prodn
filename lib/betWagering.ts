@@ -4,6 +4,9 @@ import {
   isPostBroadcastStakeRecovery,
   POST_BROADCAST_RECOVERY_MARKET_STATUSES,
 } from "@/lib/betStakeRecoveryPolicy";
+import {
+  buildBetStakeMemo,
+} from "@/lib/betStakeMemo";
 import { markBetStakeIntentRecorded, markBetStakeIntentVerified } from "@/lib/betStakeIntents";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
@@ -51,6 +54,7 @@ type BetMarketPreflightContext = {
     refundStatus: string | null;
     settlementExecutedAt: Date | null;
     bettingLockedAt: Date | null;
+    closeAt: Date | null;
     title: string;
     leftLabel: string;
     rightLabel: string;
@@ -256,6 +260,7 @@ async function loadBetMarketPreflightContext(
         refundStatus: true,
         settlementExecutedAt: true,
         bettingLockedAt: true,
+        closeAt: true,
         title: true,
         leftLabel: true,
         rightLabel: true,
@@ -622,8 +627,87 @@ export async function placePooledBetWager(
     );
   }
 
+  if (
+    escrowRuntime.onchainRequired &&
+    escrowRuntime.configError
+  ) {
+    throw new BetWagerError(
+      503,
+      escrowRuntime.configError
+    );
+  }
+
+  let stakeVerification:
+    | Awaited<
+        ReturnType<
+          typeof verifyStakeTransfer
+        >
+      >
+    | null = null;
+
+  if (shouldUseOnchainStake) {
+    if (
+      typeof input.stakeIntentId !==
+        "number" ||
+      !stakeIntent
+    ) {
+      throw new BetWagerError(
+        409,
+        "Real escrow slips require a matching stake intent before the wager can be recorded."
+      );
+    }
+
+    if (!normalizedWalletAddress) {
+      throw new BetWagerError(
+        409,
+        "Connect Keplr and lock your WOLO stake before recording the wager."
+      );
+    }
+
+    const addressError =
+      validateWoloAddress(
+        normalizedWalletAddress
+      );
+
+    if (addressError) {
+      throw new BetWagerError(
+        400,
+        addressError
+      );
+    }
+
+    if (!normalizedStakeTxHash) {
+      throw new BetWagerError(
+        409,
+        "Missing WOLO stake transaction hash for this wager."
+      );
+    }
+
+    stakeVerification =
+      await verifyStakeTransfer({
+        txHash:
+          normalizedStakeTxHash,
+        fromAddress:
+          normalizedWalletAddress,
+        expectedAmountWolo:
+          input.amountWolo,
+        expectedMemo:
+          buildBetStakeMemo(
+            input.marketId
+          ),
+      });
+
+    if (!stakeVerification.verified) {
+      throw new BetWagerError(
+        409,
+        stakeVerification.detail
+      );
+    }
+  }
+
   const postBroadcastRecovery =
-    stakeIntent
+    stakeIntent &&
+    stakeVerification?.verified
       ? isPostBroadcastStakeRecovery({
           intentStatus:
             stakeIntent.status,
@@ -643,8 +727,11 @@ export async function placePooledBetWager(
             stakeIntent.createdAt,
           broadcastSubmittedAt:
             stakeIntent.broadcastSubmittedAt,
-          marketBettingLockedAt:
-            market.bettingLockedAt,
+          txTimestamp:
+            stakeVerification.txTimestamp ??
+            null,
+          marketCloseAt:
+            market.closeAt,
           marketStatus:
             market.status,
           winnerSide:
@@ -675,45 +762,6 @@ export async function placePooledBetWager(
     }
   );
 
-  if (escrowRuntime.onchainRequired && escrowRuntime.configError) {
-    throw new BetWagerError(503, escrowRuntime.configError);
-  }
-
-  if (shouldUseOnchainStake) {
-    if (typeof input.stakeIntentId !== "number" || !stakeIntent) {
-      throw new BetWagerError(
-        409,
-        "Real escrow slips require a matching stake intent before the wager can be recorded."
-      );
-    }
-
-    if (!normalizedWalletAddress) {
-      throw new BetWagerError(
-        409,
-        "Connect Keplr and lock your WOLO stake before recording the wager."
-      );
-    }
-
-    const addressError = validateWoloAddress(normalizedWalletAddress);
-    if (addressError) {
-      throw new BetWagerError(400, addressError);
-    }
-
-    if (!normalizedStakeTxHash) {
-      throw new BetWagerError(409, "Missing WOLO stake transaction hash for this wager.");
-    }
-
-    const verification = await verifyStakeTransfer({
-      txHash: normalizedStakeTxHash,
-      fromAddress: normalizedWalletAddress,
-      expectedAmountWolo: input.amountWolo,
-    });
-
-    if (!verification.verified) {
-      throw new BetWagerError(409, verification.detail);
-    }
-  }
-
   try {
     await prisma.$transaction(async (tx) => {
       const lockedAt = new Date();
@@ -742,6 +790,8 @@ export async function placePooledBetWager(
                   market.propositionHash,
                 bettingLockedAt:
                   market.bettingLockedAt,
+                closeAt:
+                  market.closeAt,
               }
             : {
                 id:
