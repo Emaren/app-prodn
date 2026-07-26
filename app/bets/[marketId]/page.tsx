@@ -236,7 +236,23 @@ function IntegrityNotice({
 }
 
 function isCountableIntent(status: string) {
-  return !["failed", "cancelled", "canceled", "orphaned"].includes(status.toLowerCase());
+  return (
+    status.toLowerCase() ===
+    "recorded"
+  );
+}
+
+function isPendingRecoveryIntent(
+  intent: Pick<
+    IntentRow,
+    "status" | "stakeTxHash"
+  >
+) {
+  return (
+    intent.status.toLowerCase() !==
+      "recorded" &&
+    Boolean(intent.stakeTxHash)
+  );
 }
 
 function isCountableWager(status: string) {
@@ -833,6 +849,15 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
   const intentWolo = intents
     .filter((intent) => isCountableIntent(intent.status))
     .reduce((sum, intent) => sum + intent.amountWolo, 0);
+
+  const pendingRecoveryWolo = intents
+    .filter(isPendingRecoveryIntent)
+    .reduce(
+      (sum, intent) =>
+        sum + intent.amountWolo,
+      0
+    );
+
   const wageredWolo = wagers
     .filter((wager) => isCountableWager(wager.status))
     .reduce((sum, wager) => sum + wager.amountWolo, 0);
@@ -862,8 +887,15 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
   const imbalanceSide =
     leftBookWolo > rightBookWolo ? market.leftLabel : rightBookWolo > leftBookWolo ? market.rightLabel : null;
 
-  const winnerName = market.winnerSide === "right" ? market.rightLabel : market.leftLabel;
-  const leftWon = market.winnerSide === "left";
+  const winnerName =
+    market.winnerSide === "left"
+      ? market.leftLabel
+      : market.winnerSide === "right"
+        ? market.rightLabel
+        : null;
+
+  const leftWon =
+    market.winnerSide === "left";
   const rightWon = market.winnerSide === "right";
 
   const timeline: TimelineRow[] = [
@@ -903,7 +935,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
               ? ("sky" as const)
               : ("slate" as const),
     })),
-    ...(market.settledAt && market.winnerSide
+    ...(market.settledAt && market.winnerSide && winnerName
       ? [
           {
             key: "result-winner",
@@ -982,7 +1014,20 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
                 </p>
               </div>
 
-              <BookMetric label="Visible Book" value={`${formatWolo(visibleBookWolo)} WOLO`} helper={`Payout rail ${formatWolo(payoutRailWolo)} WOLO`} />
+              <div className="grid gap-3">
+                <BookMetric
+                  label="Accepted Book"
+                  value={`${formatWolo(visibleBookWolo)} WOLO`}
+                  helper={`Payout rail ${formatWolo(payoutRailWolo)} WOLO`}
+                />
+                {pendingRecoveryWolo > 0 ? (
+                  <BookMetric
+                    label="Pending Recovery"
+                    value={`${formatWolo(pendingRecoveryWolo)} WOLO`}
+                    helper="Transferred proof awaiting reconciliation"
+                  />
+                ) : null}
+              </div>
             </div>
 
             <div className="mt-8 grid gap-3 md:grid-cols-2">
@@ -1037,8 +1082,13 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
               <PremiumMatchTitle title={market.title} layout={view === "extreme" ? "wide" : "stacked"} matchup={resolvedTeamMatchup} />
 
               <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">
-                {market.eventLabel || "AoE2WAR book"} · winner: {winnerName}
-                {market.settledAt ? ` · settled ${formatDateLong(market.settledAt)}` : ""}
+                {market.eventLabel || "AoE2WAR book"}
+                {winnerName
+                  ? ` · winner: ${winnerName}`
+                  : ` · ${market.status.replaceAll("_", " ")}`}
+                {market.settledAt
+                  ? ` · settled ${formatDateLong(market.settledAt)}`
+                  : ""}
               </p>
             </div>
 
@@ -1046,7 +1096,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
               {view === "extreme" ? (
                 <div className="w-full rounded-[1.15rem] border border-amber-200/18 bg-amber-300/[0.09] px-5 py-4 text-center shadow-[0_18px_54px_rgba(0,0,0,0.24)]">
                   <div className="text-[10px] font-black uppercase tracking-[0.34em] text-amber-100/58">
-                    Visible Book
+                    Accepted Book
                   </div>
                   <div className="mt-1 text-4xl font-black tracking-[-0.045em] text-white">
                     {formatWolo(visibleBookWolo)} WOLO
@@ -1054,14 +1104,45 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
                   <div className="mt-1 text-xs font-semibold text-slate-400">
                     Payout rail {formatWolo(payoutRailWolo)} WOLO
                   </div>
+                  {pendingRecoveryWolo > 0 ? (
+                    <div className="mt-2 text-xs font-semibold text-amber-200/80">
+                      Pending recovery {formatWolo(pendingRecoveryWolo)} WOLO
+                    </div>
+                  ) : null}
                 </div>
               ) : (
-                <BookMetric label="Visible Book" value={`${formatWolo(visibleBookWolo)} WOLO`} helper={`Payout rail ${formatWolo(payoutRailWolo)} WOLO`} />
+                  <div className="grid gap-3">
+                  <BookMetric
+                    label="Accepted Book"
+                    value={`${formatWolo(visibleBookWolo)} WOLO`}
+                    helper={`Payout rail ${formatWolo(payoutRailWolo)} WOLO`}
+                  />
+                  {pendingRecoveryWolo > 0 ? (
+                    <BookMetric
+                      label="Pending Recovery"
+                      value={`${formatWolo(pendingRecoveryWolo)} WOLO`}
+                      helper="Transferred proof awaiting reconciliation"
+                    />
+                  ) : null}
+                </div>
               )}
-              <div className="grid grid-cols-3 gap-3">
-                <MiniMetric label="Matched" value={`${formatWolo(matchedWolo)}`} />
-                <MiniMetric label="Open" value={`${formatWolo(openImbalanceWolo)}`} />
-                <MiniMetric label="FB" value={`${formatWolo(founderBonusWolo)}`} />
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <MiniMetric
+                  label="Matched"
+                  value={`${formatWolo(matchedWolo)}`}
+                />
+                <MiniMetric
+                  label="Open"
+                  value={`${formatWolo(openImbalanceWolo)}`}
+                />
+                <MiniMetric
+                  label="FB"
+                  value={`${formatWolo(founderBonusWolo)}`}
+                />
+                <MiniMetric
+                  label="Recovery"
+                  value={`${formatWolo(pendingRecoveryWolo)}`}
+                />
               </div>
             </div>
           </div>

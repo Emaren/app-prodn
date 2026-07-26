@@ -317,7 +317,13 @@ export function isBetMarketHistoryHref(value: string | null | undefined) {
 }
 
 export function isRecoveryBookOpen(status: BetStatus) {
-  return status === "open" || status === "closing" || status === "live";
+  return [
+    "open",
+    "closing",
+    "live",
+    "awaiting_final_proof",
+    "under_review",
+  ].includes(status);
 }
 
 export function validateStakeAmount(stake: number, maxStake: number) {

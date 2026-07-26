@@ -3860,6 +3860,233 @@ function StakeAmountRail({
 }
 
 
+
+function BetSlipComposer({
+  market,
+  activeSelection,
+  canEdit,
+  maxStakeWolo,
+  projectedReturn,
+  statusCopy,
+  stakeError,
+  lockLabel,
+  workingKey,
+  onchainLocked,
+  onStakeChange,
+  onLock,
+  onClear,
+  density,
+}: {
+  market: BetBoardMarket;
+  activeSelection: SelectionState | null;
+  canEdit: boolean;
+  maxStakeWolo: number;
+  projectedReturn: number;
+  statusCopy: string;
+  stakeError: string | null;
+  lockLabel: string;
+  workingKey: string | null;
+  onchainLocked: boolean;
+  onStakeChange: (stake: number) => void;
+  onLock: () => void;
+  onClear: () => void;
+  density: "compact" | "spacious";
+}) {
+  const selectedSide =
+    activeSelection?.side ??
+    market.viewerWager?.side ??
+    null;
+
+  const selectedName =
+    selectedSide === "left"
+      ? market.left.name
+      : selectedSide === "right"
+        ? market.right.name
+        : null;
+
+  const shellClassName =
+    density === "spacious"
+      ? "mt-7 rounded-[1.7rem] bg-black/[0.18] px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] ring-1 ring-white/[0.055] sm:px-6"
+      : `${insetClass()} mt-5 px-5 py-5`;
+
+  return (
+    <section className={shellClassName}>
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,15rem)] lg:items-start">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+                2 · Choose amount
+              </div>
+
+              <div className="mt-1 text-sm leading-5 text-slate-300">
+                {selectedName
+                  ? `Backing ${selectedName}`
+                  : "Choose a side above to activate the WOLO slip."}
+              </div>
+            </div>
+
+            <div className="text-xs text-slate-500">
+              Max {maxStakeWolo.toLocaleString()} WOLO
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <StakeAmountRail
+              activeSelection={activeSelection}
+              canEdit={canEdit}
+              maxStakeWolo={maxStakeWolo}
+              onStakeChange={onStakeChange}
+            />
+          </div>
+        </div>
+
+        <div className="rounded-[1.15rem] border border-white/[0.055] bg-slate-950/35 px-4 py-4 lg:text-right">
+          <div
+            className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500"
+            title="Projected book return if the selected side wins."
+          >
+            Projected return
+          </div>
+
+          <div className="mt-2 break-words text-xl font-semibold text-white [overflow-wrap:anywhere]">
+            {activeSelection
+              ? `${formatCompact(projectedReturn)} WOLO`
+              : "Choose a side"}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-col gap-4 border-t border-white/[0.06] pt-5 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          className={`min-w-0 break-words text-sm leading-5 [overflow-wrap:anywhere] ${
+            stakeError
+              ? "text-rose-200"
+              : "text-slate-400"
+          }`}
+        >
+          {stakeError || statusCopy}
+        </div>
+
+        <div className="flex shrink-0 flex-wrap gap-2 sm:justify-end">
+          {market.viewerWager && !onchainLocked ? (
+            <button
+              type="button"
+              onClick={onClear}
+              disabled={
+                workingKey ===
+                `clear-${market.id}`
+              }
+              className={`inline-flex min-w-[6rem] cursor-pointer items-center justify-center rounded-xl px-4 py-3 text-sm transition ${edgeButton(
+                "glass"
+              )} ${
+                workingKey ===
+                `clear-${market.id}`
+                  ? "opacity-60"
+                  : ""
+              }`}
+            >
+              {workingKey ===
+              `clear-${market.id}`
+                ? "Clearing..."
+                : "Clear"}
+            </button>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={onLock}
+            disabled={
+              !activeSelection ||
+              Boolean(stakeError) ||
+              !canEdit ||
+              workingKey ===
+                `lock-${market.id}`
+            }
+            className={`inline-flex min-w-[11rem] cursor-pointer items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold transition ${edgeButton(
+              "gold"
+            )} ${
+              !activeSelection ||
+              Boolean(stakeError) ||
+              !canEdit ||
+              workingKey ===
+                `lock-${market.id}`
+                ? "opacity-60"
+                : ""
+            }`}
+          >
+            {lockLabel}
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FounderControlRail({
+  market,
+  isAdmin,
+  onOpenFounderBonus,
+}: {
+  market: BetBoardMarket;
+  isAdmin: boolean;
+  onOpenFounderBonus: (
+    market: BetBoardMarket,
+    bonusType: FounderBonusType
+  ) => void;
+}) {
+  if (
+    !isAdmin ||
+    market.marketType ===
+      DESYNC_SIDE_MARKET_TYPE
+  ) {
+    return null;
+  }
+
+  return (
+    <section className="mt-4 flex flex-col gap-3 rounded-[1.25rem] border border-white/[0.055] bg-black/[0.13] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <div className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
+          Founder controls
+        </div>
+
+        <div className="mt-1 text-xs leading-5 text-slate-400">
+          Promotional funding is separate from the bettor&apos;s WOLO slip.
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() =>
+            onOpenFounderBonus(
+              market,
+              "participants"
+            )
+          }
+          className="cursor-pointer rounded-xl border border-amber-300/20 bg-amber-400/10 px-4 py-2.5 text-xs font-semibold text-amber-100 transition hover:bg-amber-400/18"
+        >
+          Participants Bonus
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            onOpenFounderBonus(
+              market,
+              "winner"
+            )
+          }
+          className="cursor-pointer rounded-xl border border-sky-300/20 bg-sky-400/10 px-4 py-2.5 text-xs font-semibold text-sky-100 transition hover:bg-sky-400/18"
+        >
+          Winner Bonus
+        </button>
+      </div>
+    </section>
+  );
+}
+
+
 type ExtremeRosterSide = {
   key: BetSide;
   label: string;
@@ -4153,10 +4380,10 @@ function MarketFeature({
         ? "Confirming Chain..."
         : "Recording Slip..."
     : activeSelection
-      ? `Add ${activeSelection.stake}`
+      ? `Lock ${activeSelection.stake} WOLO`
       : market.viewerWager
-        ? "Add More"
-        : "Lock";
+        ? "Add WOLO"
+        : "Lock WOLO";
   const extremeRoster = buildExtremeMarketRoster(market);
   const marketHistoryHref = buildBetMarketHistoryHref(market.id);
   const gameStatsHref = buildBetGameStatsHref(market);
@@ -4217,24 +4444,6 @@ function MarketFeature({
                 {gameStatsLabel}
               </Link>
             ) : null}
-            {isAdmin ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => onOpenFounderBonus(market, "participants")}
-                  className="rounded-full border border-amber-300/[0.14] bg-amber-400/[0.08] px-3 py-1 text-xs text-amber-100 transition hover:bg-amber-400/[0.14]"
-                >
-                  +FB
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onOpenFounderBonus(market, "winner")}
-                  className="rounded-full border border-sky-300/[0.14] bg-sky-400/[0.08] px-3 py-1 text-xs text-sky-100 transition hover:bg-sky-400/[0.14]"
-                >
-                  +FW
-                </button>
-              </>
-            ) : null}
             <MarketStatusPill market={market} />
             {onToggleDesync ? (
               <div className="basis-full flex justify-end pt-1.5">
@@ -4247,7 +4456,11 @@ function MarketFeature({
           </div>
         </div>
 
-        <div className="mt-8 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_15rem_minmax(0,1fr)] lg:items-stretch xl:gap-6">
+        <div className="mt-8 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+          1 · Choose side
+        </div>
+
+        <div className="mt-3 grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1fr)_15rem_minmax(0,1fr)] lg:items-stretch xl:gap-6">
           <ExtremeTeamPanel
             roster={extremeRoster.left}
             selected={displaySide === "left"}
@@ -4310,57 +4523,29 @@ function MarketFeature({
           onSelect={(side) => onSelect(market, side)}
         />
 
-        <div className="mt-6 rounded-[1.7rem] bg-black/[0.16] px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.022)] ring-1 ring-white/[0.045] sm:px-5 sm:py-6">
-          <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-            <div className="min-w-0">
-              <StakeAmountRail
-                activeSelection={activeSelection}
-                canEdit={canEditSlip}
-                maxStakeWolo={maxStakeWolo}
-                onStakeChange={onStakeChange}
-              />
-            </div>
-            <div className="min-w-0 lg:text-right">
-              <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500" title="Projected book return if this side wins right now.">
-                If Right
-              </div>
-              <div className="mt-2 text-xl font-semibold text-white">
-                {activeSelection ? `${formatCompact(projectedReturn)} WOLO` : "Pick a team"}
-              </div>
-            </div>
-          </div>
+        <BetSlipComposer
+          market={market}
+          activeSelection={activeSelection}
+          canEdit={canEditSlip}
+          maxStakeWolo={maxStakeWolo}
+          projectedReturn={projectedReturn}
+          statusCopy={statusCopy}
+          stakeError={stakeError}
+          lockLabel={lockLabel}
+          workingKey={workingKey}
+          onchainLocked={onchainLocked}
+          onStakeChange={onStakeChange}
+          onLock={onLock}
+          onClear={onClear}
+          density="spacious"
+        />
 
-          <div className="mt-5 flex flex-col gap-4 border-t border-white/[0.05] pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className={`min-w-0 break-words text-sm [overflow-wrap:anywhere] ${stakeError ? "text-rose-200" : "text-slate-400"}`}>
-              {stakeError || statusCopy}
-            </div>
+        <FounderControlRail
+          market={market}
+          isAdmin={isAdmin}
+          onOpenFounderBonus={onOpenFounderBonus}
+        />
 
-            <div className="flex flex-wrap gap-2 sm:justify-end">
-              {market.viewerWager && !onchainLocked ? (
-                <button
-                  type="button"
-                  onClick={onClear}
-                  disabled={workingKey === `clear-${market.id}`}
-                  className={`inline-flex items-center rounded-full px-4 py-2.5 text-sm transition ${edgeButton("glass")} ${
-                    workingKey === `clear-${market.id}` ? "opacity-60" : ""
-                  }`}
-                >
-                  {workingKey === `clear-${market.id}` ? "Clearing..." : "Clear"}
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={onLock}
-                disabled={!activeSelection || Boolean(stakeError) || !canEditSlip || workingKey === `lock-${market.id}`}
-                className={`inline-flex items-center rounded-full px-4 py-2.5 text-sm font-semibold transition ${edgeButton("gold")} ${
-                  !activeSelection || Boolean(stakeError) || !canEditSlip || workingKey === `lock-${market.id}` ? "opacity-60" : ""
-                }`}
-              >
-                {lockLabel}
-              </button>
-            </div>
-          </div>
-        </div>
 
         <WarTape rows={market.warTape} />
       </div>
@@ -4419,24 +4604,6 @@ function MarketFeature({
               {gameStatsLabel}
             </Link>
           ) : null}
-          {isAdmin && market.marketType !== DESYNC_SIDE_MARKET_TYPE ? (
-            <>
-              <button
-                type="button"
-                onClick={() => onOpenFounderBonus(market, "participants")}
-                className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-1 text-xs text-amber-100 transition hover:bg-amber-400/18"
-              >
-                +FB
-              </button>
-              <button
-                type="button"
-                onClick={() => onOpenFounderBonus(market, "winner")}
-                className="rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-xs text-sky-100 transition hover:bg-sky-400/18"
-              >
-                +FW
-              </button>
-            </>
-          ) : null}
           <MarketStatusPill market={market} />
           {onToggleDesync ? (
             <div className="basis-full flex justify-end pt-1.5">
@@ -4449,7 +4616,11 @@ function MarketFeature({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
+      <div className="mt-6 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+        1 · Choose side
+      </div>
+
+      <div className="mt-3 grid gap-4 lg:grid-cols-[1fr_auto_1fr] lg:items-center">
         <SideChoice
           side={market.left}
           selected={displaySide === "left"}
@@ -4478,57 +4649,29 @@ function MarketFeature({
         />
       </div>
 
-      <div className={`${insetClass()} mt-5 px-4 py-4`}>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex-1">
-            <StakeAmountRail
-              activeSelection={activeSelection}
-              canEdit={canEditSlip}
-              maxStakeWolo={maxStakeWolo}
-              onStakeChange={onStakeChange}
-            />
-          </div>
-          <div className="text-right">
-            <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500" title="Projected book return if this side wins right now.">
-              {market.marketType === DESYNC_SIDE_MARKET_TYPE ? "If YES" : "If Right"}
-            </div>
-            <div className="mt-2 text-xl font-semibold text-white">
-              {activeSelection ? `${formatCompact(projectedReturn)} WOLO` : "Pick a side"}
-            </div>
-          </div>
-        </div>
+      <BetSlipComposer
+        market={market}
+        activeSelection={activeSelection}
+        canEdit={canEditSlip}
+        maxStakeWolo={maxStakeWolo}
+        projectedReturn={projectedReturn}
+        statusCopy={statusCopy}
+        stakeError={stakeError}
+        lockLabel={lockLabel}
+        workingKey={workingKey}
+        onchainLocked={onchainLocked}
+        onStakeChange={onStakeChange}
+        onLock={onLock}
+        onClear={onClear}
+        density="compact"
+      />
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-          <div className={`text-sm ${stakeError ? "text-rose-200" : "text-slate-400"}`}>
-            {stakeError || statusCopy}
-          </div>
+      <FounderControlRail
+        market={market}
+        isAdmin={isAdmin}
+        onOpenFounderBonus={onOpenFounderBonus}
+      />
 
-          <div className="flex flex-wrap gap-2">
-            {market.viewerWager && !onchainLocked ? (
-              <button
-                type="button"
-                onClick={onClear}
-                disabled={workingKey === `clear-${market.id}`}
-                className={`inline-flex items-center rounded-full px-4 py-2.5 text-sm transition ${edgeButton("glass")} ${
-                  workingKey === `clear-${market.id}` ? "opacity-60" : ""
-                }`}
-              >
-                {workingKey === `clear-${market.id}` ? "Clearing..." : "Clear"}
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={onLock}
-              disabled={!activeSelection || Boolean(stakeError) || !canEditSlip || workingKey === `lock-${market.id}`}
-              className={`inline-flex items-center rounded-full px-4 py-2.5 text-sm font-semibold transition ${edgeButton("gold")} ${
-                !activeSelection || Boolean(stakeError) || !canEditSlip || workingKey === `lock-${market.id}` ? "opacity-60" : ""
-              }`}
-            >
-              {lockLabel}
-            </button>
-          </div>
-        </div>
-      </div>
 
       {detailMode === "advanced" ? <WarTape rows={market.warTape} /> : null}
     </div>
@@ -4592,7 +4735,39 @@ function MarketCard({
           displayOppositePool
         )
       : 0;
-  const stakeError = activeSelection ? validateStakeAmount(activeSelection.stake, maxStakeWolo) : null;
+  const stakeError =
+    activeSelection
+      ? validateStakeAmount(
+          activeSelection.stake,
+          maxStakeWolo
+        )
+      : null;
+
+  const statusCopy =
+    marketWorkflow
+      ? marketWorkflow.phase ===
+          "awaiting_wallet"
+        ? "Open Keplr — no WOLO moves until you approve."
+        : marketWorkflow.phase ===
+            "confirming_chain"
+          ? "Stake submitted. Waiting for chain confirmation."
+          : "Escrow confirmed. Recording the slip."
+      : activeSelection
+        ? `Backing ${
+            activeSelection.side ===
+            "left"
+              ? market.left.name
+              : market.right.name
+          } for ${activeSelection.stake} WOLO`
+        : market.viewerWager
+          ? `Already backing ${
+              market.viewerWager.side ===
+              "left"
+                ? market.left.name
+                : market.right.name
+            } for ${market.viewerWager.amountWolo} WOLO`
+          : "Choose a side to activate the WOLO slip.";
+
   const lockLabel = marketWorkflow
     ? marketWorkflow.phase === "awaiting_wallet"
       ? "Wallet..."
@@ -4600,10 +4775,10 @@ function MarketCard({
         ? "Chain..."
         : "Saving..."
     : activeSelection
-      ? `Add ${activeSelection.stake}`
+      ? `Lock ${activeSelection.stake} WOLO`
       : market.viewerWager
-        ? "Add"
-        : "Lock";
+        ? "Add WOLO"
+        : "Lock WOLO";
   const extremeRoster = buildExtremeMarketRoster(market);
   const isExtremeTeamMarket = detailMode === "extreme" && extremeRoster.isBalancedTeamGame;
   const marketHistoryHref = buildBetMarketHistoryHref(market.id);
@@ -4615,7 +4790,7 @@ function MarketCard({
       className={
         isExtremeTeamMarket
           ? "min-w-0 max-w-full overflow-hidden rounded-[1.9rem] border border-white/[0.05] bg-[radial-gradient(circle_at_0%_0%,rgba(251,191,36,0.055),transparent_30%),radial-gradient(circle_at_100%_0%,rgba(56,189,248,0.05),transparent_30%),rgba(2,6,23,0.18)] p-5 shadow-[0_22px_60px_rgba(2,6,23,0.24)] sm:p-7"
-          : `${cardClass()} overflow-hidden p-4`
+          : `${cardClass()} overflow-hidden p-5 sm:p-6`
       }
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -4703,9 +4878,13 @@ function MarketCard({
         </div>
       </div>
 
+      <div className="mt-6 text-[10px] font-black uppercase tracking-[0.3em] text-slate-500">
+        1 · Choose side
+      </div>
+
       {isExtremeTeamMarket ? (
         <>
-          <div className="mt-6 grid min-w-0 gap-4 lg:grid-cols-2 lg:gap-6">
+          <div className="mt-3 grid min-w-0 gap-4 lg:grid-cols-2 lg:gap-6">
             <ExtremeTeamPanel
               roster={extremeRoster.left}
               selected={displaySide === "left"}
@@ -4729,7 +4908,7 @@ function MarketCard({
           />
         </>
       ) : (
-        <div className="mt-4 grid grid-cols-2 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-3">
           <SideMiniChoice
             side={market.left}
             selected={displaySide === "left"}
@@ -4747,72 +4926,33 @@ function MarketCard({
         </div>
       )}
 
-      <div
-        className={
+      <BetSlipComposer
+        market={market}
+        activeSelection={activeSelection}
+        canEdit={canEditSlip}
+        maxStakeWolo={maxStakeWolo}
+        projectedReturn={projectedReturn}
+        statusCopy={statusCopy}
+        stakeError={stakeError}
+        lockLabel={lockLabel}
+        workingKey={workingKey}
+        onchainLocked={onchainLocked}
+        onStakeChange={onStakeChange}
+        onLock={onLock}
+        onClear={onClear}
+        density={
           isExtremeTeamMarket
-            ? "mt-6 rounded-[1.6rem] bg-black/[0.16] px-4 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.022)] ring-1 ring-white/[0.045] sm:px-5"
-            : `${insetClass()} mt-4 px-4 py-4`
+            ? "spacious"
+            : "compact"
         }
-      >
-        <StakeAmountRail
-          activeSelection={activeSelection}
-          canEdit={canEditSlip}
-          maxStakeWolo={maxStakeWolo}
-          onStakeChange={onStakeChange}
-        />
+      />
 
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <div>
-            <div className="text-[11px] uppercase tracking-[0.26em] text-slate-500">If Right</div>
-            <div className="mt-2 text-base font-semibold text-white">
-              {activeSelection ? `${formatCompact(projectedReturn)} WOLO` : "Pick"}
-            </div>
-          </div>
+      <FounderControlRail
+        market={market}
+        isAdmin={isAdmin}
+        onOpenFounderBonus={onOpenFounderBonus}
+      />
 
-          <div className="flex flex-wrap gap-2 justify-end">
-            {isAdmin ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => onOpenFounderBonus(market, "participants")}
-                  className="rounded-full border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-[11px] text-amber-100 transition hover:bg-amber-400/18"
-                >
-                  +FB
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onOpenFounderBonus(market, "winner")}
-                  className="rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-2 text-[11px] text-sky-100 transition hover:bg-sky-400/18"
-                >
-                  +FW
-                </button>
-              </>
-            ) : null}
-            {market.viewerWager && !onchainLocked ? (
-              <button
-                type="button"
-                onClick={onClear}
-                disabled={workingKey === `clear-${market.id}`}
-                className={`rounded-full px-3 py-2 text-xs transition ${edgeButton("glass")} ${
-                  workingKey === `clear-${market.id}` ? "opacity-60" : ""
-                }`}
-              >
-                Clear
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={onLock}
-              disabled={!activeSelection || Boolean(stakeError) || !canEditSlip || workingKey === `lock-${market.id}`}
-              className={`rounded-full px-3 py-2 text-xs font-semibold transition ${edgeButton(
-                accent === "warm" ? "gold" : "blue"
-              )} ${!activeSelection || Boolean(stakeError) || !canEditSlip || workingKey === `lock-${market.id}` ? "opacity-60" : ""}`}
-            >
-              {lockLabel}
-            </button>
-          </div>
-        </div>
-      </div>
 
       {detailMode === "advanced" ? (
         <WarTape rows={market.warTape} emptyLabel="No tape rows yet." />

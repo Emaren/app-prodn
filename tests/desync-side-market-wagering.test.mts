@@ -154,11 +154,56 @@ test(
 
 
 test(
-  "atomic desync stake lock cannot accept a wager after the market enters closing review",
+  "fresh desync stake lock remains closed during closing review",
   () => {
+    /*
+     * The atomic lock now has two explicit paths:
+     *
+     * 1. A narrowly fenced recovery for WOLO that was already
+     *    broadcast before the market locked.
+     * 2. The ordinary fresh-wager path.
+     *
+     * This assertion protects the ordinary path: desync books
+     * remain open/live only, while winner books retain the
+     * existing open/closing/live behavior.
+     */
     assert.match(
       source,
-      /in:\s*isDesyncSideMarketType\(\s*market\.marketType\s*\)\s*\?\s*\["open",\s*"live"\]\s*:\s*\["open",\s*"closing",\s*"live"\]/
+      /where:\s*postBroadcastRecovery\s*\?\s*\{/
+    );
+
+    assert.match(
+      source,
+      /status:\s*\{\s*in:\s*isDesyncSideMarketType\(\s*market\.marketType\s*\)\s*\?\s*\[\s*"open",\s*"live",?\s*\]\s*:\s*\[\s*"open",\s*"closing",\s*"live",?\s*\]/
+    );
+
+    const recoveryPolicySource =
+      readFileSync(
+        new URL(
+          "../lib/betStakeRecoveryPolicy.ts",
+          import.meta.url
+        ),
+        "utf8"
+      );
+
+    assert.match(
+      recoveryPolicySource,
+      /POST_BROADCAST_RECOVERY_MARKET_STATUSES/
+    );
+
+    assert.match(
+      recoveryPolicySource,
+      /"awaiting_final_proof"/
+    );
+
+    assert.match(
+      recoveryPolicySource,
+      /"under_review"/
+    );
+
+    assert.doesNotMatch(
+      recoveryPolicySource,
+      /"closing"/
     );
   }
 );

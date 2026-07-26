@@ -116,33 +116,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const market = await prisma.betMarket.findUnique({
-      where: { id: marketId },
-      select: {
-        id: true,
-        status: true,
-      },
-    });
-
-    if (!market) {
-      return NextResponse.json({ detail: "Market not found." }, { status: 404 });
-    }
-
-    if (!["open", "closing", "live"].includes(market.status)) {
-      return NextResponse.json({ detail: "This book is closed." }, { status: 409 });
-    }
+    let preflightMarket:
+      Awaited<
+        ReturnType<
+          typeof preflightPooledBetWager
+        >
+      >;
 
     try {
-      await preflightPooledBetWager(prisma, {
-        viewer,
-        marketId,
-        side,
-        walletAddress,
-      });
+      preflightMarket =
+        await preflightPooledBetWager(
+          prisma,
+          {
+            viewer,
+            marketId,
+            side,
+            walletAddress,
+          }
+        );
     } catch (error) {
       if (error instanceof BetWagerError) {
-        return NextResponse.json({ detail: error.message }, { status: error.status });
+        return NextResponse.json(
+          {
+            detail:
+              error.message,
+          },
+          {
+            status:
+              error.status,
+          }
+        );
       }
+
       throw error;
     }
 
@@ -151,6 +156,8 @@ export async function POST(request: NextRequest) {
       userId: viewer.id,
       side,
       amountWolo,
+      propositionHash:
+        preflightMarket.propositionHash,
       walletAddress,
       walletProvider: payload.walletProvider ?? null,
       walletType: payload.walletType ?? null,

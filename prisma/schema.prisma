@@ -2157,8 +2157,10 @@ model BetStakeIntent {
   marketId       Int       @map("market_id")
   userId         Int       @map("user_id")
   side           String    @db.VarChar(20)
-  amountWolo     Int       @map("amount_wolo")
-  walletAddress  String?   @map("wallet_address") @db.VarChar(100)
+  amountWolo          Int       @map("amount_wolo")
+  propositionHash     String?   @map("proposition_hash") @db.VarChar(64)
+  broadcastSubmittedAt DateTime? @map("broadcast_submitted_at") @db.Timestamp(6)
+  walletAddress       String?   @map("wallet_address") @db.VarChar(100)
   walletProvider String?   @map("wallet_provider") @db.VarChar(32)
   walletType     String?   @map("wallet_type") @db.VarChar(32)
   browserInfo    String?   @map("browser_info") @db.VarChar(255)
@@ -2178,6 +2180,7 @@ model BetStakeIntent {
 
   @@index([userId, status, updatedAt], map: "ix_bet_stake_intents_user_status_updated_at")
   @@index([marketId, status, updatedAt], map: "ix_bet_stake_intents_market_status_updated_at")
+  @@index([marketId, propositionHash, status], map: "ix_bet_stake_intents_market_proposition_status")
   @@map("bet_stake_intents")
 }
 

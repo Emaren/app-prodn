@@ -32,6 +32,8 @@ export const BET_STAKE_INTENT_PUBLIC_RECOVERABLE_MARKET_STATUSES = [
   "open",
   "closing",
   "live",
+  "awaiting_final_proof",
+  "under_review",
 ] as const;
 
 export type BetStakeIntentStatus =
@@ -96,6 +98,7 @@ export async function createBetStakeIntent(
     userId: number;
     side: string;
     amountWolo: number;
+    propositionHash?: string | null;
     walletAddress?: string | null;
     walletProvider?: string | null;
     walletType?: string | null;
@@ -109,6 +112,10 @@ export async function createBetStakeIntent(
       userId: input.userId,
       side: input.side,
       amountWolo: input.amountWolo,
+      propositionHash: normalizeString(
+        input.propositionHash,
+        64
+      ),
       walletAddress: normalizeString(input.walletAddress, 100),
       walletProvider: normalizeString(input.walletProvider, 32),
       walletType: normalizeString(input.walletType, 32),
@@ -135,10 +142,12 @@ export async function updateBetStakeIntentBroadcast(
     where: { id: input.intentId },
     select: {
       status: true,
+      broadcastSubmittedAt: true,
     },
   });
 
-  const alreadyRecorded = existing?.status === "recorded";
+  const alreadyRecorded =
+    existing?.status === "recorded";
 
   return prisma.betStakeIntent.update({
     where: { id: input.intentId },
@@ -149,6 +158,9 @@ export async function updateBetStakeIntentBroadcast(
       browserInfo: normalizeString(input.browserInfo, 255),
       routePath: normalizeString(input.routePath, 160),
       stakeTxHash: normalizeString(input.stakeTxHash, 128),
+      broadcastSubmittedAt:
+        existing?.broadcastSubmittedAt ??
+        new Date(),
       status: alreadyRecorded ? "recorded" : "broadcast_submitted",
       errorDetail: null,
       orphanedAt: null,

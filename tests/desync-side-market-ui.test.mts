@@ -181,9 +181,31 @@ test(
 test(
   "desync proposition suppresses winner-only founder controls",
   () => {
+    /*
+     * Founder controls now live in one shared component rather
+     * than being repeated inline across E and A card surfaces.
+     *
+     * The component must disappear for both non-admin viewers
+     * and independent desync propositions.
+     */
     assert.match(
       page,
-      /isAdmin && market\.marketType !== DESYNC_SIDE_MARKET_TYPE/
+      /function FounderControlRail\(/
+    );
+
+    assert.match(
+      page,
+      /!isAdmin\s*\|\|\s*market\.marketType\s*===\s*DESYNC_SIDE_MARKET_TYPE/
+    );
+
+    const founderRails =
+      page.match(
+        /<FounderControlRail/g
+      ) ?? [];
+
+    assert.equal(
+      founderRails.length,
+      3
     );
 
     assert.match(

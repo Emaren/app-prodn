@@ -1,5 +1,9 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
+import {
+  isPostBroadcastStakeRecovery,
+  POST_BROADCAST_RECOVERY_MARKET_STATUSES,
+} from "@/lib/betStakeRecoveryPolicy";
 import { markBetStakeIntentRecorded, markBetStakeIntentVerified } from "@/lib/betStakeIntents";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
@@ -41,6 +45,12 @@ type BetMarketPreflightContext = {
   market: {
     id: number;
     status: string;
+    winnerSide: string | null;
+    settledAt: Date | null;
+    voidedAt: Date | null;
+    refundStatus: string | null;
+    settlementExecutedAt: Date | null;
+    bettingLockedAt: Date | null;
     title: string;
     leftLabel: string;
     rightLabel: string;
@@ -240,6 +250,12 @@ async function loadBetMarketPreflightContext(
       select: {
         id: true,
         status: true,
+        winnerSide: true,
+        settledAt: true,
+        voidedAt: true,
+        refundStatus: true,
+        settlementExecutedAt: true,
+        bettingLockedAt: true,
         title: true,
         leftLabel: true,
         rightLabel: true,
@@ -324,60 +340,64 @@ function assertBetMarketPreflight(
     viewer: Pick<WagerViewer, "id" | "inGameName" | "steamPersonaName">;
     side: "left" | "right";
     walletAddress?: string | null;
+    allowLockedPostBroadcastRecovery?: boolean;
   }
 ) {
   const normalizedWalletAddress = input.walletAddress?.trim() || "";
-
-  if (
-    ["closing", "awaiting_final_proof"].includes(context.market.status) &&
-    context.market.linkedSessionKey &&
-    !context.market.scheduledMatchId
-  ) {
-    throw new BetWagerError(
-      409,
-      "This live book is locked while the final replay is being verified."
-    );
-  }
-
-  if (!["open", "closing", "live"].includes(context.market.status)) {
-    throw new BetWagerError(409, "This book is closed.");
-  }
 
   const desyncSideMarket =
     isDesyncSideMarketType(
       context.market.marketType
     );
 
-  if (
-    context.market.integrityStatus !==
-      "verified" ||
-    !context.market.propositionHash ||
-    (
-      !desyncSideMarket &&
+  if (!input.allowLockedPostBroadcastRecovery) {
+    if (
+      ["closing", "awaiting_final_proof"].includes(context.market.status) &&
+      context.market.linkedSessionKey &&
+      !context.market.scheduledMatchId
+    ) {
+      throw new BetWagerError(
+        409,
+        "This live book is locked while the final replay is being verified."
+      );
+    }
+
+    if (!["open", "closing", "live"].includes(context.market.status)) {
+      throw new BetWagerError(409, "This book is closed.");
+    }
+
+    if (
+      context.market.integrityStatus !==
+        "verified" ||
+      !context.market.propositionHash ||
       (
-        context.market.teamResolutionStatus !==
-          "resolved" ||
-        context.market.teamConfidence !==
-          "high" ||
-        !Array.isArray(
-          context.market.leftRosterSnapshot
-        ) ||
-        !Array.isArray(
-          context.market.rightRosterSnapshot
-        ) ||
-        context.market.leftRosterSnapshot.length ===
-          0 ||
-        context.market.rightRosterSnapshot.length ===
-          0
+        !desyncSideMarket &&
+        (
+          context.market.teamResolutionStatus !==
+            "resolved" ||
+          context.market.teamConfidence !==
+            "high" ||
+          !Array.isArray(
+            context.market.leftRosterSnapshot
+          ) ||
+          !Array.isArray(
+            context.market.rightRosterSnapshot
+          ) ||
+          context.market.leftRosterSnapshot.length ===
+            0 ||
+          context.market.rightRosterSnapshot.length ===
+            0
+        )
       )
-    )
-  ) {
-    throw new BetWagerError(
-      409,
-      desyncSideMarket
-        ? "Desync betting unavailable — this battle proposition is not verified."
-        : "Betting unavailable — both teams must be verified before WOLO can enter this market."
-    );
+    ) {
+      throw new BetWagerError(
+        409,
+        desyncSideMarket
+          ? "Desync betting unavailable — this battle proposition is not verified."
+          : "Betting unavailable — both teams must be verified before WOLO can enter this market."
+      );
+    }
+
   }
 
   /*
@@ -493,13 +513,24 @@ export async function placePooledBetWager(
       escrowRuntime.ready &&
       Boolean(normalizedStakeTxHash && normalizedWalletAddress));
 
-  const [market, duplicateStake, existingIntentWager, stakeIntent] = await Promise.all([
-    preflightPooledBetWager(prisma, {
-      viewer: input.viewer,
-      marketId: input.marketId,
-      side: input.side,
-      walletAddress: normalizedWalletAddress || null,
-    }),
+  const [
+    context,
+    duplicateStake,
+    existingIntentWager,
+    stakeIntent,
+  ] = await Promise.all([
+    loadBetMarketPreflightContext(
+      prisma,
+      {
+        marketId:
+          input.marketId,
+        side:
+          input.side,
+        walletAddress:
+          normalizedWalletAddress ||
+          null,
+      }
+    ),
     normalizedStakeTxHash
       ? prisma.betWager.findUnique({
           where: { stakeTxHash: normalizedStakeTxHash },
@@ -526,36 +557,123 @@ export async function placePooledBetWager(
             side: true,
             amountWolo: true,
             status: true,
+            walletAddress: true,
+            stakeTxHash: true,
+            propositionHash: true,
+            broadcastSubmittedAt: true,
+            createdAt: true,
           },
         })
       : Promise.resolve(null),
   ]);
 
+  const market =
+    context.market;
+
   if (existingIntentWager) {
-    return { kind: "duplicate_existing" };
+    return {
+      kind:
+        "duplicate_existing",
+    };
   }
 
   if (stakeIntent) {
-    if (stakeIntent.userId !== input.viewer.id || stakeIntent.marketId !== input.marketId) {
-      throw new BetWagerError(409, "Stake recovery intent does not belong to this wager.");
+    if (
+      stakeIntent.userId !==
+        input.viewer.id ||
+      stakeIntent.marketId !==
+        input.marketId
+    ) {
+      throw new BetWagerError(
+        409,
+        "Stake recovery intent does not belong to this wager."
+      );
     }
-    if (stakeIntent.side !== input.side || stakeIntent.amountWolo !== input.amountWolo) {
-      throw new BetWagerError(409, "Stake recovery intent no longer matches this wager request.");
+
+    if (
+      stakeIntent.side !==
+        input.side ||
+      stakeIntent.amountWolo !==
+        input.amountWolo
+    ) {
+      throw new BetWagerError(
+        409,
+        "Stake recovery intent no longer matches this wager request."
+      );
     }
   }
 
   if (duplicateStake) {
     if (
-      duplicateStake.marketId === input.marketId &&
-      duplicateStake.userId === input.viewer.id
+      duplicateStake.marketId ===
+        input.marketId &&
+      duplicateStake.userId ===
+        input.viewer.id
     ) {
-      return { kind: "duplicate_existing" };
+      return {
+        kind:
+          "duplicate_existing",
+      };
     }
+
     throw new BetWagerError(
       409,
       "That WOLO stake transaction is already attached to another slip."
     );
   }
+
+  const postBroadcastRecovery =
+    stakeIntent
+      ? isPostBroadcastStakeRecovery({
+          intentStatus:
+            stakeIntent.status,
+          requestedTxHash:
+            normalizedStakeTxHash,
+          intentTxHash:
+            stakeIntent.stakeTxHash,
+          requestedWalletAddress:
+            normalizedWalletAddress,
+          intentWalletAddress:
+            stakeIntent.walletAddress,
+          intentPropositionHash:
+            stakeIntent.propositionHash,
+          marketPropositionHash:
+            market.propositionHash,
+          intentCreatedAt:
+            stakeIntent.createdAt,
+          broadcastSubmittedAt:
+            stakeIntent.broadcastSubmittedAt,
+          marketBettingLockedAt:
+            market.bettingLockedAt,
+          marketStatus:
+            market.status,
+          winnerSide:
+            market.winnerSide,
+          settledAt:
+            market.settledAt,
+          voidedAt:
+            market.voidedAt,
+          refundStatus:
+            market.refundStatus,
+          settlementExecutedAt:
+            market.settlementExecutedAt,
+        })
+      : false;
+
+  assertBetMarketPreflight(
+    context,
+    {
+      viewer:
+        input.viewer,
+      side:
+        input.side,
+      walletAddress:
+        normalizedWalletAddress ||
+        null,
+      allowLockedPostBroadcastRecovery:
+        postBroadcastRecovery,
+    }
+  );
 
   if (escrowRuntime.onchainRequired && escrowRuntime.configError) {
     throw new BetWagerError(503, escrowRuntime.configError);
@@ -599,35 +717,79 @@ export async function placePooledBetWager(
   try {
     await prisma.$transaction(async (tx) => {
       const lockedAt = new Date();
-      const lockResult = await tx.betMarket.updateMany({
-        where: {
-          id: input.marketId,
-          status: {
-            in: isDesyncSideMarketType(
-              market.marketType
-            )
-              ? ["open", "live"]
-              : ["open", "closing", "live"],
-          },
-          integrityStatus: "verified",
-          propositionHash: market.propositionHash,
-          ...(isDesyncSideMarketType(
-            market.marketType
-          )
-            ? {}
+      const lockResult =
+        await tx.betMarket.updateMany({
+          where: postBroadcastRecovery
+            ? {
+                id:
+                  input.marketId,
+                status: {
+                  in: [
+                    ...POST_BROADCAST_RECOVERY_MARKET_STATUSES,
+                  ],
+                },
+                winnerSide:
+                  null,
+                settledAt:
+                  null,
+                voidedAt:
+                  null,
+                refundStatus:
+                  null,
+                settlementExecutedAt:
+                  null,
+                propositionHash:
+                  market.propositionHash,
+                bettingLockedAt:
+                  market.bettingLockedAt,
+              }
             : {
-                teamResolutionStatus:
-                  "resolved",
-                teamConfidence:
-                  "high",
-              }),
-        },
-        data: {
-          bettingLockedAt: lockedAt,
-        },
-      });
+                id:
+                  input.marketId,
+                status: {
+                  in: isDesyncSideMarketType(
+                    market.marketType
+                  )
+                    ? [
+                        "open",
+                        "live",
+                      ]
+                    : [
+                        "open",
+                        "closing",
+                        "live",
+                      ],
+                },
+                integrityStatus:
+                  "verified",
+                propositionHash:
+                  market.propositionHash,
+                ...(isDesyncSideMarketType(
+                  market.marketType
+                )
+                  ? {}
+                  : {
+                      teamResolutionStatus:
+                        "resolved",
+                      teamConfidence:
+                        "high",
+                    }),
+              },
+          data: {
+            bettingLockedAt:
+              postBroadcastRecovery
+                ? market.bettingLockedAt
+                : lockedAt,
+          },
+        });
+
       if (lockResult.count !== 1) {
-        throw new BetWagerError(409, "Market integrity changed before the stake was recorded.");
+        throw new BetWagerError(
+          409,
+          postBroadcastRecovery
+            ? "The transferred WOLO could not be reconciled because the market proposition or financial state changed."
+            : "Market integrity changed before the stake was recorded."
+        );
       }
       const firstStakeLock = await tx.betMarket.updateMany({
         where: { id: input.marketId, firstStakeAcceptedAt: null },
@@ -710,6 +872,8 @@ export async function placePooledBetWager(
               executionMode: shouldUseOnchainStake ? "onchain_escrow" : "app_only",
               stakeTxHash: normalizedStakeTxHash || null,
               walletAddress: normalizedWalletAddress || null,
+              recoveredAfterMarketLock:
+                postBroadcastRecovery,
           stakeIntentId:
             typeof input.stakeIntentId === "number" ? input.stakeIntentId : null,
           escrowMode: escrowRuntime.mode,
