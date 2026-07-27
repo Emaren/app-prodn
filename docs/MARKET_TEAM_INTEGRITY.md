@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-market-team-integrity"
+title: "Team Market Integrity"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "financial-domain-contract"
+reviewed_at: "2026-07-26"
+review_interval_days: 30
+sensitivity: "restricted"
+---
+
 # Team Market Integrity
 
 ## Product law

@@ -1,4 +1,22 @@
+---
+id: "aoe2war.app-prodn.docs-improvement-execution-plan"
+title: "AoE2HDBets Improvement Execution Plan"
+type: "working"
+status: "superseded"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "historical-evidence"
+authority: "historical-working-record"
+reviewed_at: "2026-07-26"
+review_interval_days: 0
+sensitivity: "internal"
+---
+
 # AoE2HDBets Improvement Execution Plan
+
+> **Lifecycle:** Superseded working record. Preserve it for context, but use newer active documentation for current decisions and operations.
+
 
 Last updated: 2026-06-15
 

@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.architecture"
+title: "app-prodn Architecture"
+type: "explanation"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "architecture-explanation"
+reviewed_at: "2026-07-26"
+review_interval_days: 60
+sensitivity: "internal"
+---
+
 # app-prodn Architecture
 
 ## Watcher and betting final-proof lifecycle

@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-leaderboards"
+title: "AoE2WAR Leaderboards"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn"]
+audience: ["developers","ai-agents"]
+source_of_truth: "git"
+authority: "product-contract"
+reviewed_at: "2026-07-26"
+review_interval_days: 90
+sensitivity: "internal"
+---
+
 # AoE2WAR Leaderboards
 
 AoE2WAR has two first-class HD leaderboard routes backed by current production data:

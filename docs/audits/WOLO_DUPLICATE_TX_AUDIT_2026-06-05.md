@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-audits-wolo-duplicate-tx-audit-2026-06-05"
+title: "WOLO Duplicate Tx Audit - 2026-06-05"
+type: "historical"
+status: "historical"
+owner: "aoe2war-web"
+systems: ["app-prodn","wolochain"]
+audience: ["operators","auditors","ai-agents"]
+source_of_truth: "historical-evidence"
+authority: "audit-evidence"
+reviewed_at: "2026-07-26"
+review_interval_days: 0
+sensitivity: "restricted"
+---
+
 # WOLO Duplicate Tx Audit - 2026-06-05
 
 ## Mainnet settlement state

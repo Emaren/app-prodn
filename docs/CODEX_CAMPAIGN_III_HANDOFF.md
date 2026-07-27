@@ -1,4 +1,22 @@
+---
+id: "aoe2war.app-prodn.docs-codex-campaign-iii-handoff"
+title: "AoE2WAR Campaign III Final Handoff"
+type: "historical"
+status: "historical"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
+audience: ["operators","auditors","ai-agents"]
+source_of_truth: "historical-evidence"
+authority: "historical-evidence"
+reviewed_at: "2026-07-26"
+review_interval_days: 0
+sensitivity: "internal"
+---
+
 # AoE2WAR Campaign III Final Handoff
+
+> **Lifecycle:** Historical evidence. This document records a past state and must not be treated as current operational truth.
+
 
 ## Scope and seal rule
 

@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.deploy"
+title: "app-prodn Deploy"
+type: "runbook"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn"]
+audience: ["operators","ai-agents"]
+source_of_truth: "git"
+authority: "operational-procedure"
+reviewed_at: "2026-07-26"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # app-prodn Deploy
 
 ## Production truth

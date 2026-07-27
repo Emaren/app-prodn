@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-replay-stats-operations-release-2026-07-25"
+title: "Replay Statistics and Operations Release — 2026-07-25"
+type: "historical"
+status: "historical"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
+audience: ["operators","auditors","ai-agents"]
+source_of_truth: "historical-evidence"
+authority: "release-evidence"
+reviewed_at: "2026-07-26"
+review_interval_days: 0
+sensitivity: "restricted"
+---
+
 # Replay Statistics and Operations Release — 2026-07-25
 
 ## Outcome

@@ -1,0 +1,15 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: app-prodn
+  title: AoE2WAR Web Application
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+spec:
+  type: website
+  lifecycle: production
+  owner: group:default/aoe2war-web
+  system: aoe2war
+  dependsOn:
+    - component:default/api-prodn
+    - resource:default/wolochain

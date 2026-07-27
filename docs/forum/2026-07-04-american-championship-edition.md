@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-forum-2026-07-04-american-championship-edition"
+title: "War Room Forum — Saturday July 4, 2026 Edition"
+type: "historical"
+status: "historical"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["editors","developers","ai-agents"]
+source_of_truth: "historical-evidence"
+authority: "editorial-evidence"
+reviewed_at: "2026-07-26"
+review_interval_days: 0
+sensitivity: "public"
+---
+
 # War Room Forum — Saturday July 4, 2026 Edition
 
 Edition: American Championship Edition

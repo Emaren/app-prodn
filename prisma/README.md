@@ -1,5 +1,19 @@
-Prisma status
-=============
+---
+id: "aoe2war.app-prodn.prisma-readme"
+title: "Prisma Schema and Migration Reference"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "schema-reference"
+reviewed_at: "2026-07-26"
+review_interval_days: 60
+sensitivity: "internal"
+---
+
+# Prisma Schema and Migration Reference
 
 This schema maps the existing Postgres tables currently used by the backend:
 

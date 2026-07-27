@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-parser-engine-room"
+title: "Parser Engine Room: Durable Data Foundation"
+type: "explanation"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "architecture-explanation"
+reviewed_at: "2026-07-26"
+review_interval_days: 60
+sensitivity: "restricted"
+---
+
 # Parser Engine Room: Durable Data Foundation
 
 ## Status

@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-performance-audit-2026-07-18"
+title: "AoE2WAR Production Performance Audit — 2026-07-18"
+type: "historical"
+status: "historical"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["operators","auditors","ai-agents"]
+source_of_truth: "historical-evidence"
+authority: "historical-evidence"
+reviewed_at: "2026-07-26"
+review_interval_days: 0
+sensitivity: "internal"
+---
+
 # AoE2WAR Production Performance Audit — 2026-07-18
 
 ## Outcome

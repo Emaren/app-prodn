@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-bounty-board"
+title: "AoE2WAR Bounty Board"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers","ai-agents"]
+source_of_truth: "git"
+authority: "product-contract"
+reviewed_at: "2026-07-26"
+review_interval_days: 90
+sensitivity: "internal"
+---
+
 # AoE2WAR Bounty Board
 
 ## Product contract

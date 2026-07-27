@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-hd-replay-truth-pipeline"
+title: "HD Replay Truth Pipeline and Operator Runbook"
+type: "runbook"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
+audience: ["operators","ai-agents"]
+source_of_truth: "git"
+authority: "operational-procedure"
+reviewed_at: "2026-07-26"
+review_interval_days: 30
+sensitivity: "restricted"
+---
+
 # HD Replay Truth Pipeline and Operator Runbook
 
 ## Scope and ownership

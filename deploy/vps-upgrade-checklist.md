@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.deploy-vps-upgrade-checklist"
+title: "VPS Upgrade Checklist (AoE2HDBets)"
+type: "runbook"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn"]
+audience: ["operators","ai-agents"]
+source_of_truth: "git"
+authority: "operational-procedure"
+reviewed_at: "2026-07-26"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # VPS Upgrade Checklist (AoE2HDBets)
 
 Run this from the current VPS layout, not the old `/var/www/app-prodn` / `pm2` shape.

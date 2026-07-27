@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-direct-chat"
+title: "Direct Chat UI"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers","ai-agents"]
+source_of_truth: "git"
+authority: "product-contract"
+reviewed_at: "2026-07-26"
+review_interval_days: 90
+sensitivity: "internal"
+---
+
 # Direct Chat UI
 
 The private direct-chat experience is shared by the header Nav Chat and the full `/contact-emaren` workspace.

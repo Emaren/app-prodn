@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-universal-translator"
+title: "Universal Translator"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers","ai-agents"]
+source_of_truth: "git"
+authority: "product-contract"
+reviewed_at: "2026-07-26"
+review_interval_days: 90
+sensitivity: "internal"
+---
+
 # Universal Translator
 
 The Universal Translator is the global AoE2WAR language-preference surface. It honors the current international community without pretending the app has complete site-wide translation.

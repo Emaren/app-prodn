@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.workspace"
+title: "AoE2HDBets"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn","aoe2-watcher"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "workspace-reference"
+reviewed_at: "2026-07-26"
+review_interval_days: 60
+sensitivity: "internal"
+---
+
 # AoE2HDBets
 
 This directory currently uses **3 active repos**.

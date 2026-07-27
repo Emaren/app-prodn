@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-war-room-forum"
+title: "War Room Forum"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "product-contract"
+reviewed_at: "2026-07-26"
+review_interval_days: 60
+sensitivity: "internal"
+---
+
 # War Room Forum
 
 ## Product contract

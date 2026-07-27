@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-production-parity-2026-07-26"
+title: "AoE2WAR Production Parity Seal — 2026-07-26"
+type: "historical"
+status: "historical"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
+audience: ["operators","auditors","ai-agents"]
+source_of_truth: "historical-evidence"
+authority: "historical-evidence"
+reviewed_at: "2026-07-26"
+review_interval_days: 0
+sensitivity: "restricted"
+---
+
 # AoE2WAR Production Parity Seal — 2026-07-26
 
 ## Verdict

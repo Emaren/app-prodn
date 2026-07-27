@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-watcher-telemetry"
+title: "Watcher Telemetry"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn","aoe2-watcher"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "telemetry-contract"
+reviewed_at: "2026-07-26"
+review_interval_days: 30
+sensitivity: "restricted"
+---
+
 # Watcher Telemetry
 
 ## Production release identity — 2026-07-26

@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-challenge-system"
+title: "AoE2WAR Challenge System v2"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","wolochain"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "product-contract"
+reviewed_at: "2026-07-26"
+review_interval_days: 60
+sensitivity: "internal"
+---
+
 # AoE2WAR Challenge System v2
 
 ## Product contract

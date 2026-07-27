@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.deploy-aoe2-access-logging-phase1"
+title: "AoE2 Access Logging Phase 1"
+type: "runbook"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["operators","ai-agents"]
+source_of_truth: "git"
+authority: "operational-procedure"
+reviewed_at: "2026-07-26"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # AoE2 Access Logging Phase 1
 
 ## Scope

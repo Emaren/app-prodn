@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-security-incident-notes"
+title: "Security Incident Notes"
+type: "historical"
+status: "historical"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn","aoe2-watcher"]
+audience: ["operators","auditors","ai-agents"]
+source_of_truth: "historical-evidence"
+authority: "incident-evidence"
+reviewed_at: "2026-07-26"
+review_interval_days: 0
+sensitivity: "restricted"
+---
+
 # Security Incident Notes
 
 These notes capture watcher/download-adjacent operational truth without storing secrets or incident credentials.

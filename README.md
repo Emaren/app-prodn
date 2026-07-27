@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.readme"
+title: "app-prodn"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "repository-entrypoint"
+reviewed_at: "2026-07-26"
+review_interval_days: 60
+sensitivity: "internal"
+---
+
 # app-prodn
 
 ## Verified production seal — 2026-07-26

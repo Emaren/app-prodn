@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-ai-council-and-command-center"
+title: "AI Council and Command Center"
+type: "explanation"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers","ai-agents"]
+source_of_truth: "git"
+authority: "architecture-explanation"
+reviewed_at: "2026-07-26"
+review_interval_days: 90
+sensitivity: "internal"
+---
+
 # AI Council and Command Center
 
 ## Ownership

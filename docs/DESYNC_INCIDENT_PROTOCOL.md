@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-desync-incident-protocol"
+title: "Human-Confirmed Desync Protocol"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "domain-contract"
+reviewed_at: "2026-07-26"
+review_interval_days: 60
+sensitivity: "internal"
+---
+
 # Human-Confirmed Desync Protocol
 
 ## The three independent facts
