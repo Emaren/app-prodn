@@ -28,7 +28,8 @@
     "challenge:reconcile": "node scripts/run-challenge-reconciliation.mjs",
     "challenge:jim24": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/audit-settle-jim-challenge-24.mts",
     "challenge:legacy-prepare": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/prepare-legacy-challenge.mts",
-    "replay:stats:project": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/project-normalized-replay-stats.mts"
+    "replay:stats:project": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/project-normalized-replay-stats.mts",
+    "identity:discover": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/backfill-player-identity-discovery.mts"
   },
   "dependencies": {
     "@cosmjs/amino": "^0.33.1",
