@@ -109,6 +109,13 @@ model User {
   bountyClaims            BountyClaim[]           @relation("BountyClaimUser")
   replayRosterPromotions  ReplayRosterPromotion[] @relation("ReplayRosterPromotionActor")
 
+  identityDecisionsActed        IdentityDecision[]              @relation("IdentityDecisionActor")
+  identityDecisionSubjects      IdentityDecisionSubject[]       @relation("IdentityDecisionSubjectSiteAccount")
+  warriorPlatformLinksCreated   WarriorPlatformLink[]           @relation("WarriorPlatformLinkCreator")
+  warriorClaims                 WarriorClaim[]                  @relation("WarriorClaimSiteAccount")
+  identityResolutionRunsCreated IdentityResolutionRun[]         @relation("IdentityResolutionRunCreator")
+  identityPublicationsCreated   IdentityProjectionPublication[] @relation("IdentityProjectionPublicationActor")
+
   @@map("users")
 }
 
@@ -170,6 +177,8 @@ model GameStats {
   trophyEvents                TrophyEvent[]
   trophyChallenges            TrophyChallenge[]
   replayRosterPromotions      ReplayRosterPromotion[]       @relation("ReplayRosterPromotionGameStats")
+
+  identityProjections ReplayPlayerIdentityProjection[]
 
   @@unique([replayHash, is_final], map: "uq_replay_final")
   @@index([createdAt], map: "ix_game_stats_created_at")
@@ -534,6 +543,10 @@ model ReplayPlayerSnapshot {
   gameStats  GameStats            @relation(fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   user       User?                @relation("ReplayPlayerSnapshotUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   metrics    ReplayPlayerMetric[]
+
+  platformNameObservations PlatformNameObservation[]
+  identityProjections      ReplayPlayerIdentityProjection[]
+  identityDecisionSubjects IdentityDecisionSubject[]        @relation("IdentityDecisionSubjectReplaySnapshot")
 
   @@unique([projectionId, playerKey], map: "uq_replay_player_snapshots_projection_player")
   @@index([playerKey, createdAt], map: "ix_replay_player_snapshots_player_created")
@@ -2153,26 +2166,26 @@ model BetMarketFounderBonus {
 }
 
 model BetStakeIntent {
-  id             Int       @id @default(autoincrement())
-  marketId       Int       @map("market_id")
-  userId         Int       @map("user_id")
-  side           String    @db.VarChar(20)
-  amountWolo          Int       @map("amount_wolo")
-  propositionHash     String?   @map("proposition_hash") @db.VarChar(64)
+  id                   Int       @id @default(autoincrement())
+  marketId             Int       @map("market_id")
+  userId               Int       @map("user_id")
+  side                 String    @db.VarChar(20)
+  amountWolo           Int       @map("amount_wolo")
+  propositionHash      String?   @map("proposition_hash") @db.VarChar(64)
   broadcastSubmittedAt DateTime? @map("broadcast_submitted_at") @db.Timestamp(6)
-  walletAddress       String?   @map("wallet_address") @db.VarChar(100)
-  walletProvider String?   @map("wallet_provider") @db.VarChar(32)
-  walletType     String?   @map("wallet_type") @db.VarChar(32)
-  browserInfo    String?   @map("browser_info") @db.VarChar(255)
-  routePath      String?   @map("route_path") @db.VarChar(160)
-  status         String    @default("awaiting_signature") @db.VarChar(32)
-  stakeTxHash    String?   @unique(map: "uq_bet_stake_intents_stake_tx_hash") @map("stake_tx_hash") @db.VarChar(128)
-  errorDetail    String?   @map("error_detail") @db.VarChar(255)
-  verifiedAt     DateTime? @map("verified_at") @db.Timestamp(6)
-  recordedAt     DateTime? @map("recorded_at") @db.Timestamp(6)
-  orphanedAt     DateTime? @map("orphaned_at") @db.Timestamp(6)
-  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  walletAddress        String?   @map("wallet_address") @db.VarChar(100)
+  walletProvider       String?   @map("wallet_provider") @db.VarChar(32)
+  walletType           String?   @map("wallet_type") @db.VarChar(32)
+  browserInfo          String?   @map("browser_info") @db.VarChar(255)
+  routePath            String?   @map("route_path") @db.VarChar(160)
+  status               String    @default("awaiting_signature") @db.VarChar(32)
+  stakeTxHash          String?   @unique(map: "uq_bet_stake_intents_stake_tx_hash") @map("stake_tx_hash") @db.VarChar(128)
+  errorDetail          String?   @map("error_detail") @db.VarChar(255)
+  verifiedAt           DateTime? @map("verified_at") @db.Timestamp(6)
+  recordedAt           DateTime? @map("recorded_at") @db.Timestamp(6)
+  orphanedAt           DateTime? @map("orphaned_at") @db.Timestamp(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   market BetMarket @relation(fields: [marketId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   user   User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -2750,6 +2763,312 @@ model WorkshopStream {
 
   @@index([status, isPublic, startedAt], map: "ix_workshop_streams_public_status")
   @@map("workshop_streams")
+}
+
+/// Player Identity foundation. These models are additive and are not read
+/// by public or financial paths until a later reviewed cutover.
+model Warrior {
+  id                    Int      @id @default(autoincrement())
+  publicId              String   @unique @default(cuid()) @map("public_id") @db.VarChar(32)
+  seedPlatformAccountId Int?     @unique(map: "uq_warriors_seed_platform_account") @map("seed_platform_account_id")
+  kind                  String   @default("platform_seed") @db.VarChar(32)
+  preferredDisplayName  String   @map("preferred_display_name") @db.VarChar(100)
+  normalizedDisplayName String   @map("normalized_display_name") @db.VarChar(100)
+  status                String   @default("provisional") @db.VarChar(24)
+  mergedIntoWarriorId   Int?     @map("merged_into_warrior_id")
+  mergedByDecisionId    Int?     @map("merged_by_decision_id")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  seedPlatformAccount PlatformAccount?                 @relation("WarriorSeedPlatform", fields: [seedPlatformAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  mergedInto          Warrior?                         @relation("WarriorMerge", fields: [mergedIntoWarriorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  mergedWarriors      Warrior[]                        @relation("WarriorMerge")
+  mergeDecision       IdentityDecision?                @relation("WarriorMergeDecision", fields: [mergedByDecisionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  platformLinks       WarriorPlatformLink[]
+  claims              WarriorClaim[]
+  projections         ReplayPlayerIdentityProjection[]
+  decisionSubjects    IdentityDecisionSubject[]        @relation("IdentityDecisionSubjectWarrior")
+
+  @@index([status, normalizedDisplayName], map: "ix_warriors_status_name")
+  @@index([mergedIntoWarriorId], map: "ix_warriors_merged_into")
+  @@index([mergedByDecisionId], map: "ix_warriors_merge_decision")
+  @@map("warriors")
+}
+
+model PlatformAccount {
+  id                Int       @id @default(autoincrement())
+  publicId          String    @unique @default(cuid()) @map("public_id") @db.VarChar(32)
+  platform          String    @db.VarChar(24)
+  externalAccountId String    @map("external_account_id") @db.VarChar(64)
+  status            String    @default("active") @db.VarChar(24)
+  latestDisplayName String?   @map("latest_display_name") @db.VarChar(255)
+  firstObservedAt   DateTime? @map("first_observed_at") @db.Timestamp(6)
+  lastObservedAt    DateTime? @map("last_observed_at") @db.Timestamp(6)
+  createdFrom       String    @map("created_from") @db.VarChar(32)
+  metadata          Json?
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  seedWarrior      Warrior?                         @relation("WarriorSeedPlatform")
+  nameObservations PlatformNameObservation[]
+  warriorLinks     WarriorPlatformLink[]
+  projections      ReplayPlayerIdentityProjection[]
+  decisionSubjects IdentityDecisionSubject[]        @relation("IdentityDecisionSubjectPlatform")
+
+  @@unique([platform, externalAccountId], map: "uq_platform_accounts_namespace_external")
+  @@index([status, lastObservedAt], map: "ix_platform_accounts_status_last_seen")
+  @@map("platform_accounts")
+}
+
+model PlatformNameObservation {
+  id                     Int      @id @default(autoincrement())
+  platformAccountId      Int      @map("platform_account_id")
+  replayPlayerSnapshotId Int?     @map("replay_player_snapshot_id")
+  idempotencyKey         String   @unique(map: "uq_platform_name_observations_idempotency") @map("idempotency_key") @db.VarChar(128)
+  displayName            String   @map("display_name") @db.VarChar(255)
+  normalizedName         String   @map("normalized_name") @db.VarChar(255)
+  normalizationVersion   String   @map("normalization_version") @db.VarChar(32)
+  observedAt             DateTime @map("observed_at") @db.Timestamp(6)
+  sourceKind             String   @map("source_kind") @db.VarChar(32)
+  sourceIdentity         String   @map("source_identity") @db.VarChar(160)
+  exact                  Boolean  @default(true)
+  confidenceBps          Int?     @map("confidence_bps")
+  provenance             Json
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  platformAccount PlatformAccount       @relation(fields: [platformAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  replaySnapshot  ReplayPlayerSnapshot? @relation(fields: [replayPlayerSnapshotId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([replayPlayerSnapshotId, normalizationVersion], map: "uq_platform_name_observations_snapshot_version")
+  @@index([platformAccountId, observedAt], map: "ix_platform_name_observations_account_time")
+  @@index([normalizationVersion, normalizedName], map: "ix_platform_name_observations_normalized")
+  @@map("platform_name_observations")
+}
+
+model ProvisionalIdentity {
+  id                   Int      @id @default(autoincrement())
+  publicId             String   @unique @default(cuid()) @map("public_id") @db.VarChar(32)
+  normalizationVersion String   @map("normalization_version") @db.VarChar(32)
+  normalizedName       String   @map("normalized_name") @db.VarChar(255)
+  status               String   @default("open") @db.VarChar(24)
+  firstObservedAt      DateTime @map("first_observed_at") @db.Timestamp(6)
+  lastObservedAt       DateTime @map("last_observed_at") @db.Timestamp(6)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  projections      ReplayPlayerIdentityProjection[]
+  decisionSubjects IdentityDecisionSubject[]        @relation("IdentityDecisionSubjectProvisional")
+
+  @@unique([normalizationVersion, normalizedName], map: "uq_provisional_identities_version_name")
+  @@index([status, lastObservedAt], map: "ix_provisional_identities_status_last_seen")
+  @@map("provisional_identities")
+}
+
+model IdentityDecision {
+  id                   Int       @id @default(autoincrement())
+  publicId             String    @unique @default(cuid()) @map("public_id") @db.VarChar(32)
+  decisionKey          String    @unique @map("decision_key") @db.VarChar(128)
+  decisionType         String    @map("decision_type") @db.VarChar(32)
+  outcome              String    @db.VarChar(24)
+  actorUserId          Int?      @map("actor_user_id")
+  actorRoleSnapshot    String    @map("actor_role_snapshot") @db.VarChar(64)
+  reason               String    @db.VarChar(1000)
+  evidence             Json
+  inputHash            String    @map("input_hash") @db.VarChar(64)
+  impactPreview        Json?     @map("impact_preview")
+  effectiveFrom        DateTime? @map("effective_from") @db.Timestamp(6)
+  effectiveTo          DateTime? @map("effective_to") @db.Timestamp(6)
+  supersedesDecisionId Int?      @map("supersedes_decision_id")
+  decidedAt            DateTime  @map("decided_at") @db.Timestamp(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  actor            User?                     @relation("IdentityDecisionActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersedes       IdentityDecision?         @relation("IdentityDecisionSupersession", fields: [supersedesDecisionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersededBy     IdentityDecision[]        @relation("IdentityDecisionSupersession")
+  subjects         IdentityDecisionSubject[]
+  authorizedLinks  WarriorPlatformLink[]     @relation("WarriorPlatformLinkAuthorization")
+  supersededLinks  WarriorPlatformLink[]     @relation("WarriorPlatformLinkSupersession")
+  authorizedClaims WarriorClaim[]            @relation("WarriorClaimAuthorization")
+  supersededClaims WarriorClaim[]            @relation("WarriorClaimSupersession")
+  mergedWarriors   Warrior[]                 @relation("WarriorMergeDecision")
+
+  @@index([decisionType, decidedAt], map: "ix_identity_decisions_type_time")
+  @@index([supersedesDecisionId], map: "ix_identity_decisions_supersedes")
+  @@map("identity_decisions")
+}
+
+model IdentityDecisionSubject {
+  id                     Int      @id @default(autoincrement())
+  decisionId             Int      @map("decision_id")
+  subjectRole            String   @map("subject_role") @db.VarChar(24)
+  warriorId              Int?     @map("warrior_id")
+  platformAccountId      Int?     @map("platform_account_id")
+  provisionalIdentityId  Int?     @map("provisional_identity_id")
+  siteAccountUserId      Int?     @map("site_account_user_id")
+  warriorPlatformLinkId  Int?     @map("warrior_platform_link_id")
+  warriorClaimId         Int?     @map("warrior_claim_id")
+  replayPlayerSnapshotId Int?     @map("replay_player_snapshot_id")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  decision             IdentityDecision      @relation(fields: [decisionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  warrior              Warrior?              @relation("IdentityDecisionSubjectWarrior", fields: [warriorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  platformAccount      PlatformAccount?      @relation("IdentityDecisionSubjectPlatform", fields: [platformAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  provisionalIdentity  ProvisionalIdentity?  @relation("IdentityDecisionSubjectProvisional", fields: [provisionalIdentityId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  siteAccount          User?                 @relation("IdentityDecisionSubjectSiteAccount", fields: [siteAccountUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  warriorPlatformLink  WarriorPlatformLink?  @relation("IdentityDecisionSubjectLink", fields: [warriorPlatformLinkId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  warriorClaim         WarriorClaim?         @relation("IdentityDecisionSubjectClaim", fields: [warriorClaimId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  replayPlayerSnapshot ReplayPlayerSnapshot? @relation("IdentityDecisionSubjectReplaySnapshot", fields: [replayPlayerSnapshotId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([decisionId], map: "ix_identity_decision_subjects_decision")
+  @@index([replayPlayerSnapshotId], map: "ix_identity_decision_subjects_snapshot")
+  @@map("identity_decision_subjects")
+}
+
+model WarriorPlatformLink {
+  id                     Int       @id @default(autoincrement())
+  linkKey                String    @unique @map("link_key") @db.VarChar(128)
+  warriorId              Int       @map("warrior_id")
+  platformAccountId      Int       @map("platform_account_id")
+  status                 String    @default("proposed") @db.VarChar(24)
+  attributionFrom        DateTime  @map("attribution_from") @db.Timestamp(6)
+  attributionTo          DateTime? @map("attribution_to") @db.Timestamp(6)
+  controlVerifiedAt      DateTime? @map("control_verified_at") @db.Timestamp(6)
+  verificationMethod     String    @map("verification_method") @db.VarChar(32)
+  confidenceBps          Int?      @map("confidence_bps")
+  evidence               Json
+  authorizedByDecisionId Int       @map("authorized_by_decision_id")
+  supersededByDecisionId Int?      @map("superseded_by_decision_id")
+  createdByUserId        Int?      @map("created_by_user_id")
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  warrior              Warrior                          @relation(fields: [warriorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  platformAccount      PlatformAccount                  @relation(fields: [platformAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  authorizedByDecision IdentityDecision                 @relation("WarriorPlatformLinkAuthorization", fields: [authorizedByDecisionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersededByDecision IdentityDecision?                @relation("WarriorPlatformLinkSupersession", fields: [supersededByDecisionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  createdBy            User?                            @relation("WarriorPlatformLinkCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  projections          ReplayPlayerIdentityProjection[]
+  decisionSubjects     IdentityDecisionSubject[]        @relation("IdentityDecisionSubjectLink")
+
+  @@index([platformAccountId, status, attributionFrom, attributionTo], map: "ix_warrior_platform_links_account_window")
+  @@index([warriorId, status, attributionFrom, attributionTo], map: "ix_warrior_platform_links_warrior_window")
+  @@map("warrior_platform_links")
+}
+
+model WarriorClaim {
+  id                     Int       @id @default(autoincrement())
+  claimKey               String    @unique @map("claim_key") @db.VarChar(128)
+  warriorId              Int       @map("warrior_id")
+  userId                 Int       @map("user_id")
+  role                   String    @default("primary") @db.VarChar(24)
+  status                 String    @default("proposed") @db.VarChar(24)
+  effectiveFrom          DateTime? @map("effective_from") @db.Timestamp(6)
+  effectiveTo            DateTime? @map("effective_to") @db.Timestamp(6)
+  verificationMethod     String    @map("verification_method") @db.VarChar(32)
+  evidence               Json
+  authorizedByDecisionId Int       @map("authorized_by_decision_id")
+  supersededByDecisionId Int?      @map("superseded_by_decision_id")
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  warrior              Warrior                   @relation(fields: [warriorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  user                 User                      @relation("WarriorClaimSiteAccount", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  authorizedByDecision IdentityDecision          @relation("WarriorClaimAuthorization", fields: [authorizedByDecisionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersededByDecision IdentityDecision?         @relation("WarriorClaimSupersession", fields: [supersededByDecisionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  decisionSubjects     IdentityDecisionSubject[] @relation("IdentityDecisionSubjectClaim")
+
+  @@index([warriorId, role, status, effectiveFrom, effectiveTo], map: "ix_warrior_claims_warrior_window")
+  @@index([userId, status], map: "ix_warrior_claims_user_status")
+  @@map("warrior_claims")
+}
+
+model IdentityResolutionRun {
+  id                      Int       @id @default(autoincrement())
+  publicId                String    @unique @default(cuid()) @map("public_id") @db.VarChar(32)
+  runKey                  String    @unique @map("run_key") @db.VarChar(128)
+  resolverVersion         String    @map("resolver_version") @db.VarChar(64)
+  normalizationVersion    String    @map("normalization_version") @db.VarChar(32)
+  schemaVersion           String    @map("schema_version") @db.VarChar(32)
+  comparisonPolicyVersion String?   @map("comparison_policy_version") @db.VarChar(32)
+  mode                    String    @db.VarChar(24)
+  sourceWatermark         Json      @map("source_watermark")
+  inputHash               String    @map("input_hash") @db.VarChar(64)
+  resultHash              String?   @map("result_hash") @db.VarChar(64)
+  status                  String    @default("running") @db.VarChar(24)
+  counts                  Json?
+  mismatchSummary         Json?     @map("mismatch_summary")
+  failureSummary          Json?     @map("failure_summary")
+  startedAt               DateTime  @default(now()) @map("started_at") @db.Timestamp(6)
+  completedAt             DateTime? @map("completed_at") @db.Timestamp(6)
+  createdByUserId         Int?      @map("created_by_user_id")
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  createdBy    User?                            @relation("IdentityResolutionRunCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  projections  ReplayPlayerIdentityProjection[]
+  publications IdentityProjectionPublication[]
+
+  @@index([resolverVersion, mode, inputHash], map: "ix_identity_resolution_runs_version_mode_input")
+  @@index([status, completedAt], map: "ix_identity_resolution_runs_status_completed")
+  @@map("identity_resolution_runs")
+}
+
+model ReplayPlayerIdentityProjection {
+  id                     Int      @id @default(autoincrement())
+  resolutionRunId        Int      @map("resolution_run_id")
+  replayPlayerSnapshotId Int      @map("replay_player_snapshot_id")
+  gameStatsId            Int      @map("game_stats_id")
+  effectiveGameAt        DateTime @map("effective_game_at") @db.Timestamp(6)
+  gameTimeSource         String   @map("game_time_source") @db.VarChar(32)
+  platformAccountId      Int?     @map("platform_account_id")
+  provisionalIdentityId  Int?     @map("provisional_identity_id")
+  warriorId              Int?     @map("warrior_id")
+  warriorPlatformLinkId  Int?     @map("warrior_platform_link_id")
+  resolutionStatus       String   @map("resolution_status") @db.VarChar(32)
+  aggregateEligible      Boolean  @default(false) @map("aggregate_eligible")
+  exclusionReason        String?  @map("exclusion_reason") @db.VarChar(64)
+  exact                  Boolean  @default(false)
+  confidenceBps          Int?     @map("confidence_bps")
+  reasonCode             String   @map("reason_code") @db.VarChar(64)
+  inputHash              String   @map("input_hash") @db.VarChar(64)
+  projectionHash         String   @map("projection_hash") @db.VarChar(64)
+  provenance             Json
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  resolutionRun       IdentityResolutionRun @relation(fields: [resolutionRunId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  replaySnapshot      ReplayPlayerSnapshot  @relation(fields: [replayPlayerSnapshotId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  gameStats           GameStats             @relation(fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  platformAccount     PlatformAccount?      @relation(fields: [platformAccountId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  provisionalIdentity ProvisionalIdentity?  @relation(fields: [provisionalIdentityId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  warrior             Warrior?              @relation(fields: [warriorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  warriorPlatformLink WarriorPlatformLink?  @relation(fields: [warriorPlatformLinkId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([resolutionRunId, replayPlayerSnapshotId], map: "uq_replay_player_identity_projection_run_snapshot")
+  @@index([resolutionRunId, resolutionStatus], map: "ix_replay_player_identity_projection_run_status")
+  @@index([warriorId, aggregateEligible, gameStatsId], map: "ix_replay_player_identity_projection_warrior_game")
+  @@index([platformAccountId, gameStatsId], map: "ix_replay_player_identity_projection_platform_game")
+  @@index([provisionalIdentityId, gameStatsId], map: "ix_replay_player_identity_projection_provisional_game")
+  @@map("replay_player_identity_projections")
+}
+
+model IdentityProjectionPublication {
+  id                       Int      @id @default(autoincrement())
+  publicationKey           String   @unique @map("publication_key") @db.VarChar(128)
+  scope                    String   @db.VarChar(32)
+  action                   String   @db.VarChar(24)
+  resolutionRunId          Int?     @map("resolution_run_id")
+  predecessorPublicationId Int?     @unique(map: "uq_identity_projection_publication_predecessor") @map("predecessor_publication_id")
+  reason                   String   @db.VarChar(1000)
+  publishedByUserId        Int?     @map("published_by_user_id")
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  resolutionRun IdentityResolutionRun?         @relation(fields: [resolutionRunId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  predecessor   IdentityProjectionPublication? @relation("IdentityPublicationChain", fields: [predecessorPublicationId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  successor     IdentityProjectionPublication? @relation("IdentityPublicationChain")
+  publishedBy   User?                          @relation("IdentityProjectionPublicationActor", fields: [publishedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([scope, id], map: "ix_identity_projection_publications_scope_id")
+  @@index([resolutionRunId], map: "ix_identity_projection_publications_run")
+  @@map("identity_projection_publications")
 }
 
 model alembic_version {
