@@ -1,4 +1,39 @@
+---
+id: "aoe2war.app-prodn.docs-player-identity-discovery-wave2"
+title: "Player Identity Wave 2 — Deterministic Discovery V2"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "implementation-contract"
+reviewed_at: "2026-07-28"
+review_interval_days: 30
+sensitivity: "restricted"
+---
+
 # Player Identity Wave 2 — Deterministic Discovery V2
+
+## Release truth
+
+This wave is **implemented and pushed to `app-prodn` Git, but its discovery
+code is not deployed, its data backfill has not been applied, and no identity
+projection is published in production**. The additive schema migration itself
+is already applied.
+
+| Plane | Verified state |
+| --- | --- |
+| Git implementation | Additive identity schema landed in `59f4c86`; deterministic discovery V2 landed in `a187aa5` on `origin/main`. |
+| Local MBP | Source contains 72 Prisma migration directories and the discovery command. |
+| Production database | 74 migration records: 72 applied, two intentionally rolled back, zero incomplete. The additive Player Identity foundation migration is applied. |
+| Production web source | Discovery V2 code at `a187aa5` has not yet been deployed. |
+| Discovery data | No production `apply` was authorized or run. |
+| Public identity reads | No resolution run, publication, claim activation, or public identity cutover was performed by this wave. |
+
+Do not collapse these states into “shipped.” A pushed commit is Git truth; an
+applied schema, deployed command, populated ledger, published projection, and
+public feature cutover each require separate evidence.
 
 Wave 2 populates the empty Player Identity foundation from immutable replay-player snapshots without activating claims, historical attribution, aggregate eligibility, or publication.
 
@@ -42,6 +77,31 @@ The precision evidence establishes these expected categories before any apply:
 | Active links or claims | 0 |
 
 Counts are review gates, not permission to mutate. A read-only production plan must reproduce or explicitly explain any difference before apply is designed.
+
+Additional ambiguity evidence in the same accepted corpus:
+
+- 175 exact Steam accounts have more than one normalized display name;
+- those accounts contribute 440 normalized names beyond the first, with a
+  maximum of 36 names on one account;
+- 26 normalized names are shared by more than one exact Steam account;
+- 23 of the 126 name-only buckets never appear alongside any Steam ID;
+- normalized-name equality cannot safely attach the other 103 buckets either.
+
+The public-safe account census is **2,216 exact replay-backed SteamID64 values**.
+Raw final `GameStats` payloads expose 2,222 Steam IDs, but six are outside the
+accepted identity projection and must not enter an identity cutover merely
+because they appear in legacy JSON.
+
+## Boundary with the full identity backfill
+
+Wave 2 is a deterministic **discovery seed**, not the complete versioned
+identity projection backfill described by the control-plane architecture.
+
+Wave 2 intentionally creates no `IdentityResolutionRun`,
+`ReplayPlayerIdentityProjection`, or `IdentityProjectionPublication`. A later
+projection backfill must create those versioned rows, run shadow comparisons,
+and pass explicit publication gates. Documentation and operator messages must
+not call a Wave 2 apply “the identity cutover.”
 
 ## Execution modes
 

@@ -26,7 +26,7 @@ sensitivity: "internal"
 - detailed evidence and remaining operations debt: `docs/PRODUCTION_PARITY_2026-07-26.md`.
 
 
-Watcher-linked betting lifecycle configuration: `WATCHER_FINAL_PROOF_GRACE_MINUTES` defaults to 20. Team books obey **no confident teams, no market; no matching final roster, no settlement**. Team ID `0` is valid, player order is never membership, the first stake freezes the structured proposition, and integrity failures enter commissioner review before fees, bonuses, or payouts. See [docs/MARKET_TEAM_INTEGRITY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/MARKET_TEAM_INTEGRITY.md). Deploy the accompanying Prisma migration before restarting. Production repair work must dry-run the evidence-locked script, verify every precondition, apply once, then invoke/verify the ordinary reconciliation rail; never delete financial history or auto-claw back a wallet.
+Watcher-linked betting lifecycle configuration: `WATCHER_FINAL_PROOF_GRACE_MINUTES` defaults to 20. Team books obey **no confident teams, no market; no matching final roster, no settlement**. Team ID `0` is valid, player order is never membership, the first stake freezes the structured proposition, and integrity failures enter commissioner review before fees, bonuses, or payouts. See [docs/MARKET_TEAM_INTEGRITY.md](docs/MARKET_TEAM_INTEGRITY.md). Deploy the accompanying Prisma migration before restarting. Production repair work must dry-run the evidence-locked script, verify every precondition, apply once, then invoke/verify the ordinary reconciliation rail; never delete financial history or auto-claw back a wallet.
 
 Production Next.js frontend for AoE2HDBets.
 
@@ -38,22 +38,25 @@ The public leaderboard now has two dedicated routes: `/leaderboard` for the mode
 
 ## Canonical docs
 
-- [ARCHITECTURE.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/ARCHITECTURE.md)
-- [DEPLOY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/DEPLOY.md)
-- [PRODUCT_STATE.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/PRODUCT_STATE.md)
-- [WORKSPACE.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/WORKSPACE.md)
-- [docs/UNIVERSAL_TRANSLATOR.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/UNIVERSAL_TRANSLATOR.md)
-- [docs/CHAMPIONS_TITLE_ECONOMY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/CHAMPIONS_TITLE_ECONOMY.md)
-- [docs/SCHEDULED_MATCH_SETTLEMENTS.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/SCHEDULED_MATCH_SETTLEMENTS.md)
-- [docs/WAR_ROOM_FORUM.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/WAR_ROOM_FORUM.md)
-- [docs/HERO_STUDIO.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/HERO_STUDIO.md)
-- [docs/DIRECT_CHAT.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/DIRECT_CHAT.md)
-- [docs/MARKET_TEAM_INTEGRITY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/MARKET_TEAM_INTEGRITY.md)
-- [docs/AI_COUNCIL_AND_COMMAND_CENTER.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/AI_COUNCIL_AND_COMMAND_CENTER.md)
-- [docs/BOUNTY_BOARD.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/BOUNTY_BOARD.md)
-- [docs/RADIO_WOLO.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/RADIO_WOLO.md)
-- [docs/PARSER_OBSERVATORY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/PARSER_OBSERVATORY.md)
-- [docs/REPLAY_STATS_OPERATIONS_RELEASE_2026-07-25.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/docs/REPLAY_STATS_OPERATIONS_RELEASE_2026-07-25.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [DEPLOY.md](DEPLOY.md)
+- [PRODUCT_STATE.md](PRODUCT_STATE.md)
+- [WORKSPACE.md](WORKSPACE.md)
+- [docs/REPLAY_CORPUS_METRICS.md](docs/REPLAY_CORPUS_METRICS.md)
+- [docs/PLAYER_IDENTITY_DISCOVERY_WAVE2.md](docs/PLAYER_IDENTITY_DISCOVERY_WAVE2.md)
+- [docs/LEADERBOARDS.md](docs/LEADERBOARDS.md)
+- [docs/PARSER_OBSERVATORY.md](docs/PARSER_OBSERVATORY.md)
+- [docs/UNIVERSAL_TRANSLATOR.md](docs/UNIVERSAL_TRANSLATOR.md)
+- [docs/CHAMPIONS_TITLE_ECONOMY.md](docs/CHAMPIONS_TITLE_ECONOMY.md)
+- [docs/SCHEDULED_MATCH_SETTLEMENTS.md](docs/SCHEDULED_MATCH_SETTLEMENTS.md)
+- [docs/WAR_ROOM_FORUM.md](docs/WAR_ROOM_FORUM.md)
+- [docs/HERO_STUDIO.md](docs/HERO_STUDIO.md)
+- [docs/DIRECT_CHAT.md](docs/DIRECT_CHAT.md)
+- [docs/MARKET_TEAM_INTEGRITY.md](docs/MARKET_TEAM_INTEGRITY.md)
+- [docs/AI_COUNCIL_AND_COMMAND_CENTER.md](docs/AI_COUNCIL_AND_COMMAND_CENTER.md)
+- [docs/BOUNTY_BOARD.md](docs/BOUNTY_BOARD.md)
+- [docs/RADIO_WOLO.md](docs/RADIO_WOLO.md)
+- [docs/REPLAY_STATS_OPERATIONS_RELEASE_2026-07-25.md](docs/REPLAY_STATS_OPERATIONS_RELEASE_2026-07-25.md)
 
 ## Stack
 

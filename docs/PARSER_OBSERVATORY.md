@@ -15,6 +15,35 @@ sensitivity: "internal"
 
 # Parser Observatory
 
+## Current corpus census — 2026-07-28
+
+The current production metrics use several deliberate denominators:
+
+| Metric | Count | Grain |
+| --- | ---: | --- |
+| Final replay records | **3,011** | final watcher/upload `GameStats` rows |
+| Public battle records | **2,784** | final rows accepted by the War Vault public filter |
+| Unique logical public battles | **2,778** | public rows deduplicated by `publicReplayIdentity` |
+| Indexed parser artifacts | **2,093** | unique content-addressed Engine Room artifacts |
+| Recorded-game candidates | **1,891** | indexed artifacts excluding saved checkpoints |
+| Saved checkpoints | **202** | parseable non-final `.aoe2mpgame` artifacts |
+| Latest parser failures | **0** | failed latest indexed candidate dispositions |
+| Confirmed irrecoverable artifacts | **0** | explicit terminal irrecoverable dispositions |
+
+The equation `3,011 - 227 = 2,784` explains the two public “game” counts.
+All 202 saved checkpoints are already inside the 227 excluded final records;
+they are not an additional subtraction. The equation
+`2,784 - 6 = 2,778` applies the app’s public replay presentation identity.
+
+The physical archive contains 7,990 file paths. Only 2,093 unique artifacts are
+currently indexed, leaving 5,897 physical files unindexed or unclassified.
+That remainder is not confirmed junk.
+
+See [Replay Corpus and Public Metric Contract](REPLAY_CORPUS_METRICS.md) for
+the complete definitions, parser-mode census, identity denominators, equations,
+and irrecoverable-evidence rule. These values are a dated runtime snapshot and
+must be read dynamically by public surfaces.
+
 ## Public surface
 
 `/game-stats` is the public Parser Observatory and battle archive. It reports
@@ -22,9 +51,10 @@ live effective result/team coverage separately from private Engine Room
 candidate coverage. The page is read-only: it cannot promote candidates,
 adjudicate games, settle markets, or change chain history.
 
-## Campaign III production checkpoint
+## Historical Campaign III production checkpoint
 
-The frozen 2,025-artifact cohort is fully accounted as of July 17, 2026:
+The frozen 2,025-artifact cohort was fully accounted as of July 17, 2026. This
+section preserves that campaign receipt; it is not the current corpus total:
 
 - latest candidate dispositions: `2,025 completed / 0 failed`;
 - immutable history: 2,389 parse runs and 247,630 material observations;

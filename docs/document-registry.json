@@ -37,7 +37,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f4cd316c5e47e42a2df876b9d8d86c23265103a926f8ef779ccfbca782508c28",
+      "sha256": "b09b9f1e841a090f04ad742e5fef7c4736a00d5d9530d947ff41bc78ae7a2578",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -60,7 +60,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "be05be46066cfca88fe70805e4913f48ac3853380cd8ccb5aa3e66380c8484ae",
+      "sha256": "76c777b29f4256a45d7a5b7e4a22923ac98268d72a4d6d4aab15588b7412c03e",
       "source_of_truth": "historical-evidence",
       "status": "historical",
       "systems": [
@@ -85,7 +85,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9461c6bf625242c05be221beaf908b6770d24c4933613a6e10560b2fbc645fc1",
+      "sha256": "fe07b3aa4ea4987a6cd24ba0eccd81615b68d3d09d3e3a205238e3cb9694bb8f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -110,7 +110,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6ea27c57ec0e7a70b2720f9b167514b3e8d0a3bd095ea344f0dcafe0e7def85a",
+      "sha256": "0f577ce5a1cda352778f71dac1e6ffcd6f98739d3f3d0d2ed63bc32b1d394be1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -380,7 +380,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "499462d89408d283d90228d4acde89162947413811fac99cbfb44a64147d38e0",
+      "sha256": "11162c0da91d645c6539bf1d50d3a18eb69a0a278f68a551240d75b50bfbb032",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -492,7 +492,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0c9de057a7aa788f690f3d12d2d2b68814eff3127fb84bc2f0155eb4d98dc8bc",
+      "sha256": "4966ba6eba954686262de9709ab925e145645bb6ab4c8b25ba5492707e8f6b7a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -563,7 +563,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d164ad6a7465504d6d038ff089d96957fc1f2e96e93cf36087962a8b82b90b25",
+      "sha256": "47f3ff1c653306d79f023c57968f4bc1b621176f521aa43ed3ad86b93414e0ea",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -594,6 +594,29 @@
       ],
       "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "implementation-contract",
+      "id": "aoe2war.app-prodn.docs-player-identity-discovery-wave2",
+      "owner": "aoe2war-web",
+      "path": "docs/PLAYER_IDENTITY_DISCOVERY_WAVE2.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-07-28",
+      "sensitivity": "restricted",
+      "sha256": "bdbe542fedef1939b8381db920496508eead64e80125e0817e42a37eff6bf7b2",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn"
+      ],
+      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
+      "type": "reference"
     },
     {
       "audience": [
@@ -639,6 +662,29 @@
         "app-prodn"
       ],
       "title": "Radio WOLO",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "metric-contract",
+      "id": "aoe2war.app-prodn.docs-replay-corpus-metrics",
+      "owner": "aoe2war-web",
+      "path": "docs/REPLAY_CORPUS_METRICS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-07-28",
+      "sensitivity": "internal",
+      "sha256": "3e74373ca116237ece53c35853fd23ea893ea110687396d3dec28e0a6d7c1262",
+      "source_of_truth": "runtime-evidence",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn"
+      ],
+      "title": "Replay Corpus and Public Metric Contract",
       "type": "reference"
     },
     {
@@ -955,10 +1001,10 @@
       "type": "reference"
     }
   ],
-  "generated_at": "2026-07-26T22:17:26.452993+00:00",
+  "generated_at": "2026-07-28T14:55:00+00:00",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "50f927880a0d25016123a00633e71015c5ccb92a"
+    "commit": "d4dc7037e829f8c65de5c3ffabe07fc27b96525c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

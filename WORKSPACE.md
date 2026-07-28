@@ -15,16 +15,20 @@ sensitivity: "internal"
 
 # AoE2HDBets
 
-This directory currently uses **3 active repos**.
+This workspace has **3 active product repos**. It also contains explicitly
+classified legacy material and a detached Git worktree; those are not additional
+production systems.
 
 Together, they power the AoE2HDBets public product, replay ingest pipeline, and watcher upload client.
 
 ## Read these first
 
-- [app-prodn/ARCHITECTURE.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/ARCHITECTURE.md)
-- [app-prodn/DEPLOY.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/DEPLOY.md)
-- [app-prodn/PRODUCT_STATE.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/PRODUCT_STATE.md)
-- [api-prodn/TESTING.md](/Users/tonyblum/projects/AoE2HDBets/api-prodn/TESTING.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md)
+- [DEPLOY.md](DEPLOY.md)
+- [PRODUCT_STATE.md](PRODUCT_STATE.md)
+- [Replay Corpus and Public Metric Contract](docs/REPLAY_CORPUS_METRICS.md)
+- [Player Identity Wave 2](docs/PLAYER_IDENTITY_DISCOVERY_WAVE2.md)
+- [api-prodn/TESTING.md](../api-prodn/TESTING.md)
 
 ## Repos and responsibilities
 
@@ -71,6 +75,24 @@ The main public spine now includes:
 - players, rivalries, and live-games as real first-class destinations
 - replay-driven visible match outcomes feeding back into the product
 
+## Workspace inventory and edit boundaries
+
+| Path | Classification | Rule |
+| --- | --- | --- |
+| `app-prodn/` | active source repository | Owns the deployed Next.js product and app-side schema. |
+| `api-prodn/` | active source repository | Owns replay ingest, archive, parser execution, and parser evidence. |
+| `aoe2-watcher/` | active source repository | Owns the Electron watcher. Its active release line is not necessarily `main`. |
+| `aoe2hd-frontend-legacy/` | legacy repository | Historical frontend source. Do not implement current product work here. |
+| `app-prodn-leaderboard-og/` | detached `app-prodn` worktree | Temporary historical/isolated worktree at a detached commit. Do not treat it as an independent repository or deployment source. |
+| `_backup/` | backup material | Evidence only; never a current implementation target. |
+| root `components/` and `bin/` | unowned workspace remnants | Inspect provenance before use; active product code belongs in an owning repo. |
+
+The separate `AoE2WAR-docs` repository is the cross-system documentation
+control plane. Repository-local implementation contracts remain authoritative.
+At the 2026-07-28 audit, the control-plane repository had no configured Git
+remote; it must not be described as remotely durable until a remote is added
+and its commits are pushed.
+
 ## Repo count guidance
 
 - Keep this directory at **3 repos** unless you intentionally split a new bounded service
@@ -81,12 +103,18 @@ The main public spine now includes:
 
 ## Branch / deploy workflow
 
-Single-branch model (`main`) used across repos:
+Branches are repository-specific:
+
+| Repository | Normal branch |
+| --- | --- |
+| `app-prodn` | `main` |
+| `api-prodn` | `main` |
+| `aoe2-watcher` | the current versioned `release/watcher-*` branch unless its release procedure says otherwise |
 
 1. Develop locally on MBP in each repo
-2. Commit and push `main` to origin
-3. On VPS, connect with `ssh hel1` and pull `main` for each repo as `tony`
-4. Run migrations (`api-prodn`) before restart when schema changes exist
+2. Commit and push the owning repo's reviewed branch to origin
+3. On VPS, connect with `ssh hel1` and pull the intended release branch as `tony`
+4. Apply migrations from the repository that owns the schema before restarting; app Prisma migrations run from `app-prodn`
 5. Build/restart services (`systemd` + nginx)
 
 Important:

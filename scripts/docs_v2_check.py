@@ -8,7 +8,7 @@ import pathlib
 import posixpath
 import subprocess
 from collections import Counter
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 EXCLUDED_EXACT = frozenset(
@@ -271,11 +271,13 @@ def validate_metadata(metadata: dict[str, Any], label: str) -> list[str]:
     if metadata.get("source_of_truth") not in ALLOWED_SOURCES:
         errors.append(f"{label}: unsupported source_of_truth {metadata.get('source_of_truth')!r}")
     reviewed_at = metadata.get("reviewed_at")
+    parsed_reviewed_at: date | None = None
     if isinstance(reviewed_at, str):
         try:
             parsed = date.fromisoformat(reviewed_at)
             if parsed.isoformat() != reviewed_at:
                 raise ValueError
+            parsed_reviewed_at = parsed
         except ValueError:
             errors.append(f"{label}: reviewed_at must use YYYY-MM-DD")
     for key in ("systems", "audience"):
@@ -296,6 +298,17 @@ def validate_metadata(metadata: dict[str, Any], label: str) -> list[str]:
         errors.append(f"{label}: generated status requires generated source_of_truth")
     if metadata.get("type") == "historical" and status != "historical":
         errors.append(f"{label}: historical type requires historical status")
+    if (
+        parsed_reviewed_at is not None
+        and isinstance(interval, int)
+        and not isinstance(interval, bool)
+        and interval > 0
+    ):
+        due_at = parsed_reviewed_at + timedelta(days=interval)
+        if date.today() > due_at:
+            errors.append(
+                f"{label}: documentation review expired on {due_at.isoformat()}"
+            )
     return errors
 
 

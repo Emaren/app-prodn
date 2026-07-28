@@ -48,7 +48,7 @@ This exists because normal Next shutdowns were hanging and making deploys flaky.
 From MBP:
 
 ```bash
-git -C /Users/tonyblum/projects/AoE2HDBets/app-prodn push origin main
+git push origin main
 ```
 
 On VPS:
@@ -515,7 +515,7 @@ Do not restart blindly before the schema is in place.
 - browser should stay same-origin for `/api/*`
 - watcher uploads should continue to target `api-prodn.aoe2war.com`, not the public web host
 - browser wallet reads and stake verification depend on `rpc-mainnet.aoe2war.com` and `rest-mainnet.aoe2war.com` staying CORS-clean for both `aoe2war.com` and `www.aoe2war.com`
-- dedicated nginx request-log runbook for AoE2 Phase 1 lives at [deploy/aoe2-access-logging-phase1.md](/Users/tonyblum/projects/AoE2HDBets/app-prodn/deploy/aoe2-access-logging-phase1.md)
+- dedicated nginx request-log runbook for AoE2 Phase 1 lives at [deploy/aoe2-access-logging-phase1.md](deploy/aoe2-access-logging-phase1.md)
 
 
 ## Staking unstake signer

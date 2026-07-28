@@ -17,6 +17,11 @@ sensitivity: "internal"
 
 > **Lifecycle:** Historical evidence. This document records a past state and must not be treated as current operational truth.
 
+> **Current metric definitions:** Use
+> [Replay Corpus and Public Metric Contract](docs/REPLAY_CORPUS_METRICS.md) for
+> the current distinction between final ingestion records, public battle
+> records, unique logical battles, parser artifacts, roster names, Steam
+> accounts, provisional identities, and Warriors.
 
 ## Production parity seal — 2026-07-26
 
