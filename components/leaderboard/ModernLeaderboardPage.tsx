@@ -613,9 +613,9 @@ export function ModernLeaderboardPage({
             detail="Current board projection"
           />
           <IdentityMetric
-            label="Steam account rows"
+            label="Replay-backed Steam IDs"
             value={census.steamIdentityRows}
-            detail="Replay-backed exact SteamID64 evidence"
+            detail="Recovered from accepted replay evidence"
           />
           <IdentityMetric
             label="Name-only rows"
