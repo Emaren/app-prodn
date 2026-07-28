@@ -134,7 +134,7 @@ const EXACT_STEAM_ID_64 = /^\d{17}$/;
 const DEFAULT_REPLAY_ARCHIVE_DIR =
   "/mnt/HC_Volume_105319120/aoe2-replay-archive";
 const PHYSICAL_ARCHIVE_SCAN_BUDGET_MS =
-  5_000;
+  20_000;
 const REPLAY_ARCHIVE_SUFFIXES =
   new Set([
     ".aoe2record",
@@ -165,7 +165,7 @@ async function loadPhysicalReplayArchiveSnapshot() {
       PHYSICAL_ARCHIVE_SCAN_BUDGET_MS
     ) {
       throw new Error(
-        "physical archive scan exceeded its 5-second budget"
+        `physical archive scan exceeded its ${PHYSICAL_ARCHIVE_SCAN_BUDGET_MS / 1_000}-second budget`
       );
     }
 
@@ -208,7 +208,7 @@ async function loadPhysicalReplayArchiveSnapshot() {
         PHYSICAL_ARCHIVE_SCAN_BUDGET_MS
       ) {
         throw new Error(
-          "physical archive scan exceeded its 5-second budget"
+          `physical archive scan exceeded its ${PHYSICAL_ARCHIVE_SCAN_BUDGET_MS / 1_000}-second budget`
         );
       }
 
@@ -268,7 +268,7 @@ const loadCachedPhysicalReplayArchiveSnapshot =
   unstable_cache(
     loadPhysicalReplayArchiveSnapshot,
     [
-      "physical-replay-archive-snapshot-v1",
+      "physical-replay-archive-snapshot-v2",
     ],
     {
       revalidate: 3_600,
