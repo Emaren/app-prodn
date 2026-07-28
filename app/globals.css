@@ -2742,3 +2742,42 @@ html:not([data-champions-view]) .champions-e-breakout {
   }
 }
 
+
+/* HD LEADERBOARD B/A/E SURFACES START */
+
+main:has(> .leaderboard-modern-shell) {
+  width: 100%;
+  transition:
+    max-width 280ms ease,
+    padding-inline 280ms ease;
+}
+
+main:has(> .leaderboard-modern-shell[data-leaderboard-view="basic"]) {
+  max-width: 72rem !important;
+}
+
+main:has(> .leaderboard-modern-shell[data-leaderboard-view="advanced"]) {
+  max-width: min(calc(100vw - 1.25rem), 90rem) !important;
+}
+
+main:has(> .leaderboard-modern-shell[data-leaderboard-view="extreme"]) {
+  max-width: min(calc(100vw - 0.5rem), 118rem) !important;
+  padding-left: 0.25rem !important;
+  padding-right: 0.25rem !important;
+}
+
+.leaderboard-modern-shell {
+  width: 100%;
+  transition:
+    width 280ms ease,
+    max-width 280ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main:has(> .leaderboard-modern-shell),
+  .leaderboard-modern-shell {
+    transition: none;
+  }
+}
+
+/* HD LEADERBOARD B/A/E SURFACES END */

@@ -4,9 +4,13 @@ import { Search, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { LeaderboardScopeToggle } from "@/components/leaderboard/LeaderboardScopeToggle";
 import { LeaderboardViewLink } from "@/components/leaderboard/LeaderboardViewLink";
+import { LeaderboardViewToggle } from "@/components/leaderboard/LeaderboardViewToggle";
+import { LeaderboardWatcherCard } from "@/components/leaderboard/LeaderboardWatcherCard";
 import { ModernLeaderboardTable } from "@/components/leaderboard/ModernLeaderboardTable";
 import { LeaderboardLaneToggle } from "@/components/lobby/LeaderboardLaneToggle";
+import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import type { LobbyLeaderboardSummary } from "@/lib/lobby";
 import {
   readStoredLeaderboardLane,
@@ -120,6 +124,18 @@ export function ModernLeaderboardPage({
 }: {
   initialLeaderboard: LobbyLeaderboardSummary | null;
 }) {
+  const {
+    viewMode,
+    setViewMode,
+  } = useTileViewPreference(
+    "leaderboard",
+  );
+  const isBasic =
+    viewMode === "basic";
+  const isAdvanced =
+    viewMode === "advanced";
+  const isExtreme =
+    viewMode === "extreme";
   const [lane, setLane] = useState<LeaderboardLane>(
     initialLeaderboard?.lane ?? "rm"
   );
@@ -511,91 +527,210 @@ export function ModernLeaderboardPage({
   );
 
   return (
-    <main className="space-y-5 py-3 text-white sm:py-6">
-      <section className="overflow-hidden rounded-[1.8rem] border border-amber-200/14 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,0.09),transparent_26%),linear-gradient(145deg,#101a2d,#070d18_62%,#030711)] shadow-[0_30px_100px_rgba(0,0,0,0.3)]">
-        <div className="border-b border-amber-200/18 px-5 py-6 sm:px-8 sm:py-8">
-          <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-            <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.36em] text-amber-200/65">AoE2WAR · HD Ranked Command</div>
-              <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-amber-100 sm:text-5xl">HD Leaderboard</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-                Exact Steam accounts fold every verified historical display
-                name into one current row. Name-only evidence stays separate
-                until stronger identity proof exists.
-              </p>
+    <main
+      className="leaderboard-modern-shell space-y-5 py-3 text-white sm:py-6"
+      data-leaderboard-view={viewMode}
+    >
+      <section
+        className={`overflow-hidden border bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,0.09),transparent_26%),linear-gradient(145deg,#101a2d,#070d18_62%,#030711)] transition-[border-radius,border-color,box-shadow] duration-300 ${
+          isExtreme
+            ? "rounded-[2rem] border-amber-200/24 shadow-[0_36px_120px_rgba(0,0,0,0.42),0_0_0_1px_rgba(201,155,60,0.05)]"
+            : "rounded-[1.8rem] border-amber-200/14 shadow-[0_30px_100px_rgba(0,0,0,0.3)]"
+        }`}
+      >
+        <div
+          className={`border-b border-amber-200/18 px-5 py-6 sm:px-8 sm:py-8 ${
+            isExtreme
+              ? "bg-[radial-gradient(circle_at_82%_0%,rgba(201,155,60,0.08),transparent_30%)] lg:px-10 lg:py-9"
+              : ""
+          }`}
+        >
+          {isExtreme ? (
+            <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.36em] text-amber-200/65">
+                  AoE2WAR · HD Ranked Command
+                </div>
+                <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-amber-100 sm:text-5xl lg:text-[3.45rem]">
+                  HD Leaderboard
+                </h1>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
+                  Exact Steam accounts fold every verified historical display
+                  name into one current row. Name-only evidence stays separate
+                  until stronger identity proof exists.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                <LeaderboardWatcherCard />
+                <div className="flex items-center justify-end gap-4">
+                  <LeaderboardViewToggle
+                    value={viewMode}
+                    onChange={setViewMode}
+                  />
+                  <LeaderboardViewLink
+                    from="modern"
+                    to="og"
+                    href="/leaderboard/og"
+                  >
+                    Open Game Stats
+                  </LeaderboardViewLink>
+                </div>
+              </div>
             </div>
-            <LeaderboardViewLink from="modern" to="og" href="/leaderboard/og">Open Game Stats</LeaderboardViewLink>
-          </div>
+          ) : isAdvanced ? (
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_21rem] xl:items-start">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.36em] text-amber-200/65">
+                  AoE2WAR · HD Ranked Command
+                </div>
+                <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-amber-100 sm:text-5xl">
+                  HD Leaderboard
+                </h1>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
+                  Exact Steam accounts fold every verified historical display
+                  name into one current row. Name-only evidence stays separate
+                  until stronger identity proof exists.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <LeaderboardWatcherCard compact />
+                <div className="flex items-center justify-end gap-4">
+                  <LeaderboardViewToggle
+                    value={viewMode}
+                    onChange={setViewMode}
+                  />
+                  <LeaderboardViewLink
+                    from="modern"
+                    to="og"
+                    href="/leaderboard/og"
+                  >
+                    Open Game Stats
+                  </LeaderboardViewLink>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+              <div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.36em] text-amber-200/65">
+                  AoE2WAR · HD Ranked Command
+                </div>
+                <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-amber-100 sm:text-5xl">
+                  HD Leaderboard
+                </h1>
+                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
+                  Exact Steam accounts fold every verified historical display
+                  name into one current row. Name-only evidence stays separate
+                  until stronger identity proof exists.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4 sm:flex-col sm:items-end">
+                <LeaderboardViewToggle
+                  value={viewMode}
+                  onChange={setViewMode}
+                />
+                <LeaderboardViewLink
+                  from="modern"
+                  to="og"
+                  href="/leaderboard/og"
+                >
+                  Open Game Stats
+                </LeaderboardViewLink>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="grid gap-4 border-b border-white/[0.07] bg-black/15 px-5 py-5 sm:px-8 lg:grid-cols-[auto_auto_minmax(18rem,1fr)_auto] lg:items-center">
-          <LeaderboardLaneToggle lane={lane} onChange={changeLane} loading={loading} variant="compact" />
-          <div
-            className="inline-flex w-fit rounded-xl border border-cyan-300/20 bg-slate-950/75 p-1"
-            role="group"
-            aria-label="Leaderboard players"
-          >
-            <button
-              type="button"
-              aria-pressed={
-                scope === "all"
-              }
-              onClick={() =>
-                setScope("all")
-              }
-              className={`rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/55 ${
-                scope === "all"
-                  ? "bg-amber-200 text-slate-950 shadow-[0_8px_24px_rgba(251,191,36,0.18)]"
-                  : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
-              }`}
+        <div
+          className={`grid gap-4 border-b border-white/[0.07] bg-black/15 px-5 py-5 sm:px-8 lg:items-center ${
+            isExtreme
+              ? "lg:grid-cols-[auto_auto_minmax(20rem,1fr)_auto] lg:px-10"
+              : "lg:grid-cols-[auto_auto_minmax(18rem,1fr)_auto]"
+          }`}
+        >
+          <LeaderboardLaneToggle
+            lane={lane}
+            onChange={changeLane}
+            loading={loading}
+            variant="compact"
+          />
+
+          {isBasic ? (
+            <div
+              className="inline-flex w-fit rounded-xl border border-cyan-300/20 bg-slate-950/75 p-1"
+              role="group"
+              aria-label="Leaderboard players"
             >
-              Full leaderboard
-            </button>
-            <button
-              type="button"
-              aria-pressed={
-                scope === "claimed"
-              }
-              onClick={() =>
-                setScope("claimed")
-              }
-              className={`rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
-                scope === "claimed"
-                  ? "bg-cyan-200 text-slate-950 shadow-[0_8px_24px_rgba(34,211,238,0.16)]"
-                  : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
-              }`}
-            >
-              AoE2WAR users
-              <span className="ml-1.5 tabular-nums opacity-70">
-                {
-                  census.claimedIdentityRows
-                }
-              </span>
-            </button>
-          </div>
+              <button
+                type="button"
+                aria-pressed={scope === "all"}
+                onClick={() => setScope("all")}
+                className={`cursor-pointer rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/55 ${
+                  scope === "all"
+                    ? "bg-amber-200 text-slate-950 shadow-[0_8px_24px_rgba(251,191,36,0.18)]"
+                    : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
+                }`}
+              >
+                Full leaderboard
+              </button>
+              <button
+                type="button"
+                aria-pressed={scope === "claimed"}
+                onClick={() => setScope("claimed")}
+                className={`cursor-pointer rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
+                  scope === "claimed"
+                    ? "bg-cyan-200 text-slate-950 shadow-[0_8px_24px_rgba(34,211,238,0.16)]"
+                    : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
+                }`}
+              >
+                AoE2WAR users
+                <span className="ml-1.5 tabular-nums opacity-70">
+                  {census.claimedIdentityRows}
+                </span>
+              </button>
+            </div>
+          ) : (
+            <LeaderboardScopeToggle
+              value={scope}
+              claimedCount={census.claimedIdentityRows}
+              onChange={setScope}
+            />
+          )}
+
           <label className="relative block lg:mx-auto lg:w-full lg:max-w-xl">
             <span className="sr-only">Search warriors</span>
-            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-amber-200/70" aria-hidden="true" />
+            <Search
+              className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-amber-200/70"
+              aria-hidden="true"
+            />
             <input
               type="search"
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
               placeholder="Search by warrior name"
-              className="h-13 w-full rounded-none border border-cyan-300/25 bg-slate-950/75 pl-12 pr-12 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-amber-200/55 focus:ring-2 focus:ring-amber-200/15"
+              className={`h-13 w-full border border-cyan-300/25 bg-slate-950/75 pl-12 pr-12 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-amber-200/55 focus:ring-2 focus:ring-amber-200/15 ${
+                isBasic ? "rounded-none" : "rounded-xl"
+              }`}
             />
             {searchInput ? (
               <button
                 type="button"
                 onClick={() => setSearchInput("")}
-                className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center text-slate-400 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/50"
+                className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center text-slate-400 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/50"
                 aria-label="Clear player search"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
               </button>
             ) : null}
           </label>
+
           <div className="text-left lg:text-right">
-            <div className="text-2xl font-semibold tabular-nums text-white">{trackedPlayers.toLocaleString()}</div>
+            <div className="text-2xl font-semibold tabular-nums text-white">
+              {trackedPlayers.toLocaleString()}
+            </div>
             <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
               {query
                 ? "matching identity rows"
@@ -606,71 +741,89 @@ export function ModernLeaderboardPage({
           </div>
         </div>
 
-        <div className="grid gap-3 border-b border-white/[0.07] bg-slate-950/35 px-5 py-4 sm:grid-cols-2 sm:px-8 xl:grid-cols-4 2xl:grid-cols-7">
-          <IdentityMetric
-            label="Identity rows"
-            value={census.identityRows}
-            detail="Current board projection"
-          />
-          <IdentityMetric
-            label="Replay-backed Steam IDs"
-            value={census.steamIdentityRows}
-            detail="Recovered from accepted replay evidence"
-          />
-          <IdentityMetric
-            label="Name-only rows"
-            value={census.nameOnlyIdentityRows}
-            detail="Kept separate for safety"
-          />
-          <IdentityMetric
-            label="Profile-only rows"
-            value={census.claimedProfileOnlyRows}
-            detail={`${Math.max(0, census.claimedProfileOnlyRows - census.siteOnlyIdentityRows).toLocaleString()} Steam-linked · ${census.siteOnlyIdentityRows.toLocaleString()} site-only`}
-          />
-          <IdentityMetric
-            label="AoE2WAR profiles"
-            value={
-              census.claimedIdentityRows
-            }
-            detail="Public claimed profiles; systems excluded"
-          />
-          <IdentityMetric
-            label="Alias-history accounts"
-            value={census.accountsWithAliasHistory}
-            detail="Multiple observed names"
-          />
-          <div className="rounded-xl border border-amber-200/16 bg-[linear-gradient(135deg,rgba(251,191,36,0.09),rgba(34,211,238,0.055))] px-4 py-3">
-            <div className="text-[10px] uppercase tracking-[0.18em] text-amber-100/65">
-              24hr Rank Pulse
+        {isBasic ? (
+          <div className="grid gap-3 border-b border-white/[0.07] bg-slate-950/35 px-5 py-4 sm:grid-cols-2 sm:px-8 xl:grid-cols-4 2xl:grid-cols-7">
+            <IdentityMetric
+              label="Identity rows"
+              value={census.identityRows}
+              detail="Current board projection"
+            />
+            <IdentityMetric
+              label="Replay-backed Steam IDs"
+              value={census.steamIdentityRows}
+              detail="Recovered from accepted replay evidence"
+            />
+            <IdentityMetric
+              label="Name-only rows"
+              value={census.nameOnlyIdentityRows}
+              detail="Kept separate for safety"
+            />
+            <IdentityMetric
+              label="Profile-only rows"
+              value={census.claimedProfileOnlyRows}
+              detail={`${Math.max(0, census.claimedProfileOnlyRows - census.siteOnlyIdentityRows).toLocaleString()} Steam-linked · ${census.siteOnlyIdentityRows.toLocaleString()} site-only`}
+            />
+            <IdentityMetric
+              label="AoE2WAR profiles"
+              value={census.claimedIdentityRows}
+              detail="Public claimed profiles; systems excluded"
+            />
+            <IdentityMetric
+              label="Alias-history accounts"
+              value={census.accountsWithAliasHistory}
+              detail="Multiple observed names"
+            />
+            <div className="rounded-xl border border-amber-200/16 bg-[linear-gradient(135deg,rgba(251,191,36,0.09),rgba(34,211,238,0.055))] px-4 py-3">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-amber-100/65">
+                24hr Rank Pulse
+              </div>
+              <div className="mt-1 text-sm font-semibold text-white">
+                Make the ladder move.
+              </div>
+              <div
+                className="mt-1 text-[10px] leading-4 text-slate-400"
+                title={
+                  census.rankDelta24hCutoff
+                    ? `Reconstructed cutoff ${census.rankDelta24hCutoff}`
+                    : "Reconstructed from the current accepted corpus"
+                }
+              >
+                Reconstructed from evidence accepted by the cutoff; not yet a
+                persisted rank snapshot.
+              </div>
+              <Link
+                href="/watch"
+                className="mt-1 inline-flex cursor-pointer text-xs font-semibold text-cyan-200 underline decoration-cyan-300/30 underline-offset-4 transition hover:text-white"
+              >
+                Run the Watcher for fresher ranks →
+              </Link>
             </div>
-            <div className="mt-1 text-sm font-semibold text-white">
-              Make the ladder move.
-            </div>
-            <div
-              className="mt-1 text-[10px] leading-4 text-slate-400"
-              title={census.rankDelta24hCutoff
-                ? `Reconstructed cutoff ${census.rankDelta24hCutoff}`
-                : "Reconstructed from the current accepted corpus"}
-            >
-              Reconstructed from evidence accepted by the cutoff; not yet a
-              persisted rank snapshot.
-            </div>
-            <Link
-              href="/watch"
-              className="mt-1 inline-flex text-xs font-semibold text-cyan-200 underline decoration-cyan-300/30 underline-offset-4 transition hover:text-white"
-            >
-              Run the Watcher for fresher ranks →
-            </Link>
           </div>
-        </div>
+        ) : null}
 
-        <div className="p-3 sm:p-5 lg:p-7" aria-busy={loading || loadingMore}>
+        <div
+          className={`${
+            isExtreme
+              ? "border-t border-amber-200/16 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.045),transparent_24%)] p-2 sm:p-3 lg:p-4"
+              : isAdvanced
+                ? "p-3 sm:p-5"
+                : "p-3 sm:p-5 lg:p-7"
+          }`}
+          aria-busy={loading || loadingMore}
+        >
           {loading ? (
             <div className="space-y-2" aria-label="Loading leaderboard">
-              {Array.from({ length: 8 }, (_, index) => <div key={index} className="h-16 animate-pulse border border-white/[0.05] bg-white/[0.035]" />)}
+              {Array.from({ length: 8 }, (_, index) => (
+                <div
+                  key={index}
+                  className="h-16 animate-pulse border border-white/[0.05] bg-white/[0.035]"
+                />
+              ))}
             </div>
           ) : entries.length === 0 && query ? (
-            <div className="border border-amber-200/14 bg-amber-300/[0.045] px-5 py-10 text-center text-slate-300">No ranked warrior matches “{query}”.</div>
+            <div className="border border-amber-200/14 bg-amber-300/[0.045] px-5 py-10 text-center text-slate-300">
+              No ranked warrior matches “{query}”.
+            </div>
           ) : entries.length === 0 ? (
             <div className="border border-white/10 bg-white/[0.04] px-5 py-10 text-center text-slate-300">
               {scope === "claimed"
@@ -689,7 +842,18 @@ export function ModernLeaderboardPage({
           {error ? (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-orange-300/20 bg-orange-400/[0.06] px-4 py-3 text-sm text-orange-100">
               <span>{error}</span>
-              <button type="button" onClick={() => void loadPage({ reset: entries.length === 0, offset: entries.length === 0 ? 0 : nextOffset })} className="font-semibold underline underline-offset-4">Try again</button>
+              <button
+                type="button"
+                onClick={() =>
+                  void loadPage({
+                    reset: entries.length === 0,
+                    offset: entries.length === 0 ? 0 : nextOffset,
+                  })
+                }
+                className="cursor-pointer font-semibold underline underline-offset-4"
+              >
+                Try again
+              </button>
             </div>
           ) : null}
 
@@ -698,10 +862,17 @@ export function ModernLeaderboardPage({
               ref={sentinelRef}
               type="button"
               disabled={loadingMore}
-              onClick={() => void loadPage({ reset: false, offset: nextOffset })}
-              className="mt-5 w-full border border-amber-200/16 bg-amber-300/[0.045] px-4 py-4 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100 transition hover:border-amber-200/35 hover:bg-amber-300/[0.08] disabled:cursor-wait disabled:opacity-65"
+              onClick={() =>
+                void loadPage({
+                  reset: false,
+                  offset: nextOffset,
+                })
+              }
+              className="mt-5 w-full cursor-pointer border border-amber-200/16 bg-amber-300/[0.045] px-4 py-4 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100 transition hover:border-amber-200/35 hover:bg-amber-300/[0.08] disabled:cursor-wait disabled:opacity-65"
             >
-              {loadingMore ? "Calling up more warriors…" : "Load more warriors"}
+              {loadingMore
+                ? "Calling up more warriors…"
+                : "Load more warriors"}
             </button>
           ) : null}
         </div>
