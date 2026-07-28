@@ -27,7 +27,7 @@ Warrior cutover has occurred.
 | Git implementation | Additive schema `59f4c86`, deterministic discovery V2 `a187aa5`, exact-Steam leaderboard `d4dc703`, and live census hardening through `baabbeb` are on `origin/main`. |
 | Local MBP | Source contains 72 Prisma migration directories and the discovery command. |
 | Production database | 74 migration records: 72 applied, two intentionally rolled back, zero incomplete. The additive Player Identity foundation migration is applied. |
-| Production web source | Clean `main` at `746251bc60d46fd52d8d23318e5d568218eb726b`; deployed build `20260728153116-44f5f4143c`; web and replay API services active. |
+| Production web source | Clean checkout `main` at `43b1b9b0bd23f8634e88147faff6fb368e1977ea`, equal to `origin/main`; deployed implementation build `20260728153116-44f5f4143c` was built from `746251bc60d46fd52d8d23318e5d568218eb726b`; intervening commits are documentation-only; web and replay API services active. |
 | Discovery data | Apply committed at `2026-07-28T15:22:04.182Z`: 2,220 PlatformAccounts, 13,839 name observations, 126 provisional name-only buckets, 2,216 provisional Warriors, 2,216 proposed links, and 11 proposed claims. |
 | Public account-grain board | `/leaderboard` folds accepted replay evidence to 2,216 exact Steam rows, retains 124 public name-only rows, and adds eight profile-only rows. |
 | Publication boundary | Zero active links, active claims, resolution runs, replay identity projections, and identity publications. |

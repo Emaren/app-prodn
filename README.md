@@ -17,10 +17,12 @@ sensitivity: "internal"
 
 ## Verified identity and metric release — 2026-07-28
 
-- source: clean `main` at `746251bc60d46fd52d8d23318e5d568218eb726b`,
-  equal to `origin/main`;
-- deployed build: `20260728153116-44f5f4143c` on the active
-  `aoe2hdbets-web.service` / `127.0.0.1:3030`;
+- source checkout: clean `main` at
+  `43b1b9b0bd23f8634e88147faff6fb368e1977ea`, equal to `origin/main`;
+- deployed implementation build: `20260728153116-44f5f4143c`, built from
+  `746251bc60d46fd52d8d23318e5d568218eb726b`, on the active
+  `aoe2hdbets-web.service` / `127.0.0.1:3030`; the commits between the build
+  source and current checkout are documentation-only;
 - database: 74 migration-history rows — 72 applied, two historical rolled-back
   attempts, and zero incomplete;
 - Player Identity Wave 2: 2,216 provisional Warriors and proposed exact-Steam
