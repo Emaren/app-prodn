@@ -72,6 +72,30 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 ## Recent deployment notes
 
+### 2026-07-28 leaderboard scope and pagination hardening
+
+Implementation is complete in the release candidate, but do not treat this
+subsection as a production receipt until the commit, build ID, service restart,
+and browser/API checks are appended after deployment.
+
+- `/leaderboard` defaults to `scope=all` and offers `scope=claimed` for public
+  AoE2WAR profiles;
+- default and claimed ranks are contiguous inside the active scope, and
+  reconstructed 24-hour comparison ranks use that same scope;
+- the paginated API is strict: it never appends off-page featured profiles, and
+  `nextOffset` advances only by the returned row count;
+- homepage/lobby contender enrichment remains available only through the
+  explicit `includeFeaturedClaimed: true` snapshot option;
+- client and server caches isolate RM/DM lane plus scope;
+- exact reserved UIDs `aoe2hd_ai_concierge`, `aoe2hd_ai_grimer`,
+  `aoe2hd_ai_guy`, and `challenge-protocol` never enter competitive boards;
+  the first, second, and fourth are the three current live system rows;
+- the post-exclusion projection is 2,345 public rows: 2,216 replay-backed
+  exact-Steam rows, 124 public name-only rows, and five profile-only rows;
+- the claimed scope is 16 public profiles: 11 replay-backed plus five
+  profile-only, representing 15 exact-Steam identities and one site-only
+  identity.
+
 ### 2026-07-28 identity leaderboard and corpus-census release
 
 - clean production checkout: `main`, equal to `origin/main`; the live
@@ -355,6 +379,12 @@ curl -s https://aoe2war.com/api/forum | jq '{ledgerAvailable, threadCount: (.thr
 curl -s https://aoe2war.com/api/trophies | jq '{count: (.trophies | length), trophies: [.trophies[] | {trophyId, status, currentHolder, guardianHolder, chainStatus}]}'
 curl -s https://aoe2war.com/api/trophies/canada_champion_belt/metadata | jq '{name, external_url, attributes}'
 curl -s https://aoe2war.com/api/lobby | jq '.leaderboard.trackedPlayers, (.leaderboard.entries | length)'
+curl -s 'https://aoe2war.com/api/lobby/leaderboard?lane=rm&scope=all&offset=0&limit=50' \
+  | jq -e '.scope == "all" and (.entries | length) <= 50 and ([.entries[].rank] == [range(1; 1 + (.entries | length))])'
+curl -s 'https://aoe2war.com/api/lobby/leaderboard?lane=rm&scope=all&offset=50&limit=50' \
+  | jq -e '.scope == "all" and (.entries | length) <= 50 and ([.entries[].rank] == [range(51; 51 + (.entries | length))])'
+curl -s 'https://aoe2war.com/api/lobby/leaderboard?lane=rm&scope=claimed&offset=0&limit=50' \
+  | jq -e '.scope == "claimed" and .trackedPlayers == 16 and .claimedIdentityRows == 16 and ([.entries[].rank] == [range(1; 1 + (.entries | length))]) and (all(.entries[].uid; . != "aoe2hd_ai_concierge" and . != "aoe2hd_ai_grimer" and . != "aoe2hd_ai_guy" and . != "challenge-protocol"))'
 curl -s https://aoe2war.com/api/lobby | jq '{ticker: (.liveTicker.items | length), market: .woloMarket.poolId}'
 curl -s https://aoe2war.com/api/bets | jq '.wolo | { betEscrowMode, onchainEscrowEnabled, onchainEscrowRequired, betEscrowAddress }'
 curl -s https://aoe2war.com/api/staking/summary?period=24h | jq '.summary["24h"] | {betsPlaced, betVolumeWolo, activeStakers, totalStakedWolo, directTransferCount}'
@@ -414,17 +444,22 @@ The most important public product smoke tests are now:
 3. Basic `/lobby` view still shows the simpler leaderboard/tournament/war-chest-first layout
 4. `/api/lobby` includes `liveTicker` and `woloMarket`
 5. `/admin` can create/enable/disable ticker messages without exposing controls to normal users
-6. leaderboard renders and count matches entry length
-7. `/bets` reports live escrow truth and can still open a real lock flow in-browser
-8. tournament panel loads cleanly
-9. `/live-games` responds
-10. same-origin `/api/lobby` returns a believable snapshot shape
-11. browser stream routes exist: `/api/streams/active` returns JSON, and `game_watch_streams` has the browser-stream columns after `npx prisma migrate deploy`
-12. `/profile?watcher_stream=1&stream_session=smoke&stream_title=Smoke%20Match` renders the streamer studio without losing the watcher handoff params through auth
-13. a cancelled or failed Keplr/Ledger stake attempt records a `bet_wallet_error` activity event when it fails before stake-intent creation
-14. `/api/admin/users/rails` includes `walletFriction`, and `/admin/wolochain` renders the wallet-friction rail
-15. signed-stake recovery still requires a real tx hash, while recent no-proof stake intents remain visible as pending proof rows
-16. recent settled `/bets` results show one row per linked session, preferring challenge-linked books over watcher shadows
+6. `/leaderboard` defaults to the full board, loads sequential ranks without
+   off-page insertions, and toggles to 16 public AoE2WAR profiles with
+   contiguous scope ranks
+7. The AI Scribe, Grimer, Guy of Moxica, and Challenge Protocol do not appear
+   under either scope; a public user with the same display name remains
+   eligible because exclusion is UID-based
+8. `/bets` reports live escrow truth and can still open a real lock flow in-browser
+9. tournament panel loads cleanly
+10. `/live-games` responds
+11. same-origin `/api/lobby` returns a believable snapshot shape
+12. browser stream routes exist: `/api/streams/active` returns JSON, and `game_watch_streams` has the browser-stream columns after `npx prisma migrate deploy`
+13. `/profile?watcher_stream=1&stream_session=smoke&stream_title=Smoke%20Match` renders the streamer studio without losing the watcher handoff params through auth
+14. a cancelled or failed Keplr/Ledger stake attempt records a `bet_wallet_error` activity event when it fails before stake-intent creation
+15. `/api/admin/users/rails` includes `walletFriction`, and `/admin/wolochain` renders the wallet-friction rail
+16. signed-stake recovery still requires a real tx hash, while recent no-proof stake intents remain visible as pending proof rows
+17. recent settled `/bets` results show one row per linked session, preferring challenge-linked books over watcher shadows
 
 This matters more now than older homepage-only checks because the lobby/community shell is the real public spine.
 

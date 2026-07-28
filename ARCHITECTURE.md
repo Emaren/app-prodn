@@ -215,8 +215,15 @@ It now includes:
 - claimed profiles with zero matches as `Pending`
 
 Important semantics:
-- `trackedPlayers` should match rendered entry count
-- `rankedPlayers` means players at or above the ranking threshold
+- `trackedPlayers` is the complete result count in the active scope and search,
+  not the length of the current page
+- `entries.length` is the current strict page or enriched lobby slice
+- `rankedPlayers` means players at or above the ranking threshold in the active
+  scope
+- `identityRows` is the complete public candidate census after reserved system
+  accounts are removed; it does not shrink when the page switches scope
+- `claimedIdentityRows` is the complete public claimed-profile census after
+  the same system exclusion
 - a claimed zero-match profile can appear with:
   - `primaryRatingLabel: Pending`
   - `primaryRatingSourceLabel: Profile`
@@ -225,10 +232,55 @@ The leaderboard is now part of the product spine, not decorative filler. Changes
 
 The full leaderboard system has two distinct public projections of the same HD competitive world:
 
-- `/leaderboard` is the DE-familiar ranked player table. It reuses the lobby leaderboard loader and RM/DM lane rules, adds server-side alias search through the backward-compatible `q` parameter on `/api/lobby/leaderboard`, and paginates instead of preloading the full directory.
+- `/leaderboard` is the DE-familiar ranked player table. It reuses the lobby
+  leaderboard loader and RM/DM lane rules, adds server-side alias search
+  through the backward-compatible `q` parameter on
+  `/api/lobby/leaderboard`, and paginates instead of preloading the full
+  directory. `scope=all` is the default complete public board;
+  `scope=claimed` is the public AoE2WAR profile board.
 - `/leaderboard/og` is the archival chronological battle board. `lib/ogBoard.ts` sanitizes canonical final replay rows, resolves public player links, and sends a narrow projection through `/api/leaderboard/og`; partial replays never synthesize missing scores or achievements.
 
 The homepage board chrome and Kingdom menu open the modern route. The two dedicated pages cross-link and emit authenticated activity events through the existing user-experience telemetry rail. See `docs/LEADERBOARDS.md` for data and interaction rules.
+
+Scope selection is an identity projection boundary, not a cosmetic client
+filter. `lib/leaderboardScope.ts` normalizes unknown values to `all`;
+`lib/lobbyLeaderboard.ts` applies scope before search, sorting, rank assignment,
+24-hour comparison, and pagination. Consequently, default ranks are contiguous
+on the full board and claimed-board ranks are contiguous within the claimed
+board. A search or alternate column sort changes row order but preserves the
+canonical rank in that active lane and scope.
+
+`/api/lobby/leaderboard` is a strict pagination surface: a request for `N` rows
+returns at most `N`, and `nextOffset` advances by the number actually returned.
+The dedicated page explicitly disables both pending-profile and featured
+profile append behavior. `lib/lobbySnapshot.ts` is the intentional exception:
+the homepage/lobby snapshot opts into `includeFeaturedClaimed: true` so its
+small contender module may enrich the base slice. That opt-in must never leak
+into the paginated route.
+
+Both the server leaderboard cache key and
+`lib/leaderboardLaneClientCache.ts` include `lane + scope`. A response for RM
+claimed profiles cannot satisfy RM all-profiles, DM claimed, or DM all-profile
+requests. Client response validation also verifies the returned scope before
+seeding the cache.
+
+Competitive boards exclude reserved internal systems through exact UIDs owned
+by `lib/internalSystemAccounts.ts`:
+
+- `aoe2hd_ai_concierge` (`The AI Scribe`);
+- `aoe2hd_ai_grimer` (`Grimer`);
+- `aoe2hd_ai_guy` (`Guy of Moxica`);
+- `challenge-protocol` (`Challenge Protocol`).
+
+Only the first, second, and fourth UIDs currently have live profile rows. Guy
+is reserved proactively so creating that configured house persona cannot alter
+the public board later.
+
+Display names are deliberately not an exclusion key. A real public account may
+use the same visible name without being removed. In this contract, `claimed`
+means a public directory identity attached to an AoE2WAR SiteAccount under the
+existing app/profile rules; it is not an active Player Identity Wave 2
+`WarriorClaim`.
 
 ### Players directory
 

@@ -50,7 +50,8 @@ business logic.
 | Name-only provisional buckets | **126** | Versioned normalized-name evidence buckets for the 197 name-only snapshots; not people and not Steam accounts. |
 | Steam accounts with multiple observed names | **175** | Exact SteamID64 values with more than one normalized display name. |
 | Names shared by multiple Steam accounts | **26** | Normalized names observed against more than one exact SteamID64; name equality cannot merge them. |
-| Current public leaderboard identity rows | **2,348** | Deployed additive board rows: 2,216 replay-backed exact-Steam rows, 124 public name-only rows, and eight profile-only rows. |
+| Current public leaderboard identity rows | **2,345** | Post-exclusion additive board projection: 2,216 replay-backed exact-Steam rows, 124 public name-only rows, and five profile-only rows. |
+| Public claimed AoE2WAR profiles | **16** | Existing public directory profiles attached to SiteAccounts after reserved system UIDs are removed: 11 replay-backed plus five profile-only; 15 have exact Steam identity and one is site-only. This is not an active Wave 2 claim count. |
 | Provisional Warriors populated | **2,216** | One proposed competitive-career seed per replay-backed Steam account. These are provisional records, not a consolidated-human census. |
 
 The physical archive occupied **8,588,836,915 bytes** at the snapshot.
@@ -61,7 +62,7 @@ candidate corpus to **3.16 GB**.
 The **2,677** and **2,670** values cannot be reconciled by subtracting seven
 aliases. The first counts exact roster-name strings; the second was a legacy
 directory/leaderboard presentation count with different inclusion and claiming
-rules. The deployed exact-Steam board now reports 2,348 rows and its additive
+rules. The post-exclusion exact-Steam board reports 2,345 rows and its additive
 identity categories rather than preserving 2,670 for visual parity.
 
 The 126 discovery buckets and 124 public name-only leaderboard rows are also
@@ -87,6 +88,17 @@ two corpus buckets do not appear in its current projection.
 14,036 accepted identity snapshots
 = 13,839 Steam-backed snapshots
 + 197 name-only snapshots
+
+2,345 current public leaderboard rows
+= 2,216 replay-backed exact-Steam rows
++   124 public name-only replay rows
++     5 profile-only rows
+
+16 public claimed AoE2WAR profiles
+= 11 replay-backed claimed profiles
++  5 profile-only claimed profiles
+= 15 exact-Steam identities
++  1 site-only identity
 ```
 
 The 227 excluded final records include all 202 saved checkpoints and 25 other
@@ -169,6 +181,23 @@ remain zero. Until reviewed multi-account links and a publication exist, public
 documentation must say **2,216 replay-backed Steam accounts** or **2,216
 provisional Warriors**, never “2,216 people.”
 
+### Public claimed AoE2WAR profile
+
+One public player-directory identity attached to an AoE2WAR SiteAccount under
+the existing app/profile resolution rules, after exact reserved system UIDs
+are removed. This is the grain behind the 16-profile leaderboard scope. It is
+not the same thing as a proposed or active Player Identity `WarriorClaim`; 11
+of the 16 have replay evidence, while all 11 Wave 2 exact-match claims remain
+proposed.
+
+The three excluded live system rows are `aoe2hd_ai_concierge`,
+`aoe2hd_ai_grimer`, and `challenge-protocol`. Their removal changes the public
+board presentation from the earlier 2,348-row projection to 2,345.
+`aoe2hd_ai_guy` is also reserved before a live profile exists, so creating that
+configured house persona cannot change the public count. This policy does not
+delete replay evidence, alter the 2,216-account discovery corpus, or authorize
+display-name-based filtering.
+
 ## “Junk” and irrecoverable evidence policy
 
 A file is confirmed junk only after an explicit terminal
@@ -199,6 +228,8 @@ Public tiles must use descriptive labels, not bare “games” or “warriors”
 - `Replay-backed Steam accounts` for the 2,216 exact account count;
 - `Name-only identities awaiting review` for the 126 provisional buckets;
 - `Roster names represented` for display-name string counts such as 2,677.
+- `Public claimed AoE2WAR profiles` for the 16-profile app scope; never
+  shorten it to “verified people” or “active Warrior claims.”
 
 If a surface includes a mutable value, it must also expose an as-of time,
 freshness state, or link to the canonical metric explanation. A number without

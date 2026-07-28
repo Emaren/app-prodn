@@ -92,9 +92,20 @@ Current strengths:
 - admin-created text ticker messages are managed from `/admin` and combine with system ticker items from tournament, replay, lobby, and WOLO market state
 - the Advanced Watch & Chat hero prefers real live-game/session data, then recent completed sessions, then the latest verified replay or next tournament state; its embedded bet slip reads `/api/bets` and hands wager locking to `/bets`
 - leaderboard is shipped into the lobby surface
-- leaderboard count now matches rendered entries
+- leaderboard totals now name the complete active-scope result while the
+  returned entry count remains the strict current page/enriched lobby slice
 - leaderboard cards feel premium and readable
 - claimed zero-match profiles can appear as `Pending`
+- `/leaderboard` defaults to the complete public board and offers an explicit
+  `AoE2WAR users` toggle for the 16 public claimed profiles
+- full-board and claimed-board ranks are contiguous within the active scope,
+  and their reconstructed 24-hour comparisons use the same scope
+- strict API pages no longer append off-page featured profiles; homepage
+  featured enrichment is an explicit lobby-only option
+- The AI Scribe, Grimer, Guy of Moxica, and Challenge Protocol are excluded
+  from competitive boards by exact reserved UID, while identical display
+  names remain eligible; Guy is reserved before a live profile row exists
+- RM/DM client caches and server query caches are isolated by scope
 - live updates connected badge is present
 - next tournament panel is integrated into the same first-view experience
 - tournament queue / entrants / bracket preview sections exist
@@ -209,12 +220,14 @@ Current strengths:
 Current state:
 - leaderboard is shipped and valuable
 - first impression is materially better than before
-- deeper ranking UX is still available for improvement
+- account-grain alias folding, active-scope ranks, scope-specific 24-hour
+  movement, strict pagination, and the claimed-profile filter are shipped
+- deeper season and cohort ranking UX is still available for improvement
 
 Still wanted:
-- fuller rankings page depth
-- stronger sorting/filtering clarity
-- cleaner distinction between tracked, active, claimable, and pending profiles
+- fuller season and tournament rankings depth
+- additional explicit cohorts only when their identity grain is defensible
+- cleaner distinction between active, claimable, and pending profile state
 - better consistency between leaderboard and player detail surfaces
 
 ### Tournament depth
@@ -320,7 +333,9 @@ Still wanted:
 - tournament presentation is good, but not yet “must-watch”
 - Watch & Chat reactions are intentionally lightweight/local for now; the right-side hero comments reuse the public lobby messages, the hero bet slip is a `/bets` handoff, and persistent match-scoped comments need a dedicated context table or reuse plan before they become durable product state
 - AoE2 Shorts is currently a founding editorial surface backed by bundled replay clips. Reactions are local to the browser and comments hand off to the public war room; uploads, durable reactions, and short-scoped comment storage remain future data rails rather than simulated persistence
-- leaderboard is now real, but deeper ranking semantics still need tightening
+- leaderboard identity, scope, pagination, and 24-hour movement semantics are
+  explicit; season snapshots and reviewed multi-account Warrior ranking remain
+  future depth
 - some surfaces still carry more explanatory copy than ideal
 - token rail is now partially real, but live wallet edge cases still need hardening
 - mainnet transfer indexing can still miss a directly provable tx; the admin index-gap diagnostic now flags those cases so operators can rerun/expand the mainnet transfer backfill instead of treating the app ledger as chain truth

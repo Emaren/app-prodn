@@ -17,7 +17,12 @@ sensitivity: "internal"
 
 AoE2WAR has two first-class HD leaderboard routes backed by current production data:
 
-- `/leaderboard` is the modern ranked-warrior board. It reuses `loadLobbyLeaderboard`, folds accepted replay history by exact SteamID64 when present, preserves canonical RM/DM ordering and rank numbers, searches the complete current/alias set on the server, calculates win rate from wins and losses only, and paginates through `/api/lobby/leaderboard`.
+- `/leaderboard` is the modern ranked-warrior board. It reuses
+  `loadLobbyLeaderboard`, folds accepted replay history by exact SteamID64 when
+  present, preserves canonical RM/DM ordering and active-scope rank numbers,
+  searches the complete current/alias set on the server, calculates win rate
+  from wins and losses only, and paginates through
+  `/api/lobby/leaderboard`.
 - `/leaderboard/og` is the chronological battle board. It loads newest final replays first through `/api/leaderboard/og` and projects only the fields required by the archive cards.
 
 The homepage leaderboard chrome and the shared Kingdom menu open the modern board. Both leaderboard pages link directly to the other view.
@@ -63,22 +68,88 @@ These are runtime snapshot values. See
 [Replay Corpus and Public Metric Contract](REPLAY_CORPUS_METRICS.md); do not
 hardcode them as permanent leaderboard totals.
 
-The deployed RM board reported **2,348 additive identity rows** at the
-2026-07-28 release verification:
+The post-exclusion RM projection contains **2,345 additive identity rows**:
 
 ```text
-2,348 current board rows
+2,345 current board rows
 = 2,216 replay-backed exact-Steam rows
 +   124 public name-only replay rows
-+     8 profile-only rows
++     5 profile-only rows
 ```
 
-The eight profile-only rows are four exact-Steam profiles without accepted
-replay history plus four site-only profiles. The accepted discovery corpus has
+The five profile-only rows are four exact-Steam profiles without accepted
+replay history plus one site-only profile. The accepted discovery corpus has
 126 name-only buckets, while the public board has 124 name-only rows: two
 corpus buckets have no surviving current War Vault/public-battle row. The
 corpus count and board count therefore answer different questions and must not
 be forced to match.
+
+The public claimed AoE2WAR scope contains **16 profiles**:
+
+```text
+16 public claimed AoE2WAR profiles
+= 11 replay-backed claimed profiles
++  5 profile-only claimed profiles
+
+16 public claimed AoE2WAR profiles
+= 15 exact-Steam identities
++  1 site-only identity
+```
+
+Here `claimed` is the existing public-player-directory fact that an identity is
+attached to an AoE2WAR SiteAccount. It is not an active Player Identity Wave 2
+`WarriorClaim`: that discovery ledger remains proposed-only. Claimed profiles
+may be replay-backed or profile-only, and a profile-only row may remain
+`Pending`.
+
+## Scope, system-account, and pagination contract
+
+`/leaderboard` exposes two explicit scopes:
+
+- `all` is the default complete public identity board;
+- `claimed` is the public AoE2WAR-user board described above.
+
+`lib/leaderboardScope.ts` normalizes missing or unknown values to `all`. Scope
+filtering occurs before alias search, column sorting, rank assignment,
+24-hour comparison, and pagination. Rank is therefore canonical inside the
+active RM/DM lane and active scope:
+
+- default pages naturally continue `1…50`, `51…100`, and so on;
+- the claimed view uses `1…16`, not sparse full-board positions such as
+  `53`, `190`, or `860`;
+- search and column sorting may change display order but do not renumber a
+  warrior inside that active scope.
+
+`/api/lobby/leaderboard` is strict: `limit=N` returns no more than `N` entries,
+and `nextOffset = offset + entries.length`. The dedicated page sets
+`includePendingClaimed: false` and `includeFeaturedClaimed: false`; it never
+appends off-page featured profiles to a normal page. The homepage/lobby
+snapshot is deliberately different and opts into
+`includeFeaturedClaimed: true` so its small contender panel can include
+featured claimed profiles. Featured enrichment is therefore an explicit
+homepage composition feature, not part of the public pagination contract.
+`trackedPlayers` is the full count for the active scope and search;
+`entries.length` is only the current returned page. Neither value should be
+relabeled as the other.
+
+Leaderboard caches are scope-safe. Server cache keys include normalized lane,
+scope, offset, limit, enrichment flags, search, and sort. The client lane cache
+and in-flight request map key by `lane:scope`, and a response is accepted only
+when both fields match the request. Switching scope cannot momentarily show a
+cached response from the other board.
+
+Competitive boards remove internal systems by exact reserved UID:
+
+- `aoe2hd_ai_concierge` — The AI Scribe;
+- `aoe2hd_ai_grimer` — Grimer;
+- `aoe2hd_ai_guy` — Guy of Moxica;
+- `challenge-protocol` — Challenge Protocol.
+
+`lib/internalSystemAccounts.ts` owns those identifiers. The first, second, and
+fourth currently account for the three excluded live profile rows; Guy is
+reserved before a profile exists. Name matching is not used: a public user who
+independently chooses one of those display names remains eligible unless the
+account also has the reserved UID.
 
 ## Current name and expandable history
 
@@ -115,7 +186,10 @@ evidence, but it does not decide when evidence entered the rank comparison.
 This means an old battle newly accepted today can move the 24-hour board today.
 The calculation recomputes each identity’s then-known RM/DM rating plus the same
 chronological Site Elo comparator, then ranks with the same deterministic
-policy and identity-key final tie-breaker as the current board.
+policy and identity-key final tie-breaker as the current board. Both the current
+and baseline candidate sets are filtered to the active scope before ranking;
+the claimed view therefore reports claimed-board 24-hour movement rather than
+reusing full-board positions.
 
 This is explicitly `reconstructed_current_corpus`: it uses the current accepted,
 unsuperseded evidence set and is not an immutable rank snapshot persisted 24
@@ -173,6 +247,7 @@ Run:
 npx prisma generate
 npx tsc --noEmit --pretty false
 node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/leaderboards.test.mts tests/hd-replay-truth.test.mts
+node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/leaderboard-scope.test.mts tests/leaderboard-directory-integration.test.mts tests/leaderboard-lane-instant-switch.test.mts
 npm run build
 ```
 

@@ -30,8 +30,13 @@ sensitivity: "internal"
 - Player Identity Wave 2: 2,216 provisional Warriors and proposed exact-Steam
   links, 11 proposed claims, 126 name-only evidence buckets, zero active links
   or claims, and zero identity publications;
-- public leaderboard: 2,348 additive identity rows — 2,216 replay-backed
-  Steam accounts, 124 public name-only rows, and eight profile-only rows;
+- post-exclusion public leaderboard projection: 2,345 additive identity rows —
+  2,216 replay-backed Steam accounts, 124 public name-only rows, and five
+  profile-only rows; the release receipt remains pending until the new web
+  build is verified in production;
+- public claimed-profile scope: 16 AoE2WAR profiles — 11 replay-backed and
+  five profile-only, representing 15 exact-Steam identities and one site-only
+  identity after reserved system accounts are removed;
 - Parser Observatory: 7,990 physical replay objects, 2,093 indexed/decoded
   artifacts, 5,897 unindexed or unclassified objects, 3,011 final ingestion
   records, 2,784 public battle records, and 2,778 deduplicated public battles;
@@ -44,6 +49,17 @@ The identity seed is populated but remains proposed-only. The public board
 folds accepted evidence by exact SteamID64; no `IdentityResolutionRun`,
 identity publication, multi-account Warrior merge, or historical ownership
 activation has occurred.
+
+The modern leaderboard defaults to the complete public identity board and
+offers an `AoE2WAR users` scope for public claimed profiles. Ranks and
+reconstructed 24-hour changes are canonical inside the active scope; search
+and column sorting never renumber them. `/api/lobby/leaderboard` uses strict
+offset/limit pages, while the homepage may opt into featured-profile
+enrichment. Client and server caches include both RM/DM lane and scope.
+`The AI Scribe`, `Grimer`, `Guy of Moxica`, and `Challenge Protocol` are
+excluded by their exact reserved UIDs, not by display name. Only the other
+three currently have live profile rows, so the present count correction is
+three rows.
 
 ## Historical production seal — 2026-07-26
 
@@ -64,7 +80,13 @@ This is the public product shell users actually feel.
 
 It currently owns the premium lobby/community surface, leaderboard presentation, players/rivalries/live-games/clan routes, requests/inbox/admin flows, `$WOLO` product UI, and same-origin browser API routes that enforce session/admin behavior before proxying selected calls to `api-prodn`.
 
-The public leaderboard now has two dedicated routes: `/leaderboard` for the modern RM/DM ranked warrior table and `/leaderboard/og` for the chronological replay-backed battle board. Both use current HD data and share the app's existing ranking, replay-finality, and public-player resolution rules.
+The public leaderboard now has two dedicated routes: `/leaderboard` for the
+modern RM/DM ranked warrior table and `/leaderboard/og` for the chronological
+replay-backed battle board. The modern route defaults to the complete public
+board and can switch to public claimed AoE2WAR profiles without mixing caches
+or borrowing full-board rank numbers. Both routes use current HD data and share
+the app's existing ranking, replay-finality, and public-player resolution
+rules.
 
 ## Canonical docs
 

@@ -29,7 +29,7 @@ Warrior cutover has occurred.
 | Production database | 74 migration records: 72 applied, two intentionally rolled back, zero incomplete. The additive Player Identity foundation migration is applied. |
 | Production web source | Clean checkout `main`, equal to `origin/main`; live verification observed `43b1b9b0bd23f8634e88147faff6fb368e1977ea` before this documentation-only correction; deployed implementation build `20260728153116-44f5f4143c` was built from `746251bc60d46fd52d8d23318e5d568218eb726b`; intervening and later documentation commits do not change that implementation tree; web and replay API services active. |
 | Discovery data | Apply committed at `2026-07-28T15:22:04.182Z`: 2,220 PlatformAccounts, 13,839 name observations, 126 provisional name-only buckets, 2,216 provisional Warriors, 2,216 proposed links, and 11 proposed claims. |
-| Public account-grain board | `/leaderboard` folds accepted replay evidence to 2,216 exact Steam rows, retains 124 public name-only rows, and adds eight profile-only rows. |
+| Public account-grain board | `/leaderboard` folds accepted replay evidence to 2,216 exact Steam rows, retains 124 public name-only rows, and adds five profile-only rows after three reserved internal-system UIDs are excluded: 2,345 rows total. |
 | Publication boundary | Zero active links, active claims, resolution runs, replay identity projections, and identity publications. |
 
 Do not collapse “populated” into “identity cutover.” The account-grain
@@ -94,6 +94,27 @@ The public-safe account census is **2,216 exact replay-backed SteamID64 values**
 Raw final `GameStats` payloads expose 2,222 Steam IDs, but six are outside the
 accepted identity projection and must not enter an identity cutover merely
 because they appear in legacy JSON.
+
+## Public leaderboard scope boundary
+
+The modern board's `AoE2WAR users` toggle is an app/profile projection, not a
+Wave 2 publication. Its **16 public claimed profiles** are:
+
+- 11 replay-backed claimed profiles and five profile-only profiles;
+- 15 exact-Steam identities and one site-only identity.
+
+This `claimed` flag means the current public directory attached the identity to
+a SiteAccount under the app's existing rules. It does not promote any proposed
+`WarriorClaim` to active. Wave 2 still has 11 proposed exact-replay claims and
+zero active claims, resolution runs, projections, or publications.
+
+Competitive leaderboard candidates exclude only the exact reserved UIDs
+`aoe2hd_ai_concierge`, `aoe2hd_ai_grimer`, `aoe2hd_ai_guy`, and
+`challenge-protocol`. Three currently have live profile rows, so the policy
+removes three rows from the former 2,348-row presentation and yields **2,345**
+public rows; Guy is reserved before a row exists. This does not change the
+immutable discovery input, the 2,216 replay-backed PlatformAccounts, or any
+Wave 2 receipt hash. Display names are not exclusion evidence.
 
 ## Production apply receipt
 
