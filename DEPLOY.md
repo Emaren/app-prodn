@@ -86,7 +86,17 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 - RM/DM lane, player scope, search, pagination, rank semantics, and identity
   semantics are unchanged;
 - no Prisma migration is introduced;
-- production receipt: `PENDING_AOE2WAR_LEADERBOARD_BAE_DEPLOYMENT`.
+- production release commit: `96f82670da29d70b0d1687e00c847caa2c9f48a4`;
+- deployed build ID: `0xVDmZHtbuC9y0c9sw2kJ`;
+- public build version: `20260728232251-8b6d5eb991`;
+- deployed at: `2026-07-28T23:25:10Z`;
+- prior build rollback: `/mnt/HC_Volume_105319120/aoe2war/rollbacks/.next-rollback-20260728T232229Z`;
+- restricted VPS receipt: `/root/ops-backups/aoe2war-leaderboard-bae-20260728T232229Z`;
+- post-deploy root availability: `6.14 GiB`;
+- `/leaderboard`, the leaderboard snapshot API, the deployment-version
+  endpoint, and the public leaderboard route returned HTTP 200;
+- the production checkout was subsequently advanced only through the
+  documentation receipt commit without rebuilding.
 
 
 ### 2026-07-28 leaderboard scope and pagination hardening
