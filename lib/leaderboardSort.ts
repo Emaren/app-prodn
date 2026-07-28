@@ -2,6 +2,7 @@ import type { LobbyLeaderboardEntry } from "@/lib/lobby";
 
 export const LEADERBOARD_SORT_KEYS = [
   "rank",
+  "rank_change_24h",
   "rating",
   "warrior",
   "win_rate",
@@ -167,6 +168,15 @@ export function sortLeaderboardEntries(
             compareLocalNullableNumber(
               left.rank,
               right.rank,
+              direction,
+            );
+          break;
+
+        case "rank_change_24h":
+          comparison =
+            compareLocalNullableNumber(
+              left.rankDelta24h,
+              right.rankDelta24h,
               direction,
             );
           break;

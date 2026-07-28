@@ -2,7 +2,10 @@ import {
   isPublicBattleArchiveRow,
 } from "@/lib/publicBattleArchiveEligibility";
 
-import { publicReplayIdentity } from "@/lib/publicReplayTruth";
+import {
+  cleanPublicGameRows,
+  publicReplayIdentity,
+} from "@/lib/publicReplayTruth";
 import type { PrismaClient } from "@/lib/generated/prisma";
 
 import {
@@ -47,6 +50,8 @@ type TeamFormat = Exclude<
 
 export type MatchupGameRow = {
   id: number;
+  is_final?: boolean | null;
+  replayHash?: string | null;
   winner: string | null;
   players: unknown;
   played_on: Date | string | null;
@@ -340,8 +345,16 @@ function sortMatchRowsByPlayedAtDesc(
 
 export async function loadRecentFinalMatchupRows(
   prisma: PrismaClient,
-  take: number
+  take: number | null
 ) {
+  const requestedTake =
+    take === null
+      ? null
+      : Math.max(
+          1,
+          take
+        );
+
   const candidateMatches =
     await prisma.gameStats.findMany({
       where: { is_final: true },
@@ -350,12 +363,18 @@ export async function loadRecentFinalMatchupRows(
         { createdAt: "desc" },
         { id: "desc" },
       ],
-      take: Math.max(
-        take,
-        RECENT_FINAL_MATCH_SCAN_LIMIT
-      ),
+      ...(requestedTake === null
+        ? {}
+        : {
+            take: Math.max(
+              requestedTake,
+              RECENT_FINAL_MATCH_SCAN_LIMIT
+            ),
+          }),
       select: {
         id: true,
+        is_final: true,
+        replayHash: true,
         winner: true,
         players: true,
         played_on: true,
@@ -375,10 +394,17 @@ export async function loadRecentFinalMatchupRows(
       },
     });
 
-  return candidateMatches
+  const sortedMatches =
+    candidateMatches
     .map((game) => applyReplayAdjudicationToGameStats(game) as MatchupGameRow)
-    .sort(sortMatchRowsByPlayedAtDesc)
-    .slice(0, take);
+    .sort(sortMatchRowsByPlayedAtDesc);
+
+  return requestedTake === null
+    ? sortedMatches
+    : sortedMatches.slice(
+        0,
+        requestedTake
+      );
 }
 
 function sideHasPlayer(
@@ -2151,16 +2177,25 @@ export async function loadPublicBattleArchive(
    * Load the bounded final corpus before filtering so the archive total
    * and newest-page entries represent the same visible battle set.
    */
+  const finalReplayRecords =
+    await loadRecentFinalMatchupRows(
+      prisma,
+      null
+    );
+
+  const publicBattleRecords =
+    finalReplayRecords.filter(
+      isPublicBattleArchiveRow
+    );
+
   const candidateMatches =
-    (
-      await loadRecentFinalMatchupRows(
-        prisma,
-        5000
-      )
-    )
-      .filter(
-        isPublicBattleArchiveRow
-      );
+    cleanPublicGameRows(
+      publicBattleRecords,
+      {
+        includeReview: true,
+        includeLive: false,
+      }
+    ) as MatchupGameRow[];
 
   const entries =
     await buildRecentRivalryActivity(
@@ -2174,6 +2209,26 @@ export async function loadPublicBattleArchive(
 
     total:
       candidateMatches.length,
+
+    publicBattleRecords:
+      publicBattleRecords.length,
+
+    duplicateBattleRecords:
+      Math.max(
+        0,
+        publicBattleRecords.length -
+          candidateMatches.length
+      ),
+
+    finalReplayRecords:
+      finalReplayRecords.length,
+
+    excludedFinalRecords:
+      Math.max(
+        0,
+        finalReplayRecords.length -
+          publicBattleRecords.length
+      ),
   };
 }
 

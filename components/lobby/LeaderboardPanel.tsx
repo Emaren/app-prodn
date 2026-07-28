@@ -362,7 +362,7 @@ export function LeaderboardPanel({
               <div
                 className={`min-w-0 flex-1 whitespace-nowrap text-[10px] uppercase tracking-[0.22em] ${tone.countLabel}`}
               >
-                Players On Board
+                Identity Rows
               </div>
 
               <LobbyViewToggle
@@ -377,7 +377,7 @@ export function LeaderboardPanel({
 
           <div className="mt-3 hidden sm:flex sm:flex-row sm:items-center sm:gap-3">
             <div className={`min-w-0 text-[11px] uppercase tracking-[0.34em] ${tone.countLabel}`}>
-              Players On Board
+              Identity Rows
             </div>
 
             <div className="flex flex-nowrap items-center gap-2 sm:ml-auto">

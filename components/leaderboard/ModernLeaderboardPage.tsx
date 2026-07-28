@@ -1,6 +1,7 @@
 "use client";
 
 import { Search, X } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LeaderboardViewLink } from "@/components/leaderboard/LeaderboardViewLink";
@@ -25,6 +26,50 @@ import {
 } from "@/lib/leaderboardSort";
 
 const PAGE_SIZE = 50;
+
+type IdentityCensus = Pick<
+  LobbyLeaderboardSummary,
+  | "identityRows"
+  | "steamIdentityRows"
+  | "nameOnlyIdentityRows"
+  | "siteOnlyIdentityRows"
+  | "claimedProfileOnlyRows"
+  | "accountsWithAliasHistory"
+  | "rankDelta24hAsOf"
+  | "rankDelta24hCutoff"
+  | "rankDelta24hMethod"
+>;
+
+function identityCensus(
+  leaderboard:
+    | Partial<LobbyLeaderboardSummary>
+    | null
+    | undefined,
+): IdentityCensus {
+  return {
+    identityRows:
+      leaderboard?.identityRows ??
+      leaderboard?.trackedPlayers ??
+      0,
+    steamIdentityRows:
+      leaderboard?.steamIdentityRows ?? 0,
+    nameOnlyIdentityRows:
+      leaderboard?.nameOnlyIdentityRows ?? 0,
+    siteOnlyIdentityRows:
+      leaderboard?.siteOnlyIdentityRows ?? 0,
+    claimedProfileOnlyRows:
+      leaderboard?.claimedProfileOnlyRows ?? 0,
+    accountsWithAliasHistory:
+      leaderboard?.accountsWithAliasHistory ?? 0,
+    rankDelta24hAsOf:
+      leaderboard?.rankDelta24hAsOf ?? null,
+    rankDelta24hCutoff:
+      leaderboard?.rankDelta24hCutoff ?? null,
+    rankDelta24hMethod:
+      leaderboard?.rankDelta24hMethod ??
+      "reconstructed_current_corpus",
+  };
+}
 
 type LeaderboardResponse = LobbyLeaderboardSummary & {
   ok?: boolean;
@@ -81,6 +126,12 @@ export function ModernLeaderboardPage({
   const [query, setQuery] = useState("");
   const [entries, setEntries] = useState(initialLeaderboard?.entries ?? []);
   const [trackedPlayers, setTrackedPlayers] = useState(initialLeaderboard?.trackedPlayers ?? 0);
+  const [census, setCensus] =
+    useState<IdentityCensus>(
+      identityCensus(
+        initialLeaderboard,
+      ),
+    );
   const [nextOffset, setNextOffset] = useState(initialLeaderboard?.entries.length ?? 0);
   const [hasMore, setHasMore] = useState(
     (initialLeaderboard?.entries.length ?? 0) < (initialLeaderboard?.trackedPlayers ?? 0)
@@ -221,6 +272,11 @@ export function ModernLeaderboardPage({
             ? payload.trackedPlayers
             : payload.entries.length,
         );
+        setCensus(
+          identityCensus(
+            payload,
+          ),
+        );
 
         setNextOffset(
           typeof payload.nextOffset ===
@@ -346,6 +402,11 @@ export function ModernLeaderboardPage({
         setTrackedPlayers(
           cached.trackedPlayers,
         );
+        setCensus(
+          identityCensus(
+            cached,
+          ),
+        );
 
         setNextOffset(
           cached.entries.length,
@@ -423,7 +484,11 @@ export function ModernLeaderboardPage({
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.36em] text-amber-200/65">AoE2WAR · HD Ranked Command</div>
               <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-amber-100 sm:text-5xl">HD Leaderboard</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">Real HD ratings, replay-backed records, and the warriors ruling the ladder now.</p>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
+                Exact Steam accounts fold every verified historical display
+                name into one current row. Name-only evidence stays separate
+                until stronger identity proof exists.
+              </p>
             </div>
             <LeaderboardViewLink from="modern" to="og" href="/leaderboard/og">Open Game Stats</LeaderboardViewLink>
           </div>
@@ -454,7 +519,58 @@ export function ModernLeaderboardPage({
           </label>
           <div className="text-left lg:text-right">
             <div className="text-2xl font-semibold tabular-nums text-white">{trackedPlayers.toLocaleString()}</div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{query ? "matching warriors" : "warriors on board"}</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{query ? "matching identity rows" : "identity rows on board"}</div>
+          </div>
+        </div>
+
+        <div className="grid gap-3 border-b border-white/[0.07] bg-slate-950/35 px-5 py-4 sm:grid-cols-2 sm:px-8 xl:grid-cols-6">
+          <IdentityMetric
+            label="Identity rows"
+            value={census.identityRows}
+            detail="Current board projection"
+          />
+          <IdentityMetric
+            label="Steam account rows"
+            value={census.steamIdentityRows}
+            detail="Exact SteamID64 evidence"
+          />
+          <IdentityMetric
+            label="Name-only rows"
+            value={census.nameOnlyIdentityRows}
+            detail="Kept separate for safety"
+          />
+          <IdentityMetric
+            label="Site-only rows"
+            value={census.siteOnlyIdentityRows}
+            detail={`${census.claimedProfileOnlyRows.toLocaleString()} claimed without replay history`}
+          />
+          <IdentityMetric
+            label="Alias-history accounts"
+            value={census.accountsWithAliasHistory}
+            detail="Multiple observed names"
+          />
+          <div className="rounded-xl border border-amber-200/16 bg-[linear-gradient(135deg,rgba(251,191,36,0.09),rgba(34,211,238,0.055))] px-4 py-3">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-amber-100/65">
+              24hr Rank Pulse
+            </div>
+            <div className="mt-1 text-sm font-semibold text-white">
+              Make the ladder move.
+            </div>
+            <div
+              className="mt-1 text-[10px] leading-4 text-slate-400"
+              title={census.rankDelta24hCutoff
+                ? `Reconstructed cutoff ${census.rankDelta24hCutoff}`
+                : "Reconstructed from the current accepted corpus"}
+            >
+              Reconstructed from evidence accepted by the cutoff; not yet a
+              persisted rank snapshot.
+            </div>
+            <Link
+              href="/watch"
+              className="mt-1 inline-flex text-xs font-semibold text-cyan-200 underline decoration-cyan-300/30 underline-offset-4 transition hover:text-white"
+            >
+              Run the Watcher for fresher ranks →
+            </Link>
           </div>
         </div>
 
@@ -497,5 +613,29 @@ export function ModernLeaderboardPage({
         </div>
       </section>
     </main>
+  );
+}
+
+function IdentityMetric({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: number;
+  detail: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3">
+      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </div>
+      <div className="mt-1 text-xl font-semibold tabular-nums text-white">
+        {value.toLocaleString()}
+      </div>
+      <div className="mt-1 text-[11px] text-slate-500">
+        {detail}
+      </div>
+    </div>
   );
 }

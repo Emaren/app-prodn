@@ -7,28 +7,49 @@ import {
   parsePlayers,
   readPlayedAt,
   readPlayerSteamDmRating,
-  readPlayerSteamId,
   readPlayerSteamRmRating,
 } from "@/lib/gameStatsView";
 import {
   applyPendingWoloClaimSummary,
   buildReplayPlayerHref,
-  findClaimedUsersForReplayNames,
-  getClaimedPublicPlayer,
   normalizePublicPlayerName,
 } from "@/lib/publicPlayers";
 import { loadUserCommunitySummaries } from "@/lib/communityHonors";
+import { isPublicBattleArchiveRow } from "@/lib/publicBattleArchiveEligibility";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
 import {
   applyReplayAdjudicationToGameStats,
   EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
 } from "@/lib/replayAdjudications";
-import { resolveReplayResultForPlayer } from "@/lib/replayPlayerResult";
+import {
+  buildLeaderboardNameHistory,
+  buildLeaderboardIdentityKey,
+  normalizeLeaderboardDisplayName,
+  normalizeLeaderboardIdentityName,
+  normalizeLeaderboardSteamId,
+  readLeaderboardSteamId,
+  type LeaderboardIdentityKind,
+  type LeaderboardNameHistoryEntry,
+  type LeaderboardReplayResult,
+} from "@/lib/leaderboardIdentity";
+
+export type PublicPlayerReplayEvidence = {
+  gameStatsId: number;
+  observedName: string;
+  normalizedName: string;
+  observedAt: string | null;
+  acceptedAt: string;
+  result: LeaderboardReplayResult;
+  steamRmRating: number | null;
+  steamDmRating: number | null;
+};
 
 export type PublicPlayerDirectoryEntry = {
   key: string;
+  identityKind: LeaderboardIdentityKind;
   name: string;
+  latestObservedName: string;
   href: string;
   claimed: boolean;
   uid: string | null;
@@ -46,6 +67,8 @@ export type PublicPlayerDirectoryEntry = {
   steamRmRating: number | null;
   steamDmRating: number | null;
   aliases: string[];
+  nameHistory: LeaderboardNameHistoryEntry[];
+  replayEvidence: PublicPlayerReplayEvidence[];
   steamPersonaName: string | null;
   inGameName: string | null;
   pendingWoloClaimCount: number;
@@ -77,7 +100,18 @@ type CandidateGameRow = {
   parse_source: string | null;
 };
 
-const PLAYER_DIRECTORY_GAME_WINDOW = 5000;
+type CanonicalPlayerSnapshot = {
+  id: number;
+  gameStatsId: number;
+  displayName: string;
+  normalizedName: string;
+  steamId: string | null;
+  playerSlot: number | null;
+  resultEligible: boolean;
+  resultStatus: string;
+  createdAt: Date;
+};
+
 const PLAYER_DIRECTORY_CACHE_TTL_MS = 15_000;
 
 type PublicPlayerDirectoryCacheEntry = {
@@ -102,6 +136,39 @@ function pushAlias(entry: PublicPlayerDirectoryEntry, nextAlias: string | null |
   }
 }
 
+function toIso(
+  value: Date | string | null | undefined,
+) {
+  if (!value) return null;
+
+  const parsed =
+    value instanceof Date
+      ? value
+      : new Date(value);
+
+  return Number.isFinite(parsed.getTime())
+    ? parsed.toISOString()
+    : null;
+}
+
+function resultFromSnapshot(
+  snapshot: CanonicalPlayerSnapshot,
+): LeaderboardReplayResult {
+  if (!snapshot.resultEligible) {
+    return "unknown";
+  }
+
+  if (snapshot.resultStatus === "win") {
+    return "win";
+  }
+
+  if (snapshot.resultStatus === "loss") {
+    return "loss";
+  }
+
+  return "unknown";
+}
+
 function updateLastPlayedAt(entry: PublicPlayerDirectoryEntry, nextPlayedAt: Date | string | null) {
   if (!nextPlayedAt) return;
 
@@ -119,40 +186,31 @@ function updateLastPlayedAt(entry: PublicPlayerDirectoryEntry, nextPlayedAt: Dat
   }
 }
 
-function updateOutcome(
-  entry: PublicPlayerDirectoryEntry,
-  game: CandidateGameRow,
-  replayName: string
-) {
-  const replayNameKey = normalizeDirectoryKey(replayName);
-  const result = resolveReplayResultForPlayer(
-    game,
-    (player) => normalizeDirectoryKey(player.name) === replayNameKey
-  );
-
-  if (result === "win") {
-    entry.wins += 1;
-    return;
-  }
-
-  if (result === "loss") {
-    entry.losses += 1;
-    return;
-  }
-
-  entry.unknowns += 1;
-}
-
 function updateSteamRatings(
   entry: PublicPlayerDirectoryEntry,
   player: Record<string, unknown>,
-  nextPlayedAt: Date | string | null
+  nextPlayedAt: Date | string | null,
+  identitySteamId: string | null,
 ) {
-  const steamId = readPlayerSteamId(player);
+  const steamId =
+    entry.identityKind === "steam"
+      ? identitySteamId
+      : null;
   const steamRmRating = readPlayerSteamRmRating(player);
   const steamDmRating = readPlayerSteamDmRating(player);
 
   if (!steamId && steamRmRating === null && steamDmRating === null) {
+    return;
+  }
+
+  if (steamId && !entry.steamId) {
+    entry.steamId = steamId;
+  }
+
+  if (
+    steamRmRating === null &&
+    steamDmRating === null
+  ) {
     return;
   }
 
@@ -164,17 +222,23 @@ function updateSteamRatings(
     currentTimestamp === 0 ||
     (nextTimestamp !== null && nextTimestamp >= currentTimestamp);
 
-  if (steamId && !entry.steamId) {
-    entry.steamId = steamId;
-  }
-
   if (!shouldReplace) {
     return;
   }
 
-  entry.steamId = steamId ?? entry.steamId;
-  entry.steamRmRating = steamRmRating;
-  entry.steamDmRating = steamDmRating;
+  entry.steamId =
+    steamId ?? entry.steamId;
+
+  if (steamRmRating !== null) {
+    entry.steamRmRating =
+      steamRmRating;
+  }
+
+  if (steamDmRating !== null) {
+    entry.steamDmRating =
+      steamDmRating;
+  }
+
   entry.ratingLastSeenAt =
     nextTimestamp !== null ? new Date(nextTimestamp).toISOString() : entry.ratingLastSeenAt;
 }
@@ -273,6 +337,54 @@ function sortCandidateGamesByPlayedAtDesc(left: CandidateGameRow, right: Candida
   return right.id - left.id;
 }
 
+function playerForCanonicalSnapshot(
+  game: CandidateGameRow,
+  snapshot: CanonicalPlayerSnapshot,
+) {
+  const players = parsePlayers(game.players);
+  const steamId =
+    normalizeLeaderboardSteamId(
+      snapshot.steamId,
+    );
+
+  if (steamId) {
+    const exact = players.find(
+      (player) =>
+        readLeaderboardSteamId(player) ===
+        steamId,
+    );
+
+    return exact;
+  }
+
+  if (snapshot.playerSlot !== null) {
+    const slotted = players.find((player) => {
+      const rawSlot =
+        player.number ??
+        player.player_slot ??
+        player.playerSlot;
+      const slot =
+        typeof rawSlot === "number"
+          ? Math.round(rawSlot)
+          : Number(rawSlot);
+
+      return (
+        Number.isFinite(slot) &&
+        slot === snapshot.playerSlot
+      );
+    });
+
+    if (slotted) return slotted;
+  }
+
+  return players.find(
+    (player) =>
+      normalizeLeaderboardIdentityName(
+        displayPlayerName(player),
+      ) === snapshot.normalizedName,
+  );
+}
+
 async function loadPublicPlayerDirectoryFresh(
   prisma: PrismaClient
 ): Promise<PublicPlayerDirectory> {
@@ -313,7 +425,6 @@ async function loadPublicPlayerDirectoryFresh(
         { createdAt: "desc" },
         { id: "desc" },
       ],
-      take: PLAYER_DIRECTORY_GAME_WINDOW,
       select: {
         createdAt: true,
         event_types: true,
@@ -387,21 +498,59 @@ async function loadPublicPlayerDirectoryFresh(
    * sanitized so non-stats-eligible winner evidence cannot count as
    * W/L here while the same replay is unresolved on player profiles.
    */
-  const uniqueGames = cleanPublicGameRows(games, {
-    includeReview: true,
-    includeLive: false,
-  });
-
-  const replayNames = Array.from(
-    new Set(
-      uniqueGames.flatMap((game) =>
-        parsePlayers(game.players)
-          .map((player) => normalizePublicPlayerName(displayPlayerName(player)))
-          .filter(Boolean)
-      )
-    )
+  const uniqueGames = cleanPublicGameRows(
+    games.filter(
+      isPublicBattleArchiveRow,
+    ),
+    {
+      includeReview: true,
+      includeLive: false,
+    },
   );
-  const claimedPlayersByReplayName = await findClaimedUsersForReplayNames(prisma, replayNames);
+
+  /*
+   * Identity grain comes from the accepted, current normalized replay
+   * projection corpus. Raw GameStats JSON remains useful for rating snapshots
+   * and presentation, but an unaccepted raw participant can never create a
+   * leaderboard identity.
+   */
+  const canonicalSnapshots =
+    uniqueGames.length > 0
+      ? await prisma.replayPlayerSnapshot.findMany(
+          {
+            where: {
+              gameStatsId: {
+                in: uniqueGames.map(
+                  (game) => game.id,
+                ),
+              },
+              projection: {
+                projectionStatus:
+                  "accepted",
+                affectsPublicAggregates:
+                  true,
+                supersededBy: null,
+              },
+            },
+            orderBy: [
+              { gameStatsId: "asc" },
+              { playerSlot: "asc" },
+              { id: "asc" },
+            ],
+            select: {
+              id: true,
+              gameStatsId: true,
+              displayName: true,
+              normalizedName: true,
+              steamId: true,
+              playerSlot: true,
+              resultEligible: true,
+              resultStatus: true,
+              createdAt: true,
+            },
+          },
+        )
+      : [];
 
     const pendingGiftByUserUid = new Map<string, { count: number; amount: number }>();
     const userIdToUid = new Map(users.map((user) => [user.id, user.uid]));
@@ -439,13 +588,37 @@ async function loadPublicPlayerDirectoryFresh(
   const directory = new Map<string, PublicPlayerDirectoryEntry>();
 
   for (const user of users) {
+    const steamId =
+      normalizeLeaderboardSteamId(
+        user.steamId,
+      );
+    const key =
+      buildLeaderboardIdentityKey({
+        steamId,
+        claimedUid: user.uid,
+      });
+
+    if (!key) continue;
+
+    if (directory.has(key)) {
+      continue;
+    }
+
+    const initialName =
+      user.inGameName ||
+      user.steamPersonaName ||
+      user.uid;
     const entry: PublicPlayerDirectoryEntry = {
-      key: `claimed:${user.uid}`,
-      name: user.inGameName || user.steamPersonaName || user.uid,
+      key,
+      identityKind: steamId
+        ? "steam"
+        : "site",
+      name: initialName,
+      latestObservedName: initialName,
       href: `/players/${user.uid}`,
       claimed: true,
       uid: user.uid,
-      steamId: user.steamId,
+      steamId,
       verified: user.verified,
       verificationLevel: user.verificationLevel,
       isOnline: Boolean(user.lastSeen && user.lastSeen > onlineThreshold),
@@ -459,6 +632,8 @@ async function loadPublicPlayerDirectoryFresh(
       steamRmRating: null,
       steamDmRating: null,
       aliases: [],
+      nameHistory: [],
+      replayEvidence: [],
       steamPersonaName: user.steamPersonaName,
       inGameName: user.inGameName,
       pendingWoloClaimCount: 0,
@@ -471,56 +646,262 @@ async function loadPublicPlayerDirectoryFresh(
     directory.set(entry.key, entry);
   }
 
-  for (const game of uniqueGames) {
-    const players = parsePlayers(game.players);
-    const playedAt = readPlayedAt(game);
+  const gameById = new Map(
+    uniqueGames.map((game) => [
+      game.id,
+      game,
+    ]),
+  );
+  const latestObservationByKey = new Map<
+    string,
+    {
+      observedAt: string;
+      snapshotId: number;
+    }
+  >();
+  const seenGameIdentity = new Set<string>();
 
-    for (const player of players) {
-      const replayName = normalizePublicPlayerName(displayPlayerName(player));
-      if (!replayName) continue;
+  for (const snapshot of canonicalSnapshots) {
+    const game =
+      gameById.get(snapshot.gameStatsId);
 
-      const claimed = getClaimedPublicPlayer(replayName, claimedPlayersByReplayName);
-      const entryKey = claimed
-        ? `claimed:${claimed.uid}`
-        : `replay:${normalizeDirectoryKey(replayName)}`;
+    if (!game) continue;
 
-      let entry = directory.get(entryKey);
+    const replayName =
+      normalizeLeaderboardDisplayName(
+        snapshot.displayName,
+      );
+    const normalizedName =
+      normalizeLeaderboardIdentityName(
+        snapshot.normalizedName ||
+          replayName,
+      );
 
-      if (!entry) {
-        entry = {
-          key: entryKey,
-          name: replayName,
-          href: buildReplayPlayerHref(replayName),
-          claimed: false,
-          uid: null,
-          steamId: null,
-          verified: false,
-          verificationLevel: 0,
-          isOnline: false,
-          hasFeaturedAvatar: false,
-          totalMatches: 0,
-          wins: 0,
-          losses: 0,
-          unknowns: 0,
-          lastPlayedAt: null,
-          ratingLastSeenAt: null,
-          steamRmRating: null,
-          steamDmRating: null,
-          aliases: [],
-          steamPersonaName: null,
-          inGameName: null,
-          pendingWoloClaimCount: 0,
-          pendingWoloClaimAmount: 0,
-          badges: [],
-        };
-        directory.set(entry.key, entry);
+    if (!replayName || !normalizedName) {
+      continue;
+    }
+
+    const steamId =
+      normalizeLeaderboardSteamId(
+        snapshot.steamId,
+      );
+    const entryKey =
+      buildLeaderboardIdentityKey({
+        steamId,
+        name: replayName,
+        normalizedName,
+      });
+
+    if (!entryKey) continue;
+
+    let entry = directory.get(entryKey);
+
+    if (!entry) {
+      entry = {
+        key: entryKey,
+        identityKind: steamId
+          ? "steam"
+          : "name",
+        name: replayName,
+        latestObservedName:
+          replayName,
+        href: buildReplayPlayerHref(
+          replayName,
+        ),
+        claimed: false,
+        uid: null,
+        steamId,
+        verified: false,
+        verificationLevel: 0,
+        isOnline: false,
+        hasFeaturedAvatar: false,
+        totalMatches: 0,
+        wins: 0,
+        losses: 0,
+        unknowns: 0,
+        lastPlayedAt: null,
+        ratingLastSeenAt: null,
+        steamRmRating: null,
+        steamDmRating: null,
+        aliases: [],
+        nameHistory: [],
+        replayEvidence: [],
+        steamPersonaName: null,
+        inGameName: null,
+        pendingWoloClaimCount: 0,
+        pendingWoloClaimAmount: 0,
+        badges: [],
+      };
+
+      directory.set(entry.key, entry);
+    }
+
+    const gameIdentityKey =
+      `${snapshot.gameStatsId}:${entry.key}`;
+
+    if (
+      seenGameIdentity.has(
+        gameIdentityKey,
+      )
+    ) {
+      continue;
+    }
+
+    seenGameIdentity.add(
+      gameIdentityKey,
+    );
+
+    const playedAt =
+      readPlayedAt(game) ??
+      snapshot.createdAt;
+    const observedAt =
+      toIso(playedAt);
+    const result =
+      resultFromSnapshot(snapshot);
+    const player =
+      playerForCanonicalSnapshot(
+        game,
+        snapshot,
+      );
+    const steamRmRating = player
+      ? readPlayerSteamRmRating(
+          player,
+        )
+      : null;
+    const steamDmRating = player
+      ? readPlayerSteamDmRating(
+          player,
+        )
+      : null;
+
+    pushAlias(entry, replayName);
+    entry.totalMatches += 1;
+
+    if (result === "win") {
+      entry.wins += 1;
+    } else if (result === "loss") {
+      entry.losses += 1;
+    } else {
+      entry.unknowns += 1;
+    }
+
+    entry.replayEvidence.push({
+      gameStatsId:
+        snapshot.gameStatsId,
+      observedName: replayName,
+      normalizedName,
+      observedAt,
+      acceptedAt:
+        snapshot.createdAt.toISOString(),
+      result,
+      steamRmRating,
+      steamDmRating,
+    });
+
+    if (player) {
+      updateSteamRatings(
+        entry,
+        player,
+        playedAt,
+        steamId,
+      );
+    }
+
+    updateLastPlayedAt(
+      entry,
+      playedAt,
+    );
+
+    const observationTime =
+      observedAt ??
+      snapshot.createdAt.toISOString();
+    const currentObservation =
+      latestObservationByKey.get(
+        entry.key,
+      );
+
+    if (
+      !currentObservation ||
+      observationTime >
+        currentObservation.observedAt ||
+      (observationTime ===
+        currentObservation.observedAt &&
+        snapshot.id >
+          currentObservation.snapshotId)
+    ) {
+      entry.name = replayName;
+      entry.latestObservedName =
+        replayName;
+
+      if (!entry.claimed) {
+        entry.href =
+          buildReplayPlayerHref(
+            replayName,
+          );
       }
 
-      pushAlias(entry, replayName);
-      updateSteamRatings(entry, player, playedAt);
-      entry.totalMatches += 1;
-      updateOutcome(entry, game, replayName);
-      updateLastPlayedAt(entry, playedAt);
+      latestObservationByKey.set(
+        entry.key,
+        {
+          observedAt:
+            observationTime,
+          snapshotId: snapshot.id,
+        },
+      );
+    }
+  }
+
+  for (const entry of directory.values()) {
+    entry.replayEvidence.sort(
+      (left, right) =>
+        String(
+          right.observedAt ?? "",
+        ).localeCompare(
+          String(
+            left.observedAt ?? "",
+          ),
+        ) ||
+        right.gameStatsId -
+          left.gameStatsId,
+    );
+    entry.nameHistory =
+      buildLeaderboardNameHistory(
+        entry.replayEvidence.map(
+          (evidence) => ({
+            name:
+              evidence.observedName,
+            normalizedName:
+              evidence.normalizedName,
+            observedAt:
+              evidence.observedAt,
+            result: evidence.result,
+          }),
+        ),
+      );
+  }
+
+  const aliasOwners =
+    new Map<
+      string,
+      Set<string>
+    >();
+
+  for (const entry of directory.values()) {
+    for (const alias of entry.aliases) {
+      const aliasKey =
+        normalizeDirectoryKey(alias);
+
+      if (!aliasKey) continue;
+
+      const owners =
+        aliasOwners.get(aliasKey) ??
+        new Set<string>();
+
+      owners.add(entry.key);
+      aliasOwners.set(
+        aliasKey,
+        owners,
+      );
     }
   }
 
@@ -531,7 +912,39 @@ async function loadPublicPlayerDirectoryFresh(
 
   const allEntries = Array.from(directory.values())
     .map((entry) => {
-        const withClaims = applyPendingWoloClaimSummary(entry, pendingClaimSummaries);
+        /*
+         * Pending claims remain a legacy name-keyed rail. Fail closed when
+         * the same alias belongs to more than one identity row so WOLO
+         * telemetry cannot imply an exact cross-account attribution.
+         */
+        const unambiguousClaimAliases =
+          entry.aliases.filter(
+            (alias) =>
+              aliasOwners.get(
+                normalizeDirectoryKey(
+                  alias,
+                ),
+              )?.size === 1,
+          );
+        const claimTelemetry =
+          applyPendingWoloClaimSummary(
+            {
+              aliases:
+                unambiguousClaimAliases,
+              pendingWoloClaimCount: 0,
+              pendingWoloClaimAmount: 0,
+            },
+            pendingClaimSummaries,
+          );
+        const withClaims = {
+          ...entry,
+          pendingWoloClaimCount:
+            claimTelemetry
+              .pendingWoloClaimCount,
+          pendingWoloClaimAmount:
+            claimTelemetry
+              .pendingWoloClaimAmount,
+        };
         const pendingGift = withClaims.uid ? pendingGiftByUserUid.get(withClaims.uid) : null;
 
         if (!pendingGift) {
@@ -561,6 +974,8 @@ async function loadPublicPlayerDirectoryFresh(
 
     if (!normalizePublicPlayerName(entry.inGameName) && !normalizePublicPlayerName(entry.steamPersonaName)) {
       entry.name = entry.aliases[0] || entry.name;
+      entry.latestObservedName =
+        entry.name;
     }
 
     if (entry.uid && entry.name === entry.uid && entry.totalMatches === 0) {

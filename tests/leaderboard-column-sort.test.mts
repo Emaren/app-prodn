@@ -42,9 +42,10 @@ const sort = readFileSync(
   "utf8",
 );
 
-test("all eight leaderboard columns are sortable", () => {
+test("all nine leaderboard columns are sortable", () => {
   for (const column of [
     "rank",
+    "rank_change_24h",
     "rating",
     "warrior",
     "win_rate",

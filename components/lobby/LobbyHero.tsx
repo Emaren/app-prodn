@@ -186,7 +186,7 @@ function buildPulseItems({
           detail: "Most recent HD parse",
         }
       : {
-          label: "Tracked players",
+          label: "Identity rows",
           value: String(leaderboard.trackedPlayers),
           detail: `${leaderboard.rankedPlayers} ranked on the board`,
         },
@@ -636,7 +636,7 @@ export function LobbyHero({
                 <div className="rounded-[1.25rem] border border-amber-200/10 bg-white/[0.035] px-4 py-4">
                   <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">Board</div>
                   <div className="mt-2 text-3xl font-semibold text-white">{leaderboard.trackedPlayers}</div>
-                  <div className="mt-1 text-xs text-slate-400">tracked players</div>
+                  <div className="mt-1 text-xs text-slate-400">competitive identity rows</div>
                 </div>
                 <div className="min-w-0 rounded-[1.25rem] border border-amber-200/10 bg-white/[0.035] px-4 py-4">
                   <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">Vanguard</div>
@@ -664,7 +664,7 @@ export function LobbyHero({
                       {leaderboard.trackedPlayers}
                     </div>
                     <div className="mt-2 text-xs uppercase tracking-[0.28em] text-slate-400">
-                      Players on board
+                      Identity rows on board
                     </div>
                   </div>
                   <span className="rounded-full border border-emerald-300/18 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
@@ -951,7 +951,7 @@ export function LobbyHero({
             <div className="mt-2 text-2xl font-semibold text-white">
               {leaderboard.trackedPlayers}
             </div>
-            <div className="mt-1 text-xs text-slate-400">tracked players</div>
+            <div className="mt-1 text-xs text-slate-400">competitive identity rows</div>
           </div>
           <div className={`rounded-2xl border px-4 py-4 ${tone.insetPanel}`}>
             <div className={`text-[10px] uppercase tracking-[0.26em] ${tone.eyebrow}`}>

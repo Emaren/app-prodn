@@ -15,6 +15,10 @@ export default async function BattleArchivePage() {
   const {
     entries,
     total,
+    publicBattleRecords,
+    duplicateBattleRecords,
+    finalReplayRecords,
+    excludedFinalRecords,
   } = await loadPublicBattleArchive(
     getPrisma(),
     {
@@ -64,15 +68,56 @@ export default async function BattleArchivePage() {
 
           <div className="rounded-[1.7rem] border border-white/[0.085] bg-black/25 px-6 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
             <div className="text-xs uppercase tracking-[0.32em] text-slate-500">
-              Total Filed
+              Deduplicated Public Battles
             </div>
 
             <div className="mt-3 text-5xl font-semibold tracking-[-0.045em] text-white">
-              {total}
+              {total.toLocaleString()}
             </div>
 
-            <div className="mt-2 text-sm text-slate-500">
-              {entries.length} newest loaded
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/[0.07] pt-4">
+              <div>
+                <div className="text-lg font-semibold tabular-nums text-slate-200">
+                  {publicBattleRecords.toLocaleString()}
+                </div>
+                <div className="mt-1 text-[9px] uppercase tracking-[0.18em] text-slate-500">
+                  Public battle records
+                </div>
+              </div>
+
+              <div>
+                <div className="text-lg font-semibold tabular-nums text-slate-200">
+                  {finalReplayRecords.toLocaleString()}
+                </div>
+                <div className="mt-1 text-[9px] uppercase tracking-[0.18em] text-slate-500">
+                  Final ingestion records
+                </div>
+              </div>
+
+              <div>
+                <div className="text-lg font-semibold tabular-nums text-slate-200">
+                  {duplicateBattleRecords.toLocaleString()}
+                </div>
+                <div className="mt-1 text-[9px] uppercase tracking-[0.18em] text-slate-500">
+                  Duplicate/rehost records
+                </div>
+              </div>
+
+              <div>
+                <div className="text-lg font-semibold tabular-nums text-slate-200">
+                  {excludedFinalRecords.toLocaleString()}
+                </div>
+                <div className="mt-1 text-[9px] uppercase tracking-[0.18em] text-slate-500">
+                  Excluded non-battles
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 text-xs leading-5 text-slate-500">
+              The current public presentation key folds known duplicate rows.
+              It is not universal proof that every semantic rehost is detected.
+              Saved checkpoints and empty shells remain preserved, but are not
+              battles.
             </div>
           </div>
         </div>
@@ -91,7 +136,7 @@ export default async function BattleArchivePage() {
           </div>
 
           <div className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs text-slate-400">
-            {total} battles
+            {total.toLocaleString()} deduplicated battles
           </div>
         </div>
 

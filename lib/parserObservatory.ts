@@ -1,7 +1,18 @@
 import { unstable_cache } from "next/cache";
+import {
+  opendir,
+  stat,
+} from "node:fs/promises";
+import {
+  extname,
+  join,
+  resolve,
+} from "node:path";
 
 import { displayPlayerName, parsePlayers, readMapName } from "@/lib/gameStatsView";
+import { isPublicBattleArchiveRow } from "@/lib/publicBattleArchiveEligibility";
 import { getPrisma } from "@/lib/prisma";
+import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import { resolveReplayOwnerDisplay } from "@/lib/replayOwnerDisplay";
 import { buildReplayEvidenceLanes } from "@/lib/replayEvidenceLanes";
 import {
@@ -119,6 +130,188 @@ function candidateModeLabel(mode: string) {
   return labels[mode] || mode.replaceAll("_", " ");
 }
 
+const EXACT_STEAM_ID_64 = /^\d{17}$/;
+const DEFAULT_REPLAY_ARCHIVE_DIR =
+  "/mnt/HC_Volume_105319120/aoe2-replay-archive";
+const PHYSICAL_ARCHIVE_SCAN_BUDGET_MS =
+  5_000;
+const REPLAY_ARCHIVE_SUFFIXES =
+  new Set([
+    ".aoe2record",
+    ".aoe2mpgame",
+  ]);
+
+async function loadPhysicalReplayArchiveSnapshot() {
+  const scanStartedAt = Date.now();
+  const root = resolve(
+    process.env.REPLAY_ARCHIVE_DIR?.trim() ||
+      DEFAULT_REPLAY_ARCHIVE_DIR
+  );
+
+  try {
+    const directories = [root];
+    const files: string[] = [];
+    const extensionCounts =
+      new Map<string, number>();
+
+    while (directories.length > 0) {
+      if (
+        Date.now() - scanStartedAt >
+        PHYSICAL_ARCHIVE_SCAN_BUDGET_MS
+      ) {
+        throw new Error(
+          "physical archive scan exceeded its 5-second budget"
+        );
+      }
+
+      const directory =
+        directories.pop();
+
+      if (!directory) continue;
+
+      const handle =
+        await opendir(directory);
+
+      for await (const entry of handle) {
+        const path = join(
+          directory,
+          entry.name
+        );
+
+        if (entry.isDirectory()) {
+          directories.push(path);
+          continue;
+        }
+
+        if (!entry.isFile()) continue;
+
+        const extension =
+          extname(entry.name)
+            .toLowerCase();
+
+        if (
+          !REPLAY_ARCHIVE_SUFFIXES.has(
+            extension
+          )
+        ) {
+          continue;
+        }
+
+        files.push(path);
+        bump(
+          extensionCounts,
+          extension
+        );
+      }
+    }
+
+    let byteSize = 0;
+
+    for (
+      let index = 0;
+      index < files.length;
+      index += 64
+    ) {
+      if (
+        Date.now() - scanStartedAt >
+        PHYSICAL_ARCHIVE_SCAN_BUDGET_MS
+      ) {
+        throw new Error(
+          "physical archive scan exceeded its 5-second budget"
+        );
+      }
+
+      const sizes =
+        await Promise.all(
+          files
+            .slice(index, index + 64)
+            .map(async (path) =>
+              (await stat(path)).size
+            )
+        );
+
+      byteSize += sizes.reduce(
+        (sum, size) => sum + size,
+        0
+      );
+    }
+
+    return {
+      available: true,
+      scannedAt:
+        new Date().toISOString(),
+      root,
+      files,
+      objectCount: files.length,
+      byteSize,
+      recordedObjectCount:
+        extensionCounts.get(
+          ".aoe2record"
+        ) ?? 0,
+      savedCheckpointObjectCount:
+        extensionCounts.get(
+          ".aoe2mpgame"
+        ) ?? 0,
+    };
+  } catch (error) {
+    console.warn(
+      "Physical replay archive telemetry unavailable:",
+      error
+    );
+
+    return {
+      available: false,
+      scannedAt:
+        new Date().toISOString(),
+      root,
+      files: [] as string[],
+      objectCount: null,
+      byteSize: null,
+      recordedObjectCount: null,
+      savedCheckpointObjectCount: null,
+    };
+  }
+}
+
+const loadCachedPhysicalReplayArchiveSnapshot =
+  unstable_cache(
+    loadPhysicalReplayArchiveSnapshot,
+    [
+      "physical-replay-archive-snapshot-v1",
+    ],
+    {
+      revalidate: 3_600,
+      tags: [
+        "physical-replay-archive",
+      ],
+    }
+  );
+
+function explicitArtifactDisposition(metrics: unknown) {
+  const source = record(metrics);
+
+  for (const key of [
+    "artifact_disposition",
+    "terminal_disposition",
+    "operator_disposition",
+  ]) {
+    const value = source[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim().toLowerCase();
+    }
+  }
+
+  return "";
+}
+
+function isExplicitlyIrrecoverableArtifact(metrics: unknown) {
+  return new Set([
+    "confirmed_irrecoverable",
+    "irrecoverable",
+    "irrecoverable_junk",
+  ]).has(explicitArtifactDisposition(metrics));
+}
+
 async function loadCorpusRows() {
   // This is final watcher/upload-record grain, not deduplicated logical-game
   // grain and not the frozen Engine Room artifact cohort. Adjudications are
@@ -128,6 +321,7 @@ async function loadCorpusRows() {
     orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { id: "desc" }],
     select: {
       id: true,
+      is_final: true,
       userUid: true,
       replay_file: true,
       original_filename: true,
@@ -154,7 +348,23 @@ async function loadCorpusRows() {
 
 async function buildPublicParserObservatory() {
   const prisma = getPrisma();
-  const [rawRows, allGameRows, artifacts, runStatus, parserVersions, fieldCoverage, observations, jobs, candidateFailures, latestArtifactRuns, effectiveProjectionReceipts] = await Promise.all([
+  const [
+    rawRows,
+    allGameRows,
+    artifacts,
+    runStatus,
+    parserVersions,
+    fieldCoverage,
+    observations,
+    jobs,
+    candidateFailures,
+    latestArtifactRuns,
+    effectiveProjectionReceipts,
+    acceptedIdentitySnapshots,
+    artifactStorageKeys,
+    physicalArchive,
+    identityFoundation,
+  ] = await Promise.all([
     loadCorpusRows(),
     prisma.gameStats.count(),
     prisma.replayArtifact.aggregate({ _count: { _all: true }, _sum: { byteSize: true } }),
@@ -231,9 +441,133 @@ async function buildPublicParserObservatory() {
     prisma.replayEvidenceArtifact.count({
       where: { evidenceKind: "effective_projection_receipt" },
     }),
+    prisma.replayPlayerSnapshot.findMany({
+      where: {
+        projection: {
+          projectionStatus: "accepted",
+          affectsPublicAggregates: true,
+          supersededBy: null,
+        },
+      },
+      select: {
+        displayName: true,
+        normalizedName: true,
+        steamId: true,
+      },
+    }),
+    prisma.replayArtifact.findMany({
+      select: {
+        storageKey: true,
+      },
+    }),
+    loadCachedPhysicalReplayArchiveSnapshot(),
+    (async () => {
+      const [
+        provisionalWarriors,
+        replayBackedPlatformAccounts,
+        profileOnlyPlatformAccounts,
+        openProvisionalIdentities,
+        proposedPlatformLinks,
+        activePlatformLinks,
+        proposedClaims,
+        activeClaims,
+        publications,
+      ] = await Promise.all([
+        prisma.warrior.count({
+          where: {
+            status: "provisional",
+            mergedIntoWarriorId: null,
+          },
+        }),
+        prisma.platformAccount.count({
+          where: {
+            createdFrom:
+              "replay_backfill_v2",
+          },
+        }),
+        prisma.platformAccount.count({
+          where: {
+            createdFrom:
+              "site_account_profile_v2",
+          },
+        }),
+        prisma.provisionalIdentity.count({
+          where: { status: "open" },
+        }),
+        prisma.warriorPlatformLink.count({
+          where: { status: "proposed" },
+        }),
+        prisma.warriorPlatformLink.count({
+          where: { status: "active" },
+        }),
+        prisma.warriorClaim.count({
+          where: { status: "proposed" },
+        }),
+        prisma.warriorClaim.count({
+          where: { status: "active" },
+        }),
+        prisma.identityProjectionPublication.count(),
+      ]);
+
+      return {
+        provisionalWarriors,
+        replayBackedPlatformAccounts,
+        profileOnlyPlatformAccounts,
+        openProvisionalIdentities,
+        proposedPlatformLinks,
+        activePlatformLinks,
+        proposedClaims,
+        activeClaims,
+        publications,
+      };
+    })(),
   ]);
 
   const rows = applyReplayAdjudicationsToGameStatsRows(rawRows);
+  const physicalArchivePaths =
+    new Set(
+      physicalArchive.files
+    );
+  const indexedArchivePaths =
+    new Set(
+      artifactStorageKeys
+        .map((artifact) =>
+          resolve(
+            physicalArchive.root,
+            artifact.storageKey
+          )
+        )
+    );
+  const indexedStorageKeysPresent =
+    physicalArchive.available
+      ? Array.from(
+          indexedArchivePaths
+        ).filter((path) =>
+          physicalArchivePaths.has(
+            path
+          )
+        ).length
+      : null;
+  const missingIndexedStorageKeys =
+    physicalArchive.available
+      ? Math.max(
+          0,
+          indexedArchivePaths.size -
+            (indexedStorageKeysPresent ??
+              0)
+        )
+      : null;
+  const unindexedOrUnclassifiedObjects =
+    physicalArchive.available
+      ? Array.from(
+          physicalArchivePaths
+        ).filter(
+          (path) =>
+            !indexedArchivePaths.has(
+              path
+            )
+        ).length
+      : null;
   const unknownOwner = new Map<string, number>();
   const unknownRoster = new Map<string, number>();
   const unknownFormat = new Map<string, number>();
@@ -273,6 +607,80 @@ async function buildPublicParserObservatory() {
   const failureSizes = new Map<string, number>();
   const failedRuns = latestArtifactRuns.filter((run) => run.status === "failed");
   const completedRuns = latestArtifactRuns.filter((run) => run.status === "completed");
+  const confirmedIrrecoverableArtifacts = latestArtifactRuns.filter((run) =>
+    isExplicitlyIrrecoverableArtifact(run.metrics)
+  ).length;
+  const publicBattleRows = rows.filter(isPublicBattleArchiveRow);
+  const publicBattleRecords = publicBattleRows.length;
+  const uniqueLogicalBattles = cleanPublicGameRows(
+    publicBattleRows,
+    {
+      includeReview: true,
+      includeLive: false,
+    }
+  ).length;
+  const excludedFinalRecords = Math.max(0, rows.length - publicBattleRecords);
+  const normalizedNamesBySteamId = new Map<string, Set<string>>();
+  const steamIdsByNormalizedName = new Map<string, Set<string>>();
+  const nameOnlyIdentityBuckets = new Set<string>();
+  let steamBackedIdentitySnapshots = 0;
+
+  for (const snapshot of acceptedIdentitySnapshots) {
+    const normalizedName = snapshot.normalizedName.trim().toLowerCase();
+    const steamId = snapshot.steamId?.trim() ?? "";
+
+    if (EXACT_STEAM_ID_64.test(steamId)) {
+      steamBackedIdentitySnapshots += 1;
+
+      const accountNames =
+        normalizedNamesBySteamId.get(steamId) ??
+        new Set<string>();
+
+      if (normalizedName) {
+        accountNames.add(normalizedName);
+      }
+
+      normalizedNamesBySteamId.set(
+        steamId,
+        accountNames
+      );
+
+      if (normalizedName) {
+        const nameAccounts =
+          steamIdsByNormalizedName.get(
+            normalizedName
+          ) ?? new Set<string>();
+
+        nameAccounts.add(steamId);
+
+        steamIdsByNormalizedName.set(
+          normalizedName,
+          nameAccounts
+        );
+      }
+
+      continue;
+    }
+
+    if (normalizedName) {
+      nameOnlyIdentityBuckets.add(
+        normalizedName
+      );
+    }
+  }
+
+  const steamAccountsWithMultipleNames =
+    Array.from(
+      normalizedNamesBySteamId.values()
+    ).filter((names) => names.size > 1)
+      .length;
+
+  const namesUsedByMultipleSteamAccounts =
+    Array.from(
+      steamIdsByNormalizedName.values()
+    ).filter((steamIds) => steamIds.size > 1)
+      .length;
+
   const candidateModes = new Map<string, number>();
   for (const run of completedRuns) {
     bump(candidateModes, text(record(run.metrics).parse_mode, "unspecified"));
@@ -342,10 +750,71 @@ async function buildPublicParserObservatory() {
     generatedAt: new Date().toISOString(),
     corpus: {
       finalReplayRecords: rows.length,
+      publicBattleRecords,
+      uniqueLogicalBattles,
+      duplicateBattleRecords:
+        Math.max(
+          0,
+          publicBattleRecords -
+            uniqueLogicalBattles
+        ),
+      excludedFinalRecords,
       allDatabaseRows: allGameRows,
       archivedArtifacts: artifacts._count._all,
       archivedBytes: Number(artifacts._sum.byteSize || 0),
+      physicalArchiveAvailable:
+        physicalArchive.available,
+      physicalArchiveScannedAt:
+        physicalArchive.scannedAt,
+      physicalArchiveObjects:
+        physicalArchive.objectCount,
+      physicalArchiveBytes:
+        physicalArchive.byteSize,
+      physicalRecordedObjects:
+        physicalArchive.recordedObjectCount,
+      physicalSavedCheckpointObjects:
+        physicalArchive.savedCheckpointObjectCount,
+      indexedStorageKeysPresent,
+      missingIndexedStorageKeys,
+      unindexedOrUnclassifiedObjects,
+      observedDisplayNames: playerNames.size,
       playersRepresented: playerNames.size,
+      acceptedIdentitySnapshots:
+        acceptedIdentitySnapshots.length,
+      steamBackedIdentitySnapshots,
+      replayBackedSteamAccounts:
+        normalizedNamesBySteamId.size,
+      provisionalWarriors:
+        identityFoundation.provisionalWarriors,
+      replayBackedPlatformAccounts:
+        identityFoundation.replayBackedPlatformAccounts,
+      profileOnlyPlatformAccounts:
+        identityFoundation.profileOnlyPlatformAccounts,
+      openProvisionalIdentities:
+        identityFoundation.openProvisionalIdentities,
+      proposedPlatformLinks:
+        identityFoundation.proposedPlatformLinks,
+      activePlatformLinks:
+        identityFoundation.activePlatformLinks,
+      proposedWarriorClaims:
+        identityFoundation.proposedClaims,
+      activeWarriorClaims:
+        identityFoundation.activeClaims,
+      identityPublications:
+        identityFoundation.publications,
+      steamAccountsWithMultipleNames,
+      nameOnlyIdentityBuckets:
+        nameOnlyIdentityBuckets.size,
+      namesUsedByMultipleSteamAccounts,
+      parseableAtAnyLevelArtifacts:
+        completedRuns.length,
+      recoveryQueueArtifacts:
+        Math.max(
+          0,
+          failedRuns.length -
+            confirmedIrrecoverableArtifacts
+        ),
+      confirmedIrrecoverableArtifacts,
       resolvedResults,
       unresolvedResults,
       resolvedTeams,
@@ -453,6 +922,7 @@ export async function loadViewerParserVault(uid: string | null) {
     },
     select: {
       id: true,
+      is_final: true,
       userUid: true,
       replay_file: true,
       original_filename: true,

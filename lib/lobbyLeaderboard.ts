@@ -9,9 +9,10 @@ import {
 import {
   loadPublicPlayerDirectory,
   type PublicPlayerDirectoryEntry,
+  type PublicPlayerReplayEvidence,
 } from "@/lib/publicPlayerDirectory";
+import { isPublicBattleArchiveRow } from "@/lib/publicBattleArchiveEligibility";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
-import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import {
   applyReplayAdjudicationToGameStats,
@@ -36,10 +37,15 @@ import {
   resolveReplayResultForPlayer,
   type ReplayPlayerResultGame,
 } from "@/lib/replayPlayerResult";
+import {
+  normalizeLeaderboardSteamId,
+  readLeaderboardSteamId,
+  resolveRankDelta24h,
+  type LeaderboardRankDelta24h,
+} from "@/lib/leaderboardIdentity";
 
 const BASE_ARENA_ELO = 1500;
 const ARENA_ELO_K_FACTOR = 32;
-const LEADERBOARD_GAME_WINDOW = 5000;
 const LEADERBOARD_CACHE_TTL_MS = 15_000;
 const LEADERBOARD_CACHE_MAX_ENTRIES = 24;
 
@@ -64,7 +70,11 @@ export type LoadLobbyLeaderboardOptions = {
   sortDirection?: LeaderboardSortDirection | null;
 };
 
-type PreparedLeaderboardGame = Omit<ReplayPlayerResultGame, "players"> & {
+type PreparedLeaderboardGame = Omit<
+  ReplayPlayerResultGame,
+  "id" | "players"
+> & {
+  id: number;
   players: ReturnType<typeof parsePlayers>;
   playedAtMs: number;
 };
@@ -86,8 +96,11 @@ type CandidateLeaderboardGame = {
   parse_source: string | null;
 };
 
-type EnrichedLeaderboardEntry = PublicPlayerDirectoryEntry & {
+type EnrichedLeaderboardEntry =
+  PublicPlayerDirectoryEntry &
+  LeaderboardRankDelta24h & {
   aliasKeys: Set<string>;
+  evidenceGameIds: Set<number>;
   resolvedMatches: number;
   winRate: number;
   lastPlayedAtMs: number;
@@ -121,6 +134,12 @@ function buildEnrichedEntry(entry: PublicPlayerDirectoryEntry): EnrichedLeaderbo
   return {
     ...entry,
     aliasKeys: buildAliasKeys(entry),
+    evidenceGameIds: new Set(
+      entry.replayEvidence.map(
+        (evidence) =>
+          evidence.gameStatsId,
+      ),
+    ),
     resolvedMatches,
     winRate: resolvedMatches > 0 ? entry.wins / resolvedMatches : 0,
     lastPlayedAtMs: entry.lastPlayedAt ? new Date(entry.lastPlayedAt).getTime() : 0,
@@ -129,6 +148,12 @@ function buildEnrichedEntry(entry: PublicPlayerDirectoryEntry): EnrichedLeaderbo
     pendingWoloClaimAmount: entry.pendingWoloClaimAmount || 0,
     streakLabel: null,
     streakScore: 0,
+    rank24hAgo: null,
+    rankDelta24h: null,
+    rankDelta24hState:
+      entry.totalMatches > 0
+        ? "new"
+        : "unranked",
   };
 }
 
@@ -194,15 +219,23 @@ function compareLeaderboardEntries(
     return right.lastPlayedAtMs - left.lastPlayedAtMs;
   }
 
-  if (left.verified !== right.verified) {
-    return Number(right.verified) - Number(left.verified);
+  const nameComparison =
+    left.name.localeCompare(
+      right.name,
+      undefined,
+      {
+        numeric: true,
+        sensitivity: "base",
+      },
+    );
+
+  if (nameComparison !== 0) {
+    return nameComparison;
   }
 
-  if (left.claimed !== right.claimed) {
-    return Number(right.claimed) - Number(left.claimed);
-  }
-
-  return left.name.localeCompare(right.name);
+  return left.key.localeCompare(
+    right.key,
+  );
 }
 
 const LOBBY_LEADERBOARD_INITIAL_ENTRY_LIMIT = 600;
@@ -245,6 +278,14 @@ function compareRequestedLeaderboardSort(
       comparison = compareNullableSortNumber(
         rankByKey.get(left.key) ?? null,
         rankByKey.get(right.key) ?? null,
+        direction
+      );
+      break;
+
+    case "rank_change_24h":
+      comparison = compareNullableSortNumber(
+        left.rankDelta24h,
+        right.rankDelta24h,
         direction
       );
       break;
@@ -495,86 +536,202 @@ function buildLeaderboardSelection(
   };
 }
 
-function buildAliasEntryMap(entries: EnrichedLeaderboardEntry[]) {
-  const aliasToEntry = new Map<string, EnrichedLeaderboardEntry>();
-
-  for (const entry of entries) {
-    for (const aliasKey of entry.aliasKeys) {
-      const existing = aliasToEntry.get(aliasKey);
-      if (!existing) {
-        aliasToEntry.set(aliasKey, entry);
-        continue;
-      }
-
-      if (existing.claimed === entry.claimed) {
-        continue;
-      }
-
-      if (!existing.claimed && entry.claimed) {
-        aliasToEntry.set(aliasKey, entry);
-      }
-    }
-  }
-
-  return aliasToEntry;
-}
-
-
-function applyPendingClaimSummaries(
-  entries: EnrichedLeaderboardEntry[],
-  summaryMap: Map<
+type LeaderboardIdentityLookup = {
+  steamById: Map<
     string,
-    {
-      pendingAmountWolo: number;
-      pendingCount: number;
-      latestCreatedAt: string | null;
-      claimIds: number[];
-    }
-  >
+    EnrichedLeaderboardEntry
+  >;
+  nameOnlyByAlias: Map<
+    string,
+    EnrichedLeaderboardEntry | null
+  >;
+};
+
+function playerRecord(
+  player: unknown,
 ) {
-  for (const entry of entries) {
-    const seenClaimIds = new Set<number>();
-
-    let pendingCount = entry.pendingWoloClaimCount || 0;
-
-    let pendingAmountWolo = entry.pendingWoloClaimAmount || 0;
-
-    for (const aliasKey of entry.aliasKeys) {
-      const summary = summaryMap.get(aliasKey);
-      if (!summary) continue;
-
-      for (const claimId of summary.claimIds) {
-        if (seenClaimIds.has(claimId)) continue;
-        seenClaimIds.add(claimId);
-        pendingCount += 1;
-      }
-
-      pendingAmountWolo += summary.pendingAmountWolo;
-    }
-
-    entry.pendingWoloClaimCount = pendingCount;
-    entry.pendingWoloClaimAmount = pendingAmountWolo;
-  }
+  return player &&
+    typeof player === "object" &&
+    !Array.isArray(player)
+    ? player as Record<string, unknown>
+    : {};
 }
 
-function buildArenaElo(entries: EnrichedLeaderboardEntry[], games: PreparedLeaderboardGame[]) {
-  const aliasToEntry = buildAliasEntryMap(entries);
-  const ratings = new Map(entries.map((entry) => [entry.key, BASE_ARENA_ELO]));
+function playerIdentitySteamId(
+  player: unknown,
+) {
+  return readLeaderboardSteamId(
+    playerRecord(player),
+  );
+}
 
-  for (const game of games) {
-    const participantNames = game.players
-      .map((player) => normalizeLeaderboardKey(displayPlayerName(player)))
-      .filter(Boolean);
+function playerIdentityName(
+  player: unknown,
+) {
+  const record =
+    playerRecord(player);
 
-    if (participantNames.length !== 2) {
+  return normalizeLeaderboardKey(
+    typeof record.name === "string"
+      ? record.name
+      : displayPlayerName(record),
+  );
+}
+
+function buildIdentityLookup(
+  entries: EnrichedLeaderboardEntry[],
+): LeaderboardIdentityLookup {
+  const steamById =
+    new Map<
+      string,
+      EnrichedLeaderboardEntry
+    >();
+  const nameOnlyByAlias =
+    new Map<
+      string,
+      EnrichedLeaderboardEntry | null
+    >();
+
+  for (const entry of entries) {
+    const steamId =
+      normalizeLeaderboardSteamId(
+        entry.steamId,
+      );
+
+    if (
+      entry.identityKind === "steam" &&
+      steamId
+    ) {
+      steamById.set(
+        steamId,
+        entry,
+      );
       continue;
     }
 
-    const participantEntries = participantNames
-      .map((playerName) => aliasToEntry.get(playerName))
-      .filter((entry): entry is EnrichedLeaderboardEntry => Boolean(entry));
+    /*
+     * A site profile without verified Steam control is not replay identity.
+     * Only provisional name-only replay rows may match a player lacking an
+     * exact SteamID64.
+     */
+    if (entry.identityKind !== "name") {
+      continue;
+    }
 
-    if (participantEntries.length !== 2) {
+    for (const aliasKey of entry.aliasKeys) {
+      const hasExisting =
+        nameOnlyByAlias.has(aliasKey);
+      const existing =
+        nameOnlyByAlias.get(aliasKey);
+
+      nameOnlyByAlias.set(
+        aliasKey,
+        hasExisting &&
+          (!existing ||
+          existing.key !== entry.key
+          )
+          ? null
+          : entry,
+      );
+    }
+  }
+
+  return {
+    steamById,
+    nameOnlyByAlias,
+  };
+}
+
+function matchesLeaderboardPlayer(
+  entry: EnrichedLeaderboardEntry,
+  player: unknown,
+  gameStatsId: number,
+) {
+  if (
+    !entry.evidenceGameIds.has(
+      gameStatsId,
+    )
+  ) {
+    return false;
+  }
+
+  const steamId =
+    playerIdentitySteamId(player);
+
+  if (steamId) {
+    return (
+      entry.identityKind === "steam" &&
+      entry.steamId === steamId
+    );
+  }
+
+  return (
+    entry.identityKind === "name" &&
+    entry.aliasKeys.has(
+      playerIdentityName(player),
+    )
+  );
+}
+
+function findEntryForReplayPlayer(
+  lookup: LeaderboardIdentityLookup,
+  player: unknown,
+  gameStatsId: number,
+) {
+  const steamId =
+    playerIdentitySteamId(player);
+  const entry = steamId
+    ? lookup.steamById.get(steamId)
+    : lookup.nameOnlyByAlias.get(
+        playerIdentityName(player),
+      );
+
+  return (
+    entry &&
+    matchesLeaderboardPlayer(
+      entry,
+      player,
+      gameStatsId,
+    )
+  )
+    ? entry
+    : null;
+}
+
+function buildArenaElo(
+  entries: EnrichedLeaderboardEntry[],
+  games: PreparedLeaderboardGame[],
+) {
+  const identityLookup =
+    buildIdentityLookup(entries);
+  const ratings = new Map(entries.map((entry) => [entry.key, BASE_ARENA_ELO]));
+
+  const chronologicalGames =
+    [...games].sort(
+      (left, right) =>
+        left.playedAtMs -
+          right.playedAtMs ||
+        left.id - right.id,
+    );
+
+  for (const game of chronologicalGames) {
+    if (game.players.length !== 2) {
+      continue;
+    }
+
+    const participantEntries =
+      game.players.map((player) =>
+        findEntryForReplayPlayer(
+          identityLookup,
+          player,
+          game.id,
+        ),
+      );
+
+    if (
+      !participantEntries[0] ||
+      !participantEntries[1]
+    ) {
       continue;
     }
 
@@ -585,11 +742,21 @@ function buildArenaElo(entries: EnrichedLeaderboardEntry[], games: PreparedLeade
     const [entryA, entryB] = participantEntries;
     const outcomeA = resolveReplayResultForPlayer(
       game,
-      (player) => entryA.aliasKeys.has(normalizeLeaderboardKey(player.name))
+      (player) =>
+        matchesLeaderboardPlayer(
+          entryA,
+          player,
+          game.id,
+        ),
     );
     const outcomeB = resolveReplayResultForPlayer(
       game,
-      (player) => entryB.aliasKeys.has(normalizeLeaderboardKey(player.name))
+      (player) =>
+        matchesLeaderboardPlayer(
+          entryB,
+          player,
+          game.id,
+        ),
     );
     if (
       !(
@@ -622,7 +789,12 @@ function buildEntryOutcome(
 ) {
   const result = resolveReplayResultForPlayer(
     game,
-    (player) => entry.aliasKeys.has(normalizeLeaderboardKey(player.name))
+    (player) =>
+      matchesLeaderboardPlayer(
+        entry,
+        player,
+        game.id,
+      ),
   );
   return result === "win" ? "W" : result === "loss" ? "L" : null;
 }
@@ -632,11 +804,11 @@ function buildStreakLabel(entry: EnrichedLeaderboardEntry, games: PreparedLeader
   let count = 0;
 
   for (const game of games) {
-    const includesEntry = game.players.some((player) =>
-      entry.aliasKeys.has(normalizeLeaderboardKey(displayPlayerName(player)))
-    );
-
-    if (!includesEntry) {
+    if (
+      !entry.evidenceGameIds.has(
+        game.id,
+      )
+    ) {
       continue;
     }
 
@@ -678,6 +850,266 @@ function populateLeaderboardStreaks(
   }
 }
 
+function evidenceAcceptedAtMs(
+  evidence: PublicPlayerReplayEvidence,
+) {
+  const parsed =
+    new Date(
+      evidence.acceptedAt,
+    ).getTime();
+
+  return Number.isFinite(parsed)
+    ? parsed
+    : null;
+}
+
+function latestEvidenceRating(
+  evidence: PublicPlayerReplayEvidence[],
+  lane: "rm" | "dm",
+) {
+  for (const item of evidence) {
+    const rating =
+      lane === "dm"
+        ? item.steamDmRating
+        : item.steamRmRating;
+
+    if (
+      typeof rating === "number" &&
+      Number.isFinite(rating)
+    ) {
+      return rating;
+    }
+  }
+
+  return null;
+}
+
+function buildHistoricalLeaderboardEntry(
+  entry: EnrichedLeaderboardEntry,
+  cutoffMs: number,
+): EnrichedLeaderboardEntry {
+  const replayEvidence =
+    entry.replayEvidence.filter(
+      (evidence) => {
+        const acceptedAtMs =
+          evidenceAcceptedAtMs(
+            evidence,
+          );
+
+        return (
+          acceptedAtMs !== null &&
+          acceptedAtMs <= cutoffMs
+        );
+      },
+    );
+  const latestEvidence =
+    replayEvidence[0] ?? null;
+  const wins =
+    replayEvidence.filter(
+      (evidence) =>
+        evidence.result === "win",
+    ).length;
+  const losses =
+    replayEvidence.filter(
+      (evidence) =>
+        evidence.result === "loss",
+    ).length;
+  const unknowns =
+    replayEvidence.length -
+    wins -
+    losses;
+  const resolvedMatches =
+    wins + losses;
+  const latestRatingEvidence =
+    replayEvidence.find(
+      (evidence) =>
+        evidence.steamRmRating !==
+          null ||
+        evidence.steamDmRating !==
+          null,
+    ) ?? null;
+  const historical: PublicPlayerDirectoryEntry = {
+    ...entry,
+    name:
+      latestEvidence?.observedName ??
+      entry.name,
+    latestObservedName:
+      latestEvidence?.observedName ??
+      entry.latestObservedName,
+    totalMatches:
+      replayEvidence.length,
+    wins,
+    losses,
+    unknowns,
+    lastPlayedAt:
+      latestEvidence?.observedAt ??
+      null,
+    ratingLastSeenAt:
+      latestRatingEvidence
+        ?.observedAt ?? null,
+    steamRmRating:
+      latestEvidenceRating(
+        replayEvidence,
+        "rm",
+      ),
+    steamDmRating:
+      latestEvidenceRating(
+        replayEvidence,
+        "dm",
+      ),
+    aliases: Array.from(
+      new Set(
+        replayEvidence
+          .map(
+            (evidence) =>
+              evidence.observedName,
+          )
+          .filter(Boolean),
+      ),
+    ),
+    replayEvidence,
+  };
+
+  return {
+    ...historical,
+    aliasKeys:
+      buildAliasKeys(historical),
+    evidenceGameIds: new Set(
+      replayEvidence.map(
+        (evidence) =>
+          evidence.gameStatsId,
+      ),
+    ),
+    resolvedMatches,
+    winRate:
+      resolvedMatches > 0
+        ? wins / resolvedMatches
+        : 0,
+    lastPlayedAtMs:
+      latestEvidence?.observedAt
+        ? new Date(
+            latestEvidence.observedAt,
+          ).getTime()
+        : 0,
+    arenaElo: BASE_ARENA_ELO,
+    streakLabel: null,
+    streakScore: 0,
+    rank24hAgo: null,
+    rankDelta24h: null,
+    rankDelta24hState:
+      replayEvidence.length > 0
+        ? "unchanged"
+        : "unranked",
+  };
+}
+
+function buildCanonicalRankMap(
+  entries: EnrichedLeaderboardEntry[],
+  lane: LeaderboardLane,
+) {
+  const rankByKey =
+    new Map<string, number>();
+
+  entries
+    .filter(
+      (entry) =>
+        entry.totalMatches > 0,
+    )
+    .sort((left, right) =>
+      compareLeaderboardEntries(
+        left,
+        right,
+        lane,
+      ),
+    )
+    .forEach((entry, index) => {
+      rankByKey.set(
+        entry.key,
+        index + 1,
+      );
+    });
+
+  return rankByKey;
+}
+
+function populateRankDelta24h(
+  entries: EnrichedLeaderboardEntry[],
+  games: PreparedLeaderboardGame[],
+  lane: LeaderboardLane,
+  asOf: Date,
+) {
+  const cutoff =
+    new Date(
+      asOf.getTime() -
+        24 * 60 * 60 * 1000,
+    );
+  const historicalEntries =
+    entries.map((entry) =>
+      buildHistoricalLeaderboardEntry(
+        entry,
+        cutoff.getTime(),
+      ),
+    );
+  const historicalGameIds =
+    new Set(
+      historicalEntries.flatMap(
+        (entry) =>
+          Array.from(
+            entry.evidenceGameIds,
+          ),
+      ),
+    );
+  const historicalGames =
+    games.filter((game) =>
+      historicalGameIds.has(
+        game.id,
+      ),
+    );
+
+  buildArenaElo(
+    historicalEntries,
+    historicalGames,
+  );
+
+  const currentRankByKey =
+    buildCanonicalRankMap(
+      entries,
+      lane,
+    );
+  const historicalRankByKey =
+    buildCanonicalRankMap(
+      historicalEntries,
+      lane,
+    );
+
+  for (const entry of entries) {
+    Object.assign(
+      entry,
+      resolveRankDelta24h({
+        currentRank:
+          currentRankByKey.get(
+            entry.key,
+          ) ?? null,
+        previousRank:
+          historicalRankByKey.get(
+            entry.key,
+          ) ?? null,
+        currentlyRanked:
+          entry.totalMatches > 0,
+        previouslyRanked:
+          historicalRankByKey.has(
+            entry.key,
+          ),
+      }),
+    );
+  }
+
+  return {
+    asOf: asOf.toISOString(),
+    cutoff: cutoff.toISOString(),
+  };
+}
+
 function buildPrimaryRatingLabel(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
   const value = getPrimaryRatingValue(entry, lane);
   return value === null ? "Pending" : String(Math.round(value));
@@ -711,8 +1143,17 @@ function toLobbyLeaderboardEntry(
   return {
     rank,
     key: entry.key,
+    identityKind:
+      entry.identityKind,
     name: entry.name,
+    currentName:
+      entry.latestObservedName,
+    latestObservedName:
+      entry.latestObservedName,
+    nameHistory:
+      entry.nameHistory,
     uid: "uid" in entry ? ((entry as { uid?: string | null }).uid ?? null) : null,
+    steamId: entry.steamId,
     href: entry.href,
     elo: Math.round(entry.arenaElo),
     arenaElo: Math.round(entry.arenaElo),
@@ -736,6 +1177,12 @@ function toLobbyLeaderboardEntry(
     pendingWoloClaimAmount: entry.pendingWoloClaimAmount,
     totalMatches: entry.totalMatches,
     lastPlayedAt: entry.lastPlayedAt,
+    rank24hAgo:
+      entry.rank24hAgo,
+    rankDelta24h:
+      entry.rankDelta24h,
+    rankDelta24hState:
+      entry.rankDelta24hState,
     provisional: entry.totalMatches < LOBBY_LEADERBOARD_MIN_MATCHES,
   };
 }
@@ -767,90 +1214,15 @@ function sortCandidateGamesByPlayedAtDesc(
   return right.id - left.id;
 }
 
-function discoveredPlayerKey(name: string | null | undefined) {
-  return String(name ?? "").trim().toLowerCase();
-}
-
-function buildDiscoveredLeaderboardEntries(
-  preparedGames: PreparedLeaderboardGame[],
-  existingNames: Set<string>
-) {
-  const discovered = new Map<string, EnrichedLeaderboardEntry>();
-
-  for (const game of preparedGames) {
-    for (const player of game.players) {
-      const name = String(player.name || "").trim();
-      if (!name) continue;
-
-      const normalizedName = discoveredPlayerKey(name);
-      const key = `discovered:${normalizedName}`;
-      if (existingNames.has(normalizedName) || discovered.has(key)) continue;
-
-      const ratingSnapshot =
-        typeof player.rate_snapshot === "number"
-          ? player.rate_snapshot
-          : null;
-
-      const steamRmRating =
-        typeof player.steam_rm_rating === "number"
-          ? player.steam_rm_rating
-          : ratingSnapshot;
-
-      const steamDmRating =
-        typeof player.steam_dm_rating === "number" ? player.steam_dm_rating : null;
-      const result = resolveReplayResultForPlayer(
-        game,
-        (candidate) => normalizeLeaderboardKey(candidate.name) === normalizedName
-      );
-
-      discovered.set(key, {
-        key,
-        name,
-        href: `/players/by-name/${encodeURIComponent(name)}`,
-        profileHref: `/players/by-name/${encodeURIComponent(name)}`,
-        inGameName: name,
-        steamPersonaName: name,
-        aliases: [name],
-        aliasKeys: new Set([normalizedName]),
-        claimed: false,
-        verified: false,
-        verificationLevel: 0,
-         isOnline: false,
-         hasFeaturedAvatar: false,
-         lastSeen: null,
-        lastSeenAt: null,
-        avatarUrl: null,
-        uid: null,
-        steamId: typeof player.steam_id === "string" ? player.steam_id : null,
-        steamRmRating,
-        steamDmRating,
-        arenaElo: ratingSnapshot ?? steamRmRating ?? steamDmRating ?? 1500,
-        totalMatches: 1,
-        wins: result === "win" ? 1 : 0,
-        losses: result === "loss" ? 1 : 0,
-        unknowns: result === "unknown" ? 1 : 0,
-        currentStreak: result === "win" ? 1 : result === "loss" ? -1 : 0,
-        lastPlayedAt: Number.isFinite(game.playedAtMs)
-          ? new Date(game.playedAtMs).toISOString()
-          : null,
-        pendingWoloClaimAmount: 0,
-        pendingWoloClaimCount: 0,
-        streakLabel: null,
-        streakScore: 0,
-        lastSteamSyncAt: null,
-      } as unknown as EnrichedLeaderboardEntry);
-    }
-  }
-
-  return Array.from(discovered.values());
-}
-
 async function loadLobbyLeaderboardFresh(
   prisma: PrismaClient,
   options: LoadLobbyLeaderboardOptions = {}
 ): Promise<LobbyLeaderboardSummary> {
   const lane = normalizeLeaderboardLane(options.lane);
-  const dayStart = new Date();
+  const rankDeltaAsOf = new Date();
+  const dayStart = new Date(
+    rankDeltaAsOf,
+  );
   dayStart.setHours(0, 0, 0, 0);
 
   const [directory, rawLeaderboardGames] = await Promise.all([
@@ -863,7 +1235,6 @@ async function loadLobbyLeaderboardFresh(
         },
       },
       orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }, { id: "desc" }],
-      take: LEADERBOARD_GAME_WINDOW,
       select: {
         createdAt: true,
         event_types: true,
@@ -887,11 +1258,15 @@ async function loadLobbyLeaderboardFresh(
   const leaderboardGames = rawLeaderboardGames
     .map((game) => applyReplayAdjudicationToGameStats(game) as CandidateLeaderboardGame)
     .sort(sortCandidateGamesByPlayedAtDesc);
-  const uniqueGames = cleanPublicGameRows(leaderboardGames, {
+  const publicBattleGames =
+    leaderboardGames.filter(
+      isPublicBattleArchiveRow,
+    );
+  const uniqueGames = cleanPublicGameRows(publicBattleGames, {
     includeReview: true,
     includeLive: false,
   });
-  const resolvedGames = cleanPublicGameRows(leaderboardGames, {
+  const resolvedGames = cleanPublicGameRows(publicBattleGames, {
     includeReview: false,
     includeLive: false,
   });
@@ -921,33 +1296,47 @@ async function loadLobbyLeaderboardFresh(
     .filter((entry) => entry.totalMatches > 0 || entry.claimed)
     .map(buildEnrichedEntry);
 
-  const candidateNames = new Set(
-    candidates.flatMap((entry) => [
-      entry.name,
-      entry.inGameName,
-      entry.steamPersonaName,
-      ...entry.aliases,
-    ]).map(discoveredPlayerKey).filter(Boolean)
-  );
-  for (const discoveredEntry of buildDiscoveredLeaderboardEntries(preparedGames, candidateNames)) {
-    candidates.push(discoveredEntry);
-  }
-
-  try {
-    const pendingSummaries = await loadPendingWoloClaimSummariesByName(
-      prisma,
-      candidates.flatMap((entry) => [
-        entry.name,
-        entry.inGameName,
-        entry.steamPersonaName,
-        ...entry.aliases,
-      ])
-    );
-    applyPendingClaimSummaries(candidates, pendingSummaries);
-  } catch (error) {
-    console.warn("Pending WOLO claim telemetry unavailable for leaderboard:", error);
-  }
   buildArenaElo(candidates, preparedGames);
+  const rankDeltaWindow =
+    populateRankDelta24h(
+      candidates,
+      preparedGames,
+      lane,
+      rankDeltaAsOf,
+    );
+
+  const identityRows =
+    candidates.length;
+  const steamIdentityRows =
+    candidates.filter(
+      (entry) =>
+        entry.identityKind === "steam" &&
+        entry.totalMatches > 0,
+    ).length;
+  const nameOnlyIdentityRows =
+    candidates.filter(
+      (entry) =>
+        entry.identityKind === "name" &&
+        entry.totalMatches > 0,
+    ).length;
+  const siteOnlyIdentityRows =
+    candidates.filter(
+      (entry) =>
+        entry.identityKind === "site",
+    ).length;
+  const claimedProfileOnlyRows =
+    candidates.filter(
+      (entry) =>
+        entry.claimed &&
+        entry.totalMatches === 0,
+    ).length;
+  const accountsWithAliasHistory =
+    candidates.filter(
+      (entry) =>
+        entry.identityKind === "steam" &&
+        entry.totalMatches > 0 &&
+        entry.nameHistory.length > 1,
+    ).length;
 
   const requestedSortKey =
     normalizeLeaderboardSortKey(
@@ -1000,8 +1389,20 @@ async function loadLobbyLeaderboardFresh(
     uniqueReplaysToday,
     needsReviewToday,
     trackedPlayers: fullEntryCount,
+    identityRows,
+    steamIdentityRows,
+    nameOnlyIdentityRows,
+    siteOnlyIdentityRows,
+    claimedProfileOnlyRows,
+    accountsWithAliasHistory,
     rankedPlayers: eligibleEntries.length,
     minimumMatches: LOBBY_LEADERBOARD_MIN_MATCHES,
+    rankDelta24hAsOf:
+      rankDeltaWindow.asOf,
+    rankDelta24hCutoff:
+      rankDeltaWindow.cutoff,
+    rankDelta24hMethod:
+      "reconstructed_current_corpus",
   };
 }
 

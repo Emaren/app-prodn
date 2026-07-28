@@ -44,12 +44,143 @@ export default async function GameStatsPage() {
       <section className="relative overflow-hidden rounded-[2.2rem] border border-cyan-100/12 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.16),transparent_31%),radial-gradient(circle_at_88%_14%,rgba(251,191,36,0.15),transparent_29%),linear-gradient(145deg,#071522,#05070d_62%)] p-7 sm:p-11">
         <div className="text-xs font-bold uppercase tracking-[0.42em] text-cyan-100/62">Public Parser Observatory</div>
         <h1 className="mt-4 max-w-5xl font-serif text-5xl leading-none sm:text-7xl">Recovering the lost war record.</h1>
-        <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <Metric label="Final replay records" value={data.corpus.finalReplayRecords.toLocaleString()} />
+        <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <Metric label="Deduplicated public battles" value={data.corpus.uniqueLogicalBattles.toLocaleString()} />
+          <Metric label="Final ingestion records" value={data.corpus.finalReplayRecords.toLocaleString()} />
           <Metric label="Results resolved" value={data.corpus.resolvedResults.toLocaleString()} />
-          <Metric label="Battles in the fog" value={data.corpus.unresolvedResults.toLocaleString()} alert={data.corpus.unresolvedResults > 0} />
-          <Metric label="Warriors represented" value={data.corpus.playersRepresented.toLocaleString()} />
-          <Metric label="Replay vault" value={bytes(data.corpus.archivedBytes)} />
+          <Metric label="Replay-backed Steam IDs" value={data.corpus.replayBackedSteamAccounts.toLocaleString()} />
+          <Metric label="Provisional Warriors" value={data.corpus.provisionalWarriors.toLocaleString()} />
+          <Metric label="Indexed files decoded" value={data.corpus.parseableAtAnyLevelArtifacts.toLocaleString()} />
+        </div>
+      </section>
+
+      <section className="rounded-[1.9rem] border border-cyan-100/12 bg-[linear-gradient(145deg,rgba(7,21,34,0.96),rgba(2,6,23,0.92))] p-6 sm:p-8">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <div className="text-xs uppercase tracking-[0.3em] text-cyan-100/55">Canonical Corpus Dictionary</div>
+            <h2 className="mt-2 text-3xl font-semibold">One archive, three different counting grains.</h2>
+          </div>
+          <div className="max-w-xl text-sm leading-6 text-slate-400">
+            Record counts, physical files, and player identities answer different questions. These labels are deliberately not interchangeable.
+            <div className="mt-2 text-xs text-slate-500">
+              Snapshot generated{" "}
+              <time dateTime={data.generatedAt}>
+                {data.generatedAt.replace("T", " ").replace(/\.\d{3}Z$/, " UTC")}
+              </time>
+              {" "}· database metrics refresh every 5 minutes; physical archive telemetry refreshes hourly.
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-5 xl:grid-cols-3">
+          <CorpusLayer title="Game-record grain" accent="text-cyan-100">
+            <DefinitionMetric
+              label="Final ingestion records"
+              value={data.corpus.finalReplayRecords}
+              definition="Final watcher/upload rows in GameStats. Saved sessions, rehosts, and repeated uploads can be valid rows, so this is not a unique logical-game count."
+            />
+            <DefinitionMetric
+              label="Public battle records"
+              value={data.corpus.publicBattleRecords}
+              definition="Final rows eligible for the War Vault: completed or reviewable battle records after saved checkpoints and empty unparsed shells are excluded."
+            />
+            <DefinitionMetric
+              label="Deduplicated public battle keys"
+              value={data.corpus.uniqueLogicalBattles}
+              definition="Public battle rows deduplicated by the app’s current presentation identity. It folds the six known duplicate rows; additional semantically identical rehosts may remain."
+            />
+            <DefinitionMetric
+              label="Duplicate / rehost records"
+              value={data.corpus.duplicateBattleRecords}
+              definition="Public-eligible ingestion rows folded into an already represented logical battle. They remain preserved as source records."
+            />
+            <DefinitionMetric
+              label="Excluded non-battle records"
+              value={data.corpus.excludedFinalRecords}
+              definition="Preserved final rows intentionally kept out of the public battle archive, chiefly saved checkpoints and unparsed low-roster shells."
+            />
+            <DefinitionMetric
+              label="Result resolved / unresolved"
+              value={`${data.corpus.resolvedResults.toLocaleString()} / ${data.corpus.unresolvedResults.toLocaleString()}`}
+              definition="Outcome truth within final ingestion records. Unknown results stay out of resolved win-rate math."
+            />
+          </CorpusLayer>
+
+          <CorpusLayer title="Physical-file grain" accent="text-emerald-100">
+            <DefinitionMetric
+              label="Physical replay objects"
+              value={data.corpus.physicalArchiveObjects ?? "Unavailable"}
+              definition={data.corpus.physicalArchiveBytes === null
+                ? "The immutable archive filesystem is not visible to this web process. This does not imply that the archive is empty."
+                : `${bytes(data.corpus.physicalArchiveBytes)} of immutable source bytes: ${data.corpus.physicalRecordedObjects?.toLocaleString()} recorded-game objects and ${data.corpus.physicalSavedCheckpointObjects?.toLocaleString()} saved checkpoints. File objects are not games. Scanned ${data.corpus.physicalArchiveScannedAt.replace("T", " ").replace(/\.\d{3}Z$/, " UTC")}.`}
+              alert={!data.corpus.physicalArchiveAvailable}
+            />
+            <DefinitionMetric
+              label="Engine-indexed artifacts"
+              value={data.corpus.archivedArtifacts}
+              definition={`Unique content-addressed artifacts represented in the Engine Room index, totaling ${bytes(data.corpus.archivedBytes)}. This is a subset of the physical archive.`}
+            />
+            <DefinitionMetric
+              label="Decoded at some level"
+              value={data.corpus.parseableAtAnyLevelArtifacts}
+              definition="Engine-indexed artifacts whose latest candidate completed and recovered at least defensible structured evidence. This does not promise a winner or completed battle."
+            />
+            <DefinitionMetric
+              label="Recorded-game / saved-checkpoint files"
+              value={`${data.parser.frontier.recordedGameCandidates.toLocaleString()} / ${data.parser.frontier.savedSnapshots.toLocaleString()}`}
+              definition="Recorded-game candidates are distinct from HD saved checkpoints, which remain non-final even when their roster, map, and checkpoint state parse."
+            />
+            <DefinitionMetric
+              label="Unindexed / unclassified objects"
+              value={data.corpus.unindexedOrUnclassifiedObjects ?? "Unavailable"}
+              definition={`Physical paths not referenced by an indexed artifact storage key. They are retained unknowns—not parser failures and never presumed junk. ${data.corpus.indexedStorageKeysPresent?.toLocaleString() ?? "Unknown"} indexed storage keys were found; ${data.corpus.missingIndexedStorageKeys?.toLocaleString() ?? "unknown"} were missing.`}
+              alert={(data.corpus.unindexedOrUnclassifiedObjects ?? 0) > 0 || (data.corpus.missingIndexedStorageKeys ?? 0) > 0}
+            />
+            <DefinitionMetric
+              label="Current failures / irrecoverable recorded"
+              value={`${data.corpus.recoveryQueueArtifacts.toLocaleString()} / ${data.corpus.confirmedIrrecoverableArtifacts.toLocaleString()}`}
+              definition="A current failed candidate belongs in recovery review. Zero artifacts are recorded as irrecoverable, but a terminal junk ledger is not yet established, so the global never-parseable total remains unknown."
+              alert={data.corpus.recoveryQueueArtifacts > 0 || data.corpus.confirmedIrrecoverableArtifacts > 0}
+            />
+          </CorpusLayer>
+
+          <CorpusLayer title="Player-identity grain" accent="text-amber-100">
+            <DefinitionMetric
+              label="Provisional Warriors"
+              value={data.corpus.provisionalWarriors}
+              definition="Human/career identity records seeded one-for-one from replay-backed Steam accounts. They remain provisional until reviewed identity links are activated."
+            />
+            <DefinitionMetric
+              label="Replay-backed Steam IDs"
+              value={data.corpus.replayBackedSteamAccounts}
+              definition="Unique exact SteamID64 accounts recoverable from accepted replay-player evidence. A Steam account is not automatically the same thing as one human."
+            />
+            <DefinitionMetric
+              label="Steam IDs with multiple names"
+              value={data.corpus.steamAccountsWithMultipleNames}
+              definition="Accounts observed under more than one normalized display name. These aliases fold into one account row while remaining visible as history."
+            />
+            <DefinitionMetric
+              label="Name-only identity buckets"
+              value={data.corpus.nameOnlyIdentityBuckets}
+              definition="Lower-confidence replay identities with no exact Steam ID. They remain separate and are never auto-merged into Steam accounts."
+            />
+            <DefinitionMetric
+              label="Profile-only Steam accounts"
+              value={data.corpus.profileOnlyPlatformAccounts}
+              definition="Site-profile Steam IDs with no accepted replay evidence. They do not seed a Warrior and do not enter replay-backed leaderboard totals."
+            />
+            <DefinitionMetric
+              label="Observed names / cross-account collisions"
+              value={`${data.corpus.observedDisplayNames.toLocaleString()} / ${data.corpus.namesUsedByMultipleSteamAccounts.toLocaleString()}`}
+              definition="Observed names are presentation strings, not people. The collision count shows normalized names used by more than one exact Steam account."
+            />
+            <DefinitionMetric
+              label="Proposed / active links"
+              value={`${data.corpus.proposedPlatformLinks.toLocaleString()} / ${data.corpus.activePlatformLinks.toLocaleString()}`}
+              definition={`Identity discovery is shadow-safe: ${data.corpus.proposedWarriorClaims.toLocaleString()} site claims are proposed, ${data.corpus.activeWarriorClaims.toLocaleString()} are active, and ${data.corpus.identityPublications.toLocaleString()} identity projections have been published.`}
+            />
+          </CorpusLayer>
         </div>
       </section>
 
@@ -106,6 +237,8 @@ export default async function GameStatsPage() {
 }
 
 function Metric({ label, value, alert = false }: { label: string; value: string; alert?: boolean }) { return <div className={`rounded-2xl border p-4 ${alert ? "border-amber-200/18 bg-amber-300/[0.07]" : "border-white/10 bg-black/22"}`}><div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{label}</div><div className={`mt-2 text-xl font-semibold ${alert ? "text-amber-100" : "text-white"}`}>{value}</div></div>; }
+function CorpusLayer({ title, accent, children }: { title: string; accent: string; children: ReactNode }) { return <article className="rounded-[1.5rem] border border-white/9 bg-black/20 p-5"><h3 className={`text-sm font-semibold uppercase tracking-[0.22em] ${accent}`}>{title}</h3><div className="mt-4 space-y-3">{children}</div></article>; }
+function DefinitionMetric({ label, value, definition, alert = false }: { label: string; value: number | string; definition: string; alert?: boolean }) { return <div className={`rounded-xl border p-4 ${alert ? "border-amber-200/18 bg-amber-300/[0.055]" : "border-white/8 bg-white/[0.025]"}`}><div className="flex items-start justify-between gap-4"><div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div><div className={`shrink-0 text-lg font-semibold tabular-nums ${alert ? "text-amber-100" : "text-white"}`}>{typeof value === "number" ? value.toLocaleString() : value}</div></div><p className="mt-2 text-xs leading-5 text-slate-400">{definition}</p></div>; }
 function Mini({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3"><div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div><div className="mt-1 text-sm font-semibold text-white">{value}</div></div>; }
 function Line({ label, value }: { label: string; value: string }) { return <div className="flex items-start justify-between gap-4 border-b border-white/7 pb-2"><span className="text-slate-500">{label}</span><span className="break-all text-right text-slate-200">{value}</span></div>; }
 function Progress({ value }: { value: number }) { return <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-emerald-300 to-amber-300" style={{ width: `${Math.max(0, Math.min(100, value / 100))}%` }} /></div>; }

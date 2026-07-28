@@ -31,7 +31,7 @@ export default async function PlayersDirectoryPage() {
               Player Board
             </div>
             <h1 className="max-w-3xl text-4xl font-semibold leading-[1.02] text-white sm:text-5xl">
-              {boardCount} warriors on board.
+              {boardCount} competitive identity rows.
             </h1>
 
             <div className="flex flex-wrap gap-2">
@@ -59,7 +59,7 @@ export default async function PlayersDirectoryPage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <StatCard label="On Board" value={String(boardCount)} />
+            <StatCard label="Identity Rows" value={String(boardCount)} />
             <StatCard label="Claimed" value={String(directory.claimedEntries.length)} />
             <StatCard
               label="Live Now"
@@ -108,12 +108,13 @@ export default async function PlayersDirectoryPage() {
       </section>
 
       <Panel
-        title="Replay-Built Warriors"
-        eyebrow="Claimable Identities"
+        title="Replay-Backed Identities"
+        eyebrow="Steam and Name-Only Evidence"
         count={directory.replayEntries.length}
       >
         <div className="mb-4 text-sm leading-6 text-slate-300">
-          Parsed opponents land here with a public page and a clean claim path.
+          Exact Steam accounts fold historical names into one row. Name-only
+          evidence stays separate until stronger identity proof exists.
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
@@ -165,7 +166,9 @@ function PlayerCard({
               ? entry.verified
                 ? `claimed profile · level ${entry.verificationLevel}`
                 : `steam linked · level ${entry.verificationLevel}`
-              : "replay-built warrior"}
+              : entry.identityKind === "steam"
+                ? "replay-backed Steam account"
+                : "name-only replay identity"}
           </div>
         </div>
         <div className={`rounded-full border px-3 py-1 text-xs ${badgeStyles}`}>

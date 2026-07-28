@@ -199,7 +199,7 @@ function buildSystemTickerItems({
   items.push({
     key: "system-lobby-counts",
     text: cleanTickerText(
-      `LOBBY · ${leaderboard.activePlayers} online · ${leaderboard.matchesToday} matches today · ${leaderboard.trackedPlayers} on board`
+      `LOBBY · ${leaderboard.activePlayers} online · ${leaderboard.matchesToday} matches today · ${leaderboard.trackedPlayers} identity rows`
     ),
     source: "system",
     priority: 35,

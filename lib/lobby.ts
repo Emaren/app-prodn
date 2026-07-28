@@ -1,6 +1,11 @@
 import type { Aoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
 import type { LiveTickerSnapshot } from "@/lib/liveTicker";
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
+import type {
+  LeaderboardIdentityKind,
+  LeaderboardNameHistoryEntry,
+  LeaderboardRankDelta24hState,
+} from "@/lib/leaderboardIdentity";
 import type { WoloMarketSnapshot } from "@/lib/woloMarket";
 
 export const LOBBY_ROOM_SLUG = "main-lobby";
@@ -154,8 +159,13 @@ export type LobbyMessage = {
 export type LobbyLeaderboardEntry = {
   rank: number;
   key: string;
+  identityKind: LeaderboardIdentityKind;
   name: string;
+  currentName: string;
+  latestObservedName: string;
+  nameHistory: LeaderboardNameHistoryEntry[];
   uid: string | null;
+  steamId: string | null;
   href: string;
   elo: number | null;
   arenaElo: number | null;
@@ -179,6 +189,9 @@ export type LobbyLeaderboardEntry = {
   pendingWoloClaimAmount: number;
   totalMatches: number;
   lastPlayedAt: string | null;
+  rank24hAgo: number | null;
+  rankDelta24h: number | null;
+  rankDelta24hState: LeaderboardRankDelta24hState;
   provisional: boolean;
 };
 
@@ -193,8 +206,17 @@ export type LobbyLeaderboardSummary = {
   uniqueReplaysToday: number;
   needsReviewToday: number;
   trackedPlayers: number;
+  identityRows: number;
+  steamIdentityRows: number;
+  nameOnlyIdentityRows: number;
+  siteOnlyIdentityRows: number;
+  claimedProfileOnlyRows: number;
+  accountsWithAliasHistory: number;
   rankedPlayers: number;
   minimumMatches: number;
+  rankDelta24hAsOf: string | null;
+  rankDelta24hCutoff: string | null;
+  rankDelta24hMethod: "reconstructed_current_corpus";
 };
 
 export type LobbyWoloAccount = {
@@ -316,8 +338,18 @@ export function getFallbackLeaderboard(): LobbyLeaderboardSummary {
     uniqueReplaysToday: 0,
     needsReviewToday: 0,
     trackedPlayers: 0,
+    identityRows: 0,
+    steamIdentityRows: 0,
+    nameOnlyIdentityRows: 0,
+    siteOnlyIdentityRows: 0,
+    claimedProfileOnlyRows: 0,
+    accountsWithAliasHistory: 0,
     rankedPlayers: 0,
     minimumMatches: LOBBY_LEADERBOARD_MIN_MATCHES,
+    rankDelta24hAsOf: null,
+    rankDelta24hCutoff: null,
+    rankDelta24hMethod:
+      "reconstructed_current_corpus",
   };
 }
 
