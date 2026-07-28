@@ -17,8 +17,10 @@ sensitivity: "internal"
 
 ## Verified identity and metric release — 2026-07-28
 
-- source checkout: clean `main` at
-  `43b1b9b0bd23f8634e88147faff6fb368e1977ea`, equal to `origin/main`;
+- source checkout: clean `main`, equal to `origin/main`; the live verification
+  observed `43b1b9b0bd23f8634e88147faff6fb368e1977ea` before this
+  documentation-only correction, so later documentation descendants may
+  advance the checkout without changing the running implementation;
 - deployed implementation build: `20260728153116-44f5f4143c`, built from
   `746251bc60d46fd52d8d23318e5d568218eb726b`, on the active
   `aoe2hdbets-web.service` / `127.0.0.1:3030`; the commits between the build

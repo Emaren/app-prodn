@@ -74,8 +74,11 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 ### 2026-07-28 identity leaderboard and corpus-census release
 
-- clean production checkout: `main` at
-  `43b1b9b0bd23f8634e88147faff6fb368e1977ea`, equal to `origin/main`;
+- clean production checkout: `main`, equal to `origin/main`; the live
+  verification observed `43b1b9b0bd23f8634e88147faff6fb368e1977ea`
+  before this documentation-only correction, so later documentation
+  descendants may advance the checkout without changing the running
+  implementation;
 - running implementation build: `20260728153116-44f5f4143c`, built from
   `746251bc60d46fd52d8d23318e5d568218eb726b`; the later commits through the
   current checkout are documentation-only;
