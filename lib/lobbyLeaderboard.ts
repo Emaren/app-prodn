@@ -23,6 +23,10 @@ import {
   type LeaderboardLane,
 } from "@/lib/leaderboardLane";
 import {
+  normalizeLeaderboardScope,
+  type LeaderboardScope,
+} from "@/lib/leaderboardScope";
+import {
   normalizeLeaderboardSortDirection,
   normalizeLeaderboardSortKey,
   streakSortScore,
@@ -43,6 +47,7 @@ import {
   resolveRankDelta24h,
   type LeaderboardRankDelta24h,
 } from "@/lib/leaderboardIdentity";
+import { isLeaderboardExcludedSystemUid } from "@/lib/internalSystemAccounts";
 
 const BASE_ARENA_ELO = 1500;
 const ARENA_ELO_K_FACTOR = 32;
@@ -64,7 +69,9 @@ export type LoadLobbyLeaderboardOptions = {
   offset?: number;
   limit?: number;
   includePendingClaimed?: boolean;
+  includeFeaturedClaimed?: boolean;
   lane?: LeaderboardLane;
+  scope?: LeaderboardScope;
   query?: string | null;
   sortKey?: LeaderboardSortKey | null;
   sortDirection?: LeaderboardSortDirection | null;
@@ -375,8 +382,17 @@ function buildLeaderboardSelection(
   options: LoadLobbyLeaderboardOptions = {}
 ) {
   const lane = normalizeLeaderboardLane(options.lane);
+  const scope = normalizeLeaderboardScope(
+    options.scope,
+  );
+  const scopedEntries =
+    scope === "claimed"
+      ? entries.filter(
+          (entry) => entry.claimed,
+        )
+      : entries;
 
-  const eligibleEntries = entries
+  const eligibleEntries = scopedEntries
     .filter(
       (entry) =>
         entry.totalMatches >= LOBBY_LEADERBOARD_MIN_MATCHES
@@ -385,13 +401,13 @@ function buildLeaderboardSelection(
       compareLeaderboardEntries(left, right, lane)
     );
 
-  const rankedEntries = entries
+  const rankedEntries = scopedEntries
     .filter((entry) => entry.totalMatches > 0)
     .sort((left, right) =>
       compareLeaderboardEntries(left, right, lane)
     );
 
-  const pendingClaimedEntries = entries
+  const pendingClaimedEntries = scopedEntries
     .filter(
       (entry) =>
         entry.claimed &&
@@ -409,7 +425,7 @@ function buildLeaderboardSelection(
       return left.name.localeCompare(right.name);
     });
 
-  const featuredClaimedEntries = entries
+  const featuredClaimedEntries = scopedEntries
     .filter(
       (entry) =>
         entry.claimed &&
@@ -424,8 +440,8 @@ function buildLeaderboardSelection(
       )
     );
 
-  // Rank is always canonical. Sorting another column changes row order,
-  // never the warrior's actual ladder rank.
+  // Rank is always canonical within the selected board scope. Sorting
+  // another column changes row order, never the warrior's scope rank.
   const rankByKey = new Map<string, number>();
 
   rankedEntries.forEach((entry, index) => {
@@ -459,6 +475,8 @@ function buildLeaderboardSelection(
 
   const includePendingClaimed =
     options.includePendingClaimed ?? true;
+  const includeFeaturedClaimed =
+    options.includeFeaturedClaimed ?? false;
 
   const defaultOrderedEntries = [
     ...rankedEntries,
@@ -521,7 +539,10 @@ function buildLeaderboardSelection(
     }
   }
 
-  if (!normalizedQuery) {
+  if (
+    includeFeaturedClaimed &&
+    !normalizedQuery
+  ) {
     for (const entry of featuredClaimedEntries) {
       selectedByKey.set(entry.key, entry);
     }
@@ -1036,6 +1057,7 @@ function populateRankDelta24h(
   entries: EnrichedLeaderboardEntry[],
   games: PreparedLeaderboardGame[],
   lane: LeaderboardLane,
+  scope: LeaderboardScope,
   asOf: Date,
 ) {
   const cutoff =
@@ -1073,30 +1095,50 @@ function populateRankDelta24h(
 
   const currentRankByKey =
     buildCanonicalRankMap(
-      entries,
+      scope === "claimed"
+        ? entries.filter(
+            (entry) =>
+              entry.claimed,
+          )
+        : entries,
       lane,
     );
   const historicalRankByKey =
     buildCanonicalRankMap(
-      historicalEntries,
+      scope === "claimed"
+        ? historicalEntries.filter(
+            (entry) =>
+              entry.claimed,
+          )
+        : historicalEntries,
       lane,
     );
 
   for (const entry of entries) {
+    const inScope =
+      scope === "all" ||
+      entry.claimed;
+
     Object.assign(
       entry,
       resolveRankDelta24h({
         currentRank:
-          currentRankByKey.get(
-            entry.key,
-          ) ?? null,
+          inScope
+            ? currentRankByKey.get(
+                entry.key,
+              ) ?? null
+            : null,
         previousRank:
-          historicalRankByKey.get(
-            entry.key,
-          ) ?? null,
+          inScope
+            ? historicalRankByKey.get(
+                entry.key,
+              ) ?? null
+            : null,
         currentlyRanked:
+          inScope &&
           entry.totalMatches > 0,
         previouslyRanked:
+          inScope &&
           historicalRankByKey.has(
             entry.key,
           ),
@@ -1219,6 +1261,9 @@ async function loadLobbyLeaderboardFresh(
   options: LoadLobbyLeaderboardOptions = {}
 ): Promise<LobbyLeaderboardSummary> {
   const lane = normalizeLeaderboardLane(options.lane);
+  const scope = normalizeLeaderboardScope(
+    options.scope,
+  );
   const rankDeltaAsOf = new Date();
   const dayStart = new Date(
     rankDeltaAsOf,
@@ -1293,7 +1338,14 @@ async function loadLobbyLeaderboardFresh(
   const needsReviewToday = Math.max(0, uniqueReplaysToday - matchesToday);
 
   const candidates = directory.allEntries
-    .filter((entry) => entry.totalMatches > 0 || entry.claimed)
+    .filter(
+      (entry) =>
+        (entry.totalMatches > 0 ||
+          entry.claimed) &&
+        !isLeaderboardExcludedSystemUid(
+          entry.uid,
+        ),
+    )
     .map(buildEnrichedEntry);
 
   buildArenaElo(candidates, preparedGames);
@@ -1302,6 +1354,7 @@ async function loadLobbyLeaderboardFresh(
       candidates,
       preparedGames,
       lane,
+      scope,
       rankDeltaAsOf,
     );
 
@@ -1329,6 +1382,10 @@ async function loadLobbyLeaderboardFresh(
       (entry) =>
         entry.claimed &&
         entry.totalMatches === 0,
+    ).length;
+  const claimedIdentityRows =
+    candidates.filter(
+      (entry) => entry.claimed,
     ).length;
   const accountsWithAliasHistory =
     candidates.filter(
@@ -1375,6 +1432,7 @@ async function loadLobbyLeaderboardFresh(
   return {
     title: lane === "dm" ? "Deathmatch Leaderboard" : "Ranked Match Leaderboard",
     lane,
+    scope,
     statusLabel: lane.toUpperCase(),
     entries: selectedEntries.map((entry) =>
       toLobbyLeaderboardEntry(
@@ -1383,7 +1441,12 @@ async function loadLobbyLeaderboardFresh(
         lane
       )
     ),
-    activePlayers: directory.activeClaimed.length,
+    activePlayers:
+      candidates.filter(
+        (entry) =>
+          entry.claimed &&
+          entry.isOnline,
+      ).length,
     matchesToday,
     resolvedGamesToday: matchesToday,
     uniqueReplaysToday,
@@ -1393,6 +1456,7 @@ async function loadLobbyLeaderboardFresh(
     steamIdentityRows,
     nameOnlyIdentityRows,
     siteOnlyIdentityRows,
+    claimedIdentityRows,
     claimedProfileOnlyRows,
     accountsWithAliasHistory,
     rankedPlayers: eligibleEntries.length,
@@ -1424,6 +1488,11 @@ function buildLeaderboardCacheKey(
     ),
     includePendingClaimed:
       options.includePendingClaimed ?? true,
+    includeFeaturedClaimed:
+      options.includeFeaturedClaimed ?? false,
+    scope: normalizeLeaderboardScope(
+      options.scope,
+    ),
     query: normalizeLeaderboardSearch(options.query),
     sortKey: normalizeLeaderboardSortKey(
       options.sortKey

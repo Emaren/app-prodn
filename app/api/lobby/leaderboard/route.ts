@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { normalizeLeaderboardLane } from "@/lib/leaderboardLane";
+import { normalizeLeaderboardScope } from "@/lib/leaderboardScope";
 import {
   normalizeLeaderboardSortDirection,
   normalizeLeaderboardSortKey,
@@ -29,6 +30,11 @@ export async function GET(request: NextRequest) {
     Math.min(MAX_LIMIT, readIntegerParam(request, "limit", DEFAULT_LIMIT))
   );
   const lane = normalizeLeaderboardLane(request.nextUrl.searchParams.get("lane"));
+  const scope = normalizeLeaderboardScope(
+    request.nextUrl.searchParams.get(
+      "scope",
+    ),
+  );
   const query = request.nextUrl.searchParams.get("q")?.trim().slice(0, 64) || null;
   const sortKey = normalizeLeaderboardSortKey(
     request.nextUrl.searchParams.get("sort")
@@ -43,15 +49,17 @@ export async function GET(request: NextRequest) {
     offset,
     limit,
     includePendingClaimed: false,
+    includeFeaturedClaimed: false,
     lane,
+    scope,
     query,
     sortKey,
     sortDirection,
   });
 
-  // The leaderboard helper may enrich a selection with additional
-  // rows. The HTTP pagination contract must remain strict: a request
-  // for N rows may advance by at most N rows.
+  // This route is always strict even if a future caller accidentally
+  // enables a lobby-only enrichment option: N requested rows advance
+  // by at most N rows.
   const entries = leaderboard.entries.slice(0, limit);
   const nextOffset = offset + entries.length;
 

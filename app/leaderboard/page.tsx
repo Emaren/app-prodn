@@ -61,6 +61,8 @@ export default async function LeaderboardPage({
           offset: 0,
           limit: 50,
           includePendingClaimed: false,
+          includeFeaturedClaimed: false,
+          scope: "all",
         },
       );
   } catch (error) {

@@ -1,6 +1,10 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 
 import { AI_CONCIERGE_UID, isAiPersonaUid } from "@/lib/aiConciergeConfig";
+import {
+  CHALLENGE_PROTOCOL_NAME,
+  CHALLENGE_PROTOCOL_UID,
+} from "@/lib/internalSystemAccounts";
 import { ensureAiConciergeUser } from "@/lib/aiConcierge";
 import { getAiThreadKind } from "@/lib/aiPersonaInbox";
 import {
@@ -208,7 +212,6 @@ type DirectInboxWriteClient = Pick<
 const COMMISSIONER_NOTICE_LOCK_NAMESPACE = 752_009;
 const COMMISSIONER_NOTICE_DELIVERED_EVENT = "commissioner_notice_delivered";
 const PROTOCOL_NOTICE_DELIVERED_EVENT = "protocol_notice_delivered";
-const CHALLENGE_PROTOCOL_UID = "challenge-protocol";
 
 type ChallengeNoticeMessageRow = {
   id: number;
@@ -841,7 +844,7 @@ export async function postChallengeProtocolNoticeToParticipants(
           lockName: true,
           verificationLevel: 1,
           verificationMethod: "system",
-          steamPersonaName: "Challenge Protocol",
+          steamPersonaName: CHALLENGE_PROTOCOL_NAME,
         },
         select: { id: true },
       }));
@@ -948,7 +951,7 @@ export async function postChallengeCommissionerNotice(
           lockName: true,
           verificationLevel: 1,
           verificationMethod: "system",
-          steamPersonaName: "Challenge Protocol",
+          steamPersonaName: CHALLENGE_PROTOCOL_NAME,
         },
         select: { id: true },
       }));

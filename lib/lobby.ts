@@ -1,6 +1,7 @@
 import type { Aoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
 import type { LiveTickerSnapshot } from "@/lib/liveTicker";
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
+import type { LeaderboardScope } from "@/lib/leaderboardScope";
 import type {
   LeaderboardIdentityKind,
   LeaderboardNameHistoryEntry,
@@ -198,6 +199,7 @@ export type LobbyLeaderboardEntry = {
 export type LobbyLeaderboardSummary = {
   title: string;
   lane: LeaderboardLane;
+  scope: LeaderboardScope;
   statusLabel: string;
   entries: LobbyLeaderboardEntry[];
   activePlayers: number;
@@ -210,6 +212,7 @@ export type LobbyLeaderboardSummary = {
   steamIdentityRows: number;
   nameOnlyIdentityRows: number;
   siteOnlyIdentityRows: number;
+  claimedIdentityRows: number;
   claimedProfileOnlyRows: number;
   accountsWithAliasHistory: number;
   rankedPlayers: number;
@@ -330,6 +333,7 @@ export function getFallbackLeaderboard(): LobbyLeaderboardSummary {
   return {
     title: "Season Leaderboard",
     lane: "rm",
+    scope: "all",
     statusLabel: "RM",
     entries: [],
     activePlayers: 0,
@@ -342,6 +346,7 @@ export function getFallbackLeaderboard(): LobbyLeaderboardSummary {
     steamIdentityRows: 0,
     nameOnlyIdentityRows: 0,
     siteOnlyIdentityRows: 0,
+    claimedIdentityRows: 0,
     claimedProfileOnlyRows: 0,
     accountsWithAliasHistory: 0,
     rankedPlayers: 0,

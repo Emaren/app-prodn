@@ -6,18 +6,29 @@ import type {
 import type {
   LeaderboardLane,
 } from "@/lib/leaderboardLane";
+import {
+  normalizeLeaderboardScope,
+  type LeaderboardScope,
+} from "@/lib/leaderboardScope";
 
 const laneCache =
   new Map<
-    LeaderboardLane,
+    string,
     LobbyLeaderboardSummary
   >();
 
 const laneRequests =
   new Map<
-    LeaderboardLane,
+    string,
     Promise<LobbyLeaderboardSummary>
   >();
+
+function leaderboardCacheKey(
+  lane: LeaderboardLane,
+  scope: LeaderboardScope,
+) {
+  return `${lane}:${scope}`;
+}
 
 export function seedLeaderboardLaneCache(
   summary:
@@ -29,18 +40,26 @@ export function seedLeaderboardLaneCache(
     return;
   }
 
+  const scope =
+    normalizeLeaderboardScope(
+      summary.scope,
+    );
+  const cacheKey =
+    leaderboardCacheKey(
+      summary.lane,
+      scope,
+    );
   const current =
-    laneCache.get(summary.lane);
+    laneCache.get(cacheKey);
 
-  // Prefer the richer snapshot when both represent
-  // the same lane.
+  // Prefer the richer snapshot when both represent the same lane and scope.
   if (
     !current ||
     summary.entries.length >=
       current.entries.length
   ) {
     laneCache.set(
-      summary.lane,
+      cacheKey,
       summary,
     );
   }
@@ -48,8 +67,18 @@ export function seedLeaderboardLaneCache(
 
 export function readLeaderboardLaneCache(
   lane: LeaderboardLane,
+  scope: LeaderboardScope = "all",
 ) {
-  return laneCache.get(lane) ?? null;
+  return (
+    laneCache.get(
+      leaderboardCacheKey(
+        lane,
+        normalizeLeaderboardScope(
+          scope,
+        ),
+      ),
+    ) ?? null
+  );
 }
 
 export async function loadLeaderboardLaneCached(
@@ -57,14 +86,29 @@ export async function loadLeaderboardLaneCached(
   {
     limit = 64,
     force = false,
+    scope = "all",
   }: {
     limit?: number;
     force?: boolean;
+    scope?: LeaderboardScope;
   } = {},
 ) {
+  const normalizedScope =
+    normalizeLeaderboardScope(
+      scope,
+    );
+  const cacheKey =
+    leaderboardCacheKey(
+      lane,
+      normalizedScope,
+    );
+
   if (!force) {
     const cached =
-      readLeaderboardLaneCache(lane);
+      readLeaderboardLaneCache(
+        lane,
+        normalizedScope,
+      );
 
     if (cached) {
       return cached;
@@ -72,7 +116,7 @@ export async function loadLeaderboardLaneCached(
   }
 
   const pending =
-    laneRequests.get(lane);
+    laneRequests.get(cacheKey);
 
   if (pending) {
     return pending;
@@ -82,6 +126,7 @@ export async function loadLeaderboardLaneCached(
     const params =
       new URLSearchParams({
         lane,
+        scope: normalizedScope,
         offset: "0",
         limit: String(limit),
       });
@@ -105,7 +150,10 @@ export async function loadLeaderboardLaneCached(
       !Array.isArray(
         payload.entries,
       ) ||
-      payload.lane !== lane
+      payload.lane !== lane ||
+      normalizeLeaderboardScope(
+        payload.scope,
+      ) !== normalizedScope
     ) {
       throw new Error(
         `Leaderboard ${lane.toUpperCase()} lane unavailable`,
@@ -123,7 +171,7 @@ export async function loadLeaderboardLaneCached(
   })();
 
   laneRequests.set(
-    lane,
+    cacheKey,
     request,
   );
 
@@ -131,10 +179,12 @@ export async function loadLeaderboardLaneCached(
     return await request;
   } finally {
     if (
-      laneRequests.get(lane) ===
+      laneRequests.get(cacheKey) ===
       request
     ) {
-      laneRequests.delete(lane);
+      laneRequests.delete(
+        cacheKey,
+      );
     }
   }
 }
@@ -142,12 +192,14 @@ export async function loadLeaderboardLaneCached(
 export async function prefetchLeaderboardLane(
   lane: LeaderboardLane,
   limit = 64,
+  scope: LeaderboardScope = "all",
 ) {
   try {
     return await loadLeaderboardLaneCached(
       lane,
       {
         limit,
+        scope,
       },
     );
   } catch {

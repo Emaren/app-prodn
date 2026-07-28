@@ -1,10 +1,19 @@
-export const AI_CONCIERGE_UID = "aoe2hd_ai_concierge";
+import {
+  AI_CONCIERGE_UID,
+  AI_GRIMER_UID,
+  AI_GUY_UID,
+} from "@/lib/internalSystemAccounts";
+
+export {
+  AI_CONCIERGE_UID,
+  AI_GRIMER_UID,
+  AI_GUY_UID,
+};
+
 export const AI_CONCIERGE_NAME = "The AI Scribe";
 
-export const AI_GRIMER_UID = "aoe2hd_ai_grimer";
 export const AI_GRIMER_NAME = "Grimer";
 
-export const AI_GUY_UID = "aoe2hd_ai_guy";
 export const AI_GUY_NAME = "Guy of Moxica";
 
 function getDefaultLlamaChatGatewayUrl() {

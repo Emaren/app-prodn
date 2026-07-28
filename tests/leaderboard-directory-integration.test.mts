@@ -143,6 +143,88 @@ const acceptedOld =
 const acceptedRecently =
   new Date(now - 60 * 60 * 1000);
 
+const claimedProfileUsers =
+  Array.from(
+    { length: 60 },
+    (_, index) => {
+      const number = index + 1;
+
+      return {
+        id: 100 + number,
+        uid: `u_claimed_${number
+          .toString()
+          .padStart(3, "0")}`,
+        inGameName:
+          number === 1
+            ? "Grimer"
+            : `Profile ${number
+                .toString()
+                .padStart(3, "0")}`,
+        steamPersonaName: null,
+        steamId: null,
+        verified: true,
+        verificationLevel: 1,
+        lastSeen: null,
+      };
+    },
+  );
+
+const users = [
+  {
+    id: 1,
+    uid: "u_alpha",
+    inGameName: "New Alpha",
+    steamPersonaName: "New Alpha",
+    steamId: STEAM_ALPHA,
+    verified: true,
+    verificationLevel: 2,
+    lastSeen: null,
+  },
+  ...claimedProfileUsers,
+  {
+    id: 1001,
+    uid: "aoe2hd_ai_concierge",
+    inGameName: null,
+    steamPersonaName: "The AI Scribe",
+    steamId: null,
+    verified: true,
+    verificationLevel: 1,
+    lastSeen: null,
+  },
+  {
+    id: 1002,
+    uid: "aoe2hd_ai_grimer",
+    inGameName: null,
+    steamPersonaName: "Grimer",
+    steamId: null,
+    verified: true,
+    verificationLevel: 1,
+    lastSeen: null,
+  },
+  {
+    id: 1003,
+    uid: "challenge-protocol",
+    inGameName: null,
+    steamPersonaName:
+      "Challenge Protocol",
+    steamId: null,
+    verified: true,
+    verificationLevel: 1,
+    lastSeen: null,
+  },
+  {
+    id: 1004,
+    uid: "aoe2hd_ai_guy",
+    inGameName: null,
+    steamPersonaName:
+      "Guy of Moxica",
+    steamId: null,
+    verified: true,
+    verificationLevel: 1,
+    lastSeen: null,
+  },
+];
+
 const snapshots = [
   {
     id: 1,
@@ -214,13 +296,22 @@ const snapshots = [
 
 const prisma = {
   user: {
-    findMany: async () => [],
+    findMany: async () => users,
   },
   gameStats: {
     findMany: async () => games,
   },
   managedMediaAsset: {
-    findMany: async () => [],
+    findMany: async () => [
+      {
+        target:
+          "user-u_claimed_060-featured",
+      },
+      {
+        target:
+          "user-aoe2hd_ai_grimer-featured",
+      },
+    ],
   },
   replayPlayerSnapshot: {
     findMany: async () => snapshots,
@@ -245,7 +336,7 @@ test("directory folds aliases only within one exact Steam account", async () => 
 
   assert.equal(
     directory.allEntries.length,
-    5,
+    69,
   );
 
   const alpha =
@@ -259,6 +350,8 @@ test("directory folds aliases only within one exact Steam account", async () => 
     alpha.key,
     `steam:${STEAM_ALPHA}`,
   );
+  assert.equal(alpha.claimed, true);
+  assert.equal(alpha.uid, "u_alpha");
   assert.equal(
     alpha.name,
     "New Alpha",
@@ -329,5 +422,121 @@ test("24-hour baseline uses evidence acceptance time, not old match time", async
   assert.equal(
     leaderboard.rankDelta24hMethod,
     "reconstructed_current_corpus",
+  );
+});
+
+test("default pages stay strict and sequential even when off-page profiles are featured", async () => {
+  const firstPage =
+    await loadLobbyLeaderboard(
+      prisma as never,
+      {
+        lane: "dm",
+        scope: "all",
+        offset: 0,
+        limit: 50,
+        includePendingClaimed: false,
+        includeFeaturedClaimed: false,
+      },
+    );
+  const secondPage =
+    await loadLobbyLeaderboard(
+      prisma as never,
+      {
+        lane: "dm",
+        scope: "all",
+        offset: 50,
+        limit: 50,
+        includePendingClaimed: false,
+        includeFeaturedClaimed: false,
+      },
+    );
+
+  assert.equal(firstPage.entries.length, 50);
+  assert.deepEqual(
+    firstPage.entries.map(
+      (entry) => entry.rank,
+    ),
+    Array.from(
+      { length: 50 },
+      (_, index) => index + 1,
+    ),
+  );
+  assert.deepEqual(
+    secondPage.entries.map(
+      (entry) => entry.rank,
+    ),
+    Array.from(
+      { length: 15 },
+      (_, index) => index + 51,
+    ),
+  );
+  assert.equal(firstPage.trackedPlayers, 65);
+  assert.equal(
+    new Set(
+      [
+        ...firstPage.entries,
+        ...secondPage.entries,
+      ].map((entry) => entry.key),
+    ).size,
+    65,
+  );
+});
+
+test("claimed scope is contiguous and excludes reserved systems by UID, not name", async () => {
+  const leaderboard =
+    await loadLobbyLeaderboard(
+      prisma as never,
+      {
+        lane: "dm",
+        scope: "claimed",
+        offset: 0,
+        limit: 100,
+        includePendingClaimed: false,
+        includeFeaturedClaimed: false,
+      },
+    );
+  const uids = new Set(
+    leaderboard.entries.map(
+      (entry) => entry.uid,
+    ),
+  );
+
+  assert.equal(leaderboard.scope, "claimed");
+  assert.equal(leaderboard.trackedPlayers, 61);
+  assert.equal(leaderboard.claimedIdentityRows, 61);
+  assert.equal(leaderboard.identityRows, 65);
+  assert.equal(
+    leaderboard.entries.every(
+      (entry) => entry.claimed,
+    ),
+    true,
+  );
+  assert.deepEqual(
+    leaderboard.entries.map(
+      (entry) => entry.rank,
+    ),
+    Array.from(
+      { length: 61 },
+      (_, index) => index + 1,
+    ),
+  );
+
+  for (const uid of [
+    "aoe2hd_ai_concierge",
+    "aoe2hd_ai_grimer",
+    "aoe2hd_ai_guy",
+    "challenge-protocol",
+  ]) {
+    assert.equal(uids.has(uid), false);
+  }
+
+  assert.equal(
+    leaderboard.entries.some(
+      (entry) =>
+        entry.uid ===
+          "u_claimed_001" &&
+        entry.name === "Grimer",
+    ),
+    true,
   );
 });

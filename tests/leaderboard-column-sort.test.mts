@@ -95,10 +95,10 @@ test("API carries sort state into full leaderboard loader", () => {
   );
 });
 
-test("server sorts before pagination and preserves canonical rank", () => {
+test("server sorts before pagination and preserves canonical scope rank", () => {
   assert.match(
     loader,
-    /Rank is always canonical/,
+    /Rank is always canonical within the selected board scope/,
   );
   assert.match(
     loader,

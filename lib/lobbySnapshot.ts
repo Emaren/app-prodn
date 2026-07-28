@@ -158,7 +158,12 @@ async function loadLobbySnapshotFresh(
       }),
       loadOnlineUsers(prisma),
       loadRecentMatches(),
-      loadLobbyLeaderboard(prisma, { limit: 32, includePendingClaimed: false }),
+      loadLobbyLeaderboard(prisma, {
+        limit: 32,
+        includePendingClaimed: false,
+        includeFeaturedClaimed: true,
+        scope: "all",
+      }),
       loadLobbyWoloEarnersBoard(prisma, { mode: "weekly" }),
       loadAoe2HdPulseSnapshot(),
       loadLiveSessionSnapshot(prisma),

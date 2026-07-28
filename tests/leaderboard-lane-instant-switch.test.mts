@@ -29,7 +29,7 @@ const cache = readFileSync(
 );
 
 test(
-  "shared RM DM lane cache exists",
+  "shared RM DM lane and scope cache exists",
   () => {
     assert.match(
       cache,
@@ -45,6 +45,16 @@ test(
       cache,
       /prefetchLeaderboardLane/,
     );
+
+    assert.match(
+      cache,
+      /leaderboardCacheKey/,
+    );
+
+    assert.match(
+      cache,
+      /`\$\{lane\}:\$\{scope\}`/,
+    );
   },
 );
 
@@ -59,6 +69,11 @@ test(
     assert.match(
       dedicated,
       /readLeaderboardLaneCache/,
+    );
+
+    assert.match(
+      dedicated,
+      /prefetchLeaderboardLane\([\s\S]*scope/,
     );
   },
 );

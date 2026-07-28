@@ -13,6 +13,9 @@ import {
   writeStoredLeaderboardLane,
   type LeaderboardLane,
 } from "@/lib/leaderboardLane";
+import type {
+  LeaderboardScope,
+} from "@/lib/leaderboardScope";
 import {
   prefetchLeaderboardLane,
   readLeaderboardLaneCache,
@@ -33,6 +36,7 @@ type IdentityCensus = Pick<
   | "steamIdentityRows"
   | "nameOnlyIdentityRows"
   | "siteOnlyIdentityRows"
+  | "claimedIdentityRows"
   | "claimedProfileOnlyRows"
   | "accountsWithAliasHistory"
   | "rankDelta24hAsOf"
@@ -57,6 +61,8 @@ function identityCensus(
       leaderboard?.nameOnlyIdentityRows ?? 0,
     siteOnlyIdentityRows:
       leaderboard?.siteOnlyIdentityRows ?? 0,
+    claimedIdentityRows:
+      leaderboard?.claimedIdentityRows ?? 0,
     claimedProfileOnlyRows:
       leaderboard?.claimedProfileOnlyRows ?? 0,
     accountsWithAliasHistory:
@@ -117,6 +123,11 @@ export function ModernLeaderboardPage({
   const [lane, setLane] = useState<LeaderboardLane>(
     initialLeaderboard?.lane ?? "rm"
   );
+  const [scope, setScope] =
+    useState<LeaderboardScope>(
+      initialLeaderboard?.scope ??
+        "all",
+    );
   const [sort, setSort] =
     useState<LeaderboardSortState>({
       key: null,
@@ -166,8 +177,13 @@ export function ModernLeaderboardPage({
     void prefetchLeaderboardLane(
       alternateLane,
       PAGE_SIZE,
+      scope,
     );
-  }, [initialLeaderboard, lane]);
+  }, [
+    initialLeaderboard,
+    lane,
+    scope,
+  ]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setQuery(searchInput.trim()), 280);
@@ -204,6 +220,10 @@ export function ModernLeaderboardPage({
 
         if (!preserveRows) {
           setLoading(true);
+          setEntries([]);
+          setTrackedPlayers(0);
+          setNextOffset(0);
+          setHasMore(false);
         }
       } else {
         loadingMoreRef.current = true;
@@ -219,6 +239,7 @@ export function ModernLeaderboardPage({
         const params =
           new URLSearchParams({
             lane: requestedLane,
+            scope,
             offset: String(offset),
             limit: String(PAGE_SIZE),
           });
@@ -252,7 +273,15 @@ export function ModernLeaderboardPage({
           }
         );
         const payload = (await response.json().catch(() => ({}))) as Partial<LeaderboardResponse>;
-        if (!response.ok || !Array.isArray(payload.entries)) {
+        if (
+          !response.ok ||
+          !Array.isArray(
+            payload.entries,
+          ) ||
+          payload.scope !== scope ||
+          payload.lane !==
+            requestedLane
+        ) {
           throw new Error("leaderboard unavailable");
         }
         if (activeRequest !== requestId.current) return;
@@ -295,6 +324,7 @@ export function ModernLeaderboardPage({
           offset === 0 &&
           !query &&
           !activeSort.key &&
+          payload.scope === scope &&
           payload.lane ===
             requestedLane
         ) {
@@ -316,6 +346,7 @@ export function ModernLeaderboardPage({
     [
       lane,
       query,
+      scope,
     ]
   );
 
@@ -372,6 +403,7 @@ export function ModernLeaderboardPage({
       const cached =
         readLeaderboardLaneCache(
           nextLane,
+          scope,
         );
 
       writeStoredLeaderboardLane(
@@ -437,12 +469,14 @@ export function ModernLeaderboardPage({
       void prefetchLeaderboardLane(
         lane,
         PAGE_SIZE,
+        scope,
       );
     },
     [
       lane,
       loadPage,
       query,
+      scope,
     ],
   );
 
@@ -494,8 +528,51 @@ export function ModernLeaderboardPage({
           </div>
         </div>
 
-        <div className="grid gap-4 border-b border-white/[0.07] bg-black/15 px-5 py-5 sm:px-8 lg:grid-cols-[auto_minmax(18rem,1fr)_auto] lg:items-center">
+        <div className="grid gap-4 border-b border-white/[0.07] bg-black/15 px-5 py-5 sm:px-8 lg:grid-cols-[auto_auto_minmax(18rem,1fr)_auto] lg:items-center">
           <LeaderboardLaneToggle lane={lane} onChange={changeLane} loading={loading} variant="compact" />
+          <div
+            className="inline-flex w-fit rounded-xl border border-cyan-300/20 bg-slate-950/75 p-1"
+            role="group"
+            aria-label="Leaderboard players"
+          >
+            <button
+              type="button"
+              aria-pressed={
+                scope === "all"
+              }
+              onClick={() =>
+                setScope("all")
+              }
+              className={`rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/55 ${
+                scope === "all"
+                  ? "bg-amber-200 text-slate-950 shadow-[0_8px_24px_rgba(251,191,36,0.18)]"
+                  : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
+              }`}
+            >
+              Full leaderboard
+            </button>
+            <button
+              type="button"
+              aria-pressed={
+                scope === "claimed"
+              }
+              onClick={() =>
+                setScope("claimed")
+              }
+              className={`rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
+                scope === "claimed"
+                  ? "bg-cyan-200 text-slate-950 shadow-[0_8px_24px_rgba(34,211,238,0.16)]"
+                  : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
+              }`}
+            >
+              AoE2WAR users
+              <span className="ml-1.5 tabular-nums opacity-70">
+                {
+                  census.claimedIdentityRows
+                }
+              </span>
+            </button>
+          </div>
           <label className="relative block lg:mx-auto lg:w-full lg:max-w-xl">
             <span className="sr-only">Search warriors</span>
             <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-amber-200/70" aria-hidden="true" />
@@ -519,11 +596,17 @@ export function ModernLeaderboardPage({
           </label>
           <div className="text-left lg:text-right">
             <div className="text-2xl font-semibold tabular-nums text-white">{trackedPlayers.toLocaleString()}</div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{query ? "matching identity rows" : "identity rows on board"}</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
+              {query
+                ? "matching identity rows"
+                : scope === "claimed"
+                  ? "public claimed profiles"
+                  : "identity rows on board"}
+            </div>
           </div>
         </div>
 
-        <div className="grid gap-3 border-b border-white/[0.07] bg-slate-950/35 px-5 py-4 sm:grid-cols-2 sm:px-8 xl:grid-cols-6">
+        <div className="grid gap-3 border-b border-white/[0.07] bg-slate-950/35 px-5 py-4 sm:grid-cols-2 sm:px-8 xl:grid-cols-4 2xl:grid-cols-7">
           <IdentityMetric
             label="Identity rows"
             value={census.identityRows}
@@ -543,6 +626,13 @@ export function ModernLeaderboardPage({
             label="Profile-only rows"
             value={census.claimedProfileOnlyRows}
             detail={`${Math.max(0, census.claimedProfileOnlyRows - census.siteOnlyIdentityRows).toLocaleString()} Steam-linked · ${census.siteOnlyIdentityRows.toLocaleString()} site-only`}
+          />
+          <IdentityMetric
+            label="AoE2WAR profiles"
+            value={
+              census.claimedIdentityRows
+            }
+            detail="Public claimed profiles; systems excluded"
           />
           <IdentityMetric
             label="Alias-history accounts"
@@ -582,7 +672,11 @@ export function ModernLeaderboardPage({
           ) : entries.length === 0 && query ? (
             <div className="border border-amber-200/14 bg-amber-300/[0.045] px-5 py-10 text-center text-slate-300">No ranked warrior matches “{query}”.</div>
           ) : entries.length === 0 ? (
-            <div className="border border-white/10 bg-white/[0.04] px-5 py-10 text-center text-slate-300">No ranked warriors yet. Final HD replays will raise the first names onto this board.</div>
+            <div className="border border-white/10 bg-white/[0.04] px-5 py-10 text-center text-slate-300">
+              {scope === "claimed"
+                ? "No public claimed AoE2WAR profiles are available in this lane yet."
+                : "No ranked warriors yet. Final HD replays will raise the first names onto this board."}
+            </div>
           ) : (
             <ModernLeaderboardTable
               entries={entries}
