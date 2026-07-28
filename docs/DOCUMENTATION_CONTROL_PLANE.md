@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `111c058e747526f412c05c2e46b7dd938ce395b2`
+Implementation baseline: `main` at `6447fd3cad63adb8886b8e982dca3550fba61c1e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **44**
+- Authoritative repository documents: **45**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 4
 - `generated`: 1
 - `historical`: 9
-- `reference`: 21
+- `reference`: 22
 - `runbook`: 8
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 33
+- `active`: 34
 - `generated`: 1
 - `historical`: 9
 - `superseded`: 1
@@ -72,6 +72,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2HDBets Improvement Execution Plan](IMPROVEMENT_EXECUTION_PLAN.md) | `working` | `superseded` | `historical-working-record` |
 | [Jim Fast-Ending Team Session Diagnosis](JIM_FAST_GAME_DIAGNOSIS.md) | `historical` | `historical` | `incident-evidence` |
 | [AoE2WAR Leaderboards](LEADERBOARDS.md) | `reference` | `active` | `product-contract` |
+| [HD Leaderboard View Modes](LEADERBOARD_VIEW_MODES.md) | `reference` | `active` | `product-contract` |
 | [Team Market Integrity](MARKET_TEAM_INTEGRITY.md) | `reference` | `active` | `financial-domain-contract` |
 | [Parser Engine Room: Durable Data Foundation](PARSER_ENGINE_ROOM.md) | `explanation` | `active` | `architecture-explanation` |
 | [Parser Observatory](PARSER_OBSERVATORY.md) | `reference` | `active` | `product-contract` |

@@ -72,6 +72,23 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 ## Recent deployment notes
 
+### 2026-07-28 HD Leaderboard B/A/E presentation release
+
+- implementation baseline: `6447fd3cad63adb8886b8e982dca3550fba61c1e`;
+- Basic preserves the previously shipped `72rem` presentation and remains the
+  default;
+- Advanced expands to `90rem`, adds a compact branded Watcher card, uses the
+  premium player-scope control, and removes the public census row;
+- Extreme expands to `118rem`, uses the full branded Watcher card, removes the
+  public census row, and pulls the table directly beneath the command controls;
+- view choice persists under the repository-standard `leaderboard` tile-view
+  preference;
+- RM/DM lane, player scope, search, pagination, rank semantics, and identity
+  semantics are unchanged;
+- no Prisma migration is introduced;
+- production receipt: `PENDING_AOE2WAR_LEADERBOARD_BAE_DEPLOYMENT`.
+
+
 ### 2026-07-28 leaderboard scope and pagination hardening
 
 Implementation is complete in the release candidate, but do not treat this

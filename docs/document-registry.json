@@ -37,7 +37,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "aea27f8dd39e1b46f46faa5e85de2d3875dc1f4751200e27f7f58446f380cc34",
+      "sha256": "858057c98c924ff4e79251ef15d18008134fa8a1fc136799e04842810cf22db4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -380,7 +380,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e86a89fc9aa8c5a6a2f9077eeceba9c772df06a0779e069cced51dd63b3c7625",
+      "sha256": "f73670e23680c210ed48321a1947240fc9617a13bae1b33e97bc016fe4a03ded",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -500,6 +500,29 @@
         "api-prodn"
       ],
       "title": "AoE2WAR Leaderboards",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-leaderboard-view-modes",
+      "owner": "aoe2war-web",
+      "path": "docs/LEADERBOARD_VIEW_MODES.md",
+      "review_interval_days": 60,
+      "reviewed_at": "2026-07-28",
+      "sensitivity": "internal",
+      "sha256": "1260f357676978e8b63d2bbe0fcc2331cf1948a748a46bd540f506f16055a567",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "HD Leaderboard View Modes",
       "type": "reference"
     },
     {
@@ -1004,7 +1027,7 @@
   "generated_at": "2026-07-28T14:55:00+00:00",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "111c058e747526f412c05c2e46b7dd938ce395b2"
+    "commit": "6447fd3cad63adb8886b8e982dca3550fba61c1e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
