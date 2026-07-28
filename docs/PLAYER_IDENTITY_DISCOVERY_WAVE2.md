@@ -17,23 +17,25 @@ sensitivity: "restricted"
 
 ## Release truth
 
-This wave is **implemented and pushed to `app-prodn` Git, but its discovery
-code is not deployed, its data backfill has not been applied, and no identity
-projection is published in production**. The additive schema migration itself
-is already applied.
+This wave is **implemented, pushed, deployed, and populated in production**.
+Its rows remain proposed/provisional: no identity resolution run or identity
+projection has been published, no claim/link is active, and no multi-account
+Warrior cutover has occurred.
 
 | Plane | Verified state |
 | --- | --- |
-| Git implementation | Additive identity schema landed in `59f4c86`; deterministic discovery V2 landed in `a187aa5` on `origin/main`. |
+| Git implementation | Additive schema `59f4c86`, deterministic discovery V2 `a187aa5`, exact-Steam leaderboard `d4dc703`, and live census hardening through `baabbeb` are on `origin/main`. |
 | Local MBP | Source contains 72 Prisma migration directories and the discovery command. |
 | Production database | 74 migration records: 72 applied, two intentionally rolled back, zero incomplete. The additive Player Identity foundation migration is applied. |
-| Production web source | Discovery V2 code at `a187aa5` has not yet been deployed. |
-| Discovery data | No production `apply` was authorized or run. |
-| Public identity reads | No resolution run, publication, claim activation, or public identity cutover was performed by this wave. |
+| Production web source | Clean `main` at `746251bc60d46fd52d8d23318e5d568218eb726b`; deployed build `20260728153116-44f5f4143c`; web and replay API services active. |
+| Discovery data | Apply committed at `2026-07-28T15:22:04.182Z`: 2,220 PlatformAccounts, 13,839 name observations, 126 provisional name-only buckets, 2,216 provisional Warriors, 2,216 proposed links, and 11 proposed claims. |
+| Public account-grain board | `/leaderboard` folds accepted replay evidence to 2,216 exact Steam rows, retains 124 public name-only rows, and adds eight profile-only rows. |
+| Publication boundary | Zero active links, active claims, resolution runs, replay identity projections, and identity publications. |
 
-Do not collapse these states into “shipped.” A pushed commit is Git truth; an
-applied schema, deployed command, populated ledger, published projection, and
-public feature cutover each require separate evidence.
+Do not collapse “populated” into “identity cutover.” The account-grain
+leaderboard is deployed, but a populated discovery ledger, published identity
+projection, reviewed multi-account link, and active ownership claim remain
+separate states.
 
 Wave 2 populates the empty Player Identity foundation from immutable replay-player snapshots without activating claims, historical attribution, aggregate eligibility, or publication.
 
@@ -55,9 +57,9 @@ Wave 2 populates the empty Player Identity foundation from immutable replay-play
 - `IdentityDecision.decidedAt` is the PostgreSQL transaction timestamp of the actual apply. Historical replay observation times remain evidence and attribution-window proposals; decisions are never backdated.
 
 
-## Reviewed first-run shape
+## Applied first-run shape
 
-The precision evidence establishes these expected categories before any apply:
+The reviewed plan and committed apply reproduced these categories exactly:
 
 | Output | Expected |
 | --- | ---: |
@@ -76,7 +78,8 @@ The precision evidence establishes these expected categories before any apply:
 | Typed IdentityDecisionSubject rows | 7,015 |
 | Active links or claims | 0 |
 
-Counts are review gates, not permission to mutate. A read-only production plan must reproduce or explicitly explain any difference before apply is designed.
+These counts were apply gates, not the authority by themselves. The exact
+bounded plan hashes were reviewed before the separately confirmed transaction.
 
 Additional ambiguity evidence in the same accepted corpus:
 
@@ -91,6 +94,30 @@ The public-safe account census is **2,216 exact replay-backed SteamID64 values**
 Raw final `GameStats` payloads expose 2,222 Steam IDs, but six are outside the
 accepted identity projection and must not enter an identity cutover merely
 because they appear in legacy JSON.
+
+## Production apply receipt
+
+The bounded production plan used:
+
+```text
+maxReplayPlayerSnapshotId = 28076
+maxUserId = 159684
+inputHash = bfec8bed1ca56ee9b95145fcef670ca66bada6038bdb4c7cb3c75884ee5c4c26
+resultHash = 7e673ada19e27ff724f75d23b820acac2d12cf9904486f078c7b4944bb9f1085
+```
+
+Restricted mode-`0600` receipts are stored outside the checkout:
+
+| Receipt | SHA-256 |
+| --- | --- |
+| `2026-07-28-wave2-v2-plan.json` | `773c3d66a0981d71af9ec8d23b2ac05e4649af37327bd3916f1714ee8628179b` |
+| `2026-07-28-wave2-v2-apply.json` | `f03b3e0c3451dbdf1029531545a202fec3f9df45f2cab3df9e8556db19cae463` |
+| `2026-07-28-wave2-v2-apply.json.applied.json` | `0044822daafd1ef3ff194a9f2b1417ba603de56662b3899695172abe7651de48` |
+
+Receipt directory:
+`/mnt/HC_Volume_105319120/aoe2-parser-engine/reports/player-identity/`.
+The companion applied receipt confirms the result hash, transaction decision
+time, every created count, and all zero-publication safety checks.
 
 ## Boundary with the full identity backfill
 

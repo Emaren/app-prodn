@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-07-28"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -62,6 +62,23 @@ The dated 2026-07-28 identity census contains:
 These are runtime snapshot values. See
 [Replay Corpus and Public Metric Contract](REPLAY_CORPUS_METRICS.md); do not
 hardcode them as permanent leaderboard totals.
+
+The deployed RM board reported **2,348 additive identity rows** at the
+2026-07-28 release verification:
+
+```text
+2,348 current board rows
+= 2,216 replay-backed exact-Steam rows
++   124 public name-only replay rows
++     8 profile-only rows
+```
+
+The eight profile-only rows are four exact-Steam profiles without accepted
+replay history plus four site-only profiles. The accepted discovery corpus has
+126 name-only buckets, while the public board has 124 name-only rows: two
+corpus buckets have no surviving current War Vault/public-battle row. The
+corpus count and board count therefore answer different questions and must not
+be forced to match.
 
 ## Current name and expandable history
 

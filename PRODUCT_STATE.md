@@ -47,7 +47,9 @@ The watcher-to-betting rail now preserves explicit replay team IDs through API s
 
 ## Snapshot
 
-This file captures the current shipped state of the public product surface so a new chat can resume without re-auditing everything.
+This file captured the then-shipped public product surface. Use the current
+repository entry point, deploy runbook, and metric contracts for present
+release truth.
 
 The app is no longer just a replay/stat shell. It now has a real public product spine:
 

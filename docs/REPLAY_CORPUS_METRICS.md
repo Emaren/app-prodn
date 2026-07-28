@@ -50,6 +50,8 @@ business logic.
 | Name-only provisional buckets | **126** | Versioned normalized-name evidence buckets for the 197 name-only snapshots; not people and not Steam accounts. |
 | Steam accounts with multiple observed names | **175** | Exact SteamID64 values with more than one normalized display name. |
 | Names shared by multiple Steam accounts | **26** | Normalized names observed against more than one exact SteamID64; name equality cannot merge them. |
+| Current public leaderboard identity rows | **2,348** | Deployed additive board rows: 2,216 replay-backed exact-Steam rows, 124 public name-only rows, and eight profile-only rows. |
+| Provisional Warriors populated | **2,216** | One proposed competitive-career seed per replay-backed Steam account. These are provisional records, not a consolidated-human census. |
 
 The physical archive occupied **8,588,836,915 bytes** at the snapshot.
 `ReplayArtifact` rows represented **3,394,627,739 bytes**, and every indexed
@@ -59,8 +61,13 @@ candidate corpus to **3.16 GB**.
 The **2,677** and **2,670** values cannot be reconciled by subtracting seven
 aliases. The first counts exact roster-name strings; the second was a legacy
 directory/leaderboard presentation count with different inclusion and claiming
-rules. After exact Steam folding is published, the board must report its new
-row count and identity grain rather than preserving 2,670 for visual parity.
+rules. The deployed exact-Steam board now reports 2,348 rows and its additive
+identity categories rather than preserving 2,670 for visual parity.
+
+The 126 discovery buckets and 124 public name-only leaderboard rows are also
+different grains. Discovery preserves every accepted name-only evidence
+bucket. The board requires a surviving current War Vault/public-battle row, so
+two corpus buckets do not appear in its current projection.
 
 ## Equations that must remain visible
 
@@ -155,10 +162,12 @@ explicit evidence-backed link. SiteAccount, PlatformAccount, Warrior, display
 name, and human are separate concepts.
 
 There is not yet a defensible consolidated-human Warrior census. Discovery V2
-plans 2,216 provisional platform-seed Warriors, one for each replay-backed
-Steam account, but its data apply has not run. Until reviewed multi-account
-links and a publication exist, public documentation must say **2,216
-replay-backed Steam accounts**, not “2,216 people.”
+has populated 2,216 provisional platform-seed Warriors, one for each
+replay-backed Steam account. All 2,216 links and 11 claims remain proposed;
+active links, active claims, resolution runs, projections, and publications
+remain zero. Until reviewed multi-account links and a publication exist, public
+documentation must say **2,216 replay-backed Steam accounts** or **2,216
+provisional Warriors**, never “2,216 people.”
 
 ## “Junk” and irrecoverable evidence policy
 

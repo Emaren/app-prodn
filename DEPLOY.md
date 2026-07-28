@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-07-28"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -71,6 +71,32 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 ```
 
 ## Recent deployment notes
+
+### 2026-07-28 identity leaderboard and corpus-census release
+
+- clean production checkout: `main` at
+  `746251bc60d46fd52d8d23318e5d568218eb726b`, equal to `origin/main`;
+- running build: `20260728153116-44f5f4143c`;
+- Prisma: 72 migration directories; live ledger 74 rows, 72 applied, two
+  historical rolled-back attempts, zero incomplete, and no pending migration;
+- Player Identity Wave 2 applied once from the exact bounded plan at
+  `2026-07-28T15:22:04.182Z`;
+- populated identity foundation: 2,220 PlatformAccounts, 13,839 name
+  observations, 126 provisional name-only buckets, 2,216 provisional Warriors,
+  2,216 proposed links, 11 proposed claims, and zero active/publication rows;
+- live leaderboard: 2,348 additive rows with exact-Steam alias folding,
+  expandable per-name statistics, and reconstructed 24-hour rank movement;
+- live Parser Observatory: 7,990 physical objects, 2,093 indexed/decoded
+  artifacts, 5,897 unindexed/unclassified objects, and explicit
+  final/public/deduplicated battle denominators;
+- `/leaderboard`, `/game-stats`, and `/battle-archive` passed server and
+  browser interaction/visual checks; web and replay API services were active.
+
+The restricted plan/apply receipt hashes are recorded in
+`docs/PLAYER_IDENTITY_DISCOVERY_WAVE2.md`. The apply is proposed-only and is not
+an identity projection publication. Root storage had 2.3 GiB free (94% used)
+after the production builds, below the preferred 6 GiB deployment floor; treat
+additional package/build work as a capacity-risk decision.
 
 ### 2026-07-26 production parity seal
 

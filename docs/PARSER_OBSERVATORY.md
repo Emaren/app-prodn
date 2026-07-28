@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-07-28"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -38,6 +38,12 @@ they are not an additional subtraction. The equation
 The physical archive contains 7,990 file paths. Only 2,093 unique artifacts are
 currently indexed, leaving 5,897 physical files unindexed or unclassified.
 That remainder is not confirmed junk.
+
+The public page obtains the physical-file census from a bounded recursive scan
+of the immutable archive and caches it for one hour. Database metrics refresh
+every five minutes. The page prints both generation and archive-scan times so
+operators can distinguish a real zero from unavailable or stale storage
+telemetry.
 
 See [Replay Corpus and Public Metric Contract](REPLAY_CORPUS_METRICS.md) for
 the complete definitions, parser-mode census, identity denominators, equations,

@@ -8,14 +8,40 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-07-28"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # app-prodn
 
-## Verified production seal — 2026-07-26
+## Verified identity and metric release — 2026-07-28
+
+- source: clean `main` at `746251bc60d46fd52d8d23318e5d568218eb726b`,
+  equal to `origin/main`;
+- deployed build: `20260728153116-44f5f4143c` on the active
+  `aoe2hdbets-web.service` / `127.0.0.1:3030`;
+- database: 74 migration-history rows — 72 applied, two historical rolled-back
+  attempts, and zero incomplete;
+- Player Identity Wave 2: 2,216 provisional Warriors and proposed exact-Steam
+  links, 11 proposed claims, 126 name-only evidence buckets, zero active links
+  or claims, and zero identity publications;
+- public leaderboard: 2,348 additive identity rows — 2,216 replay-backed
+  Steam accounts, 124 public name-only rows, and eight profile-only rows;
+- Parser Observatory: 7,990 physical replay objects, 2,093 indexed/decoded
+  artifacts, 5,897 unindexed or unclassified objects, 3,011 final ingestion
+  records, 2,784 public battle records, and 2,778 deduplicated public battles;
+- exact deployment, apply-receipt, metric-definition, and remaining publication
+  boundaries live in
+  [Player Identity Wave 2](docs/PLAYER_IDENTITY_DISCOVERY_WAVE2.md) and
+  [Replay Corpus and Public Metric Contract](docs/REPLAY_CORPUS_METRICS.md).
+
+The identity seed is populated but remains proposed-only. The public board
+folds accepted evidence by exact SteamID64; no `IdentityResolutionRun`,
+identity publication, multi-account Warrior merge, or historical ownership
+activation has occurred.
+
+## Historical production seal — 2026-07-26
 
 - source: clean `main` at `22232a0bcc038a567acd052f432883e70482a3f9`;
 - deployed build: `20260726054351-9b5a6fcd0b` on `aoe2hdbets-web.service` / `127.0.0.1:3030`;

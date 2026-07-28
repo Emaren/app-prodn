@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "workspace-reference"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-07-28"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -89,9 +89,10 @@ The main public spine now includes:
 
 The separate `AoE2WAR-docs` repository is the cross-system documentation
 control plane. Repository-local implementation contracts remain authoritative.
-At the 2026-07-28 audit, the control-plane repository had no configured Git
-remote; it must not be described as remotely durable until a remote is added
-and its commits are pushed.
+Its private Git remote is
+`https://github.com/Emaren/AoE2WAR-docs`; `main` is the remotely durable portal
+and governance line. Synchronizing its copied registries never transfers
+implementation authority away from the three source repositories.
 
 ## Repo count guidance
 
