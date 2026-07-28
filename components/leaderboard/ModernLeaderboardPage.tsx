@@ -532,7 +532,7 @@ export function ModernLeaderboardPage({
           <IdentityMetric
             label="Steam account rows"
             value={census.steamIdentityRows}
-            detail="Exact SteamID64 evidence"
+            detail="Replay-backed exact SteamID64 evidence"
           />
           <IdentityMetric
             label="Name-only rows"
@@ -540,9 +540,9 @@ export function ModernLeaderboardPage({
             detail="Kept separate for safety"
           />
           <IdentityMetric
-            label="Site-only rows"
-            value={census.siteOnlyIdentityRows}
-            detail={`${census.claimedProfileOnlyRows.toLocaleString()} claimed without replay history`}
+            label="Profile-only rows"
+            value={census.claimedProfileOnlyRows}
+            detail={`${Math.max(0, census.claimedProfileOnlyRows - census.siteOnlyIdentityRows).toLocaleString()} Steam-linked · ${census.siteOnlyIdentityRows.toLocaleString()} site-only`}
           />
           <IdentityMetric
             label="Alias-history accounts"

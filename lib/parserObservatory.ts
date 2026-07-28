@@ -1,6 +1,6 @@
 import { unstable_cache } from "next/cache";
 import {
-  opendir,
+  readdir,
   stat,
 } from "node:fs/promises";
 import {
@@ -149,60 +149,51 @@ async function loadPhysicalReplayArchiveSnapshot() {
   );
 
   try {
-    const directories = [root];
+    const entries = await readdir(
+      root,
+      {
+        recursive: true,
+        withFileTypes: true,
+      }
+    );
     const files: string[] = [];
     const extensionCounts =
       new Map<string, number>();
 
-    while (directories.length > 0) {
+    if (
+      Date.now() - scanStartedAt >
+      PHYSICAL_ARCHIVE_SCAN_BUDGET_MS
+    ) {
+      throw new Error(
+        "physical archive scan exceeded its 5-second budget"
+      );
+    }
+
+    for (const entry of entries) {
+      if (!entry.isFile()) continue;
+
+      const extension =
+        extname(entry.name)
+          .toLowerCase();
+
       if (
-        Date.now() - scanStartedAt >
-        PHYSICAL_ARCHIVE_SCAN_BUDGET_MS
-      ) {
-        throw new Error(
-          "physical archive scan exceeded its 5-second budget"
-        );
-      }
-
-      const directory =
-        directories.pop();
-
-      if (!directory) continue;
-
-      const handle =
-        await opendir(directory);
-
-      for await (const entry of handle) {
-        const path = join(
-          directory,
-          entry.name
-        );
-
-        if (entry.isDirectory()) {
-          directories.push(path);
-          continue;
-        }
-
-        if (!entry.isFile()) continue;
-
-        const extension =
-          extname(entry.name)
-            .toLowerCase();
-
-        if (
-          !REPLAY_ARCHIVE_SUFFIXES.has(
-            extension
-          )
-        ) {
-          continue;
-        }
-
-        files.push(path);
-        bump(
-          extensionCounts,
+        !REPLAY_ARCHIVE_SUFFIXES.has(
           extension
-        );
+        )
+      ) {
+        continue;
       }
+
+      files.push(
+        join(
+          entry.parentPath,
+          entry.name
+        )
+      );
+      bump(
+        extensionCounts,
+        extension
+      );
     }
 
     let byteSize = 0;
@@ -210,7 +201,7 @@ async function loadPhysicalReplayArchiveSnapshot() {
     for (
       let index = 0;
       index < files.length;
-      index += 64
+      index += 256
     ) {
       if (
         Date.now() - scanStartedAt >
@@ -224,7 +215,7 @@ async function loadPhysicalReplayArchiveSnapshot() {
       const sizes =
         await Promise.all(
           files
-            .slice(index, index + 64)
+            .slice(index, index + 256)
             .map(async (path) =>
               (await stat(path)).size
             )
