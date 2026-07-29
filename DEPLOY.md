@@ -87,8 +87,15 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 - RM/DM lane behavior, scope behavior, search, pagination, rankings, identities,
   and replay-derived movement are unchanged;
 - no Prisma migration is introduced;
-- production receipt:
-  `PENDING_AOE2WAR_LEADERBOARD_ADVANCED_DEFAULT_DEPLOYMENT`.
+- production release commit: `795bc0e5ef92816439bea4dd4d87d6c2f77af7b4`;
+- deployed build ID: `tveJ4q5OsZK0Dz90Igw9B`;
+- public build version: `20260729020743-adcde508ec`;
+- deployed at: `2026-07-29T02:10:09Z`;
+- prior build rollback: `/mnt/HC_Volume_105319120/aoe2war/rollbacks/.next-rollback-20260729T020716Z`;
+- restricted VPS receipt: `/root/ops-backups/aoe2war-leaderboard-advanced-default-20260729T020716Z`;
+- post-deploy root availability: `6.13 GiB`;
+- internal and public leaderboard routes, the leaderboard snapshot API, and the
+  deployment-version endpoint returned HTTP 200.
 
 
 ### 2026-07-28 HD Leaderboard B/A/E presentation release
