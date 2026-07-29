@@ -15,20 +15,20 @@ const betsSource = readFileSync(
   "utf8",
 );
 
-test("payout proof excludes reviews and resolved outcomes without executed payout proof", () => {
+test("settlement proof excludes reviews and unresolved bettor liabilities", () => {
   assert.match(
     pageSource,
-    /payoutProofResults = recentResults\.filter\([\s\S]*resolutionStatus !== "under_review"[\s\S]*payoutState === "executed"/,
+    /payoutProofResults = recentResults\.filter\([\s\S]*resolutionStatus !== "under_review"[\s\S]*isSettlementProofState\(result\.payoutState\)/,
   );
   assert.match(
     pageSource,
-    /payoutQueueResults = recentResults\.filter\([\s\S]*payoutState !== "executed"/,
+    /payoutQueueResults = recentResults\.filter\([\s\S]*!isSettlementProofState\(result\.payoutState\)/,
   );
   assert.match(pageSource, /<SettledSection results=\{payoutProofResults\}/);
   assert.match(pageSource, /<PayoutQueueSection results=\{payoutQueueResults\}/);
   assert.match(pageSource, /<ResolutionQueueSection results=\{reviewResults\}/);
   assert.match(pageSource, /These books are not settled proof/);
-  assert.match(pageSource, /these rows are not payout proof yet/i);
+  assert.match(pageSource, /Optional Founders rewards are tracked separately/i);
 });
 
 test("review-market slips are grouped under awaiting verdict", () => {
@@ -50,10 +50,10 @@ test("the board independently preserves settlement attention, payout proof, and 
   );
   assert.match(
     betsSource,
-    /status: "pending"[\s\S]*distinct: \["sourceMarketId"\]/,
+    /status: "pending"[\s\S]*claimKind:[\s\S]*BETTOR_SETTLEMENT_CLAIM_KINDS[\s\S]*distinct: \["sourceMarketId"\]/,
   );
   assert.match(
     betsSource,
-    /result\.payoutState !== "executed"[\s\S]*\.slice\(0, 4\)[\s\S]*result\.payoutState === "executed"[\s\S]*\.slice\(0, 4\)/,
+    /!\["executed", "corrected"\]\.includes\(result\.payoutState\)[\s\S]*\.slice\(0, 4\)[\s\S]*\["executed", "corrected"\]\.includes\(result\.payoutState\)[\s\S]*\.slice\(0, 4\)/,
   );
 });

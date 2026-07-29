@@ -316,6 +316,16 @@ export type BetBoardSnapshot = {
 
 
 const OPEN_STATUSES: BetStatus[] = ["open", "closing", "live"];
+const BETTOR_SETTLEMENT_CLAIM_KINDS = [
+  "bet_payout",
+  "bet_refund",
+  "bet_corrective_refund",
+] as const;
+
+function isCoreBetSettlementClaimKind(value: string) {
+  return BETTOR_SETTLEMENT_CLAIM_KINDS.some((claimKind) => claimKind === value);
+}
+
 export const RECONCILABLE_WATCHER_STATUSES: BetStatus[] = [
   ...OPEN_STATUSES,
   "awaiting_final_proof",
@@ -5673,31 +5683,42 @@ async function loadAwaitingProofMarkets(prisma: PrismaClient) {
 export function classifyBetPayoutState(input: {
   settlementStatus: string | null;
   refundStatus: string | null;
+  coreLiabilityWolo: number;
   claims: Array<{
+    claimKind: string;
+    amountWolo: number;
     status: string;
     payoutTxHash: string | null;
   }>;
 }): BetSettledResult["payoutState"] {
-  if (
+  const correctionRecorded =
     input.settlementStatus === "corrected" ||
-    input.refundStatus === "corrected_with_overpayment"
-  ) {
-    return "corrected";
-  }
+    input.refundStatus === "corrected_with_overpayment";
+  const coreClaims = input.claims.filter((claim) =>
+    isCoreBetSettlementClaimKind(claim.claimKind)
+  );
 
   const claimIsProven = (
-    claim: (typeof input.claims)[number]
+    claim: (typeof coreClaims)[number]
   ) =>
     claim.status === "claimed" &&
     Boolean(claim.payoutTxHash?.trim());
   const provenClaimCount =
-    input.claims.filter(claimIsProven).length;
-  const everyLiabilityClaimProven =
-    input.claims.length > 0 &&
-    provenClaimCount === input.claims.length;
+    coreClaims.filter(claimIsProven).length;
+  const provenCoreWolo = coreClaims
+    .filter(claimIsProven)
+    .reduce((sum, claim) => sum + claim.amountWolo, 0);
+  const everyCoreLiabilityClaimProven =
+    coreClaims.length > 0 &&
+    provenClaimCount === coreClaims.length &&
+    provenCoreWolo >= input.coreLiabilityWolo;
 
-  if (everyLiabilityClaimProven) {
-    return "executed";
+  if (input.coreLiabilityWolo <= 0) {
+    return correctionRecorded ? "corrected" : "executed";
+  }
+
+  if (everyCoreLiabilityClaimProven) {
+    return correctionRecorded ? "corrected" : "executed";
   }
 
   if (
@@ -5711,7 +5732,6 @@ export function classifyBetPayoutState(input: {
   }
 
   if (
-    input.settlementStatus === "partial" ||
     provenClaimCount > 0
   ) {
     return "partial";
@@ -5776,6 +5796,9 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
         sourceMarketId: { not: null },
         status: "pending",
         rescindedAt: null,
+        claimKind: {
+          in: [...BETTOR_SETTLEMENT_CLAIM_KINDS],
+        },
       },
       orderBy: [
         { updatedAt: "desc" },
@@ -5906,6 +5929,9 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
             where: {
               sourceMarketId: { in: settledMarketIds },
               rescindedAt: null,
+              claimKind: {
+                in: [...BETTOR_SETTLEMENT_CLAIM_KINDS],
+              },
             },
             _sum: {
               amountWolo: true,
@@ -5918,6 +5944,8 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
             },
             select: {
               sourceMarketId: true,
+              claimKind: true,
+              amountWolo: true,
               status: true,
               payoutTxHash: true,
               payoutProofUrl: true,
@@ -5953,6 +5981,7 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
     );
 
     if (
+      isCoreBetSettlementClaimKind(row.claimKind) &&
       row.status === "claimed" &&
       row.payoutTxHash?.trim()
     ) {
@@ -5964,6 +5993,7 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
     }
 
     if (
+      isCoreBetSettlementClaimKind(row.claimKind) &&
       row.status === "claimed" &&
       row.payoutProofUrl?.trim()
     ) {
@@ -6057,6 +6087,10 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
           refundStatus:
             market.refundStatus ??
             null,
+          coreLiabilityWolo: Math.max(
+            settledPayoutTotal,
+            claimWolo
+          ),
           claims:
             marketClaimRows,
         });
@@ -6111,14 +6145,14 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
         .filter(
           (result) =>
             result.resolutionStatus !== "under_review" &&
-            result.payoutState !== "executed"
+            !["executed", "corrected"].includes(result.payoutState)
         )
         .slice(0, 4),
       ...marketResults
         .filter(
           (result) =>
             result.resolutionStatus !== "under_review" &&
-            result.payoutState === "executed"
+            ["executed", "corrected"].includes(result.payoutState)
         )
         .slice(0, 4),
       ...marketResults

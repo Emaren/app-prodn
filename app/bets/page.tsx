@@ -56,6 +56,13 @@ const STAKE_OPTIONS = [10, 25, 50, 100] as const;
 const BETS_POLL_INTERVAL_MS = 5_000;
 const STAKE_RECOVERY_STORAGE_KEY = "aoe2hdbets.betStakeRecovery.v1";
 const BETS_VIEW_STORAGE_KEY = "aoe2hdbets.betsView.v2";
+
+function isSettlementProofState(
+  state: BetSettledResult["payoutState"]
+) {
+  return state === "executed" || state === "corrected";
+}
+
 type BetSide = "left" | "right";
 type BetStatus = "open" | "closing" | "live" | "awaiting_final_proof" | "settled" | "voided" | "under_review";
 type BetsViewMode = "basic" | "advanced" | "extreme";
@@ -1388,12 +1395,12 @@ export default function BetsPage() {
   const payoutProofResults = recentResults.filter(
     (result) =>
       result.resolutionStatus !== "under_review" &&
-      result.payoutState === "executed"
+      isSettlementProofState(result.payoutState)
   );
   const payoutQueueResults = recentResults.filter(
     (result) =>
       result.resolutionStatus !== "under_review" &&
-      result.payoutState !== "executed"
+      !isSettlementProofState(result.payoutState)
   );
   const reviewResults = recentResults.filter(
     (result) => result.resolutionStatus === "under_review"
@@ -3006,8 +3013,8 @@ function SettledSection({ results }: { results: BetSettledResult[] }) {
     <section className={`${shellClass()} p-5 sm:p-6`}>
       <div className="flex items-end justify-between gap-3">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Payout Proof</div>
-          <h2 className="mt-2 text-2xl font-semibold text-white">Paid / refunded</h2>
+          <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Settlement Proof</div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">Settled / paid / refunded</h2>
         </div>
         <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
           {results.length}
@@ -3018,7 +3025,7 @@ function SettledSection({ results }: { results: BetSettledResult[] }) {
         {results.length ? (
           results.map((result) => <ResultCard key={result.id} result={result} />)
         ) : (
-          <EmptyShell label="No proof landed yet." />
+          <EmptyShell label="No settled proof landed yet." />
         )}
       </div>
     </section>
@@ -3045,8 +3052,9 @@ function PayoutQueueSection({ results }: { results: BetSettledResult[] }) {
             Outcome resolved · payout pending
           </h2>
           <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
-            The game result is known, but these rows are not payout proof yet.
-            Failed or partial sends stay visible for retry and operator follow-up.
+            The game result is known, but a bettor payout or refund still needs proof.
+            Optional Founders rewards are tracked separately and never make a settled
+            bet look pending.
           </p>
         </div>
         <div
@@ -3182,7 +3190,7 @@ function HeatSection({ board }: { board: BetBoardSnapshot | null }) {
   const latestProof = board?.settledResults.find(
     (result) =>
       result.resolutionStatus !== "under_review" &&
-      result.payoutState === "executed"
+      isSettlementProofState(result.payoutState)
   ) ?? null;
 
   return (
@@ -3225,7 +3233,7 @@ function HeatSection({ board }: { board: BetBoardSnapshot | null }) {
 
 function RecentResultFeature({ result }: { result: BetSettledResult }) {
   const underReview = result.resolutionStatus === "under_review";
-  const payoutConfirmed = result.payoutState === "executed";
+  const payoutConfirmed = isSettlementProofState(result.payoutState);
 
   return (
     <div>

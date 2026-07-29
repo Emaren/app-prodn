@@ -331,7 +331,7 @@ test("watcher reconciliation revisits automated under-review markets", () => {
   );
 });
 
-test("a mixed auto-paid and manual claim market is not payout proof", () => {
+test("a mixed auto-paid and manual core claim market is not payout proof", () => {
   assert.equal(
     resolveMarketSettlementStatus(
       {
@@ -349,12 +349,17 @@ test("a mixed auto-paid and manual claim market is not payout proof", () => {
     classifyBetPayoutState({
       settlementStatus: "executed",
       refundStatus: null,
+      coreLiabilityWolo: 200,
       claims: [
         {
+          claimKind: "bet_payout",
+          amountWolo: 100,
           status: "claimed",
           payoutTxHash: "A".repeat(64),
         },
         {
+          claimKind: "bet_payout",
+          amountWolo: 100,
           status: "pending",
           payoutTxHash: null,
         },
@@ -367,17 +372,110 @@ test("a mixed auto-paid and manual claim market is not payout proof", () => {
     classifyBetPayoutState({
       settlementStatus: "executed",
       refundStatus: null,
+      coreLiabilityWolo: 200,
       claims: [
         {
+          claimKind: "bet_payout",
+          amountWolo: 100,
           status: "claimed",
           payoutTxHash: "A".repeat(64),
         },
         {
+          claimKind: "bet_payout",
+          amountWolo: 100,
           status: "claimed",
           payoutTxHash: "B".repeat(64),
         },
       ],
     }),
     "executed"
+  );
+});
+
+test("optional reward claims never make a settled bet look pending", () => {
+  assert.equal(
+    classifyBetPayoutState({
+      settlementStatus: "partial",
+      refundStatus: null,
+      coreLiabilityWolo: 0,
+      claims: [
+        {
+          claimKind: "winner_bounty",
+          amountWolo: 98,
+          status: "pending",
+          payoutTxHash: null,
+        },
+        {
+          claimKind: "founders_bonus",
+          amountWolo: 2,
+          status: "pending",
+          payoutTxHash: null,
+        },
+      ],
+    }),
+    "executed"
+  );
+});
+
+test("missing core payout proof remains in the settlement queue", () => {
+  assert.equal(
+    classifyBetPayoutState({
+      settlementStatus: "partial",
+      refundStatus: null,
+      coreLiabilityWolo: 100,
+      claims: [
+        {
+          claimKind: "winner_bounty",
+          amountWolo: 100,
+          status: "claimed",
+          payoutTxHash: "A".repeat(64),
+        },
+      ],
+    }),
+    "pending"
+  );
+});
+
+test("optional pending rewards do not contaminate fully proven bettor settlement", () => {
+  assert.equal(
+    classifyBetPayoutState({
+      settlementStatus: "partial",
+      refundStatus: null,
+      coreLiabilityWolo: 98,
+      claims: [
+        {
+          claimKind: "bet_payout",
+          amountWolo: 98,
+          status: "claimed",
+          payoutTxHash: "A".repeat(64),
+        },
+        {
+          claimKind: "founders_bonus",
+          amountWolo: 3,
+          status: "pending",
+          payoutTxHash: null,
+        },
+      ],
+    }),
+    "executed"
+  );
+});
+
+test("undersized core proof never marks the full bettor liability executed", () => {
+  assert.equal(
+    classifyBetPayoutState({
+      settlementStatus: "executed",
+      refundStatus: null,
+      coreLiabilityWolo: 100,
+      claims: [
+        {
+          claimKind: "bet_payout",
+          amountWolo: 50,
+          status: "claimed",
+          payoutTxHash: "A".repeat(64),
+        },
+      ],
+    }),
+    "partial"
   );
 });

@@ -42,10 +42,12 @@ export default function ResultCard({
             label:
               result.resolutionStatus === "voided"
                 ? "Refund confirmed"
-                : "Payout confirmed",
+                : firstPayoutTxHash
+                  ? "Payout confirmed"
+                  : "Bet settled",
             detail: firstPayoutTxHash
               ? `Chain tx ${shortProofHash(firstPayoutTxHash)}`
-              : "Settlement rail recorded execution.",
+              : "No bettor payout was due; optional rewards are tracked separately.",
             className:
               "border-emerald-300/15 bg-emerald-400/[0.06] text-emerald-100",
           }
