@@ -36,7 +36,10 @@ import {
 import { loadLiveSessionSnapshot, type LiveGameSession } from "@/lib/liveSessionSnapshot";
 import { loadLiveGamesSnapshot } from "@/lib/liveGames";
 import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
-import { resolveReplayWinnerTruth } from "@/lib/unresolvedWatcherResult";
+import {
+  isUnknownishReplayValue,
+  resolveReplayWinnerTruth,
+} from "@/lib/unresolvedWatcherResult";
 import {
   normalizeReplayPlayerName,
   normalizeReplayPlayers,
@@ -1285,6 +1288,21 @@ export function canAutoRecoverWatcherIntegrityReview(input: {
     return false;
   }
 
+  /*
+   * Older settlement passes cross-checked the legacy scalar winner even when
+   * it contained a placeholder such as "Unknown". A trusted structured
+   * result may still have proved the complete winning team. Let only that
+   * exact placeholder mismatch return to the frozen-market validator; real
+   * player/team contradictions remain sticky operator work.
+   */
+  if (
+    isRecoverableUnknownScalarWinnerReview(
+      input.integrityReason
+    )
+  ) {
+    return true;
+  }
+
   return (
     classifyWatcherFinalFailure(
       String(input.integrityReason ?? "")
@@ -1715,10 +1733,34 @@ function settlementTruthName(value: string | null | undefined) {
   return normalizeName(value).toLowerCase();
 }
 
+export function isConcreteSettlementWinnerScalar(
+  value: string | null | undefined
+) {
+  return !isUnknownishReplayValue(value);
+}
+
+export function isRecoverableUnknownScalarWinnerReview(
+  value: string | null | undefined
+) {
+  const match = String(value ?? "").match(
+    /^WINNER_TRUTH_MISMATCH: market \d+ game_stats \d+ winner "([^"]+)" does not match market sides$/i
+  );
+
+  return Boolean(
+    match &&
+      !isConcreteSettlementWinnerScalar(
+        match[1]
+      )
+  );
+}
+
 function settlementTruthSide(
   market: Pick<SettlementWinnerTruthMarket, "leftLabel" | "rightLabel">,
   value: string | null | undefined
 ): BetSide | null {
+  if (!isConcreteSettlementWinnerScalar(value)) {
+    return null;
+  }
   const key = settlementTruthName(value);
   if (!key) return null;
   if (key === settlementTruthName(market.leftLabel)) return "left";
@@ -1849,7 +1891,12 @@ async function assertSettlementWinnerTruthGate(
   if (snapshotPlayerCount > 2) return;
 
   const rowSide = settlementTruthSide(market, game.winner);
-  if (game.winner && !rowSide) {
+  if (
+    isConcreteSettlementWinnerScalar(
+      game.winner
+    ) &&
+    !rowSide
+  ) {
     throw new Error(
       'WINNER_TRUTH_MISMATCH: market ' +
         market.id +

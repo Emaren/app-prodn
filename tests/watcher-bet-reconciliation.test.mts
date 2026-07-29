@@ -9,6 +9,8 @@ import {
   classifyBetPayoutState,
   classifyWatcherFinalFailure,
   evaluateFinalMarketIntegrity,
+  isConcreteSettlementWinnerScalar,
+  isRecoverableUnknownScalarWinnerReview,
   resolveMarketSettlementStatus,
   watcherFinalProofDeadline,
 } from "../lib/bets.ts";
@@ -168,6 +170,24 @@ test("only automated evidence-only reviews may reconcile without an operator", (
   assert.equal(
     canAutoRecoverWatcherIntegrityReview({
       status: "under_review",
+      integrityReason:
+        'WINNER_TRUTH_MISMATCH: market 420893 game_stats 19238 winner "Unknown" does not match market sides',
+      commissionerReviewState: "settlement_blocked",
+    }),
+    true
+  );
+  assert.equal(
+    canAutoRecoverWatcherIntegrityReview({
+      status: "under_review",
+      integrityReason:
+        'WINNER_TRUTH_MISMATCH: market 420893 game_stats 19238 winner "Jim" does not match market sides',
+      commissionerReviewState: "settlement_blocked",
+    }),
+    false
+  );
+  assert.equal(
+    canAutoRecoverWatcherIntegrityReview({
+      status: "under_review",
       integrityReason: "final_proposition_hash_mismatch",
       commissionerReviewState: "settlement_blocked",
     }),
@@ -179,6 +199,29 @@ test("only automated evidence-only reviews may reconcile without an operator", (
       integrityReason: "roster_changed_after_stake",
       commissionerReviewState: "roster_changed_after_stake",
     }),
+    false
+  );
+});
+
+test("placeholder scalar winners never contradict trusted structured result proof", () => {
+  assert.equal(
+    isConcreteSettlementWinnerScalar("Unknown"),
+    false
+  );
+  assert.equal(
+    isConcreteSettlementWinnerScalar("Jim"),
+    true
+  );
+  assert.equal(
+    isRecoverableUnknownScalarWinnerReview(
+      'WINNER_TRUTH_MISMATCH: market 420893 game_stats 19238 winner "Unknown" does not match market sides'
+    ),
+    true
+  );
+  assert.equal(
+    isRecoverableUnknownScalarWinnerReview(
+      'WINNER_TRUTH_MISMATCH: market 420893 game_stats 19238 winner "Jim" does not match market sides'
+    ),
     false
   );
 });
