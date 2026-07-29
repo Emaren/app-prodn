@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
+import { resolveStakerBetLedgerOutcome } from "@/lib/stakerBetLedger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -89,6 +90,7 @@ type BetRow = {
   payout_wolo: number | string | null;
   market_payout_wolo: number | string | null;
   status: string | null;
+  payout_tx_hash: string | null;
   tx_hash: string | null;
   occurred_at: Date | string | null;
 };
@@ -508,6 +510,7 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
           and winner_wager.status = 'won'
       ) as market_payout_wolo,
       bw.status,
+      bw.payout_tx_hash,
       coalesce(bw.payout_tx_hash, bw.stake_tx_hash) as tx_hash,
       coalesce(bw.settled_at, bw.stake_locked_at, bw.created_at) as occurred_at
     from bet_wagers bw
@@ -532,12 +535,17 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
           and winner_wager.status = 'won'
       ) as market_payout_wolo,
       bsi.status,
+      null::text as payout_tx_hash,
       bsi.stake_tx_hash as tx_hash,
       coalesce(bsi.recorded_at, bsi.verified_at, bsi.created_at) as occurred_at
     from bet_stake_intents bsi
     join bet_markets bm on bm.id = bsi.market_id
     where bsi.user_id = $1
       and coalesce(bsi.recorded_at, bsi.verified_at, bsi.created_at)::date >= $2::date
+      and (
+        bsi.status = 'recorded'
+        or bsi.stake_tx_hash is not null
+      )
       and not exists (
         select 1
         from bet_wagers linked_wager
@@ -568,6 +576,9 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
         count: number;
         won: number;
         lost: number;
+        refunded: number;
+        refundQueued: number;
+        stakeRecovery: number;
         pending: number;
         occurredAt: string;
       }
@@ -584,6 +595,9 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
           count: 0,
           won: 0,
           lost: 0,
+          refunded: 0,
+          refundQueued: 0,
+          stakeRecovery: 0,
           pending: 0,
           occurredAt: new Date(row.occurred_at || new Date()).toISOString(),
         };
@@ -595,12 +609,22 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
       );
       current.count += 1;
 
-      const status = String(row.status || "").toLowerCase();
+      const settlementOutcome = resolveStakerBetLedgerOutcome({
+        kind: row.kind,
+        status: row.status,
+        payoutTxHash: row.payout_tx_hash,
+      });
 
-      if (row.kind === "wager" && status === "won") {
+      if (settlementOutcome === "won") {
         current.won += 1;
-      } else if (row.kind === "wager" && status === "lost") {
+      } else if (settlementOutcome === "lost") {
         current.lost += 1;
+      } else if (settlementOutcome === "refunded") {
+        current.refunded += 1;
+      } else if (settlementOutcome === "refund_queued") {
+        current.refundQueued += 1;
+      } else if (settlementOutcome === "stake_recovery") {
+        current.stakeRecovery += 1;
       } else {
         current.pending += 1;
       }
@@ -618,29 +642,43 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
 
     return Array.from(groupedRows.entries()).map(([key, row]) => {
       const outcome =
-        row.won > 0 && row.lost === 0 && row.pending === 0
+        row.won === row.count
           ? "won"
-          : row.lost > 0 && row.won === 0 && row.pending === 0
+          : row.lost === row.count
             ? "lost"
-            : row.won === 0 && row.lost === 0
-              ? "pending"
-              : "mixed";
+            : row.refunded === row.count
+              ? "refunded"
+              : row.refundQueued === row.count
+                ? "refund_queued"
+                : row.stakeRecovery === row.count
+                  ? "stake_recovery"
+                  : row.pending === row.count
+                    ? "pending"
+                    : "mixed";
 
       const tone: LedgerRow["tone"] =
         outcome === "won"
           ? "emerald"
           : outcome === "lost"
             ? "red"
-            : "sky";
+            : outcome === "refunded"
+              ? "slate"
+              : "sky";
 
       const label =
         outcome === "won"
           ? `${formatWolo(row.amount)} won`
           : outcome === "lost"
             ? `${formatWolo(row.amount)} lost`
-            : outcome === "mixed"
-              ? `${formatWolo(row.amount)} mixed result`
-              : `${formatWolo(row.amount)} bet pending`;
+            : outcome === "refunded"
+              ? `${formatWolo(row.amount)} refunded`
+              : outcome === "refund_queued"
+                ? `${formatWolo(row.amount)} voided`
+                : outcome === "stake_recovery"
+                  ? `${formatWolo(row.amount)} stake recovery`
+                  : outcome === "mixed"
+                    ? `${formatWolo(row.amount)} mixed result`
+                    : `${formatWolo(row.amount)} bet pending`;
 
       const countLabel =
         `${row.count} ${row.count === 1 ? "bet" : "bets"}`;
@@ -648,7 +686,13 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
       const payoutLabel =
         outcome === "pending"
           ? "awaiting settlement"
-          : `${formatWolo(row.marketPayout)} payout value`;
+          : outcome === "refunded"
+            ? "exact stake returned"
+            : outcome === "refund_queued"
+              ? "refund awaiting chain proof"
+              : outcome === "stake_recovery"
+                ? "wallet transfer needs reconciliation"
+                : `${formatWolo(row.marketPayout)} payout value`;
 
       return {
         key: `grouped-bet-${key}`,
@@ -672,21 +716,34 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
     const payout = asNumber(row.payout_wolo);
     const marketPayout = asNumber(row.market_payout_wolo);
     const status = String(row.status || "recorded").toLowerCase();
-
-    const won = row.kind === "wager" && status === "won";
-    const lost = row.kind === "wager" && status === "lost";
+    const outcome = resolveStakerBetLedgerOutcome({
+      kind: row.kind,
+      status: row.status,
+      payoutTxHash: row.payout_tx_hash,
+    });
+    const won = outcome === "won";
+    const lost = outcome === "lost";
+    const refunded = outcome === "refunded";
+    const refundQueued = outcome === "refund_queued";
+    const stakeRecovery = outcome === "stake_recovery";
 
     const tone: LedgerRow["tone"] =
-      won ? "emerald" : lost ? "red" : "sky";
+      won ? "emerald" : lost ? "red" : refunded ? "slate" : "sky";
 
     const label =
-      row.kind === "intent"
-        ? `${formatWolo(amount)} bet pending`
-        : won
-          ? `${formatWolo(amount)} bet won`
-          : lost
-            ? `${formatWolo(amount)} bet lost`
-            : `${formatWolo(amount)} bet wager`;
+      won
+        ? `${formatWolo(amount)} bet won`
+        : lost
+          ? `${formatWolo(amount)} bet lost`
+          : refunded
+            ? `${formatWolo(amount)} bet refunded`
+            : refundQueued
+              ? `${formatWolo(amount)} bet voided`
+              : stakeRecovery
+                ? `${formatWolo(amount)} stake recovery`
+                : row.kind === "intent"
+                  ? `${formatWolo(amount)} bet pending`
+                  : `${formatWolo(amount)} bet active`;
 
     return {
       key: `bet-${row.kind}-${row.id}`,
@@ -698,6 +755,9 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
         row.side ? `side ${row.side}` : null,
         status,
         won ? `${formatWolo(payout)} paid out` : null,
+        refunded ? `${formatWolo(payout || amount)} returned` : null,
+        refundQueued ? "refund awaiting chain proof" : null,
+        stakeRecovery ? "wallet transfer needs reconciliation" : null,
         lost && marketPayout > 0
           ? `${formatWolo(marketPayout)} payout value`
           : null,

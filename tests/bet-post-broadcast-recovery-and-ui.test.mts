@@ -8,6 +8,9 @@ import {
 import {
   isPostBroadcastStakeRecovery,
 } from "../lib/betStakeRecoveryPolicy.ts";
+import {
+  resolveStakerBetLedgerOutcome,
+} from "../lib/stakerBetLedger.ts";
 
 const closeAt =
   new Date(
@@ -250,6 +253,77 @@ test(
     assert.match(
       settlementSource,
       /txTimestamp/
+    );
+  }
+);
+
+test(
+  "staking ledger separates refunded wagers from pending bets",
+  () => {
+    assert.equal(
+      resolveStakerBetLedgerOutcome({
+        kind: "wager",
+        status: "void",
+        payoutTxHash: "ABC123",
+      }),
+      "refunded"
+    );
+
+    assert.equal(
+      resolveStakerBetLedgerOutcome({
+        kind: "wager",
+        status: "void",
+        payoutTxHash: null,
+      }),
+      "refund_queued"
+    );
+
+    assert.equal(
+      resolveStakerBetLedgerOutcome({
+        kind: "intent",
+        status: "recorded",
+        payoutTxHash: null,
+      }),
+      "pending"
+    );
+
+    assert.equal(
+      resolveStakerBetLedgerOutcome({
+        kind: "intent",
+        status: "orphaned",
+        payoutTxHash: null,
+      }),
+      "stake_recovery"
+    );
+
+    const ledgerRoute = readFileSync(
+      "app/api/staking/stakers/[slug]/ledger/route.ts",
+      "utf8"
+    );
+
+    assert.match(
+      ledgerRoute,
+      /bw\.payout_tx_hash/
+    );
+    assert.match(
+      ledgerRoute,
+      /exact stake returned/
+    );
+    assert.match(
+      ledgerRoute,
+      /refund awaiting chain proof/
+    );
+    assert.match(
+      ledgerRoute,
+      /wallet transfer needs reconciliation/
+    );
+    assert.match(
+      ledgerRoute,
+      /bsi\.status = 'recorded'[\s\S]*bsi\.stake_tx_hash is not null/
+    );
+    assert.match(
+      ledgerRoute,
+      /const label =[\s\S]*stakeRecovery[\s\S]*row\.kind === "intent"/
     );
   }
 );
