@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-07-28"
+reviewed_at: "2026-07-29"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -71,6 +71,49 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 ```
 
 ## Recent deployment notes
+
+### 2026-07-29 bet and replay reliability release
+
+- web implementation commit:
+  `32be8b7b34d8ff60f8f0873c9f5762506a550228`;
+- replay API implementation commit:
+  `e4d1960eb26540c40193787aa8894db5e7d2d326`;
+- deployed build ID: `IE_S62e0zvc7NoYqIn-z0`;
+- public build version: `20260729210111-0f1bb6c20a`;
+- Prisma: 72 source migrations applied, zero pending;
+- backup:
+  `/mnt/HC_Volume_105319120/aoe2-parser-engine/backups/aoe2-bet-reliability-20260729T200754Z/database.dump`,
+  249,548,506 bytes, SHA-256
+  `de2237d7ac2463ca682b2754af36c7208c4e7215bf378476059c55e185e15b34`;
+- Jim's six formerly active wagers are terminal: two replay-proven losses and
+  four exact chain-proven refunds;
+- production wager backlog: zero active wagers, zero
+  `awaiting_final_proof`, zero `under_review`, and zero pending core
+  payout/refund/corrective-refund claims;
+- `/bets` separates Settlement Proof, real bettor Settlement Queue, and
+  Resolution Queue. Optional Founder/winner rewards no longer contaminate bet
+  settlement state, and routine fast-board capability deferral is not
+  presented as an outage;
+- the app/API accepts a trusted structured duel winner when the raw scalar is
+  only an `Unknown` placeholder, while named/team contradictions remain
+  fail-closed;
+- replay upload authentication commits before CPU parsing, preventing the
+  parser worker from holding an API connection throughout binary parsing;
+- `/matchups` and `/game-stats/[id]` share the complete-corpus rivalry builder;
+  the verified Emaren–Sechma result is 13 meetings, 9–0 decided, four
+  unresolved;
+- 538 false-resolved public projections received append-only unresolved
+  successors with zero aggregate rebuild, duplicate currents, coverage
+  regressions, or invalid lineage;
+- browser-local time is primary across the released user surfaces, with UTC as
+  deterministic fallback and secondary inspection truth;
+- `/api/wolo/network?format=table` reports 35 known addresses and reconciles
+  canonical supply and known bank balances at 100,000,000.000000 WOLO;
+- web/API/Wolo services were active after deploy. Wolo consensus and settlement
+  binaries remain intentionally split; no chain upgrade is required.
+
+Full evidence and invariants are recorded in
+`docs/BET_AND_REPLAY_RELIABILITY_2026-07-29.md`.
 
 ### 2026-07-28 HD Leaderboard Advanced-default refinement
 
