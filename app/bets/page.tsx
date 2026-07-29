@@ -897,7 +897,15 @@ function publicRailMessage(value: string | null | undefined) {
 }
 
 function buildPublicRailNotice(detail: string | null, warnings: string[]) {
-  const messages = [detail, ...warnings].map((item) => item?.trim()).filter(Boolean) as string[];
+  const messages = [detail, ...warnings]
+    .map((item) => item?.trim())
+    .filter(Boolean)
+    .filter(
+      (item) =>
+        !/settlement capability check deferred for fast bet-board load/i.test(
+          item as string
+        )
+    ) as string[];
   if (!messages.length) return null;
   return publicRailMessage(messages.join(" "));
 }

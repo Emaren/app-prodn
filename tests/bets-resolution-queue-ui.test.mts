@@ -57,3 +57,14 @@ test("the board independently preserves settlement attention, payout proof, and 
     /!\["executed", "corrected"\]\.includes\(result\.payoutState\)[\s\S]*\.slice\(0, 4\)[\s\S]*\["executed", "corrected"\]\.includes\(result\.payoutState\)[\s\S]*\.slice\(0, 4\)/,
   );
 });
+
+test("routine fast-board capability deferral is not presented as an outage", () => {
+  assert.match(
+    pageSource,
+    /settlement capability check deferred for fast bet-board load/i,
+  );
+  assert.match(
+    pageSource,
+    /buildPublicRailNotice[\s\S]*\.filter\([\s\S]*settlement capability check deferred for fast bet-board load/i,
+  );
+});
