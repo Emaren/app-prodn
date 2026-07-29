@@ -492,10 +492,6 @@ export async function retryPendingClaimSettlement(
     return { outcome: "skipped", claimId: claim.id, reason: "not_pending" };
   }
 
-  if (claim.payoutTxHash?.trim()) {
-    return { outcome: "skipped", claimId: claim.id, reason: "already_has_payout_tx" };
-  }
-
   if (claim.createdAt < MAINNET_CLAIM_CUTOFF) {
     const detail = "Legacy pre-mainnet claim row is not payable on WoloChain mainnet.";
 
@@ -588,22 +584,35 @@ export async function retryPendingClaimSettlement(
   try {
     assertAdminRetryWinnerTruthGate({ claim, market });
 
-    const payout = useGroupedMarketSettlement && market
-      ? await executeMarketClaimSettlementRun({
-          claimId: claim.id,
-          sourceMarketId: market.id,
-          claimKind: claim.claimKind,
-          amountWolo: claim.amountWolo,
-          toAddress: matchedUser.walletAddress,
-          matchedUserId: matchedUser.id,
-          marketTitle: market.title,
-          memoTag,
-        })
-      : await (useFounderSettlement ? executeFounderWoloPayout : executeWoloPayout)({
-          toAddress: matchedUser.walletAddress,
-          amountWolo: claim.amountWolo,
-          memo: `${market?.title || claim.displayPlayerName} · ${memoTag}`,
-        });
+    /*
+     * A broadcast can land after the first REST lookup timed out. A pending
+     * row may therefore already carry the real tx hash. Revalidate that
+     * exact send and finalize the ledger instead of broadcasting a duplicate.
+     */
+    const storedPayoutTxHash =
+      claim.payoutTxHash?.trim() ||
+      null;
+    const payout = storedPayoutTxHash
+      ? {
+          txHash: storedPayoutTxHash,
+          proofUrl: null,
+        }
+      : useGroupedMarketSettlement && market
+        ? await executeMarketClaimSettlementRun({
+            claimId: claim.id,
+            sourceMarketId: market.id,
+            claimKind: claim.claimKind,
+            amountWolo: claim.amountWolo,
+            toAddress: matchedUser.walletAddress,
+            matchedUserId: matchedUser.id,
+            marketTitle: market.title,
+            memoTag,
+          })
+        : await (useFounderSettlement ? executeFounderWoloPayout : executeWoloPayout)({
+            toAddress: matchedUser.walletAddress,
+            amountWolo: claim.amountWolo,
+            memo: `${market?.title || claim.displayPlayerName} · ${memoTag}`,
+          });
 
     if (!payout?.txHash) {
       throw new Error(
@@ -654,9 +663,13 @@ export async function retryPendingClaimSettlement(
         data: {
           settlementRunId,
           settlementStatus: "executed",
+          refundStatus:
+            claim.claimKind === "bet_refund"
+              ? "refunded"
+              : undefined,
           settlementFailureCode: null,
           settlementDetail: compactDbDetail(
-            `Admin retry settled claim ${claim.id} on grouped market rail · tx ${payout.txHash}`
+            `${storedPayoutTxHash ? "Recovered" : "Admin retry settled"} claim ${claim.id} on grouped market rail · tx ${payout.txHash}`
           ),
           settlementAttemptedAt: attemptAt,
           settlementExecutedAt: attemptAt,

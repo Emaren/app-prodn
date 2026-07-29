@@ -57,6 +57,9 @@ import {
   createPendingWoloClaim,
   normalizePendingWoloClaimName,
 } from "@/lib/pendingWoloClaims";
+import {
+  retryPendingClaimSettlement,
+} from "@/lib/adminWoloClaims";
 import { settleFounderBonuses } from "@/lib/betFounderBonuses";
 import {
   executeWoloEscrowSettlementRun,
@@ -3280,6 +3283,84 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
   }
 }
 
+const CORE_BET_SETTLEMENT_CLAIM_KINDS = [
+  "bet_payout",
+  "bet_refund",
+] as const;
+
+async function reconcilePendingCoreBetClaims(
+  prisma: PrismaClient
+) {
+  const retryCutoff =
+    new Date(
+      Date.now() -
+        5 * 60_000
+    );
+  const claims =
+    await prisma.pendingWoloClaim.findMany({
+      where: {
+        status: "pending",
+        rescindedAt: null,
+        sourceMarketId: {
+          not: null,
+        },
+        claimKind: {
+          in: [
+            ...CORE_BET_SETTLEMENT_CLAIM_KINDS,
+          ],
+        },
+        OR: [
+          {
+            payoutTxHash: {
+              not: null,
+            },
+          },
+          {
+            payoutTxHash: null,
+            payoutAttemptedAt: {
+              not: null,
+              lte: retryCutoff,
+            },
+          },
+        ],
+      },
+      orderBy: [
+        {
+          createdAt: "asc",
+        },
+        {
+          id: "asc",
+        },
+      ],
+      select: {
+        id: true,
+      },
+      take: 25,
+    });
+
+  for (const claim of claims) {
+    const result =
+      await retryPendingClaimSettlement(
+        prisma,
+        claim.id,
+        {
+          activityPath: "/bets",
+          memoTag:
+            "automated_core_bet_recovery",
+        }
+      );
+
+    if (
+      result.outcome ===
+      "failed"
+    ) {
+      console.warn(
+        `Core bet claim retry failed for claim #${claim.id}: ${result.detail}`
+      );
+    }
+  }
+}
+
 async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
   const retryCutoff = new Date(Date.now() - 5 * 60_000);
   const candidates = await prisma.betMarketFinancialAdjustment.findMany({
@@ -5346,6 +5427,7 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
   await reconcileBetMarketStatsLinks(prisma);
   await reconcileDesyncSideMarkets(prisma);
   await settleResolvedMarketWagers(prisma);
+  await reconcilePendingCoreBetClaims(prisma);
   await settleMarketIntegrityCorrections(prisma);
   await settleFounderBonuses(prisma);
 }
