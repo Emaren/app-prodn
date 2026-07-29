@@ -1,6 +1,5 @@
 "use client";
 
-import { formatLobbyMoment } from "@/components/lobby/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -14,6 +13,7 @@ import {
 } from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { LeaderboardLaneToggle } from "@/components/lobby/LeaderboardLaneToggle";
 import {
   getLobbyPresentationTone,
@@ -68,14 +68,6 @@ function mergeLeaderboardEntries(
 
     return left.name.localeCompare(right.name);
   });
-}
-
-function formatLastGame(value: string | null) {
-  if (!value) {
-    return "Pending";
-  }
-
-  return formatLobbyMoment(value);
 }
 
 function buildRecordLabel(entry: LobbyLeaderboardSummary["entries"][number]) {
@@ -485,7 +477,12 @@ export function LeaderboardPanel({
                   </div>
 
                   <div className="mt-3 text-xs text-slate-400">
-                    Last game {formatLastGame(entry.lastPlayedAt)}
+                    Last game{" "}
+                    {entry.lastPlayedAt ? (
+                      <TimeDisplayText value={entry.lastPlayedAt} />
+                    ) : (
+                      "pending"
+                    )}
                   </div>
                 </div>
               </div>

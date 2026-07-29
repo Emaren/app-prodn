@@ -5,18 +5,8 @@ import Link from "next/link";
 import { ArrowUpRight, Crown, Feather, Quote, Swords } from "lucide-react";
 
 import { WolomaniaPromoTile } from "@/components/lobby/WolomaniaPromoTile";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import type { HeroPlaylistItemView } from "@/lib/hero/types";
-
-function editionDate(value: string) {
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "Open edition";
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Edmonton",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  }).format(parsed);
-}
 
 function mediaUrl(item: HeroPlaylistItemView, mobile = false) {
   const config = item.screen.config;
@@ -115,7 +105,16 @@ function ChronicleCover({ item }: { item: HeroPlaylistItemView }) {
         <div className="flex flex-1 flex-col justify-center py-9 sm:py-12">
           <div className="flex flex-wrap items-center justify-between gap-3 text-[9px] font-semibold uppercase tracking-[0.28em] text-amber-100/60 sm:text-[10px]">
             <span>{config.kicker}</span>
-            <span>{editionDate(thread.createdAt)}</span>
+            <span>
+              <TimeDisplayText
+                value={thread.createdAt}
+                dateOnly
+                includeYear
+                month="long"
+                includeZone={false}
+                emptyValue="Open edition"
+              />
+            </span>
           </div>
           <h2 className="mt-6 max-w-[72rem] font-serif text-[clamp(3.25rem,7.8vw,8.5rem)] font-semibold leading-[0.88] tracking-[-0.045em] text-amber-50 drop-shadow-[0_18px_60px_rgba(0,0,0,0.48)] transition duration-700 group-hover:translate-x-1">
             {thread.title}

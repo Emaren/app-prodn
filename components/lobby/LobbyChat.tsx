@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { formatLobbyMoment } from "@/components/lobby/utils";
 import {
   type CSSProperties,
   type MouseEvent,
@@ -19,6 +18,7 @@ import {
   type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import type { ChatRenderItem } from "@/components/lobby/utils";
 import { displayName } from "@/components/lobby/utils";
 import type { AiVisibilityOption } from "@/lib/aiConciergeConfig";
@@ -930,7 +930,7 @@ function LobbyMessageCard({
         </div>
 
         <div className="shrink-0 text-xs text-slate-400">
-          {formatLobbyMoment(item.message.createdAt)}
+          <TimeDisplayText value={item.message.createdAt} />
         </div>
       </div>
 

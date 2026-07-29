@@ -1,12 +1,4 @@
-export const ROADMAP_LAST_UPDATED_AT = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/Edmonton",
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-  hour: "numeric",
-  minute: "2-digit",
-  timeZoneName: "short",
-}).format(new Date());
+export const ROADMAP_LAST_UPDATED_AT = new Date().toISOString();
 
 export const ROADMAP_UPDATES = [
   {

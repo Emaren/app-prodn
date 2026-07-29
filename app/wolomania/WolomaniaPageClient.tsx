@@ -20,7 +20,10 @@ import {
   Wallet,
 } from "lucide-react";
 
-const EVENT_TIMESTAMP = new Date("2026-07-10T20:00:00Z").getTime();
+import TimeDisplayText from "@/components/time/TimeDisplayText";
+
+const EVENT_STARTS_AT = "2026-07-10T20:00:00.000Z";
+const EVENT_TIMESTAMP = new Date(EVENT_STARTS_AT).getTime();
 
 const OFFICIAL_POSTER = "/uploads/managed-assets/wolomania/wolomania.webp";
 
@@ -333,7 +336,7 @@ export default function WolomaniaPageClient() {
                 The World Championship Event
               </div>
               <div className="mt-3 text-xs font-bold uppercase tracking-[0.22em] text-stone-300 sm:text-sm">
-                July 10, 2026 <span className="text-amber-300">•</span> 8:00 PM UTC{" "}
+                <TimeDisplayText value={EVENT_STARTS_AT} includeYear />{" "}
                 <span className="text-amber-300">•</span> Live on AoE2WAR.com
               </div>
             </div>
@@ -418,20 +421,43 @@ export default function WolomaniaPageClient() {
                 </div>
                 <div className="space-y-4">
                   {[
-                    ["Date", "July 10, 2026", CalendarDays],
-                    ["Time", "8:00 PM UTC", Radio],
-                    ["Format", "Best of 7", Swords],
-                  ].map(([label, value, Icon]) => {
+                    {
+                      key: "date",
+                      label: "Date",
+                      value: (
+                        <TimeDisplayText
+                          value={EVENT_STARTS_AT}
+                          dateOnly
+                          includeYear
+                          includeZone={false}
+                          month="long"
+                        />
+                      ),
+                      Icon: CalendarDays,
+                    },
+                    {
+                      key: "time",
+                      label: "Time",
+                      value: <TimeDisplayText value={EVENT_STARTS_AT} timeOnly />,
+                      Icon: Radio,
+                    },
+                    {
+                      key: "format",
+                      label: "Format",
+                      value: "Best of 7",
+                      Icon: Swords,
+                    },
+                  ].map(({ key, label, value, Icon }) => {
                     const DetailIcon = Icon as typeof CalendarDays;
                     return (
-                      <div key={label as string} className="flex gap-3 border-b border-white/10 pb-4">
+                      <div key={key} className="flex gap-3 border-b border-white/10 pb-4">
                         <DetailIcon className="mt-0.5 h-5 w-5 text-amber-300" />
                         <div>
                           <div className="text-[10px] uppercase tracking-[0.22em] text-stone-500">
-                            {label as string}
+                            {label}
                           </div>
                           <div className="mt-1 font-black uppercase tracking-[0.08em] text-white">
-                            {value as string}
+                            {value}
                           </div>
                         </div>
                       </div>

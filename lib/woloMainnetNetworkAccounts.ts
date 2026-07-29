@@ -29,6 +29,7 @@ export type WoloMainnetNetworkAccountRole =
   | "payout"
   | "staking"
   | "relayer"
+  | "workshop"
   | "user"
   | "module";
 
@@ -63,6 +64,12 @@ export const WOLO_MAINNET_NETWORK_ACCOUNTS = [
     address: "wolo1tg04m57e52evgzjkn9ruwwkz626pfv9qfv27wy",
     use: "Rewards Wallet",
     role: "payout",
+  },
+  {
+    label: "Workshop Sponsorships",
+    address: "wolo1m943tq5tuqf7ejucmac9knpls04jtmh3apzlrg",
+    use: "Rewards Wallet",
+    role: "workshop",
   },
   {
     label: "Community Treasury",
@@ -276,6 +283,7 @@ export function isWoloStakingReserveOperatorAccount(
     account.role !== "staking" &&
     account.role !== "escrow" &&
     account.role !== "relayer" &&
+    account.role !== "workshop" &&
     !isWoloNetworkRetiredAccount(account)
   );
 }

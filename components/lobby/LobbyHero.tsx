@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { formatLobbyMoment } from "@/components/lobby/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { KeyboardEvent, MouseEvent, UIEvent } from "react";
 import SteamLoginButton from "@/components/SteamLoginButton";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { LeaderboardPanel } from "@/components/lobby/LeaderboardPanel";
 import { LeaderboardLaneToggle } from "@/components/lobby/LeaderboardLaneToggle";
 import {
@@ -99,13 +99,6 @@ function formatCompactWolo(value: number | null | undefined) {
     maximumFractionDigits: 1,
     notation: value >= 1000 ? "compact" : "standard",
   }).format(value);
-}
-
-function formatUpdatedAt(value: string | null | undefined) {
-  if (!value) return "Waiting for snapshot";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Waiting for snapshot";
-  return `Updated ${formatLobbyMoment(value)}`;
 }
 
 function isInteractiveToggleTarget(target: EventTarget | null) {
@@ -1117,7 +1110,13 @@ export function LobbyHero({
                 Local chain snapshot feeding AoE2HDBets dev mode.
               </div>
             </div>
-            <div className="text-xs text-white/45">{formatUpdatedAt(wolo.updatedAt)}</div>
+            <div className="text-xs text-white/45">
+              {wolo.updatedAt ? (
+                <>Updated <TimeDisplayText value={wolo.updatedAt} /></>
+              ) : (
+                "Waiting for snapshot"
+              )}
+            </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">

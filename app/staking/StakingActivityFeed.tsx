@@ -1,8 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import TimeDisplayText, { useTimeDisplayFormatter } from "@/components/time/TimeDisplayText";
 import { useUserAuth } from "@/context/UserAuthContext";
 import type { StakingActivityItem } from "@/lib/staking";
 
@@ -386,25 +387,6 @@ function mergeActivityRows(
   return merged.sort((left, right) => activityTimestamp(right) - activityTimestamp(left));
 }
 
-function activityDayKey(item: StakingActivityItem | null | undefined) {
-  if (!item?.occurredAt) return "unknown";
-  const parsed = new Date(item.occurredAt);
-  if (Number.isNaN(parsed.getTime())) return item.occurredAt.slice(0, 10) || "unknown";
-  return parsed.toISOString().slice(0, 10);
-}
-
-function formatActivityDayLabel(value?: string | null) {
-  if (!value) return "Recent activity";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value.slice(0, 10);
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(parsed);
-}
-
 function ActivityDateDivider({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-3 py-2.5">
@@ -771,6 +753,7 @@ export default function StakingActivityFeed({
   loadMoreEndpoint?: string;
 }) {
   const { isAdmin } = useUserAuth();
+  const formatTime = useTimeDisplayFormatter();
   const initialRows = useMemo(() => items, [items]);
   const [mode, setMode] = useState<ActivityMode>("ledger");
   const [filterMode, setFilterMode] = useState<ActivityFilterMode>("all");
@@ -1319,13 +1302,39 @@ export default function StakingActivityFeed({
           }}>
           {displayRows.map((item, index) => {
             const key = activityKey(item);
-            const currentDay = activityDayKey(item);
-            const previousDay = activityDayKey(displayRows[index - 1]);
+            const currentDay = item.occurredAt
+              ? formatTime(item.occurredAt, {
+                  dateOnly: true,
+                  includeYear: true,
+                  includeZone: false,
+                })
+              : "unknown";
+            const previousItem = displayRows[index - 1];
+            const previousDay = previousItem?.occurredAt
+              ? formatTime(previousItem.occurredAt, {
+                  dateOnly: true,
+                  includeYear: true,
+                  includeZone: false,
+                })
+              : "unknown";
             const showDivider = index === 0 || currentDay !== previousDay;
 
             return (
               <div key={key} className="space-y-2.5 [content-visibility:auto] [contain-intrinsic-size:132px]">
-                {showDivider ? <ActivityDateDivider label={formatActivityDayLabel(item.occurredAt)} /> : null}
+                {showDivider ? (
+                  <ActivityDateDivider
+                    label={
+                      item.occurredAt
+                        ? formatTime(item.occurredAt, {
+                            dateOnly: true,
+                            includeYear: true,
+                            includeZone: false,
+                            month: "long",
+                          })
+                        : "Recent activity"
+                    }
+                  />
+                ) : null}
                 <ActivityRow item={item} isFresh={key === freshKey} />
               </div>
             );
@@ -1667,6 +1676,12 @@ function ActivityRow({
   const amountLabel = item.amountLabel;
   const displayAmountLabel = sanitizeActivityCopy(item.amountLabel);
   const displayTimestampLabel = sanitizeActivityCopy(item.timestampLabel || item.meta);
+  const timestampContent =
+    item.occurredAt && item.timestampLabel !== "Current stake" ? (
+      <TimeDisplayText value={item.occurredAt} includeZone={false} />
+    ) : (
+      displayTimestampLabel
+    );
 
   if (beltAsset) {
     const beltTitle = beltAsset.badge;
@@ -1726,7 +1741,7 @@ function ActivityRow({
         >
           <div className="absolute right-5 top-0 z-40 flex max-w-[45%] flex-col items-end gap-1.5 text-right">
             <FeedChip>{displayTypeLabel}</FeedChip>
-            <FeedChip>{displayTimestampLabel}</FeedChip>
+            <FeedChip>{timestampContent}</FeedChip>
             {amountLabel ? <FeedChip>{displayAmountLabel}</FeedChip> : null}
             {hasChildren ? <FeedChip>{expanded ? "Hide" : "Receipts"}</FeedChip> : null}
             {item.txUrl ? (
@@ -1856,7 +1871,7 @@ function ActivityRow({
 
         <div className="absolute right-0 top-1/2 z-20 flex w-[7.8rem] -translate-y-1/2 flex-col items-end gap-1.5 text-right">
           <FeedChip>{displayTypeLabel}</FeedChip>
-          <FeedChip>{displayTimestampLabel}</FeedChip>
+          <FeedChip>{timestampContent}</FeedChip>
           {amountLabel ? <FeedChip>{displayAmountLabel}</FeedChip> : null}
           {hasChildren ? <FeedChip>{expanded ? "Hide" : "Receipts"}</FeedChip> : null}
           {item.txUrl ? (
@@ -1888,7 +1903,7 @@ function ActivityRow({
   );
 }
 
-function FeedChip({ children }: { children: string }) {
+function FeedChip({ children }: { children: ReactNode }) {
   return (
     <span className="max-w-full break-all rounded-full border border-transparent bg-black/14 px-2.5 py-[0.22rem] text-[9px] font-semibold uppercase tracking-[0.14em] text-[#aaa18b] shadow-[inset_0_0_0_1px_rgba(125,108,68,0.10)]">
       {children}

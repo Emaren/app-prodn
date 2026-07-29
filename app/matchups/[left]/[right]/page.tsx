@@ -6,6 +6,7 @@ import {
 import type { ReactNode } from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import {
   readMapName,
   readPlayedAt,
@@ -14,6 +15,7 @@ import {
   buildMatchupHref,
   buildPlayerPairRivalryContext,
   loadRecentFinalMatchupRows,
+  PUBLIC_MATCHUP_SCAN_LIMIT,
   teamRivalryFormatLabel,
   type PlayerPairBattle,
   type PlayerPairTeamSeries,
@@ -104,7 +106,7 @@ export default async function MatchupPage({
   const candidateMatches =
     await loadRecentFinalMatchupRows(
       prisma,
-      5000
+      PUBLIC_MATCHUP_SCAN_LIMIT
     );
 
   const rivalry =
@@ -124,18 +126,6 @@ export default async function MatchupPage({
     rivalry.totalMatches === 1
       ? "1 opposing meeting"
       : `${rivalry.totalMatches} opposing meetings`;
-
-  const lastPlayedLabel =
-    rivalry.lastPlayedAt
-      ? new Date(
-          rivalry.lastPlayedAt
-        ).toLocaleString([], {
-          month: "short",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-        })
-      : "Waiting for first battle";
 
   return (
     <main className="space-y-8 py-6 text-white">
@@ -190,7 +180,12 @@ export default async function MatchupPage({
               ) : null}
 
               <Tag>
-                Last fought {lastPlayedLabel}
+                Last fought{" "}
+                {rivalry.lastPlayedAt ? (
+                  <TimeDisplayText value={rivalry.lastPlayedAt} />
+                ) : (
+                  "waiting for first battle"
+                )}
               </Tag>
             </div>
 
@@ -410,18 +405,6 @@ function TeamSeriesCard({
 }: {
   series: PlayerPairTeamSeries;
 }) {
-  const lastPlayedLabel =
-    series.lastPlayedAt
-      ? new Date(
-          series.lastPlayedAt
-        ).toLocaleString([], {
-          month: "short",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-        })
-      : "Series archived";
-
   return (
     <Link
       href={series.href}
@@ -468,7 +451,12 @@ function TeamSeriesCard({
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs">
         <span className="text-slate-500">
-          Last battle {lastPlayedLabel}
+          Last battle{" "}
+          {series.lastPlayedAt ? (
+            <TimeDisplayText value={series.lastPlayedAt} />
+          ) : (
+            "series archived"
+          )}
         </span>
 
         <span className="font-medium text-sky-200">
@@ -605,9 +593,7 @@ function BattleCard({
       <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
         {playedAt ? (
           <span>
-            {new Date(
-              playedAt
-            ).toLocaleString()}
+            <TimeDisplayText value={playedAt} includeYear />
           </span>
         ) : null}
       </div>

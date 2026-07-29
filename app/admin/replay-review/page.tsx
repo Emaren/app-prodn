@@ -10,6 +10,7 @@ import {
   UsersRound,
 } from "lucide-react";
 
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { getPrisma } from "@/lib/prisma";
 import { requireServerAdmin } from "@/lib/adminSession";
 import {
@@ -32,21 +33,6 @@ const REVIEW_PAGE_SIZE = 30;
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? value[0] : value;
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "Time unavailable";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Time unavailable";
-  return date.toLocaleString("en-CA", {
-    timeZone: "America/Edmonton",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    timeZoneName: "short",
-  });
 }
 
 function formatDuration(value: number | null) {
@@ -183,7 +169,7 @@ function ReviewCard({
                   {formatDuration(entry.durationSeconds)}
                 </span>
                 <span className="rounded-full border border-white/[0.08] bg-white/[0.035] px-3 py-1 text-xs text-slate-300">
-                  {formatDate(entry.playedOn)}
+                  <TimeDisplayText value={entry.playedOn} includeYear emptyValue="Time unavailable" />
                 </span>
               </div>
             </div>
@@ -301,7 +287,9 @@ function ReviewCard({
               </div>
               <div className="mt-2 text-xs leading-5 text-slate-400">
                 Audit entry {entry.adjudication.id ? `#${entry.adjudication.id}` : "from the legacy recovery ledger"}
-                {entry.adjudication.createdAt ? ` · ${formatDate(entry.adjudication.createdAt)}` : ""}
+                {entry.adjudication.createdAt ? (
+                  <> · <TimeDisplayText value={entry.adjudication.createdAt} includeYear /></>
+                ) : null}
                 {entry.adjudication.affectsStats ? " · stats projection active" : ""}
                 {entry.adjudication.affectsBets ? " · betting effect recorded" : " · no direct betting mutation"}
               </div>

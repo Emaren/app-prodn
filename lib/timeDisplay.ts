@@ -4,6 +4,8 @@ export const TIME_DISPLAY_STORAGE_KEY = "aoe2hdbets:time-display-mode";
 export const TIME_CLOCK_STORAGE_KEY = "aoe2hdbets:time-clock-mode";
 const TIME_DISPLAY_DEFAULT_VERSION = "browser-local-2026-04-27";
 const TIME_DISPLAY_DEFAULT_VERSION_KEY = "aoe2hdbets:time-display-default-version";
+const ACCOUNT_TIME_DISPLAY_DEFAULT_VERSION_KEY =
+  "aoe2hdbets:account-time-display-default-version";
 export const TIME_ZONE_STORAGE_KEY = "aoe2hdbets:browser-time-zone";
 
 export const TIME_DISPLAY_MODES = [
@@ -25,11 +27,16 @@ export type TimeDisplayPreference = {
   timezoneOverride?: string | null;
 };
 
-type DateLike = string | Date | null | undefined;
+export type DateLike = string | Date | null | undefined;
 
-type FormatDateTimeOptions = {
+export type FormatDateTimeOptions = {
   includeZone?: boolean;
   includeSeconds?: boolean;
+  includeYear?: boolean;
+  dateOnly?: boolean;
+  timeOnly?: boolean;
+  weekday?: "short" | "long";
+  month?: "short" | "long";
 };
 
 function pad2(value: number) {
@@ -100,6 +107,17 @@ export function detectBrowserTimeZone() {
   }
 }
 
+export function resolveBrowserTimeZone(
+  detectedBrowserTimeZone?: string | null,
+  fallbackTimeZone?: string | null
+) {
+  return (
+    normalizeTimezoneOverride(detectedBrowserTimeZone) ||
+    normalizeTimezoneOverride(fallbackTimeZone) ||
+    null
+  );
+}
+
 export function readStoredTimeDisplayMode() {
   if (typeof window === "undefined") {
     return DEFAULT_TIME_DISPLAY_MODE;
@@ -125,6 +143,36 @@ export function writeStoredTimeDisplayMode(value: TimeDisplayMode) {
   }
 
   window.localStorage.setItem(TIME_DISPLAY_STORAGE_KEY, value);
+}
+
+function accountTimeDisplayMigrationKey(accountKey: string) {
+  return `${ACCOUNT_TIME_DISPLAY_DEFAULT_VERSION_KEY}:${accountKey}`;
+}
+
+export function needsAccountTimeDisplayDefaultMigration(
+  accountKey: string | null | undefined
+) {
+  if (typeof window === "undefined" || !accountKey) {
+    return false;
+  }
+
+  return (
+    window.localStorage.getItem(accountTimeDisplayMigrationKey(accountKey)) !==
+    TIME_DISPLAY_DEFAULT_VERSION
+  );
+}
+
+export function markAccountTimeDisplayDefaultMigration(
+  accountKey: string | null | undefined
+) {
+  if (typeof window === "undefined" || !accountKey) {
+    return;
+  }
+
+  window.localStorage.setItem(
+    accountTimeDisplayMigrationKey(accountKey),
+    TIME_DISPLAY_DEFAULT_VERSION
+  );
 }
 
 export function readStoredTimeClockMode() {
@@ -176,9 +224,8 @@ export function resolveTimeZone(
   }
 
   return (
-    normalized.timezoneOverride ||
     normalizeTimezoneOverride(browserTimeZone) ||
-    detectBrowserTimeZone() ||
+    normalized.timezoneOverride ||
     "UTC"
   );
 }
@@ -213,19 +260,23 @@ function buildFormatter(
   timeClockMode: TimeClockMode = DEFAULT_TIME_CLOCK_MODE
 ) {
   const useTwelveHourClock = timeClockMode === "12h";
+  const dateOnly = options?.dateOnly === true;
+  const timeOnly = !dateOnly && options?.timeOnly === true;
   return new Intl.DateTimeFormat("en-US", {
     timeZone,
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: options?.includeSeconds ? "2-digit" : undefined,
-    hour12: useTwelveHourClock,
-    hourCycle: useTwelveHourClock ? undefined : "h23",
+    weekday: options?.weekday,
+    year: timeOnly ? undefined : options?.includeYear ? "numeric" : undefined,
+    month: timeOnly ? undefined : options?.month ?? "short",
+    day: timeOnly ? undefined : "numeric",
+    hour: dateOnly ? undefined : "2-digit",
+    minute: dateOnly ? undefined : "2-digit",
+    second: !dateOnly && options?.includeSeconds ? "2-digit" : undefined,
+    hour12: dateOnly ? undefined : useTwelveHourClock,
+    hourCycle: dateOnly || useTwelveHourClock ? undefined : "h23",
   });
 }
 
-function formatZoneLabel(timeZone: string) {
+function formatZoneLabel(timeZone: string, value: Date) {
   if (timeZone === "UTC") {
     return "UTC";
   }
@@ -235,7 +286,7 @@ function formatZoneLabel(timeZone: string) {
       timeZone,
       timeZoneName: "short",
       hour: "2-digit",
-    }).formatToParts(new Date());
+    }).formatToParts(value);
 
     return parts.find((part) => part.type === "timeZoneName")?.value ?? timeZone;
   } catch {
@@ -261,7 +312,7 @@ export function formatDateTime(
     return formatted;
   }
 
-  return `${formatted} ${formatZoneLabel(timeZone)}`;
+  return `${formatted} ${formatZoneLabel(timeZone, parsed)}`;
 }
 
 export function formatUtcDateTime(value: DateLike, options?: FormatDateTimeOptions) {

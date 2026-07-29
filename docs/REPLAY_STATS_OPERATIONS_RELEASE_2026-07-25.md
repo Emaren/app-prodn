@@ -331,7 +331,50 @@ projections, per-player/game metric counts, zero preservation, unavailable
 omission, and representative player/game pages. Rebuild/version career
 aggregates separately, then verify their denominator and coverage counts.
 
-### 6. Result and financial work remain separate
+### 6. Repair rejected watcher-inference result projections
+
+The result-policy repair is intentionally narrower than a normal projection
+run. It selects only current, accepted, unsuperseded public projections whose
+source replay was rejected with
+`watcher_inferred_opponent_win_on_incomplete_1v1` but whose stored result
+eligibility is still `resolved`. It appends an accepted unresolved successor;
+it never mutates or deletes the historical projection.
+
+Plan each bounded batch first:
+
+```bash
+npm run replay:stats:project -- \
+  --mode plan \
+  --repair-inferred-results \
+  --after-id 0 \
+  --limit 500 \
+  --operator-uid <existing-admin-uid>
+```
+
+Review every `would_supersede` row and confirm the proposed result eligibility
+is `unresolved`. If authorized, apply the exact reviewed batch:
+
+```bash
+npm run replay:stats:project -- \
+  --mode accept \
+  --repair-inferred-results \
+  --after-id 0 \
+  --limit 500 \
+  --operator-uid <existing-admin-uid> \
+  --confirm REPAIR-INFERRED-RESULT-PROJECTIONS
+```
+
+Use the returned `nextAfterId` for the next bounded batch. After applying,
+rerun plan over the same range: repaired rows must no longer be selected
+because their resolved projections are now superseded. Verify representative
+game, player, rivalry, and betting pages before continuing. This mode repairs
+public win/loss authority without allowing metric coverage to regress. Because
+the immutable successor is projected with the current exact-stat policy, newly
+available exact fields may increase coverage; compare the current and proposed
+metric counts in the plan receipt. The mode does not adjudicate a game, settle
+a bet, or initiate a chain transfer.
+
+### 7. Result and financial work remain separate
 
 Normalized acceptance does not resolve unknown winners. Candidate review may
 lead to a separately authorized result adjudication, but a money-linked game

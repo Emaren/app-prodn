@@ -63,6 +63,13 @@ type BankBalancesPayload = {
   }>;
 };
 
+type BankSupplyPayload = {
+  amount?: {
+    denom?: string;
+    amount?: string;
+  };
+};
+
 export type WoloConsensusStatus = "advancing" | "stalled" | "catching_up" | "standby";
 
 export type WoloStatusSnapshot = {
@@ -400,4 +407,20 @@ export async function fetchWoloBalanceAmount(address: string) {
   } catch {
     return fetchWoloBalanceAmountFromCli(trimmed);
   }
+}
+
+export async function fetchWoloSupplyAmount() {
+  const restSource = getRestSource();
+  const payload = await requestJson<BankSupplyPayload>(
+    `${restSource.replace(/\/$/, "")}/cosmos/bank/v1beta1/supply/by_denom?denom=${encodeURIComponent(WOLO_BASE_DENOM)}`
+  );
+  const amount = payload.amount?.denom === WOLO_BASE_DENOM
+    ? payload.amount.amount
+    : null;
+
+  if (!amount || !/^\d+$/.test(amount)) {
+    throw new Error(`WoloChain did not return a valid ${WOLO_BASE_DENOM} supply.`);
+  }
+
+  return amount.replace(/^0+(?=\d)/, "");
 }

@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import {
   loadPublicParserObservatory,
   loadViewerParserVault,
@@ -64,9 +65,7 @@ export default async function GameStatsPage() {
             Record counts, physical files, and player identities answer different questions. These labels are deliberately not interchangeable.
             <div className="mt-2 text-xs text-slate-500">
               Snapshot generated{" "}
-              <time dateTime={data.generatedAt}>
-                {data.generatedAt.replace("T", " ").replace(/\.\d{3}Z$/, " UTC")}
-              </time>
+              <TimeDisplayText value={data.generatedAt} includeYear />
               {" "}· database metrics refresh every 5 minutes; physical archive telemetry refreshes hourly.
             </div>
           </div>
@@ -112,7 +111,15 @@ export default async function GameStatsPage() {
               value={data.corpus.physicalArchiveObjects ?? "Unavailable"}
               definition={data.corpus.physicalArchiveBytes === null
                 ? "The immutable archive filesystem is not visible to this web process. This does not imply that the archive is empty."
-                : `${bytes(data.corpus.physicalArchiveBytes)} of immutable source bytes: ${data.corpus.physicalRecordedObjects?.toLocaleString()} recorded-game objects and ${data.corpus.physicalSavedCheckpointObjects?.toLocaleString()} saved checkpoints. File objects are not games. Scanned ${data.corpus.physicalArchiveScannedAt.replace("T", " ").replace(/\.\d{3}Z$/, " UTC")}.`}
+                : (
+                  <>
+                    {bytes(data.corpus.physicalArchiveBytes)} of immutable source bytes:{" "}
+                    {data.corpus.physicalRecordedObjects?.toLocaleString()} recorded-game objects and{" "}
+                    {data.corpus.physicalSavedCheckpointObjects?.toLocaleString()} saved checkpoints. File objects
+                    are not games. Scanned{" "}
+                    <TimeDisplayText value={data.corpus.physicalArchiveScannedAt} includeYear />.
+                  </>
+                )}
               alert={!data.corpus.physicalArchiveAvailable}
             />
             <DefinitionMetric
@@ -191,7 +198,7 @@ export default async function GameStatsPage() {
           <div className="mt-5 grid gap-3 sm:grid-cols-3"><Mini label="Team-resolved" value={`${data.corpus.resolvedTeams.toLocaleString()} · ${percent(data.corpus.teamCoverageBps)}`} /><Mini label="Needs result/team review" value={data.corpus.reviewRequired.toLocaleString()} /><Mini label="Archived source files" value={data.corpus.archivedArtifacts.toLocaleString()} /></div>
           <p className="mt-5 text-sm leading-6 text-slate-400">This denominator is the current set of final watcher/upload records in <code>GameStats</code>, after append-only adjudications are projected. It is not a deduplicated logical-game count: saved or rehosted records may correctly remain result-unknown. Unknowns stay excluded until replay evidence or adjudication establishes a defensible winner.</p>
         </div>
-        <div className="rounded-[1.8rem] border border-amber-200/14 bg-amber-300/[0.055] p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Canonical Parser Contract</div><h2 className="mt-3 text-2xl font-semibold">{HD_REPLAY_PARSER_CONTRACT.parserName} {HD_REPLAY_PARSER_CONTRACT.parserVersion}</h2><div className="mt-4 space-y-2 text-sm text-slate-300">{canonicalVersion ? <><Line label="Evidence pass" value={`${canonicalVersion.passName} v${canonicalVersion.passVersion}`} /><Line label="Schema" value={canonicalVersion.schemaVersion} /><Line label="Latest canonical run" value={canonicalVersion.latestAt ? new Date(canonicalVersion.latestAt).toLocaleString() : "Not recorded"} /></> : <Line label="Catalog" value="No canonical run recorded yet" />}<Line label="Candidate runs" value={data.parser.totalRuns.toLocaleString()} /><Line label="Observations preserved" value={compact(data.parser.observations)} /><Line label="Action packets cataloged" value={compact(data.parser.totalActions)} /></div></div>
+        <div className="rounded-[1.8rem] border border-amber-200/14 bg-amber-300/[0.055] p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Canonical Parser Contract</div><h2 className="mt-3 text-2xl font-semibold">{HD_REPLAY_PARSER_CONTRACT.parserName} {HD_REPLAY_PARSER_CONTRACT.parserVersion}</h2><div className="mt-4 space-y-2 text-sm text-slate-300">{canonicalVersion ? <><Line label="Evidence pass" value={`${canonicalVersion.passName} v${canonicalVersion.passVersion}`} /><Line label="Schema" value={canonicalVersion.schemaVersion} /><Line label="Latest canonical run" value={canonicalVersion.latestAt ? <TimeDisplayText value={canonicalVersion.latestAt} includeYear /> : "Not recorded"} /></> : <Line label="Catalog" value="No canonical run recorded yet" />}<Line label="Candidate runs" value={data.parser.totalRuns.toLocaleString()} /><Line label="Observations preserved" value={compact(data.parser.observations)} /><Line label="Action packets cataloged" value={compact(data.parser.totalActions)} /></div></div>
       </section>
 
       <section className="rounded-[1.9rem] border border-emerald-200/18 bg-[radial-gradient(circle_at_12%_0%,rgba(52,211,153,0.14),transparent_34%),rgba(2,6,23,0.82)] p-6 sm:p-8">
@@ -238,9 +245,9 @@ export default async function GameStatsPage() {
 
 function Metric({ label, value, alert = false }: { label: string; value: string; alert?: boolean }) { return <div className={`rounded-2xl border p-4 ${alert ? "border-amber-200/18 bg-amber-300/[0.07]" : "border-white/10 bg-black/22"}`}><div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{label}</div><div className={`mt-2 text-xl font-semibold ${alert ? "text-amber-100" : "text-white"}`}>{value}</div></div>; }
 function CorpusLayer({ title, accent, children }: { title: string; accent: string; children: ReactNode }) { return <article className="rounded-[1.5rem] border border-white/9 bg-black/20 p-5"><h3 className={`text-sm font-semibold uppercase tracking-[0.22em] ${accent}`}>{title}</h3><div className="mt-4 space-y-3">{children}</div></article>; }
-function DefinitionMetric({ label, value, definition, alert = false }: { label: string; value: number | string; definition: string; alert?: boolean }) { return <div className={`rounded-xl border p-4 ${alert ? "border-amber-200/18 bg-amber-300/[0.055]" : "border-white/8 bg-white/[0.025]"}`}><div className="flex items-start justify-between gap-4"><div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div><div className={`shrink-0 text-lg font-semibold tabular-nums ${alert ? "text-amber-100" : "text-white"}`}>{typeof value === "number" ? value.toLocaleString() : value}</div></div><p className="mt-2 text-xs leading-5 text-slate-400">{definition}</p></div>; }
+function DefinitionMetric({ label, value, definition, alert = false }: { label: string; value: number | string; definition: ReactNode; alert?: boolean }) { return <div className={`rounded-xl border p-4 ${alert ? "border-amber-200/18 bg-amber-300/[0.055]" : "border-white/8 bg-white/[0.025]"}`}><div className="flex items-start justify-between gap-4"><div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div><div className={`shrink-0 text-lg font-semibold tabular-nums ${alert ? "text-amber-100" : "text-white"}`}>{typeof value === "number" ? value.toLocaleString() : value}</div></div><p className="mt-2 text-xs leading-5 text-slate-400">{definition}</p></div>; }
 function Mini({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3"><div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div><div className="mt-1 text-sm font-semibold text-white">{value}</div></div>; }
-function Line({ label, value }: { label: string; value: string }) { return <div className="flex items-start justify-between gap-4 border-b border-white/7 pb-2"><span className="text-slate-500">{label}</span><span className="break-all text-right text-slate-200">{value}</span></div>; }
+function Line({ label, value }: { label: string; value: ReactNode }) { return <div className="flex items-start justify-between gap-4 border-b border-white/7 pb-2"><span className="text-slate-500">{label}</span><span className="break-all text-right text-slate-200">{value}</span></div>; }
 function Progress({ value }: { value: number }) { return <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-emerald-300 to-amber-300" style={{ width: `${Math.max(0, Math.min(100, value / 100))}%` }} /></div>; }
 function RankPanel({ title, rows }: { title: string; rows: Array<{ key: string; count: number }> }) { const max = rows[0]?.count || 1; return <section className="rounded-[1.6rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6"><h2 className="text-xl font-semibold">{title}</h2><div className="mt-4 space-y-3">{rows.length ? rows.map((row) => <div key={row.key}><div className="flex items-center justify-between gap-3 text-sm"><span className="truncate text-slate-300">{row.key}</span><span className="font-semibold text-amber-100">{row.count}</span></div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-white/[0.05]"><div className="h-full rounded-full bg-cyan-300/65" style={{ width: `${Math.max(4, (row.count / max) * 100)}%` }} /></div></div>) : <div className="text-sm text-slate-500">No unresolved rows in this category.</div>}</div></section>; }
 function Pill({ children }: { children: ReactNode }) { return <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-300">{children}</span>; }

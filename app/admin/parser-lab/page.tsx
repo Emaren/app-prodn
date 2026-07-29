@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import ReplayOperationsCommandCenter from "@/components/admin/ReplayOperationsCommandCenter";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { loadAdminParserLab, type ParserLabJobState } from "@/lib/adminParserLab";
 import { getPrisma } from "@/lib/prisma";
 
@@ -26,18 +27,6 @@ export const dynamic = "force-dynamic";
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "No checkpoint recorded";
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Edmonton",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
 }
 
 function percentFromBps(value: number) {
@@ -173,7 +162,8 @@ export default async function AdminParserLabPage() {
                 schema {data.contract.schemaVersion}
               </div>
               <div className="mt-4 flex items-center gap-2 text-[11px] text-slate-500">
-                <RefreshCw className="h-3.5 w-3.5" /> Snapshot {formatDate(data.generatedAt)}
+                <RefreshCw className="h-3.5 w-3.5" /> Snapshot{" "}
+                <TimeDisplayText value={data.generatedAt} includeYear />
               </div>
             </div>
           </div>
@@ -509,7 +499,9 @@ export default async function AdminParserLabPage() {
                     {failure.latestDetail ? (
                       <div className="mt-2 text-xs leading-5 text-slate-300">{failure.latestDetail}</div>
                     ) : null}
-                    <div className="mt-2 text-[11px] text-slate-500">latest {formatDate(failure.latestAt)}</div>
+                    <div className="mt-2 text-[11px] text-slate-500">
+                      latest <TimeDisplayText value={failure.latestAt} includeYear emptyValue="No checkpoint recorded" />
+                    </div>
                   </article>
                 ))
               ) : (
@@ -566,7 +558,10 @@ export default async function AdminParserLabPage() {
                       <span>max {formatNumber(job.maxArtifacts)}</span>
                       <span>{job.dryRun ? "dry run" : "write candidates"}</span>
                       <span>requested by {job.requestedBy}</span>
-                      <span>checkpoint {formatDate(job.latestEventAt)}</span>
+                      <span>
+                        checkpoint{" "}
+                        <TimeDisplayText value={job.latestEventAt} includeYear emptyValue="No checkpoint recorded" />
+                      </span>
                     </div>
                     {!job.state.invariantValid ? (
                       <div className="mt-3 rounded-xl border border-rose-300/15 bg-rose-400/[0.06] px-3 py-2 text-xs text-rose-100">
@@ -610,7 +605,8 @@ export default async function AdminParserLabPage() {
                         #{game.id} · {game.title}
                       </Link>
                       <div className="mt-1 text-xs text-slate-500">
-                        {game.mapName ?? "Map field empty"} · {formatDate(game.playedOn)}
+                        {game.mapName ?? "Map field empty"} ·{" "}
+                        <TimeDisplayText value={game.playedOn} includeYear emptyValue="No checkpoint recorded" />
                       </div>
                     </div>
                     <Link
@@ -669,7 +665,9 @@ export default async function AdminParserLabPage() {
                           <span>schema {run.schemaVersion}</span>
                           <span>{formatNumber(run.observationCount)} observations</span>
                           <span>{formatNumber(run.actionCount)} actions cataloged</span>
-                          <span>{formatDate(run.completedAt)}</span>
+                          <span>
+                            <TimeDisplayText value={run.completedAt} includeYear emptyValue="No checkpoint recorded" />
+                          </span>
                         </div>
                         {run.failureSignature ? (
                           <div className="mt-2 break-all font-mono text-[11px] text-rose-200">{run.failureSignature}</div>

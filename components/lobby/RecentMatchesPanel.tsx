@@ -1,6 +1,5 @@
 "use client";
 
-import { formatLobbyMoment } from "@/components/lobby/utils";
 import Link from "next/link";
 import { UserRound } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
@@ -9,6 +8,7 @@ import {
   type LobbyThemeKey,
   type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import {
   outcomeBadgeLabel,
   winnerLabel,
@@ -1011,7 +1011,7 @@ const MatchCard = memo(function MatchCard({
 
       {playedAt ? (
         <div className="mt-3 text-xs text-slate-400">
-          {formatLobbyMoment(playedAt)}
+          <TimeDisplayText value={playedAt} />
         </div>
       ) : null}
 

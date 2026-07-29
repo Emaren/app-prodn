@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ArrowRight, Crown, History, Medal, Shield, Sparkles, Trophy } from "lucide-react";
 
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { getPrisma } from "@/lib/prisma";
 import {
   findChampionTitleBySegments,
@@ -68,17 +69,6 @@ function txProofHref(txHash: string) {
 
 function shortTxHash(txHash: string) {
   return `${txHash.slice(0, 8)}…${txHash.slice(-6)}`;
-}
-
-function formatShortDate(value: string | null | undefined) {
-  if (!value) return null;
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toLocaleDateString("en-CA", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
 }
 
 export default async function ChampionTitleDetailPage({
@@ -198,7 +188,13 @@ export default async function ChampionTitleDetailPage({
                 {title.lastTributeRecipient ? ` → ${title.lastTributeRecipient}` : ""}
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-400">
-                Paid {formatShortDate(title.lastTributePaidAt) || "on-chain"} through the AoE2WAR Founder Rewards settlement rail.
+                Paid{" "}
+                {title.lastTributePaidAt ? (
+                  <TimeDisplayText value={title.lastTributePaidAt} dateOnly includeYear includeZone={false} />
+                ) : (
+                  "on-chain"
+                )}{" "}
+                through the AoE2WAR Founder Rewards settlement rail.
                 {title.nextTributeDay ? ` Next scheduled UTC tribute day: ${title.nextTributeDay}.` : ""}
               </p>
               <Link

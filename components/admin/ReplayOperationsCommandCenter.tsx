@@ -17,6 +17,7 @@ import {
   useState,
 } from "react";
 
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import type {
   ReplayCandidateExecutionReport,
   ReplayCandidatePlan,
@@ -49,17 +50,6 @@ function formatBytes(value: string) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`;
   return `${(bytes / 1024 ** 2).toFixed(1)} MiB`;
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "No event yet";
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Edmonton",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
 }
 
 function humanize(value: string) {
@@ -806,7 +796,11 @@ export default function ReplayOperationsCommandCenter() {
                           job #{receipt.jobId} · {receipt.identityPrefix}
                         </div>
                         <div className="mt-1 text-[10px] text-slate-500">
-                          {formatDate(receipt.latestEventAt ?? receipt.createdAt)} ·{" "}
+                          <TimeDisplayText
+                            value={receipt.latestEventAt ?? receipt.createdAt}
+                            includeYear
+                            emptyValue="No event yet"
+                          />{" · "}
                           {receipt.requestedBy}
                         </div>
                       </div>

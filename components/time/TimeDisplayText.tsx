@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState, type KeyboardEvent } from "react";
+import { useCallback, useMemo, useState, type KeyboardEvent } from "react";
 
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import {
   formatDateTime,
+  type DateLike,
+  type FormatDateTimeOptions,
   type TimeClockMode,
   type TimeDisplayMode,
 } from "@/lib/timeDisplay";
@@ -16,28 +18,54 @@ type TimeDisplayTextProps = {
   emptyValue?: string;
   includeZone?: boolean;
   includeSeconds?: boolean;
+  includeYear?: boolean;
+  dateOnly?: boolean;
+  timeOnly?: boolean;
+  weekday?: "short" | "long";
+  month?: "short" | "long";
 };
 
 function formatForMode(
-  value: string | Date | null | undefined,
+  value: DateLike,
   mode: TimeDisplayMode,
   clockMode: TimeClockMode,
   browserTimeZone: string | null,
-  includeZone: boolean,
-  includeSeconds: boolean
+  options: FormatDateTimeOptions
 ) {
   return formatDateTime(
     value,
     {
       timeDisplayMode: mode,
       timeClockMode: clockMode,
-      timezoneOverride: browserTimeZone,
+      timezoneOverride: null,
     },
     {
       browserTimeZone,
-      includeZone,
-      includeSeconds,
+      ...options,
     }
+  );
+}
+
+export function useTimeDisplayFormatter() {
+  const {
+    timeDisplayMode,
+    timeClockMode,
+    browserTimeZone,
+    appearanceLoaded,
+  } = useLobbyAppearance();
+  const resolvedDisplayMode = appearanceLoaded ? timeDisplayMode : "utc";
+  const resolvedBrowserTimeZone = appearanceLoaded ? browserTimeZone : null;
+
+  return useCallback(
+    (value: DateLike, options: FormatDateTimeOptions = {}) =>
+      formatForMode(
+        value,
+        resolvedDisplayMode,
+        timeClockMode,
+        resolvedBrowserTimeZone,
+        options
+      ),
+    [resolvedBrowserTimeZone, resolvedDisplayMode, timeClockMode]
   );
 }
 
@@ -48,35 +76,85 @@ export default function TimeDisplayText({
   emptyValue = "—",
   includeZone = true,
   includeSeconds = false,
+  includeYear = false,
+  dateOnly = false,
+  timeOnly = false,
+  weekday,
+  month,
 }: TimeDisplayTextProps) {
-  const { timeDisplayMode, timeClockMode, browserTimeZone } = useLobbyAppearance();
+  const {
+    timeDisplayMode,
+    timeClockMode,
+    browserTimeZone,
+    appearanceLoaded,
+  } = useLobbyAppearance();
   const [showMobileReveal, setShowMobileReveal] = useState(false);
+  const resolvedDisplayMode = appearanceLoaded ? timeDisplayMode : "utc";
+  const resolvedBrowserTimeZone = appearanceLoaded ? browserTimeZone : null;
 
   const primaryText = useMemo(
     () =>
       formatForMode(
         value,
-        timeDisplayMode,
+        resolvedDisplayMode,
         timeClockMode,
-        browserTimeZone,
-        includeZone,
-        includeSeconds
+        resolvedBrowserTimeZone,
+        {
+          includeZone,
+          includeSeconds,
+          includeYear,
+          dateOnly,
+          timeOnly,
+          weekday,
+          month,
+        }
       ),
-    [browserTimeZone, includeSeconds, includeZone, timeClockMode, timeDisplayMode, value]
+    [
+      dateOnly,
+      includeSeconds,
+      includeYear,
+      includeZone,
+      month,
+      resolvedBrowserTimeZone,
+      resolvedDisplayMode,
+      timeClockMode,
+      timeOnly,
+      value,
+      weekday,
+    ]
   );
 
-  const oppositeMode = timeDisplayMode === "utc" ? "local" : "utc";
+  const oppositeMode = resolvedDisplayMode === "utc" ? "local" : "utc";
   const oppositeText = useMemo(
     () =>
       formatForMode(
         value,
         oppositeMode,
         timeClockMode,
-        browserTimeZone,
-        includeZone,
-        includeSeconds
+        resolvedBrowserTimeZone,
+        {
+          includeZone,
+          includeSeconds,
+          includeYear,
+          dateOnly,
+          timeOnly,
+          weekday,
+          month,
+        }
       ),
-    [browserTimeZone, includeSeconds, includeZone, oppositeMode, timeClockMode, value]
+    [
+      dateOnly,
+      includeSeconds,
+      includeYear,
+      includeZone,
+      month,
+      oppositeMode,
+      resolvedBrowserTimeZone,
+      timeClockMode,
+      timeOnly,
+      value,
+      weekday,
+    ]
   );
 
   if (primaryText === "—") {

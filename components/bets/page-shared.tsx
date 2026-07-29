@@ -145,6 +145,13 @@ export type BetSettledResult = {
   resolutionStatus: "settled" | "voided" | "under_review";
   resolutionReason: string | null;
   refundStatus: string | null;
+  settlementStatus: string | null;
+  settlementFailureCode: string | null;
+  settlementAttemptedAt: string | null;
+  settlementExecutedAt: string | null;
+  payoutState: "executed" | "pending" | "partial" | "failed" | "corrected";
+  payoutTxHashes: string[];
+  payoutProofUrls: string[];
   teamFormat: string | null;
   teamResolutionProvenance: string | null;
   integrityStatus: string;

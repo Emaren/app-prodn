@@ -35,6 +35,7 @@ import {
 
 import { useUserAuth } from "@/context/UserAuthContext";
 import ClanViewToggle from "@/components/clans/ClanViewToggle";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import {
   CLAN_AUDIENCES,
   CLAN_AUDIENCE_DETAILS,
@@ -57,22 +58,9 @@ function initials(value: string) {
   return `${parts[0][0] || ""}${parts[parts.length - 1][0] || ""}`.toUpperCase();
 }
 
-function formatStableTime(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
-}
-
 function formatMessageTime(value: string, mounted: boolean) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  if (!mounted) return formatStableTime(value);
-  return date.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  void mounted;
+  return <TimeDisplayText value={value} emptyValue="" />;
 }
 
 function preferredAudience(allowed: ClanAudience[]) {

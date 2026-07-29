@@ -15,6 +15,7 @@ import {
   type ReplayDesyncIncidentView,
 } from "@/components/game-stats/desyncIncidentView";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import {
   formatDurationLabel,
   displayGameType,
@@ -37,10 +38,10 @@ import {
 import { canShowReplayParserDiagnostics } from "@/lib/replayDiagnosticsVisibility";
 import {
   buildMatchupHref,
+  buildPlayerPairRivalryContext,
   buildTeamMatchupHref,
-  filterHeadToHeadMatches,
   loadRecentFinalMatchupRows,
-  summarizeHeadToHead,
+  PUBLIC_MATCHUP_SCAN_LIMIT,
 } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
 import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
@@ -417,12 +418,15 @@ export default async function GameStatsDetailPage({
         : "Open Rivalry";
   const rivalryCandidates =
     playerRefs.length === 2
-      ? await loadRecentFinalMatchupRows(prisma, 800)
+      ? await loadRecentFinalMatchupRows(
+          prisma,
+          PUBLIC_MATCHUP_SCAN_LIMIT
+        )
       : [];
   const rivalrySummary =
     playerRefs.length === 2
-      ? summarizeHeadToHead(
-          filterHeadToHeadMatches(rivalryCandidates, playerRefs[0], playerRefs[1]),
+      ? buildPlayerPairRivalryContext(
+          rivalryCandidates,
           playerRefs[0],
           playerRefs[1]
         )
@@ -492,15 +496,6 @@ export default async function GameStatsDetailPage({
       ? "1 replay-backed meeting"
       : `${rivalrySummary.totalMatches} replay-backed meetings`
     : null;
-  const rivalryLastPlayedLabel = rivalrySummary?.lastPlayedAt
-    ? new Date(rivalrySummary.lastPlayedAt).toLocaleString([], {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      })
-    : "Waiting for the first stored clash";
-
   const mainShellClassName =
     "aoe2war-replay-detail-shell mx-auto w-full space-y-6 overflow-x-hidden px-3 py-4 text-white sm:px-4 sm:py-6 2xl:px-0";
 
@@ -734,7 +729,7 @@ export default async function GameStatsDetailPage({
                     </>
                   ) : null}
                   {reviewedAt ? (
-                    <> · {formatDateTime(reviewedAt)}</>
+                    <> · <TimeDisplayText value={reviewedAt} includeYear /></>
                   ) : null}
                 </div>
 
@@ -786,7 +781,7 @@ export default async function GameStatsDetailPage({
                             </p>
 
                             <div className="mt-2 text-[10px] text-slate-600">
-                              {formatDateTime(entry.createdAt)}
+                              <TimeDisplayText value={entry.createdAt} includeYear />
                             </div>
                           </div>
                         );
@@ -881,7 +876,14 @@ export default async function GameStatsDetailPage({
               </div>
 
               <div className="mt-5 flex flex-wrap gap-2">
-                <Tag>Last played {rivalryLastPlayedLabel}</Tag>
+                <Tag>
+                  Last played{" "}
+                  {rivalrySummary.lastPlayedAt ? (
+                    <TimeDisplayText value={rivalrySummary.lastPlayedAt} />
+                  ) : (
+                    "waiting for the first stored clash"
+                  )}
+                </Tag>
               </div>
             </div>
           ) : null}
@@ -921,8 +923,8 @@ export default async function GameStatsDetailPage({
               {keyEventRecord.rated !== null && keyEventRecord.rated !== undefined ? <StatRow label="Rated" value={formatPrimitive(keyEventRecord.rated)} /> : null}
               {(game.duration || game.game_duration) ? <StatRow label="Duration" value={formatDurationLabel(game.duration || game.game_duration)} /> : null}
               {keyEventRecord.platform_match_id ? <StatRow label="Match ID" value={formatPrimitive(keyEventRecord.platform_match_id)} /> : null}
-              {playedAt ? <StatRow label="Played On" value={formatDateTime(playedAt)} /> : null}
-              <StatRow label="Recorded At" value={formatDateTime(game.createdAt)} />
+              {playedAt ? <StatRow label="Played On" value={<TimeDisplayText value={playedAt} includeYear />} /> : null}
+              <StatRow label="Recorded At" value={<TimeDisplayText value={game.createdAt} includeYear />} />
               {game.user ? <StatRow label="Uploader" value={renderUploader(game.user)} /> : null}
               {keyEventRecord.lobby_name ? <StatRow label="Lobby Name" value={formatPrimitive(keyEventRecord.lobby_name)} /> : null}
               <StatRow
@@ -1187,7 +1189,7 @@ export default async function GameStatsDetailPage({
                     </div>
 
                     <div className="mt-3 text-xs text-slate-400">
-                      {attempt.createdAt.toLocaleString()}
+                      <TimeDisplayText value={attempt.createdAt} includeYear />
                     </div>
                   </div>
                 ))}
@@ -1568,13 +1570,6 @@ function formatPrimitive(value: unknown) {
 
 function formatRatingMetric(value: number | null) {
   return typeof value === "number" && Number.isFinite(value) ? String(Math.round(value)) : "Unavailable";
-}
-
-function formatDateTime(value: Date | string | null | undefined) {
-  if (!value) return "Unavailable";
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unavailable";
-  return date.toLocaleString();
 }
 
 function formatPositionValue(value: unknown) {

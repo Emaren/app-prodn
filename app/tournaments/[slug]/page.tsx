@@ -3,7 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { displayMatchPlayer, displayName, formatTournamentWindow } from "@/components/lobby/utils";
+import { displayMatchPlayer, displayName } from "@/components/lobby/utils";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { getLobbyMessages, getTournamentBySlug } from "@/lib/communityStore";
 import {
   getFallbackTournament,
@@ -47,19 +48,6 @@ type BracketPreviewSlot = {
   meta: string;
   tone: "entrant" | "open" | "forming" | "advance";
 };
-
-function formatMoment(value: string | null) {
-  if (!value) return "Scheduling now";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Scheduling now";
-  return new Intl.DateTimeFormat("en-US", {
-    timeZone: "America/Edmonton",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-}
 
 function buildBracketPreviewSlots(entrants: LobbyTournamentEntrant[]) {
   const seededSlots: BracketPreviewSlot[] = entrants.slice(0, BRACKET_SEEDED_SLOT_COUNT).map((entrant, index) => ({
@@ -161,7 +149,13 @@ export default async function TournamentDetailPage({
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <HeroStat
                 label="Window"
-                value={formatTournamentWindow(tournament.startsAt)}
+                value={
+                  tournament.startsAt ? (
+                    <TimeDisplayText value={tournament.startsAt} />
+                  ) : (
+                    "Scheduling now"
+                  )
+                }
                 helper="The current featured event slot"
               />
               <HeroStat
@@ -292,7 +286,7 @@ export default async function TournamentDetailPage({
                             {displayName(entrant.inGameName, entrant.steamPersonaName)}
                           </div>
                           <div className="mt-1 text-xs uppercase tracking-[0.25em] text-slate-400">
-                            Joined {formatMoment(entrant.joinedAt)}
+                            Joined <TimeDisplayText value={entrant.joinedAt} includeYear />
                           </div>
                         </div>
                       </div>
@@ -356,7 +350,13 @@ export default async function TournamentDetailPage({
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <MetricTile
                       label="Scheduled"
-                      value={match.scheduledAt ? formatMoment(match.scheduledAt) : "TBD"}
+                      value={
+                        match.scheduledAt ? (
+                          <TimeDisplayText value={match.scheduledAt} includeYear />
+                        ) : (
+                          "TBD"
+                        )
+                      }
                     />
                     <MetricTile
                       label="Winner"
@@ -367,7 +367,9 @@ export default async function TournamentDetailPage({
                   {match.proof ? (
                     <div className="mt-4 rounded-[1.2rem] border border-emerald-400/18 bg-emerald-500/10 p-3 text-sm text-emerald-100">
                       {match.proof.mapName || "Unknown map"}
-                      {match.proof.playedOn ? ` · ${formatMoment(match.proof.playedOn)}` : ""}
+                      {match.proof.playedOn ? (
+                        <> · <TimeDisplayText value={match.proof.playedOn} includeYear /></>
+                      ) : null}
                       {match.proof.originalFilename ? ` · ${match.proof.originalFilename}` : ""}
                     </div>
                   ) : null}
@@ -393,7 +395,9 @@ export default async function TournamentDetailPage({
                     <div className="text-sm font-semibold text-white">
                       {displayName(message.user.inGameName, message.user.steamPersonaName)}
                     </div>
-                    <div className="text-xs text-slate-400">{formatMoment(message.createdAt)}</div>
+                    <div className="text-xs text-slate-400">
+                      <TimeDisplayText value={message.createdAt} includeYear />
+                    </div>
                   </div>
                   <div className="mt-3 text-sm leading-6 text-slate-300">{message.body}</div>
                 </div>
@@ -424,7 +428,13 @@ export default async function TournamentDetailPage({
             />
             <FactCard
               label="Starts"
-              value={formatTournamentWindow(tournament.startsAt)}
+              value={
+                tournament.startsAt ? (
+                  <TimeDisplayText value={tournament.startsAt} />
+                ) : (
+                  "Scheduling now"
+                )
+              }
               helper="Current published start window."
             />
             <FactCard
@@ -637,7 +647,7 @@ function HeroStat({
   helper,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   helper: string;
 }) {
   return (
@@ -654,7 +664,7 @@ function MetricTile({
   value,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
 }) {
   return (
     <div className="rounded-[1.25rem] border border-white/8 bg-slate-950/60 p-4">
@@ -714,7 +724,7 @@ function FactCard({
   helper,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   helper: string;
 }) {
   return (

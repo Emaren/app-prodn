@@ -23,6 +23,10 @@ import {
 type Mode = "plan" | "candidate" | "accept";
 
 const ACCEPT_CONFIRMATION = "ACCEPT-EXACT-REPLAY-STATS";
+const INFERRED_RESULT_REPAIR_CONFIRMATION =
+  "REPAIR-INFERRED-RESULT-PROJECTIONS";
+const REJECTED_INFERRED_RESULT_REASON =
+  "watcher_inferred_opponent_win_on_incomplete_1v1";
 
 function argument(name: string) {
   const index = process.argv.indexOf(name);
@@ -79,6 +83,10 @@ function resultProjection(game: {
 async function main() {
   const prisma = getPrisma();
   const mode = modeArgument();
+  const repairInferredResults =
+    process.argv.includes(
+      "--repair-inferred-results"
+    );
   const gameId = integerArgument("--game-id", 0);
   const afterId = integerArgument("--after-id", 0);
   const limit = Math.min(Math.max(integerArgument("--limit", 25), 1), 500);
@@ -87,15 +95,40 @@ async function main() {
   );
   const operatorUid = argument("--operator-uid");
   if (
-    mode === "accept" &&
-    argument("--confirm") !== ACCEPT_CONFIRMATION
+    repairInferredResults &&
+    mode === "candidate"
   ) {
     throw new Error(
-      `Accept mode requires --confirm ${ACCEPT_CONFIRMATION}.`
+      "--repair-inferred-results supports only plan or accept mode."
     );
   }
-  if (mode === "accept" && !operatorUid) {
-    throw new Error("Accept mode requires --operator-uid for audit attribution.");
+  const requiredConfirmation =
+    repairInferredResults
+      ? INFERRED_RESULT_REPAIR_CONFIRMATION
+      : ACCEPT_CONFIRMATION;
+  if (
+    mode === "accept" &&
+    argument("--confirm") !==
+      requiredConfirmation
+  ) {
+    throw new Error(
+      `Accept mode requires --confirm ${requiredConfirmation}.`
+    );
+  }
+  if (
+    (
+      mode === "accept" ||
+      repairInferredResults
+    ) &&
+    !operatorUid
+  ) {
+    throw new Error(
+      `${
+        repairInferredResults
+          ? "Inferred-result repair"
+          : "Accept mode"
+      } requires --operator-uid for audit attribution.`
+    );
   }
   const operator = operatorUid
     ? await prisma.user.findUnique({
@@ -103,17 +136,49 @@ async function main() {
         select: { id: true, uid: true, isAdmin: true },
       })
     : null;
-  if (mode === "accept" && (!operator || !operator.isAdmin)) {
+  if (
+    (
+      mode === "accept" ||
+      repairInferredResults
+    ) &&
+    (!operator || !operator.isAdmin)
+  ) {
     throw new Error(
-      "Accept mode requires --operator-uid to name an existing site admin."
+      `${
+        repairInferredResults
+          ? "Inferred-result repair"
+          : "Accept mode"
+      } requires --operator-uid to name an existing site admin.`
     );
   }
+
+  const acceptedProjectionShape =
+    mode === "accept" ||
+    repairInferredResults;
 
   const games = await prisma.gameStats.findMany({
     where: {
       id: gameId > 0 ? gameId : { gt: afterId },
       is_final: true,
       players: { not: Prisma.DbNull },
+      ...(repairInferredResults
+        ? {
+            parse_reason:
+              REJECTED_INFERRED_RESULT_REASON,
+            replayStatProjections: {
+              some: {
+                projectionStatus:
+                  "accepted",
+                affectsPublicAggregates:
+                  true,
+                resultEligibility:
+                  "resolved",
+                supersededBy:
+                  null,
+              },
+            },
+          }
+        : {}),
     },
     orderBy: { id: "asc" },
     take: gameId > 0 ? 1 : limit,
@@ -165,6 +230,10 @@ async function main() {
         where: {
           projectionStatus: "accepted",
           affectsPublicAggregates: true,
+          resultEligibility:
+            repairInferredResults
+              ? "resolved"
+              : undefined,
           supersededBy: null,
         },
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -173,6 +242,7 @@ async function main() {
           id: true,
           sourceIdentity: true,
           projectionHash: true,
+          resultEligibility: true,
           playerMetricCount: true,
           gameMetricCount: true,
           createdAt: true,
@@ -234,10 +304,18 @@ async function main() {
         gameStatsId: game.id,
         replayHash: game.replayHash,
         parseRunId: parseRun?.id,
-        supersedesId: mode === "accept" ? current?.id : null,
-        projectedByUserId: mode === "accept" ? operator?.id : null,
+        supersedesId:
+          acceptedProjectionShape
+            ? current?.id
+            : null,
+        projectedByUserId:
+          acceptedProjectionShape
+            ? operator?.id
+            : null,
         projectedByUidSnapshot:
-          mode === "accept" ? operator?.uid : null,
+          acceptedProjectionShape
+            ? operator?.uid
+            : null,
         sourceKind: parseRun ? "parse_run" : "game_stats",
         sourceIdentity,
         sourceHash: parseRun?.candidateOutputHash ?? game.replayHash,
@@ -249,8 +327,11 @@ async function main() {
         metricDictionaryVersion: REPLAY_METRIC_DICTIONARY_VERSION,
         projectionPolicyVersion: REPLAY_STAT_PROJECTION_POLICY_VERSION,
         projectionStatus:
-          mode === "accept" ? "accepted" : "candidate",
-        affectsPublicAggregates: mode === "accept",
+          acceptedProjectionShape
+            ? "accepted"
+            : "candidate",
+        affectsPublicAggregates:
+          acceptedProjectionShape,
         statEligibility: "eligible",
         resultEligibility: result.resultEligibility,
         resultEligibilityReason:
@@ -269,6 +350,12 @@ async function main() {
           parse_source: game.parse_source,
           parse_reason: game.parse_reason,
           source_parser_schema_version: parseRun?.schemaVersion ?? null,
+          ...(repairInferredResults
+            ? {
+                result_policy_repair:
+                  true,
+              }
+            : {}),
         },
       });
     } catch (error) {
@@ -296,7 +383,28 @@ async function main() {
       continue;
     }
     if (
-      mode === "accept" &&
+      repairInferredResults &&
+      normalized.receipt
+        .resultEligibility !==
+        "unresolved"
+    ) {
+      report.push({
+        gameStatsId: game.id,
+        outcome:
+          "blocked_result_still_resolved",
+        currentProjectionId:
+          current?.id ?? null,
+        currentResultEligibility:
+          current
+            ?.resultEligibility ??
+          null,
+        proposedResultEligibility:
+          normalized.receipt
+            .resultEligibility,
+      });
+      continue;
+    }
+    if (
       current &&
       current.sourceIdentity === sourceIdentity &&
       current.projectionHash === normalized.receipt.projectionHash
@@ -311,7 +419,7 @@ async function main() {
       continue;
     }
     if (
-      mode === "accept" &&
+      acceptedProjectionShape &&
       current &&
       !allowCoverageRegression &&
       (normalized.receipt.playerMetricCount < current.playerMetricCount ||
@@ -343,10 +451,25 @@ async function main() {
     report.push({
       gameStatsId: game.id,
       outcome:
-        mode === "plan" ? "planned" : persisted?.outcome,
+        mode === "plan"
+          ? repairInferredResults
+            ? current
+              ? "would_supersede"
+              : "would_create"
+            : "planned"
+          : persisted?.outcome,
       projectionId: persisted?.projectionId ?? null,
       sourceIdentity,
       currentProjectionId: current?.id ?? null,
+      currentResultEligibility:
+        current?.resultEligibility ??
+        null,
+      currentPlayerMetricCount:
+        current?.playerMetricCount ??
+        null,
+      currentGameMetricCount:
+        current?.gameMetricCount ??
+        null,
       resultEligibility: normalized.receipt.resultEligibility,
       playerCount: normalized.receipt.playerCount,
       playerMetricCount: normalized.receipt.playerMetricCount,
@@ -362,6 +485,7 @@ async function main() {
       {
         mode,
         dryRun: mode === "plan",
+        repairInferredResults,
         operatorUid: operator?.uid ?? null,
         requested: {
           gameId: gameId || null,

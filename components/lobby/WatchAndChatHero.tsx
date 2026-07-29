@@ -6,7 +6,8 @@ import { Coins, ExternalLink, Flame, MessageSquareMore, Play, Skull, Swords } fr
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
 import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
-import { displayName, formatLobbyMoment } from "@/components/lobby/utils";
+import { displayName } from "@/components/lobby/utils";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import {
   getLobbyPresentationTone,
   type LobbyThemeKey,
@@ -64,6 +65,7 @@ type FeaturedWar = {
   rightLabel: string | null;
   mapName: string | null;
   detail: string;
+  detailAt: string | null;
   href: string;
   primaryStream?: WatchStreamPayload | null;
 };
@@ -231,6 +233,7 @@ function featuredFromReplay(match: LobbyMatchRow | null, tournamentTitle: string
       rightLabel: null,
       mapName: null,
       detail: "Next community war room",
+      detailAt: null,
       href: "/live-games",
     };
   }
@@ -257,7 +260,8 @@ function featuredFromReplay(match: LobbyMatchRow | null, tournamentTitle: string
     leftLabel: null,
     rightLabel: null,
     mapName,
-    detail: playedAt ? `Parsed ${formatLobbyMoment(playedAt)}` : "Latest HD parse",
+    detail: playedAt ? "Parsed" : "Latest HD parse",
+    detailAt: playedAt,
     href: `/game-stats/${match.id}`,
   };
 }
@@ -296,10 +300,11 @@ function featuredFromLiveSession(session: StreamedLiveGameSession): FeaturedWar 
     leftLabel: teams.leftLabel,
     rightLabel: teams.rightLabel,
     mapName: publicReplayMapLabel(session.mapName, "HD Battlefield"),
-    detail:
+    detail: session.state === "live" ? "Updated" : "Completed",
+    detailAt:
       session.state === "live"
-        ? `Updated ${formatLobbyMoment(session.updatedAt)}`
-        : `Completed ${formatLobbyMoment(session.completedAt || session.updatedAt)}`,
+        ? session.updatedAt
+        : session.completedAt || session.updatedAt,
     href:
       session.state === "live"
         ? `/watch/${encodeURIComponent(session.sessionKey)}`
@@ -705,6 +710,9 @@ export function WatchAndChatHero({
                   ) : null}
                   <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1">
                     {selectedWar.detail}
+                    {selectedWar.detailAt ? (
+                      <> <TimeDisplayText value={selectedWar.detailAt} /></>
+                    ) : null}
                   </span>
                 </div>
               </div>
@@ -1147,7 +1155,7 @@ function CompactCommentCard({
           <div className="min-w-0 truncate text-sm font-semibold text-white">{name}</div>
         </div>
         <time className="shrink-0 text-[11px] text-slate-500">
-          {formatLobbyMoment(message.createdAt)}
+          <TimeDisplayText value={message.createdAt} />
         </time>
       </div>
       <p className="mt-2 max-h-14 overflow-hidden text-sm leading-5 text-slate-300">

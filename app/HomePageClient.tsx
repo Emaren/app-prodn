@@ -44,6 +44,7 @@ import {
   avatarUrlForName,
   featuredAvatarCardUrlForUser,
 } from "@/lib/avatarAssets";
+import { resolveTimeZone } from "@/lib/timeDisplay";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 const ZODIAC_UID = "u_06c16d39d25c476fac2c86fee7b4d189";
@@ -1159,6 +1160,10 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
     setViewMode,
     leaderboardLane,
     setLeaderboardLane,
+    timeDisplayMode,
+    timeClockMode,
+    browserTimeZone,
+    appearanceLoaded,
   } = useLobbyAppearance();
   const communityLobbyTile = useTileViewPreference("community_lobby");
 
@@ -1458,7 +1463,29 @@ return () => {
   const isExtremeLobby = communityLobbyTile.viewMode === "extreme";
   const shouldShowShowcaseLobby = isAdvancedLobby || isExtremeLobby;
 
-  const chatItems = buildChatItems(messages);
+  const chatTimeZone = useMemo(
+    () =>
+      appearanceLoaded
+        ? resolveTimeZone(
+            {
+              timeDisplayMode,
+              timeClockMode,
+              timezoneOverride: null,
+            },
+            browserTimeZone
+          )
+        : "UTC",
+    [
+      appearanceLoaded,
+      browserTimeZone,
+      timeClockMode,
+      timeDisplayMode,
+    ]
+  );
+  const chatItems = useMemo(
+    () => buildChatItems(messages, chatTimeZone),
+    [chatTimeZone, messages]
+  );
   
   const chatRoomTitle =
     messages.length > 0 && messages[0]?.roomSlug === tournament.roomSlug && !tournament.isFallback

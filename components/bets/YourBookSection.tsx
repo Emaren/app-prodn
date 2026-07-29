@@ -38,8 +38,11 @@ function bookLifecycle(wager: BetBookEntry): BookLifecycle {
     return "proof";
   }
   if (
-    ["closing", "settled"].includes(wager.status) &&
-    /slip locked|awaiting|review|verdict/i.test(wager.closeLabel)
+    ["awaiting_final_proof", "under_review"].includes(wager.status) ||
+    (
+      ["closing", "settled"].includes(wager.status) &&
+      /slip locked|awaiting|review|verdict/i.test(wager.closeLabel)
+    )
   ) {
     return "awaiting";
   }

@@ -14,6 +14,7 @@ import {
   Wallet,
 } from "lucide-react";
 
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import {
   FALLBACK_EVENT_TILE,
   DEFAULT_EVENT_TILE_STYLE_CONFIG,
@@ -129,18 +130,6 @@ function countryLabel(country: string | null) {
   return countryRegionLabel(country);
 }
 
-function eventTimeLabel(value: string | null) {
-  if (!value) return "Time TBA";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "Time TBA";
-  return new Intl.DateTimeFormat("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "UTC",
-    timeZoneName: "short",
-  }).format(parsed);
-}
-
 function EventWrapper({
   eventTile,
   preview,
@@ -175,10 +164,40 @@ function EventWrapper({
 
 function eventFacts(eventTile: EventTileView) {
   return [
-    [eventTile.dateLabel || "Date TBA", CalendarDays],
-    [eventTimeLabel(eventTile.eventStartsAt), Radio],
-    [eventTile.matchFormat || "Format TBA", Swords],
-    [eventTile.rulesSummary || eventTile.tournamentName || "AoE2WAR Event", Trophy],
+    {
+      key: "date",
+      label: eventTile.eventStartsAt ? (
+        <TimeDisplayText
+          value={eventTile.eventStartsAt}
+          dateOnly
+          includeYear
+          includeZone={false}
+          month="long"
+        />
+      ) : (
+        eventTile.dateLabel || "Date TBA"
+      ),
+      Icon: CalendarDays,
+    },
+    {
+      key: "time",
+      label: eventTile.eventStartsAt ? (
+        <TimeDisplayText value={eventTile.eventStartsAt} timeOnly />
+      ) : (
+        "Time TBA"
+      ),
+      Icon: Radio,
+    },
+    {
+      key: "format",
+      label: eventTile.matchFormat || "Format TBA",
+      Icon: Swords,
+    },
+    {
+      key: "rules",
+      label: eventTile.rulesSummary || eventTile.tournamentName || "AoE2WAR Event",
+      Icon: Trophy,
+    },
   ] as const;
 }
 
@@ -332,9 +351,9 @@ function MobileEventTile({
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          {facts.map(([label, Icon]) => (
+          {facts.map(({ key, label, Icon }) => (
             <span
-              key={label}
+              key={key}
               className="inline-flex min-w-0 items-center justify-center gap-2 rounded-xl border border-amber-200/14 bg-white/[0.045] px-2 py-2.5 text-center text-[9px] font-black uppercase tracking-[0.1em] text-stone-100"
             >
               <Icon className="h-3.5 w-3.5 shrink-0 text-amber-300" />
@@ -472,9 +491,9 @@ function DesktopEventTile({
       <div className="absolute inset-x-0 bottom-0 z-40 bg-gradient-to-t from-black via-black/88 to-transparent px-5 pb-5 pt-28">
         <div className="mt-5 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            {facts.map(([label, Icon]) => (
+            {facts.map(({ key, label, Icon }) => (
               <span
-                key={label}
+                key={key}
                 className="inline-flex min-w-0 items-center justify-center gap-2 rounded-2xl border border-amber-200/16 bg-white/[0.045] px-3 py-3 text-center text-[10px] font-black uppercase tracking-[0.16em] text-stone-100"
               >
                 <Icon className="h-4 w-4 shrink-0 text-amber-300" />

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { useKeplr } from "@/hooks/use-keplr";
 import { useUserAuth } from "@/context/UserAuthContext";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { stakeWoloOnChain } from "@/lib/clientStaking";
 
 type StakingMe = {
@@ -146,14 +147,6 @@ export default function StakingActionTile() {
   const recommendedTopUpWolo = reserveTopUpVisible
     ? Math.ceil(operatorTopUpNeededWolo)
     : 0;
-  const lastCheckedLabel = lastCheckedAt
-    ? new Date(lastCheckedAt).toLocaleString([], {
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      })
-    : "Not checked";
   const actionPill =
     currentStakedWolo > 0 ? `Max ${formatWholeWolo(maxUnstakeWolo)}` : "Ready";
 
@@ -260,12 +253,7 @@ export default function StakingActionTile() {
   }) {
     const actor = playerName || stakingState?.user.playerName || "Staker";
     const amountLabel = formatWholeWolo(input.amountWolo);
-    const timestampLabel = new Date().toLocaleString([], {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
+    const occurredAt = new Date().toISOString();
     window.dispatchEvent(
       new CustomEvent("staking:activity", {
         detail: {
@@ -277,10 +265,11 @@ export default function StakingActionTile() {
               : input.type === "STAKE"
                 ? "Keplr signed."
                 : "Returned to wallet.",
-            meta: timestampLabel,
+            meta: input.type,
             eventType: input.type,
             amountLabel,
-            timestampLabel,
+            timestampLabel: "Just now",
+            occurredAt,
             tone: input.type === "STAKE" ? "amber" : "emerald",
           },
         },
@@ -620,7 +609,14 @@ export default function StakingActionTile() {
                 <div>Reserve target: {formatWholeWolo(reserveTargetWolo)}</div>
                 <div>Gap: {formatWholeWolo(operatorTopUpNeededWolo)}</div>
                 <div>Recommended top-up: {formatWholeWolo(recommendedTopUpWolo)}</div>
-                <div>Last checked: {lastCheckedLabel}</div>
+                <div>
+                  Last checked:{" "}
+                  {lastCheckedAt ? (
+                    <TimeDisplayText value={lastCheckedAt} />
+                  ) : (
+                    "Not checked"
+                  )}
+                </div>
               </div>
             </div>
           ) : null}

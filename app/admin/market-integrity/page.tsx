@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { getPrisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -7,19 +8,6 @@ export const dynamic = "force-dynamic";
 
 function formatWolo(value: number) {
   return new Intl.NumberFormat("en-US").format(value);
-}
-
-function formatDate(value: Date | null) {
-  return value
-    ? value.toLocaleString("en-CA", {
-        timeZone: "America/Edmonton",
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      })
-    : "Pending";
 }
 
 function tone(status: string) {
@@ -154,7 +142,10 @@ export default async function MarketIntegrityPage() {
                     </tbody>
                   </table>
                 </div>
-                <div className="mt-3 text-[11px] text-slate-500">Opened {formatDate(incident.createdAt)} · resolved {formatDate(incident.resolvedAt)}</div>
+                <div className="mt-3 text-[11px] text-slate-500">
+                  Opened <TimeDisplayText value={incident.createdAt} includeYear /> · resolved{" "}
+                  <TimeDisplayText value={incident.resolvedAt} includeYear emptyValue="Pending" />
+                </div>
               </article>
             )) : <p className="text-sm text-slate-500">No integrity incidents recorded.</p>}
           </div>

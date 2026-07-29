@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
 
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -121,6 +123,7 @@ type TimelineRow = {
   status: string;
   txHash: string | null;
   timestamp: Date;
+  verifiedAt: Date | null;
   tone: "amber" | "emerald" | "sky" | "rose" | "slate";
 };
 
@@ -150,27 +153,6 @@ function formatWolo(value: number | null | undefined) {
   return new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 6,
   }).format(Number(value || 0));
-}
-
-function formatDate(value: Date | string | null | undefined) {
-  if (!value) return "Pending";
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
-}
-
-function formatDateLong(value: Date | string | null | undefined) {
-  if (!value) return "Pending";
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(new Date(value));
 }
 
 function sideLabel(market: MarketRow, side: string | null | undefined) {
@@ -904,12 +886,13 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
       kind: "intent" as const,
       actor: intent.player,
       title: `${intent.player} offered ${formatWolo(intent.amountWolo)} WOLO`,
-      detail: `Stake intent on ${sideLabel(market, intent.side)}${intent.verifiedAt ? ` · verified ${formatDate(intent.verifiedAt)}` : ""}`,
+      detail: `Stake intent on ${sideLabel(market, intent.side)}`,
       amountWolo: intent.amountWolo,
       side: intent.side,
       status: intent.status,
       txHash: intent.stakeTxHash,
       timestamp: intent.createdAt,
+      verifiedAt: intent.verifiedAt,
       tone: "amber" as const,
     })),
     ...wagers.map((wager) => ({
@@ -926,6 +909,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
       status: wager.status === "void" ? "refund" : wager.status,
       txHash: wager.payoutTxHash || wager.stakeTxHash,
       timestamp: wager.settledAt || wager.createdAt,
+      verifiedAt: null,
       tone:
         wager.status === "won"
           ? ("emerald" as const)
@@ -948,6 +932,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
             status: "settled",
             txHash: null,
             timestamp: market.settledAt,
+            verifiedAt: null,
             tone: "emerald" as const,
           },
         ]
@@ -963,6 +948,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
       status: bonus.status,
       txHash: null,
       timestamp: bonus.settledAt || bonus.createdAt,
+      verifiedAt: null,
       tone: "emerald" as const,
     })),
     ...claims.map((claim) => ({
@@ -976,6 +962,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
       status: claim.status,
       txHash: claim.payoutTxHash,
       timestamp: claim.claimedAt || claim.createdAt,
+      verifiedAt: null,
       tone: claim.status === "claimed" ? ("emerald" as const) : ("sky" as const),
     })),
   ].sort((a, b) =>
@@ -1010,7 +997,9 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
                 </h1>
                 <p className="mt-3 text-sm text-slate-400">
                   {market.eventLabel || "AoE2WAR book"} · {market.status}
-                  {market.settledAt ? ` · ${formatDateLong(market.settledAt)}` : ""}
+                  {market.settledAt ? (
+                    <> · <TimeDisplayText value={market.settledAt} includeYear /></>
+                  ) : null}
                 </p>
               </div>
 
@@ -1087,8 +1076,8 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
                   ? ` · winner: ${winnerName}`
                   : ` · ${market.status.replaceAll("_", " ")}`}
                 {market.settledAt
-                  ? ` · settled ${formatDateLong(market.settledAt)}`
-                  : ""}
+                  ? <> · settled <TimeDisplayText value={market.settledAt} includeYear /></>
+                  : null}
               </p>
             </div>
 
@@ -1222,7 +1211,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
                     <RailCard
                       key={bonus.id}
                       title={`${formatWolo(bonus.totalAmountWolo)} WOLO · ${bonus.bonusType}`}
-                      detail={formatDate(bonus.createdAt)}
+                      detail={<TimeDisplayText value={bonus.createdAt} />}
                       status={bonus.status}
                     />
                   ))
@@ -1241,7 +1230,11 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
                     <RailCard
                       key={claim.id}
                       title={`${claim.displayPlayerName} · ${formatWolo(claim.amountWolo)} WOLO`}
-                      detail={`${claim.claimKind || "claim"} · ${formatDate(claim.createdAt)}`}
+                      detail={
+                        <>
+                          {claim.claimKind || "claim"} · <TimeDisplayText value={claim.createdAt} />
+                        </>
+                      }
                       status={claim.status}
                     />
                   ))
@@ -1386,7 +1379,7 @@ function CompactTimelineRow({ row }: { row: TimelineRow }) {
       <div className="rounded-2xl border border-emerald-300/25 bg-emerald-300/[0.07] p-4">
         <div className="text-[10px] uppercase tracking-[0.35em] text-emerald-100/60">Result</div>
         <div className="mt-1 text-lg font-black text-white">{row.title}</div>
-        <div className="mt-1 text-xs text-emerald-100/60">{formatDate(row.timestamp)}</div>
+        <div className="mt-1 text-xs text-emerald-100/60"><TimeDisplayText value={row.timestamp} /></div>
       </div>
     );
   }
@@ -1396,7 +1389,11 @@ function CompactTimelineRow({ row }: { row: TimelineRow }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="min-w-0 break-words text-sm font-black text-white [overflow-wrap:anywhere]">{row.title}</div>
-          <div className="mt-1 min-w-0 break-words text-xs text-slate-500 [overflow-wrap:anywhere]">{row.detail} · {formatDate(row.timestamp)}</div>
+          <div className="mt-1 min-w-0 break-words text-xs text-slate-500 [overflow-wrap:anywhere]">
+            {row.detail}
+            {row.verifiedAt ? <> · verified <TimeDisplayText value={row.verifiedAt} /></> : null}
+            {" · "}<TimeDisplayText value={row.timestamp} />
+          </div>
         </div>
         <span className={`rounded-full border px-3 py-1 text-xs font-black ${statusTone(row.status)}`}>
           {row.status}
@@ -1425,7 +1422,7 @@ function AdvancedTimelineRow({ row, index, market }: { row: TimelineRow; index: 
                 Result
               </div>
               <div className="mt-1 text-2xl font-black text-white">{row.title}</div>
-              <div className="mt-1 text-xs text-emerald-100/60">{formatDate(row.timestamp)}</div>
+              <div className="mt-1 text-xs text-emerald-100/60"><TimeDisplayText value={row.timestamp} /></div>
             </div>
             <span className="rounded-full border border-emerald-100/25 bg-emerald-100/10 px-3 py-1 text-xs font-black text-emerald-50">
               won
@@ -1449,10 +1446,13 @@ function AdvancedTimelineRow({ row, index, market }: { row: TimelineRow; index: 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div className="text-[10px] uppercase tracking-[0.35em] text-slate-500">
-              {row.kind} · {formatDate(row.timestamp)}
+              {row.kind} · <TimeDisplayText value={row.timestamp} />
             </div>
             <h3 className="mt-2 text-lg font-black text-white">{row.title}</h3>
-            <p className="mt-1 text-sm leading-5 text-slate-400">{row.detail}</p>
+            <p className="mt-1 text-sm leading-5 text-slate-400">
+              {row.detail}
+              {row.verifiedAt ? <> · verified <TimeDisplayText value={row.verifiedAt} /></> : null}
+            </p>
           </div>
           <span className={`rounded-full border px-3 py-1 text-xs font-black ${statusTone(row.status)}`}>
             {row.status}
@@ -1484,7 +1484,7 @@ function AdvancedTimelineRow({ row, index, market }: { row: TimelineRow; index: 
   );
 }
 
-function RailCard({ title, detail, status }: { title: string; detail: string; status: string }) {
+function RailCard({ title, detail, status }: { title: string; detail: ReactNode; status: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
       <div className="flex min-w-0 items-start justify-between gap-3">

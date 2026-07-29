@@ -7,8 +7,9 @@ import {
   type LobbyThemeKey,
   type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { getTournamentMatchStatusLabel, getTournamentStatusLabel, type LobbySnapshot } from "@/lib/lobby";
-import { displayMatchPlayer, displayName, formatLobbyMoment, formatTournamentWindow } from "@/components/lobby/utils";
+import { displayMatchPlayer, displayName } from "@/components/lobby/utils";
 import {
   normalizeResolvedWinner,
   publicReplayMapLabel,
@@ -119,7 +120,11 @@ export function TournamentPanel({
         <p className="text-sm text-slate-300">
           <span className="font-semibold text-white">{tournament.format}</span>
           {" · "}
-          {formatTournamentWindow(tournament.startsAt)}
+          {tournament.startsAt ? (
+            <TimeDisplayText value={tournament.startsAt} />
+          ) : (
+            "Scheduling now"
+          )}
         </p>
         <p className="text-sm leading-6 text-slate-300">{tournament.description}</p>
 
@@ -201,7 +206,7 @@ export function TournamentPanel({
 
                   {match.scheduledAt && (
                     <div className="mt-2.5 text-xs text-slate-400">
-                      {formatLobbyMoment(match.scheduledAt)}
+                      <TimeDisplayText value={match.scheduledAt} />
                     </div>
                   )}
 
@@ -209,8 +214,8 @@ export function TournamentPanel({
                     <div className="mt-2.5 text-xs text-emerald-100/90">
                       {publicReplayMapLabel(match.proof.mapName)}
                       {match.proof.playedOn
-                        ? ` · ${formatLobbyMoment(match.proof.playedOn)}`
-                        : ""}
+                        ? <> · <TimeDisplayText value={match.proof.playedOn} /></>
+                        : null}
                       {normalizeResolvedWinner(match.proof.winner)
                         ? ` · Winner ${normalizeResolvedWinner(match.proof.winner)}`
                         : " · Winner unresolved"}

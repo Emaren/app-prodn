@@ -49,19 +49,6 @@ function formatPublicBountyWolo(value: unknown) {
   return `${n.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`;
 }
 
-function formatPublicBountyTime(value: unknown) {
-  const d = new Date(String(value || Date.now()));
-  if (Number.isNaN(d.getTime())) return "";
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZone: "UTC",
-  }).format(d);
-}
-
 async function loadPublicNumberedBounties(limit: number) {
   const prisma = getPrisma();
 
@@ -120,16 +107,15 @@ async function loadPublicNumberedBounties(limit: number) {
     const tx = shortPublicBountyTx(row.tx_hash);
     const detail = `${String(row.memo || "Bounty").trim()}${tx ? ` · tx ${tx}` : ""}`;
     const occurredAt = new Date(row.occurred_at || Date.now()).toISOString();
-    const timestampLabel = formatPublicBountyTime(row.occurred_at);
 
     return {
       key: `public-bounty-${row.source_type}-${row.id}-${row.transfer_index ?? 0}`,
       label: `${amountLabel} bounty ${statusLabel}`,
       detail,
-      meta: timestampLabel,
+      meta: "BOUNTY",
       eventType: "BOUNTY",
       amountLabel,
-      timestampLabel,
+      timestampLabel: occurredAt,
       occurredAt,
       tone: statusLabel === "unclaimed" ? "amber" : "emerald",
     };

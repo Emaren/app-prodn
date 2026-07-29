@@ -100,6 +100,7 @@ type LedgerRow = {
   label: string;
   detail: string;
   meta: string;
+  metaKind?: "label" | "timestamp";
   occurredAt: string;
   amountLabel?: string;
   txHash?: string | null;
@@ -216,6 +217,7 @@ function registryChampionshipRows(slug: string): LedgerRow[] {
       label: profile.championship,
       detail: `${profile.player} · Kingdom designation · visible on the staking hall`,
       meta: "KINGDOM",
+      metaKind: "label",
       occurredAt: "2026-05-25T12:00:00.000Z",
     });
   }
@@ -228,6 +230,7 @@ function registryChampionshipRows(slug: string): LedgerRow[] {
       label: profile.designation,
       detail: `${profile.player} · Founding staker designation`,
       meta: "DESIGNATION",
+      metaKind: "label",
       occurredAt: "2026-05-25T12:00:01.000Z",
     });
   }

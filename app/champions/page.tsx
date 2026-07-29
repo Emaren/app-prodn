@@ -15,6 +15,7 @@ import {
   Users,
 } from "lucide-react";
 
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { getPrisma } from "@/lib/prisma";
 import { avatarCardUrlForName, featuredAvatarCardUrlForUser } from "@/lib/avatarAssets";
 import {
@@ -289,22 +290,10 @@ function shortTxHash(txHash: string) {
   return `${txHash.slice(0, 8)}…${txHash.slice(-6)}`;
 }
 
-function formatShortDate(value: string | null | undefined) {
-  if (!value) return null;
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return parsed.toLocaleDateString("en-CA", {
-    month: "short",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-}
-
 function LastTributeProof({ title, compact = false }: { title: ChampionTitleDefinition; compact?: boolean }) {
   if (!title.lastTributeTxHash) return null;
 
   const amount = title.lastTributeAmountWolo ?? title.dailyWolo;
-  const paidAt = formatShortDate(title.lastTributePaidAt);
 
   return (
     <Link
@@ -318,7 +307,10 @@ function LastTributeProof({ title, compact = false }: { title: ChampionTitleDefi
         {amount.toLocaleString()} WOLO{title.lastTributeRecipient ? ` → ${title.lastTributeRecipient}` : ""}
       </span>
       <span className="mt-0.5 block font-mono text-emerald-100/70">
-        tx {shortTxHash(title.lastTributeTxHash)}{paidAt ? ` · ${paidAt} UTC` : ""}
+        tx {shortTxHash(title.lastTributeTxHash)}
+        {title.lastTributePaidAt ? (
+          <> · <TimeDisplayText value={title.lastTributePaidAt} dateOnly includeYear includeZone={false} /></>
+        ) : null}
       </span>
     </Link>
   );

@@ -33,6 +33,7 @@ import ScheduledMatchCard, {
 import { displayName } from "@/components/lobby/utils";
 import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { battleLoopForSeed } from "@/lib/battleLoopClips";
 import {
   isBettableLiveWinnerMarket,
@@ -92,35 +93,14 @@ const ACCEPTED_SCHEDULED_STATES = new Set([
   "ready",
 ]);
 
-function formatStableIso(value: string | null) {
-  if (!value) return "Now";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Now";
-  return `${date.toISOString().slice(0, 16).replace("T", " ")} UTC`;
-}
-
 function formatTime(value: string | null, mounted: boolean) {
-  if (!value) return "Now";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Now";
-  if (!mounted) return formatStableIso(value);
-  return date.toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  void mounted;
+  return <TimeDisplayText value={value} emptyValue="Now" />;
 }
 
 function formatUpdatedTime(value: string | null, mounted: boolean) {
-  if (!value) return "Now";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Now";
-  if (!mounted) return formatStableIso(value);
-  return date.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
+  void mounted;
+  return <TimeDisplayText value={value} timeOnly emptyValue="Now" />;
 }
 
 function formatDurationCompact(value: number | null) {
@@ -926,7 +906,7 @@ function StatusPill({
   icon,
   tone = "slate",
 }: {
-  label: string;
+  label: ReactNode;
   icon?: ReactNode;
   tone?: "slate" | "red" | "amber" | "emerald";
 }) {

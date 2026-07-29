@@ -3,45 +3,7 @@ import Link from "next/link";
 import type {
   ReplayDesyncIncidentView,
 } from "@/components/game-stats/desyncIncidentView";
-
-function formatIncidentTime(
-  value: string
-) {
-  const date =
-    new Date(
-      value
-    );
-
-  if (
-    Number.isNaN(
-      date.getTime()
-    )
-  ) {
-    return "time preserved";
-  }
-
-  return new Intl.DateTimeFormat(
-    "en-CA",
-    {
-      month:
-        "short",
-
-      day:
-        "numeric",
-
-      year:
-        "numeric",
-
-      hour:
-        "numeric",
-
-      minute:
-        "2-digit",
-    }
-  ).format(
-    date
-  );
-}
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 
 function dispositionLabel(
   disposition:
@@ -116,9 +78,7 @@ export default function ConfirmedDesyncBanner({
           {" · "}
           {incident.reviewerDisplayName}
           {" · "}
-          {formatIncidentTime(
-            incident.createdAt
-          )}
+          <TimeDisplayText value={incident.createdAt} includeYear />
         </span>
 
         {incident.scheduledMatchId ? (

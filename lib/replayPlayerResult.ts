@@ -606,10 +606,7 @@ function winningTeamIndex(
    * "actgun / CRAZY_ALLOWED" is not a scalar-player conflict;
    * its team was projected from the structured contract above.
    */
-  const scalarWinner =
-    winnerTruth.statsEligible
-      ? winnerTruth.winner
-      : null;
+  const scalarWinner = winnerTruth.statsEligible ? text(game.winner) : null;
 
   const scalarWinnerTeam =
     teamIndexForName(
@@ -634,32 +631,43 @@ function winningTeamIndex(
       true;
   }
 
-  const strictFlagWinner = resolveWinningTeamIndex(players, resolution);
-  addCandidate(strictFlagWinner);
+  /*
+   * Raw player flags are parser evidence, not an independent result
+   * authority. In particular, historical watcher opponent inference wrote a
+   * complete true/false pair even though canonical replay truth rejected the
+   * inferred winner. Never let those flags re-enter public W/L through this
+   * lower-level team projector.
+   */
+  if (winnerTruth.statsEligible) {
+    const strictFlagWinner = resolveWinningTeamIndex(players, resolution);
+    addCandidate(strictFlagWinner);
 
-  const trueFlagPlayerKeys = new Set(
-    players.filter((player) => truth(player.winner)).map((player) => player.stablePlayerKey)
-  );
-  if (trueFlagPlayerKeys.size > 0) {
-    const flaggedTeamIndexes = new Set(
-      [...trueFlagPlayerKeys]
-        .map((key) => teamIndexForPlayerKey(resolution, key))
-        .filter((index): index is number => index !== null)
+    const trueFlagPlayerKeys = new Set(
+      players.filter((player) => truth(player.winner)).map((player) => player.stablePlayerKey)
     );
-    if (flaggedTeamIndexes.size !== 1) {
-      conflict = true;
-    } else {
-      const flaggedTeamIndex = [...flaggedTeamIndexes][0];
-      if (sameKeys(trueFlagPlayerKeys, teamPlayerKeys(resolution, flaggedTeamIndex))) {
-        addCandidate(flaggedTeamIndex);
-      } else if (
-        candidates.length === 0 ||
-        candidates.some((candidate) => candidate !== flaggedTeamIndex)
-      ) {
-        // A partial winner flag set cannot establish a team result on its own.
-        // It may support a scalar winner naming the same explicit team, which is
-        // how older HD rows represented a winning side.
+
+    if (trueFlagPlayerKeys.size > 0) {
+      const flaggedTeamIndexes = new Set(
+        [...trueFlagPlayerKeys]
+          .map((key) => teamIndexForPlayerKey(resolution, key))
+          .filter((index): index is number => index !== null)
+      );
+
+      if (flaggedTeamIndexes.size !== 1) {
         conflict = true;
+      } else {
+        const flaggedTeamIndex = [...flaggedTeamIndexes][0];
+        if (sameKeys(trueFlagPlayerKeys, teamPlayerKeys(resolution, flaggedTeamIndex))) {
+          addCandidate(flaggedTeamIndex);
+        } else if (
+          candidates.length === 0 ||
+          candidates.some((candidate) => candidate !== flaggedTeamIndex)
+        ) {
+          // A partial winner flag set cannot establish a team result on its own.
+          // It may support a scalar winner naming the same explicit team, which is
+          // how older HD rows represented a winning side.
+          conflict = true;
+        }
       }
     }
   }

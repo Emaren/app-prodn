@@ -119,7 +119,10 @@ test("Workshop AI excerpts are bounded and discard malformed turns", () => {
 
 test("public Workshop query hard-gates drafts and private records", () => {
   const source = readFileSync(new URL("../lib/workshop.ts", import.meta.url), "utf8");
-  assert.match(source, /status: "published", visibility: "public", publishedAt: \{ not: null \}/);
+  assert.match(
+    source,
+    /status:\s*"published",\s*visibility:\s*"public",\s*publishedAt:\s*\{\s*not:\s*null\s*\}/,
+  );
   assert.match(source, /artifacts:[\s\S]*where: \{ isPublic: true \}/);
 });
 

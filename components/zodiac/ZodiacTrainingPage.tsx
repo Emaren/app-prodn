@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import ZodiacLessonCheckout from "@/components/zodiac/ZodiacLessonCheckout";
 import type { PlayerProfileMatchItem } from "@/lib/playerProfile";
 import type { ZodiacTrainingConfig } from "@/lib/zodiacTraining";
@@ -54,18 +55,6 @@ const DM_SKILLS = [
   "Bluffing",
   "Multi-front control",
 ] as const;
-
-function formatMatchDate(value: string | null) {
-  if (!value) return "Date pending";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Date pending";
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(date);
-}
 
 function resultLabel(result: PlayerProfileMatchItem["result"]) {
   if (result === "win") return "Zodiac victory";
@@ -480,7 +469,13 @@ export default function ZodiacTrainingPage({
                     {resultLabel(match.result)}
                   </span>
                   <span className="text-[10px] text-slate-500">
-                    {formatMatchDate(match.playedAt)}
+                    <TimeDisplayText
+                      value={match.playedAt}
+                      dateOnly
+                      includeYear
+                      includeZone={false}
+                      emptyValue="Date pending"
+                    />
                   </span>
                 </div>
                 <h3 className="mt-4 line-clamp-2 min-h-12 font-bold leading-6 text-white">

@@ -48,9 +48,12 @@ import {
   DEFAULT_TIME_CLOCK_MODE,
   DEFAULT_TIME_DISPLAY_MODE,
   detectBrowserTimeZone,
+  markAccountTimeDisplayDefaultMigration,
+  needsAccountTimeDisplayDefaultMigration,
   readStoredBrowserTimeZone,
   readStoredTimeClockMode,
   readStoredTimeDisplayMode,
+  resolveBrowserTimeZone,
   writeStoredBrowserTimeZone,
   writeStoredTimeClockMode,
   writeStoredTimeDisplayMode,
@@ -116,9 +119,15 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     const storedTimeClockMode = readStoredTimeClockMode();
     const storedTileViewPreferences = applyTileViewDefaultMigration(readStoredTileViewPreferences());
     const storedLeaderboardLane = readStoredLeaderboardLane();
-    const detectedBrowserTimeZone =
-      detectBrowserTimeZone() || readStoredBrowserTimeZone();
-    setBrowserTimeZone(detectedBrowserTimeZone);
+    const detectedBrowserTimeZone = detectBrowserTimeZone();
+    const storedBrowserTimeZone = readStoredBrowserTimeZone();
+    const resolvedBrowserTimeZone = resolveBrowserTimeZone(
+      detectedBrowserTimeZone,
+      storedBrowserTimeZone
+    );
+    const migrateAccountTimeDisplayDefault =
+      needsAccountTimeDisplayDefaultMigration(user?.uid);
+    setBrowserTimeZone(resolvedBrowserTimeZone);
     setAppearanceLoaded(false);
 
     const hydrateAppearance = async () => {
@@ -139,7 +148,24 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const preference = await fetchUserAppearancePreference();
+        let preference = await fetchUserAppearancePreference();
+        if (cancelled) return;
+        if (migrateAccountTimeDisplayDefault) {
+          if (preference.timeDisplayMode === "utc") {
+            preference = await saveUserAppearancePreference({
+              themeKey: preference.themeKey,
+              tileThemeKey: preference.tileThemeKey,
+              viewMode: preference.viewMode,
+              textColor: preference.textColor,
+              timeDisplayMode: DEFAULT_TIME_DISPLAY_MODE,
+              timeClockMode: preference.timeClockMode,
+              timezoneOverride: resolvedBrowserTimeZone,
+              tileViewPreferences: preference.tileViewPreferences,
+              leaderboardLane: preference.leaderboardLane,
+            });
+          }
+          markAccountTimeDisplayDefaultMigration(user.uid);
+        }
         if (cancelled) return;
         setThemeKey(preference.themeKey);
         setTileThemeKey(preference.tileThemeKey);
@@ -147,7 +173,12 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         setTextColor(preference.textColor);
         setTimeDisplayMode(preference.timeDisplayMode);
         setTimeClockMode(preference.timeClockMode);
-        setBrowserTimeZone(preference.timezoneOverride || detectedBrowserTimeZone);
+        setBrowserTimeZone(
+          resolveBrowserTimeZone(
+            detectedBrowserTimeZone,
+            preference.timezoneOverride || storedBrowserTimeZone
+          )
+        );
         setTileViewPreferences(applyTileViewDefaultMigration(preference.tileViewPreferences ?? {}));
         setLeaderboardLane(preference.leaderboardLane);
         markTileViewDefaultMigrationApplied();

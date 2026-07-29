@@ -13,7 +13,10 @@ import {
   isWoloNetworkUserFacingAccount,
   type WoloMainnetNetworkAccount,
 } from "@/lib/woloMainnetNetworkAccounts";
-import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
+import {
+  fetchWoloBalanceAmount,
+  fetchWoloSupplyAmount,
+} from "@/lib/woloRuntime";
 import { loadMainnetStakingPositions } from "@/lib/mainnetStakingPositions";
 import { getPrisma } from "@/lib/prisma";
 
@@ -74,6 +77,35 @@ function addAmountStrings(left: string, right: string): string {
 
     result = String(sum % 10) + result;
     carry = Math.floor(sum / 10);
+    leftIndex -= 1;
+    rightIndex -= 1;
+  }
+
+  return result.replace(/^0+(?=\d)/, "");
+}
+
+function subtractAmountStrings(left: string, right: string): string {
+  if (compareAmountStrings(left, right) <= 0) {
+    return "0";
+  }
+
+  let borrow = 0;
+  let result = "";
+  let leftIndex = left.length - 1;
+  let rightIndex = right.length - 1;
+
+  while (leftIndex >= 0) {
+    let digit = Number(left[leftIndex]) - borrow;
+    const rightDigit = rightIndex >= 0 ? Number(right[rightIndex]) : 0;
+
+    if (digit < rightDigit) {
+      digit += 10;
+      borrow = 1;
+    } else {
+      borrow = 0;
+    }
+
+    result = String(digit - rightDigit) + result;
     leftIndex -= 1;
     rightIndex -= 1;
   }
@@ -172,7 +204,13 @@ async function buildNetworkRow(
   };
 }
 
-function renderTable(rows: WoloNetworkAccountRow[], totalUwolo: string) {
+function renderTable(
+  rows: WoloNetworkAccountRow[],
+  supplyUwolo: string,
+  knownAddressTotalUwolo: string,
+  totalSource: string,
+) {
+  const untrackedUwolo = subtractAmountStrings(supplyUwolo, knownAddressTotalUwolo);
   const lines = [
     `${"LABEL".padEnd(42)} ${"ADDRESS".padEnd(48)} ${"WOLO".padStart(18)} ROLE`,
     "-".repeat(128),
@@ -183,7 +221,13 @@ function renderTable(rows: WoloNetworkAccountRow[], totalUwolo: string) {
     }),
     "-".repeat(128),
     `${rows.length} known Wolo addresses`,
-    `${formatWolo(totalUwolo, true)} WOLO total across known addresses`,
+    totalSource === "chain_supply"
+      ? `${formatWolo(supplyUwolo, true)} WOLO total supply (WoloChain)`
+      : `${formatWolo(supplyUwolo, true)} WOLO subtotal across known addresses (chain supply unavailable)`,
+    `${formatWolo(knownAddressTotalUwolo, true)} WOLO across known bank balances`,
+    ...(untrackedUwolo === "0"
+      ? []
+      : [`${formatWolo(untrackedUwolo, true)} WOLO outside the known-address balance map`]),
   ];
 
   return `${lines.join("\n")}\n`;
@@ -199,16 +243,33 @@ export async function GET(request: NextRequest) {
         ),
       ),
     );
-    const totalUwolo = rows.reduce((sum, row) => addAmountStrings(sum, row.amountUwolo), "0");
+    const knownAddressTotalUwolo = rows.reduce(
+      (sum, row) => addAmountStrings(sum, row.amountUwolo),
+      "0",
+    );
+    let totalUwolo = knownAddressTotalUwolo;
+    let totalSource = "known_address_balances";
+
+    try {
+      totalUwolo = normalizeAmount(await fetchWoloSupplyAmount());
+      totalSource = "chain_supply";
+    } catch (error) {
+      console.error("Failed to load canonical WOLO supply; using known-address total:", error);
+    }
+
+    const untrackedUwolo = subtractAmountStrings(totalUwolo, knownAddressTotalUwolo);
     const format = request.nextUrl.searchParams.get("format");
 
     if (format === "table" || format === "text" || format === "txt") {
-      return new NextResponse(renderTable(rows, totalUwolo), {
+      return new NextResponse(
+        renderTable(rows, totalUwolo, knownAddressTotalUwolo, totalSource),
+        {
         headers: {
           ...NO_STORE_HEADERS,
           "Content-Type": "text/plain; charset=utf-8",
         },
-      });
+        },
+      );
     }
 
     return NextResponse.json(
@@ -221,6 +282,13 @@ export async function GET(request: NextRequest) {
         totalUwolo,
         totalWolo: formatWolo(totalUwolo),
         totalWoloFormatted: formatWolo(totalUwolo, true),
+        totalSource,
+        knownAddressTotalUwolo,
+        knownAddressTotalWolo: formatWolo(knownAddressTotalUwolo),
+        knownAddressTotalWoloFormatted: formatWolo(knownAddressTotalUwolo, true),
+        untrackedUwolo,
+        untrackedWolo: formatWolo(untrackedUwolo),
+        untrackedWoloFormatted: formatWolo(untrackedUwolo, true),
         accounts: rows.map((row) => ({
           label: row.label,
           address: row.address,

@@ -24,11 +24,60 @@ export default function ResultCard({
   basicLook?: boolean;
 }) {
   const resultPotWolo = result.totalPotWolo || result.payoutWolo;
+  const firstPayoutTxHash = result.payoutTxHashes?.[0] ?? null;
 
   const cardPadding = compact ? "px-4 py-4" : "px-4 py-4";
   const cardMinHeight = compact ? "min-h-[168px]" : "min-h-[198px]";
   const marketHistoryHref = isBetMarketHistoryHref(result.href) ? result.href : null;
   const replayStatsHref = result.href && !marketHistoryHref ? result.href : null;
+  const payoutStatus =
+    result.resolutionStatus === "under_review"
+      ? {
+          label: "Result under review",
+          detail: "No payout proof yet.",
+          className: "border-amber-300/15 bg-amber-400/[0.06] text-amber-100",
+        }
+      : result.payoutState === "executed"
+        ? {
+            label:
+              result.resolutionStatus === "voided"
+                ? "Refund confirmed"
+                : "Payout confirmed",
+            detail: firstPayoutTxHash
+              ? `Chain tx ${shortProofHash(firstPayoutTxHash)}`
+              : "Settlement rail recorded execution.",
+            className:
+              "border-emerald-300/15 bg-emerald-400/[0.06] text-emerald-100",
+          }
+        : result.payoutState === "failed"
+          ? {
+              label: "Outcome resolved · payout failed",
+              detail: result.settlementFailureCode
+                ? `Retry required · ${result.settlementFailureCode}`
+                : "Retry required; no payout proof recorded.",
+              className: "border-rose-300/18 bg-rose-400/[0.07] text-rose-100",
+            }
+          : result.payoutState === "partial"
+            ? {
+                label: "Outcome resolved · payout partial",
+                detail: "Operator follow-up required before this is proof.",
+                className:
+                  "border-orange-300/18 bg-orange-400/[0.07] text-orange-100",
+              }
+            : result.payoutState === "corrected"
+              ? {
+                  label: "Financial correction recorded",
+                  detail: "Ledger correction shown separately from payout proof.",
+                  className: "border-sky-300/15 bg-sky-400/[0.06] text-sky-100",
+                }
+              : {
+                  label: "Outcome resolved · payout pending",
+                  detail:
+                    result.settlementStatus === "executed"
+                      ? "Execution recorded; waiting for payout transaction proof."
+                      : "Waiting for a confirmed send or exact refund.",
+                  className: "border-sky-300/15 bg-sky-400/[0.06] text-sky-100",
+                };
 
   const content = (
     <div className="flex h-full flex-col">
@@ -82,6 +131,12 @@ export default function ResultCard({
                 : ""}
           </div>
         ) : null}
+        <div
+          className={`mt-2 rounded-xl border px-3 py-2 text-xs leading-5 ${payoutStatus.className}`}
+        >
+          <div className="font-semibold">{payoutStatus.label}</div>
+          <div className="mt-0.5 opacity-75">{payoutStatus.detail}</div>
+        </div>
       </div>
 
       <div className={compact ? "mt-4" : "mt-auto pt-4"}>
@@ -122,4 +177,10 @@ export default function ResultCard({
       ) : null}
     </article>
   );
+}
+
+function shortProofHash(value: string) {
+  const clean = value.trim();
+  if (clean.length <= 18) return clean;
+  return `${clean.slice(0, 10)}…${clean.slice(-6)}`;
 }

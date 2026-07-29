@@ -41,7 +41,12 @@ import {
   type ReplaySideFormat,
 } from "@/lib/replaySides";
 
-const RECENT_FINAL_MATCH_SCAN_LIMIT = 5000;
+/*
+ * Rivalry totals are historical corpus truth, not a recent-feed sample.
+ * `null` deliberately removes the old fixed-row scan ceiling so older
+ * meetings cannot disappear as the replay corpus grows.
+ */
+export const PUBLIC_MATCHUP_SCAN_LIMIT: number | null = null;
 
 type TeamFormat = Exclude<
   ReplaySideFormat,
@@ -354,6 +359,14 @@ export async function loadRecentFinalMatchupRows(
           1,
           take
         );
+  const queryTake =
+    requestedTake === null ||
+    PUBLIC_MATCHUP_SCAN_LIMIT === null
+      ? null
+      : Math.max(
+          requestedTake,
+          PUBLIC_MATCHUP_SCAN_LIMIT
+        );
 
   const candidateMatches =
     await prisma.gameStats.findMany({
@@ -363,13 +376,10 @@ export async function loadRecentFinalMatchupRows(
         { createdAt: "desc" },
         { id: "desc" },
       ],
-      ...(requestedTake === null
+      ...(queryTake === null
         ? {}
         : {
-            take: Math.max(
-              requestedTake,
-              RECENT_FINAL_MATCH_SCAN_LIMIT
-            ),
+            take: queryTake,
           }),
       select: {
         id: true,
@@ -2026,7 +2036,7 @@ export async function loadPublicRivalries(
     await loadRecentFinalMatchupRows(
       prisma,
       options?.take ??
-        RECENT_FINAL_MATCH_SCAN_LIMIT
+        PUBLIC_MATCHUP_SCAN_LIMIT
     );
 
   return buildPublicDuelRivalries(
@@ -2043,7 +2053,7 @@ export async function loadPublicTeamRivalries(
     await loadRecentFinalMatchupRows(
       prisma,
       options?.take ??
-        RECENT_FINAL_MATCH_SCAN_LIMIT
+        PUBLIC_MATCHUP_SCAN_LIMIT
     );
 
   return buildPublicTeamRivalries(
@@ -2063,7 +2073,7 @@ export async function loadPublicRivalryBoards(
     await loadRecentFinalMatchupRows(
       prisma,
       options?.take ??
-        RECENT_FINAL_MATCH_SCAN_LIMIT
+        PUBLIC_MATCHUP_SCAN_LIMIT
     );
 
   const [

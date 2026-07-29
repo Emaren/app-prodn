@@ -590,6 +590,117 @@ test("supersession lineage does not change immutable projection identity", () =>
   assert.equal(retryAfterAnotherProjection.receipt.supersedesId, 999);
 });
 
+test("an inferred-result repair creates an unresolved immutable successor without losing metric coverage", () => {
+  const shared = {
+    gameStatsId: 89,
+    replayHash,
+    sourceIdentity:
+      "game-stats:89:0",
+    projectionStatus:
+      "accepted" as const,
+    affectsPublicAggregates:
+      true,
+    projectedByUidSnapshot:
+      "test:normalized-stats",
+    statEligibility:
+      "eligible" as const,
+    players:
+      basePlayers(
+        500
+      ),
+    keyEvents: {
+      postgame_available:
+        false,
+      has_scores:
+        false,
+    },
+    provenance: {
+      source:
+        "test",
+    },
+  };
+
+  const incorrectCurrent =
+    buildReplayNormalizedStatProjection({
+      ...shared,
+      resultEligibility:
+        "resolved",
+      resultEligibilityReason:
+        "effective_replay_result",
+      winningPlayerKeys: [
+        "steam:76561198000000001",
+      ],
+    });
+
+  const repaired =
+    buildReplayNormalizedStatProjection({
+      ...shared,
+      supersedesId:
+        4_321,
+      resultEligibility:
+        "unresolved",
+      resultEligibilityReason:
+        "result_not_required_for_statistics",
+      winningPlayerKeys: [],
+      provenance: {
+        source:
+          "test",
+        result_policy_repair:
+          true,
+      },
+    });
+
+  assert.equal(
+    repaired.receipt
+      .supersedesId,
+    4_321
+  );
+  assert.notEqual(
+    repaired.receipt
+      .projectionIdentityHash,
+    incorrectCurrent.receipt
+      .projectionIdentityHash
+  );
+  assert.notEqual(
+    repaired.receipt
+      .idempotencyKey,
+    incorrectCurrent.receipt
+      .idempotencyKey
+  );
+  assert.equal(
+    repaired.receipt
+      .resultEligibility,
+    "unresolved"
+  );
+  assert.equal(
+    repaired.receipt
+      .playerMetricCount,
+    incorrectCurrent.receipt
+      .playerMetricCount
+  );
+  assert.equal(
+    repaired.receipt
+      .gameMetricCount,
+    incorrectCurrent.receipt
+      .gameMetricCount
+  );
+  assert.equal(
+    repaired.receipt
+      .affectsResults,
+    false
+  );
+  assert.ok(
+    repaired.players.every(
+      (player) =>
+        !player
+          .resultEligible &&
+        player
+          .resultStatus ===
+          "unresolved"
+    )
+  );
+});
+
 test("aggregates use stat eligibility independently from resolved-result scope", () => {
   const unresolved = projection({
     gameStatsId: 42,

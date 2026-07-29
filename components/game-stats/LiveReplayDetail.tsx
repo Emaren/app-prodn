@@ -12,6 +12,7 @@ import {
 
 import FounderBonusChips from "@/components/bets/FounderBonusChips";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import {
   displayGameType,
   displayGameVersion,
@@ -267,7 +268,7 @@ export default function LiveReplayDetail({
               {showDiagnostics && showDisconnectWarning ? <Tag>disconnect suspected</Tag> : null}
               {reliableWinner && outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
               {finalStatsReady ? <Tag>final stats ready</Tag> : null}
-              <Tag>Updated {formatDateTime(snapshot.updatedAt)}</Tag>
+              <Tag>Updated <TimeDisplayText value={snapshot.updatedAt} /></Tag>
             </div>
             <FounderBonusChips bonuses={founderBonuses} />
           </div>
@@ -445,8 +446,8 @@ export default function LiveReplayDetail({
               {publicGameVersion ? <StatRow label="Game Version" value={publicGameVersion} /> : null}
               {publicGameType ? <StatRow label="Game Type" value={publicGameType} /> : null}
               {liveDurationSeconds > 0 ? <StatRow label="Duration" value={formatDurationLabel(liveDurationSeconds)} /> : null}
-              {playedAt ? <StatRow label="Played On" value={formatDateTime(playedAt)} /> : null}
-              <StatRow label="Latest Pulse" value={formatDateTime(snapshot.updatedAt)} />
+              {playedAt ? <StatRow label="Played On" value={<TimeDisplayText value={playedAt} includeYear />} /> : null}
+              <StatRow label="Latest Pulse" value={<TimeDisplayText value={snapshot.updatedAt} includeYear />} />
               <StatRow label="Uploader" value={renderUploader(game.user)} />
               {publicLobbyName ? <StatRow label="Lobby Name" value={publicLobbyName} /> : null}
               {publicMatchId ? <StatRow label="Match ID" value={publicMatchId} /> : null}
@@ -576,7 +577,7 @@ export default function LiveReplayDetail({
                       </div>
                     </div>
                     <div className="text-right text-xs text-slate-400">
-                      <div>{formatDateTime(entry.updatedAt)}</div>
+                      <div><TimeDisplayText value={entry.updatedAt} includeYear /></div>
                       <div className="mt-1 uppercase tracking-[0.22em] text-slate-500">
                         {resolveReliableReplayWinner({
                           winner: entry.winner,
@@ -734,7 +735,7 @@ export default function LiveReplayDetail({
                     </div>
 
                     <div className="mt-3 text-xs text-slate-400">
-                      {formatDateTime(attempt.createdAt)}
+                      <TimeDisplayText value={attempt.createdAt} includeYear />
                     </div>
                   </div>
                 ))
@@ -1146,13 +1147,6 @@ function formatDeltaMetric(value: number | null) {
   if (value === null || !Number.isFinite(value)) return "Flat";
   if (value === 0) return "Flat";
   return value > 0 ? `+${Math.round(value)}` : String(Math.round(value));
-}
-
-function formatDateTime(value: Date | string | null | undefined) {
-  if (!value) return "Unavailable";
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "Unavailable";
-  return date.toLocaleString();
 }
 
 function formatPositionValue(value: unknown) {

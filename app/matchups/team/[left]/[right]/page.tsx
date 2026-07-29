@@ -6,6 +6,7 @@ import {
 import type { ReactNode } from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import {
   readMapName,
   readPlayedAt,
@@ -15,6 +16,7 @@ import {
   buildTeamMatchupHref,
   filterTeamMatchupMatches,
   loadRecentFinalMatchupRows,
+  PUBLIC_MATCHUP_SCAN_LIMIT,
   resolvePublicTeamRosterToken,
   resolveTeamMatchWinnerSide,
   summarizeTeamMatchup,
@@ -114,7 +116,7 @@ export default async function TeamMatchupPage({
   const candidateMatches =
     await loadRecentFinalMatchupRows(
       prisma,
-      5000
+      PUBLIC_MATCHUP_SCAN_LIMIT
     );
 
   const matches = filterTeamMatchupMatches(
@@ -142,18 +144,6 @@ export default async function TeamMatchupPage({
     0,
     summary.totalMatches - summary.unknowns
   );
-
-  const lastPlayedLabel =
-    summary.lastPlayedAt
-      ? new Date(
-          summary.lastPlayedAt
-        ).toLocaleString([], {
-          month: "short",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-        })
-      : "Waiting for first battle";
 
   return (
     <main className="space-y-8 py-6 text-white">
@@ -185,7 +175,12 @@ export default async function TeamMatchupPage({
               <Tag>{teamSize}v{teamSize}</Tag>
               <Tag>{decidedBattles} decided</Tag>
               <Tag>
-                Last fought {lastPlayedLabel}
+                Last fought{" "}
+                {summary.lastPlayedAt ? (
+                  <TimeDisplayText value={summary.lastPlayedAt} />
+                ) : (
+                  "waiting for first battle"
+                )}
               </Tag>
             </div>
 
@@ -258,7 +253,13 @@ export default async function TeamMatchupPage({
 
               <SummaryMetric
                 label="Last Battle"
-                value={lastPlayedLabel}
+                value={
+                  summary.lastPlayedAt ? (
+                    <TimeDisplayText value={summary.lastPlayedAt} />
+                  ) : (
+                    "Waiting for first battle"
+                  )
+                }
               />
             </div>
           </div>
@@ -364,9 +365,7 @@ export default async function TeamMatchupPage({
 
                     {playedAt ? (
                       <div className="mt-3 text-xs text-slate-400">
-                        {new Date(
-                          playedAt
-                        ).toLocaleString()}
+                        <TimeDisplayText value={playedAt} includeYear />
                       </div>
                     ) : null}
                   </article>
@@ -647,7 +646,7 @@ function SummaryMetric({
   value,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-white/8 bg-slate-950/60 px-4 py-4">

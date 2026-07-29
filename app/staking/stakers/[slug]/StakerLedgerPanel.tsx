@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Crown, Loader2, ScrollText, Shield, Swords, Trophy } from "lucide-react";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 
 type LedgerView = "all" | "staking" | "compounded" | "championships" | "bounties" | "bets" | "grouped-bets";
 
@@ -14,6 +15,7 @@ type LedgerRow = {
   label: string;
   detail: string;
   meta: string;
+  metaKind?: "label" | "timestamp";
   occurredAt: string;
   amountLabel?: string;
   txHash?: string | null;
@@ -146,7 +148,7 @@ function LedgerCard({ row }: { row: LedgerRow }) {
       <div className="flex items-center gap-3 py-3">
         <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-600/22 to-slate-700/10" />
         <div className="rounded-full border border-slate-600/35 bg-slate-900/72 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
-          {formatLedgerDayLabel(row.occurredAt)}
+          UTC staking day · {formatLedgerDayLabel(row.occurredAt)}
         </div>
         <div className="hidden h-px flex-1 bg-gradient-to-l from-transparent via-slate-600/22 to-slate-700/10 sm:block" />
       </div>
@@ -202,7 +204,11 @@ function LedgerCard({ row }: { row: LedgerRow }) {
                 : "border-white/10 bg-black/25 text-slate-300"
             }`}
           >
-            {row.meta}
+            {row.metaKind === "label" ? (
+              row.meta
+            ) : (
+              <TimeDisplayText value={row.occurredAt} includeZone={false} />
+            )}
           </div>
         </div>
       </div>

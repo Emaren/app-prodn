@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-07-29"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -78,6 +78,18 @@ Trusted team settlement requires exactly two complete explicit replay teams, a
 coherent complete winning team, and direct result evidence such as postgame or
 scoreboard truth or resignation by every member of the losing team. The legacy
 scalar `winner` field is never sufficient team settlement truth.
+
+A trusted duel has one winning player, not a two-player winning team. Shared
+structured-result adapters must accept that cardinality only when the final
+roster is exactly 1v1 and the same frozen proposition checks pass. Missing
+decisive evidence still remains unresolved; the duel exception never licenses
+uploader-opponent guessing.
+
+Watcher authentication and user lookup use a short database transaction that
+commits before CPU-bound binary parsing starts. Do not move parser execution
+back inside that transaction: concurrent uploads would hold connections for
+the entire parse and can exhaust the async SQLAlchemy pool before later
+watchers are identified.
 
 ## Raw replay artifact invariant
 

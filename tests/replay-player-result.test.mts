@@ -110,6 +110,101 @@ test("one isolated team winner flag cannot turn every other player into a loss",
   assert.equal(result(game, "P2"), "unknown");
 });
 
+test("rejected watcher inference flags cannot bypass canonical result eligibility", () => {
+  const game = {
+    winner: "Sechma",
+    players: [
+      {
+        name: "Emaren",
+        number: 1,
+        winner: false,
+      },
+      {
+        name: "Sechma",
+        number: 2,
+        winner: true,
+      },
+    ],
+    parse_reason:
+      "watcher_inferred_opponent_win_on_incomplete_1v1",
+    parse_source: "watcher_final",
+    is_final: true,
+    key_events: {
+      completed: false,
+      postgame_available: false,
+      has_scores: false,
+      winner_inference: {
+        type: "uploader_incomplete_1v1_opponent",
+        uploader_player: "Emaren",
+        inferred_winner: "Sechma",
+      },
+    },
+  };
+
+  assert.equal(
+    result(
+      game,
+      "Emaren"
+    ),
+    "unknown"
+  );
+  assert.equal(
+    result(
+      game,
+      "Sechma"
+    ),
+    "unknown"
+  );
+});
+
+test("canonical stats-eligible final winner flags still project 1v1 W/L", () => {
+  const game = {
+    winner: null,
+    players: [
+      {
+        name: "Alpha",
+        number: 1,
+        winner: true,
+      },
+      {
+        name: "Bravo",
+        number: 2,
+        winner: false,
+      },
+    ],
+    parse_reason:
+      "recorded_resignation_final",
+    parse_source: "watcher_final",
+    is_final: true,
+    event_types: [
+      "resign",
+    ],
+    key_events: {
+      completed: true,
+      completion_source:
+        "resignation",
+      resigned_player_names: [
+        "Bravo",
+      ],
+    },
+  };
+
+  assert.equal(
+    result(
+      game,
+      "Alpha"
+    ),
+    "win"
+  );
+  assert.equal(
+    result(
+      game,
+      "Bravo"
+    ),
+    "loss"
+  );
+});
+
 test("conflicting scalar and player winner evidence stays outside resolved W/L", () => {
   const players = playersFor(2).map((player, index) => ({
     ...player,

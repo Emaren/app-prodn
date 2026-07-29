@@ -210,6 +210,13 @@ type BetSettledResult = {
   resolutionStatus: "settled" | "voided" | "under_review";
   resolutionReason: string | null;
   refundStatus: string | null;
+  settlementStatus: string | null;
+  settlementFailureCode: string | null;
+  settlementAttemptedAt: string | null;
+  settlementExecutedAt: string | null;
+  payoutState: "executed" | "pending" | "partial" | "failed" | "corrected";
+  payoutTxHashes: string[];
+  payoutProofUrls: string[];
   teamFormat: string | null;
   teamResolutionProvenance: string | null;
   integrityStatus: string;
@@ -1378,6 +1385,25 @@ export default function BetsPage() {
   const liveCount = orderedBookMarkets.filter((market) => market.status === "live").length || board?.heat.liveCount || 0;
   const openCount = orderedBookMarkets.length;
   const recentResults = board?.settledResults || [];
+  const payoutProofResults = recentResults.filter(
+    (result) =>
+      result.resolutionStatus !== "under_review" &&
+      result.payoutState === "executed"
+  );
+  const payoutQueueResults = recentResults.filter(
+    (result) =>
+      result.resolutionStatus !== "under_review" &&
+      result.payoutState !== "executed"
+  );
+  const reviewResults = recentResults.filter(
+    (result) => result.resolutionStatus === "under_review"
+  );
+  const latestResult =
+    recentResults.find(
+      (result) => result.resolutionStatus !== "under_review"
+    ) ??
+    reviewResults[0] ??
+    null;
   const awaitingProofMarkets = board?.awaitingProofMarkets || [];
   const runtimeBetEscrowMode = board?.wolo.betEscrowMode || "disabled";
   const runtimeBetEscrowAddress = board?.wolo.betEscrowAddress?.trim() || "";
@@ -2297,8 +2323,8 @@ export default function BetsPage() {
                     emptyLabel="Slips and payout proof will stamp in here as the game moves."
                   />
                 </>
-              ) : recentResults.length ? (
-                <RecentResultFeature result={recentResults[0]} />
+              ) : latestResult ? (
+                <RecentResultFeature result={latestResult} />
               ) : (
                 <EmptyShell label="No books armed yet. The first live or settled book will land here." />
               )}
@@ -2361,7 +2387,7 @@ export default function BetsPage() {
               bestReturnMultiplier={board?.heat.bestReturn?.returnMultiplier ?? null}
               biggestPotLabel={board?.heat.biggestPot?.label || "Market arming"}
               biggestPotWolo={board?.heat.biggestPot?.potWolo ?? null}
-              latestResult={recentResults[0] ?? null}
+              latestResult={payoutProofResults[0] ?? null}
             />
           </section>
         </>
@@ -2509,8 +2535,8 @@ export default function BetsPage() {
                 onClear={() => handleClear(activeSpotlightMarket.id)}
                 onOpenFounderBonus={openFounderComposer}
               />
-            ) : recentResults.length ? (
-              <RecentResultFeature result={recentResults[0]} />
+            ) : latestResult ? (
+              <RecentResultFeature result={latestResult} />
             ) : (
               <EmptyShell label="No books armed yet. The latest closed book will linger here once proof lands." />
             )}
@@ -2557,7 +2583,9 @@ export default function BetsPage() {
             />
 
             <div className="space-y-5">
-              <SettledSection results={recentResults} />
+              <SettledSection results={payoutProofResults} />
+              <PayoutQueueSection results={payoutQueueResults} />
+              <ResolutionQueueSection results={reviewResults} />
               <HeatSection board={board} />
             </div>
           </section>
@@ -2716,8 +2744,8 @@ export default function BetsPage() {
                   onClear={() => handleClear(activeSpotlightMarket.id)}
                   onOpenFounderBonus={openFounderComposer}
                 />
-              ) : recentResults.length ? (
-                <RecentResultFeature result={recentResults[0]} />
+              ) : latestResult ? (
+                <RecentResultFeature result={latestResult} />
               ) : (
                 <EmptyShell label="No books armed yet. The latest closed book will linger here once proof lands." />
               )}
@@ -2764,7 +2792,9 @@ export default function BetsPage() {
                 onRecover={recoverStakeIntent}
               />
 
-              <SettledSection results={recentResults} />
+              <SettledSection results={payoutProofResults} />
+              <PayoutQueueSection results={payoutQueueResults} />
+              <ResolutionQueueSection results={reviewResults} />
               <HeatSection board={board} />
             </div>
           </section>
@@ -2977,7 +3007,7 @@ function SettledSection({ results }: { results: BetSettledResult[] }) {
       <div className="flex items-end justify-between gap-3">
         <div>
           <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Payout Proof</div>
-          <h2 className="mt-2 text-2xl font-semibold text-white">Settled</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-white">Paid / refunded</h2>
         </div>
         <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
           {results.length}
@@ -2990,6 +3020,78 @@ function SettledSection({ results }: { results: BetSettledResult[] }) {
         ) : (
           <EmptyShell label="No proof landed yet." />
         )}
+      </div>
+    </section>
+  );
+}
+
+function PayoutQueueSection({ results }: { results: BetSettledResult[] }) {
+  if (results.length === 0) return null;
+
+  const failedCount = results.filter(
+    (result) =>
+      result.payoutState === "failed" ||
+      result.payoutState === "partial"
+  ).length;
+
+  return (
+    <section className={`${shellClass()} p-5 sm:p-6`}>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.35em] text-sky-300/70">
+            Settlement Queue
+          </div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">
+            Outcome resolved · payout pending
+          </h2>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
+            The game result is known, but these rows are not payout proof yet.
+            Failed or partial sends stay visible for retry and operator follow-up.
+          </p>
+        </div>
+        <div
+          className={`rounded-full border px-3 py-1 text-xs ${
+            failedCount > 0
+              ? "border-rose-300/20 bg-rose-400/10 text-rose-100"
+              : "border-sky-300/15 bg-sky-400/10 text-sky-100"
+          }`}
+        >
+          {failedCount > 0
+            ? `${failedCount} need attention`
+            : `${results.length} pending`}
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {results.map((result) => <ResultCard key={result.id} result={result} />)}
+      </div>
+    </section>
+  );
+}
+
+function ResolutionQueueSection({ results }: { results: BetSettledResult[] }) {
+  if (results.length === 0) return null;
+
+  return (
+    <section className={`${shellClass()} p-5 sm:p-6`}>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.35em] text-amber-300/70">
+            Resolution Queue
+          </div>
+          <h2 className="mt-2 text-2xl font-semibold text-white">Under review</h2>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-slate-400">
+            These books are not settled proof. Trusted replay evidence can close them;
+            inconclusive proof expires to an exact stake refund.
+          </p>
+        </div>
+        <div className="rounded-full border border-amber-300/15 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
+          {results.length}
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {results.map((result) => <ResultCard key={result.id} result={result} />)}
       </div>
     </section>
   );
@@ -3077,6 +3179,12 @@ function BoardPulseSection({
 }
 
 function HeatSection({ board }: { board: BetBoardSnapshot | null }) {
+  const latestProof = board?.settledResults.find(
+    (result) =>
+      result.resolutionStatus !== "under_review" &&
+      result.payoutState === "executed"
+  ) ?? null;
+
   return (
     <section className={`${shellClass()} p-5 sm:p-6`}>
       <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Heat</div>
@@ -3103,10 +3211,10 @@ function HeatSection({ board }: { board: BetBoardSnapshot | null }) {
         />
         <HeatRow
           label="Latest proof"
-          value={board?.settledResults[0]?.title || "No result yet"}
+          value={latestProof?.title || "No result yet"}
           detail={
-            board?.settledResults[0]
-              ? `${board.settledResults[0].winner} · ${formatSettledTime(board.settledResults[0].settledAt)}`
+            latestProof
+              ? `${latestProof.winner} · ${formatSettledTime(latestProof.settledAt)}`
               : "Pending"
           }
         />
@@ -3116,17 +3224,30 @@ function HeatSection({ board }: { board: BetBoardSnapshot | null }) {
 }
 
 function RecentResultFeature({ result }: { result: BetSettledResult }) {
+  const underReview = result.resolutionStatus === "under_review";
+  const payoutConfirmed = result.payoutState === "executed";
+
   return (
     <div>
       <div className="min-w-0">
-        <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Latest Closed Book</div>
+        <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">
+          {underReview
+            ? "Resolution Queue"
+            : payoutConfirmed
+              ? "Latest Payout Proof"
+              : "Latest Resolved Outcome"}
+        </div>
         <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
           {result.title}
         </h2>
         <div className="mt-2 text-sm text-slate-400">
-          {result.resolutionStatus === "settled"
-            ? `${result.winner} took ${result.mapName}`
-            : `${result.winner} · ${result.mapName}`} · {formatSettledTime(result.settledAt)}
+          {underReview
+            ? `${result.winner} · not yet settled`
+            : result.resolutionStatus === "settled"
+              ? `${result.winner} took ${result.mapName}`
+              : `${result.winner} · ${result.mapName}`}
+          {!underReview && !payoutConfirmed ? " · payout not confirmed" : ""} ·{" "}
+          {formatSettledTime(result.settledAt)}
         </div>
       </div>
 

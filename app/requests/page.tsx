@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import RequestsBoard from "@/components/requests/RequestsBoard";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import {
   ABOUT_PILLARS,
   ABOUT_SIGNALS,
@@ -40,7 +41,9 @@ export default function RequestsPage() {
               </div>
               <h3 className="mt-3 text-2xl font-semibold text-white">{update.title}</h3>
               <p className="mt-4 text-sm leading-6 text-slate-300">{update.detail}</p>
-              <div className="mt-4 text-xs text-slate-500">Updated {ROADMAP_LAST_UPDATED_AT}</div>
+              <div className="mt-4 text-xs text-slate-500">
+                Updated <TimeDisplayText value={ROADMAP_LAST_UPDATED_AT} includeYear />
+              </div>
             </section>
           ))}
         </div>
@@ -157,7 +160,9 @@ function ModuleCard({
         <div>
           <div className="text-xs uppercase tracking-[0.3em] text-white/45">{status}</div>
           <h3 className="mt-2 text-2xl font-semibold text-white">{title}</h3>
-          <div className="mt-2 text-xs text-slate-400">Updated {updatedAt}</div>
+          <div className="mt-2 text-xs text-slate-400">
+            Updated <TimeDisplayText value={updatedAt} includeYear />
+          </div>
         </div>
         <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm text-white">
           {score} / 100

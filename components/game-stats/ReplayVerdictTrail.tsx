@@ -17,6 +17,7 @@ import {
   desyncIncidentHeading,
   type ReplayDesyncIncidentView,
 } from "@/components/game-stats/desyncIncidentView";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 
 type TeamAssignment = {
   teamKey: string;
@@ -554,19 +555,6 @@ function EvidenceAnalysisStatus({
       </div>
     </div>
   );
-}
-
-function formatDate(
-  value: string
-) {
-  const parsed =
-    new Date(value);
-
-  return Number.isNaN(
-    parsed.getTime()
-  )
-    ? value
-    : parsed.toLocaleString();
 }
 
 function formatBytes(
@@ -1539,9 +1527,7 @@ export default function ReplayVerdictTrail({
         />
 
         <div className="mt-3 text-[9px] text-slate-600">
-          {formatDate(
-            run.createdAt
-          )}
+          <TimeDisplayText value={run.createdAt} includeYear />
           {" · "}
           {
             run.observationCount
@@ -1593,9 +1579,7 @@ export default function ReplayVerdictTrail({
         </div>
 
         <div className="mt-2 text-[9px] text-slate-600">
-          {formatDate(
-            entry.createdAt
-          )}
+          <TimeDisplayText value={entry.createdAt} includeYear />
         </div>
       </div>
     );
@@ -1686,7 +1670,7 @@ export default function ReplayVerdictTrail({
         </div>
 
         <div className="mt-2 text-[9px] text-slate-600">
-          {formatDate(incident.createdAt)} · replay iteration {incident.sourceParseIteration}
+          <TimeDisplayText value={incident.createdAt} includeYear /> · replay iteration {incident.sourceParseIteration}
         </div>
       </div>
     );

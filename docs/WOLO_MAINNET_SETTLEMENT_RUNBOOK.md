@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-07-29"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -32,6 +32,14 @@ keys, signer funding, and settlement truth.
 The consensus node is deliberately pinned to the pre-War-Trophy binary while settlement uses the newer isolated-market binary. Treat this as an intentional compatibility boundary. Never replace the node executable merely to make its commit equal the source checkout.
 
 At inspection, `wolo-1` was synchronized (`catching_up=false`). Bet settlement reported approximately 499,955.25 WOLO payout balance and 522,045.75 WOLO escrow balance against 250,000 and 100 WOLO minimums. Founder Rewards settlement reported approximately 364,837.24 WOLO payout balance against a 1,000 WOLO minimum. Both services were loopback-only with auth tokens configured.
+
+The 2026-07-29 reliability check again found all three Wolo services active,
+`wolo-1` synchronized, and both settlement health endpoints green. The Bet
+service reported 499,948.75 WOLO payout balance and 522,508 WOLO escrow
+balance; Founder Rewards reported 364,651.991424 WOLO. This app release
+therefore does not authorize or require a consensus upgrade. Preserve the
+intentional node/settlement binary split unless a separate coordinated
+chain-upgrade plan proves otherwise.
 
 
 - Settlement URL: `http://127.0.0.1:8092`
@@ -173,3 +181,18 @@ curl -sS http://127.0.0.1:3030/api/wolo/holders?format=table
 For `/profile`, sign in as the relevant user and confirm the Money in / money
 out rail includes direct outgoing mainnet sends to Jim and Sniper after the
 backfill completes.
+
+The public network inventory uses chain supply as the canonical total and the
+sum of named bank balances as a reconciliation subtotal:
+
+```bash
+curl -sS https://aoe2war.com/api/wolo/network | \
+  jq '{totalSource,totalWolo,knownAddressTotalWolo,untrackedWolo,count}'
+curl -sS 'https://aoe2war.com/api/wolo/network?format=table'
+```
+
+Never hard-code a fixed-supply display to conceal a missing address. The
+2026-07-29 reconciliation identified
+`wolo1m943tq5tuqf7ejucmac9knpls04jtmh3apzlrg` as the Workshop sponsorship
+recipient, funded by two confirmed 100 WOLO transfers. It is separate from the
+already-listed Emaren #2 player wallet, which independently holds 200 WOLO.

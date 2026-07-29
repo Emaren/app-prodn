@@ -604,6 +604,7 @@ export function applyReplayResultAdjudication<T extends object>(
   const originalParseSource = source.parse_source ?? source.parseSource ?? null;
   const manualEvidence = {
     adjudication_id: adjudication.id,
+    idempotency_key: adjudication.idempotencyKey,
     winning_team_key: adjudication.winningTeamKey,
     winning_player_keys: [...winningPlayerKeys],
     adjudicated_by: adjudication.actorDisplayNameSnapshot,

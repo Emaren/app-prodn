@@ -218,6 +218,13 @@ export type BetSettledResult = {
   resolutionStatus: "settled" | "voided" | "under_review";
   resolutionReason: string | null;
   refundStatus: string | null;
+  settlementStatus: string | null;
+  settlementFailureCode: string | null;
+  settlementAttemptedAt: string | null;
+  settlementExecutedAt: string | null;
+  payoutState: "executed" | "pending" | "partial" | "failed" | "corrected";
+  payoutTxHashes: string[];
+  payoutProofUrls: string[];
   teamFormat: string | null;
   teamResolutionProvenance: string | null;
   integrityStatus: string;
@@ -303,9 +310,10 @@ export type BetBoardSnapshot = {
 
 
 const OPEN_STATUSES: BetStatus[] = ["open", "closing", "live"];
-const RECONCILABLE_WATCHER_STATUSES: BetStatus[] = [
+export const RECONCILABLE_WATCHER_STATUSES: BetStatus[] = [
   ...OPEN_STATUSES,
   "awaiting_final_proof",
+  "under_review",
 ];
 const WATCHER_FINAL_PROOF_GRACE_MINUTES = Math.max(
   5,
@@ -898,7 +906,97 @@ function truthyMarketValue(value: unknown) {
   );
 }
 
-function trustedStructuredMarketWinningPlayers(
+function projectCompleteMarketWinningTeam(
+  players: ReturnType<typeof normalizeReplayPlayers>,
+  winningPlayerKeysValue: unknown,
+  winningPlayerNamesValue: unknown
+) {
+  const winningPlayerKeys = new Set(
+    (
+      Array.isArray(winningPlayerKeysValue)
+        ? winningPlayerKeysValue
+        : []
+    )
+      .map((value) => String(value ?? "").trim())
+      .filter(Boolean)
+  );
+
+  const winningNames = new Set(
+    (
+      Array.isArray(winningPlayerNamesValue)
+        ? winningPlayerNamesValue
+        : []
+    )
+      .map((value) => normalizeReplayPlayerName(value))
+      .filter(Boolean)
+  );
+
+  if (
+    winningPlayerKeys.size === 0 &&
+    winningNames.size === 0
+  ) {
+    return null;
+  }
+
+  const isWinner = (
+    player: (typeof players)[number]
+  ) =>
+    (
+      winningPlayerKeys.size > 0 &&
+      winningPlayerKeys.has(player.stablePlayerKey)
+    ) ||
+    winningNames.has(player.normalizedName);
+
+  const enriched = players.map((player) => ({
+    ...player,
+    winner: isWinner(player),
+  }));
+
+  const enrichedWinnerCount = enriched.filter(
+    (player) => player.winner
+  ).length;
+
+  const expectedWinnerCount = Math.max(
+    winningPlayerKeys.size,
+    winningNames.size
+  );
+
+  if (enrichedWinnerCount !== expectedWinnerCount) {
+    return null;
+  }
+
+  // Never allow projected truth to contradict an explicit true winner flag
+  // belonging to the other side.
+  if (
+    players.some(
+      (player) =>
+        player.winner === true &&
+        !isWinner(player)
+    )
+  ) {
+    return null;
+  }
+
+  const resolution = resolveReplayTeams(
+    enriched,
+    { final: true }
+  );
+
+  if (
+    resolution.status !== "resolved" ||
+    resolution.confidence !== "high" ||
+    resolveWinningTeamIndex(
+      enriched,
+      resolution
+    ) === null
+  ) {
+    return null;
+  }
+
+  return enriched;
+}
+
+export function trustedStructuredMarketWinningPlayers(
   keyEvents: unknown,
   players: ReturnType<typeof normalizeReplayPlayers>
 ) {
@@ -937,103 +1035,100 @@ function trustedStructuredMarketWinningPlayers(
     return null;
   }
 
-  const winningPlayerKeys = new Set(
-    (
-      Array.isArray(result.winning_player_keys)
-        ? result.winning_player_keys
-        : []
-    )
-      .map((value) => String(value ?? "").trim())
-      .filter(Boolean)
-  );
-
-  const winningNames = new Set(
-    (
-      Array.isArray(result.winning_player_names)
-        ? result.winning_player_names
-        : []
-    )
-      .map((value) => normalizeReplayPlayerName(value))
-      .filter(Boolean)
-  );
-
-  if (
-    winningPlayerKeys.size < 2 &&
-    winningNames.size < 2
-  ) {
-    return null;
-  }
-
-  const isWinner = (
-    player: (typeof players)[number]
-  ) =>
-    (
-      winningPlayerKeys.size > 0 &&
-      winningPlayerKeys.has(player.stablePlayerKey)
-    ) ||
-    winningNames.has(player.normalizedName);
-
   // A trusted structured result is converted into a complete
   // winner/loser projection only inside the frozen-market
   // validation path.
-  const enriched = players.map((player) => ({
-    ...player,
-    winner: isWinner(player),
-  }));
-
-  const enrichedWinnerCount = enriched.filter(
-    (player) => player.winner
-  ).length;
-
-  const expectedWinnerCount = Math.max(
-    winningPlayerKeys.size,
-    winningNames.size
+  return projectCompleteMarketWinningTeam(
+    players,
+    result.winning_player_keys,
+    result.winning_player_names
   );
-
-  if (enrichedWinnerCount !== expectedWinnerCount) {
-    return null;
-  }
-
-  // Never allow structured truth to contradict an explicit
-  // true winner flag belonging to the other side.
-  if (
-    players.some(
-      (player) =>
-        player.winner === true &&
-        !isWinner(player)
-    )
-  ) {
-    return null;
-  }
-
-  const resolution = resolveReplayTeams(
-    enriched,
-    { final: true }
-  );
-
-  if (
-    resolution.status !== "resolved" ||
-    resolution.confidence !== "high" ||
-    resolveWinningTeamIndex(
-      enriched,
-      resolution
-    ) === null
-  ) {
-    return null;
-  }
-
-  return enriched;
 }
 
-function buildFinalMarketTruth(game: {
+export function applyBettingAuthorizedReplayAdjudication<T extends object>(
+  game: T
+): T {
+  const adjudications = (
+    game as T & {
+      replayResultAdjudications?: unknown;
+    }
+  ).replayResultAdjudications;
+  const effectiveAdjudication =
+    Array.isArray(adjudications)
+      ? (
+          adjudications[0] ??
+          null
+        ) as Parameters<
+          typeof replayResultAdjudicationAuthorizesBets
+        >[0]
+      : null;
+
+  return replayResultAdjudicationAuthorizesBets(
+    effectiveAdjudication
+  )
+    ? applyReplayAdjudicationToGameStats(
+        game
+      )
+    : game;
+}
+
+export function buildFinalMarketTruth(game: {
   winner: string | null;
   players: unknown;
   parse_reason?: string | null;
   key_events?: unknown;
+  winnerProof?: unknown;
 }) {
   const players = normalizeReplayPlayers(
     game.players
   );
+
+  const events = readMarketTruthObject(
+    game.key_events
+  );
+  const adjudication = readMarketTruthObject(
+    events.replay_result_adjudication
+  );
+  const adjudicationIdempotencyKey = String(
+    adjudication.idempotency_key ?? ""
+  ).trim();
+  const adjudicationAuthorizesBets =
+    adjudicationIdempotencyKey.startsWith("evidence:auto:") ||
+    (
+      truthyMarketValue(adjudication.affects_bets) &&
+      adjudicationIdempotencyKey.startsWith("financial-authority:")
+    );
+
+  /*
+   * An immutable accepted adjudication overlay intentionally preserves the
+   * parser's original result_resolution for audit. That older contract must
+   * not override the complete winner projection authorized by the newer
+   * adjudication ledger.
+   */
+  if (
+    String(game.winnerProof ?? "").trim().toLowerCase() ===
+      "replay_result_adjudication" &&
+    String(game.parse_reason ?? "").trim().toLowerCase() ===
+      "manual_result_adjudication" &&
+    String(adjudication.decision_status ?? "").trim().toLowerCase() ===
+      "accepted" &&
+    adjudicationAuthorizesBets
+  ) {
+    const adjudicatedPlayers =
+      projectCompleteMarketWinningTeam(
+        players,
+        adjudication.winning_player_keys,
+        adjudication.winning_player_names
+      );
+
+    if (adjudicatedPlayers) {
+      return {
+        players: adjudicatedPlayers,
+        winner: null,
+        bettingEligible: true,
+      };
+    }
+  }
 
   const structuredPlayers =
     trustedStructuredMarketWinningPlayers(
@@ -1048,6 +1143,31 @@ function buildFinalMarketTruth(game: {
       // individual member of the winning roster.
       winner: null,
       bettingEligible: true,
+    };
+  }
+
+  const structuredResult = readMarketTruthObject(
+    events.result_resolution
+  );
+  const hasStructuredResultContract =
+    Object.keys(structuredResult).length > 0 &&
+    [
+      "result_status",
+      "result_trusted",
+      "winning_team_id",
+      "winning_player_keys",
+      "winning_player_names",
+    ].some((field) => field in structuredResult);
+
+  // Once the parser emitted a structured result contract it outranks the
+  // legacy scalar winner field. If that contract failed the complete frozen
+  // market projection above, fail closed instead of resurrecting a partial or
+  // contradictory winner through the legacy 1v1 fallback.
+  if (hasStructuredResultContract) {
+    return {
+      players,
+      winner: null,
+      bettingEligible: false,
     };
   }
 
@@ -1066,7 +1186,7 @@ function buildFinalMarketTruth(game: {
 }
 
 
-function evaluateFinalMarketIntegrity(
+export function evaluateFinalMarketIntegrity(
   market: {
     leftLabel: string;
     rightLabel: string;
@@ -1079,6 +1199,7 @@ function evaluateFinalMarketIntegrity(
     players: unknown;
     parse_reason?: string | null;
     key_events?: unknown;
+    winnerProof?: unknown;
   }
 ) {
   const finalTruth = buildFinalMarketTruth(game);
@@ -1091,6 +1212,102 @@ function evaluateFinalMarketIntegrity(
     finalWinner: finalTruth.winner,
     finalBettingEligible: finalTruth.bettingEligible,
   });
+}
+
+export type WatcherFinalFailureDisposition =
+  | "awaiting_final_proof"
+  | "integrity_review";
+
+const INCONCLUSIVE_WATCHER_FINAL_REASON_CODES = new Set([
+  "final_replay_not_betting_eligible",
+  "final_winning_team_not_coherent",
+  /*
+   * Historical integrity_reason values were clamped to 120 characters with a
+   * Unicode ellipsis. The second code in the known evidence-only pair was
+   * therefore persisted as exactly `final_winning_team_…`; the token scanner
+   * sees `final_winning_team_`. Keep this exact compatibility token narrow so
+   * no other truncated structural mismatch can recover automatically.
+   */
+  "final_winning_team_",
+]);
+
+/**
+ * Separate missing result proof from a contradictory frozen proposition.
+ *
+ * A final replay that merely lacks one coherent trusted winner belongs on the
+ * bounded proof-grace/refund rail. Any additional failure is structural
+ * evidence (roster, team, proposition, or winner conflict) and remains an
+ * operator-visible integrity incident.
+ */
+export function classifyWatcherFinalFailure(
+  reasonCodes: string[]
+): WatcherFinalFailureDisposition {
+  const normalized = [
+    ...new Set(
+      reasonCodes
+        .flatMap((reason) =>
+          String(reason ?? "")
+            .toLowerCase()
+            .match(/\b(?:market|final|stored|winner)_[a-z0-9_]+\b/g) ?? []
+        )
+        .filter((reason) => reason !== "market_integrity_blocked")
+    ),
+  ];
+
+  return (
+    normalized.length > 0 &&
+    normalized.every((reason) =>
+      INCONCLUSIVE_WATCHER_FINAL_REASON_CODES.has(reason)
+    )
+  )
+    ? "awaiting_final_proof"
+    : "integrity_review";
+}
+
+/**
+ * Only the automated, evidence-only review state may recover without an
+ * operator. A roster/proposition mismatch or another commissioner state
+ * remains sticky even if a later parse happens to look settlement-ready.
+ */
+export function canAutoRecoverWatcherIntegrityReview(input: {
+  status: string;
+  integrityReason: string | null;
+  commissionerReviewState: string | null;
+}) {
+  if (input.status !== "under_review") {
+    return true;
+  }
+
+  if (
+    input.commissionerReviewState &&
+    input.commissionerReviewState !== "settlement_blocked"
+  ) {
+    return false;
+  }
+
+  return (
+    classifyWatcherFinalFailure(
+      String(input.integrityReason ?? "")
+        .split(",")
+    ) === "awaiting_final_proof"
+  );
+}
+
+export function watcherFinalProofDeadline(input: {
+  proofDeadlineAt: Date | null;
+  underReviewAt: Date | null;
+}, nowMs = Date.now()) {
+  if (input.proofDeadlineAt) {
+    return input.proofDeadlineAt;
+  }
+
+  const graceStartedAtMs =
+    input.underReviewAt?.getTime() ?? nowMs;
+
+  return new Date(
+    graceStartedAtMs +
+      WATCHER_FINAL_PROOF_GRACE_MINUTES * 60 * 1000
+  );
 }
 
 function buildSessionMarketSeed(
@@ -1603,19 +1820,10 @@ async function assertSettlementWinnerTruthGate(
     );
   }
 
-  const effectiveAdjudication =
-    rawGame
-      .replayResultAdjudications[0] ??
-    null;
-
   const game =
-    replayResultAdjudicationAuthorizesBets(
-      effectiveAdjudication
-    )
-      ? applyReplayAdjudicationToGameStats(
-          rawGame
-        )
-      : rawGame;
+    applyBettingAuthorizedReplayAdjudication(
+      rawGame
+    );
 
   const finalTruth =
     buildFinalMarketTruth(
@@ -2212,14 +2420,18 @@ function canExecuteValidatedSettlementRun(result: SettlementRunResult) {
   return result.ok && !["failed", "invalid", "refused"].includes(result.status);
 }
 
-function resolveMarketSettlementStatus(
+export function resolveMarketSettlementStatus(
   execution: SettlementRunResult | null,
   validation: SettlementRunResult | null,
   claimPlanCount: number
 ) {
   if (execution) {
     if (execution.status === "partial") return "partial";
-    if (execution.ok && execution.executedPayoutCount > 0) return "executed";
+    if (execution.ok && execution.executedPayoutCount > 0) {
+      return execution.executedPayoutCount >= claimPlanCount
+        ? "executed"
+        : "partial";
+    }
     return "failed";
   }
 
@@ -2478,6 +2690,24 @@ async function markMarketUnderIntegrityReview(
         dedupeWithinSeconds: 86_400,
       });
     }
+  });
+}
+
+async function resolveAutomatedWatcherIntegrityIncident(
+  prisma: PrismaClient,
+  marketId: number
+) {
+  await prisma.betMarketIntegrityIncident.updateMany({
+    where: {
+      marketId,
+      incidentKey: `automated-integrity-block-${marketId}`,
+      incidentType: "settlement_integrity_blocked",
+      status: "open",
+    },
+    data: {
+      status: "resolved",
+      resolvedAt: new Date(),
+    },
   });
 }
 
@@ -3528,6 +3758,28 @@ async function reconcileBetMarketStatsLinks(prisma: PrismaClient) {
   );
 }
 
+function loadDetachedWatcherFinalGame(
+  prisma: PrismaClient,
+  finalGameId: number
+) {
+  return prisma.gameStats.findUnique({
+    where: { id: finalGameId },
+    select: {
+      id: true,
+      replayHash: true,
+      winner: true,
+      players: true,
+      parse_reason: true,
+      key_events: true,
+      map: true,
+      timestamp: true,
+      createdAt: true,
+      replayResultAdjudications:
+        EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
+    },
+  });
+}
+
 async function reconcileDetachedWatcherMarkets(
   prisma: PrismaClient,
   visibleSessionKeys: Set<string>
@@ -3538,15 +3790,6 @@ async function reconcileDetachedWatcherMarkets(
       status: { in: RECONCILABLE_WATCHER_STATUSES },
       scheduledMatchId: null,
       linkedSessionKey: { not: null },
-      ...(visibleSessionKeys.size > 0
-        ? {
-            NOT: {
-              linkedSessionKey: {
-                in: [...visibleSessionKeys],
-              },
-            },
-          }
-        : {}),
     },
     select: {
       id: true,
@@ -3561,6 +3804,9 @@ async function reconcileDetachedWatcherMarkets(
       eventLabel: true,
       updatedAt: true,
       status: true,
+      integrityReason: true,
+      commissionerReviewState: true,
+      underReviewAt: true,
       proofDeadlineAt: true,
       resolutionReason: true,
     },
@@ -3573,21 +3819,18 @@ async function reconcileDetachedWatcherMarkets(
   const finalGameIdBySessionKey = new Map<string, number | null>();
   const finalGameById = new Map<
     number,
-    {
-      id: number;
-      winner: string | null;
-      players: unknown;
-      parse_reason: string | null;
-      key_events: unknown;
-      map: unknown;
-      timestamp: Date | null;
-      createdAt: Date;
-    } | null
+    Awaited<ReturnType<typeof loadDetachedWatcherFinalGame>>
   >();
 
   for (const market of markets) {
     const sessionKey = normalizeName(market.linkedSessionKey);
-    if (!sessionKey || visibleSessionKeys.has(sessionKey)) {
+    if (
+      !sessionKey ||
+      (
+        visibleSessionKeys.has(sessionKey) &&
+        market.status !== "under_review"
+      )
+    ) {
       continue;
     }
 
@@ -3602,19 +3845,10 @@ async function reconcileDetachedWatcherMarkets(
     if (finalGameId && !finalGameById.has(finalGameId)) {
       finalGameById.set(
         finalGameId,
-        await prisma.gameStats.findUnique({
-          where: { id: finalGameId },
-          select: {
-            id: true,
-            winner: true,
-            players: true,
-            parse_reason: true,
-            key_events: true,
-            map: true,
-            timestamp: true,
-            createdAt: true,
-          },
-        })
+        await loadDetachedWatcherFinalGame(
+          prisma,
+          finalGameId
+        )
       );
     }
   }
@@ -3622,36 +3856,74 @@ async function reconcileDetachedWatcherMarkets(
   await Promise.all(
     markets.map(async (market) => {
       const sessionKey = normalizeName(market.linkedSessionKey);
-      if (!sessionKey || visibleSessionKeys.has(sessionKey)) {
+      if (
+        !sessionKey ||
+        (
+          visibleSessionKeys.has(sessionKey) &&
+          market.status !== "under_review"
+        )
+      ) {
         return;
       }
 
       const finalGameId = finalGameIdBySessionKey.get(sessionKey) ?? null;
-      const finalGame = finalGameId ? finalGameById.get(finalGameId) ?? null : null;
+      const rawFinalGame =
+        finalGameId
+          ? finalGameById.get(finalGameId) ?? null
+          : null;
+      const finalGame =
+        rawFinalGame
+          ? applyBettingAuthorizedReplayAdjudication(
+              rawFinalGame
+            )
+          : null;
+      const autoRecoverableReview =
+        canAutoRecoverWatcherIntegrityReview(market);
+
+      if (
+        market.status === "under_review" &&
+        !autoRecoverableReview
+      ) {
+        return;
+      }
 
       // A watcher session disappearing from the live snapshot is not
       // final-result proof. Lock the book and preserve active wagers
       // until a real final game_stats row is available.
       if (!finalGame) {
-        await prisma.betMarket.updateMany({
+        const moved = await prisma.betMarket.updateMany({
           where: {
             id: market.id,
             status: {
-              in: ["open", "live"],
+              in: ["open", "closing", "live", "under_review"],
             },
+            voidedAt: null,
           },
           data: {
             status: "awaiting_final_proof",
             featured: false,
             closeAt: new Date(),
-            proofDeadlineAt: new Date(
-              Date.now() + WATCHER_FINAL_PROOF_GRACE_MINUTES * 60 * 1000
-            ),
+            proofDeadlineAt:
+              watcherFinalProofDeadline(market),
             resolutionReason: "final_replay_pending",
             settledAt: null,
             winnerSide: null,
+            integrityStatus: "verified",
+            integrityReason: null,
+            commissionerReviewState: null,
+            underReviewAt: null,
           },
         });
+
+        if (
+          moved.count === 1 &&
+          market.status === "under_review"
+        ) {
+          await resolveAutomatedWatcherIntegrityIncident(
+            prisma,
+            market.id
+          );
+        }
 
         return;
       }
@@ -3661,14 +3933,9 @@ async function reconcileDetachedWatcherMarkets(
         finalGame
       );
       if (!integrity.ok || !integrity.winningSide) {
-        const isIntegrityFailure = integrity.reasonCodes.some((reason) =>
-          reason.startsWith("market_") ||
-          reason.startsWith("final_proposition") ||
-          reason.startsWith("final_roster") ||
-          reason.includes("winning_team") ||
-          reason.includes("winner_string")
-        );
-        if (isIntegrityFailure) {
+        const failureDisposition =
+          classifyWatcherFinalFailure(integrity.reasonCodes);
+        if (failureDisposition === "integrity_review") {
           await markMarketUnderIntegrityReview(prisma, {
             marketId: market.id,
             title: market.title,
@@ -3686,24 +3953,43 @@ async function reconcileDetachedWatcherMarkets(
             !Array.isArray(finalGame.key_events) &&
             (finalGame.key_events as Record<string, unknown>).disconnect_detected) ||
           String(finalGame.parse_reason || "").toLowerCase().includes("disconnect") ||
-          String(finalGame.parse_reason || "").toLowerCase().includes("desync")
+            String(finalGame.parse_reason || "").toLowerCase().includes("desync")
         );
-        await prisma.betMarket.updateMany({
-          where: { id: market.id, status: { in: ["open", "live"] } },
+        const moved = await prisma.betMarket.updateMany({
+          where: {
+            id: market.id,
+            status: {
+              in: ["open", "closing", "live", "under_review"],
+            },
+            voidedAt: null,
+          },
           data: {
             status: "awaiting_final_proof",
             featured: false,
             closeAt: new Date(),
-            proofDeadlineAt: new Date(
-              Date.now() + WATCHER_FINAL_PROOF_GRACE_MINUTES * 60 * 1000
-            ),
+            proofDeadlineAt:
+              watcherFinalProofDeadline(market),
             resolutionReason: disconnectEvidence
               ? "explicit_desync_without_safe_winner"
               : "final_result_not_betting_eligible",
             linkedGameStatsId: finalGame.id,
             winnerSide: null,
+            settledAt: null,
+            integrityStatus: "verified",
+            integrityReason: null,
+            commissionerReviewState: null,
+            underReviewAt: null,
           },
         });
+        if (
+          moved.count === 1 &&
+          market.status === "under_review"
+        ) {
+          await resolveAutomatedWatcherIntegrityIncident(
+            prisma,
+            market.id
+          );
+        }
         return;
       }
       const winnerSide = integrity.winningSide;
@@ -3714,8 +4000,14 @@ async function reconcileDetachedWatcherMarkets(
         new Date();
       const mapName = readMapName(finalGame.map);
 
-      await prisma.betMarket.update({
-        where: { id: market.id },
+      const settled = await prisma.betMarket.updateMany({
+        where: {
+          id: market.id,
+          status: {
+            in: RECONCILABLE_WATCHER_STATUSES,
+          },
+          voidedAt: null,
+        },
         data: {
           status: "settled",
           featured: false,
@@ -3724,6 +4016,10 @@ async function reconcileDetachedWatcherMarkets(
           winnerSide,
           proofDeadlineAt: null,
           resolutionReason: "trusted_final_received",
+          integrityStatus: "verified",
+          integrityReason: null,
+          commissionerReviewState: null,
+          underReviewAt: null,
           linkedGameStatsId: finalGame?.id ?? market.linkedGameStatsId ?? null,
           eventLabel: buildWatcherEventLabel(
             "Final",
@@ -3737,6 +4033,16 @@ async function reconcileDetachedWatcherMarkets(
           ),
         },
       });
+
+      if (
+        settled.count === 1 &&
+        market.status === "under_review"
+      ) {
+        await resolveAutomatedWatcherIntegrityIncident(
+          prisma,
+          market.id
+        );
+      }
     })
   );
 }
@@ -5235,66 +5541,181 @@ async function loadAwaitingProofMarkets(prisma: PrismaClient) {
   return loadMarketsByStatus(prisma, ["awaiting_final_proof"]);
 }
 
+export function classifyBetPayoutState(input: {
+  settlementStatus: string | null;
+  refundStatus: string | null;
+  claims: Array<{
+    status: string;
+    payoutTxHash: string | null;
+  }>;
+}): BetSettledResult["payoutState"] {
+  if (
+    input.settlementStatus === "corrected" ||
+    input.refundStatus === "corrected_with_overpayment"
+  ) {
+    return "corrected";
+  }
+
+  const claimIsProven = (
+    claim: (typeof input.claims)[number]
+  ) =>
+    claim.status === "claimed" &&
+    Boolean(claim.payoutTxHash?.trim());
+  const provenClaimCount =
+    input.claims.filter(claimIsProven).length;
+  const everyLiabilityClaimProven =
+    input.claims.length > 0 &&
+    provenClaimCount === input.claims.length;
+
+  if (everyLiabilityClaimProven) {
+    return "executed";
+  }
+
+  if (
+    (
+      input.settlementStatus === "failed" ||
+      input.refundStatus === "failed"
+    ) &&
+    provenClaimCount === 0
+  ) {
+    return "failed";
+  }
+
+  if (
+    input.settlementStatus === "partial" ||
+    provenClaimCount > 0
+  ) {
+    return "partial";
+  }
+
+  return "pending";
+}
+
 async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettledResult[]> {
-  const [settledMarketsRaw, sessionSnapshot] = await Promise.all([
+  const marketInclude = {
+    scheduledMatch: {
+      select: {
+        linkedSessionKey: true,
+      },
+    },
+    founderBonuses: {
+      where: {
+        rescindedAt: null,
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    },
+    wagers: {
+      select: {
+        amountWolo: true,
+        payoutWolo: true,
+        status: true,
+        executionMode: true,
+        stakeTxHash: true,
+        createdAt: true,
+        stakeLockedAt: true,
+        stakeIntent: {
+          select: {
+            status: true,
+          },
+        },
+      },
+    },
+    stakeIntents: {
+      select: {
+        amountWolo: true,
+        status: true,
+      },
+    },
+    integrityIncidents: {
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 1,
+      include: {
+        adjustments: {
+          select: {
+            amountStillOwedWolo: true,
+            overpaymentWolo: true,
+            adjustmentStatus: true,
+          },
+        },
+      },
+    },
+  } satisfies Prisma.BetMarketInclude;
+
+  const attentionMarketIds = (
+    await prisma.pendingWoloClaim.findMany({
+      where: {
+        sourceMarketId: { not: null },
+        status: "pending",
+        rescindedAt: null,
+      },
+      orderBy: [
+        { updatedAt: "desc" },
+        { id: "desc" },
+      ],
+      distinct: ["sourceMarketId"],
+      take: 24,
+      select: {
+        sourceMarketId: true,
+      },
+    })
+  )
+    .map((row) => row.sourceMarketId)
+    .filter(
+      (marketId): marketId is number =>
+        typeof marketId === "number"
+    );
+
+  const [
+    attentionMarketsRaw,
+    terminalMarketsRaw,
+    reviewMarketsRaw,
+    sessionSnapshot,
+  ] = await Promise.all([
+    attentionMarketIds.length > 0
+      ? prisma.betMarket.findMany({
+          where: {
+            id: { in: attentionMarketIds },
+            marketType: WINNER_MARKET_TYPE,
+            status: { in: ["settled", "voided"] },
+          },
+          orderBy: [
+            { updatedAt: "desc" },
+            { id: "desc" },
+          ],
+          include: marketInclude,
+        })
+      : [],
     prisma.betMarket.findMany({
       where: {
         marketType: WINNER_MARKET_TYPE,
-        status: { in: ["settled", "voided", "under_review"] },
+        status: { in: ["settled", "voided"] },
       },
-      orderBy: [{ settledAt: "desc" }, { updatedAt: "desc" }, { id: "desc" }],
-      take: 40,
-      include: {
-        scheduledMatch: {
-          select: {
-            linkedSessionKey: true,
-          },
-        },
-        founderBonuses: {
-          where: {
-            rescindedAt: null,
-          },
-          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        },
-        wagers: {
-          select: {
-            amountWolo: true,
-            payoutWolo: true,
-            status: true,
-            executionMode: true,
-            stakeTxHash: true,
-            createdAt: true,
-            stakeLockedAt: true,
-            stakeIntent: {
-              select: {
-                status: true,
-              },
-            },
-          },
-        },
-        stakeIntents: {
-          select: {
-            amountWolo: true,
-            status: true,
-          },
-        },
-        integrityIncidents: {
-          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-          take: 1,
-          include: {
-            adjustments: {
-              select: {
-                amountStillOwedWolo: true,
-                overpaymentWolo: true,
-                adjustmentStatus: true,
-              },
-            },
-          },
-        },
+      orderBy: [
+        { updatedAt: "desc" },
+        { id: "desc" },
+      ],
+      take: 60,
+      include: marketInclude,
+    }),
+    prisma.betMarket.findMany({
+      where: {
+        marketType: WINNER_MARKET_TYPE,
+        status: "under_review",
       },
+      orderBy: [
+        { updatedAt: "desc" },
+        { id: "desc" },
+      ],
+      take: 20,
+      include: marketInclude,
     }),
     loadLiveSessionSnapshot(prisma),
   ]);
+  const settledMarketsRaw = [
+    ...attentionMarketsRaw,
+    ...terminalMarketsRaw,
+    ...reviewMarketsRaw,
+  ];
   const settledMarketBySurfaceKey = new Map<
     string,
     (typeof settledMarketsRaw)[number]
@@ -5316,6 +5737,20 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
       continue;
     }
 
+    if (
+      existing.status !== "under_review" &&
+      market.status === "under_review"
+    ) {
+      continue;
+    }
+    if (
+      existing.status === "under_review" &&
+      market.status !== "under_review"
+    ) {
+      settledMarketBySurfaceKey.set(surfaceKey, market);
+      continue;
+    }
+
     const marketIsChallenge = typeof market.scheduledMatchId === "number";
     const existingIsChallenge = typeof existing.scheduledMatchId === "number";
     if (marketIsChallenge && !existingIsChallenge) {
@@ -5323,35 +5758,91 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
     }
   }
 
-  const settledMarkets = [...settledMarketBySurfaceKey.values()]
+  const displayableMarkets = [...settledMarketBySurfaceKey.values()]
     .filter((market) => {
       if (!isWoloMainnet()) return true;
       return (
         market.wagers.some((wager) => isCountableBetWager(wager)) ||
         market.stakeIntents.some((intent) => isBetStakeIntentCountableStatus(intent.status))
       );
-    })
-    .slice(0, 4);
+    });
+  const settledMarkets = displayableMarkets;
 
   const settledMarketIds = settledMarkets.map((market) => market.id);
-  const claimTotals =
+  const [claimTotals, claimProofRows] =
     settledMarketIds.length > 0
-      ? await prisma.pendingWoloClaim.groupBy({
-          by: ["sourceMarketId"],
-          where: {
-            sourceMarketId: { in: settledMarketIds },
-            rescindedAt: null,
-          },
-          _sum: {
-            amountWolo: true,
-          },
-        })
-      : [];
+      ? await Promise.all([
+          prisma.pendingWoloClaim.groupBy({
+            by: ["sourceMarketId"],
+            where: {
+              sourceMarketId: { in: settledMarketIds },
+              rescindedAt: null,
+            },
+            _sum: {
+              amountWolo: true,
+            },
+          }),
+          prisma.pendingWoloClaim.findMany({
+            where: {
+              sourceMarketId: { in: settledMarketIds },
+              rescindedAt: null,
+            },
+            select: {
+              sourceMarketId: true,
+              status: true,
+              payoutTxHash: true,
+              payoutProofUrl: true,
+              errorState: true,
+            },
+          }),
+        ])
+      : [[], []];
 
   const claimTotalByMarketId = new Map<number, number>();
   for (const row of claimTotals) {
     if (typeof row.sourceMarketId === "number") {
       claimTotalByMarketId.set(row.sourceMarketId, row._sum.amountWolo ?? 0);
+    }
+  }
+
+  const payoutTxHashesByMarketId = new Map<number, Set<string>>();
+  const payoutProofUrlsByMarketId = new Map<number, Set<string>>();
+  const claimProofRowsByMarketId = new Map<
+    number,
+    typeof claimProofRows
+  >();
+  for (const row of claimProofRows) {
+    if (typeof row.sourceMarketId !== "number") continue;
+
+    const marketClaimRows =
+      claimProofRowsByMarketId.get(row.sourceMarketId) ??
+      [];
+    marketClaimRows.push(row);
+    claimProofRowsByMarketId.set(
+      row.sourceMarketId,
+      marketClaimRows
+    );
+
+    if (
+      row.status === "claimed" &&
+      row.payoutTxHash?.trim()
+    ) {
+      const hashes =
+        payoutTxHashesByMarketId.get(row.sourceMarketId) ??
+        new Set<string>();
+      hashes.add(row.payoutTxHash.trim());
+      payoutTxHashesByMarketId.set(row.sourceMarketId, hashes);
+    }
+
+    if (
+      row.status === "claimed" &&
+      row.payoutProofUrl?.trim()
+    ) {
+      const proofUrls =
+        payoutProofUrlsByMarketId.get(row.sourceMarketId) ??
+        new Set<string>();
+      proofUrls.add(row.payoutProofUrl.trim());
+      payoutProofUrlsByMarketId.set(row.sourceMarketId, proofUrls);
     }
   }
 
@@ -5420,6 +5911,26 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
           ? "recorded"
           : "in_progress"
         : null;
+      const payoutTxHashes = [
+        ...(payoutTxHashesByMarketId.get(market.id) ?? []),
+      ];
+      const payoutProofUrls = [
+        ...(payoutProofUrlsByMarketId.get(market.id) ?? []),
+      ];
+      const marketClaimRows =
+        claimProofRowsByMarketId.get(market.id) ??
+        [];
+      const payoutState =
+        classifyBetPayoutState({
+          settlementStatus:
+            market.settlementStatus ??
+            null,
+          refundStatus:
+            market.refundStatus ??
+            null,
+          claims:
+            marketClaimRows,
+        });
 
       return {
         id: market.id,
@@ -5429,6 +5940,15 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
         resolutionStatus,
         resolutionReason: market.resolutionReason ?? null,
         refundStatus: market.refundStatus ?? null,
+        settlementStatus: market.settlementStatus ?? null,
+        settlementFailureCode: market.settlementFailureCode ?? null,
+        settlementAttemptedAt:
+          market.settlementAttemptedAt?.toISOString() ?? null,
+        settlementExecutedAt:
+          market.settlementExecutedAt?.toISOString() ?? null,
+        payoutState,
+        payoutTxHashes,
+        payoutProofUrls,
         teamFormat: market.teamFormat ?? null,
         teamResolutionProvenance: market.teamResolutionProvenance ?? null,
         integrityStatus: market.integrityStatus,
@@ -5457,7 +5977,28 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
     });
 
   if (marketResults.length > 0) {
-    return marketResults.slice(0, 4);
+    return [
+      ...marketResults
+        .filter(
+          (result) =>
+            result.resolutionStatus !== "under_review" &&
+            result.payoutState !== "executed"
+        )
+        .slice(0, 4),
+      ...marketResults
+        .filter(
+          (result) =>
+            result.resolutionStatus !== "under_review" &&
+            result.payoutState === "executed"
+        )
+        .slice(0, 4),
+      ...marketResults
+        .filter(
+          (result) =>
+            result.resolutionStatus === "under_review"
+        )
+        .slice(0, 4),
+    ];
   }
 
   if (isWoloMainnet()) {
@@ -5505,6 +6046,16 @@ async function loadRecentSettledResults(prisma: PrismaClient): Promise<BetSettle
       resolutionStatus: "settled",
       resolutionReason: null,
       refundStatus: null,
+      settlementStatus: "executed",
+      settlementFailureCode: null,
+      settlementAttemptedAt: null,
+      settlementExecutedAt:
+        row.played_on?.toISOString() ||
+        row.timestamp?.toISOString() ||
+        null,
+      payoutState: "executed",
+      payoutTxHashes: [],
+      payoutProofUrls: [],
       teamFormat: null,
       teamResolutionProvenance: null,
       integrityStatus: "not_applicable",
