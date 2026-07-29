@@ -212,6 +212,31 @@
     {
       "audience": [
         "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "release-evidence",
+      "id": "aoe2war.app-prodn.docs-bet-and-replay-reliability-2026-07-29",
+      "owner": "aoe2war-web",
+      "path": "docs/BET_AND_REPLAY_RELIABILITY_2026-07-29.md",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-07-29",
+      "sensitivity": "restricted",
+      "sha256": "ace625271128d7ff2d7e8e7004fd3c47c7f8227227aba94ce976972cc9149647",
+      "source_of_truth": "git",
+      "status": "historical",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
+      "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
         "ai-agents"
       ],
       "authority": "product-contract",
@@ -380,7 +405,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5062b96680b69bc42c21bd862cb44be31848c5bd2655112a4c61384418993786",
+      "sha256": "e0f64ca86c9e780c8b5536d7f64617b6333a6f12037c26d83647d61f8dc80421",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -399,9 +424,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HD_REPLAY_TRUTH_PIPELINE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-07-29",
       "sensitivity": "restricted",
-      "sha256": "4c66930ab42c03321b1f0005687fe84a9f381ab9631aee73883b45c9c60fea46",
+      "sha256": "12f1907d0c29e7c5dc8cdac4ad9fb6d0a90d672a44c0fe181bdd4f384f1b4083",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -536,9 +561,9 @@
       "owner": "aoe2war-web",
       "path": "docs/MARKET_TEAM_INTEGRITY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-07-29",
       "sensitivity": "restricted",
-      "sha256": "aec90408f264671147778807e9eebdcdc1031efaba1a147053a0bf52b6978229",
+      "sha256": "7bd9fc1e5b9a47686891e6abb81a00c1959751eb78f8c11cb7db7aad842ed4b9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -723,7 +748,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "restricted",
-      "sha256": "e8f0dba5e9638f76153f9ba622ce3b7fe2f92e4ce9c9fa57d626f1331ec37daa",
+      "sha256": "49a28722bfd4936675ddb160d7fb4a963ec0f72b4f4229e56693f4b146783bee",
       "source_of_truth": "historical-evidence",
       "status": "historical",
       "systems": [
@@ -902,9 +927,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_MAINNET_SETTLEMENT_RUNBOOK.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-07-29",
       "sensitivity": "restricted",
-      "sha256": "1827e550a99a3ae77a52880490549ee2aac5827d87b4c88f873dc634be3fa79d",
+      "sha256": "ef79e9c8f81c354c1fdcf70486efdc0b2c7880dcc28123fa7f497f7f192f9ee6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1027,7 +1052,7 @@
   "generated_at": "2026-07-28T14:55:00+00:00",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "c8b11c0373f6b276b34870d535bda35d656a2ccf"
+    "commit": "3660cf6038f4f51e52960e0fb83e6972c79008cd"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `c8b11c0373f6b276b34870d535bda35d656a2ccf`
+Implementation baseline: `main` at `3660cf6038f4f51e52960e0fb83e6972c79008cd`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **45**
+- Authoritative repository documents: **46**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -35,7 +35,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 - `explanation`: 4
 - `generated`: 1
-- `historical`: 9
+- `historical`: 10
 - `reference`: 22
 - `runbook`: 8
 - `working`: 1
@@ -44,7 +44,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 - `active`: 34
 - `generated`: 1
-- `historical`: 9
+- `historical`: 10
 - `superseded`: 1
 
 ## Documents
@@ -60,6 +60,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [VPS Upgrade Checklist (AoE2HDBets)](../deploy/vps-upgrade-checklist.md) | `runbook` | `active` | `operational-procedure` |
 | [Admin Metrics](ADMIN_METRICS.md) | `reference` | `active` | `implementation-contract` |
 | [AI Council and Command Center](AI_COUNCIL_AND_COMMAND_CENTER.md) | `explanation` | `active` | `architecture-explanation` |
+| [Bet and Replay Reliability Release — 2026-07-29](BET_AND_REPLAY_RELIABILITY_2026-07-29.md) | `historical` | `historical` | `release-evidence` |
 | [AoE2WAR Bounty Board](BOUNTY_BOARD.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Challenge System v2](CHALLENGE_SYSTEM.md) | `reference` | `active` | `product-contract` |
 | [Championship Title Economy](CHAMPIONS_TITLE_ECONOMY.md) | `reference` | `active` | `product-contract` |
