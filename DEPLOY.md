@@ -72,6 +72,25 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 ## Recent deployment notes
 
+### 2026-07-28 HD Leaderboard Advanced-default refinement
+
+- implementation baseline: `c8b11c0373f6b276b34870d535bda35d656a2ccf`;
+- Advanced is now the default for visitors without a saved leaderboard
+  preference;
+- previously saved B/A/E choices remain respected;
+- the B/A/E selector is positioned in the leaderboard surface’s upper-right
+  corner;
+- public scope labels are `Warriors` and `Kingdom`;
+- claimed-count subtitles are removed;
+- `Open Game Stats` is removed from the leaderboard;
+- the Watcher reconstruction paragraph is removed;
+- RM/DM lane behavior, scope behavior, search, pagination, rankings, identities,
+  and replay-derived movement are unchanged;
+- no Prisma migration is introduced;
+- production receipt:
+  `PENDING_AOE2WAR_LEADERBOARD_ADVANCED_DEFAULT_DEPLOYMENT`.
+
+
 ### 2026-07-28 HD Leaderboard B/A/E presentation release
 
 - implementation baseline: `6447fd3cad63adb8886b8e982dca3550fba61c1e`;

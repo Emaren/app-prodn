@@ -15,67 +15,78 @@ sensitivity: "internal"
 
 # HD Leaderboard View Modes
 
-Implementation baseline: `6447fd3cad63adb8886b8e982dca3550fba61c1e`.
+Implementation baseline: `c8b11c0373f6b276b34870d535bda35d656a2ccf`.
 
 ## Contract
 
 `/leaderboard` owns a persistent Basic, Advanced, and Extreme presentation
-preference under the `leaderboard` tile-view key. The default remains Basic so
-existing visitors retain the previously shipped page until they deliberately
-choose another presentation.
+preference under the `leaderboard` tile-view key.
 
-The toggle is intentionally small and uses the established `B`, `A`, and `E`
-language used by other AoE2WAR command surfaces.
+Advanced is the default for visitors who do not already have a saved
+leaderboard preference. Previously saved Basic, Advanced, or Extreme choices
+remain respected.
+
+The B/A/E selector is positioned in the upper-right corner of the leaderboard
+surface.
 
 ## Basic
 
-Basic is the preserved production composition:
+Basic preserves the compact legacy presentation:
 
 - controlled maximum width of `72rem`;
 - original hero hierarchy;
 - RM/DM lane selector;
-- legacy compact player-scope selector;
+- compact Warriors and Kingdom scope selector;
 - identity and rank-pulse metric row remains visible;
 - standard leaderboard table padding.
 
 ## Advanced
 
-Advanced is the wider clean composition:
+Advanced is the default public composition:
 
 - maximum width of `90rem`;
-- compact branded Watcher card;
-- premium player-scope selector modeled after the RM/DM control;
-- admin-oriented identity metric row is removed;
-- tighter table spacing.
+- compact branded AoE2WAR Watcher card;
+- premium Warriors and Kingdom scope selector modeled after RM/DM;
+- administrative identity metric row is removed;
+- leaderboard table begins directly beneath the controls;
+- B/A/E selector remains in the surface’s upper-right corner.
 
 ## Extreme
 
 Extreme is the widest command composition:
 
 - maximum width of `118rem`;
-- full branded Watcher card using
-  `/watcher/aoe2hd-watcher-logo.webp`;
-- premium player-scope selector modeled after the RM/DM control;
-- admin-oriented identity metric row is removed;
-- table rises directly beneath the controls;
-- expanded desktop width and reduced outer padding.
+- full branded AoE2WAR Watcher card;
+- premium Warriors and Kingdom scope selector;
+- administrative identity metric row is removed;
+- expanded desktop width and reduced outer padding;
+- B/A/E selector remains in the surface’s upper-right corner.
+
+## Scope terminology
+
+The public scope choices are intentionally concise:
+
+- `Warriors`: the complete public identity board;
+- `Kingdom`: public claimed AoE2WAR profiles.
+
+The old `All Players`, `AoE2WAR Users`, and claimed-count subtitles are not part
+of the current control.
+
+## Watcher card
+
+The card retains the AoE2WAR Watcher logo and the `/watch` call to action.
+
+The public reconstruction disclaimer and the `Open Game Stats` link are removed
+from this leaderboard presentation.
 
 ## Data behavior
 
-The view mode changes presentation only. RM/DM lane, full-board versus claimed
-AoE2WAR-user scope, search, pagination, ranking, identity folding, and
-reconstructed 24-hour movement retain the same underlying contracts.
-
-The player-scope choices remain:
-
-- `all`: the complete public identity board;
-- `claimed`: public claimed AoE2WAR profiles.
-
-The Watcher card links to `/watch` and explains that reconstructed rank movement
-is evidence-derived rather than a persisted rank snapshot.
+View mode changes presentation only. RM/DM lane, Warriors versus Kingdom scope,
+search, pagination, ranking, identity folding, and reconstructed 24-hour
+movement retain their existing underlying contracts.
 
 ## Administrative metrics
 
-The census tiles are not part of Advanced or Extreme. Their long-term canonical
+The census tiles are not part of Advanced or Extreme. Their canonical long-term
 home is an authenticated administrative dashboard rather than the wide public
 leaderboard presentation.
