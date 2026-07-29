@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LeaderboardScopeToggle } from "@/components/leaderboard/LeaderboardScopeToggle";
-import { LeaderboardViewLink } from "@/components/leaderboard/LeaderboardViewLink";
 import { LeaderboardViewToggle } from "@/components/leaderboard/LeaderboardViewToggle";
 import { LeaderboardWatcherCard } from "@/components/leaderboard/LeaderboardWatcherCard";
 import { ModernLeaderboardTable } from "@/components/leaderboard/ModernLeaderboardTable";
@@ -43,9 +42,6 @@ type IdentityCensus = Pick<
   | "claimedIdentityRows"
   | "claimedProfileOnlyRows"
   | "accountsWithAliasHistory"
-  | "rankDelta24hAsOf"
-  | "rankDelta24hCutoff"
-  | "rankDelta24hMethod"
 >;
 
 function identityCensus(
@@ -71,13 +67,6 @@ function identityCensus(
       leaderboard?.claimedProfileOnlyRows ?? 0,
     accountsWithAliasHistory:
       leaderboard?.accountsWithAliasHistory ?? 0,
-    rankDelta24hAsOf:
-      leaderboard?.rankDelta24hAsOf ?? null,
-    rankDelta24hCutoff:
-      leaderboard?.rankDelta24hCutoff ?? null,
-    rankDelta24hMethod:
-      leaderboard?.rankDelta24hMethod ??
-      "reconstructed_current_corpus",
   };
 }
 
@@ -532,12 +521,19 @@ export function ModernLeaderboardPage({
       data-leaderboard-view={viewMode}
     >
       <section
-        className={`overflow-hidden border bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,0.09),transparent_26%),linear-gradient(145deg,#101a2d,#070d18_62%,#030711)] transition-[border-radius,border-color,box-shadow] duration-300 ${
+        className={`relative overflow-hidden border bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,0.09),transparent_26%),linear-gradient(145deg,#101a2d,#070d18_62%,#030711)] transition-[border-radius,border-color,box-shadow] duration-300 ${
           isExtreme
             ? "rounded-[2rem] border-amber-200/24 shadow-[0_36px_120px_rgba(0,0,0,0.42),0_0_0_1px_rgba(201,155,60,0.05)]"
             : "rounded-[1.8rem] border-amber-200/14 shadow-[0_30px_100px_rgba(0,0,0,0.3)]"
         }`}
       >
+        <div className="absolute right-5 top-5 z-20 sm:right-8 sm:top-8 lg:right-10">
+          <LeaderboardViewToggle
+            value={viewMode}
+            onChange={setViewMode}
+          />
+        </div>
+
         <div
           className={`border-b border-amber-200/18 px-5 py-6 sm:px-8 sm:py-8 ${
             isExtreme
@@ -561,21 +557,8 @@ export function ModernLeaderboardPage({
                 </p>
               </div>
 
-              <div className="space-y-4">
+              <div className="pt-12">
                 <LeaderboardWatcherCard />
-                <div className="flex items-center justify-end gap-4">
-                  <LeaderboardViewToggle
-                    value={viewMode}
-                    onChange={setViewMode}
-                  />
-                  <LeaderboardViewLink
-                    from="modern"
-                    to="og"
-                    href="/leaderboard/og"
-                  >
-                    Open Game Stats
-                  </LeaderboardViewLink>
-                </div>
               </div>
             </div>
           ) : isAdvanced ? (
@@ -594,25 +577,12 @@ export function ModernLeaderboardPage({
                 </p>
               </div>
 
-              <div className="space-y-3">
+              <div className="pt-12">
                 <LeaderboardWatcherCard compact />
-                <div className="flex items-center justify-end gap-4">
-                  <LeaderboardViewToggle
-                    value={viewMode}
-                    onChange={setViewMode}
-                  />
-                  <LeaderboardViewLink
-                    from="modern"
-                    to="og"
-                    href="/leaderboard/og"
-                  >
-                    Open Game Stats
-                  </LeaderboardViewLink>
-                </div>
               </div>
             </div>
           ) : (
-            <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+            <div className="flex flex-col justify-between gap-5 pt-12 sm:flex-row sm:items-end sm:pt-0 sm:pr-32">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.36em] text-amber-200/65">
                   AoE2WAR · HD Ranked Command
@@ -627,19 +597,6 @@ export function ModernLeaderboardPage({
                 </p>
               </div>
 
-              <div className="flex items-center gap-4 sm:flex-col sm:items-end">
-                <LeaderboardViewToggle
-                  value={viewMode}
-                  onChange={setViewMode}
-                />
-                <LeaderboardViewLink
-                  from="modern"
-                  to="og"
-                  href="/leaderboard/og"
-                >
-                  Open Game Stats
-                </LeaderboardViewLink>
-              </div>
             </div>
           )}
         </div>
@@ -674,7 +631,7 @@ export function ModernLeaderboardPage({
                     : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
                 }`}
               >
-                Full leaderboard
+                Warriors
               </button>
               <button
                 type="button"
@@ -686,16 +643,12 @@ export function ModernLeaderboardPage({
                     : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
                 }`}
               >
-                AoE2WAR users
-                <span className="ml-1.5 tabular-nums opacity-70">
-                  {census.claimedIdentityRows}
-                </span>
+                Kingdom
               </button>
             </div>
           ) : (
             <LeaderboardScopeToggle
               value={scope}
-              claimedCount={census.claimedIdentityRows}
               onChange={setScope}
             />
           )}
@@ -779,17 +732,6 @@ export function ModernLeaderboardPage({
               </div>
               <div className="mt-1 text-sm font-semibold text-white">
                 Make the ladder move.
-              </div>
-              <div
-                className="mt-1 text-[10px] leading-4 text-slate-400"
-                title={
-                  census.rankDelta24hCutoff
-                    ? `Reconstructed cutoff ${census.rankDelta24hCutoff}`
-                    : "Reconstructed from the current accepted corpus"
-                }
-              >
-                Reconstructed from evidence accepted by the cutoff; not yet a
-                persisted rank snapshot.
               </div>
               <Link
                 href="/watch"

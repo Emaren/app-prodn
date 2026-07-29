@@ -37,7 +37,7 @@ const DEFAULT_TILE_VIEW_MODES: TileViewPreferences = {
   speed: "extreme",
   academy_hero: "extreme",
   download_watcher: "extreme",
-  leaderboard: "basic",
+  leaderboard: "advanced",
 };
 
 export function isTileViewKey(value: string | null | undefined): value is TileViewKey {

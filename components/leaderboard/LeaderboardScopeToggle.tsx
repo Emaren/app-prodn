@@ -9,31 +9,26 @@ import type { LeaderboardScope } from "@/lib/leaderboardScope";
 
 const OPTIONS: ReadonlyArray<{
   scope: LeaderboardScope;
-  eyebrow: string;
   label: string;
   Icon: typeof UsersRound;
 }> = [
   {
     scope: "all",
-    eyebrow: "Warriors",
-    label: "All players",
+    label: "Warriors",
     Icon: UsersRound,
   },
   {
     scope: "claimed",
-    eyebrow: "Kingdom",
-    label: "AoE2WAR users",
+    label: "Kingdom",
     Icon: UserRound,
   },
 ];
 
 export function LeaderboardScopeToggle({
   value,
-  claimedCount,
   onChange,
 }: {
   value: LeaderboardScope;
-  claimedCount: number;
   onChange: (scope: LeaderboardScope) => void;
 }) {
   return (
@@ -55,7 +50,7 @@ export function LeaderboardScopeToggle({
                 type="button"
                 aria-pressed={active}
                 onClick={() => onChange(option.scope)}
-                className={`relative min-h-[3.45rem] cursor-pointer overflow-hidden rounded-[1rem] border px-3 py-2.5 text-left transition duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030610] ${
+                className={`relative min-h-[3.45rem] cursor-pointer overflow-hidden rounded-[1rem] border px-4 py-3 text-left transition duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030610] ${
                   active
                     ? "border-amber-200/25 bg-[linear-gradient(145deg,rgba(214,169,72,0.22),rgba(255,255,255,0.055)_40%,rgba(0,0,0,0.42)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.13),0_0_34px_rgba(201,155,60,0.13)]"
                     : "border-white/[0.075] bg-black/18 text-slate-500 hover:border-white/14 hover:bg-white/[0.045]"
@@ -69,27 +64,13 @@ export function LeaderboardScopeToggle({
                   </>
                 ) : null}
 
-                <span className="relative flex items-center justify-between gap-3">
-                  <span className="min-w-0">
-                    <span
-                      className={`block text-[0.52rem] font-black uppercase tracking-[0.3em] ${
-                        active ? "text-amber-100/50" : "text-slate-600"
-                      }`}
-                    >
-                      {option.eyebrow}
-                    </span>
-                    <span
-                      className={`mt-1 block whitespace-nowrap text-[0.72rem] font-black uppercase tracking-[0.13em] ${
-                        active ? "text-amber-50" : "text-slate-400"
-                      }`}
-                    >
-                      {option.label}
-                    </span>
-                    {option.scope === "claimed" ? (
-                      <span className="mt-0.5 block text-[9px] tabular-nums text-slate-500">
-                        {claimedCount.toLocaleString()} claimed
-                      </span>
-                    ) : null}
+                <span className="relative flex items-center justify-between gap-4">
+                  <span
+                    className={`block whitespace-nowrap text-[0.78rem] font-black uppercase tracking-[0.18em] ${
+                      active ? "text-amber-50" : "text-slate-400"
+                    }`}
+                  >
+                    {option.label}
                   </span>
 
                   <span

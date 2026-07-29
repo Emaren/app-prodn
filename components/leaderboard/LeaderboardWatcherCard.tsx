@@ -35,12 +35,9 @@ export function LeaderboardWatcherCard({
           <div className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-200/80">
             AoE2WAR Watcher
           </div>
-          <p className="mt-2 text-xs leading-5 text-slate-300">
-            Reconstructed from evidence accepted by the cutoff; not yet a persisted rank snapshot.
-          </p>
           <Link
             href="/watch"
-            className="mt-2 inline-flex cursor-pointer text-xs font-semibold text-cyan-200 underline decoration-cyan-300/30 underline-offset-4 transition hover:text-white"
+            className="mt-3 inline-flex cursor-pointer text-xs font-semibold text-cyan-200 underline decoration-cyan-300/30 underline-offset-4 transition hover:text-white"
           >
             Run the Watcher for fresher ranks →
           </Link>
