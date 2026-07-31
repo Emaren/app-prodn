@@ -37,7 +37,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-07-29",
       "sensitivity": "internal",
-      "sha256": "90e9fdf3823055088e189730414c8a4e9298a78c5ce7b27f8dae460a68b8d8b6",
+      "sha256": "b311fce4fe8d57b8929efb5963b3843e7be60578a6d4ef340f4765455eac6416",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -405,7 +405,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ab8cddbc4d3e74adf6ce6f5156a4025e56d6a72c232a3cf94a4f9bad68253427",
+      "sha256": "556f02ee733e5fe28b0300e3b72daa69415a1ec71a232e51b5e31f4a3a98f489",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -548,6 +548,30 @@
         "aoe2-watcher"
       ],
       "title": "HD Leaderboard View Modes",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-live-final-proof-visibility",
+      "owner": "aoe2war-web",
+      "path": "docs/LIVE_FINAL_PROOF_VISIBILITY.md",
+      "review_interval_days": 60,
+      "reviewed_at": "2026-07-31",
+      "sensitivity": "internal",
+      "sha256": "116a656325affc8b4e2af9b83cf217623cdb67e868964352d07afedfef1b67a4",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Live Final-Proof Visibility",
       "type": "reference"
     },
     {
@@ -1052,7 +1076,7 @@
   "generated_at": "2026-07-28T14:55:00+00:00",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "32be8b7b34d8ff60f8f0873c9f5762506a550228"
+    "commit": "85b11ea419fb14f089500c16bb9cf8847fd685f9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

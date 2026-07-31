@@ -72,6 +72,22 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 
 ## Recent deployment notes
 
+### 2026-07-31 Live final-proof visibility
+
+- implementation baseline: `85b11ea419fb14f089500c16bb9cf8847fd685f9`;
+- unresolved `watcher_final` battles remain visible for a bounded 15-minute
+  final-proof window;
+- the public battle status is `Final proof pending`;
+- pending-proof sessions are excluded from active market lookup;
+- betting and settlement remain locked;
+- trusted final results continue directly to Completed;
+- focused regression tests cover the Jim-style suppression case, trusted
+  finals, newer-live precedence, and grace expiration;
+- no Prisma migration is introduced;
+- production receipt:
+  `PENDING_AOE2WAR_FINAL_PROOF_VISIBILITY_DEPLOYMENT`.
+
+
 ### 2026-07-29 bet and replay reliability release
 
 - web implementation commit:
