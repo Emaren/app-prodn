@@ -84,8 +84,16 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 - focused regression tests cover the Jim-style suppression case, trusted
   finals, newer-live precedence, and grace expiration;
 - no Prisma migration is introduced;
-- production receipt:
-  `PENDING_AOE2WAR_FINAL_PROOF_VISIBILITY_DEPLOYMENT`.
+- production release commit: `d2a46cc48fbb0f3ea18294ed8896cce0583e4ba2`;
+- build staging mode: `volume`;
+- deployed build ID: `pwZq7F-3gRsIklcNOLLOH`;
+- public build version: `20260731013957-9e9cfa033f`;
+- deployed at: `2026-07-31T01:42:32Z`;
+- prior build rollback: `/mnt/HC_Volume_105319120/aoe2war/rollbacks/.next-rollback-20260731T013929Z`;
+- restricted VPS receipt: `/root/ops-backups/aoe2war-final-proof-visibility-20260731T013929Z`;
+- post-deploy root availability: `4.37 GiB`;
+- internal and public live-games and betting routes, their APIs, and the
+  deployment-version endpoint returned HTTP 200.
 
 
 ### 2026-07-29 bet and replay reliability release
