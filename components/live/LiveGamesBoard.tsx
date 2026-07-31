@@ -215,6 +215,7 @@ function liveMarketHref(session: LiveSession) {
     market?.id;
 
   if (
+    session.finalProofPending ||
     session.state === "completed" ||
     !isBettableLiveWinnerMarket(
       market
@@ -236,12 +237,15 @@ function sessionStatsHref(session: LiveSession) {
   const marketHref = liveMarketHref(session);
   if (marketHref) return marketHref;
 
-  return session.state === "completed" && Number.isSafeInteger(session.id) && session.id > 0
+  return (session.state === "completed" || session.finalProofPending) &&
+    Number.isSafeInteger(session.id) &&
+    session.id > 0
     ? `/game-stats/${session.id}`
     : `/game-stats/live/${encodeURIComponent(session.sessionKey)}`;
 }
 
 function liveSessionPrimaryActionLabel(session: LiveSession) {
+  if (session.finalProofPending) return "Open final proof";
   if (hasLiveBetMarket(session)) return "Bet live";
   if (session.disposition === "saved_rehost") return "Open session evidence";
   return session.state === "completed" ? "Open final stats" : "Watch live stats";
@@ -249,6 +253,7 @@ function liveSessionPrimaryActionLabel(session: LiveSession) {
 
 // AOE2WAR_SINGLE_LIVE_BET_CTA_20260724
 function liveSessionStatusLabel(session: LiveSession) {
+  if (session.finalProofPending) return "Final proof pending";
   if (hasLiveBetMarket(session)) return "Betting open";
   if (session.disposition === "saved_rehost") return "Saved / rehosted";
   return session.state === "completed" ? "Final stored" : "Live parse";
@@ -264,7 +269,11 @@ function canReviewReplaySession(
   isAdmin: boolean,
   canReviewOwnReplayResults: boolean
 ) {
-  if (session.state !== "completed" || !Number.isSafeInteger(session.id) || session.id <= 0) {
+  if (
+    (!session.finalProofPending && session.state !== "completed") ||
+    !Number.isSafeInteger(session.id) ||
+    session.id <= 0
+  ) {
     return false;
   }
   if (session.disposition === "saved_rehost") return false;
@@ -299,6 +308,7 @@ function liveDisplayTitle(session: LiveSession) {
     title.endsWith(".aoe2mpgame");
 
   if (genericProofTitle || fileLike) {
+    if (session.finalProofPending) return "Final proof pending";
     return session.state === "live" ? "Live HD battle" : "HD battle record";
   }
 
@@ -310,6 +320,7 @@ function isManualUploadedReplaySession(session: Pick<LiveSession, "uploader" | "
 }
 
 function liveSessionEyebrowLabel(session: LiveSession) {
+  if (session.finalProofPending) return "Final proof pending";
   if (session.state !== "completed") return "Watcher live";
   if (session.disposition === "saved_rehost") return "Saved session";
 
@@ -2241,7 +2252,7 @@ function ClassicLiveSessionCard({
     ? "border-emerald-400/25 bg-emerald-500/12 text-emerald-50"
     : "border-red-400/25 bg-red-500/12 text-red-50";
   const eyebrowClass = isCompleted ? "text-emerald-100/80" : "text-red-100/80";
-  const eyebrowLabel = isCompleted ? liveSessionEyebrowLabel(session) : "Watcher live";
+  const eyebrowLabel = liveSessionEyebrowLabel(session);
   const badgeLabel = liveSessionStatusLabel(session);
   const compactDuration = formatDurationCompact(session.durationSeconds);
 
@@ -2932,7 +2943,7 @@ function LiveSessionCard({
               {/* COMPLETED_DUAL_WATCHER_PROOF */}
               <DualWatcherProofStack uploaders={(session as { uploaders?: DualWatcherProofUploader[] | null }).uploaders} />
 
-              {isCompleted || hasLiveBetMarket(session)
+              {isCompleted || session.finalProofPending || hasLiveBetMarket(session)
                 ? liveSessionStatusLabel(session)
                 : "Watcher live"}
             </span>

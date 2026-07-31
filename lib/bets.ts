@@ -698,7 +698,10 @@ function buildSessionMarketSlug(session: LiveGameSession, leftLabel: string, rig
 }
 
 function buildSessionEventLabel(session: LiveGameSession) {
-  return buildWatcherEventLabel(session.state === "live" ? "Live" : "Final", session.mapName);
+  return buildWatcherEventLabel(
+    session.finalProofPending ? "Final" : session.state === "live" ? "Live" : "Final",
+    session.mapName
+  );
 }
 
 function clampDbText(value: string, max: number) {
@@ -1378,24 +1381,28 @@ function buildSessionMarketSeed(
    * GameStats row before any winner money can move.
    */
   const hasCanonicalFinalReplay =
-    session.state === "completed" &&
+    (session.state === "completed" || session.finalProofPending) &&
     session.parseSource !== "watcher_live";
+  const settlementReadyFinalReplay =
+    hasCanonicalFinalReplay && !session.finalProofPending;
 
   const resolvedWinnerSide =
-    hasCanonicalFinalReplay
+    settlementReadyFinalReplay
       ? inferWinnerSideFromSession(session)
       : null;
 
   // Canonical completed team games without one coherent winning team are
   // evidence for review, never an implicitly voided betting proposition.
-  if (hasCanonicalFinalReplay && !resolvedWinnerSide) return null;
+  if (settlementReadyFinalReplay && !resolvedWinnerSide) return null;
 
   const watcherMarketStatus: BetStatus =
-    session.state !== "completed"
-      ? "live"
-      : hasCanonicalFinalReplay
-        ? "settled"
-        : "awaiting_final_proof";
+    session.finalProofPending
+      ? "awaiting_final_proof"
+      : session.state !== "completed"
+        ? "live"
+        : hasCanonicalFinalReplay
+          ? "settled"
+          : "awaiting_final_proof";
 
   const seed = {
     scheduledMatchId: null,
@@ -1421,8 +1428,8 @@ function buildSessionMarketSeed(
     seedLeftWolo: 0,
     seedRightWolo: 0,
     closeAt: null,
-    settledAt: hasCanonicalFinalReplay ? new Date(settledAtRaw) : null,
-    winnerSide: hasCanonicalFinalReplay ? resolvedWinnerSide : null,
+    settledAt: settlementReadyFinalReplay ? new Date(settledAtRaw) : null,
+    winnerSide: settlementReadyFinalReplay ? resolvedWinnerSide : null,
     teamFormat: resolution.format,
     teamResolutionStatus: resolution.status,
     teamResolutionProvenance: resolution.provenance,

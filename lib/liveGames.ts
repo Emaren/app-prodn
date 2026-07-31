@@ -517,7 +517,9 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
   // AOE2WAR_LIVE_WINNER_MARKET_PROJECTION
   const activeMarketSummaries = await loadLiveBetMarketSummaryMap(
     prisma,
-    streamedActiveSessions.map((session) => ({ id: session.id, sessionKey: session.sessionKey }))
+    streamedActiveSessions
+      .filter((session) => !session.finalProofPending)
+      .map((session) => ({ id: session.id, sessionKey: session.sessionKey }))
   ).catch((error) => {
     console.warn("Failed to load active live market summaries:", error);
     return new Map();
@@ -525,7 +527,9 @@ async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGam
 
   const activeSessionsWithMarkets = streamedActiveSessions.map((session) => ({
     ...session,
-    reviewMarket: activeMarketSummaries.get(session.id) ?? null,
+    reviewMarket: session.finalProofPending
+      ? null
+      : activeMarketSummaries.get(session.id) ?? null,
   }));
 
   const reviewMarketSummaries = await loadReplayReviewMarketSummaryMap(
@@ -838,6 +842,7 @@ function buildRecentOutcomeSession(
       watcherCount: 1,
     }),
     state: "completed",
+    finalProofPending: false,
     players,
     teamResolution,
     uploaders: [],
@@ -1056,6 +1061,7 @@ async function loadStandaloneLiveStreamSessions(
       parseSource: "watcher_stream",
       unresolvedResult: null,
       state: "live",
+      finalProofPending: false,
       players,
       teamResolution: resolveReplayTeams(players),
       uploaders: [],

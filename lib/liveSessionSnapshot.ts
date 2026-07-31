@@ -19,6 +19,9 @@ import {
   classifyReplaySessionDisposition,
   type ReplaySessionDisposition,
 } from "@/lib/replaySessionDisposition";
+import {
+  shouldKeepFinalProofVisible,
+} from "@/lib/liveFinalProofVisibility";
 
 export type LiveGameSession = {
   id: number;
@@ -39,6 +42,7 @@ export type LiveGameSession = {
   parseSource: string | null;
   unresolvedResult: UnresolvedWatcherResult | null;
   state: "live" | "completed";
+  finalProofPending: boolean;
   players: CanonicalReplayPlayer[];
   teamResolution: ReplayTeamResolution;
   uploaders: Array<{
@@ -255,15 +259,19 @@ function buildSessionFromRow(
   row: SessionRow,
   sessionKey: string,
   state: LiveGameSession["state"],
-  sourceRows: SessionRow[] = [row]
+  sourceRows: SessionRow[] = [row],
+  options: {
+    finalProofPending?: boolean;
+  } = {}
 ): LiveGameSession {
   const activityTime = getRowActivityTime(row);
+  const finalEvidence = state === "completed" || options.finalProofPending === true;
   const uploaders = collectUploaders(sourceRows);
   const primaryUploader = uploaders[0] ?? null;
   const mergedPlayers = bestKnownPlayers(sourceRows, row);
   const parsedPlayers = mergedPlayers.players;
   const teamResolution = resolveReplayTeams(parsedPlayers, {
-    final: state === "completed",
+    final: finalEvidence,
     conflictReasonCodes: mergedPlayers.conflictReasonCodes,
   });
   const mapName = bestKnownMapName(sourceRows, row);
@@ -274,7 +282,7 @@ function buildSessionFromRow(
     parseSource: row.parse_source,
     keyEvents: row.key_events,
     eventTypes: row.event_types,
-    isFinal: state === "completed",
+    isFinal: finalEvidence,
     disconnectDetected:
       row.disconnect_detected,
   });
@@ -295,18 +303,18 @@ function buildSessionFromRow(
     winner: row.winner,
     players: parsedPlayers,
     mapName,
-    state,
+    state: finalEvidence ? "completed" : "live",
     parseReason: row.parse_reason,
     parseSource: row.parse_source,
     keyEvents: row.key_events,
     eventTypes: row.event_types,
-    isFinal: state === "completed",
+    isFinal: finalEvidence,
     disconnectDetected:
       row.disconnect_detected,
     watcherCount: uploaders.length,
   });
   const disposition = classifyReplaySessionDisposition({
-    state,
+    state: finalEvidence ? "completed" : "live",
     winner,
     keyEvents: row.key_events,
     eventTypes: row.event_types,
@@ -319,7 +327,7 @@ function buildSessionFromRow(
     parseIteration: row.parse_iteration,
     createdAt: row.createdAt.toISOString(),
     updatedAt: activityTime.toISOString(),
-    completedAt: state === "completed" ? activityTime.toISOString() : null,
+    completedAt: finalEvidence ? activityTime.toISOString() : null,
     playedOn: row.played_on?.toISOString() ?? null,
     mapName,
     durationSeconds: bestKnownDuration(sourceRows, row),
@@ -330,6 +338,7 @@ function buildSessionFromRow(
     parseSource: row.parse_source ?? null,
     unresolvedResult,
     state,
+    finalProofPending: options.finalProofPending === true,
     players,
     teamResolution,
     uploaders,
@@ -578,15 +587,43 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
     if (finalRow) {
       const finalActivityAt = getRowActivityTime(finalRow).getTime();
       if (finalActivityAt >= liveActivityAt) {
-        if (finalActivityAt >= lingerCutoff) {
-          recentlyCompletedSessions.push(
+        const finalSourceRows = finalRowsBySession.get(sessionKey) ?? [finalRow];
+        const combinedSourceRows = [
+          ...(liveRowsBySession.get(sessionKey) ?? [row]),
+          ...finalSourceRows,
+        ];
+        const completedSession = buildSessionFromRow(
+          finalRow,
+          sessionKey,
+          "completed",
+          combinedSourceRows
+        );
+        const watcherFinal = String(finalRow.parse_source ?? "")
+          .trim()
+          .toLowerCase()
+          .startsWith("watcher_final");
+        const keepFinalProofVisible =
+          watcherFinal &&
+          shouldKeepFinalProofVisible({
+            liveActivityAtMs: liveActivityAt,
+            finalActivityAtMs: finalActivityAt,
+            finalDisposition: completedSession.disposition,
+          });
+
+        if (keepFinalProofVisible) {
+          activeSessions.push(
             buildSessionFromRow(
               finalRow,
               sessionKey,
-              "completed",
-              finalRowsBySession.get(sessionKey) ?? [finalRow]
+              "live",
+              combinedSourceRows,
+              {
+                finalProofPending: true,
+              }
             )
           );
+        } else if (finalActivityAt >= lingerCutoff) {
+          recentlyCompletedSessions.push(completedSession);
         }
         continue;
       }
