@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-07-29"
+reviewed_at: "2026-08-01"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -71,6 +71,49 @@ journalctl -u aoe2hdbets-web.service -n 40 --no-pager
 ```
 
 ## Recent deployment notes
+
+
+### 2026-08-01 Betting Hall and wager-rail release
+
+- implementation commit: `45f93f8f7b5e0c4180785ab4c16776239fc4936c`;
+- deployed checkout: `a0d994ed63d9351608b6d06c433cf118b82f786c`, a documentation-baseline descendant
+  of the implementation commit;
+- previous production checkout: `bcd4152a46f1926c7886a6b93ea23486b1a453d9`;
+- deployed build ID: `WKfeJuQ2vs0XyRij6m1fm`;
+- public build version: `20260801211536-2945b45ca5`;
+- deployed at: `2026-08-01T21:23:56Z`;
+- protected database backup: `/mnt/HC_Volume_105319120/aoe2-parser-engine/backups/aoe2war-betting-hall-20260801T210351Z`;
+- prior-build rollback: `/mnt/HC_Volume_105319120/aoe2war/rollbacks/.next-rollback-20260801T210351Z`;
+- restricted deployment receipt: `/root/ops-backups/aoe2war-betting-hall-20260801T210351Z`;
+- post-deploy root free bytes: `5394227200`;
+- post-deploy mounted-volume free bytes: `13099474944`;
+- all five additive Prisma migrations applied with zero incomplete migrations;
+- generated Prisma client ownership was normalized to the `tony` build user
+  after the isolated build correctly stopped on a pre-existing permission
+  mismatch;
+- the isolated build compiled and generated all 42 static pages;
+- the temporary in-repository `.next-old-*` directory was removed only after
+  its BUILD_ID matched the protected rollback copy and the active BUILD_ID,
+  public version, service health, migrations, and smoke checks were verified;
+- local release gates passed Prisma generation/validation, TypeScript, zero
+  ESLint errors, 164 focused regressions, the 50-document registry, and the
+  complete production build;
+- `/bets`, `/api/bets`, `/profile`, `/admin/ai`, ticket authentication,
+  automation authentication, betting-bot authentication, deployment-version
+  parity, and service health passed after restart;
+- Basic preserves the merged heritage surface, Advanced preserves the former
+  Extreme presentation, and Extreme owns the new concurrent-battle cockpit;
+- winner plus optional Desync stakes use one versioned ticket and one verified
+  Keplr transfer while retaining independent proposition settlement;
+- Founder quick defaults are 2 WOLO per participant and 1,000 WOLO for the
+  winner, with retry-stable but intentionally stackable payout identities;
+- Watcher 1.5.7 concurrent sessions converge through canonical battle identity
+  and immutable public numbering without stealing an in-progress user ticket;
+- profile auto-betting remains Preview-only and Tony/Paulie remain disabled,
+  fail-closed counter-bettor configuration. No Wolo consensus upgrade occurred.
+  Funded automation still requires the separate settlement-service custody
+  rail documented in `docs/BET_AUTOMATION_AND_CUSTODY.md`.
+
 
 ### 2026-07-31 Live final-proof visibility
 

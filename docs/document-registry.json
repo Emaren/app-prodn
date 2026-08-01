@@ -35,9 +35,9 @@
       "owner": "aoe2war-web",
       "path": "DEPLOY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-07-29",
+      "reviewed_at": "2026-08-01",
       "sensitivity": "internal",
-      "sha256": "863dcb83d3102172768f340642bd3dde497a73dc72c22761990242e795d1e57b",
+      "sha256": "096c03c95cb9b4397e7eefdb836fe7747955166c97a8b4abe3fac75bb9d42260",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
