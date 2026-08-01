@@ -7,6 +7,7 @@ import {
 import {
   buildBetStakeMemo,
 } from "@/lib/betStakeMemo";
+import { acquireBetStakeTransferLock } from "@/lib/betStakeFunding";
 import { markBetStakeIntentRecorded, markBetStakeIntentVerified } from "@/lib/betStakeIntents";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
@@ -44,9 +45,11 @@ type PlaceBetWagerResult =
       kind: "created";
     };
 
-type BetMarketPreflightContext = {
+export type BetMarketPreflightContext = {
   market: {
     id: number;
+    parentMarketId: number | null;
+    slug: string;
     status: string;
     winnerSide: string | null;
     settledAt: Date | null;
@@ -146,7 +149,7 @@ function isUniqueConstraintError(error: unknown, field: string) {
   return readUniqueTargets(error).some((target) => target.includes(field));
 }
 
-async function ensureBetMarketWalletSideLock(
+export async function ensureBetMarketWalletSideLock(
   prisma: Prisma.TransactionClient,
   input: {
     marketId: number;
@@ -238,8 +241,8 @@ async function ensureBetMarketWalletSideLock(
   }
 }
 
-async function loadBetMarketPreflightContext(
-  prisma: PrismaClient,
+export async function loadBetMarketPreflightContext(
+  prisma: PrismaClient | Prisma.TransactionClient,
   input: {
     marketId: number;
     side: "left" | "right";
@@ -247,12 +250,21 @@ async function loadBetMarketPreflightContext(
   }
 ): Promise<BetMarketPreflightContext> {
   const normalizedWalletAddress = input.walletAddress?.trim() || "";
+  const freshUnsignedCutoff = new Date(Date.now() - 15 * 60 * 1000);
 
-  const [market, activeMarketWagers, walletLock, unresolvedWalletIntent] = await Promise.all([
+  const [
+    market,
+    activeMarketWagers,
+    walletLock,
+    unresolvedWalletIntent,
+    unresolvedWalletTicket,
+  ] = await Promise.all([
     prisma.betMarket.findUnique({
       where: { id: input.marketId },
       select: {
         id: true,
+        parentMarketId: true,
+        slug: true,
         status: true,
         winnerSide: true,
         settledAt: true,
@@ -307,15 +319,84 @@ async function loadBetMarketPreflightContext(
             marketId: input.marketId,
             walletAddress: normalizedWalletAddress,
             side: { not: input.side },
-            status: {
-              in: ["broadcast_submitted", "verified_unrecorded", "suspect", "orphaned"],
-            },
+            OR: [
+              {
+                status: "awaiting_signature",
+                stakeTxHash: null,
+                createdAt: { gte: freshUnsignedCutoff },
+              },
+              {
+                status: {
+                  in: ["broadcast_submitted", "verified_unrecorded", "recorded"],
+                },
+              },
+              {
+                stakeTxHash: { not: null },
+                status: {
+                  in: [
+                    "awaiting_signature",
+                    "broadcast_submitted",
+                    "verified_unrecorded",
+                    "failed",
+                    "suspect",
+                    "orphaned",
+                    "recorded",
+                  ],
+                },
+              },
+            ],
           },
           orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
           select: {
             id: true,
             status: true,
             side: true,
+          },
+        })
+      : Promise.resolve(null),
+    normalizedWalletAddress
+      ? prisma.betStakeLeg.findFirst({
+          where: {
+            marketId: input.marketId,
+            side: { not: input.side },
+            ticket: {
+              walletAddress: normalizedWalletAddress,
+              OR: [
+                {
+                  status: "awaiting_signature",
+                  stakeTxHash: null,
+                  createdAt: { gte: freshUnsignedCutoff },
+                },
+                {
+                  status: {
+                    in: ["broadcast_submitted", "verified_unrecorded", "recorded"],
+                  },
+                },
+                {
+                  stakeTxHash: { not: null },
+                  status: {
+                    in: [
+                      "awaiting_signature",
+                      "broadcast_submitted",
+                      "verified_unrecorded",
+                      "failed",
+                      "suspect",
+                      "orphaned",
+                      "recorded",
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+          orderBy: [{ ticket: { updatedAt: "desc" } }, { id: "desc" }],
+          select: {
+            id: true,
+            ticket: {
+              select: {
+                status: true,
+              },
+            },
           },
         })
       : Promise.resolve(null),
@@ -335,11 +416,16 @@ async function loadBetMarketPreflightContext(
             id: unresolvedWalletIntent.id,
             status: unresolvedWalletIntent.status,
           }
+        : unresolvedWalletTicket
+          ? {
+              id: unresolvedWalletTicket.id,
+              status: unresolvedWalletTicket.ticket.status,
+            }
         : null,
   };
 }
 
-function assertBetMarketPreflight(
+export function assertBetMarketPreflight(
   context: BetMarketPreflightContext,
   input: {
     viewer: Pick<WagerViewer, "id" | "inGameName" | "steamPersonaName">;
@@ -480,7 +566,7 @@ function assertBetMarketPreflight(
 }
 
 export async function preflightPooledBetWager(
-  prisma: PrismaClient,
+  prisma: PrismaClient | Prisma.TransactionClient,
   input: {
     viewer: Pick<WagerViewer, "id" | "inGameName" | "steamPersonaName">;
     marketId: number;
@@ -765,6 +851,30 @@ export async function placePooledBetWager(
   try {
     await prisma.$transaction(async (tx) => {
       const lockedAt = new Date();
+
+      if (shouldUseOnchainStake) {
+        await acquireBetStakeTransferLock(
+          tx,
+          normalizedStakeTxHash
+        );
+        const ticketClaim =
+          await tx.betStakeTicket.findUnique({
+            where: {
+              stakeTxHash:
+                normalizedStakeTxHash,
+            },
+            select: {
+              id: true,
+            },
+          });
+        if (ticketClaim) {
+          throw new BetWagerError(
+            409,
+            "That WOLO transfer is already attached to a multi-leg ticket."
+          );
+        }
+      }
+
       const lockResult =
         await tx.betMarket.updateMany({
           where: postBroadcastRecovery

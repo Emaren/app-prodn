@@ -2,6 +2,31 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+type PromptSource = "lobby_public" | "contact_thread" | "council" | "bounty_page";
+
+type PromptContextMode = "always" | "keyword-gated" | "bounded" | "excluded";
+
+type PromptPreview = {
+  source: PromptSource;
+  systemPrompt: string;
+  redactedUserPrompt: string;
+  contextManifest: Array<{
+    key: string;
+    label: string;
+    mode: PromptContextMode;
+  }>;
+};
+
+type ProviderPrompt = {
+  provider: string;
+  label: string;
+  promptId: string;
+  promptVersion: string;
+  platformUrl: string;
+  source: string;
+  readOnly: true;
+};
+
 type Agent = {
   id: number;
   slug: string;
@@ -24,8 +49,11 @@ type Agent = {
   maxContextChars: number;
   timeoutMs: number;
   maxCouncilTurns: number;
+  version: number;
   createdAt: string;
   updatedAt: string;
+  providerPrompt: ProviderPrompt | null;
+  promptPreviews: Record<PromptSource, PromptPreview>;
   telemetry: {
     requests: number;
     succeeded: number;
@@ -36,6 +64,27 @@ type Agent = {
     medianModelMs: number | null;
     medianFirstTokenMs: number | null;
   };
+};
+
+const PROMPT_SOURCE_LABELS: Record<PromptSource, string> = {
+  lobby_public: "Lobby public",
+  contact_thread: "Contact thread",
+  council: "Council",
+  bounty_page: "Bounty advisor",
+};
+
+const PROMPT_SOURCE_DESCRIPTIONS: Record<PromptSource, string> = {
+  lobby_public: "Public-room reply with the strictest context boundary.",
+  contact_thread: "Participant-only AI contact reply with bounded thread history.",
+  council: "Council answer grounded in the requesting member's authorized context.",
+  bounty_page: "Page-grounded bounty advice for the signed-in viewer.",
+};
+
+const PROMPT_MODE_STYLES: Record<PromptContextMode, string> = {
+  always: "border-cyan-200/20 bg-cyan-300/8 text-cyan-100",
+  "keyword-gated": "border-violet-200/20 bg-violet-300/8 text-violet-100",
+  bounded: "border-amber-200/20 bg-amber-300/8 text-amber-100",
+  excluded: "border-slate-500/20 bg-slate-800/60 text-slate-400",
 };
 
 type Snapshot = {
@@ -69,6 +118,7 @@ export default function AiCommandCenter() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [previewSource, setPreviewSource] = useState<PromptSource>("lobby_public");
 
   async function load() {
     const response = await fetch("/api/admin/ai-agents", { cache: "no-store" });
@@ -91,6 +141,19 @@ export default function AiCommandCenter() {
     setDraft(selected ? { ...selected } : null);
   }, [selected]);
 
+  const promptPreviewDirty = useMemo(() => {
+    if (!selected || !draft) return false;
+    return (
+      selected.name !== draft.name ||
+      selected.runtimePersonaId !== draft.runtimePersonaId ||
+      selected.role !== draft.role ||
+      selected.specialty !== draft.specialty ||
+      selected.personalityPrompt !== draft.personalityPrompt ||
+      selected.aoe2Prompt !== draft.aoe2Prompt ||
+      selected.requestedModel !== draft.requestedModel
+    );
+  }, [draft, selected]);
+
   async function save() {
     if (!draft) return;
     setSaving(true);
@@ -102,6 +165,7 @@ export default function AiCommandCenter() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           ...draft,
+          expectedVersion: draft.version,
           knowledgeScopes: listText(draft.knowledgeScopes),
           allowedTools: listText(draft.allowedTools),
         }),
@@ -152,7 +216,7 @@ export default function AiCommandCenter() {
           <div>
             <div className="text-xs font-bold uppercase tracking-[0.35em] text-cyan-100/60">Operator Control Plane</div>
             <h1 className="mt-3 font-serif text-4xl">AI Command Center</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Tune the AoE2 expertise layer, stage new voices safely, and inspect real request latency. Provider credentials never appear here.</p>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Edit the site-side voice and AoE2 instructions, inspect the effective prompt and context contract, and review real request latency. Provider credentials never appear here.</p>
           </div>
           <button onClick={() => void createAgent()} disabled={saving} className="rounded-full bg-cyan-200 px-5 py-3 text-sm font-bold text-slate-950 disabled:opacity-50">Stage New Agent</button>
         </div>
@@ -189,8 +253,57 @@ export default function AiCommandCenter() {
             </div>
             <TextField label="Public description" value={draft.description} onChange={(description) => setDraft({ ...draft, description })} />
             <TextField label="User-facing introduction" value={draft.introduction} onChange={(introduction) => setDraft({ ...draft, introduction })} />
-            <TextField label="Personality layer" value={draft.personalityPrompt} rows={5} onChange={(personalityPrompt) => setDraft({ ...draft, personalityPrompt })} />
-            <TextField label="AoE2 expertise layer" value={draft.aoe2Prompt} rows={8} onChange={(aoe2Prompt) => setDraft({ ...draft, aoe2Prompt })} />
+            <TextField label="Site-side personality layer (editable)" value={draft.personalityPrompt} rows={5} onChange={(personalityPrompt) => setDraft({ ...draft, personalityPrompt })} />
+            <TextField label="Site-side AoE2 expertise layer (editable)" value={draft.aoe2Prompt} rows={8} onChange={(aoe2Prompt) => setDraft({ ...draft, aoe2Prompt })} />
+            <section className="space-y-5 rounded-2xl border border-cyan-200/12 bg-cyan-300/[0.025] p-4 sm:p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold text-cyan-50">Effective prompt and context manifest</h2>
+                  <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">This preview compiles the saved site-side instructions for each surface. Dynamic user, room, wallet, staking, and database values are redacted.</p>
+                </div>
+                {promptPreviewDirty ? <span className="rounded-full border border-amber-200/20 bg-amber-300/10 px-3 py-1 text-xs text-amber-100">Save to refresh compiled preview</span> : <span className="rounded-full border border-emerald-200/20 bg-emerald-300/10 px-3 py-1 text-xs text-emerald-100">Preview matches saved config</span>}
+              </div>
+
+              <div className="rounded-xl border border-white/8 bg-black/20 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Provider prompt metadata, read only</div>
+                    {draft.providerPrompt ? <div className="mt-2 text-sm text-slate-200">{draft.providerPrompt.label} · version {draft.providerPrompt.promptVersion}</div> : <div className="mt-2 text-sm text-slate-400">This model has no managed provider prompt object.</div>}
+                  </div>
+                  {draft.providerPrompt ? <a href={draft.providerPrompt.platformUrl} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-cyan-100 hover:bg-white/[0.08]">Open provider prompt</a> : null}
+                </div>
+                {draft.providerPrompt ? <div className="mt-3 break-all font-mono text-[11px] leading-5 text-slate-500">ID {draft.providerPrompt.promptId}<br />Source {draft.providerPrompt.source}</div> : null}
+                <p className="mt-3 text-xs leading-5 text-slate-500">This dashboard edits AoE2WAR&apos;s site-side layers only. Provider prompt content and versions remain controlled at the provider and are shown here as gateway registry metadata.</p>
+              </div>
+
+              <div className="flex flex-wrap gap-2" aria-label="Prompt preview source">
+                {(Object.keys(PROMPT_SOURCE_LABELS) as PromptSource[]).map((source) => (
+                  <button key={source} type="button" aria-pressed={previewSource === source} onClick={() => setPreviewSource(source)} className={`rounded-full border px-3 py-2 text-xs transition ${previewSource === source ? "border-cyan-200/30 bg-cyan-300/12 text-cyan-50" : "border-white/8 bg-white/[0.025] text-slate-400 hover:text-slate-200"}`}>{PROMPT_SOURCE_LABELS[source]}</button>
+                ))}
+              </div>
+
+              {draft.promptPreviews?.[previewSource] ? (
+                <div className="space-y-4">
+                  <p className="text-xs text-slate-400">{PROMPT_SOURCE_DESCRIPTIONS[previewSource]}</p>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Context manifest</div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {draft.promptPreviews[previewSource].contextManifest.map((item) => <span key={item.key} title={`${item.label}: ${item.mode}`} className={`rounded-full border px-3 py-1.5 text-[11px] ${PROMPT_MODE_STYLES[item.mode]}`}>{item.label} · {item.mode}</span>)}
+                    </div>
+                  </div>
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Saved effective system prompt</div>
+                      <pre className="mt-2 max-h-[32rem] overflow-auto whitespace-pre-wrap rounded-xl border border-white/8 bg-black/35 p-4 font-mono text-[11px] leading-5 text-slate-300">{draft.promptPreviews[previewSource].systemPrompt}</pre>
+                    </div>
+                    <div>
+                      <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-500">Redacted dynamic context shape</div>
+                      <pre className="mt-2 max-h-[32rem] overflow-auto whitespace-pre-wrap rounded-xl border border-white/8 bg-black/35 p-4 font-mono text-[11px] leading-5 text-slate-300">{draft.promptPreviews[previewSource].redactedUserPrompt}</pre>
+                    </div>
+                  </div>
+                </div>
+              ) : <div className="rounded-xl border border-amber-200/15 bg-amber-300/8 p-4 text-sm text-amber-100">Prompt preview is unavailable. Reload this operator surface after the API deploy.</div>}
+            </section>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Knowledge scopes (comma separated)" value={listText(draft.knowledgeScopes)} onChange={(value) => setDraft({ ...draft, knowledgeScopes: value.split(",").map((part) => part.trim()).filter(Boolean) })} />
               <Field label="Allowed tools (comma separated)" value={listText(draft.allowedTools)} onChange={(value) => setDraft({ ...draft, allowedTools: value.split(",").map((part) => part.trim()).filter(Boolean) })} />
@@ -226,4 +339,3 @@ function NumberField({ label, value, min, max, onChange }: { label: string; valu
 function SelectField({ label, value, options, onChange }: { label: string; value: string; options: string[]; onChange: (value: string) => void }) { return <label className="space-y-2 text-sm text-slate-300"><span>{label}</span><select value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-white/10 bg-[#07111f] px-4 py-3 text-white outline-none focus:border-cyan-200/35">{options.map((option) => <option key={option}>{option}</option>)}</select></label>; }
 function TextField({ label, value, rows = 3, onChange }: { label: string; value: string; rows?: number; onChange: (value: string) => void }) { return <label className="block space-y-2 text-sm text-slate-300"><span>{label}</span><textarea value={value} rows={rows} onChange={(event) => onChange(event.target.value)} className="w-full rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-white outline-none focus:border-cyan-200/35" /></label>; }
 function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (value: boolean) => void }) { return <button type="button" aria-pressed={checked} onClick={() => onChange(!checked)} className={`rounded-full border px-4 py-2 text-sm ${checked ? "border-emerald-200/25 bg-emerald-300/10 text-emerald-100" : "border-white/10 bg-white/[0.03] text-slate-400"}`}>{label}: {checked ? "On" : "Off"}</button>; }
-

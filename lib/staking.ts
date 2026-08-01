@@ -4,6 +4,9 @@ import {
   BPS_DENOMINATOR,
   STAKER_SHARE_BPS,
 } from "@/lib/bettingFees";
+import {
+  visibleMainnetFundedBetWagerWhere as visibleMainnetWagerWhere,
+} from "@/lib/betStakeFunding";
 import { buildStakingTreasuryPayoutRequestId } from "@/lib/stakingTreasuryPayouts";
 import {
   executeWoloSettlementRun,
@@ -175,23 +178,6 @@ export function normalizeStakingPeriod(value: string | null | undefined): Stakin
 
 export function normalizeStakingBoard(value: string | null | undefined): StakingBoardKey {
   return value === "earners" || value === "rewards" ? value : "stakers";
-}
-
-function visibleMainnetWagerWhere(
-  extra: Prisma.BetWagerWhereInput = {}
-): Prisma.BetWagerWhereInput {
-  if (!isWoloMainnet()) return extra;
-  return {
-    ...extra,
-    executionMode: "onchain_escrow",
-    stakeTxHash: { not: null },
-    stakeLockedAt: { gte: getWoloMainnetDisplayStartAt() },
-    stakeIntent: {
-      is: {
-        status: "recorded",
-      },
-    },
-  };
 }
 
 function mainnetDisplayDateWhere(
@@ -367,7 +353,7 @@ async function loadBetMarketGroupKeysForTxHashes(
   const resolved = new Map<string, string>();
   if (uniqueTxHashes.length === 0) return resolved;
 
-  const [stakeIntents, stakeWagers, payoutWagers] = await Promise.all([
+  const [stakeIntents, stakeWagers, stakeTickets, payoutWagers] = await Promise.all([
     prisma.betStakeIntent.findMany({
       where: { stakeTxHash: { in: uniqueTxHashes } },
       select: { stakeTxHash: true, marketId: true },
@@ -375,6 +361,19 @@ async function loadBetMarketGroupKeysForTxHashes(
     prisma.betWager.findMany({
       where: { stakeTxHash: { in: uniqueTxHashes } },
       select: { stakeTxHash: true, marketId: true },
+    }).catch(() => []),
+    prisma.betStakeTicket.findMany({
+      where: {
+        status: "recorded",
+        stakeTxHash: { in: uniqueTxHashes },
+      },
+      select: {
+        stakeTxHash: true,
+        legs: {
+          orderBy: [{ legRole: "asc" }, { id: "asc" }],
+          select: { marketId: true, legRole: true },
+        },
+      },
     }).catch(() => []),
     prisma.betWager.findMany({
       where: { payoutTxHash: { in: uniqueTxHashes } },
@@ -394,6 +393,11 @@ async function loadBetMarketGroupKeysForTxHashes(
 
   for (const row of stakeIntents) remember(row.stakeTxHash, row.marketId);
   for (const row of stakeWagers) remember(row.stakeTxHash, row.marketId);
+  for (const ticket of stakeTickets) {
+    const primaryLeg =
+      ticket.legs.find((leg) => leg.legRole === "winner") ?? ticket.legs[0];
+    remember(ticket.stakeTxHash, primaryLeg?.marketId);
+  }
   for (const row of payoutWagers) remember(row.payoutTxHash, row.marketId);
 
   return resolved;

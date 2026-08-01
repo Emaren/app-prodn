@@ -62,6 +62,8 @@ model User {
   gameWatchStreams               GameWatchStream[]               @relation("GameWatchStreamOwner")
   betWagers                      BetWager[]
   betStakeIntents                BetStakeIntent[]
+  betStakeTickets                BetStakeTicket[]
+  betAutoPreset                  BetAutoPreset?
   betMarketWallets               BetMarketWallet[]
   betMarketFinancialAdjustments  BetMarketFinancialAdjustment[]
   reviewedPlayerIdentityAliases  PlayerIdentityAlias[]
@@ -1910,6 +1912,8 @@ model WatcherClientEvent {
 
 model BetMarket {
   id                       Int       @id @default(autoincrement())
+  battleId                 Int?      @map("battle_id")
+  parentMarketId           Int?      @map("parent_market_id")
   scheduledMatchId         Int?      @unique(map: "uq_bet_markets_scheduled_match_id") @map("scheduled_match_id")
   linkedSessionKey         String?   @map("linked_session_key") @db.VarChar(255)
   linkedGameStatsId        Int?      @map("linked_game_stats_id")
@@ -1959,22 +1963,48 @@ model BetMarket {
   createdAt                DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  scheduledMatch     ScheduledMatch?              @relation(fields: [scheduledMatchId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  linkedGameStats    GameStats?                   @relation("BetMarketLinkedGameStats", fields: [linkedGameStatsId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  wagers             BetWager[]
-  stakeIntents       BetStakeIntent[]
-  walletLocks        BetMarketWallet[]
-  founderBonuses     BetMarketFounderBonus[]
-  integrityIncidents BetMarketIntegrityIncident[]
+  battle                  BattleIdentity?              @relation(fields: [battleId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  parentMarket            BetMarket?                   @relation("BetMarketPropositionChildren", fields: [parentMarketId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  childMarkets            BetMarket[]                  @relation("BetMarketPropositionChildren")
+  scheduledMatch          ScheduledMatch?              @relation(fields: [scheduledMatchId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  linkedGameStats         GameStats?                   @relation("BetMarketLinkedGameStats", fields: [linkedGameStatsId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  wagers                  BetWager[]
+  stakeIntents            BetStakeIntent[]
+  stakeTicketLegs         BetStakeLeg[]
+  autoBetWinnerExecutions BetAutoExecution[]           @relation("BetAutoExecutionWinnerMarket")
+  autoBetDesyncExecutions BetAutoExecution[]           @relation("BetAutoExecutionDesyncMarket")
+  walletLocks             BetMarketWallet[]
+  founderBonuses          BetMarketFounderBonus[]
+  integrityIncidents      BetMarketIntegrityIncident[]
 
   @@index([status, featured, sortOrder], map: "ix_bet_markets_status_featured_sort_order")
   @@index([closeAt], map: "ix_bet_markets_close_at")
   @@index([linkedSessionKey], map: "ix_bet_markets_linked_session_key")
   @@index([linkedGameStatsId], map: "ix_bet_markets_linked_game_stats_id")
+  @@index([battleId], map: "ix_bet_markets_battle_id")
+  @@index([parentMarketId], map: "ix_bet_markets_parent_market_id")
   @@index([status, proofDeadlineAt], map: "ix_bet_markets_status_proof_deadline")
   @@index([integrityStatus, status], map: "ix_bet_markets_integrity_status")
   @@index([propositionHash], map: "ix_bet_markets_proposition_hash")
   @@map("bet_markets")
+}
+
+model BattleIdentity {
+  id              Int       @id @default(autoincrement())
+  identityKey     String    @unique(map: "uq_battle_identities_identity_key") @map("identity_key") @db.VarChar(255)
+  publicNumber    Int       @unique(map: "uq_battle_identities_public_number") @default(dbgenerated("nextval('battle_public_number_seq'::regclass)")) @map("public_number")
+  platformMatchId String?   @unique(map: "uq_battle_identities_platform_match_id") @map("platform_match_id") @db.VarChar(120)
+  state           String    @default("live") @db.VarChar(24)
+  startedAt       DateTime? @map("started_at") @db.Timestamp(6)
+  completedAt     DateTime? @map("completed_at") @db.Timestamp(6)
+  lastSeenAt      DateTime  @default(now()) @map("last_seen_at") @db.Timestamp(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  markets BetMarket[]
+
+  @@index([state, lastSeenAt], map: "ix_battle_identities_state_last_seen")
+  @@map("battle_identities")
 }
 
 model BetMarketIntegrityIncident {
@@ -2063,6 +2093,7 @@ model BetWager {
   marketId           Int       @map("market_id")
   userId             Int       @map("user_id")
   stakeIntentId      Int?      @unique(map: "uq_bet_wagers_stake_intent_id") @map("stake_intent_id")
+  stakeLegId         Int?      @unique(map: "uq_bet_wagers_stake_leg_id") @map("stake_leg_id")
   side               String    @db.VarChar(20)
   amountWolo         Int       @map("amount_wolo")
   payoutWolo         Int?      @map("payout_wolo")
@@ -2080,6 +2111,7 @@ model BetWager {
   market               BetMarket                      @relation(fields: [marketId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   user                 User                           @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   stakeIntent          BetStakeIntent?                @relation(fields: [stakeIntentId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  stakeLeg             BetStakeLeg?                   @relation(fields: [stakeLegId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   financialAdjustments BetMarketFinancialAdjustment[]
 
   @@index([userId, status, updatedAt], map: "ix_bet_wagers_user_status_updated_at")
@@ -2150,6 +2182,7 @@ model BetMarketFounderBonus {
   note            String?   @db.VarChar(160)
   status          String    @default("armed") @db.VarChar(24)
   createdByUserId Int?      @map("created_by_user_id")
+  requestId       String?   @map("request_id") @db.VarChar(128)
   failureReason   String?   @map("failure_reason") @db.VarChar(255)
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
@@ -2160,6 +2193,7 @@ model BetMarketFounderBonus {
   createdBy User?              @relation("BetMarketFounderBonusCreator", fields: [createdByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   claims    PendingWoloClaim[]
 
+  @@unique([createdByUserId, requestId], map: "uq_bet_market_founder_bonuses_creator_request")
   @@index([marketId, createdAt], map: "ix_bet_market_founder_bonuses_market_created_at")
   @@index([status, createdAt], map: "ix_bet_market_founder_bonuses_status_created_at")
   @@map("bet_market_founder_bonuses")
@@ -2195,6 +2229,200 @@ model BetStakeIntent {
   @@index([marketId, status, updatedAt], map: "ix_bet_stake_intents_market_status_updated_at")
   @@index([marketId, propositionHash, status], map: "ix_bet_stake_intents_market_proposition_status")
   @@map("bet_stake_intents")
+}
+
+/// One verified chain transfer that funds one winner leg and, optionally,
+/// its independent Desync proposition. Legacy one-market stake intents remain
+/// supported; ticket transaction hashes intentionally live only on this row.
+model BetStakeTicket {
+  id                   Int       @id @default(autoincrement())
+  version              Int       @default(1)
+  userId               Int       @map("user_id")
+  clientRequestId      String    @map("client_request_id") @db.VarChar(128)
+  source               String    @default("manual") @db.VarChar(24)
+  totalAmountWolo      Int       @map("total_amount_wolo")
+  propositionSetHash   String    @map("proposition_set_hash") @db.VarChar(64)
+  walletAddress        String    @map("wallet_address") @db.VarChar(100)
+  walletProvider       String?   @map("wallet_provider") @db.VarChar(32)
+  walletType           String?   @map("wallet_type") @db.VarChar(32)
+  browserInfo          String?   @map("browser_info") @db.VarChar(255)
+  routePath            String?   @map("route_path") @db.VarChar(160)
+  status               String    @default("awaiting_signature") @db.VarChar(32)
+  stakeTxHash          String?   @unique(map: "uq_bet_stake_tickets_stake_tx_hash") @map("stake_tx_hash") @db.VarChar(128)
+  broadcastSubmittedAt DateTime? @map("broadcast_submitted_at") @db.Timestamp(6)
+  chainTimestamp       DateTime? @map("chain_timestamp") @db.Timestamp(6)
+  errorDetail          String?   @map("error_detail") @db.VarChar(255)
+  verifiedAt           DateTime? @map("verified_at") @db.Timestamp(6)
+  recordedAt           DateTime? @map("recorded_at") @db.Timestamp(6)
+  orphanedAt           DateTime? @map("orphaned_at") @db.Timestamp(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user          User              @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  legs          BetStakeLeg[]
+  autoExecution BetAutoExecution?
+
+  @@unique([userId, clientRequestId], map: "uq_bet_stake_tickets_user_request")
+  @@index([userId, status, updatedAt], map: "ix_bet_stake_tickets_user_status_updated_at")
+  @@index([status, updatedAt], map: "ix_bet_stake_tickets_status_updated_at")
+  @@map("bet_stake_tickets")
+}
+
+/// Immutable allocation of part of a ticket transfer to one proposition.
+/// Each leg receives exactly one legacy-compatible wager at commit time.
+model BetStakeLeg {
+  id              Int      @id @default(autoincrement())
+  ticketId        Int      @map("ticket_id")
+  marketId        Int      @map("market_id")
+  legRole         String   @map("leg_role") @db.VarChar(24)
+  side            String   @db.VarChar(20)
+  amountWolo      Int      @map("amount_wolo")
+  propositionHash String   @map("proposition_hash") @db.VarChar(64)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  ticket BetStakeTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  market BetMarket      @relation(fields: [marketId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  wager  BetWager?
+
+  @@unique([ticketId, marketId], map: "uq_bet_stake_legs_ticket_market")
+  @@index([marketId, createdAt], map: "ix_bet_stake_legs_market_created_at")
+  @@map("bet_stake_legs")
+}
+
+/// A user's saved, self-only auto-bet plan. This row is configuration and
+/// never proves that WOLO is funded, reserved, escrowed, or wagered.
+model BetAutoPreset {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @unique(map: "uq_bet_auto_presets_user_id") @map("user_id")
+  enabled         Boolean  @default(false)
+  winnerStakeWolo Int      @default(10) @map("winner_stake_wolo")
+  desyncSide      String   @default("none") @map("desync_side") @db.VarChar(8)
+  desyncStakeWolo Int      @default(0) @map("desync_stake_wolo")
+  untilOut        Boolean  @default(false) @map("until_out")
+  gamesRemaining  Int?     @default(1) @map("games_remaining")
+  selfOnly        Boolean  @default(true) @map("self_only")
+  version         Int      @default(1)
+  pausedReason    String?  @map("paused_reason") @db.VarChar(80)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  executions BetAutoExecution[]
+
+  @@index([enabled, updatedAt], map: "ix_bet_auto_presets_enabled_updated_at")
+  @@map("bet_auto_presets")
+}
+
+/// Durable automation audit/outbox row. This foundation is intentionally
+/// dormant until a market evaluator and Wolo custody reservation rail exist.
+model BetAutoExecution {
+  id              Int       @id @default(autoincrement())
+  presetId        Int       @map("preset_id")
+  presetVersion   Int       @map("preset_version")
+  gameIdentityKey String    @map("game_identity_key") @db.VarChar(255)
+  winnerMarketId  Int       @map("winner_market_id")
+  desyncMarketId  Int?      @map("desync_market_id")
+  ticketId        Int?      @unique(map: "uq_bet_auto_executions_ticket_id") @map("ticket_id")
+  sessionKey      String?   @map("session_key") @db.VarChar(255)
+  propositionHash String    @map("proposition_hash") @db.VarChar(64)
+  selectedSide    String?   @map("selected_side") @db.VarChar(20)
+  winnerStakeWolo Int       @map("winner_stake_wolo")
+  desyncSide      String    @default("none") @map("desync_side") @db.VarChar(8)
+  desyncStakeWolo Int       @default(0) @map("desync_stake_wolo")
+  status          String    @default("queued") @db.VarChar(24)
+  reason          String?   @db.VarChar(255)
+  sourceEvidence  Json?     @map("source_evidence")
+  reservationId   String?   @unique(map: "uq_bet_auto_executions_reservation_id") @map("reservation_id") @db.VarChar(128)
+  attemptCount    Int       @default(0) @map("attempt_count")
+  nextAttemptAt   DateTime? @map("next_attempt_at") @db.Timestamp(6)
+  leaseOwner      String?   @map("lease_owner") @db.VarChar(100)
+  leaseExpiresAt  DateTime? @map("lease_expires_at") @db.Timestamp(6)
+  acceptedAt      DateTime? @map("accepted_at") @db.Timestamp(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  preset       BetAutoPreset   @relation(fields: [presetId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  winnerMarket BetMarket       @relation("BetAutoExecutionWinnerMarket", fields: [winnerMarketId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  desyncMarket BetMarket?      @relation("BetAutoExecutionDesyncMarket", fields: [desyncMarketId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  ticket       BetStakeTicket? @relation(fields: [ticketId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([presetId, gameIdentityKey], map: "uq_bet_auto_executions_preset_game")
+  @@index([status, nextAttemptAt], map: "ix_bet_auto_executions_status_next_attempt")
+  @@index([winnerMarketId, createdAt], map: "ix_bet_auto_executions_winner_market")
+  @@index([desyncMarketId, createdAt], map: "ix_bet_auto_executions_desync_market")
+  @@map("bet_auto_executions")
+}
+
+/// Operator-owned counter-bettor policy. These identities are deliberately
+/// separate from AiAgent runtime personas: deterministic policy owns every
+/// money-relevant choice, while an LLM may eventually write flavour only.
+model BettingBotConfig {
+  id                      Int      @id @default(autoincrement())
+  slug                    String   @unique @db.VarChar(64)
+  reservedUid             String   @unique(map: "uq_betting_bot_configs_reserved_uid") @map("reserved_uid") @db.VarChar(100)
+  displayName             String   @map("display_name") @db.VarChar(100)
+  avatarUrl               String?  @map("avatar_url") @db.VarChar(500)
+  mode                    String   @default("disabled") @db.VarChar(16)
+  commentaryEnabled       Boolean  @default(false) @map("commentary_enabled")
+  commentaryPrompt        String   @default("") @map("commentary_prompt") @db.Text
+  oppositeOnly            Boolean  @default(true) @map("opposite_only")
+  defaultCounterstakeWolo Int      @default(10) @map("default_counterstake_wolo")
+  maxCounterstakeWolo     Int      @default(10) @map("max_counterstake_wolo")
+  perMarketExposureWolo   Int      @default(10) @map("per_market_exposure_wolo")
+  dailyExposureWolo       Int      @default(50) @map("daily_exposure_wolo")
+  balanceFloorWolo        Int      @default(100) @map("balance_floor_wolo")
+  policyId                String   @default("opposite-counter") @map("policy_id") @db.VarChar(64)
+  policyVersion           Int      @default(1) @map("policy_version")
+  version                 Int      @default(1)
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt               DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  actions BetCounterAction[]
+
+  @@index([mode, updatedAt], map: "ix_betting_bot_configs_mode_updated_at")
+  @@map("betting_bot_configs")
+}
+
+/// Append-only counter-bet decision and audit evidence. Market and wager ids
+/// are durable snapshots rather than cascading relations so history survives
+/// later lifecycle cleanup. No row in this table is itself custody or a wager.
+model BetCounterAction {
+  id                        Int      @id @default(autoincrement())
+  botConfigId               Int      @map("bot_config_id")
+  botSlugSnapshot           String   @map("bot_slug_snapshot") @db.VarChar(64)
+  reservedUidSnapshot       String   @map("reserved_uid_snapshot") @db.VarChar(100)
+  marketId                  Int?     @map("market_id")
+  sourceWagerId             Int?     @map("source_wager_id")
+  eventType                 String   @map("event_type") @db.VarChar(40)
+  idempotencyKey            String   @unique(map: "uq_bet_counter_actions_idempotency") @map("idempotency_key") @db.VarChar(180)
+  policyIdSnapshot          String   @map("policy_id_snapshot") @db.VarChar(64)
+  policyVersionSnapshot     Int      @map("policy_version_snapshot")
+  configuredModeSnapshot    String   @map("configured_mode_snapshot") @db.VarChar(16)
+  effectiveModeSnapshot     String   @map("effective_mode_snapshot") @db.VarChar(16)
+  sourceSide                String?  @map("source_side") @db.VarChar(20)
+  counterSide               String?  @map("counter_side") @db.VarChar(20)
+  proposedCounterstakeWolo  Int?     @map("proposed_counterstake_wolo")
+  committedCounterstakeWolo Int?     @map("committed_counterstake_wolo")
+  marketExposureBeforeWolo  Int?     @map("market_exposure_before_wolo")
+  dailyExposureBeforeWolo   Int?     @map("daily_exposure_before_wolo")
+  availableBalanceWolo      Int?     @map("available_balance_wolo")
+  custodyVerified           Boolean  @default(false) @map("custody_verified")
+  custodyVerificationId     String?  @map("custody_verification_id") @db.VarChar(128)
+  custodyReservationId      String?  @unique(map: "uq_bet_counter_actions_custody_reservation") @map("custody_reservation_id") @db.VarChar(128)
+  stakeTxHash               String?  @unique(map: "uq_bet_counter_actions_stake_tx") @map("stake_tx_hash") @db.VarChar(128)
+  reasonCode                String   @map("reason_code") @db.VarChar(80)
+  reasonDetail              String?  @map("reason_detail") @db.VarChar(500)
+  actorUid                  String?  @map("actor_uid") @db.VarChar(100)
+  metadata                  Json     @default("{}")
+  createdAt                 DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  botConfig BettingBotConfig @relation(fields: [botConfigId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([botConfigId, createdAt], map: "ix_bet_counter_actions_bot_created")
+  @@index([marketId, createdAt], map: "ix_bet_counter_actions_market_created")
+  @@index([sourceWagerId, createdAt], map: "ix_bet_counter_actions_source_wager_created")
+  @@index([eventType, createdAt], map: "ix_bet_counter_actions_event_created")
+  @@map("bet_counter_actions")
 }
 
 model StakingPosition {
@@ -2407,6 +2635,7 @@ model AiAgent {
   maxContextChars   Int      @default(24000) @map("max_context_chars")
   timeoutMs         Int      @default(45000) @map("timeout_ms")
   maxCouncilTurns   Int      @default(2) @map("max_council_turns")
+  version           Int      @default(1)
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 

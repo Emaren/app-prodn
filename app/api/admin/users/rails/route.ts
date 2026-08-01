@@ -3,9 +3,13 @@ import { NextRequest, NextResponse } from "next/server";
 import type { AdminUsersRailsPayload } from "@/components/admin/command-tower/types";
 import { requireAdmin } from "@/lib/adminSession";
 import {
-  isBetStakeIntentCountableStatus,
   refreshRecoverableBetStakeIntents,
 } from "@/lib/betStakeIntents";
+import {
+  effectiveBetWagerStakeTxHash,
+  hasRecordedBetWagerFunding,
+  isMainnetVisibleFundedBetWager,
+} from "@/lib/betStakeFunding";
 import { loadPendingWoloClaimsForAdmin } from "@/lib/pendingWoloClaims";
 import { loadWatcherDownloadAnalytics } from "@/lib/watcherDownloads";
 import { getWoloSettlementSurfaceStatus } from "@/lib/woloBetSettlement";
@@ -13,7 +17,6 @@ import {
   buildWoloRestTxLookupUrl,
   getWoloBetEscrowRuntime,
   getWoloMainnetDisplayStartAt,
-  isMainnetVisibleBetWager,
   isWoloMainnet,
 } from "@/lib/woloChain";
 import { loadBetWalletFrictionRail } from "@/lib/adminWalletFriction";
@@ -111,14 +114,16 @@ function isCountableWagerRow(wager: {
   stakeLockedAt?: Date | string | null;
   createdAt?: Date | string | null;
   stakeIntent?: { status: string | null } | null;
+  stakeLeg?: {
+    ticket?: {
+      status: string;
+      stakeTxHash: string | null;
+    } | null;
+  } | null;
 }) {
-  if (!isMainnetVisibleBetWager(wager)) {
-    return false;
-  }
-
   return (
-    wager.executionMode !== "onchain_escrow" ||
-    isBetStakeIntentCountableStatus(wager.stakeIntent?.status)
+    isMainnetVisibleFundedBetWager(wager) &&
+    (wager.executionMode !== "onchain_escrow" || hasRecordedBetWagerFunding(wager))
   );
 }
 
@@ -251,6 +256,16 @@ export async function GET(request: NextRequest) {
               stakeIntent: {
                 select: {
                   status: true,
+                },
+              },
+              stakeLeg: {
+                select: {
+                  ticket: {
+                    select: {
+                      status: true,
+                      stakeTxHash: true,
+                    },
+                  },
                 },
               },
               user: {
@@ -432,6 +447,7 @@ export async function GET(request: NextRequest) {
 
       for (const wager of poolEligibleWagers) {
         const side = wager.side === "right" ? "right" : "left";
+        const stakeTxHash = effectiveBetWagerStakeTxHash(wager);
         const bucketKey = `${wager.userId}:${side}`;
         const existing = bettorsBySide.get(bucketKey);
 
@@ -442,7 +458,7 @@ export async function GET(request: NextRequest) {
           existing.statuses.push(wager.status);
           existing.payoutWolo += wager.payoutWolo ?? 0;
           existing.stakeWalletAddress ||= wager.stakeWalletAddress ?? null;
-          existing.stakeTxHash ||= wager.stakeTxHash ?? null;
+          existing.stakeTxHash ||= stakeTxHash;
           existing.payoutTxHash ||= wager.payoutTxHash ?? null;
           existing.payoutProofUrl ||= wager.payoutProofUrl ?? null;
           continue;
@@ -458,7 +474,7 @@ export async function GET(request: NextRequest) {
           executionModes: [wager.executionMode],
           statuses: [wager.status],
           stakeWalletAddress: wager.stakeWalletAddress ?? null,
-          stakeTxHash: wager.stakeTxHash ?? null,
+          stakeTxHash,
           payoutWolo: wager.payoutWolo ?? 0,
           payoutTxHash: wager.payoutTxHash ?? null,
           payoutProofUrl: wager.payoutProofUrl ?? null,

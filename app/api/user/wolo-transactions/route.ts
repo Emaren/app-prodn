@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { pendingWoloClaimNameKeys } from "@/lib/pendingWoloClaims";
+import {
+  effectiveBetWagerStakeTxHash,
+  visibleMainnetFundedBetWagerWhere,
+} from "@/lib/betStakeFunding";
 import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
 import { WOLO_MAINNET_WALLET_ALIASES } from "@/lib/woloMainnetWallets";
 import {
@@ -164,18 +168,7 @@ function claimStatusLabel(claim: {
 }
 
 function visibleMainnetWagerWhere(userId: number) {
-  if (!isWoloMainnet()) return { userId };
-  return {
-    userId,
-    executionMode: "onchain_escrow",
-    stakeTxHash: { not: null },
-    stakeLockedAt: { gte: getWoloMainnetDisplayStartAt() },
-    stakeIntent: {
-      is: {
-        status: "recorded",
-      },
-    },
-  };
+  return visibleMainnetFundedBetWagerWhere({ userId });
 }
 
 export async function GET(request: NextRequest) {
@@ -280,6 +273,16 @@ export async function GET(request: NextRequest) {
           payoutWolo: true,
           status: true,
           stakeTxHash: true,
+          stakeLeg: {
+            select: {
+              ticket: {
+                select: {
+                  status: true,
+                  stakeTxHash: true,
+                },
+              },
+            },
+          },
           stakeLockedAt: true,
           payoutTxHash: true,
           createdAt: true,
@@ -518,6 +521,7 @@ export async function GET(request: NextRequest) {
     }
 
     for (const wager of wagers) {
+      const stakeTxHash = effectiveBetWagerStakeTxHash(wager);
       pushRow(rows, {
         id: `wager-out-${wager.id}`,
         direction: "out",
@@ -525,10 +529,10 @@ export async function GET(request: NextRequest) {
         label: `Bet stake · ${wager.market.title}`,
         status: formatStatus(wager.status),
         occurredAt: (wager.stakeLockedAt || wager.createdAt).toISOString(),
-        txHash: wager.stakeTxHash,
+        txHash: stakeTxHash,
         proofUrl: null,
         category: "bet",
-        network: wager.stakeTxHash ? "mainnet" : "app",
+        network: stakeTxHash ? "mainnet" : "app",
       });
 
       pushRow(rows, {

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { createBetStakeIntent } from "@/lib/betStakeIntents";
+import {
+  BetStakeIntentConflictError,
+  createBetStakeIntent,
+} from "@/lib/betStakeIntents";
 import {
   BetWagerError,
   normalizeBetAmount,
@@ -116,53 +119,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let preflightMarket:
-      Awaited<
-        ReturnType<
-          typeof preflightPooledBetWager
-        >
-      >;
+    const intent = await prisma.$transaction(async (tx) => {
+      // A single-market intent and a multi-leg ticket share the same financial
+      // side lock. Serialize preparation before inviting either wallet send.
+      await tx.$queryRaw`
+        SELECT "id"
+        FROM "bet_markets"
+        WHERE "id" = ${marketId}
+        FOR UPDATE
+      `;
 
-    try {
-      preflightMarket =
-        await preflightPooledBetWager(
-          prisma,
-          {
-            viewer,
-            marketId,
-            side,
-            walletAddress,
-          }
-        );
-    } catch (error) {
-      if (error instanceof BetWagerError) {
-        return NextResponse.json(
-          {
-            detail:
-              error.message,
-          },
-          {
-            status:
-              error.status,
-          }
-        );
-      }
+      const preflightMarket = await preflightPooledBetWager(tx, {
+        viewer,
+        marketId,
+        side,
+        walletAddress,
+      });
 
-      throw error;
-    }
-
-    const intent = await createBetStakeIntent(prisma, {
-      marketId,
-      userId: viewer.id,
-      side,
-      amountWolo,
-      propositionHash:
-        preflightMarket.propositionHash,
-      walletAddress,
-      walletProvider: payload.walletProvider ?? null,
-      walletType: payload.walletType ?? null,
-      browserInfo: payload.browserInfo ?? null,
-      routePath: payload.routePath ?? request.nextUrl.pathname,
+      return createBetStakeIntent(tx, {
+        marketId,
+        userId: viewer.id,
+        side,
+        amountWolo,
+        propositionHash: preflightMarket.propositionHash,
+        walletAddress,
+        walletProvider: payload.walletProvider ?? null,
+        walletType: payload.walletType ?? null,
+        browserInfo: payload.browserInfo ?? null,
+        routePath: request.nextUrl.pathname,
+      });
     });
 
     return NextResponse.json({
@@ -173,6 +158,15 @@ export async function POST(request: NextRequest) {
       status: intent.status,
     });
   } catch (error) {
+    if (
+      error instanceof BetWagerError ||
+      error instanceof BetStakeIntentConflictError
+    ) {
+      return NextResponse.json(
+        { detail: error.message },
+        { status: error.status }
+      );
+    }
     console.error("Failed to create bet stake intent:", error);
     const detail =
       error instanceof Error ? error.message : "Could not create stake intent.";

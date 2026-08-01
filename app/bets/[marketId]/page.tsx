@@ -758,13 +758,21 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
         w.payout_wolo as "payoutWolo",
         w.status,
         w.execution_mode as "executionMode",
-        w.stake_tx_hash as "stakeTxHash",
+        coalesce(
+          w.stake_tx_hash,
+          case
+            when ticket.status = 'recorded' then ticket.stake_tx_hash
+            else null
+          end
+        ) as "stakeTxHash",
         w.payout_tx_hash as "payoutTxHash",
         coalesce(u.in_game_name, u.steam_persona_name, u.uid::text, 'User #' || w.user_id::text) as player,
         w.created_at as "createdAt",
         w.settled_at as "settledAt"
       from bet_wagers w
       left join users u on u.id = w.user_id
+      left join bet_stake_legs leg on leg.id = w.stake_leg_id
+      left join bet_stake_tickets ticket on ticket.id = leg.ticket_id
       where w.market_id = ${market.id}
       order by w.created_at asc, w.id asc
     `,

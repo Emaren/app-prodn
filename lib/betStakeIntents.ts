@@ -1,5 +1,9 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
+import {
+  acquireBetStakeIntentLock,
+  acquireBetStakeTransferLock,
+} from "@/lib/betStakeFunding";
 import { toUwoLoAmount } from "@/lib/woloChain";
 import { isWoloBetEscrowEnabled, listRecentEscrowDeposits } from "@/lib/woloBetSettlement";
 
@@ -44,6 +48,10 @@ export type BetStakeIntentStatus =
   | "failed"
   | "suspect"
   | "orphaned";
+
+export class BetStakeIntentConflictError extends Error {
+  status = 409;
+}
 
 type BetStakeIntentDb = Pick<PrismaClient, "betStakeIntent">;
 
@@ -127,7 +135,7 @@ export async function createBetStakeIntent(
 }
 
 export async function updateBetStakeIntentBroadcast(
-  prisma: BetStakeIntentDb,
+  prisma: PrismaClient,
   input: {
     intentId: number;
     walletAddress?: string | null;
@@ -138,34 +146,137 @@ export async function updateBetStakeIntentBroadcast(
     stakeTxHash: string;
   }
 ) {
-  const existing = await prisma.betStakeIntent.findUnique({
-    where: { id: input.intentId },
-    select: {
-      status: true,
-      broadcastSubmittedAt: true,
-    },
-  });
+  const stakeTxHash =
+    normalizeString(
+      input.stakeTxHash,
+      128
+    );
+  if (!stakeTxHash) {
+    throw new BetStakeIntentConflictError(
+      "Stake transaction hash is required."
+    );
+  }
 
-  const alreadyRecorded =
-    existing?.status === "recorded";
+  return prisma.$transaction(
+    async (tx) => {
+      // Lock order is stable for every legacy binding attempt: immutable
+      // intent identity first, then the candidate transfer. Hash-only locking
+      // cannot stop two different hashes from racing to replace a null hash.
+      await acquireBetStakeIntentLock(
+        tx,
+        input.intentId
+      );
+      await acquireBetStakeTransferLock(
+        tx,
+        stakeTxHash
+      );
 
-  return prisma.betStakeIntent.update({
-    where: { id: input.intentId },
-    data: {
-      walletAddress: normalizeString(input.walletAddress, 100),
-      walletProvider: normalizeString(input.walletProvider, 32),
-      walletType: normalizeString(input.walletType, 32),
-      browserInfo: normalizeString(input.browserInfo, 255),
-      routePath: normalizeString(input.routePath, 160),
-      stakeTxHash: normalizeString(input.stakeTxHash, 128),
-      broadcastSubmittedAt:
-        existing?.broadcastSubmittedAt ??
-        new Date(),
-      status: alreadyRecorded ? "recorded" : "broadcast_submitted",
-      errorDetail: null,
-      orphanedAt: null,
-    },
-  });
+      const [
+        existing,
+        ticketClaim,
+        wagerClaim,
+        intentClaim,
+      ] =
+        await Promise.all([
+          tx.betStakeIntent.findUnique({
+            where: {
+              id: input.intentId,
+            },
+            select: {
+              status: true,
+              stakeTxHash: true,
+              broadcastSubmittedAt: true,
+            },
+          }),
+          tx.betStakeTicket.findUnique({
+            where: { stakeTxHash },
+            select: { id: true },
+          }),
+          tx.betWager.findUnique({
+            where: { stakeTxHash },
+            select: {
+              id: true,
+              stakeIntentId: true,
+            },
+          }),
+          tx.betStakeIntent.findUnique({
+            where: { stakeTxHash },
+            select: { id: true },
+          }),
+        ]);
+
+      if (!existing) {
+        throw new BetStakeIntentConflictError(
+          "Stake intent not found."
+        );
+      }
+      if (
+        existing.stakeTxHash &&
+        existing.stakeTxHash !== stakeTxHash
+      ) {
+        throw new BetStakeIntentConflictError(
+          "This stake intent is already bound to another transaction hash."
+        );
+      }
+      if (
+        ticketClaim ||
+        (
+          wagerClaim &&
+          wagerClaim.stakeIntentId !== input.intentId
+        ) ||
+        (
+          intentClaim &&
+          intentClaim.id !== input.intentId
+        )
+      ) {
+        throw new BetStakeIntentConflictError(
+          "That WOLO transfer is already attached to another stake."
+        );
+      }
+
+      const alreadyRecorded =
+        existing.status ===
+        "recorded";
+
+      if (alreadyRecorded) {
+        return tx.betStakeIntent.findUnique({
+          where: { id: input.intentId },
+        });
+      }
+
+      const preserveBoundMetadata = Boolean(
+        existing.stakeTxHash
+      );
+      const nextStatus =
+        existing.status === "verified_unrecorded"
+          ? "verified_unrecorded"
+          : "broadcast_submitted";
+
+      return tx.betStakeIntent.update({
+        where: {
+          id: input.intentId,
+        },
+        data: {
+          ...(preserveBoundMetadata
+            ? {}
+            : {
+                walletAddress: normalizeString(input.walletAddress, 100),
+                walletProvider: normalizeString(input.walletProvider, 32),
+                walletType: normalizeString(input.walletType, 32),
+                browserInfo: normalizeString(input.browserInfo, 255),
+                routePath: normalizeString(input.routePath, 160),
+              }),
+          stakeTxHash,
+          broadcastSubmittedAt:
+            existing.broadcastSubmittedAt ??
+            new Date(),
+          status: nextStatus,
+          errorDetail: null,
+          orphanedAt: null,
+        },
+      });
+    }
+  );
 }
 
 export async function markBetStakeIntentVerified(
@@ -278,7 +389,7 @@ function isTerminalBetStakeIntentWithoutBroadcast(intent: {
 }
 
 async function discoverEscrowDepositForStakeIntent(
-  prisma: BetStakeIntentDb,
+  prisma: PrismaClient,
   intent: {
     id: number;
     marketId: number;

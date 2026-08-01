@@ -16,6 +16,7 @@ import {
   normalizeReplayPlayers,
   validateMarketFinalIntegrity,
 } from "./teamResolution.ts";
+import { effectiveBetWagerStakeTxHash } from "./betStakeFunding.ts";
 
 export const REPLAY_FINANCIAL_AUTHORITY_CONFIRMATION =
   "AUTHORIZE FINANCIAL RECONCILIATION";
@@ -56,6 +57,12 @@ type AuthorityWager = {
   status: string;
   executionMode: string;
   stakeTxHash: string | null;
+  stakeLeg: {
+    ticket: {
+      status: string;
+      stakeTxHash: string | null;
+    } | null;
+  } | null;
   payoutTxHash: string | null;
   stakeLockedAt: Date | null;
   settledAt: Date | null;
@@ -1032,6 +1039,16 @@ async function buildInternalPlan(
               status: true,
               executionMode: true,
               stakeTxHash: true,
+              stakeLeg: {
+                select: {
+                  ticket: {
+                    select: {
+                      status: true,
+                      stakeTxHash: true,
+                    },
+                  },
+                },
+              },
               payoutTxHash: true,
               stakeLockedAt: true,
               settledAt: true,
@@ -1564,7 +1581,7 @@ async function buildInternalPlan(
             executionMode:
               wager.executionMode,
             stakeTxHash:
-              wager.stakeTxHash,
+              effectiveBetWagerStakeTxHash(wager),
           })
         ),
     });

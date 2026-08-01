@@ -20,6 +20,7 @@ import {
   pendingWoloClaimNameKeys,
   type PendingWoloClaimSummary,
 } from "@/lib/pendingWoloClaims";
+import { isMainnetVisibleFundedBetWager } from "@/lib/betStakeFunding";
 import { buildPlayerPerformanceStats } from "@/lib/playerPerformance";
 import {
   loadPlayerNormalizedStats,
@@ -34,7 +35,7 @@ import {
   publicPlayerMatchesName,
   type PublicPlayerRef,
 } from "@/lib/publicPlayers";
-import { isAtOrAfterWoloMainnetStart, isMainnetVisibleBetWager } from "@/lib/woloChain";
+import { isAtOrAfterWoloMainnetStart } from "@/lib/woloChain";
 import { loadUserCommunitySummaries, type UserCommunitySummary } from "@/lib/communityHonors";
 import {
   applyReplayAdjudicationToGameStats,
@@ -1478,6 +1479,15 @@ async function loadWoloStats(
     stakeTxHash: string | null;
     createdAt: Date;
     stakeLockedAt: Date | null;
+    stakeIntent: {
+      status: string;
+    } | null;
+    stakeLeg: {
+      ticket: {
+        status: string;
+        stakeTxHash: string | null;
+      };
+    } | null;
   }>;
   let position: {
     currentStakedWolo: number;
@@ -1513,6 +1523,21 @@ async function loadWoloStats(
               stakeTxHash: true,
               createdAt: true,
               stakeLockedAt: true,
+              stakeIntent: {
+                select: {
+                  status: true,
+                },
+              },
+              stakeLeg: {
+                select: {
+                  ticket: {
+                    select: {
+                      status: true,
+                      stakeTxHash: true,
+                    },
+                  },
+                },
+              },
             },
           })
         : Promise.resolve([]),
@@ -1582,7 +1607,7 @@ async function loadWoloStats(
   const visibleGiftRows = profileGiftRows.filter((gift) => isAtOrAfterWoloMainnetStart(gift.acceptedAt || gift.createdAt));
   const pendingGiftRows = visibleGiftRows.filter((gift) => gift.status === "pending");
   const pendingGiftWolo = pendingGiftRows.reduce((sum, gift) => sum + (gift.amount ?? 0), 0);
-  const visibleWagers = wagers.filter(isMainnetVisibleBetWager);
+  const visibleWagers = wagers.filter(isMainnetVisibleFundedBetWager);
   const payoutWolo = visibleWagers.reduce((sum, wager) => sum + (wager.payoutTxHash ? wager.payoutWolo ?? 0 : 0), 0);
   const stakingRewardsWolo =
     (position?.pendingRewardsWolo ?? 0) +

@@ -1,5 +1,7 @@
 "use client";
 
+import { useId } from "react";
+
 type FounderBonusType = "participants" | "winner";
 
 function previewCopy(
@@ -64,6 +66,9 @@ export default function FounderBonusModal({
   onNoteChange: (value: string) => void;
   onSubmit: () => void;
 }) {
+  const amountInputId = useId();
+  const noteInputId = useId();
+
   if (!open) {
     return null;
   }
@@ -122,10 +127,11 @@ export default function FounderBonusModal({
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-          <label className="block">
-            <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Amount</div>
+          <div className="block">
+            <label htmlFor={amountInputId} className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Amount</label>
             <div className="mt-2 flex items-center rounded-[1.1rem] border border-white/10 bg-white/5 px-3 py-2">
               <input
+                id={amountInputId}
                 inputMode="numeric"
                 pattern="[0-9]*"
                 value={amountValue}
@@ -133,21 +139,22 @@ export default function FounderBonusModal({
                   onAmountChange(event.target.value.replace(/[^0-9]/g, "").slice(0, 6))
                 }
                 className="w-full bg-transparent text-base text-white outline-none placeholder:text-slate-500"
-                placeholder="200"
+                placeholder={bonusType === "winner" ? "1000" : String(Math.max(2, participantCount) * 2)}
               />
-              <span className="text-xs uppercase tracking-[0.2em] text-slate-500">WOLO</span>
+              <label htmlFor={amountInputId} className="cursor-text select-none text-xs uppercase tracking-[0.2em] text-slate-500">WOLO</label>
             </div>
-          </label>
+          </div>
 
-          <label className="block">
-            <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Note</div>
+          <div className="block">
+            <label htmlFor={noteInputId} className="text-[11px] uppercase tracking-[0.28em] text-slate-500">Note</label>
             <input
+              id={noteInputId}
               value={noteValue}
               onChange={(event) => onNoteChange(event.target.value.slice(0, 160))}
               className="mt-2 w-full rounded-[1.1rem] border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500"
               placeholder="Optional note"
             />
-          </label>
+          </div>
         </div>
 
         <div className="mt-4 rounded-[1.2rem] border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">

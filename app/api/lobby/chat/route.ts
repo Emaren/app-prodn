@@ -5,11 +5,14 @@ import {
   type RequestAiConciergeReplyArgs,
 } from "@/lib/aiConcierge";
 import {
+  loadAiAgentBySlug,
+  type AiAgentRuntimeConfig,
+} from "@/lib/aiAgents";
+import {
   type AiPersonaId,
 } from "@/lib/aiConciergeConfig";
 import { requestEnabledAiReplies } from "@/lib/aiPersonaOrchestrator";
 import { ensureLobbyRoom, getLobbyMessages } from "@/lib/communityStore";
-import { getOrCreateConversationByUsers } from "@/lib/contactInbox";
 import { readGuestReactionSessionIdFromRequest } from "@/lib/guestReactionSession";
 import { LOBBY_ROOM_SLUG, normalizeChatBody } from "@/lib/lobby";
 import { getPrisma } from "@/lib/prisma";
@@ -17,18 +20,6 @@ import { resolveRequestUid } from "@/lib/requestIdentity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-type ConversationHistoryTurn = {
-  role: "user" | "assistant";
-  content: string;
-};
-
-type PreparedPersonaThread = {
-  personaId: AiPersonaId;
-  aiUserId: number;
-  conversationId: number;
-  history: ConversationHistoryTurn[];
-};
 
 type LobbyMutationPayload = Record<string, unknown> & {
   action?: string;
@@ -119,51 +110,6 @@ function canManageLobbyMessage(
   return viewer.isAdmin || viewer.id === ownerUserId;
 }
 
-async function preparePersonaThread(args: {
-  prisma: ReturnType<typeof getPrisma>;
-  viewerUserId: number;
-  personaId: AiPersonaId;
-  messageBody: string;
-}): Promise<PreparedPersonaThread> {
-  const { prisma, viewerUserId, personaId, messageBody } = args;
-
-  const aiUser = await ensureAiPersonaUser(prisma, personaId);
-  const aiConversation = await getOrCreateConversationByUsers(prisma, viewerUserId, aiUser.id);
-  const priorAiThreadMessages = await prisma.directMessage.findMany({
-    where: {
-      conversationId: aiConversation.id,
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: 10,
-    select: {
-      body: true,
-      senderUserId: true,
-    },
-  });
-
-  await prisma.directMessage.create({
-    data: {
-      conversationId: aiConversation.id,
-      senderUserId: viewerUserId,
-      body: messageBody,
-    },
-  });
-
-  return {
-    personaId,
-    aiUserId: aiUser.id,
-    conversationId: aiConversation.id,
-    history: priorAiThreadMessages
-      .slice()
-      .reverse()
-      .filter((message) => Boolean(message.body?.trim()))
-      .map((message) => ({
-        role: message.senderUserId === viewerUserId ? "user" : "assistant",
-        content: String(message.body || "").trim(),
-      })),
-  };
-}
-
 export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const uid = await resolveRequestUid(request, body);
@@ -227,81 +173,79 @@ export async function POST(request: NextRequest) {
   });
 
   const warnings: string[] = [];
-  const preparedThreads = new Map<AiPersonaId, PreparedPersonaThread>();
-
-  for (const personaId of selectedPersonaIds) {
-    const thread = await preparePersonaThread({
-      prisma,
-      viewerUserId: user.id,
-      personaId,
-      messageBody,
-    });
-    preparedThreads.set(personaId, thread);
-  }
+  const personaConfigs = new Map<AiPersonaId, AiAgentRuntimeConfig>();
 
   if (aiEnabled && selectedPersonaIds.length > 0) {
+    const configuredPersonas = await Promise.all(
+      (["scribe", "grimer", "guy"] as const).map(async (personaId) => ({
+        personaId,
+        config: await loadAiAgentBySlug(prisma, personaId, { enabledOnly: true }).catch(
+          () => null
+        ),
+      }))
+    );
+
+    for (const { personaId, config } of configuredPersonas) {
+      if (config) personaConfigs.set(personaId, config);
+    }
+
+    const activePersonaIds = selectedPersonaIds.filter((personaId) => {
+      if (personaConfigs.has(personaId)) return true;
+      warnings.push(`${personaId === "scribe" ? "The AI Scribe" : "Grimer"} is disabled or unavailable; no model call was made.`);
+      return false;
+    });
+
+    if (activePersonaIds.length === 0) {
+      const messages = await getLobbyMessages(prisma, room.slug, 30, {
+        uid,
+        guestSessionId: readGuestReactionSessionIdFromRequest(request),
+      });
+
+      return NextResponse.json({
+        ok: true,
+        messages,
+        aiWarning: warnings.join(" ").trim() || null,
+      });
+    }
+
     try {
       const aiReplies = await requestEnabledAiReplies(
         {
           prisma,
           viewer: {
             uid: user.uid,
-            displayName: user.inGameName || user.steamPersonaName || user.uid,
+            displayName: user.inGameName || user.steamPersonaName || "Community member",
           },
           source: "lobby_public",
           userMessage: messageBody,
           visibility: "public",
           roomSlug: room.slug,
-          selectedPersonaIds,
-          guyEnabled: true,
+          selectedPersonaIds: activePersonaIds,
+          guyEnabled: personaConfigs.has("guy"),
         },
         async (requestArgs: RequestAiConciergeReplyArgs) => {
           const personaId = requestArgs.personaId as AiPersonaId;
-          const thread = preparedThreads.get(personaId);
+          const agentConfig = personaConfigs.get(personaId);
+          if (!agentConfig) {
+            throw new Error(`${personaId} is disabled or unavailable.`);
+          }
 
           return requestAiConciergeReply({
             ...requestArgs,
-            conversationHistory: thread?.history ?? [],
+            agentConfig,
           });
         }
       );
 
       for (const aiReply of aiReplies) {
         const personaId = aiReply.personaId as AiPersonaId;
-        let thread = preparedThreads.get(personaId);
+        const aiUser = await ensureAiPersonaUser(prisma, personaId);
 
-        if (!thread) {
-          thread = await preparePersonaThread({
-            prisma,
-            viewerUserId: user.id,
-            personaId,
-            messageBody,
-          });
-          preparedThreads.set(personaId, thread);
-        }
-
-        const aiThreadMessage = await prisma.directMessage.create({
-          data: {
-            conversationId: thread.conversationId,
-            senderUserId: thread.aiUserId,
-            body: aiReply.body,
-          },
-          select: { id: true },
-        });
-
-        const publicAiMessage = await prisma.chatMessage.create({
+        await prisma.chatMessage.create({
           data: {
             roomId: room.id,
-            userId: thread.aiUserId,
+            userId: aiUser.id,
             body: normalizeChatBody(aiReply.body) || `${aiReply.personaName} checked in.`,
-          },
-          select: { id: true },
-        });
-
-        await prisma.directMessage.update({
-          where: { id: aiThreadMessage.id },
-          data: {
-            sharedLobbyMessageId: publicAiMessage.id,
           },
         });
       }

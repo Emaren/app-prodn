@@ -34,30 +34,72 @@ export const AI_MODEL_OPTIONS = [
     id: "Agent4.1Scribe",
     label: "OpenAI GPT-4.1 Scribe",
     provider: "openai",
+    promptId: "pmpt_69cf27b4471481948af207cc46496d610a8fc123d5176074",
+    promptVersion: "9",
   },
   {
     id: "Agent4.1Grimer",
     label: "OpenAI GPT-4.1 Grimer",
     provider: "openai",
+    promptId: "pmpt_69d2f44dcac08193941ed5d52223acf9092ea9affdc458bd",
+    promptVersion: "11",
   },
   {
     id: "Agent4.1Guy",
     label: "OpenAI GPT-4.1 Guy",
     provider: "openai",
+    promptId: "pmpt_69d3eda4e3208196a00348e6c3531c3806b3521a2dd717fb",
+    promptVersion: "2",
   },
   {
     id: "Agent4.1M",
     label: "OpenAI GPT-4.1",
     provider: "openai",
+    promptId: "pmpt_686bf4b4f1d48195a1308c4e91328e740b8e7b35195e334b",
+    promptVersion: "5",
   },
   {
     id: "LlamaAgent42",
     label: "Local Llama 3 8B",
     provider: "ollama",
+    promptId: null,
+    promptVersion: null,
   },
 ] as const;
 
 export type AiModelId = (typeof AI_MODEL_OPTIONS)[number]["id"];
+
+export type AiProviderPromptMetadata = {
+  provider: string;
+  label: string;
+  promptId: string;
+  promptVersion: string;
+  platformUrl: string;
+  source: "llama-chat gateway registry";
+  readOnly: true;
+};
+
+export function getAiProviderPromptMetadata(
+  modelId: string | null | undefined,
+): AiProviderPromptMetadata | null {
+  const option = AI_MODEL_OPTIONS.find((candidate) => candidate.id === modelId);
+  if (!option?.promptId || !option.promptVersion) return null;
+
+  const query = new URLSearchParams({
+    prompt: option.promptId,
+    version: option.promptVersion,
+  });
+
+  return {
+    provider: option.provider,
+    label: option.label,
+    promptId: option.promptId,
+    promptVersion: option.promptVersion,
+    platformUrl: `https://platform.openai.com/chat/edit?${query.toString()}`,
+    source: "llama-chat gateway registry",
+    readOnly: true,
+  };
+}
 
 export const DEFAULT_AI_CONCIERGE_MODEL_ID: AiModelId = "Agent4.1Scribe";
 export const DEFAULT_AI_GRIMER_MODEL_ID: AiModelId = "Agent4.1Grimer";

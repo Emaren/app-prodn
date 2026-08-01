@@ -42,6 +42,7 @@ import {
 import ScheduledMatchCard, {
   CompactScheduledMatchHistoryRow,
 } from "@/components/challenge/ScheduledMatchCard";
+import AutoBetReserveCard from "@/components/profile/AutoBetReserveCard";
 import BrowserStreamStudio from "@/components/streaming/BrowserStreamStudio";
 import {
   LobbyTextColorPicker,
@@ -1186,6 +1187,8 @@ function ProfilePageContent() {
         </div>
       </section>
 
+      <AutoBetReserveCard />
+
       <section className="space-y-6">
         <div className="rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 sm:p-7">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -2306,6 +2309,8 @@ function ExtremeProfileView({
           </div>
         ) : null}
       </section>
+
+      <AutoBetReserveCard />
 
       {/* =====================================================
           THE ARMORY

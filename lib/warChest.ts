@@ -1,5 +1,8 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 
+import {
+  visibleMainnetFundedBetWagerWhere as visibleMainnetWagerWhere,
+} from "@/lib/betStakeFunding";
 import { loadBetBoardSnapshot, type BetBoardSnapshot } from "@/lib/bets";
 import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 import type {
@@ -100,23 +103,6 @@ function displayActorName(input: {
     normalizePublicPlayerName(input.steamPersonaName) ||
     input.uid
   );
-}
-
-function visibleMainnetWagerWhere(
-  extra: Prisma.BetWagerWhereInput = {}
-): Prisma.BetWagerWhereInput {
-  if (!isWoloMainnet()) return extra;
-  return {
-    ...extra,
-    executionMode: "onchain_escrow",
-    stakeTxHash: { not: null },
-    stakeLockedAt: { gte: getWoloMainnetDisplayStartAt() },
-    stakeIntent: {
-      is: {
-        status: "recorded",
-      },
-    },
-  };
 }
 
 function visibleMainnetClaimWhere(

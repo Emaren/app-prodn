@@ -511,10 +511,19 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
       ) as market_payout_wolo,
       bw.status,
       bw.payout_tx_hash,
-      coalesce(bw.payout_tx_hash, bw.stake_tx_hash) as tx_hash,
+      coalesce(
+        bw.payout_tx_hash,
+        bw.stake_tx_hash,
+        case
+          when ticket.status = 'recorded' then ticket.stake_tx_hash
+          else null
+        end
+      ) as tx_hash,
       coalesce(bw.settled_at, bw.stake_locked_at, bw.created_at) as occurred_at
     from bet_wagers bw
     join bet_markets bm on bm.id = bw.market_id
+    left join bet_stake_legs leg on leg.id = bw.stake_leg_id
+    left join bet_stake_tickets ticket on ticket.id = leg.ticket_id
     where bw.user_id = $1
       and coalesce(bw.settled_at, bw.stake_locked_at, bw.created_at)::date >= $2::date
 

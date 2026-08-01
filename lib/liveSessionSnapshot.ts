@@ -52,6 +52,10 @@ export type LiveGameSession = {
     lastSeenAt: string;
   }>;
   watcherCount: number;
+  watcherIds: string[];
+  watcherSessionIds: string[];
+  replayFingerprints: string[];
+  watcherVersions: string[];
   parseRows: number;
   coverageLevel: "unknown" | "single" | "dual" | "stacked";
   disposition: ReplaySessionDisposition;
@@ -248,6 +252,52 @@ function collectUploaders(rows: SessionRow[]) {
     }));
 }
 
+export function readWatcherUploadMetadata(keyEventsValue: unknown) {
+  const keyEvents = readKeyEvents(keyEventsValue);
+  const rawUpload = keyEvents.watcher_upload;
+  if (!rawUpload || typeof rawUpload !== "object" || Array.isArray(rawUpload)) {
+    return null;
+  }
+
+  const upload = rawUpload as Record<string, unknown>;
+  const read = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+
+  return {
+    watcherId: read(upload.watcher_id),
+    watcherSessionId: read(upload.watcher_session_id),
+    replayFingerprint: read(upload.replay_fingerprint),
+    watcherVersion: read(upload.watcher_version),
+  };
+}
+
+function collectWatcherCoverage(rows: SessionRow[]) {
+  const watcherIds = new Set<string>();
+  const watcherSessionIds = new Set<string>();
+  const replayFingerprints = new Set<string>();
+  const watcherVersions = new Set<string>();
+
+  for (const row of rows) {
+    const upload = readWatcherUploadMetadata(row.key_events);
+    if (!upload) continue;
+    const add = (target: Set<string>, value: unknown) => {
+      const normalized = typeof value === "string" ? value.trim() : "";
+      if (normalized) target.add(normalized);
+    };
+
+    add(watcherIds, upload.watcherId);
+    add(watcherSessionIds, upload.watcherSessionId);
+    add(replayFingerprints, upload.replayFingerprint);
+    add(watcherVersions, upload.watcherVersion);
+  }
+
+  return {
+    watcherIds: [...watcherIds].sort(),
+    watcherSessionIds: [...watcherSessionIds].sort(),
+    replayFingerprints: [...replayFingerprints].sort(),
+    watcherVersions: [...watcherVersions].sort(),
+  };
+}
+
 function coverageLevel(watcherCount: number): LiveGameSession["coverageLevel"] {
   if (watcherCount >= 3) return "stacked";
   if (watcherCount === 2) return "dual";
@@ -267,6 +317,8 @@ function buildSessionFromRow(
   const activityTime = getRowActivityTime(row);
   const finalEvidence = state === "completed" || options.finalProofPending === true;
   const uploaders = collectUploaders(sourceRows);
+  const watcherCoverage = collectWatcherCoverage(sourceRows);
+  const watcherCount = Math.max(watcherCoverage.watcherIds.length, uploaders.length);
   const primaryUploader = uploaders[0] ?? null;
   const mergedPlayers = bestKnownPlayers(sourceRows, row);
   const parsedPlayers = mergedPlayers.players;
@@ -311,7 +363,7 @@ function buildSessionFromRow(
     isFinal: finalEvidence,
     disconnectDetected:
       row.disconnect_detected,
-    watcherCount: uploaders.length,
+    watcherCount,
   });
   const disposition = classifyReplaySessionDisposition({
     state: finalEvidence ? "completed" : "live",
@@ -342,9 +394,13 @@ function buildSessionFromRow(
     players,
     teamResolution,
     uploaders,
-    watcherCount: uploaders.length,
+    watcherCount,
+    watcherIds: watcherCoverage.watcherIds,
+    watcherSessionIds: watcherCoverage.watcherSessionIds,
+    replayFingerprints: watcherCoverage.replayFingerprints,
+    watcherVersions: watcherCoverage.watcherVersions,
     parseRows: sourceRows.length,
-    coverageLevel: coverageLevel(uploaders.length),
+    coverageLevel: coverageLevel(watcherCount),
     disposition,
     uploader: primaryUploader
       ? {
@@ -649,7 +705,7 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
   activeSessions.sort((left, right) => {
     const leftStartedAt = new Date(left.playedOn || left.createdAt || left.updatedAt).getTime();
     const rightStartedAt = new Date(right.playedOn || right.createdAt || right.updatedAt).getTime();
-    const startedDiff = leftStartedAt - rightStartedAt;
+    const startedDiff = rightStartedAt - leftStartedAt;
     if (startedDiff !== 0) return startedDiff;
 
     const leftActivityAt = new Date(left.updatedAt).getTime();

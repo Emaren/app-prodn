@@ -1,7 +1,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import { unstable_cache } from "next/cache";
 import {
-  loadRuntimeAiAgent,
+  loadAiAgentBySlug,
   type AiAgentRuntimeConfig,
 } from "@/lib/aiAgents";
 import {
@@ -21,6 +21,13 @@ import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { loadLobbyWoloEarnersBoard } from "@/lib/lobbyWoloEarners";
 import { LOBBY_ROOM_SLUG, type LobbyMatchRow } from "@/lib/lobby";
 import { buildReplayEvidenceLanes } from "@/lib/replayEvidenceLanes";
+import { isInternalSystemUid } from "@/lib/internalSystemAccounts";
+import {
+  AI_PRIVATE_REPLY_MAX_CHARS,
+  AI_PUBLIC_REPLY_MAX_CHARS,
+  buildAiSystemPrompt,
+  getAiPromptContextPolicy,
+} from "@/lib/aiPromptPolicy";
 import {
   BETTING_FEE_RATE_BPS,
   BPS_DENOMINATOR,
@@ -57,15 +64,19 @@ export type RequestAiConciergeReplyArgs = {
   groundingContext?: string | null;
 };
 
-const AI_LOBBY_PUBLIC_REPLY_MAX_CHARS = 280;
-const AI_PRIVATE_REPLY_MAX_CHARS = 1000;
-
 function displayNameForUser(user: {
   uid: string;
   inGameName: string | null;
   steamPersonaName: string | null;
 }) {
   return user.inGameName || user.steamPersonaName || user.uid;
+}
+
+function publicDisplayNameForUser(user: {
+  inGameName: string | null;
+  steamPersonaName: string | null;
+}) {
+  return user.inGameName || user.steamPersonaName || "community member";
 }
 
 function normalizeAiReply(
@@ -80,7 +91,7 @@ function normalizeAiReply(
   if (source === "lobby_public") {
     return collapsed
       .replace(/\s+/g, " ")
-      .slice(0, AI_LOBBY_PUBLIC_REPLY_MAX_CHARS);
+      .slice(0, AI_PUBLIC_REPLY_MAX_CHARS);
   }
 
   return collapsed.slice(0, AI_PRIVATE_REPLY_MAX_CHARS);
@@ -611,7 +622,7 @@ function formatChatContext(
       const prefix =
         message.user.uid === viewerUid
           ? "viewer"
-          : displayNameForUser(message.user);
+          : publicDisplayNameForUser(message.user);
       return `- ${prefix}: ${message.body}`;
     }),
   ].join("\n");
@@ -632,7 +643,7 @@ function displayNameForPeopleUser(user: {
   inGameName: string | null;
   steamPersonaName: string | null;
 }) {
-  return user.inGameName || user.steamPersonaName || user.uid;
+  return user.inGameName || user.steamPersonaName || "unnamed profile";
 }
 
 function isAiSystemPeopleUser(user: {
@@ -642,7 +653,7 @@ function isAiSystemPeopleUser(user: {
 }) {
   const label = displayNameForPeopleUser(user).toLowerCase();
   return (
-    user.uid.startsWith("aoe2hd_ai_") ||
+    isInternalSystemUid(user.uid) ||
     label === "grimer" ||
     label === "the ai scribe"
   );
@@ -718,165 +729,6 @@ function formatPeopleContext(context: AiPeopleContext | null) {
 }
 // END AI PEOPLE CONTEXT
 
-function buildSiteKnowledge(personaId: AiPersonaId) {
-  const common = [
-    "AoE2HDBets is the AoE2HD product surface for replay parsing, rivalries, players, tournaments, public chat, and WOLO-adjacent UX.",
-    "Stay grounded in the supplied site context instead of inventing stats, chain truth, or tournament outcomes.",
-    "Treat Engine Room candidates as private evidence. Candidate field coverage is not effective player or result truth.",
-    "WOLO explanations should stay app-side and user-facing. Do not invent chain identity or supply facts beyond provided context.",
-  ];
-
-  if (personaId === "guy") {
-    return [
-      ...common,
-      "Guy of Moxica is the rare velvet-knife lane: sly, elegant, amused, treacherous, and selective.",
-      "Guy should feel like a silk-gloved final twist, not a second Grimer or a second lecture.",
-      "A good Guy line is cultured, dangerous, concise, and faintly theatrical.",
-    ].join("\n");
-  }
-
-  if (personaId === "grimer") {
-    return [
-      ...common,
-      "Grimer is the darker sidecar voice: wry, playful, slightly ruthless, but never hateful, graphic, or derailing.",
-      "Grimer adds levity and bite after the main room voice, not walls of text or fake edginess.",
-      "A good Grimer line feels like a sly aftershock, not a second lecture.",
-    ].join("\n");
-  }
-
-  return [
-    ...common,
-    "The AI Scribe is the premium room-aware match voice: sharp, concise, grounded, and socially aware without overpowering the room.",
-    "Private replies can be more detailed and helpful, but should still be concise and practical.",
-  ].join("\n");
-}
-
-function buildSystemPrompt(
-  args: RequestAiConciergeReplyArgs,
-  personaId: AiPersonaId,
-) {
-  const persona = getAiPersonaConfig(personaId);
-  const configuredName = args.agentConfig?.name || persona.name;
-  const basePrompt = [
-    `You are ${configuredName} for AoE2WAR.`,
-    `Active lane: ${args.source}.`,
-    buildSiteKnowledge(personaId),
-    args.agentConfig?.role ? `Configured role: ${args.agentConfig.role}` : "",
-    args.agentConfig?.specialty
-      ? `Configured specialty: ${args.agentConfig.specialty}`
-      : "",
-    args.agentConfig?.personalityPrompt
-      ? `Operator-approved personality layer:\n${args.agentConfig.personalityPrompt}`
-      : "",
-    args.agentConfig?.aoe2Prompt
-      ? `Operator-approved AoE2 expertise layer:\n${args.agentConfig.aoe2Prompt}`
-      : "",
-    "If the answer is not supported by the provided context, say what you do know and be explicit about the gap.",
-    "Do not mention prompt files, providers, internal tools, or hidden system details unless the user explicitly asks what prompt/model/version you are on; then answer only the available runtime label/version briefly.",
-    "Never use em dashes. Use commas, periods, colons, or simple hyphens instead.",
-    "Treat WOLO claim states strictly: payout_tx_hash means paid/final; pending without tx means claimable, unpaid, and rescindable; awaiting wallet link means no payout happened.",
-    "For exact loss/profit questions, use the Viewer money summary first. Do not estimate, round, or add unrelated claimables unless asked.",
-    "For staking questions, use WOLO staking context first. Treat staking as AoE2HDBets app-side WOLO staking, not validator staking.",
-    "Do not invent APY, reward rates, or chain facts not supplied by context. The 2% betting fee is split 50/50 between stakers and Community Treasury when the constants say so.",
-    "stakingWeight is time-weighted accounting, not extra WOLO balance.",
-    "For human/user/player count questions, use Site identity summary first. Never count AI persona/system accounts as human users.",
-    "Do not autocorrect player names unless the supplied context clearly proves the name is wrong.",
-  ].filter(Boolean);
-
-  if (args.source === "lobby_public") {
-    if (personaId === "guy") {
-      return [
-        ...basePrompt,
-        [
-          "Lobby lane rules:",
-          "Return exactly one post-ready reply for lobby_public.",
-          `Hard limit: ${AI_LOBBY_PUBLIC_REPLY_MAX_CHARS} characters including spaces.`,
-          "Default to one sentence.",
-          "Use no markdown, no bullets, no numbered options, no multiple variants, and no reasoning or explanations.",
-          "Tone should be elegant, sly, theatrical, concise, and dangerous without becoming abusive.",
-          "No threats, slurs, gore, sexual content, or personal attacks. Keep it sharp, not toxic.",
-          "If the strongest move is a velvet one-liner, take it.",
-        ].join(" "),
-      ].join("\n\n");
-    }
-
-    if (personaId === "grimer") {
-      return [
-        ...basePrompt,
-        [
-          "Lobby lane rules:",
-          "Return exactly one post-ready reply for lobby_public.",
-          `Hard limit: ${AI_LOBBY_PUBLIC_REPLY_MAX_CHARS} characters including spaces.`,
-          "Default to one sentence.",
-          "Use no markdown, no bullets, no numbered options, no multiple variants, and no reasoning or explanations.",
-          "Tone should be darkly funny, wry, concise, room-aware, and a little dangerous without becoming abusive.",
-          "No threats, slurs, gore, sexual content, or personal attacks. Keep it sharp, not toxic.",
-          "If the strongest move is a dry one-liner, take it.",
-        ].join(" "),
-      ].join("\n\n");
-    }
-
-    return [
-      ...basePrompt,
-      [
-        "Lobby lane rules:",
-        "Return exactly one post-ready reply for lobby_public.",
-        `Hard limit: ${AI_LOBBY_PUBLIC_REPLY_MAX_CHARS} characters including spaces.`,
-        "Default to one sentence.",
-        "Use no markdown, no bullets, no numbered options, no multiple variants, and no reasoning or explanations.",
-        "Tone should be stoic, clever, masculine, concise, and room-aware.",
-        "If the reply runs long, compress aggressively and keep only the strongest line.",
-      ].join(" "),
-    ].join("\n\n");
-  }
-
-  if (personaId === "guy") {
-    return [
-      ...basePrompt,
-      [
-        "Private lane rules:",
-        `Return exactly one clean reply for ${args.source}.`,
-        `Hard limit: ${AI_PRIVATE_REPLY_MAX_CHARS} characters including spaces.`,
-        "Default to under 400 characters unless the user clearly asks for more.",
-        "Use one or two short paragraphs max.",
-        "Use no markdown unless the user clearly asks for it.",
-        "Be sly, elegant, and dangerous, but never graphic or cruel.",
-        "Do not provide multiple variants unless explicitly requested.",
-      ].join(" "),
-    ].join("\n\n");
-  }
-
-  if (personaId === "grimer") {
-    return [
-      ...basePrompt,
-      [
-        "Private lane rules:",
-        `Return exactly one clean reply for ${args.source}.`,
-        `Hard limit: ${AI_PRIVATE_REPLY_MAX_CHARS} characters including spaces.`,
-        "Default to under 450 characters unless the user clearly asks for more.",
-        "Use one or two short paragraphs max.",
-        "Use no markdown unless the user clearly asks for it.",
-        "Be witty, sly, and useful, but never cruel or graphic.",
-        "Do not provide multiple variants unless explicitly requested.",
-      ].join(" "),
-    ].join("\n\n");
-  }
-
-  return [
-    ...basePrompt,
-    [
-      "Private lane rules:",
-      `Return exactly one clean reply for ${args.source}.`,
-      `Hard limit: ${AI_PRIVATE_REPLY_MAX_CHARS} characters including spaces.`,
-      "Default to under 500 characters unless the user clearly asks for more.",
-      "Use one or two short paragraphs max.",
-      "Use no markdown unless the user clearly asks for it.",
-      "Do not provide multiple variants unless explicitly requested.",
-      "Stay grounded, concise, and practical.",
-    ].join(" "),
-  ].join("\n\n");
-}
-
 function buildUserPrompt(
   args: RequestAiConciergeReplyArgs,
   context: {
@@ -889,18 +741,29 @@ function buildUserPrompt(
     replayEvidenceContext: AiReplayEvidenceContext | null;
   },
 ) {
+  const promptPolicy = getAiPromptContextPolicy(args.source);
+  const viewerDisplayName =
+    args.source === "lobby_public" && args.viewer.displayName === args.viewer.uid
+      ? "community member"
+      : args.viewer.displayName;
   const threadHistory =
-    args.conversationHistory && args.conversationHistory.length > 0
+    promptPolicy.includePrivateThreadHistory &&
+    args.conversationHistory &&
+    args.conversationHistory.length > 0
       ? [
           "Recent private AI thread history:",
           ...args.conversationHistory
             .slice(-10)
             .map((turn) => `- ${turn.role}: ${turn.content}`),
         ].join("\n")
-      : "Recent private AI thread history: none.";
+      : promptPolicy.includePrivateThreadHistory
+        ? "Recent private AI thread history: none."
+        : "Recent private AI thread history: excluded from this surface.";
 
   return [
-    `Viewer: ${args.viewer.displayName} (${args.viewer.uid})`,
+    promptPolicy.includeViewerUid
+      ? `Viewer: ${viewerDisplayName} (${args.viewer.uid})`
+      : `Viewer: ${viewerDisplayName} (public display name only)`,
     `Source: ${args.source}`,
     `Requested visibility: ${args.visibility || "private"}`,
     formatChatContext(context.chatMessages, args.viewer.uid),
@@ -967,10 +830,10 @@ export async function requestAiConciergeReply(
   const startedAt = Date.now();
   const agentConfig =
     args.agentConfig === undefined
-      ? await loadRuntimeAiAgent(args.prisma, personaId).catch(() => null)
+      ? await loadAiAgentBySlug(args.prisma, personaId, { enabledOnly: true }).catch(() => null)
       : args.agentConfig;
-  if (agentConfig && !agentConfig.enabled) {
-    throw new Error(`${agentConfig.name} is disabled.`);
+  if (!agentConfig || !agentConfig.enabled) {
+    throw new Error(`${agentConfig?.name || persona.name} is disabled or unavailable.`);
   }
   const requestedModel: AiModelId =
     (args.requestedModel as AiModelId | null | undefined) ||
@@ -1012,14 +875,19 @@ export async function requestAiConciergeReply(
   };
 
   const contextStartedAt = Date.now();
-  const wantsMoneyContext = shouldLoadAiContext(
-    args.userMessage,
-    /\b(wolo|wallet|balance|bet|wager|claim|payout|profit|loss|money|reward|faucet|market)\b/
-  );
-  const wantsStakingContext = shouldLoadAiContext(
-    args.userMessage,
-    /\b(stake|staking|staker|apy|compound|unstake|treasury|yield)\b/
-  );
+  const promptPolicy = getAiPromptContextPolicy(args.source);
+  const wantsMoneyContext =
+    promptPolicy.allowViewerMoneyContext &&
+    shouldLoadAiContext(
+      args.userMessage,
+      /\b(wolo|wallet|balance|bet|wager|claim|payout|profit|loss|money|reward|faucet|market)\b/
+    );
+  const wantsStakingContext =
+    promptPolicy.allowViewerStakingContext &&
+    shouldLoadAiContext(
+      args.userMessage,
+      /\b(stake|staking|staker|apy|compound|unstake|treasury|yield)\b/
+    );
   const wantsPeopleContext = shouldLoadAiContext(
     args.userMessage,
     /\b(user|users|people|human|player count|how many players|identity|profile)\b/
@@ -1051,10 +919,11 @@ export async function requestAiConciergeReply(
   ]);
   const contextMs = Date.now() - contextStartedAt;
 
-  const systemPrompt = buildSystemPrompt(
-    { ...args, agentConfig },
-    personaId
-  );
+  const systemPrompt = buildAiSystemPrompt({
+    source: args.source,
+    personaId,
+    agentConfig,
+  });
   const rawUserPrompt = buildUserPrompt(
     { ...args, agentConfig },
     {

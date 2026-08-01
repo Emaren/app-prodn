@@ -15,9 +15,14 @@ import {
 } from "@/lib/adminTileViewAnalytics";
 import { loadPendingWoloClaimsForAdmin, normalizePendingWoloClaimName } from "@/lib/pendingWoloClaims";
 import {
-  isBetStakeIntentCountableStatus,
   refreshRecoverableBetStakeIntents,
 } from "@/lib/betStakeIntents";
+import {
+  effectiveBetWagerStakeTxHash,
+  hasRecordedBetWagerFunding,
+  isMainnetVisibleFundedBetWager,
+  visibleMainnetFundedBetWagerWhere,
+} from "@/lib/betStakeFunding";
 import { buildChallengeEconomySurface } from "@/lib/challengeEconomy";
 import {
   SCHEDULED_MATCH_COLOR_TAGS,
@@ -29,7 +34,6 @@ import {
   buildWoloRestTxLookupUrl,
   getWoloBetEscrowRuntime,
   getWoloMainnetDisplayStartAt,
-  isMainnetVisibleBetWager,
   isWoloMainnet,
 } from "@/lib/woloChain";
 import { loadBetWalletFrictionRail } from "@/lib/adminWalletFriction";
@@ -162,33 +166,21 @@ function isCountableWagerRow(wager: {
   stakeLockedAt?: Date | string | null;
   createdAt?: Date | string | null;
   stakeIntent?: { status: string | null } | null;
+  stakeLeg?: {
+    ticket?: {
+      status: string;
+      stakeTxHash: string | null;
+    } | null;
+  } | null;
 }) {
-  if (!isMainnetVisibleBetWager(wager)) {
-    return false;
-  }
-
   return (
-    wager.executionMode !== "onchain_escrow" ||
-    isBetStakeIntentCountableStatus(wager.stakeIntent?.status)
+    isMainnetVisibleFundedBetWager(wager) &&
+    (wager.executionMode !== "onchain_escrow" || hasRecordedBetWagerFunding(wager))
   );
 }
 
 function isVisibleMainnetClaim(claim: { createdAt: Date }) {
   return !isWoloMainnet() || claim.createdAt.getTime() >= getWoloMainnetDisplayStartAt().getTime();
-}
-
-function visibleMainnetWagerWhere() {
-  if (!isWoloMainnet()) return {};
-  return {
-    executionMode: "onchain_escrow",
-    stakeTxHash: { not: null },
-    stakeLockedAt: { gte: getWoloMainnetDisplayStartAt() },
-    stakeIntent: {
-      is: {
-        status: "recorded",
-      },
-    },
-  };
 }
 
 function resolveExecutionMode(
@@ -403,10 +395,9 @@ export async function GET(request: NextRequest) {
         },
       }),
       prisma.betWager.findMany({
-        where: {
+        where: visibleMainnetFundedBetWagerWhere({
           userId: { in: userIds },
-          ...visibleMainnetWagerWhere(),
-        },
+        }),
         orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
         include: {
           market: {
@@ -414,6 +405,16 @@ export async function GET(request: NextRequest) {
               id: true,
               title: true,
               eventLabel: true,
+            },
+          },
+          stakeLeg: {
+            select: {
+              ticket: {
+                select: {
+                  status: true,
+                  stakeTxHash: true,
+                },
+              },
             },
           },
         },
@@ -472,6 +473,16 @@ export async function GET(request: NextRequest) {
               stakeIntent: {
                 select: {
                   status: true,
+                },
+              },
+              stakeLeg: {
+                select: {
+                  ticket: {
+                    select: {
+                      status: true,
+                      stakeTxHash: true,
+                    },
+                  },
                 },
               },
               user: {
@@ -845,7 +856,7 @@ export async function GET(request: NextRequest) {
           payoutWolo: row.payoutWolo ?? null,
           status: row.status,
           executionMode: row.executionMode,
-          stakeTxHash: row.stakeTxHash ?? null,
+          stakeTxHash: effectiveBetWagerStakeTxHash(row),
           stakeWalletAddress: row.stakeWalletAddress ?? null,
           stakeLockedAt: row.stakeLockedAt?.toISOString() ?? null,
           createdAt: row.createdAt.toISOString(),
@@ -1137,6 +1148,7 @@ export async function GET(request: NextRequest) {
 
       for (const wager of poolEligibleWagers) {
         const side = wager.side === "right" ? "right" : "left";
+        const stakeTxHash = effectiveBetWagerStakeTxHash(wager);
         const bucketKey = `${wager.userId}:${side}`;
         const existing = bettorsBySide.get(bucketKey);
 
@@ -1147,7 +1159,7 @@ export async function GET(request: NextRequest) {
           existing.statuses.push(wager.status);
           existing.payoutWolo += wager.payoutWolo ?? 0;
           existing.stakeWalletAddress ||= wager.stakeWalletAddress ?? null;
-          existing.stakeTxHash ||= wager.stakeTxHash ?? null;
+          existing.stakeTxHash ||= stakeTxHash;
           existing.payoutTxHash ||= wager.payoutTxHash ?? null;
           existing.payoutProofUrl ||= wager.payoutProofUrl ?? null;
           continue;
@@ -1163,7 +1175,7 @@ export async function GET(request: NextRequest) {
           executionModes: [wager.executionMode],
           statuses: [wager.status],
           stakeWalletAddress: wager.stakeWalletAddress ?? null,
-          stakeTxHash: wager.stakeTxHash ?? null,
+          stakeTxHash,
           payoutWolo: wager.payoutWolo ?? 0,
           payoutTxHash: wager.payoutTxHash ?? null,
           payoutProofUrl: wager.payoutProofUrl ?? null,

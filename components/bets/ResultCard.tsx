@@ -85,6 +85,11 @@ export default function ResultCard({
     <div className="flex h-full flex-col">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
+          {result.battleNumber ? (
+            <div className="mb-2 inline-flex rounded-full border border-cyan-200/[0.12] bg-cyan-300/[0.07] px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.2em] text-cyan-100">
+              Battle #{result.battleNumber.toLocaleString()}
+            </div>
+          ) : null}
           {basicLook ? (
             <div className="truncate whitespace-nowrap text-[10px] uppercase tracking-[0.32em] text-slate-500 sm:text-[11px]">
               {result.mapName}

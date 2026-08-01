@@ -3,7 +3,9 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 import {
   resolveFounderClaimTargetUser,
   syncFounderBonusStatus,
+  withFounderPayoutTargetLock,
 } from "@/lib/betFounderBonuses";
+import { buildFounderPayoutIdentity } from "@/lib/founderPayoutIdentity";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
 import { validateDistinctClaimPayoutTx } from "@/lib/woloClaimPayoutGuards";
@@ -11,6 +13,7 @@ import {
   executeFounderWoloPayout,
   executeWoloPayout,
   executeWoloSettlementRun,
+  findConfirmedWoloPayoutByMemo,
   getWoloPayoutExecutionBlocker,
   type SettlementRunResult,
 } from "@/lib/woloBetSettlement";
@@ -580,6 +583,160 @@ export async function retryPendingClaimSettlement(
   const useFounderSettlement = Boolean(claim.sourceFounderBonusId);
   const useGroupedMarketSettlement = Boolean(!useFounderSettlement && market && isMarketSettlementClaim(claim));
   let settlementRunId: string | null = null;
+
+  if (useFounderSettlement && claim.sourceFounderBonusId) {
+    const founderBonusId = claim.sourceFounderBonusId;
+    const payoutAddress = matchedUser.walletAddress;
+    const payoutIdentity = buildFounderPayoutIdentity({
+      founderBonusId,
+      claimGroupKey: claim.claimGroupKey,
+      claimKind: claim.claimKind,
+    });
+
+    try {
+      return await withFounderPayoutTargetLock(
+        prisma,
+        payoutIdentity,
+        async (tx) => {
+          const currentClaim = await tx.pendingWoloClaim.findUnique({
+            where: { id: claim.id },
+            select: {
+              status: true,
+              payoutTxHash: true,
+            },
+          });
+          if (!currentClaim || currentClaim.status !== "pending") {
+            return {
+              outcome: "skipped" as const,
+              claimId: claim.id,
+              reason: currentClaim ? "not_pending" as const : "not_found" as const,
+            };
+          }
+
+          assertAdminRetryWinnerTruthGate({ claim, market });
+
+          const storedPayoutTxHash = currentClaim.payoutTxHash?.trim() || null;
+          let payout: {
+            txHash: string;
+            proofUrl?: string | null;
+          } | null = storedPayoutTxHash
+            ? {
+                txHash: storedPayoutTxHash,
+                proofUrl: null as string | null,
+              }
+            : await findConfirmedWoloPayoutByMemo({
+                toAddress: payoutAddress,
+                amountWolo: claim.amountWolo,
+                memo: payoutIdentity.memo,
+              });
+
+          if (!payout) {
+            payout = await executeFounderWoloPayout({
+              requestId: payoutIdentity.requestId,
+              toAddress: payoutAddress,
+              amountWolo: claim.amountWolo,
+              memo: payoutIdentity.memo,
+            });
+          }
+
+          if (!payout?.txHash) {
+            throw new Error(
+              getWoloPayoutExecutionBlocker() ||
+                "Founder WOLO payout execution returned no transaction hash."
+            );
+          }
+
+          const payoutGuard = await validateDistinctClaimPayoutTx(tx, {
+            key: `claim-${claim.id}`,
+            claimId: claim.id,
+            txHash: payout.txHash,
+            toAddress: payoutAddress,
+            amountWolo: claim.amountWolo,
+          });
+          if (!payoutGuard.ok) {
+            throw new Error(
+              payoutGuard.detail ||
+                payoutGuard.failureCode ||
+                "Founder payout tx failed distinct MsgSend validation."
+            );
+          }
+
+          const claimed = await tx.pendingWoloClaim.updateMany({
+            where: {
+              id: claim.id,
+              status: "pending",
+            },
+            data: {
+              status: "claimed",
+              claimedByUserId: matchedUser.id,
+              claimedAt: attemptAt,
+              payoutTxHash: payout.txHash,
+              payoutProofUrl: payoutGuard.proofUrl ?? payout.proofUrl ?? null,
+              errorState: null,
+              payoutAttemptedAt: attemptAt,
+              note: compactSettlementNote(
+                market?.title || claim.displayPlayerName,
+                claim.amountWolo,
+                payout.txHash
+              ),
+            },
+          });
+          if (claimed.count !== 1) {
+            return {
+              outcome: "skipped" as const,
+              claimId: claim.id,
+              reason: "not_pending" as const,
+            };
+          }
+
+          await syncFounderBonusStatus(tx as unknown as PrismaClient, [founderBonusId]);
+          await recordUserActivity(tx as unknown as PrismaClient, {
+            userId: matchedUser.id,
+            type: "wolo_claim_auto_settled",
+            path: activityPath,
+            label: claim.displayPlayerName,
+            metadata: {
+              claimId: claim.id,
+              amountWolo: claim.amountWolo,
+              payoutTxHash: payout.txHash,
+              sourceMarketId: claim.sourceMarketId,
+              founderPayoutRequestId: payoutIdentity.requestId,
+            },
+            dedupeWithinSeconds: 0,
+          });
+
+          return {
+            outcome: "claimed" as const,
+            claimId: claim.id,
+            amountWolo: claim.amountWolo,
+            txHash: payout.txHash,
+            matchedUserId: matchedUser.id,
+          };
+        }
+      );
+    } catch (error) {
+      const detail =
+        error instanceof Error ? error.message : "Founder WOLO payout retry failed.";
+
+      await prisma.pendingWoloClaim.updateMany({
+        where: {
+          id: claim.id,
+          status: "pending",
+        },
+        data: {
+          errorState: detail.trim().replace(/\s+/g, " ").slice(0, 255),
+          payoutAttemptedAt: attemptAt,
+        },
+      });
+      await syncFounderBonusStatus(prisma, [founderBonusId]);
+
+      return {
+        outcome: "failed",
+        claimId: claim.id,
+        detail,
+      };
+    }
+  }
 
   try {
     assertAdminRetryWinnerTruthGate({ claim, market });

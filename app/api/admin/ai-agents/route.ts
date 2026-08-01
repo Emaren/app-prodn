@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { AI_MODEL_OPTIONS } from "@/lib/aiConciergeConfig";
+import {
+  AI_MODEL_OPTIONS,
+  getAiProviderPromptMetadata,
+} from "@/lib/aiConciergeConfig";
 import {
   AI_AGENT_RUNTIME_PERSONAS,
+  isRuntimePersonaId,
   loadAiAdminSnapshot,
 } from "@/lib/aiAgents";
+import {
+  AI_PROMPT_PREVIEW_SOURCES,
+  buildAiPromptPreview,
+  type AiPromptPreviewSource,
+} from "@/lib/aiPromptPolicy";
 import { requireAdmin } from "@/lib/adminSession";
 
 export const runtime = "nodejs";
@@ -25,6 +34,12 @@ function integer(value: unknown, fallback: number, min: number, max: number) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(min, Math.min(max, Math.round(parsed)));
+}
+
+function optimisticVersion(value: unknown) {
+  return Number.isSafeInteger(value) && (value as number) >= 1
+    ? (value as number)
+    : null;
 }
 
 function optionalNumber(value: unknown) {
@@ -93,10 +108,42 @@ function mutationData(body: Record<string, unknown>, creating: boolean) {
   };
 }
 
+function enrichAgentPromptData<
+  T extends {
+    runtimePersonaId: string;
+    requestedModel: string;
+    name: string;
+    role: string;
+    specialty: string;
+    personalityPrompt: string;
+    aoe2Prompt: string;
+  },
+>(agent: T) {
+  const personaId = isRuntimePersonaId(agent.runtimePersonaId)
+    ? agent.runtimePersonaId
+    : "scribe";
+  const promptPreviews = Object.fromEntries(
+    AI_PROMPT_PREVIEW_SOURCES.map((source) => [
+      source,
+      buildAiPromptPreview({ source, personaId, agentConfig: agent }),
+    ])
+  ) as Record<AiPromptPreviewSource, ReturnType<typeof buildAiPromptPreview>>;
+
+  return {
+    ...agent,
+    providerPrompt: getAiProviderPromptMetadata(agent.requestedModel),
+    promptPreviews,
+  };
+}
+
 export async function GET(request: NextRequest) {
   const gate = await requireAdmin(request);
   if ("error" in gate) return gate.error;
-  return NextResponse.json(await loadAiAdminSnapshot(gate.prisma));
+  const snapshot = await loadAiAdminSnapshot(gate.prisma);
+  return NextResponse.json({
+    ...snapshot,
+    agents: snapshot.agents.map(enrichAgentPromptData),
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -131,12 +178,76 @@ export async function PATCH(request: NextRequest) {
   if (!id) {
     return NextResponse.json({ detail: "Agent id is required." }, { status: 400 });
   }
+  const expectedVersion = optimisticVersion(body.expectedVersion);
+  if (!expectedVersion) {
+    return NextResponse.json(
+      { detail: "Agent expectedVersion is required for a safe update." },
+      { status: 400 }
+    );
+  }
 
   try {
-    const agent = await gate.prisma.aiAgent.update({
+    const existing = await gate.prisma.aiAgent.findUnique({
       where: { id },
-      data: mutationData(body, false),
-      select: { id: true, slug: true, updatedAt: true },
+      select: {
+        id: true,
+        slug: true,
+        runtimePersonaId: true,
+        name: true,
+        avatarUrl: true,
+        enabled: true,
+        public: true,
+        description: true,
+        role: true,
+        specialty: true,
+        introduction: true,
+        personalityPrompt: true,
+        aoe2Prompt: true,
+        knowledgeScopes: true,
+        allowedTools: true,
+        requestedModel: true,
+        fallbackModel: true,
+        temperature: true,
+        maxContextChars: true,
+        timeoutMs: true,
+        maxCouncilTurns: true,
+        version: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ detail: "Agent not found." }, { status: 404 });
+    }
+
+    if (existing.version !== expectedVersion) {
+      return NextResponse.json(
+        {
+          detail: "This agent changed after you opened it. Reload before saving.",
+          currentVersion: existing.version,
+        },
+        { status: 409 }
+      );
+    }
+
+    const result = await gate.prisma.aiAgent.updateMany({
+      where: { id, version: expectedVersion },
+      data: {
+        ...mutationData({ ...existing, ...body }, false),
+        version: { increment: 1 },
+      },
+    });
+
+    if (result.count !== 1) {
+      return NextResponse.json(
+        { detail: "This agent changed while you were saving. Reload and try again." },
+        { status: 409 }
+      );
+    }
+
+    const agent = await gate.prisma.aiAgent.findUnique({
+      where: { id },
+      select: { id: true, slug: true, version: true, updatedAt: true },
     });
     return NextResponse.json({ ok: true, agent });
   } catch (error) {
@@ -144,4 +255,3 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ detail: "Could not update that agent." }, { status: 400 });
   }
 }
-

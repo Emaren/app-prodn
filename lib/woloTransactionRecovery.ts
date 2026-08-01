@@ -463,6 +463,7 @@ async function loadRecoveryCandidates(prisma: PrismaClient) {
   const [
     stakingEvents,
     stakeIntents,
+    stakeTickets,
     wagers,
     scheduledMatches,
     scheduledSettlements,
@@ -525,6 +526,56 @@ async function loadRecoveryCandidates(prisma: PrismaClient) {
             inGameName: true,
             steamPersonaName: true,
             walletAddress: true,
+          },
+        },
+      },
+    }),
+    prisma.betStakeTicket.findMany({
+      where: {
+        OR: [
+          { stakeTxHash: { not: null } },
+          {
+            status: {
+              in: [
+                "awaiting_signature",
+                "broadcast_submitted",
+                "verified_unrecorded",
+                "failed",
+                "suspect",
+                "orphaned",
+              ],
+            },
+          },
+        ],
+      },
+      orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+      take: SOURCE_TAKE,
+      select: {
+        id: true,
+        totalAmountWolo: true,
+        status: true,
+        stakeTxHash: true,
+        walletAddress: true,
+        errorDetail: true,
+        createdAt: true,
+        updatedAt: true,
+        verifiedAt: true,
+        recordedAt: true,
+        user: {
+          select: {
+            id: true,
+            uid: true,
+            inGameName: true,
+            steamPersonaName: true,
+            walletAddress: true,
+          },
+        },
+        legs: {
+          orderBy: [{ legRole: "desc" }, { id: "asc" }],
+          select: {
+            marketId: true,
+            legRole: true,
+            market: { select: { title: true, eventLabel: true } },
           },
         },
       },
@@ -773,6 +824,37 @@ async function loadRecoveryCandidates(prisma: PrismaClient) {
       groupKey: `market:${intent.marketId}`,
       createdAt: intent.createdAt.toISOString(),
       updatedAt: intent.updatedAt.toISOString(),
+    });
+  }
+
+  for (const ticket of stakeTickets) {
+    const txHash = normalizeTxHash(ticket.stakeTxHash) || null;
+    const primaryLeg =
+      ticket.legs.find((leg) => leg.legRole === "winner") ?? ticket.legs[0] ?? null;
+    const storedAppStatus = normalizeStakeIntentStatus(ticket.status, txHash);
+    pushRow(rows, {
+      id: `bet-stake-ticket:${ticket.id}`,
+      source: "bet_stake_tickets",
+      sourceId: String(ticket.id),
+      actionType: "bet_challenge_escrow",
+      actionLabel: "One-transfer bet ticket",
+      storedAppStatus,
+      appStatusDetail:
+        ticket.errorDetail ||
+        `Ticket status: ${ticket.status}; ${ticket.legs.length} proposition leg${ticket.legs.length === 1 ? "" : "s"}.`,
+      txHash,
+      user: displayUser(ticket.user),
+      walletAddress: ticket.walletAddress || ticket.user.walletAddress || null,
+      amountWolo: ticket.totalAmountWolo,
+      contextLabel: primaryLeg
+        ? `${primaryLeg.market.title} · ${ticket.legs.length}-leg ticket`
+        : `Bet ticket #${ticket.id}`,
+      groupKey: primaryLeg ? `market:${primaryLeg.marketId}` : null,
+      createdAt: ticket.createdAt.toISOString(),
+      updatedAt: rowDate(
+        ticket.recordedAt || ticket.verifiedAt || ticket.updatedAt,
+        ticket.createdAt
+      ),
     });
   }
 

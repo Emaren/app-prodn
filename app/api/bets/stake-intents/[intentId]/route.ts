@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import {
   markBetStakeIntentFailure,
+  BetStakeIntentConflictError,
   refreshRecoverableBetStakeIntents,
   updateBetStakeIntentBroadcast,
 } from "@/lib/betStakeIntents";
@@ -207,6 +208,12 @@ export async function POST(
     const refreshed = await loadBetBoardSnapshot(prisma, viewer.uid);
     return NextResponse.json(refreshed);
   } catch (error) {
+    if (error instanceof BetStakeIntentConflictError) {
+      return NextResponse.json(
+        { detail: error.message, code: "stake_tx_conflict" },
+        { status: error.status }
+      );
+    }
     console.error("Failed to update bet stake intent:", error);
     const detail =
       error instanceof Error ? error.message : "Stake recovery update failed.";

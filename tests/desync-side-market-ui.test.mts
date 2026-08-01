@@ -82,28 +82,38 @@ test(
   () => {
     assert.match(
       server,
-      /marketType:\s*WINNER_MARKET_TYPE,\s*status:\s*\{\s*in:\s*\["settled",\s*"voided",\s*"under_review"\]/
+      /marketType:\s*WINNER_MARKET_TYPE,\s*status:\s*\{\s*in:\s*\["settled",\s*"voided"\]/
+    );
+
+    assert.match(
+      server,
+      /marketType:\s*WINNER_MARKET_TYPE,\s*status:\s*"under_review"/
     );
   }
 );
 
 
 test(
-  "betting page exposes the Bet on Desync control",
+  "betting page exposes Desync as one optional ticket leg",
   () => {
     assert.match(
       page,
-      /function DesyncMarketSwitch/
+      /function DesyncTicketLeg/
     );
 
     assert.match(
       page,
-      /Bet on Desync/
+      /Optional Desync call/
     );
 
     assert.match(
       page,
-      /YES \/ NO/
+      /Same wallet signature/
+    );
+
+    assert.match(
+      page,
+      /both legs move in one WOLO transaction/
     );
   }
 );
@@ -135,18 +145,18 @@ test(
 
     assert.match(
       page,
-      /activeSpotlightMarket/
+      /market\.parentMarketId === spotlightMarket\.id/
     );
   }
 );
 
 
 test(
-  "all three page modes wire the companion switch into MarketFeature",
+  "all three page modes wire the companion into the shared composer",
   () => {
     const bindings =
       page.match(
-        /desyncSwitchActive=\{showingDesyncMarket\}/g
+        /desyncMarket=\{spotlightDesyncMarket\}/g
       ) ?? [];
 
     assert.equal(
@@ -154,14 +164,9 @@ test(
       3
     );
 
-    const nestedControls =
-      page.match(
-        /basis-full flex justify-end pt-1\.5/g
-      ) ?? [];
-
-    assert.equal(
-      nestedControls.length,
-      2
+    assert.match(
+      page,
+      /handleCombinedTicketLock/
     );
   }
 );

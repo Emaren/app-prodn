@@ -94,25 +94,38 @@ function liveSessionDurationSeconds(session: LiveGameSession) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function activeLiveIterationDedupeKey(session: LiveGameSession) {
+export function activeLiveIterationDedupeKey(session: LiveGameSession) {
+  const canonicalSessionKey = normalizeLiveReplayIdentityText(session.sessionKey);
+  if (canonicalSessionKey.startsWith("platform:")) {
+    return canonicalSessionKey;
+  }
+
   const replayFile = normalizeLiveReplayIdentityText(
     session.replayFile || session.originalFilename || session.sessionKey
+  );
+  const replayFingerprint = normalizeLiveReplayIdentityText(
+    [...(session.replayFingerprints || [])].sort()[0]
   );
   const watcherSession =
     normalizeLiveReplayIdentityText(
       (session as unknown as { watcherSessionId?: unknown }).watcherSessionId ??
-        (session as unknown as { watcher_session_id?: unknown }).watcher_session_id
-    ) || "watcher";
+        (session as unknown as { watcher_session_id?: unknown }).watcher_session_id ??
+        session.watcherSessionIds?.[0]
+    );
 
   const players = liveSessionPlayersIdentity(session);
   const map = liveSessionMapIdentity(session);
 
-  if (watcherSession && replayFile) {
-    return `watcher:${watcherSession}:file:${replayFile}`;
+  if (replayFingerprint) {
+    return `fingerprint:${replayFingerprint}`;
   }
 
   if (replayFile) {
     return `file:${replayFile}:players:${players}:map:${map}`;
+  }
+
+  if (watcherSession) {
+    return `watcher:${watcherSession}`;
   }
 
   return `session:${session.sessionKey || session.id}`;
@@ -847,6 +860,10 @@ function buildRecentOutcomeSession(
     teamResolution,
     uploaders: [],
     watcherCount: 1,
+    watcherIds: [],
+    watcherSessionIds: [],
+    replayFingerprints: [],
+    watcherVersions: [],
     parseRows: 1,
     coverageLevel: "single",
     disposition: resolveReliableReplayWinner({
@@ -1066,6 +1083,10 @@ async function loadStandaloneLiveStreamSessions(
       teamResolution: resolveReplayTeams(players),
       uploaders: [],
       watcherCount: 1,
+      watcherIds: [],
+      watcherSessionIds: [],
+      replayFingerprints: [],
+      watcherVersions: [],
       parseRows: 1,
       coverageLevel: "single",
       disposition: "live",

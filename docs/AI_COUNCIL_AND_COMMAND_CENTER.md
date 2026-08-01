@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-08-01"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -22,7 +22,7 @@ AoE2HDBets owns the house voices, AoE2 grounding, public Council UX, lobby cast 
 ## Surfaces
 
 - `/ai` is the signed-in public Council. A user may ask one enabled public voice or convene two voices for one bounded round.
-- `/admin/ai` is the operator command center for enabled/public state, runtime persona template, model label, role, specialty, introduction, prompt layers, knowledge scopes, context cap, timeout, and recent latency/failure telemetry.
+- `/admin/ai` is the operator command center for enabled/public state, runtime persona template, model label, role, specialty, introduction, prompt layers, knowledge scopes, context cap, timeout, and recent latency/failure telemetry. It shows the saved effective site-side system prompt plus a redacted context manifest for each surface. Provider prompt identity/version/link metadata is read-only and provider credentials never enter the payload.
 - The lobby remains a public room. The Scribe and Grimer are cast members, not private assistant lanes or a model-picker UI.
 
 ## Prompt composition
@@ -61,7 +61,7 @@ The lobby and Council expose honest user-facing timing: a visible thinking count
 
 ## Data model and routes
 
-- `AiAgent`: operator-owned configuration overlay; seeded with Scribe, Grimer, and Guy.
+- `AiAgent`: operator-owned configuration overlay; seeded with Scribe, Grimer, and Guy. `version` is the integer optimistic-lock token for admin edits. `PATCH /api/admin/ai-agents` requires the last loaded version, increments it atomically, and returns `409` on a stale save. Do not use `updated_at` as the lock token because PostgreSQL stores microseconds that JavaScript dates cannot preserve.
 - `AiRequestTrace`: request metadata and timings only.
 - `GET|POST|PATCH /api/admin/ai-agents`: admin configuration and telemetry.
 - `POST /api/ai/council`: signed-in, rate-limited public Council execution.

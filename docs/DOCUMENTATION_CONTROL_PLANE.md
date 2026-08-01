@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `85b11ea419fb14f089500c16bb9cf8847fd685f9`
+Implementation baseline: `main` at `bcd4152a46f1926c7886a6b93ea23486b1a453d9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **47**
+- Authoritative repository documents: **50**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 4
 - `generated`: 1
 - `historical`: 10
-- `reference`: 23
+- `reference`: 26
 - `runbook`: 8
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 35
+- `active`: 38
 - `generated`: 1
 - `historical`: 10
 - `superseded`: 1
@@ -60,7 +60,10 @@ This page is generated from the validated front matter in this repository. Cross
 | [VPS Upgrade Checklist (AoE2HDBets)](../deploy/vps-upgrade-checklist.md) | `runbook` | `active` | `operational-procedure` |
 | [Admin Metrics](ADMIN_METRICS.md) | `reference` | `active` | `implementation-contract` |
 | [AI Council and Command Center](AI_COUNCIL_AND_COMMAND_CENTER.md) | `explanation` | `active` | `architecture-explanation` |
+| [Betting Hall Product and Concurrency Contract](BETTING_HALL_PRODUCT_AND_CONCURRENCY.md) | `reference` | `active` | `product-and-concurrency-contract` |
 | [Bet and Replay Reliability Release — 2026-07-29](BET_AND_REPLAY_RELIABILITY_2026-07-29.md) | `historical` | `historical` | `release-evidence` |
+| [Bet Automation and Wolo Custody Boundary](BET_AUTOMATION_AND_CUSTODY.md) | `reference` | `active` | `financial-domain-contract` |
+| [Manual Bet Stake Tickets](BET_STAKE_TICKETS.md) | `reference` | `active` | `financial-domain-contract` |
 | [AoE2WAR Bounty Board](BOUNTY_BOARD.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Challenge System v2](CHALLENGE_SYSTEM.md) | `reference` | `active` | `product-contract` |
 | [Championship Title Economy](CHAMPIONS_TITLE_ECONOMY.md) | `reference` | `active` | `product-contract` |

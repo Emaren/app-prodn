@@ -1,10 +1,15 @@
-import type { PrismaClient } from "@/lib/generated/prisma";
+import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
+import {
+  buildFounderPayoutIdentity,
+  type FounderPayoutIdentity,
+} from "@/lib/founderPayoutIdentity";
 import { createPendingWoloClaim } from "@/lib/pendingWoloClaims";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
 import {
   executeFounderWoloPayout,
+  findConfirmedWoloPayoutByMemo,
   hasWoloPayoutExecutionConfigured,
 } from "@/lib/woloBetSettlement";
 
@@ -17,6 +22,34 @@ export class FounderBonusError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+const FOUNDER_PAYOUT_LOCK_MAX_WAIT_MS = 15_000;
+const FOUNDER_PAYOUT_LOCK_TIMEOUT_MS = 120_000;
+
+/**
+ * Serialize one Founder bonus target across page reconciliation, admin retry,
+ * settlement-service execution, and the local signer fallback. The chain call
+ * deliberately stays inside the transaction-scoped advisory lock; a stable
+ * memo/request id lets a later retry recover an ambiguous completed send.
+ */
+export async function withFounderPayoutTargetLock<T>(
+  prisma: PrismaClient,
+  identity: Pick<FounderPayoutIdentity, "lockKey">,
+  callback: (tx: Prisma.TransactionClient) => Promise<T>
+) {
+  return prisma.$transaction(
+    async (tx) => {
+      await tx.$queryRaw`
+        SELECT pg_advisory_xact_lock(hashtextextended(${identity.lockKey}, 0))
+      `;
+      return callback(tx);
+    },
+    {
+      maxWait: FOUNDER_PAYOUT_LOCK_MAX_WAIT_MS,
+      timeout: FOUNDER_PAYOUT_LOCK_TIMEOUT_MS,
+    }
+  );
 }
 
 type WalletLinkedFounderUser = {
@@ -1059,68 +1092,113 @@ export async function settleFounderBonuses(
         continue;
       }
 
-      const attemptAt = new Date();
-
-      try {
-        if (!hasWoloPayoutExecutionConfigured()) {
-          throw new Error("Settlement execution is not configured in this environment.");
-        }
-
-        const payout = await executeFounderWoloPayout({
-          toAddress: resolution.matchedUser.walletAddress,
-          amountWolo: target.amountWolo,
-          memo: `${bonus.market.title} · ${claimKind}`,
-        });
-
-        if (!payout?.txHash) {
-          throw new Error("Founder payout execution returned no transaction hash.");
-        }
-
-        await createPendingWoloClaim(prisma, {
-          playerName: target.playerName,
-          displayPlayerName: target.playerName,
-          amountWolo: target.amountWolo,
-          claimKind,
-          claimGroupKey: groupKey,
-          targetScope,
-          sourceMarketId: bonus.marketId,
-          sourceGameStatsId: bonus.market.linkedGameStatsId ?? null,
-          sourceFounderBonusId: bonus.id,
-          payoutTxHash: payout.txHash,
-          payoutProofUrl: payout.proofUrl ?? null,
-          errorState: null,
-          payoutAttemptedAt: attemptAt,
-          note:
-            bonusType === "winner"
-              ? `Founders Win · ${creatorName} added ${bonus.totalAmountWolo} WOLO`
-              : `Founders Bonus · ${creatorName} added ${bonus.totalAmountWolo} WOLO`,
-          status: "claimed",
-          claimedByUserId: resolution.matchedUser.id,
-          claimedAt: attemptAt,
-        });
-      } catch (error) {
-        const detail =
-          error instanceof Error ? error.message : "Founder payout could not be settled.";
-
-        await createPendingWoloClaim(prisma, {
-          playerName: target.playerName,
-          displayPlayerName: target.playerName,
-          amountWolo: target.amountWolo,
-          claimKind,
-          claimGroupKey: groupKey,
-          targetScope,
-          sourceMarketId: bonus.marketId,
-          sourceGameStatsId: bonus.market.linkedGameStatsId ?? null,
-          sourceFounderBonusId: bonus.id,
-          errorState: detail.trim().replace(/\s+/g, " ").slice(0, 255),
-          payoutAttemptedAt: attemptAt,
-          note:
-            bonusType === "winner"
-              ? `Founders Win · ${creatorName} added ${bonus.totalAmountWolo} WOLO`
-              : `Founders Bonus · ${creatorName} added ${bonus.totalAmountWolo} WOLO`,
-          status: "pending",
-        });
+      const matchedFounderUser = resolution.matchedUser;
+      const payoutAddress = matchedFounderUser.walletAddress;
+      if (!payoutAddress) {
+        continue;
       }
+
+      const payoutIdentity = buildFounderPayoutIdentity({
+        founderBonusId: bonus.id,
+        claimGroupKey: groupKey,
+        claimKind,
+      });
+      const claimNote =
+        bonusType === "winner"
+          ? `Founders Win · ${creatorName} added ${bonus.totalAmountWolo} WOLO`
+          : `Founders Bonus · ${creatorName} added ${bonus.totalAmountWolo} WOLO`;
+
+      await withFounderPayoutTargetLock(
+        prisma,
+        payoutIdentity,
+        async (tx) => {
+          const currentClaim = await tx.pendingWoloClaim.findFirst({
+            where: {
+              sourceFounderBonusId: bonus.id,
+              claimGroupKey: groupKey,
+            },
+            select: {
+              status: true,
+            },
+          });
+          if (currentClaim?.status === "claimed") {
+            return;
+          }
+
+          const attemptAt = new Date();
+
+          try {
+            let payout: {
+              txHash: string;
+              proofUrl?: string | null;
+            } | null = await findConfirmedWoloPayoutByMemo({
+              toAddress: payoutAddress,
+              amountWolo: target.amountWolo,
+              memo: payoutIdentity.memo,
+            });
+
+            if (!payout) {
+              if (!hasWoloPayoutExecutionConfigured()) {
+                throw new Error(
+                  "Settlement execution is not configured in this environment."
+                );
+              }
+
+              payout = await executeFounderWoloPayout({
+                requestId: payoutIdentity.requestId,
+                toAddress: payoutAddress,
+                amountWolo: target.amountWolo,
+                memo: payoutIdentity.memo,
+              });
+            }
+
+            if (!payout?.txHash) {
+              throw new Error("Founder payout execution returned no transaction hash.");
+            }
+
+            await createPendingWoloClaim(tx, {
+              playerName: target.playerName,
+              displayPlayerName: target.playerName,
+              amountWolo: target.amountWolo,
+              claimKind,
+              claimGroupKey: groupKey,
+              targetScope,
+              sourceMarketId: bonus.marketId,
+              sourceGameStatsId: bonus.market.linkedGameStatsId ?? null,
+              sourceFounderBonusId: bonus.id,
+              payoutTxHash: payout.txHash,
+              payoutProofUrl: payout.proofUrl ?? null,
+              errorState: null,
+              payoutAttemptedAt: attemptAt,
+              note: claimNote,
+              status: "claimed",
+              claimedByUserId: matchedFounderUser.id,
+              claimedAt: attemptAt,
+            });
+          } catch (error) {
+            const detail =
+              error instanceof Error
+                ? error.message
+                : "Founder payout could not be settled.";
+
+            await createPendingWoloClaim(tx, {
+              playerName: target.playerName,
+              displayPlayerName: target.playerName,
+              amountWolo: target.amountWolo,
+              claimKind,
+              claimGroupKey: groupKey,
+              targetScope,
+              sourceMarketId: bonus.marketId,
+              sourceGameStatsId: bonus.market.linkedGameStatsId ?? null,
+              sourceFounderBonusId: bonus.id,
+              errorState: detail.trim().replace(/\s+/g, " ").slice(0, 255),
+              payoutAttemptedAt: attemptAt,
+              note: claimNote,
+              status: "pending",
+            });
+          }
+        }
+      );
 
       touchedFounderBonusIds.add(bonus.id);
     }
@@ -1139,6 +1217,7 @@ export async function createFounderBonus(
     amountWolo: unknown;
     note?: string | null;
     createdByUserId: number;
+    requestId?: string | null;
   }
 ) {
   const bonusType = normalizeFounderBonusType(input.bonusType);
@@ -1149,6 +1228,76 @@ export async function createFounderBonus(
   const amountWolo = normalizeFounderAmount(input.amountWolo);
   if (!amountWolo) {
     throw new FounderBonusError(400, "Founder bonus amount must be a whole number of WOLO.");
+  }
+
+  const note =
+    input.note?.trim().slice(0, 160) ||
+    null;
+
+  const rawRequestId =
+    input.requestId?.trim() ||
+    "";
+
+  if (
+    rawRequestId.length >
+    128
+  ) {
+    throw new FounderBonusError(
+      400,
+      "Founder request id must be 128 characters or fewer."
+    );
+  }
+
+  const requestId =
+    rawRequestId || null;
+
+  const assertMatchingRequest = (
+    existing: {
+      marketId: number;
+      bonusType: string;
+      totalAmountWolo: number;
+      note: string | null;
+    }
+  ) => {
+    if (
+      existing.marketId !==
+        input.marketId ||
+      existing.bonusType !==
+        bonusType ||
+      existing.totalAmountWolo !==
+        amountWolo ||
+      existing.note !== note
+    ) {
+      throw new FounderBonusError(
+        409,
+        "That founder request id already belongs to a different immutable bonus."
+      );
+    }
+  };
+
+  if (requestId) {
+    const existing =
+      await prisma.betMarketFounderBonus.findUnique({
+        where: {
+          createdByUserId_requestId: {
+            createdByUserId:
+              input.createdByUserId,
+            requestId,
+          },
+        },
+      });
+
+    if (existing) {
+      assertMatchingRequest(existing);
+      await settleFounderBonuses(prisma, {
+        marketIds: [existing.marketId],
+        founderBonusIds: [existing.id],
+      });
+      return {
+        ...existing,
+        duplicate: true,
+      };
+    }
   }
 
   const market = await prisma.betMarket.findUnique({
@@ -1198,16 +1347,58 @@ export async function createFounderBonus(
     }
   }
 
-  const created = await prisma.betMarketFounderBonus.create({
-    data: {
-      marketId: market.id,
-      bonusType,
-      totalAmountWolo: amountWolo,
-      note: input.note?.trim().slice(0, 160) || null,
-      createdByUserId: input.createdByUserId,
-      status: market.status === "settled" ? "pending" : "armed",
-    },
-  });
+  let created;
+  try {
+    created =
+      await prisma.betMarketFounderBonus.create({
+        data: {
+          marketId: market.id,
+          bonusType,
+          totalAmountWolo: amountWolo,
+          note,
+          createdByUserId:
+            input.createdByUserId,
+          requestId,
+          status:
+            market.status ===
+            "settled"
+              ? "pending"
+              : "armed",
+        },
+      });
+  } catch (error) {
+    if (
+      requestId &&
+      error instanceof
+        Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      const raced =
+        await prisma.betMarketFounderBonus.findUnique({
+          where: {
+            createdByUserId_requestId: {
+              createdByUserId:
+                input.createdByUserId,
+              requestId,
+            },
+          },
+        });
+
+      if (raced) {
+        assertMatchingRequest(raced);
+        await settleFounderBonuses(prisma, {
+          marketIds: [raced.marketId],
+          founderBonusIds: [raced.id],
+        });
+        return {
+          ...raced,
+          duplicate: true,
+        };
+      }
+    }
+
+    throw error;
+  }
 
   await recordUserActivity(prisma, {
     userId: input.createdByUserId,
@@ -1220,6 +1411,7 @@ export async function createFounderBonus(
       bonusType,
       amountWolo,
       note: created.note,
+      requestId,
     },
     dedupeWithinSeconds: 0,
   });
@@ -1229,5 +1421,8 @@ export async function createFounderBonus(
     founderBonusIds: [created.id],
   });
 
-  return created;
+  return {
+    ...created,
+    duplicate: false,
+  };
 }

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent, MouseEvent as ReactMouseEvent } from "react";
 import type { OfflineSigner } from "@cosmjs/proto-signing";
 import { Monitor, Play } from "lucide-react";
@@ -55,7 +55,8 @@ const BETTING_HALL_HERO_SRC = "/bets/betting_hall2.png";
 const STAKE_OPTIONS = [10, 25, 50, 100] as const;
 const BETS_POLL_INTERVAL_MS = 5_000;
 const STAKE_RECOVERY_STORAGE_KEY = "aoe2hdbets.betStakeRecovery.v1";
-const BETS_VIEW_STORAGE_KEY = "aoe2hdbets.betsView.v2";
+const TICKET_RECOVERY_STORAGE_KEY = "aoe2hdbets.betTicketRecovery.v1";
+const BETS_VIEW_STORAGE_KEY = "aoe2hdbets.betsView.v3";
 
 function isSettlementProofState(
   state: BetSettledResult["payoutState"]
@@ -132,6 +133,8 @@ type BetBoardSide = {
 
 type BetBoardMarket = {
   id: number;
+  parentMarketId?: number | null;
+  battleNumber?: number | null;
   slug: string;
   title: string;
   eventLabel: string;
@@ -211,6 +214,7 @@ type BetBookEntry = {
 
 type BetSettledResult = {
   id: number;
+  battleNumber?: number | null;
   title: string;
   eventLabel: string;
   winner: string;
@@ -283,6 +287,26 @@ type BetBoardSnapshot = {
       errorDetail: string | null;
       updatedAt: string;
     }>;
+    unresolvedStakeTickets: Array<{
+      id: number;
+      version: number;
+      status: string;
+      totalAmountWolo: number;
+      stakeTxHash: string | null;
+      walletAddress: string;
+      memo: string;
+      errorDetail: string | null;
+      updatedAt: string;
+      legs: Array<{
+        marketId: number;
+        marketStatus: BetStatus;
+        title: string;
+        eventLabel: string;
+        legRole: string;
+        side: BetSide;
+        amountWolo: number;
+      }>;
+    }>;
   };
   featuredMarket: BetBoardMarket | null;
   openMarkets: BetBoardMarket[];
@@ -311,6 +335,11 @@ type SelectionState = {
   marketId: number;
   side: BetSide;
   stake: number;
+  desync: {
+    marketId: number;
+    side: BetSide;
+    stake: number;
+  } | null;
 };
 
 type LockWorkflow = {
@@ -320,6 +349,7 @@ type LockWorkflow = {
 };
 
 type FounderComposerState = {
+  requestId: string;
   marketId: number;
   marketTitle: string;
   participantCount: number;
@@ -337,14 +367,7 @@ function defaultFounderParticipantAmount(
       participantCount
     );
 
-  return String(
-    Math.max(
-      count,
-      Math.floor(
-        200 / count
-      ) * count
-    )
-  );
+  return String(count * 2);
 }
 
 type KeplrKey = {
@@ -399,6 +422,32 @@ type PendingStakeRecovery = {
   routePath: string;
   updatedAt: string;
 };
+
+type PendingTicketRecovery = {
+  ticketId: number;
+  clientRequestId: string;
+  marketId: number;
+  totalAmountWolo: number;
+  memo: string;
+  walletAddress: string;
+  stakeTxHash: string | null;
+  updatedAt: string;
+};
+
+type PreparedBetStakeTicket = {
+  id: number;
+  version: number;
+  status: string;
+  totalAmountWolo: number;
+  memo: string;
+};
+
+function newClientRequestId(prefix: string) {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `${prefix}:${crypto.randomUUID()}`;
+  }
+  return `${prefix}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+}
 
 function shortTxHash(value: string) {
   if (value.length <= 18) return value;
@@ -466,6 +515,64 @@ function upsertPendingStakeRecovery(item: PendingStakeRecovery) {
 function removePendingStakeRecovery(intentId: number) {
   writePendingStakeRecoveries(
     readPendingStakeRecoveries().filter((entry) => entry.intentId !== intentId)
+  );
+}
+
+function normalizePendingTicketRecovery(input: Partial<PendingTicketRecovery>) {
+  if (!Number.isSafeInteger(input.ticketId) || (input.ticketId ?? 0) < 1) return null;
+  if (!Number.isSafeInteger(input.marketId) || (input.marketId ?? 0) < 1) return null;
+  if (!Number.isSafeInteger(input.totalAmountWolo) || (input.totalAmountWolo ?? 0) < 1) return null;
+  const clientRequestId = typeof input.clientRequestId === "string" ? input.clientRequestId.trim() : "";
+  const memo = typeof input.memo === "string" ? input.memo.trim() : "";
+  const walletAddress = typeof input.walletAddress === "string" ? input.walletAddress.trim() : "";
+  if (!clientRequestId || !memo || !walletAddress) return null;
+
+  return {
+    ticketId: input.ticketId as number,
+    clientRequestId,
+    marketId: input.marketId as number,
+    totalAmountWolo: input.totalAmountWolo as number,
+    memo,
+    walletAddress,
+    stakeTxHash: typeof input.stakeTxHash === "string" ? input.stakeTxHash.trim() || null : null,
+    updatedAt:
+      typeof input.updatedAt === "string" && input.updatedAt.trim()
+        ? input.updatedAt
+        : new Date().toISOString(),
+  } satisfies PendingTicketRecovery;
+}
+
+function readPendingTicketRecoveries() {
+  if (typeof window === "undefined") return [] as PendingTicketRecovery[];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(TICKET_RECOVERY_STORAGE_KEY) || "[]");
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((entry) =>
+        normalizePendingTicketRecovery(
+          entry && typeof entry === "object" ? (entry as Partial<PendingTicketRecovery>) : {}
+        )
+      )
+      .filter((entry): entry is PendingTicketRecovery => Boolean(entry));
+  } catch {
+    return [];
+  }
+}
+
+function writePendingTicketRecoveries(items: PendingTicketRecovery[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(TICKET_RECOVERY_STORAGE_KEY, JSON.stringify(items));
+}
+
+function upsertPendingTicketRecovery(item: PendingTicketRecovery) {
+  const current = readPendingTicketRecoveries().filter((entry) => entry.ticketId !== item.ticketId);
+  current.unshift(item);
+  writePendingTicketRecoveries(current.slice(0, 10));
+}
+
+function removePendingTicketRecovery(ticketId: number) {
+  writePendingTicketRecoveries(
+    readPendingTicketRecoveries().filter((entry) => entry.ticketId !== ticketId)
   );
 }
 
@@ -1054,47 +1161,6 @@ function BetsMutedToggleCss() {
 }
 
 
-function DesyncMarketSwitch({
-  active,
-  onToggle,
-}: {
-  active: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <div className="flex justify-end">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-pressed={active}
-        className={`group inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] transition duration-200 ${
-          active
-            ? "border-amber-200/[0.14] bg-white/[0.045] text-amber-100/80 hover:bg-white/[0.065]"
-            : "border-white/[0.08] bg-white/[0.035] text-slate-300 hover:border-white/[0.14] hover:bg-white/[0.055] hover:text-slate-200"
-        }`}
-      >
-        <span
-          aria-hidden="true"
-          className="text-sm text-amber-200/65"
-        >
-          ⚡
-        </span>
-
-        {active
-          ? "Back to Winner Market"
-          : "Bet on Desync"}
-
-        {!active ? (
-          <span className="rounded-full border border-white/[0.08] bg-black/20 px-2 py-0.5 text-[9px] tracking-[0.16em] text-slate-300">
-            YES / NO
-          </span>
-        ) : null}
-      </button>
-    </div>
-  );
-}
-
-
 export default function BetsPage() {
   const { isAdmin, isAuthenticated, loading, loginWithSteam, user } = useUserAuth();
   const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
@@ -1107,7 +1173,9 @@ export default function BetsPage() {
   const [workingKey, setWorkingKey] = useState<string | null>(null);
   const [lockWorkflow, setLockWorkflow] = useState<LockWorkflow | null>(null);
   const [recoveringIntentId, setRecoveringIntentId] = useState<number | null>(null);
+  const [recoveringTicketId, setRecoveringTicketId] = useState<number | null>(null);
   const [attemptedAutoRecoverIds, setAttemptedAutoRecoverIds] = useState<number[]>([]);
+  const [attemptedTicketRecoveryIds, setAttemptedTicketRecoveryIds] = useState<number[]>([]);
   const [founderComposer, setFounderComposer] = useState<FounderComposerState | null>(null);
   const [savingFounderBonus, setSavingFounderBonus] = useState(false);
   const [founderBonusError, setFounderBonusError] = useState<string | null>(null);
@@ -1234,6 +1302,7 @@ export default function BetsPage() {
 
   const [focusedMarketId, setFocusedMarketId] = useState<number | null>(null);
   const marketOrderRef = useRef<Map<number, number>>(new Map());
+  const knownLiveMarketIdsRef = useRef<Set<number> | null>(null);
 
   const featuredMarket = board?.featuredMarket ?? null;
 
@@ -1312,6 +1381,32 @@ export default function BetsPage() {
     [orderedBookMarkets, spotlightMarket]
   );
 
+  useEffect(() => {
+    if (!board) return;
+
+    const currentIds = new Set(orderedBookMarkets.map((market) => market.id));
+    const knownIds = knownLiveMarketIdsRef.current;
+    if (knownIds === null) {
+      knownLiveMarketIdsRef.current = currentIds;
+      return;
+    }
+
+    const arrivals = orderedBookMarkets.filter((market) => !knownIds.has(market.id));
+    if (arrivals.length > 0) {
+      const newest = [...arrivals].sort((left, right) => {
+        const leftNumber = left.battleNumber ?? left.id;
+        const rightNumber = right.battleNumber ?? right.id;
+        return rightNumber - leftNumber;
+      })[0];
+      const battleLabel = newest.battleNumber
+        ? `Battle #${newest.battleNumber.toLocaleString()}`
+        : "A new battle";
+      toast.info(`${battleLabel} is live. Your current ticket stayed in focus.`);
+    }
+
+    knownLiveMarketIdsRef.current = currentIds;
+  }, [board, orderedBookMarkets]);
+
   const spotlightDesyncMarket =
     useMemo(
       () => {
@@ -1330,15 +1425,9 @@ export default function BetsPage() {
               market.marketType ===
                 DESYNC_SIDE_MARKET_TYPE &&
               (
+                market.parentMarketId === spotlightMarket.id ||
                 market.slug ===
-                  expectedSlug ||
-                (
-                  Boolean(
-                    spotlightMarket.linkedSessionKey
-                  ) &&
-                  market.linkedSessionKey ===
-                    spotlightMarket.linkedSessionKey
-                )
+                  expectedSlug
               )
           ) ??
           null
@@ -1349,42 +1438,6 @@ export default function BetsPage() {
         spotlightMarket,
       ]
     );
-
-  const [
-    showingDesyncMarket,
-    setShowingDesyncMarket,
-  ] =
-    useState(false);
-
-  useEffect(
-    () => {
-      setShowingDesyncMarket(
-        false
-      );
-    },
-    [
-      spotlightMarket?.id,
-    ]
-  );
-
-  useEffect(
-    () => {
-      if (!spotlightDesyncMarket) {
-        setShowingDesyncMarket(
-          false
-        );
-      }
-    },
-    [
-      spotlightDesyncMarket,
-    ]
-  );
-
-  const activeSpotlightMarket =
-    showingDesyncMarket &&
-    spotlightDesyncMarket
-      ? spotlightDesyncMarket
-      : spotlightMarket;
 
   const totalBookPot = useMemo(
     () => {
@@ -1440,6 +1493,7 @@ export default function BetsPage() {
   );
   const publicEscrowConfig = publicEscrowConfigMessage(runtimeBetEscrowConfigError);
   const unresolvedStakeIntents = board?.recovery.unresolvedStakeIntents || [];
+  const unresolvedStakeTickets = board?.recovery.unresolvedStakeTickets || [];
   const maxStakeWolo = useMemo(
     () =>
       resolveStakeMax(
@@ -1479,6 +1533,7 @@ export default function BetsPage() {
     setFounderBonusError(null);
 
     setFounderComposer({
+      requestId: newClientRequestId("founder-award"),
       marketId: market.id,
       marketTitle: market.title,
       participantCount,
@@ -1489,7 +1544,7 @@ export default function BetsPage() {
           ? defaultFounderParticipantAmount(
               participantCount
             )
-          : "300",
+          : "1000",
       noteValue: "",
     });
   }
@@ -1507,8 +1562,12 @@ export default function BetsPage() {
         `/api/admin/bets/markets/${founderComposer.marketId}/founders`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "Idempotency-Key": founderComposer.requestId,
+          },
           body: JSON.stringify({
+            requestId: founderComposer.requestId,
             bonusType: founderComposer.bonusType,
             amountWolo: founderComposer.amountValue,
             note: founderComposer.noteValue || undefined,
@@ -1581,6 +1640,75 @@ export default function BetsPage() {
 
     return payload.id as number;
   }
+
+  async function prepareStakeTicket(input: {
+    clientRequestId: string;
+    wallet: PreparedStakeWallet;
+    totalAmountWolo: number;
+    legs: Array<{
+      marketId: number;
+      side: BetSide;
+      amountWolo: number;
+    }>;
+  }) {
+    const response = await fetch("/api/bets/tickets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        version: 1,
+        clientRequestId: input.clientRequestId,
+        walletAddress: input.wallet.walletAddress,
+        walletProvider: input.wallet.walletProvider,
+        walletType: input.wallet.walletType,
+        totalAmountWolo: input.totalAmountWolo,
+        legs: input.legs,
+        browserInfo:
+          typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 500) : undefined,
+        routePath: "/bets",
+      }),
+    });
+    const payload = (await response.json().catch(() => ({}))) as {
+      detail?: string;
+      ticket?: Partial<PreparedBetStakeTicket>;
+    };
+    const ticket = payload.ticket;
+    if (
+      !response.ok ||
+      !ticket ||
+      !Number.isSafeInteger(ticket.id) ||
+      !Number.isSafeInteger(ticket.totalAmountWolo) ||
+      typeof ticket.memo !== "string" ||
+      !ticket.memo.trim()
+    ) {
+      throw new Error(payload.detail || "Could not prepare the combined betting ticket.");
+    }
+    return ticket as PreparedBetStakeTicket;
+  }
+
+  const commitStakeTicket = useCallback(
+    async (recovery: PendingTicketRecovery, action: "commit" | "recover") => {
+      if (!recovery.stakeTxHash) {
+        throw new Error("The combined ticket is waiting for its wallet transaction hash.");
+      }
+      const response = await fetch(`/api/bets/tickets/${recovery.ticketId}/${action}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stakeTxHash: recovery.stakeTxHash,
+          walletAddress: recovery.walletAddress,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        detail?: string;
+        board?: BetBoardSnapshot;
+      };
+      if (!response.ok) {
+        throw new Error(payload.detail || "Could not record the combined betting ticket.");
+      }
+      return payload.board ?? null;
+    },
+    []
+  );
 
   async function recordStakeIntentBroadcast(
     intentId: number,
@@ -1786,6 +1914,67 @@ export default function BetsPage() {
     workingKey,
   ]);
 
+  useEffect(() => {
+    if (!isAuthenticated || !board || recoveringTicketId || workingKey || lockWorkflow) return;
+    const recoveryById = new Map(
+      readPendingTicketRecoveries().map((entry) => [entry.ticketId, entry] as const)
+    );
+    for (const ticket of board.recovery.unresolvedStakeTickets || []) {
+      const current = recoveryById.get(ticket.id);
+      const winnerLeg =
+        ticket.legs.find((leg) => leg.legRole === "winner") ?? ticket.legs[0] ?? null;
+      recoveryById.set(ticket.id, {
+        ticketId: ticket.id,
+        clientRequestId: current?.clientRequestId || `server-ticket:${ticket.id}`,
+        marketId: current?.marketId || winnerLeg?.marketId || 0,
+        totalAmountWolo: ticket.totalAmountWolo,
+        memo: ticket.memo,
+        walletAddress: ticket.walletAddress,
+        stakeTxHash: ticket.stakeTxHash || current?.stakeTxHash || null,
+        updatedAt: ticket.updatedAt,
+      });
+    }
+    const recovery = [...recoveryById.values()].find(
+      (entry) => entry.stakeTxHash && !attemptedTicketRecoveryIds.includes(entry.ticketId)
+    );
+    if (!recovery) return;
+
+    setAttemptedTicketRecoveryIds((current) => [...current, recovery.ticketId]);
+    setRecoveringTicketId(recovery.ticketId);
+
+    void (async () => {
+      try {
+        const refreshedBoard = await commitStakeTicket(recovery, "recover");
+        removePendingTicketRecovery(recovery.ticketId);
+        if (refreshedBoard) {
+          await refreshBoard(refreshedBoard);
+        } else {
+          const latestBoard = await loadBoard(true);
+          if (latestBoard) await refreshBoard(latestBoard);
+        }
+        toast.success("Recovered the signed Winner + Desync ticket.");
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : "The signed combined ticket still needs recovery. Its proof remains saved."
+        );
+      } finally {
+        setRecoveringTicketId((current) => (current === recovery.ticketId ? null : current));
+      }
+    })();
+  }, [
+    attemptedTicketRecoveryIds,
+    board,
+    commitStakeTicket,
+    isAuthenticated,
+    loadBoard,
+    lockWorkflow,
+    recoveringTicketId,
+    refreshBoard,
+    workingKey,
+  ]);
+
   function handleSelect(market: BetBoardMarket, side: BetSide) {
     if (!requireSignIn()) return;
     const viewerWager = market.viewerWager;
@@ -1800,6 +1989,46 @@ export default function BetsPage() {
         selection && selection.marketId === market.id && selection.side === (viewerWager?.side || side)
           ? selection.stake
           : Math.max(1, Math.min(25, maxStakeWolo)),
+      desync: selection?.marketId === market.id ? selection.desync : null,
+    });
+  }
+
+  function handleDesyncSelection(
+    winnerMarket: BetBoardMarket,
+    desyncMarket: BetBoardMarket,
+    side: BetSide | null
+  ) {
+    if (!requireSignIn()) return;
+    if (!selection || selection.marketId !== winnerMarket.id) {
+      toast.message("Choose the winning side first, then add an optional Desync call.");
+      return;
+    }
+
+    if (side && desyncMarket.viewerWager && desyncMarket.viewerWager.side !== side) {
+      toast.message("Your Desync side is already locked to the first accepted side.");
+      return;
+    }
+
+    if (side && maxStakeWolo - selection.stake < 1) {
+      toast.message("Reduce the Winner amount by at least 1 WOLO to add a Desync leg.");
+      return;
+    }
+
+    setSelection((current) => {
+      if (!current || current.marketId !== winnerMarket.id) return current;
+      if (!side) return { ...current, desync: null };
+
+      return {
+        ...current,
+        desync: {
+          marketId: desyncMarket.id,
+          side: desyncMarket.viewerWager?.side || side,
+          stake:
+            current.desync?.marketId === desyncMarket.id
+              ? current.desync.stake
+              : Math.max(1, Math.min(10, maxStakeWolo - current.stake)),
+        },
+      };
     });
   }
 
@@ -1867,7 +2096,8 @@ export default function BetsPage() {
   async function lockStakeOnChain(
     market: BetBoardMarket,
     amountWolo: number,
-    preparedWallet?: PreparedStakeWallet | null
+    preparedWallet?: PreparedStakeWallet | null,
+    memo = buildBetStakeMemo(market.id)
   ): Promise<StakeExecutionResult> {
     if (!onchainBetEscrowEnabled || !runtimeBetEscrowAddress) {
       if (onchainBetEscrowRequired) {
@@ -1916,7 +2146,7 @@ export default function BetsPage() {
         runtimeBetEscrowAddress,
         [{ amount: toUwoLoAmount(amountWolo), denom: WOLO_BASE_DENOM }],
         "auto",
-        buildBetStakeMemo(market.id)
+        memo
       );
 
       return {
@@ -1930,6 +2160,112 @@ export default function BetsPage() {
       throw new Error(describeStakeLockError(error, { isLedger: signerResolution.isLedger }));
     } finally {
       client?.disconnect();
+    }
+  }
+
+  async function handleCombinedTicketLock(
+    market: BetBoardMarket,
+    ticketSelection: SelectionState & { desync: NonNullable<SelectionState["desync"]> }
+  ) {
+    if (!onchainBetEscrowEnabled || !runtimeBetEscrowAddress) {
+      toast.error("A combined Winner + Desync ticket requires the verified one-signature WOLO rail.");
+      return;
+    }
+
+    const totalAmountWolo = ticketSelection.stake + ticketSelection.desync.stake;
+    const totalError = validateStakeAmount(totalAmountWolo, maxStakeWolo);
+    const desyncError = validateStakeAmount(ticketSelection.desync.stake, maxStakeWolo);
+    if (desyncError || totalError) {
+      toast.error(desyncError || totalError || "The combined ticket amount is invalid.");
+      return;
+    }
+
+    setWorkingKey(`lock-${market.id}`);
+    setLockWorkflow({ marketId: market.id, phase: "awaiting_wallet", stakeTxHash: null });
+    let preparedWallet: PreparedStakeWallet | null = null;
+    let recovery: PendingTicketRecovery | null = null;
+
+    try {
+      preparedWallet = await prepareStakeWallet(market);
+      const clientRequestId = newClientRequestId("manual-ticket");
+      const ticket = await prepareStakeTicket({
+        clientRequestId,
+        wallet: preparedWallet,
+        totalAmountWolo,
+        legs: [
+          {
+            marketId: market.id,
+            side: ticketSelection.side,
+            amountWolo: ticketSelection.stake,
+          },
+          {
+            marketId: ticketSelection.desync.marketId,
+            side: ticketSelection.desync.side,
+            amountWolo: ticketSelection.desync.stake,
+          },
+        ],
+      });
+
+      recovery = {
+        ticketId: ticket.id,
+        clientRequestId,
+        marketId: market.id,
+        totalAmountWolo: ticket.totalAmountWolo,
+        memo: ticket.memo,
+        walletAddress: preparedWallet.walletAddress,
+        stakeTxHash: null,
+        updatedAt: new Date().toISOString(),
+      };
+      upsertPendingTicketRecovery(recovery);
+
+      const stakeExecution = await lockStakeOnChain(
+        market,
+        ticket.totalAmountWolo,
+        preparedWallet,
+        ticket.memo
+      );
+      if (!stakeExecution.stakeTxHash) {
+        throw new Error("The combined ticket transfer returned no transaction hash.");
+      }
+
+      recovery = {
+        ...recovery,
+        stakeTxHash: stakeExecution.stakeTxHash,
+        updatedAt: new Date().toISOString(),
+      };
+      upsertPendingTicketRecovery(recovery);
+      setLockWorkflow({
+        marketId: market.id,
+        phase: "recording_wager",
+        stakeTxHash: stakeExecution.stakeTxHash,
+      });
+
+      const refreshedBoard = await commitStakeTicket(recovery, "commit");
+      removePendingTicketRecovery(ticket.id);
+      if (refreshedBoard) {
+        await refreshBoard(refreshedBoard);
+      } else {
+        const latestBoard = await loadBoard(true);
+        if (latestBoard) await refreshBoard(latestBoard);
+      }
+      setSelection(null);
+      toast.success(
+        `One signature locked ${ticket.totalAmountWolo} WOLO across Winner + Desync · ${shortTxHash(stakeExecution.stakeTxHash)}`
+      );
+    } catch (error) {
+      const rawError = error instanceof Error ? error.message : "Could not lock the combined ticket.";
+      console.error("Failed to lock combined betting ticket:", error);
+      if (recovery && !recovery.stakeTxHash) {
+        removePendingTicketRecovery(recovery.ticketId);
+      }
+      toast.error(
+        recovery?.stakeTxHash
+          ? `${describeBetWalletError(rawError)} The signed ticket proof is saved for automatic recovery.`
+          : describeBetWalletError(rawError)
+      );
+    } finally {
+      setWorkingKey(null);
+      setLockWorkflow(null);
     }
   }
 
@@ -2000,6 +2336,14 @@ export default function BetsPage() {
       toast.error(
         runtimeBetEscrowConfigError ||
           "Verified WOLO escrow is required here, but the WOLO escrow rail is not ready."
+      );
+      return;
+    }
+
+    if (selection.desync) {
+      await handleCombinedTicketLock(
+        market,
+        selection as SelectionState & { desync: NonNullable<SelectionState["desync"]> }
       );
       return;
     }
@@ -2220,6 +2564,20 @@ export default function BetsPage() {
         onViewModeChange={handleBetsViewChange}
       />
 
+      {betsView === "extreme" || orderedBookMarkets.length > 1 ? (
+        <LiveBattleDeck
+          markets={orderedBookMarkets}
+          focusedMarketId={spotlightMarket?.id ?? null}
+          selectionMarketId={selection?.marketId ?? null}
+          onFocus={setFocusedMarketId}
+        />
+      ) : null}
+
+      <TicketRecoveryRail
+        tickets={unresolvedStakeTickets}
+        recoveringTicketId={recoveringTicketId}
+      />
+
       {betsView === "basic" ? (
         <>
           <section className="grid gap-5 xl:grid-cols-[0.84fr_1.16fr]">
@@ -2294,26 +2652,14 @@ export default function BetsPage() {
 
               {loadingBoard ? (
                 <LoadingMarket />
-              ) : activeSpotlightMarket ? (
+              ) : spotlightMarket ? (
                 <>
                   <MarketFeature
-                    market={activeSpotlightMarket}
-                desyncSwitchActive={showingDesyncMarket}
-                onToggleDesync={
-                  spotlightDesyncMarket
-                    ? () =>
-                        setShowingDesyncMarket(
-                          (current) => !current
-                        )
-                    : undefined
-                }
+                    market={spotlightMarket}
+                    desyncMarket={spotlightDesyncMarket}
                     eyebrowLabel={
-                    showingDesyncMarket
-                      ? "Desync Side Market"
-                      : spotlightMarket?.featured
-                        ? "Featured Market"
-                        : "Current Book"
-                  }
+                      spotlightMarket.featured ? "Featured Market" : "Current Book"
+                    }
                     detailMode="basic"
                     selection={selection}
                     workingKey={workingKey}
@@ -2326,15 +2672,29 @@ export default function BetsPage() {
                     onSelect={handleSelect}
                     onStakeChange={(stake) =>
                       setSelection((current) =>
-                        current && current.marketId === activeSpotlightMarket.id ? { ...current, stake } : current
+                        current && current.marketId === spotlightMarket.id ? { ...current, stake } : current
                       )
                     }
-                    onLock={() => handleLock(activeSpotlightMarket)}
-                    onClear={() => handleClear(activeSpotlightMarket.id)}
+                    onDesyncSideChange={(side) =>
+                      spotlightDesyncMarket
+                        ? handleDesyncSelection(spotlightMarket, spotlightDesyncMarket, side)
+                        : undefined
+                    }
+                    onDesyncStakeChange={(stake) =>
+                      setSelection((current) =>
+                        current &&
+                        current.marketId === spotlightMarket.id &&
+                        current.desync
+                          ? { ...current, desync: { ...current.desync, stake } }
+                          : current
+                      )
+                    }
+                    onLock={() => handleLock(spotlightMarket)}
+                    onClear={() => handleClear(spotlightMarket.id)}
                     onOpenFounderBonus={openFounderComposer}
                   />
                   <WarTape
-                    rows={activeSpotlightMarket.warTape.slice(0, 5)}
+                    rows={spotlightMarket.warTape.slice(0, 5)}
                     emptyLabel="Slips and payout proof will stamp in here as the game moves."
                   />
                 </>
@@ -2346,7 +2706,7 @@ export default function BetsPage() {
             </section>
           </section>
 
-          <section className="grid gap-5 xl:grid-cols-[1.04fr_0.96fr]">
+          <section className="grid items-start gap-5 xl:grid-cols-[1.04fr_0.96fr]">
             <RecentBetsSection results={recentResults} />
 
             <YourBookSection
@@ -2361,7 +2721,7 @@ export default function BetsPage() {
             />
           </section>
 
-          <section className="grid gap-5 xl:grid-cols-[0.98fr_1.02fr]">
+          <section className="grid items-start gap-5 xl:grid-cols-[0.98fr_1.02fr]">
             <OpenBooksSection
               eyebrow={spotlightMarket ? "Other Live Books" : "Open Books"}
               title={spotlightMarket ? "Every war stays reachable." : "Pick a side."}
@@ -2383,17 +2743,13 @@ export default function BetsPage() {
               onClear={handleClear}
               onOpenFounderBonus={openFounderComposer}
               loadingBoard={loadingBoard}
-              limit={2}
+              limit={null}
               emptyLabel={
                 recentResults.length
                   ? "No extra open books right now. Recent settled books are carrying the page until the next one arms."
                   : "No open books right now. The first live book will show up here."
               }
-              footerNote={
-                openMarkets.length > 2
-                  ? `${openMarkets.length - 2} more book${openMarkets.length - 2 === 1 ? "" : "s"} waiting in Advanced view.`
-                  : null
-              }
+              footerNote={null}
             />
 
             <BoardPulseSection
@@ -2405,11 +2761,22 @@ export default function BetsPage() {
               latestResult={payoutProofResults[0] ?? null}
             />
           </section>
+
+          <AwaitingProofSection markets={awaitingProofMarkets} />
+
+          <section className="grid items-start gap-5 xl:grid-cols-2">
+            <SettledSection results={payoutProofResults} />
+            <div className="space-y-5">
+              <PayoutQueueSection results={payoutQueueResults} />
+              <ResolutionQueueSection results={reviewResults} />
+              <HeatSection board={board} />
+            </div>
+          </section>
         </>
-      ) : betsView === "extreme" ? (
+      ) : betsView === "advanced" ? (
         <>
           <section
-            data-testid="extreme-betting-hall"
+            data-testid="advanced-heritage-betting-hall"
             className="relative isolate min-w-0 w-full max-w-full overflow-hidden rounded-[2.2rem] border border-white/[0.055] bg-[radial-gradient(circle_at_18%_0%,rgba(251,191,36,0.14),transparent_34%),radial-gradient(circle_at_84%_10%,rgba(56,189,248,0.11),transparent_32%),linear-gradient(180deg,rgba(13,20,36,0.98),rgba(7,12,22,0.98))] px-5 py-7 shadow-[0_34px_100px_rgba(2,6,23,0.42)] sm:px-8 sm:py-9 lg:px-10 lg:py-11"
           >
             <div className="pointer-events-none absolute -right-16 -top-20 -z-10 opacity-[0.08]">
@@ -2426,7 +2793,7 @@ export default function BetsPage() {
               <div className="min-w-0 max-w-4xl">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="rounded-full border border-amber-200/[0.12] bg-amber-400/[0.08] px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-amber-100">
-                    Extreme
+                    Advanced
                   </span>
                   <span className="rounded-full border border-emerald-200/[0.10] bg-emerald-400/[0.07] px-3 py-1 text-[10px] uppercase tracking-[0.24em] text-emerald-100">
                     Team markets · 1v1 to 4v4
@@ -2504,31 +2871,19 @@ export default function BetsPage() {
           </section>
 
           <section
-            data-testid="extreme-featured-market"
+            data-testid="advanced-heritage-featured-market"
             className="relative min-w-0 w-full max-w-full overflow-hidden rounded-[2.2rem] border border-white/[0.055] bg-[radial-gradient(circle_at_8%_8%,rgba(245,158,11,0.08),transparent_28%),radial-gradient(circle_at_92%_12%,rgba(56,189,248,0.08),transparent_28%),linear-gradient(180deg,rgba(10,17,31,0.99),rgba(6,11,20,0.99))] px-4 py-7 shadow-[0_34px_100px_rgba(2,6,23,0.4)] sm:px-8 sm:py-9 lg:px-10 lg:py-11"
           >
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/25 to-transparent" />
             {loadingBoard ? (
               <LoadingMarket />
-            ) : activeSpotlightMarket ? (
+            ) : spotlightMarket ? (
               <MarketFeature
-                market={activeSpotlightMarket}
-                desyncSwitchActive={showingDesyncMarket}
-                onToggleDesync={
-                  spotlightDesyncMarket
-                    ? () =>
-                        setShowingDesyncMarket(
-                          (current) => !current
-                        )
-                    : undefined
-                }
+                market={spotlightMarket}
+                desyncMarket={spotlightDesyncMarket}
                 eyebrowLabel={
-                    showingDesyncMarket
-                      ? "Desync Side Market"
-                      : spotlightMarket?.featured
-                        ? "Featured Market"
-                        : "Current Book"
-                  }
+                  spotlightMarket.featured ? "Featured Market" : "Current Book"
+                }
                 detailMode="extreme"
                 selection={selection}
                 workingKey={workingKey}
@@ -2541,13 +2896,25 @@ export default function BetsPage() {
                 onSelect={handleSelect}
                 onStakeChange={(stake) =>
                   setSelection((current) =>
-                    current && current.marketId === activeSpotlightMarket.id
+                    current && current.marketId === spotlightMarket.id
                       ? { ...current, stake }
                       : current
                   )
                 }
-                onLock={() => handleLock(activeSpotlightMarket)}
-                onClear={() => handleClear(activeSpotlightMarket.id)}
+                onDesyncSideChange={(side) =>
+                  spotlightDesyncMarket
+                    ? handleDesyncSelection(spotlightMarket, spotlightDesyncMarket, side)
+                    : undefined
+                }
+                onDesyncStakeChange={(stake) =>
+                  setSelection((current) =>
+                    current && current.marketId === spotlightMarket.id && current.desync
+                      ? { ...current, desync: { ...current.desync, stake } }
+                      : current
+                  )
+                }
+                onLock={() => handleLock(spotlightMarket)}
+                onClear={() => handleClear(spotlightMarket.id)}
                 onOpenFounderBonus={openFounderComposer}
               />
             ) : latestResult ? (
@@ -2585,7 +2952,7 @@ export default function BetsPage() {
 
           <AwaitingProofSection markets={awaitingProofMarkets} />
 
-          <section className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
+          <section className="grid items-start gap-5 xl:grid-cols-[1.08fr_0.92fr]">
             <YourBookSection
               board={board}
               isAuthenticated={isAuthenticated}
@@ -2607,12 +2974,29 @@ export default function BetsPage() {
         </>
       ) : (
         <>
-          <section className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+          <ExtremeCommandHeader
+            openCount={openCount}
+            liveCount={liveCount}
+            totalBookPot={totalBookPot}
+            activeSlipCount={board?.yourBook.activeCount || 0}
+            isAuthenticated={isAuthenticated}
+            stakeRail={stakeRailLabel({
+              required: onchainBetEscrowRequired,
+              enabled: onchainBetEscrowEnabled,
+              mode: runtimeBetEscrowMode,
+            })}
+            settlementRail={settlementRailLabel(settlementExecutionMode)}
+          />
+
+          <section
+            data-testid="extreme-next-arena"
+            className="grid items-start gap-5 xl:grid-cols-[0.68fr_1.32fr]"
+          >
             <div className={`${shellClass()} p-5 sm:p-6`}>
               <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="rounded-full border border-amber-200/12 bg-amber-400/10 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.28em] text-amber-100">
-                    Bets
+                    Live ticket
                   </span>
                   <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-0.5 text-[11px] text-slate-300">
                     {openCount} books
@@ -2649,9 +3033,9 @@ export default function BetsPage() {
               </div>
 
               <div className="mt-5">
-                <div className="text-[11px] uppercase tracking-[0.38em] text-slate-400">The War Book</div>
+                <div className="text-[11px] uppercase tracking-[0.38em] text-slate-400">One slip · one signature</div>
                 <h1 className="mt-3 text-4xl font-semibold tracking-[-0.05em] text-white sm:text-5xl">
-                  Bets
+                  Pick. Sign. Watch.
                 </h1>
               </div>
 
@@ -2721,26 +3105,14 @@ export default function BetsPage() {
 
               {loadingBoard ? (
                 <LoadingMarket />
-              ) : activeSpotlightMarket ? (
+              ) : spotlightMarket ? (
                 <MarketFeature
-                  market={activeSpotlightMarket}
-                desyncSwitchActive={showingDesyncMarket}
-                onToggleDesync={
-                  spotlightDesyncMarket
-                    ? () =>
-                        setShowingDesyncMarket(
-                          (current) => !current
-                        )
-                    : undefined
-                }
+                  market={spotlightMarket}
+                  desyncMarket={spotlightDesyncMarket}
                   eyebrowLabel={
-                    showingDesyncMarket
-                      ? "Desync Side Market"
-                      : spotlightMarket?.featured
-                        ? "Featured Market"
-                        : "Current Book"
+                    spotlightMarket.featured ? "Featured Market" : "Current Book"
                   }
-                  detailMode="advanced"
+                  detailMode="extreme"
                   selection={selection}
                   workingKey={workingKey}
                   lockWorkflow={lockWorkflow}
@@ -2752,11 +3124,23 @@ export default function BetsPage() {
                   onSelect={handleSelect}
                   onStakeChange={(stake) =>
                     setSelection((current) =>
-                      current && current.marketId === activeSpotlightMarket.id ? { ...current, stake } : current
+                      current && current.marketId === spotlightMarket.id ? { ...current, stake } : current
                     )
                   }
-                  onLock={() => handleLock(activeSpotlightMarket)}
-                  onClear={() => handleClear(activeSpotlightMarket.id)}
+                  onDesyncSideChange={(side) =>
+                    spotlightDesyncMarket
+                      ? handleDesyncSelection(spotlightMarket, spotlightDesyncMarket, side)
+                      : undefined
+                  }
+                  onDesyncStakeChange={(stake) =>
+                    setSelection((current) =>
+                      current && current.marketId === spotlightMarket.id && current.desync
+                        ? { ...current, desync: { ...current.desync, stake } }
+                        : current
+                    )
+                  }
+                  onLock={() => handleLock(spotlightMarket)}
+                  onClear={() => handleClear(spotlightMarket.id)}
                   onOpenFounderBonus={openFounderComposer}
                 />
               ) : latestResult ? (
@@ -2767,7 +3151,7 @@ export default function BetsPage() {
             </section>
           </section>
 
-          <section className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
+          <section className="grid items-start gap-5 xl:grid-cols-[1.08fr_0.92fr]">
             <OpenBooksSection
               eyebrow="Open Books"
               title="Pick a side."
@@ -2844,8 +3228,7 @@ export default function BetsPage() {
                       ? defaultFounderParticipantAmount(
                           current.participantCount
                         )
-                      : current.amountValue ||
-                        "300",
+                      : "1000",
                 }
               : current
           )
@@ -2875,6 +3258,276 @@ export default function BetsPage() {
         }}
       />
     </main>
+  );
+}
+
+function ExtremeCommandHeader({
+  openCount,
+  liveCount,
+  totalBookPot,
+  activeSlipCount,
+  isAuthenticated,
+  stakeRail,
+  settlementRail,
+}: {
+  openCount: number;
+  liveCount: number;
+  totalBookPot: number;
+  activeSlipCount: number;
+  isAuthenticated: boolean;
+  stakeRail: string;
+  settlementRail: string;
+}) {
+  return (
+    <section
+      data-testid="extreme-next-command-header"
+      className="relative isolate overflow-hidden rounded-[2.35rem] border border-cyan-200/[0.12] bg-[radial-gradient(circle_at_12%_-10%,rgba(34,211,238,0.2),transparent_34%),radial-gradient(circle_at_88%_0%,rgba(251,191,36,0.2),transparent_32%),linear-gradient(135deg,rgba(6,13,26,0.99),rgba(10,19,34,0.99)_52%,rgba(5,11,22,0.99))] px-5 py-7 shadow-[0_34px_110px_rgba(2,6,23,0.55)] sm:px-8 sm:py-9 lg:px-10"
+    >
+      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-amber-200/60" />
+      <div className="pointer-events-none absolute -right-20 -top-24 -z-10 opacity-[0.09]">
+        <Image
+          src={WOLO_LOGO_SRC}
+          alt=""
+          width={440}
+          height={448}
+          className="h-[25rem] w-[25rem] object-contain"
+        />
+      </div>
+
+      <div className="grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(34rem,0.82fr)] xl:items-end">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-cyan-200/25 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.3em] text-cyan-100">
+              Extreme E
+            </span>
+            <span className="rounded-full border border-amber-200/20 bg-amber-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-amber-100">
+              Live war exchange
+            </span>
+          </div>
+
+          <div className="mt-6 text-[11px] font-black uppercase tracking-[0.44em] text-slate-400">
+            The Betting Hall · Command Deck
+          </div>
+          <h1 className="mt-3 max-w-4xl text-4xl font-black tracking-[-0.055em] text-white sm:text-6xl lg:text-7xl">
+            See the battle.
+            <span className="block bg-gradient-to-r from-cyan-200 via-white to-amber-200 bg-clip-text text-transparent">
+              Take your side.
+            </span>
+          </h1>
+          <p className="mt-5 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
+            Every live game stays visible. Your active ticket stays pinned. Winner and Desync ride
+            together when the combined ticket rail is available.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 overflow-hidden rounded-[1.55rem] border border-white/[0.07] bg-black/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] sm:grid-cols-4">
+          <ExtremeMetric label="Live" value={String(liveCount)} />
+          <ExtremeMetric label="Open" value={String(openCount)} />
+          <ExtremeMetric label="Book Pot" value={`${formatExactWolo(totalBookPot || 0)} W`} />
+          <ExtremeMetric
+            label="Your Tickets"
+            value={isAuthenticated ? String(activeSlipCount) : "Sign in"}
+          />
+        </div>
+      </div>
+
+      <div className="mt-7 flex flex-wrap gap-2 border-t border-white/[0.07] pt-5">
+        <span className="rounded-full border border-cyan-200/15 bg-cyan-300/[0.07] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-100">
+          {stakeRail}
+        </span>
+        <span className="rounded-full border border-emerald-200/15 bg-emerald-300/[0.07] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-emerald-100">
+          {settlementRail}
+        </span>
+        <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-300">
+          Proof · queue · review stay separate
+        </span>
+      </div>
+    </section>
+  );
+}
+
+function TicketRecoveryRail({
+  tickets,
+  recoveringTicketId,
+}: {
+  tickets: BetBoardSnapshot["recovery"]["unresolvedStakeTickets"];
+  recoveringTicketId: number | null;
+}) {
+  if (tickets.length === 0) return null;
+
+  return (
+    <section className="rounded-[1.5rem] border border-amber-200/[0.12] bg-amber-300/[0.045] px-4 py-4 sm:px-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-100/70">
+            Signed ticket recovery
+          </div>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
+            These Winner + Desync tickets are reconciled from their exact wallet memo, amount, and sender. The page never asks for a duplicate transfer.
+          </p>
+        </div>
+        <span className="rounded-full border border-white/[0.08] bg-black/20 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-slate-300">
+          {tickets.length} unresolved
+        </span>
+      </div>
+
+      <div className="mt-3 grid gap-2 lg:grid-cols-2">
+        {tickets.map((ticket) => {
+          const hasProof = Boolean(ticket.stakeTxHash);
+          const recovering = recoveringTicketId === ticket.id;
+          return (
+            <div
+              key={ticket.id}
+              className="rounded-2xl border border-white/[0.06] bg-slate-950/30 px-4 py-3"
+            >
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-white">
+                  Ticket #{ticket.id} · {ticket.totalAmountWolo.toLocaleString()} WOLO
+                </span>
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] ${
+                    hasProof
+                      ? "border-emerald-200/15 bg-emerald-300/[0.08] text-emerald-100"
+                      : ticket.status === "failed" || ticket.status === "suspect"
+                        ? "border-rose-200/15 bg-rose-300/[0.08] text-rose-100"
+                        : "border-amber-200/15 bg-amber-300/[0.08] text-amber-100"
+                  }`}
+                >
+                  {recovering
+                    ? "Recovering"
+                    : hasProof
+                      ? "Proof found"
+                      : ticket.status.replace(/_/g, " ")}
+                </span>
+              </div>
+              <div className="mt-1 text-xs leading-5 text-slate-400">
+                {ticket.legs.map((leg) => `${leg.legRole}: ${leg.amountWolo} W`).join(" · ")}
+              </div>
+              {!hasProof ? (
+                <div className="mt-1 text-[11px] leading-5 text-slate-500">
+                  Waiting for a verifiable wallet transaction. No wager is counted until proof is found.
+                </div>
+              ) : null}
+              {ticket.errorDetail ? (
+                <div className="mt-1 break-words text-[11px] leading-5 text-rose-100/75">
+                  {ticket.errorDetail}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function LiveBattleDeck({
+  markets,
+  focusedMarketId,
+  selectionMarketId,
+  onFocus,
+}: {
+  markets: BetBoardMarket[];
+  focusedMarketId: number | null;
+  selectionMarketId: number | null;
+  onFocus: (marketId: number) => void;
+}) {
+  const deckMarkets = useMemo(
+    () =>
+      [...markets].sort((left, right) => {
+        const leftNumber = left.battleNumber ?? Number.MIN_SAFE_INTEGER;
+        const rightNumber = right.battleNumber ?? Number.MIN_SAFE_INTEGER;
+        if (leftNumber !== rightNumber) return rightNumber - leftNumber;
+        return right.id - left.id;
+      }),
+    [markets]
+  );
+
+  return (
+    <section
+      data-testid="live-battle-deck"
+      className="overflow-hidden rounded-[1.8rem] border border-white/[0.07] bg-[linear-gradient(180deg,rgba(13,22,39,0.95),rgba(8,14,26,0.96))] p-4 shadow-[0_24px_70px_rgba(2,6,23,0.36)] sm:p-5"
+    >
+      <div className="flex flex-wrap items-end justify-between gap-3 px-1">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.34em] text-cyan-200/75">
+            Live Battle Deck
+          </div>
+          <h2 className="mt-1 text-xl font-black tracking-[-0.03em] text-white sm:text-2xl">
+            Every war. One tap away.
+          </h2>
+        </div>
+        <div className="text-xs leading-5 text-slate-400">
+          New battles rise to the front; your focused ticket never moves itself.
+        </div>
+      </div>
+
+      {deckMarkets.length ? (
+        <div className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-color:rgba(148,163,184,0.28)_transparent]">
+          {deckMarkets.map((market, index) => {
+            const focused = market.id === focusedMarketId;
+            const hasSelection = market.id === selectionMarketId;
+            const battleLabel = market.battleNumber
+              ? `Battle #${market.battleNumber.toLocaleString()}`
+              : "Battle number pending";
+
+            return (
+              <button
+                key={market.id}
+                type="button"
+                aria-pressed={focused}
+                onClick={() => onFocus(market.id)}
+                className={`group min-w-[17rem] snap-start rounded-[1.35rem] border p-4 text-left transition sm:min-w-[20rem] ${
+                  focused
+                    ? "border-cyan-200/35 bg-cyan-300/[0.09] shadow-[0_16px_45px_rgba(8,145,178,0.14)]"
+                    : "border-white/[0.07] bg-black/20 hover:border-white/[0.14] hover:bg-white/[0.045]"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2 w-2 rounded-full ${market.status === "live" ? "animate-pulse bg-emerald-300" : "bg-amber-300"}`} />
+                    <span className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-300">
+                      {battleLabel}
+                    </span>
+                  </div>
+                  {index === 0 && deckMarkets.length > 1 ? (
+                    <span className="rounded-full border border-amber-200/15 bg-amber-300/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-amber-100">
+                      Newest
+                    </span>
+                  ) : null}
+                </div>
+
+                <div className="mt-4 line-clamp-2 min-h-12 text-base font-black leading-6 text-white">
+                  {market.left.name}
+                  <span className="mx-2 text-slate-600">vs</span>
+                  {market.right.name}
+                </div>
+
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-slate-400">
+                  <span className="truncate">{market.eventLabel}</span>
+                  <span className="shrink-0 font-semibold text-amber-100">
+                    {formatCompact(market.totalPotWolo)} W
+                  </span>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-3 text-[10px] font-black uppercase tracking-[0.18em]">
+                  <span className={market.status === "live" ? "text-emerald-200" : "text-amber-200"}>
+                    {market.status === "live" ? "Live now" : "Book open"}
+                  </span>
+                  <span className={hasSelection ? "text-cyan-100" : focused ? "text-white" : "text-slate-500"}>
+                    {hasSelection ? "Ticket open" : focused ? "In focus" : "Open battle"}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="mt-4 rounded-[1.3rem] border border-dashed border-white/[0.08] bg-black/15 px-5 py-7 text-sm text-slate-400">
+          The deck is standing by. The next watcher-confirmed game will appear here automatically.
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -3927,6 +4580,8 @@ function StakeAmountRail({
   maxStakeWolo: number;
   onStakeChange: (stake: number) => void;
 }) {
+  const generatedInputId = useId();
+  const stakeInputId = `bet-stake-${generatedInputId.replace(/:/g, "")}`;
   const [customDraft, setCustomDraft] = useState("");
   const stakeError =
     activeSelection ? validateStakeAmount(activeSelection.stake, maxStakeWolo) : null;
@@ -3971,8 +4626,9 @@ function StakeAmountRail({
           </span>
         </div>
 
-        <label className="flex min-w-[11rem] items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-2 transition focus-within:border-amber-200/30 focus-within:bg-white/[0.065]">
+        <div className="flex min-w-[11rem] items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-2 transition focus-within:border-amber-200/30 focus-within:bg-white/[0.065]">
           <input
+            id={stakeInputId}
             inputMode="numeric"
             pattern="[0-9]*"
             value={activeSelection ? customDraft : ""}
@@ -3986,8 +4642,13 @@ function StakeAmountRail({
             className="min-w-0 flex-1 bg-transparent text-right text-sm text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed"
             placeholder="Amount"
           />
-          <span className="text-[11px] uppercase tracking-[0.2em] text-slate-500">WOLO</span>
-        </label>
+          <label
+            htmlFor={stakeInputId}
+            className="cursor-text select-none text-[11px] uppercase tracking-[0.2em] text-slate-500"
+          >
+            WOLO
+          </label>
+        </div>
       </div>
 
       {activeSelection ? (
@@ -3999,10 +4660,144 @@ function StakeAmountRail({
   );
 }
 
+function DesyncTicketLeg({
+  market,
+  activeSelection,
+  canEdit,
+  maxStakeWolo,
+  projectedReturn,
+  onSideChange,
+  onStakeChange,
+}: {
+  market: BetBoardMarket;
+  activeSelection: SelectionState | null;
+  canEdit: boolean;
+  maxStakeWolo: number;
+  projectedReturn: number;
+  onSideChange: (side: BetSide | null) => void;
+  onStakeChange: (stake: number) => void;
+}) {
+  const generatedInputId = useId();
+  const inputId = `bet-desync-stake-${generatedInputId.replace(/:/g, "")}`;
+  const desyncSelection =
+    activeSelection?.desync?.marketId === market.id ? activeSelection.desync : null;
+  const [draft, setDraft] = useState("");
+  const draftSelectionKey = desyncSelection
+    ? `${desyncSelection.marketId}:${desyncSelection.side}`
+    : "none";
+  const lastDraftSelectionKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (lastDraftSelectionKeyRef.current === draftSelectionKey) return;
+    lastDraftSelectionKeyRef.current = draftSelectionKey;
+    setDraft(desyncSelection ? String(desyncSelection.stake) : "");
+  }, [desyncSelection, draftSelectionKey]);
+
+  const remainingLimit = Math.max(0, maxStakeWolo - (activeSelection?.stake ?? 0));
+  const lockedSide = market.viewerWager?.side ?? null;
+
+  return (
+    <section className="mt-5 rounded-[1.3rem] border border-cyan-200/[0.09] bg-[linear-gradient(135deg,rgba(8,47,73,0.18),rgba(2,6,23,0.22))] px-4 py-4 sm:px-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-cyan-100/70">
+              3 · Optional Desync call
+            </span>
+            <span className="rounded-full border border-emerald-200/15 bg-emerald-400/[0.08] px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.2em] text-emerald-100">
+              Same wallet signature
+            </span>
+          </div>
+          <p className="mt-1 text-xs leading-5 text-slate-400">
+            Add NO or YES to this ticket. It remains a separate proposition, but both legs move in one WOLO transaction.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onSideChange(null)}
+          disabled={!desyncSelection || !canEdit}
+          className={`self-start rounded-full px-3 py-1.5 text-xs transition ${edgeButton("glass")} ${
+            !desyncSelection || !canEdit ? "cursor-not-allowed opacity-45" : ""
+          }`}
+        >
+          No Desync bet
+        </button>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)] lg:items-end">
+        <div className="grid grid-cols-2 gap-2">
+          {(["left", "right"] as const).map((side) => {
+            const sideLabel = side === "left" ? market.left.name : market.right.name;
+            const isSelected = desyncSelection?.side === side;
+            const isBlocked = Boolean(lockedSide && lockedSide !== side);
+            return (
+              <button
+                key={side}
+                type="button"
+                onClick={() => onSideChange(side)}
+                disabled={!activeSelection || !canEdit || isBlocked}
+                className={`rounded-2xl border px-4 py-3 text-left transition ${
+                  isSelected
+                    ? side === "right"
+                      ? "border-rose-200/25 bg-rose-400/[0.12] text-white shadow-[0_10px_28px_rgba(244,63,94,0.10)]"
+                      : "border-emerald-200/25 bg-emerald-400/[0.10] text-white shadow-[0_10px_28px_rgba(16,185,129,0.09)]"
+                    : "border-white/[0.06] bg-slate-950/25 text-slate-300 hover:border-white/[0.12] hover:bg-white/[0.045]"
+                } ${!activeSelection || !canEdit || isBlocked ? "cursor-not-allowed opacity-50" : ""}`}
+              >
+                <span className="block text-[10px] uppercase tracking-[0.22em] text-slate-500">
+                  Desync
+                </span>
+                <span className="mt-1 block text-lg font-semibold">{sideLabel}</span>
+                <span className="mt-1 block text-xs text-slate-400">
+                  {side === "right" ? "A confirmed desync occurs" : "Final proof clears the review window"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div>
+          <div className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 transition focus-within:border-cyan-200/30 focus-within:bg-white/[0.065]">
+            <input
+              id={inputId}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={desyncSelection ? draft : ""}
+              onChange={(event) => {
+                if (!desyncSelection) return;
+                const digits = event.target.value.replace(/[^0-9]/g, "").slice(0, 6);
+                setDraft(digits);
+                onStakeChange(digits ? Number.parseInt(digits, 10) : 0);
+              }}
+              disabled={!desyncSelection || !canEdit}
+              className="min-w-0 flex-1 bg-transparent text-right text-sm text-white outline-none placeholder:text-slate-500 disabled:cursor-not-allowed"
+              placeholder="Amount"
+            />
+            <label
+              htmlFor={inputId}
+              className="cursor-text select-none text-[11px] uppercase tracking-[0.2em] text-slate-500"
+            >
+              WOLO
+            </label>
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-3 text-[11px] text-slate-500">
+            <span>Remaining ticket limit {remainingLimit.toLocaleString()}</span>
+            <span>
+              {desyncSelection ? `If right: ${formatCompact(projectedReturn)} WOLO` : "Optional"}
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 
 
 function BetSlipComposer({
   market,
+  desyncMarket,
   activeSelection,
   canEdit,
   maxStakeWolo,
@@ -4013,11 +4808,15 @@ function BetSlipComposer({
   workingKey,
   onchainLocked,
   onStakeChange,
+  onDesyncSideChange,
+  onDesyncStakeChange,
+  desyncProjectedReturn,
   onLock,
   onClear,
   density,
 }: {
   market: BetBoardMarket;
+  desyncMarket?: BetBoardMarket | null;
   activeSelection: SelectionState | null;
   canEdit: boolean;
   maxStakeWolo: number;
@@ -4028,6 +4827,9 @@ function BetSlipComposer({
   workingKey: string | null;
   onchainLocked: boolean;
   onStakeChange: (stake: number) => void;
+  onDesyncSideChange?: (side: BetSide | null) => void;
+  onDesyncStakeChange?: (stake: number) => void;
+  desyncProjectedReturn?: number;
   onLock: () => void;
   onClear: () => void;
   density: "compact" | "spacious";
@@ -4096,6 +4898,18 @@ function BetSlipComposer({
           </div>
         </div>
       </div>
+
+      {desyncMarket && onDesyncSideChange && onDesyncStakeChange ? (
+        <DesyncTicketLeg
+          market={desyncMarket}
+          activeSelection={activeSelection}
+          canEdit={canEdit}
+          maxStakeWolo={maxStakeWolo}
+          projectedReturn={desyncProjectedReturn ?? 0}
+          onSideChange={onDesyncSideChange}
+          onStakeChange={onDesyncStakeChange}
+        />
+      ) : null}
 
       <div className="mt-5 flex flex-col gap-4 border-t border-white/[0.06] pt-5 sm:flex-row sm:items-center sm:justify-between">
         <div
@@ -4206,7 +5020,7 @@ function FounderControlRail({
           }
           className="cursor-pointer rounded-xl border border-amber-300/20 bg-amber-400/10 px-4 py-2.5 text-xs font-semibold text-amber-100 transition hover:bg-amber-400/18"
         >
-          Participants Bonus
+          Founders Bonus · 2 each
         </button>
 
         <button
@@ -4219,7 +5033,7 @@ function FounderControlRail({
           }
           className="cursor-pointer rounded-xl border border-sky-300/20 bg-sky-400/10 px-4 py-2.5 text-xs font-semibold text-sky-100 transition hover:bg-sky-400/18"
         >
-          Winner Bonus
+          Founders Win · 1,000
         </button>
       </div>
     </section>
@@ -4434,6 +5248,7 @@ function ExtremePlayerChips({
 
 function MarketFeature({
   market,
+  desyncMarket = null,
   eyebrowLabel = "Featured Market",
   detailMode = "advanced",
   selection,
@@ -4446,13 +5261,14 @@ function MarketFeature({
   maxStakeWolo,
   onSelect,
   onStakeChange,
+  onDesyncSideChange,
+  onDesyncStakeChange,
   onLock,
   onClear,
-  desyncSwitchActive = false,
-  onToggleDesync,
   onOpenFounderBonus,
 }: {
   market: BetBoardMarket;
+  desyncMarket?: BetBoardMarket | null;
   eyebrowLabel?: string;
   detailMode?: "basic" | "advanced" | "extreme";
   selection: SelectionState | null;
@@ -4465,10 +5281,10 @@ function MarketFeature({
   maxStakeWolo: number;
   onSelect: (market: BetBoardMarket, side: BetSide) => void;
   onStakeChange: (stake: number) => void;
+  onDesyncSideChange?: (side: BetSide | null) => void;
+  onDesyncStakeChange?: (stake: number) => void;
   onLock: () => void;
   onClear: () => void;
-  desyncSwitchActive?: boolean;
-  onToggleDesync?: () => void;
   onOpenFounderBonus: (market: BetBoardMarket, bonusType: FounderBonusType) => void;
 }) {
   const activeSelection = selection && selection.marketId === market.id ? selection : null;
@@ -4497,6 +5313,27 @@ function MarketFeature({
           displayOppositePool
         )
       : 0;
+  const activeDesyncSelection =
+    activeSelection?.desync && desyncMarket?.id === activeSelection.desync.marketId
+      ? activeSelection.desync
+      : null;
+  const desyncSelectedPool = activeDesyncSelection
+    ? activeDesyncSelection.side === "left"
+      ? desyncMarket?.left.poolWolo ?? 0
+      : desyncMarket?.right.poolWolo ?? 0
+    : 0;
+  const desyncOppositePool = activeDesyncSelection
+    ? activeDesyncSelection.side === "left"
+      ? desyncMarket?.right.poolWolo ?? 0
+      : desyncMarket?.left.poolWolo ?? 0
+    : 0;
+  const desyncProjectedReturn = activeDesyncSelection
+    ? projectReturn(
+        activeDesyncSelection.stake,
+        desyncSelectedPool,
+        desyncOppositePool
+      )
+    : 0;
   const statusCopy = marketWorkflow
     ? marketWorkflow.phase === "awaiting_wallet"
       ? "Open Keplr — no WOLO moves until you approve the stake."
@@ -4504,7 +5341,9 @@ function MarketFeature({
         ? "Stake submitted. Waiting for chain confirmation."
         : `Escrow confirmed${marketWorkflow.stakeTxHash ? ` · ${shortTxHash(marketWorkflow.stakeTxHash)}` : ""}. Recording slip...`
     : activeSelection
-      ? `Adding ${activeSelection.stake} WOLO to ${activeSelection.side === "left" ? market.left.name : market.right.name}`
+      ? activeDesyncSelection && desyncMarket
+        ? `One ticket: ${activeSelection.stake} WOLO on ${activeSelection.side === "left" ? market.left.name : market.right.name} + ${activeDesyncSelection.stake} WOLO on Desync ${activeDesyncSelection.side === "left" ? desyncMarket.left.name : desyncMarket.right.name}`
+        : `Adding ${activeSelection.stake} WOLO to ${activeSelection.side === "left" ? market.left.name : market.right.name}`
       : market.viewerWager
         ? `On ${market.viewerWager.side === "left" ? market.left.name : market.right.name} for ${market.viewerWager.amountWolo} WOLO across ${market.viewerWager.slipCount} slips${onchainViewerWager?.stakeTxHash ? ` · ${shortTxHash(onchainViewerWager.stakeTxHash)}` : ""}`
         : isAuthenticated
@@ -4512,7 +5351,16 @@ function MarketFeature({
           : loadingAuth
             ? "Loading"
             : "Steam sign-in required";
-  const stakeError = activeSelection ? validateStakeAmount(activeSelection.stake, maxStakeWolo) : null;
+  const stakeError = activeSelection
+    ? validateStakeAmount(activeSelection.stake, maxStakeWolo) ||
+      (activeDesyncSelection
+        ? validateStakeAmount(activeDesyncSelection.stake, maxStakeWolo) ||
+          validateStakeAmount(activeSelection.stake + activeDesyncSelection.stake, maxStakeWolo)
+        : null)
+    : null;
+  const ticketTotalWolo = activeSelection
+    ? activeSelection.stake + (activeDesyncSelection?.stake ?? 0)
+    : 0;
   const lockLabel = marketWorkflow
     ? marketWorkflow.phase === "awaiting_wallet"
       ? "Open Wallet..."
@@ -4520,7 +5368,9 @@ function MarketFeature({
         ? "Confirming Chain..."
         : "Recording Slip..."
     : activeSelection
-      ? `Lock ${activeSelection.stake} WOLO`
+      ? activeDesyncSelection
+        ? `Lock ${ticketTotalWolo} WOLO · 1 signature`
+        : `Lock ${activeSelection.stake} WOLO`
       : market.viewerWager
         ? "Add WOLO"
         : "Lock WOLO";
@@ -4539,6 +5389,11 @@ function MarketFeature({
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 flex-1 xl:max-w-4xl">
             <div className="flex flex-wrap items-center gap-2">
+              {market.battleNumber ? (
+                <span className="rounded-full border border-cyan-200/[0.14] bg-cyan-300/[0.08] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-100">
+                  Battle #{market.battleNumber.toLocaleString()}
+                </span>
+              ) : null}
               <span className="rounded-full border border-amber-200/[0.11] bg-amber-400/[0.075] px-2.5 py-1 text-[10px] uppercase tracking-[0.28em] text-amber-100">
                 {extremeRoster.formatLabel}
               </span>
@@ -4585,14 +5440,6 @@ function MarketFeature({
               </Link>
             ) : null}
             <MarketStatusPill market={market} />
-            {onToggleDesync ? (
-              <div className="basis-full flex justify-end pt-1.5">
-                <DesyncMarketSwitch
-                  active={desyncSwitchActive}
-                  onToggle={onToggleDesync}
-                />
-              </div>
-            ) : null}
           </div>
         </div>
 
@@ -4665,6 +5512,7 @@ function MarketFeature({
 
         <BetSlipComposer
           market={market}
+          desyncMarket={desyncMarket}
           activeSelection={activeSelection}
           canEdit={canEditSlip}
           maxStakeWolo={maxStakeWolo}
@@ -4675,6 +5523,9 @@ function MarketFeature({
           workingKey={workingKey}
           onchainLocked={onchainLocked}
           onStakeChange={onStakeChange}
+          onDesyncSideChange={onDesyncSideChange}
+          onDesyncStakeChange={onDesyncStakeChange}
+          desyncProjectedReturn={desyncProjectedReturn}
           onLock={onLock}
           onClear={onClear}
           density="spacious"
@@ -4696,7 +5547,14 @@ function MarketFeature({
     <div className="relative">
       <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <div className="min-w-0 max-w-3xl">
-          <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">{eyebrowLabel}</div>
+          <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.35em] text-slate-500">
+            <span>{eyebrowLabel}</span>
+            {market.battleNumber ? (
+              <span className="rounded-full border border-cyan-200/[0.12] bg-cyan-300/[0.07] px-2 py-0.5 text-[9px] font-black tracking-[0.2em] text-cyan-100">
+                Battle #{market.battleNumber.toLocaleString()}
+              </span>
+            ) : null}
+          </div>
           {marketHistoryHref ? (
             <Link
               href={marketHistoryHref}
@@ -4745,14 +5603,6 @@ function MarketFeature({
             </Link>
           ) : null}
           <MarketStatusPill market={market} />
-          {onToggleDesync ? (
-            <div className="basis-full flex justify-end pt-1.5">
-              <DesyncMarketSwitch
-                active={desyncSwitchActive}
-                onToggle={onToggleDesync}
-              />
-            </div>
-          ) : null}
         </div>
       </div>
 
@@ -4791,6 +5641,7 @@ function MarketFeature({
 
       <BetSlipComposer
         market={market}
+        desyncMarket={desyncMarket}
         activeSelection={activeSelection}
         canEdit={canEditSlip}
         maxStakeWolo={maxStakeWolo}
@@ -4801,6 +5652,9 @@ function MarketFeature({
         workingKey={workingKey}
         onchainLocked={onchainLocked}
         onStakeChange={onStakeChange}
+        onDesyncSideChange={onDesyncSideChange}
+        onDesyncStakeChange={onDesyncStakeChange}
+        desyncProjectedReturn={desyncProjectedReturn}
         onLock={onLock}
         onClear={onClear}
         density="compact"
@@ -4938,6 +5792,11 @@ function MarketCard({
           <div className="text-[11px] uppercase tracking-[0.32em] text-slate-500 break-words">
             {market.eventLabel}
           </div>
+          {market.battleNumber ? (
+            <div className="mt-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-200/80">
+              Battle #{market.battleNumber.toLocaleString()}
+            </div>
+          ) : null}
           {isExtremeTeamMarket ? (
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {marketHistoryHref ? (

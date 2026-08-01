@@ -85,7 +85,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "1b8127ae2ddc8d7e4217c539a7bb818387cbe018e5bd1a1dc98eda7cca0833fe",
+      "sha256": "e3bd925defca7ff31842ad99a2ea5d1c7e635bd8ebf10d5f3cf3a7d3fcb43cbf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -198,9 +198,9 @@
       "owner": "aoe2war-web",
       "path": "docs/AI_COUNCIL_AND_COMMAND_CENTER.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-08-01",
       "sensitivity": "internal",
-      "sha256": "1bba462cfa11aea5a35faa0884e68f6bdaed2f077b4be32088e44a40d9c92451",
+      "sha256": "069a3d1a16dc9e0643a1c6900ad4beb9753a61209a883bf6135edd7d8672460c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -208,6 +208,30 @@
       ],
       "title": "AI Council and Command Center",
       "type": "explanation"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-and-concurrency-contract",
+      "id": "aoe2war.app-prodn.docs-betting-hall-product-and-concurrency",
+      "owner": "aoe2war-web",
+      "path": "docs/BETTING_HALL_PRODUCT_AND_CONCURRENCY.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-01",
+      "sensitivity": "internal",
+      "sha256": "25745e87b5d85b9819a745eb0151fe2928618870cc1bc7ec2fd57e9e6e2d5fdc",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "Betting Hall Product and Concurrency Contract",
+      "type": "reference"
     },
     {
       "audience": [
@@ -233,6 +257,53 @@
       ],
       "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "financial-domain-contract",
+      "id": "aoe2war.app-prodn.docs-bet-automation-and-custody",
+      "owner": "aoe2war-web",
+      "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-01",
+      "sensitivity": "internal",
+      "sha256": "17f9e13889258e83ca87cf47aa39c6ef28e349aba20c0b6deff924042cc6e70d",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "Bet Automation and Wolo Custody Boundary",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "financial-domain-contract",
+      "id": "aoe2war.app-prodn.docs-bet-stake-tickets",
+      "owner": "aoe2war-web",
+      "path": "docs/BET_STAKE_TICKETS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-01",
+      "sensitivity": "internal",
+      "sha256": "e833c6625b8cf651a628fdc680c90b8c88e85da99cc9da7b6d7ad6d01ea6a770",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Manual Bet Stake Tickets",
+      "type": "reference"
     },
     {
       "audience": [
@@ -405,7 +476,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "556f02ee733e5fe28b0300e3b72daa69415a1ec71a232e51b5e31f4a3a98f489",
+      "sha256": "9832c2ab13bd4b16dfc624f7f9f03ad9948c076ea4b92eb12bdc4695b612e21f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -928,9 +999,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-08-01",
       "sensitivity": "restricted",
-      "sha256": "088b8ce907b669304a2c9d84d731b39c01fda4ce420549e54fe1dffaa6fef6a7",
+      "sha256": "1b4cab27f2698fa9c0c30e3ef7714f861b9fc1a0cf36ed997d29d6bcabebaee2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1076,7 +1147,7 @@
   "generated_at": "2026-07-28T14:55:00+00:00",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "85b11ea419fb14f089500c16bb9cf8847fd685f9"
+    "commit": "bcd4152a46f1926c7886a6b93ea23486b1a453d9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

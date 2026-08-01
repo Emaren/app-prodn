@@ -50,6 +50,7 @@ const AGENT_SELECT = {
   maxContextChars: true,
   timeoutMs: true,
   maxCouncilTurns: true,
+  version: true,
 } as const;
 
 function numericPercentile(values: number[], percentile: number) {

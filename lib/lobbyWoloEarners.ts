@@ -1,4 +1,7 @@
-import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
+import type { PrismaClient } from "@/lib/generated/prisma";
+import {
+  visibleMainnetFundedBetWagerWhere as visibleMainnetWagerWhere,
+} from "@/lib/betStakeFunding";
 import {
   buildClaimedPlayerHref,
   buildClaimedPlayerToken,
@@ -388,20 +391,6 @@ async function loadWagers(prisma: PrismaClient) {
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   }) as Promise<WagerSample[]>;
-}
-
-function visibleMainnetWagerWhere(): Prisma.BetWagerWhereInput {
-  if (!isWoloMainnet()) return {};
-  return {
-    executionMode: "onchain_escrow",
-    stakeTxHash: { not: null },
-    stakeLockedAt: { gte: getWoloMainnetDisplayStartAt() },
-    stakeIntent: {
-      is: {
-        status: "recorded",
-      },
-    },
-  };
 }
 
 function claimCountsAsWeeklyTake(claim: Pick<ClaimSample, "claimKind">) {

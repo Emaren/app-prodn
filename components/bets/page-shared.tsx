@@ -139,6 +139,7 @@ export type BetBookEntry = {
 
 export type BetSettledResult = {
   id: number;
+  battleNumber?: number | null;
   title: string;
   eventLabel: string;
   winner: string;

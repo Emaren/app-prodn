@@ -26,6 +26,7 @@ export async function POST(
       bonusType?: string;
       amountWolo?: number | string;
       note?: string;
+      requestId?: string;
     };
 
     const created = await createFounderBonus(gate.prisma, {
@@ -34,10 +35,16 @@ export async function POST(
       amountWolo: payload.amountWolo,
       note: typeof payload.note === "string" ? payload.note : null,
       createdByUserId: gate.user.id,
+      requestId:
+        (typeof payload.requestId === "string"
+          ? payload.requestId
+          : null) ||
+        request.headers.get("idempotency-key"),
     });
 
     return NextResponse.json({
       ok: true,
+      duplicate: created.duplicate,
       founderBonus: {
         id: created.id,
         marketId: created.marketId,
