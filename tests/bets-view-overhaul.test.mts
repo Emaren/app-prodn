@@ -15,7 +15,10 @@ test("the Betting Hall hero remains shared by all three views", async () => {
   const branchIndex = page.indexOf('{betsView === "basic"');
 
   assert.ok(heroIndex >= 0, "shared Betting Hall hero is missing");
-  assert.ok(branchIndex > heroIndex, "hero must render before the B/A/E branch");
+  assert.ok(
+    branchIndex > heroIndex,
+    "hero must render before the B/A/E branch",
+  );
 });
 
 test("B merges the heritage surfaces, A preserves former E, and E owns the new cockpit", async () => {
@@ -25,7 +28,10 @@ test("B merges the heritage surfaces, A preserves former E, and E owns the new c
   const extremeStart = page.indexOf("<ExtremeCommandHeader", advancedStart);
   const basic = page.slice(basicStart, advancedStart);
   const advanced = page.slice(advancedStart, extremeStart);
-  const extreme = page.slice(extremeStart, page.indexOf("<FounderBonusModal", extremeStart));
+  const extreme = page.slice(
+    extremeStart,
+    page.indexOf("<FounderBonusModal", extremeStart),
+  );
 
   for (const surface of [
     "RecentBetsSection",
@@ -38,7 +44,11 @@ test("B merges the heritage surfaces, A preserves former E, and E owns the new c
     "BoardPulseSection",
     "HeatSection",
   ]) {
-    assert.match(basic, new RegExp(`<${surface}\\b`), `Basic is missing ${surface}`);
+    assert.match(
+      basic,
+      new RegExp(`<${surface}\\b`),
+      `Basic is missing ${surface}`,
+    );
   }
 
   assert.match(advanced, /advanced-heritage-betting-hall/);
@@ -46,7 +56,21 @@ test("B merges the heritage surfaces, A preserves former E, and E owns the new c
   assert.match(extreme, /extreme-next-arena/);
   assert.match(page, /extreme-next-command-header/);
   assert.match(page, /live-battle-deck/);
-  assert.match(page, /betsView\.v3/);
+  assert.match(page, /useState<BetsViewMode>\("extreme"\)/);
+  assert.match(page, /betsView\.v4/);
+});
+
+test("E is the reset default and the removed promotional copy stays absent", async () => {
+  const page = await source("app/bets/page.tsx");
+
+  assert.match(page, /useState<BetsViewMode>\("extreme"\)/);
+  assert.match(page, /aoe2hdbets\.betsView\.v4/);
+  assert.doesNotMatch(page, /See the battle\./);
+  assert.doesNotMatch(page, /Take your side\./);
+  assert.doesNotMatch(page, /Every live game stays visible\./);
+  assert.doesNotMatch(page, /Pick\. Sign\. Watch\./);
+  assert.doesNotMatch(page, /Every war\. One tap away\./);
+  assert.doesNotMatch(page, /New battles rise to the front/);
 });
 
 test("WOLO suffix explicitly targets the custom stake input", async () => {

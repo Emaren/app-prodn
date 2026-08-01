@@ -25,9 +25,12 @@ The Betting Hall hero remains the shared entrance for every view.
 - `E` is the new command deck: live-first hierarchy, compact market telemetry,
   a pinned active ticket, and a visible arena switcher for concurrent battles.
 
-The view preference uses `aoe2hdbets.betsView.v3`. Settlement Proof, the real
-bettor Settlement Queue, and Resolution Queue remain separate in all expanded
-views. Founder rewards never make an otherwise settled core wager look pending.
+`E` is the reset default. The view preference uses
+`aoe2hdbets.betsView.v4`, so every visitor lands on E once after this release;
+later B, A, or E choices continue to persist locally. Settlement Proof, the
+real bettor Settlement Queue, and Resolution Queue remain separate in all
+expanded views. Founder rewards never make an otherwise settled core wager
+look pending.
 
 ## One-signature manual ticket
 
