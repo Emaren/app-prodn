@@ -8,30 +8,38 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-08-01"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Watcher Telemetry
 
-## Production release identity — 2026-07-26
+## Production release identity — 2026-08-01
 
-The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. Current manifests report `version: 1.5.6` for Windows, macOS, and Linux.
+The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. Current manifests report `version: 1.5.7` for Windows, macOS, and Linux.
+
+Release evidence:
+
+- source branch: `release/watcher-1.5.7-20260731-202609`;
+- source SHA: `c3d3af0a2c03a05d631b44eab773bf20650de0f8`;
+- successful Windows Artifact Signing run: `30681192827`.
 
 Verified release artifact SHA-256 values:
 
-- Linux AppImage: `b3719db0b8de8a3b291fe52deb3e079a5a93f49a2fdacd42ede1df0b5ead4558`;
-- Apple Silicon DMG: `fd1610461ecec643294bc0eed2cf69ac0443ff917a152eba2551c4c5a61f217f`;
-- Windows direct EXE: `fa034f5dbf4aa165640a012f05ffdac508a484cd81821ca3dca370e0901330db`;
-- Windows installer: `85ebcf9e6e6309cf17a518b8714eb3907790e44234edb1550aaddcd6727a14c9`.
+- Windows installer: `75aa79ca39f900225f634968f1ae95a0290ad43360a83d5c3c4a30e3c0f2e6ec`;
+- Windows portable EXE: `cbd72712135b396cd837b0b2b93e1045019fd9f220ad69d057b401ebbf3075e3`;
+- Apple Silicon DMG: `dc7a8b0a81606374253a772284db628bcced2a734c4c7aedbdb4539c5eed6cc9`;
+- macOS direct ZIP: `fbeb3822ffc5bbe09f4cea49856256a666065fdba536a824285111791e4d14fa`;
+- Linux AppImage: `983f5daacded263ee376b555f4fd6450c0acdd3c0565223b40772a6d3f420baf`.
 
-The staged `watcher-1.5.6` artifacts match the public release hashes. Older 1.5.5/1.5.4/1.5.3 files remain historical download inventory and must not be mistaken for the advertised current release.
+The staged `watcher-1.5.7` packages, updater manifests, SHA-256 list, and JSON release manifest form the authoritative release inventory. Older watcher versions remain historical download inventory and must not be mistaken for the advertised current release.
 
+## v1.5.7 truth rails
 
-## v1.5.6 truth rails
+A fresh heartbeat means connected only. Monitor state comes independently from heartbeat `monitorAttached`/`isWatching`, start/ready/stop events, server replay receipts, and watchdog events. Production update manifests advertise `1.5.7`. Older clients may lack newer recovery and telemetry fields and should be surfaced as upgrade candidates rather than judged for fields their release never emitted.
 
-A fresh heartbeat means connected only. Monitor state comes independently from heartbeat `monitorAttached`/`isWatching`, start/ready/stop events, server replay receipts, and watchdog events. Production update manifests currently advertise `1.5.6`. Older clients may lack newer recovery and telemetry fields and should be surfaced as upgrade candidates rather than judged for fields their release never emitted.
+v1.5.7 captures every upload request from one immutable in-memory replay buffer. The multipart body, known body length, `x-file-size-bytes`, and the size portion of the replay fingerprint therefore describe the same captured bytes even while AoE2HD continues appending to the source file. Upload-queue telemetry counts distinct replay/finality keys rather than inflating the queue for retries or fallback targets.
 
 Heartbeat metadata may include folder kind/validity and basename, folder/replay activity timestamps, active replay basename/size/change time, upload status/queue, batch/stream state, version/platform, and watcher/session IDs. Full private paths and replay contents are excluded.
 
