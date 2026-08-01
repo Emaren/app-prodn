@@ -203,11 +203,11 @@ export default function DownloadPage() {
           <picture>
             <source
               media="(max-width: 767px)"
-              srcSet="/watcher/watcher-v156-mobile.png"
+              srcSet="/watcher/watcher-v157-mobile.png"
             />
 
             <img
-              src="/watcher/watcher-v156-desktop.png"
+              src="/watcher/watcher-v157-desktop.png"
               alt="AoE2WAR Watcher 1.5.7 replay companion overview"
               width="1672"
               height="941"
@@ -219,15 +219,12 @@ export default function DownloadPage() {
           </picture>
 
           {/*
-            Desktop artwork interactive regions.
+            Artwork interactive regions.
 
-            Coordinates are percentages of the original
-            1672 × 941 Watcher desktop artwork, so the
-            click targets remain aligned while the image
-            scales responsively.
-
-            Mobile uses separate portrait artwork and does
-            not display these painted buttons.
+            Desktop coordinates use the original
+            1672 × 941 artwork. Mobile coordinates use the
+            separate 941 × 1672 portrait artwork. This keeps
+            both painted CTA pairs aligned while responsive.
           */}
 
           <a
@@ -236,7 +233,7 @@ export default function DownloadPage() {
             aria-label="Download Windows Installer"
             title="Download Windows Installer"
             data-watcher-hero-hotspot="windows-installer"
-            className="absolute left-[2.75%] top-[30.15%] z-10 hidden h-[5.65%] w-[16.9%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:block"
+            className="absolute left-[2.25%] top-[33.45%] z-10 hidden h-[5.75%] w-[18.35%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:block"
           >
             <span className="sr-only">
               Download Windows Installer
@@ -248,7 +245,32 @@ export default function DownloadPage() {
             aria-label="Open Profile Pairing"
             title="Open Profile Pairing"
             data-watcher-hero-hotspot="profile-pairing"
-            className="absolute left-[20.15%] top-[30.15%] z-10 hidden h-[5.65%] w-[13.35%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:block"
+            className="absolute left-[21.45%] top-[33.45%] z-10 hidden h-[5.75%] w-[14.45%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:block"
+          >
+            <span className="sr-only">
+              Open Profile Pairing
+            </span>
+          </Link>
+
+          <a
+            href={primaryArtifact.trackedHref}
+            rel="nofollow"
+            aria-label="Download Windows Installer"
+            title="Download Windows Installer"
+            data-watcher-hero-hotspot="mobile-windows-installer"
+            className="absolute left-[3.55%] top-[66.8%] z-10 h-[5.55%] w-[92.9%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:hidden"
+          >
+            <span className="sr-only">
+              Download Windows Installer
+            </span>
+          </a>
+
+          <Link
+            href="/profile?watcher_pair=1"
+            aria-label="Open Profile Pairing"
+            title="Open Profile Pairing"
+            data-watcher-hero-hotspot="mobile-profile-pairing"
+            className="absolute left-[14.1%] top-[72.75%] z-10 h-[3.55%] w-[71.8%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:hidden"
           >
             <span className="sr-only">
               Open Profile Pairing
