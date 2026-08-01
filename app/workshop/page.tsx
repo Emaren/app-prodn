@@ -187,7 +187,7 @@ export default async function WorkshopPage() {
               Current production state
             </div>
             <div className="mt-3 text-2xl font-semibold">
-              Pass 7 · Live Betting · Human Review
+              Pass 8 · Account Identity · Watcher 1.5.7
             </div>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <SignalMetric
@@ -228,26 +228,27 @@ export default async function WorkshopPage() {
               </div>
 
               <span className="rounded-full border border-amber-200/16 bg-amber-300/[0.07] px-3 py-1 text-[9px] font-bold uppercase tracking-[0.2em] text-amber-100/75">
-                Current Front · Deterministic Evidence
+                Current Front · Evidence in Motion
               </span>
             </div>
 
             <h2 className="mt-5 font-serif text-5xl leading-[0.92] text-white sm:text-6xl lg:text-7xl">
-              Deterministic Evidence.
+              Evidence in Motion.
             </h2>
 
-            {/* AOE2WAR_WORKSHOP_DETERMINISTIC_EVIDENCE_20260724 */}
+            {/* AOE2WAR_WORKSHOP_EVIDENCE_IN_MOTION_20260801 */}
             <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Pass 6 mapped the unresolved frontier without weakening result
-              gates. Pass 7 now preserves exact uneven two-team structure inside
-              the private Engine Room, while degraded metadata fragments remain
-              fail-closed. Candidate runs still cannot rewrite public results,
-              markets, wagers, or settlement. The human Review Desk remains the
-              command tower for adjudication, DESYNC truth, corrections, and
-              supersession. Automatic recovery is live, 111 exact rosters crossed
-              a zero-result-authority bridge, and open winner markets now drive
-              the Bet live action without allowing DESYNC markets to hijack the
-              battle card.
+              Since the last Workshop campaign, 44 audited app commits carried
+              AoE2WAR from candidate-only replay recovery into a broader proof
+              machine. Pass 8 normalized replay statistics and a bounded Replay
+              Operations Command Center are live. Player Identity Wave 2
+              populated account-grain evidence without activating claims or
+              merging humans. The leaderboard now separates Warriors from
+              Kingdom profiles across persistent B/A/E views. Bet and replay
+              reliability cleared stale wager rails, unresolved finals remain
+              visible without reopening betting, and Watcher 1.5.7 now uploads
+              one immutable byte snapshot at a time. Human review, financial
+              approval, and chain settlement remain separate authority gates.
             </p>
 
             <div className="mt-7 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -265,51 +266,51 @@ export default async function WorkshopPage() {
               />
 
               <CampaignMetric
-                label="Pass 7 identity"
-                value="Live"
-                note="mgz 1.8.51 · schema 2026-07-24.1 · deterministic evidence pass 7."
+                label="Audited app commits"
+                value="44"
+                note="Exact range aece6b2 → 223612f, checked before publication."
               />
 
               <CampaignMetric
-                label="Automatic recovery"
-                value="1 min"
-                note="Final recordings enter a candidate-only worker with no public or financial authority."
+                label="Parser + statistics"
+                value="Pass 8"
+                note="Schema 2026-07-25.1 with append-only normalized evidence and bounded operations."
               />
 
               <CampaignMetric
-                label="Human Review Desk"
-                value="Preserved"
-                note="Reviewers retain adjudication, DESYNC, correction, and supersession authority."
+                label="Public identity board"
+                value="2,345"
+                note="Account-grain rows at the 2026-07-28 census; not a count of humans."
               />
 
               <CampaignMetric
-                label="Live winner market"
-                value="Bet live"
-                note="Open or live winner markets drive the primary CTA; DESYNC markets remain separate."
+                label="Watcher release"
+                value="1.5.7"
+                note="Immutable upload snapshots; Windows signed, macOS and Linux channels live."
               />
             </div>
 
             <div className="mt-6 flex flex-wrap items-center gap-3">
               <Link
-                href="/challenge"
+                href="/game-stats"
                 className="inline-flex min-h-11 items-center gap-2 rounded-full bg-cyan-100 px-5 text-sm font-bold text-slate-950 transition hover:bg-white"
               >
                 <ShieldCheck className="h-4 w-4" />
-                Open the Challenge Hall
+                Open Replay Operations
               </Link>
 
               <Link
-                href="/game-stats"
+                href="/leaderboard"
                 className="inline-flex min-h-11 items-center gap-2 rounded-full border border-cyan-100/18 bg-cyan-300/[0.06] px-5 text-sm font-semibold text-cyan-50 transition hover:bg-cyan-300/10"
               >
-                Parser Observatory
+                Identity Leaderboard
               </Link>
 
               <Link
-                href="/speed"
+                href="/download"
                 className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-5 text-sm font-semibold text-slate-200 transition hover:bg-white/[0.07]"
               >
-                Speed Observatory
+                Watcher 1.5.7
               </Link>
             </div>
           </div>
@@ -325,13 +326,14 @@ export default async function WorkshopPage() {
 
             <div className="mt-6 space-y-4">
               {[
-                ["Pass 7 candidate recovery", "Active"],
-                ["Exact uneven teams", "Private only"],
-                ["Metadata fragments", "Fail-closed"],
-                ["Human Review Desk", "Preserved"],
-                ["Winner-market live CTA", "Deployed"],
-                ["DESYNC market separation", "Protected"],
-                ["Settlement authority", "Unchanged"],
+                ["Replay statistics", "Pass 8 live"],
+                ["Replay Operations", "Bounded"],
+                ["Identity discovery", "Provisional"],
+                ["Leaderboard", "2,345 rows"],
+                ["Bet/replay reliability", "Deployed"],
+                ["Final-proof visibility", "15 minutes"],
+                ["Watcher 1.5.7", "Live"],
+                ["Review + settlement", "Separate"],
               ].map(([label, value]) => (
                 <div
                   key={label}
@@ -348,22 +350,22 @@ export default async function WorkshopPage() {
             </div>
 
             <p className="mt-6 text-xs leading-6 text-slate-500">
-              The machine now arrives at the Review Desk with stronger structured
-              evidence. It does not remove the reviewer. Candidate evidence, human
-              adjudication, DESYNC provenance, public projection, betting, and
-              settlement remain distinct authority layers.
+              The machine now knows more without pretending to know more. Account
+              evidence is not a human merge, archived bytes are not a winner,
+              visible final proof is not an open book, and signed transport is not
+              settlement authority.
             </p>
           </aside>
         </div>
 
         <div className="relative mt-7 rounded-2xl border border-white/8 bg-black/20 px-5 py-4 text-xs leading-6 text-slate-500">
           <span className="font-semibold text-slate-300">Truth boundary:</span>{" "}
-          Pass 7 observations remain candidate-only unless an explicit,
-          append-only promotion grants a narrower authority. The human Review Desk
-          remains available even as machine evidence improves. Winner markets may
-          become visible during live play, but no live CTA grants result, payout, or
-          settlement authority. DESYNC truth, adjudication, corrections, and
-          supersession remain independently preserved.
+          Pass 8 candidate evidence cannot rewrite public statistics until an
+          accepted projection exists, and it never grants result, betting, or chain
+          authority. Wave 2 links and claims remain proposed rather than active.
+          The final-proof hold preserves presentation only. Watcher archive success
+          does not imply parse, result, or settlement truth. Human review and the
+          explicit financial-authority bridge remain separate gates.
         </div>
       </section>
 
