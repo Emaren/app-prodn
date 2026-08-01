@@ -32,7 +32,14 @@ test("production numbering begins immediately after the 2,819-file archive", asy
 
 test("same-game allocation uses a transaction advisory lock before sequence insert", async () => {
   const source = await readFile("lib/battleIdentity.ts", "utf8");
-  assert.match(source, /pg_advisory_xact_lock\(hashtextextended/);
+  assert.match(
+    source,
+    /await tx\.\$executeRaw`[\s\S]*pg_advisory_xact_lock\(hashtextextended/
+  );
+  assert.doesNotMatch(
+    source,
+    /await tx\.\$queryRaw`[\s\S]*SELECT\s+pg_advisory_xact_lock\(/
+  );
   assert.match(source, /findUnique[\s\S]*battleIdentity\.create/);
 });
 
@@ -51,7 +58,7 @@ test("historical proof and review rows cannot consume the first post-rollout num
     }
   >();
   const tx = {
-    $queryRaw: async () => [{ pg_advisory_xact_lock: null }],
+    $executeRaw: async () => 0,
     battleIdentity: {
       findUnique: async ({ where }: { where: { identityKey: string } }) =>
         rows.get(where.identityKey) ?? null,

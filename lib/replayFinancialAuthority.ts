@@ -1001,6 +1001,8 @@ async function buildInternalPlan(
         where: {
           linkedGameStatsId:
             gameStatsId,
+          marketType:
+            "winner",
         },
         orderBy: {
           id: "asc",

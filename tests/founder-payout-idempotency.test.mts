@@ -46,7 +46,14 @@ test("automatic Founder settlement locks, recovers, and records under one transa
   assert.ok(recoveryIndex > lockIndex);
   assert.ok(executionIndex > recoveryIndex);
   assert.ok(ledgerIndex > executionIndex);
-  assert.match(source, /pg_advisory_xact_lock\(hashtextextended/);
+  assert.match(
+    source,
+    /await tx\.\$executeRaw`[\s\S]*pg_advisory_xact_lock\(hashtextextended/
+  );
+  assert.doesNotMatch(
+    source,
+    /await tx\.\$queryRaw`[\s\S]*SELECT\s+pg_advisory_xact_lock\(/
+  );
   assert.match(source, /requestId:\s*payoutIdentity\.requestId/);
   assert.match(source, /memo:\s*payoutIdentity\.memo/);
 });

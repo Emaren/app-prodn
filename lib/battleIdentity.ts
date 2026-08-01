@@ -84,7 +84,7 @@ export async function ensurePublicBattleIdentities(
   const resolved = await Promise.all(
     [...byKey.entries()].map(async ([identityKey, candidate]) =>
       prisma.$transaction(async (tx) => {
-        await tx.$queryRaw`
+        await tx.$executeRaw`
           SELECT pg_advisory_xact_lock(hashtextextended(${identityKey}, 0))
         `;
 

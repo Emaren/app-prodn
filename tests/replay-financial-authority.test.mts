@@ -336,6 +336,21 @@ test(
   }
 );
 
+test(
+  "financial authority plans only ordinary winner markets",
+  () => {
+    const source = readFileSync(
+      "lib/replayFinancialAuthority.ts",
+      "utf8"
+    );
+
+    assert.match(
+      source,
+      /linkedGameStatsId:\s*gameStatsId,\s*marketType:\s*"winner"/
+    );
+  }
+);
+
 function planPrisma(
   options: {
     amountWolo?: number;

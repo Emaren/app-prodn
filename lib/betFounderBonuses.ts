@@ -40,7 +40,7 @@ export async function withFounderPayoutTargetLock<T>(
 ) {
   return prisma.$transaction(
     async (tx) => {
-      await tx.$queryRaw`
+      await tx.$executeRaw`
         SELECT pg_advisory_xact_lock(hashtextextended(${identity.lockKey}, 0))
       `;
       return callback(tx);
