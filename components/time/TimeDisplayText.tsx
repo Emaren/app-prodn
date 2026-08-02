@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState, type KeyboardEvent } from "react";
 
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import {
+  detectBrowserTimeZone,
   formatDateTime,
   type DateLike,
   type FormatDateTimeOptions,
@@ -48,24 +49,27 @@ function formatForMode(
 
 export function useTimeDisplayFormatter() {
   const {
-    timeDisplayMode,
     timeClockMode,
     browserTimeZone,
     appearanceLoaded,
   } = useLobbyAppearance();
-  const resolvedDisplayMode = appearanceLoaded ? timeDisplayMode : "utc";
-  const resolvedBrowserTimeZone = appearanceLoaded ? browserTimeZone : null;
+  const resolvedBrowserTimeZone = appearanceLoaded
+    ? browserTimeZone || detectBrowserTimeZone()
+    : null;
 
   return useCallback(
-    (value: DateLike, options: FormatDateTimeOptions = {}) =>
-      formatForMode(
+    (value: DateLike, options: FormatDateTimeOptions = {}) => {
+      if (!resolvedBrowserTimeZone) return "—";
+
+      return formatForMode(
         value,
-        resolvedDisplayMode,
+        "local",
         timeClockMode,
         resolvedBrowserTimeZone,
         options
-      ),
-    [resolvedBrowserTimeZone, resolvedDisplayMode, timeClockMode]
+      );
+    },
+    [resolvedBrowserTimeZone, timeClockMode]
   );
 }
 
@@ -83,53 +87,51 @@ export default function TimeDisplayText({
   month,
 }: TimeDisplayTextProps) {
   const {
-    timeDisplayMode,
     timeClockMode,
     browserTimeZone,
     appearanceLoaded,
   } = useLobbyAppearance();
   const [showMobileReveal, setShowMobileReveal] = useState(false);
-  const resolvedDisplayMode = appearanceLoaded ? timeDisplayMode : "utc";
-  const resolvedBrowserTimeZone = appearanceLoaded ? browserTimeZone : null;
+  const resolvedBrowserTimeZone = appearanceLoaded
+    ? browserTimeZone || detectBrowserTimeZone()
+    : null;
 
-  const primaryText = useMemo(
-    () =>
-      formatForMode(
-        value,
-        resolvedDisplayMode,
-        timeClockMode,
-        resolvedBrowserTimeZone,
-        {
-          includeZone,
-          includeSeconds,
-          includeYear,
-          dateOnly,
-          timeOnly,
-          weekday,
-          month,
-        }
-      ),
-    [
-      dateOnly,
-      includeSeconds,
-      includeYear,
-      includeZone,
-      month,
-      resolvedBrowserTimeZone,
-      resolvedDisplayMode,
-      timeClockMode,
-      timeOnly,
+  const primaryText = useMemo(() => {
+    if (!resolvedBrowserTimeZone) return "—";
+
+    return formatForMode(
       value,
-      weekday,
-    ]
-  );
+      "local",
+      timeClockMode,
+      resolvedBrowserTimeZone,
+      {
+        includeZone,
+        includeSeconds,
+        includeYear,
+        dateOnly,
+        timeOnly,
+        weekday,
+        month,
+      }
+    );
+  }, [
+    dateOnly,
+    includeSeconds,
+    includeYear,
+    includeZone,
+    month,
+    resolvedBrowserTimeZone,
+    timeClockMode,
+    timeOnly,
+    value,
+    weekday,
+  ]);
 
-  const oppositeMode = resolvedDisplayMode === "utc" ? "local" : "utc";
-  const oppositeText = useMemo(
+  const utcText = useMemo(
     () =>
       formatForMode(
         value,
-        oppositeMode,
+        "utc",
         timeClockMode,
         resolvedBrowserTimeZone,
         {
@@ -148,7 +150,6 @@ export default function TimeDisplayText({
       includeYear,
       includeZone,
       month,
-      oppositeMode,
       resolvedBrowserTimeZone,
       timeClockMode,
       timeOnly,
@@ -186,7 +187,7 @@ export default function TimeDisplayText({
         tabIndex={0}
         onClick={toggleMobileReveal}
         onKeyDown={handleKeyDown}
-        title={oppositeText}
+        title={utcText}
       >
         {primaryText}
       </span>
@@ -199,7 +200,7 @@ export default function TimeDisplayText({
           .filter(Boolean)
           .join(" ")}
       >
-        {oppositeText}
+        {utcText}
       </span>
     </span>
   );

@@ -51,7 +51,6 @@ import {
 } from "@/components/lobby/LobbyAppearanceControls";
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import TimeClockModeToggle from "@/components/time/TimeClockModeToggle";
-import TimeDisplayModeToggle from "@/components/time/TimeDisplayModeToggle";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { getLobbyHeroBackground } from "@/components/lobby/lobbyPresentation";
 import SteamLoginButton from "@/components/SteamLoginButton";
@@ -261,8 +260,6 @@ function ProfilePageContent() {
     setViewMode,
     textColor,
     setTextColor,
-    timeDisplayMode,
-    setTimeDisplayMode,
     timeClockMode,
     setTimeClockMode,
     browserTimeZone,
@@ -302,7 +299,7 @@ function ProfilePageContent() {
     const latest = formatSiteDateTime(
       profile.pendingClaimLatestCreatedAt,
       {
-        timeDisplayMode,
+        timeDisplayMode: "local",
         timeClockMode,
         timezoneOverride: browserTimeZone,
       },
@@ -313,7 +310,7 @@ function ProfilePageContent() {
     return count > 1
       ? `${amount} WOLO waiting across ${count} claims · latest ${latest}`
       : `${amount} WOLO waiting · latest ${latest}`;
-  }, [browserTimeZone, hasPendingClaim, profile, timeClockMode, timeDisplayMode]);
+  }, [browserTimeZone, hasPendingClaim, profile, timeClockMode]);
 
   const recentChallengeHistory = useMemo(
     () => challengeSnapshot?.historyMatches.slice(0, 4) ?? [],
@@ -1445,11 +1442,10 @@ function ProfilePageContent() {
 
           <CompactAppearanceCard title="Time" tone={appearanceTone}>
             <div className="mt-3 flex flex-col gap-3">
-              <TimeDisplayModeToggle value={timeDisplayMode} onChange={setTimeDisplayMode} />
               <TimeClockModeToggle value={timeClockMode} onChange={setTimeClockMode} />
               <div className="flex items-center gap-2 text-xs leading-5 text-slate-300">
                 <Clock3 className="h-4 w-4" />
-                Local uses the browser time zone{browserTimeZone ? ` (${browserTimeZone})` : ""}.
+                Times always use the browser time zone{browserTimeZone ? ` (${browserTimeZone})` : ""}.
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm text-slate-200">
                 Preview: <TimeDisplayText value={new Date()} className="font-medium text-white" />
@@ -1485,7 +1481,7 @@ function ProfilePageContent() {
                   {textColor} text
                 </span>
                 <span className={`rounded-full border px-2.5 py-1 text-[11px] ${appearanceTone.neutralPill}`}>
-                  {timeDisplayMode} / {timeClockMode}
+                  browser local / {timeClockMode}
                 </span>
               </div>
             </div>
@@ -3030,8 +3026,6 @@ function ExtremeProfileRoom({
     setViewMode,
     textColor,
     setTextColor,
-    timeDisplayMode,
-    setTimeDisplayMode,
     timeClockMode,
     setTimeClockMode,
     browserTimeZone,
@@ -3155,15 +3149,6 @@ function ExtremeProfileRoom({
           </div>
 
           <div className="mt-5 flex flex-col gap-4">
-            <TimeDisplayModeToggle
-              value={
-                timeDisplayMode
-              }
-              onChange={
-                setTimeDisplayMode
-              }
-            />
-
             <TimeClockModeToggle
               value={
                 timeClockMode

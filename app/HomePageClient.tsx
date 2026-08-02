@@ -1160,7 +1160,6 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
     setViewMode,
     leaderboardLane,
     setLeaderboardLane,
-    timeDisplayMode,
     timeClockMode,
     browserTimeZone,
     appearanceLoaded,
@@ -1468,23 +1467,18 @@ return () => {
       appearanceLoaded
         ? resolveTimeZone(
             {
-              timeDisplayMode,
+              timeDisplayMode: "local",
               timeClockMode,
-              timezoneOverride: null,
+              timezoneOverride: browserTimeZone,
             },
             browserTimeZone
           )
-        : "UTC",
-    [
-      appearanceLoaded,
-      browserTimeZone,
-      timeClockMode,
-      timeDisplayMode,
-    ]
+        : browserTimeZone || "UTC",
+    [appearanceLoaded, browserTimeZone, timeClockMode]
   );
   const chatItems = useMemo(
-    () => buildChatItems(messages, chatTimeZone),
-    [chatTimeZone, messages]
+    () => appearanceLoaded ? buildChatItems(messages, chatTimeZone) : [],
+    [appearanceLoaded, chatTimeZone, messages]
   );
   
   const chatRoomTitle =

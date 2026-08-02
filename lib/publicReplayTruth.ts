@@ -654,6 +654,17 @@ export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
   if (truth.statsEligible) return publicRow;
 
   const noCapturedWinnerReason = readString(row, "parse_reason", "parseReason") || "";
+  const isEngineRoomStructuralProjection =
+    noCapturedWinnerReason === "engine_room_structural_projection";
+  const structuralReplayFile = readString(
+    row,
+    "original_filename",
+    "originalFilename",
+    "replay_file",
+    "replayFile"
+  ).toLowerCase();
+  const isSavedCheckpointStructure =
+    isEngineRoomStructuralProjection && structuralReplayFile.endsWith(".aoe2mpgame");
   const isQuietCompletedNoWinner =
     publicReplayIsFinal(row) &&
     (
@@ -661,19 +672,27 @@ export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
       noCapturedWinnerReason === "repaired_parse_match_fallback" ||
       noCapturedWinnerReason === "recorded_resignation_final" ||
       noCapturedWinnerReason === "watcher_final_unparsed" ||
-      noCapturedWinnerReason === "watcher_final_submission"
+      noCapturedWinnerReason === "watcher_final_submission" ||
+      isEngineRoomStructuralProjection
     );
 
   if (isQuietCompletedNoWinner) {
     const next: Record<string, unknown> = clearUnsafeWinnerFields(publicRow);
 
     // Product truth policy:
-    // If no winner can be captured, do not put the match in a scary manual-review state.
-    // It is simply completed with no winner captured unless someone disputes it.
+    // Structurally recovered rows may publish map, roster and teams without
+    // manufacturing a winner. Ordinary completed rows remain quiet when no
+    // reliable result was captured.
     next["unresolvedResult"] = {
       code: "winner_not_captured",
-      label: "Completed",
-      explanation: "Match completed, but no reliable winner was captured from the replay data.",
+      label: isSavedCheckpointStructure
+        ? "Saved checkpoint"
+        : isEngineRoomStructuralProjection
+          ? "Result unproven"
+          : "Completed",
+      explanation: isEngineRoomStructuralProjection
+        ? "Map, roster and teams were recovered from the immutable replay artifact; no reliable winner was proven."
+        : "Match completed, but no reliable winner was captured from the replay data.",
       reviewNeeded: false,
     };
     next["reviewNeeded"] = false;

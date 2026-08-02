@@ -467,7 +467,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   const searchParams = useSearchParams();
   const router = useRouter();
   const { status: walletStatus, address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
-  const { timeDisplayMode, setTimeDisplayMode, timeClockMode, browserTimeZone } = useLobbyAppearance();
+  const { timeClockMode, browserTimeZone } = useLobbyAppearance();
   const scheduleFormId = "schedule-game";
   const [snapshot, setSnapshot] = useState<ChallengeHubSnapshot>(EMPTY_SNAPSHOT);
   const [loading, setLoading] = useState(true);
@@ -913,10 +913,6 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
         : visibleMatchTiles[0].id
     );
   }, [effectiveFocusId, visibleMatchTiles]);
-
-  function toggleSiteTimePreference() {
-    setTimeDisplayMode(timeDisplayMode === "local" ? "utc" : "local");
-  }
 
   function setQuickSchedule(minutesFromNow: number) {
     const next = new Date(Date.now() + minutesFromNow * 60_000);
@@ -1666,9 +1662,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                         <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-300 text-[11px] font-black text-slate-950">2</span>
                         Keep the challenge open
                       </div>
-                      <button type="button" onClick={toggleSiteTimePreference} className="text-[11px] text-slate-400 transition hover:text-white">
-                        {timeDisplayMode === "local" ? "Show UTC sitewide" : "Show local sitewide"}
-                      </button>
+                      <span className="text-[11px] text-slate-400">Browser-local time</span>
                     </div>
 
                     <div className="mt-3 grid grid-cols-4 gap-2">

@@ -3,6 +3,8 @@ type PlayedAtValue = string | Date;
 
 export type LobbyMatchTimeSource = {
   played_at?: DateLike | null;
+  played_at_is_absolute?: boolean | null;
+  watcher_file_mtime?: DateLike | null;
   played_on?: DateLike | null;
   derived_played_on?: DateLike | null;
   created_at?: DateLike | null;
@@ -14,17 +16,25 @@ export type LobbyMatchTimeSource = {
   replayFile?: string | null;
 };
 
-const FILENAME_TIME_PATTERNS = [
-  /@?(\d{4})[._-](\d{2})[._-](\d{2})[ T_-]?(\d{2})[:._-]?(\d{2})[:._-]?(\d{2})/,
-  /\b(\d{4})(\d{2})(\d{2})[ T_-]?(\d{2})(\d{2})(\d{2})\b/,
-];
+function stringHasExplicitZone(value: string) {
+  return /(?:Z|[+-]\d{2}:?\d{2})$/i.test(value.trim());
+}
 
-function toValidDate(value: unknown) {
+function toAbsoluteDate(value: unknown, explicitlyAbsolute = false) {
   if (value instanceof Date) {
     return Number.isFinite(value.getTime()) ? value : null;
   }
 
-  if (typeof value !== "string" && typeof value !== "number") {
+  if (typeof value === "number") {
+    const parsed = new Date(value);
+    return Number.isFinite(parsed.getTime()) ? parsed : null;
+  }
+
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  if (!explicitlyAbsolute && !stringHasExplicitZone(value)) {
     return null;
   }
 
@@ -32,50 +42,37 @@ function toValidDate(value: unknown) {
   return Number.isFinite(parsed.getTime()) ? parsed : null;
 }
 
-function derivePlayedAtFromFilename(match: LobbyMatchTimeSource) {
-  const filenames = [
-    match.original_filename,
-    match.originalFilename,
-    match.replay_file,
-    match.replayFile,
-  ];
-
-  for (const value of filenames) {
-    if (typeof value !== "string" || !value.trim()) continue;
-
-    const basename = value.trim().split(/[\\/]/).pop() ?? value.trim();
-    for (const pattern of FILENAME_TIME_PATTERNS) {
-      const matchParts = basename.match(pattern);
-      if (!matchParts) continue;
-
-      const [, year, month, day, hour, minute, second] = matchParts;
-      const playedAt = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
-      const parsed = new Date(playedAt);
-
-      if (Number.isFinite(parsed.getTime())) {
-        return playedAt;
-      }
-    }
-  }
-
-  return null;
+function originalValueOrDate(value: DateLike, parsed: Date): PlayedAtValue {
+  return typeof value === "number" ? parsed : value;
 }
 
 export function pickLobbyMatchPlayedAt(match: LobbyMatchTimeSource): PlayedAtValue | null {
-  const candidates: unknown[] = [
-    match.played_at,
-    match.played_on,
-    match.derived_played_on,
-    derivePlayedAtFromFilename(match),
-    match.created_at,
-    match.createdAt,
-    match.timestamp,
+  const watcherMtime = toAbsoluteDate(match.watcher_file_mtime, true);
+  if (watcherMtime && match.watcher_file_mtime !== null && match.watcher_file_mtime !== undefined) {
+    return originalValueOrDate(match.watcher_file_mtime, watcherMtime);
+  }
+
+  // The API explicitly marks filename/source-local replay clocks as non-absolute.
+  // Once that warning exists, do not silently replace the game time with row
+  // creation or reprocessing time. Missing is more truthful than a false instant.
+  if (match.played_at && match.played_at_is_absolute === false) {
+    return null;
+  }
+
+  const candidates: Array<{ value: DateLike | null | undefined; absolute?: boolean }> = [
+    { value: match.played_at, absolute: match.played_at_is_absolute === true },
+    { value: match.played_on },
+    { value: match.derived_played_on },
+    { value: match.created_at },
+    { value: match.createdAt },
+    { value: match.timestamp },
   ];
 
-  for (const value of candidates) {
-    const parsed = toValidDate(value);
+  for (const candidate of candidates) {
+    if (candidate.value === null || candidate.value === undefined) continue;
+    const parsed = toAbsoluteDate(candidate.value, candidate.absolute === true);
     if (parsed) {
-      return typeof value === "number" ? parsed : (value as PlayedAtValue);
+      return originalValueOrDate(candidate.value, parsed);
     }
   }
 
