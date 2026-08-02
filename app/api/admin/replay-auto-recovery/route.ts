@@ -193,6 +193,23 @@ function errorDetail(
   };
 }
 
+type ReplayAutoRecoveryCandidate = {
+  id: number;
+  replayHash: string;
+  replay_file: string;
+  original_filename: string | null;
+  parse_source: string;
+  parse_reason: string;
+  createdAt: Date;
+};
+
+const EXACT_CURRENT_HASH_SELECTION = {
+  currentReplayHashRequired: true,
+  parserContractRequired: true,
+  candidateOnlyRequired: true,
+  anyExactContractRunSuppressesRedispatch: true,
+} as const;
+
 export async function POST(
   request: NextRequest
 ) {
@@ -233,78 +250,43 @@ export async function POST(
     getPrisma();
 
   const candidates =
-    await prisma.gameStats.findMany({
-      where: {
-        is_final:
-          true,
-
-        createdAt: {
-          gte:
-            since,
-        },
-
-        replayParseRuns: {
-          none: {
-            parserName:
-              HD_REPLAY_PARSER_CONTRACT
-                .parserName,
-
-            parserVersion:
-              HD_REPLAY_PARSER_CONTRACT
-                .parserVersion,
-
-            passName:
-              HD_REPLAY_PARSER_CONTRACT
-                .passName,
-
-            passVersion:
-              HD_REPLAY_PARSER_CONTRACT
-                .passVersion,
-
-            schemaVersion:
-              HD_REPLAY_PARSER_CONTRACT
-                .schemaVersion,
-          },
-        },
-      },
-
-      orderBy: [
-        {
-          createdAt:
-            "desc",
-        },
-        {
-          id:
-            "desc",
-        },
-      ],
-
-      take:
-        100,
-
-      select: {
-        id:
-          true,
-
-        replayHash:
-          true,
-
-        replay_file:
-          true,
-
-        original_filename:
-          true,
-
-        parse_source:
-          true,
-
-        parse_reason:
-          true,
-
-        createdAt:
-          true,
-      },
-    });
+    await prisma.$queryRaw<
+      ReplayAutoRecoveryCandidate[]
+    >`
+      SELECT
+        game.id,
+        game.replay_hash AS "replayHash",
+        game.replay_file,
+        game.original_filename,
+        game.parse_source,
+        game.parse_reason,
+        game.created_at AS "createdAt"
+      FROM game_stats AS game
+      WHERE game.is_final = TRUE
+        AND game.created_at >= ${since}
+        AND NOT EXISTS (
+          SELECT 1
+          FROM replay_parse_runs AS run
+          WHERE run.game_stats_id = game.id
+            AND lower(run.input_hash) = lower(game.replay_hash)
+            AND run.parser_name =
+              ${HD_REPLAY_PARSER_CONTRACT.parserName}
+            AND run.parser_version =
+              ${HD_REPLAY_PARSER_CONTRACT.parserVersion}
+            AND run.pass_name =
+              ${HD_REPLAY_PARSER_CONTRACT.passName}
+            AND run.pass_version =
+              ${HD_REPLAY_PARSER_CONTRACT.passVersion}
+            AND run.schema_version =
+              ${HD_REPLAY_PARSER_CONTRACT.schemaVersion}
+            AND run.candidate_only = TRUE
+            AND run.affects_public_aggregates = FALSE
+        )
+      ORDER BY
+        game.created_at DESC,
+        game.id DESC
+      LIMIT 100
+    `;
 
   const eligible =
     candidates
@@ -331,6 +313,9 @@ export async function POST(
 
       parserContract:
         HD_REPLAY_PARSER_CONTRACT,
+
+      selectionInvariant:
+        EXACT_CURRENT_HASH_SELECTION,
 
       candidateCount:
         candidates.length,
@@ -496,6 +481,9 @@ export async function POST(
 
     parserContract:
       HD_REPLAY_PARSER_CONTRACT,
+
+    selectionInvariant:
+      EXACT_CURRENT_HASH_SELECTION,
 
     candidateCount:
       candidates.length,
