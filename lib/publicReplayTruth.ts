@@ -653,6 +653,24 @@ export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
 
   if (truth.statsEligible) return publicRow;
 
+  const disconnectNoResult =
+    row.disconnect_detected === true ||
+    row.disconnectDetected === true;
+
+  if (disconnectNoResult) {
+    const next: Record<string, unknown> = clearUnsafeWinnerFields(publicRow);
+    next["unresolvedResult"] = {
+      code: "disconnect_or_desync",
+      label: "Desynced",
+      explanation:
+        "Replay ended in a disconnect or desync before a canonical winner existed.",
+      reviewNeeded: false,
+    };
+    next["reviewNeeded"] = false;
+    next["winnerProof"] = "disconnect_or_desync";
+    return next as T;
+  }
+
   const noCapturedWinnerReason = readString(row, "parse_reason", "parseReason") || "";
   const isEngineRoomStructuralProjection =
     noCapturedWinnerReason === "engine_room_structural_projection";

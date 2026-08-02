@@ -64,8 +64,15 @@ function hydrateCompletedSessionRowFromParsedTruth(
   const hasNoWinnerCaptured =
     parsedWinnerProof === "not_captured" ||
     parsedUnresolved?.code === "winner_not_captured";
+  const hasParsedDisconnect =
+    parsed.disconnect_detected === true ||
+    parsed.disconnectDetected === true ||
+    parsedWinnerProof === "disconnect_or_desync" ||
+    parsedUnresolved?.code === "disconnect_or_desync";
 
-  if (!hasParsedWinner && !hasNoWinnerCaptured) return sessionRow;
+  if (!hasParsedWinner && !hasNoWinnerCaptured && !hasParsedDisconnect) {
+    return sessionRow;
+  }
 
   const next = {
     ...sessionRow,
@@ -77,6 +84,16 @@ function hydrateCompletedSessionRowFromParsedTruth(
 
   if (hasParsedWinner) {
     next.unresolvedResult = null;
+  } else if (hasParsedDisconnect) {
+    next.unresolvedResult =
+      parsed.unresolvedResult ?? {
+        code: "disconnect_or_desync",
+        label: "Desynced",
+        explanation:
+          "Replay ended in a disconnect or desync before a canonical winner existed.",
+        reviewNeeded: false,
+      };
+    next.winnerProof = "disconnect_or_desync";
   } else {
     next.unresolvedResult =
       parsed.unresolvedResult ?? {
@@ -114,7 +131,11 @@ export function completedSessionToLobbyMatch(session: LiveGameSession): LobbyMat
     parse_reason: "completed_watcher_live",
     original_filename: session.originalFilename || session.replayFile || session.sessionKey,
     replay_file: session.replayFile || session.originalFilename || session.sessionKey,
-  };
+    disconnect_detected: session.disconnectDetected,
+    disconnectDetected: session.disconnectDetected,
+    unresolvedResult: session.unresolvedResult,
+    winnerProof: session.disconnectDetected ? "disconnect_or_desync" : undefined,
+  } as LobbyMatchRow & Record<string, unknown>;
 }
 
 export function mergeCompletedSessionsIntoLobbyMatches(

@@ -599,3 +599,50 @@ test("live metadata reconciliation never lets unknown overwrite known fields", (
   assert.equal(reconciled.activeSessions[0].players.length, 2);
   assert.equal(reconciled.activeSessions[0].parseIteration, 11);
 });
+
+test("a final parser disconnect is a desynced no-result battle, not Completed", () => {
+  const publicRow = toPublicGameStatsRow({
+    id: 20452,
+    is_final: true,
+    disconnect_detected: true,
+    winner: "Unknown",
+    parse_reason: "watcher_final_submission",
+    parse_source: "watcher_final",
+    players: [
+      { name: "Jim", team_id: 0, winner: null },
+      { name: "MEZ1692", team_id: 1, winner: null },
+    ],
+    key_events: {
+      completed: false,
+      disconnect_detected: true,
+    },
+  }) as Record<string, unknown>;
+
+  assert.equal(publicRow.winner, null);
+  assert.equal(publicRow.winnerProof, "disconnect_or_desync");
+  assert.equal(publicRow.reviewNeeded, false);
+  assert.deepEqual(publicRow.unresolvedResult, {
+    code: "disconnect_or_desync",
+    label: "Desynced",
+    explanation:
+      "Replay ended in a disconnect or desync before a canonical winner existed.",
+    reviewNeeded: false,
+  });
+
+  const unresolved = classifyUnresolvedWatcherResult({
+    winner: "Unknown",
+    players: [
+      { name: "Jim" },
+      { name: "MEZ1692" },
+    ],
+    state: "completed",
+    parseReason: "watcher_final_submission",
+    parseSource: "watcher_final",
+    keyEvents: { disconnect_detected: true },
+    disconnectDetected: true,
+  });
+
+  assert.equal(unresolved?.code, "disconnect_or_desync");
+  assert.equal(unresolved?.label, "Desynced");
+  assert.equal(unresolved?.reviewNeeded, false);
+});

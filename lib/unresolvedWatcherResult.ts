@@ -3,6 +3,7 @@ import {
 } from "./replayExplicitTeamStats.ts";
 
 export const UNRESOLVED_WATCHER_RESULT_CODES = [
+  "disconnect_or_desync",
   "roster_missing",
   "winner_missing",
   "parser_unknown_fields",
@@ -18,7 +19,7 @@ export type UnresolvedWatcherResultCode =
 
 export type UnresolvedWatcherResult = {
   code: UnresolvedWatcherResultCode;
-  label: "Winner under review" | "Result review" | "Awaiting final proof";
+  label: "Winner under review" | "Result review" | "Awaiting final proof" | "Desynced";
   explanation: string;
   reviewNeeded: boolean;
 };
@@ -1596,6 +1597,18 @@ export function classifyUnresolvedWatcherResult(
 
   const rawWinner = textValue(input.winner).toLowerCase();
   const keyEvents = readKeyEvents(input.keyEvents);
+  const unresolvedDisconnectDetected =
+    input.disconnectDetected === true ||
+    truthBoolean(keyEvents.disconnect_detected);
+
+  if (unresolvedDisconnectDetected) {
+    return result(
+      "disconnect_or_desync",
+      "Desynced",
+      "Replay ended in a disconnect or desync before a canonical winner existed.",
+      false
+    );
+  }
   const completionSource = textValue(keyEvents.completion_source);
   const eventType = textValue(input.eventType).toLowerCase();
   const finalityStatus = textValue(input.finalityStatus).toLowerCase();
