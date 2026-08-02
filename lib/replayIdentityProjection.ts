@@ -15,6 +15,29 @@ import { resolveReplayResultForPlayer } from "./replayPlayerResult.ts";
 import { normalizeReplayPlayers } from "./teamResolution.ts";
 import { invalidatePublicPlayerDirectoryCache } from "./publicPlayerDirectory.ts";
 
+export type ReplayIdentityRosterBlocker =
+  | "canonical_roster_incomplete"
+  | "canonical_roster_ambiguous";
+
+export function classifyReplayIdentityRoster(rawPlayers: unknown) {
+  const players = normalizeReplayPlayers(
+    Array.isArray(rawPlayers) ? rawPlayers : []
+  );
+  const blocker: ReplayIdentityRosterBlocker | null =
+    players.length < 2
+      ? "canonical_roster_incomplete"
+      : new Set(
+            players.map((player) => player.stablePlayerKey)
+          ).size !== players.length
+        ? "canonical_roster_ambiguous"
+        : null;
+
+  return {
+    players,
+    blocker,
+  };
+}
+
 export type ReplayIdentityProjectionReport = {
   requestedCount: number;
   createdCount: number;
@@ -167,16 +190,17 @@ export async function ensureReplayIdentityProjections(
     }
 
     const effectiveGame = applyReplayAdjudicationToGameStats(game);
-    const players = normalizeReplayPlayers(
-      Array.isArray(effectiveGame.players) ? effectiveGame.players : []
+    const roster = classifyReplayIdentityRoster(
+      effectiveGame.players
     );
+    const players = roster.players;
 
-    if (players.length < 2) {
+    if (roster.blocker) {
       report.skippedCount += 1;
       report.outcomes.push({
         gameStatsId: game.id,
         outcome: "skipped",
-        detail: "canonical_roster_incomplete",
+        detail: roster.blocker,
         projectionId: null,
       });
       continue;
