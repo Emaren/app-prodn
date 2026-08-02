@@ -46,6 +46,13 @@ export type ReplayPostIngestStageExecution = {
   error: string | null;
 };
 
+export type ReplayPostIngestAutomationExecution =
+  ReplayPostIngestStageExecution & {
+    createdCount: number;
+    existingCount: number;
+    skippedCount: number;
+  };
+
 export type ReplayPostIngestReport = {
   idempotencyKey: string;
   source: string;
@@ -74,6 +81,10 @@ export type ReplayPostIngestReport = {
     completeCount: number;
     eligibleCount: number;
   };
+  automatic: {
+    results: ReplayPostIngestAutomationExecution;
+    identities: ReplayPostIngestAutomationExecution;
+  };
   financial: {
     eligibleCount: number;
     tournament: ReplayPostIngestStageExecution;
@@ -84,6 +95,22 @@ export type ReplayPostIngestReport = {
 export type ReplayPostIngestDependencies<TPrisma> = {
   reconcileTournamentMatchProofs: (prisma: TPrisma) => Promise<unknown>;
   ensureBetMarkets: (prisma: TPrisma) => Promise<unknown>;
+  reconcileAutomaticWatcherTerminalResults?: (
+    prisma: TPrisma,
+    gameStatsIds: readonly (string | number | null | undefined)[]
+  ) => Promise<{
+    createdCount: number;
+    existingCount: number;
+    skippedCount: number;
+  }>;
+  ensureReplayIdentityProjections?: (
+    prisma: TPrisma,
+    gameStatsIds: readonly (string | number | null | undefined)[]
+  ) => Promise<{
+    createdCount: number;
+    existingCount: number;
+    skippedCount: number;
+  }>;
 };
 
 const TRUSTED_FINAL_STATUSES = new Set([
@@ -286,6 +313,17 @@ function pendingExecution(requested: boolean): ReplayPostIngestStageExecution {
   };
 }
 
+function pendingAutomation(
+  requested: boolean
+): ReplayPostIngestAutomationExecution {
+  return {
+    ...pendingExecution(requested),
+    createdCount: 0,
+    existingCount: 0,
+    skippedCount: 0,
+  };
+}
+
 function stableReceiptIdentity(receipt: ReplayIngestReceipt, index: number) {
   if (receipt.replayHash) return `hash:${receipt.replayHash}`;
   if (receipt.gameId !== null) return `game:${receipt.gameId}`;
@@ -295,7 +333,7 @@ function stableReceiptIdentity(receipt: ReplayIngestReceipt, index: number) {
 export function summarizeReplayIngestStages(
   receipts: ReplayIngestReceipt[],
   source: string
-): Omit<ReplayPostIngestReport, "financial"> & {
+): Omit<ReplayPostIngestReport, "financial" | "automatic"> & {
   financial: Pick<ReplayPostIngestReport["financial"], "eligibleCount">;
 } {
   const accepted = receipts.filter((receipt) => receipt.accepted);
@@ -355,11 +393,17 @@ export function summarizeReplayIngestStages(
 async function defaultReplayPostIngestDependencies<TPrisma>(): Promise<
   ReplayPostIngestDependencies<TPrisma>
 > {
-  const [{ reconcileTournamentMatchProofs }, { ensureBetMarkets }] =
-    await Promise.all([
-      import("@/lib/tournamentProofReconciler"),
-      import("@/lib/bets"),
-    ]);
+  const [
+    { reconcileTournamentMatchProofs },
+    { ensureBetMarkets },
+    { reconcileAutomaticWatcherTerminalResults },
+    { ensureReplayIdentityProjections },
+  ] = await Promise.all([
+    import("@/lib/tournamentProofReconciler"),
+    import("@/lib/bets"),
+    import("@/lib/replayResultAdjudications"),
+    import("@/lib/replayIdentityProjection"),
+  ]);
 
   return {
     reconcileTournamentMatchProofs: (prisma) =>
@@ -369,15 +413,68 @@ async function defaultReplayPostIngestDependencies<TPrisma>(): Promise<
       ),
     ensureBetMarkets: (prisma) =>
       ensureBetMarkets(prisma as Parameters<typeof ensureBetMarkets>[0]),
+    reconcileAutomaticWatcherTerminalResults: (prisma, gameStatsIds) =>
+      reconcileAutomaticWatcherTerminalResults(
+        prisma as Parameters<typeof reconcileAutomaticWatcherTerminalResults>[0],
+        gameStatsIds
+      ),
+    ensureReplayIdentityProjections: (prisma, gameStatsIds) =>
+      ensureReplayIdentityProjections(
+        prisma as Parameters<typeof ensureReplayIdentityProjections>[0],
+        gameStatsIds
+      ),
   };
+}
+
+function acceptedFinalGameIds(receipts: ReplayIngestReceipt[]) {
+  return [
+    ...new Set(
+      receipts
+        .filter(
+          (receipt) =>
+            receipt.accepted &&
+            receipt.effectiveFinal !== false &&
+            receipt.gameId !== null
+        )
+        .map((receipt) => receipt.gameId)
+    ),
+  ];
+}
+
+async function executeAutomation<TPrisma>(input: {
+  stage: ReplayPostIngestAutomationExecution;
+  runner:
+    | ReplayPostIngestDependencies<TPrisma>["reconcileAutomaticWatcherTerminalResults"]
+    | ReplayPostIngestDependencies<TPrisma>["ensureReplayIdentityProjections"];
+  prisma: TPrisma;
+  gameStatsIds: readonly (string | number | null | undefined)[];
+}) {
+  if (!input.stage.requested) return;
+  input.stage.attempted = true;
+
+  if (!input.runner) {
+    input.stage.succeeded = true;
+    return;
+  }
+
+  try {
+    const result = await input.runner(input.prisma, input.gameStatsIds);
+    input.stage.createdCount = result.createdCount;
+    input.stage.existingCount = result.existingCount;
+    input.stage.skippedCount = result.skippedCount;
+    input.stage.succeeded = true;
+  } catch (error) {
+    input.stage.succeeded = false;
+    input.stage.error = errorMessage(error);
+  }
 }
 
 /**
  * Run the application-owned post-ingest reconciliation pass.
  *
- * The underlying tournament and market reconcilers are retry-safe/idempotent.
- * This coordinator calls each at most once per upload batch and exposes a
- * stable idempotency key so callers and operator logs can correlate retries.
+ * Automatic result evidence and identity projection are append-only and
+ * retry-safe. Financial reconciliation runs only after either the parser or
+ * the exact watcher-terminal evidence policy establishes a ready result.
  */
 export async function coordinateReplayPostIngest<TPrisma>(options: {
   prisma: TPrisma;
@@ -389,7 +486,32 @@ export async function coordinateReplayPostIngest<TPrisma>(options: {
 }): Promise<ReplayPostIngestReport> {
   const summary = summarizeReplayIngestStages(options.receipts, options.source);
   const acceptedUpload = summary.acceptedCount > 0;
-  const resultReady = summary.result.readyCount > 0;
+  const gameStatsIds = acceptedFinalGameIds(options.receipts);
+  const automaticResults = pendingAutomation(gameStatsIds.length > 0);
+  const automaticIdentities = pendingAutomation(gameStatsIds.length > 0);
+
+  let dependencies = options.dependencies;
+  if (gameStatsIds.length > 0) {
+    dependencies =
+      dependencies ||
+      (await defaultReplayPostIngestDependencies<TPrisma>());
+
+    await executeAutomation({
+      stage: automaticResults,
+      runner: dependencies.reconcileAutomaticWatcherTerminalResults,
+      prisma: options.prisma,
+      gameStatsIds,
+    });
+    await executeAutomation({
+      stage: automaticIdentities,
+      runner: dependencies.ensureReplayIdentityProjections,
+      prisma: options.prisma,
+      gameStatsIds,
+    });
+  }
+
+  const resultReady =
+    summary.result.readyCount > 0 || automaticResults.createdCount > 0;
   const tournamentRequested = Boolean(
     resultReady ||
       (acceptedUpload && options.reconcileTournamentForAcceptedUpload)
@@ -400,22 +522,13 @@ export async function coordinateReplayPostIngest<TPrisma>(options: {
   const tournament = pendingExecution(tournamentRequested);
   const markets = pendingExecution(marketsRequested);
 
-  if (!tournamentRequested && !marketsRequested) {
-    return {
-      ...summary,
-      financial: {
-        ...summary.financial,
-        tournament,
-        markets,
-      },
-    };
+  if (tournamentRequested || marketsRequested) {
+    dependencies =
+      dependencies ||
+      (await defaultReplayPostIngestDependencies<TPrisma>());
   }
 
-  const dependencies =
-    options.dependencies ||
-    (await defaultReplayPostIngestDependencies<TPrisma>());
-
-  if (tournamentRequested) {
+  if (tournamentRequested && dependencies) {
     tournament.attempted = true;
     try {
       await dependencies.reconcileTournamentMatchProofs(options.prisma);
@@ -426,7 +539,7 @@ export async function coordinateReplayPostIngest<TPrisma>(options: {
     }
   }
 
-  if (marketsRequested) {
+  if (marketsRequested && dependencies) {
     markets.attempted = true;
     try {
       await dependencies.ensureBetMarkets(options.prisma);
@@ -439,8 +552,23 @@ export async function coordinateReplayPostIngest<TPrisma>(options: {
 
   return {
     ...summary,
+    result: {
+      ...summary.result,
+      readyCount:
+        summary.result.readyCount + automaticResults.createdCount,
+      reviewCount: Math.max(
+        0,
+        summary.result.reviewCount - automaticResults.createdCount
+      ),
+    },
+    automatic: {
+      results: automaticResults,
+      identities: automaticIdentities,
+    },
     financial: {
       ...summary.financial,
+      eligibleCount:
+        summary.financial.eligibleCount + automaticResults.createdCount,
       tournament,
       markets,
     },

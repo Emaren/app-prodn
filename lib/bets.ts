@@ -1170,8 +1170,12 @@ export function buildFinalMarketTruth(game: {
   if (
     String(game.winnerProof ?? "").trim().toLowerCase() ===
       "replay_result_adjudication" &&
-    String(game.parse_reason ?? "").trim().toLowerCase() ===
-      "manual_result_adjudication" &&
+    [
+      "manual_result_adjudication",
+      "automatic_result_evidence",
+    ].includes(
+      String(game.parse_reason ?? "").trim().toLowerCase()
+    ) &&
     String(adjudication.decision_status ?? "").trim().toLowerCase() ===
       "accepted" &&
     adjudicationAuthorizesBets

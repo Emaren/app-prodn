@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import BetMarketLiveRefresh from "@/components/bets/BetMarketLiveRefresh";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { getPrisma } from "@/lib/prisma";
 
@@ -985,6 +986,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
   if (view === "basic") {
     return (
       <main className="min-h-screen bg-[#07111f] text-slate-100">
+        <BetMarketLiveRefresh />
         <section className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-5 py-8 sm:px-8 lg:px-10">
           <BookTopBar market={market} view={view} order={order} replayHref={replayHref} />
 
@@ -1046,6 +1048,7 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#050b16] text-slate-100">
+      <BetMarketLiveRefresh />
       <div className="pointer-events-none fixed inset-0 opacity-70">
         <div className="absolute left-[-10%] top-[-20%] h-[520px] w-[520px] rounded-full bg-amber-400/10 blur-3xl" />
         <div className="absolute right-[-12%] top-[10%] h-[620px] w-[620px] rounded-full bg-sky-500/10 blur-3xl" />

@@ -121,6 +121,13 @@ type PublicPlayerDirectoryCacheEntry = {
 
 let publicPlayerDirectoryCache: PublicPlayerDirectoryCacheEntry | null = null;
 let publicPlayerDirectoryPromise: Promise<PublicPlayerDirectory> | null = null;
+let publicPlayerDirectoryCacheGeneration = 0;
+
+export function invalidatePublicPlayerDirectoryCache() {
+  publicPlayerDirectoryCacheGeneration += 1;
+  publicPlayerDirectoryCache = null;
+  publicPlayerDirectoryPromise = null;
+}
 
 function normalizeDirectoryKey(value: string | null | undefined) {
   return normalizePublicPlayerName(value).toLowerCase();
@@ -1013,12 +1020,15 @@ export async function loadPublicPlayerDirectory(
     return publicPlayerDirectoryPromise;
   }
 
+  const generation = publicPlayerDirectoryCacheGeneration;
   const run = loadPublicPlayerDirectoryFresh(prisma)
     .then((value) => {
-      publicPlayerDirectoryCache = {
-        expiresAt: Date.now() + PLAYER_DIRECTORY_CACHE_TTL_MS,
-        value,
-      };
+      if (generation === publicPlayerDirectoryCacheGeneration) {
+        publicPlayerDirectoryCache = {
+          expiresAt: Date.now() + PLAYER_DIRECTORY_CACHE_TTL_MS,
+          value,
+        };
+      }
 
       return value;
     })

@@ -25,6 +25,7 @@ import {
 } from "@/lib/unresolvedWatcherResult";
 import { BattleLoopPreview } from "@/components/media/BattleLoopPreview";
 import { useNearViewport } from "@/hooks/useNearViewport";
+import { orderFeaturedBattleOptions } from "@/lib/featuredBattleOptions";
 
 type WatchAndChatHeroProps = {
   tournament: LobbySnapshot["tournament"];
@@ -458,19 +459,34 @@ export function WatchAndChatHero({
   }, []);
 
   const featuredOptions = useMemo(() => {
-    const liveSessions = [...(liveGames?.activeSessions ?? [])].sort(
-      (left, right) =>
-        Number(hasFirstPartyBattleStream(right)) -
-        Number(hasFirstPartyBattleStream(left))
+    const active = [...(liveGames?.activeSessions ?? [])]
+      .sort(
+        (left, right) =>
+          Number(hasFirstPartyBattleStream(right)) -
+          Number(hasFirstPartyBattleStream(left))
+      )
+      .map(featuredFromLiveSession);
+    const completed = (liveGames?.recentlyCompletedSessions ?? []).map(
+      featuredFromLiveSession
     );
-    const completedSessions = liveGames?.recentlyCompletedSessions ?? [];
-    const options = [
-      ...liveSessions.slice(0, 4).map(featuredFromLiveSession),
-      ...completedSessions.slice(0, 2).map(featuredFromLiveSession),
-    ];
-    if (options.length > 0) return options;
-    return [featuredFromReplay(recentMatches[0] ?? null, tournament.title)];
-  }, [liveGames?.activeSessions, liveGames?.recentlyCompletedSessions, recentMatches, tournament.title]);
+    const replay = recentMatches[0]
+      ? featuredFromReplay(recentMatches[0], tournament.title)
+      : null;
+    const options = orderFeaturedBattleOptions({
+      active,
+      completed,
+      replay,
+    });
+
+    return options.length > 0
+      ? options
+      : [featuredFromReplay(null, tournament.title)];
+  }, [
+    liveGames?.activeSessions,
+    liveGames?.recentlyCompletedSessions,
+    recentMatches,
+    tournament.title,
+  ]);
 
   const selectedWar =
     featuredOptions.find((option) => option.sessionKey === selectedSessionKey) ?? featuredOptions[0];

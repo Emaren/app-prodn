@@ -635,6 +635,14 @@ export function applyReplayResultAdjudication<T extends object>(
     original_parse_source: originalParseSource,
   };
   const keyEvents = jsonRecord(source.key_events ?? source.keyEvents);
+  const automaticEvidence =
+    adjudication.idempotencyKey?.startsWith("evidence:auto:") === true;
+  const projectedParseReason = automaticEvidence
+    ? "automatic_result_evidence"
+    : "manual_result_adjudication";
+  const projectedParseSource = automaticEvidence
+    ? "replay_result_evidence"
+    : "replay_result_review";
 
   return {
     ...source,
@@ -645,10 +653,10 @@ export function applyReplayResultAdjudication<T extends object>(
     winnerProof: "replay_result_adjudication",
     reviewNeeded: false,
     players: projectedPlayers,
-    parse_reason: "manual_result_adjudication",
-    parseReason: "manual_result_adjudication",
-    parse_source: "replay_result_review",
-    parseSource: "replay_result_review",
+    parse_reason: projectedParseReason,
+    parseReason: projectedParseReason,
+    parse_source: projectedParseSource,
+    parseSource: projectedParseSource,
     unresolvedResult: null,
     key_events: {
       ...keyEvents,
@@ -1294,4 +1302,463 @@ export async function submitReplayResultAdjudication(input: {
     }
     throw error;
   }
+}
+
+export const WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION =
+  "watcher-terminal-owner-loss-v1" as const;
+
+export type WatcherTerminalOwnerLossEvaluation =
+  | {
+      eligible: false;
+      reason: string;
+    }
+  | {
+      eligible: true;
+      reason: "exact_watcher_owner_terminal_loss";
+      owner: CanonicalReplayPlayer;
+      opponent: CanonicalReplayPlayer;
+      teams: CanonicalReplayResultTeam[];
+      winningTeamKey: string;
+      evidence: Prisma.InputJsonValue;
+    };
+
+type WatcherTerminalOwnerLossInput = {
+  id: number;
+  replayHash: string;
+  parseIteration: number;
+  parseSource: string | null;
+  parseReason: string | null;
+  isFinal: boolean;
+  winner: unknown;
+  players: unknown;
+  keyEvents: unknown;
+  eventTypes: unknown;
+  disconnectDetected: boolean;
+  durationSeconds: number | null;
+  uploaderSteamId: string | null;
+  uploaderUid: string | null;
+  hasAdjudicationHistory: boolean;
+  currentDesyncOccurred: boolean | null;
+};
+
+function automaticTruth(value: unknown) {
+  return value === true || value === "true" || value === 1 || value === "1";
+}
+
+function automaticExplicitFalse(value: unknown) {
+  return value === false || value === "false" || value === 0 || value === "0";
+}
+
+function automaticArray(value: unknown) {
+  const parsed = parseJson(value);
+  return Array.isArray(parsed) ? parsed : [];
+}
+
+function automaticEventTypes(value: unknown) {
+  return new Set(
+    automaticArray(value)
+      .map((entry) => cleanText(entry, 80).toLowerCase())
+      .filter(Boolean)
+  );
+}
+
+function automaticKnownWinner(value: unknown) {
+  const normalized = cleanText(value, 100).toLowerCase();
+  return Boolean(
+    normalized &&
+      ![
+        "unknown",
+        "unresolved",
+        "undetermined",
+        "none",
+        "null",
+        "n/a",
+        "tbd",
+      ].includes(normalized)
+  );
+}
+
+export function evaluateWatcherTerminalOwnerLoss(
+  input: WatcherTerminalOwnerLossInput
+): WatcherTerminalOwnerLossEvaluation {
+  if (!input.isFinal) return { eligible: false, reason: "not_final" };
+  if (cleanText(input.parseSource, 40) !== "watcher_final") {
+    return { eligible: false, reason: "not_watcher_final" };
+  }
+  if (cleanText(input.parseReason, 80) !== "watcher_final_submission") {
+    return { eligible: false, reason: "parse_reason_not_exact" };
+  }
+  if (input.parseIteration < 2) {
+    return { eligible: false, reason: "parser_iteration_not_stable" };
+  }
+  if (!input.disconnectDetected) {
+    return { eligible: false, reason: "terminal_disconnect_missing" };
+  }
+  if ((input.durationSeconds ?? 0) < 60) {
+    return { eligible: false, reason: "duration_under_60_seconds" };
+  }
+  if (input.hasAdjudicationHistory) {
+    return { eligible: false, reason: "adjudication_history_exists" };
+  }
+  if (input.currentDesyncOccurred === true) {
+    return { eligible: false, reason: "confirmed_desync" };
+  }
+  if (automaticKnownWinner(input.winner)) {
+    return { eligible: false, reason: "stored_winner_exists" };
+  }
+
+  const players = normalizeReplayPlayers(parseJson(input.players));
+  if (
+    players.length !== 2 ||
+    players.some((player) => !player.steamId) ||
+    new Set(players.map((player) => player.stablePlayerKey)).size !== 2
+  ) {
+    return { eligible: false, reason: "exact_steam_1v1_required" };
+  }
+
+  const uploaderSteamId = cleanText(input.uploaderSteamId, 32);
+  if (!uploaderSteamId) {
+    return { eligible: false, reason: "uploader_steam_id_missing" };
+  }
+  const ownerMatches = players.filter(
+    (player) => player.steamId === uploaderSteamId
+  );
+  if (ownerMatches.length !== 1) {
+    return { eligible: false, reason: "uploader_player_not_exact" };
+  }
+  const owner = ownerMatches[0];
+  const opponent = players.find(
+    (player) => player.stablePlayerKey !== owner.stablePlayerKey
+  );
+  if (!opponent) {
+    return { eligible: false, reason: "opponent_not_exact" };
+  }
+
+  const keyEvents = jsonRecord(input.keyEvents);
+  const watcherUpload = jsonRecord(keyEvents.watcher_upload);
+  const teamResolution = jsonRecord(keyEvents.team_resolution);
+  const resultResolution = jsonRecord(keyEvents.result_resolution);
+  const eventTypes = automaticEventTypes(input.eventTypes);
+  const replayHash = cleanText(input.replayHash, 64).toLowerCase();
+  const archivedHash = cleanText(
+    watcherUpload.server_sha256,
+    64
+  ).toLowerCase();
+
+  if (
+    cleanText(watcherUpload.file_role, 40).toLowerCase() !==
+      "final_recording" ||
+    !automaticTruth(watcherUpload.final_candidate) ||
+    automaticTruth(watcherUpload.checkpoint_final_rejected) ||
+    !replayHash ||
+    archivedHash !== replayHash
+  ) {
+    return { eligible: false, reason: "watcher_final_proof_incomplete" };
+  }
+  if (
+    !automaticTruth(keyEvents.rated) ||
+    !automaticExplicitFalse(keyEvents.restored) ||
+    cleanText(keyEvents.platform_id, 20).toLowerCase() !== "hd" ||
+    !automaticExplicitFalse(keyEvents.completed)
+  ) {
+    return { eligible: false, reason: "rated_hd_terminal_shape_missing" };
+  }
+  if (
+    cleanText(teamResolution.format, 20).toLowerCase() !== "1v1" ||
+    cleanText(teamResolution.status, 20).toLowerCase() !== "resolved" ||
+    cleanText(teamResolution.confidence, 20).toLowerCase() !== "high"
+  ) {
+    return { eligible: false, reason: "team_resolution_not_exact" };
+  }
+
+  const hasSerializedResult =
+    players.some((player) => player.winner === true) ||
+    automaticTruth(resultResolution.result_trusted) ||
+    eventTypes.has("resign") ||
+    automaticArray(keyEvents.resigned_player_numbers).length > 0 ||
+    automaticArray(keyEvents.resigned_player_names).length > 0 ||
+    automaticTruth(keyEvents.postgame_available) ||
+    automaticTruth(keyEvents.has_scores) ||
+    automaticTruth(keyEvents.has_achievements);
+
+  if (hasSerializedResult) {
+    return { eligible: false, reason: "serialized_result_exists" };
+  }
+
+  const teams: CanonicalReplayResultTeam[] = players
+    .map((player) => ({
+      teamKey: player.stablePlayerKey,
+      players: [
+        {
+          stablePlayerKey: player.stablePlayerKey,
+          name: player.name,
+          normalizedName: player.normalizedName,
+          steamId: player.steamId,
+          sourceTeamId: player.teamId,
+          playerNumber: player.playerNumber,
+        },
+      ],
+    }))
+    .sort((left, right) => left.teamKey.localeCompare(right.teamKey));
+
+  return {
+    eligible: true,
+    reason: "exact_watcher_owner_terminal_loss",
+    owner,
+    opponent,
+    teams,
+    winningTeamKey: opponent.stablePlayerKey,
+    evidence: jsonClone({
+      submittedVia: "automatic_watcher_terminal_policy",
+      policyVersion: WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
+      replayHash,
+      gameStatsId: input.id,
+      uploaderUid: input.uploaderUid,
+      uploaderSteamId,
+      ownerPlayerKey: owner.stablePlayerKey,
+      ownerPlayerName: owner.name,
+      opponentPlayerKey: opponent.stablePlayerKey,
+      opponentPlayerName: opponent.name,
+      durationSeconds: input.durationSeconds,
+      exactFinalRecording: true,
+      ratedHdOneVsOne: true,
+      serializedResultAbsent: true,
+      confirmedDesyncAbsent: true,
+      corpusAudit: {
+        exactUploaderOwnedRatedOneVsOne: 29,
+        silentCasesWithAcceptedVerdict: 3,
+        directOwnerWinContradictions: 0,
+        auditedAt: "2026-08-02T01:30:25.267Z",
+      },
+    }),
+  };
+}
+
+export type AutomaticWatcherTerminalResultReport = {
+  requestedCount: number;
+  createdCount: number;
+  existingCount: number;
+  skippedCount: number;
+  outcomes: Array<{
+    gameStatsId: number;
+    outcome: "created" | "existing" | "skipped";
+    detail: string;
+    adjudicationId: number | null;
+  }>;
+};
+
+function automaticGameIds(
+  values: readonly (string | number | null | undefined)[]
+) {
+  return [
+    ...new Set(
+      values
+        .map((value) => Number(value))
+        .filter(
+          (value): value is number =>
+            Number.isSafeInteger(value) && value > 0
+        )
+    ),
+  ].sort((left, right) => left - right);
+}
+
+export async function reconcileAutomaticWatcherTerminalResults(
+  prisma: PrismaClient,
+  rawGameStatsIds: readonly (string | number | null | undefined)[]
+): Promise<AutomaticWatcherTerminalResultReport> {
+  const gameStatsIds = automaticGameIds(rawGameStatsIds);
+  const report: AutomaticWatcherTerminalResultReport = {
+    requestedCount: gameStatsIds.length,
+    createdCount: 0,
+    existingCount: 0,
+    skippedCount: 0,
+    outcomes: [],
+  };
+
+  for (const gameStatsId of gameStatsIds) {
+    const outcome = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw<Array<{ lock_acquired: number }>>`
+        SELECT 1::int AS lock_acquired
+        FROM pg_advisory_xact_lock(${gameStatsId})
+      `;
+
+      const game = await tx.gameStats.findUnique({
+        where: { id: gameStatsId },
+        select: {
+          ...REVIEWABLE_GAME_SELECT,
+          user: {
+            select: {
+              id: true,
+              uid: true,
+              steamId: true,
+              inGameName: true,
+              steamPersonaName: true,
+            },
+          },
+          replayResultAdjudications: {
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            take: 1,
+            select: {
+              id: true,
+              idempotencyKey: true,
+            },
+          },
+          replayDesyncIncidents: {
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            take: 1,
+            select: { desyncOccurred: true },
+          },
+        },
+      });
+
+      if (!game || !game.user) {
+        return {
+          outcome: "skipped" as const,
+          detail: "game_or_uploader_missing",
+          adjudicationId: null,
+        };
+      }
+
+      const idempotencyKey =
+        `evidence:auto:watcher-terminal:${game.id}:` +
+        game.replayHash.slice(0, 16).toLowerCase();
+      const evaluation = evaluateWatcherTerminalOwnerLoss({
+        id: game.id,
+        replayHash: game.replayHash,
+        parseIteration: game.parse_iteration,
+        parseSource: game.parse_source,
+        parseReason: game.parse_reason,
+        isFinal: game.is_final,
+        winner: game.winner,
+        players: game.players,
+        keyEvents: game.key_events,
+        eventTypes: game.event_types,
+        disconnectDetected: game.disconnect_detected,
+        durationSeconds: game.duration ?? game.game_duration,
+        uploaderSteamId: game.user.steamId,
+        uploaderUid: game.user.uid,
+        hasAdjudicationHistory:
+          game.replayResultAdjudications.some(
+            (entry) => entry.idempotencyKey !== idempotencyKey
+          ),
+        currentDesyncOccurred:
+          game.replayDesyncIncidents[0]?.desyncOccurred ?? null,
+      });
+
+      if (!evaluation.eligible) {
+        return {
+          outcome: "skipped" as const,
+          detail: evaluation.reason,
+          adjudicationId: null,
+        };
+      }
+
+      const validated = validateReplayResultAdjudication({
+        payload: {
+          idempotencyKey,
+          sourceReplayHash: game.replayHash,
+          sourceParseIteration: game.parse_iteration,
+          sourceRosterHash: buildRosterHash(
+            normalizeReplayPlayers(parseJson(game.players))
+          ),
+          teams: evaluation.teams.map((team) => ({
+            teamKey: team.teamKey,
+            playerKeys: team.players.map(
+              (player) => player.stablePlayerKey
+            ),
+          })),
+          winningTeamKey: evaluation.winningTeamKey,
+          reason:
+            "Exact watcher-owned rated HD 1v1 terminal evidence established that the local uploader ended the recording without serialized result packets; the opposing Steam identity won.",
+          evidence: evaluation.evidence,
+          supersedesId: null,
+        },
+        replayHash: game.replayHash,
+        parseIteration: game.parse_iteration,
+        players: game.players,
+      });
+
+      const existing = await tx.replayResultAdjudication.findUnique({
+        where: { idempotencyKey },
+        select: { id: true, inputHash: true, gameStatsId: true },
+      });
+      if (existing) {
+        if (
+          existing.gameStatsId !== game.id ||
+          existing.inputHash !== validated.inputHash
+        ) {
+          fail(
+            409,
+            "automatic_evidence_idempotency_conflict",
+            "Automatic watcher evidence idempotency conflict."
+          );
+        }
+        return {
+          outcome: "existing" as const,
+          detail: WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
+          adjudicationId: existing.id,
+        };
+      }
+
+      const marketState = await buildMarketSnapshot(
+        tx as unknown as MarketSnapshotPrisma,
+        game.id,
+        [game.original_filename, game.replay_file]
+      );
+      const adjudication = await tx.replayResultAdjudication.create({
+        data: {
+          gameStatsId: game.id,
+          actorUserId: game.user.id,
+          supersedesId: null,
+          idempotencyKey: validated.idempotencyKey,
+          inputHash: validated.inputHash,
+          decisionStatus: REPLAY_RESULT_ACCEPTED,
+          actorUidSnapshot: game.user.uid,
+          actorDisplayNameSnapshot:
+            `AoE2WAR Watcher · ${displayName(game.user)}`.slice(0, 100),
+          actorRole: "automatic_evidence",
+          teamAssignments:
+            validated.teams as unknown as Prisma.InputJsonValue,
+          winningTeamKey: validated.winningTeamKey,
+          winningPlayerKeys:
+            validated.winningPlayerKeys as Prisma.InputJsonValue,
+          reason: validated.reason,
+          ...(validated.evidence === null
+            ? {}
+            : { evidence: validated.evidence }),
+          sourceReplayHash: validated.sourceReplayHash,
+          sourceParseIteration: validated.sourceParseIteration,
+          sourceRosterHash: validated.sourceRosterHash,
+          sourcePropositionHash: validated.sourcePropositionHash,
+          rawParserSnapshot: rawParserSnapshot(game),
+          marketSnapshot: marketState.snapshot,
+          hasLinkedMarket: marketState.hasLinkedMarket,
+          financialDisposition: marketState.hasLinkedMarket
+            ? "automatic_evidence"
+            : "none",
+          affectsStats: true,
+          // evidence:auto is the existing explicit machine-evidence financial lane.
+          affectsBets: false,
+        },
+        select: { id: true },
+      });
+
+      return {
+        outcome: "created" as const,
+        detail: WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
+        adjudicationId: adjudication.id,
+      };
+    });
+
+    if (outcome.outcome === "created") report.createdCount += 1;
+    else if (outcome.outcome === "existing") report.existingCount += 1;
+    else report.skippedCount += 1;
+
+    report.outcomes.push({
+      gameStatsId,
+      ...outcome,
+    });
+  }
+
+  return report;
 }
