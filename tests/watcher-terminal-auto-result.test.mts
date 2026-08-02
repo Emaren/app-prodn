@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   evaluateWatcherTerminalOwnerLoss,
+  reconcileAutomaticWatcherTerminalResults,
   WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE,
   WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION,
   WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
@@ -70,6 +71,26 @@ function baseInput() {
     currentDesyncOccurred: null,
   };
 }
+
+test("owner-pattern reconciliation remains diagnostic-only", async () => {
+  const report = await reconcileAutomaticWatcherTerminalResults(
+    {} as never,
+    [20432]
+  );
+
+  assert.equal(report.requestedCount, 1);
+  assert.equal(report.createdCount, 0);
+  assert.equal(report.existingCount, 0);
+  assert.equal(report.skippedCount, 1);
+  assert.deepEqual(report.outcomes, [
+    {
+      gameStatsId: 20432,
+      outcome: "skipped",
+      detail: "disabled_non_authoritative_owner_inference",
+      adjudicationId: null,
+    },
+  ]);
+});
 
 test("automatic watcher evidence uses the live append-only ledger contract", () => {
   assert.equal(

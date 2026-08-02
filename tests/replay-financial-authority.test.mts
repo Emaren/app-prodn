@@ -221,7 +221,7 @@ test(
 );
 
 test(
-  "only effective automatic evidence or explicit affectsBets authority can enter betting truth",
+  "only explicit accepted financial authority can enter betting truth",
   () => {
     assert.equal(
       replayResultAdjudicationAuthorizesBets({
@@ -243,7 +243,7 @@ test(
         idempotencyKey:
           "evidence:auto:42:9",
       }),
-      true
+      false
     );
     assert.equal(
       replayResultAdjudicationAuthorizesBets({
@@ -739,7 +739,7 @@ test(
 );
 
 test(
-  "an effective automatic-evidence verdict cannot receive redundant manual authority",
+  "an automatic-evidence label alone cannot bypass explicit financial authority",
   async () => {
     const automatic =
       await planReplayFinancialAuthority({
@@ -756,18 +756,19 @@ test(
 
     assert.equal(
       automatic.alreadyAuthorized,
-      true
+      false
     );
     assert.equal(
       automatic.ready,
-      false
+      true
     );
-    assert.ok(
+    assert.equal(
       automatic.blockers.some(
         (blocker) =>
           blocker.code ===
           "already_financially_authorized"
-      )
+      ),
+      false
     );
   }
 );

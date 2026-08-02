@@ -136,14 +136,6 @@ export function replayResultAdjudicationAuthorizesBets(
     return false;
   }
 
-  if (
-    adjudication.idempotencyKey?.startsWith(
-      "evidence:auto:"
-    ) === true
-  ) {
-    return true;
-  }
-
   return (
     adjudication.affectsBets === true &&
     adjudication.idempotencyKey?.startsWith(
@@ -1569,207 +1561,30 @@ function automaticGameIds(
 }
 
 export async function reconcileAutomaticWatcherTerminalResults(
-  prisma: PrismaClient,
+  _prisma: PrismaClient,
   rawGameStatsIds: readonly (string | number | null | undefined)[]
 ): Promise<AutomaticWatcherTerminalResultReport> {
   const gameStatsIds = automaticGameIds(rawGameStatsIds);
-  const report: AutomaticWatcherTerminalResultReport = {
+
+  /*
+   * Uploader ownership, terminal disconnect shape, last action, and corpus
+   * frequency are diagnostic signals only. They are not authoritative replay
+   * result evidence and must never create an adjudication or unlock betting.
+   *
+   * Future automatic resolution requires a direct terminal result receipt
+   * bound to the replay hash and canonical roster, or another independently
+   * verifiable result source.
+   */
+  return {
     requestedCount: gameStatsIds.length,
     createdCount: 0,
     existingCount: 0,
-    skippedCount: 0,
-    outcomes: [],
-  };
-
-  for (const gameStatsId of gameStatsIds) {
-    const outcome = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw<Array<{ lock_acquired: number }>>`
-        SELECT 1::int AS lock_acquired
-        FROM pg_advisory_xact_lock(${gameStatsId})
-      `;
-
-      const game = await tx.gameStats.findUnique({
-        where: { id: gameStatsId },
-        select: {
-          ...REVIEWABLE_GAME_SELECT,
-          user: {
-            select: {
-              id: true,
-              uid: true,
-              steamId: true,
-              inGameName: true,
-              steamPersonaName: true,
-            },
-          },
-          replayResultAdjudications: {
-            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-            take: 1,
-            select: {
-              id: true,
-              idempotencyKey: true,
-            },
-          },
-          replayDesyncIncidents: {
-            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-            take: 1,
-            select: { desyncOccurred: true },
-          },
-        },
-      });
-
-      if (!game || !game.user) {
-        return {
-          outcome: "skipped" as const,
-          detail: "game_or_uploader_missing",
-          adjudicationId: null,
-        };
-      }
-
-      const idempotencyKey =
-        `evidence:auto:watcher-terminal:${game.id}:` +
-        game.replayHash.slice(0, 16).toLowerCase();
-      const evaluation = evaluateWatcherTerminalOwnerLoss({
-        id: game.id,
-        replayHash: game.replayHash,
-        parseIteration: game.parse_iteration,
-        parseSource: game.parse_source,
-        parseReason: game.parse_reason,
-        isFinal: game.is_final,
-        winner: game.winner,
-        players: game.players,
-        keyEvents: game.key_events,
-        eventTypes: game.event_types,
-        disconnectDetected: game.disconnect_detected,
-        durationSeconds: game.duration ?? game.game_duration,
-        uploaderSteamId: game.user.steamId,
-        uploaderUid: game.user.uid,
-        hasAdjudicationHistory:
-          game.replayResultAdjudications.some(
-            (entry) => entry.idempotencyKey !== idempotencyKey
-          ),
-        currentDesyncOccurred:
-          game.replayDesyncIncidents[0]?.desyncOccurred ?? null,
-      });
-
-      if (!evaluation.eligible) {
-        return {
-          outcome: "skipped" as const,
-          detail: evaluation.reason,
-          adjudicationId: null,
-        };
-      }
-
-      const validated = validateReplayResultAdjudication({
-        payload: {
-          idempotencyKey,
-          sourceReplayHash: game.replayHash,
-          sourceParseIteration: game.parse_iteration,
-          sourceRosterHash: buildRosterHash(
-            normalizeReplayPlayers(parseJson(game.players))
-          ),
-          teams: evaluation.teams.map((team) => ({
-            teamKey: team.teamKey,
-            playerKeys: team.players.map(
-              (player) => player.stablePlayerKey
-            ),
-          })),
-          winningTeamKey: evaluation.winningTeamKey,
-          reason:
-            "Exact watcher-owned rated HD 1v1 terminal evidence established that the local uploader ended the recording without serialized result packets; the opposing Steam identity won.",
-          evidence: evaluation.evidence,
-          supersedesId: null,
-        },
-        replayHash: game.replayHash,
-        parseIteration: game.parse_iteration,
-        players: game.players,
-      });
-
-      const existing = await tx.replayResultAdjudication.findUnique({
-        where: { idempotencyKey },
-        select: { id: true, inputHash: true, gameStatsId: true },
-      });
-      if (existing) {
-        if (
-          existing.gameStatsId !== game.id ||
-          existing.inputHash !== validated.inputHash
-        ) {
-          fail(
-            409,
-            "automatic_evidence_idempotency_conflict",
-            "Automatic watcher evidence idempotency conflict."
-          );
-        }
-        return {
-          outcome: "existing" as const,
-          detail: WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
-          adjudicationId: existing.id,
-        };
-      }
-
-      const marketState = await buildMarketSnapshot(
-        tx as unknown as MarketSnapshotPrisma,
-        game.id,
-        [game.original_filename, game.replay_file]
-      );
-      const adjudication = await tx.replayResultAdjudication.create({
-        data: {
-          gameStatsId: game.id,
-          actorUserId: game.user.id,
-          supersedesId: null,
-          idempotencyKey: validated.idempotencyKey,
-          inputHash: validated.inputHash,
-          decisionStatus: REPLAY_RESULT_ACCEPTED,
-          actorUidSnapshot: game.user.uid,
-          actorDisplayNameSnapshot:
-            `AoE2WAR Watcher · ${displayName(game.user)}`.slice(0, 100),
-          actorRole:
-            WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE,
-          teamAssignments:
-            validated.teams as unknown as Prisma.InputJsonValue,
-          winningTeamKey: validated.winningTeamKey,
-          winningPlayerKeys:
-            validated.winningPlayerKeys as Prisma.InputJsonValue,
-          reason: validated.reason,
-          ...(validated.evidence === null
-            ? {}
-            : { evidence: validated.evidence }),
-          sourceReplayHash: validated.sourceReplayHash,
-          sourceParseIteration: validated.sourceParseIteration,
-          sourceRosterHash: validated.sourceRosterHash,
-          sourcePropositionHash: validated.sourcePropositionHash,
-          rawParserSnapshot: rawParserSnapshot(game),
-          marketSnapshot: marketState.snapshot,
-          hasLinkedMarket: marketState.hasLinkedMarket,
-          financialDisposition: marketState.hasLinkedMarket
-            ? WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION
-            : "none",
-          affectsStats: true,
-          /*
-           * The append-only ledger records the watcher owner as the verified
-           * submitter. Machine authority remains explicit in the evidence:auto
-           * idempotency key and immutable evidence payload.
-           */
-          affectsBets: false,
-        },
-        select: { id: true },
-      });
-
-      return {
-        outcome: "created" as const,
-        detail: WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
-        adjudicationId: adjudication.id,
-      };
-    });
-
-    if (outcome.outcome === "created") report.createdCount += 1;
-    else if (outcome.outcome === "existing") report.existingCount += 1;
-    else report.skippedCount += 1;
-
-    report.outcomes.push({
+    skippedCount: gameStatsIds.length,
+    outcomes: gameStatsIds.map((gameStatsId) => ({
       gameStatsId,
-      ...outcome,
-    });
-  }
-
-  return report;
+      outcome: "skipped" as const,
+      detail: "disabled_non_authoritative_owner_inference",
+      adjudicationId: null,
+    })),
+  };
 }
