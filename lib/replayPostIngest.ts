@@ -510,8 +510,10 @@ export async function coordinateReplayPostIngest<TPrisma>(options: {
     });
   }
 
+  const automaticReadyCount =
+    automaticResults.createdCount + automaticResults.existingCount;
   const resultReady =
-    summary.result.readyCount > 0 || automaticResults.createdCount > 0;
+    summary.result.readyCount > 0 || automaticReadyCount > 0;
   const tournamentRequested = Boolean(
     resultReady ||
       (acceptedUpload && options.reconcileTournamentForAcceptedUpload)
@@ -555,10 +557,10 @@ export async function coordinateReplayPostIngest<TPrisma>(options: {
     result: {
       ...summary.result,
       readyCount:
-        summary.result.readyCount + automaticResults.createdCount,
+        summary.result.readyCount + automaticReadyCount,
       reviewCount: Math.max(
         0,
-        summary.result.reviewCount - automaticResults.createdCount
+        summary.result.reviewCount - automaticReadyCount
       ),
     },
     automatic: {
@@ -568,7 +570,7 @@ export async function coordinateReplayPostIngest<TPrisma>(options: {
     financial: {
       ...summary.financial,
       eligibleCount:
-        summary.financial.eligibleCount + automaticResults.createdCount,
+        summary.financial.eligibleCount + automaticReadyCount,
       tournament,
       markets,
     },

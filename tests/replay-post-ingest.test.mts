@@ -302,3 +302,62 @@ test("automatic watcher evidence promotes an unresolved final before market reco
   assert.equal(report.result.reviewCount, 0);
   assert.equal(report.financial.markets.succeeded, true);
 });
+
+
+test("existing automatic watcher evidence retries downstream reconciliation", async () => {
+  const unresolved = classifyReplayIngestReceipt(
+    {
+      replay_hash: "5".repeat(64),
+      game_id: 20432,
+      finality_status: "final_recorded",
+      effective_is_final: true,
+      raw_replay_archived: true,
+      parse_completed: true,
+      should_settle: false,
+    },
+    true
+  );
+  const order: string[] = [];
+
+  const report = await coordinateReplayPostIngest({
+    prisma: {},
+    receipts: [unresolved],
+    source: "watcher_retry",
+    dependencies: {
+      reconcileAutomaticWatcherTerminalResults: async () => {
+        order.push("result-existing");
+        return {
+          createdCount: 0,
+          existingCount: 1,
+          skippedCount: 0,
+        };
+      },
+      ensureReplayIdentityProjections: async () => {
+        order.push("identity-existing");
+        return {
+          createdCount: 0,
+          existingCount: 1,
+          skippedCount: 0,
+        };
+      },
+      reconcileTournamentMatchProofs: async () => {
+        order.push("tournament");
+      },
+      ensureBetMarkets: async () => {
+        order.push("markets");
+      },
+    },
+  });
+
+  assert.deepEqual(order, [
+    "result-existing",
+    "identity-existing",
+    "tournament",
+    "markets",
+  ]);
+  assert.equal(report.automatic.results.existingCount, 1);
+  assert.equal(report.result.readyCount, 1);
+  assert.equal(report.result.reviewCount, 0);
+  assert.equal(report.financial.eligibleCount, 1);
+  assert.equal(report.financial.markets.succeeded, true);
+});

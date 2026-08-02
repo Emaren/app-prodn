@@ -1307,6 +1307,12 @@ export async function submitReplayResultAdjudication(input: {
 export const WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION =
   "watcher-terminal-owner-loss-v1" as const;
 
+export const WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE =
+  "verified_submitter" as const;
+
+export const WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION =
+  "operator_review_required" as const;
+
 export type WatcherTerminalOwnerLossEvaluation =
   | {
       eligible: false;
@@ -1716,7 +1722,8 @@ export async function reconcileAutomaticWatcherTerminalResults(
           actorUidSnapshot: game.user.uid,
           actorDisplayNameSnapshot:
             `AoE2WAR Watcher · ${displayName(game.user)}`.slice(0, 100),
-          actorRole: "automatic_evidence",
+          actorRole:
+            WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE,
           teamAssignments:
             validated.teams as unknown as Prisma.InputJsonValue,
           winningTeamKey: validated.winningTeamKey,
@@ -1734,10 +1741,14 @@ export async function reconcileAutomaticWatcherTerminalResults(
           marketSnapshot: marketState.snapshot,
           hasLinkedMarket: marketState.hasLinkedMarket,
           financialDisposition: marketState.hasLinkedMarket
-            ? "automatic_evidence"
+            ? WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION
             : "none",
           affectsStats: true,
-          // evidence:auto is the existing explicit machine-evidence financial lane.
+          /*
+           * The append-only ledger records the watcher owner as the verified
+           * submitter. Machine authority remains explicit in the evidence:auto
+           * idempotency key and immutable evidence payload.
+           */
           affectsBets: false,
         },
         select: { id: true },

@@ -109,7 +109,10 @@ async function main() {
 
   let tournamentReconciled = false;
   let marketsReconciled = false;
-  if (automaticResults.createdCount > 0) {
+  if (
+    automaticResults.createdCount > 0 ||
+    automaticResults.existingCount > 0
+  ) {
     await reconcileTournamentMatchProofs(prisma, { force: true });
     tournamentReconciled = true;
     await ensureBetMarkets(prisma);

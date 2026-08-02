@@ -3,6 +3,8 @@ import test from "node:test";
 
 import {
   evaluateWatcherTerminalOwnerLoss,
+  WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE,
+  WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION,
   WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
 } from "../lib/replayResultAdjudications.ts";
 
@@ -68,6 +70,17 @@ function baseInput() {
     currentDesyncOccurred: null,
   };
 }
+
+test("automatic watcher evidence uses the live append-only ledger contract", () => {
+  assert.equal(
+    WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE,
+    "verified_submitter"
+  );
+  assert.equal(
+    WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION,
+    "operator_review_required"
+  );
+});
 
 test("exact silent watcher-owned rated HD 1v1 resolves to the opponent", () => {
   const evaluation = evaluateWatcherTerminalOwnerLoss(baseInput());
