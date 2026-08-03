@@ -1,6 +1,7 @@
 "use client";
 
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 
 type LeaderboardLaneToggleProps = {
   lane?: LeaderboardLane;
@@ -77,6 +78,7 @@ export default function LeaderboardLaneToggle({
   variant = "card",
   className,
 }: LeaderboardLaneToggleProps) {
+  const h = useHomeCopy();
   const currentLane = normalizeLane(lane ?? value ?? activeLane ?? selectedLane);
   const isBusy = disabled || loading;
   const isCompact = variant === "compact" || variant === "inline";
@@ -101,7 +103,7 @@ export default function LeaderboardLaneToggle({
         isBusy && "opacity-60",
         className,
       )}
-      aria-label="Ranked ladder lane"
+      aria-label={h("Ranked ladder lane")}
     >
       <div
         className={cx(
@@ -145,6 +147,8 @@ function LaneButton({
   disabled: boolean;
   onClick: () => void;
 }) {
+  const h = useHomeCopy();
+
   return (
     <button
       type="button"
@@ -181,7 +185,7 @@ function LaneButton({
               active ? "text-white/45" : "text-slate-600",
             )}
           >
-            {meta.eyebrow}
+            {h(meta.eyebrow)}
           </span>
           <span
             className={cx(

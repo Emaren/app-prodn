@@ -16,6 +16,8 @@ import {
 import type { LobbyMatchRow } from "@/lib/lobby";
 import { pickLobbyMatchPlayedAt } from "@/lib/lobbyMatchTime";
 import { formatReplayTeamMatchup } from "@/lib/replayTeamDisplay";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
+import type { HomeCopy } from "@/lib/i18n/homeCopy";
 import {
   publicReplayMapLabel,
 } from "@/lib/unresolvedWatcherResult";
@@ -269,6 +271,7 @@ export function RecentMatchesPanel({
   viewMode,
   surface = "standard",
 }: RecentMatchesPanelProps) {
+  const h = useHomeCopy();
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const isExtreme = surface === "extreme";
 
@@ -496,10 +499,10 @@ export function RecentMatchesPanel({
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>
-            Match Feed
+            {h("Match Feed")}
           </div>
           <h3 className="mt-2 text-2xl font-semibold text-white">
-            Recent Parsed Games
+            {h("Recent Parsed Games")}
           </h3>
         </div>
       </div>
@@ -512,7 +515,7 @@ export function RecentMatchesPanel({
         <div className="space-y-3">
           {matches.length === 0 ? (
             <p className={`rounded-2xl border px-4 py-5 text-sm text-slate-300 ${tone.card}`}>
-              Parsed matches will show here as soon as the watcher uploads them.
+              {h("Parsed matches will show here as soon as the watcher uploads them.")}
             </p>
           ) : (
             <>
@@ -748,7 +751,7 @@ function isSavedReplayCheckpoint(match: LobbyMatchRow) {
   );
 }
 
-function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
+function getLobbyMatchResultDisplay(match: LobbyMatchRow, h: HomeCopy) {
   if (
     readLobbyHumanConfirmedDesync(
       match
@@ -756,7 +759,7 @@ function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
   ) {
     return {
       headline:
-        "DESYNCED",
+        h("DESYNCED"),
 
       pill:
         null,
@@ -821,8 +824,8 @@ function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
           resolvedWinner,
         pill:
           acceptedAdjudicatedWinner
-            ? "Reviewed result"
-            : "Replay result",
+            ? h("Reviewed result")
+            : h("Replay result"),
       };
     }
 
@@ -843,8 +846,8 @@ function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
       headline:
         truthResult?.label ||
         (isSavedReplayCheckpoint(match)
-          ? "Saved checkpoint"
-          : "Result unproven"),
+          ? h("Saved checkpoint")
+          : h("Result unproven")),
       pill: null,
     };
   }
@@ -852,8 +855,8 @@ function getLobbyMatchResultDisplay(match: LobbyMatchRow) {
   return {
     headline:
       isSavedReplayCheckpoint(match)
-        ? "Saved checkpoint"
-        : "Result under review",
+        ? h("Saved checkpoint")
+        : h("Result under review"),
     pill: null,
   };
 }
@@ -867,11 +870,12 @@ const MatchCard = memo(function MatchCard({
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
 }) {
+  const h = useHomeCopy();
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const playersLabel =
     formatReplayTeamMatchup(
       match,
-      "HD battle record"
+      h("HD battle record")
     );
 
   const matchupSides =
@@ -910,7 +914,7 @@ const MatchCard = memo(function MatchCard({
     rightMatchupPlayers.length === 1;
 
   const playedAt = pickLobbyMatchPlayedAt(match);
-  const resultDisplay = getLobbyMatchResultDisplay(match);
+  const resultDisplay = getLobbyMatchResultDisplay(match, h);
   const resultReview = readLobbyResultReview(match);
   const humanConfirmedDesync =
     readLobbyHumanConfirmedDesync(
@@ -954,7 +958,7 @@ const MatchCard = memo(function MatchCard({
                   : "text-slate-400"
               }`}
             >
-              {resultDisplay.headline}
+              {h(resultDisplay.headline)}
             </div>
           </div>
         </div>
@@ -982,7 +986,7 @@ const MatchCard = memo(function MatchCard({
                     : "text-slate-400"
                 }`}
               >
-                {resultDisplay.headline}
+                {h(resultDisplay.headline)}
               </div>
             </div>
           </div>
@@ -994,7 +998,7 @@ const MatchCard = memo(function MatchCard({
               </div>
 
               <div className="pt-px text-[9px] font-semibold uppercase tracking-[0.22em] text-slate-500">
-                vs
+                {h("vs")}
               </div>
 
               <div className="min-w-0 text-right [overflow-wrap:anywhere]">
@@ -1019,12 +1023,10 @@ const MatchCard = memo(function MatchCard({
         <span
           className="absolute bottom-4 right-4 inline-flex text-slate-400/35"
           title={
-            resultReview.reviewLabel ||
-            "Human reviewed"
+            h(resultReview.reviewLabel || "Human reviewed")
           }
           aria-label={
-            resultReview.reviewLabel ||
-            "Human reviewed"
+            h(resultReview.reviewLabel || "Human reviewed")
           }
         >
           <UserRound

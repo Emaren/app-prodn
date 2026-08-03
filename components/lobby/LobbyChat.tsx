@@ -25,6 +25,8 @@ import type { AiVisibilityOption } from "@/lib/aiConciergeConfig";
 import AutoGrowTextarea from "@/components/ui/AutoGrowTextarea";
 import { LOBBY_MESSAGE_MAX_CHARS } from "@/lib/lobby";
 import { avatarThumbUrlForUser } from "@/lib/avatarAssets";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
+import type { HomeCopy } from "@/lib/i18n/homeCopy";
 
 const TYPING_HUD_MODE_STORAGE_KEY = "aoe2war:typing-hud-mode";
 
@@ -144,6 +146,7 @@ type LobbyChatProps = {
 };
 
 export function LobbyChat(props: LobbyChatProps) {
+  const h = useHomeCopy();
   const {
     style,
     themeKey,
@@ -419,23 +422,23 @@ export function LobbyChat(props: LobbyChatProps) {
 
 
   const viewerName =
-    playerName || displayName(currentUserInGameName, currentUserSteamPersonaName) || "You";
+    playerName || displayName(currentUserInGameName, currentUserSteamPersonaName) || h("You");
 
   const premiumTypingHud = typingHudMode === "pulse";
   const ownTypingSteadyLabel =
-    messageBody.trim().length > 0 ? `${viewerName} is typing…` : null;
+    messageBody.trim().length > 0 ? h(`${viewerName} is typing…`) : null;
   const ownTypingPulseLabel =
-    ownTypingPulse && messageBody.trim().length > 0 ? `${viewerName} is typing…` : null;
+    ownTypingPulse && messageBody.trim().length > 0 ? h(`${viewerName} is typing…`) : null;
   const aiVoiceLabel = aiScribeEnabled
     ? aiGrimerEnabled
-      ? "The AI Scribe + Grimer"
-      : "The AI Scribe"
+      ? h("The AI Scribe + Grimer")
+      : h("The AI Scribe")
     : "Grimer";
   const typingLabel =
     chatPending
       ? aiEnabled && (aiScribeEnabled || aiGrimerEnabled)
-        ? `${aiVoiceLabel} thinking · ${aiThinkingSeconds}s`
-        : "The lobby is typing…"
+        ? `${aiVoiceLabel} ${h("thinking")} · ${aiThinkingSeconds}s`
+        : h("The lobby is typing…")
       : premiumTypingHud
         ? ownTypingPulseLabel
         : ownTypingSteadyLabel;
@@ -499,7 +502,7 @@ export function LobbyChat(props: LobbyChatProps) {
       <div className="flex min-w-0 items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2.5">
-            <div className={`shrink-0 text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Chat</div>
+            <div className={`shrink-0 text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>{h("Chat")}</div>
             {chatAudience.length > 0 ? (
               <>
                 <button
@@ -508,7 +511,7 @@ export function LobbyChat(props: LobbyChatProps) {
                   aria-expanded={chatFilterDockVisible}
                   className="shrink-0 rounded-full border border-white/[0.06] bg-white/[0.035] px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-400 transition hover:bg-white/[0.08] hover:text-white"
                 >
-                  Warriors
+                  {h("Warriors")}
                 </button>
                 {chatFilterDockVisible ? (
                   <div className="flex min-w-0 items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -520,7 +523,7 @@ export function LobbyChat(props: LobbyChatProps) {
                           type="button"
                           onClick={() => toggleChatAudienceUid(member.uid)}
                           aria-pressed={selected}
-                          title={selected ? `Remove ${member.name} filter` : `Filter ${member.name}`}
+                          title={selected ? h(`Remove ${member.name} filter`) : h(`Filter ${member.name}`)}
                           className={`relative h-8 w-8 shrink-0 overflow-hidden rounded-full border transition ${
                             selected
                               ? "border-amber-200/45 shadow-[0_0_18px_rgba(251,191,36,0.25)]"
@@ -532,7 +535,7 @@ export function LobbyChat(props: LobbyChatProps) {
                       );
                     })}
                     {selectedChatAudienceUids.length > 0 ? (
-                      <button type="button" onClick={() => setSelectedChatAudienceUids([])} className="shrink-0 rounded-full border border-white/[0.06] px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-slate-400 hover:text-white">Clear</button>
+                      <button type="button" onClick={() => setSelectedChatAudienceUids([])} className="shrink-0 rounded-full border border-white/[0.06] px-2 py-1 text-[9px] uppercase tracking-[0.14em] text-slate-400 hover:text-white">{h("Clear")}</button>
                     ) : null}
                   </div>
                 ) : null}
@@ -542,7 +545,7 @@ export function LobbyChat(props: LobbyChatProps) {
         </div>
 
         <div className={`shrink-0 rounded-full border border-white/[0.06] px-3 py-1 text-xs ${tone.neutralPill}`}>
-          {selectedChatAudienceUids.length > 0 ? `${displayedMessagesCount} shown` : `${messagesCount} recent`}
+          {selectedChatAudienceUids.length > 0 ? h(`${displayedMessagesCount} shown`) : h(`${messagesCount} recent`)}
         </div>
       </div>
 
@@ -553,7 +556,7 @@ export function LobbyChat(props: LobbyChatProps) {
           <div ref={chatScrollRef} onScroll={handleChatScroll} className="min-h-0 min-w-0 flex-1 overscroll-contain space-y-2 overflow-x-hidden overflow-y-auto pb-12 pr-1">
             {filteredChatItems.length === 0 ? (
               <div className={`rounded-xl border px-4 py-5 text-sm text-slate-300 ${tone.subduedCard}`}>
-                No messages yet. The first tournament chatter starts here.
+                {h("No messages yet. The first tournament chatter starts here.")}
               </div>
             ) : (
               filteredChatItems.map((item) =>
@@ -583,7 +586,7 @@ export function LobbyChat(props: LobbyChatProps) {
               type="button"
               onClick={() => scrollChatToBottom("smooth")}
               className="absolute bottom-4 left-1/2 z-20 inline-flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full border border-emerald-200/18 bg-[#07111f]/88 text-sm font-black text-emerald-100/82 shadow-[0_12px_32px_rgba(0,0,0,0.30),inset_0_0_0_1px_rgba(110,231,183,0.08)] backdrop-blur-md transition hover:border-emerald-200/30 hover:bg-[#0b1828] hover:text-emerald-50"
-              aria-label="Scroll to latest lobby message"
+              aria-label={h("Scroll to latest lobby message")}
             >
               <span aria-hidden="true">↓</span>
             </button>
@@ -595,7 +598,7 @@ export function LobbyChat(props: LobbyChatProps) {
             className={`absolute bottom-5 left-5 z-20 inline-flex h-5 w-5 items-center justify-center rounded-full opacity-45 transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-200/25 ${
               premiumTypingHud ? "bg-emerald-300/[0.055]" : "bg-white/[0.025]"
             }`}
-            aria-label="Toggle typing display"
+            aria-label={h("Toggle typing display")}
             aria-pressed={premiumTypingHud}
           >
             <span
@@ -622,7 +625,7 @@ export function LobbyChat(props: LobbyChatProps) {
           ) : null}
           {!chatPending && lastAiThoughtMs !== null ? (
             <div className="pointer-events-none mt-2 text-center text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">
-              Thought for {lastAiThoughtMs < 60_000 ? `${Math.max(1, Math.round(lastAiThoughtMs / 1000))}s` : `${Math.floor(lastAiThoughtMs / 60_000)}m ${Math.round((lastAiThoughtMs % 60_000) / 1000)}s`}
+              {h("Thought for")} {lastAiThoughtMs < 60_000 ? `${Math.max(1, Math.round(lastAiThoughtMs / 1000))}s` : `${Math.floor(lastAiThoughtMs / 60_000)}m ${Math.round((lastAiThoughtMs % 60_000) / 1000)}s`}
             </div>
           ) : null}
         </div>
@@ -644,7 +647,7 @@ export function LobbyChat(props: LobbyChatProps) {
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0 text-[11px] uppercase tracking-[0.28em] text-slate-500">
-                  Chatting as
+                  {h("Chatting as")}
                 </div>
                 <div className="truncate text-sm font-semibold text-white">
                   {playerName || displayName(currentUserInGameName, currentUserSteamPersonaName)}
@@ -655,7 +658,7 @@ export function LobbyChat(props: LobbyChatProps) {
                 <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
                   <div className="flex justify-end">
                     <AiVoicePill
-                      label="The AI Scribe"
+                      label={h("The AI Scribe")}
                       checked={aiScribeEnabled}
                       disabled={!aiEnabled}
                       onToggle={() => onAiScribeEnabledChange(!aiScribeEnabled)}
@@ -666,8 +669,8 @@ export function LobbyChat(props: LobbyChatProps) {
                     type="button"
                     onClick={() => onAiEnabledChange(!aiEnabled)}
                     aria-pressed={aiEnabled}
-                    aria-label={aiEnabled ? "House voices enabled" : "House voices disabled"}
-                    title={aiEnabled ? "House voices enabled" : "House voices disabled"}
+                    aria-label={aiEnabled ? h("House voices enabled") : h("House voices disabled")}
+                    title={aiEnabled ? h("House voices enabled") : h("House voices disabled")}
                     className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition ${
                       aiEnabled
                         ? "border-emerald-300/30 bg-emerald-400/14 text-emerald-100 shadow-[0_0_18px_rgba(52,211,153,0.18)]"
@@ -716,7 +719,7 @@ export function LobbyChat(props: LobbyChatProps) {
                         onSendMessage();
                       }
                     }}
-                    placeholder="Message the lobby..."
+                    placeholder={h("Message the lobby...")}
                     className={`min-w-0 w-full rounded-[1rem] border px-4 py-3 text-sm leading-6 outline-none ${tone.input}`}
                   />
                 </div>
@@ -726,8 +729,8 @@ export function LobbyChat(props: LobbyChatProps) {
                     onClick={onSendMessage}
                     disabled={chatPending || messageBody.trim().length === 0}
                     className={`flex min-h-[3.25rem] w-[3.25rem] shrink-0 items-center justify-center rounded-full text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${tone.primaryButton}`}
-                    aria-label={chatPending ? "Sending message" : "Send message"}
-                    title={chatPending ? "Sending..." : "Send"}
+                    aria-label={chatPending ? h("Sending message") : h("Send message")}
+                    title={chatPending ? h("Sending...") : h("Send")}
                   >
                     {chatPending ? (
                       <span className="h-4 w-4 animate-pulse rounded-full bg-current/70" />
@@ -758,7 +761,7 @@ export function LobbyChat(props: LobbyChatProps) {
           ) : (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-slate-300">
-                Sign in to join the live lobby instead of just watching it.
+                {h("Sign in to join the live lobby instead of just watching it.")}
               </div>
 
               <button
@@ -766,7 +769,7 @@ export function LobbyChat(props: LobbyChatProps) {
                 onClick={onLogin}
                 className={`rounded-full px-5 py-3 text-sm font-semibold transition ${tone.primaryButton}`}
               >
-                Sign In To Chat
+                {h("Sign In To Chat")}
               </button>
             </div>
           )}
@@ -787,6 +790,8 @@ function AiVoicePill({
   disabled: boolean;
   onToggle: () => void;
 }) {
+  const h = useHomeCopy();
+
   return (
     <button
       type="button"
@@ -799,7 +804,7 @@ function AiVoicePill({
           : "bg-[#0d1524]/90 text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)] hover:bg-[#10192a] hover:text-white"
       } disabled:cursor-not-allowed disabled:opacity-50`}
     >
-      <span className="truncate">{label}</span>
+      <span className="truncate">{h(label)}</span>
     </button>
   );
 }
@@ -837,6 +842,7 @@ function LobbyMessageCard({
   onEditMessage: (messageId: number, body: string) => void;
   onDeleteMessage: (messageId: number) => void;
 }) {
+  const h = useHomeCopy();
   const [reactionDockOpen, setReactionDockOpen] = useState(false);
   const [reactionMoreOpen, setReactionMoreOpen] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
@@ -844,7 +850,7 @@ function LobbyMessageCard({
   const canManageMessage =
     currentUserIsAdmin || (currentUserUid !== null && item.message.user.uid === currentUserUid);
   const aiLabel =
-    displayName(item.message.user.inGameName, item.message.user.steamPersonaName) || "The AI Scribe";
+    displayName(item.message.user.inGameName, item.message.user.steamPersonaName) || h("The AI Scribe");
   const authorName = displayName(item.message.user.inGameName, item.message.user.steamPersonaName) || aiLabel;
   const avatarSrc = avatarThumbUrlForUser(item.message.user.uid, authorName);
   const isBusy = reactingMessageId === item.message.id || moderatingMessageId === item.message.id;
@@ -893,7 +899,7 @@ function LobbyMessageCard({
 
   function handleEditClick(event: MouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
-    const nextBody = window.prompt("Edit lobby message", item.message.body);
+    const nextBody = window.prompt(h("Edit lobby message"), item.message.body);
     if (nextBody === null) return;
     onEditMessage(item.message.id, nextBody);
     setReactionDockOpen(false);
@@ -901,7 +907,7 @@ function LobbyMessageCard({
 
   function handleDeleteClick(event: MouseEvent<HTMLButtonElement>) {
     event.stopPropagation();
-    const confirmed = window.confirm("Delete this lobby message?");
+    const confirmed = window.confirm(h("Delete this lobby message?"));
     if (!confirmed) return;
     onDeleteMessage(item.message.id);
     setReactionDockOpen(false);
@@ -942,11 +948,11 @@ function LobbyMessageCard({
         ) : item.message.user.verificationLevel > 0 ? (
           <SteamLinkedBadge compact />
         ) : (
-          <MiniIdentityPill toneClassName={tone.neutralPill}>Unverified</MiniIdentityPill>
+          <MiniIdentityPill toneClassName={tone.neutralPill}>{h("Unverified")}</MiniIdentityPill>
         )}
 
         {!isAi && item.message.user.verified ? (
-          <MiniIdentityPill toneClassName={tone.neutralPill}>Replay verified</MiniIdentityPill>
+          <MiniIdentityPill toneClassName={tone.neutralPill}>{h("Replay verified")}</MiniIdentityPill>
         ) : null}
       </div>
 
@@ -960,7 +966,7 @@ function LobbyMessageCard({
             item.message.reactions.map((reaction) => {
               const tooltip =
                 isAuthenticated && (reaction.users.length > 0 || reaction.anonymousCount > 0)
-                  ? formatReactionTooltip(reaction)
+                  ? formatReactionTooltip(reaction, h)
                   : undefined;
 
               return (
@@ -988,7 +994,7 @@ function LobbyMessageCard({
         <button
           type="button"
           onClick={handleReactionDockToggle}
-          aria-label={reactionDockOpen ? "Close reaction dock" : "Open reaction dock"}
+          aria-label={reactionDockOpen ? h("Close reaction dock") : h("Open reaction dock")}
           aria-expanded={reactionDockOpen}
           disabled={isBusy}
           className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border text-base font-semibold transition ${
@@ -1008,7 +1014,7 @@ function LobbyMessageCard({
             : "pointer-events-none translate-y-1 scale-[0.98] opacity-0"
         }`}
         role="dialog"
-        aria-label="Message reactions"
+        aria-label={h("Message reactions")}
         aria-hidden={!reactionDockOpen}
       >
         <div className="rounded-full border border-white/[0.035] bg-white/[0.045] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]">
@@ -1041,7 +1047,7 @@ function LobbyMessageCard({
                 event.stopPropagation();
                 setReactionMoreOpen((current) => !current);
               }}
-              aria-label={reactionMoreOpen ? "Hide more reactions" : "Show more reactions"}
+              aria-label={reactionMoreOpen ? h("Hide more reactions") : h("Show more reactions")}
               aria-expanded={reactionMoreOpen}
               disabled={reactingMessageId === item.message.id}
               className={`flex h-10 w-10 items-center justify-center rounded-full text-[15px] font-black tracking-[-0.16em] transition ${
@@ -1093,7 +1099,7 @@ function LobbyMessageCard({
               disabled={moderatingMessageId === item.message.id}
               className="inline-flex h-9 items-center justify-center rounded-full border border-white/[0.055] bg-white/[0.045] px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-200 transition hover:border-white/[0.11] hover:bg-white/[0.1] hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Edit
+              {h("Edit")}
             </button>
 
             <button
@@ -1102,7 +1108,7 @@ function LobbyMessageCard({
               disabled={moderatingMessageId === item.message.id}
               className="inline-flex h-9 items-center justify-center rounded-full border border-rose-300/14 bg-rose-500/10 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-50 transition hover:border-rose-200/20 hover:bg-rose-500/16 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Delete
+              {h("Delete")}
             </button>
           </div>
         ) : null}
@@ -1118,10 +1124,12 @@ function ChatDateDivider({
   label: string;
   dividerClassName: string;
 }) {
+  const h = useHomeCopy();
+
   return (
     <div className="flex items-center gap-3 px-1 py-2">
       <div className={`h-px flex-1 border-t ${dividerClassName}`} />
-      <span className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{label}</span>
+      <span className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{h(label)}</span>
       <div className={`h-px flex-1 border-t ${dividerClassName}`} />
     </div>
   );
@@ -1144,7 +1152,8 @@ function MiniIdentityPill({
 }
 
 function formatReactionTooltip(
-  reaction: Extract<ChatRenderItem, { type: "message" }>["message"]["reactions"][number]
+  reaction: Extract<ChatRenderItem, { type: "message" }>["message"]["reactions"][number],
+  h: HomeCopy
 ) {
   const named = reaction.users.map((user) => user.displayName).filter(Boolean);
   const fragments: string[] = [];
@@ -1156,8 +1165,8 @@ function formatReactionTooltip(
   if (reaction.anonymousCount > 0) {
     fragments.push(
       reaction.anonymousCount === 1
-        ? "1 anonymous player"
-        : `${reaction.anonymousCount} anonymous players`
+        ? h("1 anonymous player")
+        : h(`${reaction.anonymousCount} anonymous players`)
     );
   }
 

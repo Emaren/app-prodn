@@ -10,6 +10,7 @@ import {
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { getTournamentMatchStatusLabel, getTournamentStatusLabel, type LobbySnapshot } from "@/lib/lobby";
 import { displayMatchPlayer, displayName } from "@/components/lobby/utils";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 import {
   normalizeResolvedWinner,
   publicReplayMapLabel,
@@ -40,6 +41,7 @@ export function TournamentPanel({
   onLogin,
   surface = "standard",
 }: TournamentPanelProps) {
+  const h = useHomeCopy();
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const isExtreme = surface === "extreme";
   const destinationHref = `/tournaments/${encodeURIComponent(tournament.slug || "next-community-tournament")}`;
@@ -91,7 +93,7 @@ export function TournamentPanel({
       }`}
       role="link"
       tabIndex={0}
-      aria-label={`Open tournament page for ${tournament.title}`}
+      aria-label={h("Open tournament page for {title}", { title: tournament.title })}
       onClick={handleTileClick}
       onKeyDown={handleTileKeyDown}
       style={
@@ -108,10 +110,10 @@ export function TournamentPanel({
     >
       <div className="flex items-start justify-between gap-4">
         <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
-          Next Tournament
+          {h("Next Tournament")}
         </div>
         <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.statusBadge}`}>
-          {getTournamentStatusLabel(tournament.status)}
+          {h(getTournamentStatusLabel(tournament.status))}
         </div>
       </div>
 
@@ -123,17 +125,17 @@ export function TournamentPanel({
           {tournament.startsAt ? (
             <TimeDisplayText value={tournament.startsAt} />
           ) : (
-            "Scheduling now"
+            h("Scheduling now")
           )}
         </p>
-        <p className="text-sm leading-6 text-slate-300">{tournament.description}</p>
+        <p className="text-sm leading-6 text-slate-300">{h(tournament.description)}</p>
 
         <div className={`rounded-2xl border p-3.5 ${tone.insetPanel}`}>
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Join Queue</div>
+              <div className="text-xs uppercase tracking-[0.25em] text-slate-400">{h("Join Queue")}</div>
               <div className="mt-1 text-lg font-semibold text-white">
-                {tournament.entryCount} {tournament.entryCount === 1 ? "entrant" : "entrants"}
+                {h(`${tournament.entryCount} ${tournament.entryCount === 1 ? "entrant" : "entrants"}`)}
               </div>
             </div>
             {isAdmin && (
@@ -141,7 +143,7 @@ export function TournamentPanel({
                 href="/admin"
                 className={`rounded-full border px-4 py-2 text-xs transition ${tone.secondaryButton}`}
               >
-                Edit Tournament
+                {h("Edit Tournament")}
               </Link>
             )}
           </div>
@@ -149,7 +151,7 @@ export function TournamentPanel({
           <div className="mt-3 flex flex-wrap gap-2">
             {tournament.entrants.length === 0 ? (
               <div className="text-sm text-slate-400">
-                No one has joined yet. The first few players set the tone.
+                {h("No one has joined yet. The first few players set the tone.")}
               </div>
             ) : (
               tournament.entrants.slice(0, 12).map((entrant) => (
@@ -167,9 +169,9 @@ export function TournamentPanel({
         <div className={`rounded-2xl border p-3.5 ${tone.insetPanel}`}>
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="text-xs uppercase tracking-[0.25em] text-slate-400">Bracket Preview</div>
+              <div className="text-xs uppercase tracking-[0.25em] text-slate-400">{h("Bracket Preview")}</div>
               <div className="mt-1 text-lg font-semibold text-white">
-                {tournament.matches.length} {tournament.matches.length === 1 ? "match" : "matches"}
+                {h(`${tournament.matches.length} ${tournament.matches.length === 1 ? "match" : "matches"}`)}
               </div>
             </div>
           </div>
@@ -177,8 +179,7 @@ export function TournamentPanel({
           <div className="mt-3 space-y-2.5">
             {tournament.matches.length === 0 ? (
               <div className="text-sm text-slate-400">
-                No bracket matches posted yet. Once the first pairings are set, they will appear here
-                live.
+                {h("No bracket matches posted yet. Once the first pairings are set, they will appear here live.")}
               </div>
             ) : (
               tournament.matches.slice(0, 3).map((match) => (
@@ -186,19 +187,19 @@ export function TournamentPanel({
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="text-sm font-medium text-white">
-                        {match.label || `Round ${match.round} · Match ${match.position}`}
+                        {match.label || `${h("Round")} ${match.round} · ${h("Match")} ${match.position}`}
                       </div>
                       <div className="mt-1 text-sm text-slate-300">
-                        {displayMatchPlayer(match.playerOne)} vs {displayMatchPlayer(match.playerTwo)}
+                        {h(displayMatchPlayer(match.playerOne))} vs {h(displayMatchPlayer(match.playerTwo))}
                       </div>
                     </div>
                     <div className="space-y-2 text-right">
                       <div className={`rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
-                        {getTournamentMatchStatusLabel(match.status)}
+                        {h(getTournamentMatchStatusLabel(match.status))}
                       </div>
                       {match.proof && (
                         <div className="rounded-full border border-emerald-400/20 bg-emerald-500/10 px-3 py-1 text-[11px] text-emerald-100">
-                          Replay Verified
+                          {h("Replay Verified")}
                         </div>
                       )}
                     </div>
@@ -217,8 +218,8 @@ export function TournamentPanel({
                         ? <> · <TimeDisplayText value={match.proof.playedOn} /></>
                         : null}
                       {normalizeResolvedWinner(match.proof.winner)
-                        ? ` · Winner ${normalizeResolvedWinner(match.proof.winner)}`
-                        : " · Winner unresolved"}
+                        ? ` · ${h("Winner")} ${normalizeResolvedWinner(match.proof.winner)}`
+                        : ` · ${h("Winner unresolved")}`}
                     </div>
                   )}
                 </div>
@@ -242,13 +243,13 @@ export function TournamentPanel({
           >
             {tournament.viewerJoined
               ? joinPending
-                ? "Leaving..."
-                : "Joined"
+                ? h("Leaving...")
+                : h("Joined")
               : joinPending
-                ? "Joining..."
+                ? h("Joining...")
                 : tournament.isFallback
-                  ? "Waiting For Setup"
-                  : "Join Tournament"}
+                  ? h("Waiting For Setup")
+                  : h("Join Tournament")}
           </button>
 
           {!isAuthenticated && (
@@ -257,7 +258,7 @@ export function TournamentPanel({
               onClick={onLogin}
               className={`rounded-full border px-5 py-2.5 text-sm transition ${tone.secondaryButton}`}
             >
-              Sign In To Join
+              {h("Sign In To Join")}
             </button>
           )}
         </div>

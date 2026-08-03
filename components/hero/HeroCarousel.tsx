@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { HeroScreenRenderer } from "@/components/hero/HeroScreenRenderer";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 import type {
   HeroPlaylistView,
   HeroTransitionStyle,
@@ -58,6 +59,7 @@ export function HeroCarousel({
   preview?: boolean;
   presentation?: "default" | "advanced";
 }) {
+  const h = useHomeCopy();
   const reducedMotion = useReducedMotion();
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
@@ -158,7 +160,7 @@ export function HeroCarousel({
       {...pauseForInteraction}
       className={frameClassName}
       aria-roledescription="carousel"
-      aria-label="AoE2WAR Main Stage"
+      aria-label={h("AoE2WAR Main Stage")}
       onPointerDown={(event) => {
         pointerStart.current = event.clientX;
       }}
@@ -208,7 +210,7 @@ export function HeroCarousel({
         <>
           <button
             type="button"
-            aria-label="Previous hero screen"
+            aria-label={h("Previous hero screen")}
             onPointerDown={(event) => event.stopPropagation()}
             onPointerUp={(event) => event.stopPropagation()}
             onClick={(event) => {
@@ -222,7 +224,7 @@ export function HeroCarousel({
           </button>
           <button
             type="button"
-            aria-label="Next hero screen"
+            aria-label={h("Next hero screen")}
             onPointerDown={(event) => event.stopPropagation()}
             onPointerUp={(event) => event.stopPropagation()}
             onClick={(event) => {

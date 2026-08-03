@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import WoloMarketExtremeTileCurrent from "@/components/lobby/WoloMarketExtremeTileCurrent";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 
 type DepthPoint = {
   index?: number;
@@ -147,6 +148,7 @@ function WoloMarketExtremeForgeTile({
 }: WoloMarketExtremeTileProps & {
   onToggleView: () => void;
 }) {
+  const h = useHomeCopy();
   const [pulse, setPulse] = useState<OsmosisPulse | null>(null);
   const [movedPulse, setMovedPulse] = useState<MovedPulse | null>(null);
   const [swapMode, setSwapMode] = useState<"woloToUsdc" | "usdcToWolo">("woloToUsdc");
@@ -244,7 +246,7 @@ function WoloMarketExtremeForgeTile({
         "after:absolute after:inset-x-12 after:top-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-yellow-100/78 after:to-transparent",
         className,
       )}
-      aria-label="Extreme WOLO market console"
+      aria-label={h("Extreme WOLO market console")}
       title=""
     >
       <div className="relative overflow-hidden rounded-[1.94rem] bg-[linear-gradient(180deg,rgba(255,255,255,0.082),rgba(255,255,255,0.024)_42%,rgba(0,0,0,0.42))] p-4 sm:p-5">
@@ -256,12 +258,12 @@ function WoloMarketExtremeForgeTile({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <p className="text-[0.58rem] font-black uppercase tracking-[0.56em] text-yellow-100/72">
-                WOLO Market
+                {h("WOLO Market")}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <MicroBadge>Extreme View</MicroBadge>
-                <MicroBadge tone="green">Live pair</MicroBadge>
-                <MicroBadge>Pool #{poolId}</MicroBadge>
+                <MicroBadge>{h("Extreme View")}</MicroBadge>
+                <MicroBadge tone="green">{h("Live pair")}</MicroBadge>
+                <MicroBadge>{h("Pool")} #{poolId}</MicroBadge>
               </div>
             </div>
 
@@ -272,7 +274,7 @@ function WoloMarketExtremeForgeTile({
               onClick={(event) => event.stopPropagation()}
               className="rounded-full border border-yellow-200/20 bg-black/28 px-3.5 py-2 text-[0.58rem] font-black uppercase tracking-[0.24em] text-yellow-100/76 transition hover:border-yellow-100/45 hover:text-yellow-50"
             >
-              Osmosis rail ↗
+              {h("Osmosis rail ↗")}
             </a>
           </div>
 
@@ -294,14 +296,14 @@ function WoloMarketExtremeForgeTile({
                   {formatUsd(price)}
                 </p>
                 <p className="mt-2 text-[0.58rem] font-black uppercase tracking-[0.32em] text-emerald-200/80">
-                  ● live spot price
+                  {h("● live spot price")}
                 </p>
               </div>
 
               <div className="relative mt-5 grid grid-cols-2 gap-2">
-                <MiniStat label="WOLO depth" value={formatCompact(pulse?.reserveWolo || 0)} />
+                <MiniStat label={h("WOLO depth")} value={formatCompact(pulse?.reserveWolo || 0)} />
                 <MiniStat
-                  label="USDC depth"
+                  label={h("USDC depth")}
                   value={formatUsd(pulse?.reserveUsdc || 0, {
                     maximumFractionDigits: 2,
                     minimumFractionDigits: 2,
@@ -314,12 +316,12 @@ function WoloMarketExtremeForgeTile({
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[0.54rem] font-black uppercase tracking-[0.34em] text-slate-500">
-                    Chain pulse / market pressure
+                    {h("Chain pulse / market pressure")}
                   </p>
                   <p className="mt-1 text-3xl font-black text-white">{formatUsd(price)}</p>
                 </div>
                 <div className="rounded-full border border-emerald-200/15 bg-emerald-300/8 px-3 py-1 text-[0.56rem] font-black uppercase tracking-[0.24em] text-emerald-100/78">
-                  synced
+                  {h("synced")}
                 </div>
               </div>
 
@@ -348,25 +350,25 @@ function WoloMarketExtremeForgeTile({
                   <circle cx="100" cy="37" r="2.45" fill="rgba(250,204,21,0.95)" />
                 </svg>
                 <div className="absolute bottom-3 left-4 right-4 flex justify-between text-[0.54rem] font-black uppercase tracking-[0.22em] text-slate-500">
-                  <span>Launch pulse</span>
-                  <span>Now</span>
+                  <span>{h("Launch pulse")}</span>
+                  <span>{h("Now")}</span>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="grid gap-2 md:grid-cols-5">
-            <MarketStat label="24h moved" value={movedWolo > 0 ? `${formatNumber(movedWolo, { maximumFractionDigits: 0 })} WOLO` : "Live rail"} />
-            <MarketStat label="Transfers" value={transferCount > 0 ? formatNumber(transferCount, { maximumFractionDigits: 0 }) : "Chain pulse"} />
+            <MarketStat label={h("24h moved")} value={movedWolo > 0 ? `${formatNumber(movedWolo, { maximumFractionDigits: 0 })} WOLO` : h("Live rail")} />
+            <MarketStat label={h("Transfers")} value={transferCount > 0 ? formatNumber(transferCount, { maximumFractionDigits: 0 }) : h("Chain pulse")} />
             <MarketStat
-              label="Liquidity"
+              label={h("Liquidity")}
               value={formatUsd(pulse?.liquidityUsd || 0, {
                 maximumFractionDigits: 2,
                 minimumFractionDigits: 2,
               })}
             />
-            <MarketStat label="Pair" value="WOLO / USDC" />
-            <MarketStat label="Trust" value="Verified rail" />
+            <MarketStat label={h("Pair")} value="WOLO / USDC" />
+            <MarketStat label={h("Trust")} value="Verified rail" />
           </div>
 
           <div
@@ -375,7 +377,7 @@ function WoloMarketExtremeForgeTile({
           >
             <div className="grid gap-3 lg:grid-cols-[1fr_auto_1fr]">
               <SwapInput
-                label={swapMode === "woloToUsdc" ? "From" : "To estimate"}
+                label={swapMode === "woloToUsdc" ? h("From") : h("To estimate")}
                 value={amount}
                 onChange={setAmount}
                 token={swapMode === "woloToUsdc" ? "WOLO" : "USDC"}
@@ -386,13 +388,13 @@ function WoloMarketExtremeForgeTile({
                 type="button"
                 onClick={() => setSwapMode((current) => (current === "woloToUsdc" ? "usdcToWolo" : "woloToUsdc"))}
                 className="mx-auto grid h-11 w-11 place-items-center self-center rounded-full border border-white/12 bg-white/[0.045] text-base font-black text-slate-300 transition hover:border-yellow-100/35 hover:text-yellow-100"
-                aria-label="Flip swap direction"
+                aria-label={h("Flip swap direction")}
               >
                 ⇄
               </button>
 
               <SwapInput
-                label={swapMode === "woloToUsdc" ? "To estimate" : "From"}
+                label={swapMode === "woloToUsdc" ? h("To estimate") : h("From")}
                 value={quoteLabel}
                 token={swapMode === "woloToUsdc" ? "USDC" : "WOLO"}
                 readOnly
@@ -404,7 +406,7 @@ function WoloMarketExtremeForgeTile({
                 type="button"
                 className="rounded-full border border-white/10 bg-white/[0.035] px-5 py-2.5 text-xs font-black text-slate-300 transition hover:border-white/22 hover:text-white"
               >
-                Slippage
+                {h("Slippage")}
               </button>
 
               <a
@@ -413,12 +415,12 @@ function WoloMarketExtremeForgeTile({
                 rel="noreferrer"
                 className="group/swap relative isolate inline-flex min-h-11 w-full max-w-[15.5rem] items-center justify-center gap-2 overflow-hidden rounded-full border border-[#b88a2a]/75 bg-[linear-gradient(180deg,#fff0a4_0%,#e9bd4f_19%,#b98222_52%,#edc150_78%,#6f430f_100%)] px-8 text-sm font-black text-[#130d04] shadow-[inset_0_1px_0_rgba(255,255,255,0.70),inset_0_-2px_0_rgba(74,43,5,0.56),0_12px_28px_rgba(0,0,0,0.36),0_0_20px_rgba(232,188,79,0.13)] ring-1 ring-[#fff0a3]/20 transition duration-300 before:pointer-events-none before:absolute before:inset-0 before:z-0 before:bg-[repeating-linear-gradient(92deg,rgba(255,255,255,0.14)_0px,rgba(255,255,255,0.14)_1px,transparent_1px,transparent_7px),linear-gradient(90deg,rgba(255,255,255,0.20)_0%,transparent_26%,rgba(71,43,9,0.16)_52%,transparent_78%,rgba(255,255,255,0.16)_100%)] before:mix-blend-soft-light after:pointer-events-none after:absolute after:inset-x-5 after:top-0 after:z-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/82 after:to-transparent hover:-translate-y-0.5 hover:border-[#ffe28a]/88 hover:text-black hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.76),inset_0_-2px_0_rgba(74,43,5,0.50),0_15px_34px_rgba(0,0,0,0.43),0_0_28px_rgba(232,188,79,0.22)] active:translate-y-0 active:scale-[0.99]"
               >
-                <span className="relative z-10">Swap</span>
+                <span className="relative z-10">{h("Swap")}</span>
                 <span className="relative z-10 text-base">→</span>
               </a>
 
               <div className="min-w-[11rem] rounded-2xl border border-white/10 bg-black/24 px-4 py-2.5 text-center">
-                <p className="text-[0.52rem] font-black uppercase tracking-[0.22em] text-slate-500">Rate</p>
+                <p className="text-[0.52rem] font-black uppercase tracking-[0.22em] text-slate-500">{h("Rate")}</p>
                 <p className="mt-1 text-xs font-black text-slate-200">1 WOLO ≈ {formatUsd(price)}</p>
               </div>
             </div>

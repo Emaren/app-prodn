@@ -45,6 +45,7 @@ import {
   featuredAvatarCardUrlForUser,
 } from "@/lib/avatarAssets";
 import { resolveTimeZone } from "@/lib/timeDisplay";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 const ZODIAC_UID = "u_06c16d39d25c476fac2c86fee7b4d189";
@@ -964,6 +965,7 @@ type HomePageClientProps = {
 };
 
 function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
+  const h = useHomeCopy();
   const { visibleWarriors, fadingSlot, featuredWarriorsReady } = useRotatingFeaturedWarriors(warriors, false);
 
   return (
@@ -974,10 +976,10 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
       <div className="grid gap-4 lg:grid-cols-[minmax(9rem,0.42fr)_minmax(0,1fr)_minmax(8rem,0.35fr)] lg:items-center">
         <div className="hidden lg:block">
           <div className="text-[10px] uppercase tracking-[0.38em] text-amber-100/72">
-            Featured Warriors
+            {h("Featured Warriors")}
           </div>
           <div className="mt-2 text-sm leading-5 text-slate-400">
-            Elite competitors. Legendary rivalries.
+            {h("Elite competitors. Legendary rivalries.")}
           </div>
         </div>
 
@@ -1014,7 +1016,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
           href="/players"
           className="hidden justify-self-end rounded-full border border-amber-200/14 px-4 py-2 text-sm text-slate-300 transition hover:border-amber-200/30 hover:text-amber-100 lg:inline-flex"
         >
-          View all warriors
+          {h("View all warriors")}
         </Link>
       </div>
     </section>
@@ -1022,6 +1024,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
 }
 
 function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
+  const h = useHomeCopy();
   const identity = normalizeFeaturedWarriorKey(warrior.lookupName || warrior.name);
   const [julioLine] = useState(() =>
     identity === "julio" || identity === "julio-alvarez" ? nextJulioFeaturedSubtitleLine(warrior) : null
@@ -1030,7 +1033,7 @@ function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
   if ((identity === "julio" || identity === "julio-alvarez") && julioLine) {
     return (
       <div className={`mt-1 text-[9px] font-semibold uppercase tracking-[0.18em] ${julioLine.className}`}>
-        {julioLine.text}
+        {h(julioLine.text)}
       </div>
     );
   }
@@ -1040,7 +1043,7 @@ function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
   if (honorSubtitle) {
     return (
       <div className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100 [text-shadow:0_0_16px_rgba(251,191,36,0.30)]">
-        {honorSubtitle}
+        {h(honorSubtitle)}
       </div>
     );
   }
@@ -1054,12 +1057,13 @@ function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
 
   return (
     <div className="mt-0.5 text-[10px] uppercase tracking-[0.18em] text-slate-300">
-      {subtitle}
+      {h(subtitle)}
     </div>
   );
 }
 
 function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
+  const h = useHomeCopy();
   const { visibleWarriors, fadingSlot, featuredWarriorsReady } = useRotatingFeaturedWarriors(warriors, false);
 
   return (
@@ -1077,10 +1081,10 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
         <div className="lg:pl-3 xl:pl-6">
           <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.32em] text-amber-100/80">
             <Crown className="h-3.5 w-3.5 fill-amber-200/40 text-amber-200/70" />
-            Featured Warriors
+            {h("Featured Warriors")}
           </div>
           <div className="mt-2 max-w-[13rem] text-sm leading-5 text-slate-400">
-            Elite competitors. Legendary rivalries.
+            {h("Elite competitors. Legendary rivalries.")}
           </div>
         </div>
 
@@ -1124,7 +1128,7 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
           href="/players"
           className="inline-flex justify-self-start text-sm font-semibold text-slate-300 transition hover:text-amber-100 lg:justify-self-end"
         >
-          View all warriors <ChevronRight className="ml-2 h-4 w-4" />
+          {h("View all warriors")} <ChevronRight className="ml-2 h-4 w-4" />
         </Link>
       </div>
     </section>
@@ -1152,6 +1156,7 @@ export default function HomePageClient({
   initialLobby,
   initialHeroPlaylist,
 }: HomePageClientProps) {
+  const h = useHomeCopy();
 const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
   const {
     themeKey,
@@ -1483,8 +1488,8 @@ return () => {
   
   const chatRoomTitle =
     messages.length > 0 && messages[0]?.roomSlug === tournament.roomSlug && !tournament.isFallback
-      ? `${tournament.title} Chat`
-      : "Live Chat";
+      ? h("{title} Chat", { title: tournament.title })
+      : h("Live Chat");
 
   const settleChatToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
     const run = () => {
@@ -1779,7 +1784,7 @@ return () => {
         | Record<string, unknown>;
 
       if (!response.ok) {
-        throw new Error(typeof payload.detail === "string" ? payload.detail : "Join failed.");
+        throw new Error(typeof payload.detail === "string" ? payload.detail : h("Join failed."));
       }
 
       setLobby((current) =>
@@ -1793,7 +1798,7 @@ return () => {
 
       await loadLobby();
     } catch (error) {
-      setJoinError(error instanceof Error ? error.message : "Join failed.");
+      setJoinError(error instanceof Error ? error.message : h("Join failed."));
     } finally {
       setJoinPending(false);
     }
@@ -1836,7 +1841,7 @@ return () => {
         | Record<string, unknown>;
 
       if (!response.ok) {
-        throw new Error(typeof payload.detail === "string" ? payload.detail : "Message failed.");
+        throw new Error(typeof payload.detail === "string" ? payload.detail : h("Message failed."));
       }
 
       setMessageBody("");
@@ -1853,7 +1858,7 @@ return () => {
         setLastAiThoughtMs(Date.now() - requestStartedAt);
       }
     } catch (error) {
-      setChatError(error instanceof Error ? error.message : "Message failed.");
+      setChatError(error instanceof Error ? error.message : h("Message failed."));
       setChatNotice(null);
     } finally {
       setChatPending(false);
@@ -1877,7 +1882,7 @@ return () => {
         | Record<string, unknown>;
 
       if (!response.ok) {
-        throw new Error(typeof payload.detail === "string" ? payload.detail : "Reaction failed.");
+        throw new Error(typeof payload.detail === "string" ? payload.detail : h("Reaction failed."));
       }
 
       setLobby((current) =>
@@ -1889,7 +1894,7 @@ return () => {
           : current
       );
     } catch (error) {
-      setChatError(error instanceof Error ? error.message : "Reaction failed.");
+      setChatError(error instanceof Error ? error.message : h("Reaction failed."));
     } finally {
       setReactingMessageId(null);
     }
@@ -1920,7 +1925,7 @@ return () => {
         | Record<string, unknown>;
 
       if (!response.ok) {
-        throw new Error(typeof payload.detail === "string" ? payload.detail : "Message update failed.");
+        throw new Error(typeof payload.detail === "string" ? payload.detail : h("Message update failed."));
       }
 
       setLobby((current) =>
@@ -1932,7 +1937,7 @@ return () => {
           : current
       );
     } catch (error) {
-      setChatError(error instanceof Error ? error.message : "Message update failed.");
+      setChatError(error instanceof Error ? error.message : h("Message update failed."));
     } finally {
       setModeratingMessageId(null);
     }

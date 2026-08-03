@@ -24,6 +24,7 @@ import { LobbyViewToggle } from "@/components/lobby/LobbyAppearanceControls";
 import type { LobbyLeaderboardSummary } from "@/lib/lobby";
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
 import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 
 type LeaderboardPanelProps = {
   leaderboard: LobbyLeaderboardSummary;
@@ -97,6 +98,7 @@ export function LeaderboardPanel({
   laneToggleVariant = "card",
   surface = "standard",
 }: LeaderboardPanelProps) {
+  const h = useHomeCopy();
   const router = useRouter();
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const isExtreme = surface === "extreme";
@@ -317,7 +319,7 @@ export function LeaderboardPanel({
       data-lobby-leaderboard-panel="true"
       role="link"
       tabIndex={0}
-      aria-label="Open the full HD Leaderboard"
+      aria-label={h("Open the full HD Leaderboard")}
       onClick={handlePanelClick}
       onKeyDown={handlePanelKeyDown}
       className={leaderboardPanelShellClassName}
@@ -325,7 +327,7 @@ export function LeaderboardPanel({
       <div className="flex flex-col gap-5">
         <div className="min-w-0">
           <div className="sm:pr-32">
-            <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Leaderboard</div>
+            <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>{h("Leaderboard")}</div>
 
             <div className="mt-4 sm:hidden">
               <div className="flex items-center justify-between gap-3">
@@ -354,7 +356,7 @@ export function LeaderboardPanel({
               <div
                 className={`min-w-0 flex-1 whitespace-nowrap text-[10px] uppercase tracking-[0.22em] ${tone.countLabel}`}
               >
-                Identity Rows
+                {h("Identity Rows")}
               </div>
 
               <LobbyViewToggle
@@ -369,7 +371,7 @@ export function LeaderboardPanel({
 
           <div className="mt-3 hidden sm:flex sm:flex-row sm:items-center sm:gap-3">
             <div className={`min-w-0 text-[11px] uppercase tracking-[0.34em] ${tone.countLabel}`}>
-              Identity Rows
+              {h("Identity Rows")}
             </div>
 
             <div className="flex flex-nowrap items-center gap-2 sm:ml-auto">
@@ -392,7 +394,7 @@ export function LeaderboardPanel({
 
         <div className="absolute right-5 top-5 sm:right-6 sm:top-6">
           <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.activeBadge}`}>
-            {onlineCount} Online
+            {onlineCount} {h("Online")}
           </div>
         </div>
       </div>
@@ -406,7 +408,7 @@ export function LeaderboardPanel({
       >
         {entries.length === 0 ? (
           <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm leading-6 text-slate-300">
-            Need more final games.
+            {h("Need more final games.")}
           </div>
         ) : (
           entries.map((entry) => (
@@ -433,16 +435,16 @@ export function LeaderboardPanel({
                         <SteamLinkedBadge compact label="Steam" />
                       ) : (
                         <MiniTag toneClassName={tone.neutralPill}>
-                          {entry.claimed ? "Claimed" : "Claimable"}
+                          {entry.claimed ? h("Claimed") : h("Claimable")}
                         </MiniTag>
                       )}
 
                       {entry.pendingWoloClaimCount > 0 ? (
                         <MiniTag toneClassName="border-amber-300/30 bg-amber-400/10 text-amber-100">
-                          Unclaimed $WOLO
+                          {h("Unclaimed $WOLO")}
                         </MiniTag>
                       ) : null}
-                      {entry.isOnline ? <MiniTag toneClassName={tone.activeBadge}>Online</MiniTag> : null}
+                      {entry.isOnline ? <MiniTag toneClassName={tone.activeBadge}>{h("Online")}</MiniTag> : null}
                     </div>
                   </div>
                 </div>
@@ -477,11 +479,11 @@ export function LeaderboardPanel({
                   </div>
 
                   <div className="mt-3 text-xs text-slate-400">
-                    Last game{" "}
+                    {h("Last game")}{" "}
                     {entry.lastPlayedAt ? (
                       <TimeDisplayText value={entry.lastPlayedAt} />
                     ) : (
-                      "pending"
+                      h("pending")
                     )}
                   </div>
                 </div>
@@ -499,7 +501,7 @@ export function LeaderboardPanel({
             disabled={isLoadingMore}
             className="mt-5 flex w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4 text-xs font-semibold uppercase tracking-[0.24em] text-slate-300 transition hover:border-amber-200/30 hover:bg-amber-300/10 hover:text-amber-100 disabled:cursor-wait disabled:opacity-70"
           >
-          {isLoadingMore ? "Loading more warriors..." : "Load more warriors"}
+          {isLoadingMore ? h("Loading more warriors...") : h("Load more warriors")}
           </button>
         ) : null}
 
@@ -510,14 +512,14 @@ export function LeaderboardPanel({
           href="/players"
           className={`rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${tone.primaryButton}`}
         >
-          Players
+          {h("Players")}
         </Link>
 
         <Link
           href="/rivalries"
           className={`rounded-full border px-4 py-2 text-sm transition ${tone.secondaryButton}`}
         >
-          Rivalries
+          {h("Rivalries")}
         </Link>
       </div>
     </div>

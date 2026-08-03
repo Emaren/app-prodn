@@ -9,6 +9,7 @@ import {
   type LobbyViewMode,
   type LobbyPresentationTone,
 } from "@/components/lobby/lobbyPresentation";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 
 type LobbyThemePickerProps = {
   themeKey: LobbyThemeKey;
@@ -46,6 +47,7 @@ export function LobbyThemePicker({
   className,
   trackClassName,
 }: LobbyThemePickerProps) {
+  const h = useHomeCopy();
   const outerSizeClassName = size === "md" ? "h-7 w-7" : "h-6 w-6";
   const circleSizeClassName = size === "md" ? "h-5 w-5" : "h-4 w-4";
 
@@ -53,7 +55,7 @@ export function LobbyThemePicker({
     <div className={["flex max-w-full flex-wrap items-center gap-2", className].filter(Boolean).join(" ")}>
       {label ? (
         <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-slate-400">
-          {label}
+          {h(label)}
         </div>
       ) : null}
 
@@ -77,8 +79,8 @@ export function LobbyThemePicker({
               ]
                 .filter(Boolean)
                 .join(" ")}
-              title={option.label}
-              aria-label={`${option.label} theme`}
+              title={h(option.label)}
+              aria-label={h("{label} theme", { label: h(option.label) })}
               aria-pressed={isActive}
             >
               <span
@@ -104,6 +106,7 @@ export function LobbyViewToggle({
   className,
   size = "sm",
 }: LobbyViewToggleProps) {
+  const h = useHomeCopy();
   const buttonClassName =
     size === "xs"
       ? "whitespace-nowrap rounded-full px-2.5 py-1.5 text-[11px] font-semibold transition"
@@ -113,7 +116,7 @@ export function LobbyViewToggle({
     <div className={["flex max-w-full flex-wrap items-center gap-2", className].filter(Boolean).join(" ")}>
       {label ? (
         <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-slate-400">
-          {label}
+          {h(label)}
         </div>
       ) : null}
       <div className={`inline-flex max-w-full flex-wrap rounded-full border p-1 ${tone.viewToggle}`}>
@@ -129,7 +132,7 @@ export function LobbyViewToggle({
               }`}
               aria-pressed={isActive}
             >
-              {option.label}
+              {h(option.label)}
             </button>
           );
         })}
@@ -145,11 +148,12 @@ export function LobbyTextColorPicker({
   label,
   className,
 }: LobbyTextColorPickerProps) {
+  const h = useHomeCopy();
   return (
     <div className={["flex flex-wrap items-center gap-2", className].filter(Boolean).join(" ")}>
       {label ? (
         <div className="text-[10px] font-medium uppercase tracking-[0.28em] text-slate-400">
-          {label}
+          {h(label)}
         </div>
       ) : null}
       <div className={`inline-flex max-w-full flex-wrap rounded-full border p-1 ${tone.viewToggle}`}>
@@ -165,7 +169,7 @@ export function LobbyTextColorPicker({
               }`}
               aria-pressed={isActive}
             >
-              {option.label}
+              {h(option.label)}
             </button>
           );
         })}

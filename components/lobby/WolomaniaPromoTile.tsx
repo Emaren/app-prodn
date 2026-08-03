@@ -21,6 +21,7 @@ import {
   isSafeEventMediaUrl,
   type EventTileView,
 } from "@/lib/events/types";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 import { countryRegionLabel } from "@/lib/countryRegionFlags";
 import { thumbnailUrlForAvatarAsset } from "@/lib/avatarAssets";
 
@@ -388,6 +389,7 @@ function DesktopEventTile({
   eventTile: EventTileView;
   preview: boolean;
 }) {
+  const h = useHomeCopy();
   const facts = eventFacts(eventTile);
   return (
     <EventWrapper
@@ -461,7 +463,7 @@ function DesktopEventTile({
       />
       <div className="pointer-events-none absolute left-[39%] top-[47.6%] z-[80] -translate-x-1/2 text-center">
         <div className="relative isolate inline-block text-[10px] font-black uppercase tracking-[0.32em] text-amber-300 [text-shadow:0_2px_10px_rgba(0,0,0,0.98),0_0_20px_rgba(0,0,0,0.72),0_0_10px_rgba(251,191,36,0.30)] before:pointer-events-none before:absolute before:inset-[-0.16em_-0.36em] before:-z-10 before:rounded-[0.45rem] before:bg-black/42 before:blur-[7px] before:content-[''] drop-shadow-[0_0_14px_rgba(251,191,36,0.42)]">
-          THE COMMISSIONER
+          {h("THE COMMISSIONER")}
         </div>
       </div>
       <div className="pointer-events-none absolute left-[39%] top-[56.8%] z-[28] h-[20rem] w-[25rem] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgba(0,0,0,0.70)_0%,rgba(0,0,0,0.48)_34%,rgba(0,0,0,0.24)_66%,transparent_100%)] blur-md" />
@@ -506,9 +508,9 @@ function DesktopEventTile({
           </span>
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-[10px] font-black uppercase tracking-[0.2em] text-stone-400">
-          <span>{footerTournamentLabel(eventTile)}</span>
+          <span>{h(footerTournamentLabel(eventTile))}</span>
           <span className="hidden h-1 w-1 rounded-full bg-amber-300/50 sm:block" />
-          <span>{footerDescription(eventTile)}</span>
+          <span>{h(footerDescription(eventTile))}</span>
         </div>
       </div>
     </EventWrapper>

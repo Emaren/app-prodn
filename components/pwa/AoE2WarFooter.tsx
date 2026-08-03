@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 import {
   Activity,
   Coins,
@@ -59,6 +60,7 @@ function FooterLink({
   label: string;
   icon: LucideIcon;
 }) {
+  const h = useHomeCopy();
   const external = href.startsWith("http");
 
   const className =
@@ -70,7 +72,7 @@ function FooterLink({
         <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-slate-950/70 text-sky-100 transition group-hover:border-amber-200/25 group-hover:text-amber-100">
           <Icon className="h-3.5 w-3.5" />
         </span>
-        <span className="truncate">{label}</span>
+        <span className="truncate">{h(label)}</span>
       </span>
       {external ? (
         <ExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-600 transition group-hover:text-amber-100" />
@@ -104,14 +106,16 @@ function FooterPanel({
   icon: LucideIcon;
   links: ReadonlyArray<{ href: string; label: string; icon: LucideIcon }>;
 }) {
+  const h = useHomeCopy();
+
   return (
     <section className="rounded-[22px] border border-white/10 bg-slate-950/48 p-4 shadow-[0_20px_80px_rgba(0,0,0,0.24)] backdrop-blur-xl">
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.34em] text-sky-200/55">
-            {eyebrow}
+            {h(eyebrow)}
           </div>
-          <h3 className="mt-1 text-base font-black text-white">{title}</h3>
+          <h3 className="mt-1 text-base font-black text-white">{h(title)}</h3>
         </div>
         <div className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-amber-100">
           <Icon className="h-4 w-4" />
@@ -141,10 +145,11 @@ function StatCard({
   value: string;
   href?: string;
 }) {
+  const h = useHomeCopy();
   const inner = (
     <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 transition hover:border-sky-200/25 hover:bg-sky-300/10">
       <div className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-500">
-        {label}
+        {h(label)}
       </div>
       <div className="mt-1 text-sm font-black text-white">{value}</div>
     </div>
@@ -160,6 +165,8 @@ function StatCard({
 }
 
 export default function AoE2WarFooter() {
+  const h = useHomeCopy();
+
   return (
     <footer className="relative mx-auto w-full max-w-6xl px-3 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-10 sm:px-4 lg:pb-10">
       <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-sky-200/30 to-transparent" />
@@ -188,12 +195,11 @@ export default function AoE2WarFooter() {
               </div>
 
               <p className="max-w-2xl text-sm leading-6 text-slate-300 sm:text-[15px]">
-                Age of Empires II match intelligence, replay proof, rivalry pages, live chat,
-                tournaments, staking, rewards, liquidity, and WoloChain-powered challenge activity.
+                {h("Age of Empires II match intelligence, replay proof, rivalry pages, live chat, tournaments, staking, rewards, liquidity, and WoloChain-powered challenge activity.")}
               </p>
 
               <div className="mt-5 inline-flex rounded-full border border-amber-200/20 bg-amber-300/10 px-4 py-2 text-xs font-black uppercase tracking-[0.28em] text-amber-100 shadow-[0_0_34px_rgba(251,191,36,0.08)]">
-                Settled on WoloChain
+                {h("Settled on WoloChain")}
               </div>
             </div>
 
@@ -219,9 +225,9 @@ export default function AoE2WarFooter() {
 
         <div className="relative flex flex-col gap-3 border-t border-white/10 px-5 py-4 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <div>
-            © {new Date().getFullYear()} AoE2WAR. Replay-backed competition and WoloChain economy.
+            © {new Date().getFullYear()} AoE2WAR. {h("Replay-backed competition and WoloChain economy.")}
           </div>
-          <div className="font-semibold text-slate-400">Aim small. Miss small. ⚔️</div>
+          <div className="font-semibold text-slate-400">{h("Aim small. Miss small. ⚔️")}</div>
         </div>
       </div>
     </footer>

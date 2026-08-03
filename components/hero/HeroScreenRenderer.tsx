@@ -7,6 +7,7 @@ import { ArrowUpRight, Crown, Feather, Quote, Swords } from "lucide-react";
 import { WolomaniaPromoTile } from "@/components/lobby/WolomaniaPromoTile";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import type { HeroPlaylistItemView } from "@/lib/hero/types";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 
 function mediaUrl(item: HeroPlaylistItemView, mobile = false) {
   const config = item.screen.config;
@@ -65,6 +66,7 @@ function ScreenLink({
 }
 
 function ChronicleCover({ item }: { item: HeroPlaylistItemView }) {
+  const h = useHomeCopy();
   const thread = item.screen.forumThread;
   if (!thread) return null;
   const config = item.screen.config;
@@ -112,7 +114,7 @@ function ChronicleCover({ item }: { item: HeroPlaylistItemView }) {
                 includeYear
                 month="long"
                 includeZone={false}
-                emptyValue="Open edition"
+                emptyValue={h("Open edition")}
               />
             </span>
           </div>
@@ -136,10 +138,10 @@ function ChronicleCover({ item }: { item: HeroPlaylistItemView }) {
 
         <footer className="flex flex-wrap items-center justify-between gap-4 border-t border-white/12 pt-5">
           <span className="text-[9px] uppercase tracking-[0.3em] text-slate-500">
-            Dispatch from the long war
+            {h("Dispatch from the long war")}
           </span>
           <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/25 bg-amber-200/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-amber-100 transition group-hover:bg-amber-200 group-hover:text-slate-950">
-            Open the edition
+            {h("Open the edition")}
             <ArrowUpRight className="h-4 w-4" />
           </span>
         </footer>
@@ -172,6 +174,7 @@ function AmbientVideo({ item }: { item: HeroPlaylistItemView }) {
 }
 
 function WarriorQuote({ item }: { item: HeroPlaylistItemView }) {
+  const h = useHomeCopy();
   const config = item.screen.config;
   const motion = config.motionPreset || "embers";
   return (
@@ -233,7 +236,7 @@ function WarriorQuote({ item }: { item: HeroPlaylistItemView }) {
           </p>
         ) : null}
         <span className="mt-9 inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-400 transition group-hover:text-amber-100">
-          Enter the War Room
+          {h("Enter the War Room")}
           <ArrowUpRight className="h-4 w-4" />
         </span>
       </div>
@@ -376,6 +379,7 @@ export function HeroScreenRenderer({
 }: {
   item: HeroPlaylistItemView;
 }) {
+  const h = useHomeCopy();
   if (item.screen.type === "featured_event") {
     if (item.screen.eventTile) {
       return (
@@ -389,11 +393,11 @@ export function HeroScreenRenderer({
       <div className="grid min-h-[32rem] place-items-center rounded-[2rem] border border-dashed border-amber-200/20 bg-black/30 px-6 text-center">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.28em] text-amber-100/65">
-            Featured Event
+            {h("Featured Event")}
           </div>
-          <div className="mt-3 text-lg font-semibold text-white">No live event</div>
+          <div className="mt-3 text-lg font-semibold text-white">{h("No live event")}</div>
           <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
-            Make an event live in Event Foundry. This screen will update automatically.
+            {h("Make an event live in Event Foundry. This screen will update automatically.")}
           </p>
         </div>
       </div>

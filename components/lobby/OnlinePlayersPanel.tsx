@@ -9,6 +9,7 @@ import {
 } from "@/components/lobby/lobbyPresentation";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import type { LobbyOnlineUser } from "@/lib/lobby";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 
 type OnlinePlayersPanelProps = {
   onlineUsers: LobbyOnlineUser[];
@@ -23,6 +24,7 @@ export function OnlinePlayersPanel({
   viewMode,
   surface = "standard",
 }: OnlinePlayersPanelProps) {
+  const h = useHomeCopy();
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const isExtreme = surface === "extreme";
 
@@ -36,18 +38,18 @@ export function OnlinePlayersPanel({
     >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>Lobby</div>
-          <h3 className="mt-2 text-2xl font-semibold text-white">Online Players</h3>
+          <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>{h("Lobby")}</div>
+          <h3 className="mt-2 text-2xl font-semibold text-white">{h("Online Players")}</h3>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Link
             href="/players"
             className={`rounded-full border px-3 py-1 text-xs transition ${tone.secondaryButton}`}
           >
-            Browse Players
+            {h("Browse Players")}
           </Link>
           <div className={`rounded-full border px-3 py-1 text-xs font-medium ${tone.activeBadge}`}>
-            {onlineUsers.length} active
+            {h(`${onlineUsers.length} active`)}
           </div>
         </div>
       </div>
@@ -55,8 +57,7 @@ export function OnlinePlayersPanel({
       <div className="mt-5 space-y-3">
         {onlineUsers.length === 0 ? (
           <p className={`rounded-2xl border px-4 py-5 text-sm text-slate-300 ${tone.card}`}>
-            No recent presence yet. Once signed-in players start pinging the site, this becomes the
-            real lobby roster.
+            {h("No recent presence yet. Once signed-in players start pinging the site, this becomes the real lobby roster.")}
           </p>
         ) : (
           onlineUsers.map((onlineUser) => (
@@ -77,6 +78,7 @@ function OnlineUserCard({
   themeKey: LobbyThemeKey;
   viewMode: LobbyViewMode;
 }) {
+  const h = useHomeCopy();
   const tone = getLobbyPresentationTone(themeKey, viewMode);
 
   return (
@@ -90,9 +92,9 @@ function OnlineUserCard({
         <div className="mt-2 flex flex-wrap gap-2">
           {user.verificationLevel > 0 ? <SteamLinkedBadge compact /> : null}
           {user.verified ? (
-            <MiniIdentityPill toneClassName={tone.neutralPill}>Replay verified</MiniIdentityPill>
+            <MiniIdentityPill toneClassName={tone.neutralPill}>{h("Replay verified")}</MiniIdentityPill>
           ) : (
-            <MiniIdentityPill toneClassName={tone.neutralPill}>New player</MiniIdentityPill>
+            <MiniIdentityPill toneClassName={tone.neutralPill}>{h("New player")}</MiniIdentityPill>
           )}
         </div>
       </div>
@@ -101,7 +103,7 @@ function OnlineUserCard({
           user.verified ? tone.activeBadge : tone.neutralPill
         }`}
       >
-        {user.verified ? "Trusted" : "New"}
+        {user.verified ? h("Trusted") : h("New")}
       </div>
     </Link>
   );

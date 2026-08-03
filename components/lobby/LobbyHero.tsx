@@ -21,6 +21,8 @@ import type { LobbyLeaderboardEntry, LobbyMatchRow, LobbySnapshot } from "@/lib/
 import { avatarThumbUrlForUser, avatarUrlForUser } from "@/lib/avatarAssets";
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
 import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
+import type { HomeCopy } from "@/lib/i18n/homeCopy";
 import { TILE_VIEW_MODES, type TileViewMode } from "@/lib/tileViewPreferences";
 import {
   normalizePublicReplayText,
@@ -117,7 +119,7 @@ function isLeaderboardNavigationControl(target: EventTarget | null) {
     : false;
 }
 
-function getRecentMatchSummary(match: LobbyMatchRow | null | undefined) {
+function getRecentMatchSummary(match: LobbyMatchRow | null | undefined, h: HomeCopy) {
   if (!match) {
     return null;
   }
@@ -129,7 +131,7 @@ function getRecentMatchSummary(match: LobbyMatchRow | null | undefined) {
   });
 
   if (winner && mapName) {
-    return `${winner} on ${mapName}`.slice(0, 48);
+    return h("{winner} on {map}", { winner, map: mapName }).slice(0, 48);
   }
 
   if (winner) {
@@ -140,63 +142,65 @@ function getRecentMatchSummary(match: LobbyMatchRow | null | undefined) {
     return mapName.slice(0, 48);
   }
 
-  return "Replay needs review";
+  return h("Replay needs review");
 }
 
 function buildPulseItems({
   pulse,
   leaderboard,
   recentMatches,
+  h,
 }: {
   pulse: Aoe2HdPulseSnapshot | null;
   leaderboard: LobbySnapshot["leaderboard"];
   recentMatches: LobbyMatchRow[];
+  h: HomeCopy;
 }) {
   const externalItems = pulse?.items ?? [];
   if (externalItems.length >= 3) {
     return externalItems.slice(0, 3);
   }
 
-  const latestMatch = getRecentMatchSummary(recentMatches[0]);
+  const latestMatch = getRecentMatchSummary(recentMatches[0], h);
   const fallbackItems: Aoe2HdPulseItem[] = [
     {
-      label: "Online now",
+      label: h("Online now"),
       value: String(leaderboard.activePlayers),
-      detail: "AoE2HDBets live sessions",
+      detail: h("AoE2HDBets live sessions"),
     },
     {
-      label: "Resolved today",
+      label: h("Resolved today"),
       value: String(leaderboard.matchesToday),
       detail:
         leaderboard.needsReviewToday > 0
-          ? `${leaderboard.needsReviewToday} final replay${leaderboard.needsReviewToday === 1 ? "" : "s"} awaiting parser review`
-          : "Unique final replays with reliable results",
+          ? h(`${leaderboard.needsReviewToday} final replay${leaderboard.needsReviewToday === 1 ? "" : "s"} awaiting parser review`)
+          : h("Unique final replays with reliable results"),
     },
     latestMatch
       ? {
-          label: "Latest replay",
+          label: h("Latest replay"),
           value: latestMatch,
-          detail: "Most recent HD parse",
+          detail: h("Most recent HD parse"),
         }
       : {
-          label: "Identity rows",
+          label: h("Identity rows"),
           value: String(leaderboard.trackedPlayers),
-          detail: `${leaderboard.rankedPlayers} ranked on the board`,
+          detail: h(`${leaderboard.rankedPlayers} ranked on the board`),
         },
   ];
 
   return [...externalItems, ...fallbackItems].slice(0, 3);
 }
 
-function formatSteamHdChip(pulse: Aoe2HdPulseSnapshot | null) {
+function formatSteamHdChip(pulse: Aoe2HdPulseSnapshot | null, h: HomeCopy) {
   if (pulse?.steamHd) {
     const { openLobbies, openSeats } = pulse.steamHd;
     return typeof openSeats === "number"
-      ? `${openLobbies} HD lobbies · ${openSeats} seats`
-      : `Steam HD: ${openLobbies} open lobbies`;
+      ? h(`${openLobbies} HD lobbies · ${openSeats} seats`)
+      : h(`Steam HD: ${openLobbies} open lobbies`);
   }
 
-  return pulse?.sourceStatus === "error" ? "Steam HD: source quiet" : "Steam HD: feed pending";
+  return pulse?.sourceStatus === "error" ? h("Steam HD: source quiet") : h("Steam HD: feed pending");
 }
 
 function primaryRating(entry: LobbyLeaderboardEntry) {
@@ -212,6 +216,8 @@ function TileModeToggle({
   tone: ReturnType<typeof getLobbyPresentationTone>;
   onTileViewModeChange: (viewMode: TileViewMode) => void;
 }) {
+  const h = useHomeCopy();
+
   return (
     <div className={`flex rounded-full border p-1 text-xs ${tone.viewToggle}`}>
       {TILE_VIEW_MODES.map((mode) => (
@@ -223,7 +229,7 @@ function TileModeToggle({
             tileViewMode === mode ? tone.viewToggleActive : "text-slate-400 hover:text-white"
           }`}
         >
-          {mode}
+          {h(mode)}
         </button>
       ))}
     </div>
@@ -251,6 +257,7 @@ export function LobbyHero({
   onTileViewModeChange,
   onToggleTileViewMode,
 }: LobbyHeroProps) {
+  const h = useHomeCopy();
   const router = useRouter();
   const accentTextClassName =
     viewMode === "field" ? "text-emerald-200/70" : "text-amber-200/70";
@@ -543,10 +550,10 @@ export function LobbyHero({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="text-sm uppercase tracking-[0.42em] text-amber-100/78">
-              Community Lobby
+              {h("Community Lobby")}
             </div>
             <div className="rounded-full border border-amber-200/16 bg-amber-300/10 px-3 py-1 text-xs text-amber-100">
-              Extreme
+              {h("Extreme")}
             </div>
             <div
               className={`rounded-full px-3 py-1 text-xs ${
@@ -555,13 +562,13 @@ export function LobbyHero({
                   : "border border-white/8 bg-white/[0.035] text-slate-400"
               }`}
             >
-              {liveConnected ? "Live updates connected" : "Polling fallback"}
+              {liveConnected ? h("Live updates connected") : h("Polling fallback")}
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2" data-ignore-tile-toggle="true">
             <div className="rounded-full border border-cyan-200/14 bg-cyan-300/8 px-3 py-1 text-xs text-cyan-50/85">
-              {formatSteamHdChip(aoe2hdPulse)}
+              {formatSteamHdChip(aoe2hdPulse, h)}
             </div>
             <TileModeToggle
               tileViewMode={tileViewMode}
@@ -573,7 +580,7 @@ export function LobbyHero({
 
         {authError && (
           <div className="max-w-2xl rounded-2xl border border-red-400/24 bg-red-500/8 px-4 py-3 text-sm text-red-100">
-            Steam sign-in failed{authDetail ? `: ${authDetail}` : "."}
+            {h("Steam sign-in failed")}{authDetail ? `: ${authDetail}` : "."}
           </div>
         )}
 
@@ -586,7 +593,7 @@ export function LobbyHero({
         <section
           role="link"
           tabIndex={0}
-          aria-label="Open the full HD Leaderboard"
+          aria-label={h("Open the full HD Leaderboard")}
           data-ignore-tile-toggle="true"
           onClick={handleExtremeLeaderboardClick}
           onKeyDown={handleExtremeLeaderboardKeyDown}
@@ -607,18 +614,18 @@ export function LobbyHero({
               <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_18%,rgba(2,6,23,0.22)_56%,rgba(2,6,23,0.96)_100%)]" />
               <div className="absolute inset-x-4 bottom-4 rounded-2xl border border-amber-200/12 bg-black/42 p-4 backdrop-blur xl:inset-x-5">
                 <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/70">
-                  Featured Contender
+                  {h("Featured Contender")}
                 </div>
                 <div className="mt-1 text-2xl font-semibold text-white">{featuredName}</div>
                 <div className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-400">
-                  {featuredRating ? `${featuredRating} rating` : "Board leader"}
+                  {featuredRating ? h(`${featuredRating} rating`) : h("Board leader")}
                 </div>
                 {featuredEntry?.href ? (
                   <Link
                     href={featuredEntry.href}
                     className="mt-4 inline-flex rounded-full border border-amber-200/20 px-4 py-2 text-sm font-semibold text-amber-50 transition hover:bg-amber-300/10"
                   >
-                    Open Profile
+                    {h("Open Profile")}
                   </Link>
                 ) : null}
               </div>
@@ -627,15 +634,15 @@ export function LobbyHero({
             <div className="min-w-0 space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-[1.25rem] border border-amber-200/10 bg-white/[0.035] px-4 py-4">
-                  <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">Board</div>
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">{h("Board")}</div>
                   <div className="mt-2 text-3xl font-semibold text-white">{leaderboard.trackedPlayers}</div>
-                  <div className="mt-1 text-xs text-slate-400">competitive identity rows</div>
+                  <div className="mt-1 text-xs text-slate-400">{h("competitive identity rows")}</div>
                 </div>
                 <div className="min-w-0 rounded-[1.25rem] border border-amber-200/10 bg-white/[0.035] px-4 py-4">
-                  <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">Vanguard</div>
+                  <div className="text-[10px] uppercase tracking-[0.28em] text-amber-100/55">{h("Vanguard")}</div>
                   <div className="mt-2 truncate text-xl font-semibold text-white">{featuredName}</div>
                   <div className="mt-1 text-xs text-slate-400">
-                    {featuredRating ? `#1 · ${featuredRating} rating` : "Awaiting a rated contender"}
+                    {featuredRating ? `#1 · ${h(`${featuredRating} rating`)}` : h("Awaiting a rated contender")}
                   </div>
                 </div>
                 <LeaderboardLaneToggle
@@ -651,17 +658,17 @@ export function LobbyHero({
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="text-[10px] uppercase tracking-[0.35em] text-amber-100/60">
-                      Leaderboard
+                      {h("Leaderboard")}
                     </div>
                     <div className="mt-2 text-5xl font-semibold leading-none text-white">
                       {leaderboard.trackedPlayers}
                     </div>
                     <div className="mt-2 text-xs uppercase tracking-[0.28em] text-slate-400">
-                      Identity rows on board
+                      {h("Identity rows on board")}
                     </div>
                   </div>
                   <span className="rounded-full border border-emerald-300/18 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100">
-                    {leaderboard.activePlayers} online
+                    {leaderboard.activePlayers} {h("online")}
                   </span>
                 </div>
 
@@ -673,7 +680,7 @@ export function LobbyHero({
                 >
                   {leaderboardRows.length === 0 ? (
                     <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-4 py-4 text-sm text-slate-300">
-                      The board is warming up.
+                      {h("The board is warming up.")}
                     </div>
                   ) : (
                     leaderboardRows.map((entry) => {
@@ -704,12 +711,12 @@ export function LobbyHero({
                             <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                               <span>{entry.primaryRatingSourceLabel}</span>
                               <span>{entry.wins}-{entry.losses}</span>
-                              {entry.claimed ? <span className="text-emerald-100">claimed</span> : null}
+                              {entry.claimed ? <span className="text-emerald-100">{h("claimed")}</span> : null}
                             </div>
                           </div>
                           <div className="text-right">
                             <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
-                              Rating
+                              {h("Rating")}
                             </div>
                             <div className="mt-1 text-lg font-semibold text-amber-50">
                               {rating ?? "—"}
@@ -728,7 +735,7 @@ export function LobbyHero({
 
                   {extremeLeaderboardLoading ? (
                     <div className="py-3 text-center text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                      Reinforcements arriving…
+                      {h("Reinforcements arriving…")}
                     </div>
                   ) : null}
                 </div>
@@ -737,24 +744,24 @@ export function LobbyHero({
               {wolo?.enabled ? (
                 <div className="grid gap-3 sm:grid-cols-3">
                   <StatCard
-                    label="Faucet Pool"
+                    label={h("Faucet Pool")}
                     value={formatCompactWolo(faucetPool)}
-                    subtext="Daily claim fuel."
+                    subtext={h("Daily claim fuel.")}
                     tone="emerald"
                     themeKey={themeKey}
                     viewMode={viewMode}
                   />
                   <StatCard
-                    label="Treasury"
+                    label={h("Treasury")}
                     value={formatCompactWolo(treasury)}
-                    subtext="Community war chest."
+                    subtext={h("Community war chest.")}
                     themeKey={themeKey}
                     viewMode={viewMode}
                   />
                   <StatCard
-                    label="DEX Liquidity Reserve"
+                    label={h("DEX Liquidity Reserve")}
                     value={formatCompactWolo(liquidity)}
-                    subtext="Market depth."
+                    subtext={h("Market depth.")}
                     themeKey={themeKey}
                     viewMode={viewMode}
                   />
@@ -768,37 +775,37 @@ export function LobbyHero({
           <div data-ignore-tile-toggle="true" className="grid gap-4 sm:grid-cols-3">
             <div className="rounded-[1.55rem] border border-emerald-200/40 bg-[linear-gradient(135deg,rgba(16,185,129,0.14),rgba(15,23,42,0.5))] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_18px_55px_rgba(0,0,0,0.18)]">
               <div className="text-[11px] uppercase tracking-[0.34em] text-emerald-100/72">
-                Active Players
+                {h("Active Players")}
               </div>
               <div className="mt-4 text-4xl font-semibold tracking-tight text-white tabular-nums">
                 {leaderboard.activePlayers}
               </div>
-              <div className="mt-4 text-sm font-medium text-slate-300">Online now.</div>
+              <div className="mt-4 text-sm font-medium text-slate-300">{h("Online now.")}</div>
             </div>
 
             <div className="rounded-[1.55rem] border border-white/14 bg-slate-950/44 px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_55px_rgba(0,0,0,0.18)]">
               <div className="text-[11px] uppercase tracking-[0.34em] text-slate-300/70">
-                Resolved Today
+                {h("Resolved Today")}
               </div>
               <div className="mt-4 text-4xl font-semibold tracking-tight text-white tabular-nums">
                 {leaderboard.matchesToday}
               </div>
               <div className="mt-4 text-sm font-medium text-slate-300">
                 {leaderboard.needsReviewToday > 0
-                  ? `${leaderboard.needsReviewToday} awaiting parser review.`
-                  : "Reliable final games."}
+                  ? h(`${leaderboard.needsReviewToday} awaiting parser review.`)
+                  : h("Reliable final games.")}
               </div>
             </div>
 
             <div className="rounded-[1.55rem] border border-amber-200/35 bg-[linear-gradient(135deg,rgba(251,191,36,0.13),rgba(15,23,42,0.48))] px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.055),0_18px_55px_rgba(0,0,0,0.18)]">
               <div className="text-[11px] uppercase tracking-[0.28em] text-amber-100/75">
-                WOLO Moved · 24h
+                {h("WOLO Moved · 24h")}
               </div>
               <div className="mt-4 text-4xl font-semibold tracking-tight text-white tabular-nums">
                 {formatCompactStatNumber(woloMoved24h.totalWolo)}
               </div>
               <div className="mt-4 text-sm font-medium text-slate-300">
-                {formatCompactStatNumber(woloMoved24h.transferCount)} transfers.
+                {formatCompactStatNumber(woloMoved24h.transferCount)} {h("transfers.")}
               </div>
             </div>
           </div>
@@ -815,12 +822,12 @@ export function LobbyHero({
         >
           {isAuthenticated ? (
             <Link href="/profile" className={primaryActionClassName}>
-              Open Profile
+              {h("Open Profile")}
             </Link>
           ) : (
             <SteamLoginButton
               className={`${primaryActionClassName} w-full whitespace-nowrap`}
-              label={loading ? "Loading..." : "Login with Steam"}
+              label={loading ? h("Loading...") : h("Login with Steam")}
               disabled={loading}
             />
           )}
@@ -829,14 +836,14 @@ export function LobbyHero({
             href={isAuthenticated ? "/upload" : "/download"}
             className="inline-flex min-h-14 items-center justify-center rounded-full border border-amber-200/14 px-5 text-center text-[13px] font-medium leading-tight text-white/85 transition hover:border-amber-200/32 hover:text-amber-50"
           >
-            {isAuthenticated ? "Upload Replay" : "Download Watcher"}
+            {isAuthenticated ? h("Upload Replay") : h("Download Watcher")}
           </Link>
 
           <Link
             href="/rivalries"
             className="inline-flex min-h-14 items-center justify-center rounded-full border border-amber-200/14 px-5 text-center text-[13px] font-medium leading-tight text-white/85 transition hover:border-amber-200/32 hover:text-amber-50"
           >
-            View Rivalries
+            {h("View Rivalries")}
           </Link>
         </div>
       </div>
@@ -848,6 +855,7 @@ export function LobbyHero({
       pulse: aoe2hdPulse,
       leaderboard,
       recentMatches,
+      h,
     });
 
     return (
@@ -859,10 +867,10 @@ export function LobbyHero({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className={`text-sm uppercase tracking-[0.4em] ${accentTextClassName}`}>
-              Community Lobby
+              {h("Community Lobby")}
             </div>
             <div className={`rounded-full border px-3 py-1 text-xs ${tone.statusBadge}`}>
-              Advanced
+              {h("Advanced")}
             </div>
             <div
               className={`rounded-full px-3 py-1 text-xs ${
@@ -873,13 +881,13 @@ export function LobbyHero({
                   : "border border-white/10 bg-white/5 text-slate-300"
               }`}
             >
-              {liveConnected ? "Live updates connected" : "Polling fallback"}
+              {liveConnected ? h("Live updates connected") : h("Polling fallback")}
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2" data-ignore-tile-toggle="true">
             <div className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-3 py-1 text-xs text-cyan-50">
-              {formatSteamHdChip(aoe2hdPulse)}
+              {formatSteamHdChip(aoe2hdPulse, h)}
             </div>
             <TileModeToggle
               tileViewMode={tileViewMode}
@@ -891,7 +899,7 @@ export function LobbyHero({
 
         {authError && (
           <div className="max-w-2xl rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-            Steam sign-in failed{authDetail ? `: ${authDetail}` : "."}
+            {h("Steam sign-in failed")}{authDetail ? `: ${authDetail}` : "."}
           </div>
         )}
 
@@ -905,10 +913,10 @@ export function LobbyHero({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className={`text-xs uppercase tracking-[0.35em] ${tone.eyebrow}`}>
-                AoE2HD Pulse
+                {h("AoE2HD Pulse")}
               </div>
               <div className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
-                Compressed lobby signal for who is around, what moved, and where the board is warm.
+                {h("Compressed lobby signal for who is around, what moved, and where the board is warm.")}
               </div>
             </div>
             <span className={`rounded-full border px-2.5 py-1 text-[11px] ${tone.neutralPill}`}>
@@ -923,13 +931,13 @@ export function LobbyHero({
                 className={`min-h-[7.5rem] rounded-2xl border px-4 py-4 ${tone.insetPanel}`}
               >
                 <div className={`text-[10px] uppercase tracking-[0.28em] ${tone.eyebrow}`}>
-                  {item.label}
+                  {h(item.label)}
                 </div>
                 <div className="mt-3 break-words text-2xl font-semibold leading-tight text-white">
                   {item.value}
                 </div>
                 <div className="mt-2 text-xs leading-5 text-slate-400">
-                  {item.detail || "\u00a0"}
+                  {item.detail ? h(item.detail) : "\u00a0"}
                 </div>
               </div>
             ))}
@@ -939,24 +947,24 @@ export function LobbyHero({
         <div className="grid gap-3 sm:grid-cols-2">
           <div className={`rounded-2xl border px-4 py-4 ${tone.insetPanel}`}>
             <div className={`text-[10px] uppercase tracking-[0.26em] ${tone.eyebrow}`}>
-              Board
+              {h("Board")}
             </div>
             <div className="mt-2 text-2xl font-semibold text-white">
               {leaderboard.trackedPlayers}
             </div>
-            <div className="mt-1 text-xs text-slate-400">competitive identity rows</div>
+            <div className="mt-1 text-xs text-slate-400">{h("competitive identity rows")}</div>
           </div>
           <div className={`rounded-2xl border px-4 py-4 ${tone.insetPanel}`}>
             <div className={`text-[10px] uppercase tracking-[0.26em] ${tone.eyebrow}`}>
-              Vanguard
+              {h("Vanguard")}
             </div>
             <div className="mt-2 truncate text-xl font-semibold text-white">
-              {leaderboard.entries[0]?.name || "Open"}
+              {leaderboard.entries[0]?.name || h("Open")}
             </div>
             <div className="mt-1 text-xs text-slate-400">
               {leaderboard.entries[0]?.primaryRating
-                ? `#1 · ${leaderboard.entries[0].primaryRating} rating`
-                : "Awaiting a rated contender"}
+                ? `#1 · ${h(`${leaderboard.entries[0].primaryRating} rating`)}`
+                : h("Awaiting a rated contender")}
             </div>
           </div>
         </div>
@@ -986,12 +994,12 @@ export function LobbyHero({
         >
           {isAuthenticated ? (
             <Link href="/profile" className={primaryActionClassName}>
-              Open Profile
+              {h("Open Profile")}
             </Link>
           ) : (
             <SteamLoginButton
               className={`${primaryActionClassName} w-full whitespace-nowrap`}
-              label={loading ? "Loading..." : "Login with Steam"}
+              label={loading ? h("Loading...") : h("Login with Steam")}
               disabled={loading}
             />
           )}
@@ -1000,14 +1008,14 @@ export function LobbyHero({
             href={isAuthenticated ? "/upload" : "/download"}
             className="inline-flex min-h-14 items-center justify-center rounded-full border border-white/15 px-5 text-center text-[13px] font-medium leading-tight text-white/85 transition hover:border-white/30 hover:text-white"
           >
-            {isAuthenticated ? "Upload Replay" : "Download Watcher"}
+            {isAuthenticated ? h("Upload Replay") : h("Download Watcher")}
           </Link>
 
           <Link
             href="/rivalries"
             className="inline-flex min-h-14 items-center justify-center rounded-full border border-white/15 px-5 text-center text-[13px] font-medium leading-tight text-white/85 transition hover:border-white/30 hover:text-white"
           >
-            View Rivalries
+            {h("View Rivalries")}
           </Link>
         </div>
       </div>
@@ -1023,7 +1031,7 @@ export function LobbyHero({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <div className={`text-sm uppercase tracking-[0.4em] ${accentTextClassName}`}>
-            Community Lobby
+            {h("Community Lobby")}
           </div>
           <div
             className={`rounded-full px-3 py-1 text-xs ${
@@ -1034,7 +1042,7 @@ export function LobbyHero({
                 : "border border-white/10 bg-white/5 text-slate-300"
             }`}
           >
-            {liveConnected ? "Live updates connected" : "Polling fallback"}
+            {liveConnected ? h("Live updates connected") : h("Polling fallback")}
           </div>
 
           {wolo?.enabled && (
@@ -1055,7 +1063,7 @@ export function LobbyHero({
 
       {authError && (
         <div className="max-w-2xl rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
-          Steam sign-in failed{authDetail ? `: ${authDetail}` : "."}
+          {h("Steam sign-in failed")}{authDetail ? `: ${authDetail}` : "."}
         </div>
       )}
 
@@ -1079,20 +1087,20 @@ export function LobbyHero({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <StatCard
-          label="Active Players"
+          label={h("Active Players")}
           value={String(leaderboard.activePlayers)}
-          subtext="Online right now."
+          subtext={h("Online right now.")}
           tone="emerald"
           themeKey={themeKey}
           viewMode={viewMode}
         />
         <StatCard
-          label="Resolved Today"
+          label={h("Resolved Today")}
           value={String(leaderboard.matchesToday)}
           subtext={
             leaderboard.needsReviewToday > 0
-              ? `${leaderboard.needsReviewToday} final replay${leaderboard.needsReviewToday === 1 ? "" : "s"} need review.`
-              : "Reliable final games."
+              ? h(`${leaderboard.needsReviewToday} final replay${leaderboard.needsReviewToday === 1 ? "" : "s"} need review.`)
+              : h("Reliable final games.")
           }
           themeKey={themeKey}
           viewMode={viewMode}
@@ -1104,41 +1112,41 @@ export function LobbyHero({
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-xs uppercase tracking-[0.35em] text-white/45">
-                WOLO Dev Rail
+                {h("WOLO Dev Rail")}
               </div>
               <div className="mt-1 text-sm text-white/70">
-                Local chain snapshot feeding AoE2HDBets dev mode.
+                {h("Local chain snapshot feeding AoE2HDBets dev mode.")}
               </div>
             </div>
             <div className="text-xs text-white/45">
               {wolo.updatedAt ? (
-                <>Updated <TimeDisplayText value={wolo.updatedAt} /></>
+                <>{h("Updated")} <TimeDisplayText value={wolo.updatedAt} /></>
               ) : (
-                "Waiting for snapshot"
+                h("Waiting for snapshot")
               )}
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-3">
             <StatCard
-              label="Faucet Pool"
+              label={h("Faucet Pool")}
               value={formatCompactWolo(faucetPool)}
-              subtext="Daily claim fuel."
+              subtext={h("Daily claim fuel.")}
               tone="emerald"
               themeKey={themeKey}
               viewMode={viewMode}
             />
             <StatCard
-              label="Treasury"
+              label={h("Treasury")}
               value={formatCompactWolo(treasury)}
-              subtext="Community war chest."
+              subtext={h("Community war chest.")}
               themeKey={themeKey}
               viewMode={viewMode}
             />
             <StatCard
-              label="DEX Liquidity Reserve"
+              label={h("DEX Liquidity Reserve")}
               value={formatCompactWolo(liquidity)}
-              subtext="Reserved market depth."
+              subtext={h("Reserved market depth.")}
               themeKey={themeKey}
               viewMode={viewMode}
             />
@@ -1155,12 +1163,12 @@ export function LobbyHero({
       >
         {isAuthenticated ? (
           <Link href="/profile" className={primaryActionClassName}>
-            Open Profile
+            {h("Open Profile")}
           </Link>
         ) : (
           <SteamLoginButton
             className={`${primaryActionClassName} w-full whitespace-nowrap`}
-            label={loading ? "Loading..." : "Login with Steam"}
+            label={loading ? h("Loading...") : h("Login with Steam")}
             disabled={loading}
           />
         )}
@@ -1169,14 +1177,14 @@ export function LobbyHero({
           href={isAuthenticated ? "/upload" : "/download"}
           className="inline-flex min-h-14 items-center justify-center rounded-full border border-white/15 px-5 text-center text-[13px] font-medium leading-tight text-white/85 transition hover:border-white/30 hover:text-white"
         >
-          {isAuthenticated ? "Upload Replay" : "Download Watcher"}
+          {isAuthenticated ? h("Upload Replay") : h("Download Watcher")}
         </Link>
 
         <Link
           href="/rivalries"
           className="inline-flex min-h-14 items-center justify-center rounded-full border border-white/15 px-5 text-center text-[13px] font-medium leading-tight text-white/85 transition hover:border-white/30 hover:text-white"
         >
-          View Rivalries
+          {h("View Rivalries")}
         </Link>
       </div>
     </div>

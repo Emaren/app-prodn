@@ -26,6 +26,8 @@ import {
 import { BattleLoopPreview } from "@/components/media/BattleLoopPreview";
 import { useNearViewport } from "@/hooks/useNearViewport";
 import { orderFeaturedBattleOptions } from "@/lib/featuredBattleOptions";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
+import type { HomeCopy } from "@/lib/i18n/homeCopy";
 
 type WatchAndChatHeroProps = {
   tournament: LobbySnapshot["tournament"];
@@ -367,6 +369,7 @@ export function WatchAndChatHero({
   onLogin,
   variant = "standard",
 }: WatchAndChatHeroProps) {
+  const h = useHomeCopy();
   const { ref: heroRef, isNear: fallbackMediaReady } = useNearViewport<HTMLElement>("200px");
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const quickChatReady = messageBody.trim().length > 0 && !chatPending;
@@ -634,7 +637,7 @@ export function WatchAndChatHero({
               <BattleLoopPreview
           seed="aoe2war-public-battle-loop"
           className="absolute inset-0 h-full w-full rounded-none border-0"
-          label="AoE2WAR battle loop"
+          label={h("AoE2WAR battle loop")}
         />
             ) : fallbackVideoUrl ? (
               <video
@@ -658,7 +661,7 @@ export function WatchAndChatHero({
                       <Play className="h-7 w-7" aria-hidden="true" />
                     </div>
                     <div className="mt-6 text-[10px] uppercase tracking-[0.38em] text-amber-100/70">
-                      {selectedWar.statusLabel}
+                      {h(selectedWar.statusLabel)}
                     </div>
                   </div>
                 </div>
@@ -670,10 +673,10 @@ export function WatchAndChatHero({
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="text-[10px] uppercase tracking-[0.34em] text-amber-100/70">
-                  Watch & Chat
+                  {h("Watch & Chat")}
                 </div>
                 <h2 className="mt-2 break-words text-2xl font-semibold text-white sm:text-3xl">
-                  {selectedWar.title}
+                  {h(selectedWar.title)}
                 </h2>
 
                 {selectedWar.teamFormat &&
@@ -711,7 +714,7 @@ export function WatchAndChatHero({
 
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-300">
                   <span className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-emerald-100">
-                    {selectedWar.statusLabel}
+                    {h(selectedWar.statusLabel)}
                   </span>
                   {selectedWar.teamFormat &&
                   selectedWar.teamFormat !== "unknown" ? (
@@ -725,7 +728,7 @@ export function WatchAndChatHero({
                     </span>
                   ) : null}
                   <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1">
-                    {selectedWar.detail}
+                    {h(selectedWar.detail)}
                     {selectedWar.detailAt ? (
                       <> <TimeDisplayText value={selectedWar.detailAt} /></>
                     ) : null}
@@ -739,7 +742,7 @@ export function WatchAndChatHero({
                 rel={actionIsExternalStream ? "noreferrer" : undefined}
                 className={`inline-flex shrink-0 items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold transition ${tone.primaryButton}`}
               >
-                Watch
+                {h("Watch")}
                 {actionIsExternalStream ? <ExternalLink className="h-4 w-4" aria-hidden="true" /> : null}
               </Link>
             </div>
@@ -747,7 +750,7 @@ export function WatchAndChatHero({
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <span className={`text-[10px] uppercase tracking-[0.28em] ${tone.accentText}`}>
-                  Reactions
+                  {h("Reactions")}
                 </span>
                 {selectedWar.players.length > 0 ? (
                   selectedWar.players.slice(0, 3).map((player) => (
@@ -775,7 +778,7 @@ export function WatchAndChatHero({
                           : `${tone.neutralPill} hover:border-white/24 hover:text-white`
                       }`}
                     >
-                      {option.statusLabel}
+                      {h(option.statusLabel)}
                     </button>
                   ))}
                 </div>
@@ -794,7 +797,7 @@ export function WatchAndChatHero({
                     }))
                   }
                   className={reactionButtonClassName}
-                  title={label}
+                  title={h(label)}
                 >
                   <Icon className="h-[1.1rem] w-[1.1rem]" aria-hidden="true" />
                   <span className="tabular-nums">{reactionCounts[key]}</span>
@@ -823,7 +826,7 @@ export function WatchAndChatHero({
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
-                Live Comments
+                {h("Live Comments")}
               </div>
               <div className="mt-1 truncate text-sm text-slate-400">
                 {selectedWar.title}
@@ -837,7 +840,7 @@ export function WatchAndChatHero({
           <div className="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
             {commentMessages.length === 0 ? (
               <div className={`rounded-2xl border px-4 py-5 text-sm text-slate-300 ${tone.subduedCard}`}>
-                No comments yet. The first war-room callout lands here.
+                {h("No comments yet. The first war-room callout lands here.")}
               </div>
             ) : (
               commentMessages.map((message) => (
@@ -855,15 +858,15 @@ export function WatchAndChatHero({
                   value={messageBody}
                   maxLength={180}
                   onChange={(event) => onMessageBodyChange(event.target.value)}
-                  placeholder="Chat with the lobby..."
+                  placeholder={h("Chat with the lobby...")}
                   className="min-w-0 flex-1 bg-transparent px-3 text-sm text-white outline-none placeholder:text-slate-500"
                 />
                 <button
                   type="submit"
                   disabled={!quickChatReady}
                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-300 text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-45"
-                  aria-label={chatPending ? "Sending chat message" : "Send chat message"}
-                  title={chatPending ? "Sending..." : "Send"}
+                  aria-label={h(chatPending ? "Sending chat message" : "Send chat message")}
+                  title={h(chatPending ? "Sending..." : "Send")}
                 >
                   {chatPending ? (
                     <span className="h-3.5 w-3.5 animate-pulse rounded-full bg-current/70" />
@@ -893,7 +896,7 @@ export function WatchAndChatHero({
                 className="pointer-events-auto mt-4 inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
               >
                 <MessageSquareMore className="h-4 w-4" aria-hidden="true" />
-                Sign In To Chat
+                {h("Sign In To Chat")}
               </button>
             ) : (
               <a
@@ -901,7 +904,7 @@ export function WatchAndChatHero({
                 className="pointer-events-auto mt-4 inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200"
               >
                 <MessageSquareMore className="h-4 w-4" aria-hidden="true" />
-                Open Chat
+                {h("Open Chat")}
               </a>
             )}
         </aside>
@@ -929,16 +932,17 @@ function HeroBetSlip({
   tone: ReturnType<typeof getLobbyPresentationTone>;
   variant?: "standard" | "extreme";
 }) {
+  const h = useHomeCopy();
   const isExtreme = variant === "extreme";
   const fallbackNames = [
     selectedWar.leftLabel ||
       selectedWar.leftRoster[0] ||
       selectedWar.players[0] ||
-      "Player 1",
+      h("Player 1"),
     selectedWar.rightLabel ||
       selectedWar.rightRoster[0] ||
       selectedWar.players[1] ||
-      "Player 2",
+      h("Player 2"),
   ];
   const leftName = market?.left.name || fallbackNames[0];
   const rightName = market?.right.name || fallbackNames[1];
@@ -960,14 +964,14 @@ function HeroBetSlip({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className={`text-[10px] uppercase tracking-[0.28em] ${tone.accentText}`}>
-            Betting
+            {h("Betting")}
           </div>
           <div className="mt-1 text-sm font-semibold text-white">
-            {market?.title || selectedWar.title}
+            {market?.title || h(selectedWar.title)}
           </div>
         </div>
         <span className={`rounded-full border px-3 py-1 text-xs ${tone.neutralPill}`}>
-          {market ? `${formatCompactWolo(market.totalPotWolo)} WOLO pot` : "Book arming"}
+          {h(market ? `${formatCompactWolo(market.totalPotWolo)} WOLO pot` : "Book arming")}
         </span>
       </div>
 
@@ -1008,7 +1012,7 @@ function HeroBetSlip({
           </div>
           <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/35 px-3 py-2.5">
             <input
-              aria-label="WOLO stake"
+              aria-label={h("WOLO stake")}
               inputMode="numeric"
               value={stakeDraft}
               onChange={(event) => onStakeDraftChange(safeStakeDraft(event.target.value))}
@@ -1023,7 +1027,7 @@ function HeroBetSlip({
 
         <div className="grid gap-2 sm:grid-cols-[1fr_auto] lg:min-w-[18rem]">
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2.5">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">If right</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{h("If right")}</div>
             <div className="mt-1 text-lg font-semibold text-white">
               {formatCompactWolo(projectedReturn)} WOLO
             </div>
@@ -1032,7 +1036,7 @@ function HeroBetSlip({
             href={betHref}
             className={`inline-flex min-h-12 items-center justify-center rounded-2xl px-5 text-sm font-semibold transition ${tone.primaryButton}`}
           >
-            Open Slip
+            {h("Open Slip")}
           </Link>
         </div>
       </div>
@@ -1042,14 +1046,18 @@ function HeroBetSlip({
   );
 }
 
-function buildExtremeBetLine(row: BetWarTapeRow) {
-  const actor = row.actor || "A watcher";
+function buildExtremeBetLine(row: BetWarTapeRow, h: HomeCopy) {
+  const actor = row.actor || h("A watcher");
 
   if (row.amountWolo && row.amountWolo > 0) {
-    return `${actor} backed ${row.note || (row.side === "right" ? "the right side" : "the left side")} with ${formatCompactWolo(row.amountWolo)} WOLO`;
+    return h("{actor} backed {side} with {amount} WOLO", {
+      actor,
+      side: row.note || h(row.side === "right" ? "the right side" : "the left side"),
+      amount: formatCompactWolo(row.amountWolo),
+    });
   }
 
-  return `${actor} moved the book: ${row.label}`;
+  return h("{actor} moved the book: {label}", { actor, label: row.label });
 }
 
 function ExtremeBetLines({
@@ -1059,8 +1067,9 @@ function ExtremeBetLines({
   market: BetBoardMarket | null;
   selectedWar: FeaturedWar;
 }) {
+  const h = useHomeCopy();
   const rows = (market?.warTape ?? []).slice(0, 3);
-  const fallbackActor = selectedWar.players[0] || "The room";
+  const fallbackActor = selectedWar.players[0] || h("The room");
 
   if (rows.length === 0) {
     return (
@@ -1076,7 +1085,7 @@ function ExtremeBetLines({
           />
         </span>
         <span className="min-w-0">
-          The book is waiting for the first face behind the bet.
+          {h("The book is waiting for the first face behind the bet.")}
         </span>
       </div>
     );
@@ -1100,7 +1109,7 @@ function ExtremeBetLines({
             />
           </span>
           <span className="min-w-0 flex-1 truncate text-slate-200">
-            {buildExtremeBetLine(row)}
+            {buildExtremeBetLine(row, h)}
           </span>
           <span className="hidden shrink-0 text-[10px] uppercase tracking-[0.18em] text-amber-100/58 sm:inline">
             {row.label}
@@ -1124,6 +1133,8 @@ function HeroBetSideButton({
   crowdPercent: number | null;
   onClick: () => void;
 }) {
+  const h = useHomeCopy();
+
   return (
     <button
       type="button"
@@ -1136,8 +1147,8 @@ function HeroBetSideButton({
     >
       <div className="truncate text-sm font-semibold">{name}</div>
       <div className="mt-1 flex items-center justify-between gap-3 text-[11px] text-slate-400">
-        <span>{poolWolo == null ? "new side" : `${formatCompactWolo(poolWolo)} WOLO`}</span>
-        <span>{crowdPercent == null ? "open" : `${crowdPercent}% crowd`}</span>
+        <span>{h(poolWolo == null ? "new side" : `${formatCompactWolo(poolWolo)} WOLO`)}</span>
+        <span>{h(crowdPercent == null ? "open" : `${crowdPercent}% crowd`)}</span>
       </div>
     </button>
   );
@@ -1150,7 +1161,8 @@ function CompactCommentCard({
   message: LobbyMessage;
   tone: ReturnType<typeof getLobbyPresentationTone>;
 }) {
-  const name = displayName(message.user.inGameName, message.user.steamPersonaName) || "The AI Scribe";
+  const h = useHomeCopy();
+  const name = displayName(message.user.inGameName, message.user.steamPersonaName) || h("The AI Scribe");
   const avatarSrc = avatarThumbUrlForUser(message.user.uid, name);
   const visibleReactions = message.reactions.filter((reaction) => reaction.count > 0).slice(0, 3);
 

@@ -29,6 +29,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { useNearViewport } from "@/hooks/useNearViewport";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 
 type ShortsView = "vertical" | "wide";
 type ShortReaction = "up" | "down" | null;
@@ -127,6 +128,8 @@ function UploaderLink({
   short: Aoe2Short;
   compact?: boolean;
 }) {
+  const h = useHomeCopy();
+
   return (
     <Link
       href={short.uploaderHref}
@@ -156,7 +159,7 @@ function UploaderLink({
         </span>
         {!compact ? (
           <span className="block text-[9px] uppercase tracking-[0.2em] text-slate-500">
-            Warrior channel
+            {h("Warrior channel")}
           </span>
         ) : null}
       </span>
@@ -165,6 +168,7 @@ function UploaderLink({
 }
 
 export default function Aoe2ShortsTile() {
+  const h = useHomeCopy();
   const { ref: tileRef, isNear: mediaReady } = useNearViewport<HTMLElement>("0px");
   const [view, setView] = useState<ShortsView>("vertical");
   const [activeIndex, setActiveIndex] = useState(0);
@@ -270,13 +274,13 @@ export default function Aoe2ShortsTile() {
     try {
       if (navigator.share) {
         await navigator.share({
-          title: activeShort.title,
-          text: `AoE2 Shorts · ${activeShort.title}`,
+          title: h(activeShort.title),
+          text: `AoE2 Shorts · ${h(activeShort.title)}`,
           url: shareUrl,
         });
       } else {
         await navigator.clipboard.writeText(shareUrl);
-        setShareNotice("Link copied");
+        setShareNotice(h("Link copied"));
       }
     } catch {
       // A dismissed share sheet should leave the reel untouched.
@@ -318,19 +322,19 @@ export default function Aoe2ShortsTile() {
                 <Flame className="hidden h-4 w-4 fill-red-500/50 text-red-300 sm:block" />
               </div>
               <div className="mt-0.5 text-[8px] font-bold uppercase tracking-[0.35em] text-amber-100/45 sm:text-[9px]">
-                War in under 90 seconds
+                {h("War in under 90 seconds")}
               </div>
             </div>
           </div>
 
           <div
             role="group"
-            aria-label="Shorts view"
+            aria-label={h("Shorts view")}
             className="inline-flex shrink-0 rounded-full border border-white/10 bg-black/38 p-1"
           >
             <button
               type="button"
-              aria-label="Vertical Shorts view"
+              aria-label={h("Vertical Shorts view")}
               aria-pressed={view === "vertical"}
               onClick={() => setView("vertical")}
               className={`grid h-9 w-9 place-items-center rounded-full transition ${
@@ -343,7 +347,7 @@ export default function Aoe2ShortsTile() {
             </button>
             <button
               type="button"
-              aria-label="Wide Shorts view"
+              aria-label={h("Wide Shorts view")}
               aria-pressed={view === "wide"}
               onClick={() => setView("wide")}
               className={`grid h-9 w-9 place-items-center rounded-full transition ${
@@ -365,7 +369,7 @@ export default function Aoe2ShortsTile() {
               >
                 <button
                   type="button"
-                  aria-label={`Open ${activeShort.title}`}
+                  aria-label={h("Open {title}", { title: activeShort.title })}
                   onClick={() => openReel(activeIndex)}
                   className="absolute inset-0 z-10"
                 />
@@ -391,10 +395,10 @@ export default function Aoe2ShortsTile() {
                 </div>
                 <div className="pointer-events-none absolute inset-x-5 bottom-5 z-20">
                   <div className="text-[9px] font-bold uppercase tracking-[0.26em] text-amber-100/60">
-                    {activeShort.signal}
+                    {h(activeShort.signal)}
                   </div>
                   <div className="mt-2 font-serif text-2xl font-semibold leading-tight text-white">
-                    {activeShort.title}
+                    {h(activeShort.title)}
                   </div>
                   <div className="pointer-events-auto mt-4 w-fit">
                     <UploaderLink short={activeShort} />
@@ -417,13 +421,13 @@ export default function Aoe2ShortsTile() {
                     onClick={() => openReel(activeIndex)}
                     className="mt-4 max-w-3xl text-left font-serif text-4xl font-medium leading-[0.98] tracking-[-0.045em] text-[#ded3bd] transition hover:text-amber-100 lg:text-6xl"
                   >
-                    {activeShort.title}
+                    {h(activeShort.title)}
                   </button>
                   <div className="mt-4 flex flex-wrap items-center gap-3">
                     <UploaderLink short={activeShort} />
                     <span className="h-4 w-px bg-white/10" />
                     <span className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
-                      {activeShort.signal}
+                      {h(activeShort.signal)}
                     </span>
                   </div>
                   <div className="mt-6 flex flex-wrap gap-2">
@@ -437,7 +441,7 @@ export default function Aoe2ShortsTile() {
                       }`}
                     >
                       <ThumbsUp className="h-4 w-4" />
-                      Like
+                      {h("Like")}
                     </button>
                     <button
                       type="button"
@@ -449,7 +453,7 @@ export default function Aoe2ShortsTile() {
                       }`}
                     >
                       <ThumbsDown className="h-4 w-4" />
-                      Pass
+                      {h("Pass")}
                     </button>
                     <button
                       type="button"
@@ -457,7 +461,7 @@ export default function Aoe2ShortsTile() {
                       className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-4 text-xs font-bold text-slate-400 transition hover:text-white"
                     >
                       <MessageCircle className="h-4 w-4" />
-                      Comment
+                      {h("Comment")}
                     </button>
                     <button
                       type="button"
@@ -465,7 +469,7 @@ export default function Aoe2ShortsTile() {
                       className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-4 text-xs font-bold text-slate-400 transition hover:text-white"
                     >
                       <Share2 className="h-4 w-4" />
-                      Share
+                      {h("Share")}
                     </button>
                   </div>
                 </div>
@@ -476,7 +480,7 @@ export default function Aoe2ShortsTile() {
                       key={short.id}
                       type="button"
                       onClick={() => setActiveIndex(index)}
-                      aria-label={`Select ${short.title}`}
+                      aria-label={h("Select {title}", { title: h(short.title) })}
                       aria-pressed={activeIndex === index}
                       className={`group/thumb relative aspect-[9/16] min-w-0 overflow-hidden rounded-[1rem] border bg-black transition ${
                         activeIndex === index
@@ -493,7 +497,7 @@ export default function Aoe2ShortsTile() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/10 to-transparent" />
                       <span className="absolute inset-x-2 bottom-2 line-clamp-2 text-left text-[9px] font-bold leading-3 text-white">
-                        {short.title}
+                        {h(short.title)}
                       </span>
                     </button>
                   ))}
@@ -507,7 +511,7 @@ export default function Aoe2ShortsTile() {
               >
                 <button
                   type="button"
-                  aria-label={`Open ${activeShort.title}`}
+                  aria-label={h("Open {title}", { title: activeShort.title })}
                   onClick={() => openReel(activeIndex)}
                   className="absolute inset-0 z-10"
                 />
@@ -531,10 +535,10 @@ export default function Aoe2ShortsTile() {
                 </div>
                 <div className="pointer-events-none absolute bottom-7 left-7 z-20 max-w-2xl">
                   <div className="text-[9px] font-bold uppercase tracking-[0.27em] text-red-200/60">
-                    {activeShort.signal}
+                    {h(activeShort.signal)}
                   </div>
                   <div className="mt-2 font-serif text-4xl font-medium tracking-[-0.04em] text-white lg:text-6xl">
-                    {activeShort.title}
+                    {h(activeShort.title)}
                   </div>
                   <div className="pointer-events-auto mt-4 w-fit">
                     <UploaderLink short={activeShort} />
@@ -551,7 +555,7 @@ export default function Aoe2ShortsTile() {
                     key={short.id}
                     type="button"
                     onClick={() => setActiveIndex(index)}
-                    aria-label={`Select ${short.title}`}
+                    aria-label={h("Select {title}", { title: h(short.title) })}
                     aria-pressed={activeIndex === index}
                     className={`group/thumb relative aspect-video w-[16rem] shrink-0 overflow-hidden rounded-[1rem] border bg-black transition ${
                       activeIndex === index
@@ -568,7 +572,7 @@ export default function Aoe2ShortsTile() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent" />
                     <span className="absolute inset-x-3 bottom-2 text-left text-[10px] font-bold text-white">
-                      {short.title}
+                      {h(short.title)}
                     </span>
                   </button>
                 ))}
@@ -594,7 +598,7 @@ export default function Aoe2ShortsTile() {
               >
                 <button
                   type="button"
-                  aria-label={`Open ${short.title}`}
+                  aria-label={h("Open {title}", { title: h(short.title) })}
                   onClick={() => openReel(index)}
                   className="absolute inset-0 z-10"
                 />
@@ -614,10 +618,10 @@ export default function Aoe2ShortsTile() {
                 </span>
                 <span className="pointer-events-none absolute inset-x-3 bottom-3 z-20">
                   <span className="block text-[8px] font-bold uppercase tracking-[0.2em] text-amber-100/55">
-                    {short.signal}
+                    {h(short.signal)}
                   </span>
                   <span className="mt-1.5 block font-serif text-lg font-semibold leading-[1.05] text-white">
-                    {short.title}
+                    {h(short.title)}
                   </span>
                   <span className="pointer-events-auto relative z-30 mt-2 block w-fit">
                     <UploaderLink short={short} compact />
@@ -634,7 +638,7 @@ export default function Aoe2ShortsTile() {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="AoE2 Shorts reel"
+          aria-label={h("AoE2 Shorts reel")}
           className="fixed inset-0 z-[300] flex items-center justify-center bg-[#010205]/96 backdrop-blur-xl"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
@@ -677,7 +681,7 @@ export default function Aoe2ShortsTile() {
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  aria-label={muted ? "Unmute Short" : "Mute Short"}
+                  aria-label={muted ? h("Unmute Short") : h("Mute Short")}
                   onClick={() => setMuted((current) => !current)}
                   className="grid h-10 w-10 place-items-center rounded-full border border-white/14 bg-black/48 text-white backdrop-blur transition hover:bg-black/70"
                 >
@@ -689,7 +693,7 @@ export default function Aoe2ShortsTile() {
                 </button>
                 <button
                   type="button"
-                  aria-label="Close AoE2 Shorts"
+                  aria-label={h("Close AoE2 Shorts")}
                   onClick={() => setReelOpen(false)}
                   className="grid h-10 w-10 place-items-center rounded-full border border-white/14 bg-black/48 text-white backdrop-blur transition hover:bg-black/70"
                 >
@@ -701,7 +705,7 @@ export default function Aoe2ShortsTile() {
             {!playing ? (
               <button
                 type="button"
-                aria-label="Play Short"
+                aria-label={h("Play Short")}
                 onClick={togglePlayback}
                 className="absolute left-1/2 top-1/2 grid h-20 w-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-amber-100/30 bg-black/48 text-amber-50 backdrop-blur"
               >
@@ -715,23 +719,23 @@ export default function Aoe2ShortsTile() {
 
             <div className="absolute bottom-5 left-4 right-[5.2rem] z-10 sm:bottom-7 sm:left-6 sm:right-[6rem]">
               <div className="text-[9px] font-bold uppercase tracking-[0.25em] text-amber-100/60">
-                {activeShort.signal} · {activeShort.duration}
+                {h(activeShort.signal)} · {activeShort.duration}
               </div>
               <div className="mt-2 text-balance font-serif text-2xl font-semibold leading-[1.04] text-white sm:text-3xl">
-                {activeShort.title}
+                {h(activeShort.title)}
               </div>
               <div className="mt-3">
                 <UploaderLink short={activeShort} />
               </div>
               <div className="mt-3 text-[9px] font-semibold uppercase tracking-[0.2em] text-white/35 md:hidden">
-                Swipe for the next war
+                {h("Swipe for the next war")}
               </div>
             </div>
 
             <div className="absolute bottom-5 right-3 z-20 flex flex-col items-center gap-3 sm:bottom-7 sm:right-4">
               <button
                 type="button"
-                aria-label="Like Short"
+                aria-label={h("Like Short")}
                 aria-pressed={activeReaction === "up"}
                 onClick={() => setReaction("up")}
                 className={`grid h-12 w-12 place-items-center rounded-full border backdrop-blur transition ${
@@ -744,7 +748,7 @@ export default function Aoe2ShortsTile() {
               </button>
               <button
                 type="button"
-                aria-label="Dislike Short"
+                aria-label={h("Dislike Short")}
                 aria-pressed={activeReaction === "down"}
                 onClick={() => setReaction("down")}
                 className={`grid h-12 w-12 place-items-center rounded-full border backdrop-blur transition ${
@@ -757,7 +761,7 @@ export default function Aoe2ShortsTile() {
               </button>
               <button
                 type="button"
-                aria-label="Open Short comments"
+                aria-label={h("Open Short comments")}
                 aria-pressed={commentsOpen}
                 onClick={() => setCommentsOpen((current) => !current)}
                 className="grid h-12 w-12 place-items-center rounded-full border border-white/14 bg-black/48 text-white backdrop-blur transition hover:bg-black/70"
@@ -766,7 +770,7 @@ export default function Aoe2ShortsTile() {
               </button>
               <button
                 type="button"
-                aria-label="Share Short"
+                aria-label={h("Share Short")}
                 onClick={() => void shareActiveShort()}
                 className="grid h-12 w-12 place-items-center rounded-full border border-white/14 bg-black/48 text-white backdrop-blur transition hover:bg-black/70"
               >
@@ -777,7 +781,7 @@ export default function Aoe2ShortsTile() {
             <div className="absolute right-4 top-1/2 z-20 hidden -translate-y-1/2 flex-col gap-2 md:flex">
               <button
                 type="button"
-                aria-label="Previous Short"
+                aria-label={h("Previous Short")}
                 onClick={() => moveReel(-1)}
                 className="grid h-11 w-11 place-items-center rounded-full border border-white/12 bg-black/42 text-white backdrop-blur transition hover:border-amber-100/28 hover:text-amber-100"
               >
@@ -785,7 +789,7 @@ export default function Aoe2ShortsTile() {
               </button>
               <button
                 type="button"
-                aria-label="Next Short"
+                aria-label={h("Next Short")}
                 onClick={() => moveReel(1)}
                 className="grid h-11 w-11 place-items-center rounded-full border border-white/12 bg-black/42 text-white backdrop-blur transition hover:border-amber-100/28 hover:text-amber-100"
               >
@@ -797,11 +801,11 @@ export default function Aoe2ShortsTile() {
               <aside className="absolute inset-x-3 bottom-3 z-30 overflow-hidden rounded-[1.4rem] border border-white/12 bg-[#070a10]/96 p-5 shadow-[0_30px_90px_rgba(0,0,0,0.65)] backdrop-blur-xl sm:inset-x-auto sm:bottom-5 sm:right-20 sm:w-[21rem]">
                 <div className="flex items-center justify-between">
                   <div className="text-[10px] font-bold uppercase tracking-[0.26em] text-amber-100/65">
-                    Comments
+                    {h("Comments")}
                   </div>
                   <button
                     type="button"
-                    aria-label="Close comments"
+                    aria-label={h("Close comments")}
                     onClick={() => setCommentsOpen(false)}
                     className="grid h-8 w-8 place-items-center rounded-full text-slate-500 transition hover:bg-white/5 hover:text-white"
                   >
@@ -811,13 +815,13 @@ export default function Aoe2ShortsTile() {
                 <div className="mt-8 text-center">
                   <MessageCircle className="mx-auto h-7 w-7 text-slate-700" />
                   <div className="mt-3 font-serif text-lg text-slate-300">
-                    First word wins.
+                    {h("First word wins.")}
                   </div>
                   <Link
                     href="/lobby#lobby-chat"
                     className="mt-4 inline-flex min-h-10 items-center rounded-full border border-amber-100/18 bg-amber-200/[0.07] px-5 text-xs font-bold text-amber-100 transition hover:bg-amber-200/12"
                   >
-                    Open the war room
+                    {h("Open the war room")}
                   </Link>
                 </div>
               </aside>

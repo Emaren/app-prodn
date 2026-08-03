@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 import {
   useCallback,
   useEffect,
@@ -150,6 +151,7 @@ function HeroLayer({
 }
 
 export default function HeroTakeoverSlot({ children }: { children: ReactNode }) {
+  const h = useHomeCopy();
   const [state, setState] = useState<HeroTakeoverState | null>(null);
   const [ready, setReady] = useState(false);
   const [loadedByKey, setLoadedByKey] = useState<Record<string, boolean>>({});
@@ -408,7 +410,7 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
           <>
             <button
               type="button"
-              aria-label="Previous hero image"
+              aria-label={h("Previous hero image")}
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -418,7 +420,7 @@ export default function HeroTakeoverSlot({ children }: { children: ReactNode }) 
             />
             <button
               type="button"
-              aria-label="Next hero image"
+              aria-label={h("Next hero image")}
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();

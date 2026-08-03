@@ -12,6 +12,7 @@ import {
 import type { LobbySnapshot } from "@/lib/lobby";
 import type { LobbyWoloEarnersEntry, LobbyWoloEarnersMode } from "@/lib/lobby";
 import { featuredAvatarThumbUrlForUser } from "@/lib/avatarAssets";
+import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 
 const WOLO_LOGO_SRC = "/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.webp";
 
@@ -165,6 +166,7 @@ export function TopWoloEarnersTile({
   className,
   surface = "standard",
 }: TopWoloEarnersTileProps) {
+  const h = useHomeCopy();
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const isExtreme = surface === "extreme";
   const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
@@ -360,16 +362,16 @@ export function TopWoloEarnersTile({
         .map((entry, index) => ({ ...entry, rank: index + 1 })),
     [lazyEntries, mode]
   );
-  const statusLabel = mode === "weekly" ? "Weekly" : "All Time";
-  const nextModeLabel = mode === "weekly" ? "All Time" : "Weekly";
+  const statusLabel = mode === "weekly" ? h("Weekly") : h("All Time");
+  const nextModeLabel = mode === "weekly" ? h("All Time") : h("Weekly");
   const headlineMeta =
     entries.length > 0
       ? totalParticipants > entries.length
-        ? `${entries.length} / ${totalParticipants} earners`
-        : `${entries.length} earners`
+        ? h(`${entries.length} / ${totalParticipants} earners`)
+        : h(`${entries.length} earners`)
       : reserve
-        ? `${reserve} reserve`
-        : "8 earners";
+        ? h(`${reserve} reserve`)
+        : h("8 earners");
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
   const viewportHeightClassName = isExtreme
     ? "h-[clamp(34rem,calc(100svh-13rem),82rem)] min-h-[42rem] max-h-[88rem] lg:min-h-[56rem] lg:max-h-[92rem]"
@@ -414,15 +416,15 @@ export function TopWoloEarnersTile({
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className={`text-xs uppercase tracking-[0.35em] ${tone.accentText}`}>
-            Top $WOLO Earners
+            {h("Top $WOLO Earners")}
           </div>
           <Link
             href="/war-chest"
             className="mt-4 flex items-center gap-2.5 rounded-2xl transition hover:text-amber-100"
-            aria-label="Open War Chest"
+            aria-label={h("Open War Chest")}
           >
             <WoloMarkBadge />
-            <h3 className="text-xl font-semibold text-white sm:text-[1.65rem]">WAR CHEST</h3>
+            <h3 className="text-xl font-semibold text-white sm:text-[1.65rem]">{h("WAR CHEST")}</h3>
           </Link>
         </div>
 
@@ -431,8 +433,8 @@ export function TopWoloEarnersTile({
             type="button"
             onClick={() => setMode((current) => (current === "weekly" ? "all_time" : "weekly"))}
             className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs transition ${tone.neutralPill} hover:border-amber-200/45 hover:bg-amber-300 hover:text-slate-950`}
-            aria-label={`Show War Chest ${nextModeLabel}`}
-            title={`Show ${nextModeLabel}`}
+            aria-label={`${h("Show War Chest")} ${nextModeLabel}`}
+            title={`${h("Show")} ${nextModeLabel}`}
           >
             {statusLabel}
           </button>
@@ -445,14 +447,14 @@ export function TopWoloEarnersTile({
           <div className="grid gap-2.5">
             {PLACEHOLDER_LANES.map((lane) => (
               <div
-                key={lane.rank}
+                key={h(lane.rank)}
                 className={`grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-[1.2rem] border px-4 py-3 ${tone.card}`}
               >
                 <div className={`rounded-full border px-3 py-1 text-xs font-semibold ${tone.rankBadge}`}>
-                  {lane.rank}
+                  {h(lane.rank)}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-white">{lane.title}</div>
+                  <div className="text-sm font-semibold text-white">{h(lane.title)}</div>
                   <div className="mt-2 h-2 rounded-full bg-white/8">
                     <div className="h-full w-1/3 rounded-full bg-white/14" />
                   </div>
@@ -472,7 +474,7 @@ export function TopWoloEarnersTile({
 
                 const primaryMetric =
                   mode === "weekly" ? entry.weeklyTakeWolo : entry.allTimeTakeWolo;
-                const primaryLabel = mode === "weekly" ? "Weekly take" : "All-time take";
+                const primaryLabel = mode === "weekly" ? h("Weekly take") : h("All-time take");
                 const avatarSrc = featuredAvatarThumbUrlForUser(entry.uid, entry.name);
                 const rowClassName = isExtreme
                   ? "relative block overflow-hidden rounded-[1.25rem] border border-amber-200/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.018))] px-3 py-3 transition hover:border-amber-200/22 hover:bg-amber-300/7 sm:px-4 sm:py-4"
@@ -500,7 +502,7 @@ export function TopWoloEarnersTile({
                       <div
                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-xs font-semibold ${tone.rankBadge}`}
                       >
-                        {formatOrdinal(entry.rank)}
+                        {h(formatOrdinal(entry.rank))}
                       </div>
 
                       <div className="min-w-0">
@@ -508,12 +510,12 @@ export function TopWoloEarnersTile({
 
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
                           <MiniTag toneClassName={entry.verified ? "border-emerald-400/25 bg-emerald-500/10 text-emerald-100" : tone.neutralPill}>
-                            {entry.verified ? "Steam linked" : entry.claimed ? "Profile claimed" : "Replay profile"}
+                            {entry.verified ? h("Steam linked") : entry.claimed ? h("Profile claimed") : h("Replay profile")}
                           </MiniTag>
 
                           {entry.claimableWolo > 0 ? (
                             <MiniTag toneClassName="border-amber-300/30 bg-amber-400/10 text-amber-100">
-                              Claimable now
+                              {h("Claimable now")}
                             </MiniTag>
                           ) : null}
                         </div>
@@ -531,11 +533,11 @@ export function TopWoloEarnersTile({
                       <div className="col-start-2 min-w-0 sm:col-span-2 sm:col-start-2">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-300">
                           <span className="break-words sm:whitespace-nowrap">
-                            <span className="font-medium text-slate-200">Settled</span> {formatWolo(entry.settledWolo)} WOLO
+                            <span className="font-medium text-slate-200">{h("Settled")}</span> {formatWolo(entry.settledWolo)} WOLO
                           </span>
                           <span className="hidden h-1 w-1 rounded-full bg-white/15 sm:inline-block" />
                           <span className="break-words sm:whitespace-nowrap">
-                            <span className="font-medium text-slate-200">Wagered</span> {formatWolo(entry.wageredWolo)} WOLO
+                            <span className="font-medium text-slate-200">{h("Wagered")}</span> {formatWolo(entry.wageredWolo)} WOLO
                           </span>
                         </div>
                       </div>
@@ -552,14 +554,14 @@ export function TopWoloEarnersTile({
 
               {PLACEHOLDER_LANES.slice(entries.length, entries.length + placeholderCount).map((lane) => (
                 <div
-                  key={lane.rank}
+                  key={h(lane.rank)}
                   className={`grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 rounded-[1.2rem] border px-4 py-3 ${tone.card}`}
                 >
                   <div className={`rounded-full border px-3 py-1 text-xs font-semibold ${tone.rankBadge}`}>
-                    {lane.rank}
+                    {h(lane.rank)}
                   </div>
                   <div className="min-w-0">
-                    <div className="text-sm font-semibold text-white">{lane.title}</div>
+                    <div className="text-sm font-semibold text-white">{h(lane.title)}</div>
                     <div className="mt-2 h-2 rounded-full bg-white/8">
                       <div className="h-full w-1/3 rounded-full bg-white/14" />
                     </div>
