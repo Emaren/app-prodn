@@ -42,6 +42,7 @@ export const REPLAY_WINNER_TRUTH_REASON_CODES = [
   "postgame_block",
   "scoreboard_completion",
   "manual_recovery",
+  "accepted_result_adjudication",
   "uploader_opponent_inference_rejected",
   "generic_inference_rejected",
   "disconnect_or_desync",
@@ -1150,6 +1151,167 @@ function coherentFinalTeamFlagStatsCandidate(
 }
 
 
+
+function acceptedReplayResultAdjudicationCandidate(
+  input: ReplayWinnerTruthInput,
+  keyEvents: Record<string, unknown>
+) {
+  const parseReason =
+    textValue(input.parseReason).toLowerCase();
+
+  const parseSource =
+    textValue(input.parseSource).toLowerCase();
+
+  if (
+    !(
+      parseReason === "manual_result_adjudication" ||
+      parseReason === "automatic_result_evidence"
+    ) ||
+    !(
+      parseSource === "replay_result_review" ||
+      parseSource === "replay_result_evidence"
+    )
+  ) {
+    return null;
+  }
+
+  const evidence =
+    readKeyEvents(
+      keyEvents.replay_result_adjudication
+    );
+
+  if (
+    textValue(
+      evidence.decision_status
+    ).toLowerCase() !== "accepted" ||
+    !truthBoolean(
+      evidence.affects_stats
+    )
+  ) {
+    return null;
+  }
+
+  const winningPlayerKeys =
+    Array.isArray(
+      evidence.winning_player_keys
+    )
+      ? evidence.winning_player_keys
+          .map(textValue)
+          .filter(Boolean)
+      : [];
+
+  if (
+    winningPlayerKeys.length === 0 ||
+    new Set(
+      winningPlayerKeys
+    ).size !==
+      winningPlayerKeys.length
+  ) {
+    return null;
+  }
+
+  const players =
+    Array.isArray(
+      input.players
+    )
+      ? input.players
+      : [];
+
+  if (
+    players.length < 2
+  ) {
+    return null;
+  }
+
+  const observedNames =
+    new Set<string>();
+
+  const winningNames:
+    string[] = [];
+
+  let losingPlayerCount =
+    0;
+
+  for (
+    const player
+    of players
+  ) {
+    const name =
+      normalizePublicReplayText(
+        player?.name
+      );
+
+    const winner =
+      explicitReplayWinnerFlag(
+        player?.winner
+      );
+
+    if (
+      !name ||
+      winner === null
+    ) {
+      return null;
+    }
+
+    const normalizedName =
+      name.toLowerCase();
+
+    if (
+      observedNames.has(
+        normalizedName
+      )
+    ) {
+      return null;
+    }
+
+    observedNames.add(
+      normalizedName
+    );
+
+    if (winner) {
+      winningNames.push(
+        name
+      );
+    } else {
+      losingPlayerCount +=
+        1;
+    }
+  }
+
+  if (
+    winningNames.length === 0 ||
+    losingPlayerCount === 0 ||
+    winningNames.length !==
+      winningPlayerKeys.length
+  ) {
+    return null;
+  }
+
+  const adjudicationId =
+    truthCount(
+      evidence.adjudication_id
+    );
+
+  if (
+    adjudicationId <= 0
+  ) {
+    return null;
+  }
+
+  return {
+    names:
+      winningNames,
+
+    label:
+      winningNames.join(
+        " / "
+      ),
+
+    adjudicationId,
+  };
+}
+
+
 export function resolveReplayWinnerTruth(
   input: ReplayWinnerTruthInput
 ): ReplayWinnerTruth {
@@ -1247,6 +1409,120 @@ export function resolveReplayWinnerTruth(
       textValue(structuredResult.result_status).toLowerCase() !== "resolved" ||
       !truthBoolean(structuredResult.result_trusted)
     );
+
+  /*
+   * An accepted, statistics-authorized adjudication is durable
+   * human result authority over the immutable replay evidence.
+   *
+   * It may correct a raw Unknown result or a replay carrying a
+   * disconnect flag, but it never becomes betting authority here.
+   * Financial authority remains an independent explicit rail.
+   */
+  const acceptedAdjudication =
+    acceptedReplayResultAdjudicationCandidate(
+      input,
+      keyEvents
+    );
+
+  if (
+    acceptedAdjudication
+  ) {
+    return {
+      winner:
+        acceptedAdjudication.label,
+
+      candidateWinner:
+        acceptedAdjudication.label,
+
+      confidence:
+        "recovered",
+
+      truthReasons: [
+        "accepted_result_adjudication",
+      ],
+
+      publicLabel:
+        acceptedAdjudication.label,
+
+      statsEligible:
+        true,
+
+      bettingEligible:
+        false,
+
+      diagnosticSummary:
+        `Winning side ${acceptedAdjudication.label} is authorized for statistics by accepted replay adjudication ${acceptedAdjudication.adjudicationId}.`,
+
+      neededEvidence:
+        [],
+    };
+  }
+
+  /*
+   * A projected adjudication must fail closed as one authority unit.
+   *
+   * When adjudication metadata is present but invalid, incomplete,
+   * nonaccepted, or not statistics-authorized, the resolver must not
+   * fall through to legacy scalar-winner or player-flag recovery.
+   */
+  const replayResultAdjudicationMarker =
+    (
+      parseReason ===
+        "manual_result_adjudication" ||
+      parseReason ===
+        "automatic_result_evidence"
+    ) &&
+    (
+      textValue(
+        input.parseSource
+      ).toLowerCase() ===
+        "replay_result_review" ||
+      textValue(
+        input.parseSource
+      ).toLowerCase() ===
+        "replay_result_evidence"
+    ) &&
+    Object.keys(
+      readKeyEvents(
+        keyEvents.replay_result_adjudication
+      )
+    ).length >
+      0;
+
+  if (
+    replayResultAdjudicationMarker &&
+    !acceptedAdjudication
+  ) {
+    return {
+      winner:
+        null,
+
+      candidateWinner,
+
+      confidence:
+        "unresolved",
+
+      truthReasons: [
+        "winner_missing",
+      ],
+
+      publicLabel:
+        "Result review",
+
+      statsEligible:
+        false,
+
+      bettingEligible:
+        false,
+
+      diagnosticSummary:
+        "Projected replay adjudication evidence was rejected because it was not accepted statistics authority over a complete explicit winning and losing roster.",
+
+      neededEvidence: [
+        "a valid accepted replay result adjudication with a complete explicit roster",
+      ],
+    };
+  }
 
   if (disconnectDetected) {
     const truthReasons: ReplayWinnerTruthReason[] = ["disconnect_or_desync"];
