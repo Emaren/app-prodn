@@ -29,6 +29,9 @@ import {
 import {
   loadPendingWoloClaimSummariesByName,
 } from "@/lib/pendingWoloClaims";
+import {
+  resolvePublicWarEngineStatus,
+} from "@/lib/warEngine";
 
 export const dynamic = "force-dynamic";
 
@@ -481,6 +484,10 @@ function BattleCard({
   const playedAt = readPlayedAt(
     battle.game
   );
+  const warEngineStatus =
+    resolvePublicWarEngineStatus(
+      battle.game
+    );
 
   const leftRoster =
     battle.leftSideNames.join(" / ");
@@ -495,9 +502,14 @@ function BattleCard({
         ? rightRoster
         : null;
 
-  let resultLabel = "Battle preserved";
+  let resultLabel =
+    warEngineStatus?.badge ??
+    "Battle preserved";
+  let resultDetail =
+    warEngineStatus?.detail ?? null;
 
   if (winnerRoster) {
+    resultDetail = null;
     if (allied) {
       resultLabel =
         battle.winnerSide ===
@@ -554,6 +566,10 @@ function BattleCard({
           {winnerRoster ? (
             <div className="mt-2 text-xs leading-5 text-slate-400">
               {winnerRoster}
+            </div>
+          ) : resultDetail ? (
+            <div className="mt-2 text-xs leading-5 text-slate-400">
+              {resultDetail}
             </div>
           ) : null}
         </div>

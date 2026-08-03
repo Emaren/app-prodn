@@ -63,6 +63,10 @@ import {
 } from "@/lib/replayAchievementMetrics";
 import { loadReplayDesyncIncidentProvenance } from "@/lib/replayDesyncIncidents";
 import { normalizeReplayPlayer } from "@/lib/teamResolution";
+import {
+  resolvePublicWarEngineStatus,
+  WAR_ENGINE_CASE_RELATION,
+} from "@/lib/warEngine";
 
 export const dynamic = "force-dynamic";
 
@@ -94,6 +98,7 @@ export default async function GameStatsDetailPage({
     where: { id: gameId },
     include: {
       replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
+      warEngineCase: WAR_ENGINE_CASE_RELATION,
       user: {
         select: {
           uid: true,
@@ -215,6 +220,8 @@ export default async function GameStatsDetailPage({
   );
 
   const game = applyReplayAdjudicationToGameStats(rawGame);
+  const warEngineStatus =
+    resolvePublicWarEngineStatus(rawGame);
   const normalizedStatsProjection =
     rawGame.replayStatProjections[0] ?? null;
 
@@ -480,13 +487,15 @@ export default async function GameStatsDetailPage({
   const isSavedCheckpoint = replayFilename
     .toLowerCase()
     .endsWith(".aoe2mpgame");
-  const unresolvedBattleLabel = confirmedDesync
-    ? "Desynced · result unresolved"
-    : isSavedCheckpoint
-      ? "Saved checkpoint · not final proof"
-      : game.is_final
-        ? "Result under review"
-        : "Battle capture · result not final";
+  const unresolvedBattleLabel =
+    warEngineStatus?.detail ??
+    (confirmedDesync
+      ? "Desynced · result unresolved"
+      : isSavedCheckpoint
+        ? "Saved checkpoint · not final proof"
+        : game.is_final
+          ? "Result under review"
+          : "Battle capture · result not final");
   const suppressPlayerWinnerState =
     Boolean(confirmedDesync) ||
     game.parse_reason === "hd_early_exit_under_60s" ||
@@ -652,7 +661,8 @@ export default async function GameStatsDetailPage({
                   ? "DESYNCED · result unresolved"
                   : publicWinnerLabel
                     ? `${publicWinnerLabel} victorious`
-                    : unresolvedBattleLabel}
+                    : warEngineStatus?.badge ??
+                      unresolvedBattleLabel}
               </Tag>
               {reviewedResultVerified && !confirmedDesync ? (
                 <Tag>
@@ -672,6 +682,32 @@ export default async function GameStatsDetailPage({
               {outcomeLabel ? <Tag>{outcomeLabel}</Tag> : null}
             </div>
             <FounderBonusChips bonuses={founderBonuses} />
+
+            {warEngineStatus ? (
+              <Link
+                href={warEngineStatus.href}
+                className="block rounded-[1.5rem] border border-amber-200/15 bg-[linear-gradient(135deg,rgba(245,158,11,0.09),rgba(56,189,248,0.035))] px-5 py-4 transition hover:border-amber-200/30 hover:bg-amber-200/[0.06]"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.3em] text-amber-200/75">
+                      {warEngineStatus.badge}
+                    </div>
+                    <div className="mt-2 text-sm leading-6 text-slate-300">
+                      {warEngineStatus.detail}
+                    </div>
+                  </div>
+
+                  <div className="rounded-full border border-sky-300/15 bg-sky-300/[0.06] px-4 py-2 text-xs text-sky-100">
+                    Tier {warEngineStatus.tier} · {warEngineStatus.tierLabel}
+                  </div>
+                </div>
+
+                <div className="mt-3 text-xs text-slate-500">
+                  Financial history locked · Open The War Engine
+                </div>
+              </Link>
+            ) : null}
 
             {reviewedResultVerified && !confirmedDesync ? (
               <details
@@ -912,7 +948,14 @@ export default async function GameStatsDetailPage({
               ) : publicWinnerLabel ? (
                 <StatRow label="Winner" value={publicWinnerLabel} />
               ) : (
-                <StatRow label="Result Status" value={unresolvedBattleLabel} />
+                <StatRow
+                  label="Result Status"
+                  value={
+                    warEngineStatus
+                      ? `${warEngineStatus.badge} · ${warEngineStatus.detail}`
+                      : unresolvedBattleLabel
+                  }
+                />
               )}
               {outcomeLabel ? <StatRow label="Victory Type" value={outcomeLabel} /> : null}
               {readMapName(game.map) !== "Map unavailable" ? <StatRow label="Map" value={readMapName(game.map)} /> : null}

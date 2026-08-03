@@ -30,7 +30,9 @@
     "challenge:legacy-prepare": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/prepare-legacy-challenge.mts",
     "replay:stats:project": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/project-normalized-replay-stats.mts",
     "identity:discover": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/backfill-player-identity-discovery.mts",
-    "workshop:publish:2026-08-01": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/publish-workshop-2026-08-01.mts"
+    "workshop:publish:2026-08-01": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/publish-workshop-2026-08-01.mts",
+    "war-engine:seed": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/seed-war-engine-foundation.mts",
+    "test:war-engine": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/war-engine-public-status.test.mts"
   },
   "dependencies": {
     "@cosmjs/amino": "^0.33.1",

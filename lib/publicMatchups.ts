@@ -31,6 +31,10 @@ import {
   resolveReliableReplayWinner,
 } from "@/lib/unresolvedWatcherResult";
 import {
+  WAR_ENGINE_CASE_RELATION,
+  type WarEngineCaseView,
+} from "@/lib/warEngine";
+import {
   applyReplayAdjudicationToGameStats,
   EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
 } from "@/lib/replayAdjudications";
@@ -72,6 +76,7 @@ export type MatchupGameRow = {
   event_types?: unknown;
   key_events?: unknown;
   parse_source?: string | null;
+  warEngineCase?: WarEngineCaseView | null;
 };
 
 export type RivalSummary = {
@@ -401,6 +406,7 @@ export async function loadRecentFinalMatchupRows(
         key_events: true,
         parse_source: true,
         replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
+        warEngineCase: WAR_ENGINE_CASE_RELATION,
       },
     });
 
