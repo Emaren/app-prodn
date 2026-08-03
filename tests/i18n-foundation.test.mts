@@ -128,6 +128,15 @@ test(
         "utf8",
       );
 
+    const dictionary =
+      readFileSync(
+        new URL(
+          "../lib/i18n/dictionary.ts",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+
     assert.match(
       source,
       /t\("title"\)/,
@@ -171,6 +180,26 @@ test(
     assert.doesNotMatch(
       source,
       /<h2 className="font-serif/,
+    );
+
+    assert.doesNotMatch(
+      dictionary,
+      /^\s*(?:title|subtitle):/m,
+    );
+
+    assert.doesNotMatch(
+      dictionary,
+      /Choose your tongue/,
+    );
+
+    assert.doesNotMatch(
+      dictionary,
+      /Every warrior enters the hall/,
+    );
+
+    assert.doesNotMatch(
+      dictionary,
+      /Elige tu lengua/,
     );
   },
 );
