@@ -63,19 +63,203 @@ export function shouldRotateBountyCarousel(
   );
 }
 
-export function isVerifiedLegacyWinnerBounty(input: {
-  claimKind: string;
-  claimedByUserId: number | null;
-  payoutTxHash: string | null;
-  rescindedAt: Date | string | null;
-  status: string;
-}) {
-  return (
-    input.claimKind === "winner_bounty" &&
-    input.status === "claimed" &&
-    input.claimedByUserId !== null &&
-    Boolean(input.payoutTxHash?.trim()) &&
-    input.rescindedAt === null
+export const OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES = [
+  "wolo1dmj5dnm7g9hmj005yzy5e5xcygudyt7wxzpxjq",
+  "wolo1r8kvt7me33rsv9ldaczj03xjrld4yumx0c0jkg",
+] as const;
+
+const OFFICIAL_NUMBERED_BOUNTY_ISSUER_SET =
+  new Set<string>(
+    OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES,
+  );
+
+const NUMBERED_BOUNTY_MEMO_PATTERN =
+  /\bbounty\s*#\s*(\d+)\b/i;
+
+export type NumberedBountyTransferRecord = {
+  id: number;
+  txHash: string;
+  transferIndex: number;
+  timestamp: Date | string;
+  senderAddress: string;
+  recipientAddress: string;
+  amountWoloDisplay: unknown;
+  memo: string | null;
+};
+
+function numberedBountyTimestamp(
+  value: Date | string,
+) {
+  const parsed = new Date(value).getTime();
+  return Number.isFinite(parsed)
+    ? parsed
+    : 0;
+}
+
+export function parseWrittenBountyNumber(
+  memo: string | null | undefined,
+) {
+  const match =
+    memo?.match(
+      NUMBERED_BOUNTY_MEMO_PATTERN,
+    );
+
+  if (!match?.[1]) return null;
+
+  const parsed = Number.parseInt(
+    match[1],
+    10,
+  );
+
+  return Number.isSafeInteger(parsed) &&
+    parsed > 0
+    ? parsed
+    : null;
+}
+
+export function canonicalBountyMemo(
+  memo: string,
+  canonicalNumber: number,
+) {
+  if (
+    !Number.isSafeInteger(
+      canonicalNumber,
+    ) ||
+    canonicalNumber < 1
+  ) {
+    return memo;
+  }
+
+  return memo.replace(
+    NUMBERED_BOUNTY_MEMO_PATTERN,
+    `Bounty #${canonicalNumber}`,
+  );
+}
+
+export function canonicalizeNumberedBountyTransfers<
+  T extends NumberedBountyTransferRecord,
+>(
+  transfers: readonly T[],
+) {
+  const seen = new Set<string>();
+
+  const admitted: Array<{
+    row: T;
+    normalizedTxHash: string;
+    writtenNumber: number;
+  }> = [];
+
+  for (const row of transfers) {
+    if (
+      !OFFICIAL_NUMBERED_BOUNTY_ISSUER_SET.has(
+        row.senderAddress,
+      )
+    ) {
+      continue;
+    }
+
+    const writtenNumber =
+      parseWrittenBountyNumber(
+        row.memo,
+      );
+
+    const normalizedTxHash =
+      row.txHash
+        .trim()
+        .toUpperCase();
+
+    const amountWolo = Number(
+      String(
+        row.amountWoloDisplay ??
+          "",
+      ),
+    );
+
+    if (
+      writtenNumber === null ||
+      !normalizedTxHash ||
+      !Number.isFinite(amountWolo) ||
+      amountWolo <= 0
+    ) {
+      continue;
+    }
+
+    const transferIdentity =
+      `${normalizedTxHash}:${row.transferIndex}`;
+
+    if (
+      seen.has(
+        transferIdentity,
+      )
+    ) {
+      continue;
+    }
+
+    seen.add(
+      transferIdentity,
+    );
+
+    admitted.push({
+      row,
+      normalizedTxHash,
+      writtenNumber,
+    });
+  }
+
+  admitted.sort(
+    (left, right) => {
+      const timestampDifference =
+        numberedBountyTimestamp(
+          left.row.timestamp,
+        ) -
+        numberedBountyTimestamp(
+          right.row.timestamp,
+        );
+
+      if (timestampDifference) {
+        return timestampDifference;
+      }
+
+      const idDifference =
+        left.row.id -
+        right.row.id;
+
+      if (idDifference) {
+        return idDifference;
+      }
+
+      return (
+        left.row.transferIndex -
+        right.row.transferIndex
+      );
+    },
+  );
+
+  return admitted.map(
+    (
+      {
+        row,
+        normalizedTxHash,
+        writtenNumber,
+      },
+      index,
+    ) => {
+      const canonicalNumber =
+        index + 1;
+
+      return {
+        ...row,
+        txHash:
+          normalizedTxHash,
+        writtenNumber,
+        canonicalNumber,
+        canonicalMemo:
+          canonicalBountyMemo(
+            row.memo || "",
+            canonicalNumber,
+          ),
+      };
+    },
   );
 }
 
@@ -83,58 +267,10 @@ export function isVerifiedCanonicalBountyPayout(input: {
   status: string | null | undefined;
   txHash: string | null | undefined;
 }) {
-  return input.status === "paid" && Boolean(input.txHash?.trim());
-}
-
-type LegacyWinnerBountyRecord = {
-  amountWolo: number;
-  claimGroupKey: string | null;
-  claimKind: string;
-  claimedByUserId: number | null;
-  payoutTxHash: string | null;
-  rescindedAt: Date | string | null;
-  status: string;
-  sourceGameStatsId: number | null;
-  sourceMarketId: number | null;
-};
-
-function legacyWinnerBountyDedupeKey(
-  input: LegacyWinnerBountyRecord,
-) {
-  const sourceIdentity =
-    input.sourceMarketId !== null
-      ? `market:${input.sourceMarketId}`
-      : input.sourceGameStatsId !== null
-        ? `game:${input.sourceGameStatsId}`
-        : `group:${
-            input.claimGroupKey?.trim().toLowerCase() || "none"
-          }`;
-
-  return [
-    input.payoutTxHash?.trim().toUpperCase() || "no-tx",
-    sourceIdentity,
-    `user:${input.claimedByUserId ?? "none"}`,
-    `amount:${input.amountWolo}`,
-  ].join("|");
-}
-
-export function dedupeVerifiedLegacyWinnerBounties<
-  T extends LegacyWinnerBountyRecord,
->(claims: readonly T[]) {
-  const seen = new Set<string>();
-  const verified: T[] = [];
-
-  for (const claim of claims) {
-    if (!isVerifiedLegacyWinnerBounty(claim)) continue;
-
-    const key = legacyWinnerBountyDedupeKey(claim);
-    if (seen.has(key)) continue;
-
-    seen.add(key);
-    verified.push(claim);
-  }
-
-  return verified;
+  return (
+    input.status === "paid" &&
+    Boolean(input.txHash?.trim())
+  );
 }
 
 export function requiresBountyValuationReason(input: {

@@ -3,67 +3,82 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
+  canonicalizeNumberedBountyTransfers,
   circularWarriorOffset,
-  dedupeVerifiedLegacyWinnerBounties,
   isPublicBountyContract,
   isVerifiedCanonicalBountyPayout,
-  isVerifiedLegacyWinnerBounty,
   moveWarriorIndex,
+  OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES,
   parseBountyRewardWolo,
+  parseWrittenBountyNumber,
   requiresBountyValuationReason,
   shouldRotateBountyCarousel,
   visibleWarriorIndexes,
 } from "../lib/bountyHall.ts";
 
-test("public legacy admission requires an identified paid winner bounty", () => {
-  assert.equal(
-    isVerifiedLegacyWinnerBounty({
-      claimKind: "winner_bounty",
-      claimedByUserId: 18168,
-      payoutTxHash: "ABC123",
-      rescindedAt: null,
-      status: "claimed",
-    }),
-    true,
+test("numbered bounty admission requires an official issuer and explicit number", () => {
+  const issuer =
+    OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES[0];
+
+  const valid = {
+    id: 1,
+    txHash: "ABC123",
+    transferIndex: 0,
+    timestamp:
+      new Date(
+        "2026-06-07T03:15:15Z",
+      ),
+    senderAddress: issuer,
+    recipientAddress:
+      "wolo1recipient",
+    amountWoloDisplay:
+      "125000.000000",
+    memo:
+      "Bounty #1 — The First Scout.",
+  };
+
+  const rows =
+    canonicalizeNumberedBountyTransfers([
+      valid,
+      {
+        ...valid,
+        id: 2,
+        txHash: "WRONG-SENDER",
+        senderAddress:
+          "wolo1notanissuer",
+      },
+      {
+        ...valid,
+        id: 3,
+        txHash: "NO-NUMBER",
+        memo:
+          "Winner bounty · automatic match bonus",
+      },
+      {
+        ...valid,
+        id: 4,
+        txHash: "",
+      },
+      {
+        ...valid,
+        id: 5,
+        txHash: "ZERO",
+        amountWoloDisplay: "0",
+      },
+    ]);
+
+  assert.deepEqual(
+    rows.map(
+      (row) => row.id,
+    ),
+    [1],
   );
+
   assert.equal(
-    isVerifiedLegacyWinnerBounty({
-      claimKind: "founders_bonus",
-      claimedByUserId: 18168,
-      payoutTxHash: "ABC123",
-      rescindedAt: null,
-      status: "claimed",
-    }),
-    false,
-  );
-  assert.equal(
-    isVerifiedLegacyWinnerBounty({
-      claimKind: "winner_bounty",
-      claimedByUserId: null,
-      payoutTxHash: "ABC123",
-      rescindedAt: null,
-    }),
-    false,
-  );
-  assert.equal(
-    isVerifiedLegacyWinnerBounty({
-      claimKind: "winner_bounty",
-      claimedByUserId: 18168,
-      payoutTxHash: null,
-      rescindedAt: null,
-      status: "claimed",
-    }),
-    false,
-  );
-  assert.equal(
-    isVerifiedLegacyWinnerBounty({
-      claimKind: "winner_bounty",
-      claimedByUserId: 18168,
-      payoutTxHash: "ABC123",
-      rescindedAt: null,
-      status: "pending",
-    }),
-    false,
+    parseWrittenBountyNumber(
+      "Founders Win bonus",
+    ),
+    null,
   );
 });
 
@@ -91,48 +106,98 @@ test("canonical paid truth requires paid status and transaction proof", () => {
   );
 });
 
-test("verified legacy winner rows deduplicate exact payout identities only", () => {
-  const shared = {
-    amountWolo: 25,
-    claimGroupKey: "market",
-    claimKind: "winner_bounty",
-    claimedByUserId: 63,
-    payoutTxHash: "ABC123",
-    rescindedAt: null,
-    status: "claimed",
-    sourceGameStatsId: 9001,
-    sourceMarketId: 7001,
+test("numbered bounty chronology closes written gaps without changing chain evidence", () => {
+  const issuer =
+    OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES[1];
+
+  const base = {
+    senderAddress: issuer,
+    recipientAddress:
+      "wolo1recipient",
+    amountWoloDisplay:
+      "1000.000000",
+    transferIndex: 0,
   };
 
   const rows =
-    dedupeVerifiedLegacyWinnerBounties([
-      { id: 10, ...shared },
-      { id: 11, ...shared },
+    canonicalizeNumberedBountyTransfers([
       {
-        id: 15,
-        ...shared,
-        sourceGameStatsId: null,
+        ...base,
+        id: 44,
+        txHash: "TX44",
+        timestamp:
+          new Date(
+            "2026-07-15T22:05:43Z",
+          ),
+        memo:
+          "Bounty #44 — Jim's 2 Cents.",
       },
       {
-        id: 12,
-        ...shared,
-        sourceMarketId: 7002,
+        ...base,
+        id: 5,
+        txHash: "TX5",
+        timestamp:
+          new Date(
+            "2026-06-08T23:03:40Z",
+          ),
+        memo:
+          "Bounty #5 — The Tribe Grows.",
       },
       {
-        id: 13,
-        ...shared,
-        claimedByUserId: 105,
+        ...base,
+        id: 1,
+        txHash: "TX1",
+        timestamp:
+          new Date(
+            "2026-06-07T03:15:15Z",
+          ),
+        memo:
+          "Bounty #1 — The First Scout.",
       },
       {
-        id: 14,
-        ...shared,
-        payoutTxHash: null,
+        ...base,
+        id: 999,
+        txHash: "TX1",
+        timestamp:
+          new Date(
+            "2026-06-07T03:15:15Z",
+          ),
+        memo:
+          "Bounty #1 — Duplicate index record.",
       },
     ]);
 
   assert.deepEqual(
-    rows.map((row) => row.id),
-    [10, 12, 13],
+    rows.map(
+      (row) =>
+        row.canonicalNumber,
+    ),
+    [1, 2, 3],
+  );
+
+  assert.deepEqual(
+    rows.map(
+      (row) =>
+        row.writtenNumber,
+    ),
+    [1, 5, 44],
+  );
+
+  assert.deepEqual(
+    rows.map(
+      (row) =>
+        row.canonicalMemo,
+    ),
+    [
+      "Bounty #1 — The First Scout.",
+      "Bounty #2 — The Tribe Grows.",
+      "Bounty #3 — Jim's 2 Cents.",
+    ],
+  );
+
+  assert.equal(
+    rows[1].memo,
+    "Bounty #5 — The Tribe Grows.",
   );
 });
 
@@ -253,30 +318,146 @@ test("automatic movement pauses for every interaction and accessibility gate", (
   assert.equal(shouldRotateBountyCarousel({ ...base, manualPauseUntil: 101 }), false);
 });
 
-test("public loader excludes founder, tribute, and generic memo rails", () => {
-  const source = readFileSync(new URL("../lib/bounties.ts", import.meta.url), "utf8");
-  const publicLoader = source.slice(
-    source.indexOf("export async function loadBountyBoard"),
-    source.indexOf("export async function loadBountyAdminSnapshot"),
+test("public loader admits only official numbered on-chain bounty transfers", () => {
+  const source = readFileSync(
+    new URL(
+      "../lib/bounties.ts",
+      import.meta.url,
+    ),
+    "utf8",
   );
 
-  assert.match(publicLoader, /claimKind: "winner_bounty"/);
-  assert.match(publicLoader, /status: "claimed"/);
-  assert.match(publicLoader, /claimedByUserId: \{ not: null \}/);
-  assert.match(publicLoader, /payoutTxHash: \{ not: null \}/);
-  assert.match(publicLoader, /entry\.hasFeaturedAvatar/);
-  assert.match(publicLoader, /featuredAvatarCardUrlForUser/);
-  assert.match(publicLoader, /dedupeVerifiedLegacyWinnerBounties/);
-  assert.match(publicLoader, /isVerifiedCanonicalBountyPayout/);
-  assert.match(publicLoader, /isPublicBountyContract/);
-  assert.doesNotMatch(publicLoader, /events:\s*\{/);
-  assert.doesNotMatch(publicLoader, /valuations:\s*\{/);
-  assert.doesNotMatch(publicLoader, /take: 300/);
-  assert.doesNotMatch(publicLoader, /\.slice\(0, 300\)/);
-  assert.doesNotMatch(publicLoader, /prisma\.trophyPayout/);
-  assert.doesNotMatch(publicLoader, /prisma\.woloIndexedTransfer/);
-  assert.doesNotMatch(publicLoader, /founders_bonus/);
-  assert.doesNotMatch(publicLoader, /daily_tribute/);
+  const publicLoader =
+    source.slice(
+      source.indexOf(
+        "export async function loadBountyBoard",
+      ),
+      source.indexOf(
+        "export async function loadBountyAdminSnapshot",
+      ),
+    );
+
+  assert.match(
+    publicLoader,
+    /woloIndexedTransfer\.findMany/,
+  );
+  assert.match(
+    publicLoader,
+    /OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES/,
+  );
+  assert.match(
+    publicLoader,
+    /canonicalizeNumberedBountyTransfers/,
+  );
+  assert.match(
+    publicLoader,
+    /recipientAddress/,
+  );
+  assert.match(
+    publicLoader,
+    /walletAddress/,
+  );
+  assert.match(
+    publicLoader,
+    /nextNumber/,
+  );
+  assert.match(
+    publicLoader,
+    /entry\.hasFeaturedAvatar/,
+  );
+  assert.match(
+    publicLoader,
+    /featuredAvatarCardUrlForUser/,
+  );
+  assert.match(
+    publicLoader,
+    /isVerifiedCanonicalBountyPayout/,
+  );
+  assert.match(
+    publicLoader,
+    /isPublicBountyContract/,
+  );
+
+  assert.doesNotMatch(
+    publicLoader,
+    /pendingWoloClaim/,
+  );
+  assert.doesNotMatch(
+    publicLoader,
+    /winner_bounty/,
+  );
+  assert.doesNotMatch(
+    publicLoader,
+    /founders_bonus/,
+  );
+  assert.doesNotMatch(
+    publicLoader,
+    /founders_win/,
+  );
+  assert.doesNotMatch(
+    publicLoader,
+    /prisma\.trophyPayout/,
+  );
+  assert.doesNotMatch(
+    publicLoader,
+    /userGift/,
+  );
+});
+
+test("staking bounty history shares the official numbered memo rule", () => {
+  const route = readFileSync(
+    new URL(
+      "../app/api/staking/activity/route.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  const feed = readFileSync(
+    new URL(
+      "../app/staking/StakingActivityFeed.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  assert.match(
+    route,
+    /canonicalizeNumberedBountyTransfers/,
+  );
+  assert.match(
+    route,
+    /OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES/,
+  );
+  assert.match(
+    route,
+    /public-numbered-bounty/,
+  );
+  assert.doesNotMatch(
+    route,
+    /user_gifts/,
+  );
+  assert.doesNotMatch(
+    route,
+    /like '%bounty%'/,
+  );
+
+  assert.match(
+    feed,
+    /parseWrittenBountyNumber/,
+  );
+  assert.match(
+    feed,
+    /Next bounty/,
+  );
+  assert.match(
+    feed,
+    /canonical sequence/,
+  );
+  assert.doesNotMatch(
+    feed,
+    /reserved gifts/,
+  );
 });
 
 test("the public contract wall excludes personal warrior bounties", () => {

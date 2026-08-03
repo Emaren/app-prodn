@@ -27,9 +27,10 @@ a proof requirement, and an identifiable warrior or open claimant pool.
 
 An opportunity is not a payment promise. `available` and `in_progress` describe
 the public workflow. `locked` is derived from a canonical claim whose reward has
-been frozen but whose payout does not yet carry transaction proof. `paid` is
-derived only from a canonical or explicitly admitted legacy bounty payout with a
-transaction hash.
+been frozen but whose payout does not yet carry transaction proof. Public paid
+history is derived only from an indexed WoloChain transfer sent by an official
+Kingdom bounty issuer whose immutable memo explicitly contains `Bounty #<number>`
+and whose transaction hash and positive WOLO amount are present.
 
 ## Public surfaces
 
@@ -53,28 +54,36 @@ transaction hash.
 - `BountyEvent` remains append-only operator chronology but does not manufacture
   public paid history.
 
-## Admitted legacy history
+## Canonical numbered history
 
-A legacy `PendingWoloClaim` row may appear publicly only when all of these are
-true:
+The public historical ledger is the chronological sequence of explicit numbered
+WoloChain bounty transfers. Admission requires all of the following:
 
-- `claim_kind = winner_bounty`;
-- `status = claimed`;
-- `claimed_by_user_id` identifies a real site account;
-- `payout_tx_hash` exists;
-- the row has not been rescinded.
+- the sender is one of the two audited Kingdom bounty issuer addresses;
+- the immutable memo matches `Bounty #<positive integer>`;
+- the transfer has a transaction hash;
+- the transfer amount is positive;
+- duplicate chain transfer identities are removed by transaction hash and
+  transfer index.
 
-The following remain preserved in the admin legacy audit but are excluded from
-public bounty counts and earnings:
+The written memo number remains immutable chain evidence. Public display assigns
+a canonical chronological number beginning at `#1`, closing historical gaps that
+were accidentally reserved for automatic match bonuses. The audited August 3,
+2026 history contains 39 paid bounties, so the next public bounty is `#40`.
 
+The following are bonuses, not bounties, and remain excluded from public bounty
+counts, history, numbering, and warrior bounty earnings:
+
+- `winner_bounty`;
 - `founders_bonus`;
 - `founders_win`;
-- championship `daily_tribute` and ordinary trophy payouts;
-- betting, staking, refund, gift, and Marketplace transfers;
-- generic indexed transfers matched only because a memo contains bounty,
-  reward, trophy, belt, or artifact.
+- championship tribute and ordinary trophy payouts;
+- generic transfers whose memo merely contains the word `bounty`;
+- pending or accepted profile gifts;
+- betting, staking, refund, Marketplace, and automatic settlement bonuses.
 
-Memo text is never a substitute for stable warrior identity.
+The admin audit preserves the original database and chain records without
+rewriting them.
 
 ## Hall roster
 

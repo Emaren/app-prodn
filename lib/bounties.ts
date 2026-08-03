@@ -1,8 +1,9 @@
 import { featuredAvatarCardUrlForUser } from "@/lib/avatarAssets";
 import {
-  dedupeVerifiedLegacyWinnerBounties,
+  canonicalizeNumberedBountyTransfers,
   isPublicBountyContract,
   isVerifiedCanonicalBountyPayout,
+  OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES,
 } from "@/lib/bountyHall";
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import { loadPublicPlayerDirectory } from "@/lib/publicPlayerDirectory";
@@ -39,12 +40,12 @@ export function classifyLegacyBountySource(input: {
   payoutKind?: string | null;
   source?: string | null;
 }) {
-  if (input.claimKind === "winner_bounty") return "battle_winner_bounty";
+  if (input.claimKind === "winner_bounty") return "winner_bonus";
   if (
     input.claimKind === "founders_bonus" ||
     input.claimKind === "founders_win"
   ) {
-    return "founder_reward";
+    return "founder_bonus";
   }
   if (input.payoutKind === "daily_tribute") return "championship_tribute";
   if (input.payoutKind) return "championship_reward";
@@ -53,263 +54,381 @@ export function classifyLegacyBountySource(input: {
 }
 
 export async function loadBountyBoard(prisma: PrismaClient) {
-  const [opportunities, canonicalClaims, legacyWinnerClaims, directory] =
-    await Promise.all([
-      prisma.bountyOpportunity.findMany({
-        orderBy: [
-          { featured: "desc" },
-          { priority: "desc" },
-          { updatedAt: "desc" },
-        ],
-        include: {
-          assignedUser: {
-            select: {
-              id: true,
-              uid: true,
-              inGameName: true,
-            },
+  const [
+    opportunities,
+    canonicalClaims,
+    numberedTransferCandidates,
+    directory,
+  ] = await Promise.all([
+    prisma.bountyOpportunity.findMany({
+      orderBy: [
+        { featured: "desc" },
+        { priority: "desc" },
+        { updatedAt: "desc" },
+      ],
+      include: {
+        assignedUser: {
+          select: {
+            id: true,
+            uid: true,
+            inGameName: true,
           },
         },
-      }),
-      prisma.bountyClaim.findMany({
-        where: {
-          cancelledAt: null,
-        },
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        include: {
-          user: {
-            select: {
-              id: true,
-              uid: true,
-              inGameName: true,
-            },
+      },
+    }),
+    prisma.bountyClaim.findMany({
+      where: {
+        cancelledAt: null,
+      },
+      select: {
+        payout: {
+          select: {
+            status: true,
+            txHash: true,
           },
-          opportunity: {
-            select: {
-              id: true,
-              slug: true,
-              title: true,
-            },
-          },
-          payout: true,
         },
-      }),
-      prisma.pendingWoloClaim.findMany({
-        where: {
-          claimKind: "winner_bounty",
-          status: "claimed",
-          claimedByUserId: { not: null },
-          payoutTxHash: { not: null },
-          rescindedAt: null,
+      },
+    }),
+    prisma.woloIndexedTransfer.findMany({
+      where: {
+        senderAddress: {
+          in: [
+            ...OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES,
+          ],
         },
-        orderBy: [{ claimedAt: "desc" }, { id: "desc" }],
-        select: {
-          id: true,
-          claimedByUserId: true,
-          displayPlayerName: true,
-          amountWolo: true,
-          claimKind: true,
-          claimGroupKey: true,
-          payoutTxHash: true,
-          payoutProofUrl: true,
-          errorState: true,
-          note: true,
-          sourceMarketId: true,
-          sourceGameStatsId: true,
-          createdAt: true,
-          claimedAt: true,
-          rescindedAt: true,
-          status: true,
+        memo: {
+          contains: "bounty",
+          mode: "insensitive",
         },
-      }),
-      loadPublicPlayerDirectory(prisma),
-    ]);
+      },
+      orderBy: [
+        { timestamp: "asc" },
+        { id: "asc" },
+        { transferIndex: "asc" },
+      ],
+      select: {
+        id: true,
+        txHash: true,
+        transferIndex: true,
+        timestamp: true,
+        senderAddress: true,
+        recipientAddress: true,
+        amountWoloDisplay: true,
+        memo: true,
+      },
+    }),
+    loadPublicPlayerDirectory(prisma),
+  ]);
 
-  const verifiedLegacyWinnerClaims =
-    dedupeVerifiedLegacyWinnerBounties(
-      legacyWinnerClaims,
+  const numberedBounties =
+    canonicalizeNumberedBountyTransfers(
+      numberedTransferCandidates,
     );
 
-  const legacyUserIds = Array.from(
-    new Set(
-      verifiedLegacyWinnerClaims
-        .map((claim) => claim.claimedByUserId)
-        .filter((value): value is number => value !== null),
-    ),
-  );
+  const recipientAddresses =
+    Array.from(
+      new Set(
+        numberedBounties.map(
+          (row) =>
+            row.recipientAddress,
+        ),
+      ),
+    );
 
-  const legacyUsers = legacyUserIds.length
-    ? await prisma.user.findMany({
-        where: { id: { in: legacyUserIds } },
-        select: { id: true, uid: true, inGameName: true },
-      })
-    : [];
+  const recipientUsers =
+    recipientAddresses.length
+      ? await prisma.user.findMany({
+          where: {
+            walletAddress: {
+              in: recipientAddresses,
+            },
+          },
+          select: {
+            id: true,
+            uid: true,
+            inGameName: true,
+            walletAddress: true,
+          },
+        })
+      : [];
 
-  const legacyUserById = new Map(
-    legacyUsers.map((user) => [user.id, user]),
-  );
+  const recipientUserByWallet =
+    new Map(
+      recipientUsers.flatMap(
+        (user) =>
+          user.walletAddress
+            ? [[
+                user.walletAddress.toLowerCase(),
+                user,
+              ] as const]
+            : [],
+      ),
+    );
 
-  const serializedOpportunities = opportunities.map((opportunity) => ({
-    ...opportunity,
-    createdAt: opportunity.createdAt.toISOString(),
-    updatedAt: opportunity.updatedAt.toISOString(),
-    publishedAt: toIso(opportunity.publishedAt),
-    expiresAt: toIso(opportunity.expiresAt),
-  }));
+  const serializedOpportunities =
+    opportunities.map(
+      (opportunity) => ({
+        ...opportunity,
+        createdAt:
+          opportunity.createdAt.toISOString(),
+        updatedAt:
+          opportunity.updatedAt.toISOString(),
+        publishedAt:
+          toIso(
+            opportunity.publishedAt,
+          ),
+        expiresAt:
+          toIso(
+            opportunity.expiresAt,
+          ),
+      }),
+    );
 
-  const canonicalLedger = canonicalClaims.map((claim) => {
-    const payout = claim.payout;
-    const txHash = payout?.txHash?.trim() || null;
-    const paid = isVerifiedCanonicalBountyPayout({
-      status: payout?.status,
-      txHash,
-    });
+  const ledger =
+    numberedBounties
+      .map((transfer) => {
+        const recipientUser =
+          recipientUserByWallet.get(
+            transfer.recipientAddress.toLowerCase(),
+          );
 
-    return {
-      key: `canonical:${claim.publicId}`,
-      source: "Canonical bounty rail",
-      sourceKind: "canonical" as const,
-      status: paid ? "paid" : "locked",
-      actor: claim.playerDisplayNameSnapshot,
-      actorUserId: claim.userId,
-      actorUid: claim.user.uid,
-      amountWolo: payout?.amountWolo ?? claim.rewardSnapshotWolo,
-      memo: `${claim.opportunity.title} · ${claim.playerDisplayNameSnapshot}`,
-      txHash,
-      proofUrl: null as string | null,
-      occurredAt: (
-        payout?.paidAt ||
-        payout?.updatedAt ||
-        claim.approvedAt ||
-        claim.createdAt
-      ).toISOString(),
-      opportunity: claim.opportunity,
-      errorState: payout?.errorDetail ?? null,
-    };
-  });
+        const amountWolo =
+          Number(
+            transfer.amountWoloDisplay.toString(),
+          );
 
-  const legacyLedger =
-    verifiedLegacyWinnerClaims.flatMap((claim) => {
-      const user = claim.claimedByUserId
-        ? legacyUserById.get(claim.claimedByUserId)
-        : null;
-
-      if (!user || !claim.payoutTxHash) return [];
-
-      return [
-        {
-          key: `legacy-winner:${claim.id}`,
-          source: "Legacy battle winner bounty",
-          sourceKind: "legacy_winner" as const,
-          status: "paid",
-          actor: claim.displayPlayerName,
-          actorUserId: user.id,
-          actorUid: user.uid,
-          amountWolo: claim.amountWolo,
+        return {
+          key:
+            `numbered-bounty:${transfer.txHash}:${transfer.transferIndex}`,
+          source:
+            "Numbered on-chain bounty",
+          sourceKind:
+            "numbered_memo" as const,
+          status:
+            "paid" as const,
+          actor:
+            recipientUser
+              ?.inGameName ||
+            null,
+          actorUserId:
+            recipientUser?.id ??
+            null,
+          actorUid:
+            recipientUser?.uid ??
+            null,
+          amountWolo,
           memo:
-            claim.note ||
-            `Winner bounty · ${claim.displayPlayerName}`,
-          txHash: claim.payoutTxHash,
-          proofUrl: claim.payoutProofUrl,
-          occurredAt: (claim.claimedAt || claim.createdAt).toISOString(),
-          opportunity: null,
-          errorState: claim.errorState,
-        },
-      ];
-    });
+            transfer.canonicalMemo,
+          originalMemo:
+            transfer.memo ||
+            "",
+          canonicalNumber:
+            transfer.canonicalNumber,
+          writtenNumber:
+            transfer.writtenNumber,
+          txHash:
+            transfer.txHash,
+          proofUrl:
+            null as string | null,
+          occurredAt:
+            transfer.timestamp.toISOString(),
+          opportunity:
+            null as {
+              id: number;
+              slug: string;
+              title: string;
+            } | null,
+          errorState:
+            null as string | null,
+        };
+      })
+      .sort(
+        (left, right) =>
+          right.occurredAt.localeCompare(
+            left.occurredAt,
+          ),
+      );
 
-  const ledger = [...canonicalLedger, ...legacyLedger].sort(
-    (left, right) =>
-      right.occurredAt.localeCompare(left.occurredAt),
-  );
+  const lockedCanonicalClaims =
+    canonicalClaims.filter(
+      (claim) =>
+        !isVerifiedCanonicalBountyPayout({
+          status:
+            claim.payout?.status,
+          txHash:
+            claim.payout?.txHash,
+        }),
+    );
 
-  const publicContracts = serializedOpportunities.filter(
-    isPublicBountyContract,
-  );
+  const publicContracts =
+    serializedOpportunities.filter(
+      isPublicBountyContract,
+    );
 
-  const nextBountyByUid = new Map(
-    serializedOpportunities
+  const nextBountyByUid =
+    new Map(
+      serializedOpportunities
+        .filter(
+          (opportunity) =>
+            opportunity.bountyKind ===
+              "personal" &&
+            opportunity.assignedUser
+              ?.uid &&
+            opportunity
+              .isNextForWarrior &&
+            ACTIVE_OPPORTUNITY_STATUSES.has(
+              opportunity.status,
+            ),
+        )
+        .map(
+          (opportunity) => [
+            opportunity
+              .assignedUser!.uid,
+            opportunity,
+          ],
+        ),
+    );
+
+  const claimedWarriors =
+    directory.claimedEntries
       .filter(
-        (opportunity) =>
-          opportunity.bountyKind === "personal" &&
-          opportunity.assignedUser?.uid &&
-          opportunity.isNextForWarrior &&
-          ACTIVE_OPPORTUNITY_STATUSES.has(opportunity.status),
+        (entry) =>
+          entry.uid &&
+          entry.hasFeaturedAvatar,
       )
-      .map((opportunity) => [opportunity.assignedUser!.uid, opportunity]),
-  );
+      .map(
+        (entry, index) => ({
+          id:
+            `claimed:${entry.uid}`,
+          uid: entry.uid!,
+          name: entry.name,
+          aliases:
+            entry.aliases,
+          href: entry.href,
+          imageUrl:
+            featuredAvatarCardUrlForUser(
+              entry.uid,
+              entry.name,
+            ),
+          mystery: false,
+          rank: index + 1,
+          battlefieldLabel:
+            entry.steamRmRating !==
+            null
+              ? `${entry.steamRmRating.toLocaleString()} RM`
+              : `${entry.totalMatches.toLocaleString()} recorded battles`,
+          nextBounty:
+            nextBountyByUid.get(
+              entry.uid!,
+            ) ?? null,
+        }),
+      );
 
-  const claimedWarriors = directory.claimedEntries
-    .filter(
+  const unclaimedCandidates =
+    directory.replayEntries.filter(
       (entry) =>
-        entry.uid &&
-        entry.hasFeaturedAvatar,
-    )
-    .map((entry, index) => ({
-      id: `claimed:${entry.uid}`,
-      uid: entry.uid!,
-      name: entry.name,
-      aliases: entry.aliases,
-      href: entry.href,
-      imageUrl: featuredAvatarCardUrlForUser(entry.uid, entry.name),
-      mystery: false,
-      rank: index + 1,
-      battlefieldLabel:
-        entry.steamRmRating !== null
-          ? `${entry.steamRmRating.toLocaleString()} RM`
-          : `${entry.totalMatches.toLocaleString()} recorded battles`,
-      nextBounty: nextBountyByUid.get(entry.uid!) ?? null,
-    }));
+        entry.totalMatches > 0,
+    );
 
-  const unclaimedCandidates = directory.replayEntries.filter(
-    (entry) => entry.totalMatches > 0,
-  );
-  const unclaimedIndex = unclaimedCandidates.length
-    ? Math.floor(Math.random() * unclaimedCandidates.length)
-    : -1;
+  const unclaimedIndex =
+    unclaimedCandidates.length
+      ? Math.floor(
+          Math.random() *
+            unclaimedCandidates.length,
+        )
+      : -1;
+
   const unclaimed =
-    unclaimedIndex >= 0 ? unclaimedCandidates[unclaimedIndex] : null;
+    unclaimedIndex >= 0
+      ? unclaimedCandidates[
+          unclaimedIndex
+        ]
+      : null;
 
   const mysteryWarrior = {
-    id: `unclaimed:${unclaimed?.key ?? "unknown"}`,
+    id:
+      `unclaimed:${unclaimed?.key ?? "unknown"}`,
     uid: null,
-    name: "Unclaimed Warrior",
+    name:
+      "Unclaimed Warrior",
     aliases: [] as string[],
-    href: unclaimed?.href ?? "/players",
-    imageUrl: featuredAvatarCardUrlForUser(null, "silhouette"),
+    href:
+      unclaimed?.href ??
+      "/players",
+    imageUrl:
+      featuredAvatarCardUrlForUser(
+        null,
+        "silhouette",
+      ),
     mystery: true,
-    rank: unclaimedIndex >= 0 ? unclaimedIndex + 1 : null,
-    battlefieldLabel: unclaimed
-      ? `${unclaimed.totalMatches.toLocaleString()} recorded battles · profile unclaimed`
-      : "A place in the Hall is waiting",
+    rank:
+      unclaimedIndex >= 0
+        ? unclaimedIndex + 1
+        : null,
+    battlefieldLabel:
+      unclaimed
+        ? `${unclaimed.totalMatches.toLocaleString()} recorded battles · profile unclaimed`
+        : "A place in the Hall is waiting",
     nextBounty: null,
   };
 
-  const warriors = [...claimedWarriors, mysteryWarrior];
-  const initialWarriorId = warriors.length
-    ? warriors[Math.floor(Math.random() * warriors.length)].id
-    : null;
+  const warriors = [
+    ...claimedWarriors,
+    mysteryWarrior,
+  ];
+
+  const initialWarriorId =
+    warriors.length
+      ? warriors[
+          Math.floor(
+            Math.random() *
+              warriors.length,
+          )
+        ].id
+      : null;
+
+  const paidWolo =
+    ledger.reduce(
+      (sum, item) =>
+        sum +
+        item.amountWolo,
+      0,
+    );
 
   return {
-    generatedAt: new Date().toISOString(),
-    opportunities: serializedOpportunities,
+    generatedAt:
+      new Date().toISOString(),
+    opportunities:
+      serializedOpportunities,
     ledger,
     hall: {
       initialWarriorId,
       warriors,
     },
+    numbering: {
+      paidCount:
+        ledger.length,
+      nextNumber:
+        ledger.length + 1,
+    },
     totals: {
-      available: publicContracts.filter(
-        (item) => item.status === "available",
-      ).length,
-      inProgress: publicContracts.filter(
-        (item) => item.status === "in_progress",
-      ).length,
-      locked: ledger.filter((item) => item.status === "locked").length,
-      paid: ledger.filter((item) => item.status === "paid").length,
-      paidWolo: ledger
-        .filter((item) => item.status === "paid")
-        .reduce((sum, item) => sum + (item.amountWolo || 0), 0),
+      available:
+        publicContracts.filter(
+          (item) =>
+            item.status ===
+            "available",
+        ).length,
+      inProgress:
+        publicContracts.filter(
+          (item) =>
+            item.status ===
+            "in_progress",
+        ).length,
+      locked:
+        lockedCanonicalClaims.length,
+      paid:
+        ledger.length,
+      paidWolo,
     },
   };
 }

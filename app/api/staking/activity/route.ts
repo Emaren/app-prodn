@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import {
+  canonicalizeNumberedBountyTransfers,
+  OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES,
+} from "@/lib/bountyHall";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { loadMainnetTransferStakingActivityPage } from "@/lib/staking";
@@ -26,100 +30,120 @@ function parseBefore(value: string | null) {
 }
 
 
-type PublicBountyActivityRow = {
-  source_type: "transfer" | "gift";
-  id: number;
-  tx_hash: string | null;
-  transfer_index: number | null;
-  amount_wolo: number | string | null;
-  memo: string | null;
-  status: string | null;
-  occurred_at: Date | string | null;
-};
-
-
-function shortPublicBountyTx(value?: string | null) {
+function shortPublicBountyTx(
+  value?: string | null,
+) {
   if (!value) return null;
-  return value.length > 18 ? `${value.slice(0, 8)}...${value.slice(-6)}` : value;
+
+  return value.length > 18
+    ? `${value.slice(0, 8)}...${value.slice(-6)}`
+    : value;
 }
 
-function formatPublicBountyWolo(value: unknown) {
+function formatPublicBountyWolo(
+  value: unknown,
+) {
   const n = Number(value || 0);
-  if (!Number.isFinite(n)) return "0 WOLO";
-  return `${n.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`;
+
+  if (!Number.isFinite(n)) {
+    return "0 WOLO";
+  }
+
+  return `${n.toLocaleString(
+    undefined,
+    {
+      maximumFractionDigits: 6,
+    },
+  )} WOLO`;
 }
 
-async function loadPublicNumberedBounties(limit: number) {
+async function loadPublicNumberedBounties(
+  limit: number,
+) {
   const prisma = getPrisma();
 
-  const rows = await prisma.$queryRawUnsafe<PublicBountyActivityRow[]>(
-    `
-    with paid_transfers as (
-      select
-        'transfer'::text as source_type,
-        t.id,
-        t.tx_hash,
-        t.transfer_index,
-        t.amount_wolo_display as amount_wolo,
-        t.memo,
-        'paid'::text as status,
-        coalesce(t.timestamp, t.created_at) as occurred_at
-      from wolo_indexed_transfers t
-      where lower(coalesce(t.memo, '')) like '%bounty%'
-    ),
-    unclaimed_gifts as (
-      select
-        'gift'::text as source_type,
-        g.id,
-        null::text as tx_hash,
-        null::int as transfer_index,
-        g.amount::numeric as amount_wolo,
-        g.note as memo,
-        g.status,
-        g.created_at as occurred_at
-      from user_gifts g
-      where g.kind = 'WOLO'
-        and g.amount > 0
-        and lower(coalesce(g.note, '')) like '%bounty%'
-        and lower(coalesce(g.status, '')) in ('pending', 'accepted')
-        and coalesce(g.display_on_profile, false) = true
+  const candidates =
+    await prisma.woloIndexedTransfer.findMany({
+      where: {
+        senderAddress: {
+          in: [
+            ...OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES,
+          ],
+        },
+        memo: {
+          contains: "bounty",
+          mode: "insensitive",
+        },
+      },
+      orderBy: [
+        { timestamp: "asc" },
+        { id: "asc" },
+        { transferIndex: "asc" },
+      ],
+      select: {
+        id: true,
+        txHash: true,
+        transferIndex: true,
+        timestamp: true,
+        senderAddress: true,
+        recipientAddress: true,
+        amountWoloDisplay: true,
+        memo: true,
+      },
+    });
+
+  const rows =
+    canonicalizeNumberedBountyTransfers(
+      candidates,
+    );
+
+  return rows
+    .slice(
+      Math.max(
+        0,
+        rows.length - limit,
+      ),
     )
-    select *
-    from (
-      select * from paid_transfers
-      union all
-      select * from unclaimed_gifts
-    ) rows
-    order by occurred_at desc, id desc
-    limit $1
-    `,
-    limit
-  );
+    .reverse()
+    .map((row) => {
+      const amountLabel =
+        formatPublicBountyWolo(
+          row.amountWoloDisplay,
+        );
 
-  return rows.map((row) => {
-    const amountLabel = formatPublicBountyWolo(row.amount_wolo);
-    const isGift = row.source_type === "gift";
-    const status = String(row.status || "").toLowerCase();
-    const statusLabel =
-      status === "pending" || status === "unclaimed" || (isGift && status !== "accepted")
-        ? "unclaimed"
-        : "paid";
-    const tx = shortPublicBountyTx(row.tx_hash);
-    const detail = `${String(row.memo || "Bounty").trim()}${tx ? ` · tx ${tx}` : ""}`;
-    const occurredAt = new Date(row.occurred_at || Date.now()).toISOString();
+      const tx =
+        shortPublicBountyTx(
+          row.txHash,
+        );
 
-    return {
-      key: `public-bounty-${row.source_type}-${row.id}-${row.transfer_index ?? 0}`,
-      label: `${amountLabel} bounty ${statusLabel}`,
-      detail,
-      meta: "BOUNTY",
-      eventType: "BOUNTY",
-      amountLabel,
-      timestampLabel: occurredAt,
-      occurredAt,
-      tone: statusLabel === "unclaimed" ? "amber" : "emerald",
-    };
-  });
+      const occurredAt =
+        row.timestamp.toISOString();
+
+      const detail =
+        `${row.canonicalMemo}` +
+        `${tx ? ` · tx ${tx}` : ""}`;
+
+      return {
+        key:
+          `public-numbered-bounty-${row.txHash}-${row.transferIndex}`,
+        label:
+          `${amountLabel} bounty paid`,
+        detail,
+        meta: "BOUNTY",
+        eventType: "BOUNTY",
+        amountLabel,
+        timestampLabel:
+          occurredAt,
+        occurredAt,
+        tone: "emerald",
+        txHash:
+          row.txHash,
+        canonicalBountyNumber:
+          row.canonicalNumber,
+        writtenBountyNumber:
+          row.writtenNumber,
+      };
+    });
 }
 
 async function requestIsAdmin(request: NextRequest) {

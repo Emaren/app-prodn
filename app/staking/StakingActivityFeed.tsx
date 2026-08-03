@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 
 import TimeDisplayText, { useTimeDisplayFormatter } from "@/components/time/TimeDisplayText";
 import { useUserAuth } from "@/context/UserAuthContext";
+import { parseWrittenBountyNumber } from "@/lib/bountyHall";
 import type { StakingActivityItem } from "@/lib/staking";
 
 type ActivityFeedEvent = CustomEvent<{ item?: StakingActivityItem }>;
@@ -55,24 +56,29 @@ function isReserveActivity(item: StakingActivityItem) {
   );
 }
 
-function isBountyActivity(item: StakingActivityItem) {
-  const eventType = normalizedEventType(item);
-  const text = sanitizeActivityCopy(
-    `${item.label || ""} ${item.detail || ""} ${item.meta || ""} ${item.amountLabel || ""} ${item.eventType || ""}`
-  ).toLowerCase();
+function isBountyActivity(
+  item: StakingActivityItem,
+) {
+  const eventType =
+    normalizedEventType(
+      item,
+    );
+
+  const text =
+    sanitizeActivityCopy(
+      `${item.label || ""} ` +
+      `${item.detail || ""} ` +
+      `${item.meta || ""} ` +
+      `${item.amountLabel || ""}`,
+    );
 
   return (
-    eventType === "BOUNTY" ||
-    isBeltBountyPayoutActivity(item) ||
-    text.includes("bounty") ||
-    text.includes("bounties") ||
-    text.includes("championship bounty") ||
-    text.includes("champion bounty") ||
-    text.includes("title bounty") ||
-    text.includes("national belt bounty")
+    eventType === "BOUNTY" &&
+    parseWrittenBountyNumber(
+      text,
+    ) !== null
   );
 }
-
 
 function isBeltActivity(item: StakingActivityItem) {
   return isBeltTributePayoutActivity(item) || isBeltBountyPayoutActivity(item);
@@ -221,33 +227,48 @@ function parseBountyWoloAmount(value?: string | null) {
 }
 
 function computePublicBountySummary(
-  rows: Array<{ label?: string; detail?: string; amountLabel?: string | null; eventType?: string | null }>,
+  rows: StakingActivityItem[],
 ) {
   let paidTotal = 0;
   let paidCount = 0;
-  let unclaimedCount = 0;
 
   for (const row of rows) {
-    const text = `${row.label || ""} ${row.detail || ""} ${row.amountLabel || ""}`.toLowerCase();
-    const isUnclaimed = text.includes("unclaimed");
-    const isPaid = text.includes("bounty paid") && !isUnclaimed;
-
-    if (isUnclaimed) {
-      unclaimedCount += 1;
+    if (
+      !isBountyActivity(
+        row,
+      )
+    ) {
       continue;
     }
 
-    if (isPaid) {
-      paidCount += 1;
-      paidTotal += parseBountyWoloAmount(row.amountLabel || row.label);
+    const text =
+      `${row.label || ""} ` +
+      `${row.detail || ""} ` +
+      `${row.amountLabel || ""}`;
+
+    if (
+      !text
+        .toLowerCase()
+        .includes(
+          "bounty paid",
+        )
+    ) {
+      continue;
     }
+
+    paidCount += 1;
+    paidTotal +=
+      parseBountyWoloAmount(
+        row.amountLabel ||
+          row.label,
+      );
   }
 
   return {
     paidTotal,
     paidCount,
-    unclaimedCount,
-    totalCount: paidCount + unclaimedCount,
+    nextNumber:
+      paidCount + 1,
   };
 }
 
@@ -1190,9 +1211,9 @@ export default function StakingActivityFeed({
               <div className="mt-1 text-xs text-slate-400">on-chain receipts</div>
             </div>
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#ded7c3]/70">Unclaimed</div>
-              <div className="mt-1 text-lg font-semibold text-amber-100">{bountySummary.unclaimedCount}</div>
-              <div className="mt-1 text-xs text-slate-400">reserved gifts</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[#ded7c3]/70">Next bounty</div>
+              <div className="mt-1 text-lg font-semibold text-amber-100">#{bountySummary.nextNumber}</div>
+              <div className="mt-1 text-xs text-slate-400">canonical sequence</div>
             </div>
           </div>
         </div>
