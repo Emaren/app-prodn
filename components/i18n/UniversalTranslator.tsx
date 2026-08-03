@@ -3,6 +3,7 @@
 import {
   Check,
   Globe,
+  Languages,
   RotateCcw,
   X,
 } from "lucide-react";
@@ -343,9 +344,17 @@ export default function UniversalTranslator({
                   <header className="universal-translator__header rounded-[1.45rem] border px-4 py-4 sm:px-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
-                        <h2 className="font-serif text-2xl font-semibold tracking-[-0.025em] text-[#e5dccb] sm:text-[1.8rem]">
-                          {t("brand")}
-                        </h2>
+                        <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.3em] text-amber-100/55">
+                          <Languages
+                            className="h-3.5 w-3.5"
+                            aria-hidden="true"
+                          />
+                          {t("title")}
+                        </div>
+
+                        <p className="mt-3 max-w-[34rem] text-sm leading-6 text-slate-400">
+                          {t("tagline")}
+                        </p>
                       </div>
                       <button
                         type="button"

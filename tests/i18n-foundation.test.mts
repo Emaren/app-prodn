@@ -63,7 +63,8 @@ test(
     const spanish =
       readJson("../messages/es.json") as {
         Translator: {
-          brand: string;
+          title: string;
+          tagline: string;
         };
         Shell: {
           currentPage: string;
@@ -79,7 +80,12 @@ test(
       };
 
     assert.equal(
-      spanish.Translator.brand,
+      spanish.Translator.title,
+      "Universal Translator",
+    );
+
+    assert.equal(
+      spanish.Translator.tagline,
       "War to the World.",
     );
 
@@ -111,7 +117,7 @@ test(
 );
 
 test(
-  "translator displays only War to the World",
+  "translator restores amber title and blue campaign line",
   () => {
     const source =
       readFileSync(
@@ -123,6 +129,31 @@ test(
       );
 
     assert.match(
+      source,
+      /t\("title"\)/,
+    );
+
+    assert.match(
+      source,
+      /t\("tagline"\)/,
+    );
+
+    assert.match(
+      source,
+      /text-amber-100\/55/,
+    );
+
+    assert.match(
+      source,
+      /text-slate-400/,
+    );
+
+    assert.match(
+      source,
+      /<Languages/,
+    );
+
+    assert.doesNotMatch(
       source,
       /t\("brand"\)/,
     );
@@ -139,12 +170,7 @@ test(
 
     assert.doesNotMatch(
       source,
-      /\{strings\.title\}/,
-    );
-
-    assert.doesNotMatch(
-      source,
-      /\{strings\.subtitle\}/,
+      /<h2 className="font-serif/,
     );
   },
 );
