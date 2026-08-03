@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-08-03"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -22,7 +22,9 @@ The Universal Translator is the global AoE2WAR language-preference surface. It h
 - `components/i18n/UniversalTranslator.tsx` owns the responsive header control and selector.
 - `context/UniversalLanguageContext.tsx` exposes `useUniversalLanguage()` for future shell and page dictionaries.
 - `lib/i18n/languages.ts` is the typed language registry, display-mark cycle, persistence contract, and sacred-term list.
-- `lib/i18n/dictionary.ts` contains the small translator-shell dictionary.
+- `lib/i18n/dictionary.ts` continues to localize the selector's internal controls.
+- `messages/en.json` and `messages/es.json` contain the first reviewed global-shell catalogs.
+- `components/i18n/AoE2WarIntlProvider.tsx` bridges the existing saved language preference into `next-intl`.
 - `app/AppShell.tsx` mounts the provider and keeps the authenticated right rail in this order: loose language signal, wireframe globe, NavChat, player control.
 - `app/globals.css` owns only the component-scoped black-glass, gold, and crimson treatment.
 
@@ -38,7 +40,11 @@ The provider initializes after mount so server and client markup agree. It also 
 
 ## Translation boundary
 
-There are no runtime AI calls and no external translation services. This pass translates the Universal Translator UI only. Future UI copy should enter typed dictionaries deliberately.
+Static product copy uses committed catalogs rather than a live AI request on every page view. English remains the canonical source language. Spanish is the first reviewed overlay and currently covers the Universal Translator presentation plus the global navigation shell.
+
+The selector's existing language registry, cookie, local-storage preference, and account preference remain authoritative. Selecting Spanish swaps the shell catalog immediately. Auto mode applies the Spanish catalog when the browser language is Spanish. Languages without a completed product catalog continue to receive English product copy rather than incomplete machine output.
+
+User-generated content remains separate. Private chat translation is requested on demand through the AI gateway and cached by message and target language. Original messages, historical records, and immutable chain memos remain authoritative.
 
 These product terms are sacred and should not be translated automatically:
 

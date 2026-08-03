@@ -1,0 +1,143 @@
+{
+  "Translator": {
+    "brand": "War to the World."
+  },
+  "Shell": {
+    "currentPage": "Página actual",
+    "steamSignIn": "Entrar con Steam",
+    "admin": "Admin",
+    "requests": "{count, plural, =0 {0 solicitudes} one {# solicitud} other {# solicitudes}}",
+    "liveGames": "{count, plural, =0 {0 partidas en vivo🔥} one {# partida en vivo🔥} other {# partidas en vivo🔥}}",
+    "workshopLive": "Taller · EN VIVO",
+    "kingdom": {
+      "title": "El Reino",
+      "openAria": "Abrir páginas del Reino",
+      "closeAria": "Cerrar el menú del Reino",
+      "pagesAria": "Páginas del Reino"
+    },
+    "nav": {
+      "bets": "Apuestas",
+      "watch": "Ver",
+      "players": "Jugadores",
+      "rivalries": "Rivalidades",
+      "wolo": "$WOLO",
+      "staking": "Staking"
+    },
+    "kingdomEntries": {
+      "kingdom": {
+        "label": "Reino",
+        "body": "El reino, las coronas y el mapa de la liga"
+      },
+      "leaderboard": {
+        "label": "Clasificación",
+        "body": "Puntuaciones, récords y guerreros clasificados"
+      },
+      "champions": {
+        "label": "Campeones",
+        "body": "Cinturones, reinados y reglas de títulos"
+      },
+      "nations": {
+        "label": "Naciones",
+        "body": "Mapa de balizas y recompensas nacionales"
+      },
+      "clans": {
+        "label": "Clanes",
+        "body": "Equipos, casas y salones de clan"
+      },
+      "academy": {
+        "label": "Academia",
+        "body": "Lecciones, órdenes de construcción y estudio de repeticiones"
+      },
+      "marketplace": {
+        "label": "Mercado",
+        "body": "Tiendas de jugadores, artesanía y encargos"
+      },
+      "forum": {
+        "label": "Foro",
+        "body": "Hilos de la Sala de Guerra y comunidad"
+      },
+      "bounties": {
+        "label": "Recompensas",
+        "body": "Oportunidades abiertas y comprobantes de pago"
+      },
+      "aiCouncil": {
+        "label": "Consejo de IA",
+        "body": "Consulta al consejo público del Reino"
+      },
+      "radio": {
+        "label": "Radio WOLO",
+        "body": "Música del Reino y envíos de creadores"
+      },
+      "workshop": {
+        "label": "El Taller",
+        "body": "Mira cómo se forja el Reino en público"
+      },
+      "parser": {
+        "label": "Observatorio del Parser",
+        "body": "Corpus de repeticiones, cobertura e incógnitas"
+      },
+      "traffic": {
+        "label": "Observatorio de Tráfico",
+        "body": "Tráfico, posibles humanos y humanos confirmados"
+      },
+      "statistics": {
+        "label": "Estadísticas del Reino",
+        "body": "WOLO, usuarios, apuestas, partidas, watchers y crecimiento"
+      },
+      "speed": {
+        "label": "Velocidad",
+        "body": "Mediciones en vivo de rendimiento y preparación"
+      }
+    },
+    "pages": {
+      "aoe2war": "AoE2WAR",
+      "aiCommandCenter": "Centro de Mando de IA",
+      "bountyCommandCenter": "Centro de Mando de Recompensas",
+      "radioDesk": "Mesa de Radio WOLO",
+      "workshopCommandCenter": "Centro de Mando del Taller",
+      "heroStudio": "Estudio de Héroes",
+      "featuredEventStudio": "Estudio de Eventos Destacados",
+      "operatorCommand": "Mando del Operador",
+      "stakingHall": "Salón de Staking",
+      "woloStaking": "Staking de WOLO",
+      "gameStats": "Estadísticas de Partidas",
+      "hdLeaderboard": "Clasificación de HD",
+      "nationalChampions": "Campeones Nacionales",
+      "clanHalls": "Salones de Clan",
+      "academy": "Academia",
+      "marketplace": "Mercado",
+      "championshipBelts": "Cinturones de Campeonato",
+      "kingdom": "El Reino",
+      "warRoomForum": "Foro de la Sala de Guerra",
+      "liveGames": "Partidas en Vivo",
+      "parserObservatory": "Observatorio del Parser",
+      "bountyBoard": "Tablón de Recompensas",
+      "aiCouncil": "Consejo de IA",
+      "radioWolo": "Radio WOLO",
+      "workshop": "El Taller",
+      "submitRadio": "Enviar a Radio WOLO",
+      "rivalryMatchup": "Duelo de Rivalidad",
+      "rivalries": "Rivalidades",
+      "playerRegistry": "Registro de Jugadores",
+      "tournamentGrounds": "Campos del Torneo",
+      "watchArena": "Arena de Transmisión",
+      "challengeHall": "Salón de Desafíos",
+      "trainUnderZodiac": "Entrena con Zodiac",
+      "bettingHall": "Salón de Apuestas",
+      "warChest": "Cofre de Guerra",
+      "woloChain": "WoloChain",
+      "woloEconomy": "Economía WOLO",
+      "woloWallet": "Cartera WOLO",
+      "playerProfile": "Perfil del Jugador",
+      "matchRequests": "Solicitudes de Partida",
+      "commandInbox": "Bandeja de Mando",
+      "downloadWatcher": "Descargar Watcher",
+      "uploadReplay": "Subir Repetición",
+      "todaysWarRoom": "Sala de Guerra de Hoy",
+      "tournamentLobby": "Lobby del Torneo",
+      "trafficObservatory": "Observatorio de Tráfico",
+      "kingdomStatistics": "Estadísticas del Reino",
+      "speedObservatory": "Observatorio de Velocidad"
+    }
+  }
+}

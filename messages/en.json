@@ -1,0 +1,143 @@
+{
+  "Translator": {
+    "brand": "War to the World."
+  },
+  "Shell": {
+    "currentPage": "Current page",
+    "steamSignIn": "Steam Sign In",
+    "admin": "Admin",
+    "requests": "{count, plural, =0 {0 Requests} one {# Request} other {# Requests}}",
+    "liveGames": "{count, plural, =0 {0 Live Games🔥} one {# Live Game🔥} other {# Live Games🔥}}",
+    "workshopLive": "Workshop · LIVE",
+    "kingdom": {
+      "title": "The Kingdom",
+      "openAria": "Open Kingdom pages",
+      "closeAria": "Close Kingdom menu",
+      "pagesAria": "Kingdom pages"
+    },
+    "nav": {
+      "bets": "Bets",
+      "watch": "Watch",
+      "players": "Players",
+      "rivalries": "Rivalries",
+      "wolo": "$WOLO",
+      "staking": "Staking"
+    },
+    "kingdomEntries": {
+      "kingdom": {
+        "label": "Kingdom",
+        "body": "The realm, crowns, and league map"
+      },
+      "leaderboard": {
+        "label": "Leaderboard",
+        "body": "Ratings, records, and ranked warriors"
+      },
+      "champions": {
+        "label": "Champions",
+        "body": "Belts, reigns, title rules"
+      },
+      "nations": {
+        "label": "Nations",
+        "body": "Beacon map and national bounties"
+      },
+      "clans": {
+        "label": "Clans",
+        "body": "Teams, houses, and clan halls"
+      },
+      "academy": {
+        "label": "Academy",
+        "body": "Lessons, build orders, replay study"
+      },
+      "marketplace": {
+        "label": "Marketplace",
+        "body": "Player shops, craft, and commissions"
+      },
+      "forum": {
+        "label": "Forum",
+        "body": "War Room threads and community"
+      },
+      "bounties": {
+        "label": "Bounties",
+        "body": "Open opportunities and payout proof"
+      },
+      "aiCouncil": {
+        "label": "AI Council",
+        "body": "Ask the public house council"
+      },
+      "radio": {
+        "label": "Radio WOLO",
+        "body": "Kingdom music and creator submissions"
+      },
+      "workshop": {
+        "label": "The Workshop",
+        "body": "Watch the kingdom being forged in public"
+      },
+      "parser": {
+        "label": "Parser Observatory",
+        "body": "Replay corpus, coverage, and unknowns"
+      },
+      "traffic": {
+        "label": "Traffic Observatory",
+        "body": "Traffic, suspected humans, and confirmed humans"
+      },
+      "statistics": {
+        "label": "Kingdom Statistics",
+        "body": "WOLO, users, bets, games, watchers, and growth"
+      },
+      "speed": {
+        "label": "Speed",
+        "body": "Your live performance and readiness measurements"
+      }
+    },
+    "pages": {
+      "aoe2war": "AoE2WAR",
+      "aiCommandCenter": "AI Command Center",
+      "bountyCommandCenter": "Bounty Command Center",
+      "radioDesk": "Radio WOLO Desk",
+      "workshopCommandCenter": "Workshop Command Center",
+      "heroStudio": "Hero Studio",
+      "featuredEventStudio": "Featured Event Studio",
+      "operatorCommand": "Operator Command",
+      "stakingHall": "Staking Hall",
+      "woloStaking": "WOLO Staking",
+      "gameStats": "Game Stats",
+      "hdLeaderboard": "HD Leaderboard",
+      "nationalChampions": "National Champions",
+      "clanHalls": "Clan Halls",
+      "academy": "Academy",
+      "marketplace": "Marketplace",
+      "championshipBelts": "Championship Belts",
+      "kingdom": "The Kingdom",
+      "warRoomForum": "War Room Forum",
+      "liveGames": "Live Games",
+      "parserObservatory": "Parser Observatory",
+      "bountyBoard": "Bounty Board",
+      "aiCouncil": "AI Council",
+      "radioWolo": "Radio WOLO",
+      "workshop": "The Workshop",
+      "submitRadio": "Submit to Radio WOLO",
+      "rivalryMatchup": "Rivalry Matchup",
+      "rivalries": "Rivalries",
+      "playerRegistry": "Player Registry",
+      "tournamentGrounds": "Tournament Grounds",
+      "watchArena": "Watch Arena",
+      "challengeHall": "Challenge Hall",
+      "trainUnderZodiac": "Train Under Zodiac",
+      "bettingHall": "Betting Hall",
+      "warChest": "War Chest",
+      "woloChain": "WoloChain",
+      "woloEconomy": "WOLO Economy",
+      "woloWallet": "WOLO Wallet",
+      "playerProfile": "Player Profile",
+      "matchRequests": "Match Requests",
+      "commandInbox": "Command Inbox",
+      "downloadWatcher": "Download Watcher",
+      "uploadReplay": "Upload Replay",
+      "todaysWarRoom": "Today’s War Room",
+      "tournamentLobby": "Tournament Lobby",
+      "trafficObservatory": "Traffic Observatory",
+      "kingdomStatistics": "Kingdom Statistics",
+      "speedObservatory": "Speed Observatory"
+    }
+  }
+}

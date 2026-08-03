@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { BarChart3, Bot, Castle, Crown, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Store, Target, UsersRound, X, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
@@ -11,6 +12,7 @@ import SpeedProof from "@/components/speed/SpeedProof";
 import SpeedRuntime from "@/components/speed/SpeedRuntime";
 import SpeedWebVitals from "@/components/speed/SpeedWebVitals";
 import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
+import AoE2WarIntlProvider from "@/components/i18n/AoE2WarIntlProvider";
 import UniversalTranslator from "@/components/i18n/UniversalTranslator";
 import HeaderMenu from "@/components/HeaderMenu";
 import SteamLoginButton from "@/components/SteamLoginButton";
@@ -121,6 +123,156 @@ function getPageHeading(pathname: string | null) {
   )?.title ?? "AoE2WAR";
 }
 
+
+const HEADER_LINK_KEYS: Readonly<Record<string, string>> = {
+  "/bets": "nav.bets",
+  "/watch": "nav.watch",
+  "/players": "nav.players",
+  "/rivalries": "nav.rivalries",
+  "/wolo": "nav.wolo",
+  "/staking": "nav.staking",
+};
+
+const KINGDOM_COPY_KEYS: Readonly<
+  Record<
+    string,
+    {
+      label: string;
+      body: string;
+    }
+  >
+> = {
+  "/kingdom": {
+    label: "kingdomEntries.kingdom.label",
+    body: "kingdomEntries.kingdom.body",
+  },
+  "/leaderboard": {
+    label: "kingdomEntries.leaderboard.label",
+    body: "kingdomEntries.leaderboard.body",
+  },
+  "/champions": {
+    label: "kingdomEntries.champions.label",
+    body: "kingdomEntries.champions.body",
+  },
+  "/national-champions": {
+    label: "kingdomEntries.nations.label",
+    body: "kingdomEntries.nations.body",
+  },
+  "/clans": {
+    label: "kingdomEntries.clans.label",
+    body: "kingdomEntries.clans.body",
+  },
+  "/academy": {
+    label: "kingdomEntries.academy.label",
+    body: "kingdomEntries.academy.body",
+  },
+  "/market": {
+    label: "kingdomEntries.marketplace.label",
+    body: "kingdomEntries.marketplace.body",
+  },
+  "/forum": {
+    label: "kingdomEntries.forum.label",
+    body: "kingdomEntries.forum.body",
+  },
+  "/bounties": {
+    label: "kingdomEntries.bounties.label",
+    body: "kingdomEntries.bounties.body",
+  },
+  "/ai": {
+    label: "kingdomEntries.aiCouncil.label",
+    body: "kingdomEntries.aiCouncil.body",
+  },
+  "/radio": {
+    label: "kingdomEntries.radio.label",
+    body: "kingdomEntries.radio.body",
+  },
+  "/workshop": {
+    label: "kingdomEntries.workshop.label",
+    body: "kingdomEntries.workshop.body",
+  },
+  "/game-stats": {
+    label: "kingdomEntries.parser.label",
+    body: "kingdomEntries.parser.body",
+  },
+  "/traffic": {
+    label: "kingdomEntries.traffic.label",
+    body: "kingdomEntries.traffic.body",
+  },
+  "/statistics": {
+    label: "kingdomEntries.statistics.label",
+    body: "kingdomEntries.statistics.body",
+  },
+  "/speed": {
+    label: "kingdomEntries.speed.label",
+    body: "kingdomEntries.speed.body",
+  },
+};
+
+const PAGE_HEADING_KEYS: Readonly<Record<string, string>> = {
+  "AI Command Center": "pages.aiCommandCenter",
+  "Bounty Command Center": "pages.bountyCommandCenter",
+  "Radio WOLO Desk": "pages.radioDesk",
+  "Workshop Command Center": "pages.workshopCommandCenter",
+  "Hero Studio": "pages.heroStudio",
+  "Featured Event Studio": "pages.featuredEventStudio",
+  "Operator Command": "pages.operatorCommand",
+  "Staking Hall": "pages.stakingHall",
+  "WOLO Staking": "pages.woloStaking",
+  "Game Stats": "pages.gameStats",
+  "HD Leaderboard": "pages.hdLeaderboard",
+  "National Champions": "pages.nationalChampions",
+  "Clan Halls": "pages.clanHalls",
+  "Academy": "pages.academy",
+  "Marketplace": "pages.marketplace",
+  "Championship Belts": "pages.championshipBelts",
+  "The Kingdom": "pages.kingdom",
+  "War Room Forum": "pages.warRoomForum",
+  "Live Games": "pages.liveGames",
+  "Parser Observatory": "pages.parserObservatory",
+  "Bounty Board": "pages.bountyBoard",
+  "AI Council": "pages.aiCouncil",
+  "Radio WOLO": "pages.radioWolo",
+  "The Workshop": "pages.workshop",
+  "Submit to Radio WOLO": "pages.submitRadio",
+  "Rivalry Matchup": "pages.rivalryMatchup",
+  "Rivalries": "pages.rivalries",
+  "Player Registry": "pages.playerRegistry",
+  "Tournament Grounds": "pages.tournamentGrounds",
+  "Watch Arena": "pages.watchArena",
+  "Challenge Hall": "pages.challengeHall",
+  "Train Under Zodiac": "pages.trainUnderZodiac",
+  "Betting Hall": "pages.bettingHall",
+  "War Chest": "pages.warChest",
+  "WoloChain": "pages.woloChain",
+  "WOLO Economy": "pages.woloEconomy",
+  "WOLO Wallet": "pages.woloWallet",
+  "Player Profile": "pages.playerProfile",
+  "Match Requests": "pages.matchRequests",
+  "Command Inbox": "pages.commandInbox",
+  "Download Watcher": "pages.downloadWatcher",
+  "Upload Replay": "pages.uploadReplay",
+  "Today’s War Room": "pages.todaysWarRoom",
+  "Tournament Lobby": "pages.tournamentLobby",
+  "Traffic Observatory": "pages.trafficObservatory",
+  "Kingdom Statistics": "pages.kingdomStatistics",
+  "Speed Observatory": "pages.speedObservatory",
+  "AoE2WAR": "pages.aoe2war",
+};
+
+function getPageHeadingKey(
+  pathname: string | null
+) {
+  const englishHeading =
+    getPageHeading(pathname);
+
+  return (
+    PAGE_HEADING_KEYS[
+      englishHeading
+    ] ??
+    "pages.aoe2war"
+  );
+}
+
 function isRouteActive(pathname: string | null, href: string) {
   return pathname === href || Boolean(pathname?.startsWith(`${href}/`));
 }
@@ -138,7 +290,14 @@ function HeaderPillLink({
   active?: boolean;
   requestCount?: number;
 }) {
-  const displayLabel = href === "/requests" ? `${requestCount ?? 0} Requests` : label;
+  const t = useTranslations("Shell");
+  const displayLabel =
+    href === "/requests"
+      ? t("requests", {
+          count:
+            requestCount ?? 0,
+        })
+      : label;
 
   return (
     <Link
@@ -162,6 +321,7 @@ function KingdomNavItem({
   className: string;
   active?: boolean;
 }) {
+  const t = useTranslations("Shell");
   const [open, setOpen] = React.useState(false);
   const [portalReady, setPortalReady] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
@@ -229,7 +389,7 @@ function KingdomNavItem({
         type="button"
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Open Kingdom pages"
+        aria-label={t("kingdom.openAria")}
         onClick={() => {
           if (window.matchMedia("(max-width: 639px), (hover: none)").matches) {
             setOpen((value) => !value);
@@ -263,7 +423,7 @@ function KingdomNavItem({
                 type="button"
                 className="absolute inset-0 bg-[#02060f]/78 backdrop-blur-[3px]"
                 onClick={() => setOpen(false)}
-                aria-label="Close Kingdom menu"
+                aria-label={t("kingdom.closeAria")}
               />
               <div
                 ref={panelRef}
@@ -274,13 +434,15 @@ function KingdomNavItem({
                     <div className="text-[10px] uppercase tracking-[0.34em] text-amber-100/55">
                       AoE2WAR
                     </div>
-                    <div className="mt-1 text-lg font-semibold text-white">The Kingdom</div>
+                    <div className="mt-1 text-lg font-semibold text-white">
+                      {t("kingdom.title")}
+                    </div>
                   </div>
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
                     className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300"
-                    aria-label="Close Kingdom menu"
+                    aria-label={t("kingdom.closeAria")}
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -302,6 +464,8 @@ function KingdomMenuPanel({
   onNavigate: () => void;
   mobile?: boolean;
 }) {
+  const t = useTranslations("Shell");
+
   return (
     <div
       className={`rounded-[1.35rem] border border-amber-200/14 bg-[linear-gradient(145deg,rgba(13,25,42,0.98),rgba(5,12,22,0.98))] p-2 shadow-[0_24px_80px_rgba(0,0,0,0.48)] ${
@@ -310,11 +474,20 @@ function KingdomMenuPanel({
           : "max-h-[calc(100dvh-7.5rem)] overflow-y-auto overscroll-contain touch-pan-y [scrollbar-gutter:stable] [scrollbar-width:thin] backdrop-blur-xl"
       }`}
       role="menu"
-      aria-label="Kingdom pages"
+      aria-label={t("kingdom.pagesAria")}
     >
       <div className="grid gap-1">
         {KINGDOM_LINKS.map((item) => {
           const Icon = item.icon;
+          const copyKeys =
+            KINGDOM_COPY_KEYS[item.href];
+
+          if (!copyKeys) {
+            throw new Error(
+              `Missing Kingdom translation keys for ${item.href}`
+            );
+          }
+
           return (
             <Link
               key={item.href}
@@ -335,8 +508,12 @@ function KingdomMenuPanel({
                 <Icon className="h-4 w-4" />
               </div>
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-slate-100">{item.label}</div>
-                <div className="mt-0.5 text-xs text-slate-500">{item.body}</div>
+                <div className="text-sm font-semibold text-slate-100">
+                  {t(copyKeys.label)}
+                </div>
+                <div className="mt-0.5 text-xs text-slate-500">
+                  {t(copyKeys.body)}
+                </div>
               </div>
             </Link>
           );
@@ -353,6 +530,8 @@ function HeaderLiveGamesLink({
   liveGamesCount: number;
   active?: boolean;
 }) {
+  const t = useTranslations("Shell");
+
   return (
     <Link
       href="/live-games"
@@ -363,12 +542,17 @@ function HeaderLiveGamesLink({
           : "border-red-400/25 bg-red-500/10 text-red-100 hover:border-red-300/40 hover:bg-red-500/15"
       }`}
     >
-      {liveGamesCount} Live Games🔥
+      {t("liveGames", {
+        count:
+          liveGamesCount,
+      })}
     </Link>
   );
 }
 
 function HeaderWorkshopLiveLink({ active }: { active?: boolean }) {
+  const t = useTranslations("Shell");
+
   return (
     <Link
       href="/workshop"
@@ -380,12 +564,13 @@ function HeaderWorkshopLiveLink({ active }: { active?: boolean }) {
       }`}
     >
       <span className="h-2 w-2 animate-pulse rounded-full bg-red-400 shadow-[0_0_14px_rgba(248,113,113,0.85)]" />
-      Workshop · LIVE
+      {t("workshopLive")}
     </Link>
   );
 }
 
 function InnerShell({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("Shell");
   const { uid, playerName, isAdmin } = useUserAuth();
   const pathname = usePathname();
   const [playerProfileViewMode, setPlayerProfileViewMode] = React.useState<string | null>(null);
@@ -546,7 +731,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         ? "max-w-[82rem]"
         : "max-w-6xl";
 
-  const headerTitle = getPageHeading(pathname);
+  const headerTitle =
+    t(
+      getPageHeadingKey(
+        pathname
+      )
+    );
   const headerSkin = getLobbyHeaderSkin(themeKey);
   const headerTone = React.useMemo(
     () => getLobbyPresentationTone(themeKey, viewMode),
@@ -718,7 +908,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             <div className="mt-3 flex min-w-0 items-end justify-between gap-3 border-t border-white/[0.065] pt-3">
               <div className="min-w-0">
                 <div className={`text-[9px] font-semibold uppercase tracking-[0.34em] ${headerTone.eyebrow}`}>
-                  Current page
+                  {t("currentPage")}
                 </div>
                 <h1 className="mt-0.5 truncate text-lg font-semibold leading-tight text-white">
                   {headerTitle}
@@ -739,7 +929,13 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   <React.Fragment key={link.href}>
                     <HeaderPillLink
                       href={link.href}
-                      label={link.label}
+                      label={
+                      t(
+                        HEADER_LINK_KEYS[
+                          link.href
+                        ]
+                      )
+                    }
                       className={headerSkin.surface}
                       active={isRouteActive(pathname, link.href)}
                       requestCount={link.countKey === "requests" ? requestCount : undefined}
@@ -760,7 +956,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                     href="/admin/user-list"
                     className="inline-flex min-h-9 shrink-0 items-center rounded-full border border-emerald-300/25 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-100 transition hover:border-emerald-200/40 hover:bg-emerald-500/15"
                   >
-                    Admin
+                    {t("admin")}
                   </Link>
                 ) : null}
               </div>
@@ -785,7 +981,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               </Link>
               <div className="min-w-0 border-l border-white/10 pl-2.5 xl:pl-3">
                 <div className={`whitespace-nowrap text-[8px] font-semibold uppercase tracking-[0.24em] xl:text-[9px] xl:tracking-[0.3em] ${headerTone.eyebrow}`}>
-                  Current page
+                  {t("currentPage")}
                 </div>
                 <h1 className="mt-0.5 truncate text-sm font-semibold text-white xl:text-base">
                   {headerTitle}
@@ -798,7 +994,13 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                 <React.Fragment key={link.href}>
                   <HeaderPillLink
                     href={link.href}
-                    label={link.label}
+                    label={
+                      t(
+                        HEADER_LINK_KEYS[
+                          link.href
+                        ]
+                      )
+                    }
                     className={headerSkin.surface}
                     active={isRouteActive(pathname, link.href)}
                     requestCount={link.countKey === "requests" ? requestCount : undefined}
@@ -844,7 +1046,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                     tone={isAcademySurface ? "academy" : "blue"}
                   />
                   <SteamLoginButton
-                    label="Steam Sign In"
+                    label={t("steamSignIn")}
                     className="inline-flex min-h-10 items-center justify-center rounded-full bg-amber-300 px-4 py-2 text-xs font-semibold text-slate-950 shadow-[0_10px_30px_rgba(251,191,36,0.18)] transition hover:bg-amber-200"
                   />
                 </>
@@ -902,9 +1104,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <UserAuthProvider>
       <Providers>
         <UniversalLanguageProvider>
-          <LobbyAppearanceProvider>
-            <InnerShell>{children}</InnerShell>
-          </LobbyAppearanceProvider>
+          <AoE2WarIntlProvider>
+            <LobbyAppearanceProvider>
+              <InnerShell>{children}</InnerShell>
+            </LobbyAppearanceProvider>
+          </AoE2WarIntlProvider>
         </UniversalLanguageProvider>
       </Providers>
     </UserAuthProvider>
