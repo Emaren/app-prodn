@@ -17,6 +17,7 @@
     "test:challenge": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/challenge-flow.test.mts tests/challenge-lifecycle.test.mts tests/challenge-title-policy.test.mts tests/challenge-history-ledger.test.mts tests/legacy-challenge-preparation.test.mts",
     "test:replay-truth": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/hd-replay-truth.test.mts",
     "test:kingdom-expansion": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/kingdom-expansion-surfaces.test.mts",
+    "test:bounties": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/bounty-hall-v2.test.mts",
     "test:zodiac": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/zodiac-training.test.mts",
     "watcher:sync": "node scripts/sync-watcher-release.mjs",
     "staking:rewards:run": "node scripts/run-staking-reward-distribution.mjs",

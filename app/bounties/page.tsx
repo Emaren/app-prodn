@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "AoE2WAR Bounty Board",
   description:
-    "Available opportunities, locked rewards, paid history, and full authoritative bounty memos.",
+    "Published warrior bounties, open contracts, and transaction-proven bounty history.",
 };
 
 export default async function BountiesPage() {

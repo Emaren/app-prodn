@@ -5,6 +5,7 @@ import Link from "next/link";
 import BountyAdvisor from "@/components/bounties/BountyAdvisor";
 import BountyWarriorCarousel from "@/components/bounties/BountyWarriorCarousel";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
+import { isPublicBountyContract } from "@/lib/bountyHall";
 import type { BountyBoardSnapshot } from "@/lib/bounties";
 import {
   TILE_VIEW_MODES,
@@ -71,7 +72,7 @@ function formatReward(
   value: number | null,
 ) {
   return value === null
-    ? "Reward posted per campaign"
+    ? "Reward not published"
     : `${value.toLocaleString()} WOLO`;
 }
 
@@ -195,8 +196,12 @@ function BasicBountyView({
 }: {
   board: BountyBoardSnapshot;
 }) {
+  const contracts = board.opportunities.filter(
+    isPublicBountyContract,
+  );
+
   const featured =
-    board.opportunities.filter(
+    contracts.filter(
       (item) =>
         item.featured &&
         [
@@ -251,7 +256,7 @@ function BasicBountyView({
             )}
           />
           <Metric
-            label="Recorded paid"
+            label="Verified bounty payouts"
             value={`${Math.round(
               board.totals
                 .paidWolo
@@ -275,7 +280,7 @@ function BasicBountyView({
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {board.opportunities.map(
+        {contracts.map(
           (item) => (
             <BasicBountyCard
               key={item.id}
@@ -505,8 +510,12 @@ function AdvancedBountyView({
 }: {
   board: BountyBoardSnapshot;
 }) {
+  const contracts = board.opportunities.filter(
+    isPublicBountyContract,
+  );
+
   const active =
-    board.opportunities.filter(
+    contracts.filter(
       (item) =>
         [
           "available",
@@ -517,7 +526,7 @@ function AdvancedBountyView({
     );
 
   const archived =
-    board.opportunities.filter(
+    contracts.filter(
       (item) =>
         ![
           "available",
@@ -533,7 +542,7 @@ function AdvancedBountyView({
         item.featured
     ) ||
     active[0] ||
-    board.opportunities[0];
+    contracts[0];
 
   return (
     <main className="space-y-7 py-5 text-white">
@@ -580,13 +589,13 @@ function AdvancedBountyView({
             )}
           />
           <PrestigeMetric
-            label="Awaiting Tribute"
+            label="Awaiting Payout"
             value={String(
               board.totals.locked
             )}
           />
           <PrestigeMetric
-            label="WOLO Recorded Paid"
+            label="Verified Bounty WOLO"
             value={Math.round(
               board.totals
                 .paidWolo
@@ -657,7 +666,7 @@ function AdvancedBountyView({
       <PremiumLedger
         board={board}
         eyebrow="Bounty Chronicle"
-        title="The complete memo trail."
+        title="The verified bounty trail."
       />
     </main>
   );
@@ -672,8 +681,12 @@ function ExtremeBountyView({
 }: {
   board: BountyBoardSnapshot;
 }) {
+  const contracts = board.opportunities.filter(
+    isPublicBountyContract,
+  );
+
   const active =
-    board.opportunities.filter(
+    contracts.filter(
       (item) =>
         [
           "available",
@@ -684,7 +697,7 @@ function ExtremeBountyView({
     );
 
   const retired =
-    board.opportunities.filter(
+    contracts.filter(
       (item) =>
         ![
           "available",
@@ -700,7 +713,7 @@ function ExtremeBountyView({
         item.featured
     ) ||
     active[0] ||
-    board.opportunities[0];
+    contracts[0];
 
   const paid =
     board.ledger.filter(
@@ -715,7 +728,7 @@ function ExtremeBountyView({
         board={board}
       />
 
-      <section className="relative min-h-[32rem] overflow-hidden rounded-[3rem] border border-amber-100/20 bg-[radial-gradient(circle_at_6%_0%,rgba(251,191,36,0.27),transparent_31%),radial-gradient(circle_at_90%_10%,rgba(190,24,93,0.18),transparent_31%),radial-gradient(circle_at_52%_110%,rgba(37,99,235,0.14),transparent_42%),linear-gradient(138deg,#180f04_0%,#080910_53%,#040611_100%)] px-7 py-11 shadow-[0_50px_180px_rgba(0,0,0,0.54),0_0_100px_rgba(251,191,36,0.07)] sm:px-11 lg:px-14 lg:py-14">
+      <section className="relative overflow-hidden rounded-[2.5rem] border border-amber-100/14 bg-[radial-gradient(circle_at_6%_0%,rgba(251,191,36,0.14),transparent_34%),linear-gradient(138deg,#120d05_0%,#070910_58%,#040611_100%)] px-7 py-8 shadow-[0_34px_120px_rgba(0,0,0,0.44)] sm:px-10 lg:px-12 lg:py-10">
         <div className="pointer-events-none absolute -left-24 top-4 h-80 w-80 rounded-full bg-amber-400/10 blur-3xl" />
         <div className="pointer-events-none absolute -right-28 top-0 h-96 w-96 rounded-full bg-rose-500/10 blur-3xl" />
         <div className="pointer-events-none absolute inset-x-20 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/75 to-transparent" />
@@ -727,20 +740,12 @@ function ExtremeBountyView({
               Bounty Exchange
             </div>
 
-            <h1 className="mt-6 max-w-4xl font-serif text-[3.7rem] leading-[0.88] tracking-[-0.055em] text-white sm:text-[5.7rem] lg:text-[7rem]">
-              The Realm
-              <br />
-              Pays for Deeds.
+            <h1 className="mt-5 max-w-4xl font-serif text-5xl leading-[0.95] tracking-[-0.04em] text-white sm:text-6xl">
+              Open Contracts.
             </h1>
 
-            <p className="mt-7 max-w-2xl text-base leading-8 text-slate-300 sm:text-lg">
-              The contract wall of
-              AoE2WAR. Recover lost
-              wars. Join the Watch.
-              Prove impossible wins.
-              Earn your place in the
-              Chronicle. Every reward
-              still answers to proof.
+            <p className="mt-5 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">
+              The public contract wall sits beneath the Hall. Choose a deed, follow its proof requirement, and treat the posted WOLO as real only when the canonical payout rail proves it.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-[0.22em]">
@@ -787,7 +792,7 @@ function ExtremeBountyView({
             extreme
           />
           <PrestigeMetric
-            label="Recorded Paid"
+            label="Verified Bounty WOLO"
             value={`${Math.round(
               board.totals
                 .paidWolo
@@ -920,7 +925,7 @@ function ExtremeBountyView({
       <PremiumLedger
         board={board}
         eyebrow="Hall of Records"
-        title="Every memo. Every receipt. Every scar."
+        title="Every verified bounty. Every receipt."
         extreme
       />
     </main>

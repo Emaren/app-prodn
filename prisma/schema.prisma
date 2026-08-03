@@ -107,10 +107,11 @@ model User {
   replayStatProjections          ReplayStatProjection[]          @relation("ReplayStatProjectionActor")
   warEngineCasesCreated          WarEngineCase[]                 @relation("WarEngineCaseCreator")
 
-  featureRequests         FeatureRequest[]        @relation("FeatureRequestRequester")
-  bountyValuationsChanged BountyValuation[]       @relation("BountyValuationChangedBy")
-  bountyClaims            BountyClaim[]           @relation("BountyClaimUser")
-  replayRosterPromotions  ReplayRosterPromotion[] @relation("ReplayRosterPromotionActor")
+  featureRequests             FeatureRequest[]        @relation("FeatureRequestRequester")
+  assignedBountyOpportunities BountyOpportunity[]     @relation("BountyOpportunityAssignedUser")
+  bountyValuationsChanged     BountyValuation[]       @relation("BountyValuationChangedBy")
+  bountyClaims                BountyClaim[]           @relation("BountyClaimUser")
+  replayRosterPromotions      ReplayRosterPromotion[] @relation("ReplayRosterPromotionActor")
 
   identityDecisionsActed        IdentityDecision[]              @relation("IdentityDecisionActor")
   identityDecisionSubjects      IdentityDecisionSubject[]       @relation("IdentityDecisionSubjectSiteAccount")
@@ -2767,28 +2768,35 @@ model AiRequestTrace {
 /// Canonical app-side opportunity definition. Chain transfers and claim ledgers
 /// remain the authority for whether WOLO actually moved.
 model BountyOpportunity {
-  id           Int      @id @default(autoincrement())
-  slug         String   @unique @db.VarChar(80)
-  title        String   @db.VarChar(160)
-  category     String   @default("kingdom") @db.VarChar(40)
-  description  String   @db.Text
-  eligibility  String?  @db.Text
-  verification String?  @db.Text
-  actionLabel  String   @map("action_label") @db.VarChar(100)
-  actionHref   String   @map("action_href") @db.VarChar(500)
-  rewardWolo   Int?     @map("reward_wolo")
-  status       String   @default("available") @db.VarChar(24)
-  featured     Boolean  @default(false)
-  priority     Int      @default(0)
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  id               Int       @id @default(autoincrement())
+  slug             String    @unique @db.VarChar(80)
+  title            String    @db.VarChar(160)
+  category         String    @default("kingdom") @db.VarChar(40)
+  bountyKind       String    @default("open_contract") @map("bounty_kind") @db.VarChar(32)
+  assignedUserId   Int?      @map("assigned_user_id")
+  isNextForWarrior Boolean   @default(false) @map("is_next_for_warrior")
+  description      String    @db.Text
+  eligibility      String?   @db.Text
+  verification     String?   @db.Text
+  actionLabel      String    @map("action_label") @db.VarChar(100)
+  actionHref       String    @map("action_href") @db.VarChar(500)
+  rewardWolo       Int?      @map("reward_wolo")
+  status           String    @default("available") @db.VarChar(24)
+  featured         Boolean   @default(false)
+  priority         Int       @default(0)
+  publishedAt      DateTime? @map("published_at") @db.Timestamp(6)
+  expiresAt        DateTime? @map("expires_at") @db.Timestamp(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  events BountyEvent[]
-
-  valuations BountyValuation[]
-  claims     BountyClaim[]
+  assignedUser User?             @relation("BountyOpportunityAssignedUser", fields: [assignedUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  events       BountyEvent[]
+  valuations   BountyValuation[]
+  claims       BountyClaim[]
 
   @@index([status, featured, priority], map: "ix_bounty_opportunities_status_featured_priority")
+  @@index([assignedUserId, status], map: "ix_bounty_opportunities_assigned_user_status")
+  @@index([bountyKind, status, priority], map: "ix_bounty_opportunities_kind_status_priority")
   @@map("bounty_opportunities")
 }
 

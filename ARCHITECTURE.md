@@ -629,15 +629,23 @@ The path is outside `/home` because `ProtectHome=true` prevents the web service 
 
 ### Storage state
 
-The mounted Hetzner volume was expanded to approximately 100 GB and ext4 was grown online.
+The Hetzner block device `/dev/sdb` is 120 GiB. On 2026-08-03, its ext4
+filesystem was expanded online to approximately 118 GiB usable capacity at
+`/mnt/HC_Volume_105319120`. Immediately after expansion, approximately
+24.6 GiB was available. Device size and usable filesystem capacity are distinct
+figures.
 
-At the 2026-07-26 production seal:
+At the 2026-08-03 storage seal:
 
-- root filesystem: approximately 2.4 GB free, 94% used; this is a P1 capacity risk and should stay above a documented safety floor;
-- mounted volume: approximately 22 GB free, 78% used;
+- root filesystem: approximately 2.5 GB free, 94% used; this remains a separate P1 capacity risk;
+- mounted volume device: 120 GiB;
+- mounted ext4 filesystem: approximately 118 GiB usable, with approximately 24.6 GiB available.
+
+The latest detailed content inventory remains the 2026-07-26 seal:
+
 - replay archive: approximately 8.0 GB / 7,925 files;
 - parser-engine root: approximately 4.9 GB / 4,946 files;
 - watcher downloads: approximately 2.5 GB / 69 files.
 
-No kernel OOM, no-space, or filesystem-corruption signal appeared in the seven-day inspection. A runaway API debug trace had already been disabled and rotated before the volume expansion.
+No service restart was required for the online filesystem expansion.
 <!-- AOE2WAR:REPLAY_EVIDENCE_ARCHITECTURE_20260722:END -->
