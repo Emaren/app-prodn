@@ -35,9 +35,9 @@
       "owner": "aoe2war-web",
       "path": "DEPLOY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-01",
+      "reviewed_at": "2026-08-04",
       "sensitivity": "internal",
-      "sha256": "096c03c95cb9b4397e7eefdb836fe7747955166c97a8b4abe3fac75bb9d42260",
+      "sha256": "f6a80414e265fd9b4aed53bb48aec5ce3567d0dc26fa051908928efcd446ba4f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -476,7 +476,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e239de25b772d92490b388ec5979809d4912417dc6875c7bdfbd07f461458a4b",
+      "sha256": "6713a8a0cbe93a53d5b79b836ad824930d647b3622f42615773f855dc09f0c6a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1167,9 +1167,9 @@
       "type": "reference"
     }
   ],
-  "generated_at": "2026-08-04T01:48:51Z",
+  "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "docs/full-audit-20260804",
+    "branch": "main",
     "commit": "1a8fa8981eb23307fe1bbc7620c942fba6566a3b"
   },
   "owner": "aoe2war-web",
