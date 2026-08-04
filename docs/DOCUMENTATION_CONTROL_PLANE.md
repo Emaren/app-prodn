@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `033739265727ee0a389edd8970fecf7b27f1b4e0`
+Implementation baseline: `main` at `1a8fa8981eb23307fe1bbc7620c942fba6566a3b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **50**
+- Authoritative repository documents: **51**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 4
 - `generated`: 1
 - `historical`: 10
-- `reference`: 26
+- `reference`: 27
 - `runbook`: 8
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 38
+- `active`: 39
 - `generated`: 1
 - `historical`: 10
 - `superseded`: 1
@@ -92,6 +92,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Security Incident Notes](SECURITY_INCIDENT_NOTES.md) | `historical` | `historical` | `incident-evidence` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
 | [Universal Translator](UNIVERSAL_TRANSLATOR.md) | `reference` | `active` | `product-contract` |
+| [The War Engine](WAR_ENGINE.md) | `reference` | `active` | `replay-evidence-escalation-contract` |
 | [War Room Forum](WAR_ROOM_FORUM.md) | `reference` | `active` | `product-contract` |
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |
 | [WOLO Mainnet Settlement App Runbook](WOLO_MAINNET_SETTLEMENT_RUNBOOK.md) | `runbook` | `active` | `operational-procedure` |

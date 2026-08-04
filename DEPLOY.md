@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-08-01"
+reviewed_at: "2026-08-04"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -45,32 +45,149 @@ This exists because normal Next shutdowns were hanging and making deploys flaky.
 
 ## Standard deploy flow
 
-From MBP:
+Production advances only to an exact reviewed commit. Source, migration,
+build, runtime, and public-release truth are verified separately.
+
+### 1. Seal the release
+
+On the MBP, verify a clean worktree, run the release-specific gates, and prove
+that the reviewed local commit matches the intended remote commit.
+
+Never deploy an unspecified moving branch tip.
+
+### 2. Verify production Git transport
+
+The VPS `app-prodn` checkout uses repository-local configuration:
+
+- origin: `git@github.com:Emaren/app-prodn.git`
+- deploy key: `/root/.ssh/github_app_prodn_write_ed25519`
+- Git protocol: version `0`
+
+The repository-local `core.sshCommand` requires the dedicated key,
+`IdentitiesOnly=yes`, batch mode, no TTY, and no remote command.
+
+Protocol v0 is intentional. Authentication and repository reads succeed with
+v0; protocol v2 produced `fatal: expected flush after ref listing`.
+
+Verify before changing source:
 
 ```bash
-git push origin main
+git remote get-url origin
+git config --local --get core.sshCommand
+git config --local --get protocol.version
+git fetch origin --prune
 ```
 
-On VPS:
+Do not depend on a shared SSH hostname alias.
+
+### 3. Capture predeploy truth and rollback
+
+Before mutation, verify:
+
+- branch `main`;
+- exact current and target commits;
+- clean tracked and untracked status;
+- active `aoe2hdbets-web.service`;
+- active `.next/BUILD_ID` and deployment version;
+- sufficient root and mounted-volume space.
+
+Store durable rollbacks and receipts beneath:
+
+```text
+/mnt/HC_Volume_105319120/aoe2war/rollbacks/
+/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/
+```
+
+Preserve `.next`, source commit, build identities, the build-version file when
+present, systemd evidence, and repository-local Git configuration.
+
+### 4. Advance only to the sealed commit
 
 ```bash
-ssh hel1
-cd /var/www/AoE2HDBets/app-prodn
-git status --short
-git pull --ff-only origin main
-npx prisma migrate deploy
-npm run build
+git reset --hard <sealed-commit>
 ```
 
-Then restart as root:
+Verify the exact commit and clean status afterward. Do not use an unbounded
+pull as the production release selector.
+
+### 5. Apply migrations only when explicitly required
+
+A deployment does not automatically require Prisma.
+
+Run `npx prisma migrate deploy` only when reviewed migrations belong to the
+sealed release and the backup, migration-history divergence, verification, and
+rollback plan are explicit.
+
+Documentation, presentation, and localization releases must not touch Prisma
+or the database unless their release plan specifically requires it.
+
+### 6. Build beside the active runtime
+
+Build as the `tony` service user:
 
 ```bash
-sudo systemctl restart aoe2hdbets-web.service
-systemctl is-active aoe2hdbets-web.service
-journalctl -u aoe2hdbets-web.service -n 40 --no-pager
+rm -rf .next-release
+
+sudo -u tony -H \
+  env NEXT_DIST_DIR=.next-release \
+  npm run build
 ```
+
+Verify compilation, static-page generation, build identity, fatal-output
+absence, and repository cleanliness before stopping the service.
+
+### 7. Swap runtimes
+
+Use a Git-ignored temporary name matching `.next-rollback-*`:
+
+```bash
+systemctl stop aoe2hdbets-web.service
+
+mv .next .next-rollback-<release>
+mv .next-release .next
+
+chown -R tony:tony .next
+systemctl start aoe2hdbets-web.service
+```
+
+Do not use an unignored `.next.pre-*` directory.
+
+### 8. Prove or roll back
+
+Internally and publicly prove:
+
+- active service;
+- staged and runtime BUILD_ID parity;
+- staged, internal, and public build-version parity;
+- homepage;
+- `/api/lobby`;
+- `/api/bets`;
+- release-specific routes and APIs.
+
+Remove the temporary fast rollback only after final proof. Keep the durable
+rollback and deployment receipt.
+
+A failure after runtime mutation restores the previous `.next`, build-version
+file, source commit, and service, then proves internal health.
 
 ## Recent deployment notes
+
+### 2026-08-04 Universal-16 homepage and shell release
+
+- source commit: `1a8fa8981eb23307fe1bbc7620c942fba6566a3b`;
+- deployed BUILD_ID: `b85fmpHZ0iR_UtOJJJxHE`;
+- public build version: `20260804004945-e5350db18a`;
+- all sixteen selector locales drive the global shell and homepage;
+- every homepage locale contains 365 static and 31 dynamic entries;
+- shell, homepage, bounty, TypeScript, ESLint, and complete production-build
+  gates passed;
+- internal and public homepage, lobby, and betting checks passed;
+- the production checkout uses the canonical GitHub origin, dedicated deploy
+  key, and repository-local Git protocol v0;
+- the release was built beside the active runtime and swapped after validation;
+- durable rollback and deployment receipts were retained;
+- no Prisma migration and no database write occurred.
+
 
 
 ### 2026-08-01 Betting Hall and wager-rail release

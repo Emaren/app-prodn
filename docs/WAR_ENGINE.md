@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-war-engine"
+title: "The War Engine"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "replay-evidence-escalation-contract"
+reviewed_at: "2026-08-04"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # The War Engine
 
 The War Engine is AoE2WAR's escalation path for replay files whose normal parser evidence cannot prove a competitive result.
