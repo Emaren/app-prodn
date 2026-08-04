@@ -169,9 +169,6 @@ function ReviewDeskBaeToggle({
                 option.value
               )
             }
-            title={
-              option.title
-            }
             aria-pressed={
               value ===
               option.value

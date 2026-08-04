@@ -1297,13 +1297,23 @@ export async function submitReplayResultAdjudication(input: {
 }
 
 export const WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION =
-  "watcher-terminal-owner-loss-v1" as const;
+  "replay-terminal-action-tail-v3" as const;
 
 export const WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE =
   "verified_submitter" as const;
 
 export const WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION =
   "operator_review_required" as const;
+
+const WATCHER_TERMINAL_MIN_LOSER_SILENCE_MS = 5_000;
+const WATCHER_TERMINAL_MIN_WINNER_LEAD_MS = 2_000;
+const WATCHER_TERMINAL_MAX_WINNER_TAIL_MS = 30_000;
+const WATCHER_TERMINAL_EVENT_WINDOW_MS = 15 * 60 * 1000;
+const WATCHER_TERMINAL_FAILURE_EVENTS = [
+  "upload_failed",
+  "parse_failed",
+  "watcher_error",
+] as const;
 
 export type WatcherTerminalOwnerLossEvaluation =
   | {
@@ -1312,15 +1322,16 @@ export type WatcherTerminalOwnerLossEvaluation =
     }
   | {
       eligible: true;
-      reason: "exact_watcher_owner_terminal_loss";
-      owner: CanonicalReplayPlayer;
-      opponent: CanonicalReplayPlayer;
+      reason: "decisive_1v1_terminal_action_tail";
+      uploader: CanonicalReplayPlayer;
+      loser: CanonicalReplayPlayer;
+      winnerPlayer: CanonicalReplayPlayer;
       teams: CanonicalReplayResultTeam[];
       winningTeamKey: string;
       evidence: Prisma.InputJsonValue;
     };
 
-type WatcherTerminalOwnerLossInput = {
+export type WatcherTerminalOwnerLossInput = {
   id: number;
   replayHash: string;
   parseIteration: number;
@@ -1335,8 +1346,21 @@ type WatcherTerminalOwnerLossInput = {
   durationSeconds: number | null;
   uploaderSteamId: string | null;
   uploaderUid: string | null;
+  uploaderUserId?: number | null;
   hasAdjudicationHistory: boolean;
   currentDesyncOccurred: boolean | null;
+  terminalReceipt: unknown;
+  terminalFailureCount: number;
+  rawActivityByPlayer: unknown;
+  parseRun?: unknown;
+};
+
+type AutomaticActivityRow = {
+  playerNumber: number;
+  playerName: string;
+  actionPacketCount: number;
+  firstActionMs: number;
+  lastActionMs: number;
 };
 
 function automaticTruth(value: unknown) {
@@ -1376,6 +1400,61 @@ function automaticKnownWinner(value: unknown) {
   );
 }
 
+function automaticFiniteNumber(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function automaticActivityRows(value: unknown): AutomaticActivityRow[] {
+  return automaticArray(value)
+    .map((entry) => {
+      const source = jsonRecord(entry);
+      const playerNumber = nonNegativeInteger(source.player_number);
+      const actionPacketCount = nonNegativeInteger(source.action_packet_count);
+      const firstActionMs = automaticFiniteNumber(source.first_action_ms);
+      const lastActionMs = automaticFiniteNumber(source.last_action_ms);
+      if (
+        playerNumber === null ||
+        actionPacketCount === null ||
+        actionPacketCount < 1 ||
+        firstActionMs === null ||
+        lastActionMs === null ||
+        firstActionMs < 0 ||
+        lastActionMs < firstActionMs
+      ) {
+        return null;
+      }
+      return {
+        playerNumber,
+        playerName: cleanText(source.player_name, 100),
+        actionPacketCount,
+        firstActionMs,
+        lastActionMs,
+      };
+    })
+    .filter((entry): entry is AutomaticActivityRow => entry !== null);
+}
+
+function automaticTerminalReceipt(value: unknown) {
+  const source = jsonRecord(value);
+  const metadata = jsonRecord(source.metadata);
+  return {
+    eventId: cleanText(source.eventId ?? source.event_id ?? source.id, 80),
+    eventType: cleanText(source.eventType ?? source.event_type, 80).toLowerCase(),
+    createdAt: cleanText(source.createdAt ?? source.created_at, 80),
+    userId: positiveInteger(source.userId ?? source.user_id),
+    userUid: cleanText(source.userUid ?? source.user_uid, 100),
+    sessionId: cleanText(source.sessionId ?? source.session_id, 80),
+    replayHash: cleanText(source.replayHash ?? source.replay_hash, 64).toLowerCase(),
+    replayFile: cleanText(source.replayFile ?? source.replay_file, 255),
+    metadata,
+  };
+}
+
 export function evaluateWatcherTerminalOwnerLoss(
   input: WatcherTerminalOwnerLossInput
 ): WatcherTerminalOwnerLossEvaluation {
@@ -1404,11 +1483,14 @@ export function evaluateWatcherTerminalOwnerLoss(
   if (automaticKnownWinner(input.winner)) {
     return { eligible: false, reason: "stored_winner_exists" };
   }
+  if (!Number.isSafeInteger(input.terminalFailureCount) || input.terminalFailureCount !== 0) {
+    return { eligible: false, reason: "terminal_failure_present" };
+  }
 
   const players = normalizeReplayPlayers(parseJson(input.players));
   if (
     players.length !== 2 ||
-    players.some((player) => !player.steamId) ||
+    players.some((player) => !player.steamId || player.playerNumber === null) ||
     new Set(players.map((player) => player.stablePlayerKey)).size !== 2
   ) {
     return { eligible: false, reason: "exact_steam_1v1_required" };
@@ -1418,19 +1500,13 @@ export function evaluateWatcherTerminalOwnerLoss(
   if (!uploaderSteamId) {
     return { eligible: false, reason: "uploader_steam_id_missing" };
   }
-  const ownerMatches = players.filter(
+  const uploaderMatches = players.filter(
     (player) => player.steamId === uploaderSteamId
   );
-  if (ownerMatches.length !== 1) {
+  if (uploaderMatches.length !== 1) {
     return { eligible: false, reason: "uploader_player_not_exact" };
   }
-  const owner = ownerMatches[0];
-  const opponent = players.find(
-    (player) => player.stablePlayerKey !== owner.stablePlayerKey
-  );
-  if (!opponent) {
-    return { eligible: false, reason: "opponent_not_exact" };
-  }
+  const uploader = uploaderMatches[0];
 
   const keyEvents = jsonRecord(input.keyEvents);
   const watcherUpload = jsonRecord(keyEvents.watcher_upload);
@@ -1472,15 +1548,91 @@ export function evaluateWatcherTerminalOwnerLoss(
   const hasSerializedResult =
     players.some((player) => player.winner === true) ||
     automaticTruth(resultResolution.result_trusted) ||
+    Boolean(cleanText(resultResolution.winning_team_id, 100)) ||
+    automaticArray(resultResolution.winning_player_names).length > 0 ||
+    automaticArray(resultResolution.winning_player_keys).length > 0 ||
     eventTypes.has("resign") ||
     automaticArray(keyEvents.resigned_player_numbers).length > 0 ||
-    automaticArray(keyEvents.resigned_player_names).length > 0 ||
-    automaticTruth(keyEvents.postgame_available) ||
-    automaticTruth(keyEvents.has_scores) ||
-    automaticTruth(keyEvents.has_achievements);
+    automaticArray(keyEvents.resigned_player_names).length > 0;
 
   if (hasSerializedResult) {
     return { eligible: false, reason: "serialized_result_exists" };
+  }
+
+  const receipt = automaticTerminalReceipt(input.terminalReceipt);
+  const receiptProvided = Boolean(
+    receipt.eventType ||
+      receipt.replayHash ||
+      receipt.sessionId ||
+      receipt.replayFile
+  );
+  const receiptTypeAllowed = [
+    "final_settle_observation_complete",
+    "legacy_final_monitor_settled",
+  ].includes(receipt.eventType);
+  const receiptIdentityMatches =
+    receiptTypeAllowed &&
+    receipt.replayHash === replayHash &&
+    Boolean(receipt.sessionId) &&
+    Boolean(receipt.replayFile) &&
+    (!input.uploaderUserId || receipt.userId === input.uploaderUserId) &&
+    (!input.uploaderUid || !receipt.userUid || receipt.userUid === input.uploaderUid);
+  const finalStored = receipt.metadata.finalStored;
+  if (
+    receiptProvided &&
+    (!receiptIdentityMatches ||
+      (receipt.eventType === "final_settle_observation_complete" &&
+        !automaticTruth(finalStored)))
+  ) {
+    return { eligible: false, reason: "terminal_receipt_conflicts" };
+  }
+
+  const activityRows = automaticActivityRows(input.rawActivityByPlayer);
+  const activityPairs = players
+    .map((player) => {
+      if (player.playerNumber === null) return null;
+      const rows = activityRows.filter(
+        (entry) => entry.playerNumber === player.playerNumber
+      );
+      if (rows.length !== 1) return null;
+      return { player, activity: rows[0] };
+    })
+    .filter(
+      (entry): entry is {
+        player: CanonicalReplayPlayer;
+        activity: AutomaticActivityRow;
+      } => entry !== null
+    )
+    .sort(
+      (left, right) =>
+        left.activity.lastActionMs - right.activity.lastActionMs
+    );
+
+  if (activityPairs.length !== 2) {
+    return { eligible: false, reason: "raw_activity_not_exact" };
+  }
+
+  const loser = activityPairs[0].player;
+  const loserActivity = activityPairs[0].activity;
+  const winnerPlayer = activityPairs[1].player;
+  const winnerActivity = activityPairs[1].activity;
+  const durationMs = Math.round((input.durationSeconds ?? 0) * 1000);
+  const winnerLeadMs =
+    winnerActivity.lastActionMs - loserActivity.lastActionMs;
+  const loserSilenceMs = durationMs - loserActivity.lastActionMs;
+  const winnerTailMs = durationMs - winnerActivity.lastActionMs;
+
+  if (winnerLeadMs < WATCHER_TERMINAL_MIN_WINNER_LEAD_MS) {
+    return { eligible: false, reason: "terminal_activity_gap_too_short" };
+  }
+  if (loserSilenceMs < WATCHER_TERMINAL_MIN_LOSER_SILENCE_MS) {
+    return { eligible: false, reason: "loser_terminal_silence_too_short" };
+  }
+  if (
+    winnerTailMs < 0 ||
+    winnerTailMs > WATCHER_TERMINAL_MAX_WINNER_TAIL_MS
+  ) {
+    return { eligible: false, reason: "winner_not_active_at_terminal_tail" };
   }
 
   const teams: CanonicalReplayResultTeam[] = players
@@ -1501,33 +1653,58 @@ export function evaluateWatcherTerminalOwnerLoss(
 
   return {
     eligible: true,
-    reason: "exact_watcher_owner_terminal_loss",
-    owner,
-    opponent,
+    reason: "decisive_1v1_terminal_action_tail",
+    uploader,
+    loser,
+    winnerPlayer,
     teams,
-    winningTeamKey: opponent.stablePlayerKey,
+    winningTeamKey: winnerPlayer.stablePlayerKey,
     evidence: jsonClone({
-      submittedVia: "automatic_watcher_terminal_policy",
+      submittedVia: "automatic_replay_terminal_policy",
       policyVersion: WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
       replayHash,
       gameStatsId: input.id,
       uploaderUid: input.uploaderUid,
+      uploaderUserId: input.uploaderUserId ?? null,
       uploaderSteamId,
-      ownerPlayerKey: owner.stablePlayerKey,
-      ownerPlayerName: owner.name,
-      opponentPlayerKey: opponent.stablePlayerKey,
-      opponentPlayerName: opponent.name,
+      uploaderPlayerKey: uploader.stablePlayerKey,
+      uploaderPlayerName: uploader.name,
+      losingPlayerKey: loser.stablePlayerKey,
+      losingPlayerName: loser.name,
+      winningPlayerKey: winnerPlayer.stablePlayerKey,
+      winningPlayerName: winnerPlayer.name,
       durationSeconds: input.durationSeconds,
       exactFinalRecording: true,
       ratedHdOneVsOne: true,
       serializedResultAbsent: true,
       confirmedDesyncAbsent: true,
-      corpusAudit: {
-        exactUploaderOwnedRatedOneVsOne: 29,
-        silentCasesWithAcceptedVerdict: 3,
-        directOwnerWinContradictions: 0,
-        auditedAt: "2026-08-02T01:30:25.267Z",
+      terminalReceiptMode: receiptProvided
+        ? "exact_watcher_receipt"
+        : "action_tail_fallback",
+      terminalReceipt: receiptProvided
+        ? {
+            eventId: receipt.eventId,
+            eventType: receipt.eventType,
+            createdAt: receipt.createdAt,
+            sessionId: receipt.sessionId,
+            replayFile: receipt.replayFile,
+            metadata: receipt.metadata,
+          }
+        : null,
+      parseRun: input.parseRun ?? null,
+      actionTail: {
+        loser: loserActivity,
+        winner: winnerActivity,
+        winnerLeadMs,
+        loserSilenceMs,
+        winnerTailMs,
+        thresholds: {
+          minimumWinnerLeadMs: WATCHER_TERMINAL_MIN_WINNER_LEAD_MS,
+          minimumLoserSilenceMs: WATCHER_TERMINAL_MIN_LOSER_SILENCE_MS,
+          maximumWinnerTailMs: WATCHER_TERMINAL_MAX_WINNER_TAIL_MS,
+        },
       },
+      financialAuthority: false,
     }),
   };
 }
@@ -1560,31 +1737,427 @@ function automaticGameIds(
   ].sort((left, right) => left - right);
 }
 
+function automaticEventReceipt(entry: {
+  id: bigint;
+  eventType: string;
+  createdAt: Date;
+  userId: number | null;
+  userUid: string | null;
+  sessionId: string | null;
+  replayHash: string | null;
+  replayFile: string | null;
+  metadata: Prisma.JsonValue | null;
+}) {
+  return {
+    eventId: entry.id.toString(),
+    eventType: entry.eventType,
+    createdAt: entry.createdAt.toISOString(),
+    userId: entry.userId,
+    userUid: entry.userUid,
+    sessionId: entry.sessionId,
+    replayHash: entry.replayHash,
+    replayFile: entry.replayFile,
+    metadata: entry.metadata,
+  };
+}
+
 export async function reconcileAutomaticWatcherTerminalResults(
-  _prisma: PrismaClient,
+  prisma: PrismaClient,
   rawGameStatsIds: readonly (string | number | null | undefined)[]
 ): Promise<AutomaticWatcherTerminalResultReport> {
   const gameStatsIds = automaticGameIds(rawGameStatsIds);
+  const outcomes: AutomaticWatcherTerminalResultReport["outcomes"] = [];
 
-  /*
-   * Uploader ownership, terminal disconnect shape, last action, and corpus
-   * frequency are diagnostic signals only. They are not authoritative replay
-   * result evidence and must never create an adjudication or unlock betting.
-   *
-   * Future automatic resolution requires a direct terminal result receipt
-   * bound to the replay hash and canonical roster, or another independently
-   * verifiable result source.
-   */
+  for (const gameStatsId of gameStatsIds) {
+    try {
+      const outcome = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw<Array<{ lock_acquired: number }>>`
+          SELECT 1::int AS lock_acquired
+          FROM pg_advisory_xact_lock(${gameStatsId})
+        `;
+
+        const game = await tx.gameStats.findUnique({
+          where: { id: gameStatsId },
+          select: {
+            ...REVIEWABLE_GAME_SELECT,
+            user: {
+              select: {
+                id: true,
+                uid: true,
+                steamId: true,
+                inGameName: true,
+                steamPersonaName: true,
+              },
+            },
+          },
+        });
+        if (!game) {
+          return {
+            gameStatsId,
+            outcome: "skipped" as const,
+            detail: "game_not_found",
+            adjudicationId: null,
+          };
+        }
+        if (!game.user?.steamId) {
+          return {
+            gameStatsId,
+            outcome: "skipped" as const,
+            detail: "verified_uploader_missing",
+            adjudicationId: null,
+          };
+        }
+
+        const idempotencyKey = [
+          "evidence:auto",
+          WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
+          gameStatsId,
+          game.replayHash.slice(0, 16),
+          game.parse_iteration,
+        ].join(":");
+        const existingIdempotent = await tx.replayResultAdjudication.findUnique({
+          where: { idempotencyKey },
+          select: { id: true },
+        });
+        if (existingIdempotent) {
+          return {
+            gameStatsId,
+            outcome: "existing" as const,
+            detail: "idempotent_adjudication_exists",
+            adjudicationId: existingIdempotent.id,
+          };
+        }
+
+        const [previousAdjudication, currentDesyncIncident] = await Promise.all([
+          tx.replayResultAdjudication.findFirst({
+            where: { gameStatsId },
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            select: { id: true },
+          }),
+          tx.replayDesyncIncident.findFirst({
+            where: { gameStatsId },
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            select: { desyncOccurred: true },
+          }),
+        ]);
+        if (previousAdjudication) {
+          return {
+            gameStatsId,
+            outcome: "skipped" as const,
+            detail: "adjudication_history_exists",
+            adjudicationId: previousAdjudication.id,
+          };
+        }
+        if (currentDesyncIncident?.desyncOccurred === true) {
+          return {
+            gameStatsId,
+            outcome: "skipped" as const,
+            detail: "confirmed_desync",
+            adjudicationId: null,
+          };
+        }
+
+        const terminalComplete = await tx.watcherClientEvent.findFirst({
+          where: {
+            userId: game.user.id,
+            replayHash: game.replayHash,
+            eventType: "final_settle_observation_complete",
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          select: {
+            id: true,
+            eventType: true,
+            createdAt: true,
+            userId: true,
+            userUid: true,
+            sessionId: true,
+            replayHash: true,
+            replayFile: true,
+            metadata: true,
+          },
+        });
+
+        let receipt = terminalComplete
+          ? automaticEventReceipt(terminalComplete)
+          : null;
+        let terminalWindowStart = terminalComplete?.createdAt ?? null;
+        let terminalWindowEnd = terminalComplete?.createdAt ?? null;
+
+        if (terminalComplete?.sessionId && terminalComplete.replayFile) {
+          const settleStarted = await tx.watcherClientEvent.findFirst({
+            where: {
+              userId: game.user.id,
+              sessionId: terminalComplete.sessionId,
+              replayFile: terminalComplete.replayFile,
+              eventType: "final_settle_observation_started",
+              createdAt: {
+                gte: new Date(
+                  terminalComplete.createdAt.getTime() -
+                    WATCHER_TERMINAL_EVENT_WINDOW_MS
+                ),
+                lte: terminalComplete.createdAt,
+              },
+            },
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            select: { createdAt: true },
+          });
+          terminalWindowStart = settleStarted?.createdAt ?? terminalComplete.createdAt;
+        }
+
+        if (!receipt) {
+          const finalEvent = await tx.watcherClientEvent.findFirst({
+            where: {
+              userId: game.user.id,
+              replayHash: game.replayHash,
+              eventType: {
+                in: ["final_candidate_accepted", "result_review_routed"],
+              },
+            },
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+            select: {
+              id: true,
+              eventType: true,
+              createdAt: true,
+              userId: true,
+              userUid: true,
+              sessionId: true,
+              replayHash: true,
+              replayFile: true,
+              metadata: true,
+            },
+          });
+          if (finalEvent?.sessionId && finalEvent.replayFile) {
+            const monitorStop = await tx.watcherClientEvent.findFirst({
+              where: {
+                userId: game.user.id,
+                sessionId: finalEvent.sessionId,
+                replayFile: finalEvent.replayFile,
+                eventType: "monitor_stop",
+                createdAt: {
+                  gte: finalEvent.createdAt,
+                  lte: new Date(
+                    finalEvent.createdAt.getTime() + WATCHER_TERMINAL_EVENT_WINDOW_MS
+                  ),
+                },
+              },
+              orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+              select: {
+                id: true,
+                eventType: true,
+                createdAt: true,
+                userId: true,
+                userUid: true,
+                sessionId: true,
+                replayHash: true,
+                replayFile: true,
+                metadata: true,
+              },
+            });
+            if (monitorStop) {
+              receipt = {
+                eventId: monitorStop.id.toString(),
+                eventType: "legacy_final_monitor_settled",
+                createdAt: monitorStop.createdAt.toISOString(),
+                userId: finalEvent.userId,
+                userUid: finalEvent.userUid,
+                sessionId: finalEvent.sessionId,
+                replayHash: finalEvent.replayHash,
+                replayFile: finalEvent.replayFile,
+                metadata: {
+                  finalEventId: finalEvent.id.toString(),
+                  finalEventType: finalEvent.eventType,
+                  finalEventCreatedAt: finalEvent.createdAt.toISOString(),
+                  monitorStopEventId: monitorStop.id.toString(),
+                },
+              };
+              terminalWindowStart = finalEvent.createdAt;
+              terminalWindowEnd = monitorStop.createdAt;
+            }
+          }
+        }
+
+        const terminalFailureCount = await tx.watcherClientEvent.count({
+          where:
+            receipt && terminalWindowStart && terminalWindowEnd
+              ? {
+                  userId: game.user.id,
+                  sessionId: receipt.sessionId,
+                  replayFile: receipt.replayFile,
+                  eventType: { in: [...WATCHER_TERMINAL_FAILURE_EVENTS] },
+                  createdAt: {
+                    gte: terminalWindowStart,
+                    lte: terminalWindowEnd,
+                  },
+                }
+              : {
+                  userId: game.user.id,
+                  replayHash: game.replayHash,
+                  eventType: { in: [...WATCHER_TERMINAL_FAILURE_EVENTS] },
+                },
+        });
+
+        const parseRun = await tx.replayParseRun.findFirst({
+          where: {
+            gameStatsId,
+            artifact: { sha256: game.replayHash },
+            status: { in: ["completed", "recovered"] },
+          },
+          orderBy: [{ completedAt: "desc" }, { id: "desc" }],
+          select: {
+            id: true,
+            parserName: true,
+            parserVersion: true,
+            parserBuild: true,
+            passName: true,
+            passVersion: true,
+            schemaVersion: true,
+            status: true,
+            candidateOnly: true,
+            affectsPublicAggregates: true,
+            completedAt: true,
+            observations: {
+              where: { fieldPath: "actions.raw_activity_by_player" },
+              orderBy: { id: "desc" },
+              take: 1,
+              select: { id: true, value: true, provenance: true },
+            },
+          },
+        });
+        const activityObservation = parseRun?.observations[0] ?? null;
+        if (!parseRun || !activityObservation) {
+          return {
+            gameStatsId,
+            outcome: "skipped" as const,
+            detail: "raw_activity_observation_missing",
+            adjudicationId: null,
+          };
+        }
+
+        const evaluation = evaluateWatcherTerminalOwnerLoss({
+          id: game.id,
+          replayHash: game.replayHash,
+          parseIteration: game.parse_iteration,
+          parseSource: game.parse_source,
+          parseReason: game.parse_reason,
+          isFinal: game.is_final,
+          winner: game.winner,
+          players: game.players,
+          keyEvents: game.key_events,
+          eventTypes: game.event_types,
+          disconnectDetected: game.disconnect_detected,
+          durationSeconds: game.game_duration ?? game.duration,
+          uploaderSteamId: game.user.steamId,
+          uploaderUid: game.user.uid,
+          uploaderUserId: game.user.id,
+          hasAdjudicationHistory: false,
+          currentDesyncOccurred: currentDesyncIncident?.desyncOccurred ?? null,
+          terminalReceipt: receipt,
+          terminalFailureCount,
+          rawActivityByPlayer: activityObservation.value,
+          parseRun: {
+            id: parseRun.id,
+            parserName: parseRun.parserName,
+            parserVersion: parseRun.parserVersion,
+            parserBuild: parseRun.parserBuild,
+            passName: parseRun.passName,
+            passVersion: parseRun.passVersion,
+            schemaVersion: parseRun.schemaVersion,
+            status: parseRun.status,
+            candidateOnly: parseRun.candidateOnly,
+            affectsPublicAggregates: parseRun.affectsPublicAggregates,
+            completedAt: parseRun.completedAt,
+            activityObservationId: activityObservation.id,
+            activityProvenance: activityObservation.provenance,
+          },
+        });
+        if (!evaluation.eligible) {
+          return {
+            gameStatsId,
+            outcome: "skipped" as const,
+            detail: evaluation.reason,
+            adjudicationId: null,
+          };
+        }
+
+        const validated = validateReplayResultAdjudication({
+          payload: {
+            idempotencyKey,
+            sourceReplayHash: game.replayHash,
+            sourceParseIteration: game.parse_iteration,
+            teams: evaluation.teams,
+            winningTeamKey: evaluation.winningTeamKey,
+            reason:
+              `Automatic terminal evidence: ${evaluation.loser.name} stopped first in the ` +
+              `final rated 1v1 while ${evaluation.winnerPlayer.name} remained active.`,
+            evidence: evaluation.evidence,
+          },
+          replayHash: game.replayHash,
+          parseIteration: game.parse_iteration,
+          players: game.players,
+        });
+        const marketState = await buildMarketSnapshot(
+          tx as unknown as MarketSnapshotPrisma,
+          gameStatsId,
+          [game.original_filename, game.replay_file]
+        );
+        const adjudication = await tx.replayResultAdjudication.create({
+          data: {
+            gameStatsId,
+            actorUserId: game.user.id,
+            supersedesId: null,
+            idempotencyKey: validated.idempotencyKey,
+            inputHash: validated.inputHash,
+            decisionStatus: REPLAY_RESULT_ACCEPTED,
+            actorUidSnapshot: game.user.uid,
+            actorDisplayNameSnapshot: displayName(game.user),
+            actorRole: WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE,
+            teamAssignments: validated.teams as unknown as Prisma.InputJsonValue,
+            winningTeamKey: validated.winningTeamKey,
+            winningPlayerKeys: validated.winningPlayerKeys as Prisma.InputJsonValue,
+            reason: validated.reason,
+            ...(validated.evidence === null ? {} : { evidence: validated.evidence }),
+            sourceReplayHash: validated.sourceReplayHash,
+            sourceParseIteration: validated.sourceParseIteration,
+            sourceRosterHash: validated.sourceRosterHash,
+            sourcePropositionHash: validated.sourcePropositionHash,
+            rawParserSnapshot: rawParserSnapshot(game),
+            marketSnapshot: marketState.snapshot,
+            hasLinkedMarket: marketState.hasLinkedMarket,
+            financialDisposition: marketState.hasLinkedMarket
+              ? WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION
+              : "none",
+            affectsStats: true,
+            affectsBets: false,
+          },
+          select: { id: true },
+        });
+        return {
+          gameStatsId,
+          outcome: "created" as const,
+          detail: evaluation.reason,
+          adjudicationId: adjudication.id,
+        };
+      });
+      outcomes.push(outcome);
+    } catch (error) {
+      console.error(
+        `Automatic watcher terminal reconciliation failed for game ${gameStatsId}:`,
+        error
+      );
+      outcomes.push({
+        gameStatsId,
+        outcome: "skipped",
+        detail: "reconciliation_error",
+        adjudicationId: null,
+      });
+    }
+  }
+
   return {
     requestedCount: gameStatsIds.length,
-    createdCount: 0,
-    existingCount: 0,
-    skippedCount: gameStatsIds.length,
-    outcomes: gameStatsIds.map((gameStatsId) => ({
-      gameStatsId,
-      outcome: "skipped" as const,
-      detail: "disabled_non_authoritative_owner_inference",
-      adjudicationId: null,
-    })),
+    createdCount: outcomes.filter((entry) => entry.outcome === "created").length,
+    existingCount: outcomes.filter((entry) => entry.outcome === "existing").length,
+    skippedCount: outcomes.filter((entry) => entry.outcome === "skipped").length,
+    outcomes,
   };
 }

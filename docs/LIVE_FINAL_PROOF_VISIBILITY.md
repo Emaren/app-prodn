@@ -8,14 +8,14 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-07-31"
+reviewed_at: "2026-08-04"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # Live Final-Proof Visibility
 
-Implementation baseline: `85b11ea419fb14f089500c16bb9cf8847fd685f9`.
+Implementation baseline: `ea28fcbe378bb37fb78f5347734fef8a4768f453`.
 
 ## Problem
 
@@ -42,3 +42,18 @@ During that window:
 The visibility hold changes presentation only. It does not reopen betting,
 downgrade final transport evidence, or authorize settlement without canonical
 result truth.
+
+
+<!-- AOE2WAR:TERMINAL_RESULT_EXIT_FROM_PENDING_V3:START -->
+## Decisive 1v1 exit from pending
+
+A final rated HD 1v1 may leave the pending presentation when
+`replay-terminal-action-tail-v3` appends a valid stats-only effective result.
+The completed battle then shows the later-active player as winner through the
+normal adjudicated-result projection.
+
+This transition requires the exact terminal activity fences documented in the
+HD Replay Truth Pipeline. It does not turn Watcher transport success into
+settlement truth. The automatic row remains `affectsBets = false`; a linked
+market stays on the separate operator financial-authority rail.
+<!-- AOE2WAR:TERMINAL_RESULT_EXIT_FROM_PENDING_V3:END -->

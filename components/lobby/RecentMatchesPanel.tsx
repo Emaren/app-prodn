@@ -1022,9 +1022,6 @@ const MatchCard = memo(function MatchCard({
       {resultReview.reviewed ? (
         <span
           className="absolute bottom-4 right-4 inline-flex text-slate-400/35"
-          title={
-            h(resultReview.reviewLabel || "Human reviewed")
-          }
           aria-label={
             h(resultReview.reviewLabel || "Human reviewed")
           }

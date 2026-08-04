@@ -7,11 +7,12 @@ import {
   WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE,
   WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION,
   WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
+  type WatcherTerminalOwnerLossInput,
 } from "../lib/replayResultAdjudications.ts";
 
 const replayHash = "4".repeat(64);
 
-function baseInput() {
+function baseInput(): WatcherTerminalOwnerLossInput {
   return {
     id: 20432,
     replayHash,
@@ -64,35 +65,67 @@ function baseInput() {
     },
     eventTypes: [],
     disconnectDetected: true,
-    durationSeconds: 2088,
+    durationSeconds: 485.64,
     uploaderSteamId: "76561198065420384",
     uploaderUid: "u_emaren",
+    uploaderUserId: 7,
     hasAdjudicationHistory: false,
     currentDesyncOccurred: null,
+    terminalReceipt: {
+      eventId: "9001",
+      eventType: "final_settle_observation_complete",
+      createdAt: "2026-08-04T02:12:26.796Z",
+      userId: 7,
+      userUid: "u_emaren",
+      sessionId: "session_exact",
+      replayHash,
+      replayFile: "MP Replay.aoe2record",
+      metadata: {
+        finalStored: true,
+        settleWindowMs: 180000,
+      },
+    },
+    terminalFailureCount: 0,
+    rawActivityByPlayer: [
+      {
+        player_number: 1,
+        player_name: "Emaren",
+        action_packet_count: 182,
+        first_action_ms: 1400,
+        last_action_ms: 470990,
+      },
+      {
+        player_number: 2,
+        player_name: "Feegaro",
+        action_packet_count: 201,
+        first_action_ms: 1600,
+        last_action_ms: 480268,
+      },
+    ],
+    parseRun: {
+      id: 4965,
+      passName: "hd_deterministic_evidence",
+      passVersion: "8",
+    },
   };
 }
 
-test("owner-pattern reconciliation remains diagnostic-only", async () => {
+test("empty automatic reconciliation is a safe no-op", async () => {
   const report = await reconcileAutomaticWatcherTerminalResults(
     {} as never,
-    [20432]
+    []
   );
 
-  assert.equal(report.requestedCount, 1);
-  assert.equal(report.createdCount, 0);
-  assert.equal(report.existingCount, 0);
-  assert.equal(report.skippedCount, 1);
-  assert.deepEqual(report.outcomes, [
-    {
-      gameStatsId: 20432,
-      outcome: "skipped",
-      detail: "disabled_non_authoritative_owner_inference",
-      adjudicationId: null,
-    },
-  ]);
+  assert.deepEqual(report, {
+    requestedCount: 0,
+    createdCount: 0,
+    existingCount: 0,
+    skippedCount: 0,
+    outcomes: [],
+  });
 });
 
-test("automatic watcher evidence uses the live append-only ledger contract", () => {
+test("automatic watcher evidence uses stats-only append-only authority", () => {
   assert.equal(
     WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE,
     "verified_submitter"
@@ -101,79 +134,211 @@ test("automatic watcher evidence uses the live append-only ledger contract", () 
     WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION,
     "operator_review_required"
   );
+  assert.equal(
+    WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
+    "replay-terminal-action-tail-v3"
+  );
 });
 
-test("exact silent watcher-owned rated HD 1v1 resolves to the opponent", () => {
+test("final rated HD 1v1 action tail resolves the player who remained active", () => {
   const evaluation = evaluateWatcherTerminalOwnerLoss(baseInput());
 
   assert.equal(evaluation.eligible, true);
   if (!evaluation.eligible) return;
 
   assert.equal(
-    evaluation.opponent.stablePlayerKey,
+    evaluation.loser.stablePlayerKey,
+    "steam:76561198065420384"
+  );
+  assert.equal(
+    evaluation.winnerPlayer.stablePlayerKey,
     "steam:76561198442007385"
   );
   assert.equal(
     evaluation.winningTeamKey,
     "steam:76561198442007385"
   );
+  const evidence = evaluation.evidence as {
+    policyVersion?: unknown;
+    financialAuthority?: unknown;
+    terminalReceiptMode?: unknown;
+    actionTail?: {
+      winnerLeadMs?: unknown;
+      loserSilenceMs?: unknown;
+      winnerTailMs?: unknown;
+    };
+  };
   assert.equal(
-    (evaluation.evidence as { policyVersion?: unknown }).policyVersion,
+    evidence.policyVersion,
     WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION
   );
+  assert.equal(evidence.financialAuthority, false);
+  assert.equal(evidence.terminalReceiptMode, "exact_watcher_receipt");
+  assert.equal(evidence.actionTail?.winnerLeadMs, 9278);
+  assert.equal(evidence.actionTail?.loserSilenceMs, 14650);
+  assert.equal(evidence.actionTail?.winnerTailMs, 5372);
+});
+
+test("legacy final plus clean monitor settlement is accepted", () => {
+  const input = baseInput();
+  input.terminalReceipt = {
+    eventId: "9002",
+    eventType: "legacy_final_monitor_settled",
+    createdAt: "2026-08-04T02:12:26.796Z",
+    userId: 7,
+    userUid: "u_emaren",
+    sessionId: "session_exact",
+    replayHash,
+    replayFile: "MP Replay.aoe2record",
+    metadata: {
+      finalEventType: "result_review_routed",
+      monitorStopEventId: "9002",
+    },
+  };
+
+  assert.equal(evaluateWatcherTerminalOwnerLoss(input).eligible, true);
+});
+
+test("action tail can resolve without a receipt, but conflicting receipt blocks", () => {
+  const missing = baseInput();
+  missing.terminalReceipt = null;
+  const fallback = evaluateWatcherTerminalOwnerLoss(missing);
+  assert.equal(fallback.eligible, true);
+  if (fallback.eligible) {
+    const evidence = fallback.evidence as { terminalReceiptMode?: unknown };
+    assert.equal(evidence.terminalReceiptMode, "action_tail_fallback");
+  }
+
+  const mismatched = baseInput();
+  mismatched.terminalReceipt = {
+    ...(mismatched.terminalReceipt as Record<string, unknown>),
+    replayHash: "5".repeat(64),
+  };
+  assert.deepEqual(evaluateWatcherTerminalOwnerLoss(mismatched), {
+    eligible: false,
+    reason: "terminal_receipt_conflicts",
+  });
+});
+
+test("a terminal failure blocks inference", () => {
+  const input = baseInput();
+  input.terminalFailureCount = 1;
+
+  assert.deepEqual(evaluateWatcherTerminalOwnerLoss(input), {
+    eligible: false,
+    reason: "terminal_failure_present",
+  });
+});
+
+test("winner must remain active after the loser and near the replay tail", () => {
+  const shortLead = baseInput();
+  shortLead.rawActivityByPlayer = [
+    {
+      player_number: 1,
+      player_name: "Emaren",
+      action_packet_count: 10,
+      first_action_ms: 1000,
+      last_action_ms: 479000,
+    },
+    {
+      player_number: 2,
+      player_name: "Feegaro",
+      action_packet_count: 10,
+      first_action_ms: 1000,
+      last_action_ms: 480000,
+    },
+  ];
+  assert.deepEqual(evaluateWatcherTerminalOwnerLoss(shortLead), {
+    eligible: false,
+    reason: "terminal_activity_gap_too_short",
+  });
+
+  const staleOpponent = baseInput();
+  staleOpponent.rawActivityByPlayer = [
+    {
+      player_number: 1,
+      player_name: "Emaren",
+      action_packet_count: 10,
+      first_action_ms: 1000,
+      last_action_ms: 430000,
+    },
+    {
+      player_number: 2,
+      player_name: "Feegaro",
+      action_packet_count: 10,
+      first_action_ms: 1000,
+      last_action_ms: 450000,
+    },
+  ];
+  assert.deepEqual(evaluateWatcherTerminalOwnerLoss(staleOpponent), {
+    eligible: false,
+    reason: "winner_not_active_at_terminal_tail",
+  });
+});
+
+test("the uploader may be the winner when the opponent stops first", () => {
+  const input = baseInput();
+  input.uploaderSteamId = "76561198442007385";
+
+  const evaluation = evaluateWatcherTerminalOwnerLoss(input);
+  assert.equal(evaluation.eligible, true);
+  if (!evaluation.eligible) return;
+
+  assert.equal(evaluation.uploader.name, "Feegaro");
+  assert.equal(evaluation.loser.name, "Emaren");
+  assert.equal(evaluation.winnerPlayer.name, "Feegaro");
+  assert.equal(evaluation.winningTeamKey, "steam:76561198442007385");
+});
+
+test("generic postgame panels do not block a decisive action tail", () => {
+  const input = baseInput();
+  input.keyEvents = {
+    ...(input.keyEvents as Record<string, unknown>),
+    postgame_available: true,
+    has_scores: true,
+    has_achievements: true,
+  };
+
+  const evaluation = evaluateWatcherTerminalOwnerLoss(input);
+  assert.equal(evaluation.eligible, true);
 });
 
 test("serialized resignation evidence blocks terminal inference", () => {
   const input = baseInput();
   input.eventTypes = ["resign"];
 
-  assert.deepEqual(
-    evaluateWatcherTerminalOwnerLoss(input),
-    {
-      eligible: false,
-      reason: "serialized_result_exists",
-    }
-  );
+  assert.deepEqual(evaluateWatcherTerminalOwnerLoss(input), {
+    eligible: false,
+    reason: "serialized_result_exists",
+  });
 });
 
 test("confirmed desync blocks terminal inference", () => {
   const input = baseInput();
   input.currentDesyncOccurred = true;
 
-  assert.deepEqual(
-    evaluateWatcherTerminalOwnerLoss(input),
-    {
-      eligible: false,
-      reason: "confirmed_desync",
-    }
-  );
+  assert.deepEqual(evaluateWatcherTerminalOwnerLoss(input), {
+    eligible: false,
+    reason: "confirmed_desync",
+  });
 });
 
 test("an uploader mismatch cannot award the opponent", () => {
   const input = baseInput();
   input.uploaderSteamId = "76561199999999999";
 
-  assert.deepEqual(
-    evaluateWatcherTerminalOwnerLoss(input),
-    {
-      eligible: false,
-      reason: "uploader_player_not_exact",
-    }
-  );
+  assert.deepEqual(evaluateWatcherTerminalOwnerLoss(input), {
+    eligible: false,
+    reason: "uploader_player_not_exact",
+  });
 });
 
 test("short or non-final recordings remain unresolved", () => {
   const short = baseInput();
   short.durationSeconds = 59;
-  assert.equal(
-    evaluateWatcherTerminalOwnerLoss(short).eligible,
-    false
-  );
+  assert.equal(evaluateWatcherTerminalOwnerLoss(short).eligible, false);
 
   const live = baseInput();
   live.isFinal = false;
-  assert.equal(
-    evaluateWatcherTerminalOwnerLoss(live).eligible,
-    false
-  );
+  assert.equal(evaluateWatcherTerminalOwnerLoss(live).eligible, false);
 });

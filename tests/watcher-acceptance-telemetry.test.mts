@@ -14,6 +14,8 @@ test("watcher acceptance telemetry keeps archive, parse, result, and review mile
     "parse_succeeded",
     "result_ready",
     "result_review_routed",
+    "final_settle_observation_started",
+    "final_settle_observation_complete",
   ]) {
     assert.match(
       watcherTelemetrySource,

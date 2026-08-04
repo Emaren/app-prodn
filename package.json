@@ -30,6 +30,7 @@
     "challenge:jim24": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/audit-settle-jim-challenge-24.mts",
     "challenge:legacy-prepare": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/prepare-legacy-challenge.mts",
     "replay:stats:project": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/project-normalized-replay-stats.mts",
+    "replay:terminal:reconcile": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/reconcile-automatic-watcher-terminal-results.mts",
     "identity:discover": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/backfill-player-identity-discovery.mts",
     "workshop:publish:2026-08-01": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/publish-workshop-2026-08-01.mts",
     "war-engine:seed": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/seed-war-engine-foundation.mts",
