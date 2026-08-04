@@ -1,384 +1,58 @@
+import {
+  HOME_DYNAMIC_SOURCE_KEYS,
+  HOME_SOURCE_KEYS,
+} from "./homeSources.ts";
+
 type HomeCopyValue = string | number;
 type HomeCopyValues = Record<string, HomeCopyValue | null | undefined>;
 
-const SPANISH_HOME_COPY: Readonly<Record<string, string>> = {
-  "Featured Warriors": "Guerreros destacados",
-  "Elite competitors. Legendary rivalries.": "Competidores de élite. Rivalidades legendarias.",
-  "View all warriors": "Ver todos los guerreros",
-  "ELO TBD": "ELO por definir",
-  "W-L-U TBD": "V-D-I por definir",
-  "ELO ᛫ RECORD ᛫ STREAK": "ELO ᛫ RÉCORD ᛫ RACHA",
-  "The Specialist": "El especialista",
-  "The Sharpshooter": "El francotirador",
-  "The Conquistador": "El conquistador",
-  "American Champion": "Campeón estadounidense",
-  "The Tactician": "El estratega",
-  "Chaos Champion": "Campeón del caos",
-  "Featured Contender": "Contendiente destacado",
-  "Ranked Warrior": "Guerrero clasificado",
-  "Featured Warrior": "Guerrero destacado",
-  "AI Scribe": "Escriba de IA",
-  "AI Advisor": "Asesor de IA",
-  "The AI Scribe": "El Escriba de IA",
-  "In the Arena": "En la arena",
-  "Claimed Warrior": "Guerrero reclamado",
-  "Rising Warrior": "Guerrero en ascenso",
-  "Rank Pending": "Rango pendiente",
-  "Mystery Player": "Jugador misterioso",
-  "Live Chat": "Chat en vivo",
-  "{title} Chat": "Chat de {title}",
-  "Join failed.": "No se pudo unir.",
-  "Message failed.": "No se pudo enviar el mensaje.",
-  "Reaction failed.": "No se pudo registrar la reacción.",
-  "Message update failed.": "No se pudo actualizar el mensaje.",
-
-  "Black": "Negro",
-  "Grey": "Gris",
-  "White": "Blanco",
-  "Sepia": "Sepia",
-  "Crimson": "Carmesí",
-  "Midnight": "Medianoche",
-  "Steel": "Acero",
-  "Field": "Campo",
-  "{label} theme": "Tema {label}",
-  "Open Slot": "Plaza abierta",
-  "Steam user": "Usuario de Steam",
-  "Community Lobby": "Lobby de la comunidad",
-  "basic": "Básico",
-  "advanced": "Avanzado",
-  "extreme": "Extremo",
-  "Basic": "Básico",
-  "Advanced": "Avanzado",
-  "Extreme": "Extremo",
-  "Steam sign-in failed": "Falló el inicio de sesión con Steam",
-  "Open Profile": "Abrir perfil",
-  "View Rivalries": "Ver rivalidades",
-  "online": "en línea",
-  "claimed": "reclamado",
-  "Rating": "Rating",
-  "Identity rows on board": "Filas de identidad en el tablero",
-  "The board is warming up.": "El tablero se está activando.",
-  "Reinforcements arriving…": "Llegan refuerzos…",
-  "Daily claim fuel.": "Combustible para reclamos diarios.",
-  "Community war chest.": "Cofre de guerra de la comunidad.",
-  "Market depth.": "Profundidad de mercado.",
-  "WOLO Moved · 24h": "WOLO movido · 24 h",
-  "transfers.": "transferencias.",
-  "AoE2HD Pulse": "Pulso de AoE2HD",
-  "Compressed lobby signal for who is around, what moved, and where the board is warm.": "Señal compacta del lobby: quién está presente, qué se movió y dónde está activo el tablero.",
-  "Open": "Abierto",
-  "Online right now.": "En línea ahora mismo.",
-  "WOLO Dev Rail": "Rail de desarrollo WOLO",
-  "Local chain snapshot feeding AoE2HDBets dev mode.": "Instantánea de la cadena local alimentando el modo de desarrollo de AoE2WAR.",
-  "Waiting for snapshot": "Esperando la instantánea",
-  "Reserved market depth.": "Profundidad de mercado reservada.",
-  "{winner} on {map}": "{winner} en {map}",
-  "Open tournament page for {title}": "Abrir la página del torneo {title}",
-  "Live ticker": "Ticker en vivo",
-  "LIVE · AoE2HD lobby open · Join the next Founders Cup": "EN VIVO · Lobby de AoE2HD abierto · Únete a la próxima Founders Cup",
-  "Live updates connected": "Actualizaciones en vivo conectadas",
-  "Polling fallback": "Consulta de respaldo",
-  "Steam HD: feed pending": "Steam HD: feed pendiente",
-  "Steam HD: source quiet": "Steam HD: fuente silenciosa",
-  "Board": "Tablero",
-  "competitive identity rows": "filas de identidad competitiva",
-  "Vanguard": "Vanguardia",
-  "Awaiting a rated contender": "Esperando un contendiente con rating",
-  "Board leader": "Líder del tablero",
-  "Online now": "En línea ahora",
-  "Online now.": "En línea ahora.",
-  "Resolved today": "Resueltas hoy",
-  "Resolved Today": "Resueltas hoy",
-  "Active Players": "Jugadores activos",
-  "Latest replay": "Última repetición",
-  "Identity rows": "Filas de identidad",
-  "Most recent HD parse": "Análisis HD más reciente",
-  "AoE2HDBets live sessions": "Sesiones en vivo de AoE2WAR",
-  "Unique final replays with reliable results": "Repeticiones finales únicas con resultados fiables",
-  "Reliable final games.": "Partidas finales fiables.",
-  "Replay needs review": "La repetición necesita revisión",
-  "Faucet Pool": "Fondo del faucet",
-  "Treasury": "Tesorería",
-  "DEX Liquidity Reserve": "Reserva de liquidez DEX",
-  "Updated": "Actualizado",
-  "Loading...": "Cargando...",
-  "Login with Steam": "Entrar con Steam",
-  "Upload Replay": "Subir repetición",
-  "Download Watcher": "Descargar Watcher",
-
-  "Ranked": "Clasificatoria",
-  "Death": "Muerte",
-  "Ranked ladder lane": "Clasificación RM",
-  "Open the full HD Leaderboard": "Abrir la clasificación HD completa",
-  "Leaderboard": "Clasificación",
-  "Identity Rows": "Filas de identidad",
-  "Need more final games.": "Se necesitan más partidas finales.",
-  "Unclaimed $WOLO": "$WOLO sin reclamar",
-  "Last game": "Última partida",
-  "pending": "pendiente",
-  "Players": "Jugadores",
-  "Rivalries": "Rivalidades",
-  "Claimed": "Reclamado",
-  "Claimable": "Reclamable",
-  "Online": "En línea",
-  "Loading more warriors...": "Cargando más guerreros...",
-  "Load more warriors": "Cargar más guerreros",
-
-  "Next Tournament": "Próximo torneo",
-  "Scheduling now": "Programándose ahora",
-  "Join Queue": "Cola de inscripción",
-  "Edit Tournament": "Editar torneo",
-  "No one has joined yet. The first few players set the tone.": "Nadie se ha unido todavía. Los primeros jugadores marcarán el tono.",
-  "Bracket Preview": "Vista previa del cuadro",
-  "No bracket matches posted yet. Once the first pairings are set, they will appear here live.": "Todavía no se han publicado partidas del cuadro. Cuando se definan los primeros cruces, aparecerán aquí en vivo.",
-  "Round": "Ronda",
-  "Match": "Partida",
-  "Replay Verified": "Repetición verificada",
-  "Winner": "Ganador",
-  "Winner unresolved": "Ganador sin resolver",
-  "Leaving...": "Saliendo...",
-  "Joined": "Inscrito",
-  "Joining...": "Inscribiendo...",
-  "Waiting For Setup": "Esperando configuración",
-  "Join Tournament": "Unirse al torneo",
-  "Sign In To Join": "Entrar para unirse",
-  "entrant": "participante",
-  "entrants": "participantes",
-  "match": "partida",
-  "matches": "partidas",
-  "Completed": "Completado",
-  "Live": "En vivo",
-  "Upcoming": "Próximo",
-  "Draft": "Borrador",
-
-  "Top $WOLO Earners": "Mayores ganadores de $WOLO",
-  "Show War Chest": "Mostrar Cofre de Guerra",
-  "Show": "Mostrar",
-  "Claimable now": "Reclamable ahora",
-  "WAR CHEST": "COFRE DE GUERRA",
-  "Open War Chest": "Abrir el Cofre de Guerra",
-  "Weekly": "Semanal",
-  "All Time": "Histórico",
-  "Weekly take": "Ganancia semanal",
-  "All-time take": "Ganancia histórica",
-  "Awaiting first earner": "Esperando al primer ganador",
-  "Steam linked": "Steam vinculado",
-  "Profile claimed": "Perfil reclamado",
-  "Replay profile": "Perfil de repeticiones",
-  "Settled": "Liquidado",
-  "Wagered": "Apostado",
-  "reserve": "reserva",
-  "earners": "ganadores",
-
-  "Lobby": "Lobby",
-  "Online Players": "Jugadores en línea",
-  "Browse Players": "Ver jugadores",
-  "active": "activo",
-  "No recent presence yet. Once signed-in players start pinging the site, this becomes the real lobby roster.": "Todavía no hay presencia reciente. Cuando los jugadores conectados empiecen a enviar actividad, esta será la lista real del lobby.",
-  "Replay verified": "Repetición verificada",
-  "New player": "Jugador nuevo",
-  "Trusted": "Confiable",
-  "New": "Nuevo",
-
-  "Match Feed": "Feed de partidas",
-  "Parsed matches will show here as soon as the watcher uploads them.": "Las partidas analizadas aparecerán aquí en cuanto el Watcher las suba.",
-  "DESYNCED": "DESINCRONIZADA",
-  "HD battle record": "Registro de batalla HD",
-  "Human reviewed": "Revisado por una persona",
-  "vs": "vs",
-  "Recent Parsed Games": "Partidas analizadas recientemente",
-  "Human verdict and human-supplied evidence": "Veredicto humano y evidencia aportada por una persona",
-  "Human verdict": "Veredicto humano",
-  "Human-supplied evidence": "Evidencia aportada por una persona",
-  "Reviewed result": "Resultado revisado",
-  "Replay result": "Resultado de la repetición",
-  "Saved checkpoint": "Punto de control guardado",
-  "Result unproven": "Resultado no demostrado",
-  "Result under review": "Resultado en revisión",
-  "Desynced": "Desincronizada",
-  "No recent parsed games yet.": "Todavía no hay partidas analizadas recientemente.",
-
-  "Recent": "Reciente",
-  "Today": "Hoy",
-  "Yesterday": "Ayer",
-  "Fire": "Fuego",
-  "Sword": "Espada",
-  "Skull": "Calavera",
-  "Chat": "Chat",
-  "You": "Tú",
-  "Warriors": "Guerreros",
-  "No messages yet. The first tournament chatter starts here.": "Todavía no hay mensajes. La primera conversación del torneo comienza aquí.",
-  "Thought for": "Pensó durante",
-  "Chatting as": "Chateando como",
-  "Sign in to join the live lobby instead of just watching it.": "Entra para participar en el lobby en vivo en lugar de limitarte a observarlo.",
-  "Sign In To Chat": "Entrar para chatear",
-  "The AI Scribe + Grimer": "El Escriba de IA + Grimer",
-  "Edit lobby message": "Editar mensaje del lobby",
-  "Delete this lobby message?": "¿Eliminar este mensaje del lobby?",
-  "Edit": "Editar",
-  "Delete": "Eliminar",
-  "Clear": "Limpiar",
-  "shown": "mostrados",
-  "recent": "recientes",
-  "Scroll to latest lobby message": "Ir al mensaje más reciente del lobby",
-  "Toggle typing display": "Alternar indicador de escritura",
-  "The lobby is typing…": "El lobby está escribiendo…",
-  "thinking": "pensando",
-  "House voices enabled": "Voces de la casa activadas",
-  "House voices disabled": "Voces de la casa desactivadas",
-  "Message the lobby...": "Escribe al lobby...",
-  "Sending message": "Enviando mensaje",
-  "Send message": "Enviar mensaje",
-  "Sending...": "Enviando...",
-  "Send": "Enviar",
-  "Unverified": "No verificado",
-  "Close reaction dock": "Cerrar panel de reacciones",
-  "Open reaction dock": "Abrir panel de reacciones",
-  "Message reactions": "Reacciones del mensaje",
-  "Hide more reactions": "Ocultar más reacciones",
-  "Show more reactions": "Mostrar más reacciones",
-  "anonymous player": "jugador anónimo",
-  "anonymous players": "jugadores anónimos",
-  "Filter": "Filtrar",
-  "Remove filter": "Quitar filtro",
-
-  "Watch & Chat": "Ver y chatear",
-  "Watch": "Ver",
-  "Reactions": "Reacciones",
-  "Live Comments": "Comentarios en vivo",
-  "No comments yet. The first war-room callout lands here.": "Todavía no hay comentarios. La primera llamada de la sala de guerra aparecerá aquí.",
-  "Open Chat": "Abrir chat",
-  "Betting": "Apuestas",
-  "WOLO stake": "Apuesta WOLO",
-  "Open Slip": "Abrir boleto",
-  "Player 1": "Jugador 1",
-  "Team 1": "Equipo 1",
-  "Team 2": "Equipo 2",
-  "Player 2": "Jugador 2",
-  "A watcher": "Un espectador",
-  "The room": "La sala",
-  "The book is waiting for the first face behind the bet.": "El libro espera al primer rostro detrás de la apuesta.",
-  "{actor} backed {side} with {amount} WOLO": "{actor} respaldó {side} con {amount} WOLO",
-  "{actor} moved the book: {label}": "{actor} movió el libro: {label}",
-  "Recorded forever on AoE2WAR": "Registrado para siempre en AoE2WAR",
-  "Verifiable · Immutable · On-chain": "Verificable · Inmutable · On-chain",
-  "THE COMMISSIONER": "EL COMISIONADO",
-  "On Deck": "En espera",
-  "Next community war room": "Próxima sala de guerra de la comunidad",
-  "Replay": "Repetición",
-  "HD Battle Record": "Registro de batalla HD",
-  "Parsed": "Analizada",
-  "Latest HD parse": "Último análisis HD",
-  "Saved Battle Cam": "Battle Cam guardada",
-  "Battle Cam": "Battle Cam",
-  "AoE2WAR battle loop": "Bucle de batalla de AoE2WAR",
-  "Chat with the lobby...": "Chatea con el lobby...",
-  "Sending chat message": "Enviando mensaje al chat",
-  "Send chat message": "Enviar mensaje al chat",
-  "Book arming": "Libro preparándose",
-  "If right": "Si aciertas",
-  "the right side": "el lado derecho",
-  "the left side": "el lado izquierdo",
-  "new side": "lado nuevo",
-  "crowd": "público",
-  "pot": "pozo",
-
-  "Osmosis rail ↗": "Rail de Osmosis ↗",
-  "● live spot price": "● precio spot en vivo",
-  "Chain pulse / market pressure": "Pulso de cadena / presión de mercado",
-  "Pool pressure / live pulse": "Presión del pool / pulso en vivo",
-  "synced": "sincronizado",
-  "Slippage": "Deslizamiento",
-  "Extreme WOLO market console": "Consola extrema del mercado WOLO",
-  "WOLO Market": "Mercado WOLO",
-  "Amount of {symbol} to swap": "Cantidad de {symbol} para intercambiar",
-  "Extreme View": "Vista extrema",
-  "Live pair": "Par en vivo",
-  "WOLO depth": "Profundidad WOLO",
-  "USDC depth": "Profundidad USDC",
-  "Launch pulse": "Pulso de lanzamiento",
-  "Sell pressure": "Presión de venta",
-  "Now": "Ahora",
-  "24h moved": "Movido en 24 h",
-  "Live rail": "Rail en vivo",
-  "Transfers": "Transferencias",
-  "Chain pulse": "Pulso de la cadena",
-  "Liquidity": "Liquidez",
-  "Pair": "Par",
-  "Trust": "Confianza",
-  "From": "Desde",
-  "To estimate": "Estimación recibida",
-  "Flip swap direction": "Invertir dirección del swap",
-  "Swap": "Swap",
-  "Rate": "Tasa",
-  "Pool syncing": "Sincronizando pool",
-  "Pool live": "Pool en vivo",
-  "Flip WOLO and USDC": "Invertir WOLO y USDC",
-
-  "Open edition": "Edición abierta",
-  "Dispatch from the long war": "Despacho de la larga guerra",
-  "Open the edition": "Abrir la edición",
-  "Enter the War Room": "Entrar en la Sala de Guerra",
-  "AoE2WAR Main Stage": "Escenario principal de AoE2WAR",
-  "Featured Event": "Evento destacado",
-  "Make an event live in Event Foundry. This screen will update automatically.": "Activa un evento en Event Foundry. Esta pantalla se actualizará automáticamente.",
-  "Previous hero screen": "Pantalla hero anterior",
-  "Next hero screen": "Pantalla hero siguiente",
-  "No live event": "No hay evento en vivo",
-  "Previous hero image": "Imagen hero anterior",
-  "Next hero image": "Imagen hero siguiente",
-  "Shorts view": "Vista Shorts",
-  "Warrior channel": "Canal del guerrero",
-  "Like": "Me gusta",
-  "Pass": "Pasar",
-  "Comment": "Comentar",
-  "Share": "Compartir",
-  "Select {title}": "Seleccionar {title}",
-  "War in under 90 seconds": "Guerra en menos de 90 segundos",
-  "Open {title}": "Abrir {title}",
-  "Link copied": "Enlace copiado",
-  "Swipe for the next war": "Desliza para la próxima guerra",
-  "Comments": "Comentarios",
-  "First word wins.": "La primera palabra gana.",
-  "Open the war room": "Abrir la sala de guerra",
-  "Julio enters the crossfire": "Julio entra en el fuego cruzado",
-  "The fortress wakes up": "La fortaleza despierta",
-  "Jungle siege line": "Línea de asedio en la jungla",
-  "One raid changes the map": "Una incursión cambia el mapa",
-  "Imperial Age · Death Match": "Edad Imperial · Death Match",
-  "Founders Cup tape": "Cinta de Founders Cup",
-  "Vertical Shorts view": "Vista vertical de Shorts",
-  "Wide Shorts view": "Vista panorámica de Shorts",
-  "AoE2 Shorts reel": "Reel de AoE2 Shorts",
-  "Unmute Short": "Activar sonido del Short",
-  "Mute Short": "Silenciar Short",
-  "Close AoE2 Shorts": "Cerrar AoE2 Shorts",
-  "Play Short": "Reproducir Short",
-  "Like Short": "Me gusta este Short",
-  "Dislike Short": "No me gusta este Short",
-  "Open Short comments": "Abrir comentarios del Short",
-  "Share Short": "Compartir Short",
-  "Previous Short": "Short anterior",
-  "Next Short": "Short siguiente",
-  "Close comments": "Cerrar comentarios",
-
-  "Chain": "Cadena",
-  "Symbol": "Símbolo",
-  "Pool": "Pool",
-  "Contact": "Contacto",
-  "Explore": "Explorar",
-  "War room": "Sala de guerra",
-  "WOLO rails": "Rails WOLO",
-  "Community": "Comunidad",
-  "Join the signal": "Únete a la señal",
-  "Matches": "Partidas",
-  "Tournaments": "Torneos",
-  "Play DE": "Jugar DE",
-  "Age of Empires II match intelligence, replay proof, rivalry pages, live chat, tournaments, staking, rewards, liquidity, and WoloChain-powered challenge activity.": "Inteligencia de partidas de Age of Empires II, pruebas de repeticiones, páginas de rivalidades, chat en vivo, torneos, staking, recompensas, liquidez y actividad de desafíos impulsada por WoloChain.",
-  "Settled on WoloChain": "Liquidado en WoloChain",
-  "Aim small. Miss small. ⚔️": "Apunta pequeño. Falla pequeño. ⚔️",
-  "Replay-backed competition and WoloChain economy.": "Competencia respaldada por repeticiones y economía WoloChain.",
+export type HomeCatalog = {
+  static: readonly string[];
+  dynamic: readonly string[];
 };
+
+export type HomeCopy = (
+  source: string,
+  values?: HomeCopyValues,
+) => string;
+
+const HOME_SOURCE_INDEX = new Map<string, number>(
+  HOME_SOURCE_KEYS.map((source, index) => [source, index]),
+);
+
+const DYNAMIC_MATCHERS = [
+  [/^Rank #(\d+)$/, ["rank"]],
+  [/^(\d+)W · (\d+)L · (\d+)U$/, ["wins", "losses", "unknowns"]],
+  [/^(\d+)(?:st|nd|rd|th)$/, ["rank"]],
+  [/^(\d+) active$/, ["count"]],
+  [/^(\d+) entrant$/, ["count"]],
+  [/^(\d+) entrants$/, ["count"]],
+  [/^(\d+) match$/, ["count"]],
+  [/^(\d+) matches$/, ["count"]],
+  [/^(\d+) shown$/, ["count"]],
+  [/^(\d+) recent$/, ["count"]],
+  [/^(\d+) earners$/, ["count"]],
+  [/^(\d+) \/ (\d+) earners$/, ["shown", "total"]],
+  [/^(\d+) reserve$/, ["reserve"]],
+  [/^Winner (.+)$/, ["winner"]],
+  [/^(.+) is typing…$/, ["name"]],
+  [/^Filter (.+)$/, ["name"]],
+  [/^Remove (.+) filter$/, ["name"]],
+  [/^(\d+) anonymous player$/, ["count"]],
+  [/^(\d+) anonymous players$/, ["count"]],
+  [/^(\d+) HD lobbies · (\d+) seats$/, ["lobbies", "seats"]],
+  [/^Steam HD: (\d+) open lobbies$/, ["count"]],
+  [/^(\d+) ranked on the board$/, ["count"]],
+  [/^(\d+) final replay awaiting parser review$/, ["count"]],
+  [/^(\d+) final replays awaiting parser review$/, ["count"]],
+  [/^(\d+) awaiting parser review\.$/, ["count"]],
+  [/^(.+) WOLO pot$/, ["amount"]],
+  [/^(.+)% crowd$/, ["percent"]],
+  [/^(.+) rating$/, ["rating"]],
+  [/^(.+) WOLO$/, ["amount"]],
+  [/^(.+)'s Team$/, ["name"]],
+  [/^(.+)' Team$/, ["name"]],
+] as const;
 
 function interpolate(template: string, values?: HomeCopyValues) {
   if (!values) return template;
@@ -389,62 +63,72 @@ function interpolate(template: string, values?: HomeCopyValues) {
   }, template);
 }
 
-export function homeCopy(locale: string, source: string, values?: HomeCopyValues) {
-  const translated = locale.toLowerCase().startsWith("es")
-    ? SPANISH_HOME_COPY[source] ?? source
-    : source;
-
-  const patterned = locale.toLowerCase().startsWith("es")
-    ? translatePatternedHomeCopy(translated)
-    : translated;
-
-  return interpolate(patterned, values);
-}
-
-function translatePatternedHomeCopy(source: string) {
-  const patterns: Array<[RegExp, (...parts: string[]) => string]> = [
-    [/^Rank #(\d+)$/, (rank) => `Rango #${rank}`],
-    [/^(\d+)W · (\d+)L · (\d+)U$/, (wins, losses, unknowns) => `${wins}V · ${losses}D · ${unknowns}I`],
-    [/^(\d+)(?:st|nd|rd|th)$/, (rank) => `${rank}.º`],
-    [/^(\d+) active$/, (count) => `${count} activos`],
-    [/^(\d+) entrant$/, (count) => `${count} participante`],
-    [/^(\d+) entrants$/, (count) => `${count} participantes`],
-    [/^(\d+) match$/, (count) => `${count} partida`],
-    [/^(\d+) matches$/, (count) => `${count} partidas`],
-    [/^(\d+) shown$/, (count) => `${count} mostrados`],
-    [/^(\d+) recent$/, (count) => `${count} recientes`],
-    [/^(\d+) earners$/, (count) => `${count} ganadores`],
-    [/^(\d+) \/ (\d+) earners$/, (shown, total) => `${shown} / ${total} ganadores`],
-    [/^(\d+) reserve$/, (reserve) => `${reserve} de reserva`],
-    [/^Winner (.+)$/, (winner) => `Ganador: ${winner}`],
-    [/^(.+) is typing…$/, (name) => `${name} está escribiendo…`],
-    [/^Filter (.+)$/, (name) => `Filtrar ${name}`],
-    [/^Remove (.+) filter$/, (name) => `Quitar filtro de ${name}`],
-    [/^(\d+) anonymous player$/, (count) => `${count} jugador anónimo`],
-    [/^(\d+) anonymous players$/, (count) => `${count} jugadores anónimos`],
-    [/^(\d+) HD lobbies · (\d+) seats$/, (lobbies, seats) => `${lobbies} lobbies HD · ${seats} plazas`],
-    [/^Steam HD: (\d+) open lobbies$/, (count) => `Steam HD: ${count} lobbies abiertos`],
-    [/^(\d+) ranked on the board$/, (count) => `${count} clasificados en el tablero`],
-    [/^(\d+) final replay awaiting parser review$/, (count) => `${count} repetición final pendiente de revisión del parser`],
-    [/^(\d+) final replays awaiting parser review$/, (count) => `${count} repeticiones finales pendientes de revisión del parser`],
-    [/^(\d+) awaiting parser review\.$/, (count) => `${count} pendientes de revisión del parser.`],
-    [/^(\d+) WOLO pot$/, (amount) => `Pozo de ${amount} WOLO`],
-    [/^(\d+)% crowd$/, (percent) => `${percent}% del público`],
-    [/^(.+) rating$/, (rating) => `Rating ${rating}`],
-    [/^(.+) WOLO pot$/, (amount) => `Pozo de ${amount} WOLO`],
-    [/^(.+) WOLO$/, (amount) => `${amount} WOLO`],
-    [/^(.+)\'s Team$/, (name) => `Equipo de ${name}`],
-    [/^(.+)\' Team$/, (name) => `Equipo de ${name}`],
-  ];
-
-  for (const [pattern, render] of patterns) {
+function dynamicTranslation(catalog: HomeCatalog, source: string) {
+  for (let index = 0; index < DYNAMIC_MATCHERS.length; index += 1) {
+    const [pattern, names] = DYNAMIC_MATCHERS[index];
     const match = source.match(pattern);
-    if (match) return render(...match.slice(1));
+    if (!match) continue;
+
+    const values = Object.fromEntries(
+      names.map((name, captureIndex) => [name, match[captureIndex + 1]]),
+    );
+
+    return {
+      template: catalog.dynamic[index] ?? HOME_DYNAMIC_SOURCE_KEYS[index],
+      values,
+    };
   }
 
-  return source;
+  return null;
 }
 
-export type HomeCopy = (source: string, values?: HomeCopyValues) => string;
+export function translateHomeCopy(
+  catalog: HomeCatalog,
+  source: string,
+  values?: HomeCopyValues,
+) {
+  const staticIndex = HOME_SOURCE_INDEX.get(source);
 
-export const HOME_SPANISH_COPY = SPANISH_HOME_COPY;
+  if (staticIndex !== undefined) {
+    return interpolate(catalog.static[staticIndex] ?? source, values);
+  }
+
+  const dynamic = dynamicTranslation(catalog, source);
+  if (!dynamic) return interpolate(source, values);
+
+  return interpolate(dynamic.template, {
+    ...dynamic.values,
+    ...values,
+  });
+}
+
+export function assertHomeCatalog(
+  value: unknown,
+): asserts value is HomeCatalog {
+  if (!value || typeof value !== "object") {
+    throw new Error("Homepage translation catalog is missing.");
+  }
+
+  const candidate = value as Partial<HomeCatalog>;
+
+  if (
+    !Array.isArray(candidate.static) ||
+    candidate.static.length !== HOME_SOURCE_KEYS.length
+  ) {
+    throw new Error("Homepage static catalog is incomplete.");
+  }
+
+  if (
+    !Array.isArray(candidate.dynamic) ||
+    candidate.dynamic.length !== HOME_DYNAMIC_SOURCE_KEYS.length
+  ) {
+    throw new Error("Homepage dynamic catalog is incomplete.");
+  }
+
+  if (
+    candidate.static.some((entry) => typeof entry !== "string" || !entry.trim()) ||
+    candidate.dynamic.some((entry) => typeof entry !== "string" || !entry.trim())
+  ) {
+    throw new Error("Homepage translation catalog contains empty copy.");
+  }
+}

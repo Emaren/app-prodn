@@ -1,0 +1,144 @@
+{
+  "Translator": {
+    "title": "Universal Translator",
+    "tagline": "War to the World."
+  },
+  "Shell": {
+    "currentPage": "වර්තමාන පිටුව",
+    "steamSignIn": "Steam පිවිසෙන්න",
+    "admin": "පරිපාලක",
+    "requests": "{count, plural, =0 {ඉල්ලීම් 0 ක්} one {ඉල්ලීම # ක්} other {ඉල්ලීම් # ක්}}",
+    "liveGames": "{count, plural, =0 {සජීවී ක්‍රීඩා 0🔥} one {සජීවී ක්‍රීඩා #🔥} other {සජීවී ක්‍රීඩා #🔥}}",
+    "workshopLive": "වැඩමුළුව · සජීවීව",
+    "kingdom": {
+      "title": "රජධානිය",
+      "openAria": "රජධානිය පිටු විවෘත කරන්න",
+      "closeAria": "රජධානිය මෙනුව වසන්න",
+      "pagesAria": "රජධානිය පිටු"
+    },
+    "nav": {
+      "bets": "පරීක්ෂණ",
+      "watch": "පෙරදසුන",
+      "players": "ක්‍රීඩකයින්",
+      "rivalries": "වෛරීත්වය",
+      "wolo": "$WOLO",
+      "staking": "අරමුදල් දීම"
+    },
+    "kingdomEntries": {
+      "kingdom": {
+        "label": "රාජධානිය",
+        "body": "රාජධානියේ, මුදුන්, හා ලීග් සිතියම"
+      },
+      "leaderboard": {
+        "label": "උත්ක්‍රමණික දැක්ම",
+        "body": "ගණන් අගයන්, වාර්තා, සහ ශ්‍රේණිගත වීරයෝ"
+      },
+      "champions": {
+        "label": "චැම්පියන්වරු",
+        "body": "කඩිසුන්, පාලනය, ශීර්ෂ නීති"
+      },
+      "nations": {
+        "label": "ජාතින්",
+        "body": "ඇඟිලි සංඛ්‍යාපත සිතියම සහ ජාතික වටිනාකම්"
+      },
+      "clans": {
+        "label": "කුල",
+        "body": "ජාතීන්, නිවෙස්, හා කුල ශාලා"
+      },
+      "academy": {
+        "label": "අකադෙමිය",
+        "body": "පැඩෑරුම්, ගොඩනැගීමේ අනුපිළිවෙළ, නැවත වරක් අධ්‍යයනය"
+      },
+      "marketplace": {
+        "label": "වෙළඳපොල",
+        "body": "ක්‍රීඩක වෙළඳසැල්, කර්මාන්තය, හා විභාග"
+      },
+      "forum": {
+        "label": "ප්‍රසිද්ධ මණ්ඩපය",
+        "body": "යුද්ධ කාමර තීරස් සහ ප්‍රජා සමාජය"
+      },
+      "bounties": {
+        "label": "ඉලක්කමුදුන්",
+        "body": "විවෘත අවස්ථා සහ ගෙවීම් සාධන"
+      },
+      "aiCouncil": {
+        "label": "AI සභාව",
+        "body": "ප්‍රසිද්ධ මණ්ඩප සභාවගෙන් අසන්න"
+      },
+      "radio": {
+        "label": "රේඩියෝ WOLO",
+        "body": "රාජධානිය සංගීතය සහ නිර්මාණකරුවන්ගේ ඉදිරිපත් කළ දේ"
+      },
+      "workshop": {
+        "label": "වැඩමුළුව",
+        "body": "රාජධානිය මහජනත්වයෙන් සකස් වන අයුරු නරඹන්න"
+      },
+      "parser": {
+        "label": "පරිශීලක සංසන්දන විව්‍යුහය",
+        "body": "නැවත වරක් විශ්ලේෂණය, ආවරණය, සහ නොදන්නා දේවල්"
+      },
+      "traffic": {
+        "label": "යාත්‍රා සංවේදනය",
+        "body": "යාත්‍රා, සැක සහිත මිනිසුන්, සහ තහවුරු කළ මිනිසුන්"
+      },
+      "statistics": {
+        "label": "රාජධානිය සංඛ්‍යාත විශ්ලේෂණය",
+        "body": "WOLO, පරිශීලකයින්, පරීක්ෂණ, ක්‍රීඩා, නැරඹුම්කරුවන්, සහ වර්ධනය"
+      },
+      "speed": {
+        "label": "වේගය",
+        "body": "ඔබේ සජීවී කාර්ය සාධනය සහ සූදානම මැනුම්"
+      }
+    },
+    "pages": {
+      "aoe2war": "AoE2WAR",
+      "aiCommandCenter": "AI විධාන මධ්යස්ථානය",
+      "bountyCommandCenter": "මෙහෙයුම් මධ්යස්ථානය",
+      "radioDesk": "ගුවන්විදුලි WOLO මේසය",
+      "workshopCommandCenter": "වැඩසිටපු විධාන මධ්යස්ථානය",
+      "heroStudio": "වීර ක්ෂේත්‍රය",
+      "featuredEventStudio": "විශේෂ අනුවේදන ස්ටූඩියෝව",
+      "operatorCommand": "මෙහෙයුම් විධානය",
+      "stakingHall": "Staking ශාලාව",
+      "woloStaking": "WOLO Staking",
+      "gameStats": "ක්‍රීඩා සංඛ්‍යාලේඛන",
+      "hdLeaderboard": "HD නායක පුවරුව",
+      "nationalChampions": "ජාතික ශූරයින්",
+      "clanHalls": "කුසල සමාජ ශාලා",
+      "academy": "අධ්‍යයන ආයතනය",
+      "marketplace": "වෙළඳපොළ",
+      "championshipBelts": "ශ්‍රේෂ්ඨතා බෙල්ට්",
+      "kingdom": "රාජධානිය",
+      "warRoomForum": "යුධ කාමර හමුදාව",
+      "liveGames": "සජීවී ක්‍රීඩා",
+      "parserObservatory": "Parser නිධානය",
+      "bountyBoard": "බා운ටි පුවරුව",
+      "aiCouncil": "AI සභාව",
+      "radioWolo": "ගුවන්විදුලි WOLO",
+      "workshop": "වැඩපෑම් ශාලාව",
+      "submitRadio": "ගුවන්විදුලි WOLO වෙත ඉදිරිපත් කරන්න",
+      "rivalryMatchup": "විරෝධි තරඟය",
+      "rivalries": "විරෝධතා",
+      "playerRegistry": "ක්‍රීඩක දත්ත සමුදාය",
+      "tournamentGrounds": "තරඟ භූමිය",
+      "watchArena": "අරීනාව නැරඹීම",
+      "challengeHall": "අභියෝග ශාලාව",
+      "trainUnderZodiac": "රෝහිනී යට පුහුණු වන්න",
+      "bettingHall": "ප්‍රස්ථාන ශාලාව",
+      "warChest": "යුධ ප්‍රමාණය",
+      "woloChain": "WoloChain",
+      "woloEconomy": "WOLO ආර්ථිකය",
+      "woloWallet": "WOLO පසුම්බිය",
+      "playerProfile": "ක්‍රීඩක පැතිකඩ",
+      "matchRequests": "තරඟ ඉල්ලීම්",
+      "commandInbox": "විධාන ලිපි පෙට්ටිය",
+      "downloadWatcher": "Watcher බාගන්න",
+      "uploadReplay": "ප්‍රතිදාන උඩුගත කරන්න",
+      "todaysWarRoom": "අදගේ යුධ කාමරය",
+      "tournamentLobby": "තරඟ ක්ෂේත්‍රය",
+      "trafficObservatory": "ප්‍රවාහ කොට්ඨාසය",
+      "kingdomStatistics": "රාජ්‍ය සංඛ්‍යාලේඛන",
+      "speedObservatory": "වේග අධීක්ෂණ"
+    }
+  }
+}

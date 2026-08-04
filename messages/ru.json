@@ -1,0 +1,144 @@
+{
+  "Translator": {
+    "title": "Universal Translator",
+    "tagline": "War to the World."
+  },
+  "Shell": {
+    "currentPage": "Текущая страница",
+    "steamSignIn": "Steam Войти",
+    "admin": "Админ",
+    "requests": "{count, plural, =0 {0 запросов} one {# запрос} other {# запросов}}",
+    "liveGames": "{count, plural, =0 {0 живых игр🔥} one {# живая игра🔥} other {# живых игр🔥}}",
+    "workshopLive": "Мастерская · LIVE",
+    "kingdom": {
+      "title": "Королевство",
+      "openAria": "Открыть страницы Королевства",
+      "closeAria": "Закрыть меню Королевства",
+      "pagesAria": "Страницы Королевства"
+    },
+    "nav": {
+      "bets": "Ставки",
+      "watch": "Смотреть",
+      "players": "Игроки",
+      "rivalries": "Соперничества",
+      "wolo": "$WOLO",
+      "staking": "Стейкинг"
+    },
+    "kingdomEntries": {
+      "kingdom": {
+        "label": "Королевство",
+        "body": "Владения, короны и карта лиг"
+      },
+      "leaderboard": {
+        "label": "Таблица лидеров",
+        "body": "Рейтинги, рекорды и ранжированные воины"
+      },
+      "champions": {
+        "label": "Чемпионы",
+        "body": "Пояса, правления, правила титулов"
+      },
+      "nations": {
+        "label": "Нации",
+        "body": "Карта маяков и национальные награды"
+      },
+      "clans": {
+        "label": "Кланы",
+        "body": "Команды, дома и штабы кланов"
+      },
+      "academy": {
+        "label": "Академия",
+        "body": "Уроки, порядки сборки, анализ повторов"
+      },
+      "marketplace": {
+        "label": "Торговая площадка",
+        "body": "Магазины игроков, крафт и заказы"
+      },
+      "forum": {
+        "label": "Форум",
+        "body": "Темы Военной комнаты и сообщество"
+      },
+      "bounties": {
+        "label": "Награды",
+        "body": "Открытые возможности и подтверждение выплат"
+      },
+      "aiCouncil": {
+        "label": "Совет ИИ",
+        "body": "Вопросы для совета публичного дома"
+      },
+      "radio": {
+        "label": "Радио WOLO",
+        "body": "Музыка королевства и работы авторов"
+      },
+      "workshop": {
+        "label": "Мастерская",
+        "body": "Смотрите, как кузнецы куют королевство на публике"
+      },
+      "parser": {
+        "label": "Обсерватория парсеров",
+        "body": "Корпус повторов, обзоры и неизвестное"
+      },
+      "traffic": {
+        "label": "Обсерватория трафика",
+        "body": "Трафик, подозреваемые люди и подтверждённые люди"
+      },
+      "statistics": {
+        "label": "Статистика Королевства",
+        "body": "WOLO, пользователи, ставки, игры, смотрящие и рост"
+      },
+      "speed": {
+        "label": "Скорость",
+        "body": "Показатели вашей производительности и готовности в реальном времени"
+      }
+    },
+    "pages": {
+      "aoe2war": "AoE2WAR",
+      "aiCommandCenter": "Центр команд ИИ",
+      "bountyCommandCenter": "Центр команд наград",
+      "radioDesk": "Радио WOLO Доска",
+      "workshopCommandCenter": "Центр команд мастерской",
+      "heroStudio": "Герой-студия",
+      "featuredEventStudio": "Студия избранных событий",
+      "operatorCommand": "Оперативный штаб",
+      "stakingHall": "Зал ставок",
+      "woloStaking": "WOLO Ставки",
+      "gameStats": "Статистика игры",
+      "hdLeaderboard": "HD Таблица лидеров",
+      "nationalChampions": "Национальные чемпионы",
+      "clanHalls": "Клановые залы",
+      "academy": "Академия",
+      "marketplace": "Рынок",
+      "championshipBelts": "Пояса чемпионов",
+      "kingdom": "Королевство",
+      "warRoomForum": "Форум военной комнаты",
+      "liveGames": "Игры в прямом эфире",
+      "parserObservatory": "Обсерватория парсера",
+      "bountyBoard": "Доска наград",
+      "aiCouncil": "Совет ИИ",
+      "radioWolo": "Радио WOLO",
+      "workshop": "Мастерская",
+      "submitRadio": "Отправить на Радио WOLO",
+      "rivalryMatchup": "Матч соперников",
+      "rivalries": "Соперничества",
+      "playerRegistry": "Реестр игроков",
+      "tournamentGrounds": "Турнирное поле",
+      "watchArena": "Арена просмотра",
+      "challengeHall": "Зал вызова",
+      "trainUnderZodiac": "Тренируйся под Зодиаком",
+      "bettingHall": "Зал ставок",
+      "warChest": "Военный сундук",
+      "woloChain": "WoloChain",
+      "woloEconomy": "Экономика WOLO",
+      "woloWallet": "Кошелек WOLO",
+      "playerProfile": "Профиль игрока",
+      "matchRequests": "Запросы на матч",
+      "commandInbox": "Командный ящик",
+      "downloadWatcher": "Скачать Watcher",
+      "uploadReplay": "Загрузить реплей",
+      "todaysWarRoom": "Сегодняшняя военная комната",
+      "tournamentLobby": "Лобби турнира",
+      "trafficObservatory": "Обсерватория трафика",
+      "kingdomStatistics": "Статистика королевства",
+      "speedObservatory": "Обсерватория скорости"
+    }
+  }
+}

@@ -1,0 +1,144 @@
+{
+  "Translator": {
+    "title": "Universal Translator",
+    "tagline": "War to the World."
+  },
+  "Shell": {
+    "currentPage": "தற்போதைய பக்கம்",
+    "steamSignIn": "Steam உள்நுழைவு",
+    "admin": "நிர்வாகம்",
+    "requests": "{count, plural, =0 {0 கோரிக்கைகள்} one {# கோரிக்கை} other {# கோரிக்கைகள்}}",
+    "liveGames": "{count, plural, =0 {0 நேரடி போட்டிகள்🔥} one {# நேரடி போட்டி🔥} other {# நேரடி போட்டிகள்🔥}}",
+    "workshopLive": "பணிமனை · நேரலை",
+    "kingdom": {
+      "title": "அரசு",
+      "openAria": "அரசு பக்கங்களைத் திற",
+      "closeAria": "அரசு பட்டியை மூடு",
+      "pagesAria": "அரசு பக்கங்கள்"
+    },
+    "nav": {
+      "bets": "பந்தயங்கள்",
+      "watch": "பார்",
+      "players": "ஆட்டக்காரர்கள்",
+      "rivalries": "எதிரிகள்",
+      "wolo": "$WOLO",
+      "staking": "பணயம்"
+    },
+    "kingdomEntries": {
+      "kingdom": {
+        "label": "அரசு",
+        "body": "பரப்பும், கிரீடங்களும், மற்றும் லீக் வரைபடம்"
+      },
+      "leaderboard": {
+        "label": "முன்னணி பட்டியல்",
+        "body": "மதிப்பீடுகள், பதிவுகள், மற்றும் தரவரிசைமான போராளிகள்"
+      },
+      "champions": {
+        "label": "சாம்பியன்கள்",
+        "body": "பெல்ட்கள், ஆட்சி, பட்ட விதிகளும்"
+      },
+      "nations": {
+        "label": "நாடுகள்",
+        "body": "பீக்கான் வரைபடம் மற்றும் தேசிய வருமானங்கள்"
+      },
+      "clans": {
+        "label": "கிளான்கள்",
+        "body": "அணிகள், வீடுகள், மற்றும் கிளான் மண்டபங்கள்"
+      },
+      "academy": {
+        "label": "அக்காடமி",
+        "body": "பாடங்கள், கட்டுமான ஒழுங்குகள், மறுநோக்கு ஆய்வு"
+      },
+      "marketplace": {
+        "label": "சந்தை",
+        "body": "ஆட்டக்காரர் கடைகள், கைவினை, மற்றும் ஆணைகள்"
+      },
+      "forum": {
+        "label": "வாரியர் அறை",
+        "body": "போர் அறை தொடர்கள் மற்றும் சமூக வாழ்க்கை"
+      },
+      "bounties": {
+        "label": "வெகுமதிகள்",
+        "body": "திறந்த வாய்ப்புகள் மற்றும் செலுத்தல் நிரூபிப்பு"
+      },
+      "aiCouncil": {
+        "label": "ஏ.ஐ. பேரவை",
+        "body": "பொது அறை பேரவையிடம் கேளுங்கள்"
+      },
+      "radio": {
+        "label": "ரேடியோ WOLO",
+        "body": "அரசுப் பாடல்கள் மற்றும் கலைஞர் சமர்ப்பித்தல்கள்"
+      },
+      "workshop": {
+        "label": "பணிமனை",
+        "body": "அரசு உருவாக்கப் பட்டதைப் பொது இடத்தில் பார்"
+      },
+      "parser": {
+        "label": "பிரித்தலூக்கு நோக்ககம்",
+        "body": "மறுநோக்கு தொகுப்பு, ஒளி மற்றும் அறியாதவை"
+      },
+      "traffic": {
+        "label": "போக்குவரத்து நோக்ககம்",
+        "body": "போக்குவரத்து, சந்தேகமான மனிதர்கள், மற்றும் உறுதிப்படுத்தப்பட்ட மனிதர்கள்"
+      },
+      "statistics": {
+        "label": "அரசு புள்ளிவிவரங்கள்",
+        "body": "WOLO, பயனர்கள், பந்தயங்கள், போட்டிகள், பார்வையாளர்கள், மற்றும் வளர்ச்சி"
+      },
+      "speed": {
+        "label": "வேகம்",
+        "body": "உங்கள் நேரடி செயல்திறன் மற்றும் தயாராவதற்கான அளவீடுகள்"
+      }
+    },
+    "pages": {
+      "aoe2war": "AoE2WAR",
+      "aiCommandCenter": "ஏஐ கட்டளை மையம்",
+      "bountyCommandCenter": "பவுண்டி கட்டளை மையம்",
+      "radioDesk": "வானொலி WOLO மேசை",
+      "workshopCommandCenter": "பணிமனை கட்டளை மையம்",
+      "heroStudio": "ஹீரோ ஸ்டூடியோ",
+      "featuredEventStudio": "சிறப்பு நிகழ்வு ஸ்டூடியோ",
+      "operatorCommand": "ஆபரேட்டர் கட்டளை",
+      "stakingHall": "ஸ்டேக்கிங் ஹால்",
+      "woloStaking": "WOLO ஸ்டேக்கிங்",
+      "gameStats": "விளையாட்டு புள்ளிவிவரங்கள்",
+      "hdLeaderboard": "HD முதன்மைப்பட்டியல்",
+      "nationalChampions": "தேசிய சாம்பியன்கள்",
+      "clanHalls": "க்ளான் அரங்கங்கள்",
+      "academy": "கல்லூரி",
+      "marketplace": "சந்தை",
+      "championshipBelts": "சாம்பியன் பட்டைகள்",
+      "kingdom": "அரசு",
+      "warRoomForum": "போர் அறை விவாதம்",
+      "liveGames": "நேரலை போட்டிகள்",
+      "parserObservatory": "பார்சர் வானிலை மையம்",
+      "bountyBoard": "பவுண்டி பலகை",
+      "aiCouncil": "ஏஐ கவுன்ஸில்",
+      "radioWolo": "வானொலி WOLO",
+      "workshop": "பணிமனை",
+      "submitRadio": "வானொலி WOLOக்கு சமர்ப்பிக்கவும்",
+      "rivalryMatchup": "பிரதிக்கூறல் الموا",
+      "rivalries": "பிரதிக்கூறல்கள்",
+      "playerRegistry": "பிளேயர் பதிவேடு",
+      "tournamentGrounds": "போட்டி மைதானம்",
+      "watchArena": "பார்வை அரங்கம்",
+      "challengeHall": "சவால் அரங்கம்",
+      "trainUnderZodiac": "ராசி கீழ் பயிற்சி",
+      "bettingHall": "வேட்டையாடும் ஹால்",
+      "warChest": "போர் புதையல்",
+      "woloChain": "WoloChain",
+      "woloEconomy": "WOLO பொருளாதாரம்",
+      "woloWallet": "WOLO பணப்பை",
+      "playerProfile": "பிளேயர் சுயவிவரம்",
+      "matchRequests": "போட்டி கோரிக்கைகள்",
+      "commandInbox": "கட்டளை அஞ்சல் பெட்டி",
+      "downloadWatcher": "Watcher பதிவிறக்கவும்",
+      "uploadReplay": "மீள்பதிவு பதிவேற்றம்",
+      "todaysWarRoom": "இன்றைய போர் அறை",
+      "tournamentLobby": "போட்டி லாபி",
+      "trafficObservatory": "போக்குவரத்து வானிலை மையம்",
+      "kingdomStatistics": "அரசு புள்ளிவிவரங்கள்",
+      "speedObservatory": "வேகம் வானிலை மையம்"
+    }
+  }
+}

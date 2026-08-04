@@ -1,0 +1,144 @@
+{
+  "Translator": {
+    "title": "Universal Translator",
+    "tagline": "War to the World."
+  },
+  "Shell": {
+    "currentPage": "वर्तमान पृष्ठ",
+    "steamSignIn": "Steam साइन इन करें",
+    "admin": "प्रशासक",
+    "requests": "{count, plural, =0 {0 अनुरोध} one {# अनुरोध} other {# अनुरोध}}",
+    "liveGames": "{count, plural, =0 {0 लाइव गेम🔥} one {# लाइव गेम🔥} other {# लाइव गेम्स🔥}}",
+    "workshopLive": "वर्कशॉप · लाइव",
+    "kingdom": {
+      "title": "राज्य",
+      "openAria": "राज्य पृष्ठ खोलें",
+      "closeAria": "राज्य मेनू बंद करें",
+      "pagesAria": "राज्य पृष्ठ"
+    },
+    "nav": {
+      "bets": "शर्तें",
+      "watch": "देखें",
+      "players": "खिलाड़ी",
+      "rivalries": "प्रतिद्वंद्विता",
+      "wolo": "$WOLO",
+      "staking": "सट्टा लगाना"
+    },
+    "kingdomEntries": {
+      "kingdom": {
+        "label": "राज्य",
+        "body": "साम्राज्य, ताज और लीग का नक्शा"
+      },
+      "leaderboard": {
+        "label": "लीडरबोर्ड",
+        "body": "रेटिंग्स, रिकॉर्ड्स, और रैंक वाले योद्धा"
+      },
+      "champions": {
+        "label": "चैंपियन",
+        "body": "बेल्ट्स, शासन, शीर्षक नियम"
+      },
+      "nations": {
+        "label": "राष्ट्र",
+        "body": "बीकन मानचित्र और राष्ट्रीय इनाम"
+      },
+      "clans": {
+        "label": "क्लैन्स",
+        "body": "टीमें, हाउस और कबीला हॉल"
+      },
+      "academy": {
+        "label": "अकादमी",
+        "body": "पाठ, बिल्ड ऑर्डर, रिप्ले अध्ययन"
+      },
+      "marketplace": {
+        "label": "बाजार",
+        "body": "खिलाड़ी की दुकानें, निर्माण, और कमीशन"
+      },
+      "forum": {
+        "label": "फोरम",
+        "body": "वार रूम थ्रेड्स और समुदाय"
+      },
+      "bounties": {
+        "label": "इनाम",
+        "body": "खुली संभावनाएँ और भुगतान प्रमाण"
+      },
+      "aiCouncil": {
+        "label": "एआई परिषद",
+        "body": "सार्वजनिक हाउस परिषद से पूछें"
+      },
+      "radio": {
+        "label": "रेडियो WOLO",
+        "body": "राज्य संगीत और निर्माता प्रस्तुतियाँ"
+      },
+      "workshop": {
+        "label": "वर्कशॉप",
+        "body": "देखें कि राज्य सार्वजनिक रूप से कैसे गढ़ा जा रहा है"
+      },
+      "parser": {
+        "label": "पार्सर वेधशाला",
+        "body": "रिप्ले संकलन, कवरेज, और अनजाने"
+      },
+      "traffic": {
+        "label": "ट्रैफिक वेधशाला",
+        "body": "ट्रैफिक, संदिग्ध मानव, और पुष्टि किए गए मानव"
+      },
+      "statistics": {
+        "label": "राज्य सांख्यिकी",
+        "body": "WOLO, उपयोगकर्ता, शर्तें, खेल, दर्शक और वृद्धि"
+      },
+      "speed": {
+        "label": "गति",
+        "body": "आपका लाइव प्रदर्शन और तत्परता माप"
+      }
+    },
+    "pages": {
+      "aoe2war": "AoE2WAR",
+      "aiCommandCenter": "एआई कमांड सेंटर",
+      "bountyCommandCenter": "बाउंटी कमांड सेंटर",
+      "radioDesk": "रेडियो WOLO डेस्क",
+      "workshopCommandCenter": "वर्कशॉप कमांड सेंटर",
+      "heroStudio": "हीरो स्टूडियो",
+      "featuredEventStudio": "फीचर्ड इवेंट स्टूडियो",
+      "operatorCommand": "ऑपरेटर कमांड",
+      "stakingHall": "स्टेकिंग हॉल",
+      "woloStaking": "WOLO स्टेकिंग",
+      "gameStats": "गेम आँकड़े",
+      "hdLeaderboard": "HD लीडरबोर्ड",
+      "nationalChampions": "राष्ट्रीय चैंपियन",
+      "clanHalls": "क्लैन हॉल्स",
+      "academy": "अकादमी",
+      "marketplace": "मार्केटप्लेस",
+      "championshipBelts": "चैंपियनशिप बेल्ट्स",
+      "kingdom": "द किंगडम",
+      "warRoomForum": "वार रूम फोरम",
+      "liveGames": "लाइव गेम्स",
+      "parserObservatory": "पार्सर ऑब्जर्वेटरी",
+      "bountyBoard": "बाउंटी बोर्ड",
+      "aiCouncil": "एआई काउंसिल",
+      "radioWolo": "रेडियो WOLO",
+      "workshop": "द वर्कशॉप",
+      "submitRadio": "रेडियो WOLO में सबमिट करें",
+      "rivalryMatchup": "राइवलरी मुकाबला",
+      "rivalries": "राइवलरीज़",
+      "playerRegistry": "प्लेयर रजिस्ट्री",
+      "tournamentGrounds": "टूर्नामेंट ग्राउंड्स",
+      "watchArena": "वॉच एरीना",
+      "challengeHall": "चैलेंज हॉल",
+      "trainUnderZodiac": "ज़ोडियक के तहत ट्रेनिंग",
+      "bettingHall": "बेटिंग हॉल",
+      "warChest": "वार चेस्ट",
+      "woloChain": "WoloChain",
+      "woloEconomy": "WOLO अर्थव्यवस्था",
+      "woloWallet": "WOLO वॉलेट",
+      "playerProfile": "प्लेयर प्रोफाइल",
+      "matchRequests": "मैच अनुरोध",
+      "commandInbox": "कमांड इनबॉक्स",
+      "downloadWatcher": "डाउनलोड Watcher",
+      "uploadReplay": "रीप्ले अपलोड करें",
+      "todaysWarRoom": "आज का वार रूम",
+      "tournamentLobby": "टूर्नामेंट लॉबी",
+      "trafficObservatory": "ट्रैफिक ऑब्जर्वेटरी",
+      "kingdomStatistics": "किंगडम सांख्यिकी",
+      "speedObservatory": "स्पीड ऑब्जर्वेटरी"
+    }
+  }
+}

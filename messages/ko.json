@@ -1,0 +1,144 @@
+{
+  "Translator": {
+    "title": "Universal Translator",
+    "tagline": "War to the World."
+  },
+  "Shell": {
+    "currentPage": "현재 페이지",
+    "steamSignIn": "Steam 로그인",
+    "admin": "관리자",
+    "requests": "{count, plural, =0 {요청 0건} one {#건 요청} other {#건 요청}}",
+    "liveGames": "{count, plural, =0 {실시간 게임 0개🔥} one {실시간 게임 #개🔥} other {실시간 게임 #개🔥}}",
+    "workshopLive": "워크숍 · 라이브",
+    "kingdom": {
+      "title": "왕국",
+      "openAria": "왕국 페이지 열기",
+      "closeAria": "왕국 메뉴 닫기",
+      "pagesAria": "왕국 페이지"
+    },
+    "nav": {
+      "bets": "베팅",
+      "watch": "관전",
+      "players": "플레이어",
+      "rivalries": "라이벌전",
+      "wolo": "$WOLO",
+      "staking": "스테이킹"
+    },
+    "kingdomEntries": {
+      "kingdom": {
+        "label": "왕국",
+        "body": "영지, 왕관, 리그 지도"
+      },
+      "leaderboard": {
+        "label": "리더보드",
+        "body": "레이팅, 전적, 랭킹 전사"
+      },
+      "champions": {
+        "label": "챔피언",
+        "body": "벨트, 통치, 타이틀 규정"
+      },
+      "nations": {
+        "label": "국가",
+        "body": "비콘 맵과 국가 현상금"
+      },
+      "clans": {
+        "label": "클랜",
+        "body": "팀, 가문, 클랜 홀"
+      },
+      "academy": {
+        "label": "아카데미",
+        "body": "강의, 빌드 오더, 리플레이 연구"
+      },
+      "marketplace": {
+        "label": "마켓플레이스",
+        "body": "플레이어 상점, 제작, 커미션"
+      },
+      "forum": {
+        "label": "포럼",
+        "body": "전쟁실 스레드 및 커뮤니티"
+      },
+      "bounties": {
+        "label": "현상금",
+        "body": "공개 기회 및 지급 인증"
+      },
+      "aiCouncil": {
+        "label": "AI 평의회",
+        "body": "공공 하우스 평의회 질문"
+      },
+      "radio": {
+        "label": "라디오 WOLO",
+        "body": "왕국 음악 및 크리에이터 제출곡"
+      },
+      "workshop": {
+        "label": "워크숍",
+        "body": "공개된 왕국 제작 현장 관전"
+      },
+      "parser": {
+        "label": "파서 천문대",
+        "body": "리플레이 집합, 커버리지, 미확인 자료"
+      },
+      "traffic": {
+        "label": "트래픽 천문대",
+        "body": "트래픽, 추정 인간, 인증 인간"
+      },
+      "statistics": {
+        "label": "왕국 통계",
+        "body": "WOLO, 사용자, 베팅, 경기, 관전자 및 성장"
+      },
+      "speed": {
+        "label": "속도",
+        "body": "실시간 퍼포먼스 및 준비 상태 측정"
+      }
+    },
+    "pages": {
+      "aoe2war": "AoE2WAR",
+      "aiCommandCenter": "AI 지휘 센터",
+      "bountyCommandCenter": "바운티 지휘 센터",
+      "radioDesk": "라디오 WOLO 데스크",
+      "workshopCommandCenter": "워크숍 지휘 센터",
+      "heroStudio": "히어로 스튜디오",
+      "featuredEventStudio": "특집 이벤트 스튜디오",
+      "operatorCommand": "작전 명령",
+      "stakingHall": "스테이킹 홀",
+      "woloStaking": "WOLO 스테이킹",
+      "gameStats": "게임 통계",
+      "hdLeaderboard": "HD 리더보드",
+      "nationalChampions": "국가 챔피언",
+      "clanHalls": "클랜 홀",
+      "academy": "아카데미",
+      "marketplace": "마켓플레이스",
+      "championshipBelts": "챔피언십 벨트",
+      "kingdom": "왕국",
+      "warRoomForum": "워룸 포럼",
+      "liveGames": "라이브 게임",
+      "parserObservatory": "파서 관측소",
+      "bountyBoard": "바운티 게시판",
+      "aiCouncil": "AI 평의회",
+      "radioWolo": "라디오 WOLO",
+      "workshop": "워크숍",
+      "submitRadio": "라디오 WOLO에 제출",
+      "rivalryMatchup": "라이벌 대진표",
+      "rivalries": "라이벌전",
+      "playerRegistry": "플레이어 등록부",
+      "tournamentGrounds": "토너먼트 경기장",
+      "watchArena": "관전 아레나",
+      "challengeHall": "도전의 전당",
+      "trainUnderZodiac": "조디악 훈련소",
+      "bettingHall": "배팅 홀",
+      "warChest": "워체스트",
+      "woloChain": "WoloChain",
+      "woloEconomy": "WOLO 경제",
+      "woloWallet": "WOLO 지갑",
+      "playerProfile": "플레이어 프로필",
+      "matchRequests": "매치 요청",
+      "commandInbox": "명령 인박스",
+      "downloadWatcher": "Watcher 다운로드",
+      "uploadReplay": "리플레이 업로드",
+      "todaysWarRoom": "오늘의 워룸",
+      "tournamentLobby": "토너먼트 로비",
+      "trafficObservatory": "트래픽 관측소",
+      "kingdomStatistics": "왕국 통계",
+      "speedObservatory": "속도 관측소"
+    }
+  }
+}

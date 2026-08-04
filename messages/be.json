@@ -1,0 +1,144 @@
+{
+  "Translator": {
+    "title": "Universal Translator",
+    "tagline": "War to the World."
+  },
+  "Shell": {
+    "currentPage": "Бягучая старонка",
+    "steamSignIn": "Steam Увайсці",
+    "admin": "Адмін",
+    "requests": "{count, plural, =0 {0 запытаў} one {# запыт} other {# запытаў}}",
+    "liveGames": "{count, plural, =0 {0 жывых гульняў🔥} one {# жывая гульня🔥} other {# жывыя гульні🔥}}",
+    "workshopLive": "Майстэрня · ПРАМАЭФІР",
+    "kingdom": {
+      "title": "Каралеўства",
+      "openAria": "Адкрыць старонкі Каралеўства",
+      "closeAria": "Закрыць меню Каралеўства",
+      "pagesAria": "Старонкі Каралеўства"
+    },
+    "nav": {
+      "bets": "Стаўкі",
+      "watch": "Глядзець",
+      "players": "Гулец",
+      "rivalries": "Суперніцтвы",
+      "wolo": "$WOLO",
+      "staking": "Стэйкінг"
+    },
+    "kingdomEntries": {
+      "kingdom": {
+        "label": "Каралеўства",
+        "body": "Вобласць, кароны і мапа лігі"
+      },
+      "leaderboard": {
+        "label": "Табліца лідараў",
+        "body": "Рэйтынгі, рэкорды і рэйтынгаваныя ваяры"
+      },
+      "champions": {
+        "label": "Чэмпіёны",
+        "body": "Поясы, кіраванне, правілы званняў"
+      },
+      "nations": {
+        "label": "Нацыі",
+        "body": "Мапа маякоў і нацыянальныя ўзнагароды"
+      },
+      "clans": {
+        "label": "Кланы",
+        "body": "Каманды, дамы і залы кланаў"
+      },
+      "academy": {
+        "label": "Акадэмія",
+        "body": "Урокі, білд-ордэры, аналіз паўтораў"
+      },
+      "marketplace": {
+        "label": "Кірмаш",
+        "body": "Крамы гульцоў, рамяство і камісіі"
+      },
+      "forum": {
+        "label": "Форум",
+        "body": "Патокі Ваеннай залы і супольнасць"
+      },
+      "bounties": {
+        "label": "Узнагароды",
+        "body": "Адкрытыя магчымасці і пацверджанне выплат"
+      },
+      "aiCouncil": {
+        "label": "Рада штучнага інтэлекту",
+        "body": "Пытаць раду грамадскага дома"
+      },
+      "radio": {
+        "label": "Радыё WOLO",
+        "body": "Музыка Каралеўства і працы стваральнікаў"
+      },
+      "workshop": {
+        "label": "Майстэрня",
+        "body": "Глядзіце, як Каралеўства ствараецца на вачах"
+      },
+      "parser": {
+        "label": "Назіральная станцыя парсера",
+        "body": "Карпус паўтораў, ахоп і невядомыя"
+      },
+      "traffic": {
+        "label": "Назіральная станцыя трафіку",
+        "body": "Трафік, падазроныя людзі і пацверджаныя людзі"
+      },
+      "statistics": {
+        "label": "Статыстыка Каралеўства",
+        "body": "WOLO, карыстальнікі, стаўкі, гульні, гледачы і рост"
+      },
+      "speed": {
+        "label": "Хуткасць",
+        "body": "Вашы прамыя паказчыкі і ўзровень гатоўнасці"
+      }
+    },
+    "pages": {
+      "aoe2war": "AoE2WAR",
+      "aiCommandCenter": "Цэнтр камандавання ШІ",
+      "bountyCommandCenter": "Цэнтр камандавання ўзнагародамі",
+      "radioDesk": "Радыё WOLO Стол",
+      "workshopCommandCenter": "Цэнтр камандавання майстэрняй",
+      "heroStudio": "Героіная студыя",
+      "featuredEventStudio": "Студыя абраных падзей",
+      "operatorCommand": "Каманда аператараў",
+      "stakingHall": "Зала стэйкінгу",
+      "woloStaking": "WOLO Стэйкінг",
+      "gameStats": "Статыстыка гульні",
+      "hdLeaderboard": "HD Табліца лідараў",
+      "nationalChampions": "Нацыянальныя чэмпіёны",
+      "clanHalls": "Кланавыя залы",
+      "academy": "Акадэмія",
+      "marketplace": "Рынак",
+      "championshipBelts": "Чэмпіёнскія паясы",
+      "kingdom": "Каралеўства",
+      "warRoomForum": "Форум ваеннай залы",
+      "liveGames": "Прамыя гульні",
+      "parserObservatory": "Абсерваторыя парсера",
+      "bountyBoard": "Дошка ўзнагарод",
+      "aiCouncil": "Савет ШІ",
+      "radioWolo": "Радыё WOLO",
+      "workshop": "Майстэрня",
+      "submitRadio": "Адправіць на Радыё WOLO",
+      "rivalryMatchup": "Матч супрацьніцтва",
+      "rivalries": "Супрацьстаянні",
+      "playerRegistry": "Рэестр гульцоў",
+      "tournamentGrounds": "Турнірныя пляцоўкі",
+      "watchArena": "Глядзець Арэну",
+      "challengeHall": "Зала выклікаў",
+      "trainUnderZodiac": "Трэніравацца ў знаку Задыяка",
+      "bettingHall": "Зала стаўкаў",
+      "warChest": "Ваенны куфар",
+      "woloChain": "WoloChain",
+      "woloEconomy": "WOLO Эканоміка",
+      "woloWallet": "WOLO Кашалёк",
+      "playerProfile": "Профіль гульца",
+      "matchRequests": "Запыты на матч",
+      "commandInbox": "Скрыня каманд",
+      "downloadWatcher": "Спампаваць Watcher",
+      "uploadReplay": "Загрузіць паўтор",
+      "todaysWarRoom": "Ваенная зала сёння",
+      "tournamentLobby": "Лобі турніру",
+      "trafficObservatory": "Абсерваторыя трафіку",
+      "kingdomStatistics": "Статыстыка каралеўства",
+      "speedObservatory": "Абсерваторыя хуткасці"
+    }
+  }
+}

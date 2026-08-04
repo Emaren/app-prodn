@@ -1,0 +1,144 @@
+{
+  "Translator": {
+    "title": "Universal Translator",
+    "tagline": "War to the World."
+  },
+  "Shell": {
+    "currentPage": "当前页面",
+    "steamSignIn": "Steam 登录",
+    "admin": "管理员",
+    "requests": "{count, plural, =0 {0 个请求} one {# 个请求} other {# 个请求}}",
+    "liveGames": "{count, plural, =0 {0 场直播🔥} one {# 场直播🔥} other {# 场直播🔥}}",
+    "workshopLive": "战工坊 · 直播",
+    "kingdom": {
+      "title": "王国",
+      "openAria": "打开王国页面",
+      "closeAria": "关闭王国菜单",
+      "pagesAria": "王国页面"
+    },
+    "nav": {
+      "bets": "投注",
+      "watch": "观看",
+      "players": "玩家",
+      "rivalries": "对决",
+      "wolo": "$WOLO",
+      "staking": "质押"
+    },
+    "kingdomEntries": {
+      "kingdom": {
+        "label": "王国",
+        "body": "领域、皇冠与联赛地图"
+      },
+      "leaderboard": {
+        "label": "排行榜",
+        "body": "评分、记录与排名战士"
+      },
+      "champions": {
+        "label": "冠军",
+        "body": "腰带、统治、头衔规则"
+      },
+      "nations": {
+        "label": "国家",
+        "body": "信标地图与国家悬赏"
+      },
+      "clans": {
+        "label": "战队",
+        "body": "团队、家族与公会大厅"
+      },
+      "academy": {
+        "label": "学院",
+        "body": "课程、Build Order、回放学习"
+      },
+      "marketplace": {
+        "label": "市场",
+        "body": "玩家商店、制作与委托"
+      },
+      "forum": {
+        "label": "论坛",
+        "body": "作战室话题与社区"
+      },
+      "bounties": {
+        "label": "悬赏",
+        "body": "开放机会及支付证明"
+      },
+      "aiCouncil": {
+        "label": "AI议会",
+        "body": "向公共议会提问"
+      },
+      "radio": {
+        "label": "广播 WOLO",
+        "body": "王国音乐及创作者投稿"
+      },
+      "workshop": {
+        "label": "战工坊",
+        "body": "观看王国锻造的全过程"
+      },
+      "parser": {
+        "label": "解析观测站",
+        "body": "回放库、数据覆盖与未知内容"
+      },
+      "traffic": {
+        "label": "流量观测站",
+        "body": "流量、疑似真人和验证用户"
+      },
+      "statistics": {
+        "label": "王国数据",
+        "body": "WOLO、用户、投注、比赛、观众及增长情况"
+      },
+      "speed": {
+        "label": "速度",
+        "body": "你的实时表现与状态评估"
+      }
+    },
+    "pages": {
+      "aoe2war": "AoE2WAR",
+      "aiCommandCenter": "AI指挥中心",
+      "bountyCommandCenter": "赏金指挥中心",
+      "radioDesk": "Radio WOLO 工作台",
+      "workshopCommandCenter": "工坊指挥中心",
+      "heroStudio": "英雄工作室",
+      "featuredEventStudio": "精选活动工作室",
+      "operatorCommand": "行动指令",
+      "stakingHall": "质押大厅",
+      "woloStaking": "WOLO 质押",
+      "gameStats": "游戏统计",
+      "hdLeaderboard": "HD 排行榜",
+      "nationalChampions": "国家冠军",
+      "clanHalls": "氏族大厅",
+      "academy": "学院",
+      "marketplace": "市场",
+      "championshipBelts": "冠军腰带",
+      "kingdom": "王国",
+      "warRoomForum": "作战室论坛",
+      "liveGames": "实时游戏",
+      "parserObservatory": "解析观测站",
+      "bountyBoard": "悬赏榜",
+      "aiCouncil": "AI议会",
+      "radioWolo": "Radio WOLO",
+      "workshop": "工坊",
+      "submitRadio": "提交到 Radio WOLO",
+      "rivalryMatchup": "对决匹配",
+      "rivalries": "对决",
+      "playerRegistry": "玩家名册",
+      "tournamentGrounds": "锦标赛场地",
+      "watchArena": "观赛竞技场",
+      "challengeHall": "挑战大厅",
+      "trainUnderZodiac": "在黄道下训练",
+      "bettingHall": "博彩大厅",
+      "warChest": "战争宝箱",
+      "woloChain": "WoloChain",
+      "woloEconomy": "WOLO 经济",
+      "woloWallet": "WOLO 钱包",
+      "playerProfile": "玩家资料",
+      "matchRequests": "对局请求",
+      "commandInbox": "命令收件箱",
+      "downloadWatcher": "下载 Watcher",
+      "uploadReplay": "上传回放",
+      "todaysWarRoom": "今日作战室",
+      "tournamentLobby": "锦标赛大厅",
+      "trafficObservatory": "流量观测站",
+      "kingdomStatistics": "王国统计",
+      "speedObservatory": "速度观测站"
+    }
+  }
+}

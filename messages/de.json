@@ -1,0 +1,144 @@
+{
+  "Translator": {
+    "title": "Universal Translator",
+    "tagline": "War to the World."
+  },
+  "Shell": {
+    "currentPage": "Aktuelle Seite",
+    "steamSignIn": "Steam Anmelden",
+    "admin": "Admin",
+    "requests": "{count, plural, =0 {0 Anfragen} one {# Anfrage} other {# Anfragen}}",
+    "liveGames": "{count, plural, =0 {0 Live-Spiele🔥} one {# Live-Spiel🔥} other {# Live-Spiele🔥}}",
+    "workshopLive": "Werkstatt · LIVE",
+    "kingdom": {
+      "title": "Das Königreich",
+      "openAria": "Königreichsseiten öffnen",
+      "closeAria": "Königreichsmenü schließen",
+      "pagesAria": "Königreichsseiten"
+    },
+    "nav": {
+      "bets": "Wetten",
+      "watch": "Ansehen",
+      "players": "Spieler",
+      "rivalries": "Rivalitäten",
+      "wolo": "$WOLO",
+      "staking": "Einsätze"
+    },
+    "kingdomEntries": {
+      "kingdom": {
+        "label": "Königreich",
+        "body": "Das Reich, Kronen und Ligenkarte"
+      },
+      "leaderboard": {
+        "label": "Bestenliste",
+        "body": "Wertungen, Rekorde und gewertete Krieger"
+      },
+      "champions": {
+        "label": "Champions",
+        "body": "Titel, Regentschaften, Titelregeln"
+      },
+      "nations": {
+        "label": "Nationen",
+        "body": "Leuchtfeuerkarte und nationale Kopfgelder"
+      },
+      "clans": {
+        "label": "Clans",
+        "body": "Teams, Häuser und Clan-Hallen"
+      },
+      "academy": {
+        "label": "Akademie",
+        "body": "Lektionen, Build-Orders, Replay-Analyse"
+      },
+      "marketplace": {
+        "label": "Marktplatz",
+        "body": "Spielershops, Handwerk und Aufträge"
+      },
+      "forum": {
+        "label": "Forum",
+        "body": "War Room-Threads und Community"
+      },
+      "bounties": {
+        "label": "Kopfgelder",
+        "body": "Offene Chancen und Auszahlungsnachweise"
+      },
+      "aiCouncil": {
+        "label": "KI-Rat",
+        "body": "Den Rat des öffentlichen Hauses fragen"
+      },
+      "radio": {
+        "label": "Radio WOLO",
+        "body": "Königreichsmusik und Kreator-Einsendungen"
+      },
+      "workshop": {
+        "label": "Die Werkstatt",
+        "body": "Sieh zu, wie das Königreich öffentlich geschmiedet wird"
+      },
+      "parser": {
+        "label": "Parser-Observatorium",
+        "body": "Replay-Korpus, Berichterstattung und Unbekanntes"
+      },
+      "traffic": {
+        "label": "Verkehrs-Observatorium",
+        "body": "Verkehr, verdächtige Menschen und bestätigte Menschen"
+      },
+      "statistics": {
+        "label": "Königreichsstatistiken",
+        "body": "WOLO, Nutzer, Wetten, Spiele, Zuschauer und Wachstum"
+      },
+      "speed": {
+        "label": "Geschwindigkeit",
+        "body": "Deine Live-Leistung und Bereitschaftsmessungen"
+      }
+    },
+    "pages": {
+      "aoe2war": "AoE2WAR",
+      "aiCommandCenter": "KI-Kommandozentrale",
+      "bountyCommandCenter": "Kopfgeld-Kommandozentrale",
+      "radioDesk": "Radio WOLO Redaktion",
+      "workshopCommandCenter": "Werkstatt-Kommandozentrale",
+      "heroStudio": "Heldenstudio",
+      "featuredEventStudio": "Studio für besondere Events",
+      "operatorCommand": "Operator-Kommando",
+      "stakingHall": "Staking-Halle",
+      "woloStaking": "WOLO Staking",
+      "gameStats": "Spielstatistiken",
+      "hdLeaderboard": "HD Bestenliste",
+      "nationalChampions": "Landesmeister",
+      "clanHalls": "Clanhallen",
+      "academy": "Akademie",
+      "marketplace": "Marktplatz",
+      "championshipBelts": "Meisterschaftsgürtel",
+      "kingdom": "Das Königreich",
+      "warRoomForum": "War Room Forum",
+      "liveGames": "Live-Spiele",
+      "parserObservatory": "Parser-Observatorium",
+      "bountyBoard": "Kopfgeldtafel",
+      "aiCouncil": "KI-Rat",
+      "radioWolo": "Radio WOLO",
+      "workshop": "Die Werkstatt",
+      "submitRadio": "Beitrag an Radio WOLO einreichen",
+      "rivalryMatchup": "Rivalitäten-Duell",
+      "rivalries": "Rivalitäten",
+      "playerRegistry": "Spielerregister",
+      "tournamentGrounds": "Turniergelände",
+      "watchArena": "Arena ansehen",
+      "challengeHall": "Herausforderungshalle",
+      "trainUnderZodiac": "Training beim Zodiac",
+      "bettingHall": "Wett-Halle",
+      "warChest": "Kriegskasse",
+      "woloChain": "WoloChain",
+      "woloEconomy": "WOLO Wirtschaft",
+      "woloWallet": "WOLO Wallet",
+      "playerProfile": "Spielerprofil",
+      "matchRequests": "Matchanfragen",
+      "commandInbox": "Befehls-Postfach",
+      "downloadWatcher": "Watcher herunterladen",
+      "uploadReplay": "Replay hochladen",
+      "todaysWarRoom": "Heutiger War Room",
+      "tournamentLobby": "Turnierlobby",
+      "trafficObservatory": "Verkehrs-Observatorium",
+      "kingdomStatistics": "Königreichsstatistik",
+      "speedObservatory": "Geschwindigkeits-Observatorium"
+    }
+  }
+}

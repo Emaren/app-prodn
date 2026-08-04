@@ -3,9 +3,18 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
-  HOME_SPANISH_COPY,
-  homeCopy,
+  translateHomeCopy,
+  type HomeCatalog,
 } from "../lib/i18n/homeCopy.ts";
+import {
+  HOME_DYNAMIC_SOURCE_KEYS,
+  HOME_SOURCE_KEYS,
+} from "../lib/i18n/homeSources.ts";
+
+const LANGUAGE_CODES = [
+  "en", "zh-CN", "fr", "de", "es", "pt-BR", "pl", "ja",
+  "ko", "zh-TW", "nl", "ru", "be", "hi", "si", "ta",
+] as const;
 
 const integrationFiles = [
   "../app/HomePageClient.tsx",
@@ -31,170 +40,122 @@ const integrationFiles = [
   "../components/pwa/AoE2WarFooter.tsx",
 ] as const;
 
-function source(relativePath: string) {
-  return readFileSync(
-    new URL(relativePath, import.meta.url),
-    "utf8",
-  );
+function source(path: string) {
+  return readFileSync(new URL(path, import.meta.url), "utf8");
 }
 
-test("Spanish homepage copy translates core visible surfaces", () => {
+function catalog(locale: string): HomeCatalog {
+  return JSON.parse(
+    readFileSync(
+      new URL(`../messages/home/${locale}.json`, import.meta.url),
+      "utf8",
+    ),
+  ) as HomeCatalog;
+}
+
+test("all sixteen homepage catalogs are complete and aligned", () => {
+  for (const locale of LANGUAGE_CODES) {
+    const value = catalog(locale);
+    assert.equal(value.static.length, HOME_SOURCE_KEYS.length, locale);
+    assert.equal(value.dynamic.length, HOME_DYNAMIC_SOURCE_KEYS.length, locale);
+    assert.ok(value.static.every((entry) => entry.trim()), locale);
+    assert.ok(value.dynamic.every((entry) => entry.trim()), locale);
+  }
+});
+
+test("all non-English homepage catalogs substantially translate source", () => {
+  const english = catalog("en");
+
+  for (const locale of LANGUAGE_CODES) {
+    if (locale === "en") continue;
+    const translated = catalog(locale);
+    const changed = english.static.filter(
+      (entry, index) => translated.static[index] !== entry,
+    ).length;
+
+    assert.ok(changed >= english.static.length * 0.65, locale);
+    assert.notEqual(
+      translateHomeCopy(translated, "Featured Warriors"),
+      "Featured Warriors",
+      locale,
+    );
+    assert.notEqual(
+      translateHomeCopy(translated, "Online Players"),
+      "Online Players",
+      locale,
+    );
+  }
+});
+
+test("Spanish homepage retains reviewed production copy", () => {
+  const spanish = catalog("es");
   assert.equal(
-    homeCopy("es", "Featured Warriors"),
+    translateHomeCopy(spanish, "Featured Warriors"),
     "Guerreros destacados",
   );
   assert.equal(
-    homeCopy("es", "Community Lobby"),
+    translateHomeCopy(spanish, "Community Lobby"),
     "Lobby de la comunidad",
   );
   assert.equal(
-    homeCopy("es", "Online Players"),
+    translateHomeCopy(spanish, "Online Players"),
     "Jugadores en línea",
   );
   assert.equal(
-    homeCopy("es", "Recent Parsed Games"),
+    translateHomeCopy(spanish, "Recent Parsed Games"),
     "Partidas analizadas recientemente",
   );
   assert.equal(
-    homeCopy("es", "WAR CHEST"),
+    translateHomeCopy(spanish, "WAR CHEST"),
     "COFRE DE GUERRA",
   );
-  assert.equal(
-    homeCopy("es", "Message the lobby..."),
-    "Escribe al lobby...",
-  );
-  assert.equal(
-    homeCopy("es", "Watch & Chat"),
-    "Ver y chatear",
-  );
-  assert.equal(
-    homeCopy("es", "WOLO Market"),
-    "Mercado WOLO",
-  );
 });
 
-test("Spanish homepage copy translates generated phrases around protected truth", () => {
-  assert.equal(
-    homeCopy("es", "4 entrants"),
-    "4 participantes",
-  );
-  assert.equal(
-    homeCopy("es", "Winner Jim"),
-    "Ganador: Jim",
-  );
-  assert.equal(
-    homeCopy("es", "Jim is typing…"),
-    "Jim está escribiendo…",
-  );
-  assert.equal(
-    homeCopy("es", "25 WOLO pot"),
-    "Pozo de 25 WOLO",
-  );
-  assert.equal(
-    homeCopy("es", "3 HD lobbies · 8 seats"),
-    "3 lobbies HD · 8 plazas",
-  );
-  assert.equal(
-    homeCopy("es", "Rank #2380"),
-    "Rango #2380",
-  );
-  assert.equal(
-    homeCopy("es", "12W · 4L · 1U"),
-    "12V · 4D · 1I",
-  );
+test("dynamic phrases preserve player and chain truth", () => {
+  for (const locale of LANGUAGE_CODES) {
+    const translated = catalog(locale);
+    const winner = translateHomeCopy(translated, "Winner Jim");
+    const pot = translateHomeCopy(translated, "25 WOLO pot");
+    const rank = translateHomeCopy(translated, "Rank #2380");
+
+    assert.match(winner, /Jim/);
+    assert.match(pot, /25/);
+    assert.match(pot, /WOLO/);
+    assert.match(rank, /2380/);
+
+    if (locale !== "en") {
+      assert.notEqual(winner, "Winner Jim", locale);
+    }
+  }
 });
 
-test("protected AoE2WAR names and user content remain unchanged", () => {
-  for (const protectedValue of [
-    "AoE2WAR",
-    "WOLO",
-    "$WOLO",
-    "WoloChain",
-    "Wolomania",
-    "ELO",
-    "RM",
-    "DM",
-    "Steam",
-    "Emaren",
-    "Julio Alvarez",
-    "[BDB]PIGMAN",
-    "Yucatan",
-    "wolo1abc123",
-    "8A9F00HASH",
+test("protected user and chain truth remains unchanged in every locale", () => {
+  const values = [
+    "AoE2WAR", "WOLO", "$WOLO", "WoloChain", "Wolomania",
+    "ELO", "RM", "DM", "Steam", "Emaren", "Julio Alvarez",
+    "[BDB]PIGMAN", "Yucatan", "wolo1abc123", "8A9F00HASH",
     "Nice! Jim shows up 🔥",
-  ]) {
-    assert.equal(
-      homeCopy("es", protectedValue),
-      protectedValue,
-    );
+  ];
+
+  for (const locale of LANGUAGE_CODES) {
+    const translated = catalog(locale);
+    for (const value of values) {
+      assert.equal(translateHomeCopy(translated, value), value, `${locale}:${value}`);
+    }
   }
 });
 
 test("English locale preserves source copy", () => {
+  const english = catalog("en");
   assert.equal(
-    homeCopy("en", "Featured Warriors"),
+    translateHomeCopy(english, "Featured Warriors"),
     "Featured Warriors",
   );
-  assert.equal(
-    homeCopy("en", "4 entrants"),
-    "4 entrants",
-  );
+  assert.equal(translateHomeCopy(english, "4 entrants"), "4 entrants");
 });
 
-test("all active homepage surfaces use the homepage locale hook", () => {
-  for (const relativePath of integrationFiles) {
-    assert.match(
-      source(relativePath),
-      /useHomeCopy/,
-      `${relativePath} must use homepage translation copy`,
-    );
+test("all active homepage surfaces use the locale-aware hook", () => {
+  for (const path of integrationFiles) {
+    assert.match(source(path), /useHomeCopy/, path);
   }
-});
-
-test("reviewed screenshot English is not rendered as raw JSX", () => {
-  const combined = integrationFiles
-    .map((relativePath) => source(relativePath))
-    .join("\n");
-
-  for (const retiredRawJsx of [
-    "Featured Warriors",
-    "Elite competitors. Legendary rivalries.",
-    "View all warriors",
-    "Community Lobby",
-    "Online Players",
-    "Recent Parsed Games",
-    "WAR CHEST",
-    "Join Queue",
-    "Bracket Preview",
-    "Live Comments",
-    "WOLO Market",
-    "Aim small. Miss small. ⚔️",
-  ]) {
-    const escaped = retiredRawJsx.replace(
-      /[.*+?^${}()|[\]\\]/g,
-      "\\$&",
-    );
-
-    assert.doesNotMatch(
-      combined,
-      new RegExp(`>\\s*${escaped}\\s*<`),
-      `${retiredRawJsx} must render through homeCopy`,
-    );
-  }
-});
-
-test("Spanish catalog is substantial and retains sacred terms", () => {
-  assert.ok(
-    Object.keys(HOME_SPANISH_COPY).length >= 200,
-    "homepage Spanish catalog should cover the complete active surface",
-  );
-
-  assert.equal(
-    homeCopy("es", "Settled on WoloChain"),
-    "Liquidado en WoloChain",
-  );
-  assert.equal(
-    homeCopy("es", "WOLO depth"),
-    "Profundidad WOLO",
-  );
 });

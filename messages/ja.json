@@ -1,0 +1,144 @@
+{
+  "Translator": {
+    "title": "Universal Translator",
+    "tagline": "War to the World."
+  },
+  "Shell": {
+    "currentPage": "現在のページ",
+    "steamSignIn": "Steam サインイン",
+    "admin": "管理者",
+    "requests": "{count, plural, =0 {0件のリクエスト} one {#件のリクエスト} other {#件のリクエスト}}",
+    "liveGames": "{count, plural, =0 {ライブゲーム0件🔥} one {#件のライブゲーム🔥} other {#件のライブゲーム🔥}}",
+    "workshopLive": "ワークショップ · ライブ",
+    "kingdom": {
+      "title": "キングダム",
+      "openAria": "キングダムページを開く",
+      "closeAria": "キングダムメニューを閉じる",
+      "pagesAria": "キングダムページ"
+    },
+    "nav": {
+      "bets": "ベット",
+      "watch": "観戦",
+      "players": "プレイヤー",
+      "rivalries": "ライバル",
+      "wolo": "$WOLO",
+      "staking": "ステーキング"
+    },
+    "kingdomEntries": {
+      "kingdom": {
+        "label": "キングダム",
+        "body": "領域・王冠・リーグマップ"
+      },
+      "leaderboard": {
+        "label": "リーダーボード",
+        "body": "レーティング・記録・ランク戦士"
+      },
+      "champions": {
+        "label": "チャンピオン",
+        "body": "ベルト・在位・タイトルルール"
+      },
+      "nations": {
+        "label": "国家",
+        "body": "ビーコンマップとナショナルバウンティ"
+      },
+      "clans": {
+        "label": "クラン",
+        "body": "チーム・家・クランホール"
+      },
+      "academy": {
+        "label": "アカデミー",
+        "body": "レッスン・ビルドオーダー・リプレイ研究"
+      },
+      "marketplace": {
+        "label": "マーケットプレイス",
+        "body": "プレイヤーショップ・クラフト・コミッション"
+      },
+      "forum": {
+        "label": "フォーラム",
+        "body": "ウォールームのスレッド・コミュニティ"
+      },
+      "bounties": {
+        "label": "バウンティ",
+        "body": "オープンなオファー・支払い証拠"
+      },
+      "aiCouncil": {
+        "label": "AI評議会",
+        "body": "パブリックハウス評議会に質問する"
+      },
+      "radio": {
+        "label": "ラジオ WOLO",
+        "body": "キングダム音楽・クリエイター投稿"
+      },
+      "workshop": {
+        "label": "ワークショップ",
+        "body": "キングダム創造の様子を公開視聴"
+      },
+      "parser": {
+        "label": "パーサー天文台",
+        "body": "リプレイコーパス・カバレッジ・未調査分"
+      },
+      "traffic": {
+        "label": "トラフィック天文台",
+        "body": "トラフィック・推定人間・認証済み人間"
+      },
+      "statistics": {
+        "label": "キングダム統計",
+        "body": "WOLO、ユーザー、ベット、ゲーム、ウォッチャー、成長"
+      },
+      "speed": {
+        "label": "スピード",
+        "body": "ライブパフォーマンス・準備状況"
+      }
+    },
+    "pages": {
+      "aoe2war": "AoE2WAR",
+      "aiCommandCenter": "AI指令センター",
+      "bountyCommandCenter": "バウンティ指令センター",
+      "radioDesk": "Radio WOLO デスク",
+      "workshopCommandCenter": "ワークショップ指令センター",
+      "heroStudio": "ヒーロースタジオ",
+      "featuredEventStudio": "特集イベントスタジオ",
+      "operatorCommand": "オペレーターコマンド",
+      "stakingHall": "スティーキングホール",
+      "woloStaking": "WOLO ステーキング",
+      "gameStats": "ゲーム統計",
+      "hdLeaderboard": "HD ランキング",
+      "nationalChampions": "ナショナルチャンピオン",
+      "clanHalls": "クランホール",
+      "academy": "アカデミー",
+      "marketplace": "マーケットプレイス",
+      "championshipBelts": "チャンピオンベルト",
+      "kingdom": "ザ・キングダム",
+      "warRoomForum": "ウォールームフォーラム",
+      "liveGames": "ライブゲーム",
+      "parserObservatory": "パーサー天文台",
+      "bountyBoard": "バウンティボード",
+      "aiCouncil": "AI評議会",
+      "radioWolo": "Radio WOLO",
+      "workshop": "ワークショップ",
+      "submitRadio": "Radio WOLOへ投稿",
+      "rivalryMatchup": "ライバル対決",
+      "rivalries": "ライバルリスト",
+      "playerRegistry": "プレイヤー名簿",
+      "tournamentGrounds": "トーナメント会場",
+      "watchArena": "アリーナ観戦",
+      "challengeHall": "チャレンジホール",
+      "trainUnderZodiac": "ゾディアックで訓練",
+      "bettingHall": "ベッティングホール",
+      "warChest": "ウォーチェスト",
+      "woloChain": "WoloChain",
+      "woloEconomy": "WOLO 経済",
+      "woloWallet": "WOLO ウォレット",
+      "playerProfile": "プレイヤープロフィール",
+      "matchRequests": "マッチリクエスト",
+      "commandInbox": "コマンド受信箱",
+      "downloadWatcher": "Watcherをダウンロード",
+      "uploadReplay": "リプレイアップロード",
+      "todaysWarRoom": "本日のウォールーム",
+      "tournamentLobby": "トーナメントロビー",
+      "trafficObservatory": "トラフィック天文台",
+      "kingdomStatistics": "王国統計",
+      "speedObservatory": "スピード天文台"
+    }
+  }
+}

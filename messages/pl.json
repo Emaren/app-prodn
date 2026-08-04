@@ -1,0 +1,144 @@
+{
+  "Translator": {
+    "title": "Universal Translator",
+    "tagline": "War to the World."
+  },
+  "Shell": {
+    "currentPage": "Bieżąca strona",
+    "steamSignIn": "Steam Zaloguj się",
+    "admin": "Admin",
+    "requests": "{count, plural, =0 {0 próśb} one {# prośba} other {# prośby}}",
+    "liveGames": "{count, plural, =0 {0 gier na żywo🔥} one {# gra na żywo🔥} other {# gry na żywo🔥}}",
+    "workshopLive": "Warsztat · NA ŻYWO",
+    "kingdom": {
+      "title": "Królestwo",
+      "openAria": "Otwórz strony Królestwa",
+      "closeAria": "Zamknij menu Królestwa",
+      "pagesAria": "Strony Królestwa"
+    },
+    "nav": {
+      "bets": "Zakłady",
+      "watch": "Oglądaj",
+      "players": "Gracze",
+      "rivalries": "Rywalizacje",
+      "wolo": "$WOLO",
+      "staking": "Stawkowanie"
+    },
+    "kingdomEntries": {
+      "kingdom": {
+        "label": "Królestwo",
+        "body": "Kraina, korony i mapa ligi"
+      },
+      "leaderboard": {
+        "label": "Ranking",
+        "body": "Oceny, rekordy i wojownicy z rankingów"
+      },
+      "champions": {
+        "label": "Mistrzowie",
+        "body": "Pasy, panowania, zasady tytułów"
+      },
+      "nations": {
+        "label": "Narody",
+        "body": "Mapa latarni i narodowe nagrody"
+      },
+      "clans": {
+        "label": "Klan",
+        "body": "Drużyny, domy i hale klanowe"
+      },
+      "academy": {
+        "label": "Akademia",
+        "body": "Lekcje, build ordery, analiza powtórek"
+      },
+      "marketplace": {
+        "label": "Rynek",
+        "body": "Sklepy graczy, rzemiosło i zlecenia"
+      },
+      "forum": {
+        "label": "Forum",
+        "body": "Wątki War Room i społeczność"
+      },
+      "bounties": {
+        "label": "Nagrody",
+        "body": "Otwarte okazje i potwierdzenia wypłat"
+      },
+      "aiCouncil": {
+        "label": "Rada SI",
+        "body": "Zapytaj radę w izbie publicznej"
+      },
+      "radio": {
+        "label": "Radio WOLO",
+        "body": "Muzyka królestwa i zgłoszenia twórców"
+      },
+      "workshop": {
+        "label": "Warsztat",
+        "body": "Obserwuj publiczne kucie królestwa"
+      },
+      "parser": {
+        "label": "Obserwatorium Parsera",
+        "body": "Korpus powtórek, relacje i niewiadome"
+      },
+      "traffic": {
+        "label": "Obserwatorium Ruchu",
+        "body": "Ruch, podejrzewani ludzie i potwierdzeni użytkownicy"
+      },
+      "statistics": {
+        "label": "Statystyki Królestwa",
+        "body": "WOLO, użytkownicy, zakłady, gry, widzowie i rozwój"
+      },
+      "speed": {
+        "label": "Szybkość",
+        "body": "Twoje wyniki na żywo i pomiary gotowości"
+      }
+    },
+    "pages": {
+      "aoe2war": "AoE2WAR",
+      "aiCommandCenter": "Centrum Dowodzenia SI",
+      "bountyCommandCenter": "Centrum Dowodzenia Nagród",
+      "radioDesk": "Radio WOLO Biurko",
+      "workshopCommandCenter": "Centrum Dowodzenia Warsztatu",
+      "heroStudio": "Studio Bohatera",
+      "featuredEventStudio": "Studio Wydarzeń Specjalnych",
+      "operatorCommand": "Dowództwo Operatora",
+      "stakingHall": "Sala Stakowania",
+      "woloStaking": "WOLO Stakowanie",
+      "gameStats": "Statystyki Gry",
+      "hdLeaderboard": "HD Ranking",
+      "nationalChampions": "Mistrzowie Krajowi",
+      "clanHalls": "Sale Klanowe",
+      "academy": "Akademia",
+      "marketplace": "Targowisko",
+      "championshipBelts": "Pas Mistrzowski",
+      "kingdom": "Królestwo",
+      "warRoomForum": "Forum Sali Wojennej",
+      "liveGames": "Gry Na Żywo",
+      "parserObservatory": "Obserwatorium Parsera",
+      "bountyBoard": "Tablica Nagród",
+      "aiCouncil": "Rada SI",
+      "radioWolo": "Radio WOLO",
+      "workshop": "Warsztat",
+      "submitRadio": "Zgłoś do Radia WOLO",
+      "rivalryMatchup": "Pojedynek Rywalizacji",
+      "rivalries": "Rywalizacje",
+      "playerRegistry": "Rejestr Graczy",
+      "tournamentGrounds": "Tereny Turniejowe",
+      "watchArena": "Arena Obserwacyjna",
+      "challengeHall": "Sala Wyzwań",
+      "trainUnderZodiac": "Trenuj u Zodiaku",
+      "bettingHall": "Sala Zakładów",
+      "warChest": "Skarbiec Wojenny",
+      "woloChain": "WoloChain",
+      "woloEconomy": "Gospodarka WOLO",
+      "woloWallet": "Portfel WOLO",
+      "playerProfile": "Profil Gracza",
+      "matchRequests": "Prośby o Mecze",
+      "commandInbox": "Skrzynka Dowodzenia",
+      "downloadWatcher": "Pobierz Watcher",
+      "uploadReplay": "Wyślij Powtórkę",
+      "todaysWarRoom": "Dzisiejsza Sala Wojenna",
+      "tournamentLobby": "Lobby Turniejowe",
+      "trafficObservatory": "Obserwatorium Ruchu",
+      "kingdomStatistics": "Statystyki Królestwa",
+      "speedObservatory": "Obserwatorium Szybkości"
+    }
+  }
+}

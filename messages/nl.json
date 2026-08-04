@@ -1,0 +1,144 @@
+{
+  "Translator": {
+    "title": "Universal Translator",
+    "tagline": "War to the World."
+  },
+  "Shell": {
+    "currentPage": "Huidige pagina",
+    "steamSignIn": "Steam Inloggen",
+    "admin": "Beheerder",
+    "requests": "{count, plural, =0 {0 Verzoeken} one {# Verzoek} other {# Verzoeken}}",
+    "liveGames": "{count, plural, =0 {0 Live Games🔥} one {# Live Game🔥} other {# Live Games🔥}}",
+    "workshopLive": "Workshop · LIVE",
+    "kingdom": {
+      "title": "Het Koninkrijk",
+      "openAria": "Open Koninkrijk pagina's",
+      "closeAria": "Sluit Koninkrijk menu",
+      "pagesAria": "Koninkrijk pagina's"
+    },
+    "nav": {
+      "bets": "Wedden",
+      "watch": "Kijken",
+      "players": "Spelers",
+      "rivalries": "Rivaliteiten",
+      "wolo": "$WOLO",
+      "staking": "Staken"
+    },
+    "kingdomEntries": {
+      "kingdom": {
+        "label": "Koninkrijk",
+        "body": "Het rijk, kronen en ranglijst kaart"
+      },
+      "leaderboard": {
+        "label": "Ranglijst",
+        "body": "Beoordelingen, records en gerangschikte krijgers"
+      },
+      "champions": {
+        "label": "Kampioenen",
+        "body": "Titels, heerschappijen, titelregels"
+      },
+      "nations": {
+        "label": "Naties",
+        "body": "Bakenkaart en nationale beloningen"
+      },
+      "clans": {
+        "label": "Clans",
+        "body": "Teams, huizen en clan zalen"
+      },
+      "academy": {
+        "label": "Academie",
+        "body": "Lessen, build orders, herhalingstudie"
+      },
+      "marketplace": {
+        "label": "Marktplaats",
+        "body": "Spelerswinkels, maken en opdrachten"
+      },
+      "forum": {
+        "label": "Forum",
+        "body": "War Room discussies en community"
+      },
+      "bounties": {
+        "label": "Beloningen",
+        "body": "Open kansen en uitbetalingsbewijs"
+      },
+      "aiCouncil": {
+        "label": "AI Raad",
+        "body": "Vraag het raadshuis publiek"
+      },
+      "radio": {
+        "label": "Radio WOLO",
+        "body": "Koninkrijk muziek en inzendingen van makers"
+      },
+      "workshop": {
+        "label": "De Werkplaats",
+        "body": "Bekijk het koninkrijk dat publiekelijk wordt gesmeed"
+      },
+      "parser": {
+        "label": "Parser Observatorium",
+        "body": "Replay collectie, dekking en onbekenden"
+      },
+      "traffic": {
+        "label": "Verkeersobservatorium",
+        "body": "Verkeer, vermoedelijke mensen en bevestigde mensen"
+      },
+      "statistics": {
+        "label": "Koninkrijksstatistieken",
+        "body": "WOLO, gebruikers, weddenschappen, spellen, kijkers en groei"
+      },
+      "speed": {
+        "label": "Snelheid",
+        "body": "Je live prestaties en gereedheidsmetingen"
+      }
+    },
+    "pages": {
+      "aoe2war": "AoE2WAR",
+      "aiCommandCenter": "AI Commando Centrum",
+      "bountyCommandCenter": "Bounty Commando Centrum",
+      "radioDesk": "Radio WOLO Desk",
+      "workshopCommandCenter": "Workshop Commando Centrum",
+      "heroStudio": "Heldenstudio",
+      "featuredEventStudio": "Uitgelicht Evenementenstudio",
+      "operatorCommand": "Operator Commando",
+      "stakingHall": "Stakingzaal",
+      "woloStaking": "WOLO Staking",
+      "gameStats": "Spelstatistieken",
+      "hdLeaderboard": "HD Ranglijst",
+      "nationalChampions": "Nationale Kampioenen",
+      "clanHalls": "Clanzalen",
+      "academy": "Academie",
+      "marketplace": "Marktplaats",
+      "championshipBelts": "Kampioensgordels",
+      "kingdom": "Het Koninkrijk",
+      "warRoomForum": "War Room Forum",
+      "liveGames": "Live Spellen",
+      "parserObservatory": "Parser Observatorium",
+      "bountyBoard": "Bountybord",
+      "aiCouncil": "AI Raad",
+      "radioWolo": "Radio WOLO",
+      "workshop": "De Werkplaats",
+      "submitRadio": "Indienen bij Radio WOLO",
+      "rivalryMatchup": "Rivaliteitsduel",
+      "rivalries": "Rivaliteiten",
+      "playerRegistry": "Spelerregister",
+      "tournamentGrounds": "Toernooigebied",
+      "watchArena": "Kijkarena",
+      "challengeHall": "Uitdagingszaal",
+      "trainUnderZodiac": "Train onder Zodiac",
+      "bettingHall": "Gokzaal",
+      "warChest": "Oorlogskist",
+      "woloChain": "WoloChain",
+      "woloEconomy": "WOLO Economie",
+      "woloWallet": "WOLO Portemonnee",
+      "playerProfile": "Spelersprofiel",
+      "matchRequests": "Wedstrijdverzoeken",
+      "commandInbox": "Commando Inbox",
+      "downloadWatcher": "Download Watcher",
+      "uploadReplay": "Upload Herhaling",
+      "todaysWarRoom": "Vandaag’s War Room",
+      "tournamentLobby": "Toernooilobby",
+      "trafficObservatory": "Verkeersobservatorium",
+      "kingdomStatistics": "Koninkrijk Statistieken",
+      "speedObservatory": "Snelheidsobservatorium"
+    }
+  }
+}
