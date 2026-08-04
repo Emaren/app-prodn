@@ -407,9 +407,9 @@
       "owner": "aoe2war-web",
       "path": "docs/COMMISSIONER_REPLAY_REVIEW.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-08-04",
       "sensitivity": "internal",
-      "sha256": "e5642ef3ec0d4e3f6e99957f2aab2c3bb9cc0c39a73a80585b051c7ea63162ed",
+      "sha256": "e2aa72ed0597bbc21db2001b97c03275f4d8f86b6b1801e4b3b02ef341f71191",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -430,9 +430,9 @@
       "owner": "aoe2war-web",
       "path": "docs/DESYNC_INCIDENT_PROTOCOL.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-08-04",
       "sensitivity": "internal",
-      "sha256": "134f56bce738938572a0c7d66a2577a0a62eb5268fb794c327f6aabca00b8b42",
+      "sha256": "470817b1f4c0e3450ebb7c7851b11afe7a81b08107f7bd054a9b661ea1a3a9c9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -476,7 +476,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6713a8a0cbe93a53d5b79b836ad824930d647b3622f42615773f855dc09f0c6a",
+      "sha256": "d84b8ce437cd10ec1ffe5e76c46dd3f7e02b2deb061871c47f5eb6f810e2fb26",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -495,9 +495,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HD_REPLAY_TRUTH_PIPELINE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-07-29",
+      "reviewed_at": "2026-08-04",
       "sensitivity": "restricted",
-      "sha256": "12f1907d0c29e7c5dc8cdac4ad9fb6d0a90d672a44c0fe181bdd4f384f1b4083",
+      "sha256": "a0e8c3de632992d559122fd54a86b800a2c4a89a490bc50d6f3930a08cd5e154",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -632,9 +632,9 @@
       "owner": "aoe2war-web",
       "path": "docs/LIVE_FINAL_PROOF_VISIBILITY.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-07-31",
+      "reviewed_at": "2026-08-04",
       "sensitivity": "internal",
-      "sha256": "116a656325affc8b4e2af9b83cf217623cdb67e868964352d07afedfef1b67a4",
+      "sha256": "b765d6bb6c651c8142d6628f7c4b60fcfb60dcd8a41a16fa1f9567a7343401ab",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1022,9 +1022,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-01",
+      "reviewed_at": "2026-08-04",
       "sensitivity": "restricted",
-      "sha256": "1b4cab27f2698fa9c0c30e3ef7714f861b9fc1a0cf36ed997d29d6bcabebaee2",
+      "sha256": "1c9470a4b845cc2809d3a8e838b802484455ef464fb1298dc248f0fce420dc69",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1170,7 +1170,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "1a8fa8981eb23307fe1bbc7620c942fba6566a3b"
+    "commit": "ea28fcbe378bb37fb78f5347734fef8a4768f453"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

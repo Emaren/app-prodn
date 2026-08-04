@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-08-01"
+reviewed_at: "2026-08-04"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -46,6 +46,29 @@ Heartbeat metadata may include folder kind/validity and basename, folder/replay 
 Truth disagreements are operator-visible: server replay without upload telemetry; client success without server row; fresh heartbeat with unknown monitor; active monitor with unknown folder; valid quiet folder; and old client coverage.
 
 Watcher analytics now separates noisy package pulls from confirmed watcher behavior.
+
+
+<!-- AOE2WAR:TERMINAL_RESULT_RECEIPTS_V3:START -->
+### Terminal settlement-observation receipts
+
+The Watcher source now preserves `finalStored` and `settleWindowMs` when
+normalizing terminal runtime events into remote telemetry. The server accepts
+the event types:
+
+- `final_settle_observation_started`;
+- `final_settle_observation_complete`.
+
+A complete receipt can bind replay hash, session, replay basename, user
+identity, final-storage confirmation, and settle-window duration to the
+automatic action-tail evidence record. A matching receipt is corroboration; a
+missing receipt may fall back to exact replay activity, while a supplied
+conflicting receipt blocks automatic resolution.
+
+These source changes do not by themselves publish a new desktop release.
+Production artifacts and manifests remain version `1.5.7` until a separately
+built, tested, signed/staged, and published Watcher release advances them. The
+Watcher never selects a winner and the receipt never authorizes betting.
+<!-- AOE2WAR:TERMINAL_RESULT_RECEIPTS_V3:END -->
 
 ## Signal Layers
 
@@ -105,6 +128,8 @@ Allowed `watcher_client_events.event_type` values:
 - `final_candidate_accepted`
 - `final_candidate_deferred`
 - `final_candidate_reopened`
+- `final_settle_observation_started`
+- `final_settle_observation_complete`
 - `batch_upload_started`
 - `batch_upload_scanned`
 - `batch_upload_file_started`

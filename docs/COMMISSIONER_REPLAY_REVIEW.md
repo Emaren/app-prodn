@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-08-04"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -75,9 +75,10 @@ Keep these layers separate in code, operator language, and incident reports.
    - Immutable historical evidence even when a later parser or human finds a
      better answer.
 2. **Replay adjudication ledger**
-   - Append-only human decisions in `replay_result_adjudications`.
-   - Stores exact teams, complete winning team, actor snapshots, reason,
-     evidence, source hashes, raw parser snapshot, and money snapshot.
+   - Append-only human decisions plus narrowly bounded automatic stats-only
+     result rows in `replay_result_adjudications`.
+   - Stores exact teams, complete winning team, actor/provenance snapshots,
+     reason, evidence, source hashes, raw parser snapshot, and money snapshot.
 3. **Effective public/stats result**
    - The accepted result projected into profiles, battle details, rivalry
      records, and public archives.
@@ -140,6 +141,38 @@ market, retains `operator_review_required`, uses a
 `affectsBets = true`. That row does not invent a new result; it authorizes the
 already-reviewed exact result for the existing betting reconciler.
 
+
+<!-- AOE2WAR:AUTOMATIC_TERMINAL_ADJUDICATION_V3:START -->
+## Automatic terminal-evidence adjudications
+
+`replay-terminal-action-tail-v3` may append a non-human, stats-only
+adjudication for a final rated HD 1v1 when one player stops acting first and the
+other remains active through the terminal replay tail. It is not a submitter
+claim, commissioner verdict, resignation guess, or generic
+uploader-versus-opponent inference.
+
+The row records:
+
+- `submittedVia = automatic_replay_terminal_policy`;
+- `policyVersion = replay-terminal-action-tail-v3`;
+- exact submitter, winner, and loser player keys/names;
+- replay hash and parser-run identity;
+- `terminalReceiptMode = exact_watcher_receipt` or
+  `action_tail_fallback`;
+- measured winner lead, loser silence, winner tail, and their policy thresholds;
+- `financialAuthority = false`.
+
+A current human-confirmed desync, terminal Watcher failure, conflicting receipt,
+serialized result, existing adjudication history, ambiguous roster/activity, or
+insufficient terminal gap blocks the automatic row. The accepted row may update
+profiles, rivalry records, leaderboards, and public battle presentation through
+the existing effective-result projection. It cannot authorize a market.
+
+Human review remains available. Any correction appends a superseding row with
+its own attributable evidence; neither the parser record nor the automatic row
+is edited or deleted.
+<!-- AOE2WAR:AUTOMATIC_TERMINAL_ADJUDICATION_V3:END -->
+
 ## Public presentation versus private evidence
 
 Public presentation should feel complete and confident without making false
@@ -159,6 +192,8 @@ claims:
   above;
 - keep parser codes, rejected inferences, conflict details, confidence/evidence
   breakdowns, stale-hash errors, and financial snapshots private;
+- retain accessible ARIA labels for reviewed-result glyphs and review-mode
+  controls without browser-native `title` hover tooltips;
 - never convert a missing value into zero or a guess merely to fill space.
 
 Recommended public phrases include **Battle filed**, **Replay preserved**, and

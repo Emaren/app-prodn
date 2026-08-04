@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "domain-contract"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-08-04"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -50,6 +50,23 @@ The raw parser run, screenshot/evidence chain, result adjudication, and desync
 incident remain separately attributable in the Verdict Trail. Machine evidence
 such as `disconnect_detected`, desync/disconnect parse reasons, or replay events
 is only `parserDesyncCandidate`; it never becomes human truth automatically.
+
+
+<!-- AOE2WAR:TERMINAL_RESULT_DESYNC_BOUNDARY_V3:START -->
+## Automatic terminal-result boundary
+
+The homepage/lobby `DESYNCED` headline is controlled by the latest effective
+append-only human incident, not by `disconnect_detected` alone. Parser
+disconnect/desync fields remain candidate evidence and may still keep an
+unresolved parser projection out of ordinary trusted-result handling.
+
+The automatic final-1v1 action-tail policy independently checks the effective
+human incident state. `desyncOccurred = true` is a hard blocker. When no current
+human-confirmed incident exists, generic disconnect metadata may coexist with a
+stats-only action-tail result if every roster, finality, activity, receipt, and
+failure fence passes. That result does not erase or relabel the original parser
+candidate evidence and never creates financial authority.
+<!-- AOE2WAR:TERMINAL_RESULT_DESYNC_BOUNDARY_V3:END -->
 
 ## Challenge projection
 
