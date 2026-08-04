@@ -180,6 +180,31 @@ test("main lobby match cards project current human-confirmed desync truth", () =
   assert.match(desyncHydrator, /humanConfirmedDesync/);
 
   assert.match(panel, /readLobbyHumanConfirmedDesync/);
-  assert.match(panel, /headline:\s*"DESYNCED"/);
+  assert.match(panel, /headline:\s*h\("DESYNCED"\)/);
   assert.match(panel, /humanConfirmedDesync/);
+});
+
+test("review and lobby controls avoid browser-native hover tooltips", () => {
+  const reviewDesk = readFileSync(
+    new URL(
+      "../app/game-stats/[id]/review/ReplayResultReviewWorkspace.tsx",
+      import.meta.url
+    ),
+    "utf8"
+  );
+  const panel = readFileSync(
+    new URL("../components/lobby/RecentMatchesPanel.tsx", import.meta.url),
+    "utf8"
+  );
+
+  assert.doesNotMatch(
+    reviewDesk,
+    /title=\{\s*(?:h\(\s*)?option\.title/
+  );
+  assert.doesNotMatch(
+    panel,
+    /title=\{\s*h\(\s*resultReview\.reviewLabel/
+  );
+  assert.match(reviewDesk, /aria-pressed/);
+  assert.match(panel, /aria-label=\{/);
 });
