@@ -91,7 +91,7 @@ function isMarketSettlementClaim(claim: {
 
 const ADMIN_RETRY_WINNER_CLAIM_KINDS = new Set(["bet_payout", "winner_bounty"]);
 
-type AdminRetryWinnerTruthMarket = {
+export type AdminRetryWinnerTruthMarket = {
   id: number;
   title: string;
   eventLabel: string;
@@ -104,6 +104,12 @@ type AdminRetryWinnerTruthMarket = {
     winner: string | null;
     players: unknown;
   } | null;
+  wagers: Array<{
+    userId: number;
+    side: string;
+    payoutWolo: number | null;
+    status: string;
+  }>;
 };
 
 function adminRetryTruthName(value: string | null | undefined) {
@@ -178,13 +184,15 @@ function adminRetryClaimTargetsSide(
   );
 }
 
-function assertAdminRetryWinnerTruthGate(input: {
+export function assertAdminRetryWinnerTruthGate(input: {
   claim: {
     id: number;
     displayPlayerName: string;
     normalizedPlayerName: string;
     claimKind: string | null;
+    amountWolo: number;
   };
+  matchedUserId: number;
   market: AdminRetryWinnerTruthMarket | null;
 }) {
   const claimKind = (input.claim.claimKind || "").trim();
@@ -212,6 +220,68 @@ function assertAdminRetryWinnerTruthGate(input: {
         market.id +
         " has no settled winner_side"
     );
+  }
+
+  /*
+   * A bet payout belongs to the bettor whose winning wager funded the
+   * entitlement. It does not belong to the player or team named by the
+   * match proposition. Prove the retry against the stored winning wager,
+   * bettor identity, winning side, and exact payout amount.
+   */
+  if (claimKind === "bet_payout") {
+    const winningWagers =
+      market.wagers.filter(
+        (wager) =>
+          wager.userId === input.matchedUserId &&
+          wager.status === "won"
+      );
+    const payoutWolo =
+      winningWagers.reduce(
+        (total, wager) =>
+          total + (wager.payoutWolo ?? 0),
+        0
+      );
+
+    if (winningWagers.length === 0) {
+      throw new Error(
+        "ADMIN_RETRY_BETTOR_ENTITLEMENT_MISMATCH: claim " +
+          input.claim.id +
+          " has no stored winning wager for matched user " +
+          input.matchedUserId +
+          " on market " +
+          market.id
+      );
+    }
+
+    if (
+      winningWagers.some(
+        (wager) => wager.side !== winnerSide
+      )
+    ) {
+      throw new Error(
+        "ADMIN_RETRY_BETTOR_ENTITLEMENT_MISMATCH: claim " +
+          input.claim.id +
+          " winning wager side does not match market " +
+          market.id +
+          " winner_side=" +
+          winnerSide
+      );
+    }
+
+    if (payoutWolo !== input.claim.amountWolo) {
+      throw new Error(
+        "ADMIN_RETRY_BETTOR_ENTITLEMENT_MISMATCH: claim " +
+          input.claim.id +
+          " amount " +
+          input.claim.amountWolo +
+          " does not match stored winning wager entitlement " +
+          payoutWolo +
+          " on market " +
+          market.id
+      );
+    }
+
+    return;
   }
 
   const expectedWinnerName = winnerSide === "left" ? market.leftLabel : market.rightLabel;
@@ -572,6 +642,18 @@ export async function retryPendingClaimSettlement(
                 players: true,
               },
             },
+            wagers: {
+              where: {
+                userId: matchedUser.id,
+                status: "won",
+              },
+              select: {
+                userId: true,
+                side: true,
+                payoutWolo: true,
+                status: true,
+              },
+            },
           },
         })
       : null;
@@ -613,7 +695,11 @@ export async function retryPendingClaimSettlement(
             };
           }
 
-          assertAdminRetryWinnerTruthGate({ claim, market });
+          assertAdminRetryWinnerTruthGate({
+            claim,
+            matchedUserId: matchedUser.id,
+            market,
+          });
 
           const storedPayoutTxHash = currentClaim.payoutTxHash?.trim() || null;
           let payout: {
@@ -739,7 +825,11 @@ export async function retryPendingClaimSettlement(
   }
 
   try {
-    assertAdminRetryWinnerTruthGate({ claim, market });
+    assertAdminRetryWinnerTruthGate({
+      claim,
+      matchedUserId: matchedUser.id,
+      market,
+    });
 
     /*
      * A broadcast can land after the first REST lookup timed out. A pending
