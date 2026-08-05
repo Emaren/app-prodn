@@ -8,6 +8,10 @@ import {
   type CanonicalReplayPlayer,
 } from "./teamResolution.ts";
 import { loadReplayDesyncIncidentProvenance } from "./replayDesyncIncidents.ts";
+import {
+  evaluateWatcherTeamTerminalResult,
+  WATCHER_TEAM_TERMINAL_POLICY_VERSION,
+} from "./watcherTeamTerminalResult.ts";
 
 export const REPLAY_RESULT_ACCEPTED = "accepted" as const;
 export const REPLAY_RESULT_PENDING_ADMIN = "pending_admin_approval" as const;
@@ -1808,9 +1812,19 @@ export async function reconcileAutomaticWatcherTerminalResults(
           };
         }
 
+        const automaticRoster =
+          canonicalPlayers(
+            game.players
+          );
+
+        const automaticPolicyVersion =
+          automaticRoster.length === 2
+            ? WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION
+            : WATCHER_TEAM_TERMINAL_POLICY_VERSION;
+
         const idempotencyKey = [
           "evidence:auto",
-          WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
+          automaticPolicyVersion,
           gameStatsId,
           game.replayHash.slice(0, 16),
           game.parse_iteration,
@@ -2033,7 +2047,7 @@ export async function reconcileAutomaticWatcherTerminalResults(
           };
         }
 
-        const evaluation = evaluateWatcherTerminalOwnerLoss({
+        const terminalEvaluationInput = {
           id: game.id,
           replayHash: game.replayHash,
           parseIteration: game.parse_iteration,
@@ -2045,31 +2059,63 @@ export async function reconcileAutomaticWatcherTerminalResults(
           keyEvents: game.key_events,
           eventTypes: game.event_types,
           disconnectDetected: game.disconnect_detected,
-          durationSeconds: game.game_duration ?? game.duration,
-          uploaderSteamId: game.user.steamId,
-          uploaderUid: game.user.uid,
-          uploaderUserId: game.user.id,
-          hasAdjudicationHistory: false,
-          currentDesyncOccurred: currentDesyncIncident?.desyncOccurred ?? null,
-          terminalReceipt: receipt,
+          durationSeconds:
+            game.game_duration ??
+            game.duration,
+          uploaderSteamId:
+            game.user.steamId,
+          uploaderUid:
+            game.user.uid,
+          uploaderUserId:
+            game.user.id,
+          hasAdjudicationHistory:
+            false,
+          currentDesyncOccurred:
+            currentDesyncIncident
+              ?.desyncOccurred ??
+            null,
+          terminalReceipt:
+            receipt,
           terminalFailureCount,
-          rawActivityByPlayer: activityObservation.value,
+          rawActivityByPlayer:
+            activityObservation.value,
           parseRun: {
             id: parseRun.id,
-            parserName: parseRun.parserName,
-            parserVersion: parseRun.parserVersion,
-            parserBuild: parseRun.parserBuild,
-            passName: parseRun.passName,
-            passVersion: parseRun.passVersion,
-            schemaVersion: parseRun.schemaVersion,
-            status: parseRun.status,
-            candidateOnly: parseRun.candidateOnly,
-            affectsPublicAggregates: parseRun.affectsPublicAggregates,
-            completedAt: parseRun.completedAt,
-            activityObservationId: activityObservation.id,
-            activityProvenance: activityObservation.provenance,
+            parserName:
+              parseRun.parserName,
+            parserVersion:
+              parseRun.parserVersion,
+            parserBuild:
+              parseRun.parserBuild,
+            passName:
+              parseRun.passName,
+            passVersion:
+              parseRun.passVersion,
+            schemaVersion:
+              parseRun.schemaVersion,
+            status:
+              parseRun.status,
+            candidateOnly:
+              parseRun.candidateOnly,
+            affectsPublicAggregates:
+              parseRun.affectsPublicAggregates,
+            completedAt:
+              parseRun.completedAt,
+            activityObservationId:
+              activityObservation.id,
+            activityProvenance:
+              activityObservation.provenance,
           },
-        });
+        };
+
+        const evaluation =
+          automaticRoster.length === 2
+            ? evaluateWatcherTerminalOwnerLoss(
+                terminalEvaluationInput
+              )
+            : evaluateWatcherTeamTerminalResult(
+                terminalEvaluationInput
+              );
         if (!evaluation.eligible) {
           return {
             gameStatsId,
@@ -2079,19 +2125,35 @@ export async function reconcileAutomaticWatcherTerminalResults(
           };
         }
 
+        const adjudicationReason =
+          evaluation.reason ===
+          "decisive_1v1_terminal_action_tail"
+            ? (
+                `Automatic terminal evidence: ${evaluation.loser.name} stopped first in the ` +
+                `final rated 1v1 while ${evaluation.winnerPlayer.name} remained active.`
+              )
+            : (
+                `Automatic team terminal evidence: ` +
+                `${evaluation.losingTeam.players
+                  .map((player) => player.name)
+                  .join(" / ")} stopped first while ` +
+                `${evaluation.winningTeam.players
+                  .map((player) => player.name)
+                  .join(" / ")} remained active at the replay tail.`
+              );
+
         const validated = validateReplayResultAdjudication({
           payload: {
             idempotencyKey,
             sourceReplayHash: game.replayHash,
             sourceParseIteration: game.parse_iteration,
             sourceRosterHash: buildRosterHash(
-              canonicalPlayers(game.players)
+              automaticRoster
             ),
             teams: evaluation.teams,
             winningTeamKey: evaluation.winningTeamKey,
             reason:
-              `Automatic terminal evidence: ${evaluation.loser.name} stopped first in the ` +
-              `final rated 1v1 while ${evaluation.winnerPlayer.name} remained active.`,
+              adjudicationReason,
             evidence: evaluation.evidence,
           },
           replayHash: game.replayHash,
