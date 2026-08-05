@@ -1309,6 +1309,9 @@ export const WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE =
 export const WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION =
   "operator_review_required" as const;
 
+export const WATCHER_TERMINAL_RAW_ACTIVITY_FIELD_PATH =
+  "actions.raw_activity_by_player" as const;
+
 const WATCHER_TERMINAL_MIN_LOSER_SILENCE_MS = 5_000;
 const WATCHER_TERMINAL_MIN_WINNER_LEAD_MS = 2_000;
 const WATCHER_TERMINAL_MAX_WINNER_TAIL_MS = 30_000;
@@ -2015,6 +2018,12 @@ export async function reconcileAutomaticWatcherTerminalResults(
             gameStatsId,
             artifact: { sha256: game.replayHash },
             status: { in: ["completed", "recovered"] },
+            observations: {
+              some: {
+                fieldPath:
+                  WATCHER_TERMINAL_RAW_ACTIVITY_FIELD_PATH,
+              },
+            },
           },
           orderBy: [{ completedAt: "desc" }, { id: "desc" }],
           select: {
@@ -2030,7 +2039,10 @@ export async function reconcileAutomaticWatcherTerminalResults(
             affectsPublicAggregates: true,
             completedAt: true,
             observations: {
-              where: { fieldPath: "actions.raw_activity_by_player" },
+              where: {
+                fieldPath:
+                  WATCHER_TERMINAL_RAW_ACTIVITY_FIELD_PATH,
+              },
               orderBy: { id: "desc" },
               take: 1,
               select: { id: true, value: true, provenance: true },

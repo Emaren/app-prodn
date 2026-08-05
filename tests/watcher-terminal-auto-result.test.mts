@@ -7,6 +7,7 @@ import {
   WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE,
   WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION,
   WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
+  WATCHER_TERMINAL_RAW_ACTIVITY_FIELD_PATH,
   type WatcherTerminalOwnerLossInput,
 } from "../lib/replayResultAdjudications.ts";
 import {
@@ -132,6 +133,9 @@ test("empty automatic reconciliation is a safe no-op", async () => {
 test("automatic reconciliation submits the canonical roster hash", async () => {
   const input = baseInput();
   let createdData: Record<string, unknown> | null = null;
+  let parseRunFindFirstArgs:
+    | Record<string, unknown>
+    | null = null;
 
   const game = {
     id: input.id,
@@ -186,8 +190,13 @@ test("automatic reconciliation submits the canonical roster hash", async () => {
       count: async () => 0,
     },
     replayParseRun: {
-      findFirst: async () => ({
-        id: 4965,
+      findFirst: async (
+        args: Record<string, unknown>
+      ) => {
+        parseRunFindFirstArgs = args;
+
+        return {
+          id: 4965,
         parserName: "mgz",
         parserVersion: "8",
         parserBuild: "test",
@@ -205,7 +214,8 @@ test("automatic reconciliation submits the canonical roster hash", async () => {
             provenance: { source: "test" },
           },
         ],
-      }),
+        };
+      },
     },
     betMarket: {
       findMany: async () => [],
@@ -238,6 +248,22 @@ test("automatic reconciliation submits the canonical roster hash", async () => {
   assert.deepEqual(createdData?.winningPlayerKeys, [
     "steam:76561198442007385",
   ]);
+
+  assert.deepEqual(
+    (
+      parseRunFindFirstArgs as {
+        where?: {
+          observations?: unknown;
+        };
+      } | null
+    )?.where?.observations,
+    {
+      some: {
+        fieldPath:
+          WATCHER_TERMINAL_RAW_ACTIVITY_FIELD_PATH,
+      },
+    }
+  );
 });
 
 test("automatic watcher evidence uses stats-only append-only authority", () => {
