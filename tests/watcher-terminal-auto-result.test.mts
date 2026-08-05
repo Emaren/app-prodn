@@ -9,6 +9,10 @@ import {
   WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
   type WatcherTerminalOwnerLossInput,
 } from "../lib/replayResultAdjudications.ts";
+import {
+  buildRosterHash,
+  normalizeReplayPlayers,
+} from "../lib/teamResolution.ts";
 
 const replayHash = "4".repeat(64);
 
@@ -123,6 +127,117 @@ test("empty automatic reconciliation is a safe no-op", async () => {
     skippedCount: 0,
     outcomes: [],
   });
+});
+
+test("automatic reconciliation submits the canonical roster hash", async () => {
+  const input = baseInput();
+  let createdData: Record<string, unknown> | null = null;
+
+  const game = {
+    id: input.id,
+    userUid: input.uploaderUid,
+    replay_file: "MP Replay.aoe2record",
+    replayHash: input.replayHash,
+    createdAt: new Date("2026-08-04T02:12:26.796Z"),
+    game_version: "HD",
+    map: { name: "Yucatan" },
+    game_type: "Random Map",
+    duration: input.durationSeconds,
+    game_duration: input.durationSeconds,
+    winner: input.winner,
+    players: input.players,
+    event_types: input.eventTypes,
+    key_events: input.keyEvents,
+    timestamp: new Date("2026-08-04T02:12:26.796Z"),
+    played_on: new Date("2026-08-04T02:04:21.156Z"),
+    parse_iteration: input.parseIteration,
+    is_final: input.isFinal,
+    disconnect_detected: input.disconnectDetected,
+    parse_source: input.parseSource,
+    parse_reason: input.parseReason,
+    original_filename: "MP Replay.aoe2record",
+    user: {
+      id: input.uploaderUserId,
+      uid: input.uploaderUid,
+      steamId: input.uploaderSteamId,
+      inGameName: "Emaren",
+      steamPersonaName: "Emaren",
+    },
+  };
+
+  const tx = {
+    $queryRaw: async () => [{ lock_acquired: 1 }],
+    gameStats: {
+      findUnique: async () => game,
+    },
+    replayResultAdjudication: {
+      findUnique: async () => null,
+      findFirst: async () => null,
+      create: async (args: { data: Record<string, unknown> }) => {
+        createdData = args.data;
+        return { id: 9001 };
+      },
+    },
+    replayDesyncIncident: {
+      findFirst: async () => null,
+    },
+    watcherClientEvent: {
+      findFirst: async () => null,
+      count: async () => 0,
+    },
+    replayParseRun: {
+      findFirst: async () => ({
+        id: 4965,
+        parserName: "mgz",
+        parserVersion: "8",
+        parserBuild: "test",
+        passName: "hd_deterministic_evidence",
+        passVersion: "8",
+        schemaVersion: "1",
+        status: "completed",
+        candidateOnly: true,
+        affectsPublicAggregates: false,
+        completedAt: new Date("2026-08-04T02:12:26.796Z"),
+        observations: [
+          {
+            id: 7001,
+            value: input.rawActivityByPlayer,
+            provenance: { source: "test" },
+          },
+        ],
+      }),
+    },
+    betMarket: {
+      findMany: async () => [],
+    },
+    pendingWoloClaim: {
+      findMany: async () => [],
+    },
+  };
+
+  const prisma = {
+    $transaction: async (
+      callback: (transaction: typeof tx) => Promise<unknown>
+    ) => callback(tx),
+  };
+
+  const report = await reconcileAutomaticWatcherTerminalResults(
+    prisma as never,
+    [input.id]
+  );
+
+  const expectedRosterHash = buildRosterHash(
+    normalizeReplayPlayers(input.players)
+  );
+
+  assert.equal(report.createdCount, 1);
+  assert.equal(report.skippedCount, 0);
+  assert.equal(createdData?.sourceRosterHash, expectedRosterHash);
+  assert.equal(createdData?.affectsStats, true);
+  assert.equal(createdData?.affectsBets, false);
+  assert.deepEqual(createdData?.winningPlayerKeys, [
+    "steam:76561198442007385",
+  ]);
 });
 
 test("automatic watcher evidence uses stats-only append-only authority", () => {

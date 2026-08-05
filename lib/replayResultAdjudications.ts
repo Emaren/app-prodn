@@ -2084,6 +2084,9 @@ export async function reconcileAutomaticWatcherTerminalResults(
             idempotencyKey,
             sourceReplayHash: game.replayHash,
             sourceParseIteration: game.parse_iteration,
+            sourceRosterHash: buildRosterHash(
+              canonicalPlayers(game.players)
+            ),
             teams: evaluation.teams,
             winningTeamKey: evaluation.winningTeamKey,
             reason:
