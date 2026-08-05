@@ -31,7 +31,7 @@ export default async function PlayersDirectoryPage() {
               Player Board
             </div>
             <h1 className="max-w-3xl text-4xl font-semibold leading-[1.02] text-white sm:text-5xl">
-              {boardCount} competitive identity rows.
+              {boardCount} warriors on board.
             </h1>
 
             <div className="flex flex-wrap gap-2">
@@ -59,7 +59,7 @@ export default async function PlayersDirectoryPage() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <StatCard label="Identity Rows" value={String(boardCount)} />
+            <StatCard label="On Board" value={String(boardCount)} />
             <StatCard label="Claimed" value={String(directory.claimedEntries.length)} />
             <StatCard
               label="Live Now"
