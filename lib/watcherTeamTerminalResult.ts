@@ -4,7 +4,7 @@ import {
 } from "./teamResolution.ts";
 
 export const WATCHER_TEAM_TERMINAL_POLICY_VERSION =
-  "replay-team-terminal-action-tail-v1" as const;
+  "replay-team-terminal-action-tail-v2" as const;
 
 export const WATCHER_TEAM_TERMINAL_MIN_LEAD_MS = 10_000;
 export const WATCHER_TEAM_TERMINAL_MIN_LOSER_SILENCE_MS = 10_000;
@@ -1459,7 +1459,7 @@ export function evaluateWatcherTeamTerminalResult(
       (
         receipt.eventType ===
           "final_settle_observation_complete" &&
-        !truth(
+        explicitFalse(
           receipt.metadata
             .finalStored
         )

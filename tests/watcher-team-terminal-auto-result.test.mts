@@ -518,7 +518,7 @@ test(
   () => {
     assert.equal(
       WATCHER_TEAM_TERMINAL_POLICY_VERSION,
-      "replay-team-terminal-action-tail-v1"
+      "replay-team-terminal-action-tail-v2"
     );
 
     assert.equal(
@@ -1122,6 +1122,163 @@ test(
         createdData?.reason
       ),
       /YODA.*Wok_Dias.*Rick.*Mt\. Bison/
+    );
+  }
+);
+
+test(
+  "watcher 1.5.7 completion receipt may omit finalStored and system player zero is ignored",
+  () => {
+    const input =
+      teamInput21197();
+
+    input.terminalReceipt = {
+      eventId: "3662128",
+      eventType:
+        "final_settle_observation_complete",
+      createdAt:
+        "2026-08-05T03:38:39.969Z",
+      userId:
+        input.uploaderUserId,
+      userUid:
+        input.uploaderUid,
+      sessionId:
+        "session_b769b8ea2ecd4bada99b64429f3e75b0",
+      replayHash:
+        input.replayHash,
+      replayFile:
+        "MP Replay v5.8 @2026.08.04 231024 (3).aoe2record",
+      metadata: {
+        runtimeEventType:
+          "final-settle-observation-complete",
+        watcherVersion:
+          "1.5.7",
+      },
+    };
+
+    input.rawActivityByPlayer = [
+      {
+        player_number: 0,
+        player_name: null,
+        action_packet_count: 1,
+        first_action_ms: 2494818,
+        last_action_ms: 2494818,
+        action_type_counts: {
+          game: 1,
+        },
+      },
+      ...(
+        input.rawActivityByPlayer as Array<
+          Record<string, unknown>
+        >
+      ),
+    ];
+
+    const evaluation =
+      evaluateWatcherTeamTerminalResult(
+        input
+      );
+
+    assert.equal(
+      evaluation.eligible,
+      true
+    );
+
+    if (!evaluation.eligible) {
+      return;
+    }
+
+    assert.equal(
+      evaluation.winningTeamKey,
+      "team:1"
+    );
+
+    const evidence =
+      evaluation.evidence as {
+        policyVersion?: unknown;
+        terminalReceiptMode?: unknown;
+      };
+
+    assert.equal(
+      evidence.policyVersion,
+      WATCHER_TEAM_TERMINAL_POLICY_VERSION
+    );
+
+    assert.equal(
+      evidence.terminalReceiptMode,
+      "exact_watcher_receipt"
+    );
+  }
+);
+
+test(
+  "explicitly false finalStored or mismatched receipt identity still fails closed",
+  () => {
+    const explicitFalseReceipt =
+      teamInput21197();
+
+    explicitFalseReceipt.terminalReceipt = {
+      eventType:
+        "final_settle_observation_complete",
+      userId:
+        explicitFalseReceipt
+          .uploaderUserId,
+      userUid:
+        explicitFalseReceipt
+          .uploaderUid,
+      sessionId:
+        "session_exact",
+      replayHash:
+        explicitFalseReceipt
+          .replayHash,
+      replayFile:
+        "MP Replay.aoe2record",
+      metadata: {
+        finalStored: false,
+      },
+    };
+
+    assert.deepEqual(
+      evaluateWatcherTeamTerminalResult(
+        explicitFalseReceipt
+      ),
+      {
+        eligible: false,
+        reason:
+          "terminal_receipt_conflicts",
+      }
+    );
+
+    const mismatchedHash =
+      teamInput21197();
+
+    mismatchedHash.terminalReceipt = {
+      eventType:
+        "final_settle_observation_complete",
+      userId:
+        mismatchedHash
+          .uploaderUserId,
+      userUid:
+        mismatchedHash
+          .uploaderUid,
+      sessionId:
+        "session_exact",
+      replayHash:
+        "9".repeat(64),
+      replayFile:
+        "MP Replay.aoe2record",
+      metadata: {},
+    };
+
+    assert.deepEqual(
+      evaluateWatcherTeamTerminalResult(
+        mismatchedHash
+      ),
+      {
+        eligible: false,
+        reason:
+          "terminal_receipt_conflicts",
+      }
     );
   }
 );
