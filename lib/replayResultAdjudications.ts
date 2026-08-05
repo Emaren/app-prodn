@@ -642,7 +642,7 @@ export function applyReplayResultAdjudication<T extends object>(
 
   return {
     ...source,
-    winner: winningNames[0],
+    winner: winningNames.join(" / "),
     winnerPlayers: winningNames,
     winningPlayerKeys: [...winningPlayerKeys],
     winningTeamKey: adjudication.winningTeamKey,

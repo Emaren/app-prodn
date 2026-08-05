@@ -207,7 +207,7 @@ test("the effective projection marks every winning teammate and preserves raw ev
     key_events: Record<string, unknown>;
   };
 
-  assert.equal(projected.winner, "Jim");
+  assert.equal(projected.winner, "Jim / Rick");
   assert.deepEqual(projected.winnerPlayers.sort(), ["Jim", "Rick"]);
   assert.deepEqual(
     projected.players.map((player) => [player.name, player.team_id, player.winner]),

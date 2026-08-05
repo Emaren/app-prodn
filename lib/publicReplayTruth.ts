@@ -577,6 +577,99 @@ function publicWinnerFlagIsTrue(value: unknown) {
   return value === true || value === "true" || value === 1 || value === "1";
 }
 
+function trustedStructuredWinningPlayerNames(
+  row: PublicGameStatsLike
+) {
+  const keyEvents =
+    readRecord(
+      row.key_events ??
+        row.keyEvents
+    );
+
+  const resultResolution =
+    readRecord(
+      keyEvents
+        .result_resolution
+    );
+
+  const winningNames =
+    (
+      Array.isArray(
+        resultResolution
+          .winning_player_names
+      )
+        ? resultResolution
+            .winning_player_names
+        : []
+    )
+      .map(
+        normalizePublicReplayText
+      )
+      .filter(
+        (
+          name
+        ): name is string =>
+          Boolean(name)
+      );
+
+  const winningKeys =
+    new Set(
+      winningNames.map(
+        (name) =>
+          name.toLowerCase()
+      )
+    );
+
+  if (
+    winningNames.length < 2 ||
+    winningKeys.size !==
+      winningNames.length
+  ) {
+    return null;
+  }
+
+  const rosterNames =
+    readPlayers(
+      row.players
+    )
+      .map(
+        (player) =>
+          normalizePublicReplayText(
+            player.name
+          )
+      )
+      .filter(
+        (
+          name
+        ): name is string =>
+          Boolean(name)
+      );
+
+  const rosterKeys =
+    new Set(
+      rosterNames.map(
+        (name) =>
+          name.toLowerCase()
+      )
+    );
+
+  if (
+    rosterNames.length < 3 ||
+    rosterKeys.size !==
+      rosterNames.length ||
+    winningNames.length >=
+      rosterNames.length ||
+    [...winningKeys].some(
+      (key) =>
+        !rosterKeys.has(key)
+    )
+  ) {
+    return null;
+  }
+
+  return winningNames;
+}
+
 function trustedManualPublicWinner(row: PublicGameStatsLike) {
   const parseReason = readString(row, "parse_reason", "parseReason") || "";
   if (!isManualPublicResultReason(parseReason)) return null;
@@ -640,11 +733,62 @@ export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
     // This changes presentation only. Betting eligibility remains
     // independently governed by truth.bettingEligible.
     next["winner"] = truth.winner;
-    next["winnerProof"] = truth.truthReasons.includes(
-      "trusted_team_result"
-    )
-      ? "trusted_structured_result"
-      : "replay_winner_truth";
+
+    const trustedTeamResult =
+      truth.truthReasons.includes(
+        "trusted_team_result"
+      );
+
+    next["winnerProof"] =
+      trustedTeamResult
+        ? "trusted_structured_result"
+        : "replay_winner_truth";
+
+    if (trustedTeamResult) {
+      const winningNames =
+        trustedStructuredWinningPlayerNames(
+          row
+        );
+
+      if (winningNames) {
+        const winningKeys =
+          new Set(
+            winningNames.map(
+              (name) =>
+                name.toLowerCase()
+            )
+          );
+
+        const players =
+          readPlayers(
+            publicRow.players
+          );
+
+        if (players.length > 0) {
+          next["players"] =
+            players.map(
+              (player) => {
+                const name =
+                  normalizePublicReplayText(
+                    player.name
+                  );
+
+                return {
+                  ...player,
+                  winner:
+                    Boolean(
+                      name &&
+                      winningKeys.has(
+                        name.toLowerCase()
+                      )
+                    ),
+                };
+              }
+            );
+        }
+      }
+    }
+
     next["reviewNeeded"] = false;
     next["unresolvedResult"] = null;
 

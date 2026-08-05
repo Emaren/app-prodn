@@ -646,3 +646,134 @@ test("a final parser disconnect is a desynced no-result battle, not Completed", 
   assert.equal(unresolved?.label, "Desynced");
   assert.equal(unresolved?.reviewNeeded, false);
 });
+
+test(
+  "trusted structured team projection publishes the full side and exact player flags",
+  () => {
+    const publicRow =
+      toPublicGameStatsRow({
+        id: 21215,
+        is_final: true,
+        disconnect_detected: false,
+        winner: "Unknown",
+        parse_reason:
+          "team_resignation_complete",
+        parse_source:
+          "watcher_final",
+        event_types: [
+          "resign",
+        ],
+        players: [
+          {
+            name: "BucKy",
+            winner: false,
+          },
+          {
+            name: "DaNny10",
+            winner: false,
+          },
+          {
+            name: "_AgEz_",
+            winner: false,
+          },
+          {
+            name: "prosdestroyer",
+            winner: false,
+          },
+          {
+            name: "Jim",
+            winner: false,
+          },
+          {
+            name: "Uber Hero",
+            winner: false,
+          },
+        ],
+        key_events: {
+          completed: true,
+          result_resolution: {
+            result_status:
+              "resolved",
+            result_trusted: true,
+            result_provenance:
+              "complete_losing_team_resignation",
+            winning_team_id: 0,
+            winning_player_names: [
+              "Jim",
+              "Uber Hero",
+              "DaNny10",
+            ],
+          },
+          team_resolution: {
+            status: "resolved",
+            confidence: "high",
+            teams: [
+              {
+                team_id: 0,
+                players: [
+                  "Jim",
+                  "Uber Hero",
+                  "DaNny10",
+                ],
+              },
+              {
+                team_id: 1,
+                players: [
+                  "BucKy",
+                  "_AgEz_",
+                  "prosdestroyer",
+                ],
+              },
+            ],
+          },
+        },
+      });
+
+    assert.equal(
+      publicRow.winner,
+      "Jim / Uber Hero / DaNny10"
+    );
+
+    assert.equal(
+      publicRow.winnerProof,
+      "trusted_structured_result"
+    );
+
+    assert.equal(
+      publicRow.reviewNeeded,
+      false
+    );
+
+    assert.equal(
+      publicRow.unresolvedResult,
+      null
+    );
+
+    const playerFlags =
+      Object.fromEntries(
+        (
+          publicRow.players as Array<{
+            name: string;
+            winner: boolean;
+          }>
+        ).map(
+          (player) => [
+            player.name,
+            player.winner,
+          ]
+        )
+      );
+
+    assert.deepEqual(
+      playerFlags,
+      {
+        BucKy: false,
+        DaNny10: true,
+        _AgEz_: false,
+        prosdestroyer: false,
+        Jim: true,
+        "Uber Hero": true,
+      }
+    );
+  }
+);
