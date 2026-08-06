@@ -39,7 +39,7 @@ const DEFAULT_TILE_VIEW_MODES: TileViewPreferences = {
   academy_hero: "extreme",
   download_watcher: "extreme",
   leaderboard: "advanced",
-  workshop: "advanced",
+  workshop: "extreme",
 };
 
 export function isTileViewKey(value: string | null | undefined): value is TileViewKey {
