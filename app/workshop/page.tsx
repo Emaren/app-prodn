@@ -11,6 +11,8 @@ import {
   loadWorkshopChroniclePage,
 } from "@/lib/workshop";
 
+import "./workshop-polish.css";
+
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
