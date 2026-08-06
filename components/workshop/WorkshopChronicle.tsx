@@ -5,6 +5,10 @@ import Link from "next/link";
 import {
   Anvil,
   Bot,
+  CalendarDays,
+  ChevronDown,
+  Clock3,
+  ExternalLink,
   Hammer,
   Rocket,
   ScrollText,
@@ -82,37 +86,44 @@ const TYPE_PRESENTATION: Record<
     Icon: typeof Hammer;
     accent: string;
     glow: string;
+    dot: string;
   }
 > = {
   milestone: {
     Icon: Sparkles,
     accent: "text-amber-100",
     glow: "from-amber-300/[0.12] via-orange-300/[0.035] to-transparent",
+    dot: "bg-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.58)]",
   },
   deployment: {
     Icon: Rocket,
     accent: "text-emerald-100",
     glow: "from-emerald-300/[0.10] via-cyan-300/[0.025] to-transparent",
+    dot: "bg-emerald-300 shadow-[0_0_18px_rgba(110,231,183,0.5)]",
   },
   parser_discovery: {
     Icon: Wrench,
     accent: "text-cyan-100",
     glow: "from-cyan-300/[0.10] via-blue-300/[0.025] to-transparent",
+    dot: "bg-cyan-300 shadow-[0_0_18px_rgba(103,232,249,0.5)]",
   },
   design_decision: {
     Icon: ShieldCheck,
     accent: "text-violet-100",
     glow: "from-violet-300/[0.10] via-fuchsia-300/[0.025] to-transparent",
+    dot: "bg-violet-300 shadow-[0_0_18px_rgba(196,181,253,0.5)]",
   },
   ai_discussion: {
     Icon: Bot,
     accent: "text-fuchsia-100",
     glow: "from-fuchsia-300/[0.10] via-violet-300/[0.025] to-transparent",
+    dot: "bg-fuchsia-300 shadow-[0_0_18px_rgba(240,171,252,0.5)]",
   },
   build_note: {
     Icon: Hammer,
     accent: "text-orange-100",
     glow: "from-orange-300/[0.09] via-amber-300/[0.025] to-transparent",
+    dot: "bg-orange-300 shadow-[0_0_18px_rgba(253,186,116,0.5)]",
   },
 };
 
@@ -122,6 +133,7 @@ function presentation(entry: ChronicleEntry) {
       Icon: Anvil,
       accent: "text-slate-100",
       glow: "from-white/[0.07] via-white/[0.015] to-transparent",
+      dot: "bg-slate-300 shadow-[0_0_16px_rgba(203,213,225,0.36)]",
     }
   );
 }
@@ -175,6 +187,10 @@ function isStrong(entry: ChronicleEntry) {
   );
 }
 
+function isExternalUrl(value: string) {
+  return /^https?:\/\//i.test(value);
+}
+
 export default function WorkshopChronicle({
   initialEntries,
   initialHasMore,
@@ -185,6 +201,9 @@ export default function WorkshopChronicle({
   const [nextCursor, setNextCursor] = useState(initialNextCursor);
   const [loading, setLoading] = useState(false);
   const [automaticLoadFailed, setAutomaticLoadFailed] = useState(false);
+  const [expandedEntries, setExpandedEntries] = useState<Set<string>>(
+    () => new Set(),
+  );
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const groups = useMemo(() => {
@@ -212,14 +231,19 @@ export default function WorkshopChronicle({
     return ordered;
   }, [entries]);
 
-  const alignmentByPublicId = useMemo(() => {
-    return new Map<string, "left" | "right">(
-      entries.map((entry, index) => [
-        entry.publicId,
-        index % 2 === 0 ? "left" : "right",
-      ]),
-    );
-  }, [entries]);
+  const toggleEntry = useCallback((publicId: string) => {
+    setExpandedEntries((current) => {
+      const next = new Set(current);
+
+      if (next.has(publicId)) {
+        next.delete(publicId);
+      } else {
+        next.add(publicId);
+      }
+
+      return next;
+    });
+  }, []);
 
   const loadOlder = useCallback(async () => {
     if (loading || !hasMore || !nextCursor) return;
@@ -287,43 +311,66 @@ export default function WorkshopChronicle({
   return (
     <section
       id="chronicle"
-      className="relative overflow-hidden rounded-[2.15rem] border border-amber-100/12 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.09),transparent_31%),linear-gradient(180deg,rgba(15,23,42,0.86),rgba(2,6,23,0.96))] px-5 py-8 shadow-[0_30px_100px_rgba(0,0,0,0.28)] sm:px-8 sm:py-10"
+      className="relative overflow-hidden rounded-[2.15rem] border border-amber-100/12 bg-[radial-gradient(circle_at_18%_0%,rgba(251,191,36,0.09),transparent_29%),radial-gradient(circle_at_88%_4%,rgba(56,189,248,0.055),transparent_24%),linear-gradient(180deg,rgba(15,23,42,0.88),rgba(2,6,23,0.97))] px-4 py-8 shadow-[0_30px_100px_rgba(0,0,0,0.28)] sm:px-7 sm:py-10 lg:px-10"
     >
-      <div className="mx-auto max-w-5xl">
-        <header className="text-center">
-          <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.36em] text-amber-100/55">
-            <ScrollText className="h-4 w-4" />
-            Living History
+      <div className="mx-auto max-w-6xl">
+        <header className="border-b border-white/[0.07] pb-7 sm:flex sm:items-end sm:justify-between sm:gap-8">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.32em] text-amber-100/58">
+              <ScrollText className="h-4 w-4" />
+              Living History
+            </div>
+
+            <h2 className="mt-3 font-serif text-3xl leading-tight sm:text-4xl lg:text-5xl">
+              The Workshop Chronicle
+            </h2>
+
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400 sm:text-[15px]">
+              Verified releases and decisions, newest first. The important part
+              stays visible; hashes, receipts, and technical detail open only
+              when you need them.
+            </p>
           </div>
 
-          <h2 className="mt-3 font-serif text-4xl sm:text-5xl">
-            The Workshop Chronicle
-          </h2>
-
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-400">
-            The story of how Emaren, AI, players, and the Kingdom are forging
-            AoE2WAR — newest verified work first, one build at a time.
-          </p>
+          <div className="mt-5 flex flex-wrap gap-2 sm:mt-0 sm:justify-end">
+            <div className="rounded-full border border-white/8 bg-black/20 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+              {entries.length} loaded records
+            </div>
+            <div className="rounded-full border border-amber-200/12 bg-amber-300/[0.045] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-100/62">
+              Newest first
+            </div>
+          </div>
         </header>
 
-        <div className="relative mt-10">
-          <div className="pointer-events-none absolute bottom-0 left-[1.45rem] top-0 w-px bg-gradient-to-b from-amber-200/30 via-white/8 to-transparent sm:left-1/2" />
+        <div className="relative mt-8">
+          <div className="pointer-events-none absolute bottom-0 left-[1.08rem] top-0 w-px bg-gradient-to-b from-amber-200/38 via-white/10 to-transparent sm:left-[1.3rem]" />
 
-          <div className="space-y-12">
+          <div className="space-y-10">
             {groups.map((group) => (
-              <section key={group.key}>
-                <div className="relative z-10 mb-6 flex sm:justify-center">
-                  <div className="rounded-full border border-amber-100/12 bg-slate-950 px-5 py-2 text-[10px] font-bold uppercase tracking-[0.3em] text-amber-100/70 shadow-xl">
-                    {group.label}
+              <section key={group.key} aria-label={group.label}>
+                <div className="relative z-10 flex items-center gap-3">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-amber-100/18 bg-slate-950 text-amber-100 shadow-[0_8px_28px_rgba(0,0,0,0.38)] sm:h-10 sm:w-10">
+                    <CalendarDays className="h-4 w-4" />
+                  </div>
+
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <h3 className="text-sm font-semibold text-slate-100 sm:text-base">
+                      {group.label}
+                    </h3>
+                    <div className="h-px min-w-6 flex-1 bg-gradient-to-r from-white/10 to-transparent" />
+                    <span className="shrink-0 text-[10px] uppercase tracking-[0.18em] text-slate-600">
+                      {group.entries.length} {group.entries.length === 1 ? "record" : "records"}
+                    </span>
                   </div>
                 </div>
 
-                <div className="space-y-5">
+                <div className="mt-4 space-y-4 pl-12 sm:pl-16">
                   {group.entries.map((entry) => (
                     <ChronicleEntry
                       key={entry.publicId}
                       entry={entry}
-                      align={alignmentByPublicId.get(entry.publicId) ?? "left"}
+                      expanded={expandedEntries.has(entry.publicId)}
+                      onToggle={() => toggleEntry(entry.publicId)}
                     />
                   ))}
                 </div>
@@ -334,17 +381,17 @@ export default function WorkshopChronicle({
           <div ref={sentinelRef} className="h-2" />
 
           {loading ? (
-            <div className="mt-8 text-center text-xs uppercase tracking-[0.24em] text-slate-600">
+            <div className="mt-8 pl-12 text-xs uppercase tracking-[0.22em] text-slate-600 sm:pl-16">
               Opening older pages of the Chronicle…
             </div>
           ) : null}
 
           {automaticLoadFailed && hasMore ? (
-            <div className="mt-8 text-center">
+            <div className="mt-8 pl-12 sm:pl-16">
               <button
                 type="button"
                 onClick={() => void loadOlder()}
-                className="rounded-full border border-white/12 bg-white/[0.035] px-5 py-2.5 text-xs font-semibold text-slate-200 transition hover:bg-white/[0.07]"
+                className="cursor-pointer rounded-full border border-white/12 bg-white/[0.035] px-5 py-2.5 text-xs font-semibold text-slate-200 transition hover:bg-white/[0.07]"
               >
                 Load older history
               </button>
@@ -352,7 +399,7 @@ export default function WorkshopChronicle({
           ) : null}
 
           {!hasMore && entries.length > 7 ? (
-            <div className="mt-10 text-center text-[10px] uppercase tracking-[0.3em] text-slate-700">
+            <div className="mt-10 pl-12 text-[10px] uppercase tracking-[0.28em] text-slate-700 sm:pl-16">
               The Chronicle begins here.
             </div>
           ) : null}
@@ -364,133 +411,204 @@ export default function WorkshopChronicle({
 
 function ChronicleEntry({
   entry,
-  align,
+  expanded,
+  onToggle,
 }: {
   entry: ChronicleEntry;
-  align: "left" | "right";
+  expanded: boolean;
+  onToggle: () => void;
 }) {
-  const { Icon, accent, glow } = presentation(entry);
+  const { Icon, accent, glow, dot } = presentation(entry);
   const major = isMajor(entry);
   const strong = isStrong(entry);
+  const detailsId = `chronicle-details-${entry.publicId}`;
+  const hasTechnicalRecord = Boolean(
+    entry.body || entry.dialogue.length > 0 || entry.artifacts.length > 0,
+  );
+  const externalLink = entry.linkUrl ? isExternalUrl(entry.linkUrl) : false;
 
   return (
-    <article
-      id={entry.publicId}
-      className={[
-        "relative grid sm:grid-cols-2",
-        align === "right" ? "sm:[&>*]:col-start-2" : "",
-      ].join(" ")}
-    >
+    <article id={entry.publicId} className="relative scroll-mt-28">
       <div
         className={[
-          "relative ml-12 sm:ml-0",
-          align === "left" ? "sm:pr-10" : "sm:pl-10",
+          "absolute -left-[2.02rem] top-7 h-3 w-3 rounded-full border border-slate-950 sm:-left-[2.45rem]",
+          dot,
+        ].join(" ")}
+        aria-hidden="true"
+      />
+
+      <div
+        className={[
+          "overflow-hidden border bg-gradient-to-br",
+          glow,
+          major
+            ? "rounded-[1.55rem] border-amber-100/16 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.24)] sm:p-6"
+            : strong
+              ? "rounded-[1.4rem] border-white/10 p-5"
+              : "rounded-[1.25rem] border-white/[0.075] p-4 sm:p-5",
         ].join(" ")}
       >
-        <div
-          className={[
-            "absolute top-6 h-3.5 w-3.5 rounded-full border border-amber-50/60 bg-amber-300 shadow-[0_0_18px_rgba(251,191,36,0.5)]",
-            "-left-[2.98rem]",
-            align === "left"
-              ? "sm:-right-[0.45rem] sm:left-auto"
-              : "sm:-left-[0.45rem]",
-          ].join(" ")}
-        />
-
-        <div
-          className={[
-            "overflow-hidden border bg-gradient-to-br",
-            glow,
-            major
-              ? "rounded-[1.8rem] border-amber-100/18 p-6 shadow-[0_24px_70px_rgba(0,0,0,0.28)] sm:p-7"
-              : strong
-                ? "rounded-[1.55rem] border-white/11 p-5"
-                : "rounded-[1.35rem] border-white/8 p-4",
-          ].join(" ")}
-        >
-          <div className="flex items-start justify-between gap-4">
-            <div
-              className={[
-                "flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.24em]",
-                accent,
-              ].join(" ")}
-            >
-              <Icon className={major ? "h-4 w-4" : "h-3.5 w-3.5"} />
-              {TYPE_LABELS[entry.entryType] || entry.entryType}
-            </div>
-
-            <time className="shrink-0 text-[9px] text-slate-600">
-              {moment(entry.occurredAt)}
-            </time>
-          </div>
-
-          <h3
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div
             className={[
-              "font-semibold text-white",
-              major
-                ? "mt-4 font-serif text-3xl leading-tight"
-                : strong
-                  ? "mt-3 text-xl"
-                  : "mt-2 text-base",
+              "flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.22em]",
+              accent,
             ].join(" ")}
           >
-            {entry.title}
-          </h3>
+            <Icon className={major ? "h-4 w-4" : "h-3.5 w-3.5"} />
+            {TYPE_LABELS[entry.entryType] || entry.entryType}
+            {entry.pinned ? (
+              <span className="rounded-full border border-current/15 px-2 py-0.5 text-[8px] tracking-[0.16em] opacity-65">
+                Featured
+              </span>
+            ) : null}
+          </div>
 
-          {entry.summary ? (
-            <p
-              className={[
-                "text-slate-300",
-                major ? "mt-4 text-base leading-7" : "mt-3 text-sm leading-6",
-              ].join(" ")}
+          <time className="inline-flex shrink-0 items-center gap-1.5 text-[10px] text-slate-600">
+            <Clock3 className="h-3 w-3" />
+            {moment(entry.occurredAt)}
+          </time>
+        </div>
+
+        <h4
+          className={[
+            "max-w-4xl font-semibold text-white",
+            major
+              ? "mt-3 font-serif text-2xl leading-tight sm:text-3xl"
+              : strong
+                ? "mt-3 text-xl leading-snug"
+                : "mt-2.5 text-base leading-snug sm:text-lg",
+          ].join(" ")}
+        >
+          {entry.title}
+        </h4>
+
+        {entry.summary ? (
+          <p
+            className={[
+              "max-w-4xl text-slate-300",
+              major
+                ? "mt-3 text-[15px] leading-7"
+                : "mt-2.5 text-sm leading-6",
+            ].join(" ")}
+          >
+            {entry.summary}
+          </p>
+        ) : null}
+
+        {entry.mediaUrl ? (
+          entry.mediaKind === "video" ? (
+            <video
+              className="mt-5 aspect-video w-full rounded-2xl border border-white/10 bg-black object-cover"
+              controls
+              preload="metadata"
+              src={entry.mediaUrl}
+            />
+          ) : entry.mediaKind === "audio" ? (
+            <audio
+              className="mt-5 w-full"
+              controls
+              preload="none"
+              src={entry.mediaUrl}
+            />
+          ) : (
+            <Image
+              className="mt-5 max-h-[34rem] w-full rounded-2xl border border-white/10 object-cover"
+              src={entry.mediaUrl}
+              alt={entry.mediaAlt || entry.title}
+              width={1400}
+              height={900}
+              sizes="(max-width: 640px) 100vw, 80vw"
+              unoptimized
+            />
+          )
+        ) : null}
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {hasTechnicalRecord ? (
+            <button
+              type="button"
+              onClick={onToggle}
+              aria-expanded={expanded}
+              aria-controls={detailsId}
+              className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-black/15 px-3.5 py-2 text-xs font-semibold text-slate-300 transition hover:border-white/18 hover:bg-white/[0.05] hover:text-white"
             >
-              {entry.summary}
-            </p>
-          ) : null}
-
-          {major && entry.body ? (
-            <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-400">
-              {entry.body}
-            </p>
-          ) : null}
-
-          {entry.mediaUrl ? (
-            entry.mediaKind === "video" ? (
-              <video
-                className="mt-5 aspect-video w-full rounded-2xl border border-white/10 bg-black object-cover"
-                controls
-                preload="metadata"
-                src={entry.mediaUrl}
+              {expanded ? "Hide technical record" : "Read technical record"}
+              <ChevronDown
+                className={[
+                  "h-3.5 w-3.5 transition-transform",
+                  expanded ? "rotate-180" : "",
+                ].join(" ")}
               />
-            ) : entry.mediaKind === "audio" ? (
-              <audio
-                className="mt-5 w-full"
-                controls
-                preload="none"
-                src={entry.mediaUrl}
-              />
-            ) : (
-              <Image
-                className="mt-5 max-h-[32rem] w-full rounded-2xl border border-white/10 object-cover"
-                src={entry.mediaUrl}
-                alt={entry.mediaAlt || entry.title}
-                width={1200}
-                height={800}
-                sizes="(max-width: 640px) 100vw, 50vw"
-                unoptimized
-              />
-            )
+            </button>
           ) : null}
 
           {entry.linkUrl ? (
             <Link
               href={entry.linkUrl}
-              className="mt-5 inline-flex rounded-full border border-white/12 px-4 py-2 text-xs font-semibold text-white transition hover:bg-white/[0.06]"
+              target={externalLink ? "_blank" : undefined}
+              rel={externalLink ? "noreferrer" : undefined}
+              className="inline-flex items-center gap-2 rounded-full border border-amber-200/12 bg-amber-300/[0.045] px-3.5 py-2 text-xs font-semibold text-amber-100/78 transition hover:border-amber-200/24 hover:bg-amber-300/[0.08] hover:text-amber-50"
             >
               {entry.linkLabel || "Open build"}
+              {externalLink ? <ExternalLink className="h-3.5 w-3.5" /> : null}
             </Link>
           ) : null}
         </div>
+
+        {expanded && hasTechnicalRecord ? (
+          <div
+            id={detailsId}
+            className="mt-4 border-t border-white/[0.075] pt-4"
+          >
+            {entry.body ? (
+              <p className="max-w-5xl whitespace-pre-wrap text-sm leading-7 text-slate-400 [overflow-wrap:anywhere]">
+                {entry.body}
+              </p>
+            ) : null}
+
+            {entry.dialogue.length > 0 ? (
+              <div className="mt-4 grid gap-3">
+                {entry.dialogue.map((line, index) => (
+                  <blockquote
+                    key={`${entry.publicId}-dialogue-${index}`}
+                    className="rounded-xl border border-white/[0.07] bg-black/15 px-4 py-3"
+                  >
+                    <div className="text-[9px] font-bold uppercase tracking-[0.2em] text-slate-500">
+                      {line.speaker}
+                    </div>
+                    <p className="mt-1.5 text-sm leading-6 text-slate-300 [overflow-wrap:anywhere]">
+                      {line.body}
+                    </p>
+                  </blockquote>
+                ))}
+              </div>
+            ) : null}
+
+            {entry.artifacts.length > 0 ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {entry.artifacts.map((artifact) => {
+                  const artifactExternal = isExternalUrl(artifact.url);
+
+                  return (
+                    <Link
+                      key={`${entry.publicId}-${artifact.kind}-${artifact.sortOrder}`}
+                      href={artifact.url}
+                      target={artifactExternal ? "_blank" : undefined}
+                      rel={artifactExternal ? "noreferrer" : undefined}
+                      className="inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.025] px-3 py-2 text-xs text-slate-300 transition hover:bg-white/[0.06] hover:text-white"
+                    >
+                      {artifact.label}
+                      {artifactExternal ? (
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      ) : null}
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </article>
   );
