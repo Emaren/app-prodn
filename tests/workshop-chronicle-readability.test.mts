@@ -6,17 +6,26 @@ const chronicle = readFileSync(
   "components/workshop/WorkshopChronicle.tsx",
   "utf8",
 );
+const polish = readFileSync(
+  "app/workshop/workshop-polish.css",
+  "utf8",
+);
 const publication = readFileSync(
-  "scripts/publish-workshop-2026-08-06.mts",
+  "scripts/publish-workshop-2026-08-06-polish.mts",
   "utf8",
 );
 
-test("Workshop Chronicle uses one full-width reading rail", () => {
+test("Advanced and Extreme retain one full-width readable Chronicle rail", () => {
   assert.match(chronicle, /max-w-6xl/);
   assert.match(chronicle, /pl-12 sm:pl-16/);
   assert.match(chronicle, /loaded records/);
   assert.doesNotMatch(chronicle, /sm:grid-cols-2/);
   assert.doesNotMatch(chronicle, /alignmentByPublicId/);
+
+  assert.match(
+    polish,
+    /main\[data-workshop-view="basic"\] #chronicle[\s\S]*width:\s*50%/,
+  );
 });
 
 test("dense Chronicle evidence is optional but preserved", () => {
@@ -28,19 +37,19 @@ test("dense Chronicle evidence is optional but preserved", () => {
   assert.match(chronicle, /\[overflow-wrap:anywhere\]/);
 });
 
-test("August 6 publication records the BAE release and readability pass", () => {
+test("August 6 polish publication records the two deliberate Chronicle modes", () => {
   assert.match(
     publication,
-    /222c4601f925c966232afff6d9b9aaf6570f2a0d/,
-  );
-  assert.match(publication, /20260806153401-ba04dfc88b/);
-  assert.match(publication, /The Workshop becomes a three-level observatory\./);
-  assert.match(
-    publication,
-    /The Chronicle trades narrow zig-zags for one readable record\./,
+    /The Workshop becomes a three-level observatory\./,
   );
   assert.match(
     publication,
-    /PUBLISH-WORKSHOP-CHRONICLE-2026-08-06/,
+    /The Chronicle gains two deliberate reading modes\./,
+  );
+  assert.match(publication, /Extreme is now the default command-deck view/);
+  assert.match(publication, /Basic alternates entries around the center rail/);
+  assert.match(
+    publication,
+    /PUBLISH-WORKSHOP-EXTREME-POLISH-2026-08-06/,
   );
 });
