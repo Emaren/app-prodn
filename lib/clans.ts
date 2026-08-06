@@ -23,7 +23,7 @@ export const CLAN_AUDIENCE_DETAILS: Record<
   clan: {
     label: "Clan only",
     shortLabel: "Clan",
-    description: "Visible only to active Mystikal clan members.",
+    description: "Visible only to active clan members.",
   },
 };
 
@@ -56,35 +56,45 @@ export const MYSTIKAL_FALLBACK: ClanDirectoryEntry = {
   memberCount: 0,
 };
 
-export function buildMystikalFallbackSnapshot(
-  viewerUid: string | null = null
-): ClanHallSnapshot {
-  const authenticated = Boolean(viewerUid);
+export const JIMS_CLAN_FALLBACK: ClanDirectoryEntry = {
+  id: -1,
+  slug: "jims-clan",
+  name: "Jim's Clan",
+  tagline: "The American Champion raises his banner.",
+  description:
+    "A hard American warhouse for Jim, his allies, and every player willing to carry the fight.",
+  crestUrl: null,
+  memberCount: 0,
+};
 
-  return {
-    clan: {
-      ...MYSTIKAL_FALLBACK,
-      chatAudiencePolicy: "public",
-    },
-    viewer: {
-      authenticated,
-      uid: viewerUid,
-      displayName: null,
-      isMember: false,
-      role: null,
-      canManage: false,
-    },
-    allowedAudiences: authenticated ? ["public", "users"] : [],
-    messages: [],
-    roster: [],
-    access: {
-      canReadChat: true,
-      canPost: authenticated,
-      notice: authenticated
-        ? "Choose who can see each post before you send it."
-        : "You are seeing public clan posts. Sign in to join the conversation.",
-    },
-  };
+export const LEGEND_CLAN_FALLBACK: ClanDirectoryEntry = {
+  id: -2,
+  slug: "legend-clan",
+  name: "Legend Clan",
+  tagline: "The Sultan's house gathers beneath an opulent banner.",
+  description:
+    "A palace-hall for LeGenD_Sultan and the warriors who fight beneath the Legend banner.",
+  crestUrl: null,
+  memberCount: 0,
+};
+
+export const FOUNDING_CLAN_FALLBACKS: readonly ClanDirectoryEntry[] = [
+  MYSTIKAL_FALLBACK,
+  JIMS_CLAN_FALLBACK,
+  LEGEND_CLAN_FALLBACK,
+];
+
+export function findFoundingClanFallback(slug: string) {
+  return FOUNDING_CLAN_FALLBACKS.find((clan) => clan.slug === slug.toLowerCase()) ?? null;
+}
+
+export function mergeClanDirectoryWithFoundingClans(clans: ClanDirectoryEntry[]) {
+  const bySlug = new Map(clans.map((clan) => [clan.slug, clan]));
+  const founding = FOUNDING_CLAN_FALLBACKS.map(
+    (fallback) => bySlug.get(fallback.slug) ?? fallback
+  );
+  const foundingSlugs = new Set(FOUNDING_CLAN_FALLBACKS.map((clan) => clan.slug));
+  return [...founding, ...clans.filter((clan) => !foundingSlugs.has(clan.slug))];
 }
 
 export type ClanHallSnapshot = {
@@ -138,11 +148,40 @@ export type ClanHallSnapshot = {
   };
 };
 
+export function buildClanFallbackSnapshot(
+  clan: ClanDirectoryEntry,
+  viewerUid: string | null = null
+): ClanHallSnapshot {
+  const authenticated = Boolean(viewerUid);
+  return {
+    clan: { ...clan, chatAudiencePolicy: "public" },
+    viewer: {
+      authenticated,
+      uid: viewerUid,
+      displayName: null,
+      isMember: false,
+      role: null,
+      canManage: false,
+    },
+    allowedAudiences: authenticated ? ["public", "users"] : [],
+    messages: [],
+    roster: [],
+    access: {
+      canReadChat: true,
+      canPost: authenticated,
+      notice: authenticated
+        ? "Choose who can see each post before you send it."
+        : "You are seeing public clan posts. Sign in to join the conversation.",
+    },
+  };
+}
+
+export function buildMystikalFallbackSnapshot(viewerUid: string | null = null) {
+  return buildClanFallbackSnapshot(MYSTIKAL_FALLBACK, viewerUid);
+}
+
 export function isClanAudience(value: unknown): value is ClanAudience {
-  return (
-    typeof value === "string" &&
-    (CLAN_AUDIENCES as readonly string[]).includes(value)
-  );
+  return typeof value === "string" && (CLAN_AUDIENCES as readonly string[]).includes(value);
 }
 
 export function normalizeClanView(
@@ -170,16 +209,10 @@ export function normalizeClanMessage(value: unknown) {
 }
 
 export function isClanReaction(value: unknown): value is ClanReaction {
-  return (
-    typeof value === "string" &&
-    (CLAN_REACTIONS as readonly string[]).includes(value)
-  );
+  return typeof value === "string" && (CLAN_REACTIONS as readonly string[]).includes(value);
 }
 
-export function audienceAllowedByPolicy(
-  audience: ClanAudience,
-  policy: ClanAudience
-) {
+export function audienceAllowedByPolicy(audience: ClanAudience, policy: ClanAudience) {
   return AUDIENCE_BREADTH[audience] <= AUDIENCE_BREADTH[policy];
 }
 
@@ -191,9 +224,7 @@ function displayName(user: {
   return user.inGameName || user.steamPersonaName || user.uid;
 }
 
-export async function loadClanDirectory(
-  prisma: PrismaClient
-): Promise<ClanDirectoryEntry[]> {
+export async function loadClanDirectory(prisma: PrismaClient): Promise<ClanDirectoryEntry[]> {
   const clans = await prisma.clan.findMany({
     where: { status: "active" },
     orderBy: [{ name: "asc" }, { id: "asc" }],
@@ -206,9 +237,7 @@ export async function loadClanDirectory(
       crestUrl: true,
       _count: {
         select: {
-          members: {
-            where: { status: "active" },
-          },
+          members: { where: { status: "active" } },
         },
       },
     },
@@ -231,10 +260,7 @@ export async function loadClanHallSnapshot(
   viewerUid: string | null
 ): Promise<ClanHallSnapshot | null> {
   const clan = await prisma.clan.findFirst({
-    where: {
-      slug,
-      status: "active",
-    },
+    where: { slug, status: "active" },
     select: {
       id: true,
       slug: true,
@@ -244,15 +270,10 @@ export async function loadClanHallSnapshot(
       crestUrl: true,
       chatAudiencePolicy: true,
       _count: {
-        select: {
-          members: {
-            where: { status: "active" },
-          },
-        },
+        select: { members: { where: { status: "active" } } },
       },
     },
   });
-
   if (!clan) return null;
 
   const viewer = viewerUid
@@ -267,26 +288,15 @@ export async function loadClanHallSnapshot(
         },
       })
     : null;
-
   const membership = viewer
     ? await prisma.clanMember.findUnique({
-        where: {
-          clanId_userId: {
-            clanId: clan.id,
-            userId: viewer.id,
-          },
-        },
-        select: {
-          role: true,
-          status: true,
-        },
+        where: { clanId_userId: { clanId: clan.id, userId: viewer.id } },
+        select: { role: true, status: true },
       })
     : null;
-
   const activeMembership = membership?.status === "active" ? membership : null;
   const canManage = Boolean(
-    viewer?.isAdmin ||
-      (activeMembership && MANAGER_ROLES.has(activeMembership.role))
+    viewer?.isAdmin || (activeMembership && MANAGER_ROLES.has(activeMembership.role))
   );
   const isMember = Boolean(activeMembership || viewer?.isAdmin);
   const policy = normalizeClanAudience(clan.chatAudiencePolicy, "public");
@@ -295,7 +305,6 @@ export async function loadClanHallSnapshot(
     policy === "public" ||
     (policy === "users" && authenticated) ||
     (policy === "clan" && isMember);
-
   const visibleAudiences: ClanAudience[] = canReadChat
     ? [
         "public",
@@ -303,7 +312,6 @@ export async function loadClanHallSnapshot(
         ...(isMember ? (["clan"] as const) : []),
       ]
     : [];
-
   const allowedAudiences = authenticated
     ? CLAN_AUDIENCES.filter(
         (audience) =>
@@ -315,12 +323,7 @@ export async function loadClanHallSnapshot(
   const [messageRows, rosterRows] = await Promise.all([
     visibleAudiences.length > 0
       ? prisma.clanMessage.findMany({
-          where: {
-            clanId: clan.id,
-            audience: {
-              in: visibleAudiences,
-            },
-          },
+          where: { clanId: clan.id, audience: { in: visibleAudiences } },
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           take: 80,
           select: {
@@ -343,11 +346,7 @@ export async function loadClanHallSnapshot(
                 emoji: true,
                 userId: true,
                 user: {
-                  select: {
-                    uid: true,
-                    inGameName: true,
-                    steamPersonaName: true,
-                  },
+                  select: { uid: true, inGameName: true, steamPersonaName: true },
                 },
               },
             },
@@ -355,29 +354,20 @@ export async function loadClanHallSnapshot(
         })
       : [],
     prisma.clanMember.findMany({
-      where: {
-        clanId: clan.id,
-        status: "active",
-      },
+      where: { clanId: clan.id, status: "active" },
       orderBy: [{ role: "asc" }, { joinedAt: "asc" }],
       take: 16,
       select: {
         role: true,
         joinedAt: true,
         user: {
-          select: {
-            uid: true,
-            inGameName: true,
-            steamPersonaName: true,
-          },
+          select: { uid: true, inGameName: true, steamPersonaName: true },
         },
       },
     }),
   ]);
 
-  const authorIds = Array.from(
-    new Set(messageRows.map((message) => message.author.id))
-  );
+  const authorIds = Array.from(new Set(messageRows.map((message) => message.author.id)));
   const authorMemberships =
     authorIds.length > 0
       ? await prisma.clanMember.findMany({
@@ -386,25 +376,20 @@ export async function loadClanHallSnapshot(
             userId: { in: authorIds },
             status: "active",
           },
-          select: {
-            userId: true,
-            role: true,
-          },
+          select: { userId: true, role: true },
         })
       : [];
-  const roleByUserId = new Map(
-    authorMemberships.map((row) => [row.userId, row.role])
-  );
+  const roleByUserId = new Map(authorMemberships.map((row) => [row.userId, row.role]));
 
   const notice =
     policy === "clan" && !isMember
-      ? "This hall is currently visible to Mystikal clan members only."
+      ? `${clan.name} is currently visible to active clan members only.`
       : policy === "users" && !authenticated
-        ? "Mystikal currently shares this hall with signed-in AoE2WAR users."
+        ? `${clan.name} currently shares this hall with signed-in AoE2WAR users.`
         : !authenticated
           ? "You are seeing public clan posts. Sign in to join the conversation."
           : allowedAudiences.length === 0
-            ? "Mystikal has closed posting to clan members."
+            ? `${clan.name} has closed posting to clan members.`
             : "Choose who can see each post before you send it.";
 
   return {
@@ -441,6 +426,7 @@ export async function loadClanHallSnapshot(
             users: Array<{ uid: string; displayName: string }>;
           }
         >();
+
         for (const reaction of message.reactions) {
           if (!isClanReaction(reaction.emoji)) continue;
           const group = groupedReactions.get(reaction.emoji) ?? {
@@ -450,18 +436,18 @@ export async function loadClanHallSnapshot(
             users: [],
           };
           group.count += 1;
-          group.viewerReacted =
-            group.viewerReacted || reaction.userId === viewer?.id;
+          group.viewerReacted = group.viewerReacted || reaction.userId === viewer?.id;
           group.users.push({
             uid: reaction.user.uid,
             displayName: displayName(reaction.user),
           });
           groupedReactions.set(reaction.emoji, group);
         }
+
         const canEdit = Boolean(
-          viewer &&
-            (message.author.id === viewer.id || viewer.isAdmin || canManage)
+          viewer && (message.author.id === viewer.id || viewer.isAdmin || canManage)
         );
+
         return {
           id: message.id,
           body: message.body,
@@ -489,10 +475,6 @@ export async function loadClanHallSnapshot(
       role: member.role,
       joinedAt: member.joinedAt.toISOString(),
     })),
-    access: {
-      canReadChat,
-      canPost: allowedAudiences.length > 0,
-      notice,
-    },
+    access: { canReadChat, canPost: allowedAudiences.length > 0, notice },
   };
 }
