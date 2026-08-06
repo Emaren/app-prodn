@@ -1,0 +1,25 @@
+/* Basic-only Chronicle heading alignment. Advanced and Extreme stay left-led. */
+main[data-workshop-view="basic"] #chronicle > div > header {
+  display: block;
+  text-align: center;
+}
+
+main[data-workshop-view="basic"] #chronicle > div > header > div:first-child {
+  max-width: 48rem;
+  margin-inline: auto;
+  text-align: center;
+}
+
+main[data-workshop-view="basic"] #chronicle > div > header > div:first-child > div {
+  justify-content: center;
+}
+
+main[data-workshop-view="basic"] #chronicle > div > header > div:first-child > h2,
+main[data-workshop-view="basic"] #chronicle > div > header > div:first-child > p {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+main[data-workshop-view="basic"] #chronicle > div > header > div:last-child {
+  justify-content: center;
+}
