@@ -12,6 +12,7 @@ import {
 } from "@/lib/workshop";
 
 import "./workshop-polish.css";
+import "./workshop-chronicle-gap-fill.css";
 
 export const dynamic = "force-dynamic";
 
