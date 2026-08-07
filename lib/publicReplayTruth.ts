@@ -802,16 +802,36 @@ export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
     row.disconnectDetected === true;
 
   if (disconnectNoResult) {
-    const next: Record<string, unknown> = clearUnsafeWinnerFields(publicRow);
+    const next: Record<string, unknown> =
+      clearUnsafeWinnerFields(
+        publicRow
+      );
+
+    /*
+     * A parser/watcher disconnect flag is machine evidence,
+     * not human-confirmed desync truth.
+     *
+     * The lobby may display DESYNCED only after the separate,
+     * append-only ReplayDesyncIncident ledger establishes that
+     * human conclusion.
+     */
     next["unresolvedResult"] = {
-      code: "disconnect_or_desync",
-      label: "Desynced",
+      code:
+        "disconnect_result_unproven",
+      label:
+        "Result unproven",
       explanation:
-        "Replay ended in a disconnect or desync before a canonical winner existed.",
-      reviewNeeded: false,
+        "The replay ended with a disconnect flag before a canonical winner was proven. A machine disconnect flag is not a human-confirmed desync.",
+      reviewNeeded:
+        true,
     };
-    next["reviewNeeded"] = false;
-    next["winnerProof"] = "disconnect_or_desync";
+
+    next["reviewNeeded"] =
+      true;
+
+    next["winnerProof"] =
+      "disconnect_result_unproven";
+
     return next as T;
   }
 

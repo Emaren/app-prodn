@@ -22,6 +22,10 @@ import {
   runLatestReplayParserForGame,
 } from "@/lib/replayParserOnDemand";
 
+import {
+  reconcileAutomaticWatcherTerminalResults,
+} from "@/lib/replayResultAdjudications";
+
 export const runtime =
   "nodejs";
 
@@ -246,6 +250,40 @@ export async function POST(
   const since =
     recoverySince();
 
+  const targetGameStatsIdRaw =
+    request.nextUrl
+      .searchParams
+      .get("gameStatsId");
+
+  const targetGameStatsId =
+    targetGameStatsIdRaw === null
+      ? null
+      : Number.parseInt(
+          targetGameStatsIdRaw,
+          10
+        );
+
+  if (
+    targetGameStatsIdRaw !== null &&
+    (
+      !Number.isSafeInteger(
+        targetGameStatsId
+      ) ||
+      (targetGameStatsId ?? 0) < 1
+    )
+  ) {
+    return NextResponse.json(
+      {
+        detail:
+          "gameStatsId must be a positive integer.",
+      },
+      {
+        status:
+          400,
+      }
+    );
+  }
+
   const prisma =
     getPrisma();
 
@@ -264,6 +302,11 @@ export async function POST(
       FROM game_stats AS game
       WHERE game.is_final = TRUE
         AND game.created_at >= ${since}
+        AND (
+          ${targetGameStatsId}::integer IS NULL
+          OR game.id =
+            ${targetGameStatsId}::integer
+        )
         AND NOT EXISTS (
           SELECT 1
           FROM replay_parse_runs AS run
@@ -307,6 +350,8 @@ export async function POST(
 
       dryRun:
         true,
+
+      targetGameStatsId,
 
       since:
         since.toISOString(),
@@ -392,11 +437,28 @@ export async function POST(
       new Date();
 
     try {
-      const result =
+      const parserResult =
         await runLatestReplayParserForGame(
           prisma,
           game.id,
           requestedByUid
+        );
+
+      /*
+       * Parser recovery creates the evidence rail.
+       *
+       * Immediately retry the automatic terminal-result policy
+       * after the exact current-hash Engine Room run exists.
+       * This closes the old timing hole where post-ingest result
+       * reconciliation ran before raw action-tail evidence was
+       * available and was never retried afterward.
+       */
+      const automaticTerminalResult =
+        await reconcileAutomaticWatcherTerminalResults(
+          prisma,
+          [
+            game.id,
+          ]
         );
 
       results.push({
@@ -413,7 +475,9 @@ export async function POST(
         ok:
           true,
 
-        result,
+        parserResult,
+
+        automaticTerminalResult,
 
         startedAt:
           startedAt
@@ -476,6 +540,8 @@ export async function POST(
     dryRun:
       false,
 
+    targetGameStatsId,
+
     since:
       since.toISOString(),
 
@@ -503,14 +569,20 @@ export async function POST(
     results,
 
     authorityBoundary: {
-      candidateOnly:
+      parserCandidateOnly:
         true,
 
-      affectsPublicAggregates:
+      parserAffectsPublicAggregates:
         false,
 
       gameStatsChanges:
         0,
+
+      resultAdjudicationMayBeAppended:
+        true,
+
+      resultAdjudicationAffectsStats:
+        true,
 
       marketChanges:
         0,
