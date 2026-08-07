@@ -9,6 +9,7 @@ import {
   ChevronDown,
   Coins,
   Hammer,
+  Landmark,
   LayoutList,
   MessageCirclePlus,
   MessageSquare,
@@ -509,8 +510,14 @@ function FeatureRequestMessageCard({
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-amber-100/70">
-                <Hammer className="h-3.5 w-3.5" />
-                Feature Request
+                {request.kind === "clan_hall" ? (
+                  <Landmark className="h-3.5 w-3.5" />
+                ) : (
+                  <Hammer className="h-3.5 w-3.5" />
+                )}
+                {request.kind === "clan_hall"
+                  ? "Clan Alert"
+                  : "Feature Request"}
               </div>
 
               <div className="mt-2 text-base font-bold text-white">
@@ -533,13 +540,28 @@ function FeatureRequestMessageCard({
               <Coins className="h-3.5 w-3.5 text-amber-200/70" />
               <span>{request.amountWolo.toLocaleString()} WOLO</span>
               <span>·</span>
-              <span>Private Workshop request</span>
+              <span>
+                {request.kind === "clan_hall"
+                  ? "Verified Clan Hall purchase"
+                  : "Private Workshop request"}
+              </span>
             </div>
 
-            <div title={request.requestId}>
-              Request #{request.requestId.slice(0, 8)}
-              {" · "}
-              {formatBubbleTime(message.createdAt)}
+            <div className="flex flex-wrap items-center gap-2">
+              <div title={request.requestId}>
+                Request #{request.requestId.slice(0, 8)}
+                {" · "}
+                {formatBubbleTime(message.createdAt)}
+              </div>
+              {request.kind === "clan_hall" ? (
+                <Link
+                  href="/admin/clans"
+                  className="inline-flex items-center gap-1 rounded-full border border-red-200/20 bg-red-300/[0.08] px-2.5 py-1 text-[9px] font-black text-red-100 transition hover:bg-red-300/15"
+                >
+                  Open Clan Command
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+              ) : null}
             </div>
           </div>
         </div>

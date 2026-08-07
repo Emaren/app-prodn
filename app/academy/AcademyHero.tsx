@@ -7,14 +7,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { KeyboardEvent, MouseEvent } from "react";
 import { ArrowRight, Flame, Orbit, Shield, Sparkles } from "lucide-react";
-import { Cinzel_Decorative } from "next/font/google";
-
-const academyWarTitleFont = Cinzel_Decorative({
-  subsets: ["latin"],
-  weight: ["700", "900"],
-  display: "swap",
-});
-
 type AcademyHeroVariant = "a" | "b" | "e";
 
 const ACADEMY_HERO_BG_IMAGE = "/academy/academy-gates-red.webp";
@@ -35,7 +27,7 @@ const HERO_VARIANTS: Array<{
     key: "b",
     label: "B",
     name: "Base",
-    line: "Original text title",
+    line: "Scholarly gold title",
   },
   {
     key: "a",
@@ -296,18 +288,18 @@ export default function AcademyHero() {
         <div className="mt-auto max-w-[42rem] pb-2">
           {heroVariant === "b" ? (
             <>
+              <p className="mt-16 text-[10px] font-bold uppercase tracking-[0.42em] text-amber-100/52">
+                AoE2WAR · The War College
+              </p>
+
               <h1
-                className={[
-                  academyWarTitleFont.className,
-                  "mt-16 text-5xl font-black leading-[0.88] tracking-[-0.065em] text-transparent sm:text-7xl lg:text-[5.35rem]",
-                ].join(" ")}
+                data-academy-basic-title
+                className="market-display-title market-display-gold market-hero-title mt-4 pb-2 font-serif text-5xl font-normal leading-[1.01] tracking-[-0.045em] sm:text-6xl lg:text-7xl"
               >
-                <span className="bg-[linear-gradient(180deg,#f5e4b8_0%,#c9953d_18%,#7b451f_45%,#d2a755_66%,#5f321b_84%,#d3a85c_100%)] bg-clip-text drop-shadow-[0_3px_0_rgba(33,14,7,0.88)] [filter:drop-shadow(0_14px_28px_rgba(0,0,0,0.58))]">
-                  The Academy
-                </span>
+                The Academy
               </h1>
 
-              <div className="mt-5 h-px w-56 bg-gradient-to-r from-amber-200/70 via-amber-100/18 to-transparent" />
+              <div className="mt-3 h-px w-36 bg-gradient-to-r from-amber-100/62 via-amber-100/20 to-transparent" />
             </>
           ) : (
             <>
@@ -315,7 +307,7 @@ export default function AcademyHero() {
 
               <div
                 className={[
-                  "relative h-[7.95rem] w-[min(101%,30.4rem)] max-w-none overflow-visible sm:h-[9.9rem] sm:w-[34.9rem] lg:h-[10.8rem] lg:w-[36.7rem]",
+                  "relative h-[7.15rem] w-[min(91%,27.4rem)] max-w-none overflow-visible sm:h-[8.9rem] sm:w-[31.4rem] lg:h-[9.7rem] lg:w-[33rem]",
                   heroVariant === "e"
                     ? "mt-7 sm:mt-8 lg:mt-9"
                     : "mt-6 sm:mt-7 lg:mt-8",
@@ -330,7 +322,7 @@ export default function AcademyHero() {
                   width={1672}
                   height={941}
                   priority
-                  sizes="(max-width: 640px) 92vw, (max-width: 1024px) 36rem, 38rem"
+                  sizes="(max-width: 640px) 84vw, (max-width: 1024px) 32rem, 34rem"
                   className={[
                     "absolute left-[-0.5rem] top-[47%] h-auto w-full -translate-y-1/2 select-none object-contain sm:left-[-0.82rem] lg:left-[-0.96rem]",
                     heroVariant === "e"

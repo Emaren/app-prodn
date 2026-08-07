@@ -6,12 +6,24 @@ import {
   getOrCreateConversationByUsers,
   resolvePrimaryAdminContact,
 } from "@/lib/contactInbox";
+import {
+  buildClanAlertBody,
+  buildClanHallRequestText,
+  CLAN_HALL_REQUEST_MARKER,
+  normalizeClanFoundingMessage,
+  normalizeClanHallName,
+  parseClanHallRequestText,
+  slugifyClanHallName,
+} from "@/lib/clanHallRequests";
 import { buildFeatureRequestInboxMessage } from "@/lib/featureRequestInboxMessage";
-import { CLAN_HALL_REQUEST_MARKER } from "@/lib/clanHallRequests";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { recordUserActivity } from "@/lib/userExperience";
-import { WOLO_BASE_DENOM, WOLO_CHAIN_ID, toUwoLoAmount } from "@/lib/woloChain";
+import {
+  WOLO_BASE_DENOM,
+  WOLO_CHAIN_ID,
+  toUwoLoAmount,
+} from "@/lib/woloChain";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,14 +32,16 @@ const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, max-age=0",
 };
 
-const DEFAULT_SPONSOR_WOLO = 100;
+const CLAN_HALL_PRICE_WOLO = 100;
 
 function normalizeAddress(value: unknown) {
   const address = String(value ?? "")
     .trim()
     .toLowerCase();
 
-  return /^wolo1[0-9a-z]{20,90}$/.test(address) ? address : null;
+  return /^wolo1[0-9a-z]{20,90}$/.test(address)
+    ? address
+    : null;
 }
 
 function normalizeTxHash(value: unknown) {
@@ -48,38 +62,19 @@ function normalizePublicId(value: unknown) {
     : null;
 }
 
-function normalizeRequestText(value: unknown) {
-  const text = String(value ?? "")
-    .replace(/\r\n/g, "\n")
-    .trim();
-
-  if (text.length < 3 || text.length > 4_000) {
-    return null;
-  }
-
-  return text;
-}
-
-function sponsorRuntime() {
+function runtimeConfig() {
   const recipientAddress = normalizeAddress(
-    process.env.WORKSHOP_SPONSOR_RECIPIENT_ADDRESS,
+    process.env.CLAN_HALL_RECIPIENT_ADDRESS ||
+      process.env.WORKSHOP_SPONSOR_RECIPIENT_ADDRESS,
   );
-
-  const configuredAmount = Number.parseInt(
-    process.env.WORKSHOP_SPONSOR_AMOUNT_WOLO || "",
-    10,
-  );
-
-  const amountWolo =
-    Number.isFinite(configuredAmount) && configuredAmount > 0
-      ? configuredAmount
-      : DEFAULT_SPONSOR_WOLO;
 
   return {
     ready: Boolean(recipientAddress),
     recipientAddress,
-    amountWolo,
-    amountUwolo: BigInt(toUwoLoAmount(amountWolo)),
+    amountWolo: CLAN_HALL_PRICE_WOLO,
+    amountUwolo: BigInt(
+      toUwoLoAmount(CLAN_HALL_PRICE_WOLO),
+    ),
   };
 }
 
@@ -88,7 +83,11 @@ function displayName(user: {
   inGameName: string | null;
   steamPersonaName: string | null;
 }) {
-  return user.inGameName || user.steamPersonaName || user.uid;
+  return (
+    user.inGameName ||
+    user.steamPersonaName ||
+    user.uid
+  );
 }
 
 async function requireViewer(request: NextRequest) {
@@ -98,7 +97,8 @@ async function requireViewer(request: NextRequest) {
     return {
       error: NextResponse.json(
         {
-          detail: "Sign in with Steam before sponsoring a Workshop feature.",
+          detail:
+            "Sign in with Steam before buying a clan hall.",
         },
         {
           status: 401,
@@ -109,7 +109,6 @@ async function requireViewer(request: NextRequest) {
   }
 
   const prisma = getPrisma();
-
   const viewer = await prisma.user.findUnique({
     where: {
       uid: sessionUid,
@@ -119,7 +118,6 @@ async function requireViewer(request: NextRequest) {
       uid: true,
       inGameName: true,
       steamPersonaName: true,
-      walletAddress: true,
     },
   });
 
@@ -127,7 +125,8 @@ async function requireViewer(request: NextRequest) {
     return {
       error: NextResponse.json(
         {
-          detail: "Your AoE2WAR profile could not be found.",
+          detail:
+            "Your AoE2WAR profile could not be found.",
         },
         {
           status: 404,
@@ -140,50 +139,6 @@ async function requireViewer(request: NextRequest) {
   return {
     prisma,
     viewer,
-  };
-}
-
-function requestPayload(request: {
-  publicId: string;
-  requestText: string | null;
-  requesterAddress: string;
-  sponsorAmountWolo: number;
-  sponsorRecipientAddress: string;
-  sponsorMemo: string;
-  sponsorTxHash: string | null;
-  paymentStatus: string;
-  status: string;
-  sponsoredAt: Date | null;
-  submittedAt: Date | null;
-  acceptedAt: Date | null;
-  startedAt: Date | null;
-  completedAt: Date | null;
-  declinedAt: Date | null;
-  refundedAt: Date | null;
-  refundStatus: string;
-  developmentValueWolo: number | null;
-  createdAt: Date;
-}) {
-  return {
-    publicId: request.publicId,
-    requestText: request.requestText,
-    requesterAddress: request.requesterAddress,
-    sponsorAmountWolo: request.sponsorAmountWolo,
-    sponsorRecipientAddress: request.sponsorRecipientAddress,
-    sponsorMemo: request.sponsorMemo,
-    sponsorTxHash: request.sponsorTxHash,
-    paymentStatus: request.paymentStatus,
-    status: request.status,
-    sponsoredAt: request.sponsoredAt?.toISOString() ?? null,
-    submittedAt: request.submittedAt?.toISOString() ?? null,
-    acceptedAt: request.acceptedAt?.toISOString() ?? null,
-    startedAt: request.startedAt?.toISOString() ?? null,
-    completedAt: request.completedAt?.toISOString() ?? null,
-    declinedAt: request.declinedAt?.toISOString() ?? null,
-    refundedAt: request.refundedAt?.toISOString() ?? null,
-    refundStatus: request.refundStatus,
-    developmentValueWolo: request.developmentValueWolo,
-    createdAt: request.createdAt.toISOString(),
   };
 }
 
@@ -200,24 +155,59 @@ const REQUEST_SELECT = {
   sponsoredAt: true,
   submittedAt: true,
   acceptedAt: true,
-  startedAt: true,
-  completedAt: true,
-  declinedAt: true,
-  refundedAt: true,
-  refundStatus: true,
-  developmentValueWolo: true,
   createdAt: true,
 } as const;
 
-export async function GET(request: NextRequest) {
-  const runtime = sponsorRuntime();
-  const sessionUid = await getSessionUid(request);
+function requestPayload(request: {
+  publicId: string;
+  requestText: string | null;
+  requesterAddress: string;
+  sponsorAmountWolo: number;
+  sponsorRecipientAddress: string;
+  sponsorMemo: string;
+  sponsorTxHash: string | null;
+  paymentStatus: string;
+  status: string;
+  sponsoredAt: Date | null;
+  submittedAt: Date | null;
+  acceptedAt: Date | null;
+  createdAt: Date;
+}) {
+  const details = parseClanHallRequestText(
+    request.requestText,
+  );
 
+  return {
+    publicId: request.publicId,
+    clanName: details?.clanName ?? "",
+    desiredSlug: details?.desiredSlug ?? "",
+    foundingMessage:
+      details?.foundingMessage ?? "",
+    requesterAddress: request.requesterAddress,
+    sponsorAmountWolo: request.sponsorAmountWolo,
+    sponsorRecipientAddress:
+      request.sponsorRecipientAddress,
+    sponsorMemo: request.sponsorMemo,
+    sponsorTxHash: request.sponsorTxHash,
+    paymentStatus: request.paymentStatus,
+    status: request.status,
+    sponsoredAt:
+      request.sponsoredAt?.toISOString() ?? null,
+    submittedAt:
+      request.submittedAt?.toISOString() ?? null,
+    acceptedAt:
+      request.acceptedAt?.toISOString() ?? null,
+    createdAt: request.createdAt.toISOString(),
+  };
+}
+
+export async function GET(request: NextRequest) {
+  const runtime = runtimeConfig();
+  const sessionUid = await getSessionUid(request);
   let latestRequest = null;
 
   if (sessionUid) {
     const prisma = getPrisma();
-
     const viewer = await prisma.user.findUnique({
       where: {
         uid: sessionUid,
@@ -228,28 +218,30 @@ export async function GET(request: NextRequest) {
     });
 
     if (viewer) {
-      const latest = await prisma.featureRequest.findFirst({
-        where: {
-          requesterUserId: viewer.id,
-          NOT: {
+      const latest =
+        await prisma.featureRequest.findFirst({
+          where: {
+            requesterUserId: viewer.id,
             requestText: {
               startsWith: CLAN_HALL_REQUEST_MARKER,
             },
+            status: {
+              in: [
+                "awaiting_payment",
+                "awaiting_request",
+              ],
+            },
           },
-          status: {
-            in: ["awaiting_payment", "awaiting_request"],
-          },
-        },
-        orderBy: [
-          {
-            createdAt: "desc",
-          },
-          {
-            id: "desc",
-          },
-        ],
-        select: REQUEST_SELECT,
-      });
+          orderBy: [
+            {
+              createdAt: "desc",
+            },
+            {
+              id: "desc",
+            },
+          ],
+          select: REQUEST_SELECT,
+        });
 
       if (latest) {
         latestRequest = requestPayload(latest);
@@ -261,11 +253,11 @@ export async function GET(request: NextRequest) {
     {
       ok: true,
       ready: runtime.ready,
+      priceWolo: runtime.amountWolo,
       treasury: {
-        label: "Workshop Treasury",
+        label: "Clan Hall Treasury",
         address: runtime.recipientAddress,
       },
-      sponsorAmountWolo: runtime.amountWolo,
       latestRequest,
     },
     {
@@ -283,22 +275,22 @@ export async function POST(request: NextRequest) {
     }
 
     const { prisma, viewer } = gate;
-
-    const body = (await request.json().catch(() => ({}))) as Record<
-      string,
-      unknown
-    >;
-
+    const body = (await request
+      .json()
+      .catch(() => ({}))) as Record<string, unknown>;
     const action = String(body.action ?? "")
       .trim()
       .toLowerCase();
+    const runtime = runtimeConfig();
 
-    const runtime = sponsorRuntime();
-
-    if (!runtime.ready || !runtime.recipientAddress) {
+    if (
+      !runtime.ready ||
+      !runtime.recipientAddress
+    ) {
       return NextResponse.json(
         {
-          detail: "The Workshop Treasury is not configured yet.",
+          detail:
+            "The Clan Hall Treasury is not configured yet.",
         },
         {
           status: 503,
@@ -308,13 +300,25 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "intent") {
-      const requesterAddress = normalizeAddress(body.walletAddress);
+      const requesterAddress = normalizeAddress(
+        body.walletAddress,
+      );
+      const clanName = normalizeClanHallName(
+        body.clanName,
+      );
+      const desiredSlug = slugifyClanHallName(
+        body.desiredSlug || clanName,
+      );
+      const foundingMessage =
+        normalizeClanFoundingMessage(
+          body.foundingMessage,
+        );
 
       if (!requesterAddress) {
         return NextResponse.json(
           {
             detail:
-              "Connect a valid WoloChain wallet before sponsoring a feature.",
+              "Connect a valid WoloChain wallet before buying a clan hall.",
           },
           {
             status: 400,
@@ -323,13 +327,11 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const requestText = normalizeRequestText(body.requestText);
-
-      if (!requestText) {
+      if (!clanName || !desiredSlug) {
         return NextResponse.json(
           {
             detail:
-              "Describe the feature you want to sponsor before opening the WoloChain payment.",
+              "Name the clan before opening the WoloChain payment.",
           },
           {
             status: 400,
@@ -338,32 +340,39 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const reuseAfter = new Date(Date.now() - 30 * 60 * 1000);
+      const requestText = buildClanHallRequestText({
+        clanName,
+        desiredSlug,
+        foundingMessage,
+      });
+      const reuseAfter = new Date(
+        Date.now() - 30 * 60 * 1000,
+      );
 
-      let intent = await prisma.featureRequest.findFirst({
-        where: {
-          requesterUserId: viewer.id,
-          requesterAddress,
-          sponsorRecipientAddress: runtime.recipientAddress,
-          sponsorAmountWolo: runtime.amountWolo,
-          NOT: {
+      let intent =
+        await prisma.featureRequest.findFirst({
+          where: {
+            requesterUserId: viewer.id,
+            requesterAddress,
+            sponsorRecipientAddress:
+              runtime.recipientAddress,
+            sponsorAmountWolo: runtime.amountWolo,
             requestText: {
               startsWith: CLAN_HALL_REQUEST_MARKER,
             },
+            paymentStatus: {
+              in: ["awaiting_payment", "broadcast"],
+            },
+            status: "awaiting_payment",
+            createdAt: {
+              gte: reuseAfter,
+            },
           },
-          paymentStatus: {
-            in: ["awaiting_payment", "broadcast"],
+          orderBy: {
+            createdAt: "desc",
           },
-          status: "awaiting_payment",
-          createdAt: {
-            gte: reuseAfter,
-          },
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-        select: REQUEST_SELECT,
-      });
+          select: REQUEST_SELECT,
+        });
 
       if (!intent) {
         const publicId = randomUUID();
@@ -373,41 +382,36 @@ export async function POST(request: NextRequest) {
             publicId,
             requesterUserId: viewer.id,
             requesterUidSnapshot: viewer.uid,
-            requesterDisplayNameSnapshot: displayName(viewer),
+            requesterDisplayNameSnapshot:
+              displayName(viewer),
             requestText,
             requesterAddress,
             sponsorAmountWolo: runtime.amountWolo,
             sponsorAmountUwolo: runtime.amountUwolo,
-            sponsorRecipientAddress: runtime.recipientAddress,
-            sponsorMemo: `AoE2WAR Workshop Sponsor · ${publicId}`,
+            sponsorRecipientAddress:
+              runtime.recipientAddress,
+            sponsorMemo:
+              `AoE2WAR Clan Hall · ${publicId}`,
             paymentStatus: "awaiting_payment",
             status: "awaiting_payment",
             refundStatus: "not_required",
           },
           select: REQUEST_SELECT,
         });
-      }
-
-      if (
-        intent.paymentStatus === "awaiting_payment" &&
+      } else if (
+        intent.paymentStatus ===
+          "awaiting_payment" &&
         intent.requestText !== requestText
       ) {
-        await prisma.featureRequest.updateMany({
+        intent = await prisma.featureRequest.update({
           where: {
             publicId: intent.publicId,
-            requesterUserId: viewer.id,
-            paymentStatus: "awaiting_payment",
-            status: "awaiting_payment",
           },
           data: {
             requestText,
           },
+          select: REQUEST_SELECT,
         });
-
-        intent = {
-          ...intent,
-          requestText,
-        };
       }
 
       return NextResponse.json(
@@ -427,7 +431,8 @@ export async function POST(request: NextRequest) {
     if (!publicId) {
       return NextResponse.json(
         {
-          detail: "A valid Workshop feature request is required.",
+          detail:
+            "A valid clan hall purchase is required.",
         },
         {
           status: 400,
@@ -436,27 +441,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const existing = await prisma.featureRequest.findFirst({
-      where: {
-        publicId,
-        requesterUserId: viewer.id,
-        NOT: {
+    const existing =
+      await prisma.featureRequest.findFirst({
+        where: {
+          publicId,
+          requesterUserId: viewer.id,
           requestText: {
             startsWith: CLAN_HALL_REQUEST_MARKER,
           },
         },
-      },
-      select: {
-        id: true,
-        ...REQUEST_SELECT,
-        sponsorAmountUwolo: true,
-      },
-    });
+        select: {
+          id: true,
+          ...REQUEST_SELECT,
+          sponsorAmountUwolo: true,
+        },
+      });
 
     if (!existing) {
       return NextResponse.json(
         {
-          detail: "That Workshop feature request could not be found.",
+          detail:
+            "That clan hall purchase could not be found.",
         },
         {
           status: 404,
@@ -466,7 +471,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "verify") {
-      if (existing.paymentStatus === "confirmed" && existing.sponsorTxHash) {
+      if (
+        existing.paymentStatus === "confirmed" &&
+        existing.sponsorTxHash
+      ) {
         return NextResponse.json(
           {
             ok: true,
@@ -480,16 +488,20 @@ export async function POST(request: NextRequest) {
       }
 
       const txHash =
-        normalizeTxHash(body.txHash) || normalizeTxHash(existing.sponsorTxHash);
-
+        normalizeTxHash(body.txHash) ||
+        normalizeTxHash(existing.sponsorTxHash);
       const fromAddress =
-        normalizeAddress(body.fromAddress) || existing.requesterAddress;
+        normalizeAddress(body.fromAddress) ||
+        existing.requesterAddress;
 
-      if (existing.sponsorTxHash && existing.sponsorTxHash !== txHash) {
+      if (
+        existing.sponsorTxHash &&
+        existing.sponsorTxHash !== txHash
+      ) {
         return NextResponse.json(
           {
             detail:
-              "This Workshop sponsorship already has a different WoloChain transaction proof. Verify the existing payment instead of replacing it.",
+              "This clan hall purchase already has a different WoloChain transaction proof.",
           },
           {
             status: 409,
@@ -502,7 +514,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             detail:
-              "The Workshop needs the WoloChain transaction proof before it can confirm sponsorship.",
+              "The clan hall purchase needs its WoloChain transaction proof.",
           },
           {
             status: 400,
@@ -511,11 +523,13 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (fromAddress !== existing.requesterAddress) {
+      if (
+        fromAddress !== existing.requesterAddress
+      ) {
         return NextResponse.json(
           {
             detail:
-              "The connected Keplr address changed after the Workshop sponsorship was opened.",
+              "The connected Keplr account changed after the clan hall purchase opened.",
           },
           {
             status: 409,
@@ -524,22 +538,24 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const duplicate = await prisma.featureRequest.findFirst({
-        where: {
-          sponsorTxHash: txHash,
-          id: {
-            not: existing.id,
+      const duplicate =
+        await prisma.featureRequest.findFirst({
+          where: {
+            sponsorTxHash: txHash,
+            id: {
+              not: existing.id,
+            },
           },
-        },
-        select: {
-          id: true,
-        },
-      });
+          select: {
+            id: true,
+          },
+        });
 
       if (duplicate) {
         return NextResponse.json(
           {
-            detail: "That WoloChain payment proof has already been used.",
+            detail:
+              "That WoloChain payment proof has already been used.",
           },
           {
             status: 409,
@@ -569,30 +585,45 @@ export async function POST(request: NextRequest) {
 
       let transfer = null;
 
-      for (let attempt = 0; attempt < 10; attempt += 1) {
-        transfer = await prisma.woloIndexedTransfer.findFirst({
-          where: {
-            chainId: WOLO_CHAIN_ID,
-            txHash,
-            senderAddress: existing.requesterAddress,
-            recipientAddress: existing.sponsorRecipientAddress,
-            amountUwolo:
-              existing.sponsorAmountUwolo ??
-              BigInt(toUwoLoAmount(existing.sponsorAmountWolo)),
-            denom: WOLO_BASE_DENOM,
-            memo: existing.sponsorMemo,
-          },
-          orderBy: {
-            transferIndex: "asc",
-          },
-        });
+      for (
+        let attempt = 0;
+        attempt < 10;
+        attempt += 1
+      ) {
+        transfer =
+          await prisma.woloIndexedTransfer.findFirst(
+            {
+              where: {
+                chainId: WOLO_CHAIN_ID,
+                txHash,
+                senderAddress:
+                  existing.requesterAddress,
+                recipientAddress:
+                  existing.sponsorRecipientAddress,
+                amountUwolo:
+                  existing.sponsorAmountUwolo ??
+                  BigInt(
+                    toUwoLoAmount(
+                      existing.sponsorAmountWolo,
+                    ),
+                  ),
+                denom: WOLO_BASE_DENOM,
+                memo: existing.sponsorMemo,
+              },
+              orderBy: {
+                transferIndex: "asc",
+              },
+            },
+          );
 
         if (transfer) {
           break;
         }
 
         if (attempt < 9) {
-          await new Promise((resolve) => setTimeout(resolve, 900));
+          await new Promise((resolve) =>
+            setTimeout(resolve, 900),
+          );
         }
       }
 
@@ -601,7 +632,9 @@ export async function POST(request: NextRequest) {
           {
             ok: false,
             pending: true,
-            request: requestPayload(broadcastRequest),
+            request: requestPayload(
+              broadcastRequest,
+            ),
             detail:
               "The payment was broadcast. Waiting for the WoloChain indexer to confirm it.",
           },
@@ -612,33 +645,38 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const confirmed = await prisma.featureRequest.update({
-        where: {
-          id: existing.id,
-        },
-        data: {
-          sponsorTxHash: txHash,
-          sponsorAmountUwolo: transfer.amountUwolo,
-          paymentStatus: "confirmed",
-          status: "awaiting_request",
-          sponsoredAt: transfer.timestamp,
-        },
-        select: REQUEST_SELECT,
-      });
+      const confirmed =
+        await prisma.featureRequest.update({
+          where: {
+            id: existing.id,
+          },
+          data: {
+            sponsorTxHash: txHash,
+            sponsorAmountUwolo:
+              transfer.amountUwolo,
+            paymentStatus: "confirmed",
+            status: "awaiting_request",
+            sponsoredAt: transfer.timestamp,
+          },
+          select: REQUEST_SELECT,
+        });
 
       await recordUserActivity(prisma, {
         userId: viewer.id,
-        type: "workshop_feature_sponsored",
-        path: "/workshop",
+        type: "clan_hall_purchased",
+        path: "/clans",
         label: confirmed.publicId,
         metadata: {
-          amountWolo: confirmed.sponsorAmountWolo,
-          recipientAddress: confirmed.sponsorRecipientAddress,
+          amountWolo:
+            confirmed.sponsorAmountWolo,
           txHash: confirmed.sponsorTxHash,
         },
         dedupeWithinSeconds: 60,
       }).catch((error) => {
-        console.warn("Failed to mirror Workshop sponsorship telemetry:", error);
+        console.warn(
+          "Failed to mirror clan hall purchase telemetry:",
+          error,
+        );
       });
 
       return NextResponse.json(
@@ -658,7 +696,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             detail:
-              "Confirm the 100 WOLO Workshop sponsorship before submitting the feature idea.",
+              "Confirm the 100 WOLO clan hall payment before sending the Clan Alert.",
           },
           {
             status: 409,
@@ -667,13 +705,15 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const requestText = normalizeRequestText(body.requestText);
+      const details = parseClanHallRequestText(
+        existing.requestText,
+      );
 
-      if (!requestText) {
+      if (!details) {
         return NextResponse.json(
           {
             detail:
-              "Tell the Workshop what you want built in at least a few words.",
+              "The clan hall details could not be read.",
           },
           {
             status: 400,
@@ -682,65 +722,78 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const firstSubmission = existing.submittedAt == null;
-
-      const submitted = await prisma.featureRequest.update({
-        where: {
-          id: existing.id,
-        },
-        data: {
-          requestText,
-          status: "submitted",
-          submittedAt: existing.submittedAt ?? new Date(),
-        },
-        select: REQUEST_SELECT,
-      });
+      const firstSubmission =
+        existing.submittedAt == null;
+      const submitted =
+        await prisma.featureRequest.update({
+          where: {
+            id: existing.id,
+          },
+          data: {
+            status: "submitted",
+            submittedAt:
+              existing.submittedAt ?? new Date(),
+          },
+          select: REQUEST_SELECT,
+        });
 
       if (firstSubmission) {
         try {
-          const admin = await resolvePrimaryAdminContact(prisma);
+          const admin =
+            await resolvePrimaryAdminContact(prisma);
 
           if (admin && admin.id !== viewer.id) {
-            const conversation = await getOrCreateConversationByUsers(
-              prisma,
-              viewer.id,
-              admin.id,
-            );
+            const conversation =
+              await getOrCreateConversationByUsers(
+                prisma,
+                viewer.id,
+                admin.id,
+              );
 
             await prisma.directMessage.create({
               data: {
                 conversationId: conversation.id,
                 senderUserId: viewer.id,
-                body: buildFeatureRequestInboxMessage({
-                  requester: displayName(viewer),
-                  amountWolo: submitted.sponsorAmountWolo,
-                  requestId: submitted.publicId,
-                  payment: submitted.sponsorTxHash || "verified",
-                  requestText,
-                }),
+                body: buildFeatureRequestInboxMessage(
+                  {
+                    kind: "clan_hall",
+                    requester: displayName(viewer),
+                    amountWolo:
+                      submitted.sponsorAmountWolo,
+                    requestId:
+                      submitted.publicId,
+                    payment:
+                      submitted.sponsorTxHash ||
+                      "verified",
+                    requestText:
+                      buildClanAlertBody(details),
+                  },
+                ),
               },
             });
           }
         } catch (error) {
           console.warn(
-            "FeatureRequest committed, but inbox mirror failed:",
+            "Clan hall purchase committed, but Clan Alert delivery failed:",
             error,
           );
         }
 
         await recordUserActivity(prisma, {
           userId: viewer.id,
-          type: "workshop_feature_submitted",
-          path: "/workshop",
+          type: "clan_hall_submitted",
+          path: "/clans",
           label: submitted.publicId,
           metadata: {
-            sponsorAmountWolo: submitted.sponsorAmountWolo,
-            sponsorTxHash: submitted.sponsorTxHash,
+            clanName: details.clanName,
+            desiredSlug: details.desiredSlug,
+            sponsorTxHash:
+              submitted.sponsorTxHash,
           },
           dedupeWithinSeconds: 60,
         }).catch((error) => {
           console.warn(
-            "Failed to mirror Workshop submission telemetry:",
+            "Failed to mirror Clan Alert telemetry:",
             error,
           );
         });
@@ -760,7 +813,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        detail: "That Workshop sponsorship action is not supported.",
+        detail:
+          "That clan hall purchase action is not supported.",
       },
       {
         status: 400,
@@ -768,14 +822,14 @@ export async function POST(request: NextRequest) {
       },
     );
   } catch (error) {
-    console.error("Workshop sponsorship failed:", error);
+    console.error("Clan hall purchase failed:", error);
 
     return NextResponse.json(
       {
         detail:
           error instanceof Error
             ? error.message
-            : "The Workshop sponsorship could not be completed.",
+            : "The clan hall purchase could not be completed.",
       },
       {
         status: 500,

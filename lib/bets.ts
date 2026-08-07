@@ -376,6 +376,21 @@ const WATCHER_FINAL_PROOF_GRACE_MINUTES = Math.max(
   Number.parseInt(process.env.WATCHER_FINAL_PROOF_GRACE_MINUTES || "20", 10) || 20
 );
 
+/*
+ * Live watcher projections may briefly rotate between physical parse rows
+ * while retaining the same stable platform session key.
+ *
+ * Keep the existing market visible but financially locked during that
+ * continuity window instead of immediately removing it from the live deck.
+ */
+const WATCHER_LIVE_SNAPSHOT_GRACE_SECONDS = Math.max(
+  15,
+  Number.parseInt(
+    process.env.WATCHER_LIVE_SNAPSHOT_GRACE_SECONDS || "120",
+    10
+  ) || 120
+);
+
 const DESYNC_MARKET_REVIEW_GRACE_MINUTES = Math.max(
   1,
   Number.parseInt(
@@ -4090,6 +4105,7 @@ async function reconcileDetachedWatcherMarkets(
       rightRosterSnapshot: true,
       eventLabel: true,
       updatedAt: true,
+      closeAt: true,
       status: true,
       integrityReason: true,
       commissionerReviewState: true,
@@ -4174,10 +4190,69 @@ async function reconcileDetachedWatcherMarkets(
         return;
       }
 
-      // A watcher session disappearing from the live snapshot is not
-      // final-result proof. Lock the book and preserve active wagers
-      // until a real final game_stats row is available.
+      /*
+       * A watcher session disappearing from one projection is not final
+       * result proof. The watcher may be rotating from one physical live
+       * parse row to another while retaining the stable session identity.
+       *
+       * First miss:
+       *   - keep the market in the primary/open board
+       *   - change it to closing so new WOLO cannot enter
+       *   - preserve every existing wager and founder bonus
+       *
+       * Continuous miss beyond the bounded grace:
+       *   - move into the existing awaiting-final-proof rail
+       */
       if (!finalGame) {
+        const snapshotGapObservedAt =
+          new Date();
+
+        if (market.status === "live") {
+          const held =
+            await prisma.betMarket.updateMany({
+              where: {
+                id: market.id,
+                status: "live",
+                voidedAt: null,
+              },
+              data: {
+                status: "closing",
+                closeAt:
+                  snapshotGapObservedAt,
+                proofDeadlineAt: null,
+                resolutionReason:
+                  "live_snapshot_revalidating",
+                settledAt: null,
+                winnerSide: null,
+              },
+            });
+
+          if (held.count === 1) {
+            console.warn(
+              `Holding live market #${market.id} during a transient watcher snapshot gap.`
+            );
+          }
+
+          return;
+        }
+
+        const snapshotGapStartedAt =
+          market.closeAt ??
+          market.updatedAt;
+
+        const withinSnapshotGrace =
+          market.status === "closing" &&
+          market.resolutionReason ===
+            "live_snapshot_revalidating" &&
+          snapshotGapObservedAt.getTime() -
+            snapshotGapStartedAt.getTime() <
+            WATCHER_LIVE_SNAPSHOT_GRACE_SECONDS *
+              1000;
+
+        if (withinSnapshotGrace) {
+          return;
+        }
+
         const moved = await prisma.betMarket.updateMany({
           where: {
             id: market.id,
@@ -6053,10 +6128,14 @@ function buildMarketCard(
     featured: market.featured,
     closeLabel:
       market.status === "closing" &&
-      linkedSessionKey &&
-      !market.scheduledMatch
-        ? "Awaiting final replay"
-        : formatCloseLabel(
+      market.resolutionReason ===
+        "live_snapshot_revalidating"
+        ? "Revalidating live watcher"
+        : market.status === "closing" &&
+            linkedSessionKey &&
+            !market.scheduledMatch
+          ? "Awaiting final replay"
+          : formatCloseLabel(
             market.status as BetStatus,
             market.closeAt
           ),

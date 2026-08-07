@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 
 import ClanHallClient from "@/components/clans/ClanHallClient";
 import {
-  buildMystikalFallbackSnapshot,
+  buildClanFallbackSnapshot,
+  findFoundingClanFallback,
   loadClanHallSnapshot,
   normalizeClanView,
 } from "@/lib/clans";
@@ -17,43 +18,97 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Mystikal Clan",
-  description:
-    "The Mystikal Clan hall on AoE2WAR: clan chat with public, signed-in, and clan-only audiences.",
-};
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const normalizedSlug = decodeURIComponent(slug)
+    .trim()
+    .toLowerCase();
+  const fallback =
+    findFoundingClanFallback(normalizedSlug);
+
+  return {
+    title: fallback?.name || "Clan Hall",
+    description:
+      fallback?.description ||
+      "An AoE2WAR clan warhouse for conversation, rivalries, and shared battle history.",
+  };
+}
 
 export default async function ClanHallPage({
   params,
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ view?: string | string[] }>;
+  searchParams?: Promise<{
+    view?: string | string[];
+  }>;
 }) {
   const { slug } = await params;
-  const resolvedSearchParams = searchParams ? await searchParams : {};
-  const view = normalizeClanView(resolvedSearchParams.view);
+  const resolvedSearchParams = searchParams
+    ? await searchParams
+    : {};
+  const view = normalizeClanView(
+    resolvedSearchParams.view,
+  );
   const cookieStore = await cookies();
   const claims = await verifySession(
-    cookieStore.get(SESSION_COOKIE_NAME)?.value
+    cookieStore.get(SESSION_COOKIE_NAME)?.value,
   );
-  const normalizedSlug = decodeURIComponent(slug).toLowerCase();
+  const normalizedSlug = decodeURIComponent(slug)
+    .trim()
+    .toLowerCase();
   let snapshot;
+
   try {
     snapshot = await loadClanHallSnapshot(
       getPrisma(),
       normalizedSlug,
-      claims?.uid ?? null
+      claims?.uid ?? null,
     );
   } catch (error) {
-    console.warn("Failed to load clan hall:", error);
-    snapshot =
-      normalizedSlug === "mystikal"
-        ? buildMystikalFallbackSnapshot(claims?.uid ?? null)
-        : null;
+    console.warn(
+      "Failed to load clan hall:",
+      error,
+    );
+    const fallback =
+      findFoundingClanFallback(
+        normalizedSlug,
+      );
+
+    snapshot = fallback
+      ? buildClanFallbackSnapshot(
+          fallback,
+          claims?.uid ?? null,
+        )
+      : null;
   }
 
-  if (!snapshot) notFound();
+  if (!snapshot) {
+    const fallback =
+      findFoundingClanFallback(
+        normalizedSlug,
+      );
 
-  return <ClanHallClient initialSnapshot={snapshot} initialView={view} />;
+    snapshot = fallback
+      ? buildClanFallbackSnapshot(
+          fallback,
+          claims?.uid ?? null,
+        )
+      : null;
+  }
+
+  if (!snapshot) {
+    notFound();
+  }
+
+  return (
+    <ClanHallClient
+      initialSnapshot={snapshot}
+      initialView={view}
+    />
+  );
 }

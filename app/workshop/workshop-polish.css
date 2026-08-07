@@ -308,3 +308,173 @@ main[data-workshop-view="extreme"] #sponsor-a-feature {
     margin-top: 1rem;
   }
 }
+
+
+/* WORKSHOP_MURAL_TOGGLE_20260806
+   Basic + Advanced receive the full observatory mural.
+   Extreme preserves its clean default and fades the mural in on tile click.
+*/
+
+.workshop-hero-banner {
+  position: relative;
+  min-height: 16rem;
+  aspect-ratio: 16 / 7;
+  overflow: hidden;
+  margin: -1.5rem -1.5rem 2rem;
+  border-bottom: 1px solid rgb(254 243 199 / 0.14);
+  background: #020711;
+  box-shadow:
+    0 30px 90px rgb(0 0 0 / 0.28),
+    inset 0 -1px 0 rgb(255 255 255 / 0.035);
+}
+
+main[data-workshop-view="basic"] .workshop-hero-banner {
+  border-bottom-color: rgb(254 215 170 / 0.18);
+}
+
+main[data-workshop-view="advanced"] .workshop-hero-banner {
+  border-bottom-color: rgb(165 243 252 / 0.16);
+}
+
+@media (min-width: 640px) {
+  main[data-workshop-view="basic"] .workshop-hero-banner {
+    min-height: 20rem;
+    margin: -3rem -2.75rem 2.35rem;
+  }
+
+  main[data-workshop-view="advanced"] .workshop-hero-banner {
+    min-height: 20rem;
+    margin: -2.25rem -2.25rem 2.35rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  main[data-workshop-view="advanced"] .workshop-hero-banner {
+    min-height: 24rem;
+    margin: -2.5rem -2.5rem 2.5rem;
+  }
+}
+
+main[data-workshop-view="extreme"]
+  > section:first-of-type[data-workshop-extreme-hero] {
+  isolation: isolate;
+}
+
+main[data-workshop-view="extreme"]
+  > section:first-of-type[data-workshop-extreme-hero]::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: "";
+  pointer-events: none;
+  background-image:
+    linear-gradient(
+      180deg,
+      rgb(2 7 17 / 0.52) 0%,
+      rgb(2 7 17 / 0.62) 42%,
+      rgb(2 7 17 / 0.86) 100%
+    ),
+    radial-gradient(circle at 18% 14%, rgb(251 191 36 / 0.10), transparent 30%),
+    radial-gradient(circle at 82% 12%, rgb(56 189 248 / 0.12), transparent 30%),
+    url("/workshop/workshop-observatory-hero.webp");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: 0;
+  transition: opacity 520ms ease;
+}
+
+main[data-workshop-view="extreme"]
+  > section:first-of-type[data-workshop-extreme-hero="on"]::after {
+  opacity: 0.48;
+}
+
+main[data-workshop-view="extreme"]
+  > section:first-of-type[data-workshop-extreme-hero="on"] {
+  border-color: rgb(165 243 252 / 0.20);
+  box-shadow:
+    0 46px 150px rgb(0 0 0 / 0.68),
+    0 0 70px rgb(56 189 248 / 0.055),
+    inset 0 1px 0 rgb(255 255 255 / 0.08);
+}
+
+main[data-workshop-view="extreme"]
+  > section:first-of-type[data-workshop-extreme-hero]
+  > div:first-child {
+  z-index: 1;
+}
+
+main[data-workshop-view="extreme"]
+  > section:first-of-type[data-workshop-extreme-hero]
+  > div:nth-child(2),
+main[data-workshop-view="extreme"]
+  > section:first-of-type[data-workshop-extreme-hero]
+  > div:nth-child(3) {
+  z-index: 2;
+}
+
+
+/* WORKSHOP_BASIC_MARKET_HERO_20260806
+   Basic borrows the Marketplace hero grammar:
+   cinematic full-card image, top badges, gold title, bottom actions,
+   and compact live-state cards. Advanced and Extreme are untouched.
+*/
+
+main[data-workshop-view="basic"] .workshop-basic-market-hero {
+  min-height: 42rem;
+}
+
+main[data-workshop-view="basic"]
+  .workshop-basic-market-hero
+  > .workshop-hero-banner {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  min-height: 0;
+  height: 100%;
+  aspect-ratio: auto;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+main[data-workshop-view="basic"]
+  .workshop-basic-market-hero
+  > .workshop-hero-banner
+  img {
+  object-position: center 44%;
+  transform: scale(1.015);
+}
+
+main[data-workshop-view="basic"] .workshop-basic-market-title {
+  text-shadow:
+    0 4px 28px rgb(0 0 0 / 0.88),
+    0 1px 0 rgb(255 255 255 / 0.04);
+}
+
+main[data-workshop-view="basic"]
+  .workshop-basic-market-hero
+  .market-gold-button,
+main[data-workshop-view="basic"]
+  .workshop-basic-market-hero
+  .market-iron-button {
+  cursor: pointer;
+}
+
+@media (max-width: 639px) {
+  main[data-workshop-view="basic"] .workshop-basic-market-hero {
+    min-height: 46rem;
+  }
+
+  main[data-workshop-view="basic"] .workshop-basic-market-title {
+    top: 27%;
+    right: 1.5rem;
+  }
+}
+
+@media (min-width: 640px) {
+  main[data-workshop-view="basic"] .workshop-basic-market-hero {
+    min-height: 45rem;
+  }
+}

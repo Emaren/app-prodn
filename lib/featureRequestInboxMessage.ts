@@ -1,6 +1,10 @@
-export const FEATURE_REQUEST_INBOX_HEADLINE = "🔨 FEATURE REQUEST";
+export const FEATURE_REQUEST_INBOX_HEADLINE =
+  "🔨 FEATURE REQUEST";
+export const CLAN_ALERT_INBOX_HEADLINE =
+  "🏰 CLAN ALERT";
 
 export type FeatureRequestInboxMessage = {
+  kind: "feature" | "clan_hall";
   requester: string;
   amountWolo: number;
   requestId: string;
@@ -9,14 +13,22 @@ export type FeatureRequestInboxMessage = {
 };
 
 export function buildFeatureRequestInboxMessage({
+  kind = "feature",
   requester,
   amountWolo,
   requestId,
   payment,
   requestText,
-}: FeatureRequestInboxMessage) {
+}: Omit<FeatureRequestInboxMessage, "kind"> & {
+  kind?: FeatureRequestInboxMessage["kind"];
+}) {
+  const headline =
+    kind === "clan_hall"
+      ? CLAN_ALERT_INBOX_HEADLINE
+      : FEATURE_REQUEST_INBOX_HEADLINE;
+
   return [
-    FEATURE_REQUEST_INBOX_HEADLINE,
+    headline,
     `From: ${requester}`,
     `Sponsorship: ${amountWolo} WOLO`,
     `Request ID: ${requestId}`,
@@ -27,7 +39,10 @@ export function buildFeatureRequestInboxMessage({
 }
 
 function readField(lines: string[], prefix: string) {
-  const line = lines.find((candidate) => candidate.startsWith(prefix));
+  const line = lines.find((candidate) =>
+    candidate.startsWith(prefix),
+  );
+
   return line ? line.slice(prefix.length).trim() : "";
 }
 
@@ -36,7 +51,21 @@ export function parseFeatureRequestInboxMessage(
 ): FeatureRequestInboxMessage | null {
   const text = body?.trim();
 
-  if (!text || !text.startsWith(`${FEATURE_REQUEST_INBOX_HEADLINE}\n`)) {
+  if (!text) {
+    return null;
+  }
+
+  const featurePrefix =
+    `${FEATURE_REQUEST_INBOX_HEADLINE}\n`;
+  const clanPrefix =
+    `${CLAN_ALERT_INBOX_HEADLINE}\n`;
+  const kind = text.startsWith(clanPrefix)
+    ? "clan_hall"
+    : text.startsWith(featurePrefix)
+      ? "feature"
+      : null;
+
+  if (!kind) {
     return null;
   }
 
@@ -51,11 +80,9 @@ export function parseFeatureRequestInboxMessage(
     .slice(0, separatorIndex)
     .split(/\r?\n/)
     .map((line) => line.trim());
-
   const requestText = text
     .slice(separatorIndex + separator.length)
     .trim();
-
   const requester = readField(metadata, "From:");
   const amountText = readField(metadata, "Sponsorship:")
     .replace(/\s*WOLO$/i, "")
@@ -76,6 +103,7 @@ export function parseFeatureRequestInboxMessage(
   }
 
   return {
+    kind,
     requester,
     amountWolo,
     requestId,

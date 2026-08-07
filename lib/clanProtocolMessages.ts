@@ -21,9 +21,24 @@ export function buildClanLeaderProtocolMessage({
   playerName: string;
   granting: boolean;
 }) {
-  const identity = [clanCallsign.trim(), playerName.trim()]
-    .filter(Boolean)
-    .join(" ");
+  const callsign = clanCallsign.trim();
+  const player = playerName.trim();
+  const possessiveRoot = callsign
+    .replace(/[’']s$/i, "")
+    .trim()
+    .toLowerCase();
+  const playerFirstToken =
+    player.split(/\s+/).filter(Boolean)[0]?.toLowerCase() ??
+    "";
+
+  const identity =
+    callsign &&
+    player &&
+    possessiveRoot &&
+    (possessiveRoot === player.toLowerCase() ||
+      possessiveRoot === playerFirstToken)
+      ? `${callsign} Clan`
+      : [callsign, player].filter(Boolean).join(" ");
 
   return granting
     ? `🏰 ${CLAN_LEADER_APPOINTED_PHRASE} ⚔️ • ${identity} 🛡️`

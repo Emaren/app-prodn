@@ -37,7 +37,9 @@
     "workshop:publish:2026-08-06-polish": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/publish-workshop-2026-08-06-polish.mts",
     "war-engine:seed": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/seed-war-engine-foundation.mts",
     "test:war-engine": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/war-engine-public-status.test.mts",
-    "test:i18n": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/i18n-foundation.test.mts"
+    "test:i18n": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/i18n-foundation.test.mts",
+    "clans:seed:2026-08-06": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/seed-clans-2026-08-06.mts",
+    "test:clans-v2": "node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/clan-warhouse-v2.test.mts"
   },
   "dependencies": {
     "@cosmjs/amino": "^0.33.1",

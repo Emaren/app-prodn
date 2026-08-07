@@ -43,6 +43,7 @@ import ScheduledMatchCard, {
   CompactScheduledMatchHistoryRow,
 } from "@/components/challenge/ScheduledMatchCard";
 import AutoBetReserveCard from "@/components/profile/AutoBetReserveCard";
+import ClanCrestManager from "@/components/profile/ClanCrestManager";
 import BrowserStreamStudio from "@/components/streaming/BrowserStreamStudio";
 import {
   LobbyTextColorPicker,
@@ -766,6 +767,7 @@ function ProfilePageContent() {
 
   if (profileViewMode === "extreme") {
     return (
+      <div className="space-y-6">
       <ExtremeProfileView
         profile={profile}
         uid={uid}
@@ -816,6 +818,8 @@ function ProfilePageContent() {
         onClaimPending={() => void claimPendingWolo()}
         onLogout={() => void logout()}
       />
+        <ClanCrestManager />
+      </div>
     );
   }
 
@@ -828,6 +832,8 @@ function ProfilePageContent() {
         </div>
         <ProfileModeToggle value={profileViewMode} onChange={setProfileViewMode} />
       </div>
+
+      <ClanCrestManager />
 
       <section className="min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/70 p-5 sm:p-8">
         <div className={`grid gap-6 xl:items-start ${isBasicProfileView ? "xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]" : "xl:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.74fr)]"}`}>

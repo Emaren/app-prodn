@@ -54,7 +54,7 @@ type AdminMediaUser = {
   totalMatches?: number;
 };
 
-const KIND_OPTIONS = ["avatar", "belt", "artifact", "logo", "background", "motion", "other"] as const;
+const KIND_OPTIONS = ["avatar", "crest", "belt", "artifact", "logo", "background", "motion", "other"] as const;
 type MediaKind = (typeof KIND_OPTIONS)[number];
 
 const COUNTRY_OPTIONS = [
@@ -138,6 +138,7 @@ const COUNTRY_OPTIONS = [
 
 const CATEGORY_LABELS: Record<MediaKind, string> = {
   avatar: "Avatars",
+  crest: "Clan Crests",
   belt: "Belts",
   artifact: "Artifacts",
   logo: "Logos",
@@ -886,6 +887,12 @@ export default function AdminMediaAssetsPage() {
             Refresh
           </button>
           <Link
+            href="/admin/clans"
+            className="inline-flex items-center gap-2 rounded-full border border-red-200/20 bg-red-300/[0.06] px-4 py-2 text-sm font-semibold text-red-100 transition hover:border-red-200/35 hover:bg-red-300/10"
+          >
+            Clan Command
+          </Link>
+          <Link
             href="/admin"
             className="inline-flex items-center gap-2 rounded-full border border-white/12 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-amber-200/35 hover:text-amber-100"
           >
@@ -907,7 +914,7 @@ export default function AdminMediaAssetsPage() {
         </section>
       )}
 
-      <nav className="mb-5 grid gap-2 sm:grid-cols-3 xl:grid-cols-7">
+      <nav className="mb-5 grid gap-2 sm:grid-cols-4 xl:grid-cols-8">
         {categoryStats.map((stat) => (
           <button
             key={stat.kind}

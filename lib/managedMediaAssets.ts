@@ -5,7 +5,7 @@ import path from "path";
 import type { PrismaClient } from "@/lib/generated/prisma";
 import { allChampionTitles } from "@/lib/champions/titles";
 
-export const MANAGED_MEDIA_KINDS = ["avatar", "belt", "artifact", "logo", "background", "motion", "other"] as const;
+export const MANAGED_MEDIA_KINDS = ["avatar", "crest", "belt", "artifact", "logo", "background", "motion", "other"] as const;
 
 export type ManagedMediaKind = (typeof MANAGED_MEDIA_KINDS)[number];
 

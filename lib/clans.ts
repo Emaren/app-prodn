@@ -23,7 +23,7 @@ export const CLAN_AUDIENCE_DETAILS: Record<
   clan: {
     label: "Clan only",
     shortLabel: "Clan",
-    description: "Visible only to active Mystikal clan members.",
+    description: "Visible only to active clan members.",
   },
 };
 
@@ -56,14 +56,72 @@ export const MYSTIKAL_FALLBACK: ClanDirectoryEntry = {
   memberCount: 0,
 };
 
-export function buildMystikalFallbackSnapshot(
-  viewerUid: string | null = null
+export const JIMS_CLAN_FALLBACK: ClanDirectoryEntry = {
+  id: -1,
+  slug: "jims-clan",
+  name: "Jim's Clan",
+  tagline: "The American Champion raises his banner.",
+  description:
+    "A hard American warhouse for Jim, his allies, and every player willing to carry the fight.",
+  crestUrl: null,
+  memberCount: 0,
+};
+
+export const LEGEND_CLAN_FALLBACK: ClanDirectoryEntry = {
+  id: -2,
+  slug: "legend-clan",
+  name: "Legend Clan",
+  tagline: "The Sultan's house gathers beneath an opulent banner.",
+  description:
+    "A palace-hall for LeGenD_Sultan and the warriors who fight beneath the Legend banner.",
+  crestUrl: null,
+  memberCount: 0,
+};
+
+export const FOUNDING_CLAN_FALLBACKS: readonly ClanDirectoryEntry[] = [
+  MYSTIKAL_FALLBACK,
+  JIMS_CLAN_FALLBACK,
+  LEGEND_CLAN_FALLBACK,
+];
+
+export function findFoundingClanFallback(slug: string) {
+  return (
+    FOUNDING_CLAN_FALLBACKS.find(
+      (clan) => clan.slug === slug.toLowerCase(),
+    ) ?? null
+  );
+}
+
+export function mergeClanDirectoryWithFoundingClans(
+  clans: ClanDirectoryEntry[],
+) {
+  const bySlug = new Map(
+    clans.map((clan) => [clan.slug, clan]),
+  );
+
+  const founding = FOUNDING_CLAN_FALLBACKS.map(
+    (fallbackClan) =>
+      bySlug.get(fallbackClan.slug) ?? fallbackClan,
+  );
+  const foundingSlugs = new Set(
+    FOUNDING_CLAN_FALLBACKS.map((clan) => clan.slug),
+  );
+  const additional = clans.filter(
+    (clan) => !foundingSlugs.has(clan.slug),
+  );
+
+  return [...founding, ...additional];
+}
+
+export function buildClanFallbackSnapshot(
+  clan: ClanDirectoryEntry,
+  viewerUid: string | null = null,
 ): ClanHallSnapshot {
   const authenticated = Boolean(viewerUid);
 
   return {
     clan: {
-      ...MYSTIKAL_FALLBACK,
+      ...clan,
       chatAudiencePolicy: "public",
     },
     viewer: {
@@ -85,6 +143,15 @@ export function buildMystikalFallbackSnapshot(
         : "You are seeing public clan posts. Sign in to join the conversation.",
     },
   };
+}
+
+export function buildMystikalFallbackSnapshot(
+  viewerUid: string | null = null,
+): ClanHallSnapshot {
+  return buildClanFallbackSnapshot(
+    MYSTIKAL_FALLBACK,
+    viewerUid,
+  );
 }
 
 export type ClanHallSnapshot = {
@@ -398,13 +465,13 @@ export async function loadClanHallSnapshot(
 
   const notice =
     policy === "clan" && !isMember
-      ? "This hall is currently visible to Mystikal clan members only."
+      ? `${clan.name} is currently visible to active clan members only.`
       : policy === "users" && !authenticated
-        ? "Mystikal currently shares this hall with signed-in AoE2WAR users."
+        ? `${clan.name} currently shares this hall with signed-in AoE2WAR users.`
         : !authenticated
           ? "You are seeing public clan posts. Sign in to join the conversation."
           : allowedAudiences.length === 0
-            ? "Mystikal has closed posting to clan members."
+            ? `${clan.name} has closed posting to clan members.`
             : "Choose who can see each post before you send it.";
 
   return {

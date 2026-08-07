@@ -27,6 +27,7 @@ import {
 import { GlobalInstallAppPrompt } from "@/components/pwa/InstallAppPrompt";
 import MobileFloatingNav from "@/components/pwa/MobileFloatingNav";
 import AoE2WarFooter from "@/components/pwa/AoE2WarFooter";
+import ClanWarhouseFooter from "@/components/clans/ClanWarhouseFooter";
 import { getTileViewMode } from "@/lib/tileViewPreferences";
 import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
 import { Toaster } from "sonner";
@@ -737,10 +738,17 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         pathname
       )
     );
-  const headerSkin = getLobbyHeaderSkin(themeKey);
+  const shellThemeKey =
+    isClanSurface ? "crimson" : themeKey;
+  const headerSkin =
+    getLobbyHeaderSkin(shellThemeKey);
   const headerTone = React.useMemo(
-    () => getLobbyPresentationTone(themeKey, viewMode),
-    [themeKey, viewMode]
+    () =>
+      getLobbyPresentationTone(
+        shellThemeKey,
+        viewMode
+      ),
+    [shellThemeKey, viewMode]
   );
 
   function handleContactShellWheel(event: React.WheelEvent<HTMLDivElement>) {
@@ -810,7 +818,13 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       className={`${isAcademySurface ? "academy-route-shell" : ""} flex w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${isContactPage ? "h-[100dvh] min-h-[44rem] max-h-none overflow-y-auto overscroll-contain sm:min-h-[56rem]" : "min-h-screen"}`}
       onWheel={handleContactShellWheel}
       style={
-        isObservatorySurface
+        isClanSurface
+          ? {
+              backgroundColor: "#060403",
+              backgroundImage:
+                "radial-gradient(74rem 38rem at 8% 0%, rgba(127,29,29,0.22), transparent 62%), radial-gradient(62rem 34rem at 92% 0%, rgba(180,83,9,0.10), transparent 64%), repeating-linear-gradient(92deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 48px), linear-gradient(180deg, #0d0806 0%, #060505 38%, #020304 100%)",
+            }
+          : isObservatorySurface
           ? pathname === "/traffic"
             ? {
                 backgroundColor: "#01070b",
@@ -846,7 +860,18 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       <header
         className={`sticky top-0 z-[180] shrink-0 overflow-visible border-b px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.7rem)] backdrop-blur-2xl transition-[background-color,border-color] duration-500 sm:px-4 lg:py-3 ${headerSkin.shell}`}
         style={
-          isObservatorySurface
+          isClanSurface
+            ? {
+                backgroundColor:
+                  "rgba(12, 7, 5, 0.975)",
+                backgroundImage:
+                  "radial-gradient(44rem 12rem at 12% -20%, rgba(153,27,27,0.25), transparent 64%), radial-gradient(38rem 11rem at 88% -20%, rgba(245,158,11,0.10), transparent 66%), linear-gradient(180deg, rgba(22,12,9,0.99), rgba(8,7,7,0.98))",
+                borderColor:
+                  "rgba(248,113,113,0.14)",
+                boxShadow:
+                  "0 18px 60px rgba(0,0,0,0.46)",
+              }
+            : isObservatorySurface
             ? pathname === "/traffic"
               ? {
                   backgroundColor: "rgba(2, 9, 15, 0.97)",
@@ -864,9 +889,27 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         }
       >
         <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <div className="absolute -left-16 -top-20 h-44 w-72 rounded-full bg-amber-300/[0.055] blur-3xl" />
-          <div className="absolute -right-20 -top-20 h-44 w-72 rounded-full bg-sky-300/[0.065] blur-3xl" />
-          <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-amber-100/25 to-transparent" />
+          <div
+            className={`absolute -left-16 -top-20 h-44 w-72 rounded-full blur-3xl ${
+              isClanSurface
+                ? "bg-red-700/[0.14]"
+                : "bg-amber-300/[0.055]"
+            }`}
+          />
+          <div
+            className={`absolute -right-20 -top-20 h-44 w-72 rounded-full blur-3xl ${
+              isClanSurface
+                ? "bg-amber-500/[0.07]"
+                : "bg-sky-300/[0.065]"
+            }`}
+          />
+          <div
+            className={`absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent ${
+              isClanSurface
+                ? "via-red-200/25"
+                : "via-amber-100/25"
+            } to-transparent`}
+          />
         </div>
 
         <div className={`relative mx-auto w-full overflow-visible ${
@@ -890,7 +933,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               </Link>
 
               <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
-                <UniversalTranslator tone={isAcademySurface ? "academy" : "blue"} />
+                <UniversalTranslator tone={
+                      isAcademySurface ||
+                      isClanSurface
+                        ? "academy"
+                        : "blue"
+                    } />
                 {uid ? <HeaderInboxControl buttonClassName={`${headerSkin.surface} h-10 w-10`} /> : null}
                 <HeaderMenu
                   playerName={playerName}
@@ -1026,7 +1074,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               {uid ? (
                 <>
                   <UniversalTranslator
-                    tone={isAcademySurface ? "academy" : "blue"}
+                    tone={
+                      isAcademySurface ||
+                      isClanSurface
+                        ? "academy"
+                        : "blue"
+                    }
                   />
                   <HeaderInboxControl buttonClassName={`${headerSkin.surface} h-10 w-10`} />
                   <HeaderMenu
@@ -1043,7 +1096,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               ) : (
                 <>
                   <UniversalTranslator
-                    tone={isAcademySurface ? "academy" : "blue"}
+                    tone={
+                      isAcademySurface ||
+                      isClanSurface
+                        ? "academy"
+                        : "blue"
+                    }
                   />
                   <SteamLoginButton
                     label={t("steamSignIn")}
@@ -1092,7 +1150,14 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         <GlobalInstallAppPrompt />
         {children}
       </main>
-      {!isContactPage && !isHeroStudioSurface ? <AoE2WarFooter /> : null}
+      {!isContactPage &&
+      !isHeroStudioSurface ? (
+        isClanSurface ? (
+          <ClanWarhouseFooter />
+        ) : (
+          <AoE2WarFooter />
+        )
+      ) : null}
       {!isContactPage ? <MobileFloatingNav /> : null}
       <Toaster richColors />
     </div>

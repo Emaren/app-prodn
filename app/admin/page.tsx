@@ -605,6 +605,12 @@ export default function AdminPage() {
                 Media Armory
               </Link>
               <Link
+                href="/admin/clans"
+                className="inline-flex rounded-full border border-red-200/22 bg-red-300/[0.07] px-5 py-3 text-sm text-red-100 transition hover:border-red-200/40 hover:bg-red-300/12"
+              >
+                Clan Command
+              </Link>
+              <Link
                 href="/admin/user-list"
                 className="inline-flex rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
               >
