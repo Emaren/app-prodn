@@ -54,7 +54,7 @@ type AdminMediaUser = {
   totalMatches?: number;
 };
 
-const KIND_OPTIONS = ["avatar", "crest", "belt", "artifact", "logo", "background", "motion", "other"] as const;
+const KIND_OPTIONS = ["avatar", "crest", "hero", "belt", "artifact", "logo", "background", "motion", "other"] as const;
 type MediaKind = (typeof KIND_OPTIONS)[number];
 
 const COUNTRY_OPTIONS = [
@@ -139,6 +139,7 @@ const COUNTRY_OPTIONS = [
 const CATEGORY_LABELS: Record<MediaKind, string> = {
   avatar: "Avatars",
   crest: "Clan Crests",
+  hero: "Hero Images",
   belt: "Belts",
   artifact: "Artifacts",
   logo: "Logos",
@@ -873,7 +874,7 @@ export default function AdminMediaAssetsPage() {
           <div className="text-xs uppercase tracking-[0.34em] text-amber-100/65">Admin Armory</div>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Media Manager</h1>
           <p className="mt-2 max-w-3xl text-sm text-slate-400">
-            Upload assets once. Select assets. Assign them to warriors. See every assigned asset by category.
+            Upload assets once. Reuse them across warriors, clans, and page Hero chains without touching code.
           </p>
         </div>
 
@@ -886,6 +887,12 @@ export default function AdminMediaAssetsPage() {
             <RefreshCw className="h-4 w-4" />
             Refresh
           </button>
+          <Link
+            href="/admin/page-heroes"
+            className="inline-flex items-center gap-2 rounded-full border border-cyan-200/20 bg-cyan-300/[0.06] px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/35 hover:bg-cyan-300/10"
+          >
+            Page Heroes
+          </Link>
           <Link
             href="/admin/clans"
             className="inline-flex items-center gap-2 rounded-full border border-red-200/20 bg-red-300/[0.06] px-4 py-2 text-sm font-semibold text-red-100 transition hover:border-red-200/35 hover:bg-red-300/10"
@@ -914,7 +921,7 @@ export default function AdminMediaAssetsPage() {
         </section>
       )}
 
-      <nav className="mb-5 grid gap-2 sm:grid-cols-4 xl:grid-cols-8">
+      <nav className="mb-5 grid gap-2 sm:grid-cols-4 xl:grid-cols-9">
         {categoryStats.map((stat) => (
           <button
             key={stat.kind}
@@ -1169,14 +1176,23 @@ export default function AdminMediaAssetsPage() {
                 Clear
               </button>
 
-              <button
-                type="button"
-                onClick={() => void assignSelectedAssets()}
-                disabled={!selectedUserUid || selectedAssets.length === 0 || assigning}
-                className="rounded-full bg-sky-300 px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {assigning ? "Assigning..." : "Assign selected"}
-              </button>
+              {category === "hero" ? (
+                <Link
+                  href="/admin/page-heroes"
+                  className="rounded-full bg-cyan-300 px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-cyan-200"
+                >
+                  Use in Page Heroes
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void assignSelectedAssets()}
+                  disabled={!selectedUserUid || selectedAssets.length === 0 || assigning}
+                  className="rounded-full bg-sky-300 px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {assigning ? "Assigning..." : "Assign selected"}
+                </button>
+              )}
             </div>
           </div>
 
@@ -1192,7 +1208,16 @@ export default function AdminMediaAssetsPage() {
             </div>
 
             <div className="text-xs text-slate-400">
-              Target: <span className="font-semibold text-slate-200">{selectedUser?.displayName || "choose warrior"}</span>
+              {category === "hero" ? (
+                <span>Global Hero Image library · assign and order in Page Hero Studio</span>
+              ) : (
+                <>
+                  Target:{" "}
+                  <span className="font-semibold text-slate-200">
+                    {selectedUser?.displayName || "choose warrior"}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 

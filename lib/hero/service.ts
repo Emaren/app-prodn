@@ -447,6 +447,11 @@ export async function loadHeroStudioSnapshot(
   const [screens, eventTiles, forumThreads, mediaAssets, publications] =
     await Promise.all([
       prisma.heroScreen.findMany({
+        where: {
+          NOT: {
+            key: { startsWith: "page-hero-" },
+          },
+        },
         orderBy: [{ status: "asc" }, { updatedAt: "desc" }, { id: "desc" }],
         take: 300,
       }),

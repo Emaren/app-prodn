@@ -2,13 +2,20 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import GameStatsHero from "@/components/game-stats/GameStatsHero";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import {
   loadPublicParserObservatory,
   loadViewerParserVault,
 } from "@/lib/parserObservatory";
+import {
+  loadPageHeroChain,
+  normalizePageHeroView,
+} from "@/lib/pageHeroes";
 import { HD_REPLAY_PARSER_CONTRACT } from "@/lib/replayEngineRoom";
 import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
+
+import "./game-stats-polish.css";
 
 export const dynamic = "force-dynamic";
 
@@ -26,12 +33,19 @@ function compact(value: number) {
   return new Intl.NumberFormat("en-US", { notation: value >= 10_000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(value);
 }
 
-export default async function GameStatsPage() {
+export default async function GameStatsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ view?: string | string[] }>;
+}) {
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const view = normalizePageHeroView(resolvedSearchParams.view);
   const cookieStore = await cookies();
   const claims = await verifySession(cookieStore.get(SESSION_COOKIE_NAME)?.value);
-  const [data, vault] = await Promise.all([
+  const [data, vault, heroChain] = await Promise.all([
     loadPublicParserObservatory(),
     loadViewerParserVault(claims?.uid ?? null),
+    loadPageHeroChain("game-stats", view),
   ]);
   const canonicalVersion = data.parser.versions.find(
     (version) =>
@@ -41,19 +55,28 @@ export default async function GameStatsPage() {
   const fullJob = data.parser.jobs.find((job) => job.latestEvent?.eventType === "completed") ?? data.parser.jobs[0] ?? null;
 
   return (
-    <main className="space-y-7 py-7 text-white">
-      <section className="relative overflow-hidden rounded-[2.2rem] border border-cyan-100/12 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.16),transparent_31%),radial-gradient(circle_at_88%_14%,rgba(251,191,36,0.15),transparent_29%),linear-gradient(145deg,#071522,#05070d_62%)] p-7 sm:p-11">
-        <div className="text-xs font-bold uppercase tracking-[0.42em] text-cyan-100/62">Public Parser Observatory</div>
-        <h1 className="mt-4 max-w-5xl font-serif text-5xl leading-none sm:text-7xl">Recovering the lost war record.</h1>
-        <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-          <Metric label="Deduplicated public battles" value={data.corpus.uniqueLogicalBattles.toLocaleString()} />
-          <Metric label="Final ingestion records" value={data.corpus.finalReplayRecords.toLocaleString()} />
-          <Metric label="Results resolved" value={data.corpus.resolvedResults.toLocaleString()} />
-          <Metric label="Replay-backed Steam IDs" value={data.corpus.replayBackedSteamAccounts.toLocaleString()} />
-          <Metric label="Provisional Warriors" value={data.corpus.provisionalWarriors.toLocaleString()} />
-          <Metric label="Indexed files decoded" value={data.corpus.parseableAtAnyLevelArtifacts.toLocaleString()} />
-        </div>
-      </section>
+    <main
+      data-game-stats-view={view}
+      className={`mx-auto w-full space-y-7 py-7 text-white transition-[max-width] duration-300 ${
+        view === "basic"
+          ? "max-w-[72rem]"
+          : view === "advanced"
+            ? "max-w-[82rem]"
+            : "max-w-[90rem]"
+      }`}
+    >
+      <GameStatsHero
+        view={view}
+        chain={heroChain}
+        metrics={[
+          { label: "Deduplicated public battles", value: data.corpus.uniqueLogicalBattles.toLocaleString() },
+          { label: "Final ingestion records", value: data.corpus.finalReplayRecords.toLocaleString() },
+          { label: "Results resolved", value: data.corpus.resolvedResults.toLocaleString() },
+          { label: "Replay-backed Steam IDs", value: data.corpus.replayBackedSteamAccounts.toLocaleString() },
+          { label: "Provisional Warriors", value: data.corpus.provisionalWarriors.toLocaleString() },
+          { label: "Indexed files decoded", value: data.corpus.parseableAtAnyLevelArtifacts.toLocaleString() },
+        ]}
+      />
 
       <section className="rounded-[1.9rem] border border-cyan-100/12 bg-[linear-gradient(145deg,rgba(7,21,34,0.96),rgba(2,6,23,0.92))] p-6 sm:p-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -71,7 +94,7 @@ export default async function GameStatsPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-5 xl:grid-cols-3">
+        <div className="game-stats-corpus-grid mt-6 grid gap-5 xl:grid-cols-3">
           <CorpusLayer title="Game-record grain" accent="text-cyan-100">
             <DefinitionMetric
               label="Final ingestion records"
@@ -201,7 +224,8 @@ export default async function GameStatsPage() {
         <div className="rounded-[1.8rem] border border-amber-200/14 bg-amber-300/[0.055] p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Canonical Parser Contract</div><h2 className="mt-3 text-2xl font-semibold">{HD_REPLAY_PARSER_CONTRACT.parserName} {HD_REPLAY_PARSER_CONTRACT.parserVersion}</h2><div className="mt-4 space-y-2 text-sm text-slate-300">{canonicalVersion ? <><Line label="Evidence pass" value={`${canonicalVersion.passName} v${canonicalVersion.passVersion}`} /><Line label="Schema" value={canonicalVersion.schemaVersion} /><Line label="Latest canonical run" value={canonicalVersion.latestAt ? <TimeDisplayText value={canonicalVersion.latestAt} includeYear /> : "Not recorded"} /></> : <Line label="Catalog" value="No canonical run recorded yet" />}<Line label="Candidate runs" value={data.parser.totalRuns.toLocaleString()} /><Line label="Observations preserved" value={compact(data.parser.observations)} /><Line label="Action packets cataloged" value={compact(data.parser.totalActions)} /></div></div>
       </section>
 
-      <section className="rounded-[1.9rem] border border-emerald-200/18 bg-[radial-gradient(circle_at_12%_0%,rgba(52,211,153,0.14),transparent_34%),rgba(2,6,23,0.82)] p-6 sm:p-8">
+      {view !== "basic" ? (
+<section className="rounded-[1.9rem] border border-emerald-200/18 bg-[radial-gradient(circle_at_12%_0%,rgba(52,211,153,0.14),transparent_34%),rgba(2,6,23,0.82)] p-6 sm:p-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div><div className="text-xs uppercase tracking-[0.3em] text-emerald-100/60">The 329 Frontier Is Broken</div><h2 className="mt-2 text-3xl font-semibold">Every archived artifact now has a latest candidate disposition.</h2></div>
           <div className="text-right"><div className="text-3xl font-semibold text-emerald-100">{data.parser.frontier.completed.toLocaleString()} / {data.parser.frontier.artifacts.toLocaleString()}</div><div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-emerald-100/55">latest candidates accounted</div></div>
@@ -215,37 +239,50 @@ export default async function GameStatsPage() {
         <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{data.parser.frontier.modes.map((mode) => <div key={mode.key} className="flex items-center justify-between gap-4 rounded-xl border border-white/8 bg-white/[0.035] p-4"><div><div className="text-sm font-semibold text-white">{mode.label}</div><code className="mt-1 block break-all text-[10px] text-slate-500">{mode.key}</code></div><span className="text-xl font-semibold text-amber-100">{mode.count.toLocaleString()}</span></div>)}</div>
         <p className="mt-6 text-sm leading-6 text-slate-400">Candidate completion is not automatic public truth. Saved-game snapshots preserve roster, map, and checkpoint evidence but never count as completed battles. Effective corrections require separate review, a content-addressed receipt, and a zero-financial-impact gate.</p>
       </section>
+      ) : null}
 
       {vault ? <section className="rounded-[1.8rem] border border-emerald-200/14 bg-emerald-300/[0.055] p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-emerald-100/60">Your Vault</div><div className="mt-4 grid gap-3 sm:grid-cols-5"><Metric label="Your battles" value={vault.total.toLocaleString()} /><Metric label="Resolved" value={vault.resolved.toLocaleString()} /><Metric label="Unknown" value={vault.unknown.toLocaleString()} alert={vault.unknown > 0} /><Metric label="Teams resolved" value={vault.teamsResolved.toLocaleString()} /><Metric label="Result coverage" value={percent(vault.resultCoverageBps)} /></div></section> : null}
 
-      <section className="grid gap-5 xl:grid-cols-2">
+      {view !== "basic" ? (
+<section className="grid gap-5 xl:grid-cols-2">
         <RankPanel title="Unknowns by replay owner" rows={data.unknowns.byOwner} />
         <RankPanel title="Unknowns by warrior in roster" rows={data.unknowns.byRosterPlayer} />
         <RankPanel title="Unknowns by result reason" rows={data.unknowns.byReason} />
         <RankPanel title="Unknowns by replay game type" rows={data.unknowns.byGameType} />
       </section>
+      ) : null}
 
-      <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8"><div className="flex flex-wrap items-end justify-between gap-4"><div><div className="text-xs uppercase tracking-[0.3em] text-cyan-100/55">Extraction Coverage</div><h2 className="mt-2 text-3xl font-semibold">Stats currently acquired</h2></div><div className="text-sm text-slate-500">Top {data.parser.fields.length} observed fields</div></div><div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{data.parser.fields.slice(0, 30).map((field) => <div key={field.fieldPath} className="rounded-xl border border-white/8 bg-white/[0.03] p-4"><div className="flex items-start justify-between gap-3"><code className="break-all text-xs text-cyan-100">{field.fieldPath}</code><span className="shrink-0 text-xs text-slate-500">{field.observations.toLocaleString()}</span></div><div className="mt-2 text-[10px] uppercase tracking-[0.16em] text-slate-500">{field.minConfidenceBps === null ? "Experimental / unscored" : field.minConfidenceBps === field.maxConfidenceBps ? `${percent(field.minConfidenceBps)} confidence rubric` : `${percent(field.minConfidenceBps)}–${percent(field.maxConfidenceBps || field.minConfidenceBps)} confidence rubric`}</div></div>)}</div></section>
+      {view === "extreme" ? (
+<section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8"><div className="flex flex-wrap items-end justify-between gap-4"><div><div className="text-xs uppercase tracking-[0.3em] text-cyan-100/55">Extraction Coverage</div><h2 className="mt-2 text-3xl font-semibold">Stats currently acquired</h2></div><div className="text-sm text-slate-500">Top {data.parser.fields.length} observed fields</div></div><div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{data.parser.fields.slice(0, 30).map((field) => <div key={field.fieldPath} className="rounded-xl border border-white/8 bg-white/[0.03] p-4"><div className="flex items-start justify-between gap-3"><code className="break-all text-xs text-cyan-100">{field.fieldPath}</code><span className="shrink-0 text-xs text-slate-500">{field.observations.toLocaleString()}</span></div><div className="mt-2 text-[10px] uppercase tracking-[0.16em] text-slate-500">{field.minConfidenceBps === null ? "Experimental / unscored" : field.minConfidenceBps === field.maxConfidenceBps ? `${percent(field.minConfidenceBps)} confidence rubric` : `${percent(field.minConfidenceBps)}–${percent(field.maxConfidenceBps || field.minConfidenceBps)} confidence rubric`}</div></div>)}</div></section>
+      ) : null}
 
-      <section className="rounded-[1.8rem] border border-amber-200/13 bg-amber-300/[0.045] p-6 sm:p-8">
+      {view === "extreme" ? (
+<section className="rounded-[1.8rem] border border-amber-200/13 bg-amber-300/[0.045] p-6 sm:p-8">
         <div className="flex flex-wrap items-end justify-between gap-4"><div><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Advanced Evidence Front</div><h2 className="mt-2 text-3xl font-semibold">Captured is not the same as proven.</h2></div><div className="max-w-md text-sm leading-6 text-slate-400">These are structured evidence lanes. Experimental fields stay out of player truth and AI claims until their semantics are scored.</div></div>
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{data.parser.advancedLanes.map((lane) => <article key={lane.key} className="rounded-2xl border border-white/8 bg-slate-950/55 p-5"><div className="flex items-start justify-between gap-3"><h3 className="text-lg font-semibold">{lane.label}</h3><span className={`rounded-full border px-3 py-1 text-[9px] uppercase tracking-[0.16em] ${lane.maturity === "validated" ? "border-emerald-200/20 bg-emerald-300/10 text-emerald-100" : lane.maturity === "mixed" ? "border-amber-200/20 bg-amber-300/10 text-amber-100" : "border-cyan-200/16 bg-cyan-300/[0.07] text-cyan-100"}`}>{lane.maturity}</span></div><div className="mt-4 flex items-end gap-3"><span className="text-3xl font-semibold text-white">{lane.observations.toLocaleString()}</span><span className="pb-1 text-xs text-slate-500">observations</span></div><div className="mt-2 text-xs text-slate-500">{lane.scoredObservations.toLocaleString()} confidence-scored · {lane.supportingFieldsPresent}/{lane.supportingFieldsTotal} supporting fields</div><p className="mt-4 text-sm leading-6 text-slate-400">{lane.truthRule}</p></article>)}</div>
       </section>
+      ) : null}
 
-      <section className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]"><div className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Latest Engine Room Campaign</div>{fullJob ? <><h2 className="mt-3 text-3xl font-semibold">{fullJob.maxArtifacts.toLocaleString()}-artifact bounded manifest</h2><div className="mt-5 grid gap-3 sm:grid-cols-3"><Mini label="Processed" value={(fullJob.latestEvent?.processedCount ?? 0).toLocaleString()} /><Mini label="Full candidates" value={(fullJob.latestEvent?.succeededCount ?? 0).toLocaleString()} /><Mini label="Structured failures" value={(fullJob.latestEvent?.failedCount ?? 0).toLocaleString()} /></div><p className="mt-5 text-sm leading-6 text-slate-400">Status: <span className="text-emerald-100">{fullJob.latestEvent?.eventType || "queued"}</span>. Candidate-only: {fullJob.candidateOnly ? "yes" : "no"}. Public aggregates affected: {fullJob.affectsPublicAggregates ? "yes" : "no"}.</p></> : <div className="mt-4 text-slate-500">No bounded parser campaign is cataloged.</div>}</div><div className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-rose-100/55">Historical Candidate Failure Signatures</div><div className="mt-4 space-y-2">{data.parser.failures.map((failure) => <div key={failure.signature} className="rounded-xl border border-white/8 bg-white/[0.03] p-3"><div className="flex items-start justify-between gap-3"><code className="break-all text-[11px] text-slate-300">{failure.signature}</code><span className="shrink-0 text-sm font-semibold text-rose-100">{failure.count}</span></div></div>)}</div></div></section>
+      {view === "extreme" ? (
+<section className="grid gap-5 lg:grid-cols-[1.05fr_0.95fr]"><div className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Latest Engine Room Campaign</div>{fullJob ? <><h2 className="mt-3 text-3xl font-semibold">{fullJob.maxArtifacts.toLocaleString()}-artifact bounded manifest</h2><div className="mt-5 grid gap-3 sm:grid-cols-3"><Mini label="Processed" value={(fullJob.latestEvent?.processedCount ?? 0).toLocaleString()} /><Mini label="Full candidates" value={(fullJob.latestEvent?.succeededCount ?? 0).toLocaleString()} /><Mini label="Structured failures" value={(fullJob.latestEvent?.failedCount ?? 0).toLocaleString()} /></div><p className="mt-5 text-sm leading-6 text-slate-400">Status: <span className="text-emerald-100">{fullJob.latestEvent?.eventType || "queued"}</span>. Candidate-only: {fullJob.candidateOnly ? "yes" : "no"}. Public aggregates affected: {fullJob.affectsPublicAggregates ? "yes" : "no"}.</p></> : <div className="mt-4 text-slate-500">No bounded parser campaign is cataloged.</div>}</div><div className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-rose-100/55">Historical Candidate Failure Signatures</div><div className="mt-4 space-y-2">{data.parser.failures.map((failure) => <div key={failure.signature} className="rounded-xl border border-white/8 bg-white/[0.03] p-3"><div className="flex items-start justify-between gap-3"><code className="break-all text-[11px] text-slate-300">{failure.signature}</code><span className="shrink-0 text-sm font-semibold text-rose-100">{failure.count}</span></div></div>)}</div></div></section>
+      ) : null}
 
-      <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Battles Remaining in the Fog</div><div className="mt-5 grid gap-4 lg:grid-cols-2">{data.unknowns.latest.map((game) => <article key={game.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-5"><div className="flex items-start justify-between gap-4"><div><div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Battle #{game.id} · {game.owner}</div><h3 className="mt-2 text-lg font-semibold">{game.players.length ? game.players.join(" · ") : "Roster unavailable"}</h3></div><span className="rounded-full border border-amber-200/15 bg-amber-300/[0.07] px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-amber-100">Needs proof</span></div><div className="mt-3 text-sm text-slate-400">{game.mapName} · {game.gameType} · {game.parseReason}</div><div className="mt-3 text-xs leading-5 text-slate-500">Needed: {game.neededEvidence.join(", ") || "human review or stronger final evidence"}</div><Link href={`/game-stats/${game.id}`} className="mt-4 inline-flex rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-white">Open battle record</Link></article>)}</div></section>
+      {view !== "basic" ? (
+<section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Battles Remaining in the Fog</div><div className="mt-5 grid gap-4 lg:grid-cols-2">{data.unknowns.latest.map((game) => <article key={game.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-5"><div className="flex items-start justify-between gap-4"><div><div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Battle #{game.id} · {game.owner}</div><h3 className="mt-2 text-lg font-semibold">{game.players.length ? game.players.join(" · ") : "Roster unavailable"}</h3></div><span className="rounded-full border border-amber-200/15 bg-amber-300/[0.07] px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-amber-100">Needs proof</span></div><div className="mt-3 text-sm text-slate-400">{game.mapName} · {game.gameType} · {game.parseReason}</div><div className="mt-3 text-xs leading-5 text-slate-500">Needed: {game.neededEvidence.join(", ") || "human review or stronger final evidence"}</div><Link href={`/game-stats/${game.id}`} className="mt-4 inline-flex rounded-full border border-white/10 px-4 py-2 text-xs font-semibold text-white">Open battle record</Link></article>)}</div></section>
+      ) : null}
 
       <section className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8"><div className="flex flex-wrap items-end justify-between gap-4"><div><div className="text-xs uppercase tracking-[0.3em] text-cyan-100/55">Recently Decoded</div><h2 className="mt-2 text-3xl font-semibold">Deep battle records</h2></div><div className="flex gap-2"><Link href="/upload" className="rounded-full bg-amber-300 px-4 py-2 text-xs font-bold text-slate-950">Upload history</Link><Link href="/download" className="rounded-full border border-white/12 px-4 py-2 text-xs font-semibold">Download Watcher</Link></div></div><div className="mt-5 grid gap-4 lg:grid-cols-2">{data.recentDecodes.map((game) => <article key={game.id} className="rounded-2xl border border-white/8 bg-white/[0.03] p-5"><div className="flex flex-wrap items-center justify-between gap-3"><span className="text-xs text-slate-500">Battle #{game.id}</span><div className="flex gap-2"><Pill>{game.teamsResolved ? `Teams ${game.teamConfidence}` : "Teams unresolved"}</Pill><Pill>{game.winner ? `Result ${game.resultConfidence}` : "Result review"}</Pill></div></div><h3 className="mt-3 text-xl font-semibold">{game.players.length ? game.players.join(" · ") : "Replay roster"}</h3><div className="mt-2 text-sm text-slate-400">{game.mapName}{game.winner ? ` · ${game.winner} victorious` : " · winner under review"}</div><div className="mt-4 flex items-center justify-between gap-3"><span className="text-xs text-slate-500">{game.teamProvenance}</span><Link href={`/game-stats/${game.id}`} className="text-sm font-semibold text-cyan-100">Open →</Link></div></article>)}</div></section>
 
-      <section className="grid gap-4 md:grid-cols-2"><Roadmap title="Under active research" items={["Postgame tables and exact end-screen statistics", "Validated action-rate and eAPM semantics", "Kills, losses, resource totals, and peak army", "Controlled HD playback and screenshot/OCR evidence"]} /><Roadmap title="Truth law" items={["Explicit replay team IDs only, including valid team 0", "No player-order team assignment", "No uploader-loss or player-one winner fabrication", "Candidate parser output never rewrites public or financial truth"]} /></section>
+      {view !== "basic" ? (
+<section className="grid gap-4 md:grid-cols-2"><Roadmap title="Under active research" items={["Postgame tables and exact end-screen statistics", "Validated action-rate and eAPM semantics", "Kills, losses, resource totals, and peak army", "Controlled HD playback and screenshot/OCR evidence"]} /><Roadmap title="Truth law" items={["Explicit replay team IDs only, including valid team 0", "No player-order team assignment", "No uploader-loss or player-one winner fabrication", "Candidate parser output never rewrites public or financial truth"]} /></section>
+      ) : null}
     </main>
   );
 }
 
 function Metric({ label, value, alert = false }: { label: string; value: string; alert?: boolean }) { return <div className={`rounded-2xl border p-4 ${alert ? "border-amber-200/18 bg-amber-300/[0.07]" : "border-white/10 bg-black/22"}`}><div className="text-[10px] uppercase tracking-[0.24em] text-slate-500">{label}</div><div className={`mt-2 text-xl font-semibold ${alert ? "text-amber-100" : "text-white"}`}>{value}</div></div>; }
-function CorpusLayer({ title, accent, children }: { title: string; accent: string; children: ReactNode }) { return <article className="rounded-[1.5rem] border border-white/9 bg-black/20 p-5"><h3 className={`text-sm font-semibold uppercase tracking-[0.22em] ${accent}`}>{title}</h3><div className="mt-4 space-y-3">{children}</div></article>; }
-function DefinitionMetric({ label, value, definition, alert = false }: { label: string; value: number | string; definition: ReactNode; alert?: boolean }) { return <div className={`rounded-xl border p-4 ${alert ? "border-amber-200/18 bg-amber-300/[0.055]" : "border-white/8 bg-white/[0.025]"}`}><div className="flex items-start justify-between gap-4"><div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div><div className={`shrink-0 text-lg font-semibold tabular-nums ${alert ? "text-amber-100" : "text-white"}`}>{typeof value === "number" ? value.toLocaleString() : value}</div></div><p className="mt-2 text-xs leading-5 text-slate-400">{definition}</p></div>; }
+function CorpusLayer({ title, accent, children }: { title: string; accent: string; children: ReactNode }) { return <article className="game-stats-corpus-layer rounded-[1.5rem] border border-white/9 bg-black/20 p-5"><h3 className={`text-sm font-semibold uppercase tracking-[0.22em] ${accent}`}>{title}</h3><div className="mt-4 space-y-3">{children}</div></article>; }
+function DefinitionMetric({ label, value, definition, alert = false }: { label: string; value: number | string; definition: ReactNode; alert?: boolean }) { return <div className={`game-stats-definition-metric rounded-xl border p-4 ${alert ? "border-amber-200/18 bg-amber-300/[0.055]" : "border-white/8 bg-white/[0.025]"}`}><div className="flex items-start justify-between gap-4"><div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div><div className={`shrink-0 text-lg font-semibold tabular-nums ${alert ? "text-amber-100" : "text-white"}`}>{typeof value === "number" ? value.toLocaleString() : value}</div></div><p className="mt-2 text-xs leading-5 text-slate-400">{definition}</p></div>; }
 function Mini({ label, value }: { label: string; value: string }) { return <div className="rounded-xl border border-white/8 bg-white/[0.03] p-3"><div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</div><div className="mt-1 text-sm font-semibold text-white">{value}</div></div>; }
 function Line({ label, value }: { label: string; value: ReactNode }) { return <div className="flex items-start justify-between gap-4 border-b border-white/7 pb-2"><span className="text-slate-500">{label}</span><span className="break-all text-right text-slate-200">{value}</span></div>; }
 function Progress({ value }: { value: number }) { return <div className="mt-5 h-3 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-emerald-300 to-amber-300" style={{ width: `${Math.max(0, Math.min(100, value / 100))}%` }} /></div>; }

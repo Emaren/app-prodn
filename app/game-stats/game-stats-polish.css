@@ -1,0 +1,35 @@
+/* GAME_STATS_BAE_MANAGED_HERO_20260807 */
+
+main[data-game-stats-view="basic"] .game-stats-definition-metric p {
+  display: none;
+}
+
+main[data-game-stats-view="basic"]
+  .game-stats-corpus-layer
+  .game-stats-definition-metric:nth-child(n + 4) {
+  display: none;
+}
+
+main[data-game-stats-view="basic"] .game-stats-definition-metric {
+  padding-top: 0.9rem;
+  padding-bottom: 0.9rem;
+}
+
+@media (min-width: 900px) {
+  main[data-game-stats-view="basic"] .game-stats-corpus-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+main[data-game-stats-view="extreme"] .game-stats-managed-hero {
+  box-shadow:
+    0 42px 145px rgb(0 0 0 / 0.48),
+    0 0 70px rgb(34 211 238 / 0.05);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-stats-managed-hero img {
+    transition-duration: 0ms !important;
+    transform: none !important;
+  }
+}
