@@ -4,17 +4,13 @@ import test from "node:test";
 import {
   evaluateWatcherTerminalOwnerLoss,
   reconcileAutomaticWatcherTerminalResults,
+  WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY,
   WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE,
   WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION,
   WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
   WATCHER_TERMINAL_RAW_ACTIVITY_FIELD_PATH,
   type WatcherTerminalOwnerLossInput,
 } from "../lib/replayResultAdjudications.ts";
-import {
-  buildRosterHash,
-  normalizeReplayPlayers,
-} from "../lib/teamResolution.ts";
-
 const replayHash = "4".repeat(64);
 
 function baseInput(): WatcherTerminalOwnerLossInput {
@@ -130,7 +126,7 @@ test("empty automatic reconciliation is a safe no-op", async () => {
   });
 });
 
-test("automatic reconciliation submits the canonical roster hash", async () => {
+test("automatic reconciliation keeps 1v1 action tail diagnostic only", async () => {
   const input = baseInput();
   let createdData: Record<string, unknown> | null = null;
   let parseRunFindFirstArgs:
@@ -236,18 +232,18 @@ test("automatic reconciliation submits the canonical roster hash", async () => {
     [input.id]
   );
 
-  const expectedRosterHash = buildRosterHash(
-    normalizeReplayPlayers(input.players)
-  );
-
-  assert.equal(report.createdCount, 1);
-  assert.equal(report.skippedCount, 0);
-  assert.equal(createdData?.sourceRosterHash, expectedRosterHash);
-  assert.equal(createdData?.affectsStats, true);
-  assert.equal(createdData?.affectsBets, false);
-  assert.deepEqual(createdData?.winningPlayerKeys, [
-    "steam:76561198442007385",
+  assert.equal(report.createdCount, 0);
+  assert.equal(report.existingCount, 0);
+  assert.equal(report.skippedCount, 1);
+  assert.deepEqual(report.outcomes, [
+    {
+      gameStatsId: input.id,
+      outcome: "skipped",
+      detail: "action_tail_diagnostic_only",
+      adjudicationId: null,
+    },
   ]);
+  assert.equal(createdData, null);
 
   assert.deepEqual(
     (
@@ -278,6 +274,10 @@ test("automatic watcher evidence uses stats-only append-only authority", () => {
   assert.equal(
     WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
     "replay-terminal-action-tail-v3"
+  );
+  assert.equal(
+    WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY,
+    false
   );
 });
 

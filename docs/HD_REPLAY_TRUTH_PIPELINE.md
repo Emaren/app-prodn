@@ -87,48 +87,41 @@ uploader-opponent guessing.
 
 
 <!-- AOE2WAR:AUTOMATIC_TERMINAL_ACTION_TAIL_V3:START -->
-## Automatic final 1v1 terminal action-tail result
+## Final 1v1 terminal action-tail evidence — diagnostic only
 
-Policy `replay-terminal-action-tail-v3` is a narrow result-recovery lane for a
-final, rated AoE2 HD 1v1 whose serialized replay result is absent but whose
-recorded player activity has a decisive terminal ordering.
+Policy `replay-terminal-action-tail-v3` remains the historical evidence
+label for the terminal-action ordering experiment.
 
-Eligibility requires all of the following:
+As of 2026-08-07, terminal action ordering is not automatic winner
+authority. Production game `21811` supplied a decisive counterexample:
+the known voluntary quitter was the later-active player in the replay
+packet stream, while the opponent's final gameplay packet occurred
+earlier. The same immutable parser candidate contained zero raw or
+normalized resignation events.
 
-- exactly two canonical players with distinct exact replay player numbers;
-- the submitter Steam identity maps to exactly one canonical player, without
-  assuming that the submitter won or lost;
-- no existing adjudication history, trusted winner, winning-team projection,
-  winning-player projection, or serialized resignation;
-- no current human-confirmed desync and no terminal Watcher failure;
-- exactly one recorded-action summary for each canonical player;
-- the later-active player acts at least **2,000 ms** after the earlier player;
-- the earlier player is silent for at least **5,000 ms** before replay end;
-- the later-active player acts within **30,000 ms** of the replay tail.
+Therefore:
 
-An exact `final_settle_observation_complete` or
-`legacy_final_monitor_settled` receipt strengthens provenance. A missing receipt
-may use `action_tail_fallback`; a supplied receipt with conflicting replay,
-session, file, user, or final-storage identity blocks the result. Generic
-postgame-panel, score, or achievement availability is not itself a serialized
-winner and does not suppress otherwise decisive action-tail evidence.
+- action-tail measurements may be preserved for diagnosis and review;
+- action-tail measurements alone must not append an accepted 1v1 result;
+- an exact Watcher terminal receipt proves replay/session provenance,
+  not which AoE2 player won;
+- missing Watcher terminal metadata must not increase result authority;
+- explicit serialized resignation, trusted winner serialization, or
+  authorized human adjudication remains result authority;
+- historical `replay-terminal-action-tail-v3` adjudications remain
+  immutable evidence and must be audited or superseded append-only,
+  never silently edited or deleted.
 
-An accepted result appends reason
-`decisive_1v1_terminal_action_tail` with replay hash, parser run, submitter,
-winner, loser, action-tail measurements, thresholds, and receipt mode. It sets
-`affectsStats = true`, `affectsBets = false`, and
-`financialAuthority = false`. A linked market remains
-`operator_review_required`; this policy never settles, pays, refunds, reopens,
-or rewrites money or chain history.
+`WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY = false` is the forward
+code-level safety gate.
 
-The controlled operator entry point is:
+The existing evaluator may continue measuring terminal action ordering,
+but the automatic reconciler returns `action_tail_diagnostic_only`
+instead of creating a new accepted 1v1 adjudication.
 
-```bash
-npm run replay:terminal:reconcile -- <GameStats ID> [more IDs...]
-```
-
-The reconciler is idempotent and append-only. A later human correction must be a
-new superseding adjudication, never an edit to the automatic evidence row.
+Team terminal recovery remains separate because it requires explicit
+serialized resignation evidence and exact resignation/team integrity
+before terminal timing is considered.
 <!-- AOE2WAR:AUTOMATIC_TERMINAL_ACTION_TAIL_V3:END -->
 
 Watcher authentication and user lookup use a short database transaction that

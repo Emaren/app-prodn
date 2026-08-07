@@ -1303,6 +1303,17 @@ export async function submitReplayResultAdjudication(input: {
 export const WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION =
   "replay-terminal-action-tail-v3" as const;
 
+/*
+ * Production game 21811 proved that terminal action ordering is not
+ * sufficient winner authority. A player who voluntarily exits may still
+ * be the later-active player in the recorded packet stream.
+ *
+ * Preserve the evaluator as diagnostic evidence, but do not allow
+ * 1v1 action-tail evidence alone to append an accepted result.
+ */
+export const WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY =
+  false as const;
+
 export const WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE =
   "verified_submitter" as const;
 
@@ -2133,6 +2144,18 @@ export async function reconcileAutomaticWatcherTerminalResults(
             gameStatsId,
             outcome: "skipped" as const,
             detail: evaluation.reason,
+            adjudicationId: null,
+          };
+        }
+
+        if (
+          automaticRoster.length === 2 &&
+          !WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY
+        ) {
+          return {
+            gameStatsId,
+            outcome: "skipped" as const,
+            detail: "action_tail_diagnostic_only",
             adjudicationId: null,
           };
         }
