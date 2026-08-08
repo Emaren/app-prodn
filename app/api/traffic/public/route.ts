@@ -59,11 +59,25 @@ export async function GET() {
     const payload =
       (await response.json()) as PublicTrafficPayload;
 
+    /*
+     * Public charts show completed UTC days only.
+     *
+     * The upstream begins accumulating today's bucket at
+     * 00:00 UTC. Rendering that partial bucket beside complete
+     * historical days creates an artificial plunge at the
+     * right edge of the graph.
+     */
+    const todayUtc =
+      new Date()
+        .toISOString()
+        .slice(0, 10);
+
     const points = Array.isArray(payload.points)
       ? payload.points
           .filter(
             (point) =>
               typeof point?.date === "string" &&
+              point.date < todayUtc &&
               point.values,
           )
           .map((point) => {
