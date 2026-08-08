@@ -476,7 +476,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d8e000c9a593f9eeb24d21287d26636f99eafb5ff2b20e2cd8ddf76103c7eb76",
+      "sha256": "532e969301ae6d527dcc9b0ce72ef71183bfdf3e8e48a3b174806736880ee7b6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -575,6 +575,29 @@
       ],
       "title": "Jim Fast-Ending Team Session Diagnosis",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-and-implementation-contract",
+      "id": "aoe2war.app-prodn.docs-kingdom-civic-surfaces",
+      "owner": "aoe2war-web",
+      "path": "docs/KINGDOM_CIVIC_SURFACES.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-08",
+      "sensitivity": "internal",
+      "sha256": "8dd5658f7f525c40f1b5c466a10154a3af206a64d791bba7ba45a6e446254fc0",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Kingdom Civic Surfaces",
+      "type": "reference"
     },
     {
       "audience": [
@@ -1058,6 +1081,29 @@
     },
     {
       "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "cross-repository-handoff",
+      "id": "aoe2war.app-prodn.docs-wolochain-civic-rail-handoff-prompt",
+      "owner": "aoe2war-web",
+      "path": "docs/WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-08",
+      "sensitivity": "internal",
+      "sha256": "8407492eb8b3f96ac38e2e3c1bc6d10df6168c91378a8270f15c5c01c3c4e2e7",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "WoloChain Civic Rail Handoff Prompt",
+      "type": "reference"
+    },
+    {
+      "audience": [
         "operators",
         "ai-agents"
       ],
@@ -1191,7 +1237,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "5f9af6425e03a8bec25ebde283749f86b4d46c19"
+    "commit": "9b8bbbf5c282a6bd0346afe0c866d37b27c8117a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
