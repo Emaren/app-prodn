@@ -16,6 +16,10 @@ import {
   ReplayScreenshotEvidenceError,
 } from "@/lib/replayScreenshotEvidence";
 import {
+  AUTO_SCREENSHOT_VERDICT_CONFIDENCE_BPS,
+  resolveScreenshotAutoVerdictEvidence,
+} from "@/lib/screenshotAutoVerdictPolicy";
+import {
   getSessionUid,
 } from "@/lib/session";
 
@@ -41,94 +45,6 @@ function json(
           "private, no-store, max-age=0",
       },
     }
-  );
-}
-
-const AUTO_SCREENSHOT_VERDICT_CONFIDENCE_BPS =
-  9000;
-
-function autoVerdictRecord(
-  value: unknown
-): Record<string, unknown> | null {
-  return value &&
-    typeof value === "object" &&
-    !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : null;
-}
-
-function autoVerdictStringArray(
-  value: unknown
-) {
-  return Array.isArray(value)
-    ? value
-        .map((entry) =>
-          typeof entry === "string"
-            ? entry.trim()
-            : ""
-        )
-        .filter(Boolean)
-    : [];
-}
-
-function autoVerdictAssessmentConfirmed(
-  observation:
-    | {
-        value: unknown;
-        confidenceBps: number | null;
-      }
-    | undefined
-) {
-  if (!observation) {
-    return false;
-  }
-
-  const value =
-    autoVerdictRecord(
-      observation.value
-    );
-
-  const status =
-    typeof value?.status ===
-      "string"
-      ? value.status
-          .trim()
-          .toLowerCase()
-      : "";
-
-  /*
-   * Screenshot analysis distinguishes between:
-   *
-   * confirmed:
-   *   explicit, directly conclusive evidence
-   *
-   * observed:
-   *   materially visible evidence with a confidence score
-   *
-   * A high-confidence OBSERVED assessment is eligible for
-   * automatic promotion only because the stronger canonical
-   * checks below still require:
-   *
-   *   - complete mapped roster
-   *   - complete mapped teams
-   *   - mapped winning player keys
-   *   - winner exactly matching one team
-   *   - no existing durable verdict
-   *   - no human-confirmed desync
-   *
-   * conflict / unclear / not_visible remain ineligible.
-   */
-  const eligibleStatus =
-    status === "confirmed" ||
-    status === "observed";
-
-  return (
-    eligibleStatus &&
-    (
-      observation.confidenceBps ??
-      0
-    ) >=
-      AUTO_SCREENSHOT_VERDICT_CONFIDENCE_BPS
   );
 }
 
@@ -168,64 +84,6 @@ async function maybeAutoAdjudicateScreenshotEvidence(
       )
     );
 
-  const teamAssessment =
-    byPath.get(
-      "evidence.team_composition"
-    );
-
-  const winnerAssessment =
-    byPath.get(
-      "evidence.winner_loser"
-    );
-
-  const winningKeysObservation =
-    byPath.get(
-      "result.winning_player_keys"
-    );
-
-  const teamsObservation =
-    byPath.get(
-      "teams.resolution"
-    );
-
-  if (
-    !autoVerdictAssessmentConfirmed(
-      teamAssessment
-    ) ||
-    !autoVerdictAssessmentConfirmed(
-      winnerAssessment
-    )
-  ) {
-    return {
-      outcome: "review_required",
-      reason:
-        "team_or_winner_not_confirmed_at_90_percent",
-    };
-  }
-
-  if (
-    !winningKeysObservation ||
-    (
-      winningKeysObservation
-        .confidenceBps ??
-      0
-    ) <
-      AUTO_SCREENSHOT_VERDICT_CONFIDENCE_BPS ||
-    !teamsObservation ||
-    (
-      teamsObservation
-        .confidenceBps ??
-      0
-    ) <
-      AUTO_SCREENSHOT_VERDICT_CONFIDENCE_BPS
-  ) {
-    return {
-      outcome: "review_required",
-      reason:
-        "canonical_result_mapping_below_90_percent",
-    };
-  }
-
   const state =
     await loadReplayResultReviewState(
       prisma,
@@ -241,7 +99,8 @@ async function maybeAutoAdjudicateScreenshotEvidence(
     0
   ) {
     return {
-      outcome: "existing_verdict",
+      outcome:
+        "existing_verdict",
       adjudicationId:
         state.adjudications[0]?.id ??
         null,
@@ -258,7 +117,8 @@ async function maybeAutoAdjudicateScreenshotEvidence(
     true
   ) {
     return {
-      outcome: "review_required",
+      outcome:
+        "review_required",
       reason:
         "confirmed_desync_incident",
     };
@@ -267,125 +127,44 @@ async function maybeAutoAdjudicateScreenshotEvidence(
   const reviewGame =
     state.game;
 
-  const winningPlayerKeys =
-    autoVerdictStringArray(
-      winningKeysObservation.value
-    );
-
-  const teamsValue =
-    autoVerdictRecord(
-      teamsObservation.value
-    );
-
-  const rawTeams =
-    Array.isArray(
-      teamsValue?.teams
-    )
-      ? teamsValue.teams
-      : [];
-
-  const evidenceTeams =
-    rawTeams
-      .map((entry) => {
-        const team =
-          autoVerdictRecord(
-            entry
-          );
-
-        return autoVerdictStringArray(
-          team?.player_keys
-        );
-      })
-      .filter(
-        (playerKeys) =>
-          playerKeys.length >
-          0
-      );
-
-  /*
-   * Winner markets are always two opposing sides:
-   * 1v1 / 2v2 / 3v3 / 4v4.
-   */
-  if (
-    evidenceTeams.length !==
-    2
-  ) {
-    return {
-      outcome: "review_required",
-      reason:
-        "screenshot_team_count_not_two",
-    };
-  }
-
-  const canonicalKeys =
-    reviewGame.canonicalRoster
-      .map(
-        (player) =>
-          player.stablePlayerKey
-      )
-      .sort();
-
-  const assignedKeys =
-    [
-      ...new Set(
-        evidenceTeams.flat()
-      ),
-    ].sort();
-
-  const completeRoster =
-    canonicalKeys.length ===
-      assignedKeys.length &&
-    canonicalKeys.every(
-      (key, index) =>
-        key ===
-        assignedKeys[index]
-    );
-
-  if (!completeRoster) {
-    return {
-      outcome: "review_required",
-      reason:
-        "screenshot_roster_not_exactly_canonical",
-    };
-  }
+  const resolution =
+    resolveScreenshotAutoVerdictEvidence({
+      teamAssessment:
+        byPath.get(
+          "evidence.team_composition"
+        ),
+      winnerAssessment:
+        byPath.get(
+          "evidence.winner_loser"
+        ),
+      winningKeysObservation:
+        byPath.get(
+          "result.winning_player_keys"
+        ),
+      teamsObservation:
+        byPath.get(
+          "teams.resolution"
+        ),
+      canonicalRoster:
+        reviewGame.canonicalRoster.map(
+          (player) => ({
+            stablePlayerKey:
+              player.stablePlayerKey,
+            normalizedName:
+              player.normalizedName,
+          })
+        ),
+    });
 
   if (
-    winningPlayerKeys.length <
-    1
+    resolution.outcome ===
+    "review_required"
   ) {
-    return {
-      outcome: "review_required",
-      reason:
-        "winning_player_keys_missing",
-    };
-  }
-
-  const winningTeamIndex =
-    evidenceTeams.findIndex(
-      (playerKeys) =>
-        playerKeys.length ===
-          winningPlayerKeys.length &&
-        winningPlayerKeys.every(
-          (key) =>
-            playerKeys.includes(
-              key
-            )
-        )
-    );
-
-  if (
-    winningTeamIndex ===
-    -1
-  ) {
-    return {
-      outcome: "review_required",
-      reason:
-        "winning_players_do_not_exactly_match_one_team",
-    };
+    return resolution;
   }
 
   const teams =
-    evidenceTeams.map(
+    resolution.evidenceTeams.map(
       (playerKeys, index) => ({
         teamKey:
           index === 0
@@ -397,8 +176,14 @@ async function maybeAutoAdjudicateScreenshotEvidence(
 
   const winningTeamKey =
     teams[
-      winningTeamIndex
+      resolution.winningTeamIndex
     ].teamKey;
+
+  const reason =
+    resolution.teamResolutionMode ===
+      "canonical_duel_singletons"
+      ? "High-confidence explicit postgame winner evidence confirmed a canonical two-player duel; the two canonical participants were resolved as opposing singleton sides."
+      : "High-confidence postgame screenshot evidence confirmed the complete teams and victorious side.";
 
   const submitted =
     await submitReplayResultAdjudication({
@@ -416,24 +201,21 @@ async function maybeAutoAdjudicateScreenshotEvidence(
           reviewGame.sourceRosterHash,
         teams,
         winningTeamKey,
-        reason:
-          "High-confidence postgame screenshot evidence confirmed the complete teams and victorious side.",
+        reason,
         evidence: {
           submittedVia:
             "automatic_screenshot_evidence_policy",
           policyVersion:
-            "screenshot-auto-verdict-v1",
+            "screenshot-auto-verdict-v2",
           parseRunId,
           minimumConfidenceBps:
             AUTO_SCREENSHOT_VERDICT_CONFIDENCE_BPS,
+          teamResolutionMode:
+            resolution.teamResolutionMode,
           teamConfidenceBps:
-            teamAssessment
-              ?.confidenceBps ??
-            null,
+            resolution.teamConfidenceBps,
           winnerConfidenceBps:
-            winnerAssessment
-              ?.confidenceBps ??
-            null,
+            resolution.winnerConfidenceBps,
         },
         supersedesId:
           null,
@@ -446,7 +228,8 @@ async function maybeAutoAdjudicateScreenshotEvidence(
     "accepted"
   ) {
     return {
-      outcome: "review_required",
+      outcome:
+        "review_required",
       reason:
         "adjudication_not_accepted",
       adjudicationId:
@@ -455,11 +238,14 @@ async function maybeAutoAdjudicateScreenshotEvidence(
   }
 
   return {
-    outcome: "adjudicated",
+    outcome:
+      "adjudicated",
     adjudicationId:
       submitted.adjudication.id,
     parseRunId,
     winningTeamKey,
+    teamResolutionMode:
+      resolution.teamResolutionMode,
   };
 }
 
