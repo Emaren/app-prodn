@@ -44,9 +44,17 @@ export async function GET() {
 
     const rows = await prisma.$queryRaw<StatisticsRow[]>`
 WITH days AS (
+  /*
+   * Observatory points represent complete UTC calendar days.
+   * Never compare today's partial bucket with completed days.
+   */
   SELECT generate_series(
     DATE '2026-05-22',
-    CURRENT_DATE,
+    (
+      NOW()
+        AT TIME ZONE
+        'UTC'
+    )::date - 1,
     INTERVAL '1 day'
   )::date AS day
 ),
@@ -139,6 +147,9 @@ first_return_by_user AS (
   WHERE
     e.created_at::date >
       u.created_at::date
+
+    AND e.type =
+      'page_view'
   GROUP BY
     u.id
 ),
@@ -186,58 +197,208 @@ bets_daily AS (
   GROUP BY 1
 ),
 
-managed_streams_daily AS (
+/*
+ * Games Streamed / Players Streamed
+ * ----------------------------------
+ *
+ * "Streamed" here means replay/game state streamed into
+ * AoE2WAR by the desktop Watcher while the game was live.
+ *
+ * This is deliberately unrelated to game_watch_streams,
+ * which belongs to the separate video-streaming subsystem.
+ *
+ * watcher_live emits many parser iterations per game. Collapse
+ * those iterations to the same stable identity used by the
+ * live-game surface:
+ *
+ *   platform:<platform_match_id>
+ *   otherwise original replay filename / replay basename.
+ */
+watcher_live_rows AS (
   SELECT
-    COALESCE(
-      started_at,
-      created_at
-    )::date AS day,
-    COUNT(
-      DISTINCT session_key
-    ) AS games_streamed
-  FROM game_watch_streams
+    id,
+    created_at,
+    timestamp,
+    parse_iteration,
+    players,
+
+    CASE
+      WHEN
+        COALESCE(
+          key_events::jsonb
+            ->>
+            'platform_match_id',
+          ''
+        ) <> ''
+      THEN
+        'platform:' ||
+        (
+          key_events::jsonb
+            ->>
+            'platform_match_id'
+        )
+
+      ELSE
+        COALESCE(
+          NULLIF(
+            BTRIM(
+              original_filename
+            ),
+            ''
+          ),
+
+          NULLIF(
+            BTRIM(
+              regexp_replace(
+                COALESCE(
+                  replay_file,
+                  ''
+                ),
+                '^.*/',
+                ''
+              )
+            ),
+            ''
+          )
+        )
+    END AS session_key
+
+  FROM game_stats
+
   WHERE
-    COALESCE(
-      started_at,
-      created_at
-    ) >=
+    created_at >=
       TIMESTAMP '2026-05-22'
-    AND provider =
-      'aoe2war'
-    AND source_type IN (
-      'watcher_native',
-      'browser'
+
+    AND parse_source =
+      'watcher_live'
+
+    AND parse_iteration > 0
+
+    /*
+     * Match the live-session surface exclusions.
+     */
+    AND COALESCE(
+      parse_reason,
+      ''
+    ) NOT IN (
+      'superseded_by_later_upload',
+      'watcher_final_unparsed'
     )
-    AND status <>
-      'removed'
-  GROUP BY 1
 ),
 
-watcher_games_daily AS (
+watcher_live_ranked AS (
   SELECT
-    created_at::date AS day,
-    COUNT(*) AS watcher_games_ingested,
+    *,
+
+    /*
+     * A game that crosses midnight belongs to the UTC day on
+     * which AoE2WAR first received that live session.
+     */
+    MIN(
+      created_at
+    ) OVER (
+      PARTITION BY
+        session_key
+    ) AS first_seen,
+
+    /*
+     * Use the richest/latest parser iteration for player-seat
+     * accounting while counting the session itself only once.
+     */
+    ROW_NUMBER() OVER (
+      PARTITION BY
+        session_key
+
+      ORDER BY
+        parse_iteration DESC,
+
+        COALESCE(
+          timestamp,
+          created_at
+        ) DESC,
+
+        id DESC
+    ) AS best_row
+
+  FROM watcher_live_rows
+
+  WHERE
+    COALESCE(
+      session_key,
+      ''
+    ) <> ''
+),
+
+managed_streams_daily AS (
+  SELECT
+    first_seen::date AS day,
+
+    COUNT(*) AS games_streamed,
+
     COALESCE(
       SUM(
         CASE
-          WHEN jsonb_typeof(players) =
-            'array'
-          THEN jsonb_array_length(
-            players
-          )
+          WHEN
+            jsonb_typeof(
+              players
+            ) = 'array'
+          THEN
+            jsonb_array_length(
+              players
+            )
           ELSE 0
         END
       ),
       0
     ) AS streamed_player_seats
+
+  FROM watcher_live_ranked
+
+  WHERE
+    best_row = 1
+
+  GROUP BY 1
+),
+
+
+/*
+ * Watcher Games
+ * -------------
+ *
+ * Every distinct final replay received through the Watcher
+ * counts here, including Batch Upload.
+ *
+ * created_at intentionally represents the day AoE2WAR received
+ * the final replay. Batch-import mountains are therefore valid
+ * Watcher activity and remain visible.
+ */
+watcher_games_daily AS (
+  SELECT
+    created_at::date AS day,
+
+    COUNT(
+      DISTINCT COALESCE(
+        NULLIF(
+          replay_hash,
+          ''
+        ),
+        'game:' ||
+          id::text
+      )
+    ) AS watcher_games_ingested
+
   FROM game_stats
+
   WHERE
     created_at >=
       TIMESTAMP '2026-05-22'
+
     AND is_final =
       TRUE
+
     AND parse_source =
       'watcher_final'
+
   GROUP BY 1
 ),
 
@@ -449,7 +610,7 @@ SELECT
   ) AS watcher_games_ingested,
 
   COALESCE(
-    wg.streamed_player_seats,
+    s.streamed_player_seats,
     0
   ) AS streamed_player_seats,
 
