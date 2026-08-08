@@ -1952,12 +1952,22 @@ export function evaluateWatcherRecorderExitResult(
     const finalStored =
       receipt.metadata.finalStored;
 
+    /*
+     * Watcher 1.5.7 completion receipts legitimately omit finalStored.
+     *
+     * Omission is neutral because the durable watcher_upload envelope,
+     * exact replay hash/session/user identity, and stored final recording
+     * independently prove the artifact we are evaluating.
+     *
+     * An explicitly false finalStored remains contradictory and fails
+     * closed.
+     */
     if (
       !receiptIdentityMatches ||
       (
         receipt.eventType ===
           "final_settle_observation_complete" &&
-        !automaticTruth(
+        automaticExplicitFalse(
           finalStored
         )
       )

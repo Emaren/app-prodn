@@ -415,6 +415,133 @@ test("modern authenticated watcher final produces provisional recorder-exit infe
   );
 });
 
+
+test("watcher 1.5.7 completion receipt may omit finalStored", () => {
+  const input =
+    baseInput();
+
+  input.terminalReceipt = {
+    eventId:
+      "3861307",
+
+    eventType:
+      "final_settle_observation_complete",
+
+    createdAt:
+      "2026-08-08T03:14:03.779Z",
+
+    userId:
+      input.uploaderUserId,
+
+    userUid:
+      input.uploaderUid,
+
+    sessionId:
+      "session_exact",
+
+    replayHash,
+
+    replayFile:
+      "MP Replay v5.8 @2026.08.07 212440 (1).aoe2record",
+
+    metadata: {
+      watcherVersion:
+        "1.5.7",
+
+      runtimeEventType:
+        "final-settle-observation-complete",
+
+      finalAccepted:
+        false,
+
+      fileSizeBytes:
+        1036727,
+    },
+  };
+
+  const evaluation =
+    evaluateWatcherRecorderExitResult(
+      input
+    );
+
+  assert.equal(
+    evaluation.eligible,
+    true
+  );
+
+  if (!evaluation.eligible) {
+    return;
+  }
+
+  const evidence =
+    evaluation.evidence as {
+      terminalReceiptMode?: unknown;
+      financialAuthority?: unknown;
+    };
+
+  assert.equal(
+    evidence.terminalReceiptMode,
+    "exact_watcher_receipt"
+  );
+
+  assert.equal(
+    evidence.financialAuthority,
+    false
+  );
+});
+
+test("explicit finalStored false still blocks recorder-exit inference", () => {
+  const input =
+    baseInput();
+
+  input.terminalReceipt = {
+    eventId:
+      "3861307",
+
+    eventType:
+      "final_settle_observation_complete",
+
+    createdAt:
+      "2026-08-08T03:14:03.779Z",
+
+    userId:
+      input.uploaderUserId,
+
+    userUid:
+      input.uploaderUid,
+
+    sessionId:
+      "session_exact",
+
+    replayHash,
+
+    replayFile:
+      "MP Replay v5.8 @2026.08.07 212440 (1).aoe2record",
+
+    metadata: {
+      watcherVersion:
+        "1.5.7",
+
+      runtimeEventType:
+        "final-settle-observation-complete",
+
+      finalStored:
+        false,
+    },
+  };
+
+  assert.deepEqual(
+    evaluateWatcherRecorderExitResult(
+      input
+    ),
+    {
+      eligible: false,
+      reason:
+        "terminal_receipt_conflicts",
+    }
+  );
+});
+
 test("old uploader-opponent false-positive policy shape cannot qualify", () => {
   const input =
     baseInput();
