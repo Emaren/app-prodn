@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowRight, Wallet } from "lucide-react";
 
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { formatPublicStakingWeight } from "@/lib/stakingDisplay";
+import { useStakingState } from "./StakingStateProvider";
 
 function formatTokenAmount(raw?: string) {
   const amount = Number(raw ?? "0");
@@ -22,25 +23,6 @@ function shortAddress(value: string) {
   if (value.length <= 18) return value;
   return `${value.slice(0, 10)}...${value.slice(-6)}`;
 }
-
-type StakingMe = {
-  user: {
-    playerName: string;
-    walletAddress: string | null;
-  };
-  position: {
-    currentStakedWolo: number;
-    stakingWeight: string;
-    pendingRewardsWolo: number;
-    lifetimeRewardsWolo: number;
-    lifetimeTxFeesWolo: number;
-    lastRewardPaymentAt: string | null;
-    lastRewardAmountWolo: number;
-  };
-  execution: {
-    detail: string;
-  };
-};
 
 function formatWholeWolo(value: number | null | undefined) {
   if (value == null) return "--";
@@ -69,8 +51,7 @@ export default function StakingWalletPanel() {
   const { data: rawBalance, isLoading: balanceLoading } = useWoloBalance(address);
   const { isAuthenticated, loading, playerName, loginWithSteam } = useUserAuth();
   const [walletError, setWalletError] = useState<string | null>(null);
-  const [stakingState, setStakingState] = useState<StakingMe | null>(null);
-  const [stakingLoading, setStakingLoading] = useState(false);
+  const { stakingState, stakingLoading } = useStakingState();
 
   const balanceLabel = useMemo(
     () => (balanceLoading ? "Syncing" : `${formatTokenAmount(rawBalance)} WOLO`),
@@ -85,37 +66,6 @@ export default function StakingWalletPanel() {
         : status === "connecting" || status === "checking"
           ? "Checking wallet"
           : "Wallet offline";
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadStakingState() {
-      if (!isAuthenticated) {
-        setStakingState(null);
-        return;
-      }
-
-      setStakingLoading(true);
-      try {
-        const response = await fetch("/api/staking/me", { cache: "no-store" });
-        if (!response.ok) {
-          if (!cancelled) setStakingState(null);
-          return;
-        }
-        const payload = (await response.json()) as StakingMe;
-        if (!cancelled) setStakingState(payload);
-      } catch {
-        if (!cancelled) setStakingState(null);
-      } finally {
-        if (!cancelled) setStakingLoading(false);
-      }
-    }
-
-    void loadStakingState();
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated]);
 
   async function handleConnect() {
     try {

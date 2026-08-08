@@ -24,6 +24,10 @@ import {
   loadMainnetStakingPositions,
 } from "@/lib/mainnetStakingPositions";
 import {
+  applyMainnetStakingBalanceChange,
+  resolvePublicCurrentStakedWolo,
+} from "@/lib/mainnetStakingDerivation";
+import {
   derivePendingSettlementActivityGroups,
   type PendingSettlementActivityGroup,
 } from "@/lib/mainnetSettlementActivity";
@@ -1771,60 +1775,91 @@ export async function loadMainnetTransferStakingActivityPage(
   };
 }
 
+type MainnetLeaderboardData = {
+  positions: Awaited<ReturnType<typeof loadMainnetStakingPositions>>;
+  allocations: Array<{ userId: number; rewardWolo: number }>;
+};
+
+async function loadMainnetLeaderboardData(
+  prisma: PrismaClient,
+  asOf: Date,
+): Promise<MainnetLeaderboardData> {
+  const [positions, rewardTotals] = await Promise.all([
+    loadMainnetStakingPositions(prisma, { asOf }),
+    prisma.stakingRewardAllocation.groupBy({
+      by: ["userId"],
+      where: {
+        positionId: null,
+        ...mainnetDisplayDateWhere(),
+      },
+      _sum: { rewardWolo: true },
+    }),
+  ]);
+
+  return {
+    positions,
+    allocations: rewardTotals.map((row) => ({
+      userId: row.userId,
+      rewardWolo: row._sum.rewardWolo ?? 0,
+    })),
+  };
+}
+
+function buildMainnetBoardRows(
+  data: MainnetLeaderboardData,
+  mode: "staked" | "earned" | "weight",
+): StakingLeaderboardRow[] {
+  const rewardsByUserId = new Map<number, number>();
+  for (const allocation of data.allocations) {
+    rewardsByUserId.set(
+      allocation.userId,
+      (rewardsByUserId.get(allocation.userId) ?? 0) + allocation.rewardWolo,
+    );
+  }
+
+  return data.positions
+    .map((position) => ({
+      player: position.player,
+      badge: "",
+      stakedWolo: position.currentStakedWolo,
+      rewardsWolo: rewardsByUserId.get(position.userId) ?? 0,
+      stakingWeight: position.stakingWeight,
+      status: "Live",
+      tone: "slate" as const,
+    }))
+    .sort((left, right) => {
+      if (mode === "earned") {
+        return (
+          right.rewardsWolo - left.rewardsWolo ||
+          right.stakedWolo - left.stakedWolo
+        );
+      }
+      if (mode === "weight") {
+        const leftWeight = BigInt(left.stakingWeight || 0);
+        const rightWeight = BigInt(right.stakingWeight || 0);
+        if (leftWeight !== rightWeight) return leftWeight > rightWeight ? -1 : 1;
+      }
+      return (
+        right.stakedWolo - left.stakedWolo ||
+        right.rewardsWolo - left.rewardsWolo
+      );
+    })
+    .slice(0, 8)
+    .map((row, index) => ({
+      ...row,
+      badge: badgeForRank(
+        index,
+        mode === "earned" ? "Fee share" : "Mainnet stake",
+      ),
+      tone: toneForRank(index),
+    }));
+}
+
 async function loadBoardRows(
   prisma: PrismaClient,
   mode: "staked" | "earned" | "weight"
 ): Promise<StakingLeaderboardRow[]> {
   const now = new Date();
-  if (isWoloMainnet()) {
-    const [positions, allocations] = await Promise.all([
-      loadMainnetStakingPositions(prisma, { asOf: now }),
-      prisma.stakingRewardAllocation.findMany({
-        where: {
-          ...(isWoloMainnet() ? { positionId: null } : {}),
-          ...mainnetDisplayDateWhere(),
-        },
-        select: {
-          userId: true,
-          rewardWolo: true,
-        },
-        take: 5_000,
-      }),
-    ]);
-    const rewardsByUserId = new Map<number, number>();
-    for (const allocation of allocations) {
-      rewardsByUserId.set(
-        allocation.userId,
-        (rewardsByUserId.get(allocation.userId) ?? 0) + allocation.rewardWolo
-      );
-    }
-
-    return positions
-      .map((position, index) => ({
-        player: position.player,
-        badge: badgeForRank(index, mode === "earned" ? "Fee share" : "Mainnet stake"),
-        stakedWolo: position.currentStakedWolo,
-        rewardsWolo: rewardsByUserId.get(position.userId) ?? 0,
-        stakingWeight: position.stakingWeight,
-        status: "Live",
-        tone: toneForRank(index),
-      }))
-      .sort((left, right) => {
-        if (mode === "earned") return right.rewardsWolo - left.rewardsWolo || right.stakedWolo - left.stakedWolo;
-        if (mode === "weight") {
-          const leftWeight = BigInt(left.stakingWeight || 0);
-          const rightWeight = BigInt(right.stakingWeight || 0);
-          if (leftWeight !== rightWeight) return leftWeight > rightWeight ? -1 : 1;
-        }
-        return right.stakedWolo - left.stakedWolo || right.rewardsWolo - left.rewardsWolo;
-      })
-      .slice(0, 8)
-      .map((row, index) => ({
-        ...row,
-        badge: badgeForRank(index, mode === "earned" ? "Fee share" : "Mainnet stake"),
-        tone: toneForRank(index),
-      }));
-  }
 
   const orderBy =
     mode === "earned"
@@ -1961,6 +1996,31 @@ export async function loadStakingLeaderboard(
   prisma: PrismaClient,
   board: StakingBoardKey
 ): Promise<StakingLeaderboard> {
+  if (isWoloMainnet()) {
+    const [data, recentRewards] = await Promise.all([
+      loadMainnetLeaderboardData(prisma, new Date()),
+      loadRecentRewardRows(prisma),
+    ]);
+    const topStakers = buildMainnetBoardRows(data, "staked");
+    const topEarners = buildMainnetBoardRows(data, "earned");
+    const topWeight = buildMainnetBoardRows(data, "weight");
+    const rows =
+      board === "earners"
+        ? topEarners
+        : board === "rewards"
+          ? recentRewards
+          : topStakers;
+
+    return {
+      board,
+      rows,
+      topStakers,
+      topEarners,
+      topWeight,
+      recentRewards,
+    };
+  }
+
   const [topStakers, topEarners, topWeight, recentRewards] = await Promise.all([
     loadBoardRows(prisma, "staked"),
     loadBoardRows(prisma, "earned"),
@@ -2233,12 +2293,29 @@ export async function createConfirmedStakingEvent(
       update: input.walletAddress ? { walletAddress: input.walletAddress } : {},
     });
 
-    const weightBefore = computeCurrentStakingWeight(position, now);
-    const balanceBefore = position.currentStakedWolo;
+    const useMainnetBalance = isWoloMainnet();
+    const confirmedPrincipal = useMainnetBalance
+      ? resolvePublicCurrentStakedWolo(position)
+      : position.currentStakedWolo;
+    if (input.type === "UNSTAKE" && input.amountWolo > confirmedPrincipal) {
+      throw new StakingActionError(
+        "No confirmed stake is available for that unstake.",
+        409,
+      );
+    }
+    const mainnetBalance = useMainnetBalance
+      ? applyMainnetStakingBalanceChange(position, input.type, input.amountWolo)
+      : null;
+    const weightBefore = computeCurrentStakingWeight(
+      { ...position, currentStakedWolo: confirmedPrincipal },
+      now,
+    );
+    const balanceBefore = mainnetBalance?.balanceBefore ?? position.currentStakedWolo;
     const balanceAfter =
-      input.type === "STAKE"
+      mainnetBalance?.balanceAfter ??
+      (input.type === "STAKE"
         ? balanceBefore + input.amountWolo
-        : balanceBefore - input.amountWolo;
+        : balanceBefore - input.amountWolo);
 
     if (balanceAfter < 0) {
       throw new StakingActionError("No confirmed stake is available for that unstake.", 409);
@@ -2270,7 +2347,14 @@ export async function createConfirmedStakingEvent(
       where: { id: position.id },
       data: {
         walletAddress: input.walletAddress ?? position.walletAddress,
-        currentStakedWolo: balanceAfter,
+        currentStakedWolo:
+          mainnetBalance?.currentStakedWolo ?? balanceAfter,
+        ...(mainnetBalance
+          ? {
+              compoundedRewardsWolo:
+                mainnetBalance.compoundedRewardsWolo,
+            }
+          : {}),
         accumulatedWeight: weightBefore,
         lastWeightUpdateAt: now,
         status: balanceAfter > 0 ? "active" : "inactive",

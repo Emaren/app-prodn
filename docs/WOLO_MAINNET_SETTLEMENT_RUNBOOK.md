@@ -103,10 +103,19 @@ The staking wallet chain balance contains two different kinds of funds:
 
 Only confirmed user stake contributes to staking principal, staking weight,
 auto-compound principal, withdrawable liability, leaderboard order, or staker
-status-room totals. Operational reserve funding remains visible in the indexed
-audit trail as `RESERVE` / `Admin operational funding`, but it is
+status-room totals. Current values come from the canonical app position; daily
+reward weight and strict reconciliation replay the complete confirmed staking
+event ledger across retired and current custody wallets. Raw indexed transfers
+remain audit input and cannot independently create liability. Operational
+reserve funding remains visible in the indexed audit trail as `RESERVE` /
+`Admin operational funding`, but it is
 excluded from those calculations and from the default public staking feed.
 Admins can inspect it explicitly through the `Reserve/Admin` activity filter.
+
+Unstake checks and confirmed-event finalization must use that same combined
+mainnet liability. Finalization consumes direct principal before compounded
+principal, records the combined balance before/after on the event, and marks a
+position inactive only when both buckets are zero.
 
 Use one of these canonical memos for a direct operational top-up:
 
@@ -131,7 +140,7 @@ max(10,000 WOLO, configured unstake/settlement fee headroom)
 The app derives the operator figures as:
 
 ```text
-confirmed liability = memo-filtered mainnet staking positions
+confirmed liability = canonical current staking positions
 actual reserve headroom = staking wallet chain balance - confirmed liability
 required balance = confirmed liability + reserve target
 healthy = chain balance >= required balance
@@ -144,8 +153,8 @@ curl -sS https://aoe2war.com/api/staking/config | jq '.operatorFunding'
 ```
 
 Repeated transfer-index scans are safe: the transaction hash/index remains
-the unique storage key, and the memo classifier is reapplied on every liability
-derivation. Existing reserve transfers therefore reclassify without deleting
+the unique storage key, and indexed rows remain an audit source rather than the
+current-liability authority. Existing reserve transfers therefore reclassify without deleting
 or hiding their indexed ledger rows.
 
 ## App payout behavior

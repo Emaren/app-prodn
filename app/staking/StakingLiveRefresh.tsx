@@ -2,12 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef } from "react";
+import { useStakingState } from "./StakingStateProvider";
 
 const REFRESH_INTERVAL_MS = 12_000;
 const FIRST_REFRESH_MS = 2_000;
 
 export default function StakingLiveRefresh() {
   const router = useRouter();
+  const { refreshStakingState } = useStakingState();
   const timerRef = useRef<number | null>(null);
   const inFlightRef = useRef(false);
 
@@ -37,6 +39,7 @@ export default function StakingLiveRefresh() {
       if (!inFlightRef.current) {
         inFlightRef.current = true;
         router.refresh();
+        void refreshStakingState();
 
         window.setTimeout(() => {
           inFlightRef.current = false;
@@ -60,7 +63,7 @@ export default function StakingLiveRefresh() {
       clearTimer();
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };
-  }, [router]);
+  }, [refreshStakingState, router]);
 
   return null;
 }

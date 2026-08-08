@@ -16,6 +16,7 @@ export const TILE_VIEW_KEYS = [
   "speed",
   "academy_hero",
   "download_watcher",
+  "staking",
   "leaderboard",
   "workshop",
 ] as const;
@@ -38,6 +39,7 @@ const DEFAULT_TILE_VIEW_MODES: TileViewPreferences = {
   speed: "extreme",
   academy_hero: "extreme",
   download_watcher: "extreme",
+  staking: "basic",
   leaderboard: "advanced",
   workshop: "extreme",
 };

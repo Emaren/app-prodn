@@ -890,17 +890,8 @@ export default function StakingActivityFeed({
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
-  const scrollFrameRef = useRef<number | null>(null);
   const lastLoadMoreAtRef = useRef(0);
   const autoPrefetchedViewRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (scrollFrameRef.current !== null) {
-        window.cancelAnimationFrame(scrollFrameRef.current);
-      }
-    };
-  }, []);
 
   useEffect(() => {
     setRows((current) => mergeActivityRows(initialRows, current));
@@ -1341,7 +1332,7 @@ export default function StakingActivityFeed({
             const showDivider = index === 0 || currentDay !== previousDay;
 
             return (
-              <div key={key} className="space-y-2.5 [content-visibility:auto] [contain-intrinsic-size:132px]">
+              <div key={key} className="space-y-2.5">
                 {showDivider ? (
                   <ActivityDateDivider
                     label={
@@ -1756,7 +1747,7 @@ function ActivityRow({
           onClick={() => {
             if (hasChildren) setExpanded((value) => !value);
           }}
-          className={`relative min-h-[10.625rem] w-full text-left focus:outline-none focus-visible:outline-none ${
+          className={`relative h-[10.625rem] w-full text-left focus:outline-none focus-visible:outline-none ${
             hasChildren ? "cursor-pointer" : "cursor-default"
           }`}
         >
@@ -1789,7 +1780,7 @@ function ActivityRow({
             />
           </div>
 
-          <div className="relative z-20 flex min-h-[10.625rem] max-w-[62%] flex-col justify-start pr-4 pt-3 sm:max-w-[61%]">
+          <div className="relative z-20 flex h-[10.625rem] max-w-[62%] flex-col justify-start pr-4 pt-3 sm:max-w-[61%]">
             <div className="flex min-w-0 items-start gap-3">
               <div className="relative mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-transparent bg-black/14 shadow-[inset_0_0_0_1px_rgba(111,87,37,0.24),inset_0_1px_0_rgba(255,255,255,0.050),0_0_18px_rgba(251,191,36,0.08)]">
                 <Image
@@ -1868,7 +1859,7 @@ function ActivityRow({
         onClick={() => {
           if (hasChildren) setExpanded((value) => !value);
         }}
-        className={`relative min-h-[5.45rem] w-full min-w-0 pr-[8.6rem] text-left focus:outline-none focus-visible:outline-none ${
+        className={`relative h-[5.45rem] w-full min-w-0 pr-[8.6rem] text-left focus:outline-none focus-visible:outline-none ${
           hasChildren ? "cursor-pointer" : "cursor-default"
         }`}
       >

@@ -31,11 +31,14 @@ This dashboard must not treat raw watcher package traffic as real users. Package
 
 View preferences are a first-class signal, not an identity-field afterthought.
 Each user card has a dedicated presentation strip for Community Lobby, Live
-Games, and Forum, with exact `Basic`, `Advanced`, and `Extreme` state. A stored
+Games, Forum, Kingdom Chronicle, Rivalries, Academy Hero, Download Watcher, and
+Staking, with exact `Basic`, `Advanced`, and `Extreme` state. A stored
 per-surface preference is distinguished from the effective product default.
-The overview reports the same three surfaces with B/A/E counts, percentages,
-stored preference totals, and default totals. This distinction matters when a
-new product default would otherwise look like a user choice.
+The overview reports the same surfaces with B/A/E counts, percentages, stored
+preference totals, and default totals. This distinction matters when a new
+product default would otherwise look like a user choice. Staking defaults to
+Basic; its modes change only the page width (72rem, 82rem, or the full content
+rail).
 
 Forum effective defaults are Extreme. The July 2 launch migration writes that
 selection once for each visiting user; subsequent user changes remain ordinary

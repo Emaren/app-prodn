@@ -51,6 +51,7 @@ import StakingHeroStakeTiles from "./StakingHeroStakeTiles";
 import StakingActionTile from "./StakingActionTile";
 import StakingAdvancedTrigger from "./StakingAdvancedTrigger";
 import StakingPayoutSchedule from "./StakingPayoutSchedule";
+import StakingViewShell, { StakingViewToggle } from "./StakingViewShell";
 import TreasuryActions from "./TreasuryActions";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 
@@ -538,22 +539,31 @@ export default async function StakingPage({
   const period = normalizePeriod(resolvedSearchParams?.period);
   const board = normalizeBoard(resolvedSearchParams?.board);
 
+  const [snapshotResult, leaderboardResult] = await Promise.allSettled([
+    loadEconomySnapshot(period),
+    loadStakingLeaderboard(getPrisma(), board),
+  ]);
   let snapshot: EconomySnapshot;
-  try {
-    snapshot = await loadEconomySnapshot(period);
-  } catch (error) {
-    console.warn("Failed to load staking economy snapshot:", error);
+  if (snapshotResult.status === "fulfilled") {
+    snapshot = snapshotResult.value;
+  } else {
+    console.warn(
+      "Failed to load staking economy snapshot:",
+      snapshotResult.reason,
+    );
     snapshot = fallbackSnapshot(period);
   }
-
   let boardRows = BOARD_ROWS[board];
-  try {
-    const leaderboard = await loadStakingLeaderboard(getPrisma(), board);
+  if (leaderboardResult.status === "fulfilled") {
+    const leaderboard = leaderboardResult.value;
     if (leaderboard.rows.length > 0) {
       boardRows = leaderboard.rows.map(mapLeaderboardRow);
     }
-  } catch (error) {
-    console.warn("Failed to load staking leaderboard:", error);
+  } else {
+    console.warn(
+      "Failed to load staking leaderboard:",
+      leaderboardResult.reason,
+    );
   }
 
   const [stakingWallet, treasury, escrowWallet, payoutWallet, dexLiquidityWallet] = await Promise.all([
@@ -617,6 +627,7 @@ export default async function StakingPage({
   const meter = weightMeter(snapshot.totalStakingWeight);
 
   return (
+    <StakingViewShell>
     <main className="space-y-6 overflow-x-hidden py-3 text-white sm:space-y-7 sm:py-4">
       <SpeedReadyMarker route="/staking" />
       <style>{`
@@ -648,10 +659,13 @@ export default async function StakingPage({
 
         <div className="relative z-10 grid min-w-0 gap-7 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.82fr)] xl:items-stretch">
           <div className="flex h-full min-w-0 flex-col gap-6">
-            <div className="flex flex-wrap gap-2">
-              <HeroPill tone="amber">{bettingFeeLabel} betting fee</HeroPill>
-              <HeroPill tone="emerald">50% to stakers</HeroPill>
-              <HeroPill tone="slate">No lockups</HeroPill>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap gap-2">
+                <HeroPill tone="amber">{bettingFeeLabel} betting fee</HeroPill>
+                <HeroPill tone="emerald">50% to stakers</HeroPill>
+                <HeroPill tone="slate">No lockups</HeroPill>
+              </div>
+              <StakingViewToggle />
             </div>
 
             <div className="space-y-4">
@@ -988,6 +1002,7 @@ export default async function StakingPage({
       </section>
           <StakingLiveRefresh />
     </main>
+    </StakingViewShell>
   );
 }
 

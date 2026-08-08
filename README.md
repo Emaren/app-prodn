@@ -177,6 +177,7 @@ The current first-impression path is no longer just the homepage. The real produ
 - Belts, tag titles, national titles, and ELO titles use `Reward Tribute`; special designation artifacts use `Artifact Bonus`.
 - `/challenge` defaults to the Extreme smart composer, with Basic and Advanced alternatives. Eligible title stakes are discovered automatically, challenge deposits use the structured WoloChain memo contract, and the API records funding only after WoloChain verifies the signed escrow transfer.
 - `/staking` separates memo-classified operator reserve funding from user stake liability and enforces a minimum 10,000 WOLO operating reserve without hiding direct funding activity.
+- `/staking` uses the shared B/A/E presentation preference: Basic preserves the established 72rem room, Advanced opens an 82rem room, and Extreme uses the full application rail. The saved/effective choice is included in the existing admin view-preference telemetry.
 - Championship art assets under `public/champions` should keep real alpha transparency; holder/silhouette backplates live in `public/champions/players`.
 - `/profile` stores title eligibility settings through `represented_country` and `gender_division`.
 - Seeded national and Elite trophies persist through Prisma and overlay the public Champions and profile surfaces; projected bounty remains app display math.
@@ -250,18 +251,28 @@ WOLO betting / settlement:
 - `STAKING_REWARD_RUN_TOKEN` for the protected daily staking-reward runner
 - `STAKING_REWARD_RUN_URL=http://127.0.0.1:3030` for the local runner script used by the VPS timer
 
-On `wolo-1`, public staking totals, personal stake, and leaderboards are derived
-from tx-backed staking movement on or after `WOLO_MAINNET_DISPLAY_START_AT`:
-indexed WoloChain bank sends to/from the configured staking wallet plus
-confirmed app `staking_events` that carry verified mainnet tx hashes. Legacy
-`staking_positions` rows are kept for migration/operator history, but they must
-not drive mainnet-facing staking totals. Mainnet direct-transfer indexing is
-exposed read-only at
+On `wolo-1`, current public staking totals, personal stake, leaderboards,
+max-unstake, and Forge capacity use the app's confirmed canonical
+`staking_positions` liability (`current_staked_wolo` plus finalized compounded
+rewards). A raw or partially backfilled bank send cannot override that current
+liability. Daily reward weights and strict operator reconciliation cursor-page
+the complete confirmed `STAKE`, `UNSTAKE`, and `COMPOUND` event ledger through
+the requested period boundary; this logical ledger spans retired and current
+custody wallets. Confirmed stake/unstake events are admitted after the app
+verifies the WoloChain transaction, while compound events come from finalized
+reward allocations. Mainnet unstake finalization debits the same combined
+principal that the page authorizes: direct stake is consumed first, then live
+compounded principal, and the position remains active until both reach zero.
+
+Mainnet direct-transfer indexing remains an independent, read-only audit source
+at
 `GET /api/wolo/mainnet-transfers`; operators can refresh the index with
 `POST /api/admin/wolo-transfers/backfill` or
 `node scripts/backfill-wolo-mainnet-transfers.mjs`. The index stores one row per
 successful `MsgSend` inside a tx, so a multi-send transaction is not collapsed
-into the first recipient.
+into the first recipient. An indexed-only transfer is not stake until the
+staking workflow has verified it and recorded the corresponding confirmed app
+event/canonical position.
 
 Payout claim rows are only marked `claimed` after the app verifies that the
 returned WoloChain tx contains a distinct matching `MsgSend` for that claim's
@@ -283,6 +294,9 @@ BigJobs94/VNS with verified stake txs display the tx-backed wager transfer;
 older app-only markets such as Coco de Hae can still appear as settlement queue
 debt when they have pending claim rows but no payout tx hash yet. Do not label
 those settlement queue rows as chain txs until `payout_tx_hash` exists.
+Activity cards keep fixed established heights and do not use off-screen
+intrinsic-size placeholders, so receipt/transaction enrichment cannot make the
+scroll rail balloon as rows enter the viewport.
 
 Public WOLO betting surfaces should translate settlement-service blockers into
 player-safe copy. For example, a payout signer reserve-floor failure should read
@@ -390,12 +404,15 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - Admins manage custom live ticker messages from `/admin`; enabled messages are text-only, ordered by priority, and mixed with system ticker items from tournament/replay/lobby/WOLO market state.
 - `/bets` now requires real Keplr-signed WOLO stake locks on `wolo-1`; the wager is only recorded after the stake tx verifies against WoloChain REST, and app-only wager rows stay out of mainnet-facing bet, profile, staking, war-chest, and admin rails
 - `/bets` can now fund one winner leg plus its attached Desync leg with one versioned stake ticket and one exact-memo Keplr transfer. The legs remain independently settled, become countable only after atomic ticket recording, and retain server-side escrow-deposit recovery. See `docs/BET_STAKE_TICKETS.md`.
-- `/staking` uses real Keplr stake transfers into the staking wallet, indexed mainnet `MsgSend` rows plus confirmed app staking events for public stake display, and staking-wallet-signed WoloChain transfers for unstake. User max-unstake follows confirmed tx-backed principal; the staking wallet reserve/headroom is treated as operator-funded and surfaces as an operator top-up warning when the wallet cannot cover remaining confirmed stake plus reserve after the unstake.
+- `/staking` uses real Keplr stake transfers into the staking wallet and staking-wallet-signed WoloChain transfers for unstake. Current display and max-unstake follow the confirmed canonical app liability; the complete confirmed staking-event ledger supplies historical reward weight and strict reconciliation, while indexed `MsgSend` rows remain audit-only until admitted by the verified staking workflow. The staking wallet reserve/headroom is treated as operator-funded and surfaces as an operator top-up warning when the wallet cannot cover remaining confirmed stake plus reserve after the unstake.
+- `/staking` B/A/E changes width only: Basic is the existing 72rem layout, Advanced is 82rem, and Extreme fills the application content rail. The selection persists through the canonical tile-view preference and appears in aggregate/per-user Admin Dashboard telemetry.
+- `/staking` uses one shared `/api/staking/me` client snapshot for its hero, wallet, and action tiles; confirmed stake, unstake, and auto-compound mutations refresh that shared snapshot so the tiles cannot disagree after an action.
+- `/staking` unstake authorization and confirmed-event finalization use the same direct-plus-compounded balance; full-seat and compounded-only remainders are covered explicitly. Mainnet leaderboard rewards are aggregated without a fixed-row truncation fence, and one shared data load builds every board.
 - `/staking` Recent Activity shows grouped pending settlement claims for mainnet-era markets even when there is no payout tx yet; that is app claim debt, not WoloChain transfer truth.
 - `/staking` reward distributions are finalized once per closed UTC day through `npm run staking:rewards:run`; valid reward wallets are paid through the WOLO settlement rail and successful payouts are recorded as staking `CLAIM` events for Recent Activity. Before a daily distribution exists, personal pending rewards can show the modeled unpaid mainnet fee share from settled signed wagers.
 - The AI Scribe and Grimer receive live `/staking` context through `lib/aiConcierge.ts` for lobby and contact replies. They should explain app-side WOLO staking state, fee splits, rewards, and viewer positions from supplied context only, without calling it validator staking or inventing APY.
 - trusted wallet-linked winners can now auto-settle on-chain after distinct `MsgSend` proof, while unmatched, duplicate-guarded, review-needed, or failed payouts still fall back to the pending-claim/admin rail
-- `/admin/user-list` is the User List / Command Tower: it has quick links to Admin Home, Media Assets, WoloChain, and itself; user cards and the overview show Community Lobby, Live Games, and Forum Basic/Advanced/Extreme preference signals while separating saved selections from effective defaults; Honors keeps existing badge add/remove controls and can grant/remove Belt, Artifact, and Designation honors through the existing `user_badges` table; Recent Actions lazy-loads in a fixed-height scroll pane without a manual Next 50 button.
+- `/admin/user-list` is the User List / Command Tower: it has quick links to Admin Home, Media Assets, WoloChain, and itself; user cards and the overview show Basic/Advanced/Extreme preference signals for Community Lobby, Live Games, Forum, Kingdom Chronicle, Rivalries, Academy Hero, Download Watcher, and Staking while separating saved selections from effective defaults; Honors keeps existing badge add/remove controls and can grant/remove Belt, Artifact, and Designation honors through the existing `user_badges` table; Recent Actions lazy-loads in a fixed-height scroll pane without a manual Next 50 button.
 - `/admin/user-list` also shows app-local Journey Summary above each Recent Actions pane. It derives route chains, source, engagement, and suspicion hints from authenticated `UserActivityEvent` rows plus safe page/click capture; it does not store chat/form bodies, passwords, tokens, private keys, typed text, or unvetted client metadata.
 - Journey Intelligence Phase 2B keeps triage client-side: operator summary counts, filters, text search, sorting, and per-card Journey Details expand from the existing payload. No lazy journey endpoint is needed yet.
 - accepted scheduled matches now seed pre-live runway books so betting does not have to wait for watcher-live detection

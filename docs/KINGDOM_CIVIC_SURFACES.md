@@ -135,16 +135,20 @@ reward-eligible principal = min(identity stake, 1,000,000 WOLO)
 Forge Power               = max(identity stake - 1,000,000 WOLO, 0)
 ```
 
-Only the staking reward job passes this cap into the shared staking derivation.
-Other staking views may continue to derive the full chain principal.
+Only the staking reward job passes this cap into the historical staking-event
+derivation. Current public staking, execution limits, and Forge capacity use the
+confirmed canonical position (`current_staked_wolo` plus finalized compounded
+rewards) without applying the cap to displayed/withdrawable principal.
 
-Daily finalization cursor-pages the complete historical transfer/event corpus
-through the period boundary and applies the cap over that exact interval. It
+Daily finalization cursor-pages the complete confirmed `STAKE`, `UNSTAKE`, and
+`COMPOUND` event ledger through the period boundary and applies the cap over
+that exact interval. The logical event ledger spans retired and current custody
+wallets, so a custody migration cannot silently omit an earlier unstake. It
 does not compare a historical midnight snapshot to today's canonical position.
-Required wallet identities are resolved against every address in the selected
-corpus without the general activity-book row limits. Unknown inbound transfers
-remain unattributed rather than earning a linked-identity reward; an unresolved
-outbound from the controlled staking wallet stops allocation.
+Strict current reconciliation compares the complete confirmed event ledger to
+the canonical current positions and fails closed on disagreement. Raw indexed
+bank sends remain transfer-audit evidence and cannot independently create
+staking liability or reward weight.
 
 ## Feature Deeds
 

@@ -30,6 +30,62 @@ export type DerivedMainnetStakingPosition = {
   txHashes: string[];
 };
 
+export function resolvePublicCurrentStakedWolo(position: {
+  currentStakedWolo: number;
+  compoundedRewardsWolo: number;
+}) {
+  return (
+    Math.max(0, position.currentStakedWolo || 0) +
+    Math.max(0, position.compoundedRewardsWolo || 0)
+  );
+}
+
+export function applyMainnetStakingBalanceChange(
+  position: {
+    currentStakedWolo: number;
+    compoundedRewardsWolo: number;
+  },
+  type: "STAKE" | "UNSTAKE",
+  amountWolo: number,
+) {
+  const currentStakedWolo = Math.max(0, position.currentStakedWolo || 0);
+  const compoundedRewardsWolo = Math.max(
+    0,
+    position.compoundedRewardsWolo || 0,
+  );
+  const balanceBefore = currentStakedWolo + compoundedRewardsWolo;
+
+  if (type === "STAKE") {
+    return {
+      balanceBefore,
+      balanceAfter: balanceBefore + amountWolo,
+      currentStakedWolo: currentStakedWolo + amountWolo,
+      compoundedRewardsWolo,
+    };
+  }
+
+  if (amountWolo > balanceBefore) {
+    throw new RangeError("Unstake exceeds the confirmed mainnet stake.");
+  }
+
+  // Preserve the established principal-first accounting: an unstake consumes
+  // the user's directly staked principal before drawing down rewards that have
+  // compounded into the live seat.
+  const currentAfter = Math.max(0, currentStakedWolo - amountWolo);
+  const compoundedDrawdown = Math.max(0, amountWolo - currentStakedWolo);
+  const compoundedAfter = Math.max(
+    0,
+    compoundedRewardsWolo - compoundedDrawdown,
+  );
+
+  return {
+    balanceBefore,
+    balanceAfter: currentAfter + compoundedAfter,
+    currentStakedWolo: currentAfter,
+    compoundedRewardsWolo: compoundedAfter,
+  };
+}
+
 function normalizeAddress(value: string | null | undefined) {
   return (value || "").trim().toLowerCase();
 }

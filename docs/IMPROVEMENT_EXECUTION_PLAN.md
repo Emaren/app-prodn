@@ -105,6 +105,27 @@ The eighth shipped slice is championship polish and menu/staking hardening:
 - Hardened the Kingdom chip and account menu for mobile tap behavior and unclipped fixed-sheet rendering.
 - Cleaned staking reward copy so compounded rewards read as canonical receipts instead of duplicate-looking events.
 
+The staking reliability follow-through locks the surface for future expansion:
+
+- Current public stake, execution limits, and Forge capacity now use the
+  confirmed canonical app position, while closed-day rewards and strict audits
+  replay the complete confirmed staking-event ledger across custody eras.
+- The Emaren regression is covered explicitly: the complete history resolves
+  to `101 WOLO`; omitting the legacy-custody unstake reproduces `111 WOLO` and
+  the inflated daily weight.
+- Recent Activity cards retain their established fixed heights and no longer
+  swap 132px intrinsic placeholders into the scroll rail.
+- Staking joined the shared B/A/E preference/admin telemetry system with Basic
+  preserving the existing width, Advanced slightly wider, and Extreme full
+  width.
+- Hero, wallet, and action tiles consume one shared personal staking snapshot,
+  and confirmed mutations refresh every consumer together.
+- Unstake authorization and finalization now share one direct-plus-compounded
+  balance contract; full withdrawal clears both buckets and a compounded-only
+  remainder stays active.
+- Mainnet leaderboard reward totals are aggregated without a fixed-row cap,
+  while one shared load produces all leaderboard modes.
+
 ## Next concrete slice
 
 Continue with tournament gravity, exact postgame achievement/economy depth, and the persistent title-admin rail, unless live wallet handoff telemetry shows a fresher production issue.

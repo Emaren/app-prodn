@@ -70,6 +70,30 @@ test("leaderboard-lane analytics default invalid or missing values to RM", () =>
   assert.equal(normalizeLeaderboardLane(null), "rm");
 });
 
+test("staking BAE defaults to Basic and reports explicit selections", () => {
+  const breakdown = buildAdminTileViewBreakdown([
+    { appearance: { tileViewPreferences: {} } },
+    { appearance: { tileViewPreferences: { staking: "advanced" } } },
+    { appearance: { tileViewPreferences: { staking: "extreme" } } },
+  ]);
+
+  const staking = breakdown.find((entry) => entry.tileKey === "staking");
+
+  assert.deepEqual(staking, {
+    tileKey: "staking",
+    label: "Staking",
+    basicCount: 1,
+    advancedCount: 1,
+    extremeCount: 1,
+    basicPercent: 33,
+    advancedPercent: 33,
+    extremePercent: 34,
+    explicitCount: 2,
+    defaultCount: 1,
+    preferredMode: "extreme",
+  });
+});
+
 test("the current tile migration restores Basic as the live-games default", () => {
   const storage = new Map<string, string>([
     [

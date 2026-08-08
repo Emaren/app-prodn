@@ -106,7 +106,7 @@ async function loadForgeStakePositions(
           : ("mainnet_canonical_snapshot" as const),
         health: "ok" as const,
         detail: options.strictReconciliation
-          ? "Complete indexed transfer and canonical position reconciliation."
+          ? "Complete confirmed staking-event and canonical position reconciliation."
           : "Current confirmed staking snapshot; Forge mutations perform complete reconciliation.",
         positions: mainnet.map((position) => ({
           userId: position.userId,

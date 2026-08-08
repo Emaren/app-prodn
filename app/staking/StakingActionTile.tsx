@@ -8,47 +8,7 @@ import { useKeplr } from "@/hooks/use-keplr";
 import { useUserAuth } from "@/context/UserAuthContext";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { stakeWoloOnChain } from "@/lib/clientStaking";
-
-type StakingMe = {
-  user: {
-    playerName: string;
-    walletAddress: string | null;
-  };
-  position: {
-    currentStakedWolo: number;
-    pendingRewardsWolo?: number;
-    autoCompoundRewards?: boolean;
-    compoundedRewardsWolo?: number;
-  };
-  execution: {
-    maxUnstakeWolo?: number;
-    totalConfirmedStakedWolo?: number;
-    stakingWalletBalanceWolo?: number | null;
-    stakingWalletReserveHeadroomWolo?: number;
-    stakingWalletOperatingReserveWolo?: number | null;
-    stakingWalletReserveTargetWolo?: number;
-    stakingWalletReserveSurplusWolo?: number | null;
-    operationalReserveHealthy?: boolean | null;
-    unstakeHeadroomWolo?: number;
-    requiredStakingWalletBalanceWolo?: number;
-    operatorTopUpNeededWolo?: number;
-    walletUnderfunded?: boolean;
-    currentUnstakeExecutable?: boolean;
-    currentUnstakeReserveCheck?: {
-      executable: boolean;
-      requestedUnstakeWolo: number;
-      userConfirmedStakeWolo: number;
-      totalConfirmedStakedWolo: number;
-      stakingWalletBalanceWolo: number | null;
-      operatorReserveWolo: number;
-      remainingStakeAfterUnstakeWolo: number;
-      requiredBalanceAfterUnstakeWolo: number;
-      availableAfterUnstakeWolo: number | null;
-      operatorTopUpNeededWolo: number;
-    };
-    operatorWarning?: string | null;
-  };
-};
+import { useStakingState } from "./StakingStateProvider";
 
 type StakingConfig = {
   stakingWalletAddress: string;
@@ -87,7 +47,11 @@ export default function StakingActionTile() {
   const { address, status, connect } = useKeplr();
   const { isAuthenticated, isAdmin, playerName, loginWithSteam } = useUserAuth();
   const router = useRouter();
-  const [stakingState, setStakingState] = useState<StakingMe | null>(null);
+  const {
+    stakingState,
+    refreshStakingState,
+    updateStakingState,
+  } = useStakingState();
   const [stakingConfig, setStakingConfig] = useState<StakingConfig | null>(null);
   const [amountInput, setAmountInput] = useState("1000");
   const [amountTouched, setAmountTouched] = useState(false);
@@ -152,19 +116,15 @@ export default function StakingActionTile() {
 
   async function reloadStakingState() {
     if (!isAuthenticated) {
-      setStakingState(null);
       setStakingConfig(null);
       return;
     }
 
     try {
-      const [stateResponse, configResponse] = await Promise.all([
-        fetch("/api/staking/me", { cache: "no-store" }),
+      const [, configResponse] = await Promise.all([
+        refreshStakingState({ force: true }),
         fetch("/api/staking/config", { cache: "no-store" }),
       ]);
-      if (stateResponse.ok) {
-        setStakingState((await stateResponse.json()) as StakingMe);
-      }
       if (configResponse.ok) {
         setStakingConfig((await configResponse.json()) as StakingConfig);
       }
@@ -180,18 +140,14 @@ export default function StakingActionTile() {
 
     async function load() {
       if (!isAuthenticated) {
-        setStakingState(null);
+        setStakingConfig(null);
         return;
       }
 
       try {
-        const [stateResponse, configResponse] = await Promise.all([
-          fetch("/api/staking/me", { cache: "no-store" }),
-          fetch("/api/staking/config", { cache: "no-store" }),
-        ]);
-        if (!cancelled && stateResponse.ok) {
-          setStakingState((await stateResponse.json()) as StakingMe);
-        }
+        const configResponse = await fetch("/api/staking/config", {
+          cache: "no-store",
+        });
         if (!cancelled && configResponse.ok) {
           setStakingConfig((await configResponse.json()) as StakingConfig);
         }
@@ -349,7 +305,7 @@ export default function StakingActionTile() {
         throw new Error(payload.detail || "Could not update auto-stake rewards.");
       }
 
-      setStakingState((current) =>
+      updateStakingState((current) =>
         current
           ? {
               ...current,
@@ -364,6 +320,7 @@ export default function StakingActionTile() {
             }
           : current
       );
+      await refreshStakingState({ force: true });
       setMessage(payload.detail || (nextEnabled ? "Auto-stake rewards is on." : "Auto-stake rewards is off."));
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Auto-stake update failed.");

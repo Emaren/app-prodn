@@ -269,7 +269,8 @@ test("all three prestige surfaces and mutation APIs are discoverable", () => {
   assert.match(mainnetPositions, /collectCursorPages/);
   assert.match(mainnetPositions, /requireCompleteLedger/);
   assert.match(mainnetPositions, /canonicalOnly/);
-  assert.match(mainnetPositions, /outbound identity resolution failed/);
+  assert.match(mainnetPositions, /event-ledger reconciliation failed/);
+  assert.doesNotMatch(mainnetPositions, /woloIndexedTransfer\.findMany/);
   assert.match(addressBook, /requiredUserAddresses/);
   assert.match(addressBook, /WOLO wallet identity conflict/);
   assert.match(forgeDomain, /canonicalOnly: true/);

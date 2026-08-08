@@ -1,19 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Check, Copy } from "lucide-react";
 
 import { useKeplr } from "@/hooks/use-keplr";
-import { useUserAuth } from "@/context/UserAuthContext";
-
-type StakingMe = {
-  user: {
-    walletAddress: string | null;
-  };
-  position: {
-    currentStakedWolo: number;
-  };
-};
+import { useStakingState } from "./StakingStateProvider";
 
 function shortAddress(value: string | null | undefined) {
   if (!value) return "Wallet not linked";
@@ -31,41 +22,8 @@ export default function StakingHeroStakeTiles({
 }: {
   totalStakedLabel: string;
 }) {
-  const { isAuthenticated } = useUserAuth();
   const { address, status } = useKeplr();
-  const [stakingState, setStakingState] = useState<StakingMe | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadStake() {
-      if (!isAuthenticated) {
-        setStakingState(null);
-        return;
-      }
-
-      setLoading(true);
-      try {
-        const response = await fetch("/api/staking/me", { cache: "no-store" });
-        if (!response.ok) {
-          if (!cancelled) setStakingState(null);
-          return;
-        }
-        const payload = (await response.json()) as StakingMe;
-        if (!cancelled) setStakingState(payload);
-      } catch {
-        if (!cancelled) setStakingState(null);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    void loadStake();
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuthenticated]);
+  const { stakingState, stakingLoading } = useStakingState();
 
   const currentStaked = stakingState?.position.currentStakedWolo ?? 0;
   const walletAddress = useMemo(() => {
@@ -77,7 +35,7 @@ export default function StakingHeroStakeTiles({
     <div className="grid gap-3 sm:grid-cols-3">
       <StakeHeroTile
         label="My Stake"
-        value={loading ? "Syncing" : formatWholeWolo(currentStaked)}
+        value={stakingLoading ? "Syncing" : formatWholeWolo(currentStaked)}
         helper={<AddressLine address={walletAddress} />}
       />
       <StakeHeroTile

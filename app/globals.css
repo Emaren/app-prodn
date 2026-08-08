@@ -2745,6 +2745,40 @@ html:not([data-champions-view]) .champions-e-breakout {
 
 /* HD LEADERBOARD B/A/E SURFACES START */
 
+/* Staking B/A/E changes only the available page width. Basic preserves the
+   established /staking shell; Advanced opens a little more room; Extreme uses
+   the full app content rail. */
+main:has(> .staking-view-shell) {
+  width: 100%;
+  transition:
+    max-width 280ms ease,
+    padding-inline 280ms ease;
+}
+
+main:has(> .staking-view-shell[data-staking-view="basic"]) {
+  max-width: 72rem !important;
+}
+
+main:has(> .staking-view-shell[data-staking-view="advanced"]) {
+  max-width: min(calc(100vw - 1.25rem), 82rem) !important;
+}
+
+main:has(> .staking-view-shell[data-staking-view="extreme"]) {
+  max-width: none !important;
+}
+
+.staking-view-shell {
+  width: 100%;
+  transition: width 280ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  main:has(> .staking-view-shell),
+  .staking-view-shell {
+    transition: none;
+  }
+}
+
 main:has(> .leaderboard-modern-shell) {
   width: 100%;
   transition:
