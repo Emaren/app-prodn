@@ -52,6 +52,32 @@ function getDisplayName(user: SessionUser | null) {
   return user.inGameName || user.steamPersonaName || "";
 }
 
+function ensureTrafficId(storage: Storage, key: string, prefix: string) {
+  const existing = storage.getItem(key);
+  if (existing) return existing;
+
+  const suffix =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID().replace(/-/g, "")
+      : `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  const value = `${prefix}_${suffix}`;
+  storage.setItem(key, value);
+  return value;
+}
+
+function currentTrafficPresence() {
+  if (typeof window === "undefined") return null;
+  try {
+    return {
+      traffic_visitor_id: ensureTrafficId(localStorage, "traffic_visitor_id", "v"),
+      traffic_session_id: ensureTrafficId(sessionStorage, "traffic_session_id", "s"),
+      traffic_path: `${window.location.pathname}${window.location.search}`,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function persistDisplayState(user: SessionUser | null) {
   if (typeof window === "undefined") return;
 
@@ -179,7 +205,12 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
 
     const ping = async () => {
       try {
-        await fetch("/api/user/ping", { method: "POST" });
+        const presence = currentTrafficPresence();
+        await fetch("/api/user/ping", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(presence ?? {}),
+        });
       } catch (error) {
         if (active) {
           console.warn("Presence ping failed:", error);
