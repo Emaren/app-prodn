@@ -42,7 +42,7 @@ const VISION_MODEL =
 const VISION_PARSER_NAME =
   "aoe2war.screenshot_vision";
 
-const VISION_PARSER_VERSION = "1.0.0";
+const VISION_PARSER_VERSION = "1.0.1";
 const VISION_PASS_NAME = "postgame_evidence";
 const VISION_PASS_VERSION = "1";
 const VISION_SCHEMA_VERSION = "2026-07-22.1";
@@ -1077,6 +1077,12 @@ async function analyzeImages(
         "Rules:",
         "- Do not invent values that are not visible.",
         "- Do not infer a winner merely from score unless the screenshot explicitly supports the result.",
+        "- On Age of Empires II HD Score / Achievements screens, inspect the player rows and Total Score column very carefully for the small explicit victory/result emblem. Depending on rendering it can resemble crossed swords, a medal, badge, or small winner icon immediately beside a player's total score or row.",
+        "- That emblem is an explicit result signal. If exactly one player visibly carries it, identify that player as the winner even when the replay itself has no resignation or defeat event.",
+        "- When an explicit winner emblem is visible, set winnerLoser.status to confirmed, populate winningPlayerNames and losingPlayerNames, and emit winner facts. Base that result on the emblem itself, never on which player has the larger numeric score.",
+        "- A large score advantage, military advantage, economy advantage, survival status, or timeline shape by itself is NOT sufficient evidence of victory.",
+        "- Before returning winnerLoser as not_visible, make a dedicated high-detail inspection of every supplied Score / Achievements screenshot around each player name, player banner, Total Score value, and adjacent iconography for a victory/result marker.",
+        "- If the purported result emblem is genuinely ambiguous or unreadable, leave the result unclear rather than guessing.",
         "- If text is illegible, mark the field unclear.",
         "- If a category is not shown, mark it not_visible with confidence 0.",
         "- Human adjudication results are intentionally NOT provided.",

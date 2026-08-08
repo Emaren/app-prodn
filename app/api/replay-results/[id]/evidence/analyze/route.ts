@@ -199,7 +199,7 @@ async function maybeAutoAdjudicateScreenshotEvidence(
     return {
       outcome: "review_required",
       reason:
-        "team_or_winner_not_confirmed_at_98_percent",
+        "team_or_winner_not_confirmed_at_90_percent",
     };
   }
 
@@ -222,7 +222,7 @@ async function maybeAutoAdjudicateScreenshotEvidence(
     return {
       outcome: "review_required",
       reason:
-        "canonical_result_mapping_below_98_percent",
+        "canonical_result_mapping_below_90_percent",
     };
   }
 
