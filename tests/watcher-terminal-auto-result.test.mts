@@ -2,9 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  evaluateWatcherRecorderExitResult,
   evaluateWatcherTerminalOwnerLoss,
+  isProvisionalWatcherRecorderExitAdjudication,
   reconcileAutomaticWatcherTerminalResults,
   WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY,
+  WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION,
+  WATCHER_TERMINAL_RECORDER_EXIT_RESULT_AUTHORITY,
   WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE,
   WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION,
   WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
@@ -48,6 +52,10 @@ function baseInput(): WatcherTerminalOwnerLossInput {
         final_candidate: true,
         checkpoint_final_rejected: false,
         server_sha256: replayHash,
+        watcher_id: "watcher_exact",
+        watcher_session_id: "session_exact",
+        file_size_bytes: 123456,
+        replay_fingerprint: "123456:1786158638102",
       },
       team_resolution: {
         format: "1v1",
@@ -126,7 +134,7 @@ test("empty automatic reconciliation is a safe no-op", async () => {
   });
 });
 
-test("automatic reconciliation keeps 1v1 action tail diagnostic only", async () => {
+test("automatic reconciliation creates provisional recorder-exit stats verdict", async () => {
   const input = baseInput();
   let createdData: Record<string, unknown> | null = null;
   let parseRunFindFirstArgs:
@@ -232,18 +240,54 @@ test("automatic reconciliation keeps 1v1 action tail diagnostic only", async () 
     [input.id]
   );
 
-  assert.equal(report.createdCount, 0);
+  assert.equal(report.createdCount, 1);
   assert.equal(report.existingCount, 0);
-  assert.equal(report.skippedCount, 1);
+  assert.equal(report.skippedCount, 0);
   assert.deepEqual(report.outcomes, [
     {
       gameStatsId: input.id,
-      outcome: "skipped",
-      detail: "action_tail_diagnostic_only",
-      adjudicationId: null,
+      outcome: "created",
+      detail: "provisional_1v1_authenticated_recorder_exit",
+      adjudicationId: 9001,
     },
   ]);
-  assert.equal(createdData, null);
+
+  assert.ok(createdData);
+  const stored =
+    createdData as Record<string, unknown>;
+
+  assert.equal(
+    stored.affectsStats,
+    true
+  );
+  assert.equal(
+    stored.affectsBets,
+    false
+  );
+  assert.match(
+    String(
+      stored.idempotencyKey
+    ),
+    /replay-terminal-recorder-exit-v1/
+  );
+
+  const evidence =
+    stored.evidence as
+      | Record<string, unknown>
+      | undefined;
+
+  assert.equal(
+    evidence?.provisionalStatsInference,
+    true
+  );
+  assert.equal(
+    evidence?.replayPacketLeaveProof,
+    false
+  );
+  assert.equal(
+    evidence?.financialAuthority,
+    false
+  );
 
   assert.deepEqual(
     (
@@ -277,6 +321,255 @@ test("automatic watcher evidence uses stats-only append-only authority", () => {
   );
   assert.equal(
     WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY,
+    false
+  );
+  assert.equal(
+    WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION,
+    "replay-terminal-recorder-exit-v1"
+  );
+  assert.equal(
+    WATCHER_TERMINAL_RECORDER_EXIT_RESULT_AUTHORITY,
+    true
+  );
+});
+
+
+test("modern authenticated watcher final produces provisional recorder-exit inference", () => {
+  const input =
+    baseInput();
+
+  input.id = 22128;
+
+  input.players = [
+    {
+      name: "Emaren",
+      steam_id: "76561198065420384",
+      number: 1,
+      team_id: 1,
+      winner: null,
+    },
+    {
+      name: "kaoritec",
+      steam_id: "76561198904976282",
+      number: 2,
+      team_id: 2,
+      winner: null,
+    },
+  ];
+
+  const evaluation =
+    evaluateWatcherRecorderExitResult(
+      input
+    );
+
+  assert.equal(
+    evaluation.eligible,
+    true
+  );
+
+  if (!evaluation.eligible) {
+    return;
+  }
+
+  assert.equal(
+    evaluation.loser.stablePlayerKey,
+    "steam:76561198065420384"
+  );
+
+  assert.equal(
+    evaluation.winnerPlayer.stablePlayerKey,
+    "steam:76561198904976282"
+  );
+
+  assert.equal(
+    evaluation.winningTeamKey,
+    "steam:76561198904976282"
+  );
+
+  const evidence =
+    evaluation.evidence as {
+      provisionalStatsInference?: unknown;
+      replayPacketLeaveProof?: unknown;
+      financialAuthority?: unknown;
+      policyVersion?: unknown;
+    };
+
+  assert.equal(
+    evidence.provisionalStatsInference,
+    true
+  );
+
+  assert.equal(
+    evidence.replayPacketLeaveProof,
+    false
+  );
+
+  assert.equal(
+    evidence.financialAuthority,
+    false
+  );
+
+  assert.equal(
+    evidence.policyVersion,
+    WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION
+  );
+});
+
+test("old uploader-opponent false-positive policy shape cannot qualify", () => {
+  const input =
+    baseInput();
+
+  input.id = 10252;
+
+  input.parseReason =
+    "watcher_inferred_opponent_win_on_incomplete_1v1";
+
+  const evaluation =
+    evaluateWatcherRecorderExitResult(
+      input
+    );
+
+  assert.deepEqual(
+    evaluation,
+    {
+      eligible: false,
+      reason:
+        "parse_reason_not_exact",
+    }
+  );
+});
+
+test("modern watcher provenance is mandatory", () => {
+  const input =
+    baseInput();
+
+  const keyEvents =
+    input.keyEvents as Record<
+      string,
+      unknown
+    >;
+
+  keyEvents.watcher_upload = {
+    file_role:
+      "final_recording",
+
+    final_candidate:
+      true,
+
+    checkpoint_final_rejected:
+      false,
+
+    server_sha256:
+      replayHash,
+  };
+
+  assert.deepEqual(
+    evaluateWatcherRecorderExitResult(
+      input
+    ),
+    {
+      eligible: false,
+      reason:
+        "modern_watcher_final_proof_incomplete",
+    }
+  );
+});
+
+test("postgame or score evidence blocks recorder-exit inference", () => {
+  const input =
+    baseInput();
+
+  const keyEvents =
+    input.keyEvents as Record<
+      string,
+      unknown
+    >;
+
+  keyEvents.postgame_available =
+    true;
+
+  assert.deepEqual(
+    evaluateWatcherRecorderExitResult(
+      input
+    ),
+    {
+      eligible: false,
+      reason:
+        "postgame_or_score_evidence_not_explicitly_absent",
+    }
+  );
+});
+
+test("explicit resignation remains stronger than recorder-exit inference", () => {
+  const input =
+    baseInput();
+
+  input.eventTypes = [
+    "resign",
+  ];
+
+  const keyEvents =
+    input.keyEvents as Record<
+      string,
+      unknown
+    >;
+
+  keyEvents.resigned_player_numbers = [
+    2,
+  ];
+
+  assert.deepEqual(
+    evaluateWatcherRecorderExitResult(
+      input
+    ),
+    {
+      eligible: false,
+      reason:
+        "serialized_result_exists",
+    }
+  );
+});
+
+test("provisional recorder-exit classifier accepts only its stats-only ledger row", () => {
+  assert.equal(
+    isProvisionalWatcherRecorderExitAdjudication({
+      idempotencyKey:
+        `evidence:auto:${WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION}:22128:abc:86`,
+      decisionStatus:
+        "accepted",
+      affectsStats:
+        true,
+      affectsBets:
+        false,
+    }),
+    true
+  );
+
+  assert.equal(
+    isProvisionalWatcherRecorderExitAdjudication({
+      idempotencyKey:
+        "evidence:auto:screenshot-auto-verdict-v2:22128:5553",
+      decisionStatus:
+        "accepted",
+      affectsStats:
+        true,
+      affectsBets:
+        false,
+    }),
+    false
+  );
+
+  assert.equal(
+    isProvisionalWatcherRecorderExitAdjudication({
+      idempotencyKey:
+        `evidence:auto:${WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION}:22128:abc:86`,
+      decisionStatus:
+        "accepted",
+      affectsStats:
+        true,
+      affectsBets:
+        true,
+    }),
     false
   );
 });

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
 import {
+  reconcileAutomaticWatcherTerminalResults,
+} from "@/lib/replayResultAdjudications";
+import {
   isWatcherClientEventType,
   normalizeReplayFileName,
   normalizeWatcherString,
@@ -17,6 +20,14 @@ export const dynamic = "force-dynamic";
 
 const MAX_BODY_BYTES = 64 * 1024;
 const MAX_BATCH_EVENTS = 25;
+
+const TERMINAL_RECONCILE_EVENT_TYPES =
+  new Set<WatcherClientEventInput["eventType"]>([
+    "result_review_routed",
+    "final_candidate_accepted",
+    "final_settle_observation_complete",
+    "monitor_stop",
+  ]);
 
 type RawWatcherEvent = Record<string, unknown>;
 
@@ -88,6 +99,88 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Failed to record watcher telemetry:", error);
     return NextResponse.json({ ok: true, stored: 0, linked: identity.resolved });
+  }
+
+  /*
+   * Terminal result reconciliation is idempotent and append-only.
+   * Telemetry storage remains successful even if reconciliation must
+   * wait for a later parser run/event and retry.
+   */
+  if (
+    identity.resolved &&
+    identity.userUid
+  ) {
+    const replayHashes = [
+      ...new Set(
+        events
+          .filter((event) =>
+            TERMINAL_RECONCILE_EVENT_TYPES.has(
+              event.eventType
+            )
+          )
+          .map((event) =>
+            event.replayHash
+          )
+          .filter(
+            (value): value is string =>
+              Boolean(value)
+          )
+      ),
+    ];
+
+    if (replayHashes.length > 0) {
+      try {
+        const terminalGames =
+          await prisma.gameStats.findMany({
+            where: {
+              userUid:
+                identity.userUid,
+              replayHash: {
+                in:
+                  replayHashes,
+              },
+              is_final:
+                true,
+            },
+            select: {
+              id: true,
+            },
+          });
+
+        if (
+          terminalGames.length >
+          0
+        ) {
+          const report =
+            await reconcileAutomaticWatcherTerminalResults(
+              prisma,
+              terminalGames.map(
+                (game) =>
+                  game.id
+              )
+            );
+
+          if (
+            report.createdCount >
+            0
+          ) {
+            console.info(
+              "AOE2WAR automatic watcher terminal reconciliation",
+              report
+            );
+          }
+        }
+      } catch (error) {
+        /*
+         * Never turn telemetry delivery into a failure because a parser
+         * run or terminal dependency has not arrived yet.
+         */
+        console.error(
+          "Watcher terminal reconciliation deferred:",
+          error
+        );
+      }
+    }
   }
 
   return NextResponse.json({

@@ -6,6 +6,7 @@ import {
 import { ensureBetMarkets } from "@/lib/bets";
 import { getPrisma } from "@/lib/prisma";
 import {
+  isProvisionalWatcherRecorderExitAdjudication,
   loadReplayResultReviewState,
   ReplayResultReviewError,
   requireReplayResultReviewAccess,
@@ -93,16 +94,32 @@ async function maybeAutoAdjudicateScreenshotEvidence(
 
   /*
    * Never silently replace an existing durable verdict.
+   *
+   * The single exception is our explicitly provisional, stats-only
+   * authenticated-recorder inference. High-confidence screenshot
+   * evidence may append a correction that supersedes that exact policy.
    */
+  const latestAdjudication =
+    state.adjudications[0] ??
+    null;
+
+  const provisionalRecorderExitAdjudication =
+    isProvisionalWatcherRecorderExitAdjudication(
+      latestAdjudication
+    )
+      ? latestAdjudication
+      : null;
+
   if (
     state.adjudications.length >
-    0
+      0 &&
+    !provisionalRecorderExitAdjudication
   ) {
     return {
       outcome:
         "existing_verdict",
       adjudicationId:
-        state.adjudications[0]?.id ??
+        latestAdjudication?.id ??
         null,
     };
   }
@@ -218,6 +235,8 @@ async function maybeAutoAdjudicateScreenshotEvidence(
             resolution.winnerConfidenceBps,
         },
         supersedesId:
+          provisionalRecorderExitAdjudication
+            ?.id ??
           null,
       },
     });

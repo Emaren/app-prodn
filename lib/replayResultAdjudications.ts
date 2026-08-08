@@ -1314,6 +1314,47 @@ export const WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION =
 export const WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY =
   false as const;
 
+/*
+ * Modern watcher finals can support a narrower practical inference that
+ * does NOT claim the replay bytes contained a player-specific leave packet.
+ *
+ * If an authenticated watcher recorder exactly matches one participant in
+ * a final rated HD 1v1, the replay terminated unresolved, and every stronger
+ * result source is explicitly absent, treat the recorder as a PROVISIONAL
+ * losing-side candidate for public/stats projection only.
+ *
+ * This is deliberately separate from replay-terminal-action-tail-v3:
+ * production game 21811 proved action ordering is not winner authority.
+ */
+export const WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION =
+  "replay-terminal-recorder-exit-v1" as const;
+
+export const WATCHER_TERMINAL_RECORDER_EXIT_RESULT_AUTHORITY =
+  true as const;
+
+export function isProvisionalWatcherRecorderExitAdjudication(
+  value:
+    | {
+        idempotencyKey?: unknown;
+        decisionStatus?: unknown;
+        affectsStats?: unknown;
+        affectsBets?: unknown;
+      }
+    | null
+    | undefined
+) {
+  return Boolean(
+    value &&
+      typeof value.idempotencyKey === "string" &&
+      value.idempotencyKey.startsWith(
+        `evidence:auto:${WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION}:`
+      ) &&
+      value.decisionStatus === REPLAY_RESULT_ACCEPTED &&
+      value.affectsStats === true &&
+      value.affectsBets === false
+  );
+}
+
 export const WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE =
   "verified_submitter" as const;
 
@@ -1470,6 +1511,629 @@ function automaticTerminalReceipt(value: unknown) {
     replayHash: cleanText(source.replayHash ?? source.replay_hash, 64).toLowerCase(),
     replayFile: cleanText(source.replayFile ?? source.replay_file, 255),
     metadata,
+  };
+}
+
+
+export type WatcherRecorderExitEvaluation =
+  | {
+      eligible: false;
+      reason: string;
+    }
+  | {
+      eligible: true;
+      reason: "provisional_1v1_authenticated_recorder_exit";
+      uploader: CanonicalReplayPlayer;
+      loser: CanonicalReplayPlayer;
+      winnerPlayer: CanonicalReplayPlayer;
+      teams: CanonicalReplayResultTeam[];
+      winningTeamKey: string;
+      evidence: Prisma.InputJsonValue;
+    };
+
+/*
+ * Stats-only policy inference.
+ *
+ * Important:
+ * - This does NOT claim the replay encoded a player-specific leave packet.
+ * - It does NOT use score, chat, player order, color, or last-action order.
+ * - It does NOT grant financial authority.
+ * - Any stronger explicit result or later high-confidence screenshot can
+ *   supersede this provisional adjudication through the append-only ledger.
+ */
+export function evaluateWatcherRecorderExitResult(
+  input: WatcherTerminalOwnerLossInput
+): WatcherRecorderExitEvaluation {
+  if (!input.isFinal) {
+    return { eligible: false, reason: "not_final" };
+  }
+
+  if (cleanText(input.parseSource, 40) !== "watcher_final") {
+    return { eligible: false, reason: "not_watcher_final" };
+  }
+
+  if (
+    cleanText(input.parseReason, 80) !==
+    "watcher_final_submission"
+  ) {
+    return {
+      eligible: false,
+      reason: "parse_reason_not_exact",
+    };
+  }
+
+  if (input.parseIteration < 2) {
+    return {
+      eligible: false,
+      reason: "parser_iteration_not_stable",
+    };
+  }
+
+  if (!input.disconnectDetected) {
+    return {
+      eligible: false,
+      reason: "unresolved_terminal_shape_missing",
+    };
+  }
+
+  if ((input.durationSeconds ?? 0) < 60) {
+    return {
+      eligible: false,
+      reason: "duration_under_60_seconds",
+    };
+  }
+
+  if (input.hasAdjudicationHistory) {
+    return {
+      eligible: false,
+      reason: "adjudication_history_exists",
+    };
+  }
+
+  if (input.currentDesyncOccurred === true) {
+    return {
+      eligible: false,
+      reason: "confirmed_desync",
+    };
+  }
+
+  if (automaticKnownWinner(input.winner)) {
+    return {
+      eligible: false,
+      reason: "stored_winner_exists",
+    };
+  }
+
+  if (
+    !Number.isSafeInteger(input.terminalFailureCount) ||
+    input.terminalFailureCount !== 0
+  ) {
+    return {
+      eligible: false,
+      reason: "terminal_failure_present",
+    };
+  }
+
+  const players =
+    normalizeReplayPlayers(
+      parseJson(input.players)
+    );
+
+  if (
+    players.length !== 2 ||
+    players.some(
+      (player) =>
+        !player.steamId ||
+        player.playerNumber === null
+    ) ||
+    new Set(
+      players.map(
+        (player) =>
+          player.stablePlayerKey
+      )
+    ).size !== 2
+  ) {
+    return {
+      eligible: false,
+      reason: "exact_steam_1v1_required",
+    };
+  }
+
+  const uploaderSteamId =
+    cleanText(
+      input.uploaderSteamId,
+      32
+    );
+
+  if (!uploaderSteamId) {
+    return {
+      eligible: false,
+      reason: "uploader_steam_id_missing",
+    };
+  }
+
+  const uploaderMatches =
+    players.filter(
+      (player) =>
+        player.steamId ===
+        uploaderSteamId
+    );
+
+  if (uploaderMatches.length !== 1) {
+    return {
+      eligible: false,
+      reason: "uploader_player_not_exact",
+    };
+  }
+
+  const uploader =
+    uploaderMatches[0];
+
+  const opponent =
+    players.find(
+      (player) =>
+        player.stablePlayerKey !==
+        uploader.stablePlayerKey
+    );
+
+  if (!opponent) {
+    return {
+      eligible: false,
+      reason: "opponent_not_exact",
+    };
+  }
+
+  const keyEvents =
+    jsonRecord(
+      input.keyEvents
+    );
+
+  const watcherUpload =
+    jsonRecord(
+      keyEvents.watcher_upload
+    );
+
+  const teamResolution =
+    jsonRecord(
+      keyEvents.team_resolution
+    );
+
+  const resultResolution =
+    jsonRecord(
+      keyEvents.result_resolution
+    );
+
+  const eventTypes =
+    automaticEventTypes(
+      input.eventTypes
+    );
+
+  const replayHash =
+    cleanText(
+      input.replayHash,
+      64
+    ).toLowerCase();
+
+  const archivedHash =
+    cleanText(
+      watcherUpload.server_sha256,
+      64
+    ).toLowerCase();
+
+  const watcherId =
+    cleanText(
+      watcherUpload.watcher_id,
+      80
+    );
+
+  const watcherSessionId =
+    cleanText(
+      watcherUpload.watcher_session_id,
+      80
+    );
+
+  const replayFingerprint =
+    cleanText(
+      watcherUpload.replay_fingerprint,
+      160
+    );
+
+  const finalFileSize =
+    positiveInteger(
+      watcherUpload.file_size_bytes
+    );
+
+  if (
+    cleanText(
+      watcherUpload.file_role,
+      40
+    ).toLowerCase() !==
+      "final_recording" ||
+    !automaticTruth(
+      watcherUpload.final_candidate
+    ) ||
+    automaticTruth(
+      watcherUpload.checkpoint_final_rejected
+    ) ||
+    !watcherId ||
+    !watcherSessionId ||
+    !replayFingerprint ||
+    finalFileSize === null ||
+    !replayHash ||
+    archivedHash !== replayHash
+  ) {
+    return {
+      eligible: false,
+      reason:
+        "modern_watcher_final_proof_incomplete",
+    };
+  }
+
+  if (
+    !automaticTruth(
+      keyEvents.rated
+    ) ||
+    !automaticExplicitFalse(
+      keyEvents.restored
+    ) ||
+    cleanText(
+      keyEvents.platform_id,
+      20
+    ).toLowerCase() !==
+      "hd" ||
+    !automaticExplicitFalse(
+      keyEvents.completed
+    )
+  ) {
+    return {
+      eligible: false,
+      reason:
+        "rated_hd_terminal_shape_missing",
+    };
+  }
+
+  if (
+    cleanText(
+      teamResolution.format,
+      20
+    ).toLowerCase() !==
+      "1v1" ||
+    cleanText(
+      teamResolution.status,
+      20
+    ).toLowerCase() !==
+      "resolved" ||
+    cleanText(
+      teamResolution.confidence,
+      20
+    ).toLowerCase() !==
+      "high"
+  ) {
+    return {
+      eligible: false,
+      reason:
+        "team_resolution_not_exact",
+    };
+  }
+
+  const hasSerializedResult =
+    players.some(
+      (player) =>
+        player.winner === true
+    ) ||
+    automaticTruth(
+      resultResolution.result_trusted
+    ) ||
+    Boolean(
+      cleanText(
+        resultResolution.winning_team_id,
+        100
+      )
+    ) ||
+    automaticArray(
+      resultResolution.winning_player_names
+    ).length > 0 ||
+    automaticArray(
+      resultResolution.winning_player_keys
+    ).length > 0 ||
+    eventTypes.has("resign") ||
+    automaticArray(
+      keyEvents.resigned_player_numbers
+    ).length > 0 ||
+    automaticArray(
+      keyEvents.resigned_player_names
+    ).length > 0;
+
+  if (hasSerializedResult) {
+    return {
+      eligible: false,
+      reason:
+        "serialized_result_exists",
+    };
+  }
+
+  if (
+    cleanText(
+      resultResolution.result_status,
+      40
+    ).toLowerCase() !==
+      "review_required" ||
+    !automaticExplicitFalse(
+      resultResolution.result_trusted
+    )
+  ) {
+    return {
+      eligible: false,
+      reason:
+        "review_required_state_not_exact",
+    };
+  }
+
+  const scoreCount =
+    nonNegativeInteger(
+      keyEvents.player_score_count
+    ) ?? 0;
+
+  const achievementCount =
+    nonNegativeInteger(
+      keyEvents.achievement_player_count
+    ) ?? 0;
+
+  /*
+   * If the local recorder already possesses postgame/result-like material,
+   * do not guess that the recorder lost. Let stronger evidence resolve it.
+   */
+  if (
+    !automaticExplicitFalse(
+      keyEvents.postgame_available
+    ) ||
+    !automaticExplicitFalse(
+      keyEvents.has_scores
+    ) ||
+    !automaticExplicitFalse(
+      keyEvents.has_achievements
+    ) ||
+    scoreCount !== 0 ||
+    achievementCount !== 0
+  ) {
+    return {
+      eligible: false,
+      reason:
+        "postgame_or_score_evidence_not_explicitly_absent",
+    };
+  }
+
+  const receipt =
+    automaticTerminalReceipt(
+      input.terminalReceipt
+    );
+
+  const receiptProvided =
+    Boolean(
+      receipt.eventType ||
+      receipt.replayHash ||
+      receipt.sessionId ||
+      receipt.replayFile
+    );
+
+  if (receiptProvided) {
+    const receiptTypeAllowed =
+      [
+        "final_settle_observation_complete",
+        "legacy_final_monitor_settled",
+      ].includes(
+        receipt.eventType
+      );
+
+    const receiptIdentityMatches =
+      receiptTypeAllowed &&
+      receipt.replayHash ===
+        replayHash &&
+      Boolean(
+        receipt.sessionId
+      ) &&
+      receipt.sessionId ===
+        watcherSessionId &&
+      Boolean(
+        receipt.replayFile
+      ) &&
+      (
+        !input.uploaderUserId ||
+        receipt.userId ===
+          input.uploaderUserId
+      ) &&
+      (
+        !input.uploaderUid ||
+        !receipt.userUid ||
+        receipt.userUid ===
+          input.uploaderUid
+      );
+
+    const finalStored =
+      receipt.metadata.finalStored;
+
+    if (
+      !receiptIdentityMatches ||
+      (
+        receipt.eventType ===
+          "final_settle_observation_complete" &&
+        !automaticTruth(
+          finalStored
+        )
+      )
+    ) {
+      return {
+        eligible: false,
+        reason:
+          "terminal_receipt_conflicts",
+      };
+    }
+  }
+
+  const teams:
+    CanonicalReplayResultTeam[] =
+      players
+        .map(
+          (player) => ({
+            teamKey:
+              player.stablePlayerKey,
+
+            players: [
+              {
+                stablePlayerKey:
+                  player.stablePlayerKey,
+
+                name:
+                  player.name,
+
+                normalizedName:
+                  player.normalizedName,
+
+                steamId:
+                  player.steamId,
+
+                sourceTeamId:
+                  player.teamId,
+
+                playerNumber:
+                  player.playerNumber,
+              },
+            ],
+          })
+        )
+        .sort(
+          (left, right) =>
+            left.teamKey.localeCompare(
+              right.teamKey
+            )
+        );
+
+  return {
+    eligible: true,
+
+    reason:
+      "provisional_1v1_authenticated_recorder_exit",
+
+    uploader,
+
+    loser:
+      uploader,
+
+    winnerPlayer:
+      opponent,
+
+    teams,
+
+    winningTeamKey:
+      opponent.stablePlayerKey,
+
+    evidence:
+      jsonClone({
+        submittedVia:
+          "automatic_watcher_recorder_exit_policy",
+
+        policyVersion:
+          WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION,
+
+        gameStatsId:
+          input.id,
+
+        replayHash,
+
+        uploaderUid:
+          input.uploaderUid,
+
+        uploaderUserId:
+          input.uploaderUserId ??
+          null,
+
+        recorderSteamId:
+          uploaderSteamId,
+
+        recorderPlayerKey:
+          uploader.stablePlayerKey,
+
+        recorderPlayerName:
+          uploader.name,
+
+        provisionalLosingPlayerKey:
+          uploader.stablePlayerKey,
+
+        provisionalLosingPlayerName:
+          uploader.name,
+
+        provisionalWinningPlayerKey:
+          opponent.stablePlayerKey,
+
+        provisionalWinningPlayerName:
+          opponent.name,
+
+        exactFinalRecording:
+          true,
+
+        ratedHdOneVsOne:
+          true,
+
+        serializedResultAbsent:
+          true,
+
+        postgameEvidenceAbsent:
+          true,
+
+        confirmedDesyncAbsent:
+          true,
+
+        replayPacketLeaveProof:
+          false,
+
+        provisionalStatsInference:
+          true,
+
+        financialAuthority:
+          false,
+
+        inferenceBasis:
+          "authenticated_recorder_terminal_without_serialized_result",
+
+        watcherFinal: {
+          watcherId,
+          watcherSessionId,
+          fileRole:
+            watcherUpload.file_role,
+          finalCandidate:
+            watcherUpload.final_candidate,
+          serverSha256:
+            archivedHash,
+          fileSizeBytes:
+            finalFileSize,
+          replayFingerprint,
+        },
+
+        terminalReceiptMode:
+          receiptProvided
+            ? "exact_watcher_receipt"
+            : "durable_final_without_receipt",
+
+        terminalReceipt:
+          receiptProvided
+            ? {
+                eventId:
+                  receipt.eventId,
+
+                eventType:
+                  receipt.eventType,
+
+                createdAt:
+                  receipt.createdAt,
+
+                sessionId:
+                  receipt.sessionId,
+
+                replayFile:
+                  receipt.replayFile,
+              }
+            : null,
+      }),
   };
 }
 
@@ -1833,7 +2497,7 @@ export async function reconcileAutomaticWatcherTerminalResults(
 
         const automaticPolicyVersion =
           automaticRoster.length === 2
-            ? WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION
+            ? WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION
             : WATCHER_TEAM_TERMINAL_POLICY_VERSION;
 
         const idempotencyKey = [
@@ -2133,7 +2797,7 @@ export async function reconcileAutomaticWatcherTerminalResults(
 
         const evaluation =
           automaticRoster.length === 2
-            ? evaluateWatcherTerminalOwnerLoss(
+            ? evaluateWatcherRecorderExitResult(
                 terminalEvaluationInput
               )
             : evaluateWatcherTeamTerminalResult(
@@ -2148,24 +2812,14 @@ export async function reconcileAutomaticWatcherTerminalResults(
           };
         }
 
-        if (
-          automaticRoster.length === 2 &&
-          !WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY
-        ) {
-          return {
-            gameStatsId,
-            outcome: "skipped" as const,
-            detail: "action_tail_diagnostic_only",
-            adjudicationId: null,
-          };
-        }
-
         const adjudicationReason =
           evaluation.reason ===
-          "decisive_1v1_terminal_action_tail"
+          "provisional_1v1_authenticated_recorder_exit"
             ? (
-                `Automatic terminal evidence: ${evaluation.loser.name} stopped first in the ` +
-                `final rated 1v1 while ${evaluation.winnerPlayer.name} remained active.`
+                `Automatic provisional stats inference: authenticated watcher recorder ` +
+                `${evaluation.loser.name} ended an unresolved final rated 1v1 with no ` +
+                `serialized or postgame result evidence; ${evaluation.winnerPlayer.name} ` +
+                `is projected as the opposing winner pending stronger evidence.`
               )
             : (
                 `Automatic team terminal evidence: ` +

@@ -600,7 +600,7 @@ test("live metadata reconciliation never lets unknown overwrite known fields", (
   assert.equal(reconciled.activeSessions[0].parseIteration, 11);
 });
 
-test("a final parser disconnect is a desynced no-result battle, not Completed", () => {
+test("a final parser disconnect remains unproven until result or desync authority exists", () => {
   const publicRow = toPublicGameStatsRow({
     id: 20452,
     is_final: true,
@@ -619,14 +619,17 @@ test("a final parser disconnect is a desynced no-result battle, not Completed", 
   }) as Record<string, unknown>;
 
   assert.equal(publicRow.winner, null);
-  assert.equal(publicRow.winnerProof, "disconnect_or_desync");
-  assert.equal(publicRow.reviewNeeded, false);
+  assert.equal(
+    publicRow.winnerProof,
+    "disconnect_result_unproven"
+  );
+  assert.equal(publicRow.reviewNeeded, true);
   assert.deepEqual(publicRow.unresolvedResult, {
-    code: "disconnect_or_desync",
-    label: "Desynced",
+    code: "disconnect_result_unproven",
+    label: "Result unproven",
     explanation:
-      "Replay ended in a disconnect or desync before a canonical winner existed.",
-    reviewNeeded: false,
+      "The replay ended with a disconnect flag before a canonical winner was proven. A machine disconnect flag is not a human-confirmed desync.",
+    reviewNeeded: true,
   });
 
   const unresolved = classifyUnresolvedWatcherResult({
