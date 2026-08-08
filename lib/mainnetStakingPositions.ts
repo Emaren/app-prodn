@@ -15,6 +15,8 @@ import {
 } from "@/lib/woloMainnetNetworkAccounts";
 import { getWoloMainnetDisplayStartAt } from "@/lib/woloChain";
 import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
+import { cappedRewardPrincipalWolo } from "@/lib/stakingRewardCap";
+import { collectCursorPages } from "@/lib/collectCursorPages";
 
 function normalizeAddress(value: string | null | undefined) {
   return (value || "").trim().toLowerCase();
@@ -38,20 +40,42 @@ function computeCanonicalStakingWeight(position: {
   accumulatedWeight: bigint;
   currentStakedWolo: number;
   lastWeightUpdateAt: Date;
-}, asOf: Date) {
+}, asOf: Date, options: {
+  weightStartAt?: Date;
+  rewardWeightCapWolo?: number;
+} = {}) {
+  const startAt = new Date(
+    Math.max(
+      position.lastWeightUpdateAt.getTime(),
+      options.weightStartAt?.getTime() ?? position.lastWeightUpdateAt.getTime(),
+    ),
+  );
   const seconds = Math.max(
     0,
-    Math.floor((asOf.getTime() - position.lastWeightUpdateAt.getTime()) / 1000)
+    Math.floor((asOf.getTime() - startAt.getTime()) / 1000),
   );
+  const baseWeight =
+    options.weightStartAt &&
+    options.weightStartAt.getTime() > position.lastWeightUpdateAt.getTime()
+      ? BigInt(0)
+      : position.accumulatedWeight;
+  const rewardPrincipal =
+    options.rewardWeightCapWolo === undefined
+      ? Math.max(0, Math.trunc(position.currentStakedWolo))
+      : cappedRewardPrincipalWolo(
+          position.currentStakedWolo,
+          options.rewardWeightCapWolo,
+        );
   return (
-    position.accumulatedWeight +
-    BigInt(Math.max(0, Math.trunc(position.currentStakedWolo))) * BigInt(seconds)
+    baseWeight + BigInt(rewardPrincipal) * BigInt(seconds)
   ).toString();
 }
 
 export type LoadMainnetStakingPositionsOptions = {
   asOf?: Date;
   weightStartAt?: Date;
+  rewardWeightCapWolo?: number;
+  requireCompleteLedger?: boolean;
   take?: number;
 };
 
@@ -65,69 +89,75 @@ export async function loadMainnetStakingPositions(
   const asOf = options.asOf ?? new Date();
   const mainnetStartAt = getWoloMainnetDisplayStartAt();
   const weightStartAt = options.weightStartAt ?? mainnetStartAt;
-  const take = Math.max(1, Math.min(options.take ?? 5_000, 10_000));
+  const pageSize = Math.max(1, Math.min(options.take ?? 5_000, 10_000));
   const [addressBook, rows, events, canonicalPositions] = await Promise.all([
     buildWoloAddressBook(prisma),
-    prisma.woloIndexedTransfer.findMany({
-      where: {
-        chainId: WOLO_MAINNET_CHAIN_ID,
-        denom: WOLO_MAINNET_BASE_DENOM,
-        source: WOLO_INDEXED_TRANSFER_SOURCE,
-        timestamp: {
-          gte: mainnetStartAt,
-          lte: asOf,
+    collectCursorPages(pageSize, (cursorId) =>
+      prisma.woloIndexedTransfer.findMany({
+        where: {
+          chainId: WOLO_MAINNET_CHAIN_ID,
+          denom: WOLO_MAINNET_BASE_DENOM,
+          source: WOLO_INDEXED_TRANSFER_SOURCE,
+          timestamp: {
+            gte: mainnetStartAt,
+            lte: asOf,
+          },
+          OR: [
+            { senderAddress: stakingWalletAddress },
+            { recipientAddress: stakingWalletAddress },
+          ],
         },
-        OR: [
-          { senderAddress: stakingWalletAddress },
-          { recipientAddress: stakingWalletAddress },
-        ],
-      },
-      orderBy: [{ timestamp: "asc" }, { height: "asc" }, { id: "asc" }],
-      take,
-    }),
-    prisma.stakingEvent.findMany({
-      where: {
-        status: "CONFIRMED",
-        type: { in: ["STAKE", "UNSTAKE", "COMPOUND"] },
-        amountWolo: { gt: 0 },
-        txHash: { not: null },
-        OR: [
-          {
-            confirmedAt: {
-              gte: mainnetStartAt,
-              lte: asOf,
+        orderBy: { id: "asc" },
+        take: pageSize,
+        ...(cursorId === null ? {} : { cursor: { id: cursorId }, skip: 1 }),
+      }),
+    ),
+    collectCursorPages(pageSize, (cursorId) =>
+      prisma.stakingEvent.findMany({
+        where: {
+          status: "CONFIRMED",
+          type: { in: ["STAKE", "UNSTAKE", "COMPOUND"] },
+          amountWolo: { gt: 0 },
+          txHash: { not: null },
+          OR: [
+            {
+              confirmedAt: {
+                gte: mainnetStartAt,
+                lte: asOf,
+              },
+            },
+            {
+              confirmedAt: null,
+              createdAt: {
+                gte: mainnetStartAt,
+                lte: asOf,
+              },
+            },
+          ],
+        },
+        orderBy: { id: "asc" },
+        take: pageSize,
+        ...(cursorId === null ? {} : { cursor: { id: cursorId }, skip: 1 }),
+        select: {
+          id: true,
+          type: true,
+          amountWolo: true,
+          txHash: true,
+          walletAddress: true,
+          createdAt: true,
+          confirmedAt: true,
+          userId: true,
+          user: {
+            select: {
+              uid: true,
+              inGameName: true,
+              steamPersonaName: true,
+              walletAddress: true,
             },
           },
-          {
-            confirmedAt: null,
-            createdAt: {
-              gte: mainnetStartAt,
-              lte: asOf,
-            },
-          },
-        ],
-      },
-      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-      take,
-      select: {
-        id: true,
-        type: true,
-        amountWolo: true,
-        txHash: true,
-        walletAddress: true,
-        createdAt: true,
-        confirmedAt: true,
-        userId: true,
-        user: {
-          select: {
-            uid: true,
-            inGameName: true,
-            steamPersonaName: true,
-            walletAddress: true,
-          },
         },
-      },
-    }),
+      }),
+    ),
     prisma.stakingPosition.findMany({
       where: {
         status: "active",
@@ -194,6 +224,7 @@ export async function loadMainnetStakingPositions(
     mainnetStartAt,
     asOf,
     weightStartAt,
+    rewardWeightCapWolo: options.rewardWeightCapWolo,
     operationalReserveSourceAddresses:
       WOLO_STAKING_RESERVE_OPERATOR_ADDRESSES,
   });
@@ -209,6 +240,14 @@ export async function loadMainnetStakingPositions(
 
     const existing = positionsByUserId.get(canonical.userId);
     const existingStake = Math.max(0, existing?.currentStakedWolo || 0);
+    if (options.requireCompleteLedger) {
+      if (!existing || existingStake !== canonicalSeatStake) {
+        throw new Error(
+          `Staking ledger reconciliation failed for user ${canonical.userId}: derived=${existingStake}, canonical=${canonicalSeatStake}.`,
+        );
+      }
+      continue;
+    }
     const publicSeatStake = Math.max(existingStake, canonicalSeatStake);
     if (publicSeatStake <= 0) continue;
 
@@ -239,7 +278,12 @@ export async function loadMainnetStakingPositions(
       walletAddress: walletAddress || existing?.walletAddress || null,
       currentStakedWolo: publicSeatStake,
       totalStakedWolo: Math.max(existing?.totalStakedWolo || 0, publicSeatStake),
-      stakingWeight: existing?.stakingWeight || computeCanonicalStakingWeight(canonicalWeightInput, asOf),
+      stakingWeight:
+        existing?.stakingWeight ||
+        computeCanonicalStakingWeight(canonicalWeightInput, asOf, {
+          weightStartAt: options.weightStartAt,
+          rewardWeightCapWolo: options.rewardWeightCapWolo,
+        }),
     });
   }
 

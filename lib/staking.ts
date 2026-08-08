@@ -36,6 +36,10 @@ import {
   canExposePublicStakingActivityEvent,
   stakingTransferLedgerPresentation,
 } from "@/lib/stakingTransferClassification";
+import {
+  cappedRewardWeightForWindow,
+  KINGDOM_STAKE_REWARD_CAP_WOLO,
+} from "@/lib/stakingRewardCap";
 
 export {
   BETTING_FEE_RATE_BPS,
@@ -1904,10 +1908,8 @@ async function loadRecentRewardRows(prisma: PrismaClient): Promise<StakingLeader
 async function loadMainnetRewardSnapshotForUser(
   prisma: PrismaClient,
   userId: number,
-  positions: Awaited<ReturnType<typeof loadMainnetStakingPositions>>
 ) {
-  const [unpaidAllocation, claimedAllocation, lifetimeAllocation, settledAggregate] =
-    await Promise.all([
+  const [unpaidAllocation, claimedAllocation, lifetimeAllocation] = await Promise.all([
       prisma.stakingRewardAllocation.aggregate({
         where: {
           userId,
@@ -1937,36 +1939,12 @@ async function loadMainnetRewardSnapshotForUser(
         },
         _sum: { rewardWolo: true },
       }),
-      prisma.betWager.aggregate({
-        where: visibleMainnetWagerWhere({
-          settledAt: { not: null },
-        }),
-        _sum: { amountWolo: true },
-      }),
     ]);
 
   const pendingAllocatedWolo = unpaidAllocation._sum.rewardWolo ?? 0;
   const claimedRewardsWolo = claimedAllocation._sum.rewardWolo ?? 0;
   const lifetimeAllocatedWolo = lifetimeAllocation._sum.rewardWolo ?? 0;
-  const viewerPosition = positions.find((position) => position.userId === userId);
-  const viewerWeight = BigInt(viewerPosition?.stakingWeight || 0);
-  const totalWeight = positions.reduce(
-    (sum, position) => sum + BigInt(position.stakingWeight || 0),
-    BigInt(0)
-  );
-
-  let modeledPendingWolo = 0;
-  if (viewerWeight > BigInt(0) && totalWeight > BigInt(0)) {
-    const settledVolumeWolo = settledAggregate._sum.amountWolo ?? 0;
-    const feePools = calculateModeledFeePools(settledVolumeWolo);
-    const shareRatio = Number(viewerWeight) / Number(totalWeight);
-    const modeledGrossWolo = Number.isFinite(shareRatio)
-      ? feePools.stakerPoolWolo * shareRatio
-      : 0;
-    modeledPendingWolo = Math.max(0, modeledGrossWolo - claimedRewardsWolo);
-  }
-
-  const pendingRewardsWolo = Math.max(pendingAllocatedWolo, modeledPendingWolo);
+  const pendingRewardsWolo = pendingAllocatedWolo;
   const lifetimeRewardsWolo = Math.max(
     lifetimeAllocatedWolo,
     pendingRewardsWolo + claimedRewardsWolo
@@ -2072,7 +2050,7 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
   const useMainnetPosition = isWoloMainnet();
   const mainnetPosition = mainnetPositions.find((position) => position.userId === userId) ?? null;
   const mainnetRewardSnapshot = useMainnetPosition
-    ? await loadMainnetRewardSnapshotForUser(prisma, userId, mainnetPositions)
+    ? await loadMainnetRewardSnapshotForUser(prisma, userId)
     : {
         pendingRewardsWolo: 0,
         lifetimeRewardsWolo: 0,
@@ -2365,7 +2343,12 @@ export async function calculateDailyStakingRewardDistribution(
       },
     }),
     isWoloMainnet()
-      ? loadMainnetStakingPositions(prisma, { asOf: periodEnd, weightStartAt: periodStart })
+      ? loadMainnetStakingPositions(prisma, {
+          asOf: periodEnd,
+          weightStartAt: periodStart,
+          rewardWeightCapWolo: KINGDOM_STAKE_REWARD_CAP_WOLO,
+          requireCompleteLedger: true,
+        })
       : Promise.resolve([]),
   ]);
 
@@ -2384,20 +2367,36 @@ export async function calculateDailyStakingRewardDistribution(
       }));
   const settledVolumeWolo = settledAggregate._sum.amountWolo ?? 0;
   const feePools = calculateLedgerFeePools(settledVolumeWolo);
+  const rewardWindowSeconds = Math.max(
+    0,
+    Math.floor((periodEnd.getTime() - periodStart.getTime()) / 1000),
+  );
   const weightedPositions = positions.map((position) => ({
     ...position,
     userWeight:
       position.id == null
         ? position.accumulatedWeight
-        : computeCurrentStakingWeight(
-            {
-              currentStakedWolo: position.currentStakedWolo,
-              accumulatedWeight: position.accumulatedWeight,
-              lastWeightUpdateAt: position.lastWeightUpdateAt,
-            },
-            periodEnd
+        : cappedRewardWeightForWindow(
+            position.currentStakedWolo,
+            rewardWindowSeconds,
           ),
   }));
+  const maximumIdentityWeight = cappedRewardWeightForWindow(
+    KINGDOM_STAKE_REWARD_CAP_WOLO,
+    rewardWindowSeconds,
+  );
+  if (
+    weightedPositions.some(
+      (position) =>
+        position.userWeight < BigInt(0) ||
+        position.userWeight > maximumIdentityWeight,
+    )
+  ) {
+    throw new StakingActionError(
+      "A staking reward weight exceeded the linked-identity cap; distribution stopped before allocation.",
+      409,
+    );
+  }
   const totalWeight = weightedPositions.reduce(
     (sum, position) => sum + position.userWeight,
     BigInt(0)
@@ -2421,6 +2420,8 @@ export async function calculateDailyStakingRewardDistribution(
               settledBets: settledAggregate._count._all,
               settledVolumeWolo,
               unit: "uwolo",
+              rewardWeightPolicy: "linked_identity_cap_v1",
+              rewardWeightCapWolo: KINGDOM_STAKE_REWARD_CAP_WOLO,
             },
           },
         })
@@ -2440,6 +2441,8 @@ export async function calculateDailyStakingRewardDistribution(
               settledBets: settledAggregate._count._all,
               settledVolumeWolo,
               unit: "uwolo",
+              rewardWeightPolicy: "linked_identity_cap_v1",
+              rewardWeightCapWolo: KINGDOM_STAKE_REWARD_CAP_WOLO,
             },
           },
         });

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { Flame } from "lucide-react";
+import Link from "next/link";
+import { Anvil, ArrowRight, Eye, Flame, Scale } from "lucide-react";
 
 import { kingdomStats } from "@/lib/aoe2warLeague";
 
@@ -19,6 +20,33 @@ const royalSteps = [
   ["Prove", "Win games, light beacons, upload replays."],
   ["Record", "Chronicles turn effort into memory."],
   ["Reward", "Bounties and WOLO become the kingdom ledger."],
+] as const;
+
+const civicHalls = [
+  {
+    href: "/round-chamber",
+    title: "Round Chamber",
+    eyebrow: "How the Kingdom governs",
+    body: "Bring proposals into the circle, cast a civic ballot, debate the law, and follow every mandate through the Chronicle.",
+    icon: Scale,
+    tone: "from-amber-300/14 via-amber-200/[0.04] to-transparent",
+  },
+  {
+    href: "/kingdom-forge",
+    title: "Kingdom Forge",
+    eyebrow: "What the Kingdom builds",
+    body: "Direct excess staking power into named projects, milestones, patrons, architects, and 10,000 finite Feature Deeds.",
+    icon: Anvil,
+    tone: "from-orange-400/14 via-orange-300/[0.04] to-transparent",
+  },
+  {
+    href: "/oracle",
+    title: "The Oracle",
+    eyebrow: "What the Kingdom believes",
+    body: "Price the future through exact-rule markets on growth, games, economy, Forge milestones, and civic momentum.",
+    icon: Eye,
+    tone: "from-violet-400/14 via-cyan-300/[0.04] to-transparent",
+  },
 ] as const;
 
 function StatTile({ label, value }: { label: string; value: string }) {
@@ -61,6 +89,41 @@ export default function KingdomPage() {
             <p className="mt-2 text-sm leading-6 text-slate-300">{body}</p>
           </article>
         ))}
+      </section>
+
+      <section className="space-y-4">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-100/55">
+            The civic crown
+          </div>
+          <h2 className="mt-2 text-3xl font-black tracking-tight sm:text-4xl">
+            Govern it. Forge it. Price its future.
+          </h2>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          {civicHalls.map((hall) => {
+            const Icon = hall.icon;
+            return (
+              <Link
+                key={hall.href}
+                href={hall.href}
+                className={`group relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-gradient-to-br ${hall.tone} p-6 transition hover:-translate-y-0.5 hover:border-amber-100/25`}
+              >
+                <div className="grid h-12 w-12 place-items-center rounded-2xl border border-amber-100/16 bg-black/25 text-amber-100">
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="mt-5 text-[10px] font-black uppercase tracking-[0.25em] text-amber-100/55">
+                  {hall.eyebrow}
+                </div>
+                <h3 className="mt-2 text-2xl font-black text-white">{hall.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-slate-300">{hall.body}</p>
+                <div className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-amber-100">
+                  Enter <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                </div>
+              </Link>
+            );
+          })}
+        </div>
       </section>
 
       <KingdomChroniclesClient />

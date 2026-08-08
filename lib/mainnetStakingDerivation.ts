@@ -1,6 +1,7 @@
 import {
   classifyStakingWalletInboundTransfer,
 } from "./stakingTransferClassification.ts";
+import { cappedRewardPrincipalWolo } from "./stakingRewardCap.ts";
 
 export type MainnetStakingTransferInput = {
   txHash: string;
@@ -43,14 +44,20 @@ function addWeight(
   currentStakeWolo: number,
   from: Date | null,
   to: Date,
-  weightStartAt?: Date
+  weightStartAt?: Date,
+  rewardWeightCapWolo?: number,
 ) {
   if (!from) return currentWeight;
 
   const startMs = Math.max(from.getTime(), weightStartAt?.getTime() ?? from.getTime());
   const seconds = Math.max(0, Math.floor((to.getTime() - startMs) / 1000));
 
-  return currentWeight + BigInt(Math.max(0, Math.trunc(currentStakeWolo))) * BigInt(seconds);
+  const rewardPrincipal =
+    rewardWeightCapWolo === undefined
+      ? Math.max(0, Math.trunc(currentStakeWolo))
+      : cappedRewardPrincipalWolo(currentStakeWolo, rewardWeightCapWolo);
+
+  return currentWeight + BigInt(rewardPrincipal) * BigInt(seconds);
 }
 
 function transferResolutionScore(transfer: MainnetStakingTransferInput) {
@@ -86,6 +93,7 @@ export function deriveMainnetStakingPositionsFromTransfers(
     mainnetStartAt: Date | string;
     asOf?: Date | string;
     weightStartAt?: Date | string;
+    rewardWeightCapWolo?: number;
     operationalReserveSourceAddresses?: readonly string[];
   }
 ): DerivedMainnetStakingPosition[] {
@@ -191,7 +199,8 @@ export function deriveMainnetStakingPositionsFromTransfers(
         existing.currentStakedWolo,
         existing._lastWeightAt,
         timestamp,
-        weightStartAt
+        weightStartAt,
+        options.rewardWeightCapWolo,
       );
     existing._lastWeightAt = timestamp;
     existing.lastTxAt = timestamp;
@@ -219,7 +228,8 @@ export function deriveMainnetStakingPositionsFromTransfers(
           position.currentStakedWolo,
           position._lastWeightAt,
           asOf,
-          weightStartAt
+          weightStartAt,
+          options.rewardWeightCapWolo,
         );
       return {
         userId: position.userId,

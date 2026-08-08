@@ -113,6 +113,19 @@ model User {
   bountyClaims                BountyClaim[]           @relation("BountyClaimUser")
   replayRosterPromotions      ReplayRosterPromotion[] @relation("ReplayRosterPromotionActor")
 
+  roundProposalsCreated RoundProposal[] @relation("RoundProposalCreator")
+  roundVotes            RoundVote[]
+  roundComments         RoundComment[]
+  roundEventsActed      RoundEvent[]    @relation("RoundEventActor")
+
+  forgeCommitments  ForgeCommitment[]
+  forgeDeedHoldings ForgeDeedHolding[]
+  forgeEventsActed  ForgeEvent[]       @relation("ForgeEventActor")
+
+  oracleMarketProposals OracleMarketProposal[] @relation("OracleMarketProposalCreator")
+  oraclePaperPositions  OraclePaperPosition[]
+  oracleEventsActed     OracleEvent[]          @relation("OracleEventActor")
+
   identityDecisionsActed        IdentityDecision[]              @relation("IdentityDecisionActor")
   identityDecisionSubjects      IdentityDecisionSubject[]       @relation("IdentityDecisionSubjectSiteAccount")
   warriorPlatformLinksCreated   WarriorPlatformLink[]           @relation("WarriorPlatformLinkCreator")
@@ -3439,4 +3452,302 @@ model ReplayRosterPromotion {
   @@index([gameStatsId, createdAt], map: "ix_replay_roster_promotions_game_created")
   @@index([promotedByUserId, createdAt], map: "ix_replay_roster_promotions_actor_created")
   @@map("replay_roster_promotions")
+}
+
+/// AoE2WAR civic governance proposal. This is an app identity vote and is
+/// intentionally separate from WoloChain stake-weighted x/gov truth.
+model RoundProposal {
+  id              Int       @id @default(autoincrement())
+  publicId        String    @unique @default(uuid()) @map("public_id") @db.Uuid
+  category        String    @default("kingdom") @db.VarChar(40)
+  title           String    @db.VarChar(180)
+  summary         String    @db.VarChar(500)
+  body            String    @db.Text
+  status          String    @default("open") @db.VarChar(24)
+  createdByUserId Int?      @map("created_by_user_id")
+  createdByLabel  String    @default("Founding Steward") @map("created_by_label") @db.VarChar(120)
+  votingClosesAt  DateTime? @map("voting_closes_at") @db.Timestamp(6)
+  decidedAt       DateTime? @map("decided_at") @db.Timestamp(6)
+  decisionNote    String?   @map("decision_note") @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  creator  User?          @relation("RoundProposalCreator", fields: [createdByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  votes    RoundVote[]
+  comments RoundComment[]
+  events   RoundEvent[]
+
+  @@index([status, createdAt], map: "ix_round_proposals_status_created")
+  @@index([category, status], map: "ix_round_proposals_category_status")
+  @@index([createdByUserId, createdAt], map: "ix_round_proposals_creator_created")
+  @@map("round_proposals")
+}
+
+model RoundVote {
+  id         Int      @id @default(autoincrement())
+  proposalId Int      @map("proposal_id")
+  userId     Int      @map("user_id")
+  choice     String   @db.VarChar(16)
+  reason     String?  @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  proposal RoundProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([proposalId, userId], map: "uq_round_votes_proposal_user")
+  @@index([userId, updatedAt], map: "ix_round_votes_user_updated")
+  @@map("round_votes")
+}
+
+model RoundComment {
+  id         Int      @id @default(autoincrement())
+  proposalId Int      @map("proposal_id")
+  userId     Int      @map("user_id")
+  body       String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  proposal RoundProposal @relation(fields: [proposalId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([proposalId, createdAt], map: "ix_round_comments_proposal_created")
+  @@index([userId, createdAt], map: "ix_round_comments_user_created")
+  @@map("round_comments")
+}
+
+/// Append-only Round Chamber lifecycle and ballot trail.
+model RoundEvent {
+  id          Int      @id @default(autoincrement())
+  proposalId  Int?     @map("proposal_id")
+  actorUserId Int?     @map("actor_user_id")
+  eventType   String   @map("event_type") @db.VarChar(32)
+  detail      String   @db.Text
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  proposal RoundProposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  actor    User?          @relation("RoundEventActor", fields: [actorUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([proposalId, createdAt], map: "ix_round_events_proposal_created")
+  @@index([eventType, createdAt], map: "ix_round_events_type_created")
+  @@map("round_events")
+}
+
+/// A named development campaign inside the Kingdom Forge. Funding truth may be
+/// app-signal or verified chain funding; the settlementMode makes that explicit.
+model ForgeProject {
+  id              Int       @id @default(autoincrement())
+  publicId        String    @unique @default(uuid()) @map("public_id") @db.Uuid
+  slug            String    @unique @db.VarChar(80)
+  title           String    @db.VarChar(180)
+  category        String    @default("kingdom") @db.VarChar(40)
+  summary         String    @db.VarChar(500)
+  body            String    @db.Text
+  status          String    @default("gathering") @db.VarChar(24)
+  targetWolo      BigInt    @map("target_wolo")
+  developmentDays Int       @default(120) @map("development_days")
+  totalDeeds      Int       @default(10000) @map("total_deeds")
+  patronDeeds     Int       @default(7000) @map("patron_deeds")
+  builderDeeds    Int       @default(2000) @map("builder_deeds")
+  kingdomDeeds    Int       @default(1000) @map("kingdom_deeds")
+  featuredOrder   Int       @default(0) @map("featured_order")
+  targetDate      DateTime? @map("target_date") @db.Timestamp(6)
+  shippedAt       DateTime? @map("shipped_at") @db.Timestamp(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  milestones   ForgeMilestone[]
+  commitments  ForgeCommitment[]
+  deedHoldings ForgeDeedHolding[]
+  events       ForgeEvent[]
+
+  @@index([status, featuredOrder], map: "ix_forge_projects_status_featured")
+  @@index([category, status], map: "ix_forge_projects_category_status")
+  @@map("forge_projects")
+}
+
+model ForgeMilestone {
+  id          Int       @id @default(autoincrement())
+  projectId   Int       @map("project_id")
+  sequence    Int
+  title       String    @db.VarChar(160)
+  summary     String    @db.VarChar(500)
+  status      String    @default("sealed") @db.VarChar(24)
+  completedAt DateTime? @map("completed_at") @db.Timestamp(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  project ForgeProject @relation(fields: [projectId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([projectId, sequence], map: "uq_forge_milestones_project_sequence")
+  @@index([projectId, status], map: "ix_forge_milestones_project_status")
+  @@map("forge_milestones")
+}
+
+model ForgeCommitment {
+  id             Int       @id @default(autoincrement())
+  projectId      Int       @map("project_id")
+  userId         Int       @map("user_id")
+  amountWolo     BigInt    @map("amount_wolo")
+  status         String    @default("signalled") @db.VarChar(24)
+  settlementMode String    @default("app_signal") @map("settlement_mode") @db.VarChar(32)
+  fundingMemo    String?   @unique @map("funding_memo") @db.VarChar(255)
+  fundingTxHash  String?   @unique @map("funding_tx_hash") @db.VarChar(128)
+  confirmedAt    DateTime? @map("confirmed_at") @db.Timestamp(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  project ForgeProject @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([projectId, userId], map: "uq_forge_commitments_project_user")
+  @@index([userId, status], map: "ix_forge_commitments_user_status")
+  @@index([projectId, status], map: "ix_forge_commitments_project_status")
+  @@map("forge_commitments")
+}
+
+/// App provenance/governance deed ledger. rightsMode prevents a presentation
+/// row from silently becoming chain ownership or an uncapped revenue promise.
+model ForgeDeedHolding {
+  id         Int      @id @default(autoincrement())
+  projectId  Int      @map("project_id")
+  userId     Int      @map("user_id")
+  deedClass  String   @map("deed_class") @db.VarChar(24)
+  quantity   Int
+  rightsMode String   @default("provenance_governance") @map("rights_mode") @db.VarChar(40)
+  sourceRef  String   @unique @map("source_ref") @db.VarChar(180)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  project ForgeProject @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  user    User         @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([projectId, deedClass], map: "ix_forge_deed_holdings_project_class")
+  @@index([userId, createdAt], map: "ix_forge_deed_holdings_user_created")
+  @@map("forge_deed_holdings")
+}
+
+/// Append-only Forge project, milestone, funding-proof, and deed event trail.
+model ForgeEvent {
+  id          Int      @id @default(autoincrement())
+  projectId   Int?     @map("project_id")
+  actorUserId Int?     @map("actor_user_id")
+  eventType   String   @map("event_type") @db.VarChar(32)
+  detail      String   @db.Text
+  amountWolo  BigInt?  @map("amount_wolo")
+  txHash      String?  @map("tx_hash") @db.VarChar(128)
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  project ForgeProject? @relation(fields: [projectId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  actor   User?         @relation("ForgeEventActor", fields: [actorUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([projectId, createdAt], map: "ix_forge_events_project_created")
+  @@index([eventType, createdAt], map: "ix_forge_events_type_created")
+  @@index([txHash], map: "ix_forge_events_tx_hash")
+  @@map("forge_events")
+}
+
+/// Oracle markets are independent from replay-backed BetMarket rows. Stage I
+/// uses non-transferable marks while the same market/rule lifecycle is proven.
+model OracleMarket {
+  id              Int      @id @default(autoincrement())
+  publicId        String   @unique @default(uuid()) @map("public_id") @db.Uuid
+  slug            String   @unique @db.VarChar(100)
+  question        String   @db.VarChar(240)
+  summary         String   @db.VarChar(500)
+  category        String   @db.VarChar(40)
+  outcomeType     String   @default("binary") @map("outcome_type") @db.VarChar(24)
+  status          String   @default("trading") @db.VarChar(24)
+  closesAt        DateTime @map("closes_at") @db.Timestamp(6)
+  resolvesAt      DateTime @map("resolves_at") @db.Timestamp(6)
+  sourceMetricKey String   @map("source_metric_key") @db.VarChar(80)
+  sourceLabel     String   @map("source_label") @db.VarChar(160)
+  currentValue    BigInt?  @map("current_value")
+  targetValue     BigInt?  @map("target_value")
+  resolutionRule  String   @map("resolution_rule") @db.Text
+  voidRule        String   @map("void_rule") @db.Text
+  maxPoolWolo     BigInt?  @map("max_pool_wolo")
+  seedYesMarks    Int      @default(0) @map("seed_yes_marks")
+  seedNoMarks     Int      @default(0) @map("seed_no_marks")
+  createdByLabel  String   @default("The Oracle") @map("created_by_label") @db.VarChar(120)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  positions OraclePaperPosition[]
+  events    OracleEvent[]
+
+  @@index([status, closesAt], map: "ix_oracle_markets_status_closes")
+  @@index([category, status], map: "ix_oracle_markets_category_status")
+  @@map("oracle_markets")
+}
+
+model OraclePaperPosition {
+  id          Int      @id @default(autoincrement())
+  marketId    Int      @map("market_id")
+  userId      Int      @map("user_id")
+  side        String   @db.VarChar(12)
+  amountMarks Int      @map("amount_marks")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  market OracleMarket @relation(fields: [marketId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([marketId, userId], map: "uq_oracle_paper_positions_market_user")
+  @@index([userId, updatedAt], map: "ix_oracle_paper_positions_user_updated")
+  @@index([marketId, side], map: "ix_oracle_paper_positions_market_side")
+  @@map("oracle_paper_positions")
+}
+
+model OracleMarketProposal {
+  id              Int       @id @default(autoincrement())
+  publicId        String    @unique @default(uuid()) @map("public_id") @db.Uuid
+  createdByUserId Int       @map("created_by_user_id")
+  question        String    @db.VarChar(240)
+  category        String    @db.VarChar(40)
+  outcomeType     String    @default("binary") @map("outcome_type") @db.VarChar(24)
+  closesAt        DateTime  @map("closes_at") @db.Timestamp(6)
+  resolvesAt      DateTime  @map("resolves_at") @db.Timestamp(6)
+  sourceMetricKey String    @map("source_metric_key") @db.VarChar(80)
+  sourceLabel     String    @map("source_label") @db.VarChar(160)
+  resolutionRule  String    @map("resolution_rule") @db.Text
+  voidRule        String    @map("void_rule") @db.Text
+  maxPoolWolo     BigInt    @map("max_pool_wolo")
+  bondWolo        Int       @default(100) @map("bond_wolo")
+  bondStatus      String    @default("not_funded") @map("bond_status") @db.VarChar(24)
+  status          String    @default("proposed") @db.VarChar(24)
+  reviewNote      String?   @map("review_note") @db.Text
+  reviewedByUid   String?   @map("reviewed_by_uid") @db.VarChar(100)
+  reviewedAt      DateTime? @map("reviewed_at") @db.Timestamp(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  creator User          @relation("OracleMarketProposalCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  events  OracleEvent[]
+
+  @@index([status, createdAt], map: "ix_oracle_market_proposals_status_created")
+  @@index([createdByUserId, createdAt], map: "ix_oracle_market_proposals_creator_created")
+  @@map("oracle_market_proposals")
+}
+
+/// Append-only Oracle market, proposal, position, resolution, and dispute trail.
+model OracleEvent {
+  id          Int      @id @default(autoincrement())
+  marketId    Int?     @map("market_id")
+  proposalId  Int?     @map("proposal_id")
+  actorUserId Int?     @map("actor_user_id")
+  eventType   String   @map("event_type") @db.VarChar(32)
+  detail      String   @db.Text
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  market   OracleMarket?         @relation(fields: [marketId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  proposal OracleMarketProposal? @relation(fields: [proposalId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  actor    User?                 @relation("OracleEventActor", fields: [actorUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([marketId, createdAt], map: "ix_oracle_events_market_created")
+  @@index([proposalId, createdAt], map: "ix_oracle_events_proposal_created")
+  @@index([eventType, createdAt], map: "ix_oracle_events_type_created")
+  @@map("oracle_events")
 }

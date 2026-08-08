@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { BarChart3, Bot, Castle, Crown, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Store, Target, UsersRound, X, Zap } from "lucide-react";
+import { Anvil, BarChart3, Bot, Castle, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, UsersRound, X, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import SpeedProof from "@/components/speed/SpeedProof";
@@ -50,6 +50,9 @@ const HEADER_LINKS: ReadonlyArray<{
 
 const KINGDOM_LINKS = [
   { href: "/kingdom", label: "Kingdom", icon: Castle, body: "The realm, crowns, and league map" },
+  { href: "/round-chamber", label: "Round Chamber", icon: Scale, body: "Proposals, civic ballots, and public mandates" },
+  { href: "/kingdom-forge", label: "Kingdom Forge", icon: Anvil, body: "Forge Power, projects, milestones, and deeds" },
+  { href: "/oracle", label: "The Oracle", icon: Eye, body: "Price the future of the Kingdom" },
   { href: "/leaderboard", label: "Leaderboard", icon: BarChart3, body: "Ratings, records, and ranked warriors" },
   { href: "/champions", label: "Champions", icon: Crown, body: "Belts, reigns, title rules" },
   { href: "/national-champions", label: "Nations", icon: Globe2, body: "Beacon map and national bounties" },
@@ -84,7 +87,10 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/academy", title: "Academy" },
   { prefix: "/market", title: "Marketplace" },
   { prefix: "/champions", title: "Championship Belts" },
+  { prefix: "/kingdom-forge", title: "Kingdom Forge" },
   { prefix: "/kingdom", title: "The Kingdom" },
+  { prefix: "/round-chamber", title: "Round Chamber" },
+  { prefix: "/oracle", title: "The Oracle" },
   { prefix: "/forum", title: "War Room Forum" },
   { prefix: "/live-games", title: "Live Games" },
   { prefix: "/game-stats", title: "Parser Observatory" },
@@ -266,12 +272,7 @@ function getPageHeadingKey(
   const englishHeading =
     getPageHeading(pathname);
 
-  return (
-    PAGE_HEADING_KEYS[
-      englishHeading
-    ] ??
-    "pages.aoe2war"
-  );
+  return PAGE_HEADING_KEYS[englishHeading] ?? null;
 }
 
 function isRouteActive(pathname: string | null, href: string) {
@@ -483,12 +484,6 @@ function KingdomMenuPanel({
           const copyKeys =
             KINGDOM_COPY_KEYS[item.href];
 
-          if (!copyKeys) {
-            throw new Error(
-              `Missing Kingdom translation keys for ${item.href}`
-            );
-          }
-
           return (
             <Link
               key={item.href}
@@ -510,10 +505,10 @@ function KingdomMenuPanel({
               </div>
               <div className="min-w-0">
                 <div className="text-sm font-semibold text-slate-100">
-                  {t(copyKeys.label)}
+                  {copyKeys ? t(copyKeys.label) : item.label}
                 </div>
                 <div className="mt-0.5 text-xs text-slate-500">
-                  {t(copyKeys.body)}
+                  {copyKeys ? t(copyKeys.body) : item.body}
                 </div>
               </div>
             </Link>
@@ -634,6 +629,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/academy") ||
     pathname?.startsWith("/market") ||
     pathname?.startsWith("/kingdom") ||
+    pathname?.startsWith("/round-chamber") ||
+    pathname?.startsWith("/oracle") ||
     pathname?.startsWith("/leaderboard") ||
     pathname?.startsWith("/workshop") ||
     pathname?.startsWith("/battle-archive") ||
@@ -732,12 +729,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         ? "max-w-[82rem]"
         : "max-w-6xl";
 
-  const headerTitle =
-    t(
-      getPageHeadingKey(
-        pathname
-      )
-    );
+  const pageHeadingKey = getPageHeadingKey(pathname);
+  const headerTitle = pageHeadingKey ? t(pageHeadingKey) : getPageHeading(pathname);
   const shellThemeKey =
     isClanSurface ? "crimson" : themeKey;
   const headerSkin =

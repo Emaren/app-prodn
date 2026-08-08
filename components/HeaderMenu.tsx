@@ -12,6 +12,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import {
+  Anvil,
   BarChart3,
   BadgeDollarSign,
   Bot,
@@ -20,11 +21,13 @@ import {
   Coins,
   Crown,
   Download,
+  Eye,
   Globe2,
   HandCoins,
   ListChecks,
   MessageSquareMore,
   Radio,
+  Scale,
   Shield,
   Swords,
   Target,
@@ -90,6 +93,9 @@ export default function HeaderMenu({
       { href: "/staking", label: "Staking", icon: HandCoins, featured: true },
       { href: "/bets", label: "Bets", icon: BadgeDollarSign, featured: true },
       { href: "/kingdom", label: "Kingdom", icon: Castle, featured: true },
+      { href: "/round-chamber", label: "Round Chamber", icon: Scale, featured: true },
+      { href: "/kingdom-forge", label: "Kingdom Forge", icon: Anvil, featured: true },
+      { href: "/oracle", label: "The Oracle", icon: Eye, featured: true },
       { href: "/clans", label: "Clans", icon: Users, featured: true },
       { href: "/watch", label: "Watcher / Streaming", icon: Radio, featured: true },
       { href: "/bounties", label: "Bounty Board", icon: Target, featured: true },
