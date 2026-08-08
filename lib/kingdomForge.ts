@@ -45,6 +45,38 @@ const USER_SELECT = {
   steamPersonaName: true,
 } as const;
 
+const STRICT_STAKE_RECONCILIATION_TTL_MS = 15_000;
+let strictStakeReconciliationCache: {
+  expiresAt: number;
+  promise: ReturnType<typeof loadMainnetStakingPositions>;
+} | null = null;
+
+function loadStrictMainnetStakeReconciliation(prisma: PrismaClient) {
+  const now = Date.now();
+  if (
+    strictStakeReconciliationCache &&
+    strictStakeReconciliationCache.expiresAt > now
+  ) {
+    return strictStakeReconciliationCache.promise;
+  }
+
+  const promise = loadMainnetStakingPositions(prisma, {
+    requireCompleteLedger: true,
+    reconcileCanonicalCurrent: true,
+  });
+  const cacheEntry = {
+    expiresAt: now + STRICT_STAKE_RECONCILIATION_TTL_MS,
+    promise,
+  };
+  strictStakeReconciliationCache = cacheEntry;
+  void promise.catch(() => {
+    if (strictStakeReconciliationCache === cacheEntry) {
+      strictStakeReconciliationCache = null;
+    }
+  });
+  return promise;
+}
+
 function displayName(user: {
   uid: string;
   inGameName: string | null;
@@ -59,16 +91,23 @@ function numberFromBigInt(value: bigint | number | null | undefined) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-async function loadForgeStakePositions(prisma: PrismaClient) {
+async function loadForgeStakePositions(
+  prisma: PrismaClient,
+  options: { strictReconciliation?: boolean } = {},
+) {
   if (isWoloMainnet()) {
     try {
-      const mainnet = await loadMainnetStakingPositions(prisma, {
-        requireCompleteLedger: true,
-      });
+      const mainnet = options.strictReconciliation
+        ? await loadStrictMainnetStakeReconciliation(prisma)
+        : await loadMainnetStakingPositions(prisma, { canonicalOnly: true });
       return {
-        source: "mainnet_reconciled" as const,
+        source: options.strictReconciliation
+          ? ("mainnet_reconciled" as const)
+          : ("mainnet_canonical_snapshot" as const),
         health: "ok" as const,
-        detail: "Complete indexed transfer and canonical position reconciliation.",
+        detail: options.strictReconciliation
+          ? "Complete indexed transfer and canonical position reconciliation."
+          : "Current confirmed staking snapshot; Forge mutations perform complete reconciliation.",
         positions: mainnet.map((position) => ({
           userId: position.userId,
           player: position.player,
@@ -117,12 +156,15 @@ async function loadForgeStakePositions(prisma: PrismaClient) {
 export async function loadKingdomForgeSnapshot(
   prisma: PrismaClient,
   viewerUid?: string | null,
+  options: { strictStakeLedger?: boolean } = {},
 ) {
   const [viewer, stakeLedger, projects, events] = await Promise.all([
     viewerUid
       ? prisma.user.findUnique({ where: { uid: viewerUid }, select: USER_SELECT })
       : null,
-    loadForgeStakePositions(prisma),
+    loadForgeStakePositions(prisma, {
+      strictReconciliation: options.strictStakeLedger === true,
+    }),
     prisma.forgeProject.findMany({
       orderBy: [{ featuredOrder: "desc" }, { createdAt: "asc" }],
       include: {

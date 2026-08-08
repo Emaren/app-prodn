@@ -61,11 +61,16 @@ and chronicle state plus a private viewer projection when signed in.
   enforced class-supply ceiling.
 
 Commitment writes use an actor-scoped Postgres advisory lock so concurrent
-requests cannot over-allocate one identity's Forge capacity. The mutation path
-reconciles the complete mainnet transfer/event ledger again inside that lock and
-fails closed if canonical and derived principal disagree. The snapshot exposes
-the ledger source and health instead of silently substituting another stake
-source. A new or recast commitment is stored with
+requests cannot over-allocate one identity's Forge capacity. Public reads and
+the cheap eligibility precheck use the current confirmed canonical snapshot;
+accounts without excess principal cannot trigger a corpus scan. Eligible commit
+requests then reconcile the complete mainnet transfer/event ledger, resolve only
+the addresses present in that corpus without global identity limits, and fail
+closed on an unexplained outbound or current canonical mismatch. Concurrent
+strict scans coalesce behind a short-lived in-process reconciliation promise.
+The transaction lock then rechecks current canonical principal and all active
+commitments before writing. The snapshot exposes ledger source and health
+instead of silently substituting another source. A new or recast commitment is stored with
 `settlement_mode = app_signal`. It does not transfer, lock, unbond, or custody
 WOLO. A funded or otherwise settlement-controlled commitment cannot be recast or
 withdrawn through the app-signal path; its chain proof remains immutable and a
@@ -105,6 +110,12 @@ citizen proposal; approval opens a market with balanced seed liquidity.
 
 The allowed branches also support pause/resume and terminal voiding where the
 implementation permits them. A market cannot reopen after its published close.
+Publishing `settled` requires a durable `YES` or `NO` result, at least 20
+characters of evidence, resolver UID, and resolution timestamp. Publishing
+`voided` requires `VOID` with the same evidence and resolver facts. The database
+refuses terminal status without those facts and refuses terminal facts on a
+nonterminal market. The optional observed resolution value and the full evidence
+are rendered beside the market and preserved in its Chronicle.
 Oracle Marks are non-transferable forecast units, not WOLO, and have no chain
 custody or payout. The proposal's 100 WOLO bond and future pool ceiling are
 explicit design metadata; `bond_status = not_funded` is the truthful initial
@@ -126,6 +137,14 @@ Forge Power               = max(identity stake - 1,000,000 WOLO, 0)
 
 Only the staking reward job passes this cap into the shared staking derivation.
 Other staking views may continue to derive the full chain principal.
+
+Daily finalization cursor-pages the complete historical transfer/event corpus
+through the period boundary and applies the cap over that exact interval. It
+does not compare a historical midnight snapshot to today's canonical position.
+Required wallet identities are resolved against every address in the selected
+corpus without the general activity-book row limits. Unknown inbound transfers
+remain unattributed rather than earning a linked-identity reward; an unresolved
+outbound from the controlled staking wallet stops allocation.
 
 ## Feature Deeds
 

@@ -97,7 +97,19 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const snapshot = await loadKingdomForgeSnapshot(prisma, viewer.uid);
+      const currentSnapshot = await loadKingdomForgeSnapshot(prisma, viewer.uid);
+      if ((currentSnapshot.viewer?.forgeCapacityWolo ?? 0) <= 0) {
+        return NextResponse.json(
+          {
+            detail:
+              "Forge capacity begins above the 1,000,000 WOLO Kingdom Stake lane.",
+          },
+          { status: 409, headers: NO_STORE_HEADERS },
+        );
+      }
+      const snapshot = await loadKingdomForgeSnapshot(prisma, viewer.uid, {
+        strictStakeLedger: true,
+      });
       if (snapshot.stakeLedger.health !== "ok") {
         return NextResponse.json(
           { detail: snapshot.stakeLedger.detail },

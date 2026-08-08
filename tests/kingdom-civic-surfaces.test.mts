@@ -18,6 +18,7 @@ import {
 } from "../lib/roundChamber.ts";
 import {
   ORACLE_MARK_ALLOWANCE,
+  normalizeOracleTerminalResult,
   oracleNextAllocatedMarks,
   oraclePoolProbabilityBps,
 } from "../lib/oracle.ts";
@@ -122,6 +123,56 @@ test("Oracle probability and the global Mark allowance remain deterministic", ()
   );
 });
 
+test("Oracle terminal result truth is exact and rejects ambiguous lifecycle data", () => {
+  assert.deepEqual(
+    normalizeOracleTerminalResult("settled", {
+      resultOutcome: "yes",
+      resultEvidence: "Signed Kingdom Metrics snapshot recorded 3,007 citizens.",
+      observedResolutionValue: "3007",
+    }),
+    {
+      resultOutcome: "YES",
+      resultEvidence: "Signed Kingdom Metrics snapshot recorded 3,007 citizens.",
+      observedResolutionValue: BigInt(3007),
+    },
+  );
+  assert.deepEqual(
+    normalizeOracleTerminalResult("voided", {
+      resultOutcome: "VOID",
+      resultEvidence: "The frozen source ledger did not publish a complete snapshot.",
+    }),
+    {
+      resultOutcome: "VOID",
+      resultEvidence: "The frozen source ledger did not publish a complete snapshot.",
+      observedResolutionValue: null,
+    },
+  );
+  assert.throws(
+    () =>
+      normalizeOracleTerminalResult("settled", {
+        resultOutcome: "VOID",
+        resultEvidence: "This is long enough but uses the wrong terminal outcome.",
+      }),
+    /requires a published YES or NO outcome/,
+  );
+  assert.throws(
+    () =>
+      normalizeOracleTerminalResult("voided", {
+        resultOutcome: "YES",
+        resultEvidence: "This is long enough but uses the wrong terminal outcome.",
+      }),
+    /requires the published VOID outcome/,
+  );
+  assert.throws(
+    () =>
+      normalizeOracleTerminalResult("resolving", {
+        resultOutcome: "YES",
+        resultEvidence: "Terminal evidence cannot ride on a nonterminal status.",
+      }),
+    /only be published with settled or voided status/,
+  );
+});
+
 test("the civic migration creates independent ledgers and immutable chronicles", () => {
   const migration = readFileSync(
     new URL(
@@ -161,6 +212,23 @@ test("the civic migration creates independent ledgers and immutable chronicles",
   assert.match(migration, /BEFORE TRUNCATE ON "oracle_events"/);
   assert.match(migration, /enforce_forge_deed_class_supply/);
   assert.match(migration, /"status" <> 'funded' OR "settlement_mode" = 'chain_verified'/);
+  assert.match(migration, /"result_outcome" VARCHAR\(8\)/);
+  assert.match(migration, /"result_evidence" TEXT/);
+  assert.match(migration, /"observed_resolution_value" BIGINT/);
+  assert.match(migration, /"resolved_by_uid" VARCHAR\(100\)/);
+  assert.match(migration, /"resolved_at" TIMESTAMP\(6\)/);
+  assert.match(
+    migration,
+    /"status" = 'settled'[\s\S]*"result_outcome" IN \('YES', 'NO'\)[\s\S]*length\(btrim\("result_evidence"\)\) >= 20/,
+  );
+  assert.match(
+    migration,
+    /"status" = 'voided'[\s\S]*"result_outcome" = 'VOID'[\s\S]*length\(btrim\("result_evidence"\)\) >= 20/,
+  );
+  assert.match(
+    migration,
+    /"status" NOT IN \('settled', 'voided'\)[\s\S]*"result_outcome" IS NULL[\s\S]*"resolved_at" IS NULL/,
+  );
   assert.doesNotMatch(migration, /ALTER TABLE "bet_markets"/);
   assert.doesNotMatch(migration, /provider_key|api_key|password|database_url/i);
 });
@@ -180,6 +248,15 @@ test("all three prestige surfaces and mutation APIs are discoverable", () => {
     new URL("../app/api/kingdom-forge/route.ts", import.meta.url),
     "utf8",
   );
+  const forgeDomain = readFileSync(
+    new URL("../lib/kingdomForge.ts", import.meta.url),
+    "utf8",
+  );
+  const addressBook = readFileSync(
+    new URL("../lib/woloMainnetTransfers.ts", import.meta.url),
+    "utf8",
+  );
+  const oracleDomain = readFileSync(new URL("../lib/oracle.ts", import.meta.url), "utf8");
 
   for (const route of ["/round-chamber", "/kingdom-forge", "/oracle"]) {
     assert.match(shell, new RegExp(route.replace("/", "\\/")));
@@ -191,8 +268,20 @@ test("all three prestige surfaces and mutation APIs are discoverable", () => {
   assert.match(staking, /maximumIdentityWeight/);
   assert.match(mainnetPositions, /collectCursorPages/);
   assert.match(mainnetPositions, /requireCompleteLedger/);
+  assert.match(mainnetPositions, /canonicalOnly/);
+  assert.match(mainnetPositions, /outbound identity resolution failed/);
+  assert.match(addressBook, /requiredUserAddresses/);
+  assert.match(addressBook, /WOLO wallet identity conflict/);
+  assert.match(forgeDomain, /canonicalOnly: true/);
+  assert.match(forgeDomain, /STRICT_STAKE_RECONCILIATION_TTL_MS/);
+  assert.match(forgeDomain, /reconcileCanonicalCurrent: true/);
   assert.match(forgeRoute, /FORGE_FUNDED_COMMITMENT_IMMUTABLE/);
   assert.match(forgeRoute, /settlementMode !== "app_signal"/);
+  assert.match(forgeRoute, /strictStakeLedger: true/);
+  assert.match(oracleDomain, /A settled market requires a published YES or NO outcome/);
+  assert.match(oracleDomain, /A voided market requires the published VOID outcome/);
+  assert.match(oracleDomain, /resultEvidence: normalizeRule/);
+  assert.match(oracleDomain, /resolvedByUid: actor\.uid/);
 
   for (const file of [
     "../app/api/round-chamber/route.ts",

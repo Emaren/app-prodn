@@ -125,6 +125,7 @@ model User {
   oracleMarketProposals OracleMarketProposal[] @relation("OracleMarketProposalCreator")
   oraclePaperPositions  OraclePaperPosition[]
   oracleEventsActed     OracleEvent[]          @relation("OracleEventActor")
+  oracleMarketsResolved OracleMarket[]         @relation("OracleMarketResolver")
 
   identityDecisionsActed        IdentityDecision[]              @relation("IdentityDecisionActor")
   identityDecisionSubjects      IdentityDecisionSubject[]       @relation("IdentityDecisionSubjectSiteAccount")
@@ -3651,31 +3652,37 @@ model ForgeEvent {
 /// Oracle markets are independent from replay-backed BetMarket rows. Stage I
 /// uses non-transferable marks while the same market/rule lifecycle is proven.
 model OracleMarket {
-  id              Int      @id @default(autoincrement())
-  publicId        String   @unique @default(uuid()) @map("public_id") @db.Uuid
-  slug            String   @unique @db.VarChar(100)
-  question        String   @db.VarChar(240)
-  summary         String   @db.VarChar(500)
-  category        String   @db.VarChar(40)
-  outcomeType     String   @default("binary") @map("outcome_type") @db.VarChar(24)
-  status          String   @default("trading") @db.VarChar(24)
-  closesAt        DateTime @map("closes_at") @db.Timestamp(6)
-  resolvesAt      DateTime @map("resolves_at") @db.Timestamp(6)
-  sourceMetricKey String   @map("source_metric_key") @db.VarChar(80)
-  sourceLabel     String   @map("source_label") @db.VarChar(160)
-  currentValue    BigInt?  @map("current_value")
-  targetValue     BigInt?  @map("target_value")
-  resolutionRule  String   @map("resolution_rule") @db.Text
-  voidRule        String   @map("void_rule") @db.Text
-  maxPoolWolo     BigInt?  @map("max_pool_wolo")
-  seedYesMarks    Int      @default(0) @map("seed_yes_marks")
-  seedNoMarks     Int      @default(0) @map("seed_no_marks")
-  createdByLabel  String   @default("The Oracle") @map("created_by_label") @db.VarChar(120)
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  id                      Int       @id @default(autoincrement())
+  publicId                String    @unique @default(uuid()) @map("public_id") @db.Uuid
+  slug                    String    @unique @db.VarChar(100)
+  question                String    @db.VarChar(240)
+  summary                 String    @db.VarChar(500)
+  category                String    @db.VarChar(40)
+  outcomeType             String    @default("binary") @map("outcome_type") @db.VarChar(24)
+  status                  String    @default("trading") @db.VarChar(24)
+  closesAt                DateTime  @map("closes_at") @db.Timestamp(6)
+  resolvesAt              DateTime  @map("resolves_at") @db.Timestamp(6)
+  sourceMetricKey         String    @map("source_metric_key") @db.VarChar(80)
+  sourceLabel             String    @map("source_label") @db.VarChar(160)
+  currentValue            BigInt?   @map("current_value")
+  targetValue             BigInt?   @map("target_value")
+  resolutionRule          String    @map("resolution_rule") @db.Text
+  voidRule                String    @map("void_rule") @db.Text
+  maxPoolWolo             BigInt?   @map("max_pool_wolo")
+  seedYesMarks            Int       @default(0) @map("seed_yes_marks")
+  seedNoMarks             Int       @default(0) @map("seed_no_marks")
+  resultOutcome           String?   @map("result_outcome") @db.VarChar(8)
+  resultEvidence          String?   @map("result_evidence") @db.Text
+  observedResolutionValue BigInt?   @map("observed_resolution_value")
+  resolvedByUid           String?   @map("resolved_by_uid") @db.VarChar(100)
+  resolvedAt              DateTime? @map("resolved_at") @db.Timestamp(6)
+  createdByLabel          String    @default("The Oracle") @map("created_by_label") @db.VarChar(120)
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   positions OraclePaperPosition[]
   events    OracleEvent[]
+  resolver  User?                 @relation("OracleMarketResolver", fields: [resolvedByUid], references: [uid], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([status, closesAt], map: "ix_oracle_markets_status_closes")
   @@index([category, status], map: "ix_oracle_markets_category_status")

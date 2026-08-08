@@ -20,6 +20,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import type {
   OracleMarketView,
+  OracleResolutionInput,
+  OracleResultOutcome,
   OracleSide,
   OracleSnapshot,
   OracleViewer,
@@ -36,7 +38,11 @@ type OracleMarketDetailProps = {
     side: OracleSide;
     amountMarks: number;
   }) => Promise<boolean>;
-  onSetStatus?: (slug: string, status: string) => Promise<boolean>;
+  onSetStatus?: (
+    slug: string,
+    status: string,
+    resolution?: OracleResolutionInput,
+  ) => Promise<boolean>;
   onSignIn?: () => void;
 };
 
@@ -85,6 +91,9 @@ export default function OracleMarketDetail({
   const [side, setSide] = useState<OracleSide>(market.viewerPosition?.side ?? "yes");
   const [amount, setAmount] = useState(market.viewerPosition?.amountMarks ?? 100);
   const [adminStatus, setAdminStatus] = useState("");
+  const [resultOutcome, setResultOutcome] = useState<OracleResultOutcome>("YES");
+  const [resultEvidence, setResultEvidence] = useState("");
+  const [observedResolutionValue, setObservedResolutionValue] = useState("");
 
   useEffect(() => {
     setSide(market.viewerPosition?.side ?? "yes");
@@ -112,6 +121,16 @@ export default function OracleMarketDetail({
   }, [market.noMarks, market.viewerPosition, market.yesMarks, normalizedAmount, side]);
 
   const canForecast = market.status === "trading" && new Date(market.closesAt).getTime() > Date.now();
+  const terminalTransition = adminStatus === "settled" || adminStatus === "voided";
+  const observedValueReady =
+    observedResolutionValue.trim() === "" || /^-?\d+$/.test(observedResolutionValue.trim());
+  const terminalFormReady =
+    !terminalTransition ||
+    (resultEvidence.trim().length >= 20 &&
+      observedValueReady &&
+      (adminStatus === "voided"
+        ? resultOutcome === "VOID"
+        : resultOutcome === "YES" || resultOutcome === "NO"));
   const availableCopy = viewer
     ? `${number(markBalance.available)} unallocated Marks`
     : "Sign in to receive 1,000 Marks";
@@ -161,9 +180,9 @@ export default function OracleMarketDetail({
           <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MetricTile
               icon={CircleGauge}
-              label="Crowd probability"
-              value={`${probability(market.yesProbabilityBps)} YES`}
-              detail={`${probability(10_000 - market.yesProbabilityBps)} NO`}
+              label={market.resultOutcome ? "Published result" : "Crowd probability"}
+              value={market.resultOutcome ?? `${probability(market.yesProbabilityBps)} YES`}
+              detail={market.resultOutcome ? "Durable terminal record" : `${probability(10_000 - market.yesProbabilityBps)} NO`}
             />
             <MetricTile
               icon={Sparkles}
@@ -186,6 +205,26 @@ export default function OracleMarketDetail({
           </div>
         </div>
       </section>
+
+      {market.resultOutcome && market.resultEvidence ? (
+        <section className={`rounded-[2rem] border p-5 sm:p-6 ${market.resultOutcome === "YES" ? "border-emerald-200/24 bg-emerald-300/[0.07]" : market.resultOutcome === "NO" ? "border-rose-200/24 bg-rose-300/[0.07]" : "border-amber-200/24 bg-amber-300/[0.07]"}`} aria-labelledby={`oracle-result-${market.slug}`}>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-white/55">Published Oracle result</p>
+              <h2 id={`oracle-result-${market.slug}`} className="mt-2 font-serif text-3xl font-semibold text-white">
+                {market.resultOutcome === "VOID" ? "Market voided" : `${market.resultOutcome} resolved`}
+              </h2>
+              <p className="mt-3 max-w-4xl whitespace-pre-wrap text-sm leading-6 text-slate-200">{market.resultEvidence}</p>
+            </div>
+            <span className="shrink-0 rounded-2xl border border-white/15 bg-black/20 px-5 py-3 text-2xl font-black text-white">{market.resultOutcome}</span>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <SmallFact label="Resolver UID" value={market.resolvedByUid ?? "Unavailable"} />
+            <SmallFact label="Resolved at" value={market.resolvedAt ? dateLabel(market.resolvedAt) : "Unavailable"} />
+            <SmallFact label="Observed value" value={market.observedResolutionValue === null ? "Not recorded" : number(market.observedResolutionValue)} />
+          </div>
+        </section>
+      ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)] xl:items-start">
         <section className="rounded-[2rem] border border-white/10 bg-[#080b16]/95 p-5 shadow-[0_24px_75px_rgba(0,0,0,0.28)] sm:p-6 xl:sticky xl:top-24">
@@ -403,26 +442,102 @@ export default function OracleMarketDetail({
               <h2 className="mt-2 text-xl font-semibold text-white">Advance the published lifecycle.</h2>
               <p className="mt-2 text-sm leading-5 text-slate-400">Terminal outcomes cannot be reopened. Every change appends a Chronicle event.</p>
               {market.availableAdminStatuses.length ? (
-                <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                  <label className="sr-only" htmlFor={`oracle-status-${market.slug}`}>Next market status</label>
-                  <select
-                    id={`oracle-status-${market.slug}`}
-                    value={adminStatus}
-                    onChange={(event) => setAdminStatus(event.target.value)}
-                    className="min-h-11 flex-1 rounded-xl border border-white/10 bg-[#070a14] px-3 text-sm text-white outline-none focus:border-amber-200/35"
-                  >
-                    <option value="">Choose next status</option>
-                    {market.availableAdminStatuses.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
-                  </select>
+                <div className="mt-4 space-y-4">
+                  <label className="block" htmlFor={`oracle-status-${market.slug}`}>
+                    <span className="mb-1.5 block text-[10px] font-black uppercase tracking-[0.2em] text-amber-200/65">Next market status</span>
+                    <select
+                      id={`oracle-status-${market.slug}`}
+                      value={adminStatus}
+                      onChange={(event) => {
+                        const status = event.target.value;
+                        setAdminStatus(status);
+                        if (status === "voided") setResultOutcome("VOID");
+                        if (status === "settled" && resultOutcome === "VOID") setResultOutcome("YES");
+                      }}
+                      className="min-h-11 w-full rounded-xl border border-white/10 bg-[#070a14] px-3 text-sm text-white outline-none focus:border-amber-200/35"
+                    >
+                      <option value="">Choose next status</option>
+                      {market.availableAdminStatuses.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
+                    </select>
+                  </label>
+
+                  {terminalTransition ? (
+                    <fieldset className="space-y-4 rounded-[1.35rem] border border-amber-200/16 bg-black/20 p-4">
+                      <legend className="px-2 text-[10px] font-black uppercase tracking-[0.22em] text-amber-100">Durable terminal result</legend>
+                      {adminStatus === "settled" ? (
+                        <div>
+                          <div className="text-xs font-semibold text-slate-300">Outcome</div>
+                          <div className="mt-2 grid grid-cols-2 gap-2" role="group" aria-label="Settled outcome">
+                            {(["YES", "NO"] as const).map((outcome) => (
+                              <button
+                                key={outcome}
+                                type="button"
+                                aria-pressed={resultOutcome === outcome}
+                                onClick={() => setResultOutcome(outcome)}
+                                className={`min-h-11 rounded-xl border text-sm font-black transition focus:outline-none focus:ring-2 focus:ring-amber-100/50 ${resultOutcome === outcome ? outcome === "YES" ? "border-emerald-200/35 bg-emerald-300/18 text-emerald-100" : "border-rose-200/35 bg-rose-300/18 text-rose-100" : "border-white/10 bg-white/[0.035] text-slate-400"}`}
+                              >
+                                {outcome}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-amber-200/18 bg-amber-300/10 px-4 py-3 text-sm font-black text-amber-100">Outcome: VOID</div>
+                      )}
+
+                      <label className="block" htmlFor={`oracle-result-evidence-${market.slug}`}>
+                        <span className="text-xs font-semibold text-slate-300">Published evidence</span>
+                        <textarea
+                          id={`oracle-result-evidence-${market.slug}`}
+                          required
+                          minLength={20}
+                          maxLength={4000}
+                          value={resultEvidence}
+                          onChange={(event) => setResultEvidence(event.target.value)}
+                          placeholder="Name the source snapshot, observed metric, calculation, and why the exact rule produces this result."
+                          className="mt-2 min-h-28 w-full resize-y rounded-xl border border-white/10 bg-[#070a14] px-3 py-3 text-sm leading-5 text-white outline-none placeholder:text-slate-600 focus:border-amber-200/35"
+                        />
+                        <span className={`mt-1 block text-[11px] ${resultEvidence.trim().length >= 20 ? "text-emerald-300" : "text-slate-500"}`}>{resultEvidence.trim().length} / 20 minimum characters</span>
+                      </label>
+
+                      <label className="block" htmlFor={`oracle-observed-value-${market.slug}`}>
+                        <span className="text-xs font-semibold text-slate-300">Observed resolution value <span className="font-normal text-slate-500">(optional whole number)</span></span>
+                        <input
+                          id={`oracle-observed-value-${market.slug}`}
+                          type="text"
+                          inputMode="numeric"
+                          pattern="-?[0-9]+"
+                          value={observedResolutionValue}
+                          onChange={(event) => setObservedResolutionValue(event.target.value)}
+                          placeholder="e.g. 3007"
+                          className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#070a14] px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-amber-200/35"
+                        />
+                        {!observedValueReady ? <span className="mt-1 block text-[11px] text-rose-300">Use a whole number with no commas or decimals.</span> : null}
+                      </label>
+                    </fieldset>
+                  ) : null}
+
                   <button
                     type="button"
-                    disabled={!adminStatus || busy}
+                    disabled={!adminStatus || busy || !terminalFormReady}
                     onClick={async () => {
-                      if (await onSetStatus(market.slug, adminStatus)) setAdminStatus("");
+                      const resolution = terminalTransition
+                        ? {
+                            resultOutcome,
+                            resultEvidence: resultEvidence.trim(),
+                            observedResolutionValue: observedResolutionValue.trim() || null,
+                          }
+                        : undefined;
+                      if (await onSetStatus(market.slug, adminStatus, resolution)) {
+                        setAdminStatus("");
+                        setResultOutcome("YES");
+                        setResultEvidence("");
+                        setObservedResolutionValue("");
+                      }
                     }}
-                    className="min-h-11 rounded-xl bg-amber-300 px-5 text-sm font-black text-slate-950 transition hover:bg-amber-200 disabled:opacity-45"
+                    className="min-h-11 w-full rounded-xl bg-amber-300 px-5 text-sm font-black text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-45"
                   >
-                    Publish transition
+                    {terminalTransition ? "Publish terminal result" : "Publish transition"}
                   </button>
                 </div>
               ) : (

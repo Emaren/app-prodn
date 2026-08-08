@@ -67,6 +67,15 @@ export type WoloAddressBookEntry = {
   uid?: string | null;
 };
 
+export type BuildWoloAddressBookOptions = {
+  /**
+   * Resolve every supplied address against all app identity sources without a
+   * global `take` limit. Staking/reward reconciliation uses this to avoid
+   * silently losing older wallet links when the general activity book is large.
+   */
+  requiredUserAddresses?: readonly string[];
+};
+
 export type IndexedWoloTransfer = {
   txHash: string;
   transferIndex: number;
@@ -248,7 +257,11 @@ function putAddress(
 ) {
   const address = normalizeAddress(rawAddress);
   if (!address) return;
-  if (!options.prefer && book.has(address)) return;
+  const existing = book.get(address);
+  if (!options.prefer && existing) return;
+  if (options.prefer && existing && existing.kind !== "user" && entry.kind === "user") {
+    return;
+  }
   book.set(address, { address, ...entry });
 }
 
@@ -430,7 +443,10 @@ async function mapWithConcurrency<T, R>(
   return results;
 }
 
-export async function buildWoloAddressBook(prisma: PrismaClient) {
+export async function buildWoloAddressBook(
+  prisma: PrismaClient,
+  options: BuildWoloAddressBookOptions = {},
+) {
   const book = new Map<string, WoloAddressBookEntry>();
 
   for (const wallet of WOLO_MAINNET_WALLET_ALIASES) {
@@ -632,6 +648,142 @@ export async function buildWoloAddressBook(prisma: PrismaClient) {
       label: "Tracked recipient wallet",
       kind: "tracked",
     });
+  }
+
+  const requiredUserAddresses = Array.from(
+    new Set(
+      (options.requiredUserAddresses ?? [])
+        .map((address) => normalizeAddress(address))
+        .filter((address): address is string => Boolean(address)),
+    ),
+  );
+  const requiredAddressChunks: string[][] = [];
+  for (let index = 0; index < requiredUserAddresses.length; index += 500) {
+    requiredAddressChunks.push(requiredUserAddresses.slice(index, index + 500));
+  }
+
+  function putRequiredUser(
+    rawAddress: string | null | undefined,
+    user: {
+      id: number;
+      uid: string;
+      inGameName: string | null;
+      steamPersonaName: string | null;
+    },
+  ) {
+    const address = normalizeAddress(rawAddress);
+    if (!address) return;
+    const existing = book.get(address);
+    if (existing?.kind !== "user") {
+      // Never let an app identity silently replace a configured custody,
+      // treasury, escrow, or other tracked service address.
+      if (existing) return;
+    } else if (existing.userId && existing.userId !== user.id) {
+      throw new Error(
+        `WOLO wallet identity conflict for ${address}: users ${existing.userId} and ${user.id}.`,
+      );
+    }
+    putAddress(
+      book,
+      address,
+      {
+        label: displayUserName(user),
+        kind: "user",
+        userId: user.id,
+        uid: user.uid,
+      },
+      { prefer: true },
+    );
+  }
+
+  for (const addresses of requiredAddressChunks) {
+    const [requiredUsers, requiredPositions, requiredEvents, requiredIntents, requiredWagers] =
+      await Promise.all([
+        prisma.user.findMany({
+          where: { walletAddress: { in: addresses } },
+          select: {
+            id: true,
+            uid: true,
+            inGameName: true,
+            steamPersonaName: true,
+            walletAddress: true,
+          },
+        }),
+        prisma.stakingPosition.findMany({
+          where: { walletAddress: { in: addresses } },
+          distinct: ["walletAddress", "userId"],
+          select: {
+            walletAddress: true,
+            userId: true,
+            user: {
+              select: {
+                id: true,
+                uid: true,
+                inGameName: true,
+                steamPersonaName: true,
+              },
+            },
+          },
+        }),
+        prisma.stakingEvent.findMany({
+          where: { walletAddress: { in: addresses } },
+          distinct: ["walletAddress", "userId"],
+          select: {
+            walletAddress: true,
+            userId: true,
+            user: {
+              select: {
+                id: true,
+                uid: true,
+                inGameName: true,
+                steamPersonaName: true,
+              },
+            },
+          },
+        }),
+        prisma.betStakeIntent.findMany({
+          where: { walletAddress: { in: addresses } },
+          distinct: ["walletAddress", "userId"],
+          select: {
+            walletAddress: true,
+            userId: true,
+            user: {
+              select: {
+                id: true,
+                uid: true,
+                inGameName: true,
+                steamPersonaName: true,
+              },
+            },
+          },
+        }),
+        prisma.betWager.findMany({
+          where: { stakeWalletAddress: { in: addresses } },
+          distinct: ["stakeWalletAddress", "userId"],
+          select: {
+            stakeWalletAddress: true,
+            userId: true,
+            user: {
+              select: {
+                id: true,
+                uid: true,
+                inGameName: true,
+                steamPersonaName: true,
+              },
+            },
+          },
+        }),
+      ]);
+
+    for (const user of requiredUsers) putRequiredUser(user.walletAddress, user);
+    for (const position of requiredPositions) {
+      putRequiredUser(position.walletAddress, position.user);
+    }
+    for (const event of requiredEvents) putRequiredUser(event.walletAddress, event.user);
+    for (const intent of requiredIntents) putRequiredUser(intent.walletAddress, intent.user);
+    for (const wager of requiredWagers) {
+      putRequiredUser(wager.stakeWalletAddress, wager.user);
+    }
   }
 
   return book;

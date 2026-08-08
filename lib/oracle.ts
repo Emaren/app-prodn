@@ -49,8 +49,16 @@ const ORACLE_STATUS_TRANSITIONS: Readonly<Record<string, readonly string[]>> = {
 
 const PUBLIC_PROPOSAL_STATUSES = ["proposed", "rule_review", "approved"];
 const ORACLE_LOCK_NAMESPACE = 1_608_080;
+const ORACLE_MARKET_LOCK_NAMESPACE = 1_608_081;
 
 export type OracleSide = "yes" | "no";
+export type OracleResultOutcome = "YES" | "NO" | "VOID";
+
+export type OracleResolutionInput = {
+  resultOutcome: OracleResultOutcome;
+  resultEvidence: string;
+  observedResolutionValue?: string | null;
+};
 
 export type OracleViewer = {
   uid: string;
@@ -80,6 +88,11 @@ export type OracleMarketView = {
   category: string;
   outcomeType: string;
   status: string;
+  resultOutcome: OracleResultOutcome | null;
+  resultEvidence: string | null;
+  observedResolutionValue: string | null;
+  resolvedByUid: string | null;
+  resolvedAt: string | null;
   closesAt: string;
   resolvesAt: string;
   sourceMetricKey: string;
@@ -236,6 +249,59 @@ function parsePoolCeiling(value: unknown) {
     throw new OracleInputError("The future WOLO market ceiling must be between 1,000 and 100,000,000.");
   }
   return amount;
+}
+
+function parseObservedResolutionValue(value: unknown) {
+  if (value === undefined || value === null || value === "") return null;
+  const raw = typeof value === "number" ? String(value) : typeof value === "string" ? value : "";
+  if (!/^-?\d+$/.test(raw.trim())) {
+    throw new OracleInputError("Observed resolution value must be a whole number when provided.");
+  }
+  const parsed = BigInt(raw.trim());
+  const minimum = BigInt("-9223372036854775808");
+  const maximum = BigInt("9223372036854775807");
+  if (parsed < minimum || parsed > maximum) {
+    throw new OracleInputError("Observed resolution value exceeds the supported ledger range.");
+  }
+  return parsed;
+}
+
+export function normalizeOracleTerminalResult(
+  status: string,
+  payload: {
+    resultOutcome?: unknown;
+    resultEvidence?: unknown;
+    observedResolutionValue?: unknown;
+  },
+) {
+  const isTerminal = status === "settled" || status === "voided";
+  if (!isTerminal) {
+    if (
+      payload.resultOutcome !== undefined ||
+      payload.resultEvidence !== undefined ||
+      payload.observedResolutionValue !== undefined
+    ) {
+      throw new OracleInputError(
+        "Terminal result data may only be published with settled or voided status.",
+      );
+    }
+    return null;
+  }
+
+  const requestedOutcome =
+    typeof payload.resultOutcome === "string" ? payload.resultOutcome.trim().toUpperCase() : "";
+  if (status === "settled" && requestedOutcome !== "YES" && requestedOutcome !== "NO") {
+    throw new OracleInputError("A settled market requires a published YES or NO outcome.");
+  }
+  if (status === "voided" && requestedOutcome !== "VOID") {
+    throw new OracleInputError("A voided market requires the published VOID outcome.");
+  }
+
+  return {
+    resultOutcome: requestedOutcome as OracleResultOutcome,
+    resultEvidence: normalizeRule(payload.resultEvidence, "Resolution evidence"),
+    observedResolutionValue: parseObservedResolutionValue(payload.observedResolutionValue),
+  };
 }
 
 function slugifyQuestion(question: string, publicId: string) {
@@ -532,6 +598,14 @@ export async function loadOracleSnapshot(
       category: market.category,
       outcomeType: market.outcomeType,
       status: market.status,
+      resultOutcome:
+        market.resultOutcome === "YES" || market.resultOutcome === "NO" || market.resultOutcome === "VOID"
+          ? market.resultOutcome
+          : null,
+      resultEvidence: market.resultEvidence,
+      observedResolutionValue: bigintString(market.observedResolutionValue),
+      resolvedByUid: market.resolvedByUid,
+      resolvedAt: market.resolvedAt?.toISOString() ?? null,
       closesAt: market.closesAt.toISOString(),
       resolvesAt: market.resolvesAt.toISOString(),
       sourceMetricKey: market.sourceMetricKey,
@@ -878,7 +952,13 @@ export async function reviewOracleProposal(
 export async function setOracleMarketStatus(
   prisma: PrismaClient,
   actor: OracleActor,
-  payload: { slug?: unknown; status?: unknown },
+  payload: {
+    slug?: unknown;
+    status?: unknown;
+    resultOutcome?: unknown;
+    resultEvidence?: unknown;
+    observedResolutionValue?: unknown;
+  },
 ) {
   if (!actor.isAdmin) throw new OracleInputError("Admin access is required.", 403);
   const slug = normalizeText(payload.slug, "Market", 1, 100).toLowerCase();
@@ -886,10 +966,21 @@ export async function setOracleMarketStatus(
   if (!(ORACLE_MARKET_STATUSES as readonly string[]).includes(nextStatus)) {
     throw new OracleInputError("Choose a valid Oracle market status.");
   }
+  const terminalResult = normalizeOracleTerminalResult(nextStatus, payload);
+  const isTerminal = Boolean(terminalResult);
+  const resultOutcome = terminalResult?.resultOutcome ?? null;
+  const resultEvidence = terminalResult?.resultEvidence ?? null;
+  const observedResolutionValue = terminalResult?.observedResolutionValue ?? null;
 
   await prisma.$transaction(async (tx) => {
-    const market = await tx.oracleMarket.findUnique({
+    const marketIdentity = await tx.oracleMarket.findUnique({
       where: { slug },
+      select: { id: true },
+    });
+    if (!marketIdentity) throw new OracleInputError("Oracle market not found.", 404);
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${ORACLE_MARKET_LOCK_NAMESPACE}, ${marketIdentity.id})`;
+    const market = await tx.oracleMarket.findUnique({
+      where: { id: marketIdentity.id },
       select: { id: true, status: true, closesAt: true },
     });
     if (!market) throw new OracleInputError("Oracle market not found.", 404);
@@ -904,14 +995,46 @@ export async function setOracleMarketStatus(
       throw new OracleInputError("A market cannot reopen after its published close time.", 409);
     }
 
-    await tx.oracleMarket.update({ where: { id: market.id }, data: { status: nextStatus } });
+    const resolvedAt = isTerminal ? new Date() : null;
+    await tx.oracleMarket.update({
+      where: { id: market.id },
+      data: isTerminal
+        ? {
+            status: nextStatus,
+            resultOutcome,
+            resultEvidence,
+            observedResolutionValue,
+            resolvedByUid: actor.uid,
+            resolvedAt,
+          }
+        : { status: nextStatus },
+    });
     await tx.oracleEvent.create({
       data: {
         marketId: market.id,
         actorUserId: actor.id,
-        eventType: "market_status_changed",
-        detail: `${userLabel(actor)} moved the market from ${market.status} to ${nextStatus}.`,
-        metadata: { previousStatus: market.status, status: nextStatus },
+        eventType:
+          nextStatus === "settled"
+            ? "market_resolved"
+            : nextStatus === "voided"
+              ? "market_voided"
+              : "market_status_changed",
+        detail: isTerminal
+          ? `${userLabel(actor)} published ${resultOutcome} as the terminal market result. ${resultEvidence}`
+          : `${userLabel(actor)} moved the market from ${market.status} to ${nextStatus}.`,
+        metadata: {
+          previousStatus: market.status,
+          status: nextStatus,
+          ...(isTerminal
+            ? {
+                resultOutcome,
+                resultEvidence,
+                observedResolutionValue: bigintString(observedResolutionValue),
+                resolvedByUid: actor.uid,
+                resolvedAt: resolvedAt?.toISOString() ?? null,
+              }
+            : {}),
+        },
       },
     });
   });

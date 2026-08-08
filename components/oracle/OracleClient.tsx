@@ -29,6 +29,7 @@ import { useUserAuth } from "@/context/UserAuthContext";
 import type {
   OracleMarketView,
   OracleProposalView,
+  OracleResolutionInput,
   OracleSide,
   OracleSnapshot,
 } from "@/lib/oracle";
@@ -179,11 +180,17 @@ export default function OracleClient({ initialSnapshot, focusSlug }: OracleClien
     );
   }
 
-  async function setMarketStatus(slug: string, status: string) {
+  async function setMarketStatus(
+    slug: string,
+    status: string,
+    resolution?: OracleResolutionInput,
+  ) {
     return mutate(
       "PATCH",
-      { action: "market_status", slug, status },
-      `Market lifecycle advanced to ${statusLabel(status)}.`,
+      { action: "market_status", slug, status, ...resolution },
+      status === "settled" || status === "voided"
+        ? `Published ${resolution?.resultOutcome ?? statusLabel(status)} as the durable Oracle result.`
+        : `Market lifecycle advanced to ${statusLabel(status)}.`,
     );
   }
 
@@ -498,6 +505,20 @@ function OracleMarketCard({ market, snapshot, busy, onPlace, onSignIn }: { marke
         <h3 className="text-xl font-semibold leading-7 text-white transition group-hover:text-violet-100 sm:text-2xl">{market.question}</h3>
         <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-400">{market.summary}</p>
       </Link>
+
+      {market.resultOutcome && market.resultEvidence ? (
+        <div className={`mt-4 rounded-[1.25rem] border p-4 ${market.resultOutcome === "YES" ? "border-emerald-200/22 bg-emerald-300/[0.07]" : market.resultOutcome === "NO" ? "border-rose-200/22 bg-rose-300/[0.07]" : "border-amber-200/22 bg-amber-300/[0.07]"}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-[10px] font-black uppercase tracking-[0.22em] text-white/60">Published result</span>
+            <span className="rounded-full border border-white/12 bg-black/20 px-3 py-1 text-sm font-black text-white">{market.resultOutcome}</span>
+          </div>
+          <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-300">{market.resultEvidence}</p>
+          <div className="mt-2 text-[11px] text-slate-500">
+            {market.resolvedByUid ? `Resolved by ${market.resolvedByUid}` : "Resolver unavailable"}
+            {market.resolvedAt ? ` · ${dateLabel(market.resolvedAt)}` : ""}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-5 rounded-[1.25rem] border border-white/8 bg-black/20 p-3.5">
         <div className="flex items-end justify-between gap-4">

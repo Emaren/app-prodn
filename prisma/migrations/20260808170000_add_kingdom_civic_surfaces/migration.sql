@@ -257,14 +257,50 @@ CREATE TABLE "oracle_markets" (
   "max_pool_wolo" BIGINT,
   "seed_yes_marks" INTEGER NOT NULL DEFAULT 0,
   "seed_no_marks" INTEGER NOT NULL DEFAULT 0,
+  "result_outcome" VARCHAR(8),
+  "result_evidence" TEXT,
+  "observed_resolution_value" BIGINT,
+  "resolved_by_uid" VARCHAR(100),
+  "resolved_at" TIMESTAMP(6),
   "created_by_label" VARCHAR(120) NOT NULL DEFAULT 'The Oracle',
   "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "fk_oracle_markets_resolver" FOREIGN KEY ("resolved_by_uid") REFERENCES "users"("uid") ON DELETE RESTRICT ON UPDATE NO ACTION,
   CONSTRAINT "ck_oracle_markets_outcome" CHECK ("outcome_type" IN ('binary', 'range', 'date_bucket', 'multiple')),
   CONSTRAINT "ck_oracle_markets_status" CHECK ("status" IN ('draft', 'review', 'approved', 'trading', 'locked', 'resolving', 'challenge', 'settled', 'voided', 'paused')),
   CONSTRAINT "ck_oracle_markets_dates" CHECK ("resolves_at" >= "closes_at"),
   CONSTRAINT "ck_oracle_markets_seed" CHECK ("seed_yes_marks" >= 0 AND "seed_no_marks" >= 0),
-  CONSTRAINT "ck_oracle_markets_pool" CHECK ("max_pool_wolo" IS NULL OR "max_pool_wolo" > 0)
+  CONSTRAINT "ck_oracle_markets_pool" CHECK ("max_pool_wolo" IS NULL OR "max_pool_wolo" > 0),
+  CONSTRAINT "ck_oracle_markets_terminal_result" CHECK (
+    (
+      "status" = 'settled'
+      AND "result_outcome" IS NOT NULL
+      AND "result_outcome" IN ('YES', 'NO')
+      AND "result_evidence" IS NOT NULL
+      AND length(btrim("result_evidence")) >= 20
+      AND "resolved_by_uid" IS NOT NULL
+      AND length(btrim("resolved_by_uid")) >= 1
+      AND "resolved_at" IS NOT NULL
+    )
+    OR (
+      "status" = 'voided'
+      AND "result_outcome" IS NOT NULL
+      AND "result_outcome" = 'VOID'
+      AND "result_evidence" IS NOT NULL
+      AND length(btrim("result_evidence")) >= 20
+      AND "resolved_by_uid" IS NOT NULL
+      AND length(btrim("resolved_by_uid")) >= 1
+      AND "resolved_at" IS NOT NULL
+    )
+    OR (
+      "status" NOT IN ('settled', 'voided')
+      AND "result_outcome" IS NULL
+      AND "result_evidence" IS NULL
+      AND "observed_resolution_value" IS NULL
+      AND "resolved_by_uid" IS NULL
+      AND "resolved_at" IS NULL
+    )
+  )
 );
 CREATE UNIQUE INDEX "oracle_markets_public_id_key" ON "oracle_markets"("public_id");
 CREATE UNIQUE INDEX "oracle_markets_slug_key" ON "oracle_markets"("slug");

@@ -9,6 +9,7 @@ import {
   WOLO_MAINNET_BASE_DENOM,
   WOLO_MAINNET_CHAIN_ID,
   buildWoloAddressBook,
+  type WoloAddressBookEntry,
 } from "@/lib/woloMainnetTransfers";
 import {
   WOLO_STAKING_RESERVE_OPERATOR_ADDRESSES,
@@ -76,6 +77,8 @@ export type LoadMainnetStakingPositionsOptions = {
   weightStartAt?: Date;
   rewardWeightCapWolo?: number;
   requireCompleteLedger?: boolean;
+  reconcileCanonicalCurrent?: boolean;
+  canonicalOnly?: boolean;
   take?: number;
 };
 
@@ -87,99 +90,188 @@ export async function loadMainnetStakingPositions(
   if (!stakingWalletAddress) return [];
 
   const asOf = options.asOf ?? new Date();
+  const reconcileCanonicalCurrent = options.reconcileCanonicalCurrent === true;
+  if (
+    reconcileCanonicalCurrent &&
+    Math.abs(Date.now() - asOf.getTime()) > 60_000
+  ) {
+    throw new Error(
+      "Canonical staking positions can only reconcile a current ledger snapshot.",
+    );
+  }
   const mainnetStartAt = getWoloMainnetDisplayStartAt();
   const weightStartAt = options.weightStartAt ?? mainnetStartAt;
   const pageSize = Math.max(1, Math.min(options.take ?? 5_000, 10_000));
-  const [addressBook, rows, events, canonicalPositions] = await Promise.all([
-    buildWoloAddressBook(prisma),
-    collectCursorPages(pageSize, (cursorId) =>
-      prisma.woloIndexedTransfer.findMany({
-        where: {
-          chainId: WOLO_MAINNET_CHAIN_ID,
-          denom: WOLO_MAINNET_BASE_DENOM,
-          source: WOLO_INDEXED_TRANSFER_SOURCE,
-          timestamp: {
-            gte: mainnetStartAt,
-            lte: asOf,
-          },
-          OR: [
-            { senderAddress: stakingWalletAddress },
-            { recipientAddress: stakingWalletAddress },
-          ],
-        },
-        orderBy: { id: "asc" },
-        take: pageSize,
-        ...(cursorId === null ? {} : { cursor: { id: cursorId }, skip: 1 }),
-      }),
-    ),
-    collectCursorPages(pageSize, (cursorId) =>
-      prisma.stakingEvent.findMany({
-        where: {
-          status: "CONFIRMED",
-          type: { in: ["STAKE", "UNSTAKE", "COMPOUND"] },
-          amountWolo: { gt: 0 },
-          txHash: { not: null },
-          OR: [
-            {
-              confirmedAt: {
+  const [rows, events, canonicalPositions] = await Promise.all([
+    options.requireCompleteLedger
+      ? collectCursorPages(pageSize, (cursorId) =>
+          prisma.woloIndexedTransfer.findMany({
+            where: {
+              chainId: WOLO_MAINNET_CHAIN_ID,
+              denom: WOLO_MAINNET_BASE_DENOM,
+              source: WOLO_INDEXED_TRANSFER_SOURCE,
+              timestamp: {
                 gte: mainnetStartAt,
                 lte: asOf,
               },
+              OR: [
+                { senderAddress: stakingWalletAddress },
+                { recipientAddress: stakingWalletAddress },
+              ],
             },
-            {
-              confirmedAt: null,
-              createdAt: {
-                gte: mainnetStartAt,
-                lte: asOf,
-              },
+            orderBy: { id: "asc" },
+            take: pageSize,
+            ...(cursorId === null
+              ? {}
+              : { cursor: { id: cursorId }, skip: 1 }),
+          }),
+        )
+      : options.canonicalOnly
+        ? Promise.resolve([])
+        : prisma.woloIndexedTransfer.findMany({
+            where: {
+              chainId: WOLO_MAINNET_CHAIN_ID,
+              denom: WOLO_MAINNET_BASE_DENOM,
+              source: WOLO_INDEXED_TRANSFER_SOURCE,
+              timestamp: { gte: mainnetStartAt, lte: asOf },
+              OR: [
+                { senderAddress: stakingWalletAddress },
+                { recipientAddress: stakingWalletAddress },
+              ],
             },
-          ],
-        },
-        orderBy: { id: "asc" },
-        take: pageSize,
-        ...(cursorId === null ? {} : { cursor: { id: cursorId }, skip: 1 }),
-        select: {
-          id: true,
-          type: true,
-          amountWolo: true,
-          txHash: true,
-          walletAddress: true,
-          createdAt: true,
-          confirmedAt: true,
-          userId: true,
-          user: {
+            orderBy: { id: "asc" },
+            take: pageSize,
+          }),
+    options.requireCompleteLedger
+      ? collectCursorPages(pageSize, (cursorId) =>
+          prisma.stakingEvent.findMany({
+            where: {
+              status: "CONFIRMED",
+              type: { in: ["STAKE", "UNSTAKE", "COMPOUND"] },
+              amountWolo: { gt: 0 },
+              txHash: { not: null },
+              OR: [
+                {
+                  confirmedAt: {
+                    gte: mainnetStartAt,
+                    lte: asOf,
+                  },
+                },
+                {
+                  confirmedAt: null,
+                  createdAt: {
+                    gte: mainnetStartAt,
+                    lte: asOf,
+                  },
+                },
+              ],
+            },
+            orderBy: { id: "asc" },
+            take: pageSize,
+            ...(cursorId === null
+              ? {}
+              : { cursor: { id: cursorId }, skip: 1 }),
             select: {
-              uid: true,
-              inGameName: true,
-              steamPersonaName: true,
+              id: true,
+              type: true,
+              amountWolo: true,
+              txHash: true,
               walletAddress: true,
+              createdAt: true,
+              confirmedAt: true,
+              userId: true,
+              user: {
+                select: {
+                  uid: true,
+                  inGameName: true,
+                  steamPersonaName: true,
+                  walletAddress: true,
+                },
+              },
+            },
+          }),
+        )
+      : options.canonicalOnly
+        ? Promise.resolve([])
+        : prisma.stakingEvent.findMany({
+            where: {
+              status: "CONFIRMED",
+              type: { in: ["STAKE", "UNSTAKE", "COMPOUND"] },
+              amountWolo: { gt: 0 },
+              txHash: { not: null },
+              OR: [
+                {
+                  confirmedAt: { gte: mainnetStartAt, lte: asOf },
+                },
+                {
+                  confirmedAt: null,
+                  createdAt: { gte: mainnetStartAt, lte: asOf },
+                },
+              ],
+            },
+            orderBy: { id: "asc" },
+            take: pageSize,
+            select: {
+              id: true,
+              type: true,
+              amountWolo: true,
+              txHash: true,
+              walletAddress: true,
+              createdAt: true,
+              confirmedAt: true,
+              userId: true,
+              user: {
+                select: {
+                  uid: true,
+                  inGameName: true,
+                  steamPersonaName: true,
+                  walletAddress: true,
+                },
+              },
+            },
+          }),
+    options.requireCompleteLedger && !reconcileCanonicalCurrent
+      ? Promise.resolve([])
+      : prisma.stakingPosition.findMany({
+          where: {
+            status: "active",
+            OR: [
+              { currentStakedWolo: { gt: 0 } },
+              { compoundedRewardsWolo: { gt: 0 } },
+            ],
+          },
+          select: {
+            userId: true,
+            walletAddress: true,
+            currentStakedWolo: true,
+            compoundedRewardsWolo: true,
+            accumulatedWeight: true,
+            lastWeightUpdateAt: true,
+            user: {
+              select: {
+                uid: true,
+                inGameName: true,
+                steamPersonaName: true,
+              },
             },
           },
-        },
-      }),
-    ),
-    prisma.stakingPosition.findMany({
-      where: {
-        status: "active",
-        currentStakedWolo: { gt: 0 },
-      },
-      select: {
-        userId: true,
-        walletAddress: true,
-        currentStakedWolo: true,
-        compoundedRewardsWolo: true,
-        accumulatedWeight: true,
-        lastWeightUpdateAt: true,
-        user: {
-          select: {
-            uid: true,
-            inGameName: true,
-            steamPersonaName: true,
-          },
-        },
-      },
-    }),
+        }),
   ]);
+
+  const addressBook: Map<string, WoloAddressBookEntry> =
+    rows.length > 0
+      ? await buildWoloAddressBook(
+          prisma,
+          options.requireCompleteLedger
+            ? {
+                requiredUserAddresses: rows.flatMap((row) => [
+                  row.senderAddress,
+                  row.recipientAddress,
+                ]),
+              }
+            : {},
+        )
+      : new Map();
 
   const indexedTransfers: MainnetStakingTransferInput[] = rows.map((row) => {
     const senderAddress = normalizeAddress(row.senderAddress);
@@ -219,6 +311,22 @@ export async function loadMainnetStakingPositions(
     };
   });
 
+  if (options.requireCompleteLedger) {
+    const unresolved = rows.find((row) => {
+      const senderAddress = normalizeAddress(row.senderAddress);
+      const recipientAddress = normalizeAddress(row.recipientAddress);
+      const recipient = addressBook.get(recipientAddress);
+      const unresolvedUserRecipient =
+        !recipient || (recipient.kind === "user" && !recipient.userId);
+      return senderAddress === stakingWalletAddress && unresolvedUserRecipient;
+    });
+    if (unresolved) {
+      throw new Error(
+        `Staking ledger outbound identity resolution failed for transaction ${unresolved.txHash}; distribution stopped before allocation.`,
+      );
+    }
+  }
+
   const derivedPositions = deriveMainnetStakingPositionsFromTransfers([...indexedTransfers, ...eventTransfers], {
     stakingWalletAddress,
     mainnetStartAt,
@@ -240,8 +348,8 @@ export async function loadMainnetStakingPositions(
 
     const existing = positionsByUserId.get(canonical.userId);
     const existingStake = Math.max(0, existing?.currentStakedWolo || 0);
-    if (options.requireCompleteLedger) {
-      if (!existing || existingStake !== canonicalSeatStake) {
+    if (reconcileCanonicalCurrent) {
+      if (existingStake !== canonicalSeatStake) {
         throw new Error(
           `Staking ledger reconciliation failed for user ${canonical.userId}: derived=${existingStake}, canonical=${canonicalSeatStake}.`,
         );
@@ -285,6 +393,21 @@ export async function loadMainnetStakingPositions(
           rewardWeightCapWolo: options.rewardWeightCapWolo,
         }),
     });
+  }
+
+  if (reconcileCanonicalCurrent) {
+    const canonicalUserIds = new Set(
+      canonicalPositions.map((position) => position.userId),
+    );
+    const unmatchedDerived = derivedPositions.find(
+      (position) =>
+        position.currentStakedWolo > 0 && !canonicalUserIds.has(position.userId),
+    );
+    if (unmatchedDerived) {
+      throw new Error(
+        `Staking ledger reconciliation failed for user ${unmatchedDerived.userId}: derived=${unmatchedDerived.currentStakedWolo}, canonical=0.`,
+      );
+    }
   }
 
   return Array.from(positionsByUserId.values()).filter(
