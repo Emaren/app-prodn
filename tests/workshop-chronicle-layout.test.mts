@@ -11,26 +11,51 @@ const source = readFileSync(
 );
 
 test(
-  "Workshop Chronicle alternates across the full chronological stream",
+  "Workshop Chronicle preserves one full-width chronological stream",
   () => {
     assert.match(
       source,
-      /const alignmentByPublicId = useMemo/,
+      /const groups = useMemo/,
     );
 
     assert.match(
       source,
-      /entries\.map\(\(entry, index\) =>/,
+      /for \(const entry of entries\)/,
     );
 
     assert.match(
       source,
-      /alignmentByPublicId\.get\(entry\.publicId\)/,
+      /group\.entries\.map\(\(entry\) =>/,
+    );
+
+    assert.match(
+      source,
+      /return \[\.\.\.current, \.\.\.additions\]/,
+    );
+
+    assert.match(
+      source,
+      /max-w-6xl/,
+    );
+
+    assert.match(
+      source,
+      /pl-12 sm:pl-16/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /alignmentByPublicId/,
     );
 
     assert.doesNotMatch(
       source,
       /align=\{index % 2 === 0/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /sm:grid-cols-2/,
     );
   },
 );

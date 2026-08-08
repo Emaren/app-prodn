@@ -136,6 +136,9 @@ const LANES = [
 const WORKSHOP_HERO_IMAGE =
   "/workshop/workshop-observatory-hero.webp";
 
+const WORKSHOP_CURRENT_CAMPAIGN =
+  "AOE2WAR_WORKSHOP_TRUTH_IN_PRODUCTION_20260808";
+
 function pct(bps: number) {
   return `${(bps / 100).toFixed(1)}%`;
 }
@@ -198,6 +201,7 @@ export default function WorkshopExperience({ data, chronicle, diagnostics }: Pro
           : "w-full max-w-none space-y-6 py-6 text-white"
       }
       data-workshop-view={viewMode}
+      data-workshop-campaign={WORKSHOP_CURRENT_CAMPAIGN}
     >
       {viewMode === "basic" ? (
         <BasicView {...shared} />
@@ -412,11 +416,11 @@ function BasicView(props: ViewProps) {
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <Eyebrow>Current campaign</Eyebrow>
-            <h2 className="mt-3 font-serif text-4xl sm:text-5xl">Evidence in Motion.</h2>
+            <h2 className="mt-3 font-serif text-4xl sm:text-5xl">Truth in Production.</h2>
             <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-300">
-              The archive is classified. The work now is turning replay evidence into
-              useful battle truth without inventing winners, merging people, or granting
-              financial authority too early.
+              Replay-result recovery, authenticated Watcher exits, completed-day
+              observability, and Watcher-grounded statistics are now live behind
+              explicit authority boundaries and production proof.
             </p>
           </div>
           <div className="text-right">
@@ -460,9 +464,9 @@ function AdvancedView(props: ViewProps) {
           <div className="max-w-4xl">
             <StatusPill data={data} />
             <div className="mt-5 text-[10px] font-bold uppercase tracking-[0.38em] text-cyan-100/55">The Workshop · Advanced</div>
-            <h1 className="mt-3 font-serif text-5xl leading-[0.94] sm:text-7xl">Evidence in Motion.</h1>
+            <h1 className="mt-3 font-serif text-5xl leading-[0.94] sm:text-7xl">Truth in Production.</h1>
             <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-              What changed. What is proven. What remains uncertain. What happens next.
+              What happened. What proved it. Which authority accepted it. What remains deliberately uncertain.
             </p>
             <CurrentFront data={data} />
           </div>

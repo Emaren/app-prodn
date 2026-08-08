@@ -2,84 +2,212 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const page = readFileSync(
-  new URL("../app/workshop/page.tsx", import.meta.url),
-  "utf8",
+const page =
+  readFileSync(
+    new URL(
+      "../app/workshop/page.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+const experience =
+  readFileSync(
+    new URL(
+      "../components/workshop/WorkshopExperience.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+const publisher =
+  readFileSync(
+    new URL(
+      "../scripts/publish-workshop-2026-08-08.mts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+test(
+  "Workshop presents Truth in Production as the current campaign",
+  () => {
+    assert.match(
+      experience,
+      /AOE2WAR_WORKSHOP_TRUTH_IN_PRODUCTION_20260808/,
+    );
+
+    assert.match(
+      experience,
+      /Truth in Production\./,
+    );
+
+    assert.match(
+      experience,
+      /authenticated Watcher exits/,
+    );
+
+    assert.match(
+      experience,
+      /completed-day/,
+    );
+
+    assert.match(
+      experience,
+      /Watcher-grounded statistics/,
+    );
+  },
 );
 
-const chronicle = readFileSync(
-  new URL("../components/workshop/WorkshopChronicle.tsx", import.meta.url),
-  "utf8",
+test(
+  "old Evidence in Motion campaign is no longer current",
+  () => {
+    assert.doesNotMatch(
+      experience,
+      /Evidence in Motion\./,
+    );
+  },
 );
 
-const publisher = readFileSync(
-  new URL(
-    "../scripts/publish-workshop-2026-08-01.mts",
-    import.meta.url,
-  ),
-  "utf8",
+test(
+  "Workshop metadata describes the production-truth observatory",
+  () => {
+    assert.match(
+      page,
+      /production truth/,
+    );
+
+    assert.match(
+      page,
+      /Watcher activity/,
+    );
+
+    assert.match(
+      page,
+      /adjudication/,
+    );
+
+    assert.match(
+      page,
+      /settlement boundaries/,
+    );
+  },
 );
 
-test("obsolete Workshop hero copy is removed", () => {
-  assert.doesNotMatch(page, /The strange machine is forged in public/);
-  assert.doesNotMatch(page, /\{data\.status\.description\}/);
-});
+test(
+  "August 8 publication records the exact release chain",
+  () => {
+    for (
+      const release of [
+        "e55e943d038c1c62e6d6e40e507b4e0b115b604e",
+        "07a0c8c87d19d77ba45ea68a3050ddcff884a8ea",
+        "97db284b69a0f973e9a6a6408a5dcb52703362c4",
+        "875ba6448b5763be02a4da8b548bff3a556cb821",
+        "b44176ef680441ff7ef40d8dc587b0d091d838bf",
+        "1396062b50d6a7b0a3418d42f0e0f6aa612d1b06",
+      ]
+    ) {
+      assert.match(
+        publisher,
+        new RegExp(
+          release,
+        ),
+      );
+    }
+  },
+);
 
-test("Workshop presents Evidence in Motion as the current campaign", () => {
-  assert.match(page, /AOE2WAR_WORKSHOP_EVIDENCE_IN_MOTION_20260801/);
-  assert.match(page, /Evidence in Motion\./);
-  assert.match(page, /44 audited app commits/);
-  assert.match(page, /Pass 8 · Account Identity · Watcher 1\.5\.7/);
-  assert.match(page, /Player Identity Wave 2/);
-  assert.match(page, /persistent B\/A\/E views/);
-  assert.match(page, /immutable byte snapshot/);
-  assert.match(page, /Human review, financial/);
-  assert.match(page, /Open Replay Operations/);
-  assert.match(page, /Identity Leaderboard/);
-});
+test(
+  "publication records the four new Workshop milestones",
+  () => {
+    assert.match(
+      publisher,
+      /Visible victory becomes admissible evidence\./,
+    );
 
-test("Workshop preserves the authority boundaries", () => {
-  assert.match(page, /Account\s+evidence is not a human merge/);
-  assert.match(page, /archived bytes are not a winner/);
-  assert.match(page, /visible final proof is not an open book/);
-  assert.match(page, /Wave 2 links and claims remain proposed/);
-  assert.match(page, /explicit financial-authority bridge/);
-});
+    assert.match(
+      publisher,
+      /Fast exits gain a narrow stats-only recovery rail\./,
+    );
 
-test("old parser campaign framing is no longer current", () => {
-  assert.doesNotMatch(page, /Campaign IV · Parser Front/);
-  assert.doesNotMatch(page, />\s*Into the Fog\.\s*</);
-  assert.doesNotMatch(page, />\s*Deterministic Evidence\.\s*</);
-});
+    assert.match(
+      publisher,
+      /Traffic stops graphing unfinished days\./,
+    );
 
-test("Workshop publication audits and curates the exact release range", () => {
-  assert.match(
-    publisher,
-    /aece6b2f2b4640e73f2207cfdf7120638deca4e9/,
-  );
-  assert.match(
-    publisher,
-    /223612f7583ece499c551a6ea62ae376ce5d0115/,
-  );
-  assert.match(
-    publisher,
-    /c3d3af0a2c03a05d631b44eab773bf20650de0f8/,
-  );
-  assert.match(publisher, /EXPECTED_APP_COMMIT_COUNT = 44/);
-  assert.match(publisher, /Player Identity Wave 2 populates/);
-  assert.match(publisher, /Watcher 1\.5\.7 binds every upload/);
-  assert.match(publisher, /The forge reclaims 5\.4 GB/);
-  assert.match(
-    publisher,
-    /PUBLISH-WORKSHOP-EVIDENCE-IN-MOTION-2026-08-01/,
-  );
-});
+    assert.match(
+      publisher,
+      /Statistics is rewired to Watcher truth\./,
+    );
+  },
+);
 
-test("Workshop still protects public Match Rooms and private DMs", () => {
-  assert.match(page, /Public Match Rooms are separate Challenge-scoped/);
-  assert.match(page, /private DMs/);
-});
+test(
+  "replay recovery publication preserves authority boundaries",
+  () => {
+    assert.match(
+      publisher,
+      /replayPacketLeaveProof remains false/,
+    );
 
-test("Workshop Chronicle includes players in the living build history", () => {
-  assert.match(chronicle, /Emaren, AI, players, and the Kingdom/);
-});
+    assert.match(
+      publisher,
+      /provisionalStatsInference remains true/,
+    );
+
+    assert.match(
+      publisher,
+      /affectsStats is true/,
+    );
+
+    assert.match(
+      publisher,
+      /affectsBets is false/,
+    );
+
+    assert.match(
+      publisher,
+      /financialAuthority remains false/,
+    );
+
+    assert.match(
+      publisher,
+      /action-tail authority remains disabled/,
+    );
+  },
+);
+
+test(
+  "Statistics publication preserves Watcher versus video semantics",
+  () => {
+    assert.match(
+      publisher,
+      /watcher_live/,
+    );
+
+    assert.match(
+      publisher,
+      /watcher_final/,
+    );
+
+    assert.match(
+      publisher,
+      /separate video-stream subsystem/,
+    );
+
+    assert.match(
+      publisher,
+      /Batch Upload remains visible/,
+    );
+
+    assert.match(
+      publisher,
+      /13 Games Streamed, 48 Players Streamed, and 13 Watcher Games/,
+    );
+
+    assert.match(
+      publisher,
+      /812 and 1,172 distinct Watcher Games/,
+    );
+  },
+);

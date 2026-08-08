@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "The Workshop",
   description:
-    "Follow AoE2WAR's live production state through clear progress, replay-truth diagnostics, identity evidence, build records, and settlement boundaries.",
+    "Follow AoE2WAR's production truth through replay evidence, Watcher activity, observability, build records, adjudication, and settlement boundaries.",
 };
 
 export default async function WorkshopPage() {
