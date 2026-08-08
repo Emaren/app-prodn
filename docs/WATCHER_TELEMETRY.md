@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-08-04"
+reviewed_at: "2026-08-08"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -49,25 +49,39 @@ Watcher analytics now separates noisy package pulls from confirmed watcher behav
 
 
 <!-- AOE2WAR:TERMINAL_RESULT_RECEIPTS_V3:START -->
-### Terminal settlement-observation receipts
+### Terminal result receipts and stats-only recovery
 
-The Watcher source now preserves `finalStored` and `settleWindowMs` when
-normalizing terminal runtime events into remote telemetry. The server accepts
-the event types:
+Watcher terminal receipts are corroborating transport evidence. The Watcher
+does not select a winner and no Watcher receipt creates financial authority.
 
-- `final_settle_observation_started`;
-- `final_settle_observation_complete`.
+The current source contract preserves terminal settlement-observation metadata
+through Watcher source `0519ce64b6e4aadd42dc3b34e27f8628bf0558bc`. A completion receipt may include
+`finalStored`, `settleWindowMs`, replay/session/file identity, and other
+transport evidence. For Watcher 1.5.7, omission of `finalStored` is neutral;
+explicit `finalStored=false` or identity/hash/session conflicts remain blocking.
 
-A complete receipt can bind replay hash, session, replay basename, user
-identity, final-storage confirmation, and settle-window duration to the
-automatic action-tail evidence record. A matching receipt is corroboration; a
-missing receipt may fall back to exact replay activity, while a supplied
-conflicting receipt blocks automatic resolution.
+`replay-terminal-recorder-exit-v1` is the narrow current automatic 1v1 recovery
+policy. It requires a modern authenticated Watcher final rated 1v1, an exact
+canonical recorder identity, and absence of stronger serialized
+winner/resignation/postgame evidence. The authenticated recorder is treated as
+a provisional statistical loser and the canonical opponent as provisional
+statistical winner.
 
-These source changes do not by themselves publish a new desktop release.
-Production artifacts and manifests remain version `1.5.7` until a separately
-built, tested, signed/staged, and published Watcher release advances them. The
-Watcher never selects a winner and the receipt never authorizes betting.
+Recorder-exit adjudications are append-only and explicitly carry the equivalent
+of:
+
+- `replayPacketLeaveProof=false`;
+- `provisionalStatsInference=true`;
+- `affectsStats=true`;
+- `affectsBets=false`;
+- `financialAuthority=false`.
+
+The prior 1v1 `replay-terminal-action-tail-v3` policy remains disabled as
+result authority. Standard mgz action-tail ordering is diagnostic evidence only
+and must not automatically create a 1v1 winner.
+
+Stronger screenshot or human evidence may supersede a provisional recorder-exit
+adjudication append-only. Settlement remains a separate authority domain.
 <!-- AOE2WAR:TERMINAL_RESULT_RECEIPTS_V3:END -->
 
 ## Signal Layers

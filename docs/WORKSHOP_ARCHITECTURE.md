@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-08-08"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -105,3 +105,26 @@ At the July 17, 2026 production checkpoint, the Workshop is open in
 published/public. The pinned milestone is **The 329 frontier falls**. These are
 database facts at the checkpoint, not migration defaults or a promise that the
 state will never change.
+
+<!-- AOE2WAR:TRUTH_IN_PRODUCTION_20260808:START -->
+## Truth in Production — August 8, 2026
+
+The current Workshop campaign is **Truth in Production**.
+
+The public Workshop remains a curated projection rather than a raw operations
+console. The August 8 publication records four production advances:
+
+- explicit AoE2HD postgame winner emblems can support append-only replay
+  adjudication when the winner cue itself is explicit;
+- `replay-terminal-recorder-exit-v1` provides a narrow provisional stats-only
+  recovery rail for authenticated modern Watcher final rated 1v1 recordings;
+- Traffic omits the still-accumulating current UTC day;
+- Statistics defines Games Streamed from unique `watcher_live` game sessions,
+  Players Streamed from those same sessions, and Watcher Games from distinct
+  `watcher_final` replay ingestion including Batch Upload.
+
+The Chronicle remains idempotent and operator-published. These records do not
+mutate raw replay evidence and do not create betting or settlement authority.
+
+Implementation baseline for this Workshop campaign: `5f9af6425e03a8bec25ebde283749f86b4d46c19`.
+<!-- AOE2WAR:TRUTH_IN_PRODUCTION_20260808:END -->

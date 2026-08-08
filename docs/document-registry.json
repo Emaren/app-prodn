@@ -175,9 +175,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ADMIN_METRICS.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-08-08",
       "sensitivity": "internal",
-      "sha256": "8e700372955492a7f58681d05aec388c8bd6d32be7582ca20deb162de0582af5",
+      "sha256": "5ed64978b5c8132c05e42c952b92291a538024a8cd622c86efc7c40c0c00c6e6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -476,7 +476,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d84b8ce437cd10ec1ffe5e76c46dd3f7e02b2deb061871c47f5eb6f810e2fb26",
+      "sha256": "d8e000c9a593f9eeb24d21287d26636f99eafb5ff2b20e2cd8ddf76103c7eb76",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -497,7 +497,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-04",
       "sensitivity": "restricted",
-      "sha256": "a0e8c3de632992d559122fd54a86b800a2c4a89a490bc50d6f3930a08cd5e154",
+      "sha256": "58dede657df220356034f65ba099c4a25c5c7405fa3de3d1d4afabf67d324a41",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -668,6 +668,27 @@
         "wolochain"
       ],
       "title": "Team Market Integrity",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.page-hero-cms",
+      "owner": "aoe2war-web",
+      "path": "docs/PAGE_HERO_CMS.md",
+      "review_interval_days": 90,
+      "reviewed_at": "2026-08-07",
+      "sensitivity": "internal",
+      "sha256": "6bafba383f3645df82ce2b8d69036155e2dd6a662023374d1b5e8ac94fa1c15c",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Page Hero CMS",
       "type": "reference"
     },
     {
@@ -1022,9 +1043,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-04",
+      "reviewed_at": "2026-08-08",
       "sensitivity": "restricted",
-      "sha256": "1c9470a4b845cc2809d3a8e838b802484455ef464fb1298dc248f0fce420dc69",
+      "sha256": "85d05d3850d615ca3804950157097b91e893f08d54dab2d609916ecb76ae27f0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1067,9 +1088,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WORKSHOP_ARCHITECTURE.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-08-08",
       "sensitivity": "internal",
-      "sha256": "8fcb5d358cddeb222d881011c0cf9819fd6abe638c54292eb1669987ebd4ed7c",
+      "sha256": "bbfd23d49e9de291d5206fa02d8819fe4518d1020bb9eac35fb8e09ec6fd2b2b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1170,7 +1191,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "ea28fcbe378bb37fb78f5347734fef8a4768f453"
+    "commit": "5f9af6425e03a8bec25ebde283749f86b4d46c19"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

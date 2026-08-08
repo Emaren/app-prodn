@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `ea28fcbe378bb37fb78f5347734fef8a4768f453`
+Implementation baseline: `main` at `5f9af6425e03a8bec25ebde283749f86b4d46c19`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **51**
+- Authoritative repository documents: **52**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 4
 - `generated`: 1
 - `historical`: 10
-- `reference`: 27
+- `reference`: 28
 - `runbook`: 8
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 39
+- `active`: 40
 - `generated`: 1
 - `historical`: 10
 - `superseded`: 1
@@ -79,6 +79,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [HD Leaderboard View Modes](LEADERBOARD_VIEW_MODES.md) | `reference` | `active` | `product-contract` |
 | [Live Final-Proof Visibility](LIVE_FINAL_PROOF_VISIBILITY.md) | `reference` | `active` | `product-contract` |
 | [Team Market Integrity](MARKET_TEAM_INTEGRITY.md) | `reference` | `active` | `financial-domain-contract` |
+| [Page Hero CMS](PAGE_HERO_CMS.md) | `reference` | `active` | `product-contract` |
 | [Parser Engine Room: Durable Data Foundation](PARSER_ENGINE_ROOM.md) | `explanation` | `active` | `architecture-explanation` |
 | [Parser Observatory](PARSER_OBSERVATORY.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Production Performance Audit — 2026-07-18](PERFORMANCE_AUDIT_2026-07-18.md) | `historical` | `historical` | `historical-evidence` |

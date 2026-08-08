@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "implementation-contract"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-08-08"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -164,3 +164,32 @@ The admin rail classifies recent package pulls with conservative labels:
 - `converted_to_match`: package pull followed by a watcher-sourced `game_stats` match.
 
 Conversion labels are best-effort. Do not overstate precision in UI copy.
+
+<!-- AOE2WAR:STATISTICS_TRUTH_20260808:START -->
+## Public Statistics Observatory — August 8, 2026
+
+`/statistics` describes Watcher game-data activity, not video transport.
+
+- **Games Streamed** counts one stable `watcher_live` game session. Parser
+  iterations collapse by stable platform match identity when available,
+  otherwise replay filename identity. A cross-midnight session belongs to its
+  first-seen UTC day.
+- **Players Streamed** sums the known player seats from the richest canonical
+  iteration of those same unique live sessions.
+- **Watcher Games** counts distinct `watcher_final` replay hashes on the UTC
+  ingestion day. Batch Upload is intentionally included.
+- The separate video-stream transport store is not an authority for these
+  metrics.
+- Statistics and Traffic both omit the current incomplete UTC day.
+- `Returning Users / Day` and cumulative `Users Who Returned` both require a
+  later `page_view`.
+
+Production proof for August 7 is:
+
+- Games Streamed: 13
+- Players Streamed: 48
+- Watcher Games: 13
+
+The July 7 and July 8 Batch Upload peaks remain 812 and 1,172 distinct Watcher
+Games respectively.
+<!-- AOE2WAR:STATISTICS_TRUTH_20260808:END -->
