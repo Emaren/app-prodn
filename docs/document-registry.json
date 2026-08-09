@@ -11,9 +11,9 @@
       "owner": "aoe2war-web",
       "path": "ARCHITECTURE.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-08-08",
       "sensitivity": "internal",
-      "sha256": "7035dbdd93e72ace20fca34784cd7eed49f32907ee7526be4fc674901d46a0c3",
+      "sha256": "0e178701ad51e36f5cbf01ebec926c7fb27bddd2df99025dab8768d038d1507c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -60,7 +60,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "45c4c858dfdafcc9f7361bcfc51ada66a72767e3151d8383b2d1d83aec6661fc",
+      "sha256": "a6b2b4fa6c4551c8a6ef6fd44a6d9e3185a75a4cef2509e053e4ed64ff2cfeac",
       "source_of_truth": "historical-evidence",
       "status": "historical",
       "systems": [
@@ -85,7 +85,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "6953272100b41690dc6a8da87a443c33bd1f3417adea3d606bb10dbe53f75bc2",
+      "sha256": "4b60cbac5859592472474ade06d7c4640809b0c68cd46b530c893ef94f88220c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -476,7 +476,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2712061454e7e07575f560dc2b3f2789f360f6a92521ed0a2ff163a1c7fc672a",
+      "sha256": "d1eb2143cb02cfaae8ec25d35a6bb0945d5ca824d9ba837e595c9935eac02de4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -655,9 +655,9 @@
       "owner": "aoe2war-web",
       "path": "docs/LIVE_FINAL_PROOF_VISIBILITY.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-04",
+      "reviewed_at": "2026-08-08",
       "sensitivity": "internal",
-      "sha256": "b765d6bb6c651c8142d6628f7c4b60fcfb60dcd8a41a16fa1f9567a7343401ab",
+      "sha256": "de2ba571a51544ccb3e83bbb78820d186679185f82b002702f489f10ef32d17d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -773,7 +773,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "75970b311023df793beb9fb1176d5fbca5d20c015744023a55d67ba8366fbed8",
+      "sha256": "818064ea471502ea4ea35fc5a46e79f6f620b705fa6059b26948fb401d9333aa",
       "source_of_truth": "historical-evidence",
       "status": "historical",
       "systems": [
@@ -849,6 +849,31 @@
         "app-prodn"
       ],
       "title": "Radio WOLO",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "auditors",
+        "ai-agents"
+      ],
+      "authority": "architecture-contract",
+      "id": "aoe2war.app-prodn.docs-realtime-truth-contract",
+      "owner": "aoe2war-web",
+      "path": "docs/REALTIME_TRUTH_CONTRACT.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-08",
+      "sensitivity": "internal",
+      "sha256": "585895fbc6abeb0a3c0a87c21a4ae600e894385415efbc542f907065964cb179",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "AoE2WAR Realtime Truth Contract",
       "type": "reference"
     },
     {
@@ -1237,7 +1262,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "e11e3ee86b9fa822146ffd91512bb86f0ace31a2"
+    "commit": "5185783ea80d94a6fb4de0b244ba98ad06c53ae6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
