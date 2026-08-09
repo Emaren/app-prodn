@@ -50,9 +50,20 @@ def sample():
     transport = {
         "origin": MODULE.EXPECTED_ORIGIN,
         "protocol": MODULE.EXPECTED_PROTOCOL,
+        "executor": MODULE.EXPECTED_PROD_USER,
+        "git_foreign_entries": "0",
+        "git_unwritable_dirs": "0",
+        "deploy_key_readable": "1",
+        "deploy_key_owner": (
+            f"{MODULE.EXPECTED_PROD_USER}:{MODULE.EXPECTED_PROD_USER}"
+        ),
+        "deploy_key_mode": "600",
+        "deploy_key_fingerprint": MODULE.EXPECTED_DEPLOY_KEY_FINGERPRINT,
         "sshcmd": (
-            "ssh -i /root/.ssh/github_app_prodn_write_ed25519 "
-            "-o IdentitiesOnly=yes -o BatchMode=yes"
+            f"ssh -F /dev/null -i {MODULE.EXPECTED_DEPLOY_KEY} "
+            "-o IdentitiesOnly=yes -o BatchMode=yes "
+            "-o StrictHostKeyChecking=yes "
+            f"-o UserKnownHostsFile={MODULE.EXPECTED_KNOWN_HOSTS}"
         ),
         "remote_main": release,
     }
@@ -102,6 +113,44 @@ class ShipTests(unittest.TestCase):
         transport["origin"] = "git@example.invalid:wrong/repo.git"
         self.assertIn(
             "production Git origin does not match canonical origin",
+            MODULE.validation_errors(data, manifest, transport),
+        )
+
+    def test_foreign_git_ownership_blocks(self):
+        data, manifest, transport = sample()
+        transport["git_foreign_entries"] = "1"
+        self.assertIn(
+            "production .git contains entries not owned by the deploy user",
+            MODULE.validation_errors(data, manifest, transport),
+        )
+
+    def test_unwritable_git_directory_blocks(self):
+        data, manifest, transport = sample()
+        transport["git_unwritable_dirs"] = "1"
+        self.assertIn(
+            "production .git contains directories not writable by the deploy user",
+            MODULE.validation_errors(data, manifest, transport),
+        )
+
+    def test_unreadable_or_wrong_deploy_key_blocks(self):
+        data, manifest, transport = sample()
+        transport["deploy_key_readable"] = "0"
+        transport["deploy_key_fingerprint"] = "SHA256:wrong"
+        errors = MODULE.validation_errors(data, manifest, transport)
+        self.assertIn(
+            "production dedicated deploy key is not readable by the deploy user",
+            errors,
+        )
+        self.assertIn(
+            "production dedicated deploy key fingerprint does not match",
+            errors,
+        )
+
+    def test_ssh_config_fallback_blocks(self):
+        data, manifest, transport = sample()
+        transport["sshcmd"] = transport["sshcmd"].replace("-F /dev/null ", "")
+        self.assertIn(
+            "production core.sshCommand does not disable SSH config fallback",
             MODULE.validation_errors(data, manifest, transport),
         )
 

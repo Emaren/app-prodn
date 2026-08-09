@@ -31,7 +31,10 @@ PUBLIC = os.getenv(
 SHIP_PLAN_DIR = ROOT / ".aoe2war-release" / "ship-plans"
 
 EXPECTED_ORIGIN = "git@github.com:Emaren/app-prodn.git"
-EXPECTED_DEPLOY_KEY = "/root/.ssh/github_app_prodn_write_ed25519"
+EXPECTED_PROD_USER = "tony"
+EXPECTED_DEPLOY_KEY = "/home/tony/.ssh/gh_deploy_aoe2hdbets_app_prodn"
+EXPECTED_DEPLOY_KEY_FINGERPRINT = "SHA256:229KVsTphLtYRwmLbqR82g+uIBRip3wzmXfR3etNcZk"
+EXPECTED_KNOWN_HOSTS = "/home/tony/.ssh/known_hosts"
 EXPECTED_PROTOCOL = "0"
 
 
@@ -75,8 +78,16 @@ def production_transport() -> tuple[dict[str, str], str | None]:
         "origin=$(git remote get-url origin 2>/dev/null || true)",
         "sshcmd=$(git config --local --get core.sshCommand 2>/dev/null || true)",
         "protocol=$(git config --local --get protocol.version 2>/dev/null || true)",
+        "executor=$(id -un)",
+        "git_foreign_entries=$(find .git ! -user \"$executor\" -printf . 2>/dev/null | wc -c | tr -d ' ')",
+        "git_unwritable_dirs=$(find .git -type d ! -writable -printf . 2>/dev/null | wc -c | tr -d ' ')",
+        f"deploy_key={shlex.quote(EXPECTED_DEPLOY_KEY)}",
+        "deploy_key_readable=$([ -r \"$deploy_key\" ] && echo 1 || echo 0)",
+        "deploy_key_owner=$(stat -c '%U:%G' \"$deploy_key\" 2>/dev/null || true)",
+        "deploy_key_mode=$(stat -c '%a' \"$deploy_key\" 2>/dev/null || true)",
+        "deploy_key_fingerprint=$(ssh-keygen -lf \"$deploy_key\" 2>/dev/null | awk '{print $2}' || true)",
         "remote_main=$(git ls-remote --exit-code origin refs/heads/main 2>/dev/null | awk '{print $1}' || true)",
-        'printf "origin\\t%s\\nsshcmd\\t%s\\nprotocol\\t%s\\nremote_main\\t%s\\n" "$origin" "$sshcmd" "$protocol" "$remote_main"',
+        'printf "origin\\t%s\\nsshcmd\\t%s\\nprotocol\\t%s\\nexecutor\\t%s\\ngit_foreign_entries\\t%s\\ngit_unwritable_dirs\\t%s\\ndeploy_key_readable\\t%s\\ndeploy_key_owner\\t%s\\ndeploy_key_mode\\t%s\\ndeploy_key_fingerprint\\t%s\\nremote_main\\t%s\\n" "$origin" "$sshcmd" "$protocol" "$executor" "$git_foreign_entries" "$git_unwritable_dirs" "$deploy_key_readable" "$deploy_key_owner" "$deploy_key_mode" "$deploy_key_fingerprint" "$remote_main"',
     ]
     remote = "; ".join(commands)
     p = run(
@@ -216,13 +227,33 @@ def validation_errors(
         errors.append("production Git origin does not match canonical origin")
     if transport.get("protocol") != EXPECTED_PROTOCOL:
         errors.append("production Git protocol is not canonical protocol v0")
+    if transport.get("executor") != EXPECTED_PROD_USER:
+        errors.append("production Git execution user is not the canonical deploy user")
+    if transport.get("git_foreign_entries") != "0":
+        errors.append("production .git contains entries not owned by the deploy user")
+    if transport.get("git_unwritable_dirs") != "0":
+        errors.append("production .git contains directories not writable by the deploy user")
+    if transport.get("deploy_key_readable") != "1":
+        errors.append("production dedicated deploy key is not readable by the deploy user")
+    if transport.get("deploy_key_owner") != f"{EXPECTED_PROD_USER}:{EXPECTED_PROD_USER}":
+        errors.append("production dedicated deploy key ownership is not canonical")
+    if transport.get("deploy_key_mode") not in {"400", "600"}:
+        errors.append("production dedicated deploy key permissions are not restrictive")
+    if transport.get("deploy_key_fingerprint") != EXPECTED_DEPLOY_KEY_FINGERPRINT:
+        errors.append("production dedicated deploy key fingerprint does not match")
     sshcmd = transport.get("sshcmd") or ""
     if EXPECTED_DEPLOY_KEY not in sshcmd:
         errors.append("production core.sshCommand does not use the dedicated deploy key")
+    if "-F /dev/null" not in sshcmd:
+        errors.append("production core.sshCommand does not disable SSH config fallback")
     if "IdentitiesOnly=yes" not in sshcmd:
         errors.append("production core.sshCommand does not require IdentitiesOnly=yes")
     if "BatchMode=yes" not in sshcmd:
         errors.append("production core.sshCommand does not require BatchMode=yes")
+    if "StrictHostKeyChecking=yes" not in sshcmd:
+        errors.append("production core.sshCommand does not require strict host-key checking")
+    if f"UserKnownHostsFile={EXPECTED_KNOWN_HOSTS}" not in sshcmd:
+        errors.append("production core.sshCommand does not use the canonical known_hosts file")
     if transport.get("remote_main") != release_sha:
         errors.append("production origin main does not resolve to manifest release SHA")
 
@@ -267,7 +298,7 @@ def build_plan(
         },
         {
             "phase": "build",
-            "command": "rm -rf .next-release && sudo -u tony -H env NEXT_DIST_DIR=.next-release npm run build",
+            "command": "rm -rf .next-release && sudo -n -u tony -H env NEXT_DIST_DIR=.next-release npm run build",
             "action": "Build beside the active runtime; verify build success, BUILD_ID, generated build version, ownership, and repository cleanliness before service stop.",
         },
         {
