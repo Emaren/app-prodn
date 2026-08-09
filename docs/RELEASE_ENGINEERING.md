@@ -49,19 +49,38 @@ DIRTY -> GATED -> SEALED -> PUBLISHED -> STAGED -> ACTIVE -> VERIFIED -> CERTIFI
 
 Safety states include `DOCS_INVALID`, `DIVERGED`, `PRODUCTION_DIRTY`, `RUNTIME_UNHEALTHY`, `RUNTIME_UNVERIFIED`, and `PROTECTED_SERVICE_ALERT`.
 
-## Phase I command surface
+## Implemented command surface
 
-Phase I is intentionally read-only:
+Release Engineering I currently implements:
 
 ```bash
 bin/aoe2-release status
 bin/aoe2-release context
 bin/aoe2-release status --json
+bin/aoe2-release gate
+bin/aoe2-release gate --json
+bin/aoe2-release manifest
+bin/aoe2-release manifest --json
 ```
 
-`status` serves operators. `context` is a compact AI/operator handoff. `--json` is the machine-readable contract for future gates, receipts, CI, and deployment automation.
+`status` serves operators. `context` is a compact AI/operator handoff. JSON output is the machine-readable contract for gates, receipts, manifests, CI, and deployment automation.
 
 Phase I observes local and GitHub Git truth, Documentation Baseline ancestry, production source/worktree state, web-service health, active/staged build identity, internal/public build-version parity, rollback inventory, disk space, and protected WOLO listeners on 8092/8093. It performs no commit, push, reset, build, service restart, database mutation, or WOLO mutation.
+
+`gate` determines the release scope, calculates a SHA-256 scope identity, classifies release risk, runs the applicable fail-closed validation plan, and records a machine-readable gate receipt beneath the ignored local `.aoe2war-release/gates/` state directory.
+
+The risk ladder is ordered from lower to higher consequence:
+
+```text
+NO_CHANGE -> DOCUMENTATION -> PRESENTATION -> APPLICATION -> INFRASTRUCTURE
+          -> WATCHER -> REPLAY_TRUTH -> FINANCIAL -> DATABASE
+```
+
+Risk classification may only add validation as consequence rises. It must never weaken domain-specific safety requirements.
+
+`manifest` requires a clean local tree, Mac/GitHub parity, a valid Documentation Baseline, clean reachable production source that still precedes the release, and a matching PASS gate receipt for the exact committed release scope. It then writes an ignored local release manifest and companion SHA-256 file beneath `.aoe2war-release/manifests/`.
+
+The manifest binds the release commit, implementation/documentation baseline, previous production commit, exact changed-file scope, risk class, migration declaration, gate receipt, and core deployment policy before production source advances.
 
 ## Planned automation surface
 
