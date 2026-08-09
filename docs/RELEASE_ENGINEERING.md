@@ -86,7 +86,7 @@ Risk classification may only add validation as consequence rises. It must never 
 
 The manifest binds the release commit, implementation/documentation baseline, previous production commit, exact changed-file scope, risk class, migration declaration, gate receipt, and core deployment policy before production source advances.
 
-`ship --dry-run` validates the bound manifest and gate receipt, verifies Mac/GitHub/repository and production ancestry, checks canonical production Git transport, requires a healthy active runtime with internal/public build-version parity, requires protected WOLO listeners on 8092/8093, refuses releases with Prisma migrations, refuses an existing staged build, and writes a SHA-256-bound deployment plan beneath `.aoe2war-release/ship-plans/`.
+`ship --dry-run` validates the bound manifest and gate receipt, verifies Mac/GitHub/repository and production ancestry, checks the canonical production Git execution identity and transport, requires all production Git metadata to be owned and writable by the deploy user, verifies the dedicated deploy key is readable with the expected ownership, restrictive mode, and fingerprint, requires a healthy active runtime with internal/public build-version parity, requires protected WOLO listeners on 8092/8093, refuses releases with Prisma migrations, refuses an existing staged build, and writes a SHA-256-bound deployment plan beneath `.aoe2war-release/ship-plans/`.
 
 The dry run performs zero production mutation.
 
@@ -95,6 +95,8 @@ The dry run performs zero production mutation.
 Staging records candidate BUILD_ID, candidate build version, and a deterministic SHA-256 identity for the staged `.next-release` artifact. It then proves the existing `.next` BUILD_ID, live internal/public build version, web-service state, and protected WOLO listener counts did not change. `ship --stage` never stops, starts, or restarts the AoE2WAR web service and never mutates WOLO services.
 
 Durable stage evidence is written beneath the root-owned deployment-receipt parent without weakening that parent. Forge creates only the per-release receipt directory through the VPS narrow passwordless `/usr/bin/install` capability, with ownership `tony:tony` and mode `0750`.
+
+Production Git mutation has one canonical execution identity: `tony`. The production `.git` metadata must contain no foreign-owned entries and no directories that are unwritable by that user. Repository transport is bound to `/home/tony/.ssh/gh_deploy_aoe2hdbets_app_prodn`, fingerprint `SHA256:229KVsTphLtYRwmLbqR82g+uIBRip3wzmXfR3etNcZk`, with SSH config fallback disabled through `-F /dev/null`, exact-key authentication, strict host-key checking, and the canonical Tony-owned known-hosts file. A transport that merely resolves GitHub through another identity is not sufficient release proof.
 
 Failure handling distinguishes the production-mutation boundary. A failure before source advancement reports that recovery was not required and does not reset production. Once source mutation begins, a failure removes the candidate build, restores the previous production source and pre-build version identity, and leaves the live `.next` runtime running. Successful staging deliberately stops at `STAGED`; it does not activate the candidate.
 

@@ -61,14 +61,24 @@ Never deploy an unspecified moving branch tip.
 
 ### 2. Verify production Git transport
 
-The VPS `app-prodn` checkout uses repository-local configuration:
+The VPS `app-prodn` checkout uses one canonical Git execution identity:
 
+- execution user: `tony`
 - origin: `git@github.com:Emaren/app-prodn.git`
-- deploy key: `/root/.ssh/github_app_prodn_write_ed25519`
+- deploy key: `/home/tony/.ssh/gh_deploy_aoe2hdbets_app_prodn`
+- deploy-key fingerprint: `SHA256:229KVsTphLtYRwmLbqR82g+uIBRip3wzmXfR3etNcZk`
+- known-hosts file: `/home/tony/.ssh/known_hosts`
 - Git protocol: version `0`
 
-The repository-local `core.sshCommand` requires the dedicated key,
-`IdentitiesOnly=yes`, batch mode, no TTY, and no remote command.
+All production `.git` entries must be owned by `tony`, and all `.git`
+directories must be writable by `tony`. Do not run production Git mutation as
+`root`; mixed Git ownership is a release-blocking condition.
+
+The repository-local `core.sshCommand` requires `-F /dev/null`, the dedicated
+key above, `IdentitiesOnly=yes`, `BatchMode=yes`, `StrictHostKeyChecking=yes`,
+the canonical `UserKnownHostsFile`, no TTY, and no remote command. Disabling
+the user SSH config prevents an unrelated key from silently satisfying GitHub
+authentication.
 
 Protocol v0 is intentional. Authentication and repository reads succeed with
 v0; protocol v2 produced `fatal: expected flush after ref listing`.
@@ -79,10 +89,14 @@ Verify before changing source:
 git remote get-url origin
 git config --local --get core.sshCommand
 git config --local --get protocol.version
+test "$(find .git ! -user tony -printf . | wc -c)" -eq 0
+test "$(find .git -type d ! -writable -printf . | wc -c)" -eq 0
+ssh-keygen -lf /home/tony/.ssh/gh_deploy_aoe2hdbets_app_prodn
 git fetch origin --prune
 ```
 
-Do not depend on a shared SSH hostname alias.
+The fetch must succeed as `tony` through the repository-local transport. Do not
+depend on a shared SSH hostname alias or an implicit fallback identity.
 
 ### 3. Capture predeploy truth and rollback
 
@@ -132,7 +146,7 @@ Build as the `tony` service user:
 ```bash
 rm -rf .next-release
 
-sudo -u tony -H \
+sudo -n -u tony -H \
   env NEXT_DIST_DIR=.next-release \
   npm run build
 ```
