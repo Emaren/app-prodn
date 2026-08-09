@@ -61,6 +61,8 @@ bin/aoe2-release gate
 bin/aoe2-release gate --json
 bin/aoe2-release manifest
 bin/aoe2-release manifest --json
+bin/aoe2-release ship --dry-run
+bin/aoe2-release ship --dry-run --json
 ```
 
 `status` serves operators. `context` is a compact AI/operator handoff. JSON output is the machine-readable contract for gates, receipts, manifests, CI, and deployment automation.
@@ -82,13 +84,19 @@ Risk classification may only add validation as consequence rises. It must never 
 
 The manifest binds the release commit, implementation/documentation baseline, previous production commit, exact changed-file scope, risk class, migration declaration, gate receipt, and core deployment policy before production source advances.
 
+`ship --dry-run` validates the bound manifest and gate receipt, verifies Mac/GitHub/repository and production ancestry, checks canonical production Git transport, requires a healthy active runtime with internal/public build-version parity, requires protected WOLO listeners on 8092/8093, refuses releases with Prisma migrations, refuses an existing staged build, and writes a SHA-256-bound deployment plan beneath `.aoe2war-release/ship-plans/`.
+
+The dry run performs zero production mutation. Plain `ship` remains deliberately unavailable until the mutating deployment path, proof contract, durable receipt, artifact identity, and automatic rollback behavior are separately implemented and sealed.
+
 ## Planned automation surface
 
-Later phases may add `gate`, `seal`, `ship`, `prove`, and `rollback`. They are not authoritative until implemented, tested, documented, and sealed through the same release process.
+Later phases may add a mutating `ship`, plus `seal`, `prove`, and `rollback`. They are not authoritative until implemented, tested, documented, and sealed through the same release process.
 
 ## Release Manifest and provenance
 
-A future manifest will bind implementation commit, release/documentation commit, previous production commit, changed-file set and risk class, required gates/results, migration declaration, build identity, artifact SHA-256, activation timestamp, and rollback/receipt identity.
+The implemented predeploy manifest binds implementation commit, release/documentation commit, previous production commit, changed-file set and risk class, gate receipt, migration declaration, and core release policy before production mutation.
+
+Future manifest evolution will add staged build identity, deterministic artifact SHA-256, activation timestamp, public-proof results, and rollback/deployment-receipt identity.
 
 Until a runtime has such a manifest, tooling must label its artifact provenance `legacy-unmanifested`; source/runtime parity alone is not cryptographic build provenance.
 
