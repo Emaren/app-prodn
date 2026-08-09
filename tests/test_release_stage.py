@@ -91,7 +91,7 @@ class StageTests(unittest.TestCase):
             receipt_dir="/mnt/receipt",
         )
         self.assertIn("NEXT_DIST_DIR=.next-release", script)
-        self.assertIn("sudo -u tony", script)
+        self.assertIn("sudo -n -u tony", script)
         self.assertIn("test ! -e .next-release", script)
 
     def test_stage_script_persists_bound_release_evidence_before_source_advance(self):
@@ -111,6 +111,36 @@ class StageTests(unittest.TestCase):
         self.assertLess(gate_write, source_advance)
         self.assertIn('= "$MANIFEST_SHA"', script)
         self.assertIn('= "$GATE_SHA"', script)
+
+    def test_stage_receipt_uses_narrow_passwordless_install(self):
+        script = MODULE.remote_stage_script(
+            release_sha="b" * 40,
+            previous_sha="a" * 40,
+            manifest_sha="c" * 64,
+            gate_sha="d" * 64,
+            receipt_dir="/mnt/receipt",
+        )
+        self.assertIn(
+            "sudo -n /usr/bin/install -d -o tony -g tony -m 0750",
+            script,
+        )
+        self.assertNotIn("mkdir -p", script)
+
+    def test_stage_recovery_trap_precedes_mutation(self):
+        script = MODULE.remote_stage_script(
+            release_sha="b" * 40,
+            previous_sha="a" * 40,
+            manifest_sha="c" * 64,
+            gate_sha="d" * 64,
+            receipt_dir="/mnt/receipt",
+        )
+        trap_pos = script.index("trap restore_stage_failure EXIT")
+        mutation_pos = script.index("mutation_started=1")
+        reset_pos = script.index('git reset --hard "$RELEASE"')
+        self.assertLess(trap_pos, mutation_pos)
+        self.assertLess(mutation_pos, reset_pos)
+        self.assertIn("NOT_REQUIRED", script)
+        self.assertIn("RESTORED", script)
 
     def test_stage_script_never_stops_or_restarts_services(self):
         script = MODULE.remote_stage_script(

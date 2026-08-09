@@ -88,7 +88,32 @@ PUBLIC={q(PUBLIC)}
 MANIFEST_CONTENT={q(manifest_text)}
 GATE_CONTENT={q(gate_text)}
 
-mkdir -p "$RECEIPT"
+mutation_started=0
+
+restore_stage_failure() {{
+  rc="$?"
+  if [ "$rc" -ne 0 ]; then
+    if [ "$mutation_started" = "1" ]; then
+      rm -rf .next-release
+      git reset --hard "$PREVIOUS" >/dev/null 2>&1 || true
+      if [ "$old_version_present" = "1" ] && [ -f "$RECEIPT/pre-build-version" ]; then
+        cp -p "$RECEIPT/pre-build-version" .aoe2war-build-version || true
+      else
+        rm -f .aoe2war-build-version || true
+      fi
+      printf 'recovery\tRESTORED\n'
+      printf 'status=FAILED\nexit_code=%s\nrestored_source=%s\n' \
+        "$rc" "$(git rev-parse HEAD 2>/dev/null || true)" \
+        > "$RECEIPT/stage-status.txt" || true
+    else
+      printf 'recovery\tNOT_REQUIRED\n'
+    fi
+  fi
+  exit "$rc"
+}}
+trap restore_stage_failure EXIT
+
+sudo -n /usr/bin/install -d -o tony -g tony -m 0750 "$RECEIPT"
 printf '%s' "$MANIFEST_CONTENT" > "$RECEIPT/release-manifest.json"
 printf '%s' "$GATE_CONTENT" > "$RECEIPT/gate-receipt.json"
 test "$(sha256sum "$RECEIPT/release-manifest.json" | awk '{{print $1}}')" = "$MANIFEST_SHA"
@@ -132,23 +157,6 @@ printf '%s\n' \
   "sshcmd=$sshcmd" \
   > "$RECEIPT/prestage.txt"
 
-restore_stage_failure() {{
-  rc="$?"
-  if [ "$rc" -ne 0 ]; then
-    rm -rf .next-release
-    git reset --hard "$PREVIOUS" >/dev/null 2>&1 || true
-    if [ "$old_version_present" = "1" ] && [ -f "$RECEIPT/pre-build-version" ]; then
-      cp -p "$RECEIPT/pre-build-version" .aoe2war-build-version || true
-    else
-      rm -f .aoe2war-build-version || true
-    fi
-    printf 'status=FAILED\nexit_code=%s\nrestored_source=%s\n' \
-      "$rc" "$(git rev-parse HEAD 2>/dev/null || true)" \
-      > "$RECEIPT/stage-status.txt" || true
-  fi
-  exit "$rc"
-}}
-trap restore_stage_failure EXIT
 
 test "$before_head" = "$PREVIOUS"
 test "$before_dirty" = "0"
@@ -162,12 +170,13 @@ git fetch origin --prune
 remote_main="$(git rev-parse origin/main)"
 test "$remote_main" = "$RELEASE"
 
+mutation_started=1
 git reset --hard "$RELEASE"
 test "$(git rev-parse HEAD)" = "$RELEASE"
 test -z "$(git status --porcelain --untracked-files=all)"
 
 rm -rf .next-release
-sudo -u {q(BUILD_USER)} -H env NEXT_DIST_DIR=.next-release npm run build \
+sudo -n -u {q(BUILD_USER)} -H env NEXT_DIST_DIR=.next-release npm run build \
   > "$RECEIPT/build.log" 2>&1
 
 test -f .next-release/BUILD_ID
@@ -407,7 +416,13 @@ def stage_release(
             if p.stderr and p.stderr.strip():
                 print(p.stderr.rstrip())
             print(f"Receipt: {receipt_dir}")
-            print("Stage failure path attempted automatic source/build-version restoration.")
+            recovery = parse_kv(p.stdout or "").get("recovery")
+            if recovery == "RESTORED":
+                print("Recovery: production source/build-version restoration completed.")
+            elif recovery == "NOT_REQUIRED":
+                print("Recovery: not required; failure occurred before source mutation.")
+            else:
+                print("Recovery: unconfirmed; inspect production truth before retry.")
         return 1
 
     result = parse_kv(p.stdout or "")
