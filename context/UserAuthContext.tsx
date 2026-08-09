@@ -205,25 +205,119 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
 
     const ping = async () => {
       try {
-        const presence = currentTrafficPresence();
-        await fetch("/api/user/ping", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(presence ?? {}),
-        });
+        const presence =
+          currentTrafficPresence();
+
+        const response =
+          await fetch(
+            "/api/user/ping",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              credentials:
+                "same-origin",
+              body: JSON.stringify(
+                presence ?? {},
+              ),
+            },
+          );
+
+        const payload = (
+          await response
+            .json()
+            .catch(() => ({}))
+        ) as {
+          traffic_identity?: {
+            status?: string;
+            http_status?: number;
+            session_event_count?: number;
+          };
+        };
+
+        if (!response.ok) {
+          throw new Error(
+            `Presence ping failed: ${response.status}`,
+          );
+        }
+
+        const bridgeStatus =
+          payload
+            .traffic_identity
+            ?.status;
+
+        if (
+          bridgeStatus !== "stored"
+        ) {
+          console.warn(
+            "Traffic identity presence was not stored:",
+            payload
+              .traffic_identity ??
+              {
+                status:
+                  "missing-status",
+              },
+          );
+        }
       } catch (error) {
         if (active) {
-          console.warn("Presence ping failed:", error);
+          console.warn(
+            "Presence ping failed:",
+            error,
+          );
         }
       }
     };
 
     void ping();
-    const interval = window.setInterval(ping, 60_000);
+
+    const interval =
+      window.setInterval(
+        ping,
+        60_000,
+      );
+
+    const onVisibilityChange = () => {
+      if (
+        document.visibilityState ===
+        "visible"
+      ) {
+        void ping();
+      }
+    };
+
+    const onFocus = () => {
+      void ping();
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      onVisibilityChange,
+    );
+
+    window.addEventListener(
+      "focus",
+      onFocus,
+    );
 
     return () => {
       active = false;
-      window.clearInterval(interval);
+
+      window.clearInterval(
+        interval,
+      );
+
+      document.removeEventListener(
+        "visibilitychange",
+        onVisibilityChange,
+      );
+
+      window.removeEventListener(
+        "focus",
+        onFocus,
+      );
     };
   }, [uid]);
 
