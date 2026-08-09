@@ -218,6 +218,7 @@ def path_risk(path: str) -> str:
         "next.config.ts",
         "scripts/aoe2_release.py",
         "scripts/aoe2_release_gate.py",
+        "scripts/aoe2_release_ship.py",
         "bin/aoe2-release",
         "deploy.md",
     }
@@ -311,8 +312,10 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
             "bin/aoe2-release",
             "scripts/aoe2_release.py",
             "scripts/aoe2_release_gate.py",
+            "scripts/aoe2_release_ship.py",
             "tests/test_release_engineering.py",
             "tests/test_release_gate.py",
+            "tests/test_release_ship.py",
         }
         for path in paths
     )
@@ -326,6 +329,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "unittest",
                     "tests/test_release_engineering.py",
                     "tests/test_release_gate.py",
+                    "tests/test_release_ship.py",
                 ],
                 120,
             )
@@ -339,6 +343,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "py_compile",
                     "scripts/aoe2_release.py",
                     "scripts/aoe2_release_gate.py",
+                    "scripts/aoe2_release_ship.py",
                 ],
                 120,
             )

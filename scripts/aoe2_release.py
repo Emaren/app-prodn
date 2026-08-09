@@ -28,7 +28,7 @@ def run(args: list[str], timeout: int = 20) -> tuple[int, str, str]:
             timeout=timeout,
             check=False,
         )
-        return p.returncode, p.stdout.strip(), p.stderr.strip()
+        return p.returncode, p.stdout.rstrip(), p.stderr.rstrip()
     except Exception as exc:
         return 127, "", str(exc)
 
@@ -329,11 +329,23 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="aoe2-release")
     parser.add_argument(
         "command",
-        choices=["status", "context", "gate", "manifest"],
+        choices=["status", "context", "gate", "manifest", "ship"],
     )
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     data = collect()
+
+    if args.command == "ship":
+        from aoe2_release_ship import ship_release
+        return ship_release(
+            data,
+            dry_run=args.dry_run,
+            json_output=args.json,
+        )
+
+    if args.dry_run:
+        parser.error("--dry-run is only valid with ship")
 
     if args.command in {"gate", "manifest"}:
         from aoe2_release_gate import gate_release, manifest_release

@@ -31,6 +31,13 @@ def state_data(*, local="a", github="a", prod="a", dirty=0, prod_dirty=0,
 
 
 class ReleaseEngineeringTests(unittest.TestCase):
+    def test_run_preserves_leading_stdout_space(self):
+        rc, out, _ = MODULE.run(
+            ["python3", "-c", "import sys; sys.stdout.write(\" M file\\n\")"]
+        )
+        self.assertEqual(rc, 0)
+        self.assertEqual(out, " M file")
+
     def test_parse_kv(self):
         self.assertEqual(MODULE.parse_kv("head\tabc\nservice\tactive\n"), {"head": "abc", "service": "active"})
 
