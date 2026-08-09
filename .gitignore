@@ -80,6 +80,9 @@ storage/
 # Generated deployment identity
 .aoe2war-build-version
 
+# Local release-engineering receipts and manifests
+.aoe2war-release/
+
 # VPS-local operator repair backups
 runtime/
 # Python bytecode/cache

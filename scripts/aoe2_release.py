@@ -327,10 +327,20 @@ def context(data: dict) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="aoe2-release")
-    parser.add_argument("command", choices=["status", "context"])
+    parser.add_argument(
+        "command",
+        choices=["status", "context", "gate", "manifest"],
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     data = collect()
+
+    if args.command in {"gate", "manifest"}:
+        from aoe2_release_gate import gate_release, manifest_release
+        if args.command == "gate":
+            return gate_release(data, json_output=args.json)
+        return manifest_release(data, json_output=args.json)
+
     if args.json:
         print(json.dumps(data, indent=2, sort_keys=True))
     elif args.command == "status":
