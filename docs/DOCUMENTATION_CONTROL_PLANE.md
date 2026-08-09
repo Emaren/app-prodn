@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `d2ded71443cb1fffe578ad3e3bee09e04dd77707`
+Implementation baseline: `main` at `24fe14f02451d46183da2905f920eb608f015234`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **55**
+- Authoritative repository documents: **56**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 4
 - `generated`: 1
 - `historical`: 10
-- `reference`: 31
+- `reference`: 32
 - `runbook`: 8
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 43
+- `active`: 44
 - `generated`: 1
 - `historical`: 10
 - `superseded`: 1
@@ -88,6 +88,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR Production Parity Seal — 2026-07-26](PRODUCTION_PARITY_2026-07-26.md) | `historical` | `historical` | `historical-evidence` |
 | [Radio WOLO](RADIO_WOLO.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Realtime Truth Contract](REALTIME_TRUTH_CONTRACT.md) | `reference` | `active` | `architecture-contract` |
+| [AoE2WAR Release Engineering](RELEASE_ENGINEERING.md) | `reference` | `active` | `release-engineering-contract` |
 | [Replay Corpus and Public Metric Contract](REPLAY_CORPUS_METRICS.md) | `reference` | `active` | `metric-contract` |
 | [Replay Statistics and Operations Release — 2026-07-25](REPLAY_STATS_OPERATIONS_RELEASE_2026-07-25.md) | `historical` | `historical` | `release-evidence` |
 | [Rivalries and the War Vault](RIVALRIES_AND_WAR_VAULT.md) | `reference` | `active` | `product-contract` |

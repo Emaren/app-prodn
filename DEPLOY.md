@@ -48,6 +48,10 @@ This exists because normal Next shutdowns were hanging and making deploys flaky.
 Production advances only to an exact reviewed commit. Source, migration,
 build, runtime, and public-release truth are verified separately.
 
+The executable release model is defined in `docs/RELEASE_ENGINEERING.md`.
+`DEPLOY.md` remains the canonical operator and emergency runbook; release
+automation must preserve these invariants rather than bypass them.
+
 ### 1. Seal the release
 
 On the MBP, verify a clean worktree, run the release-specific gates, and prove
