@@ -50,8 +50,6 @@ const HEADER_LINKS: ReadonlyArray<{
 
 const KINGDOM_LINKS = [
   { href: "/kingdom", label: "Kingdom", icon: Castle, body: "The realm, crowns, and league map" },
-  { href: "/round-chamber", label: "Round Chamber", icon: Scale, body: "Proposals, civic ballots, and public mandates" },
-  { href: "/kingdom-forge", label: "Kingdom Forge", icon: Anvil, body: "Forge Power, projects, milestones, and deeds" },
   { href: "/oracle", label: "The Oracle", icon: Eye, body: "Price the future of the Kingdom" },
   { href: "/leaderboard", label: "Leaderboard", icon: BarChart3, body: "Ratings, records, and ranked warriors" },
   { href: "/champions", label: "Champions", icon: Crown, body: "Belts, reigns, title rules" },
@@ -66,6 +64,8 @@ const KINGDOM_LINKS = [
   { href: "/workshop", label: "The Workshop", icon: Hammer, body: "Watch the kingdom being forged in public" },
   { href: "/game-stats", label: "Parser Observatory", icon: BarChart3, body: "Replay corpus, coverage, and unknowns" },
   { href: "/traffic", label: "Traffic Observatory", icon: Globe2, body: "Traffic, suspected humans, and confirmed humans" },
+  { href: "/kingdom-forge", label: "Kingdom Forge", icon: Anvil, body: "Forge Power, projects, milestones, and deeds" },
+  { href: "/round-chamber", label: "The Chamber", icon: Scale, body: "Proposals, civic ballots, and public mandates" },
   { href: "/statistics", label: "Kingdom Statistics", icon: BarChart3, body: "WOLO, users, bets, games, watchers, and growth" },
   { href: "/speed", label: "Speed", icon: Zap, body: "Your live performance and readiness measurements" },
 ] as const;
@@ -89,7 +89,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/champions", title: "Championship Belts" },
   { prefix: "/kingdom-forge", title: "Kingdom Forge" },
   { prefix: "/kingdom", title: "The Kingdom" },
-  { prefix: "/round-chamber", title: "Round Chamber" },
+  { prefix: "/round-chamber", title: "The Chamber" },
   { prefix: "/oracle", title: "The Oracle" },
   { prefix: "/forum", title: "War Room Forum" },
   { prefix: "/live-games", title: "Live Games" },

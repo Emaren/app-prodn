@@ -25,7 +25,7 @@ export type UnresolvedWatcherResult = {
     | "Result review"
     | "Awaiting final proof"
     | "Desynced"
-    | "Result unknown · watcher ended early";
+    | "Unknown · watcher ended early";
   explanation: string;
   reviewNeeded: boolean;
 };
@@ -1934,7 +1934,7 @@ export function classifyUnresolvedWatcherResult(
   if (watcherEndedBeforeTeamResult) {
     return result(
       "watcher_ended_early_team_result",
-      "Result unknown · watcher ended early",
+      "Unknown · watcher ended early",
       "The watcher recording ended before the team game final result was captured, so the eventual winner is unknown.",
       false
     );

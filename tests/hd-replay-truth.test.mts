@@ -926,7 +926,7 @@ test(
 
     assert.equal(
       unresolved?.label,
-      "Result unknown · watcher ended early"
+      "Unknown · watcher ended early"
     );
 
     assert.equal(
@@ -987,7 +987,7 @@ test(
 
     assert.equal(
       publicRow.unresolvedResult?.label,
-      "Result unknown · watcher ended early"
+      "Unknown · watcher ended early"
     );
   }
 );
