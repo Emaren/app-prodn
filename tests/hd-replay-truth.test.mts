@@ -780,3 +780,235 @@ test(
     );
   }
 );
+
+test(
+  "partial 2v2 watcher resignation stays result-unknown when the match continued",
+  () => {
+    const players = [
+      {
+        name: "Lone Wolf",
+        steam_id: "76561198276714565",
+        team_id: 1,
+        winner: null,
+      },
+      {
+        name: "vaporskills",
+        steam_id: "76561198434557019",
+        team_id: 1,
+        winner: null,
+      },
+      {
+        name: "Emaren",
+        steam_id: "76561198065420384",
+        team_id: 0,
+        winner: null,
+      },
+      {
+        name: "FEOMX",
+        steam_id: "76561199554522420",
+        team_id: 0,
+        winner: null,
+      },
+    ];
+
+    const keyEvents = {
+      completed: false,
+
+      resigned_player_names: [
+        "Emaren",
+      ],
+
+      resigned_player_numbers: [
+        3,
+      ],
+
+      team_resolution: {
+        format: "2v2",
+        status: "resolved",
+        confidence: "high",
+        provenance:
+          "explicit_final_team_ids",
+
+        teams: [
+          {
+            team_id: 0,
+            players: [
+              "Emaren",
+              "FEOMX",
+            ],
+          },
+          {
+            team_id: 1,
+            players: [
+              "Lone Wolf",
+              "vaporskills",
+            ],
+          },
+        ],
+      },
+
+      result_resolution: {
+        result_status:
+          "review_required",
+        result_trusted:
+          false,
+
+        winning_team_id:
+          null,
+
+        winning_player_names:
+          [],
+
+        result_evidence: {
+          complete_losing_team_resignation:
+            false,
+
+          winner_flags_coherent:
+            false,
+        },
+      },
+    };
+
+    const truth =
+      resolveReplayWinnerTruth({
+        winner:
+          "Unknown",
+
+        players,
+
+        parseReason:
+          "watcher_final_submission",
+
+        parseSource:
+          "watcher_final",
+
+        keyEvents,
+
+        eventTypes: [
+          "resign",
+        ],
+
+        isFinal:
+          true,
+      });
+
+    assert.equal(
+      truth.winner,
+      null
+    );
+
+    assert.equal(
+      truth.statsEligible,
+      false
+    );
+
+    assert.equal(
+      truth.bettingEligible,
+      false
+    );
+
+    const unresolved =
+      classifyUnresolvedWatcherResult({
+        winner:
+          "Unknown",
+
+        players,
+
+        playerCount:
+          4,
+
+        mapName:
+          "Clean Oasis Gold 25",
+
+        state:
+          "completed",
+
+        parseReason:
+          "watcher_final_submission",
+
+        parseSource:
+          "watcher_final",
+
+        keyEvents,
+
+        eventTypes: [
+          "resign",
+        ],
+
+        isFinal:
+          true,
+
+        finalAccepted:
+          true,
+      });
+
+    assert.equal(
+      unresolved?.code,
+      "watcher_ended_early_team_result"
+    );
+
+    assert.equal(
+      unresolved?.label,
+      "Result unknown · watcher ended early"
+    );
+
+    assert.equal(
+      unresolved?.reviewNeeded,
+      false
+    );
+
+    const publicRow =
+      toPublicGameStatsRow({
+        id:
+          22507,
+
+        is_final:
+          true,
+
+        winner:
+          "Unknown",
+
+        map: {
+          name:
+            "Clean Oasis Gold 25",
+          size:
+            "medium",
+        },
+
+        players,
+
+        parse_reason:
+          "watcher_final_submission",
+
+        parse_source:
+          "watcher_final",
+
+        key_events:
+          keyEvents,
+
+        event_types: [
+          "resign",
+        ],
+      });
+
+    assert.equal(
+      publicRow.winner,
+      null
+    );
+
+    assert.equal(
+      publicRow.reviewNeeded,
+      false
+    );
+
+    assert.equal(
+      publicRow.unresolvedResult?.code,
+      "watcher_ended_early_team_result"
+    );
+
+    assert.equal(
+      publicRow.unresolvedResult?.label,
+      "Result unknown · watcher ended early"
+    );
+  }
+);

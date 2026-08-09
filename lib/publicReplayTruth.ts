@@ -859,6 +859,68 @@ export function toPublicGameStatsRow<T extends PublicGameStatsLike>(row: T): T {
     );
 
   if (isQuietCompletedNoWinner) {
+    const players =
+      readPlayers(row.players);
+
+    const specificUnresolved =
+      classifyUnresolvedWatcherResult({
+        winner: row.winner,
+        players,
+        playerCount:
+          players.length,
+        mapName:
+          readMapName(row),
+        state:
+          "completed",
+        parseReason:
+          readString(
+            row,
+            "parse_reason",
+            "parseReason"
+          ) || null,
+        parseSource:
+          readString(
+            row,
+            "parse_source",
+            "parseSource"
+          ) || null,
+        keyEvents:
+          row.key_events ??
+          row.keyEvents,
+        eventTypes:
+          row.event_types ??
+          row.eventTypes,
+        isFinal:
+          publicReplayIsFinal(row),
+        finalAccepted:
+          publicReplayIsFinal(row),
+        disconnectDetected:
+          row.disconnect_detected === true ||
+          row.disconnectDetected === true,
+      });
+
+    if (
+      specificUnresolved?.code ===
+        "watcher_ended_early_team_result"
+    ) {
+      const next:
+        Record<string, unknown> =
+          clearUnsafeWinnerFields(
+            publicRow
+          );
+
+      next["unresolvedResult"] =
+        specificUnresolved;
+
+      next["reviewNeeded"] =
+        false;
+
+      next["winnerProof"] =
+        "watcher_ended_early_team_result";
+
+      return next as T;
+    }
+
     const next: Record<string, unknown> = clearUnsafeWinnerFields(publicRow);
 
     // Product truth policy:
