@@ -63,6 +63,8 @@ bin/aoe2-release manifest
 bin/aoe2-release manifest --json
 bin/aoe2-release ship --dry-run
 bin/aoe2-release ship --dry-run --json
+bin/aoe2-release ship --stage
+bin/aoe2-release ship --stage --json
 ```
 
 `status` serves operators. `context` is a compact AI/operator handoff. JSON output is the machine-readable contract for gates, receipts, manifests, CI, and deployment automation.
@@ -86,17 +88,25 @@ The manifest binds the release commit, implementation/documentation baseline, pr
 
 `ship --dry-run` validates the bound manifest and gate receipt, verifies Mac/GitHub/repository and production ancestry, checks canonical production Git transport, requires a healthy active runtime with internal/public build-version parity, requires protected WOLO listeners on 8092/8093, refuses releases with Prisma migrations, refuses an existing staged build, and writes a SHA-256-bound deployment plan beneath `.aoe2war-release/ship-plans/`.
 
-The dry run performs zero production mutation. Plain `ship` remains deliberately unavailable until the mutating deployment path, proof contract, durable receipt, artifact identity, and automatic rollback behavior are separately implemented and sealed.
+The dry run performs zero production mutation.
+
+`ship --stage` is the first bounded production-mutation phase. It revalidates the sealed manifest, gate receipt, production state, Git transport, live runtime identity, public version parity, and protected WOLO listeners before mutation. It then persists the bound manifest and gate evidence into durable deployment storage, advances production source only to the exact sealed release SHA, and builds the candidate beside the live runtime in `.next-release` as the production application user.
+
+Staging records candidate BUILD_ID, candidate build version, and a deterministic SHA-256 identity for the staged `.next-release` artifact. It then proves the existing `.next` BUILD_ID, live internal/public build version, web-service state, and protected WOLO listener counts did not change. `ship --stage` never stops, starts, or restarts the AoE2WAR web service and never mutates WOLO services.
+
+A staging failure removes the candidate build, restores the previous production source and pre-build version identity, and leaves the live `.next` runtime running. Successful staging deliberately stops at `STAGED`; it does not activate the candidate.
+
+Plain `ship` remains deliberately unavailable until activation, internal/public proof, certification, and automatic runtime rollback are implemented and sealed.
 
 ## Planned automation surface
 
-Later phases may add a mutating `ship`, plus `seal`, `prove`, and `rollback`. They are not authoritative until implemented, tested, documented, and sealed through the same release process.
+Later phases may add staged-artifact activation, mutating one-command `ship`, plus `seal`, `prove`, and `rollback`. They are not authoritative until implemented, tested, documented, and sealed through the same release process.
 
 ## Release Manifest and provenance
 
 The implemented predeploy manifest binds implementation commit, release/documentation commit, previous production commit, changed-file set and risk class, gate receipt, migration declaration, and core release policy before production mutation.
 
-Future manifest evolution will add staged build identity, deterministic artifact SHA-256, activation timestamp, public-proof results, and rollback/deployment-receipt identity.
+Staging receipts now record staged build identity, candidate build version, deterministic artifact SHA-256, and durable pre-activation evidence. Future provenance evolution will bind activation timestamp, internal/public proof results, certification state, and rollback identity to the completed deployment receipt.
 
 Until a runtime has such a manifest, tooling must label its artifact provenance `legacy-unmanifested`; source/runtime parity alone is not cryptographic build provenance.
 
