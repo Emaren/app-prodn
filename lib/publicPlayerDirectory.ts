@@ -272,10 +272,6 @@ function sortClaimedEntries(left: PublicPlayerDirectoryEntry, right: PublicPlaye
     return ratingComparison;
   }
 
-  if (left.isOnline !== right.isOnline) {
-    return Number(right.isOnline) - Number(left.isOnline);
-  }
-
   if (left.verified !== right.verified) {
     return Number(right.verified) - Number(left.verified);
   }
@@ -292,7 +288,10 @@ function sortClaimedEntries(left: PublicPlayerDirectoryEntry, right: PublicPlaye
     return left.lastPlayedAt ? -1 : 1;
   }
 
-  return left.name.localeCompare(right.name);
+  const nameComparison = left.name.localeCompare(right.name);
+  return nameComparison !== 0
+    ? nameComparison
+    : left.key.localeCompare(right.key);
 }
 
 function sortReplayEntries(left: PublicPlayerDirectoryEntry, right: PublicPlayerDirectoryEntry) {
@@ -392,7 +391,7 @@ function playerForCanonicalSnapshot(
   );
 }
 
-async function loadPublicPlayerDirectoryFresh(
+export async function loadPublicPlayerDirectoryFresh(
   prisma: PrismaClient
 ): Promise<PublicPlayerDirectory> {
   const onlineThreshold = new Date(Date.now() - 2 * 60 * 1000);

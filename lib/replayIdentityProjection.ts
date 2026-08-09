@@ -51,6 +51,54 @@ export type ReplayIdentityProjectionReport = {
   }>;
 };
 
+export type ReplayIdentityProjectionRefreshReason =
+  | "source_identity_changed"
+  | "source_hash_changed"
+  | "result_eligibility_changed"
+  | "winning_players_changed";
+
+export function replayIdentityProjectionRefreshReason(input: {
+  current: {
+    sourceIdentity: string;
+    sourceHash: string;
+    resultEligibility: string;
+    playerSnapshots: Array<{
+      playerKey: string;
+      resultStatus: string;
+    }>;
+  };
+  intended: {
+    sourceIdentity: string;
+    sourceHash: string;
+    resultEligibility: "resolved" | "unresolved";
+    winningPlayerKeys: string[];
+  };
+}): ReplayIdentityProjectionRefreshReason | null {
+  if (input.current.sourceIdentity !== input.intended.sourceIdentity) {
+    return "source_identity_changed";
+  }
+  if (input.current.sourceHash !== input.intended.sourceHash) {
+    return "source_hash_changed";
+  }
+  if (input.current.resultEligibility !== input.intended.resultEligibility) {
+    return "result_eligibility_changed";
+  }
+  if (input.intended.resultEligibility !== "resolved") return null;
+
+  const currentWinners = input.current.playerSnapshots
+    .filter((snapshot) => snapshot.resultStatus === "win")
+    .map((snapshot) => snapshot.playerKey)
+    .sort((left, right) => left.localeCompare(right));
+  const intendedWinners = [...input.intended.winningPlayerKeys].sort(
+    (left, right) => left.localeCompare(right)
+  );
+
+  return currentWinners.length === intendedWinners.length &&
+    currentWinners.every((winner, index) => winner === intendedWinners[index])
+    ? null
+    : "winning_players_changed";
+}
+
 function positiveGameIds(values: readonly (string | number | null | undefined)[]) {
   return [
     ...new Set(
@@ -170,7 +218,16 @@ export async function ensureReplayIdentityProjections(
         select: {
           id: true,
           sourceIdentity: true,
+          sourceHash: true,
           projectionHash: true,
+          resultEligibility: true,
+          playerSnapshots: {
+            orderBy: { id: "asc" },
+            select: {
+              playerKey: true,
+              resultStatus: true,
+            },
+          },
         },
       },
     },
@@ -178,7 +235,26 @@ export async function ensureReplayIdentityProjections(
 
   for (const game of games) {
     const current = game.replayStatProjections[0] ?? null;
-    if (current) {
+    const parseRun = game.replayParseRuns[0] ?? null;
+    const sourceIdentity = parseRun
+      ? `parse-run:${parseRun.runIdentityHash}`
+      : `game-stats:${game.id}:${game.parse_iteration}`;
+    const sourceHash = parseRun?.candidateOutputHash ?? game.replayHash;
+    const effectiveGame = applyReplayAdjudicationToGameStats(game);
+    const result = resultProjection(effectiveGame);
+    const refreshReason = current
+      ? replayIdentityProjectionRefreshReason({
+          current,
+          intended: {
+            sourceIdentity,
+            sourceHash,
+            resultEligibility: result.resultEligibility,
+            winningPlayerKeys: result.winningPlayerKeys,
+          },
+        })
+      : null;
+
+    if (current && refreshReason === null) {
       report.existingCount += 1;
       report.outcomes.push({
         gameStatsId: game.id,
@@ -189,19 +265,24 @@ export async function ensureReplayIdentityProjections(
       continue;
     }
 
-    const effectiveGame = applyReplayAdjudicationToGameStats(game);
     const roster = classifyReplayIdentityRoster(
       effectiveGame.players
     );
     const players = roster.players;
 
     if (roster.blocker) {
-      report.skippedCount += 1;
+      if (current) {
+        report.existingCount += 1;
+      } else {
+        report.skippedCount += 1;
+      }
       report.outcomes.push({
         gameStatsId: game.id,
-        outcome: "skipped",
-        detail: roster.blocker,
-        projectionId: null,
+        outcome: current ? "existing" : "skipped",
+        detail: current
+          ? `accepted_public_projection_preserved:${roster.blocker}`
+          : roster.blocker,
+        projectionId: current?.id ?? null,
       });
       continue;
     }
@@ -233,19 +314,15 @@ export async function ensureReplayIdentityProjections(
         userIdBySteamId.get(player.steamId) ?? null;
     }
 
-    const parseRun = game.replayParseRuns[0] ?? null;
-    const sourceIdentity = parseRun
-      ? `parse-run:${parseRun.runIdentityHash}`
-      : `game-stats:${game.id}:${game.parse_iteration}`;
-    const result = resultProjection(effectiveGame);
     const projection = buildReplayNormalizedStatProjection({
       gameStatsId: game.id,
       replayHash: game.replayHash,
       parseRunId: parseRun?.id,
+      supersedesId: current?.id,
       projectedByUidSnapshot: "system:replay-post-ingest",
       sourceKind: parseRun ? "parse_run" : "game_stats",
       sourceIdentity,
-      sourceHash: parseRun?.candidateOutputHash ?? game.replayHash,
+      sourceHash,
       parserName: parseRun?.parserName,
       parserVersion: parseRun?.parserVersion,
       passName: parseRun?.passName,
@@ -274,6 +351,8 @@ export async function ensureReplayIdentityProjections(
         parse_reason: effectiveGame.parse_reason,
         source_parser_schema_version: parseRun?.schemaVersion ?? null,
         identity_policy: "latest-steam-name-folding-v1",
+        supersedes_projection_id: current?.id ?? null,
+        refresh_reason: refreshReason,
       },
     });
     const persisted = await persistReplayNormalizedStatProjection(

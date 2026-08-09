@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import PlayerMatchFeedClient from "@/components/players/PlayerMatchFeedClient";
+import PlayerProfileRealtimeRefresh from "@/components/players/PlayerProfileRealtimeRefresh";
 import { PlayerAiDevelopmentConsole, PlayerHeroAiDomBinder } from "@/components/players/PlayerAiFeature";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import { formatDurationLabel } from "@/lib/gameStatsView";
@@ -145,16 +146,21 @@ function PlayerRecordBadge({ profile }: { profile: PlayerProfile }) {
 
 export default async function PlayerProfilePage({ profile, viewMode }: PlayerProfilePageProps) {
   const titleHonors = await loadPlayerTitleHonors(profile);
+  const profileSurface =
+    viewMode === "basic"
+      ? <PlayerProfileBasic profile={profile} />
+      : viewMode === "extreme"
+        ? <PlayerProfileExtreme profile={profile} titleHonors={titleHonors} />
+        : <PlayerProfileAdvanced profile={profile} />;
 
-  if (viewMode === "basic") {
-    return <PlayerProfileBasic profile={profile} />;
-  }
-
-  if (viewMode === "extreme") {
-    return <PlayerProfileExtreme profile={profile} titleHonors={titleHonors} />;
-  }
-
-  return <PlayerProfileAdvanced profile={profile} />;
+  return (
+    <>
+      <PlayerProfileRealtimeRefresh
+        initialGeneration={profile.matchFeed.generation}
+      />
+      {profileSurface}
+    </>
+  );
 }
 
 function PlayerProfileExtreme({
@@ -224,7 +230,9 @@ function PlayerProfileExtreme({
           <div className="space-y-6">
             <Panel eyebrow="Match Feed" title="Replay archive" count={`${profile.matchFeed.totalMatches} total`}>
               <PlayerMatchFeedClient
+                key={profile.href}
                 identity={profile.identity}
+                initialGeneration={profile.matchFeed.generation}
                 initialItems={profile.matchFeed.items}
                 initialNextCursor={profile.matchFeed.nextCursor}
                 totalMatches={profile.matchFeed.totalMatches}
@@ -313,7 +321,9 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
         <div className="space-y-5">
           <Panel eyebrow="Match Feed" title="Replay archive" count={`${profile.matchFeed.totalMatches} total`}>
             <PlayerMatchFeedClient
+              key={profile.href}
               identity={profile.identity}
+              initialGeneration={profile.matchFeed.generation}
               initialItems={profile.matchFeed.items}
               initialNextCursor={profile.matchFeed.nextCursor}
               totalMatches={profile.matchFeed.totalMatches}
@@ -445,7 +455,9 @@ function ClaimedBasicProfile({ profile }: { profile: PlayerProfile }) {
 
         <Panel eyebrow="Match Feed" title="Recent replay-backed matches" count={`${profile.matchFeed.totalMatches} total`}>
           <PlayerMatchFeedClient
+            key={profile.href}
             identity={profile.identity}
+            initialGeneration={profile.matchFeed.generation}
             initialItems={profile.matchFeed.items}
             initialNextCursor={profile.matchFeed.nextCursor}
             totalMatches={profile.matchFeed.totalMatches}
@@ -599,7 +611,9 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
 
           <div className="mt-5">
             <PlayerMatchFeedClient
+              key={profile.href}
               identity={profile.identity}
+              initialGeneration={profile.matchFeed.generation}
               initialItems={profile.matchFeed.items}
               initialNextCursor={profile.matchFeed.nextCursor}
               totalMatches={profile.matchFeed.totalMatches}

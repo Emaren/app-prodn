@@ -11,6 +11,8 @@ import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
 import { getLobbyMatchPlayedAtMs } from "@/lib/lobbyMatchTime";
 import { mergeCompletedSessionsIntoLobbyMatches } from "@/lib/liveCompletedMatchSurface";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
+import { isPublicBattleArchiveRow } from "@/lib/publicBattleArchiveEligibility";
+import { sliceVisibleOffsetPage } from "@/lib/visibleOffsetPagination";
 import {
   hydrateEffectiveReplayResultAdjudications,
 } from "@/lib/replayAdjudications";
@@ -26,10 +28,17 @@ export async function loadLobbyRecentMatches({
 }: LoadLobbyRecentMatchesOptions = {}): Promise<LobbyMatchRow[]> {
   try {
     const safeOffset = Math.max(0, Math.floor(offset));
-    const safeLimit = Math.max(1, Math.min(96, Math.floor(limit)));
+    const safeLimit = Math.max(1, Math.min(160, Math.floor(limit)));
+    const upstreamLimit = Math.min(
+      500,
+      Math.max(160, safeOffset + safeLimit + 96),
+    );
 
     const base = getBackendUpstreamBase();
-    const response = await fetch(`${base}/api/game_stats?limit=160`, { cache: "no-store" });
+    const response = await fetch(
+      `${base}/api/game_stats?limit=${upstreamLimit}`,
+      { cache: "no-store" },
+    );
     if (!response.ok) return [];
 
     const payload = (await response.json()) as unknown;
@@ -56,25 +65,22 @@ export async function loadLobbyRecentMatches({
     const mergedRows = mergeCompletedSessionsIntoLobbyMatches(
       publicRows.slice().sort((a, b) => getLobbyMatchPlayedAtMs(b) - getLobbyMatchPlayedAtMs(a)),
       completedSessions,
-      safeOffset + safeLimit
+      upstreamLimit,
     );
 
     const visibleRows =
-      cleanPublicGameRows(
-        mergedRows,
-        {
-          includeReview:
-            true,
-
-          includeLive:
-            false,
-        }
-      )
-        .slice(
-          safeOffset,
-          safeOffset +
-            safeLimit
-        ) as LobbyMatchRow[];
+      sliceVisibleOffsetPage({
+        rows: cleanPublicGameRows(
+          mergedRows,
+          {
+            includeReview: true,
+            includeLive: false,
+          },
+        ) as LobbyMatchRow[],
+        isVisible: isPublicBattleArchiveRow,
+        offset: safeOffset,
+        limit: safeLimit,
+      });
 
     const prisma =
       getPrisma();

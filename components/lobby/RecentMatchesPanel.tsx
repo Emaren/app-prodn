@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { UserRound } from "lucide-react";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   getLobbyPresentationTone,
   type LobbyThemeKey,
@@ -21,16 +28,34 @@ import type { HomeCopy } from "@/lib/i18n/homeCopy";
 import {
   publicReplayMapLabel,
 } from "@/lib/unresolvedWatcherResult";
+import {
+  authoritativePrefixDepthThroughTail,
+  appendUniqueRowsById,
+} from "@/lib/authoritativeListWindow";
 
 const MATCH_FEED_PAGE_SIZE = 24;
-const MATCH_FEED_REFRESH_MS = 15_000;
+const MATCH_FEED_MAX_REFRESH_SIZE = 96;
+const MATCH_FEED_MAX_RECONCILE_EXTRA = 96;
+const MATCH_FEED_REFRESH_MS = 5_000;
 
 type RecentMatchesResponse = {
+  generation?: string;
   ok?: boolean;
   matches?: LobbyMatchRow[];
   nextOffset?: number;
   hasMore?: boolean;
 };
+
+function sameMatchPrefix(
+  current: LobbyMatchRow[],
+  latest: LobbyMatchRow[],
+) {
+  return latest.every(
+    (match, index) =>
+      current[index]?.id === match.id &&
+      JSON.stringify(current[index]) === JSON.stringify(match),
+  );
+}
 
 type RecentMatchesPanelProps = {
   recentMatches: LobbyMatchRow[];
@@ -38,48 +63,6 @@ type RecentMatchesPanelProps = {
   viewMode: LobbyViewMode;
   surface?: "standard" | "extreme";
 };
-
-function readMatchPlayersForTruth(match: LobbyMatchRow) {
-  const raw = (match as { players?: unknown }).players;
-
-  if (Array.isArray(raw)) {
-    return raw.filter(
-      (player): player is Record<string, unknown> =>
-        Boolean(player) &&
-        typeof player === "object" &&
-        !Array.isArray(player)
-    );
-  }
-
-  if (typeof raw === "string") {
-    try {
-      const parsed = JSON.parse(raw) as unknown;
-
-      if (Array.isArray(parsed)) {
-        return parsed.filter(
-          (player): player is Record<string, unknown> =>
-            Boolean(player) &&
-            typeof player === "object" &&
-            !Array.isArray(player)
-        );
-      }
-    } catch {
-      return [];
-    }
-  }
-
-  return [];
-}
-
-function normalizeTruthWinner(value: unknown) {
-  const winner = String(value || "").trim();
-
-  if (!winner || winner.toLowerCase() === "unknown") {
-    return "";
-  }
-
-  return winner;
-}
 
 function readLobbyHumanConfirmedDesync(
   match: LobbyMatchRow
@@ -91,178 +74,6 @@ function readLobbyHumanConfirmedDesync(
     }
   ).humanConfirmedDesync ===
     true;
-}
-
-function matchTruthScore(match: LobbyMatchRow) {
-  const candidate = match as LobbyMatchRow & {
-    winnerProof?: unknown;
-    reviewNeeded?: unknown;
-    unresolvedResult?: unknown;
-    parse_reason?: unknown;
-    parseReason?: unknown;
-  };
-
-  const directWinner = normalizeTruthWinner(candidate.winner);
-
-  const markedWinners = readMatchPlayersForTruth(match).filter(
-    (player) =>
-      player.winner === true &&
-      normalizeTruthWinner(player.name)
-  );
-
-  const unresolved =
-    candidate.unresolvedResult &&
-    typeof candidate.unresolvedResult === "object";
-
-  const parseReason = String(
-    candidate.parse_reason || candidate.parseReason || ""
-  ).toLowerCase();
-
-  let score = 0;
-
-  if (directWinner) score += 1000;
-  if (markedWinners.length > 0) score += 700;
-
-  if (candidate.reviewNeeded === false) score += 120;
-  if (candidate.reviewNeeded === true) score -= 180;
-
-  if (!unresolved) score += 80;
-  if (unresolved) score -= 40;
-
-  if (candidate.winnerProof) score += 40;
-
-  if (parseReason === "recorded_resignation_final") {
-    score += 80;
-  } else if (
-    parseReason ===
-      "watcher_inferred_opponent_win_on_incomplete_1v1" ||
-    parseReason === "watcher_inferred_opponent_win_on_incomplete"
-  ) {
-    score += 30;
-  }
-
-  return score;
-}
-
-function matchRenderFingerprint(
-  match: LobbyMatchRow
-) {
-  const candidate = match as LobbyMatchRow & {
-    winnerProof?: unknown;
-    reviewNeeded?: unknown;
-    unresolvedResult?: unknown;
-    humanConfirmedDesync?: unknown;
-    parseReason?: unknown;
-  };
-
-  return JSON.stringify({
-    map: candidate.map,
-    players: candidate.players,
-    winner: candidate.winner,
-    winnerProof: candidate.winnerProof,
-    reviewNeeded: candidate.reviewNeeded,
-    unresolvedResult: candidate.unresolvedResult,
-    humanConfirmedDesync:
-      candidate.humanConfirmedDesync,
-    parseReason:
-      candidate.parse_reason ||
-      candidate.parseReason ||
-      "",
-    reviewedResult: readLobbyResultReview(match),
-    playedAt: pickLobbyMatchPlayedAt(match),
-  });
-}
-
-function mergeMatchLists(
-  primary: LobbyMatchRow[],
-  secondary: LobbyMatchRow[],
-  preserveSecondaryWhenIdentical = false
-) {
-  const order: number[] = [];
-  const byId = new Map<number, LobbyMatchRow>();
-
-  for (const match of [...primary, ...secondary]) {
-    if (!byId.has(match.id)) {
-      order.push(match.id);
-      byId.set(match.id, match);
-      continue;
-    }
-
-    const current = byId.get(match.id)!;
-
-    /*
-     * The first list is the authoritative/fresher page in every
-     * same-ID merge path. Never let an older cached row restore
-     * or erase a desync marker merely because its winner score
-     * happens to be stronger.
-     */
-    const currentDesyncMarker =
-      (
-        current as {
-          humanConfirmedDesync?:
-            unknown;
-        }
-      ).humanConfirmedDesync;
-
-    const incomingDesyncMarker =
-      (
-        match as {
-          humanConfirmedDesync?:
-            unknown;
-        }
-      ).humanConfirmedDesync;
-
-    if (
-      typeof currentDesyncMarker ===
-        "boolean" &&
-      typeof incomingDesyncMarker ===
-        "boolean" &&
-      currentDesyncMarker !==
-        incomingDesyncMarker
-    ) {
-      continue;
-    }
-
-    const currentScore = matchTruthScore(current);
-    const incomingScore = matchTruthScore(match);
-
-    if (incomingScore > currentScore) {
-      byId.set(match.id, match);
-      continue;
-    }
-
-    if (
-      preserveSecondaryWhenIdentical &&
-      incomingScore === currentScore &&
-      matchRenderFingerprint(match) ===
-        matchRenderFingerprint(current)
-    ) {
-      // Primary controls ordering and supplies fresher truth when
-      // something changed. For identical rows, retain the existing
-      // client object so React has nothing to repaint.
-      byId.set(match.id, match);
-    }
-  }
-
-  const merged = order
-    .map((id) => byId.get(id))
-    .filter(
-      (match): match is LobbyMatchRow =>
-        Boolean(match)
-    );
-
-  if (
-    preserveSecondaryWhenIdentical &&
-    merged.length === secondary.length &&
-    merged.every(
-      (match, index) =>
-        match === secondary[index]
-    )
-  ) {
-    return secondary;
-  }
-
-  return merged;
 }
 
 export function RecentMatchesPanel({
@@ -280,20 +91,17 @@ export function RecentMatchesPanel({
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const matchesRef = useRef(matches);
+  const replayGenerationRef = useRef<string | null>(null);
+  const nextOffsetRef = useRef(recentMatches.length);
   const loadingRef = useRef(false);
   const refreshingLatestRef = useRef(false);
   const hasMoreRef = useRef(true);
   const matchFeedScrollRef = useRef<HTMLDivElement | null>(null);
   const matchFeedSentinelRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    setMatches((current) => mergeMatchLists(recentMatches, current, true));
-
-    if (recentMatches.length > 0) {
-      hasMoreRef.current = true;
-      setHasMoreMatches(true);
-    }
-  }, [recentMatches]);
+  const pendingScrollAdjustmentRef = useRef<{
+    scrollHeight: number;
+    scrollTop: number;
+  } | null>(null);
 
   useEffect(() => {
     matchesRef.current = matches;
@@ -303,38 +111,197 @@ export function RecentMatchesPanel({
     hasMoreRef.current = hasMoreMatches;
   }, [hasMoreMatches]);
 
+  useLayoutEffect(() => {
+    const pending = pendingScrollAdjustmentRef.current;
+    const viewport = matchFeedScrollRef.current;
+    pendingScrollAdjustmentRef.current = null;
+
+    if (!pending || !viewport) return;
+
+    viewport.scrollTop =
+      pending.scrollTop +
+      viewport.scrollHeight -
+      pending.scrollHeight;
+  }, [matches]);
+
   const refreshLatestMatches = useCallback(async () => {
-    if (refreshingLatestRef.current) return;
+    if (refreshingLatestRef.current || loadingRef.current) return;
 
     refreshingLatestRef.current = true;
 
     try {
-      const response = await fetch(
-        `/api/lobby/recent-matches?offset=0&limit=${MATCH_FEED_PAGE_SIZE}&refresh=${Date.now()}`,
-        {
-          cache: "no-store",
-          headers: {
-            "Cache-Control": "no-cache",
-          },
-        }
+      const loadedBeforeRefresh = matchesRef.current;
+      const loadedBeforeRefreshCount = loadedBeforeRefresh.length;
+      const refreshLimit = Math.max(
+        MATCH_FEED_PAGE_SIZE,
+        Math.min(
+          MATCH_FEED_MAX_REFRESH_SIZE,
+          loadedBeforeRefreshCount,
+        ),
       );
 
-      if (!response.ok) return;
+      const loadPage = async (offset: number, limit: number) => {
+        const response = await fetch(
+          `/api/lobby/recent-matches?offset=${offset}&limit=${limit}&refresh=${Date.now()}`,
+          {
+            cache: "no-store",
+            headers: {
+              "Cache-Control": "no-cache",
+            },
+          },
+        );
 
-      const payload =
-        (await response.json()) as RecentMatchesResponse;
+        if (!response.ok) return null;
 
-      const latestMatches = Array.isArray(payload.matches)
+        return (await response.json()) as RecentMatchesResponse;
+      };
+
+      const payload = await loadPage(0, refreshLimit);
+
+      if (!payload) return;
+
+      const generation =
+        typeof payload.generation === "string" &&
+        payload.generation.length > 0
+          ? payload.generation
+          : null;
+      const generationChanged =
+        generation !== null &&
+        generation !== replayGenerationRef.current;
+
+      if (generation !== null) {
+        replayGenerationRef.current = generation;
+      }
+
+      let authoritativePrefix = Array.isArray(payload.matches)
         ? payload.matches
         : [];
+      let nextOffset =
+        typeof payload.nextOffset === "number" &&
+        Number.isFinite(payload.nextOffset)
+          ? Math.max(0, payload.nextOffset)
+          : authoritativePrefix.length;
+      let pageHasMore =
+        typeof payload.hasMore === "boolean"
+          ? payload.hasMore
+          : authoritativePrefix.length >= refreshLimit;
+      const fullFirstWindowReceived =
+        authoritativePrefix.length >=
+        Math.min(loadedBeforeRefreshCount, refreshLimit);
+      const firstWindowUnchanged =
+        fullFirstWindowReceived &&
+        sameMatchPrefix(
+          loadedBeforeRefresh,
+          authoritativePrefix,
+        );
 
-      if (latestMatches.length === 0) return;
+      if (!generationChanged && firstWindowUnchanged) {
+        if (refreshLimit >= loadedBeforeRefreshCount) {
+          nextOffsetRef.current = nextOffset;
+          hasMoreRef.current = pageHasMore;
+          setHasMoreMatches(pageHasMore);
+        }
 
-      // The fresh page goes first. Existing rows with the same ID are
-      // discarded, so repaired winner truth replaces stale client truth.
-      setMatches((current) =>
-        mergeMatchLists(latestMatches, current, true)
+        return;
+      }
+
+      const minimumDepth = Math.max(
+        MATCH_FEED_PAGE_SIZE,
+        loadedBeforeRefreshCount,
       );
+      const maximumDepth =
+        minimumDepth + MATCH_FEED_MAX_RECONCILE_EXTRA;
+      const previousTailId = loadedBeforeRefresh.at(-1)?.id;
+
+      while (
+        pageHasMore &&
+        authoritativePrefix.length < maximumDepth &&
+        (
+          authoritativePrefix.length < minimumDepth ||
+          (
+            previousTailId !== undefined &&
+            !authoritativePrefix.some(
+              (match) => match.id === previousTailId,
+            )
+          )
+        )
+      ) {
+        const batchLimit = Math.min(
+          MATCH_FEED_MAX_REFRESH_SIZE,
+          maximumDepth - authoritativePrefix.length,
+        );
+        const previousOffset = nextOffset;
+        const nextPayload = await loadPage(nextOffset, batchLimit);
+
+        if (!nextPayload) return;
+
+        const nextGeneration =
+          typeof nextPayload.generation === "string" &&
+          nextPayload.generation.length > 0
+            ? nextPayload.generation
+            : null;
+
+        if (
+          generation !== null &&
+          nextGeneration !== null &&
+          nextGeneration !== generation
+        ) {
+          return;
+        }
+
+        const nextMatches = Array.isArray(nextPayload.matches)
+          ? nextPayload.matches
+          : [];
+
+        authoritativePrefix = appendUniqueRowsById(
+          authoritativePrefix,
+          nextMatches,
+        );
+        nextOffset =
+          typeof nextPayload.nextOffset === "number" &&
+          Number.isFinite(nextPayload.nextOffset)
+            ? Math.max(previousOffset, nextPayload.nextOffset)
+            : previousOffset + nextMatches.length;
+        pageHasMore =
+          typeof nextPayload.hasMore === "boolean"
+            ? nextPayload.hasMore
+            : nextMatches.length >= batchLimit;
+
+        if (
+          nextMatches.length === 0 ||
+          nextOffset <= previousOffset
+        ) {
+          pageHasMore = false;
+        }
+      }
+
+      const authoritativeDepth =
+        authoritativePrefixDepthThroughTail(
+          loadedBeforeRefresh,
+          authoritativePrefix,
+          minimumDepth,
+        );
+      const nextMatches = authoritativePrefix.slice(
+        0,
+        authoritativeDepth,
+      );
+      const nextHasMore =
+        authoritativeDepth < authoritativePrefix.length ||
+        pageHasMore;
+      const viewport = matchFeedScrollRef.current;
+
+      if (viewport && viewport.scrollTop > 0) {
+        pendingScrollAdjustmentRef.current = {
+          scrollHeight: viewport.scrollHeight,
+          scrollTop: viewport.scrollTop,
+        };
+      }
+
+      matchesRef.current = nextMatches;
+      setMatches(nextMatches);
+      nextOffsetRef.current = authoritativeDepth;
+      hasMoreRef.current = nextHasMore;
+      setHasMoreMatches(nextHasMore);
     } catch (error) {
       console.warn(
         "Failed to refresh latest lobby matches:",
@@ -380,13 +347,17 @@ export function RecentMatchesPanel({
   }, [refreshLatestMatches]);
 
   const loadMoreMatches = useCallback(async () => {
-    if (loadingRef.current || !hasMoreRef.current) return;
+    if (
+      loadingRef.current ||
+      refreshingLatestRef.current ||
+      !hasMoreRef.current
+    ) return;
 
     loadingRef.current = true;
     setIsLoadingMore(true);
 
     try {
-      const offset = matchesRef.current.length;
+      const offset = nextOffsetRef.current;
       const response = await fetch(
         `/api/lobby/recent-matches?offset=${offset}&limit=${MATCH_FEED_PAGE_SIZE}`,
         { cache: "no-store" }
@@ -407,7 +378,13 @@ export function RecentMatchesPanel({
         return;
       }
 
-      setMatches((current) => mergeMatchLists(current, nextMatches));
+      setMatches((current) => appendUniqueRowsById(current, nextMatches));
+
+      nextOffsetRef.current =
+        typeof payload.nextOffset === "number" &&
+        Number.isFinite(payload.nextOffset)
+          ? Math.max(offset, payload.nextOffset)
+          : offset + nextMatches.length;
 
       const nextHasMore =
         typeof payload.hasMore === "boolean"

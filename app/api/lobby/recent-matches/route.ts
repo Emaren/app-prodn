@@ -1,26 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { loadLobbyRecentMatches } from "@/lib/lobbyRecentMatches";
-import {
-  hydrateLobbyHumanEvidenceMarkers,
-} from "@/lib/lobbyHumanEvidence";
+import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
+import { getPrisma } from "@/lib/prisma";
 import type {
   LobbyMatchRow,
 } from "@/lib/lobby";
-import {
-  getPrisma,
-} from "@/lib/prisma";
-import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
-import {
-  isPublicBattleArchiveRow,
-} from "@/lib/publicBattleArchiveEligibility";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 const DEFAULT_LIMIT = 24;
-const MAX_LIMIT = 48;
+const MAX_LIMIT = 96;
 
 function readIntegerParam(request: NextRequest, name: string, fallback: number) {
   const rawValue = request.nextUrl.searchParams.get(name);
@@ -37,44 +29,25 @@ export async function GET(request: NextRequest) {
     Math.min(MAX_LIMIT, readIntegerParam(request, "limit", DEFAULT_LIMIT))
   );
 
-  // Pull a little extra so filtered watcher artifacts do not leave
-  // visible holes in the public feed.
-  const rows = await loadLobbyRecentMatches({
-    offset,
-    limit: limit + 13,
-  });
+  // Pull one canonical visible lookahead row. Filtering happens inside the
+  // loader before offset, so this cursor is measured in rendered rows.
+  const [rows, generation] = await Promise.all([
+    loadLobbyRecentMatches({
+      offset,
+      limit: limit + 1,
+    }),
+    loadPublicReplayGeneration(getPrisma()),
+  ]);
 
-  const visibleMatches =
-    cleanPublicGameRows(
-      rows,
-      {
-        includeReview:
-          true,
-
-        includeLive:
-          false,
-      }
-    )
-      .filter(
-        isPublicBattleArchiveRow
-      )
-      .slice(
-        0,
-        limit
-      ) as LobbyMatchRow[];
-
-  const matches =
-    await hydrateLobbyHumanEvidenceMarkers(
-      getPrisma(),
-      visibleMatches
-    );
+  const matches = rows.slice(0, limit) as LobbyMatchRow[];
 
   return NextResponse.json(
     {
       ok: true,
+      generation,
       matches,
       nextOffset: offset + matches.length,
-      hasMore: rows.length > limit || matches.length === limit,
+      hasMore: rows.length > limit,
     },
     {
       headers: {

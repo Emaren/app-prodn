@@ -1,32 +1,19 @@
 import { PrismaClient } from "@/lib/generated/prisma";
-import { getPrisma } from "@/lib/prisma";
 import { ensureBetMarkets } from "@/lib/bets";
 import { getEmptyAoe2HdPulseSnapshot, loadAoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
-import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getFeaturedTournament, getLobbyMessages } from "@/lib/communityStore";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { loadLobbyRecentMatches } from "@/lib/lobbyRecentMatches";
-import { mergeCompletedSessionsIntoLobbyMatches } from "@/lib/liveCompletedMatchSurface";
 import { loadLobbyWoloEarnersBoard } from "@/lib/lobbyWoloEarners";
 import { getFallbackLiveTickerSnapshot, loadLiveTickerSnapshot } from "@/lib/liveTicker";
-import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
 import {
   LOBBY_ROOM_SLUG,
   getFallbackLeaderboard,
   getFallbackTournament,
   getFallbackWoloEarnersBoard,
-  type LobbyMatchRow,
-  type LobbyOnlineUser,
   type LobbySnapshot,
 } from "@/lib/lobby";
-import { getLobbyMatchPlayedAtMs } from "@/lib/lobbyMatchTime";
-import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
-import {
-  hydrateEffectiveReplayResultAdjudications,
-} from "@/lib/replayAdjudications";
-import {
-  hydrateLobbyHumanEvidenceMarkers,
-} from "@/lib/lobbyHumanEvidence";
+import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
 import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { loadWoloMarketSnapshot } from "@/lib/woloMarket";
@@ -64,70 +51,6 @@ function queueLobbyMaintenance(prisma: PrismaClient) {
     });
 }
 
-async function loadRecentMatches(): Promise<LobbyMatchRow[]> {
-  try {
-    const base = getBackendUpstreamBase();
-    const response = await fetch(`${base}/api/game_stats?limit=128`, { cache: "no-store" });
-    if (!response.ok) return [];
-
-    const payload = (await response.json()) as LobbyMatchRow[] | unknown;
-    if (!Array.isArray(payload)) return [];
-
-    const hydratedRows =
-      await hydrateEffectiveReplayResultAdjudications(
-        getPrisma(),
-        payload
-      );
-
-    const publicRows = cleanPublicGameRows(hydratedRows, {
-      includeReview: true,
-      includeLive: false,
-    }) as LobbyMatchRow[];
-
-    return publicRows
-      .slice()
-      .sort((a, b) => getLobbyMatchPlayedAtMs(b) - getLobbyMatchPlayedAtMs(a))
-      .slice(0, LOBBY_RECENT_MATCH_INITIAL_LIMIT);
-  } catch (error) {
-    console.warn("Failed to load recent matches for lobby:", error);
-    return [];
-  }
-}
-
-async function loadOnlineUsers(prisma: PrismaClient): Promise<LobbyOnlineUser[]> {
-  try {
-    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
-
-    const users = await prisma.user.findMany({
-      where: {
-        inGameName: { not: null },
-        lastSeen: { gt: twoMinutesAgo },
-      },
-      orderBy: { lastSeen: "desc" },
-      select: {
-        uid: true,
-        inGameName: true,
-        verified: true,
-        verificationLevel: true,
-      },
-      take: 12,
-    });
-
-    return users.map(
-      (user) =>
-        ({
-          uid: user.uid,
-          in_game_name: user.inGameName || user.uid,
-          verified: user.verified,
-          verificationLevel: user.verificationLevel,
-        }) satisfies LobbyOnlineUser
-    );
-  } catch (error) {
-    console.warn("Failed to load online users for lobby:", error);
-    return [];
-  }
-}
-
 async function loadLobbySnapshotFresh(
   prisma: PrismaClient,
   viewerUid?: string | null,
@@ -145,19 +68,21 @@ async function loadLobbySnapshotFresh(
 
     const [
       tournamentMessages,
-      onlineUsers,
-      baseRecentMatches,
+      presence,
+      recentMatches,
       leaderboard,
       woloEarners,
       aoe2hdPulse,
-      liveSessionSnapshot,
     ] = await Promise.all([
       getLobbyMessages(prisma, tournament.roomSlug, 24, {
         uid: viewerUid,
         guestSessionId: guestReactionSessionId,
       }),
-      loadOnlineUsers(prisma),
-      loadRecentMatches(),
+      loadPublicPresenceSnapshot(prisma),
+      loadLobbyRecentMatches({
+        offset: 0,
+        limit: LOBBY_RECENT_MATCH_INITIAL_LIMIT,
+      }),
       loadLobbyLeaderboard(prisma, {
         limit: 32,
         includePendingClaimed: false,
@@ -166,10 +91,11 @@ async function loadLobbySnapshotFresh(
       }),
       loadLobbyWoloEarnersBoard(prisma, { mode: "weekly" }),
       loadAoe2HdPulseSnapshot(),
-      loadLiveSessionSnapshot(prisma),
     ]);
     const visibleLeaderboard = {
       ...leaderboard,
+      // The hero count and visible roster must be one presence sample.
+      activePlayers: presence.activePlayers,
       entries: leaderboard.entries.slice(0, 32),
     };
 
@@ -188,29 +114,9 @@ async function loadLobbySnapshotFresh(
           }
         : woloEarners;
 
-    const recentMatches =
-      await hydrateLobbyHumanEvidenceMarkers(
-        prisma,
-
-        cleanPublicGameRows(
-          mergeCompletedSessionsIntoLobbyMatches(
-            baseRecentMatches,
-            liveSessionSnapshot
-              .recentlyCompletedSessions,
-            LOBBY_RECENT_MATCH_INITIAL_LIMIT
-          ),
-          {
-            includeReview:
-              true,
-
-            includeLive:
-              false,
-          }
-        ) as LobbyMatchRow[]
-      );
     const liveTicker = await loadLiveTickerSnapshot(prisma, {
       tournament,
-      leaderboard,
+      leaderboard: visibleLeaderboard,
       recentMatches,
       woloMarket,
     });
@@ -226,7 +132,7 @@ async function loadLobbySnapshotFresh(
     return {
       tournament,
       messages,
-      onlineUsers,
+      onlineUsers: presence.onlineUsers,
       recentMatches,
       leaderboard: visibleLeaderboard,
       featuredWarriorEntries,
@@ -243,21 +149,10 @@ async function loadLobbySnapshotFresh(
       tournament: getFallbackTournament(false),
       messages: [],
       onlineUsers: [],
-      recentMatches:
-        await hydrateLobbyHumanEvidenceMarkers(
-          prisma,
-
-          cleanPublicGameRows(
-            await loadRecentMatches(),
-            {
-              includeReview:
-                true,
-
-              includeLive:
-                false,
-            }
-          ) as LobbyMatchRow[]
-        ),
+      recentMatches: await loadLobbyRecentMatches({
+        offset: 0,
+        limit: LOBBY_RECENT_MATCH_INITIAL_LIMIT,
+      }),
       leaderboard: getFallbackLeaderboard(),
       featuredWarriorEntries: [],
       wolo,
@@ -278,33 +173,6 @@ type LobbySnapshotCacheEntry = {
 const LOBBY_SNAPSHOT_CACHE_TTL_MS = 15000;
 const LOBBY_SNAPSHOT_STALE_TTL_MS = 10 * 60 * 1000;
 const lobbySnapshotCache = new Map<string, LobbySnapshotCacheEntry>();
-
-async function attachCanonicalRecentMatches(
-  snapshot: LobbySnapshotCacheEntry["value"]
-): Promise<LobbySnapshotCacheEntry["value"]> {
-  try {
-    const recentMatches = await loadLobbyRecentMatches({
-      offset: 0,
-      limit: LOBBY_RECENT_MATCH_INITIAL_LIMIT,
-    });
-
-    if (recentMatches.length === 0) {
-      return snapshot;
-    }
-
-    return {
-      ...snapshot,
-      recentMatches,
-    };
-  } catch (error) {
-    console.warn(
-      "Failed to attach canonical recent matches to lobby snapshot:",
-      error
-    );
-
-    return snapshot;
-  }
-}
 
 export async function loadLobbySnapshot(
   prisma: Parameters<typeof loadLobbySnapshotFresh>[0],
@@ -328,7 +196,6 @@ export async function loadLobbySnapshot(
         viewerUid,
         guestReactionSessionId
       )
-        .then(attachCanonicalRecentMatches)
         .then((value) => {
           const refreshedAt = Date.now();
 
@@ -356,12 +223,10 @@ export async function loadLobbySnapshot(
     return cached.value;
   }
 
-  const value = await attachCanonicalRecentMatches(
-    await loadLobbySnapshotFresh(
-      prisma,
-      viewerUid,
-      guestReactionSessionId
-    )
+  const value = await loadLobbySnapshotFresh(
+    prisma,
+    viewerUid,
+    guestReactionSessionId
   );
 
   lobbySnapshotCache.set(cacheKey, {

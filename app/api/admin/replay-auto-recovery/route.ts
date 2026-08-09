@@ -26,6 +26,15 @@ import {
   reconcileAutomaticWatcherTerminalResults,
 } from "@/lib/replayResultAdjudications";
 
+import {
+  ensureReplayIdentityProjections,
+} from "@/lib/replayIdentityProjection";
+
+import {
+  selectReplayParserRecoveryBatch,
+  selectRecurrentReplayRecoveryBatch,
+} from "@/lib/replayRecoveryBatch";
+
 export const runtime =
   "nodejs";
 
@@ -207,11 +216,48 @@ type ReplayAutoRecoveryCandidate = {
   createdAt: Date;
 };
 
+type ReplayReconciliationCandidate =
+  ReplayAutoRecoveryCandidate & {
+    missingIdentityProjection:
+      boolean;
+    missingAcceptedResult:
+      boolean;
+    staleIdentityResultProjection:
+      boolean;
+  };
+
 const EXACT_CURRENT_HASH_SELECTION = {
   currentReplayHashRequired: true,
   parserContractRequired: true,
   candidateOnlyRequired: true,
   anyExactContractRunSuppressesRedispatch: true,
+  candidateHorizon:
+    "complete_configured_lookback",
+  candidateRotation:
+    true,
+} as const;
+
+const RECURRENT_OUTPUT_SELECTION = {
+  currentReplayHashRequired:
+    true,
+  parserContractRequired:
+    true,
+  exactContractRunRequired:
+    true,
+  missingAcceptedIdentityProjectionOrResultRequired:
+    true,
+  parserRedispatch:
+    false,
+  identityGapsFirst:
+    true,
+  identityGapsRotate:
+    true,
+  resultOnlyGapsRotate:
+    true,
+  mixedLaneIdentityShare:
+    "3:1",
+  candidateHorizon:
+    "complete_configured_lookback",
 } as const;
 
 export async function POST(
@@ -247,8 +293,23 @@ export async function POST(
       3
     );
 
+  const reconciliationBatchSize =
+    boundedInteger(
+      process.env
+        .REPLAY_AUTO_RECONCILE_BATCH_SIZE,
+      8,
+      1,
+      24
+    );
+
   const since =
     recoverySince();
+
+  const recoveryMinuteBucket =
+    Math.floor(
+      Date.now() /
+        60_000
+    );
 
   const targetGameStatsIdRaw =
     request.nextUrl
@@ -328,18 +389,205 @@ export async function POST(
       ORDER BY
         game.created_at DESC,
         game.id DESC
-      LIMIT 100
     `;
 
   const eligible =
-    candidates
-      .filter(
-        finalRecording
+    selectReplayParserRecoveryBatch({
+      candidates:
+        candidates.filter(
+          finalRecording
+        ),
+      batchSize,
+      targetGameStatsId,
+      minuteBucket:
+        recoveryMinuteBucket,
+    });
+
+  /*
+   * Parser dispatch and post-parse publication are separate recovery lanes.
+   * The parser lane intentionally stops redispatching after any exact current-
+   * hash contract run. This recurrent lane closes the corresponding output
+   * hole: an exact run must never permanently suppress a missing accepted
+   * identity projection or result reconciliation after a transient failure.
+   */
+  const reconciliationCandidates =
+    await prisma.$queryRaw<
+      ReplayReconciliationCandidate[]
+    >`
+      WITH recurrent_final AS (
+        SELECT
+          game.id,
+          game.replay_hash AS "replayHash",
+          game.replay_file,
+          game.original_filename,
+          game.parse_source,
+          game.parse_reason,
+          game.created_at AS "createdAt",
+          EXISTS (
+            SELECT 1
+            FROM replay_parse_runs AS run
+            WHERE run.game_stats_id = game.id
+              AND lower(run.input_hash) = lower(game.replay_hash)
+              AND run.parser_name =
+                ${HD_REPLAY_PARSER_CONTRACT.parserName}
+              AND run.parser_version =
+                ${HD_REPLAY_PARSER_CONTRACT.parserVersion}
+              AND run.pass_name =
+                ${HD_REPLAY_PARSER_CONTRACT.passName}
+              AND run.pass_version =
+                ${HD_REPLAY_PARSER_CONTRACT.passVersion}
+              AND run.schema_version =
+                ${HD_REPLAY_PARSER_CONTRACT.schemaVersion}
+              AND run.candidate_only = TRUE
+              AND run.affects_public_aggregates = FALSE
+          ) AS "hasExactParserRun",
+          EXISTS (
+            SELECT 1
+            FROM replay_stat_projections AS projection
+            WHERE projection.game_stats_id = game.id
+              AND projection.projection_status = 'accepted'
+              AND projection.affects_public_aggregates = TRUE
+              AND NOT EXISTS (
+                SELECT 1
+                FROM replay_stat_projections AS successor
+                WHERE successor.supersedes_id = projection.id
+              )
+          ) AS "hasAcceptedIdentityProjection",
+          EXISTS (
+            SELECT 1
+            FROM replay_stat_projections AS resolved_projection
+            WHERE resolved_projection.game_stats_id = game.id
+              AND resolved_projection.projection_status = 'accepted'
+              AND resolved_projection.affects_public_aggregates = TRUE
+              AND resolved_projection.result_eligibility = 'resolved'
+              AND NOT EXISTS (
+                SELECT 1
+                FROM replay_stat_projections AS resolved_successor
+                WHERE resolved_successor.supersedes_id = resolved_projection.id
+              )
+          ) AS "hasResolvedIdentityProjection",
+          (
+            lower(
+              btrim(
+                coalesce(game.winner, '')
+              )
+            ) NOT IN (
+              '',
+              'unknown',
+              'n/a',
+              'na',
+              'none',
+              'pending',
+              'unresolved',
+              'result under review',
+              'to be determined'
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM replay_result_adjudications AS adjudication
+              WHERE adjudication.game_stats_id = game.id
+                AND adjudication.decision_status = 'accepted'
+                AND adjudication.affects_stats = TRUE
+            )
+            OR EXISTS (
+              SELECT 1
+              FROM replay_stat_projections AS result_projection
+              WHERE result_projection.game_stats_id = game.id
+                AND result_projection.projection_status = 'accepted'
+                AND result_projection.affects_public_aggregates = TRUE
+                AND result_projection.result_eligibility = 'resolved'
+                AND NOT EXISTS (
+                  SELECT 1
+                  FROM replay_stat_projections AS result_successor
+                  WHERE result_successor.supersedes_id = result_projection.id
+                )
+            )
+          ) AS "hasAcceptedResult",
+          EXISTS (
+            SELECT 1
+            FROM replay_result_adjudications AS newer_adjudication
+            WHERE newer_adjudication.game_stats_id = game.id
+              AND newer_adjudication.decision_status = 'accepted'
+              AND newer_adjudication.affects_stats = TRUE
+              AND newer_adjudication.created_at > coalesce(
+                (
+                  SELECT max(current_projection.created_at)
+                  FROM replay_stat_projections AS current_projection
+                  WHERE current_projection.game_stats_id = game.id
+                    AND current_projection.projection_status = 'accepted'
+                    AND current_projection.affects_public_aggregates = TRUE
+                    AND NOT EXISTS (
+                      SELECT 1
+                      FROM replay_stat_projections AS current_successor
+                      WHERE current_successor.supersedes_id = current_projection.id
+                    )
+                ),
+                TIMESTAMP 'epoch'
+              )
+          ) AS "hasNewerAcceptedAdjudication"
+        FROM game_stats AS game
+        WHERE game.is_final = TRUE
+          AND game.created_at >= ${since}
+          AND (
+            ${targetGameStatsId}::integer IS NULL
+            OR game.id =
+              ${targetGameStatsId}::integer
+          )
       )
-      .slice(
-        0,
-        batchSize
-      );
+      SELECT
+        recurrent_final.id,
+        recurrent_final."replayHash",
+        recurrent_final.replay_file,
+        recurrent_final.original_filename,
+        recurrent_final.parse_source,
+        recurrent_final.parse_reason,
+        recurrent_final."createdAt",
+        NOT recurrent_final."hasAcceptedIdentityProjection"
+          AS "missingIdentityProjection",
+        NOT recurrent_final."hasAcceptedResult"
+          AS "missingAcceptedResult",
+        (
+          recurrent_final."hasAcceptedIdentityProjection" = TRUE
+          AND recurrent_final."hasAcceptedResult" = TRUE
+          AND (
+            recurrent_final."hasResolvedIdentityProjection" = FALSE
+            OR recurrent_final."hasNewerAcceptedAdjudication" = TRUE
+          )
+        ) AS "staleIdentityResultProjection"
+      FROM recurrent_final
+      WHERE recurrent_final."hasExactParserRun" = TRUE
+        AND (
+          recurrent_final."hasAcceptedIdentityProjection" = FALSE
+          OR recurrent_final."hasAcceptedResult" = FALSE
+          OR (
+            recurrent_final."hasAcceptedIdentityProjection" = TRUE
+            AND recurrent_final."hasAcceptedResult" = TRUE
+            AND (
+              recurrent_final."hasResolvedIdentityProjection" = FALSE
+              OR recurrent_final."hasNewerAcceptedAdjudication" = TRUE
+            )
+          )
+        )
+      ORDER BY
+        recurrent_final."createdAt" DESC,
+        recurrent_final.id DESC
+    `;
+
+  const reconciliationEligible =
+    selectRecurrentReplayRecoveryBatch({
+      candidates:
+        reconciliationCandidates.filter(
+          finalRecording
+        ),
+
+      batchSize:
+        reconciliationBatchSize,
+
+      targetGameStatsId,
+
+      minuteBucket:
+        recoveryMinuteBucket,
+    });
 
   if (
     dryRun
@@ -362,6 +610,9 @@ export async function POST(
       selectionInvariant:
         EXACT_CURRENT_HASH_SELECTION,
 
+      recurrentSelectionInvariant:
+        RECURRENT_OUTPUT_SELECTION,
+
       candidateCount:
         candidates.length,
 
@@ -370,6 +621,25 @@ export async function POST(
 
       eligible:
         eligible.map(
+          (
+            game
+          ) => ({
+            ...game,
+
+            createdAt:
+              game.createdAt
+                .toISOString(),
+          })
+        ),
+
+      reconciliationCandidateCount:
+        reconciliationCandidates.length,
+
+      reconciliationEligibleCount:
+        reconciliationEligible.length,
+
+      reconciliationEligible:
+        reconciliationEligible.map(
           (
             game
           ) => ({
@@ -461,6 +731,14 @@ export async function POST(
           ]
         );
 
+      const identityProjection =
+        await ensureReplayIdentityProjections(
+          prisma,
+          [
+            game.id,
+          ]
+        );
+
       results.push({
         gameStatsId:
           game.id,
@@ -478,6 +756,8 @@ export async function POST(
         parserResult,
 
         automaticTerminalResult,
+
+        identityProjection,
 
         startedAt:
           startedAt
@@ -520,6 +800,117 @@ export async function POST(
     }
   }
 
+  const reconciliationResults:
+    Array<
+      Record<string, unknown>
+    > =
+    [];
+
+  for (
+    const game of
+    reconciliationEligible
+  ) {
+    const startedAt =
+      new Date();
+
+    try {
+      const automaticTerminalResult =
+        await reconcileAutomaticWatcherTerminalResults(
+          prisma,
+          [
+            game.id,
+          ]
+        );
+
+      /*
+       * Result reconciliation runs first so a newly accepted adjudication is
+       * part of the immutable public projection created immediately after it.
+       */
+      const identityProjection =
+        await ensureReplayIdentityProjections(
+          prisma,
+          [
+            game.id,
+          ]
+        );
+
+      reconciliationResults.push({
+        gameStatsId:
+          game.id,
+
+        replayHash:
+          game.replayHash,
+
+        filename:
+          game.original_filename ||
+          game.replay_file,
+
+        missingIdentityProjection:
+          game.missingIdentityProjection,
+
+        missingAcceptedResult:
+          game.missingAcceptedResult,
+
+        staleIdentityResultProjection:
+          game.staleIdentityResultProjection,
+
+        ok:
+          true,
+
+        automaticTerminalResult,
+
+        identityProjection,
+
+        startedAt:
+          startedAt
+            .toISOString(),
+
+        completedAt:
+          new Date()
+            .toISOString(),
+      });
+    } catch (
+      error
+    ) {
+      reconciliationResults.push({
+        gameStatsId:
+          game.id,
+
+        replayHash:
+          game.replayHash,
+
+        filename:
+          game.original_filename ||
+          game.replay_file,
+
+        missingIdentityProjection:
+          game.missingIdentityProjection,
+
+        missingAcceptedResult:
+          game.missingAcceptedResult,
+
+        staleIdentityResultProjection:
+          game.staleIdentityResultProjection,
+
+        ok:
+          false,
+
+        error:
+          errorDetail(
+            error
+          ),
+
+        startedAt:
+          startedAt
+            .toISOString(),
+
+        completedAt:
+          new Date()
+            .toISOString(),
+      });
+    }
+  }
+
   const succeeded =
     results.filter(
       (
@@ -533,9 +924,26 @@ export async function POST(
     results.length -
     succeeded;
 
+  const reconciliationSucceeded =
+    reconciliationResults.filter(
+      (
+        result
+      ) =>
+        result.ok ===
+          true
+    ).length;
+
+  const reconciliationFailed =
+    reconciliationResults.length -
+    reconciliationSucceeded;
+
+  const totalFailed =
+    failed +
+    reconciliationFailed;
+
   return NextResponse.json({
     ok:
-      failed === 0,
+      totalFailed === 0,
 
     dryRun:
       false,
@@ -551,6 +959,9 @@ export async function POST(
     selectionInvariant:
       EXACT_CURRENT_HASH_SELECTION,
 
+    recurrentSelectionInvariant:
+      RECURRENT_OUTPUT_SELECTION,
+
     candidateCount:
       candidates.length,
 
@@ -558,15 +969,43 @@ export async function POST(
       eligible.length,
 
     processedCount:
-      results.length,
+      results.length +
+      reconciliationResults.length,
 
     succeededCount:
-      succeeded,
+      succeeded +
+      reconciliationSucceeded,
 
     failedCount:
+      totalFailed,
+
+    parserProcessedCount:
+      results.length,
+
+    parserSucceededCount:
+      succeeded,
+
+    parserFailedCount:
       failed,
 
     results,
+
+    reconciliationCandidateCount:
+      reconciliationCandidates.length,
+
+    reconciliationEligibleCount:
+      reconciliationEligible.length,
+
+    reconciliationProcessedCount:
+      reconciliationResults.length,
+
+    reconciliationSucceededCount:
+      reconciliationSucceeded,
+
+    reconciliationFailedCount:
+      reconciliationFailed,
+
+    reconciliationResults,
 
     authorityBoundary: {
       parserCandidateOnly:
@@ -595,7 +1034,7 @@ export async function POST(
     },
   }, {
     status:
-      failed === 0
+      totalFailed === 0
         ? 200
         : 503,
   });

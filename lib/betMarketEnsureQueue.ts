@@ -5,6 +5,7 @@ import { ensureBetMarkets } from "@/lib/bets";
 let lastBackgroundEnsureAt = 0;
 let backgroundEnsurePromise: Promise<void> | null = null;
 let backgroundEnsureTimer: ReturnType<typeof setTimeout> | null = null;
+export const BET_MARKET_ENSURE_MIN_INTERVAL_MS = 5_000;
 
 export function queueBetMarketEnsure(prisma: PrismaClient, delayMs = 1_000) {
   const now = Date.now();
@@ -12,7 +13,7 @@ export function queueBetMarketEnsure(prisma: PrismaClient, delayMs = 1_000) {
   if (
     backgroundEnsurePromise ||
     backgroundEnsureTimer ||
-    now - lastBackgroundEnsureAt < 15_000
+    now - lastBackgroundEnsureAt < BET_MARKET_ENSURE_MIN_INTERVAL_MS
   ) {
     return;
   }

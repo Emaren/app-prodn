@@ -101,6 +101,20 @@ The full repository suite passed 124 of 126 tests. The two failures are unrelate
 - Player and staking dynamic-detail routes remain the best candidates for a query/cache profiling pass. Current measurements were variable rather than conclusively regressed.
 - Preserve image quality settings on the main promotional surfaces. Further savings should come from delivery format, responsive sizing, preload discipline, and cache policy—not visibly lower source quality.
 
+## Realtime contract follow-up — 2026-08-08
+
+- Public site presence is defined by named users whose `users.last_seen` is newer than two minutes. One request-time snapshot supplies both the homepage Active Players count and Online Players roster.
+- The homepage and `/players` refresh that snapshot every five seconds while visible and immediately after focus or visibility resume. The endpoint and browser request are no-store.
+- `/players` presence is presentation state only. It may change an Online/Profile badge and the Online Now subset, but it does not reorder or remove ordinary claimed membership.
+- `/players` and player profiles poll one lightweight replay/projection generation on the same five-second/focus cadence. A changed generation refreshes full directory/profile truth, while the profile match feed preserves explicitly loaded older rows and scroll position.
+- Recent Parsed Games owns an independent five-second visible poll plus focus/visibility refresh. Each successful leading-page response is authoritative for same-ID corrections and removals; separately loaded older pages remain available below it.
+- The homepage lobby snapshot now uses the canonical recent-match loader once instead of fetching and merging the same final/live sources twice during a cache refresh.
+- `/api/watcher/events` now applies a bounded, process-local 30-second admission window to only `replay_detected_ignored` / `monitoring` noise. The key includes the resolved account, watcher, and replay identity; it is cleared by `monitor_stop`, capped at 2,048 keys, and pruned after four windows. API-key `last_used_at` is touched only for a batch with an admitted event, so suppressed notifications create no watcher-event or API-key writes. All upload, parser, result, final-candidate, and settlement-observation events remain lossless at ingress.
+
+The replay API now invalidates every process-local `/api/game_stats` limit variant after each durable final commit. Each cache miss captures a generation before its database query and may refill only that generation, so an older in-flight query cannot republish stale rows after invalidation. Direct API uploads also deliver the exact durable receipt to the web post-ingest coordinator with bounded retry; the recurring recovery lane repairs recent exact-parser finals that still lack accepted result or identity output.
+
+The complete current contract and measured August 8 root causes are in `docs/REALTIME_TRUTH_CONTRACT.md`.
+
 ## Deployment
 
 Application commits deployed in this pass:

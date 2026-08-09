@@ -2,27 +2,48 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
+import {
+  PlayerPresenceCount,
+  PlayerPresenceEmpty,
+  PlayerPresenceOnly,
+  PlayerPresenceStatus,
+} from "@/components/players/PlayerDirectoryPresence";
+import PlayerDirectoryRealtimeRefresh from "@/components/players/PlayerDirectoryRealtimeRefresh";
+import { PublicPresenceProvider } from "@/components/presence/PublicPresenceProvider";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { getPrisma } from "@/lib/prisma";
 import {
-  loadPublicPlayerDirectory,
+  loadPublicPlayerDirectoryFresh,
   type PublicPlayerDirectoryEntry,
 } from "@/lib/publicPlayerDirectory";
+import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
+import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
 
 export const dynamic = "force-dynamic";
 
 export default async function PlayersDirectoryPage() {
   const prisma = getPrisma();
-  const directory = await loadPublicPlayerDirectory(prisma);
+  const [initialGeneration, presence] = await Promise.all([
+    loadPublicReplayGeneration(prisma),
+    loadPublicPresenceSnapshot(prisma),
+  ]);
+  // A client refresh only happens after the lightweight generation changes,
+  // so this request must bypass the older shared directory snapshot.
+  const directory = await loadPublicPlayerDirectoryFresh(prisma);
   const boardCount = directory.allEntries.length;
+  const claimedUids = directory.claimedEntries.flatMap((entry) =>
+    entry.uid ? [entry.uid] : [],
+  );
   const claimableCount = Math.max(
     directory.replayEntries.length,
     boardCount - directory.claimedEntries.length
   );
 
   return (
-    <main className="space-y-5 py-5 text-white sm:space-y-6 sm:py-6">
+    <PublicPresenceProvider initialOnlineUsers={presence.onlineUsers}>
+      <main className="space-y-5 py-5 text-white sm:space-y-6 sm:py-6">
+      <PlayerDirectoryRealtimeRefresh initialGeneration={initialGeneration} />
       <SpeedReadyMarker route="/players" />
       <section className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.16),_transparent_30%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#020617)] p-6 sm:p-8">
         <div className="grid gap-7 lg:grid-cols-[1.1fr_0.9fr] lg:items-start">
@@ -37,7 +58,7 @@ export default async function PlayersDirectoryPage() {
             <div className="flex flex-wrap gap-2">
               <HeroPill>{directory.claimedEntries.length} Claimed Profiles</HeroPill>
               <HeroPill live>
-                {directory.activeClaimed.length} Live Now
+                <PlayerPresenceCount directoryUids={claimedUids} /> Live Now
               </HeroPill>
               <HeroPill>{claimableCount} Claimable</HeroPill>
             </div>
@@ -63,7 +84,7 @@ export default async function PlayersDirectoryPage() {
             <StatCard label="Claimed" value={String(directory.claimedEntries.length)} />
             <StatCard
               label="Live Now"
-              value={String(directory.activeClaimed.length)}
+              value={<PlayerPresenceCount directoryUids={claimedUids} />}
               live
               helper="Realtime site activity"
             />
@@ -76,17 +97,18 @@ export default async function PlayersDirectoryPage() {
         <Panel
           title="Online Now"
           eyebrow="Live Lobby"
-          count={directory.activeClaimed.length}
+          count={<PlayerPresenceCount directoryUids={claimedUids} />}
           status={<LiveSignal label="Calculating live" />}
         >
           <div className="space-y-3">
-            {directory.activeClaimed.length === 0 ? (
+            <PlayerPresenceEmpty directoryUids={claimedUids}>
               <EmptyPanel message="No claimed players are live right now." />
-            ) : (
-              directory.activeClaimed.slice(0, 12).map((entry) => (
-                <PlayerCard key={entry.key} entry={entry} accent="emerald" />
-              ))
-            )}
+            </PlayerPresenceEmpty>
+            {directory.claimedEntries.map((entry) => (
+              <PlayerPresenceOnly key={entry.key} uid={entry.uid}>
+                <PlayerCard entry={entry} accent="emerald" />
+              </PlayerPresenceOnly>
+            ))}
           </div>
         </Panel>
 
@@ -99,7 +121,7 @@ export default async function PlayersDirectoryPage() {
             {directory.claimedEntries.length === 0 ? (
               <EmptyPanel message="No claimed profiles yet." />
             ) : (
-              directory.claimedEntries.slice(0, 18).map((entry) => (
+              directory.claimedEntries.map((entry) => (
                 <PlayerCard key={entry.key} entry={entry} accent="amber" />
               ))
             )}
@@ -127,7 +149,8 @@ export default async function PlayersDirectoryPage() {
           )}
         </div>
       </Panel>
-    </main>
+      </main>
+    </PublicPresenceProvider>
   );
 }
 
@@ -172,7 +195,7 @@ function PlayerCard({
           </div>
         </div>
         <div className={`rounded-full border px-3 py-1 text-xs ${badgeStyles}`}>
-          {entry.claimed ? (entry.isOnline ? "Online" : "Profile") : "Claimable"}
+          {entry.claimed ? <PlayerPresenceStatus uid={entry.uid} /> : "Claimable"}
         </div>
       </div>
 
@@ -236,7 +259,7 @@ function Panel({
 }: {
   title: string;
   eyebrow: string;
-  count?: number;
+  count?: ReactNode;
   status?: ReactNode;
   children: ReactNode;
 }) {
@@ -249,7 +272,7 @@ function Panel({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {status}
-          {typeof count === "number" ? (
+          {count !== undefined ? (
             <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
               {count}
             </div>
@@ -268,7 +291,7 @@ function StatCard({
   helper,
 }: {
   label: string;
-  value: string;
+  value: ReactNode;
   live?: boolean;
   helper?: string;
 }) {

@@ -42,6 +42,8 @@ import {
   EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
 } from "@/lib/replayAdjudications";
 import { cleanPublicGameRows, type PublicGameStatsLike } from "@/lib/publicReplayTruth";
+import { PLAYER_MATCH_FEED_RECONCILE_BATCH_SIZE } from "@/lib/playerMatchFeedPagination";
+import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
 import { resolveReplayResultForPlayer } from "@/lib/replayPlayerResult";
 import {
   normalizePublicReplayText,
@@ -103,6 +105,7 @@ export type PlayerProfileMatchItem = {
 };
 
 export type PlayerProfileMatchFeedPage = {
+  generation: string;
   items: PlayerProfileMatchItem[];
   nextCursor: number | null;
   totalMatches: number;
@@ -1233,11 +1236,18 @@ function playerProfileOutcomeLabel(game: PlayerProfileGameRow) {
   return outcomeBadgeLabel(game.parse_reason, game.winner);
 }
 
-function buildMatchFeed(games: PlayerProfileGameRow[], currentPlayer: PublicPlayerRef, offset = 0, limit = PROFILE_MATCH_PAGE_LIMIT): PlayerProfileMatchFeedPage {
+function buildMatchFeed(
+  games: PlayerProfileGameRow[],
+  currentPlayer: PublicPlayerRef,
+  generation: string,
+  offset = 0,
+  limit = PROFILE_MATCH_PAGE_LIMIT,
+): PlayerProfileMatchFeedPage {
   const items = games.slice(offset, offset + limit).map((game) => toMatchItem(game, currentPlayer));
   const nextOffset = offset + items.length;
 
   return {
+    generation,
     items,
     nextCursor: nextOffset < games.length ? nextOffset : null,
     totalMatches: games.length,
@@ -1897,6 +1907,9 @@ async function buildProfileFromPlayer(
     user: ClaimedProfileUser | null;
   }
 ): Promise<PlayerProfile> {
+  // Read the watermark before the replay query. Truth that lands afterward is
+  // guaranteed to produce a different client poll token and another refresh.
+  const matchFeedGeneration = await loadPublicReplayGeneration(prisma);
   const candidateGames = await loadCandidateFinalGames(prisma);
   const matchedGames = filterGamesForPlayer(candidateGames, input.currentPlayer);
   const pendingClaimSummaries = await safeLoadPendingWoloClaimSummaries(prisma, input.aliases);
@@ -2001,7 +2014,13 @@ async function buildProfileFromPlayer(
     charts,
     bestGames,
     rivalries,
-    matchFeed: buildMatchFeed(matchedGames, currentPlayer, 0, PROFILE_INITIAL_MATCH_LIMIT),
+    matchFeed: buildMatchFeed(
+      matchedGames,
+      currentPlayer,
+      matchFeedGeneration,
+      0,
+      PROFILE_INITIAL_MATCH_LIMIT,
+    ),
     tickerItems: buildTickerItems(profileCore),
   };
 }
@@ -2127,12 +2146,20 @@ export async function loadPlayerProfileMatchPage(
   const currentPlayer = await resolveMatchFeedIdentity(prisma, identity);
   if (!currentPlayer) return null;
 
+  const generation = await loadPublicReplayGeneration(prisma);
   const games = filterGamesForPlayer(await loadCandidateFinalGames(prisma), currentPlayer);
   return buildMatchFeed(
     games,
     currentPlayer,
+    generation,
     Math.max(0, Math.round(cursor || 0)),
-    Math.max(1, Math.min(36, Math.round(limit || PROFILE_MATCH_PAGE_LIMIT)))
+    Math.max(
+      1,
+      Math.min(
+        PLAYER_MATCH_FEED_RECONCILE_BATCH_SIZE,
+        Math.round(limit || PROFILE_MATCH_PAGE_LIMIT),
+      ),
+    ),
   );
 }
 

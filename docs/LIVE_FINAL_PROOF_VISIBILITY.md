@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-04"
+reviewed_at: "2026-08-08"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -42,6 +42,24 @@ During that window:
 The visibility hold changes presentation only. It does not reopen betting,
 downgrade final transport evidence, or authorize settlement without canonical
 result truth.
+
+## Deadline and refresh invariants
+
+- Entering `awaiting_final_proof` and persisting `proof_deadline_at` are one
+  lifecycle transition, including direct unresolved-final market seeds.
+- An existing deadline is immutable. A legacy or anomalous null deadline gets
+  one fresh bounded migration grace when repaired; after it is persisted,
+  reconciliation cannot restart it from `updated_at` or worker time. A desync
+  child inherits an already-persisted parent deadline.
+- Repair runs before expiry. Expired winner propositions void first, linked
+  desync propositions follow their terminal parent, and the normal settlement
+  rail returns each active stake exactly.
+- `/bets` refreshes every two seconds while visible and immediately after
+  focus/visibility resume. `/live-games` refreshes every five seconds with the
+  same foreground contract.
+- Expired live-snapshot cache hits wait on one coalesced fresh load. Stale truth
+  is only a refresh-failure fallback, never the healthy-path response while a
+  refresh runs.
 
 
 <!-- AOE2WAR:TERMINAL_RESULT_EXIT_FROM_PENDING_V3:START -->

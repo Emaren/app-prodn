@@ -6,6 +6,7 @@ import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function readCursor(value: string | null) {
   const parsed = Number(value || "0");
@@ -53,7 +54,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(page, {
       headers: {
-        "Cache-Control": "no-store, max-age=0",
+        "Cache-Control":
+          "no-store, no-cache, must-revalidate, max-age=0",
+        Pragma: "no-cache",
+        Expires: "0",
       },
     });
   } catch (error) {

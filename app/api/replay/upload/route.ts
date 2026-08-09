@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getSessionUid } from "@/lib/session";
 import { getPrisma } from "@/lib/prisma";
+import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 import {
   classifyReplayIngestReceipt,
   coordinateReplayPostIngest,
@@ -105,6 +106,7 @@ export async function POST(request: NextRequest) {
   const headers = new Headers();
   if (contentType) headers.set("content-type", contentType);
   headers.set("x-user-uid", uid);
+  headers.set("x-post-ingest-owner", "web_proxy");
   if (playerName) {
     headers.set("x-player-name", playerName);
   }
@@ -166,6 +168,9 @@ export async function POST(request: NextRequest) {
       reconcileTournamentForAcceptedUpload: !isFinalUpload,
       reconcileMarketsForReadyResult: isFinalUpload,
     });
+    if (!postIngest.financial.markets.requested) {
+      queueBetMarketEnsure(prisma, 0);
+    }
 
     if (postIngest.financial.tournament.error) {
       console.warn(

@@ -5,14 +5,31 @@ import { useCallback, useEffect, useRef, useState, type UIEvent } from "react";
 
 import type { PlayerProfileIdentity, PlayerProfileMatchItem } from "@/lib/playerProfile";
 import ReviewReplayResultButton from "@/components/game-stats/ReviewReplayResultButton";
+import { appendUniqueRowsById } from "@/lib/authoritativeListWindow";
+import {
+  PLAYER_MATCH_FEED_RECONCILE_BATCH_SIZE,
+  playerMatchFeedNextCursor,
+  playerMatchFeedRefreshDepth,
+} from "@/lib/playerMatchFeedPagination";
+
+const PLAYER_MATCH_FEED_PAGE_SIZE = 18;
 
 type PlayerMatchFeedClientProps = {
   identity: PlayerProfileIdentity;
+  initialGeneration: string;
   initialItems: PlayerProfileMatchItem[];
   initialNextCursor: number | null;
   totalMatches: number;
   accent?: "amber" | "rose" | "sky";
   variant?: "command" | "classic";
+};
+
+type PlayerMatchFeedResponse = {
+  detail?: string;
+  generation?: string;
+  items?: PlayerProfileMatchItem[];
+  nextCursor?: number | null;
+  totalMatches?: number;
 };
 
 function formatDate(value: string | null) {
@@ -44,10 +61,15 @@ function accentHoverClass(accent: "amber" | "rose" | "sky") {
   return "hover:border-amber-300/35";
 }
 
-function buildFeedUrl(identity: PlayerProfileIdentity, cursor: number) {
+function buildFeedUrl(
+  identity: PlayerProfileIdentity,
+  cursor: number,
+  limit = PLAYER_MATCH_FEED_PAGE_SIZE,
+) {
   const params = new URLSearchParams({
     kind: identity.kind,
     cursor: String(cursor),
+    limit: String(limit),
   });
 
   if (identity.kind === "claimed") {
@@ -61,6 +83,7 @@ function buildFeedUrl(identity: PlayerProfileIdentity, cursor: number) {
 
 export default function PlayerMatchFeedClient({
   identity,
+  initialGeneration,
   initialItems,
   initialNextCursor,
   totalMatches,
@@ -69,39 +92,225 @@ export default function PlayerMatchFeedClient({
 }: PlayerMatchFeedClientProps) {
   const [items, setItems] = useState(initialItems);
   const [nextCursor, setNextCursor] = useState(initialNextCursor);
+  const [currentTotalMatches, setCurrentTotalMatches] = useState(totalMatches);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const itemsRef = useRef(initialItems);
+  const nextCursorRef = useRef(initialNextCursor);
+  const totalMatchesRef = useRef(totalMatches);
+  const appliedGenerationRef = useRef(initialGeneration);
+  const dataGenerationRef = useRef(0);
+  const loadingRef = useRef(false);
+  const reconcilingRef = useRef(false);
+  const reconciliationSequenceRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  const applyItems = useCallback((nextItems: PlayerProfileMatchItem[]) => {
+    itemsRef.current = nextItems;
+    setItems(nextItems);
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+      reconciliationSequenceRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (initialGeneration === appliedGenerationRef.current) return;
+
+    const reconciliationSequence =
+      ++reconciliationSequenceRef.current;
+    const refreshDepth = playerMatchFeedRefreshDepth({
+      currentlyLoaded: itemsRef.current.length,
+      initialWindow: initialItems.length,
+      nextTotal: totalMatches,
+      previousTotal: totalMatchesRef.current,
+    });
+
+    dataGenerationRef.current += 1;
+    reconcilingRef.current = true;
+
+    const applyAuthoritativePrefix = (
+      authoritativeItems: PlayerProfileMatchItem[],
+      authoritativeTotal: number,
+    ) => {
+      if (
+        !mountedRef.current ||
+        reconciliationSequence !== reconciliationSequenceRef.current
+      ) {
+        return;
+      }
+
+      appliedGenerationRef.current = initialGeneration;
+      totalMatchesRef.current = authoritativeTotal;
+      applyItems(authoritativeItems);
+      setCurrentTotalMatches(authoritativeTotal);
+
+      const refreshedCursor = playerMatchFeedNextCursor(
+        authoritativeItems.length,
+        authoritativeTotal,
+      );
+      nextCursorRef.current = refreshedCursor;
+      setNextCursor(refreshedCursor);
+      setError(null);
+    };
+
+    if (refreshDepth <= initialItems.length) {
+      applyAuthoritativePrefix(
+        initialItems.slice(0, refreshDepth),
+        totalMatches,
+      );
+      reconcilingRef.current = false;
+      return;
+    }
+
+    const reconcileLoadedPrefix = async () => {
+      try {
+        let authoritativeTotal = totalMatches;
+        let cursor = 0;
+        let authoritativeItems: PlayerProfileMatchItem[] = [];
+
+        while (authoritativeItems.length < refreshDepth) {
+          const batchLimit = Math.min(
+            PLAYER_MATCH_FEED_RECONCILE_BATCH_SIZE,
+            refreshDepth - authoritativeItems.length,
+          );
+          const response = await fetch(
+            `${buildFeedUrl(identity, cursor, batchLimit)}&refresh=${Date.now()}`,
+            {
+              cache: "no-store",
+              headers: { "Cache-Control": "no-cache" },
+            },
+          );
+          const payload = (await response.json()) as PlayerMatchFeedResponse;
+
+          if (!response.ok) {
+            throw new Error(
+              payload.detail || "Match feed could not reconcile.",
+            );
+          }
+
+          const responseGeneration = String(payload.generation || "").trim();
+          if (
+            responseGeneration &&
+            responseGeneration !== initialGeneration
+          ) {
+            window.dispatchEvent(
+              new Event("aoe2war:player-profile-refresh"),
+            );
+            return;
+          }
+
+          const batchItems = Array.isArray(payload.items)
+            ? payload.items
+            : [];
+          authoritativeItems = appendUniqueRowsById(
+            authoritativeItems,
+            batchItems,
+          );
+          authoritativeTotal = Number.isFinite(payload.totalMatches)
+            ? Math.max(0, Number(payload.totalMatches))
+            : authoritativeTotal;
+
+          const nextBatchCursor = payload.nextCursor ?? null;
+          if (
+            batchItems.length === 0 ||
+            nextBatchCursor === null ||
+            nextBatchCursor <= cursor
+          ) {
+            break;
+          }
+          cursor = nextBatchCursor;
+        }
+
+        applyAuthoritativePrefix(
+          authoritativeItems,
+          authoritativeTotal,
+        );
+      } catch (reconciliationError) {
+        console.warn(
+          "Failed to reconcile loaded player match prefix:",
+          reconciliationError,
+        );
+
+        // Fall back to the fresh server window and its own safe cursor. This
+        // sacrifices loaded depth only on failure, never archive ordering.
+        applyAuthoritativePrefix(initialItems, totalMatches);
+      } finally {
+        if (reconciliationSequence === reconciliationSequenceRef.current) {
+          reconcilingRef.current = false;
+        }
+      }
+    };
+
+    void reconcileLoadedPrefix();
+  }, [
+    applyItems,
+    identity,
+    initialGeneration,
+    initialItems,
+    totalMatches,
+  ]);
 
   const loadMore = useCallback(async () => {
-    if (loading || nextCursor === null) return;
+    const cursor = nextCursorRef.current;
+    if (loadingRef.current || reconcilingRef.current || cursor === null) return;
 
+    loadingRef.current = true;
     setLoading(true);
     setError(null);
+    const requestDataGeneration = dataGenerationRef.current;
 
     try {
-      const response = await fetch(buildFeedUrl(identity, nextCursor), {
+      const response = await fetch(buildFeedUrl(identity, cursor), {
         cache: "no-store",
       });
-      const payload = (await response.json()) as {
-        items?: PlayerProfileMatchItem[];
-        nextCursor?: number | null;
-        detail?: string;
-      };
+      const payload = (await response.json()) as PlayerMatchFeedResponse;
 
       if (!response.ok) {
         throw new Error(payload.detail || "Match feed could not load.");
       }
 
-      setItems((current) => [...current, ...(payload.items || [])]);
-      setNextCursor(payload.nextCursor ?? null);
+      const responseGeneration = String(payload.generation || "").trim();
+      if (
+        requestDataGeneration !== dataGenerationRef.current ||
+        (responseGeneration &&
+          responseGeneration !== appliedGenerationRef.current)
+      ) {
+        window.dispatchEvent(
+          new Event("aoe2war:player-profile-refresh"),
+        );
+        return;
+      }
+
+      const nextItems = appendUniqueRowsById(
+        itemsRef.current,
+        Array.isArray(payload.items) ? payload.items : [],
+      );
+      applyItems(nextItems);
+
+      const nextPageCursor = payload.nextCursor ?? null;
+      nextCursorRef.current = nextPageCursor;
+      setNextCursor(nextPageCursor);
+
+      if (Number.isFinite(payload.totalMatches)) {
+        const nextTotal = Math.max(0, Number(payload.totalMatches));
+        totalMatchesRef.current = nextTotal;
+        setCurrentTotalMatches(nextTotal);
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Match feed could not load.");
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
-  }, [identity, loading, nextCursor]);
+  }, [applyItems, identity]);
 
   const handleFeedScroll = useCallback(
     (event: UIEvent<HTMLDivElement>) => {
@@ -137,7 +346,7 @@ export default function PlayerMatchFeedClient({
     <div className="min-h-0">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="text-xs uppercase tracking-[0.28em] text-slate-400">
-          {items.length} / {totalMatches} loaded
+          {items.length} / {currentTotalMatches} loaded
         </div>
         {nextCursor !== null ? (
           <button

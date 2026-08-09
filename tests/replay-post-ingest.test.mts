@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   classifyReplayIngestReceipt,
   coordinateReplayPostIngest,
+  replayPostIngestReportSucceeded,
   summarizeReplayIngestStages,
 } from "../lib/replayPostIngest.ts";
 
@@ -215,6 +216,43 @@ test("one reconciliation failure does not suppress the other stage", async () =>
   assert.equal(report.financial.tournament.error, "tournament unavailable");
   assert.equal(marketCalls, 1);
   assert.equal(report.financial.markets.succeeded, true);
+  assert.equal(
+    replayPostIngestReportSucceeded(report),
+    false
+  );
+});
+
+test("a requested market failure remains retryable HTTP work", async () => {
+  const trusted = classifyReplayIngestReceipt(
+    {
+      replay_hash: "9".repeat(64),
+      game_id: 99,
+      finality_status: "trusted_final",
+      final_accepted: true,
+      should_settle: true,
+    },
+    true
+  );
+
+  const report = await coordinateReplayPostIngest({
+    prisma: {},
+    receipts: [trusted],
+    source: "api_direct",
+    reconcileMarketsForReadyResult: true,
+    dependencies: {
+      reconcileTournamentMatchProofs: async () => undefined,
+      ensureBetMarkets: async () => {
+        throw new Error("market ensure unavailable");
+      },
+    },
+  });
+
+  assert.equal(report.financial.markets.requested, true);
+  assert.equal(report.financial.markets.succeeded, false);
+  assert.equal(
+    replayPostIngestReportSucceeded(report),
+    false
+  );
 });
 
 test("stage summaries expose a stable retry correlation key", () => {

@@ -38,7 +38,7 @@ import {
   loadReplayDesyncIncidentProvenance,
 } from "@/lib/replayDesyncIncidents";
 import { loadLiveSessionSnapshot, type LiveGameSession } from "@/lib/liveSessionSnapshot";
-import { loadLiveGamesSnapshot } from "@/lib/liveGames";
+import { loadLiveGamesSnapshotFresh } from "@/lib/liveGames";
 import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
 import {
   isUnknownishReplayValue,
@@ -585,6 +585,8 @@ type MarketSeed = {
   seedLeftWolo: number;
   seedRightWolo: number;
   closeAt: Date | null;
+  proofDeadlineAt?: Date | null;
+  resolutionReason?: string | null;
   settledAt: Date | null;
   winnerSide: BetSide | null;
   teamFormat: ReplayTeamFormat | null;
@@ -599,6 +601,45 @@ type MarketSeed = {
   integrityStatus: string;
   integrityReason: string | null;
 };
+
+export function reconciledWinnerMarketSessionKeys(
+  seeds: ReadonlyArray<{
+    linkedSessionKey: string | null;
+    marketType: string;
+  }>
+) {
+  return new Set(
+    seeds
+      .filter(
+        (seed) =>
+          seed.marketType ===
+          WINNER_MARKET_TYPE
+      )
+      .map((seed) =>
+        normalizeName(
+          seed.linkedSessionKey
+        )
+      )
+      .filter(Boolean)
+  );
+}
+
+export function watcherMarketNeedsDetachedReconciliation(input: {
+  normalizedSessionKey: string;
+  marketStatus: string;
+  reconciledSessionKeys: ReadonlySet<string>;
+}) {
+  return Boolean(
+    input.normalizedSessionKey &&
+      (
+        !input.reconciledSessionKeys.has(
+          input.normalizedSessionKey
+        ) ||
+        input.marketStatus ===
+          "under_review"
+      )
+  );
+}
 
 function marketSeedCreateData(seed: MarketSeed) {
   return {
@@ -619,6 +660,8 @@ function marketSeedCreateData(seed: MarketSeed) {
     seedLeftWolo: seed.seedLeftWolo,
     seedRightWolo: seed.seedRightWolo,
     closeAt: seed.closeAt,
+    proofDeadlineAt: seed.proofDeadlineAt ?? null,
+    resolutionReason: seed.resolutionReason ?? null,
     settledAt: seed.settledAt,
     winnerSide: seed.winnerSide,
     teamFormat: seed.teamFormat,
@@ -649,6 +692,9 @@ function marketSeedUpdateData(
     propositionHash: string | null;
     firstStakeAcceptedAt: Date | null;
     closeAt: Date | null;
+    proofDeadlineAt: Date | null;
+    resolutionReason: string | null;
+    createdAt: Date;
   } | null
 ) {
   const existingWinnerSide =
@@ -708,8 +754,22 @@ function marketSeedUpdateData(
       integrityReason: "roster_changed_after_stake",
       commissionerReviewState: "roster_changed_after_stake",
       underReviewAt: new Date(),
+      proofDeadlineAt: null,
     };
   }
+
+  const nextProofDeadlineAt =
+    seed.status === "awaiting_final_proof"
+      ? existing?.proofDeadlineAt ??
+        seed.proofDeadlineAt ??
+        watcherFinalProofDeadline({
+          proofDeadlineAt: null,
+          underReviewAt: null,
+          proofObservedAt: seed.closeAt,
+          closeAt: existing?.closeAt ?? null,
+          createdAt: existing?.createdAt ?? null,
+        })
+      : null;
 
   return {
     ...(seed.battleId ? { battleId: seed.battleId } : {}),
@@ -728,6 +788,18 @@ function marketSeedUpdateData(
     seedLeftWolo: seed.seedLeftWolo,
     seedRightWolo: seed.seedRightWolo,
     closeAt: keepSettledWinnerLatch ? null : seed.closeAt,
+    proofDeadlineAt:
+      keepSettledWinnerLatch
+        ? null
+        : nextProofDeadlineAt,
+    ...(seed.status === "awaiting_final_proof"
+      ? {
+          resolutionReason:
+            seed.resolutionReason ??
+            existing?.resolutionReason ??
+            "final_replay_pending",
+        }
+      : {}),
     settledAt: keepSettledWinnerLatch ? existing?.settledAt ?? seed.settledAt : seed.settledAt,
     winnerSide: keepSettledWinnerLatch ? existingWinnerSide : seed.winnerSide,
     ...(propositionLocked
@@ -1389,20 +1461,125 @@ export function canAutoRecoverWatcherIntegrityReview(input: {
   );
 }
 
-export function watcherFinalProofDeadline(input: {
+type WatcherFinalProofClock = {
   proofDeadlineAt: Date | null;
   underReviewAt: Date | null;
-}, nowMs = Date.now()) {
+  proofObservedAt?: Date | null;
+  closeAt?: Date | null;
+  createdAt?: Date | null;
+};
+
+export function watcherFinalProofGraceStartedAt(
+  input: WatcherFinalProofClock,
+  nowMs = Date.now()
+) {
+  return (
+    input.underReviewAt ??
+    input.proofObservedAt ??
+    input.closeAt ??
+    input.createdAt ??
+    new Date(nowMs)
+  );
+}
+
+export function watcherFinalProofDeadline(
+  input: WatcherFinalProofClock,
+  nowMs = Date.now()
+) {
   if (input.proofDeadlineAt) {
     return input.proofDeadlineAt;
   }
 
   const graceStartedAtMs =
-    input.underReviewAt?.getTime() ?? nowMs;
+    watcherFinalProofGraceStartedAt(
+      input,
+      nowMs
+    ).getTime();
 
   return new Date(
     graceStartedAtMs +
       WATCHER_FINAL_PROOF_GRACE_MINUTES * 60 * 1000
+  );
+}
+
+type WatcherFinalProofTransitionClock =
+  WatcherFinalProofClock & {
+    status: string;
+  };
+
+/**
+ * Start a new proof grace from the observation that caused a market to enter
+ * the proof rail. A live/open market's creation time is game age, not proof
+ * age, so it must never shorten its first proof window. Reconciliation may
+ * revisit an already-closing/awaiting market; in that case retain its explicit
+ * persisted proof clock and only use the new observation when no such clock
+ * exists.
+ */
+export function watcherFinalProofDeadlineForTransition(
+  input: WatcherFinalProofTransitionClock,
+  proofObservedAt = new Date()
+) {
+  const preservesExistingProofClock =
+    input.status === "closing" ||
+    input.status === "awaiting_final_proof";
+
+  if (!preservesExistingProofClock) {
+    return watcherFinalProofDeadline(
+      {
+        proofDeadlineAt: null,
+        underReviewAt: null,
+        proofObservedAt,
+        closeAt: null,
+        createdAt: null,
+      },
+      proofObservedAt.getTime()
+    );
+  }
+
+  const hasPersistedProofClock = Boolean(
+    input.proofDeadlineAt ||
+      input.underReviewAt ||
+      input.closeAt
+  );
+
+  return watcherFinalProofDeadline(
+    {
+      proofDeadlineAt: input.proofDeadlineAt,
+      underReviewAt: input.underReviewAt,
+      proofObservedAt:
+        hasPersistedProofClock
+          ? null
+          : proofObservedAt,
+      closeAt: input.closeAt,
+      // createdAt is intentionally excluded from live reconciliation. It is
+      // only a deterministic fallback for repairing already-historical rows.
+      createdAt: null,
+    },
+    proofObservedAt.getTime()
+  );
+}
+
+/**
+ * Repair a missing persisted proof clock without retroactively consuming grace.
+ *
+ * Normal realtime transitions persist their deadline atomically from the proof
+ * observation that caused the transition. Reaching this helper therefore means
+ * the row predates that invariant or suffered an anomalous missing-clock write.
+ * Give that row one bounded repair grace from this repair observation, persist
+ * it once, and never restart it on later reconciliation.
+ */
+export function watcherMissingProofDeadlineRepairDeadline(
+  repairObservedAt = new Date()
+) {
+  return watcherFinalProofDeadlineForTransition(
+    {
+      status: "awaiting_final_proof",
+      proofDeadlineAt: null,
+      underReviewAt: null,
+      closeAt: null,
+      createdAt: null,
+    },
+    repairObservedAt
   );
 }
 
@@ -1465,6 +1642,14 @@ function buildSessionMarketSeed(
         : hasCanonicalFinalReplay
           ? "settled"
           : "awaiting_final_proof";
+  const proofObservedAt = new Date(settledAtRaw);
+  const normalizedProofObservedAt = Number.isNaN(
+    proofObservedAt.getTime()
+  )
+    ? new Date(session.createdAt)
+    : proofObservedAt;
+  const awaitingFinalProof =
+    watcherMarketStatus === "awaiting_final_proof";
 
   const seed = {
     scheduledMatchId: null,
@@ -1489,7 +1674,25 @@ function buildSessionMarketSeed(
         : null,
     seedLeftWolo: 0,
     seedRightWolo: 0,
-    closeAt: null,
+    closeAt:
+      awaitingFinalProof
+        ? normalizedProofObservedAt
+        : null,
+    proofDeadlineAt:
+      awaitingFinalProof
+        ? watcherFinalProofDeadline({
+            proofDeadlineAt: null,
+            underReviewAt: null,
+            proofObservedAt:
+              normalizedProofObservedAt,
+          })
+        : null,
+    resolutionReason:
+      awaitingFinalProof
+        ? hasCanonicalFinalReplay
+          ? "final_result_not_betting_eligible"
+          : "final_replay_pending"
+        : null,
     settledAt: settlementReadyFinalReplay ? new Date(settledAtRaw) : null,
     winnerSide: settlementReadyFinalReplay ? resolvedWinnerSide : null,
     teamFormat: resolution.format,
@@ -3836,6 +4039,101 @@ async function voidExpiredWatcherMarkets(prisma: PrismaClient) {
   });
 }
 
+async function repairMissingWatcherProofDeadlines(
+  prisma: PrismaClient
+) {
+  const missing = await prisma.betMarket.findMany({
+    where: {
+      status: "awaiting_final_proof",
+      proofDeadlineAt: null,
+      marketType: {
+        in: [
+          WINNER_MARKET_TYPE,
+          DESYNC_SIDE_MARKET_TYPE,
+        ],
+      },
+    },
+    select: {
+      id: true,
+      marketType: true,
+      closeAt: true,
+      createdAt: true,
+      underReviewAt: true,
+      proofDeadlineAt: true,
+      resolutionReason: true,
+      parentMarket: {
+        select: {
+          proofDeadlineAt: true,
+          closeAt: true,
+          createdAt: true,
+          underReviewAt: true,
+        },
+      },
+    },
+  });
+
+  if (missing.length === 0) {
+    return;
+  }
+
+  /*
+   * Missing proof deadlines are a migration/anomaly condition, not proof that
+   * grace began at market creation. Historical production contains real-money
+   * awaiting_final_proof books created before proof_deadline_at was persisted.
+   *
+   * Capture one observation for the whole repair batch. A parent and its
+   * deadline-less desync child therefore receive the same fresh bounded window.
+   * If the parent already owns a deadline, the child inherits that deadline
+   * instead of inventing another clock.
+   */
+  const repairObservedAt = new Date();
+
+  await prisma.$transaction(
+    missing.map((market) => {
+      const parentProofClock =
+        market.marketType === DESYNC_SIDE_MARKET_TYPE &&
+        market.parentMarket
+          ? market.parentMarket
+          : null;
+
+      const inheritedParentDeadline =
+        parentProofClock?.proofDeadlineAt ?? null;
+
+      const proofDeadlineAt =
+        inheritedParentDeadline ??
+        watcherMissingProofDeadlineRepairDeadline(
+          repairObservedAt
+        );
+
+      const repairCloseAt =
+        inheritedParentDeadline
+          ? parentProofClock?.closeAt ??
+            parentProofClock?.underReviewAt ??
+            repairObservedAt
+          : repairObservedAt;
+
+      return prisma.betMarket.updateMany({
+        where: {
+          id: market.id,
+          status: "awaiting_final_proof",
+          proofDeadlineAt: null,
+        },
+        data: {
+          closeAt:
+            market.closeAt ??
+            repairCloseAt,
+          proofDeadlineAt,
+          resolutionReason:
+            market.resolutionReason ??
+            (market.marketType === DESYNC_SIDE_MARKET_TYPE
+              ? "desync_final_replay_pending"
+              : "final_replay_pending"),
+        },
+      });
+    })
+  );
+}
+
 async function linkLateFinalEvidence(prisma: PrismaClient) {
   const voidedMarkets = await prisma.betMarket.findMany({
     where: {
@@ -3900,7 +4198,13 @@ async function linkLateFinalEvidence(prisma: PrismaClient) {
 
 
 async function buildOpenMarketSeeds(prisma: PrismaClient) {
-  const sessionSnapshot = await loadLiveGamesSnapshot(prisma);
+  /*
+   * Market discovery is a financial projection and must read current replay
+   * truth. The public live-games surface may use its short SWR cache, but a
+   * stale snapshot here can suppress a newly eligible proposition until the
+   * next background ensure window.
+   */
+  const sessionSnapshot = await loadLiveGamesSnapshotFresh(prisma);
   const {
     tiles: scheduledMatchTiles,
     matchedActiveSessionKeys,
@@ -3910,12 +4214,6 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
     sessionSnapshot.activeSessions,
     sessionSnapshot.recentlyCompletedSessions
   );
-  const visibleSessionKeys = new Set(
-    [...sessionSnapshot.activeSessions, ...sessionSnapshot.recentlyCompletedSessions]
-      .map((session) => normalizeName(session.sessionKey))
-      .filter(Boolean)
-  );
-
   const seeds: MarketSeed[] = [];
   const seenSlugs = new Set<string>();
   const challengeSeeds = buildChallengeMarketSeeds(scheduledMatchTiles);
@@ -4005,9 +4303,20 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
     seed.battleId = identityKey ? battleIdentities.get(identityKey)?.id ?? null : null;
   }
 
+  /*
+   * Visibility alone is not financial reconciliation. An active/completed
+   * watcher row may be structurally ineligible and therefore produce no seed.
+   * Only a winner seed that survived validation/upsert may protect an existing
+   * same-session book from the detached/finality safety pass.
+   */
+  const reconciledSessionKeys =
+    reconciledWinnerMarketSessionKeys(
+      seeds
+    );
+
   return {
     seeds,
-    visibleSessionKeys,
+    reconciledSessionKeys,
   };
 }
 
@@ -4082,9 +4391,9 @@ function loadDetachedWatcherFinalGame(
   });
 }
 
-async function reconcileDetachedWatcherMarkets(
+export async function reconcileDetachedWatcherMarkets(
   prisma: PrismaClient,
-  visibleSessionKeys: Set<string>
+  reconciledSessionKeys: ReadonlySet<string>
 ) {
   const markets = await prisma.betMarket.findMany({
     where: {
@@ -4112,6 +4421,7 @@ async function reconcileDetachedWatcherMarkets(
       underReviewAt: true,
       proofDeadlineAt: true,
       resolutionReason: true,
+      createdAt: true,
     },
   });
 
@@ -4128,11 +4438,13 @@ async function reconcileDetachedWatcherMarkets(
   for (const market of markets) {
     const sessionKey = normalizeName(market.linkedSessionKey);
     if (
-      !sessionKey ||
-      (
-        visibleSessionKeys.has(sessionKey) &&
-        market.status !== "under_review"
-      )
+      !watcherMarketNeedsDetachedReconciliation({
+        normalizedSessionKey:
+          sessionKey,
+        marketStatus:
+          market.status,
+        reconciledSessionKeys,
+      })
     ) {
       continue;
     }
@@ -4160,11 +4472,13 @@ async function reconcileDetachedWatcherMarkets(
     markets.map(async (market) => {
       const sessionKey = normalizeName(market.linkedSessionKey);
       if (
-        !sessionKey ||
-        (
-          visibleSessionKeys.has(sessionKey) &&
-          market.status !== "under_review"
-        )
+        !watcherMarketNeedsDetachedReconciliation({
+          normalizedSessionKey:
+            sessionKey,
+          marketStatus:
+            market.status,
+          reconciledSessionKeys,
+        })
       ) {
         return;
       }
@@ -4257,16 +4571,25 @@ async function reconcileDetachedWatcherMarkets(
           where: {
             id: market.id,
             status: {
-              in: ["open", "closing", "live", "under_review"],
+              in: [
+                "open",
+                "closing",
+                "live",
+                "awaiting_final_proof",
+                "under_review",
+              ],
             },
             voidedAt: null,
           },
           data: {
             status: "awaiting_final_proof",
             featured: false,
-            closeAt: new Date(),
+            closeAt: snapshotGapObservedAt,
             proofDeadlineAt:
-              watcherFinalProofDeadline(market),
+              watcherFinalProofDeadlineForTransition(
+                market,
+                snapshotGapObservedAt
+              ),
             resolutionReason: "final_replay_pending",
             settledAt: null,
             winnerSide: null,
@@ -4317,20 +4640,30 @@ async function reconcileDetachedWatcherMarkets(
           String(finalGame.parse_reason || "").toLowerCase().includes("disconnect") ||
             String(finalGame.parse_reason || "").toLowerCase().includes("desync")
         );
+        const proofObservedAt = new Date();
         const moved = await prisma.betMarket.updateMany({
           where: {
             id: market.id,
             status: {
-              in: ["open", "closing", "live", "under_review"],
+              in: [
+                "open",
+                "closing",
+                "live",
+                "awaiting_final_proof",
+                "under_review",
+              ],
             },
             voidedAt: null,
           },
           data: {
             status: "awaiting_final_proof",
             featured: false,
-            closeAt: new Date(),
+            closeAt: proofObservedAt,
             proofDeadlineAt:
-              watcherFinalProofDeadline(market),
+              watcherFinalProofDeadlineForTransition(
+                market,
+                proofObservedAt
+              ),
             resolutionReason: disconnectEvidence
               ? "explicit_desync_without_safe_winner"
               : "final_result_not_betting_eligible",
@@ -4906,6 +5239,15 @@ async function reconcileDesyncSideMarkets(
 
         status:
           true,
+
+        closeAt:
+          true,
+
+        proofDeadlineAt:
+          true,
+
+        resolutionReason:
+          true,
       },
     });
 
@@ -5149,6 +5491,21 @@ async function reconcileDesyncSideMarkets(
       parent?.status ===
       "awaiting_final_proof"
     ) {
+      const alreadyAligned =
+        Boolean(parent.proofDeadlineAt) &&
+        market.status ===
+          "awaiting_final_proof" &&
+        market.proofDeadlineAt?.getTime() ===
+          parent.proofDeadlineAt?.getTime() &&
+        market.linkedGameStatsId ===
+          gameStatsId &&
+        market.resolutionReason ===
+          "desync_final_replay_pending";
+
+      if (alreadyAligned) {
+        continue;
+      }
+
       await prisma.betMarket.updateMany({
         where: {
           id:
@@ -5172,6 +5529,7 @@ async function reconcileDesyncSideMarkets(
             false,
 
           closeAt:
+            market.closeAt ??
             now,
 
           proofDeadlineAt:
@@ -5798,7 +6156,7 @@ async function reconcileAuthorizedReplayVerdictMarkets(
 async function runBetMarketEnsure(prisma: PrismaClient) {
   await archiveLowConfidenceZeroPotMarkets(prisma);
   const ticketMarketGuard = buildBetStakeTicketMarketGuardWhere();
-  const { seeds, visibleSessionKeys } = await buildOpenMarketSeeds(prisma);
+  const { seeds, reconciledSessionKeys } = await buildOpenMarketSeeds(prisma);
   const slugs = [...new Set(seeds.map((seed) => seed.slug))];
   const staleMarketCutoff = new Date(Date.now() - 2 * 60_000);
   const existingMarkets = await prisma.betMarket.findMany({
@@ -5817,6 +6175,9 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
       propositionHash: true,
       firstStakeAcceptedAt: true,
       closeAt: true,
+      proofDeadlineAt: true,
+      resolutionReason: true,
+      createdAt: true,
     },
   });
   const existingBySlug = new Map(existingMarkets.map((market) => [market.slug, market] as const));
@@ -5938,7 +6299,7 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
   }
 
   await reconcileChallengeSessionShadowMarkets(prisma, seeds);
-  await reconcileDetachedWatcherMarkets(prisma, visibleSessionKeys);
+  await reconcileDetachedWatcherMarkets(prisma, reconciledSessionKeys);
   await linkLateFinalEvidence(prisma);
   /*
    * An explicitly authorized final result is trusted proof. Apply it before
@@ -5946,6 +6307,7 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
    * Terminal void/refund guards inside the reconciler remain authoritative.
    */
   await reconcileAuthorizedReplayVerdictMarkets(prisma);
+  await repairMissingWatcherProofDeadlines(prisma);
   await voidExpiredWatcherMarkets(prisma);
 
   await prisma.betMarket.updateMany({

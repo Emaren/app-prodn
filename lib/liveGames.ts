@@ -414,7 +414,9 @@ async function hydrateCompletedSessionUploaders<T extends CompletedUploaderHydra
 }
 
 
-async function loadLiveGamesSnapshotFresh(prisma: PrismaClient): Promise<LiveGamesSnapshot> {
+export async function loadLiveGamesSnapshotFresh(
+  prisma: PrismaClient
+): Promise<LiveGamesSnapshot> {
   const [
     tournament,
     recentMatches,
@@ -1218,14 +1220,55 @@ function attachStreams(
 }
 type LiveGamesSnapshotCacheEntry = {
   expiresAt: number;
-  staleUntil: number;
-  refreshing: boolean;
   value: LiveGamesSnapshot;
 };
 
-const LIVE_GAMES_SNAPSHOT_CACHE_TTL_MS = 8000;
-const LIVE_GAMES_SNAPSHOT_STALE_TTL_MS = 10 * 60 * 1000;
+const LIVE_GAMES_SNAPSHOT_CACHE_TTL_MS = 4000;
 let liveGamesSnapshotCache: LiveGamesSnapshotCacheEntry | null = null;
+let liveGamesSnapshotRefreshPromise: Promise<LiveGamesSnapshot> | null = null;
+
+function refreshLiveGamesSnapshot(
+  prisma: PrismaClient
+) {
+  if (liveGamesSnapshotRefreshPromise) {
+    return liveGamesSnapshotRefreshPromise;
+  }
+
+  const lastGoodSnapshot = liveGamesSnapshotCache;
+  const refresh = loadLiveGamesSnapshotFresh(prisma)
+    .then((value) => {
+      liveGamesSnapshotCache = {
+        expiresAt:
+          Date.now() +
+          LIVE_GAMES_SNAPSHOT_CACHE_TTL_MS,
+        value,
+      };
+      return value;
+    })
+    .catch((error) => {
+      /*
+       * Expired snapshots are never returned while a healthy refresh is in
+       * flight. The last good value is a failure-only availability fallback;
+       * it remains expired so the next request retries current DB truth.
+       */
+      if (lastGoodSnapshot) {
+        console.error(
+          "Failed to refresh live games snapshot; serving the last good snapshot once:",
+          error
+        );
+        return lastGoodSnapshot.value;
+      }
+      throw error;
+    })
+    .finally(() => {
+      if (liveGamesSnapshotRefreshPromise === refresh) {
+        liveGamesSnapshotRefreshPromise = null;
+      }
+    });
+
+  liveGamesSnapshotRefreshPromise = refresh;
+  return refresh;
+}
 
 export async function loadLiveGamesSnapshot(prisma: PrismaClient): Promise<LiveGamesSnapshot> {
   const now = Date.now();
@@ -1234,41 +1277,5 @@ export async function loadLiveGamesSnapshot(prisma: PrismaClient): Promise<LiveG
     return liveGamesSnapshotCache.value;
   }
 
-  if (liveGamesSnapshotCache && liveGamesSnapshotCache.staleUntil > now) {
-    if (!liveGamesSnapshotCache.refreshing) {
-      liveGamesSnapshotCache.refreshing = true;
-
-      void loadLiveGamesSnapshotFresh(prisma)
-        .then((value) => {
-          const refreshedAt = Date.now();
-
-          liveGamesSnapshotCache = {
-            expiresAt: refreshedAt + LIVE_GAMES_SNAPSHOT_CACHE_TTL_MS,
-            staleUntil: refreshedAt + LIVE_GAMES_SNAPSHOT_STALE_TTL_MS,
-            refreshing: false,
-            value,
-          };
-        })
-        .catch((error) => {
-          console.error("Failed to refresh live games snapshot cache:", error);
-
-          if (liveGamesSnapshotCache) {
-            liveGamesSnapshotCache.refreshing = false;
-          }
-        });
-    }
-
-    return liveGamesSnapshotCache.value;
-  }
-
-  const value = await loadLiveGamesSnapshotFresh(prisma);
-
-  liveGamesSnapshotCache = {
-    expiresAt: now + LIVE_GAMES_SNAPSHOT_CACHE_TTL_MS,
-    staleUntil: now + LIVE_GAMES_SNAPSHOT_STALE_TTL_MS,
-    refreshing: false,
-    value,
-  };
-
-  return value;
+  return refreshLiveGamesSnapshot(prisma);
 }

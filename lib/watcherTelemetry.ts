@@ -99,6 +99,7 @@ export type WatcherClientEventInput = {
 };
 
 type WatcherIdentity = {
+  apiKeyId?: number | null;
   userId: number | null;
   userUid: string | null;
   resolved: boolean;
@@ -193,7 +194,7 @@ export async function resolveWatcherTelemetryIdentity(
   const normalized = apiKey?.trim() || "";
   const match = normalized.match(WATCHER_KEY_RE);
   if (!match) {
-    return { userId: null, userUid: null, resolved: false };
+    return { apiKeyId: null, userId: null, userUid: null, resolved: false };
   }
 
   const apiKeyRow = await prisma.apiKey.findFirst({
@@ -215,7 +216,7 @@ export async function resolveWatcherTelemetryIdentity(
   });
 
   if (!apiKeyRow || !verifyWatcherKeyHash(normalized, apiKeyRow.keyHash)) {
-    return { userId: null, userUid: null, resolved: false };
+    return { apiKeyId: null, userId: null, userUid: null, resolved: false };
   }
 
   if (options.touchLastUsedAt !== false) {
@@ -226,10 +227,23 @@ export async function resolveWatcherTelemetryIdentity(
   }
 
   return {
+    apiKeyId: apiKeyRow.id,
     userId: apiKeyRow.user.id,
     userUid: apiKeyRow.user.uid,
     resolved: true,
   };
+}
+
+export async function touchWatcherTelemetryIdentity(
+  prisma: PrismaClient,
+  identity: WatcherIdentity,
+) {
+  if (!identity.apiKeyId) return;
+
+  await prisma.apiKey.update({
+    where: { id: identity.apiKeyId },
+    data: { lastUsedAt: new Date() },
+  });
 }
 
 function sanitizeMetadataValue(value: unknown, depth: number): Prisma.InputJsonValue | undefined {

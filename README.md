@@ -353,6 +353,7 @@ These routes are important because they often do more than simple pass-through w
 - Watcher final uploads can store header-only fallback rows when MGZ full-summary decoding fails; fallback rows are explicit parser breadcrumbs and do not fabricate a winner or postgame resource table
 - Watcher packages: generated in `aoe2-watcher/dist`, then synced into `public/downloads` with `npm run watcher:sync`
 - Watcher latest-version metadata: `/api/watcher/release` feeds the desktop app's Update / Latest Version indicator
+- Watcher telemetry ingress coalesces only repeated `replay_detected_ignored` events whose reason is `monitoring`, per resolved watcher/replay identity, to one stored summary every 30 seconds. The response reports exact `stored`, `suppressed`, and `failed` counts; monitor-stop clears the replay window, and upload/parser/result/finality events are never coalesced. This server guard protects production immediately even when an installed watcher predates client-side coalescing.
 - Watcher pairing route: `/profile?watcher_pair=1` (mints a key and launches `aoe2hd-watcher://pair?...`)
 - Replay parser page: `/replay-parser`
 
@@ -422,6 +423,12 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - `/bets` now keeps recent no-proof stake intents visible in Your Book and scans WoloChain escrow deposits for 24 hours, so tx-landed/browser-lost cases have a server-side recovery path without being counted in pools before proof lands.
 - `/admin/wolochain` and the `/admin/user-list` WoloChain entry tile now surface recent wallet-friction events beside settlement and market rails.
 - `/players/[uid]` and `/players/by-name/[name]` now default to the Advanced command-center profile; Basic remains available with `?view=basic`, and Match Feed lazy-loads older replay/manual-backfill rows through `/api/player-profile/matches`
+- Homepage presence now comes from one canonical `users.last_seen` sample: the Active Players value and Online Players roster refresh together every five seconds while visible and immediately on focus/visibility resume. `/api/user/online_users` is explicitly no-store.
+- `/players` keeps ordinary claimed-profile ordering stable instead of reordering membership by transient presence, renders every claimed profile instead of silently cutting the list at 18, and refreshes its live count, Online Now roster, and profile status badges from the same five-second presence sample.
+- `/players` and open player profiles poll one lightweight replay/projection generation every five seconds while visible and on foreground resume. A changed generation refreshes the complete server truth, including directory membership, match cards, totals, record, win rate, radar, streaks, and charts; the match feed preserves explicitly loaded older rows and scroll state.
+- Homepage Recent Parsed Games refreshes its authoritative leading window every five seconds while visible and on focus/visibility resume. Fresh same-ID corrections and removals replace client state; older pages loaded by scrolling remain behind that canonical window.
+- Direct FastAPI replay commits invalidate every public replay-list cache variant and hand the durable receipt to the idempotent web post-ingest coordinator with bounded retries. The recurring recovery timer independently repairs recent exact-parser finals missing an accepted identity projection or result, so a transient callback failure cannot make a player disappear permanently.
+- The canonical stale bounds, cache rules, truth stages, and operational verification rail are documented in `docs/REALTIME_TRUTH_CONTRACT.md`.
 - the app now presents `$WOLO` as both a product rail and a partially real money-movement rail, with remaining hardening focused on live wallet edge cases and player/tournament depth
 - `/wolo` now includes an app-side starter faucet claim path, a clean Wallet Snapshot connect surface, a tight `WOLO Market` tile, and a slim faucet claim row underneath
 - the top-nav Roadmap link intentionally renders without the old blue count badge

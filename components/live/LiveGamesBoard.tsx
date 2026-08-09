@@ -573,11 +573,30 @@ export default function LiveGamesBoard({ initialSnapshot }: LiveGamesBoardProps)
     setMounted(true);
     void refresh();
 
+    const refreshIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refresh();
+      }
+    };
+
     const interval = window.setInterval(() => {
-      void refresh();
+      refreshIfVisible();
     }, LIVE_GAMES_POLL_INTERVAL_MS);
 
-    return () => window.clearInterval(interval);
+    window.addEventListener("focus", refreshIfVisible);
+    document.addEventListener(
+      "visibilitychange",
+      refreshIfVisible
+    );
+
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshIfVisible);
+      document.removeEventListener(
+        "visibilitychange",
+        refreshIfVisible
+      );
+    };
   }, [refresh]);
 
   useEffect(() => {

@@ -18,6 +18,7 @@ import { WoloMarketTile } from "@/components/lobby/WoloMarketTile";
 import { HeroCarousel } from "@/components/hero/HeroCarousel";
 import Aoe2ShortsTile from "@/components/home/Aoe2ShortsTile";
 import HeroTakeoverSlot from "@/components/home/HeroTakeoverSlot";
+import { usePublicPresence } from "@/components/presence/PublicPresenceProvider";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { buildChatItems } from "@/components/lobby/utils";
@@ -1170,6 +1171,7 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
     appearanceLoaded,
   } = useLobbyAppearance();
   const communityLobbyTile = useTileViewPreference("community_lobby");
+  const presence = usePublicPresence(initialLobby?.onlineUsers ?? []);
 
   const [lobby, setLobby] = useState<LobbySnapshot | null>(initialLobby);
   const [laneLeaderboard, setLaneLeaderboard] = useState<LobbyLeaderboardSummary | null>(
@@ -1300,8 +1302,16 @@ return () => {
     () => lobby?.leaderboard ?? getFallbackLeaderboard(),
     [lobby?.leaderboard]
   );
-  const leaderboard =
+  const selectedLeaderboard =
     laneLeaderboard?.lane === leaderboardLane ? laneLeaderboard : baseLeaderboard;
+  const leaderboard = useMemo(
+    () => ({
+      ...selectedLeaderboard,
+      // Use the exact same live sample as the Online Players panel.
+      activePlayers: presence.activePlayers,
+    }),
+    [presence.activePlayers, selectedLeaderboard],
+  );
 
   useEffect(() => {
     // The live lobby snapshot is already our warm RM lane.
@@ -1455,7 +1465,7 @@ return () => {
       ]),
     [leaderboard.entries, lobby?.featuredWarriorEntries]
   );
-  const onlineUsers = lobby?.onlineUsers ?? [];
+  const onlineUsers = presence.onlineUsers;
   const recentMatches = lobby?.recentMatches ?? [];
   const messages = lobby?.messages ?? EMPTY_MESSAGES;
   const wolo = lobby?.wolo ?? null;

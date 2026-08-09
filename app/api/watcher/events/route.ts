@@ -12,8 +12,12 @@ import {
   recordWatcherClientEvent,
   resolveWatcherTelemetryIdentity,
   sanitizeWatcherMetadata,
+  touchWatcherTelemetryIdentity,
   type WatcherClientEventInput,
 } from "@/lib/watcherTelemetry";
+import {
+  watcherTelemetryCoalescer,
+} from "@/lib/watcherTelemetryCoalescer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -89,16 +93,49 @@ export async function POST(request: NextRequest) {
   const prisma = getPrisma();
   const identity = await resolveWatcherTelemetryIdentity(
     prisma,
-    readWatcherTelemetryApiKey(request)
+    readWatcherTelemetryApiKey(request),
+    { touchLastUsedAt: false },
   );
 
-  try {
-    await Promise.all(
-      events.map((event) => recordWatcherClientEvent(prisma, request, event, identity))
-    );
-  } catch (error) {
-    console.error("Failed to record watcher telemetry:", error);
-    return NextResponse.json({ ok: true, stored: 0, linked: identity.resolved });
+  const admissions = events.map((event) =>
+    watcherTelemetryCoalescer.admit(event, identity)
+  );
+  const acceptedAdmissions = admissions.filter(
+    (admission) => admission.accepted
+  );
+  const suppressed = admissions.length - acceptedAdmissions.length;
+
+  if (acceptedAdmissions.length > 0) {
+    try {
+      await touchWatcherTelemetryIdentity(prisma, identity);
+    } catch (error) {
+      console.warn("Failed to touch watcher telemetry identity:", error);
+    }
+  }
+
+  const writeResults = await Promise.allSettled(
+    acceptedAdmissions.map((admission) =>
+      recordWatcherClientEvent(
+        prisma,
+        request,
+        admission.event,
+        identity,
+      )
+    )
+  );
+  const storedEvents: WatcherClientEventInput[] = [];
+  let failed = 0;
+
+  for (const [index, result] of writeResults.entries()) {
+    const admission = acceptedAdmissions[index];
+    if (result.status === "fulfilled") {
+      storedEvents.push(admission.event);
+      continue;
+    }
+
+    failed += 1;
+    watcherTelemetryCoalescer.recordWriteFailure(admission);
+    console.error("Failed to record watcher telemetry:", result.reason);
   }
 
   /*
@@ -112,7 +149,7 @@ export async function POST(request: NextRequest) {
   ) {
     const replayHashes = [
       ...new Set(
-        events
+        storedEvents
           .filter((event) =>
             TERMINAL_RECONCILE_EVENT_TYPES.has(
               event.eventType
@@ -185,7 +222,9 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    stored: events.length,
+    stored: storedEvents.length,
+    suppressed,
+    failed,
     linked: identity.resolved,
     userUid: identity.userUid,
   });

@@ -92,6 +92,26 @@ export type ReplayPostIngestReport = {
   };
 };
 
+export function replayPostIngestReportSucceeded(
+  report: Pick<
+    ReplayPostIngestReport,
+    "automatic" | "financial"
+  >
+) {
+  const stages = [
+    report.automatic.results,
+    report.automatic.identities,
+    report.financial.tournament,
+    report.financial.markets,
+  ];
+
+  return stages.every(
+    (stage) =>
+      !stage.requested ||
+      stage.succeeded === true
+  );
+}
+
 export type ReplayPostIngestDependencies<TPrisma> = {
   reconcileTournamentMatchProofs: (prisma: TPrisma) => Promise<unknown>;
   ensureBetMarkets: (prisma: TPrisma) => Promise<unknown>;
@@ -395,7 +415,7 @@ async function defaultReplayPostIngestDependencies<TPrisma>(): Promise<
 > {
   const [
     { reconcileTournamentMatchProofs },
-    { ensureBetMarkets },
+    { ensureBetMarketsAfterCommit },
     { reconcileAutomaticWatcherTerminalResults },
     { ensureReplayIdentityProjections },
   ] = await Promise.all([
@@ -412,7 +432,9 @@ async function defaultReplayPostIngestDependencies<TPrisma>(): Promise<
         { force: true }
       ),
     ensureBetMarkets: (prisma) =>
-      ensureBetMarkets(prisma as Parameters<typeof ensureBetMarkets>[0]),
+      ensureBetMarketsAfterCommit(
+        prisma as Parameters<typeof ensureBetMarketsAfterCommit>[0]
+      ),
     reconcileAutomaticWatcherTerminalResults: (prisma, gameStatsIds) =>
       reconcileAutomaticWatcherTerminalResults(
         prisma as Parameters<typeof reconcileAutomaticWatcherTerminalResults>[0],

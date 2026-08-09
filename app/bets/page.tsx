@@ -60,7 +60,7 @@ import {
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
 const BETTING_HALL_HERO_SRC = "/bets/betting_hall2.png";
 const STAKE_OPTIONS = [10, 25, 50, 100] as const;
-const BETS_POLL_INTERVAL_MS = 5_000;
+const BETS_POLL_INTERVAL_MS = 2_000;
 const STAKE_RECOVERY_STORAGE_KEY = "aoe2hdbets.betStakeRecovery.v1";
 const TICKET_RECOVERY_STORAGE_KEY = "aoe2hdbets.betTicketRecovery.v1";
 const BETS_VIEW_STORAGE_KEY = "aoe2hdbets.betsView.v4";
@@ -1319,14 +1319,23 @@ export default function BetsPage() {
     syncPendingStakeRecoveries();
   }, [syncPendingStakeRecoveries]);
 
-  const loadBoard = useCallback(async (quiet = false) => {
+  const loadBoard = useCallback(async (
+    quiet = false,
+    signal?: AbortSignal,
+  ) => {
     try {
-      const response = await fetch("/api/bets", { cache: "no-store" });
+      const response = await fetch("/api/bets", {
+        cache: "no-store",
+        signal,
+      });
       if (!response.ok) {
         throw new Error("Bet board failed to load.");
       }
       return (await response.json()) as BetBoardSnapshot;
     } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return null;
+      }
       console.error("Failed to load bet board:", error);
       if (!quiet) {
         toast.error("The book is quiet right now.");
@@ -1378,30 +1387,50 @@ export default function BetsPage() {
 
   useEffect(() => {
     let cancelled = false;
+    let activeRequest: AbortController | null = null;
+
+    function refreshBoard(
+      quiet: boolean,
+      supersede = false,
+    ) {
+      if (activeRequest && !supersede) {
+        return;
+      }
+
+      if (supersede) {
+        activeRequest?.abort();
+      }
+      const request = new AbortController();
+      activeRequest = request;
+
+      void loadBoard(quiet, request.signal)
+        .then((payload) => {
+          if (
+            !cancelled &&
+            activeRequest === request &&
+            payload
+          ) {
+            setBoard(payload);
+          }
+        })
+        .finally(() => {
+          if (activeRequest === request) {
+            activeRequest = null;
+          }
+        });
+    }
 
     function handleForegroundRefresh() {
       if (document.visibilityState === "visible") {
-        void loadBoard(true).then((payload) => {
-          if (!cancelled && payload) {
-            setBoard(payload);
-          }
-        });
+        refreshBoard(true, true);
       }
     }
 
-    void loadBoard().then((payload) => {
-      if (!cancelled && payload) {
-        setBoard(payload);
-      }
-    });
+    refreshBoard(false);
 
     const interval = window.setInterval(() => {
       if (document.visibilityState === "visible") {
-        void loadBoard(true).then((payload) => {
-          if (!cancelled && payload) {
-            setBoard(payload);
-          }
-        });
+        refreshBoard(true);
       }
     }, BETS_POLL_INTERVAL_MS);
 
@@ -1410,6 +1439,7 @@ export default function BetsPage() {
 
     return () => {
       cancelled = true;
+      activeRequest?.abort();
       window.clearInterval(interval);
       window.removeEventListener("focus", handleForegroundRefresh);
       document.removeEventListener("visibilitychange", handleForegroundRefresh);

@@ -173,13 +173,49 @@ function parseMapName(value: unknown) {
 }
 
 function bestKnownPlayers(rows: SessionRow[], fallback: SessionRow) {
-  return mergeReplayPlayerIterations([
-    fallback.players,
+  return mergeLiveSessionPlayerIterations([
+    fallback,
     ...rows
       .filter((row) => row.id !== fallback.id)
-      .sort((left, right) => left.parse_iteration - right.parse_iteration)
-      .map((row) => row.players),
+      .sort((left, right) => left.parse_iteration - right.parse_iteration),
   ]);
+}
+
+const METADATA_ONLY_RECOVERY_REASONS = new Set([
+  "hd_metadata_fragment_only_recovery",
+]);
+
+export function mergeLiveSessionPlayerIterations(
+  rows: Array<
+    Pick<
+      SessionRow,
+      "parse_reason" | "players"
+    >
+  >
+) {
+  const substantiveRows = rows.filter(
+    (row) =>
+      !METADATA_ONLY_RECOVERY_REASONS.has(
+        String(row.parse_reason ?? "")
+          .trim()
+          .toLowerCase()
+      )
+  );
+
+  /*
+   * The first HD watcher pass can recover only a metadata fragment. It is
+   * useful until a real replay iteration arrives, but its partial roster/team
+   * assignment must not poison every later coherent iteration for the full
+   * live-session freshness window.
+   */
+  const mergeRows =
+    substantiveRows.length > 0
+      ? substantiveRows
+      : rows;
+
+  return mergeReplayPlayerIterations(
+    mergeRows.map((row) => row.players)
+  );
 }
 
 function bestKnownMapName(rows: SessionRow[], fallback: SessionRow) {
