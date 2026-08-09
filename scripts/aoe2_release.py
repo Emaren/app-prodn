@@ -333,10 +333,19 @@ def main() -> int:
     )
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--stage", action="store_true")
     args = parser.parse_args()
     data = collect()
 
     if args.command == "ship":
+        if args.dry_run and args.stage:
+            parser.error("ship accepts only one of --dry-run or --stage")
+        if args.stage:
+            from aoe2_release_stage import stage_release
+            return stage_release(
+                data,
+                json_output=args.json,
+            )
         from aoe2_release_ship import ship_release
         return ship_release(
             data,
@@ -344,8 +353,8 @@ def main() -> int:
             json_output=args.json,
         )
 
-    if args.dry_run:
-        parser.error("--dry-run is only valid with ship")
+    if args.dry_run or args.stage:
+        parser.error("--dry-run and --stage are only valid with ship")
 
     if args.command in {"gate", "manifest"}:
         from aoe2_release_gate import gate_release, manifest_release
