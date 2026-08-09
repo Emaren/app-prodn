@@ -1879,6 +1879,67 @@ export function classifyUnresolvedWatcherResult(
 
   const rawWinner = textValue(input.winner).toLowerCase();
   const keyEvents = readKeyEvents(input.keyEvents);
+  const watcherParseSource =
+    textValue(input.parseSource).toLowerCase();
+
+  const watcherUpload =
+    readKeyEvents(
+      keyEvents.watcher_upload
+    );
+
+  const teamResolution =
+    readKeyEvents(
+      keyEvents.team_resolution
+    );
+
+  const resultResolution =
+    readKeyEvents(
+      keyEvents.result_resolution
+    );
+
+  const resultEvidence =
+    readKeyEvents(
+      resultResolution.result_evidence
+    );
+
+  const watcherEndedBeforeTeamResult =
+    playerCount >= 4 &&
+    watcherParseSource === "watcher_final" &&
+    !truthBoolean(keyEvents.completed) &&
+    truthBoolean(
+      watcherUpload.final_candidate
+    ) &&
+    textValue(
+      watcherUpload.file_role
+    ).toLowerCase() === "final_recording" &&
+    textValue(
+      teamResolution.status
+    ).toLowerCase() === "resolved" &&
+    textValue(
+      teamResolution.confidence
+    ).toLowerCase() === "high" &&
+    textValue(
+      resultResolution.result_status
+    ).toLowerCase() === "review_required" &&
+    !truthBoolean(
+      resultResolution.result_trusted
+    ) &&
+    !truthBoolean(
+      resultEvidence.postgame_available
+    ) &&
+    !truthBoolean(
+      resultEvidence.complete_losing_team_resignation
+    );
+
+  if (watcherEndedBeforeTeamResult) {
+    return result(
+      "watcher_ended_early_team_result",
+      "Result unknown · watcher ended early",
+      "The watcher recording ended before the team game final result was captured, so the eventual winner is unknown.",
+      false
+    );
+  }
+
   const unresolvedDisconnectDetected =
     input.disconnectDetected === true ||
     truthBoolean(keyEvents.disconnect_detected);
@@ -1958,73 +2019,6 @@ export function classifyUnresolvedWatcherResult(
     // A live replay is not expected to expose winner proof yet. Known roster and
     // map metadata are enough to present it as a normal active game.
     return null;
-  }
-
-  /*
-   * A player-run HD recording can become final locally when its watcher
-   * resigns/leaves even though the team game continues for the remaining
-   * players.
-   *
-   * That proves neither team won. Preserve the known roster while making
-   * the missing terminal observation explicit and keeping stats/betting
-   * fail-closed.
-   */
-  const watcherParseSource =
-    textValue(input.parseSource).toLowerCase();
-
-  const teamResolution =
-    readKeyEvents(
-      keyEvents.team_resolution
-    );
-
-  const resultResolution =
-    readKeyEvents(
-      keyEvents.result_resolution
-    );
-
-  const resultEvidence =
-    readKeyEvents(
-      resultResolution.result_evidence
-    );
-
-  const watcherEndedBeforeTeamResult =
-    playerCount >= 4 &&
-    finalish &&
-    watcherParseSource === "watcher_final" &&
-    !truthBoolean(keyEvents.completed) &&
-    (
-      hasArrayValues(
-        keyEvents.resigned_player_names
-      ) ||
-      hasArrayValues(
-        keyEvents.resigned_player_numbers
-      ) ||
-      eventTypeSet(input.eventTypes)
-        .has("resign")
-    ) &&
-    textValue(
-      teamResolution.status
-    ).toLowerCase() === "resolved" &&
-    textValue(
-      teamResolution.confidence
-    ).toLowerCase() === "high" &&
-    textValue(
-      resultResolution.result_status
-    ).toLowerCase() === "review_required" &&
-    !truthBoolean(
-      resultResolution.result_trusted
-    ) &&
-    !truthBoolean(
-      resultEvidence.complete_losing_team_resignation
-    );
-
-  if (watcherEndedBeforeTeamResult) {
-    return result(
-      "watcher_ended_early_team_result",
-      "Result unknown · watcher ended early",
-      "The watcher recording ended after a player resignation while the team game could continue, so the eventual winner was not observed.",
-      false
-    );
   }
 
   if (winnerTruth.confidence === "inferred_low_confidence") {

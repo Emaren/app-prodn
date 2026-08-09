@@ -782,7 +782,7 @@ test(
 );
 
 test(
-  "partial 2v2 watcher resignation stays result-unknown when the match continued",
+  "incomplete 2v2 watcher final beats generic disconnect review without inventing a result",
   () => {
     const players = [
       {
@@ -811,24 +811,31 @@ test(
       },
     ];
 
+    const resultEvidence = {
+      postgame_available: false,
+      winner_flags_coherent: false,
+      complete_losing_team_resignation: false,
+    };
+
     const keyEvents = {
       completed: false,
 
-      resigned_player_names: [
-        "Emaren",
-      ],
+      watcher_upload: {
+        file_role: "final_recording",
+        final_candidate: true,
+      },
 
-      resigned_player_numbers: [
-        3,
-      ],
+      resigned_player_names: [],
+      resigned_player_numbers: [],
 
       team_resolution: {
         format: "2v2",
         status: "resolved",
         confidence: "high",
-        provenance:
-          "explicit_final_team_ids",
-
+        provenance: "explicit_final_team_ids",
+        result_status: "review_required",
+        result_trusted: false,
+        result_evidence: resultEvidence,
         teams: [
           {
             team_id: 0,
@@ -848,48 +855,30 @@ test(
       },
 
       result_resolution: {
-        result_status:
-          "review_required",
-        result_trusted:
-          false,
-
-        winning_team_id:
-          null,
-
-        winning_player_names:
-          [],
-
-        result_evidence: {
-          complete_losing_team_resignation:
-            false,
-
-          winner_flags_coherent:
-            false,
-        },
+        result_status: "review_required",
+        result_trusted: false,
+        winning_team_id: null,
+        winning_player_names: [],
+        result_evidence: resultEvidence,
       },
     };
 
     const truth =
       resolveReplayWinnerTruth({
-        winner:
-          "Unknown",
-
+        winner: "Unknown",
         players,
-
         parseReason:
           "watcher_final_submission",
-
         parseSource:
           "watcher_final",
-
         keyEvents,
-
         eventTypes: [
-          "resign",
+          "order",
+          "move",
+          "build",
         ],
-
-        isFinal:
-          true,
+        isFinal: true,
+        disconnectDetected: true,
       });
 
     assert.equal(
@@ -909,37 +898,25 @@ test(
 
     const unresolved =
       classifyUnresolvedWatcherResult({
-        winner:
-          "Unknown",
-
+        winner: "Unknown",
         players,
-
-        playerCount:
-          4,
-
+        playerCount: 4,
         mapName:
           "Clean Oasis Gold 25",
-
-        state:
-          "completed",
-
+        state: "completed",
         parseReason:
           "watcher_final_submission",
-
         parseSource:
           "watcher_final",
-
         keyEvents,
-
         eventTypes: [
-          "resign",
+          "order",
+          "move",
+          "build",
         ],
-
-        isFinal:
-          true,
-
-        finalAccepted:
-          true,
+        isFinal: true,
+        finalAccepted: true,
+        disconnectDetected: true,
       });
 
     assert.equal(
@@ -959,20 +936,15 @@ test(
 
     const publicRow =
       toPublicGameStatsRow({
-        id:
-          22507,
-
-        is_final:
-          true,
-
-        winner:
-          "Unknown",
+        id: 22507,
+        is_final: true,
+        disconnect_detected: true,
+        winner: "Unknown",
 
         map: {
           name:
             "Clean Oasis Gold 25",
-          size:
-            "medium",
+          size: "medium",
         },
 
         players,
@@ -987,7 +959,9 @@ test(
           keyEvents,
 
         event_types: [
-          "resign",
+          "order",
+          "move",
+          "build",
         ],
       });
 
@@ -999,6 +973,11 @@ test(
     assert.equal(
       publicRow.reviewNeeded,
       false
+    );
+
+    assert.equal(
+      publicRow.winnerProof,
+      "watcher_ended_early_team_result"
     );
 
     assert.equal(
