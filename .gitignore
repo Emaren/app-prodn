@@ -82,3 +82,6 @@ storage/
 
 # VPS-local operator repair backups
 runtime/
+# Python bytecode/cache
+__pycache__/
+*.py[cod]
