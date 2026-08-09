@@ -94,7 +94,9 @@ The dry run performs zero production mutation.
 
 Staging records candidate BUILD_ID, candidate build version, and a deterministic SHA-256 identity for the staged `.next-release` artifact. It then proves the existing `.next` BUILD_ID, live internal/public build version, web-service state, and protected WOLO listener counts did not change. `ship --stage` never stops, starts, or restarts the AoE2WAR web service and never mutates WOLO services.
 
-A staging failure removes the candidate build, restores the previous production source and pre-build version identity, and leaves the live `.next` runtime running. Successful staging deliberately stops at `STAGED`; it does not activate the candidate.
+Durable stage evidence is written beneath the root-owned deployment-receipt parent without weakening that parent. Forge creates only the per-release receipt directory through the VPS narrow passwordless `/usr/bin/install` capability, with ownership `tony:tony` and mode `0750`.
+
+Failure handling distinguishes the production-mutation boundary. A failure before source advancement reports that recovery was not required and does not reset production. Once source mutation begins, a failure removes the candidate build, restores the previous production source and pre-build version identity, and leaves the live `.next` runtime running. Successful staging deliberately stops at `STAGED`; it does not activate the candidate.
 
 Plain `ship` remains deliberately unavailable until activation, internal/public proof, certification, and automatic runtime rollback are implemented and sealed.
 
