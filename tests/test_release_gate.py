@@ -70,5 +70,20 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertEqual(scripts.count("test:replay-truth"), 1)
 
 
+    def test_operator_cli_is_infrastructure_risk(self):
+        self.assertEqual(MODULE.path_risk("bin/aoe2war"), "INFRASTRUCTURE")
+
+    def test_operator_cli_triggers_full_release_suite(self):
+        scope = {
+            "mode": "worktree",
+            "base_sha": "a",
+            "target_sha": "WORKTREE",
+            "changed_files": ["bin/aoe2war"],
+        }
+        plan = MODULE.command_plan(scope, "INFRASTRUCTURE")
+        release_tests = [args for label, args, _timeout in plan if label == "release-engineering-tests"]
+        self.assertEqual(len(release_tests), 1)
+        self.assertIn("tests/test_aoe2_cli.py", release_tests[0])
+
 if __name__ == "__main__":
     unittest.main()

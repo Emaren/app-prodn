@@ -223,6 +223,7 @@ def path_risk(path: str) -> str:
         "scripts/aoe2_release_auto.py",
         "bin/aoe2-release",
         "bin/aoe2war-release",
+        "bin/aoe2war",
         "deploy.md",
     }
     if p.startswith(infra_prefixes) or p in infra_exact:
@@ -314,6 +315,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
         in {
             "bin/aoe2-release",
             "bin/aoe2war-release",
+            "bin/aoe2war",
             "scripts/aoe2_release.py",
             "scripts/aoe2_release_gate.py",
             "scripts/aoe2_release_ship.py",
@@ -324,6 +326,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
             "tests/test_release_ship.py",
             "tests/test_release_stage.py",
             "tests/test_release_auto.py",
+            "tests/test_aoe2_cli.py",
         }
         for path in paths
     )
@@ -340,6 +343,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "tests/test_release_ship.py",
                     "tests/test_release_stage.py",
                     "tests/test_release_auto.py",
+                    "tests/test_aoe2_cli.py",
                 ],
                 120,
             )

@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import re
 import shlex
 import subprocess
+import sys
 import urllib.request
+from contextlib import contextmanager
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +18,50 @@ PROD_HOST = os.getenv("AOE2_RELEASE_HOST", "hel1")
 PROD_REPO = os.getenv("AOE2_RELEASE_PROD_REPO", "/var/www/AoE2HDBets/app-prodn")
 SERVICE = os.getenv("AOE2_RELEASE_SERVICE", "aoe2hdbets-web.service")
 PUBLIC = os.getenv("AOE2_RELEASE_PUBLIC_BASE", "https://aoe2war.com")
+STATE_DIR = ROOT / ".aoe2war-release"
+DEPLOY_LOCK = STATE_DIR / "deploy.lock"
+
+
+class DeployLockBusy(RuntimeError):
+    pass
+
+
+@contextmanager
+def deployment_lock(path: Path = DEPLOY_LOCK):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a+", encoding="utf-8") as handle:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            handle.seek(0)
+            holder = handle.read().strip() or "holder metadata unavailable"
+            raise DeployLockBusy(
+                "another mutating AoE2WAR release command already holds the deployment lock: "
+                + holder.replace("\n", "; ")
+            ) from exc
+
+        handle.seek(0)
+        handle.truncate()
+        handle.write(f"pid={os.getpid()}\n")
+        handle.write("command=" + shlex.join(sys.argv) + "\n")
+        handle.flush()
+        try:
+            yield
+        finally:
+            handle.seek(0)
+            handle.truncate()
+            handle.write("released\n")
+            handle.flush()
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def run_mutating_release(action) -> int:
+    try:
+        with deployment_lock():
+            return action()
+    except DeployLockBusy as exc:
+        print(f"STOP: {exc}", file=sys.stderr)
+        return 2
 
 
 def run(args: list[str], timeout: int = 20) -> tuple[int, str, str]:
@@ -162,7 +209,7 @@ def integer(value: str | None) -> int | None:
     return int(value) if value and value.isdigit() else None
 
 
-ACTIVATION_RECEIPT_DIR = ROOT / ".aoe2war-release" / "activation-receipts"
+ACTIVATION_RECEIPT_DIR = STATE_DIR / "activation-receipts"
 
 
 def sha256_path(path: Path) -> str | None:
@@ -241,6 +288,69 @@ def certified_runtime(production: dict) -> dict:
             "build_version": version,
         }
     return fallback
+
+
+def release_history(limit: int = 10) -> list[dict]:
+    if limit < 1:
+        raise ValueError("release history limit must be at least 1")
+    if not ACTIVATION_RECEIPT_DIR.exists():
+        return []
+
+    try:
+        paths = sorted(
+            ACTIVATION_RECEIPT_DIR.glob("*.json"),
+            key=lambda item: item.stat().st_mtime,
+            reverse=True,
+        )
+    except OSError:
+        return []
+
+    history: list[dict] = []
+    for path in paths:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if payload.get("schema") != 1:
+            continue
+        if payload.get("kind") != "aoe2war-activation-result":
+            continue
+        if payload.get("status") != "CERTIFIED":
+            continue
+        history.append(
+            {
+                "generated_at": payload.get("generated_at"),
+                "release_sha": payload.get("release_sha"),
+                "previous_production_sha": payload.get("previous_production_sha"),
+                "risk_class": payload.get("risk_class"),
+                "active_build_id": payload.get("active_build_id"),
+                "build_version": payload.get("candidate_build_version"),
+                "fast_rollback": payload.get("fast_rollback"),
+                "durable_rollback": payload.get("durable_rollback"),
+                "receipt_path": str(path.relative_to(ROOT)),
+            }
+        )
+        if len(history) >= limit:
+            break
+    return history
+
+
+def print_release_history(history: list[dict]) -> None:
+    print("⚔️  AOE2WAR CERTIFIED RELEASES")
+    if not history:
+        print("No certified activation receipts found.")
+        return
+    for index, item in enumerate(history, start=1):
+        release_sha = str(item.get("release_sha") or "unknown")
+        previous = str(item.get("previous_production_sha") or "unknown")
+        print(
+            f"#{index:<2} {release_sha[:10]}  "
+            f"risk={item.get('risk_class') or 'unknown'}  "
+            f"build={item.get('active_build_id') or 'unknown'}"
+        )
+        print(f"    at={item.get('generated_at') or 'unknown'}  previous={previous[:10]}")
+        print(f"    rollback={item.get('fast_rollback') or item.get('durable_rollback') or 'none'}")
+        print(f"    receipt={item.get('receipt_path')}")
 
 
 def derive_state(data: dict) -> tuple[str, str]:
@@ -424,13 +534,30 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="aoe2war-release")
     parser.add_argument(
         "command",
-        choices=["status", "context", "gate", "manifest", "ship"],
+        choices=["status", "context", "releases", "gate", "manifest", "ship"],
     )
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--stage", action="store_true")
     parser.add_argument("--activate", metavar="STAGE_RECEIPT")
+    parser.add_argument("--limit", type=int, default=10)
     args = parser.parse_args()
+
+    if args.command == "releases":
+        if args.dry_run or args.stage or args.activate:
+            parser.error("--dry-run, --stage, and --activate are not valid with releases")
+        if args.limit < 1:
+            parser.error("--limit must be at least 1")
+        history = release_history(args.limit)
+        if args.json:
+            print(json.dumps({"schema": 1, "releases": history}, indent=2, sort_keys=True))
+        else:
+            print_release_history(history)
+        return 0
+
+    if args.limit != 10:
+        parser.error("--limit is only valid with releases")
+
     data = collect()
 
     if args.command == "ship":
@@ -441,18 +568,23 @@ def main() -> int:
 
         if args.activate:
             from aoe2_release_ship import activate_release
-            return activate_release(
+            action = lambda: activate_release(
                 data,
                 stage_receipt=args.activate,
                 dry_run=args.dry_run,
                 json_output=args.json,
             )
+            if args.dry_run:
+                return action()
+            return run_mutating_release(action)
 
         if args.stage:
             from aoe2_release_stage import stage_release
-            return stage_release(
-                data,
-                json_output=args.json,
+            return run_mutating_release(
+                lambda: stage_release(
+                    data,
+                    json_output=args.json,
+                )
             )
 
         if args.dry_run:
@@ -464,10 +596,12 @@ def main() -> int:
             )
 
         from aoe2_release_auto import ship_all
-        return ship_all(
-            collect=collect,
-            initial=data,
-            json_output=args.json,
+        return run_mutating_release(
+            lambda: ship_all(
+                collect=collect,
+                initial=data,
+                json_output=args.json,
+            )
         )
 
     if args.dry_run or args.stage or args.activate:

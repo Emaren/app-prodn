@@ -1,5 +1,8 @@
+import fcntl
 import importlib.util
+import json
 import pathlib
+import tempfile
 import unittest
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "aoe2_release.py"
@@ -90,6 +93,49 @@ class ReleaseEngineeringTests(unittest.TestCase):
         self.assertEqual(state, "PUBLISHED")
         self.assertIn("CERTIFIED", nxt)
 
+
+    def test_deployment_lock_blocks_second_mutating_command(self):
+        with tempfile.TemporaryDirectory() as temp:
+            lock_path = pathlib.Path(temp) / "deploy.lock"
+            with lock_path.open("a+", encoding="utf-8") as handle:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                with self.assertRaises(MODULE.DeployLockBusy):
+                    with MODULE.deployment_lock(lock_path):
+                        pass
+
+    def test_release_history_reads_only_certified_activation_receipts(self):
+        original = MODULE.ACTIVATION_RECEIPT_DIR
+        MODULE.STATE_DIR.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(dir=MODULE.STATE_DIR) as temp:
+            receipt_dir = pathlib.Path(temp)
+            MODULE.ACTIVATION_RECEIPT_DIR = receipt_dir
+            try:
+                certified = {
+                    "schema": 1,
+                    "kind": "aoe2war-activation-result",
+                    "status": "CERTIFIED",
+                    "generated_at": "2026-08-10T03:00:00Z",
+                    "release_sha": "a" * 40,
+                    "previous_production_sha": "b" * 40,
+                    "risk_class": "INFRASTRUCTURE",
+                    "active_build_id": "build-new",
+                    "candidate_build_version": "version-new",
+                    "fast_rollback": ".next-rollback-test",
+                    "durable_rollback": "/durable/test",
+                }
+                (receipt_dir / "good.json").write_text(
+                    json.dumps(certified), encoding="utf-8"
+                )
+                rejected = dict(certified, status="FAILED")
+                (receipt_dir / "bad.json").write_text(
+                    json.dumps(rejected), encoding="utf-8"
+                )
+                history = MODULE.release_history(limit=10)
+                self.assertEqual(len(history), 1)
+                self.assertEqual(history[0]["release_sha"], "a" * 40)
+                self.assertEqual(history[0]["active_build_id"], "build-new")
+            finally:
+                MODULE.ACTIVATION_RECEIPT_DIR = original
 
 if __name__ == "__main__":
     unittest.main()

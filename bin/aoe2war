@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BIN_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+RELEASE="$BIN_DIR/aoe2war-release"
+
+usage() {
+  cat <<'EOF'
+AoE2WAR operator CLI
+
+Usage:
+  aoe2war deploy [release options]
+  aoe2war status [--json]
+  aoe2war context [--json]
+  aoe2war releases [--limit N] [--json]
+  aoe2war gate [--json]
+  aoe2war manifest [--json]
+  aoe2war release <raw release-engine command/options>
+
+Examples:
+  aoe2war deploy
+  aoe2war deploy --dry-run
+  aoe2war status
+  aoe2war releases --limit 5
+EOF
+}
+
+command="${1:-help}"
+case "$command" in
+  deploy)
+    shift
+    exec "$RELEASE" ship "$@"
+    ;;
+  status|context|releases|gate|manifest)
+    shift
+    exec "$RELEASE" "$command" "$@"
+    ;;
+  release)
+    shift
+    exec "$RELEASE" "$@"
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    echo "STOP: unknown AoE2WAR command: $command" >&2
+    echo >&2
+    usage >&2
+    exit 2
+    ;;
+esac
