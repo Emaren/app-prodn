@@ -357,6 +357,752 @@ def write_plan(plan: dict) -> Path:
     return path
 
 
+ACTIVATION_RECEIPT_DIR = ROOT / ".aoe2war-release" / "activation-receipts"
+STAGE_RECEIPT_DIR = ROOT / ".aoe2war-release" / "stage-receipts"
+REMOTE_RECEIPT_ROOT = "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts"
+ROLLBACK_ROOT = "/mnt/HC_Volume_105319120/aoe2war/rollbacks"
+
+
+def _is_hex(value: object, length: int) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == length
+        and all(ch in "0123456789abcdef" for ch in value)
+    )
+
+
+def load_stage_receipt(
+    stage_receipt: str,
+) -> tuple[Path, dict, str, Path, dict, str, Path, str]:
+    raw = Path(stage_receipt)
+    path = (raw if raw.is_absolute() else ROOT / raw).resolve()
+    allowed = STAGE_RECEIPT_DIR.resolve()
+    try:
+        path.relative_to(allowed)
+    except ValueError as exc:
+        raise ShipError(
+            "Activation stage receipt must live under "
+            ".aoe2war-release/stage-receipts."
+        ) from exc
+    if not path.is_file():
+        raise ShipError(f"Stage receipt is missing: {path}")
+
+    try:
+        receipt = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ShipError(f"Stage receipt is invalid JSON: {exc}") from exc
+
+    if receipt.get("schema") != 1:
+        raise ShipError("Stage receipt schema is not supported.")
+    if receipt.get("kind") != "aoe2war-stage-result":
+        raise ShipError("Stage receipt kind is not aoe2war-stage-result.")
+    if receipt.get("status") != "STAGED":
+        raise ShipError("Stage receipt is not STAGED.")
+    if receipt.get("live_runtime_mutated") is not False:
+        raise ShipError("Stage receipt does not prove live runtime remained unchanged.")
+    if receipt.get("wolo_mutated") is not False:
+        raise ShipError("Stage receipt does not prove WOLO remained untouched.")
+
+    release_sha = receipt.get("release_sha")
+    artifact_sha = receipt.get("artifact_sha256")
+    if not _is_hex(release_sha, 40):
+        raise ShipError("Stage receipt release SHA is invalid.")
+    if not _is_hex(artifact_sha, 64):
+        raise ShipError("Stage receipt artifact SHA-256 is invalid.")
+    if path.name != f"{release_sha}-{artifact_sha[:12]}.json":
+        raise ShipError("Stage receipt filename is not bound to release/artifact.")
+
+    required = (
+        "active_build_id",
+        "staged_build_id",
+        "live_build_version",
+        "candidate_build_version",
+        "previous_production_sha",
+        "manifest_path",
+        "manifest_sha256",
+        "gate_path",
+        "gate_sha256",
+        "remote_receipt_dir",
+    )
+    for key in required:
+        if not receipt.get(key):
+            raise ShipError(f"Stage receipt is missing required field: {key}")
+
+    if not _is_hex(receipt.get("previous_production_sha"), 40):
+        raise ShipError("Stage receipt previous production SHA is invalid.")
+    if not _is_hex(receipt.get("manifest_sha256"), 64):
+        raise ShipError("Stage receipt manifest SHA-256 is invalid.")
+    if not _is_hex(receipt.get("gate_sha256"), 64):
+        raise ShipError("Stage receipt gate SHA-256 is invalid.")
+    if int(receipt.get("wolo_8092_count") or 0) < 1:
+        raise ShipError("Stage receipt does not bind a live WOLO 8092 listener.")
+    if int(receipt.get("wolo_8093_count") or 0) < 1:
+        raise ShipError("Stage receipt does not bind a live WOLO 8093 listener.")
+
+    remote_receipt = str(receipt["remote_receipt_dir"])
+    if not remote_receipt.startswith(f"{REMOTE_RECEIPT_ROOT}/stage-"):
+        raise ShipError("Remote stage receipt is outside the canonical receipt root.")
+
+    manifest_path, manifest, manifest_sha = load_manifest(release_sha)
+    gate_path, gate_sha = gate_integrity(manifest)
+    if str(manifest_path.relative_to(ROOT)) != receipt["manifest_path"]:
+        raise ShipError("Stage receipt manifest path does not match release manifest.")
+    if manifest_sha != receipt["manifest_sha256"]:
+        raise ShipError("Stage receipt manifest SHA-256 does not match release manifest.")
+    if str(gate_path.relative_to(ROOT)) != receipt["gate_path"]:
+        raise ShipError("Stage receipt gate path does not match bound gate receipt.")
+    if gate_sha != receipt["gate_sha256"]:
+        raise ShipError("Stage receipt gate SHA-256 does not match bound gate receipt.")
+    if manifest.get("release_sha") != release_sha:
+        raise ShipError("Manifest release SHA does not match stage receipt.")
+    if manifest.get("previous_production_sha") != receipt["previous_production_sha"]:
+        raise ShipError("Manifest previous production SHA does not match stage receipt.")
+    if manifest.get("risk_class") != receipt.get("risk_class"):
+        raise ShipError("Manifest risk class does not match stage receipt.")
+    if manifest.get("migration_paths"):
+        raise ShipError(
+            "Release contains Prisma migrations; receipt-driven activation refuses migrations."
+        )
+
+    return (
+        path,
+        receipt,
+        sha256_file(path),
+        manifest_path,
+        manifest,
+        manifest_sha,
+        gate_path,
+        gate_sha,
+    )
+
+
+def activation_validation_errors(
+    data: dict,
+    receipt: dict,
+    transport: dict[str, str],
+) -> list[str]:
+    local = data["local"]
+    github = data["github"]
+    docs = data["documentation"]
+    prod = data["production"]
+    errors: list[str] = []
+
+    if local.get("dirty_count") != 0:
+        errors.append("local tooling worktree is not clean")
+    if not local.get("head"):
+        errors.append("local tooling HEAD is unavailable")
+    if github.get("main_sha") != local.get("head"):
+        errors.append("local tooling HEAD does not equal GitHub main")
+    if docs.get("baseline_is_ancestor_of_local") is not True:
+        errors.append("Documentation Baseline is not a valid ancestor of tooling HEAD")
+
+    if not prod.get("reachable"):
+        errors.append("production is unreachable")
+    if prod.get("dirty_count") != 0:
+        errors.append("production worktree is not clean")
+    if prod.get("source_sha") != receipt.get("release_sha"):
+        errors.append("production source does not equal staged release SHA")
+    if prod.get("service") != "active":
+        errors.append("production web service is not active")
+    if prod.get("active_build_id") != receipt.get("active_build_id"):
+        errors.append("active BUILD_ID drifted from stage receipt")
+    if prod.get("staged_build_id") != receipt.get("staged_build_id"):
+        errors.append("staged BUILD_ID drifted from stage receipt")
+    if prod.get("internal_build_version") != receipt.get("live_build_version"):
+        errors.append("internal live build version drifted from stage receipt")
+    if prod.get("public_build_version") != receipt.get("live_build_version"):
+        errors.append("public live build version drifted from stage receipt")
+    if prod.get("version_parity") is not True:
+        errors.append("internal/public live build-version parity is not healthy")
+    if prod.get("wolo_8092_count") != receipt.get("wolo_8092_count"):
+        errors.append("protected WOLO listener 8092 drifted from stage receipt")
+    if prod.get("wolo_8093_count") != receipt.get("wolo_8093_count"):
+        errors.append("protected WOLO listener 8093 drifted from stage receipt")
+
+    if transport.get("origin") != EXPECTED_ORIGIN:
+        errors.append("production Git origin does not match canonical origin")
+    if transport.get("protocol") != EXPECTED_PROTOCOL:
+        errors.append("production Git protocol is not canonical protocol v0")
+    if transport.get("executor") != EXPECTED_PROD_USER:
+        errors.append("production Git execution user is not the canonical deploy user")
+    if transport.get("git_foreign_entries") != "0":
+        errors.append("production .git contains entries not owned by the deploy user")
+    if transport.get("git_unwritable_dirs") != "0":
+        errors.append("production .git contains directories not writable by the deploy user")
+    if transport.get("deploy_key_readable") != "1":
+        errors.append("production dedicated deploy key is not readable by deploy user")
+    if transport.get("deploy_key_owner") != f"{EXPECTED_PROD_USER}:{EXPECTED_PROD_USER}":
+        errors.append("production dedicated deploy key ownership is not canonical")
+    if transport.get("deploy_key_mode") not in {"400", "600"}:
+        errors.append("production dedicated deploy key permissions are not restrictive")
+    if transport.get("deploy_key_fingerprint") != EXPECTED_DEPLOY_KEY_FINGERPRINT:
+        errors.append("production dedicated deploy key fingerprint does not match")
+
+    sshcmd = transport.get("sshcmd") or ""
+    if EXPECTED_DEPLOY_KEY not in sshcmd:
+        errors.append("production core.sshCommand does not use the dedicated deploy key")
+    if "-F /dev/null" not in sshcmd:
+        errors.append("production core.sshCommand does not disable SSH config fallback")
+    if "IdentitiesOnly=yes" not in sshcmd:
+        errors.append("production core.sshCommand does not require IdentitiesOnly=yes")
+    if "BatchMode=yes" not in sshcmd:
+        errors.append("production core.sshCommand does not require BatchMode=yes")
+    if "StrictHostKeyChecking=yes" not in sshcmd:
+        errors.append("production core.sshCommand does not require strict host-key checking")
+    if f"UserKnownHostsFile={EXPECTED_KNOWN_HOSTS}" not in sshcmd:
+        errors.append("production core.sshCommand does not use the canonical known_hosts file")
+    if transport.get("remote_main") != github.get("main_sha"):
+        errors.append("production origin main does not equal current GitHub main")
+
+    return errors
+
+
+def remote_activation_script(
+    receipt: dict,
+    *,
+    stage_receipt_sha: str,
+    stage_receipt_text: str,
+    dry_run: bool,
+    receipt_dir: str,
+    rollback_dir: str,
+) -> str:
+    q = shlex.quote
+    mode = "DRY_RUN" if dry_run else "ACTIVATE"
+    return f"""
+set -euo pipefail
+cd {q(PROD_REPO)}
+
+MODE={q(mode)}
+SERVICE={q(SERVICE)}
+PUBLIC={q(PUBLIC)}
+RELEASE={q(receipt['release_sha'])}
+PREVIOUS={q(receipt['previous_production_sha'])}
+OLD_BUILD={q(receipt['active_build_id'])}
+STAGED_BUILD={q(receipt['staged_build_id'])}
+LIVE_VERSION={q(receipt['live_build_version'])}
+CANDIDATE_VERSION={q(receipt['candidate_build_version'])}
+ARTIFACT={q(receipt['artifact_sha256'])}
+MANIFEST_SHA={q(receipt['manifest_sha256'])}
+GATE_SHA={q(receipt['gate_sha256'])}
+STAGE_RECEIPT_SHA={q(stage_receipt_sha)}
+STAGE_REMOTE={q(receipt['remote_receipt_dir'])}
+ACT_RECEIPT={q(receipt_dir)}
+ROLLBACK={q(rollback_dir)}
+STAGE_RECEIPT_CONTENT={q(stage_receipt_text)}
+
+wolo_count() {{ ss -ltn | grep -Ec ":$1[[:space:]]" || true; }}
+build_version() {{ python3 -c 'import json,sys; print(json.load(sys.stdin).get("buildVersion",""))'; }}
+artifact_hash() {{
+  tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf - "$1" \
+  | sha256sum | awk '{{print $1}}'
+}}
+active_artifact_hash() {{
+  tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+    --transform='s#^\\.next#\\.next-release#' -cf - .next \
+  | sha256sum | awk '{{print $1}}'
+}}
+critical_get() {{
+  curl -fsS --max-time 12 --retry 3 --retry-delay 1 --retry-all-errors -o /dev/null "$1"
+}}
+
+before_head="$(git rev-parse HEAD)"
+before_dirty="$(git status --porcelain --untracked-files=all | wc -l | tr -d ' ')"
+before_service="$(systemctl is-active "$SERVICE" || true)"
+before_pid="$(systemctl show "$SERVICE" -p MainPID --value)"
+before_active_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
+before_staged_build="$(cat .next-release/BUILD_ID 2>/dev/null || true)"
+before_candidate_version="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
+before_internal_version="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deployment-version | build_version)"
+before_public_version="$(curl -fsS --max-time 10 "$PUBLIC/api/deployment-version" | build_version)"
+before_wolo8092="$(wolo_count 8092)"
+before_wolo8093="$(wolo_count 8093)"
+
+sudo -n -l /usr/bin/systemctl restart "$SERVICE" >/dev/null
+sudo -n -l /usr/bin/systemctl stop "$SERVICE" >/dev/null
+sudo -n -l /usr/bin/systemctl start "$SERVICE" >/dev/null
+sudo -n -l /usr/bin/install >/dev/null
+
+test "$before_head" = "$RELEASE"
+test "$before_dirty" = "0"
+test "$before_service" = "active"
+test -n "$before_pid"
+test "$before_active_build" = "$OLD_BUILD"
+test "$before_staged_build" = "$STAGED_BUILD"
+test "$before_candidate_version" = "$CANDIDATE_VERSION"
+test "$before_internal_version" = "$LIVE_VERSION"
+test "$before_public_version" = "$LIVE_VERSION"
+test "$before_wolo8092" = {q(str(receipt['wolo_8092_count']))}
+test "$before_wolo8093" = {q(str(receipt['wolo_8093_count']))}
+
+test -d "$STAGE_REMOTE"
+test -f "$STAGE_REMOTE/release-manifest.json"
+test -f "$STAGE_REMOTE/gate-receipt.json"
+test -f "$STAGE_REMOTE/stage-status.txt"
+test "$(sha256sum "$STAGE_REMOTE/release-manifest.json" | awk '{{print $1}}')" = "$MANIFEST_SHA"
+test "$(sha256sum "$STAGE_REMOTE/gate-receipt.json" | awk '{{print $1}}')" = "$GATE_SHA"
+grep -Fx "status=STAGED" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "release_sha=$RELEASE" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "active_build_id=$OLD_BUILD" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "staged_build_id=$STAGED_BUILD" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "candidate_build_version=$CANDIDATE_VERSION" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "artifact_sha256=$ARTIFACT" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+
+candidate_artifact="$(artifact_hash .next-release)"
+test "$candidate_artifact" = "$ARTIFACT"
+critical_get http://127.0.0.1:3030/
+critical_get http://127.0.0.1:3030/api/lobby
+critical_get http://127.0.0.1:3030/api/bets
+critical_get "$PUBLIC/"
+critical_get "$PUBLIC/api/lobby"
+critical_get "$PUBLIC/api/bets"
+
+if [ "$MODE" = "DRY_RUN" ]; then
+  printf 'status\\tPREPARED\\n'
+  printf 'release_sha\\t%s\\n' "$RELEASE"
+  printf 'source_sha\\t%s\\n' "$before_head"
+  printf 'active_build_id\\t%s\\n' "$before_active_build"
+  printf 'staged_build_id\\t%s\\n' "$before_staged_build"
+  printf 'live_build_version\\t%s\\n' "$before_internal_version"
+  printf 'candidate_build_version\\t%s\\n' "$before_candidate_version"
+  printf 'artifact_sha256\\t%s\\n' "$candidate_artifact"
+  printf 'wolo8092\\t%s\\n' "$before_wolo8092"
+  printf 'wolo8093\\t%s\\n' "$before_wolo8093"
+  exit 0
+fi
+
+sudo -n /usr/bin/install -d -o tony -g tony -m 0750 "$ACT_RECEIPT"
+sudo -n /usr/bin/install -d -o tony -g tony -m 0750 "$ROLLBACK"
+printf '%s' "$STAGE_RECEIPT_CONTENT" > "$ACT_RECEIPT/stage-receipt.json"
+test "$(sha256sum "$ACT_RECEIPT/stage-receipt.json" | awk '{{print $1}}')" = "$STAGE_RECEIPT_SHA"
+cp -p "$STAGE_REMOTE/release-manifest.json" "$ACT_RECEIPT/release-manifest.json"
+cp -p "$STAGE_REMOTE/gate-receipt.json" "$ACT_RECEIPT/gate-receipt.json"
+cp -p "$STAGE_REMOTE/stage-status.txt" "$ACT_RECEIPT/stage-status.txt"
+
+printf '%s\\n' \
+  "release_sha=$RELEASE" \
+  "previous_production_sha=$PREVIOUS" \
+  "old_build_id=$OLD_BUILD" \
+  "staged_build_id=$STAGED_BUILD" \
+  "live_build_version=$LIVE_VERSION" \
+  "candidate_build_version=$CANDIDATE_VERSION" \
+  "artifact_sha256=$ARTIFACT" \
+  "manifest_sha256=$MANIFEST_SHA" \
+  "gate_sha256=$GATE_SHA" \
+  "stage_receipt_sha256=$STAGE_RECEIPT_SHA" \
+  "before_pid=$before_pid" \
+  "before_wolo8092=$before_wolo8092" \
+  "before_wolo8093=$before_wolo8093" \
+  > "$ACT_RECEIPT/preactivation.txt"
+
+cp -a .next "$ROLLBACK/next"
+test "$(cat "$ROLLBACK/next/BUILD_ID")" = "$OLD_BUILD"
+FAST_OLD=".next-rollback-activate-$(date -u +%Y%m%dT%H%M%SZ)"
+test ! -e "$FAST_OLD"
+MUTATED=0
+COMMITTED=0
+
+rollback_activation() {{
+  rc=$?
+  if [ "$COMMITTED" = "1" ]; then return 0; fi
+  set +e
+  rollback_status="FAILED_PREACTIVATION"
+  if [ "$MUTATED" = "1" ]; then
+    rollback_status="ROLLBACK_FAILED"
+    sudo -n /usr/bin/systemctl stop "$SERVICE" >/dev/null 2>&1 || true
+    current_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
+    if [ "$current_build" = "$STAGED_BUILD" ] && [ ! -e .next-release ]; then
+      mv .next .next-release
+    fi
+    if [ ! -e .next ] && [ -d "$FAST_OLD" ]; then mv "$FAST_OLD" .next; fi
+    sudo -n /usr/bin/systemctl start "$SERVICE" >/dev/null 2>&1 || true
+    for _ in $(seq 1 30); do
+      if [ "$(systemctl is-active "$SERVICE" 2>/dev/null || true)" = "active" ] \
+        && curl -fsS --max-time 5 http://127.0.0.1:3030/api/deployment-version >/dev/null 2>&1; then break; fi
+      sleep 1
+    done
+    rb_service="$(systemctl is-active "$SERVICE" 2>/dev/null || true)"
+    rb_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
+    rb_staged="$(cat .next-release/BUILD_ID 2>/dev/null || true)"
+    rb_internal="$(curl -fsS --max-time 6 http://127.0.0.1:3030/api/deployment-version 2>/dev/null | build_version 2>/dev/null || true)"
+    rb_public="$(curl -fsS --max-time 8 "$PUBLIC/api/deployment-version" 2>/dev/null | build_version 2>/dev/null || true)"
+    rb_wolo8092="$(wolo_count 8092)"
+    rb_wolo8093="$(wolo_count 8093)"
+    if [ "$rb_service" = "active" ] \
+      && [ "$rb_build" = "$OLD_BUILD" ] \
+      && [ "$rb_staged" = "$STAGED_BUILD" ] \
+      && [ "$rb_internal" = "$LIVE_VERSION" ] \
+      && [ "$rb_public" = "$LIVE_VERSION" ] \
+      && [ "$rb_wolo8092" = "$before_wolo8092" ] \
+      && [ "$rb_wolo8093" = "$before_wolo8093" ]; then
+      rollback_status="ROLLED_BACK"
+    fi
+    printf '%s\\n' \
+      "status=$rollback_status" \
+      "original_exit_code=$rc" \
+      "active_build_id=$rb_build" \
+      "staged_build_id=$rb_staged" \
+      "internal_build_version=$rb_internal" \
+      "public_build_version=$rb_public" \
+      "wolo8092=$rb_wolo8092" \
+      "wolo8093=$rb_wolo8093" \
+      > "$ACT_RECEIPT/rollback-status.txt" 2>/dev/null || true
+  fi
+}}
+trap rollback_activation EXIT
+
+mv .next "$FAST_OLD"
+MUTATED=1
+mv .next-release .next
+test "$(cat .next/BUILD_ID)" = "$STAGED_BUILD"
+test -d "$FAST_OLD"
+test "$(cat "$FAST_OLD/BUILD_ID")" = "$OLD_BUILD"
+sudo -n /usr/bin/systemctl restart "$SERVICE"
+
+READY=0
+for _ in $(seq 1 30); do
+  if [ "$(systemctl is-active "$SERVICE" 2>/dev/null || true)" = "active" ] \
+    && curl -fsS --max-time 5 http://127.0.0.1:3030/api/deployment-version >/dev/null 2>&1; then READY=1; break; fi
+  sleep 1
+done
+test "$READY" = "1"
+
+after_service="$(systemctl is-active "$SERVICE")"
+after_pid="$(systemctl show "$SERVICE" -p MainPID --value)"
+after_head="$(git rev-parse HEAD)"
+after_dirty="$(git status --porcelain --untracked-files=all | wc -l | tr -d ' ')"
+after_active_build="$(cat .next/BUILD_ID)"
+after_internal_version="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deployment-version | build_version)"
+after_public_version="$(curl -fsS --max-time 10 "$PUBLIC/api/deployment-version" | build_version)"
+after_wolo8092="$(wolo_count 8092)"
+after_wolo8093="$(wolo_count 8093)"
+after_artifact="$(active_artifact_hash)"
+
+test "$after_service" = "active"
+test -n "$after_pid"
+test "$after_head" = "$RELEASE"
+test "$after_dirty" = "0"
+test "$after_active_build" = "$STAGED_BUILD"
+test "$after_internal_version" = "$CANDIDATE_VERSION"
+test "$after_public_version" = "$CANDIDATE_VERSION"
+test "$after_wolo8092" = "$before_wolo8092"
+test "$after_wolo8093" = "$before_wolo8093"
+test "$after_artifact" = "$ARTIFACT"
+test ! -e .next-release
+test -d "$FAST_OLD"
+test "$(cat "$ROLLBACK/next/BUILD_ID")" = "$OLD_BUILD"
+
+critical_get http://127.0.0.1:3030/
+critical_get http://127.0.0.1:3030/api/lobby
+critical_get http://127.0.0.1:3030/api/bets
+critical_get http://127.0.0.1:3030/api/deployment-version
+critical_get "$PUBLIC/"
+critical_get "$PUBLIC/api/lobby"
+critical_get "$PUBLIC/api/bets"
+critical_get "$PUBLIC/api/deployment-version"
+
+printf '%s\\n' \
+  "status=CERTIFIED" \
+  "release_sha=$RELEASE" \
+  "previous_production_sha=$PREVIOUS" \
+  "old_build_id=$OLD_BUILD" \
+  "active_build_id=$after_active_build" \
+  "live_build_version=$LIVE_VERSION" \
+  "candidate_build_version=$after_internal_version" \
+  "artifact_sha256=$after_artifact" \
+  "manifest_sha256=$MANIFEST_SHA" \
+  "gate_sha256=$GATE_SHA" \
+  "stage_receipt_sha256=$STAGE_RECEIPT_SHA" \
+  "before_pid=$before_pid" \
+  "after_pid=$after_pid" \
+  "wolo8092=$after_wolo8092" \
+  "wolo8093=$after_wolo8093" \
+  "fast_rollback=$FAST_OLD" \
+  "durable_rollback=$ROLLBACK" \
+  "release_specific_proof=INFRASTRUCTURE_exact_runtime_identity_and_critical_routes" \
+  > "$ACT_RECEIPT/certification.txt"
+COMMITTED=1
+
+printf 'status\\tCERTIFIED\\n'
+printf 'release_sha\\t%s\\n' "$RELEASE"
+printf 'source_sha\\t%s\\n' "$after_head"
+printf 'previous_build_id\\t%s\\n' "$OLD_BUILD"
+printf 'active_build_id\\t%s\\n' "$after_active_build"
+printf 'candidate_build_version\\t%s\\n' "$after_internal_version"
+printf 'artifact_sha256\\t%s\\n' "$after_artifact"
+printf 'wolo8092\\t%s\\n' "$after_wolo8092"
+printf 'wolo8093\\t%s\\n' "$after_wolo8093"
+printf 'fast_rollback\\t%s\\n' "$FAST_OLD"
+printf 'durable_rollback\\t%s\\n' "$ROLLBACK"
+printf 'receipt_dir\\t%s\\n' "$ACT_RECEIPT"
+"""
+
+
+def validate_activation_result(result: dict[str, str], receipt: dict) -> list[str]:
+    errors: list[str] = []
+    if result.get("status") != "CERTIFIED":
+        errors.append("remote activation did not report CERTIFIED")
+    if result.get("release_sha") != receipt.get("release_sha"):
+        errors.append("activated release SHA does not equal stage receipt")
+    if result.get("source_sha") != receipt.get("release_sha"):
+        errors.append("production source changed away from staged release")
+    if result.get("previous_build_id") != receipt.get("active_build_id"):
+        errors.append("activation previous BUILD_ID does not equal stage receipt")
+    if result.get("active_build_id") != receipt.get("staged_build_id"):
+        errors.append("active BUILD_ID does not equal staged BUILD_ID")
+    if result.get("candidate_build_version") != receipt.get("candidate_build_version"):
+        errors.append("active build version does not equal candidate build version")
+    if result.get("artifact_sha256") != receipt.get("artifact_sha256"):
+        errors.append("active artifact SHA-256 does not equal staged artifact")
+    if result.get("wolo8092") != str(receipt.get("wolo_8092_count")):
+        errors.append("WOLO listener 8092 changed during activation")
+    if result.get("wolo8093") != str(receipt.get("wolo_8093_count")):
+        errors.append("WOLO listener 8093 changed during activation")
+    if not result.get("receipt_dir"):
+        errors.append("durable activation receipt directory is missing")
+    if not result.get("durable_rollback"):
+        errors.append("durable rollback directory is missing")
+    return errors
+
+
+def write_activation_receipt(payload: dict) -> Path:
+    ACTIVATION_RECEIPT_DIR.mkdir(parents=True, exist_ok=True)
+    path = ACTIVATION_RECEIPT_DIR / (
+        f"{payload['release_sha']}-{payload['artifact_sha256'][:12]}.json"
+    )
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\\n", encoding="utf-8")
+    return path
+
+
+def activate_release(
+    data: dict,
+    *,
+    stage_receipt: str,
+    dry_run: bool,
+    json_output: bool = False,
+) -> int:
+    try:
+        (
+            receipt_path,
+            receipt,
+            receipt_sha,
+            manifest_path,
+            manifest,
+            manifest_sha,
+            gate_path,
+            gate_sha,
+        ) = load_stage_receipt(stage_receipt)
+    except ShipError as exc:
+        if json_output:
+            print(json.dumps({"status": "ERROR", "error": str(exc)}, indent=2))
+        else:
+            print(f"STOP: {exc}")
+        return 2
+
+    transport, transport_error = production_transport()
+    if transport_error:
+        if json_output:
+            print(json.dumps({"status": "ERROR", "error": transport_error}, indent=2))
+        else:
+            print(f"STOP: production Git transport inspection failed: {transport_error}")
+        return 2
+
+    errors = activation_validation_errors(data, receipt, transport)
+    if errors:
+        payload = {
+            "schema": 1,
+            "kind": "aoe2war-activation-preflight",
+            "status": "BLOCKED",
+            "release_sha": receipt["release_sha"],
+            "stage_receipt_path": str(receipt_path.relative_to(ROOT)),
+            "errors": errors,
+        }
+        if json_output:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print("STOP: RECEIPT-DRIVEN ACTIVATION PREFLIGHT BLOCKED")
+            for error in errors:
+                print(f"  - {error}")
+        return 2
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    release_short = receipt["release_sha"][:12]
+    receipt_dir = f"{REMOTE_RECEIPT_ROOT}/activate-{stamp}-{release_short}"
+    rollback_dir = f"{ROLLBACK_ROOT}/activate-{stamp}-{release_short}"
+    script = remote_activation_script(
+        receipt,
+        stage_receipt_sha=receipt_sha,
+        stage_receipt_text=receipt_path.read_text(encoding="utf-8"),
+        dry_run=dry_run,
+        receipt_dir=receipt_dir,
+        rollback_dir=rollback_dir,
+    )
+    p = run(
+        [
+            "ssh",
+            "-o", "BatchMode=yes",
+            "-o", "ConnectTimeout=8",
+            PROD_HOST,
+            f"bash -lc {shlex.quote(script)}",
+        ],
+        timeout=180 if dry_run else 900,
+    )
+    if p.returncode != 0:
+        message = (p.stderr or "").strip() or f"ssh exited {p.returncode}"
+        payload = {
+            "schema": 1,
+            "kind": "aoe2war-activation-result",
+            "status": "ERROR",
+            "release_sha": receipt["release_sha"],
+            "stage_receipt_path": str(receipt_path.relative_to(ROOT)),
+            "remote_receipt_dir": receipt_dir,
+            "error": message,
+            "remote_stdout": (p.stdout or "").strip(),
+        }
+        if json_output:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print("STOP: RECEIPT-DRIVEN ACTIVATION FAILED")
+            print(f"Release: {receipt['release_sha']}")
+            print(f"Receipt: {receipt_dir}")
+            if p.stdout:
+                print(p.stdout.rstrip())
+            if message:
+                print(message)
+            print(
+                "Remote activation trap was armed before runtime mutation; "
+                "inspect rollback-status.txt if mutation began."
+            )
+        return 2
+
+    result = parse_kv(p.stdout or "")
+    if dry_run:
+        expected = {
+            "status": "PREPARED",
+            "release_sha": receipt["release_sha"],
+            "source_sha": receipt["release_sha"],
+            "active_build_id": receipt["active_build_id"],
+            "staged_build_id": receipt["staged_build_id"],
+            "live_build_version": receipt["live_build_version"],
+            "candidate_build_version": receipt["candidate_build_version"],
+            "artifact_sha256": receipt["artifact_sha256"],
+            "wolo8092": str(receipt["wolo_8092_count"]),
+            "wolo8093": str(receipt["wolo_8093_count"]),
+        }
+        mismatches = [
+            f"{key}: expected {value!r}, got {result.get(key)!r}"
+            for key, value in expected.items()
+            if result.get(key) != value
+        ]
+        if mismatches:
+            if json_output:
+                print(json.dumps({"status": "BLOCKED", "errors": mismatches}, indent=2))
+            else:
+                print("STOP: ACTIVATION DRY-RUN RESULT DRIFT")
+                for mismatch in mismatches:
+                    print(f"  - {mismatch}")
+            return 2
+        payload = {
+            "schema": 1,
+            "kind": "aoe2war-activation-preflight",
+            "status": "PASS",
+            "mode": "DRY_RUN",
+            "release_sha": receipt["release_sha"],
+            "stage_receipt_path": str(receipt_path.relative_to(ROOT)),
+            "stage_receipt_sha256": receipt_sha,
+            "manifest_path": str(manifest_path.relative_to(ROOT)),
+            "manifest_sha256": manifest_sha,
+            "gate_path": str(gate_path.relative_to(ROOT)),
+            "gate_sha256": gate_sha,
+            "artifact_sha256": receipt["artifact_sha256"],
+        }
+        if json_output:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print("⚔️  AOE2WAR PHASE IV-B ACTIVATION PREFLIGHT")
+            print(f"Release:        {receipt['release_sha']}")
+            print(f"Previous prod:  {receipt['previous_production_sha']}")
+            print(f"Active build:   {receipt['active_build_id']}")
+            print(f"Staged build:   {receipt['staged_build_id']}")
+            print(f"Live version:   {receipt['live_build_version']}")
+            print(f"Candidate ver:  {receipt['candidate_build_version']}")
+            print(f"Artifact SHA:   {receipt['artifact_sha256']}")
+            print(f"Manifest SHA:   {manifest_sha}")
+            print(f"Gate SHA:       {gate_sha}")
+            print(
+                "WOLO:           "
+                f"8092={receipt['wolo_8092_count']}  "
+                f"8093={receipt['wolo_8093_count']}  UNTOUCHED"
+            )
+            print()
+            print("PASS: ACTIVATION PREFLIGHT — ZERO PRODUCTION MUTATION")
+        return 0
+
+    result_errors = validate_activation_result(result, receipt)
+    if result_errors:
+        if json_output:
+            print(json.dumps({"status": "ERROR", "errors": result_errors, "remote": result}, indent=2, sort_keys=True))
+        else:
+            print("STOP: ACTIVATION COMPLETED REMOTELY BUT RESULT VALIDATION FAILED")
+            for error in result_errors:
+                print(f"  - {error}")
+            print(f"Remote receipt: {receipt_dir}")
+        return 2
+
+    payload = {
+        "schema": 1,
+        "kind": "aoe2war-activation-result",
+        "generated_at": utc_now(),
+        "status": "CERTIFIED",
+        "release_sha": receipt["release_sha"],
+        "implementation_sha": receipt.get("implementation_sha"),
+        "previous_production_sha": receipt["previous_production_sha"],
+        "risk_class": receipt.get("risk_class"),
+        "stage_receipt_path": str(receipt_path.relative_to(ROOT)),
+        "stage_receipt_sha256": receipt_sha,
+        "manifest_path": str(manifest_path.relative_to(ROOT)),
+        "manifest_sha256": manifest_sha,
+        "gate_path": str(gate_path.relative_to(ROOT)),
+        "gate_sha256": gate_sha,
+        "previous_build_id": result["previous_build_id"],
+        "active_build_id": result["active_build_id"],
+        "candidate_build_version": result["candidate_build_version"],
+        "artifact_sha256": result["artifact_sha256"],
+        "wolo_8092_count": int(result["wolo8092"]),
+        "wolo_8093_count": int(result["wolo8093"]),
+        "remote_receipt_dir": result["receipt_dir"],
+        "fast_rollback": result["fast_rollback"],
+        "durable_rollback": result["durable_rollback"],
+        "release_specific_proof": (
+            "INFRASTRUCTURE exact runtime identity plus internal/public critical-route proof"
+        ),
+        "wolo_mutated": False,
+    }
+    local_receipt = write_activation_receipt(payload)
+    payload["local_receipt_path"] = str(local_receipt.relative_to(ROOT))
+    payload["local_receipt_sha256"] = sha256_file(local_receipt)
+    if json_output:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    print("⚔️  AOE2WAR RELEASE ACTIVATED + CERTIFIED")
+    print(f"Release:        {payload['release_sha']}")
+    print(f"Previous build: {payload['previous_build_id']}")
+    print(f"Active build:   {payload['active_build_id']}")
+    print(f"Candidate ver:  {payload['candidate_build_version']}")
+    print(f"Artifact SHA:   {payload['artifact_sha256']}")
+    print(
+        "WOLO:           "
+        f"8092={payload['wolo_8092_count']}  "
+        f"8093={payload['wolo_8093_count']}  UNTOUCHED"
+    )
+    print(f"Fast rollback:  {payload['fast_rollback']}")
+    print(f"Durable rollback: {payload['durable_rollback']}")
+    print(f"Remote receipt: {payload['remote_receipt_dir']}")
+    print(f"Local receipt:  {payload['local_receipt_path']}")
+    print()
+    print("PASS: RELEASE ACTIVATED + CERTIFIED — WOLO UNTOUCHED")
+    return 0
+
 def ship_release(
     data: dict,
     *,

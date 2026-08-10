@@ -70,6 +70,27 @@ def sample():
     return data, manifest, transport
 
 
+def activation_sample():
+    data, manifest, transport = sample()
+    release = manifest["release_sha"]
+    data["local"]["head"] = "d" * 40
+    data["github"]["main_sha"] = "d" * 40
+    data["production"]["source_sha"] = release
+    data["production"]["staged_build_id"] = "candidate-build"
+    receipt = {
+        "release_sha": release,
+        "active_build_id": "old-build",
+        "staged_build_id": "candidate-build",
+        "live_build_version": "old-version",
+        "candidate_build_version": "candidate-version",
+        "artifact_sha256": "e" * 64,
+        "wolo_8092_count": 1,
+        "wolo_8093_count": 1,
+    }
+    transport["remote_main"] = data["github"]["main_sha"]
+    return data, receipt, transport
+
+
 class ShipTests(unittest.TestCase):
     def test_valid_preflight(self):
         data, manifest, transport = sample()
@@ -169,6 +190,65 @@ class ShipTests(unittest.TestCase):
         )
         self.assertFalse(
             plan["protected_services"]["wolo_8093_mutation_allowed"]
+        )
+
+
+    def test_activation_valid_preflight_allows_tooling_head_after_candidate(self):
+        data, receipt, transport = activation_sample()
+        self.assertEqual(MODULE.activation_validation_errors(data, receipt, transport), [])
+
+    def test_activation_source_drift_blocks(self):
+        data, receipt, transport = activation_sample()
+        data["production"]["source_sha"] = "f" * 40
+        self.assertIn(
+            "production source does not equal staged release SHA",
+            MODULE.activation_validation_errors(data, receipt, transport),
+        )
+
+    def test_activation_staged_build_drift_blocks(self):
+        data, receipt, transport = activation_sample()
+        data["production"]["staged_build_id"] = "wrong-candidate"
+        self.assertIn(
+            "staged BUILD_ID drifted from stage receipt",
+            MODULE.activation_validation_errors(data, receipt, transport),
+        )
+
+    def test_activation_tooling_remote_main_must_match_current_github(self):
+        data, receipt, transport = activation_sample()
+        transport["remote_main"] = "0" * 40
+        self.assertIn(
+            "production origin main does not equal current GitHub main",
+            MODULE.activation_validation_errors(data, receipt, transport),
+        )
+
+    def test_activation_wolo_drift_blocks(self):
+        data, receipt, transport = activation_sample()
+        data["production"]["wolo_8092_count"] = 0
+        self.assertIn(
+            "protected WOLO listener 8092 drifted from stage receipt",
+            MODULE.activation_validation_errors(data, receipt, transport),
+        )
+
+    def test_activation_result_requires_exact_candidate_identity(self):
+        _, receipt, _ = activation_sample()
+        result = {
+            "status": "CERTIFIED",
+            "release_sha": receipt["release_sha"],
+            "source_sha": receipt["release_sha"],
+            "previous_build_id": receipt["active_build_id"],
+            "active_build_id": receipt["staged_build_id"],
+            "candidate_build_version": receipt["candidate_build_version"],
+            "artifact_sha256": receipt["artifact_sha256"],
+            "wolo8092": "1",
+            "wolo8093": "1",
+            "receipt_dir": "/mnt/receipt",
+            "durable_rollback": "/mnt/rollback",
+        }
+        self.assertEqual(MODULE.validate_activation_result(result, receipt), [])
+        result["artifact_sha256"] = "0" * 64
+        self.assertIn(
+            "active artifact SHA-256 does not equal staged artifact",
+            MODULE.validate_activation_result(result, receipt),
         )
 
 
