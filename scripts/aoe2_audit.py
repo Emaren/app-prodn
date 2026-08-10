@@ -407,7 +407,7 @@ def copy_central_head_to_temp() -> tuple[tempfile.TemporaryDirectory[str], Path]
         raise RuntimeError(f"git archive failed: {out}")
 
     with tarfile.open(archive, "r") as tar:
-        tar.extractall(checkout)
+        tar.extractall(checkout, filter="data")
 
     return temp, checkout
 
@@ -758,6 +758,20 @@ def check_wolo_vps_split(audit: Audit) -> None:
         )
 
 
+def collect_audit() -> Audit:
+    audit = Audit()
+    snapshots = check_source_repositories(audit)
+    check_source_documentation(audit)
+    check_central_state(audit, snapshots)
+    check_taxonomy(audit)
+    check_central_quality_gates(audit)
+    check_maps(audit)
+    check_context_archives(audit)
+    check_production(audit)
+    check_wolo_vps_split(audit)
+    return audit
+
+
 def print_human(audit: Audit) -> None:
     payload = audit.payload()
     print("⚔️  AOE2WAR ESTATE AUDIT")
@@ -815,16 +829,7 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
-    audit = Audit()
-    snapshots = check_source_repositories(audit)
-    check_source_documentation(audit)
-    check_central_state(audit, snapshots)
-    check_taxonomy(audit)
-    check_central_quality_gates(audit)
-    check_maps(audit)
-    check_context_archives(audit)
-    check_production(audit)
-    check_wolo_vps_split(audit)
+    audit = collect_audit()
 
     if args.json:
         print(json.dumps(audit.payload(), indent=2, sort_keys=True))
