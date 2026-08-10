@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fcntl
 import importlib.util
 import os
 from pathlib import Path
@@ -21,6 +22,10 @@ class OperatorBridgeTests(unittest.TestCase):
         self.assertEqual(
             MODULE.command_for_run({"action": "audit"}),
             [str(MODULE.CLI), "audit", "--json"],
+        )
+        self.assertEqual(
+            MODULE.command_for_run({"action": "doctor"}),
+            [str(MODULE.CLI), "doctor"],
         )
         self.assertEqual(
             MODULE.command_for_run({"action": "update_plan"}),
@@ -50,6 +55,18 @@ class OperatorBridgeTests(unittest.TestCase):
     def test_try_parse_json(self):
         self.assertEqual(MODULE.try_parse_json('{"p0":0}'), {"p0": 0})
         self.assertIsNone(MODULE.try_parse_json("not json"))
+
+    def test_finish_lock_pauses_claims(self):
+        with tempfile.TemporaryDirectory() as temp:
+            lock = Path(temp) / "finish.lock"
+            lock.touch()
+            with lock.open("a+", encoding="utf-8") as handle:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                with patch.object(MODULE, "FINISH_LOCK", lock):
+                    self.assertTrue(MODULE.finish_in_progress())
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            with patch.object(MODULE, "FINISH_LOCK", lock):
+                self.assertFalse(MODULE.finish_in_progress())
 
 
 if __name__ == "__main__":

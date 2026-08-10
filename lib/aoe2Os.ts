@@ -17,6 +17,14 @@ export const AOE2_OS_ACTIONS = {
     confirmation: null,
     requiresSourceSha: false,
   },
+  doctor: {
+    label: "System Doctor",
+    description:
+      "Inspect host, toolchain, bridge, capacity, architecture and disaster-recovery readiness.",
+    risk: "read",
+    confirmation: null,
+    requiresSourceSha: false,
+  },
   update_plan: {
     label: "Plan Update",
     description: "Show documentation/context maintenance that would be performed.",

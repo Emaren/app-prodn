@@ -222,6 +222,15 @@ def path_risk(path: str) -> str:
         "scripts/aoe2_release_stage.py",
         "scripts/aoe2_release_auto.py",
         "scripts/aoe2_release_rollback.py",
+        "scripts/aoe2_audit.py",
+        "scripts/aoe2_update.py",
+        "scripts/aoe2_doctor.py",
+        "scripts/aoe2_finish.py",
+        "scripts/aoe2_operator_bridge.py",
+        "config/aoe2war-operations.json",
+        "lib/aoe2Os.ts",
+        "app/api/admin/aoe2war-os/route.ts",
+        "app/api/internal/aoe2war-os/bridge/route.ts",
         "bin/aoe2-release",
         "bin/aoe2war-release",
         "bin/aoe2war",
@@ -317,6 +326,12 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
             "bin/aoe2-release",
             "bin/aoe2war-release",
             "bin/aoe2war",
+            "scripts/aoe2_audit.py",
+            "scripts/aoe2_update.py",
+            "scripts/aoe2_doctor.py",
+            "scripts/aoe2_finish.py",
+            "scripts/aoe2_operator_bridge.py",
+            "config/aoe2war-operations.json",
             "scripts/aoe2_release.py",
             "scripts/aoe2_release_gate.py",
             "scripts/aoe2_release_ship.py",
@@ -348,6 +363,11 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "tests/test_release_auto.py",
                     "tests/test_release_rollback.py",
                     "tests/test_aoe2_cli.py",
+                    "tests/test_aoe2_audit.py",
+                    "tests/test_aoe2_update.py",
+                    "tests/test_aoe2_doctor.py",
+                    "tests/test_aoe2_finish.py",
+                    "tests/test_aoe2_operator_bridge.py",
                 ],
                 120,
             )
@@ -365,6 +385,37 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "scripts/aoe2_release_stage.py",
                     "scripts/aoe2_release_auto.py",
                     "scripts/aoe2_release_rollback.py",
+                    "scripts/aoe2_audit.py",
+                    "scripts/aoe2_update.py",
+                    "scripts/aoe2_doctor.py",
+                    "scripts/aoe2_finish.py",
+                    "scripts/aoe2_operator_bridge.py",
+                ],
+                120,
+            )
+        )
+
+    os_control_tooling = any(
+        path in {
+            "lib/aoe2Os.ts",
+            "app/api/admin/aoe2war-os/route.ts",
+            "app/api/internal/aoe2war-os/bridge/route.ts",
+            "scripts/aoe2_operator_bridge.py",
+            "tests/aoe2war-os-control.test.mts",
+            "tests/test_aoe2_operator_bridge.py",
+        }
+        for path in paths
+    )
+    if os_control_tooling:
+        commands.append(
+            (
+                "aoe2war-os-control-tests",
+                [
+                    "node",
+                    "--experimental-strip-types",
+                    "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+                    "--test",
+                    "tests/aoe2war-os-control.test.mts",
                 ],
                 120,
             )

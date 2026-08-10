@@ -32,6 +32,7 @@ async function withStore(fn: (root: string) => Promise<void>) {
 
 test("confirmation policy is server-side", () => {
   assert.equal(confirmationMatches("audit", ""), true);
+  assert.equal(confirmationMatches("doctor", ""), true);
   assert.equal(confirmationMatches("update_apply", "UPDATE"), true);
   assert.equal(confirmationMatches("update_apply", "update"), false);
   assert.equal(confirmationMatches("deploy", "DEPLOY"), true);

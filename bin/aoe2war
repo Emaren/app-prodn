@@ -4,7 +4,9 @@ set -euo pipefail
 BIN_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 RELEASE="$BIN_DIR/aoe2war-release"
 AUDIT="$BIN_DIR/../scripts/aoe2_audit.py"
+DOCTOR="$BIN_DIR/../scripts/aoe2_doctor.py"
 UPDATE="$BIN_DIR/../scripts/aoe2_update.py"
+FINISH="$BIN_DIR/../scripts/aoe2_finish.py"
 BRIDGE="$BIN_DIR/../scripts/aoe2_operator_bridge.py"
 
 usage() {
@@ -15,7 +17,9 @@ Usage:
   aoe2war info
   aoe2war deploy [release options]
   aoe2war audit [--json]
+  aoe2war doctor [--json] [--strict]
   aoe2war update [--apply] [--json]
+  aoe2war finish [--dry-run] [--json] [-m MESSAGE]
   aoe2war bridge [--once] [bridge options]
   aoe2war status [--json]
   aoe2war context [--json]
@@ -29,8 +33,10 @@ Examples:
   aoe2war info
   aoe2war audit
   aoe2war audit --json
+  aoe2war doctor
   aoe2war update
   aoe2war update --apply
+  aoe2war finish
   aoe2war bridge --once
   aoe2war deploy
   aoe2war deploy --dry-run
@@ -62,6 +68,12 @@ SAFE / READ-ONLY
       authorities, production health, protected Wolo listeners, system maps
       and context evidence. Makes no changes.
 
+  aoe2war doctor
+      Operator-grade read-only health check beyond the estate audit. Adds host
+      hygiene, toolchains, Operator Bridge, capacity, semantic map completeness,
+      architecture seams and disaster-recovery readiness. Warnings are advisory;
+      blockers return nonzero.
+
   aoe2war update
       Plan documentation/context maintenance. Shows exactly what would change.
       Makes no changes.
@@ -84,6 +96,13 @@ ADMIN UI / OPERATOR BRIDGE
       Heartbeat, claim at most one queued Admin action, then exit.
 
 PRODUCTION WRITE
+
+  aoe2war finish
+      Canonical end-of-work command. Reconciles Mac/GitHub source authority,
+      safely adopts a tracked VPS-first candidate only from one exact base,
+      gates and commits unpublished work, refreshes documentation/context,
+      deploys if needed, certifies production, runs the final estate audit and
+      Doctor, and leaves one aggregate receipt. Wolo remains observe-only.
 
   aoe2war deploy
       Ship the current eligible application revision through the protected
@@ -121,11 +140,14 @@ NORMAL RHYTHM
   Want full confidence:
       aoe2war audit
 
-  Finished development:
-      aoe2war update
-      aoe2war update --apply
+  Finished coding:
+      aoe2war finish
 
-  Ready to ship application behavior:
+  Want to see exactly what finish would do first:
+      aoe2war finish --dry-run
+
+  Manual maintenance/release primitives remain available:
+      aoe2war update --apply
       aoe2war deploy
 
   Months later and forgot the commands:
@@ -149,9 +171,17 @@ case "$command" in
     shift
     exec python3 "$AUDIT" "$@"
     ;;
+  doctor)
+    shift
+    exec python3 "$DOCTOR" "$@"
+    ;;
   update)
     shift
     exec python3 "$UPDATE" "$@"
+    ;;
+  finish)
+    shift
+    exec python3 "$FINISH" "$@"
     ;;
   bridge)
     shift

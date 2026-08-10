@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import getpass
 import json
 import os
@@ -18,6 +19,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / "bin" / "aoe2war"
+FINISH_LOCK = ROOT / ".aoe2war-release" / "finish.lock"
 
 DEFAULT_URL = os.getenv("AOE2WAR_OS_BRIDGE_URL", "https://aoe2war.com").rstrip("/")
 DEFAULT_TOKEN_FILE = Path(
@@ -27,11 +29,12 @@ DEFAULT_TOKEN_FILE = Path(
     )
 ).expanduser()
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 ACTIONS = {
     "status",
     "audit",
+    "doctor",
     "update_plan",
     "update_apply",
     "deploy_plan",
@@ -61,6 +64,21 @@ def load_token(token_file: Path = DEFAULT_TOKEN_FILE) -> str:
     if not value:
         raise BridgeError(f"Bridge token file is empty: {token_file}")
     return value
+
+
+def finish_in_progress() -> bool:
+    if not FINISH_LOCK.exists():
+        return False
+    try:
+        with FINISH_LOCK.open("a+", encoding="utf-8") as handle:
+            try:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                return True
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            return False
+    except OSError:
+        return False
 
 
 def bridge_id() -> str:
@@ -134,6 +152,8 @@ def command_for_run(run: dict[str, Any]) -> list[str]:
         return [str(CLI), "status", "--json"]
     if action == "audit":
         return [str(CLI), "audit", "--json"]
+    if action == "doctor":
+        return [str(CLI), "doctor"]
     if action == "update_plan":
         return [str(CLI), "update", "--json"]
     if action == "update_apply":
@@ -417,6 +437,18 @@ def run_bridge(
         )
 
     while True:
+        if finish_in_progress():
+            post_bridge(
+                {"op": "heartbeat"},
+                token=token,
+                base_url=base_url,
+            )
+            if once:
+                print("finish in progress; no command claimed", flush=True)
+                return 0
+            time.sleep(max(1.0, interval))
+            continue
+
         response = post_bridge(
             {"op": "claim"},
             token=token,

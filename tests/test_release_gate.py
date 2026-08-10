@@ -120,5 +120,31 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertEqual(len(release_tests), 1)
         self.assertIn("tests/test_release_rollback.py", release_tests[0])
 
+    def test_finish_and_doctor_are_infrastructure_tooling(self):
+        self.assertEqual(
+            MODULE.path_risk("scripts/aoe2_finish.py"),
+            "INFRASTRUCTURE",
+        )
+        self.assertEqual(
+            MODULE.path_risk("scripts/aoe2_doctor.py"),
+            "INFRASTRUCTURE",
+        )
+        scope = {
+            "mode": "worktree",
+            "base_sha": "a",
+            "target_sha": "WORKTREE",
+            "changed_files": ["scripts/aoe2_finish.py"],
+        }
+        plan = MODULE.command_plan(scope, "INFRASTRUCTURE")
+        release_tests = [
+            args
+            for label, args, _timeout in plan
+            if label == "release-engineering-tests"
+        ]
+        self.assertEqual(len(release_tests), 1)
+        self.assertIn("tests/test_aoe2_finish.py", release_tests[0])
+        self.assertIn("tests/test_aoe2_doctor.py", release_tests[0])
+
+
 if __name__ == "__main__":
     unittest.main()

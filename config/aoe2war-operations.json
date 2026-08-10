@@ -1,0 +1,78 @@
+{
+  "schema": 1,
+  "project": "AoE2WAR",
+  "canonical": {
+    "branch": "main",
+    "github_repository": "Emaren/app-prodn",
+    "production_host": "hel1",
+    "production_repo": "/var/www/AoE2HDBets/app-prodn",
+    "service": "aoe2hdbets-web.service",
+    "public_base_url": "https://aoe2war.com",
+    "web_bind": "127.0.0.1:3030",
+    "deployment_manager": "systemd",
+    "volume_mount": "/mnt/HC_Volume_105319120",
+    "control_store": "/mnt/HC_Volume_105319120/aoe2war/os-control",
+    "bridge_env_file": "/etc/aoe2hdbets/aoe2war-os-bridge.env",
+    "bridge_systemd_dropin": "/etc/systemd/system/aoe2hdbets-web.service.d/60-aoe2war-os.conf",
+    "bridge_token_file": "~/.config/aoe2war/os-bridge-token",
+    "bridge_launchagent": "~/Library/LaunchAgents/com.aoe2war.operator-bridge.plist",
+    "bridge_launchagent_label": "com.aoe2war.operator-bridge"
+  },
+  "protected": {
+    "wolo_runtime_mutation_policy": "observe-only-unless-explicitly-authorized",
+    "wolo_listener_ports": [
+      8092,
+      8093
+    ],
+    "database_automatic_migration_policy": "fail-closed-reviewed-lane"
+  },
+  "toolchain": {
+    "node_major": null,
+    "python_major_minor": "3.13",
+    "yarn": "1.22.22",
+    "next": "15.1.7",
+    "prisma": "7.4.0",
+    "node_policy": "operator-and-production-major-must-match-until-explicitly-pinned"
+  },
+  "capacity": {
+    "root_free_warn_gib": 5.0,
+    "root_free_preferred_gib": 6.0,
+    "volume_used_warn_percent": 85,
+    "volume_used_critical_percent": 92
+  },
+  "operator_bridge": {
+    "online_threshold_seconds": 45,
+    "poll_interval_seconds": 3,
+    "direction": "outbound-only",
+    "arbitrary_shell": false
+  },
+  "finish": {
+    "auto_commit_local_worktree": true,
+    "auto_publish_clean_local_commits": true,
+    "vps_candidate_adoption": "tracked-existing-files-only-exact-base",
+    "vps_untracked_files": "fail-closed",
+    "database_migrations": "not-auto-applied",
+    "wolo_runtime_mutation": false,
+    "final_requirement": "certified-production-and-estate-p0-0-p1-0"
+  },
+  "semantic_maps": {
+    "required_terms": [
+      "AoE2WAR",
+      "8092",
+      "8093",
+      "/mnt/HC_Volume_105319120/aoe2war/rollbacks/",
+      "Operator Bridge",
+      "/mnt/HC_Volume_105319120/aoe2war/os-control"
+    ]
+  },
+  "offsite_evidence": {
+    "enabled": false,
+    "authority": null,
+    "restore_proof": null,
+    "note": "Pending high-ROI off-host encrypted evidence vault and restore drill."
+  },
+  "legacy_deployment_artifacts": {
+    "ecosystem.config.js": "non-canonical-review-or-retire",
+    "Dockerfile": "non-canonical-review-package-manager-contract"
+  }
+}
