@@ -15,6 +15,7 @@ EXCLUDED_EXACT = frozenset(
     {
         ".git",
         ".next",
+        ".aoe2war-release",
         ".direnv",
         ".pytest_cache",
         ".mypy_cache",

@@ -13,6 +13,16 @@ MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
 SPEC.loader.exec_module(MODULE)
 
+DOCS_SCRIPT = (
+    pathlib.Path(__file__).resolve().parents[1]
+    / "scripts"
+    / "docs_v2_check.py"
+)
+DOCS_SPEC = importlib.util.spec_from_file_location("docs_v2_check", DOCS_SCRIPT)
+DOCS = importlib.util.module_from_spec(DOCS_SPEC)
+assert DOCS_SPEC and DOCS_SPEC.loader
+DOCS_SPEC.loader.exec_module(DOCS)
+
 
 def sample():
     return {
@@ -134,6 +144,18 @@ class AutoShipTests(unittest.TestCase):
             MODULE.porcelain_paths(output),
             {"docs/DOCUMENTATION_CONTROL_PLANE.md"},
         )
+
+    def test_docs_scanner_excludes_release_operational_state(self):
+        operational = pathlib.PurePosixPath(
+            ".aoe2war-release/patch-backups/example/docs/"
+            "DOCUMENTATION_CONTROL_PLANE.md"
+        )
+        canonical = pathlib.PurePosixPath(
+            "docs/DOCUMENTATION_CONTROL_PLANE.md"
+        )
+
+        self.assertTrue(DOCS.is_excluded(operational))
+        self.assertFalse(DOCS.is_excluded(canonical))
 
 if __name__ == "__main__":
     unittest.main()
