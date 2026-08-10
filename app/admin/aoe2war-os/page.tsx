@@ -106,6 +106,19 @@ function shortSha(value: unknown) {
   return typeof value === "string" && value.length >= 10 ? value.slice(0, 10) : "—";
 }
 
+function formatElapsed(milliseconds: number) {
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
 function statusTone(status: string) {
   if (["HEALTHY", "PASS", "succeeded", "CERTIFIED", "active"].includes(status)) {
     return "text-emerald-200 bg-emerald-400/10 border-emerald-300/20";
@@ -152,6 +165,7 @@ export default function AoE2WarOsAdminPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState<string | null>(null);
   const [confirmations, setConfirmations] = useState<Record<string, string>>({});
+  const [clock, setClock] = useState(() => Date.now());
 
   const refresh = useCallback(async () => {
     try {
@@ -179,6 +193,11 @@ export default function AoE2WarOsAdminPage() {
     return () => window.clearInterval(interval);
   }, [refresh]);
 
+  useEffect(() => {
+    const interval = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   const snapshotPayload = record(dashboard?.snapshot?.payload);
   const areas = record(snapshotPayload.areas);
   const info = record(snapshotPayload.info);
@@ -192,7 +211,26 @@ export default function AoE2WarOsAdminPage() {
     return typeof app.head === "string" ? app.head : null;
   }, [sourceRepos]);
 
-  const events = dashboard?.activeRun?.events ?? [];
+  const activeRun = dashboard?.activeRun ?? null;
+  const events = activeRun?.events ?? [];
+  const runIsActive = Boolean(
+    activeRun && ["queued", "claimed", "running"].includes(activeRun.status)
+  );
+  const runStartValue = activeRun?.startedAt ?? activeRun?.requestedAt ?? null;
+  const runStartMs = runStartValue ? new Date(runStartValue).getTime() : Number.NaN;
+  const latestEvent = events.length > 0 ? events[events.length - 1] : null;
+  const latestActivityValue =
+    latestEvent?.createdAt ?? activeRun?.startedAt ?? activeRun?.requestedAt ?? null;
+  const latestActivityMs = latestActivityValue
+    ? new Date(latestActivityValue).getTime()
+    : Number.NaN;
+  const runElapsed = Number.isFinite(runStartMs)
+    ? formatElapsed(clock - runStartMs)
+    : "00:00";
+  const outputAgeMs = Number.isFinite(latestActivityMs)
+    ? Math.max(0, clock - latestActivityMs)
+    : 0;
+  const outputIsFresh = events.length > 0 && outputAgeMs <= 15_000;
 
   async function queueAction(action: ActionDefinition) {
     try {
@@ -477,6 +515,74 @@ export default function AoE2WarOsAdminPage() {
               </button>
             ) : null}
           </div>
+
+          {activeRun ? (
+            <div className="border-b border-slate-800/70 bg-slate-950/70 px-6 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 text-xs">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                  <div className="inline-flex items-center gap-2 font-medium text-cyan-100">
+                    {runIsActive ? (
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-cyan-400 opacity-60" />
+                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-cyan-300" />
+                      </span>
+                    ) : (
+                      <span className="h-2.5 w-2.5 rounded-full bg-slate-500" />
+                    )}
+                    {runIsActive ? "COMMAND ACTIVE" : activeRun.status.toUpperCase()}
+                  </div>
+
+                  <div className="text-slate-500">
+                    Elapsed{" "}
+                    <span className="font-mono font-semibold tabular-nums text-slate-100">
+                      {runElapsed}
+                    </span>
+                  </div>
+
+                  <div className="text-slate-500">
+                    {events.length > 0 ? (
+                      <>
+                        Last output{" "}
+                        <span
+                          className={`font-mono tabular-nums ${
+                            outputIsFresh ? "text-emerald-300" : "text-amber-200"
+                          }`}
+                        >
+                          {formatElapsed(outputAgeMs)} ago
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-amber-200">Waiting for first output</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 text-slate-500">
+                  <span>
+                    <span className="font-mono text-slate-300">{events.length}</span> events
+                  </span>
+                  {dashboard?.bridge ? (
+                    <span>
+                      Bridge{" "}
+                      <span className={bridgeOnline ? "text-emerald-300" : "text-rose-300"}>
+                        seen {relativeAge(dashboard.bridge.lastSeenAt)}
+                      </span>
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              {runIsActive ? (
+                <div
+                  className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-900"
+                  aria-label="Command is still running"
+                  role="progressbar"
+                >
+                  <div className="h-full w-full animate-pulse bg-gradient-to-r from-cyan-500/25 via-emerald-300 to-cyan-500/25" />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="h-[520px] overflow-y-auto p-5 font-mono text-xs leading-5 text-slate-300">
             {events.length > 0 ? (
