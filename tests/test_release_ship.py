@@ -229,6 +229,45 @@ class ShipTests(unittest.TestCase):
             MODULE.activation_validation_errors(data, receipt, transport),
         )
 
+    def test_activation_uses_root_name_independent_content_hash(self):
+        _, receipt, _ = activation_sample()
+        receipt = {
+            **receipt,
+            "previous_production_sha": "a" * 40,
+            "manifest_sha256": "1" * 64,
+            "gate_sha256": "2" * 64,
+            "remote_receipt_dir": (
+                "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/"
+                "stage-test"
+            ),
+        }
+        script = MODULE.remote_activation_script(
+            receipt,
+            stage_receipt_sha="3" * 64,
+            stage_receipt_text="{}",
+            dry_run=False,
+            receipt_dir="/mnt/activation",
+            rollback_dir="/mnt/rollback",
+        )
+        self.assertIn("content_hash()", script)
+        self.assertIn(
+            'candidate_content_sha="$(content_hash .next-release)"',
+            script,
+        )
+        self.assertIn(
+            'after_content_sha="$(content_hash .next)"',
+            script,
+        )
+        self.assertIn(
+            'test "$after_content_sha" = "$candidate_content_sha"',
+            script,
+        )
+        self.assertIn(
+            'artifact_sha256=$ARTIFACT',
+            script,
+        )
+        self.assertNotIn("active_artifact_hash()", script)
+
     def test_activation_result_requires_exact_candidate_identity(self):
         _, receipt, _ = activation_sample()
         result = {

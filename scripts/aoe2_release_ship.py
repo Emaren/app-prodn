@@ -596,9 +596,9 @@ artifact_hash() {{
   tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf - "$1" \
   | sha256sum | awk '{{print $1}}'
 }}
-active_artifact_hash() {{
+content_hash() {{
   tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
-    --transform='s#^\\.next#\\.next-release#' -cf - .next \
+    -C "$1" -cf - . \
   | sha256sum | awk '{{print $1}}'
 }}
 critical_get() {{
@@ -649,6 +649,8 @@ grep -Fx "artifact_sha256=$ARTIFACT" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 
 candidate_artifact="$(artifact_hash .next-release)"
 test "$candidate_artifact" = "$ARTIFACT"
+candidate_content_sha="$(content_hash .next-release)"
+test -n "$candidate_content_sha"
 critical_get http://127.0.0.1:3030/
 critical_get http://127.0.0.1:3030/api/lobby
 critical_get http://127.0.0.1:3030/api/bets
@@ -686,6 +688,7 @@ printf '%s\\n' \
   "live_build_version=$LIVE_VERSION" \
   "candidate_build_version=$CANDIDATE_VERSION" \
   "artifact_sha256=$ARTIFACT" \
+  "candidate_content_sha256=$candidate_content_sha" \
   "manifest_sha256=$MANIFEST_SHA" \
   "gate_sha256=$GATE_SHA" \
   "stage_receipt_sha256=$STAGE_RECEIPT_SHA" \
@@ -775,7 +778,7 @@ after_internal_version="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deplo
 after_public_version="$(curl -fsS --max-time 10 "$PUBLIC/api/deployment-version" | build_version)"
 after_wolo8092="$(wolo_count 8092)"
 after_wolo8093="$(wolo_count 8093)"
-after_artifact="$(active_artifact_hash)"
+after_content_sha="$(content_hash .next)"
 
 test "$after_service" = "active"
 test -n "$after_pid"
@@ -786,7 +789,7 @@ test "$after_internal_version" = "$CANDIDATE_VERSION"
 test "$after_public_version" = "$CANDIDATE_VERSION"
 test "$after_wolo8092" = "$before_wolo8092"
 test "$after_wolo8093" = "$before_wolo8093"
-test "$after_artifact" = "$ARTIFACT"
+test "$after_content_sha" = "$candidate_content_sha"
 test ! -e .next-release
 test -d "$FAST_OLD"
 test "$(cat "$ROLLBACK/next/BUILD_ID")" = "$OLD_BUILD"
@@ -808,7 +811,8 @@ printf '%s\\n' \
   "active_build_id=$after_active_build" \
   "live_build_version=$LIVE_VERSION" \
   "candidate_build_version=$after_internal_version" \
-  "artifact_sha256=$after_artifact" \
+  "artifact_sha256=$ARTIFACT" \
+  "content_sha256=$after_content_sha" \
   "manifest_sha256=$MANIFEST_SHA" \
   "gate_sha256=$GATE_SHA" \
   "stage_receipt_sha256=$STAGE_RECEIPT_SHA" \
@@ -828,7 +832,8 @@ printf 'source_sha\\t%s\\n' "$after_head"
 printf 'previous_build_id\\t%s\\n' "$OLD_BUILD"
 printf 'active_build_id\\t%s\\n' "$after_active_build"
 printf 'candidate_build_version\\t%s\\n' "$after_internal_version"
-printf 'artifact_sha256\\t%s\\n' "$after_artifact"
+printf 'artifact_sha256\\t%s\\n' "$ARTIFACT"
+printf 'content_sha256\\t%s\\n' "$after_content_sha"
 printf 'wolo8092\\t%s\\n' "$after_wolo8092"
 printf 'wolo8093\\t%s\\n' "$after_wolo8093"
 printf 'fast_rollback\\t%s\\n' "$FAST_OLD"
