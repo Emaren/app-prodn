@@ -1,5 +1,6 @@
 import importlib.util
 import pathlib
+import subprocess
 import unittest
 
 SCRIPT = (
@@ -106,6 +107,33 @@ class AutoShipTests(unittest.TestCase):
             any("8093" in item for item in MODULE.final_errors(data, release))
         )
 
+
+    def test_git_preserves_leading_porcelain_status_space(self):
+        original = MODULE.run
+
+        def fake_run(args, *, timeout=300):
+            return subprocess.CompletedProcess(
+                args,
+                0,
+                stdout=" M docs/DOCUMENTATION_CONTROL_PLANE.md\n",
+                stderr="",
+            )
+
+        MODULE.run = fake_run
+        try:
+            output = MODULE.git(
+                "status",
+                "--porcelain",
+                "--untracked-files=all",
+            )
+        finally:
+            MODULE.run = original
+
+        self.assertTrue(output.startswith(" M "))
+        self.assertEqual(
+            MODULE.porcelain_paths(output),
+            {"docs/DOCUMENTATION_CONTROL_PLANE.md"},
+        )
 
 if __name__ == "__main__":
     unittest.main()

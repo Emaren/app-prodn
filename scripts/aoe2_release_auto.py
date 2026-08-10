@@ -42,7 +42,7 @@ def git(*args: str) -> str:
         raise AutoShipError(
             f"git {' '.join(args)} failed: {(p.stderr or '').strip()}"
         )
-    return (p.stdout or "").strip()
+    return (p.stdout or "").rstrip("\n")
 
 
 def is_ancestor(older: str, newer: str) -> bool:
