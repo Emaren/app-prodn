@@ -49,6 +49,12 @@ class AoE2WarCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stdout.splitlines(), ["releases", "--limit", "4"])
 
+    def test_rollback_maps_directly(self):
+        result = self.run_cli("rollback", "--dry-run")
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout.splitlines(), ["rollback", "--dry-run"])
+
+
     def test_unknown_command_fails_closed(self):
         result = self.run_cli("warp-drive")
         self.assertEqual(result.returncode, 2)

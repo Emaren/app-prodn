@@ -534,7 +534,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(prog="aoe2war-release")
     parser.add_argument(
         "command",
-        choices=["status", "context", "releases", "gate", "manifest", "ship"],
+        choices=["status", "context", "releases", "gate", "manifest", "ship", "rollback"],
     )
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
@@ -559,6 +559,20 @@ def main() -> int:
         parser.error("--limit is only valid with releases")
 
     data = collect()
+
+    if args.command == "rollback":
+        if args.stage or args.activate:
+            parser.error("--stage and --activate are not valid with rollback")
+        from aoe2_release_rollback import rollback_release
+        action = lambda: rollback_release(
+            data,
+            collect=collect,
+            dry_run=args.dry_run,
+            json_output=args.json,
+        )
+        if args.dry_run:
+            return action()
+        return run_mutating_release(action)
 
     if args.command == "ship":
         if args.stage and args.activate:

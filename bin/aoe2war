@@ -13,6 +13,7 @@ Usage:
   aoe2war status [--json]
   aoe2war context [--json]
   aoe2war releases [--limit N] [--json]
+  aoe2war rollback [--dry-run] [--json]
   aoe2war gate [--json]
   aoe2war manifest [--json]
   aoe2war release <raw release-engine command/options>
@@ -22,6 +23,8 @@ Examples:
   aoe2war deploy --dry-run
   aoe2war status
   aoe2war releases --limit 5
+  aoe2war rollback --dry-run
+  aoe2war rollback
 EOF
 }
 
@@ -31,7 +34,7 @@ case "$command" in
     shift
     exec "$RELEASE" ship "$@"
     ;;
-  status|context|releases|gate|manifest)
+  status|context|releases|rollback|gate|manifest)
     shift
     exec "$RELEASE" "$command" "$@"
     ;;
