@@ -162,24 +162,111 @@ def integer(value: str | None) -> int | None:
     return int(value) if value and value.isdigit() else None
 
 
+ACTIVATION_RECEIPT_DIR = ROOT / ".aoe2war-release" / "activation-receipts"
+
+
+def sha256_path(path: Path) -> str | None:
+    try:
+        import hashlib
+        h = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except OSError:
+        return None
+
+
+def receipt_evidence_ok(relative_path: object, expected_sha: object) -> bool:
+    if not isinstance(relative_path, str) or not isinstance(expected_sha, str):
+        return False
+    try:
+        path = (ROOT / relative_path).resolve()
+        path.relative_to(ROOT.resolve())
+    except (OSError, ValueError):
+        return False
+    return path.is_file() and sha256_path(path) == expected_sha
+
+
+def certified_runtime(production: dict) -> dict:
+    fallback = {
+        "status": "legacy-unmanifested",
+        "release_sha": None,
+        "receipt_path": None,
+        "artifact_sha256": None,
+    }
+    if not production.get("reachable") or not ACTIVATION_RECEIPT_DIR.exists():
+        return fallback
+    try:
+        paths = sorted(
+            ACTIVATION_RECEIPT_DIR.glob("*.json"),
+            key=lambda item: item.stat().st_mtime,
+            reverse=True,
+        )
+    except OSError:
+        return fallback
+    for path in paths:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if payload.get("schema") != 1 or payload.get("kind") != "aoe2war-activation-result":
+            continue
+        if payload.get("status") != "CERTIFIED" or payload.get("wolo_mutated") is not False:
+            continue
+        if payload.get("release_sha") != production.get("source_sha"):
+            continue
+        if payload.get("active_build_id") != production.get("active_build_id"):
+            continue
+        version = payload.get("candidate_build_version")
+        if version != production.get("internal_build_version") or version != production.get("public_build_version"):
+            continue
+        if int(payload.get("wolo_8092_count") or 0) != int(production.get("wolo_8092_count") or 0):
+            continue
+        if int(payload.get("wolo_8093_count") or 0) != int(production.get("wolo_8093_count") or 0):
+            continue
+        evidence = (
+            ("stage_receipt_path", "stage_receipt_sha256"),
+            ("manifest_path", "manifest_sha256"),
+            ("gate_path", "gate_sha256"),
+        )
+        if not all(receipt_evidence_ok(payload.get(p), payload.get(s)) for p, s in evidence):
+            continue
+        return {
+            "status": "CERTIFIED",
+            "release_sha": payload.get("release_sha"),
+            "receipt_path": str(path.relative_to(ROOT)),
+            "artifact_sha256": payload.get("artifact_sha256"),
+            "active_build_id": payload.get("active_build_id"),
+            "build_version": version,
+        }
+    return fallback
+
+
 def derive_state(data: dict) -> tuple[str, str]:
     local = data["local"]
     remote = data["github"]
     docs = data.get("documentation", {})
     prod = data["production"]
+    cert = data.get("certification", {})
     if local["dirty_count"] not in (0, None):
-        return "DIRTY", "Gate or discard local changes."
+        return "DIRTY", "Review and commit local changes before release."
     if docs.get("baseline_is_ancestor_of_local") is False:
         return "DOCS_INVALID", "Refresh or repair the Documentation Baseline."
     if not remote["main_sha"]:
         return "UNKNOWN", "Resolve GitHub main."
     if local["head"] != remote["main_sha"]:
+        relation = is_ancestor(remote["main_sha"], local["head"])
+        if relation is True:
+            return "UNPUBLISHED", "Gate and publish the committed local release."
         return "DIVERGED", "Reconcile Mac HEAD and GitHub main."
     if not prod["reachable"]:
         return "PUBLISHED", "GitHub is sealed; production inspection failed."
     if prod.get("dirty_count") not in (0, None):
         return "PRODUCTION_DIRTY", "Inspect production drift before any deployment."
     if prod["source_sha"] != remote["main_sha"]:
+        if cert.get("status") == "CERTIFIED":
+            return "PUBLISHED", "Active runtime is CERTIFIED; GitHub main is newer and ready for the next ship."
         return "PUBLISHED", "Advance production to the sealed GitHub commit."
     if prod["staged_build_id"]:
         return "STAGED", "Candidate build exists; activate and prove it."
@@ -189,8 +276,9 @@ def derive_state(data: dict) -> tuple[str, str]:
         return "RUNTIME_UNVERIFIED", "Repair runtime identity or public version parity."
     if prod.get("wolo_8092_count") == 0 or prod.get("wolo_8093_count") == 0:
         return "PROTECTED_SERVICE_ALERT", "A protected WOLO listener is missing; investigate without mutating it."
-    return "ACTIVE_SOURCE_PARITY", "Add Release Manifest provenance to reach CERTIFIED."
-
+    if cert.get("status") == "CERTIFIED":
+        return "CERTIFIED", "Release is active, publicly verified, and receipt-certified."
+    return "ACTIVE_SOURCE_PARITY", "Runtime is healthy but lacks matching certified provenance."
 
 def collect() -> dict:
     head = git("rev-parse", "HEAD")
@@ -203,6 +291,27 @@ def collect() -> dict:
     raw, error = production()
     internal = version_value(raw.get("version"))
     public = public_version()
+    prod = {
+        "host": PROD_HOST,
+        "repo": PROD_REPO,
+        "reachable": error is None,
+        "error": error,
+        "source_sha": raw.get("head") or None,
+        "branch": raw.get("branch") or None,
+        "dirty_count": integer(raw.get("dirty")),
+        "service": raw.get("service") or None,
+        "active_build_id": raw.get("active") or None,
+        "staged_build_id": raw.get("staged") or None,
+        "internal_build_version": internal,
+        "public_build_version": public,
+        "version_parity": bool(internal and public and internal == public),
+        "rollback_count": integer(raw.get("rollbacks")),
+        "latest_rollback": raw.get("latest") or None,
+        "root_free_kb": integer(raw.get("root_free")),
+        "volume_free_kb": integer(raw.get("volume_free")),
+        "wolo_8092_count": integer(raw.get("wolo8092")),
+        "wolo_8093_count": integer(raw.get("wolo8093")),
+    }
     data = {
         "schema": 1,
         "local": {
@@ -216,40 +325,21 @@ def collect() -> dict:
         "documentation": {
             "implementation_baseline": baseline,
             "baseline_is_ancestor_of_local": baseline_ancestor,
-            "release_head_is_docs_descendant": bool(
-                baseline_ancestor and baseline and head and baseline != head
-            ),
+            "release_head_is_docs_descendant": bool(baseline_ancestor and baseline and head and baseline != head),
         },
-        "production": {
-            "host": PROD_HOST,
-            "repo": PROD_REPO,
-            "reachable": error is None,
-            "error": error,
-            "source_sha": raw.get("head") or None,
-            "branch": raw.get("branch") or None,
-            "dirty_count": integer(raw.get("dirty")),
-            "service": raw.get("service") or None,
-            "active_build_id": raw.get("active") or None,
-            "staged_build_id": raw.get("staged") or None,
-            "internal_build_version": internal,
-            "public_build_version": public,
-            "version_parity": bool(internal and public and internal == public),
-            "rollback_count": integer(raw.get("rollbacks")),
-            "latest_rollback": raw.get("latest") or None,
-            "root_free_kb": integer(raw.get("root_free")),
-            "volume_free_kb": integer(raw.get("volume_free")),
-            "wolo_8092_count": integer(raw.get("wolo8092")),
-            "wolo_8093_count": integer(raw.get("wolo8093")),
-        },
+        "production": prod,
     }
+    cert = certified_runtime(prod)
+    data["certification"] = cert
     state, nxt = derive_state(data)
     data["release"] = {
         "state": state,
         "next": nxt,
-        "runtime_provenance": "legacy-unmanifested",
+        "runtime_provenance": cert.get("status"),
+        "certified_release_sha": cert.get("release_sha"),
+        "certification_receipt": cert.get("receipt_path"),
     }
     return data
-
 
 def short(value: str | None) -> str:
     return value[:10] if value else "—"
@@ -261,6 +351,7 @@ def status(data: dict) -> None:
     d = data["documentation"]
     p = data["production"]
     r = data["release"]
+    c = data.get("certification", {})
     print("⚔️  AOE2WAR RELEASE STATUS")
     print(f"State:          {r['state']}")
     print(f"Next:           {r['next']}")
@@ -284,8 +375,10 @@ def status(data: dict) -> None:
     w8092 = "UP" if (p["wolo_8092_count"] or 0) > 0 else "MISSING"
     w8093 = "UP" if (p["wolo_8093_count"] or 0) > 0 else "MISSING"
     print(f"WOLO protected: 8092={w8092}  8093={w8093}")
-    print("Provenance:     legacy-unmanifested")
-
+    if c.get("status") == "CERTIFIED":
+        print(f"Provenance:     CERTIFIED  release={short(c.get('release_sha'))}  receipt={c.get('receipt_path')}")
+    else:
+        print("Provenance:     legacy-unmanifested")
 
 def context(data: dict) -> None:
     l = data["local"]
@@ -293,6 +386,7 @@ def context(data: dict) -> None:
     d = data["documentation"]
     p = data["production"]
     r = data["release"]
+    c = data.get("certification", {})
     fields = [
         ("state", r["state"]),
         ("next", r["next"]),
@@ -317,13 +411,14 @@ def context(data: dict) -> None:
         ("volume_free_kb", p["volume_free_kb"]),
         ("wolo_8092_count", p["wolo_8092_count"]),
         ("wolo_8093_count", p["wolo_8093_count"]),
-        ("runtime_provenance", "legacy-unmanifested"),
+        ("runtime_provenance", c.get("status") or "legacy-unmanifested"),
+        ("certified_release_sha", c.get("release_sha") or "none"),
+        ("certification_receipt", c.get("receipt_path") or "none"),
     ]
     print("AOE2WAR RELEASE CONTEXT")
     for key, value in fields:
         print(f"{key}={value if value is not None else 'unknown'}")
     print("policy=exact sealed commit; build beside live; fail closed; preserve rollback; prove internal and public; never mutate WOLO unless explicitly required")
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="aoe2-release")

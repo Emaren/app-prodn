@@ -27,6 +27,7 @@ def state_data(*, local="a", github="a", prod="a", dirty=0, prod_dirty=0,
             "wolo_8092_count": w8092,
             "wolo_8093_count": w8093,
         },
+        "certification": {"status": "legacy-unmanifested", "release_sha": None},
     }
 
 
@@ -76,6 +77,18 @@ class ReleaseEngineeringTests(unittest.TestCase):
 
     def test_derive_state_active_source_parity(self):
         self.assertEqual(MODULE.derive_state(state_data())[0], "ACTIVE_SOURCE_PARITY")
+
+    def test_derive_state_certified(self):
+        data = state_data()
+        data["certification"] = {"status": "CERTIFIED", "release_sha": "a"}
+        self.assertEqual(MODULE.derive_state(data)[0], "CERTIFIED")
+
+    def test_published_state_preserves_certified_runtime_truth(self):
+        data = state_data(prod="old")
+        data["certification"] = {"status": "CERTIFIED", "release_sha": "old"}
+        state, nxt = MODULE.derive_state(data)
+        self.assertEqual(state, "PUBLISHED")
+        self.assertIn("CERTIFIED", nxt)
 
 
 if __name__ == "__main__":

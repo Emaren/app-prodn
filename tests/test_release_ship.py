@@ -1,5 +1,7 @@
 import importlib.util
+import json
 import pathlib
+import tempfile
 import unittest
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "aoe2_release_ship.py"
@@ -290,6 +292,24 @@ class ShipTests(unittest.TestCase):
             MODULE.validate_activation_result(result, receipt),
         )
 
+
+    def test_activation_receipt_is_valid_json_with_real_newline(self):
+        payload = {
+            "release_sha": "b" * 40,
+            "artifact_sha256": "e" * 64,
+        }
+        original = MODULE.ACTIVATION_RECEIPT_DIR
+        with tempfile.TemporaryDirectory() as tmp:
+            MODULE.ACTIVATION_RECEIPT_DIR = pathlib.Path(tmp)
+            try:
+                path = MODULE.write_activation_receipt(payload)
+                raw = path.read_bytes()
+            finally:
+                MODULE.ACTIVATION_RECEIPT_DIR = original
+
+        self.assertTrue(raw.endswith(b"\n"))
+        self.assertFalse(raw.endswith(b"\\n"))
+        self.assertEqual(json.loads(raw.decode("utf-8")), payload)
 
 if __name__ == "__main__":
     unittest.main()

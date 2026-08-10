@@ -874,7 +874,7 @@ def write_activation_receipt(payload: dict) -> Path:
     path = ACTIVATION_RECEIPT_DIR / (
         f"{payload['release_sha']}-{payload['artifact_sha256'][:12]}.json"
     )
-    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\\n", encoding="utf-8")
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return path
 
 
