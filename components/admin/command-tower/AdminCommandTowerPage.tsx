@@ -19,6 +19,7 @@ import {
   Palette,
   RadioTower,
   Search,
+  ShieldCheck,
   SortDesc,
   Sparkles,
   Target,
@@ -66,6 +67,7 @@ const EMPTY_DRAFT: DraftState = {
 
 const ADMIN_NAV_LINKS = [
   { href: "/admin", label: "Admin Home", Icon: Home },
+  { href: "/admin/aoe2war-os", label: "AoE2WAR OS", Icon: ShieldCheck },
   { href: "/admin/hero-studio", label: "Hero Studio", Icon: Sparkles },
   { href: "/admin/events", label: "Featured Event", Icon: CalendarRange },
   { href: "/admin/trophies", label: "Trophy Command", Icon: Crown },

@@ -635,6 +635,12 @@ export default function AdminPage() {
                 AI Command Center
               </Link>
               <Link
+                href="/admin/aoe2war-os"
+                className="inline-flex rounded-full border border-emerald-200/20 bg-emerald-300/[0.07] px-5 py-3 text-sm text-emerald-100 transition hover:border-emerald-200/40 hover:bg-emerald-300/12"
+              >
+                AoE2WAR OS
+              </Link>
+              <Link
                 href="/admin/bounties"
                 className="inline-flex rounded-full border border-amber-200/18 bg-amber-300/[0.06] px-5 py-3 text-sm text-amber-100 transition hover:border-amber-200/36 hover:bg-amber-300/10"
               >

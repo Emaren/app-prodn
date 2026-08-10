@@ -5,6 +5,7 @@ BIN_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 RELEASE="$BIN_DIR/aoe2war-release"
 AUDIT="$BIN_DIR/../scripts/aoe2_audit.py"
 UPDATE="$BIN_DIR/../scripts/aoe2_update.py"
+BRIDGE="$BIN_DIR/../scripts/aoe2_operator_bridge.py"
 
 usage() {
   cat <<'EOF'
@@ -15,6 +16,7 @@ Usage:
   aoe2war deploy [release options]
   aoe2war audit [--json]
   aoe2war update [--apply] [--json]
+  aoe2war bridge [--once] [bridge options]
   aoe2war status [--json]
   aoe2war context [--json]
   aoe2war releases [--limit N] [--json]
@@ -29,6 +31,7 @@ Examples:
   aoe2war audit --json
   aoe2war update
   aoe2war update --apply
+  aoe2war bridge --once
   aoe2war deploy
   aoe2war deploy --dry-run
   aoe2war status
@@ -69,6 +72,16 @@ DOCUMENTATION / CONTEXT WRITE
       Reconcile repository documentation baselines, the central AoE2WAR-docs
       federation and stale context archives. It does NOT deploy production,
       mutate the database, change Wolo runtime state or upgrade dependencies.
+
+ADMIN UI / OPERATOR BRIDGE
+
+  aoe2war bridge
+      Keep this operator machine connected outbound to Admin > AoE2WAR OS.
+      The website can queue only allow-listed actions; this bridge executes the
+      existing protected CLI locally and streams progress/results back.
+
+  aoe2war bridge --once
+      Heartbeat, claim at most one queued Admin action, then exit.
 
 PRODUCTION WRITE
 
@@ -139,6 +152,10 @@ case "$command" in
   update)
     shift
     exec python3 "$UPDATE" "$@"
+    ;;
+  bridge)
+    shift
+    exec python3 "$BRIDGE" "$@"
     ;;
   status|context|releases|rollback|gate|manifest)
     shift
