@@ -3,6 +3,7 @@ set -euo pipefail
 
 BIN_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 RELEASE="$BIN_DIR/aoe2war-release"
+AUDIT="$BIN_DIR/../scripts/aoe2_audit.py"
 
 usage() {
   cat <<'EOF'
@@ -10,6 +11,7 @@ AoE2WAR operator CLI
 
 Usage:
   aoe2war deploy [release options]
+  aoe2war audit [--json]
   aoe2war status [--json]
   aoe2war context [--json]
   aoe2war releases [--limit N] [--json]
@@ -19,6 +21,8 @@ Usage:
   aoe2war release <raw release-engine command/options>
 
 Examples:
+  aoe2war audit
+  aoe2war audit --json
   aoe2war deploy
   aoe2war deploy --dry-run
   aoe2war status
@@ -33,6 +37,10 @@ case "$command" in
   deploy)
     shift
     exec "$RELEASE" ship "$@"
+    ;;
+  audit)
+    shift
+    exec python3 "$AUDIT" "$@"
     ;;
   status|context|releases|rollback|gate|manifest)
     shift
