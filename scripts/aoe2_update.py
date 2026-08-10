@@ -7,6 +7,9 @@ import hashlib
 import json
 import os
 import subprocess
+import sys
+import tempfile
+import time
 from collections import Counter
 from contextlib import contextmanager
 from datetime import datetime, timezone
@@ -61,6 +64,99 @@ CENTRAL_ALLOWED_EXACT = {
 
 class UpdateError(RuntimeError):
     pass
+
+
+def format_elapsed(seconds: float) -> str:
+    total = max(0, int(seconds))
+    hours, remainder = divmod(total, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes:02d}:{secs:02d}"
+
+
+class Progress:
+    def __init__(
+        self,
+        *,
+        stream=None,
+        clock=time.monotonic,
+    ) -> None:
+        self.stream = stream if stream is not None else sys.stdout
+        self.clock = clock
+        self.started = clock()
+
+    def emit(self, symbol: str, message: str) -> None:
+        elapsed = format_elapsed(self.clock() - self.started)
+        print(
+            f"[{elapsed}] {symbol} {message}",
+            file=self.stream,
+            flush=True,
+        )
+
+    def start(self, message: str) -> None:
+        self.emit("→", message)
+
+    def done(self, message: str) -> None:
+        self.emit("✓", message)
+
+    def wait(self, message: str, step_seconds: float) -> None:
+        self.emit(
+            "…",
+            f"{message} ({format_elapsed(step_seconds)} in this step)",
+        )
+
+
+def run_with_heartbeat(
+    args: list[str],
+    *,
+    cwd: Path,
+    progress: Progress,
+    label: str,
+    timeout: int,
+    env: dict[str, str] | None = None,
+    heartbeat_seconds: float = 15.0,
+) -> tuple[int, str]:
+    step_started = time.monotonic()
+
+    with tempfile.TemporaryFile(mode="w+t", encoding="utf-8") as capture:
+        try:
+            process = subprocess.Popen(
+                args,
+                cwd=str(cwd),
+                text=True,
+                stdout=capture,
+                stderr=subprocess.STDOUT,
+                env=env,
+            )
+        except Exception as exc:
+            return 127, str(exc)
+
+        deadline = step_started + timeout
+
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                process.kill()
+                process.wait()
+                capture.seek(0)
+                captured = capture.read().rstrip()
+                suffix = f"\\nTimed out after {timeout}s"
+                return 124, (captured + suffix).strip()
+
+            try:
+                returncode = process.wait(
+                    timeout=min(heartbeat_seconds, remaining)
+                )
+                break
+            except subprocess.TimeoutExpired:
+                progress.wait(
+                    label,
+                    time.monotonic() - step_started,
+                )
+
+        capture.seek(0)
+        return returncode, capture.read().rstrip()
 
 
 def run(
@@ -358,7 +454,11 @@ def push_and_verify(repo_id: str, repo: Path, branch: str) -> None:
         )
 
 
-def refresh_source_documentation(repo_id: str, repo: Path) -> dict[str, str]:
+def refresh_source_documentation(
+    repo_id: str,
+    repo: Path,
+    progress: Progress | None = None,
+) -> dict[str, str]:
     branch, implementation_head = require_clean_remote(repo_id, repo)
 
     rc, out = source_checker(repo)
@@ -516,29 +616,43 @@ def reconcile_taxonomy(
     return taxonomy, changes
 
 
-def central_sync() -> dict[str, Any]:
+def central_sync(
+    progress: Progress | None = None,
+) -> dict[str, Any]:
     branch, before_head = require_clean_remote("AoE2WAR-docs", DOCS)
 
     venv_python = DOCS / ".venv-docs" / "bin" / "python"
     if not venv_python.is_file():
         raise UpdateError(f"central documentation venv missing: {venv_python}")
 
-    rc, out = run(
-        [
-            str(venv_python),
-            "scripts/sync_workspace.py",
-            "--workspace", str(WORKSPACE),
-            "--vpssentry", str(VPSSENTRY),
-            "--wolochain", str(WOLOCHAIN),
-        ],
-        cwd=DOCS,
-        timeout=180,
+    if progress:
+        progress.start("Synchronizing five repository registries...")
+
+    sync_args = [
+        str(venv_python),
+        "scripts/sync_workspace.py",
+        "--workspace", str(WORKSPACE),
+        "--vpssentry", str(VPSSENTRY),
+        "--wolochain", str(WOLOCHAIN),
+    ]
+    rc, out = (
+        run_with_heartbeat(
+            sync_args,
+            cwd=DOCS,
+            progress=progress,
+            label="Synchronizing repository registries",
+            timeout=180,
+        )
+        if progress
+        else run(sync_args, cwd=DOCS, timeout=180)
     )
     if rc != 0:
         raise UpdateError(
             "central raw registry synchronization failed: "
             + aoe2_audit.checker_summary(out)
         )
+    if progress:
+        progress.done("Five repository registries synchronized")
 
     registries: dict[str, dict[str, Any]] = {}
     for path in sorted((DOCS / "catalog" / "registries").glob("*.json")):
@@ -553,17 +667,46 @@ def central_sync() -> dict[str, Any]:
             f"actual={sorted(registries)} expected={sorted(SOURCES)}"
         )
 
+    if progress:
+        progress.start("Reconciling central taxonomy...")
+
     taxonomy_path = DOCS / "catalog" / "document-taxonomy.json"
     taxonomy = json.loads(taxonomy_path.read_text(encoding="utf-8"))
     taxonomy, taxonomy_changes = reconcile_taxonomy(taxonomy, registries)
-    taxonomy_path.write_text(json.dumps(taxonomy, indent=2) + "\n", encoding="utf-8")
+    taxonomy_path.write_text(
+        json.dumps(taxonomy, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    if progress:
+        progress.done(
+            f"Central taxonomy reconciled "
+            f"({len(taxonomy_changes)} source document change(s))"
+        )
 
+    gate_labels = {
+        "docs-check": "central docs-check",
+        "audit-taxonomy": "central taxonomy audit",
+        "build": "strict MkDocs build",
+    }
     for target in ("docs-check", "audit-taxonomy", "build"):
-        rc, out = run(["make", target], cwd=DOCS, timeout=240)
+        label = gate_labels[target]
+        if progress:
+            progress.start(f"Running {label}...")
+            rc, out = run_with_heartbeat(
+                ["make", target],
+                cwd=DOCS,
+                progress=progress,
+                label=f"Running {label}",
+                timeout=240,
+            )
+        else:
+            rc, out = run(["make", target], cwd=DOCS, timeout=240)
         if rc != 0:
             raise UpdateError(
                 f"central {target} failed: {aoe2_audit.checker_summary(out)}"
             )
+        if progress:
+            progress.done(f"{label} passed")
 
     rc, out = git(DOCS, "diff", "--check")
     if rc != 0:
@@ -593,6 +736,9 @@ def central_sync() -> dict[str, Any]:
     if rc != 0:
         raise UpdateError(f"central staged diff check failed: {out}")
 
+    if progress:
+        progress.start("Committing central documentation synchronization...")
+
     rc, out = run(
         ["git", "commit", "-m", "Synchronize AoE2WAR documentation estate"],
         cwd=DOCS,
@@ -602,14 +748,31 @@ def central_sync() -> dict[str, Any]:
 
     after_head = git_output(DOCS, "rev-parse", "HEAD")
     push_and_verify("AoE2WAR-docs", DOCS, branch)
+    if progress:
+        progress.done(
+            f"Central documentation pushed ({after_head[:10]})"
+        )
 
     for target in ("docs-check", "audit-taxonomy", "build"):
-        rc, out = run(["make", target], cwd=DOCS, timeout=240)
+        label = gate_labels[target]
+        if progress:
+            progress.start(f"Rechecking {label} after commit...")
+            rc, out = run_with_heartbeat(
+                ["make", target],
+                cwd=DOCS,
+                progress=progress,
+                label=f"Rechecking {label}",
+                timeout=240,
+            )
+        else:
+            rc, out = run(["make", target], cwd=DOCS, timeout=240)
         if rc != 0:
             raise UpdateError(
                 f"central post-commit {target} failed: "
                 f"{aoe2_audit.checker_summary(out)}"
             )
+        if progress:
+            progress.done(f"Post-commit {label} passed")
 
     if status_paths(DOCS):
         raise UpdateError(
@@ -624,7 +787,10 @@ def central_sync() -> dict[str, Any]:
     }
 
 
-def capture_context(projects: list[str]) -> dict[str, dict[str, Any]]:
+def capture_context(
+    projects: list[str],
+    progress: Progress | None = None,
+) -> dict[str, dict[str, Any]]:
     if not projects:
         return {}
 
@@ -638,20 +804,49 @@ def capture_context(projects: list[str]) -> dict[str, dict[str, Any]]:
     env["PRUNE_LATEST"] = "0"
     env["CONTEXT_PROFILE"] = "ops"
 
-    rc, out = run(
-        [str(tool), "--only-projects", "--projects", " ".join(projects)],
-        cwd=VPSSENTRY,
-        timeout=900,
-        env=env,
+    capture_label = "Capturing context: " + ", ".join(projects)
+    if progress:
+        progress.start(capture_label + "...")
+
+    capture_args = [
+        str(tool),
+        "--only-projects",
+        "--projects",
+        " ".join(projects),
+    ]
+    rc, out = (
+        run_with_heartbeat(
+            capture_args,
+            cwd=VPSSENTRY,
+            progress=progress,
+            label=capture_label,
+            timeout=900,
+            env=env,
+            heartbeat_seconds=20.0,
+        )
+        if progress
+        else run(
+            capture_args,
+            cwd=VPSSENTRY,
+            timeout=900,
+            env=env,
+        )
     )
     if rc != 0:
-        raise UpdateError("context capture failed: " + aoe2_audit.checker_summary(out))
+        raise UpdateError(
+            "context capture failed: " + aoe2_audit.checker_summary(out)
+        )
+    if progress:
+        progress.done("Context capture command completed")
 
     tgz_dir = VPSSENTRY / "context" / "tgz"
     sha_dir = VPSSENTRY / "context" / "sha256"
     result: dict[str, dict[str, Any]] = {}
 
     for project in projects:
+        if progress:
+            progress.start(f"Verifying {project} context archive...")
+
         matches = sorted(tgz_dir.glob(f"{project}-context-*-{stamp}.tgz"))
         if len(matches) != 1:
             raise UpdateError(
@@ -695,6 +890,12 @@ def capture_context(projects: list[str]) -> dict[str, dict[str, Any]]:
             "sha256": actual_sha,
             "bytes": archive.stat().st_size,
         }
+        if progress:
+            mib = archive.stat().st_size / (1024 * 1024)
+            progress.done(
+                f"{project} context verified · "
+                f"{mib:.1f} MiB · {actual_sha[:12]}"
+            )
 
     return result
 
@@ -710,7 +911,10 @@ def write_receipt(payload: dict[str, Any]) -> Path:
     return path
 
 
-def apply_update(plan: dict[str, Any]) -> int:
+def apply_update(
+    plan: dict[str, Any],
+    progress: Progress | None = None,
+) -> int:
     if plan["blocked"]:
         raise UpdateError("update plan is blocked; resolve findings manually")
 
@@ -718,9 +922,19 @@ def apply_update(plan: dict[str, Any]) -> int:
         print("AOE2WAR UPDATE: already current")
         return 0
 
+    if progress:
+        progress.start("Revalidating repository parity and clean worktrees...")
+
     for repo_id, repo in SOURCES.items():
         require_clean_remote(repo_id, repo)
     require_clean_remote("AoE2WAR-docs", DOCS)
+
+    if progress:
+        progress.done("All source authorities clean and remote-synchronized")
+        progress.done(
+            "Safety boundary confirmed — "
+            "no runtime/database/Wolo/dependency mutation"
+        )
 
     before = plan["audit"]
     source_results: list[dict[str, str]] = []
@@ -745,12 +959,24 @@ def apply_update(plan: dict[str, Any]) -> int:
 
     try:
         for repo_id in plan["baseline_refreshes"]:
-            source_results.append(
-                refresh_source_documentation(repo_id, SOURCES[repo_id])
+            if progress:
+                progress.start(
+                    f"Refreshing {repo_id} documentation baseline..."
+                )
+            result = refresh_source_documentation(
+                repo_id,
+                SOURCES[repo_id],
+                progress=progress,
             )
+            source_results.append(result)
+            if progress:
+                progress.done(
+                    f"{repo_id} documentation refreshed "
+                    f"({result['documentation_commit'][:10]})"
+                )
 
         if plan["central_sync"] or source_results:
-            central_result = central_sync()
+            central_result = central_sync(progress=progress)
             receipt_payload["central_result"] = central_result
 
         projects = set(plan["context_projects"])
@@ -771,8 +997,11 @@ def apply_update(plan: dict[str, Any]) -> int:
             if project in projects
         ]
 
-        archives = capture_context(ordered)
+        archives = capture_context(ordered, progress=progress)
         receipt_payload["context_archives"] = archives
+
+        if progress:
+            progress.start("Running final full estate audit...")
 
         after_audit = aoe2_audit.collect_audit().payload()
         receipt_payload["after_audit"] = after_audit
@@ -782,6 +1011,9 @@ def apply_update(plan: dict[str, Any]) -> int:
                 "final estate audit is not clean: "
                 f"P0={after_audit['p0']} P1={after_audit['p1']}"
             )
+
+        if progress:
+            progress.done("Final estate audit passed — P0=0 P1=0")
 
         receipt_payload["status"] = "VERIFIED"
         receipt_payload["completed_at"] = datetime.now(timezone.utc).isoformat()
@@ -840,9 +1072,8 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
-    plan = collect_plan()
-
     if not args.apply:
+        plan = collect_plan()
         if args.json:
             print(json.dumps(plan, indent=2, sort_keys=True))
         else:
@@ -854,10 +1085,36 @@ def main() -> int:
     if args.json:
         parser.error("--json is currently plan-only; omit it with --apply")
 
+    progress = Progress()
+    print("⚔️  AOE2WAR UPDATE", flush=True)
+    print(flush=True)
+
     try:
+        progress.start("Acquiring maintenance + release locks...")
         with update_lock():
+            progress.done("Maintenance + release locks acquired")
+
+            progress.start("Auditing estate and building locked update plan...")
             locked_plan = collect_plan()
-            return apply_update(locked_plan)
+            locked_audit = locked_plan["audit"]
+            progress.done(
+                "Locked update plan built — "
+                f"P0={locked_audit['p0']} P1={locked_audit['p1']}"
+            )
+
+            if locked_plan["blocked"]:
+                raise UpdateError(
+                    "locked update plan is blocked; "
+                    "run `aoe2war update` for details"
+                )
+
+            if not locked_plan["changes_needed"]:
+                progress.done("Estate is already current")
+                print()
+                print("UPDATE: ALREADY CURRENT")
+                return 0
+
+            return apply_update(locked_plan, progress=progress)
     except (UpdateError, aoe2_release.DeployLockBusy) as exc:
         print(f"STOP: {exc}", file=os.sys.stderr)
         return 2

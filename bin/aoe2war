@@ -11,6 +11,7 @@ usage() {
 AoE2WAR operator CLI
 
 Usage:
+  aoe2war info
   aoe2war deploy [release options]
   aoe2war audit [--json]
   aoe2war update [--apply] [--json]
@@ -23,6 +24,7 @@ Usage:
   aoe2war release <raw release-engine command/options>
 
 Examples:
+  aoe2war info
   aoe2war audit
   aoe2war audit --json
   aoe2war update
@@ -36,8 +38,96 @@ Examples:
 EOF
 }
 
+info() {
+  cat <<'EOF'
+⚔️  AoE2WAR Operator Guide
+
+The normal commands, in plain English.
+
+SAFE / READ-ONLY
+
+  aoe2war info
+      Show this guide. Use it when you come back later and want to remember
+      what the operator tools do.
+
+  aoe2war status
+      Quick release/deployment state: local source, GitHub, production,
+      certification and what the release engine thinks should happen next.
+
+  aoe2war audit
+      Exhaustive read-only estate check. Verifies Git, all documentation
+      authorities, production health, protected Wolo listeners, system maps
+      and context evidence. Makes no changes.
+
+  aoe2war update
+      Plan documentation/context maintenance. Shows exactly what would change.
+      Makes no changes.
+
+DOCUMENTATION / CONTEXT WRITE
+
+  aoe2war update --apply
+      Reconcile repository documentation baselines, the central AoE2WAR-docs
+      federation and stale context archives. It does NOT deploy production,
+      mutate the database, change Wolo runtime state or upgrade dependencies.
+
+PRODUCTION WRITE
+
+  aoe2war deploy
+      Ship the current eligible application revision through the protected
+      release pipeline and certification gates.
+
+  aoe2war rollback --dry-run
+      Preview the protected rollback target. Makes no production change.
+
+  aoe2war rollback
+      Activate the previous protected production generation.
+
+ADVANCED / DIAGNOSTIC
+
+  aoe2war releases
+      Show recent release history.
+
+  aoe2war gate
+      Inspect release eligibility.
+
+  aoe2war manifest
+      Inspect release artifact identity.
+
+  aoe2war context
+      Show release-engine context/state.
+
+  aoe2war release ...
+      Direct low-level access to the release engine. Use only when you know
+      exactly which release-engine operation you want.
+
+NORMAL RHYTHM
+
+  Before work:
+      aoe2war status
+
+  Want full confidence:
+      aoe2war audit
+
+  Finished development:
+      aoe2war update
+      aoe2war update --apply
+
+  Ready to ship application behavior:
+      aoe2war deploy
+
+  Months later and forgot the commands:
+      aoe2war info
+
+Syntax-only help:
+      aoe2war --help
+EOF
+}
+
 command="${1:-help}"
 case "$command" in
+  info)
+    info
+    ;;
   deploy)
     shift
     exec "$RELEASE" ship "$@"

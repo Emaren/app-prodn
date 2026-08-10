@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import pathlib
 import sys
 import unittest
@@ -187,6 +188,57 @@ class UpdateCommandTests(unittest.TestCase):
                 taxonomy,
                 {"app-prodn": {"documents": []}},
             )
+
+
+    def test_format_elapsed(self):
+        self.assertEqual(MODULE.format_elapsed(0), "00:00")
+        self.assertEqual(MODULE.format_elapsed(65), "01:05")
+        self.assertEqual(MODULE.format_elapsed(3661), "1:01:01")
+
+    def test_progress_emits_elapsed_human_line(self):
+        values = iter([100.0, 165.0])
+        stream = io.StringIO()
+        progress = MODULE.Progress(
+            stream=stream,
+            clock=lambda: next(values),
+        )
+        progress.done("finished")
+        self.assertEqual(
+            stream.getvalue(),
+            "[01:05] ✓ finished\n",
+        )
+
+    def test_progress_wait_includes_step_elapsed(self):
+        values = iter([10.0, 20.0])
+        stream = io.StringIO()
+        progress = MODULE.Progress(
+            stream=stream,
+            clock=lambda: next(values),
+        )
+        progress.wait("working", 42)
+        self.assertIn(
+            "… working (00:42 in this step)",
+            stream.getvalue(),
+        )
+
+    def test_run_with_heartbeat_reports_long_step(self):
+        stream = io.StringIO()
+        progress = MODULE.Progress(stream=stream)
+        rc, output = MODULE.run_with_heartbeat(
+            [
+                sys.executable,
+                "-c",
+                "import time; time.sleep(0.12); print('done')",
+            ],
+            cwd=pathlib.Path.cwd(),
+            progress=progress,
+            label="heartbeat test",
+            timeout=2,
+            heartbeat_seconds=0.02,
+        )
+        self.assertEqual(rc, 0)
+        self.assertEqual(output, "done")
+        self.assertIn("… heartbeat test", stream.getvalue())
 
 
 if __name__ == "__main__":
