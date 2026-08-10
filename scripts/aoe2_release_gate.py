@@ -220,7 +220,9 @@ def path_risk(path: str) -> str:
         "scripts/aoe2_release_gate.py",
         "scripts/aoe2_release_ship.py",
         "scripts/aoe2_release_stage.py",
+        "scripts/aoe2_release_auto.py",
         "bin/aoe2-release",
+        "bin/aoe2war-release",
         "deploy.md",
     }
     if p.startswith(infra_prefixes) or p in infra_exact:
@@ -311,14 +313,17 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
         path
         in {
             "bin/aoe2-release",
+            "bin/aoe2war-release",
             "scripts/aoe2_release.py",
             "scripts/aoe2_release_gate.py",
             "scripts/aoe2_release_ship.py",
             "scripts/aoe2_release_stage.py",
+            "scripts/aoe2_release_auto.py",
             "tests/test_release_engineering.py",
             "tests/test_release_gate.py",
             "tests/test_release_ship.py",
             "tests/test_release_stage.py",
+            "tests/test_release_auto.py",
         }
         for path in paths
     )
@@ -334,6 +339,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "tests/test_release_gate.py",
                     "tests/test_release_ship.py",
                     "tests/test_release_stage.py",
+                    "tests/test_release_auto.py",
                 ],
                 120,
             )
@@ -349,6 +355,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "scripts/aoe2_release_gate.py",
                     "scripts/aoe2_release_ship.py",
                     "scripts/aoe2_release_stage.py",
+                    "scripts/aoe2_release_auto.py",
                 ],
                 120,
             )

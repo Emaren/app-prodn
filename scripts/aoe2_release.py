@@ -421,7 +421,7 @@ def context(data: dict) -> None:
     print("policy=exact sealed commit; build beside live; fail closed; preserve rollback; prove internal and public; never mutate WOLO unless explicitly required")
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="aoe2-release")
+    parser = argparse.ArgumentParser(prog="aoe2war-release")
     parser.add_argument(
         "command",
         choices=["status", "context", "gate", "manifest", "ship"],
@@ -438,6 +438,7 @@ def main() -> int:
             parser.error("ship accepts only one of --stage or --activate")
         if args.dry_run and args.stage:
             parser.error("ship --stage does not accept --dry-run")
+
         if args.activate:
             from aoe2_release_ship import activate_release
             return activate_release(
@@ -446,16 +447,26 @@ def main() -> int:
                 dry_run=args.dry_run,
                 json_output=args.json,
             )
+
         if args.stage:
             from aoe2_release_stage import stage_release
             return stage_release(
                 data,
                 json_output=args.json,
             )
-        from aoe2_release_ship import ship_release
-        return ship_release(
-            data,
-            dry_run=args.dry_run,
+
+        if args.dry_run:
+            from aoe2_release_ship import ship_release
+            return ship_release(
+                data,
+                dry_run=True,
+                json_output=args.json,
+            )
+
+        from aoe2_release_auto import ship_all
+        return ship_all(
+            collect=collect,
+            initial=data,
             json_output=args.json,
         )
 
@@ -477,7 +488,6 @@ def main() -> int:
     else:
         context(data)
     return 0
-
 
 if __name__ == "__main__":
     raise SystemExit(main())
