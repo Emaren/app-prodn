@@ -38,6 +38,28 @@ EXPECTED_KNOWN_HOSTS = "/home/tony/.ssh/known_hosts"
 EXPECTED_PROTOCOL = "0"
 
 
+def _bounded_env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return max(minimum, min(maximum, value))
+
+
+ACTIVATION_SOAK_SECONDS = _bounded_env_int(
+    "AOE2_RELEASE_SOAK_SECONDS", 60, 10, 300
+)
+ACTIVATION_SOAK_INTERVAL_SECONDS = _bounded_env_int(
+    "AOE2_RELEASE_SOAK_INTERVAL_SECONDS", 10, 5, 60
+)
+FAST_ROLLBACK_KEEP = _bounded_env_int(
+    "AOE2_RELEASE_FAST_ROLLBACK_KEEP", 2, 1, 10
+)
+
+
 class ShipError(RuntimeError):
     pass
 
@@ -315,8 +337,16 @@ def build_plan(
             "action": "Prove service active; BUILD_ID/build-version identity; internal /, /api/lobby, /api/bets, /api/deployment-version; corresponding public routes; and protected WOLO listener continuity.",
         },
         {
+            "phase": "soak",
+            "action": "Keep the activation rollback trap armed through a bounded post-activation health soak that repeatedly proves exact source/build/version, critical internal/public routes, service health, and WOLO listener continuity.",
+        },
+        {
             "phase": "certify",
-            "action": "Write final proof and artifact identity to the durable deployment receipt. On any critical proof failure, restore previous source/runtime and prove internal health.",
+            "action": "Write final proof and artifact identity to the durable deployment receipt only after the soak passes. On any critical proof failure before certification, restore previous source/runtime and prove internal health.",
+        },
+        {
+            "phase": "retention",
+            "action": "After certification, retain the newest verified fast rollback copies and prune only older modern fast copies whose BUILD_ID has durable volume-backed rollback/rescue evidence. Never auto-delete unmatched artifacts.",
         },
     ]
 
@@ -589,6 +619,9 @@ STAGE_REMOTE={q(receipt['remote_receipt_dir'])}
 ACT_RECEIPT={q(receipt_dir)}
 ROLLBACK={q(rollback_dir)}
 STAGE_RECEIPT_CONTENT={q(stage_receipt_text)}
+SOAK_SECONDS={ACTIVATION_SOAK_SECONDS}
+SOAK_INTERVAL={ACTIVATION_SOAK_INTERVAL_SECONDS}
+FAST_ROLLBACK_KEEP={FAST_ROLLBACK_KEEP}
 
 wolo_count() {{ ss -ltn | grep -Ec ":$1[[:space:]]" || true; }}
 build_version() {{ python3 -c 'import json,sys; print(json.load(sys.stdin).get("buildVersion",""))'; }}
@@ -803,6 +836,48 @@ critical_get "$PUBLIC/api/lobby"
 critical_get "$PUBLIC/api/bets"
 critical_get "$PUBLIC/api/deployment-version"
 
+# ------------------------------------------------------------
+# BOUNDED POST-ACTIVATION HEALTH SOAK
+#
+# COMMITTED is deliberately still 0 here. Any critical failure
+# exits through rollback_activation(), restoring OLD_BUILD.
+# ------------------------------------------------------------
+SOAK_SAMPLES=0
+soak_elapsed=0
+while [ "$soak_elapsed" -lt "$SOAK_SECONDS" ]; do
+  sleep "$SOAK_INTERVAL"
+  soak_elapsed=$((soak_elapsed + SOAK_INTERVAL))
+
+  soak_service="$(systemctl is-active "$SERVICE" 2>/dev/null || true)"
+  soak_head="$(git rev-parse HEAD)"
+  soak_dirty="$(git status --porcelain --untracked-files=all | wc -l | tr -d ' ')"
+  soak_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
+  soak_internal="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deployment-version | build_version)"
+  soak_public="$(curl -fsS --max-time 10 "$PUBLIC/api/deployment-version" | build_version)"
+  soak_wolo8092="$(wolo_count 8092)"
+  soak_wolo8093="$(wolo_count 8093)"
+
+  test "$soak_service" = "active"
+  test "$soak_head" = "$RELEASE"
+  test "$soak_dirty" = "0"
+  test "$soak_build" = "$STAGED_BUILD"
+  test "$soak_internal" = "$CANDIDATE_VERSION"
+  test "$soak_public" = "$CANDIDATE_VERSION"
+  test "$soak_wolo8092" = "$before_wolo8092"
+  test "$soak_wolo8093" = "$before_wolo8093"
+
+  critical_get http://127.0.0.1:3030/
+  critical_get http://127.0.0.1:3030/api/lobby
+  critical_get http://127.0.0.1:3030/api/bets
+  critical_get http://127.0.0.1:3030/api/deployment-version
+  critical_get "$PUBLIC/"
+  critical_get "$PUBLIC/api/lobby"
+  critical_get "$PUBLIC/api/bets"
+  critical_get "$PUBLIC/api/deployment-version"
+
+  SOAK_SAMPLES=$((SOAK_SAMPLES + 1))
+done
+
 printf '%s\\n' \
   "status=CERTIFIED" \
   "release_sha=$RELEASE" \
@@ -820,13 +895,163 @@ printf '%s\\n' \
   "after_pid=$after_pid" \
   "wolo8092=$after_wolo8092" \
   "wolo8093=$after_wolo8093" \
+  "soak_seconds=$SOAK_SECONDS" \
+  "soak_samples=$SOAK_SAMPLES" \
   "fast_rollback=$FAST_OLD" \
   "durable_rollback=$ROLLBACK" \
-  "release_specific_proof=INFRASTRUCTURE_exact_runtime_identity_and_critical_routes" \
+  "release_specific_proof=INFRASTRUCTURE_exact_runtime_identity_critical_routes_and_bounded_health_soak" \
   > "$ACT_RECEIPT/certification.txt"
 COMMITTED=1
 
-printf 'status\\tCERTIFIED\\n'
+# ------------------------------------------------------------
+# VERIFIED FAST-ROLLBACK RETENTION
+#
+# This is post-certification and intentionally non-fatal. Only
+# modern fast copies with a durable BUILD_ID twin are eligible.
+# Unmatched artifacts are never auto-deleted. Keep the newest N
+# verified fast copies; older verified duplicates are reclaimable.
+# ------------------------------------------------------------
+RETENTION_STATUS="PASS"
+RETENTION_PRUNED=0
+RETENTION_RECLAIMED_KB=0
+RETENTION_MATCHED=0
+RETENTION_UNMATCHED=0
+retention_candidates="$ACT_RECEIPT/fast-retention-candidates.tsv"
+retention_sorted="$ACT_RECEIPT/fast-retention-sorted.tsv"
+retention_plan="$ACT_RECEIPT/fast-retention.tsv"
+
+printf 'mtime\tfast_path\tbuild_id\tsize_kb\tproof_kind\tproof_path\n' > "$retention_candidates"
+printf 'action\tfast_path\tbuild_id\tsize_kb\tproof_kind\tproof_path\n' > "$retention_plan"
+
+set +e
+for d in .next-rollback-activate-* .next-rollback-manual-*; do
+  [ -d "$d" ] || continue
+  build="$(cat "$d/BUILD_ID" 2>/dev/null || true)"
+  [ -n "$build" ] || {{
+    RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
+    printf 'UNMATCHED_KEEP\t%s\t%s\t0\tNONE\t-\n' "$d" "$build" >> "$retention_plan"
+    continue
+  }}
+
+  proof_kind=""
+  proof_path=""
+  match="$(
+    find /mnt/HC_Volume_105319120/aoe2war/rollbacks \
+      -type f -path '*/next/BUILD_ID' \
+      -exec grep -lFx "$build" {{}} \\; 2>/dev/null \
+    | head -n 1
+  )"
+  if [ -n "$match" ]; then
+    proof_kind="DURABLE_ROLLBACK"
+    proof_path="${{match%/BUILD_ID}}"
+  else
+    match="$(
+      find /mnt/HC_Volume_105319120/aoe2war/deploy-receipts \
+        -type f -path '*/current-next/BUILD_ID' \
+        -exec grep -lFx "$build" {{}} \\; 2>/dev/null \
+      | head -n 1
+    )"
+    if [ -n "$match" ]; then
+      proof_kind="DURABLE_RESCUE"
+      proof_path="${{match%/BUILD_ID}}"
+    fi
+  fi
+
+  if [ -z "$proof_kind" ]; then
+    RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
+    size_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
+    printf 'UNMATCHED_KEEP\t%s\t%s\t%s\tNONE\t-\n' \
+      "$d" "$build" "${{size_kb:-0}}" >> "$retention_plan"
+    continue
+  fi
+
+  mtime="$(stat -c '%Y' "$d" 2>/dev/null)"
+  size_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
+  if [ -z "$mtime" ] || [ -z "$size_kb" ]; then
+    RETENTION_STATUS="WARN"
+    RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
+    printf 'UNMATCHED_KEEP\t%s\t%s\t%s\t%s\t%s\n' \
+      "$d" "$build" "${{size_kb:-0}}" "$proof_kind" "$proof_path" >> "$retention_plan"
+    continue
+  fi
+
+  printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+    "$mtime" "$d" "$build" "$size_kb" "$proof_kind" "$proof_path" \
+    >> "$retention_candidates"
+done
+
+sort -rn -k1,1 "$retention_candidates" > "$retention_sorted"
+rank=0
+while IFS=$'\t' read -r mtime path build size_kb proof_kind proof_path; do
+  [ "$mtime" = "mtime" ] && continue
+  [ -n "$path" ] || continue
+  rank=$((rank + 1))
+  RETENTION_MATCHED=$((RETENTION_MATCHED + 1))
+  if [ "$rank" -le "$FAST_ROLLBACK_KEEP" ]; then
+    printf 'KEEP\t%s\t%s\t%s\t%s\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+    continue
+  fi
+
+  case "$path" in
+    .next-rollback-activate-*|.next-rollback-manual-*) ;;
+    *)
+      RETENTION_STATUS="WARN"
+      printf 'UNMATCHED_KEEP\t%s\t%s\t%s\t%s\t%s\n' \
+        "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+      continue
+      ;;
+  esac
+
+  if [ "$(cat "$path/BUILD_ID" 2>/dev/null || true)" != "$build" ]; then
+    RETENTION_STATUS="WARN"
+    printf 'UNMATCHED_KEEP\t%s\t%s\t%s\t%s\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+    continue
+  fi
+
+  if rm -rf -- "$path" && [ ! -e "$path" ]; then
+    RETENTION_PRUNED=$((RETENTION_PRUNED + 1))
+    RETENTION_RECLAIMED_KB=$((RETENTION_RECLAIMED_KB + size_kb))
+    printf 'PRUNE\t%s\t%s\t%s\t%s\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+  else
+    RETENTION_STATUS="WARN"
+    printf 'KEEP_DELETE_FAILED\t%s\t%s\t%s\t%s\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+  fi
+done < "$retention_sorted"
+
+rm -f "$retention_candidates" "$retention_sorted"
+
+retention_service="$(systemctl is-active "$SERVICE" 2>/dev/null || true)"
+retention_head="$(git rev-parse HEAD 2>/dev/null || true)"
+retention_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
+retention_wolo8092="$(wolo_count 8092)"
+retention_wolo8093="$(wolo_count 8093)"
+if [ "$retention_service" != "active" ] \
+  || [ "$retention_head" != "$RELEASE" ] \
+  || [ "$retention_build" != "$STAGED_BUILD" ] \
+  || [ "$retention_wolo8092" != "$before_wolo8092" ] \
+  || [ "$retention_wolo8093" != "$before_wolo8093" ]; then
+  RETENTION_STATUS="WARN"
+fi
+set -e
+
+printf '%s\n' \
+  "status=$RETENTION_STATUS" \
+  "keep=$FAST_ROLLBACK_KEEP" \
+  "matched=$RETENTION_MATCHED" \
+  "unmatched_kept=$RETENTION_UNMATCHED" \
+  "pruned=$RETENTION_PRUNED" \
+  "reclaimed_kb=$RETENTION_RECLAIMED_KB" \
+  "source_sha=$retention_head" \
+  "active_build_id=$retention_build" \
+  "wolo8092=$retention_wolo8092" \
+  "wolo8093=$retention_wolo8093" \
+  > "$ACT_RECEIPT/fast-retention-result.txt"
+
+printf 'status\tCERTIFIED\n'
 printf 'release_sha\\t%s\\n' "$RELEASE"
 printf 'source_sha\\t%s\\n' "$after_head"
 printf 'previous_build_id\\t%s\\n' "$OLD_BUILD"
@@ -836,6 +1061,13 @@ printf 'artifact_sha256\\t%s\\n' "$ARTIFACT"
 printf 'content_sha256\\t%s\\n' "$after_content_sha"
 printf 'wolo8092\\t%s\\n' "$after_wolo8092"
 printf 'wolo8093\\t%s\\n' "$after_wolo8093"
+printf 'soak_seconds\\t%s\\n' "$SOAK_SECONDS"
+printf 'soak_samples\\t%s\\n' "$SOAK_SAMPLES"
+printf 'retention_status\\t%s\\n' "$RETENTION_STATUS"
+printf 'retention_keep\\t%s\\n' "$FAST_ROLLBACK_KEEP"
+printf 'retention_pruned\\t%s\\n' "$RETENTION_PRUNED"
+printf 'retention_reclaimed_kb\\t%s\\n' "$RETENTION_RECLAIMED_KB"
+printf 'retention_unmatched_kept\\t%s\\n' "$RETENTION_UNMATCHED"
 printf 'fast_rollback\\t%s\\n' "$FAST_OLD"
 printf 'durable_rollback\\t%s\\n' "$ROLLBACK"
 printf 'receipt_dir\\t%s\\n' "$ACT_RECEIPT"
@@ -862,6 +1094,18 @@ def validate_activation_result(result: dict[str, str], receipt: dict) -> list[st
         errors.append("WOLO listener 8092 changed during activation")
     if result.get("wolo8093") != str(receipt.get("wolo_8093_count")):
         errors.append("WOLO listener 8093 changed during activation")
+    if result.get("soak_seconds") != str(ACTIVATION_SOAK_SECONDS):
+        errors.append("activation health-soak duration does not match policy")
+    try:
+        soak_samples = int(result.get("soak_samples") or "0")
+    except ValueError:
+        soak_samples = 0
+    if soak_samples < 1:
+        errors.append("activation health soak did not complete any samples")
+    if result.get("retention_status") not in {"PASS", "WARN"}:
+        errors.append("fast-rollback retention did not report PASS/WARN")
+    if result.get("retention_keep") != str(FAST_ROLLBACK_KEEP):
+        errors.append("fast-rollback retention keep count does not match policy")
     if not result.get("receipt_dir"):
         errors.append("durable activation receipt directory is missing")
     if not result.get("durable_rollback"):
@@ -1074,11 +1318,18 @@ def activate_release(
         "artifact_sha256": result["artifact_sha256"],
         "wolo_8092_count": int(result["wolo8092"]),
         "wolo_8093_count": int(result["wolo8093"]),
+        "soak_seconds": int(result["soak_seconds"]),
+        "soak_samples": int(result["soak_samples"]),
+        "fast_rollback_retention_status": result["retention_status"],
+        "fast_rollback_keep": int(result["retention_keep"]),
+        "fast_rollback_pruned": int(result["retention_pruned"]),
+        "fast_rollback_reclaimed_kb": int(result["retention_reclaimed_kb"]),
+        "fast_rollback_unmatched_kept": int(result["retention_unmatched_kept"]),
         "remote_receipt_dir": result["receipt_dir"],
         "fast_rollback": result["fast_rollback"],
         "durable_rollback": result["durable_rollback"],
         "release_specific_proof": (
-            "INFRASTRUCTURE exact runtime identity plus internal/public critical-route proof"
+            "INFRASTRUCTURE exact runtime identity, internal/public critical-route proof, and bounded post-activation health soak"
         ),
         "wolo_mutated": False,
     }
@@ -1095,6 +1346,18 @@ def activate_release(
     print(f"Active build:   {payload['active_build_id']}")
     print(f"Candidate ver:  {payload['candidate_build_version']}")
     print(f"Artifact SHA:   {payload['artifact_sha256']}")
+    print(
+        "Health soak:    "
+        f"{payload['soak_seconds']}s / {payload['soak_samples']} samples  PASS"
+    )
+    print(
+        "Fast retention: "
+        f"{payload['fast_rollback_retention_status']}  "
+        f"keep={payload['fast_rollback_keep']}  "
+        f"pruned={payload['fast_rollback_pruned']}  "
+        f"reclaimed={payload['fast_rollback_reclaimed_kb']}KB  "
+        f"unmatched-kept={payload['fast_rollback_unmatched_kept']}"
+    )
     print(
         "WOLO:           "
         f"8092={payload['wolo_8092_count']}  "

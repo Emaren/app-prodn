@@ -282,6 +282,13 @@ class ShipTests(unittest.TestCase):
             "artifact_sha256": receipt["artifact_sha256"],
             "wolo8092": "1",
             "wolo8093": "1",
+            "soak_seconds": str(MODULE.ACTIVATION_SOAK_SECONDS),
+            "soak_samples": "6",
+            "retention_status": "PASS",
+            "retention_keep": str(MODULE.FAST_ROLLBACK_KEEP),
+            "retention_pruned": "1",
+            "retention_reclaimed_kb": "800000",
+            "retention_unmatched_kept": "4",
             "receipt_dir": "/mnt/receipt",
             "durable_rollback": "/mnt/rollback",
         }
@@ -290,6 +297,85 @@ class ShipTests(unittest.TestCase):
         self.assertIn(
             "active artifact SHA-256 does not equal staged artifact",
             MODULE.validate_activation_result(result, receipt),
+        )
+
+
+    def test_activation_script_soaks_before_certification_commit(self):
+        _, receipt, _ = activation_sample()
+        receipt = {
+            **receipt,
+            "previous_production_sha": "a" * 40,
+            "manifest_sha256": "1" * 64,
+            "gate_sha256": "2" * 64,
+            "remote_receipt_dir": (
+                "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/"
+                "stage-test"
+            ),
+        }
+        script = MODULE.remote_activation_script(
+            receipt,
+            stage_receipt_sha="3" * 64,
+            stage_receipt_text="{}",
+            dry_run=False,
+            receipt_dir="/mnt/activation",
+            rollback_dir="/mnt/rollback",
+        )
+        self.assertIn("BOUNDED POST-ACTIVATION HEALTH SOAK", script)
+        self.assertIn('test "$soak_build" = "$STAGED_BUILD"', script)
+        self.assertIn('test "$soak_wolo8092" = "$before_wolo8092"', script)
+        self.assertIn('critical_get "$PUBLIC/api/deployment-version"', script)
+        self.assertLess(script.index("SOAK_SAMPLES=0"), script.index("COMMITTED=1"))
+
+    def test_activation_script_retention_is_verified_and_unmatched_safe(self):
+        _, receipt, _ = activation_sample()
+        receipt = {
+            **receipt,
+            "previous_production_sha": "a" * 40,
+            "manifest_sha256": "1" * 64,
+            "gate_sha256": "2" * 64,
+            "remote_receipt_dir": (
+                "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/"
+                "stage-test"
+            ),
+        }
+        script = MODULE.remote_activation_script(
+            receipt,
+            stage_receipt_sha="3" * 64,
+            stage_receipt_text="{}",
+            dry_run=False,
+            receipt_dir="/mnt/activation",
+            rollback_dir="/mnt/rollback",
+        )
+        self.assertIn("VERIFIED FAST-ROLLBACK RETENTION", script)
+        self.assertIn("UNMATCHED_KEEP", script)
+        self.assertIn("DURABLE_ROLLBACK", script)
+        self.assertIn("DURABLE_RESCUE", script)
+        self.assertIn(".next-rollback-activate-*|.next-rollback-manual-*", script)
+        self.assertGreater(
+            script.index("VERIFIED FAST-ROLLBACK RETENTION"),
+            script.index("COMMITTED=1"),
+        )
+
+    def test_activation_result_rejects_missing_health_soak(self):
+        _, receipt, _ = activation_sample()
+        result = {
+            "status": "CERTIFIED",
+            "release_sha": receipt["release_sha"],
+            "source_sha": receipt["release_sha"],
+            "previous_build_id": receipt["active_build_id"],
+            "active_build_id": receipt["staged_build_id"],
+            "candidate_build_version": receipt["candidate_build_version"],
+            "artifact_sha256": receipt["artifact_sha256"],
+            "wolo8092": "1",
+            "wolo8093": "1",
+            "retention_status": "PASS",
+            "retention_keep": str(MODULE.FAST_ROLLBACK_KEEP),
+            "receipt_dir": "/mnt/receipt",
+            "durable_rollback": "/mnt/rollback",
+        }
+        errors = MODULE.validate_activation_result(result, receipt)
+        self.assertTrue(
+            any("health-soak" in error or "health soak" in error for error in errors)
         )
 
 

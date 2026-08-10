@@ -221,6 +221,7 @@ def path_risk(path: str) -> str:
         "scripts/aoe2_release_ship.py",
         "scripts/aoe2_release_stage.py",
         "scripts/aoe2_release_auto.py",
+        "scripts/aoe2_release_rollback.py",
         "bin/aoe2-release",
         "bin/aoe2war-release",
         "bin/aoe2war",
@@ -363,6 +364,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "scripts/aoe2_release_ship.py",
                     "scripts/aoe2_release_stage.py",
                     "scripts/aoe2_release_auto.py",
+                    "scripts/aoe2_release_rollback.py",
                 ],
                 120,
             )
