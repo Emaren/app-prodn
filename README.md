@@ -8,12 +8,53 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-07-28"
+reviewed_at: "2026-08-10"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # app-prodn
+
+## Current certified production seal — 2026-08-10
+
+The current web release is governed by the certified AoE2WAR release engine.
+
+- implementation SHA:
+  `3a01a658f0a2c875a25447877336c7bb705ca244`;
+- release SHA:
+  `f77413662e7819eb82a180f2a01f8a181f56bfe4`;
+- active BUILD_ID: `jC7k39PxGZyNOGoJzwHEP`;
+- internal/public build version: `20260810040737-108deccc84`;
+- service: `aoe2hdbets-web.service` active on `127.0.0.1:3030`;
+- provenance: `CERTIFIED`;
+- default activation soak: 60 seconds / six proof samples;
+- fast rollback retention: keep the newest two verified modern copies; never
+  auto-delete unmatched state;
+- Wolo settlement listeners `8092` and `8093` are protected observe-only
+  dependencies of the web release engine;
+- Watcher manifests advertise `1.5.7`.
+
+Routine web deployment from the MBP is:
+
+```bash
+aoe2war deploy
+```
+
+Operator state/recovery surfaces are:
+
+```bash
+aoe2war status
+aoe2war context
+aoe2war releases --limit 5
+aoe2war rollback --dry-run
+aoe2war rollback
+```
+
+The August 10 live rollback/forward-recovery fire drill and final release
+evidence are frozen in
+[Certified Release Engineering Seal](docs/RELEASE_ENGINEERING_SEAL_2026-08-10.md).
+The current automation contract is
+[AoE2WAR Release Engineering](docs/RELEASE_ENGINEERING.md).
 
 ## Verified identity and metric release — 2026-07-28
 
@@ -92,6 +133,9 @@ rules.
 
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [DEPLOY.md](DEPLOY.md)
+- [docs/RELEASE_ENGINEERING.md](docs/RELEASE_ENGINEERING.md)
+- [docs/RELEASE_ENGINEERING_SEAL_2026-08-10.md](docs/RELEASE_ENGINEERING_SEAL_2026-08-10.md)
+- [docs/WATCHER_TELEMETRY.md](docs/WATCHER_TELEMETRY.md)
 - [PRODUCT_STATE.md](PRODUCT_STATE.md)
 - [WORKSPACE.md](WORKSPACE.md)
 - [docs/REPLAY_CORPUS_METRICS.md](docs/REPLAY_CORPUS_METRICS.md)

@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **56**
+- Authoritative repository documents: **57**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -35,7 +35,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 - `explanation`: 4
 - `generated`: 1
-- `historical`: 10
+- `historical`: 11
 - `reference`: 32
 - `runbook`: 8
 - `working`: 1
@@ -44,7 +44,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 - `active`: 44
 - `generated`: 1
-- `historical`: 10
+- `historical`: 11
 - `superseded`: 1
 
 ## Documents
@@ -89,6 +89,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Radio WOLO](RADIO_WOLO.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Realtime Truth Contract](REALTIME_TRUTH_CONTRACT.md) | `reference` | `active` | `architecture-contract` |
 | [AoE2WAR Release Engineering](RELEASE_ENGINEERING.md) | `reference` | `active` | `release-engineering-contract` |
+| [AoE2WAR Certified Release Engineering Seal — 2026-08-10](RELEASE_ENGINEERING_SEAL_2026-08-10.md) | `historical` | `historical` | `release-evidence` |
 | [Replay Corpus and Public Metric Contract](REPLAY_CORPUS_METRICS.md) | `reference` | `active` | `metric-contract` |
 | [Replay Statistics and Operations Release — 2026-07-25](REPLAY_STATS_OPERATIONS_RELEASE_2026-07-25.md) | `historical` | `historical` | `release-evidence` |
 | [Rivalries and the War Vault](RIVALRIES_AND_WAR_VAULT.md) | `reference` | `active` | `product-contract` |

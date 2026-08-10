@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "workspace-reference"
-reviewed_at: "2026-07-28"
+reviewed_at: "2026-08-10"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -25,6 +25,7 @@ Together, they power the AoE2HDBets public product, replay ingest pipeline, and 
 
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [DEPLOY.md](DEPLOY.md)
+- [AoE2WAR Release Engineering](docs/RELEASE_ENGINEERING.md)
 - [PRODUCT_STATE.md](PRODUCT_STATE.md)
 - [Replay Corpus and Public Metric Contract](docs/REPLAY_CORPUS_METRICS.md)
 - [Player Identity Wave 2](docs/PLAYER_IDENTITY_DISCOVERY_WAVE2.md)
@@ -104,23 +105,64 @@ implementation authority away from the three source repositories.
 
 ## Branch / deploy workflow
 
-Branches are repository-specific:
+Branches remain repository-specific:
 
 | Repository | Normal branch |
 | --- | --- |
 | `app-prodn` | `main` |
 | `api-prodn` | `main` |
-| `aoe2-watcher` | the current versioned `release/watcher-*` branch unless its release procedure says otherwise |
+| `aoe2-watcher` | current versioned `release/watcher-*` branch unless its release procedure says otherwise |
 
-1. Develop locally on MBP in each repo
-2. Commit and push the owning repo's reviewed branch to origin
-3. On VPS, connect with `ssh hel1` and pull the intended release branch as `tony`
-4. Apply migrations from the repository that owns the schema before restarting; app Prisma migrations run from `app-prodn`
-5. Build/restart services (`systemd` + nginx)
+### `app-prodn`
+
+Develop and review locally, commit the intended code on `main`, then use:
+
+```bash
+aoe2war status
+aoe2war deploy
+```
+
+The release engine owns the ordinary web release sequence: documentation
+baseline handling, risk gates, exact GitHub publication, manifest sealing,
+stage-beside-live, activation preflight, restart/proof, bounded health soak,
+certification, durable/fast rollback evidence, bounded verified retention, and
+final provenance proof.
+
+Do not manually `pull`/build/restart the web app for routine releases merely
+because that was the historical procedure. `DEPLOY.md` retains the manual flow
+for emergency/recovery and explicit database-migration work.
+
+The automated lane fails closed on Prisma migration paths. A schema release must
+use an explicitly reviewed backup/migration/compatibility/rollback procedure.
+
+Use:
+
+```bash
+aoe2war rollback --dry-run
+aoe2war rollback
+```
+
+for the one-step certified recovery lane.
+
+### `api-prodn`
+
+`api-prodn` keeps its own release/testing authority. Do not assume the
+`app-prodn` `aoe2war deploy` command deploys or restarts the replay API.
+
+### `aoe2-watcher`
+
+Watcher artifacts are released from the owning versioned Watcher release branch
+and its artifact/signing workflow. Current production manifests advertise
+Watcher `1.5.7`.
 
 Important:
-- a local code change is not a production fix until the VPS pull/build/restart is complete
-- if deploys fail with `Permission denied`, inspect ownership drift before changing code
+
+- a local code change is not a production fix until its owning repository's
+  release procedure is complete;
+- Git ownership/transport drift is release-blocking evidence, not a reason to
+  bypass the release engine as root;
+- `app-prodn` ordinary deploys observe Wolo settlement ports `8092`/`8093` but
+  never mutate them.
 
 ## Required production routing model
 

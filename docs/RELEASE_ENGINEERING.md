@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-08-09"
+reviewed_at: "2026-08-10"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -17,109 +17,480 @@ sensitivity: "internal"
 
 ## Purpose
 
-AoE2WAR release engineering converts the production runbook into executable,
-fail-closed policy. The objective is not more ceremony. It is to preserve the
-existing production safeguards while making routine releases faster, simpler,
-more reproducible, easier to resume in a fresh AI session, and easier to audit.
+AoE2WAR release engineering is the executable, fail-closed production release
+contract for `app-prodn`. It separates implementation truth, documentation
+truth, GitHub truth, production source truth, build truth, runtime truth,
+public truth, recovery truth, and protected WOLO dependency state.
 
 `DEPLOY.md` remains the canonical operator and emergency runbook. This document
-defines the release model that automation must implement. If automation and the
-runbook disagree, stop and reconcile them before production mutation.
+defines the automated release model. If the implementation and either document
+disagree, stop and reconcile them before production mutation.
 
 ## Core invariants
 
-1. Production advances only to an exact sealed Git commit, never an unspecified moving branch tip.
-2. Implementation truth, documentation truth, GitHub truth, production-source truth, build truth, runtime truth, and public truth are verified separately.
-3. The Documentation Baseline names the implementation commit described by repository documentation. Documentation-only commits may follow it.
-4. Production builds occur beside the active runtime in `.next-release`; a failed build must not replace the live `.next` runtime.
-5. A deploy preserves a usable prior runtime before activation.
-6. Runtime activation is followed by internal and public proof; critical proof failure must fail closed and preserve or restore rollback capability.
-7. Database migrations require explicit reviewed migration scope and rollback planning.
-8. WOLO services are protected dependencies. Ordinary app release tooling may observe them but must not restart, mutate, or reconfigure them.
-9. Release tooling itself is tested and versioned in Git.
-10. Machine-readable state and receipts must let a new operator or AI recover release context without conversational memory.
+1. Production advances only to an exact sealed Git commit.
+2. The Documentation Baseline names the implementation commit described by the
+   repository documentation; documentation-only commits may follow it.
+3. The release SHA and implementation SHA are distinct identities when the
+   generated documentation-baseline commit follows implementation.
+4. Production builds occur beside the active runtime in `.next-release`.
+5. The active `.next` runtime is preserved before activation in both fast and
+   durable rollback evidence.
+6. A candidate is not `CERTIFIED` merely because the service restarted.
+7. Activation must prove exact source/build/version identity, critical internal
+   and public routes, and protected WOLO listener continuity.
+8. The activation rollback trap remains armed through the bounded health soak.
+9. Fast rollback copies are a bounded root-filesystem recovery cache. Durable
+   rollback and deployment evidence live on the mounted volume.
+10. No unmatched rollback artifact is automatically deleted.
+11. Ordinary app release tooling may observe WOLO services on ports `8092` and
+    `8093` but must not restart, mutate, or reconfigure them.
+12. Automated plain ship refuses Prisma migrations. Database changes require a
+    separately reviewed migration/backup/rollback procedure.
+13. Mutating release commands are serialized by a deployment lock.
+14. Machine-readable receipts must let a fresh operator or AI reconstruct the
+    release state without conversational memory.
+
+## Operator command surface
+
+The canonical human-facing command family is:
+
+```bash
+aoe2war status
+aoe2war context
+aoe2war deploy
+aoe2war deploy --dry-run
+aoe2war releases --limit 5
+aoe2war rollback --dry-run
+aoe2war rollback
+aoe2war gate
+aoe2war manifest
+```
+
+The repository command is `bin/aoe2war`. Tony's MBP installs a tiny
+`$HOME/bin/aoe2war` wrapper that execs the repository command, so the operator
+surface works from any directory. `bin/aoe2war` delegates to the lower-level
+`bin/aoe2war-release` engine.
+
+`aoe2war release <raw release-engine command/options>` exists for bounded
+phase-specific or diagnostic use. Routine production releases should use
+`aoe2war deploy`.
 
 ## Release state model
 
-Target lifecycle:
+The intended successful lifecycle is:
 
 ```text
-DIRTY -> GATED -> SEALED -> PUBLISHED -> STAGED -> ACTIVE -> VERIFIED -> CERTIFIED
+DIRTY
+  -> GATED
+  -> SEALED
+  -> PUBLISHED
+  -> STAGED
+  -> ACTIVE
+  -> SOAKING
+  -> VERIFIED
+  -> CERTIFIED
 ```
 
-Safety states include `DOCS_INVALID`, `DIVERGED`, `PRODUCTION_DIRTY`, `RUNTIME_UNHEALTHY`, `RUNTIME_UNVERIFIED`, and `PROTECTED_SERVICE_ALERT`.
+`status` derives operator-facing state from local Git, GitHub, the
+Documentation Baseline, production checkout/runtime identity, public version
+parity, protected WOLO listeners, and matching activation receipts.
 
-## Implemented command surface
+Safety/blocking states include `DOCS_INVALID`, `DIVERGED`,
+`PRODUCTION_DIRTY`, `RUNTIME_UNHEALTHY`, `RUNTIME_UNVERIFIED`,
+`PROTECTED_SERVICE_ALERT`, and a healthy `PUBLISHED` state when GitHub/main is
+newer than a deliberately restored certified production runtime.
 
-Release Engineering I currently implements:
+## One-command deploy
 
-```bash
-bin/aoe2-release status
-bin/aoe2-release context
-bin/aoe2-release status --json
-bin/aoe2-release gate
-bin/aoe2-release gate --json
-bin/aoe2-release manifest
-bin/aoe2-release manifest --json
-bin/aoe2-release ship --dry-run
-bin/aoe2-release ship --dry-run --json
-bin/aoe2-release ship --stage
-bin/aoe2-release ship --stage --json
-```
+`aoe2war deploy` is the authoritative no-migration automatic transmission.
 
-`status` serves operators. `context` is a compact AI/operator handoff. JSON output is the machine-readable contract for gates, receipts, manifests, CI, and deployment automation.
+### 1. Preflight
 
-Phase I observes local and GitHub Git truth, Documentation Baseline ancestry, production source/worktree state, web-service health, active/staged build identity, internal/public build-version parity, rollback inventory, disk space, and protected WOLO listeners on 8092/8093. It performs no commit, push, reset, build, service restart, database mutation, or WOLO mutation.
+The engine requires:
 
-`gate` determines the release scope, calculates a SHA-256 scope identity, classifies release risk, runs the applicable fail-closed validation plan, and records a machine-readable gate receipt beneath the ignored local `.aoe2war-release/gates/` state directory.
+- local branch `main`;
+- clean local worktree;
+- a valid Documentation Baseline ancestor;
+- reachable, clean production;
+- active `aoe2hdbets-web.service`;
+- internal/public build-version parity;
+- live protected listeners on `8092` and `8093`;
+- no unresolved `.next-release` candidate;
+- a real change to ship.
 
-The risk ladder is ordered from lower to higher consequence:
+A local `fcntl.flock` deployment mutex prevents concurrent mutating release
+commands from racing each other.
+
+### 2. Documentation baseline
+
+When implementation changed since the current Documentation Baseline, the
+engine runs the documentation generator with baseline refresh and may create a
+generated documentation-only commit. That commit becomes the release SHA while
+the baseline continues to identify the implementation SHA.
+
+When all changes since the baseline are documentation-only, the baseline is not
+needlessly moved.
+
+### 3. Gate
+
+The release gate:
+
+- computes the exact release scope;
+- hashes the scope;
+- classifies risk;
+- runs the applicable fail-closed validation plan;
+- writes a machine-readable gate receipt beneath
+  `.aoe2war-release/gates/`.
+
+Risk order:
 
 ```text
 NO_CHANGE -> DOCUMENTATION -> PRESENTATION -> APPLICATION -> INFRASTRUCTURE
           -> WATCHER -> REPLAY_TRUTH -> FINANCIAL -> DATABASE
 ```
 
-Risk classification may only add validation as consequence rises. It must never weaken domain-specific safety requirements.
+Release-engineering changes trigger the complete release-engineering test suite
+and explicit Python compilation, including the rollback implementation.
 
-`manifest` requires a clean local tree, Mac/GitHub parity, a valid Documentation Baseline, clean reachable production source that still precedes the release, and a matching PASS gate receipt for the exact committed release scope. It then writes an ignored local release manifest and companion SHA-256 file beneath `.aoe2war-release/manifests/`.
+### 4. Exact GitHub publish
 
-The manifest binds the release commit, implementation/documentation baseline, previous production commit, exact changed-file scope, risk class, migration declaration, gate receipt, and core deployment policy before production source advances.
+The engine pushes the exact sealed release SHA to `origin/main` only when the
+remote is a valid ancestor. It refuses non-fast-forward ambiguity and verifies
+GitHub landed on the exact release SHA.
 
-`ship --dry-run` validates the bound manifest and gate receipt, verifies Mac/GitHub/repository and production ancestry, checks the canonical production Git execution identity and transport, requires all production Git metadata to be owned and writable by the deploy user, verifies the dedicated deploy key is readable with the expected ownership, restrictive mode, and fingerprint, requires a healthy active runtime with internal/public build-version parity, requires protected WOLO listeners on 8092/8093, refuses releases with Prisma migrations, refuses an existing staged build, and writes a SHA-256-bound deployment plan beneath `.aoe2war-release/ship-plans/`.
+### 5. Release manifest
 
-The dry run performs zero production mutation.
+The manifest binds:
 
-`ship --stage` is the first bounded production-mutation phase. It revalidates the sealed manifest, gate receipt, production state, Git transport, live runtime identity, public version parity, and protected WOLO listeners before mutation. It then persists the bound manifest and gate evidence into durable deployment storage, advances production source only to the exact sealed release SHA, and builds the candidate beside the live runtime in `.next-release` as the production application user.
+- release SHA;
+- implementation/documentation baseline;
+- previous production SHA;
+- exact changed-file scope;
+- risk class;
+- migration declaration;
+- gate receipt and digest;
+- deployment policy.
 
-Staging records candidate BUILD_ID, candidate build version, and a deterministic SHA-256 identity for the staged `.next-release` artifact. It then proves the existing `.next` BUILD_ID, live internal/public build version, web-service state, and protected WOLO listener counts did not change. `ship --stage` never stops, starts, or restarts the AoE2WAR web service and never mutates WOLO services.
+The manifest and companion SHA-256 live beneath
+`.aoe2war-release/manifests/`.
 
-Durable stage evidence is written beneath the root-owned deployment-receipt parent without weakening that parent. Forge creates only the per-release receipt directory through the VPS narrow passwordless `/usr/bin/install` capability, with ownership `tony:tony` and mode `0750`.
+### 6. Stage beside live
 
-Production Git mutation has one canonical execution identity: `tony`. The production `.git` metadata must contain no foreign-owned entries and no directories that are unwritable by that user. Repository transport is bound to `/home/tony/.ssh/gh_deploy_aoe2hdbets_app_prodn`, fingerprint `SHA256:229KVsTphLtYRwmLbqR82g+uIBRip3wzmXfR3etNcZk`, with SSH config fallback disabled through `-F /dev/null`, exact-key authentication, strict host-key checking, and the canonical Tony-owned known-hosts file. A transport that merely resolves GitHub through another identity is not sufficient release proof.
+Production source advances only to the sealed release SHA. The candidate builds
+as user `tony` into `.next-release` while the existing `.next` runtime remains
+live.
 
-Failure handling distinguishes the production-mutation boundary. A failure before source advancement reports that recovery was not required and does not reset production. Once source mutation begins, a failure removes the candidate build, restores the previous production source and pre-build version identity, and leaves the live `.next` runtime running. Successful staging deliberately stops at `STAGED`; it does not activate the candidate.
+Staging records:
 
-Plain `ship` remains deliberately unavailable until activation, internal/public proof, certification, and automatic runtime rollback are implemented and sealed.
+- current active BUILD_ID;
+- candidate BUILD_ID;
+- live and candidate build versions;
+- deterministic staged artifact SHA-256;
+- bound manifest/gate evidence;
+- production source identity;
+- WOLO listener counts.
 
-## Planned automation surface
+Durable stage evidence is stored beneath:
 
-Later phases may add staged-artifact activation, mutating one-command `ship`, plus `seal`, `prove`, and `rollback`. They are not authoritative until implemented, tested, documented, and sealed through the same release process.
+```text
+/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/
+```
 
-## Release Manifest and provenance
+A successful stage ends with the live runtime unchanged.
 
-The implemented predeploy manifest binds implementation commit, release/documentation commit, previous production commit, changed-file set and risk class, gate receipt, migration declaration, and core release policy before production mutation.
+### 7. Zero-mutation activation preflight
 
-Staging receipts now record staged build identity, candidate build version, deterministic artifact SHA-256, and durable pre-activation evidence. Future provenance evolution will bind activation timestamp, internal/public proof results, certification state, and rollback identity to the completed deployment receipt.
+Before the runtime swap, activation re-verifies:
 
-Until a runtime has such a manifest, tooling must label its artifact provenance `legacy-unmanifested`; source/runtime parity alone is not cryptographic build provenance.
+- the bound stage receipt and its hashes;
+- exact candidate artifact identity;
+- current source/runtime identity;
+- service health;
+- internal/public live version parity;
+- critical routes;
+- canonical Git transport;
+- protected WOLO counts.
 
-## Risk principle
+Dry-run activation performs zero production mutation.
 
-Automation reduces ceremony for low-risk presentation releases and adds mandatory gates for higher-risk surfaces. Financial authority, betting, settlement, replay-result authority, Prisma/schema changes, authentication, watcher protocol changes, and infrastructure changes must never receive weaker validation merely because the release CLI is convenient.
+### 8. Activate with rollback trap armed
 
-## Context handoff principle
+Before mutation, the engine copies the prior active runtime to durable rollback
+storage:
 
-A fresh operator or AI session begins with `aoe2-release context`. It states what is local, what is on GitHub, what source is on production, what runtime is active, whether a candidate is staged, whether the Documentation Baseline is coherent, whether public runtime identity matches, and whether protected dependencies appear present.
+```text
+/mnt/HC_Volume_105319120/aoe2war/rollbacks/
+```
 
-This replaces manual reconstruction of release state; it does not replace authoritative domain documents needed to understand a feature change.
+It also preserves a fast root copy named
+`.next-rollback-activate-<UTC>`, swaps `.next-release` into `.next`, and
+restarts only `aoe2hdbets-web.service`.
+
+Until certification commits, any critical failure after mutation exits through
+the activation failure trap, which attempts to restore the previous runtime and
+prove the restored internal identity.
+
+### 9. Immediate proof and bounded health soak
+
+After restart the candidate must prove:
+
+- service active;
+- exact release source;
+- clean production checkout;
+- exact candidate BUILD_ID;
+- exact internal/public candidate build version;
+- exact candidate content identity;
+- no leftover `.next-release`;
+- critical internal routes:
+  `/`, `/api/lobby`, `/api/bets`, `/api/deployment-version`;
+- matching public routes;
+- unchanged WOLO listener counts.
+
+The rollback trap then stays armed during a bounded health soak.
+
+Defaults:
+
+```text
+AOE2_RELEASE_SOAK_SECONDS=60
+AOE2_RELEASE_SOAK_INTERVAL_SECONDS=10
+```
+
+The implementation bounds soak duration to 10–300 seconds and interval to
+5–60 seconds. Each sample repeats service/source/build/version/route/WOLO
+proof. The normal default produces six samples over 60 seconds.
+
+A soak failure prevents certification and triggers the existing activation
+recovery path.
+
+### 10. Certification
+
+Only after the soak passes does the engine write `status=CERTIFIED` in the
+durable activation evidence and commit the activation as successful.
+
+The local activation receipt lives beneath:
+
+```text
+.aoe2war-release/activation-receipts/
+```
+
+Certification binds release SHA, implementation SHA, prior production SHA,
+previous/active build IDs, candidate build version, artifact SHA, manifest/gate
+evidence, durable/fast rollback identity, soak evidence, and WOLO continuity.
+
+### 11. Verified fast-rollback retention
+
+Retention runs only after certification and is intentionally non-fatal.
+
+The managed namespaces are:
+
+```text
+.next-rollback-activate-*
+.next-rollback-manual-*
+```
+
+A fast copy is eligible for pruning only when its `BUILD_ID` has a verified
+durable twin in either:
+
+```text
+/mnt/HC_Volume_105319120/aoe2war/rollbacks/*/next/BUILD_ID
+/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/*/current-next/BUILD_ID
+```
+
+Default:
+
+```text
+AOE2_RELEASE_FAST_ROLLBACK_KEEP=2
+```
+
+The implementation bounds the keep count to 1–10. It keeps the newest matching
+fast copies and may delete only older verified duplicates. A missing BUILD_ID,
+missing durable match, unsafe path, identity drift, or deletion problem is
+recorded and kept rather than guessed away.
+
+Legacy rollback directories outside the managed namespaces are not candidates.
+
+Retention writes its plan/result into the durable activation receipt and
+re-proves the active service/source/build and protected WOLO counts afterward.
+
+### 12. Independent final proof
+
+The local operator process re-collects production state and independently
+confirms certified provenance, exact source/build/version identity, public
+version parity, critical routes, and protected WOLO continuity.
+
+Only then does `aoe2war deploy` report:
+
+```text
+PASS: RELEASE SHIPPED + CERTIFIED — WOLO UNTOUCHED
+```
+
+## Release identity and provenance
+
+Do not collapse these identities:
+
+- **implementation SHA** — code implementation described by documentation;
+- **release SHA** — exact Git commit published/deployed, which may be a
+  documentation-only descendant of implementation;
+- **BUILD_ID** — Next build identity;
+- **build version** — public/internal deployment version;
+- **artifact SHA-256** — staged artifact identity;
+- **content SHA-256** — root-name-independent candidate/active runtime content
+  identity;
+- **activation receipt** — evidence binding the above to proof and rollback.
+
+The same release SHA can legitimately have multiple separately certified build
+artifacts if the exact source is rebuilt. Release history therefore records
+release plus artifact/runtime identity rather than assuming a Git SHA implies
+one unique build.
+
+## Certified release history
+
+`aoe2war releases` reads only local activation receipts that declare:
+
+- schema `1`;
+- kind `aoe2war-activation-result`;
+- status `CERTIFIED`.
+
+It is a read-only operator history surface. Multiple certified artifacts for
+one release SHA are intentionally visible.
+
+## Explicit certified rollback
+
+`aoe2war rollback` is one-step, receipt-driven recovery, not arbitrary SHA
+selection.
+
+Preconditions include:
+
+- clean local worktree;
+- Mac HEAD equals GitHub main;
+- production is reachable, clean, active, and version-coherent;
+- current production source equals local/GitHub source;
+- current runtime has matching `CERTIFIED` activation provenance;
+- no staged candidate exists;
+- protected WOLO listeners are present.
+
+The rollback target comes from the current certified activation receipt's
+`previous_production_sha` and `previous_build_id`. The engine then requires a
+matching earlier `CERTIFIED` activation receipt for that exact
+release/build/version and validates its supporting evidence.
+
+`aoe2war rollback --dry-run` proves the plan and source with zero production
+mutation.
+
+A real rollback:
+
+1. chooses an exact fast rollback when it matches or a durable rollback
+   fallback when required;
+2. preserves the currently running certified runtime as forward rescue
+   evidence before mutation;
+3. restores target source and target runtime together;
+4. restarts only the AoE2WAR web service;
+5. proves internal/public critical routes and exact target version;
+6. requires WOLO listener counts unchanged;
+7. re-collects state and requires the target to be recognized as `CERTIFIED`;
+8. writes durable remote and local rollback receipts.
+
+After a successful rollback, `aoe2war status` may correctly show `PUBLISHED`
+instead of `CERTIFIED` at the repository level when GitHub/main is newer than
+the deliberately restored certified production source.
+
+The live August 10, 2026 rollback/forward-recovery fire drill is frozen in
+`docs/RELEASE_ENGINEERING_SEAL_2026-08-10.md`.
+
+## Production Git transport
+
+Production Git mutation has one canonical execution identity:
+
+- user: `tony`;
+- origin: `git@github.com:Emaren/app-prodn.git`;
+- deploy key: `/home/tony/.ssh/gh_deploy_aoe2hdbets_app_prodn`;
+- deploy-key fingerprint:
+  `SHA256:229KVsTphLtYRwmLbqR82g+uIBRip3wzmXfR3etNcZk`;
+- known-hosts file: `/home/tony/.ssh/known_hosts`;
+- Git protocol: `0`.
+
+The repository-local `core.sshCommand` disables config fallback with
+`-F /dev/null`, requires the exact key, `IdentitiesOnly=yes`,
+`BatchMode=yes`, strict host-key checking, and the canonical known-hosts file.
+
+Foreign-owned or unwritable `.git` metadata blocks release.
+
+## Database migration boundary
+
+The automatic `aoe2war deploy` lane refuses any release manifest containing
+Prisma migration paths. This is intentional.
+
+Database releases require an explicit higher-risk procedure covering backup,
+migration-history coherence, compatibility, application order, proof, and
+rollback. Until that lane is deliberately implemented and sealed, fail-closed
+refusal is the correct production behavior.
+
+## WOLO protected boundary
+
+Ports `8092` and `8093` are protected dependencies, not release targets.
+
+The app release engine may observe listener counts and require continuity. It
+must not restart, upgrade, reconfigure, transfer through, or otherwise mutate
+those services.
+
+Every stage, activation, soak, rollback, retention proof, and final
+certification treats WOLO continuity as an invariant.
+
+## Receipt map
+
+Local ignored release state:
+
+```text
+.aoe2war-release/
+  gates/
+  manifests/
+  ship-plans/
+  stage-receipts/
+  activation-receipts/
+  rollback-receipts/
+  patch-backups/
+  deploy.lock
+```
+
+Durable VPS evidence:
+
+```text
+/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/
+/mnt/HC_Volume_105319120/aoe2war/rollbacks/
+```
+
+Root `.next-rollback-*` directories are fast recovery cache/evidence and are
+subject only to the verified retention policy above.
+
+## Documentation-control interaction
+
+`.aoe2war-release/` is operational state and is excluded from documentation
+discovery. Backup copies of Markdown beneath release state must never be
+mistaken for canonical repository documents.
+
+For repository documentation:
+
+```bash
+python3 scripts/docs_v2_check.py
+python3 scripts/docs_v2_check.py --write
+python3 scripts/docs_v2_check.py --write --refresh-baseline
+```
+
+Use `--write` for documentation-only changes. Use `--refresh-baseline` when
+intentional implementation changes need the generated Documentation Baseline
+advanced.
+
+## Context handoff
+
+A fresh operator or AI session should begin with:
+
+```bash
+aoe2war context
+aoe2war status
+aoe2war releases --limit 5
+```
+
+These surfaces reconstruct release state. They do not replace domain-specific
+contracts for betting, replay truth, settlement, Watcher behavior, or database
+authority.

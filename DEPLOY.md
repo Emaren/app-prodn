@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-08-04"
+reviewed_at: "2026-08-10"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -43,7 +43,70 @@ Current restart tuning:
 
 This exists because normal Next shutdowns were hanging and making deploys flaky.
 
-## Standard deploy flow
+## Standard operator deploy flow
+
+For ordinary `app-prodn` production releases, the canonical MBP workflow is:
+
+```bash
+aoe2war status
+aoe2war deploy
+aoe2war status
+aoe2war releases --limit 5
+```
+
+`aoe2war deploy` is the normal production path. It performs the documentation
+baseline decision, risk gate, exact GitHub publish, release manifest, build
+beside live, zero-mutation activation preflight, runtime activation, immediate
+internal/public proof, a default 60-second/six-sample health soak while the
+rollback trap remains armed, certification, verified fast-rollback retention,
+and an independent final proof.
+
+The command observes WOLO listeners `8092` and `8093` as protected dependencies
+and requires them to remain unchanged. It does not restart or mutate them.
+
+Mutating release operations are serialized by the release lock. Do not bypass
+the lock by manually running multiple overlapping production mutations.
+
+The automatic lane deliberately refuses releases containing Prisma migration
+paths. Use the reviewed manual/database procedure below when schema changes are
+actually required.
+
+### Normal rollback
+
+Before a real rollback:
+
+```bash
+aoe2war rollback --dry-run
+```
+
+A real one-step rollback is:
+
+```bash
+aoe2war rollback
+```
+
+Rollback is receipt-driven. It restores only the immediately previous
+`CERTIFIED` source/build/version, preserves the current certified generation as
+forward rescue evidence, proves internal/public health, and requires WOLO
+listener continuity.
+
+The August 10 live rollback and forward-recovery drill is frozen in
+`docs/RELEASE_ENGINEERING_SEAL_2026-08-10.md`.
+
+### Operator context
+
+For a fresh terminal, operator, or AI session:
+
+```bash
+aoe2war context
+aoe2war status
+aoe2war releases --limit 5
+```
+
+The repository command is `bin/aoe2war`; Tony's MBP exposes it globally through
+`$HOME/bin/aoe2war`.
+
+## Manual / emergency deploy flow
 
 Production advances only to an exact reviewed commit. Source, migration,
 build, runtime, and public-release truth are verified separately.
@@ -182,11 +245,37 @@ Internally and publicly prove:
 - `/api/bets`;
 - release-specific routes and APIs.
 
-Remove the temporary fast rollback only after final proof. Keep the durable
-rollback and deployment receipt.
+Do not delete fast rollback state merely because immediate proof passed. The
+automated release engine retains the newest verified modern fast copies and
+prunes only older `.next-rollback-activate-*` / `.next-rollback-manual-*`
+directories whose BUILD_ID has a proven durable twin. Unmatched or legacy
+rollback artifacts are kept. Durable rollback and deployment receipts remain
+protected evidence on the mounted volume.
 
 A failure after runtime mutation restores the previous `.next`, build-version
 file, source commit, and service, then proves internal health.
+
+## Certified release-engineering completion — 2026-08-10
+
+The release-control system described above was completed and production-proven.
+
+Final certified release-engineering identity:
+
+- implementation SHA: `3a01a658f0a2c875a25447877336c7bb705ca244`;
+- release SHA: `f77413662e7819eb82a180f2a01f8a181f56bfe4`;
+- BUILD_ID: `jC7k39PxGZyNOGoJzwHEP`;
+- build version: `20260810040737-108deccc84`;
+- health soak: 60 seconds / 6 samples / PASS;
+- fast retention: PASS, keep 2, pruned 2, reclaimed 1,653,296 KB;
+- public build-version parity: YES;
+- provenance: CERTIFIED;
+- Wolo listeners `8092` and `8093`: live and untouched.
+
+The release system also passed a live one-generation certified rollback fire
+drill and ordinary forward recovery before final hardening was accepted.
+
+Full immutable evidence and the exact rollback/storage story are recorded in
+`docs/RELEASE_ENGINEERING_SEAL_2026-08-10.md`.
 
 ## Recent deployment notes
 
