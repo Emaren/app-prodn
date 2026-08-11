@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `hotfix/release-docs-baseline-parser-20260811` at `798ac4aff4b43ca37bea71e55141fef1469895c7`
+Implementation baseline: `hotfix/release-docs-baseline-parser-20260811` at `c590a8746d95aa67a3718c53d0e154e9872e90d9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
