@@ -300,7 +300,7 @@ def docs_baseline() -> str | None:
     except OSError:
         return None
     match = re.search(
-        r"Implementation baseline:\s*`main`\s+at\s+`([0-9a-f]{40})`",
+        r"Implementation baseline:\s*`[^`\r\n]+`\s+at\s+`([0-9a-f]{40})`",
         text,
     )
     return match.group(1) if match else None

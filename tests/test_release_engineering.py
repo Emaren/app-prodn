@@ -44,6 +44,20 @@ class ReleaseEngineeringTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(out, " M file")
 
+
+    def test_docs_baseline_accepts_generated_branch_label(self):
+        sha = "804cd13399c70e7f248c6e83beee425b92f242cd"
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            docs = root / "docs"
+            docs.mkdir()
+            (docs / "DOCUMENTATION_CONTROL_PLANE.md").write_text(
+                f"Implementation baseline: `hotfix/client-flight-recorder-20260811` at `{sha}`\n",
+                encoding="utf-8",
+            )
+            with patch.object(MODULE, "ROOT", root):
+                self.assertEqual(MODULE.docs_baseline(), sha)
+
     def test_parse_kv(self):
         self.assertEqual(MODULE.parse_kv("head\tabc\nservice\tactive\n"), {"head": "abc", "service": "active"})
 
