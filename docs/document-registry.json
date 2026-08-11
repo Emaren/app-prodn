@@ -476,7 +476,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "da80bb517183d90132c6a612028d950e7e620ada48a43730966cb17b8dd5c8f9",
+      "sha256": "9f3d9c6b64866da9905fe68b19afb3d0821014995f8d2023f0b59ac2876e0b20",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1357,7 +1357,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "cf2f4690853f6917cb74640eb02ab9419e45d413"
+    "commit": "4e3e1b4cda2a85e8804894889fe9603686be78f3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
