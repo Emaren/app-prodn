@@ -1,0 +1,15 @@
+{
+  "schema": 1,
+  "node_test_glob": "tests/*.test.mts",
+  "runner": {
+    "node_flags": [
+      "--experimental-strip-types",
+      "--experimental-loader",
+      "./scripts/aoe2-alias-loader.mjs",
+      "--disable-warning=MODULE_TYPELESS_PACKAGE_JSON",
+      "--test",
+      "--test-reporter=dot"
+    ]
+  },
+  "quarantine": []
+}

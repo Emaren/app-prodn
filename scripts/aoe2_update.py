@@ -6,6 +6,7 @@ import fcntl
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -24,6 +25,7 @@ WORKSPACE = aoe2_audit.WORKSPACE
 VPSSENTRY = aoe2_audit.VPSSENTRY
 WOLOCHAIN = aoe2_audit.WOLOCHAIN
 DOCS = aoe2_audit.DOCS
+PROJECTS_ROOT = aoe2_audit.PROJECTS_ROOT
 SOURCES = aoe2_audit.CORE_SOURCES
 
 REPO_TO_CONTEXT = {
@@ -49,6 +51,19 @@ AUTO_P1_KEYS = {
 
 RECEIPT_DIR = ROOT / ".aoe2war-release" / "update-receipts"
 UPDATE_LOCK = ROOT / ".aoe2war-release" / "update.lock"
+
+ESTATE_MAP_BEGIN = "<!-- BEGIN AOE2WAR GENERATED CURRENT STATE -->"
+ESTATE_MAP_END = "<!-- END AOE2WAR GENERATED CURRENT STATE -->"
+ESTATE_MAP_SOURCE_RE = re.compile(
+    r"^- Current-state source SHA: `([0-9a-f]{40})`$", re.MULTILINE
+)
+ESTATE_MAP_FILES = ("SYSTEM_MAP.md", "SERVER_STORAGE_MAP.md")
+ESTATE_MAP_ALLOWED_PATHS = {
+    "context/SYSTEM_MAP.md",
+    "context/SERVER_STORAGE_MAP.md",
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+}
 
 CENTRAL_ALLOWED_EXACT = {
     "catalog/document-taxonomy.json",
@@ -304,9 +319,267 @@ def archive_project_from_finding(detail: str) -> str | None:
     return None
 
 
-def collect_plan() -> dict[str, Any]:
+def certified_source_ready(
+    release_data: dict[str, Any],
+) -> tuple[bool, str, str | None]:
+    """Prove that intended Git source is the active certified production source."""
+    local = release_data.get("local")
+    github = release_data.get("github")
+    production = release_data.get("production")
+    certification = release_data.get("certification")
+    if not all(
+        isinstance(item, dict)
+        for item in (local, github, production, certification)
+    ):
+        return False, "release evidence is incomplete", None
+
+    intended = github.get("main_sha")
+    if not isinstance(intended, str) or re.fullmatch(r"[0-9a-f]{40}", intended) is None:
+        return False, "GitHub source is unresolved", None
+    if local.get("head") != intended:
+        return False, "local and GitHub source are not exact", intended
+    if local.get("dirty_count") != 0:
+        return False, "local source worktree is not clean", intended
+    if not production.get("reachable"):
+        return False, "production inspection is unavailable", intended
+    if production.get("source_sha") != intended:
+        return (
+            False,
+            "production is not yet at intended Git source; defer until post-deploy",
+            intended,
+        )
+    if production.get("dirty_count") != 0:
+        return False, "production source worktree is not clean", intended
+    if production.get("service") != "active":
+        return False, "production service is not active", intended
+    if production.get("staged_build_id") not in (None, ""):
+        return False, "a staged candidate exists; defer until activation completes", intended
+    if production.get("version_parity") is not True:
+        return False, "internal/public build version parity is not proven", intended
+
+    if certification.get("status") != "CERTIFIED":
+        return False, "active runtime lacks certified provenance", intended
+    if certification.get("release_sha") != intended:
+        return False, "certified receipt source does not match intended source", intended
+    if certification.get("active_build_id") != production.get("active_build_id"):
+        return False, "certified and active BUILD_ID values differ", intended
+    versions = {
+        production.get("internal_build_version"),
+        production.get("public_build_version"),
+        certification.get("build_version"),
+    }
+    if None in versions or len(versions) != 1:
+        return False, "certified/internal/public build versions differ", intended
+    if production.get("wolo_8092_count") != 1:
+        return False, "protected Wolo listener 8092 count is not exactly 1", intended
+    if production.get("wolo_8093_count") != 1:
+        return False, "protected Wolo listener 8093 count is not exactly 1", intended
+    return True, "exact intended source is active and receipt-certified", intended
+
+
+def estate_map_source(path: Path) -> str:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise UpdateError(f"estate map cannot be read: {path}: {exc}") from exc
+    if text.count(ESTATE_MAP_BEGIN) != 1 or text.count(ESTATE_MAP_END) != 1:
+        raise UpdateError(
+            f"estate map must contain exactly one bounded current-state block: {path}"
+        )
+    begin = text.index(ESTATE_MAP_BEGIN)
+    end = text.index(ESTATE_MAP_END, begin) + len(ESTATE_MAP_END)
+    matches = ESTATE_MAP_SOURCE_RE.findall(text[begin:end])
+    if len(matches) != 1:
+        raise UpdateError(
+            f"estate map current-state block has invalid source identity: {path}"
+        )
+    return matches[0]
+
+
+def estate_map_refresh_plan(
+    release_data: dict[str, Any],
+    *,
+    vpssentry: Path = VPSSENTRY,
+    projects_root: Path = PROJECTS_ROOT,
+) -> dict[str, Any]:
+    ready, reason, intended = certified_source_ready(release_data)
+    if not ready:
+        return {
+            "status": "deferred",
+            "reason": reason,
+            "intended_source_sha": intended,
+        }
+
+    sources: set[str] = set()
+    try:
+        for name in ESTATE_MAP_FILES:
+            authoritative = vpssentry / "context" / name
+            mirror = projects_root / name
+            if not mirror.is_file():
+                raise UpdateError(f"estate-map workspace mirror is missing: {mirror}")
+            if authoritative.read_bytes() != mirror.read_bytes():
+                raise UpdateError(
+                    f"estate-map workspace mirror differs from Git authority: {mirror}"
+                )
+            sources.add(estate_map_source(authoritative))
+    except (OSError, UpdateError) as exc:
+        return {
+            "status": "blocked",
+            "reason": str(exc),
+            "intended_source_sha": intended,
+        }
+
+    if len(sources) != 1:
+        return {
+            "status": "blocked",
+            "reason": "estate-map generated blocks disagree on current source",
+            "intended_source_sha": intended,
+        }
+
+    current = next(iter(sources))
+    return {
+        "status": "current" if current == intended else "refresh",
+        "reason": (
+            "generated blocks already match certified source"
+            if current == intended
+            else "generated blocks lag exact certified production source"
+        ),
+        "intended_source_sha": intended,
+        "current_source_sha": current,
+    }
+
+
+def certification_receipt(release_data: dict[str, Any]) -> dict[str, Any]:
+    certification = release_data.get("certification", {})
+    relative = certification.get("receipt_path")
+    if not isinstance(relative, str) or not relative:
+        raise UpdateError("certified activation receipt path is unavailable")
+    try:
+        path = (ROOT / relative).resolve()
+        path.relative_to(ROOT.resolve())
+    except (OSError, ValueError) as exc:
+        raise UpdateError(
+            f"certified activation receipt escapes application root: {relative!r}"
+        ) from exc
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise UpdateError(f"certified activation receipt is unreadable: {path}") from exc
+    if not isinstance(payload, dict):
+        raise UpdateError("certified activation receipt must contain an object")
+    if payload.get("schema") != 1:
+        raise UpdateError("certified activation receipt schema must be 1")
+    if payload.get("kind") != "aoe2war-activation-result":
+        raise UpdateError("certified activation receipt kind is invalid")
+    if payload.get("status") != "CERTIFIED":
+        raise UpdateError("activation receipt is not CERTIFIED")
+    if payload.get("release_sha") != certification.get("release_sha"):
+        raise UpdateError("activation receipt source differs from certified runtime")
+    if payload.get("active_build_id") != certification.get("active_build_id"):
+        raise UpdateError("activation receipt BUILD_ID differs from certified runtime")
+    if payload.get("candidate_build_version") != certification.get("build_version"):
+        raise UpdateError("activation receipt build version differs from certified runtime")
+    if payload.get("artifact_sha256") != certification.get("artifact_sha256"):
+        raise UpdateError("activation receipt artifact differs from certified runtime")
+    if payload.get("wolo_mutated") is not False:
+        raise UpdateError("activation receipt does not prove wolo_mutated=false")
+    return payload
+
+
+def _utc_z(value: object, label: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise UpdateError(f"{label} is missing")
+    normalized = value[:-6] + "Z" if value.endswith("+00:00") else value
+    if re.fullmatch(
+        r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z",
+        normalized,
+    ) is None:
+        raise UpdateError(f"{label} is not an ISO-8601 UTC timestamp")
+    return normalized
+
+
+def build_estate_map_snapshot(
+    release_data: dict[str, Any],
+    receipt: dict[str, Any],
+    *,
+    observed_at: str | None = None,
+) -> dict[str, Any]:
+    ready, reason, intended = certified_source_ready(release_data)
+    if not ready or intended is None:
+        raise UpdateError(f"estate-map refresh is not eligible: {reason}")
+    production = release_data["production"]
+    certification = release_data["certification"]
+    observed = observed_at or datetime.now(timezone.utc).replace(
+        microsecond=0
+    ).isoformat().replace("+00:00", "Z")
+    return {
+        "schema": 1,
+        "kind": "aoe2war-certified-current-state",
+        "observed_at": _utc_z(observed, "estate-map observation time"),
+        "intended_source_sha": intended,
+        "production": {
+            "host": production.get("host"),
+            "repo": production.get("repo"),
+            "branch": production.get("branch"),
+            "source_sha": production.get("source_sha"),
+            "dirty_count": production.get("dirty_count"),
+            "service": production.get("service"),
+            "active_build_id": production.get("active_build_id"),
+            "staged_build_id": production.get("staged_build_id"),
+            "internal_build_version": production.get("internal_build_version"),
+            "public_build_version": production.get("public_build_version"),
+            "version_parity": production.get("version_parity"),
+            "root_free_kb": production.get("root_free_kb"),
+            "volume_free_kb": production.get("volume_free_kb"),
+            "rollback_count": production.get("rollback_count"),
+            "latest_rollback": (
+                production.get("latest_rollback") or receipt.get("fast_rollback")
+            ),
+        },
+        "certification": {
+            "status": certification.get("status"),
+            "release_sha": certification.get("release_sha"),
+            "certified_at": _utc_z(
+                receipt.get("generated_at"), "activation certification time"
+            ),
+            "implementation_sha": receipt.get("implementation_sha"),
+            "active_build_id": certification.get("active_build_id"),
+            "build_version": certification.get("build_version"),
+            "artifact_sha256": certification.get("artifact_sha256"),
+            "receipt_path": certification.get("receipt_path"),
+            "durable_receipt_dir": receipt.get("remote_receipt_dir"),
+            "durable_rollback": receipt.get("durable_rollback"),
+            "fast_rollback": receipt.get("fast_rollback"),
+            "risk_class": receipt.get("risk_class"),
+            "wolo_mutated": receipt.get("wolo_mutated"),
+        },
+        "wolo": {
+            "listener_8092_count": production.get("wolo_8092_count"),
+            "listener_8093_count": production.get("wolo_8093_count"),
+        },
+    }
+
+
+def collect_plan(
+    release_data: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     audit = aoe2_audit.collect_audit()
     payload = audit.payload()
+
+    if release_data is None:
+        try:
+            release_data = aoe2_release.collect()
+        except Exception as exc:
+            release_data = {}
+            estate_maps = {
+                "status": "deferred",
+                "reason": f"release evidence collection failed: {exc}",
+                "intended_source_sha": None,
+            }
+        else:
+            estate_maps = estate_map_refresh_plan(release_data)
+    else:
+        estate_maps = estate_map_refresh_plan(release_data)
 
     baseline_refreshes: list[str] = []
     blocked_source_docs: list[dict[str, str]] = []
@@ -344,6 +617,7 @@ def collect_plan() -> dict[str, Any]:
 
     central_sync_needed = bool(
         baseline_refreshes
+        or estate_maps["status"] == "refresh"
         or any(
             finding["key"] in {
                 "central-source-snapshot-stale",
@@ -355,7 +629,15 @@ def collect_plan() -> dict[str, Any]:
     if central_sync_needed:
         context_projects.add("AoE2WAR-docs")
 
-    blocked = bool(payload["p0"] or blocked_source_docs or unknown_p1)
+    if estate_maps["status"] == "refresh":
+        context_projects.add("VPSSentry")
+
+    blocked = bool(
+        payload["p0"]
+        or blocked_source_docs
+        or unknown_p1
+        or estate_maps["status"] == "blocked"
+    )
 
     return {
         "schema": 1,
@@ -363,11 +645,15 @@ def collect_plan() -> dict[str, Any]:
         "baseline_refreshes": sorted(baseline_refreshes),
         "blocked_source_docs": blocked_source_docs,
         "unknown_p1": unknown_p1,
+        "estate_maps": estate_maps,
         "central_sync": central_sync_needed,
         "context_projects": sorted(context_projects),
         "blocked": blocked,
         "changes_needed": bool(
-            baseline_refreshes or central_sync_needed or context_projects
+            baseline_refreshes
+            or central_sync_needed
+            or context_projects
+            or estate_maps["status"] == "refresh"
         ),
     }
 
@@ -390,6 +676,19 @@ def print_plan(plan: dict[str, Any]) -> None:
 
     print()
     print("Central federation: " + ("SYNCHRONIZE" if plan["central_sync"] else "CURRENT"))
+
+    estate_maps = plan["estate_maps"]
+    print()
+    if estate_maps["status"] == "refresh":
+        map_label = "REFRESH FROM CERTIFIED SOURCE"
+    elif estate_maps["status"] == "current":
+        map_label = "CURRENT"
+    elif estate_maps["status"] == "deferred":
+        map_label = "DEFERRED UNTIL POST-DEPLOY"
+    else:
+        map_label = "BLOCKED"
+    print(f"Estate-map generated state: {map_label}")
+    print(f"  {estate_maps['reason']}")
 
     print()
     print("Context capture:")
@@ -533,6 +832,162 @@ def refresh_source_documentation(
         "status": "refreshed",
         "implementation_head": implementation_head,
         "documentation_commit": documentation_commit,
+    }
+
+
+def refresh_estate_maps(
+    progress: Progress | None = None,
+) -> dict[str, Any]:
+    """Refresh VPSSentry map blocks only from exact certified production source."""
+    if progress:
+        progress.start("Re-proving certified source for estate-map refresh...")
+    try:
+        release_data = aoe2_release.collect()
+    except Exception as exc:
+        return {
+            "status": "deferred",
+            "reason": f"release evidence collection failed: {exc}",
+        }
+
+    map_plan = estate_map_refresh_plan(release_data)
+    if map_plan["status"] == "blocked":
+        raise UpdateError(f"estate-map refresh is blocked: {map_plan['reason']}")
+    if map_plan["status"] == "deferred":
+        if progress:
+            progress.done(
+                "Estate-map refresh deferred until post-deploy certification"
+            )
+        return map_plan
+    if map_plan["status"] == "current":
+        if progress:
+            progress.done("Estate-map generated state already matches certification")
+        return map_plan
+
+    branch, before_head = require_clean_remote("vpssentry", VPSSENTRY)
+    receipt = certification_receipt(release_data)
+    snapshot = build_estate_map_snapshot(release_data, receipt)
+    tool = VPSSENTRY / "scripts" / "estate_map_current_state.py"
+    if not tool.is_file():
+        raise UpdateError(f"VPSSentry estate-map renderer is missing: {tool}")
+
+    if progress:
+        progress.done(
+            "Certified source is exact across Git, production, and activation receipt"
+        )
+        progress.start("Rendering bounded estate-map current-state blocks...")
+
+    with tempfile.NamedTemporaryFile(
+        mode="w",
+        encoding="utf-8",
+        suffix=".json",
+    ) as handle:
+        json.dump(snapshot, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+        handle.flush()
+        rc, out = run(
+            [
+                "python3",
+                str(tool),
+                "--write",
+                "--snapshot",
+                handle.name,
+                "--mirror-root",
+                str(PROJECTS_ROOT),
+                "--require-mirrors",
+            ],
+            cwd=VPSSENTRY,
+            timeout=120,
+        )
+    if rc != 0:
+        raise UpdateError(
+            "estate-map rendering failed: " + aoe2_audit.checker_summary(out)
+        )
+
+    rc, out = run(
+        [
+            "python3",
+            "scripts/docs_v2_check.py",
+            "--write",
+            "--mirror-root",
+            str(PROJECTS_ROOT),
+            "--require-map-mirrors",
+        ],
+        cwd=VPSSENTRY,
+        timeout=120,
+    )
+    if rc != 0:
+        raise UpdateError(
+            "VPSSentry registry refresh failed after map rendering: "
+            + aoe2_audit.checker_summary(out)
+        )
+
+    changed = status_paths(VPSSENTRY)
+    unsafe = sorted(path for path in changed if path not in ESTATE_MAP_ALLOWED_PATHS)
+    if unsafe:
+        raise UpdateError(
+            "estate-map refresh touched paths outside its documentation allowlist: "
+            f"{unsafe}"
+        )
+
+    if not changed:
+        return {
+            **map_plan,
+            "status": "already-current",
+            "before": before_head,
+            "after": before_head,
+        }
+
+    rc, out = source_checker(VPSSENTRY)
+    if rc != 0:
+        raise UpdateError(
+            "VPSSentry checker failed after map refresh: "
+            + aoe2_audit.checker_summary(out)
+        )
+    rc, out = git(VPSSENTRY, "diff", "--check")
+    if rc != 0:
+        raise UpdateError(f"VPSSentry estate-map diff check failed: {out}")
+
+    rc, out = run(
+        ["git", "add", "--", *sorted(changed)],
+        cwd=VPSSENTRY,
+    )
+    if rc != 0:
+        raise UpdateError(f"VPSSentry estate-map staging failed: {out}")
+    rc, out = git(VPSSENTRY, "diff", "--cached", "--check")
+    if rc != 0:
+        raise UpdateError(f"VPSSentry staged estate-map diff check failed: {out}")
+
+    rc, out = run(
+        ["git", "commit", "-m", "Refresh certified estate-map current state"],
+        cwd=VPSSENTRY,
+    )
+    if rc != 0:
+        raise UpdateError(f"VPSSentry estate-map commit failed: {out}")
+    after_head = git_output(VPSSENTRY, "rev-parse", "HEAD")
+    push_and_verify("vpssentry", VPSSENTRY, branch)
+
+    rc, out = source_checker(VPSSENTRY)
+    if rc != 0:
+        raise UpdateError(
+            "VPSSentry checker failed after estate-map commit: "
+            + aoe2_audit.checker_summary(out)
+        )
+    final_plan = estate_map_refresh_plan(release_data)
+    if final_plan["status"] != "current":
+        raise UpdateError(
+            "estate-map current source did not converge after refresh: "
+            f"{final_plan}"
+        )
+    if progress:
+        progress.done(
+            f"Certified estate-map state pushed ({after_head[:10]})"
+        )
+    return {
+        **final_plan,
+        "status": "refreshed",
+        "before": before_head,
+        "after": after_head,
+        "observed_at": snapshot["observed_at"],
     }
 
 
@@ -919,7 +1374,14 @@ def apply_update(
         raise UpdateError("update plan is blocked; resolve findings manually")
 
     if not plan["changes_needed"]:
-        print("AOE2WAR UPDATE: already current")
+        if plan["estate_maps"]["status"] == "deferred":
+            print(
+                "AOE2WAR UPDATE: maintenance current; estate-map refresh "
+                "deferred until post-deploy certification"
+            )
+            print(plan["estate_maps"]["reason"])
+        else:
+            print("AOE2WAR UPDATE: already current")
         return 0
 
     if progress:
@@ -938,6 +1400,7 @@ def apply_update(
 
     before = plan["audit"]
     source_results: list[dict[str, str]] = []
+    estate_map_result: dict[str, Any] = dict(plan["estate_maps"])
     central_result: dict[str, Any] = {"status": "not-needed"}
     archives: dict[str, dict[str, Any]] = {}
 
@@ -953,6 +1416,7 @@ def apply_update(
         "dependency_upgraded": False,
         "before_audit": before,
         "source_results": source_results,
+        "estate_map_result": estate_map_result,
         "central_result": central_result,
         "context_archives": archives,
     }
@@ -975,7 +1439,15 @@ def apply_update(
                     f"({result['documentation_commit'][:10]})"
                 )
 
-        if plan["central_sync"] or source_results:
+        if plan["estate_maps"]["status"] == "refresh":
+            estate_map_result = refresh_estate_maps(progress=progress)
+            receipt_payload["estate_map_result"] = estate_map_result
+
+        if (
+            plan["central_sync"]
+            or source_results
+            or estate_map_result.get("status") == "refreshed"
+        ):
             central_result = central_sync(progress=progress)
             receipt_payload["central_result"] = central_result
 
@@ -983,6 +1455,8 @@ def apply_update(
         for result in source_results:
             if result["status"] == "refreshed":
                 projects.add(REPO_TO_CONTEXT[result["repo"]])
+        if estate_map_result.get("status") == "refreshed":
+            projects.add("VPSSentry")
         if central_result.get("status") == "synchronized":
             projects.add("AoE2WAR-docs")
 
@@ -1026,6 +1500,11 @@ def apply_update(
                 f"{result['repo']}: {result['status']} "
                 f"docs={result['documentation_commit'][:10]}"
             )
+        print(
+            "Estate maps: "
+            f"{estate_map_result.get('status')} · "
+            f"{estate_map_result.get('reason')}"
+        )
         print(
             "Central: "
             f"{central_result.get('status')} "
@@ -1109,9 +1588,20 @@ def main() -> int:
                 )
 
             if not locked_plan["changes_needed"]:
-                progress.done("Estate is already current")
+                if locked_plan["estate_maps"]["status"] == "deferred":
+                    progress.done(
+                        "Maintenance is current; estate-map refresh deferred "
+                        "until post-deploy certification"
+                    )
+                else:
+                    progress.done("Estate is already current")
                 print()
                 print("UPDATE: ALREADY CURRENT")
+                if locked_plan["estate_maps"]["status"] == "deferred":
+                    print(
+                        "Estate maps: DEFERRED — "
+                        + locked_plan["estate_maps"]["reason"]
+                    )
                 return 0
 
             return apply_update(locked_plan, progress=progress)

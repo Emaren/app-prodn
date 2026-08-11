@@ -33,7 +33,10 @@ disagree, stop and reconcile them before production mutation.
    repository documentation; documentation-only commits may follow it.
 3. The release SHA and implementation SHA are distinct identities when the
    generated documentation-baseline commit follows implementation.
-4. Production builds occur beside the active runtime in `.next-release`.
+4. Production builds occur in a disposable detached Git worktree. Staging
+   leaves the live source, `public/`, `.aoe2war-build-version`, `node_modules`,
+   and active `.next` runtime unchanged, then copies only a cache-free artifact
+   into `.next-release`.
 5. The active `.next` runtime is preserved before activation in both fast and
    durable rollback evidence.
 6. A candidate is not `CERTIFIED` merely because the service restarted.
@@ -50,6 +53,10 @@ disagree, stop and reconcile them before production mutation.
 13. Mutating release commands are serialized by a deployment lock.
 14. Machine-readable receipts must let a fresh operator or AI reconstruct the
     release state without conversational memory.
+15. The automatic isolated-build lane requires an unchanged `yarn.lock` and
+    unchanged dependency/package-manager sections in `package.json`. A
+    dependency-contract-changing release fails closed instead of silently
+    reusing incompatible production `node_modules`.
 
 ## Operator command surface
 
@@ -96,6 +103,19 @@ DIRTY
 Documentation Baseline, production checkout/runtime identity, public version
 parity, protected WOLO listeners, and matching activation receipts.
 
+While `.next-release` exists, status reports `STAGED` before ordinary
+production-source parity. In that state the live checkout intentionally remains
+on the previous production SHA. A normal `aoe2war deploy` (and therefore
+`aoe2war finish`) resumes only a stage receipt whose release SHA and candidate
+BUILD_ID exactly match the live staged artifact; it does not rebuild or
+republish the candidate. If that exact receipt is absent locally, the engine may
+rehydrate it from VPS evidence only when exactly one durable receipt matches. It
+re-proves the previous source, active and staged BUILD_IDs, cache-free artifact
+digest, manifest/gate digests, service/build-version identity, and protected
+listener counts before installing the exact receipt and its bound evidence
+locally. Missing, conflicting, ambiguous, or mismatched evidence stops before
+activation.
+
 Safety/blocking states include `DOCS_INVALID`, `DIVERGED`,
 `PRODUCTION_DIRTY`, `RUNTIME_UNHEALTHY`, `RUNTIME_UNVERIFIED`,
 `PROTECTED_SERVICE_ALERT`, and a healthy `PUBLISHED` state when GitHub/main is
@@ -115,9 +135,9 @@ The engine requires:
 - reachable, clean production;
 - active `aoe2hdbets-web.service`;
 - internal/public build-version parity;
-- live protected listeners on `8092` and `8093`;
-- no unresolved `.next-release` candidate;
-- a real change to ship.
+- exactly one live protected listener on each of `8092` and `8093`;
+- either no staged candidate and a real change to ship, or one exact staged
+  candidate with a matching receipt that can be resumed safely.
 
 A local `fcntl.flock` deployment mutex prevents concurrent mutating release
 commands from racing each other.
@@ -175,11 +195,25 @@ The manifest binds:
 The manifest and companion SHA-256 live beneath
 `.aoe2war-release/manifests/`.
 
-### 6. Stage beside live
+### 6. Isolated stage beside live
 
-Production source advances only to the sealed release SHA. The candidate builds
-as user `tony` into `.next-release` while the existing `.next` runtime remains
-live.
+Production source remains on the manifest's previous production SHA throughout
+staging. The engine fetches the sealed release, proves `yarn.lock` and the
+package dependency contract did not change, verifies pinned Yarn `1.22.22`,
+creates a temporary detached worktree for that exact release, and copies the
+already-proven production dependency tree into that disposable worktree.
+Build hooks, Prisma generation, the generated build-version sidecar, and Next
+build output can therefore mutate only the temporary worktree and its copied
+`node_modules`.
+
+After a successful build, the engine removes `.next-release/cache` and
+binary-safely relocates embedded absolute worktree paths to the canonical live
+repository path. The disposable and live paths are deliberately equal in byte
+length, and staging fails if any disposable path remains. The engine then hashes
+the cache-free relocated artifact, copies it to the live checkout as
+`.next-release`, and removes the temporary worktree. It finally proves that the
+live source, `public/`, `.aoe2war-build-version`, `node_modules`, active `.next`,
+service, public version, and protected listeners remained unchanged.
 
 Staging records:
 
@@ -188,7 +222,7 @@ Staging records:
 - live and candidate build versions;
 - deterministic staged artifact SHA-256;
 - bound manifest/gate evidence;
-- production source identity;
+- previous/live production source identity and isolation invariants;
 - WOLO listener counts.
 
 Durable stage evidence is stored beneath:
@@ -197,7 +231,18 @@ Durable stage evidence is stored beneath:
 /mnt/HC_Volume_105319120/aoe2war/deploy-receipts/
 ```
 
-A successful stage ends with the live runtime unchanged.
+The durable directory contains the exact local stage receipt plus its SHA-256
+sidecar, manifest, gate receipt, and stage-status proof. That complete evidence
+set is the crash-recovery and Mac/VPS handoff boundary; a candidate without it
+may still be resumed from an already-valid local receipt on the staging host,
+but another host must fail closed rather than reconstruct trust from the
+artifact alone.
+
+A successful stage ends with only the ignored `.next-release` artifact added.
+The current automatic lane rejects any release that changes `yarn.lock` or the
+dependency/package-manager sections of `package.json`; a future dependency-swap
+lane must atomically install, activate, and roll back `node_modules` before that
+boundary can be relaxed.
 
 ### 7. Zero-mutation activation preflight
 
@@ -205,7 +250,7 @@ Before the runtime swap, activation re-verifies:
 
 - the bound stage receipt and its hashes;
 - exact candidate artifact identity;
-- current source/runtime identity;
+- previous source/live runtime identity and unchanged build-version sidecar;
 - service health;
 - internal/public live version parity;
 - critical routes;
@@ -217,19 +262,24 @@ Dry-run activation performs zero production mutation.
 ### 8. Activate with rollback trap armed
 
 Before mutation, the engine copies the prior active runtime to durable rollback
-storage:
+storage without rebuildable `.next/cache`, and records the previous source and
+build-version identity:
 
 ```text
 /mnt/HC_Volume_105319120/aoe2war/rollbacks/
 ```
 
-It also preserves a fast root copy named
-`.next-rollback-activate-<UTC>`, swaps `.next-release` into `.next`, and
-restarts only `aoe2hdbets-web.service`.
+It arms the rollback trap and stops `aoe2hdbets-web.service` before changing any
+member of the activation bundle. While the service is stopped it preserves a
+fast root copy named `.next-rollback-activate-<UTC>`, swaps `.next-release`
+into `.next`, advances the live checkout to the exact release SHA, writes the
+candidate `.aoe2war-build-version`, and then starts only the web service.
 
 Until certification commits, any critical failure after mutation exits through
-the activation failure trap, which attempts to restore the previous runtime and
-prove the restored internal identity.
+the activation failure trap, which stops the service, preserves the exact
+candidate back in `.next-release`, restores the previous `.next`, resets source
+to the previous production SHA, restores the prior build-version sidecar,
+restarts the service, and proves the complete restored identity.
 
 ### 9. Immediate proof and bounded health soak
 

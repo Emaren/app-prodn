@@ -4,6 +4,7 @@ import importlib.util
 import io
 import pathlib
 import sys
+import tempfile
 import unittest
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "aoe2_update.py"
@@ -16,6 +17,47 @@ MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
 sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
+
+
+def certified_release(source: str = "a" * 40) -> dict:
+    build_id = "certified-build-id"
+    build_version = "20260811010000-aaaaaaaaaa"
+    return {
+        "local": {
+            "head": source,
+            "branch": "main",
+            "dirty_count": 0,
+        },
+        "github": {"main_sha": source},
+        "production": {
+            "host": "hel1",
+            "repo": "/var/www/AoE2HDBets/app-prodn",
+            "reachable": True,
+            "source_sha": source,
+            "branch": "main",
+            "dirty_count": 0,
+            "service": "active",
+            "active_build_id": build_id,
+            "staged_build_id": None,
+            "internal_build_version": build_version,
+            "public_build_version": build_version,
+            "version_parity": True,
+            "rollback_count": 2,
+            "latest_rollback": ".next-rollback-activate-example",
+            "root_free_kb": 6_000_000,
+            "volume_free_kb": 8_000_000,
+            "wolo_8092_count": 1,
+            "wolo_8093_count": 1,
+        },
+        "certification": {
+            "status": "CERTIFIED",
+            "release_sha": source,
+            "active_build_id": build_id,
+            "build_version": build_version,
+            "artifact_sha256": "b" * 64,
+            "receipt_path": ".aoe2war-release/activation-receipts/example.json",
+        },
+    }
 
 
 class UpdateCommandTests(unittest.TestCase):
@@ -53,6 +95,82 @@ class UpdateCommandTests(unittest.TestCase):
         self.assertIsNone(
             MODULE.archive_project_from_finding("unknown: x")
         )
+
+    def test_certified_source_ready_requires_exact_three_plane_identity(self):
+        ready, reason, source = MODULE.certified_source_ready(certified_release())
+        self.assertTrue(ready, reason)
+        self.assertEqual(source, "a" * 40)
+
+        github_ahead = certified_release("a" * 40)
+        github_ahead["local"]["head"] = "c" * 40
+        github_ahead["github"]["main_sha"] = "c" * 40
+        ready, reason, source = MODULE.certified_source_ready(github_ahead)
+        self.assertFalse(ready)
+        self.assertEqual(source, "c" * 40)
+        self.assertIn("defer until post-deploy", reason)
+
+    def test_estate_map_plan_refreshes_only_certified_intended_source(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            vpssentry = base / "VPSSentry"
+            projects = base / "projects"
+            (vpssentry / "context").mkdir(parents=True)
+            projects.mkdir()
+            block = (
+                MODULE.ESTATE_MAP_BEGIN
+                + "\n## Generated\n\n"
+                + f"- Current-state source SHA: `{'d' * 40}`\n"
+                + MODULE.ESTATE_MAP_END
+                + "\n"
+            )
+            for name in MODULE.ESTATE_MAP_FILES:
+                (vpssentry / "context" / name).write_text(
+                    block, encoding="utf-8"
+                )
+                (projects / name).write_text(block, encoding="utf-8")
+
+            plan = MODULE.estate_map_refresh_plan(
+                certified_release(),
+                vpssentry=vpssentry,
+                projects_root=projects,
+            )
+            self.assertEqual(plan["status"], "refresh")
+            self.assertEqual(plan["current_source_sha"], "d" * 40)
+
+            deferred_release = certified_release()
+            deferred_release["local"]["head"] = "c" * 40
+            deferred_release["github"]["main_sha"] = "c" * 40
+            deferred = MODULE.estate_map_refresh_plan(
+                deferred_release,
+                vpssentry=vpssentry,
+                projects_root=projects,
+            )
+            self.assertEqual(deferred["status"], "deferred")
+
+    def test_estate_map_snapshot_uses_certification_receipt_evidence(self):
+        receipt = {
+            "generated_at": "2026-08-11T00:59:00.123Z",
+            "implementation_sha": "c" * 40,
+            "remote_receipt_dir": "/mnt/volume/deploy-receipts/example",
+            "durable_rollback": "/mnt/volume/rollbacks/example",
+            "fast_rollback": ".next-rollback-activate-example",
+            "risk_class": "INFRASTRUCTURE",
+            "wolo_mutated": False,
+        }
+        snapshot = MODULE.build_estate_map_snapshot(
+            certified_release(),
+            receipt,
+            observed_at="2026-08-11T01:00:00Z",
+        )
+        self.assertEqual(snapshot["intended_source_sha"], "a" * 40)
+        self.assertEqual(
+            snapshot["certification"]["implementation_sha"], "c" * 40
+        )
+        self.assertEqual(
+            snapshot["certification"]["durable_rollback"],
+            "/mnt/volume/rollbacks/example",
+        )
+        self.assertFalse(snapshot["certification"]["wolo_mutated"])
 
     def test_taxonomy_refresh_existing(self):
         taxonomy = {

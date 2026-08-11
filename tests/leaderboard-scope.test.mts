@@ -43,11 +43,11 @@ test("leaderboard exposes an accessible full versus claimed-profile scope", () =
   );
   assert.match(
     page,
-    />\s*Full leaderboard\s*</,
+    />\s*Warriors\s*</,
   );
   assert.match(
     page,
-    /AoE2WAR users/,
+    />\s*Kingdom\s*</,
   );
   assert.match(
     page,

@@ -172,7 +172,7 @@ test("invalid timestamps retain the shared empty-state contract", () => {
   );
 });
 
-test("TimeDisplayText keeps server and first client render on UTC until appearance hydration", () => {
+test("TimeDisplayText waits for browser hydration and keeps UTC as secondary inspection truth", () => {
   const source = readFileSync(
     new URL("../components/time/TimeDisplayText.tsx", import.meta.url),
     "utf8"
@@ -181,10 +181,12 @@ test("TimeDisplayText keeps server and first client render on UTC until appearan
   assert.match(source, /appearanceLoaded/);
   assert.match(
     source,
-    /const resolvedDisplayMode = appearanceLoaded \? timeDisplayMode : "utc"/
+    /const resolvedBrowserTimeZone = appearanceLoaded[\s\S]*?detectBrowserTimeZone\(\)[\s\S]*?: null/
   );
   assert.match(
     source,
-    /const resolvedBrowserTimeZone = appearanceLoaded \? browserTimeZone : null/
+    /if \(!resolvedBrowserTimeZone\) return "—"/
   );
+  assert.match(source, /const utcText = useMemo/);
+  assert.match(source, /title=\{utcText\}/);
 });

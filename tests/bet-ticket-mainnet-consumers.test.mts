@@ -7,7 +7,6 @@ import {
   isMainnetVisibleFundedBetWager,
   visibleMainnetFundedBetWagerWhere,
 } from "../lib/betStakeFunding.ts";
-import { calculateDailyStakingRewardDistribution } from "../lib/staking.ts";
 
 const afterMainnetStart = new Date("2026-07-30T12:00:00.000Z");
 
@@ -87,6 +86,10 @@ test("shared mainnet query keeps caller predicates and both recorded proof rails
 });
 
 test("daily staking distribution records volume returned through the shared ticket-aware fence", async () => {
+  const stakingWalletEnv = "NEXT_PUBLIC_WOLO_STAKING_WALLET_ADDRESS";
+  const previousStakingWallet = process.env[stakingWalletEnv];
+  process.env[stakingWalletEnv] = "wolo1teststakingwallet";
+
   let aggregateWhere: unknown = null;
   let dailyStatUpsert: Record<string, unknown> | null = null;
 
@@ -121,26 +124,40 @@ test("daily staking distribution records volume returned through the shared tick
     stakingPosition: {
       findMany: async () => [],
     },
+    stakingEvent: {
+      findMany: async () => [],
+    },
     $transaction: async <T>(callback: (client: typeof tx) => Promise<T>) =>
       callback(tx),
   };
 
-  const result = await calculateDailyStakingRewardDistribution(
-    prisma as never,
-    new Date("2026-07-30T00:00:00.000Z")
-  );
-  const serializedWhere = JSON.stringify(aggregateWhere);
-  const create = (dailyStatUpsert?.create ?? {}) as Record<string, unknown>;
+  try {
+    const { calculateDailyStakingRewardDistribution } = await import(
+      "../lib/staking.ts"
+    );
+    const result = await calculateDailyStakingRewardDistribution(
+      prisma as never,
+      new Date("2026-07-30T00:00:00.000Z")
+    );
+    const serializedWhere = JSON.stringify(aggregateWhere);
+    const create = (dailyStatUpsert?.create ?? {}) as Record<string, unknown>;
 
-  assert.deepEqual(result, {
-    distributionId: 91,
-    created: true,
-    status: "FINALIZED",
-  });
-  assert.match(serializedWhere, /"stakeIntent":/);
-  assert.match(serializedWhere, /"stakeLeg":/);
-  assert.equal(create.betVolumeWolo, 30);
-  assert.equal(create.betsPlaced, 2);
+    assert.deepEqual(result, {
+      distributionId: 91,
+      created: true,
+      status: "FINALIZED",
+    });
+    assert.match(serializedWhere, /"stakeIntent":/);
+    assert.match(serializedWhere, /"stakeLeg":/);
+    assert.equal(create.betVolumeWolo, 30);
+    assert.equal(create.betsPlaced, 2);
+  } finally {
+    if (previousStakingWallet === undefined) {
+      delete process.env[stakingWalletEnv];
+    } else {
+      process.env[stakingWalletEnv] = previousStakingWallet;
+    }
+  }
 });
 
 test("user history and admin operator rails expose the shared ticket funding proof", async () => {

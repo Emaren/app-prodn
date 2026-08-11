@@ -1,0 +1,177 @@
+---
+id: "aoe2war.app-prodn.docs-host-maintenance"
+title: "AoE2WAR Host Maintenance"
+type: "runbook"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","api-prodn","wolochain","vps"]
+audience: ["operators","ai-agents"]
+source_of_truth: "git"
+authority: "host-maintenance-procedure"
+reviewed_at: "2026-08-10"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
+# AoE2WAR Host Maintenance
+
+## Scope and current posture
+
+This runbook owns explicitly approved VPS package and reboot maintenance. It is
+separate from application release engineering.
+
+At this review, Doctor reports that host maintenance is pending, including a
+reboot-required marker and available package updates. The exact package count
+and reboot state are live facts: read them from `aoe2war doctor --json` and the
+host package manager rather than copying a number into documentation.
+
+`aoe2war finish` does not reboot the host, install or upgrade packages, change
+kernel state, enable unattended upgrades, run a distribution upgrade, apply a
+database migration, or mutate Wolo. A warning is a maintenance signal, not
+authorization. Each material host mutation requires Tony's explicit approval,
+an announced window, and a reviewed rollback/recovery plan.
+
+## Stop conditions
+
+Do not begin package or reboot work while any of these are true:
+
+- a finish, deploy, rollback, retention, backup, migration, or settlement run
+  is active;
+- source/runtime is not certified or the production checkout has unexplained
+  changes;
+- either protected Wolo port `8092` or `8093` does not have exactly one
+  expected listener;
+- database backup or migration truth is unknown for a schema-affecting change;
+- root or mounted-volume health suggests the maintenance itself may exhaust
+  storage;
+- no usable console/recovery access exists if SSH does not return;
+- the exact packages, expected restarts, outage, and rollback path have not
+  been reviewed;
+- the requested action would change Wolo binaries, keyrings, consensus, or
+  settlement behavior without a separate Wolo upgrade plan.
+
+## Required authorization record
+
+Before mutation, record:
+
+- operator, UTC start/window, reason, and exact host;
+- exact command class: package refresh, named package upgrade, kernel upgrade,
+  or reboot;
+- package/version list and services expected to restart;
+- expected public impact and communication plan;
+- pre-maintenance release SHA, BUILD_ID, build version, service state, database
+  migration state, capacity, and Wolo listener counts;
+- backup/snapshot identifiers and how to recover console access;
+- explicit approval and abort criteria.
+
+The eventual automation should persist a uniquely named, access-restricted,
+append-only maintenance receipt under the AoE2WAR control/evidence store. That
+receipt writer is not implemented by this documentation. Until it exists, do
+not claim that host maintenance has automated or off-host evidence; retain the
+approved incident/change record and command outputs without secrets.
+
+## Read-only preflight
+
+Run the read-only application and estate checks first:
+
+```bash
+aoe2war status
+aoe2war audit
+aoe2war doctor
+aoe2war releases --limit 5
+```
+
+Then inspect host state without changing it:
+
+```bash
+systemctl --failed
+df -h /
+df -h /mnt/HC_Volume_105319120
+test -f /var/run/reboot-required
+apt list --upgradable
+sudo apt-get --simulate upgrade
+```
+
+Review the simulated transaction in full. Confirm whether it changes Node,
+PostgreSQL, nginx, systemd, OpenSSH, firewall tooling, the kernel, or libraries
+used by the web/API/Wolo processes. Redact secrets and database URLs from any
+captured output.
+
+## Package-maintenance lane
+
+1. Confirm the authorization record and recovery access.
+2. Capture fresh read-only preflight truth and any required provider snapshot or
+   protected backup. The mounted volume alone is not off-host recovery; see
+   `docs/EVIDENCE_VAULT.md`.
+3. Refresh package metadata only inside the approved window.
+4. Re-run the simulated transaction and compare it with the approved package
+   list. Stop on newly introduced packages or removals.
+5. Apply only the approved upgrade class. Do not improvise `dist-upgrade`,
+   release upgrades, package removals, autoremove, or unattended-upgrade policy
+   changes.
+6. Capture package-manager and `needrestart` results. Restart only the services
+   required by the approved plan; do not restart Wolo merely because a generic
+   tool recommends it.
+7. If a reboot is now required, stop after package verification and enter the
+   separately approved reboot lane below.
+8. Run all post-maintenance proof before closing the change.
+
+An application rollback does not undo an OS package or kernel change. Package
+rollback must use the reviewed package versions/provider snapshot and must
+account for database and on-disk format compatibility.
+
+## Reboot lane
+
+A reboot requires a fresh explicit approval after preflight. Do not treat an
+old `/var/run/reboot-required` marker, a package-manager prompt, or a Doctor
+warning as consent.
+
+Immediately before reboot:
+
+1. verify no protected mutation is running;
+2. record public and internal web/API health;
+3. record exactly one listener on Wolo ports `8092` and `8093`;
+4. record active timers, failed units, capacity, and the current certified
+   release identities;
+5. confirm provider console/recovery access and the abort/escalation contact;
+6. obtain explicit approval for the exact UTC window.
+
+Only the approved operator executes the host reboot. Do not combine it with a
+deploy, migration, Wolo upgrade, filesystem cleanup, or configuration rewrite.
+
+After SSH returns, allow declared services their documented startup time, then
+verify:
+
+```bash
+systemctl is-system-running
+systemctl --failed
+systemctl is-active aoe2hdbets-web.service
+systemctl is-active aoe2hdbets-api.service
+aoe2war status
+aoe2war audit
+aoe2war doctor
+```
+
+Also prove public HTTPS, internal binds `3030` and `3330`, database migration
+state, critical timers, root/volume capacity, and exactly one listener on each
+protected Wolo port. A temporarily slow Wolo startup is not permission to
+replace its binary or force a chain upgrade. Inspect its owning runbook and
+logs, preserve evidence, and escalate if expected identity or listener count
+does not return.
+
+## Completion criteria
+
+Maintenance is complete only when:
+
+- approved package/kernel/reboot scope matches what actually changed;
+- web, replay API, public routes, database connectivity, and required timers
+  are healthy;
+- the certified application source/build/version identities did not drift;
+- protected Wolo listener counts and expected identities are unchanged;
+- no new failed unit, capacity blocker, or permission drift remains;
+- `aoe2war audit` has no P0/P1 finding and Doctor has no blocker;
+- outputs, deviations, rollback readiness, and any remaining warning are
+  recorded in a new immutable change record.
+
+Never rewrite an older maintenance or release receipt to represent the new
+state. Append a superseding record and keep the original evidence.

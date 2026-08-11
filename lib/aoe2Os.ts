@@ -53,6 +53,14 @@ export const AOE2_OS_ACTIONS = {
     confirmation: "DEPLOY",
     requiresSourceSha: true,
   },
+  finish: {
+    label: "Finish Everything",
+    description:
+      "Reconcile source and documentation, release safely, certify production, and run final estate checks.",
+    risk: "production_write",
+    confirmation: "FINISH",
+    requiresSourceSha: false,
+  },
   rollback_preview: {
     label: "Rollback Preview",
     description: "Preview the receipt-driven rollback target without changing production.",
@@ -90,6 +98,10 @@ export type Aoe2OsRun = {
   requestedByUid: string;
   expectedSourceSha: string | null;
   expectedTargetSha: string | null;
+  parameters: {
+    message?: string;
+    dryRun?: boolean;
+  } | null;
   bridgeId: string | null;
   requestedAt: string;
   claimedAt: string | null;
@@ -300,6 +312,7 @@ export async function createAoe2OsRun(input: {
   requestedByUid: string;
   expectedSourceSha?: string | null;
   expectedTargetSha?: string | null;
+  parameters?: Aoe2OsRun["parameters"];
 }) {
   return serializeMutation(async () => {
     const existing = (await listRuns(100)).find((run) =>
@@ -327,6 +340,7 @@ export async function createAoe2OsRun(input: {
       requestedByUid: input.requestedByUid,
       expectedSourceSha: input.expectedSourceSha?.trim() || null,
       expectedTargetSha: input.expectedTargetSha?.trim() || null,
+      parameters: input.parameters ?? null,
       bridgeId: null,
       requestedAt: timestamp,
       claimedAt: null,
@@ -341,6 +355,11 @@ export async function createAoe2OsRun(input: {
     await atomicWriteJson(runPath(id), run);
     return run;
   });
+}
+
+export async function readAoe2OsRun(runId: string) {
+  if (!/^[A-Za-z0-9-]{1,100}$/.test(runId)) return null;
+  return readJson<Aoe2OsRun>(runPath(runId));
 }
 
 export async function cancelAoe2OsRun(runId: string) {

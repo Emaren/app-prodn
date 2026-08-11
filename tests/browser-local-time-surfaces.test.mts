@@ -139,7 +139,7 @@ test("fixed-zone APIs preserve raw ISO instants for browser-side rendering", () 
   const roadmap = source("lib/siteRoadmapContent.ts");
 
   assert.doesNotMatch(stakingActivityApi, /formatPublicBountyTime/);
-  assert.match(stakingActivityApi, /timestampLabel: occurredAt/);
+  assert.match(stakingActivityApi, /timestampLabel:\s*occurredAt/);
   assert.match(roadmap, /new Date\(\)\.toISOString\(\)/);
 });
 

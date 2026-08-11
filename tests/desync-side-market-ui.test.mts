@@ -226,7 +226,7 @@ test(
   () => {
     assert.match(
       page,
-      /YES settles on confirmed desync · NO after final-result review window/
+      /YES settles on confirmed desync · NO after final-result review\s*window/
     );
   }
 );

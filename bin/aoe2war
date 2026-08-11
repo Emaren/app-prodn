@@ -8,6 +8,7 @@ DOCTOR="$BIN_DIR/../scripts/aoe2_doctor.py"
 UPDATE="$BIN_DIR/../scripts/aoe2_update.py"
 FINISH="$BIN_DIR/../scripts/aoe2_finish.py"
 BRIDGE="$BIN_DIR/../scripts/aoe2_operator_bridge.py"
+STORAGE_RETENTION="$BIN_DIR/../scripts/aoe2_storage_retention.py"
 
 usage() {
   cat <<'EOF'
@@ -19,6 +20,7 @@ Usage:
   aoe2war audit [--json]
   aoe2war doctor [--json] [--strict]
   aoe2war update [--apply] [--json]
+  aoe2war storage-retention [--apply] [--json]
   aoe2war finish [--dry-run] [--json] [-m MESSAGE]
   aoe2war bridge [--once] [bridge options]
   aoe2war status [--json]
@@ -36,6 +38,8 @@ Examples:
   aoe2war doctor
   aoe2war update
   aoe2war update --apply
+  aoe2war storage-retention
+  aoe2war storage-retention --apply
   aoe2war finish
   aoe2war bridge --once
   aoe2war deploy
@@ -78,12 +82,25 @@ SAFE / READ-ONLY
       Plan documentation/context maintenance. Shows exactly what would change.
       Makes no changes.
 
+  aoe2war storage-retention
+      Preview the exact regenerable .next/cache material eligible inside older
+      durable activation rollback generations. Protects the newest two and
+      makes no production or receipt change.
+
 DOCUMENTATION / CONTEXT WRITE
 
   aoe2war update --apply
       Reconcile repository documentation baselines, the central AoE2WAR-docs
       federation and stale context archives. It does NOT deploy production,
       mutate the database, change Wolo runtime state or upgrade dependencies.
+
+BOUNDED STORAGE WRITE
+
+  aoe2war storage-retention --apply
+      Persist a durable plan, recheck its digest, then remove only the planned
+      cache directories from older activation rollback generations. Generation
+      evidence and BUILD_ID remain; source/build/service and protected Wolo
+      listener counts must remain unchanged and are recorded afterward.
 
 ADMIN UI / OPERATOR BRIDGE
 
@@ -178,6 +195,10 @@ case "$command" in
   update)
     shift
     exec python3 "$UPDATE" "$@"
+    ;;
+  storage-retention)
+    shift
+    exec python3 "$STORAGE_RETENTION" "$@"
     ;;
   finish)
     shift

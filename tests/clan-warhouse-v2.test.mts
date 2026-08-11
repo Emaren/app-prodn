@@ -116,7 +116,7 @@ test("clan admins can choose assigned crests from profile", () => {
 test("managed media includes a dedicated crest kind", () => {
   assert.match(
     media,
-    /"avatar", "crest", "belt"/,
+    /MANAGED_MEDIA_KINDS = \[[^\]]*"crest"[^\]]*\] as const/,
   );
 });
 

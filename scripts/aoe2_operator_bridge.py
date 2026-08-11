@@ -29,7 +29,7 @@ DEFAULT_TOKEN_FILE = Path(
     )
 ).expanduser()
 
-VERSION = "1.1.0"
+VERSION = "1.2.0"
 
 ACTIONS = {
     "status",
@@ -39,6 +39,7 @@ ACTIONS = {
     "update_apply",
     "deploy_plan",
     "deploy",
+    "finish",
     "rollback_preview",
     "rollback",
 }
@@ -169,6 +170,15 @@ def command_for_run(run: dict[str, Any]) -> list[str]:
                 f"expected={expected or '(missing)'} actual={actual}"
             )
         return [str(CLI), "deploy"]
+    if action == "finish":
+        parameters = run.get("parameters")
+        if not isinstance(parameters, dict):
+            parameters = {}
+        message = str(parameters.get("message") or "Finish AoE2WAR work")[:200]
+        command = [str(CLI), "finish", "--json", "--message", message]
+        if parameters.get("dryRun") is True:
+            command.append("--dry-run")
+        return command
     if action == "rollback_preview":
         return [str(CLI), "rollback", "--dry-run", "--json"]
     if action == "rollback":
@@ -333,9 +343,12 @@ def execute_run(
     process: subprocess.Popen[str] | None = None
 
     try:
+        child_env = os.environ.copy()
+        child_env["AOE2WAR_OPERATOR_BRIDGE_RUN_ID"] = run_id
         process = subprocess.Popen(
             command,
             cwd=str(ROOT),
+            env=child_env,
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -389,7 +402,7 @@ def execute_run(
                 source_action=action,
                 payload=result,
             )
-        elif action in {"update_apply", "deploy", "rollback"}:
+        elif action in {"update_apply", "deploy", "finish", "rollback"}:
             run_audit_snapshot(
                 token=token,
                 base_url=base_url,
@@ -471,6 +484,12 @@ def run_bridge(
                     f"completed {run.get('id')} exit={exit_code}",
                     flush=True,
                 )
+                if run.get("action") == "finish":
+                    print(
+                        "reloading Operator Bridge after finish...",
+                        flush=True,
+                    )
+                    os.execv(sys.executable, [sys.executable, *sys.argv])
             except Exception as exc:
                 print(f"run failed: {exc}", file=sys.stderr, flush=True)
         elif once:

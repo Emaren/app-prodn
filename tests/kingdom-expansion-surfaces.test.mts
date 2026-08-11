@@ -161,7 +161,10 @@ test("advanced replay lanes distinguish extracted evidence from proven semantics
 test("AI replay grounding consumes structured coverage without promoting candidates", () => {
   const source = readFileSync(new URL("../lib/aiConcierge.ts", import.meta.url), "utf8");
   assert.match(source, /Structured replay evidence context/);
-  assert.match(source, /Candidate field coverage is not effective player or result truth/);
+  assert.match(
+    source,
+    /candidate coverage follows\. Coverage is extraction readiness, not player-specific effective truth/i,
+  );
   assert.match(source, /Saved checkpoint candidates:[\s\S]*non-final/);
   assert.match(source, /Never turn candidate coverage[\s\S]*into a result/);
   assert.doesNotMatch(source, /candidateOutputStorageKey/);

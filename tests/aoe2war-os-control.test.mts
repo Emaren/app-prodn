@@ -11,6 +11,7 @@ import {
   confirmationMatches,
   createAoe2OsRun,
   loadAoe2OsDashboard,
+  readAoe2OsRun,
   writeAoe2OsBridgeHeartbeat,
   writeAoe2OsSnapshot,
   appendAoe2OsRunEvent,
@@ -36,6 +37,8 @@ test("confirmation policy is server-side", () => {
   assert.equal(confirmationMatches("update_apply", "UPDATE"), true);
   assert.equal(confirmationMatches("update_apply", "update"), false);
   assert.equal(confirmationMatches("deploy", "DEPLOY"), true);
+  assert.equal(confirmationMatches("finish", "FINISH"), true);
+  assert.equal(confirmationMatches("finish", "finish"), false);
 });
 
 test("bridge online window is deterministic", () => {
@@ -67,8 +70,10 @@ test("file-backed control plane queues, claims, streams and completes", async ()
       action: "audit",
       requestedByUserId: 1,
       requestedByUid: "admin",
+      parameters: { message: "ignored by audit", dryRun: true },
     });
     assert.equal(run.status, "queued");
+    assert.equal((await readAoe2OsRun(run.id))?.parameters?.dryRun, true);
 
     await assert.rejects(
       createAoe2OsRun({

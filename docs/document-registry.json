@@ -37,7 +37,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-10",
       "sensitivity": "internal",
-      "sha256": "4f157822cc7c6507cbbdb598c354817626e974e71966dd14ccdb648c596ed9d9",
+      "sha256": "82c41b125a97e2841c0916fd1dd11e74f19dd749544263a67b439c98f953e854",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -476,7 +476,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "35ec9879ebb9a09e910d38fb4abb04131c3315a0f9bc7b39cbc23729026e381f",
+      "sha256": "573116145b6ebbc1024a4eec6958c59f1d40f349d69bb26ee3e88b0c0f3cfc6c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -484,6 +484,31 @@
       ],
       "title": "app-prodn Documentation Index",
       "type": "generated"
+    },
+    {
+      "audience": [
+        "operators",
+        "auditors",
+        "ai-agents"
+      ],
+      "authority": "disaster-recovery-contract",
+      "id": "aoe2war.app-prodn.docs-evidence-vault",
+      "owner": "aoe2war-web",
+      "path": "docs/EVIDENCE_VAULT.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-10",
+      "sensitivity": "internal",
+      "sha256": "18b3bf52d617fab0efccd660c174acaea021ff94bfa31d5feb909edef900c334",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "AoE2WAR Evidence Vault",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -529,6 +554,30 @@
       ],
       "title": "Hero Studio",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "host-maintenance-procedure",
+      "id": "aoe2war.app-prodn.docs-host-maintenance",
+      "owner": "aoe2war-web",
+      "path": "docs/HOST_MAINTENANCE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-10",
+      "sensitivity": "internal",
+      "sha256": "896530856debc31fae0356f964b48e1cf1dd7437d40b37b7f055ae452be602d0",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "wolochain",
+        "vps"
+      ],
+      "title": "AoE2WAR Host Maintenance",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -889,7 +938,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-10",
       "sensitivity": "internal",
-      "sha256": "7ba654e68f69f0a45d4393d2ee4a009190c7fd96f692806adc1742a863c65956",
+      "sha256": "83d84b828fef651e35700da786acd0e52d06bbb9e9075b170d7b9c35ecfdde62",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

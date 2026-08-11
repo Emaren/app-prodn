@@ -6,11 +6,15 @@ import fcntl
 import json
 import os
 import re
+import select
 import shlex
+import socket
 import subprocess
 import sys
+import time
 import urllib.request
-from contextlib import contextmanager
+import uuid
+from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,10 +24,174 @@ SERVICE = os.getenv("AOE2_RELEASE_SERVICE", "aoe2hdbets-web.service")
 PUBLIC = os.getenv("AOE2_RELEASE_PUBLIC_BASE", "https://aoe2war.com")
 STATE_DIR = ROOT / ".aoe2war-release"
 DEPLOY_LOCK = STATE_DIR / "deploy.lock"
+GLOBAL_RELEASE_LOCK = Path(
+    os.getenv(
+        "AOE2_RELEASE_GLOBAL_LOCK",
+        "/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock",
+    )
+)
+GLOBAL_LEASE_ENV = "AOE2WAR_GLOBAL_LEASE_HELD"
+GLOBAL_LEASE_OWNER_ENV = "AOE2WAR_GLOBAL_LEASE_OWNER_PID"
 
 
 class DeployLockBusy(RuntimeError):
     pass
+
+
+def inherited_global_lease() -> bool:
+    token = os.getenv(GLOBAL_LEASE_ENV, "").strip()
+    owner = os.getenv(GLOBAL_LEASE_OWNER_ENV, "").strip()
+    if not token or not owner.isdigit():
+        return False
+    owner_pid = int(owner)
+    return owner_pid in {os.getpid(), os.getppid()}
+
+
+@contextmanager
+def local_global_release_lease(path: Path, holder: str):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    metadata = path.with_suffix(path.suffix + ".meta")
+    with path.open("a+", encoding="utf-8") as handle:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            try:
+                detail = metadata.read_text(encoding="utf-8").strip()
+            except OSError:
+                detail = "holder metadata unavailable"
+            raise DeployLockBusy(
+                "canonical production release lease is already held: "
+                + detail.replace("\n", "; ")
+            ) from exc
+        temporary = metadata.with_name(f".{metadata.name}.{uuid.uuid4().hex}.tmp")
+        try:
+            temporary.write_text(holder + "\n", encoding="utf-8")
+            os.replace(temporary, metadata)
+            yield
+        finally:
+            temporary.unlink(missing_ok=True)
+            metadata.unlink(missing_ok=True)
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+@contextmanager
+def remote_global_release_lease(path: Path, holder: str):
+    metadata = str(path) + ".meta"
+    script = f"""
+set -euo pipefail
+mkdir -p {shlex.quote(str(path.parent))}
+exec 9>{shlex.quote(str(path))}
+if ! flock -n 9; then
+  printf 'BUSY\\t'
+  if [ -r {shlex.quote(metadata)} ]; then
+    tr '\\n' ';' < {shlex.quote(metadata)}
+  else
+    printf 'holder metadata unavailable'
+  fi
+  printf '\\n'
+  exit 73
+fi
+umask 077
+tmp={shlex.quote(metadata)}.$$.$RANDOM
+printf '%s\\n' {shlex.quote(holder)} > "$tmp"
+mv "$tmp" {shlex.quote(metadata)}
+printf 'ACQUIRED\\n'
+IFS= read -r _ || true
+rm -f {shlex.quote(metadata)}
+""".strip()
+    process = subprocess.Popen(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=8",
+            PROD_HOST,
+            f"bash -lc {shlex.quote(script)}",
+        ],
+        cwd=ROOT,
+        text=True,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    assert process.stdout is not None
+    ready, _, _ = select.select([process.stdout], [], [], 15)
+    if not ready:
+        process.kill()
+        _, error = process.communicate(timeout=5)
+        raise DeployLockBusy(
+            "timed out acquiring canonical production release lease: "
+            + error[-1000:]
+        )
+    handshake = process.stdout.readline().rstrip("\n")
+    if handshake != "ACQUIRED":
+        try:
+            _, error = process.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            _, error = process.communicate(timeout=5)
+        detail = handshake.removeprefix("BUSY\t") or error or "unknown holder"
+        raise DeployLockBusy(
+            "canonical production release lease is already held: "
+            + detail[:2000]
+        )
+    try:
+        yield
+    finally:
+        if process.stdin is not None:
+            try:
+                process.stdin.write("release\n")
+                process.stdin.flush()
+                process.stdin.close()
+            except BrokenPipeError:
+                pass
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+
+
+@contextmanager
+def global_release_lease(path: Path = GLOBAL_RELEASE_LOCK):
+    if inherited_global_lease():
+        yield
+        return
+
+    token = uuid.uuid4().hex
+    holder = json.dumps(
+        {
+            "token": token,
+            "host": socket.gethostname(),
+            "pid": os.getpid(),
+            "started_at": time.time(),
+            "command": shlex.join(sys.argv),
+        },
+        sort_keys=True,
+    )
+    prior_token = os.environ.get(GLOBAL_LEASE_ENV)
+    prior_owner = os.environ.get(GLOBAL_LEASE_OWNER_ENV)
+    local_production = ROOT.resolve() == Path(PROD_REPO).resolve()
+    lease = (
+        local_global_release_lease(path, holder)
+        if local_production
+        else remote_global_release_lease(path, holder)
+    )
+    with lease:
+        os.environ[GLOBAL_LEASE_ENV] = token
+        os.environ[GLOBAL_LEASE_OWNER_ENV] = str(os.getpid())
+        try:
+            yield
+        finally:
+            if prior_token is None:
+                os.environ.pop(GLOBAL_LEASE_ENV, None)
+            else:
+                os.environ[GLOBAL_LEASE_ENV] = prior_token
+            if prior_owner is None:
+                os.environ.pop(GLOBAL_LEASE_OWNER_ENV, None)
+            else:
+                os.environ[GLOBAL_LEASE_OWNER_ENV] = prior_owner
 
 
 @contextmanager
@@ -45,8 +213,10 @@ def deployment_lock(path: Path = DEPLOY_LOCK):
         handle.write(f"pid={os.getpid()}\n")
         handle.write("command=" + shlex.join(sys.argv) + "\n")
         handle.flush()
+        lease = global_release_lease() if path == DEPLOY_LOCK else nullcontext()
         try:
-            yield
+            with lease:
+                yield
         finally:
             handle.seek(0)
             handle.truncate()
@@ -374,12 +544,15 @@ def derive_state(data: dict) -> tuple[str, str]:
         return "PUBLISHED", "GitHub is sealed; production inspection failed."
     if prod.get("dirty_count") not in (0, None):
         return "PRODUCTION_DIRTY", "Inspect production drift before any deployment."
+    if prod["staged_build_id"]:
+        return (
+            "STAGED",
+            "Candidate build exists beside the previous live source; resume its exact receipt with aoe2war deploy.",
+        )
     if prod["source_sha"] != remote["main_sha"]:
         if cert.get("status") == "CERTIFIED":
             return "PUBLISHED", "Active runtime is CERTIFIED; GitHub main is newer and ready for the next ship."
         return "PUBLISHED", "Advance production to the sealed GitHub commit."
-    if prod["staged_build_id"]:
-        return "STAGED", "Candidate build exists; activate and prove it."
     if prod["service"] != "active":
         return "RUNTIME_UNHEALTHY", "Production source matches but service is not active."
     if not prod.get("active_build_id") or not prod.get("version_parity"):

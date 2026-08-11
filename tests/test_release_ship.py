@@ -46,6 +46,7 @@ def sample():
         "documentation_baseline": "c" * 40,
         "previous_production_sha": previous,
         "risk_class": "INFRASTRUCTURE",
+        "changed_files": ["scripts/example.py"],
         "migration_paths": [],
         "scope_sha256": "scope",
     }
@@ -77,10 +78,11 @@ def activation_sample():
     release = manifest["release_sha"]
     data["local"]["head"] = "d" * 40
     data["github"]["main_sha"] = "d" * 40
-    data["production"]["source_sha"] = release
+    data["production"]["source_sha"] = manifest["previous_production_sha"]
     data["production"]["staged_build_id"] = "candidate-build"
     receipt = {
         "release_sha": release,
+        "previous_production_sha": manifest["previous_production_sha"],
         "active_build_id": "old-build",
         "staged_build_id": "candidate-build",
         "live_build_version": "old-version",
@@ -121,9 +123,24 @@ class ShipTests(unittest.TestCase):
         data, manifest, transport = sample()
         data["production"]["wolo_8093_count"] = 0
         self.assertIn(
-            "protected WOLO listener 8093 is missing",
+            "protected WOLO listener 8093 count must be exactly 1",
             MODULE.validation_errors(data, manifest, transport),
         )
+
+    def test_duplicate_wolo_listener_blocks(self):
+        data, manifest, transport = sample()
+        data["production"]["wolo_8092_count"] = 2
+        self.assertIn(
+            "protected WOLO listener 8092 count must be exactly 1",
+            MODULE.validation_errors(data, manifest, transport),
+        )
+
+    def test_dependency_lock_change_fails_closed(self):
+        data, manifest, transport = sample()
+        manifest["changed_files"].append("yarn.lock")
+        errors = MODULE.validation_errors(data, manifest, transport)
+        self.assertTrue(any("unchanged dependency lock" in error for error in errors))
+        self.assertTrue(any("node_modules" in error for error in errors))
 
     def test_migrations_block_automated_ship(self):
         data, manifest, transport = sample()
@@ -203,7 +220,7 @@ class ShipTests(unittest.TestCase):
         data, receipt, transport = activation_sample()
         data["production"]["source_sha"] = "f" * 40
         self.assertIn(
-            "production source does not equal staged release SHA",
+            "production source does not equal the stage receipt previous SHA",
             MODULE.activation_validation_errors(data, receipt, transport),
         )
 
@@ -268,7 +285,103 @@ class ShipTests(unittest.TestCase):
             'artifact_sha256=$ARTIFACT',
             script,
         )
+        self.assertIn('-C "$1" -cf - .', script)
+        self.assertIn("--exclude='./cache' --exclude='./cache/*'", script)
         self.assertNotIn("active_artifact_hash()", script)
+
+    def test_activation_advances_source_version_and_runtime_only_while_stopped(self):
+        _, receipt, _ = activation_sample()
+        receipt = {
+            **receipt,
+            "manifest_sha256": "1" * 64,
+            "gate_sha256": "2" * 64,
+            "remote_receipt_dir": (
+                "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/"
+                "stage-test"
+            ),
+        }
+        script = MODULE.remote_activation_script(
+            receipt,
+            stage_receipt_sha="3" * 64,
+            stage_receipt_text="{}",
+            dry_run=False,
+            receipt_dir="/mnt/activation",
+            rollback_dir="/mnt/rollback",
+        )
+        armed = script.index("trap rollback_activation EXIT")
+        stopped = script.index(
+            'sudo -n /usr/bin/systemctl stop "$SERVICE"\n', armed
+        )
+        runtime_swap = script.index('mv .next-release .next', stopped)
+        source_advance = script.index('git reset --hard "$RELEASE"', runtime_swap)
+        version_advance = script.index(
+            'printf \'%s\\n\' "$CANDIDATE_VERSION" > .aoe2war-build-version',
+            source_advance,
+        )
+        started = script.index(
+            'sudo -n /usr/bin/systemctl start "$SERVICE"\n', version_advance
+        )
+        self.assertLess(armed, stopped)
+        self.assertLess(stopped, runtime_swap)
+        self.assertLess(runtime_swap, source_advance)
+        self.assertLess(source_advance, version_advance)
+        self.assertLess(version_advance, started)
+        self.assertNotIn('systemctl restart "$SERVICE"', script)
+
+    def test_activation_failure_restores_full_bundle_and_preserves_stage(self):
+        _, receipt, _ = activation_sample()
+        receipt = {
+            **receipt,
+            "manifest_sha256": "1" * 64,
+            "gate_sha256": "2" * 64,
+            "remote_receipt_dir": (
+                "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/"
+                "stage-test"
+            ),
+        }
+        script = MODULE.remote_activation_script(
+            receipt,
+            stage_receipt_sha="3" * 64,
+            stage_receipt_text="{}",
+            dry_run=False,
+            receipt_dir="/mnt/activation",
+            rollback_dir="/mnt/rollback",
+        )
+        self.assertIn('git reset --hard "$PREVIOUS"', script)
+        self.assertIn(
+            'printf \'%s\\n\' "$LIVE_VERSION" > .aoe2war-build-version',
+            script,
+        )
+        self.assertIn('mv .next .next-release', script)
+        self.assertIn('rb_staged_artifact="$(artifact_hash .next-release', script)
+        self.assertIn('&& [ "$rb_head" = "$PREVIOUS" ]', script)
+        self.assertIn('&& [ "$rb_build_version_file" = "$LIVE_VERSION" ]', script)
+
+    def test_durable_rollback_copy_is_cache_free(self):
+        _, receipt, _ = activation_sample()
+        receipt = {
+            **receipt,
+            "manifest_sha256": "1" * 64,
+            "gate_sha256": "2" * 64,
+            "remote_receipt_dir": (
+                "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/"
+                "stage-test"
+            ),
+        }
+        script = MODULE.remote_activation_script(
+            receipt,
+            stage_receipt_sha="3" * 64,
+            stage_receipt_text="{}",
+            dry_run=False,
+            receipt_dir="/mnt/activation",
+            rollback_dir="/mnt/rollback",
+        )
+        self.assertIn(
+            'rsync -a --exclude \'/cache/\' .next/ "$ROLLBACK/next/"',
+            script,
+        )
+        self.assertIn('test ! -e "$ROLLBACK/next/cache"', script)
+        self.assertNotIn('cp -a .next "$ROLLBACK/next"', script)
 
     def test_activation_result_requires_exact_candidate_identity(self):
         _, receipt, _ = activation_sample()
@@ -280,6 +393,8 @@ class ShipTests(unittest.TestCase):
             "active_build_id": receipt["staged_build_id"],
             "candidate_build_version": receipt["candidate_build_version"],
             "artifact_sha256": receipt["artifact_sha256"],
+            "durable_cache_free": "1",
+            "activation_bundle_while_stopped": "1",
             "wolo8092": "1",
             "wolo8093": "1",
             "soak_seconds": str(MODULE.ACTIVATION_SOAK_SECONDS),
@@ -366,6 +481,8 @@ class ShipTests(unittest.TestCase):
             "active_build_id": receipt["staged_build_id"],
             "candidate_build_version": receipt["candidate_build_version"],
             "artifact_sha256": receipt["artifact_sha256"],
+            "durable_cache_free": "1",
+            "activation_bundle_while_stopped": "1",
             "wolo8092": "1",
             "wolo8093": "1",
             "retention_status": "PASS",

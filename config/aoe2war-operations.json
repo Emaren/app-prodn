@@ -11,6 +11,7 @@
     "web_bind": "127.0.0.1:3030",
     "deployment_manager": "systemd",
     "volume_mount": "/mnt/HC_Volume_105319120",
+    "global_release_lock": "/mnt/HC_Volume_105319120/aoe2war/os-control/locks/release.lock",
     "control_store": "/mnt/HC_Volume_105319120/aoe2war/os-control",
     "bridge_env_file": "/etc/aoe2hdbets/aoe2war-os-bridge.env",
     "bridge_systemd_dropin": "/etc/systemd/system/aoe2hdbets-web.service.d/60-aoe2war-os.conf",
@@ -26,13 +27,31 @@
     ],
     "database_automatic_migration_policy": "fail-closed-reviewed-lane"
   },
+  "components": {
+    "web": {
+      "release_automation": "protected-certified"
+    },
+    "replay_api": {
+      "local_repo": "../api-prodn",
+      "production_repo": "/var/www/AoE2HDBets/api-prodn",
+      "branch": "main",
+      "service": "aoe2hdbets-api.service",
+      "bind": "127.0.0.1:3330",
+      "health_url": "http://127.0.0.1:3330/health",
+      "release_automation": "verify-only-until-dependency-and-migration-lane-is-certified"
+    }
+  },
   "toolchain": {
-    "node_major": null,
+    "node_major": 22,
+    "operator_node_majors": [
+      22,
+      24
+    ],
     "python_major_minor": "3.13",
     "yarn": "1.22.22",
     "next": "15.1.7",
     "prisma": "7.4.0",
-    "node_policy": "operator-and-production-major-must-match-until-explicitly-pinned"
+    "node_policy": "build-and-production-use-node-22; operator-node-22-or-24-supported"
   },
   "capacity": {
     "root_free_warn_gib": 5.0,
@@ -40,9 +59,26 @@
     "volume_used_warn_percent": 85,
     "volume_used_critical_percent": 92
   },
+  "storage_retention": {
+    "default_mode": "preview-read-only",
+    "durable_rollback_root": "/mnt/HC_Volume_105319120/aoe2war/rollbacks",
+    "receipt_root": "/mnt/HC_Volume_105319120/aoe2war/os-control/storage-retention-receipts",
+    "lock_path": "/mnt/HC_Volume_105319120/aoe2war/os-control/locks/storage-retention.lock",
+    "activation_generation_prefix": "activate-",
+    "source_cache_relative_path": ".next/cache",
+    "durable_cache_relative_path": "next/cache",
+    "protect_newest_activation_generations": 2,
+    "delete_generation_directories": false,
+    "require_plan_digest_recheck": true,
+    "require_runtime_identity_recheck": true
+  },
   "operator_bridge": {
     "online_threshold_seconds": 45,
     "poll_interval_seconds": 3,
+    "minimum_version": "1.2.0",
+    "required_capabilities": [
+      "finish"
+    ],
     "direction": "outbound-only",
     "arbitrary_shell": false
   },
@@ -51,6 +87,9 @@
     "auto_publish_clean_local_commits": true,
     "vps_candidate_adoption": "tracked-existing-files-only-exact-base",
     "vps_untracked_files": "fail-closed",
+    "auto_storage_retention": true,
+    "host_execution": "operator-local-or-production-delegated-through-fixed-action-bridge",
+    "global_serialization": "canonical-production-volume-lease",
     "database_migrations": "not-auto-applied",
     "wolo_runtime_mutation": false,
     "final_requirement": "certified-production-and-estate-p0-0-p1-0"
@@ -72,7 +111,7 @@
     "note": "Pending high-ROI off-host encrypted evidence vault and restore drill."
   },
   "legacy_deployment_artifacts": {
-    "ecosystem.config.js": "non-canonical-review-or-retire",
-    "Dockerfile": "non-canonical-review-package-manager-contract"
+    "ecosystem.config.js": "must-be-absent",
+    "Dockerfile": "must-be-absent"
   }
 }

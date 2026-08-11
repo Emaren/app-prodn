@@ -3,7 +3,9 @@ from __future__ import annotations
 import importlib.util
 import pathlib
 import sys
+import tempfile
 import unittest
+from unittest.mock import patch
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "aoe2_finish.py"
 SCRIPTS = SCRIPT.parent
@@ -89,6 +91,87 @@ class FinishTests(unittest.TestCase):
         self.assertFalse(MODULE.needs_deploy(clean))
         changed = {**clean, "local": {"head": "b"}}
         self.assertTrue(MODULE.needs_deploy(changed))
+
+    def test_checkpoint_receipt_replaces_one_atomic_file(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = pathlib.Path(temp) / "finish.json"
+            payload = {"status": "RUNNING", "phases": {}}
+            MODULE.checkpoint_receipt(path, payload)
+            payload["status"] = "CERTIFIED"
+            MODULE.checkpoint_receipt(path, payload)
+            stored = MODULE.json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(stored["status"], "CERTIFIED")
+            self.assertIn("updated_at", stored)
+            self.assertEqual(list(path.parent.glob("*.tmp")), [])
+
+    def test_production_role_can_be_forced_without_path_guessing(self):
+        with patch.dict(MODULE.os.environ, {"AOE2_FINISH_HOST_ROLE": "production"}):
+            self.assertTrue(MODULE.is_production_checkout())
+        with patch.dict(MODULE.os.environ, {"AOE2_FINISH_HOST_ROLE": "operator"}):
+            self.assertFalse(MODULE.is_production_checkout())
+
+    def test_environment_value_parser_never_executes_content(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = pathlib.Path(temp) / "bridge.env"
+            path.write_text(
+                "# comment\nexport AOE2WAR_OS_BRIDGE_TOKEN='fixed-token'\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                MODULE.parse_environment_value(path, "AOE2WAR_OS_BRIDGE_TOKEN"),
+                "fixed-token",
+            )
+
+    def test_delegated_bridge_run_defers_reload_to_parent(self):
+        with patch.dict(
+            MODULE.os.environ,
+            {"AOE2WAR_OPERATOR_BRIDGE_RUN_ID": "run-123"},
+        ):
+            result = MODULE.reload_operator_bridge_after_release(
+                MODULE.Progress(enabled=False)
+            )
+        self.assertEqual(result["status"], "PARENT_SELF_RELOAD_PENDING")
+
+    def test_external_source_authorities_fail_closed_on_dirty_repo(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = pathlib.Path(temp)
+            external = base / "external"
+            docs = base / "docs"
+            external.mkdir()
+            docs.mkdir()
+            with (
+                patch.object(
+                    MODULE.aoe2_update,
+                    "SOURCES",
+                    {"app-prodn": MODULE.ROOT, "api-prodn": external},
+                ),
+                patch.object(MODULE.aoe2_update, "DOCS", docs),
+                patch.object(
+                    MODULE.aoe2_update,
+                    "git_output",
+                    side_effect=lambda _repo, command, *args: (
+                        "main" if command == "branch" else "a" * 40
+                    ),
+                ),
+                patch.object(
+                    MODULE.aoe2_update,
+                    "status_paths",
+                    side_effect=lambda repo: {"changed.py"} if repo == external else set(),
+                ),
+                patch.object(
+                    MODULE.aoe2_update,
+                    "remote_sha",
+                    return_value="a" * 40,
+                ),
+            ):
+                result = MODULE.external_source_authority_snapshot()
+
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertEqual(
+            result["repositories"]["api-prodn"]["status"],
+            "DIRTY",
+        )
+        self.assertTrue(any("api-prodn" in item for item in result["blockers"]))
 
 
 if __name__ == "__main__":

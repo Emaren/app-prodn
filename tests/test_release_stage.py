@@ -28,7 +28,7 @@ def sample():
         "status": "STAGED",
         "release_sha": release,
         "previous_sha": previous,
-        "source_sha": release,
+        "source_sha": previous,
         "active_build_id": "old-build",
         "staged_build_id": "candidate-build",
         "live_build_version": "old-version",
@@ -37,6 +37,14 @@ def sample():
         "service": "active",
         "wolo8092": "1",
         "wolo8093": "1",
+        "isolated_worktree": "1",
+        "dependency_contract_unchanged": "1",
+        "cache_free_artifact": "1",
+        "artifact_path_relocated": "1",
+        "live_source_mutated": "0",
+        "live_public_mutated": "0",
+        "live_node_modules_mutated": "0",
+        "live_build_version_mutated": "0",
         "receipt_dir": "/mnt/receipt",
     }
     return data, manifest, result
@@ -82,7 +90,7 @@ class StageTests(unittest.TestCase):
             MODULE.validate_stage_result(data, manifest, result),
         )
 
-    def test_stage_script_builds_beside_live(self):
+    def test_stage_script_builds_in_disposable_worktree(self):
         script = MODULE.remote_stage_script(
             release_sha="b" * 40,
             previous_sha="a" * 40,
@@ -91,10 +99,19 @@ class StageTests(unittest.TestCase):
             receipt_dir="/mnt/receipt",
         )
         self.assertIn("NEXT_DIST_DIR=.next-release", script)
-        self.assertIn("sudo -n -u tony", script)
+        self.assertIn('git worktree add --detach "$build_worktree" "$RELEASE"', script)
+        self.assertIn("/tmp/aoe2war-stage-XXXXXXXXXX", script)
+        self.assertIn('${#build_worktree}', script)
+        self.assertIn('${#LIVE_REPO}', script)
+        self.assertIn('cp -a node_modules "$build_worktree/node_modules"', script)
+        self.assertIn('cd "$build_worktree"', script)
+        self.assertIn('NEXT_DIST_DIR=.next-release yarn build', script)
+        self.assertIn('test "$(yarn --version)" = "1.22.22"', script)
+        self.assertNotIn("sudo -n -u tony", script)
         self.assertIn("test ! -e .next-release", script)
+        self.assertNotIn('git reset --hard "$RELEASE"', script)
 
-    def test_stage_script_persists_bound_release_evidence_before_source_advance(self):
+    def test_stage_script_persists_evidence_before_isolated_build_and_copy(self):
         script = MODULE.remote_stage_script(
             release_sha="b" * 40,
             previous_sha="a" * 40,
@@ -106,9 +123,11 @@ class StageTests(unittest.TestCase):
         )
         manifest_write = script.index("release-manifest.json")
         gate_write = script.index("gate-receipt.json")
-        source_advance = script.index('git reset --hard "$RELEASE"')
-        self.assertLess(manifest_write, source_advance)
-        self.assertLess(gate_write, source_advance)
+        worktree_build = script.index('git worktree add --detach "$build_worktree"')
+        live_copy = script.index('mv "$stage_copy" .next-release')
+        self.assertLess(manifest_write, worktree_build)
+        self.assertLess(gate_write, worktree_build)
+        self.assertLess(worktree_build, live_copy)
         self.assertIn('= "$MANIFEST_SHA"', script)
         self.assertIn('= "$GATE_SHA"', script)
 
@@ -136,9 +155,9 @@ class StageTests(unittest.TestCase):
         )
         trap_pos = script.index("trap restore_stage_failure EXIT")
         mutation_pos = script.index("mutation_started=1")
-        reset_pos = script.index('git reset --hard "$RELEASE"')
+        copy_pos = script.index('mv "$stage_copy" .next-release')
         self.assertLess(trap_pos, mutation_pos)
-        self.assertLess(mutation_pos, reset_pos)
+        self.assertLess(mutation_pos, copy_pos)
         self.assertIn("NOT_REQUIRED", script)
         self.assertIn("RESTORED", script)
 
@@ -154,7 +173,7 @@ class StageTests(unittest.TestCase):
         self.assertNotIn("systemctl start", script)
         self.assertNotIn("systemctl restart", script)
 
-    def test_stage_script_has_automatic_source_restore(self):
+    def test_stage_script_cleans_partial_artifact_without_source_mutation(self):
         previous = "a" * 40
         script = MODULE.remote_stage_script(
             release_sha="b" * 40,
@@ -163,9 +182,40 @@ class StageTests(unittest.TestCase):
             gate_sha="d" * 64,
             receipt_dir="/mnt/receipt",
         )
-        self.assertIn('git reset --hard "$PREVIOUS"', script)
+        self.assertNotIn('git reset --hard "$PREVIOUS"', script)
+        self.assertNotIn('git reset --hard "$RELEASE"', script)
         self.assertIn("rm -rf .next-release", script)
+        self.assertIn("cleanup_build_worktree", script)
         self.assertIn("trap restore_stage_failure EXIT", script)
+
+    def test_stage_script_requires_unchanged_dependency_contract_and_cache_free_copy(self):
+        script = MODULE.remote_stage_script(
+            release_sha="b" * 40,
+            previous_sha="a" * 40,
+            manifest_sha="c" * 64,
+            gate_sha="d" * 64,
+            receipt_dir="/mnt/receipt",
+        )
+        self.assertIn('git diff --quiet "$PREVIOUS" "$RELEASE" -- yarn.lock', script)
+        self.assertIn("will not reuse incompatible production node_modules", script)
+        self.assertIn('dependency_contract "$PREVIOUS"', script)
+        self.assertIn("atomic node_modules activation/rollback is required", script)
+        self.assertIn('rm -rf "$build_worktree/.next-release/cache"', script)
+        self.assertIn('test ! -e .next-release/cache', script)
+        self.assertIn("artifact relocation paths differ in byte length", script)
+        self.assertIn("embedded worktree path remains in artifact file", script)
+        self.assertIn('artifact_path_relocated\t1', script)
+        self.assertIn('live_source_mutated\t0', script)
+
+    def test_isolated_stage_invariant_is_required(self):
+        data, manifest, result = sample()
+        result["live_node_modules_mutated"] = "1"
+        self.assertTrue(
+            any(
+                "live_node_modules_mutated" in error
+                for error in MODULE.validate_stage_result(data, manifest, result)
+            )
+        )
 
     def test_stage_script_only_observes_wolo_ports(self):
         script = MODULE.remote_stage_script(
@@ -179,6 +229,22 @@ class StageTests(unittest.TestCase):
         self.assertIn(":8093", script)
         self.assertNotIn("systemctl restart wolo", script.lower())
         self.assertNotIn("kill", script.lower())
+
+    def test_exact_local_stage_receipt_is_persisted_with_durable_hash(self):
+        receipt_dir = (
+            f"{MODULE.REMOTE_RECEIPT_ROOT}/stage-stamp-{'b' * 12}"
+        )
+        script = MODULE.durable_stage_receipt_script(
+            receipt_dir=receipt_dir,
+            receipt_text='{"status":"STAGED"}\n',
+            receipt_sha256="c" * 64,
+        )
+        self.assertIn("refusing non-canonical durable stage receipt path", script)
+        self.assertIn("stage-receipt.json.sha256", script)
+        self.assertIn('cmp -s "$tmp_receipt" "$RECEIPT/stage-receipt.json"', script)
+        self.assertIn('mv "$tmp_receipt" "$RECEIPT/stage-receipt.json"', script)
+        self.assertIn("stage_receipt_sha256", script)
+        self.assertNotIn("rm -rf", script)
 
 
 if __name__ == "__main__":

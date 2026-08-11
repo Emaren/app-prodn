@@ -45,6 +45,24 @@ class OperatorBridgeTests(unittest.TestCase):
                 [str(MODULE.CLI), "deploy"],
             )
 
+    def test_finish_is_fixed_command_with_bounded_parameters(self):
+        self.assertEqual(
+            MODULE.command_for_run(
+                {
+                    "action": "finish",
+                    "parameters": {"message": "Ship the war room", "dryRun": True},
+                }
+            ),
+            [
+                str(MODULE.CLI),
+                "finish",
+                "--json",
+                "--message",
+                "Ship the war room",
+                "--dry-run",
+            ],
+        )
+
     def test_token_file(self):
         with tempfile.TemporaryDirectory() as temp:
             token_file = Path(temp) / "token"

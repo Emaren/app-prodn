@@ -6,7 +6,11 @@ import {
   bridgeTokenMatches,
   claimNextAoe2OsRun,
   completeAoe2OsRun,
+  createAoe2OsRun,
   isAoe2OsAction,
+  loadAoe2OsDashboard,
+  readAoe2OsRun,
+  readAoe2OsRunEvents,
   writeAoe2OsBridgeHeartbeat,
   writeAoe2OsSnapshot,
 } from "@/lib/aoe2Os";
@@ -81,6 +85,63 @@ export async function POST(request: NextRequest) {
   }
 
   const op = text(body.op, 32);
+
+  // The production CLI uses the same authenticated, fixed-action control
+  // plane to delegate `finish` to the Mac source authority. These operations
+  // intentionally do not publish a fake VPS bridge heartbeat.
+  try {
+    if (op === "queue_finish") {
+      const dashboard = await loadAoe2OsDashboard();
+      if (
+        !dashboard.bridge?.online ||
+        !dashboard.bridge.capabilities.includes("finish")
+      ) {
+        return NextResponse.json(
+          { detail: "The Mac Operator Bridge is not online with finish capability." },
+          { status: 503, headers: NO_STORE }
+        );
+      }
+
+      const run = await createAoe2OsRun({
+        action: "finish",
+        requestedByUserId: 0,
+        requestedByUid: `production-cli:${text(body.hostname, 120) || "unknown"}`,
+        parameters: {
+          message: text(body.message, 200) || "Finish AoE2WAR work",
+          dryRun: body.dryRun === true,
+        },
+      });
+      return NextResponse.json({ ok: true, run }, { headers: NO_STORE });
+    }
+
+    if (op === "run_status") {
+      const runId = text(body.runId, 100);
+      if (!runId) {
+        return NextResponse.json(
+          { detail: "runId is required." },
+          { status: 400, headers: NO_STORE }
+        );
+      }
+      const run = await readAoe2OsRun(runId);
+      if (!run) {
+        return NextResponse.json(
+          { detail: "AoE2WAR OS run not found." },
+          { status: 404, headers: NO_STORE }
+        );
+      }
+      const events = await readAoe2OsRunEvents(runId);
+      return NextResponse.json({ ok: true, run, events }, { headers: NO_STORE });
+    }
+  } catch (error) {
+    return NextResponse.json(
+      {
+        detail:
+          error instanceof Error ? error.message : "AoE2WAR OS delegation failed.",
+      },
+      { status: 409, headers: NO_STORE }
+    );
+  }
+
   const bridge = bridgeFields(body);
 
   if (!bridge) {

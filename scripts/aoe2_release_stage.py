@@ -27,7 +27,6 @@ from aoe2_release_ship import (
 
 STAGE_RECEIPT_DIR = ROOT / ".aoe2war-release" / "stage-receipts"
 REMOTE_RECEIPT_ROOT = "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts"
-BUILD_USER = "tony"
 
 
 class StageError(RuntimeError):
@@ -85,24 +84,35 @@ GATE_SHA={q(gate_sha)}
 RECEIPT={q(receipt_dir)}
 SERVICE={q(SERVICE)}
 PUBLIC={q(PUBLIC)}
+LIVE_REPO={q(PROD_REPO)}
 MANIFEST_CONTENT={q(manifest_text)}
 GATE_CONTENT={q(gate_text)}
 
 mutation_started=0
+build_parent=""
+build_worktree=""
+
+cleanup_build_worktree() {{
+  if [ -n "$build_worktree" ] && [ -d "$build_worktree" ]; then
+    git worktree remove --force "$build_worktree" >/dev/null 2>&1 || true
+    if [ -e "$build_worktree" ]; then
+      rm -rf -- "$build_worktree" >/dev/null 2>&1 || true
+    fi
+  fi
+  if [ -n "$build_parent" ] && [ -d "$build_parent" ]; then
+    rm -rf -- "$build_parent" >/dev/null 2>&1 || true
+  fi
+  git worktree prune >/dev/null 2>&1 || true
+}}
 
 restore_stage_failure() {{
   rc="$?"
+  cleanup_build_worktree
   if [ "$rc" -ne 0 ]; then
     if [ "$mutation_started" = "1" ]; then
       rm -rf .next-release
-      git reset --hard "$PREVIOUS" >/dev/null 2>&1 || true
-      if [ "$old_version_present" = "1" ] && [ -f "$RECEIPT/pre-build-version" ]; then
-        cp -p "$RECEIPT/pre-build-version" .aoe2war-build-version || true
-      else
-        rm -f .aoe2war-build-version || true
-      fi
       printf 'recovery\tRESTORED\n'
-      printf 'status=FAILED\nexit_code=%s\nrestored_source=%s\n' \
+      printf 'status=FAILED\nexit_code=%s\nsource_unchanged=%s\n' \
         "$rc" "$(git rev-parse HEAD 2>/dev/null || true)" \
         > "$RECEIPT/stage-status.txt" || true
     else
@@ -131,12 +141,7 @@ before_wolo8093="$(ss -ltn | grep -Ec ':8093[[:space:]]' || true)"
 origin="$(git remote get-url origin)"
 protocol="$(git config --local --get protocol.version || true)"
 sshcmd="$(git config --local --get core.sshCommand || true)"
-
-old_version_present=0
-if [ -f .aoe2war-build-version ]; then
-  old_version_present=1
-  cp -p .aoe2war-build-version "$RECEIPT/pre-build-version"
-fi
+before_build_version_file="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
 
 printf '%s\n' \
   "release_sha=$RELEASE" \
@@ -152,6 +157,7 @@ printf '%s\n' \
   "before_public=$before_public" \
   "before_wolo8092=$before_wolo8092" \
   "before_wolo8093=$before_wolo8093" \
+  "before_build_version_file=$before_build_version_file" \
   "origin=$origin" \
   "protocol=$protocol" \
   "sshcmd=$sshcmd" \
@@ -162,28 +168,119 @@ test "$before_head" = "$PREVIOUS"
 test "$before_dirty" = "0"
 test "$before_service" = "active"
 test -n "$before_active_build"
-test "$before_wolo8092" -ge 1
-test "$before_wolo8093" -ge 1
+test "$before_build_version_file" = "$(
+  printf '%s' "$before_internal" |
+    python3 -c 'import json,sys; print(json.load(sys.stdin).get("buildVersion",""))'
+)"
+test "$before_wolo8092" = "1"
+test "$before_wolo8093" = "1"
 test ! -e .next-release
 
 git fetch origin --prune
 remote_main="$(git rev-parse origin/main)"
 test "$remote_main" = "$RELEASE"
+if ! git diff --quiet "$PREVIOUS" "$RELEASE" -- yarn.lock; then
+  echo "STOP: yarn.lock changed; isolated staging will not reuse incompatible production node_modules." >&2
+  exit 42
+fi
+dependency_contract() {{
+  git show "$1:package.json" | python3 -c '
+import json,sys
+p=json.load(sys.stdin)
+keys=("dependencies","devDependencies","optionalDependencies","peerDependencies","packageManager")
+print(json.dumps({{key:p.get(key) for key in keys}},sort_keys=True,separators=(",",":")))
+'
+}}
+previous_dependency_contract="$(dependency_contract "$PREVIOUS")"
+release_dependency_contract="$(dependency_contract "$RELEASE")"
+if [ "$previous_dependency_contract" != "$release_dependency_contract" ]; then
+  echo "STOP: package dependency contract changed; atomic node_modules activation/rollback is required." >&2
+  exit 42
+fi
+test "$(yarn --version)" = "1.22.22"
+command -v rsync >/dev/null
 
-mutation_started=1
-git reset --hard "$RELEASE"
-test "$(git rev-parse HEAD)" = "$RELEASE"
-test -z "$(git status --porcelain --untracked-files=all)"
+build_parent="$(mktemp -d {q('/var/www/AoE2HDBets/.aoe2war-stage-XXXXXX')})"
+build_worktree="$(mktemp -d /tmp/aoe2war-stage-XXXXXXXXXX)"
+# Next embeds absolute project paths in several runtime manifests. Use an
+# equal-length disposable path so binary-safe relocation cannot shift offsets.
+test "${{#build_worktree}}" = "${{#LIVE_REPO}}"
+rmdir "$build_worktree"
+git worktree add --detach "$build_worktree" "$RELEASE" \
+  > "$RECEIPT/worktree-add.log" 2>&1
+test "$(git -C "$build_worktree" rev-parse HEAD)" = "$RELEASE"
 
-rm -rf .next-release
-sudo -n -u {q(BUILD_USER)} -H env NEXT_DIST_DIR=.next-release npm run build \
+# The current automatic lane deliberately accepts only an unchanged Yarn lock
+# and package dependency contract. Copy the already-proven production
+# dependency tree into the isolated worktree; build/prebuild tooling may mutate
+# only this disposable copy.
+cp -a node_modules "$build_worktree/node_modules"
+(
+  cd "$build_worktree"
+  env NEXT_DIST_DIR=.next-release yarn build
+) \
   > "$RECEIPT/build.log" 2>&1
 
-test -f .next-release/BUILD_ID
-test -f .aoe2war-build-version
+test -f "$build_worktree/.next-release/BUILD_ID"
+test -f "$build_worktree/.aoe2war-build-version"
 
-staged_build="$(cat .next-release/BUILD_ID)"
-candidate_version="$(cat .aoe2war-build-version | tr -d '\r\n')"
+# Next's build cache is rebuildable and is never part of a staged or durable
+# rollback runtime. Removing it before hashing makes the receipt bind the exact
+# cache-free artifact that activation will consume.
+rm -rf "$build_worktree/.next-release/cache"
+test ! -e "$build_worktree/.next-release/cache"
+
+# Relocate every embedded disposable-worktree path to the canonical live path
+# before hashing. Equal byte lengths keep binary/source-map offsets stable.
+relocated_files="$(
+  python3 - "$build_worktree/.next-release" "$build_worktree" "$LIVE_REPO" <<'PY'
+import os
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+old_text = sys.argv[2]
+new_text = sys.argv[3]
+old = old_text.encode()
+new = new_text.encode()
+if len(old) != len(new):
+    raise SystemExit("artifact relocation paths differ in byte length")
+
+changed = 0
+for path in root.rglob("*"):
+    if path.is_symlink():
+        target = os.readlink(path)
+        if old_text in target:
+            path.unlink()
+            path.symlink_to(target.replace(old_text, new_text))
+            changed += 1
+        continue
+    if not path.is_file():
+        continue
+    data = path.read_bytes()
+    if old in data:
+        path.write_bytes(data.replace(old, new))
+        changed += 1
+
+for path in root.rglob("*"):
+    if path.is_symlink():
+        if old_text in os.readlink(path):
+            raise SystemExit("embedded worktree path remains in artifact symlink")
+        continue
+    if path.is_file() and old in path.read_bytes():
+        raise SystemExit("embedded worktree path remains in artifact file")
+
+print(changed)
+PY
+)"
+test "$relocated_files" -ge 1
+
+staged_build="$(cat "$build_worktree/.next-release/BUILD_ID")"
+candidate_version="$(cat "$build_worktree/.aoe2war-build-version" | tr -d '\r\n')"
+stage_copy="$build_parent/live-next-release"
+mkdir "$stage_copy"
+rsync -a --delete "$build_worktree/.next-release/" "$stage_copy/"
+test ! -e "$stage_copy/cache"
 artifact_sha="$(
   tar \
     --sort=name \
@@ -191,10 +288,19 @@ artifact_sha="$(
     --owner=0 \
     --group=0 \
     --numeric-owner \
-    -cf - .next-release \
+    -C "$stage_copy" -cf - . \
   | sha256sum \
   | awk '{{print $1}}'
 )"
+
+mutation_started=1
+mv "$stage_copy" .next-release
+test "$(cat .next-release/BUILD_ID)" = "$staged_build"
+test ! -e .next-release/cache
+
+cleanup_build_worktree
+build_parent=""
+build_worktree=""
 
 after_head="$(git rev-parse HEAD)"
 after_dirty="$(git status --porcelain --untracked-files=all | wc -l | tr -d ' ')"
@@ -204,8 +310,9 @@ after_internal="$(curl -fsS --max-time 6 http://127.0.0.1:3030/api/deployment-ve
 after_public="$(curl -fsS --max-time 8 "$PUBLIC/api/deployment-version")"
 after_wolo8092="$(ss -ltn | grep -Ec ':8092[[:space:]]' || true)"
 after_wolo8093="$(ss -ltn | grep -Ec ':8093[[:space:]]' || true)"
+after_build_version_file="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
 
-test "$after_head" = "$RELEASE"
+test "$after_head" = "$PREVIOUS"
 test "$after_dirty" = "0"
 test "$after_service" = "active"
 test "$after_active_build" = "$before_active_build"
@@ -213,6 +320,7 @@ test "$after_internal" = "$before_internal"
 test "$after_public" = "$before_public"
 test "$after_wolo8092" = "$before_wolo8092"
 test "$after_wolo8093" = "$before_wolo8093"
+test "$after_build_version_file" = "$before_build_version_file"
 test -n "$staged_build"
 test -n "$candidate_version"
 test -n "$artifact_sha"
@@ -233,6 +341,14 @@ printf '%s\n' \
   "service=$after_service" \
   "wolo8092=$after_wolo8092" \
   "wolo8093=$after_wolo8093" \
+  "isolated_worktree=1" \
+  "dependency_contract_unchanged=1" \
+  "cache_free_artifact=1" \
+  "artifact_path_relocated=1" \
+  "live_source_mutated=0" \
+  "live_public_mutated=0" \
+  "live_node_modules_mutated=0" \
+  "live_build_version_mutated=0" \
   "receipt_dir=$RECEIPT" \
   > "$RECEIPT/stage-status.txt"
 
@@ -251,6 +367,14 @@ printf 'artifact_sha256\t%s\n' "$artifact_sha"
 printf 'service\t%s\n' "$after_service"
 printf 'wolo8092\t%s\n' "$after_wolo8092"
 printf 'wolo8093\t%s\n' "$after_wolo8093"
+printf 'isolated_worktree\t1\n'
+printf 'dependency_contract_unchanged\t1\n'
+printf 'cache_free_artifact\t1\n'
+printf 'artifact_path_relocated\t1\n'
+printf 'live_source_mutated\t0\n'
+printf 'live_public_mutated\t0\n'
+printf 'live_node_modules_mutated\t0\n'
+printf 'live_build_version_mutated\t0\n'
 printf 'receipt_dir\t%s\n' "$RECEIPT"
 
 trap - EXIT
@@ -271,8 +395,8 @@ def validate_stage_result(
         errors.append("staged release SHA does not equal manifest release SHA")
     if result.get("previous_sha") != manifest.get("previous_production_sha"):
         errors.append("stage previous SHA does not equal manifest previous production")
-    if result.get("source_sha") != manifest.get("release_sha"):
-        errors.append("production source did not advance to manifest release SHA")
+    if result.get("source_sha") != manifest.get("previous_production_sha"):
+        errors.append("production source changed during isolated staging")
     if result.get("active_build_id") != prod.get("active_build_id"):
         errors.append("active runtime BUILD_ID changed during staging")
     if not result.get("staged_build_id"):
@@ -290,6 +414,18 @@ def validate_stage_result(
         errors.append("WOLO 8092 listener count changed during staging")
     if result.get("wolo8093") != str(prod.get("wolo_8093_count")):
         errors.append("WOLO 8093 listener count changed during staging")
+    for key, expected in (
+        ("isolated_worktree", "1"),
+        ("dependency_contract_unchanged", "1"),
+        ("cache_free_artifact", "1"),
+        ("artifact_path_relocated", "1"),
+        ("live_source_mutated", "0"),
+        ("live_public_mutated", "0"),
+        ("live_node_modules_mutated", "0"),
+        ("live_build_version_mutated", "0"),
+    ):
+        if result.get(key) != expected:
+            errors.append(f"isolated-stage invariant failed: {key}={result.get(key)!r}")
 
     return errors
 
@@ -304,6 +440,98 @@ def write_local_receipt(payload: dict) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+def durable_stage_receipt_script(
+    *,
+    receipt_dir: str,
+    receipt_text: str,
+    receipt_sha256: str,
+) -> str:
+    """Persist the exact local stage receipt beside its durable VPS evidence."""
+    q = shlex.quote
+    return f"""
+set -Eeuo pipefail
+RECEIPT={q(receipt_dir)}
+RECEIPT_ROOT={q(REMOTE_RECEIPT_ROOT)}
+EXPECTED_SHA={q(receipt_sha256)}
+RECEIPT_CONTENT={q(receipt_text)}
+
+case "$RECEIPT" in
+  "$RECEIPT_ROOT"/stage-*) ;;
+  *) echo "refusing non-canonical durable stage receipt path" >&2; exit 41 ;;
+esac
+test -d "$RECEIPT"
+test -f "$RECEIPT/release-manifest.json"
+test -f "$RECEIPT/gate-receipt.json"
+test -f "$RECEIPT/stage-status.txt"
+
+tmp_receipt="$RECEIPT/.stage-receipt.json.$$"
+tmp_digest="$RECEIPT/.stage-receipt.json.sha256.$$"
+cleanup() {{ rm -f -- "$tmp_receipt" "$tmp_digest"; }}
+trap cleanup EXIT
+umask 077
+printf '%s' "$RECEIPT_CONTENT" > "$tmp_receipt"
+actual_sha="$(sha256sum "$tmp_receipt" | awk '{{print $1}}')"
+test "$actual_sha" = "$EXPECTED_SHA"
+printf '%s  stage-receipt.json\n' "$EXPECTED_SHA" > "$tmp_digest"
+
+if [ -e "$RECEIPT/stage-receipt.json" ]; then
+  cmp -s "$tmp_receipt" "$RECEIPT/stage-receipt.json"
+  rm -f -- "$tmp_receipt"
+else
+  mv "$tmp_receipt" "$RECEIPT/stage-receipt.json"
+fi
+if [ -e "$RECEIPT/stage-receipt.json.sha256" ]; then
+  cmp -s "$tmp_digest" "$RECEIPT/stage-receipt.json.sha256"
+  rm -f -- "$tmp_digest"
+else
+  mv "$tmp_digest" "$RECEIPT/stage-receipt.json.sha256"
+fi
+
+test "$(sha256sum "$RECEIPT/stage-receipt.json" | awk '{{print $1}}')" = "$EXPECTED_SHA"
+test "$(awk 'NR == 1 {{print $1}}' "$RECEIPT/stage-receipt.json.sha256")" = "$EXPECTED_SHA"
+printf 'status\tDURABLE\n'
+printf 'stage_receipt_sha256\t%s\n' "$EXPECTED_SHA"
+printf 'stage_receipt_path\t%s\n' "$RECEIPT/stage-receipt.json"
+"""
+
+
+def persist_durable_stage_receipt(receipt_dir: str, local_receipt: Path) -> dict[str, str]:
+    receipt_text = local_receipt.read_text(encoding="utf-8")
+    receipt_sha = sha256_file(local_receipt)
+    script = durable_stage_receipt_script(
+        receipt_dir=receipt_dir,
+        receipt_text=receipt_text,
+        receipt_sha256=receipt_sha,
+    )
+    p = run(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=8",
+            PROD_HOST,
+            f"bash -lc {shlex.quote(script)}",
+        ],
+        timeout=90,
+    )
+    if p.returncode != 0:
+        detail = ((p.stderr or "") or (p.stdout or "")).strip()
+        raise StageError(
+            "exact stage receipt could not be persisted with durable evidence"
+            + (f": {detail}" if detail else "")
+        )
+    result = parse_kv(p.stdout or "")
+    if (
+        result.get("status") != "DURABLE"
+        or result.get("stage_receipt_sha256") != receipt_sha
+        or result.get("stage_receipt_path")
+        != f"{receipt_dir}/stage-receipt.json"
+    ):
+        raise StageError("durable stage receipt proof is incomplete or inconsistent")
+    return result
 
 
 def stage_release(
@@ -374,7 +602,7 @@ def stage_release(
         print(f"Manifest SHA:   {manifest_sha}")
         print(f"Gate SHA:       {gate_sha}")
         print(f"Receipt:        {receipt_dir}")
-        print("Action:         advance exact source + build .next-release")
+        print("Action:         isolated worktree build + cache-free .next-release copy")
         print("Live runtime:   MUST REMAIN UNCHANGED")
         print("WOLO:           OBSERVE ONLY")
         print()
@@ -403,8 +631,8 @@ def stage_release(
             "stdout_tail": (p.stdout or "")[-4000:],
             "stderr_tail": (p.stderr or "")[-4000:],
             "rollback_policy": (
-                "remote trap removes .next-release, restores previous source "
-                "and pre-build version identity; live runtime is never stopped"
+                "remote trap removes any partial .next-release and disposable "
+                "worktree; live source/build-version/runtime are never changed"
             ),
         }
         if json_output:
@@ -418,9 +646,9 @@ def stage_release(
             print(f"Receipt: {receipt_dir}")
             recovery = parse_kv(p.stdout or "").get("recovery")
             if recovery == "RESTORED":
-                print("Recovery: production source/build-version restoration completed.")
+                print("Recovery: partial staged artifact removed; live state was unchanged.")
             elif recovery == "NOT_REQUIRED":
-                print("Recovery: not required; failure occurred before source mutation.")
+                print("Recovery: not required; failure occurred before artifact copy.")
             else:
                 print("Recovery: unconfirmed; inspect production truth before retry.")
         return 1
@@ -469,6 +697,14 @@ def stage_release(
         "wolo_8092_count": int(result["wolo8092"]),
         "wolo_8093_count": int(result["wolo8093"]),
         "remote_receipt_dir": result["receipt_dir"],
+        "isolated_worktree": True,
+        "dependency_contract_unchanged": True,
+        "cache_free_artifact": True,
+        "artifact_path_relocated": True,
+        "live_source_mutated": False,
+        "live_public_mutated": False,
+        "live_node_modules_mutated": False,
+        "live_build_version_mutated": False,
         "live_runtime_mutated": False,
         "wolo_mutated": False,
     }
@@ -476,16 +712,52 @@ def stage_release(
     payload["local_receipt_path"] = str(local_receipt.relative_to(ROOT))
     payload["local_receipt_sha256"] = sha256_file(local_receipt)
 
+    try:
+        durable = persist_durable_stage_receipt(receipt_dir, local_receipt)
+    except StageError as exc:
+        if json_output:
+            print(
+                json.dumps(
+                    {
+                        **payload,
+                        "status": "UNVERIFIED",
+                        "error": str(exc),
+                        "recovery": (
+                            "the candidate remains staged and the exact local receipt "
+                            "remains available; cross-host resume is blocked until its "
+                            "durable receipt is proven"
+                        ),
+                    },
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            print("STOP: RELEASE STAGED BUT DURABLE RECEIPT PROOF FAILED")
+            print(f"  - {exc}")
+            print(f"Local receipt:  {payload['local_receipt_path']}")
+            print("Live runtime:   UNCHANGED")
+            print("Recovery:       retry from this host; cross-host resume remains blocked")
+        return 2
+
+    payload["remote_stage_receipt_path"] = durable["stage_receipt_path"]
+    payload["remote_stage_receipt_sha256"] = durable[
+        "stage_receipt_sha256"
+    ]
+
     if json_output:
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
 
-    print(f"Source:         {payload['source_sha']}")
+    print(f"Live source:    {payload['source_sha']}  UNCHANGED")
     print(f"Active build:   {payload['active_build_id']}  UNCHANGED")
     print(f"Staged build:   {payload['staged_build_id']}")
     print(f"Live version:   {payload['live_build_version']}  UNCHANGED")
     print(f"Candidate ver:  {payload['candidate_build_version']}")
     print(f"Artifact SHA:   {payload['artifact_sha256']}")
+    print("Build isolation: temporary detached worktree; live source/public/dependencies untouched")
+    print("Artifact paths: relocated to canonical live root before hashing")
+    print("Artifact cache: cache-free")
     print(f"Service:        {payload['service']}")
     print(
         "WOLO protected: "
@@ -494,6 +766,7 @@ def stage_release(
     )
     print(f"Remote receipt: {payload['remote_receipt_dir']}")
     print(f"Local receipt:  {payload['local_receipt_path']}")
+    print(f"Durable receipt: {payload['remote_stage_receipt_path']}")
     print()
     print("PASS: RELEASE STAGED — LIVE RUNTIME UNCHANGED — WOLO UNTOUCHED")
     return 0

@@ -31,6 +31,12 @@ class DoctorTests(unittest.TestCase):
         self.assertTrue(MODULE.version_prefix_matches("Python 3.13.5", "3.13"))
         self.assertFalse(MODULE.version_prefix_matches("Python 3.12.9", "3.13"))
 
+    def test_version_at_least(self):
+        self.assertTrue(MODULE.version_at_least("1.2.0", "1.2.0"))
+        self.assertTrue(MODULE.version_at_least("v1.3.1", "1.2.0"))
+        self.assertFalse(MODULE.version_at_least("1.1.9", "1.2.0"))
+        self.assertFalse(MODULE.version_at_least("unknown", "1.2.0"))
+
     def test_parse_percent(self):
         self.assertEqual(MODULE.parse_percent("87%"), 87)
         self.assertEqual(MODULE.parse_percent("87"), 87)

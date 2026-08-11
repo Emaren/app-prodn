@@ -43,33 +43,106 @@ Current restart tuning:
 
 This exists because normal Next shutdowns were hanging and making deploys flaky.
 
-## Standard operator deploy flow
+## One-command operator finish
 
-For ordinary `app-prodn` production releases, the canonical MBP workflow is:
+For an ordinary `app-prodn` release, run the same command from Tony's Mac or
+from the production `app-prodn` checkout:
 
 ```bash
-aoe2war status
-aoe2war deploy
-aoe2war status
-aoe2war releases --limit 5
+aoe2war finish
 ```
 
-`aoe2war deploy` is the normal production path. It performs the documentation
-baseline decision, risk gate, exact GitHub publish, release manifest, build
-beside live, zero-mutation activation preflight, runtime activation, immediate
-internal/public proof, a default 60-second/six-sample health soak while the
-rollback trap remains armed, certification, verified fast-rollback retention,
-and an independent final proof.
+Use `aoe2war finish --dry-run` for a read-only plan that includes source
+authority, expected deployment, Doctor blockers, validation steps, and the
+automatic mutation boundaries.
+
+On the Mac, `finish` directly owns the transaction. In the production checkout,
+the same command authenticates to the internal control plane, queues the exact
+allow-listed `finish` action for the outbound Mac Operator Bridge, and streams
+the run. If the bridge or credential is unavailable, delegation fails closed;
+the VPS does not SSH to itself or become a competing Git authority.
+
+`finish` reconciles eligible unpublished Mac work or a tracked VPS-first
+candidate from one exact base, gates and publishes the commit, refreshes
+governed documentation and context, applies only the policy-bound cache
+retention described below when eligible, deploys only when needed, certifies
+the runtime, runs the independent estate audit and Doctor, and leaves one
+checkpointed aggregate receipt. Untracked VPS files fail closed. Runtime
+certification is recorded immediately, so a later documentation or maintenance
+failure cannot incorrectly erase a successful activation.
+
+`aoe2war deploy` is the lower-level protected web release engine invoked by
+`finish`. It performs the documentation baseline decision, risk gate, exact
+GitHub publish, release manifest, isolated temporary-worktree build, cache-free
+staging beside live, zero-mutation activation preflight, bundled
+source/build-version/runtime activation while the service is stopped,
+immediate internal/public proof, a default 60-second/six-sample health soak
+while the full rollback trap remains armed, certification, verified
+fast-rollback retention, and an independent final proof. Invoke it directly
+only for a deliberately scoped release-engineering operation.
+
+If an exact `.next-release` candidate already exists, rerun `aoe2war finish`
+for the ordinary lane, or `aoe2war deploy` for a deliberately scoped low-level
+lane. The release engine resumes only the matching stage receipt and artifact;
+it does not blindly rebuild or discard the candidate. During `STAGED`,
+production source correctly remains on the previous live SHA.
 
 The command observes WOLO listeners `8092` and `8093` as protected dependencies
 and requires them to remain unchanged. It does not restart or mutate them.
 
-Mutating release operations are serialized by the release lock. Do not bypass
-the lock by manually running multiple overlapping production mutations.
+Mutating release operations are serialized across the Mac and production host
+by the canonical release lease, with checkout-local locks as a second guard.
+Do not bypass the lease by manually running overlapping production mutations.
 
 The automatic lane deliberately refuses releases containing Prisma migration
-paths. Use the reviewed manual/database procedure below when schema changes are
-actually required.
+paths, a changed `yarn.lock`, or changed dependency/package-manager sections in
+`package.json`. A dependency-contract-changing release needs a separately
+reviewed lane that atomically installs, activates, and rolls back `node_modules`;
+the release engine will not silently reuse incompatible production dependencies.
+
+It also never performs a database migration, Wolo mutation, host reboot,
+kernel/package upgrade, or broad cleanup. Those are separately authorized
+maintenance procedures. Observing exactly one listener on each protected Wolo
+port, `8092` and `8093`, is a health invariant; it is not permission to change
+either service.
+
+The current mutating release lane owns `app-prodn`. Estate audit observes the
+replay API, Watcher, documentation, storage, and Wolo boundaries, but `finish`
+does not silently deploy those repositories or turn cross-system observation
+into mutation authority.
+
+### Bounded storage retention
+
+`finish` previews this policy before mutation and again after certification. If
+the operations contract enables automatic retention and eligible caches exist,
+it applies the same digest-bound policy; otherwise it records preview/no-op
+truth. Preview the policy directly with:
+
+```bash
+aoe2war storage-retention
+```
+
+The preview is read-only and writes no receipt. An explicitly applied plan is:
+
+```bash
+aoe2war storage-retention --apply
+```
+
+Apply may remove only the exact `next/cache` directory from eligible older
+durable `activate-*` rollback generations. It protects at least the newest two
+activation generations; preserves every generation directory, source record,
+BUILD_ID, staged/activation/rollback receipt, and active runtime; refuses
+symlinks and special files; rechecks the digest-bound plan before each removal;
+and proves source/build/service/capacity and protected Wolo identity afterward.
+It must never expand into raw replay, database, settlement, user-upload,
+Evidence Vault, or general filesystem retention.
+
+Finalized release, rollback, finish, and retention receipts are immutable
+operational evidence. Never edit, reuse, or delete a finalized receipt to make
+state appear healthy; create a new superseding receipt. The mounted volume is
+durable local evidence, but is not an off-host backup. See
+`docs/EVIDENCE_VAULT.md` for the unconfigured off-host design and
+`docs/HOST_MAINTENANCE.md` for explicitly authorized reboot/package work.
 
 ### Normal rollback
 
@@ -106,7 +179,12 @@ aoe2war releases --limit 5
 The repository command is `bin/aoe2war`; Tony's MBP exposes it globally through
 `$HOME/bin/aoe2war`.
 
-## Manual / emergency deploy flow
+## Break-glass manual deploy flow
+
+This section is recovery guidance, not an alternative ordinary workflow. Stop
+and prefer `aoe2war finish` whenever the protected engine can run. A manual
+transaction requires an incident record, an exact release identity, a named
+operator, and preservation of equivalent receipts and rollback evidence.
 
 Production advances only to an exact reviewed commit. Source, migration,
 build, runtime, and public-release truth are verified separately.
@@ -179,17 +257,18 @@ Store durable rollbacks and receipts beneath:
 /mnt/HC_Volume_105319120/aoe2war/deploy-receipts/
 ```
 
-Preserve `.next`, source commit, build identities, the build-version file when
-present, systemd evidence, and repository-local Git configuration.
+Preserve a cache-free copy of `.next`, source commit, build identities, the
+build-version file when present, systemd evidence, and repository-local Git
+configuration. The root fast rollback may retain runtime cache; the durable
+copy should not.
 
-### 4. Advance only to the sealed commit
+### 4. Keep live source on the previous commit while staging
 
-```bash
-git reset --hard <sealed-commit>
-```
-
-Verify the exact commit and clean status afterward. Do not use an unbounded
-pull as the production release selector.
+Fetch and verify the sealed commit, but do not advance the live checkout before
+activation. Production source, `public/`, `.aoe2war-build-version`,
+`node_modules`, and `.next` must all remain on the current certified generation
+while `.next-release` is built. Do not use an unbounded pull as the release
+selector.
 
 ### 5. Apply migrations only when explicitly required
 
@@ -202,20 +281,21 @@ rollback plan are explicit.
 Documentation, presentation, and localization releases must not touch Prisma
 or the database unless their release plan specifically requires it.
 
-### 6. Build beside the active runtime
+### 6. Build in an isolated temporary worktree
 
-Build as the `tony` service user:
+Require `yarn.lock` and the `package.json` dependency/package-manager contract to
+be unchanged between the previous and sealed commits. Create a detached
+per-release Git worktree outside the live checkout, copy the proven production
+`node_modules` into that disposable worktree, verify pinned Yarn `1.22.22`, and
+run `NEXT_DIST_DIR=.next-release yarn build` there. Remove
+`.next-release/cache`, bind the artifact hash/BUILD_ID/build version in the
+stage receipt, copy the cache-free artifact into the live checkout as
+`.next-release`, and remove the worktree.
 
-```bash
-rm -rf .next-release
-
-sudo -n -u tony -H \
-  env NEXT_DIST_DIR=.next-release \
-  npm run build
-```
-
-Verify compilation, static-page generation, build identity, fatal-output
-absence, and repository cleanliness before stopping the service.
+Verify compilation, static-page generation, artifact identity, fatal-output
+absence, and that live source/public/build-version/dependencies/runtime/service
+identity did not change. Prefer the automated `aoe2war deploy` implementation;
+do not recreate this transaction ad hoc without its cleanup trap and receipts.
 
 ### 7. Swap runtimes
 
@@ -226,12 +306,14 @@ systemctl stop aoe2hdbets-web.service
 
 mv .next .next-rollback-<release>
 mv .next-release .next
+git reset --hard <sealed-commit>
+printf '%s\n' '<candidate-build-version>' > .aoe2war-build-version
 
-chown -R tony:tony .next
 systemctl start aoe2hdbets-web.service
 ```
 
-Do not use an unignored `.next.pre-*` directory.
+Source, build-version identity, and runtime must advance only inside the stopped
+service window. Do not use an unignored `.next.pre-*` directory.
 
 ### 8. Prove or roll back
 
@@ -252,8 +334,10 @@ directories whose BUILD_ID has a proven durable twin. Unmatched or legacy
 rollback artifacts are kept. Durable rollback and deployment receipts remain
 protected evidence on the mounted volume.
 
-A failure after runtime mutation restores the previous `.next`, build-version
-file, source commit, and service, then proves internal health.
+A failure after runtime mutation stops the service, moves the exact candidate
+back to `.next-release`, restores the previous `.next`, resets the previous
+source commit, restores the previous build-version file, restarts the service,
+and proves the complete source/build/version/runtime identity.
 
 ## Certified release-engineering completion — 2026-08-10
 
@@ -909,21 +993,18 @@ journalctl -u aoe2hdbets-web.service -n 80 --no-pager
 
 Then verify the public page is still using plain download anchors, not Next-prefetchable internal navigation.
 
-### Interrupted pulls
+### Dirty or historically interrupted checkout
 
-If a fast-forward pull dies partway through because of ownership drift, the repo can look locally modified even though it is just half-updated deployment state.
+Do not normalize a dirty production checkout with a generic stash/pull/restart
+recipe. Run `aoe2war finish --dry-run`: the protected lane can adopt an exact
+tracked VPS-first candidate only from one shared base and fails closed on
+untracked or ambiguous state.
 
-Recover deliberately:
-
-```bash
-git status --short
-git diff --stat
-git stash push -m interrupted-pull
-git pull --ff-only origin main
-git stash drop stash@{0}
-```
-
-Do not do this blindly if the VPS has intentional local changes.
+If a legacy manual fast-forward was interrupted, preserve `git status`, the
+exact diff, current HEAD, active build/version identity, and the latest stage
+and activation receipts before changing anything. Recover only through a
+reviewed incident-specific transaction. Never drop a stash or reset a path
+until its contents are proven redundant.
 
 ### `next-env.d.ts` drift
 
@@ -933,10 +1014,10 @@ This file still drifts on the VPS and has caused:
 - file ownership issues during builds
 - manual `chown tony:tony /var/www/AoE2HDBets/app-prodn/next-env.d.ts`
 
-Until fixed properly:
-
-- expect `git status` on the VPS to sometimes show `M next-env.d.ts`
-- stash or preserve it before pulling if needed
+Treat a new `next-env.d.ts` diff as unexplained production source state. Preserve
+and compare it with the sealed source, then let `aoe2war finish --dry-run`
+classify the checkout. Do not publish generated drift, stash it blindly, or
+resume with a manual pull merely to make status clean.
 
 ### Inbox attachments
 

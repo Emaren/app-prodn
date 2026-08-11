@@ -227,13 +227,21 @@ def path_risk(path: str) -> str:
         "scripts/aoe2_doctor.py",
         "scripts/aoe2_finish.py",
         "scripts/aoe2_operator_bridge.py",
+        "scripts/aoe2_storage_retention.py",
         "config/aoe2war-operations.json",
+        "config/test-contract.json",
+        ".nvmrc",
         "lib/aoe2Os.ts",
         "app/api/admin/aoe2war-os/route.ts",
         "app/api/internal/aoe2war-os/bridge/route.ts",
         "bin/aoe2-release",
         "bin/aoe2war-release",
         "bin/aoe2war",
+        "tests/test_aoe2_storage_retention.py",
+        "scripts/run_test_contract.py",
+        "scripts/scan_tracked_secrets.py",
+        "tests/test_test_contract.py",
+        "tests/test_scan_tracked_secrets.py",
         "deploy.md",
     }
     if p.startswith(infra_prefixes) or p in infra_exact:
@@ -319,6 +327,14 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
     commands.append(
         ("documentation-control-plane", ["python3", "scripts/docs_v2_check.py"], 120)
     )
+    commands.append(
+        ("tracked-secret-scan", ["python3", "scripts/scan_tracked_secrets.py"], 120)
+    )
+
+    if risk not in {"NO_CHANGE", "DOCUMENTATION"}:
+        commands.append(
+            ("active-node-test-contract", ["python3", "scripts/run_test_contract.py"], 300)
+        )
 
     release_tooling = any(
         path
@@ -331,6 +347,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
             "scripts/aoe2_doctor.py",
             "scripts/aoe2_finish.py",
             "scripts/aoe2_operator_bridge.py",
+            "scripts/aoe2_storage_retention.py",
             "config/aoe2war-operations.json",
             "scripts/aoe2_release.py",
             "scripts/aoe2_release_gate.py",
@@ -345,6 +362,11 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
             "tests/test_release_auto.py",
             "tests/test_release_rollback.py",
             "tests/test_aoe2_cli.py",
+            "tests/test_aoe2_storage_retention.py",
+            "scripts/run_test_contract.py",
+            "scripts/scan_tracked_secrets.py",
+            "tests/test_test_contract.py",
+            "tests/test_scan_tracked_secrets.py",
         }
         for path in paths
     )
@@ -368,6 +390,9 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "tests/test_aoe2_doctor.py",
                     "tests/test_aoe2_finish.py",
                     "tests/test_aoe2_operator_bridge.py",
+                    "tests/test_aoe2_storage_retention.py",
+                    "tests/test_test_contract.py",
+                    "tests/test_scan_tracked_secrets.py",
                 ],
                 120,
             )
@@ -390,6 +415,9 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "scripts/aoe2_doctor.py",
                     "scripts/aoe2_finish.py",
                     "scripts/aoe2_operator_bridge.py",
+                    "scripts/aoe2_storage_retention.py",
+                    "scripts/run_test_contract.py",
+                    "scripts/scan_tracked_secrets.py",
                 ],
                 120,
             )

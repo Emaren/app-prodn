@@ -11,11 +11,14 @@ import shlex
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.request
+import uuid
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import aoe2_audit
 import aoe2_doctor
@@ -52,10 +55,13 @@ class SourcePlan:
 
 
 class Progress:
-    def __init__(self) -> None:
+    def __init__(self, *, enabled: bool = True) -> None:
         self.started = time.monotonic()
+        self.enabled = enabled
 
     def emit(self, symbol: str, text: str) -> None:
+        if not self.enabled:
+            return
         elapsed = int(time.monotonic() - self.started)
         minutes, seconds = divmod(elapsed, 60)
         print(f"[{minutes:02d}:{seconds:02d}] {symbol} {text}", flush=True)
@@ -91,6 +97,231 @@ def run(
         raise FinishError(
             f"command timed out after {timeout}s: {shlex.join(args)}"
         ) from exc
+
+
+def is_production_checkout() -> bool:
+    forced = os.getenv("AOE2_FINISH_HOST_ROLE", "").strip().lower()
+    if forced:
+        if forced not in {"operator", "production"}:
+            raise FinishError(
+                "AOE2_FINISH_HOST_ROLE must be 'operator' or 'production'"
+            )
+        return forced == "production"
+    try:
+        contract = aoe2_doctor.load_contract()
+        production_repo = Path(str(contract["canonical"]["production_repo"]))
+    except Exception as exc:
+        raise FinishError(f"cannot resolve host role from operations contract: {exc}") from exc
+    return ROOT.resolve() == production_repo.resolve()
+
+
+def parse_environment_value(path: Path, key: str) -> str | None:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except PermissionError:
+        process = run(
+            ["sudo", "-n", "/usr/bin/cat", str(path)],
+            cwd=ROOT,
+            timeout=10,
+        )
+        if process.returncode != 0:
+            return None
+        text = process.stdout or ""
+    except FileNotFoundError:
+        return None
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[7:].lstrip()
+        name, separator, raw_value = line.partition("=")
+        if separator and name.strip() == key:
+            value = raw_value.strip()
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+                value = value[1:-1]
+            return value or None
+    return None
+
+
+def production_bridge_request(
+    *,
+    base_url: str,
+    token: str,
+    payload: dict[str, Any],
+    timeout: int = 30,
+) -> dict[str, Any]:
+    body = json.dumps(payload).encode("utf-8")
+    request = urllib.request.Request(
+        base_url.rstrip("/") + "/api/internal/aoe2war-os/bridge",
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "x-aoe2war-os-key": token,
+            "User-Agent": "AoE2WAR-Production-Finish/1.0",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            value = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", "replace")
+        raise FinishError(
+            f"Operator Bridge API HTTP {exc.code}: {detail[:1200]}"
+        ) from exc
+    except (urllib.error.URLError, TimeoutError) as exc:
+        raise FinishError(f"Operator Bridge API unavailable: {exc}") from exc
+    except json.JSONDecodeError as exc:
+        raise FinishError("Operator Bridge API returned invalid JSON") from exc
+    if not isinstance(value, dict):
+        raise FinishError("Operator Bridge API returned a non-object response")
+    return value
+
+
+def delegate_finish_from_production(
+    *,
+    message: str,
+    dry_run: bool,
+    json_mode: bool,
+) -> int:
+    contract = aoe2_doctor.load_contract()
+    canonical = contract["canonical"]
+    env_file = Path(str(canonical["bridge_env_file"]))
+    token = os.getenv("AOE2WAR_OS_BRIDGE_TOKEN", "").strip()
+    if not token:
+        token = parse_environment_value(env_file, "AOE2WAR_OS_BRIDGE_TOKEN") or ""
+    if not token:
+        raise FinishError(
+            "cannot read the Operator Bridge credential on production; "
+            f"verify {env_file} or passwordless scoped sudo access"
+        )
+
+    base_url = str(canonical["public_base_url"])
+    queued = production_bridge_request(
+        base_url=base_url,
+        token=token,
+        payload={
+            "op": "queue_finish",
+            "hostname": os.uname().nodename,
+            "message": message,
+            "dryRun": dry_run,
+        },
+    )
+    run_value = queued.get("run")
+    if not isinstance(run_value, dict) or not run_value.get("id"):
+        raise FinishError("Operator Bridge did not return a queued finish run")
+    run_id = str(run_value["id"])
+
+    if not json_mode:
+        print("⚔️  AOE2WAR FINISH · PRODUCTION DELEGATION", flush=True)
+        print(
+            f"Queued {run_id} on the canonical Mac source authority.",
+            flush=True,
+        )
+
+    seen_events: set[str] = set()
+    deadline = time.monotonic() + 3600
+    transient_started: float | None = None
+    while time.monotonic() < deadline:
+        try:
+            status_payload = production_bridge_request(
+                base_url=base_url,
+                token=token,
+                payload={"op": "run_status", "runId": run_id},
+            )
+            transient_started = None
+        except FinishError:
+            # The web service is expected to be briefly unavailable while its
+            # own release activates. A bounded retry preserves the delegation.
+            if transient_started is None:
+                transient_started = time.monotonic()
+            if time.monotonic() - transient_started > 120:
+                raise
+            time.sleep(2)
+            continue
+
+        events = status_payload.get("events")
+        if not json_mode and isinstance(events, list):
+            for event in events:
+                if not isinstance(event, dict):
+                    continue
+                event_id = str(event.get("id") or "")
+                if not event_id or event_id in seen_events:
+                    continue
+                seen_events.add(event_id)
+                print(str(event.get("message") or ""), flush=True)
+
+        run_state = status_payload.get("run")
+        if not isinstance(run_state, dict):
+            raise FinishError("Operator Bridge run status is malformed")
+        status = str(run_state.get("status") or "")
+        if status in {"succeeded", "failed", "cancelled"}:
+            result = run_state.get("result")
+            exit_code = run_state.get("exitCode")
+            normalized_exit = int(exit_code) if isinstance(exit_code, int) else 2
+            if json_mode:
+                if isinstance(result, dict):
+                    payload = {
+                        **result,
+                        "delegated_from_production": True,
+                        "control_run_id": run_id,
+                    }
+                else:
+                    payload = {
+                        "status": status.upper(),
+                        "delegated_from_production": True,
+                        "control_run_id": run_id,
+                        "result": result,
+                        "error": run_state.get("error"),
+                    }
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            elif status != "succeeded":
+                print(
+                    "STOP: delegated finish failed: "
+                    + str(run_state.get("error") or status),
+                    file=sys.stderr,
+                )
+            return normalized_exit
+
+        time.sleep(2)
+
+    raise FinishError(f"delegated finish {run_id} exceeded the 60-minute limit")
+
+
+def reload_operator_bridge_after_release(progress: Progress) -> dict[str, Any]:
+    delegated_run = os.getenv("AOE2WAR_OPERATOR_BRIDGE_RUN_ID", "").strip()
+    if delegated_run:
+        progress.done("Operator Bridge will self-reload after this delegated run")
+        return {
+            "status": "PARENT_SELF_RELOAD_PENDING",
+            "run_id": delegated_run,
+        }
+    if sys.platform != "darwin":
+        return {"status": "SKIPPED_NON_DARWIN"}
+
+    contract = aoe2_doctor.load_contract()
+    label = str(contract["canonical"]["bridge_launchagent_label"])
+    target = f"gui/{os.getuid()}/{label}"
+    progress.start("Reloading Operator Bridge onto the released control contract...")
+    process = run(
+        ["launchctl", "kickstart", "-k", target],
+        timeout=30,
+    )
+    if process.returncode != 0:
+        raise FinishError(
+            "cannot reload persistent Operator Bridge: "
+            + (process.stdout or "unknown launchctl failure")[-2000:]
+        )
+    deadline = time.monotonic() + 20
+    while time.monotonic() < deadline:
+        state = run(["launchctl", "print", target], timeout=10)
+        if state.returncode == 0 and "state = running" in (state.stdout or ""):
+            progress.done("Operator Bridge reloaded and running")
+            return {"status": "RELOADED", "launchagent": target}
+        time.sleep(1)
+    raise FinishError("Operator Bridge did not return to running state after reload")
 
 
 def run_live(
@@ -734,13 +965,284 @@ def needs_deploy(data: dict[str, Any]) -> bool:
 
 def write_receipt(payload: dict[str, Any]) -> Path:
     RECEIPT_DIR.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    path = RECEIPT_DIR / f"{stamp}.json"
-    path.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    path = RECEIPT_DIR / f"{stamp}-{os.getpid()}.json"
+    checkpoint_receipt(path, payload)
     return path
+
+
+def checkpoint_receipt(path: Path, payload: dict[str, Any]) -> None:
+    """Atomically persist the current finish transaction state."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload["updated_at"] = datetime.now(timezone.utc).isoformat()
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    encoded = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    try:
+        with temporary.open("w", encoding="utf-8") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+        try:
+            directory_fd = os.open(path.parent, os.O_RDONLY)
+        except OSError:
+            directory_fd = None
+        if directory_fd is not None:
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def start_phase(
+    receipt: dict[str, Any],
+    name: str,
+    checkpoint: Callable[[], None],
+) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    receipt["active_phase"] = name
+    receipt.setdefault("phases", {})[name] = {
+        "status": "RUNNING",
+        "started_at": now,
+    }
+    checkpoint()
+
+
+def finish_phase(
+    receipt: dict[str, Any],
+    name: str,
+    checkpoint: Callable[[], None],
+    *,
+    detail: dict[str, Any] | None = None,
+) -> None:
+    phase = receipt.setdefault("phases", {}).setdefault(name, {})
+    phase["status"] = "PASSED"
+    phase["completed_at"] = datetime.now(timezone.utc).isoformat()
+    if detail:
+        phase.update(detail)
+    receipt["active_phase"] = None
+    checkpoint()
+
+
+def fail_active_phase(receipt: dict[str, Any], error: str) -> None:
+    name = receipt.get("active_phase")
+    if not isinstance(name, str):
+        return
+    phase = receipt.setdefault("phases", {}).setdefault(name, {})
+    phase["status"] = "FAILED"
+    phase["failed_at"] = datetime.now(timezone.utc).isoformat()
+    phase["error"] = error
+
+
+def doctor_blocker_details(payload: dict[str, Any]) -> list[str]:
+    return [
+        str(finding.get("detail") or finding.get("key") or "unknown blocker")
+        for finding in payload.get("findings", [])
+        if finding.get("severity") == "BLOCKER"
+    ]
+
+
+def assert_certified_release(data: dict[str, Any]) -> None:
+    if needs_deploy(data):
+        raise FinishError(
+            "release proof does not show current source as CERTIFIED production"
+        )
+    production = data.get("production", {})
+    if production.get("wolo_8092_count") != 1:
+        raise FinishError("protected Wolo listener 8092 count is not exactly 1")
+    if production.get("wolo_8093_count") != 1:
+        raise FinishError("protected Wolo listener 8093 count is not exactly 1")
+
+
+def documentation_plan_summary(plan: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "blocked": bool(plan.get("blocked")),
+        "changes_needed": bool(plan.get("changes_needed")),
+        "baseline_refreshes": list(plan.get("baseline_refreshes") or []),
+        "central_sync": bool(plan.get("central_sync")),
+        "context_projects": list(plan.get("context_projects") or []),
+        "blocked_source_docs": list(plan.get("blocked_source_docs") or []),
+        "unknown_p1": list(plan.get("unknown_p1") or []),
+    }
+
+
+def external_source_authority_snapshot() -> dict[str, Any]:
+    """Prove every non-web source authority is clean before any mutation.
+
+    `finish` can reconcile the web checkout itself. It must not silently choose
+    an authority or publish work from API, watcher, VPSSentry, WoloChain, or the
+    federated docs repository, so those repositories are explicit preflight
+    stop-lines.
+    """
+    repositories = {
+        repo_id: repo
+        for repo_id, repo in aoe2_update.SOURCES.items()
+        if repo.resolve() != ROOT.resolve()
+    }
+    repositories["AoE2WAR-docs"] = aoe2_update.DOCS
+
+    details: dict[str, Any] = {}
+    blockers: list[str] = []
+    for repo_id, repo in repositories.items():
+        entry: dict[str, Any] = {"path": str(repo)}
+        details[repo_id] = entry
+        if not repo.is_dir():
+            entry["status"] = "MISSING"
+            blockers.append(f"{repo_id} repository is missing: {repo}")
+            continue
+        try:
+            branch = aoe2_update.git_output(repo, "branch", "--show-current")
+            head = aoe2_update.git_output(repo, "rev-parse", "HEAD")
+            dirty = sorted(aoe2_update.status_paths(repo))
+            remote = aoe2_update.remote_sha(repo, branch) if branch else None
+        except Exception as exc:
+            entry.update({"status": "UNRESOLVED", "error": str(exc)})
+            blockers.append(f"{repo_id} source authority is unresolved: {exc}")
+            continue
+
+        entry.update(
+            {
+                "branch": branch,
+                "head": head,
+                "remote": remote,
+                "dirty_paths": dirty,
+                "status": "EXACT",
+            }
+        )
+        if not branch:
+            entry["status"] = "DETACHED"
+            blockers.append(f"{repo_id} source authority is detached")
+        if dirty:
+            entry["status"] = "DIRTY"
+            blockers.append(
+                f"{repo_id} worktree has unpublished paths: {dirty}"
+            )
+        if remote is None:
+            entry["status"] = "REMOTE_UNRESOLVED"
+            blockers.append(f"{repo_id} origin/{branch or '?'} is unresolved")
+        elif remote != head:
+            entry["status"] = "REMOTE_MISMATCH"
+            blockers.append(
+                f"{repo_id} local/origin mismatch: "
+                f"local={head[:10]} origin={remote[:10]}"
+            )
+
+    return {
+        "status": "BLOCKED" if blockers else "EXACT",
+        "repositories": details,
+        "blockers": blockers,
+    }
+
+
+def reconcile_documentation(
+    *,
+    label: str,
+    progress: Progress,
+    json_mode: bool,
+) -> dict[str, Any]:
+    plan = aoe2_update.collect_plan()
+    summary = documentation_plan_summary(plan)
+    if plan.get("blocked"):
+        raise FinishError(
+            f"{label} documentation plan is blocked: "
+            + json.dumps(summary, sort_keys=True)
+        )
+    if not plan.get("changes_needed"):
+        progress.done(f"{label} documentation/context already current")
+        return {**summary, "result": "ALREADY_CURRENT"}
+    run_live(
+        [str(CLI), "update", "--apply"],
+        label=f"{label} documentation federation + context evidence",
+        progress=progress,
+        timeout=1800,
+        json_mode=json_mode,
+    )
+    return {**summary, "result": "RECONCILED"}
+
+
+def run_json_cli(
+    args: list[str],
+    *,
+    label: str,
+    progress: Progress,
+    timeout: int,
+) -> tuple[int, dict[str, Any]]:
+    progress.start(label)
+    rc, output = run_capture_with_heartbeat(
+        args,
+        label=label,
+        progress=progress,
+        timeout=timeout,
+    )
+    try:
+        payload = json.loads(output)
+    except json.JSONDecodeError as exc:
+        raise FinishError(f"{label} returned invalid JSON: {output[-4000:]}") from exc
+    if not isinstance(payload, dict):
+        raise FinishError(f"{label} returned a non-object JSON result")
+    return rc, payload
+
+
+def storage_retention_cycle(
+    *,
+    receipt: dict[str, Any],
+    receipt_key: str,
+    checkpoint: Callable[[], None],
+    progress: Progress,
+    apply_allowed: bool,
+) -> dict[str, Any]:
+    rc, preview = run_json_cli(
+        [str(CLI), "storage-retention", "--json"],
+        label="Previewing bounded durable-cache retention",
+        progress=progress,
+        timeout=600,
+    )
+    result: dict[str, Any] = {"preview": preview, "apply": None}
+    receipt[receipt_key] = result
+    checkpoint()
+    if rc != 0 or preview.get("status") not in {"READY", "NOOP"}:
+        raise FinishError(
+            "storage-retention preview failed: " + json.dumps(preview, sort_keys=True)
+        )
+
+    contract = aoe2_doctor.load_contract()
+    auto_apply = bool(contract.get("finish", {}).get("auto_storage_retention"))
+    candidates = int(preview.get("candidate_count") or 0)
+    if not apply_allowed or not auto_apply or candidates == 0:
+        result["decision"] = (
+            "NO_CANDIDATES"
+            if candidates == 0
+            else "PREVIEW_ONLY"
+        )
+        checkpoint()
+        return result
+
+    apply_rc, applied = run_json_cli(
+        [str(CLI), "storage-retention", "--apply", "--json"],
+        label="Applying digest-bound cache-only retention",
+        progress=progress,
+        timeout=1800,
+    )
+    result["apply"] = applied
+    result["decision"] = "APPLIED"
+    checkpoint()
+    if apply_rc != 0 or applied.get("status") not in {"APPLIED", "NOOP"}:
+        raise FinishError(
+            "storage-retention apply failed: " + json.dumps(applied, sort_keys=True)
+        )
+    if not applied.get("runtime_identity_unchanged"):
+        raise FinishError("storage retention did not prove runtime identity unchanged")
+    if not applied.get("wolo_listener_counts_unchanged"):
+        raise FinishError("storage retention did not prove Wolo listener counts unchanged")
+    if int(applied.get("generation_directories_deleted") or 0) != 0:
+        raise FinishError("storage retention reported generation-directory deletion")
+    progress.done(
+        "Storage retention proved safe · "
+        f"{applied.get('deleted_count', 0)} cache tree(s) · runtime/Wolo unchanged"
+    )
+    return result
 
 
 @contextmanager
@@ -829,13 +1331,95 @@ def plan_payload() -> dict[str, Any]:
         github_head=str(github),
         production_head=str(production.get("source_sha") or ""),
     )
+    external_sources = external_source_authority_snapshot()
+
+    quiet_progress = Progress(enabled=False)
+    storage_rc, storage_preview = run_json_cli(
+        [str(CLI), "storage-retention", "--json"],
+        label="Storage-retention preview",
+        progress=quiet_progress,
+        timeout=600,
+    )
+    doctor = aoe2_doctor.collect_doctor(
+        include_estate=False,
+        progress=False,
+    ).payload()
+    contract = aoe2_doctor.load_contract()
+    auto_retention = bool(
+        contract.get("finish", {}).get("auto_storage_retention")
+    )
+    projected = storage_preview.get("projected_capacity_after", {})
+    projected_used = projected.get("used_percent")
+    capacity_critical = int(
+        contract.get("capacity", {}).get("volume_used_critical_percent") or 92
+    )
+    retention_can_remediate_capacity = bool(
+        storage_rc == 0
+        and storage_preview.get("status") == "READY"
+        and int(storage_preview.get("candidate_count") or 0) > 0
+        and isinstance(projected_used, (int, float))
+        and projected_used < capacity_critical
+        and auto_retention
+    )
+    blocker_findings = [
+        finding
+        for finding in doctor.get("findings", [])
+        if finding.get("severity") == "BLOCKER"
+    ]
+    remediated_blockers = [
+        str(finding.get("detail") or finding.get("key"))
+        for finding in blocker_findings
+        if finding.get("key") == "volume-capacity-critical"
+        and retention_can_remediate_capacity
+    ]
+    blockers = [
+        str(finding.get("detail") or finding.get("key") or "unknown blocker")
+        for finding in blocker_findings
+        if not (
+            finding.get("key") == "volume-capacity-critical"
+            and retention_can_remediate_capacity
+        )
+    ]
+    if storage_rc != 0 or storage_preview.get("status") not in {"READY", "NOOP"}:
+        blockers.append("storage-retention preview did not pass")
+    blockers.extend(external_sources["blockers"])
 
     detail: dict[str, Any] = {
-        "schema": 1,
+        "schema": 2,
+        "kind": "aoe2war-finish-plan",
         "generated_at": datetime.now(timezone.utc).isoformat(),
+        "status": (
+            "BLOCKED"
+            if blockers
+            else "READY_WITH_AUTOMATIC_REMEDIATION"
+            if remediated_blockers
+            else "READY"
+        ),
         "source_plan": asdict(plan),
+        "external_source_authorities": external_sources,
         "release": data,
         "local_dirty_paths": list(local.get("dirty_paths") or []),
+        "deploy_expected": plan.mode != "clean" or needs_deploy(data),
+        "doctor": doctor,
+        "storage_retention": storage_preview,
+        "blockers": blockers,
+        "automatic_remediations": remediated_blockers,
+        "validation_plan": [
+            "safe storage retention preview/apply when policy permits",
+            "pre-mutation operational Doctor",
+            "source authority reconciliation and release gate",
+            "documentation/context reconciliation",
+            "isolated stage and protected activation",
+            "immediate certified runtime + Wolo proof",
+            "post-release current-state documentation refresh",
+            "independent estate audit and final Doctor",
+        ],
+        "automatic_mutation_boundaries": {
+            "database": False,
+            "wolo": False,
+            "host_reboot": False,
+            "package_upgrade": False,
+        },
     }
     if plan.mode == "vps_worktree":
         tracked, untracked = vps_dirty_paths(
@@ -851,11 +1435,21 @@ def plan_payload() -> dict[str, Any]:
 
 def execute_finish(
     *,
+    receipt: dict[str, Any],
+    checkpoint: Callable[[], None],
     message: str,
     dry_run: bool,
     json_mode: bool,
 ) -> tuple[int, dict[str, Any]]:
-    progress = Progress()
+    progress = Progress(enabled=not json_mode)
+
+    if dry_run:
+        receipt.update(plan_payload())
+        receipt["dry_run"] = True
+        checkpoint()
+        return (2 if receipt.get("status") == "BLOCKED" else 0), receipt
+
+    start_phase(receipt, "inspect", checkpoint)
     before = aoe2_release.collect()
     local = before["local"]
     production = before["production"]
@@ -880,35 +1474,57 @@ def execute_finish(
         github_head=str(github_head),
         production_head=str(production.get("source_sha") or ""),
     )
+    receipt.update(
+        {
+            "source_plan": asdict(plan),
+            "before_release": before,
+            "code_commit": None,
+            "vps_adoption": None,
+            "documentation_reconciled": False,
+            "production_deployed": False,
+            "release_outcome": "NOT_ATTEMPTED",
+        }
+    )
+    external_sources = external_source_authority_snapshot()
+    receipt["external_source_authorities"] = external_sources
+    if external_sources["blockers"]:
+        raise FinishError(
+            "non-web source authorities are not exact; finish will not mutate "
+            "anything until they are reconciled: "
+            + "; ".join(external_sources["blockers"])
+        )
+    finish_phase(receipt, "inspect", checkpoint)
 
-    receipt: dict[str, Any] = {
-        "schema": 1,
-        "kind": "aoe2war-finish-result",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "status": "RUNNING",
-        "source_plan": asdict(plan),
-        "before_release": before,
-        "code_commit": None,
-        "vps_adoption": None,
-        "documentation_reconciled": False,
-        "production_deployed": False,
-        "database_mutated": False,
-        "wolo_mutated_by_finish": False,
-    }
+    start_phase(receipt, "preflight_storage_retention", checkpoint)
+    storage_retention_cycle(
+        receipt=receipt,
+        receipt_key="preflight_storage_retention",
+        checkpoint=checkpoint,
+        progress=progress,
+        apply_allowed=True,
+    )
+    finish_phase(receipt, "preflight_storage_retention", checkpoint)
 
-    if dry_run:
-        if plan.mode == "vps_worktree":
-            tracked, untracked = vps_dirty_paths(
-                str(production["host"]),
-                str(production["repo"]),
-            )
-            receipt["vps_adoption"] = {
-                "tracked_paths": tracked,
-                "untracked_paths": untracked,
-            }
-        receipt["status"] = "DRY_RUN"
-        return 0, receipt
+    start_phase(receipt, "operational_preflight", checkpoint)
+    progress.start("Running pre-mutation operational Doctor...")
+    preflight_doctor = aoe2_doctor.collect_doctor(
+        include_estate=False,
+        progress=False,
+    ).payload()
+    receipt["preflight_doctor"] = preflight_doctor
+    preflight_blockers = doctor_blocker_details(preflight_doctor)
+    if preflight_blockers:
+        raise FinishError(
+            "pre-mutation Doctor found blocking operational issues: "
+            + "; ".join(preflight_blockers)
+        )
+    progress.done(
+        f"Pre-mutation Doctor passed — {preflight_doctor['score']}/100 · "
+        f"{preflight_doctor['warnings']} warning(s)"
+    )
+    finish_phase(receipt, "operational_preflight", checkpoint)
 
+    start_phase(receipt, "source_reconciliation", checkpoint)
     progress.start(
         "Source authority: "
         + plan.mode.replace("_", " ")
@@ -923,6 +1539,7 @@ def execute_finish(
             dry_run=False,
             json_mode=json_mode,
         )
+        checkpoint()
 
     elif plan.mode == "vps_worktree":
         capture = adopt_vps_candidate(
@@ -931,6 +1548,7 @@ def execute_finish(
             dry_run=False,
         )
         receipt["vps_adoption"] = capture
+        checkpoint()
 
     if plan.mode in {"local_worktree", "vps_worktree"}:
         committed = gate_and_commit(
@@ -939,6 +1557,7 @@ def execute_finish(
             json_mode=json_mode,
         )
         receipt["code_commit"] = committed
+        checkpoint()
 
         if capture is not None:
             reset_vps_candidate_after_publish(
@@ -951,26 +1570,41 @@ def execute_finish(
     elif plan.mode == "clean":
         progress.done("Mac and GitHub source already exact")
 
+    finish_phase(receipt, "source_reconciliation", checkpoint)
+
     # A clean local branch may have become fast-forwarded or published above.
+    start_phase(receipt, "source_parity", checkpoint)
     if git_paths():
         raise FinishError(
             "source reconciliation left a dirty Mac worktree; refusing maintenance"
         )
     if git_output("rev-parse", "HEAD") != remote_branch_sha():
         raise FinishError("Mac/GitHub parity is not exact after source reconciliation")
+    finish_phase(receipt, "source_parity", checkpoint)
 
-    run_live(
-        [str(CLI), "update", "--apply"],
-        label="Reconciling documentation federation + context evidence",
+    start_phase(receipt, "pre_release_documentation", checkpoint)
+    receipt["pre_release_documentation"] = reconcile_documentation(
+        label="Pre-release",
         progress=progress,
-        timeout=1800,
         json_mode=json_mode,
     )
     receipt["documentation_reconciled"] = True
+    finish_phase(receipt, "pre_release_documentation", checkpoint)
+
+    if git_paths():
+        raise FinishError(
+            "documentation reconciliation left a dirty operator worktree"
+        )
+    if git_output("rev-parse", "HEAD") != remote_branch_sha():
+        raise FinishError(
+            "documentation reconciliation left Mac/GitHub source out of parity"
+        )
 
     post_update = aoe2_release.collect()
     receipt["post_update_release"] = post_update
+    checkpoint()
 
+    start_phase(receipt, "deployment", checkpoint)
     if needs_deploy(post_update):
         run_live(
             [str(CLI), "deploy"],
@@ -982,7 +1616,46 @@ def execute_finish(
         receipt["production_deployed"] = True
     else:
         progress.done("Production already matches certified source; deploy skipped")
+    finish_phase(
+        receipt,
+        "deployment",
+        checkpoint,
+        detail={"deployed": receipt["production_deployed"]},
+    )
 
+    # Prove and record the runtime result immediately. Later documentation or
+    # maintenance failures must never erase a successful certified activation.
+    start_phase(receipt, "release_certification", checkpoint)
+    certified_release = aoe2_release.collect()
+    receipt["certified_release"] = certified_release
+    assert_certified_release(certified_release)
+    receipt["release_outcome"] = "CERTIFIED"
+    receipt["release_certified_at"] = datetime.now(timezone.utc).isoformat()
+    finish_phase(receipt, "release_certification", checkpoint)
+
+    start_phase(receipt, "post_release_storage_retention", checkpoint)
+    storage_retention_cycle(
+        receipt=receipt,
+        receipt_key="post_release_storage_retention",
+        checkpoint=checkpoint,
+        progress=progress,
+        apply_allowed=True,
+    )
+    finish_phase(receipt, "post_release_storage_retention", checkpoint)
+
+    start_phase(receipt, "post_release_documentation", checkpoint)
+    receipt["post_release_documentation"] = reconcile_documentation(
+        label="Post-release current-state",
+        progress=progress,
+        json_mode=json_mode,
+    )
+    finish_phase(receipt, "post_release_documentation", checkpoint)
+
+    start_phase(receipt, "operator_bridge_reload", checkpoint)
+    receipt["operator_bridge_reload"] = reload_operator_bridge_after_release(progress)
+    finish_phase(receipt, "operator_bridge_reload", checkpoint)
+
+    start_phase(receipt, "estate_audit", checkpoint)
     progress.start("Running independent final estate audit...")
     rc, audit_output = run_capture_with_heartbeat(
         [str(CLI), "audit", "--json"],
@@ -1005,7 +1678,9 @@ def execute_finish(
         )
     progress.done("Independent estate audit passed — P0=0 P1=0")
     receipt["final_audit"] = final_audit
+    finish_phase(receipt, "estate_audit", checkpoint)
 
+    start_phase(receipt, "final_doctor", checkpoint)
     progress.start("Running AoE2WAR Doctor...")
     doctor = aoe2_doctor.collect_doctor(
         estate_payload=final_audit,
@@ -1027,22 +1702,17 @@ def execute_finish(
         f"Doctor complete — {doctor_payload['score']}/100 · "
         f"{doctor_payload['warnings']} warning(s)"
     )
+    finish_phase(receipt, "final_doctor", checkpoint)
 
+    start_phase(receipt, "final_certification", checkpoint)
     final_release = aoe2_release.collect()
     receipt["final_release"] = final_release
-
-    if needs_deploy(final_release):
-        raise FinishError(
-            "final release proof does not show current Mac source as CERTIFIED"
-        )
-
-    if final_release["production"].get("wolo_8092_count") != 1:
-        raise FinishError("final protected Wolo listener 8092 count is not exactly 1")
-    if final_release["production"].get("wolo_8093_count") != 1:
-        raise FinishError("final protected Wolo listener 8093 count is not exactly 1")
+    assert_certified_release(final_release)
+    finish_phase(receipt, "final_certification", checkpoint)
 
     receipt["status"] = "CERTIFIED"
     receipt["completed_at"] = datetime.now(timezone.utc).isoformat()
+    checkpoint()
     return 0, receipt
 
 
@@ -1108,6 +1778,39 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    try:
+        production_role = is_production_checkout()
+    except Exception as exc:
+        if args.json:
+            print(json.dumps({"status": "ERROR", "error": str(exc)}, indent=2))
+        else:
+            print(f"STOP: {exc}", file=sys.stderr)
+        return 2
+
+    if production_role:
+        try:
+            return delegate_finish_from_production(
+                message=args.message,
+                dry_run=args.dry_run,
+                json_mode=args.json,
+            )
+        except Exception as exc:
+            if args.json:
+                print(
+                    json.dumps(
+                        {
+                            "status": "ERROR",
+                            "delegated_from_production": True,
+                            "error": str(exc),
+                        },
+                        indent=2,
+                        sort_keys=True,
+                    )
+                )
+            else:
+                print(f"STOP: {exc}", file=sys.stderr)
+            return 2
+
     if args.dry_run:
         try:
             payload = plan_payload()
@@ -1135,6 +1838,19 @@ def main() -> int:
                 "VPS dirty:    "
                 f"{payload['release']['production'].get('dirty_count')}"
             )
+            print(f"Deploy:       {'EXPECTED' if payload['deploy_expected'] else 'SKIP'}")
+            print(
+                "Doctor:       "
+                f"{payload['doctor'].get('score', '—')}/100 "
+                f"{payload['doctor'].get('status', 'UNKNOWN')}"
+            )
+            storage = payload["storage_retention"]
+            print(
+                "Retention:    "
+                f"{storage.get('candidate_count', 0)} cache candidate(s), "
+                f"projected volume "
+                f"{storage.get('projected_capacity_after', {}).get('used_percent', '—')}%"
+            )
             if payload.get("vps_candidate"):
                 print(
                     "VPS tracked:  "
@@ -1149,32 +1865,60 @@ def main() -> int:
                     )
                 )
             print()
+            if payload["blockers"]:
+                print("Blocking preflight findings:")
+                for blocker in payload["blockers"]:
+                    print(f"  - {blocker}")
+                print()
+            if payload["automatic_remediations"]:
+                print("Automatically remediated before mutation:")
+                for remediation in payload["automatic_remediations"]:
+                    print(f"  - {remediation}")
+                print()
             print("No changes made.")
-        return 0
+        return 2 if payload["status"] == "BLOCKED" else 0
 
-    print("⚔️  AOE2WAR FINISH", flush=True)
-    print("One command from finished code to certified operating state.", flush=True)
-    print("WOLO: observe only.", flush=True)
-    print(flush=True)
+    if not args.json:
+        print("⚔️  AOE2WAR FINISH", flush=True)
+        print("One command from finished code to certified operating state.", flush=True)
+        print("WOLO: observe only.", flush=True)
+        print(flush=True)
 
     receipt: dict[str, Any] = {
-        "schema": 1,
+        "schema": 2,
         "kind": "aoe2war-finish-result",
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "status": "FAILED",
+        "status": "RUNNING",
+        "release_outcome": "NOT_ATTEMPTED",
+        "active_phase": None,
+        "phases": {},
         "wolo_mutated_by_finish": False,
         "database_mutated": False,
+        "host_rebooted": False,
+        "packages_upgraded": False,
     }
+    path: Path | None = None
 
     try:
+        path = write_receipt(receipt)
+
+        def checkpoint() -> None:
+            assert path is not None
+            checkpoint_receipt(path, receipt)
+
+        start_phase(receipt, "serialization", checkpoint)
         with finish_lock():
             assert_no_competing_operator_process()
-            _, receipt = execute_finish(
-                message=args.message,
-                dry_run=False,
-                json_mode=args.json,
-            )
-            path = write_receipt(receipt)
+            with aoe2_release.global_release_lease():
+                receipt["global_release_lease"] = "canonical-production-held"
+                finish_phase(receipt, "serialization", checkpoint)
+                execute_finish(
+                    receipt=receipt,
+                    checkpoint=checkpoint,
+                    message=args.message,
+                    dry_run=False,
+                    json_mode=args.json,
+                )
 
         if args.json:
             print(
@@ -1192,11 +1936,18 @@ def main() -> int:
         return 0
 
     except Exception as exc:
-        receipt["status"] = "FAILED"
+        fail_active_phase(receipt, str(exc))
+        if receipt.get("release_outcome") == "CERTIFIED":
+            receipt["status"] = "CERTIFIED_WITH_POSTCHECK_FAILURE"
+        else:
+            receipt["status"] = "FAILED"
         receipt["failed_at"] = datetime.now(timezone.utc).isoformat()
         receipt["error"] = str(exc)
         try:
-            path = write_receipt(receipt)
+            if path is None:
+                path = write_receipt(receipt)
+            else:
+                checkpoint_receipt(path, receipt)
         except Exception:
             path = None
 
@@ -1204,7 +1955,14 @@ def main() -> int:
             payload = {**receipt, "receipt_path": str(path) if path else None}
             print(json.dumps(payload, indent=2, sort_keys=True))
         else:
-            print(f"STOP: {exc}", file=sys.stderr)
+            if receipt.get("release_outcome") == "CERTIFIED":
+                print(
+                    "ATTENTION: production release is CERTIFIED, but a later "
+                    f"finish check failed: {exc}",
+                    file=sys.stderr,
+                )
+            else:
+                print(f"STOP: {exc}", file=sys.stderr)
             if path:
                 print(f"finish failure receipt: {path}", file=sys.stderr)
         return 2

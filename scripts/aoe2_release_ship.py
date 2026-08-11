@@ -234,10 +234,18 @@ def validation_errors(
         errors.append("internal/public build-version parity is not healthy")
     if prod.get("staged_build_id"):
         errors.append("a staged .next-release build already exists")
-    if (prod.get("wolo_8092_count") or 0) < 1:
-        errors.append("protected WOLO listener 8092 is missing")
-    if (prod.get("wolo_8093_count") or 0) < 1:
-        errors.append("protected WOLO listener 8093 is missing")
+    if prod.get("wolo_8092_count") != 1:
+        errors.append("protected WOLO listener 8092 count must be exactly 1")
+    if prod.get("wolo_8093_count") != 1:
+        errors.append("protected WOLO listener 8093 count must be exactly 1")
+
+    changed_files = manifest.get("changed_files") or []
+    if "yarn.lock" in changed_files:
+        errors.append(
+            "release changes yarn.lock; the automatic isolated-stage lane "
+            "requires an unchanged dependency lock and will not reuse "
+            "incompatible production node_modules"
+        )
 
     migrations = manifest.get("migration_paths") or []
     if migrations:
@@ -307,12 +315,12 @@ def build_plan(
         },
         {
             "phase": "rollback",
-            "action": "Preserve the active .next runtime and deployment identity in durable rollback storage before runtime mutation.",
+            "action": "Preserve a cache-free copy of the active .next runtime plus source/build-version identity in durable rollback storage before activation.",
         },
         {
-            "phase": "source",
-            "command": f"git reset --hard {release_sha}",
-            "action": "Advance production source only to the exact manifest release SHA and verify a clean checkout.",
+            "phase": "isolate",
+            "command": f"git worktree add --detach <temporary-worktree> {release_sha}",
+            "action": "Create a disposable per-release worktree. Keep the live source, public tree, node_modules, build-version sidecar, and active runtime unchanged during staging.",
         },
         {
             "phase": "migration",
@@ -320,17 +328,17 @@ def build_plan(
         },
         {
             "phase": "build",
-            "command": "rm -rf .next-release && sudo -n -u tony -H env NEXT_DIST_DIR=.next-release npm run build",
-            "action": "Build beside the active runtime; verify build success, BUILD_ID, generated build version, ownership, and repository cleanliness before service stop.",
+            "command": "prove unchanged Yarn/package dependency contract, copy live node_modules into a temporary worktree, then run NEXT_DIST_DIR=.next-release yarn build",
+            "action": "With an unchanged Yarn lock and package dependency contract, build in the disposable worktree using a copy of the proven dependency tree; fail closed when atomic node_modules activation and rollback would be required.",
         },
         {
             "phase": "artifact",
-            "action": "Record candidate BUILD_ID, build version, and deterministic artifact SHA-256 in the deployment receipt before activation.",
+            "action": "Remove rebuildable cache, copy the cache-free candidate to live .next-release, and bind BUILD_ID, build version, and deterministic artifact SHA-256 in the stage receipt.",
         },
         {
             "phase": "activate",
-            "command": f"systemctl stop {SERVICE}; mv .next .next-rollback-<UTC>; mv .next-release .next; chown -R tony:tony .next; systemctl start {SERVICE}",
-            "action": "Atomically preserve the fast rollback, activate the staged runtime, and restart only the AoE2WAR web service.",
+            "command": f"systemctl stop {SERVICE}; mv .next .next-rollback-<UTC>; mv .next-release .next; git reset --hard {release_sha}; write-build-version; systemctl start {SERVICE}",
+            "action": "While the web service is stopped, advance runtime, source, and build-version identity together, then start only the AoE2WAR web service.",
         },
         {
             "phase": "prove",
@@ -342,7 +350,7 @@ def build_plan(
         },
         {
             "phase": "certify",
-            "action": "Write final proof and artifact identity to the durable deployment receipt only after the soak passes. On any critical proof failure before certification, restore previous source/runtime and prove internal health.",
+            "action": "Write final proof and artifact identity to the durable deployment receipt only after the soak passes. On any critical proof failure before certification, restore previous source/build-version/runtime, preserve the exact staged candidate, and prove internal health.",
         },
         {
             "phase": "retention",
@@ -432,6 +440,21 @@ def load_stage_receipt(
         raise ShipError("Stage receipt does not prove live runtime remained unchanged.")
     if receipt.get("wolo_mutated") is not False:
         raise ShipError("Stage receipt does not prove WOLO remained untouched.")
+    isolation_requirements = {
+        "isolated_worktree": True,
+        "dependency_contract_unchanged": True,
+        "cache_free_artifact": True,
+        "artifact_path_relocated": True,
+        "live_source_mutated": False,
+        "live_public_mutated": False,
+        "live_node_modules_mutated": False,
+        "live_build_version_mutated": False,
+    }
+    for key, expected in isolation_requirements.items():
+        if receipt.get(key) is not expected:
+            raise ShipError(
+                f"Stage receipt does not prove isolated-stage invariant: {key}."
+            )
 
     release_sha = receipt.get("release_sha")
     artifact_sha = receipt.get("artifact_sha256")
@@ -448,6 +471,7 @@ def load_stage_receipt(
         "live_build_version",
         "candidate_build_version",
         "previous_production_sha",
+        "source_sha",
         "manifest_path",
         "manifest_sha256",
         "gate_path",
@@ -464,10 +488,10 @@ def load_stage_receipt(
         raise ShipError("Stage receipt manifest SHA-256 is invalid.")
     if not _is_hex(receipt.get("gate_sha256"), 64):
         raise ShipError("Stage receipt gate SHA-256 is invalid.")
-    if int(receipt.get("wolo_8092_count") or 0) < 1:
-        raise ShipError("Stage receipt does not bind a live WOLO 8092 listener.")
-    if int(receipt.get("wolo_8093_count") or 0) < 1:
-        raise ShipError("Stage receipt does not bind a live WOLO 8093 listener.")
+    if int(receipt.get("wolo_8092_count") or 0) != 1:
+        raise ShipError("Stage receipt must bind exactly one WOLO 8092 listener.")
+    if int(receipt.get("wolo_8093_count") or 0) != 1:
+        raise ShipError("Stage receipt must bind exactly one WOLO 8093 listener.")
 
     remote_receipt = str(receipt["remote_receipt_dir"])
     if not remote_receipt.startswith(f"{REMOTE_RECEIPT_ROOT}/stage-"):
@@ -487,11 +511,20 @@ def load_stage_receipt(
         raise ShipError("Manifest release SHA does not match stage receipt.")
     if manifest.get("previous_production_sha") != receipt["previous_production_sha"]:
         raise ShipError("Manifest previous production SHA does not match stage receipt.")
+    if receipt.get("source_sha") != receipt.get("previous_production_sha"):
+        raise ShipError(
+            "Stage receipt does not prove production source remained on the previous SHA."
+        )
     if manifest.get("risk_class") != receipt.get("risk_class"):
         raise ShipError("Manifest risk class does not match stage receipt.")
     if manifest.get("migration_paths"):
         raise ShipError(
             "Release contains Prisma migrations; receipt-driven activation refuses migrations."
+        )
+    if "yarn.lock" in (manifest.get("changed_files") or []):
+        raise ShipError(
+            "Release changes yarn.lock; receipt-driven activation refuses an "
+            "artifact built from reused production node_modules."
         )
 
     return (
@@ -530,8 +563,8 @@ def activation_validation_errors(
         errors.append("production is unreachable")
     if prod.get("dirty_count") != 0:
         errors.append("production worktree is not clean")
-    if prod.get("source_sha") != receipt.get("release_sha"):
-        errors.append("production source does not equal staged release SHA")
+    if prod.get("source_sha") != receipt.get("previous_production_sha"):
+        errors.append("production source does not equal the stage receipt previous SHA")
     if prod.get("service") != "active":
         errors.append("production web service is not active")
     if prod.get("active_build_id") != receipt.get("active_build_id"):
@@ -626,11 +659,13 @@ FAST_ROLLBACK_KEEP={FAST_ROLLBACK_KEEP}
 wolo_count() {{ ss -ltn | grep -Ec ":$1[[:space:]]" || true; }}
 build_version() {{ python3 -c 'import json,sys; print(json.load(sys.stdin).get("buildVersion",""))'; }}
 artifact_hash() {{
-  tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf - "$1" \
+  tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+    -C "$1" -cf - . \
   | sha256sum | awk '{{print $1}}'
 }}
 content_hash() {{
   tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+    --exclude='./cache' --exclude='./cache/*' \
     -C "$1" -cf - . \
   | sha256sum | awk '{{print $1}}'
 }}
@@ -644,24 +679,23 @@ before_service="$(systemctl is-active "$SERVICE" || true)"
 before_pid="$(systemctl show "$SERVICE" -p MainPID --value)"
 before_active_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
 before_staged_build="$(cat .next-release/BUILD_ID 2>/dev/null || true)"
-before_candidate_version="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
+before_build_version_file="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
 before_internal_version="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deployment-version | build_version)"
 before_public_version="$(curl -fsS --max-time 10 "$PUBLIC/api/deployment-version" | build_version)"
 before_wolo8092="$(wolo_count 8092)"
 before_wolo8093="$(wolo_count 8093)"
 
-sudo -n -l /usr/bin/systemctl restart "$SERVICE" >/dev/null
 sudo -n -l /usr/bin/systemctl stop "$SERVICE" >/dev/null
 sudo -n -l /usr/bin/systemctl start "$SERVICE" >/dev/null
 sudo -n -l /usr/bin/install >/dev/null
 
-test "$before_head" = "$RELEASE"
+test "$before_head" = "$PREVIOUS"
 test "$before_dirty" = "0"
 test "$before_service" = "active"
 test -n "$before_pid"
 test "$before_active_build" = "$OLD_BUILD"
 test "$before_staged_build" = "$STAGED_BUILD"
-test "$before_candidate_version" = "$CANDIDATE_VERSION"
+test "$before_build_version_file" = "$LIVE_VERSION"
 test "$before_internal_version" = "$LIVE_VERSION"
 test "$before_public_version" = "$LIVE_VERSION"
 test "$before_wolo8092" = {q(str(receipt['wolo_8092_count']))}
@@ -679,7 +713,17 @@ grep -Fx "active_build_id=$OLD_BUILD" "$STAGE_REMOTE/stage-status.txt" >/dev/nul
 grep -Fx "staged_build_id=$STAGED_BUILD" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 grep -Fx "candidate_build_version=$CANDIDATE_VERSION" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 grep -Fx "artifact_sha256=$ARTIFACT" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "source_sha=$PREVIOUS" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "isolated_worktree=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "dependency_contract_unchanged=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "cache_free_artifact=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "artifact_path_relocated=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "live_source_mutated=0" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "live_public_mutated=0" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "live_node_modules_mutated=0" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "live_build_version_mutated=0" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 
+test ! -e .next-release/cache
 candidate_artifact="$(artifact_hash .next-release)"
 test "$candidate_artifact" = "$ARTIFACT"
 candidate_content_sha="$(content_hash .next-release)"
@@ -698,7 +742,7 @@ if [ "$MODE" = "DRY_RUN" ]; then
   printf 'active_build_id\\t%s\\n' "$before_active_build"
   printf 'staged_build_id\\t%s\\n' "$before_staged_build"
   printf 'live_build_version\\t%s\\n' "$before_internal_version"
-  printf 'candidate_build_version\\t%s\\n' "$before_candidate_version"
+  printf 'candidate_build_version\\t%s\\n' "$CANDIDATE_VERSION"
   printf 'artifact_sha256\\t%s\\n' "$candidate_artifact"
   printf 'wolo8092\\t%s\\n' "$before_wolo8092"
   printf 'wolo8093\\t%s\\n' "$before_wolo8093"
@@ -730,8 +774,12 @@ printf '%s\\n' \
   "before_wolo8093=$before_wolo8093" \
   > "$ACT_RECEIPT/preactivation.txt"
 
-cp -a .next "$ROLLBACK/next"
+mkdir "$ROLLBACK/next"
+rsync -a --exclude '/cache/' .next/ "$ROLLBACK/next/"
 test "$(cat "$ROLLBACK/next/BUILD_ID")" = "$OLD_BUILD"
+test ! -e "$ROLLBACK/next/cache"
+printf '%s\\n' "$PREVIOUS" > "$ROLLBACK/source-sha"
+printf '%s\\n' "$LIVE_VERSION" > "$ROLLBACK/build-version"
 FAST_OLD=".next-rollback-activate-$(date -u +%Y%m%dT%H%M%SZ)"
 test ! -e "$FAST_OLD"
 MUTATED=0
@@ -750,6 +798,8 @@ rollback_activation() {{
       mv .next .next-release
     fi
     if [ ! -e .next ] && [ -d "$FAST_OLD" ]; then mv "$FAST_OLD" .next; fi
+    git reset --hard "$PREVIOUS" >/dev/null 2>&1 || true
+    printf '%s\\n' "$LIVE_VERSION" > .aoe2war-build-version 2>/dev/null || true
     sudo -n /usr/bin/systemctl start "$SERVICE" >/dev/null 2>&1 || true
     for _ in $(seq 1 30); do
       if [ "$(systemctl is-active "$SERVICE" 2>/dev/null || true)" = "active" ] \
@@ -757,15 +807,26 @@ rollback_activation() {{
       sleep 1
     done
     rb_service="$(systemctl is-active "$SERVICE" 2>/dev/null || true)"
+    rb_head="$(git rev-parse HEAD 2>/dev/null || true)"
+    rb_dirty="$(git status --porcelain --untracked-files=all 2>/dev/null | wc -l | tr -d ' ')"
     rb_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
     rb_staged="$(cat .next-release/BUILD_ID 2>/dev/null || true)"
+    rb_build_version_file="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
+    rb_staged_artifact=""
+    if [ -d .next-release ]; then
+      rb_staged_artifact="$(artifact_hash .next-release 2>/dev/null || true)"
+    fi
     rb_internal="$(curl -fsS --max-time 6 http://127.0.0.1:3030/api/deployment-version 2>/dev/null | build_version 2>/dev/null || true)"
     rb_public="$(curl -fsS --max-time 8 "$PUBLIC/api/deployment-version" 2>/dev/null | build_version 2>/dev/null || true)"
     rb_wolo8092="$(wolo_count 8092)"
     rb_wolo8093="$(wolo_count 8093)"
     if [ "$rb_service" = "active" ] \
+      && [ "$rb_head" = "$PREVIOUS" ] \
+      && [ "$rb_dirty" = "0" ] \
       && [ "$rb_build" = "$OLD_BUILD" ] \
       && [ "$rb_staged" = "$STAGED_BUILD" ] \
+      && [ "$rb_staged_artifact" = "$ARTIFACT" ] \
+      && [ "$rb_build_version_file" = "$LIVE_VERSION" ] \
       && [ "$rb_internal" = "$LIVE_VERSION" ] \
       && [ "$rb_public" = "$LIVE_VERSION" ] \
       && [ "$rb_wolo8092" = "$before_wolo8092" ] \
@@ -775,24 +836,37 @@ rollback_activation() {{
     printf '%s\\n' \
       "status=$rollback_status" \
       "original_exit_code=$rc" \
+      "source_sha=$rb_head" \
+      "dirty_count=$rb_dirty" \
       "active_build_id=$rb_build" \
       "staged_build_id=$rb_staged" \
+      "staged_artifact_sha256=$rb_staged_artifact" \
+      "build_version_file=$rb_build_version_file" \
       "internal_build_version=$rb_internal" \
       "public_build_version=$rb_public" \
       "wolo8092=$rb_wolo8092" \
       "wolo8093=$rb_wolo8093" \
       > "$ACT_RECEIPT/rollback-status.txt" 2>/dev/null || true
   fi
+  return "$rc"
 }}
 trap rollback_activation EXIT
 
-mv .next "$FAST_OLD"
 MUTATED=1
+sudo -n /usr/bin/systemctl stop "$SERVICE"
+test "$(systemctl is-active "$SERVICE" 2>/dev/null || true)" != "active"
+mv .next "$FAST_OLD"
 mv .next-release .next
 test "$(cat .next/BUILD_ID)" = "$STAGED_BUILD"
+test ! -e .next/cache
 test -d "$FAST_OLD"
 test "$(cat "$FAST_OLD/BUILD_ID")" = "$OLD_BUILD"
-sudo -n /usr/bin/systemctl restart "$SERVICE"
+git reset --hard "$RELEASE"
+test "$(git rev-parse HEAD)" = "$RELEASE"
+test -z "$(git status --porcelain --untracked-files=all)"
+printf '%s\\n' "$CANDIDATE_VERSION" > .aoe2war-build-version
+test "$(cat .aoe2war-build-version | tr -d '\\r\\n')" = "$CANDIDATE_VERSION"
+sudo -n /usr/bin/systemctl start "$SERVICE"
 
 READY=0
 for _ in $(seq 1 30); do
@@ -807,6 +881,7 @@ after_pid="$(systemctl show "$SERVICE" -p MainPID --value)"
 after_head="$(git rev-parse HEAD)"
 after_dirty="$(git status --porcelain --untracked-files=all | wc -l | tr -d ' ')"
 after_active_build="$(cat .next/BUILD_ID)"
+after_build_version_file="$(cat .aoe2war-build-version | tr -d '\\r\\n')"
 after_internal_version="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deployment-version | build_version)"
 after_public_version="$(curl -fsS --max-time 10 "$PUBLIC/api/deployment-version" | build_version)"
 after_wolo8092="$(wolo_count 8092)"
@@ -818,6 +893,7 @@ test -n "$after_pid"
 test "$after_head" = "$RELEASE"
 test "$after_dirty" = "0"
 test "$after_active_build" = "$STAGED_BUILD"
+test "$after_build_version_file" = "$CANDIDATE_VERSION"
 test "$after_internal_version" = "$CANDIDATE_VERSION"
 test "$after_public_version" = "$CANDIDATE_VERSION"
 test "$after_wolo8092" = "$before_wolo8092"
@@ -826,6 +902,9 @@ test "$after_content_sha" = "$candidate_content_sha"
 test ! -e .next-release
 test -d "$FAST_OLD"
 test "$(cat "$ROLLBACK/next/BUILD_ID")" = "$OLD_BUILD"
+test ! -e "$ROLLBACK/next/cache"
+test "$(cat "$ROLLBACK/source-sha")" = "$PREVIOUS"
+test "$(cat "$ROLLBACK/build-version")" = "$LIVE_VERSION"
 
 critical_get http://127.0.0.1:3030/
 critical_get http://127.0.0.1:3030/api/lobby
@@ -852,6 +931,7 @@ while [ "$soak_elapsed" -lt "$SOAK_SECONDS" ]; do
   soak_head="$(git rev-parse HEAD)"
   soak_dirty="$(git status --porcelain --untracked-files=all | wc -l | tr -d ' ')"
   soak_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
+  soak_build_version_file="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
   soak_internal="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deployment-version | build_version)"
   soak_public="$(curl -fsS --max-time 10 "$PUBLIC/api/deployment-version" | build_version)"
   soak_wolo8092="$(wolo_count 8092)"
@@ -861,6 +941,7 @@ while [ "$soak_elapsed" -lt "$SOAK_SECONDS" ]; do
   test "$soak_head" = "$RELEASE"
   test "$soak_dirty" = "0"
   test "$soak_build" = "$STAGED_BUILD"
+  test "$soak_build_version_file" = "$CANDIDATE_VERSION"
   test "$soak_internal" = "$CANDIDATE_VERSION"
   test "$soak_public" = "$CANDIDATE_VERSION"
   test "$soak_wolo8092" = "$before_wolo8092"
@@ -882,10 +963,12 @@ printf '%s\\n' \
   "status=CERTIFIED" \
   "release_sha=$RELEASE" \
   "previous_production_sha=$PREVIOUS" \
+  "source_sha=$after_head" \
   "old_build_id=$OLD_BUILD" \
   "active_build_id=$after_active_build" \
   "live_build_version=$LIVE_VERSION" \
   "candidate_build_version=$after_internal_version" \
+  "build_version_file=$after_build_version_file" \
   "artifact_sha256=$ARTIFACT" \
   "content_sha256=$after_content_sha" \
   "manifest_sha256=$MANIFEST_SHA" \
@@ -899,6 +982,8 @@ printf '%s\\n' \
   "soak_samples=$SOAK_SAMPLES" \
   "fast_rollback=$FAST_OLD" \
   "durable_rollback=$ROLLBACK" \
+  "durable_cache_free=1" \
+  "activation_bundle_while_stopped=1" \
   "release_specific_proof=INFRASTRUCTURE_exact_runtime_identity_critical_routes_and_bounded_health_soak" \
   > "$ACT_RECEIPT/certification.txt"
 COMMITTED=1
@@ -1027,11 +1112,13 @@ rm -f "$retention_candidates" "$retention_sorted"
 retention_service="$(systemctl is-active "$SERVICE" 2>/dev/null || true)"
 retention_head="$(git rev-parse HEAD 2>/dev/null || true)"
 retention_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
+retention_build_version_file="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
 retention_wolo8092="$(wolo_count 8092)"
 retention_wolo8093="$(wolo_count 8093)"
 if [ "$retention_service" != "active" ] \
   || [ "$retention_head" != "$RELEASE" ] \
   || [ "$retention_build" != "$STAGED_BUILD" ] \
+  || [ "$retention_build_version_file" != "$CANDIDATE_VERSION" ] \
   || [ "$retention_wolo8092" != "$before_wolo8092" ] \
   || [ "$retention_wolo8093" != "$before_wolo8093" ]; then
   RETENTION_STATUS="WARN"
@@ -1070,6 +1157,8 @@ printf 'retention_reclaimed_kb\\t%s\\n' "$RETENTION_RECLAIMED_KB"
 printf 'retention_unmatched_kept\\t%s\\n' "$RETENTION_UNMATCHED"
 printf 'fast_rollback\\t%s\\n' "$FAST_OLD"
 printf 'durable_rollback\\t%s\\n' "$ROLLBACK"
+printf 'durable_cache_free\\t1\\n'
+printf 'activation_bundle_while_stopped\\t1\\n'
 printf 'receipt_dir\\t%s\\n' "$ACT_RECEIPT"
 """
 
@@ -1090,6 +1179,10 @@ def validate_activation_result(result: dict[str, str], receipt: dict) -> list[st
         errors.append("active build version does not equal candidate build version")
     if result.get("artifact_sha256") != receipt.get("artifact_sha256"):
         errors.append("active artifact SHA-256 does not equal staged artifact")
+    if result.get("durable_cache_free") != "1":
+        errors.append("durable rollback does not prove cache-free storage")
+    if result.get("activation_bundle_while_stopped") != "1":
+        errors.append("activation does not prove source/build/runtime advanced while stopped")
     if result.get("wolo8092") != str(receipt.get("wolo_8092_count")):
         errors.append("WOLO listener 8092 changed during activation")
     if result.get("wolo8093") != str(receipt.get("wolo_8093_count")):
@@ -1228,7 +1321,7 @@ def activate_release(
         expected = {
             "status": "PREPARED",
             "release_sha": receipt["release_sha"],
-            "source_sha": receipt["release_sha"],
+            "source_sha": receipt["previous_production_sha"],
             "active_build_id": receipt["active_build_id"],
             "staged_build_id": receipt["staged_build_id"],
             "live_build_version": receipt["live_build_version"],
@@ -1316,6 +1409,8 @@ def activate_release(
         "active_build_id": result["active_build_id"],
         "candidate_build_version": result["candidate_build_version"],
         "artifact_sha256": result["artifact_sha256"],
+        "durable_cache_free": True,
+        "activation_bundle_while_stopped": True,
         "wolo_8092_count": int(result["wolo8092"]),
         "wolo_8093_count": int(result["wolo8093"]),
         "soak_seconds": int(result["soak_seconds"]),

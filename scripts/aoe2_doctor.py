@@ -181,6 +181,20 @@ def version_prefix_matches(actual: str | None, expected: str) -> bool:
     return core == expected or core.startswith(expected + ".")
 
 
+def version_at_least(actual: str | None, minimum: str | None) -> bool:
+    actual_core = semver_core(actual)
+    minimum_core = semver_core(minimum)
+    if actual_core is None or minimum_core is None:
+        return False
+
+    def parts(value: str) -> tuple[int, int, int]:
+        numbers = [int(part) for part in value.split(".")]
+        padded = numbers + [0, 0, 0]
+        return padded[0], padded[1], padded[2]
+
+    return parts(actual_core) >= parts(minimum_core)
+
+
 def parse_percent(value: str | None) -> int | None:
     if not value:
         return None
@@ -299,18 +313,28 @@ def check_toolchain(doctor: Doctor, contract: dict[str, Any]) -> None:
             )
 
     node_expected = str(expected.get("node_major") or "")
+    allowed_operator_majors = {
+        str(value)
+        for value in expected.get("operator_node_majors", [])
+        if str(value).isdigit()
+    }
+    if not allowed_operator_majors and node_expected:
+        allowed_operator_majors.add(node_expected)
     operator_node = (
         semver_core(results["node"]["version"])
         if results.get("node", {}).get("rc") == 0
         else None
     )
     if node_expected:
-        if not operator_node or operator_node.split(".", 1)[0] != node_expected:
+        operator_major = operator_node.split(".", 1)[0] if operator_node else None
+        if not operator_major or operator_major not in allowed_operator_majors:
             doctor.add(
                 "WARN",
                 "Toolchain",
                 "node-version",
-                f"operator Node={operator_node or 'unknown'} expected major={node_expected}",
+                f"operator Node={operator_node or 'unknown'} allowed majors="
+                f"{sorted(allowed_operator_majors)}; canonical build/production "
+                f"major={node_expected}",
                 2,
             )
     else:
@@ -385,6 +409,18 @@ def check_toolchain(doctor: Doctor, contract: dict[str, Any]) -> None:
             1,
         )
 
+    engines = package.get("engines", {}) if isinstance(package, dict) else {}
+    node_engine = str(engines.get("node") or "") if isinstance(engines, dict) else ""
+    if node_expected and node_expected not in node_engine:
+        doctor.add(
+            "WARN",
+            "Toolchain",
+            "package-node-engine",
+            f"package.json Node engine={node_engine or 'missing'} does not expose "
+            f"canonical major {node_expected}",
+            1,
+        )
+
     canonical = contract.get("canonical", {})
     host = str(canonical.get("production_host") or "hel1")
     rc, remote_node = ssh(host, "node --version 2>/dev/null || true")
@@ -449,6 +485,12 @@ pid="$(systemctl show {shlex.quote(service)} -p MainPID --value 2>/dev/null)"
 if [ -n "$pid" ] && [ "$pid" != "0" ] && [ -r "/proc/$pid/environ" ]; then
   tr '\\0' '\\n' < "/proc/$pid/environ" | cut -d= -f1 | grep -qx AOE2WAR_OS_BRIDGE_TOKEN && runtime_token=1
 fi
+effective_envfile=0
+if systemctl cat {shlex.quote(service)} 2>/dev/null | grep -Fqx -- {shlex.quote('EnvironmentFile=' + envfile)}; then
+  effective_envfile=1
+elif systemctl cat {shlex.quote(service)} 2>/dev/null | grep -Fqx -- {shlex.quote('EnvironmentFile=-' + envfile)}; then
+  effective_envfile=1
+fi
 printf 'service\\t%s\\n' "$(systemctl is-active {shlex.quote(service)} 2>/dev/null)"
 printf 'root\\t%s\\n' "$root_line"
 printf 'volume\\t%s\\n' "$volume_line"
@@ -459,6 +501,7 @@ printf 'envfile_exists\\t%s\\n' "$envfile_exists"
 printf 'dropin_exists\\t%s\\n' "$dropin_exists"
 printf 'store_exists\\t%s\\n' "$store_exists"
 printf 'runtime_token\\t%s\\n' "$runtime_token"
+printf 'effective_envfile\\t%s\\n' "$effective_envfile"
 printf 'environment_files\\t%s\\n' "$(systemctl show {shlex.quote(service)} -p EnvironmentFiles --value 2>/dev/null)"
 printf 'store_meta\\t%s\\n' "$(stat -c '%U:%G:%a' {shlex.quote(store)} 2>/dev/null)"
 """.strip()
@@ -552,12 +595,12 @@ def check_host_and_server_bridge(
 
     canonical = contract["canonical"]
     expected_env = str(canonical["bridge_env_file"])
-    if expected_env not in str(snap.get("environment_files") or ""):
+    if snap.get("effective_envfile") != "1":
         doctor.add(
             "WARN",
             "Operator Bridge",
             "environment-authority",
-            f"systemd EnvironmentFiles does not include {expected_env}",
+            f"effective merged systemd unit does not include {expected_env}",
             1,
         )
 
@@ -703,6 +746,41 @@ def check_local_bridge(doctor: Doctor, contract: dict[str, Any]) -> None:
         try:
             state = json.loads(output)
             result["remote_state"] = state
+            bridge_policy = contract.get("operator_bridge", {})
+            minimum_version = str(bridge_policy.get("minimum_version") or "")
+            actual_version = semver_core(str(state.get("version") or ""))
+            if minimum_version and not version_at_least(
+                actual_version,
+                minimum_version,
+            ):
+                doctor.add(
+                    "WARN",
+                    "Operator Bridge",
+                    "bridge-version",
+                    f"running Operator Bridge={actual_version or 'unknown'} "
+                    f"expected {minimum_version}",
+                    2,
+                )
+            capabilities = {
+                str(value)
+                for value in state.get("capabilities", [])
+                if isinstance(value, str)
+            }
+            required_capabilities = {
+                str(value)
+                for value in bridge_policy.get("required_capabilities", [])
+                if isinstance(value, str)
+            }
+            missing_capabilities = sorted(required_capabilities - capabilities)
+            if missing_capabilities:
+                doctor.add(
+                    "WARN",
+                    "Operator Bridge",
+                    "bridge-capabilities",
+                    f"running Operator Bridge is missing fixed capabilities: "
+                    f"{missing_capabilities}",
+                    2,
+                )
             seen = parse_iso(str(state.get("lastSeenAt") or ""))
             if seen is None:
                 raise ValueError("lastSeenAt unavailable")
@@ -801,6 +879,18 @@ def check_architecture(
                 )
         map_results[name] = result
 
+    legacy = contract.get("legacy_deployment_artifacts", {})
+    for relative, policy in legacy.items() if isinstance(legacy, dict) else []:
+        candidate = ROOT / str(relative)
+        if policy == "must-be-absent" and candidate.exists():
+            doctor.add(
+                "WARN",
+                "Architecture",
+                "legacy-deployment-artifact",
+                f"retired deployment artifact reappeared: {relative}",
+                2,
+            )
+
     ecosystem = ROOT / "ecosystem.config.js"
     if ecosystem.is_file():
         text = ecosystem.read_text(encoding="utf-8", errors="replace")
@@ -849,6 +939,131 @@ def check_disaster_recovery(doctor: Doctor, contract: dict[str, Any]) -> None:
             "configured; VPS root and mounted volume still share a failure domain",
             3,
         )
+
+
+def check_replay_api(doctor: Doctor, contract: dict[str, Any]) -> None:
+    component = contract.get("components", {}).get("replay_api", {})
+    if not isinstance(component, dict):
+        doctor.add(
+            "BLOCKER",
+            "Architecture",
+            "api-contract",
+            "operations contract has no replay_api component",
+            5,
+        )
+        return
+
+    local_repo = (ROOT / str(component.get("local_repo") or "")).resolve()
+    expected_local = (ROOT.parent / "api-prodn").resolve()
+    remote_repo = str(component.get("production_repo") or "")
+    service = str(component.get("service") or "")
+    branch = str(component.get("branch") or "main")
+    health_url = str(component.get("health_url") or "")
+    host = str(contract.get("canonical", {}).get("production_host") or "hel1")
+    result: dict[str, Any] = {
+        "local_repo": str(local_repo),
+        "production_repo": remote_repo,
+        "release_automation": component.get("release_automation"),
+    }
+
+    if local_repo != expected_local or not local_repo.is_dir():
+        doctor.add(
+            "BLOCKER",
+            "Architecture",
+            "api-local-repo",
+            f"replay API local authority is unavailable or non-canonical: {local_repo}",
+            6,
+        )
+        doctor.info["replay_api"] = result
+        return
+
+    commands = {
+        "head": ["git", "rev-parse", "HEAD"],
+        "branch": ["git", "branch", "--show-current"],
+        "dirty": ["git", "status", "--porcelain", "--untracked-files=all"],
+        "origin": [
+            "git",
+            "ls-remote",
+            "--exit-code",
+            "origin",
+            f"refs/heads/{branch}",
+        ],
+        "migration_head": [str(local_repo / ".venv" / "bin" / "alembic"), "heads"],
+    }
+    for key, command in commands.items():
+        rc, output = run(command, cwd=local_repo, timeout=30)
+        result[key] = output.strip()
+        result[key + "_rc"] = rc
+
+    local_head = result.get("head") if result.get("head_rc") == 0 else None
+    origin_output = str(result.get("origin") or "")
+    origin_head = origin_output.split()[0] if origin_output else None
+    local_migration = str(result.get("migration_head") or "").split()[0] or None
+
+    remote_script = f"""
+set +e
+cd {shlex.quote(remote_repo)} || exit 10
+printf 'head\\t%s\\n' "$(git rev-parse HEAD 2>/dev/null)"
+printf 'branch\\t%s\\n' "$(git branch --show-current 2>/dev/null)"
+printf 'dirty\\t%s\\n' "$(git status --porcelain --untracked-files=all 2>/dev/null | wc -l | tr -d ' ')"
+printf 'service\\t%s\\n' "$(systemctl is-active {shlex.quote(service)} 2>/dev/null)"
+printf 'port_count\\t%s\\n' "$(ss -ltnH sport = :3330 2>/dev/null | wc -l | tr -d ' ')"
+printf 'health\\t%s\\n' "$(curl -fsS --max-time 5 {shlex.quote(health_url)} 2>/dev/null)"
+printf 'migration_current\\t%s\\n' "$(venv/bin/alembic current 2>/dev/null | tail -n 1 | awk '{{print $1}}')"
+""".strip()
+    remote_rc, remote_output = ssh(host, remote_script, timeout=45)
+    remote: dict[str, str] = {}
+    for line in remote_output.splitlines():
+        if "\t" in line:
+            key, value = line.split("\t", 1)
+            remote[key] = value.strip()
+    remote["rc"] = str(remote_rc)
+    result["production"] = remote
+
+    problems: list[str] = []
+    if result.get("branch") != branch:
+        problems.append(f"local branch={result.get('branch')!r}")
+    if str(result.get("dirty") or "").strip():
+        problems.append("local worktree is dirty")
+    if not local_head or local_head != origin_head:
+        problems.append(
+            f"local/origin mismatch local={str(local_head)[:10]} origin={str(origin_head)[:10]}"
+        )
+    if remote_rc != 0:
+        problems.append("production inspection failed")
+    if remote.get("head") != local_head:
+        problems.append(
+            f"production source={str(remote.get('head'))[:10]} local={str(local_head)[:10]}"
+        )
+    if remote.get("branch") != branch:
+        problems.append(f"production branch={remote.get('branch')!r}")
+    if remote.get("dirty") != "0":
+        problems.append(f"production dirty_count={remote.get('dirty')!r}")
+    if remote.get("service") != "active":
+        problems.append(f"service={remote.get('service')!r}")
+    if remote.get("port_count") != "1":
+        problems.append(f"port 3330 listeners={remote.get('port_count')!r}")
+    try:
+        health = json.loads(remote.get("health") or "")
+    except json.JSONDecodeError:
+        health = None
+    if not isinstance(health, dict) or health.get("status") != "ok":
+        problems.append("health endpoint did not return status=ok")
+    if not local_migration or remote.get("migration_current") != local_migration:
+        problems.append(
+            f"migration current={remote.get('migration_current')!r} "
+            f"source head={local_migration!r}"
+        )
+
+    if problems:
+        doctor.add(
+            "BLOCKER",
+            "Production",
+            "replay-api-proof",
+            "replay API is not exact: " + "; ".join(problems),
+            10,
+        )
+    doctor.info["replay_api"] = result
 
 
 def check_production_summary(
@@ -941,6 +1156,7 @@ def collect_doctor(
         print("→ Production: verifying certified runtime and Wolo boundary...", flush=True)
     release_data = aoe2_release.collect()
     check_production_summary(doctor, release_data)
+    check_replay_api(doctor, contract)
 
     if progress:
         print("→ Bridge: verifying Mac LaunchAgent + server control plane...", flush=True)

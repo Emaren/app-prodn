@@ -1,0 +1,68 @@
+name: AoE2WAR CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aoe2war-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  control-plane:
+    name: Release and documentation control plane
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Compile Python tooling
+        run: python3 -m compileall -q scripts tests
+      - name: Run Python contracts
+        run: python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Verify documentation control plane
+        run: python3 scripts/docs_v2_check.py
+      - name: Verify Node test inventory
+        run: python3 scripts/run_test_contract.py --list
+      - name: Scan candidate source for secrets
+        run: python3 scripts/scan_tracked_secrets.py
+
+  web:
+    name: Type, contract, and production build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/aoe2war_ci
+      SESSION_SECRET: ci-only-not-a-production-secret
+      NEXTAUTH_SECRET: ci-only-not-a-production-secret
+      NEXTAUTH_URL: http://127.0.0.1:3030
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.22.0
+          cache: yarn
+      - name: Enable pinned package manager
+        run: |
+          corepack enable
+          yarn --version
+      - name: Install frozen dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts --non-interactive
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: Typecheck
+        run: npx tsc --noEmit --pretty false
+      - name: Run active Node contract inventory
+        run: python3 scripts/run_test_contract.py
+      - name: Build production application
+        run: yarn build

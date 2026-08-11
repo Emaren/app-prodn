@@ -1,9 +1,11 @@
 import fcntl
 import importlib.util
 import json
+import os
 import pathlib
 import tempfile
 import unittest
+from unittest.mock import patch
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "aoe2_release.py"
 SPEC = importlib.util.spec_from_file_location("aoe2_release", SCRIPT)
@@ -69,6 +71,14 @@ class ReleaseEngineeringTests(unittest.TestCase):
     def test_derive_state_staged(self):
         self.assertEqual(MODULE.derive_state(state_data(staged="candidate"))[0], "STAGED")
 
+    def test_derive_state_staged_wins_before_source_parity(self):
+        state, nxt = MODULE.derive_state(
+            state_data(local="new", github="new", prod="previous", staged="candidate")
+        )
+        self.assertEqual(state, "STAGED")
+        self.assertIn("previous live source", nxt)
+        self.assertIn("aoe2war deploy", nxt)
+
     def test_derive_state_runtime_unhealthy(self):
         self.assertEqual(MODULE.derive_state(state_data(service="failed"))[0], "RUNTIME_UNHEALTHY")
 
@@ -102,6 +112,25 @@ class ReleaseEngineeringTests(unittest.TestCase):
                 with self.assertRaises(MODULE.DeployLockBusy):
                     with MODULE.deployment_lock(lock_path):
                         pass
+
+    def test_canonical_local_lease_blocks_another_holder(self):
+        with tempfile.TemporaryDirectory() as temp:
+            lock_path = pathlib.Path(temp) / "release.lock"
+            with MODULE.local_global_release_lease(lock_path, "first"):
+                with self.assertRaises(MODULE.DeployLockBusy):
+                    with MODULE.local_global_release_lease(lock_path, "second"):
+                        pass
+            self.assertFalse(lock_path.with_suffix(".lock.meta").exists())
+
+    def test_inherited_lease_requires_owner_or_parent_pid(self):
+        values = {
+            MODULE.GLOBAL_LEASE_ENV: "lease-token",
+            MODULE.GLOBAL_LEASE_OWNER_ENV: str(os.getpid()),
+        }
+        with patch.dict(os.environ, values, clear=False):
+            self.assertTrue(MODULE.inherited_global_lease())
+            os.environ[MODULE.GLOBAL_LEASE_OWNER_ENV] = "99999999"
+            self.assertFalse(MODULE.inherited_global_lease())
 
     def test_release_history_reads_only_certified_activation_receipts(self):
         original = MODULE.ACTIVATION_RECEIPT_DIR

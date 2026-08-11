@@ -16,6 +16,7 @@ import {
   getTileViewMode,
   markTileViewDefaultMigrationApplied,
   normalizeTileViewPreferences,
+  LIVE_GAMES_VIEW_STORAGE_KEY,
   TILE_VIEW_DEFAULT_VERSION,
   TILE_VIEW_DEFAULT_VERSION_KEY,
 } from "../lib/tileViewPreferences.ts";
@@ -27,8 +28,9 @@ test("forum opens on Extreme and persists as a recognized tile preference", () =
   });
 });
 
-test("the Extreme launch migration runs once without resetting other surfaces", () => {
+test("the Extreme launch migration respects the independent live-games choice", () => {
   const storage = new Map<string, string>();
+  storage.set(LIVE_GAMES_VIEW_STORAGE_KEY, "extreme");
   Object.defineProperty(globalThis, "window", {
     configurable: true,
     value: {
@@ -43,19 +45,29 @@ test("the Extreme launch migration runs once without resetting other surfaces", 
     assert.deepEqual(
       applyTileViewDefaultMigration({
         forum: "basic",
-        live_games: "extreme",
+        live_games: "basic",
+        leaderboard: "advanced",
       }),
       {
         forum: "extreme",
         live_games: "extreme",
+        leaderboard: "advanced",
       }
     );
 
     markTileViewDefaultMigrationApplied();
     assert.equal(storage.get(TILE_VIEW_DEFAULT_VERSION_KEY), TILE_VIEW_DEFAULT_VERSION);
-    assert.deepEqual(applyTileViewDefaultMigration({ forum: "advanced" }), {
-      forum: "advanced",
-    });
+    assert.deepEqual(
+      applyTileViewDefaultMigration({
+        forum: "advanced",
+        leaderboard: "basic",
+      }),
+      {
+        forum: "advanced",
+        live_games: "extreme",
+        leaderboard: "basic",
+      }
+    );
   } finally {
     Reflect.deleteProperty(globalThis, "window");
   }
