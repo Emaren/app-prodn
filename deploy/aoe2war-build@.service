@@ -9,6 +9,7 @@ Group=tony
 WorkingDirectory=/tmp/aoe2war-stage-%i
 Environment=NEXT_DIST_DIR=.next-release
 Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=NODE_OPTIONS=--max-old-space-size=2304
 Environment=PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
 Environment=PRISMA_SCHEMA_ENGINE_BINARY=/var/www/AoE2HDBets/app-prodn/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x
 Environment=HOME=/tmp/aoe2war-stage-%i/.sandbox-home
