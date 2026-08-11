@@ -9,6 +9,7 @@ Group=tony
 WorkingDirectory=/tmp/aoe2war-stage-%i
 Environment=NEXT_DIST_DIR=.next-release
 Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
 Environment=HOME=/tmp/aoe2war-stage-%i/.sandbox-home
 Environment=XDG_CONFIG_HOME=/tmp/aoe2war-stage-%i/.sandbox-home/.config
 Environment=XDG_CACHE_HOME=/tmp/aoe2war-stage-%i/.sandbox-home/.cache
