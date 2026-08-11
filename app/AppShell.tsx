@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Anvil, BarChart3, Bot, Castle, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, UsersRound, X, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
+import ClientFlightRecorder from "@/components/analytics/ClientFlightRecorder";
 import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
 import SpeedProof from "@/components/speed/SpeedProof";
 import SpeedRuntime from "@/components/speed/SpeedRuntime";
@@ -850,6 +851,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       <SpeedWebVitals />
       <SpeedProof />
       <UserExperienceTracker />
+      <ClientFlightRecorder />
       <header
         className={`sticky top-0 z-[180] shrink-0 overflow-visible border-b px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.7rem)] backdrop-blur-2xl transition-[background-color,border-color] duration-500 sm:px-4 lg:py-3 ${headerSkin.shell}`}
         style={
