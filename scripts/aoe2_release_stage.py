@@ -27,6 +27,10 @@ from aoe2_release_ship import (
 
 STAGE_RECEIPT_DIR = ROOT / ".aoe2war-release" / "stage-receipts"
 REMOTE_RECEIPT_ROOT = "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts"
+BUILD_SANDBOX_UNIT_SOURCE = ROOT / "deploy" / "aoe2war-build@.service"
+BUILD_SANDBOX_UNIT = "/etc/systemd/system/aoe2war-build@.service"
+DEPS_SANDBOX_UNIT_SOURCE = ROOT / "deploy" / "aoe2war-deps@.service"
+DEPS_SANDBOX_UNIT = "/etc/systemd/system/aoe2war-deps@.service"
 
 
 class StageError(RuntimeError):
@@ -73,6 +77,8 @@ def remote_stage_script(
     gate_text: str = "",
 ) -> str:
     q = shlex.quote
+    build_unit_sha = sha256_file(BUILD_SANDBOX_UNIT_SOURCE)
+    deps_unit_sha = sha256_file(DEPS_SANDBOX_UNIT_SOURCE)
     return f"""
 set -Eeuo pipefail
 cd {q(PROD_REPO)}
@@ -82,6 +88,10 @@ PREVIOUS={q(previous_sha)}
 MANIFEST_SHA={q(manifest_sha)}
 GATE_SHA={q(gate_sha)}
 RECEIPT={q(receipt_dir)}
+BUILD_UNIT_TEMPLATE={q(BUILD_SANDBOX_UNIT)}
+BUILD_UNIT_SHA={q(build_unit_sha)}
+DEPS_UNIT_TEMPLATE={q(DEPS_SANDBOX_UNIT)}
+DEPS_UNIT_SHA={q(deps_unit_sha)}
 SERVICE={q(SERVICE)}
 PUBLIC={q(PUBLIC)}
 LIVE_REPO={q(PROD_REPO)}
@@ -91,6 +101,21 @@ GATE_CONTENT={q(gate_text)}
 mutation_started=0
 build_parent=""
 build_worktree=""
+
+# Runtime bundles are deployment state, not source state. This filtering must
+# work even while production is still checked out at a commit whose .gitignore
+# predates the dependency-bundle release lane.
+source_status() {{
+  git status --porcelain=v1 --untracked-files=normal -- . \
+    ':(exclude).next-release' \
+    ':(exclude).next-release/**' \
+    ':(exclude).node_modules-release' \
+    ':(exclude).node_modules-release/**' \
+    ':(exclude).next-rollback*' \
+    ':(exclude).next-rollback*/**' \
+    ':(exclude).node_modules-rollback*' \
+    ':(exclude).node_modules-rollback*/**'
+}}
 
 cleanup_build_worktree() {{
   if [ -n "$build_worktree" ] && [ -d "$build_worktree" ]; then
@@ -110,7 +135,7 @@ restore_stage_failure() {{
   cleanup_build_worktree
   if [ "$rc" -ne 0 ]; then
     if [ "$mutation_started" = "1" ]; then
-      rm -rf .next-release
+      rm -rf .next-release .node_modules-release
       printf 'recovery\tRESTORED\n'
       printf 'status=FAILED\nexit_code=%s\nsource_unchanged=%s\n' \
         "$rc" "$(git rev-parse HEAD 2>/dev/null || true)" \
@@ -131,7 +156,7 @@ test "$(sha256sum "$RECEIPT/gate-receipt.json" | awk '{{print $1}}')" = "$GATE_S
 
 before_head="$(git rev-parse HEAD)"
 before_branch="$(git branch --show-current)"
-before_dirty="$(git status --porcelain --untracked-files=all | wc -l | tr -d ' ')"
+before_dirty="$(source_status | wc -l | tr -d ' ')"
 before_service="$(systemctl is-active "$SERVICE" || true)"
 before_active_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
 before_internal="$(curl -fsS --max-time 6 http://127.0.0.1:3030/api/deployment-version)"
@@ -175,14 +200,14 @@ test "$before_build_version_file" = "$(
 test "$before_wolo8092" = "1"
 test "$before_wolo8093" = "1"
 test ! -e .next-release
+test ! -e .node_modules-release
 
 git fetch origin --prune
 remote_main="$(git rev-parse origin/main)"
 test "$remote_main" = "$RELEASE"
-if ! git diff --quiet "$PREVIOUS" "$RELEASE" -- yarn.lock; then
-  echo "STOP: yarn.lock changed; isolated staging will not reuse incompatible production node_modules." >&2
-  exit 42
-fi
+# Dependency changes are supported by staging a fresh candidate-owned tree.
+# Policy: yarn install --frozen-lockfile; network fetch executes with
+# --ignore-scripts, while lifecycle scripts run only in the offline sandbox.
 dependency_contract() {{
   git show "$1:package.json" | python3 -c '
 import json,sys
@@ -193,12 +218,50 @@ print(json.dumps({{key:p.get(key) for key in keys}},sort_keys=True,separators=("
 }}
 previous_dependency_contract="$(dependency_contract "$PREVIOUS")"
 release_dependency_contract="$(dependency_contract "$RELEASE")"
-if [ "$previous_dependency_contract" != "$release_dependency_contract" ]; then
-  echo "STOP: package dependency contract changed; atomic node_modules activation/rollback is required." >&2
-  exit 42
+if [ "$previous_dependency_contract" = "$release_dependency_contract" ]; then
+  dependency_contract_unchanged=1
+else
+  dependency_contract_unchanged=0
+fi
+if git diff --quiet "$PREVIOUS" "$RELEASE" -- yarn.lock; then
+  dependency_lock_changed=0
+else
+  dependency_lock_changed=1
 fi
 test "$(yarn --version)" = "1.22.22"
 command -v rsync >/dev/null
+test -f "$BUILD_UNIT_TEMPLATE"
+test "$(sha256sum "$BUILD_UNIT_TEMPLATE" | awk '{{print $1}}')" = "$BUILD_UNIT_SHA"
+test -f "$DEPS_UNIT_TEMPLATE"
+test "$(sha256sum "$DEPS_UNIT_TEMPLATE" | awk '{{print $1}}')" = "$DEPS_UNIT_SHA"
+
+grep -F -- "--frozen-lockfile --ignore-scripts" "$DEPS_UNIT_TEMPLATE" >/dev/null
+grep -F -- "--frozen-lockfile --offline --force" "$BUILD_UNIT_TEMPLATE" >/dev/null
+grep -Fx "PrivateNetwork=yes" "$BUILD_UNIT_TEMPLATE" >/dev/null
+grep -Fx "InaccessiblePaths=/etc/aoe2hdbets" "$DEPS_UNIT_TEMPLATE" >/dev/null
+grep -Fx "InaccessiblePaths=/mnt/HC_Volume_105319120" "$DEPS_UNIT_TEMPLATE" >/dev/null
+
+YARN_RUNTIME=/home/tony/.cache/node/corepack/v1/yarn/1.22.22
+test -f "$YARN_RUNTIME/bin/yarn.js"
+test "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$YARN_RUNTIME/package.json")" = "1.22.22"
+
+# Fail closed before creating candidate worktrees or fetching dependencies.
+# Free-space policy reserves two live dependency-tree equivalents plus 1 GiB
+# for candidate materialization, Yarn cache, build output, and staging overhead.
+test -d "$LIVE_REPO/node_modules"
+live_dependency_kb="$(du -sk "$LIVE_REPO/node_modules" | awk '{{print $1}}')"
+root_available_kb="$(df -Pk "$LIVE_REPO" | awk 'NR==2 {{print $4}}')"
+test "$live_dependency_kb" -gt 0
+test "$root_available_kb" -gt 0
+root_required_kb=$((live_dependency_kb * 2 + 1048576))
+
+printf '%s\n' \
+  "live_dependency_kb=$live_dependency_kb" \
+  "root_available_kb=$root_available_kb" \
+  "root_required_kb=$root_required_kb" \
+  > "$RECEIPT/disk-preflight.txt"
+
+test "$root_available_kb" -ge "$root_required_kb"
 
 build_parent="$(mktemp -d {q('/var/www/AoE2HDBets/.aoe2war-stage-XXXXXX')})"
 build_worktree="$(mktemp -d /tmp/aoe2war-stage-XXXXXXXXXX)"
@@ -210,16 +273,60 @@ git worktree add --detach "$build_worktree" "$RELEASE" \
   > "$RECEIPT/worktree-add.log" 2>&1
 test "$(git -C "$build_worktree" rev-parse HEAD)" = "$RELEASE"
 
-# The current automatic lane deliberately accepts only an unchanged Yarn lock
-# and package dependency contract. Copy the already-proven production
-# dependency tree into the isolated worktree; build/prebuild tooling may mutate
-# only this disposable copy.
-cp -a node_modules "$build_worktree/node_modules"
-(
-  cd "$build_worktree"
-  env NEXT_DIST_DIR=.next-release yarn build
-) \
+# Candidate dependencies are fetched from the exact release lock in a
+# root-defined sandbox with network access but lifecycle scripts disabled.
+# The fetch-created node_modules tree is discarded; the build sandbox then
+# rematerializes the exact tree offline with lifecycle scripts enabled.
+cp -a "$YARN_RUNTIME" "$build_worktree/.yarn-runtime"
+install -d -m 0700 \
+  "$build_worktree/.sandbox-home" \
+  "$build_worktree/.sandbox-home/.config" \
+  "$build_worktree/.sandbox-home/.cache" \
+  "$build_worktree/.tmp" \
+  "$build_worktree/.yarn-cache"
+
+build_instance="${{build_worktree#/tmp/aoe2war-stage-}}"
+[[ "$build_instance" =~ ^[A-Za-z0-9]{{10}}$ ]]
+deps_unit="aoe2war-deps@${{build_instance}}.service"
+build_unit="aoe2war-build@${{build_instance}}.service"
+
+# Authorization probes only; execution is performed by the separate calls below.
+sudo -n -l /usr/bin/systemctl start --wait "$deps_unit" >/dev/null
+sudo -n -l /usr/bin/systemctl start --wait "$build_unit" >/dev/null
+
+sudo -n /usr/bin/systemctl reset-failed "$deps_unit" >/dev/null 2>&1 || true
+deps_started_epoch="$(date +%s)"
+if ! sudo -n /usr/bin/systemctl start --wait "$deps_unit"; then
+  sudo -n /usr/bin/journalctl -u "$deps_unit" \
+    --since "@$deps_started_epoch" --no-pager -o cat \
+    > "$RECEIPT/dependency-fetch.log" 2>&1 || true
+  exit 42
+fi
+sudo -n /usr/bin/journalctl -u "$deps_unit" \
+  --since "@$deps_started_epoch" --no-pager -o cat \
+  > "$RECEIPT/dependency-fetch.log" 2>&1
+test "$(systemctl show "$deps_unit" -p Result --value)" = "success"
+test "$(systemctl show "$deps_unit" -p ExecMainStatus --value)" = "0"
+test -d "$build_worktree/node_modules"
+
+# Never trust/use the network-phase materialization as the runtime tree.
+rm -rf "$build_worktree/node_modules"
+test ! -e "$build_worktree/node_modules"
+
+sudo -n /usr/bin/systemctl reset-failed "$build_unit" >/dev/null 2>&1 || true
+build_started_epoch="$(date +%s)"
+if ! sudo -n /usr/bin/systemctl start --wait "$build_unit"; then
+  sudo -n /usr/bin/journalctl -u "$build_unit" \
+    --since "@$build_started_epoch" --no-pager -o cat \
+    > "$RECEIPT/build.log" 2>&1 || true
+  exit 43
+fi
+sudo -n /usr/bin/journalctl -u "$build_unit" \
+  --since "@$build_started_epoch" --no-pager -o cat \
   > "$RECEIPT/build.log" 2>&1
+test "$(systemctl show "$build_unit" -p Result --value)" = "success"
+test "$(systemctl show "$build_unit" -p ExecMainStatus --value)" = "0"
+test -d "$build_worktree/node_modules"
 
 test -f "$build_worktree/.next-release/BUILD_ID"
 test -f "$build_worktree/.aoe2war-build-version"
@@ -293,8 +400,26 @@ artifact_sha="$(
   | awk '{{print $1}}'
 )"
 
+candidate_node_modules_sha="$(
+  tar \
+    --sort=name \
+    --mtime='UTC 1970-01-01' \
+    --owner=0 \
+    --group=0 \
+    --numeric-owner \
+    -C "$build_worktree/node_modules" -cf - . \
+  | sha256sum \
+  | awk '{{print $1}}'
+)"
+candidate_node_modules_kb="$(du -sk "$build_worktree/node_modules" | awk '{{print $1}}')"
+test "${{#candidate_node_modules_sha}}" = "64"
+test "$candidate_node_modules_kb" -gt 0
+
 mutation_started=1
+mv "$build_worktree/node_modules" .node_modules-release
 mv "$stage_copy" .next-release
+
+test -d .node_modules-release
 test "$(cat .next-release/BUILD_ID)" = "$staged_build"
 test ! -e .next-release/cache
 
@@ -303,7 +428,7 @@ build_parent=""
 build_worktree=""
 
 after_head="$(git rev-parse HEAD)"
-after_dirty="$(git status --porcelain --untracked-files=all | wc -l | tr -d ' ')"
+after_dirty="$(source_status | wc -l | tr -d ' ')"
 after_service="$(systemctl is-active "$SERVICE" || true)"
 after_active_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
 after_internal="$(curl -fsS --max-time 6 http://127.0.0.1:3030/api/deployment-version)"
@@ -324,6 +449,7 @@ test "$after_build_version_file" = "$before_build_version_file"
 test -n "$staged_build"
 test -n "$candidate_version"
 test -n "$artifact_sha"
+test -n "$candidate_node_modules_sha"
 
 printf '%s\n' \
   "status=STAGED" \
@@ -338,11 +464,20 @@ printf '%s\n' \
   )" \
   "candidate_build_version=$candidate_version" \
   "artifact_sha256=$artifact_sha" \
+  "candidate_node_modules_sha256=$candidate_node_modules_sha" \
+  "candidate_node_modules_kb=$candidate_node_modules_kb" \
   "service=$after_service" \
   "wolo8092=$after_wolo8092" \
   "wolo8093=$after_wolo8093" \
   "isolated_worktree=1" \
-  "dependency_contract_unchanged=1" \
+  "build_process_sandboxed=1" \
+  "build_network_private=1" \
+  "build_secret_paths_inaccessible=1" \
+  "dependency_fetch_sandboxed=1" \
+  "dependency_fetch_scripts_disabled=1" \
+  "dependency_build_offline=1" \
+  "dependency_contract_unchanged=$dependency_contract_unchanged" \
+  "dependency_lock_changed=$dependency_lock_changed" \
   "cache_free_artifact=1" \
   "artifact_path_relocated=1" \
   "live_source_mutated=0" \
@@ -364,11 +499,20 @@ printf 'live_build_version\t%s\n' "$(
 )"
 printf 'candidate_build_version\t%s\n' "$candidate_version"
 printf 'artifact_sha256\t%s\n' "$artifact_sha"
+printf 'candidate_node_modules_sha256\t%s\n' "$candidate_node_modules_sha"
+printf 'candidate_node_modules_kb\t%s\n' "$candidate_node_modules_kb"
 printf 'service\t%s\n' "$after_service"
 printf 'wolo8092\t%s\n' "$after_wolo8092"
 printf 'wolo8093\t%s\n' "$after_wolo8093"
 printf 'isolated_worktree\t1\n'
-printf 'dependency_contract_unchanged\t1\n'
+printf 'build_process_sandboxed\t1\n'
+printf 'build_network_private\t1\n'
+printf 'build_secret_paths_inaccessible\t1\n'
+printf 'dependency_fetch_sandboxed\t1\n'
+printf 'dependency_fetch_scripts_disabled\t1\n'
+printf 'dependency_build_offline\t1\n'
+printf 'dependency_contract_unchanged\t%s\n' "$dependency_contract_unchanged"
+printf 'dependency_lock_changed\t%s\n' "$dependency_lock_changed"
 printf 'cache_free_artifact\t1\n'
 printf 'artifact_path_relocated\t1\n'
 printf 'live_source_mutated\t0\n'
@@ -408,6 +552,20 @@ def validate_stage_result(
     artifact = result.get("artifact_sha256") or ""
     if len(artifact) != 64 or any(c not in "0123456789abcdef" for c in artifact):
         errors.append("candidate artifact SHA-256 is invalid")
+
+    dependency_artifact = result.get("candidate_node_modules_sha256") or ""
+    if len(dependency_artifact) != 64 or any(
+        c not in "0123456789abcdef" for c in dependency_artifact
+    ):
+        errors.append("candidate node_modules SHA-256 is invalid")
+
+    try:
+        dependency_kb = int(result.get("candidate_node_modules_kb") or "0")
+    except ValueError:
+        dependency_kb = 0
+    if dependency_kb <= 0:
+        errors.append("candidate node_modules size is invalid")
+
     if result.get("service") != "active":
         errors.append("AoE2WAR web service is not active after staging")
     if result.get("wolo8092") != str(prod.get("wolo_8092_count")):
@@ -416,7 +574,12 @@ def validate_stage_result(
         errors.append("WOLO 8093 listener count changed during staging")
     for key, expected in (
         ("isolated_worktree", "1"),
-        ("dependency_contract_unchanged", "1"),
+        ("build_process_sandboxed", "1"),
+        ("build_network_private", "1"),
+        ("build_secret_paths_inaccessible", "1"),
+        ("dependency_fetch_sandboxed", "1"),
+        ("dependency_fetch_scripts_disabled", "1"),
+        ("dependency_build_offline", "1"),
         ("cache_free_artifact", "1"),
         ("artifact_path_relocated", "1"),
         ("live_source_mutated", "0"),
@@ -426,6 +589,21 @@ def validate_stage_result(
     ):
         if result.get(key) != expected:
             errors.append(f"isolated-stage invariant failed: {key}={result.get(key)!r}")
+
+    for key in ("dependency_contract_unchanged", "dependency_lock_changed"):
+        if result.get(key) not in {"0", "1"}:
+            errors.append(
+                f"dependency evidence flag is invalid: {key}={result.get(key)!r}"
+            )
+
+    if "changed_files" in manifest:
+        expected_lock_changed = (
+            "1" if "yarn.lock" in (manifest.get("changed_files") or []) else "0"
+        )
+        if result.get("dependency_lock_changed") != expected_lock_changed:
+            errors.append(
+                "dependency lock-change evidence does not match release manifest"
+            )
 
     return errors
 
@@ -631,8 +809,9 @@ def stage_release(
             "stdout_tail": (p.stdout or "")[-4000:],
             "stderr_tail": (p.stderr or "")[-4000:],
             "rollback_policy": (
-                "remote trap removes any partial .next-release and disposable "
-                "worktree; live source/build-version/runtime are never changed"
+                "remote trap removes partial .next-release and "
+                ".node_modules-release plus the disposable worktree; "
+                "live source/build-version/runtime are never changed"
             ),
         }
         if json_output:
@@ -693,12 +872,27 @@ def stage_release(
         "live_build_version": result["live_build_version"],
         "candidate_build_version": result["candidate_build_version"],
         "artifact_sha256": result["artifact_sha256"],
+        "candidate_node_modules_sha256": result[
+            "candidate_node_modules_sha256"
+        ],
+        "candidate_node_modules_kb": int(result["candidate_node_modules_kb"]),
         "service": result["service"],
         "wolo_8092_count": int(result["wolo8092"]),
         "wolo_8093_count": int(result["wolo8093"]),
         "remote_receipt_dir": result["receipt_dir"],
         "isolated_worktree": True,
-        "dependency_contract_unchanged": True,
+        "build_process_sandboxed": True,
+        "build_network_private": True,
+        "build_secret_paths_inaccessible": True,
+        "dependency_fetch_sandboxed": True,
+        "dependency_fetch_scripts_disabled": True,
+        "dependency_build_offline": True,
+        "dependency_contract_unchanged": (
+            result["dependency_contract_unchanged"] == "1"
+        ),
+        "dependency_lock_changed": (
+            result["dependency_lock_changed"] == "1"
+        ),
         "cache_free_artifact": True,
         "artifact_path_relocated": True,
         "live_source_mutated": False,
@@ -755,6 +949,15 @@ def stage_release(
     print(f"Live version:   {payload['live_build_version']}  UNCHANGED")
     print(f"Candidate ver:  {payload['candidate_build_version']}")
     print(f"Artifact SHA:   {payload['artifact_sha256']}")
+    print(
+        "Dependency SHA: "
+        f"{payload['candidate_node_modules_sha256']}  "
+        f"{payload['candidate_node_modules_kb']}KB"
+    )
+    print(
+        "Dependencies:   fresh frozen candidate tree; "
+        "network fetch scripts disabled; offline build materialization"
+    )
     print("Build isolation: temporary detached worktree; live source/public/dependencies untouched")
     print("Artifact paths: relocated to canonical live root before hashing")
     print("Artifact cache: cache-free")

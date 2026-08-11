@@ -88,6 +88,10 @@ def activation_sample():
         "live_build_version": "old-version",
         "candidate_build_version": "candidate-version",
         "artifact_sha256": "e" * 64,
+        "candidate_node_modules_sha256": "f" * 64,
+        "candidate_node_modules_kb": 123456,
+        "dependency_contract_unchanged": True,
+        "dependency_lock_changed": False,
         "wolo_8092_count": 1,
         "wolo_8093_count": 1,
     }
@@ -135,12 +139,18 @@ class ShipTests(unittest.TestCase):
             MODULE.validation_errors(data, manifest, transport),
         )
 
-    def test_dependency_lock_change_fails_closed(self):
+    def test_dependency_lock_change_is_supported_by_fresh_candidate_lane(self):
         data, manifest, transport = sample()
         manifest["changed_files"].append("yarn.lock")
         errors = MODULE.validation_errors(data, manifest, transport)
-        self.assertTrue(any("unchanged dependency lock" in error for error in errors))
-        self.assertTrue(any("node_modules" in error for error in errors))
+        self.assertFalse(
+            any(
+                "yarn.lock" in error
+                or "dependency lock" in error
+                or "node_modules" in error
+                for error in errors
+            )
+        )
 
     def test_migrations_block_automated_ship(self):
         data, manifest, transport = sample()
@@ -328,6 +338,111 @@ class ShipTests(unittest.TestCase):
         self.assertLess(version_advance, started)
         self.assertNotIn('systemctl restart "$SERVICE"', script)
 
+
+    def test_activation_binds_staged_dependency_identity(self):
+        _, receipt, _ = activation_sample()
+        receipt = {
+            **receipt,
+            "manifest_sha256": "1" * 64,
+            "gate_sha256": "2" * 64,
+            "remote_receipt_dir": (
+                "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/"
+                "stage-test"
+            ),
+        }
+
+        script = MODULE.remote_activation_script(
+            receipt,
+            stage_receipt_sha="3" * 64,
+            stage_receipt_text="{}",
+            dry_run=False,
+            receipt_dir="/mnt/activation",
+            rollback_dir="/mnt/rollback",
+        )
+
+        self.assertIn(
+            'candidate_dependency_artifact="$(artifact_hash .node_modules-release)"',
+            script,
+        )
+        self.assertIn(
+            'test "$candidate_dependency_artifact" = "$DEPENDENCY_ARTIFACT"',
+            script,
+        )
+        self.assertIn(
+            'dependency_fetch_scripts_disabled=1',
+            script,
+        )
+        self.assertIn(
+            'dependency_build_offline=1',
+            script,
+        )
+        self.assertIn(
+            'candidate_dependency_identity="$(stat -Lc \'%d:%i\' .node_modules-release)"',
+            script,
+        )
+        self.assertIn(
+            'test "$(stat -Lc \'%d:%i\' node_modules)" = "$candidate_dependency_identity"',
+            script,
+        )
+
+    def test_activation_atomically_swaps_and_rolls_back_dependency_tree(self):
+        _, receipt, _ = activation_sample()
+        receipt = {
+            **receipt,
+            "manifest_sha256": "1" * 64,
+            "gate_sha256": "2" * 64,
+            "remote_receipt_dir": (
+                "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/"
+                "stage-test"
+            ),
+        }
+        script = MODULE.remote_activation_script(
+            receipt,
+            stage_receipt_sha="3" * 64,
+            stage_receipt_text="{}",
+            dry_run=False,
+            receipt_dir="/mnt/activation",
+            rollback_dir="/mnt/rollback",
+        )
+
+        armed = script.index("trap rollback_activation EXIT")
+        stopped = script.index(
+            'sudo -n /usr/bin/systemctl stop "$SERVICE"\n',
+            armed,
+        )
+        old_runtime = script.index('mv .next "$FAST_OLD"', stopped)
+        old_modules = script.index(
+            'mv node_modules "$FAST_OLD_MODULES"',
+            old_runtime,
+        )
+        new_modules = script.index(
+            'mv .node_modules-release node_modules',
+            old_modules,
+        )
+        new_runtime = script.index(
+            'mv .next-release .next',
+            new_modules,
+        )
+        started = script.index(
+            'sudo -n /usr/bin/systemctl start "$SERVICE"\n',
+            new_runtime,
+        )
+
+        self.assertLess(stopped, old_runtime)
+        self.assertLess(old_runtime, old_modules)
+        self.assertLess(old_modules, new_modules)
+        self.assertLess(new_modules, new_runtime)
+        self.assertLess(new_runtime, started)
+
+        self.assertIn(
+            'mv node_modules .node_modules-release',
+            script,
+        )
+        self.assertIn(
+            'mv "$FAST_OLD_MODULES" node_modules',
+            script,
+        )
+
     def test_activation_failure_restores_full_bundle_and_preserves_stage(self):
         _, receipt, _ = activation_sample()
         receipt = {
@@ -393,6 +508,10 @@ class ShipTests(unittest.TestCase):
             "active_build_id": receipt["staged_build_id"],
             "candidate_build_version": receipt["candidate_build_version"],
             "artifact_sha256": receipt["artifact_sha256"],
+            "candidate_node_modules_sha256": (
+                receipt["candidate_node_modules_sha256"]
+            ),
+            "previous_node_modules_sha256": "9" * 64,
             "durable_cache_free": "1",
             "activation_bundle_while_stopped": "1",
             "wolo8092": "1",
@@ -405,6 +524,12 @@ class ShipTests(unittest.TestCase):
             "retention_reclaimed_kb": "800000",
             "retention_unmatched_kept": "4",
             "receipt_dir": "/mnt/receipt",
+            "fast_rollback": (
+                ".next-rollback-activate-20260811T120000Z"
+            ),
+            "fast_rollback_modules": (
+                ".node_modules-rollback-activate-20260811T120000Z"
+            ),
             "durable_rollback": "/mnt/rollback",
         }
         self.assertEqual(MODULE.validate_activation_result(result, receipt), [])
@@ -414,6 +539,115 @@ class ShipTests(unittest.TestCase):
             MODULE.validate_activation_result(result, receipt),
         )
 
+
+    def test_activation_result_requires_paired_dependency_provenance(self):
+        _, receipt, _ = activation_sample()
+
+        result = {
+            "status": "CERTIFIED",
+            "release_sha": receipt["release_sha"],
+            "source_sha": receipt["release_sha"],
+            "previous_build_id": receipt["active_build_id"],
+            "active_build_id": receipt["staged_build_id"],
+            "candidate_build_version": receipt["candidate_build_version"],
+            "artifact_sha256": receipt["artifact_sha256"],
+            "durable_cache_free": "1",
+            "activation_bundle_while_stopped": "1",
+            "wolo8092": "1",
+            "wolo8093": "1",
+            "soak_seconds": str(MODULE.ACTIVATION_SOAK_SECONDS),
+            "soak_samples": "6",
+            "retention_status": "PASS",
+            "retention_keep": str(MODULE.FAST_ROLLBACK_KEEP),
+            "receipt_dir": "/mnt/receipt",
+            "durable_rollback": "/mnt/rollback",
+            "fast_rollback": ".next-rollback-activate-20260811T120000Z",
+        }
+
+        errors = MODULE.validate_activation_result(result, receipt)
+
+        self.assertTrue(
+            any("candidate node_modules" in error for error in errors)
+        )
+        self.assertTrue(
+            any("previous node_modules" in error for error in errors)
+        )
+        self.assertTrue(
+            any("paired fast rollback" in error for error in errors)
+        )
+
+        result["candidate_node_modules_sha256"] = (
+            receipt["candidate_node_modules_sha256"]
+        )
+        result["previous_node_modules_sha256"] = "9" * 64
+        result["fast_rollback_modules"] = (
+            ".node_modules-rollback-activate-20260811T120000Z"
+        )
+
+        errors = MODULE.validate_activation_result(result, receipt)
+
+        self.assertFalse(
+            any("candidate node_modules" in error for error in errors)
+        )
+        self.assertFalse(
+            any("previous node_modules" in error for error in errors)
+        )
+        self.assertFalse(
+            any("paired fast rollback" in error for error in errors)
+        )
+
+    def test_activation_disk_preflight_precedes_durable_rollback_copy(self):
+        _, receipt, _ = activation_sample()
+        receipt = {
+            **receipt,
+            "previous_production_sha": "a" * 40,
+            "manifest_sha256": "1" * 64,
+            "gate_sha256": "2" * 64,
+            "remote_receipt_dir": (
+                "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/"
+                "stage-test"
+            ),
+        }
+
+        script = MODULE.remote_activation_script(
+            receipt,
+            stage_receipt_sha="3" * 64,
+            stage_receipt_text="{}",
+            dry_run=False,
+            receipt_dir="/mnt/activation",
+            rollback_dir=(
+                "/mnt/HC_Volume_105319120/aoe2war/rollbacks/"
+                "activate-test"
+            ),
+        )
+
+        self.assertIn(
+            'live_dependency_kb="$(du -sk node_modules',
+            script,
+        )
+        self.assertIn(
+            'live_next_kb="$(du -sk .next',
+            script,
+        )
+        self.assertIn(
+            'evidence_available_kb="$(df -Pk "$rollback_parent"',
+            script,
+        )
+        self.assertIn(
+            'evidence_required_kb=$((live_dependency_kb + live_next_kb + 1048576))',
+            script,
+        )
+        self.assertIn(
+            'test "$evidence_available_kb" -ge "$evidence_required_kb"',
+            script,
+        )
+
+        preflight = script.index("evidence_available_kb=")
+        durable_next = script.index('mkdir "$ROLLBACK/next"')
+        durable_modules = script.index('mkdir "$ROLLBACK/node_modules"')
+
+        self.assertLess(preflight, durable_next)
+        self.assertLess(preflight, durable_modules)
 
     def test_activation_script_soaks_before_certification_commit(self):
         _, receipt, _ = activation_sample()
@@ -439,6 +673,18 @@ class ShipTests(unittest.TestCase):
         self.assertIn('test "$soak_build" = "$STAGED_BUILD"', script)
         self.assertIn('test "$soak_wolo8092" = "$before_wolo8092"', script)
         self.assertIn('critical_get "$PUBLIC/api/deployment-version"', script)
+
+        # Soak source-cleanliness must use the same controlled runtime-bundle
+        # exclusions as every other activation cleanliness check.
+        self.assertIn(
+            'soak_dirty="$(source_status | wc -l | tr -d \' \')"',
+            script,
+        )
+        self.assertNotIn(
+            'soak_dirty="$(git status --porcelain --untracked-files=all',
+            script,
+        )
+
         self.assertLess(script.index("SOAK_SAMPLES=0"), script.index("COMMITTED=1"))
 
     def test_activation_script_retention_is_verified_and_unmatched_safe(self):
@@ -469,6 +715,60 @@ class ShipTests(unittest.TestCase):
         self.assertGreater(
             script.index("VERIFIED FAST-ROLLBACK RETENTION"),
             script.index("COMMITTED=1"),
+        )
+
+    def test_activation_retention_prunes_only_complete_runtime_pairs(self):
+        _, receipt, _ = activation_sample()
+        receipt = {
+            **receipt,
+            "previous_production_sha": "a" * 40,
+            "manifest_sha256": "1" * 64,
+            "gate_sha256": "2" * 64,
+            "remote_receipt_dir": (
+                "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/"
+                "stage-test"
+            ),
+        }
+
+        script = MODULE.remote_activation_script(
+            receipt,
+            stage_receipt_sha="3" * 64,
+            stage_receipt_text="{}",
+            dry_run=False,
+            receipt_dir="/mnt/activation",
+            rollback_dir="/mnt/rollback",
+        )
+
+        # Every fast .next candidate must derive and require its paired
+        # dependency directory before it can become prune-eligible.
+        self.assertIn(
+            'modules="${d/.next-/.node_modules-}"',
+            script,
+        )
+        self.assertIn(
+            '[ -d "$modules" ] ||',
+            script,
+        )
+
+        # Deletion must first move both halves out of the live rollback
+        # namespace. If the second move fails, the first half is restored.
+        self.assertIn(
+            'mv "$path" "$prune_next_tmp"',
+            script,
+        )
+        self.assertIn(
+            'mv "$modules" "$prune_modules_tmp"',
+            script,
+        )
+        self.assertIn(
+            'mv "$prune_next_tmp" "$path"',
+            script,
+        )
+
+        # Only after both moves succeed may both temporary halves be removed.
+        self.assertIn(
+            'rm -rf -- "$prune_next_tmp" "$prune_modules_tmp"',
+            script,
         )
 
     def test_activation_result_rejects_missing_health_soak(self):

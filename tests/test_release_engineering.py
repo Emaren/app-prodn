@@ -15,8 +15,9 @@ SPEC.loader.exec_module(MODULE)
 
 
 def state_data(*, local="a", github="a", prod="a", dirty=0, prod_dirty=0,
-               reachable=True, staged=None, service="active", active="build",
-               parity=True, docs_valid=True, w8092=1, w8093=1):
+               reachable=True, staged=None, staged_modules=None,
+               service="active", active="build", parity=True, docs_valid=True,
+               w8092=1, w8093=1):
     return {
         "local": {"dirty_count": dirty, "head": local},
         "github": {"main_sha": github},
@@ -26,6 +27,9 @@ def state_data(*, local="a", github="a", prod="a", dirty=0, prod_dirty=0,
             "source_sha": prod,
             "dirty_count": prod_dirty,
             "staged_build_id": staged,
+            "staged_node_modules_present": (
+                bool(staged) if staged_modules is None else staged_modules
+            ),
             "service": service,
             "active_build_id": active,
             "version_parity": parity,
@@ -84,6 +88,13 @@ class ReleaseEngineeringTests(unittest.TestCase):
 
     def test_derive_state_staged(self):
         self.assertEqual(MODULE.derive_state(state_data(staged="candidate"))[0], "STAGED")
+
+    def test_derive_state_rejects_unpaired_staged_runtime(self):
+        state, nxt = MODULE.derive_state(
+            state_data(staged="candidate", staged_modules=False)
+        )
+        self.assertEqual(state, "STAGING_INCOMPLETE")
+        self.assertIn("node_modules", nxt)
 
     def test_derive_state_staged_wins_before_source_parity(self):
         state, nxt = MODULE.derive_state(

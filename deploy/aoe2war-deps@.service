@@ -1,0 +1,53 @@
+[Unit]
+Description=AoE2WAR isolated dependency fetch %i
+Documentation=file:/var/www/AoE2HDBets/app-prodn/docs/RELEASE_ENGINEERING.md
+
+[Service]
+Type=oneshot
+User=tony
+Group=tony
+WorkingDirectory=/tmp/aoe2war-stage-%i
+
+Environment=HOME=/tmp/aoe2war-stage-%i/.sandbox-home
+Environment=XDG_CONFIG_HOME=/tmp/aoe2war-stage-%i/.sandbox-home/.config
+Environment=XDG_CACHE_HOME=/tmp/aoe2war-stage-%i/.sandbox-home/.cache
+Environment=TMPDIR=/tmp/aoe2war-stage-%i/.tmp
+Environment=TMP=/tmp/aoe2war-stage-%i/.tmp
+Environment=TEMP=/tmp/aoe2war-stage-%i/.tmp
+
+ExecStart=/usr/bin/node /tmp/aoe2war-stage-%i/.yarn-runtime/bin/yarn.js install --frozen-lockfile --ignore-scripts --non-interactive --cache-folder /tmp/aoe2war-stage-%i/.yarn-cache
+
+# Network is available only for dependency retrieval. Candidate/package
+# lifecycle scripts are disabled in this phase.
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+
+# Writable only inside the disposable detached worktree.
+ProtectSystem=strict
+ReadWritePaths=/tmp/aoe2war-stage-%i
+ProtectHome=yes
+InaccessiblePaths=/etc/aoe2hdbets
+InaccessiblePaths=/mnt/HC_Volume_105319120
+
+PrivateUsers=yes
+PrivateDevices=yes
+ProtectProc=invisible
+ProcSubset=pid
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictNamespaces=yes
+LockPersonality=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RemoveIPC=yes
+SystemCallArchitectures=native
+
+UMask=0077
+TasksMax=512
+MemoryMax=3G
+TimeoutStartSec=1500

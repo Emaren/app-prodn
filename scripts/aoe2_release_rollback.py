@@ -188,6 +188,15 @@ def rollback_plan(data: dict) -> dict:
     target_release = str(current.get("previous_production_sha") or "")
     target_build = str(current.get("previous_build_id") or "")
     fast_rollback = str(current.get("fast_rollback") or "")
+    fast_rollback_modules = str(
+        current.get("fast_rollback_modules") or ""
+    )
+    current_dependency_sha = str(
+        current.get("candidate_node_modules_sha256") or ""
+    )
+    target_dependency_sha = str(
+        current.get("previous_node_modules_sha256") or ""
+    )
     durable_rollback = str(current.get("durable_rollback") or "")
 
     if current_release != prod.get("source_sha"):
@@ -204,6 +213,30 @@ def rollback_plan(data: dict) -> dict:
         raise RollbackError("fast rollback path is outside the canonical release namespace")
     if "/" in fast_rollback or ".." in fast_rollback:
         raise RollbackError("fast rollback path must be a top-level production directory")
+
+    expected_fast_modules = fast_rollback.replace(
+        ".next-", ".node_modules-", 1
+    )
+    if fast_rollback_modules != expected_fast_modules:
+        raise RollbackError(
+            "certified fast rollback dependency path is missing or inconsistent"
+        )
+    if "/" in fast_rollback_modules or ".." in fast_rollback_modules:
+        raise RollbackError(
+            "fast rollback dependency path must be a top-level production directory"
+        )
+
+    for label, value in (
+        ("current", current_dependency_sha),
+        ("target", target_dependency_sha),
+    ):
+        if len(value) != 64 or any(
+            c not in "0123456789abcdef" for c in value
+        ):
+            raise RollbackError(
+                f"{label} certified node_modules SHA-256 is invalid"
+            )
+
     if not durable_rollback.startswith(CANONICAL_DURABLE_ROLLBACK_ROOT):
         raise RollbackError("durable rollback path is outside the canonical rollback root")
 
@@ -232,6 +265,18 @@ def rollback_plan(data: dict) -> dict:
         )
     target_path, target_payload, target_sha = target_cert
 
+    target_cert_dependency_sha = str(
+        target_payload.get("candidate_node_modules_sha256") or ""
+    )
+    if (
+        target_cert_dependency_sha
+        and target_cert_dependency_sha != target_dependency_sha
+    ):
+        raise RollbackError(
+            "target certification node_modules SHA-256 disagrees with "
+            "the current activation transition receipt"
+        )
+
     return {
         "schema": 1,
         "current_release_sha": current_release,
@@ -241,6 +286,9 @@ def rollback_plan(data: dict) -> dict:
         "target_build_id": target_build,
         "target_build_version": target_version,
         "fast_rollback": fast_rollback,
+        "fast_rollback_modules": fast_rollback_modules,
+        "current_node_modules_sha256": current_dependency_sha,
+        "target_node_modules_sha256": target_dependency_sha,
         "durable_rollback": durable_rollback,
         "wolo_8092_count": int(prod.get("wolo_8092_count") or 0),
         "wolo_8093_count": int(prod.get("wolo_8093_count") or 0),
@@ -270,6 +318,9 @@ TARGET={q(plan['target_release_sha'])}
 TARGET_BUILD={q(plan['target_build_id'])}
 TARGET_VERSION={q(plan['target_build_version'])}
 FAST_TARGET={q(plan['fast_rollback'])}
+FAST_TARGET_MODULES={q(plan['fast_rollback_modules'])}
+CURRENT_DEPENDENCY_SHA={q(plan['current_node_modules_sha256'])}
+TARGET_DEPENDENCY_SHA={q(plan['target_node_modules_sha256'])}
 DURABLE_TARGET={q(plan['durable_rollback'])}
 RECEIPT={q(receipt_dir)}
 EXPECTED_WOLO8092={q(str(plan['wolo_8092_count']))}
@@ -278,9 +329,23 @@ EXPECTED_WOLO8093={q(str(plan['wolo_8093_count']))}
 wolo_count() {{ ss -ltn | grep -Ec ":$1[[:space:]]" || true; }}
 build_version() {{ python3 -c 'import json,sys; print(json.load(sys.stdin).get("buildVersion",""))'; }}
 critical_get() {{ curl -fsS --max-time 12 --retry 3 --retry-delay 1 --retry-all-errors -o /dev/null "$1"; }}
+artifact_hash() {{
+  tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner     -C "$1" -cf - .   | sha256sum | awk '{{print $1}}'
+}}
+source_status() {{
+  git status --porcelain=v1 --untracked-files=normal -- . \
+    ':(exclude).next-release' \
+    ':(exclude).next-release/**' \
+    ':(exclude).node_modules-release' \
+    ':(exclude).node_modules-release/**' \
+    ':(exclude).next-rollback*' \
+    ':(exclude).next-rollback*/**' \
+    ':(exclude).node_modules-rollback*' \
+    ':(exclude).node_modules-rollback*/**'
+}}
 
 before_head="$(git rev-parse HEAD)"
-before_dirty="$(git status --porcelain --untracked-files=all | wc -l | tr -d ' ')"
+before_dirty="$(source_status | wc -l | tr -d ' ')"
 before_service="$(systemctl is-active "$SERVICE" || true)"
 before_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
 before_staged="$(cat .next-release/BUILD_ID 2>/dev/null || true)"
@@ -298,16 +363,25 @@ test "$before_internal" = "$CURRENT_VERSION"
 test "$before_public" = "$CURRENT_VERSION"
 test "$before_wolo8092" = "$EXPECTED_WOLO8092"
 test "$before_wolo8093" = "$EXPECTED_WOLO8093"
+test "$(artifact_hash node_modules)" = "$CURRENT_DEPENDENCY_SHA"
 git cat-file -e "$TARGET^{{commit}}"
 test -d "$DURABLE_TARGET/next"
 test "$(cat "$DURABLE_TARGET/next/BUILD_ID")" = "$TARGET_BUILD"
+test -d "$DURABLE_TARGET/node_modules"
 
 SOURCE_KIND="durable"
 SOURCE_PATH="$DURABLE_TARGET/next"
-if [ -d "$FAST_TARGET" ] && [ "$(cat "$FAST_TARGET/BUILD_ID" 2>/dev/null || true)" = "$TARGET_BUILD" ]; then
+SOURCE_MODULES_PATH="$DURABLE_TARGET/node_modules"
+
+if [ -d "$FAST_TARGET" ] \
+  && [ -d "$FAST_TARGET_MODULES" ] \
+  && [ "$(cat "$FAST_TARGET/BUILD_ID" 2>/dev/null || true)" = "$TARGET_BUILD" ]; then
   SOURCE_KIND="fast"
   SOURCE_PATH="$FAST_TARGET"
+  SOURCE_MODULES_PATH="$FAST_TARGET_MODULES"
 fi
+
+test "$(artifact_hash "$SOURCE_MODULES_PATH")" = "$TARGET_DEPENDENCY_SHA"
 
 critical_get http://127.0.0.1:3030/
 critical_get http://127.0.0.1:3030/api/lobby
@@ -331,6 +405,41 @@ if [ "$MODE" = "DRY_RUN" ]; then
 fi
 
 sudo -n /usr/bin/install -d -o tony -g tony -m 0750 "$RECEIPT"
+
+# Fail closed before any bulky rollback copy.
+#
+# Evidence must hold a durable rescue of the currently certified runtime
+# pair. Root must hold a materialized copy of the selected target pair.
+# Each filesystem also keeps a 1 GiB safety reserve.
+current_next_kb="$(du -sk .next | awk '{{print $1}}')"
+current_dependency_kb="$(du -sk node_modules | awk '{{print $1}}')"
+evidence_available_kb="$(df -Pk "$RECEIPT" | awk 'NR==2 {{print $4}}')"
+test "$current_next_kb" -gt 0
+test "$current_dependency_kb" -gt 0
+test "$evidence_available_kb" -gt 0
+evidence_required_kb=$((current_next_kb + current_dependency_kb + 1048576))
+
+target_next_kb="$(du -sk "$SOURCE_PATH" | awk '{{print $1}}')"
+target_dependency_kb="$(du -sk "$SOURCE_MODULES_PATH" | awk '{{print $1}}')"
+root_available_kb="$(df -Pk . | awk 'NR==2 {{print $4}}')"
+test "$target_next_kb" -gt 0
+test "$target_dependency_kb" -gt 0
+test "$root_available_kb" -gt 0
+root_required_kb=$((target_next_kb + target_dependency_kb + 1048576))
+
+cat > "$RECEIPT/disk-preflight.txt" <<EOF
+current_next_kb=$current_next_kb
+current_dependency_kb=$current_dependency_kb
+evidence_available_kb=$evidence_available_kb
+evidence_required_kb=$evidence_required_kb
+target_next_kb=$target_next_kb
+target_dependency_kb=$target_dependency_kb
+root_available_kb=$root_available_kb
+root_required_kb=$root_required_kb
+EOF
+
+test "$evidence_available_kb" -ge "$evidence_required_kb"
+test "$root_available_kb" -ge "$root_required_kb"
 printf '%s\n' \
   "current_release_sha=$CURRENT" \
   "current_build_id=$CURRENT_BUILD" \
@@ -347,15 +456,32 @@ printf '%s\n' \
 # Preserve the currently certified runtime on durable storage before mutation.
 cp -a .next "$RECEIPT/current-next"
 test "$(cat "$RECEIPT/current-next/BUILD_ID")" = "$CURRENT_BUILD"
-if [ -f .aoe2war-build-version ]; then cp -p .aoe2war-build-version "$RECEIPT/current-build-version"; fi
+
+cp -a node_modules "$RECEIPT/current-node_modules"
+test -d "$RECEIPT/current-node_modules"
+test "$(artifact_hash "$RECEIPT/current-node_modules")" = "$CURRENT_DEPENDENCY_SHA"
+
+if [ -f .aoe2war-build-version ]; then
+  cp -p .aoe2war-build-version "$RECEIPT/current-build-version"
+fi
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 FORWARD_FAST=".next-rollback-manual-$STAMP"
+FORWARD_FAST_MODULES=".node_modules-rollback-manual-$STAMP"
 TARGET_TMP=".next-rollback-target-$STAMP"
+TARGET_MODULES_TMP=".node_modules-rollback-target-$STAMP"
+
 test ! -e "$FORWARD_FAST"
+test ! -e "$FORWARD_FAST_MODULES"
 test ! -e "$TARGET_TMP"
+test ! -e "$TARGET_MODULES_TMP"
+
 cp -a "$SOURCE_PATH" "$TARGET_TMP"
 test "$(cat "$TARGET_TMP/BUILD_ID")" = "$TARGET_BUILD"
+
+cp -a "$SOURCE_MODULES_PATH" "$TARGET_MODULES_TMP"
+test -d "$TARGET_MODULES_TMP"
+test "$(artifact_hash "$TARGET_MODULES_TMP")" = "$TARGET_DEPENDENCY_SHA"
 
 MUTATED=0
 COMMITTED=0
@@ -367,8 +493,20 @@ rollback_failure() {{
   if [ "$MUTATED" = "1" ]; then
     status="ROLLBACK_FAILED"
     sudo -n /usr/bin/systemctl stop "$SERVICE" >/dev/null 2>&1 || true
-    rm -rf .next >/dev/null 2>&1 || true
-    if [ -d "$FORWARD_FAST" ]; then mv "$FORWARD_FAST" .next; fi
+    if [ -d .next ] && [ ! -e "$TARGET_TMP" ] && [ -d "$FORWARD_FAST" ]; then
+      mv .next "$TARGET_TMP" >/dev/null 2>&1 || true
+    fi
+    if [ -d node_modules ] && [ ! -e "$TARGET_MODULES_TMP" ] && [ -d "$FORWARD_FAST_MODULES" ]; then
+      mv node_modules "$TARGET_MODULES_TMP" >/dev/null 2>&1 || true
+    fi
+
+    if [ ! -e node_modules ] && [ -d "$FORWARD_FAST_MODULES" ]; then
+      mv "$FORWARD_FAST_MODULES" node_modules
+    fi
+    if [ ! -e .next ] && [ -d "$FORWARD_FAST" ]; then
+      mv "$FORWARD_FAST" .next
+    fi
+
     git reset --hard "$CURRENT" >/dev/null 2>&1 || true
     printf '%s\n' "$CURRENT_VERSION" > .aoe2war-build-version
     sudo -n /usr/bin/systemctl start "$SERVICE" >/dev/null 2>&1 || true
@@ -379,12 +517,14 @@ rollback_failure() {{
     done
     rb_head="$(git rev-parse HEAD 2>/dev/null || true)"
     rb_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
+    rb_dependency="$(artifact_hash node_modules 2>/dev/null || true)"
     rb_internal="$(curl -fsS --max-time 6 http://127.0.0.1:3030/api/deployment-version 2>/dev/null | build_version 2>/dev/null || true)"
     rb_public="$(curl -fsS --max-time 8 "$PUBLIC/api/deployment-version" 2>/dev/null | build_version 2>/dev/null || true)"
     rb_wolo8092="$(wolo_count 8092)"
     rb_wolo8093="$(wolo_count 8093)"
     if [ "$rb_head" = "$CURRENT" ] \
       && [ "$rb_build" = "$CURRENT_BUILD" ] \
+      && [ "$rb_dependency" = "$CURRENT_DEPENDENCY_SHA" ] \
       && [ "$rb_internal" = "$CURRENT_VERSION" ] \
       && [ "$rb_public" = "$CURRENT_VERSION" ] \
       && [ "$rb_wolo8092" = "$EXPECTED_WOLO8092" ] \
@@ -401,11 +541,15 @@ trap rollback_failure EXIT
 
 sudo -n /usr/bin/systemctl stop "$SERVICE"
 MUTATED=1
+
 mv .next "$FORWARD_FAST"
+mv node_modules "$FORWARD_FAST_MODULES"
+mv "$TARGET_MODULES_TMP" node_modules
 mv "$TARGET_TMP" .next
+
 git reset --hard "$TARGET"
 printf '%s\n' "$TARGET_VERSION" > .aoe2war-build-version
-test -z "$(git status --porcelain --untracked-files=all)"
+test -z "$(source_status)"
 test "$(cat .next/BUILD_ID)" = "$TARGET_BUILD"
 sudo -n /usr/bin/systemctl start "$SERVICE"
 
@@ -417,8 +561,10 @@ for _ in $(seq 1 30); do
 done
 test "$READY" = "1"
 
+test "$(artifact_hash node_modules)" = "$TARGET_DEPENDENCY_SHA"
+
 after_head="$(git rev-parse HEAD)"
-after_dirty="$(git status --porcelain --untracked-files=all | wc -l | tr -d ' ')"
+after_dirty="$(source_status | wc -l | tr -d ' ')"
 after_service="$(systemctl is-active "$SERVICE")"
 after_build="$(cat .next/BUILD_ID)"
 after_staged="$(cat .next-release/BUILD_ID 2>/dev/null || true)"
@@ -453,8 +599,11 @@ printf '%s\n' \
   "from_build_id=$CURRENT_BUILD" \
   "to_build_id=$TARGET_BUILD" \
   "to_build_version=$TARGET_VERSION" \
+  "from_node_modules_sha256=$CURRENT_DEPENDENCY_SHA" \
+  "to_node_modules_sha256=$TARGET_DEPENDENCY_SHA" \
   "source_kind=$SOURCE_KIND" \
   "forward_fast_rollback=$FORWARD_FAST" \
+  "forward_fast_rollback_modules=$FORWARD_FAST_MODULES" \
   "wolo8092=$after_wolo8092" \
   "wolo8093=$after_wolo8093" \
   > "$RECEIPT/certification.txt"
@@ -466,8 +615,11 @@ printf 'to_release_sha\t%s\n' "$TARGET"
 printf 'from_build_id\t%s\n' "$CURRENT_BUILD"
 printf 'to_build_id\t%s\n' "$TARGET_BUILD"
 printf 'to_build_version\t%s\n' "$TARGET_VERSION"
+printf 'from_node_modules_sha256\t%s\n' "$CURRENT_DEPENDENCY_SHA"
+printf 'to_node_modules_sha256\t%s\n' "$TARGET_DEPENDENCY_SHA"
 printf 'source_kind\t%s\n' "$SOURCE_KIND"
 printf 'forward_fast_rollback\t%s\n' "$FORWARD_FAST"
+printf 'forward_fast_rollback_modules\t%s\n' "$FORWARD_FAST_MODULES"
 printf 'wolo8092\t%s\n' "$after_wolo8092"
 printf 'wolo8093\t%s\n' "$after_wolo8093"
 printf 'receipt_dir\t%s\n' "$RECEIPT"
@@ -483,6 +635,8 @@ def validate_remote_result(result: dict[str, str], plan: dict) -> list[str]:
         "from_build_id": plan["current_build_id"],
         "to_build_id": plan["target_build_id"],
         "to_build_version": plan["target_build_version"],
+        "from_node_modules_sha256": plan["current_node_modules_sha256"],
+        "to_node_modules_sha256": plan["target_node_modules_sha256"],
         "wolo8092": str(plan["wolo_8092_count"]),
         "wolo8093": str(plan["wolo_8093_count"]),
     }
@@ -491,8 +645,18 @@ def validate_remote_result(result: dict[str, str], plan: dict) -> list[str]:
             errors.append(f"{key}: expected {value!r}, got {result.get(key)!r}")
     if result.get("source_kind") not in {"fast", "durable"}:
         errors.append("rollback source kind is invalid")
-    if not result.get("forward_fast_rollback", "").startswith(".next-rollback-manual-"):
+    forward_fast = result.get("forward_fast_rollback", "")
+    forward_fast_modules = result.get("forward_fast_rollback_modules", "")
+    if not forward_fast.startswith(".next-rollback-manual-"):
         errors.append("forward fast rollback was not preserved")
+    expected_forward_modules = forward_fast.replace(
+        ".next-", ".node_modules-", 1
+    )
+    if (
+        not forward_fast_modules.startswith(".node_modules-rollback-manual-")
+        or forward_fast_modules != expected_forward_modules
+    ):
+        errors.append("forward fast rollback dependency pair is invalid")
     if not result.get("receipt_dir", "").startswith(f"{REMOTE_RECEIPT_ROOT}/rollback-"):
         errors.append("remote rollback receipt is outside canonical receipt root")
     return errors
@@ -668,8 +832,11 @@ def rollback_release(
         "to_release_sha": plan["target_release_sha"],
         "to_build_id": plan["target_build_id"],
         "to_build_version": plan["target_build_version"],
+        "from_node_modules_sha256": result["from_node_modules_sha256"],
+        "to_node_modules_sha256": result["to_node_modules_sha256"],
         "source_kind": result["source_kind"],
         "forward_fast_rollback": result["forward_fast_rollback"],
+        "forward_fast_rollback_modules": result["forward_fast_rollback_modules"],
         "current_activation_receipt_path": plan["current_activation_receipt_path"],
         "current_activation_receipt_sha256": plan["current_activation_receipt_sha256"],
         "target_certification_receipt_path": plan["target_certification_receipt_path"],

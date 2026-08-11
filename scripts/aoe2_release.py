@@ -325,6 +325,7 @@ def production() -> tuple[dict[str, str], str | None]:
         f"service=$(systemctl is-active {shlex.quote(SERVICE)} 2>/dev/null || true)",
         "active=$(cat .next/BUILD_ID 2>/dev/null || true)",
         "staged=$(cat .next-release/BUILD_ID 2>/dev/null || true)",
+        "staged_modules=0; [ -d .node_modules-release ] && staged_modules=1",
         "version=$(curl -fsS --max-time 4 http://127.0.0.1:3030/api/deployment-version 2>/dev/null || true)",
         "rollbacks=$(find . -maxdepth 1 -type d -name \".next-rollback*\" 2>/dev/null | wc -l | tr -d \" \")",
         "latest=$(ls -1dt .next-rollback* 2>/dev/null | head -n 1 || true)",
@@ -332,7 +333,7 @@ def production() -> tuple[dict[str, str], str | None]:
         "volume_free=$(df -Pk /mnt/HC_Volume_105319120 2>/dev/null | awk \"NR==2 {print \\$4}\")",
         "wolo8092=$(ss -ltn 2>/dev/null | grep -Ec \":8092[[:space:]]\" || true)",
         "wolo8093=$(ss -ltn 2>/dev/null | grep -Ec \":8093[[:space:]]\" || true)",
-        "printf \"head\\t%s\\nbranch\\t%s\\ndirty\\t%s\\nservice\\t%s\\nactive\\t%s\\nstaged\\t%s\\nversion\\t%s\\nrollbacks\\t%s\\nlatest\\t%s\\nroot_free\\t%s\\nvolume_free\\t%s\\nwolo8092\\t%s\\nwolo8093\\t%s\\n\" \"$head\" \"$branch\" \"$dirty\" \"$service\" \"$active\" \"$staged\" \"$version\" \"$rollbacks\" \"$latest\" \"$root_free\" \"$volume_free\" \"$wolo8092\" \"$wolo8093\"",
+        "printf \"head\\t%s\\nbranch\\t%s\\ndirty\\t%s\\nservice\\t%s\\nactive\\t%s\\nstaged\\t%s\\nstaged_modules\\t%s\\nversion\\t%s\\nrollbacks\\t%s\\nlatest\\t%s\\nroot_free\\t%s\\nvolume_free\\t%s\\nwolo8092\\t%s\\nwolo8093\\t%s\\n\" \"$head\" \"$branch\" \"$dirty\" \"$service\" \"$active\" \"$staged\" \"$staged_modules\" \"$version\" \"$rollbacks\" \"$latest\" \"$root_free\" \"$volume_free\" \"$wolo8092\" \"$wolo8093\"",
     ]
     remote = "; ".join(commands)
     rc, out, err = run(
@@ -545,9 +546,14 @@ def derive_state(data: dict) -> tuple[str, str]:
     if prod.get("dirty_count") not in (0, None):
         return "PRODUCTION_DIRTY", "Inspect production drift before any deployment."
     if prod["staged_build_id"]:
+        if not prod.get("staged_node_modules_present"):
+            return (
+                "STAGING_INCOMPLETE",
+                "Staged .next exists without staged node_modules; repair or restage before deployment.",
+            )
         return (
             "STAGED",
-            "Candidate build exists beside the previous live source; resume its exact receipt with aoe2war deploy.",
+            "Candidate runtime bundle exists beside the previous live source; resume its exact receipt with aoe2war deploy.",
         )
     if prod["source_sha"] != remote["main_sha"]:
         if cert.get("status") == "CERTIFIED":
@@ -585,6 +591,7 @@ def collect() -> dict:
         "service": raw.get("service") or None,
         "active_build_id": raw.get("active") or None,
         "staged_build_id": raw.get("staged") or None,
+        "staged_node_modules_present": raw.get("staged_modules") == "1",
         "internal_build_version": internal,
         "public_build_version": public,
         "version_parity": bool(internal and public and internal == public),
