@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `1bfe4e184d2b59062c2c75f35df88d6a3fdeb4f8`
+Implementation baseline: `hotfix/client-flight-recorder-20260811` at `804cd13399c70e7f248c6e83beee425b92f242cd`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
