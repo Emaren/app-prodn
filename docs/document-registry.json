@@ -476,7 +476,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bbeb2631bc5917670c534bb96f75dd29d333ab7de967ff706e06cae76a63258f",
+      "sha256": "0aa971fb591d1a604060a488d7a0ea8f02ad017f455520b2246e9bd083fa62f1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1356,8 +1356,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "hotfix/release-docs-baseline-parser-20260811",
-    "commit": "c590a8746d95aa67a3718c53d0e154e9872e90d9"
+    "branch": "hotfix/atomic-dependency-release-lane-20260811",
+    "commit": "4061baa74f1493c987e6e9c25f03437c98dfbc1e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
