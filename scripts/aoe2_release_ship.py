@@ -239,14 +239,6 @@ def validation_errors(
     if prod.get("wolo_8093_count") != 1:
         errors.append("protected WOLO listener 8093 count must be exactly 1")
 
-    changed_files = manifest.get("changed_files") or []
-    if "yarn.lock" in changed_files:
-        errors.append(
-            "release changes yarn.lock; the automatic isolated-stage lane "
-            "requires an unchanged dependency lock and will not reuse "
-            "incompatible production node_modules"
-        )
-
     migrations = manifest.get("migration_paths") or []
     if migrations:
         errors.append(
@@ -442,7 +434,12 @@ def load_stage_receipt(
         raise ShipError("Stage receipt does not prove WOLO remained untouched.")
     isolation_requirements = {
         "isolated_worktree": True,
-        "dependency_contract_unchanged": True,
+        "build_process_sandboxed": True,
+        "build_network_private": True,
+        "build_secret_paths_inaccessible": True,
+        "dependency_fetch_sandboxed": True,
+        "dependency_fetch_scripts_disabled": True,
+        "dependency_build_offline": True,
         "cache_free_artifact": True,
         "artifact_path_relocated": True,
         "live_source_mutated": False,
@@ -462,6 +459,27 @@ def load_stage_receipt(
         raise ShipError("Stage receipt release SHA is invalid.")
     if not _is_hex(artifact_sha, 64):
         raise ShipError("Stage receipt artifact SHA-256 is invalid.")
+
+    dependency_sha = receipt.get("candidate_node_modules_sha256")
+    if not _is_hex(dependency_sha, 64):
+        raise ShipError(
+            "Stage receipt candidate node_modules SHA-256 is invalid."
+        )
+
+    try:
+        dependency_kb = int(receipt.get("candidate_node_modules_kb") or 0)
+    except (TypeError, ValueError):
+        dependency_kb = 0
+    if dependency_kb <= 0:
+        raise ShipError(
+            "Stage receipt candidate node_modules size is invalid."
+        )
+
+    for key in ("dependency_contract_unchanged", "dependency_lock_changed"):
+        if not isinstance(receipt.get(key), bool):
+            raise ShipError(
+                f"Stage receipt dependency evidence flag is invalid: {key}."
+            )
     if path.name != f"{release_sha}-{artifact_sha[:12]}.json":
         raise ShipError("Stage receipt filename is not bound to release/artifact.")
 
@@ -470,6 +488,8 @@ def load_stage_receipt(
         "staged_build_id",
         "live_build_version",
         "candidate_build_version",
+        "candidate_node_modules_sha256",
+        "candidate_node_modules_kb",
         "previous_production_sha",
         "source_sha",
         "manifest_path",
@@ -521,10 +541,12 @@ def load_stage_receipt(
         raise ShipError(
             "Release contains Prisma migrations; receipt-driven activation refuses migrations."
         )
-    if "yarn.lock" in (manifest.get("changed_files") or []):
+    dependency_lock_changed = "yarn.lock" in (
+        manifest.get("changed_files") or []
+    )
+    if receipt.get("dependency_lock_changed") is not dependency_lock_changed:
         raise ShipError(
-            "Release changes yarn.lock; receipt-driven activation refuses an "
-            "artifact built from reused production node_modules."
+            "Stage receipt dependency-lock evidence does not match manifest."
         )
 
     return (
@@ -645,6 +667,10 @@ STAGED_BUILD={q(receipt['staged_build_id'])}
 LIVE_VERSION={q(receipt['live_build_version'])}
 CANDIDATE_VERSION={q(receipt['candidate_build_version'])}
 ARTIFACT={q(receipt['artifact_sha256'])}
+DEPENDENCY_ARTIFACT={q(receipt['candidate_node_modules_sha256'])}
+DEPENDENCY_KB={q(str(receipt['candidate_node_modules_kb']))}
+DEPENDENCY_CONTRACT_UNCHANGED={q("1" if receipt['dependency_contract_unchanged'] else "0")}
+DEPENDENCY_LOCK_CHANGED={q("1" if receipt['dependency_lock_changed'] else "0")}
 MANIFEST_SHA={q(receipt['manifest_sha256'])}
 GATE_SHA={q(receipt['gate_sha256'])}
 STAGE_RECEIPT_SHA={q(stage_receipt_sha)}
@@ -669,12 +695,31 @@ content_hash() {{
     -C "$1" -cf - . \
   | sha256sum | awk '{{print $1}}'
 }}
+source_status() {{
+  git status --porcelain=v1 --untracked-files=normal -- . \
+    ':(exclude).next-release' \
+    ':(exclude).next-release/**' \
+    ':(exclude).node_modules-release' \
+    ':(exclude).node_modules-release/**' \
+    ':(exclude).next-rollback*' \
+    ':(exclude).next-rollback*/**' \
+    ':(exclude).node_modules-rollback*' \
+    ':(exclude).node_modules-rollback*/**'
+}}
+source_state_hash() {{
+  {{
+    git rev-parse HEAD
+    printf '\\0'
+    source_status
+  }} | sha256sum | awk '{{print $1}}'
+}}
 critical_get() {{
   curl -fsS --max-time 12 --retry 3 --retry-delay 1 --retry-all-errors -o /dev/null "$1"
 }}
 
 before_head="$(git rev-parse HEAD)"
-before_dirty="$(git status --porcelain --untracked-files=all | wc -l | tr -d ' ')"
+before_dirty="$(source_status | wc -l | tr -d ' ')"
+before_source_state="$(source_state_hash)"
 before_service="$(systemctl is-active "$SERVICE" || true)"
 before_pid="$(systemctl show "$SERVICE" -p MainPID --value)"
 before_active_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
@@ -713,9 +758,18 @@ grep -Fx "active_build_id=$OLD_BUILD" "$STAGE_REMOTE/stage-status.txt" >/dev/nul
 grep -Fx "staged_build_id=$STAGED_BUILD" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 grep -Fx "candidate_build_version=$CANDIDATE_VERSION" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 grep -Fx "artifact_sha256=$ARTIFACT" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "candidate_node_modules_sha256=$DEPENDENCY_ARTIFACT" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "candidate_node_modules_kb=$DEPENDENCY_KB" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 grep -Fx "source_sha=$PREVIOUS" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 grep -Fx "isolated_worktree=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
-grep -Fx "dependency_contract_unchanged=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "build_process_sandboxed=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "build_network_private=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "build_secret_paths_inaccessible=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "dependency_fetch_sandboxed=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "dependency_fetch_scripts_disabled=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "dependency_build_offline=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "dependency_contract_unchanged=$DEPENDENCY_CONTRACT_UNCHANGED" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "dependency_lock_changed=$DEPENDENCY_LOCK_CHANGED" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 grep -Fx "cache_free_artifact=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 grep -Fx "artifact_path_relocated=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 grep -Fx "live_source_mutated=0" "$STAGE_REMOTE/stage-status.txt" >/dev/null
@@ -724,8 +778,20 @@ grep -Fx "live_node_modules_mutated=0" "$STAGE_REMOTE/stage-status.txt" >/dev/nu
 grep -Fx "live_build_version_mutated=0" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 
 test ! -e .next-release/cache
+test -d .node_modules-release
+
 candidate_artifact="$(artifact_hash .next-release)"
 test "$candidate_artifact" = "$ARTIFACT"
+
+candidate_dependency_artifact="$(artifact_hash .node_modules-release)"
+test "$candidate_dependency_artifact" = "$DEPENDENCY_ARTIFACT"
+
+candidate_dependency_kb="$(du -sk .node_modules-release | awk '{{print $1}}')"
+test "$candidate_dependency_kb" = "$DEPENDENCY_KB"
+
+candidate_dependency_identity="$(stat -Lc '%d:%i' .node_modules-release)"
+test -n "$candidate_dependency_identity"
+
 candidate_content_sha="$(content_hash .next-release)"
 test -n "$candidate_content_sha"
 critical_get http://127.0.0.1:3030/
@@ -757,6 +823,31 @@ cp -p "$STAGE_REMOTE/release-manifest.json" "$ACT_RECEIPT/release-manifest.json"
 cp -p "$STAGE_REMOTE/gate-receipt.json" "$ACT_RECEIPT/gate-receipt.json"
 cp -p "$STAGE_REMOTE/stage-status.txt" "$ACT_RECEIPT/stage-status.txt"
 
+old_dependency_artifact="$(artifact_hash node_modules)"
+test "${{#old_dependency_artifact}}" = "64"
+
+# Fail closed before creating either durable rollback runtime half.
+# Reserve the measured live dependency tree + live Next runtime + 1 GiB
+# on the evidence filesystem for rollback materialization and overhead.
+rollback_parent="$(dirname "$ROLLBACK")"
+test -d "$rollback_parent"
+live_dependency_kb="$(du -sk node_modules | awk '{{print $1}}')"
+live_next_kb="$(du -sk .next | awk '{{print $1}}')"
+evidence_available_kb="$(df -Pk "$rollback_parent" | awk 'NR==2 {{print $4}}')"
+test "$live_dependency_kb" -gt 0
+test "$live_next_kb" -gt 0
+test "$evidence_available_kb" -gt 0
+evidence_required_kb=$((live_dependency_kb + live_next_kb + 1048576))
+
+printf '%s\n' \
+  "live_dependency_kb=$live_dependency_kb" \
+  "live_next_kb=$live_next_kb" \
+  "evidence_available_kb=$evidence_available_kb" \
+  "evidence_required_kb=$evidence_required_kb" \
+  > "$ACT_RECEIPT/disk-preflight.txt"
+
+test "$evidence_available_kb" -ge "$evidence_required_kb"
+
 printf '%s\\n' \
   "release_sha=$RELEASE" \
   "previous_production_sha=$PREVIOUS" \
@@ -769,6 +860,7 @@ printf '%s\\n' \
   "manifest_sha256=$MANIFEST_SHA" \
   "gate_sha256=$GATE_SHA" \
   "stage_receipt_sha256=$STAGE_RECEIPT_SHA" \
+  "initial_source_state_sha256=$before_source_state" \
   "before_pid=$before_pid" \
   "before_wolo8092=$before_wolo8092" \
   "before_wolo8093=$before_wolo8093" \
@@ -778,11 +870,19 @@ mkdir "$ROLLBACK/next"
 rsync -a --exclude '/cache/' .next/ "$ROLLBACK/next/"
 test "$(cat "$ROLLBACK/next/BUILD_ID")" = "$OLD_BUILD"
 test ! -e "$ROLLBACK/next/cache"
+
+mkdir "$ROLLBACK/node_modules"
+rsync -a node_modules/ "$ROLLBACK/node_modules/"
+test "$(artifact_hash "$ROLLBACK/node_modules")" = "$old_dependency_artifact"
 printf '%s\\n' "$PREVIOUS" > "$ROLLBACK/source-sha"
 printf '%s\\n' "$LIVE_VERSION" > "$ROLLBACK/build-version"
-FAST_OLD=".next-rollback-activate-$(date -u +%Y%m%dT%H%M%SZ)"
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+FAST_OLD=".next-rollback-activate-$STAMP"
+FAST_OLD_MODULES=".node_modules-rollback-activate-$STAMP"
 test ! -e "$FAST_OLD"
+test ! -e "$FAST_OLD_MODULES"
 MUTATED=0
+SERVICE_STOPPED=0
 COMMITTED=0
 
 rollback_activation() {{
@@ -793,12 +893,25 @@ rollback_activation() {{
   if [ "$MUTATED" = "1" ]; then
     rollback_status="ROLLBACK_FAILED"
     sudo -n /usr/bin/systemctl stop "$SERVICE" >/dev/null 2>&1 || true
-    current_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
-    if [ "$current_build" = "$STAGED_BUILD" ] && [ ! -e .next-release ]; then
+    if [ -d .next ] && [ ! -e .next-release ] && [ -d "$FAST_OLD" ]; then
       mv .next .next-release
     fi
-    if [ ! -e .next ] && [ -d "$FAST_OLD" ]; then mv "$FAST_OLD" .next; fi
-    git reset --hard "$PREVIOUS" >/dev/null 2>&1 || true
+    if [ -d node_modules ] && [ ! -e .node_modules-release ] && [ -d "$FAST_OLD_MODULES" ]; then
+      mv node_modules .node_modules-release
+    fi
+    if [ ! -e node_modules ] && [ -d "$FAST_OLD_MODULES" ]; then
+      mv "$FAST_OLD_MODULES" node_modules
+    fi
+    if [ ! -e .next ] && [ -d "$FAST_OLD" ]; then
+      mv "$FAST_OLD" .next
+    fi
+    rollback_pre_head="$(git rev-parse HEAD 2>/dev/null || true)"
+    rollback_pre_dirty="$(source_status 2>/dev/null | wc -l | tr -d ' ')"
+    rollback_source_reset=0
+    if [ "$rollback_pre_head" = "$RELEASE" ] && [ "$rollback_pre_dirty" = "0" ]; then
+      git reset --hard "$PREVIOUS" >/dev/null 2>&1 || true
+      rollback_source_reset=1
+    fi
     printf '%s\\n' "$LIVE_VERSION" > .aoe2war-build-version 2>/dev/null || true
     sudo -n /usr/bin/systemctl start "$SERVICE" >/dev/null 2>&1 || true
     for _ in $(seq 1 30); do
@@ -808,7 +921,7 @@ rollback_activation() {{
     done
     rb_service="$(systemctl is-active "$SERVICE" 2>/dev/null || true)"
     rb_head="$(git rev-parse HEAD 2>/dev/null || true)"
-    rb_dirty="$(git status --porcelain --untracked-files=all 2>/dev/null | wc -l | tr -d ' ')"
+    rb_dirty="$(source_status 2>/dev/null | wc -l | tr -d ' ')"
     rb_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
     rb_staged="$(cat .next-release/BUILD_ID 2>/dev/null || true)"
     rb_build_version_file="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
@@ -836,6 +949,9 @@ rollback_activation() {{
     printf '%s\\n' \
       "status=$rollback_status" \
       "original_exit_code=$rc" \
+      "pre_rollback_source_sha=$rollback_pre_head" \
+      "pre_rollback_dirty_count=$rollback_pre_dirty" \
+      "source_reset_attempted=$rollback_source_reset" \
       "source_sha=$rb_head" \
       "dirty_count=$rb_dirty" \
       "active_build_id=$rb_build" \
@@ -847,26 +963,52 @@ rollback_activation() {{
       "wolo8092=$rb_wolo8092" \
       "wolo8093=$rb_wolo8093" \
       > "$ACT_RECEIPT/rollback-status.txt" 2>/dev/null || true
+  elif [ "$SERVICE_STOPPED" = "1" ]; then
+    # A last-moment source drift must abort before runtime/source mutation.
+    # Restore only service availability; never reset the newly observed work.
+    sudo -n /usr/bin/systemctl start "$SERVICE" >/dev/null 2>&1 || true
   fi
   return "$rc"
 }}
 trap rollback_activation EXIT
 
-MUTATED=1
+SERVICE_STOPPED=1
 sudo -n /usr/bin/systemctl stop "$SERVICE"
 test "$(systemctl is-active "$SERVICE" 2>/dev/null || true)" != "active"
+final_pre_mutation_head="$(git rev-parse HEAD)"
+final_pre_mutation_dirty="$(source_status | wc -l | tr -d ' ')"
+final_pre_mutation_source_state="$(source_state_hash)"
+test "$final_pre_mutation_head" = "$PREVIOUS"
+test "$final_pre_mutation_dirty" = "0"
+test "$final_pre_mutation_source_state" = "$before_source_state"
+printf '%s\n' \
+  "final_pre_mutation_head=$final_pre_mutation_head" \
+  "final_pre_mutation_dirty_count=$final_pre_mutation_dirty" \
+  "final_pre_mutation_source_state_sha256=$final_pre_mutation_source_state" \
+  >> "$ACT_RECEIPT/preactivation.txt"
+MUTATED=1
 mv .next "$FAST_OLD"
+mv node_modules "$FAST_OLD_MODULES"
+mv .node_modules-release node_modules
+test "$(stat -Lc '%d:%i' node_modules)" = "$candidate_dependency_identity"
+
 mv .next-release .next
+
 test "$(cat .next/BUILD_ID)" = "$STAGED_BUILD"
 test ! -e .next/cache
+test -d node_modules
+test ! -e .node_modules-release
+
 test -d "$FAST_OLD"
 test "$(cat "$FAST_OLD/BUILD_ID")" = "$OLD_BUILD"
+test -d "$FAST_OLD_MODULES"
 git reset --hard "$RELEASE"
 test "$(git rev-parse HEAD)" = "$RELEASE"
-test -z "$(git status --porcelain --untracked-files=all)"
+test -z "$(source_status)"
 printf '%s\\n' "$CANDIDATE_VERSION" > .aoe2war-build-version
 test "$(cat .aoe2war-build-version | tr -d '\\r\\n')" = "$CANDIDATE_VERSION"
 sudo -n /usr/bin/systemctl start "$SERVICE"
+SERVICE_STOPPED=0
 
 READY=0
 for _ in $(seq 1 30); do
@@ -879,7 +1021,7 @@ test "$READY" = "1"
 after_service="$(systemctl is-active "$SERVICE")"
 after_pid="$(systemctl show "$SERVICE" -p MainPID --value)"
 after_head="$(git rev-parse HEAD)"
-after_dirty="$(git status --porcelain --untracked-files=all | wc -l | tr -d ' ')"
+after_dirty="$(source_status | wc -l | tr -d ' ')"
 after_active_build="$(cat .next/BUILD_ID)"
 after_build_version_file="$(cat .aoe2war-build-version | tr -d '\\r\\n')"
 after_internal_version="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deployment-version | build_version)"
@@ -929,7 +1071,7 @@ while [ "$soak_elapsed" -lt "$SOAK_SECONDS" ]; do
 
   soak_service="$(systemctl is-active "$SERVICE" 2>/dev/null || true)"
   soak_head="$(git rev-parse HEAD)"
-  soak_dirty="$(git status --porcelain --untracked-files=all | wc -l | tr -d ' ')"
+  soak_dirty="$(source_status | wc -l | tr -d ' ')"
   soak_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
   soak_build_version_file="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
   soak_internal="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deployment-version | build_version)"
@@ -959,6 +1101,12 @@ while [ "$soak_elapsed" -lt "$SOAK_SECONDS" ]; do
   SOAK_SAMPLES=$((SOAK_SAMPLES + 1))
 done
 
+certified_dependency_artifact="$(artifact_hash node_modules)"
+test "$certified_dependency_artifact" = "$DEPENDENCY_ARTIFACT"
+
+previous_fast_dependency_artifact="$(artifact_hash "$FAST_OLD_MODULES")"
+test "$previous_fast_dependency_artifact" = "$old_dependency_artifact"
+
 printf '%s\\n' \
   "status=CERTIFIED" \
   "release_sha=$RELEASE" \
@@ -970,6 +1118,8 @@ printf '%s\\n' \
   "candidate_build_version=$after_internal_version" \
   "build_version_file=$after_build_version_file" \
   "artifact_sha256=$ARTIFACT" \
+  "candidate_node_modules_sha256=$certified_dependency_artifact" \
+  "previous_node_modules_sha256=$old_dependency_artifact" \
   "content_sha256=$after_content_sha" \
   "manifest_sha256=$MANIFEST_SHA" \
   "gate_sha256=$GATE_SHA" \
@@ -981,6 +1131,7 @@ printf '%s\\n' \
   "soak_seconds=$SOAK_SECONDS" \
   "soak_samples=$SOAK_SAMPLES" \
   "fast_rollback=$FAST_OLD" \
+  "fast_rollback_modules=$FAST_OLD_MODULES" \
   "durable_rollback=$ROLLBACK" \
   "durable_cache_free=1" \
   "activation_bundle_while_stopped=1" \
@@ -1011,15 +1162,34 @@ printf 'action\tfast_path\tbuild_id\tsize_kb\tproof_kind\tproof_path\n' > "$rete
 set +e
 for d in .next-rollback-activate-* .next-rollback-manual-*; do
   [ -d "$d" ] || continue
-  build="$(cat "$d/BUILD_ID" 2>/dev/null || true)"
-  [ -n "$build" ] || {{
+
+  # A fast rollback is one runtime unit: .next + node_modules.
+  # Legacy/unpaired artifacts are always keep-only.
+  modules="${{d/.next-/.node_modules-}}"
+  [ -d "$modules" ] || {{
     RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
-    printf 'UNMATCHED_KEEP\t%s\t%s\t0\tNONE\t-\n' "$d" "$build" >> "$retention_plan"
+    size_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
+    printf 'UNMATCHED_KEEP\t%s\t%s\t%s\tMISSING_MODULE_PAIR\t-\n' \
+      "$d" "-" "${{size_kb:-0}}" >> "$retention_plan"
     continue
   }}
 
+  build="$(cat "$d/BUILD_ID" 2>/dev/null || true)"
+  [ -n "$build" ] || {{
+    RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
+    next_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
+    modules_kb="$(du -sk "$modules" 2>/dev/null | awk '{{print $1}}')"
+    size_kb=$((${{next_kb:-0}} + ${{modules_kb:-0}}))
+    printf 'UNMATCHED_KEEP\t%s\t%s\t%s\tNO_BUILD_ID\t-\n' \
+      "$d" "$build" "$size_kb" >> "$retention_plan"
+    continue
+  }}
+
+  # Pruning requires a durable proof for BOTH runtime halves.
   proof_kind=""
   proof_path=""
+  proof_modules=""
+
   match="$(
     find /mnt/HC_Volume_105319120/aoe2war/rollbacks \
       -type f -path '*/next/BUILD_ID' \
@@ -1027,9 +1197,16 @@ for d in .next-rollback-activate-* .next-rollback-manual-*; do
     | head -n 1
   )"
   if [ -n "$match" ]; then
-    proof_kind="DURABLE_ROLLBACK"
-    proof_path="${{match%/BUILD_ID}}"
-  else
+    proof_next="${{match%/BUILD_ID}}"
+    candidate_proof_modules="${{proof_next%/next}}/node_modules"
+    if [ -d "$candidate_proof_modules" ]; then
+      proof_kind="DURABLE_ROLLBACK"
+      proof_path="$proof_next"
+      proof_modules="$candidate_proof_modules"
+    fi
+  fi
+
+  if [ -z "$proof_kind" ]; then
     match="$(
       find /mnt/HC_Volume_105319120/aoe2war/deploy-receipts \
         -type f -path '*/current-next/BUILD_ID' \
@@ -1037,29 +1214,40 @@ for d in .next-rollback-activate-* .next-rollback-manual-*; do
       | head -n 1
     )"
     if [ -n "$match" ]; then
-      proof_kind="DURABLE_RESCUE"
-      proof_path="${{match%/BUILD_ID}}"
+      proof_next="${{match%/BUILD_ID}}"
+      candidate_proof_modules="${{proof_next%/current-next}}/current-node_modules"
+      if [ -d "$candidate_proof_modules" ]; then
+        proof_kind="DURABLE_RESCUE"
+        proof_path="$proof_next"
+        proof_modules="$candidate_proof_modules"
+      fi
     fi
   fi
 
-  if [ -z "$proof_kind" ]; then
+  if [ -z "$proof_kind" ] || [ ! -d "$proof_modules" ]; then
     RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
-    size_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
-    printf 'UNMATCHED_KEEP\t%s\t%s\t%s\tNONE\t-\n' \
-      "$d" "$build" "${{size_kb:-0}}" >> "$retention_plan"
+    next_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
+    modules_kb="$(du -sk "$modules" 2>/dev/null | awk '{{print $1}}')"
+    size_kb=$((${{next_kb:-0}} + ${{modules_kb:-0}}))
+    printf 'UNMATCHED_KEEP\t%s\t%s\t%s\tNO_PAIRED_DURABLE_PROOF\t-\n' \
+      "$d" "$build" "$size_kb" >> "$retention_plan"
     continue
   fi
 
   mtime="$(stat -c '%Y' "$d" 2>/dev/null)"
-  size_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
-  if [ -z "$mtime" ] || [ -z "$size_kb" ]; then
+  next_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
+  modules_kb="$(du -sk "$modules" 2>/dev/null | awk '{{print $1}}')"
+
+  if [ -z "$mtime" ] || [ -z "$next_kb" ] || [ -z "$modules_kb" ]; then
     RETENTION_STATUS="WARN"
     RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
+    size_kb=$((${{next_kb:-0}} + ${{modules_kb:-0}}))
     printf 'UNMATCHED_KEEP\t%s\t%s\t%s\t%s\t%s\n' \
-      "$d" "$build" "${{size_kb:-0}}" "$proof_kind" "$proof_path" >> "$retention_plan"
+      "$d" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
     continue
   fi
 
+  size_kb=$((next_kb + modules_kb))
   printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
     "$mtime" "$d" "$build" "$size_kb" "$proof_kind" "$proof_path" \
     >> "$retention_candidates"
@@ -1067,11 +1255,26 @@ done
 
 sort -rn -k1,1 "$retention_candidates" > "$retention_sorted"
 rank=0
+
 while IFS=$'\t' read -r mtime path build size_kb proof_kind proof_path; do
   [ "$mtime" = "mtime" ] && continue
   [ -n "$path" ] || continue
+
+  modules="${{path/.next-/.node_modules-}}"
+
+  # A pair that disappeared or became incomplete since enumeration
+  # immediately becomes keep-only.
+  if [ ! -d "$path" ] || [ ! -d "$modules" ]; then
+    RETENTION_STATUS="WARN"
+    RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
+    printf 'UNMATCHED_KEEP\t%s\t%s\t%s\tPAIR_DRIFT\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_path" >> "$retention_plan"
+    continue
+  fi
+
   rank=$((rank + 1))
   RETENTION_MATCHED=$((RETENTION_MATCHED + 1))
+
   if [ "$rank" -le "$FAST_ROLLBACK_KEEP" ]; then
     printf 'KEEP\t%s\t%s\t%s\t%s\t%s\n' \
       "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
@@ -1095,12 +1298,49 @@ while IFS=$'\t' read -r mtime path build size_kb proof_kind proof_path; do
     continue
   fi
 
-  if rm -rf -- "$path" && [ ! -e "$path" ]; then
+  # Remove the pair from the canonical rollback namespace atomically-ish:
+  # first rename BOTH halves on the same filesystem. If the second rename
+  # fails, restore the first immediately. Only then delete the two temps.
+  prune_next_tmp="${{path}}.prune-$$"
+  prune_modules_tmp="${{modules}}.prune-$$"
+
+  if [ -e "$prune_next_tmp" ] || [ -e "$prune_modules_tmp" ]; then
+    RETENTION_STATUS="WARN"
+    printf 'KEEP_PRUNE_TMP_COLLISION\t%s\t%s\t%s\t%s\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+    continue
+  fi
+
+  if ! mv "$path" "$prune_next_tmp"; then
+    RETENTION_STATUS="WARN"
+    printf 'KEEP_PAIR_MOVE_FAILED\t%s\t%s\t%s\t%s\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+    continue
+  fi
+
+  if ! mv "$modules" "$prune_modules_tmp"; then
+    mv "$prune_next_tmp" "$path" >/dev/null 2>&1 || true
+    RETENTION_STATUS="WARN"
+    printf 'KEEP_PAIR_MOVE_FAILED\t%s\t%s\t%s\t%s\t%s\n' \
+      "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
+    continue
+  fi
+
+  if rm -rf -- "$prune_next_tmp" "$prune_modules_tmp" \
+    && [ ! -e "$prune_next_tmp" ] \
+    && [ ! -e "$prune_modules_tmp" ]; then
     RETENTION_PRUNED=$((RETENTION_PRUNED + 1))
     RETENTION_RECLAIMED_KB=$((RETENTION_RECLAIMED_KB + size_kb))
-    printf 'PRUNE\t%s\t%s\t%s\t%s\t%s\n' \
+    printf 'PRUNE_PAIR\t%s\t%s\t%s\t%s\t%s\n' \
       "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
   else
+    # Best-effort restoration of any surviving temp halves.
+    if [ -d "$prune_next_tmp" ] && [ ! -e "$path" ]; then
+      mv "$prune_next_tmp" "$path" >/dev/null 2>&1 || true
+    fi
+    if [ -d "$prune_modules_tmp" ] && [ ! -e "$modules" ]; then
+      mv "$prune_modules_tmp" "$modules" >/dev/null 2>&1 || true
+    fi
     RETENTION_STATUS="WARN"
     printf 'KEEP_DELETE_FAILED\t%s\t%s\t%s\t%s\t%s\n' \
       "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
@@ -1145,6 +1385,8 @@ printf 'previous_build_id\\t%s\\n' "$OLD_BUILD"
 printf 'active_build_id\\t%s\\n' "$after_active_build"
 printf 'candidate_build_version\\t%s\\n' "$after_internal_version"
 printf 'artifact_sha256\\t%s\\n' "$ARTIFACT"
+printf 'candidate_node_modules_sha256\\t%s\\n' "$certified_dependency_artifact"
+printf 'previous_node_modules_sha256\\t%s\\n' "$old_dependency_artifact"
 printf 'content_sha256\\t%s\\n' "$after_content_sha"
 printf 'wolo8092\\t%s\\n' "$after_wolo8092"
 printf 'wolo8093\\t%s\\n' "$after_wolo8093"
@@ -1156,6 +1398,7 @@ printf 'retention_pruned\\t%s\\n' "$RETENTION_PRUNED"
 printf 'retention_reclaimed_kb\\t%s\\n' "$RETENTION_RECLAIMED_KB"
 printf 'retention_unmatched_kept\\t%s\\n' "$RETENTION_UNMATCHED"
 printf 'fast_rollback\\t%s\\n' "$FAST_OLD"
+printf 'fast_rollback_modules\\t%s\\n' "$FAST_OLD_MODULES"
 printf 'durable_rollback\\t%s\\n' "$ROLLBACK"
 printf 'durable_cache_free\\t1\\n'
 printf 'activation_bundle_while_stopped\\t1\\n'
@@ -1179,6 +1422,43 @@ def validate_activation_result(result: dict[str, str], receipt: dict) -> list[st
         errors.append("active build version does not equal candidate build version")
     if result.get("artifact_sha256") != receipt.get("artifact_sha256"):
         errors.append("active artifact SHA-256 does not equal staged artifact")
+
+    if result.get("candidate_node_modules_sha256") != receipt.get(
+        "candidate_node_modules_sha256"
+    ):
+        errors.append(
+            "active candidate node_modules SHA-256 does not equal "
+            "staged candidate node_modules"
+        )
+
+    previous_dependency_sha = (
+        result.get("previous_node_modules_sha256") or ""
+    )
+    if (
+        len(previous_dependency_sha) != 64
+        or any(
+            c not in "0123456789abcdef"
+            for c in previous_dependency_sha
+        )
+    ):
+        errors.append(
+            "previous node_modules SHA-256 is missing or invalid"
+        )
+
+    fast_rollback = result.get("fast_rollback") or ""
+    fast_rollback_modules = result.get("fast_rollback_modules") or ""
+    expected_fast_modules = (
+        fast_rollback.replace(".next-", ".node_modules-", 1)
+        if fast_rollback.startswith(".next-rollback-activate-")
+        else ""
+    )
+    if (
+        not expected_fast_modules
+        or fast_rollback_modules != expected_fast_modules
+    ):
+        errors.append(
+            "paired fast rollback node_modules path is missing or inconsistent"
+        )
     if result.get("durable_cache_free") != "1":
         errors.append("durable rollback does not prove cache-free storage")
     if result.get("activation_bundle_while_stopped") != "1":
@@ -1409,6 +1689,12 @@ def activate_release(
         "active_build_id": result["active_build_id"],
         "candidate_build_version": result["candidate_build_version"],
         "artifact_sha256": result["artifact_sha256"],
+        "candidate_node_modules_sha256": result[
+            "candidate_node_modules_sha256"
+        ],
+        "previous_node_modules_sha256": result[
+            "previous_node_modules_sha256"
+        ],
         "durable_cache_free": True,
         "activation_bundle_while_stopped": True,
         "wolo_8092_count": int(result["wolo8092"]),
@@ -1422,6 +1708,7 @@ def activate_release(
         "fast_rollback_unmatched_kept": int(result["retention_unmatched_kept"]),
         "remote_receipt_dir": result["receipt_dir"],
         "fast_rollback": result["fast_rollback"],
+        "fast_rollback_modules": result["fast_rollback_modules"],
         "durable_rollback": result["durable_rollback"],
         "release_specific_proof": (
             "INFRASTRUCTURE exact runtime identity, internal/public critical-route proof, and bounded post-activation health soak"

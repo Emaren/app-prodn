@@ -1,6 +1,8 @@
 # Ignored by default:
 node_modules/
 node_modules
+.node_modules-release/
+.node_modules-rollback*/
 .next/
 .next-release/
 .next-rollback*/

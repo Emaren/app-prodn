@@ -1,0 +1,54 @@
+[Unit]
+Description=AoE2WAR isolated release build %i
+Documentation=file:/var/www/AoE2HDBets/app-prodn/docs/RELEASE_ENGINEERING.md
+
+[Service]
+Type=oneshot
+User=tony
+Group=tony
+WorkingDirectory=/tmp/aoe2war-stage-%i
+Environment=NEXT_DIST_DIR=.next-release
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=HOME=/tmp/aoe2war-stage-%i/.sandbox-home
+Environment=XDG_CONFIG_HOME=/tmp/aoe2war-stage-%i/.sandbox-home/.config
+Environment=XDG_CACHE_HOME=/tmp/aoe2war-stage-%i/.sandbox-home/.cache
+Environment=TMPDIR=/tmp/aoe2war-stage-%i/.tmp
+Environment=TMP=/tmp/aoe2war-stage-%i/.tmp
+Environment=TEMP=/tmp/aoe2war-stage-%i/.tmp
+ExecStart=/usr/bin/node /tmp/aoe2war-stage-%i/.yarn-runtime/bin/yarn.js install --frozen-lockfile --offline --force --non-interactive --cache-folder /tmp/aoe2war-stage-%i/.yarn-cache
+ExecStart=/usr/bin/node /tmp/aoe2war-stage-%i/.yarn-runtime/bin/yarn.js build
+
+# Candidate build hooks may write only their disposable detached worktree.
+ProtectSystem=strict
+ReadWritePaths=/tmp/aoe2war-stage-%i
+ProtectHome=yes
+InaccessiblePaths=/etc/aoe2hdbets
+InaccessiblePaths=/mnt/HC_Volume_105319120
+
+# Candidate code has no host network, host user identity, devices, capabilities,
+# kernel/control-group mutation authority, or visibility into host processes.
+PrivateNetwork=yes
+PrivateUsers=yes
+PrivateDevices=yes
+ProtectProc=invisible
+ProcSubset=pid
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictNamespaces=yes
+LockPersonality=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+RemoveIPC=yes
+SystemCallArchitectures=native
+
+# Bound accidental or hostile build resource consumption.
+UMask=0077
+TasksMax=512
+MemoryMax=3G
+TimeoutStartSec=1500

@@ -23,6 +23,7 @@ def sample():
     manifest = {
         "release_sha": release,
         "previous_production_sha": previous,
+        "changed_files": ["yarn.lock"],
     }
     result = {
         "status": "STAGED",
@@ -34,11 +35,20 @@ def sample():
         "live_build_version": "old-version",
         "candidate_build_version": "candidate-version",
         "artifact_sha256": "a" * 64,
+        "candidate_node_modules_sha256": "b" * 64,
+        "candidate_node_modules_kb": "123456",
         "service": "active",
         "wolo8092": "1",
         "wolo8093": "1",
         "isolated_worktree": "1",
+        "build_process_sandboxed": "1",
+        "build_network_private": "1",
+        "build_secret_paths_inaccessible": "1",
+        "dependency_fetch_sandboxed": "1",
+        "dependency_fetch_scripts_disabled": "1",
+        "dependency_build_offline": "1",
         "dependency_contract_unchanged": "1",
+        "dependency_lock_changed": "1",
         "cache_free_artifact": "1",
         "artifact_path_relocated": "1",
         "live_source_mutated": "0",
@@ -51,6 +61,41 @@ def sample():
 
 
 class StageTests(unittest.TestCase):
+    def test_stage_disk_preflight_precedes_candidate_materialization(self):
+        script = MODULE.remote_stage_script(
+            release_sha="b" * 40,
+            previous_sha="a" * 40,
+            manifest_sha="c" * 64,
+            gate_sha="d" * 64,
+            receipt_dir="/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/stage-test",
+        )
+
+        self.assertIn(
+            'root_available_kb="$(df -Pk "$LIVE_REPO"',
+            script,
+        )
+        self.assertIn(
+            'live_dependency_kb="$(du -sk "$LIVE_REPO/node_modules"',
+            script,
+        )
+        self.assertIn(
+            'root_required_kb=$((live_dependency_kb * 2 + 1048576))',
+            script,
+        )
+        self.assertIn(
+            'test "$root_available_kb" -ge "$root_required_kb"',
+            script,
+        )
+
+        preflight = script.index('root_available_kb=')
+        build_parent = script.index('build_parent="$(mktemp')
+        dependency_fetch = script.index(
+            'sudo -n /usr/bin/systemctl start --wait "$deps_unit"'
+        )
+
+        self.assertLess(preflight, build_parent)
+        self.assertLess(preflight, dependency_fetch)
+
     def test_valid_stage_result(self):
         data, manifest, result = sample()
         self.assertEqual(
@@ -98,14 +143,48 @@ class StageTests(unittest.TestCase):
             gate_sha="d" * 64,
             receipt_dir="/mnt/receipt",
         )
-        self.assertIn("NEXT_DIST_DIR=.next-release", script)
+        self.assertIn("build_unit=", script)
+        self.assertIn(
+            "Environment=NEXT_DIST_DIR=.next-release",
+            MODULE.BUILD_SANDBOX_UNIT_SOURCE.read_text(),
+        )
         self.assertIn('git worktree add --detach "$build_worktree" "$RELEASE"', script)
         self.assertIn("/tmp/aoe2war-stage-XXXXXXXXXX", script)
         self.assertIn('${#build_worktree}', script)
         self.assertIn('${#LIVE_REPO}', script)
-        self.assertIn('cp -a node_modules "$build_worktree/node_modules"', script)
-        self.assertIn('cd "$build_worktree"', script)
-        self.assertIn('NEXT_DIST_DIR=.next-release yarn build', script)
+        self.assertNotIn(
+            'cp -a node_modules "$build_worktree/node_modules"',
+            script,
+        )
+        self.assertIn('deps_unit="aoe2war-deps@', script)
+        self.assertIn('build_unit="aoe2war-build@', script)
+        self.assertIn(
+            'rm -rf "$build_worktree/node_modules"',
+            script,
+        )
+        self.assertIn(
+            'mv "$build_worktree/node_modules" .node_modules-release',
+            script,
+        )
+        self.assertNotIn('cd "$build_worktree"', script)
+        self.assertIn(
+            "WorkingDirectory=/tmp/aoe2war-stage-%i",
+            MODULE.BUILD_SANDBOX_UNIT_SOURCE.read_text(),
+        )
+        self.assertIn(
+            "WorkingDirectory=/tmp/aoe2war-stage-%i",
+            MODULE.DEPS_SANDBOX_UNIT_SOURCE.read_text(),
+        )
+        build_unit = MODULE.BUILD_SANDBOX_UNIT_SOURCE.read_text()
+        self.assertIn(
+            "Environment=NEXT_DIST_DIR=.next-release",
+            build_unit,
+        )
+        self.assertIn(
+            "ExecStart=/usr/bin/node "
+            "/tmp/aoe2war-stage-%i/.yarn-runtime/bin/yarn.js build",
+            build_unit,
+        )
         self.assertIn('test "$(yarn --version)" = "1.22.22"', script)
         self.assertNotIn("sudo -n -u tony", script)
         self.assertIn("test ! -e .next-release", script)
@@ -170,7 +249,7 @@ class StageTests(unittest.TestCase):
             receipt_dir="/mnt/receipt",
         )
         self.assertNotIn("systemctl stop", script)
-        self.assertNotIn("systemctl start", script)
+        self.assertNotIn('systemctl start "$SERVICE"', script)
         self.assertNotIn("systemctl restart", script)
 
     def test_stage_script_cleans_partial_artifact_without_source_mutation(self):
@@ -188,7 +267,7 @@ class StageTests(unittest.TestCase):
         self.assertIn("cleanup_build_worktree", script)
         self.assertIn("trap restore_stage_failure EXIT", script)
 
-    def test_stage_script_requires_unchanged_dependency_contract_and_cache_free_copy(self):
+    def test_stage_script_records_dependency_change_evidence_and_cache_free_artifact(self):
         script = MODULE.remote_stage_script(
             release_sha="b" * 40,
             previous_sha="a" * 40,
@@ -196,16 +275,79 @@ class StageTests(unittest.TestCase):
             gate_sha="d" * 64,
             receipt_dir="/mnt/receipt",
         )
-        self.assertIn('git diff --quiet "$PREVIOUS" "$RELEASE" -- yarn.lock', script)
-        self.assertIn("will not reuse incompatible production node_modules", script)
+        self.assertNotIn(
+            "will not reuse incompatible production node_modules",
+            script,
+        )
+        self.assertNotIn(
+            "atomic node_modules activation/rollback is required",
+            script,
+        )
         self.assertIn('dependency_contract "$PREVIOUS"', script)
-        self.assertIn("atomic node_modules activation/rollback is required", script)
-        self.assertIn('rm -rf "$build_worktree/.next-release/cache"', script)
+        self.assertIn("dependency_contract_unchanged=0", script)
+        self.assertIn("dependency_lock_changed=1", script)
+        self.assertIn(".node_modules-release", script)
+        self.assertIn(
+            'rm -rf "$build_worktree/.next-release/cache"',
+            script,
+        )
         self.assertIn('test ! -e .next-release/cache', script)
         self.assertIn("artifact relocation paths differ in byte length", script)
         self.assertIn("embedded worktree path remains in artifact file", script)
-        self.assertIn('artifact_path_relocated\t1', script)
-        self.assertIn('live_source_mutated\t0', script)
+        self.assertIn('artifact_path_relocated	1', script)
+        self.assertIn('live_source_mutated	0', script)
+
+    def test_stage_source_cleanliness_excludes_only_controlled_runtime_bundles(self):
+        script = MODULE.remote_stage_script(
+            release_sha="b" * 40,
+            previous_sha="a" * 40,
+            manifest_sha="c" * 64,
+            gate_sha="d" * 64,
+            receipt_dir="/mnt/receipt",
+        )
+        self.assertIn("source_status()", script)
+        self.assertIn("' :(exclude).node_modules-release'".replace(" ", ""), script)
+        self.assertIn("' :(exclude).node_modules-rollback*'".replace(" ", ""), script)
+        self.assertIn(
+            'before_dirty="$(source_status | wc -l',
+            script,
+        )
+        self.assertIn(
+            'after_dirty="$(source_status | wc -l',
+            script,
+        )
+
+    def test_stage_script_builds_fresh_candidate_dependency_tree_without_live_mutation(self):
+        script = MODULE.remote_stage_script(
+            release_sha="b" * 40,
+            previous_sha="a" * 40,
+            manifest_sha="c" * 64,
+            gate_sha="d" * 64,
+            receipt_dir="/mnt/receipt",
+        )
+        self.assertNotIn(
+            "will not reuse incompatible production node_modules",
+            script,
+        )
+        self.assertNotIn(
+            "atomic node_modules activation/rollback is required",
+            script,
+        )
+        self.assertIn("yarn install --frozen-lockfile", script)
+        fetch = script.index('systemctl start --wait "$deps_unit"')
+        discard_fetch_tree = script.index(
+            'rm -rf "$build_worktree/node_modules"',
+            fetch,
+        )
+        build = script.index(
+            'systemctl start --wait "$build_unit"',
+            discard_fetch_tree,
+        )
+        self.assertLess(fetch, discard_fetch_tree)
+        self.assertLess(discard_fetch_tree, build)
+        self.assertIn(".node_modules-release", script)
+        self.assertIn("candidate_node_modules_sha256", script)
+        self.assertIn("live_node_modules_mutated", script)
 
     def test_isolated_stage_invariant_is_required(self):
         data, manifest, result = sample()
