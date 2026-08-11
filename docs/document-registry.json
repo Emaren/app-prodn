@@ -476,7 +476,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0aa971fb591d1a604060a488d7a0ea8f02ad017f455520b2246e9bd083fa62f1",
+      "sha256": "da80bb517183d90132c6a612028d950e7e620ada48a43730966cb17b8dd5c8f9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1356,8 +1356,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "hotfix/atomic-dependency-release-lane-20260811",
-    "commit": "4061baa74f1493c987e6e9c25f03437c98dfbc1e"
+    "branch": "main",
+    "commit": "cf2f4690853f6917cb74640eb02ab9419e45d413"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

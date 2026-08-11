@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `hotfix/atomic-dependency-release-lane-20260811` at `4061baa74f1493c987e6e9c25f03437c98dfbc1e`
+Implementation baseline: `main` at `cf2f4690853f6917cb74640eb02ab9419e45d413`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
