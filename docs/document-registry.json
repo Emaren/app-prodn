@@ -476,7 +476,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bf8072519e964e8b6f8d51bc7bb54a4aea3c55367ed3b89131183ddb96502d19",
+      "sha256": "bbeb2631bc5917670c534bb96f75dd29d333ab7de967ff706e06cae76a63258f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1356,8 +1356,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "hotfix/client-flight-recorder-20260811",
-    "commit": "804cd13399c70e7f248c6e83beee425b92f242cd"
+    "branch": "hotfix/release-docs-baseline-parser-20260811",
+    "commit": "c590a8746d95aa67a3718c53d0e154e9872e90d9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
