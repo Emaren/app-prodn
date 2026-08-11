@@ -36,6 +36,19 @@ const SAFE_METADATA_KEYS = new Set([
   "destination",
   "from",
   "to",
+  "errorName",
+  "errorMessage",
+  "errorStack",
+  "reasonType",
+  "sourcePath",
+  "visibilityState",
+  "online",
+  "persisted",
+  "lineNumber",
+  "columnNumber",
+  "longTaskDurationMs",
+  "longTaskStartMs",
+  "eventLoopStallMs",
 ]);
 
 const STRING_METADATA_LIMITS: Record<string, number> = {
@@ -63,11 +76,22 @@ const STRING_METADATA_LIMITS: Record<string, number> = {
   destination: 16,
   from: 16,
   to: 16,
+  errorName: 120,
+  errorMessage: 500,
+  errorStack: 1200,
+  reasonType: 80,
+  sourcePath: 240,
+  visibilityState: 24,
 };
 
 const NUMERIC_METADATA_LIMITS: Record<string, number> = {
   viewportWidth: 10_000,
   viewportHeight: 10_000,
+  lineNumber: 10_000_000,
+  columnNumber: 10_000_000,
+  longTaskDurationMs: 600_000,
+  longTaskStartMs: 2_000_000_000,
+  eventLoopStallMs: 600_000,
 };
 
 function sanitizeMetadataString(value: string, maxLength: number) {
