@@ -36,7 +36,7 @@ import {
 
 
 const MANIFEST_VERSION =
-  "public_replay_roster_v2_manifest_v1";
+  "public_replay_roster_v2_manifest_v2";
 
 const MANIFEST_PATH =
   process.env.ROSTER_V2_MANIFEST ??
@@ -98,28 +98,7 @@ function lower(
 }
 
 
-function unknownWinner(
-  value: unknown
-) {
-  const normalized =
-    lower(value);
-
-  return (
-    !normalized ||
-    [
-      "unknown",
-      "unresolved",
-      "none",
-      "null",
-      "n/a",
-    ].includes(
-      normalized
-    )
-  );
-}
-
-
-function sha256Bytes(
+ function sha256Bytes(
   value: string
 ) {
   return createHash(
@@ -978,22 +957,7 @@ try {
     }
 
 
-    if (
-      !unknownWinner(
-        game.winner
-      )
-    ) {
-      blockers.push(
-        `stored_winner_not_unknown:${
-          text(
-            game.winner
-          )
-        }`
-      );
-    }
-
-
-    if (run) {
+     if (run) {
       if (
         run.gameStatsId !==
           game.id
@@ -1133,8 +1097,15 @@ try {
 
 
       /*
-       * A V2 roster promotion is not allowed to create result
-       * authority as a side effect.
+       * V2 is roster-only authority.
+       *
+       * A game may already possess legitimate result truth.
+       * That is not itself a blocker.
+       *
+       * The fail-closed requirement is stronger and more
+       * precise: replacing only GameStats.players must leave
+       * the complete public/result authority snapshot exactly
+       * unchanged.
        */
       const beforeGame =
         {
@@ -1151,29 +1122,7 @@ try {
         );
 
 
-      if (
-        beforeAuthority
-          .winner ||
-        beforeAuthority
-          .candidateWinner ||
-        beforeAuthority
-          .reliableWinner ||
-        beforeAuthority
-          .statsEligible ||
-        beforeAuthority
-          .bettingEligible ||
-        beforeAuthority
-          .resolvedVisible ||
-        !beforeAuthority
-          .reviewVisible
-      ) {
-        blockers.push(
-          "before_result_authority_not_clean"
-        );
-      }
-
-
-      if (
+       if (
         projection.ok
       ) {
         const projectedGame =
@@ -1209,29 +1158,7 @@ try {
         }
 
 
-        if (
-          afterAuthority
-            .winner ||
-          afterAuthority
-            .candidateWinner ||
-          afterAuthority
-            .reliableWinner ||
-          afterAuthority
-            .statsEligible ||
-          afterAuthority
-            .bettingEligible ||
-          afterAuthority
-            .resolvedVisible ||
-          !afterAuthority
-            .reviewVisible
-        ) {
-          blockers.push(
-            "projected_result_authority_not_clean"
-          );
-        }
-
-
-        if (
+         if (
           blockers.length ===
           0
         ) {
@@ -1334,6 +1261,9 @@ try {
                 replayHash:
                   game.replayHash,
 
+                inputHash:
+                  run.inputHash,
+
                 artifactSha256:
                   run.artifact.sha256,
 
@@ -1342,6 +1272,9 @@ try {
 
                 parserConfigHash:
                   run.parserConfigHash,
+
+                parserContract:
+                  HD_REPLAY_PARSER_CONTRACT,
 
                 candidateOutputHash:
                   run.candidateOutputHash,
@@ -1411,6 +1344,12 @@ try {
               authorityBoundary: {
                 rosterOnly:
                   true,
+
+                winnerRemains:
+                  game.winner,
+
+                resultAdjudication:
+                  false,
 
                 affectsPublicAggregates:
                   true,
