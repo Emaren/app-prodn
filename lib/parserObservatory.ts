@@ -12,7 +12,11 @@ import {
 import { displayPlayerName, parsePlayers, readMapName } from "@/lib/gameStatsView";
 import { isPublicBattleArchiveRow } from "@/lib/publicBattleArchiveEligibility";
 import { getPrisma } from "@/lib/prisma";
-import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
+import {
+  cleanPublicGameRows,
+  publicReplayWinnerTruth,
+} from "@/lib/publicReplayTruth";
+import { publicReplayRosterV2DisplayState } from "@/lib/publicReplayRosterV2";
 import { resolveReplayOwnerDisplay } from "@/lib/replayOwnerDisplay";
 import { buildReplayEvidenceLanes } from "@/lib/replayEvidenceLanes";
 import {
@@ -603,13 +607,14 @@ async function buildPublicParserObservatory() {
   ).length;
   const publicBattleRows = rows.filter(isPublicBattleArchiveRow);
   const publicBattleRecords = publicBattleRows.length;
-  const uniqueLogicalBattles = cleanPublicGameRows(
+  const logicalBattleRows = cleanPublicGameRows(
     publicBattleRows,
     {
       includeReview: true,
       includeLive: false,
     }
-  ).length;
+  );
+  const uniqueLogicalBattles = logicalBattleRows.length;
   const excludedFinalRecords = Math.max(0, rows.length - publicBattleRecords);
   const normalizedNamesBySteamId = new Map<string, Set<string>>();
   const steamIdsByNormalizedName = new Map<string, Set<string>>();
@@ -737,6 +742,65 @@ async function buildPublicParserObservatory() {
     }
   }
 
+
+  /*
+   * Canonical public logical-battle grain.
+   *
+   * These counters answer the product question a visitor actually asks:
+   * does one deduplicated public battle have a defensible result and a
+   * complete display roster/team composition?
+   *
+   * They intentionally do NOT use the legacy key_events.team_resolution
+   * counter as roster authority. Public roster truth is the same display
+   * contract used by the repaired V2 roster lane.
+   */
+  let logicalResultResolved = 0;
+  let logicalRosterComplete = 0;
+  let logicalBattleTruthComplete = 0;
+  let logicalNeedsResultOnly = 0;
+  let logicalNeedsRosterOnly = 0;
+  let logicalNeedsBoth = 0;
+
+  for (const row of logicalBattleRows) {
+    const result = publicReplayWinnerTruth(row);
+    const roster = publicReplayRosterV2DisplayState(row.players);
+
+    if (result.statsEligible) {
+      logicalResultResolved += 1;
+    }
+
+    if (roster.complete) {
+      logicalRosterComplete += 1;
+    }
+
+    if (result.statsEligible && roster.complete) {
+      logicalBattleTruthComplete += 1;
+    } else if (!result.statsEligible && roster.complete) {
+      logicalNeedsResultOnly += 1;
+    } else if (result.statsEligible && !roster.complete) {
+      logicalNeedsRosterOnly += 1;
+    } else {
+      logicalNeedsBoth += 1;
+    }
+  }
+
+  const logicalResultUnresolved =
+    uniqueLogicalBattles - logicalResultResolved;
+  const logicalRosterIncomplete =
+    uniqueLogicalBattles - logicalRosterComplete;
+  const logicalBattleTruthIncomplete =
+    uniqueLogicalBattles - logicalBattleTruthComplete;
+
+  const logicalResultCoverageBps = uniqueLogicalBattles
+    ? Math.round((logicalResultResolved / uniqueLogicalBattles) * 10_000)
+    : 0;
+  const logicalRosterCoverageBps = uniqueLogicalBattles
+    ? Math.round((logicalRosterComplete / uniqueLogicalBattles) * 10_000)
+    : 0;
+  const logicalBattleTruthCoverageBps = uniqueLogicalBattles
+    ? Math.round((logicalBattleTruthComplete / uniqueLogicalBattles) * 10_000)
+    : 0;
+
   return {
     generatedAt: new Date().toISOString(),
     corpus: {
@@ -749,6 +813,18 @@ async function buildPublicParserObservatory() {
           publicBattleRecords -
             uniqueLogicalBattles
         ),
+      logicalResultResolved,
+      logicalResultUnresolved,
+      logicalRosterComplete,
+      logicalRosterIncomplete,
+      logicalBattleTruthComplete,
+      logicalBattleTruthIncomplete,
+      logicalNeedsResultOnly,
+      logicalNeedsRosterOnly,
+      logicalNeedsBoth,
+      logicalResultCoverageBps,
+      logicalRosterCoverageBps,
+      logicalBattleTruthCoverageBps,
       excludedFinalRecords,
       allDatabaseRows: allGameRows,
       archivedArtifacts: artifacts._count._all,

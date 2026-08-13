@@ -69,12 +69,12 @@ export default async function GameStatsPage({
         view={view}
         chain={heroChain}
         metrics={[
-          { label: "Deduplicated public battles", value: data.corpus.uniqueLogicalBattles.toLocaleString() },
-          { label: "Final ingestion records", value: data.corpus.finalReplayRecords.toLocaleString() },
-          { label: "Results resolved", value: data.corpus.resolvedResults.toLocaleString() },
-          { label: "Replay-backed Steam IDs", value: data.corpus.replayBackedSteamAccounts.toLocaleString() },
-          { label: "Provisional Warriors", value: data.corpus.provisionalWarriors.toLocaleString() },
-          { label: "Indexed files decoded", value: data.corpus.parseableAtAnyLevelArtifacts.toLocaleString() },
+          { label: "Logical battles", value: data.corpus.uniqueLogicalBattles.toLocaleString() },
+          { label: "Full battle truth", value: data.corpus.logicalBattleTruthComplete.toLocaleString() },
+          { label: "Need result / roster truth", value: data.corpus.logicalBattleTruthIncomplete.toLocaleString() },
+          { label: "Complete rosters", value: data.corpus.logicalRosterComplete.toLocaleString() },
+          { label: "Incomplete rosters", value: data.corpus.logicalRosterIncomplete.toLocaleString() },
+          { label: "Duplicate / rehost rows", value: data.corpus.duplicateBattleRecords.toLocaleString() },
         ]}
       />
 
@@ -109,7 +109,7 @@ export default async function GameStatsPage({
             <DefinitionMetric
               label="Deduplicated public battle keys"
               value={data.corpus.uniqueLogicalBattles}
-              definition="Public battle rows deduplicated by the app’s current presentation identity. It folds the six known duplicate rows; additional semantically identical rehosts may remain."
+              definition={`Public battle rows deduplicated by the app’s current presentation identity. It currently folds ${data.corpus.duplicateBattleRecords.toLocaleString()} redundant row${data.corpus.duplicateBattleRecords === 1 ? "" : "s"} while preserving every source record.`}
             />
             <DefinitionMetric
               label="Duplicate / rehost records"
@@ -122,9 +122,19 @@ export default async function GameStatsPage({
               definition="Preserved final rows intentionally kept out of the public battle archive, chiefly saved checkpoints and unparsed low-roster shells."
             />
             <DefinitionMetric
-              label="Result resolved / unresolved"
-              value={`${data.corpus.resolvedResults.toLocaleString()} / ${data.corpus.unresolvedResults.toLocaleString()}`}
-              definition="Outcome truth within final ingestion records. Unknown results stay out of resolved win-rate math."
+              label="Logical result resolved / unresolved"
+              value={`${data.corpus.logicalResultResolved.toLocaleString()} / ${data.corpus.logicalResultUnresolved.toLocaleString()}`}
+              definition="Outcome truth after public-battle filtering and logical deduplication. Unknown results stay out of resolved win-rate math."
+            />
+            <DefinitionMetric
+              label="Logical roster complete / incomplete"
+              value={`${data.corpus.logicalRosterComplete.toLocaleString()} / ${data.corpus.logicalRosterIncomplete.toLocaleString()}`}
+              definition="Complete public participant identity plus a defensible 1v1 or balanced 2v2–4v4 team composition."
+            />
+            <DefinitionMetric
+              label="Full battle truth / needs truth"
+              value={`${data.corpus.logicalBattleTruthComplete.toLocaleString()} / ${data.corpus.logicalBattleTruthIncomplete.toLocaleString()}`}
+              definition="A full-truth logical battle has both a defensible result and a complete public roster/team composition."
             />
           </CorpusLayer>
 
@@ -216,10 +226,16 @@ export default async function GameStatsPage({
 
       <section className="grid gap-5 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="rounded-[1.8rem] border border-white/10 bg-slate-950/75 p-6 sm:p-8">
-          <div className="flex flex-wrap items-end justify-between gap-4"><div><div className="text-xs uppercase tracking-[0.3em] text-cyan-100/55">Replay Truth Progress</div><h2 className="mt-2 text-3xl font-semibold">{data.corpus.resolvedResults.toLocaleString()} / {data.corpus.finalReplayRecords.toLocaleString()} final replay records resolved</h2></div><div className="text-2xl font-semibold text-cyan-100">{percent(data.corpus.resultCoverageBps)}</div></div>
-          <Progress value={data.corpus.resultCoverageBps} />
-          <div className="mt-5 grid gap-3 sm:grid-cols-3"><Mini label="Team-resolved" value={`${data.corpus.resolvedTeams.toLocaleString()} · ${percent(data.corpus.teamCoverageBps)}`} /><Mini label="Needs result/team review" value={data.corpus.reviewRequired.toLocaleString()} /><Mini label="Archived source files" value={data.corpus.archivedArtifacts.toLocaleString()} /></div>
-          <p className="mt-5 text-sm leading-6 text-slate-400">This denominator is the current set of final watcher/upload records in <code>GameStats</code>, after append-only adjudications are projected. It is not a deduplicated logical-game count: saved or rehosted records may correctly remain result-unknown. Unknowns stay excluded until replay evidence or adjudication establishes a defensible winner.</p>
+          <div className="flex flex-wrap items-end justify-between gap-4"><div><div className="text-xs uppercase tracking-[0.3em] text-cyan-100/55">Full Battle Truth</div><h2 className="mt-2 text-3xl font-semibold">{data.corpus.logicalBattleTruthComplete.toLocaleString()} / {data.corpus.uniqueLogicalBattles.toLocaleString()} logical battles have winner + complete roster truth</h2></div><div className="text-2xl font-semibold text-cyan-100">{percent(data.corpus.logicalBattleTruthCoverageBps)}</div></div>
+          <Progress value={data.corpus.logicalBattleTruthCoverageBps} />
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            <Mini label="Result truth" value={`${data.corpus.logicalResultResolved.toLocaleString()} · ${percent(data.corpus.logicalResultCoverageBps)}`} />
+            <Mini label="Roster truth" value={`${data.corpus.logicalRosterComplete.toLocaleString()} · ${percent(data.corpus.logicalRosterCoverageBps)}`} />
+            <Mini label="Need result only" value={data.corpus.logicalNeedsResultOnly.toLocaleString()} />
+            <Mini label="Need roster only" value={data.corpus.logicalNeedsRosterOnly.toLocaleString()} />
+            <Mini label="Need both" value={data.corpus.logicalNeedsBoth.toLocaleString()} />
+          </div>
+          <p className="mt-5 text-sm leading-6 text-slate-400">This denominator is the deduplicated public logical-battle corpus. A battle reaches full truth only when the public result is defensible and the participant roster/team composition is complete. Final ingestion records, physical files, parser artifacts, and duplicate/rehost rows remain visible separately above.</p>
         </div>
         <div className="rounded-[1.8rem] border border-amber-200/14 bg-amber-300/[0.055] p-6 sm:p-8"><div className="text-xs uppercase tracking-[0.3em] text-amber-100/55">Canonical Parser Contract</div><h2 className="mt-3 text-2xl font-semibold">{HD_REPLAY_PARSER_CONTRACT.parserName} {HD_REPLAY_PARSER_CONTRACT.parserVersion}</h2><div className="mt-4 space-y-2 text-sm text-slate-300">{canonicalVersion ? <><Line label="Evidence pass" value={`${canonicalVersion.passName} v${canonicalVersion.passVersion}`} /><Line label="Schema" value={canonicalVersion.schemaVersion} /><Line label="Latest canonical run" value={canonicalVersion.latestAt ? <TimeDisplayText value={canonicalVersion.latestAt} includeYear /> : "Not recorded"} /></> : <Line label="Catalog" value="No canonical run recorded yet" />}<Line label="Candidate runs" value={data.parser.totalRuns.toLocaleString()} /><Line label="Observations preserved" value={compact(data.parser.observations)} /><Line label="Action packets cataloged" value={compact(data.parser.totalActions)} /></div></div>
       </section>

@@ -42,6 +42,18 @@ export type WorkshopDiagnostics = {
     publicBattleRecords: number;
     uniqueLogicalBattles: number;
     duplicateBattleRecords: number;
+    logicalResultResolved: number;
+    logicalResultUnresolved: number;
+    logicalRosterComplete: number;
+    logicalRosterIncomplete: number;
+    logicalBattleTruthComplete: number;
+    logicalBattleTruthIncomplete: number;
+    logicalNeedsResultOnly: number;
+    logicalNeedsRosterOnly: number;
+    logicalNeedsBoth: number;
+    logicalResultCoverageBps: number;
+    logicalRosterCoverageBps: number;
+    logicalBattleTruthCoverageBps: number;
     excludedFinalRecords: number;
     resolvedResults: number;
     unresolvedResults: number;
@@ -424,17 +436,17 @@ function BasicView(props: ViewProps) {
             </p>
           </div>
           <div className="text-right">
-            <div className="text-4xl font-semibold text-cyan-100">{pct(diagnostics.corpus.resultCoverageBps)}</div>
-            <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-slate-500">Result coverage</div>
+            <div className="text-4xl font-semibold text-cyan-100">{pct(diagnostics.corpus.logicalBattleTruthCoverageBps)}</div>
+            <div className="mt-1 text-[10px] uppercase tracking-[0.22em] text-slate-500">Full battle truth</div>
           </div>
         </div>
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Metric label="Resolved results" value={diagnostics.corpus.resolvedResults} />
-          <Metric label="Still uncertain" value={diagnostics.corpus.unresolvedResults} alert />
+          <Metric label="Full battle truth" value={diagnostics.corpus.logicalBattleTruthComplete} />
+          <Metric label="Needs truth" value={diagnostics.corpus.logicalBattleTruthIncomplete} alert />
           <Metric label="Logical battles" value={diagnostics.corpus.uniqueLogicalBattles} />
-          <Metric label="Provisional Warriors" value={diagnostics.corpus.provisionalWarriors} />
+          <Metric label="Complete rosters" value={diagnostics.corpus.logicalRosterComplete} />
         </div>
-        <Progress value={diagnostics.corpus.resultCoverageBps / 100} />
+        <Progress value={diagnostics.corpus.logicalBattleTruthCoverageBps / 100} />
         <Boundary compact />
       </section>
 
@@ -451,7 +463,9 @@ function BasicView(props: ViewProps) {
 
 function AdvancedView(props: ViewProps) {
   const { data, chronicle, diagnostics, feed, viewMode, setViewMode } = props;
-  const result = diagnostics.corpus.resultCoverageBps / 100;
+  const fullTruth = diagnostics.corpus.logicalBattleTruthCoverageBps / 100;
+  const result = diagnostics.corpus.logicalResultCoverageBps / 100;
+  const roster = diagnostics.corpus.logicalRosterCoverageBps / 100;
   const frontier = diagnostics.parser.frontier.artifacts
     ? (diagnostics.parser.frontier.completed / diagnostics.parser.frontier.artifacts) * 100
     : 0;
@@ -473,11 +487,11 @@ function AdvancedView(props: ViewProps) {
           <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
         </div>
         <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-          <Metric label="Result coverage" value={pct(diagnostics.corpus.resultCoverageBps)} accent />
-          <Metric label="Resolved" value={diagnostics.corpus.resolvedResults} />
-          <Metric label="Needs truth" value={diagnostics.corpus.unresolvedResults} alert />
+          <Metric label="Full battle truth" value={pct(diagnostics.corpus.logicalBattleTruthCoverageBps)} accent />
+          <Metric label="Full truth" value={diagnostics.corpus.logicalBattleTruthComplete} />
+          <Metric label="Needs truth" value={diagnostics.corpus.logicalBattleTruthIncomplete} alert />
+          <Metric label="Complete rosters" value={diagnostics.corpus.logicalRosterComplete} />
           <Metric label="Logical battles" value={diagnostics.corpus.uniqueLogicalBattles} />
-          <Metric label="Warriors" value={diagnostics.corpus.provisionalWarriors} />
           <Metric label="Watcher" value={`v${diagnostics.watcherVersion}`} accent />
         </div>
       </section>
@@ -488,20 +502,19 @@ function AdvancedView(props: ViewProps) {
             <div>
               <Eyebrow>Replay truth progress</Eyebrow>
               <h2 className="mt-2 text-3xl font-semibold">
-                {diagnostics.corpus.resolvedResults.toLocaleString()} of {diagnostics.corpus.finalReplayRecords.toLocaleString()} final records resolved
+                {diagnostics.corpus.logicalBattleTruthComplete.toLocaleString()} of {diagnostics.corpus.uniqueLogicalBattles.toLocaleString()} logical battles have full truth
               </h2>
             </div>
-            <div className="text-3xl font-semibold text-cyan-100">{result.toFixed(1)}%</div>
+            <div className="text-3xl font-semibold text-cyan-100">{fullTruth.toFixed(1)}%</div>
           </div>
-          <Progress value={result} />
+          <Progress value={fullTruth} />
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            <Mini label="Team truth" value={pct(diagnostics.corpus.teamCoverageBps)} />
-            <Mini label="Review queue" value={diagnostics.corpus.reviewRequired.toLocaleString()} />
-            <Mini label="Current failures" value={diagnostics.parser.frontier.failed.toLocaleString()} />
+            <Mini label="Result truth" value={`${result.toFixed(1)}% · ${diagnostics.corpus.logicalResultResolved.toLocaleString()}`} />
+            <Mini label="Roster truth" value={`${roster.toFixed(1)}% · ${diagnostics.corpus.logicalRosterComplete.toLocaleString()}`} />
+            <Mini label="Need both" value={diagnostics.corpus.logicalNeedsBoth.toLocaleString()} />
           </div>
           <p className="mt-5 text-sm leading-6 text-slate-400">
-            Unknown results stay unknown. The site promotes a winner only when replay
-            evidence or adjudication can defend it.
+            Full truth requires both a defensible winner and complete public participant/team composition. Unknown results stay unknown; roster recovery never manufactures result authority.
           </p>
         </div>
         <div className="rounded-[2rem] border border-amber-200/14 bg-[linear-gradient(145deg,rgba(50,34,16,0.74),rgba(4,8,16,0.94))] p-6 sm:p-8">
@@ -537,9 +550,9 @@ function AdvancedView(props: ViewProps) {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Front icon={Target} label="Replay truth" title={`${diagnostics.corpus.unresolvedResults.toLocaleString()} records remain uncertain`} note="Resolve outcome and team evidence without manufacturing certainty." href="/game-stats" />
+        <Front icon={Target} label="Replay truth" title={`${diagnostics.corpus.logicalResultUnresolved.toLocaleString()} logical battles still need a result`} note="Resolve outcome evidence without manufacturing certainty." href="/game-stats" />
         <Front icon={Users} label="Identity" title={`${diagnostics.corpus.replayBackedSteamAccounts.toLocaleString()} replay-backed accounts`} note="Aliases can fold into accounts. Accounts do not silently become one human." href="/leaderboard" />
-        <Front icon={ShieldCheck} label="Reliability" title={`${diagnostics.corpus.reviewRequired.toLocaleString()} records need review`} note="Unresolved finals stay visible while betting and settlement remain closed." href="/bets" />
+        <Front icon={ShieldCheck} label="Reliability" title={`${diagnostics.corpus.logicalBattleTruthIncomplete.toLocaleString()} logical battles still need truth`} note={`${diagnostics.corpus.logicalNeedsResultOnly.toLocaleString()} need only a result, ${diagnostics.corpus.logicalNeedsRosterOnly.toLocaleString()} need only roster truth, and ${diagnostics.corpus.logicalNeedsBoth.toLocaleString()} need both.`} href="/game-stats" />
         <Front icon={Activity} label="Watcher" title={`Version ${diagnostics.watcherVersion} is live`} note="Immutable snapshots keep one captured replay from changing mid-flight." href="/download" />
       </section>
 
@@ -558,8 +571,9 @@ function AdvancedView(props: ViewProps) {
 function ExtremeView(props: ViewProps) {
   const { data, chronicle, diagnostics, feed, viewMode, setViewMode } = props;
   const [heroBackgroundVisible, setHeroBackgroundVisible] = useState(false);
-  const result = diagnostics.corpus.resultCoverageBps / 100;
-  const team = diagnostics.corpus.teamCoverageBps / 100;
+  const fullTruth = diagnostics.corpus.logicalBattleTruthCoverageBps / 100;
+  const result = diagnostics.corpus.logicalResultCoverageBps / 100;
+  const team = diagnostics.corpus.logicalRosterCoverageBps / 100;
   const decoded = diagnostics.corpus.archivedArtifacts
     ? (diagnostics.corpus.parseableAtAnyLevelArtifacts / diagnostics.corpus.archivedArtifacts) * 100
     : 0;
@@ -598,7 +612,7 @@ function ExtremeView(props: ViewProps) {
         </div>
 
         <div className="relative mt-9 grid gap-5 xl:grid-cols-[0.75fr_1.25fr]">
-          <Dial value={result} resolved={diagnostics.corpus.resolvedResults} unresolved={diagnostics.corpus.unresolvedResults} />
+          <Dial value={fullTruth} resolved={diagnostics.corpus.logicalBattleTruthComplete} unresolved={diagnostics.corpus.logicalBattleTruthIncomplete} />
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <Metric label="Final records" value={diagnostics.corpus.finalReplayRecords} />
             <Metric label="Public battle records" value={diagnostics.corpus.publicBattleRecords} />
@@ -618,7 +632,8 @@ function ExtremeView(props: ViewProps) {
             <Funnel label="Final ingestion records" value={diagnostics.corpus.finalReplayRecords} max={diagnostics.corpus.finalReplayRecords} />
             <Funnel label="Public battle records" value={diagnostics.corpus.publicBattleRecords} max={diagnostics.corpus.finalReplayRecords} />
             <Funnel label="Unique logical battles" value={diagnostics.corpus.uniqueLogicalBattles} max={diagnostics.corpus.finalReplayRecords} />
-            <Funnel label="Results resolved" value={diagnostics.corpus.resolvedResults} max={diagnostics.corpus.finalReplayRecords} accent />
+            <Funnel label="Complete rosters" value={diagnostics.corpus.logicalRosterComplete} max={diagnostics.corpus.uniqueLogicalBattles} />
+            <Funnel label="Full battle truth" value={diagnostics.corpus.logicalBattleTruthComplete} max={diagnostics.corpus.uniqueLogicalBattles} accent />
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <Mini label="Duplicate / rehost rows" value={diagnostics.corpus.duplicateBattleRecords.toLocaleString()} />
@@ -632,7 +647,8 @@ function ExtremeView(props: ViewProps) {
             <Radar label="Archive frontier" value={frontier} />
             <Radar label="Artifacts decoded" value={decoded} />
             <Radar label="Result truth" value={result} />
-            <Radar label="Team truth" value={team} />
+            <Radar label="Roster + team truth" value={team} />
+            <Radar label="Full battle truth" value={fullTruth} />
           </div>
         </div>
       </section>
