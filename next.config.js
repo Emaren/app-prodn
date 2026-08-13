@@ -1,4 +1,7 @@
+// Next loads this configuration through CommonJS.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const fs = require("fs");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const path = require("path");
 
 const BUILD_VERSION_FILE = path.join(
