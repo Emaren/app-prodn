@@ -44,6 +44,17 @@ module.exports = {
   },
 
 
+  // Release staging deliberately discards .next-release/cache before
+  // artifact hashing. Do not materialize Webpack's filesystem cache in the
+  // isolated release worktree only to delete it immediately afterward.
+  webpack(config) {
+    if (process.env.NEXT_DIST_DIR === ".next-release") {
+      config.cache = false;
+    }
+
+    return config;
+  },
+
   async headers() {
     const imageCacheHeader = {
       key: "Cache-Control",
