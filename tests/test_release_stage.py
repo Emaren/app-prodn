@@ -190,6 +190,41 @@ class StageTests(unittest.TestCase):
         self.assertIn("test ! -e .next-release", script)
         self.assertNotIn('git reset --hard "$RELEASE"', script)
 
+    def test_build_sandbox_releases_yarn_cache_before_next_build(self):
+        build_unit = MODULE.BUILD_SANDBOX_UNIT_SOURCE.read_text()
+
+        install_marker = (
+            "ExecStart=/usr/bin/node "
+            "/tmp/aoe2war-stage-%i/.yarn-runtime/bin/yarn.js install "
+            "--frozen-lockfile --offline --force --non-interactive "
+            "--cache-folder /tmp/aoe2war-stage-%i/.yarn-cache"
+        )
+        cache_release_marker = (
+            "ExecStart=/usr/bin/rm -rf "
+            "/tmp/aoe2war-stage-%i/.yarn-cache"
+        )
+        build_marker = (
+            "ExecStart=/usr/bin/node "
+            "/tmp/aoe2war-stage-%i/.yarn-runtime/bin/yarn.js build"
+        )
+
+        self.assertIn(install_marker, build_unit)
+        self.assertIn(cache_release_marker, build_unit)
+        self.assertIn(build_marker, build_unit)
+
+        self.assertEqual(
+            build_unit.count(cache_release_marker),
+            1,
+        )
+
+        install_pos = build_unit.index(install_marker)
+        release_pos = build_unit.index(cache_release_marker)
+        build_pos = build_unit.index(build_marker)
+
+        self.assertLess(install_pos, release_pos)
+        self.assertLess(release_pos, build_pos)
+
+
     def test_stage_script_persists_evidence_before_isolated_build_and_copy(self):
         script = MODULE.remote_stage_script(
             release_sha="b" * 40,

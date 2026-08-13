@@ -19,6 +19,11 @@ Environment=TMPDIR=/tmp/aoe2war-stage-%i/.tmp
 Environment=TMP=/tmp/aoe2war-stage-%i/.tmp
 Environment=TEMP=/tmp/aoe2war-stage-%i/.tmp
 ExecStart=/usr/bin/node /tmp/aoe2war-stage-%i/.yarn-runtime/bin/yarn.js install --frozen-lockfile --offline --force --non-interactive --cache-folder /tmp/aoe2war-stage-%i/.yarn-cache
+
+# The package cache is required only to rematerialize candidate node_modules
+# offline. Release that root-filesystem space before the Next production build.
+ExecStart=/usr/bin/rm -rf /tmp/aoe2war-stage-%i/.yarn-cache
+
 ExecStart=/usr/bin/node /tmp/aoe2war-stage-%i/.yarn-runtime/bin/yarn.js build
 
 # Candidate build hooks may write only their disposable detached worktree.
