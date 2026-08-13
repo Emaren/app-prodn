@@ -385,8 +385,17 @@ test "$relocated_files" -ge 1
 staged_build="$(cat "$build_worktree/.next-release/BUILD_ID")"
 candidate_version="$(cat "$build_worktree/.aoe2war-build-version" | tr -d '\r\n')"
 stage_copy="$build_parent/live-next-release"
-mkdir "$stage_copy"
-rsync -a --delete "$build_worktree/.next-release/" "$stage_copy/"
+
+# The completed candidate artifact already exists on the root filesystem.
+# Do not duplicate it into another root-backed staging directory: that creates
+# a second full artifact copy at peak disk usage. Require both staging parents
+# to share one filesystem and use a metadata-only directory rename instead.
+test ! -e "$stage_copy"
+test "$(stat -c '%d' "$build_worktree")" = "$(stat -c '%d' "$build_parent")"
+mv "$build_worktree/.next-release" "$stage_copy"
+
+test -d "$stage_copy"
+test ! -e "$build_worktree/.next-release"
 test ! -e "$stage_copy/cache"
 artifact_sha="$(
   tar \

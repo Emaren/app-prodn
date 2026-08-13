@@ -210,6 +210,45 @@ class StageTests(unittest.TestCase):
         self.assertIn('= "$MANIFEST_SHA"', script)
         self.assertIn('= "$GATE_SHA"', script)
 
+    def test_stage_artifact_handoff_is_zero_copy_on_same_filesystem(self):
+        script = MODULE.remote_stage_script(
+            release_sha="b" * 40,
+            previous_sha="a" * 40,
+            manifest_sha="c" * 64,
+            gate_sha="d" * 64,
+            receipt_dir="/mnt/receipt",
+        )
+
+        self.assertIn(
+            'test "$(stat -c \'%d\' "$build_worktree")" = '
+            '"$(stat -c \'%d\' "$build_parent")"',
+            script,
+        )
+        self.assertIn(
+            'mv "$build_worktree/.next-release" "$stage_copy"',
+            script,
+        )
+        self.assertIn(
+            'test ! -e "$build_worktree/.next-release"',
+            script,
+        )
+
+        self.assertNotIn(
+            'rsync -a --delete "$build_worktree/.next-release/" '
+            '"$stage_copy/"',
+            script,
+        )
+
+        move_to_stage = script.index(
+            'mv "$build_worktree/.next-release" "$stage_copy"'
+        )
+        mutation = script.index("mutation_started=1")
+        move_live = script.index('mv "$stage_copy" .next-release')
+
+        self.assertLess(move_to_stage, mutation)
+        self.assertLess(mutation, move_live)
+
+
     def test_stage_receipt_uses_narrow_passwordless_install(self):
         script = MODULE.remote_stage_script(
             release_sha="b" * 40,
