@@ -520,15 +520,15 @@ function KingdomNavItem({
             : className
         }`}
       >
-        <span className="relative z-10">🏰</span>
-        {hasUnseenPageChanges ? (
-          <span
-            aria-hidden="true"
-            className="absolute right-[5px] top-[5px] flex h-[7px] w-[7px] items-center justify-center rounded-full bg-slate-950/75 ring-1 ring-white/[0.06]"
-          >
-            <span className="h-[2.5px] w-[2.5px] rounded-full bg-slate-300/80 shadow-[0_0_5px_rgba(203,213,225,0.38)]" />
-          </span>
-        ) : null}
+        <span className="relative z-10 inline-flex">
+          🏰
+          {hasUnseenPageChanges ? (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute -right-[2px] top-[1px] h-[3.5px] w-[3.5px] rounded-full bg-slate-300/85 shadow-[0_0_4px_rgba(203,213,225,0.38)]"
+            />
+          ) : null}
+        </span>
       </button>
 
       {open ? (
