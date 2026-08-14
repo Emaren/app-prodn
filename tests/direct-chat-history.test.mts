@@ -145,3 +145,25 @@ test("history anchoring waits for the requested cursor and chat routes reject fo
   assert.match(routeSource, /isChallengeInboxNoticeBody\(payload\.body\)/);
   assert.match(routeSource, /Challenge record formatting is reserved/);
 });
+
+test("opening an already-read direct thread does not rewrite its read timestamp", () => {
+  const inboxSource = readFileSync(
+    new URL("../lib/contactInbox.ts", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(
+    inboxSource,
+    /const hasUnreadActivity = Boolean/
+  );
+
+  assert.match(
+    inboxSource,
+    /if \(!hasUnreadActivity\) \{[\s\S]*?await markDelivered;[\s\S]*?return false;[\s\S]*?\}/
+  );
+
+  assert.match(
+    inboxSource,
+    /lastReadAt: readUpperBound/
+  );
+});

@@ -164,12 +164,12 @@ function ChamberStat({
   value: string | number;
 }) {
   return (
-    <div className="rounded-[1.25rem] border border-amber-100/12 bg-black/30 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
-      <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-amber-100/55">
+    <div className="border border-[#97703b]/40 bg-[linear-gradient(150deg,rgba(28,21,13,0.91),rgba(5,5,5,0.90))] p-3.5 shadow-[inset_0_1px_0_rgba(255,225,166,0.08),0_12px_30px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+      <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.24em] text-[#c4a36e]/68">
         {icon}
         {label}
       </div>
-      <div className="mt-2 font-serif text-2xl font-bold text-amber-50 sm:text-3xl">
+      <div className="mt-2 font-serif text-2xl font-bold text-[#f0dab0] sm:text-3xl">
         {value}
       </div>
     </div>
@@ -178,7 +178,7 @@ function ChamberStat({
 
 function Chronicle({ proposal }: { proposal: RoundChamberProposal }) {
   return (
-    <details className="group rounded-[1.25rem] border border-white/[0.07] bg-black/20 open:bg-black/30">
+    <details className="group border border-[#846238]/35 bg-[linear-gradient(145deg,rgba(14,11,8,0.90),rgba(3,3,3,0.95))] open:border-[#aa8044]/45 open:bg-black/45">
       <summary className="flex min-h-12 list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-slate-200 marker:content-none">
         <span className="inline-flex items-center gap-2">
           <BookOpenText className="h-4 w-4 text-amber-200/65" />
@@ -217,7 +217,7 @@ function Chronicle({ proposal }: { proposal: RoundChamberProposal }) {
 
 function BallotLedger({ proposal }: { proposal: RoundChamberProposal }) {
   return (
-    <details className="group rounded-[1.25rem] border border-white/[0.07] bg-black/20 open:bg-black/30">
+    <details className="group border border-[#846238]/35 bg-[linear-gradient(145deg,rgba(14,11,8,0.90),rgba(3,3,3,0.95))] open:border-[#aa8044]/45 open:bg-black/45">
       <summary className="flex min-h-12 list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-slate-200 marker:content-none">
         <span className="inline-flex items-center gap-2">
           <Vote className="h-4 w-4 text-amber-200/65" />
@@ -302,9 +302,10 @@ function ProposalCard({
   return (
     <article
       id={`proposal-${proposal.publicId}`}
-      className="relative overflow-hidden rounded-[1.8rem] border border-amber-100/12 bg-[linear-gradient(155deg,rgba(31,25,18,0.94),rgba(6,10,18,0.97)_54%,rgba(3,6,12,0.99))] shadow-[0_28px_90px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.045)]"
+      className="relative overflow-hidden border border-[#9f733b]/45 bg-[radial-gradient(circle_at_18%_0%,rgba(168,107,34,0.10),transparent_28%),linear-gradient(155deg,rgba(24,18,11,0.98),rgba(5,5,6,0.99)_54%,rgba(2,2,3,0.995))] shadow-[0_34px_110px_rgba(0,0,0,0.48),inset_0_1px_0_rgba(255,226,171,0.07)]"
     >
-      <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-amber-300/[0.045] blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 -top-20 h-52 w-52 rounded-full bg-[#c78c35]/[0.06] blur-3xl" />
+      <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-[#d2a45a]/40 to-transparent" />
       <div className="relative p-4 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0">
@@ -780,96 +781,225 @@ export default function RoundChamberClient() {
   const totals = snapshot?.totals;
   const viewer = snapshot?.viewer;
 
+  const activeProposal =
+    snapshot?.proposals.find((proposal) => proposal.votingOpen) ??
+    snapshot?.proposals[0] ??
+    null;
+
   return (
-    <main className="space-y-6 overflow-x-hidden py-3 text-white sm:space-y-8 sm:py-5">
-      <section className="relative isolate min-h-[34rem] overflow-hidden rounded-[2rem] border border-amber-100/18 bg-[#03050a] shadow-[0_42px_130px_rgba(0,0,0,0.52),inset_0_1px_0_rgba(255,255,255,0.07)] sm:min-h-[39rem]">
+    <main className="relative space-y-7 overflow-x-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(151,94,25,0.08),transparent_30%),linear-gradient(180deg,#050403_0%,#080705_44%,#030303_100%)] py-3 text-white sm:space-y-9 sm:py-5">
+      <section className="relative isolate min-h-[49rem] overflow-hidden border-y border-[#9d713a]/40 bg-[#030302] shadow-[0_38px_140px_rgba(0,0,0,0.78),inset_0_1px_0_rgba(255,226,168,0.10)] sm:min-h-[54rem] lg:min-h-[58rem]">
+
         <Image
-          src="/kingdom/kingdom-hero-bg.webp"
-          alt="The AoE2WAR Kingdom castle overlooking the Round Chamber"
+          src="/round-chamber/round-chamber-senate-hero.png"
+          alt="The monumental AoE2WAR Round Chamber Senate"
           fill
           priority
-          sizes="(max-width: 1536px) 100vw, 1536px"
-          className="object-cover object-[61%_center] saturate-[0.86] contrast-[1.05]"
+          quality={90}
+          sizes="100vw"
+          className="object-cover object-center brightness-[0.73] saturate-[0.82] contrast-[1.12]"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,4,9,0.91)_0%,rgba(2,4,9,0.76)_42%,rgba(2,4,9,0.32)_75%,rgba(2,4,9,0.42)_100%),linear-gradient(180deg,rgba(2,4,9,0.12),rgba(2,4,9,0.26)_55%,rgba(2,4,9,0.88)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_34%,rgba(251,191,36,0.11),transparent_29%)]" />
-        <div className="absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/40 to-transparent" />
 
-        <div className="relative flex min-h-[34rem] max-w-5xl flex-col justify-between p-6 sm:min-h-[39rem] sm:p-10 lg:p-12">
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/15 bg-black/25 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-amber-100/75 backdrop-blur-xl">
-              <Crown className="h-3.5 w-3.5" /> The Kingdom
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-100/12 bg-emerald-300/[0.045] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-100/70 backdrop-blur-xl">
-              <CircleDot className="h-3.5 w-3.5" /> Chamber open
-            </span>
-          </div>
+        {/* Cinematic darkness */}
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.72)_0%,rgba(0,0,0,0.12)_29%,rgba(0,0,0,0.11)_55%,rgba(3,3,2,0.96)_100%)]" />
 
-          <div>
-            <div className="text-xs font-black uppercase tracking-[0.46em] text-amber-100/58">
-              Hear every citizen
+        {/* Central Senate fire */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,165,53,0.17),transparent_23%),radial-gradient(circle_at_50%_50%,transparent_25%,rgba(0,0,0,0.15)_58%,rgba(0,0,0,0.72)_100%)]" />
+
+        {/* Bronze architectural rule */}
+        <div className="absolute inset-x-[4%] top-5 h-px bg-gradient-to-r from-transparent via-[#eccb8c]/65 to-transparent" />
+        <div className="absolute inset-x-[10%] bottom-6 h-px bg-gradient-to-r from-transparent via-[#8d652f]/45 to-transparent" />
+
+        <div className="relative mx-auto flex min-h-[49rem] max-w-[96rem] flex-col px-5 py-8 sm:min-h-[54rem] sm:px-8 sm:py-10 lg:min-h-[58rem] lg:px-12">
+
+          {/* Senate inscription */}
+          <header className="mx-auto text-center">
+
+            <div className="flex items-center justify-center gap-3 text-[9px] font-black uppercase tracking-[0.46em] text-[#dfc28c]/70 sm:text-[10px]">
+              <span className="h-px w-10 bg-gradient-to-r from-transparent to-[#ba8944]" />
+              <Crown className="h-3.5 w-3.5 text-[#d9aa58]" />
+              Senatus · Civitas · Regnum
+              <Crown className="h-3.5 w-3.5 text-[#d9aa58]" />
+              <span className="h-px w-10 bg-gradient-to-l from-transparent to-[#ba8944]" />
             </div>
-            <h1 className="mt-3 max-w-4xl font-serif text-[clamp(3.2rem,9vw,7.5rem)] font-semibold uppercase leading-[0.84] tracking-[-0.045em] text-transparent bg-clip-text bg-[linear-gradient(180deg,#fff9df_0%,#e8c675_34%,#a86f20_78%,#684015_100%)] drop-shadow-[0_12px_30px_rgba(0,0,0,0.82)]">
-              Round Chamber
+
+            <h1 className="mt-4 font-serif text-[clamp(3.6rem,8vw,8rem)] font-semibold uppercase leading-[0.80] tracking-[-0.055em] text-transparent bg-clip-text bg-[linear-gradient(180deg,#fff8dd_0%,#efd394_27%,#c58a39_58%,#684015_100%)] drop-shadow-[0_10px_24px_rgba(0,0,0,0.95)]">
+              The Round
+              <span className="block">Chamber</span>
             </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-amber-50/72 sm:text-lg sm:leading-8">
-              Bring an idea to the oak table. Debate it in public. Cast one
-              equal civic ballot. Let the Chronicle remember what the Kingdom
-              chose—and why.
+
+            <div className="mx-auto mt-5 flex max-w-3xl items-center gap-4">
+              <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#d2a659]/70" />
+              <Landmark className="h-5 w-5 text-[#d6a657]" />
+              <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[#d2a659]/70" />
+            </div>
+
+            <p className="mx-auto mt-5 max-w-2xl font-serif text-base leading-7 text-[#ead8b4]/90 sm:text-lg sm:leading-8">
+              Every citizen has a seat. Every voice may enter the record.
+              Every ballot stands equal before the Kingdom.
             </p>
 
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              {viewer?.canParticipate ? (
-                <button
-                  type="button"
-                  onClick={() => setShowProposalForm((current) => !current)}
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-amber-300 px-6 text-sm font-black text-slate-950 shadow-[0_14px_42px_rgba(245,158,11,0.18)] transition hover:-translate-y-0.5 hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-100/50"
-                >
-                  <ScrollText className="h-4 w-4" /> Place a proposal
-                </button>
-              ) : (
-                <SteamLoginButton
-                  label={viewer ? "Link Steam to enter" : "Enter with Steam"}
-                  returnTo="/round-chamber"
-                  className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-amber-300 px-6 text-sm font-black text-slate-950 shadow-[0_14px_42px_rgba(245,158,11,0.18)] transition hover:-translate-y-0.5 hover:bg-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-100/50"
-                />
-              )}
-              <a
-                href="#chamber-floor"
-                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-amber-100/18 bg-black/25 px-6 text-sm font-bold text-amber-50/80 backdrop-blur-xl transition hover:-translate-y-0.5 hover:border-amber-100/30 hover:text-white"
-              >
-                Walk the chamber floor <ArrowRight className="h-4 w-4" />
-              </a>
-            </div>
-          </div>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+              <span className="inline-flex items-center gap-2 border border-[#be8d4c]/35 bg-black/45 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.22em] text-[#dfc794] backdrop-blur-md">
+                <CircleDot className="h-3.5 w-3.5 text-emerald-300" />
+                Chamber in session
+              </span>
 
-          <div className="mt-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <ChamberStat
-              icon={<ScrollText className="h-3.5 w-3.5" />}
-              label="Proposals"
-              value={totals?.proposals ?? "—"}
-            />
-            <ChamberStat
-              icon={<Vote className="h-3.5 w-3.5" />}
-              label="Civic ballots"
-              value={totals?.ballots ?? "—"}
-            />
-            <ChamberStat
-              icon={<Users className="h-3.5 w-3.5" />}
-              label="Voices"
-              value={totals?.civicVoters ?? "—"}
-            />
-            <ChamberStat
-              icon={<Gavel className="h-3.5 w-3.5" />}
-              label="Adopted"
-              value={totals?.adoptedProposals ?? "—"}
-            />
+              <span className="inline-flex items-center gap-2 border border-[#be8d4c]/35 bg-black/45 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.22em] text-[#dfc794] backdrop-blur-md">
+                <Scale className="h-3.5 w-3.5" />
+                One citizen · one ballot
+              </span>
+            </div>
+          </header>
+
+          {/* Preserve the architecture as the visual centerpiece */}
+          <div className="flex-1" />
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_25rem] lg:items-end">
+
+            <div>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <ChamberStat
+                  icon={<ScrollText className="h-3.5 w-3.5" />}
+                  label="Scrolls"
+                  value={totals?.proposals ?? "—"}
+                />
+
+                <ChamberStat
+                  icon={<Vote className="h-3.5 w-3.5" />}
+                  label="Ballots sealed"
+                  value={totals?.ballots ?? "—"}
+                />
+
+                <ChamberStat
+                  icon={<Users className="h-3.5 w-3.5" />}
+                  label="Citizens heard"
+                  value={totals?.civicVoters ?? "—"}
+                />
+
+                <ChamberStat
+                  icon={<Gavel className="h-3.5 w-3.5" />}
+                  label="Decrees adopted"
+                  value={totals?.adoptedProposals ?? "—"}
+                />
+              </div>
+
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+
+                {viewer?.canParticipate ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowProposalForm((current) => !current)
+                    }
+                    className="inline-flex min-h-12 items-center justify-center gap-2 border border-[#f0cc84]/50 bg-[linear-gradient(180deg,#d4a24b,#98651f)] px-6 text-sm font-black uppercase tracking-[0.08em] text-[#160e05] shadow-[0_14px_40px_rgba(168,102,25,0.24),inset_0_1px_0_rgba(255,242,197,0.55)] transition hover:-translate-y-0.5 hover:brightness-110"
+                  >
+                    <ScrollText className="h-4 w-4" />
+                    Present a scroll
+                  </button>
+                ) : (
+                  <SteamLoginButton
+                    label={
+                      viewer
+                        ? "Link Steam to take your seat"
+                        : "Enter the Senate"
+                    }
+                    returnTo="/round-chamber"
+                    className="inline-flex min-h-12 items-center justify-center gap-2 border border-[#f0cc84]/50 bg-[linear-gradient(180deg,#d4a24b,#98651f)] px-6 text-sm font-black uppercase tracking-[0.08em] text-[#160e05] shadow-[0_14px_40px_rgba(168,102,25,0.24)] transition hover:-translate-y-0.5 hover:brightness-110"
+                  />
+                )}
+
+                <a
+                  href="#chamber-floor"
+                  className="inline-flex min-h-12 items-center justify-center gap-2 border border-[#ad8043]/40 bg-black/55 px-6 text-sm font-bold text-[#ead7b0] backdrop-blur-md transition hover:-translate-y-0.5 hover:border-[#ddb872]/65 hover:bg-black/70"
+                >
+                  Enter the Senate floor
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              </div>
+            </div>
+
+            {/* REAL existing proposal data */}
+            <aside className="border border-[#a97c40]/45 bg-[linear-gradient(145deg,rgba(19,14,8,0.94),rgba(3,3,3,0.97))] p-5 shadow-[0_24px_80px_rgba(0,0,0,0.62),inset_0_1px_0_rgba(255,225,169,0.08)] backdrop-blur-lg">
+
+              <div className="flex items-center justify-between border-b border-[#976c36]/25 pb-3">
+                <div className="text-[9px] font-black uppercase tracking-[0.28em] text-[#cfad75]/70">
+                  Current docket
+                </div>
+                <Vote className="h-4 w-4 text-[#d2a04f]" />
+              </div>
+
+              {activeProposal ? (
+                <>
+                  <div className="mt-4 text-[9px] font-black uppercase tracking-[0.20em] text-[#9e835c]">
+                    {categoryLabel(activeProposal.category)}
+                  </div>
+
+                  <h2 className="mt-2 font-serif text-xl font-bold leading-tight text-[#fff0cf]">
+                    {activeProposal.title}
+                  </h2>
+
+                  <p className="mt-2 line-clamp-3 text-xs leading-5 text-[#b7aa95]">
+                    {activeProposal.summary}
+                  </p>
+
+                  <div className="mt-5 flex items-end justify-between gap-4">
+
+                    <div>
+                      <div className="text-[9px] uppercase tracking-[0.20em] text-[#867258]">
+                        Support
+                      </div>
+
+                      <div className="font-serif text-3xl font-bold text-[#dab363]">
+                        {activeProposal.supportPercent}%
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="text-[9px] uppercase tracking-[0.20em] text-[#867258]">
+                        Sealed ballots
+                      </div>
+
+                      <div className="font-serif text-2xl font-bold text-[#f1ddb5]">
+                        {activeProposal.ballotCount}
+                      </div>
+                    </div>
+
+                  </div>
+
+                  <div className="mt-3 h-1.5 overflow-hidden bg-[#311a12]">
+                    <div
+                      className="h-full bg-[linear-gradient(90deg,#896d2e,#e1bc68)]"
+                      style={{
+                        width: `${activeProposal.supportPercent}%`,
+                      }}
+                    />
+                  </div>
+
+                  <a
+                    href={`#proposal-${activeProposal.publicId}`}
+                    className="mt-4 inline-flex min-h-10 w-full items-center justify-center gap-2 border border-[#9d743c]/40 bg-[#9f762f]/10 px-4 text-xs font-black uppercase tracking-[0.12em] text-[#e5c581] transition hover:bg-[#aa7e35]/20"
+                  >
+                    View the living record
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </a>
+                </>
+              ) : (
+                <div className="py-7 text-center">
+                  <ScrollText className="mx-auto h-6 w-6 text-[#9b7843]" />
+                  <p className="mt-3 text-sm text-[#a9987c]">
+                    No scroll has entered the Senate yet.
+                  </p>
+                </div>
+              )}
+
+            </aside>
           </div>
         </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.55fr)]">
-        <div className="rounded-[1.6rem] border border-sky-200/12 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.10),transparent_34%),linear-gradient(145deg,rgba(10,20,34,0.94),rgba(3,7,15,0.98))] p-5 sm:p-6">
+        <div className="border border-[#95703d]/40 bg-[radial-gradient(circle_at_top_left,rgba(181,120,43,0.09),transparent_34%),linear-gradient(145deg,rgba(21,16,10,0.97),rgba(4,4,5,0.99))] p-5 shadow-[inset_0_1px_0_rgba(255,225,168,0.06)] sm:p-6">
           <div className="flex items-start gap-4">
             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-sky-200/14 bg-sky-300/[0.07] text-sky-100">
               <ShieldCheck className="h-5 w-5" />
@@ -889,7 +1019,7 @@ export default function RoundChamberClient() {
           </div>
         </div>
 
-        <div className="rounded-[1.6rem] border border-amber-100/12 bg-[linear-gradient(145deg,rgba(34,26,13,0.76),rgba(5,8,14,0.97))] p-5 sm:p-6">
+        <div className="border border-[#95703d]/40 bg-[linear-gradient(145deg,rgba(31,23,12,0.95),rgba(4,4,5,0.99))] p-5 shadow-[inset_0_1px_0_rgba(255,225,168,0.06)] sm:p-6">
           <div className="flex items-center gap-3">
             <Scale className="h-5 w-5 text-amber-200/75" />
             <div>
@@ -1064,14 +1194,14 @@ export default function RoundChamberClient() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <div className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-100/55">
-              The oak table
+              The Senate floor
             </div>
             <h2 className="mt-2 font-serif text-3xl font-bold text-amber-50 sm:text-4xl">
-              Chamber floor
+              The Living Docket
             </h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-              Public proposals, equal civic ballots, citizen deliberation, and
-              every stewardship decision in one visible record.
+              Every scroll before the Kingdom. Every public argument. Every
+              equal civic ballot. Every decree preserved in the permanent record.
             </p>
           </div>
           <div className="flex max-w-full gap-2 overflow-x-auto pb-1">
@@ -1174,25 +1304,25 @@ export default function RoundChamberClient() {
           {
             icon: <ScrollText className="h-5 w-5" />,
             step: "01",
-            title: "Propose",
+            title: "Present the scroll",
             body: "A signed citizen places a clear change before the Kingdom.",
           },
           {
             icon: <Swords className="h-5 w-5" />,
             step: "02",
-            title: "Deliberate & ballot",
+            title: "Debate & cast",
             body: "The floor stays public; every account holds one support or oppose ballot.",
           },
           {
             icon: <Landmark className="h-5 w-5" />,
             step: "03",
-            title: "Decide & remember",
+            title: "Seal the decree",
             body: "A steward adopts, declines, or reopens—and the Chronicle never forgets.",
           },
         ].map((item) => (
           <article
             key={item.step}
-            className="relative overflow-hidden rounded-[1.55rem] border border-white/10 bg-[linear-gradient(145deg,rgba(15,23,42,0.78),rgba(3,7,18,0.95))] p-5"
+            className="relative overflow-hidden border border-[#806139]/35 bg-[linear-gradient(145deg,rgba(20,16,11,0.95),rgba(3,3,4,0.99))] p-5 shadow-[inset_0_1px_0_rgba(255,224,163,0.05)]"
           >
             <div className="absolute right-4 top-2 font-serif text-6xl text-white/[0.025]">
               {item.step}

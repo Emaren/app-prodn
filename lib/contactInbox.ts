@@ -1714,31 +1714,115 @@ async function markConversationRead(
 ) {
   const conversation = await prisma.directConversation.findUnique({
     where: { pairKey: buildPairKey(viewerUserId, targetUserId) },
-    select: { id: true },
+    select: {
+      id: true,
+      participants: {
+        where: { userId: viewerUserId },
+        take: 1,
+        select: { lastReadAt: true },
+      },
+    },
   });
 
   if (!conversation) {
-    return;
+    return false;
   }
 
-  const now = new Date();
-  await prisma.$transaction([
-    prisma.directConversationParticipant.updateMany({
-      where: {
-        conversationId: conversation.id,
-        userId: viewerUserId,
-      },
-      data: { lastReadAt: now },
-    }),
+  const currentLastReadAt =
+    conversation.participants[0]?.lastReadAt ?? null;
+
+  // Freeze the read boundary before checking for unread activity.
+  // Activity arriving after this instant stays unread.
+  const readUpperBound = new Date();
+
+  const createdAtWindow = currentLastReadAt
+    ? {
+        gt: currentLastReadAt,
+        lte: readUpperBound,
+      }
+    : {
+        lte: readUpperBound,
+      };
+
+  const [unreadMessage, unreadBadge, unreadGift] =
+    await Promise.all([
+      prisma.directMessage.findFirst({
+        where: {
+          conversationId: conversation.id,
+          senderUserId: targetUserId,
+          createdAt: createdAtWindow,
+        },
+        orderBy: [
+          { createdAt: "desc" },
+          { id: "desc" },
+        ],
+        select: { id: true },
+      }),
+      prisma.userBadge.findFirst({
+        where: {
+          userId: viewerUserId,
+          createdByUserId: targetUserId,
+          createdAt: createdAtWindow,
+        },
+        orderBy: [
+          { createdAt: "desc" },
+          { id: "desc" },
+        ],
+        select: { id: true },
+      }),
+      prisma.userGift.findFirst({
+        where: {
+          userId: viewerUserId,
+          createdByUserId: targetUserId,
+          createdAt: createdAtWindow,
+        },
+        orderBy: [
+          { createdAt: "desc" },
+          { id: "desc" },
+        ],
+        select: { id: true },
+      }),
+    ]);
+
+  const hasUnreadActivity = Boolean(
+    unreadMessage ||
+    unreadBadge ||
+    unreadGift
+  );
+
+  const markDelivered =
     prisma.directMessage.updateMany({
       where: {
         conversationId: conversation.id,
         senderUserId: targetUserId,
         deliveredAt: null,
       },
-      data: { deliveredAt: now },
+      data: {
+        deliveredAt: readUpperBound,
+      },
+    });
+
+  // Reopening an already-read thread must not turn lastReadAt
+  // into a generic "last opened" timestamp.
+  if (!hasUnreadActivity) {
+    await markDelivered;
+    return false;
+  }
+
+  await prisma.$transaction([
+    prisma.directConversationParticipant.updateMany({
+      where: {
+        conversationId: conversation.id,
+        userId: viewerUserId,
+      },
+      data: {
+        lastReadAt: readUpperBound,
+      },
     }),
+    markDelivered,
   ]);
+
+  return true;
 }
 
 export async function resolveInboxTargetForViewer(

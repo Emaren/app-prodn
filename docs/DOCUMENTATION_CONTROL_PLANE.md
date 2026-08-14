@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **60**
+- Authoritative repository documents: **61**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 4
 - `generated`: 1
 - `historical`: 12
-- `reference`: 32
+- `reference`: 33
 - `runbook`: 10
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 46
+- `active`: 47
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 1
@@ -82,6 +82,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [HD Leaderboard View Modes](LEADERBOARD_VIEW_MODES.md) | `reference` | `active` | `product-contract` |
 | [Live Final-Proof Visibility](LIVE_FINAL_PROOF_VISIBILITY.md) | `reference` | `active` | `product-contract` |
 | [Team Market Integrity](MARKET_TEAM_INTEGRITY.md) | `reference` | `active` | `financial-domain-contract` |
+| [Page Change Notices](PAGE_CHANGE_NOTICES.md) | `reference` | `active` | `product-contract` |
 | [Page Hero CMS](PAGE_HERO_CMS.md) | `reference` | `active` | `product-contract` |
 | [Parser Engine Room: Durable Data Foundation](PARSER_ENGINE_ROOM.md) | `explanation` | `active` | `architecture-explanation` |
 | [Parser Observatory](PARSER_OBSERVATORY.md) | `reference` | `active` | `product-contract` |

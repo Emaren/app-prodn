@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-08-14"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -85,7 +85,7 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 - Full Chat keeps compact floating date chips pinned to the scrolling timeline. Nav Chat omits them entirely to protect the smaller viewscreen; its latest outgoing receipt already carries the calendar date.
 - Edits are intentionally silent in the public presentation: corrected text replaces the old copy without an `edited` badge. Deletes remove the message without leaving a public tombstone; server authorization and internal timestamps remain intact.
 - Message action trays deliberately disable `content-visibility` paint containment only while open, then choose an above/below anchor inside the timeline. This keeps reactions, reply, pin, translation, edit, and delete fully visible without giving up off-screen message rendering performance.
-- Opening a thread marks incoming messages read. Establishing the live event stream marks previously undelivered incoming messages delivered, even if that thread is not open.
+- Opening a thread advances `lastReadAt` only when unread incoming activity actually exists. Reopening, refreshing, or merely checking an already-read Nav Chat / Full Chat thread does not rewrite the read timestamp into a generic "last opened" time. Establishing the live event stream still marks previously undelivered incoming messages delivered, even if that thread is not open.
 - Draft text and quoted-reply targets are debounced to `direct_message_drafts`, shared between Nav Chat and Full Chat, and removed after a successful send.
 - Replies persist a validated same-conversation message reference and render a compact quote in every mode.
 - Pins are shared conversation state. The header pin drawer exposes the latest twelve pinned messages.

@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-and-implementation-contract"
-reviewed_at: "2026-08-08"
+reviewed_at: "2026-08-14"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -247,3 +247,25 @@ On production, deploy code and schema in this order:
    `rewardWeightCapWolo = 1000000` while preserving the full stake projection.
 9. Read Wolo node and settlement health as a boundary check. Do not restart or
    replace the intentionally pinned consensus binary as part of this app deploy.
+
+## Round Chamber presentation contract
+
+The `/round-chamber` civic surface uses the monumental Senate presentation
+introduced on 2026-08-14. The visual language is ancient Roman/Greek/Spartan:
+black stone, bronze, restrained gold, monumental serif typography, and the
+circular chamber artwork at
+`public/round-chamber/round-chamber-senate-hero.png`.
+
+The presentation must never fabricate civic state. The hero docket, proposal
+counts, ballot counts, support percentages, deliberation, public ballot ledger,
+and Chamber Chronicle continue to render from the existing Round Chamber
+snapshot/API and database records.
+
+A presentation release must not seed, replace, delete, or rewrite existing
+proposals, votes, comments, or chronicle events. Existing citizen activity stays
+authoritative across visual redesigns.
+
+The Round Chamber is also the first consumer of the versioned Kingdom page-change
+notice contract. Browsers that have not visited the current Senate V2 route
+version see a muted dot in the Kingdom navigation until they actually visit the
+page.

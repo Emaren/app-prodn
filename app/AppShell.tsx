@@ -24,6 +24,15 @@ import {
 } from "@/components/lobby/LobbyAppearanceContext";
 import { getTileViewMode } from "@/lib/tileViewPreferences";
 import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
+import {
+  PAGE_CHANGE_NOTICES,
+  PAGE_CHANGE_NOTICE_STORAGE_KEY,
+  getUnseenPageChangeHrefs,
+  isPageChangeNoticeRoute,
+  markPageChangeNoticeSeen,
+  parseSeenPageChangeVersions,
+  type SeenPageChangeVersions,
+} from "@/lib/pageChangeNotices";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
 import { UniversalLanguageProvider } from "@/context/UniversalLanguageContext";
 
@@ -310,6 +319,77 @@ function isRouteActive(pathname: string | null, href: string) {
   return pathname === href || Boolean(pathname?.startsWith(`${href}/`));
 }
 
+function usePageChangeNotices() {
+  const pathname = usePathname();
+  const [seenVersions, setSeenVersions] =
+    React.useState<SeenPageChangeVersions | null>(null);
+
+  React.useEffect(() => {
+    const syncSeenVersions = () => {
+      try {
+        setSeenVersions(
+          parseSeenPageChangeVersions(
+            window.localStorage.getItem(PAGE_CHANGE_NOTICE_STORAGE_KEY)
+          )
+        );
+      } catch {
+        setSeenVersions({});
+      }
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === PAGE_CHANGE_NOTICE_STORAGE_KEY) {
+        syncSeenVersions();
+      }
+    };
+
+    syncSeenVersions();
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  React.useEffect(() => {
+    if (seenVersions === null || !pathname) return;
+
+    const visitedNotices = PAGE_CHANGE_NOTICES.filter((notice) =>
+      isPageChangeNoticeRoute(pathname, notice.href)
+    );
+    if (visitedNotices.length === 0) return;
+
+    let nextSeenVersions = seenVersions;
+    for (const notice of visitedNotices) {
+      nextSeenVersions = markPageChangeNoticeSeen(
+        nextSeenVersions,
+        notice.href,
+        notice.version
+      );
+    }
+
+    if (nextSeenVersions === seenVersions) return;
+
+    try {
+      window.localStorage.setItem(
+        PAGE_CHANGE_NOTICE_STORAGE_KEY,
+        JSON.stringify(nextSeenVersions)
+      );
+    } catch {
+      // Keep the in-memory state correct when storage is unavailable.
+    }
+
+    setSeenVersions(nextSeenVersions);
+  }, [pathname, seenVersions]);
+
+  return React.useMemo(
+    () =>
+      new Set(
+        seenVersions === null
+          ? []
+          : getUnseenPageChangeHrefs(seenVersions)
+      ),
+    [seenVersions]
+  );
+}
+
 function HeaderPillLink({
   href,
   label,
@@ -359,6 +439,8 @@ function KingdomNavItem({
   active?: boolean;
 }) {
   const t = useTranslations("Shell");
+  const unseenPageChanges = usePageChangeNotices();
+  const hasUnseenPageChanges = unseenPageChanges.size > 0;
   const [open, setOpen] = React.useState(false);
   const [portalReady, setPortalReady] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
@@ -439,6 +521,12 @@ function KingdomNavItem({
         }`}
       >
         <span className="relative z-10">🏰</span>
+        {hasUnseenPageChanges ? (
+          <span
+            aria-hidden="true"
+            className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-slate-400/75 shadow-[0_0_0_3px_rgba(148,163,184,0.07)]"
+          />
+        ) : null}
       </button>
 
       {open ? (
@@ -447,7 +535,10 @@ function KingdomNavItem({
           onMouseEnter={openMenu}
           onMouseLeave={scheduleClose}
         >
-          <KingdomMenuPanel onNavigate={() => setOpen(false)} />
+          <KingdomMenuPanel
+            onNavigate={() => setOpen(false)}
+            unseenPageChanges={unseenPageChanges}
+          />
         </div>
       ) : null}
 
@@ -482,7 +573,11 @@ function KingdomNavItem({
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                <KingdomMenuPanel onNavigate={() => setOpen(false)} mobile />
+                <KingdomMenuPanel
+                  onNavigate={() => setOpen(false)}
+                  unseenPageChanges={unseenPageChanges}
+                  mobile
+                />
               </div>
             </div>,
             document.body
@@ -494,9 +589,11 @@ function KingdomNavItem({
 
 function KingdomMenuPanel({
   onNavigate,
+  unseenPageChanges,
   mobile = false,
 }: {
   onNavigate: () => void;
+  unseenPageChanges: ReadonlySet<string>;
   mobile?: boolean;
 }) {
   const t = useTranslations("Shell");
@@ -517,6 +614,8 @@ function KingdomMenuPanel({
           const Icon = item.icon;
           const copyKeys =
             KINGDOM_COPY_KEYS[item.href];
+          const hasPageChange =
+            unseenPageChanges.has(item.href);
 
           return (
             <Link
@@ -535,7 +634,7 @@ function KingdomMenuPanel({
                 }
                 onNavigate();
               }}
-              className="group/item flex items-center gap-3 rounded-[1rem] px-3 py-3 text-left transition hover:bg-white/[0.07]"
+              className="group/item relative flex items-center gap-3 rounded-[1rem] px-3 py-3 pr-8 text-left transition hover:bg-white/[0.07]"
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-amber-200/12 bg-amber-300/[0.06] text-amber-100 transition group-hover/item:border-amber-200/25 group-hover/item:bg-amber-300/10">
                 <Icon className="h-4 w-4" />
@@ -548,6 +647,13 @@ function KingdomMenuPanel({
                   {copyKeys ? t(copyKeys.body) : item.body}
                 </div>
               </div>
+
+              {hasPageChange ? (
+                <span
+                  aria-hidden="true"
+                  className="absolute right-3 top-3 h-2 w-2 rounded-full bg-slate-400/75 shadow-[0_0_0_3px_rgba(148,163,184,0.06)]"
+                />
+              ) : null}
             </Link>
           );
         })}

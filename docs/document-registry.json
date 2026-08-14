@@ -452,9 +452,9 @@
       "owner": "aoe2war-web",
       "path": "docs/DIRECT_CHAT.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-08-14",
       "sensitivity": "internal",
-      "sha256": "f75e7cce7bb379dbb5c8234e67998a4ae266ddb27c186af166bc1e94c911402b",
+      "sha256": "e6358bfbf11e53383639b729580cf340ee0104fb1c64927865a4af95f778d350",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -476,7 +476,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f393bce81d7a0c74d32d3c8c59feb7c815867e3fb72edcf9197084953abe7615",
+      "sha256": "ba3a40a56a4112c607884e8811738aab83458d63398fc21ab65f48221e0161a0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -636,9 +636,9 @@
       "owner": "aoe2war-web",
       "path": "docs/KINGDOM_CIVIC_SURFACES.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-08",
+      "reviewed_at": "2026-08-14",
       "sensitivity": "internal",
-      "sha256": "22ee5dfbb1d6fe18d94bd9cabc1189a63e6811047e53b8e727cbb993f2a767e6",
+      "sha256": "c6fcacb4c46f80ce68f8edfa44c4e1afb16a74bd9214bc1ee30db2e9eef865e9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -740,6 +740,28 @@
         "wolochain"
       ],
       "title": "Team Market Integrity",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-page-change-notices",
+      "owner": "aoe2war-web",
+      "path": "docs/PAGE_CHANGE_NOTICES.md",
+      "review_interval_days": 90,
+      "reviewed_at": "2026-08-14",
+      "sensitivity": "internal",
+      "sha256": "91204e23eb13fee9d5ed60a5a2da8cf3920d03af23a5f53330c89064959aaa25",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Page Change Notices",
       "type": "reference"
     },
     {
