@@ -524,8 +524,10 @@ function KingdomNavItem({
         {hasUnseenPageChanges ? (
           <span
             aria-hidden="true"
-            className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-slate-400/75 shadow-[0_0_0_3px_rgba(148,163,184,0.07)]"
-          />
+            className="absolute right-[5px] top-[5px] flex h-[7px] w-[7px] items-center justify-center rounded-full bg-slate-950/75 ring-1 ring-white/[0.06]"
+          >
+            <span className="h-[2.5px] w-[2.5px] rounded-full bg-slate-300/80 shadow-[0_0_5px_rgba(203,213,225,0.38)]" />
+          </span>
         ) : null}
       </button>
 
