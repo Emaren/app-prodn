@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-08-10"
+reviewed_at: "2026-08-14"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -544,3 +544,32 @@ aoe2war releases --limit 5
 These surfaces reconstruct release state. They do not replace domain-specific
 contracts for betting, replay truth, settlement, Watcher behavior, or database
 authority.
+
+
+## Finish self-maintenance invariants — 2026-08-14
+
+`aoe2war finish` owns the routine transition from finished code to certified
+operating state. Operators should not have to pre-run TypeScript, ESLint,
+`git diff --check`, context cleanup, or generated-doc pushes merely to make the
+command succeed.
+
+Additional fail-closed invariants:
+
+1. Production root and the canonical mounted volume are measured separately
+   before expensive maintenance/release work and again at final certification.
+   Root free space below the contract warning floor blocks the release before
+   staging; mounted-volume use at the critical threshold also blocks.
+2. A clean `AoE2WAR-docs` checkout that is only ahead of origin is validated
+   through the central docs gates and pushed automatically. A clean checkout
+   behind origin may fast-forward. Dirty or truly diverged docs history remains
+   a hard stop.
+3. Before an AoE2WAR context capture, stale generated archives for the requested
+   series are bounded to the newest generation and the Mac must prove enough
+   free space for staging, compression, and the expected output.
+4. Project context packaging is strict: a failed child ZIP/TGZ step propagates
+   its exit status. The update engine still independently requires exactly one
+   archive for the requested `CTX_TS`, a portable checksum sidecar, and a
+   matching SHA-256.
+5. Storage relocation of arbitrary live dependencies remains guided rather than
+   automatic. `finish` may apply only its explicitly contracted retention
+   policy; broader root relocation requires a separately proven storage action.

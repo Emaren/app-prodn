@@ -536,6 +536,70 @@ def ssh_text(
     return process.returncode, process.stdout or ""
 
 
+def production_capacity_snapshot() -> dict[str, Any]:
+    contract = aoe2_doctor.load_contract()
+    volume = str(contract["canonical"]["volume_mount"])
+    script = (
+        "import json,os;"
+        "paths=['/'," + repr(volume) + "];"
+        "out={};"
+        "\nfor p in paths:\n"
+        " v=os.statvfs(p); b=v.f_frsize or v.f_bsize; "
+        "t=v.f_blocks*b; a=v.f_bavail*b; u=max(0,t-a); "
+        "out[p]={'total_bytes':t,'available_bytes':a,"
+        "'used_bytes':u,'used_percent':round((u*100.0/t) if t else 100.0,2)}\n"
+        "print(json.dumps(out,sort_keys=True))"
+    )
+    rc, output = ssh_text(
+        ROOT_SSH,
+        "python3 -c " + shlex.quote(script),
+        timeout=30,
+    )
+    if rc != 0:
+        raise FinishError("cannot read production filesystem capacity: " + output[-2000:])
+    try:
+        payload = json.loads(output.strip())
+    except json.JSONDecodeError as exc:
+        raise FinishError(
+            "production filesystem capacity returned invalid JSON: " + output[-2000:]
+        ) from exc
+    if not isinstance(payload, dict) or "/" not in payload or volume not in payload:
+        raise FinishError("production filesystem capacity payload is incomplete")
+    return {"root": payload["/"], "volume": payload[volume], "volume_path": volume}
+
+
+def assert_capacity_headroom(snapshot: dict[str, Any]) -> None:
+    contract = aoe2_doctor.load_contract()
+    capacity = contract.get("capacity", {})
+    root_warn = float(capacity.get("root_free_warn_gib") or 5.0)
+    volume_critical = float(capacity.get("volume_used_critical_percent") or 92.0)
+
+    root_available = int(snapshot["root"]["available_bytes"])
+    root_available_gib = root_available / (1024 ** 3)
+    if root_available_gib < root_warn:
+        raise FinishError(
+            "production root headroom is below the release floor: "
+            f"{root_available_gib:.2f} GiB free < {root_warn:.2f} GiB"
+        )
+
+    volume_used = float(snapshot["volume"]["used_percent"])
+    if volume_used >= volume_critical:
+        raise FinishError(
+            "production mounted volume is at/above the critical release threshold: "
+            f"{volume_used:.2f}% >= {volume_critical:.2f}%"
+        )
+
+
+def capacity_human(snapshot: dict[str, Any]) -> str:
+    root_gib = int(snapshot["root"]["available_bytes"]) / (1024 ** 3)
+    volume_gib = int(snapshot["volume"]["available_bytes"]) / (1024 ** 3)
+    volume_used = float(snapshot["volume"]["used_percent"])
+    return (
+        f"root {root_gib:.1f} GiB free · "
+        f"volume {volume_gib:.1f} GiB free / {volume_used:.1f}% used"
+    )
+
+
 def vps_dirty_paths(host: str, repo: str) -> tuple[list[str], list[str]]:
     command = (
         f"cd {shlex.quote(repo)} && "
@@ -1068,6 +1132,92 @@ def documentation_plan_summary(plan: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def docs_history_relation(repo: Path, head: str, remote: str) -> str:
+    if head == remote:
+        return "EXACT"
+    known_rc, _ = aoe2_update.git(repo, "cat-file", "-e", f"{remote}^{{commit}}")
+    if known_rc != 0:
+        return "FETCH_REQUIRED"
+    ahead_rc, _ = aoe2_update.git(
+        repo, "merge-base", "--is-ancestor", remote, head
+    )
+    if ahead_rc == 0:
+        return "LOCAL_AHEAD"
+    behind_rc, _ = aoe2_update.git(
+        repo, "merge-base", "--is-ancestor", head, remote
+    )
+    if behind_rc == 0:
+        return "LOCAL_BEHIND"
+    return "DIVERGED"
+
+
+def reconcile_managed_docs_history(progress: Progress) -> dict[str, Any]:
+    repo = aoe2_update.DOCS
+    if not repo.is_dir():
+        raise FinishError(f"AoE2WAR-docs repository is missing: {repo}")
+
+    branch = aoe2_update.git_output(repo, "branch", "--show-current")
+    if not branch:
+        raise FinishError("AoE2WAR-docs is detached")
+    dirty = sorted(aoe2_update.status_paths(repo))
+    if dirty:
+        raise FinishError(
+            "AoE2WAR-docs worktree is dirty; refusing automatic history choice: "
+            + ", ".join(dirty)
+        )
+
+    progress.start("Reconciling clean AoE2WAR-docs history...")
+    fetch = run(
+        ["git", "fetch", "--quiet", "origin", branch],
+        cwd=repo,
+        timeout=120,
+    )
+    if fetch.returncode != 0:
+        raise FinishError(
+            "AoE2WAR-docs fetch failed: " + (fetch.stdout or "")[-4000:]
+        )
+
+    head = aoe2_update.git_output(repo, "rev-parse", "HEAD")
+    remote = aoe2_update.remote_sha(repo, branch)
+    if remote is None:
+        raise FinishError(f"cannot resolve AoE2WAR-docs origin/{branch}")
+
+    relation = docs_history_relation(repo, head, remote)
+    if relation == "EXACT":
+        progress.done("AoE2WAR-docs already exact with origin")
+        return {"action": "none", "head": head}
+
+    if relation == "LOCAL_BEHIND":
+        merge = run(["git", "merge", "--ff-only", remote], cwd=repo, timeout=120)
+        if merge.returncode != 0:
+            raise FinishError(
+                "AoE2WAR-docs fast-forward failed: " + (merge.stdout or "")[-4000:]
+            )
+        final = aoe2_update.git_output(repo, "rev-parse", "HEAD")
+        if final != remote or aoe2_update.status_paths(repo):
+            raise FinishError("AoE2WAR-docs fast-forward did not end exact and clean")
+        progress.done(f"AoE2WAR-docs fast-forwarded ({final[:10]})")
+        return {"action": "fast-forward-local", "head": final}
+
+    if relation == "LOCAL_AHEAD":
+        for target in ("docs-check", "audit-taxonomy", "build"):
+            gate = run(["make", target], cwd=repo, timeout=300)
+            if gate.returncode != 0:
+                raise FinishError(
+                    f"AoE2WAR-docs {target} failed before auto-publish: "
+                    + (gate.stdout or "")[-4000:]
+                )
+        aoe2_update.push_and_verify("AoE2WAR-docs", repo, branch)
+        final = aoe2_update.git_output(repo, "rev-parse", "HEAD")
+        progress.done(f"AoE2WAR-docs validated and published ({final[:10]})")
+        return {"action": "publish-local-commits", "head": final}
+
+    raise FinishError(
+        "AoE2WAR-docs histories diverged; refusing automatic merge/rebase "
+        f"(local={head[:10]} origin={remote[:10]})"
+    )
+
+
 def external_source_authority_snapshot() -> dict[str, Any]:
     """Prove every non-web source authority is clean before any mutation.
 
@@ -1123,11 +1273,24 @@ def external_source_authority_snapshot() -> dict[str, Any]:
             entry["status"] = "REMOTE_UNRESOLVED"
             blockers.append(f"{repo_id} origin/{branch or '?'} is unresolved")
         elif remote != head:
-            entry["status"] = "REMOTE_MISMATCH"
-            blockers.append(
-                f"{repo_id} local/origin mismatch: "
-                f"local={head[:10]} origin={remote[:10]}"
-            )
+            if repo_id == "AoE2WAR-docs" and not dirty and branch:
+                relation = docs_history_relation(repo, head, remote)
+                entry["history_relation"] = relation
+                if relation in {"LOCAL_AHEAD", "LOCAL_BEHIND", "FETCH_REQUIRED"}:
+                    entry["status"] = "RECONCILABLE"
+                    entry["automatic_reconciliation"] = True
+                else:
+                    entry["status"] = "REMOTE_MISMATCH"
+                    blockers.append(
+                        f"{repo_id} local/origin mismatch is not safely reconcilable: "
+                        f"relation={relation} local={head[:10]} origin={remote[:10]}"
+                    )
+            else:
+                entry["status"] = "REMOTE_MISMATCH"
+                blockers.append(
+                    f"{repo_id} local/origin mismatch: "
+                    f"local={head[:10]} origin={remote[:10]}"
+                )
 
     return {
         "status": "BLOCKED" if blockers else "EXACT",
@@ -1332,6 +1495,7 @@ def plan_payload() -> dict[str, Any]:
         production_head=str(production.get("source_sha") or ""),
     )
     external_sources = external_source_authority_snapshot()
+    capacity_snapshot = production_capacity_snapshot()
 
     quiet_progress = Progress(enabled=False)
     storage_rc, storage_preview = run_json_cli(
@@ -1383,6 +1547,17 @@ def plan_payload() -> dict[str, Any]:
     if storage_rc != 0 or storage_preview.get("status") not in {"READY", "NOOP"}:
         blockers.append("storage-retention preview did not pass")
     blockers.extend(external_sources["blockers"])
+    try:
+        assert_capacity_headroom(capacity_snapshot)
+    except FinishError as exc:
+        blockers.append(str(exc))
+
+    docs_entry = external_sources.get("repositories", {}).get("AoE2WAR-docs", {})
+    if docs_entry.get("status") == "RECONCILABLE":
+        remediated_blockers.append(
+            "AoE2WAR-docs clean history will be reconciled automatically "
+            f"({docs_entry.get('history_relation')})"
+        )
 
     detail: dict[str, Any] = {
         "schema": 2,
@@ -1402,13 +1577,16 @@ def plan_payload() -> dict[str, Any]:
         "deploy_expected": plan.mode != "clean" or needs_deploy(data),
         "doctor": doctor,
         "storage_retention": storage_preview,
+        "capacity": capacity_snapshot,
         "blockers": blockers,
         "automatic_remediations": remediated_blockers,
         "validation_plan": [
             "safe storage retention preview/apply when policy permits",
+            "explicit root + mounted-volume release headroom proof",
             "pre-mutation operational Doctor",
             "source authority reconciliation and release gate",
-            "documentation/context reconciliation",
+            "clean AoE2WAR-docs history reconciliation",
+            "bounded pre-capture context retention and exact archive verification",
             "isolated stage and protected activation",
             "immediate certified runtime + Wolo proof",
             "post-release current-state documentation refresh",
@@ -1505,6 +1683,14 @@ def execute_finish(
     )
     finish_phase(receipt, "preflight_storage_retention", checkpoint)
 
+    start_phase(receipt, "capacity_preflight", checkpoint)
+    progress.start("Proving production root + mounted-volume headroom...")
+    preflight_capacity = production_capacity_snapshot()
+    assert_capacity_headroom(preflight_capacity)
+    receipt["preflight_capacity"] = preflight_capacity
+    progress.done("Capacity preflight passed — " + capacity_human(preflight_capacity))
+    finish_phase(receipt, "capacity_preflight", checkpoint)
+
     start_phase(receipt, "operational_preflight", checkpoint)
     progress.start("Running pre-mutation operational Doctor...")
     preflight_doctor = aoe2_doctor.collect_doctor(
@@ -1581,6 +1767,19 @@ def execute_finish(
     if git_output("rev-parse", "HEAD") != remote_branch_sha():
         raise FinishError("Mac/GitHub parity is not exact after source reconciliation")
     finish_phase(receipt, "source_parity", checkpoint)
+
+    start_phase(receipt, "documentation_history_reconciliation", checkpoint)
+    receipt["documentation_history_reconciliation"] = reconcile_managed_docs_history(
+        progress
+    )
+    exact_external_sources = external_source_authority_snapshot()
+    if exact_external_sources["blockers"]:
+        raise FinishError(
+            "source authorities are not exact after documentation history reconciliation: "
+            + "; ".join(exact_external_sources["blockers"])
+        )
+    receipt["external_source_authorities"] = exact_external_sources
+    finish_phase(receipt, "documentation_history_reconciliation", checkpoint)
 
     start_phase(receipt, "pre_release_documentation", checkpoint)
     receipt["pre_release_documentation"] = reconcile_documentation(
@@ -1704,6 +1903,14 @@ def execute_finish(
     )
     finish_phase(receipt, "final_doctor", checkpoint)
 
+    start_phase(receipt, "final_capacity", checkpoint)
+    progress.start("Re-proving final filesystem headroom...")
+    final_capacity = production_capacity_snapshot()
+    assert_capacity_headroom(final_capacity)
+    receipt["final_capacity"] = final_capacity
+    progress.done("Final capacity proof passed — " + capacity_human(final_capacity))
+    finish_phase(receipt, "final_capacity", checkpoint)
+
     start_phase(receipt, "final_certification", checkpoint)
     final_release = aoe2_release.collect()
     receipt["final_release"] = final_release
@@ -1735,6 +1942,9 @@ def print_finish_summary(receipt: dict[str, Any], receipt_path: Path) -> None:
     print(f"Estate:          {audit.get('estate') or '—'}")
     print(f"P0 / P1:         {audit.get('p0')} / {audit.get('p1')}")
     print(f"Doctor:          {doctor.get('score', '—')}/100")
+    final_capacity = receipt.get("final_capacity")
+    if isinstance(final_capacity, dict):
+        print("Capacity:        " + capacity_human(final_capacity))
     print(
         "Wolo:            "
         f"8092={production.get('wolo_8092_count')} "
@@ -1851,6 +2061,7 @@ def main() -> int:
                 f"projected volume "
                 f"{storage.get('projected_capacity_after', {}).get('used_percent', '—')}%"
             )
+            print("Capacity:     " + capacity_human(payload["capacity"]))
             if payload.get("vps_candidate"):
                 print(
                     "VPS tracked:  "

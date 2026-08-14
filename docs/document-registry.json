@@ -980,9 +980,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_ENGINEERING.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-10",
+      "reviewed_at": "2026-08-14",
       "sensitivity": "internal",
-      "sha256": "e6bdd7ddf697a83892b08d80829ce931e6cc78b9fd4a3004cd54714b0ef3de88",
+      "sha256": "f2d57e54472fed0e0129d44e0786d02e45070198fd51affa6e5db4f01d19863b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

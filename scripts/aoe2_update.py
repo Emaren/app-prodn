@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -51,6 +52,10 @@ AUTO_P1_KEYS = {
 
 RECEIPT_DIR = ROOT / ".aoe2war-release" / "update-receipts"
 UPDATE_LOCK = ROOT / ".aoe2war-release" / "update.lock"
+
+GIB = 1024 ** 3
+CONTEXT_CAPTURE_MIN_FREE_BYTES = 4 * GIB
+CONTEXT_CAPTURE_MARGIN_BYTES = 1 * GIB
 
 ESTATE_MAP_BEGIN = "<!-- BEGIN AOE2WAR GENERATED CURRENT STATE -->"
 ESTATE_MAP_END = "<!-- END AOE2WAR GENERATED CURRENT STATE -->"
@@ -1242,6 +1247,91 @@ def central_sync(
     }
 
 
+def prune_context_before_capture(
+    projects: list[str],
+    progress: Progress | None = None,
+) -> None:
+    context_root = VPSSENTRY / "context"
+    tool = VPSSENTRY / "bin" / "context-prune-latest"
+    if not tool.is_file():
+        raise UpdateError(f"context retention tool missing: {tool}")
+
+    env = os.environ.copy()
+    env.update(
+        {
+            "DRY_RUN": "0",
+            "KEEP_N": "1",
+            "KEEP_CODE": "0",
+            "KEEP_LOGS": "1",
+            "PROJECTS": " ".join(projects),
+        }
+    )
+    if progress:
+        progress.start("Applying bounded context retention before capture...")
+    rc, out = run(
+        [str(tool), str(context_root)],
+        cwd=VPSSENTRY,
+        timeout=180,
+        env=env,
+    )
+    if rc != 0:
+        raise UpdateError(
+            "pre-capture context retention failed: "
+            + aoe2_audit.checker_summary(out)
+        )
+    if progress:
+        progress.done("Pre-capture context retention passed")
+
+
+def context_capture_headroom(
+    projects: list[str],
+    progress: Progress | None = None,
+) -> dict[str, int]:
+    context_root = VPSSENTRY / "context"
+    tgz_dir = context_root / "tgz"
+    sizes: list[int] = []
+
+    for project in projects:
+        matches = sorted(
+            tgz_dir.glob(f"{project}-context-*.tgz"),
+            key=lambda path: path.stat().st_mtime_ns,
+            reverse=True,
+        )
+        if matches:
+            sizes.append(matches[0].stat().st_size)
+
+    largest = max(sizes, default=0)
+    expected_outputs = sum(sizes)
+    if largest:
+        required = max(
+            CONTEXT_CAPTURE_MIN_FREE_BYTES,
+            (2 * largest) + expected_outputs + CONTEXT_CAPTURE_MARGIN_BYTES,
+        )
+    else:
+        required = CONTEXT_CAPTURE_MIN_FREE_BYTES
+
+    free = shutil.disk_usage(context_root).free
+    if free < required:
+        raise UpdateError(
+            "insufficient Mac context-capture headroom after bounded retention: "
+            f"free={free / GIB:.2f} GiB required={required / GIB:.2f} GiB "
+            f"projects={projects}"
+        )
+
+    result = {
+        "free_bytes": free,
+        "required_bytes": required,
+        "largest_prior_archive_bytes": largest,
+        "expected_output_bytes": expected_outputs,
+    }
+    if progress:
+        progress.done(
+            "Context capture headroom passed · "
+            f"{free / GIB:.1f} GiB free · {required / GIB:.1f} GiB required"
+        )
+    return result
+
+
 def capture_context(
     projects: list[str],
     progress: Progress | None = None,
@@ -1253,10 +1343,15 @@ def capture_context(
     if not tool.is_file():
         raise UpdateError(f"context tool missing: {tool}")
 
+    prune_context_before_capture(projects, progress)
+    context_capture_headroom(projects, progress)
+
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     env = os.environ.copy()
     env["CTX_TS"] = stamp
-    env["PRUNE_LATEST"] = "0"
+    env["PRUNE_LATEST"] = "1"
+    env["PRUNE_DRY_RUN"] = "0"
+    env["KEEP_N"] = "1"
     env["CONTEXT_PROFILE"] = "ops"
 
     capture_label = "Capturing context: " + ", ".join(projects)
