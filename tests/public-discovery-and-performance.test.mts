@@ -32,12 +32,43 @@ test("robots advertises the sitemap and keeps private rails out of search", () =
 
 test("critical performance safeguards stay wired into the public surfaces", () => {
   const home = readFileSync(new URL("../app/HomePageClient.tsx", import.meta.url), "utf8");
+  const shell = readFileSync(new URL("../app/AppShell.tsx", import.meta.url), "utf8");
   const rivalries = readFileSync(new URL("../app/rivalries/page.tsx", import.meta.url), "utf8");
+  const earners = readFileSync(
+    new URL("../components/lobby/TopWoloEarnersTile.tsx", import.meta.url),
+    "utf8"
+  );
+  const playerFeed = readFileSync(
+    new URL("../components/players/PlayerMatchFeedClient.tsx", import.meta.url),
+    "utf8"
+  );
+  const playerAi = readFileSync(
+    new URL("../components/players/PlayerAiFeature.tsx", import.meta.url),
+    "utf8"
+  );
+  const ogBoard = readFileSync(
+    new URL("../components/leaderboard/OgBoardPage.tsx", import.meta.url),
+    "utf8"
+  );
+  const nextConfig = readFileSync(new URL("../next.config.js", import.meta.url), "utf8");
   const warChest = readFileSync(new URL("../lib/warChest.ts", import.meta.url), "utf8");
 
   assert.doesNotMatch(home, /homepageHydrated/);
   assert.doesNotMatch(home, /image\.loading = "eager"[\s\S]{0,900}for \(const warrior of pool\)/);
+  assert.match(shell, /fetch\("\/api\/header-summary"/);
+  assert.doesNotMatch(shell, /fetch\("\/api\/(?:live-games|requests|workshop)\?summary=1"/);
   assert.match(rivalries, /const RIVALRIES_PER_PAGE = 72/);
+  assert.match(earners, /\$\{Math\.max\(totalParticipants, entries\.length\)\} earners/);
+  assert.doesNotMatch(earners, /\$\{[^}]+\}\s*\/\s*\$\{[^}]+\}\s*earners/);
+  assert.match(playerFeed, /distanceFromBottom < 1600/);
+  assert.match(playerFeed, /rootMargin: "1600px 0px"/);
+  assert.match(playerFeed, /\[content-visibility:auto\]/);
+  assert.match(ogBoard, /rootMargin: "1800px 0px"/);
+  assert.doesNotMatch(playerAi, /setInterval\(markHeroSurfaces/);
+  assert.match(nextConfig, /\$\{directory\}\/:path\*\.:ext\(\$\{publicMediaExtensions\}\)/);
+  assert.doesNotMatch(nextConfig, /\$\{directory\}\/:path\+/);
+  assert.match(nextConfig, /explicitPublicMediaSources/);
+  assert.match(nextConfig, /\/watch\/:collection\(previews\|recordings\)/);
   assert.match(warChest, /ensureMarkets: false/);
   assert.match(warChest, /settlementSurfaceMode: "fast"/);
 });

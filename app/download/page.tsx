@@ -203,11 +203,11 @@ export default function DownloadPage() {
           <picture>
             <source
               media="(max-width: 767px)"
-              srcSet="/watcher/watcher-v157-mobile.png"
+              srcSet="/watcher/watcher-v157-mobile-88aacd9f-lossless.webp"
             />
 
             <img
-              src="/watcher/watcher-v157-desktop.png"
+              src="/watcher/watcher-v157-desktop-61afeeae-lossless.webp"
               alt="AoE2WAR Watcher 1.5.7 replay companion overview"
               width="1672"
               height="941"
@@ -451,7 +451,7 @@ export default function DownloadPage() {
                 }`}
               >
                 <Image
-                  src="/watcher/aoe2hd-watcher-logo.png"
+                  src="/watcher/aoe2hd-watcher-logo-2f280ff7-lossless.webp"
                   alt="AoE2HDBets Watcher logo"
                   fill
                   className="object-contain p-2"

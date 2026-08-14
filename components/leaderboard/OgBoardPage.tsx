@@ -135,7 +135,7 @@ export function OgBoardPage({
           }
         },
         {
-          rootMargin: "700px 0px",
+          rootMargin: "1800px 0px",
         },
       );
 

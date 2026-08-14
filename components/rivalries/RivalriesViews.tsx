@@ -4,12 +4,12 @@ import type {
 } from "react";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
-import {
-  teamRivalryFormatLabel,
-  type PublicLatestRivalry,
-  type PublicRivalryEntry,
-  type PublicTeamRivalryEntry,
+import type {
+  PublicLatestRivalry,
+  PublicRivalryEntry,
+  PublicTeamRivalryEntry,
 } from "@/lib/publicMatchups";
+import { teamRivalryFormatLabel } from "@/lib/replaySides";
 import { normalizePublicReplayText } from "@/lib/unresolvedWatcherResult";
 
 export type RivalriesViewsProps = {

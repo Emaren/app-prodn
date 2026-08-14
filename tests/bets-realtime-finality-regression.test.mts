@@ -453,7 +453,7 @@ test(
   () => {
     assert.match(
       betsPageSource,
-      /BETS_POLL_INTERVAL_MS = 2_000/
+      /BETS_POLL_INTERVAL_MS = 5_000/
     );
     assert.match(
       betsPageSource,

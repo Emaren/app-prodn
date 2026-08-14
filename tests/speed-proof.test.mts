@@ -40,7 +40,10 @@ test("Speed Proof receives idempotent sample upgrades from the recorder", () => 
 });
 
 test("Speed Proof remains globally wired alongside the personal Speed Observatory", () => {
-  assert.match(shell, /import SpeedProof from "@\/components\/speed\/SpeedProof"/);
+  assert.match(
+    shell,
+    /const SpeedProof = dynamic\(\(\) => import\("@\/components\/speed\/SpeedProof"\)/
+  );
   assert.match(shell, /<SpeedProof \/>/);
   assert.doesNotMatch(shell, /href="\/speed"/);
 });

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+/* eslint-disable @next/next/no-img-element */
+
+import { useEffect, useRef, useState } from "react";
 import { BattleLoopPreview } from "@/components/media/BattleLoopPreview";
 
 type WatchPreviewScreenProps = {
@@ -47,6 +49,9 @@ export function WatchPreviewScreen({
   const [showLive, setShowLive] = useState(false);
   const [loopReady, setLoopReady] = useState(false);
   const [loopFailed, setLoopFailed] = useState(false);
+  const [nearViewport, setNearViewport] = useState(large);
+  const [hovered, setHovered] = useState(false);
+  const previewRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setShowLive(false);
@@ -54,15 +59,43 @@ export function WatchPreviewScreen({
     setLoopFailed(false);
   }, [mediaKey, videoUrl, liveEmbedUrl]);
 
+  useEffect(() => {
+    if (large) {
+      setNearViewport(true);
+      return;
+    }
+
+    const node = previewRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") {
+      setNearViewport(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const nextNearViewport = entries.some((entry) => entry.isIntersecting);
+        setNearViewport(nextNearViewport);
+        if (!nextNearViewport) setLoopReady(false);
+      },
+      { rootMargin: "900px 0px", threshold: 0.01 }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [large, mediaKey]);
+
   const hasLoop = Boolean(videoUrl);
   const hasLive = Boolean(liveEmbedUrl);
   const shouldShowLive = hasLive && showLive;
   const poster = safePoster(posterUrl);
+  const shouldLoadLoop = large || nearViewport || hovered;
 
   const shouldShowPendingLabel = !shouldShowLive && (!hasLoop || loopFailed) && !hasLive;
 
   return (
     <div
+      ref={previewRef}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       className={[
         "group relative isolate overflow-hidden rounded-[1.35rem] border border-white/10 bg-black shadow-2xl",
         large ? "aspect-video min-h-[360px]" : "aspect-video min-h-[120px]",
@@ -71,7 +104,17 @@ export function WatchPreviewScreen({
     >
       {!large ? <BroadcastPlaceholder showLabel={shouldShowPendingLabel} /> : null}
 
-      {hasLoop && !shouldShowLive ? (
+      {poster && (!shouldLoadLoop || !loopReady || loopFailed) ? (
+        <img
+          src={poster}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover"
+          loading={large ? "eager" : "lazy"}
+          decoding="async"
+        />
+      ) : null}
+
+      {hasLoop && shouldLoadLoop && !shouldShowLive ? (
         <video
           key={videoUrl}
           className={[

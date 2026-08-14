@@ -189,7 +189,7 @@ export function OgBattleCard({
 
   return (
     <article
-      className={`rounded-xl p-6 shadow-lg transition-all ${
+      className={`rounded-xl p-6 shadow-lg transition-all [content-visibility:auto] [contain-intrinsic-size:auto_36rem] ${
         latest
           ? "border-2 border-yellow-500 bg-gray-900 text-yellow-400"
           : "border border-gray-600 bg-gray-700 text-black"

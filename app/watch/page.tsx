@@ -247,10 +247,34 @@ function isCompletedWatcherLiveGame(game: {
 async function loadWatchIndexSnapshot() {
   const prisma = getPrisma();
 
-  const recentRows = await prisma.gameStats.findMany({
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: 160,
-  });
+  // The media sources do not depend on the replay query, so start them while
+  // Postgres resolves the recent-game window. Streams still wait for the
+  // deduplicated session keys below.
+  const [recentRows, mediaRegistry, broadcastPreviewsByKey] = await Promise.all([
+    prisma.gameStats.findMany({
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 160,
+      select: {
+        id: true,
+        replay_file: true,
+        createdAt: true,
+        map: true,
+        duration: true,
+        game_duration: true,
+        winner: true,
+        players: true,
+        event_types: true,
+        key_events: true,
+        parse_iteration: true,
+        is_final: true,
+        parse_source: true,
+        parse_reason: true,
+        original_filename: true,
+      },
+    }),
+    loadWatchMediaRegistry(),
+    loadBetBroadcastPreviewMap(),
+  ]);
 
   const latestBySession = new Map<string, (typeof recentRows)[number]>();
 
@@ -265,11 +289,6 @@ async function loadWatchIndexSnapshot() {
 
   const games = Array.from(latestBySession.values()).slice(0, 120);
   const sessionKeys = games.map(readSessionKey).filter(Boolean);
-
-  const [mediaRegistry, broadcastPreviewsByKey] = await Promise.all([
-    loadWatchMediaRegistry(),
-    loadBetBroadcastPreviewMap(),
-  ]);
 
   const streams = await loadWatchStreamsForSessions(prisma, sessionKeys);
 

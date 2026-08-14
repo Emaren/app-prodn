@@ -1,20 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 
 import SteamLoginButton from "@/components/SteamLoginButton";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { useUserAuth } from "@/context/UserAuthContext";
 import type { RequestBoardComment, RequestBoardItem, RequestBoardSnapshot } from "@/lib/requestBoardTypes";
-
-function formatTimestamp(value: string) {
-  return new Date(value).toLocaleString([], {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
 
 async function requestBoardSnapshot() {
   const response = await fetch("/api/requests", { cache: "no-store" });
@@ -102,7 +94,13 @@ function CommentCard({
         <div>
           <div className="text-sm font-medium text-white">{comment.author.displayName}</div>
           <div className="mt-1 text-[11px] uppercase tracking-[0.24em] text-slate-500">
-            {formatTimestamp(comment.createdAt)}
+            <TimeDisplayText
+              value={comment.createdAt}
+              includeZone={false}
+              month="short"
+              interactive={false}
+              className="inline-block min-w-[8rem]"
+            />
           </div>
         </div>
         <div className="flex w-full flex-wrap gap-2 text-xs text-slate-400 sm:w-auto sm:justify-end">
@@ -288,7 +286,13 @@ function RequestCard(props: RequestCardProps) {
                   {item.author.displayName}
                 </div>
                 <div className="text-[11px] uppercase tracking-[0.3em] text-slate-600">
-                  {formatTimestamp(item.createdAt)}
+                  <TimeDisplayText
+                    value={item.createdAt}
+                    includeZone={false}
+                    month="short"
+                    interactive={false}
+                    className="inline-block min-w-[8rem]"
+                  />
                 </div>
                 {item.status === "completed" ? (
                   <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.24em] text-emerald-100">
@@ -372,7 +376,14 @@ function RequestCard(props: RequestCardProps) {
 
           {item.completedAt ? (
             <div className="rounded-2xl border border-emerald-400/15 bg-emerald-500/[0.08] px-4 py-3 text-sm text-emerald-100/90">
-              Marked completed {formatTimestamp(item.completedAt)}
+              Marked completed{" "}
+              <TimeDisplayText
+                value={item.completedAt}
+                includeZone={false}
+                month="short"
+                interactive={false}
+                className="inline-block min-w-[8rem]"
+              />
               {item.completedBy ? ` by ${item.completedBy.displayName}` : ""}.
             </div>
           ) : null}
@@ -426,10 +437,17 @@ function RequestCard(props: RequestCardProps) {
   );
 }
 
-export default function RequestsBoard() {
+export default function RequestsBoard({
+  initialSnapshot,
+}: {
+  initialSnapshot?: RequestBoardSnapshot | null;
+}) {
   const { uid, loading: authLoading } = useUserAuth();
-  const [snapshot, setSnapshot] = useState<RequestBoardSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [snapshot, setSnapshot] = useState<RequestBoardSnapshot | null>(
+    initialSnapshot ?? null
+  );
+  const [loading, setLoading] = useState(!initialSnapshot);
+  const initialSnapshotPendingRef = useRef(Boolean(initialSnapshot));
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -464,13 +482,23 @@ export default function RequestsBoard() {
     }
 
     if (!authLoading) {
+      const initialViewerUid = initialSnapshot?.viewer?.uid ?? null;
+      if (
+        initialSnapshotPendingRef.current &&
+        initialViewerUid === (uid ?? null)
+      ) {
+        initialSnapshotPendingRef.current = false;
+        return () => {
+          cancelled = true;
+        };
+      }
       void load();
     }
 
     return () => {
       cancelled = true;
     };
-  }, [authLoading, uid]);
+  }, [authLoading, initialSnapshot, uid]);
 
   const viewerReady = Boolean(snapshot?.viewer);
   const emptyOpen = (snapshot?.items.length ?? 0) === 0;
@@ -745,7 +773,18 @@ export default function RequestsBoard() {
                   >
                     <div className="text-base font-semibold text-white">{item.title}</div>
                     <div className="mt-1 text-sm text-slate-400">
-                      {item.score} votes · Completed {item.completedAt ? formatTimestamp(item.completedAt) : "recently"}
+                      {item.score} votes · Completed{" "}
+                      {item.completedAt ? (
+                        <TimeDisplayText
+                          value={item.completedAt}
+                          includeZone={false}
+                          month="short"
+                          interactive={false}
+                          className="inline-block min-w-[8rem]"
+                        />
+                      ) : (
+                        "recently"
+                      )}
                       {item.completedBy ? ` by ${item.completedBy.displayName}` : ""}
                     </div>
                   </button>

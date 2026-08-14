@@ -85,7 +85,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-08-10",
       "sensitivity": "internal",
-      "sha256": "8bb548c0633a4d0a270ec2960879ce2ca432b08f5f68d280996077bca12a6dc1",
+      "sha256": "a897dbe210eb2041e7568d72ea9768eb75eb55c9728819729297848d5e29347c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -476,7 +476,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "36de653951b2acf61535d9f7ac92ff705cf2146bb366f311539ec0696d8fde1c",
+      "sha256": "fc19b2ab404f49dba21def1f14962a18b90f027d0f043666ea9b20b8adbc55dd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -829,6 +829,28 @@
         "app-prodn"
       ],
       "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
+      "type": "historical"
+    },
+    {
+      "audience": [
+        "operators",
+        "auditors",
+        "ai-agents"
+      ],
+      "authority": "release-evidence",
+      "id": "aoe2war.app-prodn.docs-performance-audit-2026-08-13",
+      "owner": "aoe2war-web",
+      "path": "docs/PERFORMANCE_AUDIT_2026-08-13.md",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-08-13",
+      "sensitivity": "internal",
+      "sha256": "ab4460fc80591839726aa5de8892851da40ff9c054d463117a93f1086c8beb58",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
       "type": "historical"
     },
     {

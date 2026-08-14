@@ -44,6 +44,7 @@ import {
 import { cleanPublicGameRows, type PublicGameStatsLike } from "@/lib/publicReplayTruth";
 import { PLAYER_MATCH_FEED_RECONCILE_BATCH_SIZE } from "@/lib/playerMatchFeedPagination";
 import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
+import { createGenerationKeyedLoader } from "@/lib/generationKeyedLoader";
 import { resolveReplayResultForPlayer } from "@/lib/replayPlayerResult";
 import {
   normalizePublicReplayText,
@@ -270,6 +271,11 @@ type ClaimedProfileUser = {
 const PROFILE_MATCH_SCAN_LIMIT = 8000;
 const PROFILE_INITIAL_MATCH_LIMIT = 18;
 const PROFILE_MATCH_PAGE_LIMIT = 18;
+
+const loadPlayerProfileReplayCorpus = createGenerationKeyedLoader<
+  PrismaClient,
+  PlayerProfileGameRow[]
+>();
 
 const RESOURCE_KEYS = {
   food: ["food", "food gathered", "food collected", "food_collected", "food_gathered", "total_food"],
@@ -1371,7 +1377,7 @@ function dedupePlayerProfileGamesByReplay(games: PlayerProfileGameRow[]) {
 }
 
 
-async function loadCandidateFinalGames(prisma: PrismaClient): Promise<PlayerProfileGameRow[]> {
+async function loadCandidateFinalGamesFresh(prisma: PrismaClient): Promise<PlayerProfileGameRow[]> {
   const rows = await prisma.gameStats.findMany({
     where: {
       OR: [
@@ -1443,6 +1449,17 @@ async function loadCandidateFinalGames(prisma: PrismaClient): Promise<PlayerProf
   }) as unknown as PlayerProfileGameRow[];
 
   return dedupePlayerProfileGamesByReplay(publicRows);
+}
+
+function loadCandidateFinalGames(
+  prisma: PrismaClient,
+  generation: string,
+): Promise<PlayerProfileGameRow[]> {
+  return loadPlayerProfileReplayCorpus(
+    prisma,
+    generation,
+    () => loadCandidateFinalGamesFresh(prisma),
+  );
 }
 
 function filterGamesForPlayer(games: PlayerProfileGameRow[], currentPlayer: PublicPlayerRef) {
@@ -1910,7 +1927,10 @@ async function buildProfileFromPlayer(
   // Read the watermark before the replay query. Truth that lands afterward is
   // guaranteed to produce a different client poll token and another refresh.
   const matchFeedGeneration = await loadPublicReplayGeneration(prisma);
-  const candidateGames = await loadCandidateFinalGames(prisma);
+  const candidateGames = await loadCandidateFinalGames(
+    prisma,
+    matchFeedGeneration,
+  );
   const matchedGames = filterGamesForPlayer(candidateGames, input.currentPlayer);
   const pendingClaimSummaries = await safeLoadPendingWoloClaimSummaries(prisma, input.aliases);
   const currentPlayer = applyPendingWoloClaimSummary(input.currentPlayer, pendingClaimSummaries);
@@ -2147,7 +2167,10 @@ export async function loadPlayerProfileMatchPage(
   if (!currentPlayer) return null;
 
   const generation = await loadPublicReplayGeneration(prisma);
-  const games = filterGamesForPlayer(await loadCandidateFinalGames(prisma), currentPlayer);
+  const games = filterGamesForPlayer(
+    await loadCandidateFinalGames(prisma, generation),
+    currentPlayer,
+  );
   return buildMatchFeed(
     games,
     currentPlayer,

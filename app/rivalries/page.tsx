@@ -1,11 +1,8 @@
 import Link from "next/link";
 
-import BasicRivalriesView from "@/components/rivalries/BasicRivalriesView";
 import RivalriesViewShell from "@/components/rivalries/RivalriesViewShell";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import {
-  AdvancedRivalriesView,
-  ExtremeRivalriesView,
   type RivalryCollectionTotals,
 } from "@/components/rivalries/RivalriesViews";
 import { getPrisma } from "@/lib/prisma";
@@ -160,11 +157,7 @@ export default async function RivalriesPage({ searchParams }: RivalriesPageProps
         totalPages={totalPages}
         totalBoards={totals.boards}
       />
-      <RivalriesViewShell
-        basicView={<BasicRivalriesView {...viewProps} />}
-        advancedView={<AdvancedRivalriesView {...viewProps} />}
-        extremeView={<ExtremeRivalriesView {...viewProps} />}
-      />
+      <RivalriesViewShell {...viewProps} />
       <RivalryPagination
         page={page}
         totalPages={totalPages}

@@ -390,7 +390,7 @@ export function ModernLeaderboardPage({
           void loadPage({ reset: false, offset: nextOffset });
         }
       },
-      { rootMargin: "700px 0px" }
+      { rootMargin: "2400px 0px" }
     );
     observer.observe(node);
     return () => observer.disconnect();

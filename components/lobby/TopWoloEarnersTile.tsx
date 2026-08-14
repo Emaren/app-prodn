@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type UIEvent } from "react";
 
 import {
@@ -50,14 +51,6 @@ const PLACEHOLDER_LANES = [
 ] as const;
 const VISIBLE_ROWS = 14;
 const WAR_CHEST_PAGE_SIZE = 48;
-
-function formatCompactWolo(value: number | null | undefined) {
-  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) return null;
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: 1,
-    notation: value >= 1000 ? "compact" : "standard",
-  }).format(value);
-}
 
 function formatWolo(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "0";
@@ -159,7 +152,6 @@ function compareEntriesForMode(mode: LobbyWoloEarnersMode) {
 }
 
 export function TopWoloEarnersTile({
-  wolo,
   board,
   themeKey,
   viewMode,
@@ -167,9 +159,9 @@ export function TopWoloEarnersTile({
   surface = "standard",
 }: TopWoloEarnersTileProps) {
   const h = useHomeCopy();
+  const router = useRouter();
   const tone = getLobbyPresentationTone(themeKey, viewMode);
   const isExtreme = surface === "extreme";
-  const reserve = formatCompactWolo(wolo?.accounts.ecosystembounties?.wolo ?? null);
   const [mode, setMode] = useState<LobbyWoloEarnersMode>(board?.mode ?? "weekly");
   const [lazyEntries, setLazyEntries] = useState<LobbyWoloEarnersEntry[]>(board?.entries ?? []);
   const [totalParticipants, setTotalParticipants] = useState(
@@ -364,14 +356,9 @@ export function TopWoloEarnersTile({
   );
   const statusLabel = mode === "weekly" ? h("Weekly") : h("All Time");
   const nextModeLabel = mode === "weekly" ? h("All Time") : h("Weekly");
-  const headlineMeta =
-    entries.length > 0
-      ? totalParticipants > entries.length
-        ? h(`${entries.length} / ${totalParticipants} earners`)
-        : h(`${entries.length} earners`)
-      : reserve
-        ? h(`${reserve} reserve`)
-        : h("8 earners");
+  const headlineMeta = h(
+    `${Math.max(totalParticipants, entries.length)} earners`
+  );
   const placeholderCount = Math.max(0, VISIBLE_ROWS - entries.length);
   const viewportHeightClassName = isExtreme
     ? "h-[clamp(34rem,calc(100svh-13rem),82rem)] min-h-[42rem] max-h-[88rem] lg:min-h-[56rem] lg:max-h-[92rem]"
@@ -477,13 +464,16 @@ export function TopWoloEarnersTile({
                 const primaryLabel = mode === "weekly" ? h("Weekly take") : h("All-time take");
                 const avatarSrc = featuredAvatarThumbUrlForUser(entry.uid, entry.name);
                 const rowClassName = isExtreme
-                  ? "relative block overflow-hidden rounded-[1.25rem] border border-amber-200/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.018))] px-3 py-3 transition hover:border-amber-200/22 hover:bg-amber-300/7 sm:px-4 sm:py-4"
-                  : `block rounded-[1.25rem] border px-4 py-4 transition ${tone.card} ${tone.cardHover}`;
+                  ? "relative block overflow-hidden rounded-[1.25rem] border border-amber-200/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.018))] px-3 py-3 transition [content-visibility:auto] [contain-intrinsic-size:auto_7rem] hover:border-amber-200/22 hover:bg-amber-300/7 sm:px-4 sm:py-4"
+                  : `block rounded-[1.25rem] border px-4 py-4 transition [content-visibility:auto] [contain-intrinsic-size:auto_7rem] ${tone.card} ${tone.cardHover}`;
 
                 return (
                   <Link
                     key={entry.key}
                     href={entry.href}
+                    prefetch={false}
+                    onMouseEnter={() => router.prefetch(entry.href)}
+                    onFocus={() => router.prefetch(entry.href)}
                     className={rowClassName}
                   >
                     {isExtreme ? (

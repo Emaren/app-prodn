@@ -95,8 +95,6 @@ export function usePublicPresence(
       }
     };
 
-    refreshIfVisible();
-
     const interval = window.setInterval(
       refreshIfVisible,
       PUBLIC_PRESENCE_REFRESH_MS,

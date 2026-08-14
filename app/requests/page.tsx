@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 
 import RequestsBoard from "@/components/requests/RequestsBoard";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
@@ -10,14 +11,27 @@ import {
   ROADMAP_MODULES,
   ROADMAP_UPDATES,
 } from "@/lib/siteRoadmapContent";
+import { getPrisma } from "@/lib/prisma";
+import { getRequestBoardSnapshot } from "@/lib/requestBoard";
+import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
-export default function RequestsPage() {
+export default async function RequestsPage() {
+  const cookieStore = await cookies();
+  const claims = await verifySession(cookieStore.get(SESSION_COOKIE_NAME)?.value);
+  const initialSnapshot = await getRequestBoardSnapshot(
+    getPrisma(),
+    claims?.uid ?? null
+  ).catch((error) => {
+    console.warn("Failed to server-render request board:", error);
+    return null;
+  });
+
   return (
     <main className="space-y-6 py-2 text-white sm:space-y-8 sm:py-3">
       <section id="requests" className="space-y-4 sm:space-y-6">
-        <RequestsBoard />
+        <RequestsBoard initialSnapshot={initialSnapshot} />
       </section>
 
       <section id="updates" className="space-y-4">

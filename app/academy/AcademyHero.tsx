@@ -10,8 +10,10 @@ import { ArrowRight, Flame, Orbit, Shield, Sparkles } from "lucide-react";
 type AcademyHeroVariant = "a" | "b" | "e";
 
 const ACADEMY_HERO_BG_IMAGE = "/academy/academy-gates-red.webp";
-const ACADEMY_HERO_E_BG_IMAGE = "/academy/academy-hero-e.png";
-const ACADEMY_HERO_TITLE_IMAGE = "/academy/the-academy-title-fresh.png";
+const ACADEMY_HERO_E_BG_IMAGE =
+  "/academy/academy-hero-e-f2b3eaff-lossless.webp";
+const ACADEMY_HERO_TITLE_IMAGE =
+  "/academy/the-academy-title-fresh-23fc015f-lossless.webp";
 
 const DEFAULT_ACADEMY_HERO_VARIANT: AcademyHeroVariant = "e";
 const ACADEMY_HERO_STORAGE_KEY = "aoe2war.academy.heroVariant.v1";

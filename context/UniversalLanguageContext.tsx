@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -17,6 +18,7 @@ import {
   normalizeUniversalLanguage,
   type UniversalLanguageCode,
 } from "@/lib/i18n/languages";
+import { useUserAuth } from "@/context/UserAuthContext";
 
 type UniversalLanguageContextValue = {
   selectedLanguage: UniversalLanguageCode | null;
@@ -56,9 +58,11 @@ export function UniversalLanguageProvider({
 }: {
   children: ReactNode;
 }) {
+  const { uid, loading: authLoading } = useUserAuth();
   const [selectedLanguage, setSelectedLanguageState] =
     useState<UniversalLanguageCode | null>(null);
   const [languageLoaded, setLanguageLoaded] = useState(false);
+  const deviceLanguageRef = useRef<UniversalLanguageCode | null>(null);
 
   useEffect(() => {
     let stored: UniversalLanguageCode | null = null;
@@ -69,9 +73,14 @@ export function UniversalLanguageProvider({
     } catch {
       // Private browsing can block storage; Auto remains the safe default.
     }
+    deviceLanguageRef.current = stored;
     setSelectedLanguageState(stored);
     writeLanguageCookie(stored);
     setLanguageLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (authLoading || !uid) return;
 
     const controller = new AbortController();
     void fetch("/api/user/language", {
@@ -96,8 +105,8 @@ export function UniversalLanguageProvider({
             // The account preference still applies in memory.
           }
           writeLanguageCookie(accountLanguage);
-        } else if (stored) {
-          persistAccountLanguage(stored);
+        } else if (deviceLanguageRef.current) {
+          persistAccountLanguage(deviceLanguageRef.current);
         }
       })
       .catch((error: unknown) => {
@@ -105,7 +114,7 @@ export function UniversalLanguageProvider({
       });
 
     return () => controller.abort();
-  }, []);
+  }, [authLoading, uid]);
 
   useEffect(() => {
     if (!languageLoaded) return;

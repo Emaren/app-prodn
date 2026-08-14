@@ -5,7 +5,7 @@ import { useEffect } from "react";
 const CLIENT_BUILD_VERSION =
   process.env.NEXT_PUBLIC_AOE2WAR_BUILD_VERSION || "";
 
-const VERSION_CHECK_INTERVAL_MS = 20_000;
+const VERSION_CHECK_INTERVAL_MS = 60_000;
 
 type DeploymentVersionResponse = {
   buildVersion?: unknown;
@@ -21,6 +21,15 @@ export default function DeploymentVersionGuard() {
 
     let disposed = false;
     let checking = false;
+    let firstCheckTimer: number | null = null;
+    let idleHandle: number | null = null;
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (
+        callback: IdleRequestCallback,
+        options?: IdleRequestOptions
+      ) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
 
     const checkDeploymentVersion = async () => {
       if (disposed || checking) return;
@@ -94,10 +103,18 @@ export default function DeploymentVersionGuard() {
       }
     };
 
-    const firstCheck = window.setTimeout(
-      checkWhenVisible,
-      1500
-    );
+    const scheduleFirstCheck = () => {
+      if (idleWindow.requestIdleCallback) {
+        idleHandle = idleWindow.requestIdleCallback(checkWhenVisible, {
+          timeout: 8_000,
+        });
+      } else {
+        firstCheckTimer = window.setTimeout(checkWhenVisible, 5_000);
+      }
+    };
+
+    if (document.readyState === "complete") scheduleFirstCheck();
+    else window.addEventListener("load", scheduleFirstCheck, { once: true });
 
     const interval = window.setInterval(
       checkWhenVisible,
@@ -117,7 +134,9 @@ export default function DeploymentVersionGuard() {
     return () => {
       disposed = true;
 
-      window.clearTimeout(firstCheck);
+      window.removeEventListener("load", scheduleFirstCheck);
+      if (firstCheckTimer !== null) window.clearTimeout(firstCheckTimer);
+      if (idleHandle !== null) idleWindow.cancelIdleCallback?.(idleHandle);
       window.clearInterval(interval);
 
       window.removeEventListener(

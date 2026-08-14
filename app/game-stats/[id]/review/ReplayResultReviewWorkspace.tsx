@@ -635,7 +635,18 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
   }
 
   if (loading) {
-    return <main className="py-10 text-white"><div className="rounded-[2rem] border border-white/10 bg-slate-950/80 p-8 text-slate-300">Opening the battle record…</div></main>;
+    return (
+      <main className="min-h-[120rem] space-y-5 py-10 text-white" aria-busy="true">
+        <div className="animate-pulse rounded-[2rem] border border-white/10 bg-slate-950/80 p-8 text-slate-300">
+          Opening the battle record…
+        </div>
+        <div className="grid animate-pulse gap-5 lg:grid-cols-2">
+          <div className="min-h-[34rem] rounded-[2rem] border border-white/8 bg-white/[0.025]" />
+          <div className="min-h-[34rem] rounded-[2rem] border border-white/8 bg-white/[0.025]" />
+        </div>
+        <div className="min-h-[36rem] animate-pulse rounded-[2rem] border border-white/8 bg-white/[0.025]" />
+      </main>
+    );
   }
 
   if (!state || error) {

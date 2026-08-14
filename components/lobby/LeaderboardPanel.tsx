@@ -415,7 +415,7 @@ export function LeaderboardPanel({
             <Link
               key={entry.key}
               href={entry.href}
-              className={`block rounded-2xl border px-4 py-4 transition ${tone.card} ${tone.cardHover}`}
+              className={`block rounded-2xl border px-4 py-4 transition [content-visibility:auto] [contain-intrinsic-size:auto_9rem] ${tone.card} ${tone.cardHover}`}
             >
               <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                 <div className="flex min-w-0 items-start gap-4">

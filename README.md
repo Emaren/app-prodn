@@ -353,6 +353,18 @@ Optional migration compatibility:
 
 - `ALLOW_LEGACY_UID_HEADERS=true` to temporarily allow `x-user-uid` / body uid fallback for user routes
 
+## Performance delivery contract
+
+- Preserve premium source-image and avatar fidelity. Optimize bytes with lossless formats, responsive delivery, request scheduling, caching, and visibility-aware loading; do not lower the established avatar card quality or substitute visibly weaker art. Keep originals available where the product exposes zoom or showcase inspection.
+- Only the first visible/LCP media should receive eager or priority loading. Decode rotating hero media independently and warm the next item without blocking the current one.
+- Long lists and media rails must request or reveal the next section well before the user reaches the bottom. Current early-load sentinels use roughly 1,600–3,600 px of lookahead, with `content-visibility` or near-viewport media activation where appropriate.
+- Off-screen looping video must remain poster-first, gain a source only near the viewport or on intent, and release/pause that source after it leaves the activation band.
+- Shared shell work must stay below the interaction-critical path: inbox contents load only when opened, noncritical telemetry and install prompts load after idle, and header counts use one coalesced summary request rather than route-wide fanout.
+- War Chest renders the live total as `N earners`. Do not restore a loaded-row numerator such as `64 / 302 earners`; pagination may remain internal while the denominator continues to update from canonical data.
+- Static asset directories may receive long-lived immutable-style cache policy only on explicit media-file extensions; route families with dynamic slugs must use allow-listed asset filenames or subdirectories. Never give an HTML directory root or dynamic product route (for example `/lobby`, `/champions/world`, `/bets/562774`, or `/watch/[sessionKey]`) an asset cache lifetime.
+
+The measured August 2026 implementation and its reproducible route inventory are recorded in `docs/PERFORMANCE_AUDIT_2026-08-13.md`.
+
 ## Browser/API contract highlights
 
 Important same-origin browser routes include:

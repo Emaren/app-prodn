@@ -1,6 +1,7 @@
 "use client";
 
-import {type CSSProperties, useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState} from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, Crown } from "lucide-react";
@@ -13,10 +14,7 @@ import { OnlinePlayersPanel } from "@/components/lobby/OnlinePlayersPanel";
 import { RecentMatchesPanel } from "@/components/lobby/RecentMatchesPanel";
 import { TopWoloEarnersTile } from "@/components/lobby/TopWoloEarnersTile";
 import { TournamentPanel } from "@/components/lobby/TournamentPanel";
-import { WatchAndChatHero } from "@/components/lobby/WatchAndChatHero";
-import { WoloMarketTile } from "@/components/lobby/WoloMarketTile";
 import { HeroCarousel } from "@/components/hero/HeroCarousel";
-import Aoe2ShortsTile from "@/components/home/Aoe2ShortsTile";
 import HeroTakeoverSlot from "@/components/home/HeroTakeoverSlot";
 import { usePublicPresence } from "@/components/presence/PublicPresenceProvider";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
@@ -48,6 +46,22 @@ import {
 import { resolveTimeZone } from "@/lib/timeDisplay";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 
+const Aoe2ShortsTile = dynamic(
+  () => import("@/components/home/Aoe2ShortsTile"),
+  { ssr: false }
+);
+const WatchAndChatHero = dynamic(
+  () =>
+    import("@/components/lobby/WatchAndChatHero").then(
+      (module) => module.WatchAndChatHero
+    ),
+  { ssr: false }
+);
+const WoloMarketTile = dynamic(
+  () => import("@/components/lobby/WoloMarketTile"),
+  { ssr: false }
+);
+
 const EMPTY_MESSAGES: LobbyMessage[] = [];
 const ZODIAC_UID = "u_06c16d39d25c476fac2c86fee7b4d189";
 const DIL_PASCANA_UID = "u_17816384361f4c8a8d57c6934265100b";
@@ -69,6 +83,48 @@ const FEATURED_WARRIOR_ROTATE_MS = 3800;
 const FEATURED_WARRIOR_FIRST_ROTATE_MS = 6200;
 const FEATURED_WARRIOR_FADE_MS = 300;
 const FEATURED_WARRIOR_HOLD_MS = 60;
+
+function AheadOfScroll({
+  children,
+  minHeight,
+}: {
+  children: ReactNode;
+  minHeight: string;
+}) {
+  const [ready, setReady] = useState(false);
+  const warmupRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const node = warmupRef.current;
+    if (!node || typeof IntersectionObserver === "undefined") {
+      setReady(true);
+      return;
+    }
+
+    const fallback = window.setTimeout(() => setReady(true), 8_000);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setReady(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "2800px 0px", threshold: 0.01 }
+    );
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(fallback);
+    };
+  }, []);
+
+  return (
+    <div ref={warmupRef} style={ready ? undefined : { minHeight }}>
+      {ready ? children : null}
+    </div>
+  );
+}
 
 const JULIO_FEATURED_SUBTITLE_LINES = [
   {
@@ -745,13 +801,6 @@ function decodeFeaturedWarriorImage(src: string) {
   return promise;
 }
 
-function warmFeaturedWarriorLineup(lineup: FeaturedWarrior[]) {
-  return Promise.all(lineup.map((warrior) => decodeFeaturedWarriorImage(featuredWarriorImageSrc(warrior)))).then(
-    () => undefined
-  );
-}
-
-
 function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
   const poolSignature = useMemo(
     () => pool.map((warrior) => `${warrior.key}:${featuredWarriorImageSrc(warrior)}`).join("|"),
@@ -809,14 +858,10 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
     visibleWarriorsRef.current = initialLineup;
     setVisibleWarriors(initialLineup);
 
-    void warmFeaturedWarriorLineup(initialLineup).then(() => {
-      if (disposed) return;
-
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          if (!disposed) setFeaturedWarriorsReady(true);
-        });
-      });
+    // Reveal the card shells immediately and let each full-quality avatar
+    // decode independently. Rotation still pre-decodes every incoming avatar.
+    window.requestAnimationFrame(() => {
+      if (!disposed) setFeaturedWarriorsReady(true);
     });
 
     return () => {
@@ -997,7 +1042,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
                 alt=""
                 fill
                 sizes="(min-width: 1280px) 250px, (min-width: 640px) 45vw, 90vw"
-                priority={index < FEATURED_WARRIOR_SLOT_COUNT}
+                priority={index < 2}
                 unoptimized
                 className="object-contain object-top transition duration-500 ease-out group-hover:scale-[1.01] opacity-90"
               />
@@ -1109,7 +1154,7 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
                     alt=""
                     fill
                     sizes="(min-width: 1280px) 280px, (min-width: 640px) 45vw, 90vw"
-                    priority={index < FEATURED_WARRIOR_SLOT_COUNT}
+                    priority={index < 2}
                     unoptimized
                     className="object-contain object-center drop-shadow-[0_18px_34px_rgba(0,0,0,0.56)] transition duration-500 ease-out [mask-image:linear-gradient(180deg,black_0%,black_88%,transparent_100%)]"
                   />
@@ -1230,61 +1275,83 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
   }, []);
 
   useEffect(() => {
-    void loadLobby();
+    if (liveConnected) return;
+
+    const fallbackTimer = window.setTimeout(
+      () => void loadLobby(),
+      initialLobby ? 10_000 : 0
+    );
 
     const interval = window.setInterval(() => {
       void loadLobby();
     }, 30_000);
 
-return () => {
+    return () => {
+      window.clearTimeout(fallbackTimer);
       window.clearInterval(interval);
     };
-  }, [loadLobby]);
+  }, [initialLobby, liveConnected, loadLobby]);
 
   useEffect(() => {
     if (typeof window === "undefined" || typeof EventSource === "undefined") {
       return;
     }
 
-    const source = new EventSource("/api/lobby/stream");
+    let cancelled = false;
+    let source: EventSource | null = null;
+    let timer: number | null = null;
+    let idleHandle: number | null = null;
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (
+        callback: IdleRequestCallback,
+        options?: IdleRequestOptions
+      ) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
 
-    const handleSnapshot = (event: MessageEvent<string>) => {
-      try {
-        const snapshot = JSON.parse(event.data) as LobbySnapshot;
-        setLobby((current) =>
-          current
-            ? {
-                ...snapshot,
-                messages: mergeLobbyMessagesById(current.messages, snapshot.messages),
-              }
-            : snapshot
-        );
-        setLobbyError(null);
-        setLiveConnected(true);
-      } catch (error) {
-        console.warn("Failed to parse live lobby snapshot:", error);
+    const connect = () => {
+      if (cancelled || source) return;
+      source = new EventSource("/api/lobby/stream");
+
+      source.addEventListener("snapshot", ((event: MessageEvent<string>) => {
+        try {
+          const snapshot = JSON.parse(event.data) as LobbySnapshot;
+          setLobby((current) =>
+            current
+              ? {
+                  ...snapshot,
+                  messages: mergeLobbyMessagesById(current.messages, snapshot.messages),
+                }
+              : snapshot
+          );
+          setLobbyError(null);
+          setLiveConnected(true);
+        } catch (error) {
+          console.warn("Failed to parse live lobby snapshot:", error);
+        }
+      }) as EventListener);
+
+      source.onopen = () => setLiveConnected(true);
+      source.onerror = () => setLiveConnected(false);
+    };
+
+    const scheduleConnection = () => {
+      if (idleWindow.requestIdleCallback) {
+        idleHandle = idleWindow.requestIdleCallback(connect, { timeout: 1_800 });
+      } else {
+        timer = window.setTimeout(connect, 700);
       }
     };
 
-    const handleStreamError = () => {
-      setLiveConnected(false);
-    };
-
-    source.addEventListener("snapshot", handleSnapshot as EventListener);
-    source.addEventListener("error", handleStreamError as EventListener);
-
-    source.onopen = () => {
-      setLiveConnected(true);
-    };
-
-    source.onerror = () => {
-      setLiveConnected(false);
-    };
+    if (document.readyState === "complete") scheduleConnection();
+    else window.addEventListener("load", scheduleConnection, { once: true });
 
     return () => {
-      source.removeEventListener("snapshot", handleSnapshot as EventListener);
-      source.removeEventListener("error", handleStreamError as EventListener);
-      source.close();
+      cancelled = true;
+      window.removeEventListener("load", scheduleConnection);
+      if (timer !== null) window.clearTimeout(timer);
+      if (idleHandle !== null) idleWindow.cancelIdleCallback?.(idleHandle);
+      source?.close();
       setLiveConnected(false);
     };
   }, []);
@@ -1335,23 +1402,42 @@ return () => {
         ? "dm"
         : "rm";
 
-    // Warm the opposite lane immediately after paint.
-    // Only the first visible chunk is needed; the panel's
-    // existing infinite loader owns subsequent pages.
-    void prefetchLeaderboardLane(
-      alternateLane,
-      LEADERBOARD_LANE_PREFETCH_SIZE,
-    ).then((summary) => {
-      if (
-        summary &&
-        summary.lane ===
-          leaderboardLane
-      ) {
-        setLaneLeaderboard(
-          summary,
-        );
+    let timer: number | null = null;
+    let idleHandle: number | null = null;
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (
+        callback: IdleRequestCallback,
+        options?: IdleRequestOptions
+      ) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    const connection = (
+      navigator as Navigator & {
+        connection?: { saveData?: boolean; effectiveType?: string };
       }
-    });
+    ).connection;
+    const warmAlternateLane = () => {
+      if (connection?.saveData || /(^|-)2g$/.test(connection?.effectiveType ?? "")) {
+        return;
+      }
+      void prefetchLeaderboardLane(
+        alternateLane,
+        LEADERBOARD_LANE_PREFETCH_SIZE,
+      );
+    };
+
+    if (idleWindow.requestIdleCallback) {
+      idleHandle = idleWindow.requestIdleCallback(warmAlternateLane, {
+        timeout: 4_500,
+      });
+    } else {
+      timer = window.setTimeout(warmAlternateLane, 2_500);
+    }
+
+    return () => {
+      if (timer !== null) window.clearTimeout(timer);
+      if (idleHandle !== null) idleWindow.cancelIdleCallback?.(idleHandle);
+    };
   }, [
     baseLeaderboard,
     leaderboardLane,
@@ -2000,29 +2086,35 @@ return (
               }
             />
           </HeroTakeoverSlot>
-          <Aoe2ShortsTile />
-          <WatchAndChatHero
-            tournament={tournament}
-            recentMatches={recentMatches}
-            messages={messages}
-            themeKey={tileThemeKey}
-            viewMode={viewMode}
-            variant={isExtremeLobby ? "extreme" : "standard"}
-            isAuthenticated={isAuthenticated}
-            messageBody={messageBody}
-            chatPending={chatPending}
-            onMessageBodyChange={setMessageBody}
-            onSendMessage={() => {
-              void handleSendMessage();
-            }}
-            onLogin={() => loginWithSteam("/")}
-          />
-          <WoloMarketTile
-            market={woloMarket}
-            themeKey={tileThemeKey}
-            viewMode={viewMode}
-            surface={isExtremeLobby ? "extreme" : "standard"}
-          />
+          <AheadOfScroll minHeight="38rem">
+            <Aoe2ShortsTile />
+          </AheadOfScroll>
+          <AheadOfScroll minHeight="46rem">
+            <WatchAndChatHero
+              tournament={tournament}
+              recentMatches={recentMatches}
+              messages={messages}
+              themeKey={tileThemeKey}
+              viewMode={viewMode}
+              variant={isExtremeLobby ? "extreme" : "standard"}
+              isAuthenticated={isAuthenticated}
+              messageBody={messageBody}
+              chatPending={chatPending}
+              onMessageBodyChange={setMessageBody}
+              onSendMessage={() => {
+                void handleSendMessage();
+              }}
+              onLogin={() => loginWithSteam("/")}
+            />
+          </AheadOfScroll>
+          <AheadOfScroll minHeight="36rem">
+            <WoloMarketTile
+              market={woloMarket}
+              themeKey={tileThemeKey}
+              viewMode={viewMode}
+              surface={isExtremeLobby ? "extreme" : "standard"}
+            />
+          </AheadOfScroll>
         </>
       ) : null}
 

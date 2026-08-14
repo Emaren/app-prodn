@@ -24,6 +24,7 @@ type TimeDisplayTextProps = {
   timeOnly?: boolean;
   weekday?: "short" | "long";
   month?: "short" | "long";
+  interactive?: boolean;
 };
 
 function formatForMode(
@@ -85,6 +86,7 @@ export default function TimeDisplayText({
   timeOnly = false,
   weekday,
   month,
+  interactive = true,
 }: TimeDisplayTextProps) {
   const {
     timeClockMode,
@@ -160,6 +162,14 @@ export default function TimeDisplayText({
 
   if (primaryText === "—") {
     return <span className={className}>{emptyValue}</span>;
+  }
+
+  if (!interactive) {
+    return (
+      <span className={className} title={utcText}>
+        {primaryText}
+      </span>
+    );
   }
 
   function toggleMobileReveal() {

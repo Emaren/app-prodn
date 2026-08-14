@@ -188,17 +188,42 @@ test("the shared matchup scan preserves the full Emaren-Sechma series beyond the
   ];
 
   let queryTake: number | undefined;
+  let matchupQueryCount = 0;
+  let generationRevision = 1;
   const prisma = {
     gameStats: {
+      findFirst: async () => ({
+        id: generationRevision,
+        is_final: true,
+        parse_iteration: generationRevision,
+        parse_reason: "recorded_resignation_final",
+        parse_source: "watcher_final",
+        winner: "Emaren",
+      }),
       findMany: async (
         options: {
           take?: number;
         }
       ) => {
+        matchupQueryCount += 1;
         queryTake = options.take;
         return corpus;
       },
     },
+    replayStatProjection: {
+      findFirst: async () => null,
+    },
+    replayPlayerSnapshot: {
+      findFirst: async () => null,
+    },
+    replayResultAdjudication: {
+      findFirst: async () => null,
+    },
+    $queryRaw: async () => [
+      {
+        fingerprint: `identity-${generationRevision}`,
+      },
+    ],
   } as unknown as Parameters<
     typeof loadRecentFinalMatchupRows
   >[0];
@@ -249,6 +274,11 @@ test("the shared matchup scan preserves the full Emaren-Sechma series beyond the
     queryTake,
     undefined
   );
+  assert.equal(
+    matchupQueryCount,
+    1,
+    "numeric and canonical views should share one complete-corpus projection"
+  );
   assert.deepEqual(
     {
       meetings:
@@ -275,5 +305,52 @@ test("the shared matchup scan preserves the full Emaren-Sechma series beyond the
       canonicalSummary.rightWins +
       canonicalSummary.unknowns,
     canonicalSummary.totalMatches
+  );
+
+  corpus.unshift(
+    provenEmarenWin(
+      21_000,
+      "2026-07-29T18:30:26.000Z"
+    )
+  );
+  generationRevision += 1;
+
+  await new Promise((resolve) => setTimeout(resolve, 1_050));
+
+  const [refreshedRows, concurrentRows] =
+    await Promise.all([
+      loadRecentFinalMatchupRows(
+        prisma,
+        PUBLIC_MATCHUP_SCAN_LIMIT
+      ),
+      loadRecentFinalMatchupRows(
+        prisma,
+        PUBLIC_MATCHUP_SCAN_LIMIT
+      ),
+    ]);
+  assert.equal(
+    concurrentRows.length,
+    refreshedRows.length,
+    "same-generation concurrent readers should share the in-flight projection"
+  );
+  const refreshedSummary =
+    buildPlayerPairRivalryContext(
+      refreshedRows,
+      emaren,
+      sechma
+    );
+
+  assert.equal(
+    matchupQueryCount,
+    2,
+    "a new public replay generation must invalidate the shared projection"
+  );
+  assert.equal(
+    refreshedSummary.totalMatches,
+    14
+  );
+  assert.equal(
+    refreshedSummary.leftWins,
+    10
   );
 });

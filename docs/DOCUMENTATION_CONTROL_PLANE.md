@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **59**
+- Authoritative repository documents: **60**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -35,7 +35,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 - `explanation`: 4
 - `generated`: 1
-- `historical`: 11
+- `historical`: 12
 - `reference`: 32
 - `runbook`: 10
 - `working`: 1
@@ -44,7 +44,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 - `active`: 46
 - `generated`: 1
-- `historical`: 11
+- `historical`: 12
 - `superseded`: 1
 
 ## Documents
@@ -86,6 +86,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Parser Engine Room: Durable Data Foundation](PARSER_ENGINE_ROOM.md) | `explanation` | `active` | `architecture-explanation` |
 | [Parser Observatory](PARSER_OBSERVATORY.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Production Performance Audit — 2026-07-18](PERFORMANCE_AUDIT_2026-07-18.md) | `historical` | `historical` | `historical-evidence` |
+| [AoE2WAR Production Performance Audit — 2026-08-13](PERFORMANCE_AUDIT_2026-08-13.md) | `historical` | `historical` | `release-evidence` |
 | [Player Identity Wave 2 — Deterministic Discovery V2](PLAYER_IDENTITY_DISCOVERY_WAVE2.md) | `reference` | `active` | `implementation-contract` |
 | [AoE2WAR Production Parity Seal — 2026-07-26](PRODUCTION_PARITY_2026-07-26.md) | `historical` | `historical` | `historical-evidence` |
 | [Radio WOLO](RADIO_WOLO.md) | `reference` | `active` | `product-contract` |

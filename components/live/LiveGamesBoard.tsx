@@ -1086,7 +1086,7 @@ function ClassicBoard({
       const target = event.currentTarget;
       const distanceFromBottom = target.scrollHeight - target.scrollTop - target.clientHeight;
 
-      if (distanceFromBottom < 220) {
+      if (distanceFromBottom < 1800) {
         void loadMoreArchiveMatches();
       }
     },

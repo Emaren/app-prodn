@@ -408,7 +408,7 @@ function ProfilePageContent() {
     (event: UIEvent<HTMLDivElement>) => {
       const element = event.currentTarget;
       const nearBottom =
-        element.scrollHeight - element.scrollTop - element.clientHeight < 72;
+        element.scrollHeight - element.scrollTop - element.clientHeight < 1600;
       if (nearBottom) {
         void loadMoreMoneyRows();
       }

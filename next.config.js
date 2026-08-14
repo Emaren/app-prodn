@@ -63,6 +63,37 @@ module.exports = {
       key: "Cache-Control",
       value: "public, max-age=86400, stale-while-revalidate=604800",
     };
+    const publicMediaDirectories = [
+      "academy",
+      "brand",
+      "featured-warriors",
+      "icons",
+      "kingdom",
+      "legacy",
+      "lobby",
+      "market",
+      "shorts",
+      "social",
+      "watcher",
+      "workshop",
+    ];
+    const publicMediaExtensions =
+      "avif|gif|ico|jpeg|jpg|mp4|png|svg|webm|webp";
+    const explicitPublicMediaSources = [
+      "/bets/betting_hall2.png",
+      "/champions/:collection(belts|designations|payout-cards|players)/:path*.:ext(avif|gif|jpeg|jpg|png|svg|webp)",
+      "/clans/:asset(mystikal-crest.webp|mystikal-wordmark.png|mystikal-wordmark-transparent.png)",
+      "/oracle/:asset(oracle-hero-bg.png|oracle-hero-bg.webp)",
+      "/watch/aoe2hd-screen.svg",
+      "/watch/:collection(previews|recordings)/:path*.:ext(mp4|webm)",
+    ];
+    const publicMediaHeaders = [
+      imageCacheHeader,
+      {
+        key: "X-AoE2WAR-Public-Cache",
+        value: "AOE2WAR_PUBLIC_IMAGE_CACHE",
+      },
+    ];
 
     return [
       {
@@ -92,30 +123,17 @@ module.exports = {
         ],
       },
 
-      {
-        source: "/brand/:path*",
-        headers: [imageCacheHeader, { key: "X-AoE2WAR-Public-Cache", value: "AOE2WAR_PUBLIC_IMAGE_CACHE" }],
-      },
-      {
-        source: "/champions/:path*",
-        headers: [imageCacheHeader, { key: "X-AoE2WAR-Public-Cache", value: "AOE2WAR_PUBLIC_IMAGE_CACHE" }],
-      },
-      {
-        source: "/icons/:path*",
-        headers: [imageCacheHeader, { key: "X-AoE2WAR-Public-Cache", value: "AOE2WAR_PUBLIC_IMAGE_CACHE" }],
-      },
-      {
-        source: "/legacy/:path*",
-        headers: [imageCacheHeader, { key: "X-AoE2WAR-Public-Cache", value: "AOE2WAR_PUBLIC_IMAGE_CACHE" }],
-      },
-      {
-        source: "/lobby/:path*",
-        headers: [imageCacheHeader, { key: "X-AoE2WAR-Public-Cache", value: "AOE2WAR_PUBLIC_IMAGE_CACHE" }],
-      },
-      {
-        source: "/watcher/:path*",
-        headers: [imageCacheHeader, { key: "X-AoE2WAR-Public-Cache", value: "AOE2WAR_PUBLIC_IMAGE_CACHE" }],
-      },
+      ...publicMediaDirectories.map((directory) => ({
+        // Match only real media files. Directory roots and dynamic product
+        // routes such as /bets/[marketId] or /watch/[sessionKey] must never
+        // inherit static-asset cache semantics.
+        source: `/${directory}/:path*.:ext(${publicMediaExtensions})`,
+        headers: publicMediaHeaders,
+      })),
+      ...explicitPublicMediaSources.map((source) => ({
+        source,
+        headers: publicMediaHeaders,
+      })),
     ];
   },
 

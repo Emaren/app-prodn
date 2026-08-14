@@ -1,8 +1,6 @@
 "use client";
 
-import type {
-  ReactNode,
-} from "react";
+import dynamic from "next/dynamic";
 
 import {
   useTileViewPreference,
@@ -11,6 +9,23 @@ import {
   TILE_VIEW_MODES,
   type TileViewMode,
 } from "@/lib/tileViewPreferences";
+import type { RivalriesViewsProps } from "@/components/rivalries/RivalriesViews";
+
+const BasicRivalriesView = dynamic(
+  () => import("@/components/rivalries/BasicRivalriesView")
+);
+const AdvancedRivalriesView = dynamic(
+  () =>
+    import("@/components/rivalries/RivalriesViews").then(
+      (module) => module.AdvancedRivalriesView
+    )
+);
+const ExtremeRivalriesView = dynamic(
+  () =>
+    import("@/components/rivalries/RivalriesViews").then(
+      (module) => module.ExtremeRivalriesView
+    )
+);
 
 const VIEW_LABELS: Record<
   TileViewMode,
@@ -21,15 +36,7 @@ const VIEW_LABELS: Record<
   extreme: "Extreme",
 };
 
-export default function RivalriesViewShell({
-  basicView,
-  advancedView,
-  extremeView,
-}: {
-  basicView: ReactNode;
-  advancedView: ReactNode;
-  extremeView: ReactNode;
-}) {
+export default function RivalriesViewShell(props: RivalriesViewsProps) {
   const {
     viewMode,
     setViewMode,
@@ -39,10 +46,10 @@ export default function RivalriesViewShell({
 
   const activeView =
     viewMode === "basic"
-      ? basicView
+      ? <BasicRivalriesView {...props} />
       : viewMode === "advanced"
-        ? advancedView
-        : extremeView;
+        ? <AdvancedRivalriesView {...props} />
+        : <ExtremeRivalriesView {...props} />;
 
   return (
     <div

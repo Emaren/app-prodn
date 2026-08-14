@@ -203,14 +203,14 @@ export async function getRequestBoardSnapshot(
   prisma: PrismaClient,
   viewerUid?: string | null
 ): Promise<RequestBoardSnapshot> {
-  const viewer = viewerUid
-    ? await prisma.user.findUnique({
-        where: { uid: viewerUid },
-        select: USER_SELECT,
-      })
-    : null;
-
-  const requests = await prisma.communityRequest.findMany({
+  const [viewer, requests] = await Promise.all([
+    viewerUid
+      ? prisma.user.findUnique({
+          where: { uid: viewerUid },
+          select: USER_SELECT,
+        })
+      : Promise.resolve(null),
+    prisma.communityRequest.findMany({
     include: {
       author: { select: USER_SELECT },
       completedBy: { select: USER_SELECT },
@@ -234,7 +234,8 @@ export async function getRequestBoardSnapshot(
         },
       },
     },
-  });
+    }),
+  ]);
 
   const mapped = requests.map((request) => mapRequest(request, viewer));
   const items = mapped

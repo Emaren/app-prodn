@@ -44,6 +44,7 @@ import {
   type ParsedReplaySides,
   type ReplaySideFormat,
 } from "@/lib/replaySides";
+import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
 
 /*
  * Rivalry totals are historical corpus truth, not a recent-feed sample.
@@ -78,6 +79,23 @@ export type MatchupGameRow = {
   parse_source?: string | null;
   warEngineCase?: WarEngineCaseView | null;
 };
+
+const PUBLIC_MATCHUP_ROWS_CACHE_TTL_MS = 15_000;
+
+type PublicMatchupRowsCacheEntry = {
+  expiresAt: number;
+  generation: string;
+  rows: MatchupGameRow[];
+};
+
+type PublicMatchupRowsPromiseEntry = {
+  generation: string;
+  value: Promise<MatchupGameRow[]>;
+};
+
+let publicMatchupRowsCache: PublicMatchupRowsCacheEntry | null = null;
+let publicMatchupRowsPromise: PublicMatchupRowsPromiseEntry | null = null;
+let latestRequestedPublicMatchupGeneration: string | null = null;
 
 export type RivalSummary = {
   ref: PublicPlayerRef;
@@ -353,26 +371,10 @@ function sortMatchRowsByPlayedAtDesc(
   return right.id - left.id;
 }
 
-export async function loadRecentFinalMatchupRows(
+async function loadRecentFinalMatchupRowsFresh(
   prisma: PrismaClient,
-  take: number | null
+  queryTake: number | null
 ) {
-  const requestedTake =
-    take === null
-      ? null
-      : Math.max(
-          1,
-          take
-        );
-  const queryTake =
-    requestedTake === null ||
-    PUBLIC_MATCHUP_SCAN_LIMIT === null
-      ? null
-      : Math.max(
-          requestedTake,
-          PUBLIC_MATCHUP_SCAN_LIMIT
-        );
-
   const candidateMatches =
     await prisma.gameStats.findMany({
       where: { is_final: true },
@@ -414,6 +416,93 @@ export async function loadRecentFinalMatchupRows(
     candidateMatches
     .map((game) => applyReplayAdjudicationToGameStats(game) as MatchupGameRow)
     .sort(sortMatchRowsByPlayedAtDesc);
+
+  return sortedMatches;
+}
+
+async function loadCompletePublicMatchupRows(
+  prisma: PrismaClient
+) {
+  let generation: string;
+
+  try {
+    generation = await loadPublicReplayGeneration(prisma);
+  } catch (error) {
+    console.warn(
+      "Failed to read the public replay generation for matchup caching:",
+      error
+    );
+    return loadRecentFinalMatchupRowsFresh(prisma, null);
+  }
+
+  const now = Date.now();
+
+  if (
+    publicMatchupRowsCache &&
+    publicMatchupRowsCache.generation === generation &&
+    publicMatchupRowsCache.expiresAt > now
+  ) {
+    return publicMatchupRowsCache.rows;
+  }
+
+  if (
+    publicMatchupRowsPromise &&
+    publicMatchupRowsPromise.generation === generation
+  ) {
+    return publicMatchupRowsPromise.value;
+  }
+
+  latestRequestedPublicMatchupGeneration = generation;
+
+  const run = loadRecentFinalMatchupRowsFresh(prisma, null)
+    .then((rows) => {
+      if (latestRequestedPublicMatchupGeneration === generation) {
+        publicMatchupRowsCache = {
+          expiresAt: Date.now() + PUBLIC_MATCHUP_ROWS_CACHE_TTL_MS,
+          generation,
+          rows,
+        };
+      }
+
+      return rows;
+    })
+    .finally(() => {
+      if (publicMatchupRowsPromise?.value === run) {
+        publicMatchupRowsPromise = null;
+      }
+    });
+
+  publicMatchupRowsPromise = {
+    generation,
+    value: run,
+  };
+
+  return run;
+}
+
+export async function loadRecentFinalMatchupRows(
+  prisma: PrismaClient,
+  take: number | null
+) {
+  const requestedTake =
+    take === null
+      ? null
+      : Math.max(
+          1,
+          take
+        );
+  const queryTake =
+    requestedTake === null ||
+    PUBLIC_MATCHUP_SCAN_LIMIT === null
+      ? null
+      : Math.max(
+          requestedTake,
+          PUBLIC_MATCHUP_SCAN_LIMIT
+        );
+  const sortedMatches =
+    queryTake === null
+      ? await loadCompletePublicMatchupRows(prisma)
+      : await loadRecentFinalMatchupRowsFresh(prisma, queryTake);
 
   return requestedTake === null
     ? sortedMatches

@@ -81,11 +81,11 @@ export default function SpeedProof() {
     // Covers initial hydration where the recorder can publish before this
     // component's effect subscription is active.
     findCurrentProof();
-    const interval = window.setInterval(findCurrentProof, 250);
-    const timeout = window.setTimeout(() => window.clearInterval(interval), 15_000);
+    const timers = [400, 1_200, 3_000, 7_000].map((delay) =>
+      window.setTimeout(findCurrentProof, delay)
+    );
     return () => {
-      window.clearInterval(interval);
-      window.clearTimeout(timeout);
+      timers.forEach((timer) => window.clearTimeout(timer));
     };
   }, [route]);
 

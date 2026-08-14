@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 
-import LobbyClientOnly from "@/app/lobby/LobbyClientOnly";
+import HomePageClient from "@/app/HomePageClient";
 import { loadPublishedHeroPlaylist } from "@/lib/hero/service";
 import { readGuestReactionSessionIdFromCookies } from "@/lib/guestReactionSession";
 import { loadLobbySnapshot } from "@/lib/lobbySnapshot";
@@ -24,7 +24,7 @@ export default async function LobbyPage() {
   ]);
 
   return (
-    <LobbyClientOnly
+    <HomePageClient
       initialLobby={initialLobby}
       initialHeroPlaylist={initialHeroPlaylist}
     />

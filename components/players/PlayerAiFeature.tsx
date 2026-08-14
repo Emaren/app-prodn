@@ -475,13 +475,13 @@ export function PlayerHeroAiDomBinder(props: PlayerAiFeatureProps) {
     };
 
     markHeroSurfaces();
+    const frame = window.requestAnimationFrame(markHeroSurfaces);
 
-    const interval = window.setInterval(markHeroSurfaces, 900);
     window.addEventListener("resize", markHeroSurfaces);
     window.addEventListener("focus", markHeroSurfaces);
 
     return () => {
-      window.clearInterval(interval);
+      window.cancelAnimationFrame(frame);
       window.removeEventListener("resize", markHeroSurfaces);
       window.removeEventListener("focus", markHeroSurfaces);
     };

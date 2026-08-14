@@ -1,11 +1,11 @@
 "use client";
 
 import { MessageSquareMore, X } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
 
-import ContactInboxPanel from "@/components/contact/ContactInboxPanel";
 import {
   mergeContactInboxPayload,
   type MergeContactInboxPayloadOptions,
@@ -17,6 +17,18 @@ import type {
   ContactTextMessage,
 } from "@/components/contact/types";
 import { useUserAuth } from "@/context/UserAuthContext";
+
+const ContactInboxPanel = dynamic(
+  () => import("@/components/contact/ContactInboxPanel"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full items-center justify-center text-xs font-semibold uppercase tracking-[0.24em] text-slate-500">
+        Opening inbox…
+      </div>
+    ),
+  }
+);
 
 function readDetail(payload: unknown) {
   if (!payload || typeof payload !== "object") {

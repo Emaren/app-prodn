@@ -183,7 +183,7 @@ function ArchiveCard({
 
   return (
     <article
-      className="rounded-[1.75rem] border border-white/[0.085] bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.065),transparent_28%),linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.014))] p-5 shadow-[0_18px_55px_rgba(0,0,0,0.24)] transition hover:border-amber-100/16 hover:bg-white/[0.045]"
+      className="rounded-[1.75rem] border border-white/[0.085] bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.065),transparent_28%),linear-gradient(145deg,rgba(255,255,255,0.04),rgba(255,255,255,0.014))] p-5 shadow-[0_18px_55px_rgba(0,0,0,0.24)] transition [content-visibility:auto] [contain-intrinsic-size:auto_22rem] hover:border-amber-100/16 hover:bg-white/[0.045]"
       data-vault-number={vaultNumber}
       data-game-stats-id={entry.gameId}
     >

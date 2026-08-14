@@ -90,7 +90,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           src="https://plausible.io/js/script.js"
         />
         <Script
-          strategy="afterInteractive"
+          strategy="lazyOnload"
           src="https://traffic.tokentap.ca/api/beacon.js"
           data-project="aoe2hdbets"
         />

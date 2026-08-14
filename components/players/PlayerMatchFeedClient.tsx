@@ -316,7 +316,7 @@ export default function PlayerMatchFeedClient({
     (event: UIEvent<HTMLDivElement>) => {
       const node = event.currentTarget;
       const distanceFromBottom = node.scrollHeight - node.scrollTop - node.clientHeight;
-      if (distanceFromBottom < 520) {
+      if (distanceFromBottom < 1600) {
         void loadMore();
       }
     },
@@ -334,7 +334,7 @@ export default function PlayerMatchFeedClient({
       },
       {
         root: scrollerRef.current,
-        rootMargin: "360px",
+        rootMargin: "1600px 0px",
       }
     );
 
@@ -364,7 +364,7 @@ export default function PlayerMatchFeedClient({
         )}
       </div>
 
-      <div ref={scrollerRef} onScroll={handleFeedScroll} className="max-h-[min(74dvh,56rem)] space-y-3 overflow-y-auto overscroll-contain pr-1 scroll-smooth [scrollbar-width:thin] [scrollbar-color:rgba(251,191,36,0.35)_rgba(15,23,42,0.55)] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]">
+      <div ref={scrollerRef} onScroll={handleFeedScroll} className="max-h-[min(74dvh,56rem)] space-y-3 overflow-y-auto overscroll-contain pr-1 scroll-smooth [contain:layout_paint] [scrollbar-gutter:stable] [scrollbar-width:thin] [scrollbar-color:rgba(251,191,36,0.35)_rgba(15,23,42,0.55)] [-webkit-overflow-scrolling:touch] [touch-action:pan-y]">
         {items.length === 0 ? (
           <div className="rounded-[1.25rem] border border-white/8 bg-white/5 px-4 py-5 text-sm text-slate-300">
             No replay-backed matches have landed here yet.
@@ -373,7 +373,10 @@ export default function PlayerMatchFeedClient({
           items.map((item) => {
             if (variant === "classic") {
               return (
-                <div key={item.id} className="space-y-2">
+                <div
+                  key={item.id}
+                  className="space-y-2 [content-visibility:auto] [contain-intrinsic-size:auto_10rem]"
+                >
                   <Link
                     href={item.href}
                     className={`block rounded-2xl border border-white/8 bg-white/5 px-4 py-4 transition hover:bg-white/10 ${accentHoverClass(accent)}`}
@@ -406,7 +409,10 @@ export default function PlayerMatchFeedClient({
             }
 
             return (
-              <div key={item.id} className="space-y-2">
+              <div
+                key={item.id}
+                className="space-y-2 [content-visibility:auto] [contain-intrinsic-size:auto_11rem]"
+              >
                 <Link
                   href={item.href}
                   className={`block rounded-[1.25rem] border border-white/8 bg-white/5 px-4 py-4 transition hover:bg-white/10 ${accentHoverClass(accent)}`}

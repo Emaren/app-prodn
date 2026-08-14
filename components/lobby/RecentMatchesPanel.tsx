@@ -413,7 +413,7 @@ export function RecentMatchesPanel({
       viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
 
     const needsMoreRows = viewport.scrollHeight <= viewport.clientHeight + 24;
-    const nearBottom = distanceFromBottom <= 320;
+    const nearBottom = distanceFromBottom <= 2200;
 
     if (needsMoreRows || nearBottom) {
       void loadMoreMatches();
@@ -453,7 +453,7 @@ export function RecentMatchesPanel({
       },
       {
         root,
-        rootMargin: "280px 0px",
+        rootMargin: "2200px 0px",
         threshold: 0.01,
       }
     );
@@ -901,7 +901,7 @@ const MatchCard = memo(function MatchCard({
   return (
     <Link
       href={`/game-stats/${match.id}`}
-      className={`relative block rounded-2xl border px-4 py-4 transition-colors duration-150 ${
+      className={`relative block rounded-2xl border px-4 py-4 transition-colors duration-150 [content-visibility:auto] [contain-intrinsic-size:auto_8rem] ${
         isOneVOne
           ? ""
           : "min-h-[112px]"

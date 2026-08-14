@@ -60,7 +60,7 @@ import {
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
 const BETTING_HALL_HERO_SRC = "/bets/betting_hall2.png";
 const STAKE_OPTIONS = [10, 25, 50, 100] as const;
-const BETS_POLL_INTERVAL_MS = 2_000;
+const BETS_POLL_INTERVAL_MS = 5_000;
 const STAKE_RECOVERY_STORAGE_KEY = "aoe2hdbets.betStakeRecovery.v1";
 const TICKET_RECOVERY_STORAGE_KEY = "aoe2hdbets.betTicketRecovery.v1";
 const BETS_VIEW_STORAGE_KEY = "aoe2hdbets.betsView.v4";

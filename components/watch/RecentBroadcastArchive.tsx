@@ -1,7 +1,8 @@
 "use client";
 
-import { type ReactNode, useMemo, useState, type UIEvent } from "react";
+import { type ReactNode, useMemo, useRef, useState, type UIEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import WatchPreviewScreen from "@/components/watch/WatchPreviewScreen";
 
@@ -32,6 +33,7 @@ export default function RecentBroadcastArchive({
   matches: WatchArchiveMatch[];
 }) {
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT);
+  const lastRevealAtRef = useRef(0);
   const visibleMatches = useMemo(
     () => matches.slice(0, Math.min(visibleCount, matches.length)),
     [matches, visibleCount]
@@ -40,9 +42,11 @@ export default function RecentBroadcastArchive({
   function handleScroll(event: UIEvent<HTMLDivElement>) {
     const element = event.currentTarget;
     const nearBottom =
-      element.scrollHeight - element.scrollTop - element.clientHeight < 220;
+      element.scrollHeight - element.scrollTop - element.clientHeight < 1800;
     if (!nearBottom) return;
+    if (Date.now() - lastRevealAtRef.current < 180) return;
 
+    lastRevealAtRef.current = Date.now();
     setVisibleCount((current) => Math.min(matches.length, current + LOAD_STEP));
   }
 
@@ -89,10 +93,15 @@ export default function RecentBroadcastArchive({
 }
 
 function ArchiveCard({ match }: { match: WatchArchiveMatch }) {
+  const router = useRouter();
+
   return (
     <Link
       href={match.href}
-      className="group block overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/[0.035] transition hover:-translate-y-0.5 hover:border-sky-300/35 hover:bg-sky-400/[0.06]"
+      prefetch={false}
+      onMouseEnter={() => router.prefetch(match.href)}
+      onFocus={() => router.prefetch(match.href)}
+      className="group block overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/[0.035] transition [content-visibility:auto] [contain-intrinsic-size:auto_28rem] hover:-translate-y-0.5 hover:border-sky-300/35 hover:bg-sky-400/[0.06]"
     >
       <div className="relative aspect-video overflow-hidden bg-black">
         <ArchivePreview match={match} />

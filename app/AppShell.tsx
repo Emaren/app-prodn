@@ -1,18 +1,15 @@
 "use client";
 
 import React from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Anvil, BarChart3, Bot, Castle, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, UsersRound, X, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
-import ClientFlightRecorder from "@/components/analytics/ClientFlightRecorder";
-import UserExperienceTracker from "@/components/analytics/UserExperienceTracker";
-import SpeedProof from "@/components/speed/SpeedProof";
 import SpeedRuntime from "@/components/speed/SpeedRuntime";
 import SpeedWebVitals from "@/components/speed/SpeedWebVitals";
-import HeaderInboxControl from "@/components/contact/HeaderInboxControl";
 import AoE2WarIntlProvider from "@/components/i18n/AoE2WarIntlProvider";
 import UniversalTranslator from "@/components/i18n/UniversalTranslator";
 import HeaderMenu from "@/components/HeaderMenu";
@@ -25,16 +22,49 @@ import {
   LobbyAppearanceProvider,
   useLobbyAppearance,
 } from "@/components/lobby/LobbyAppearanceContext";
-import { GlobalInstallAppPrompt } from "@/components/pwa/InstallAppPrompt";
-import MobileFloatingNav from "@/components/pwa/MobileFloatingNav";
-import AoE2WarFooter from "@/components/pwa/AoE2WarFooter";
-import ClanWarhouseFooter from "@/components/clans/ClanWarhouseFooter";
 import { getTileViewMode } from "@/lib/tileViewPreferences";
 import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
-import { Toaster } from "sonner";
-import { Providers } from "./Providers";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
 import { UniversalLanguageProvider } from "@/context/UniversalLanguageContext";
+
+const HeaderInboxControl = dynamic(
+  () => import("@/components/contact/HeaderInboxControl"),
+  { ssr: false }
+);
+const SpeedProof = dynamic(() => import("@/components/speed/SpeedProof"), {
+  ssr: false,
+});
+const UserExperienceTracker = dynamic(
+  () => import("@/components/analytics/UserExperienceTracker"),
+  { ssr: false }
+);
+const ClientFlightRecorder = dynamic(
+  () => import("@/components/analytics/ClientFlightRecorder"),
+  { ssr: false }
+);
+const MobileFloatingNav = dynamic(
+  () => import("@/components/pwa/MobileFloatingNav"),
+  { ssr: false }
+);
+const AoE2WarFooter = dynamic(
+  () => import("@/components/pwa/AoE2WarFooter"),
+  { ssr: false }
+);
+const ClanWarhouseFooter = dynamic(
+  () => import("@/components/clans/ClanWarhouseFooter"),
+  { ssr: false }
+);
+const GlobalInstallAppPrompt = dynamic(
+  () =>
+    import("@/components/pwa/InstallAppPrompt").then(
+      (module) => module.GlobalInstallAppPrompt
+    ),
+  { ssr: false }
+);
+const Toaster = dynamic(
+  () => import("sonner").then((module) => module.Toaster),
+  { ssr: false }
+);
 
 const HEADER_LINKS: ReadonlyArray<{
   href: string;
@@ -294,6 +324,7 @@ function HeaderPillLink({
   requestCount?: number;
 }) {
   const t = useTranslations("Shell");
+  const router = useRouter();
   const displayLabel =
     href === "/requests"
       ? t("requests", {
@@ -305,6 +336,9 @@ function HeaderPillLink({
   return (
     <Link
       href={href}
+      prefetch={false}
+      onMouseEnter={() => router.prefetch(href)}
+      onFocus={() => router.prefetch(href)}
       aria-current={active ? "page" : undefined}
       className={`relative inline-flex min-h-9 shrink-0 items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-[11px] font-semibold tracking-[0.01em] transition duration-200 xl:px-3.5 ${
         active
@@ -407,17 +441,15 @@ function KingdomNavItem({
         <span className="relative z-10">🏰</span>
       </button>
 
-      <div
-        className={`absolute left-1/2 top-full z-[220] hidden w-[22rem] -translate-x-1/2 pt-7 transition duration-150 sm:block ${
-          open
-            ? "pointer-events-auto translate-y-0 opacity-100"
-            : "pointer-events-none -translate-y-1 opacity-0"
-        }`}
-        onMouseEnter={openMenu}
-        onMouseLeave={scheduleClose}
-      >
-        <KingdomMenuPanel key={open ? "kingdom-open" : "kingdom-closed"} onNavigate={() => setOpen(false)} />
-      </div>
+      {open ? (
+        <div
+          className="absolute left-1/2 top-full z-[220] hidden w-[22rem] -translate-x-1/2 pt-7 sm:block"
+          onMouseEnter={openMenu}
+          onMouseLeave={scheduleClose}
+        >
+          <KingdomMenuPanel onNavigate={() => setOpen(false)} />
+        </div>
+      ) : null}
 
       {portalReady && open
         ? createPortal(
@@ -468,6 +500,7 @@ function KingdomMenuPanel({
   mobile?: boolean;
 }) {
   const t = useTranslations("Shell");
+  const router = useRouter();
 
   return (
     <div
@@ -489,6 +522,9 @@ function KingdomMenuPanel({
             <Link
               key={item.href}
               href={item.href}
+              prefetch={false}
+              onMouseEnter={() => router.prefetch(item.href)}
+              onFocus={() => router.prefetch(item.href)}
               role="menuitem"
               onClick={() => {
                 if (item.href === "/leaderboard") {
@@ -528,10 +564,14 @@ function HeaderLiveGamesLink({
   active?: boolean;
 }) {
   const t = useTranslations("Shell");
+  const router = useRouter();
 
   return (
     <Link
       href="/live-games"
+      prefetch={false}
+      onMouseEnter={() => router.prefetch("/live-games")}
+      onFocus={() => router.prefetch("/live-games")}
       aria-current={active ? "page" : undefined}
       className={`inline-flex min-h-9 shrink-0 items-center rounded-full border px-3 py-1.5 text-[11px] font-semibold transition duration-200 ${
         active
@@ -549,10 +589,14 @@ function HeaderLiveGamesLink({
 
 function HeaderWorkshopLiveLink({ active }: { active?: boolean }) {
   const t = useTranslations("Shell");
+  const router = useRouter();
 
   return (
     <Link
       href="/workshop"
+      prefetch={false}
+      onMouseEnter={() => router.prefetch("/workshop")}
+      onFocus={() => router.prefetch("/workshop")}
       aria-current={active ? "page" : undefined}
       className={`inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-bold transition ${
         active
@@ -566,33 +610,70 @@ function HeaderWorkshopLiveLink({ active }: { active?: boolean }) {
   );
 }
 
+function PlayerProfileViewModeSync({
+  onChange,
+}: {
+  onChange: React.Dispatch<React.SetStateAction<string | null>>;
+}) {
+  const searchParams = useSearchParams();
+
+  React.useEffect(() => {
+    onChange(searchParams.get("view"));
+  }, [onChange, searchParams]);
+
+  return null;
+}
+
 function InnerShell({ children }: { children: React.ReactNode }) {
   const t = useTranslations("Shell");
   const { uid, playerName, isAdmin } = useUserAuth();
   const pathname = usePathname();
+  const router = useRouter();
+  const isPlayerProfileSurface = pathname.startsWith("/players/");
   const [playerProfileViewMode, setPlayerProfileViewMode] = React.useState<string | null>(null);
+  const [deferredClientsReady, setDeferredClientsReady] = React.useState(false);
+  const [footerReady, setFooterReady] = React.useState(false);
+  const footerWarmupRef = React.useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    const syncPlayerProfileViewMode = () => {
-      setPlayerProfileViewMode(new URLSearchParams(window.location.search).get("view"));
+    let cancelled = false;
+    let timer: number | null = null;
+    let idleHandle: number | null = null;
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (
+        callback: IdleRequestCallback,
+        options?: IdleRequestOptions
+      ) => number;
+      cancelIdleCallback?: (handle: number) => void;
     };
 
-    syncPlayerProfileViewMode();
+    const revealDeferredClients = () => {
+      if (!cancelled) setDeferredClientsReady(true);
+    };
+    const schedule = () => {
+      if (idleWindow.requestIdleCallback) {
+        idleHandle = idleWindow.requestIdleCallback(revealDeferredClients, {
+          timeout: 1600,
+        });
+      } else {
+        timer = window.setTimeout(revealDeferredClients, 700);
+      }
+    };
 
-    window.addEventListener("popstate", syncPlayerProfileViewMode);
-    window.addEventListener("focus", syncPlayerProfileViewMode);
-
-    const interval = window.setInterval(syncPlayerProfileViewMode, 500);
+    if (document.readyState === "complete") {
+      schedule();
+    } else {
+      window.addEventListener("load", schedule, { once: true });
+    }
 
     return () => {
-      window.removeEventListener("popstate", syncPlayerProfileViewMode);
-      window.removeEventListener("focus", syncPlayerProfileViewMode);
-      window.clearInterval(interval);
+      cancelled = true;
+      window.removeEventListener("load", schedule);
+      if (timer !== null) window.clearTimeout(timer);
+      if (idleHandle !== null) idleWindow.cancelIdleCallback?.(idleHandle);
     };
-  }, [pathname]);
-  const isPlayerProfileSurface = pathname.startsWith("/players/");
+  }, []);
+
   const isExtremePlayerProfileSurface =
     isPlayerProfileSurface && playerProfileViewMode !== "basic" && playerProfileViewMode !== "advanced";
   const { themeKey, viewMode, textColor, pageStyle, tileViewPreferences } =
@@ -661,6 +742,35 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     tileViewPreferences,
     "download_watcher"
   );
+
+  React.useEffect(() => {
+    if (footerReady || isContactPage || isHeroStudioSurface) return;
+
+    const node = footerWarmupRef.current;
+    if (!node) return;
+
+    const fallback = window.setTimeout(() => setFooterReady(true), 5000);
+    if (typeof IntersectionObserver === "undefined") {
+      return () => window.clearTimeout(fallback);
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setFooterReady(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "3200px 0px", threshold: 0.01 }
+    );
+    observer.observe(node);
+
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(fallback);
+    };
+  }, [footerReady, isContactPage, isHeroStudioSurface]);
+
   React.useEffect(() => {
     if (!isContactPage) {
       setContactViewportHeight(null);
@@ -765,45 +875,82 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     let cancelled = false;
+    let initialTimer: number | null = null;
+    let idleHandle: number | null = null;
+    let lastLoadedAt = 0;
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (
+        callback: IdleRequestCallback,
+        options?: IdleRequestOptions
+      ) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
 
     async function loadHeaderCounts() {
-      try {
-        const [liveResponse, requestsResponse, workshopResponse] = await Promise.all([
-          fetch("/api/live-games?summary=1", { cache: "no-store" }),
-          fetch("/api/requests?summary=1", { cache: "no-store" }),
-          fetch("/api/workshop?summary=1", { cache: "no-store" }),
-        ]);
+      if (document.visibilityState !== "visible") return;
+      lastLoadedAt = Date.now();
 
-        const livePayload = liveResponse.ok
-          ? ((await liveResponse.json()) as { liveCount?: number })
-          : {};
-        const requestsPayload = requestsResponse.ok
-          ? ((await requestsResponse.json()) as { openCount?: number })
-          : {};
-        const workshopPayload = workshopResponse.ok
-          ? ((await workshopResponse.json()) as { isLive?: boolean; streamLive?: boolean })
+      try {
+        const response = await fetch("/api/header-summary");
+        const payload = response.ok
+          ? ((await response.json()) as {
+              liveCount?: number;
+              openRequestCount?: number;
+              workshopLive?: boolean;
+            })
           : {};
 
         if (!cancelled) {
-          setLiveGamesCount(typeof livePayload.liveCount === "number" ? livePayload.liveCount : 0);
+          setLiveGamesCount(typeof payload.liveCount === "number" ? payload.liveCount : 0);
           setRequestCount(
-            typeof requestsPayload.openCount === "number" ? requestsPayload.openCount : 0
+            typeof payload.openRequestCount === "number" ? payload.openRequestCount : 0
           );
-          setWorkshopLive(workshopPayload.isLive === true || workshopPayload.streamLive === true);
+          setWorkshopLive(payload.workshopLive === true);
         }
       } catch (error) {
         console.warn("Failed to load header counts:", error);
       }
     }
 
-    void loadHeaderCounts();
+    const scheduleInitialLoad = () => {
+      if (idleWindow.requestIdleCallback) {
+        idleHandle = idleWindow.requestIdleCallback(
+          () => void loadHeaderCounts(),
+          { timeout: 2200 }
+        );
+      } else {
+        initialTimer = window.setTimeout(() => void loadHeaderCounts(), 900);
+      }
+    };
+    const refreshWhenVisible = () => {
+      if (
+        document.visibilityState === "visible" &&
+        Date.now() - lastLoadedAt >= 30_000
+      ) {
+        void loadHeaderCounts();
+      }
+    };
+
+    if (document.readyState === "complete") {
+      scheduleInitialLoad();
+    } else {
+      window.addEventListener("load", scheduleInitialLoad, { once: true });
+    }
+
     const interval = window.setInterval(() => {
       void loadHeaderCounts();
     }, 30_000);
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       cancelled = true;
+      window.removeEventListener("load", scheduleInitialLoad);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
       window.clearInterval(interval);
+      if (initialTimer !== null) window.clearTimeout(initialTimer);
+      if (idleHandle !== null) idleWindow.cancelIdleCallback?.(idleHandle);
     };
   }, []);
 
@@ -847,13 +994,22 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       data-text-tone={textColor}
       data-theme-key={themeKey}
     >
+      {isPlayerProfileSurface ? (
+        <React.Suspense fallback={null}>
+          <PlayerProfileViewModeSync onChange={setPlayerProfileViewMode} />
+        </React.Suspense>
+      ) : null}
       <SpeedRuntime />
       <SpeedWebVitals />
-      <SpeedProof />
-      <UserExperienceTracker />
-      <ClientFlightRecorder />
+      {deferredClientsReady ? (
+        <>
+          <SpeedProof />
+          <UserExperienceTracker />
+          <ClientFlightRecorder />
+        </>
+      ) : null}
       <header
-        className={`sticky top-0 z-[180] shrink-0 overflow-visible border-b px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.7rem)] backdrop-blur-2xl transition-[background-color,border-color] duration-500 sm:px-4 lg:py-3 ${headerSkin.shell}`}
+        className={`sticky top-0 z-[180] shrink-0 overflow-visible border-b px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.7rem)] backdrop-blur-md transition-[background-color,border-color] duration-500 sm:px-4 sm:backdrop-blur-xl lg:py-3 lg:backdrop-blur-2xl ${headerSkin.shell}`}
         style={
           isClanSurface
             ? {
@@ -914,6 +1070,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             <div className="flex min-w-0 items-center justify-between gap-3">
               <Link
                 href="/"
+                prefetch={false}
+                onMouseEnter={() => router.prefetch("/")}
+                onFocus={() => router.prefetch("/")}
                 className="group relative flex shrink-0 items-center rounded-xl px-1 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/40"
                 aria-label="AOE2WAR home"
               >
@@ -1010,6 +1169,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             <div className="flex min-w-0 items-center gap-2 xl:gap-3">
               <Link
                 href="/"
+                prefetch={false}
+                onMouseEnter={() => router.prefetch("/")}
+                onFocus={() => router.prefetch("/")}
                 className="group relative flex shrink-0 items-center rounded-xl px-1 py-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/40"
                 aria-label="AOE2WAR home"
               >
@@ -1142,19 +1304,22 @@ function InnerShell({ children }: { children: React.ReactNode }) {
           isContactPage ? "!py-2 !pb-2 overflow-hidden sm:!py-3 sm:!pb-3" : isMediaManagerSurface || isHeroStudioSurface ? "overflow-x-visible" : "overflow-x-hidden"
         }`}
       >
-        <GlobalInstallAppPrompt />
+        {deferredClientsReady ? <GlobalInstallAppPrompt /> : null}
         {children}
       </main>
-      {!isContactPage &&
-      !isHeroStudioSurface ? (
-        isClanSurface ? (
-          <ClanWarhouseFooter />
-        ) : (
-          <AoE2WarFooter />
-        )
+      {!isContactPage && !isHeroStudioSurface ? (
+        <div ref={footerWarmupRef} className={footerReady ? undefined : "h-px"}>
+          {footerReady ? (
+            isClanSurface ? (
+              <ClanWarhouseFooter />
+            ) : (
+              <AoE2WarFooter />
+            )
+          ) : null}
+        </div>
       ) : null}
       {!isContactPage ? <MobileFloatingNav /> : null}
-      <Toaster richColors />
+      {deferredClientsReady ? <Toaster richColors /> : null}
     </div>
   );
 }
@@ -1162,15 +1327,13 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <UserAuthProvider>
-      <Providers>
-        <UniversalLanguageProvider>
-          <AoE2WarIntlProvider>
-            <LobbyAppearanceProvider>
-              <InnerShell>{children}</InnerShell>
-            </LobbyAppearanceProvider>
-          </AoE2WarIntlProvider>
-        </UniversalLanguageProvider>
-      </Providers>
+      <UniversalLanguageProvider>
+        <AoE2WarIntlProvider>
+          <LobbyAppearanceProvider>
+            <InnerShell>{children}</InnerShell>
+          </LobbyAppearanceProvider>
+        </AoE2WarIntlProvider>
+      </UniversalLanguageProvider>
     </UserAuthProvider>
   );
 }

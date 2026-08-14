@@ -22,10 +22,10 @@ export const metadata: Metadata = {
 };
 
 const nationalBeltArt = {
-  canada: "/uploads/managed-assets/belt/national-canada-1781562091096-163be1f7.png",
-  us: "/uploads/managed-assets/belt/national-usa-1781561984182-c5fa08c6.png",
-  mexico: "/uploads/managed-assets/belt/national-mexico-1781562178354-696c5763.png",
-  uk: "/uploads/managed-assets/belt/national-uk-1781562877273-5b3d1e75.png",
+  canada: "/champions/belts/national-canada-1fd048b9-lossless.webp",
+  us: "/champions/belts/national-usa-04324bb5-lossless.webp",
+  mexico: "/champions/belts/national-mexico-bf599444-lossless.webp",
+  uk: "/champions/belts/national-uk-8976fc9d-lossless.webp",
 } as const;
 
 const championNationSlugs: Record<string, string> = {
@@ -206,7 +206,7 @@ function ChampionShowcaseCard({ beacon, priority = false }: { beacon: NationalBe
   const challengeHref = challengeHrefForNationalBelt(beacon.id, beacon.champion);
 
   return (
-    <article className="group overflow-hidden rounded-[2rem] border border-amber-200/20 bg-[radial-gradient(circle_at_70%_6%,rgba(251,191,36,0.16),transparent_28%),linear-gradient(135deg,rgba(20,27,41,0.92),rgba(6,10,20,0.96)_54%,rgba(30,12,18,0.88))] p-4 shadow-[0_32px_100px_rgba(0,0,0,0.32)]">
+    <article className="group overflow-hidden rounded-[2rem] border border-amber-200/20 bg-[radial-gradient(circle_at_70%_6%,rgba(251,191,36,0.16),transparent_28%),linear-gradient(135deg,rgba(20,27,41,0.92),rgba(6,10,20,0.96)_54%,rgba(30,12,18,0.88))] p-4 shadow-[0_32px_100px_rgba(0,0,0,0.32)] [content-visibility:auto] [contain-intrinsic-size:auto_32rem]">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,0.96fr)_minmax(19rem,1.04fr)] lg:items-center">
         <div className="relative overflow-hidden rounded-[1.55rem] border border-amber-100/16 bg-[radial-gradient(circle_at_50%_30%,rgba(251,191,36,0.16),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(0,0,0,0.32)),#050b17] px-5 py-6">
           <Link href={beltHref} aria-label={`View ${shortName} NFT`} className="absolute inset-0 z-10 rounded-[1.55rem]" />
@@ -384,7 +384,7 @@ export default function NationalChampionsPage() {
   const vacantBeacons = nationalBeacons.filter((beacon) => !beacon.champion);
   const totalBounty = nationalBeacons.reduce((sum, beacon) => sum + beacon.bountyWolo, 0);
   const headlineChampions = litBeacons;
-  const priorityChampionIds = new Set(["canada", "us", "mexico"]);
+  const priorityChampionIds = new Set(["canada", "us"]);
 
   return (
     <main className="mx-auto w-full max-w-[96rem] space-y-8 overflow-x-hidden px-3 py-4 text-white sm:px-5 sm:py-6">
