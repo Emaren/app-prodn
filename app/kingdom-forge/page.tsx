@@ -2,8 +2,6 @@ import type { Metadata } from "next";
 
 import KingdomForgeClient from "@/components/kingdom-forge/KingdomForgeClient";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
   title: "Kingdom Forge",
   description:
@@ -16,10 +14,10 @@ export const metadata: Metadata = {
     url: "https://aoe2war.com/kingdom-forge",
     images: [
       {
-        url: "/market/agora-marketplace.webp",
-        width: 1915,
-        height: 821,
-        alt: "The lantern-lit Kingdom Forge",
+        url: "/kingdom-forge/construction.jpg",
+        width: 2048,
+        height: 682,
+        alt: "The Kingdom Forge rising under construction",
       },
     ],
   },

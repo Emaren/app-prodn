@@ -234,6 +234,17 @@ export async function loadKingdomForgeSnapshot(
       (sum, commitment) => sum + numberFromBigInt(commitment.amountWolo),
       0,
     );
+    const fundedWolo = project.commitments
+      .filter(
+        (commitment) =>
+          commitment.status === "funded" &&
+          commitment.settlementMode !== "app_signal" &&
+          Boolean(commitment.fundingTxHash),
+      )
+      .reduce(
+        (sum, commitment) => sum + numberFromBigInt(commitment.amountWolo),
+        0,
+      );
     const targetWolo = numberFromBigInt(project.targetWolo);
     const deedCounts = project.deedHoldings.reduce(
       (acc, holding) => {
@@ -259,6 +270,7 @@ export async function loadKingdomForgeSnapshot(
       status: project.status,
       targetWolo,
       signalledWolo,
+      fundedWolo,
       signalProgressBps:
         targetWolo > 0
           ? Math.min(10_000, Math.round((signalledWolo / targetWolo) * 10_000))

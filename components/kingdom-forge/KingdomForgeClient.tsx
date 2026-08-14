@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -15,13 +14,19 @@ import {
   Landmark,
   LockKeyhole,
   Pickaxe,
-  ScrollText,
   ShieldCheck,
   Sparkles,
   UsersRound,
 } from "lucide-react";
 
 import SteamLoginButton from "@/components/SteamLoginButton";
+import {
+  ForgeDoctrine,
+  ForgeHealthMeter,
+  ForgeHero,
+  ForgeProjectArt,
+  ForgeWorldPanels,
+} from "@/components/kingdom-forge/ForgeVisuals";
 import { useUserAuth } from "@/context/UserAuthContext";
 import type { KingdomForgeSnapshot } from "@/lib/kingdomForge";
 
@@ -140,7 +145,7 @@ export default function KingdomForgeClient() {
       setSnapshot(next);
       const notices: Record<string, string> = {
         withdraw: "Forge Power returned to your unassigned capacity.",
-        commit: "Your Forge Power signal is now in the Chronicle.",
+        commit: "Your Forge Power pledge is now in the Chronicle.",
         set_project_status: "Project lifecycle and Chronicle advanced together.",
         set_milestone_status: "Milestone state and Chronicle advanced together.",
         grant_deeds: "The finite deed ledger recorded that provenance grant.",
@@ -176,55 +181,18 @@ export default function KingdomForgeClient() {
 
   return (
     <main className="relative isolate -mx-3 overflow-hidden bg-[#07080b] text-white sm:-mx-5 lg:-mx-8">
-      <section className="relative min-h-[650px] overflow-hidden border-b border-amber-100/10 px-4 pb-10 pt-10 sm:px-8 lg:px-12 lg:pb-14 lg:pt-16">
-        <Image
-          src="/market/agora-marketplace.webp"
-          alt="The lantern-lit streets of the Kingdom Forge"
-          fill
-          priority
-          className="object-cover object-center opacity-60"
-          sizes="100vw"
-        />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(4,5,8,0.98)_0%,rgba(4,5,8,0.85)_36%,rgba(4,5,8,0.35)_72%,rgba(4,5,8,0.72)_100%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_24%_20%,rgba(245,158,11,0.17),transparent_32%),linear-gradient(180deg,transparent_62%,#07080b_100%)]" />
+      <ForgeHero
+        kingdomStake={formatWolo(summary?.totalRewardEligibleWolo ?? 0, true)}
+        forgeCapacity={formatWolo(summary?.totalForgeCapacityWolo ?? 0, true)}
+        powerSignalled={formatWolo(summary?.totalSignalledWolo ?? 0, true)}
+        openProjects={summary?.openProjects ?? 0}
+        activePatrons={summary?.activePatrons ?? 0}
+        utilization={forgeUtilization}
+      />
 
-        <div className="relative mx-auto flex min-h-[570px] max-w-[1680px] flex-col justify-between gap-10">
-          <div className="max-w-4xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-black/45 px-4 py-2 text-[10px] font-black uppercase tracking-[0.32em] text-amber-100 backdrop-blur-xl">
-              <Hammer className="h-4 w-4" /> Kingdom Development Foundry
-            </div>
-            <h1 className="mt-7 font-serif text-5xl font-black uppercase leading-[0.88] tracking-[-0.045em] text-[#fff2c7] drop-shadow-[0_8px_30px_rgba(0,0,0,0.7)] sm:text-7xl lg:text-[7.4rem]">
-              Kingdom
-              <br />
-              <span className="text-transparent [-webkit-text-stroke:1px_rgba(253,230,138,0.75)]">Forge</span>
-            </h1>
-            <p className="mt-6 max-w-2xl text-xl font-semibold leading-8 text-white sm:text-2xl">
-              The first million earns. The rest builds.
-            </p>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-              Choose the wing of AoE2WAR that deserves the next stone. Every campaign has its own target,
-              milestones, patrons, provenance, and finite deed charter.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <a href="#projects" className="inline-flex items-center gap-2 rounded-full bg-amber-300 px-5 py-3 text-sm font-black text-[#171006] transition hover:bg-amber-200">
-                Enter the foundry <ArrowRight className="h-4 w-4" />
-              </a>
-              <Link href="/round-chamber" className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/35 px-5 py-3 text-sm font-bold text-white backdrop-blur transition hover:border-white/30">
-                Forge mandates <ScrollText className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
+      <div className="relative mx-auto max-w-[1900px] space-y-14 px-4 py-10 sm:px-8 lg:space-y-20 lg:px-12 lg:py-16">
+        <ForgeDoctrine />
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Stat label="Kingdom Stake" value={formatWolo(summary?.totalRewardEligibleWolo ?? 0, true)} detail="Reward-weighted principal after the identity cap" />
-            <Stat label="Forge Capacity" value={formatWolo(summary?.totalForgeCapacityWolo ?? 0, true)} detail="Stake above the first-million lane" />
-            <Stat label="Power Signalled" value={formatWolo(summary?.totalSignalledWolo ?? 0, true)} detail={`${forgeUtilization.toFixed(1)}% of visible Forge capacity`} />
-            <Stat label="Open Projects" value={String(summary?.openProjects ?? 0)} detail={`${summary?.activePatrons ?? 0} patrons at the anvil`} />
-          </div>
-        </div>
-      </section>
-
-      <div className="relative mx-auto max-w-[1680px] space-y-12 px-4 py-10 sm:px-8 lg:px-12 lg:py-16">
         <section className="grid gap-5 xl:grid-cols-[1.18fr_0.82fr]">
           <div className="overflow-hidden rounded-[2rem] border border-amber-200/15 bg-[radial-gradient(circle_at_10%_0%,rgba(245,158,11,0.12),transparent_38%),linear-gradient(145deg,rgba(25,18,10,0.96),rgba(7,9,14,0.98))] p-6 shadow-[0_30px_90px_rgba(0,0,0,0.32)] sm:p-8">
             <div className="flex flex-wrap items-start justify-between gap-4">
@@ -303,8 +271,16 @@ export default function KingdomForgeClient() {
                       project.viewerCommitment.status !== "funded" &&
                       project.viewerCommitment.settlementMode === "app_signal",
                   );
+                  const provenMilestones = project.milestones.filter(
+                    (milestone) => milestone.status === "proven",
+                  ).length;
+                  const constructionProgress = project.milestones.length
+                    ? (provenMilestones / project.milestones.length) * 100
+                    : 0;
+
                   return (
                     <article key={project.slug} className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,rgba(18,18,20,0.98),rgba(6,8,13,0.98))] p-5 shadow-[0_25px_70px_rgba(0,0,0,0.22)] transition hover:border-amber-200/20 sm:p-7">
+                      <ForgeProjectArt title={project.title} slug={project.slug} />
                       <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-orange-500/8 blur-3xl" />
                       <div className="relative">
                         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -314,13 +290,48 @@ export default function KingdomForgeClient() {
                         <h3 className="mt-5 text-3xl font-black tracking-tight text-[#fff5d6]">{project.title}</h3>
                         <p className="mt-3 text-sm leading-7 text-slate-300">{project.summary}</p>
 
-                        <div className="mt-6 grid grid-cols-3 gap-2">
-                          <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3"><div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">Target</div><div className="mt-1 text-sm font-black">{formatWolo(project.targetWolo, true)}</div></div>
-                          <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3"><div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">Signalled</div><div className="mt-1 text-sm font-black">{formatWolo(project.signalledWolo, true)}</div></div>
-                          <div className="rounded-xl border border-white/8 bg-white/[0.035] p-3"><div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">Target date</div><div className="mt-1 text-sm font-black">{formatDate(project.targetDate)}</div></div>
+                        <div className="mt-6 grid gap-2 lg:grid-cols-3">
+                          <ForgeHealthMeter
+                            label="Mandate"
+                            value={`${(project.signalProgressBps / 100).toFixed(1)}%`}
+                            detail={`${formatWolo(project.signalledWolo, true)} pledged of ${formatWolo(project.targetWolo, true)} target`}
+                            percent={project.signalProgressBps / 100}
+                            tone="gold"
+                          />
+                          <ForgeHealthMeter
+                            label="Build Fuel"
+                            value={project.fundedWolo > 0 ? formatWolo(project.fundedWolo, true) : "Not ignited"}
+                            detail={
+                              project.fundedWolo > 0
+                                ? "Verified project funding recorded; Charter fuel requirement remains separate."
+                                : "Pledges move no WOLO. Ignition requires the verified project-funding rail."
+                            }
+                            percent={null}
+                            tone="fire"
+                          />
+                          <ForgeHealthMeter
+                            label="Construction"
+                            value={`${constructionProgress.toFixed(0)}%`}
+                            detail={`${provenMilestones} of ${project.milestones.length} milestones proven`}
+                            percent={constructionProgress}
+                            tone="steel"
+                          />
                         </div>
-                        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/8"><div className="h-full rounded-full bg-[linear-gradient(90deg,#f59e0b,#f97316,#ef4444)] transition-all" style={{ width: `${project.signalProgressBps / 100}%` }} /></div>
-                        <div className="mt-2 flex justify-between text-[10px] text-slate-500"><span>{project.patrons} patrons</span><span>{(project.signalProgressBps / 100).toFixed(1)}% mandate</span></div>
+
+                        <div className="mt-3 grid grid-cols-3 gap-px border border-white/10 bg-white/10">
+                          <div className="bg-black/45 p-3">
+                            <div className="text-[8px] font-black uppercase tracking-[0.2em] text-white/35">Mandate Target</div>
+                            <div className="mt-1 text-xs font-black text-white">{formatWolo(project.targetWolo, true)}</div>
+                          </div>
+                          <div className="bg-black/45 p-3">
+                            <div className="text-[8px] font-black uppercase tracking-[0.2em] text-white/35">Patrons</div>
+                            <div className="mt-1 text-xs font-black text-white">{project.patrons}</div>
+                          </div>
+                          <div className="bg-black/45 p-3">
+                            <div className="text-[8px] font-black uppercase tracking-[0.2em] text-white/35">Target Date</div>
+                            <div className="mt-1 text-xs font-black text-white">{formatDate(project.targetDate)}</div>
+                          </div>
+                        </div>
 
                         <div className="mt-6 grid gap-2 sm:grid-cols-4">
                           {project.milestones.map((milestone) => (
@@ -339,12 +350,12 @@ export default function KingdomForgeClient() {
                           {viewer ? (
                             <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                               <input disabled={Boolean(project.viewerCommitment) && !commitmentMutable} inputMode="numeric" aria-label={`Forge Power for ${project.title}`} value={amounts[project.slug] ?? String(project.viewerCommitment?.amountWolo ?? "")} onChange={(event) => setAmounts((current) => ({ ...current, [project.slug]: event.target.value.replace(/[^0-9]/g, "") }))} placeholder="Amount in WOLO" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/45 px-4 py-3 text-sm font-bold outline-none focus:border-amber-300/40 disabled:cursor-not-allowed disabled:opacity-55" />
-                              <button type="button" disabled={busy || (Boolean(project.viewerCommitment) && !commitmentMutable) || !Number.isFinite(proposedAmount) || proposedAmount <= 0} onClick={() => void act("commit", { projectSlug: project.slug, amountWolo: proposedAmount }, project.slug)} className="rounded-xl bg-amber-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-40">{busy ? "Striking…" : project.viewerCommitment && !commitmentMutable ? "Funding sealed" : project.viewerCommitment ? "Recast" : "Commit"}</button>
+                              <button type="button" disabled={busy || (Boolean(project.viewerCommitment) && !commitmentMutable) || !Number.isFinite(proposedAmount) || proposedAmount <= 0} onClick={() => void act("commit", { projectSlug: project.slug, amountWolo: proposedAmount }, project.slug)} className="rounded-xl bg-amber-300 px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-40">{busy ? "Pledging…" : project.viewerCommitment && !commitmentMutable ? "Fuel locked" : project.viewerCommitment ? "Recast pledge" : "Pledge power"}</button>
                             </div>
                           ) : (
                             <div className="mt-4"><SteamLoginButton className="rounded-full bg-amber-300 px-4 py-2 text-xs font-black text-slate-950 hover:bg-amber-200" /></div>
                           )}
-                          <div className="mt-3 text-[10px] leading-5 text-slate-500">App signal until a verified project-funding transaction exists. Your current staking principal is not moved by this action.</div>
+                          <div className="mt-3 text-[10px] leading-5 text-slate-500">Forge Power pledge only — reversible and no WOLO moves. Build Fuel begins only after explicit Ignition into verified project escrow.</div>
                         </div>
                       </div>
                     </article>
@@ -352,6 +363,8 @@ export default function KingdomForgeClient() {
                 })}
           </div>
         </section>
+
+        <ForgeWorldPanels />
 
         <section className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
           <div className="rounded-[2rem] border border-amber-200/15 bg-[linear-gradient(145deg,rgba(27,20,9,0.96),rgba(7,8,12,0.98))] p-6 sm:p-8">

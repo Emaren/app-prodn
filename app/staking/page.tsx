@@ -12,6 +12,7 @@ import {
   Crown,
   Gem,
   HandCoins,
+  Hammer,
   Landmark,
   ShieldCheck,
   Swords,
@@ -689,6 +690,32 @@ export default async function StakingPage({
             <StakingHeroStakeTiles
               totalStakedLabel={formatWolo(snapshot.totalStakedWolo, { compact: false })}
             />
+
+            <Link
+              href="/kingdom-forge"
+              className="group relative overflow-hidden border border-orange-300/25 bg-[linear-gradient(110deg,rgba(124,45,18,0.72),rgba(17,24,39,0.96)_55%,rgba(8,47,73,0.72))] px-5 py-4 shadow-[0_18px_55px_rgba(0,0,0,0.25)] transition hover:border-orange-300/50"
+            >
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-[linear-gradient(90deg,transparent,#fb923c,transparent)]" />
+              <div className="flex items-center justify-between gap-5">
+                <div className="flex min-w-0 items-center gap-4">
+                  <div className="grid h-11 w-11 shrink-0 place-items-center border border-orange-300/30 bg-orange-400/10 text-orange-300">
+                    <Hammer className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[9px] font-black uppercase tracking-[0.26em] text-orange-300">
+                      Beyond the Crown Stake
+                    </div>
+                    <div className="mt-1 text-sm font-black text-white sm:text-base">
+                      Above 1,000,000 WOLO, excess stake enters the Kingdom Forge economy.
+                    </div>
+                    <div className="mt-1 text-xs leading-5 text-white/45">
+                      Keep the smaller-staker reward pool healthy. Use Forge Power to choose what AoE2WAR builds next.
+                    </div>
+                  </div>
+                </div>
+                <ArrowRight className="h-5 w-5 shrink-0 text-orange-300 transition group-hover:translate-x-1" />
+              </div>
+            </Link>
 
             <CompactLeaderboard
               board={board}
