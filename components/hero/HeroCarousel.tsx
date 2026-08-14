@@ -2,8 +2,12 @@
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { preload } from "react-dom";
 
-import { HeroScreenRenderer } from "@/components/hero/HeroScreenRenderer";
+import {
+  HeroScreenRenderer,
+  heroScreenPreloadUrl,
+} from "@/components/hero/HeroScreenRenderer";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 import type {
   HeroPlaylistView,
@@ -71,6 +75,12 @@ export function HeroCarousel({
   const hasMultiple = items.length > 1;
   const current = items[index] || items[0];
   const settings = playlist.playlist;
+  const currentHeroImageUrl = current ? heroScreenPreloadUrl(current) : "";
+
+  if (currentHeroImageUrl) {
+    preload(currentHeroImageUrl, { as: "image", fetchPriority: "high" });
+  }
+
   const imageFit =
     presentation === "advanced" ||
     current?.screen.config.imageFit === "contain"

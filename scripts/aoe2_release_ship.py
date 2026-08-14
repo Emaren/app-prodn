@@ -725,6 +725,99 @@ source_state_hash() {{
     source_status
   }} | sha256sum | awk '{{print $1}}'
 }}
+release_path_is_reserved() {{
+  case "$1" in
+    .next|.next/*|node_modules|node_modules/*|\
+    .next-release|.next-release/*|.node_modules-release|.node_modules-release/*|\
+    .next-rollback*|.node_modules-rollback*|\
+    .aoe2war-build-version|.aoe2war-release|.aoe2war-release/*) return 0 ;;
+  esac
+  return 1
+}}
+release_only_list_integrity() {{
+  test -f "$RELEASE_ONLY_PATHS" \
+    && test ! -L "$RELEASE_ONLY_PATHS" \
+    && test "$(stat -c '%a' "$RELEASE_ONLY_PATHS")" = "600" \
+    && test "$(sha256sum "$RELEASE_ONLY_PATHS" | awk '{{print $1}}')" = "$release_only_paths_sha"
+}}
+release_path_literal() {{ printf '%s' ":(top,literal)$1"; }}
+release_path_shape_is_safe() {{
+  release_shape_path="$1"
+  case "$release_shape_path" in
+    ""|/*|.|..|./*|../*|*/./*|*/.|*/../*|*/..|*//*) return 1 ;;
+  esac
+  release_path_is_reserved "$release_shape_path" && return 1
+  release_shape_parent=""
+  release_shape_remainder="$release_shape_path"
+  while [[ "$release_shape_remainder" == */* ]]; do
+    release_shape_component="${{release_shape_remainder%%/*}}"
+    release_shape_remainder="${{release_shape_remainder#*/}}"
+    if [ -z "$release_shape_parent" ]; then
+      release_shape_parent="$release_shape_component"
+    else
+      release_shape_parent="$release_shape_parent/$release_shape_component"
+    fi
+    test ! -L "$release_shape_parent" || return 1
+    if [ -e "$release_shape_parent" ] && [ ! -d "$release_shape_parent" ]; then
+      return 1
+    fi
+  done
+  return 0
+}}
+release_path_absent() {{
+  release_absent_path="$1"
+  release_absent_literal="$(release_path_literal "$release_absent_path")"
+  test ! -e "$release_absent_path" || return 1
+  test ! -L "$release_absent_path" || return 1
+  release_absent_tracked_bytes="$(
+    git ls-files --cached -z -- "$release_absent_literal" | wc -c | tr -d ' '
+  )" || return 1
+  release_absent_untracked_bytes="$(
+    git ls-files --others --exclude-standard -z -- "$release_absent_literal" | wc -c | tr -d ' '
+  )" || return 1
+  release_absent_ignored_bytes="$(
+    git ls-files --others --ignored --exclude-standard -z -- "$release_absent_literal" | wc -c | tr -d ' '
+  )" || return 1
+  test "$release_absent_tracked_bytes" = "0" \
+    && test "$release_absent_untracked_bytes" = "0" \
+    && test "$release_absent_ignored_bytes" = "0"
+}}
+validate_release_only_paths() {{
+  release_only_list_integrity || return 1
+  while IFS= read -r -d '' release_only_path; do
+    release_path_shape_is_safe "$release_only_path" || return 1
+    release_only_literal="$(release_path_literal "$release_only_path")"
+    release_only_mode="$(
+      git -c core.quotePath=true ls-tree "$RELEASE" -- "$release_only_literal" \
+        | awk 'NR == 1 {{print $1; exit}}'
+    )"
+    case "$release_only_mode" in
+      100644|100755|120000) ;;
+      *) return 1 ;;
+    esac
+    release_path_absent "$release_only_path" || return 1
+  done < "$RELEASE_ONLY_PATHS"
+}}
+cleanup_release_only_paths() {{
+  cleanup_release_only_rc=0
+  release_only_list_integrity || return 1
+  while IFS= read -r -d '' release_only_path; do
+    # A failed reset toward RELEASE can materialize a newly tracked path while
+    # leaving HEAD at PREVIOUS. The pre-mutation proof makes -x safe here; the
+    # literal top-level pathspec prevents names from expanding as Git magic.
+    if ! release_path_shape_is_safe "$release_only_path"; then
+      cleanup_release_only_rc=1
+      continue
+    fi
+    release_only_literal="$(release_path_literal "$release_only_path")"
+    if [ -e "$release_only_path" ] || [ -L "$release_only_path" ]; then
+      git clean -f -x -- "$release_only_literal" >/dev/null 2>&1 \
+        || cleanup_release_only_rc=1
+    fi
+    release_path_absent "$release_only_path" || cleanup_release_only_rc=1
+  done < "$RELEASE_ONLY_PATHS"
+  return "$cleanup_release_only_rc"
+}}
 critical_get() {{
   curl -fsS --max-time 12 --retry 3 --retry-delay 1 --retry-all-errors -o /dev/null "$1"
 }}
@@ -844,6 +937,17 @@ test "$(sha256sum "$ACT_RECEIPT/stage-receipt.json" | awk '{{print $1}}')" = "$S
 cp -p "$STAGE_REMOTE/release-manifest.json" "$ACT_RECEIPT/release-manifest.json"
 cp -p "$STAGE_REMOTE/gate-receipt.json" "$ACT_RECEIPT/gate-receipt.json"
 cp -p "$STAGE_REMOTE/stage-status.txt" "$ACT_RECEIPT/stage-status.txt"
+RELEASE_ONLY_PATHS="$(mktemp "$ACT_RECEIPT/release-only-paths.nul.XXXXXX")"
+chmod 0600 "$RELEASE_ONLY_PATHS"
+test -f "$RELEASE_ONLY_PATHS"
+test ! -L "$RELEASE_ONLY_PATHS"
+test "$(stat -c '%a' "$RELEASE_ONLY_PATHS")" = "600"
+git diff --no-renames --name-only --diff-filter=A -z "$PREVIOUS" "$RELEASE" \
+  > "$RELEASE_ONLY_PATHS"
+release_only_paths_sha="$(sha256sum "$RELEASE_ONLY_PATHS" | awk '{{print $1}}')"
+test "${{#release_only_paths_sha}}" = "64"
+release_only_list_integrity
+validate_release_only_paths
 
 old_dependency_artifact="$(artifact_hash node_modules)"
 test "${{#old_dependency_artifact}}" = "64"
@@ -882,6 +986,7 @@ printf '%s\\n' \
   "manifest_sha256=$MANIFEST_SHA" \
   "gate_sha256=$GATE_SHA" \
   "stage_receipt_sha256=$STAGE_RECEIPT_SHA" \
+  "release_only_paths_sha256=$release_only_paths_sha" \
   "initial_source_state_sha256=$before_source_state" \
   "before_pid=$before_pid" \
   "before_wolo8092=$before_wolo8092" \
@@ -904,6 +1009,7 @@ FAST_OLD_MODULES=".node_modules-rollback-activate-$STAMP"
 test ! -e "$FAST_OLD"
 test ! -e "$FAST_OLD_MODULES"
 MUTATED=0
+SOURCE_MUTATION_STARTED=0
 SERVICE_STOPPED=0
 COMMITTED=0
 
@@ -929,10 +1035,16 @@ rollback_activation() {{
     fi
     rollback_pre_head="$(git rev-parse HEAD 2>/dev/null || true)"
     rollback_pre_dirty="$(source_status 2>/dev/null | wc -l | tr -d ' ')"
-    rollback_source_reset=0
-    if [ "$rollback_pre_head" = "$RELEASE" ] && [ "$rollback_pre_dirty" = "0" ]; then
-      git reset --hard "$PREVIOUS" >/dev/null 2>&1 || true
-      rollback_source_reset=1
+    # MUTATED is armed only after proving the original clean source state.
+    # Always restore that state: a failed reset can dirty tracked files while
+    # leaving HEAD at PREVIOUS, which makes HEAD-only rollback guards unsafe.
+    rollback_source_reset=1
+    git reset --hard "$PREVIOUS" >/dev/null 2>&1
+    rollback_source_reset_rc=$?
+    rollback_release_only_cleanup_rc=0
+    if [ "$SOURCE_MUTATION_STARTED" = "1" ]; then
+      cleanup_release_only_paths
+      rollback_release_only_cleanup_rc=$?
     fi
     printf '%s\\n' "$LIVE_VERSION" > .aoe2war-build-version 2>/dev/null || true
     sudo -n /usr/bin/systemctl start "$SERVICE" >/dev/null 2>&1 || true
@@ -944,6 +1056,9 @@ rollback_activation() {{
     rb_service="$(systemctl is-active "$SERVICE" 2>/dev/null || true)"
     rb_head="$(git rev-parse HEAD 2>/dev/null || true)"
     rb_dirty="$(source_status 2>/dev/null | wc -l | tr -d ' ')"
+    rb_dirty_rc=$?
+    rb_source_state="$(source_state_hash 2>/dev/null)"
+    rb_source_state_rc=$?
     rb_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
     rb_staged="$(cat .next-release/BUILD_ID 2>/dev/null || true)"
     rb_build_version_file="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
@@ -956,8 +1071,13 @@ rollback_activation() {{
     rb_wolo8092="$(wolo_count 8092)"
     rb_wolo8093="$(wolo_count 8093)"
     if [ "$rb_service" = "active" ] \
+      && [ "$rollback_source_reset_rc" = "0" ] \
+      && [ "$rollback_release_only_cleanup_rc" = "0" ] \
+      && [ "$rb_dirty_rc" = "0" ] \
+      && [ "$rb_source_state_rc" = "0" ] \
       && [ "$rb_head" = "$PREVIOUS" ] \
       && [ "$rb_dirty" = "0" ] \
+      && [ "$rb_source_state" = "$before_source_state" ] \
       && [ "$rb_build" = "$OLD_BUILD" ] \
       && [ "$rb_staged" = "$STAGED_BUILD" ] \
       && [ "$rb_staged_artifact" = "$ARTIFACT" ] \
@@ -974,8 +1094,13 @@ rollback_activation() {{
       "pre_rollback_source_sha=$rollback_pre_head" \
       "pre_rollback_dirty_count=$rollback_pre_dirty" \
       "source_reset_attempted=$rollback_source_reset" \
+      "source_reset_exit_code=$rollback_source_reset_rc" \
+      "release_only_cleanup_exit_code=$rollback_release_only_cleanup_rc" \
       "source_sha=$rb_head" \
       "dirty_count=$rb_dirty" \
+      "dirty_probe_exit_code=$rb_dirty_rc" \
+      "source_state_sha256=$rb_source_state" \
+      "source_state_probe_exit_code=$rb_source_state_rc" \
       "active_build_id=$rb_build" \
       "staged_build_id=$rb_staged" \
       "staged_artifact_sha256=$rb_staged_artifact" \
@@ -1000,13 +1125,17 @@ test "$(systemctl is-active "$SERVICE" 2>/dev/null || true)" != "active"
 final_pre_mutation_head="$(git rev-parse HEAD)"
 final_pre_mutation_dirty="$(source_status | wc -l | tr -d ' ')"
 final_pre_mutation_source_state="$(source_state_hash)"
+final_release_only_paths_sha="$(sha256sum "$RELEASE_ONLY_PATHS" | awk '{{print $1}}')"
 test "$final_pre_mutation_head" = "$PREVIOUS"
 test "$final_pre_mutation_dirty" = "0"
 test "$final_pre_mutation_source_state" = "$before_source_state"
+test "$final_release_only_paths_sha" = "$release_only_paths_sha"
+validate_release_only_paths
 printf '%s\n' \
   "final_pre_mutation_head=$final_pre_mutation_head" \
   "final_pre_mutation_dirty_count=$final_pre_mutation_dirty" \
   "final_pre_mutation_source_state_sha256=$final_pre_mutation_source_state" \
+  "final_release_only_paths_sha256=$final_release_only_paths_sha" \
   >> "$ACT_RECEIPT/preactivation.txt"
 MUTATED=1
 mv .next "$FAST_OLD"
@@ -1024,6 +1153,7 @@ test ! -e .node_modules-release
 test -d "$FAST_OLD"
 test "$(cat "$FAST_OLD/BUILD_ID")" = "$OLD_BUILD"
 test -d "$FAST_OLD_MODULES"
+SOURCE_MUTATION_STARTED=1
 git reset --hard "$RELEASE"
 test "$(git rev-parse HEAD)" = "$RELEASE"
 test -z "$(source_status)"

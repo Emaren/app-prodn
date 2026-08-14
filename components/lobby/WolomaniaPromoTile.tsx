@@ -38,9 +38,17 @@ type PromoImageProps = {
   alt: string;
   className: string;
   sizes: string;
+  priority?: boolean;
 };
 
-function PromoImage({ src, fallback, alt, className, sizes }: PromoImageProps) {
+function PromoImage({
+  src,
+  fallback,
+  alt,
+  className,
+  sizes,
+  priority = false,
+}: PromoImageProps) {
   return (
     <Image
       src={src || fallback}
@@ -48,7 +56,9 @@ function PromoImage({ src, fallback, alt, className, sizes }: PromoImageProps) {
       width={1200}
       height={1600}
       quality={95}
-      priority
+      priority={priority}
+      loading="eager"
+      fetchPriority={priority ? "high" : "low"}
       sizes={sizes}
       className={className}
       onError={(event) => {
@@ -328,6 +338,7 @@ function MobileEventTile({
             fallback={ASSET_FALLBACKS.playerOne}
             alt={eventTile.playerOneName}
             sizes="(max-width: 639px) 70vw, 1px"
+            priority
             className="absolute -bottom-4 -left-10 h-[94%] w-[70%] object-contain object-bottom drop-shadow-[0_24px_50px_rgba(0,0,0,0.85)]"
           />
           <PromoImage
@@ -335,6 +346,7 @@ function MobileEventTile({
             fallback={ASSET_FALLBACKS.playerTwo}
             alt={eventTile.playerTwoName}
             sizes="(max-width: 639px) 70vw, 1px"
+            priority
             className="absolute -bottom-4 -right-10 h-[94%] w-[70%] object-contain object-bottom drop-shadow-[0_24px_50px_rgba(0,0,0,0.85)]"
           />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black via-black/65 to-transparent" />
@@ -445,6 +457,7 @@ function DesktopEventTile({
         fallback={ASSET_FALLBACKS.playerOne}
         alt={eventTile.playerOneName}
         sizes="(max-width: 639px) 1px, 33vw"
+        priority
         className="absolute bottom-[1.5rem] left-[5%] z-30 h-[64%] w-[33%] object-contain object-bottom opacity-100 drop-shadow-[0_24px_60px_rgba(0,0,0,0.82)] sm:h-[68%]"
       />
       <PromoImage
@@ -452,6 +465,7 @@ function DesktopEventTile({
         fallback={ASSET_FALLBACKS.playerTwo}
         alt={eventTile.playerTwoName}
         sizes="(max-width: 639px) 1px, 34vw"
+        priority
         className="absolute bottom-[1.5rem] right-[5%] z-30 h-[65%] w-[34%] object-contain object-bottom opacity-100 drop-shadow-[0_24px_60px_rgba(0,0,0,0.82)] sm:h-[69%]"
       />
       <PromoImage

@@ -31,7 +31,8 @@ import {
   type LeaderboardSortState,
 } from "@/lib/leaderboardSort";
 
-const PAGE_SIZE = 50;
+const RESET_PAGE_SIZE = 50;
+const SCROLL_PAGE_SIZE = 150;
 
 type IdentityCensus = Pick<
   LobbyLeaderboardSummary,
@@ -181,7 +182,7 @@ export function ModernLeaderboardPage({
 
     void prefetchLeaderboardLane(
       alternateLane,
-      PAGE_SIZE,
+      RESET_PAGE_SIZE,
       scope,
     );
   }, [
@@ -246,7 +247,7 @@ export function ModernLeaderboardPage({
             lane: requestedLane,
             scope,
             offset: String(offset),
-            limit: String(PAGE_SIZE),
+            limit: String(reset ? RESET_PAGE_SIZE : SCROLL_PAGE_SIZE),
           });
         if (query) {
           params.set("q", query);
@@ -390,7 +391,7 @@ export function ModernLeaderboardPage({
           void loadPage({ reset: false, offset: nextOffset });
         }
       },
-      { rootMargin: "2400px 0px" }
+      { rootMargin: "8000px 0px" }
     );
     observer.observe(node);
     return () => observer.disconnect();
@@ -473,7 +474,7 @@ export function ModernLeaderboardPage({
       // Keep the opposite lane warm for the next flip.
       void prefetchLeaderboardLane(
         lane,
-        PAGE_SIZE,
+        RESET_PAGE_SIZE,
         scope,
       );
     },

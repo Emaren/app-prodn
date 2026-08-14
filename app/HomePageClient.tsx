@@ -1043,6 +1043,8 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
                 fill
                 sizes="(min-width: 1280px) 250px, (min-width: 640px) 45vw, 90vw"
                 priority={index < 2}
+                loading="eager"
+                fetchPriority={index < 2 ? "high" : "auto"}
                 unoptimized
                 className="object-contain object-top transition duration-500 ease-out group-hover:scale-[1.01] opacity-90"
               />
@@ -1155,6 +1157,8 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
                     fill
                     sizes="(min-width: 1280px) 280px, (min-width: 640px) 45vw, 90vw"
                     priority={index < 2}
+                    loading="eager"
+                    fetchPriority={index < 2 ? "high" : "auto"}
                     unoptimized
                     className="object-contain object-center drop-shadow-[0_18px_34px_rgba(0,0,0,0.56)] transition duration-500 ease-out [mask-image:linear-gradient(180deg,black_0%,black_88%,transparent_100%)]"
                   />

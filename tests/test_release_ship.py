@@ -1,6 +1,9 @@
 import importlib.util
+import hashlib
 import json
+import os
 import pathlib
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -101,6 +104,123 @@ def activation_sample():
     }
     transport["remote_main"] = data["github"]["main_sha"]
     return data, receipt, transport
+
+
+def render_activation_script():
+    _, receipt, _ = activation_sample()
+    receipt = {
+        **receipt,
+        "manifest_sha256": "1" * 64,
+        "gate_sha256": "2" * 64,
+        "remote_receipt_dir": (
+            "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/stage-test"
+        ),
+    }
+    return MODULE.remote_activation_script(
+        receipt,
+        stage_receipt_sha="3" * 64,
+        stage_receipt_text="{}",
+        dry_run=False,
+        receipt_dir="/mnt/activation",
+        rollback_dir="/mnt/rollback",
+    )
+
+
+def source_guard_shell():
+    script = render_activation_script()
+    start = script.index("release_path_is_reserved()")
+    end = script.index("critical_get()", start)
+    return script[start:end]
+
+
+def source_proof_shell():
+    script = render_activation_script()
+    start = script.index("source_status()")
+    end = script.index("release_path_is_reserved()", start)
+    return script[start:end]
+
+
+def git(repo, *args, check=True):
+    return subprocess.run(
+        ["git", *args],
+        cwd=repo,
+        check=check,
+        capture_output=True,
+        text=False,
+    )
+
+
+def initialize_release_repo(repo, release_paths, *, ignored=""):
+    git(repo, "init", "-q")
+    git(repo, "config", "user.name", "Release Test")
+    git(repo, "config", "user.email", "release@example.invalid")
+    (repo / ".gitignore").write_text(ignored, encoding="utf-8")
+    (repo / "base.txt").write_text("previous\n", encoding="utf-8")
+    git(repo, "add", ".gitignore", "base.txt")
+    git(repo, "commit", "-qm", "previous")
+    previous = git(repo, "rev-parse", "HEAD").stdout.decode().strip()
+
+    for relative in release_paths:
+        target = repo / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(f"release: {relative!r}\n", encoding="utf-8")
+        git(repo, "add", "-f", "--", f":(top,literal){relative}")
+    git(repo, "commit", "-qm", "release")
+    release = git(repo, "rev-parse", "HEAD").stdout.decode().strip()
+    git(repo, "checkout", "-q", previous)
+    return previous, release
+
+
+def write_release_only_list(repo, receipt, previous, release):
+    receipt.mkdir()
+    paths_file = receipt / "release-only-paths.nul.test"
+    paths_file.write_bytes(
+        git(
+            repo,
+            "diff",
+            "--no-renames",
+            "--name-only",
+            "--diff-filter=A",
+            "-z",
+            previous,
+            release,
+        ).stdout
+    )
+    paths_file.chmod(0o600)
+    digest = hashlib.sha256(paths_file.read_bytes()).hexdigest()
+    return paths_file, digest
+
+
+def run_source_guard(repo, paths_file, digest, previous, release, command):
+    darwin_stat = """
+if [ "$(uname -s)" = "Darwin" ]; then
+  stat() {
+    if [ "$1" = "-c" ] && [ "$2" = "%a" ]; then
+      command stat -f '%Lp' "$3"
+    else
+      command stat "$@"
+    fi
+  }
+fi
+"""
+    harness = "\n".join(
+        (
+            "set -uo pipefail",
+            f"PREVIOUS={previous}",
+            f"RELEASE={release}",
+            f"RELEASE_ONLY_PATHS={str(paths_file)!r}",
+            f"release_only_paths_sha={digest}",
+            source_guard_shell(),
+            darwin_stat,
+            command,
+        )
+    )
+    return subprocess.run(
+        ["bash", "-c", harness],
+        cwd=repo,
+        capture_output=True,
+        text=True,
+    )
 
 
 class ShipTests(unittest.TestCase):
@@ -575,7 +695,468 @@ class ShipTests(unittest.TestCase):
         self.assertIn('mv .next .next-release', script)
         self.assertIn('rb_staged_artifact="$(artifact_hash .next-release', script)
         self.assertIn('&& [ "$rb_head" = "$PREVIOUS" ]', script)
+        self.assertIn(
+            '&& [ "$rb_source_state" = "$before_source_state" ]',
+            script,
+        )
         self.assertIn('&& [ "$rb_build_version_file" = "$LIVE_VERSION" ]', script)
+
+    def test_activation_partial_source_reset_is_restored_without_head_gate(self):
+        script = render_activation_script()
+
+        rollback_start = script.index('if [ "$MUTATED" = "1" ]; then')
+        rollback_end = script.index(
+            'elif [ "$SERVICE_STOPPED" = "1" ]; then'
+        )
+        rollback = script[rollback_start:rollback_end]
+        self.assertIn('git reset --hard "$PREVIOUS"', rollback)
+        self.assertNotIn(
+            '[ "$rollback_pre_head" = "$RELEASE" ]',
+            rollback,
+        )
+        self.assertNotIn(
+            '[ "$rollback_pre_dirty" = "0" ]',
+            rollback,
+        )
+        self.assertIn('source_reset_exit_code=$rollback_source_reset_rc', rollback)
+        self.assertIn(
+            'release_only_cleanup_exit_code=$rollback_release_only_cleanup_rc',
+            rollback,
+        )
+
+        marker = script.index("SOURCE_MUTATION_STARTED=1")
+        forward_reset = script.index('git reset --hard "$RELEASE"', marker)
+        self.assertLess(marker, forward_reset)
+        self.assertIn(
+            'git diff --no-renames --name-only --diff-filter=A -z '
+            '"$PREVIOUS" "$RELEASE"',
+            script,
+        )
+        self.assertIn(
+            'RELEASE_ONLY_PATHS="$(mktemp '
+            '"$ACT_RECEIPT/release-only-paths.nul.XXXXXX")"',
+            script,
+        )
+        self.assertIn('done < "$RELEASE_ONLY_PATHS"', script)
+        self.assertIn(
+            'release_only_paths_sha256=$release_only_paths_sha',
+            script,
+        )
+        self.assertIn(
+            'git clean -f -x -- "$release_only_literal"',
+            script,
+        )
+        self.assertNotIn("git clean -fd", script)
+        self.assertIn(':(top,literal)$1', script)
+        self.assertIn(
+            '&& [ "$rollback_source_reset_rc" = "0" ]',
+            rollback,
+        )
+        self.assertIn(
+            '&& [ "$rollback_release_only_cleanup_rc" = "0" ]',
+            rollback,
+        )
+
+    def test_activation_preactivation_drift_is_never_reset(self):
+        script = render_activation_script()
+
+        final_clean_proof = script.index(
+            'test "$final_pre_mutation_source_state" = "$before_source_state"'
+        )
+        mutation_marker = script.index("MUTATED=1", final_clean_proof)
+        self.assertLess(final_clean_proof, mutation_marker)
+
+        drift_start = script.index('elif [ "$SERVICE_STOPPED" = "1" ]; then')
+        drift_end = script.index("fi\n  return", drift_start)
+        drift_branch = script[drift_start:drift_end]
+        self.assertIn('systemctl start "$SERVICE"', drift_branch)
+        self.assertNotIn("git reset", drift_branch)
+        self.assertNotIn("git clean", drift_branch)
+
+    def test_release_only_cleanup_is_literal_nul_safe_and_stage_safe(self):
+        release_paths = (
+            "wild*card.txt",
+            "question?.txt",
+            "bracket[abc].txt",
+            ":(glob)magic.txt",
+            "-leading.txt",
+            "line\nbreak.txt",
+            "tab\tname.txt",
+            "ignored/target*.txt",
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = pathlib.Path(tmp)
+            previous, release = initialize_release_repo(
+                repo,
+                release_paths,
+                ignored=(
+                    "ignored/\n.next/\n.next-release/\n"
+                    ".node_modules-release/\n"
+                ),
+            )
+            receipt = repo / "receipt"
+            paths_file, digest = write_release_only_list(
+                repo, receipt, previous, release
+            )
+
+            ignored_sibling = repo / "ignored/sibling.keep"
+            ignored_sibling.parent.mkdir(parents=True, exist_ok=True)
+            ignored_sibling.write_text("preserve\n", encoding="utf-8")
+            staged_artifact = repo / ".next-release/artifact.bin"
+            staged_artifact.parent.mkdir()
+            staged_artifact.write_bytes(b"candidate-artifact")
+            staged_digest = hashlib.sha256(staged_artifact.read_bytes()).hexdigest()
+
+            validation = run_source_guard(
+                repo,
+                paths_file,
+                digest,
+                previous,
+                release,
+                "validate_release_only_paths",
+            )
+            self.assertEqual(validation.returncode, 0, validation.stderr)
+
+            listed_paths = tuple(
+                item.decode("utf-8")
+                for item in paths_file.read_bytes().split(b"\0")
+                if item
+            )
+            self.assertEqual(set(listed_paths), set(release_paths))
+            for relative in listed_paths:
+                target = repo / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("partial reset\n", encoding="utf-8")
+
+            decoys = (
+                repo / "wildZZcard.txt",
+                repo / "questionX.txt",
+                repo / "bracketa.txt",
+                repo / ":(glob)other.txt",
+            )
+            for decoy in decoys:
+                decoy.write_text("preserve\n", encoding="utf-8")
+
+            cleanup = run_source_guard(
+                repo,
+                paths_file,
+                digest,
+                previous,
+                release,
+                "cleanup_release_only_paths",
+            )
+            self.assertEqual(cleanup.returncode, 0, cleanup.stderr)
+            for relative in listed_paths:
+                target = repo / relative
+                self.assertFalse(target.exists() or target.is_symlink())
+            self.assertEqual(ignored_sibling.read_text(), "preserve\n")
+            self.assertTrue(all(decoy.exists() for decoy in decoys))
+            self.assertEqual(
+                hashlib.sha256(staged_artifact.read_bytes()).hexdigest(),
+                staged_digest,
+            )
+
+    def test_release_only_preflight_rejects_ignored_exact_collision(self):
+        for collision_kind in ("file", "directory", "broken_symlink"):
+            with self.subTest(kind=collision_kind), tempfile.TemporaryDirectory() as tmp:
+                repo = pathlib.Path(tmp)
+                target = "ignored/collision?.txt"
+                previous, release = initialize_release_repo(
+                    repo,
+                    (target,),
+                    ignored="ignored/\n",
+                )
+                receipt = repo / "receipt"
+                paths_file, digest = write_release_only_list(
+                    repo, receipt, previous, release
+                )
+                collision = repo / target
+                collision.parent.mkdir(parents=True, exist_ok=True)
+                if collision_kind == "file":
+                    collision.write_text(
+                        "preexisting ignored data\n", encoding="utf-8"
+                    )
+                elif collision_kind == "directory":
+                    collision.mkdir()
+                else:
+                    os.symlink("missing-target", collision)
+
+                validation = run_source_guard(
+                    repo,
+                    paths_file,
+                    digest,
+                    previous,
+                    release,
+                    "validate_release_only_paths",
+                )
+                self.assertNotEqual(validation.returncode, 0)
+                self.assertTrue(collision.exists() or collision.is_symlink())
+                if collision_kind == "file":
+                    self.assertEqual(
+                        collision.read_text(encoding="utf-8"),
+                        "preexisting ignored data\n",
+                    )
+
+        script = render_activation_script()
+        final_validation = script.index(
+            "validate_release_only_paths",
+            script.index("final_release_only_paths_sha="),
+        )
+        self.assertLess(final_validation, script.index("MUTATED=1"))
+
+    def test_release_only_preflight_rejects_ancestor_obstructions(self):
+        for obstruction in ("symlink", "file"):
+            with self.subTest(obstruction=obstruction), tempfile.TemporaryDirectory() as tmp:
+                repo = pathlib.Path(tmp)
+                target = "parent/child[1].txt"
+                previous, release = initialize_release_repo(repo, (target,))
+                receipt = repo / "receipt"
+                paths_file, digest = write_release_only_list(
+                    repo, receipt, previous, release
+                )
+                parent = repo / "parent"
+                if obstruction == "symlink":
+                    external = repo / "external"
+                    external.mkdir()
+                    (external / "sentinel").write_text("safe\n", encoding="utf-8")
+                    os.symlink(external, parent)
+                else:
+                    parent.write_text("not a directory\n", encoding="utf-8")
+
+                validation = run_source_guard(
+                    repo,
+                    paths_file,
+                    digest,
+                    previous,
+                    release,
+                    "validate_release_only_paths",
+                )
+                self.assertNotEqual(validation.returncode, 0)
+                if obstruction == "symlink":
+                    self.assertEqual(
+                        (external / "sentinel").read_text(encoding="utf-8"),
+                        "safe\n",
+                    )
+
+    def test_release_only_preflight_rejects_reserved_runtime_paths(self):
+        reserved_paths = (
+            ".next/evil",
+            "node_modules/evil",
+            ".next-release/evil",
+            ".node_modules-release/evil",
+            ".next-rollback-test/evil",
+            ".node_modules-rollback-test/evil",
+            ".aoe2war-build-version",
+            ".aoe2war-release/evil",
+        )
+        for target in reserved_paths:
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as tmp:
+                repo = pathlib.Path(tmp)
+                previous, release = initialize_release_repo(
+                    repo,
+                    (target,),
+                    ignored=(
+                        ".next*\nnode_modules/\n.node_modules-*\n"
+                        ".aoe2war-build-version\n.aoe2war-release/\n"
+                    ),
+                )
+                receipt = repo / "receipt"
+                paths_file, digest = write_release_only_list(
+                    repo, receipt, previous, release
+                )
+                validation = run_source_guard(
+                    repo,
+                    paths_file,
+                    digest,
+                    previous,
+                    release,
+                    "validate_release_only_paths",
+                )
+                self.assertNotEqual(validation.returncode, 0)
+
+    def test_release_only_manifest_decomposes_renames(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = pathlib.Path(tmp)
+            git(repo, "init", "-q")
+            git(repo, "config", "user.name", "Release Test")
+            git(repo, "config", "user.email", "release@example.invalid")
+            old_path = "old-name.txt"
+            new_path = "renamed*target?.txt"
+            (repo / old_path).write_text("same content\n", encoding="utf-8")
+            git(repo, "add", old_path)
+            git(repo, "commit", "-qm", "previous")
+            previous = git(repo, "rev-parse", "HEAD").stdout.decode().strip()
+            os.rename(repo / old_path, repo / new_path)
+            git(repo, "add", "-A")
+            git(repo, "commit", "-qm", "release")
+            release = git(repo, "rev-parse", "HEAD").stdout.decode().strip()
+            git(repo, "checkout", "-q", previous)
+
+            paths_file, _ = write_release_only_list(
+                repo, repo / "receipt", previous, release
+            )
+            listed = tuple(
+                item.decode("utf-8")
+                for item in paths_file.read_bytes().split(b"\0")
+                if item
+            )
+            self.assertEqual(listed, (new_path,))
+
+    def test_release_only_preflight_rejects_gitlinks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = pathlib.Path(tmp)
+            git(repo, "init", "-q")
+            git(repo, "config", "user.name", "Release Test")
+            git(repo, "config", "user.email", "release@example.invalid")
+            (repo / "base.txt").write_text("previous\n", encoding="utf-8")
+            git(repo, "add", "base.txt")
+            git(repo, "commit", "-qm", "previous")
+            previous = git(repo, "rev-parse", "HEAD").stdout.decode().strip()
+            git(
+                repo,
+                "update-index",
+                "--add",
+                "--cacheinfo",
+                f"160000,{previous},gitlink-target",
+            )
+            git(repo, "commit", "-qm", "release gitlink")
+            release = git(repo, "rev-parse", "HEAD").stdout.decode().strip()
+            git(repo, "checkout", "-q", previous)
+            paths_file, digest = write_release_only_list(
+                repo, repo / "receipt", previous, release
+            )
+
+            validation = run_source_guard(
+                repo,
+                paths_file,
+                digest,
+                previous,
+                release,
+                "validate_release_only_paths",
+            )
+            self.assertNotEqual(validation.returncode, 0)
+
+    def test_release_only_cleanup_fails_closed_on_corrupt_manifest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = pathlib.Path(tmp)
+            target = "new-file.txt"
+            previous, release = initialize_release_repo(repo, (target,))
+            receipt = repo / "receipt"
+            paths_file, digest = write_release_only_list(
+                repo, receipt, previous, release
+            )
+            materialized = repo / target
+            materialized.write_text("partial reset\n", encoding="utf-8")
+            paths_file.write_bytes(paths_file.read_bytes() + b"tampered\0")
+
+            cleanup = run_source_guard(
+                repo,
+                paths_file,
+                digest,
+                previous,
+                release,
+                "cleanup_release_only_paths",
+            )
+            self.assertNotEqual(cleanup.returncode, 0)
+            self.assertTrue(materialized.exists())
+
+            script = render_activation_script()
+            rollback_start = script.index('rollback_status="ROLLBACK_FAILED"')
+            rollback_certify = script.index(
+                'rollback_status="ROLLED_BACK"', rollback_start
+            )
+            reset_rc_proof = script.index(
+                '[ "$rollback_source_reset_rc" = "0" ]', rollback_start
+            )
+            cleanup_rc_proof = script.index(
+                '[ "$rollback_release_only_cleanup_rc" = "0" ]',
+                rollback_start,
+            )
+            self.assertLess(reset_rc_proof, rollback_certify)
+            self.assertLess(cleanup_rc_proof, rollback_certify)
+
+    def test_release_path_absence_fails_closed_on_git_index_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = pathlib.Path(tmp)
+            target = "new-file.txt"
+            previous, release = initialize_release_repo(repo, (target,))
+            paths_file, digest = write_release_only_list(
+                repo, repo / "receipt", previous, release
+            )
+            (repo / ".git/index").write_bytes(b"corrupt index")
+
+            absence = run_source_guard(
+                repo,
+                paths_file,
+                digest,
+                previous,
+                release,
+                "release_path_absent new-file.txt",
+            )
+            self.assertNotEqual(absence.returncode, 0)
+
+    def test_empty_release_only_list_cannot_mask_git_probe_failure(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = pathlib.Path(tmp)
+            git(repo, "init", "-q")
+            git(repo, "config", "user.name", "Release Test")
+            git(repo, "config", "user.email", "release@example.invalid")
+            tracked = repo / "tracked.txt"
+            tracked.write_text("previous\n", encoding="utf-8")
+            git(repo, "add", "tracked.txt")
+            git(repo, "commit", "-qm", "previous")
+            previous = git(repo, "rev-parse", "HEAD").stdout.decode().strip()
+            tracked.write_text("release\n", encoding="utf-8")
+            git(repo, "commit", "-qam", "release")
+            release = git(repo, "rev-parse", "HEAD").stdout.decode().strip()
+            git(repo, "checkout", "-q", previous)
+            paths_file, _ = write_release_only_list(
+                repo, repo / "receipt", previous, release
+            )
+            self.assertEqual(paths_file.read_bytes(), b"")
+            (repo / ".git/index").write_bytes(b"corrupt index")
+
+            harness = "\n".join(
+                (
+                    "set -uo pipefail",
+                    source_proof_shell(),
+                    "set +e",
+                    'rb_dirty="$(source_status 2>/dev/null | wc -l | tr -d \' \')"',
+                    "rb_dirty_rc=$?",
+                    'rb_source_state="$(source_state_hash 2>/dev/null)"',
+                    "rb_source_state_rc=$?",
+                    'printf \'dirty_rc=%s\\nstate_rc=%s\\n\' '
+                    '"$rb_dirty_rc" "$rb_source_state_rc"',
+                )
+            )
+            proof = subprocess.run(
+                ["bash", "-c", harness],
+                cwd=repo,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(proof.returncode, 0, proof.stderr)
+            fields = dict(
+                line.split("=", 1)
+                for line in proof.stdout.splitlines()
+                if "=" in line
+            )
+            self.assertNotEqual(fields["dirty_rc"], "0")
+            self.assertNotEqual(fields["state_rc"], "0")
+
+            script = render_activation_script()
+            rollback_start = script.index('rollback_status="ROLLBACK_FAILED"')
+            rollback_certify = script.index(
+                'rollback_status="ROLLED_BACK"', rollback_start
+            )
+            for required_probe in (
+                '[ "$rb_dirty_rc" = "0" ]',
+                '[ "$rb_source_state_rc" = "0" ]',
+            ):
+                self.assertLess(
+                    script.index(required_probe, rollback_start),
+                    rollback_certify,
+                )
 
     def test_durable_rollback_copy_is_cache_free(self):
         _, receipt, _ = activation_sample()

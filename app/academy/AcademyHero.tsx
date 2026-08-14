@@ -5,6 +5,7 @@ import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { preload } from "react-dom";
 import type { KeyboardEvent, MouseEvent } from "react";
 import { ArrowRight, Flame, Orbit, Shield, Sparkles } from "lucide-react";
 type AcademyHeroVariant = "a" | "b" | "e";
@@ -111,7 +112,61 @@ function sendAcademyHeroPreference(
   }).catch(() => undefined);
 }
 
+const ACADEMY_HERO_WARM_PROMISES = new Map<string, Promise<void>>();
+
+function academyHeroBackgroundImage(variant: AcademyHeroVariant) {
+  return variant === "e"
+    ? ACADEMY_HERO_E_BG_IMAGE
+    : ACADEMY_HERO_BG_IMAGE;
+}
+
+function warmAcademyHeroBackground(variant: AcademyHeroVariant) {
+  if (typeof window === "undefined") {
+    return Promise.resolve();
+  }
+
+  const src = academyHeroBackgroundImage(variant);
+  const existing = ACADEMY_HERO_WARM_PROMISES.get(src);
+
+  if (existing) {
+    return existing;
+  }
+
+  const promise = new Promise<void>((resolve) => {
+    const image = new window.Image();
+    let settled = false;
+
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      resolve();
+    };
+
+    image.decoding = "async";
+    image.fetchPriority = "high";
+    image.onload = finish;
+    image.onerror = finish;
+    image.src = src;
+
+    if (image.complete) {
+      if (typeof image.decode === "function") {
+        void image.decode().then(finish).catch(finish);
+      } else {
+        finish();
+      }
+    }
+  });
+
+  ACADEMY_HERO_WARM_PROMISES.set(src, promise);
+  return promise;
+}
+
 export default function AcademyHero() {
+  preload(ACADEMY_HERO_E_BG_IMAGE, {
+    as: "image",
+    fetchPriority: "high",
+  });
+
   const {
     appearanceLoaded,
     tileViewPreferences,
@@ -123,28 +178,56 @@ export default function AcademyHero() {
   );
 
   useEffect(() => {
-    if (!appearanceLoaded) return;
-
-    const accountView = tileViewPreferences.academy_hero;
-
-    if (accountView) {
-      setHeroVariant(TILE_VIEW_TO_ACADEMY_HERO[accountView]);
-      return;
-    }
-
     const legacyVariant = window.localStorage.getItem(
       ACADEMY_HERO_STORAGE_KEY,
     );
 
     if (isHeroVariant(legacyVariant)) {
-      setHeroVariant(legacyVariant);
-      setTileViewPreference(
-        "academy_hero",
-        ACADEMY_HERO_TO_TILE_VIEW[legacyVariant],
-      );
+      void warmAcademyHeroBackground(legacyVariant);
     }
+  }, []);
+
+  useEffect(() => {
+    if (!appearanceLoaded) return;
+
+    const accountView = tileViewPreferences.academy_hero;
+    let nextVariant: AcademyHeroVariant | null = accountView
+      ? TILE_VIEW_TO_ACADEMY_HERO[accountView]
+      : null;
+
+    if (!nextVariant) {
+      const legacyVariant = window.localStorage.getItem(
+        ACADEMY_HERO_STORAGE_KEY,
+      );
+
+      if (isHeroVariant(legacyVariant)) {
+        nextVariant = legacyVariant;
+
+        setTileViewPreference(
+          "academy_hero",
+          ACADEMY_HERO_TO_TILE_VIEW[legacyVariant],
+        );
+      }
+    }
+
+    if (!nextVariant || nextVariant === heroVariant) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void warmAcademyHeroBackground(nextVariant).then(() => {
+      if (!cancelled) {
+        setHeroVariant(nextVariant);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [
     appearanceLoaded,
+    heroVariant,
     setTileViewPreference,
     tileViewPreferences.academy_hero,
   ]);

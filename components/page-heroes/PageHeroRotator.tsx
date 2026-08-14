@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { preload } from "react-dom";
 
 import type { PageHeroChain } from "@/lib/pageHeroes";
 
@@ -17,6 +18,11 @@ export default function PageHeroRotator({
   );
   const [index, setIndex] = useState(0);
   const [reducedMotion, setReducedMotion] = useState(false);
+  const firstImageUrl = items[0]?.asset?.url;
+
+  if (firstImageUrl) {
+    preload(firstImageUrl, { as: "image", fetchPriority: "high" });
+  }
 
   useEffect(() => {
     setIndex(0);
@@ -46,6 +52,8 @@ export default function PageHeroRotator({
     const next = items[(index + 1) % items.length]?.asset?.url;
     if (!next) return;
     const image = new Image();
+    image.decoding = "async";
+    image.fetchPriority = "low";
     image.src = next;
   }, [index, items]);
 
@@ -75,8 +83,8 @@ export default function PageHeroRotator({
             <img
               src={asset.url}
               alt=""
-              loading={itemIndex <= 1 ? "eager" : "lazy"}
-              fetchPriority={itemIndex === 0 ? "high" : "auto"}
+              loading={itemIndex === 0 ? "eager" : "lazy"}
+              fetchPriority={itemIndex === 0 ? "high" : "low"}
               className="absolute inset-0 h-full w-full object-cover"
               style={{ objectPosition: `${item.focalX}% ${item.focalY}%` }}
             />

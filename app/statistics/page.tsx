@@ -6,6 +6,7 @@ import PremiumTimeSeriesChart, {
   type ObservatoryPoint,
   type ObservatorySeries,
 } from "@/components/observatory/PremiumTimeSeriesChart";
+import { publishExplicitSpeedReady } from "@/lib/speed/readiness";
 
 const SERIES: ObservatorySeries[] = [
   {
@@ -171,6 +172,26 @@ export default function StatisticsPage() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (points.length === 0) return;
+
+    let secondFrame: number | null = null;
+
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        publishExplicitSpeedReady("/statistics");
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+
+      if (secondFrame !== null) {
+        window.cancelAnimationFrame(secondFrame);
+      }
+    };
+  }, [points.length]);
 
   return (
     <main className="relative min-h-screen w-full overflow-hidden bg-[#05040d] text-white">

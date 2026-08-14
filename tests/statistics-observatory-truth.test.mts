@@ -11,6 +11,15 @@ const source =
     "utf8",
   );
 
+const pageSource =
+  fs.readFileSync(
+    new URL(
+      "../app/statistics/page.tsx",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
 test(
   "Statistics exposes completed UTC days only",
   () => {
@@ -217,6 +226,26 @@ test(
     assert.match(
       cumulative,
       /e\.type =\s+'page_view'/,
+    );
+  },
+);
+
+test(
+  "Statistics reports ready only after real chart data is rendered",
+  () => {
+    assert.match(
+      pageSource,
+      /points\.length === 0/,
+    );
+
+    assert.match(
+      pageSource,
+      /requestAnimationFrame/,
+    );
+
+    assert.match(
+      pageSource,
+      /publishExplicitSpeedReady\("\/statistics"\)/,
     );
   },
 );

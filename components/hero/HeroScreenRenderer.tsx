@@ -6,7 +6,10 @@ import { ArrowUpRight, Crown, Feather, Quote, Swords } from "lucide-react";
 
 import { WolomaniaPromoTile } from "@/components/lobby/WolomaniaPromoTile";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
-import type { HeroPlaylistItemView } from "@/lib/hero/types";
+import {
+  isSafeHeroMediaUrl,
+  type HeroPlaylistItemView,
+} from "@/lib/hero/types";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 
 function mediaUrl(item: HeroPlaylistItemView, mobile = false) {
@@ -17,6 +20,41 @@ function mediaUrl(item: HeroPlaylistItemView, mobile = false) {
     item.screen.mediaAsset?.url ||
     ""
   );
+}
+
+export function heroScreenPreloadUrl(item: HeroPlaylistItemView) {
+  if (item.screen.type === "featured_event") {
+    const eventBackground = item.screen.eventTile?.backgroundImageUrl || "";
+    return eventBackground && isSafeHeroMediaUrl(eventBackground)
+      ? eventBackground
+      : "";
+  }
+
+  const config = item.screen.config;
+  const fallbackMediaUrl = mediaUrl(item);
+  const mediaAssetIsVideo =
+    item.screen.mediaAsset?.mimeType.startsWith("video/") ?? false;
+  const backgroundUrl =
+    config.backgroundImageUrl ||
+    (!mediaAssetIsVideo ? fallbackMediaUrl : "");
+  const videoUrl = config.videoUrl || (mediaAssetIsVideo ? fallbackMediaUrl : "");
+  const isPureImage =
+    item.screen.type === "media_takeover" &&
+    (config.pureImage === true ||
+      ((config.overlayOpacity ?? 0.45) <= 0.01 &&
+        !config.eyebrow &&
+        !config.title &&
+        !config.subtitle &&
+        !config.ctaLabel));
+
+  // Pure-image takeovers already emit the exact responsive preload through
+  // next/image's priority path. CSS backgrounds and video posters do not.
+  if (isPureImage && !videoUrl) return "";
+
+  const preloadUrl = videoUrl
+    ? config.posterUrl || backgroundUrl
+    : backgroundUrl;
+  return preloadUrl && isSafeHeroMediaUrl(preloadUrl) ? preloadUrl : "";
 }
 
 function mediaStyle(item: HeroPlaylistItemView) {

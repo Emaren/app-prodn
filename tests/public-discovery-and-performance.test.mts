@@ -50,6 +50,10 @@ test("critical performance safeguards stay wired into the public surfaces", () =
     new URL("../components/leaderboard/OgBoardPage.tsx", import.meta.url),
     "utf8"
   );
+  const modernLeaderboard = readFileSync(
+    new URL("../components/leaderboard/ModernLeaderboardPage.tsx", import.meta.url),
+    "utf8"
+  );
   const nextConfig = readFileSync(new URL("../next.config.js", import.meta.url), "utf8");
   const warChest = readFileSync(new URL("../lib/warChest.ts", import.meta.url), "utf8");
 
@@ -64,6 +68,14 @@ test("critical performance safeguards stay wired into the public surfaces", () =
   assert.match(playerFeed, /rootMargin: "1600px 0px"/);
   assert.match(playerFeed, /\[content-visibility:auto\]/);
   assert.match(ogBoard, /rootMargin: "1800px 0px"/);
+  assert.ok(modernLeaderboard.includes("const RESET_PAGE_SIZE = 50;"));
+  assert.ok(modernLeaderboard.includes("const SCROLL_PAGE_SIZE = 150;"));
+  assert.ok(
+    modernLeaderboard.includes(
+      "limit: String(reset ? RESET_PAGE_SIZE : SCROLL_PAGE_SIZE),"
+    )
+  );
+  assert.ok(modernLeaderboard.includes('rootMargin: "8000px 0px"'));
   assert.doesNotMatch(playerAi, /setInterval\(markHeroSurfaces/);
   assert.match(nextConfig, /\$\{directory\}\/:path\*\.:ext\(\$\{publicMediaExtensions\}\)/);
   assert.doesNotMatch(nextConfig, /\$\{directory\}\/:path\+/);

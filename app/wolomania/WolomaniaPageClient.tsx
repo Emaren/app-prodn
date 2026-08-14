@@ -2,6 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
+import { preload } from "react-dom";
 import {
   CalendarDays,
   ChevronRight,
@@ -227,6 +228,8 @@ function InfoTile({
 }
 
 export default function WolomaniaPageClient() {
+  preload(OFFICIAL_POSTER, { as: "image", fetchPriority: "high" });
+
   return (
     <div className="relative -mx-1 overflow-hidden rounded-[2rem] border border-amber-300/10 bg-[#050505] text-stone-100 shadow-[0_40px_140px_rgba(0,0,0,0.55)] sm:-mx-2 lg:-mx-6">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(245,158,11,0.28),transparent_28%),radial-gradient(circle_at_20%_18%,rgba(185,28,28,0.22),transparent_22%),linear-gradient(180deg,rgba(0,0,0,0)_0%,rgba(0,0,0,0.42)_38%,rgba(0,0,0,0.82)_100%)]" />
@@ -311,6 +314,8 @@ export default function WolomaniaPageClient() {
               <img
                 src={OFFICIAL_POSTER}
                 alt="Wolomania I official event poster"
+                loading="eager"
+                fetchPriority="high"
                 className="mx-auto block w-full max-w-5xl object-contain"
               />
             </div>
