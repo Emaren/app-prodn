@@ -350,7 +350,7 @@ durable twin in either:
 Default:
 
 ```text
-AOE2_RELEASE_FAST_ROLLBACK_KEEP=2
+AOE2_RELEASE_FAST_ROLLBACK_KEEP=1
 ```
 
 The implementation bounds the keep count to 1–10. It keeps the newest matching
