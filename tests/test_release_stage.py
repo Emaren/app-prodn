@@ -37,6 +37,9 @@ def sample():
         "artifact_sha256": "a" * 64,
         "candidate_node_modules_sha256": "b" * 64,
         "candidate_node_modules_kb": "123456",
+        "prisma_schema_engine_commit": "c" * 40,
+        "prisma_schema_engine_sha256": "d" * 64,
+        "prisma_schema_engine_seeded": "1",
         "service": "active",
         "wolo8092": "1",
         "wolo8093": "1",
@@ -223,7 +226,6 @@ class StageTests(unittest.TestCase):
 
         self.assertLess(install_pos, release_pos)
         self.assertLess(release_pos, build_pos)
-
 
     def test_stage_script_persists_evidence_before_isolated_build_and_copy(self):
         script = MODULE.remote_stage_script(
@@ -422,6 +424,82 @@ class StageTests(unittest.TestCase):
         self.assertIn(".node_modules-release", script)
         self.assertIn("candidate_node_modules_sha256", script)
         self.assertIn("live_node_modules_mutated", script)
+
+    def test_stage_proves_prisma_engine_version_and_candidate_hash(self):
+        script = MODULE.remote_stage_script(
+            release_sha="b" * 40,
+            previous_sha="a" * 40,
+            manifest_sha="c" * 64,
+            gate_sha="d" * 64,
+            receipt_dir="/mnt/receipt",
+        )
+
+        version_proof = (
+            'test "$live_prisma_engine_version" = '
+            '"schema-engine-cli $candidate_prisma_engine_commit"'
+        )
+        hash_proof = (
+            'test "$candidate_prisma_engine_sha" = '
+            '"$live_prisma_engine_sha"'
+        )
+        discard = script.index('rm -rf "$build_worktree/node_modules"')
+        build = script.index('systemctl start --wait "$build_unit"', discard)
+        engine_copy = script.index(
+            'install -m 0755 "$LIVE_PRISMA_SCHEMA_ENGINE" '
+            '"$candidate_prisma_schema_engine"',
+            build,
+        )
+        containment = script.index(
+            'test "$(realpath -e "$candidate_prisma_engine_dir")" = '
+            '"$candidate_prisma_engine_dir"',
+            build,
+        )
+        target_unlink = script.index(
+            'unlink -- "$candidate_prisma_schema_engine"',
+            containment,
+        )
+        regular_file_proof = script.index(
+            'test -f "$candidate_prisma_schema_engine"',
+            engine_copy,
+        )
+        target_realpath_proof = script.index(
+            'test "$(realpath -e "$candidate_prisma_schema_engine")" = '
+            '"$candidate_prisma_schema_engine"',
+            regular_file_proof,
+        )
+        dependency_hash = script.index('candidate_node_modules_sha="$(', engine_copy)
+
+        self.assertIn(version_proof, script)
+        self.assertIn(hash_proof, script)
+        self.assertIn(
+            '[[ "$candidate_prisma_engine_commit" =~ ^[0-9a-f]{40}$ ]]',
+            script,
+        )
+        self.assertLess(script.index(version_proof), discard)
+        self.assertGreater(engine_copy, build)
+        self.assertLess(containment, target_unlink)
+        self.assertLess(target_unlink, engine_copy)
+        self.assertLess(engine_copy, regular_file_proof)
+        self.assertLess(regular_file_proof, target_realpath_proof)
+        self.assertLess(engine_copy, script.index(hash_proof))
+        self.assertLess(script.index(hash_proof), dependency_hash)
+        self.assertIn('test ! -L "$build_worktree/node_modules"', script)
+        self.assertIn('test ! -L "$build_worktree/node_modules/@prisma"', script)
+        self.assertIn('test ! -L "$candidate_prisma_engine_dir"', script)
+        self.assertIn('test ! -L "$candidate_prisma_schema_engine"', script)
+        self.assertIn("prisma_schema_engine_seeded=1", script)
+
+    def test_prisma_engine_receipt_proof_is_required(self):
+        data, manifest, result = sample()
+        result["prisma_schema_engine_seeded"] = "0"
+        result["prisma_schema_engine_sha256"] = "not-a-sha"
+
+        errors = MODULE.validate_stage_result(data, manifest, result)
+
+        self.assertIn("candidate Prisma schema-engine SHA-256 is invalid", errors)
+        self.assertTrue(
+            any("prisma_schema_engine_seeded" in error for error in errors)
+        )
 
     def test_isolated_stage_invariant_is_required(self):
         data, manifest, result = sample()

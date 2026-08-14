@@ -95,6 +95,8 @@ DEPS_UNIT_SHA={q(deps_unit_sha)}
 SERVICE={q(SERVICE)}
 PUBLIC={q(PUBLIC)}
 LIVE_REPO={q(PROD_REPO)}
+PRISMA_SCHEMA_ENGINE_REL=node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x
+LIVE_PRISMA_SCHEMA_ENGINE="$LIVE_REPO/$PRISMA_SCHEMA_ENGINE_REL"
 MANIFEST_CONTENT={q(manifest_text)}
 GATE_CONTENT={q(gate_text)}
 
@@ -249,6 +251,7 @@ test "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version
 # Free-space policy reserves two live dependency-tree equivalents plus 1 GiB
 # for candidate materialization, Yarn cache, build output, and staging overhead.
 test -d "$LIVE_REPO/node_modules"
+test -x "$LIVE_PRISMA_SCHEMA_ENGINE"
 live_dependency_kb="$(du -sk "$LIVE_REPO/node_modules" | awk '{{print $1}}')"
 root_available_kb="$(df -Pk "$LIVE_REPO" | awk 'NR==2 {{print $4}}')"
 test "$live_dependency_kb" -gt 0
@@ -309,6 +312,24 @@ test "$(systemctl show "$deps_unit" -p Result --value)" = "success"
 test "$(systemctl show "$deps_unit" -p ExecMainStatus --value)" = "0"
 test -d "$build_worktree/node_modules"
 
+# The build sandbox deliberately has no network. Prove that its live bootstrap
+# engine belongs to the exact engine commit requested by the frozen candidate
+# before the network-phase dependency tree is discarded.
+candidate_prisma_engine_commit="$(
+  python3 - "$build_worktree/node_modules/@prisma/engines-version/package.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    print(json.load(handle)["prisma"]["enginesVersion"])
+PY
+)"
+live_prisma_engine_version="$("$LIVE_PRISMA_SCHEMA_ENGINE" --version)"
+[[ "$candidate_prisma_engine_commit" =~ ^[0-9a-f]{{40}}$ ]]
+test "$live_prisma_engine_version" = "schema-engine-cli $candidate_prisma_engine_commit"
+live_prisma_engine_sha="$(sha256sum "$LIVE_PRISMA_SCHEMA_ENGINE" | awk '{{print $1}}')"
+test "${{#live_prisma_engine_sha}}" = "64"
+
 # Never trust/use the network-phase materialization as the runtime tree.
 rm -rf "$build_worktree/node_modules"
 test ! -e "$build_worktree/node_modules"
@@ -327,6 +348,33 @@ sudo -n /usr/bin/journalctl -u "$build_unit" \
 test "$(systemctl show "$build_unit" -p Result --value)" = "success"
 test "$(systemctl show "$build_unit" -p ExecMainStatus --value)" = "0"
 test -d "$build_worktree/node_modules"
+
+# Prisma's postinstall cannot download inside the network-private build unit.
+# The isolated build borrows the version-proven live engine through its fixed
+# environment override. Preserve that exact engine in the candidate dependency
+# tree before hashing so activation bootstraps the next release as well.
+candidate_prisma_engine_dir="$build_worktree/node_modules/@prisma/engines"
+test -d "$candidate_prisma_engine_dir"
+test ! -L "$build_worktree/node_modules"
+test ! -L "$build_worktree/node_modules/@prisma"
+test ! -L "$candidate_prisma_engine_dir"
+test "$(realpath -e "$build_worktree")" = "$build_worktree"
+test "$(realpath -e "$candidate_prisma_engine_dir")" = "$candidate_prisma_engine_dir"
+candidate_prisma_schema_engine="$candidate_prisma_engine_dir/schema-engine-debian-openssl-3.0.x"
+if [ -e "$candidate_prisma_schema_engine" ] || [ -L "$candidate_prisma_schema_engine" ]; then
+  unlink -- "$candidate_prisma_schema_engine"
+fi
+test ! -e "$candidate_prisma_schema_engine"
+test ! -L "$candidate_prisma_schema_engine"
+install -m 0755 "$LIVE_PRISMA_SCHEMA_ENGINE" "$candidate_prisma_schema_engine"
+test -f "$candidate_prisma_schema_engine"
+test -x "$candidate_prisma_schema_engine"
+test ! -L "$candidate_prisma_schema_engine"
+test "$(realpath -e "$candidate_prisma_schema_engine")" = "$candidate_prisma_schema_engine"
+candidate_prisma_engine_sha="$(
+  sha256sum "$candidate_prisma_schema_engine" | awk '{{print $1}}'
+)"
+test "$candidate_prisma_engine_sha" = "$live_prisma_engine_sha"
 
 test -f "$build_worktree/.next-release/BUILD_ID"
 test -f "$build_worktree/.aoe2war-build-version"
@@ -475,6 +523,9 @@ printf '%s\n' \
   "artifact_sha256=$artifact_sha" \
   "candidate_node_modules_sha256=$candidate_node_modules_sha" \
   "candidate_node_modules_kb=$candidate_node_modules_kb" \
+  "prisma_schema_engine_commit=$candidate_prisma_engine_commit" \
+  "prisma_schema_engine_sha256=$candidate_prisma_engine_sha" \
+  "prisma_schema_engine_seeded=1" \
   "service=$after_service" \
   "wolo8092=$after_wolo8092" \
   "wolo8093=$after_wolo8093" \
@@ -510,6 +561,9 @@ printf 'candidate_build_version\t%s\n' "$candidate_version"
 printf 'artifact_sha256\t%s\n' "$artifact_sha"
 printf 'candidate_node_modules_sha256\t%s\n' "$candidate_node_modules_sha"
 printf 'candidate_node_modules_kb\t%s\n' "$candidate_node_modules_kb"
+printf 'prisma_schema_engine_commit\t%s\n' "$candidate_prisma_engine_commit"
+printf 'prisma_schema_engine_sha256\t%s\n' "$candidate_prisma_engine_sha"
+printf 'prisma_schema_engine_seeded\t1\n'
 printf 'service\t%s\n' "$after_service"
 printf 'wolo8092\t%s\n' "$after_wolo8092"
 printf 'wolo8093\t%s\n' "$after_wolo8093"
@@ -575,6 +629,18 @@ def validate_stage_result(
     if dependency_kb <= 0:
         errors.append("candidate node_modules size is invalid")
 
+    engine_commit = result.get("prisma_schema_engine_commit") or ""
+    if len(engine_commit) != 40 or any(
+        c not in "0123456789abcdef" for c in engine_commit
+    ):
+        errors.append("candidate Prisma schema-engine commit is invalid")
+
+    engine_sha = result.get("prisma_schema_engine_sha256") or ""
+    if len(engine_sha) != 64 or any(
+        c not in "0123456789abcdef" for c in engine_sha
+    ):
+        errors.append("candidate Prisma schema-engine SHA-256 is invalid")
+
     if result.get("service") != "active":
         errors.append("AoE2WAR web service is not active after staging")
     if result.get("wolo8092") != str(prod.get("wolo_8092_count")):
@@ -589,6 +655,7 @@ def validate_stage_result(
         ("dependency_fetch_sandboxed", "1"),
         ("dependency_fetch_scripts_disabled", "1"),
         ("dependency_build_offline", "1"),
+        ("prisma_schema_engine_seeded", "1"),
         ("cache_free_artifact", "1"),
         ("artifact_path_relocated", "1"),
         ("live_source_mutated", "0"),
@@ -885,6 +952,9 @@ def stage_release(
             "candidate_node_modules_sha256"
         ],
         "candidate_node_modules_kb": int(result["candidate_node_modules_kb"]),
+        "prisma_schema_engine_commit": result["prisma_schema_engine_commit"],
+        "prisma_schema_engine_sha256": result["prisma_schema_engine_sha256"],
+        "prisma_schema_engine_seeded": True,
         "service": result["service"],
         "wolo_8092_count": int(result["wolo8092"]),
         "wolo_8093_count": int(result["wolo8093"]),
@@ -966,6 +1036,11 @@ def stage_release(
     print(
         "Dependencies:   fresh frozen candidate tree; "
         "network fetch scripts disabled; offline build materialization"
+    )
+    print(
+        "Prisma engine:  "
+        f"{payload['prisma_schema_engine_commit']}  "
+        f"{payload['prisma_schema_engine_sha256']}  SEEDED"
     )
     print("Build isolation: temporary detached worktree; live source/public/dependencies untouched")
     print("Artifact paths: relocated to canonical live root before hashing")

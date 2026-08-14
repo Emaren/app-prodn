@@ -3,6 +3,7 @@ import json
 import pathlib
 import tempfile
 import unittest
+from unittest import mock
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "aoe2_release_ship.py"
 SPEC = importlib.util.spec_from_file_location("aoe2_release_ship", SCRIPT)
@@ -90,6 +91,9 @@ def activation_sample():
         "artifact_sha256": "e" * 64,
         "candidate_node_modules_sha256": "f" * 64,
         "candidate_node_modules_kb": 123456,
+        "prisma_schema_engine_commit": "c" * 40,
+        "prisma_schema_engine_sha256": "d" * 64,
+        "prisma_schema_engine_seeded": True,
         "dependency_contract_unchanged": True,
         "dependency_lock_changed": False,
         "wolo_8092_count": 1,
@@ -225,6 +229,85 @@ class ShipTests(unittest.TestCase):
     def test_activation_valid_preflight_allows_tooling_head_after_candidate(self):
         data, receipt, transport = activation_sample()
         self.assertEqual(MODULE.activation_validation_errors(data, receipt, transport), [])
+
+    def test_stage_receipt_requires_prisma_engine_provenance(self):
+        _, manifest, _ = sample()
+        release = manifest["release_sha"]
+        artifact = "e" * 64
+        manifest_path = MODULE.ROOT / ".aoe2war-release/manifests/test.json"
+        gate_path = MODULE.ROOT / ".aoe2war-release/gates/test.json"
+        receipt = {
+            "schema": 1,
+            "kind": "aoe2war-stage-result",
+            "status": "STAGED",
+            "release_sha": release,
+            "previous_production_sha": manifest["previous_production_sha"],
+            "source_sha": manifest["previous_production_sha"],
+            "risk_class": manifest["risk_class"],
+            "active_build_id": "old-build",
+            "staged_build_id": "candidate-build",
+            "live_build_version": "old-version",
+            "candidate_build_version": "candidate-version",
+            "artifact_sha256": artifact,
+            "candidate_node_modules_sha256": "f" * 64,
+            "candidate_node_modules_kb": 123456,
+            "prisma_schema_engine_commit": "c" * 40,
+            "prisma_schema_engine_sha256": "d" * 64,
+            "prisma_schema_engine_seeded": True,
+            "dependency_contract_unchanged": True,
+            "dependency_lock_changed": False,
+            "manifest_path": str(manifest_path.relative_to(MODULE.ROOT)),
+            "manifest_sha256": "1" * 64,
+            "gate_path": str(gate_path.relative_to(MODULE.ROOT)),
+            "gate_sha256": "2" * 64,
+            "remote_receipt_dir": (
+                "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/"
+                "stage-test"
+            ),
+            "wolo_8092_count": 1,
+            "wolo_8093_count": 1,
+            "live_runtime_mutated": False,
+            "wolo_mutated": False,
+            "isolated_worktree": True,
+            "build_process_sandboxed": True,
+            "build_network_private": True,
+            "build_secret_paths_inaccessible": True,
+            "dependency_fetch_sandboxed": True,
+            "dependency_fetch_scripts_disabled": True,
+            "dependency_build_offline": True,
+            "cache_free_artifact": True,
+            "artifact_path_relocated": True,
+            "live_source_mutated": False,
+            "live_public_mutated": False,
+            "live_node_modules_mutated": False,
+            "live_build_version_mutated": False,
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            receipt_root = pathlib.Path(tmp)
+            receipt_path = receipt_root / f"{release}-{artifact[:12]}.json"
+            with (
+                mock.patch.object(MODULE, "STAGE_RECEIPT_DIR", receipt_root),
+                mock.patch.object(
+                    MODULE,
+                    "load_manifest",
+                    return_value=(manifest_path, manifest, "1" * 64),
+                ),
+                mock.patch.object(
+                    MODULE,
+                    "gate_integrity",
+                    return_value=(gate_path, "2" * 64),
+                ),
+            ):
+                for missing in (
+                    "prisma_schema_engine_commit",
+                    "prisma_schema_engine_sha256",
+                    "prisma_schema_engine_seeded",
+                ):
+                    invalid = {key: value for key, value in receipt.items() if key != missing}
+                    receipt_path.write_text(json.dumps(invalid), encoding="utf-8")
+                    with self.assertRaises(MODULE.ShipError):
+                        MODULE.load_stage_receipt(str(receipt_path))
 
     def test_activation_source_drift_blocks(self):
         data, receipt, transport = activation_sample()
@@ -374,6 +457,28 @@ class ShipTests(unittest.TestCase):
         )
         self.assertIn(
             'dependency_build_offline=1',
+            script,
+        )
+        self.assertIn(
+            'grep -Fx "prisma_schema_engine_commit=$PRISMA_ENGINE_COMMIT"',
+            script,
+        )
+        self.assertIn(
+            'grep -Fx "prisma_schema_engine_sha256=$PRISMA_ENGINE_SHA"',
+            script,
+        )
+        self.assertIn(
+            'grep -Fx "prisma_schema_engine_seeded=1"',
+            script,
+        )
+        self.assertIn(
+            'test "$(sha256sum "$candidate_prisma_engine" | '
+            'awk \'{print $1}\')" = "$PRISMA_ENGINE_SHA"',
+            script,
+        )
+        self.assertIn(
+            'test "$("$candidate_prisma_engine" --version)" = '
+            '"schema-engine-cli $PRISMA_ENGINE_COMMIT"',
             script,
         )
         self.assertIn(

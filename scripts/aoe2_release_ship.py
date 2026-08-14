@@ -440,6 +440,7 @@ def load_stage_receipt(
         "dependency_fetch_sandboxed": True,
         "dependency_fetch_scripts_disabled": True,
         "dependency_build_offline": True,
+        "prisma_schema_engine_seeded": True,
         "cache_free_artifact": True,
         "artifact_path_relocated": True,
         "live_source_mutated": False,
@@ -475,6 +476,13 @@ def load_stage_receipt(
             "Stage receipt candidate node_modules size is invalid."
         )
 
+    prisma_engine_commit = receipt.get("prisma_schema_engine_commit")
+    if not _is_hex(prisma_engine_commit, 40):
+        raise ShipError("Stage receipt Prisma schema-engine commit is invalid.")
+    prisma_engine_sha = receipt.get("prisma_schema_engine_sha256")
+    if not _is_hex(prisma_engine_sha, 64):
+        raise ShipError("Stage receipt Prisma schema-engine SHA-256 is invalid.")
+
     for key in ("dependency_contract_unchanged", "dependency_lock_changed"):
         if not isinstance(receipt.get(key), bool):
             raise ShipError(
@@ -490,6 +498,8 @@ def load_stage_receipt(
         "candidate_build_version",
         "candidate_node_modules_sha256",
         "candidate_node_modules_kb",
+        "prisma_schema_engine_commit",
+        "prisma_schema_engine_sha256",
         "previous_production_sha",
         "source_sha",
         "manifest_path",
@@ -669,6 +679,8 @@ CANDIDATE_VERSION={q(receipt['candidate_build_version'])}
 ARTIFACT={q(receipt['artifact_sha256'])}
 DEPENDENCY_ARTIFACT={q(receipt['candidate_node_modules_sha256'])}
 DEPENDENCY_KB={q(str(receipt['candidate_node_modules_kb']))}
+PRISMA_ENGINE_COMMIT={q(receipt['prisma_schema_engine_commit'])}
+PRISMA_ENGINE_SHA={q(receipt['prisma_schema_engine_sha256'])}
 DEPENDENCY_CONTRACT_UNCHANGED={q("1" if receipt['dependency_contract_unchanged'] else "0")}
 DEPENDENCY_LOCK_CHANGED={q("1" if receipt['dependency_lock_changed'] else "0")}
 MANIFEST_SHA={q(receipt['manifest_sha256'])}
@@ -760,6 +772,9 @@ grep -Fx "candidate_build_version=$CANDIDATE_VERSION" "$STAGE_REMOTE/stage-statu
 grep -Fx "artifact_sha256=$ARTIFACT" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 grep -Fx "candidate_node_modules_sha256=$DEPENDENCY_ARTIFACT" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 grep -Fx "candidate_node_modules_kb=$DEPENDENCY_KB" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "prisma_schema_engine_commit=$PRISMA_ENGINE_COMMIT" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "prisma_schema_engine_sha256=$PRISMA_ENGINE_SHA" "$STAGE_REMOTE/stage-status.txt" >/dev/null
+grep -Fx "prisma_schema_engine_seeded=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 grep -Fx "source_sha=$PREVIOUS" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 grep -Fx "isolated_worktree=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
 grep -Fx "build_process_sandboxed=1" "$STAGE_REMOTE/stage-status.txt" >/dev/null
@@ -788,6 +803,13 @@ test "$candidate_dependency_artifact" = "$DEPENDENCY_ARTIFACT"
 
 candidate_dependency_kb="$(du -sk .node_modules-release | awk '{{print $1}}')"
 test "$candidate_dependency_kb" = "$DEPENDENCY_KB"
+
+candidate_prisma_engine=.node_modules-release/@prisma/engines/schema-engine-debian-openssl-3.0.x
+test -f "$candidate_prisma_engine"
+test -x "$candidate_prisma_engine"
+test ! -L "$candidate_prisma_engine"
+test "$(sha256sum "$candidate_prisma_engine" | awk '{{print $1}}')" = "$PRISMA_ENGINE_SHA"
+test "$("$candidate_prisma_engine" --version)" = "schema-engine-cli $PRISMA_ENGINE_COMMIT"
 
 candidate_dependency_identity="$(stat -Lc '%d:%i' .node_modules-release)"
 test -n "$candidate_dependency_identity"
