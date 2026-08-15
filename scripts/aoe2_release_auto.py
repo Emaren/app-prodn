@@ -8,8 +8,6 @@ import os
 import shlex
 import subprocess
 import tempfile
-import urllib.error
-import urllib.request
 from pathlib import Path
 from typing import Callable
 
@@ -716,14 +714,35 @@ def resolve_stage_receipt(
 
 def route_proof() -> None:
     for path in ("/", "/api/lobby", "/api/bets", "/api/deployment-version"):
-        with urllib.request.urlopen(
-            PUBLIC.rstrip("/") + path,
-            timeout=12,
-        ) as response:
-            if response.status != 200:
-                raise AutoShipError(
-                    f"public route failed: {path} -> {response.status}"
-                )
+        url = PUBLIC.rstrip("/") + path
+        p = run(
+            [
+                "curl",
+                "-fsS",
+                "--connect-timeout",
+                "4",
+                "--max-time",
+                "12",
+                "-o",
+                "/dev/null",
+                "-w",
+                "%{http_code}",
+                url,
+            ],
+            timeout=15,
+        )
+        status = (p.stdout or "").strip()
+
+        if p.returncode != 0 or status != "200":
+            detail = (
+                (p.stderr or "")
+                or status
+                or f"curl exit {p.returncode}"
+            ).strip()
+
+            raise AutoShipError(
+                f"public route failed: {path} -> {detail}"
+            )
 
     remote = (
         "set -euo pipefail; "
@@ -949,7 +968,6 @@ def ship_all(
         AutoShipError,
         OSError,
         subprocess.SubprocessError,
-        urllib.error.URLError,
     ) as exc:
         print(f"STOP: ONE-COMMAND SHIP FAILED: {exc}")
         return 2

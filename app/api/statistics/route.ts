@@ -1,4 +1,4 @@
-import { unstable_cache } from "next/cache";
+import { createStaleWhileRevalidateCache } from "@/lib/staleWhileRevalidateCache";
 import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
@@ -39,8 +39,7 @@ function numeric(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-const loadStatisticsRows = unstable_cache(
-  async () => {
+async function queryStatisticsRows(): Promise<StatisticsRow[]> {
     const prisma = getPrisma();
 
     return prisma.$queryRaw<StatisticsRow[]>`
@@ -707,9 +706,11 @@ LEFT JOIN radio_daily rs
 
 ORDER BY d.day;
 `;
-  },
-  ["statistics-complete-utc-days-v1"],
-  { revalidate: 3600 },
+}
+
+const loadStatisticsRows = createStaleWhileRevalidateCache(
+  queryStatisticsRows,
+  60 * 60 * 1000,
 );
 
 export async function GET() {

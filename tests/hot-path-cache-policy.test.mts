@@ -12,36 +12,39 @@ const watcherSource = fs.readFileSync(
   "utf8",
 );
 
+const cacheSource = fs.readFileSync(
+  new URL("../lib/staleWhileRevalidateCache.ts", import.meta.url),
+  "utf8",
+);
+
 test(
-  "Statistics caches its expensive completed-day database query",
+  "Statistics uses deterministic process-local SWR caching",
   () => {
     assert.match(
       statisticsSource,
-      /import \{ unstable_cache \} from "next\/cache"/,
+      /createStaleWhileRevalidateCache/,
+    );
+
+    assert.doesNotMatch(
+      statisticsSource,
+      /unstable_cache/,
     );
 
     assert.match(
       statisticsSource,
-      /const loadStatisticsRows = unstable_cache\(/,
+      /async function queryStatisticsRows/,
     );
 
     assert.match(
       statisticsSource,
-      /\["statistics-complete-utc-days-v1"\]/,
+      /const loadStatisticsRows = createStaleWhileRevalidateCache/,
     );
 
     assert.match(
       statisticsSource,
-      /\{ revalidate: 3600 \}/,
+      /60 \* 60 \* 1000/,
     );
 
-    assert.match(
-      statisticsSource,
-      /const rows = await loadStatisticsRows\(\)/,
-    );
-
-    // We are caching the expensive data calculation, not
-    // silently changing the route's truth/render contract.
     assert.match(
       statisticsSource,
       /export const dynamic = "force-dynamic"/,
@@ -50,41 +53,51 @@ test(
 );
 
 test(
-  "Watcher Funnel reuses its expensive dashboard calculation briefly",
+  "Watcher Funnel uses deterministic short SWR caching",
   () => {
     assert.match(
       watcherSource,
-      /import \{ unstable_cache \} from "next\/cache"/,
+      /createStaleWhileRevalidateCache/,
+    );
+
+    assert.doesNotMatch(
+      watcherSource,
+      /unstable_cache/,
     );
 
     assert.match(
       watcherSource,
-      /const loadCachedWatcherFunnelDashboard = unstable_cache\(/,
-    );
-
-    assert.match(
-      watcherSource,
-      /\["admin-watcher-funnel-dashboard-v1"\]/,
-    );
-
-    assert.match(
-      watcherSource,
-      /\{ revalidate: 15 \}/,
-    );
-
-    assert.match(
-      watcherSource,
-      /loadWatcherFunnelDashboard\(getPrisma\(\)\)/,
-    );
-
-    assert.match(
-      watcherSource,
-      /const data = await loadCachedWatcherFunnelDashboard\(\)/,
+      /15_000/,
     );
 
     assert.match(
       watcherSource,
       /export const dynamic = "force-dynamic"/,
+    );
+  },
+);
+
+test(
+  "SWR helper deduplicates cold work and preserves stale good data",
+  () => {
+    assert.match(
+      cacheSource,
+      /let inFlight: Promise<T> \| null = null/,
+    );
+
+    assert.match(
+      cacheSource,
+      /if \(inFlight\)/,
+    );
+
+    assert.match(
+      cacheSource,
+      /return entry\.value/,
+    );
+
+    assert.match(
+      cacheSource,
+      /void refresh\(\)\.catch/,
     );
   },
 );

@@ -1,4 +1,4 @@
-import { unstable_cache } from "next/cache";
+import { createStaleWhileRevalidateCache } from "@/lib/staleWhileRevalidateCache";
 import WatcherFunnelDashboard from "@/components/admin/WatcherFunnelDashboard";
 import { getPrisma } from "@/lib/prisma";
 import { loadWatcherFunnelDashboard } from "@/lib/watcherFunnel";
@@ -6,11 +6,11 @@ import { loadWatcherFunnelDashboard } from "@/lib/watcherFunnel";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const loadCachedWatcherFunnelDashboard = unstable_cache(
-  async () => loadWatcherFunnelDashboard(getPrisma()),
-  ["admin-watcher-funnel-dashboard-v1"],
-  { revalidate: 15 },
-);
+const loadCachedWatcherFunnelDashboard =
+  createStaleWhileRevalidateCache(
+    async () => loadWatcherFunnelDashboard(getPrisma()),
+    15_000,
+  );
 
 export default async function AdminWatcherFunnelPage() {
   const data = await loadCachedWatcherFunnelDashboard();

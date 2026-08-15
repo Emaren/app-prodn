@@ -412,6 +412,88 @@ class AutoShipTests(unittest.TestCase):
         manifest.assert_not_called()
         stage.assert_not_called()
 
+    def test_route_proof_uses_curl_for_public_routes(self):
+        calls = []
+
+        def fake_run(args, *, timeout=300):
+            calls.append(args)
+
+            if args[0] == "curl":
+                return subprocess.CompletedProcess(
+                    args,
+                    0,
+                    stdout="200",
+                    stderr="",
+                )
+
+            if args[0] == "ssh":
+                return subprocess.CompletedProcess(
+                    args,
+                    0,
+                    stdout="",
+                    stderr="",
+                )
+
+            raise AssertionError(
+                f"unexpected command: {args}"
+            )
+
+        with mock.patch.object(
+            MODULE,
+            "run",
+            side_effect=fake_run,
+        ):
+            MODULE.route_proof()
+
+        public_calls = [
+            args
+            for args in calls
+            if args and args[0] == "curl"
+        ]
+
+        self.assertEqual(len(public_calls), 4)
+
+        for args in public_calls:
+            self.assertIn("-fsS", args)
+            self.assertIn("--connect-timeout", args)
+            self.assertIn("--max-time", args)
+            self.assertEqual(args[-2], "%{http_code}")
+
+        self.assertTrue(
+            any(args[0] == "ssh" for args in calls)
+        )
+
+    def test_route_proof_fails_closed_on_public_curl_failure(self):
+        failed = subprocess.CompletedProcess(
+            ["curl"],
+            22,
+            stdout="403",
+            stderr="curl: (22) HTTP 403",
+        )
+
+        with mock.patch.object(
+            MODULE,
+            "run",
+            return_value=failed,
+        ):
+            with self.assertRaisesRegex(
+                MODULE.AutoShipError,
+                "public route failed",
+            ):
+                MODULE.route_proof()
+
+    def test_release_auto_no_longer_uses_urllib_for_public_proof(self):
+        source = SCRIPT.read_text(encoding="utf-8")
+
+        self.assertNotIn(
+            "urllib.request",
+            source,
+        )
+        self.assertNotIn(
+            "urllib.error",
+            source,
+        )
+
     def test_documentation_only(self):
         self.assertTrue(
             MODULE.documentation_only(
