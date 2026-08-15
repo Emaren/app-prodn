@@ -81,10 +81,10 @@ function CommandButton({
       aria-pressed={active}
       aria-label={label}
       title={label}
-      className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl border transition-[border-color,background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/45 ${
+      className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg border transition-[border-color,background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/45 ${
         active
           ? "border-amber-200/28 bg-amber-300/[0.10] text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_24px_rgba(251,191,36,0.08)]"
-          : "border-white/[0.08] bg-black/24 text-slate-500 hover:border-white/15 hover:bg-white/[0.04] hover:text-slate-200"
+          : "border-transparent bg-transparent text-slate-500 hover:border-white/[0.08] hover:bg-white/[0.045] hover:text-slate-100"
       }`}
     >
       {children}
@@ -96,14 +96,14 @@ function podiumMetal(
   rank: number,
 ) {
   if (rank === 1) {
-    return "border-amber-200/28 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.16),transparent_58%),linear-gradient(145deg,rgba(79,54,14,0.30),rgba(4,9,17,0.80))]";
+    return "border-amber-200/42 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.25),transparent_62%),linear-gradient(145deg,rgba(92,61,14,0.38),rgba(4,9,17,0.88))] shadow-[inset_0_1px_0_rgba(255,243,190,0.10),0_10px_34px_rgba(245,158,11,0.09),0_0_28px_rgba(251,191,36,0.07)]";
   }
 
   if (rank === 2) {
-    return "border-slate-200/16 bg-[radial-gradient(circle_at_50%_0%,rgba(226,232,240,0.09),transparent_58%),linear-gradient(145deg,rgba(51,65,85,0.22),rgba(4,9,17,0.80))]";
+    return "border-slate-200/24 bg-[radial-gradient(circle_at_50%_0%,rgba(226,232,240,0.13),transparent_60%),linear-gradient(145deg,rgba(51,65,85,0.28),rgba(4,9,17,0.86))] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]";
   }
 
-  return "border-orange-300/16 bg-[radial-gradient(circle_at_50%_0%,rgba(194,120,71,0.10),transparent_58%),linear-gradient(145deg,rgba(72,37,18,0.24),rgba(4,9,17,0.80))]";
+  return "border-orange-300/24 bg-[radial-gradient(circle_at_50%_0%,rgba(194,120,71,0.15),transparent_60%),linear-gradient(145deg,rgba(82,40,18,0.30),rgba(4,9,17,0.86))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]";
 }
 
 function PodiumCard({
@@ -324,7 +324,7 @@ export function LivingLeaderboard({
     <section className="relative overflow-hidden rounded-[2rem] border border-amber-200/22 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.11),transparent_30%),radial-gradient(circle_at_88%_0%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(145deg,#0b1728,#050b15_56%,#02060d)] shadow-[0_40px_130px_rgba(0,0,0,0.48),0_0_0_1px_rgba(201,155,60,0.045)]">
       <div className="pointer-events-none absolute inset-x-16 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/50 to-transparent" />
 
-      <div className="absolute right-5 top-5 z-20 sm:right-8 sm:top-8 lg:right-10">
+      <div className="absolute right-5 top-4 z-20 sm:right-8 sm:top-5 lg:right-10 lg:top-5">
         <LeaderboardViewToggle
           value={viewMode}
           onChange={
@@ -333,17 +333,17 @@ export function LivingLeaderboard({
         />
       </div>
 
-      <header className="relative grid gap-7 border-b border-amber-200/15 px-5 pb-7 pt-7 sm:px-8 sm:pb-8 sm:pt-9 lg:grid-cols-[minmax(0,1fr)_minmax(28rem,38rem)] lg:px-10 lg:pb-9 lg:pt-10">
-        <div className="min-w-0 pr-0 lg:pr-8">
+      <header className="relative grid gap-5 border-b border-amber-200/15 px-5 py-5 sm:px-8 sm:py-6 lg:grid-cols-[minmax(0,1fr)_minmax(30rem,40rem)] lg:items-center lg:px-10 lg:py-6">
+        <div className="min-w-0 pr-0 lg:pr-6">
           <div className="text-[10px] font-black uppercase tracking-[0.38em] text-amber-200/65">
             AoE2WAR · Living Ranked Command
           </div>
 
-          <h1 className="mt-3 font-serif text-4xl font-semibold tracking-[-0.045em] text-amber-50 sm:text-5xl lg:text-[3.7rem]">
+          <h1 className="mt-2.5 font-serif text-4xl font-semibold tracking-[-0.045em] text-amber-50 sm:text-5xl lg:text-[3.45rem]">
             HD Leaderboard
           </h1>
 
-          <div className="mt-5 flex flex-wrap items-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-cyan-200/12 bg-cyan-300/[0.045] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-100/80">
               {lane.toUpperCase()}
             </span>
@@ -379,9 +379,9 @@ export function LivingLeaderboard({
           </div>
         </div>
 
-        <div className="min-w-0 pt-10 lg:pt-8">
+        <div className="min-w-0 pt-8 lg:pt-7">
           {podium.length > 0 ? (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-3 gap-2.5">
               {podium.map(
                 (entry) => (
                   <PodiumCard
@@ -393,13 +393,13 @@ export function LivingLeaderboard({
             </div>
           ) : null}
 
-          <div className="mt-3">
+          <div className="mt-2">
             <LeaderboardWatcherCard />
           </div>
         </div>
       </header>
 
-      <div className="grid gap-3 border-b border-white/[0.07] bg-black/18 px-5 py-4 sm:px-8 lg:grid-cols-[auto_auto_minmax(19rem,1fr)_auto_auto] lg:items-center lg:px-10">
+      <div className="grid gap-3 border-b border-white/[0.07] bg-black/20 px-5 py-3 sm:px-8 lg:grid-cols-[auto_auto_minmax(24rem,1fr)_auto_auto] lg:items-center lg:px-10">
         <LeaderboardLaneToggle
           lane={lane}
           onChange={onLaneChange}
@@ -412,7 +412,7 @@ export function LivingLeaderboard({
           onChange={onScopeChange}
         />
 
-        <label className="relative block min-w-0 lg:mx-auto lg:w-full lg:max-w-2xl">
+        <label className="relative block min-w-0 lg:mx-auto lg:w-full lg:max-w-3xl">
           <span className="sr-only">
             Search warriors
           </span>
@@ -431,7 +431,14 @@ export function LivingLeaderboard({
               )
             }
             placeholder="Search warrior"
-            className="h-12 w-full rounded-xl border border-white/[0.09] bg-[#020711]/88 pl-11 pr-11 text-sm font-medium text-white outline-none transition placeholder:text-slate-600 hover:border-cyan-200/20 focus:border-amber-200/45 focus:ring-2 focus:ring-amber-200/10"
+            style={{
+              backgroundColor: "#020711",
+              color: "#f8fafc",
+              WebkitTextFillColor: "#f8fafc",
+              colorScheme: "dark",
+              caretColor: "#fde68a",
+            }}
+            className="h-11 w-full appearance-none rounded-xl border border-cyan-200/12 bg-[#020711] pl-11 pr-11 text-sm font-semibold text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.025),0_8px_28px_rgba(0,0,0,0.18)] outline-none transition-[border-color,box-shadow] placeholder:text-slate-600 hover:border-cyan-200/24 focus:border-amber-200/48 focus:ring-2 focus:ring-amber-200/10 [&::-webkit-search-cancel-button]:appearance-none"
           />
 
           {searchInput ? (
@@ -451,7 +458,7 @@ export function LivingLeaderboard({
           ) : null}
         </label>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 rounded-xl border border-white/[0.07] bg-[#020711]/75 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
           <CommandButton
             active={
               sortKey ===

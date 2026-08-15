@@ -560,13 +560,13 @@ export function LivingLeaderboardTable({
 
   const vertical =
     dense
-      ? "py-2.5"
-      : "py-4";
+      ? "py-3"
+      : "py-[1.05rem]";
 
   return (
     <>
       <div className="hidden overflow-x-auto rounded-[1.4rem] border border-amber-200/12 bg-[#040914] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] md:block">
-        <table className="w-full min-w-[72rem] border-collapse text-left">
+        <table className="w-full min-w-[78rem] border-collapse text-left">
           <thead className="sticky top-0 z-10 bg-[#07101f]/98 shadow-[0_1px_0_rgba(251,191,36,0.22)] backdrop-blur-xl">
             <tr>
               <SortHeader
@@ -688,13 +688,13 @@ export function LivingLeaderboardTable({
                           event,
                         )
                       }
-                      className={`group cursor-pointer border-b border-white/[0.045] text-sm transition-[background-color,box-shadow] duration-150 ${
+                      className={`group cursor-pointer border-b border-white/[0.05] text-[0.95rem] transition-[background-color,box-shadow] duration-150 ${
                         index % 2 === 0
                           ? "bg-slate-900/44"
                           : "bg-black/18"
                       } ${
                         hot
-                          ? "shadow-[inset_3px_0_0_rgba(251,191,36,0.55)] hover:bg-amber-300/[0.055]"
+                          ? "shadow-[inset_4px_0_0_rgba(251,191,36,0.58)] hover:bg-amber-300/[0.06]"
                           : "hover:bg-cyan-300/[0.045]"
                       }`}
                     >
@@ -748,7 +748,7 @@ export function LivingLeaderboardTable({
                               expanded
                             }
                             aria-controls={id}
-                            className={`inline-flex min-w-[4.4rem] items-center justify-center gap-1.5 rounded-lg border px-2.5 py-2 font-black tabular-nums transition ${rankMetal(
+                            className={`inline-flex min-w-[4.8rem] items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 text-[0.95rem] font-black tabular-nums transition ${rankMetal(
                               entry.rank,
                             )}`}
                           >
@@ -777,7 +777,7 @@ export function LivingLeaderboardTable({
                             href={
                               entry.href
                             }
-                            className="min-w-0 truncate text-[0.95rem] font-bold text-cyan-100 decoration-cyan-300/20 underline-offset-4 transition hover:text-white hover:underline"
+                            className="min-w-0 truncate text-[1.05rem] font-black tracking-[-0.01em] text-cyan-100 decoration-cyan-300/20 underline-offset-4 transition hover:text-white hover:underline"
                           >
                             {
                               entry.currentName
@@ -792,7 +792,7 @@ export function LivingLeaderboardTable({
                           ) : null}
                         </div>
 
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+                        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-600">
                           <span>
                             {identityLabel(
                               entry,
@@ -828,7 +828,7 @@ export function LivingLeaderboardTable({
                       <td
                         className={`px-3 text-right ${vertical}`}
                       >
-                        <div className="text-base font-black tabular-nums text-white">
+                        <div className="text-lg font-black tabular-nums text-white">
                           {
                             entry.primaryRatingLabel
                           }
