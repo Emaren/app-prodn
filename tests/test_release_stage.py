@@ -193,6 +193,23 @@ class StageTests(unittest.TestCase):
         self.assertIn("test ! -e .next-release", script)
         self.assertNotIn('git reset --hard "$RELEASE"', script)
 
+    def test_build_sandbox_has_memory_headroom_for_next_workers(self):
+        build_unit = MODULE.BUILD_SANDBOX_UNIT_SOURCE.read_text()
+        deps_unit = MODULE.DEPS_SANDBOX_UNIT_SOURCE.read_text()
+
+        # Next production builds fan out into multiple Node processes.
+        # Preserve the per-process V8 ceiling while allowing enough
+        # aggregate cgroup headroom for those workers to coexist.
+        self.assertIn(
+            "Environment=NODE_OPTIONS=--max-old-space-size=2304",
+            build_unit,
+        )
+        self.assertIn("MemoryMax=4G", build_unit)
+
+        # Dependency materialization already succeeds inside 3 GiB;
+        # do not broaden that sandbox unnecessarily.
+        self.assertIn("MemoryMax=3G", deps_unit)
+
     def test_build_sandbox_releases_yarn_cache_before_next_build(self):
         build_unit = MODULE.BUILD_SANDBOX_UNIT_SOURCE.read_text()
 

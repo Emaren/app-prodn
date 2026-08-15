@@ -58,5 +58,5 @@ SystemCallArchitectures=native
 # Bound accidental or hostile build resource consumption.
 UMask=0077
 TasksMax=512
-MemoryMax=3G
+MemoryMax=4G
 TimeoutStartSec=1500
