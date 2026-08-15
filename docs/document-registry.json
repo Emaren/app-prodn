@@ -476,7 +476,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "dc652474cc163675c116f93c13ba203c5f1bbfd45a6ff19d6a865148fae97005",
+      "sha256": "4ddda3b0c8569137018078440be6debb6f22dbb1f60bacbc29146d7404b83122",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -681,9 +681,9 @@
       "owner": "aoe2war-web",
       "path": "docs/LEADERBOARD_VIEW_MODES.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-07-28",
+      "reviewed_at": "2026-08-15",
       "sensitivity": "internal",
-      "sha256": "bb87526731b4099629f74e4844b6e0b67dc1a44e5192c018c55fe20d4cdd6024",
+      "sha256": "143df8be587181e12aec3febbc9c0adcd4219fb4f59f24bc4f4b4d6609c31b67",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1401,7 +1401,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "40d225bd4755002d5e94720974579d972ac53c83"
+    "commit": "8d03ad35e2d5ee4fa6abfa7e749e235888db302a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
