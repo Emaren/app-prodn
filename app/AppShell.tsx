@@ -520,11 +520,11 @@ function KingdomNavItem({
             : className
         }`}
       >
-        <span className="relative z-10">🏰</span>
+        <span className="relative z-10 text-[16px] leading-none">🏰</span>
         {hasUnseenPageChanges ? (
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-1/2 ml-[4px] -mt-[7px] h-[4px] w-[4px] rounded-full bg-slate-300/85 shadow-[0_0_4px_rgba(203,213,225,0.42)]"
+            className="pointer-events-none absolute left-1/2 top-1/2 ml-[5px] -mt-[8px] h-[4px] w-[4px] rounded-full bg-slate-300/85 shadow-[0_0_4px_rgba(203,213,225,0.42)]"
           />
         ) : null}
       </button>
