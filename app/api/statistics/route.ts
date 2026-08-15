@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
@@ -38,11 +39,11 @@ function numeric(value: unknown) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-export async function GET() {
-  try {
+const loadStatisticsRows = unstable_cache(
+  async () => {
     const prisma = getPrisma();
 
-    const rows = await prisma.$queryRaw<StatisticsRow[]>`
+    return prisma.$queryRaw<StatisticsRow[]>`
 WITH days AS (
   /*
    * Observatory points represent complete UTC calendar days.
@@ -706,6 +707,14 @@ LEFT JOIN radio_daily rs
 
 ORDER BY d.day;
 `;
+  },
+  ["statistics-complete-utc-days-v1"],
+  { revalidate: 3600 },
+);
+
+export async function GET() {
+  try {
+    const rows = await loadStatisticsRows();
 
     const points = rows.map((row) => ({
       date: row.day.toISOString().slice(0, 10),
