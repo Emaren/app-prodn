@@ -1,7 +1,6 @@
 "use client";
 
 import { Search, X } from "lucide-react";
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LeaderboardScopeToggle } from "@/components/leaderboard/LeaderboardScopeToggle";
@@ -34,43 +33,6 @@ import {
 
 const RESET_PAGE_SIZE = 50;
 const SCROLL_PAGE_SIZE = 150;
-
-type IdentityCensus = Pick<
-  LobbyLeaderboardSummary,
-  | "identityRows"
-  | "steamIdentityRows"
-  | "nameOnlyIdentityRows"
-  | "siteOnlyIdentityRows"
-  | "claimedIdentityRows"
-  | "claimedProfileOnlyRows"
-  | "accountsWithAliasHistory"
->;
-
-function identityCensus(
-  leaderboard:
-    | Partial<LobbyLeaderboardSummary>
-    | null
-    | undefined,
-): IdentityCensus {
-  return {
-    identityRows:
-      leaderboard?.identityRows ??
-      leaderboard?.trackedPlayers ??
-      0,
-    steamIdentityRows:
-      leaderboard?.steamIdentityRows ?? 0,
-    nameOnlyIdentityRows:
-      leaderboard?.nameOnlyIdentityRows ?? 0,
-    siteOnlyIdentityRows:
-      leaderboard?.siteOnlyIdentityRows ?? 0,
-    claimedIdentityRows:
-      leaderboard?.claimedIdentityRows ?? 0,
-    claimedProfileOnlyRows:
-      leaderboard?.claimedProfileOnlyRows ?? 0,
-    accountsWithAliasHistory:
-      leaderboard?.accountsWithAliasHistory ?? 0,
-  };
-}
 
 type LeaderboardResponse = LobbyLeaderboardSummary & {
   ok?: boolean;
@@ -121,8 +83,6 @@ export function ModernLeaderboardPage({
   } = useTileViewPreference(
     "leaderboard",
   );
-  const isBasic =
-    viewMode === "basic";
   const isAdvanced =
     viewMode === "advanced";
   const isExtreme =
@@ -144,12 +104,6 @@ export function ModernLeaderboardPage({
   const [query, setQuery] = useState("");
   const [entries, setEntries] = useState(initialLeaderboard?.entries ?? []);
   const [trackedPlayers, setTrackedPlayers] = useState(initialLeaderboard?.trackedPlayers ?? 0);
-  const [census, setCensus] =
-    useState<IdentityCensus>(
-      identityCensus(
-        initialLeaderboard,
-      ),
-    );
   const [nextOffset, setNextOffset] = useState(initialLeaderboard?.entries.length ?? 0);
   const [hasMore, setHasMore] = useState(
     (initialLeaderboard?.entries.length ?? 0) < (initialLeaderboard?.trackedPlayers ?? 0)
@@ -330,11 +284,6 @@ export function ModernLeaderboardPage({
             ? payload.trackedPlayers
             : payload.entries.length,
         );
-        setCensus(
-          identityCensus(
-            payload,
-          ),
-        );
 
         setNextOffset(
           typeof payload.nextOffset ===
@@ -467,11 +416,6 @@ export function ModernLeaderboardPage({
         setTrackedPlayers(
           cached.trackedPlayers,
         );
-        setCensus(
-          identityCensus(
-            cached,
-          ),
-        );
 
         setNextOffset(
           cached.entries.length,
@@ -553,11 +497,6 @@ export function ModernLeaderboardPage({
           cached.trackedPlayers,
         );
 
-        setCensus(
-          identityCensus(
-            cached,
-          ),
-        );
 
         setNextOffset(
           cached.entries.length,
@@ -701,7 +640,7 @@ export function ModernLeaderboardPage({
               </div>
             </div>
           ) : (
-            <div className="flex flex-col justify-between gap-5 pt-12 sm:flex-row sm:items-end sm:pt-0 sm:pr-32">
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_21rem] xl:items-start">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.36em] text-amber-200/65">
                   AoE2WAR · HD Ranked Command
@@ -716,6 +655,9 @@ export function ModernLeaderboardPage({
                 </p>
               </div>
 
+              <div className="pt-12">
+                <LeaderboardWatcherCard compact />
+              </div>
             </div>
           )}
         </div>
@@ -734,43 +676,10 @@ export function ModernLeaderboardPage({
             variant="compact"
           />
 
-          {isBasic ? (
-            <div
-              className="inline-flex w-fit rounded-xl border border-cyan-300/20 bg-slate-950/75 p-1"
-              role="group"
-              aria-label="Leaderboard players"
-            >
-              <button
-                type="button"
-                aria-pressed={scope === "all"}
-                onClick={() => changeScope("all")}
-                className={`cursor-pointer rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/55 ${
-                  scope === "all"
-                    ? "bg-amber-200 text-slate-950 shadow-[0_8px_24px_rgba(251,191,36,0.18)]"
-                    : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
-                }`}
-              >
-                Warriors
-              </button>
-              <button
-                type="button"
-                aria-pressed={scope === "claimed"}
-                onClick={() => changeScope("claimed")}
-                className={`cursor-pointer rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
-                  scope === "claimed"
-                    ? "bg-cyan-200 text-slate-950 shadow-[0_8px_24px_rgba(34,211,238,0.16)]"
-                    : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
-                }`}
-              >
-                Kingdom
-              </button>
-            </div>
-          ) : (
-            <LeaderboardScopeToggle
-              value={scope}
-              onChange={changeScope}
-            />
-          )}
+          <LeaderboardScopeToggle
+            value={scope}
+            onChange={changeScope}
+          />
 
           <label className="relative block lg:mx-auto lg:w-full lg:max-w-xl">
             <span className="sr-only">Search warriors</span>
@@ -783,9 +692,7 @@ export function ModernLeaderboardPage({
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
               placeholder="Search by warrior name"
-              className={`h-13 w-full border border-cyan-300/25 bg-slate-950/75 pl-12 pr-12 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-amber-200/55 focus:ring-2 focus:ring-amber-200/15 ${
-                isBasic ? "rounded-none" : "rounded-xl"
-              }`}
+              className="h-13 w-full rounded-xl border border-cyan-300/25 bg-slate-950/75 pl-12 pr-12 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-amber-200/55 focus:ring-2 focus:ring-amber-200/15"
             />
             {searchInput ? (
               <button
@@ -813,62 +720,12 @@ export function ModernLeaderboardPage({
           </div>
         </div>
 
-        {isBasic ? (
-          <div className="grid gap-3 border-b border-white/[0.07] bg-slate-950/35 px-5 py-4 sm:grid-cols-2 sm:px-8 xl:grid-cols-4 2xl:grid-cols-7">
-            <IdentityMetric
-              label="Identity rows"
-              value={census.identityRows}
-              detail="Current board projection"
-            />
-            <IdentityMetric
-              label="Replay-backed Steam IDs"
-              value={census.steamIdentityRows}
-              detail="Recovered from accepted replay evidence"
-            />
-            <IdentityMetric
-              label="Name-only rows"
-              value={census.nameOnlyIdentityRows}
-              detail="Kept separate for safety"
-            />
-            <IdentityMetric
-              label="Profile-only rows"
-              value={census.claimedProfileOnlyRows}
-              detail={`${Math.max(0, census.claimedProfileOnlyRows - census.siteOnlyIdentityRows).toLocaleString()} Steam-linked · ${census.siteOnlyIdentityRows.toLocaleString()} site-only`}
-            />
-            <IdentityMetric
-              label="AoE2WAR profiles"
-              value={census.claimedIdentityRows}
-              detail="Public claimed profiles; systems excluded"
-            />
-            <IdentityMetric
-              label="Alias-history accounts"
-              value={census.accountsWithAliasHistory}
-              detail="Multiple observed names"
-            />
-            <div className="rounded-xl border border-amber-200/16 bg-[linear-gradient(135deg,rgba(251,191,36,0.09),rgba(34,211,238,0.055))] px-4 py-3">
-              <div className="text-[10px] uppercase tracking-[0.18em] text-amber-100/65">
-                24hr Rank Pulse
-              </div>
-              <div className="mt-1 text-sm font-semibold text-white">
-                Make the ladder move.
-              </div>
-              <Link
-                href="/watch"
-                className="mt-1 inline-flex cursor-pointer text-xs font-semibold text-cyan-200 underline decoration-cyan-300/30 underline-offset-4 transition hover:text-white"
-              >
-                Run the Watcher for fresher ranks →
-              </Link>
-            </div>
-          </div>
-        ) : null}
 
         <div
           className={`${
             isExtreme
               ? "border-t border-amber-200/16 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.045),transparent_24%)] p-2 sm:p-3 lg:p-4"
-              : isAdvanced
-                ? "p-3 sm:p-5"
-                : "p-3 sm:p-5 lg:p-7"
+              : "p-3 sm:p-5"
           }`}
           aria-busy={loading || loadingMore}
         >
@@ -939,29 +796,5 @@ export function ModernLeaderboardPage({
         </div>
       </section>
     </main>
-  );
-}
-
-function IdentityMetric({
-  label,
-  value,
-  detail,
-}: {
-  label: string;
-  value: number;
-  detail: string;
-}) {
-  return (
-    <div className="rounded-xl border border-white/[0.07] bg-white/[0.025] px-4 py-3">
-      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </div>
-      <div className="mt-1 text-xl font-semibold tabular-nums text-white">
-        {value.toLocaleString()}
-      </div>
-      <div className="mt-1 text-[11px] text-slate-500">
-        {detail}
-      </div>
-    </div>
   );
 }

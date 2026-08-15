@@ -40,7 +40,7 @@ const DEFAULT_TILE_VIEW_MODES: TileViewPreferences = {
   academy_hero: "extreme",
   download_watcher: "extreme",
   staking: "basic",
-  leaderboard: "advanced",
+  leaderboard: "extreme",
   workshop: "extreme",
 };
 

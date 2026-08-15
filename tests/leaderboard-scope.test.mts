@@ -12,6 +12,14 @@ const page = readFileSync(
   "utf8",
 );
 
+const scopeToggle = readFileSync(
+  new URL(
+    "../components/leaderboard/LeaderboardScopeToggle.tsx",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
 const route = readFileSync(
   new URL(
     "../app/api/lobby/leaderboard/route.ts",
@@ -39,19 +47,23 @@ const cache = readFileSync(
 test("leaderboard exposes an accessible full versus claimed-profile scope", () => {
   assert.match(
     page,
+    /<LeaderboardScopeToggle/,
+  );
+  assert.match(
+    scopeToggle,
     /aria-label="Leaderboard players"/,
   );
   assert.match(
-    page,
-    />\s*Warriors\s*</,
+    scopeToggle,
+    /label: "Warriors"/,
   );
   assert.match(
-    page,
-    />\s*Kingdom\s*</,
+    scopeToggle,
+    /label: "Kingdom"/,
   );
   assert.match(
-    page,
-    /aria-pressed=/,
+    scopeToggle,
+    /aria-pressed=\{active\}/,
   );
 });
 
