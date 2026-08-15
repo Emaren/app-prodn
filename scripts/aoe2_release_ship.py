@@ -1210,6 +1210,42 @@ critical_get "$PUBLIC/api/bets"
 critical_get "$PUBLIC/api/deployment-version"
 
 # ------------------------------------------------------------
+# POST-ACTIVATION PERFORMANCE PREWARM
+#
+# Statistics has a deliberately expensive first computation and
+# a process-local SWR cache thereafter. Pay the cold calculation
+# here while rollback remains armed so a human visitor does not
+# become the first caller after a successful activation.
+#
+# This is performance evidence, not a release-critical truth
+# route, so warmup failure is recorded but does not independently
+# roll back an otherwise healthy release.
+# ------------------------------------------------------------
+STATISTICS_PREWARM="FAIL"
+STATISTICS_WARM_SECONDS=""
+
+if curl -fsS \
+  --connect-timeout 3 \
+  --max-time 20 \
+  -o /dev/null \
+  http://127.0.0.1:3030/api/statistics
+then
+  STATISTICS_WARM_SECONDS="$(
+    curl -fsS \
+      --connect-timeout 3 \
+      --max-time 12 \
+      -o /dev/null \
+      -w '%{{time_total}}' \
+      http://127.0.0.1:3030/api/statistics \
+      || true
+  )"
+
+  if [ -n "$STATISTICS_WARM_SECONDS" ]; then
+    STATISTICS_PREWARM="PASS"
+  fi
+fi
+
+# ------------------------------------------------------------
 # BOUNDED POST-ACTIVATION HEALTH SOAK
 #
 # COMMITTED is deliberately still 0 here. Any critical failure
@@ -1282,6 +1318,8 @@ printf '%s\\n' \
   "wolo8093=$after_wolo8093" \
   "soak_seconds=$SOAK_SECONDS" \
   "soak_samples=$SOAK_SAMPLES" \
+  "statistics_prewarm=$STATISTICS_PREWARM" \
+  "statistics_warm_seconds=$STATISTICS_WARM_SECONDS" \
   "fast_rollback=$FAST_OLD" \
   "fast_rollback_modules=$FAST_OLD_MODULES" \
   "durable_rollback=$ROLLBACK" \

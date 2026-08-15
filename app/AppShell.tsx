@@ -1378,7 +1378,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main
-        className={`mx-auto flex min-h-0 min-w-0 w-full flex-1 flex-col py-4 pb-32 lg:pb-4 ${isContactPage ? "transition-none" : "transition-[max-width] duration-300"} ${
+        className={`mx-auto flex min-h-0 min-w-0 w-full flex-1 flex-col py-4 pb-32 lg:pb-4 ${
           isContactPage
             ? "max-w-[96rem] px-2 sm:px-3"
           : isMediaManagerSurface

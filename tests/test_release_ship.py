@@ -461,6 +461,45 @@ class ShipTests(unittest.TestCase):
             MODULE.activation_validation_errors(data, receipt, transport),
         )
 
+    def test_activation_prewarms_statistics_before_health_soak(self):
+        script = render_activation_script()
+
+        prewarm = script.index('STATISTICS_PREWARM="FAIL"')
+        soak = script.index(
+            "# BOUNDED POST-ACTIVATION HEALTH SOAK",
+            prewarm,
+        )
+
+        self.assertLess(prewarm, soak)
+
+        prewarm_block = script[prewarm:soak]
+
+        self.assertIn(
+            "http://127.0.0.1:3030/api/statistics",
+            prewarm_block,
+        )
+        self.assertIn(
+            "--connect-timeout 3",
+            prewarm_block,
+        )
+        self.assertIn(
+            "--max-time 20",
+            prewarm_block,
+        )
+        self.assertIn(
+            "-w '%{time_total}'",
+            prewarm_block,
+        )
+
+        self.assertIn(
+            "statistics_prewarm=$STATISTICS_PREWARM",
+            script,
+        )
+        self.assertIn(
+            "statistics_warm_seconds=$STATISTICS_WARM_SECONDS",
+            script,
+        )
+
     def test_activation_uses_root_name_independent_content_hash(self):
         _, receipt, _ = activation_sample()
         receipt = {

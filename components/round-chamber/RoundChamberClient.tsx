@@ -36,6 +36,7 @@ import {
 } from "react";
 
 import SteamLoginButton from "@/components/SteamLoginButton";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import type {
   RoundChamberChoice,
@@ -604,9 +605,15 @@ function ProposalCard({
   );
 }
 
-export default function RoundChamberClient() {
-  const [snapshot, setSnapshot] = useState<RoundChamberSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function RoundChamberClient({
+  initialSnapshot,
+}: {
+  initialSnapshot: RoundChamberSnapshot | null;
+}) {
+  const [snapshot, setSnapshot] =
+    useState<RoundChamberSnapshot | null>(initialSnapshot);
+  const [loading, setLoading] =
+    useState(initialSnapshot === null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [sendingKey, setSendingKey] = useState<string | null>(null);
@@ -639,8 +646,9 @@ export default function RoundChamberClient() {
   }, []);
 
   useEffect(() => {
+    if (initialSnapshot) return;
     void loadSnapshot();
-  }, [loadSnapshot]);
+  }, [initialSnapshot, loadSnapshot]);
 
   const mutate = useCallback(
     async (
@@ -788,6 +796,10 @@ export default function RoundChamberClient() {
 
   return (
     <main className="relative space-y-7 overflow-x-hidden bg-[radial-gradient(circle_at_50%_0%,rgba(151,94,25,0.08),transparent_30%),linear-gradient(180deg,#050403_0%,#080705_44%,#030303_100%)] py-3 text-white sm:space-y-9 sm:py-5">
+      <SpeedReadyMarker
+        route="/round-chamber"
+        ready={!loading && snapshot !== null}
+      />
       <section className="relative isolate min-h-[49rem] overflow-hidden border-y border-[#9d713a]/40 bg-[#030302] shadow-[0_38px_140px_rgba(0,0,0,0.78),inset_0_1px_0_rgba(255,226,168,0.10)] sm:min-h-[54rem] lg:min-h-[58rem]">
 
         <Image

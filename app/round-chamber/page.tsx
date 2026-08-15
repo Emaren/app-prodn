@@ -1,6 +1,16 @@
+import { cookies } from "next/headers";
 import type { Metadata } from "next";
 
 import RoundChamberClient from "@/components/round-chamber/RoundChamberClient";
+import { getPrisma } from "@/lib/prisma";
+import {
+  getRoundChamberSnapshot,
+  type RoundChamberSnapshot,
+} from "@/lib/roundChamber";
+import {
+  SESSION_COOKIE_NAME,
+  verifySession,
+} from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +34,31 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RoundChamberPage() {
-  return <RoundChamberClient />;
+export default async function RoundChamberPage() {
+  const cookieStore = await cookies();
+  const claims = await verifySession(
+    cookieStore.get(SESSION_COOKIE_NAME)?.value,
+  );
+
+  let initialSnapshot: RoundChamberSnapshot | null = null;
+
+  try {
+    initialSnapshot = await getRoundChamberSnapshot(
+      getPrisma(),
+      claims?.uid ?? null,
+    );
+  } catch (error) {
+    // Keep the existing client-side recovery path if the initial
+    // server snapshot is temporarily unavailable.
+    console.error(
+      "[round-chamber] initial snapshot unavailable",
+      error,
+    );
+  }
+
+  return (
+    <RoundChamberClient
+      initialSnapshot={initialSnapshot}
+    />
+  );
 }
