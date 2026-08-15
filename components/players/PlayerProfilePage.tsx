@@ -405,10 +405,10 @@ function ClaimedBasicProfile({ profile }: { profile: PlayerProfile }) {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.88fr_1.12fr]">
-        <div className="space-y-6">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
+        <div className="min-w-0 space-y-6">
           <Panel eyebrow="Stats" title="Performance snapshot">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               <MetricCard label="Steam RM" value={formatNumber(profile.steam.rmRating)} />
               <MetricCard label="Steam DM" value={formatNumber(profile.steam.dmRating)} />
               <MetricCard label="Win Rate" value={formatPercent(profile.command.winRate)} />
@@ -528,8 +528,8 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
-        <section className="space-y-6">
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+        <section className="min-w-0 space-y-6">
           <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
             {pendingClaimCount > 0 ? (
               <div className="mb-5 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-4 text-sm leading-6 text-amber-100">
@@ -539,7 +539,7 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
             <div className="text-xs uppercase tracking-[0.35em] text-white/45">Stats</div>
             <h2 className="mt-2 text-2xl font-semibold text-white">Performance Snapshot</h2>
 
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
               <MetricCard label="Steam RM" value={formatRatingMetric(profile.performance.steamRating)} />
               <MetricCard label="Steam DM" value={formatRatingMetric(profile.performance.ladderRating)} />
               <MetricCard label="Win Rate" value={formatPercent(profile.performance.winRate)} />
@@ -598,7 +598,7 @@ function ReplayClassicBasicProfile({ profile }: { profile: PlayerProfile }) {
           </section>
         </section>
 
-        <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
+        <section className="min-w-0 rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
               <div className="text-xs uppercase tracking-[0.35em] text-white/45">Match Feed</div>
@@ -930,7 +930,7 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[1.55rem] border border-white/10 bg-slate-950/72 p-5 shadow-[0_24px_70px_rgba(2,6,23,0.22)] sm:p-6">
+    <section className="min-w-0 rounded-[1.55rem] border border-white/10 bg-slate-950/72 p-5 shadow-[0_24px_70px_rgba(2,6,23,0.22)] sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-xs uppercase tracking-[0.35em] text-white/45">{eyebrow}</div>
@@ -1517,9 +1517,9 @@ function StreamRail({ profile }: { profile: PlayerProfile }) {
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[1.15rem] border border-white/8 bg-white/5 px-4 py-4">
-      <div className="text-xs uppercase tracking-[0.25em] text-slate-500">{label}</div>
-      <div className="mt-3 text-lg font-semibold text-white">{value}</div>
+    <div className="min-w-0 rounded-[1.15rem] border border-white/8 bg-white/5 px-4 py-4">
+      <div className="text-xs uppercase leading-5 tracking-[0.25em] text-slate-500">{label}</div>
+      <div className="mt-3 break-words text-lg font-semibold leading-snug text-white">{value}</div>
     </div>
   );
 }
