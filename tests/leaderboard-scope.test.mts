@@ -112,30 +112,41 @@ test("a failed scope reset cannot expose stale rows from the previous scope", ()
 });
 
 test("a mismatched API scope or lane fails before rows are applied", () => {
+  const loadPagePosition =
+    page.indexOf(
+      "const loadPage",
+    );
   const validationPosition =
     page.indexOf(
-      "payload.scope !== scope",
-      page.indexOf(
-        "const loadPage",
-      ),
+      "payload.scope !==",
+      loadPagePosition,
+    );
+  const requestedScopePosition =
+    page.indexOf(
+      "requestedScope",
+      validationPosition,
     );
   const laneValidationPosition =
     page.indexOf(
       "payload.lane !==",
-      validationPosition,
+      requestedScopePosition,
     );
   const applyPosition =
     page.indexOf(
       "setEntries(",
-      validationPosition,
+      laneValidationPosition,
     );
 
   assert.ok(
     validationPosition >= 0,
   );
   assert.ok(
-    laneValidationPosition >
+    requestedScopePosition >
       validationPosition,
+  );
+  assert.ok(
+    laneValidationPosition >
+      requestedScopePosition,
   );
   assert.ok(
     applyPosition >
