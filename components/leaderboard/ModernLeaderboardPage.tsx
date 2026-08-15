@@ -7,6 +7,7 @@ import { LeaderboardScopeToggle } from "@/components/leaderboard/LeaderboardScop
 import { LeaderboardViewToggle } from "@/components/leaderboard/LeaderboardViewToggle";
 import { LeaderboardWatcherCard } from "@/components/leaderboard/LeaderboardWatcherCard";
 import { ModernLeaderboardTable } from "@/components/leaderboard/ModernLeaderboardTable";
+import { LivingLeaderboard } from "@/components/leaderboard/LivingLeaderboard";
 import { LeaderboardLaneToggle } from "@/components/lobby/LeaderboardLaneToggle";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
@@ -83,8 +84,6 @@ export function ModernLeaderboardPage({
   } = useTileViewPreference(
     "leaderboard",
   );
-  const isAdvanced =
-    viewMode === "advanced";
   const isExtreme =
     viewMode === "extreme";
   const [lane, setLane] = useState<LeaderboardLane>(
@@ -568,6 +567,58 @@ export function ModernLeaderboardPage({
     [loadPage],
   );
 
+
+  if (isExtreme) {
+    return (
+      <main
+        className="leaderboard-modern-shell space-y-5 py-3 text-white sm:py-6"
+        data-leaderboard-view={viewMode}
+      >
+        <SpeedReadyMarker
+          route="/leaderboard"
+          ready={!loading}
+        />
+
+        <LivingLeaderboard
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          lane={lane}
+          onLaneChange={changeLane}
+          scope={scope}
+          onScopeChange={changeScope}
+          searchInput={searchInput}
+          onSearchInputChange={setSearchInput}
+          query={query}
+          trackedPlayers={trackedPlayers}
+          entries={entries}
+          sortKey={sort.key}
+          sortDirection={sort.direction}
+          onSort={changeSort}
+          loading={loading}
+          loadingMore={loadingMore}
+          error={error}
+          hasMore={hasMore}
+          onRetry={() =>
+            void loadPage({
+              reset:
+                entries.length === 0,
+              offset:
+                entries.length === 0
+                  ? 0
+                  : nextOffset,
+            })
+          }
+          onLoadMore={() =>
+            void loadPage({
+              reset: false,
+              offset: nextOffset,
+            })
+          }
+        />
+      </main>
+    );
+  }
+
   return (
     <main
       className="leaderboard-modern-shell space-y-5 py-3 text-white sm:py-6"
@@ -578,13 +629,7 @@ export function ModernLeaderboardPage({
         ready={!loading}
       />
 
-      <section
-        className={`relative overflow-hidden border bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,0.09),transparent_26%),linear-gradient(145deg,#101a2d,#070d18_62%,#030711)] transition-[border-radius,border-color,box-shadow] duration-300 ${
-          isExtreme
-            ? "rounded-[2rem] border-amber-200/24 shadow-[0_36px_120px_rgba(0,0,0,0.42),0_0_0_1px_rgba(201,155,60,0.05)]"
-            : "rounded-[1.8rem] border-amber-200/14 shadow-[0_30px_100px_rgba(0,0,0,0.3)]"
-        }`}
-      >
+      <section className="relative overflow-hidden rounded-[1.8rem] border border-amber-200/14 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,0.09),transparent_26%),linear-gradient(145deg,#101a2d,#070d18_62%,#030711)] shadow-[0_30px_100px_rgba(0,0,0,0.3)]">
         <div className="absolute right-5 top-5 z-20 sm:right-8 sm:top-8 lg:right-10">
           <LeaderboardViewToggle
             value={viewMode}
@@ -592,83 +637,31 @@ export function ModernLeaderboardPage({
           />
         </div>
 
-        <div
-          className={`border-b border-amber-200/18 px-5 py-6 sm:px-8 sm:py-8 ${
-            isExtreme
-              ? "bg-[radial-gradient(circle_at_82%_0%,rgba(201,155,60,0.08),transparent_30%)] lg:px-10 lg:py-9"
-              : ""
-          }`}
-        >
-          {isExtreme ? (
-            <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-start">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.36em] text-amber-200/65">
-                  AoE2WAR · HD Ranked Command
-                </div>
-                <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-amber-100 sm:text-5xl lg:text-[3.45rem]">
-                  HD Leaderboard
-                </h1>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-                  Exact Steam accounts fold every verified historical display
-                  name into one current row. Name-only evidence stays separate
-                  until stronger identity proof exists.
-                </p>
+        <div className="border-b border-amber-200/18 px-5 py-6 sm:px-8 sm:py-8">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_21rem] xl:items-start">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.36em] text-amber-200/65">
+                AoE2WAR · HD Ranked Command
               </div>
 
-              <div className="pt-12">
-                <LeaderboardWatcherCard />
-              </div>
-            </div>
-          ) : isAdvanced ? (
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_21rem] xl:items-start">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.36em] text-amber-200/65">
-                  AoE2WAR · HD Ranked Command
-                </div>
-                <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-amber-100 sm:text-5xl">
-                  HD Leaderboard
-                </h1>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-                  Exact Steam accounts fold every verified historical display
-                  name into one current row. Name-only evidence stays separate
-                  until stronger identity proof exists.
-                </p>
-              </div>
+              <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-amber-100 sm:text-5xl">
+                HD Leaderboard
+              </h1>
 
-              <div className="pt-12">
-                <LeaderboardWatcherCard compact />
-              </div>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
+                Exact Steam accounts fold every verified historical display
+                name into one current row. Name-only evidence stays separate
+                until stronger identity proof exists.
+              </p>
             </div>
-          ) : (
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_21rem] xl:items-start">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.36em] text-amber-200/65">
-                  AoE2WAR · HD Ranked Command
-                </div>
-                <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-amber-100 sm:text-5xl">
-                  HD Leaderboard
-                </h1>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-                  Exact Steam accounts fold every verified historical display
-                  name into one current row. Name-only evidence stays separate
-                  until stronger identity proof exists.
-                </p>
-              </div>
 
-              <div className="pt-12">
-                <LeaderboardWatcherCard compact />
-              </div>
+            <div className="pt-12">
+              <LeaderboardWatcherCard compact />
             </div>
-          )}
+          </div>
         </div>
 
-        <div
-          className={`grid gap-4 border-b border-white/[0.07] bg-black/15 px-5 py-5 sm:px-8 lg:items-center ${
-            isExtreme
-              ? "lg:grid-cols-[auto_auto_minmax(20rem,1fr)_auto] lg:px-10"
-              : "lg:grid-cols-[auto_auto_minmax(18rem,1fr)_auto]"
-          }`}
-        >
+        <div className="grid gap-4 border-b border-white/[0.07] bg-black/15 px-5 py-5 sm:px-8 lg:grid-cols-[auto_auto_minmax(18rem,1fr)_auto] lg:items-center">
           <LeaderboardLaneToggle
             lane={lane}
             onChange={changeLane}
@@ -682,26 +675,40 @@ export function ModernLeaderboardPage({
           />
 
           <label className="relative block lg:mx-auto lg:w-full lg:max-w-xl">
-            <span className="sr-only">Search warriors</span>
+            <span className="sr-only">
+              Search warriors
+            </span>
+
             <Search
               className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-amber-200/70"
               aria-hidden="true"
             />
+
             <input
               type="search"
               value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
+              onChange={(event) =>
+                setSearchInput(
+                  event.target.value,
+                )
+              }
               placeholder="Search by warrior name"
               className="h-13 w-full rounded-xl border border-cyan-300/25 bg-slate-950/75 pl-12 pr-12 text-base text-white outline-none transition placeholder:text-slate-500 focus:border-amber-200/55 focus:ring-2 focus:ring-amber-200/15"
             />
+
             {searchInput ? (
               <button
                 type="button"
-                onClick={() => setSearchInput("")}
+                onClick={() =>
+                  setSearchInput("")
+                }
                 className="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 cursor-pointer items-center justify-center text-slate-400 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/50"
                 aria-label="Clear player search"
               >
-                <X className="h-4 w-4" aria-hidden="true" />
+                <X
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                />
               </button>
             ) : null}
           </label>
@@ -710,6 +717,7 @@ export function ModernLeaderboardPage({
             <div className="text-2xl font-semibold tabular-nums text-white">
               {trackedPlayers.toLocaleString()}
             </div>
+
             <div className="text-[10px] uppercase tracking-[0.2em] text-slate-500">
               {query
                 ? "matching identity rows"
@@ -720,29 +728,37 @@ export function ModernLeaderboardPage({
           </div>
         </div>
 
-
         <div
-          className={`${
-            isExtreme
-              ? "border-t border-amber-200/16 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.045),transparent_24%)] p-2 sm:p-3 lg:p-4"
-              : "p-3 sm:p-5"
-          }`}
-          aria-busy={loading || loadingMore}
+          data-classic-leaderboard-table
+          className="p-3 sm:p-5"
+          aria-busy={
+            loading ||
+            loadingMore
+          }
         >
           {loading ? (
-            <div className="space-y-2" aria-label="Loading leaderboard">
-              {Array.from({ length: 8 }, (_, index) => (
-                <div
-                  key={index}
-                  className="h-16 animate-pulse border border-white/[0.05] bg-white/[0.035]"
-                />
-              ))}
+            <div
+              className="space-y-2"
+              aria-label="Loading leaderboard"
+            >
+              {Array.from(
+                { length: 8 },
+                (_, index) => (
+                  <div
+                    key={index}
+                    className="h-16 animate-pulse border border-white/[0.05] bg-white/[0.035]"
+                  />
+                ),
+              )}
             </div>
-          ) : entries.length === 0 && query ? (
+          ) : entries.length ===
+              0 &&
+            query ? (
             <div className="border border-amber-200/14 bg-amber-300/[0.045] px-5 py-10 text-center text-slate-300">
               No ranked warrior matches “{query}”.
             </div>
-          ) : entries.length === 0 ? (
+          ) : entries.length ===
+            0 ? (
             <div className="border border-white/10 bg-white/[0.04] px-5 py-10 text-center text-slate-300">
               {scope === "claimed"
                 ? "No public claimed AoE2WAR profiles are available in this lane yet."
@@ -752,7 +768,9 @@ export function ModernLeaderboardPage({
             <ModernLeaderboardTable
               entries={entries}
               sortKey={sort.key}
-              sortDirection={sort.direction}
+              sortDirection={
+                sort.direction
+              }
               onSort={changeSort}
             />
           )}
@@ -760,12 +778,19 @@ export function ModernLeaderboardPage({
           {error ? (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border border-orange-300/20 bg-orange-400/[0.06] px-4 py-3 text-sm text-orange-100">
               <span>{error}</span>
+
               <button
                 type="button"
                 onClick={() =>
                   void loadPage({
-                    reset: entries.length === 0,
-                    offset: entries.length === 0 ? 0 : nextOffset,
+                    reset:
+                      entries.length ===
+                      0,
+                    offset:
+                      entries.length ===
+                      0
+                        ? 0
+                        : nextOffset,
                   })
                 }
                 className="cursor-pointer font-semibold underline underline-offset-4"
@@ -775,15 +800,19 @@ export function ModernLeaderboardPage({
             </div>
           ) : null}
 
-          {hasMore && !loading ? (
+          {hasMore &&
+          !loading ? (
             <button
               ref={sentinelRef}
               type="button"
-              disabled={loadingMore}
+              disabled={
+                loadingMore
+              }
               onClick={() =>
                 void loadPage({
                   reset: false,
-                  offset: nextOffset,
+                  offset:
+                    nextOffset,
                 })
               }
               className="mt-5 w-full cursor-pointer border border-amber-200/16 bg-amber-300/[0.045] px-4 py-4 text-xs font-semibold uppercase tracking-[0.24em] text-amber-100 transition hover:border-amber-200/35 hover:bg-amber-300/[0.08] disabled:cursor-wait disabled:opacity-65"

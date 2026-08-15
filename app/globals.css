@@ -2787,7 +2787,11 @@ main:has(> .leaderboard-modern-shell) {
 }
 
 main:has(> .leaderboard-modern-shell[data-leaderboard-view="basic"]) {
-  max-width: 72rem !important;
+  max-width: min(calc(100vw - 1.25rem), 76rem) !important;
+}
+
+.leaderboard-modern-shell[data-leaderboard-view="basic"] [data-classic-leaderboard-table] {
+  padding-right: 1.75rem;
 }
 
 main:has(> .leaderboard-modern-shell[data-leaderboard-view="advanced"]) {

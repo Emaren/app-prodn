@@ -34,7 +34,7 @@ remain shared contracts.
 
 Basic is the preserved compact classic leaderboard:
 
-- controlled maximum width of `72rem`;
+- controlled maximum width of `76rem`, preserving the compact classic identity while giving the final table column deliberate breathing room;
 - clean classic hero composition;
 - compact branded AoE2WAR Watcher card;
 - premium RM/DM selector;
@@ -65,14 +65,33 @@ Advanced is the primary visual control specimen while Extreme evolves.
 Extreme is the default flagship leaderboard:
 
 - controlled maximum width of `118rem`;
-- Phase-0 visual appearance preserved before Living Leaderboard development;
+- dedicated Living Leaderboard presentation tree, separate from the Basic/Advanced classic tree;
 - full branded AoE2WAR Watcher card;
 - premium RM/DM selector;
 - premium Warriors/Kingdom selector;
 - no public administrative census strip;
 - expanded desktop command canvas.
 
-Extreme exclusively owns future Living Leaderboard presentation and interaction.
+Extreme exclusively owns Living Leaderboard presentation and interaction.
+
+### Living foundation
+
+The first flagship Living pass includes:
+
+- a podium rail for the current top three loaded ranks;
+- direct 24-hour movement sorting;
+- transparent rank-pulse highlighting based only on existing movement/new-board/winning-streak evidence;
+- local warrior bookmarks and a bookmark-only projection;
+- compact/comfortable row density control;
+- richer scan-first warrior rows;
+- inline direct-manipulation warrior expansion;
+- mobile-equivalent interaction;
+- no additional base-board network request and no deep-warrior preload.
+
+The Living presentation consumes the same lean leaderboard payload and shared
+lane/scope/cache truth as Classic. Pure presentation features remain client-side
+overlays until a dedicated precomputed intelligence projection is deliberately
+introduced.
 
 ## Classic baseline boundary
 
