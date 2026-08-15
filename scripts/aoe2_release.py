@@ -12,7 +12,6 @@ import socket
 import subprocess
 import sys
 import time
-import urllib.request
 import uuid
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
@@ -354,16 +353,35 @@ def production() -> tuple[dict[str, str], str | None]:
 
 
 def public_version() -> str | None:
-    try:
-        with urllib.request.urlopen(
-            f"{PUBLIC.rstrip('/')}/api/deployment-version",
-            timeout=6,
-        ) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-        value = payload.get("buildVersion")
-        return str(value) if value else None
-    except Exception:
+    url = f"{PUBLIC.rstrip('/')}/api/deployment-version"
+
+    rc, out, _ = run(
+        [
+            "curl",
+            "-fsS",
+            "--connect-timeout",
+            "4",
+            "--max-time",
+            "6",
+            "-H",
+            "Accept: application/json",
+            "-H",
+            "Cache-Control: no-cache",
+            url,
+        ],
+        timeout=8,
+    )
+
+    if rc != 0 or not out:
         return None
+
+    try:
+        payload = json.loads(out)
+    except json.JSONDecodeError:
+        return None
+
+    value = payload.get("buildVersion")
+    return str(value) if value else None
 
 
 def version_value(raw: str | None) -> str | None:
