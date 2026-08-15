@@ -1245,6 +1245,53 @@ then
   fi
 fi
 
+LEADERBOARD_PREWARM="PASS"
+LEADERBOARD_WARM_SECONDS=""
+
+for spec in \
+  "rm all" \
+  "rm claimed" \
+  "dm all" \
+  "dm claimed"
+do
+  set -- $spec
+  lane="$1"
+  scope="$2"
+
+  leaderboard_url="http://127.0.0.1:3030/api/lobby/leaderboard?lane=$lane&scope=$scope&offset=0&limit=50"
+
+  if ! curl -fsS \
+    --connect-timeout 3 \
+    --max-time 20 \
+    -o /dev/null \
+    "$leaderboard_url"
+  then
+    LEADERBOARD_PREWARM="FAIL"
+    continue
+  fi
+
+  warm_seconds="$(
+    curl -fsS \
+      --connect-timeout 3 \
+      --max-time 12 \
+      -o /dev/null \
+      -w '%{{time_total}}' \
+      "$leaderboard_url" \
+      || true
+  )"
+
+  if [ -z "$warm_seconds" ]; then
+    LEADERBOARD_PREWARM="FAIL"
+    continue
+  fi
+
+  if [ -n "$LEADERBOARD_WARM_SECONDS" ]; then
+    LEADERBOARD_WARM_SECONDS="$LEADERBOARD_WARM_SECONDS,"
+  fi
+
+  LEADERBOARD_WARM_SECONDS="$LEADERBOARD_WARM_SECONDS$lane:$scope:$warm_seconds"
+done
+
 # ------------------------------------------------------------
 # BOUNDED POST-ACTIVATION HEALTH SOAK
 #
@@ -1320,6 +1367,8 @@ printf '%s\\n' \
   "soak_samples=$SOAK_SAMPLES" \
   "statistics_prewarm=$STATISTICS_PREWARM" \
   "statistics_warm_seconds=$STATISTICS_WARM_SECONDS" \
+  "leaderboard_prewarm=$LEADERBOARD_PREWARM" \
+  "leaderboard_warm_seconds=$LEADERBOARD_WARM_SECONDS" \
   "fast_rollback=$FAST_OLD" \
   "fast_rollback_modules=$FAST_OLD_MODULES" \
   "durable_rollback=$ROLLBACK" \

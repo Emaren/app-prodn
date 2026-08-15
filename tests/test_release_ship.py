@@ -500,6 +500,48 @@ class ShipTests(unittest.TestCase):
             script,
         )
 
+    def test_activation_prewarms_common_leaderboards_before_health_soak(self):
+        script = render_activation_script()
+
+        prewarm = script.index('LEADERBOARD_PREWARM="PASS"')
+        soak = script.index(
+            "# BOUNDED POST-ACTIVATION HEALTH SOAK",
+            prewarm,
+        )
+
+        self.assertLess(prewarm, soak)
+
+        block = script[prewarm:soak]
+
+        for lane, scope in (
+            ("rm", "all"),
+            ("rm", "claimed"),
+            ("dm", "all"),
+            ("dm", "claimed"),
+        ):
+            self.assertIn(
+                f'"{lane} {scope}"',
+                block,
+            )
+
+        self.assertIn(
+            "/api/lobby/leaderboard?lane=$lane&scope=$scope&offset=0&limit=50",
+            block,
+        )
+        self.assertIn(
+            "-w '%{time_total}'",
+            block,
+        )
+
+        self.assertIn(
+            "leaderboard_prewarm=$LEADERBOARD_PREWARM",
+            script,
+        )
+        self.assertIn(
+            "leaderboard_warm_seconds=$LEADERBOARD_WARM_SECONDS",
+            script,
+        )
+
     def test_activation_uses_root_name_independent_content_hash(self):
         _, receipt, _ = activation_sample()
         receipt = {

@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 
 import { ModernLeaderboardPage } from "@/components/leaderboard/ModernLeaderboardPage";
 import { LeaderboardViewPreferenceMarker } from "@/components/leaderboard/LeaderboardViewPreferenceMarker";
-import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import {
   LEADERBOARD_VIEW_COOKIE_KEY,
@@ -77,8 +76,6 @@ export default async function LeaderboardPage({
       <LeaderboardViewPreferenceMarker
         view="modern"
       />
-
-      <SpeedReadyMarker route="/leaderboard" />
 
       <ModernLeaderboardPage
         initialLeaderboard={

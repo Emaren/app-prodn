@@ -1504,29 +1504,27 @@ function buildLeaderboardCacheKey(
   });
 }
 
-export async function loadLobbyLeaderboard(
+function startLeaderboardRefresh(
   prisma: PrismaClient,
-  options: LoadLobbyLeaderboardOptions = {}
+  options: LoadLobbyLeaderboardOptions,
+  cacheKey: string,
 ): Promise<LobbyLeaderboardSummary> {
-  const now = Date.now();
-  const cacheKey = buildLeaderboardCacheKey(options);
-  const cached = leaderboardCache.get(cacheKey);
+  const existing =
+    leaderboardPromises.get(cacheKey);
 
-  if (cached && cached.expiresAt > now) {
-    return cached.value;
+  if (existing) {
+    return existing;
   }
 
-  const inFlight = leaderboardPromises.get(cacheKey);
-
-  if (inFlight) {
-    return inFlight;
-  }
-
-  const run = loadLobbyLeaderboardFresh(prisma, options)
+  const run = loadLobbyLeaderboardFresh(
+    prisma,
+    options,
+  )
     .then((value) => {
       leaderboardCache.set(cacheKey, {
         expiresAt:
-          Date.now() + LEADERBOARD_CACHE_TTL_MS,
+          Date.now() +
+          LEADERBOARD_CACHE_TTL_MS,
         value,
       });
 
@@ -1534,9 +1532,13 @@ export async function loadLobbyLeaderboard(
         leaderboardCache.size >
         LEADERBOARD_CACHE_MAX_ENTRIES
       ) {
-        for (const [key, entry] of leaderboardCache) {
+        for (
+          const [key, entry]
+          of leaderboardCache
+        ) {
           if (
-            entry.expiresAt <= Date.now() ||
+            entry.expiresAt <=
+              Date.now() ||
             leaderboardCache.size >
               LEADERBOARD_CACHE_MAX_ENTRIES
           ) {
@@ -1548,11 +1550,65 @@ export async function loadLobbyLeaderboard(
       return value;
     })
     .finally(() => {
-      if (leaderboardPromises.get(cacheKey) === run) {
-        leaderboardPromises.delete(cacheKey);
+      if (
+        leaderboardPromises.get(
+          cacheKey,
+        ) === run
+      ) {
+        leaderboardPromises.delete(
+          cacheKey,
+        );
       }
     });
 
-  leaderboardPromises.set(cacheKey, run);
+  leaderboardPromises.set(
+    cacheKey,
+    run,
+  );
+
   return run;
+}
+
+export async function loadLobbyLeaderboard(
+  prisma: PrismaClient,
+  options: LoadLobbyLeaderboardOptions = {}
+): Promise<LobbyLeaderboardSummary> {
+  const now = Date.now();
+  const cacheKey =
+    buildLeaderboardCacheKey(options);
+  const cached =
+    leaderboardCache.get(cacheKey);
+
+  if (cached) {
+    if (
+      cached.expiresAt <= now &&
+      !leaderboardPromises.has(
+        cacheKey,
+      )
+    ) {
+      void startLeaderboardRefresh(
+        prisma,
+        options,
+        cacheKey,
+      ).catch((error) => {
+        console.warn(
+          "Leaderboard background refresh failed:",
+          error,
+        );
+      });
+    }
+
+    // Once a good snapshot exists, expiry means
+    // "refresh in the background", never
+    // "make the next human wait".
+    return cached.value;
+  }
+
+  // Only the genuinely cold first computation waits.
+  // Concurrent cold callers share one in-flight build.
+  return startLeaderboardRefresh(
+    prisma,
+    options,
+    cacheKey,
+  );
 }

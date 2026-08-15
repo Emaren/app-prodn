@@ -9,6 +9,7 @@ import { LeaderboardViewToggle } from "@/components/leaderboard/LeaderboardViewT
 import { LeaderboardWatcherCard } from "@/components/leaderboard/LeaderboardWatcherCard";
 import { ModernLeaderboardTable } from "@/components/leaderboard/ModernLeaderboardTable";
 import { LeaderboardLaneToggle } from "@/components/lobby/LeaderboardLaneToggle";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import type { LobbyLeaderboardSummary } from "@/lib/lobby";
 import {
@@ -165,6 +166,7 @@ export function ModernLeaderboardPage({
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLButtonElement | null>(null);
   const skipNextLaneReloadRef = useRef(false);
+  const skipNextScopeReloadRef = useRef(false);
 
   useEffect(() => {
     seedLeaderboardLaneCache(
@@ -180,10 +182,24 @@ export function ModernLeaderboardPage({
         ? "dm"
         : "rm";
 
+    const alternateScope:
+      LeaderboardScope =
+      scope === "all"
+        ? "claimed"
+        : "all";
+
+    // Warm the two most likely next interactions:
+    // RM <-> DM and Warriors <-> Kingdom.
     void prefetchLeaderboardLane(
       alternateLane,
       RESET_PAGE_SIZE,
       scope,
+    );
+
+    void prefetchLeaderboardLane(
+      activeLane,
+      RESET_PAGE_SIZE,
+      alternateScope,
     );
   }, [
     initialLeaderboard,
@@ -203,12 +219,14 @@ export function ModernLeaderboardPage({
       preserveRows = false,
       sortOverride,
       laneOverride,
+      scopeOverride,
     }: {
       reset: boolean;
       offset?: number;
       preserveRows?: boolean;
       sortOverride?: LeaderboardSortState;
       laneOverride?: LeaderboardLane;
+      scopeOverride?: LeaderboardScope;
     }) => {
       if (
         !reset &&
@@ -242,10 +260,14 @@ export function ModernLeaderboardPage({
           laneOverride ??
           lane;
 
+        const requestedScope =
+          scopeOverride ??
+          scope;
+
         const params =
           new URLSearchParams({
             lane: requestedLane,
-            scope,
+            scope: requestedScope,
             offset: String(offset),
             limit: String(reset ? RESET_PAGE_SIZE : SCROLL_PAGE_SIZE),
           });
@@ -284,7 +306,8 @@ export function ModernLeaderboardPage({
           !Array.isArray(
             payload.entries,
           ) ||
-          payload.scope !== scope ||
+          payload.scope !==
+            requestedScope ||
           payload.lane !==
             requestedLane
         ) {
@@ -330,7 +353,8 @@ export function ModernLeaderboardPage({
           offset === 0 &&
           !query &&
           !activeSort.key &&
-          payload.scope === scope &&
+          payload.scope ===
+            requestedScope &&
           payload.lane ===
             requestedLane
         ) {
@@ -369,9 +393,12 @@ export function ModernLeaderboardPage({
     }
 
     if (
-      skipNextLaneReloadRef.current
+      skipNextLaneReloadRef.current ||
+      skipNextScopeReloadRef.current
     ) {
       skipNextLaneReloadRef.current =
+        false;
+      skipNextScopeReloadRef.current =
         false;
       return;
     }
@@ -486,6 +513,92 @@ export function ModernLeaderboardPage({
     ],
   );
 
+  const changeScope = useCallback(
+    (
+      nextScope:
+        LeaderboardScope,
+    ) => {
+      if (nextScope === scope) {
+        return;
+      }
+
+      const cached =
+        readLeaderboardLaneCache(
+          lane,
+          nextScope,
+        );
+
+      // Prevent the generic effect from blanking the board
+      // after this explicit scope transition.
+      skipNextScopeReloadRef.current =
+        true;
+
+      // Invalidate an older in-flight page request.
+      requestId.current += 1;
+
+      setScope(nextScope);
+
+      // The opposite scope is normally already prefetched.
+      // Apply it synchronously before React paints again.
+      if (
+        cached &&
+        !query &&
+        !sortRef.current.key
+      ) {
+        setEntries(
+          cached.entries,
+        );
+
+        setTrackedPlayers(
+          cached.trackedPlayers,
+        );
+
+        setCensus(
+          identityCensus(
+            cached,
+          ),
+        );
+
+        setNextOffset(
+          cached.entries.length,
+        );
+
+        setHasMore(
+          cached.entries.length <
+            cached.trackedPlayers,
+        );
+
+        setLoading(false);
+        setLoadingMore(false);
+        loadingMoreRef.current =
+          false;
+        setError(null);
+      }
+
+      // Revalidate quietly against authoritative server
+      // truth. Never blank Warriors/Kingdom into skeletons.
+      void loadPage({
+        reset: true,
+        preserveRows: true,
+        scopeOverride:
+          nextScope,
+      });
+
+      // Keep the previous scope warm for the next flip.
+      void prefetchLeaderboardLane(
+        lane,
+        RESET_PAGE_SIZE,
+        scope,
+      );
+    },
+    [
+      lane,
+      loadPage,
+      query,
+      scope,
+    ],
+  );
+
   const changeSort = useCallback(
     (key: LeaderboardSortKey) => {
       const next =
@@ -521,6 +634,11 @@ export function ModernLeaderboardPage({
       className="leaderboard-modern-shell space-y-5 py-3 text-white sm:py-6"
       data-leaderboard-view={viewMode}
     >
+      <SpeedReadyMarker
+        route="/leaderboard"
+        ready={!loading}
+      />
+
       <section
         className={`relative overflow-hidden border bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,0.09),transparent_26%),linear-gradient(145deg,#101a2d,#070d18_62%,#030711)] transition-[border-radius,border-color,box-shadow] duration-300 ${
           isExtreme
@@ -625,7 +743,7 @@ export function ModernLeaderboardPage({
               <button
                 type="button"
                 aria-pressed={scope === "all"}
-                onClick={() => setScope("all")}
+                onClick={() => changeScope("all")}
                 className={`cursor-pointer rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/55 ${
                   scope === "all"
                     ? "bg-amber-200 text-slate-950 shadow-[0_8px_24px_rgba(251,191,36,0.18)]"
@@ -637,7 +755,7 @@ export function ModernLeaderboardPage({
               <button
                 type="button"
                 aria-pressed={scope === "claimed"}
-                onClick={() => setScope("claimed")}
+                onClick={() => changeScope("claimed")}
                 className={`cursor-pointer rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/55 ${
                   scope === "claimed"
                     ? "bg-cyan-200 text-slate-950 shadow-[0_8px_24px_rgba(34,211,238,0.16)]"
@@ -650,7 +768,7 @@ export function ModernLeaderboardPage({
           ) : (
             <LeaderboardScopeToggle
               value={scope}
-              onChange={setScope}
+              onChange={changeScope}
             />
           )}
 

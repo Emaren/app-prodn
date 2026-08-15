@@ -30,7 +30,6 @@ test("all primary battlefield routes publish explicit readiness", () => {
     ["components/live/LiveGamesBoard.tsx", '<SpeedReadyMarker route="/live-games" />'],
     ["app/players/page.tsx", '<SpeedReadyMarker route="/players" />'],
     ["app/rivalries/page.tsx", '<SpeedReadyMarker route="/rivalries" />'],
-    ["app/leaderboard/page.tsx", '<SpeedReadyMarker route="/leaderboard" />'],
     ["app/war-chest/page.tsx", '<SpeedReadyMarker route="/war-chest" />'],
     ["app/staking/page.tsx", '<SpeedReadyMarker route="/staking" />'],
   ]);
@@ -38,6 +37,22 @@ test("all primary battlefield routes publish explicit readiness", () => {
   for (const [path, marker] of expectations) {
     assert.ok(source(path).includes(marker), `${path} is missing ${marker}`);
   }
+});
+
+test("Leaderboard does not claim authoritative ready until its board exists", () => {
+  const leaderboard = source(
+    "components/leaderboard/ModernLeaderboardPage.tsx",
+  );
+
+  assert.match(
+    leaderboard,
+    /<SpeedReadyMarker\s+route="\/leaderboard"\s+ready=\{!loading\}\s*\/>/,
+  );
+
+  assert.doesNotMatch(
+    source("app/leaderboard/page.tsx"),
+    /SpeedReadyMarker/,
+  );
 });
 
 test("Bets does not claim authoritative ready until its board fetch resolves", () => {
