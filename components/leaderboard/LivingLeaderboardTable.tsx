@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ChevronsUpDown,
   ExternalLink,
+  EyeOff,
   Flame,
   Minus,
   Star,
@@ -508,6 +509,8 @@ export function LivingLeaderboardTable({
   onSort,
   bookmarks,
   onToggleBookmark,
+  onHideEntry,
+  spotlightKey,
   pulseActive,
   dense,
 }: {
@@ -523,6 +526,10 @@ export function LivingLeaderboardTable({
   onToggleBookmark: (
     entry: LobbyLeaderboardEntry,
   ) => void;
+  onHideEntry: (
+    entry: LobbyLeaderboardEntry,
+  ) => void;
+  spotlightKey: string | null;
   pulseActive: boolean;
   dense: boolean;
 }) {
@@ -674,6 +681,10 @@ export function LivingLeaderboardTable({
                   pulseActive &&
                   isHot(entry);
 
+                const spotlit =
+                  spotlightKey ===
+                  entry.key;
+
                 const id =
                   rowId(entry.key);
 
@@ -682,6 +693,11 @@ export function LivingLeaderboardTable({
                     key={entry.key}
                   >
                     <tr
+                      data-living-spotlight={
+                        spotlit
+                          ? "true"
+                          : undefined
+                      }
                       onClick={(event) =>
                         toggleFromRow(
                           entry,
@@ -693,9 +709,11 @@ export function LivingLeaderboardTable({
                           ? "bg-slate-900/44"
                           : "bg-black/18"
                       } ${
-                        hot
-                          ? "shadow-[inset_4px_0_0_rgba(251,191,36,0.58)] hover:bg-amber-300/[0.06]"
-                          : "hover:bg-cyan-300/[0.045]"
+                        spotlit
+                          ? "bg-cyan-300/[0.075] shadow-[inset_4px_0_0_rgba(103,232,249,0.85),inset_0_0_0_1px_rgba(103,232,249,0.09)]"
+                          : hot
+                            ? "shadow-[inset_4px_0_0_rgba(251,191,36,0.58)] hover:bg-amber-300/[0.06]"
+                            : "hover:bg-cyan-300/[0.045]"
                       }`}
                     >
                       <td
@@ -730,6 +748,26 @@ export function LivingLeaderboardTable({
                                   ? "fill-current"
                                   : ""
                               }`}
+                              aria-hidden="true"
+                            />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(
+                              event,
+                            ) => {
+                              event.stopPropagation();
+                              onHideEntry(
+                                entry,
+                              );
+                            }}
+                            aria-label={`Hide ${entry.currentName}`}
+                            title="Hide warrior"
+                            className="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-white/[0.05] bg-white/[0.015] text-slate-700 opacity-35 transition group-hover:opacity-100 hover:border-slate-300/20 hover:bg-white/[0.04] hover:text-slate-300"
+                          >
+                            <EyeOff
+                              className="h-3.5 w-3.5"
                               aria-hidden="true"
                             />
                           </button>
@@ -968,6 +1006,10 @@ export function LivingLeaderboardTable({
             pulseActive &&
             isHot(entry);
 
+          const spotlit =
+            spotlightKey ===
+            entry.key;
+
           const id =
             rowId(
               `mobile-${entry.key}`,
@@ -976,6 +1018,11 @@ export function LivingLeaderboardTable({
           return (
             <article
               key={entry.key}
+              data-living-spotlight={
+                spotlit
+                  ? "true"
+                  : undefined
+              }
               onClick={(event) =>
                 toggleFromRow(
                   entry,
@@ -983,9 +1030,11 @@ export function LivingLeaderboardTable({
                 )
               }
               className={`relative overflow-hidden rounded-[1.25rem] border p-4 transition ${
-                hot
-                  ? "border-amber-200/20 bg-[radial-gradient(circle_at_0%_0%,rgba(251,191,36,0.10),transparent_34%),linear-gradient(145deg,rgba(17,28,45,0.98),rgba(4,9,18,0.98))]"
-                  : "border-white/[0.08] bg-[linear-gradient(145deg,rgba(17,28,45,0.98),rgba(4,9,18,0.98))]"
+                spotlit
+                  ? "border-cyan-200/30 bg-[radial-gradient(circle_at_0%_0%,rgba(34,211,238,0.12),transparent_38%),linear-gradient(145deg,rgba(17,28,45,0.98),rgba(4,9,18,0.98))] shadow-[inset_4px_0_0_rgba(103,232,249,0.78)]"
+                  : hot
+                    ? "border-amber-200/20 bg-[radial-gradient(circle_at_0%_0%,rgba(251,191,36,0.10),transparent_34%),linear-gradient(145deg,rgba(17,28,45,0.98),rgba(4,9,18,0.98))]"
+                    : "border-white/[0.08] bg-[linear-gradient(145deg,rgba(17,28,45,0.98),rgba(4,9,18,0.98))]"
               }`}
             >
               <div className="flex items-start gap-3">
@@ -1024,6 +1073,24 @@ export function LivingLeaderboardTable({
                     }
                   </div>
                 </div>
+
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onHideEntry(
+                      entry,
+                    );
+                  }}
+                  aria-label={`Hide ${entry.currentName}`}
+                  title="Hide warrior"
+                  className="grid h-10 w-10 place-items-center rounded-full border border-white/[0.08] text-slate-600"
+                >
+                  <EyeOff
+                    className="h-4 w-4"
+                    aria-hidden="true"
+                  />
+                </button>
 
                 <button
                   type="button"

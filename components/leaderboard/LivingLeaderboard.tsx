@@ -2,10 +2,14 @@
 
 import {
   Activity,
+  Crosshair,
   Crown,
+  Eye,
+  EyeOff,
   Flame,
   Rows3,
   Search,
+  SlidersHorizontal,
   Star,
   X,
 } from "lucide-react";
@@ -13,26 +17,54 @@ import Link from "next/link";
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
+  type UIEvent,
 } from "react";
 
-import { LivingLeaderboardTable } from "@/components/leaderboard/LivingLeaderboardTable";
-import { LeaderboardScopeToggle } from "@/components/leaderboard/LeaderboardScopeToggle";
-import { LeaderboardViewToggle } from "@/components/leaderboard/LeaderboardViewToggle";
-import { LeaderboardWatcherCard } from "@/components/leaderboard/LeaderboardWatcherCard";
-import { LeaderboardLaneToggle } from "@/components/lobby/LeaderboardLaneToggle";
-import type { LobbyLeaderboardEntry } from "@/lib/lobby";
-import type { LeaderboardLane } from "@/lib/leaderboardLane";
-import type { LeaderboardScope } from "@/lib/leaderboardScope";
+import {
+  LivingLeaderboardTable,
+} from "@/components/leaderboard/LivingLeaderboardTable";
+import {
+  LeaderboardScopeToggle,
+} from "@/components/leaderboard/LeaderboardScopeToggle";
+import {
+  LeaderboardViewToggle,
+} from "@/components/leaderboard/LeaderboardViewToggle";
+import {
+  LeaderboardWatcherCard,
+} from "@/components/leaderboard/LeaderboardWatcherCard";
+import {
+  LeaderboardLaneToggle,
+} from "@/components/lobby/LeaderboardLaneToggle";
+import type {
+  LobbyLeaderboardEntry,
+} from "@/lib/lobby";
+import type {
+  LeaderboardLane,
+} from "@/lib/leaderboardLane";
+import type {
+  LeaderboardScope,
+} from "@/lib/leaderboardScope";
 import type {
   LeaderboardSortDirection,
   LeaderboardSortKey,
 } from "@/lib/leaderboardSort";
-import type { TileViewMode } from "@/lib/tileViewPreferences";
+import {
+  LIVING_LEADERBOARD_WINDOW_ROWS,
+  type LivingLeaderboardPreferences,
+} from "@/lib/livingLeaderboardPreferences";
+import type {
+  TileViewMode,
+} from "@/lib/tileViewPreferences";
 
-const BOOKMARK_STORAGE_KEY =
-  "aoe2war:living-leaderboard:bookmarks:v1";
+export type LivingLeaderboardSpotlightTarget = {
+  key: string;
+  rank: number;
+  name: string;
+  mode: "top" | "center";
+};
 
 function pulseWarrior(
   entry: LobbyLeaderboardEntry,
@@ -65,11 +97,13 @@ function pulseWarrior(
 
 function CommandButton({
   active,
+  disabled = false,
   label,
   onClick,
   children,
 }: {
   active: boolean;
+  disabled?: boolean;
   label: string;
   onClick: () => void;
   children: ReactNode;
@@ -77,11 +111,12 @@ function CommandButton({
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onClick}
       aria-pressed={active}
       aria-label={label}
       title={label}
-      className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg border transition-[border-color,background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/45 ${
+      className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg border transition-[border-color,background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/45 disabled:cursor-not-allowed disabled:opacity-25 ${
         active
           ? "border-amber-200/28 bg-amber-300/[0.10] text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_24px_rgba(251,191,36,0.08)]"
           : "border-transparent bg-transparent text-slate-500 hover:border-white/[0.08] hover:bg-white/[0.045] hover:text-slate-100"
@@ -155,6 +190,7 @@ export function LivingLeaderboard({
   query,
   trackedPlayers,
   entries,
+  podiumEntries,
   sortKey,
   sortDirection,
   onSort,
@@ -164,6 +200,12 @@ export function LivingLeaderboard({
   hasMore,
   onRetry,
   onLoadMore,
+  preferences,
+  onPreferencesChange,
+  spotlightTarget,
+  spotlightLoading,
+  spotlightAvailable,
+  personalRankViewActive,
 }: {
   viewMode: TileViewMode;
   onViewModeChange: (
@@ -184,6 +226,7 @@ export function LivingLeaderboard({
   query: string;
   trackedPlayers: number;
   entries: LobbyLeaderboardEntry[];
+  podiumEntries: LobbyLeaderboardEntry[];
   sortKey: LeaderboardSortKey | null;
   sortDirection:
     | LeaderboardSortDirection
@@ -197,111 +240,116 @@ export function LivingLeaderboard({
   hasMore: boolean;
   onRetry: () => void;
   onLoadMore: () => void;
+  preferences: LivingLeaderboardPreferences;
+  onPreferencesChange: (
+    patch: Partial<LivingLeaderboardPreferences>,
+  ) => void;
+  spotlightTarget:
+    | LivingLeaderboardSpotlightTarget
+    | null;
+  spotlightLoading: boolean;
+  spotlightAvailable: boolean;
+  personalRankViewActive: boolean;
 }) {
-  const [bookmarks, setBookmarks] =
-    useState<Set<string>>(
-      () => new Set(),
+  const viewportRef =
+    useRef<HTMLDivElement | null>(
+      null,
     );
 
   const [
-    bookmarkedOnly,
-    setBookmarkedOnly,
-  ] = useState(false);
-
-  const [
-    pulseActive,
-    setPulseActive,
-  ] = useState(true);
-
-  const [dense, setDense] =
+    rankWindowOpen,
+    setRankWindowOpen,
+  ] =
     useState(false);
 
+  const [
+    hiddenOpen,
+    setHiddenOpen,
+  ] =
+    useState(false);
+
+  const [
+    rankStartDraft,
+    setRankStartDraft,
+  ] =
+    useState(
+      String(
+        preferences.rankWindowStart ??
+          1,
+      ),
+    );
+
   useEffect(() => {
-    try {
-      const raw =
-        window.localStorage.getItem(
-          BOOKMARK_STORAGE_KEY,
-        );
+    setRankStartDraft(
+      String(
+        preferences.rankWindowStart ??
+          1,
+      ),
+    );
+  }, [
+    preferences.rankWindowStart,
+  ]);
 
-      const parsed =
-        raw
-          ? JSON.parse(raw)
-          : [];
+  const bookmarks =
+    useMemo(
+      () =>
+        new Set(
+          preferences.bookmarkedPlayerKeys,
+        ),
+      [
+        preferences.bookmarkedPlayerKeys,
+      ],
+    );
 
-      if (
-        Array.isArray(parsed) &&
-        parsed.every(
-          (value) =>
-            typeof value ===
-            "string",
-        )
-      ) {
-        setBookmarks(
-          new Set(parsed),
-        );
-      }
-    } catch {
-      // Local preference failure should never block the board.
-    }
-  }, []);
+  const hiddenKeys =
+    useMemo(
+      () =>
+        new Set(
+          preferences.hiddenPlayers.map(
+            (entry) =>
+              entry.key,
+          ),
+        ),
+      [
+        preferences.hiddenPlayers,
+      ],
+    );
 
-  const toggleBookmark = (
-    entry: LobbyLeaderboardEntry,
-  ) => {
-    setBookmarks((current) => {
-      const next =
-        new Set(current);
-
-      if (next.has(entry.key)) {
-        next.delete(entry.key);
-      } else {
-        next.add(entry.key);
-      }
-
-      try {
-        window.localStorage.setItem(
-          BOOKMARK_STORAGE_KEY,
-          JSON.stringify([
-            ...next,
-          ]),
-        );
-      } catch {
-        // Keep the in-memory interaction even when persistence is unavailable.
-      }
-
-      return next;
-    });
-  };
+  const unhiddenEntries =
+    useMemo(
+      () =>
+        entries.filter(
+          (entry) =>
+            !hiddenKeys.has(
+              entry.key,
+            ) ||
+            entry.key ===
+              spotlightTarget?.key,
+        ),
+      [
+        entries,
+        hiddenKeys,
+        spotlightTarget?.key,
+      ],
+    );
 
   const visibleEntries =
     useMemo(
       () =>
-        bookmarkedOnly
-          ? entries.filter(
+        preferences.bookmarkedOnly
+          ? unhiddenEntries.filter(
               (entry) =>
                 bookmarks.has(
                   entry.key,
                 ),
             )
-          : entries,
+          : unhiddenEntries,
       [
-        bookmarkedOnly,
         bookmarks,
-        entries,
+        preferences.bookmarkedOnly,
+        unhiddenEntries,
       ],
     );
-
-  const podium = useMemo(
-    () =>
-      [...entries]
-        .sort(
-          (left, right) =>
-            left.rank -
-            right.rank,
-        )
-        .slice(0, 3),
-    [entries],
-  );
 
   const loadedMovers =
     entries.filter(
@@ -315,13 +363,220 @@ export function LivingLeaderboard({
         entry.isOnline,
     ).length;
 
-  const visibleCount =
-    bookmarkedOnly
-      ? visibleEntries.length
-      : trackedPlayers;
+  const toggleBookmark = (
+    entry: LobbyLeaderboardEntry,
+  ) => {
+    const next =
+      new Set(
+        preferences.bookmarkedPlayerKeys,
+      );
+
+    if (next.has(entry.key)) {
+      next.delete(entry.key);
+    } else {
+      next.add(entry.key);
+    }
+
+    onPreferencesChange({
+      bookmarkedPlayerKeys:
+        Array.from(next),
+    });
+  };
+
+  const hideEntry = (
+    entry: LobbyLeaderboardEntry,
+  ) => {
+    if (
+      hiddenKeys.has(entry.key)
+    ) {
+      return;
+    }
+
+    onPreferencesChange({
+      hiddenPlayers: [
+        ...preferences.hiddenPlayers,
+        {
+          key: entry.key,
+          name:
+            entry.currentName,
+        },
+      ],
+    });
+  };
+
+  const unhideEntry = (
+    key: string,
+  ) => {
+    onPreferencesChange({
+      hiddenPlayers:
+        preferences.hiddenPlayers.filter(
+          (entry) =>
+            entry.key !== key,
+        ),
+    });
+  };
+
+  const cycleSpotlight = () => {
+    const next =
+      preferences.spotlightMode ===
+      "off"
+        ? "top"
+        : preferences.spotlightMode ===
+            "top"
+          ? "center"
+          : "off";
+
+    onPreferencesChange({
+      spotlightMode: next,
+    });
+
+    setRankWindowOpen(false);
+  };
+
+  const applyRankWindow = () => {
+    const parsed =
+      Number.parseInt(
+        rankStartDraft,
+        10,
+      );
+
+    const start =
+      Number.isFinite(parsed)
+        ? Math.max(
+            1,
+            Math.min(
+              Math.max(
+                1,
+                trackedPlayers,
+              ),
+              parsed,
+            ),
+          )
+        : 1;
+
+    onPreferencesChange({
+      spotlightMode: "off",
+      rankWindowStart:
+        start,
+    });
+
+    setRankWindowOpen(false);
+  };
+
+  const clearRankWindow = () => {
+    onPreferencesChange({
+      rankWindowStart:
+        null,
+    });
+
+    setRankWindowOpen(false);
+  };
+
+  useEffect(() => {
+    if (
+      !spotlightTarget ||
+      !viewportRef.current
+    ) {
+      return;
+    }
+
+    const viewport =
+      viewportRef.current;
+
+    const candidates =
+      Array.from(
+        viewport.querySelectorAll<HTMLElement>(
+          '[data-living-spotlight="true"]',
+        ),
+      );
+
+    const target =
+      candidates.find(
+        (candidate) =>
+          candidate.offsetParent !==
+          null,
+      );
+
+    if (!target) {
+      return;
+    }
+
+    target.scrollIntoView({
+      block:
+        spotlightTarget.mode ===
+        "center"
+          ? "center"
+          : "start",
+      inline: "nearest",
+      behavior: "auto",
+    });
+  }, [
+    entries,
+    spotlightTarget,
+  ]);
+
+  const handleViewportScroll = (
+    event: UIEvent<HTMLDivElement>,
+  ) => {
+    if (
+      personalRankViewActive ||
+      loading ||
+      loadingMore ||
+      !hasMore
+    ) {
+      return;
+    }
+
+    const node =
+      event.currentTarget;
+
+    if (
+      node.scrollTop +
+        node.clientHeight >=
+      node.scrollHeight -
+        900
+    ) {
+      onLoadMore();
+    }
+  };
+
+  const rankWindowEnd =
+    preferences.rankWindowStart
+      ? Math.min(
+          trackedPlayers,
+          preferences.rankWindowStart +
+            preferences.rankWindowRows -
+            1,
+        )
+      : null;
+
+  const countLabel =
+    spotlightTarget
+      ? `#${spotlightTarget.rank}`
+      : preferences.rankWindowStart &&
+          rankWindowEnd
+        ? `${preferences.rankWindowStart}–${rankWindowEnd}`
+        : preferences.bookmarkedOnly
+          ? String(
+              visibleEntries.length,
+            )
+          : trackedPlayers.toLocaleString();
+
+  const countSublabel =
+    spotlightTarget
+      ? "spotlight"
+      : preferences.rankWindowStart
+        ? "window"
+        : preferences.bookmarkedOnly
+          ? "saved"
+          : query
+            ? "matching"
+            : scope === "claimed"
+              ? "kingdom"
+              : "warriors";
 
   return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-amber-200/22 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.11),transparent_30%),radial-gradient(circle_at_88%_0%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(145deg,#0b1728,#050b15_56%,#02060d)] shadow-[0_40px_130px_rgba(0,0,0,0.48),0_0_0_1px_rgba(201,155,60,0.045)]">
+    <section className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] border border-amber-200/22 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.11),transparent_30%),radial-gradient(circle_at_88%_0%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(145deg,#0b1728,#050b15_56%,#02060d)] shadow-[0_40px_130px_rgba(0,0,0,0.48),0_0_0_1px_rgba(201,155,60,0.045)]">
       <div className="pointer-events-none absolute inset-x-16 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/50 to-transparent" />
 
       <div className="absolute right-5 top-4 z-20 sm:right-8 sm:top-5 lg:right-10 lg:top-5">
@@ -333,7 +588,7 @@ export function LivingLeaderboard({
         />
       </div>
 
-      <header className="relative grid gap-5 border-b border-amber-200/15 px-5 py-5 sm:px-8 sm:py-6 lg:grid-cols-[minmax(0,1fr)_minmax(30rem,40rem)] lg:items-center lg:px-10 lg:py-6">
+      <header className="relative shrink-0 grid gap-5 border-b border-amber-200/15 px-5 py-5 sm:px-8 sm:py-6 lg:grid-cols-[minmax(0,1fr)_minmax(30rem,40rem)] lg:items-center lg:px-10 lg:py-6">
         <div className="min-w-0 pr-0 lg:pr-6">
           <div className="text-[10px] font-black uppercase tracking-[0.38em] text-amber-200/65">
             AoE2WAR · Living Ranked Command
@@ -361,7 +616,7 @@ export function LivingLeaderboard({
             {loadedMovers > 0 ? (
               <span
                 className="inline-flex items-center gap-1.5 rounded-full border border-orange-300/12 bg-orange-300/[0.045] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-orange-200/80"
-                title="Loaded warriors with upward 24h movement, a new-board state, or a winning streak"
+                title="Loaded rank pulse"
               >
                 <Flame
                   className="h-3 w-3"
@@ -380,9 +635,9 @@ export function LivingLeaderboard({
         </div>
 
         <div className="min-w-0 pt-8 lg:pt-7">
-          {podium.length > 0 ? (
+          {podiumEntries.length > 0 ? (
             <div className="grid grid-cols-3 gap-2.5">
-              {podium.map(
+              {podiumEntries.map(
                 (entry) => (
                   <PodiumCard
                     key={entry.key}
@@ -399,7 +654,7 @@ export function LivingLeaderboard({
         </div>
       </header>
 
-      <div className="grid gap-3 border-b border-white/[0.07] bg-black/20 px-5 py-3 sm:px-8 lg:grid-cols-[auto_auto_minmax(24rem,1fr)_auto_auto] lg:items-center lg:px-10">
+      <div className="relative shrink-0 grid gap-3 border-b border-white/[0.07] bg-black/20 px-5 py-3 sm:px-8 lg:grid-cols-[auto_auto_minmax(24rem,1fr)_auto_auto] lg:items-center lg:px-10">
         <LeaderboardLaneToggle
           lane={lane}
           onChange={onLaneChange}
@@ -432,11 +687,16 @@ export function LivingLeaderboard({
             }
             placeholder="Search warrior"
             style={{
-              backgroundColor: "#020711",
-              color: "#f8fafc",
-              WebkitTextFillColor: "#f8fafc",
-              colorScheme: "dark",
-              caretColor: "#fde68a",
+              backgroundColor:
+                "#020711",
+              color:
+                "#f8fafc",
+              WebkitTextFillColor:
+                "#f8fafc",
+              colorScheme:
+                "dark",
+              caretColor:
+                "#fde68a",
             }}
             className="h-11 w-full appearance-none rounded-xl border border-cyan-200/12 bg-[#020711] pl-11 pr-11 text-sm font-semibold text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.025),0_8px_28px_rgba(0,0,0,0.18)] outline-none transition-[border-color,box-shadow] placeholder:text-slate-600 hover:border-cyan-200/24 focus:border-amber-200/48 focus:ring-2 focus:ring-amber-200/10 [&::-webkit-search-cancel-button]:appearance-none"
           />
@@ -445,7 +705,9 @@ export function LivingLeaderboard({
             <button
               type="button"
               onClick={() =>
-                onSearchInputChange("")
+                onSearchInputChange(
+                  "",
+                )
               }
               aria-label="Clear warrior search"
               className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-slate-500 transition hover:bg-white/[0.05] hover:text-white"
@@ -458,13 +720,67 @@ export function LivingLeaderboard({
           ) : null}
         </label>
 
-        <div className="flex items-center gap-1 rounded-xl border border-white/[0.07] bg-[#020711]/75 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
+        <div className="relative flex items-center gap-1 rounded-xl border border-white/[0.07] bg-[#020711]/75 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
+          <CommandButton
+            active={
+              preferences.spotlightMode !==
+              "off"
+            }
+            disabled={
+              !spotlightAvailable ||
+              spotlightLoading
+            }
+            label={
+              !spotlightAvailable
+                ? "Sign in to spotlight yourself"
+                : preferences.spotlightMode ===
+                    "off"
+                  ? "Spotlight me · top"
+                  : preferences.spotlightMode ===
+                      "top"
+                    ? "Spotlight me · center"
+                    : "Exit spotlight"
+            }
+            onClick={
+              cycleSpotlight
+            }
+          >
+            <Crosshair
+              className={`h-4 w-4 ${
+                spotlightLoading
+                  ? "animate-pulse"
+                  : ""
+              }`}
+              aria-hidden="true"
+            />
+          </CommandButton>
+
+          <CommandButton
+            active={
+              preferences.rankWindowStart !==
+              null
+            }
+            label="Rank window"
+            onClick={() => {
+              setRankWindowOpen(
+                (current) =>
+                  !current,
+              );
+              setHiddenOpen(false);
+            }}
+          >
+            <SlidersHorizontal
+              className="h-4 w-4"
+              aria-hidden="true"
+            />
+          </CommandButton>
+
           <CommandButton
             active={
               sortKey ===
               "rank_change_24h"
             }
-            label="Sort by 24 hour movement"
+            label="24 hour rank movement"
             onClick={() =>
               onSort(
                 "rank_change_24h",
@@ -478,13 +794,15 @@ export function LivingLeaderboard({
           </CommandButton>
 
           <CommandButton
-            active={pulseActive}
+            active={
+              preferences.pulseActive
+            }
             label="Highlight rank pulse"
             onClick={() =>
-              setPulseActive(
-                (current) =>
-                  !current,
-              )
+              onPreferencesChange({
+                pulseActive:
+                  !preferences.pulseActive,
+              })
             }
           >
             <Flame
@@ -494,18 +812,20 @@ export function LivingLeaderboard({
           </CommandButton>
 
           <CommandButton
-            active={bookmarkedOnly}
+            active={
+              preferences.bookmarkedOnly
+            }
             label="Show bookmarked warriors"
             onClick={() =>
-              setBookmarkedOnly(
-                (current) =>
-                  !current,
-              )
+              onPreferencesChange({
+                bookmarkedOnly:
+                  !preferences.bookmarkedOnly,
+              })
             }
           >
             <Star
               className={`h-4 w-4 ${
-                bookmarkedOnly
+                preferences.bookmarkedOnly
                   ? "fill-current"
                   : ""
               }`}
@@ -513,14 +833,45 @@ export function LivingLeaderboard({
             />
           </CommandButton>
 
+          {preferences.hiddenPlayers.length >
+          0 ? (
+            <CommandButton
+              active={hiddenOpen}
+              label={`${preferences.hiddenPlayers.length} hidden warrior${preferences.hiddenPlayers.length === 1 ? "" : "s"}`}
+              onClick={() => {
+                setHiddenOpen(
+                  (current) =>
+                    !current,
+                );
+                setRankWindowOpen(false);
+              }}
+            >
+              <span className="relative">
+                <EyeOff
+                  className="h-4 w-4"
+                  aria-hidden="true"
+                />
+                <span className="absolute -right-2 -top-2 min-w-4 rounded-full bg-slate-200 px-1 text-center text-[8px] font-black leading-4 text-slate-950">
+                  {
+                    preferences
+                      .hiddenPlayers
+                      .length
+                  }
+                </span>
+              </span>
+            </CommandButton>
+          ) : null}
+
           <CommandButton
-            active={dense}
+            active={
+              preferences.dense
+            }
             label="Compact row density"
             onClick={() =>
-              setDense(
-                (current) =>
-                  !current,
-              )
+              onPreferencesChange({
+                dense:
+                  !preferences.dense,
+              })
             }
           >
             <Rows3
@@ -528,112 +879,283 @@ export function LivingLeaderboard({
               aria-hidden="true"
             />
           </CommandButton>
+
+          {rankWindowOpen ? (
+            <div className="absolute right-0 top-[calc(100%+0.55rem)] z-40 w-72 rounded-2xl border border-amber-200/16 bg-[#040913]/98 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+              <div className="grid grid-cols-[1fr_auto] gap-3">
+                <label>
+                  <span className="block text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                    From
+                  </span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={Math.max(
+                      1,
+                      trackedPlayers,
+                    )}
+                    value={
+                      rankStartDraft
+                    }
+                    onChange={(
+                      event,
+                    ) =>
+                      setRankStartDraft(
+                        event.target
+                          .value,
+                      )
+                    }
+                    className="mt-2 h-10 w-full rounded-lg border border-white/10 bg-black/35 px-3 font-black tabular-nums text-white outline-none focus:border-amber-200/40"
+                  />
+                </label>
+
+                <div>
+                  <span className="block text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                    Rows
+                  </span>
+
+                  <div className="mt-2 flex gap-1">
+                    {LIVING_LEADERBOARD_WINDOW_ROWS.map(
+                      (rows) => (
+                        <button
+                          key={rows}
+                          type="button"
+                          onClick={() =>
+                            onPreferencesChange(
+                              {
+                                rankWindowRows:
+                                  rows,
+                              },
+                            )
+                          }
+                          className={`h-10 rounded-lg border px-2.5 text-[10px] font-black tabular-nums transition ${
+                            preferences.rankWindowRows ===
+                            rows
+                              ? "border-amber-200/30 bg-amber-300/[0.10] text-amber-100"
+                              : "border-white/[0.07] bg-white/[0.02] text-slate-500 hover:text-white"
+                          }`}
+                        >
+                          {rows}
+                        </button>
+                      ),
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={
+                    applyRankWindow
+                  }
+                  className="flex-1 rounded-lg border border-amber-200/28 bg-amber-300/[0.09] px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.16em] text-amber-100 transition hover:bg-amber-300/[0.14]"
+                >
+                  Apply
+                </button>
+
+                {preferences.rankWindowStart !==
+                null ? (
+                  <button
+                    type="button"
+                    onClick={
+                      clearRankWindow
+                    }
+                    className="rounded-lg border border-white/[0.08] px-3 py-2.5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 transition hover:text-white"
+                  >
+                    Reset
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {hiddenOpen ? (
+            <div className="absolute right-0 top-[calc(100%+0.55rem)] z-40 w-80 rounded-2xl border border-white/12 bg-[#040913]/98 p-3 shadow-[0_24px_80px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3 px-2 pb-2">
+                <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                  Hidden ·{" "}
+                  {
+                    preferences
+                      .hiddenPlayers
+                      .length
+                  }
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    onPreferencesChange({
+                      hiddenPlayers:
+                        [],
+                    })
+                  }
+                  className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500 hover:text-white"
+                >
+                  All
+                </button>
+              </div>
+
+              <div className="max-h-72 space-y-1 overflow-y-auto">
+                {preferences.hiddenPlayers.map(
+                  (entry) => (
+                    <button
+                      key={
+                        entry.key
+                      }
+                      type="button"
+                      onClick={() =>
+                        unhideEntry(
+                          entry.key,
+                        )
+                      }
+                      className="flex w-full items-center justify-between gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left transition hover:border-white/[0.07] hover:bg-white/[0.035]"
+                    >
+                      <span className="min-w-0 truncate text-sm font-semibold text-slate-300">
+                        {
+                          entry.name
+                        }
+                      </span>
+
+                      <Eye
+                        className="h-4 w-4 shrink-0 text-slate-600"
+                        aria-hidden="true"
+                      />
+                    </button>
+                  ),
+                )}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="min-w-[7rem] text-left lg:text-right">
           <div className="text-2xl font-black tabular-nums text-white">
-            {visibleCount.toLocaleString()}
+            {countLabel}
           </div>
 
           <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600">
-            {bookmarkedOnly
-              ? "saved"
-              : query
-                ? "matching"
-                : scope ===
-                    "claimed"
-                  ? "kingdom"
-                  : "warriors"}
+            {countSublabel}
           </div>
         </div>
       </div>
 
       <div
-        className="border-t border-amber-200/10 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.04),transparent_24%)] p-2 sm:p-3 lg:p-4"
+        className="min-h-0 flex-1 overflow-hidden border-t border-amber-200/10 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.04),transparent_24%)] p-2 sm:p-3 lg:p-4"
         aria-busy={
-          loading || loadingMore
+          loading ||
+          loadingMore
         }
       >
-        {loading ? (
-          <div
-            className="space-y-2"
-            aria-label="Loading leaderboard"
-          >
-            {Array.from(
-              { length: 8 },
-              (_, index) => (
-                <div
-                  key={index}
-                  className="h-16 animate-pulse rounded-xl border border-white/[0.05] bg-white/[0.025]"
-                />
-              ),
-            )}
-          </div>
-        ) : visibleEntries.length ===
-            0 &&
-          bookmarkedOnly ? (
-          <div className="grid min-h-52 place-items-center rounded-[1.35rem] border border-amber-200/10 bg-black/20">
-            <Star
-              className="h-7 w-7 text-amber-200/45"
-              aria-label="No bookmarked warriors"
+        <div
+          ref={viewportRef}
+          data-living-leaderboard-viewport
+          onScroll={
+            handleViewportScroll
+          }
+          className="h-full min-h-0 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]"
+        >
+          {loading &&
+          entries.length === 0 ? (
+            <div
+              className="space-y-2"
+              aria-label="Loading leaderboard"
+            >
+              {Array.from(
+                { length: 8 },
+                (_, index) => (
+                  <div
+                    key={index}
+                    className="h-16 animate-pulse rounded-xl border border-white/[0.05] bg-white/[0.025]"
+                  />
+                ),
+              )}
+            </div>
+          ) : visibleEntries.length ===
+              0 &&
+            preferences.bookmarkedOnly ? (
+            <div className="grid min-h-52 place-items-center rounded-[1.35rem] border border-amber-200/10 bg-black/20">
+              <Star
+                className="h-7 w-7 text-amber-200/45"
+                aria-label="No bookmarked warriors"
+              />
+            </div>
+          ) : visibleEntries.length ===
+              0 &&
+            query ? (
+            <div className="grid min-h-52 place-items-center rounded-[1.35rem] border border-white/[0.07] bg-black/20 text-slate-500">
+              No warrior matches “{query}”.
+            </div>
+          ) : visibleEntries.length ===
+            0 ? (
+            <div className="grid min-h-52 place-items-center rounded-[1.35rem] border border-white/[0.07] bg-black/20 text-slate-500">
+              No ranked warriors.
+            </div>
+          ) : (
+            <LivingLeaderboardTable
+              entries={
+                visibleEntries
+              }
+              sortKey={sortKey}
+              sortDirection={
+                sortDirection
+              }
+              onSort={onSort}
+              bookmarks={
+                bookmarks
+              }
+              onToggleBookmark={
+                toggleBookmark
+              }
+              onHideEntry={
+                hideEntry
+              }
+              spotlightKey={
+                spotlightTarget?.key ??
+                null
+              }
+              pulseActive={
+                preferences.pulseActive
+              }
+              dense={
+                preferences.dense
+              }
             />
-          </div>
-        ) : visibleEntries.length ===
-            0 &&
-          query ? (
-          <div className="grid min-h-52 place-items-center rounded-[1.35rem] border border-white/[0.07] bg-black/20 text-slate-500">
-            No warrior matches “{query}”.
-          </div>
-        ) : visibleEntries.length ===
-          0 ? (
-          <div className="grid min-h-52 place-items-center rounded-[1.35rem] border border-white/[0.07] bg-black/20 text-slate-500">
-            No ranked warriors.
-          </div>
-        ) : (
-          <LivingLeaderboardTable
-            entries={visibleEntries}
-            sortKey={sortKey}
-            sortDirection={
-              sortDirection
-            }
-            onSort={onSort}
-            bookmarks={bookmarks}
-            onToggleBookmark={
-              toggleBookmark
-            }
-            pulseActive={
-              pulseActive
-            }
-            dense={dense}
-          />
-        )}
+          )}
 
-        {error ? (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-orange-300/18 bg-orange-400/[0.05] px-4 py-3 text-sm text-orange-100">
-            <span>{error}</span>
+          {error ? (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-orange-300/18 bg-orange-400/[0.05] px-4 py-3 text-sm text-orange-100">
+              <span>{error}</span>
 
+              <button
+                type="button"
+                onClick={onRetry}
+                className="font-black uppercase tracking-[0.12em] underline underline-offset-4"
+              >
+                Retry
+              </button>
+            </div>
+          ) : null}
+
+          {hasMore &&
+          !loading &&
+          !personalRankViewActive ? (
             <button
               type="button"
-              onClick={onRetry}
-              className="font-black uppercase tracking-[0.12em] underline underline-offset-4"
+              disabled={
+                loadingMore
+              }
+              onClick={
+                onLoadMore
+              }
+              className="mt-3 w-full rounded-xl border border-amber-200/12 bg-amber-300/[0.035] px-4 py-3.5 text-[10px] font-black uppercase tracking-[0.22em] text-amber-100/75 transition hover:border-amber-200/28 hover:bg-amber-300/[0.07] disabled:cursor-wait disabled:opacity-60"
             >
-              Retry
+              {loadingMore
+                ? "Calling warriors…"
+                : "More"}
             </button>
-          </div>
-        ) : null}
-
-        {hasMore && !loading ? (
-          <button
-            type="button"
-            disabled={loadingMore}
-            onClick={onLoadMore}
-            className="mt-3 w-full rounded-xl border border-amber-200/12 bg-amber-300/[0.035] px-4 py-3.5 text-[10px] font-black uppercase tracking-[0.22em] text-amber-100/75 transition hover:border-amber-200/28 hover:bg-amber-300/[0.07] disabled:cursor-wait disabled:opacity-60"
-          >
-            {loadingMore
-              ? "Calling warriors…"
-              : "More"}
-          </button>
-        ) : null}
+          ) : null}
+        </div>
       </div>
     </section>
   );

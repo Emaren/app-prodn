@@ -101,6 +101,10 @@ test("Extreme owns a dedicated Living Leaderboard tree", () => {
     "components/leaderboard/LivingLeaderboardTable.tsx",
   );
 
+  const preferenceHook = source(
+    "components/leaderboard/useLivingLeaderboardPreferences.ts",
+  );
+
   assert.match(
     page,
     /if \(isExtreme\) \{[\s\S]*<LivingLeaderboard/,
@@ -118,7 +122,17 @@ test("Extreme owns a dedicated Living Leaderboard tree", () => {
 
   assert.match(
     living,
-    /BOOKMARK_STORAGE_KEY/,
+    /bookmarkedPlayerKeys/,
+  );
+
+  assert.match(
+    preferenceHook,
+    /aoe2war:living-leaderboard:preferences:v2/,
+  );
+
+  assert.match(
+    preferenceHook,
+    /\/api\/user\/leaderboard-preferences/,
   );
 
   assert.match(

@@ -70,9 +70,17 @@ test("critical performance safeguards stay wired into the public surfaces", () =
   assert.match(ogBoard, /rootMargin: "1800px 0px"/);
   assert.ok(modernLeaderboard.includes("const RESET_PAGE_SIZE = 50;"));
   assert.ok(modernLeaderboard.includes("const SCROLL_PAGE_SIZE = 150;"));
+  assert.match(
+    modernLeaderboard,
+    /const requestedLimit =[\s\S]*limitOverride \?\?[\s\S]*RESET_PAGE_SIZE[\s\S]*SCROLL_PAGE_SIZE/,
+  );
+  assert.match(
+    modernLeaderboard,
+    /Math\.min\(\s*600,/,
+  );
   assert.ok(
     modernLeaderboard.includes(
-      "limit: String(reset ? RESET_PAGE_SIZE : SCROLL_PAGE_SIZE),"
+      "limit: String(requestedLimit),"
     )
   );
   assert.ok(modernLeaderboard.includes('rootMargin: "8000px 0px"'));

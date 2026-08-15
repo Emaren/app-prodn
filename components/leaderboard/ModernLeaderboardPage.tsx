@@ -7,7 +7,11 @@ import { LeaderboardScopeToggle } from "@/components/leaderboard/LeaderboardScop
 import { LeaderboardViewToggle } from "@/components/leaderboard/LeaderboardViewToggle";
 import { LeaderboardWatcherCard } from "@/components/leaderboard/LeaderboardWatcherCard";
 import { ModernLeaderboardTable } from "@/components/leaderboard/ModernLeaderboardTable";
-import { LivingLeaderboard } from "@/components/leaderboard/LivingLeaderboard";
+import {
+  LivingLeaderboard,
+  type LivingLeaderboardSpotlightTarget,
+} from "@/components/leaderboard/LivingLeaderboard";
+import { useLivingLeaderboardPreferences } from "@/components/leaderboard/useLivingLeaderboardPreferences";
 import { LeaderboardLaneToggle } from "@/components/lobby/LeaderboardLaneToggle";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
@@ -86,6 +90,14 @@ export function ModernLeaderboardPage({
   );
   const isExtreme =
     viewMode === "extreme";
+
+  const {
+    preferences: livingPreferences,
+    updatePreferences: updateLivingPreferencesRaw,
+    ready: livingPreferencesReady,
+    isAuthenticated: livingPreferencesAuthenticated,
+  } = useLivingLeaderboardPreferences();
+
   const [lane, setLane] = useState<LeaderboardLane>(
     initialLeaderboard?.lane ?? "rm"
   );
@@ -102,7 +114,15 @@ export function ModernLeaderboardPage({
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
   const [entries, setEntries] = useState(initialLeaderboard?.entries ?? []);
+  const [podiumEntries, setPodiumEntries] = useState(
+    (initialLeaderboard?.entries ?? [])
+      .filter((entry) => entry.rank <= 3)
+      .sort((left, right) => left.rank - right.rank)
+  );
   const [trackedPlayers, setTrackedPlayers] = useState(initialLeaderboard?.trackedPlayers ?? 0);
+  const [spotlightTarget, setSpotlightTarget] =
+    useState<LivingLeaderboardSpotlightTarget | null>(null);
+  const [spotlightLoading, setSpotlightLoading] = useState(false);
   const [nextOffset, setNextOffset] = useState(initialLeaderboard?.entries.length ?? 0);
   const [hasMore, setHasMore] = useState(
     (initialLeaderboard?.entries.length ?? 0) < (initialLeaderboard?.trackedPlayers ?? 0)
@@ -120,6 +140,16 @@ export function ModernLeaderboardPage({
   const sentinelRef = useRef<HTMLButtonElement | null>(null);
   const skipNextLaneReloadRef = useRef(false);
   const skipNextScopeReloadRef = useRef(false);
+  const personalViewWasActiveRef = useRef(false);
+  const personalViewRequestRef = useRef(0);
+
+  const hasPersonalRankView =
+    isExtreme &&
+    livingPreferencesReady &&
+    (
+      livingPreferences.spotlightMode !== "off" ||
+      livingPreferences.rankWindowStart !== null
+    );
 
   useEffect(() => {
     seedLeaderboardLaneCache(
@@ -173,6 +203,7 @@ export function ModernLeaderboardPage({
       sortOverride,
       laneOverride,
       scopeOverride,
+      limitOverride,
     }: {
       reset: boolean;
       offset?: number;
@@ -180,6 +211,7 @@ export function ModernLeaderboardPage({
       sortOverride?: LeaderboardSortState;
       laneOverride?: LeaderboardLane;
       scopeOverride?: LeaderboardScope;
+      limitOverride?: number;
     }) => {
       if (
         !reset &&
@@ -217,12 +249,26 @@ export function ModernLeaderboardPage({
           scopeOverride ??
           scope;
 
+        const requestedLimit =
+          Math.max(
+            1,
+            Math.min(
+              600,
+              Math.floor(
+                limitOverride ??
+                  (reset
+                    ? RESET_PAGE_SIZE
+                    : SCROLL_PAGE_SIZE),
+              ),
+            ),
+          );
+
         const params =
           new URLSearchParams({
             lane: requestedLane,
             scope: requestedScope,
             offset: String(offset),
-            limit: String(reset ? RESET_PAGE_SIZE : SCROLL_PAGE_SIZE),
+            limit: String(requestedLimit),
           });
         if (query) {
           params.set("q", query);
@@ -283,6 +329,19 @@ export function ModernLeaderboardPage({
             ? payload.trackedPlayers
             : payload.entries.length,
         );
+
+        if (
+          reset &&
+          offset === 0 &&
+          !query &&
+          !activeSort.key
+        ) {
+          setPodiumEntries(
+            payload.entries
+              .filter((entry) => entry.rank <= 3)
+              .sort((left, right) => left.rank - right.rank),
+          );
+        }
 
         setNextOffset(
           typeof payload.nextOffset ===
@@ -351,10 +410,31 @@ export function ModernLeaderboardPage({
       return;
     }
 
+    if (
+      isExtreme &&
+      livingPreferencesReady &&
+      !query &&
+      (
+        livingPreferences.spotlightMode !== "off" ||
+        livingPreferences.rankWindowStart !== null
+      )
+    ) {
+      return;
+    }
+
     void loadPage({
       reset: true,
     });
-  }, [initialLeaderboard, lane, query, loadPage]);
+  }, [
+    initialLeaderboard,
+    isExtreme,
+    lane,
+    livingPreferences.rankWindowStart,
+    livingPreferences.spotlightMode,
+    livingPreferencesReady,
+    query,
+    loadPage,
+  ]);
 
   useEffect(() => {
     if (!hasMore || loading || loadingMore) return;
@@ -401,9 +481,21 @@ export function ModernLeaderboardPage({
 
       setLane(nextLane);
 
+      if (cached) {
+        setPodiumEntries(
+          cached.entries
+            .filter((entry) => entry.rank <= 3)
+            .sort((left, right) => left.rank - right.rank),
+        );
+      } else if (hasPersonalRankView) {
+        setPodiumEntries([]);
+      }
+
       // The opposite lane is normally already prefetched.
-      // Apply it synchronously before React paints again.
+      // Apply it synchronously before React paints again,
+      // except when a personal rank window owns row selection.
       if (
+        !hasPersonalRankView &&
         cached &&
         !query &&
         !sortRef.current.key
@@ -432,14 +524,16 @@ export function ModernLeaderboardPage({
         setError(null);
       }
 
-      // Revalidate quietly against authoritative server
-      // truth. Never blank the table into skeletons.
-      void loadPage({
-        reset: true,
-        preserveRows: true,
-        laneOverride:
-          nextLane,
-      });
+      if (!hasPersonalRankView) {
+        // Revalidate quietly against authoritative server
+        // truth. Never blank the table into skeletons.
+        void loadPage({
+          reset: true,
+          preserveRows: true,
+          laneOverride:
+            nextLane,
+        });
+      }
 
       // Keep the opposite lane warm for the next flip.
       void prefetchLeaderboardLane(
@@ -451,6 +545,7 @@ export function ModernLeaderboardPage({
     [
       lane,
       loadPage,
+      hasPersonalRankView,
       query,
       scope,
     ],
@@ -481,9 +576,21 @@ export function ModernLeaderboardPage({
 
       setScope(nextScope);
 
+      if (cached) {
+        setPodiumEntries(
+          cached.entries
+            .filter((entry) => entry.rank <= 3)
+            .sort((left, right) => left.rank - right.rank),
+        );
+      } else if (hasPersonalRankView) {
+        setPodiumEntries([]);
+      }
+
       // The opposite scope is normally already prefetched.
-      // Apply it synchronously before React paints again.
+      // Apply it synchronously before React paints again,
+      // except when a personal rank window owns row selection.
       if (
+        !hasPersonalRankView &&
         cached &&
         !query &&
         !sortRef.current.key
@@ -513,14 +620,16 @@ export function ModernLeaderboardPage({
         setError(null);
       }
 
-      // Revalidate quietly against authoritative server
-      // truth. Never blank Warriors/Kingdom into skeletons.
-      void loadPage({
-        reset: true,
-        preserveRows: true,
-        scopeOverride:
-          nextScope,
-      });
+      if (!hasPersonalRankView) {
+        // Revalidate quietly against authoritative server
+        // truth. Never blank Warriors/Kingdom into skeletons.
+        void loadPage({
+          reset: true,
+          preserveRows: true,
+          scopeOverride:
+            nextScope,
+        });
+      }
 
       // Keep the previous scope warm for the next flip.
       void prefetchLeaderboardLane(
@@ -530,6 +639,7 @@ export function ModernLeaderboardPage({
       );
     },
     [
+      hasPersonalRankView,
       lane,
       loadPage,
       query,
@@ -539,6 +649,14 @@ export function ModernLeaderboardPage({
 
   const changeSort = useCallback(
     (key: LeaderboardSortKey) => {
+      if (hasPersonalRankView) {
+        updateLivingPreferencesRaw({
+          spotlightMode: "off",
+          rankWindowStart: null,
+        });
+        setSpotlightTarget(null);
+      }
+
       const next =
         nextLeaderboardSort(
           sortRef.current,
@@ -564,14 +682,310 @@ export function ModernLeaderboardPage({
         sortOverride: next,
       });
     },
-    [loadPage],
+    [
+      hasPersonalRankView,
+      loadPage,
+      updateLivingPreferencesRaw,
+    ],
   );
+
+  const changeLivingPreferences =
+    useCallback(
+      (
+        patch: Parameters<
+          typeof updateLivingPreferencesRaw
+        >[0],
+      ) => {
+        const activatesRankNavigation =
+          (
+            patch.spotlightMode === "top" ||
+            patch.spotlightMode === "center"
+          ) ||
+          typeof patch.rankWindowStart === "number";
+
+        if (activatesRankNavigation) {
+          sortRef.current = {
+            key: null,
+            direction: null,
+          };
+          setSort({
+            key: null,
+            direction: null,
+          });
+          setSearchInput("");
+          setQuery("");
+        }
+
+        updateLivingPreferencesRaw(
+          patch,
+        );
+      },
+      [
+        updateLivingPreferencesRaw,
+      ],
+    );
+
+  const changeSearchInput =
+    useCallback(
+      (value: string) => {
+        if (
+          value.trim() &&
+          hasPersonalRankView
+        ) {
+          updateLivingPreferencesRaw({
+            spotlightMode: "off",
+            rankWindowStart: null,
+          });
+          setSpotlightTarget(null);
+        }
+
+        setSearchInput(value);
+      },
+      [
+        hasPersonalRankView,
+        updateLivingPreferencesRaw,
+      ],
+    );
+
+  useEffect(() => {
+    if (
+      !livingPreferencesReady ||
+      query
+    ) {
+      return;
+    }
+
+    const request =
+      ++personalViewRequestRef.current;
+
+    let cancelled = false;
+
+    const run = async () => {
+      if (!isExtreme) {
+        if (
+          personalViewWasActiveRef.current
+        ) {
+          personalViewWasActiveRef.current =
+            false;
+          setSpotlightTarget(null);
+
+          await loadPage({
+            reset: true,
+            preserveRows: true,
+            offset: 0,
+            limitOverride:
+              RESET_PAGE_SIZE,
+          });
+        }
+
+        return;
+      }
+
+      const spotlightMode =
+        livingPreferences.spotlightMode;
+
+      const rankWindowStart =
+        livingPreferences.rankWindowStart;
+
+      const rows =
+        livingPreferences.rankWindowRows;
+
+      const active =
+        spotlightMode !== "off" ||
+        rankWindowStart !== null;
+
+      if (!active) {
+        if (
+          personalViewWasActiveRef.current
+        ) {
+          personalViewWasActiveRef.current =
+            false;
+          setSpotlightTarget(null);
+
+          await loadPage({
+            reset: true,
+            preserveRows: true,
+            offset: 0,
+            limitOverride:
+              RESET_PAGE_SIZE,
+          });
+        }
+
+        return;
+      }
+
+      personalViewWasActiveRef.current =
+        true;
+
+      if (
+        spotlightMode === "off" &&
+        rankWindowStart !== null
+      ) {
+        setSpotlightTarget(null);
+
+        await loadPage({
+          reset: true,
+          preserveRows: true,
+          offset:
+            Math.max(
+              0,
+              rankWindowStart -
+                1,
+            ),
+          limitOverride:
+            rows,
+        });
+
+        return;
+      }
+
+      setSpotlightLoading(true);
+
+      try {
+        const params =
+          new URLSearchParams({
+            lane,
+            scope,
+          });
+
+        const response =
+          await fetch(
+            `/api/lobby/leaderboard/locate?${params}`,
+            {
+              cache: "no-store",
+            },
+          );
+
+        const payload =
+          (await response
+            .json()
+            .catch(() => ({}))) as {
+            found?: boolean;
+            key?: string | null;
+            rank?: number | null;
+            name?: string | null;
+            detail?: string;
+          };
+
+        if (
+          !response.ok
+        ) {
+          throw new Error(
+            response.status === 401
+              ? "Sign in with Steam to spotlight your rank."
+              : payload.detail ||
+                  "Your warrior could not be located.",
+          );
+        }
+
+        if (
+          !payload.found ||
+          !payload.key ||
+          typeof payload.rank !==
+            "number"
+        ) {
+          throw new Error(
+            "Your linked warrior is not ranked in this board yet.",
+          );
+        }
+
+        const rank =
+          Math.max(
+            1,
+            Math.floor(
+              payload.rank,
+            ),
+          );
+
+        const offset =
+          spotlightMode ===
+          "center"
+            ? Math.max(
+                0,
+                rank -
+                  1 -
+                  Math.floor(
+                    rows / 2,
+                  ),
+              )
+            : rank - 1;
+
+        await loadPage({
+          reset: true,
+          preserveRows: true,
+          offset,
+          limitOverride:
+            rows,
+        });
+
+        if (
+          cancelled ||
+          request !==
+            personalViewRequestRef.current
+        ) {
+          return;
+        }
+
+        setSpotlightTarget({
+          key:
+            payload.key,
+          rank,
+          name:
+            payload.name ||
+            payload.key,
+          mode:
+            spotlightMode ===
+            "center"
+              ? "center"
+              : "top",
+        });
+      } catch (nextError) {
+        if (
+          !cancelled &&
+          request ===
+            personalViewRequestRef.current
+        ) {
+          setSpotlightTarget(null);
+
+          setError(
+            nextError instanceof Error
+              ? nextError.message
+              : "Your warrior could not be located.",
+          );
+        }
+      } finally {
+        if (
+          !cancelled &&
+          request ===
+            personalViewRequestRef.current
+        ) {
+          setSpotlightLoading(false);
+        }
+      }
+    };
+
+    void run();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isExtreme,
+    lane,
+    livingPreferences.rankWindowRows,
+    livingPreferences.rankWindowStart,
+    livingPreferences.spotlightMode,
+    livingPreferencesReady,
+    loadPage,
+    query,
+    scope,
+  ]);
 
 
   if (isExtreme) {
     return (
       <main
-        className="leaderboard-modern-shell space-y-5 py-3 text-white sm:py-6"
+        className="leaderboard-modern-shell h-[calc(100dvh-5rem)] min-h-0 overflow-hidden py-2 text-white sm:py-3"
         data-leaderboard-view={viewMode}
       >
         <SpeedReadyMarker
@@ -587,10 +1001,11 @@ export function ModernLeaderboardPage({
           scope={scope}
           onScopeChange={changeScope}
           searchInput={searchInput}
-          onSearchInputChange={setSearchInput}
+          onSearchInputChange={changeSearchInput}
           query={query}
           trackedPlayers={trackedPlayers}
           entries={entries}
+          podiumEntries={podiumEntries}
           sortKey={sort.key}
           sortDirection={sort.direction}
           onSort={changeSort}
@@ -614,6 +1029,12 @@ export function ModernLeaderboardPage({
               offset: nextOffset,
             })
           }
+          preferences={livingPreferences}
+          onPreferencesChange={changeLivingPreferences}
+          spotlightTarget={spotlightTarget}
+          spotlightLoading={spotlightLoading}
+          spotlightAvailable={livingPreferencesAuthenticated}
+          personalRankViewActive={hasPersonalRankView}
         />
       </main>
     );

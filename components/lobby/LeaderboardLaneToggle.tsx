@@ -47,12 +47,12 @@ const LANES: Record<
     short: "DM",
     eyebrow: "Death",
     sigil: "⚔",
-    activeText: "text-yellow-100",
+    activeText: "text-cyan-100",
     idleText: "text-slate-400",
-    activeBorder: "border-yellow-200/28",
-    activeGlow: "shadow-[inset_0_1px_0_rgba(255,255,255,0.13),0_0_38px_rgba(250,204,21,0.15)]",
-    activeLine: "from-transparent via-yellow-200/75 to-transparent",
-    focusRing: "focus-visible:ring-yellow-200/60",
+    activeBorder: "border-cyan-200/28",
+    activeGlow: "shadow-[inset_0_1px_0_rgba(255,255,255,0.13),0_0_34px_rgba(103,232,249,0.13)]",
+    activeLine: "from-transparent via-cyan-200/70 to-transparent",
+    focusRing: "focus-visible:ring-cyan-200/55",
   },
 };
 

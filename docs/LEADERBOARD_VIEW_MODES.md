@@ -76,22 +76,36 @@ Extreme exclusively owns Living Leaderboard presentation and interaction.
 
 ### Living foundation
 
-The first flagship Living pass includes:
+The Living foundation includes:
 
-- a podium rail for the current top three loaded ranks;
+- a canonical podium rail;
 - direct 24-hour movement sorting;
 - transparent rank-pulse highlighting based only on existing movement/new-board/winning-streak evidence;
-- local warrior bookmarks and a bookmark-only projection;
+- account-persisted warrior bookmarks with guest local fallback;
 - compact/comfortable row density control;
 - richer scan-first warrior rows;
 - inline direct-manipulation warrior expansion;
+- Spotlight Me with top-of-viewport and centered modes;
+- direct rank-window projection by start rank and row count;
+- personal warrior hiding without renumbering canonical ranks;
+- a persistent hidden-warrior recovery control;
+- an inner leaderboard viewport so the ranked field scrolls independently of the page shell;
 - mobile-equivalent interaction;
 - no additional base-board network request and no deep-warrior preload.
 
-The Living presentation consumes the same lean leaderboard payload and shared
-lane/scope/cache truth as Classic. Pure presentation features remain client-side
-overlays until a dedicated precomputed intelligence projection is deliberately
-introduced.
+Spotlight and rank-window modes fetch the requested canonical rank slice directly
+through server pagination. They must never download every earlier row merely to
+reach the requested warrior.
+
+Signed-in Living preferences are account-scoped through authenticated server
+state and mirror locally for immediate rendering. Guests retain local
+preferences. Personal hiding is presentation-only: hiding canonical rank `#37`
+must render `#36` followed by `#38`; rank truth is never rewritten.
+
+The preference contract already reserves the standard discovery windows
+`24h`, `3d`, `7d`, and `30d` plus mover directions `both`, `up`, and `down`.
+Most Active, Biggest Movers, and Heat must use separate lightweight projections
+rather than inflate the base leaderboard payload.
 
 ## Classic baseline boundary
 
