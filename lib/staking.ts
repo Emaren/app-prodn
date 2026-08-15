@@ -2404,7 +2404,12 @@ export async function calculateDailyStakingRewardDistribution(
     throw new StakingActionError("Distribution already has allocations; refusing to double-credit.", 409);
   }
 
-  const [settledAggregate, legacyPositions, mainnetPositions] = await Promise.all([
+  const [
+    settledAggregate,
+    legacyPositions,
+    mainnetPositions,
+    mainnetLifetimePositions,
+  ] = await Promise.all([
     prisma.betWager.aggregate({
       where: visibleMainnetWagerWhere({
         settledAt: {
@@ -2434,20 +2439,53 @@ export async function calculateDailyStakingRewardDistribution(
           requireCompleteLedger: true,
         })
       : Promise.resolve([]),
+    isWoloMainnet()
+      ? loadMainnetStakingPositions(prisma, {
+          asOf: periodEnd,
+          requireCompleteLedger: true,
+        })
+      : Promise.resolve([]),
   ]);
 
+  const mainnetLifetimeWeightByUserId = new Map(
+    mainnetLifetimePositions.map((position) => [
+      position.userId,
+      BigInt(position.stakingWeight || 0),
+    ]),
+  );
+
   const positions = isWoloMainnet()
-    ? mainnetPositions.map((position) => ({
-        id: null as number | null,
-        userId: position.userId,
-        walletAddress: position.walletAddress,
-        currentStakedWolo: position.currentStakedWolo,
-        accumulatedWeight: BigInt(position.stakingWeight || 0),
-        lastWeightUpdateAt: periodEnd,
-      }))
+    ? mainnetPositions.map((position) => {
+        const lifetimeWeight =
+          mainnetLifetimeWeightByUserId.get(position.userId);
+
+        if (lifetimeWeight === undefined) {
+          throw new StakingActionError(
+            `Lifetime staking weight is unavailable for user ${position.userId}; distribution stopped before allocation.`,
+            409,
+          );
+        }
+
+        return {
+          id: null as number | null,
+          userId: position.userId,
+          walletAddress: position.walletAddress,
+          currentStakedWolo: position.currentStakedWolo,
+
+          // Reward-window weight remains capped and is used only to divide
+          // this distribution's reward pool.
+          accumulatedWeight: BigInt(position.stakingWeight || 0),
+
+          // Lifetime weight is independently reconstructed from the complete
+          // confirmed staking-event ledger and must survive compounding.
+          lifetimeWeight,
+          lastWeightUpdateAt: periodEnd,
+        };
+      })
     : legacyPositions.map((position) => ({
         ...position,
         id: position.id as number | null,
+        lifetimeWeight: computeCurrentStakingWeight(position, periodEnd),
       }));
   const settledVolumeWolo = settledAggregate._sum.amountWolo ?? 0;
   const feePools = calculateLedgerFeePools(settledVolumeWolo);
@@ -2607,7 +2645,7 @@ export async function calculateDailyStakingRewardDistribution(
                 compoundedRewardsWolo: rewardWolo,
                 lifetimeRewardsWolo: rewardWolo,
                 autoCompoundRewards: true,
-                accumulatedWeight: position.userWeight,
+                accumulatedWeight: position.lifetimeWeight,
                 lastWeightUpdateAt: periodEnd,
                 status: "active",
               },
@@ -2618,7 +2656,7 @@ export async function calculateDailyStakingRewardDistribution(
                   : { currentStakedWolo: { increment: rewardWolo } }),
                 compoundedRewardsWolo: { increment: rewardWolo },
                 lifetimeRewardsWolo: { increment: rewardWolo },
-                accumulatedWeight: position.userWeight,
+                accumulatedWeight: position.lifetimeWeight,
                 lastWeightUpdateAt: periodEnd,
                 status: "active",
               },
@@ -2633,8 +2671,8 @@ export async function calculateDailyStakingRewardDistribution(
                 amountWolo: rewardWolo,
                 txHash: compoundTxHash,
                 status: "CONFIRMED",
-                weightBefore: position.userWeight,
-                weightAfter: position.userWeight,
+                weightBefore: position.lifetimeWeight,
+                weightAfter: position.lifetimeWeight,
                 balanceBefore,
                 balanceAfter,
                 confirmedAt: periodEnd,
@@ -2652,7 +2690,7 @@ export async function calculateDailyStakingRewardDistribution(
               data: {
                 pendingRewardsWolo: { increment: rewardWolo },
                 lifetimeRewardsWolo: { increment: rewardWolo },
-                accumulatedWeight: position.userWeight,
+                accumulatedWeight: position.lifetimeWeight,
                 lastWeightUpdateAt: periodEnd,
               },
             });
