@@ -362,12 +362,12 @@ export default function ClanHallPurchase() {
   return (
     <section
       id="buy-clan-hall"
-      className="clan-purchase-rail relative overflow-hidden rounded-[2.1rem] border border-red-200/16 bg-[radial-gradient(circle_at_15%_0%,rgba(185,28,28,0.17),transparent_34%),radial-gradient(circle_at_92%_18%,rgba(245,158,11,0.10),transparent_30%),linear-gradient(145deg,rgba(20,12,9,0.97),rgba(5,7,10,0.99))] p-5 shadow-[0_32px_100px_rgba(0,0,0,0.45)] sm:p-8"
+      className="clan-purchase-rail relative overflow-hidden rounded-[2.1rem] border p-5 shadow-[0_32px_100px_rgba(0,0,0,0.45)] sm:p-8"
     >
-      <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/45 to-transparent" />
+      <div className="clan-theme-accent-line pointer-events-none absolute inset-x-12 top-0 h-px" />
 
       <div className="relative mx-auto max-w-5xl">
-        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-red-100/70">
+        <div className="clan-theme-label flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em]">
           <Landmark className="h-4 w-4 text-amber-200" />
           Found a house
         </div>
@@ -409,7 +409,7 @@ export default function ClanHallPurchase() {
               }}
               disabled={working || requestLocked}
               placeholder="The name under your banner"
-              className="min-h-12 rounded-[1.15rem] border border-white/10 bg-black/30 px-4 text-sm text-white outline-none transition placeholder:text-stone-700 focus:border-red-200/28 disabled:cursor-not-allowed disabled:opacity-65"
+              className="min-h-12 rounded-[1.15rem] border border-white/10 bg-black/30 px-4 text-sm text-white outline-none transition placeholder:text-stone-700 clan-theme-focus disabled:cursor-not-allowed disabled:opacity-65"
             />
           </label>
 
@@ -428,7 +428,7 @@ export default function ClanHallPurchase() {
               disabled={working || requestLocked}
               rows={4}
               placeholder="Who are you, who should lead the hall, and what banner are you raising?"
-              className="resize-y rounded-[1.15rem] border border-white/10 bg-black/30 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-stone-700 focus:border-red-200/28 disabled:cursor-not-allowed disabled:opacity-65"
+              className="resize-y rounded-[1.15rem] border border-white/10 bg-black/30 px-4 py-3 text-sm leading-6 text-white outline-none transition placeholder:text-stone-700 clan-theme-focus disabled:cursor-not-allowed disabled:opacity-65"
             />
           </label>
         </div>

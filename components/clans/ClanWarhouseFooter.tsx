@@ -73,8 +73,8 @@ function WarhousePanel({
   links: readonly WarhouseLink[];
 }) {
   return (
-    <section className="rounded-[1.45rem] border border-stone-400/15 bg-[linear-gradient(145deg,rgba(35,24,19,0.54),rgba(4,5,6,0.74))] p-4 shadow-[inset_0_1px_0_rgba(255,244,220,0.035),0_20px_60px_rgba(0,0,0,0.28)]">
-      <div className="text-[9px] font-black uppercase tracking-[0.32em] text-red-200/50">
+    <section className="clan-warhouse-footer__panel rounded-[1.45rem] border p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_20px_60px_rgba(0,0,0,0.28)]">
+      <div className="clan-theme-label text-[9px] font-black uppercase tracking-[0.32em]">
         {eyebrow}
       </div>
 
@@ -90,7 +90,7 @@ function WarhousePanel({
             <Link
               key={link.href}
               href={link.href}
-              className="group flex cursor-pointer items-center gap-3 rounded-[1rem] border border-stone-400/10 bg-black/25 px-3 py-3 transition hover:border-red-200/25 hover:bg-red-950/25"
+              className="clan-warhouse-footer__link group flex cursor-pointer items-center gap-3 rounded-[1rem] border border-stone-400/10 bg-black/25 px-3 py-3 transition"
             >
               <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-amber-200/15 bg-amber-300/[0.045] text-amber-100/80 transition group-hover:border-amber-200/30 group-hover:text-amber-100">
                 <Icon className="h-4 w-4" />
@@ -117,15 +117,15 @@ function WarhousePanel({
 
 export default function ClanWarhouseFooter() {
   return (
-    <footer className="relative mx-auto w-full max-w-[90rem] px-3 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-10 sm:px-4 lg:pb-10">
-      <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-red-300/22 to-transparent" />
+    <footer className="clan-warhouse-footer relative mx-auto w-full max-w-[90rem] px-3 pb-[calc(env(safe-area-inset-bottom)+7rem)] pt-10 sm:px-4 lg:pb-10">
+      <div className="clan-theme-accent-line pointer-events-none absolute inset-x-8 top-0 h-px" />
 
-      <div className="relative isolate overflow-hidden rounded-[2.25rem] border border-red-200/15 bg-[#080605] shadow-[0_42px_150px_rgba(0,0,0,0.62)]">
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_8%_0%,rgba(153,27,27,0.25),transparent_30%),radial-gradient(circle_at_92%_4%,rgba(245,158,11,0.12),transparent_27%),linear-gradient(145deg,rgba(29,17,13,0.98),rgba(7,7,8,0.99)_50%,rgba(2,3,4,1))]" />
+      <div className="clan-warhouse-footer__shell relative isolate overflow-hidden rounded-[2.25rem] border shadow-[0_42px_150px_rgba(0,0,0,0.62)]">
+        <div className="clan-warhouse-footer__wash pointer-events-none absolute inset-0 -z-10" />
 
         <div className="pointer-events-none absolute inset-0 -z-10 opacity-25 [background-image:repeating-linear-gradient(93deg,rgba(255,255,255,0.025)_0_1px,transparent_1px_49px),repeating-linear-gradient(0deg,transparent_0_43px,rgba(255,255,255,0.02)_44px,transparent_45px)]" />
 
-        <div className="pointer-events-none absolute left-[8%] top-0 h-48 w-40 -translate-y-1/2 rounded-full bg-red-700/15 blur-3xl" />
+        <div className="clan-warhouse-footer__glow pointer-events-none absolute left-[8%] top-0 h-48 w-40 -translate-y-1/2 rounded-full blur-3xl" />
         <div className="pointer-events-none absolute right-[7%] top-0 h-44 w-36 -translate-y-1/2 rounded-full bg-amber-500/10 blur-3xl" />
         <div className="pointer-events-none absolute inset-x-16 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/38 to-transparent" />
 
@@ -133,16 +133,16 @@ export default function ClanWarhouseFooter() {
           <section className="grid gap-8 border-b border-stone-400/12 pb-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-end">
             <div>
               <div className="flex items-center gap-4">
-                <div className="relative grid h-16 w-16 place-items-center overflow-hidden rounded-[1.25rem] border border-red-200/20 bg-[radial-gradient(circle_at_50%_35%,rgba(245,158,11,0.16),transparent_54%),linear-gradient(145deg,rgba(69,10,10,0.72),rgba(4,5,6,0.96))] text-amber-100 shadow-[0_0_45px_rgba(153,27,27,0.20)]">
+                <div className="clan-warhouse-footer__shield relative grid h-16 w-16 place-items-center overflow-hidden rounded-[1.25rem] border text-amber-100 shadow-[0_0_45px_rgba(0,0,0,0.20)]">
                   <Shield
                     className="h-8 w-8"
                     strokeWidth={1.35}
                   />
-                  <Flame className="absolute bottom-2 right-2 h-3.5 w-3.5 text-red-300/75" />
+                  <Flame className="clan-theme-label absolute bottom-2 right-2 h-3.5 w-3.5" />
                 </div>
 
                 <div>
-                  <div className="text-[9px] font-black uppercase tracking-[0.42em] text-red-200/55">
+                  <div className="clan-theme-label text-[9px] font-black uppercase tracking-[0.42em]">
                     AoE2WAR · Clan Warhouse
                   </div>
 
@@ -159,7 +159,7 @@ export default function ClanWarhouseFooter() {
               </p>
 
               <div className="mt-5 flex flex-wrap gap-2">
-                <span className="rounded-full border border-red-200/15 bg-red-950/25 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.22em] text-red-100/65">
+                <span className="clan-theme-chip rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.22em]">
                   Granite halls
                 </span>
 
@@ -173,7 +173,7 @@ export default function ClanWarhouseFooter() {
               </div>
             </div>
 
-            <div className="rounded-[1.5rem] border border-amber-200/15 bg-[radial-gradient(circle_at_88%_10%,rgba(245,158,11,0.11),transparent_32%),linear-gradient(145deg,rgba(48,25,17,0.58),rgba(3,4,5,0.76))] p-5 shadow-[inset_0_1px_0_rgba(255,244,220,0.04)]">
+            <div className="clan-warhouse-footer__cta rounded-[1.5rem] border p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.3em] text-amber-100/55">
                 <Landmark className="h-4 w-4" />
                 Raise another banner
@@ -216,12 +216,12 @@ export default function ClanWarhouseFooter() {
               links={warPaths}
             />
 
-            <section className="rounded-[1.45rem] border border-red-200/13 bg-[radial-gradient(circle_at_50%_0%,rgba(127,29,29,0.16),transparent_42%),linear-gradient(145deg,rgba(28,17,14,0.60),rgba(4,5,6,0.78))] p-5 text-center shadow-[inset_0_1px_0_rgba(255,244,220,0.03)]">
-              <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-red-200/17 bg-red-950/30 text-red-100">
+            <section className="clan-warhouse-footer__house-card rounded-[1.45rem] border p-5 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+              <div className="clan-theme-icon-tile mx-auto grid h-14 w-14 place-items-center rounded-2xl border">
                 <UsersRound className="h-6 w-6" />
               </div>
 
-              <div className="mt-4 text-[9px] font-black uppercase tracking-[0.32em] text-red-200/50">
+              <div className="clan-theme-label mt-4 text-[9px] font-black uppercase tracking-[0.32em]">
                 Houses of AoE2WAR
               </div>
 

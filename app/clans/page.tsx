@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 import ClanHallPurchase from "@/components/clans/ClanHallPurchase";
-import ClanViewToggle from "@/components/clans/ClanViewToggle";
+import ClanDisplayRail from "@/components/clans/ClanDisplayRail";
 import {
   FOUNDING_CLAN_FALLBACKS,
   loadClanDirectory,
@@ -86,16 +86,16 @@ export default async function ClansPage({
     <main
       className={`clan-directory clan-${view}-view mx-auto w-full space-y-6 py-3 text-white sm:py-5`}
     >
-      <section className="clan-directory-masthead relative overflow-hidden rounded-[1.6rem] border border-red-200/14 px-5 py-4 sm:px-7">
-        <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/45 to-transparent" />
+      <section className="clan-directory-masthead relative overflow-hidden rounded-[1.6rem] border px-5 py-4 sm:px-7">
+        <div className="clan-theme-accent-line pointer-events-none absolute inset-x-12 top-0 h-px" />
 
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
+        <div className="relative flex flex-wrap items-center gap-4">
           <div className="inline-flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl border border-red-200/16 bg-red-950/45 text-red-100">
+            <div className="clan-theme-icon-tile grid h-10 w-10 place-items-center rounded-xl border">
               <UsersRound className="h-5 w-5" />
             </div>
             <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.34em] text-red-100/62">
+              <div className="clan-theme-label text-[10px] font-black uppercase tracking-[0.34em]">
                 Houses of AoE2WAR
               </div>
               <div className="mt-0.5 text-sm text-stone-500">
@@ -104,10 +104,6 @@ export default async function ClansPage({
             </div>
           </div>
 
-          <ClanViewToggle
-            view={view}
-            basePath="/clans"
-          />
         </div>
       </section>
 
@@ -119,7 +115,7 @@ export default async function ClansPage({
             data-clan-slug={clan.slug}
             className="clan-directory-card clan-directory-card--house group relative flex min-h-[34rem] flex-col overflow-hidden rounded-[2.1rem] border p-5 transition duration-300 hover:-translate-y-1 sm:p-7"
           >
-            <div className="pointer-events-none absolute inset-x-14 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/45 to-transparent" />
+            <div className="clan-theme-accent-line pointer-events-none absolute inset-x-14 top-0 h-px" />
 
             <div className="clan-crest-stage relative mx-auto grid aspect-square w-full max-w-[23rem] place-items-center overflow-hidden rounded-[1.7rem] border border-amber-100/14 p-2">
               {clan.crestUrl ? (
@@ -132,7 +128,7 @@ export default async function ClansPage({
                   className="rounded-[1.35rem] object-cover transition duration-700 group-hover:scale-[1.035] group-hover:saturate-[1.08]"
                 />
               ) : (
-                <div className="grid h-full w-full place-items-center rounded-[1.35rem] border border-dashed border-red-200/16 bg-black/30 text-stone-700">
+                <div className="clan-theme-outline grid h-full w-full place-items-center rounded-[1.35rem] border border-dashed bg-black/30 text-stone-700">
                   <Shield className="h-28 w-28" strokeWidth={1} />
                 </div>
               )}
@@ -140,13 +136,13 @@ export default async function ClansPage({
             </div>
 
             <div className="relative mt-6 flex flex-1 flex-col">
-              <div className="text-[10px] font-black uppercase tracking-[0.30em] text-red-100/55">
+              <div className="clan-theme-label text-[10px] font-black uppercase tracking-[0.30em]">
                 {clanWarLine(clan.slug)}
               </div>
               <h2 className="mt-3 font-serif text-4xl leading-tight tracking-[-0.035em] text-stone-50 sm:text-5xl">
                 {clan.name}
               </h2>
-              <div className="mt-3 h-px w-28 bg-gradient-to-r from-red-400/55 via-amber-100/22 to-transparent" />
+              <div className="clan-theme-rule mt-3 h-px w-28" />
               <p className="mt-4 text-sm leading-6 text-stone-400">
                 {clan.tagline}
               </p>
@@ -170,13 +166,13 @@ export default async function ClansPage({
           href="#buy-clan-hall"
           className="clan-directory-card clan-directory-card--summon group relative flex min-h-[34rem] flex-col items-center justify-center overflow-hidden rounded-[2.1rem] border border-dashed px-7 py-10 text-center transition duration-300 hover:-translate-y-1"
         >
-          <div className="pointer-events-none absolute inset-x-16 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/45 to-transparent" />
+          <div className="clan-theme-accent-line pointer-events-none absolute inset-x-16 top-0 h-px" />
 
-          <div className="relative grid h-36 w-36 place-items-center rounded-[2rem] border border-red-200/20 bg-red-950/35 text-red-100 shadow-[0_24px_80px_rgba(0,0,0,0.38)] transition duration-300 group-hover:scale-105 group-hover:border-amber-200/30">
+          <div className="clan-theme-icon-tile relative grid h-36 w-36 place-items-center rounded-[2rem] border shadow-[0_24px_80px_rgba(0,0,0,0.38)] transition duration-300 group-hover:scale-105">
             <Plus className="h-14 w-14" strokeWidth={1.4} />
           </div>
 
-          <div className="relative mt-8 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.32em] text-red-100/70">
+          <div className="clan-theme-label relative mt-8 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.32em]">
             <Flame className="h-4 w-4 text-amber-200" />
             Raise a banner
           </div>
@@ -194,11 +190,13 @@ export default async function ClansPage({
             Buy a Clan Hall · 100 WOLO
             <ArrowRight className="h-4 w-4" />
           </span>
-          <Sparkles className="pointer-events-none absolute bottom-8 right-8 h-6 w-6 text-red-200/30" />
+          <Sparkles className="clan-theme-text-soft pointer-events-none absolute bottom-8 right-8 h-6 w-6" />
         </a>
       </section>
 
       <ClanHallPurchase />
+
+      <ClanDisplayRail view={view} basePath="/clans" />
     </main>
   );
 }

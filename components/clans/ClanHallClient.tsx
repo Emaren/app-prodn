@@ -34,7 +34,7 @@ import {
 } from "react";
 
 import { useUserAuth } from "@/context/UserAuthContext";
-import ClanViewToggle from "@/components/clans/ClanViewToggle";
+import ClanDisplayRail from "@/components/clans/ClanDisplayRail";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import {
   CLAN_AUDIENCES,
@@ -378,15 +378,8 @@ export default function ClanHallClient({
     <main
       className={`clan-hall clan-${initialView}-view mx-auto w-full space-y-6 py-3 text-white sm:py-5`}
     >
-      <section className="relative overflow-hidden rounded-[2.2rem] border border-red-200/16 bg-[radial-gradient(circle_at_18%_10%,rgba(127,29,29,0.21),transparent_31%),radial-gradient(circle_at_88%_5%,rgba(56,189,248,0.12),transparent_29%),linear-gradient(145deg,#101729,#060a14_60%,#02040a)] px-5 py-6 shadow-[0_34px_120px_rgba(0,0,0,0.32)] sm:px-7 sm:py-8">
-        <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-red-200/55 to-transparent" />
-        <div className="absolute right-5 top-5 z-20 sm:right-7 sm:top-7">
-          <ClanViewToggle
-            view={initialView}
-            basePath={`/clans/${snapshot.clan.slug}`}
-            label="Clan hall view mode"
-          />
-        </div>
+      <section className="clan-hall-hero relative overflow-hidden rounded-[2.2rem] border px-5 py-6 sm:px-7 sm:py-8">
+        <div className="clan-theme-accent-line pointer-events-none absolute inset-x-12 top-0 h-px" />
         <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center">
           <div className="relative mx-auto aspect-square w-full max-w-[15rem] shrink-0 overflow-hidden rounded-[2rem] border border-white/12 bg-black/35 shadow-[0_26px_80px_rgba(0,0,0,0.42)] lg:mx-0">
             <Image
@@ -410,7 +403,7 @@ export default function ClanHallClient({
               All clan halls
             </Link>
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2 lg:justify-start">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200/18 bg-red-300/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-red-100">
+              <span className="clan-theme-chip inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.2em]">
                 <Shield className="h-3.5 w-3.5" />
                 Founding clan
               </span>
@@ -493,7 +486,7 @@ export default function ClanHallClient({
           <header className="border-b border-white/9 px-4 py-4 sm:px-6 sm:py-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.32em] text-red-200/70">
+                <div className="clan-theme-label flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.32em]">
                   <MessageSquareText className="h-4 w-4" />
                   Clan chat
                 </div>
@@ -530,7 +523,7 @@ export default function ClanHallClient({
             ) : snapshot.messages.length === 0 ? (
               <div className="grid min-h-full place-items-center px-4 py-10 text-center">
                 <div className="max-w-md">
-                  <div className="mx-auto grid h-16 w-16 place-items-center rounded-[1.5rem] border border-red-200/16 bg-red-300/[0.07] text-red-100">
+                  <div className="clan-theme-icon-tile mx-auto grid h-16 w-16 place-items-center rounded-[1.5rem] border">
                     <Sparkles className="h-7 w-7" />
                   </div>
                   <h3 className="mt-5 text-xl font-bold text-white">
@@ -644,7 +637,7 @@ export default function ClanHallClient({
                   })}
                 </div>
 
-                <div className="mt-3 flex items-end gap-2 rounded-[1.4rem] border border-white/10 bg-white/[0.04] p-2 focus-within:border-red-200/28 focus-within:bg-white/[0.055]">
+                <div className="clan-theme-composer mt-3 flex items-end gap-2 rounded-[1.4rem] border border-white/10 bg-white/[0.04] p-2 focus-within:bg-white/[0.055]">
                   <textarea
                     value={message}
                     onChange={(event) => setMessage(event.target.value.slice(0, 1200))}
@@ -655,7 +648,7 @@ export default function ClanHallClient({
                   <button
                     type="submit"
                     disabled={posting || !message.trim()}
-                    className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-red-300 text-slate-950 transition hover:bg-red-200 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="clan-theme-send grid h-11 w-11 shrink-0 place-items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Send clan message"
                   >
                     <Send className="h-[1.125rem] w-[1.125rem]" />
@@ -682,7 +675,7 @@ export default function ClanHallClient({
           ) : (
             <section className="rounded-[1.6rem] border border-white/10 bg-black/24 p-4">
               <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.26em] text-slate-500">
-                <Eye className="h-4 w-4 text-red-200" />
+                <Eye className="clan-theme-label h-4 w-4" />
                 Hall audience
               </div>
               <div className="mt-4 flex items-center gap-3">
@@ -713,7 +706,7 @@ export default function ClanHallClient({
           <section className="rounded-[1.6rem] border border-white/10 bg-black/24 p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.26em] text-slate-500">
-                <UsersRound className="h-4 w-4 text-red-200" />
+                <UsersRound className="clan-theme-label h-4 w-4" />
                 Roster
               </div>
               <span className="rounded-full border border-white/9 bg-white/[0.04] px-2.5 py-1 text-[10px] text-slate-400">
@@ -732,7 +725,7 @@ export default function ClanHallClient({
                     key={member.uid}
                     className="flex items-center gap-3 rounded-xl border border-white/7 bg-white/[0.025] px-3 py-2.5"
                   >
-                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-red-200/14 bg-red-300/[0.07] text-xs font-black text-red-100">
+                    <div className="clan-theme-icon-tile grid h-9 w-9 shrink-0 place-items-center rounded-xl border text-xs font-black">
                       {initials(member.displayName)}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -765,6 +758,11 @@ export default function ClanHallClient({
           </section>
         </aside>
       </section>
+
+      <ClanDisplayRail
+        view={initialView}
+        basePath={`/clans/${snapshot.clan.slug}`}
+      />
     </main>
   );
 }
@@ -831,7 +829,7 @@ function ClanMessageBubble({
     <div
       className={`clan-message group/message relative flex gap-3 rounded-[1.35rem] border p-3 sm:p-4 ${
         ownMessage
-          ? "border-red-200/16 bg-red-300/[0.065]"
+          ? "clan-message--own"
           : "border-white/8 bg-white/[0.025]"
       }`}
     >
@@ -875,7 +873,7 @@ function ClanMessageBubble({
                   type="button"
                   onClick={onStartEdit}
                   disabled={busy}
-                  className="grid h-7 w-7 place-items-center rounded-full border border-white/8 bg-black/20 text-slate-400 transition hover:border-red-200/25 hover:text-red-100 disabled:opacity-40"
+                  className="clan-theme-action grid h-7 w-7 place-items-center rounded-full border border-white/8 bg-black/20 text-slate-400 transition disabled:opacity-40"
                   aria-label="Edit clan message"
                   title="Edit"
                 >
@@ -887,7 +885,7 @@ function ClanMessageBubble({
                   type="button"
                   onClick={onDelete}
                   disabled={busy}
-                  className="grid h-7 w-7 place-items-center rounded-full border border-white/8 bg-black/20 text-slate-400 transition hover:border-red-200/25 hover:text-red-200 disabled:opacity-40"
+                  className="clan-theme-action grid h-7 w-7 place-items-center rounded-full border border-white/8 bg-black/20 text-slate-400 transition disabled:opacity-40"
                   aria-label="Delete clan message"
                   title="Delete"
                 >
@@ -899,7 +897,7 @@ function ClanMessageBubble({
         </div>
 
         {editing ? (
-          <div className="mt-3 rounded-[1rem] border border-red-200/18 bg-black/24 p-2">
+          <div className="clan-theme-outline mt-3 rounded-[1rem] border bg-black/24 p-2">
             <textarea
               value={editingBody}
               onChange={(event) =>
@@ -975,8 +973,8 @@ function ClanMessageBubble({
               disabled={busy}
               className={`grid h-7 w-7 place-items-center rounded-full border transition ${
                 reactionDockOpen
-                  ? "border-red-200/28 bg-red-300/12 text-red-100"
-                  : "border-white/8 bg-black/18 text-slate-500 hover:border-red-200/20 hover:text-red-100"
+                  ? "clan-theme-action--active"
+                  : "clan-theme-action border-white/8 bg-black/18 text-slate-500"
               } disabled:opacity-40`}
               aria-label={
                 reactionDockOpen ? "Close reaction choices" : "React to message"
@@ -1066,8 +1064,8 @@ function ClanPolicyPanel({
   onChange: (policy: ClanAudience) => void;
 }) {
   return (
-    <section className="rounded-[1.6rem] border border-red-200/14 bg-red-300/[0.045] p-4">
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.26em] text-red-200/70">
+    <section className="clan-policy-panel rounded-[1.6rem] border p-4">
+      <div className="clan-theme-label flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.26em]">
         <Settings2 className="h-4 w-4" />
         Clan admin · hall audience
       </div>

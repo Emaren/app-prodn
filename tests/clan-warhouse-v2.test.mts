@@ -13,6 +13,9 @@ const purchase = read("app/api/clans/purchase/route.ts");
 const purchaseUi = read(
   "components/clans/ClanHallPurchase.tsx",
 );
+const displayRail = read(
+  "components/clans/ClanDisplayRail.tsx",
+);
 const admin = read("app/admin/clans/page.tsx");
 const adminApi = read("app/api/admin/clans/route.ts");
 const crestApi = read(
@@ -125,11 +128,19 @@ test("Clan Alerts are distinct in Emaren's inbox", () => {
   assert.match(inbox, /Open Clan Command/);
 });
 
-test("clan surfaces use the granite, timber and crimson warhouse", () => {
-  assert.match(css, /CLAN WARHOUSE V2/);
-  assert.match(css, /granite/i);
-  assert.match(css, /rough timber/i);
-  assert.match(css, /127 29 29/);
+test("clan surfaces default to AoE2WAR blue with opt-in crimson", () => {
+  assert.match(css, /CLAN DISPLAY THEMES/);
+  assert.match(css, /Default: canonical AoE2WAR blue/);
+  assert.match(css, /data-clan-theme="crimson"/);
+  assert.match(css, /--clan-accent: 56 189 248/);
+  assert.match(css, /--clan-accent-deep: 127 29 29/);
+  assert.match(displayRail, /aoe2war:clans:theme/);
+  assert.match(displayRail, /Palette/);
+  assert.match(displayRail, /ClanViewToggle/);
+  assert.match(directory, /<ClanDisplayRail view=\{view\} basePath="\/clans" \/>/);
+  assert.match(hall, /<ClanDisplayRail/);
+  assert.doesNotMatch(directory, /import ClanViewToggle/);
+  assert.doesNotMatch(hall, /import ClanViewToggle/);
   assert.doesNotMatch(hall, /violet-/);
   assert.doesNotMatch(directory, /violet-/);
 });
