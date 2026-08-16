@@ -114,6 +114,53 @@ The preference contract already reserves the standard discovery windows
 Most Active, Biggest Movers, and Heat must use separate lightweight projections
 rather than inflate the base leaderboard payload.
 
+
+### Living command experience seal — 2026-08-15
+
+The Extreme Living Leaderboard interaction campaign is sealed with the following
+presentation contract:
+
+- Extreme owns the full-height flagship Living canvas and independent ranked
+  scroll viewport.
+- Whole desktop warrior rows own drilldown interaction except for explicit
+  interactive descendants.
+- Row detail is persisted as Inline, Docked, or Modal. Inline is the default
+  and preserves the certified production warrior expansion and player link.
+- Mobile continues to use inline expansion.
+- The hero keeps the Broadcast Rail composition: identity left, podium
+  hard-right, Watcher rail below the podium.
+- The public title cycle contains exactly six approved identities:
+  AoE2 Beveled Steel Dark, AoE2 Beveled Steel, Spartan Bronze,
+  Titanium Legion, Cobalt Armor, and AoE2 Logo Gunmetal.
+- A seventh No Title state removes the complete title wrapper and decorative
+  rule from layout and compacts the remaining hero controls naturally.
+- Titanium Legion is the canonical default for a new title preference.
+  Explicit persisted choices remain respected.
+- Historical experimental numeric title definitions remain internal only for
+  preference-index compatibility and are not reachable through the public cycle.
+- Rank Window, Hidden Warriors, and Columns are contextual command popovers.
+  Clicking anywhere outside an open box closes it; Escape closes it; clicking
+  inside the box remains interactive.
+- Command sorting is server-authoritative. Warm command-sort projections are
+  cached so the board can transition quickly without inventing client-only rank
+  truth.
+- Spotlight and rank-window navigation use direct canonical projections rather
+  than traversing all earlier ranks.
+- Spotlight canonical return reuses warm cached board state immediately.
+- Last 10 and rolling 30-day W-L remain scan-first competitive metrics.
+- Auto/Custom columns remain persisted presentation state.
+- Basic, Advanced, and Extreme switching changes presentation without refetching
+  ranking truth.
+- The local production-data preview remains development-only and read-only:
+  production public leaderboard truth may be read, but production Steam OAuth,
+  auth writes, presence writes, and leaderboard-preference database writes are
+  not enabled by preview mode.
+
+The Living performance law remains unchanged: no deep-fact preload for the full
+warrior population, no full-rank Spotlight traversal, no content-width animation,
+no avoidable layout shift, and no base-board network fetch merely to change
+presentation.
+
 ## Classic baseline boundary
 
 Basic and Advanced are preserved reference surfaces.
