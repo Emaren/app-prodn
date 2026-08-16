@@ -4,11 +4,41 @@ export const LIVING_LEADERBOARD_WINDOW_ROWS =
 export const LIVING_LEADERBOARD_TIME_WINDOWS =
   [1, 3, 7, 30] as const;
 
+export const LIVING_LEADERBOARD_COLUMNS = [
+  "rating",
+  "movement24h",
+  "last10",
+  "last30",
+  "winRate",
+  "record",
+  "games",
+  "streak",
+  "lastPlayed",
+] as const;
+
+export const DEFAULT_LIVING_LEADERBOARD_VISIBLE_COLUMNS = [
+  "rating",
+  "movement24h",
+  "last10",
+  "last30",
+  "winRate",
+  "record",
+  "games",
+  "streak",
+] as const;
+
 export type LivingLeaderboardWindowRows =
   (typeof LIVING_LEADERBOARD_WINDOW_ROWS)[number];
 
 export type LivingLeaderboardTimeWindowDays =
   (typeof LIVING_LEADERBOARD_TIME_WINDOWS)[number];
+
+export type LivingLeaderboardColumnKey =
+  (typeof LIVING_LEADERBOARD_COLUMNS)[number];
+
+export type LivingLeaderboardColumnMode =
+  | "auto"
+  | "custom";
 
 export type LivingLeaderboardSpotlightMode =
   | "off"
@@ -43,6 +73,9 @@ export type LivingLeaderboardPreferences = {
   dense: boolean;
   pulseActive: boolean;
 
+  columnMode: LivingLeaderboardColumnMode;
+  visibleColumns: LivingLeaderboardColumnKey[];
+
   discoveryMode: LivingLeaderboardDiscoveryMode;
   activityWindowDays: LivingLeaderboardTimeWindowDays;
   moverWindowDays: LivingLeaderboardTimeWindowDays;
@@ -62,6 +95,11 @@ export const DEFAULT_LIVING_LEADERBOARD_PREFERENCES:
 
     dense: false,
     pulseActive: true,
+
+    columnMode: "auto",
+    visibleColumns: [
+      ...DEFAULT_LIVING_LEADERBOARD_VISIBLE_COLUMNS,
+    ],
 
     discoveryMode: "rank",
     activityWindowDays: 1,
@@ -117,6 +155,31 @@ function normalizeTimeWindow(
   )
     ? (value as LivingLeaderboardTimeWindowDays)
     : 1;
+}
+
+function normalizeColumns(
+  value: unknown,
+): LivingLeaderboardColumnKey[] {
+  if (!Array.isArray(value)) {
+    return [
+      ...DEFAULT_LIVING_LEADERBOARD_VISIBLE_COLUMNS,
+    ];
+  }
+
+  const requested =
+    new Set(
+      value.filter(
+        (
+          item,
+        ): item is string =>
+          typeof item === "string",
+      ),
+    );
+
+  return LIVING_LEADERBOARD_COLUMNS.filter(
+    (column) =>
+      requested.has(column),
+  );
 }
 
 function normalizeHiddenPlayers(
@@ -227,6 +290,12 @@ export function normalizeLivingLeaderboardPreferences(
       ? input.moverDirection
       : "both";
 
+  const columnMode:
+    LivingLeaderboardColumnMode =
+    input.columnMode === "custom"
+      ? "custom"
+      : "auto";
+
   const discoveryMode:
     LivingLeaderboardDiscoveryMode =
     input.discoveryMode === "activity" ||
@@ -258,6 +327,12 @@ export function normalizeLivingLeaderboardPreferences(
       input.dense === true,
     pulseActive:
       input.pulseActive !== false,
+
+    columnMode,
+    visibleColumns:
+      normalizeColumns(
+        input.visibleColumns,
+      ),
 
     discoveryMode,
     activityWindowDays:

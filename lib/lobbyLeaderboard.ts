@@ -1177,11 +1177,85 @@ function buildSecondaryRatingLabel(entry: EnrichedLeaderboardEntry, lane: Leader
   return `Site ${Math.round(entry.arenaElo)}`;
 }
 
+function buildLast10Results(
+  entry: EnrichedLeaderboardEntry,
+): LobbyLeaderboardEntry["last10Results"] {
+  return entry.replayEvidence
+    .slice(0, 10)
+    .reverse()
+    .map((evidence) =>
+      evidence.result === "win"
+        ? "W"
+        : evidence.result === "loss"
+          ? "L"
+          : "U",
+    );
+}
+
+function buildLast30Record(
+  entry: EnrichedLeaderboardEntry,
+  asOfMs: number,
+) {
+  const cutoffMs =
+    asOfMs -
+    30 * 24 * 60 * 60 * 1000;
+
+  let last30Wins = 0;
+  let last30Losses = 0;
+  let last30Unknowns = 0;
+
+  for (const evidence of entry.replayEvidence) {
+    if (!evidence.observedAt) {
+      continue;
+    }
+
+    const playedAtMs =
+      new Date(
+        evidence.observedAt,
+      ).getTime();
+
+    if (
+      !Number.isFinite(playedAtMs) ||
+      playedAtMs < cutoffMs ||
+      playedAtMs > asOfMs
+    ) {
+      continue;
+    }
+
+    if (evidence.result === "win") {
+      last30Wins += 1;
+    } else if (
+      evidence.result === "loss"
+    ) {
+      last30Losses += 1;
+    } else {
+      last30Unknowns += 1;
+    }
+  }
+
+  return {
+    last30Wins,
+    last30Losses,
+    last30Unknowns,
+    last30Games:
+      last30Wins +
+      last30Losses +
+      last30Unknowns,
+  };
+}
+
 function toLobbyLeaderboardEntry(
   entry: EnrichedLeaderboardEntry,
   rank: number,
-  lane: LeaderboardLane
+  lane: LeaderboardLane,
+  asOfMs: number,
 ): LobbyLeaderboardEntry {
+  const last30 =
+    buildLast30Record(
+      entry,
+      asOfMs,
+    );
+
   return {
     rank,
     key: entry.key,
@@ -1219,6 +1293,9 @@ function toLobbyLeaderboardEntry(
     pendingWoloClaimAmount: entry.pendingWoloClaimAmount,
     totalMatches: entry.totalMatches,
     lastPlayedAt: entry.lastPlayedAt,
+    last10Results:
+      buildLast10Results(entry),
+    ...last30,
     rank24hAgo:
       entry.rank24hAgo,
     rankDelta24h:
@@ -1438,7 +1515,8 @@ async function loadLobbyLeaderboardFresh(
       toLobbyLeaderboardEntry(
         entry,
         rankByKey.get(entry.key) ?? 1,
-        lane
+        lane,
+        rankDeltaAsOf.getTime(),
       )
     ),
     activePlayers:

@@ -90,6 +90,13 @@ The Living foundation includes:
 - personal warrior hiding without renumbering canonical ranks;
 - a persistent hidden-warrior recovery control;
 - an inner leaderboard viewport so the ranked field scrolls independently of the page shell;
+- Extreme viewport ownership so the outer document and global footer do not move while the Living board is active;
+- Spotlight navigation confined entirely to the ranked viewport;
+- compact Last 10 W/L form derived from existing replay evidence;
+- rolling 30-day W-L form;
+- responsive Auto columns that maximize useful competitive information for the available display width;
+- account-persisted Custom column visibility;
+- Last Played available as an optional metric rather than permanent prime real estate;
 - mobile-equivalent interaction;
 - no additional base-board network request and no deep-warrior preload.
 

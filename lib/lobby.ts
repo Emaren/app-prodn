@@ -190,6 +190,11 @@ export type LobbyLeaderboardEntry = {
   pendingWoloClaimAmount: number;
   totalMatches: number;
   lastPlayedAt: string | null;
+  last10Results: Array<"W" | "L" | "U">;
+  last30Wins: number;
+  last30Losses: number;
+  last30Unknowns: number;
+  last30Games: number;
   rank24hAgo: number | null;
   rankDelta24h: number | null;
   rankDelta24hState: LeaderboardRankDelta24hState;

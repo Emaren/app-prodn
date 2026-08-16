@@ -985,7 +985,7 @@ export function ModernLeaderboardPage({
   if (isExtreme) {
     return (
       <main
-        className="leaderboard-modern-shell h-[calc(100dvh-5rem)] min-h-0 overflow-hidden py-2 text-white sm:py-3"
+        className="leaderboard-modern-shell h-full min-h-0 overflow-hidden py-0 text-white"
         data-leaderboard-view={viewMode}
       >
         <SpeedReadyMarker

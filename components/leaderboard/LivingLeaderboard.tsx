@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  Columns3,
   Crosshair,
   Crown,
   Eye,
@@ -52,7 +53,10 @@ import type {
   LeaderboardSortKey,
 } from "@/lib/leaderboardSort";
 import {
+  DEFAULT_LIVING_LEADERBOARD_VISIBLE_COLUMNS,
+  LIVING_LEADERBOARD_COLUMNS,
   LIVING_LEADERBOARD_WINDOW_ROWS,
+  type LivingLeaderboardColumnKey,
   type LivingLeaderboardPreferences,
 } from "@/lib/livingLeaderboardPreferences";
 import type {
@@ -65,6 +69,22 @@ export type LivingLeaderboardSpotlightTarget = {
   name: string;
   mode: "top" | "center";
 };
+
+const LIVING_COLUMN_LABELS:
+  Record<
+    LivingLeaderboardColumnKey,
+    string
+  > = {
+    rating: "Rating",
+    movement24h: "24h",
+    last10: "Last 10",
+    last30: "30d",
+    winRate: "Win %",
+    record: "W–L",
+    games: "Games",
+    streak: "Streak",
+    lastPlayed: "Last played",
+  };
 
 function pulseWarrior(
   entry: LobbyLeaderboardEntry,
@@ -269,6 +289,12 @@ export function LivingLeaderboard({
     useState(false);
 
   const [
+    columnsOpen,
+    setColumnsOpen,
+  ] =
+    useState(false);
+
+  const [
     rankStartDraft,
     setRankStartDraft,
   ] =
@@ -416,6 +442,34 @@ export function LivingLeaderboard({
     });
   };
 
+  const toggleColumn = (
+    column:
+      LivingLeaderboardColumnKey,
+  ) => {
+    const next =
+      new Set(
+        preferences.columnMode ===
+        "custom"
+          ? preferences.visibleColumns
+          : DEFAULT_LIVING_LEADERBOARD_VISIBLE_COLUMNS,
+      );
+
+    if (next.has(column)) {
+      next.delete(column);
+    } else {
+      next.add(column);
+    }
+
+    onPreferencesChange({
+      columnMode: "custom",
+      visibleColumns:
+        LIVING_LEADERBOARD_COLUMNS.filter(
+          (candidate) =>
+            next.has(candidate),
+        ),
+    });
+  };
+
   const cycleSpotlight = () => {
     const next =
       preferences.spotlightMode ===
@@ -431,6 +485,8 @@ export function LivingLeaderboard({
     });
 
     setRankWindowOpen(false);
+    setHiddenOpen(false);
+    setColumnsOpen(false);
   };
 
   const applyRankWindow = () => {
@@ -501,14 +557,50 @@ export function LivingLeaderboard({
       return;
     }
 
-    target.scrollIntoView({
-      block:
+    const viewportRect =
+      viewport.getBoundingClientRect();
+
+    const targetRect =
+      target.getBoundingClientRect();
+
+    const stickyHeader =
+      viewport.querySelector<HTMLElement>(
+        "thead",
+      );
+
+    const stickyHeight =
+      stickyHeader
+        ?.getBoundingClientRect()
+        .height ?? 0;
+
+    const targetTop =
+      viewport.scrollTop +
+      targetRect.top -
+      viewportRect.top;
+
+    const desiredTop =
+      spotlightTarget.mode ===
+      "center"
+        ? targetTop -
+          (
+            viewport.clientHeight -
+            targetRect.height
+          ) /
+            2
+        : targetTop -
+          stickyHeight -
+          8;
+
+    viewport.scrollTo({
+      top: Math.max(
+        0,
+        desiredTop,
+      ),
+      behavior:
         spotlightTarget.mode ===
         "center"
-          ? "center"
-          : "start",
-      inline: "nearest",
-      behavior: "auto",
+          ? "smooth"
+          : "auto",
     });
   }, [
     entries,
@@ -767,6 +859,7 @@ export function LivingLeaderboard({
                   !current,
               );
               setHiddenOpen(false);
+              setColumnsOpen(false);
             }}
           >
             <SlidersHorizontal
@@ -844,6 +937,7 @@ export function LivingLeaderboard({
                     !current,
                 );
                 setRankWindowOpen(false);
+                setColumnsOpen(false);
               }}
             >
               <span className="relative">
@@ -864,6 +958,28 @@ export function LivingLeaderboard({
 
           <CommandButton
             active={
+              columnsOpen ||
+              preferences.columnMode ===
+                "custom"
+            }
+            label="Columns"
+            onClick={() => {
+              setColumnsOpen(
+                (current) =>
+                  !current,
+              );
+              setRankWindowOpen(false);
+              setHiddenOpen(false);
+            }}
+          >
+            <Columns3
+              className="h-4 w-4"
+              aria-hidden="true"
+            />
+          </CommandButton>
+
+          <CommandButton
+            active={
               preferences.dense
             }
             label="Compact row density"
@@ -879,6 +995,86 @@ export function LivingLeaderboard({
               aria-hidden="true"
             />
           </CommandButton>
+
+          {columnsOpen ? (
+            <div className="absolute right-0 top-[calc(100%+0.55rem)] z-40 w-72 rounded-2xl border border-white/12 bg-[#040913]/98 p-3 shadow-[0_24px_80px_rgba(0,0,0,0.65)] backdrop-blur-xl">
+              <div className="flex items-center justify-between gap-3 px-2 pb-2">
+                <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+                  Columns
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    onPreferencesChange({
+                      columnMode:
+                        "auto",
+                    })
+                  }
+                  className={`rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] transition ${
+                    preferences.columnMode ===
+                    "auto"
+                      ? "border-amber-200/28 bg-amber-300/[0.09] text-amber-100"
+                      : "border-white/[0.07] text-slate-500 hover:text-white"
+                  }`}
+                >
+                  Auto
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1">
+                {LIVING_LEADERBOARD_COLUMNS.map(
+                  (column) => {
+                    const selected =
+                      preferences.visibleColumns.includes(
+                        column,
+                      );
+
+                    const active =
+                      preferences.columnMode ===
+                        "custom" &&
+                      selected;
+
+                    return (
+                      <button
+                        key={column}
+                        type="button"
+                        onClick={() =>
+                          toggleColumn(
+                            column,
+                          )
+                        }
+                        className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-left text-[10px] font-black uppercase tracking-[0.12em] transition ${
+                          active
+                            ? "border-cyan-200/20 bg-cyan-300/[0.065] text-cyan-50"
+                            : "border-transparent text-slate-500 hover:border-white/[0.07] hover:bg-white/[0.035] hover:text-white"
+                        }`}
+                      >
+                        <span>
+                          {
+                            LIVING_COLUMN_LABELS[
+                              column
+                            ]
+                          }
+                        </span>
+
+                        {preferences.columnMode ===
+                        "custom" ? (
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              selected
+                                ? "bg-cyan-200"
+                                : "bg-slate-800"
+                            }`}
+                          />
+                        ) : null}
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+          ) : null}
 
           {rankWindowOpen ? (
             <div className="absolute right-0 top-[calc(100%+0.55rem)] z-40 w-72 rounded-2xl border border-amber-200/16 bg-[#040913]/98 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.65)] backdrop-blur-xl">
@@ -1119,6 +1315,12 @@ export function LivingLeaderboard({
               }
               dense={
                 preferences.dense
+              }
+              columnMode={
+                preferences.columnMode
+              }
+              visibleColumns={
+                preferences.visibleColumns
               }
             />
           )}

@@ -848,9 +848,21 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     tileViewPreferences,
     "download_watcher"
   );
+  const leaderboardViewMode = getTileViewMode(
+    tileViewPreferences,
+    "leaderboard"
+  );
+  const isLivingLeaderboardSurface =
+    pathname === "/leaderboard" &&
+    leaderboardViewMode === "extreme";
 
   React.useEffect(() => {
-    if (footerReady || isContactPage || isHeroStudioSurface) return;
+    if (
+      footerReady ||
+      isContactPage ||
+      isHeroStudioSurface ||
+      isLivingLeaderboardSurface
+    ) return;
 
     const node = footerWarmupRef.current;
     if (!node) return;
@@ -875,7 +887,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       observer.disconnect();
       window.clearTimeout(fallback);
     };
-  }, [footerReady, isContactPage, isHeroStudioSurface]);
+  }, [
+    footerReady,
+    isContactPage,
+    isHeroStudioSurface,
+    isLivingLeaderboardSurface,
+  ]);
 
   React.useEffect(() => {
     if (!isContactPage) {
@@ -918,6 +935,39 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       document.body.style.overflow = previousBodyOverflow;
     };
   }, [isContactPage]);
+  React.useEffect(() => {
+    if (!isLivingLeaderboardSurface) {
+      return;
+    }
+
+    const previousDocumentOverflow =
+      document.documentElement.style.overflow;
+
+    const previousBodyOverflow =
+      document.body.style.overflow;
+
+    document.documentElement.style.overflow =
+      "hidden";
+
+    document.body.style.overflow =
+      "hidden";
+
+    if (window.scrollY !== 0) {
+      window.scrollTo({
+        top: 0,
+        behavior: "auto",
+      });
+    }
+
+    return () => {
+      document.documentElement.style.overflow =
+        previousDocumentOverflow;
+
+      document.body.style.overflow =
+        previousBodyOverflow;
+    };
+  }, [isLivingLeaderboardSurface]);
+
   const activeSurfaceViewMode = isLiveGamesSurface
     ? liveGamesViewMode
     : isForumSurface
@@ -1062,7 +1112,11 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`${isAcademySurface ? "academy-route-shell" : ""} flex w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${isContactPage ? "h-[100dvh] min-h-[44rem] max-h-none overflow-y-auto overscroll-contain sm:min-h-[56rem]" : "min-h-screen"}`}
+      className={`${isAcademySurface ? "academy-route-shell" : ""} flex w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${isContactPage
+        ? "h-[100dvh] min-h-[44rem] max-h-none overflow-y-auto overscroll-contain sm:min-h-[56rem]"
+        : isLivingLeaderboardSurface
+          ? "h-[100dvh] min-h-0 overflow-y-hidden"
+          : "min-h-screen"}`}
       onWheel={handleContactShellWheel}
       style={
         isClanSurface
@@ -1389,6 +1443,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               ? "max-w-none px-3 sm:px-4 2xl:px-6"
             : isObservatorySurface
               ? "max-w-none px-0"
+            : isLivingLeaderboardSurface
+              ? "max-w-[118rem] px-3 sm:px-4 2xl:px-5"
             : `px-3 sm:px-4 ${
                 isBountiesSurface
                   ? bountyShellMaxWidth
@@ -1407,13 +1463,21 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                           : "max-w-6xl"
               }`
         } ${isAcademySurface ? "academy-shell-skin" : ""} ${
-          isContactPage ? "!py-2 !pb-2 overflow-hidden sm:!py-3 sm:!pb-3" : isMediaManagerSurface || isHeroStudioSurface ? "overflow-x-visible" : "overflow-x-hidden"
+          isContactPage
+            ? "!py-2 !pb-2 overflow-hidden sm:!py-3 sm:!pb-3"
+            : isLivingLeaderboardSurface
+              ? "!py-2 !pb-2 overflow-hidden"
+              : isMediaManagerSurface || isHeroStudioSurface
+                ? "overflow-x-visible"
+                : "overflow-x-hidden"
         }`}
       >
         {deferredClientsReady ? <GlobalInstallAppPrompt /> : null}
         {children}
       </main>
-      {!isContactPage && !isHeroStudioSurface ? (
+      {!isContactPage &&
+      !isHeroStudioSurface &&
+      !isLivingLeaderboardSurface ? (
         <div ref={footerWarmupRef} className={footerReady ? undefined : "h-px"}>
           {footerReady ? (
             isClanSurface ? (

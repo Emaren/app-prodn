@@ -25,6 +25,10 @@ import type {
   LeaderboardSortDirection,
   LeaderboardSortKey,
 } from "@/lib/leaderboardSort";
+import type {
+  LivingLeaderboardColumnKey,
+  LivingLeaderboardColumnMode,
+} from "@/lib/livingLeaderboardPreferences";
 
 function winRate(entry: LobbyLeaderboardEntry) {
   return calculateResolvedWinRate(
@@ -293,13 +297,15 @@ function SortHeader({
 function StaticHeader({
   children,
   align = "left",
+  className = "",
 }: {
   children: React.ReactNode;
   align?: "left" | "right";
+  className?: string;
 }) {
   return (
     <th
-      className={`px-3 py-3.5 text-[10px] font-black uppercase tracking-[0.19em] text-amber-100/80 ${
+      className={`${className} px-3 py-3.5 text-[10px] font-black uppercase tracking-[0.19em] text-amber-100/80 ${
         align === "right"
           ? "text-right"
           : "text-left"
@@ -307,6 +313,145 @@ function StaticHeader({
     >
       {children}
     </th>
+  );
+}
+
+function columnVisibilityClass(
+  column:
+    LivingLeaderboardColumnKey,
+  mode:
+    LivingLeaderboardColumnMode,
+  visibleColumns:
+    readonly LivingLeaderboardColumnKey[],
+) {
+  if (mode === "custom") {
+    return visibleColumns.includes(
+      column,
+    )
+      ? "table-cell"
+      : "hidden";
+  }
+
+  switch (column) {
+    case "rating":
+      return "table-cell";
+
+    case "last10":
+      return "hidden min-[900px]:table-cell";
+
+    case "last30":
+      return "hidden min-[1030px]:table-cell";
+
+    case "movement24h":
+      return "hidden min-[1120px]:table-cell";
+
+    case "streak":
+      return "hidden min-[1200px]:table-cell";
+
+    case "games":
+      return "hidden min-[1280px]:table-cell";
+
+    case "winRate":
+      return "hidden min-[1370px]:table-cell";
+
+    case "record":
+      return "hidden min-[1480px]:table-cell";
+
+    case "lastPlayed":
+      return "hidden";
+  }
+}
+
+function RecentForm({
+  results,
+}: {
+  results:
+    LobbyLeaderboardEntry["last10Results"];
+}) {
+  if (results.length === 0) {
+    return (
+      <span className="text-slate-700">
+        —
+      </span>
+    );
+  }
+
+  return (
+    <div
+      className="flex items-center justify-end gap-0.5"
+      title="Last 10 games · oldest to newest"
+      aria-label={`Last 10 games: ${results.join(
+        " ",
+      )}`}
+    >
+      {results.map(
+        (result, index) => (
+          <span
+            key={`${index}-${result}`}
+            className={`grid h-4 w-4 place-items-center rounded-[0.28rem] text-[8px] font-black ${
+              result === "W"
+                ? "bg-emerald-300/13 text-emerald-300"
+                : result === "L"
+                  ? "bg-orange-300/12 text-orange-300"
+                  : "bg-slate-700/25 text-slate-600"
+            }`}
+            title={
+              result === "W"
+                ? "Win"
+                : result === "L"
+                  ? "Loss"
+                  : "Unresolved"
+            }
+          >
+            {result === "U"
+              ? "·"
+              : result}
+          </span>
+        ),
+      )}
+    </div>
+  );
+}
+
+function ThirtyDayRecord({
+  entry,
+}: {
+  entry: LobbyLeaderboardEntry;
+}) {
+  if (entry.last30Games === 0) {
+    return (
+      <span className="text-slate-700">
+        —
+      </span>
+    );
+  }
+
+  return (
+    <div
+      className="text-right"
+      title="Rolling last 30 days"
+    >
+      <div className="whitespace-nowrap font-black tabular-nums">
+        <span className="text-emerald-300">
+          {entry.last30Wins}
+        </span>
+
+        <span className="px-1 text-slate-700">
+          –
+        </span>
+
+        <span className="text-orange-300">
+          {entry.last30Losses}
+        </span>
+      </div>
+
+      <div className="mt-1 whitespace-nowrap text-[9px] tabular-nums text-slate-600">
+        {entry.last30Games}g
+        {entry.last30Unknowns > 0
+          ? ` · ${entry.last30Unknowns}?`
+          : ""}
+      </div>
+    </div>
   );
 }
 
@@ -513,6 +658,8 @@ export function LivingLeaderboardTable({
   spotlightKey,
   pulseActive,
   dense,
+  columnMode,
+  visibleColumns,
 }: {
   entries: LobbyLeaderboardEntry[];
   sortKey: LeaderboardSortKey | null;
@@ -532,6 +679,10 @@ export function LivingLeaderboardTable({
   spotlightKey: string | null;
   pulseActive: boolean;
   dense: boolean;
+  columnMode:
+    LivingLeaderboardColumnMode;
+  visibleColumns:
+    readonly LivingLeaderboardColumnKey[];
 }) {
   const [expandedKeys, setExpandedKeys] =
     useState<Set<string>>(
@@ -570,10 +721,30 @@ export function LivingLeaderboardTable({
       ? "py-3"
       : "py-[1.05rem]";
 
+  const columnClass = (
+    column:
+      LivingLeaderboardColumnKey,
+  ) =>
+    columnVisibilityClass(
+      column,
+      columnMode,
+      visibleColumns,
+    );
+
+  const customWide =
+    columnMode === "custom" &&
+    visibleColumns.length > 6;
+
   return (
     <>
       <div className="hidden overflow-x-auto rounded-[1.4rem] border border-amber-200/12 bg-[#040914] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] md:block">
-        <table className="w-full min-w-[78rem] border-collapse text-left">
+        <table
+          className={`w-full table-fixed border-collapse text-left ${
+            customWide
+              ? "min-w-[88rem]"
+              : ""
+          }`}
+        >
           <thead className="sticky top-0 z-10 bg-[#07101f]/98 shadow-[0_1px_0_rgba(251,191,36,0.22)] backdrop-blur-xl">
             <tr>
               <SortHeader
@@ -584,7 +755,7 @@ export function LivingLeaderboardTable({
                   sortDirection
                 }
                 onSort={onSort}
-                className="w-28"
+                className="w-44"
               />
 
               <SortHeader
@@ -606,8 +777,28 @@ export function LivingLeaderboardTable({
                 }
                 onSort={onSort}
                 align="right"
-                className="w-28"
+                className={`${columnClass(
+                  "rating",
+                )} w-28`}
               />
+
+              <StaticHeader
+                align="right"
+                className={`${columnClass(
+                  "last10",
+                )} w-48`}
+              >
+                Last 10
+              </StaticHeader>
+
+              <StaticHeader
+                align="right"
+                className={`${columnClass(
+                  "last30",
+                )} w-28`}
+              >
+                30d W–L
+              </StaticHeader>
 
               <SortHeader
                 label="24h"
@@ -618,7 +809,23 @@ export function LivingLeaderboardTable({
                 }
                 onSort={onSort}
                 align="right"
-                className="w-28"
+                className={`${columnClass(
+                  "movement24h",
+                )} w-24`}
+              />
+
+              <SortHeader
+                label="Streak"
+                column="streak"
+                sortKey={sortKey}
+                sortDirection={
+                  sortDirection
+                }
+                onSort={onSort}
+                align="right"
+                className={`${columnClass(
+                  "streak",
+                )} w-24`}
               />
 
               <SortHeader
@@ -629,10 +836,17 @@ export function LivingLeaderboardTable({
                   sortDirection
                 }
                 onSort={onSort}
-                className="w-40"
+                className={`${columnClass(
+                  "winRate",
+                )} w-40`}
               />
 
-              <StaticHeader align="right">
+              <StaticHeader
+                align="right"
+                className={`${columnClass(
+                  "record",
+                )} w-20`}
+              >
                 W–L
               </StaticHeader>
 
@@ -645,23 +859,18 @@ export function LivingLeaderboardTable({
                 }
                 onSort={onSort}
                 align="right"
-                className="w-24"
+                className={`${columnClass(
+                  "games",
+                )} w-24`}
               />
 
-              <SortHeader
-                label="Streak"
-                column="streak"
-                sortKey={sortKey}
-                sortDirection={
-                  sortDirection
-                }
-                onSort={onSort}
+              <StaticHeader
                 align="right"
-                className="w-24"
-              />
-
-              <StaticHeader align="right">
-                Last
+                className={`${columnClass(
+                  "lastPlayed",
+                )} w-28`}
+              >
+                Last played
               </StaticHeader>
             </tr>
           </thead>
@@ -864,7 +1073,9 @@ export function LivingLeaderboardTable({
                       </td>
 
                       <td
-                        className={`px-3 text-right ${vertical}`}
+                        className={`${columnClass(
+                          "rating",
+                        )} px-3 text-right ${vertical}`}
                       >
                         <div className="text-lg font-black tabular-nums text-white">
                           {
@@ -882,7 +1093,31 @@ export function LivingLeaderboardTable({
                       </td>
 
                       <td
-                        className={`px-3 text-right ${vertical}`}
+                        className={`${columnClass(
+                          "last10",
+                        )} px-3 text-right ${vertical}`}
+                      >
+                        <RecentForm
+                          results={
+                            entry.last10Results
+                          }
+                        />
+                      </td>
+
+                      <td
+                        className={`${columnClass(
+                          "last30",
+                        )} px-3 text-right ${vertical}`}
+                      >
+                        <ThirtyDayRecord
+                          entry={entry}
+                        />
+                      </td>
+
+                      <td
+                        className={`${columnClass(
+                          "movement24h",
+                        )} px-3 text-right ${vertical}`}
                       >
                         <RankMovement
                           entry={entry}
@@ -890,7 +1125,9 @@ export function LivingLeaderboardTable({
                       </td>
 
                       <td
-                        className={`px-3 ${vertical}`}
+                        className={`${columnClass(
+                          "winRate",
+                        )} px-3 ${vertical}`}
                       >
                         <WinRateMeter
                           entry={entry}
@@ -898,7 +1135,9 @@ export function LivingLeaderboardTable({
                       </td>
 
                       <td
-                        className={`px-3 text-right ${vertical}`}
+                        className={`${columnClass(
+                          "record",
+                        )} px-3 text-right ${vertical}`}
                       >
                         <div className="whitespace-nowrap font-semibold tabular-nums">
                           <span className="text-emerald-300">
@@ -914,7 +1153,9 @@ export function LivingLeaderboardTable({
                       </td>
 
                       <td
-                        className={`px-3 text-right tabular-nums text-slate-300 ${vertical}`}
+                        className={`${columnClass(
+                          "games",
+                        )} px-3 text-right tabular-nums text-slate-300 ${vertical}`}
                       >
                         <div>
                           {
@@ -937,7 +1178,9 @@ export function LivingLeaderboardTable({
                       </td>
 
                       <td
-                        className={`px-3 text-right text-base font-black tabular-nums ${vertical} ${streakTone(
+                        className={`${columnClass(
+                          "streak",
+                        )} px-3 text-right text-base font-black tabular-nums ${vertical} ${streakTone(
                           entry.streakLabel,
                         )}`}
                       >
@@ -946,7 +1189,9 @@ export function LivingLeaderboardTable({
                       </td>
 
                       <td
-                        className={`px-4 text-right ${vertical}`}
+                        className={`${columnClass(
+                          "lastPlayed",
+                        )} px-4 text-right ${vertical}`}
                       >
                         <div className="whitespace-nowrap text-[10px] tabular-nums text-slate-500">
                           {compactDate(
@@ -975,7 +1220,7 @@ export function LivingLeaderboardTable({
                         className="border-b border-cyan-200/[0.08] bg-[#020813]"
                       >
                         <td
-                          colSpan={9}
+                          colSpan={11}
                           className="px-3 py-3"
                         >
                           <WarriorExpansion
