@@ -4,6 +4,12 @@ export const LIVING_LEADERBOARD_WINDOW_ROWS =
 export const LIVING_LEADERBOARD_TIME_WINDOWS =
   [1, 3, 7, 30] as const;
 
+export const LIVING_LEADERBOARD_HERO_TITLE_STYLE_COUNT =
+  18;
+
+export const DEFAULT_LIVING_LEADERBOARD_HERO_TITLE_STYLE =
+  2;
+
 export const LIVING_LEADERBOARD_COLUMNS = [
   "rating",
   "movement24h",
@@ -56,6 +62,11 @@ export type LivingLeaderboardDiscoveryMode =
   | "movers"
   | "heat";
 
+export type LivingLeaderboardDrilldownMode =
+  | 1
+  | 2
+  | 3;
+
 export type LivingLeaderboardHiddenPlayer = {
   key: string;
   name: string;
@@ -72,6 +83,9 @@ export type LivingLeaderboardPreferences = {
 
   dense: boolean;
   pulseActive: boolean;
+  heroTitleStyle: number;
+  drilldownMode:
+    LivingLeaderboardDrilldownMode;
 
   columnMode: LivingLeaderboardColumnMode;
   visibleColumns: LivingLeaderboardColumnKey[];
@@ -95,6 +109,9 @@ export const DEFAULT_LIVING_LEADERBOARD_PREFERENCES:
 
     dense: false,
     pulseActive: true,
+    heroTitleStyle:
+      DEFAULT_LIVING_LEADERBOARD_HERO_TITLE_STYLE,
+    drilldownMode: 1,
 
     columnMode: "auto",
     visibleColumns: [
@@ -283,6 +300,13 @@ export function normalizeLivingLeaderboardPreferences(
         )
       : null;
 
+  const drilldownMode:
+    LivingLeaderboardDrilldownMode =
+    input.drilldownMode === 2 ||
+    input.drilldownMode === 3
+      ? input.drilldownMode
+      : 1;
+
   const moverDirection:
     LivingLeaderboardMoverDirection =
     input.moverDirection === "up" ||
@@ -327,6 +351,24 @@ export function normalizeLivingLeaderboardPreferences(
       input.dense === true,
     pulseActive:
       input.pulseActive !== false,
+    heroTitleStyle:
+      typeof input.heroTitleStyle ===
+        "number" &&
+      Number.isFinite(
+        input.heroTitleStyle,
+      )
+        ? Math.max(
+            0,
+            Math.min(
+              LIVING_LEADERBOARD_HERO_TITLE_STYLE_COUNT -
+                1,
+              Math.floor(
+                input.heroTitleStyle,
+              ),
+            ),
+          )
+        : DEFAULT_LIVING_LEADERBOARD_HERO_TITLE_STYLE,
+    drilldownMode,
 
     columnMode,
     visibleColumns:

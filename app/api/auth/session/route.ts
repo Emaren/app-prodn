@@ -5,6 +5,9 @@ import { getPrisma } from "@/lib/prisma";
 import { hydrateSteamIdentity } from "@/lib/steamIdentity";
 import { fetchUserVerification, toUserApi, type UserCoreRow } from "@/lib/userDto";
 import {
+  getPreviewIdentity,
+} from "@/lib/previewDataSource";
+import {
   clearSessionCookie,
   getSessionUid,
   newSessionUid,
@@ -26,6 +29,32 @@ function normalizeEmail(v: unknown): string | null {
 }
 
 export async function GET(request: NextRequest) {
+  const previewIdentity =
+    getPreviewIdentity();
+
+  if (previewIdentity) {
+    return NextResponse.json({
+      uid: previewIdentity.uid,
+      preview: true,
+      user: {
+        uid: previewIdentity.uid,
+        email: null,
+        inGameName:
+          previewIdentity.name,
+        isAdmin: false,
+        canReviewOwnReplayResults:
+          false,
+        steamId: null,
+        steamPersonaName:
+          previewIdentity.name,
+        verificationLevel: 1,
+        verificationMethod:
+          "preview",
+        verified: true,
+      },
+    });
+  }
+
   const uid = await getSessionUid(request);
   if (!uid) {
     return NextResponse.json({ detail: "No active session" }, { status: 401 });

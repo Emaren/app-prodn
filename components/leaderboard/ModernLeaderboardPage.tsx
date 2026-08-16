@@ -31,7 +31,6 @@ import {
 } from "@/lib/leaderboardLaneClientCache";
 import {
   nextLeaderboardSort,
-  sortLeaderboardEntries,
   type LeaderboardSortKey,
   type LeaderboardSortState,
 } from "@/lib/leaderboardSort";
@@ -43,6 +42,29 @@ type LeaderboardResponse = LobbyLeaderboardSummary & {
   ok?: boolean;
   nextOffset: number;
   hasMore: boolean;
+};
+
+type SpotlightWarmWindow = {
+  cacheKey: string;
+  rank: number;
+  key: string;
+  name: string;
+  offset: number;
+  entries: LobbyLeaderboardSummary["entries"];
+  trackedPlayers: number;
+  nextOffset: number;
+  hasMore: boolean;
+  warmedAt: number;
+};
+
+type CommandSortWarmWindow = {
+  cacheKey: string;
+  entries:
+    LobbyLeaderboardSummary["entries"];
+  trackedPlayers: number;
+  nextOffset: number;
+  hasMore: boolean;
+  warmedAt: number;
 };
 
 function mergeEntries(
@@ -123,6 +145,7 @@ export function ModernLeaderboardPage({
   const [spotlightTarget, setSpotlightTarget] =
     useState<LivingLeaderboardSpotlightTarget | null>(null);
   const [spotlightLoading, setSpotlightLoading] = useState(false);
+  const [firstOffset, setFirstOffset] = useState(0);
   const [nextOffset, setNextOffset] = useState(initialLeaderboard?.entries.length ?? 0);
   const [hasMore, setHasMore] = useState(
     (initialLeaderboard?.entries.length ?? 0) < (initialLeaderboard?.trackedPlayers ?? 0)
@@ -140,8 +163,46 @@ export function ModernLeaderboardPage({
   const sentinelRef = useRef<HTMLButtonElement | null>(null);
   const skipNextLaneReloadRef = useRef(false);
   const skipNextScopeReloadRef = useRef(false);
+  const skipNextViewModeReloadRef = useRef(false);
   const personalViewWasActiveRef = useRef(false);
   const personalViewRequestRef = useRef(0);
+
+  const spotlightWarmRef =
+    useRef<SpotlightWarmWindow | null>(
+      null,
+    );
+
+  const spotlightWarmRequestRef =
+    useRef(0);
+
+  const spotlightWarmPromiseRef =
+    useRef<{
+      cacheKey: string;
+      promise:
+        Promise<SpotlightWarmWindow | null>;
+    } | null>(null);
+
+  const commandSortWarmRef =
+    useRef<
+      Map<
+        string,
+        CommandSortWarmWindow
+      >
+    >(
+      new Map(),
+    );
+
+  const commandSortWarmPromiseRef =
+    useRef<
+      Map<
+        string,
+        Promise<
+          CommandSortWarmWindow | null
+        >
+      >
+    >(
+      new Map(),
+    );
 
   const hasPersonalRankView =
     isExtreme &&
@@ -204,6 +265,7 @@ export function ModernLeaderboardPage({
       laneOverride,
       scopeOverride,
       limitOverride,
+      prepend = false,
     }: {
       reset: boolean;
       offset?: number;
@@ -212,6 +274,7 @@ export function ModernLeaderboardPage({
       laneOverride?: LeaderboardLane;
       scopeOverride?: LeaderboardScope;
       limitOverride?: number;
+      prepend?: boolean;
     }) => {
       if (
         !reset &&
@@ -231,6 +294,7 @@ export function ModernLeaderboardPage({
           setLoading(true);
           setEntries([]);
           setTrackedPlayers(0);
+          setFirstOffset(0);
           setNextOffset(0);
           setHasMore(false);
         }
@@ -317,11 +381,20 @@ export function ModernLeaderboardPage({
         setEntries((current) =>
           reset
             ? payload.entries!
-            : mergeEntries(
-                current,
-                payload.entries!,
-              ),
+            : prepend
+              ? mergeEntries(
+                  payload.entries!,
+                  current,
+                )
+              : mergeEntries(
+                  current,
+                  payload.entries!,
+                ),
         );
+
+        if (reset || prepend) {
+          setFirstOffset(offset);
+        }
 
         setTrackedPlayers(
           typeof payload.trackedPlayers ===
@@ -343,17 +416,19 @@ export function ModernLeaderboardPage({
           );
         }
 
-        setNextOffset(
-          typeof payload.nextOffset ===
-            "number"
-            ? payload.nextOffset
-            : offset +
-              payload.entries.length,
-        );
+        if (!prepend) {
+          setNextOffset(
+            typeof payload.nextOffset ===
+              "number"
+              ? payload.nextOffset
+              : offset +
+                payload.entries.length,
+          );
 
-        setHasMore(
-          Boolean(payload.hasMore),
-        );
+          setHasMore(
+            Boolean(payload.hasMore),
+          );
+        }
 
         if (
           reset &&
@@ -387,6 +462,278 @@ export function ModernLeaderboardPage({
     ]
   );
 
+  const warmSpotlight =
+    useCallback(
+      (): Promise<
+        SpotlightWarmWindow | null
+      > => {
+        if (
+          !isExtreme ||
+          !livingPreferencesAuthenticated ||
+          query
+        ) {
+          return Promise.resolve(
+            null,
+          );
+        }
+
+        const rows =
+          livingPreferences
+            .rankWindowRows;
+
+        const cacheKey =
+          `${lane}:${scope}:${rows}`;
+
+        const existing =
+          spotlightWarmRef.current;
+
+        if (
+          existing &&
+          existing.cacheKey ===
+            cacheKey &&
+          Date.now() -
+            existing.warmedAt <
+            30_000
+        ) {
+          return Promise.resolve(
+            existing,
+          );
+        }
+
+        const inFlight =
+          spotlightWarmPromiseRef.current;
+
+        if (
+          inFlight &&
+          inFlight.cacheKey ===
+            cacheKey
+        ) {
+          return inFlight.promise;
+        }
+
+        const warmRequest =
+          ++spotlightWarmRequestRef.current;
+
+        const promise =
+          (async () => {
+            try {
+              // ----------------------------------------------
+              // Resolve signed-in canonical rank.
+              // ----------------------------------------------
+
+              const locateParams =
+                new URLSearchParams({
+                  lane,
+                  scope,
+                });
+
+              const locateResponse =
+                await fetch(
+                  `/api/lobby/leaderboard/locate?${locateParams}`,
+                  {
+                    cache:
+                      "no-store",
+                  },
+                );
+
+              const located =
+                (await locateResponse
+                  .json()
+                  .catch(
+                    () => ({}),
+                  )) as {
+                  found?: boolean;
+                  key?: string | null;
+                  rank?: number | null;
+                  name?: string | null;
+                };
+
+              if (
+                !locateResponse.ok ||
+                !located.found ||
+                !located.key ||
+                typeof located.rank !==
+                  "number"
+              ) {
+                return null;
+              }
+
+              const rank =
+                Math.max(
+                  1,
+                  Math.floor(
+                    located.rank,
+                  ),
+                );
+
+              // ----------------------------------------------
+              // Load one reusable window:
+              //
+              // [ rows above ][ warrior ][ rows below ]
+              //
+              // Top mode scrolls warrior to top.
+              // Center mode scrolls same warrior to center.
+              // No second fetch is required.
+              // ----------------------------------------------
+
+              const offset =
+                Math.max(
+                  0,
+                  rank -
+                    1 -
+                    rows,
+                );
+
+              const limit =
+                Math.min(
+                  600,
+                  rows * 2 + 1,
+                );
+
+              const boardParams =
+                new URLSearchParams({
+                  lane,
+                  scope,
+                  offset:
+                    String(offset),
+                  limit:
+                    String(limit),
+                });
+
+              const boardResponse =
+                await fetch(
+                  `/api/lobby/leaderboard?${boardParams}`,
+                  {
+                    cache:
+                      "no-store",
+                  },
+                );
+
+              const payload =
+                (await boardResponse
+                  .json()
+                  .catch(
+                    () => ({}),
+                  )) as Partial<LeaderboardResponse>;
+
+              if (
+                !boardResponse.ok ||
+                !Array.isArray(
+                  payload.entries,
+                ) ||
+                payload.lane !== lane ||
+                payload.scope !== scope
+              ) {
+                return null;
+              }
+
+              const warm:
+                SpotlightWarmWindow = {
+                cacheKey,
+                rank,
+                key:
+                  located.key,
+                name:
+                  located.name ||
+                  located.key,
+                offset,
+                entries:
+                  payload.entries,
+                trackedPlayers:
+                  typeof payload
+                    .trackedPlayers ===
+                  "number"
+                    ? payload
+                        .trackedPlayers
+                    : payload.entries
+                        .length,
+                nextOffset:
+                  typeof payload
+                    .nextOffset ===
+                  "number"
+                    ? payload
+                        .nextOffset
+                    : offset +
+                      payload.entries
+                        .length,
+                hasMore:
+                  Boolean(
+                    payload.hasMore,
+                  ),
+                warmedAt:
+                  Date.now(),
+              };
+
+              if (
+                warmRequest ===
+                spotlightWarmRequestRef
+                  .current
+              ) {
+                spotlightWarmRef.current =
+                  warm;
+              }
+
+              return warm;
+            } catch {
+              // Spotlight prewarming is opportunistic.
+              // Never degrade the ordinary leaderboard.
+              return null;
+            }
+          })();
+
+        spotlightWarmPromiseRef.current =
+          {
+            cacheKey,
+            promise,
+          };
+
+        void promise.finally(
+          () => {
+            if (
+              spotlightWarmPromiseRef
+                .current?.promise ===
+              promise
+            ) {
+              spotlightWarmPromiseRef.current =
+                null;
+            }
+          },
+        );
+
+        return promise;
+      },
+      [
+        isExtreme,
+        lane,
+        livingPreferences
+          .rankWindowRows,
+        livingPreferencesAuthenticated,
+        query,
+        scope,
+      ],
+    );
+
+  useEffect(() => {
+    if (
+      !isExtreme ||
+      !livingPreferencesReady ||
+      !livingPreferencesAuthenticated ||
+      query
+    ) {
+      return;
+    }
+
+    // Begin immediately after the Living surface becomes
+    // interactive. The user sees no spinner and no row change.
+    void warmSpotlight();
+  }, [
+    isExtreme,
+    livingPreferencesAuthenticated,
+    livingPreferencesReady,
+    query,
+    warmSpotlight,
+  ]);
+
   useEffect(() => {
     if (firstEffect.current) {
       firstEffect.current = false;
@@ -396,6 +743,14 @@ export function ModernLeaderboardPage({
       } else if (!initialLeaderboard) {
         void loadPage({ reset: true });
       }
+      return;
+    }
+
+    if (
+      skipNextViewModeReloadRef.current
+    ) {
+      skipNextViewModeReloadRef.current =
+        false;
       return;
     }
 
@@ -451,6 +806,34 @@ export function ModernLeaderboardPage({
     observer.observe(node);
     return () => observer.disconnect();
   }, [hasMore, loadPage, loading, loadingMore, nextOffset]);
+
+  const changeViewMode =
+    useCallback(
+      (
+        nextMode:
+          typeof viewMode,
+      ) => {
+        if (
+          nextMode === viewMode
+        ) {
+          return;
+        }
+
+        // B/A/E are presentation modes over the same
+        // leaderboard truth. Prevent the generic effect
+        // from treating a visual change like data navigation.
+        skipNextViewModeReloadRef.current =
+          true;
+
+        setViewMode(
+          nextMode,
+        );
+      },
+      [
+        setViewMode,
+        viewMode,
+      ],
+    );
 
   const changeLane = useCallback(
     (
@@ -647,6 +1030,242 @@ export function ModernLeaderboardPage({
     ],
   );
 
+  const commandSortCacheKey =
+    useCallback(
+      (
+        key:
+          LeaderboardSortKey,
+        direction:
+          "asc" | "desc",
+      ) =>
+        `${lane}:${scope}:${key}:${direction}`,
+      [
+        lane,
+        scope,
+      ],
+    );
+
+  const warmCommandSort =
+    useCallback(
+      (
+        key:
+          LeaderboardSortKey,
+        direction:
+          "asc" | "desc",
+      ): Promise<
+        CommandSortWarmWindow | null
+      > => {
+        if (query) {
+          return Promise.resolve(
+            null,
+          );
+        }
+
+        const cacheKey =
+          `${lane}:${scope}:${key}:${direction}`;
+
+        const existing =
+          commandSortWarmRef.current.get(
+            cacheKey,
+          );
+
+        if (
+          existing &&
+          Date.now() -
+            existing.warmedAt <
+            60_000
+        ) {
+          return Promise.resolve(
+            existing,
+          );
+        }
+
+        const inFlight =
+          commandSortWarmPromiseRef.current.get(
+            cacheKey,
+          );
+
+        if (inFlight) {
+          return inFlight;
+        }
+
+        const promise =
+          (async () => {
+            try {
+              const params =
+                new URLSearchParams({
+                  lane,
+                  scope,
+                  offset: "0",
+                  limit:
+                    String(
+                      RESET_PAGE_SIZE,
+                    ),
+                  sort: key,
+                  dir: direction,
+                });
+
+              const response =
+                await fetch(
+                  `/api/lobby/leaderboard?${params}`,
+                  {
+                    cache:
+                      "no-store",
+                  },
+                );
+
+              const payload =
+                (await response
+                  .json()
+                  .catch(
+                    () => ({}),
+                  )) as Partial<LeaderboardResponse>;
+
+              if (
+                !response.ok ||
+                !Array.isArray(
+                  payload.entries,
+                ) ||
+                payload.lane !==
+                  lane ||
+                payload.scope !==
+                  scope
+              ) {
+                return null;
+              }
+
+              const warm:
+                CommandSortWarmWindow = {
+                cacheKey,
+                entries:
+                  payload.entries,
+                trackedPlayers:
+                  typeof payload
+                    .trackedPlayers ===
+                  "number"
+                    ? payload
+                        .trackedPlayers
+                    : payload.entries
+                        .length,
+                nextOffset:
+                  typeof payload
+                    .nextOffset ===
+                  "number"
+                    ? payload
+                        .nextOffset
+                    : payload.entries
+                        .length,
+                hasMore:
+                  Boolean(
+                    payload.hasMore,
+                  ),
+                warmedAt:
+                  Date.now(),
+              };
+
+              commandSortWarmRef.current.set(
+                cacheKey,
+                warm,
+              );
+
+              return warm;
+            } catch {
+              // Prewarming is opportunistic.
+              return null;
+            } finally {
+              commandSortWarmPromiseRef.current.delete(
+                cacheKey,
+              );
+            }
+          })();
+
+        commandSortWarmPromiseRef.current.set(
+          cacheKey,
+          promise,
+        );
+
+        return promise;
+      },
+      [
+        lane,
+        query,
+        scope,
+      ],
+    );
+
+  const applyCommandSortWarm =
+    useCallback(
+      (
+        warm:
+          CommandSortWarmWindow,
+      ) => {
+        // Kill any older page request before swapping
+        // resident sorted truth into view.
+        requestId.current += 1;
+
+        loadingMoreRef.current =
+          false;
+
+        setEntries(
+          warm.entries,
+        );
+
+        setTrackedPlayers(
+          warm.trackedPlayers,
+        );
+
+        setFirstOffset(0);
+
+        setNextOffset(
+          warm.nextOffset,
+        );
+
+        setHasMore(
+          warm.hasMore,
+        );
+
+        setLoading(false);
+        setLoadingMore(false);
+        setError(null);
+      },
+      [],
+    );
+
+  useEffect(() => {
+    if (
+      loading ||
+      query
+    ) {
+      return;
+    }
+
+    // These four command views are likely next actions.
+    // Build them while the user is simply looking at
+    // the leaderboard.
+    void Promise.all([
+      warmCommandSort(
+        "rank_change_24h",
+        "desc",
+      ),
+      warmCommandSort(
+        "rank_change_24h",
+        "asc",
+      ),
+      warmCommandSort(
+        "streak",
+        "desc",
+      ),
+      warmCommandSort(
+        "streak",
+        "asc",
+      ),
+    ]);
+  }, [
+    loading,
+    query,
+    warmCommandSort,
+  ]);
+
   const changeSort = useCallback(
     (key: LeaderboardSortKey) => {
       if (hasPersonalRankView) {
@@ -654,7 +1273,10 @@ export function ModernLeaderboardPage({
           spotlightMode: "off",
           rankWindowStart: null,
         });
-        setSpotlightTarget(null);
+
+        setSpotlightTarget(
+          null,
+        );
       }
 
       const next =
@@ -663,19 +1285,132 @@ export function ModernLeaderboardPage({
           key,
         );
 
-      sortRef.current = next;
-      setSort(next);
+      sortRef.current =
+        next;
 
-      // Immediate response for the rows already in memory.
-      setEntries((current) =>
-        sortLeaderboardEntries(
-          current,
-          next,
-        ),
+      setSort(
+        next,
       );
 
-      // Quietly replace them with the authoritative
-      // full-board server ordering. Do not show skeletons.
+      // ------------------------------------------------------
+      // THIRD CLICK: canonical rank order.
+      //
+      // The normal lane/scope cache is already resident.
+      // Restore it immediately, then quietly revalidate.
+      // ------------------------------------------------------
+
+      if (
+        !next.key ||
+        !next.direction
+      ) {
+        const base =
+          readLeaderboardLaneCache(
+            lane,
+            scope,
+          );
+
+        if (
+          base &&
+          !query
+        ) {
+          requestId.current += 1;
+
+          loadingMoreRef.current =
+            false;
+
+          setEntries(
+            base.entries,
+          );
+
+          setTrackedPlayers(
+            base.trackedPlayers,
+          );
+
+          setFirstOffset(0);
+
+          setNextOffset(
+            base.entries.length,
+          );
+
+          setHasMore(
+            base.entries.length <
+              base.trackedPlayers,
+          );
+
+          setLoading(false);
+          setLoadingMore(false);
+          setError(null);
+        }
+
+        void loadPage({
+          reset: true,
+          preserveRows: true,
+          sortOverride: next,
+        });
+
+        return;
+      }
+
+      // ------------------------------------------------------
+      // COMMAND SORT FAST PATH.
+      //
+      // Movers and Streak should normally already exist
+      // in memory from idle prewarming.
+      // ------------------------------------------------------
+
+      if (!query) {
+        const cacheKey =
+          commandSortCacheKey(
+            next.key,
+            next.direction,
+          );
+
+        const warm =
+          commandSortWarmRef.current.get(
+            cacheKey,
+          );
+
+        if (
+          warm &&
+          Date.now() -
+            warm.warmedAt <
+            60_000
+        ) {
+          applyCommandSortWarm(
+            warm,
+          );
+
+          return;
+        }
+
+        // If the user beat the prewarm, reuse the in-flight
+        // request instead of starting a duplicate fetch.
+        void warmCommandSort(
+          next.key,
+          next.direction,
+        ).then(
+          (nextWarm) => {
+            if (
+              !nextWarm ||
+              sortRef.current.key !==
+                next.key ||
+              sortRef.current.direction !==
+                next.direction
+            ) {
+              return;
+            }
+
+            applyCommandSortWarm(
+              nextWarm,
+            );
+          },
+        );
+
+        return;
+      }
+
+      // Search-specific sorts cannot use the generic
+      // unfiltered warm cache.
       void loadPage({
         reset: true,
         preserveRows: true,
@@ -683,9 +1418,15 @@ export function ModernLeaderboardPage({
       });
     },
     [
+      applyCommandSortWarm,
+      commandSortCacheKey,
       hasPersonalRankView,
+      lane,
       loadPage,
+      query,
+      scope,
       updateLivingPreferencesRaw,
+      warmCommandSort,
     ],
   );
 
@@ -703,17 +1444,100 @@ export function ModernLeaderboardPage({
           ) ||
           typeof patch.rankWindowStart === "number";
 
+        const exitsSpotlight =
+          patch.spotlightMode === "off" &&
+          livingPreferences.spotlightMode !==
+            "off";
+
         if (activatesRankNavigation) {
           sortRef.current = {
             key: null,
             direction: null,
           };
+
           setSort({
             key: null,
             direction: null,
           });
+
           setSearchInput("");
           setQuery("");
+        }
+
+        if (exitsSpotlight) {
+          // Third Spotlight click is a LOCAL UI operation.
+          // Cancel ownership of any personal-view request
+          // before preferences update and restore the already
+          // resident canonical lane immediately.
+          personalViewRequestRef.current += 1;
+
+          personalViewWasActiveRef.current =
+            false;
+
+          requestId.current += 1;
+
+          loadingMoreRef.current =
+            false;
+
+          setSpotlightTarget(null);
+          setSpotlightLoading(false);
+          setLoading(false);
+          setLoadingMore(false);
+          setError(null);
+
+          const cached =
+            readLeaderboardLaneCache(
+              lane,
+              scope,
+            );
+
+          if (
+            cached &&
+            !query &&
+            !sortRef.current.key
+          ) {
+            setEntries(
+              cached.entries,
+            );
+
+            setTrackedPlayers(
+              cached.trackedPlayers,
+            );
+
+            setPodiumEntries(
+              cached.entries
+                .filter(
+                  (entry) =>
+                    entry.rank <= 3,
+                )
+                .sort(
+                  (left, right) =>
+                    left.rank -
+                    right.rank,
+                ),
+            );
+
+            setFirstOffset(0);
+
+            setNextOffset(
+              cached.entries.length,
+            );
+
+            setHasMore(
+              cached.entries.length <
+                cached.trackedPlayers,
+            );
+          } else {
+            // Rare cold-cache fallback: keep current rows
+            // visible and revalidate quietly. Never skeleton.
+            void loadPage({
+              reset: true,
+              preserveRows: true,
+              offset: 0,
+              limitOverride:
+                RESET_PAGE_SIZE,
+            });
+          }
         }
 
         updateLivingPreferencesRaw(
@@ -721,6 +1545,12 @@ export function ModernLeaderboardPage({
         );
       },
       [
+        lane,
+        livingPreferences
+          .spotlightMode,
+        loadPage,
+        query,
+        scope,
         updateLivingPreferencesRaw,
       ],
     );
@@ -839,6 +1669,69 @@ export function ModernLeaderboardPage({
         return;
       }
 
+      const warmCacheKey =
+        `${lane}:${scope}:${rows}`;
+
+      const warm =
+        spotlightWarmRef.current;
+
+      if (
+        warm &&
+        warm.cacheKey ===
+          warmCacheKey
+      ) {
+        // Invalidate any older row request. Spotlight now owns
+        // the board selection.
+        requestId.current += 1;
+
+        loadingMoreRef.current =
+          false;
+
+        setLoading(false);
+        setLoadingMore(false);
+        setError(null);
+
+        setEntries(
+          warm.entries,
+        );
+
+        setTrackedPlayers(
+          warm.trackedPlayers,
+        );
+
+        setFirstOffset(
+          warm.offset,
+        );
+
+        setNextOffset(
+          warm.nextOffset,
+        );
+
+        setHasMore(
+          warm.hasMore,
+        );
+
+        setSpotlightTarget({
+          key:
+            warm.key,
+          rank:
+            warm.rank,
+          name:
+            warm.name,
+          mode:
+            spotlightMode ===
+            "center"
+              ? "center"
+              : "top",
+        });
+
+        setSpotlightLoading(
+          false,
+        );
+
+        return;
+      }
+
       setSpotlightLoading(true);
 
       try {
@@ -897,25 +1790,37 @@ export function ModernLeaderboardPage({
             ),
           );
 
-        const offset =
+        const contextBefore =
           spotlightMode ===
           "center"
-            ? Math.max(
-                0,
-                rank -
-                  1 -
-                  Math.floor(
-                    rows / 2,
-                  ),
+            ? Math.floor(
+                rows / 2,
               )
-            : rank - 1;
+            : rows;
+
+        const offset =
+          Math.max(
+            0,
+            rank -
+              1 -
+              contextBefore,
+          );
+
+        const spotlightRows =
+          spotlightMode ===
+          "center"
+            ? rows
+            : Math.min(
+                600,
+                rows * 2,
+              );
 
         await loadPage({
           reset: true,
           preserveRows: true,
           offset,
           limitOverride:
-            rows,
+            spotlightRows,
         });
 
         if (
@@ -982,6 +1887,41 @@ export function ModernLeaderboardPage({
   ]);
 
 
+  const loadEarlierRanks =
+    useCallback(() => {
+      if (
+        firstOffset <= 0 ||
+        loadingMoreRef.current
+      ) {
+        return;
+      }
+
+      const amount =
+        Math.min(
+          SCROLL_PAGE_SIZE,
+          firstOffset,
+        );
+
+      const offset =
+        Math.max(
+          0,
+          firstOffset -
+            amount,
+        );
+
+      void loadPage({
+        reset: false,
+        offset,
+        limitOverride:
+          firstOffset -
+          offset,
+        prepend: true,
+      });
+    }, [
+      firstOffset,
+      loadPage,
+    ]);
+
   if (isExtreme) {
     return (
       <main
@@ -995,7 +1935,9 @@ export function ModernLeaderboardPage({
 
         <LivingLeaderboard
           viewMode={viewMode}
-          onViewModeChange={setViewMode}
+          onViewModeChange={
+            changeViewMode
+          }
           lane={lane}
           onLaneChange={changeLane}
           scope={scope}
@@ -1013,6 +1955,9 @@ export function ModernLeaderboardPage({
           loadingMore={loadingMore}
           error={error}
           hasMore={hasMore}
+          hasEarlier={
+            firstOffset > 0
+          }
           onRetry={() =>
             void loadPage({
               reset:
@@ -1028,6 +1973,9 @@ export function ModernLeaderboardPage({
               reset: false,
               offset: nextOffset,
             })
+          }
+          onLoadEarlier={
+            loadEarlierRanks
           }
           preferences={livingPreferences}
           onPreferencesChange={changeLivingPreferences}
@@ -1054,20 +2002,80 @@ export function ModernLeaderboardPage({
         <div className="absolute right-5 top-5 z-20 sm:right-8 sm:top-8 lg:right-10">
           <LeaderboardViewToggle
             value={viewMode}
-            onChange={setViewMode}
+            onChange={
+              changeViewMode
+            }
           />
         </div>
 
         <div className="border-b border-amber-200/18 px-5 py-6 sm:px-8 sm:py-8">
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_21rem] xl:items-start">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.36em] text-amber-200/65">
+              <div
+                className={`flex items-center gap-3 text-[10px] font-black uppercase tracking-[0.38em] ${
+                  viewMode === "advanced"
+                    ? "text-blue-200/48"
+                    : "text-cyan-100/42"
+                }`}
+              >
+                <span
+                  className={`h-px w-7 bg-gradient-to-r ${
+                    viewMode === "advanced"
+                      ? "from-blue-300/65 to-blue-500/5"
+                      : "from-cyan-200/55 to-cyan-500/5"
+                  }`}
+                />
+
                 AoE2WAR · HD Ranked Command
               </div>
 
-              <h1 className="mt-3 font-serif text-3xl font-semibold tracking-tight text-amber-100 sm:text-5xl">
-                HD Leaderboard
-              </h1>
+              <div className="relative mt-3 inline-block max-w-full overflow-visible pr-6">
+                <div
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute -inset-x-12 -inset-y-7 rounded-full blur-[48px] ${
+                    viewMode === "advanced"
+                      ? "bg-blue-500/[0.085]"
+                      : "bg-cyan-400/[0.055]"
+                  }`}
+                />
+
+                <h1
+                  className={`relative bg-clip-text text-[clamp(2.7rem,3.8vw,4.25rem)] font-black leading-[0.92] text-transparent ${
+                    viewMode === "advanced"
+                      ? "font-sans uppercase tracking-[-0.065em]"
+                      : "font-serif tracking-[-0.052em]"
+                  }`}
+                  style={
+                    viewMode === "advanced"
+                      ? {
+                          backgroundImage:
+                            "repeating-linear-gradient(180deg, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 1px, transparent 1px, transparent 4px), linear-gradient(180deg, #e3f1ff 0%, #91bff4 13%, #467fc4 29%, #174d92 47%, #082b5c 57%, #2c68ae 71%, #83afe2 86%, #224f88 100%)",
+                          WebkitTextStroke:
+                            "0.45px rgba(191,219,254,0.22)",
+                          textShadow:
+                            "0 1px 0 rgba(239,246,255,0.20), 0 2px 0 rgba(69,112,166,0.45), 0 4px 0 rgba(5,25,55,0.88), 0 7px 18px rgba(0,0,0,0.42), 0 0 28px rgba(37,99,235,0.18)",
+                        }
+                      : {
+                          backgroundImage:
+                            "repeating-linear-gradient(180deg, rgba(255,255,255,0.055) 0px, rgba(255,255,255,0.055) 1px, transparent 1px, transparent 5px), linear-gradient(180deg, #e4f6fb 0%, #a8d1df 14%, #5d91a8 31%, #28536d 48%, #102d43 59%, #376c86 74%, #8db5c5 88%, #315a6f 100%)",
+                          WebkitTextStroke:
+                            "0.42px rgba(186,230,253,0.18)",
+                          textShadow:
+                            "0 1px 0 rgba(224,247,250,0.16), 0 2px 0 rgba(70,116,137,0.38), 0 4px 0 rgba(3,20,31,0.90), 0 7px 19px rgba(0,0,0,0.46), 0 0 24px rgba(34,211,238,0.10)",
+                        }
+                  }
+                >
+                  HD Leaderboard
+                </h1>
+
+                <div
+                  className={`mt-3.5 h-px max-w-[28rem] bg-gradient-to-r to-transparent ${
+                    viewMode === "advanced"
+                      ? "from-blue-200/42 via-blue-500/17"
+                      : "from-cyan-100/30 via-cyan-700/12"
+                  }`}
+                />
+              </div>
 
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
                 Exact Steam accounts fold every verified historical display

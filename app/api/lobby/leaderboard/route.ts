@@ -8,6 +8,7 @@ import {
   normalizeLeaderboardSortKey,
 } from "@/lib/leaderboardSort";
 import { getPrisma } from "@/lib/prisma";
+import { buildPreviewDataUrl } from "@/lib/previewDataSource";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,6 +25,50 @@ function readIntegerParam(request: NextRequest, name: string, fallback: number) 
 }
 
 export async function GET(request: NextRequest) {
+  const previewUrl =
+    buildPreviewDataUrl(
+      "/api/lobby/leaderboard",
+      request.nextUrl.searchParams,
+    );
+
+  if (previewUrl) {
+    const response =
+      await fetch(
+        previewUrl,
+        {
+          cache: "no-store",
+          headers: {
+            Accept:
+              "application/json",
+            "Cache-Control":
+              "no-cache",
+          },
+        },
+      );
+
+    const body =
+      await response.text();
+
+    return new NextResponse(
+      body,
+      {
+        status:
+          response.status,
+        headers: {
+          "Content-Type":
+            response.headers.get(
+              "content-type",
+            ) ??
+            "application/json; charset=utf-8",
+          "Cache-Control":
+            "no-store",
+          "X-AoE2WAR-Preview-Data":
+            "production-read-through",
+        },
+      },
+    );
+  }
+
   const offset = Math.max(0, readIntegerParam(request, "offset", 0));
   const limit = Math.max(
     1,

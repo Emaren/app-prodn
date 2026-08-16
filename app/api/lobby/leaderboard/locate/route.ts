@@ -16,6 +16,10 @@ import {
   getPrisma,
 } from "@/lib/prisma";
 import {
+  buildPreviewDataUrl,
+  getPreviewIdentity,
+} from "@/lib/previewDataSource";
+import {
   getSessionUid,
 } from "@/lib/session";
 
@@ -26,6 +30,114 @@ export async function GET(
   request: NextRequest,
 ) {
   try {
+    const previewIdentity =
+      getPreviewIdentity();
+
+    if (previewIdentity) {
+      const lane =
+        normalizeLeaderboardLane(
+          request.nextUrl.searchParams.get(
+            "lane",
+          ),
+        );
+
+      const scope =
+        normalizeLeaderboardScope(
+          request.nextUrl.searchParams.get(
+            "scope",
+          ),
+        );
+
+      const previewUrl =
+        buildPreviewDataUrl(
+          "/api/lobby/leaderboard",
+          new URLSearchParams({
+            lane,
+            scope,
+            q: previewIdentity.name,
+            offset: "0",
+            limit: "64",
+          }),
+        );
+
+      if (!previewUrl) {
+        throw new Error(
+          "Preview leaderboard source unavailable",
+        );
+      }
+
+      const response =
+        await fetch(
+          previewUrl,
+          {
+            cache: "no-store",
+            headers: {
+              Accept:
+                "application/json",
+              "Cache-Control":
+                "no-cache",
+            },
+          },
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          `Preview locate returned ${response.status}`,
+        );
+      }
+
+      const payload =
+        (await response.json()) as {
+          entries?: Array<{
+            key: string;
+            rank: number;
+            currentName: string;
+          }>;
+          trackedPlayers?: number;
+        };
+
+      const targetName =
+        previewIdentity.name
+          .trim()
+          .toLowerCase();
+
+      const entry =
+        (payload.entries ?? [])
+          .find(
+            (candidate) =>
+              candidate.currentName
+                .trim()
+                .toLowerCase() ===
+              targetName,
+          );
+
+      return NextResponse.json(
+        entry
+          ? {
+              found: true,
+              lane,
+              scope,
+              key: entry.key,
+              rank: entry.rank,
+              name:
+                entry.currentName,
+              trackedPlayers:
+                payload.trackedPlayers ??
+                0,
+              preview: true,
+            }
+          : {
+              found: false,
+              lane,
+              scope,
+              key: null,
+              rank: null,
+              name: null,
+              preview: true,
+            },
+      );
+    }
+
     const sessionUid =
       await getSessionUid(
         request,

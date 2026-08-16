@@ -11,8 +11,12 @@ import {
   Flame,
   Minus,
   Star,
+  X,
 } from "lucide-react";
 import Link from "next/link";
+import {
+  createPortal,
+} from "react-dom";
 import {
   Fragment,
   useState,
@@ -378,7 +382,7 @@ function RecentForm({
 
   return (
     <div
-      className="flex items-center justify-end gap-0.5"
+      className="flex items-center justify-end gap-[3px]"
       title="Last 10 games · oldest to newest"
       aria-label={`Last 10 games: ${results.join(
         " ",
@@ -388,12 +392,12 @@ function RecentForm({
         (result, index) => (
           <span
             key={`${index}-${result}`}
-            className={`grid h-4 w-4 place-items-center rounded-[0.28rem] text-[8px] font-black ${
+            className={`grid h-4 w-4 place-items-center rounded-[0.28rem] border text-[9px] font-black leading-none ${
               result === "W"
-                ? "bg-emerald-300/13 text-emerald-300"
+                ? "border-emerald-300/20 bg-emerald-300/12 text-emerald-200"
                 : result === "L"
-                  ? "bg-orange-300/12 text-orange-300"
-                  : "bg-slate-700/25 text-slate-600"
+                  ? "border-orange-300/20 bg-orange-300/12 text-orange-200"
+                  : "border-slate-700/35 bg-slate-700/20 text-slate-500"
             }`}
             title={
               result === "W"
@@ -647,6 +651,343 @@ function WarriorExpansion({
   );
 }
 
+function DockedWarriorExpansion({
+  entry,
+}: {
+  entry: LobbyLeaderboardEntry;
+}) {
+  const alternateNames =
+    entry.nameHistory
+      .map(
+        (history) =>
+          history.name,
+      )
+      .filter(
+        (name) =>
+          name !==
+          entry.currentName,
+      )
+      .slice(0, 4);
+
+  return (
+    <div className="grid min-h-12 grid-cols-[auto_auto_auto_minmax(0,1fr)_auto] items-center gap-x-5 border-l-2 border-cyan-300/35 bg-[linear-gradient(90deg,rgba(34,211,238,0.045),rgba(4,10,20,0.94)_22%,rgba(2,7,15,0.98))] px-5 py-2.5 text-[10px] shadow-[inset_0_1px_0_rgba(103,232,249,0.06)]">
+      <div className="whitespace-nowrap">
+        <span className="font-black uppercase tracking-[0.17em] text-slate-600">
+          {identityLabel(entry)}
+        </span>
+      </div>
+
+      <div className="whitespace-nowrap text-slate-500">
+        30d{" "}
+        <strong className="font-black text-emerald-300">
+          {entry.last30Wins}
+        </strong>
+        <span className="px-1 text-slate-700">
+          –
+        </span>
+        <strong className="font-black text-orange-300">
+          {entry.last30Losses}
+        </strong>
+      </div>
+
+      <div className="whitespace-nowrap text-slate-500">
+        Last{" "}
+        <strong className="font-semibold tabular-nums text-slate-300">
+          {compactDate(
+            entry.lastPlayedAt,
+          )}
+        </strong>
+      </div>
+
+      <div className="min-w-0 truncate text-slate-500">
+        {entry.unknowns > 0 ? (
+          <>
+            <span className="text-orange-200/65">
+              {entry.unknowns} unresolved
+            </span>
+
+            {alternateNames.length > 0
+              ? " · "
+              : ""}
+          </>
+        ) : null}
+
+        {alternateNames.length > 0 ? (
+          <>
+            Also{" "}
+            <strong className="font-semibold text-slate-300">
+              {alternateNames.join(
+                " · ",
+              )}
+            </strong>
+          </>
+        ) : null}
+
+        {entry.isOnline ? (
+          <span className="ml-3 font-black uppercase tracking-[0.14em] text-emerald-300">
+            Online
+          </span>
+        ) : null}
+      </div>
+
+      <Link
+        href={entry.href}
+        onClick={(event) =>
+          event.stopPropagation()
+        }
+        className="inline-flex items-center gap-1.5 rounded-full border border-amber-200/16 bg-amber-300/[0.035] px-3 py-1.5 font-black uppercase tracking-[0.14em] text-amber-100/85 transition hover:border-amber-200/35 hover:bg-amber-300/[0.07] hover:text-white"
+      >
+        Warrior
+        <ExternalLink
+          className="h-3 w-3"
+          aria-hidden="true"
+        />
+      </Link>
+    </div>
+  );
+}
+
+function DesktopWarriorInspector({
+  entry,
+  onClose,
+}: {
+  entry: LobbyLeaderboardEntry;
+  onClose: () => void;
+}) {
+  const rate =
+    winRate(entry);
+
+  const alternateNames =
+    entry.nameHistory
+      .map(
+        (history) =>
+          history.name,
+      )
+      .filter(
+        (name) =>
+          name !==
+          entry.currentName,
+      )
+      .slice(0, 4);
+
+  return (
+    <div
+      className="pointer-events-none fixed bottom-20 left-1/2 z-[105] hidden w-[min(calc(100vw-3rem),76rem)] -translate-x-1/2 px-2 md:block"
+      role="presentation"
+    >
+      <div
+        id="living-warrior-inspector"
+        role="dialog"
+        aria-label={`${entry.currentName} warrior inspector`}
+        className="pointer-events-auto relative overflow-hidden rounded-[1.15rem] border border-cyan-200/18 bg-[radial-gradient(circle_at_8%_0%,rgba(34,211,238,0.10),transparent_24%),linear-gradient(145deg,rgba(6,17,30,0.985),rgba(2,7,15,0.985))] shadow-[0_24px_80px_rgba(0,0,0,0.68),inset_0_1px_0_rgba(255,255,255,0.045)] backdrop-blur-xl"
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-16 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/55 to-transparent"
+        />
+
+        <div className="flex min-h-[4.9rem] items-center gap-5 px-5 py-3">
+          <div
+            className={`inline-flex min-w-[4.9rem] shrink-0 items-center justify-center rounded-xl border px-3 py-2.5 text-base font-black tabular-nums ${rankMetal(
+              entry.rank,
+            )}`}
+          >
+            #{entry.rank}
+          </div>
+
+          <div className="min-w-0 w-[15rem] shrink-0">
+            <div className="truncate text-[1.05rem] font-black tracking-[-0.01em] text-cyan-50">
+              {entry.currentName}
+            </div>
+
+            <div className="mt-1 truncate text-[9px] font-semibold uppercase tracking-[0.15em] text-slate-600">
+              {identityLabel(entry)}
+              {" · "}
+              {
+                entry.primaryRatingSourceLabel
+              }
+              {entry.isOnline
+                ? " · ONLINE"
+                : ""}
+            </div>
+          </div>
+
+          <div className="h-9 w-px shrink-0 bg-white/[0.07]" />
+
+          <div className="grid shrink-0 grid-cols-5 gap-x-6">
+            <div>
+              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-600">
+                Rating
+              </div>
+              <div className="mt-1 font-black tabular-nums text-white">
+                {
+                  entry.primaryRatingLabel
+                }
+              </div>
+            </div>
+
+            <div>
+              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-600">
+                30d
+              </div>
+              <div className="mt-1 whitespace-nowrap font-black tabular-nums">
+                <span className="text-emerald-300">
+                  {entry.last30Wins}
+                </span>
+                <span className="px-1 text-slate-700">
+                  –
+                </span>
+                <span className="text-orange-300">
+                  {entry.last30Losses}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-600">
+                Record
+              </div>
+              <div className="mt-1 whitespace-nowrap font-black tabular-nums">
+                <span className="text-emerald-300">
+                  {entry.wins}
+                </span>
+                <span className="px-1 text-slate-700">
+                  –
+                </span>
+                <span className="text-orange-300">
+                  {entry.losses}
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-600">
+                Win %
+              </div>
+              <div className="mt-1 font-black tabular-nums text-white">
+                {rate === null
+                  ? "—"
+                  : `${rate.toFixed(
+                      1,
+                    )}%`}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-[8px] font-black uppercase tracking-[0.16em] text-slate-600">
+                Streak
+              </div>
+              <div
+                className={`mt-1 font-black ${streakTone(
+                  entry.streakLabel,
+                )}`}
+              >
+                {entry.streakLabel ||
+                  "—"}
+              </div>
+            </div>
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[9px] text-slate-500">
+              Last{" "}
+              <strong className="font-semibold tabular-nums text-slate-300">
+                {compactDate(
+                  entry.lastPlayedAt,
+                )}
+              </strong>
+
+              {entry.unknowns > 0 ? (
+                <>
+                  {" · "}
+                  <span className="text-orange-200/65">
+                    {
+                      entry.unknowns
+                    }{" "}
+                    unresolved
+                  </span>
+                </>
+              ) : null}
+            </div>
+
+            {alternateNames.length >
+            0 ? (
+              <div className="mt-1 truncate text-[9px] text-slate-600">
+                Also{" "}
+                <strong className="font-semibold text-slate-300">
+                  {alternateNames.join(
+                    " · ",
+                  )}
+                </strong>
+              </div>
+            ) : null}
+          </div>
+
+          <Link
+            href={entry.href}
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200/18 bg-amber-300/[0.045] px-4 py-2 text-[9px] font-black uppercase tracking-[0.15em] text-amber-100 transition hover:border-amber-200/40 hover:bg-amber-300/[0.09] hover:text-white"
+          >
+            Warrior
+            <ExternalLink
+              className="h-3 w-3"
+              aria-hidden="true"
+            />
+          </Link>
+
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close warrior inspector"
+            title="Close"
+            className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-full border border-white/[0.07] bg-white/[0.025] text-slate-500 transition hover:border-white/15 hover:bg-white/[0.06] hover:text-white"
+          >
+            <X
+              className="h-4 w-4"
+              aria-hidden="true"
+            />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DockedWarriorInspector({
+  entry,
+  onClose,
+}: {
+  entry: LobbyLeaderboardEntry;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      id="living-warrior-dock"
+      className="relative z-20 hidden border-t border-cyan-200/16 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,0.07),transparent_30%),linear-gradient(90deg,rgba(5,16,29,0.99),rgba(2,7,15,0.99))] px-3 py-2.5 md:block lg:pr-40 shadow-[0_-18px_50px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(103,232,249,0.055)]"
+    >
+      <div className="flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <DockedWarriorExpansion
+            entry={entry}
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close warrior inspector"
+          title="Close"
+          className="grid h-9 w-9 shrink-0 cursor-pointer place-items-center rounded-full border border-white/[0.08] bg-white/[0.025] text-slate-500 transition hover:border-white/15 hover:bg-white/[0.06] hover:text-white"
+        >
+          <X
+            className="h-4 w-4"
+            aria-hidden="true"
+          />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function LivingLeaderboardTable({
   entries,
   sortKey,
@@ -660,6 +1001,7 @@ export function LivingLeaderboardTable({
   dense,
   columnMode,
   visibleColumns,
+  drilldownMode,
 }: {
   entries: LobbyLeaderboardEntry[];
   sortKey: LeaderboardSortKey | null;
@@ -683,6 +1025,10 @@ export function LivingLeaderboardTable({
     LivingLeaderboardColumnMode;
   visibleColumns:
     readonly LivingLeaderboardColumnKey[];
+  drilldownMode:
+    | 1
+    | 2
+    | 3;
 }) {
   const [expandedKeys, setExpandedKeys] =
     useState<Set<string>>(
@@ -693,15 +1039,17 @@ export function LivingLeaderboardTable({
     entry: LobbyLeaderboardEntry,
   ) => {
     setExpandedKeys((current) => {
-      const next = new Set(current);
-
-      if (next.has(entry.key)) {
-        next.delete(entry.key);
-      } else {
-        next.add(entry.key);
+      if (
+        current.has(
+          entry.key,
+        )
+      ) {
+        return new Set();
       }
 
-      return next;
+      return new Set([
+        entry.key,
+      ]);
     });
   };
 
@@ -734,6 +1082,23 @@ export function LivingLeaderboardTable({
   const customWide =
     columnMode === "custom" &&
     visibleColumns.length > 6;
+
+  const expandedEntry =
+    entries.find(
+      (entry) =>
+        expandedKeys.has(
+          entry.key,
+        ),
+    ) ?? null;
+
+  const dockTarget =
+    drilldownMode === 2 &&
+    typeof document !==
+      "undefined"
+      ? document.getElementById(
+          "living-leaderboard-inspector-dock",
+        )
+      : null;
 
   return (
     <>
@@ -815,20 +1180,6 @@ export function LivingLeaderboardTable({
               />
 
               <SortHeader
-                label="Streak"
-                column="streak"
-                sortKey={sortKey}
-                sortDirection={
-                  sortDirection
-                }
-                onSort={onSort}
-                align="right"
-                className={`${columnClass(
-                  "streak",
-                )} w-24`}
-              />
-
-              <SortHeader
                 label="Win %"
                 column="win_rate"
                 sortKey={sortKey}
@@ -864,6 +1215,20 @@ export function LivingLeaderboardTable({
                 )} w-24`}
               />
 
+              <SortHeader
+                label="Streak"
+                column="streak"
+                sortKey={sortKey}
+                sortDirection={
+                  sortDirection
+                }
+                onSort={onSort}
+                align="right"
+                className={`${columnClass(
+                  "streak",
+                )} w-24`}
+              />
+
               <StaticHeader
                 align="right"
                 className={`${columnClass(
@@ -894,9 +1259,6 @@ export function LivingLeaderboardTable({
                   spotlightKey ===
                   entry.key;
 
-                const id =
-                  rowId(entry.key);
-
                 return (
                   <Fragment
                     key={entry.key}
@@ -913,7 +1275,39 @@ export function LivingLeaderboardTable({
                           event,
                         )
                       }
-                      className={`group cursor-pointer border-b border-white/[0.05] text-[0.95rem] transition-[background-color,box-shadow] duration-150 ${
+                      onKeyDown={(event) => {
+                        if (
+                          event.currentTarget !==
+                          event.target
+                        ) {
+                          return;
+                        }
+
+                        if (
+                          event.key === "Enter" ||
+                          event.key === " "
+                        ) {
+                          event.preventDefault();
+                          toggleRow(entry);
+                        }
+                      }}
+                      tabIndex={0}
+                      aria-expanded={expanded}
+                      aria-controls={
+                        expanded
+                          ? drilldownMode ===
+                            1
+                            ? rowId(
+                                entry.key,
+                              )
+                            : drilldownMode ===
+                                2
+                              ? "living-warrior-dock"
+                              : "living-warrior-inspector"
+                          : undefined
+                      }
+                      title={`Inspect ${entry.currentName}`}
+                      className={`group cursor-pointer border-b border-white/[0.05] text-[0.95rem] outline-none transition-[background-color,box-shadow] duration-150 focus-visible:shadow-[inset_0_0_0_1px_rgba(103,232,249,0.28)] ${
                         index % 2 === 0
                           ? "bg-slate-900/44"
                           : "bg-black/18"
@@ -981,20 +1375,8 @@ export function LivingLeaderboardTable({
                             />
                           </button>
 
-                          <button
-                            type="button"
-                            onClick={(
-                              event,
-                            ) => {
-                              event.stopPropagation();
-                              toggleRow(
-                                entry,
-                              );
-                            }}
-                            aria-expanded={
-                              expanded
-                            }
-                            aria-controls={id}
+                          <div
+                            aria-hidden="true"
                             className={`inline-flex min-w-[4.8rem] items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 text-[0.95rem] font-black tabular-nums transition ${rankMetal(
                               entry.rank,
                             )}`}
@@ -1012,7 +1394,7 @@ export function LivingLeaderboardTable({
                             )}
 
                             #{entry.rank}
-                          </button>
+                          </div>
                         </div>
                       </td>
 
@@ -1214,9 +1596,12 @@ export function LivingLeaderboardTable({
                       </td>
                     </tr>
 
-                    {expanded ? (
+                                        {expanded &&
+                    drilldownMode === 1 ? (
                       <tr
-                        id={id}
+                        id={rowId(
+                          entry.key,
+                        )}
                         className="border-b border-cyan-200/[0.08] bg-[#020813]"
                       >
                         <td
@@ -1229,6 +1614,8 @@ export function LivingLeaderboardTable({
                         </td>
                       </tr>
                     ) : null}
+
+
                   </Fragment>
                 );
               },
@@ -1432,6 +1819,36 @@ export function LivingLeaderboardTable({
           );
         })}
       </div>
+
+      {expandedEntry &&
+      drilldownMode === 2 &&
+      dockTarget
+        ? createPortal(
+            <DockedWarriorInspector
+              entry={
+                expandedEntry
+              }
+              onClose={() =>
+                setExpandedKeys(
+                  new Set(),
+                )
+              }
+            />,
+            dockTarget,
+          )
+        : null}
+
+      {expandedEntry &&
+      drilldownMode === 3 ? (
+        <DesktopWarriorInspector
+          entry={expandedEntry}
+          onClose={() =>
+            setExpandedKeys(
+              new Set(),
+            )
+          }
+        />
+      ) : null}
     </>
   );
 }

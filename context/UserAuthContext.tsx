@@ -199,7 +199,14 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
   }, [refreshSession]);
 
   useEffect(() => {
-    if (!uid) return;
+    if (
+      !uid ||
+      uid.startsWith(
+        "preview:",
+      )
+    ) {
+      return;
+    }
 
     let active = true;
 

@@ -8,6 +8,9 @@ import {
   normalizeLivingLeaderboardPreferences,
 } from "@/lib/livingLeaderboardPreferences";
 import { getPrisma } from "@/lib/prisma";
+import {
+  getPreviewIdentity,
+} from "@/lib/previewDataSource";
 import { getSessionUid } from "@/lib/session";
 import {
   recordUserActivity,
@@ -76,6 +79,16 @@ export async function GET(
   request: NextRequest,
 ) {
   try {
+    if (getPreviewIdentity()) {
+      return NextResponse.json({
+        preferences:
+          DEFAULT_LIVING_LEADERBOARD_PREFERENCES,
+        stored: false,
+        updatedAt: null,
+        preview: true,
+      });
+    }
+
     const resolved =
       await resolveUser(request);
 
@@ -150,6 +163,25 @@ export async function POST(
   request: NextRequest,
 ) {
   try {
+    if (getPreviewIdentity()) {
+      const body =
+        await request
+          .json()
+          .catch(() => ({}));
+
+      const preferences =
+        normalizeLivingLeaderboardPreferences(
+          body,
+        );
+
+      return NextResponse.json({
+        ok: true,
+        preferences,
+        updatedAt: null,
+        preview: true,
+      });
+    }
+
     const resolved =
       await resolveUser(request);
 

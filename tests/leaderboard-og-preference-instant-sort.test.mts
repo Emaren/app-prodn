@@ -166,16 +166,31 @@ test(
 );
 
 test(
-  "sort click changes visible rows immediately before server authority returns",
+  "sort click preserves rows while server-authoritative warm ordering resolves",
   () => {
     assert.match(
       sort,
       /export function sortLeaderboardEntries/,
     );
 
+    assert.doesNotMatch(
+      modernPage,
+      /sortLeaderboardEntries/,
+    );
+
     assert.match(
       modernPage,
-      /setEntries\(\(current\) =>[\s\S]*sortLeaderboardEntries/,
+      /The server owns the requested ordering\./,
+    );
+
+    assert.match(
+      modernPage,
+      /commandSortWarmRef/,
+    );
+
+    assert.match(
+      modernPage,
+      /commandSortWarmPromiseRef/,
     );
 
     assert.match(

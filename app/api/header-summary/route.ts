@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 import { loadLiveGamesSnapshot } from "@/lib/liveGames";
 import { getPrisma } from "@/lib/prisma";
+import { buildPreviewDataUrl } from "@/lib/previewDataSource";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -89,6 +90,49 @@ async function loadHeaderSummary(): Promise<HeaderSummary> {
 
 export async function GET() {
   try {
+    const previewUrl =
+      buildPreviewDataUrl(
+        "/api/header-summary",
+      );
+
+    if (previewUrl) {
+      const response =
+        await fetch(
+          previewUrl,
+          {
+            cache: "no-store",
+            headers: {
+              Accept:
+                "application/json",
+              "Cache-Control":
+                "no-cache",
+            },
+          },
+        );
+
+      const body =
+        await response.text();
+
+      return new NextResponse(
+        body,
+        {
+          status:
+            response.status,
+          headers: {
+            "Content-Type":
+              response.headers.get(
+                "content-type",
+              ) ??
+              "application/json; charset=utf-8",
+            "Cache-Control":
+              "no-store",
+            "X-AoE2WAR-Preview-Data":
+              "production-read-through",
+          },
+        },
+      );
+    }
+
     return NextResponse.json(await loadHeaderSummary(), {
       headers: {
         "Cache-Control": "public, max-age=5, stale-while-revalidate=20",

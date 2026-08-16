@@ -117,7 +117,7 @@ test("Extreme owns a dedicated Living Leaderboard tree", () => {
 
   assert.match(
     living,
-    /<LeaderboardWatcherCard \/>/,
+    /<LeaderboardWatcherCard\b/,
   );
 
   assert.match(
