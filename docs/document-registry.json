@@ -374,6 +374,28 @@
     },
     {
       "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-clan-halls",
+      "owner": "aoe2war-web",
+      "path": "docs/CLAN_HALLS.md",
+      "review_interval_days": 90,
+      "reviewed_at": "2026-08-16",
+      "sensitivity": "internal",
+      "sha256": "5c0bc739c4ff894591c67623b8fcf3df359a0cd074cca531f37805b71e19ff14",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Clan Halls",
+      "type": "reference"
+    },
+    {
+      "audience": [
         "operators",
         "auditors",
         "ai-agents"
@@ -454,7 +476,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-08-14",
       "sensitivity": "internal",
-      "sha256": "e6358bfbf11e53383639b729580cf340ee0104fb1c64927865a4af95f778d350",
+      "sha256": "b32a7b4af7b0d31449a235d676beb01f6c5a4bb72eac872f56278135ab81eac4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -476,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c3baa22c7ab7618657252c2782a3c6c8a702d6dd81df79170f910eaef4fca71d",
+      "sha256": "1665a401a722fdf4c5e2f7be29a5baadc7e9877cdd842281af3990ff6a806765",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1300,7 +1322,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-08-08",
       "sensitivity": "internal",
-      "sha256": "bbfd23d49e9de291d5206fa02d8819fe4518d1020bb9eac35fb8e09ec6fd2b2b",
+      "sha256": "0814d4a57e0fa7af57adee774f65d81f232694a229f63b86fb9b1107b0aa46f8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

@@ -3,6 +3,8 @@ import path from "path";
 
 import { NextResponse } from "next/server";
 
+import { getPreviewDataOrigin } from "@/lib/previewDataSource";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -127,6 +129,55 @@ export async function GET(
       });
     } catch {
       // Try next root.
+    }
+  }
+
+  const previewOrigin = getPreviewDataOrigin();
+
+  if (previewOrigin) {
+    const upstream = new URL(
+      `/uploads/managed-assets/${encodeURIComponent(kind)}/${encodeURIComponent(file)}`,
+      previewOrigin,
+    );
+    const headers = new Headers();
+    const range = request.headers.get("range");
+
+    if (range) {
+      headers.set("Range", range);
+    }
+
+    const response = await fetch(upstream, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+      redirect: "manual",
+    });
+
+    if (response.ok || response.status === 206) {
+      const responseHeaders = new Headers();
+
+      for (const name of [
+        "accept-ranges",
+        "cache-control",
+        "content-length",
+        "content-range",
+        "content-type",
+        "etag",
+        "last-modified",
+      ]) {
+        const value = response.headers.get(name);
+        if (value) responseHeaders.set(name, value);
+      }
+
+      responseHeaders.set(
+        "X-AoE2WAR-Preview-Data",
+        "production-managed-media",
+      );
+
+      return new NextResponse(response.body, {
+        status: response.status,
+        headers: responseHeaders,
+      });
     }
   }
 

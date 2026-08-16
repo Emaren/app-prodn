@@ -120,3 +120,19 @@ For changes to this surface, verify:
 13. Message links open safely in a new tab without opening the message action tray.
 14. Choosing French (or another supported language) in `/profile` persists across reloads; Translate displays that language inline in Nav Chat and Full Chat without a full-timeline refresh.
 15. Nav Chat renders no floating date chip; Full Chat retains the compact sticky date context.
+
+
+## Clan invitation transport — 2026-08-16
+
+The AoE2WAR Hall Invite Door reuses pairwise Direct Chat as its first delivery
+transport. A Hall invitation is a normal persisted direct message containing a
+direct Hall URL. Acceptance is not inferred from reading or clicking the
+message: `/api/clans/[slug]/invites` re-proves recipient participation, current
+inviter authority, pending invitation shape, and Clan identity before an
+idempotent membership upsert. Accept/decline updates the invitation message and
+publishes the ordinary Direct Message event stream so Nav Chat and Full Chat
+reconcile naturally.
+
+This V1 intentionally adds no Prisma migration. External Steam/email/SMS/
+messenger transports are future delivery adapters over the same Hall-link
+concept, not separate membership authorities.

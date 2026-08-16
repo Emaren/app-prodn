@@ -11,7 +11,7 @@ const FOUNDING_CLANS = [
     description:
       "A home for the Mystikal players, their allies, their rivals, and the AoE2 HD stories that keep the band together.",
     crestUrl: "/clans/mystikal-crest.webp",
-    ownerNames: ["Emaren"],
+    ownerNames: [],
   },
   {
     slug: "jims-clan",
@@ -43,6 +43,8 @@ async function findUser(
   prisma: ReturnType<typeof getPrisma>,
   names: readonly string[],
 ) {
+  if (names.length === 0) return null;
+
   return prisma.user.findFirst({
     where: {
       OR: names.flatMap((name) => [

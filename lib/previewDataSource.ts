@@ -108,17 +108,24 @@ export function getPreviewIdentity():
     return null;
   }
 
+  const explicitUid =
+    process.env
+      .AOE2WAR_PREVIEW_USER_UID
+      ?.trim();
+
   return {
-    uid: `preview:${name
-      .toLowerCase()
-      .replace(
-        /[^a-z0-9]+/g,
-        "-",
-      )
-      .replace(
-        /^-+|-+$/g,
-        "",
-      )}`,
+    uid:
+      explicitUid ||
+      `preview:${name
+        .toLowerCase()
+        .replace(
+          /[^a-z0-9]+/g,
+          "-",
+        )
+        .replace(
+          /^-+|-+$/g,
+          "",
+        )}`,
     name,
   };
 }

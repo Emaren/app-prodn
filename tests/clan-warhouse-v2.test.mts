@@ -25,6 +25,7 @@ const media = read("lib/managedMediaAssets.ts");
 const seed = read(
   "scripts/seed-clans-2026-08-06.mts",
 );
+const clanLib = read("lib/clans.ts");
 const profile = read("app/profile/page.tsx");
 const inbox = read(
   "components/contact/ContactInboxPanel.tsx",
@@ -128,19 +129,81 @@ test("Clan Alerts are distinct in Emaren's inbox", () => {
   assert.match(inbox, /Open Clan Command/);
 });
 
-test("clan surfaces default to AoE2WAR blue with opt-in crimson", () => {
+test("clan surfaces cycle a plain site baseline plus four premium themes", () => {
   assert.match(css, /CLAN DISPLAY THEMES/);
-  assert.match(css, /Default: canonical AoE2WAR blue/);
+  assert.match(css, /CLAN THEME — SITE DEFAULT BLUE/);
+  assert.match(css, /CLAN THEME — PREMIUM BLUE/);
+  assert.match(css, /data-clan-theme="premium"/);
+  assert.match(css, /data-clan-theme="premium-light"/);
+  assert.match(css, /data-clan-theme="premium-dark"/);
   assert.match(css, /data-clan-theme="crimson"/);
-  assert.match(css, /--clan-accent: 56 189 248/);
-  assert.match(css, /--clan-accent-deep: 127 29 29/);
-  assert.match(displayRail, /aoe2war:clans:theme/);
+  assert.match(css, /engraving, stripes, glow, or texture/);
+  assert.match(displayRail, /"site"/);
+  assert.match(displayRail, /"premium"/);
+  assert.match(displayRail, /"premium-light"/);
+  assert.match(displayRail, /"premium-dark"/);
+  assert.match(displayRail, /"crimson"/);
   assert.match(displayRail, /Palette/);
+  assert.doesNotMatch(displayRail, /clan-theme-toggle__track/);
   assert.match(displayRail, /ClanViewToggle/);
   assert.match(directory, /<ClanDisplayRail view=\{view\} basePath="\/clans" \/>/);
   assert.match(hall, /<ClanDisplayRail/);
-  assert.doesNotMatch(directory, /import ClanViewToggle/);
-  assert.doesNotMatch(hall, /import ClanViewToggle/);
-  assert.doesNotMatch(hall, /violet-/);
-  assert.doesNotMatch(directory, /violet-/);
+});
+
+
+test("clan navigation follows the five-state palette", () => {
+  const appShell = read("app/AppShell.tsx");
+
+  assert.match(appShell, /clanHeaderStyle/);
+  assert.match(appShell, /clanHeaderLeftGlow/);
+  assert.match(appShell, /clanHeaderRightGlow/);
+  assert.match(appShell, /clanHeaderDivider/);
+  assert.match(
+    appShell,
+    /!isClanSurface \|\| clanDisplayTheme === "site"[\s\S]*\? undefined/,
+  );
+  assert.match(
+    appShell,
+    /clanDisplayTheme === "premium"[\s\S]*rgba\(8, 17, 34, 0\.975\)/,
+  );
+  assert.match(
+    appShell,
+    /clanDisplayTheme === "premium-light"[\s\S]*rgba\(18, 35, 65, 0\.975\)/,
+  );
+  assert.match(
+    appShell,
+    /clanDisplayTheme === "premium-dark"[\s\S]*rgba\(2, 8, 18, 0\.985\)/,
+  );
+  assert.match(
+    appShell,
+    /clanDisplayTheme === "crimson"[\s\S]*\? "crimson"[\s\S]*: "midnight"/,
+  );
+  assert.match(appShell, /\? clanHeaderStyle/);
+});
+
+
+test("site admin authority stays separate from clan membership", () => {
+  assert.match(
+    clanLib,
+    /const isMember = Boolean\(activeMembership\);/,
+  );
+  assert.match(
+    clanLib,
+    /const hasClanAccess = Boolean\(activeMembership \|\| viewer\?\.isAdmin\);/,
+  );
+  assert.match(
+    clanLib,
+    /viewer\?\.isAdmin \|\|[\s\S]*MANAGER_ROLES/,
+  );
+});
+
+test("Mystikal founding seed does not appoint Emaren", () => {
+  assert.match(
+    seed,
+    /slug: "mystikal"[\s\S]*ownerNames: \[\]/,
+  );
+  assert.doesNotMatch(
+    seed,
+    /slug: "mystikal"[\s\S]{0,400}ownerNames: \["Emaren"\]/,
+  );
 });

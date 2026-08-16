@@ -10,6 +10,7 @@ import {
 } from "@/lib/clans";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import { publishClanHallEvent } from "@/lib/clanHallEvents";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -145,6 +146,16 @@ export async function POST(
         });
       }
 
+      publishClanHallEvent(slug, {
+        type: "reaction",
+        messageId,
+      });
+
+      publishClanHallEvent(slug, {
+        type: "reaction",
+        messageId,
+      });
+
       const refreshed = await loadClanHallSnapshot(prisma, slug, viewer.uid);
       return NextResponse.json(refreshed, { headers: NO_STORE_HEADERS });
     }
@@ -239,6 +250,8 @@ export async function POST(
       },
     });
 
+    publishClanHallEvent(slug, { type: "message" });
+
     const snapshot = await loadClanHallSnapshot(prisma, slug, viewer.uid);
     return NextResponse.json(snapshot, {
       status: 201,
@@ -308,6 +321,11 @@ export async function PATCH(
         data: { body: message },
       });
 
+      publishClanHallEvent(slug, {
+        type: "message_updated",
+        messageId,
+      });
+
       const refreshed = await loadClanHallSnapshot(prisma, slug, viewer.uid);
       return NextResponse.json(refreshed, { headers: NO_STORE_HEADERS });
     }
@@ -332,6 +350,8 @@ export async function PATCH(
         chatAudiencePolicy: body.chatAudiencePolicy,
       },
     });
+
+    publishClanHallEvent(slug, { type: "policy" });
 
     const refreshed = await loadClanHallSnapshot(prisma, slug, viewer.uid);
     return NextResponse.json(refreshed, { headers: NO_STORE_HEADERS });
@@ -387,6 +407,11 @@ export async function DELETE(
         id: messageId,
         clanId: current.clan.id,
       },
+    });
+
+    publishClanHallEvent(slug, {
+      type: "message_deleted",
+      messageId,
     });
 
     const refreshed = await loadClanHallSnapshot(prisma, slug, viewer.uid);

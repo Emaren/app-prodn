@@ -355,19 +355,22 @@ export async function loadClanHallSnapshot(
     viewer?.isAdmin ||
       (activeMembership && MANAGER_ROLES.has(activeMembership.role))
   );
-  const isMember = Boolean(activeMembership || viewer?.isAdmin);
+  // Site administration and clan membership are separate truths.
+  // A site admin may administer/access a hall without appearing as a member.
+  const isMember = Boolean(activeMembership);
+  const hasClanAccess = Boolean(activeMembership || viewer?.isAdmin);
   const policy = normalizeClanAudience(clan.chatAudiencePolicy, "public");
   const authenticated = Boolean(viewer);
   const canReadChat =
     policy === "public" ||
     (policy === "users" && authenticated) ||
-    (policy === "clan" && isMember);
+    (policy === "clan" && hasClanAccess);
 
   const visibleAudiences: ClanAudience[] = canReadChat
     ? [
         "public",
         ...(authenticated ? (["users"] as const) : []),
-        ...(isMember ? (["clan"] as const) : []),
+        ...(hasClanAccess ? (["clan"] as const) : []),
       ]
     : [];
 
@@ -375,7 +378,7 @@ export async function loadClanHallSnapshot(
     ? CLAN_AUDIENCES.filter(
         (audience) =>
           audienceAllowedByPolicy(audience, policy) &&
-          (audience !== "clan" || isMember)
+          (audience !== "clan" || hasClanAccess)
       )
     : [];
 
@@ -464,7 +467,7 @@ export async function loadClanHallSnapshot(
   );
 
   const notice =
-    policy === "clan" && !isMember
+    policy === "clan" && !hasClanAccess
       ? `${clan.name} is currently visible to active clan members only.`
       : policy === "users" && !authenticated
         ? `${clan.name} currently shares this hall with signed-in AoE2WAR users.`

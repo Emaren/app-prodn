@@ -2,6 +2,8 @@ import { randomUUID } from "crypto";
 import { SignJWT, jwtVerify } from "jose";
 import { NextRequest, NextResponse } from "next/server";
 
+import { getPreviewIdentity } from "@/lib/previewDataSource";
+
 const FALLBACK_SESSION_SECRET = "aoe2hdbets-dev-session-secret-change-me";
 const SESSION_ISSUER = "aoe2hdbets";
 const SESSION_COOKIE = "aoe2hdbets_session";
@@ -40,6 +42,11 @@ export async function signSession(uid: string) {
 }
 
 export async function verifySession(token: string | undefined | null): Promise<SessionClaims | null> {
+  const previewIdentity = getPreviewIdentity();
+  if (previewIdentity) {
+    return { uid: previewIdentity.uid };
+  }
+
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, getSessionSecret(), {

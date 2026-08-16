@@ -799,6 +799,66 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     pathname === "/speed";
   const isAcademySurface = pathname?.startsWith("/academy");
   const isClanSurface = pathname?.startsWith("/clans");
+  const [clanDisplayTheme, setClanDisplayTheme] =
+    React.useState<
+      "site" | "premium" | "premium-light" | "premium-dark" | "crimson"
+    >("site");
+
+  React.useEffect(() => {
+    if (!isClanSurface || typeof window === "undefined") return;
+
+    const normalizeClanDisplayTheme = (value: string | null) => {
+      if (value === "premium") return "premium" as const;
+      if (value === "premium-light") return "premium-light" as const;
+      if (value === "premium-dark" || value === "blue") {
+        return "premium-dark" as const;
+      }
+      if (value === "crimson") return "crimson" as const;
+      return "site" as const;
+    };
+
+    const syncStoredTheme = () => {
+      setClanDisplayTheme(
+        normalizeClanDisplayTheme(
+          window.localStorage.getItem("aoe2war:clans:theme"),
+        ),
+      );
+    };
+
+    const handleThemeChange = (event: Event) => {
+      const theme =
+        (
+          event as CustomEvent<
+            "site" | "premium" | "premium-light" | "premium-dark" | "crimson"
+          >
+        ).detail;
+
+      if (
+        theme === "site" ||
+        theme === "premium" ||
+        theme === "premium-light" ||
+        theme === "premium-dark" ||
+        theme === "crimson"
+      ) {
+        setClanDisplayTheme(theme);
+      }
+    };
+
+    syncStoredTheme();
+    window.addEventListener("storage", syncStoredTheme);
+    window.addEventListener(
+      "aoe2war:clan-theme-change",
+      handleThemeChange,
+    );
+
+    return () => {
+      window.removeEventListener("storage", syncStoredTheme);
+      window.removeEventListener(
+        "aoe2war:clan-theme-change",
+        handleThemeChange,
+      );
+    };
+  }, [isClanSurface]);
   const isNationalChampionsSurface = pathname?.startsWith("/national-champions");
   const isBetsSurface = pathname === "/bets";
   const isBetDetailSurface = Boolean(pathname?.match(/^\/bets\/[^/]+/));
@@ -999,7 +1059,33 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const pageHeadingKey = getPageHeadingKey(pathname);
   const headerTitle = pageHeadingKey ? t(pageHeadingKey) : getPageHeading(pathname);
   const shellThemeKey =
-    isClanSurface ? "crimson" : themeKey;
+    isClanSurface
+      ? clanDisplayTheme === "crimson"
+        ? "crimson"
+        : "midnight"
+      : themeKey;
+
+  const clanPageStyle: React.CSSProperties =
+    clanDisplayTheme === "site" ||
+    clanDisplayTheme === "premium"
+      ? pageStyle
+      : clanDisplayTheme === "premium-light"
+        ? {
+            backgroundColor: "#0f172a",
+            backgroundImage:
+              "radial-gradient(72rem 38rem at 12% 0%, rgba(59,130,246,0.16), transparent 62%), radial-gradient(62rem 34rem at 90% 2%, rgba(147,197,253,0.09), transparent 64%), linear-gradient(180deg, #111827 0%, #0f172a 43%, #050814 100%)",
+          }
+        : clanDisplayTheme === "premium-dark"
+          ? {
+              backgroundColor: "#02040a",
+              backgroundImage:
+                "radial-gradient(72rem 38rem at 10% 0%, rgba(56,189,248,0.16), transparent 62%), radial-gradient(62rem 34rem at 92% 2%, rgba(30,64,175,0.16), transparent 64%), linear-gradient(180deg, #081428 0%, #030812 46%, #02040a 100%)",
+            }
+          : {
+              backgroundColor: "#060403",
+              backgroundImage:
+                "radial-gradient(74rem 38rem at 8% 0%, rgba(127,29,29,0.22), transparent 62%), radial-gradient(62rem 34rem at 92% 0%, rgba(180,83,9,0.10), transparent 64%), repeating-linear-gradient(92deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 48px), linear-gradient(180deg, #0d0806 0%, #060505 38%, #020304 100%)",
+            };
   const headerSkin =
     getLobbyHeaderSkin(shellThemeKey);
   const headerTone = React.useMemo(
@@ -1010,6 +1096,74 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       ),
     [shellThemeKey, viewMode]
   );
+
+  const clanHeaderStyle: React.CSSProperties | undefined =
+    !isClanSurface || clanDisplayTheme === "site"
+      ? undefined
+      : clanDisplayTheme === "premium"
+        ? {
+            backgroundColor: "rgba(8, 17, 34, 0.975)",
+            backgroundImage:
+              "radial-gradient(44rem 12rem at 12% -20%, rgba(96,165,250,0.16), transparent 64%), radial-gradient(38rem 11rem at 88% -20%, rgba(59,130,246,0.09), transparent 66%), linear-gradient(180deg, rgba(13,27,52,0.99), rgba(7,15,29,0.98))",
+            borderColor: "rgba(96,165,250,0.15)",
+            boxShadow: "0 18px 56px rgba(3,18,38,0.36)",
+          }
+        : clanDisplayTheme === "premium-light"
+          ? {
+              backgroundColor: "rgba(18, 35, 65, 0.975)",
+              backgroundImage:
+                "radial-gradient(44rem 12rem at 12% -20%, rgba(147,197,253,0.22), transparent 64%), radial-gradient(38rem 11rem at 88% -20%, rgba(59,130,246,0.15), transparent 66%), linear-gradient(180deg, rgba(28,49,84,0.99), rgba(13,27,51,0.98))",
+              borderColor: "rgba(147,197,253,0.19)",
+              boxShadow: "0 18px 58px rgba(15,38,75,0.34)",
+            }
+          : clanDisplayTheme === "premium-dark"
+            ? {
+                backgroundColor: "rgba(2, 8, 18, 0.985)",
+                backgroundImage:
+                  "radial-gradient(44rem 12rem at 12% -20%, rgba(56,189,248,0.16), transparent 64%), radial-gradient(38rem 11rem at 88% -20%, rgba(30,64,175,0.19), transparent 66%), linear-gradient(180deg, rgba(5,18,38,0.995), rgba(2,7,17,0.99))",
+                borderColor: "rgba(56,189,248,0.13)",
+                boxShadow: "0 18px 62px rgba(0,0,0,0.48)",
+              }
+            : {
+                backgroundColor: "rgba(12, 7, 5, 0.975)",
+                backgroundImage:
+                  "radial-gradient(44rem 12rem at 12% -20%, rgba(153,27,27,0.25), transparent 64%), radial-gradient(38rem 11rem at 88% -20%, rgba(245,158,11,0.10), transparent 66%), linear-gradient(180deg, rgba(22,12,9,0.99), rgba(8,7,7,0.98))",
+                borderColor: "rgba(248,113,113,0.14)",
+                boxShadow: "0 18px 60px rgba(0,0,0,0.46)",
+              };
+
+  const clanHeaderLeftGlow =
+    clanDisplayTheme === "crimson"
+      ? "bg-red-700/[0.14]"
+      : clanDisplayTheme === "premium-dark"
+        ? "bg-sky-500/[0.10]"
+        : clanDisplayTheme === "premium-light"
+          ? "bg-blue-300/[0.10]"
+          : clanDisplayTheme === "premium"
+            ? "bg-blue-500/[0.085]"
+            : "bg-amber-300/[0.055]";
+
+  const clanHeaderRightGlow =
+    clanDisplayTheme === "crimson"
+      ? "bg-amber-500/[0.07]"
+      : clanDisplayTheme === "premium-dark"
+        ? "bg-blue-800/[0.13]"
+        : clanDisplayTheme === "premium-light"
+          ? "bg-sky-300/[0.09]"
+          : clanDisplayTheme === "premium"
+            ? "bg-sky-300/[0.075]"
+            : "bg-sky-300/[0.065]";
+
+  const clanHeaderDivider =
+    clanDisplayTheme === "crimson"
+      ? "via-red-200/25"
+      : clanDisplayTheme === "premium-dark"
+        ? "via-sky-300/20"
+        : clanDisplayTheme === "premium-light"
+          ? "via-blue-200/24"
+          : clanDisplayTheme === "premium"
+            ? "via-sky-200/22"
+            : "via-amber-100/25";
 
   function handleContactShellWheel(event: React.WheelEvent<HTMLDivElement>) {
     if (!isContactPage || event.deltaY === 0) return;
@@ -1120,11 +1274,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       onWheel={handleContactShellWheel}
       style={
         isClanSurface
-          ? {
-              backgroundColor: "#060403",
-              backgroundImage:
-                "radial-gradient(74rem 38rem at 8% 0%, rgba(127,29,29,0.22), transparent 62%), radial-gradient(62rem 34rem at 92% 0%, rgba(180,83,9,0.10), transparent 64%), repeating-linear-gradient(92deg, rgba(255,255,255,0.012) 0 1px, transparent 1px 48px), linear-gradient(180deg, #0d0806 0%, #060505 38%, #020304 100%)",
-            }
+          ? clanPageStyle
           : isObservatorySurface
           ? pathname === "/traffic"
             ? {
@@ -1172,16 +1322,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         className={`sticky top-0 z-[180] shrink-0 overflow-visible border-b px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.7rem)] backdrop-blur-md transition-[background-color,border-color] duration-500 sm:px-4 sm:backdrop-blur-xl lg:py-3 lg:backdrop-blur-2xl ${headerSkin.shell}`}
         style={
           isClanSurface
-            ? {
-                backgroundColor:
-                  "rgba(12, 7, 5, 0.975)",
-                backgroundImage:
-                  "radial-gradient(44rem 12rem at 12% -20%, rgba(153,27,27,0.25), transparent 64%), radial-gradient(38rem 11rem at 88% -20%, rgba(245,158,11,0.10), transparent 66%), linear-gradient(180deg, rgba(22,12,9,0.99), rgba(8,7,7,0.98))",
-                borderColor:
-                  "rgba(248,113,113,0.14)",
-                boxShadow:
-                  "0 18px 60px rgba(0,0,0,0.46)",
-              }
+            ? clanHeaderStyle
             : isObservatorySurface
             ? pathname === "/traffic"
               ? {
@@ -1203,21 +1344,21 @@ function InnerShell({ children }: { children: React.ReactNode }) {
           <div
             className={`absolute -left-16 -top-20 h-44 w-72 rounded-full blur-3xl ${
               isClanSurface
-                ? "bg-red-700/[0.14]"
+                ? clanHeaderLeftGlow
                 : "bg-amber-300/[0.055]"
             }`}
           />
           <div
             className={`absolute -right-20 -top-20 h-44 w-72 rounded-full blur-3xl ${
               isClanSurface
-                ? "bg-amber-500/[0.07]"
+                ? clanHeaderRightGlow
                 : "bg-sky-300/[0.065]"
             }`}
           />
           <div
             className={`absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent ${
               isClanSurface
-                ? "via-red-200/25"
+                ? clanHeaderDivider
                 : "via-amber-100/25"
             } to-transparent`}
           />
@@ -1249,7 +1390,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
                 <UniversalTranslator tone={
                       isAcademySurface ||
-                      isClanSurface
+                      (isClanSurface &&
+                        clanDisplayTheme === "crimson")
                         ? "academy"
                         : "blue"
                     } />
@@ -1393,7 +1535,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   <UniversalTranslator
                     tone={
                       isAcademySurface ||
-                      isClanSurface
+                      (isClanSurface &&
+                        clanDisplayTheme === "crimson")
                         ? "academy"
                         : "blue"
                     }
@@ -1415,7 +1558,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   <UniversalTranslator
                     tone={
                       isAcademySurface ||
-                      isClanSurface
+                      (isClanSurface &&
+                        clanDisplayTheme === "crimson")
                         ? "academy"
                         : "blue"
                     }

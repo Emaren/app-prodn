@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **61**
+- Authoritative repository documents: **62**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 4
 - `generated`: 1
 - `historical`: 12
-- `reference`: 33
+- `reference`: 34
 - `runbook`: 10
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 47
+- `active`: 48
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 1
@@ -67,6 +67,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR Bounty Board](BOUNTY_BOARD.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Challenge System v2](CHALLENGE_SYSTEM.md) | `reference` | `active` | `product-contract` |
 | [Championship Title Economy](CHAMPIONS_TITLE_ECONOMY.md) | `reference` | `active` | `product-contract` |
+| [Clan Halls](CLAN_HALLS.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Campaign III Final Handoff](CODEX_CAMPAIGN_III_HANDOFF.md) | `historical` | `historical` | `historical-evidence` |
 | [Commissioner Replay Result Review](COMMISSIONER_REPLAY_REVIEW.md) | `runbook` | `active` | `operational-procedure` |
 | [Human-Confirmed Desync Protocol](DESYNC_INCIDENT_PROTOCOL.md) | `reference` | `active` | `domain-contract` |

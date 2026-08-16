@@ -128,3 +128,19 @@ mutate raw replay evidence and do not create betting or settlement authority.
 
 Implementation baseline for this Workshop campaign: `5f9af6425e03a8bec25ebde283749f86b4d46c19`.
 <!-- AOE2WAR:TRUTH_IN_PRODUCTION_20260808:END -->
+
+
+## Writable Clan social shadow — 2026-08-16
+
+Clan Hall development has two explicit parity lanes. `npm run dev:prod` remains
+a hard read-only live-production preview. `npm run dev:shadow:fresh` rebuilds
+the local `aoe2hdbets_shadow` database from the current canonical Prisma schema
+and imports only `users`, `clans`, `clan_members`, `clan_messages`, and
+`clan_message_reactions` from production. Direct-message tables exist locally
+and begin empty so invitation/chat work is freely writable. The 6.7 GB
+replay/parser/game corpus is deliberately excluded.
+
+The shadow launcher refuses a non-loopback base database, strips production
+mutation credentials, and keeps heavy game/parser read surfaces on the public
+production upstream. It is development infrastructure only and is never a
+production migration mechanism.

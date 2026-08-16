@@ -156,8 +156,8 @@ export default function ClanCrestManager() {
             Choose your clan crest
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-400">
-            AoE2WAR assigns crest options to your house. Clan owners
-            and admins can change the banner displayed across the
+            AoE2WAR assigns crest options to your house. The King
+            and clan admins can change the banner displayed across the
             directory and hall whenever they choose.
           </p>
         </div>

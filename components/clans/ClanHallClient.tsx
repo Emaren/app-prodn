@@ -12,6 +12,8 @@ import {
   LockKeyhole,
   MessageSquareText,
   Pencil,
+  Radio,
+  RotateCcw,
   Send,
   Settings2,
   Shield,
@@ -36,6 +38,9 @@ import {
 import { useUserAuth } from "@/context/UserAuthContext";
 import ClanDisplayRail from "@/components/clans/ClanDisplayRail";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
+import { ClanInviteDoor, ClanInvitePrompt } from "@/components/clans/ClanInviteDoor";
+import { clanHallFeatureEnabled } from "@/lib/clanHallFeatures";
+import { formatClanRole } from "@/lib/clanRoles";
 import {
   CLAN_AUDIENCES,
   CLAN_AUDIENCE_DETAILS,
@@ -46,7 +51,15 @@ import {
   type ClanViewMode,
 } from "@/lib/clans";
 
-const POLL_INTERVAL_MS = 10_000;
+const BASELINE_POLL_INTERVAL_MS = 10_000;
+const REALTIME_SAFETY_POLL_INTERVAL_MS = 60_000;
+
+type PendingClanMessage = {
+  id: string;
+  body: string;
+  audience: ClanAudience;
+  status: "sending" | "failed";
+};
 
 function initials(value: string) {
   const parts = value
@@ -109,10 +122,22 @@ export default function ClanHallClient({
   const [reactionDockId, setReactionDockId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [pendingMessages, setPendingMessages] = useState<
+    PendingClanMessage[]
+  >([]);
+  const [liveConnected, setLiveConnected] = useState(false);
   const chatViewportRef = useRef<HTMLDivElement | null>(null);
   const requestInFlightRef = useRef(false);
 
   const endpoint = `/api/clans/${encodeURIComponent(snapshot.clan.slug)}`;
+  const realtimeEnabled = clanHallFeatureEnabled(
+    snapshot.clan.slug,
+    "realtime",
+  );
+  const optimisticMessagesEnabled = clanHallFeatureEnabled(
+    snapshot.clan.slug,
+    "optimisticMessages",
+  );
 
   const settleChatToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
     window.requestAnimationFrame(() => {
@@ -145,11 +170,38 @@ export default function ClanHallClient({
 
   useEffect(() => {
     void refresh();
-    const interval = window.setInterval(() => {
+
+    if (!realtimeEnabled) {
+      setLiveConnected(false);
+      const interval = window.setInterval(() => {
+        void refresh();
+      }, BASELINE_POLL_INTERVAL_MS);
+      return () => window.clearInterval(interval);
+    }
+
+    const eventSource = new EventSource(`${endpoint}/events`);
+    const safetyInterval = window.setInterval(() => {
       void refresh();
-    }, POLL_INTERVAL_MS);
-    return () => window.clearInterval(interval);
-  }, [refresh, uid]);
+    }, REALTIME_SAFETY_POLL_INTERVAL_MS);
+
+    const markReady = () => setLiveConnected(true);
+    const refreshFromHall = () => {
+      setLiveConnected(true);
+      void refresh();
+    };
+
+    eventSource.addEventListener("ready", markReady);
+    eventSource.addEventListener("hall", refreshFromHall);
+    eventSource.onerror = () => setLiveConnected(false);
+
+    return () => {
+      window.clearInterval(safetyInterval);
+      eventSource.removeEventListener("ready", markReady);
+      eventSource.removeEventListener("hall", refreshFromHall);
+      eventSource.close();
+      setLiveConnected(false);
+    };
+  }, [endpoint, realtimeEnabled, refresh, uid]);
 
   useEffect(() => {
     if (!snapshot.allowedAudiences.includes(audience)) {
@@ -161,47 +213,113 @@ export default function ClanHallClient({
     settleChatToBottom();
   }, [settleChatToBottom, snapshot.messages.length]);
 
-  async function postMessage(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (posting || !message.trim()) return;
-
+  async function sendMessageDraft(
+    draft: string,
+    draftAudience: ClanAudience,
+    pendingId: string,
+  ) {
     setPosting(true);
     setError(null);
     setNotice(null);
+
+    setPendingMessages((current) =>
+      current.map((entry) =>
+        entry.id === pendingId
+          ? { ...entry, status: "sending" }
+          : entry,
+      ),
+    );
+
     try {
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message,
-          audience,
+          message: draft,
+          audience: draftAudience,
         }),
       });
       const payload = (await response.json().catch(() => null)) as
         | ClanHallSnapshot
         | { detail?: string }
         | null;
+
       if (!response.ok || !payload || !("clan" in payload)) {
         throw new Error(
           payload && "detail" in payload && payload.detail
             ? payload.detail
-            : "Message could not be posted."
+            : "Message could not be posted.",
         );
       }
 
       setSnapshot(payload);
-      setMessage("");
-      setNotice(`Posted for ${CLAN_AUDIENCE_DETAILS[audience].label}.`);
+      setPendingMessages((current) =>
+        current.filter((entry) => entry.id !== pendingId),
+      );
+      if (!optimisticMessagesEnabled) {
+        setMessage("");
+      }
+      setNotice(
+        `Posted for ${CLAN_AUDIENCE_DETAILS[draftAudience].label}.`,
+      );
       settleChatToBottom("smooth");
     } catch (postError) {
+      setPendingMessages((current) =>
+        current.map((entry) =>
+          entry.id === pendingId
+            ? { ...entry, status: "failed" }
+            : entry,
+        ),
+      );
       setError(
         postError instanceof Error
           ? postError.message
-          : "Message could not be posted."
+          : "Message could not be posted.",
       );
     } finally {
       setPosting(false);
     }
+  }
+
+  async function postMessage(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const draft = message.trim();
+    if (posting || !draft) return;
+
+    const pendingId =
+      `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    if (optimisticMessagesEnabled) {
+      setPendingMessages((current) => [
+        ...current,
+        {
+          id: pendingId,
+          body: draft,
+          audience,
+          status: "sending",
+        },
+      ]);
+      setMessage("");
+      settleChatToBottom("smooth");
+    }
+
+    await sendMessageDraft(draft, audience, pendingId);
+  }
+
+  function retryPendingMessage(pending: PendingClanMessage) {
+    if (posting) return;
+    void sendMessageDraft(
+      pending.body,
+      pending.audience,
+      pending.id,
+    );
+  }
+
+  function dismissPendingMessage(pendingId: string) {
+    setPendingMessages((current) =>
+      current.filter((entry) => entry.id !== pendingId),
+    );
   }
 
   async function updatePolicy(nextPolicy: ClanAudience) {
@@ -368,6 +486,8 @@ export default function ClanHallClient({
   const policyDetail =
     CLAN_AUDIENCE_DETAILS[snapshot.clan.chatAudiencePolicy];
   const visibleMessageCount = snapshot.messages.length;
+  const hasConversation =
+    snapshot.messages.length > 0 || pendingMessages.length > 0;
 
   const clansHref =
     initialView === "advanced" ? "/clans" : `/clans?view=${initialView}`;
@@ -457,11 +577,7 @@ export default function ClanHallClient({
               {snapshot.viewer.isMember ? (
                 <StatPill
                   icon={<UserRoundCheck className="h-4 w-4" />}
-                  label={
-                    snapshot.viewer.role === "site_admin"
-                      ? "AoE2WAR operator"
-                      : `Clan ${snapshot.viewer.role || "member"}`
-                  }
+                  label={formatClanRole(snapshot.viewer.role)}
                   accent
                 />
               ) : null}
@@ -481,14 +597,42 @@ export default function ClanHallClient({
         </div>
       ) : null}
 
+      <ClanInvitePrompt
+        slug={snapshot.clan.slug}
+        clanName={snapshot.clan.name}
+      />
+
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_21rem]">
         <article className="min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,rgba(8,13,26,0.96),rgba(3,6,13,0.96))] shadow-[0_28px_90px_rgba(0,0,0,0.28)]">
           <header className="border-b border-white/9 px-4 py-4 sm:px-6 sm:py-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="clan-theme-label flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.32em]">
-                  <MessageSquareText className="h-4 w-4" />
-                  Clan chat
+                <div className="flex items-center gap-3">
+                  <div className="clan-theme-label flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.32em]">
+                    <MessageSquareText className="h-4 w-4" />
+                    Clan chat
+                  </div>
+                  {realtimeEnabled ? (
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] ${
+                        liveConnected
+                          ? "border-emerald-200/16 bg-emerald-300/[0.07] text-emerald-200"
+                          : "border-slate-200/10 bg-white/[0.035] text-slate-500"
+                      }}`}
+                      title={
+                        liveConnected
+                          ? "Live Hall link connected"
+                          : "Live Hall link reconnecting"
+                      }
+                    >
+                      <Radio
+                        className={`h-3 w-3 ${
+                          liveConnected ? "animate-pulse" : ""
+                        }}`}
+                      />
+                      {liveConnected ? "Live" : "Linking"}
+                    </span>
+                  ) : null}
                 </div>
                 <h2 className="mt-2 text-2xl font-black tracking-[-0.025em] text-white">
                   The {snapshot.clan.name} hall
@@ -520,7 +664,7 @@ export default function ClanHallClient({
                   loginWithSteam(`/clans/${snapshot.clan.slug}`)
                 }
               />
-            ) : snapshot.messages.length === 0 ? (
+            ) : !hasConversation ? (
               <div className="grid min-h-full place-items-center px-4 py-10 text-center">
                 <div className="max-w-md">
                   <div className="clan-theme-icon-tile mx-auto grid h-16 w-16 place-items-center rounded-[1.5rem] border">
@@ -574,6 +718,15 @@ export default function ClanHallClient({
                     onReaction={(emoji) => {
                       void toggleReaction(chatMessage.id, emoji);
                     }}
+                  />
+                ))}
+                {pendingMessages.map((pending) => (
+                  <PendingClanMessageBubble
+                    key={pending.id}
+                    pending={pending}
+                    displayName={snapshot.viewer.displayName || "You"}
+                    onRetry={() => retryPendingMessage(pending)}
+                    onDismiss={() => dismissPendingMessage(pending.id)}
                   />
                 ))}
               </div>
@@ -666,6 +819,15 @@ export default function ClanHallClient({
         </article>
 
         <aside className="space-y-5">
+          <ClanInviteDoor
+            slug={snapshot.clan.slug}
+            clanName={snapshot.clan.name}
+            enabled={
+              snapshot.viewer.canManage &&
+              clanHallFeatureEnabled(snapshot.clan.slug, "inviteDoor")
+            }
+          />
+
           {snapshot.viewer.canManage ? (
             <ClanPolicyPanel
               policy={snapshot.clan.chatAudiencePolicy}
@@ -733,7 +895,7 @@ export default function ClanHallClient({
                         {member.displayName}
                       </div>
                       <div className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                        {member.role}
+                        {formatClanRole(member.role)}
                       </div>
                     </div>
                     {["owner", "admin"].includes(member.role) ? (
@@ -790,6 +952,82 @@ function StatPill({
   );
 }
 
+function PendingClanMessageBubble({
+  pending,
+  displayName,
+  onRetry,
+  onDismiss,
+}: {
+  pending: PendingClanMessage;
+  displayName: string;
+  onRetry: () => void;
+  onDismiss: () => void;
+}) {
+  const Icon = audienceIcon(pending.audience);
+  const failed = pending.status === "failed";
+
+  return (
+    <div
+      className={`relative flex gap-3 rounded-[1.35rem] border p-3 sm:p-4 ${
+        failed
+          ? "border-red-300/22 bg-red-400/[0.075]"
+          : "border-emerald-200/14 bg-emerald-300/[0.045]"
+      }`}
+    >
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[1rem] border border-white/10 bg-black/24 text-xs font-black text-white">
+        {initials(displayName)}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-white">
+            {displayName}
+          </span>
+          <span
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold ${audienceTone(
+              pending.audience,
+            )}`}
+          >
+            <Icon className="h-3 w-3" />
+            {CLAN_AUDIENCE_DETAILS[pending.audience].shortLabel}
+          </span>
+          <span
+            className={`text-[9px] font-bold uppercase tracking-[0.16em] ${
+              failed ? "text-red-200" : "text-emerald-200/70"
+            }`}
+          >
+            {failed ? "Not sent" : "Sending"}
+          </span>
+          {failed ? (
+            <span className="ml-auto inline-flex items-center gap-1">
+              <button
+                type="button"
+                onClick={onRetry}
+                className="grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-black/20 text-slate-300 transition hover:border-emerald-200/25 hover:text-emerald-100"
+                aria-label="Retry clan message"
+                title="Retry"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={onDismiss}
+                className="grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-black/20 text-slate-400 transition hover:border-red-200/25 hover:text-red-200"
+                aria-label="Dismiss failed clan message"
+                title="Dismiss"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">
+          {pending.body}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function ClanMessageBubble({
   message,
   mounted,
@@ -843,7 +1081,7 @@ function ClanMessageBubble({
           </span>
           {message.author.isClanMember ? (
             <span className="rounded-full border border-amber-200/14 bg-amber-300/[0.07] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] text-amber-100">
-              {message.author.role || "member"}
+              {formatClanRole(message.author.role)}
             </span>
           ) : (
             <span className="rounded-full border border-sky-200/12 bg-sky-300/[0.06] px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-sky-100">
