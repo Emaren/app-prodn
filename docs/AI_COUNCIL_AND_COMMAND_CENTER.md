@@ -17,7 +17,7 @@ sensitivity: "internal"
 
 ## Ownership
 
-AoE2HDBets owns the house voices, AoE2 grounding, public Council UX, lobby cast behavior, operator configuration, and request telemetry. The local Llama chat gateway remains the model-execution boundary. Provider credentials stay in service configuration and never enter the database or admin payloads.
+AoE2HDBets owns the house voices, AoE2 grounding, public Council UX, lobby cast behavior, operator configuration, request telemetry, and the OpenAI execution boundary for OpenAI-backed voices. OpenAI-backed agents call the Responses API directly from the server using the canonical service credential. The historical Llama chat gateway is retained only as an optional adapter for local/Ollama-backed models. Provider credentials stay in service configuration and never enter the database or admin payloads.
 
 ## Surfaces
 
@@ -27,7 +27,15 @@ AoE2HDBets owns the house voices, AoE2 grounding, public Council UX, lobby cast 
 
 ## Prompt composition
 
-`lib/aiConcierge.ts` builds prompts in layers:
+OpenAI-backed house voices use two explicit instruction layers plus bounded dynamic input:
+
+1. the versioned OpenAI saved prompt referenced by `prompt.id` and `prompt.version`;
+2. the AoE2WAR site-side system prompt sent as Responses `instructions`;
+3. bounded dynamic context and the current member message sent as Responses `input`.
+
+The direct OpenAI request sets `store: false`, so AoE2WAR does not ask the Responses API to retain application state for house-voice calls. Normal OpenAI API abuse-monitoring/data-control policy remains a separate provider concern.
+
+`lib/aiConcierge.ts` builds the AoE2WAR prompt in layers:
 
 1. immutable product and safety truth;
 2. built-in runtime persona behavior (`scribe`, `grimer`, or `guy`);
@@ -41,7 +49,7 @@ Unknown facts must remain unknown. Bounty state, payout state, replay outcomes, 
 
 Every attempted model call writes an `AiRequestTrace` with the source, requested model label, success/failure/timeout state, context/model/total timing, character counts, and a bounded error code. Prompt and response text are deliberately excluded.
 
-The current local gateway returns one completed JSON response, not token SSE. `firstTokenMs` therefore records the completed model-response duration as an honest first-visible-text proxy; it must not be described as streamed token latency. `totalMs` remains the end-to-end request measure including context assembly.
+House voices currently return one completed provider response, not token SSE. `firstTokenMs` therefore records the completed model-response duration as an honest first-visible-text proxy; it must not be described as streamed token latency. `totalMs` remains the end-to-end request measure including context assembly. OpenAI HTTP/provider failures are recorded with bounded `openai_*` error codes; optional local-model gateway failures retain `gateway_*` codes.
 
 Context sources are assembled in parallel. Recent-match grounding is cached for 15 seconds, while wallet/economy, staking, and people-directory context are loaded only when the question asks for those domains. This keeps general AoE2 questions out of unrelated database paths without weakening grounding for finance or identity questions.
 
@@ -69,3 +77,45 @@ The lobby and Council expose honest user-facing timing: a visible thinking count
 ## Verification
 
 Run `npx prisma generate`, `npx tsc --noEmit --pretty false`, `npm run test:kingdom-expansion`, and `npm run build`. After deployment, verify `/ai`, admin authorization, a real Council call, trace creation, and unchanged public-lobby behavior.
+
+
+## Hall Scribe agent family
+
+`aoe2war-hall-scribe` is a distinct agent and system identity that reuses the
+`scribe` runtime family without reusing The AI Scribe's user identity. The
+Command Center exposes a dedicated Stage Hall Scribe action and a `clan_hall`
+effective-prompt preview.
+
+`Agent4.1HallScribe` uses dedicated provider prompt environment configuration
+when present and the proven Scribe v9 prompt as an explicit fallback. OpenAI
+Hall execution uses the direct AoE2WAR Responses rail; Llama is not required.
+
+
+## Kingdom Knowledge Router
+
+All house voices consume the application-owned Kingdom Knowledge Router for
+current public AoE2WAR facts. The router selects only relevant repositories per
+question and loads them concurrently.
+
+Hall Scribe receives the same public Kingdom repositories plus its own
+audience-filtered Hall roster/history.
+
+Viewer-private financial/session/direct-message context remains a separate
+surface-gated rail and is never implied by public KKR access.
+
+## 2026-08-17 release boundary - direct OpenAI and Hall Scribe
+
+OpenAI-backed house voices use the Responses API directly. The local Llama
+adapter remains optional and is not a dependency of the Hall Scribe path.
+
+AoE2WAR Hall Scribe is the dedicated `aoe2war-hall-scribe` agent using
+`Agent4.1HallScribe`, which resolves the pinned GPT-4.1 Hall provider prompt.
+Clan Hall requests use Kingdom Knowledge Router evidence as their current
+public-site truth plane. The Hall lane intentionally does not launch the
+generic lobby leaderboard and generic recent-match snapshots beside KKR.
+
+The production-data development launcher can optionally import the production
+OpenAI credential over SSH into the local Next child process only. The value is
+memory-only, is never printed or written to disk, and does not weaken the
+production PostgreSQL read-only fence. `INTERNAL_API_KEY` and `ADMIN_TOKEN`
+remain excluded.

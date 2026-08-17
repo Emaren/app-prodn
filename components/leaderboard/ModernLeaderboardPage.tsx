@@ -739,6 +739,7 @@ export function ModernLeaderboardPage({
       firstEffect.current = false;
       const storedLane = readStoredLeaderboardLane();
       if (storedLane !== lane) {
+        writeStoredLeaderboardLane(storedLane);
         setLane(storedLane);
       } else if (!initialLeaderboard) {
         void loadPage({ reset: true });

@@ -22,7 +22,7 @@ test("shadow launcher refuses non-local base databases", () => {
   );
 });
 
-test("shadow refresh clones only the Clan social slice", () => {
+test("shadow refresh clones only the production-shaped social and AI control-plane slice", () => {
   const launcher = read("scripts/dev-shadow.py");
 
   for (const table of [
@@ -31,12 +31,23 @@ test("shadow refresh clones only the Clan social slice", () => {
     "clan_members",
     "clan_messages",
     "clan_message_reactions",
+    "ai_agents",
+    "ai_request_traces",
+    "betting_bot_configs",
+    "bet_counter_actions",
   ]) {
     assert.match(launcher, new RegExp(`"${table}"`));
   }
 
+  assert.match(
+    launcher,
+    /SHADOW_TABLES = SOCIAL_TABLES \+ CONTROL_PLANE_TABLES/,
+  );
   assert.match(launcher, /--data-only/);
-  assert.match(launcher, /only selected social-table data crossed SSH/);
+  assert.match(
+    launcher,
+    /only selected social\/control-plane table data crossed SSH/,
+  );
   assert.match(
     launcher,
     /replay\/parser\/game corpus was deliberately not cloned/,

@@ -416,3 +416,71 @@ where parse_source = 'file_upload'
 - The homepage may request a larger Leaderboard seed, but the helper previously capped returned rows at 600.
 - The helper cap is raised so the homepage can seed the full current board.
 - This is not a product cap; it is only the current safe homepage seed range while dedicated pagination remains available.
+
+
+## Live truth freshness boundary
+
+The server-rendered `/live-games` page may use the ordinary short-lived snapshot
+path for fast initial paint.
+
+The continuously polled `/api/live-games` endpoint explicitly requests fresh
+live truth. A newly observed watcher session must not wait for a stale
+application snapshot to age out while `/bets` already knows the newer battle.
+
+The KKR `live_games` repository uses the same explicit fresh public snapshot
+path for production queries so AI answers about games live now converge with
+the live board and betting rail.
+
+Client-side reconciliation remains a continuity/grace mechanism. It does not
+replace canonical watcher-backed live truth.
+
+
+## Leaderboard identity and speed convergence
+
+Claimed leaderboard identities keep the claimed canonical display name.
+Incoming replay aliases update alias history and `latestObservedName` without
+renaming the claimed row.
+
+Claimed and by-name player profiles resolve through the same public player
+directory and use its full alias set. Pagination uses that same consolidated
+identity, preventing a profile from showing only the slice recorded under its
+latest literal replay name.
+
+Leaderboard lane preference is persisted to a server-readable cookie as well
+as local storage, allowing `/leaderboard` to SSR the preferred RM/DM lane
+instead of rendering one lane and discarding it after hydration.
+
+The public player directory and leaderboard share one short-lived raw final
+GameStats corpus. Leaderboard lane/search/sort variants additionally share one
+processed corpus. Accepted replay identity changes invalidate the raw corpus,
+player directory, and processed leaderboard caches immediately.
+
+
+## Historical composite alias search
+
+Replay-observed names remain evidence and are not rewritten merely because they
+contain commas.
+
+Search has a narrower contract than identity history:
+
+- canonical/current names, in-game names, Steam persona names, and standalone
+  aliases remain normal substring-search keys;
+- a historical comma-containing alias that is not itself a current/direct name
+  remains in name history but does not make another identity match one of that
+  composite label's components;
+- the full historical composite alias remains discoverable by exact search.
+
+This prevents historical composite observations from leaking one player's name
+into another Steam account's ordinary search results while preserving replay
+evidence.
+
+## 2026-08-17 identity evidence boundary
+
+Watcher uploader identity is provenance, not participant identity. A batch or
+history upload cannot prove that the uploader controlled any replay participant
+account, and display-name similarity is never control evidence.
+
+The future high-confidence control rail is deliberately live: paired AoE2WAR
+account + watcher device/session + locally active SteamID64 + a live-growing
+replay + that same SteamID64 appearing as a participant in the replay. Until
+that evidence exists, multi-account human ownership is not inferred.

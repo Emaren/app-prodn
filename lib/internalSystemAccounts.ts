@@ -4,6 +4,8 @@ export const AI_GRIMER_UID =
   "aoe2hd_ai_grimer";
 export const AI_GUY_UID =
   "aoe2hd_ai_guy";
+export const AOE2WAR_HALL_SCRIBE_UID =
+  "aoe2hd_ai_clan_aoe2war_hall_scribe";
 export const BETTING_BOT_TONY_UID =
   "aoe2hd_betting_bot_tony";
 export const BETTING_BOT_PAULIE_UID =
@@ -18,6 +20,7 @@ const LEADERBOARD_EXCLUDED_SYSTEM_UIDS =
     AI_CONCIERGE_UID,
     AI_GRIMER_UID,
     AI_GUY_UID,
+    AOE2WAR_HALL_SCRIBE_UID,
     BETTING_BOT_TONY_UID,
     BETTING_BOT_PAULIE_UID,
     CHALLENGE_PROTOCOL_UID,

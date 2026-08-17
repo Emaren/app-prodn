@@ -20,7 +20,6 @@ import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
 import {
   applyReplayAdjudicationToGameStats,
-  EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
 } from "@/lib/replayAdjudications";
 import {
   buildLeaderboardNameHistory,
@@ -33,6 +32,10 @@ import {
   type LeaderboardNameHistoryEntry,
   type LeaderboardReplayResult,
 } from "@/lib/leaderboardIdentity";
+
+import {
+  loadPublicLeaderboardRawGames,
+} from "@/lib/publicLeaderboardGameCorpus";
 
 export type PublicPlayerReplayEvidence = {
   gameStatsId: number;
@@ -141,6 +144,11 @@ function pushAlias(entry: PublicPlayerDirectoryEntry, nextAlias: string | null |
   if (!entry.aliases.some((currentAlias) => normalizeDirectoryKey(currentAlias) === aliasKey)) {
     entry.aliases.push(alias);
   }
+}
+
+function isSafePublicReplayObservedName(value: string | null | undefined) {
+  const name = normalizePublicPlayerName(value);
+  return Boolean(name) && !name.includes(",");
 }
 
 function toIso(
@@ -419,36 +427,7 @@ export async function loadPublicPlayerDirectoryFresh(
       ],
     }),
 
-    prisma.gameStats.findMany({
-      where: {
-        is_final: true,
-        NOT: {
-          parse_reason: "superseded_by_later_upload",
-        },
-      },
-      orderBy: [
-        { timestamp: "desc" },
-        { createdAt: "desc" },
-        { id: "desc" },
-      ],
-      select: {
-        createdAt: true,
-        event_types: true,
-        id: true,
-        is_final: true,
-        key_events: true,
-        original_filename: true,
-        played_on: true,
-        players: true,
-        replay_file: true,
-        replayHash: true,
-        timestamp: true,
-        winner: true,
-        parse_reason: true,
-        parse_source: true,
-        replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
-      },
-    }),
+    loadPublicLeaderboardRawGames(prisma),
 
     prisma.managedMediaAsset.findMany({
       where: {
@@ -703,17 +682,21 @@ export async function loadPublicPlayerDirectoryFresh(
     let entry = directory.get(entryKey);
 
     if (!entry) {
+      const publicReplayName = isSafePublicReplayObservedName(replayName)
+        ? replayName
+        : "";
+
       entry = {
         key: entryKey,
         identityKind: steamId
           ? "steam"
           : "name",
-        name: replayName,
+        name: publicReplayName,
         latestObservedName:
-          replayName,
-        href: buildReplayPlayerHref(
-          replayName,
-        ),
+          publicReplayName,
+        href: publicReplayName
+          ? buildReplayPlayerHref(publicReplayName)
+          : "",
         claimed: false,
         uid: null,
         steamId,
@@ -780,7 +763,9 @@ export async function loadPublicPlayerDirectoryFresh(
         )
       : null;
 
-    pushAlias(entry, replayName);
+    if (isSafePublicReplayObservedName(replayName)) {
+      pushAlias(entry, replayName);
+    }
     entry.totalMatches += 1;
 
     if (result === "win") {
@@ -827,19 +812,22 @@ export async function loadPublicPlayerDirectoryFresh(
       );
 
     if (
-      !currentObservation ||
+      isSafePublicReplayObservedName(replayName) &&
+      (
+        !currentObservation ||
       observationTime >
         currentObservation.observedAt ||
       (observationTime ===
         currentObservation.observedAt &&
         snapshot.id >
           currentObservation.snapshotId)
+      )
     ) {
-      entry.name = replayName;
       entry.latestObservedName =
         replayName;
 
       if (!entry.claimed) {
+        entry.name = replayName;
         entry.href =
           buildReplayPlayerHref(
             replayName,
@@ -872,7 +860,9 @@ export async function loadPublicPlayerDirectoryFresh(
     );
     entry.nameHistory =
       buildLeaderboardNameHistory(
-        entry.replayEvidence.map(
+        entry.replayEvidence
+          .filter((evidence) => isSafePublicReplayObservedName(evidence.observedName))
+          .map(
           (evidence) => ({
             name:
               evidence.observedName,
@@ -965,7 +955,7 @@ export async function loadPublicPlayerDirectoryFresh(
       })
     .filter((entry) => {
     if (!entry.claimed) {
-      return true;
+      return Boolean(entry.name && entry.aliases.length > 0);
     }
 
     const hasNamedIdentity = Boolean(

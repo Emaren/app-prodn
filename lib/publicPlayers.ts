@@ -4,6 +4,7 @@ export type ClaimedPublicPlayer = {
   uid: string;
   inGameName: string | null;
   steamPersonaName: string | null;
+  steamId?: string | null;
   verified: boolean;
   verificationLevel: number;
 };
@@ -14,6 +15,7 @@ export type PublicPlayerRef = {
   href: string;
   claimed: boolean;
   uid: string | null;
+  steamId?: string | null;
   verified: boolean;
   verificationLevel: number;
   aliases: string[];
@@ -34,6 +36,11 @@ function normalizeKey(value: string | null | undefined) {
 
 export function normalizePublicPlayerName(value: string | null | undefined) {
   return (value || "").trim().replace(/\s+/g, " ").slice(0, 64);
+}
+
+export function normalizePublicPlayerSteamId(value: unknown) {
+  const normalized = String(value ?? "").trim();
+  return /^\d{17}$/.test(normalized) ? normalized : null;
 }
 
 export function buildReplayPlayerHref(name: string) {
@@ -101,6 +108,7 @@ export function buildClaimedPublicPlayerRef(
     href: buildClaimedPlayerHref(claimed.uid),
     claimed: true,
     uid: claimed.uid,
+    steamId: normalizePublicPlayerSteamId(claimed.steamId),
     verified: claimed.verified,
     verificationLevel: claimed.verificationLevel,
     aliases,
@@ -120,6 +128,7 @@ export function buildReplayPublicPlayerRef(name: string): PublicPlayerRef {
     href: buildReplayPlayerHref(normalizedName),
     claimed: false,
     uid: null,
+    steamId: null,
     verified: false,
     verificationLevel: 0,
     aliases: [normalizedName],
@@ -160,6 +169,34 @@ export function applyPendingWoloClaimSummary<
   };
 }
 
+export async function findUniqueClaimedUserForReplayName(
+  prisma: PrismaClient,
+  name: string,
+) {
+  const normalizedName = normalizePublicPlayerName(name);
+  if (!normalizedName) return null;
+
+  const users = await prisma.user.findMany({
+    where: {
+      OR: [
+        { inGameName: { equals: normalizedName, mode: "insensitive" } },
+        { steamPersonaName: { equals: normalizedName, mode: "insensitive" } },
+      ],
+    },
+    select: {
+      uid: true,
+      inGameName: true,
+      steamPersonaName: true,
+      steamId: true,
+      verified: true,
+      verificationLevel: true,
+    },
+    take: 3,
+  });
+
+  return users.length === 1 ? users[0] : null;
+}
+
 export async function findClaimedUsersForReplayNames(prisma: PrismaClient, names: string[]) {
   const uniqueNames = Array.from(
     new Set(names.map((name) => normalizePublicPlayerName(name)).filter(Boolean))
@@ -180,6 +217,7 @@ export async function findClaimedUsersForReplayNames(prisma: PrismaClient, names
       uid: true,
       inGameName: true,
       steamPersonaName: true,
+      steamId: true,
       verified: true,
       verificationLevel: true,
     },
@@ -189,11 +227,14 @@ export async function findClaimedUsersForReplayNames(prisma: PrismaClient, names
 
   for (const name of uniqueNames) {
     const key = normalizeKey(name);
-    const exactInGame = users.find((user) => normalizeKey(user.inGameName) === key);
-    const exactSteam = users.find((user) => normalizeKey(user.steamPersonaName) === key);
-    const claimed = exactInGame || exactSteam;
-    if (claimed) {
-      map.set(key, claimed);
+    const matches = users.filter(
+      (user) =>
+        normalizeKey(user.inGameName) === key ||
+        normalizeKey(user.steamPersonaName) === key,
+    );
+
+    if (matches.length === 1) {
+      map.set(key, matches[0]);
     }
   }
 
@@ -237,6 +278,7 @@ export async function resolvePublicPlayerToken(prisma: PrismaClient, token: stri
         uid: true,
         inGameName: true,
         steamPersonaName: true,
+        steamId: true,
         verified: true,
         verificationLevel: true,
       },
@@ -245,25 +287,57 @@ export async function resolvePublicPlayerToken(prisma: PrismaClient, token: stri
     return user ? buildClaimedPublicPlayerRef(user) : null;
   }
 
-  const claimedUser = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { inGameName: { equals: parsed.name, mode: "insensitive" } },
-        { steamPersonaName: { equals: parsed.name, mode: "insensitive" } },
-      ],
-    },
-    select: {
-      uid: true,
-      inGameName: true,
-      steamPersonaName: true,
-      verified: true,
-      verificationLevel: true,
-    },
-  });
+  const claimedUser = await findUniqueClaimedUserForReplayName(prisma, parsed.name);
 
   return claimedUser
     ? buildClaimedPublicPlayerRef(claimedUser, parsed.name)
     : buildReplayPublicPlayerRef(parsed.name);
+}
+
+function replayParticipantRecord(participant: unknown) {
+  return participant && typeof participant === "object" && !Array.isArray(participant)
+    ? (participant as Record<string, unknown>)
+    : null;
+}
+
+function replayParticipantSteamId(participant: unknown) {
+  const record = replayParticipantRecord(participant);
+  if (!record) return null;
+
+  for (const key of ["steam_id", "steamId", "user_id", "userId"] as const) {
+    const steamId = normalizePublicPlayerSteamId(record[key]);
+    if (steamId) return steamId;
+  }
+
+  return null;
+}
+
+function replayParticipantName(participant: unknown) {
+  const record = replayParticipantRecord(participant);
+  if (!record) return "";
+
+  for (const key of ["name", "displayName", "player", "player_name"] as const) {
+    const value = record[key];
+    if (typeof value !== "string") continue;
+    const name = normalizePublicPlayerName(value);
+    if (name) return name;
+  }
+
+  return "";
+}
+
+export function publicPlayerMatchesReplayParticipant(
+  player: PublicPlayerRef,
+  participant: unknown,
+) {
+  const targetSteamId = normalizePublicPlayerSteamId(player.steamId);
+
+  if (targetSteamId) {
+    return replayParticipantSteamId(participant) === targetSteamId;
+  }
+
+  const name = replayParticipantName(participant);
+  return Boolean(name) && publicPlayerMatchesName(player, name);
 }
 
 export function publicPlayerMatchesName(player: PublicPlayerRef, name: string) {

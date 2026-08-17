@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     queueBetMarketEnsure(prisma, 0);
 
     const publicSnapshot =
-      await loadPublicLiveGamesSnapshot(prisma);
+      await loadPublicLiveGamesSnapshot(prisma, { fresh: true });
     const snapshot = withLiveProofCounts(publicSnapshot as Record<string, unknown>);
     const headers = {
       "Cache-Control": "no-store, max-age=0",

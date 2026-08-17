@@ -24,6 +24,21 @@ SOCIAL_TABLES = (
     "clan_message_reactions",
 )
 
+CONTROL_PLANE_TABLES = (
+    "ai_agents",
+    "ai_request_traces",
+    "betting_bot_configs",
+    "bet_counter_actions",
+)
+
+SHADOW_TABLES = SOCIAL_TABLES + CONTROL_PLANE_TABLES
+
+SAFE_PRODUCTION_ENV_KEYS = (
+    "AOE2WAR_HALL_SCRIBE_PROMPT_ID",
+    "AOE2WAR_HALL_SCRIBE_PROMPT_VERSION",
+    "AOE2WAR_SCREENSHOT_VISION_MODEL",
+)
+
 
 def stop(message: str) -> None:
     raise SystemExit(f"STOP: {message}")
@@ -179,7 +194,7 @@ def run_local_migrations(shadow_url: str) -> None:
 def remote_social_dump_script() -> str:
     table_args = " ".join(
         f"--table=public.{table}"
-        for table in SOCIAL_TABLES
+        for table in SHADOW_TABLES
     )
 
     return rf'''
@@ -219,8 +234,8 @@ exec pg_dump \
 
 def stream_social_data(shadow_url: str) -> None:
     print(
-        "> Importing production social slice: "
-        + ", ".join(SOCIAL_TABLES),
+        "> Importing production-shaped shadow slice: "
+        + ", ".join(SHADOW_TABLES),
         flush=True,
     )
 
@@ -297,20 +312,20 @@ def stream_social_data(shadow_url: str) -> None:
     if restore.returncode != 0:
         if stderr.strip():
             print(stderr.strip(), file=sys.stderr)
-        stop("local social-slice SQL restore failed")
+        stop("local production-shaped shadow SQL restore failed")
 
     if compat_status != 0:
-        stop("PG17 social-slice compatibility filter failed")
+        stop("PG17 shadow-slice compatibility filter failed")
 
     if ssh_status != 0:
         if stderr.strip():
             print(stderr.strip(), file=sys.stderr)
-        stop("remote production social pg_dump failed")
+        stop("remote production shadow pg_dump failed")
 
     elapsed = time.monotonic() - started
-    print(f"PASS: production social slice imported in {elapsed:.1f}s")
+    print(f"PASS: production-shaped shadow slice imported in {elapsed:.1f}s")
     print("PASS: production DATABASE_URL never left the VPS")
-    print("PASS: only selected social-table data crossed SSH")
+    print("PASS: only selected social/control-plane table data crossed SSH")
     print("PASS: PG17 psql-only meta-commands were filtered")
 
 
@@ -341,6 +356,26 @@ SELECT setval(
   COALESCE((SELECT MAX(id) FROM clan_message_reactions), 1),
   true
 );
+SELECT setval(
+  pg_get_serial_sequence('ai_agents', 'id'),
+  COALESCE((SELECT MAX(id) FROM ai_agents), 1),
+  true
+);
+SELECT setval(
+  pg_get_serial_sequence('ai_request_traces', 'id'),
+  COALESCE((SELECT MAX(id) FROM ai_request_traces), 1),
+  true
+);
+SELECT setval(
+  pg_get_serial_sequence('betting_bot_configs', 'id'),
+  COALESCE((SELECT MAX(id) FROM betting_bot_configs), 1),
+  true
+);
+SELECT setval(
+  pg_get_serial_sequence('bet_counter_actions', 'id'),
+  COALESCE((SELECT MAX(id) FROM bet_counter_actions), 1),
+  true
+);
 '''
 
     subprocess.run(
@@ -357,7 +392,7 @@ SELECT setval(
         stdout=subprocess.DEVNULL,
     )
 
-    print("PASS: local social-table sequences aligned for writable testing")
+    print("PASS: local social/control-plane sequences aligned for writable testing")
 
 
 def refresh_shadow() -> None:
@@ -365,8 +400,8 @@ def refresh_shadow() -> None:
     print("AOE2WAR — REFRESH LOCAL SOCIAL SHADOW")
     print("=" * 60)
     print(
-        "Production DB is 6.7 GB; Hall development intentionally "
-        "clones only the social slice."
+        "Production DB is 6.7 GB; local development intentionally "
+        "clones the small social + AI/operator control-plane slice."
     )
 
     base_url = local_base_database_url()
@@ -402,6 +437,10 @@ def refresh_shadow() -> None:
                 "(SELECT count(*) FROM clan_members),"
                 "(SELECT count(*) FROM clan_messages),"
                 "(SELECT count(*) FROM clan_message_reactions),"
+                "(SELECT count(*) FROM ai_agents),"
+                "(SELECT count(*) FROM ai_request_traces),"
+                "(SELECT count(*) FROM betting_bot_configs),"
+                "(SELECT count(*) FROM bet_counter_actions),"
                 "pg_size_pretty(pg_database_size(current_database()))"
             ),
         ],
@@ -414,14 +453,23 @@ def refresh_shadow() -> None:
         members,
         clan_messages,
         reactions,
+        ai_agents,
+        ai_traces,
+        betting_bots,
+        counter_actions,
         size,
     ) = proof.split("|")
 
     print(
         "PASS: social shadow ready "
         f"(users={users}, clans={clans}, members={members}, "
-        f"messages={clan_messages}, reactions={reactions}, size={size})"
+        f"messages={clan_messages}, reactions={reactions}, "
+        f"ai_agents={ai_agents}, ai_traces={ai_traces}, "
+        f"betting_bots={betting_bots}, counter_actions={counter_actions}, "
+        f"size={size})"
     )
+    print("PASS: AI Command Center production state is mirrored locally")
+    print("PASS: Tony & Paulie operator state is mirrored locally")
     print("PASS: direct-message tables exist locally and start empty")
     print("PASS: replay/parser/game corpus was deliberately not cloned")
     print("PASS: shadow database is local, writable, and disposable")
@@ -473,6 +521,82 @@ const { Client } = require("pg");
         env=env,
         text=True,
     ).strip()
+
+
+def read_safe_production_runtime() -> tuple[dict[str, str], str | None]:
+    # Read only AI-provider parity over SSH. The OpenAI credential is returned
+    # only to this launcher and injected into the child Next process environment.
+    # It is never printed or written to disk.
+    remote = r"""
+set -euo pipefail
+PID="$(systemctl show aoe2hdbets-web.service -p MainPID --value)"
+test -n "$PID"
+test "$PID" != "0"
+python3 - "$PID" <<'PYREMOTE'
+import json
+import sys
+from pathlib import Path
+pid = sys.argv[1]
+wanted = {
+    "AOE2WAR_HALL_SCRIBE_PROMPT_ID",
+    "AOE2WAR_HALL_SCRIBE_PROMPT_VERSION",
+    "AOE2WAR_SCREENSHOT_VISION_MODEL",
+}
+env = {}
+raw = open(f"/proc/{pid}/environ", "rb").read().split(b"\0")
+for item in raw:
+    if b"=" not in item:
+        continue
+    key, value = item.split(b"=", 1)
+    key = key.decode("utf-8", "replace")
+    if key in wanted:
+        env[key] = value.decode("utf-8", "replace")
+key_file = "/etc/aoe2hdbets/openai.key"
+for item in raw:
+    if item.startswith(b"OPENAI_API_KEY_FILE="):
+        key_file = item.split(b"=", 1)[1].decode("utf-8", "replace")
+        break
+try:
+    key = Path(key_file).read_text().strip()
+except OSError:
+    key = ""
+print(json.dumps({"env": env, "openai_key": key}))
+PYREMOTE
+"""
+    result = subprocess.run(
+        [
+            "ssh", "-T", "-o", "BatchMode=yes", "-o", "LogLevel=ERROR",
+            SSH_TARGET, "bash", "-s",
+        ],
+        input=remote,
+        text=True,
+        capture_output=True,
+        timeout=15,
+    )
+    if result.returncode != 0:
+        if result.stderr.strip():
+            print(
+                "WARN: safe production AI runtime mirror unavailable: "
+                + result.stderr.strip(),
+                file=sys.stderr,
+            )
+        return {}, None
+    try:
+        import json
+        payload = json.loads(result.stdout)
+    except Exception:
+        print(
+            "WARN: safe production AI runtime mirror returned invalid data",
+            file=sys.stderr,
+        )
+        return {}, None
+    safe_env = {
+        key: str(value)
+        for key, value in dict(payload.get("env") or {}).items()
+        if key in SAFE_PRODUCTION_ENV_KEYS and str(value).strip()
+    }
+    openai_key = str(payload.get("openai_key") or "").strip() or None
+    return safe_env, openai_key
 
 
 def wait_for_https(process: subprocess.Popen) -> bool:
@@ -527,22 +651,46 @@ def serve_shadow() -> int:
 
     env["AOE2_BACKEND_UPSTREAM"] = PREVIEW_ORIGIN
 
+    safe_prod_env, ephemeral_openai_key = read_safe_production_runtime()
+    for key, value in safe_prod_env.items():
+        env[key] = value
+
+    if ephemeral_openai_key:
+        env["OPENAI_API_KEY"] = ephemeral_openai_key
+        env.pop("OPENAI_API_KEY_FILE", None)
+    else:
+        env.pop("OPENAI_API_KEY", None)
+        env.pop("OPENAI_API_KEY_FILE", None)
+
+    # Production application/chain mutation authority never enters shadow.
     env.pop("INTERNAL_API_KEY", None)
     env.pop("ADMIN_TOKEN", None)
     env.pop("AOE2WAR_PROD_DB_PREVIEW", None)
     env.pop("PGOPTIONS", None)
 
     print("=" * 60)
-    print("AOE2WAR — WRITABLE LOCAL SOCIAL SHADOW")
+    print("AOE2WAR — WRITABLE PRODUCTION-SHAPED LOCAL SHADOW")
     print("=" * 60)
     print(f"PASS: local shadow DB: {SHADOW_DB}")
     print(f"PASS: local identity: {PREVIEW_NAME} ({preview_uid})")
     print("PASS: application database writes go ONLY to localhost shadow")
-    print("PASS: production internal credentials are absent")
+    print("PASS: production application/chain mutation credentials are absent")
+    if ephemeral_openai_key:
+        print(
+            "PASS: OpenAI provider credential mirrored ephemerally "
+            "(process memory only; never written or printed)"
+        )
+    else:
+        print("NOTE: OpenAI provider credential unavailable; UI/data parity remains")
+    if safe_prod_env:
+        print(
+            "PASS: safe production AI runtime settings mirrored: "
+            + ", ".join(sorted(safe_prod_env))
+        )
     print("PASS: production media/public read surfaces remain available")
     print()
     print("> Local code + hot reload: https://localhost:3000")
-    print("> Clan/social DB: LOCAL WRITABLE PRODUCTION-SHAPED CLONE")
+    print("> Clan/AI control plane: LOCAL WRITABLE PRODUCTION-SHAPED CLONE")
     print("> Heavy game/replay corpus: NOT CLONED")
     print("> Production DB write path: NONE")
     print()

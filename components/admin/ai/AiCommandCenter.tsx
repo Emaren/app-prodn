@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type PromptSource = "lobby_public" | "contact_thread" | "council" | "bounty_page";
+type PromptSource =
+  | "lobby_public"
+  | "contact_thread"
+  | "council"
+  | "bounty_page"
+  | "clan_hall";
 
 type PromptContextMode = "always" | "keyword-gated" | "bounded" | "excluded";
 
@@ -71,6 +76,7 @@ const PROMPT_SOURCE_LABELS: Record<PromptSource, string> = {
   contact_thread: "Contact thread",
   council: "Council",
   bounty_page: "Bounty advisor",
+  clan_hall: "Clan Hall",
 };
 
 const PROMPT_SOURCE_DESCRIPTIONS: Record<PromptSource, string> = {
@@ -78,6 +84,7 @@ const PROMPT_SOURCE_DESCRIPTIONS: Record<PromptSource, string> = {
   contact_thread: "Participant-only AI contact reply with bounded thread history.",
   council: "Council answer grounded in the requesting member's authorized context.",
   bounty_page: "Page-grounded bounty advice for the signed-in viewer.",
+  clan_hall: "Shared Hall reply with audience-filtered history and all private viewer context excluded.",
 };
 
 const PROMPT_MODE_STYLES: Record<PromptContextMode, string> = {
@@ -137,6 +144,16 @@ export default function AiCommandCenter() {
     [selectedId, snapshot]
   );
 
+  const hallScribeExists = useMemo(
+    () =>
+      Boolean(
+        snapshot?.agents.some(
+          (agent) => agent.slug === "aoe2war-hall-scribe",
+        ),
+      ),
+    [snapshot],
+  );
+
   useEffect(() => {
     setDraft(selected ? { ...selected } : null);
   }, [selected]);
@@ -181,6 +198,65 @@ export default function AiCommandCenter() {
     }
   }
 
+  async function stageHallScribe() {
+    setSaving(true);
+    setNotice(null);
+    setError(null);
+    try {
+      const response = await fetch("/api/admin/ai-agents", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: "Hall Scribe",
+          slug: "aoe2war-hall-scribe",
+          runtimePersonaId: "scribe",
+          enabled: true,
+          public: false,
+          description:
+            "Resident intelligence and chronicler of the AoE2WAR Clan Hall.",
+          role:
+            "AoE2WAR Hall assistant",
+          specialty:
+            "Answering AoE2WAR questions using Kingdom knowledge and current Hall context",
+          introduction:
+            "Mention @Hall Scribe to ask about AoE2WAR or anything happening in this Hall.",
+          personalityPrompt:
+            "Direct, concise, natural, respectful, and helpful. Answer the question first. Default to one or two short sentences. Do not force lore, jokes, roleplay, or personality.",
+          aoe2Prompt:
+            "Use supplied Kingdom Knowledge Router evidence and current Hall context as the source of truth. Prefer exact site facts. If information is unavailable, say so briefly rather than guessing.",
+          knowledgeScopes: [
+            "kingdom_public_all",
+            "clan_hall_history",
+          ],
+          allowedTools: [],
+          requestedModel: "Agent4.1HallScribe",
+          maxContextChars: 24000,
+          timeoutMs: 45000,
+          maxCouncilTurns: 1,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        detail?: string;
+        agent?: { id: number };
+      };
+      if (!response.ok) {
+        throw new Error(payload.detail || "Could not stage Hall Scribe.");
+      }
+      await load();
+      if (payload.agent?.id) setSelectedId(payload.agent.id);
+      setPreviewSource("clan_hall");
+      setNotice("Hall Scribe staged and enabled for the AoE2WAR Hall.");
+    } catch (stageError) {
+      setError(
+        stageError instanceof Error
+          ? stageError.message
+          : "Could not stage Hall Scribe.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function createAgent() {
     setSaving(true);
     setNotice(null);
@@ -218,7 +294,18 @@ export default function AiCommandCenter() {
             <h1 className="mt-3 font-serif text-4xl">AI Command Center</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Edit the site-side voice and AoE2 instructions, inspect the effective prompt and context contract, and review real request latency. Provider credentials never appear here.</p>
           </div>
-          <button onClick={() => void createAgent()} disabled={saving} className="rounded-full bg-cyan-200 px-5 py-3 text-sm font-bold text-slate-950 disabled:opacity-50">Stage New Agent</button>
+          <div className="flex flex-wrap items-center gap-2">
+            {!hallScribeExists ? (
+              <button
+                onClick={() => void stageHallScribe()}
+                disabled={saving}
+                className="rounded-full border border-violet-200/20 bg-violet-300/10 px-5 py-3 text-sm font-bold text-violet-50 disabled:opacity-50"
+              >
+                Stage Hall Scribe
+              </button>
+            ) : null}
+            <button onClick={() => void createAgent()} disabled={saving} className="rounded-full bg-cyan-200 px-5 py-3 text-sm font-bold text-slate-950 disabled:opacity-50">Stage New Agent</button>
+          </div>
         </div>
       </section>
 
@@ -247,7 +334,7 @@ export default function AiCommandCenter() {
               <Field label="Name" value={draft.name} onChange={(name) => setDraft({ ...draft, name })} />
               <Field label="Slug" value={draft.slug} disabled onChange={() => {}} />
               <SelectField label="Runtime template" value={draft.runtimePersonaId} options={["scribe", "grimer", "guy"]} onChange={(runtimePersonaId) => setDraft({ ...draft, runtimePersonaId })} />
-              <SelectField label="Model" value={draft.requestedModel} options={["Agent4.1Scribe", "Agent4.1Grimer", "Agent4.1Guy", "Agent4.1M", "LlamaAgent42"]} onChange={(requestedModel) => setDraft({ ...draft, requestedModel })} />
+              <SelectField label="Model" value={draft.requestedModel} options={["Agent4.1Scribe", "Agent4.1HallScribe", "Agent4.1Grimer", "Agent4.1Guy", "Agent4.1M", "LlamaAgent42"]} onChange={(requestedModel) => setDraft({ ...draft, requestedModel })} />
               <Field label="Role" value={draft.role} onChange={(role) => setDraft({ ...draft, role })} />
               <Field label="Specialty" value={draft.specialty} onChange={(specialty) => setDraft({ ...draft, specialty })} />
             </div>
@@ -273,7 +360,7 @@ export default function AiCommandCenter() {
                   {draft.providerPrompt ? <a href={draft.providerPrompt.platformUrl} target="_blank" rel="noreferrer" className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-cyan-100 hover:bg-white/[0.08]">Open provider prompt</a> : null}
                 </div>
                 {draft.providerPrompt ? <div className="mt-3 break-all font-mono text-[11px] leading-5 text-slate-500">ID {draft.providerPrompt.promptId}<br />Source {draft.providerPrompt.source}</div> : null}
-                <p className="mt-3 text-xs leading-5 text-slate-500">This dashboard edits AoE2WAR&apos;s site-side layers only. Provider prompt content and versions remain controlled at the provider and are shown here as gateway registry metadata.</p>
+                <p className="mt-3 text-xs leading-5 text-slate-500">This dashboard edits AoE2WAR&apos;s site-side layers only. Provider prompt content and versions remain controlled at the provider and are shown here as AoE2WAR provider-registry metadata. OpenAI-backed voices execute directly; local models may use the optional gateway.</p>
               </div>
 
               <div className="flex flex-wrap gap-2" aria-label="Prompt preview source">

@@ -144,3 +144,20 @@ The shadow launcher refuses a non-loopback base database, strips production
 mutation credentials, and keeps heavy game/parser read surfaces on the public
 production upstream. It is development infrastructure only and is never a
 production migration mechanism.
+
+
+## Production-shaped local shadow
+
+`npm run shadow:refresh` builds a disposable local PostgreSQL database from the
+current Prisma schema and imports the small production-shaped development
+slice needed for realistic UI work. It includes Clan/social truth plus
+`ai_agents`, `ai_request_traces`, `betting_bot_configs`, and
+`bet_counter_actions`, so `/admin/ai` mirrors the production control plane.
+Heavy replay/parser/game/financial corpus remains outside the clone.
+
+`npm run dev:shadow` keeps `DATABASE_URL` local and strips production
+application/chain mutation credentials. For direct OpenAI development parity,
+the launcher may read the canonical production OpenAI credential over the
+existing SSH channel and inject it only into the local Next child-process
+environment. The value is never printed or written to disk. Safe non-secret
+Hall Scribe provider prompt ID/version settings are mirrored the same way.

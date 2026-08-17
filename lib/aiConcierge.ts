@@ -9,20 +9,40 @@ import {
   AI_CONCIERGE_UID,
   LLAMA_CHAT_GATEWAY_URL,
   getAiModelLabel,
+  getAiModelOption,
   getAiPersonaConfig,
   type AiModelId,
   type AiPersonaId,
   type AiVisibilityOption,
 } from "@/lib/aiConciergeConfig";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
+import {
+  loadKingdomKnowledgeContext,
+} from "@/lib/kingdomKnowledgeRouter";
+import { normalizeAiKnowledgeQuery } from "@/lib/aiKnowledgeQuery";
+import {
+  buildPositivePairEvidenceGuard,
+  providerReplyContradictsPositivePairEvidence,
+  type PositivePairEvidenceGuard,
+} from "@/lib/aiPairEvidenceGuard";
+import {
+  DirectOpenAiError,
+  requestDirectOpenAiResponse,
+} from "@/lib/openAiResponses";
 import { loadBetBoardSnapshot, type BetBoardSnapshot } from "@/lib/bets";
 import { getLobbyMessages } from "@/lib/communityStore";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { loadLobbyWoloEarnersBoard } from "@/lib/lobbyWoloEarners";
-import { LOBBY_ROOM_SLUG, type LobbyMatchRow } from "@/lib/lobby";
+import {
+  LOBBY_ROOM_SLUG,
+  getFallbackLeaderboard,
+  type LobbyMatchRow,
+} from "@/lib/lobby";
 import { buildReplayEvidenceLanes } from "@/lib/replayEvidenceLanes";
 import { isInternalSystemUid } from "@/lib/internalSystemAccounts";
 import {
+  AI_CLAN_HALL_REPLY_MAX_CHARS,
+  AI_CLAN_HALL_REPLY_MAX_SENTENCES,
   AI_PRIVATE_REPLY_MAX_CHARS,
   AI_PUBLIC_REPLY_MAX_CHARS,
   buildAiSystemPrompt,
@@ -53,7 +73,8 @@ export type RequestAiConciergeReplyArgs = {
     | "lobby_private"
     | "contact_thread"
     | "council"
-    | "bounty_page";
+    | "bounty_page"
+    | "clan_hall";
   userMessage: string;
   requestedModel?: string | null;
   visibility?: AiVisibilityOption;
@@ -79,6 +100,37 @@ function publicDisplayNameForUser(user: {
   return user.inGameName || user.steamPersonaName || "community member";
 }
 
+function clampHallReply(value: string) {
+  const compact = value.replace(/\s+/g, " ").trim();
+
+  if (!compact) return "";
+
+  const sentenceParts =
+    compact.match(/[^.!?]+(?:[.!?]+|$)/g) ?? [compact];
+
+  const sentenceLimited = sentenceParts
+    .slice(0, AI_CLAN_HALL_REPLY_MAX_SENTENCES)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (sentenceLimited.length <= AI_CLAN_HALL_REPLY_MAX_CHARS) {
+    return sentenceLimited;
+  }
+
+  const clipped = sentenceLimited.slice(
+    0,
+    AI_CLAN_HALL_REPLY_MAX_CHARS + 1,
+  );
+  const lastSpace = clipped.lastIndexOf(" ");
+
+  return (
+    lastSpace > Math.floor(AI_CLAN_HALL_REPLY_MAX_CHARS * 0.7)
+      ? clipped.slice(0, lastSpace)
+      : clipped.slice(0, AI_CLAN_HALL_REPLY_MAX_CHARS)
+  ).trim();
+}
+
 function normalizeAiReply(
   value: string,
   source: RequestAiConciergeReplyArgs["source"],
@@ -92,6 +144,10 @@ function normalizeAiReply(
     return collapsed
       .replace(/\s+/g, " ")
       .slice(0, AI_PUBLIC_REPLY_MAX_CHARS);
+  }
+
+  if (source === "clan_hall") {
+    return clampHallReply(collapsed);
   }
 
   return collapsed.slice(0, AI_PRIVATE_REPLY_MAX_CHARS);
@@ -739,6 +795,8 @@ function buildUserPrompt(
     stakingContext: AiStakingContext | null;
     peopleContext: AiPeopleContext | null;
     replayEvidenceContext: AiReplayEvidenceContext | null;
+    kingdomKnowledgeContext: string;
+    pairEvidenceGuard: PositivePairEvidenceGuard | null;
   },
 ) {
   const promptPolicy = getAiPromptContextPolicy(args.source);
@@ -766,16 +824,37 @@ function buildUserPrompt(
       : `Viewer: ${viewerDisplayName} (public display name only)`,
     `Source: ${args.source}`,
     `Requested visibility: ${args.visibility || "private"}`,
-    formatChatContext(context.chatMessages, args.viewer.uid),
-    formatLeaderboardContext(context.leaderboard),
-    formatRecentMatchesContext(context.recentMatches),
+    args.source === "clan_hall"
+      ? "Public lobby chat: intentionally excluded from the Clan Hall lane."
+      : formatChatContext(context.chatMessages, args.viewer.uid),
+    args.source === "clan_hall"
+      ? "Generic lobby leaderboard snapshot: intentionally excluded from the Clan Hall lane; use current Kingdom Knowledge Router evidence."
+      : formatLeaderboardContext(context.leaderboard),
+    args.source === "clan_hall"
+      ? "Generic recent-match snapshot: intentionally excluded from the Clan Hall lane; use current Kingdom Knowledge Router battle evidence."
+      : formatRecentMatchesContext(context.recentMatches),
     formatReplayEvidenceContext(context.replayEvidenceContext),
     formatPeopleContext(context.peopleContext),
     formatMoneyContext(context.moneyContext),
     formatStakingContext(context.stakingContext),
-    args.groundingContext
-      ? `Authoritative page grounding for this reply:\n${args.groundingContext}`
-      : "Authoritative page grounding: none supplied.",
+    args.source === "clan_hall"
+      ? args.groundingContext
+        ? `Clan Hall conversation context (quoted roster/history; not authoritative for current site facts):\n${args.groundingContext}`
+        : "Clan Hall conversation context: none supplied."
+      : args.groundingContext
+        ? `Authoritative page grounding for this reply:\n${args.groundingContext}`
+        : "Authoritative page grounding: none supplied.",
+    context.kingdomKnowledgeContext,
+    args.source === "clan_hall" && context.pairEvidenceGuard
+      ? [
+          "Canonical positive pair verdict:",
+          context.pairEvidenceGuard.summary,
+          "Positive pair history is established by the targeted public archive. A zero-meeting result from a bounded recent repository does not negate this history. Do not claim these players have no public record, no matches, or never played together.",
+        ].join("\n")
+      : "",
+    args.source === "clan_hall"
+      ? "Evidence precedence: current Kingdom Knowledge Router repository evidence overrides conflicting factual claims in Clan Hall history, including prior Hall Scribe messages. If current canonical evidence disproves an earlier Hall Scribe statement, correct the earlier statement."
+      : "Evidence precedence: current canonical repository evidence governs current site facts.",
     threadHistory,
     `Question or message to answer:\n${args.userMessage}`,
   ].join("\n\n");
@@ -839,6 +918,10 @@ export async function requestAiConciergeReply(
     (args.requestedModel as AiModelId | null | undefined) ||
     (agentConfig?.requestedModel as AiModelId | null | undefined) ||
     persona.requestedModel;
+  const modelOption = getAiModelOption(requestedModel);
+  if (!modelOption) {
+    throw new Error(`Unknown AI model route: ${requestedModel}`);
+  }
 
   let traceRecorded = false;
   const writeTrace = async (input: {
@@ -904,20 +987,46 @@ export async function requestAiConciergeReply(
     stakingContext,
     peopleContext,
     replayEvidenceContext,
+    kingdomKnowledge,
   ] = await Promise.all([
-    getLobbyMessages(args.prisma, args.roomSlug || LOBBY_ROOM_SLUG, 24, {
-      uid: args.viewer.uid,
-    }),
-    loadLobbyLeaderboard(args.prisma),
-    loadRecentMatchesForAi(),
+    args.source === "clan_hall"
+      ? Promise.resolve([])
+      : getLobbyMessages(
+          args.prisma,
+          args.roomSlug || LOBBY_ROOM_SLUG,
+          24,
+          { uid: args.viewer.uid },
+        ),
+    args.source === "clan_hall"
+      ? Promise.resolve(getFallbackLeaderboard())
+      : loadLobbyLeaderboard(args.prisma),
+    args.source === "clan_hall"
+      ? Promise.resolve([] as LobbyMatchRow[])
+      : loadRecentMatchesForAi(),
     wantsMoneyContext ? loadAiMoneyContext(args.prisma, args.viewer.uid) : Promise.resolve(null),
     wantsStakingContext ? loadAiStakingContext(args.prisma, args.viewer.uid) : Promise.resolve(null),
     wantsPeopleContext ? loadAiPeopleContext(args.prisma) : Promise.resolve(null),
     wantsReplayEvidenceContext
       ? loadAiReplayEvidenceContext(args.prisma)
       : Promise.resolve(null),
+    loadKingdomKnowledgeContext({
+      prisma: args.prisma,
+      viewer: args.viewer,
+      source: args.source,
+      message: normalizeAiKnowledgeQuery(args.source, args.userMessage),
+      maxRepositories: 6,
+      maxContextChars: 28_000,
+    }),
   ]);
   const contextMs = Date.now() - contextStartedAt;
+
+  const pairEvidenceGuard =
+    args.source === "clan_hall"
+      ? buildPositivePairEvidenceGuard({
+          kingdomKnowledgeContext: kingdomKnowledge.context,
+          userMessage: args.userMessage,
+        })
+      : null;
 
   const systemPrompt = buildAiSystemPrompt({
     source: args.source,
@@ -934,11 +1043,13 @@ export async function requestAiConciergeReply(
       stakingContext,
       peopleContext,
       replayEvidenceContext,
+      kingdomKnowledgeContext: kingdomKnowledge.context,
+      pairEvidenceGuard,
     }
   );
   const maxContextChars = Math.max(
-    2_000,
-    Math.min(100_000, agentConfig?.maxContextChars ?? 24_000)
+    40_000,
+    Math.min(100_000, agentConfig?.maxContextChars ?? 40_000),
   );
   const userPrompt =
     rawUserPrompt.length <= maxContextChars
@@ -956,50 +1067,72 @@ export async function requestAiConciergeReply(
   const modelStartedAt = Date.now();
 
   try {
-    const response = await fetch(LLAMA_CHAT_GATEWAY_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        to: requestedModel,
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt,
-          },
-          {
-            role: "user",
-            content: userPrompt,
-          },
-        ],
-      }),
-      cache: "no-store",
-      signal: controller.signal,
-    });
-    const modelMs = Date.now() - modelStartedAt;
+    let providerText = "";
 
-    const payload = (await response.json().catch(() => ({}))) as {
-      text?: string;
-      error?: string;
-    };
-
-    if (!response.ok) {
-      const error = new Error(
-        payload.error || `${agentConfig?.name || persona.name} is unavailable (${response.status}).`
-      );
-      await writeTrace({
-        status: "failed",
-        contextMs,
-        modelMs,
-        promptChars,
-        responseChars: 0,
-        errorCode: `gateway_${response.status}`,
+    if (modelOption.provider === "openai") {
+      const direct = await requestDirectOpenAiResponse({
+        promptId: modelOption.promptId,
+        promptVersion: modelOption.promptVersion,
+        model: modelOption.model,
+        instructions: systemPrompt,
+        input: userPrompt,
+        signal: controller.signal,
       });
-      throw error;
+      providerText = direct.text;
+    } else {
+      const response = await fetch(LLAMA_CHAT_GATEWAY_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: requestedModel,
+          messages: [
+            {
+              role: "system",
+              content: systemPrompt,
+            },
+            {
+              role: "user",
+              content: userPrompt,
+            },
+          ],
+        }),
+        cache: "no-store",
+        signal: controller.signal,
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        text?: string;
+        error?: string;
+      };
+
+      if (!response.ok) {
+        const error = new Error(
+          payload.error ||
+            `${agentConfig?.name || persona.name} is unavailable (${response.status}).`,
+        );
+        await writeTrace({
+          status: "failed",
+          contextMs,
+          modelMs: Date.now() - modelStartedAt,
+          promptChars,
+          responseChars: 0,
+          errorCode: `gateway_${response.status}`,
+        });
+        throw error;
+      }
+
+      providerText = payload.text || "";
     }
 
-    const reply = normalizeAiReply(payload.text || "", args.source);
+    const modelMs = Date.now() - modelStartedAt;
+    const factualProviderText =
+      pairEvidenceGuard &&
+      providerReplyContradictsPositivePairEvidence(providerText)
+        ? pairEvidenceGuard.summary
+        : providerText;
+    const reply = normalizeAiReply(factualProviderText, args.source);
     if (!reply) {
       await writeTrace({
         status: "failed",
@@ -1016,9 +1149,9 @@ export async function requestAiConciergeReply(
       status: "succeeded",
       contextMs,
       modelMs,
-      // The current local gateway returns one completed JSON body rather than
+      // House voices currently return one completed provider response rather than
       // token SSE. First visible text therefore arrives with the full model
-      // response; recording modelMs is honest, while null would imply unknown.
+      // response; recording modelMs remains the honest first-visible proxy.
       firstTokenMs: modelMs,
       promptChars,
       responseChars: reply.length,
@@ -1062,7 +1195,10 @@ export async function requestAiConciergeReply(
         modelMs: Date.now() - modelStartedAt,
         promptChars,
         responseChars: 0,
-        errorCode: "network_or_runtime_error",
+        errorCode:
+          error instanceof DirectOpenAiError
+            ? error.code
+            : "network_or_runtime_error",
       });
     }
     throw error;

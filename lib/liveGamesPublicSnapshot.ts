@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import {
   loadLiveGamesSnapshot,
+  loadLiveGamesSnapshotFresh,
   type LiveGamesSnapshot,
 } from "@/lib/liveGames";
 import {
@@ -178,8 +179,13 @@ export async function hydrateLiveGamesSnapshotFromFinalRows(
   };
 }
 
-export async function loadPublicLiveGamesSnapshot(prisma: PrismaClient) {
-  const snapshot = await loadLiveGamesSnapshot(prisma);
+export async function loadPublicLiveGamesSnapshot(
+  prisma: PrismaClient,
+  options: { fresh?: boolean } = {},
+) {
+  const snapshot = options.fresh
+    ? await loadLiveGamesSnapshotFresh(prisma)
+    : await loadLiveGamesSnapshot(prisma);
   const hydrated = await hydrateLiveGamesSnapshotFromFinalRows(prisma, snapshot);
   return sanitizePublicLiveGamesSnapshot(hydrated) as LiveGamesSnapshot;
 }

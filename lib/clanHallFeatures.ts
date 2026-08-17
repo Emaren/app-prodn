@@ -41,6 +41,7 @@ const AOE2WAR_FLAGSHIP_FEATURES: ClanHallFeatureProfile = {
   realtime: true,
   optimisticMessages: true,
   inviteDoor: true,
+  hallScribe: true,
 };
 
 const FLAGSHIP_BY_SLUG: Record<string, ClanHallFeatureProfile> = {

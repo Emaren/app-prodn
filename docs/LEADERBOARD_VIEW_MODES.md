@@ -199,3 +199,19 @@ The Living Leaderboard must preserve the instant leaderboard architecture:
 - hover and expansion data load progressively;
 - no Extreme feature may require loading every deep fact for every warrior
   before the board becomes usable.
+
+## 2026-08-17 identity and candidate-index boundary
+
+Leaderboard and profile identity use exact SteamID64 across observed display
+name changes. Historical standalone aliases remain searchable inside the same
+exact Steam account; composite observations are exact-full-query evidence only
+and cannot leak component names into another account.
+
+Exact-Steam profile history may use replay-player snapshots as a candidate
+index, but public GameStats cleanup and exact participant verification remain
+the truth gate. Production release validation includes a recent-final
+**public-profile-eligible** snapshot coverage audit so a partially stale
+candidate estate cannot silently omit current exact-Steam matches. The audit
+uses canonical replay-player normalization and intentionally excludes the same
+under-60-second `no_rated_result` / not-completed early exits that public player
+profiles already classify as no-game replays.

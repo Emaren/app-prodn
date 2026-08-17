@@ -1,5 +1,4 @@
 import {
-  displayPlayerName,
   normalizeDurationSeconds,
   parsePlayers,
   readMapName,
@@ -7,7 +6,10 @@ import {
   readPlayerSteamDmRating,
   readPlayerSteamRmRating,
 } from "@/lib/gameStatsView";
-import { type PublicPlayerRef, publicPlayerMatchesName } from "@/lib/publicPlayers";
+import {
+  type PublicPlayerRef,
+  publicPlayerMatchesReplayParticipant,
+} from "@/lib/publicPlayers";
 import { applyReplayAdjudicationToGameStats } from "@/lib/replayAdjudications";
 import {
   normalizePublicReplayText,
@@ -94,7 +96,7 @@ export function buildPlayerPerformanceStats(
     const match = applyReplayAdjudicationToGameStats(rawMatch);
     const players = parsePlayers(match.players);
     const currentRecord = players.find((player) =>
-      publicPlayerMatchesName(currentPlayer, displayPlayerName(player))
+      publicPlayerMatchesReplayParticipant(currentPlayer, player)
     );
 
     if (currentRecord) {
@@ -124,7 +126,7 @@ export function buildPlayerPerformanceStats(
     for (const player of players) {
       const name = normalizePublicReplayText(player.name);
       if (!name) continue;
-      if (!publicPlayerMatchesName(currentPlayer, name)) {
+      if (!publicPlayerMatchesReplayParticipant(currentPlayer, player)) {
         opponentKeys.add(name.toLowerCase());
       }
     }
@@ -147,9 +149,9 @@ export function buildPlayerPerformanceStats(
       resolveReplayResultForPlayer(
         match,
         (player) =>
-          publicPlayerMatchesName(
+          publicPlayerMatchesReplayParticipant(
             currentPlayer,
-            player.name
+            player
           )
       );
 

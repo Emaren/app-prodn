@@ -24,7 +24,7 @@ test("owner storage remains conventional while the Hall says The King", () => {
   );
 });
 
-test("AoE2WAR enables only the intended V1 flagship powers", () => {
+test("AoE2WAR enables the intended flagship powers for the current Hall release", () => {
   const aoe2war = getClanHallFeatures("aoe2war");
   const mystikal = getClanHallFeatures("mystikal");
 
@@ -32,7 +32,7 @@ test("AoE2WAR enables only the intended V1 flagship powers", () => {
   assert.equal(aoe2war.optimisticMessages, true);
   assert.equal(aoe2war.inviteDoor, true);
 
-  assert.equal(aoe2war.hallScribe, false);
+  assert.equal(aoe2war.hallScribe, true);
   assert.equal(aoe2war.presence, false);
   assert.equal(aoe2war.typing, false);
   assert.equal(aoe2war.delegatedRecruiting, false);

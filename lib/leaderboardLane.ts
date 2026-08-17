@@ -1,5 +1,6 @@
 export const LEADERBOARD_LANES = ["rm", "dm"] as const;
 export const LEADERBOARD_LANE_STORAGE_KEY = "aoe2hdbets:leaderboard-lane";
+export const LEADERBOARD_LANE_COOKIE_KEY = "aoe2hdbets_leaderboard_lane";
 
 export type LeaderboardLane = (typeof LEADERBOARD_LANES)[number];
 
@@ -30,9 +31,21 @@ export function writeStoredLeaderboardLane(lane: LeaderboardLane) {
     return;
   }
 
+  const normalizedLane = normalizeLeaderboardLane(lane);
+
   try {
-    window.localStorage.setItem(LEADERBOARD_LANE_STORAGE_KEY, normalizeLeaderboardLane(lane));
+    window.localStorage.setItem(
+      LEADERBOARD_LANE_STORAGE_KEY,
+      normalizedLane,
+    );
   } catch {
     // Private browsing can block storage. The in-memory preference still works.
+  }
+
+  try {
+    document.cookie =
+      `${LEADERBOARD_LANE_COOKIE_KEY}=${encodeURIComponent(normalizedLane)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+  } catch {
+    // Cookie persistence is an optimization. Client state still works without it.
   }
 }

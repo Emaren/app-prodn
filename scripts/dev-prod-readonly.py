@@ -75,6 +75,75 @@ PYREMOTE
     return value
 
 
+def read_prod_openai_key() -> str:
+    remote_script = r"""
+set -euo pipefail
+
+PID="$(systemctl show aoe2hdbets-web.service -p MainPID --value)"
+test -n "$PID"
+test "$PID" != "0"
+
+python3 - "$PID" <<'PYREMOTE'
+import pathlib
+import sys
+
+pid = sys.argv[1]
+items = open(f"/proc/{pid}/environ", "rb").read().split(b"\0")
+env = {}
+
+for item in items:
+    if b"=" not in item:
+        continue
+    key, value = item.split(b"=", 1)
+    env[key.decode("utf-8", "ignore")] = value.decode("utf-8", "strict")
+
+direct = env.get("OPENAI_API_KEY", "").strip()
+if direct:
+    sys.stdout.write(direct)
+    raise SystemExit(0)
+
+key_file = env.get("OPENAI_API_KEY_FILE", "").strip()
+if not key_file:
+    raise SystemExit("production OPENAI_API_KEY/OPENAI_API_KEY_FILE missing")
+
+value = pathlib.Path(key_file).read_text().strip()
+if not value:
+    raise SystemExit("production OpenAI key file is empty")
+
+sys.stdout.write(value)
+PYREMOTE
+"""
+
+    result = subprocess.run(
+        [
+            "ssh",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "LogLevel=ERROR",
+            SSH_TARGET,
+            "bash",
+            "-s",
+        ],
+        input=remote_script,
+        text=True,
+        capture_output=True,
+    )
+
+    if result.returncode != 0:
+        if result.stderr.strip():
+            print(result.stderr.strip(), file=sys.stderr)
+        stop("could not read production OpenAI credential over SSH")
+
+    value = result.stdout.strip()
+
+    if len(value) < 20 or any(ch.isspace() for ch in value):
+        stop("production OpenAI credential had an unexpected shape")
+
+    return value
+
+
 def parse_prod_database(value: str):
     normalized = value.replace(
         "postgresql+asyncpg://",
@@ -287,9 +356,25 @@ def main() -> int:
         # not the dead local :3330 API.
         env["AOE2_BACKEND_UPSTREAM"] = PREVIEW_ORIGIN
 
-        # Never carry a production internal API credential onto the Mac.
+        # Never carry production mutation/admin credentials onto the Mac.
         env.pop("INTERNAL_API_KEY", None)
         env.pop("ADMIN_TOKEN", None)
+
+        with_openai = (
+            os.environ.get("AOE2WAR_PROD_PREVIEW_WITH_OPENAI", "").lower()
+            == "true"
+        )
+        no_browser = (
+            os.environ.get("AOE2WAR_PROD_PREVIEW_NO_BROWSER", "").lower()
+            == "true"
+        )
+
+        if with_openai:
+            # Explicit opt-in only. The production OpenAI credential is read
+            # over SSH and injected into the local Next child environment.
+            # It is never written to disk, argv, logs, or Git.
+            env["OPENAI_API_KEY"] = read_prod_openai_key()
+            env.pop("OPENAI_API_KEY_FILE", None)
 
         proof = pg_probe(env)
         env["AOE2WAR_PREVIEW_USER_UID"] = proof["previewUid"]
@@ -307,6 +392,10 @@ def main() -> int:
         )
         print("PASS: production DATABASE_URL remains memory-only")
         print("PASS: production INTERNAL_API_KEY/ADMIN_TOKEN not imported")
+        if with_openai:
+            print("PASS: production OpenAI credential injected memory-only")
+        else:
+            print("PASS: production OpenAI credential not imported")
         print("PASS: backend reads use public https://aoe2war.com")
         print()
         print("> Local source + hot reload: https://localhost:3000")
@@ -320,11 +409,14 @@ def main() -> int:
         )
 
         if wait_for_local_https(node):
-            subprocess.Popen(
-                ["open", "https://localhost:3000/clans/aoe2war"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
+            if no_browser:
+                print("PASS: localhost browser auto-open disabled")
+            else:
+                subprocess.Popen(
+                    ["open", "https://localhost:3000/clans/aoe2war"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
 
         return node.wait()
 

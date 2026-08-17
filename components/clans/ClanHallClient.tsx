@@ -138,6 +138,10 @@ export default function ClanHallClient({
     snapshot.clan.slug,
     "optimisticMessages",
   );
+  const hallScribeEnabled = clanHallFeatureEnabled(
+    snapshot.clan.slug,
+    "hallScribe",
+  );
 
   const settleChatToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
     window.requestAnimationFrame(() => {
@@ -633,6 +637,15 @@ export default function ClanHallClient({
                       {liveConnected ? "Live" : "Linking"}
                     </span>
                   ) : null}
+                  {hallScribeEnabled ? (
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-full border border-violet-200/14 bg-violet-300/[0.055] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] text-violet-100/80"
+                      title="Mention @Hall Scribe"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Hall Scribe
+                    </span>
+                  ) : null}
                 </div>
                 <h2 className="mt-2 text-2xl font-black tracking-[-0.025em] text-white">
                   The {snapshot.clan.name} hall
@@ -794,7 +807,28 @@ export default function ClanHallClient({
                   <textarea
                     value={message}
                     onChange={(event) => setMessage(event.target.value.slice(0, 1200))}
-                    placeholder={`Message ${snapshot.clan.name}…`}
+                    onKeyDown={(event) => {
+                      if (
+                        event.key !== "Enter" ||
+                        event.shiftKey ||
+                        event.nativeEvent.isComposing
+                      ) {
+                        return;
+                      }
+
+                      event.preventDefault();
+
+                      if (posting || !message.trim()) {
+                        return;
+                      }
+
+                      event.currentTarget.form?.requestSubmit();
+                    }}
+                    placeholder={
+                      hallScribeEnabled
+                        ? `Message ${snapshot.clan.name}… mention @Hall Scribe`
+                        : `Message ${snapshot.clan.name}…`
+                    }
                     rows={3}
                     className="min-h-[4.7rem] flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-6 text-white outline-none placeholder:text-slate-600"
                   />

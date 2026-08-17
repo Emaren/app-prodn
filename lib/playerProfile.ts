@@ -31,8 +31,9 @@ import {
   applyPendingWoloClaimSummary,
   buildClaimedPublicPlayerRef,
   buildReplayPublicPlayerRef,
+  findUniqueClaimedUserForReplayName,
   normalizePublicPlayerName,
-  publicPlayerMatchesName,
+  publicPlayerMatchesReplayParticipant,
   type PublicPlayerRef,
 } from "@/lib/publicPlayers";
 import { isAtOrAfterWoloMainnetStart } from "@/lib/woloChain";
@@ -51,6 +52,8 @@ import {
   publicReplayMapLabel,
   resolveReliableReplayWinner,
 } from "@/lib/unresolvedWatcherResult";
+
+import { loadPublicPlayerDirectory } from "@/lib/publicPlayerDirectory";
 
 export type PlayerProfileViewMode = "basic" | "advanced" | "extreme";
 export type PlayerProfileIdentity =
@@ -385,14 +388,14 @@ function readNestedNumeric(source: unknown, candidateKeys: readonly string[]) {
 
 function currentPlayerRecord(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef) {
   return parsePlayers(game.players).find((player) =>
-    publicPlayerMatchesName(currentPlayer, displayPlayerName(player))
+    publicPlayerMatchesReplayParticipant(currentPlayer, player)
   );
 }
 
 function gameResult(game: PlayerProfileGameRow, currentPlayer: PublicPlayerRef): "win" | "loss" | "unknown" {
   return resolveReplayResultForPlayer(
     game,
-    (player) => publicPlayerMatchesName(currentPlayer, player.name)
+    (player) => publicPlayerMatchesReplayParticipant(currentPlayer, player)
   );
 }
 
@@ -1377,9 +1380,23 @@ function dedupePlayerProfileGamesByReplay(games: PlayerProfileGameRow[]) {
 }
 
 
-async function loadCandidateFinalGamesFresh(prisma: PrismaClient): Promise<PlayerProfileGameRow[]> {
+async function loadCandidateFinalGamesFresh(
+  prisma: PrismaClient,
+  gameStatsIds?: number[],
+): Promise<PlayerProfileGameRow[]> {
+  if (gameStatsIds && gameStatsIds.length === 0) {
+    return [];
+  }
+
   const rows = await prisma.gameStats.findMany({
     where: {
+      ...(gameStatsIds
+        ? {
+            id: {
+              in: gameStatsIds,
+            },
+          }
+        : {}),
       OR: [
         { is_final: true },
         {
@@ -1451,14 +1468,80 @@ async function loadCandidateFinalGamesFresh(prisma: PrismaClient): Promise<Playe
   return dedupePlayerProfileGamesByReplay(publicRows);
 }
 
-function loadCandidateFinalGames(
+async function loadExactSteamCandidateGameIds(
+  prisma: PrismaClient,
+  steamId: string,
+): Promise<number[] | null> {
+  try {
+    const snapshots =
+      await prisma.replayPlayerSnapshot.findMany({
+        where: {
+          playerKey: `steam:${steamId}`,
+        },
+        select: {
+          gameStatsId: true,
+        },
+      });
+
+    return [
+      ...new Set(
+        snapshots.map(
+          (snapshot) =>
+            snapshot.gameStatsId,
+        ),
+      ),
+    ];
+  } catch (error) {
+    if (!isMissingPrismaStorageError(error)) {
+      throw error;
+    }
+
+    warnOptionalProfileRail(
+      "exact Steam snapshot candidate index",
+      error,
+    );
+
+    return null;
+  }
+}
+
+async function loadCandidateFinalGames(
   prisma: PrismaClient,
   generation: string,
+  currentPlayer?: PublicPlayerRef,
 ): Promise<PlayerProfileGameRow[]> {
+  const exactSteamId =
+    currentPlayer?.steamId?.trim();
+
+  if (exactSteamId) {
+    const candidateGameIds =
+      await loadExactSteamCandidateGameIds(
+        prisma,
+        exactSteamId,
+      );
+
+    // ReplayPlayerSnapshot is only an indexed candidate locator here.
+    // GameStats public cleanup + exact participant matching remain truth.
+    // An unavailable or empty snapshot rail fails safely back to the
+    // generation-cached whole-estate loader instead of inventing absence.
+    if (
+      candidateGameIds &&
+      candidateGameIds.length > 0
+    ) {
+      return loadCandidateFinalGamesFresh(
+        prisma,
+        candidateGameIds,
+      );
+    }
+  }
+
   return loadPlayerProfileReplayCorpus(
     prisma,
     generation,
-    () => loadCandidateFinalGamesFresh(prisma),
+    () =>
+      loadCandidateFinalGamesFresh(
+        prisma,
+      ),
   );
 }
 
@@ -1930,6 +2013,7 @@ async function buildProfileFromPlayer(
   const candidateGames = await loadCandidateFinalGames(
     prisma,
     matchFeedGeneration,
+    input.currentPlayer,
   );
   const matchedGames = filterGamesForPlayer(candidateGames, input.currentPlayer);
   const pendingClaimSummaries = await safeLoadPendingWoloClaimSummaries(prisma, input.aliases);
@@ -2045,6 +2129,112 @@ async function buildProfileFromPlayer(
   };
 }
 
+
+async function resolveProfileDirectoryIdentity(
+  prisma: PrismaClient,
+  {
+    uid,
+    name,
+  }: {
+    uid?: string | null;
+    name?: string | null;
+  },
+) {
+  const directory =
+    await loadPublicPlayerDirectory(
+      prisma,
+    );
+
+  if (uid) {
+    const claimed =
+      directory.allEntries.find(
+        (entry) =>
+          entry.uid === uid,
+      );
+
+    if (claimed) {
+      return claimed;
+    }
+  }
+
+  const normalizedName =
+    normalizeKey(
+      normalizePublicPlayerName(
+        name,
+      ),
+    );
+
+  if (!normalizedName) {
+    return null;
+  }
+
+  const matches =
+    directory.allEntries.filter(
+      (entry) =>
+        [
+          entry.name,
+          entry.latestObservedName,
+          ...entry.aliases,
+        ].some(
+          (alias) =>
+            normalizeKey(alias) ===
+            normalizedName,
+        ),
+    );
+
+  return matches.length === 1
+    ? matches[0]
+    : null;
+}
+
+function mergeProfileAliases(
+  values: Array<
+    string | null | undefined
+  >,
+) {
+  const aliases: string[] = [];
+
+  for (const value of values) {
+    const normalized =
+      normalizePublicPlayerName(
+        value,
+      );
+
+    if (!normalized) {
+      continue;
+    }
+
+    if (
+      aliases.some(
+        (alias) =>
+          normalizeKey(alias) ===
+          normalizeKey(normalized),
+      )
+    ) {
+      continue;
+    }
+
+    aliases.push(
+      normalized,
+    );
+  }
+
+  return aliases;
+}
+
+function withProfileAliases(
+  currentPlayer: PublicPlayerRef,
+  aliases: string[],
+) {
+  return {
+    ...currentPlayer,
+    aliases:
+      aliases.length > 0
+        ? aliases
+        : currentPlayer.aliases,
+  };
+}
+
 async function loadClaimedProfileUser(prisma: PrismaClient, uid: string): Promise<ClaimedProfileUser | null> {
   try {
     return await prisma.user.findUnique({
@@ -2096,65 +2286,432 @@ async function loadClaimedProfileUser(prisma: PrismaClient, uid: string): Promis
   }
 }
 
-export async function loadClaimedPlayerProfile(prisma: PrismaClient, uid: string) {
-  const user = await loadClaimedProfileUser(prisma, uid);
+export async function loadClaimedPlayerProfile(
+  prisma: PrismaClient,
+  uid: string,
+) {
+  const user =
+    await loadClaimedProfileUser(
+      prisma,
+      uid,
+    );
 
   if (!user) return null;
 
-  const displayName = user.inGameName || user.steamPersonaName || user.uid;
-  const currentPlayer = buildClaimedPublicPlayerRef(user, displayName);
-  const aliases = Array.from(
-    new Set(
-      [user.inGameName, user.steamPersonaName, displayName]
-        .map((name) => normalizePublicPlayerName(name))
-        .filter(Boolean)
-    )
-  );
+  const directoryEntry =
+    await resolveProfileDirectoryIdentity(
+      prisma,
+      {
+        uid,
+      },
+    );
 
-  return buildProfileFromPlayer(prisma, {
-    identity: { kind: "claimed", uid },
-    currentPlayer,
-    displayName,
-    aliases,
-    user,
-  });
+  const displayName =
+    user.inGameName ||
+    directoryEntry?.name ||
+    user.steamPersonaName ||
+    user.uid;
+
+  const aliases =
+    mergeProfileAliases([
+      user.inGameName,
+      user.steamPersonaName,
+      displayName,
+      directoryEntry?.name,
+      directoryEntry?.latestObservedName,
+      ...(directoryEntry?.aliases ?? []),
+    ]);
+
+  const currentPlayer =
+    withProfileAliases(
+      buildClaimedPublicPlayerRef(
+        user,
+        displayName,
+      ),
+      aliases,
+    );
+
+  return buildProfileFromPlayer(
+    prisma,
+    {
+      identity: {
+        kind: "claimed",
+        uid,
+      },
+      currentPlayer,
+      displayName,
+      aliases,
+      user,
+    },
+  );
 }
 
-export async function loadReplayPlayerProfile(prisma: PrismaClient, name: string) {
-  const playerName = normalizePublicPlayerName(name);
+export async function loadReplayPlayerProfile(
+  prisma: PrismaClient,
+  name: string,
+) {
+  const playerName =
+    normalizePublicPlayerName(
+      name,
+    );
+
   if (!playerName) return null;
 
-  const currentPlayer = buildReplayPublicPlayerRef(playerName);
-  const profile = await buildProfileFromPlayer(prisma, {
-    identity: { kind: "replay", name: playerName },
-    currentPlayer,
-    displayName: playerName,
-    aliases: [playerName],
-    user: null,
-  });
-
-  return profile.command.totalMatches > 0 ? profile : null;
-}
-
-async function resolveMatchFeedIdentity(prisma: PrismaClient, identity: PlayerProfileIdentity) {
-  if (identity.kind === "claimed") {
-    const user = await prisma.user.findUnique({
-      where: { uid: identity.uid },
-      select: {
-        uid: true,
-        inGameName: true,
-        steamPersonaName: true,
-        verified: true,
-        verificationLevel: true,
+  const directoryEntry =
+    await resolveProfileDirectoryIdentity(
+      prisma,
+      {
+        name: playerName,
       },
-    });
-    if (!user) return null;
-    const displayName = user.inGameName || user.steamPersonaName || user.uid;
-    return buildClaimedPublicPlayerRef(user, displayName);
+    );
+
+  if (
+    directoryEntry?.claimed &&
+    directoryEntry.uid
+  ) {
+    return loadClaimedPlayerProfile(
+      prisma,
+      directoryEntry.uid,
+    );
   }
 
-  const name = normalizePublicPlayerName(identity.name);
-  return name ? buildReplayPublicPlayerRef(name) : null;
+  const displayName =
+    directoryEntry?.name ??
+    playerName;
+
+  const aliases =
+    mergeProfileAliases([
+      displayName,
+      playerName,
+      directoryEntry?.latestObservedName,
+      ...(directoryEntry?.aliases ?? []),
+    ]);
+
+  const currentPlayer =
+    withProfileAliases(
+      buildReplayPublicPlayerRef(
+        displayName,
+      ),
+      aliases,
+    );
+
+  const profile =
+    await buildProfileFromPlayer(
+      prisma,
+      {
+        identity: {
+          kind: "replay",
+          name: displayName,
+        },
+        currentPlayer,
+        displayName,
+        aliases,
+        user: null,
+      },
+    );
+
+  return profile.command.totalMatches > 0
+    ? profile
+    : null;
+}
+
+function buildExactSteamClaimedMatchFeedPlayer(
+  user: Parameters<typeof buildClaimedPublicPlayerRef>[0],
+) {
+  const displayName =
+    user.inGameName ||
+    user.steamPersonaName ||
+    user.uid;
+
+  const currentPlayer =
+    buildClaimedPublicPlayerRef(
+      user,
+      displayName,
+    );
+
+  // Exact SteamID64 is sovereign. When the claimed user already carries
+  // exact platform identity, the match feed must not rebuild the entire
+  // public player directory merely to rediscover the same account.
+  if (!currentPlayer.steamId) {
+    return null;
+  }
+
+  const aliases =
+    mergeProfileAliases([
+      user.inGameName,
+      user.steamPersonaName,
+      displayName,
+    ]);
+
+  return withProfileAliases(
+    currentPlayer,
+    aliases,
+  );
+}
+
+async function resolveMatchFeedIdentity(
+  prisma: PrismaClient,
+  identity: PlayerProfileIdentity,
+) {
+  if (identity.kind === "claimed") {
+    const user =
+      await loadClaimedProfileUser(
+        prisma,
+        identity.uid,
+      );
+
+    if (!user) return null;
+
+    const exactSteamPlayer =
+      buildExactSteamClaimedMatchFeedPlayer(
+        user,
+      );
+
+    if (exactSteamPlayer) {
+      return exactSteamPlayer;
+    }
+
+    const directoryEntry =
+      await resolveProfileDirectoryIdentity(
+        prisma,
+        {
+          uid: identity.uid,
+        },
+      );
+
+    const displayName =
+      user.inGameName ||
+      directoryEntry?.name ||
+      user.steamPersonaName ||
+      user.uid;
+
+    const aliases =
+      mergeProfileAliases([
+        user.inGameName,
+        user.steamPersonaName,
+        displayName,
+        directoryEntry?.name,
+        directoryEntry?.latestObservedName,
+        ...(directoryEntry?.aliases ?? []),
+      ]);
+
+    return withProfileAliases(
+      buildClaimedPublicPlayerRef(
+        user,
+        displayName,
+      ),
+      aliases,
+    );
+  }
+
+  const name =
+    normalizePublicPlayerName(
+      identity.name,
+    );
+
+  if (!name) return null;
+
+  // Replay display text may promote to a claimed account only when it exactly
+  // and uniquely matches that account's current claimed names. Historical
+  // aliases and composite observations are not identity proof.
+  const claimedUser = await findUniqueClaimedUserForReplayName(prisma, name);
+
+  if (claimedUser) {
+    const exactSteamPlayer =
+      buildExactSteamClaimedMatchFeedPlayer(
+        claimedUser,
+      );
+
+    if (exactSteamPlayer) {
+      return exactSteamPlayer;
+    }
+
+    const claimedDirectoryEntry =
+      await resolveProfileDirectoryIdentity(
+        prisma,
+        {
+          uid: claimedUser.uid,
+        },
+      );
+
+    const displayName =
+      claimedUser.inGameName ||
+      claimedDirectoryEntry?.name ||
+      claimedUser.steamPersonaName ||
+      claimedUser.uid;
+
+    const aliases =
+      mergeProfileAliases([
+        claimedUser.inGameName,
+        claimedUser.steamPersonaName,
+        displayName,
+        claimedDirectoryEntry?.name,
+        claimedDirectoryEntry?.latestObservedName,
+        ...(claimedDirectoryEntry?.aliases ?? []),
+      ]);
+
+    return withProfileAliases(
+      buildClaimedPublicPlayerRef(
+        claimedUser,
+        displayName,
+      ),
+      aliases,
+    );
+  }
+
+  const directoryEntry =
+    await resolveProfileDirectoryIdentity(
+      prisma,
+      {
+        name,
+      },
+    );
+
+  // If name-only directory reconciliation reaches a claimed profile through
+  // historical/composite aliases, fail closed. Exact Steam identity remains
+  // authoritative and this replay name stays separate.
+  const replayDirectoryEntry =
+    directoryEntry?.claimed
+      ? null
+      : directoryEntry;
+
+  const displayName =
+    replayDirectoryEntry?.name ??
+    name;
+
+  const aliases =
+    mergeProfileAliases([
+      displayName,
+      name,
+      replayDirectoryEntry?.latestObservedName,
+      ...(replayDirectoryEntry?.aliases ?? []),
+    ]);
+
+  return withProfileAliases(
+    buildReplayPublicPlayerRef(
+      displayName,
+    ),
+    aliases,
+  );
+
+}
+
+export async function loadPlayerProfileMatchPagesForPlayersAndGameIds(
+  prisma: PrismaClient,
+  currentPlayers: PublicPlayerRef[],
+  gameStatsIds: number[],
+  limit = PLAYER_MATCH_FEED_RECONCILE_BATCH_SIZE,
+) {
+  const normalizedGameStatsIds = [
+    ...new Set(
+      gameStatsIds.filter(
+        (gameStatsId) =>
+          Number.isInteger(gameStatsId) &&
+          gameStatsId > 0,
+      ),
+    ),
+  ];
+
+  const generationPromise =
+    loadPublicReplayGeneration(
+      prisma,
+    );
+
+  const candidateGamesPromise =
+    loadCandidateFinalGamesFresh(
+      prisma,
+      normalizedGameStatsIds,
+    );
+
+  const [generation, candidateGames] =
+    await Promise.all([
+      generationPromise,
+      candidateGamesPromise,
+    ]);
+
+  const pageLimit =
+    Math.max(
+      1,
+      Math.min(
+        PLAYER_MATCH_FEED_RECONCILE_BATCH_SIZE,
+        Math.round(
+          limit ||
+            PLAYER_MATCH_FEED_RECONCILE_BATCH_SIZE,
+        ),
+      ),
+    );
+
+  return currentPlayers.map(
+    (currentPlayer) =>
+      buildMatchFeed(
+        filterGamesForPlayer(
+          candidateGames,
+          currentPlayer,
+        ),
+        currentPlayer,
+        generation,
+        0,
+        pageLimit,
+      ),
+  );
+}
+
+export async function loadPlayerProfileMatchPageForGameIds(
+  prisma: PrismaClient,
+  identity: PlayerProfileIdentity,
+  gameStatsIds: number[],
+  limit = PLAYER_MATCH_FEED_RECONCILE_BATCH_SIZE,
+) {
+  const currentPlayer =
+    await resolveMatchFeedIdentity(
+      prisma,
+      identity,
+    );
+
+  if (!currentPlayer) {
+    return null;
+  }
+
+  const generation =
+    await loadPublicReplayGeneration(
+      prisma,
+    );
+
+  const games =
+    filterGamesForPlayer(
+      await loadCandidateFinalGamesFresh(
+        prisma,
+        [
+          ...new Set(
+            gameStatsIds.filter(
+              (gameStatsId) =>
+                Number.isInteger(
+                  gameStatsId,
+                ) &&
+                gameStatsId > 0,
+            ),
+          ),
+        ],
+      ),
+      currentPlayer,
+    );
+
+  return buildMatchFeed(
+    games,
+    currentPlayer,
+    generation,
+    0,
+    Math.max(
+      1,
+      Math.min(
+        PLAYER_MATCH_FEED_RECONCILE_BATCH_SIZE,
+        Math.round(
+          limit ||
+            PLAYER_MATCH_FEED_RECONCILE_BATCH_SIZE,
+        ),
+      ),
+    ),
+  );
 }
 
 export async function loadPlayerProfileMatchPage(
@@ -2168,7 +2725,11 @@ export async function loadPlayerProfileMatchPage(
 
   const generation = await loadPublicReplayGeneration(prisma);
   const games = filterGamesForPlayer(
-    await loadCandidateFinalGames(prisma, generation),
+    await loadCandidateFinalGames(
+      prisma,
+      generation,
+      currentPlayer,
+    ),
     currentPlayer,
   );
   return buildMatchFeed(

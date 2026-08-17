@@ -11,6 +11,7 @@ import {
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { publishClanHallEvent } from "@/lib/clanHallEvents";
+import { maybeCreateAoE2WarHallScribeReply } from "@/lib/clanHallScribe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -151,11 +152,6 @@ export async function POST(
         messageId,
       });
 
-      publishClanHallEvent(slug, {
-        type: "reaction",
-        messageId,
-      });
-
       const refreshed = await loadClanHallSnapshot(prisma, slug, viewer.uid);
       return NextResponse.json(refreshed, { headers: NO_STORE_HEADERS });
     }
@@ -175,6 +171,7 @@ export async function POST(
       },
       select: {
         id: true,
+        name: true,
         chatAudiencePolicy: true,
       },
     });
@@ -241,16 +238,42 @@ export async function POST(
       );
     }
 
-    await prisma.clanMessage.create({
+    const createdMessage = await prisma.clanMessage.create({
       data: {
         clanId: clan.id,
         authorUserId: viewer.id,
         body: message,
         audience,
       },
+      select: { id: true },
     });
 
-    publishClanHallEvent(slug, { type: "message" });
+    publishClanHallEvent(slug, {
+      type: "message",
+      messageId: createdMessage.id,
+    });
+
+    try {
+      await maybeCreateAoE2WarHallScribeReply({
+        prisma,
+        clanId: clan.id,
+        clanSlug: slug,
+        clanName: clan.name,
+        audience,
+        triggerMessageId: createdMessage.id,
+        message,
+        viewer: {
+          uid: viewer.uid,
+          displayName:
+            viewer.inGameName || viewer.steamPersonaName || viewer.uid,
+        },
+      });
+    } catch (hallScribeError) {
+      console.warn(
+        "Hall Scribe reply failed; human Hall message remains posted:",
+        hallScribeError,
+      );
+    }
 
     const snapshot = await loadClanHallSnapshot(prisma, slug, viewer.uid);
     return NextResponse.json(snapshot, {

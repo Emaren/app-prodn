@@ -27,22 +27,22 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **62**
+- Authoritative repository documents: **65**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
 ### Types
 
-- `explanation`: 4
+- `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 34
+- `reference`: 36
 - `runbook`: 10
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 48
+- `active`: 51
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 1
@@ -73,12 +73,15 @@ This page is generated from the validated front matter in this repository. Cross
 | [Human-Confirmed Desync Protocol](DESYNC_INCIDENT_PROTOCOL.md) | `reference` | `active` | `domain-contract` |
 | [Direct Chat UI](DIRECT_CHAT.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Evidence Vault](EVIDENCE_VAULT.md) | `runbook` | `active` | `disaster-recovery-contract` |
+| [Hall Scribe, Identity and KKR Release - 2026-08-17](HALL_SCRIBE_IDENTITY_KKR_RELEASE_2026-08-17.md) | `reference` | `active` | `release-evidence` |
+| [AoE2WAR Hall Scribe Prompt Stack](HALL_SCRIBE_PROMPT.md) | `reference` | `active` | `product-contract` |
 | [HD Replay Truth Pipeline and Operator Runbook](HD_REPLAY_TRUTH_PIPELINE.md) | `runbook` | `active` | `operational-procedure` |
 | [Hero Studio](HERO_STUDIO.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Host Maintenance](HOST_MAINTENANCE.md) | `runbook` | `active` | `host-maintenance-procedure` |
 | [AoE2HDBets Improvement Execution Plan](IMPROVEMENT_EXECUTION_PLAN.md) | `working` | `superseded` | `historical-working-record` |
 | [Jim Fast-Ending Team Session Diagnosis](JIM_FAST_GAME_DIAGNOSIS.md) | `historical` | `historical` | `incident-evidence` |
 | [Kingdom Civic Surfaces](KINGDOM_CIVIC_SURFACES.md) | `reference` | `active` | `product-and-implementation-contract` |
+| [Kingdom Knowledge Router](KINGDOM_KNOWLEDGE_ROUTER.md) | `explanation` | `active` | `architecture-explanation` |
 | [AoE2WAR Leaderboards](LEADERBOARDS.md) | `reference` | `active` | `product-contract` |
 | [HD Leaderboard View Modes](LEADERBOARD_VIEW_MODES.md) | `reference` | `active` | `product-contract` |
 | [Live Final-Proof Visibility](LIVE_FINAL_PROOF_VISIBILITY.md) | `reference` | `active` | `product-contract` |

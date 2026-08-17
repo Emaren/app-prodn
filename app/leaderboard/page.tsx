@@ -7,6 +7,10 @@ import { LeaderboardViewPreferenceMarker } from "@/components/leaderboard/Leader
 import type { LobbyLeaderboardSummary } from "@/lib/lobby";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import {
+  LEADERBOARD_LANE_COOKIE_KEY,
+  normalizeLeaderboardLane,
+} from "@/lib/leaderboardLane";
+import {
   LEADERBOARD_VIEW_COOKIE_KEY,
   normalizeLeaderboardView,
 } from "@/lib/leaderboardViewPreference";
@@ -36,6 +40,13 @@ export default async function LeaderboardPage({
       : null;
 
   const cookieStore = await cookies();
+
+  const preferredLane =
+    normalizeLeaderboardLane(
+      cookieStore.get(
+        LEADERBOARD_LANE_COOKIE_KEY,
+      )?.value,
+    );
 
   const preferredView =
     normalizeLeaderboardView(
@@ -122,7 +133,7 @@ export default async function LeaderboardPage({
         await loadLobbyLeaderboard(
           getPrisma(),
           {
-            lane: "rm",
+            lane: preferredLane,
             offset: 0,
             limit: 50,
             includePendingClaimed:

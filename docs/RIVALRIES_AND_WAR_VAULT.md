@@ -213,3 +213,21 @@ The completed production pass was verified with:
 - preserved game-stats-to-rivalry crosslinks;
 - no visible redundant `Open Stats` or matrix
   `Open Player Rivalry` labels.
+
+## 2026-08-17 identity authority boundary
+
+Exact SteamID64 is the sovereign replay participant key whenever it is present.
+Replay display names are observations, not merge keys. Composite comma-name
+observations remain raw evidence and must not be split into aliases for another
+account.
+
+Replay-player snapshots narrow candidate game IDs; they do not replace GameStats
+truth. Pair summaries must independently prove both canonical players in the
+same cleaned GameStats row. Watcher uploader/site UID proves upload provenance,
+not participant identity.
+
+The Zodiac/somniosator release canary resolves five legitimate meetings:
+one 1v1 opponent game, one team-opponent game and three teammate games. Zodiac
+is 2-0 when opposed; together they are 1-2. Game 23876 is excluded because the
+display string containing Zodiac belongs to the Brian/Trunks Steam account and
+the exact Zodiac Steam account is absent.

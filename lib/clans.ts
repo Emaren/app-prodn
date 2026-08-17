@@ -1,5 +1,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 
+import { AOE2WAR_HALL_SCRIBE_UID } from "@/lib/internalSystemAccounts";
+
 export const CLAN_AUDIENCES = ["public", "users", "clan"] as const;
 export type ClanAudience = (typeof CLAN_AUDIENCES)[number];
 export const CLAN_REACTIONS = ["⚔️", "🔥", "🛡️", "🏰", "👑", "🩸"] as const;
@@ -501,7 +503,10 @@ export async function loadClanHallSnapshot(
       .slice()
       .reverse()
       .map((message) => {
-        const role = roleByUserId.get(message.author.id) ?? null;
+        const role =
+          message.author.uid === AOE2WAR_HALL_SCRIBE_UID
+            ? "hall_scribe"
+            : roleByUserId.get(message.author.id) ?? null;
         const groupedReactions = new Map<
           ClanReaction,
           {
@@ -538,14 +543,20 @@ export async function loadClanHallSnapshot(
           audience: normalizeClanAudience(message.audience),
           createdAt: message.createdAt.toISOString(),
           updatedAt: message.updatedAt.toISOString(),
-          edited: message.updatedAt.getTime() > message.createdAt.getTime(),
+          edited:
+            message.author.uid === AOE2WAR_HALL_SCRIBE_UID
+              ? false
+              : message.updatedAt.getTime() > message.createdAt.getTime(),
           canEdit,
           canDelete: canEdit,
           author: {
             uid: message.author.uid,
             displayName: displayName(message.author),
             role,
-            isClanMember: Boolean(role),
+            isClanMember:
+              message.author.uid === AOE2WAR_HALL_SCRIBE_UID
+                ? false
+                : Boolean(role),
           },
           reactions: CLAN_REACTIONS.flatMap((emoji) => {
             const group = groupedReactions.get(emoji);

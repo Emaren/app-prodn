@@ -16,7 +16,6 @@ import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import {
   applyReplayAdjudicationToGameStats,
-  EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
 } from "@/lib/replayAdjudications";
 import {
   normalizeLeaderboardLane,
@@ -34,7 +33,6 @@ import {
   type LeaderboardSortKey,
 } from "@/lib/leaderboardSort";
 import {
-  matchesLeaderboardSearch,
   normalizeLeaderboardSearch,
 } from "@/lib/leaderboardPage";
 import {
@@ -48,6 +46,14 @@ import {
   type LeaderboardRankDelta24h,
 } from "@/lib/leaderboardIdentity";
 import { isLeaderboardExcludedSystemUid } from "@/lib/internalSystemAccounts";
+
+import {
+  loadPublicLeaderboardRawGames,
+} from "@/lib/publicLeaderboardGameCorpus";
+
+import {
+  matchesPublicPlayerSearch,
+} from "@/lib/publicPlayerSearch";
 
 const BASE_ARENA_ELO = 1500;
 const ARENA_ELO_K_FACTOR = 32;
@@ -63,7 +69,25 @@ const leaderboardCache = new Map<string, LeaderboardCacheEntry>();
 const leaderboardPromises =
   new Map<string, Promise<LobbyLeaderboardSummary>>();
 
-const SUPERSEDED_PARSE_REASON = "superseded_by_later_upload";
+type LeaderboardGameCorpus = {
+  uniqueGames: CandidateLeaderboardGame[];
+  resolvedGames: CandidateLeaderboardGame[];
+  preparedGames: PreparedLeaderboardGame[];
+  recentGames: PreparedLeaderboardGame[];
+};
+
+type LeaderboardGameCorpusCacheEntry = {
+  expiresAt: number;
+  value: LeaderboardGameCorpus;
+};
+
+let leaderboardGameCorpusCache:
+  LeaderboardGameCorpusCacheEntry | null =
+  null;
+let leaderboardGameCorpusPromise:
+  Promise<LeaderboardGameCorpus> | null =
+  null;
+
 
 export type LoadLobbyLeaderboardOptions = {
   offset?: number;
@@ -487,11 +511,20 @@ function buildLeaderboardSelection(
     normalizeLeaderboardSearch(options.query);
 
   const filteredEntries = normalizedQuery
-    ? defaultOrderedEntries.filter((entry) =>
-        matchesLeaderboardSearch(
-          entry.aliasKeys,
-          normalizedQuery
-        )
+    ? defaultOrderedEntries.filter(
+        (entry) =>
+          matchesPublicPlayerSearch(
+            {
+              name: entry.name,
+              inGameName:
+                entry.inGameName,
+              steamPersonaName:
+                entry.steamPersonaName,
+              aliases:
+                entry.aliases,
+            },
+            normalizedQuery,
+          ),
       )
     : defaultOrderedEntries;
 
@@ -1333,6 +1366,134 @@ function sortCandidateGamesByPlayedAtDesc(
   return right.id - left.id;
 }
 
+
+async function loadLeaderboardGameCorpus(
+  prisma: PrismaClient,
+): Promise<LeaderboardGameCorpus> {
+  const now = Date.now();
+
+  if (
+    leaderboardGameCorpusCache &&
+    leaderboardGameCorpusCache.expiresAt >
+      now
+  ) {
+    return leaderboardGameCorpusCache.value;
+  }
+
+  if (leaderboardGameCorpusPromise) {
+    return leaderboardGameCorpusPromise;
+  }
+
+  const run = (async () => {
+    const rawLeaderboardGames =
+      await loadPublicLeaderboardRawGames(
+        prisma,
+      );
+
+    const leaderboardGames =
+      rawLeaderboardGames
+        .map(
+          (game) =>
+            applyReplayAdjudicationToGameStats(
+              game,
+            ) as CandidateLeaderboardGame,
+        )
+        .sort(
+          sortCandidateGamesByPlayedAtDesc,
+        );
+
+    const publicBattleGames =
+      leaderboardGames.filter(
+        isPublicBattleArchiveRow,
+      );
+
+    const uniqueGames =
+      cleanPublicGameRows(
+        publicBattleGames,
+        {
+          includeReview: true,
+          includeLive: false,
+        },
+      ) as CandidateLeaderboardGame[];
+
+    const resolvedGames =
+      cleanPublicGameRows(
+        publicBattleGames,
+        {
+          includeReview: false,
+          includeLive: false,
+        },
+      ) as CandidateLeaderboardGame[];
+
+    const preparedGames:
+      PreparedLeaderboardGame[] =
+      resolvedGames.map(
+        (game) => {
+          const playedAt =
+            readPlayedAt(game);
+
+          return {
+            ...game,
+            players:
+              parsePlayers(
+                game.players,
+              ),
+            playedAtMs:
+              playedAt
+                ? new Date(
+                    playedAt,
+                  ).getTime()
+                : 0,
+          };
+        },
+      );
+
+    const recentGames =
+      [...preparedGames].sort(
+        (left, right) =>
+          right.playedAtMs -
+          left.playedAtMs,
+      );
+
+    return {
+      uniqueGames,
+      resolvedGames,
+      preparedGames,
+      recentGames,
+    };
+  })();
+
+  leaderboardGameCorpusPromise = run;
+
+  try {
+    const value = await run;
+
+    leaderboardGameCorpusCache = {
+      expiresAt:
+        Date.now() +
+        LEADERBOARD_CACHE_TTL_MS,
+      value,
+    };
+
+    return value;
+  } finally {
+    if (
+      leaderboardGameCorpusPromise ===
+      run
+    ) {
+      leaderboardGameCorpusPromise =
+        null;
+    }
+  }
+}
+
+export function invalidateLobbyLeaderboardCache() {
+  leaderboardCache.clear();
+  leaderboardPromises.clear();
+  leaderboardGameCorpusCache = null;
+  leaderboardGameCorpusPromise = null;
+}
+
 async function loadLobbyLeaderboardFresh(
   prisma: PrismaClient,
   options: LoadLobbyLeaderboardOptions = {}
@@ -1347,63 +1508,18 @@ async function loadLobbyLeaderboardFresh(
   );
   dayStart.setHours(0, 0, 0, 0);
 
-  const [directory, rawLeaderboardGames] = await Promise.all([
-    loadPublicPlayerDirectory(prisma),
-    prisma.gameStats.findMany({
-      where: {
-        is_final: true,
-        NOT: {
-          parse_reason: SUPERSEDED_PARSE_REASON,
-        },
-      },
-      orderBy: [{ timestamp: "desc" }, { createdAt: "desc" }, { id: "desc" }],
-      select: {
-        createdAt: true,
-        event_types: true,
-        id: true,
-        is_final: true,
-        key_events: true,
-        original_filename: true,
-        played_on: true,
-        players: true,
-        replay_file: true,
-        replayHash: true,
-        timestamp: true,
-        winner: true,
-        parse_reason: true,
-        parse_source: true,
-        replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
-      },
-    }),
-  ]);
+    const [directory, gameCorpus] =
+    await Promise.all([
+      loadPublicPlayerDirectory(prisma),
+      loadLeaderboardGameCorpus(prisma),
+    ]);
 
-  const leaderboardGames = rawLeaderboardGames
-    .map((game) => applyReplayAdjudicationToGameStats(game) as CandidateLeaderboardGame)
-    .sort(sortCandidateGamesByPlayedAtDesc);
-  const publicBattleGames =
-    leaderboardGames.filter(
-      isPublicBattleArchiveRow,
-    );
-  const uniqueGames = cleanPublicGameRows(publicBattleGames, {
-    includeReview: true,
-    includeLive: false,
-  });
-  const resolvedGames = cleanPublicGameRows(publicBattleGames, {
-    includeReview: false,
-    includeLive: false,
-  });
-
-  const preparedGames: PreparedLeaderboardGame[] = resolvedGames.map((game) => {
-    const playedAt = readPlayedAt(game);
-
-    return {
-      ...game,
-      players: parsePlayers(game.players),
-      playedAtMs: playedAt ? new Date(playedAt).getTime() : 0,
-    };
-  });
-
-  const recentGames = [...preparedGames].sort((left, right) => right.playedAtMs - left.playedAtMs);
+  const {
+    uniqueGames,
+    resolvedGames,
+    preparedGames,
+    recentGames,
+  } = gameCorpus;
   const dayStartMs = dayStart.getTime();
   const isToday = (game: CandidateLeaderboardGame) => {
     const playedAt = readPlayedAt(game);

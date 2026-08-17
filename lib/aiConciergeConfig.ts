@@ -29,18 +29,35 @@ export type AiVisibilityOption = (typeof AI_VISIBILITY_OPTIONS)[number];
 
 export const DEFAULT_AI_VISIBILITY: AiVisibilityOption = "public";
 
+const HALL_SCRIBE_PROVIDER_PROMPT_ID =
+  process.env.AOE2WAR_HALL_SCRIBE_PROMPT_ID?.trim() ||
+  "pmpt_6a8231b331348197b5858fb46dabc6aa0a74c246f54e8741";
+
+const HALL_SCRIBE_PROVIDER_PROMPT_VERSION =
+  process.env.AOE2WAR_HALL_SCRIBE_PROMPT_VERSION?.trim() || "2";
+
 export const AI_MODEL_OPTIONS = [
   {
     id: "Agent4.1Scribe",
     label: "OpenAI GPT-4.1 Scribe",
     provider: "openai",
+    model: "gpt-4.1",
     promptId: "pmpt_69cf27b4471481948af207cc46496d610a8fc123d5176074",
     promptVersion: "9",
+  },
+  {
+    id: "Agent4.1HallScribe",
+    label: "OpenAI GPT-4.1 Hall Scribe",
+    provider: "openai",
+    model: "gpt-4.1",
+    promptId: HALL_SCRIBE_PROVIDER_PROMPT_ID,
+    promptVersion: HALL_SCRIBE_PROVIDER_PROMPT_VERSION,
   },
   {
     id: "Agent4.1Grimer",
     label: "OpenAI GPT-4.1 Grimer",
     provider: "openai",
+    model: "gpt-4.1",
     promptId: "pmpt_69d2f44dcac08193941ed5d52223acf9092ea9affdc458bd",
     promptVersion: "11",
   },
@@ -48,6 +65,7 @@ export const AI_MODEL_OPTIONS = [
     id: "Agent4.1Guy",
     label: "OpenAI GPT-4.1 Guy",
     provider: "openai",
+    model: "gpt-4.1",
     promptId: "pmpt_69d3eda4e3208196a00348e6c3531c3806b3521a2dd717fb",
     promptVersion: "2",
   },
@@ -55,6 +73,7 @@ export const AI_MODEL_OPTIONS = [
     id: "Agent4.1M",
     label: "OpenAI GPT-4.1",
     provider: "openai",
+    model: "gpt-4.1",
     promptId: "pmpt_686bf4b4f1d48195a1308c4e91328e740b8e7b35195e334b",
     promptVersion: "5",
   },
@@ -62,6 +81,7 @@ export const AI_MODEL_OPTIONS = [
     id: "LlamaAgent42",
     label: "Local Llama 3 8B",
     provider: "ollama",
+    model: "llama3:8b",
     promptId: null,
     promptVersion: null,
   },
@@ -69,13 +89,22 @@ export const AI_MODEL_OPTIONS = [
 
 export type AiModelId = (typeof AI_MODEL_OPTIONS)[number]["id"];
 
+export function getAiModelOption(
+  modelId: string | null | undefined,
+) {
+  return (
+    AI_MODEL_OPTIONS.find((option) => option.id === modelId) ??
+    null
+  );
+}
+
 export type AiProviderPromptMetadata = {
   provider: string;
   label: string;
   promptId: string;
   promptVersion: string;
   platformUrl: string;
-  source: "llama-chat gateway registry";
+  source: "AoE2WAR provider registry";
   readOnly: true;
 };
 
@@ -96,7 +125,7 @@ export function getAiProviderPromptMetadata(
     promptId: option.promptId,
     promptVersion: option.promptVersion,
     platformUrl: `https://platform.openai.com/chat/edit?${query.toString()}`,
-    source: "llama-chat gateway registry",
+    source: "AoE2WAR provider registry",
     readOnly: true,
   };
 }

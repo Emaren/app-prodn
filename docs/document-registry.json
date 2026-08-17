@@ -200,7 +200,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-08-01",
       "sensitivity": "internal",
-      "sha256": "069a3d1a16dc9e0643a1c6900ad4beb9753a61209a883bf6135edd7d8672460c",
+      "sha256": "de5963623179f87998fb5e06925e2e8fae4ed4db1eb7e10c128f22e3ef65b73e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -385,7 +385,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-08-16",
       "sensitivity": "internal",
-      "sha256": "5c0bc739c4ff894591c67623b8fcf3df359a0cd074cca531f37805b71e19ff14",
+      "sha256": "0986896bf1ddc2067183af6869681d2b582ccc1d72db2ed264440cda8d565aa3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5575c918f48f08654d373832f182ec1c73fe7696e9226243e0fb5c2318392de2",
+      "sha256": "23374963945fbe844fb9a5dd9e500d20ebf269d9e65fbed3b2954add306f2f72",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -531,6 +531,50 @@
       ],
       "title": "AoE2WAR Evidence Vault",
       "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "release-evidence",
+      "id": "aoe2war.app-prodn.docs-hall-scribe-identity-kkr-release-2026-08-17",
+      "owner": "aoe2war-web",
+      "path": "docs/HALL_SCRIBE_IDENTITY_KKR_RELEASE_2026-08-17.md",
+      "review_interval_days": 90,
+      "reviewed_at": "2026-08-17",
+      "sensitivity": "internal",
+      "sha256": "cf04f25cdd01c050ff97488745768ac728fa5bda29affd75b0942c58e96d15fe",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Hall Scribe, Identity and KKR Release - 2026-08-17",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-hall-scribe-prompt",
+      "owner": "aoe2war-web",
+      "path": "docs/HALL_SCRIBE_PROMPT.md",
+      "review_interval_days": 90,
+      "reviewed_at": "2026-08-16",
+      "sensitivity": "internal",
+      "sha256": "13bbd5b58d1bd5e74260a2f1f431b31466dd158487d97a7e99cfd85a8de29b22",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "AoE2WAR Hall Scribe Prompt Stack",
+      "type": "reference"
     },
     {
       "audience": [
@@ -673,6 +717,28 @@
     {
       "audience": [
         "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "architecture-explanation",
+      "id": "aoe2war.app-prodn.docs-kingdom-knowledge-router",
+      "owner": "aoe2war-web",
+      "path": "docs/KINGDOM_KNOWLEDGE_ROUTER.md",
+      "review_interval_days": 60,
+      "reviewed_at": "2026-08-16",
+      "sensitivity": "internal",
+      "sha256": "78d86b0f9fcc26eed8f7bde5b406cb6a43bd5d8e050e8e2cdbdcbadcf1db6cba",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Kingdom Knowledge Router",
+      "type": "explanation"
+    },
+    {
+      "audience": [
+        "developers",
         "ai-agents"
       ],
       "authority": "product-contract",
@@ -705,7 +771,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-08-15",
       "sensitivity": "internal",
-      "sha256": "868e37dc5383c3a08c45dcceb920b38eeab3ac7dc39491016cd96d7e1e6ce4dc",
+      "sha256": "94b41fc208e299809a23a1c921596ab249694da7cf78c91d745c52d2182c96e8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1097,7 +1163,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "aab032d755a8d397de5d2dbd6bf7f6c6ff3179afab84de739340e0fcc154e725",
+      "sha256": "0c4e0b30c3bd4dbbe87eb5b0fd33fe6dc43ee327cbef91197c6d0e7378448330",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1254,7 +1320,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-08",
       "sensitivity": "restricted",
-      "sha256": "85d05d3850d615ca3804950157097b91e893f08d54dab2d609916ecb76ae27f0",
+      "sha256": "889b1755d10e3ce196e540b0a7b49231d137e87c65b766d0c90dd052754af81b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1322,7 +1388,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-08-08",
       "sensitivity": "internal",
-      "sha256": "0814d4a57e0fa7af57adee774f65d81f232694a229f63b86fb9b1107b0aa46f8",
+      "sha256": "43ecf8f8f3e071be425ba3c44b5a8f772d5c791fd77a82e191fa6e2904dc4182",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

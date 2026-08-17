@@ -14,6 +14,8 @@ import {
 import { resolveReplayResultForPlayer } from "./replayPlayerResult.ts";
 import { normalizeReplayPlayers } from "./teamResolution.ts";
 import { invalidatePublicPlayerDirectoryCache } from "./publicPlayerDirectory.ts";
+import { invalidateLobbyLeaderboardCache } from "./lobbyLeaderboard.ts";
+import { invalidatePublicLeaderboardRawGameCache } from "./publicLeaderboardGameCorpus.ts";
 
 export type ReplayIdentityRosterBlocker =
   | "canonical_roster_incomplete"
@@ -387,7 +389,9 @@ export async function ensureReplayIdentityProjections(
   }
 
   if (report.createdCount > 0) {
+    invalidatePublicLeaderboardRawGameCache();
     invalidatePublicPlayerDirectoryCache();
+    invalidateLobbyLeaderboardCache();
   }
 
   return report;

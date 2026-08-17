@@ -77,7 +77,7 @@ test("profile cursor zero is authoritative and archive loads are generation-safe
   assert.match(profile, /const matchFeedGeneration = await loadPublicReplayGeneration\(prisma\)/);
   assert.match(profile, /createGenerationKeyedLoader/);
   assert.match(profile, /loadCandidateFinalGames\(\s*prisma,\s*matchFeedGeneration/);
-  assert.match(profile, /loadCandidateFinalGames\(prisma, generation\)/);
+  assert.match(profile, /loadCandidateFinalGames\(\s*prisma,\s*generation,\s*currentPlayer,\s*\)/);
   assert.match(profile, /Math\.min\(\s*PLAYER_MATCH_FEED_RECONCILE_BATCH_SIZE/);
   assert.match(profile, /generation,/);
   assert.match(route, /revalidate\s*=\s*0/);

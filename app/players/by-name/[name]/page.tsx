@@ -6,7 +6,10 @@ import {
   parsePlayerProfileViewMode,
 } from "@/lib/playerProfile";
 import { getPrisma } from "@/lib/prisma";
-import { normalizePublicPlayerName } from "@/lib/publicPlayers";
+import {
+  findUniqueClaimedUserForReplayName,
+  normalizePublicPlayerName,
+} from "@/lib/publicPlayers";
 
 export const dynamic = "force-dynamic";
 
@@ -28,15 +31,7 @@ export default async function ReplayOnlyPlayerPage({
   }
 
   const prisma = getPrisma();
-  const claimedUser = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { inGameName: { equals: playerName, mode: "insensitive" } },
-        { steamPersonaName: { equals: playerName, mode: "insensitive" } },
-      ],
-    },
-    select: { uid: true },
-  });
+  const claimedUser = await findUniqueClaimedUserForReplayName(prisma, playerName);
 
   if (claimedUser) {
     const viewQuery = resolvedSearchParams.view ? `?view=${encodeURIComponent(String(resolvedSearchParams.view))}` : "";
