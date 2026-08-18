@@ -38,6 +38,7 @@ export type LiveGameSession = {
   originalFilename: string | null;
   disconnectDetected: boolean;
   winner: string | null;
+  bettingEligible: boolean;
   parseReason: string | null;
   parseSource: string | null;
   unresolvedResult: UnresolvedWatcherResult | null;
@@ -422,6 +423,7 @@ function buildSessionFromRow(
     originalFilename: row.original_filename ?? null,
     disconnectDetected: row.disconnect_detected,
     winner,
+    bettingEligible: winnerTruth.bettingEligible,
     parseReason: row.parse_reason ?? null,
     parseSource: row.parse_source ?? null,
     unresolvedResult,
