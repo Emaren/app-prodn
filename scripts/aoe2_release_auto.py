@@ -426,7 +426,7 @@ for candidate in candidates:
         if key.strip() != "DATABASE_URL":
             continue
         value = value.strip()
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in {chr(34), chr(39)}:
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {{chr(34), chr(39)}}:
             value = value[1:-1]
         database_url = value
         break
@@ -441,16 +441,16 @@ parsed = urlsplit(raw)
 if parsed.scheme not in {"postgresql", "postgres"}:
     raise SystemExit("STOP: production DATABASE_URL scheme is not PostgreSQL")
 
-values = {
+values = {{
     "PGHOST": parsed.hostname or "",
     "PGPORT": str(parsed.port or 5432),
     "PGUSER": unquote(parsed.username or ""),
     "PGPASSWORD": unquote(parsed.password or ""),
     "PGDATABASE": unquote(parsed.path.lstrip("/")),
     "DATABASE_URL": raw,
-}
+}}
 for key, value in values.items():
-    print(f"export {key}={shlex.quote(value)}")
+    print(f"export {{key}}={{shlex.quote(value)}}")
 PY
 # shellcheck disable=SC1090
 . "$cred"

@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import pathlib
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -142,6 +143,30 @@ UPDATE "users" SET "email" = "email";''',
         self.assertEqual(resolved["risk_class"], "DATABASE")
         self.assertEqual(len(names), 6)
         self.assertEqual(names[-1], "20260818081500_page_change_v2_preserve_chamber_notice")
+
+    def test_production_migration_script_renders_nested_python(self):
+        script = MODULE.production_migration_script(
+            release_sha="c" * 40,
+            migration_names=["20260101000000_create_widget"],
+        )
+
+        self.assertIn('in {chr(34), chr(39)}:', script)
+        self.assertIn('values = {\n    "PGHOST":', script)
+        self.assertIn('print(f"export {key}={shlex.quote(value)}")', script)
+
+        marker = "<<'PY'\n"
+        self.assertIn(marker, script)
+        nested_python = script.split(marker, 1)[1].split("\nPY\n", 1)[0]
+        compile(nested_python, "<production-db-credential-loader>", "exec")
+
+        shell = subprocess.run(
+            ["bash", "-n"],
+            input=script,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(shell.returncode, 0, shell.stderr)
 
     def test_financial_gate_is_also_allowed(self):
         temp, root, manifests, release = self.with_release(
