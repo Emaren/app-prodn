@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `f0de30b7636743c27088a36645ea8cc4bdb8257c`
+Implementation baseline: `main` at `19ffb1046b6ed3f40752e39101dd3344a240324e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **65**
+- Authoritative repository documents: **66**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 36
+- `reference`: 37
 - `runbook`: 10
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 51
+- `active`: 52
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 1
@@ -85,6 +85,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR Leaderboards](LEADERBOARDS.md) | `reference` | `active` | `product-contract` |
 | [HD Leaderboard View Modes](LEADERBOARD_VIEW_MODES.md) | `reference` | `active` | `product-contract` |
 | [Live Final-Proof Visibility](LIVE_FINAL_PROOF_VISIBILITY.md) | `reference` | `active` | `product-contract` |
+| [Marketplace Business V1](MARKETPLACE_BUSINESS.md) | `reference` | `active` | `financial-domain-contract` |
 | [Team Market Integrity](MARKET_TEAM_INTEGRITY.md) | `reference` | `active` | `financial-domain-contract` |
 | [Page Change Notices](PAGE_CHANGE_NOTICES.md) | `reference` | `active` | `product-contract` |
 | [Page Hero CMS](PAGE_HERO_CMS.md) | `reference` | `active` | `product-contract` |

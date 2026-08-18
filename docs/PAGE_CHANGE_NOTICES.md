@@ -8,78 +8,99 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-14"
-review_interval_days: 90
+reviewed_at: "2026-08-18"
+review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # Page Change Notices
 
-AoE2WAR uses small muted navigation dots to tell a returning browser that a
-Kingdom page has materially changed since that browser last visited that version.
+## Gray Dot V2
 
-## Ownership
+AoE2WAR uses small muted gray navigation dots to tell a returning user that a
+Kingdom page has materially changed since that user last saw the current
+edition.
 
-- `lib/pageChangeNotices.ts` is the canonical version registry and persistence
-  contract.
-- `app/AppShell.tsx` renders the aggregate dot on the `🏰` control and the
-  per-page dot inside the Kingdom menu.
-- Persistence is browser-local under
-  `aoe2war:page-change-notices:v1`.
+Gray Dot V2 is durable for authenticated users and lightweight for anonymous
+visitors. It is separate from chat unread counts, financial alerts, chain
+alerts, and transient live activity.
 
-## Product contract
+## Canonical implementation
 
-A page notice represents meaningful UI, content, or product-surface change. It
-is deliberately separate from chat unread counts, Workshop live state, requests,
-chain state, and financial state.
+- `lib/pageChangeManifest.generated.ts` is the generated source-change manifest.
+- `lib/pageChangeNotices.ts` exposes the client notice contract and anonymous
+  `localStorage` fallback under `aoe2war:page-change-notices:v2`.
+- `lib/pageChangeServer.ts` owns authenticated persistence and curated
+  content-revision bumps.
+- Prisma `PageChangeRevision` stores the current source/content edition.
+- Prisma `UserPageChangeSeen` stores each authenticated user's exact seen
+  edition and `seenAt`.
+- `app/AppShell.tsx` renders the aggregate castle dot and per-route menu dots.
+- Command Tower/admin surfaces may expose seen/unseen history for operators.
 
-Opening the Kingdom menu does **not** clear a notice.
+## Covered Kingdom routes
 
-A notice clears only when the browser actually visits that route or one of its
-child routes. The stored value is the page's current version token, so a later
-material update can surface the dot again by bumping that route's version.
+Gray Dot V2 covers 19 routes:
 
-The `🏰` header control carries one muted grey dot whenever at least one Kingdom
-page has an unseen version. Each unseen page carries its own muted grey dot in
-the upper-right of its menu row.
+`/kingdom`, `/oracle`, `/leaderboard`, `/champions`,
+`/national-champions`, `/clans`, `/academy`, `/market`, `/ai`,
+`/bounties`, `/forum`, `/radio`, `/workshop`, `/game-stats`, `/traffic`,
+`/kingdom-forge`, `/round-chamber`, `/statistics`, and `/speed`.
 
-This is intentionally a lightweight per-browser orientation feature. It does
-not require authentication, database state, WOLO state, or a server write.
+`scripts/generate_page_change_manifest.py` owns the source fingerprints.
+Do not hand-edit `pageChangeManifest.generated.ts`.
 
-## Current release notice
+## Two change rails
 
-The first registered notice is:
+### Source/UI change
 
-```text
-/round-chamber = 2026-08-14-senate-v2
-```
+A meaningful page-specific source change changes the route's generated
+`sourceVersion`. `syncPageChangeReleaseManifest()` persists the new edition and
+its change time/reason.
 
-It corresponds to the Roman/Spartan Senate presentation overhaul of the Round
-Chamber.
+### Curated content change
 
-## Adding a future notice
+Meaningful DB/editorial publication that does not require source code changes
+uses `bumpPageChangeContentRevision(prisma, href, reason)`. This increments the
+server-side content revision.
 
-For a meaningful page update, add the route to `PAGE_CHANGE_NOTICES` or bump its
-existing version token.
+Volatile counters, transient rows, and ordinary runtime activity must not create
+notice churn merely because values changed.
 
-```ts
-{
-  href: "/workshop",
-  version: "2026-08-20-forge-stream-v3",
-}
-```
+## Seen semantics
 
-Do not create notice churn for typo fixes or invisible implementation-only
-changes.
+For an authenticated user, a route is unseen when stored
+`UserPageChangeSeen.sourceVersion` or `contentRevision` differs from the current
+`PageChangeRevision`.
 
-## Verification
+Visiting the route marks only that current edition seen. A later source or
+content revision can surface the dot again.
 
-1. Clear `aoe2war:page-change-notices:v1` in local storage.
-2. Open any route other than the changed page.
-3. Confirm a muted dot appears on `🏰`.
-4. Open the Kingdom menu and confirm the changed row has the muted upper-right
-   dot.
-5. Close and reopen the menu; the dot must remain.
-6. Visit the changed page.
-7. Reopen the Kingdom menu; that page's dot must be gone.
-8. Reload; the visited state must persist.
+Brand-new accounts are initialized to the current release baseline so they do
+not inherit every historical gray dot.
+
+For signed-out visitors the client retains the V2 browser-local fallback.
+Opening the Kingdom menu does not clear a notice.
+
+## Presentation contract
+
+- `🏰` carries one restrained aggregate gray dot when at least one Kingdom route
+  is unseen.
+- Each unseen route may carry its own muted dot inside the Kingdom menu.
+- The public meaning is only: **this place changed**.
+- Internal reason/fingerprint text stays out of the normal player UI.
+
+## Release verification
+
+When changing the V2 contract:
+
+1. update implementation/tests;
+2. regenerate source fingerprints where applicable;
+3. preserve authenticated seen receipts unless an intentional migration says
+   otherwise;
+4. keep new-account baseline behavior;
+5. keep anonymous fallback non-blocking;
+6. run Page Change V2 tests and the normal protected release gate.
+
+The August 2026 V2 migration intentionally preserved the existing Round Chamber
+notice rather than silently clearing it.

@@ -48,15 +48,19 @@ disagree, stop and reconcile them before production mutation.
 10. No unmatched rollback artifact is automatically deleted.
 11. Ordinary app release tooling may observe WOLO services on ports `8092` and
     `8093` but must not restart, mutate, or reconfigure them.
-12. Automated plain ship refuses Prisma migrations. Database changes require a
-    separately reviewed migration/backup/rollback procedure.
+12. Prisma migrations are permitted only through the protected
+    `DATABASE`/`FINANCIAL` additive migration lane: exact migration frontier,
+    candidate staged before DB mutation, durable pre-migration `pg_dump` plus
+    SHA-256, migration receipt verification, and no destructive SQL/DML
+    against pre-existing production truth.
 13. Mutating release commands are serialized by a deployment lock.
 14. Machine-readable receipts must let a fresh operator or AI reconstruct the
     release state without conversational memory.
-15. The automatic isolated-build lane requires an unchanged `yarn.lock` and
-    unchanged dependency/package-manager sections in `package.json`. A
-    dependency-contract-changing release fails closed instead of silently
-    reusing incompatible production `node_modules`.
+15. Dependency-contract changes are supported only by the candidate-owned
+    dependency lane: frozen-lockfile network fetch with lifecycle scripts
+    disabled, then lifecycle/build work in the offline/private sandbox.
+    Candidate `node_modules` is hash-bound, staged beside live, atomically
+    activated with `.next`, and rolled back as one runtime bundle.
 
 ## Operator command surface
 
@@ -123,7 +127,10 @@ newer than a deliberately restored certified production runtime.
 
 ## One-command deploy
 
-`aoe2war deploy` is the authoritative no-migration automatic transmission.
+`aoe2war deploy` is the authoritative protected automatic transmission.
+Ordinary releases remain zero-migration; database releases enter the explicitly
+classified additive migration lane and must satisfy its stronger evidence
+contract.
 
 ### 1. Preflight
 
@@ -198,13 +205,13 @@ The manifest and companion SHA-256 live beneath
 ### 6. Isolated stage beside live
 
 Production source remains on the manifest's previous production SHA throughout
-staging. The engine fetches the sealed release, proves `yarn.lock` and the
-package dependency contract did not change, verifies pinned Yarn `1.22.22`,
-creates a temporary detached worktree for that exact release, and copies the
-already-proven production dependency tree into that disposable worktree.
-Build hooks, Prisma generation, the generated build-version sidecar, and Next
-build output can therefore mutate only the temporary worktree and its copied
-`node_modules`.
+staging. The engine fetches the sealed release, verifies pinned Yarn `1.22.22`,
+creates a temporary detached worktree for that exact release, and materializes
+a candidate-owned dependency tree. Dependency network fetch uses
+`--frozen-lockfile --ignore-scripts`; lifecycle scripts/build work then run in
+the offline/private sandbox. Build hooks, Prisma generation, the generated
+build-version sidecar, dependency tree, and Next build output therefore belong
+only to the candidate until activation.
 
 After a successful build, the engine removes `.next-release/cache` and
 binary-safely relocates embedded absolute worktree paths to the canonical live
@@ -238,11 +245,62 @@ may still be resumed from an already-valid local receipt on the staging host,
 but another host must fail closed rather than reconstruct trust from the
 artifact alone.
 
-A successful stage ends with only the ignored `.next-release` artifact added.
-The current automatic lane rejects any release that changes `yarn.lock` or the
-dependency/package-manager sections of `package.json`; a future dependency-swap
-lane must atomically install, activate, and roll back `node_modules` before that
-boundary can be relaxed.
+A successful stage leaves ignored `.next-release` and
+`.node_modules-release` candidate artifacts beside the unchanged live runtime.
+Their identities are hash-bound in the stage receipt. Activation stops the web
+service, swaps the candidate dependency tree and Next runtime together, advances
+source/build-version identity, and keeps paired fast/durable rollback material.
+
+### Protected additive Prisma migration lane
+
+When the manifest contains Prisma migrations, automatic release is allowed only
+for `DATABASE` or `FINANCIAL` risk and only after the exact candidate has been
+staged beside the unchanged live runtime.
+
+The migration phase must:
+
+- derive the exact pending Prisma frontier and require it to equal the manifest;
+- reject unexpected, partial, destructive, or non-additive migration work;
+- create durable `pg_dump -Fc --no-owner --no-acl` evidence before the first
+  production DB mutation;
+- SHA-256 bind that backup on the mounted evidence volume;
+- deploy the exact migration frontier;
+- verify each declared migration is applied exactly once with no unfinished or
+  rolled-back row;
+- write durable migration status before runtime activation.
+
+A failed app activation after successful additive DB migration does not justify
+an ad-hoc production DB rollback. The previous app remains backward-compatible
+with the additive schema while the engine recovers or activates the exact staged
+candidate.
+
+### Activation transport timeout recovery
+
+Transport timeout is **not** equivalent to activation failure.
+
+The exact remote activation receipt directory is known before activation starts.
+If the Mac-side SSH wait expires, the orchestrator must not restage, remigrate,
+or blindly retry. It enters an unknown-remote-state recovery lane and polls only
+that exact durable activation directory.
+
+Automatic recovery is allowed only when durable evidence and live runtime truth
+simultaneously prove:
+
+- `status=CERTIFIED`;
+- exact release/previous SHA, active BUILD_ID, build version, artifact and
+  dependency identity;
+- exact stage/manifest/gate SHA-256 bindings;
+- clean current production source;
+- active service and internal/public version parity;
+- no staged runtime/dependency tree remains;
+- completed bounded health soak and retention evidence;
+- unchanged protected WOLO listener counts;
+- valid fast and durable rollback paths.
+
+Only then may the normal local activation receipt be written and certification
+continue. Missing, conflicting, partial, ambiguous, or non-certified evidence
+remains `REMOTE_STATE_UNKNOWN`; the engine must stop and tell the operator not
+to retry blindly.
 
 ### 7. Zero-mutation activation preflight
 
