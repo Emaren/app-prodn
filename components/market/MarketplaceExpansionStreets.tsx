@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import {
   ArrowRight,
   Crown,
@@ -640,6 +641,11 @@ export default async function MarketplaceExpansionStreets() {
   const fourthStreet = STREETS[2];
   const fifthStreet = STREETS[3];
   const sixthStreet = STREETS[4];
+
+  // Marketplace storefronts are request-time database state. The isolated
+  // release builder intentionally has no DATABASE_URL, so never prerender this
+  // database read during `next build`.
+  await connection();
   const listings = await loadPublicMarketplaceAwningListings(getPrisma());
 
   return (

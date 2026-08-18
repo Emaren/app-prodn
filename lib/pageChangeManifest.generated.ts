@@ -40,7 +40,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/market",
     label: "Marketplace",
-    version: "src-ea17e63d40dd10119947",
+    version: "src-19b658fda9a88d5f7006",
   },
   {
     href: "/ai",
