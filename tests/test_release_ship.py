@@ -270,6 +270,234 @@ class ShipTests(unittest.TestCase):
         )
         self.assertEqual(shell.returncode, 0, shell.stderr)
 
+    def test_activation_transport_timeout_recovers_exact_certified_result(self):
+        data, receipt, transport = activation_sample()
+        receipt = {
+            **receipt,
+            "implementation_sha": "c" * 40,
+            "risk_class": "INFRASTRUCTURE",
+        }
+        manifest = {
+            "release_sha": receipt["release_sha"],
+            "migration_paths": [],
+        }
+
+        # load_stage_receipt() is mocked, but activate_release() still reads
+        # receipt_path text and later renders all three paths relative to ROOT.
+        # Reuse this real repository file as a harmless readable in-root fixture.
+        stage_path = SCRIPT
+        manifest_path = SCRIPT
+        gate_path = SCRIPT
+
+        recovered = {
+            "status": "CERTIFIED",
+            "release_sha": receipt["release_sha"],
+            "source_sha": receipt["release_sha"],
+            "previous_build_id": receipt["active_build_id"],
+            "active_build_id": receipt["staged_build_id"],
+            "candidate_build_version": receipt["candidate_build_version"],
+            "artifact_sha256": receipt["artifact_sha256"],
+            "candidate_node_modules_sha256": receipt[
+                "candidate_node_modules_sha256"
+            ],
+            "previous_node_modules_sha256": "9" * 64,
+            "content_sha256": "8" * 64,
+            "wolo8092": "1",
+            "wolo8093": "1",
+            "soak_seconds": str(MODULE.ACTIVATION_SOAK_SECONDS),
+            "soak_samples": "6",
+            "retention_status": "PASS",
+            "retention_keep": str(MODULE.FAST_ROLLBACK_KEEP),
+            "retention_pruned": "1",
+            "retention_reclaimed_kb": "123",
+            "retention_unmatched_kept": "0",
+            "fast_rollback": ".next-rollback-activate-test",
+            "fast_rollback_modules": ".node_modules-rollback-activate-test",
+            "durable_rollback": "/mnt/rollback",
+            "durable_cache_free": "1",
+            "activation_bundle_while_stopped": "1",
+            "receipt_dir": "/mnt/activation",
+        }
+
+        timeout = subprocess.TimeoutExpired(cmd=["ssh"], timeout=900)
+
+        with (
+            mock.patch.object(
+                MODULE,
+                "load_stage_receipt",
+                return_value=(
+                    stage_path,
+                    receipt,
+                    "3" * 64,
+                    manifest_path,
+                    manifest,
+                    "1" * 64,
+                    gate_path,
+                    "2" * 64,
+                ),
+            ),
+            mock.patch.object(
+                MODULE,
+                "verify_production_migration_receipt",
+                return_value=None,
+            ),
+            mock.patch.object(
+                MODULE,
+                "production_transport",
+                return_value=(transport, None),
+            ),
+            mock.patch.object(
+                MODULE,
+                "activation_validation_errors",
+                return_value=[],
+            ),
+            mock.patch.object(
+                MODULE,
+                "remote_activation_script",
+                return_value="echo test",
+            ),
+            mock.patch.object(MODULE, "run", side_effect=timeout),
+            mock.patch.object(
+                MODULE,
+                "recover_certified_activation_result",
+                return_value=(recovered, "recovered from durable CERTIFIED evidence"),
+            ) as recovery,
+            mock.patch.object(
+                MODULE,
+                "write_activation_receipt",
+                return_value=(
+                    MODULE.ROOT
+                    / ".aoe2war-release/activation-receipts/fake.json"
+                ),
+            ),
+            mock.patch.object(MODULE, "sha256_file", return_value="4" * 64),
+        ):
+            rc = MODULE.activate_release(
+                data,
+                stage_receipt="ignored.json",
+                dry_run=False,
+                json_output=True,
+            )
+
+        self.assertEqual(rc, 0)
+        recovery.assert_called_once()
+        kwargs = recovery.call_args.kwargs
+        self.assertEqual(kwargs["stage_receipt_sha"], "3" * 64)
+        self.assertEqual(kwargs["manifest_sha"], "1" * 64)
+        self.assertEqual(kwargs["gate_sha"], "2" * 64)
+
+    def test_certified_timeout_recovery_validates_durable_evidence_and_live_truth(self):
+        _, receipt, _ = activation_sample()
+
+        cert = {
+            "status": "CERTIFIED",
+            "release_sha": receipt["release_sha"],
+            "previous_production_sha": receipt["previous_production_sha"],
+            "source_sha": receipt["release_sha"],
+            "old_build_id": receipt["active_build_id"],
+            "active_build_id": receipt["staged_build_id"],
+            "candidate_build_version": receipt["candidate_build_version"],
+            "artifact_sha256": receipt["artifact_sha256"],
+            "candidate_node_modules_sha256": receipt[
+                "candidate_node_modules_sha256"
+            ],
+            "previous_node_modules_sha256": "9" * 64,
+            "content_sha256": "8" * 64,
+            "stage_receipt_sha256": "3" * 64,
+            "manifest_sha256": "1" * 64,
+            "gate_sha256": "2" * 64,
+            "wolo8092": "1",
+            "wolo8093": "1",
+            "soak_seconds": str(MODULE.ACTIVATION_SOAK_SECONDS),
+            "soak_samples": "6",
+            "fast_rollback": ".next-rollback-activate-test",
+            "fast_rollback_modules": ".node_modules-rollback-activate-test",
+            "durable_rollback": "/mnt/rollback",
+            "durable_cache_free": "1",
+            "activation_bundle_while_stopped": "1",
+        }
+        ret = {
+            "status": "PASS",
+            "keep": str(MODULE.FAST_ROLLBACK_KEEP),
+            "matched": "1",
+            "unmatched_kept": "0",
+            "pruned": "1",
+            "reclaimed_kb": "123",
+            "source_sha": receipt["release_sha"],
+            "active_build_id": receipt["staged_build_id"],
+            "wolo8092": "1",
+            "wolo8093": "1",
+        }
+        live = {
+            "source_sha": receipt["release_sha"],
+            "dirty_count": "0",
+            "service": "active",
+            "active_build_id": receipt["staged_build_id"],
+            "build_version_file": receipt["candidate_build_version"],
+            "staged_build_id": "",
+            "staged_modules": "0",
+            "internal_build_version": receipt["candidate_build_version"],
+            "public_build_version": receipt["candidate_build_version"],
+            "wolo8092": "1",
+            "wolo8093": "1",
+        }
+        hashes = {
+            "stage_receipt_sha256": "3" * 64,
+            "manifest_sha256": "1" * 64,
+            "gate_sha256": "2" * 64,
+        }
+
+        stdout = "\n".join(
+            [
+                *(f"CERT\t{k}\t{v}" for k, v in cert.items()),
+                *(f"RET\t{k}\t{v}" for k, v in ret.items()),
+                *(f"LIVE\t{k}\t{v}" for k, v in live.items()),
+                *(f"HASH\t{k}\t{v}" for k, v in hashes.items()),
+            ]
+        )
+
+        completed = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=stdout,
+            stderr="",
+        )
+
+        with mock.patch.object(MODULE, "run", return_value=completed) as runner:
+            result, detail = MODULE.recover_certified_activation_result(
+                receipt,
+                receipt_dir="/mnt/activation",
+                stage_receipt_sha="3" * 64,
+                manifest_sha="1" * 64,
+                gate_sha="2" * 64,
+            )
+
+        self.assertIsNotNone(result)
+        assert result is not None
+        self.assertEqual(result["status"], "CERTIFIED")
+        self.assertEqual(result["active_build_id"], receipt["staged_build_id"])
+        self.assertEqual(
+            result["candidate_build_version"],
+            receipt["candidate_build_version"],
+        )
+        self.assertEqual(result["wolo8092"], "1")
+        self.assertEqual(result["wolo8093"], "1")
+        self.assertIn("durable CERTIFIED", detail)
+
+        remote = runner.call_args.args[0][-1]
+        shell_argv = shlex.split(remote)
+        self.assertEqual(shell_argv[:2], ["bash", "-lc"])
+
+        generated = shell_argv[2]
+        shell = subprocess.run(
+            ["bash", "-n"],
+            input=generated,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(shell.returncode, 0, shell.stderr)
+
     def test_valid_preflight(self):
         data, manifest, transport = sample()
         self.assertEqual(

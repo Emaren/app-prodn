@@ -6,6 +6,7 @@ import os
 import shlex
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -57,6 +58,12 @@ ACTIVATION_SOAK_INTERVAL_SECONDS = _bounded_env_int(
 )
 FAST_ROLLBACK_KEEP = _bounded_env_int(
     "AOE2_RELEASE_FAST_ROLLBACK_KEEP", 1, 1, 10
+)
+ACTIVATION_TIMEOUT_RECOVERY_SECONDS = _bounded_env_int(
+    "AOE2_RELEASE_TIMEOUT_RECOVERY_SECONDS", 300, 30, 900
+)
+ACTIVATION_TIMEOUT_RECOVERY_INTERVAL_SECONDS = _bounded_env_int(
+    "AOE2_RELEASE_TIMEOUT_RECOVERY_INTERVAL_SECONDS", 10, 2, 60
 )
 
 
@@ -1880,6 +1887,224 @@ printf 'migration_receipt\\t%s\\n' "$receipt_match"
         )
 
 
+
+def _parse_recovery_probe(text: str) -> dict[str, dict[str, str]]:
+    groups: dict[str, dict[str, str]] = {
+        "CERT": {},
+        "RET": {},
+        "LIVE": {},
+        "HASH": {},
+    }
+    for raw in text.splitlines():
+        parts = raw.split("\t", 2)
+        if len(parts) != 3:
+            continue
+        group, key, value = parts
+        if group not in groups or not key:
+            continue
+        if key in groups[group]:
+            raise ShipError(
+                f"Certified timeout recovery returned duplicate {group}.{key}."
+            )
+        groups[group][key] = value
+    return groups
+
+
+def recover_certified_activation_result(
+    receipt: dict,
+    *,
+    receipt_dir: str,
+    stage_receipt_sha: str,
+    manifest_sha: str,
+    gate_sha: str,
+) -> tuple[dict[str, str] | None, str]:
+    # Recover only from exact durable CERTIFIED evidence after transport timeout.
+    q = shlex.quote
+    probe = "\n".join(
+        [
+            "set -euo pipefail",
+            f"ACT={q(receipt_dir)}",
+            f"PROD={q(PROD_REPO)}",
+            'test -f "$ACT/certification.txt" || exit 44',
+            'test -f "$ACT/fast-retention-result.txt" || exit 44',
+            'test -f "$ACT/stage-receipt.json" || exit 44',
+            'test -f "$ACT/release-manifest.json" || exit 44',
+            'test -f "$ACT/gate-receipt.json" || exit 44',
+            'while IFS="=" read -r key value; do printf "CERT\\t%s\\t%s\\n" "$key" "$value"; done < "$ACT/certification.txt"',
+            'while IFS="=" read -r key value; do printf "RET\\t%s\\t%s\\n" "$key" "$value"; done < "$ACT/fast-retention-result.txt"',
+            'printf "HASH\\tstage_receipt_sha256\\t%s\\n" "$(sha256sum "$ACT/stage-receipt.json" | cut -d" " -f1)"',
+            'printf "HASH\\tmanifest_sha256\\t%s\\n" "$(sha256sum "$ACT/release-manifest.json" | cut -d" " -f1)"',
+            'printf "HASH\\tgate_sha256\\t%s\\n" "$(sha256sum "$ACT/gate-receipt.json" | cut -d" " -f1)"',
+            'cd "$PROD"',
+            'printf "LIVE\\tsource_sha\\t%s\\n" "$(git rev-parse HEAD)"',
+            'printf "LIVE\\tdirty_count\\t%s\\n" "$(git status --porcelain --untracked-files=all | wc -l | tr -d " ")"',
+            f'printf "LIVE\\tservice\\t%s\\n" "$(systemctl is-active {shlex.quote(SERVICE)} 2>/dev/null || true)"',
+            'printf "LIVE\\tactive_build_id\\t%s\\n" "$(cat .next/BUILD_ID 2>/dev/null || true)"',
+            'printf "LIVE\\tbuild_version_file\\t%s\\n" "$(tr -d "\\r\\n" < .aoe2war-build-version 2>/dev/null || true)"',
+            'printf "LIVE\\tstaged_build_id\\t%s\\n" "$(cat .next-release/BUILD_ID 2>/dev/null || true)"',
+            'staged_modules=0; test -d .node_modules-release && staged_modules=1; printf "LIVE\\tstaged_modules\\t%s\\n" "$staged_modules"',
+            'internal="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deployment-version 2>/dev/null || true)"',
+            'public="$(curl -fsS --max-time 10 ' + shlex.quote(PUBLIC.rstrip("/") + "/api/deployment-version") + ' 2>/dev/null || true)"',
+            'python3 - "$internal" "$public" <<\'PY\'\nimport json, sys\nfor label, raw in (("internal", sys.argv[1]), ("public", sys.argv[2])):\n    try:\n        value = str(json.loads(raw).get("buildVersion") or "")\n    except Exception:\n        value = ""\n    print("LIVE\\t%s_build_version\\t%s" % (label, value))\nPY',
+            'printf "LIVE\\twolo8092\\t%s\\n" "$(ss -ltn 2>/dev/null | grep -Ec ":8092[[:space:]]" || true)"',
+            'printf "LIVE\\twolo8093\\t%s\\n" "$(ss -ltn 2>/dev/null | grep -Ec ":8093[[:space:]]" || true)"',
+            'fast="$(sed -n "s/^fast_rollback=//p" "$ACT/certification.txt")"',
+            'fast_modules="$(sed -n "s/^fast_rollback_modules=//p" "$ACT/certification.txt")"',
+            'durable="$(sed -n "s/^durable_rollback=//p" "$ACT/certification.txt")"',
+            'test -n "$fast" && test -d "$fast"',
+            'test -n "$fast_modules" && test -d "$fast_modules"',
+            'test -n "$durable" && test -d "$durable"',
+        ]
+    )
+
+    deadline = time.monotonic() + ACTIVATION_TIMEOUT_RECOVERY_SECONDS
+    last_detail = "durable certification evidence not visible yet"
+
+    while True:
+        try:
+            p = run(
+                [
+                    "ssh",
+                    "-o",
+                    "BatchMode=yes",
+                    "-o",
+                    "ConnectTimeout=8",
+                    PROD_HOST,
+                    f"bash -lc {shlex.quote(probe)}",
+                ],
+                timeout=30,
+            )
+        except subprocess.TimeoutExpired:
+            p = None
+            last_detail = "recovery probe transport timed out"
+
+        if p is not None and p.returncode == 0:
+            groups = _parse_recovery_probe(p.stdout or "")
+            cert = groups["CERT"]
+            ret = groups["RET"]
+            live = groups["LIVE"]
+            hashes = groups["HASH"]
+
+            expected_cert = {
+                "status": "CERTIFIED",
+                "release_sha": str(receipt.get("release_sha") or ""),
+                "previous_production_sha": str(receipt.get("previous_production_sha") or ""),
+                "source_sha": str(receipt.get("release_sha") or ""),
+                "old_build_id": str(receipt.get("active_build_id") or ""),
+                "active_build_id": str(receipt.get("staged_build_id") or ""),
+                "candidate_build_version": str(receipt.get("candidate_build_version") or ""),
+                "artifact_sha256": str(receipt.get("artifact_sha256") or ""),
+                "candidate_node_modules_sha256": str(receipt.get("candidate_node_modules_sha256") or ""),
+                "stage_receipt_sha256": stage_receipt_sha,
+                "manifest_sha256": manifest_sha,
+                "gate_sha256": gate_sha,
+                "wolo8092": str(receipt.get("wolo_8092_count")),
+                "wolo8093": str(receipt.get("wolo_8093_count")),
+                "durable_cache_free": "1",
+                "activation_bundle_while_stopped": "1",
+            }
+            expected_live = {
+                "source_sha": str(receipt.get("release_sha") or ""),
+                "dirty_count": "0",
+                "service": "active",
+                "active_build_id": str(receipt.get("staged_build_id") or ""),
+                "build_version_file": str(receipt.get("candidate_build_version") or ""),
+                "staged_build_id": "",
+                "staged_modules": "0",
+                "internal_build_version": str(receipt.get("candidate_build_version") or ""),
+                "public_build_version": str(receipt.get("candidate_build_version") or ""),
+                "wolo8092": str(receipt.get("wolo_8092_count")),
+                "wolo8093": str(receipt.get("wolo_8093_count")),
+            }
+            expected_hashes = {
+                "stage_receipt_sha256": stage_receipt_sha,
+                "manifest_sha256": manifest_sha,
+                "gate_sha256": gate_sha,
+            }
+
+            mismatches = []
+            for label, actual, expected in (
+                ("cert", cert, expected_cert),
+                ("live", live, expected_live),
+                ("hash", hashes, expected_hashes),
+            ):
+                mismatches.extend(
+                    f"{label}.{key}: expected {value!r}, got {actual.get(key)!r}"
+                    for key, value in expected.items()
+                    if actual.get(key) != value
+                )
+
+            if ret.get("status") not in {"PASS", "WARN"}:
+                mismatches.append(f"ret.status: expected PASS/WARN, got {ret.get('status')!r}")
+            if ret.get("keep") != str(FAST_ROLLBACK_KEEP):
+                mismatches.append(f"ret.keep: expected {FAST_ROLLBACK_KEEP!r}, got {ret.get('keep')!r}")
+            for key, expected in (
+                ("source_sha", str(receipt.get("release_sha") or "")),
+                ("active_build_id", str(receipt.get("staged_build_id") or "")),
+                ("wolo8092", str(receipt.get("wolo_8092_count"))),
+                ("wolo8093", str(receipt.get("wolo_8093_count"))),
+            ):
+                if ret.get(key) != expected:
+                    mismatches.append(f"ret.{key}: expected {expected!r}, got {ret.get(key)!r}")
+
+            try:
+                soak_samples = int(cert.get("soak_samples") or "0")
+            except ValueError:
+                soak_samples = 0
+            if soak_samples < 1:
+                mismatches.append("cert.soak_samples: no completed soak samples")
+            if cert.get("soak_seconds") != str(ACTIVATION_SOAK_SECONDS):
+                mismatches.append("cert.soak_seconds: policy duration does not match")
+
+            if mismatches:
+                raise ShipError(
+                    "Durable activation evidence appeared after transport timeout but does not exactly match the staged release: "
+                    + "; ".join(mismatches)
+                )
+
+            result = {
+                "status": cert["status"],
+                "release_sha": cert["release_sha"],
+                "source_sha": cert["source_sha"],
+                "previous_build_id": cert["old_build_id"],
+                "active_build_id": cert["active_build_id"],
+                "candidate_build_version": cert["candidate_build_version"],
+                "artifact_sha256": cert["artifact_sha256"],
+                "candidate_node_modules_sha256": cert["candidate_node_modules_sha256"],
+                "previous_node_modules_sha256": cert["previous_node_modules_sha256"],
+                "content_sha256": cert.get("content_sha256", ""),
+                "wolo8092": cert["wolo8092"],
+                "wolo8093": cert["wolo8093"],
+                "soak_seconds": cert["soak_seconds"],
+                "soak_samples": cert["soak_samples"],
+                "retention_status": ret["status"],
+                "retention_keep": ret["keep"],
+                "retention_pruned": ret.get("pruned", "0"),
+                "retention_reclaimed_kb": ret.get("reclaimed_kb", "0"),
+                "retention_unmatched_kept": ret.get("unmatched_kept", "0"),
+                "fast_rollback": cert["fast_rollback"],
+                "fast_rollback_modules": cert["fast_rollback_modules"],
+                "durable_rollback": cert["durable_rollback"],
+                "durable_cache_free": cert["durable_cache_free"],
+                "activation_bundle_while_stopped": cert["activation_bundle_while_stopped"],
+                "receipt_dir": receipt_dir,
+            }
+            return result, "recovered from durable CERTIFIED evidence"
+
+        if p is not None:
+            detail = ((p.stderr or "") or (p.stdout or "")).strip()
+            if detail:
+                last_detail = detail[-2000:]
+            elif p.returncode == 44:
+                last_detail = "remote activation has not published final evidence yet"
+            else:
+                last_detail = f"recovery probe exited {p.returncode}"
+
+        if time.monotonic() >= deadline:
+            return None, last_detail
+
+        time.sleep(ACTIVATION_TIMEOUT_RECOVERY_INTERVAL_SECONDS)
+
 def activate_release(
     data: dict,
     *,
@@ -1952,45 +2177,108 @@ def activate_release(
         receipt_dir=receipt_dir,
         rollback_dir=rollback_dir,
     )
-    p = run(
-        [
-            "ssh",
-            "-o", "BatchMode=yes",
-            "-o", "ConnectTimeout=8",
-            PROD_HOST,
-            f"bash -lc {shlex.quote(script)}",
-        ],
-        timeout=180 if dry_run else 900,
-    )
-    if p.returncode != 0:
-        message = (p.stderr or "").strip() or f"ssh exited {p.returncode}"
-        payload = {
-            "schema": 1,
-            "kind": "aoe2war-activation-result",
-            "status": "ERROR",
-            "release_sha": receipt["release_sha"],
-            "stage_receipt_path": str(receipt_path.relative_to(ROOT)),
-            "remote_receipt_dir": receipt_dir,
-            "error": message,
-            "remote_stdout": (p.stdout or "").strip(),
-        }
-        if json_output:
-            print(json.dumps(payload, indent=2, sort_keys=True))
-        else:
-            print("STOP: RECEIPT-DRIVEN ACTIVATION FAILED")
-            print(f"Release: {receipt['release_sha']}")
-            print(f"Receipt: {receipt_dir}")
-            if p.stdout:
-                print(p.stdout.rstrip())
-            if message:
-                print(message)
-            print(
-                "Remote activation trap was armed before runtime mutation; "
-                "inspect rollback-status.txt if mutation began."
-            )
-        return 2
+    transport_recovered_after_timeout = False
+    try:
+        p = run(
+            [
+                "ssh",
+                "-o", "BatchMode=yes",
+                "-o", "ConnectTimeout=8",
+                PROD_HOST,
+                f"bash -lc {shlex.quote(script)}",
+            ],
+            timeout=180 if dry_run else 900,
+        )
+    except subprocess.TimeoutExpired as exc:
+        if dry_run:
+            message = f"activation dry-run transport timed out: {exc}"
+            if json_output:
+                print(json.dumps({"status": "ERROR", "error": message}, indent=2))
+            else:
+                print(f"STOP: {message}")
+            return 2
 
-    result = parse_kv(p.stdout or "")
+        try:
+            result, recovery_detail = recover_certified_activation_result(
+                receipt,
+                receipt_dir=receipt_dir,
+                stage_receipt_sha=receipt_sha,
+                manifest_sha=manifest_sha,
+                gate_sha=gate_sha,
+            )
+        except ShipError as recovery_error:
+            if json_output:
+                print(json.dumps({
+                    "status": "REMOTE_STATE_UNKNOWN",
+                    "release_sha": receipt["release_sha"],
+                    "remote_receipt_dir": receipt_dir,
+                    "error": str(recovery_error),
+                }, indent=2, sort_keys=True))
+            else:
+                print("STOP: ACTIVATION TRANSPORT TIMED OUT; EVIDENCE CONFLICT")
+                print(f"Release: {receipt['release_sha']}")
+                print(f"Remote receipt: {receipt_dir}")
+                print(str(recovery_error))
+                print("Do not retry activation automatically.")
+            return 2
+
+        if result is None:
+            payload = {
+                "schema": 1,
+                "kind": "aoe2war-activation-result",
+                "status": "REMOTE_STATE_UNKNOWN",
+                "release_sha": receipt["release_sha"],
+                "stage_receipt_path": str(receipt_path.relative_to(ROOT)),
+                "remote_receipt_dir": receipt_dir,
+                "error": (
+                    "activation transport timed out and no exact durable "
+                    f"CERTIFIED result became provable: {recovery_detail}"
+                ),
+            }
+            if json_output:
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                print("STOP: ACTIVATION TRANSPORT TIMED OUT — REMOTE STATE UNKNOWN")
+                print(f"Release: {receipt['release_sha']}")
+                print(f"Remote receipt: {receipt_dir}")
+                print(recovery_detail)
+                print(
+                    "Do not restage, remigrate, or retry activation blindly. "
+                    "Inspect durable activation/rollback evidence first."
+                )
+            return 2
+
+        transport_recovered_after_timeout = True
+    else:
+        if p.returncode != 0:
+            message = (p.stderr or "").strip() or f"ssh exited {p.returncode}"
+            payload = {
+                "schema": 1,
+                "kind": "aoe2war-activation-result",
+                "status": "ERROR",
+                "release_sha": receipt["release_sha"],
+                "stage_receipt_path": str(receipt_path.relative_to(ROOT)),
+                "remote_receipt_dir": receipt_dir,
+                "error": message,
+                "remote_stdout": (p.stdout or "").strip(),
+            }
+            if json_output:
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                print("STOP: RECEIPT-DRIVEN ACTIVATION FAILED")
+                print(f"Release: {receipt['release_sha']}")
+                print(f"Receipt: {receipt_dir}")
+                if p.stdout:
+                    print(p.stdout.rstrip())
+                if message:
+                    print(message)
+                print(
+                    "Remote activation trap was armed before runtime mutation; "
+                    "inspect rollback-status.txt if mutation began."
+                )
+            return 2
+
+        result = parse_kv(p.stdout or "")
     if dry_run:
         expected = {
             "status": "PREPARED",
@@ -2108,6 +2396,7 @@ def activate_release(
             "INFRASTRUCTURE exact runtime identity, internal/public critical-route proof, and bounded post-activation health soak"
         ),
         "wolo_mutated": False,
+        "transport_recovered_after_timeout": transport_recovered_after_timeout,
     }
     local_receipt = write_activation_receipt(payload)
     payload["local_receipt_path"] = str(local_receipt.relative_to(ROOT))
@@ -2143,6 +2432,8 @@ def activate_release(
     print(f"Durable rollback: {payload['durable_rollback']}")
     print(f"Remote receipt: {payload['remote_receipt_dir']}")
     print(f"Local receipt:  {payload['local_receipt_path']}")
+    if payload["transport_recovered_after_timeout"]:
+        print("Transport:      SSH timeout recovered from exact durable CERTIFIED evidence")
     print()
     print("PASS: RELEASE ACTIVATED + CERTIFIED — WOLO UNTOUCHED")
     return 0
