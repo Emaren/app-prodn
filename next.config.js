@@ -15,6 +15,9 @@ const AOE2WAR_BUILD_VERSION = fs.existsSync(
   ? fs.readFileSync(BUILD_VERSION_FILE, "utf8").trim()
   : "development";
 
+const IS_RELEASE_BUILD =
+  process.env.NEXT_DIST_DIR === ".next-release";
+
 // next.config.js
 //
 // Goal: NEVER bake api-prodn into the browser bundle.
@@ -30,6 +33,23 @@ const UPSTREAM_API = (process.env.AOE2_BACKEND_UPSTREAM ?? "http://127.0.0.1:333
 module.exports = {
   reactStrictMode: false,
   productionBrowserSourceMaps: false,
+
+  // The production release sandbox is a 4 GiB cgroup. Keep expensive
+  // validation fail-closed, but run it sequentially in prebuild instead of
+  // overlapping Next's lint/type workers with the compiled application graph.
+  // The explicit Webpack worker is required because this project has a custom
+  // webpack() hook; Next otherwise may not enable its memory-saving worker.
+  experimental: {
+    webpackBuildWorker: true,
+    webpackMemoryOptimizations: true,
+    ...(IS_RELEASE_BUILD ? { cpus: 2 } : {}),
+  },
+  eslint: {
+    ignoreDuringBuilds: IS_RELEASE_BUILD,
+  },
+  typescript: {
+    ignoreBuildErrors: IS_RELEASE_BUILD,
+  },
   // Production can build into .next-release while the live process keeps
   // serving .next, then swap directories during a sub-second restart window.
   distDir: process.env.NEXT_DIST_DIR || ".next",
