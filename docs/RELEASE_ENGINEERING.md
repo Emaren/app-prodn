@@ -251,6 +251,33 @@ Their identities are hash-bound in the stage receipt. Activation stops the web
 service, swaps the candidate dependency tree and Next runtime together, advances
 source/build-version identity, and keeps paired fast/durable rollback material.
 
+### Bounded release-build memory policy
+
+The production build sandbox is intentionally resource-bounded. A build OOM is
+a stage failure, not permission to weaken production isolation or raise memory
+limits beyond safe host capacity.
+
+For release staging (`NEXT_DIST_DIR=.next-release`):
+
+- lint runs explicitly in `prebuild`;
+- TypeScript validation runs explicitly as `tsc --noEmit` in `prebuild`;
+- those checks are sequential and must pass before `next build`;
+- Next's duplicate in-build lint/type workers are disabled only for that
+  release-build mode, because equivalent checks already passed in the same
+  fail-closed build lifecycle;
+- ordinary/non-release builds retain Next's normal built-in lint/type behavior;
+- `experimental.webpackBuildWorker` is explicitly enabled because this repo has
+  a custom `webpack()` hook;
+- `experimental.webpackMemoryOptimizations` is enabled;
+- release worker concurrency is bounded to two CPUs.
+
+Do not solve a release-build OOM by disabling validation without a replacement,
+raising `MemoryMax` past safe host capacity, restarting WoloChain, or building
+inside the live production tree.
+
+A failure before `.next-release` / `.node_modules-release` artifact copy leaves
+the certified runtime unchanged and requires no runtime rollback.
+
 ### Protected additive Prisma migration lane
 
 When the manifest contains Prisma migrations, automatic release is allowed only
