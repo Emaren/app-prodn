@@ -113,5 +113,25 @@
   "legacy_deployment_artifacts": {
     "ecosystem.config.js": "must-be-absent",
     "Dockerfile": "must-be-absent"
+  },
+  "maintenance_safety": {
+    "wolo_service": "wolochaind-mainnet.service",
+    "wolo_rpc_status_url": "http://127.0.0.1:27657/status",
+    "wolo_oom_score_adjust": -900,
+    "runner_source": "scripts/aoe2_maintenance_run.sh",
+    "runner_installed": "/usr/local/sbin/aoe2war-maintenance-run",
+    "wolo_dropin_source": "ops/systemd/wolochaind-mainnet.service.d/20-oom-protection.conf",
+    "wolo_dropin_installed": "/etc/systemd/system/wolochaind-mainnet.service.d/20-oom-protection.conf",
+    "maintenance_oom_score_adjust": 800,
+    "memory_high_mib": 256,
+    "memory_max_mib": 384,
+    "memory_swap_max_mib": 128,
+    "cpu_quota_percent": 20,
+    "io_weight": 1,
+    "minimum_mem_available_mib": 2048,
+    "emergency_mem_available_mib": 1024,
+    "max_block_age_seconds": 20,
+    "max_no_progress_seconds": 15,
+    "policy": "maintenance-dies-before-sole-validator"
   }
 }

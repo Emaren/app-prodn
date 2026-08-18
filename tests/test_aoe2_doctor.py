@@ -62,5 +62,51 @@ class DoctorTests(unittest.TestCase):
         self.assertEqual(doctor.category_status("Production"), "FAIL")
 
 
+    def test_maintenance_safety_problems_exact(self):
+        policy = {
+            "wolo_service": "wolochaind-mainnet.service",
+            "wolo_oom_score_adjust": -900,
+        }
+        snapshot = {
+            "node_service": "wolochaind-mainnet.service",
+            "service_state": "active",
+            "systemd_oom": "-900",
+            "live_oom": "-900",
+            "runner_sha": "a" * 64,
+            "runner_source_sha": "a" * 64,
+            "dropin_sha": "b" * 64,
+            "dropin_source_sha": "b" * 64,
+            "runner_mode": "755",
+            "dropin_mode": "644",
+        }
+        self.assertEqual(
+            MODULE.maintenance_safety_problems(policy, snapshot),
+            [],
+        )
+
+    def test_maintenance_safety_problems_detect_drift(self):
+        policy = {
+            "wolo_service": "wolochaind-mainnet.service",
+            "wolo_oom_score_adjust": -900,
+        }
+        snapshot = {
+            "node_service": "wolochaind-mainnet.service",
+            "service_state": "inactive",
+            "systemd_oom": "0",
+            "live_oom": "0",
+            "runner_sha": "a",
+            "runner_source_sha": "b",
+            "dropin_sha": "c",
+            "dropin_source_sha": "d",
+            "runner_mode": "700",
+            "dropin_mode": "600",
+        }
+        problems = MODULE.maintenance_safety_problems(policy, snapshot)
+        self.assertGreaterEqual(len(problems), 7)
+        self.assertTrue(any("service_state" in value for value in problems))
+        self.assertTrue(any("live_oom" in value for value in problems))
+        self.assertTrue(any("runner" in value for value in problems))
+
+
 if __name__ == "__main__":
     unittest.main()

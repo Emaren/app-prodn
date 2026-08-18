@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -823,6 +824,188 @@ def check_local_bridge(doctor: Doctor, contract: dict[str, Any]) -> None:
     doctor.info["operator_bridge"] = result
 
 
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def maintenance_safety_problems(
+    policy: dict[str, Any],
+    snapshot: dict[str, Any],
+) -> list[str]:
+    problems: list[str] = []
+
+    expected_text = {
+        "node_service": str(policy.get("wolo_service") or ""),
+        "service_state": "active",
+        "systemd_oom": str(policy.get("wolo_oom_score_adjust")),
+        "live_oom": str(policy.get("wolo_oom_score_adjust")),
+    }
+    for key, expected in expected_text.items():
+        actual = str(snapshot.get(key) or "")
+        if actual != expected:
+            problems.append(f"{key}={actual!r} expected {expected!r}")
+
+    if snapshot.get("runner_sha") != snapshot.get("runner_source_sha"):
+        problems.append("installed maintenance runner does not match source authority")
+    if snapshot.get("dropin_sha") != snapshot.get("dropin_source_sha"):
+        problems.append("installed Wolo OOM drop-in does not match source authority")
+    if snapshot.get("runner_mode") != "755":
+        problems.append(
+            f"maintenance runner mode={snapshot.get('runner_mode')!r} expected '755'"
+        )
+    if snapshot.get("dropin_mode") != "644":
+        problems.append(
+            f"Wolo OOM drop-in mode={snapshot.get('dropin_mode')!r} expected '644'"
+        )
+
+    return problems
+
+
+def check_maintenance_safety(
+    doctor: Doctor,
+    contract: dict[str, Any],
+) -> None:
+    policy = contract.get("maintenance_safety")
+    if not isinstance(policy, dict):
+        doctor.add(
+            "WARN",
+            "Host",
+            "maintenance-safety-contract",
+            "operations contract has no maintenance_safety block",
+            3,
+        )
+        return
+
+    required = {
+        "wolo_service": "wolochaind-mainnet.service",
+        "wolo_rpc_status_url": "http://127.0.0.1:27657/status",
+        "wolo_oom_score_adjust": -900,
+        "runner_source": "scripts/aoe2_maintenance_run.sh",
+        "runner_installed": "/usr/local/sbin/aoe2war-maintenance-run",
+        "wolo_dropin_source": (
+            "ops/systemd/wolochaind-mainnet.service.d/20-oom-protection.conf"
+        ),
+        "wolo_dropin_installed": (
+            "/etc/systemd/system/wolochaind-mainnet.service.d/"
+            "20-oom-protection.conf"
+        ),
+        "maintenance_oom_score_adjust": 800,
+        "memory_high_mib": 256,
+        "memory_max_mib": 384,
+        "memory_swap_max_mib": 128,
+        "cpu_quota_percent": 20,
+        "io_weight": 1,
+        "minimum_mem_available_mib": 2048,
+        "emergency_mem_available_mib": 1024,
+        "max_block_age_seconds": 20,
+        "max_no_progress_seconds": 15,
+        "policy": "maintenance-dies-before-sole-validator",
+    }
+
+    bad_contract = [
+        f"{key}={policy.get(key)!r} expected {value!r}"
+        for key, value in required.items()
+        if policy.get(key) != value
+    ]
+    if bad_contract:
+        doctor.add(
+            "WARN",
+            "Host",
+            "maintenance-safety-contract",
+            "maintenance safety contract drift: " + "; ".join(bad_contract),
+            3,
+        )
+        doctor.info["maintenance_safety"] = {
+            "policy": policy,
+            "contract_problems": bad_contract,
+        }
+        return
+
+    runner_source = ROOT / str(policy["runner_source"])
+    dropin_source = ROOT / str(policy["wolo_dropin_source"])
+
+    source_problems: list[str] = []
+    if not runner_source.is_file():
+        source_problems.append(f"missing source runner {runner_source}")
+    if not dropin_source.is_file():
+        source_problems.append(f"missing source Wolo drop-in {dropin_source}")
+
+    if source_problems:
+        doctor.add(
+            "WARN",
+            "Host",
+            "maintenance-safety-source",
+            "; ".join(source_problems),
+            3,
+        )
+        doctor.info["maintenance_safety"] = {
+            "policy": policy,
+            "source_problems": source_problems,
+        }
+        return
+
+    runner_source_sha = _sha256_file(runner_source)
+    dropin_source_sha = _sha256_file(dropin_source)
+
+    host = str(contract.get("canonical", {}).get("production_host") or "hel1")
+    service = str(policy["wolo_service"])
+    runner = str(policy["runner_installed"])
+    dropin = str(policy["wolo_dropin_installed"])
+
+    remote_script = f"""
+set -euo pipefail
+pid="$(systemctl show {shlex.quote(service)} -p MainPID --value)"
+printf 'node_service\\t%s\\n' {shlex.quote(service)}
+printf 'service_state\\t%s\\n' "$(systemctl is-active {shlex.quote(service)})"
+printf 'systemd_oom\\t%s\\n' "$(systemctl show {shlex.quote(service)} -p OOMScoreAdjust --value)"
+printf 'live_oom\\t%s\\n' "$(cat "/proc/$pid/oom_score_adj" 2>/dev/null || true)"
+printf 'runner_sha\\t%s\\n' "$(sha256sum {shlex.quote(runner)} 2>/dev/null | awk '{{print $1}}')"
+printf 'dropin_sha\\t%s\\n' "$(sha256sum {shlex.quote(dropin)} 2>/dev/null | awk '{{print $1}}')"
+printf 'runner_mode\\t%s\\n' "$(stat -c '%a' {shlex.quote(runner)} 2>/dev/null)"
+printf 'dropin_mode\\t%s\\n' "$(stat -c '%a' {shlex.quote(dropin)} 2>/dev/null)"
+""".strip()
+
+    rc, output = ssh(host, remote_script, timeout=20)
+    snapshot: dict[str, Any] = {
+        "rc": rc,
+        "runner_source_sha": runner_source_sha,
+        "dropin_source_sha": dropin_source_sha,
+    }
+    for line in output.splitlines():
+        if "\t" in line:
+            key, value = line.split("\t", 1)
+            snapshot[key] = value.strip()
+
+    if rc != 0:
+        doctor.add(
+            "WARN",
+            "Host",
+            "maintenance-safety-proof",
+            "cannot inspect live Wolo/maintenance safety rails",
+            3,
+        )
+        snapshot["error"] = output
+        doctor.info["maintenance_safety"] = snapshot
+        return
+
+    problems = maintenance_safety_problems(policy, snapshot)
+    snapshot["problems"] = problems
+    doctor.info["maintenance_safety"] = snapshot
+
+    if problems:
+        doctor.add(
+            "WARN",
+            "Host",
+            "maintenance-safety-drift",
+            "; ".join(problems),
+            3,
+        )
+
+
 def check_architecture(
     doctor: Doctor,
     contract: dict[str, Any],
@@ -1162,6 +1345,7 @@ def collect_doctor(
         print("→ Bridge: verifying Mac LaunchAgent + server control plane...", flush=True)
     check_local_bridge(doctor, contract)
     check_host_and_server_bridge(doctor, contract)
+    check_maintenance_safety(doctor, contract)
 
     if progress:
         print("→ Toolchain: comparing operator/VPS/package contract...", flush=True)

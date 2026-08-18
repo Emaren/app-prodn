@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","wolochain","vps"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "host-maintenance-procedure"
-reviewed_at: "2026-08-10"
+reviewed_at: "2026-08-18"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -30,6 +30,48 @@ kernel state, enable unattended upgrades, run a distribution upgrade, apply a
 database migration, or mutate Wolo. A warning is a maintenance signal, not
 authorization. Each material host mutation requires Tony's explicit approval,
 an announced window, and a reviewed rollback/recovery plan.
+
+## Critical-workload isolation
+
+WoloChain is currently the sole validator for `wolo-1`; ordinary infrastructure
+maintenance must therefore fail before the validator can be sacrificed by host
+resource pressure.
+
+The canonical safety rails are:
+
+- source-controlled Wolo systemd drop-in:
+  `ops/systemd/wolochaind-mainnet.service.d/20-oom-protection.conf`;
+- installed drop-in:
+  `/etc/systemd/system/wolochaind-mainnet.service.d/20-oom-protection.conf`;
+- source-controlled maintenance runner:
+  `scripts/aoe2_maintenance_run.sh`;
+- installed runner:
+  `/usr/local/sbin/aoe2war-maintenance-run`;
+- Wolo `OOMScoreAdjust=-900`;
+- maintenance `OOMScoreAdjust=800`;
+- maintenance `MemoryHigh=256M`, `MemoryMax=384M`,
+  `MemorySwapMax=128M`;
+- maintenance `CPUQuota=20%`, `IOWeight=1`;
+- preflight minimum `MemAvailable=2 GiB`;
+- emergency abort floor `MemAvailable=1 GiB`;
+- Wolo block age must remain at most 20 seconds;
+- Wolo height must not stop progressing for more than 15 seconds.
+
+The runner continuously observes Wolo while the bounded transient systemd unit
+executes. If Wolo RPC disappears, block age becomes stale, consensus stops
+progressing, or emergency memory headroom is crossed, the maintenance unit is
+stopped and the maintenance command fails closed.
+
+These rails were introduced after an August 18, 2026 storage-compression proof
+created global host memory pressure and Linux selected the sole validator as the
+OOM victim. Systemd restarted the validator cleanly and CometBFT replayed the
+last block, but maintenance is no longer permitted to rely on `nice`, `ionice`,
+or single-threading alone. Those controls influence scheduling; they are not a
+memory-isolation boundary.
+
+`aoe2war doctor` must verify that the installed runner/drop-in are byte-identical
+to their source authorities and that both the effective systemd OOM priority and
+the live validator process OOM priority remain `-900`.
 
 ## Stop conditions
 
