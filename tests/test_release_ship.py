@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import pathlib
+import shlex
 import subprocess
 import tempfile
 import unittest
@@ -224,6 +225,51 @@ fi
 
 
 class ShipTests(unittest.TestCase):
+    def test_production_migration_verifier_renders_nested_python(self):
+        manifest = {
+            "release_sha": "e" * 40,
+            "risk_class": "DATABASE",
+            "migration_paths": [
+                "prisma/migrations/20260101000000_create_widget/migration.sql"
+            ],
+        }
+        completed = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout="migration_receipt\\t/mnt/receipt\\n",
+            stderr="",
+        )
+
+        with mock.patch.object(MODULE, "run", return_value=completed) as runner:
+            MODULE.verify_production_migration_receipt(manifest)
+
+        command = runner.call_args.args[0][-1]
+        shell_argv = shlex.split(command)
+        self.assertEqual(shell_argv[:2], ["bash", "-lc"])
+        script = shell_argv[2]
+
+        self.assertIn('in {chr(34), chr(39)}:', script)
+        self.assertIn('not in {"postgresql", "postgres"}:', script)
+        self.assertIn('for key, value in {\n    "PGHOST":', script)
+        self.assertIn(
+            'print(f"export {key}={shlex.quote(value)}")',
+            script,
+        )
+
+        marker = "<<'PY'\n"
+        self.assertIn(marker, script)
+        nested = script.split(marker, 1)[1].split("\nPY\n", 1)[0]
+        compile(nested, "<migration-activation-db-verifier>", "exec")
+
+        shell = subprocess.run(
+            ["bash", "-n"],
+            input=script,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(shell.returncode, 0, shell.stderr)
+
     def test_valid_preflight(self):
         data, manifest, transport = sample()
         self.assertEqual(

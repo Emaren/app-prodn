@@ -1794,7 +1794,7 @@ for candidate in [repo / ".env", repo / ".env.production", repo / ".env.local"]:
         if key.strip() != "DATABASE_URL":
             continue
         value = value.strip()
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in {chr(34), chr(39)}:
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {{chr(34), chr(39)}}:
             value = value[1:-1]
         database_url = value
         break
@@ -1806,17 +1806,17 @@ if not database_url:
 
 raw = database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
 parsed = urlsplit(raw)
-if parsed.scheme not in {"postgresql", "postgres"}:
+if parsed.scheme not in {{"postgresql", "postgres"}}:
     raise SystemExit("STOP: production DATABASE_URL is not PostgreSQL")
 
-for key, value in {
+for key, value in {{
     "PGHOST": parsed.hostname or "",
     "PGPORT": str(parsed.port or 5432),
     "PGUSER": unquote(parsed.username or ""),
     "PGPASSWORD": unquote(parsed.password or ""),
     "PGDATABASE": unquote(parsed.path.lstrip("/")),
-}.items():
-    print(f"export {key}={shlex.quote(value)}")
+}}.items():
+    print(f"export {{key}}={{shlex.quote(value)}}")
 PY
 # shellcheck disable=SC1090
 . "$cred"
