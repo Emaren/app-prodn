@@ -25,13 +25,11 @@ import {
 import { getTileViewMode } from "@/lib/tileViewPreferences";
 import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
 import {
-  PAGE_CHANGE_NOTICES,
   PAGE_CHANGE_NOTICE_STORAGE_KEY,
   getUnseenPageChangeHrefs,
-  isPageChangeNoticeRoute,
   markPageChangeNoticeSeen,
+  pageChangeNoticeForPathname,
   parseSeenPageChangeVersions,
-  type SeenPageChangeVersions,
 } from "@/lib/pageChangeNotices";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
 import { UniversalLanguageProvider } from "@/context/UniversalLanguageContext";
@@ -321,73 +319,98 @@ function isRouteActive(pathname: string | null, href: string) {
 
 function usePageChangeNotices() {
   const pathname = usePathname();
-  const [seenVersions, setSeenVersions] =
-    React.useState<SeenPageChangeVersions | null>(null);
+  const { uid } = useUserAuth();
+  const [unseenHrefs, setUnseenHrefs] = React.useState<Set<string>>(new Set());
 
-  React.useEffect(() => {
-    const syncSeenVersions = () => {
-      try {
-        setSeenVersions(
-          parseSeenPageChangeVersions(
-            window.localStorage.getItem(PAGE_CHANGE_NOTICE_STORAGE_KEY)
-          )
-        );
-      } catch {
-        setSeenVersions({});
-      }
-    };
+  const syncAnonymous = React.useCallback(() => {
+    try {
+      const seen = parseSeenPageChangeVersions(
+        window.localStorage.getItem(PAGE_CHANGE_NOTICE_STORAGE_KEY)
+      );
+      setUnseenHrefs(new Set(getUnseenPageChangeHrefs(seen)));
+    } catch {
+      setUnseenHrefs(new Set());
+    }
+  }, []);
 
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === null || event.key === PAGE_CHANGE_NOTICE_STORAGE_KEY) {
-        syncSeenVersions();
-      }
-    };
-
-    syncSeenVersions();
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+  const syncAuthenticated = React.useCallback(async () => {
+    try {
+      const response = await fetch("/api/page-change-notices", {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        unseen?: string[];
+      };
+      if (!response.ok) throw new Error("Page-change state failed");
+      setUnseenHrefs(new Set(payload.unseen || []));
+    } catch {
+      // Keep current in-memory truth rather than manufacturing dots.
+    }
   }, []);
 
   React.useEffect(() => {
-    if (seenVersions === null || !pathname) return;
-
-    const visitedNotices = PAGE_CHANGE_NOTICES.filter((notice) =>
-      isPageChangeNoticeRoute(pathname, notice.href)
-    );
-    if (visitedNotices.length === 0) return;
-
-    let nextSeenVersions = seenVersions;
-    for (const notice of visitedNotices) {
-      nextSeenVersions = markPageChangeNoticeSeen(
-        nextSeenVersions,
-        notice.href,
-        notice.version
-      );
+    if (uid) {
+      void syncAuthenticated();
+      const handleFocus = () => void syncAuthenticated();
+      window.addEventListener("focus", handleFocus);
+      return () => window.removeEventListener("focus", handleFocus);
     }
 
-    if (nextSeenVersions === seenVersions) return;
+    syncAnonymous();
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === PAGE_CHANGE_NOTICE_STORAGE_KEY) {
+        syncAnonymous();
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [syncAnonymous, syncAuthenticated, uid]);
+
+  React.useEffect(() => {
+    const visitedNotice = pageChangeNoticeForPathname(pathname);
+    if (!visitedNotice || !unseenHrefs.has(visitedNotice.href)) return;
+
+    if (uid) {
+      setUnseenHrefs((current) => {
+        const next = new Set(current);
+        next.delete(visitedNotice.href);
+        return next;
+      });
+      void fetch("/api/page-change-notices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ href: visitedNotice.href }),
+      }).then((response) => {
+        if (!response.ok) void syncAuthenticated();
+      });
+      return;
+    }
 
     try {
+      const seen = parseSeenPageChangeVersions(
+        window.localStorage.getItem(PAGE_CHANGE_NOTICE_STORAGE_KEY)
+      );
+      const next = markPageChangeNoticeSeen(
+        seen,
+        visitedNotice.href,
+        visitedNotice.version
+      );
       window.localStorage.setItem(
         PAGE_CHANGE_NOTICE_STORAGE_KEY,
-        JSON.stringify(nextSeenVersions)
+        JSON.stringify(next)
       );
+      setUnseenHrefs(new Set(getUnseenPageChangeHrefs(next)));
     } catch {
-      // Keep the in-memory state correct when storage is unavailable.
+      setUnseenHrefs((current) => {
+        const next = new Set(current);
+        next.delete(visitedNotice.href);
+        return next;
+      });
     }
+  }, [pathname, syncAuthenticated, uid, unseenHrefs]);
 
-    setSeenVersions(nextSeenVersions);
-  }, [pathname, seenVersions]);
-
-  return React.useMemo(
-    () =>
-      new Set(
-        seenVersions === null
-          ? []
-          : getUnseenPageChangeHrefs(seenVersions)
-      ),
-    [seenVersions]
-  );
+  return unseenHrefs;
 }
 
 function HeaderPillLink({

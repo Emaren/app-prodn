@@ -240,9 +240,9 @@ def validation_errors(
         errors.append("protected WOLO listener 8093 count must be exactly 1")
 
     migrations = manifest.get("migration_paths") or []
-    if migrations:
+    if migrations and manifest.get("risk_class") not in {"FINANCIAL", "DATABASE"}:
         errors.append(
-            "release contains Prisma migrations; automated ship does not support migrations yet"
+            "release contains Prisma migrations without a DATABASE/FINANCIAL gate"
         )
 
     if transport.get("origin") != EXPECTED_ORIGIN:
@@ -316,7 +316,13 @@ def build_plan(
         },
         {
             "phase": "migration",
-            "action": "No Prisma migration. The manifest declares zero migration paths.",
+            "action": (
+                "After candidate staging, require an exact production migration frontier, "
+                "write a durable pre-migration pg_dump, apply only the manifest-bound additive "
+                "Prisma migrations, and verify their _prisma_migrations receipts before activation."
+                if (manifest.get("migration_paths") or [])
+                else "No Prisma migration. The manifest declares zero migration paths."
+            ),
         },
         {
             "phase": "build",
@@ -547,9 +553,9 @@ def load_stage_receipt(
         )
     if manifest.get("risk_class") != receipt.get("risk_class"):
         raise ShipError("Manifest risk class does not match stage receipt.")
-    if manifest.get("migration_paths"):
+    if manifest.get("migration_paths") and manifest.get("risk_class") not in {"FINANCIAL", "DATABASE"}:
         raise ShipError(
-            "Release contains Prisma migrations; receipt-driven activation refuses migrations."
+            "Release contains Prisma migrations without a DATABASE/FINANCIAL gate."
         )
     dependency_lock_changed = "yarn.lock" in (
         manifest.get("changed_files") or []
@@ -1734,6 +1740,146 @@ def write_activation_receipt(payload: dict) -> Path:
     return path
 
 
+def migration_names_from_manifest(manifest: dict) -> list[str]:
+    paths = [str(item) for item in (manifest.get("migration_paths") or [])]
+    names = sorted({Path(path).parent.name for path in paths})
+    if len(names) != len(paths):
+        raise ShipError("Manifest contains duplicate Prisma migration directories.")
+    return names
+
+
+def verify_production_migration_receipt(manifest: dict) -> None:
+    names = migration_names_from_manifest(manifest)
+    if not names:
+        return
+    if manifest.get("risk_class") not in {"FINANCIAL", "DATABASE"}:
+        raise ShipError("Prisma migrations require a DATABASE or FINANCIAL release gate.")
+
+    release_sha = str(manifest.get("release_sha") or "")
+    if len(release_sha) != 40:
+        raise ShipError("Migration verification requires an exact release SHA.")
+
+    q = shlex.quote
+    expected = "\n".join(names)
+    release_short = release_sha[:12]
+    script = f"""
+set -Eeuo pipefail
+RELEASE={q(release_sha)}
+RELEASE_SHORT={q(release_short)}
+PROD_REPO={q(PROD_REPO)}
+RECEIPT_ROOT={q(REMOTE_RECEIPT_ROOT)}
+EXPECTED_MIGRATIONS={q(expected)}
+
+cred="$(mktemp /tmp/aoe2war-db-verify.XXXXXX)"
+cleanup() {{ rm -f "$cred"; }}
+trap cleanup EXIT INT TERM
+chmod 600 "$cred"
+
+python3 - "$PROD_REPO" > "$cred" <<'PY'
+from pathlib import Path
+from urllib.parse import unquote, urlsplit
+import shlex
+import sys
+
+repo = Path(sys.argv[1])
+database_url = None
+for candidate in [repo / ".env", repo / ".env.production", repo / ".env.local"]:
+    if not candidate.is_file():
+        continue
+    for raw in candidate.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key.strip() != "DATABASE_URL":
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {chr(34), chr(39)}:
+            value = value[1:-1]
+        database_url = value
+        break
+    if database_url:
+        break
+
+if not database_url:
+    raise SystemExit("STOP: production DATABASE_URL is unavailable")
+
+raw = database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+parsed = urlsplit(raw)
+if parsed.scheme not in {"postgresql", "postgres"}:
+    raise SystemExit("STOP: production DATABASE_URL is not PostgreSQL")
+
+for key, value in {
+    "PGHOST": parsed.hostname or "",
+    "PGPORT": str(parsed.port or 5432),
+    "PGUSER": unquote(parsed.username or ""),
+    "PGPASSWORD": unquote(parsed.password or ""),
+    "PGDATABASE": unquote(parsed.path.lstrip("/")),
+}.items():
+    print(f"export {key}={shlex.quote(value)}")
+PY
+# shellcheck disable=SC1090
+. "$cred"
+rm -f "$cred"
+cred=""
+
+expected_file="$(mktemp /tmp/aoe2war-expected-migrations.XXXXXX)"
+trap 'rm -f "$expected_file" "$cred"' EXIT INT TERM
+printf '%s\\n' "$EXPECTED_MIGRATIONS" | sed '/^$/d' | sort -u > "$expected_file"
+
+while IFS= read -r migration; do
+  [ -n "$migration" ] || continue
+  count="$(psql -X -v ON_ERROR_STOP=1 -Atqc \
+    "select count(*) from \\"_prisma_migrations\\" where migration_name='$migration' and finished_at is not null and rolled_back_at is null;")"
+  [ "$count" = "1" ] || {{
+    echo "STOP: production migration is not applied exactly once: $migration" >&2
+    exit 81
+  }}
+done < "$expected_file"
+
+receipt_match=""
+while IFS= read -r candidate; do
+  status="$candidate/migration-status.txt"
+  [ -f "$status" ] || continue
+  grep -Fqx "release_sha=$RELEASE" "$status" || continue
+  grep -Fqx "status=APPLIED" "$status" || continue
+  ok=1
+  while IFS= read -r migration; do
+    [ -n "$migration" ] || continue
+    grep -Fqx "migration=$migration" "$status" || ok=0
+  done < "$expected_file"
+  [ "$ok" = 1 ] && receipt_match="$candidate"
+done < <(
+  find "$RECEIPT_ROOT" -mindepth 1 -maxdepth 1 -type d \
+    -name "migration-*-${{RELEASE_SHORT}}" -print 2>/dev/null | sort
+)
+
+[ -n "$receipt_match" ] || {{
+  echo "STOP: durable production migration receipt is missing" >&2
+  exit 82
+}}
+printf 'migration_receipt\\t%s\\n' "$receipt_match"
+"""
+    p = run(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=8",
+            PROD_HOST,
+            f"bash -lc {shlex.quote(script)}",
+        ],
+        timeout=120,
+    )
+    if p.returncode != 0:
+        detail = ((p.stderr or "") or (p.stdout or "")).strip()
+        raise ShipError(
+            "Production migration verification failed"
+            + (f": {detail[-4000:]}" if detail else "")
+        )
+
+
 def activate_release(
     data: dict,
     *,
@@ -1752,6 +1898,15 @@ def activate_release(
             gate_path,
             gate_sha,
         ) = load_stage_receipt(stage_receipt)
+    except ShipError as exc:
+        if json_output:
+            print(json.dumps({"status": "ERROR", "error": str(exc)}, indent=2))
+        else:
+            print(f"STOP: {exc}")
+        return 2
+
+    try:
+        verify_production_migration_receipt(manifest)
     except ShipError as exc:
         if json_output:
             print(json.dumps({"status": "ERROR", "error": str(exc)}, indent=2))

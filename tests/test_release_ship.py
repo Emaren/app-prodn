@@ -276,11 +276,16 @@ class ShipTests(unittest.TestCase):
             )
         )
 
-    def test_migrations_block_automated_ship(self):
+    def test_migrations_require_database_or_financial_gate(self):
         data, manifest, transport = sample()
         manifest["migration_paths"] = ["prisma/migrations/x/migration.sql"]
         errors = MODULE.validation_errors(data, manifest, transport)
-        self.assertTrue(any("does not support migrations yet" in e for e in errors))
+        self.assertTrue(any("DATABASE/FINANCIAL" in e for e in errors))
+
+        for risk in ("FINANCIAL", "DATABASE"):
+            manifest["risk_class"] = risk
+            errors = MODULE.validation_errors(data, manifest, transport)
+            self.assertFalse(any("migration" in e.lower() for e in errors))
 
     def test_transport_origin_blocks(self):
         data, manifest, transport = sample()

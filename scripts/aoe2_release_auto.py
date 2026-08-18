@@ -5,6 +5,7 @@ import base64
 import hashlib
 import json
 import os
+import re
 import shlex
 import subprocess
 import tempfile
@@ -42,6 +43,10 @@ CONTROL_PLANE_DOCS = {
     "docs/DOCUMENTATION_CONTROL_PLANE.md",
     "docs/document-registry.json",
 }
+
+MIGRATION_RECEIPT_ROOT = (
+    "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts"
+)
 
 
 def run(args: list[str], *, timeout: int = 300) -> subprocess.CompletedProcess:
@@ -245,6 +250,363 @@ def publish_exact(head: str) -> None:
         raise AutoShipError(
             "GitHub main did not land on the exact sealed release HEAD"
         )
+
+
+def release_manifest(release_sha: str) -> dict:
+    path = MANIFEST_DIR / f"{release_sha}.json"
+    if not path.is_file():
+        raise AutoShipError(
+            f"release manifest is missing: {path.relative_to(ROOT)}"
+        )
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise AutoShipError(f"release manifest is invalid JSON: {exc}") from exc
+    if payload.get("release_sha") != release_sha:
+        raise AutoShipError("release manifest SHA binding is invalid")
+    return payload
+
+
+def migration_contract(release_sha: str) -> tuple[dict, list[str]]:
+    manifest = release_manifest(release_sha)
+    paths = [str(item) for item in (manifest.get("migration_paths") or [])]
+    if not paths:
+        return manifest, []
+
+    if manifest.get("risk_class") not in {"FINANCIAL", "DATABASE"}:
+        raise AutoShipError(
+            "Prisma migrations require a DATABASE or FINANCIAL release gate"
+        )
+
+    allowed_path = re.compile(
+        r"^prisma/migrations/[A-Za-z0-9_.-]+/migration\.sql$"
+    )
+    destructive = [
+        re.compile(r"\bDROP\s+(?:TABLE|COLUMN|TYPE|SCHEMA|INDEX)\b", re.I),
+        re.compile(r"\bTRUNCATE\b", re.I),
+        re.compile(r"\bALTER\s+TABLE\b[\s\S]{0,240}\bRENAME\b", re.I),
+        re.compile(r"\bALTER\s+TABLE\b[\s\S]{0,240}\bALTER\s+COLUMN\b[\s\S]{0,160}\bTYPE\b", re.I),
+    ]
+
+    texts: list[tuple[str, str]] = []
+    created_tables: set[str] = set()
+
+    for rel in paths:
+        if not allowed_path.fullmatch(rel):
+            raise AutoShipError(f"migration path is outside the Prisma contract: {rel}")
+        path = (ROOT / rel).resolve()
+        try:
+            path.relative_to((ROOT / "prisma/migrations").resolve())
+        except ValueError as exc:
+            raise AutoShipError(f"migration escapes Prisma migrations: {rel}") from exc
+        if not path.is_file():
+            raise AutoShipError(f"migration file is missing: {rel}")
+
+        sql = path.read_text(encoding="utf-8")
+        texts.append((rel, sql))
+        for table in re.findall(
+            r'\bCREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"?([A-Za-z_][A-Za-z0-9_]*)"?',
+            sql,
+            flags=re.I,
+        ):
+            created_tables.add(table)
+
+        for pattern in destructive:
+            if pattern.search(sql):
+                raise AutoShipError(
+                    f"migration contract rejects destructive SQL in {rel}"
+                )
+
+    if not created_tables:
+        raise AutoShipError(
+            "migration release has no CREATE TABLE authority; "
+            "automatic migration mode is limited to additive/backward-compatible releases"
+        )
+
+    for rel, sql in texts:
+        for pattern, verb in [
+            (
+                re.compile(
+                    r'\bUPDATE\s+"?([A-Za-z_][A-Za-z0-9_]*)"?\s+SET\b',
+                    re.I,
+                ),
+                "UPDATE",
+            ),
+            (
+                re.compile(
+                    r'\bDELETE\s+FROM\s+"?([A-Za-z_][A-Za-z0-9_]*)"?\b',
+                    re.I,
+                ),
+                "DELETE",
+            ),
+            (
+                re.compile(
+                    r'\bALTER\s+TABLE\s+"?([A-Za-z_][A-Za-z0-9_]*)"?\b',
+                    re.I,
+                ),
+                "ALTER TABLE",
+            ),
+        ]:
+            for table in pattern.findall(sql):
+                if table not in created_tables:
+                    raise AutoShipError(
+                        f"{verb} targets pre-existing table {table!r} in {rel}; "
+                        "automatic migration mode only mutates tables created by this release"
+                    )
+
+    names = sorted(
+        {
+            Path(rel).parent.name
+            for rel in paths
+        }
+    )
+    if len(names) != len(paths):
+        raise AutoShipError("migration manifest contains duplicate migration directories")
+    return manifest, names
+
+
+def production_migration_script(
+    *,
+    release_sha: str,
+    migration_names: list[str],
+) -> str:
+    q = shlex.quote
+    expected = "\n".join(migration_names)
+    release_short = release_sha[:12]
+
+    return f"""
+set -Eeuo pipefail
+RELEASE={q(release_sha)}
+RELEASE_SHORT={q(release_short)}
+PROD_REPO={q(PROD_REPO)}
+RECEIPT_ROOT={q(MIGRATION_RECEIPT_ROOT)}
+EXPECTED_MIGRATIONS={q(expected)}
+
+tmp=""
+cred=""
+cleanup() {{
+  set +e
+  [ -n "$tmp" ] && git -C "$PROD_REPO" worktree remove --force "$tmp" >/dev/null 2>&1
+  [ -n "$cred" ] && rm -f "$cred"
+}}
+trap cleanup EXIT INT TERM
+
+cd "$PROD_REPO"
+test -z "$(git status --porcelain --untracked-files=all)" \
+  || {{ echo "STOP: production source worktree is dirty" >&2; exit 71; }}
+
+git fetch --quiet origin main
+test "$(git rev-parse origin/main)" = "$RELEASE" \
+  || {{ echo "STOP: production origin/main is not the release SHA" >&2; exit 72; }}
+
+tmp="$(mktemp -d /tmp/aoe2war-migrate-${{RELEASE_SHORT}}-XXXXXX)"
+rmdir "$tmp"
+git worktree add --quiet --detach "$tmp" "$RELEASE"
+ln -s "$PROD_REPO/node_modules" "$tmp/node_modules"
+
+cred="$(mktemp /tmp/aoe2war-db-env.XXXXXX)"
+chmod 600 "$cred"
+python3 - "$PROD_REPO" > "$cred" <<'PY'
+from pathlib import Path
+from urllib.parse import unquote, urlsplit
+import shlex
+import sys
+
+repo = Path(sys.argv[1])
+candidates = [repo / ".env", repo / ".env.production", repo / ".env.local"]
+database_url = None
+for candidate in candidates:
+    if not candidate.is_file():
+        continue
+    for raw in candidate.read_text().splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        if key.strip() != "DATABASE_URL":
+            continue
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {chr(34), chr(39)}:
+            value = value[1:-1]
+        database_url = value
+        break
+    if database_url:
+        break
+
+if not database_url:
+    raise SystemExit("STOP: production DATABASE_URL is unavailable")
+
+raw = database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
+parsed = urlsplit(raw)
+if parsed.scheme not in {"postgresql", "postgres"}:
+    raise SystemExit("STOP: production DATABASE_URL scheme is not PostgreSQL")
+
+values = {
+    "PGHOST": parsed.hostname or "",
+    "PGPORT": str(parsed.port or 5432),
+    "PGUSER": unquote(parsed.username or ""),
+    "PGPASSWORD": unquote(parsed.password or ""),
+    "PGDATABASE": unquote(parsed.path.lstrip("/")),
+    "DATABASE_URL": raw,
+}
+for key, value in values.items():
+    print(f"export {key}={shlex.quote(value)}")
+PY
+# shellcheck disable=SC1090
+. "$cred"
+rm -f "$cred"
+cred=""
+
+test -n "$PGDATABASE" || {{ echo "STOP: production DB name is empty" >&2; exit 73; }}
+printf 'database\\t%s\\n' "$PGDATABASE"
+
+expected_file="$tmp/.expected-migrations"
+repo_file="$tmp/.repo-migrations"
+applied_file="$tmp/.applied-migrations"
+pending_file="$tmp/.pending-migrations"
+
+printf '%s\\n' "$EXPECTED_MIGRATIONS" | sed '/^$/d' | sort -u > "$expected_file"
+find "$tmp/prisma/migrations" -mindepth 1 -maxdepth 1 -type d -printf '%f\\n' | sort -u > "$repo_file"
+psql -X -v ON_ERROR_STOP=1 -Atqc \
+  'select migration_name from "_prisma_migrations" where finished_at is not null and rolled_back_at is null order by migration_name;' \
+  > "$applied_file"
+comm -23 "$repo_file" "$applied_file" > "$pending_file"
+
+unexpected="$(comm -23 "$pending_file" "$expected_file" || true)"
+[ -z "$unexpected" ] \
+  || {{ echo "STOP: production has pending migrations outside this release: $unexpected" >&2; exit 74; }}
+
+release_pending="$(comm -12 "$pending_file" "$expected_file" || true)"
+expected_count="$(wc -l < "$expected_file" | tr -d ' ')"
+pending_count="$(printf '%s\\n' "$release_pending" | sed '/^$/d' | wc -l | tr -d ' ')"
+
+receipt_match=""
+while IFS= read -r candidate; do
+  status="$candidate/migration-status.txt"
+  [ -f "$status" ] || continue
+  grep -Fqx "release_sha=$RELEASE" "$status" || continue
+  grep -Fqx "status=APPLIED" "$status" || continue
+  ok=1
+  while IFS= read -r migration; do
+    [ -n "$migration" ] || continue
+    grep -Fqx "migration=$migration" "$status" || ok=0
+  done < "$expected_file"
+  [ "$ok" = 1 ] && receipt_match="$candidate"
+done < <(
+  find "$RECEIPT_ROOT" -mindepth 1 -maxdepth 1 -type d \
+    -name "migration-*-${{RELEASE_SHORT}}" -print 2>/dev/null | sort
+)
+
+if [ "$pending_count" = "0" ]; then
+  [ -n "$receipt_match" ] \
+    || {{ echo "STOP: release migrations are applied but durable migration receipt is missing" >&2; exit 75; }}
+  printf 'mode\\talready-applied\\n'
+  printf 'receipt_dir\\t%s\\n' "$receipt_match"
+  exit 0
+fi
+
+[ "$pending_count" = "$expected_count" ] \
+  || {{ echo "STOP: release migration frontier is partially applied" >&2; exit 76; }}
+cmp -s "$pending_file" "$expected_file" \
+  || {{ echo "STOP: pending migration frontier differs from release manifest" >&2; exit 77; }}
+
+stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+receipt="$RECEIPT_ROOT/migration-${{stamp}}-${{RELEASE_SHORT}}"
+mkdir -p "$receipt"
+dump="$receipt/pre-migration.dump"
+
+pg_dump -Fc --no-owner --no-acl -f "$dump"
+dump_sha="$(sha256sum "$dump" | awk '{{print $1}}')"
+test -n "$dump_sha"
+
+(
+  cd "$tmp"
+  DATABASE_URL="$DATABASE_URL" ./node_modules/.bin/prisma migrate deploy
+)
+
+for migration in $(cat "$expected_file"); do
+  count="$(psql -X -v ON_ERROR_STOP=1 -Atqc \
+    "select count(*) from \\"_prisma_migrations\\" where migration_name='$migration' and finished_at is not null and rolled_back_at is null;")"
+  [ "$count" = "1" ] \
+    || {{ echo "STOP: migration did not land exactly once: $migration" >&2; exit 78; }}
+done
+
+failed="$(psql -X -v ON_ERROR_STOP=1 -Atqc \
+  'select count(*) from "_prisma_migrations" where finished_at is null and rolled_back_at is null;')"
+[ "$failed" = "0" ] \
+  || {{ echo "STOP: Prisma reports unfinished migration rows" >&2; exit 79; }}
+
+status="$receipt/migration-status.txt"
+{{
+  printf 'status=APPLIED\\n'
+  printf 'release_sha=%s\\n' "$RELEASE"
+  printf 'database=%s\\n' "$PGDATABASE"
+  printf 'dump=pre-migration.dump\\n'
+  printf 'dump_sha256=%s\\n' "$dump_sha"
+  while IFS= read -r migration; do
+    [ -n "$migration" ] && printf 'migration=%s\\n' "$migration"
+  done < "$expected_file"
+}} > "$status"
+sha256sum "$status" > "$status.sha256"
+
+printf 'mode\\tapplied\\n'
+printf 'receipt_dir\\t%s\\n' "$receipt"
+printf 'dump_sha256\\t%s\\n' "$dump_sha"
+"""
+
+
+def apply_production_migrations_if_needed(release_sha: str) -> str | None:
+    manifest, migration_names = migration_contract(release_sha)
+    if not migration_names:
+        return None
+
+    print()
+    print("== PRODUCTION DATABASE MIGRATIONS ==")
+    print("Policy:         additive/backward-compatible only")
+    print(f"Gate:           {manifest.get('risk_class')}")
+    print("Database:       exact pending frontier only")
+    print("Backup:         durable pg_dump before first mutation")
+    print("WOLO:           untouched")
+    print("Migrations:")
+    for name in migration_names:
+        print(f"  - {name}")
+
+    script = production_migration_script(
+        release_sha=release_sha,
+        migration_names=migration_names,
+    )
+    p = run(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=8",
+            PROD_HOST,
+            f"bash -lc {shlex.quote(script)}",
+        ],
+        timeout=1800,
+    )
+    result = parse_kv(p.stdout or "")
+    if p.returncode != 0:
+        detail = ((p.stderr or "") or (p.stdout or "")).strip()
+        raise AutoShipError(
+            "protected production migration phase failed"
+            + (f": {detail[-6000:]}" if detail else "")
+        )
+
+    receipt = result.get("receipt_dir")
+    if not receipt or not receipt.startswith(
+        f"{MIGRATION_RECEIPT_ROOT}/migration-"
+    ):
+        raise AutoShipError("production migration phase returned no durable receipt")
+
+    print(f"Migration mode: {result.get('mode') or 'verified'}")
+    print(f"Receipt:        {receipt}")
+    if result.get("dump_sha256"):
+        print(f"Backup SHA256:  {result['dump_sha256']}")
+    print("PASS: production migrations applied/verified before activation")
+    return receipt
 
 
 def latest_stage_receipt(
@@ -504,8 +866,10 @@ def validate_hydrated_stage_evidence(
         raise AutoShipError("durable release manifest release SHA mismatch")
     if manifest.get("previous_production_sha") != previous_sha:
         raise AutoShipError("durable release manifest previous source mismatch")
-    if manifest.get("migration_paths"):
-        raise AutoShipError("durable staged release contains Prisma migrations")
+    if manifest.get("migration_paths") and manifest.get("risk_class") not in {"FINANCIAL", "DATABASE"}:
+        raise AutoShipError(
+            "durable staged release has migrations without a DATABASE/FINANCIAL gate"
+        )
     if "yarn.lock" in (manifest.get("changed_files") or []):
         raise AutoShipError(
             "durable staged release changes yarn.lock; isolated dependency swap is required"
@@ -802,6 +1166,7 @@ def activate_and_certify(
     release_head: str,
     stage_receipt: Path,
 ) -> int:
+    apply_production_migrations_if_needed(release_head)
     staged_data = collect()
 
     print()

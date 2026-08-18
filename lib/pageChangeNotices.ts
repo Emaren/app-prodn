@@ -1,19 +1,18 @@
+import { PAGE_CHANGE_MANIFEST } from "./pageChangeManifest.generated.ts";
+
 export type PageChangeNotice = {
   href: string;
+  label: string;
   version: string;
 };
 
 export type SeenPageChangeVersions = Record<string, string>;
 
 export const PAGE_CHANGE_NOTICE_STORAGE_KEY =
-  "aoe2war:page-change-notices:v1";
+  "aoe2war:page-change-notices:v2";
 
-export const PAGE_CHANGE_NOTICES = [
-  {
-    href: "/round-chamber",
-    version: "2026-08-14-senate-v2",
-  },
-] as const satisfies readonly PageChangeNotice[];
+export const PAGE_CHANGE_NOTICES =
+  PAGE_CHANGE_MANIFEST satisfies readonly PageChangeNotice[];
 
 export function parseSeenPageChangeVersions(
   raw: string | null
@@ -63,4 +62,13 @@ export function markPageChangeNoticeSeen(
 ): SeenPageChangeVersions {
   if (seen[href] === version) return seen;
   return { ...seen, [href]: version };
+}
+
+export function pageChangeNoticeForPathname(pathname: string | null) {
+  if (!pathname) return null;
+  return (
+    PAGE_CHANGE_NOTICES.find((notice) =>
+      isPageChangeNoticeRoute(pathname, notice.href)
+    ) ?? null
+  );
 }

@@ -237,6 +237,11 @@ export default function AdminUserCard({
             <span className={`rounded-full border px-3 py-1 text-xs ${unreadTone(user.userUnreadCount)}`}>
               {user.userUnreadCount} on their red icon
             </span>
+            {user.pageChangeState.unseenCount > 0 ? (
+              <span className="rounded-full border border-slate-300/20 bg-slate-300/[0.06] px-3 py-1 text-xs text-slate-200">
+                {user.pageChangeState.unseenCount} gray dots
+              </span>
+            ) : null}
             {user.pendingBadgeCount + user.pendingGiftCount > 0 ? (
               <span className="rounded-full border border-amber-300/30 bg-amber-400/10 px-3 py-1 text-xs text-amber-100">
                 {user.pendingBadgeCount + user.pendingGiftCount} honors pending
@@ -470,6 +475,64 @@ export default function AdminUserCard({
           </div>
         </section>
       </div>
+
+      <section className="mt-4 rounded-2xl border border-slate-300/10 bg-[linear-gradient(145deg,rgba(148,163,184,0.045),rgba(2,6,23,0.32))] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-slate-500">
+            <BellDot className="h-4 w-4" />
+            Gray-dot sightline
+          </div>
+          <span className="rounded-full border border-slate-300/15 bg-slate-300/[0.05] px-2.5 py-1 text-[11px] text-slate-300">
+            {user.pageChangeState.unseenCount} unseen
+          </span>
+        </div>
+
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+              Unseen now
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {user.pageChangeState.unseen.length > 0 ? (
+                user.pageChangeState.unseen.map((item) => (
+                  <span
+                    key={item.href}
+                    title={item.reason || "Page changed"}
+                    className="inline-flex items-center gap-2 rounded-full border border-slate-300/14 bg-slate-300/[0.05] px-3 py-1.5 text-xs text-slate-200"
+                  >
+                    <span className="h-2 w-2 rounded-full bg-slate-400/80" />
+                    {item.label}
+                  </span>
+                ))
+              ) : (
+                <span className="text-sm text-slate-500">No gray dots showing.</span>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
+              Recently cleared
+            </div>
+            <div className="mt-2 space-y-1.5">
+              {user.pageChangeState.seen.slice(0, 6).map((item) => (
+                <div
+                  key={item.href}
+                  className="flex items-center justify-between gap-3 text-xs text-slate-400"
+                >
+                  <span>{item.label}</span>
+                  <AdminTime value={item.seenAt} emptyValue="—" />
+                </div>
+              ))}
+              {user.pageChangeState.seen.length === 0 ? (
+                <span className="text-sm text-slate-500">
+                  No page-change clear history yet.
+                </span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </section>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
         <section className="rounded-2xl border border-white/8 bg-white/5 p-4">

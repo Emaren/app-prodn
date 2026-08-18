@@ -142,6 +142,22 @@ export type AdminClanMembership = AdminClanOption & {
   joinedAt: string;
 };
 
+export type PageChangeAdminItem = {
+  href: string;
+  label: string;
+  version: string;
+  contentRevision: number;
+  changedAt: string;
+  reason: string | null;
+  seenAt: string | null;
+};
+
+export type PageChangeAdminState = {
+  unseenCount: number;
+  unseen: PageChangeAdminItem[];
+  seen: PageChangeAdminItem[];
+};
+
 export type AdminUserRow = {
   uid: string;
   email: string | null;
@@ -165,6 +181,7 @@ export type AdminUserRow = {
   recentActions: Activity[];
   recentActionsTotalCount: number;
   lastActivityAt: string | null;
+  pageChangeState: PageChangeAdminState;
   journeySummary: AdminJourneySummary | null;
   pendingBadgeCount: number;
   pendingGiftCount: number;

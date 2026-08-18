@@ -106,8 +106,10 @@ model User {
   replayPlayerMetricAggregates   ReplayPlayerMetricAggregate[]   @relation("ReplayPlayerMetricAggregateUser")
   replayStatProjections          ReplayStatProjection[]          @relation("ReplayStatProjectionActor")
   warEngineCasesCreated          WarEngineCase[]                 @relation("WarEngineCaseCreator")
+  pageChangeSeen               UserPageChangeSeen[]            @relation("UserPageChangeSeenUser")
 
   featureRequests             FeatureRequest[]        @relation("FeatureRequestRequester")
+  marketplaceShopsOwned      MarketplaceShop[]       @relation("MarketplaceShopOwner")
   assignedBountyOpportunities BountyOpportunity[]     @relation("BountyOpportunityAssignedUser")
   bountyValuationsChanged     BountyValuation[]       @relation("BountyValuationChangedBy")
   bountyClaims                BountyClaim[]           @relation("BountyClaimUser")
@@ -3757,4 +3759,193 @@ model OracleEvent {
   @@index([proposalId, createdAt], map: "ix_oracle_events_proposal_created")
   @@index([eventType, createdAt], map: "ix_oracle_events_type_created")
   @@map("oracle_events")
+}
+
+model MarketplaceShop {
+  id                    Int      @id @default(autoincrement())
+  publicId              String   @unique(map: "uq_marketplace_shops_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  kind                  String   @default("player") @db.VarChar(24)
+  ownerUserId           Int?     @map("owner_user_id")
+  slug                  String   @unique(map: "uq_marketplace_shops_slug") @db.VarChar(80)
+  name                  String   @db.VarChar(120)
+  offer                 String   @db.Text
+  proprietorLabel       String   @map("proprietor_label") @db.VarChar(120)
+  streetKey             String   @map("street_key") @db.VarChar(40)
+  slot                  Int
+  displayEnabled        Boolean  @default(false) @map("display_enabled")
+  status                String   @default("active") @db.VarChar(24)
+  charterAmountWolo     Int      @default(100) @map("charter_amount_wolo")
+  charterState          String   @default("unpaid") @map("charter_state") @db.VarChar(24)
+  charterTxHash         String?  @unique(map: "uq_marketplace_shops_charter_tx_hash") @map("charter_tx_hash") @db.VarChar(128)
+  charterPaidAt         DateTime? @map("charter_paid_at") @db.Timestamp(6)
+  sourceProposalEventId Int?     @unique(map: "uq_marketplace_shops_source_proposal_event_id") @map("source_proposal_event_id")
+  sourceMessageId       Int?     @unique(map: "uq_marketplace_shops_source_message_id") @map("source_message_id")
+  heroImageUrl          String?   @map("hero_image_url") @db.VarChar(500)
+  href                  String    @db.VarChar(255)
+  approvedAt            DateTime? @map("approved_at") @db.Timestamp(6)
+  approvedByUserId      Int?      @map("approved_by_user_id")
+  approvalMessageId     Int?      @unique(map: "uq_marketplace_shops_approval_message_id") @map("approval_message_id")
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  owner       User?                    @relation("MarketplaceShopOwner", fields: [ownerUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  inquiries   MarketplaceInquiry[]
+  invoices    MarketplaceInvoice[]
+  payments    MarketplacePayment[]
+  taxPayments MarketplaceTaxPayment[]
+
+  @@unique([streetKey, slot], map: "uq_marketplace_shops_street_slot")
+  @@index([ownerUserId, status], map: "ix_marketplace_shops_owner_status")
+  @@index([displayEnabled, status], map: "ix_marketplace_shops_display_status")
+  @@index([status, approvedAt], map: "ix_marketplace_shops_status_approved")
+  @@map("marketplace_shops")
+}
+
+model MarketplaceInquiry {
+  id                             Int       @id @default(autoincrement())
+  publicId                       String    @unique(map: "uq_marketplace_inquiries_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  shopId                         Int       @map("shop_id")
+  kind                           String    @default("customer_request") @db.VarChar(32)
+  requesterUserId                Int       @map("requester_user_id")
+  recipientUserId                Int       @map("recipient_user_id")
+  requesterUidSnapshot           String    @map("requester_uid_snapshot") @db.VarChar(100)
+  requesterDisplayNameSnapshot   String    @map("requester_display_name_snapshot") @db.VarChar(120)
+  recipientUidSnapshot           String    @map("recipient_uid_snapshot") @db.VarChar(100)
+  recipientDisplayNameSnapshot   String    @map("recipient_display_name_snapshot") @db.VarChar(120)
+  requestText                    String    @map("request_text") @db.Text
+  amountWolo                     Int       @default(100) @map("amount_wolo")
+  taxRateBps                     Int       @default(1000) @map("tax_rate_bps")
+  taxAmountWolo                  Int       @default(10) @map("tax_amount_wolo")
+  recipientAddressSnapshot       String    @map("recipient_address_snapshot") @db.VarChar(100)
+  memo                           String    @unique(map: "uq_marketplace_inquiries_memo") @db.VarChar(255)
+  status                         String    @default("awaiting_payment") @db.VarChar(24)
+  directMessageId                Int?      @unique(map: "uq_marketplace_inquiries_direct_message_id") @map("direct_message_id")
+  paidAt                         DateTime? @map("paid_at") @db.Timestamp(6)
+  createdAt                      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  shop    MarketplaceShop    @relation(fields: [shopId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  payment MarketplacePayment? @relation("MarketplaceInquiryPayment")
+  invoices MarketplaceInvoice[]
+
+  @@index([shopId, kind, status, createdAt], map: "ix_marketplace_inquiries_shop_kind_status_created")
+  @@index([requesterUserId, createdAt], map: "ix_marketplace_inquiries_requester_created")
+  @@index([recipientUserId, createdAt], map: "ix_marketplace_inquiries_recipient_created")
+  @@map("marketplace_inquiries")
+}
+
+model MarketplaceInvoice {
+  id                           Int       @id @default(autoincrement())
+  publicId                     String    @unique(map: "uq_marketplace_invoices_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  shopId                       Int       @map("shop_id")
+  inquiryId                    Int       @map("inquiry_id")
+  issuerUserId                 Int       @map("issuer_user_id")
+  customerUserId               Int       @map("customer_user_id")
+  issuerUidSnapshot            String    @map("issuer_uid_snapshot") @db.VarChar(100)
+  issuerDisplayNameSnapshot    String    @map("issuer_display_name_snapshot") @db.VarChar(120)
+  customerUidSnapshot          String    @map("customer_uid_snapshot") @db.VarChar(100)
+  customerDisplayNameSnapshot  String    @map("customer_display_name_snapshot") @db.VarChar(120)
+  description                  String    @db.Text
+  amountWolo                   Int       @map("amount_wolo")
+  taxRateBps                   Int       @default(1000) @map("tax_rate_bps")
+  taxAmountWolo                Int       @map("tax_amount_wolo")
+  recipientAddressSnapshot     String    @map("recipient_address_snapshot") @db.VarChar(100)
+  memo                         String    @unique(map: "uq_marketplace_invoices_memo") @db.VarChar(255)
+  status                       String    @default("awaiting_payment") @db.VarChar(24)
+  directMessageId              Int?      @unique(map: "uq_marketplace_invoices_direct_message_id") @map("direct_message_id")
+  paidAt                       DateTime? @map("paid_at") @db.Timestamp(6)
+  createdAt                    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                    DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  shop    MarketplaceShop     @relation(fields: [shopId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  inquiry MarketplaceInquiry  @relation(fields: [inquiryId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  payment MarketplacePayment? @relation("MarketplaceInvoicePayment")
+
+  @@index([shopId, status, createdAt], map: "ix_marketplace_invoices_shop_status_created")
+  @@index([customerUserId, createdAt], map: "ix_marketplace_invoices_customer_created")
+  @@index([issuerUserId, createdAt], map: "ix_marketplace_invoices_issuer_created")
+  @@map("marketplace_invoices")
+}
+
+model MarketplacePayment {
+  id                         Int       @id @default(autoincrement())
+  publicId                   String    @unique(map: "uq_marketplace_payments_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  kind                       String    @db.VarChar(24)
+  shopId                     Int       @map("shop_id")
+  inquiryId                  Int?      @unique(map: "uq_marketplace_payments_inquiry_id") @map("inquiry_id")
+  invoiceId                  Int?      @unique(map: "uq_marketplace_payments_invoice_id") @map("invoice_id")
+  payerUserId                Int       @map("payer_user_id")
+  payeeUserId                Int?      @map("payee_user_id")
+  payerUidSnapshot           String    @map("payer_uid_snapshot") @db.VarChar(100)
+  payerDisplayNameSnapshot   String    @map("payer_display_name_snapshot") @db.VarChar(120)
+  payeeUidSnapshot           String?   @map("payee_uid_snapshot") @db.VarChar(100)
+  payeeDisplayNameSnapshot   String    @map("payee_display_name_snapshot") @db.VarChar(120)
+  amountWolo                 Int       @map("amount_wolo")
+  taxRateBps                 Int       @default(0) @map("tax_rate_bps")
+  taxAmountWolo              Int       @default(0) @map("tax_amount_wolo")
+  senderAddressSnapshot      String    @map("sender_address_snapshot") @db.VarChar(100)
+  recipientAddressSnapshot   String    @map("recipient_address_snapshot") @db.VarChar(100)
+  memo                       String    @unique(map: "uq_marketplace_payments_memo") @db.VarChar(255)
+  txHash                     String    @unique(map: "uq_marketplace_payments_tx_hash") @map("tx_hash") @db.VarChar(128)
+  proofUrl                   String?   @map("proof_url") @db.VarChar(500)
+  verifiedAt                 DateTime  @map("verified_at") @db.Timestamp(6)
+  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  shop       MarketplaceShop        @relation(fields: [shopId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  inquiry    MarketplaceInquiry?    @relation("MarketplaceInquiryPayment", fields: [inquiryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  invoice    MarketplaceInvoice?    @relation("MarketplaceInvoicePayment", fields: [invoiceId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  taxPayment MarketplaceTaxPayment? @relation("MarketplaceTaxReceipt")
+
+  @@index([shopId, verifiedAt], map: "ix_marketplace_payments_shop_verified")
+  @@index([payerUserId, verifiedAt], map: "ix_marketplace_payments_payer_verified")
+  @@index([payeeUserId, verifiedAt], map: "ix_marketplace_payments_payee_verified")
+  @@index([kind, verifiedAt], map: "ix_marketplace_payments_kind_verified")
+  @@map("marketplace_payments")
+}
+
+model MarketplaceTaxPayment {
+  id                      Int       @id @default(autoincrement())
+  publicId                String    @unique(map: "uq_marketplace_tax_payments_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  shopId                  Int       @map("shop_id")
+  amountWolo              Int       @map("amount_wolo")
+  treasuryAddressSnapshot String    @map("treasury_address_snapshot") @db.VarChar(100)
+  memo                    String    @unique(map: "uq_marketplace_tax_payments_memo") @db.VarChar(255)
+  status                  String    @default("awaiting_payment") @db.VarChar(24)
+  paymentId               Int?      @unique(map: "uq_marketplace_tax_payments_payment_id") @map("payment_id")
+  paidAt                  DateTime? @map("paid_at") @db.Timestamp(6)
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  shop    MarketplaceShop     @relation(fields: [shopId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  payment MarketplacePayment? @relation("MarketplaceTaxReceipt", fields: [paymentId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([shopId, status, createdAt], map: "ix_marketplace_tax_payments_shop_status_created")
+  @@map("marketplace_tax_payments")
+}
+
+
+model PageChangeRevision {
+  href            String   @id @db.VarChar(80)
+  sourceVersion   String   @map("source_version") @db.VarChar(64)
+  contentRevision Int      @default(0) @map("content_revision")
+  reason          String?  @db.VarChar(255)
+  changedAt       DateTime @default(now()) @map("changed_at") @db.Timestamp(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  @@map("page_change_revisions")
+}
+
+model UserPageChangeSeen {
+  id              Int      @id @default(autoincrement())
+  userId          Int      @map("user_id")
+  href            String   @db.VarChar(80)
+  sourceVersion   String   @map("source_version") @db.VarChar(64)
+  contentRevision Int      @default(0) @map("content_revision")
+  seenAt          DateTime @default(now()) @map("seen_at") @db.Timestamp(6)
+
+  user User @relation("UserPageChangeSeenUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, href], map: "uq_user_page_change_seen_user_href")
+  @@index([href, seenAt], map: "ix_user_page_change_seen_href_seen")
+  @@map("user_page_change_seen")
 }

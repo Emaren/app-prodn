@@ -19,7 +19,9 @@ import {
   Languages,
   Pin,
   Reply,
+  ReceiptText,
   Search,
+  Store,
   ShieldCheck,
   Sparkles,
   Swords,
@@ -52,6 +54,10 @@ import {
   parseFeatureRequestInboxMessage,
   type FeatureRequestInboxMessage,
 } from "@/lib/featureRequestInboxMessage";
+import {
+  parseMarketplaceInboxMessage,
+  type MarketplaceInboxMessage,
+} from "@/lib/marketplaceInboxMessage";
 import {
   UNIVERSAL_LANGUAGES,
   findUniversalLanguage,
@@ -570,6 +576,87 @@ function FeatureRequestMessageCard({
   );
 }
 
+
+function MarketplaceMessageCard({
+  message,
+  entry,
+}: {
+  message: Extract<ContactInboxMessage, { kind: "text" }>;
+  entry: MarketplaceInboxMessage;
+}) {
+  const approval = entry.kind === "approval";
+  const invoice = entry.kind === "invoice" || entry.kind === "invoice_paid";
+  const paid = approval || entry.kind !== "invoice";
+  const icon = invoice ? ReceiptText : entry.kind === "development" ? Hammer : Store;
+  const Icon = icon;
+  const title =
+    entry.kind === "inquiry"
+      ? "Marketplace Purchase Request"
+      : entry.kind === "invoice"
+        ? "Marketplace Invoice"
+        : entry.kind === "invoice_paid"
+          ? "Marketplace Invoice Paid"
+          : entry.kind === "approval"
+            ? "Marketplace Charter Approved"
+            : "Marketplace Development Request";
+  const href = approval
+    ? entry.profileHref || "/profile#my-business"
+    : invoice
+      ? `/market/invoices/${encodeURIComponent(entry.recordId)}`
+      : "/market";
+
+  return (
+    <div className="flex justify-center py-1">
+      <div className="w-full max-w-2xl overflow-hidden rounded-[1.45rem] border border-teal-100/18 bg-[radial-gradient(circle_at_8%_0%,rgba(20,184,166,0.12),transparent_36%),linear-gradient(145deg,rgba(7,31,32,0.94),rgba(8,15,25,0.97))] shadow-[0_20px_55px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.05)]">
+        <div className="px-4 py-4 sm:px-5 sm:py-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-teal-100/70">
+                <Icon className="h-3.5 w-3.5" />
+                {title}
+              </div>
+              <div className="mt-2 text-base font-bold text-white">{entry.shop}</div>
+              <div className="mt-1 text-xs text-slate-500">From {entry.actor}</div>
+            </div>
+            <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] ${paid ? "border-emerald-200/15 bg-emerald-300/[0.08] text-emerald-100" : "border-amber-200/15 bg-amber-300/[0.08] text-amber-100"}`}>
+              <ShieldCheck className="h-3.5 w-3.5" />
+              {approval ? "Kingdom approved" : paid ? "Payment verified" : "Awaiting payment"}
+            </div>
+          </div>
+
+          <div className="mt-4 whitespace-pre-wrap rounded-[1.1rem] border border-white/8 bg-black/20 px-4 py-4 text-sm leading-6 text-slate-100 [overflow-wrap:anywhere]">
+            {entry.requestText}
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+            <div className="flex items-center gap-2">
+              {approval ? (
+                <ShieldCheck className="h-3.5 w-3.5 text-amber-200/70" />
+              ) : (
+                <Coins className="h-3.5 w-3.5 text-amber-200/70" />
+              )}
+              {approval ? null : <span>{entry.amountWolo.toLocaleString()} WOLO</span>}
+              {approval ? null : <span>·</span>}
+              <span>{entry.payment}</span>
+            </div>
+            <Link
+              href={href}
+              className="inline-flex items-center gap-1 rounded-full border border-teal-100/16 bg-teal-300/[0.07] px-2.5 py-1 text-[9px] font-black text-teal-50 transition hover:bg-teal-300/[0.12]"
+            >
+              {approval ? "Open My Business" : invoice ? "Open invoice" : "Open Marketplace"}
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+
+          <div className="mt-2 text-right text-[9px] uppercase tracking-[0.14em] text-slate-600">
+            {entry.recordId.slice(0, 8)} · {formatBubbleTime(message.createdAt)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ChallengeThreadStrip({
   data,
   mode,
@@ -995,6 +1082,7 @@ function TextMessageBubble({
   const clanProtocolMessage = parseClanProtocolMessage(message.body);
   const compactChallengeNotice = message.body ? challengeNoticeTone(summarizeChallengeInboxMessage(message.body)) : null;
   const featureRequest = parseFeatureRequestInboxMessage(message.body);
+  const marketplaceMessage = parseMarketplaceInboxMessage(message.body);
   const [trayPinnedOpen, setTrayPinnedOpen] = useState(false);
   const [trayPlacement, setTrayPlacement] = useState<"above" | "below">("above");
   const [reactionMoreOpen, setReactionMoreOpen] = useState(false);
@@ -1196,6 +1284,15 @@ function TextMessageBubble({
 
   if (compactChallengeNotice) {
     return <ChallengeSystemMessageLine message={message} compactNotice={compactChallengeNotice} />;
+  }
+
+  if (marketplaceMessage) {
+    return (
+      <MarketplaceMessageCard
+        message={message}
+        entry={marketplaceMessage}
+      />
+    );
   }
 
   if (featureRequest) {

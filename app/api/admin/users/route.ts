@@ -38,6 +38,7 @@ import {
 } from "@/lib/woloChain";
 import { loadBetWalletFrictionRail } from "@/lib/adminWalletFriction";
 import { loadAcademyHeroPreferenceAnalytics } from "@/lib/adminAcademyHeroTelemetry";
+import { loadAdminPageChangeStateMap } from "@/lib/pageChangeServer";
 
 function buildPairKey(leftUserId: number, rightUserId: number) {
   return [leftUserId, rightUserId].sort((a, b) => a - b).join(":");
@@ -882,6 +883,11 @@ export async function GET(request: NextRequest) {
       betStatsByUserId.set(row.userId, stats);
     }
 
+    const pageChangeStateMap = await loadAdminPageChangeStateMap(
+      prisma,
+      users.map((entry) => entry.id)
+    );
+
     const userRows = await Promise.all(
       users.map(async (entry) => {
         const community = communityMap.get(entry.id) ?? {
@@ -960,6 +966,12 @@ export async function GET(request: NextRequest) {
           recentActions,
           recentActionsTotalCount: activitySummary.recentActionsTotalCount,
           lastActivityAt: activitySummary.lastActivityAt,
+          pageChangeState:
+            pageChangeStateMap.get(entry.id) ?? {
+              unseenCount: 0,
+              unseen: [],
+              seen: [],
+            },
           journeySummary: journeySummaryMap.get(entry.id) ?? null,
           pendingBadgeCount: community.badges.filter((badge) => badge.status === "pending").length,
           pendingGiftCount: community.gifts.filter((gift) => gift.status === "pending").length,

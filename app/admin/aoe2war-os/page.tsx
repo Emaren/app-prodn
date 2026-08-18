@@ -106,6 +106,29 @@ function shortSha(value: unknown) {
   return typeof value === "string" && value.length >= 10 ? value.slice(0, 10) : "—";
 }
 
+function stringValue(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function numberValue(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function kbToGiB(value: unknown) {
+  const parsed = numberValue(value);
+  return parsed === null ? null : parsed / 1024 / 1024;
+}
+
+function arrayOfRecords(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter(
+        (item): item is Record<string, unknown> =>
+          Boolean(item) && typeof item === "object" && !Array.isArray(item)
+      )
+    : [];
+}
+
 function formatElapsed(milliseconds: number) {
   const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
   const hours = Math.floor(totalSeconds / 3600);
@@ -291,6 +314,126 @@ export default function AoE2WarOsAdminPage() {
   const bridgeOnline = Boolean(dashboard?.bridge?.online);
   const busy = Boolean(dashboard?.activeRun);
 
+  const findings = arrayOfRecords(snapshotPayload.findings);
+  const notes = Array.isArray(snapshotPayload.notes)
+    ? snapshotPayload.notes.filter((item): item is string => typeof item === "string")
+    : [];
+  const appSource = record(sourceRepos["app-prodn"]);
+  const appHead = stringValue(appSource.head);
+  const githubHead = stringValue(appSource.remote);
+  const productionSource = stringValue(release.production_source);
+  const internalVersion = stringValue(release.internal_build_version);
+  const publicVersion = stringValue(release.public_build_version);
+  const rootFreeGiB = kbToGiB(release.root_free_kb);
+  const volumeFreeGiB = kbToGiB(release.volume_free_kb);
+  const wolo8092 = numberValue(release.wolo_8092_count);
+  const wolo8093 = numberValue(release.wolo_8093_count);
+  const sourcePublished =
+    appHead && githubHead ? appHead === githubHead : null;
+  const sourceInProduction =
+    appHead && productionSource ? appHead === productionSource : null;
+  const runtimeVersionParity =
+    internalVersion && publicVersion ? internalVersion === publicVersion : null;
+  const protectedWoloHealthy = wolo8092 === 1 && wolo8093 === 1;
+  const contextRows = Object.values(archives).map(record);
+  const staleContextCount = contextRows.filter((archive) => archive.stale === true).length;
+  const currentContextCount = contextRows.length - staleContextCount;
+  const snapshotGeneratedMs = dashboard?.snapshot
+    ? new Date(dashboard.snapshot.generatedAt).getTime()
+    : Number.NaN;
+  const snapshotAgeMs = Number.isFinite(snapshotGeneratedMs)
+    ? Math.max(0, clock - snapshotGeneratedMs)
+    : null;
+  const snapshotStale =
+    snapshotAgeMs === null || snapshotAgeMs > 30 * 60 * 1000;
+
+  const operatorVerdict = !dashboard?.snapshot
+    ? {
+        status: "UNKNOWN",
+        label: "WAITING FOR EVIDENCE",
+        summary:
+          "AoE2WAR OS has no estate snapshot yet. Run a full audit before trusting release or runtime status.",
+      }
+    : dashboard.snapshot.p0 > 0
+      ? {
+          status: "FAIL",
+          label: "BLOCKED",
+          summary: `${dashboard.snapshot.p0} blocking P0 finding(s) must be resolved before production work.${
+            snapshotStale
+              ? ` That evidence is also ${relativeAge(dashboard.snapshot.generatedAt)} old.`
+              : ""
+          }`,
+        }
+      : snapshotStale
+        ? {
+            status: "WARN",
+            label: "EVIDENCE STALE",
+            summary: `The last estate snapshot is ${relativeAge(
+              dashboard.snapshot.generatedAt
+            )}. The cards below describe that snapshot, not live truth.`,
+          }
+        : dashboard.snapshot.p1 > 0
+          ? {
+              status: "WARN",
+              label: "ATTENTION",
+              summary: `${dashboard.snapshot.p1} P1 finding(s) need review. Read the findings before deciding what to run.`,
+            }
+          : !bridgeOnline
+            ? {
+                status: "WARN",
+                label: "BRIDGE OFFLINE",
+                summary:
+                  "The last evidence is healthy, but the Operator Bridge is offline so this page cannot execute fresh controls.",
+              }
+            : String(release.state ?? "") === "CERTIFIED"
+              ? {
+                  status: "CERTIFIED",
+                  label: "STABLE",
+                  summary:
+                    "The last current audit says production is healthy, certified and protected. No release action is required unless source has moved.",
+                }
+              : {
+                  status: "WARN",
+                  label: String(release.state ?? "ACTION AVAILABLE"),
+                  summary: String(
+                    release.next ??
+                      "Review the release engine state below before choosing an action."
+                  ),
+                };
+
+  const recommendedNext = !dashboard?.snapshot
+    ? "Run Full Audit. Fresh evidence comes before deployment decisions."
+    : dashboard.snapshot.p0 > 0
+      ? "Resolve the P0 findings below, then run Full Audit again."
+      : snapshotStale
+        ? "Run Full Audit. Fresh evidence comes before deployment decisions."
+        : dashboard.snapshot.p1 > 0
+        ? "Review the P1 findings, then use System Doctor or Full Audit as appropriate."
+        : String(
+            release.next ??
+              (bridgeOnline
+                ? "Refresh Status to confirm nothing changed."
+                : "Start the Operator Bridge on the Mac source authority.")
+          );
+
+  const productionControlBlocked =
+    !bridgeOnline ||
+    busy ||
+    !dashboard?.snapshot ||
+    snapshotStale ||
+    dashboard.snapshot.p0 > 0;
+  const productionControlReason = !dashboard?.snapshot
+    ? "Production controls locked until a full audit publishes evidence."
+    : dashboard.snapshot.p0 > 0
+      ? "Production controls locked while P0 findings exist."
+      : snapshotStale
+        ? `Production controls locked because audit evidence is ${relativeAge(
+            dashboard.snapshot.generatedAt
+          )} old. Run Full Audit first.`
+        : !bridgeOnline
+          ? "Production controls locked while the Operator Bridge is offline."
+          : null;
+
   return (
     <main className="mx-auto max-w-[1480px] px-4 py-8 text-white sm:px-6 lg:px-8">
       <div className="rounded-[2rem] bg-[radial-gradient(circle_at_12%_5%,rgba(16,185,129,0.16),transparent_28%),radial-gradient(circle_at_86%_12%,rgba(59,130,246,0.14),transparent_30%),linear-gradient(145deg,#07111f,#020617_58%,#07101c)] p-6 shadow-2xl sm:p-8">
@@ -333,7 +476,7 @@ export default function AoE2WarOsAdminPage() {
               className="inline-flex items-center gap-2 rounded-full bg-slate-800 px-4 py-2 text-sm text-slate-100 transition hover:bg-slate-700"
             >
               <RefreshCw className="h-4 w-4" />
-              Refresh
+              Reload dashboard
             </button>
           </div>
         </div>
@@ -350,6 +493,44 @@ export default function AoE2WarOsAdminPage() {
             safe to view, but remote controls remain offline until bridge setup is completed.
           </div>
         ) : null}
+
+        <section className="mt-6 grid gap-4 rounded-[1.6rem] border border-slate-700/55 bg-slate-950/55 p-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.32em] text-slate-500">
+              Operator verdict
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <span
+                className={`inline-flex rounded-full border px-3 py-1.5 text-xs font-bold tracking-[0.08em] ${statusTone(
+                  operatorVerdict.status
+                )}`}
+              >
+                {operatorVerdict.label}
+              </span>
+              <span className="text-xs text-slate-500">
+                snapshot {dashboard?.snapshot ? relativeAge(dashboard.snapshot.generatedAt) : "never"}
+              </span>
+            </div>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+              {operatorVerdict.summary}
+            </p>
+          </div>
+
+          <div className="rounded-[1.2rem] border border-cyan-300/10 bg-cyan-400/[0.035] p-4">
+            <div className="text-[10px] uppercase tracking-[0.28em] text-cyan-200/60">
+              Next best action
+            </div>
+            <div className="mt-2 text-sm font-medium leading-6 text-cyan-50">
+              {recommendedNext}
+            </div>
+            <a
+              href="#operator-actions"
+              className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-cyan-200 transition hover:text-white"
+            >
+              Go to controls ↓
+            </a>
+          </div>
+        </section>
 
         <section className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <StatusCard
@@ -400,6 +581,67 @@ export default function AoE2WarOsAdminPage() {
           />
         </section>
 
+        <section className="mt-5 rounded-[1.4rem] border border-slate-700/50 bg-slate-950/45 p-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
+                System truth
+              </div>
+              <div className="mt-1 text-sm text-slate-400">
+                The facts that decide whether AoE2WAR can be changed safely.
+              </div>
+            </div>
+            <div className="text-xs text-slate-600">
+              evidence {dashboard?.snapshot ? relativeAge(dashboard.snapshot.generatedAt) : "unavailable"}
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+            <TruthTile
+              label="Source chain"
+              value={`${shortSha(appHead)} → ${shortSha(githubHead)} → ${shortSha(productionSource)}`}
+              detail={
+                sourcePublished === true && sourceInProduction === true
+                  ? "Mac, GitHub and production are exact."
+                  : sourcePublished === true
+                    ? "Mac and GitHub agree; production is on another source."
+                    : "Source authority needs reconciliation."
+              }
+              ok={sourcePublished === true && sourceInProduction === true}
+            />
+            <TruthTile
+              label="Runtime identity"
+              value={String(release.service ?? "Unknown")}
+              detail={`build ${
+                stringValue(release.active_build_id)?.slice(0, 10) ?? "—"
+              } · versions ${runtimeVersionParity === true ? "match" : "need proof"}`}
+              ok={String(release.service ?? "") === "active" && runtimeVersionParity === true}
+            />
+            <TruthTile
+              label="Protected WOLO"
+              value={`8092 ${wolo8092 ?? "—"} · 8093 ${wolo8093 ?? "—"}`}
+              detail="Settlement listeners are observe-only during web release work."
+              ok={protectedWoloHealthy}
+            />
+            <TruthTile
+              label="Capacity"
+              value={`root ${rootFreeGiB === null ? "—" : `${rootFreeGiB.toFixed(1)} GiB`}`}
+              detail={`volume ${
+                volumeFreeGiB === null ? "—" : `${volumeFreeGiB.toFixed(1)} GiB free`
+              }`}
+              ok={rootFreeGiB !== null && volumeFreeGiB !== null}
+            />
+            <TruthTile
+              label="Evidence"
+              value={`${currentContextCount} current · ${staleContextCount} stale`}
+              detail={`bridge ${
+                dashboard?.bridge ? relativeAge(dashboard.bridge.lastSeenAt) : "never"
+              } · audit ${dashboard?.snapshot ? relativeAge(dashboard.snapshot.generatedAt) : "never"}`}
+              ok={!snapshotStale && staleContextCount === 0 && bridgeOnline}
+            />
+          </div>
+        </section>
+
         {Object.keys(areas).length > 0 ? (
           <section className="mt-5 rounded-[1.4rem] border border-slate-700/50 bg-slate-950/45 p-4">
             <div className="mb-3 text-[10px] uppercase tracking-[0.3em] text-slate-500">
@@ -426,10 +668,67 @@ export default function AoE2WarOsAdminPage() {
             </div>
           </section>
         ) : null}
+
+        {dashboard?.snapshot ? (
+          <section className="mt-5 rounded-[1.4rem] border border-slate-700/50 bg-slate-950/45 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.3em] text-slate-500">
+                  Findings & notes
+                </div>
+                <div className="mt-1 text-sm text-slate-400">
+                  Human-readable reasons behind the estate score.
+                </div>
+              </div>
+              <div className="text-xs text-slate-500">
+                P0 {dashboard.snapshot.p0} · P1 {dashboard.snapshot.p1}
+              </div>
+            </div>
+
+            {findings.length > 0 ? (
+              <div className="mt-4 grid gap-2">
+                {findings.map((finding, index) => {
+                  const severity = String(finding.severity ?? "INFO");
+                  return (
+                    <div
+                      key={`${String(finding.key ?? "finding")}-${index}`}
+                      className={`rounded-xl border px-4 py-3 text-sm ${statusTone(
+                        severity === "P0" ? "FAIL" : "WARN"
+                      )}`}
+                    >
+                      <div className="font-semibold">
+                        {severity} · {String(finding.area ?? "Estate")} ·{" "}
+                        {String(finding.key ?? "finding")}
+                      </div>
+                      <div className="mt-1 leading-5 opacity-80">
+                        {String(finding.detail ?? "No detail supplied.")}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-4 rounded-xl border border-emerald-300/10 bg-emerald-400/[0.035] px-4 py-3 text-sm text-emerald-100">
+                No P0 or P1 findings in this estate snapshot.
+              </div>
+            )}
+
+            {notes.length > 0 ? (
+              <div className="mt-3 space-y-1.5 text-xs leading-5 text-slate-500">
+                {notes.map((note, index) => (
+                  <div key={`${index}-${note}`}>• {note}</div>
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <section className="rounded-[2rem] bg-slate-950/80 p-6 shadow-xl sm:p-7">
+        <section
+          id="operator-actions"
+          className="scroll-mt-24 rounded-[2rem] bg-slate-950/80 p-6 shadow-xl sm:p-7"
+        >
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-xs uppercase tracking-[0.32em] text-slate-500">
@@ -449,6 +748,18 @@ export default function AoE2WarOsAdminPage() {
             The website only queues allow-listed requests. Your Mac Operator Bridge executes
             the existing AoE2WAR CLI and streams the result back here.
           </p>
+
+          <div className="mt-4 rounded-xl border border-emerald-300/10 bg-emerald-400/[0.035] px-4 py-3 text-xs leading-5 text-slate-400">
+            Release safety: source is gated and receipt-bound; additive Prisma migrations
+            require an exact pending frontier plus a durable pre-migration database backup;
+            protected WOLO listeners remain observe-only throughout activation.
+          </div>
+
+          {productionControlReason ? (
+            <div className="mt-3 rounded-xl border border-amber-300/15 bg-amber-400/[0.055] px-4 py-3 text-xs font-medium leading-5 text-amber-100">
+              {productionControlReason}
+            </div>
+          ) : null}
 
           <div className="mt-6 space-y-5">
             <ActionGroup
@@ -477,11 +788,11 @@ export default function AoE2WarOsAdminPage() {
             />
             <ActionGroup
               title="Production"
-              subtitle={`Protected release engine · expected source ${shortSha(
+              subtitle={`Protected release · source ${shortSha(
                 currentSourceSha
-              )}`}
+              )} · DB backup+verify when migrations exist`}
               actions={productionActions}
-              disabled={!bridgeOnline || busy}
+              disabled={productionControlBlocked}
               submitting={submitting}
               confirmations={confirmations}
               onConfirmation={(action, value) =>
@@ -746,6 +1057,39 @@ export default function AoE2WarOsAdminPage() {
         </div>
       </section>
     </main>
+  );
+}
+
+function TruthTile({
+  label,
+  value,
+  detail,
+  ok,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  ok: boolean | null;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-800/70 bg-slate-950/65 p-4">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[10px] uppercase tracking-[0.24em] text-slate-600">
+          {label}
+        </div>
+        <span
+          className={`h-2.5 w-2.5 rounded-full ${
+            ok === true
+              ? "bg-emerald-300"
+              : ok === false
+                ? "bg-amber-300"
+                : "bg-slate-600"
+          }`}
+        />
+      </div>
+      <div className="mt-2 font-mono text-sm font-semibold text-slate-100">{value}</div>
+      <div className="mt-2 text-xs leading-5 text-slate-500">{detail}</div>
+    </div>
   );
 }
 

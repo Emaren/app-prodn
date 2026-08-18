@@ -6,7 +6,7 @@
     "kill-ports": "lsof -ti:3000,3001 | xargs kill -9 || true",
     "cert": "mkcert -install && mkcert localhost 127.0.0.1 ::1",
     "dev": "npm run kill-ports && npm run cert && node server.js",
-    "prebuild": "node scripts/write-build-version.mjs && prisma generate",
+    "prebuild": "python3 scripts/generate_page_change_manifest.py && node scripts/write-build-version.mjs && prisma generate",
     "build": "next build",
     "postbuild": "node scripts/prepare-runtime-cache.mjs",
     "prestart": "node scripts/prepare-runtime-cache.mjs",

@@ -48,7 +48,8 @@ export const AOE2_OS_ACTIONS = {
   },
   deploy: {
     label: "Deploy Production",
-    description: "Ship the current reviewed source through the protected release pipeline.",
+    description:
+      "Ship reviewed source through the protected release pipeline, including backup-first additive Prisma migrations when present.",
     risk: "production_write",
     confirmation: "DEPLOY",
     requiresSourceSha: true,
@@ -56,7 +57,7 @@ export const AOE2_OS_ACTIONS = {
   finish: {
     label: "Finish Everything",
     description:
-      "Reconcile source and documentation, release safely, certify production, and run final estate checks.",
+      "Reconcile source and documentation, backup and apply approved additive Prisma migrations when needed, release safely, certify production, and run final estate checks.",
     risk: "production_write",
     confirmation: "FINISH",
     requiresSourceSha: false,

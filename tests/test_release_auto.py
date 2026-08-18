@@ -389,6 +389,9 @@ class AutoShipTests(unittest.TestCase):
                 return_value=(receipt, False),
             ) as resolve,
             mock.patch.object(MODULE, "activate_release", return_value=0) as activate,
+            mock.patch.object(
+                MODULE, "apply_production_migrations_if_needed", return_value=None
+            ) as migrate,
             mock.patch.object(MODULE, "route_proof") as route,
             mock.patch.object(MODULE, "gate_release") as gate,
             mock.patch.object(MODULE, "manifest_release") as manifest,
@@ -404,6 +407,7 @@ class AutoShipTests(unittest.TestCase):
             "candidate-build",
             initial["production"],
         )
+        migrate.assert_called_once_with(initial["local"]["head"])
         self.assertEqual(activate.call_count, 2)
         self.assertTrue(activate.call_args_list[0].kwargs["dry_run"])
         self.assertFalse(activate.call_args_list[1].kwargs["dry_run"])
