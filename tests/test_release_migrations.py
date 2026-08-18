@@ -168,6 +168,18 @@ UPDATE "users" SET "email" = "email";''',
         )
         self.assertEqual(shell.returncode, 0, shell.stderr)
 
+    def test_production_migration_receipt_uses_privileged_owned_install(self):
+        script = MODULE.production_migration_script(
+            release_sha="e" * 40,
+            migration_names=["20260101000000_create_widget"],
+        )
+
+        self.assertIn(
+            'sudo -n /usr/bin/install -d -o tony -g tony -m 0750 "$receipt"',
+            script,
+        )
+        self.assertNotIn('\nmkdir -p "$receipt"\n', script)
+
     def test_financial_gate_is_also_allowed(self):
         temp, root, manifests, release = self.with_release(
             [("20260101000000_create_widget", 'CREATE TABLE "widget" ("id" SERIAL PRIMARY KEY);')],

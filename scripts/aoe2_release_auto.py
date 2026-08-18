@@ -512,7 +512,7 @@ cmp -s "$pending_file" "$expected_file" \
 
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 receipt="$RECEIPT_ROOT/migration-${{stamp}}-${{RELEASE_SHORT}}"
-mkdir -p "$receipt"
+sudo -n /usr/bin/install -d -o tony -g tony -m 0750 "$receipt"
 dump="$receipt/pre-migration.dump"
 
 pg_dump -Fc --no-owner --no-acl -f "$dump"
