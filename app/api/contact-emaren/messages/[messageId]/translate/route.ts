@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { LLAMA_CHAT_GATEWAY_URL } from "@/lib/aiConciergeConfig";
 import {
   findUniversalLanguage,
   normalizeUniversalLanguage,
 } from "@/lib/i18n/languages";
+import {
+  DirectOpenAiError,
+  requestDirectOpenAiResponse,
+} from "@/lib/openAiResponses";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 
@@ -56,22 +59,37 @@ export async function POST(
     return NextResponse.json({ language, text: message.translations[0].text, cached: true });
   }
 
-  const response = await fetch(LLAMA_CHAT_GATEWAY_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      to: "Agent4.1M",
-      messages: [
-        { role: "system", content: "You are a precise chat translator. Return only the translated message, preserving names, links, emoji, line breaks, and game terminology. Never add commentary." },
-        { role: "user", content: `Translate this private chat message to ${languageDefinition.englishName} (${language}):\n\n${message.body}` },
-      ],
-    }),
-    cache: "no-store",
-  });
-  const payload = (await response.json().catch(() => ({}))) as { text?: string; error?: string };
-  const text = payload.text?.trim();
-  if (!response.ok || !text) {
-    return NextResponse.json({ detail: payload.error || "Translation is temporarily unavailable" }, { status: 503 });
+  let text = "";
+  try {
+    const response = await requestDirectOpenAiResponse({
+      model: "gpt-4.1",
+      instructions:
+        "You are a precise chat translator. Return only the translated message, preserving names, links, emoji, line breaks, and game terminology. Never add commentary.",
+      input: `Translate this private chat message to ${languageDefinition.englishName} (${language}):\n\n${message.body}`,
+    });
+    text = response.text.trim();
+  } catch (error) {
+    console.error("Private chat translation provider failed", {
+      messageId: message.id,
+      language,
+      error,
+    });
+    return NextResponse.json(
+      {
+        detail:
+          error instanceof DirectOpenAiError
+            ? error.message
+            : "Translation is temporarily unavailable",
+      },
+      { status: 503 },
+    );
+  }
+
+  if (!text) {
+    return NextResponse.json(
+      { detail: "Translation is temporarily unavailable" },
+      { status: 503 },
+    );
   }
 
   await prisma.directMessageTranslation.upsert({
