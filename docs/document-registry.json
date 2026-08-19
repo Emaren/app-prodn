@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a68f746737f156f9aaf9dd3e79b3ebd3ac4da0698a528623ba358ec1d9ab8bf6",
+      "sha256": "ec1c41744605ba50c08944a157026bfd842265e1954b94dc4d26729a6b62954b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1267,6 +1267,31 @@
     {
       "audience": [
         "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "storage-operating-contract",
+      "id": "aoe2war.app-prodn.storage-os",
+      "owner": "aoe2war-web",
+      "path": "docs/STORAGE_OS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-18",
+      "sensitivity": "internal",
+      "sha256": "29116382733be53d9c1f5b1e9d7341826eb339c97fd72fa70c373662b765b3b2",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2war",
+        "wolochain",
+        "vpssentry"
+      ],
+      "title": "AoE2WAR Storage OS",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
         "ai-agents"
       ],
       "authority": "product-contract",
@@ -1512,7 +1537,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "e0e1cb0c7eaafee0c85363c3d4d0f91b977ae2f8"
+    "commit": "33b364f290eaee9da7f7040880e2cd021e9d2f94"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
