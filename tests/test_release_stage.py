@@ -212,6 +212,10 @@ class StageTests(unittest.TestCase):
             script,
         )
         self.assertIn("dependency_cache_key=", script)
+        self.assertIn(
+            'sudo -n /usr/bin/install -d -o tony -g tony -m 0700 "$CACHE_ROOT"',
+            script,
+        )
         self.assertIn("yarn_cache_hit=0", script)
         self.assertIn("next_cache_hit=0", script)
         self.assertIn('"$YARN_CACHE_CURRENT/data/"', script)

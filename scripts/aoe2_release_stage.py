@@ -335,7 +335,7 @@ install -d -m 0700 \
   "$build_worktree/.tmp" \
   "$build_worktree/.yarn-cache"
 
-install -d -m 0700 "$CACHE_ROOT"
+sudo -n /usr/bin/install -d -o tony -g tony -m 0700 "$CACHE_ROOT"
 chmod 0700 "$CACHE_ROOT"
 test ! -L "$CACHE_ROOT"
 

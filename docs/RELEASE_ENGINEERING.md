@@ -687,3 +687,7 @@ A successful build may replace the bounded current cache for the next release.
 Cache-key mismatch or absence uses the ordinary cold path. Candidate dependency
 SHA-256, artifact SHA-256, Prisma engine identity, activation certification,
 rollback evidence and Wolo protection remain authoritative.
+
+Because the durable deploy-receipts parent is not an unprivileged creation
+surface, the release engine provisions the bounded cache root with `sudo install`
+and assigns it to `tony`; subsequent cache operations do not run privileged.

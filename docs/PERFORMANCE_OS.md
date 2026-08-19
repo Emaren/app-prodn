@@ -196,3 +196,7 @@ rollback proof and Wolo boundary all remain mandatory.
 Only one current Yarn cache and one current Next cache are retained. A
 dependency/toolchain key mismatch is a cache miss. Cache absence therefore
 degrades to the existing cold path rather than weakening a release invariant.
+
+The mounted persistent cache root is provisioned through the release engine's
+bounded privileged directory-creation seam and immediately owned by `tony`;
+all cache seeding, replacement, and verification remains unprivileged.
