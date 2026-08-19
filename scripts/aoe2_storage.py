@@ -475,11 +475,27 @@ def maintain(*, apply: bool, until_target: bool, max_generations: int, force: bo
         if plan["status"] == "NOOP_HEALTHY":
             print("PASS: storage is already below the healthy target")
             break
+        watch_continuation = False
         if plan["status"] == "WATCH" and not force:
-            print("PASS: storage is in WATCH range; no archival is due")
-            break
-        if plan["status"] != "READY" and not (force and plan.get("candidate")):
-            raise StorageError(f"storage plan is not actionable: {plan['status']}")
+            if until_target and archived > 0:
+                if not plan.get("candidate"):
+                    raise StorageError(
+                        "healthy target not reached but no eligible "
+                        "generation remains"
+                    )
+                watch_continuation = True
+            else:
+                print("PASS: storage is in WATCH range; no archival is due")
+                break
+
+        if (
+            plan["status"] != "READY"
+            and not watch_continuation
+            and not (force and plan.get("candidate"))
+        ):
+            raise StorageError(
+                f"storage plan is not actionable: {plan['status']}"
+            )
 
         generation = str(plan["candidate"])
         print()

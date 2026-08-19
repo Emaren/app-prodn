@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2war","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "storage-operating-contract"
-reviewed_at: "2026-08-18"
+reviewed_at: "2026-08-19"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -53,6 +53,24 @@ primitive and never deletes durable rollback generations.
 | `82–85%` | Maintenance due | Deliberate archival allowed |
 | `85–92%` | Attention | Archival high priority |
 | `>= 92%` | Critical | Fail closed on unnecessary growth |
+
+
+## Maintenance hysteresis
+
+The healthy target and maintenance trigger intentionally form a hysteresis band.
+
+A normal maintenance run does not begin automatically while the volume is in
+the `78–82%` WATCH range. Automatic/deliberate maintenance becomes due at
+`>=82%`.
+
+Once an `--until-target` batch has already completed at least one verified
+archive transaction, it may continue through the WATCH range until the volume
+reaches `<78%`. The batch still stops immediately on a failed safety proof,
+missing eligible generation, explicit transaction limit, or other fail-closed
+condition.
+
+This avoids repeated maintenance churn around the 82% boundary while preserving
+the rule that WATCH alone does not initiate archival work.
 
 ## One-generation transaction
 
@@ -113,3 +131,4 @@ archival from intentionally mutating the recovery estate concurrently.
 - One archive transaction = one generation.
 - Missing/inconsistent evidence fails closed.
 - Deploy receipts remain protected evidence.
+\n
