@@ -172,3 +172,27 @@ Wolo proof, Operator Bridge reload, and the final finish audit remain mandatory.
 - A faster release that weakens rollback, provenance, health soak, or Wolo
   protection is a regression.
 \n
+
+## Bounded build-computation cache
+
+Performance OS may persist two bounded computation caches beside durable deploy
+receipts:
+
+- the current Yarn package cache, keyed by the frozen dependency contract,
+  `yarn.lock`, Yarn version, Node version and architecture;
+- the current Next computation cache, under the same dependency/toolchain key.
+
+Both caches are copied into the disposable detached release worktree before
+sandbox execution. The systemd build/dependency units remain unchanged:
+dependency retrieval still runs with lifecycle scripts disabled and the build
+still runs network-private with production secrets and the mounted volume
+inaccessible.
+
+The caches are acceleration inputs only. They are never release truth.
+`yarn install --frozen-lockfile`, candidate dependency hashing, Prisma engine
+proof, the cache-free `.next` artifact requirement, runtime certification,
+rollback proof and Wolo boundary all remain mandatory.
+
+Only one current Yarn cache and one current Next cache are retained. A
+dependency/toolchain key mismatch is a cache miss. Cache absence therefore
+degrades to the existing cold path rather than weakening a release invariant.

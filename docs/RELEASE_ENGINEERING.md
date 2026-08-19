@@ -670,3 +670,20 @@ Operator Bridge reload.
 The overlap is bounded to the context projects chosen by the locked update plan
 and is settled before post-release update replans the estate. Failure falls back
 to ordinary synchronous post-release context reconciliation.
+
+## Release-stage computation cache
+
+The isolated release stage may seed disposable Yarn and Next caches from one
+bounded persistent cache entry stored beside durable deploy receipts. The
+persistent cache is not mounted into either systemd sandbox; stage copies cache
+data into the disposable worktree before execution.
+
+This optimization does not alter the installed `aoe2war-deps@.service` or
+`aoe2war-build@.service` security boundary. The dependency phase remains a
+frozen scripts-disabled install, the build phase remains network-private, and
+the final deploy artifact remains cache-free.
+
+A successful build may replace the bounded current cache for the next release.
+Cache-key mismatch or absence uses the ordinary cold path. Candidate dependency
+SHA-256, artifact SHA-256, Prisma engine identity, activation certification,
+rollback evidence and Wolo protection remain authoritative.

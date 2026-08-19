@@ -50,6 +50,11 @@ def sample():
         "dependency_fetch_sandboxed": "1",
         "dependency_fetch_scripts_disabled": "1",
         "dependency_build_offline": "1",
+        "persistent_build_cache": "1",
+        "cache_is_release_truth": "0",
+        "dependency_cache_key": "e" * 64,
+        "yarn_cache_hit": "0",
+        "next_cache_hit": "0",
         "dependency_contract_unchanged": "1",
         "dependency_lock_changed": "1",
         "cache_free_artifact": "1",
@@ -192,6 +197,49 @@ class StageTests(unittest.TestCase):
         self.assertNotIn("sudo -n -u tony", script)
         self.assertIn("test ! -e .next-release", script)
         self.assertNotIn('git reset --hard "$RELEASE"', script)
+
+    def test_stage_uses_bounded_persistent_computation_cache(self):
+        script = MODULE.remote_stage_script(
+            release_sha="b" * 40,
+            previous_sha="a" * 40,
+            manifest_sha="c" * 64,
+            gate_sha="d" * 64,
+            receipt_dir="/mnt/receipt",
+        )
+
+        self.assertIn(
+            'CACHE_ROOT="$(dirname "$RECEIPT")/build-cache-v1"',
+            script,
+        )
+        self.assertIn("dependency_cache_key=", script)
+        self.assertIn("yarn_cache_hit=0", script)
+        self.assertIn("next_cache_hit=0", script)
+        self.assertIn('"$YARN_CACHE_CURRENT/data/"', script)
+        self.assertIn('"$NEXT_CACHE_CURRENT/data/"', script)
+        self.assertIn("timing_record yarn_cache_seed", script)
+        self.assertIn("timing_record yarn_cache_persist", script)
+        self.assertIn("timing_record next_cache_seed", script)
+        self.assertIn("timing_record next_cache_persist", script)
+        self.assertIn("persistent_build_cache=1", script)
+        self.assertIn("cache_is_release_truth=0", script)
+
+        self.assertIn('test ! -e "$stage_copy/cache"', script)
+        self.assertIn(
+            'mv "$build_worktree/node_modules" .node_modules-release',
+            script,
+        )
+
+        build_unit = MODULE.BUILD_SANDBOX_UNIT_SOURCE.read_text()
+        deps_unit = MODULE.DEPS_SANDBOX_UNIT_SOURCE.read_text()
+        self.assertIn("PrivateNetwork=yes", build_unit)
+        self.assertIn(
+            "InaccessiblePaths=/mnt/HC_Volume_105319120",
+            build_unit,
+        )
+        self.assertIn(
+            "InaccessiblePaths=/mnt/HC_Volume_105319120",
+            deps_unit,
+        )
 
     def test_build_sandbox_has_memory_headroom_for_next_workers(self):
         build_unit = MODULE.BUILD_SANDBOX_UNIT_SOURCE.read_text()
