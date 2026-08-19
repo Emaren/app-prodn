@@ -118,6 +118,7 @@ builds a time series so future decisions use release-over-release deltas.
 - A benchmark never mutates production.
 - Performance data may recommend a change; it does not bypass a release gate.
 - Missing timing evidence is reported as missing evidence, not inferred.
+- Performance timing is observational: missing timing evidence is surfaced as missing evidence and must not invalidate an otherwise correct release transaction.
 - Public latency is not blamed on the application when the origin seam disproves
   that conclusion.
 - A faster release that weakens rollback, provenance, health soak, or Wolo

@@ -137,6 +137,58 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertIn('"timings_ms": timings_ms', source)
         self.assertIn('"duration_seconds": stage_duration_seconds', source)
 
+    def test_stage_wall_timer_is_scoped_to_stage_release(self):
+        source = (
+            ROOT / "scripts" / "aoe2_release_stage.py"
+        ).read_text(encoding="utf-8")
+
+        persist = source.split(
+            "def persist_durable_stage_receipt",
+            1,
+        )[1].split(
+            "\ndef stage_release(",
+            1,
+        )[0]
+
+        stage = source.split(
+            "\ndef stage_release(",
+            1,
+        )[1]
+
+        self.assertNotIn(
+            "stage_started_monotonic = time.monotonic()",
+            persist,
+        )
+        self.assertIn(
+            "stage_started_monotonic = time.monotonic()",
+            stage,
+        )
+        self.assertLess(
+            stage.index(
+                "stage_started_monotonic = time.monotonic()"
+            ),
+            stage.index("p = run("),
+        )
+        self.assertIn(
+            "time.monotonic() - stage_started_monotonic",
+            stage,
+        )
+
+    def test_remote_stage_timing_is_observational(self):
+        source = (
+            ROOT / "scripts" / "aoe2_release_stage.py"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "date +%s%N 2>/dev/null || true",
+            source,
+        )
+        self.assertIn(
+            '>> "$TIMING_FILE" 2>/dev/null || true',
+            source,
+        )
+
+
     def test_activation_receipt_records_wall_duration(self):
         source = (
             ROOT / "scripts" / "aoe2_release_ship.py"

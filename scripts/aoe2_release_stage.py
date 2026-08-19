@@ -104,15 +104,20 @@ GATE_CONTENT={q(gate_text)}
 TIMING_FILE="$RECEIPT/stage-timings.tsv"
 
 timing_now_ns() {{
-  date +%s%N
+  date +%s%N 2>/dev/null || true
 }}
 
 timing_record() {{
   name="$1"
   start_ns="$2"
   end_ns="$(timing_now_ns)"
+
+  if ! [[ "$start_ns" =~ ^[0-9]+$ && "$end_ns" =~ ^[0-9]+$ ]]; then
+    return 0
+  fi
+
   elapsed_ms=$(( (end_ns - start_ns) / 1000000 ))
-  printf '%s\t%s\n' "$name" "$elapsed_ms" >> "$TIMING_FILE"
+  printf '%s\t%s\n' "$name" "$elapsed_ms" >> "$TIMING_FILE" 2>/dev/null || true
 }}
 
 mutation_started=0
@@ -166,7 +171,7 @@ restore_stage_failure() {{
 trap restore_stage_failure EXIT
 
 sudo -n /usr/bin/install -d -o tony -g tony -m 0750 "$RECEIPT"
-: > "$TIMING_FILE"
+: > "$TIMING_FILE" 2>/dev/null || true
 stage_total_started="$(timing_now_ns)"
 printf '%s' "$MANIFEST_CONTENT" > "$RECEIPT/release-manifest.json"
 printf '%s' "$GATE_CONTENT" > "$RECEIPT/gate-receipt.json"
@@ -617,9 +622,11 @@ printf 'live_public_mutated\t0\n'
 printf 'live_node_modules_mutated\t0\n'
 printf 'live_build_version_mutated\t0\n'
 printf 'receipt_dir\t%s\n' "$RECEIPT"
-while IFS=$'\t' read -r timing_name timing_ms; do
-  printf 'timing_%s_ms\t%s\n' "$timing_name" "$timing_ms"
-done < "$TIMING_FILE"
+if [ -f "$TIMING_FILE" ]; then
+  while IFS=$'\t' read -r timing_name timing_ms; do
+    printf 'timing_%s_ms\t%s\n' "$timing_name" "$timing_ms"
+  done < "$TIMING_FILE"
+fi
 
 trap - EXIT
 """.strip()
@@ -796,8 +803,6 @@ def persist_durable_stage_receipt(receipt_dir: str, local_receipt: Path) -> dict
         receipt_text=receipt_text,
         receipt_sha256=receipt_sha,
     )
-    stage_started_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-    stage_started_monotonic = time.monotonic()
     p = run(
         [
             "ssh",
@@ -900,6 +905,8 @@ def stage_release(
         print("WOLO:           OBSERVE ONLY")
         print()
 
+    stage_started_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    stage_started_monotonic = time.monotonic()
     p = run(
         [
             "ssh",
