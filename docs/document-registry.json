@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "14af9efbfdbb7595ff3108a93f3ccd109261d9a89e1a1fcfd327d0cfba63c08e",
+      "sha256": "f0364e670909b67e39a0e9d145a5147aa2c8bb966859d6db4eea26b23b563ea6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -506,6 +506,28 @@
       ],
       "title": "app-prodn Documentation Index",
       "type": "generated"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "documentation-operations-contract",
+      "id": "aoe2war.app-prodn.docs-documentation-os",
+      "owner": "aoe2war-web",
+      "path": "docs/DOCUMENTATION_OS.md",
+      "review_interval_days": 60,
+      "reviewed_at": "2026-08-19",
+      "sensitivity": "internal",
+      "sha256": "50669441c0cea23cfac98c04fe4fc650f37244b6cbc205c06571f39d1775e7e6",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Documentation OS",
+      "type": "reference"
     },
     {
       "audience": [
@@ -1275,9 +1297,9 @@
       "owner": "aoe2war-web",
       "path": "docs/STORAGE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-18",
+      "reviewed_at": "2026-08-19",
       "sensitivity": "internal",
-      "sha256": "fd0a4977c7c5cc42848a71dd955fd431c41718bfe523eb16e4adcfab2563ba58",
+      "sha256": "e9ead8097efecd7f814a298d0959a5379e71e57febff3a2ea48a2af9dd4d065e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1537,7 +1559,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "41368cc9fc1e83af63d61b0c5296e9978f624c84"
+    "commit": "b45317c49b2dd0b3aed22abac09e86a2e560c9d5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

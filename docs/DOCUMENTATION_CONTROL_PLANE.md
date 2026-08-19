@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `41368cc9fc1e83af63d61b0c5296e9978f624c84`
+Implementation baseline: `main` at `b45317c49b2dd0b3aed22abac09e86a2e560c9d5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **67**
+- Authoritative repository documents: **68**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 38
+- `reference`: 39
 - `runbook`: 10
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 53
+- `active`: 54
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 1
@@ -72,6 +72,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Commissioner Replay Result Review](COMMISSIONER_REPLAY_REVIEW.md) | `runbook` | `active` | `operational-procedure` |
 | [Human-Confirmed Desync Protocol](DESYNC_INCIDENT_PROTOCOL.md) | `reference` | `active` | `domain-contract` |
 | [Direct Chat UI](DIRECT_CHAT.md) | `reference` | `active` | `product-contract` |
+| [Documentation OS](DOCUMENTATION_OS.md) | `reference` | `active` | `documentation-operations-contract` |
 | [AoE2WAR Evidence Vault](EVIDENCE_VAULT.md) | `runbook` | `active` | `disaster-recovery-contract` |
 | [Hall Scribe, Identity and KKR Release - 2026-08-17](HALL_SCRIBE_IDENTITY_KKR_RELEASE_2026-08-17.md) | `reference` | `active` | `release-evidence` |
 | [AoE2WAR Hall Scribe Prompt Stack](HALL_SCRIBE_PROMPT.md) | `reference` | `active` | `product-contract` |
