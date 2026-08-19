@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f0364e670909b67e39a0e9d145a5147aa2c8bb966859d6db4eea26b23b563ea6",
+      "sha256": "200e65787228c5318876b3ef1fcfb1be08f06ff703ec7dee385586a50087e338",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1007,6 +1007,28 @@
       ],
       "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "performance-operating-contract",
+      "id": "aoe2war.app-prodn.performance-os",
+      "owner": "aoe2war-web",
+      "path": "docs/PERFORMANCE_OS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-19",
+      "sensitivity": "internal",
+      "sha256": "01da4feb981775d92e99c904842dd5fccf0cfd86f03ebd1d3117af3917824263",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "AoE2WAR Performance OS",
+      "type": "reference"
     },
     {
       "audience": [
@@ -1559,7 +1581,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "b45317c49b2dd0b3aed22abac09e86a2e560c9d5"
+    "commit": "b706031f33f7cf71b8243a8ace8c800c1b3ae511"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
