@@ -671,40 +671,15 @@ The overlap is bounded to the context projects chosen by the locked update plan
 and is settled before post-release update replans the estate. Failure falls back
 to ordinary synchronous post-release context reconciliation.
 
-## Release-stage computation cache
+## Persistent build-cache decision
 
-The isolated release stage may seed disposable Yarn and Next caches from one
-bounded persistent cache entry stored beside durable deploy receipts. The
-persistent cache is not mounted into either systemd sandbox; stage copies cache
-data into the disposable worktree before execution.
+A production experiment with a copied persistent Yarn/Next cache was retired
+after the warm path measured slower than the certified V1.2 stage and consumed
+about 3.4 GiB of durable-volume capacity. Release staging therefore retains the
+fresh scripts-disabled network dependency fetch followed by the network-private
+frozen offline build.
 
-This optimization does not alter the installed `aoe2war-deps@.service` or
-`aoe2war-build@.service` security boundary. The dependency phase remains a
-frozen scripts-disabled install, the build phase remains network-private, and
-the final deploy artifact remains cache-free.
-
-A successful build may replace the bounded current cache for the next release.
-Cache-key mismatch or absence uses the ordinary cold path. Candidate dependency
-SHA-256, artifact SHA-256, Prisma engine identity, activation certification,
-rollback evidence and Wolo protection remain authoritative.
-
-Because the durable deploy-receipts parent is not an unprivileged creation
-surface, the release engine provisions the bounded cache root with `sudo install`
-and assigns it to `tony`; subsequent cache operations do not run privileged.
-
-## Warm dependency-fetch bypass
-
-A matching persistent dependency cache does not by itself authorize a network
-fetch bypass. Release stage requires all three conditions:
-
-- exact dependency cache-key hit;
-- unchanged dependency contract;
-- unchanged `yarn.lock`.
-
-Only then may the network dependency-fetch unit be skipped. The build remains
-network-private and performs frozen offline dependency materialization. Prisma
-engine identity is then proved from the materialized candidate dependency tree
-before any candidate artifact or dependency tree is published.
-
-Cold releases retain the original scripts-disabled network fetch and pre-build
-Prisma proof. Cache ambiguity falls back to that cold path.
+This is an evidence-based rejection of that cache topology, not a relaxation of
+release guarantees. Frozen dependency inputs, Prisma engine identity, candidate
+dependency hashing, cache-free artifact hashing, activation certification,
+rollback evidence, and Wolo protection remain authoritative.

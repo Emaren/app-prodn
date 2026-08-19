@@ -173,47 +173,30 @@ Wolo proof, Operator Bridge reload, and the final finish audit remain mandatory.
   protection is a regression.
 \n
 
-## Bounded build-computation cache
+## Rejected persistent build-cache experiment — V1.3/V1.3.1
 
-Performance OS may persist two bounded computation caches beside durable deploy
-receipts:
+The V1.3/V1.3.1 persistent Yarn + Next build-cache experiment was certified
+safely and then rejected on measured production economics.
 
-- the current Yarn package cache, keyed by the frozen dependency contract,
-  `yarn.lock`, Yarn version, Node version and architecture;
-- the current Next computation cache, under the same dependency/toolchain key.
+Measured warm-path evidence:
 
-Both caches are copied into the disposable detached release worktree before
-sandbox execution. The systemd build/dependency units remain unchanged:
-dependency retrieval still runs with lifecycle scripts disabled and the build
-still runs network-private with production secrets and the mounted volume
-inaccessible.
+- exact Yarn cache hit: yes;
+- exact Next cache hit: yes;
+- network dependency fetch skipped: yes;
+- dependency contract unchanged: yes;
+- `yarn.lock` unchanged: yes;
+- Yarn cache seed: 109.563 seconds;
+- avoided network dependency fetch: about 79.7 seconds;
+- offline build: 172.342 seconds versus 173.774 seconds in the V1.2 reference;
+- warm stage: 5:17.8 versus 4:56.8 in V1.2;
+- warm finish: 18:03.0 versus 15:47.2 in V1.2;
+- persistent cache footprint: about 3.4 GiB.
 
-The caches are acceleration inputs only. They are never release truth.
-`yarn install --frozen-lockfile`, candidate dependency hashing, Prisma engine
-proof, the cache-free `.next` artifact requirement, runtime certification,
-rollback proof and Wolo boundary all remain mandatory.
+The cache therefore spent more time copying the multi-gigabyte Yarn cache than
+the network fetch it replaced, while the Next cache produced no material build
+reduction. The experiment also consumed material mounted-volume capacity.
 
-Only one current Yarn cache and one current Next cache are retained. A
-dependency/toolchain key mismatch is a cache miss. Cache absence therefore
-degrades to the existing cold path rather than weakening a release invariant.
-
-The mounted persistent cache root is provisioned through the release engine's
-bounded privileged directory-creation seam and immediately owned by `tony`;
-all cache seeding, replacement, and verification remains unprivileged.
-
-## True warm dependency path
-
-When the persistent Yarn cache key matches and both the dependency contract and
-`yarn.lock` are unchanged from certified production, stage may skip the
-network dependency-fetch unit entirely. The network-private build unit still
-runs its frozen offline materialization from the seeded cache.
-
-On a cold path, candidate Prisma engine equivalence is proved before the build
-as before. On a warm path, the candidate tree does not exist until the offline
-build unit materializes it, so the same exact engine-commit equivalence is
-proved immediately after the build and before artifact relocation, hashing, or
-candidate publication. A mismatch therefore remains a pre-release failure.
-
-The stage receipt records `dependency_fetch_skipped`; a skip is invalid unless
-the exact Yarn cache hit, unchanged dependency contract, and unchanged frozen
-lock are all present.
+Decision: the release stage uses the certified V1.2 cold dependency-fetch path.
+Do not reintroduce a copied persistent dependency/build cache without new
+evidence that changes the storage and copy-time economics. Cache may accelerate
+computation, but cache is never release truth.

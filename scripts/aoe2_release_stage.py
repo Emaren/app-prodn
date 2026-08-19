@@ -103,11 +103,6 @@ GATE_CONTENT={q(gate_text)}
 
 TIMING_FILE="$RECEIPT/stage-timings.tsv"
 
-CACHE_ROOT="$(dirname "$RECEIPT")/build-cache-v1"
-YARN_CACHE_CURRENT="$CACHE_ROOT/yarn-current"
-NEXT_CACHE_CURRENT="$CACHE_ROOT/next-current"
-
-
 timing_now_ns() {{
   date +%s%N 2>/dev/null || true
 }}
@@ -274,25 +269,6 @@ YARN_RUNTIME=/home/tony/.cache/node/corepack/v1/yarn/1.22.22
 test -f "$YARN_RUNTIME/bin/yarn.js"
 test "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$YARN_RUNTIME/package.json")" = "1.22.22"
 
-
-node_version="$(node --version)"
-yarn_lock_sha="$(
-  git show "$RELEASE:yarn.lock" |
-    sha256sum |
-    cut -d' ' -f1
-)"
-dependency_cache_key="$(
-  printf '%s\n%s\n%s\n%s\n%s\n' \
-    "$release_dependency_contract" \
-    "$yarn_lock_sha" \
-    "yarn-1.22.22" \
-    "$node_version" \
-    "$(uname -m)" |
-    sha256sum |
-    cut -d' ' -f1
-)"
-test "${{#dependency_cache_key}}" = "64"
-
 # Fail closed before creating candidate worktrees or fetching dependencies.
 # Free-space policy reserves two live dependency-tree equivalents plus 1 GiB
 # for candidate materialization, Yarn cache, build output, and staging overhead.
@@ -335,42 +311,6 @@ install -d -m 0700 \
   "$build_worktree/.tmp" \
   "$build_worktree/.yarn-cache"
 
-sudo -n /usr/bin/install -d -o tony -g tony -m 0700 "$CACHE_ROOT"
-chmod 0700 "$CACHE_ROOT"
-test ! -L "$CACHE_ROOT"
-
-yarn_cache_hit=0
-next_cache_hit=0
-
-if \
-  [ -f "$YARN_CACHE_CURRENT/key" ] &&
-  [ "$(cat "$YARN_CACHE_CURRENT/key")" = "$dependency_cache_key" ] &&
-  [ -d "$YARN_CACHE_CURRENT/data" ] &&
-  [ ! -L "$YARN_CACHE_CURRENT" ]
-then
-  yarn_cache_seed_started="$(timing_now_ns)"
-  rsync -a --delete \
-    "$YARN_CACHE_CURRENT/data/" \
-    "$build_worktree/.yarn-cache/"
-  yarn_cache_hit=1
-  timing_record yarn_cache_seed "$yarn_cache_seed_started"
-fi
-
-if \
-  [ -f "$NEXT_CACHE_CURRENT/key" ] &&
-  [ "$(cat "$NEXT_CACHE_CURRENT/key")" = "$dependency_cache_key" ] &&
-  [ -d "$NEXT_CACHE_CURRENT/data" ] &&
-  [ ! -L "$NEXT_CACHE_CURRENT" ]
-then
-  next_cache_seed_started="$(timing_now_ns)"
-  install -d -m 0700 "$build_worktree/.next-release/cache"
-  rsync -a --delete \
-    "$NEXT_CACHE_CURRENT/data/" \
-    "$build_worktree/.next-release/cache/"
-  next_cache_hit=1
-  timing_record next_cache_seed "$next_cache_seed_started"
-fi
-
 build_instance="${{build_worktree#/tmp/aoe2war-stage-}}"
 [[ "$build_instance" =~ ^[A-Za-z0-9]{{10}}$ ]]
 deps_unit="aoe2war-deps@${{build_instance}}.service"
@@ -382,82 +322,43 @@ sudo -n -l /usr/bin/systemctl start --wait "$build_unit" >/dev/null
 timing_record worktree_setup "$worktree_setup_started"
 
 dependency_fetch_started="$(timing_now_ns)"
-dependency_fetch_skipped=0
-candidate_prisma_engine_commit=""
+sudo -n /usr/bin/systemctl reset-failed "$deps_unit" >/dev/null 2>&1 || true
+deps_started_epoch="$(date +%s)"
+if ! sudo -n /usr/bin/systemctl start --wait "$deps_unit"; then
+  sudo -n /usr/bin/journalctl -u "$deps_unit" \
+    --since "@$deps_started_epoch" --no-pager -o cat \
+    > "$RECEIPT/dependency-fetch.log" 2>&1 || true
+  exit 42
+fi
+sudo -n /usr/bin/journalctl -u "$deps_unit" \
+  --since "@$deps_started_epoch" --no-pager -o cat \
+  > "$RECEIPT/dependency-fetch.log" 2>&1
+test "$(systemctl show "$deps_unit" -p Result --value)" = "success"
+test "$(systemctl show "$deps_unit" -p ExecMainStatus --value)" = "0"
+test -d "$build_worktree/node_modules"
+timing_record dependency_fetch "$dependency_fetch_started"
 
-read_candidate_prisma_engine_commit() {{
-  python3 - "$build_worktree/node_modules/@prisma/engines-version/package.json" <<'PY_PRISMA_COMMIT'
+# The build sandbox deliberately has no network. Prove that its live bootstrap
+# engine belongs to the exact engine commit requested by the frozen candidate
+# before the network-phase dependency tree is discarded.
+candidate_prisma_engine_commit="$(
+  python3 - "$build_worktree/node_modules/@prisma/engines-version/package.json" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     print(json.load(handle)["prisma"]["enginesVersion"])
-PY_PRISMA_COMMIT
-}}
-
+PY
+)"
 live_prisma_engine_version="$("$LIVE_PRISMA_SCHEMA_ENGINE" --version)"
+[[ "$candidate_prisma_engine_commit" =~ ^[0-9a-f]{{40}}$ ]]
+test "$live_prisma_engine_version" = "schema-engine-cli $candidate_prisma_engine_commit"
 live_prisma_engine_sha="$(sha256sum "$LIVE_PRISMA_SCHEMA_ENGINE" | awk '{{print $1}}')"
 test "${{#live_prisma_engine_sha}}" = "64"
 
-# A persistent Yarn cache is an acceleration input only. It may suppress the
-# network dependency-fetch phase only when the exact dependency key hit is
-# accompanied by unchanged dependency contract + unchanged frozen lock.
-if \
-  [ "$yarn_cache_hit" = "1" ] &&
-  [ "$dependency_contract_unchanged" = "1" ] &&
-  [ "$dependency_lock_changed" = "0" ]
-then
-  dependency_fetch_skipped=1
-  printf '%s\n' \
-    "SKIPPED: exact warm dependency cache hit" \
-    "dependency_cache_key=$dependency_cache_key" \
-    > "$RECEIPT/dependency-fetch.log"
-else
-  # Any ambiguity falls back to the original cold path.
-  yarn_cache_hit=0
-  sudo -n /usr/bin/systemctl reset-failed "$deps_unit" >/dev/null 2>&1 || true
-  deps_started_epoch="$(date +%s)"
-  if ! sudo -n /usr/bin/systemctl start --wait "$deps_unit"; then
-    sudo -n /usr/bin/journalctl -u "$deps_unit" \
-      --since "@$deps_started_epoch" --no-pager -o cat \
-      > "$RECEIPT/dependency-fetch.log" 2>&1 || true
-    exit 42
-  fi
-  sudo -n /usr/bin/journalctl -u "$deps_unit" \
-    --since "@$deps_started_epoch" --no-pager -o cat \
-    > "$RECEIPT/dependency-fetch.log" 2>&1
-  test "$(systemctl show "$deps_unit" -p Result --value)" = "success"
-  test "$(systemctl show "$deps_unit" -p ExecMainStatus --value)" = "0"
-  test -d "$build_worktree/node_modules"
-
-  yarn_cache_persist_started="$(timing_now_ns)"
-  yarn_cache_tmp="$CACHE_ROOT/.yarn-current-$$"
-  yarn_cache_old="$CACHE_ROOT/.yarn-old-$$"
-  rm -rf "$yarn_cache_tmp" "$yarn_cache_old"
-  install -d -m 0700 "$yarn_cache_tmp/data"
-  rsync -a --delete \
-    "$build_worktree/.yarn-cache/" \
-    "$yarn_cache_tmp/data/"
-  printf '%s\n' "$dependency_cache_key" > "$yarn_cache_tmp/key"
-  if [ -e "$YARN_CACHE_CURRENT" ]; then
-    test ! -L "$YARN_CACHE_CURRENT"
-    mv "$YARN_CACHE_CURRENT" "$yarn_cache_old"
-  fi
-  mv "$yarn_cache_tmp" "$YARN_CACHE_CURRENT"
-  rm -rf "$yarn_cache_old"
-  timing_record yarn_cache_persist "$yarn_cache_persist_started"
-
-  # Preserve the original cold-path pre-build Prisma equivalence proof.
-  candidate_prisma_engine_commit="$(read_candidate_prisma_engine_commit)"
-  [[ "$candidate_prisma_engine_commit" =~ ^[0-9a-f]{{40}}$ ]]
-  test "$live_prisma_engine_version" = "schema-engine-cli $candidate_prisma_engine_commit"
-
-  # Never trust/use the network-phase materialization as the runtime tree.
-  rm -rf "$build_worktree/node_modules"
-  test ! -e "$build_worktree/node_modules"
-fi
-
-timing_record dependency_fetch "$dependency_fetch_started"
+# Never trust/use the network-phase materialization as the runtime tree.
+rm -rf "$build_worktree/node_modules"
+test ! -e "$build_worktree/node_modules"
 
 offline_build_started="$(timing_now_ns)"
 sudo -n /usr/bin/systemctl reset-failed "$build_unit" >/dev/null 2>&1 || true
@@ -475,31 +376,6 @@ test "$(systemctl show "$build_unit" -p Result --value)" = "success"
 test "$(systemctl show "$build_unit" -p ExecMainStatus --value)" = "0"
 test -d "$build_worktree/node_modules"
 timing_record offline_build "$offline_build_started"
-
-if [ -z "$candidate_prisma_engine_commit" ]; then
-  candidate_prisma_engine_commit="$(read_candidate_prisma_engine_commit)"
-fi
-[[ "$candidate_prisma_engine_commit" =~ ^[0-9a-f]{{40}}$ ]]
-test "$live_prisma_engine_version" = "schema-engine-cli $candidate_prisma_engine_commit"
-
-if [ -d "$build_worktree/.next-release/cache" ]; then
-  next_cache_persist_started="$(timing_now_ns)"
-  next_cache_tmp="$CACHE_ROOT/.next-current-$$"
-  next_cache_old="$CACHE_ROOT/.next-old-$$"
-  rm -rf "$next_cache_tmp" "$next_cache_old"
-  install -d -m 0700 "$next_cache_tmp/data"
-  rsync -a --delete \
-    "$build_worktree/.next-release/cache/" \
-    "$next_cache_tmp/data/"
-  printf '%s\n' "$dependency_cache_key" > "$next_cache_tmp/key"
-  if [ -e "$NEXT_CACHE_CURRENT" ]; then
-    test ! -L "$NEXT_CACHE_CURRENT"
-    mv "$NEXT_CACHE_CURRENT" "$next_cache_old"
-  fi
-  mv "$next_cache_tmp" "$NEXT_CACHE_CURRENT"
-  rm -rf "$next_cache_old"
-  timing_record next_cache_persist "$next_cache_persist_started"
-fi
 
 # Prisma's postinstall cannot download inside the network-private build unit.
 # The isolated build borrows the version-proven live engine through its fixed
@@ -698,13 +574,7 @@ printf '%s\n' \
   "build_secret_paths_inaccessible=1" \
   "dependency_fetch_sandboxed=1" \
   "dependency_fetch_scripts_disabled=1" \
-  "dependency_fetch_skipped=$dependency_fetch_skipped" \
   "dependency_build_offline=1" \
-  "persistent_build_cache=1" \
-  "cache_is_release_truth=0" \
-  "dependency_cache_key=$dependency_cache_key" \
-  "yarn_cache_hit=$yarn_cache_hit" \
-  "next_cache_hit=$next_cache_hit" \
   "dependency_contract_unchanged=$dependency_contract_unchanged" \
   "dependency_lock_changed=$dependency_lock_changed" \
   "cache_free_artifact=1" \
@@ -742,13 +612,7 @@ printf 'build_network_private\t1\n'
 printf 'build_secret_paths_inaccessible\t1\n'
 printf 'dependency_fetch_sandboxed\t1\n'
 printf 'dependency_fetch_scripts_disabled\t1\n'
-printf 'dependency_fetch_skipped\t%s\n' "$dependency_fetch_skipped"
 printf 'dependency_build_offline\t1\n'
-printf 'persistent_build_cache\t1\n'
-printf 'cache_is_release_truth\t0\n'
-printf 'dependency_cache_key\t%s\n' "$dependency_cache_key"
-printf 'yarn_cache_hit\t%s\n' "$yarn_cache_hit"
-printf 'next_cache_hit\t%s\n' "$next_cache_hit"
 printf 'dependency_contract_unchanged\t%s\n' "$dependency_contract_unchanged"
 printf 'dependency_lock_changed\t%s\n' "$dependency_lock_changed"
 printf 'cache_free_artifact\t1\n'
@@ -835,8 +699,6 @@ def validate_stage_result(
         ("dependency_fetch_sandboxed", "1"),
         ("dependency_fetch_scripts_disabled", "1"),
         ("dependency_build_offline", "1"),
-        ("persistent_build_cache", "1"),
-        ("cache_is_release_truth", "0"),
         ("prisma_schema_engine_seeded", "1"),
         ("cache_free_artifact", "1"),
         ("artifact_path_relocated", "1"),
@@ -848,37 +710,11 @@ def validate_stage_result(
         if result.get(key) != expected:
             errors.append(f"isolated-stage invariant failed: {key}={result.get(key)!r}")
 
-    for key in (
-        "dependency_contract_unchanged",
-        "dependency_lock_changed",
-        "yarn_cache_hit",
-        "next_cache_hit",
-        "dependency_fetch_skipped",
-    ):
+    for key in ("dependency_contract_unchanged", "dependency_lock_changed"):
         if result.get(key) not in {"0", "1"}:
             errors.append(
                 f"dependency evidence flag is invalid: {key}={result.get(key)!r}"
             )
-
-    if result.get("dependency_fetch_skipped") == "1":
-        if result.get("yarn_cache_hit") != "1":
-            errors.append(
-                "dependency fetch skip requires an exact Yarn cache hit"
-            )
-        if result.get("dependency_contract_unchanged") != "1":
-            errors.append(
-                "dependency fetch skip requires unchanged dependency contract"
-            )
-        if result.get("dependency_lock_changed") != "0":
-            errors.append(
-                "dependency fetch skip requires unchanged frozen lock"
-            )
-
-    cache_key = result.get("dependency_cache_key") or ""
-    if len(cache_key) != 64 or any(
-        c not in "0123456789abcdef" for c in cache_key
-    ):
-        errors.append("dependency cache key is invalid")
 
     if "changed_files" in manifest:
         expected_lock_changed = (
@@ -1195,12 +1031,6 @@ def stage_release(
         "dependency_fetch_sandboxed": True,
         "dependency_fetch_scripts_disabled": True,
         "dependency_build_offline": True,
-        "persistent_build_cache": True,
-        "cache_is_release_truth": False,
-        "dependency_cache_key": result["dependency_cache_key"],
-        "yarn_cache_hit": result["yarn_cache_hit"] == "1",
-        "next_cache_hit": result["next_cache_hit"] == "1",
-        "dependency_fetch_skipped": result["dependency_fetch_skipped"] == "1",
         "dependency_contract_unchanged": (
             result["dependency_contract_unchanged"] == "1"
         ),
