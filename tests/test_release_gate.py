@@ -134,6 +134,39 @@ class ReleaseGateTests(unittest.TestCase):
         )
 
 
+    def test_documentation_os_is_infrastructure_risk(self):
+        self.assertEqual(
+            MODULE.path_risk("scripts/aoe2_docs.py"),
+            "INFRASTRUCTURE",
+        )
+        self.assertEqual(
+            MODULE.path_risk("tests/test_aoe2_docs.py"),
+            "INFRASTRUCTURE",
+        )
+
+    def test_documentation_os_triggers_release_contract(self):
+        scope = {
+            "mode": "worktree",
+            "base_sha": "a",
+            "target_sha": "WORKTREE",
+            "changed_files": ["scripts/aoe2_docs.py"],
+        }
+        plan = MODULE.command_plan(scope, "INFRASTRUCTURE")
+        release_tests = [
+            args
+            for label, args, _timeout in plan
+            if label == "release-engineering-tests"
+        ]
+        compile_steps = [
+            args
+            for label, args, _timeout in plan
+            if label == "release-python-compile"
+        ]
+        self.assertEqual(len(release_tests), 1)
+        self.assertEqual(len(compile_steps), 1)
+        self.assertIn("tests/test_aoe2_docs.py", release_tests[0])
+        self.assertIn("scripts/aoe2_docs.py", compile_steps[0])
+
     def test_operator_cli_is_infrastructure_risk(self):
         self.assertEqual(MODULE.path_risk("bin/aoe2war"), "INFRASTRUCTURE")
 

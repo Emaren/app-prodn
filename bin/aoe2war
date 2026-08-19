@@ -10,6 +10,7 @@ FINISH="$BIN_DIR/../scripts/aoe2_finish.py"
 BRIDGE="$BIN_DIR/../scripts/aoe2_operator_bridge.py"
 STORAGE_RETENTION="$BIN_DIR/../scripts/aoe2_storage_retention.py"
 STORAGE="$BIN_DIR/../scripts/aoe2_storage.py"
+DOCS_OS="$BIN_DIR/../scripts/aoe2_docs.py"
 
 usage() {
   cat <<'EOF'
@@ -21,6 +22,7 @@ Usage:
   aoe2war audit [--json]
   aoe2war doctor [--json] [--strict]
   aoe2war update [--apply] [--json]
+  aoe2war docs <status|impact|audit|update> [options]
   aoe2war storage-retention [--apply] [--json]
   aoe2war storage <status|plan|maintain|verify> [options]
   aoe2war finish [--dry-run] [--json] [-m MESSAGE]
@@ -79,6 +81,23 @@ SAFE / READ-ONLY
       hygiene, toolchains, Operator Bridge, capacity, semantic map completeness,
       architecture seams and disaster-recovery readiness. Warnings are advisory;
       blockers return nonzero.
+
+  aoe2war docs status
+      Show cheap documentation health: implementation baseline, semantic impact,
+      source registry, central federation/taxonomy state and review freshness.
+
+  aoe2war docs impact
+      Map implementation changes to ranked living-document review candidates.
+      High-risk contract changes require semantic review; ordinary application
+      work defaults to generated-registry refresh only.
+
+  aoe2war docs audit
+      Run the full documentation control-plane validation in an isolated central
+      docs worktree so the canonical AoE2WAR-docs repository is not rewritten.
+
+  aoe2war docs update [--apply]
+      Documentation-OS entry point to the existing protected update engine.
+      The legacy top-level `aoe2war update` remains a compatible alias.
 
   aoe2war update
       Plan documentation/context maintenance. Shows exactly what would change.
@@ -193,6 +212,10 @@ case "$command" in
   doctor)
     shift
     exec python3 "$DOCTOR" "$@"
+    ;;
+  docs)
+    shift
+    exec python3 "$DOCS_OS" "$@"
     ;;
   update)
     shift
