@@ -82,6 +82,23 @@
     "direction": "outbound-only",
     "arbitrary_shell": false
   },
+  "rollback_archive": {
+    "rollback_root": "/mnt/HC_Volume_105319120/aoe2war/rollbacks",
+    "archive_root": "/mnt/HC_Volume_105319120/aoe2war/rollback-archives",
+    "receipt_root": "/mnt/HC_Volume_105319120/aoe2war/os-control/rollback-archive-receipts",
+    "verify_root": "/mnt/HC_Volume_105319120/aoe2war/os-control/rollback-archive-verify",
+    "lock_path": "/mnt/HC_Volume_105319120/aoe2war/os-control/locks/rollback-archive.lock",
+    "maintenance_runner": "/usr/local/sbin/aoe2war-maintenance-run",
+    "protect_newest_activation_generations": 5,
+    "healthy_target_percent": 78,
+    "maintenance_due_percent": 82,
+    "automatic_archive_threshold_percent": 85,
+    "critical_percent": 92,
+    "max_generations_per_transaction": 1,
+    "legacy_auto_action": "never",
+    "wolo_mutation_allowed": false,
+    "proven_pilot_sha256": "aae6f7f3c367a8a6f59c918b37ba2cafc6897cf25d18e6cc212373ca925420ae"
+  },
   "finish": {
     "auto_commit_local_worktree": true,
     "auto_publish_clean_local_commits": true,

@@ -9,6 +9,7 @@ UPDATE="$BIN_DIR/../scripts/aoe2_update.py"
 FINISH="$BIN_DIR/../scripts/aoe2_finish.py"
 BRIDGE="$BIN_DIR/../scripts/aoe2_operator_bridge.py"
 STORAGE_RETENTION="$BIN_DIR/../scripts/aoe2_storage_retention.py"
+STORAGE="$BIN_DIR/../scripts/aoe2_storage.py"
 
 usage() {
   cat <<'EOF'
@@ -21,6 +22,7 @@ Usage:
   aoe2war doctor [--json] [--strict]
   aoe2war update [--apply] [--json]
   aoe2war storage-retention [--apply] [--json]
+  aoe2war storage <status|plan|maintain|verify> [options]
   aoe2war finish [--dry-run] [--json] [-m MESSAGE]
   aoe2war bridge [--once] [bridge options]
   aoe2war status [--json]
@@ -199,6 +201,10 @@ case "$command" in
   storage-retention)
     shift
     exec python3 "$STORAGE_RETENTION" "$@"
+    ;;
+  storage)
+    shift
+    exec python3 "$STORAGE" "$@"
     ;;
   finish)
     shift
