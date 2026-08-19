@@ -2178,6 +2178,8 @@ def activate_release(
         rollback_dir=rollback_dir,
     )
     transport_recovered_after_timeout = False
+    activation_started_at = utc_now()
+    activation_started_monotonic = time.monotonic()
     try:
         p = run(
             [
@@ -2279,6 +2281,11 @@ def activate_release(
             return 2
 
         result = parse_kv(p.stdout or "")
+    activation_completed_at = utc_now()
+    activation_duration_seconds = round(
+        time.monotonic() - activation_started_monotonic,
+        3,
+    )
     if dry_run:
         expected = {
             "status": "PREPARED",
@@ -2356,6 +2363,9 @@ def activate_release(
         "schema": 1,
         "kind": "aoe2war-activation-result",
         "generated_at": utc_now(),
+        "started_at": activation_started_at,
+        "completed_at": activation_completed_at,
+        "duration_seconds": activation_duration_seconds,
         "status": "CERTIFIED",
         "release_sha": receipt["release_sha"],
         "implementation_sha": receipt.get("implementation_sha"),

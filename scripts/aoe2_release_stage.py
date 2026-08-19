@@ -6,6 +6,7 @@ import os
 import shlex
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -100,6 +101,20 @@ LIVE_PRISMA_SCHEMA_ENGINE="$LIVE_REPO/$PRISMA_SCHEMA_ENGINE_REL"
 MANIFEST_CONTENT={q(manifest_text)}
 GATE_CONTENT={q(gate_text)}
 
+TIMING_FILE="$RECEIPT/stage-timings.tsv"
+
+timing_now_ns() {{
+  date +%s%N
+}}
+
+timing_record() {{
+  name="$1"
+  start_ns="$2"
+  end_ns="$(timing_now_ns)"
+  elapsed_ms=$(( (end_ns - start_ns) / 1000000 ))
+  printf '%s\t%s\n' "$name" "$elapsed_ms" >> "$TIMING_FILE"
+}}
+
 mutation_started=0
 build_parent=""
 build_worktree=""
@@ -151,6 +166,8 @@ restore_stage_failure() {{
 trap restore_stage_failure EXIT
 
 sudo -n /usr/bin/install -d -o tony -g tony -m 0750 "$RECEIPT"
+: > "$TIMING_FILE"
+stage_total_started="$(timing_now_ns)"
 printf '%s' "$MANIFEST_CONTENT" > "$RECEIPT/release-manifest.json"
 printf '%s' "$GATE_CONTENT" > "$RECEIPT/gate-receipt.json"
 test "$(sha256sum "$RECEIPT/release-manifest.json" | awk '{{print $1}}')" = "$MANIFEST_SHA"
@@ -266,6 +283,7 @@ printf '%s\n' \
 
 test "$root_available_kb" -ge "$root_required_kb"
 
+worktree_setup_started="$(timing_now_ns)"
 build_parent="$(mktemp -d {q('/var/www/AoE2HDBets/.aoe2war-stage-XXXXXX')})"
 build_worktree="$(mktemp -d /tmp/aoe2war-stage-XXXXXXXXXX)"
 # Next embeds absolute project paths in several runtime manifests. Use an
@@ -296,7 +314,9 @@ build_unit="aoe2war-build@${{build_instance}}.service"
 # Authorization probes only; execution is performed by the separate calls below.
 sudo -n -l /usr/bin/systemctl start --wait "$deps_unit" >/dev/null
 sudo -n -l /usr/bin/systemctl start --wait "$build_unit" >/dev/null
+timing_record worktree_setup "$worktree_setup_started"
 
+dependency_fetch_started="$(timing_now_ns)"
 sudo -n /usr/bin/systemctl reset-failed "$deps_unit" >/dev/null 2>&1 || true
 deps_started_epoch="$(date +%s)"
 if ! sudo -n /usr/bin/systemctl start --wait "$deps_unit"; then
@@ -311,6 +331,7 @@ sudo -n /usr/bin/journalctl -u "$deps_unit" \
 test "$(systemctl show "$deps_unit" -p Result --value)" = "success"
 test "$(systemctl show "$deps_unit" -p ExecMainStatus --value)" = "0"
 test -d "$build_worktree/node_modules"
+timing_record dependency_fetch "$dependency_fetch_started"
 
 # The build sandbox deliberately has no network. Prove that its live bootstrap
 # engine belongs to the exact engine commit requested by the frozen candidate
@@ -334,6 +355,7 @@ test "${{#live_prisma_engine_sha}}" = "64"
 rm -rf "$build_worktree/node_modules"
 test ! -e "$build_worktree/node_modules"
 
+offline_build_started="$(timing_now_ns)"
 sudo -n /usr/bin/systemctl reset-failed "$build_unit" >/dev/null 2>&1 || true
 build_started_epoch="$(date +%s)"
 if ! sudo -n /usr/bin/systemctl start --wait "$build_unit"; then
@@ -348,6 +370,7 @@ sudo -n /usr/bin/journalctl -u "$build_unit" \
 test "$(systemctl show "$build_unit" -p Result --value)" = "success"
 test "$(systemctl show "$build_unit" -p ExecMainStatus --value)" = "0"
 test -d "$build_worktree/node_modules"
+timing_record offline_build "$offline_build_started"
 
 # Prisma's postinstall cannot download inside the network-private build unit.
 # The isolated build borrows the version-proven live engine through its fixed
@@ -387,6 +410,7 @@ test ! -e "$build_worktree/.next-release/cache"
 
 # Relocate every embedded disposable-worktree path to the canonical live path
 # before hashing. Equal byte lengths keep binary/source-map offsets stable.
+artifact_relocation_started="$(timing_now_ns)"
 relocated_files="$(
   python3 - "$build_worktree/.next-release" "$build_worktree" "$LIVE_REPO" <<'PY'
 import os
@@ -429,6 +453,7 @@ print(changed)
 PY
 )"
 test "$relocated_files" -ge 1
+timing_record artifact_relocation "$artifact_relocation_started"
 
 staged_build="$(cat "$build_worktree/.next-release/BUILD_ID")"
 candidate_version="$(cat "$build_worktree/.aoe2war-build-version" | tr -d '\r\n')"
@@ -445,6 +470,7 @@ mv "$build_worktree/.next-release" "$stage_copy"
 test -d "$stage_copy"
 test ! -e "$build_worktree/.next-release"
 test ! -e "$stage_copy/cache"
+artifact_hash_started="$(timing_now_ns)"
 artifact_sha="$(
   tar \
     --sort=name \
@@ -456,7 +482,9 @@ artifact_sha="$(
   | sha256sum \
   | awk '{{print $1}}'
 )"
+timing_record artifact_hash "$artifact_hash_started"
 
+dependency_hash_started="$(timing_now_ns)"
 candidate_node_modules_sha="$(
   tar \
     --sort=name \
@@ -469,9 +497,11 @@ candidate_node_modules_sha="$(
   | awk '{{print $1}}'
 )"
 candidate_node_modules_kb="$(du -sk "$build_worktree/node_modules" | awk '{{print $1}}')"
+timing_record dependency_hash "$dependency_hash_started"
 test "${{#candidate_node_modules_sha}}" = "64"
 test "$candidate_node_modules_kb" -gt 0
 
+candidate_publish_started="$(timing_now_ns)"
 mutation_started=1
 mv "$build_worktree/node_modules" .node_modules-release
 mv "$stage_copy" .next-release
@@ -479,8 +509,11 @@ mv "$stage_copy" .next-release
 test -d .node_modules-release
 test "$(cat .next-release/BUILD_ID)" = "$staged_build"
 test ! -e .next-release/cache
+timing_record candidate_publish "$candidate_publish_started"
 
+cleanup_started="$(timing_now_ns)"
 cleanup_build_worktree
+timing_record cleanup "$cleanup_started"
 build_parent=""
 build_worktree=""
 
@@ -507,6 +540,7 @@ test -n "$staged_build"
 test -n "$candidate_version"
 test -n "$artifact_sha"
 test -n "$candidate_node_modules_sha"
+timing_record stage_total "$stage_total_started"
 
 printf '%s\n' \
   "status=STAGED" \
@@ -583,6 +617,9 @@ printf 'live_public_mutated\t0\n'
 printf 'live_node_modules_mutated\t0\n'
 printf 'live_build_version_mutated\t0\n'
 printf 'receipt_dir\t%s\n' "$RECEIPT"
+while IFS=$'\t' read -r timing_name timing_ms; do
+  printf 'timing_%s_ms\t%s\n' "$timing_name" "$timing_ms"
+done < "$TIMING_FILE"
 
 trap - EXIT
 """.strip()
@@ -759,6 +796,8 @@ def persist_durable_stage_receipt(receipt_dir: str, local_receipt: Path) -> dict
         receipt_text=receipt_text,
         receipt_sha256=receipt_sha,
     )
+    stage_started_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    stage_started_monotonic = time.monotonic()
     p = run(
         [
             "ssh",
@@ -873,6 +912,11 @@ def stage_release(
         ],
         timeout=1800,
     )
+    stage_completed_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    stage_duration_seconds = round(
+        time.monotonic() - stage_started_monotonic,
+        3,
+    )
 
     if p.returncode != 0:
         payload = {
@@ -882,6 +926,9 @@ def stage_release(
             "release_sha": release_sha,
             "receipt_dir": receipt_dir,
             "returncode": p.returncode,
+            "stage_started_at": stage_started_at,
+            "stage_completed_at": stage_completed_at,
+            "stage_duration_seconds": stage_duration_seconds,
             "stdout_tail": (p.stdout or "")[-4000:],
             "stderr_tail": (p.stderr or "")[-4000:],
             "rollback_policy": (
@@ -909,6 +956,13 @@ def stage_release(
         return 1
 
     result = parse_kv(p.stdout or "")
+    timings_ms = {
+        key[len("timing_"):-len("_ms")]: int(value)
+        for key, value in result.items()
+        if key.startswith("timing_")
+        and key.endswith("_ms")
+        and value.isdigit()
+    }
     result_errors = validate_stage_result(data, manifest, result)
     if result_errors:
         payload = {
@@ -934,6 +988,10 @@ def stage_release(
         "kind": "aoe2war-stage-result",
         "status": "STAGED",
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "started_at": stage_started_at,
+        "completed_at": stage_completed_at,
+        "duration_seconds": stage_duration_seconds,
+        "timings_ms": timings_ms,
         "release_sha": release_sha,
         "implementation_sha": manifest.get("implementation_sha"),
         "previous_production_sha": manifest.get("previous_production_sha"),

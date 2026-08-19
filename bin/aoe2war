@@ -10,6 +10,7 @@ FINISH="$BIN_DIR/../scripts/aoe2_finish.py"
 BRIDGE="$BIN_DIR/../scripts/aoe2_operator_bridge.py"
 STORAGE_RETENTION="$BIN_DIR/../scripts/aoe2_storage_retention.py"
 STORAGE="$BIN_DIR/../scripts/aoe2_storage.py"
+SPEED="$BIN_DIR/../scripts/aoe2_speed.py"
 DOCS_OS="$BIN_DIR/../scripts/aoe2_docs.py"
 
 usage() {
@@ -23,6 +24,7 @@ Usage:
   aoe2war doctor [--json] [--strict]
   aoe2war update [--apply] [--json]
   aoe2war docs <status|impact|audit|update> [options]
+  aoe2war speed [status|release-history|benchmark|compare|diagnose]
   aoe2war storage-retention [--apply] [--json]
   aoe2war storage <status|plan|maintain|verify> [options]
   aoe2war finish [--dry-run] [--json] [-m MESSAGE]
@@ -228,6 +230,10 @@ case "$command" in
   storage)
     shift
     exec python3 "$STORAGE" "$@"
+    ;;
+  speed)
+    shift
+    exec python3 "$SPEED" "$@"
     ;;
   finish)
     shift
