@@ -102,6 +102,33 @@ The August 19, 2026 baseline established:
 These measurements are evidence, not permanent thresholds. Performance OS
 builds a time series so future decisions use release-over-release deltas.
 
+## Fast-rollback retention performance
+
+Fast-rollback retention is post-certification and non-fatal, but it still
+contributes to operator wall time because activation waits for it to return.
+
+The August 19, 2026 instrumented baseline measured approximately 475 seconds
+between durable certification evidence and completion of fast retention.
+
+Retention proof discovery has canonical shallow locations:
+
+```text
+aoe2war/rollbacks/<generation>/next/BUILD_ID
+aoe2war/deploy-receipts/<receipt>/current-next/BUILD_ID
+```
+
+The retention engine therefore enumerates only those fixed BUILD_ID locations.
+It must not recursively traverse rollback payloads, node_modules trees, build
+trees, database snapshots, or deploy-evidence payloads merely to discover
+BUILD_ID proof.
+
+The durable-proof requirement is unchanged: a fast rollback pair without a
+valid paired durable runtime + node_modules proof remains keep-only.
+
+Performance receipts also split retention cost into proof lookup, filesystem
+size probes, deletion, and total retention wall time so the next optimization
+targets measured cost rather than inference.
+
 ## Optimization order
 
 1. Remove dominant release-time waste revealed by timing receipts.

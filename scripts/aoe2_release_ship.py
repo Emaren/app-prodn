@@ -1398,6 +1398,7 @@ COMMITTED=1
 # modern fast copies with a durable BUILD_ID twin are eligible.
 # Unmatched artifacts are never auto-deleted. Keep the newest N
 # verified fast copies; older verified duplicates are reclaimable.
+# Proof discovery is shallow/bounded; never recursively walk evidence payloads.
 # ------------------------------------------------------------
 RETENTION_STATUS="PASS"
 RETENTION_PRUNED=0
@@ -1411,6 +1412,61 @@ retention_plan="$ACT_RECEIPT/fast-retention.tsv"
 printf 'mtime\tfast_path\tbuild_id\tsize_kb\tproof_kind\tproof_path\n' > "$retention_candidates"
 printf 'action\tfast_path\tbuild_id\tsize_kb\tproof_kind\tproof_path\n' > "$retention_plan"
 
+retention_now_ns() {{
+  date +%s%N 2>/dev/null || true
+}}
+
+retention_delta_ms() {{
+  started="$1"
+  ended="$(retention_now_ns)"
+
+  if [[ "$started" =~ ^[0-9]+$ && "$ended" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$(( (ended - started) / 1000000 ))"
+  else
+    printf '0\n'
+  fi
+}}
+
+find_durable_build_proof() {{
+  wanted_build="$1"
+
+  for candidate_build_id in \
+    /mnt/HC_Volume_105319120/aoe2war/rollbacks/*/next/BUILD_ID
+  do
+    [ -f "$candidate_build_id" ] || continue
+
+    if [ "$(cat "$candidate_build_id" 2>/dev/null || true)" = "$wanted_build" ]; then
+      printf '%s\n' "$candidate_build_id"
+      return 0
+    fi
+  done
+
+  return 1
+}}
+
+find_rescue_build_proof() {{
+  wanted_build="$1"
+
+  for candidate_build_id in \
+    /mnt/HC_Volume_105319120/aoe2war/deploy-receipts/*/current-next/BUILD_ID
+  do
+    [ -f "$candidate_build_id" ] || continue
+
+    if [ "$(cat "$candidate_build_id" 2>/dev/null || true)" = "$wanted_build" ]; then
+      printf '%s\n' "$candidate_build_id"
+      return 0
+    fi
+  done
+
+  return 1
+}}
+
+RETENTION_TOTAL_STARTED="$(retention_now_ns)"
+RETENTION_PROOF_MS=0
+RETENTION_SIZE_MS=0
+RETENTION_DELETE_MS=0
+
+
 set +e
 for d in .next-rollback-activate-* .next-rollback-manual-*; do
   [ -d "$d" ] || continue
@@ -1420,7 +1476,10 @@ for d in .next-rollback-activate-* .next-rollback-manual-*; do
   modules="${{d/.next-/.node_modules-}}"
   [ -d "$modules" ] || {{
     RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
+    size_probe_started="$(retention_now_ns)"
     size_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
+    size_probe_ms="$(retention_delta_ms "$size_probe_started")"
+    RETENTION_SIZE_MS=$((RETENTION_SIZE_MS + size_probe_ms))
     printf 'UNMATCHED_KEEP\t%s\t%s\t%s\tMISSING_MODULE_PAIR\t-\n' \
       "$d" "-" "${{size_kb:-0}}" >> "$retention_plan"
     continue
@@ -1429,9 +1488,12 @@ for d in .next-rollback-activate-* .next-rollback-manual-*; do
   build="$(cat "$d/BUILD_ID" 2>/dev/null || true)"
   [ -n "$build" ] || {{
     RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
+    size_probe_started="$(retention_now_ns)"
     next_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
     modules_kb="$(du -sk "$modules" 2>/dev/null | awk '{{print $1}}')"
     size_kb=$((${{next_kb:-0}} + ${{modules_kb:-0}}))
+    size_probe_ms="$(retention_delta_ms "$size_probe_started")"
+    RETENTION_SIZE_MS=$((RETENTION_SIZE_MS + size_probe_ms))
     printf 'UNMATCHED_KEEP\t%s\t%s\t%s\tNO_BUILD_ID\t-\n' \
       "$d" "$build" "$size_kb" >> "$retention_plan"
     continue
@@ -1442,12 +1504,8 @@ for d in .next-rollback-activate-* .next-rollback-manual-*; do
   proof_path=""
   proof_modules=""
 
-  match="$(
-    find /mnt/HC_Volume_105319120/aoe2war/rollbacks \
-      -type f -path '*/next/BUILD_ID' \
-      -exec grep -lFx "$build" {{}} \\; 2>/dev/null \
-    | head -n 1
-  )"
+  proof_lookup_started="$(retention_now_ns)"
+  match="$(find_durable_build_proof "$build" || true)"
   if [ -n "$match" ]; then
     proof_next="${{match%/BUILD_ID}}"
     candidate_proof_modules="${{proof_next%/next}}/node_modules"
@@ -1459,12 +1517,7 @@ for d in .next-rollback-activate-* .next-rollback-manual-*; do
   fi
 
   if [ -z "$proof_kind" ]; then
-    match="$(
-      find /mnt/HC_Volume_105319120/aoe2war/deploy-receipts \
-        -type f -path '*/current-next/BUILD_ID' \
-        -exec grep -lFx "$build" {{}} \\; 2>/dev/null \
-      | head -n 1
-    )"
+    match="$(find_rescue_build_proof "$build" || true)"
     if [ -n "$match" ]; then
       proof_next="${{match%/BUILD_ID}}"
       candidate_proof_modules="${{proof_next%/current-next}}/current-node_modules"
@@ -1475,18 +1528,24 @@ for d in .next-rollback-activate-* .next-rollback-manual-*; do
       fi
     fi
   fi
+  proof_lookup_ms="$(retention_delta_ms "$proof_lookup_started")"
+  RETENTION_PROOF_MS=$((RETENTION_PROOF_MS + proof_lookup_ms))
 
   if [ -z "$proof_kind" ] || [ ! -d "$proof_modules" ]; then
     RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
+    size_probe_started="$(retention_now_ns)"
     next_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
     modules_kb="$(du -sk "$modules" 2>/dev/null | awk '{{print $1}}')"
     size_kb=$((${{next_kb:-0}} + ${{modules_kb:-0}}))
+    size_probe_ms="$(retention_delta_ms "$size_probe_started")"
+    RETENTION_SIZE_MS=$((RETENTION_SIZE_MS + size_probe_ms))
     printf 'UNMATCHED_KEEP\t%s\t%s\t%s\tNO_PAIRED_DURABLE_PROOF\t-\n' \
       "$d" "$build" "$size_kb" >> "$retention_plan"
     continue
   fi
 
   mtime="$(stat -c '%Y' "$d" 2>/dev/null)"
+  size_probe_started="$(retention_now_ns)"
   next_kb="$(du -sk "$d" 2>/dev/null | awk '{{print $1}}')"
   modules_kb="$(du -sk "$modules" 2>/dev/null | awk '{{print $1}}')"
 
@@ -1494,6 +1553,8 @@ for d in .next-rollback-activate-* .next-rollback-manual-*; do
     RETENTION_STATUS="WARN"
     RETENTION_UNMATCHED=$((RETENTION_UNMATCHED + 1))
     size_kb=$((${{next_kb:-0}} + ${{modules_kb:-0}}))
+  size_probe_ms="$(retention_delta_ms "$size_probe_started")"
+  RETENTION_SIZE_MS=$((RETENTION_SIZE_MS + size_probe_ms))
     printf 'UNMATCHED_KEEP\t%s\t%s\t%s\t%s\t%s\n' \
       "$d" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
     continue
@@ -1578,6 +1639,7 @@ while IFS=$'\t' read -r mtime path build size_kb proof_kind proof_path; do
     continue
   fi
 
+  delete_started="$(retention_now_ns)"
   if rm -rf -- "$prune_next_tmp" "$prune_modules_tmp" \
     && [ ! -e "$prune_next_tmp" ] \
     && [ ! -e "$prune_modules_tmp" ]; then
@@ -1597,6 +1659,8 @@ while IFS=$'\t' read -r mtime path build size_kb proof_kind proof_path; do
     printf 'KEEP_DELETE_FAILED\t%s\t%s\t%s\t%s\t%s\n' \
       "$path" "$build" "$size_kb" "$proof_kind" "$proof_path" >> "$retention_plan"
   fi
+  delete_ms="$(retention_delta_ms "$delete_started")"
+  RETENTION_DELETE_MS=$((RETENTION_DELETE_MS + delete_ms))
 done < "$retention_sorted"
 
 rm -f "$retention_candidates" "$retention_sorted"
@@ -1617,6 +1681,8 @@ if [ "$retention_service" != "active" ] \
 fi
 set -e
 
+RETENTION_TOTAL_MS="$(retention_delta_ms "$RETENTION_TOTAL_STARTED")"
+
 printf '%s\n' \
   "status=$RETENTION_STATUS" \
   "keep=$FAST_ROLLBACK_KEEP" \
@@ -1626,6 +1692,10 @@ printf '%s\n' \
   "reclaimed_kb=$RETENTION_RECLAIMED_KB" \
   "source_sha=$retention_head" \
   "active_build_id=$retention_build" \
+  "proof_lookup_ms=$RETENTION_PROOF_MS" \
+  "size_probe_ms=$RETENTION_SIZE_MS" \
+  "delete_ms=$RETENTION_DELETE_MS" \
+  "total_ms=$RETENTION_TOTAL_MS" \
   "wolo8092=$retention_wolo8092" \
   "wolo8093=$retention_wolo8093" \
   > "$ACT_RECEIPT/fast-retention-result.txt"

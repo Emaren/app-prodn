@@ -189,6 +189,40 @@ class PerformanceOSTests(unittest.TestCase):
         )
 
 
+    def test_fast_retention_proof_lookup_is_bounded_and_timed(self):
+        source = (
+            ROOT / "scripts" / "aoe2_release_ship.py"
+        ).read_text(encoding="utf-8")
+
+        region = source.split(
+            "# VERIFIED FAST-ROLLBACK RETENTION",
+            1,
+        )[1].split(
+            "\ndef validate_activation_result",
+            1,
+        )[0]
+
+        self.assertIn("find_durable_build_proof()", region)
+        self.assertIn("/aoe2war/rollbacks/*/next/BUILD_ID", region)
+        self.assertIn("find_rescue_build_proof()", region)
+        self.assertIn(
+            "/aoe2war/deploy-receipts/*/current-next/BUILD_ID",
+            region,
+        )
+        self.assertNotIn(
+            "find /mnt/HC_Volume_105319120/aoe2war/rollbacks",
+            region,
+        )
+        self.assertNotIn(
+            "find /mnt/HC_Volume_105319120/aoe2war/deploy-receipts",
+            region,
+        )
+        self.assertIn("proof_lookup_ms=$RETENTION_PROOF_MS", region)
+        self.assertIn("size_probe_ms=$RETENTION_SIZE_MS", region)
+        self.assertIn("delete_ms=$RETENTION_DELETE_MS", region)
+        self.assertIn("total_ms=$RETENTION_TOTAL_MS", region)
+
+
     def test_activation_receipt_records_wall_duration(self):
         source = (
             ROOT / "scripts" / "aoe2_release_ship.py"
