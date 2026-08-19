@@ -132,6 +132,38 @@ class FinishTests(unittest.TestCase):
             )
         self.assertEqual(result["status"], "PARENT_SELF_RELOAD_PENDING")
 
+    def test_context_overlap_captures_and_checkpoints_result(self):
+        receipt = {}
+        checkpoints = []
+        with patch.object(
+            MODULE.aoe2_update,
+            "capture_context",
+            return_value={
+                "AoE2HDBets": {
+                    "sha256": "a" * 64,
+                    "bytes": 123,
+                }
+            },
+        ):
+            state = MODULE.start_pre_release_context_overlap(
+                projects=["AoE2HDBets"],
+                receipt=receipt,
+                checkpoint=lambda: checkpoints.append("checkpoint"),
+                progress=MODULE.Progress(enabled=False),
+            )
+            MODULE.settle_pre_release_context_overlap(
+                state=state,
+                receipt=receipt,
+                checkpoint=lambda: checkpoints.append("checkpoint"),
+                progress=MODULE.Progress(enabled=False),
+            )
+
+        overlap = receipt["pre_release_context_overlap"]
+        self.assertEqual(overlap["status"], "PASSED")
+        self.assertEqual(overlap["projects"], ["AoE2HDBets"])
+        self.assertIn("AoE2HDBets", overlap["archives"])
+        self.assertGreaterEqual(len(checkpoints), 2)
+
     def test_external_source_authorities_fail_closed_on_dirty_repo(self):
         with tempfile.TemporaryDirectory() as temp:
             base = pathlib.Path(temp)

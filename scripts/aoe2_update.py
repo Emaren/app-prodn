@@ -663,6 +663,35 @@ def collect_plan(
     }
 
 
+
+def audit_blockers_with_deferred_context(
+    audit: dict[str, Any],
+    deferred_projects: list[str],
+) -> list[dict[str, Any]]:
+    """Return P0/P1 findings not explained by explicitly deferred context."""
+    deferred = set(deferred_projects)
+    blockers: list[dict[str, Any]] = []
+
+    for finding in audit.get("findings", []):
+        if not isinstance(finding, dict):
+            continue
+
+        severity = str(finding.get("severity") or "")
+        if severity not in {"P0", "P1"}:
+            continue
+
+        if severity == "P1" and str(finding.get("key") or "") == "archive-stale":
+            project = archive_project_from_finding(
+                str(finding.get("detail") or "")
+            )
+            if project and project in deferred:
+                continue
+
+        blockers.append(finding)
+
+    return blockers
+
+
 def print_plan(plan: dict[str, Any]) -> None:
     audit = plan["audit"]
     print("⚔️  AOE2WAR UPDATE PLAN")
@@ -1464,6 +1493,9 @@ def write_receipt(payload: dict[str, Any]) -> Path:
 def apply_update(
     plan: dict[str, Any],
     progress: Progress | None = None,
+    *,
+    defer_context: bool = False,
+    defer_final_audit: bool = False,
 ) -> int:
     if plan["blocked"]:
         raise UpdateError("update plan is blocked; resolve findings manually")
@@ -1514,6 +1546,8 @@ def apply_update(
         "estate_map_result": estate_map_result,
         "central_result": central_result,
         "context_archives": archives,
+        "deferred_context_projects": [],
+        "final_audit_deferred": bool(defer_final_audit),
     }
 
     try:
@@ -1566,25 +1600,61 @@ def apply_update(
             if project in projects
         ]
 
-        archives = capture_context(ordered, progress=progress)
-        receipt_payload["context_archives"] = archives
+        deferred_context_projects: list[str] = []
+        if defer_context and ordered:
+            deferred_context_projects = list(ordered)
+            receipt_payload["deferred_context_projects"] = deferred_context_projects
+            if progress:
+                progress.start("Deferring planned context capture to finish overlap...")
+                progress.done(
+                    "Context capture deferred to finish overlap · "
+                    + ", ".join(deferred_context_projects)
+                )
+        else:
+            archives = capture_context(ordered, progress=progress)
+            receipt_payload["context_archives"] = archives
 
-        if progress:
-            progress.start("Running final full estate audit...")
+        if defer_final_audit:
+            receipt_payload["after_audit"] = {
+                "status": "DEFERRED_TO_FINISH_FINAL_AUDIT",
+                "deferred_context_projects": deferred_context_projects,
+            }
+            if progress:
+                progress.start("Deferring duplicate full estate audit to finish...")
+                progress.done(
+                    "Full estate audit deferred to canonical finish final audit"
+                )
+        else:
+            if progress:
+                progress.start("Running final full estate audit...")
 
-        after_audit = aoe2_audit.collect_audit().payload()
-        receipt_payload["after_audit"] = after_audit
-
-        if after_audit["p0"] or after_audit["p1"]:
-            raise UpdateError(
-                "final estate audit is not clean: "
-                f"P0={after_audit['p0']} P1={after_audit['p1']}"
+            after_audit = aoe2_audit.collect_audit().payload()
+            receipt_payload["after_audit"] = after_audit
+            blockers = audit_blockers_with_deferred_context(
+                after_audit,
+                deferred_context_projects,
             )
 
-        if progress:
-            progress.done("Final estate audit passed — P0=0 P1=0")
+            if blockers:
+                raise UpdateError(
+                    "final estate audit has non-deferred P0/P1 findings: "
+                    + json.dumps(blockers, sort_keys=True)
+                )
 
-        receipt_payload["status"] = "VERIFIED"
+            if progress:
+                if deferred_context_projects and after_audit.get("p1"):
+                    progress.done(
+                        "Final estate audit passed with context-only P1 deferred"
+                    )
+                else:
+                    progress.done("Final estate audit passed — P0=0 P1=0")
+
+        if defer_final_audit:
+            receipt_payload["status"] = "APPLIED_FINAL_AUDIT_DEFERRED"
+        elif deferred_context_projects:
+            receipt_payload["status"] = "VERIFIED_CONTEXT_DEFERRED"
+        else:
+            receipt_payload["status"] = "VERIFIED"
         receipt_payload["completed_at"] = datetime.now(timezone.utc).isoformat()
         receipt = write_receipt(receipt_payload)
 
@@ -1611,13 +1681,28 @@ def apply_update(
                 f"{item['bytes']} bytes"
             )
         print()
-        print("P0  0")
-        print("P1  0")
+        if defer_final_audit:
+            print("P0/P1 final audit: DEFERRED TO `aoe2war finish`")
+        elif deferred_context_projects:
+            after = receipt_payload.get("after_audit") or {}
+            print(f"P0  {after.get('p0', 0)}")
+            print(
+                f"P1  {after.get('p1', 0)} "
+                "(explicit deferred-context findings only)"
+            )
+        else:
+            print("P0  0")
+            print("P1  0")
         print("Runtime mutations: NONE")
         print("Wolo mutations: NONE")
         print(f"Receipt: {receipt}")
         print()
-        print("ESTATE: HEALTHY")
+        if defer_final_audit:
+            print("ESTATE: FINAL AUDIT DEFERRED TO `aoe2war finish`")
+        elif deferred_context_projects:
+            print("ESTATE: VERIFIED WITH DEFERRED CONTEXT")
+        else:
+            print("ESTATE: HEALTHY")
         return 0
 
     except Exception as exc:
@@ -1643,8 +1728,27 @@ def main() -> int:
         action="store_true",
         help="apply the safe maintenance plan",
     )
+    parser.add_argument(
+        "--defer-context",
+        action="store_true",
+        help=(
+            "internal finish fast path: leave planned context capture for "
+            "finish to overlap with deployment"
+        ),
+    )
+    parser.add_argument(
+        "--defer-final-audit",
+        action="store_true",
+        help=(
+            "internal finish fast path: defer update's broad final audit to "
+            "finish's canonical independent final audit"
+        ),
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
+
+    if (args.defer_context or args.defer_final_audit) and not args.apply:
+        parser.error("defer flags require --apply")
 
     if not args.apply:
         plan = collect_plan()
@@ -1699,7 +1803,12 @@ def main() -> int:
                     )
                 return 0
 
-            return apply_update(locked_plan, progress=progress)
+            return apply_update(
+                locked_plan,
+                progress=progress,
+                defer_context=args.defer_context,
+                defer_final_audit=args.defer_final_audit,
+            )
     except (UpdateError, aoe2_release.DeployLockBusy) as exc:
         print(f"STOP: {exc}", file=os.sys.stderr)
         return 2

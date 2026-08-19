@@ -85,6 +85,34 @@ class UpdateCommandTests(unittest.TestCase):
         )
         self.assertFalse(MODULE.baseline_refresh_needed("candidate document found"))
 
+    def test_deferred_context_audit_allows_only_selected_archive_stale(self):
+        audit = {
+            "findings": [
+                {
+                    "severity": "P1",
+                    "key": "archive-stale",
+                    "detail": "AoE2HDBets: archive=old newest=new",
+                },
+                {
+                    "severity": "P1",
+                    "key": "other-problem",
+                    "detail": "must remain blocking",
+                },
+                {
+                    "severity": "P0",
+                    "key": "archive-stale",
+                    "detail": "AoE2HDBets: archive=old newest=new",
+                },
+            ]
+        }
+        blockers = MODULE.audit_blockers_with_deferred_context(
+            audit,
+            ["AoE2HDBets"],
+        )
+        self.assertEqual(len(blockers), 2)
+        self.assertEqual(blockers[0]["key"], "other-problem")
+        self.assertEqual(blockers[1]["severity"], "P0")
+
     def test_archive_project_detection(self):
         self.assertEqual(
             MODULE.archive_project_from_finding(

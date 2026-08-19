@@ -129,6 +129,27 @@ Performance receipts also split retention cost into proof lookup, filesystem
 size probes, deletion, and total retention wall time so the next optimization
 targets measured cost rather than inference.
 
+## Context overlap fast path
+
+Context archives are durable operating evidence, but archive compression is not
+a prerequisite for production activation.
+
+During `aoe2war finish`, pre-release documentation/control-plane reconciliation
+may defer exactly the context projects selected by its locked update plan.
+Finish starts those captures after source and documentation authorities are
+frozen, overlaps them with the protected remote deployment, and settles the
+result before post-release context planning.
+
+If the overlapped capture fails, post-release update sees the stale archive and
+falls back to the ordinary synchronous capture path. No stale context finding is
+silently discarded.
+
+The update engine may also defer its own broad final estate audit only when
+`aoe2war finish` owns the canonical independent final estate audit later in the
+same transaction. Source documentation checkers, central docs-check, taxonomy
+audit, strict MkDocs build, release gate, runtime certification, rollback proof,
+Wolo proof, Operator Bridge reload, and the final finish audit remain mandatory.
+
 ## Optimization order
 
 1. Remove dominant release-time waste revealed by timing receipts.

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import fcntl
 import hashlib
 import json
@@ -1304,6 +1305,8 @@ def reconcile_documentation(
     label: str,
     progress: Progress,
     json_mode: bool,
+    defer_context: bool = False,
+    defer_final_audit: bool = False,
 ) -> dict[str, Any]:
     plan = aoe2_update.collect_plan()
     summary = documentation_plan_summary(plan)
@@ -1315,14 +1318,125 @@ def reconcile_documentation(
     if not plan.get("changes_needed"):
         progress.done(f"{label} documentation/context already current")
         return {**summary, "result": "ALREADY_CURRENT"}
+    update_args = [str(CLI), "update", "--apply"]
+    if defer_context:
+        update_args.append("--defer-context")
+    if defer_final_audit:
+        update_args.append("--defer-final-audit")
+
     run_live(
-        [str(CLI), "update", "--apply"],
+        update_args,
         label=f"{label} documentation federation + context evidence",
         progress=progress,
         timeout=1800,
         json_mode=json_mode,
     )
     return {**summary, "result": "RECONCILED"}
+
+
+def start_pre_release_context_overlap(
+    *,
+    projects: list[str],
+    receipt: dict[str, Any],
+    checkpoint: Callable[[], None],
+    progress: Progress,
+) -> dict[str, Any] | None:
+    selected = set(projects)
+    ordered = [
+        project
+        for project in (
+            "AoE2HDBets",
+            "WoloChain-wolo-1",
+            "VPSSentry",
+            "AoE2WAR-docs",
+        )
+        if project in selected
+    ]
+    if not ordered:
+        return None
+
+    progress.start("Launching pre-release context capture beside deployment...")
+    executor = concurrent.futures.ThreadPoolExecutor(
+        max_workers=1,
+        thread_name_prefix="aoe2war-context-overlap",
+    )
+    started_at = datetime.now(timezone.utc).isoformat()
+    started_monotonic = time.monotonic()
+    future = executor.submit(
+        aoe2_update.capture_context,
+        ordered,
+        None,
+    )
+
+    receipt["pre_release_context_overlap"] = {
+        "status": "RUNNING",
+        "projects": ordered,
+        "started_at": started_at,
+    }
+    checkpoint()
+    progress.done(
+        "Pre-release context capture running in parallel · "
+        + ", ".join(ordered)
+    )
+
+    return {
+        "executor": executor,
+        "future": future,
+        "projects": ordered,
+        "started_at": started_at,
+        "started_monotonic": started_monotonic,
+    }
+
+
+def settle_pre_release_context_overlap(
+    *,
+    state: dict[str, Any] | None,
+    receipt: dict[str, Any],
+    checkpoint: Callable[[], None],
+    progress: Progress,
+) -> None:
+    if state is None:
+        return
+
+    future = state["future"]
+    executor = state["executor"]
+    projects = list(state["projects"])
+    started_monotonic = float(state["started_monotonic"])
+
+    progress.start("Reconciling overlapped pre-release context result...")
+    try:
+        archives = future.result()
+    except Exception as exc:
+        receipt["pre_release_context_overlap"] = {
+            "status": "FAILED_FALLBACK_TO_POST_RELEASE",
+            "projects": projects,
+            "started_at": state["started_at"],
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "duration_seconds": round(
+                time.monotonic() - started_monotonic,
+                3,
+            ),
+            "error": str(exc),
+        }
+        progress.done(
+            "Overlapped context failed; post-release update will reconcile it"
+        )
+    else:
+        receipt["pre_release_context_overlap"] = {
+            "status": "PASSED",
+            "projects": projects,
+            "started_at": state["started_at"],
+            "completed_at": datetime.now(timezone.utc).isoformat(),
+            "duration_seconds": round(
+                time.monotonic() - started_monotonic,
+                3,
+            ),
+            "archives": archives,
+        }
+        progress.done("Overlapped pre-release context capture verified")
+    finally:
+        executor.shutdown(wait=True)
+        checkpoint()
 
 
 def run_json_cli(
@@ -1786,6 +1900,8 @@ def execute_finish(
         label="Pre-release",
         progress=progress,
         json_mode=json_mode,
+        defer_context=True,
+        defer_final_audit=True,
     )
     receipt["documentation_reconciled"] = True
     finish_phase(receipt, "pre_release_documentation", checkpoint)
@@ -1798,6 +1914,15 @@ def execute_finish(
         raise FinishError(
             "documentation reconciliation left Mac/GitHub source out of parity"
         )
+
+    context_overlap_state = start_pre_release_context_overlap(
+        projects=list(
+            receipt["pre_release_documentation"].get("context_projects") or []
+        ),
+        receipt=receipt,
+        checkpoint=checkpoint,
+        progress=progress,
+    )
 
     post_update = aoe2_release.collect()
     receipt["post_update_release"] = post_update
@@ -1842,11 +1967,19 @@ def execute_finish(
     )
     finish_phase(receipt, "post_release_storage_retention", checkpoint)
 
+    settle_pre_release_context_overlap(
+        state=context_overlap_state,
+        receipt=receipt,
+        checkpoint=checkpoint,
+        progress=progress,
+    )
+
     start_phase(receipt, "post_release_documentation", checkpoint)
     receipt["post_release_documentation"] = reconcile_documentation(
         label="Post-release current-state",
         progress=progress,
         json_mode=json_mode,
+        defer_final_audit=True,
     )
     finish_phase(receipt, "post_release_documentation", checkpoint)
 
@@ -1936,7 +2069,7 @@ def print_finish_summary(receipt: dict[str, Any], receipt_path: Path) -> None:
     print(f"Source:          {str(final.get('local', {}).get('head') or '—')[:10]}  exact")
     print("GitHub:          synchronized")
     print("Documentation:   synchronized")
-    print("Context:         verified by update engine")
+    print("Context:         verified by finish/update pipeline")
     print(f"Production:      {certification.get('status') or '—'}")
     print(f"Build:           {production.get('active_build_id') or '—'}")
     print(f"Estate:          {audit.get('estate') or '—'}")

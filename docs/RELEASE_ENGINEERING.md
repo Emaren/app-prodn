@@ -658,3 +658,15 @@ Additional fail-closed invariants:
 5. Storage relocation of arbitrary live dependencies remains guided rather than
    automatic. `finish` may apply only its explicitly contracted retention
    policy; broader root relocation requires a separately proven storage action.
+
+## Finish-owned context overlap and final audit
+
+`aoe2war finish` owns the complete end-of-work transaction. Its internal update
+fast path may defer context compression so the exact planned capture runs beside
+the remote deployment, and may defer update's broad final estate audit because
+finish performs one authoritative audit after post-release reconciliation and
+Operator Bridge reload.
+
+The overlap is bounded to the context projects chosen by the locked update plan
+and is settled before post-release update replans the estate. Failure falls back
+to ordinary synchronous post-release context reconciliation.
