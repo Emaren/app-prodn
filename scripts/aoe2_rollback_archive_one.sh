@@ -16,6 +16,8 @@ CONTROL="$VOL/aoe2war/os-control"
 RECEIPTS="$CONTROL/rollback-archive-receipts"
 VERIFYROOT="$CONTROL/rollback-archive-verify"
 LOCK="$CONTROL/locks/rollback-archive.lock"
+RELEASE_LOCK="$CONTROL/locks/release.lock"
+RETENTION_LOCK="$CONTROL/locks/storage-retention.lock"
 
 RUNNER="/usr/local/sbin/aoe2war-maintenance-run"
 NODE="wolochaind-mainnet.service"
@@ -182,6 +184,24 @@ if [ "$available_kb" -lt "$needed_kb" ]; then
 fi
 
 install -d -m 0755 "$ARCHROOT" "$RECEIPTS" "$VERIFYROOT" "$(dirname "$LOCK")"
+
+# Serialize archival against releases and cache-retention.
+# Open existing lock files without truncating their holder metadata.
+test -f "$RELEASE_LOCK"
+test ! -L "$RELEASE_LOCK"
+exec 8<>"$RELEASE_LOCK"
+if ! flock -n 8; then
+  echo "STOP: canonical release lock is already held"
+  exit 1
+fi
+
+test -f "$RETENTION_LOCK"
+test ! -L "$RETENTION_LOCK"
+exec 7<>"$RETENTION_LOCK"
+if ! flock -n 7; then
+  echo "STOP: storage retention lock is already held"
+  exit 1
+fi
 
 exec 9>"$LOCK"
 if ! flock -n 9; then

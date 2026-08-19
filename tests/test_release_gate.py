@@ -70,6 +70,70 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertEqual(scripts.count("test:replay-truth"), 1)
 
 
+    def test_storage_os_is_infrastructure_risk(self):
+        self.assertEqual(
+            MODULE.path_risk("scripts/aoe2_storage.py"),
+            "INFRASTRUCTURE",
+        )
+
+        self.assertEqual(
+            MODULE.path_risk(
+                "scripts/aoe2_rollback_archive_one.sh"
+            ),
+            "INFRASTRUCTURE",
+        )
+
+        self.assertEqual(
+            MODULE.path_risk("tests/test_aoe2_storage.py"),
+            "INFRASTRUCTURE",
+        )
+
+    def test_storage_os_triggers_storage_unit_contract(self):
+        scope = {
+            "mode": "worktree",
+            "base_sha": "a",
+            "target_sha": "WORKTREE",
+            "changed_files": ["scripts/aoe2_storage.py"],
+        }
+
+        plan = MODULE.command_plan(
+            scope,
+            "INFRASTRUCTURE",
+        )
+
+        release_tests = [
+            args
+            for label, args, _timeout in plan
+            if label == "release-engineering-tests"
+        ]
+
+        self.assertEqual(
+            len(release_tests),
+            1,
+        )
+
+        self.assertIn(
+            "tests/test_aoe2_storage.py",
+            release_tests[0],
+        )
+
+        compile_steps = [
+            args
+            for label, args, _timeout in plan
+            if label == "release-python-compile"
+        ]
+
+        self.assertEqual(
+            len(compile_steps),
+            1,
+        )
+
+        self.assertIn(
+            "scripts/aoe2_storage.py",
+            compile_steps[0],
+        )
+
+
     def test_operator_cli_is_infrastructure_risk(self):
         self.assertEqual(MODULE.path_risk("bin/aoe2war"), "INFRASTRUCTURE")
 

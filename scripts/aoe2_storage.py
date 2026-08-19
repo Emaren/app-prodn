@@ -69,6 +69,7 @@ def policy() -> dict[str, Any]:
         "verify_root": "/mnt/HC_Volume_105319120/aoe2war/os-control/rollback-archive-verify",
         "lock_path": "/mnt/HC_Volume_105319120/aoe2war/os-control/locks/rollback-archive.lock",
         "maintenance_runner": "/usr/local/sbin/aoe2war-maintenance-run",
+        "root_maintenance_host": "root@hel1",
     }
     for key, value in expected_archive.items():
         if archive.get(key) != value:
@@ -448,7 +449,8 @@ def invoke_worker(release: str, build: str, generation: str) -> None:
     source = WORKER_PATH.read_text(encoding="utf-8")
     cmd = [
         "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8",
-        p["production_host"], "bash", "-s", "--", release, build, generation,
+        p["root_maintenance_host"],
+        "bash", "-s", "--", release, build, generation,
     ]
     proc = subprocess.run(cmd, input=source, text=True, check=False)
     if proc.returncode != 0:
@@ -519,6 +521,7 @@ def self_test() -> int:
     p = policy()
     assert (p["healthy_target"], p["maintenance_due"], p["automatic_threshold"], p["critical"]) == (78, 82, 85, 92)
     assert p["protected_newest"] == 5
+    assert p["root_maintenance_host"] == "root@hel1"
     assert GENERATION_RE.fullmatch("activate-20260818T195631Z-005546f4068d")
     assert not GENERATION_RE.fullmatch("../activate-20260818T195631Z-005546f4068d")
     expected = "aae6f7f3c367a8a6f59c918b37ba2cafc6897cf25d18e6cc212373ca925420ae"

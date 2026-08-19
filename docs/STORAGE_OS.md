@@ -82,6 +82,28 @@ Cold archival is deliberately outside the latency-critical `aoe2war finish`
 path. Finish may inspect storage health; multi-minute historical compression is
 maintenance, not deployment.
 
+
+## Privilege and serialization boundary
+
+Read-only Storage OS inspection uses the normal `tony@hel1` authority.
+
+Mutating cold archival uses the explicit `root@hel1` maintenance authority
+because archive files, verification trees, archive receipts, and archive locks
+are root-owned evidence surfaces. Those surfaces must not be made world-writable
+to avoid a privilege boundary.
+
+A cold-archive transaction acquires locks in this order:
+
+1. canonical `release.lock`;
+2. `storage-retention.lock`;
+3. `rollback-archive.lock`.
+
+All acquisitions are non-blocking and fail closed. The canonical release lock is
+opened without truncating holder metadata before the flock succeeds.
+
+This prevents deployment, rollback/release maintenance, cache retention, and cold
+archival from intentionally mutating the recovery estate concurrently.
+
 ## Safety invariants
 
 - Wolo mutation forbidden.

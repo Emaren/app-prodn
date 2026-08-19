@@ -97,7 +97,8 @@
     "max_generations_per_transaction": 1,
     "legacy_auto_action": "never",
     "wolo_mutation_allowed": false,
-    "proven_pilot_sha256": "aae6f7f3c367a8a6f59c918b37ba2cafc6897cf25d18e6cc212373ca925420ae"
+    "proven_pilot_sha256": "aae6f7f3c367a8a6f59c918b37ba2cafc6897cf25d18e6cc212373ca925420ae",
+    "root_maintenance_host": "root@hel1"
   },
   "finish": {
     "auto_commit_local_worktree": true,
