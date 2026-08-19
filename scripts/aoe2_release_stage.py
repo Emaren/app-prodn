@@ -382,23 +382,54 @@ sudo -n -l /usr/bin/systemctl start --wait "$build_unit" >/dev/null
 timing_record worktree_setup "$worktree_setup_started"
 
 dependency_fetch_started="$(timing_now_ns)"
-sudo -n /usr/bin/systemctl reset-failed "$deps_unit" >/dev/null 2>&1 || true
-deps_started_epoch="$(date +%s)"
-if ! sudo -n /usr/bin/systemctl start --wait "$deps_unit"; then
+dependency_fetch_skipped=0
+candidate_prisma_engine_commit=""
+
+read_candidate_prisma_engine_commit() {{
+  python3 - "$build_worktree/node_modules/@prisma/engines-version/package.json" <<'PY_PRISMA_COMMIT'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    print(json.load(handle)["prisma"]["enginesVersion"])
+PY_PRISMA_COMMIT
+}}
+
+live_prisma_engine_version="$("$LIVE_PRISMA_SCHEMA_ENGINE" --version)"
+live_prisma_engine_sha="$(sha256sum "$LIVE_PRISMA_SCHEMA_ENGINE" | awk '{{print $1}}')"
+test "${{#live_prisma_engine_sha}}" = "64"
+
+# A persistent Yarn cache is an acceleration input only. It may suppress the
+# network dependency-fetch phase only when the exact dependency key hit is
+# accompanied by unchanged dependency contract + unchanged frozen lock.
+if \
+  [ "$yarn_cache_hit" = "1" ] &&
+  [ "$dependency_contract_unchanged" = "1" ] &&
+  [ "$dependency_lock_changed" = "0" ]
+then
+  dependency_fetch_skipped=1
+  printf '%s\n' \
+    "SKIPPED: exact warm dependency cache hit" \
+    "dependency_cache_key=$dependency_cache_key" \
+    > "$RECEIPT/dependency-fetch.log"
+else
+  # Any ambiguity falls back to the original cold path.
+  yarn_cache_hit=0
+  sudo -n /usr/bin/systemctl reset-failed "$deps_unit" >/dev/null 2>&1 || true
+  deps_started_epoch="$(date +%s)"
+  if ! sudo -n /usr/bin/systemctl start --wait "$deps_unit"; then
+    sudo -n /usr/bin/journalctl -u "$deps_unit" \
+      --since "@$deps_started_epoch" --no-pager -o cat \
+      > "$RECEIPT/dependency-fetch.log" 2>&1 || true
+    exit 42
+  fi
   sudo -n /usr/bin/journalctl -u "$deps_unit" \
     --since "@$deps_started_epoch" --no-pager -o cat \
-    > "$RECEIPT/dependency-fetch.log" 2>&1 || true
-  exit 42
-fi
-sudo -n /usr/bin/journalctl -u "$deps_unit" \
-  --since "@$deps_started_epoch" --no-pager -o cat \
-  > "$RECEIPT/dependency-fetch.log" 2>&1
-test "$(systemctl show "$deps_unit" -p Result --value)" = "success"
-test "$(systemctl show "$deps_unit" -p ExecMainStatus --value)" = "0"
-test -d "$build_worktree/node_modules"
-timing_record dependency_fetch "$dependency_fetch_started"
+    > "$RECEIPT/dependency-fetch.log" 2>&1
+  test "$(systemctl show "$deps_unit" -p Result --value)" = "success"
+  test "$(systemctl show "$deps_unit" -p ExecMainStatus --value)" = "0"
+  test -d "$build_worktree/node_modules"
 
-if [ "$yarn_cache_hit" = "0" ]; then
   yarn_cache_persist_started="$(timing_now_ns)"
   yarn_cache_tmp="$CACHE_ROOT/.yarn-current-$$"
   yarn_cache_old="$CACHE_ROOT/.yarn-old-$$"
@@ -415,29 +446,18 @@ if [ "$yarn_cache_hit" = "0" ]; then
   mv "$yarn_cache_tmp" "$YARN_CACHE_CURRENT"
   rm -rf "$yarn_cache_old"
   timing_record yarn_cache_persist "$yarn_cache_persist_started"
+
+  # Preserve the original cold-path pre-build Prisma equivalence proof.
+  candidate_prisma_engine_commit="$(read_candidate_prisma_engine_commit)"
+  [[ "$candidate_prisma_engine_commit" =~ ^[0-9a-f]{{40}}$ ]]
+  test "$live_prisma_engine_version" = "schema-engine-cli $candidate_prisma_engine_commit"
+
+  # Never trust/use the network-phase materialization as the runtime tree.
+  rm -rf "$build_worktree/node_modules"
+  test ! -e "$build_worktree/node_modules"
 fi
 
-# The build sandbox deliberately has no network. Prove that its live bootstrap
-# engine belongs to the exact engine commit requested by the frozen candidate
-# before the network-phase dependency tree is discarded.
-candidate_prisma_engine_commit="$(
-  python3 - "$build_worktree/node_modules/@prisma/engines-version/package.json" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as handle:
-    print(json.load(handle)["prisma"]["enginesVersion"])
-PY
-)"
-live_prisma_engine_version="$("$LIVE_PRISMA_SCHEMA_ENGINE" --version)"
-[[ "$candidate_prisma_engine_commit" =~ ^[0-9a-f]{{40}}$ ]]
-test "$live_prisma_engine_version" = "schema-engine-cli $candidate_prisma_engine_commit"
-live_prisma_engine_sha="$(sha256sum "$LIVE_PRISMA_SCHEMA_ENGINE" | awk '{{print $1}}')"
-test "${{#live_prisma_engine_sha}}" = "64"
-
-# Never trust/use the network-phase materialization as the runtime tree.
-rm -rf "$build_worktree/node_modules"
-test ! -e "$build_worktree/node_modules"
+timing_record dependency_fetch "$dependency_fetch_started"
 
 offline_build_started="$(timing_now_ns)"
 sudo -n /usr/bin/systemctl reset-failed "$build_unit" >/dev/null 2>&1 || true
@@ -455,6 +475,12 @@ test "$(systemctl show "$build_unit" -p Result --value)" = "success"
 test "$(systemctl show "$build_unit" -p ExecMainStatus --value)" = "0"
 test -d "$build_worktree/node_modules"
 timing_record offline_build "$offline_build_started"
+
+if [ -z "$candidate_prisma_engine_commit" ]; then
+  candidate_prisma_engine_commit="$(read_candidate_prisma_engine_commit)"
+fi
+[[ "$candidate_prisma_engine_commit" =~ ^[0-9a-f]{{40}}$ ]]
+test "$live_prisma_engine_version" = "schema-engine-cli $candidate_prisma_engine_commit"
 
 if [ -d "$build_worktree/.next-release/cache" ]; then
   next_cache_persist_started="$(timing_now_ns)"
@@ -672,6 +698,7 @@ printf '%s\n' \
   "build_secret_paths_inaccessible=1" \
   "dependency_fetch_sandboxed=1" \
   "dependency_fetch_scripts_disabled=1" \
+  "dependency_fetch_skipped=$dependency_fetch_skipped" \
   "dependency_build_offline=1" \
   "persistent_build_cache=1" \
   "cache_is_release_truth=0" \
@@ -715,6 +742,7 @@ printf 'build_network_private\t1\n'
 printf 'build_secret_paths_inaccessible\t1\n'
 printf 'dependency_fetch_sandboxed\t1\n'
 printf 'dependency_fetch_scripts_disabled\t1\n'
+printf 'dependency_fetch_skipped\t%s\n' "$dependency_fetch_skipped"
 printf 'dependency_build_offline\t1\n'
 printf 'persistent_build_cache\t1\n'
 printf 'cache_is_release_truth\t0\n'
@@ -825,10 +853,25 @@ def validate_stage_result(
         "dependency_lock_changed",
         "yarn_cache_hit",
         "next_cache_hit",
+        "dependency_fetch_skipped",
     ):
         if result.get(key) not in {"0", "1"}:
             errors.append(
                 f"dependency evidence flag is invalid: {key}={result.get(key)!r}"
+            )
+
+    if result.get("dependency_fetch_skipped") == "1":
+        if result.get("yarn_cache_hit") != "1":
+            errors.append(
+                "dependency fetch skip requires an exact Yarn cache hit"
+            )
+        if result.get("dependency_contract_unchanged") != "1":
+            errors.append(
+                "dependency fetch skip requires unchanged dependency contract"
+            )
+        if result.get("dependency_lock_changed") != "0":
+            errors.append(
+                "dependency fetch skip requires unchanged frozen lock"
             )
 
     cache_key = result.get("dependency_cache_key") or ""
@@ -1157,6 +1200,7 @@ def stage_release(
         "dependency_cache_key": result["dependency_cache_key"],
         "yarn_cache_hit": result["yarn_cache_hit"] == "1",
         "next_cache_hit": result["next_cache_hit"] == "1",
+        "dependency_fetch_skipped": result["dependency_fetch_skipped"] == "1",
         "dependency_contract_unchanged": (
             result["dependency_contract_unchanged"] == "1"
         ),

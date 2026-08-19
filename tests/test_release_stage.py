@@ -55,6 +55,7 @@ def sample():
         "dependency_cache_key": "e" * 64,
         "yarn_cache_hit": "0",
         "next_cache_hit": "0",
+        "dependency_fetch_skipped": "0",
         "dependency_contract_unchanged": "1",
         "dependency_lock_changed": "1",
         "cache_free_artifact": "1",
@@ -226,6 +227,23 @@ class StageTests(unittest.TestCase):
         self.assertIn("timing_record next_cache_persist", script)
         self.assertIn("persistent_build_cache=1", script)
         self.assertIn("cache_is_release_truth=0", script)
+        self.assertIn("dependency_fetch_skipped=0", script)
+        self.assertIn(
+            '[ "$dependency_contract_unchanged" = "1" ]',
+            script,
+        )
+        self.assertIn(
+            '[ "$dependency_lock_changed" = "0" ]',
+            script,
+        )
+        self.assertIn(
+            "SKIPPED: exact warm dependency cache hit",
+            script,
+        )
+        self.assertIn(
+            'if [ -z "$candidate_prisma_engine_commit" ]; then',
+            script,
+        )
 
         self.assertIn('test ! -e "$stage_copy/cache"', script)
         self.assertIn(

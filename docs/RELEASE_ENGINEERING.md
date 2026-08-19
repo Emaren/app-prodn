@@ -691,3 +691,20 @@ rollback evidence and Wolo protection remain authoritative.
 Because the durable deploy-receipts parent is not an unprivileged creation
 surface, the release engine provisions the bounded cache root with `sudo install`
 and assigns it to `tony`; subsequent cache operations do not run privileged.
+
+## Warm dependency-fetch bypass
+
+A matching persistent dependency cache does not by itself authorize a network
+fetch bypass. Release stage requires all three conditions:
+
+- exact dependency cache-key hit;
+- unchanged dependency contract;
+- unchanged `yarn.lock`.
+
+Only then may the network dependency-fetch unit be skipped. The build remains
+network-private and performs frozen offline dependency materialization. Prisma
+engine identity is then proved from the materialized candidate dependency tree
+before any candidate artifact or dependency tree is published.
+
+Cold releases retain the original scripts-disabled network fetch and pre-build
+Prisma proof. Cache ambiguity falls back to that cold path.

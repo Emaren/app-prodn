@@ -200,3 +200,20 @@ degrades to the existing cold path rather than weakening a release invariant.
 The mounted persistent cache root is provisioned through the release engine's
 bounded privileged directory-creation seam and immediately owned by `tony`;
 all cache seeding, replacement, and verification remains unprivileged.
+
+## True warm dependency path
+
+When the persistent Yarn cache key matches and both the dependency contract and
+`yarn.lock` are unchanged from certified production, stage may skip the
+network dependency-fetch unit entirely. The network-private build unit still
+runs its frozen offline materialization from the seeded cache.
+
+On a cold path, candidate Prisma engine equivalence is proved before the build
+as before. On a warm path, the candidate tree does not exist until the offline
+build unit materializes it, so the same exact engine-commit equivalence is
+proved immediately after the build and before artifact relocation, hashing, or
+candidate publication. A mismatch therefore remains a pre-release failure.
+
+The stage receipt records `dependency_fetch_skipped`; a skip is invalid unless
+the exact Yarn cache hit, unchanged dependency contract, and unchanged frozen
+lock are all present.
