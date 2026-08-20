@@ -212,8 +212,26 @@ if [ "$FULL" = "1" ]; then
     systemctl restart {TRAFFIC_TIMER}
     test "$(systemctl is-active {TRAFFIC_TIMER})" = "active"
     next="$(systemctl show {TRAFFIC_TIMER} -p NextElapseUSecRealtime --value)"
-    test -n "$next"
-    test "$next" != "n/a"
+    last_trigger="$(systemctl show {TRAFFIC_TIMER} -p LastTriggerUSec --value)"
+    rollup_state="$(systemctl show traffic-project-daily-rollups-aoe2hdbets.service -p ActiveState --value)"
+
+    scheduled=0
+    if [ -n "$next" ] && [ "$next" != "n/a" ]; then
+      scheduled=1
+    fi
+
+    triggered_running=0
+    if [ -n "$last_trigger" ] && [ "$last_trigger" != "n/a" ]; then
+      if [ "$rollup_state" = "active" ] || [ "$rollup_state" = "activating" ]; then
+        triggered_running=1
+      fi
+    fi
+
+    if [ "$scheduled" != "1" ] && [ "$triggered_running" != "1" ]; then
+      echo "STOP: Traffic timer rearm lacks valid evidence: next=$next last_trigger=$last_trigger service=$rollup_state" >&2
+      exit 21
+    fi
+
     timer_rearmed=1
   fi
 fi

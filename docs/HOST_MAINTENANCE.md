@@ -238,3 +238,19 @@ polluting current host health.
 independent mutable-state Recovery OS contract lacks a named authority and
 verified restore proof. Package upgrades and reboot stay explicit maintenance
 operations.
+
+## Traffic rollup timer rearm proof
+
+The Traffic daily-rollup timer uses `OnUnitActiveSec`. Immediately after a
+daemon reload/restart it may trigger the rollup service and legitimately expose
+no `NextElapseUSecRealtime` while that service remains active or activating.
+
+Host OS therefore accepts either of two bounded rearm proofs:
+
+1. the timer is active and has a concrete next-elapse timestamp; or
+2. the timer is active, has a concrete last-trigger timestamp, and the linked
+   rollup service is still active/activating from that trigger.
+
+An empty next-elapse value by itself is not a failure while the triggered
+service is still executing. Core web/API service state and Wolo listener counts
+remain protected before and after host tidy.
