@@ -149,7 +149,7 @@ const WORKSHOP_HERO_IMAGE =
   "/workshop/workshop-observatory-hero.webp";
 
 const WORKSHOP_CURRENT_CAMPAIGN =
-  "AOE2WAR_WORKSHOP_TRUTH_IN_PRODUCTION_20260808";
+  "AOE2WAR_WORKSHOP_KINGDOM_BUILDS_AGAIN_20260820";
 
 function pct(bps: number) {
   return `${(bps / 100).toFixed(1)}%`;

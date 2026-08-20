@@ -659,3 +659,21 @@ The latest detailed content inventory remains the 2026-07-26 seal:
 
 No service restart was required for the online filesystem expansion.
 <!-- AOE2WAR:REPLAY_EVIDENCE_ARCHITECTURE_20260722:END -->
+
+## Profile War Archive — private player document exchange
+
+Player profiles expose a private War Archive for guides, build orders, notes and
+other bounded document formats. The owner uploads through
+`/api/profile-documents`; AoE2WAR admins may list/read documents for a claimed
+player profile. Other users receive no document metadata and no document bytes.
+
+Document bytes are not public Media Armory assets. Production defaults to
+`/mnt/HC_Volume_105319120/aoe2war/profile-documents-private`, outside the public
+managed-media route. Database metadata reuses `ManagedMediaAsset` with an opaque
+`profile-document:v1:` storage reference; the app never publishes that reference
+as a public URL. Downloads flow only through the authenticated document route
+with `private, no-store` and `X-Content-Type-Options: nosniff`.
+
+Each document is capped at 25 MB. Each player is capped at 30 active documents
+and 250 MB total active document storage. Deleting a document first retires its
+metadata and then removes the private file. No Prisma migration is required.

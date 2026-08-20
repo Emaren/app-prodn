@@ -161,3 +161,23 @@ the launcher may read the canonical production OpenAI credential over the
 existing SSH channel and inject it only into the local Next child-process
 environment. The value is never printed or written to disk. Safe non-secret
 Hall Scribe provider prompt ID/version settings are mirrored the same way.
+
+## Kingdom Builds Again closeout — August 20, 2026
+
+The August 20 Workshop closeout records the operating-system closure, verified
+rollback archival lifecycle, persistent release-speed pulse and private player
+War Archives. These are curated public records; raw terminal logs, private
+documents, credentials and recovery evidence remain outside the Workshop.
+
+The Workshop route remains `force-dynamic` so live status semantics are not
+silently converted into build-time truth. Its public Postgres projection and
+initial Chronicle page are cached for 30 seconds, while Parser Observatory keeps
+its existing 300-second cache. The global `?summary=1` header poll now uses a
+separate tiny cached status/stream projection instead of assembling up to 120
+Workshop entries and artifacts on every poll. This removes repeated public
+Workshop database assembly from ordinary navigation while preserving bounded
+freshness.
+
+Profile War Archive documents are explicitly not Workshop artifacts. They are
+private owner/admin material and never become public merely because Workshop
+records the feature's existence.

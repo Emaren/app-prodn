@@ -46,6 +46,7 @@ import AutoBetReserveCard from "@/components/profile/AutoBetReserveCard";
 import MarketplaceBusinessCard from "@/components/market/MarketplaceBusinessCard";
 import MarketplaceOwnerConsole from "@/components/market/MarketplaceOwnerConsole";
 import ClanCrestManager from "@/components/profile/ClanCrestManager";
+import ProfileDocumentVault from "@/components/profile/ProfileDocumentVault";
 import BrowserStreamStudio from "@/components/streaming/BrowserStreamStudio";
 import {
   LobbyTextColorPicker,
@@ -338,14 +339,7 @@ function ProfilePageContent() {
 
   const loadProfile = useCallback(async () => {
     try {
-      const [profileResponse, watcherKeyResponse, challengeResponse, moneyResponse] = await Promise.all([
-        fetch("/api/user/me", { cache: "no-store" }),
-        fetch("/api/user/watcher-key", { cache: "no-store" }),
-        fetch("/api/challenges", { cache: "no-store" }),
-        fetch(`/api/user/wolo-transactions?offset=0&limit=${MONEY_TX_PAGE_SIZE}`, {
-          cache: "no-store",
-        }),
-      ]);
+      const profileResponse = await fetch("/api/user/me", { cache: "no-store" });
 
       if (profileResponse.ok) {
         const nextProfile = (await profileResponse.json()) as ProfileResponse;
@@ -354,24 +348,59 @@ function ProfilePageContent() {
           setPlayerName(nextProfile.inGameName);
         }
       }
+    } catch (error) {
+      console.warn("Failed to load primary profile identity:", error);
+    }
 
-      if (watcherKeyResponse.ok) {
-        const payload = (await watcherKeyResponse.json()) as { keys?: WatcherKeyRow[] };
+    const secondaryRequests = [
+      fetch("/api/user/watcher-key", { cache: "no-store" }),
+      fetch("/api/challenges", { cache: "no-store" }),
+      fetch(`/api/user/wolo-transactions?offset=0&limit=${MONEY_TX_PAGE_SIZE}`, {
+        cache: "no-store",
+      }),
+    ] as const;
+
+    const [watcherKeyResult, challengeResult, moneyResult] =
+      await Promise.allSettled(secondaryRequests);
+
+    try {
+      if (
+        watcherKeyResult.status === "fulfilled" &&
+        watcherKeyResult.value.ok
+      ) {
+        const payload =
+          (await watcherKeyResult.value.json()) as { keys?: WatcherKeyRow[] };
         setWatcherKeys(Array.isArray(payload.keys) ? payload.keys : []);
       }
+    } catch (error) {
+      console.warn("Failed to load watcher keys:", error);
+    }
 
-      if (challengeResponse.ok) {
-        const payload = (await challengeResponse.json()) as ChallengeHubSnapshot;
+    try {
+      if (
+        challengeResult.status === "fulfilled" &&
+        challengeResult.value.ok
+      ) {
+        const payload =
+          (await challengeResult.value.json()) as ChallengeHubSnapshot;
         setChallengeSnapshot(payload);
       }
+    } catch (error) {
+      console.warn("Failed to load challenge snapshot:", error);
+    }
 
-      if (moneyResponse.ok) {
-        const payload = (await moneyResponse.json()) as WoloTransactionsResponse;
+    try {
+      if (
+        moneyResult.status === "fulfilled" &&
+        moneyResult.value.ok
+      ) {
+        const payload =
+          (await moneyResult.value.json()) as WoloTransactionsResponse;
         setMoneyRows(Array.isArray(payload.rows) ? payload.rows : []);
         setMoneyHasMore(Boolean(payload.hasMore));
       }
     } catch (error) {
-      console.warn("Failed to load profile:", error);
+      console.warn("Failed to load initial WOLO transactions:", error);
     }
   }, [setPlayerName]);
 
@@ -3624,6 +3653,8 @@ function ExtremeAvatarStage({
           }}
         />
       </label>
+
+      <ProfileDocumentVault />
     </div>
   );
 }
@@ -3856,6 +3887,8 @@ function ProfileAvatarPanel({
             }}
           />
         </label>
+
+        <ProfileDocumentVault />
       </div>
     );
   }
@@ -3928,6 +3961,8 @@ function ProfileAvatarPanel({
           }}
         />
       </label>
+
+      <ProfileDocumentVault />
     </div>
   );
 }

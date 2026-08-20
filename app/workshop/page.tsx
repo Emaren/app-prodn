@@ -4,11 +4,10 @@ import WorkshopExperience, {
   type WorkshopDiagnostics,
 } from "@/components/workshop/WorkshopExperience";
 import { loadPublicParserObservatory } from "@/lib/parserObservatory";
-import { getPrisma } from "@/lib/prisma";
 import { WATCHER_RELEASE } from "@/lib/watcherRelease";
 import {
-  loadPublicWorkshop,
-  loadWorkshopChroniclePage,
+  loadCachedPublicWorkshop,
+  loadCachedWorkshopChronicleFirstPage,
 } from "@/lib/workshop";
 
 import "./workshop-polish.css";
@@ -23,11 +22,9 @@ export const metadata: Metadata = {
 };
 
 export default async function WorkshopPage() {
-  const prisma = getPrisma();
-
   const [data, chronicle, observatory] = await Promise.all([
-    loadPublicWorkshop(prisma),
-    loadWorkshopChroniclePage(prisma, { take: 18 }),
+    loadCachedPublicWorkshop(),
+    loadCachedWorkshopChronicleFirstPage(),
     loadPublicParserObservatory(),
   ]);
 

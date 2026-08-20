@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import PlayerMatchFeedClient from "@/components/players/PlayerMatchFeedClient";
 import PlayerProfileRealtimeRefresh from "@/components/players/PlayerProfileRealtimeRefresh";
+import PlayerProfileDocumentShelf from "@/components/players/PlayerProfileDocumentShelf";
 import { PlayerAiDevelopmentConsole, PlayerHeroAiDomBinder } from "@/components/players/PlayerAiFeature";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import { formatDurationLabel } from "@/lib/gameStatsView";
@@ -228,6 +229,10 @@ function PlayerProfileExtreme({
           </div>
 
           <div className="space-y-6">
+            {profile.identity.kind === "claimed" ? (
+              <PlayerProfileDocumentShelf uid={profile.identity.uid} />
+            ) : null}
+
             <Panel eyebrow="Match Feed" title="Replay archive" count={`${profile.matchFeed.totalMatches} total`}>
               <PlayerMatchFeedClient
                 key={profile.href}
@@ -319,6 +324,10 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
         </div>
 
         <div className="space-y-5">
+          {profile.identity.kind === "claimed" ? (
+            <PlayerProfileDocumentShelf uid={profile.identity.uid} />
+          ) : null}
+
           <Panel eyebrow="Match Feed" title="Replay archive" count={`${profile.matchFeed.totalMatches} total`}>
             <PlayerMatchFeedClient
               key={profile.href}
@@ -447,6 +456,10 @@ function ClaimedBasicProfile({ profile }: { profile: PlayerProfile }) {
               />
             </dl>
           </Panel>
+
+          {profile.identity.kind === "claimed" ? (
+            <PlayerProfileDocumentShelf uid={profile.identity.uid} />
+          ) : null}
 
           <Panel eyebrow="Rivalries" title="Top head-to-heads">
             <RivalryList profile={profile} compact />
