@@ -8,7 +8,7 @@ import { WATCHER_RELEASE } from "@/lib/watcherRelease";
 import {
   loadCachedPublicWorkshop,
   loadCachedWorkshopChronicleFirstPage,
-} from "@/lib/workshop";
+} from "@/lib/workshopCached";
 
 import "./workshop-polish.css";
 import "./workshop-chronicle-gap-fill.css";

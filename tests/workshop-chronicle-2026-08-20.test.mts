@@ -14,8 +14,8 @@ const workshopApi = fs.readFileSync(
   "app/api/workshop/route.ts",
   "utf8",
 );
-const workshopLib = fs.readFileSync(
-  "lib/workshop.ts",
+const workshopCached = fs.readFileSync(
+  "lib/workshopCached.ts",
   "utf8",
 );
 const workshopExperience = fs.readFileSync(
@@ -68,15 +68,15 @@ test("Workshop keeps force-dynamic route but caches its public DB projection", (
     /loadCachedWorkshopChronicleFirstPage/,
   );
   assert.match(
-    workshopLib,
+    workshopCached,
     /unstable_cache/,
   );
   assert.match(
-    workshopLib,
+    workshopCached,
     /loadCachedPublicWorkshopSummary/,
   );
   assert.match(
-    workshopLib,
+    workshopCached,
     /revalidate: 30/,
   );
   assert.match(

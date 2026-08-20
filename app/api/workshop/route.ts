@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   loadCachedPublicWorkshop,
   loadCachedPublicWorkshopSummary,
-} from "@/lib/workshop";
+} from "@/lib/workshopCached";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

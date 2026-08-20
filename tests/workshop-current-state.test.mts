@@ -30,11 +30,11 @@ const publisher =
   );
 
 test(
-  "Workshop presents Truth in Production as the current campaign",
+  "Workshop presents Kingdom Builds Again as the current campaign",
   () => {
     assert.match(
       experience,
-      /AOE2WAR_WORKSHOP_TRUTH_IN_PRODUCTION_20260808/,
+      /AOE2WAR_WORKSHOP_KINGDOM_BUILDS_AGAIN_20260820/,
     );
 
     assert.match(
