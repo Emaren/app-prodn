@@ -786,18 +786,40 @@ export function LivingLeaderboard({
       null,
     );
 
-  const [
-    focusStage,
-    setFocusStage,
-  ] =
-    useState<
+  const rowScrollRef =
+    useRef<HTMLDivElement | null>(
+      null,
+    );
+
+  const focusStageRef =
+    useRef<
       "overview" | "command" | "table"
     >("overview");
+
+  const appHeaderRef =
+    useRef<HTMLElement | null>(
+      null,
+    );
+
+  const mobileNavRef =
+    useRef<HTMLElement | null>(
+      null,
+    );
+
+  const returnRailRef =
+    useRef<HTMLDivElement | null>(
+      null,
+    );
 
   const [
     appHeaderHeight,
     setAppHeaderHeight,
   ] = useState(0);
+
+  const spotlightExitDestinationRef =
+    useRef<
+      "overview" | "table"
+    >("table");
 
   useLayoutEffect(() => {
     const header =
@@ -808,6 +830,30 @@ export function LivingLeaderboard({
     if (!header) {
       return;
     }
+
+    const mobileNav =
+      document.querySelector<HTMLElement>(
+        "[data-mobile-floating-nav]",
+      );
+
+    appHeaderRef.current =
+      header;
+    mobileNavRef.current =
+      mobileNav;
+
+    const previousHeaderTransition =
+      header.style.transition;
+    const previousHeaderTransform =
+      header.style.transform;
+    const previousHeaderOpacity =
+      header.style.opacity;
+    const previousHeaderPointerEvents =
+      header.style.pointerEvents;
+    const previousMobileDisplay =
+      mobileNav?.style.display ?? "";
+
+    header.style.transition =
+      "none";
 
     const measure = () => {
       const nextHeight =
@@ -840,6 +886,25 @@ export function LivingLeaderboard({
         "resize",
         measure,
       );
+
+      header.style.transition =
+        previousHeaderTransition;
+      header.style.transform =
+        previousHeaderTransform;
+      header.style.opacity =
+        previousHeaderOpacity;
+      header.style.pointerEvents =
+        previousHeaderPointerEvents;
+
+      if (mobileNav) {
+        mobileNav.style.display =
+          previousMobileDisplay;
+      }
+
+      appHeaderRef.current =
+        null;
+      mobileNavRef.current =
+        null;
     };
   }, []);
 
@@ -1169,23 +1234,192 @@ export function LivingLeaderboard({
     });
   };
 
-  const cycleSpotlight = () => {
-    const next =
-      preferences.spotlightMode ===
-      "off"
-        ? "top"
-        : preferences.spotlightMode ===
-            "top"
-          ? "center"
-          : "off";
-
-    onPreferencesChange({
-      spotlightMode: next,
-    });
-
+  const closeCommandPopovers = () => {
     setRankWindowOpen(false);
     setHiddenOpen(false);
     setColumnsOpen(false);
+  };
+
+  const setReturnRailVisible = (
+    visible: boolean,
+  ) => {
+    const rail =
+      returnRailRef.current;
+
+    if (!rail) {
+      return;
+    }
+
+    rail.style.opacity =
+      visible ? "1" : "0";
+    rail.style.transform =
+      visible
+        ? "translate3d(0, 0, 0)"
+        : "translate3d(0, 0.5rem, 0)";
+    rail.style.pointerEvents =
+      visible ? "auto" : "none";
+  };
+
+  const syncAppChromeToScroll = (
+    scrollTop: number,
+  ) => {
+    const header =
+      appHeaderRef.current;
+
+    if (!header) {
+      return;
+    }
+
+    const travel =
+      Math.max(
+        1,
+        appHeaderHeight ||
+          Math.ceil(
+            header.getBoundingClientRect()
+              .height,
+          ),
+      );
+
+    const offset =
+      Math.min(
+        travel,
+        Math.max(
+          0,
+          scrollTop,
+        ),
+      );
+
+    header.style.transition =
+      "none";
+    header.style.opacity =
+      "1";
+    header.style.transform =
+      `translate3d(0, -${offset}px, 0)`;
+    header.style.pointerEvents =
+      offset >= travel - 1
+        ? "none"
+        : "";
+  };
+
+  const setFocusStageImperatively = (
+    stage:
+      | "overview"
+      | "command"
+      | "table",
+  ) => {
+    focusStageRef.current =
+      stage;
+
+    const viewport =
+      viewportRef.current;
+
+    if (viewport) {
+      viewport.dataset.leaderboardFocus =
+        stage;
+    }
+
+    const mobileNav =
+      mobileNavRef.current;
+
+    if (mobileNav) {
+      mobileNav.style.display =
+        stage === "table"
+          ? "none"
+          : "";
+    }
+
+    setReturnRailVisible(
+      stage !== "overview" ||
+        personalRankViewActive,
+    );
+  };
+
+  useLayoutEffect(() => {
+    const rail =
+      returnRailRef.current;
+
+    if (!rail) {
+      return;
+    }
+
+    const visible =
+      personalRankViewActive ||
+      focusStageRef.current !==
+        "overview";
+
+    rail.style.opacity =
+      visible ? "1" : "0";
+    rail.style.transform =
+      visible
+        ? "translate3d(0, 0, 0)"
+        : "translate3d(0, 0.5rem, 0)";
+    rail.style.pointerEvents =
+      visible ? "auto" : "none";
+  }, [
+    personalRankViewActive,
+  ]);
+
+  const scrollToCommand = () => {
+    const viewport =
+      viewportRef.current;
+
+    const commandTop =
+      commandSnapRef.current
+        ?.offsetTop ?? 0;
+
+    closeCommandPopovers();
+
+    viewport?.scrollTo({
+      top: commandTop,
+      behavior: "smooth",
+    });
+  };
+
+  const returnToBoardTop = () => {
+    spotlightExitDestinationRef.current =
+      "overview";
+
+    const hasPersonalNavigation =
+      preferences.spotlightMode !==
+        "off" ||
+      preferences.rankWindowStart !==
+        null ||
+      personalRankViewActive;
+
+    if (hasPersonalNavigation) {
+      onPreferencesChange({
+        spotlightMode: "off",
+        rankWindowStart: null,
+      });
+    }
+
+    closeCommandPopovers();
+
+    window.requestAnimationFrame(
+      () => {
+        viewportRef.current?.scrollTo({
+          top: 0,
+          behavior: "smooth",
+        });
+      },
+    );
+  };
+
+  const cycleSpotlight = () => {
+    if (
+      preferences.spotlightMode ===
+      "off"
+    ) {
+      onPreferencesChange({
+        spotlightMode: "center",
+        rankWindowStart: null,
+      });
+
+      closeCommandPopovers();
+      return;
+    }
+
+    returnToBoardTop();
   };
 
   const applyRankWindow = () => {
@@ -1228,19 +1462,23 @@ export function LivingLeaderboard({
   };
 
   useEffect(() => {
+    const viewport =
+      viewportRef.current;
+
+    const rowsViewport =
+      rowScrollRef.current;
+
     if (
       !spotlightTarget ||
-      !viewportRef.current
+      !viewport ||
+      !rowsViewport
     ) {
       return;
     }
 
-    const viewport =
-      viewportRef.current;
-
     const candidates =
       Array.from(
-        viewport.querySelectorAll<HTMLElement>(
+        rowsViewport.querySelectorAll<HTMLElement>(
           '[data-living-spotlight="true"]',
         ),
       );
@@ -1256,50 +1494,38 @@ export function LivingLeaderboard({
       return;
     }
 
-    const viewportRect =
-      viewport.getBoundingClientRect();
+    const rowsRect =
+      rowsViewport.getBoundingClientRect();
 
     const targetRect =
       target.getBoundingClientRect();
 
-    const stickyHeader =
-      viewport.querySelector<HTMLElement>(
-        "thead",
-      );
-
-    const stickyHeight =
-      stickyHeader
-        ?.getBoundingClientRect()
-        .height ?? 0;
-
     const targetTop =
-      viewport.scrollTop +
+      rowsViewport.scrollTop +
       targetRect.top -
-      viewportRect.top;
+      rowsRect.top;
 
     const desiredTop =
-      spotlightTarget.mode ===
-      "center"
-        ? targetTop -
-          (
-            viewport.clientHeight -
-            targetRect.height
-          ) /
-            2
-        : targetTop -
-          stickyHeight -
-          8;
+      targetTop -
+      (
+        rowsViewport.clientHeight -
+        targetRect.height
+      ) /
+        2;
 
     viewport.scrollTo({
+      top:
+        tableSnapRef.current
+          ?.offsetTop ?? 0,
+      behavior: "smooth",
+    });
+
+    rowsViewport.scrollTo({
       top: Math.max(
         0,
         desiredTop,
       ),
-      behavior:
-        spotlightTarget.mode ===
-        "center"
-          ? "smooth"
-          : "auto",
+      behavior: "smooth",
     });
   }, [
     spotlightTarget,
@@ -1309,22 +1535,22 @@ export function LivingLeaderboard({
     const anchor =
       prependAnchorRef.current;
 
-    const viewport =
-      viewportRef.current;
+    const rowsViewport =
+      rowScrollRef.current;
 
     if (
       !anchor ||
-      !viewport
+      !rowsViewport
     ) {
       return;
     }
 
     const addedHeight =
-      viewport.scrollHeight -
+      rowsViewport.scrollHeight -
       anchor.scrollHeight;
 
     if (addedHeight > 0) {
-      viewport.scrollTop =
+      rowsViewport.scrollTop =
         anchor.scrollTop +
         addedHeight;
     }
@@ -1345,17 +1571,41 @@ export function LivingLeaderboard({
     const viewport =
       viewportRef.current;
 
-    // top/center -> off:
+    // Spotlight -> off:
     // canonical rows have already been restored in memory.
-    // Put rank #1 at the top before the browser paints.
+    // Explicit Spotlight/Top exits return to full overview;
+    // other controller-owned exits preserve the table focus.
     if (
       previous &&
       !spotlightTarget &&
       viewport
     ) {
+      const destination =
+        spotlightExitDestinationRef.current;
+
       viewport.scrollTop =
-        tableSnapRef.current?.offsetTop ??
-        0;
+        destination === "overview"
+          ? 0
+          : tableSnapRef.current
+              ?.offsetTop ?? 0;
+
+      setFocusStageImperatively(
+        destination === "overview"
+          ? "overview"
+          : "table",
+      );
+
+      rowScrollRef.current?.scrollTo({
+        top: 0,
+        behavior: "auto",
+      });
+
+      syncAppChromeToScroll(
+        viewport.scrollTop,
+      );
+
+      spotlightExitDestinationRef.current =
+        "table";
     }
 
     previousSpotlightTargetRef.current =
@@ -1369,6 +1619,10 @@ export function LivingLeaderboard({
   ) => {
     const node =
       event.currentTarget;
+
+    syncAppChromeToScroll(
+      node.scrollTop,
+    );
 
     const commandTop =
       commandSnapRef.current
@@ -1401,11 +1655,22 @@ export function LivingLeaderboard({
           ? "command"
           : "overview";
 
-    setFocusStage((current) =>
-      current === nextFocusStage
-        ? current
-        : nextFocusStage,
-    );
+    if (
+      focusStageRef.current !==
+      nextFocusStage
+    ) {
+      setFocusStageImperatively(
+        nextFocusStage,
+      );
+    }
+
+  };
+
+  const handleRowsScroll = (
+    event: UIEvent<HTMLDivElement>,
+  ) => {
+    const node =
+      event.currentTarget;
 
     if (
       loading ||
@@ -1419,52 +1684,52 @@ export function LivingLeaderboard({
         spotlightTarget,
       );
 
-    if (spotlightActive) {
+    // Spotlight starts as a centered 50/50 context window.
+    // The inner row plane then expands lazily before either
+    // loaded boundary while preserving the visible warrior.
+    if (
+      spotlightActive &&
+      hasEarlier &&
+      node.scrollTop <= 1800
+    ) {
       if (
-        hasEarlier &&
-        node.scrollTop <= 500
+        !prependAnchorRef.current
       ) {
-        if (
-          !prependAnchorRef.current
-        ) {
-          prependAnchorRef.current = {
-            scrollHeight:
-              node.scrollHeight,
-            scrollTop:
-              node.scrollTop,
-          };
-        }
-
-        onLoadEarlier();
-        return;
+        prependAnchorRef.current = {
+          scrollHeight:
+            node.scrollHeight,
+          scrollTop:
+            node.scrollTop,
+        };
       }
 
-      if (
-        hasMore &&
-        node.scrollTop +
-          node.clientHeight >=
-        node.scrollHeight -
-          900
-      ) {
-        onLoadMore();
-      }
+      onLoadEarlier();
+      return;
+    }
 
+    if (
+      spotlightActive &&
+      hasMore &&
+      node.scrollTop +
+        node.clientHeight >=
+      node.scrollHeight -
+        1800
+    ) {
+      onLoadMore();
       return;
     }
 
     // Explicit rank windows stay deliberately bounded.
-    if (
-      personalRankViewActive ||
-      !hasMore
-    ) {
+    if (personalRankViewActive) {
       return;
     }
 
     if (
+      hasMore &&
       node.scrollTop +
         node.clientHeight >=
       node.scrollHeight -
-        900
+        1800
     ) {
       onLoadMore();
     }
@@ -1509,11 +1774,75 @@ export function LivingLeaderboard({
     <section
       ref={viewportRef}
       data-living-leaderboard-viewport
-      data-leaderboard-focus={focusStage}
+      data-leaderboard-focus={
+        focusStageRef.current
+      }
       onScroll={handleViewportScroll}
       className="relative flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain scroll-smooth rounded-[2rem] border border-amber-200/22 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.11),transparent_30%),radial-gradient(circle_at_88%_0%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(145deg,#0b1728,#050b15_56%,#02060d)] shadow-[0_40px_130px_rgba(0,0,0,0.48),0_0_0_1px_rgba(201,155,60,0.045)] [scroll-snap-type:y_mandatory] [scrollbar-gutter:stable]"
     >
       <div className="pointer-events-none absolute inset-x-16 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/50 to-transparent" />
+
+      <div
+        ref={returnRailRef}
+        data-leaderboard-return-rail
+        style={{
+          opacity:
+            personalRankViewActive ||
+            focusStageRef.current !==
+              "overview"
+              ? 1
+              : 0,
+          transform:
+            personalRankViewActive ||
+            focusStageRef.current !==
+              "overview"
+              ? "translate3d(0, 0, 0)"
+              : "translate3d(0, 0.5rem, 0)",
+          pointerEvents:
+            personalRankViewActive ||
+            focusStageRef.current !==
+              "overview"
+              ? "auto"
+              : "none",
+        }}
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] right-3 z-[175] transition-[opacity,transform] duration-150 lg:bottom-5 lg:right-5"
+      >
+          <div className="pointer-events-auto flex items-center gap-1 rounded-2xl border border-amber-100/16 bg-[#030914]/92 p-1.5 shadow-[0_18px_55px_rgba(0,0,0,0.48),inset_0_1px_0_rgba(255,255,255,0.055)] backdrop-blur-xl">
+            <button
+              type="button"
+              onClick={scrollToCommand}
+              aria-label="Show leaderboard commands"
+              title="Commands"
+              className="group inline-flex h-10 items-center gap-2 rounded-xl border border-transparent px-3 text-slate-400 transition-[border-color,background-color,color,transform] duration-150 hover:-translate-y-px hover:border-cyan-200/16 hover:bg-cyan-300/[0.055] hover:text-cyan-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/35"
+            >
+              <Search
+                className="h-4 w-4"
+                aria-hidden="true"
+              />
+              <span className="hidden text-[9px] font-black uppercase tracking-[0.16em] sm:inline">
+                Commands
+              </span>
+            </button>
+
+            <div className="h-6 w-px bg-white/[0.08]" />
+
+            <button
+              type="button"
+              onClick={returnToBoardTop}
+              aria-label="Return to leaderboard top"
+              title="Top"
+              className="group inline-flex h-10 items-center gap-2 rounded-xl border border-transparent px-3 text-amber-100/80 transition-[border-color,background-color,color,transform] duration-150 hover:-translate-y-px hover:border-amber-200/22 hover:bg-amber-300/[0.07] hover:text-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/40"
+            >
+              <Crown
+                className="h-4 w-4"
+                aria-hidden="true"
+              />
+              <span className="hidden text-[9px] font-black uppercase tracking-[0.16em] sm:inline">
+                Top
+              </span>
+            </button>
+          </div>
+      </div>
 
       <div
         data-leaderboard-snap="overview"
@@ -1789,11 +2118,8 @@ export function LivingLeaderboard({
                 ? "Sign in to spotlight yourself"
                 : preferences.spotlightMode ===
                     "off"
-                  ? "Spotlight me · top"
-                  : preferences.spotlightMode ===
-                      "top"
-                    ? "Spotlight me · center"
-                    : "Exit spotlight"
+                  ? "Spotlight me · center"
+                  : "Exit spotlight · return to top"
             }
             onClick={
               cycleSpotlight
@@ -2243,13 +2569,18 @@ export function LivingLeaderboard({
       <div
         ref={tableSnapRef}
         data-leaderboard-snap="table"
-        className="flex min-h-full shrink-0 flex-col overflow-visible border-t border-amber-200/10 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.04),transparent_24%)] px-2 pb-2 sm:px-3 sm:pb-3 lg:px-4 lg:pb-4 [scroll-snap-align:start] [scroll-snap-stop:always]"
+        className="flex h-full min-h-full shrink-0 flex-col overflow-visible border-t border-amber-200/10 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.04),transparent_24%)] px-2 pb-2 sm:px-3 sm:pb-3 lg:px-4 lg:pb-4 [scroll-snap-align:start] [scroll-snap-stop:always]"
         aria-busy={
           loading ||
           loadingMore
         }
       >
-        <div className="min-h-0 flex-1 pr-1">
+        <div
+          ref={rowScrollRef}
+          data-leaderboard-row-scroll
+          onScroll={handleRowsScroll}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable] [scrollbar-width:thin] [-webkit-overflow-scrolling:touch]"
+        >
           {loading &&
           entries.length === 0 ? (
             <div

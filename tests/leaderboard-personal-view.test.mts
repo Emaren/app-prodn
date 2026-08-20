@@ -62,6 +62,16 @@ test("Living preference normalization reserves standard discovery windows", () =
     "center",
   );
 
+  const legacyTop =
+    normalizeLivingLeaderboardPreferences({
+      spotlightMode: "top",
+    });
+
+  assert.equal(
+    legacyTop.spotlightMode,
+    "center",
+  );
+
   assert.equal(
     normalized.rankWindowStart,
     432,
@@ -166,7 +176,12 @@ test("controller loads personal rank windows directly instead of walking from ra
 
   assert.match(
     page,
-    /Math\.floor\(\s*rows\s*\/\s*2/,
+    /SPOTLIGHT_CONTEXT_ROWS = 50/,
+  );
+
+  assert.match(
+    page,
+    /SPOTLIGHT_INITIAL_ROWS/,
   );
 });
 

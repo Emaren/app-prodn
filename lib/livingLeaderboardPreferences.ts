@@ -48,7 +48,6 @@ export type LivingLeaderboardColumnMode =
 
 export type LivingLeaderboardSpotlightMode =
   | "off"
-  | "top"
   | "center";
 
 export type LivingLeaderboardMoverDirection =
@@ -273,9 +272,9 @@ export function normalizeLivingLeaderboardPreferences(
 
   const spotlightMode:
     LivingLeaderboardSpotlightMode =
-    input.spotlightMode === "top" ||
-    input.spotlightMode === "center"
-      ? input.spotlightMode
+    input.spotlightMode === "center" ||
+    input.spotlightMode === "top"
+      ? "center"
       : "off";
 
   const rankWindowStartRaw =

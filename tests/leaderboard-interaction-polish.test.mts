@@ -218,7 +218,12 @@ test("Spotlight exit restores canonical cache without waiting", () => {
 
   assert.match(
     living,
-    /tableSnapRef\.current\?\.offsetTop/,
+    /spotlightExitDestinationRef/,
+  );
+
+  assert.match(
+    living,
+    /destination === "overview"[\s\S]*\? 0/,
   );
 });
 
@@ -227,7 +232,26 @@ test("Extreme leaderboard owns three responsive scroll focus presets", () => {
     "components/leaderboard/LivingLeaderboard.tsx",
   );
 
-  assert.match(living, /data-leaderboard-focus=\{focusStage\}/);
+  assert.match(
+    living,
+    /data-leaderboard-focus=\{[\s\S]*focusStageRef\.current/,
+  );
+  assert.match(
+    living,
+    /focusStageRef/,
+  );
+  assert.doesNotMatch(
+    living,
+    /\bsetFocusStage\s*\(/,
+  );
+  assert.match(
+    living,
+    /header\.style\.transition\s*=\s*"none"/,
+  );
+  assert.match(
+    living,
+    /header\.style\.transform/,
+  );
   assert.match(living, /data-leaderboard-snap="overview"/);
   assert.match(living, /data-leaderboard-snap="command"/);
   assert.match(living, /data-leaderboard-snap="table"/);
@@ -269,5 +293,149 @@ test("Extreme leaderboard owns three responsive scroll focus presets", () => {
   assert.doesNotMatch(
     livingTable,
     /hidden overflow-x-auto rounded-\[1\.4rem\]/,
+  );
+});
+
+test("rank rows own wheel traversal independently from chrome focus", () => {
+  const living = source(
+    "components/leaderboard/LivingLeaderboard.tsx",
+  );
+
+  assert.match(
+    living,
+    /data-leaderboard-row-scroll/,
+  );
+  assert.match(
+    living,
+    /rowScrollRef/,
+  );
+  assert.match(
+    living,
+    /onScroll=\{handleRowsScroll\}/,
+  );
+  assert.match(
+    living,
+    /overflow-y-auto overscroll-contain/,
+  );
+  assert.match(
+    living,
+    /rowsViewport\.scrollHeight -\s*anchor\.scrollHeight/,
+  );
+  assert.match(
+    living,
+    /spotlightActive &&\s*hasEarlier &&\s*node\.scrollTop <= 1800/,
+  );
+  assert.match(
+    living,
+    /viewport\.scrollTo\(\{[\s\S]*tableSnapRef\.current[\s\S]*rowsViewport\.scrollTo/,
+  );
+});
+
+test("Spotlight is a two-state centered expandable view", () => {
+  const preferences = source(
+    "lib/livingLeaderboardPreferences.ts",
+  );
+  const page = source(
+    "components/leaderboard/ModernLeaderboardPage.tsx",
+  );
+  const living = source(
+    "components/leaderboard/LivingLeaderboard.tsx",
+  );
+
+  const spotlightType =
+    preferences.slice(
+      preferences.indexOf(
+        "export type LivingLeaderboardSpotlightMode",
+      ),
+      preferences.indexOf(
+        "export type LivingLeaderboardMoverDirection",
+      ),
+    );
+
+  assert.match(
+    spotlightType,
+    /"off"/,
+  );
+  assert.match(
+    spotlightType,
+    /"center"/,
+  );
+  assert.doesNotMatch(
+    spotlightType,
+    /"top"/,
+  );
+
+  assert.match(
+    preferences,
+    /input\.spotlightMode === "center"[\s\S]*input\.spotlightMode === "top"[\s\S]*\? "center"/,
+  );
+
+  assert.match(
+    living,
+    /spotlightMode: "center"/,
+  );
+  assert.match(
+    living,
+    /Exit spotlight · return to top/,
+  );
+  assert.match(
+    living,
+    /Spotlight starts as a centered 50\/50 context window/,
+  );
+  assert.match(
+    living,
+    /onLoadEarlier\(\)/,
+  );
+  assert.match(
+    living,
+    /onLoadMore\(\)/,
+  );
+
+  assert.match(
+    page,
+    /SPOTLIGHT_CONTEXT_ROWS = 50/,
+  );
+  assert.match(
+    page,
+    /SPOTLIGHT_INITIAL_ROWS =\s*SPOTLIGHT_CONTEXT_ROWS \* 2 \+ 1/,
+  );
+  assert.match(
+    page,
+    /const contextBefore =\s*SPOTLIGHT_CONTEXT_ROWS/,
+  );
+  assert.match(
+    page,
+    /const spotlightRows =\s*SPOTLIGHT_INITIAL_ROWS/,
+  );
+});
+
+test("deep leaderboard navigation exposes premium Commands and Top returns", () => {
+  const living = source(
+    "components/leaderboard/LivingLeaderboard.tsx",
+  );
+
+  assert.match(
+    living,
+    /data-leaderboard-return-rail/,
+  );
+  assert.match(
+    living,
+    /const scrollToCommand/,
+  );
+  assert.match(
+    living,
+    /const returnToBoardTop/,
+  );
+  assert.match(
+    living,
+    /aria-label="Show leaderboard commands"/,
+  );
+  assert.match(
+    living,
+    /aria-label="Return to leaderboard top"/,
+  );
+  assert.match(
+    living,
+    /rankWindowStart: null/,
   );
 });

@@ -37,6 +37,9 @@ import {
 
 const RESET_PAGE_SIZE = 50;
 const SCROLL_PAGE_SIZE = 150;
+const SPOTLIGHT_CONTEXT_ROWS = 50;
+const SPOTLIGHT_INITIAL_ROWS =
+  SPOTLIGHT_CONTEXT_ROWS * 2 + 1;
 
 type LeaderboardResponse = LobbyLeaderboardSummary & {
   ok?: boolean;
@@ -477,12 +480,8 @@ export function ModernLeaderboardPage({
           );
         }
 
-        const rows =
-          livingPreferences
-            .rankWindowRows;
-
         const cacheKey =
-          `${lane}:${scope}:${rows}`;
+          `${lane}:${scope}:spotlight:${SPOTLIGHT_INITIAL_ROWS}`;
 
         const existing =
           spotlightWarmRef.current;
@@ -567,13 +566,12 @@ export function ModernLeaderboardPage({
                 );
 
               // ----------------------------------------------
-              // Load one reusable window:
+              // Load one reusable centered window:
               //
-              // [ rows above ][ warrior ][ rows below ]
+              // [ 50 above ][ warrior ][ 50 below ]
               //
-              // Top mode scrolls warrior to top.
-              // Center mode scrolls same warrior to center.
-              // No second fetch is required.
+              // Boundary scrolling can extend either direction
+              // later without making Spotlight itself expensive.
               // ----------------------------------------------
 
               const offset =
@@ -581,14 +579,11 @@ export function ModernLeaderboardPage({
                   0,
                   rank -
                     1 -
-                    rows,
+                    SPOTLIGHT_CONTEXT_ROWS,
                 );
 
               const limit =
-                Math.min(
-                  600,
-                  rows * 2 + 1,
-                );
+                SPOTLIGHT_INITIAL_ROWS;
 
               const boardParams =
                 new URLSearchParams({
@@ -705,8 +700,6 @@ export function ModernLeaderboardPage({
       [
         isExtreme,
         lane,
-        livingPreferences
-          .rankWindowRows,
         livingPreferencesAuthenticated,
         query,
         scope,
@@ -1439,10 +1432,7 @@ export function ModernLeaderboardPage({
         >[0],
       ) => {
         const activatesRankNavigation =
-          (
-            patch.spotlightMode === "top" ||
-            patch.spotlightMode === "center"
-          ) ||
+          patch.spotlightMode === "center" ||
           typeof patch.rankWindowStart === "number";
 
         const exitsSpotlight =
@@ -1466,7 +1456,7 @@ export function ModernLeaderboardPage({
         }
 
         if (exitsSpotlight) {
-          // Third Spotlight click is a LOCAL UI operation.
+          // Spotlight exit is a LOCAL UI operation.
           // Cancel ownership of any personal-view request
           // before preferences update and restore the already
           // resident canonical lane immediately.
@@ -1618,7 +1608,7 @@ export function ModernLeaderboardPage({
       const rankWindowStart =
         livingPreferences.rankWindowStart;
 
-      const rows =
+      const rankWindowRows =
         livingPreferences.rankWindowRows;
 
       const active =
@@ -1664,14 +1654,14 @@ export function ModernLeaderboardPage({
                 1,
             ),
           limitOverride:
-            rows,
+            rankWindowRows,
         });
 
         return;
       }
 
       const warmCacheKey =
-        `${lane}:${scope}:${rows}`;
+        `${lane}:${scope}:spotlight:${SPOTLIGHT_INITIAL_ROWS}`;
 
       const warm =
         spotlightWarmRef.current;
@@ -1720,10 +1710,7 @@ export function ModernLeaderboardPage({
           name:
             warm.name,
           mode:
-            spotlightMode ===
-            "center"
-              ? "center"
-              : "top",
+            "center",
         });
 
         setSpotlightLoading(
@@ -1792,12 +1779,7 @@ export function ModernLeaderboardPage({
           );
 
         const contextBefore =
-          spotlightMode ===
-          "center"
-            ? Math.floor(
-                rows / 2,
-              )
-            : rows;
+          SPOTLIGHT_CONTEXT_ROWS;
 
         const offset =
           Math.max(
@@ -1808,13 +1790,7 @@ export function ModernLeaderboardPage({
           );
 
         const spotlightRows =
-          spotlightMode ===
-          "center"
-            ? rows
-            : Math.min(
-                600,
-                rows * 2,
-              );
+          SPOTLIGHT_INITIAL_ROWS;
 
         await loadPage({
           reset: true,
@@ -1840,10 +1816,7 @@ export function ModernLeaderboardPage({
             payload.name ||
             payload.key,
           mode:
-            spotlightMode ===
-            "center"
-              ? "center"
-              : "top",
+            "center",
         });
       } catch (nextError) {
         if (
