@@ -200,3 +200,16 @@ Decision: the release stage uses the certified V1.2 cold dependency-fetch path.
 Do not reintroduce a copied persistent dependency/build cache without new
 evidence that changes the storage and copy-time economics. Cache may accelerate
 computation, but cache is never release truth.
+
+## Automatic critical-route release pulse
+
+Every successful `aoe2war finish` now runs one cheap persisted public HTTP pulse
+after release certification. The pulse covers the small critical route set and
+records HTTP status, median TTFB, median total time, release/build identity and
+a like-for-like comparison with the prior pulse.
+
+The pulse is observational. Release certification remains authoritative; a
+transient public-network failure is recorded as a post-release performance
+warning rather than rewriting a certified runtime as unshipped. Full 66-route
+and browser readiness/Core Web Vitals campaigns remain explicit higher-cost
+benchmarks.

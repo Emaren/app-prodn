@@ -12,6 +12,11 @@ STORAGE_RETENTION="$BIN_DIR/../scripts/aoe2_storage_retention.py"
 STORAGE="$BIN_DIR/../scripts/aoe2_storage.py"
 SPEED="$BIN_DIR/../scripts/aoe2_speed.py"
 DOCS_OS="$BIN_DIR/../scripts/aoe2_docs.py"
+COUNCIL="$BIN_DIR/../scripts/aoe2_council.py"
+WORKSPACE="$BIN_DIR/../scripts/aoe2_workspace.py"
+HOST_OS="$BIN_DIR/../scripts/aoe2_host.py"
+RECOVERY_OS="$BIN_DIR/../scripts/aoe2_recovery.py"
+SPEED_PULSE="$BIN_DIR/../scripts/aoe2_speed_pulse.py"
 
 usage() {
   cat <<'EOF'
@@ -24,9 +29,13 @@ Usage:
   aoe2war doctor [--json] [--strict]
   aoe2war update [--apply] [--json]
   aoe2war docs <status|impact|audit|update> [options]
-  aoe2war speed [status|release-history|benchmark|compare|diagnose]
+  aoe2war speed [status|release-history|benchmark|compare|diagnose|pulse]
   aoe2war storage-retention [--apply] [--json]
   aoe2war storage <status|plan|maintain|verify> [options]
+  aoe2war council [--json]
+  aoe2war workspace <status|plan|clean> [options]
+  aoe2war host <status|tidy|maintenance-plan> [options]
+  aoe2war recovery <status|plan> [options]
   aoe2war finish [--dry-run] [--json] [-m MESSAGE]
   aoe2war bridge [--once] [bridge options]
   aoe2war status [--json]
@@ -172,6 +181,46 @@ ADVANCED / DIAGNOSTIC
       Direct low-level access to the release engine. Use only when you know
       exactly which release-engine operation you want.
 
+KINGDOM INTELLIGENCE / HYGIENE
+
+  aoe2war council
+      Read-only prioritized command center. Combines Audit, Doctor, Storage,
+      Host, Recovery, Workspace and Performance evidence into ranked practical
+      recommendations with one best next action.
+
+  aoe2war speed pulse
+      Cheap persisted critical-route public performance pulse. `aoe2war finish`
+      runs this automatically after certification without weakening release truth.
+
+  aoe2war workspace status
+      Classify registered worktrees as main, clean+merged cleanup candidates,
+      dirty preserved review, or active unmerged work. Unregistered siblings are
+      surfaced but never removed automatically.
+
+  aoe2war workspace clean [--apply]
+      Preview or remove only clean registered worktrees whose HEAD is already an
+      ancestor of main. Dirty, unmerged and unregistered directories are protected.
+
+  aoe2war host status
+      Read-only host hygiene: reboot/update state, transient release failures,
+      Traffic rollup timer and protected web/API/Wolo health.
+
+  aoe2war host tidy [--apply]
+      Reset only failed AoE2WAR build/dependency transient instances and, in the
+      full lane, daemon-reload/rearm the known Traffic rollup timer. No package
+      upgrades and no reboot.
+
+  aoe2war host maintenance-plan
+      Plan protected package/reboot maintenance. Fail closed until the off-host
+      Recovery OS contract has a named authority and verified restore proof.
+
+  aoe2war recovery status
+      Show whether encrypted off-host Evidence Vault + restore proof is actually
+      configured. Local/mounted copies do not count as off-host recovery.
+
+  aoe2war recovery plan
+      Show the exact fail-closed steps required before host patch/reboot work.
+
 NORMAL RHYTHM
 
   Before work:
@@ -233,7 +282,27 @@ case "$command" in
     ;;
   speed)
     shift
+    if [ "${1:-}" = "pulse" ]; then
+      shift
+      exec python3 "$SPEED_PULSE" "$@"
+    fi
     exec python3 "$SPEED" "$@"
+    ;;
+  council)
+    shift
+    exec python3 "$COUNCIL" "$@"
+    ;;
+  workspace)
+    shift
+    exec python3 "$WORKSPACE" "$@"
+    ;;
+  host)
+    shift
+    exec python3 "$HOST_OS" "$@"
+    ;;
+  recovery)
+    shift
+    exec python3 "$RECOVERY_OS" "$@"
     ;;
   finish)
     shift

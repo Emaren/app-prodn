@@ -217,3 +217,24 @@ Maintenance is complete only when:
 
 Never rewrite an older maintenance or release receipt to represent the new
 state. Append a superseding record and keep the original evidence.
+
+## Host OS bounded hygiene and maintenance gate
+
+`aoe2war host status` is read-only host hygiene. `aoe2war host tidy --apply`
+may reset only failed `aoe2war-build@` / `aoe2war-deps@` transient instances
+after their evidence has already been captured. The full tidy lane also runs a
+systemd daemon reload and rearms the known AoE2WAR Traffic daily-rollup timer
+when enabled. It does not upgrade packages and does not reboot the host.
+
+Host OS uses the operations contract's explicit `root_maintenance_host`
+authority for these bounded systemd operations rather than assuming the
+ordinary production SSH user has maintenance privileges.
+
+A successful `aoe2war finish` invokes only the transient-cleanup lane before the
+final Doctor, preventing historical failed build instances from permanently
+polluting current host health.
+
+`aoe2war host maintenance-plan` remains read-only and fail-closed while the
+independent mutable-state Recovery OS contract lacks a named authority and
+verified restore proof. Package upgrades and reboot stay explicit maintenance
+operations.

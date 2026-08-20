@@ -1987,6 +1987,47 @@ def execute_finish(
     receipt["operator_bridge_reload"] = reload_operator_bridge_after_release(progress)
     finish_phase(receipt, "operator_bridge_reload", checkpoint)
 
+    start_phase(receipt, "release_transient_hygiene", checkpoint)
+    try:
+        rc, hygiene = run_json_cli(
+            [
+                str(CLI),
+                "host",
+                "tidy",
+                "--apply",
+                "--transients-only",
+                "--json",
+            ],
+            label=(
+                "Clearing recorded failed AoE2WAR "
+                "release transients..."
+            ),
+            progress=progress,
+            timeout=120,
+        )
+        receipt["release_transient_hygiene"] = {
+            "rc": rc,
+            "result": hygiene,
+        }
+        progress.done(
+            "Release transient hygiene complete — "
+            f"reset={hygiene.get('reset_transients', 0)}"
+        )
+    except Exception as exc:
+        receipt["release_transient_hygiene"] = {
+            "status": "WARN",
+            "error": str(exc),
+        }
+        progress.done(
+            "Release transient hygiene unavailable; "
+            "recorded as advisory warning"
+        )
+    finish_phase(
+        receipt,
+        "release_transient_hygiene",
+        checkpoint,
+    )
+
     start_phase(receipt, "estate_audit", checkpoint)
     progress.start("Running independent final estate audit...")
     rc, audit_output = run_capture_with_heartbeat(
@@ -2049,6 +2090,46 @@ def execute_finish(
     receipt["final_release"] = final_release
     assert_certified_release(final_release)
     finish_phase(receipt, "final_certification", checkpoint)
+
+    start_phase(receipt, "site_performance_pulse", checkpoint)
+    try:
+        rc, pulse = run_json_cli(
+            [
+                sys.executable,
+                str(ROOT / "scripts" / "aoe2_speed_pulse.py"),
+                "--json",
+            ],
+            label=(
+                "Running cheap post-release public "
+                "performance pulse..."
+            ),
+            progress=progress,
+            timeout=180,
+        )
+        receipt["site_performance_pulse"] = {
+            "rc": rc,
+            "result": pulse,
+        }
+        progress.done(
+            "Site performance pulse complete — "
+            f"{pulse.get('status', 'UNKNOWN')} · routes="
+            f"{(pulse.get('summary') or {}).get('ok_count', '—')}/"
+            f"{(pulse.get('summary') or {}).get('sample_count', '—')}"
+        )
+    except Exception as exc:
+        receipt["site_performance_pulse"] = {
+            "status": "WARN",
+            "error": str(exc),
+        }
+        progress.done(
+            "Site performance pulse unavailable; "
+            "release certification remains authoritative"
+        )
+    finish_phase(
+        receipt,
+        "site_performance_pulse",
+        checkpoint,
+    )
 
     receipt["status"] = "CERTIFIED"
     receipt["completed_at"] = datetime.now(timezone.utc).isoformat()

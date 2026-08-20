@@ -163,3 +163,23 @@ visible to Doctor rather than hidden behind the last successful upload.
 - If the vault becomes required for release policy, that requirement must be an
   explicit fail-closed gate with a documented emergency override and receipt;
   it must not be inferred from a green application deploy.
+
+## Recovery OS and Council gating
+
+`aoe2war recovery status` exposes the actual `offsite_evidence` contract rather
+than inferring safety from local or mounted-volume copies. `aoe2war recovery
+plan` lists the recovery-proof requirements and deliberately performs no backup
+mutation.
+
+GitHub is already the independent source-code recovery authority. The remaining
+Recovery OS question is only irreplaceable mutable production state. A paid
+third storage provider is not required by the contract: a deliberately small,
+verified Mac survival copy may satisfy the independent-state requirement if it
+contains the minimum state needed to recover after total Hetzner loss.
+
+`aoe2war council` ranks missing independent mutable-state recovery proof ahead
+of host reboot/package maintenance. Host maintenance planning remains blocked
+until the contract names the chosen independent authority and a dated verified
+restore-proof receipt. This prevents "source is in GitHub" or "a backup exists"
+from being confused with "mutable production state has been restored in a
+drill".
