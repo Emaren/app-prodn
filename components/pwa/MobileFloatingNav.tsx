@@ -66,6 +66,7 @@ export default function MobileFloatingNav() {
   if (mode === "hidden") {
     return (
       <button
+        data-mobile-floating-nav
         type="button"
         onClick={() => setStoredMode("normal")}
         className="fixed bottom-[calc(env(safe-area-inset-bottom)+0.7rem)] left-1/2 z-[170] inline-flex -translate-x-1/2 items-center gap-2 rounded-full border border-amber-200/16 bg-[#07101a]/94 px-4 py-2.5 text-xs font-semibold text-slate-200 shadow-[0_18px_70px_rgba(0,0,0,0.52)] backdrop-blur-2xl transition hover:border-amber-200/30 lg:hidden"
@@ -82,6 +83,7 @@ export default function MobileFloatingNav() {
 
   return (
     <div
+      data-mobile-floating-nav
       className={`fixed bottom-[calc(env(safe-area-inset-bottom)+0.7rem)] left-1/2 z-[170] w-[calc(100%-1.25rem)] max-w-[31rem] -translate-x-1/2 overflow-hidden rounded-[1.35rem] border border-amber-200/14 bg-[#07101a]/94 shadow-[0_24px_90px_rgba(0,0,0,0.62)] backdrop-blur-2xl transition lg:hidden ${
         expanded ? "p-2.5" : "p-1.5"
       }`}

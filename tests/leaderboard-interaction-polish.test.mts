@@ -218,6 +218,56 @@ test("Spotlight exit restores canonical cache without waiting", () => {
 
   assert.match(
     living,
-    /viewport\.scrollTop\s*=\s*0/,
+    /tableSnapRef\.current\?\.offsetTop/,
+  );
+});
+
+test("Extreme leaderboard owns three responsive scroll focus presets", () => {
+  const living = source(
+    "components/leaderboard/LivingLeaderboard.tsx",
+  );
+
+  assert.match(living, /data-leaderboard-focus=\{focusStage\}/);
+  assert.match(living, /data-leaderboard-snap="overview"/);
+  assert.match(living, /data-leaderboard-snap="command"/);
+  assert.match(living, /data-leaderboard-snap="table"/);
+  assert.match(living, /\[scroll-snap-type:y_mandatory\]/);
+  assert.match(living, /\[scroll-snap-stop:always\]/);
+  assert.match(living, /commandSnapRef/);
+  assert.match(living, /tableSnapRef/);
+  assert.match(living, /appHeaderHeight/);
+
+  const appShell = readFileSync(
+    join(process.cwd(), "app", "AppShell.tsx"),
+    "utf8",
+  );
+  const mobileNav = readFileSync(
+    join(process.cwd(), "components", "pwa", "MobileFloatingNav.tsx"),
+    "utf8",
+  );
+  const globals = readFileSync(
+    join(process.cwd(), "app", "globals.css"),
+    "utf8",
+  );
+
+  assert.match(appShell, /data-app-shell-header/);
+  assert.match(mobileNav, /data-mobile-floating-nav/);
+  assert.match(globals, /data-leaderboard-focus="command"/);
+  assert.match(globals, /data-leaderboard-focus="table"/);
+  assert.match(globals, /\[data-app-shell-header\]/);
+  assert.match(globals, /\[data-mobile-floating-nav\]/);
+
+  const livingTable = source(
+    "components/leaderboard/LivingLeaderboardTable.tsx",
+  );
+
+  assert.match(
+    livingTable,
+    /<thead className="sticky top-0/,
+  );
+
+  assert.doesNotMatch(
+    livingTable,
+    /hidden overflow-x-auto rounded-\[1\.4rem\]/,
   );
 });

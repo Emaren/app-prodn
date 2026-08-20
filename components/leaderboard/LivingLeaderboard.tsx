@@ -776,6 +776,73 @@ export function LivingLeaderboard({
       null,
     );
 
+  const commandSnapRef =
+    useRef<HTMLDivElement | null>(
+      null,
+    );
+
+  const tableSnapRef =
+    useRef<HTMLDivElement | null>(
+      null,
+    );
+
+  const [
+    focusStage,
+    setFocusStage,
+  ] =
+    useState<
+      "overview" | "command" | "table"
+    >("overview");
+
+  const [
+    appHeaderHeight,
+    setAppHeaderHeight,
+  ] = useState(0);
+
+  useLayoutEffect(() => {
+    const header =
+      document.querySelector<HTMLElement>(
+        "[data-app-shell-header]",
+      );
+
+    if (!header) {
+      return;
+    }
+
+    const measure = () => {
+      const nextHeight =
+        Math.ceil(
+          header.getBoundingClientRect()
+            .height,
+        );
+
+      setAppHeaderHeight((current) =>
+        current === nextHeight
+          ? current
+          : nextHeight,
+      );
+    };
+
+    measure();
+
+    const observer =
+      new ResizeObserver(measure);
+
+    observer.observe(header);
+    window.addEventListener(
+      "resize",
+      measure,
+    );
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener(
+        "resize",
+        measure,
+      );
+    };
+  }, []);
+
   const prependAnchorRef =
     useRef<{
       scrollHeight: number;
@@ -1286,7 +1353,9 @@ export function LivingLeaderboard({
       !spotlightTarget &&
       viewport
     ) {
-      viewport.scrollTop = 0;
+      viewport.scrollTop =
+        tableSnapRef.current?.offsetTop ??
+        0;
     }
 
     previousSpotlightTargetRef.current =
@@ -1298,15 +1367,52 @@ export function LivingLeaderboard({
   const handleViewportScroll = (
     event: UIEvent<HTMLDivElement>,
   ) => {
+    const node =
+      event.currentTarget;
+
+    const commandTop =
+      commandSnapRef.current
+        ?.offsetTop ??
+      Number.POSITIVE_INFINITY;
+
+    const tableTop =
+      tableSnapRef.current
+        ?.offsetTop ??
+      Number.POSITIVE_INFINITY;
+
+    const commandThreshold =
+      Number.isFinite(commandTop)
+        ? commandTop / 2
+        : Number.POSITIVE_INFINITY;
+
+    const tableThreshold =
+      Number.isFinite(tableTop) &&
+      Number.isFinite(commandTop)
+        ? commandTop +
+          (tableTop - commandTop) / 2
+        : Number.POSITIVE_INFINITY;
+
+    const nextFocusStage =
+      node.scrollTop >=
+      tableThreshold
+        ? "table"
+        : node.scrollTop >=
+            commandThreshold
+          ? "command"
+          : "overview";
+
+    setFocusStage((current) =>
+      current === nextFocusStage
+        ? current
+        : nextFocusStage,
+    );
+
     if (
       loading ||
       loadingMore
     ) {
       return;
     }
-
-    const node =
-      event.currentTarget;
 
     const spotlightActive =
       Boolean(
@@ -1400,10 +1506,30 @@ export function LivingLeaderboard({
               : "warriors";
 
   return (
-    <section className="relative flex h-full min-h-0 flex-col overflow-hidden rounded-[2rem] border border-amber-200/22 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.11),transparent_30%),radial-gradient(circle_at_88%_0%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(145deg,#0b1728,#050b15_56%,#02060d)] shadow-[0_40px_130px_rgba(0,0,0,0.48),0_0_0_1px_rgba(201,155,60,0.045)]">
+    <section
+      ref={viewportRef}
+      data-living-leaderboard-viewport
+      data-leaderboard-focus={focusStage}
+      onScroll={handleViewportScroll}
+      className="relative flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain scroll-smooth rounded-[2rem] border border-amber-200/22 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.11),transparent_30%),radial-gradient(circle_at_88%_0%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(145deg,#0b1728,#050b15_56%,#02060d)] shadow-[0_40px_130px_rgba(0,0,0,0.48),0_0_0_1px_rgba(201,155,60,0.045)] [scroll-snap-type:y_mandatory] [scrollbar-gutter:stable]"
+    >
       <div className="pointer-events-none absolute inset-x-16 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/50 to-transparent" />
 
-      <header className="relative shrink-0 grid gap-7 border-b border-white/[0.07] px-6 py-6 sm:px-9 sm:py-7 lg:grid-cols-[minmax(31rem,0.92fr)_minmax(37rem,1.08fr)] lg:items-center lg:gap-10 lg:px-12 lg:py-7 2xl:grid-cols-[minmax(36rem,0.88fr)_minmax(43rem,1.12fr)] 2xl:gap-14">
+      <div
+        data-leaderboard-snap="overview"
+        aria-hidden="true"
+        style={{
+          height:
+            appHeaderHeight > 0
+              ? `${appHeaderHeight}px`
+              : "4.0625rem",
+        }}
+        className="shrink-0 [scroll-snap-align:start] [scroll-snap-stop:always]"
+      />
+
+      <header
+        className="relative shrink-0 grid gap-7 border-b border-white/[0.07] px-6 py-6 sm:px-9 sm:py-7 lg:grid-cols-[minmax(31rem,0.92fr)_minmax(37rem,1.08fr)] lg:items-center lg:gap-10 lg:px-12 lg:py-7 2xl:grid-cols-[minmax(36rem,0.88fr)_minmax(43rem,1.12fr)] 2xl:gap-14"
+      >
         <div
           className={`relative min-w-0 ${
             heroTitleHidden
@@ -1578,7 +1704,11 @@ export function LivingLeaderboard({
         </div>
       </header>
 
-      <div className="relative shrink-0 grid gap-3 border-b border-white/[0.07] bg-black/20 px-5 py-3 sm:px-8 lg:grid-cols-[auto_auto_minmax(24rem,1fr)_auto_auto] lg:items-center lg:px-10">
+      <div
+        ref={commandSnapRef}
+        data-leaderboard-snap="command"
+        className="relative shrink-0 grid gap-3 border-b border-white/[0.07] bg-black/20 px-5 py-3 sm:px-8 lg:grid-cols-[auto_auto_minmax(24rem,1fr)_auto_auto] lg:items-center lg:px-10 [scroll-snap-align:start] [scroll-snap-stop:always]"
+      >
         <LeaderboardLaneToggle
           lane={lane}
           onChange={onLaneChange}
@@ -2111,20 +2241,15 @@ export function LivingLeaderboard({
       </div>
 
       <div
-        className="flex min-h-0 flex-1 flex-col overflow-hidden border-t border-amber-200/10 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.04),transparent_24%)] p-2 sm:p-3 lg:p-4"
+        ref={tableSnapRef}
+        data-leaderboard-snap="table"
+        className="flex min-h-full shrink-0 flex-col overflow-visible border-t border-amber-200/10 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.04),transparent_24%)] px-2 pb-2 sm:px-3 sm:pb-3 lg:px-4 lg:pb-4 [scroll-snap-align:start] [scroll-snap-stop:always]"
         aria-busy={
           loading ||
           loadingMore
         }
       >
-        <div
-          ref={viewportRef}
-          data-living-leaderboard-viewport
-          onScroll={
-            handleViewportScroll
-          }
-          className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]"
-        >
+        <div className="min-h-0 flex-1 pr-1">
           {loading &&
           entries.length === 0 ? (
             <div

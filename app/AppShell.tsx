@@ -1342,6 +1342,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         </>
       ) : null}
       <header
+        data-app-shell-header
         className={`sticky top-0 z-[180] shrink-0 overflow-visible border-b px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.7rem)] backdrop-blur-md transition-[background-color,border-color] duration-500 sm:px-4 sm:backdrop-blur-xl lg:py-3 lg:backdrop-blur-2xl ${headerSkin.shell}`}
         style={
           isClanSurface

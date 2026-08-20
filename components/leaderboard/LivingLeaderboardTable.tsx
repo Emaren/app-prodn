@@ -1102,7 +1102,7 @@ export function LivingLeaderboardTable({
 
   return (
     <>
-      <div className="hidden overflow-x-auto rounded-[1.4rem] border border-amber-200/12 bg-[#040914] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] md:block">
+      <div className="hidden overflow-visible rounded-[1.4rem] border border-amber-200/12 bg-[#040914] shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] md:block">
         <table
           className={`w-full table-fixed border-collapse text-left ${
             customWide
