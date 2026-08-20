@@ -11,9 +11,9 @@
       "owner": "aoe2war-web",
       "path": "ARCHITECTURE.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-08",
+      "reviewed_at": "2026-08-20",
       "sensitivity": "internal",
-      "sha256": "74330cea7b0a6449dd9c871fe1f547368331571b12f6b0577de87d3bfc6be4e4",
+      "sha256": "44dc1b18587236005ea0dc7795bbb86a6b186e88237fad94f4d8ef943d5adb8d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -35,9 +35,9 @@
       "owner": "aoe2war-web",
       "path": "DEPLOY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-10",
+      "reviewed_at": "2026-08-20",
       "sensitivity": "internal",
-      "sha256": "82c41b125a97e2841c0916fd1dd11e74f19dd749544263a67b439c98f953e854",
+      "sha256": "816e293440a5b019277d0c6ceb936865ee9bc50d3fb74dd96bcc1454e705a620",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -83,9 +83,9 @@
       "owner": "aoe2war-web",
       "path": "README.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-10",
+      "reviewed_at": "2026-08-20",
       "sensitivity": "internal",
-      "sha256": "a897dbe210eb2041e7568d72ea9768eb75eb55c9728819729297848d5e29347c",
+      "sha256": "17918bf7c107f0a7d8a0adfe03ceb8db4d2b50c87dd12386520a8032a921b8fe",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -108,9 +108,9 @@
       "owner": "aoe2war-web",
       "path": "WORKSPACE.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-10",
+      "reviewed_at": "2026-08-20",
       "sensitivity": "internal",
-      "sha256": "75584d06d2a9dd6ee3ca82d3aefb97cfecc7095c931bebeea123b08191dc977c",
+      "sha256": "f2c95d059cbb6f735c00c5d7cb77876ca5365843d747f35467cffd84768cfdbe",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8e2fbf74ff98c6b881c0d1ab86993ec10614b45c74881f9d9e1e836c0db62304",
+      "sha256": "5ee31a2fae0dafe6a47fba842d349939a8f030d68c226017429d58d3689fbe12",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -518,9 +518,9 @@
       "owner": "aoe2war-web",
       "path": "docs/DOCUMENTATION_OS.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-19",
+      "reviewed_at": "2026-08-20",
       "sensitivity": "internal",
-      "sha256": "50669441c0cea23cfac98c04fe4fc650f37244b6cbc205c06571f39d1775e7e6",
+      "sha256": "f5bfdf7a100d87892fcbdcf8d1860c0353fda97da21324371870e26f3c030bba",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -747,9 +747,9 @@
       "owner": "aoe2war-web",
       "path": "docs/KINGDOM_KNOWLEDGE_ROUTER.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-16",
+      "reviewed_at": "2026-08-20",
       "sensitivity": "internal",
-      "sha256": "78d86b0f9fcc26eed8f7bde5b406cb6a43bd5d8e050e8e2cdbdcbadcf1db6cba",
+      "sha256": "3c523fddef918d98d614db15d3d16ad94baeb721c8f884acc3bb707091a77d50",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -874,6 +874,31 @@
       ],
       "title": "Team Market Integrity",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "operational-procedure",
+      "id": "aoe2war.app-prodn.docs-operator-start-here",
+      "owner": "aoe2war-web",
+      "path": "docs/OPERATOR_START_HERE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-20",
+      "sensitivity": "internal",
+      "sha256": "01396ac18a134e63cd276f6b7e9aca68089ce97596b43be4c4202a24b59187db",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "AoE2WAR Operator Start Here",
+      "type": "runbook"
     },
     {
       "audience": [
@@ -1056,6 +1081,28 @@
     {
       "audience": [
         "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "operational-procedure",
+      "id": "aoe2war.app-prodn.docs-player-war-archive-operations",
+      "owner": "aoe2war-web",
+      "path": "docs/PLAYER_WAR_ARCHIVE_OPERATIONS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-20",
+      "sensitivity": "internal",
+      "sha256": "6d6b3ee30ddbc2bd0c6bd7128b5d2abd8d87929f2bb35f126474c125a34f53c4",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Player War Archive Operations",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "operators",
         "auditors",
         "ai-agents"
       ],
@@ -1135,9 +1182,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_ENGINEERING.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-14",
+      "reviewed_at": "2026-08-20",
       "sensitivity": "internal",
-      "sha256": "1d63c2210b20937fd65f8175a476f3e83e712f60a94924d67c73c78efa0dbf80",
+      "sha256": "fb5d4f5876c04244debb418e9b82354e116397e6a30529262029c8dde3876520",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1478,9 +1525,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WORKSHOP_ARCHITECTURE.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-08",
+      "reviewed_at": "2026-08-20",
       "sensitivity": "internal",
-      "sha256": "9e104b70dc6d9a21e51af70cd8372923262430c8f73cb402150ed51d0a2220a5",
+      "sha256": "9a0071e8d4c8cf7b77ed877ca8401d2fdea699f62fd909fc9c50f0961714e93c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

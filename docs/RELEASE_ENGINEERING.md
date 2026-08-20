@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-08-14"
+reviewed_at: "2026-08-20"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -67,6 +67,8 @@ disagree, stop and reconcile them before production mutation.
 The canonical human-facing command family is:
 
 ```bash
+aoe2war finish
+aoe2war finish --dry-run
 aoe2war status
 aoe2war context
 aoe2war deploy
@@ -84,8 +86,32 @@ surface works from any directory. `bin/aoe2war` delegates to the lower-level
 `bin/aoe2war-release` engine.
 
 `aoe2war release <raw release-engine command/options>` exists for bounded
-phase-specific or diagnostic use. Routine production releases should use
-`aoe2war deploy`.
+phase-specific or diagnostic use. Routine end-of-work closure should use
+`aoe2war finish`; direct `aoe2war deploy` is the deliberately scoped lower-level
+web release lane.
+
+## Interactive operator recovery discipline
+
+The release engine already owns fail-closed validation, locking, staging,
+rollback traps and receipts. An outer interactive `set -euo pipefail` wrapper is
+not part of the release contract and should not be added around canonical
+operator commands.
+
+For AI-assisted or recovery-sensitive operation:
+
+1. inspect `aoe2war context` and `aoe2war status` first;
+2. when debugging, use one visible lifecycle action at a time;
+3. never infer failure from a lost terminal, SSH timeout, or long build alone;
+4. never blindly retry an uncertain activation;
+5. re-open a terminal and reconstruct state from Mac/GitHub/production identity,
+   BUILD_ID/build version, provenance and receipts;
+6. resume or roll back only through the release controller's recognized state.
+
+Application releases can take many minutes because the gate, isolated build and
+bounded health soak are real work. During a direct deploy, generated
+documentation baseline handling may create a documentation-only release commit
+after the implementation commit. The resulting release SHA is expected to be a
+descendant of the implementation SHA.
 
 ## Release state model
 

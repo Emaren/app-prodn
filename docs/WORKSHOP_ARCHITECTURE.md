@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-08-08"
+reviewed_at: "2026-08-20"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -180,4 +180,5 @@ freshness.
 
 Profile War Archive documents are explicitly not Workshop artifacts. They are
 private owner/admin material and never become public merely because Workshop
-records the feature's existence.
+records the feature's existence. Canonical operator metadata/byte verification
+lives in `docs/PLAYER_WAR_ARCHIVE_OPERATIONS.md`.

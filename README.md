@@ -8,14 +8,19 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-08-10"
+reviewed_at: "2026-08-20"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # app-prodn
 
-## Current certified production seal — 2026-08-10
+> Fresh operator or AI session: read
+> [AoE2WAR Operator Start Here](docs/OPERATOR_START_HERE.md), then run
+> `aoe2war context` and `aoe2war status`. Mutable production truth is not
+> inferred from dated prose.
+
+## Certified release-engineering baseline — 2026-08-10
 
 The current web release is governed by the certified AoE2WAR release engine.
 
@@ -34,11 +39,16 @@ The current web release is governed by the certified AoE2WAR release engine.
   dependencies of the web release engine;
 - Watcher manifests advertise `1.5.7`.
 
-Routine web deployment from the MBP is:
+Routine end-of-work closure from the MBP is:
 
 ```bash
-aoe2war deploy
+aoe2war finish
 ```
+
+`aoe2war deploy` is the lower-level protected web release engine for a
+deliberately scoped release operation. See
+[AoE2WAR Operator Start Here](docs/OPERATOR_START_HERE.md) before diagnosing or
+releasing from a fresh terminal.
 
 Operator state/recovery surfaces are:
 
@@ -131,6 +141,8 @@ rules.
 
 ## Canonical docs
 
+- [AoE2WAR Operator Start Here](docs/OPERATOR_START_HERE.md)
+- [Player War Archive Operations](docs/PLAYER_WAR_ARCHIVE_OPERATIONS.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [DEPLOY.md](DEPLOY.md)
 - [docs/RELEASE_ENGINEERING.md](docs/RELEASE_ENGINEERING.md)

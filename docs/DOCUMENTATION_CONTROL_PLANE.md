@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **69**
+- Authoritative repository documents: **71**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,12 +37,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 40
-- `runbook`: 10
+- `runbook`: 12
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 55
+- `active`: 57
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 1
@@ -88,6 +88,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Live Final-Proof Visibility](LIVE_FINAL_PROOF_VISIBILITY.md) | `reference` | `active` | `product-contract` |
 | [Marketplace Business V1](MARKETPLACE_BUSINESS.md) | `reference` | `active` | `financial-domain-contract` |
 | [Team Market Integrity](MARKET_TEAM_INTEGRITY.md) | `reference` | `active` | `financial-domain-contract` |
+| [AoE2WAR Operator Start Here](OPERATOR_START_HERE.md) | `runbook` | `active` | `operational-procedure` |
 | [Page Change Notices](PAGE_CHANGE_NOTICES.md) | `reference` | `active` | `product-contract` |
 | [Page Hero CMS](PAGE_HERO_CMS.md) | `reference` | `active` | `product-contract` |
 | [Parser Engine Room: Durable Data Foundation](PARSER_ENGINE_ROOM.md) | `explanation` | `active` | `architecture-explanation` |
@@ -96,6 +97,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR Production Performance Audit — 2026-08-13](PERFORMANCE_AUDIT_2026-08-13.md) | `historical` | `historical` | `release-evidence` |
 | [AoE2WAR Performance OS](PERFORMANCE_OS.md) | `reference` | `active` | `performance-operating-contract` |
 | [Player Identity Wave 2 — Deterministic Discovery V2](PLAYER_IDENTITY_DISCOVERY_WAVE2.md) | `reference` | `active` | `implementation-contract` |
+| [Player War Archive Operations](PLAYER_WAR_ARCHIVE_OPERATIONS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Production Parity Seal — 2026-07-26](PRODUCTION_PARITY_2026-07-26.md) | `historical` | `historical` | `historical-evidence` |
 | [Radio WOLO](RADIO_WOLO.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Realtime Truth Contract](REALTIME_TRUTH_CONTRACT.md) | `reference` | `active` | `architecture-contract` |

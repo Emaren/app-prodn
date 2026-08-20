@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "workspace-reference"
-reviewed_at: "2026-08-10"
+reviewed_at: "2026-08-20"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -23,6 +23,7 @@ Together, they power the AoE2HDBets public product, replay ingest pipeline, and 
 
 ## Read these first
 
+- [AoE2WAR Operator Start Here](docs/OPERATOR_START_HERE.md)
 - [ARCHITECTURE.md](ARCHITECTURE.md)
 - [DEPLOY.md](DEPLOY.md)
 - [AoE2WAR Release Engineering](docs/RELEASE_ENGINEERING.md)
@@ -115,12 +116,17 @@ Branches remain repository-specific:
 
 ### `app-prodn`
 
-Develop and review locally, commit the intended code on `main`, then use:
+Develop and review locally, then close ordinary work with:
 
 ```bash
+aoe2war context
 aoe2war status
-aoe2war deploy
+aoe2war finish
 ```
+
+Use `aoe2war deploy` directly only for a deliberately scoped lower-level web
+release where the implementation is already committed and the worktree is
+clean.
 
 The release engine owns the ordinary web release sequence: documentation
 baseline handling, risk gates, exact GitHub publication, manifest sealing,
@@ -207,6 +213,9 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 
 ## Runtime truth
 
+- AoE2WAR HD production PostgreSQL database: `aoe2hd_db`
+- sister AoE2DE PostgreSQL database: `aoe2de_db` — never HD production truth
+- local writable development shadow: `aoe2hdbets_shadow` — never production evidence
 - web repo path on VPS: `/var/www/AoE2HDBets/app-prodn`
 - api repo path on VPS: `/var/www/AoE2HDBets/api-prodn`
 - web binds to `127.0.0.1:3030`

@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-08-10"
+reviewed_at: "2026-08-20"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -17,7 +17,11 @@ sensitivity: "internal"
 
 ## Production truth
 
+For a fresh operator or AI-assisted session, begin with
+`docs/OPERATOR_START_HERE.md`.
+
 - VPS repo path: `/var/www/AoE2HDBets/app-prodn`
+- HD production database: `aoe2hd_db`
 - service: `aoe2hdbets-web.service`
 - public domain: `https://aoe2war.com`
 - bind: `127.0.0.1:3030`
@@ -51,6 +55,24 @@ from the production `app-prodn` checkout:
 ```bash
 aoe2war finish
 ```
+
+### Interactive AI/operator shell discipline
+
+The release engine is already fail-closed. Do not wrap `aoe2war finish`,
+`aoe2war deploy`, rollback, or diagnostic recovery in an outer interactive
+`set -euo pipefail` harness. When troubleshooting with an AI or when terminal
+stability is in question, use small observable stages rather than one giant
+shell transaction.
+
+A long gate/build/soak is not failure evidence. If the terminal disappears,
+SSH times out, or the outcome is uncertain, open a fresh terminal and inspect
+`aoe2war status` and `aoe2war releases --limit 5` before any retry. The exact
+source/build/version/provenance and durable receipts decide what happened.
+
+Direct `aoe2war deploy` may generate and publish a documentation-baseline
+commit after the implementation commit. In that normal case the release SHA is
+newer than the implementation SHA; the Documentation Baseline continues to
+name the implementation commit.
 
 Use `aoe2war finish --dry-run` for a read-only plan that includes source
 authority, expected deployment, Doctor blockers, validation steps, and the

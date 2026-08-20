@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-08-08"
+reviewed_at: "2026-08-20"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -58,6 +58,24 @@ It does not own:
 - final authority over replay-derived match records
 
 ## Runtime shape
+
+### Production database identity
+
+`app-prodn` / AoE2WAR HD production database truth is explicitly
+`aoe2hd_db`.
+
+`aoe2de_db` is the sister AoE2DE database and is never a substitute HD truth
+source merely because both databases contain similar tables.
+
+The local writable `aoe2hdbets_shadow` database and any other shadow/test
+database are development evidence only. Production investigations must name the
+owning database explicitly; do not auto-select the first database matching a
+schema.
+
+For direct operator inspection on the VPS, prefer explicit read-only
+transactions against `aoe2hd_db` rather than bare `psql` or an inherited shell
+default. Private profile War Archive metadata/bytes verification is defined in
+`docs/PLAYER_WAR_ARCHIVE_OPERATIONS.md`.
 
 ### Verified production authority split — 2026-07-26
 

@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "documentation-operations-contract"
-reviewed_at: "2026-08-19"
+reviewed_at: "2026-08-20"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -66,6 +66,25 @@ not rewritten by a read-only audit.
 
 `update` delegates to the existing protected `aoe2war update` engine. The
 legacy top-level command remains supported for compatibility.
+
+## Operational learning capture
+
+Documentation OS is also the mechanism for removing repeat operator friction.
+
+When a stable topology fact, authority boundary or recovery procedure forces
+multiple false starts because it was not encoded, update the owning semantic
+runbook before closing the work. Capture the durable rule and the exact safe
+operator command, not the chat transcript that exposed the gap.
+
+Examples include:
+
+- canonical production database identity versus sister/shadow databases;
+- the distinction between implementation SHA and generated release SHA;
+- status/receipt-first recovery after a lost terminal or transport timeout;
+- private metadata plus physical-byte verification for managed uploads.
+
+Generated indexes cannot substitute for this semantic knowledge. Fresh
+operator/AI sessions should begin at `docs/OPERATOR_START_HERE.md`.
 
 ## Impact policy
 

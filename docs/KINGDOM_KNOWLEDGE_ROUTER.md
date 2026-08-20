@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-08-16"
+reviewed_at: "2026-08-20"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -69,9 +69,10 @@ history.
 
 KKR V1 is the public Kingdom knowledge plane.
 
-Viewer-private wallet, wager, claim, staking, session and direct-message context
-remains outside KKR and continues to be gated by `lib/aiPromptPolicy.ts` and the
-calling surface.
+Viewer-private wallet, wager, claim, staking, session, direct-message and
+Profile War Archive document context remains outside KKR and continues to be
+gated by the owning private surface and `lib/aiPromptPolicy.ts`. Private War
+Archive bytes are never promoted into the public Kingdom knowledge plane.
 
 Shared Hall and public-lobby surfaces never gain private viewer context merely
 because KKR exists.
