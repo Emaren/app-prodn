@@ -929,6 +929,11 @@ export function LivingLeaderboard({
       scrollTop: number;
     } | null>(null);
 
+  // Programmatic Spotlight centering must never be interpreted
+  // as user traversal toward a lazy-load boundary.
+  const spotlightCenteringRef =
+    useRef(false);
+
   const [
     rankWindowOpen,
     setRankWindowOpen,
@@ -1508,7 +1513,7 @@ export function LivingLeaderboard({
     setRankWindowOpen(false);
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const viewport =
       viewportRef.current;
 
@@ -1541,6 +1546,16 @@ export function LivingLeaderboard({
       return;
     }
 
+    // Center before paint and temporarily suppress boundary
+    // prefetch. The old smooth inner scroll crossed the
+    // <=1800px threshold, fired onLoadEarlier(), and the
+    // prepend anchor then overrode the intended center.
+    spotlightCenteringRef.current =
+      true;
+
+    prependAnchorRef.current =
+      null;
+
     const rowsRect =
       rowsViewport.getBoundingClientRect();
 
@@ -1572,8 +1587,38 @@ export function LivingLeaderboard({
         0,
         desiredTop,
       ),
-      behavior: "smooth",
+      behavior: "auto",
     });
+
+    let settleFrame = 0;
+
+    const releaseFrame =
+      window.requestAnimationFrame(
+        () => {
+          settleFrame =
+            window.requestAnimationFrame(
+              () => {
+                spotlightCenteringRef.current =
+                  false;
+              },
+            );
+        },
+      );
+
+    return () => {
+      window.cancelAnimationFrame(
+        releaseFrame,
+      );
+
+      if (settleFrame) {
+        window.cancelAnimationFrame(
+          settleFrame,
+        );
+      }
+
+      spotlightCenteringRef.current =
+        false;
+    };
   }, [
     spotlightTarget,
   ]);
@@ -1787,6 +1832,14 @@ export function LivingLeaderboard({
     if (
       loading ||
       loadingMore
+    ) {
+      return;
+    }
+
+    // A scroll event caused by Spotlight's own centering is
+    // positioning, not intent to traverse toward an edge.
+    if (
+      spotlightCenteringRef.current
     ) {
       return;
     }

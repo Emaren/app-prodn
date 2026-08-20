@@ -331,6 +331,85 @@ test("rank rows own wheel traversal independently from chrome focus", () => {
   );
 });
 
+test("Spotlight programmatic centering cannot trigger boundary prefetch", () => {
+  const living = source(
+    "components/leaderboard/LivingLeaderboard.tsx",
+  );
+
+  assert.match(
+    living,
+    /const spotlightCenteringRef =\s*useRef\(false\)/,
+  );
+
+  const centerStart =
+    living.indexOf(
+      "// Center before paint and temporarily suppress boundary",
+    );
+  const centerEnd =
+    living.indexOf(
+      "useLayoutEffect(() => {",
+      centerStart + 1,
+    );
+  const centerBlock =
+    living.slice(
+      centerStart,
+      centerEnd,
+    );
+
+  assert.ok(
+    centerStart >= 0,
+    "Spotlight centering contract block must exist",
+  );
+
+  assert.match(
+    centerBlock,
+    /spotlightCenteringRef\.current =\s*true/,
+  );
+  assert.match(
+    centerBlock,
+    /prependAnchorRef\.current =\s*null/,
+  );
+  assert.match(
+    centerBlock,
+    /rowsViewport\.scrollTo\(\{[\s\S]*behavior: "auto"/,
+  );
+  assert.doesNotMatch(
+    centerBlock,
+    /rowsViewport\.scrollTo\(\{[\s\S]*behavior: "smooth"/,
+  );
+
+  const rowsStart =
+    living.indexOf(
+      "const handleRowsScroll",
+    );
+  const rowsEnd =
+    living.indexOf(
+      "const rankWindowEnd",
+      rowsStart,
+    );
+  const rowsBlock =
+    living.slice(
+      rowsStart,
+      rowsEnd,
+    );
+
+  const guardIndex =
+    rowsBlock.indexOf(
+      "spotlightCenteringRef.current",
+    );
+  const earlierIndex =
+    rowsBlock.indexOf(
+      "node.scrollTop <= 1800",
+    );
+
+  assert.ok(
+    guardIndex >= 0 &&
+      earlierIndex >= 0 &&
+      guardIndex < earlierIndex,
+    "programmatic-centering guard must run before earlier-rank prefetch",
+  );
+});
+
 test("Spotlight is a two-state centered expandable view", () => {
   const preferences = source(
     "lib/livingLeaderboardPreferences.ts",
