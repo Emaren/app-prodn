@@ -255,7 +255,7 @@ test("Extreme leaderboard owns three responsive scroll focus presets", () => {
   assert.match(living, /data-leaderboard-snap="overview"/);
   assert.match(living, /data-leaderboard-snap="command"/);
   assert.match(living, /data-leaderboard-snap="table"/);
-  assert.match(living, /\[scroll-snap-type:y_mandatory\]/);
+  assert.match(living, /\[scroll-snap-type:y_proximity\]/);
   assert.match(living, /\[scroll-snap-stop:always\]/);
   assert.match(living, /commandSnapRef/);
   assert.match(living, /tableSnapRef/);
@@ -287,7 +287,7 @@ test("Extreme leaderboard owns three responsive scroll focus presets", () => {
 
   assert.match(
     livingTable,
-    /<thead className="sticky top-0/,
+    /<thead[\s\S]*data-leaderboard-column-header[\s\S]*className="sticky top-0/,
   );
 
   assert.doesNotMatch(
@@ -437,5 +437,146 @@ test("deep leaderboard navigation exposes premium Commands and Top returns", () 
   assert.match(
     living,
     /rankWindowStart: null/,
+  );
+});
+
+test("Extreme online count shares canonical realtime public presence", () => {
+  const route = source(
+    "app/leaderboard/page.tsx",
+  );
+  const modern = source(
+    "components/leaderboard/ModernLeaderboardPage.tsx",
+  );
+  const living = source(
+    "components/leaderboard/LivingLeaderboard.tsx",
+  );
+
+  assert.match(
+    route,
+    /loadPublicPresenceSnapshot/,
+  );
+  assert.match(
+    route,
+    /PublicPresenceProvider/,
+  );
+  assert.match(
+    modern,
+    /usePublicPresenceContext/,
+  );
+  assert.match(
+    modern,
+    /activePlayers=\{activePlayers\}/,
+  );
+  assert.match(
+    living,
+    /activePlayers: number/,
+  );
+  assert.match(
+    living,
+    /Realtime claimed warriors currently online/,
+  );
+  assert.doesNotMatch(
+    living,
+    /const loadedOnline/,
+  );
+});
+
+test("column header wheel pulls the outer Leaderboard focus rail", () => {
+  const living = source(
+    "components/leaderboard/LivingLeaderboard.tsx",
+  );
+  const table = source(
+    "components/leaderboard/LivingLeaderboardTable.tsx",
+  );
+
+  assert.match(
+    table,
+    /data-leaderboard-column-header/,
+  );
+  assert.match(
+    living,
+    /handleColumnHeaderWheel/,
+  );
+  assert.match(
+    living,
+    /passive: false/,
+  );
+  assert.match(
+    living,
+    /event\.preventDefault\(\)/,
+  );
+  assert.match(
+    living,
+    /viewport\.scrollBy\(\{[\s\S]*top: event\.deltaY/,
+  );
+});
+
+test("Spotlight is center-or-canonical-top only", () => {
+  const living = source(
+    "components/leaderboard/LivingLeaderboard.tsx",
+  );
+
+  assert.match(
+    living,
+    /mode: "center";/,
+  );
+  assert.doesNotMatch(
+    living,
+    /mode: "top" \| "center"/,
+  );
+  assert.match(
+    living,
+    /rowScrollRef\.current\?\.scrollTo\(\{[\s\S]*top: 0/,
+  );
+  assert.match(
+    living,
+    /setFocusStageImperatively\(\s*"overview"/,
+  );
+  assert.match(
+    living,
+    /syncAppChromeToScroll\(\s*0/,
+  );
+});
+
+test("navbar movement is compositor-only during Leaderboard focus scroll", () => {
+  const living = source(
+    "components/leaderboard/LivingLeaderboard.tsx",
+  );
+
+  assert.match(
+    living,
+    /header\.style\.willChange\s*=\s*"transform"/,
+  );
+  assert.match(
+    living,
+    /header\.style\.backfaceVisibility\s*=\s*"hidden"/,
+  );
+
+  const start =
+    living.indexOf(
+      "const syncAppChromeToScroll",
+    );
+  const end =
+    living.indexOf(
+      "const setFocusStageImperatively",
+      start,
+    );
+  const block =
+    living.slice(
+      start,
+      end,
+    );
+
+  assert.match(
+    block,
+    /header\.style\.transform/,
+  );
+  assert.doesNotMatch(
+    block,
+    /pointerEvents/,
+  );
+  assert.doesNotMatch(
+    block,
+    /style\.opacity/,
   );
 });

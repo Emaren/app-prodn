@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -70,7 +71,7 @@ export type LivingLeaderboardSpotlightTarget = {
   key: string;
   rank: number;
   name: string;
-  mode: "top" | "center";
+  mode: "center";
 };
 
 type LivingHeroTitleStyle = {
@@ -705,6 +706,7 @@ export function LivingLeaderboard({
   onSearchInputChange,
   query,
   trackedPlayers,
+  activePlayers,
   entries,
   podiumEntries,
   sortKey,
@@ -743,6 +745,7 @@ export function LivingLeaderboard({
   ) => void;
   query: string;
   trackedPlayers: number;
+  activePlayers: number;
   entries: LobbyLeaderboardEntry[];
   podiumEntries: LobbyLeaderboardEntry[];
   sortKey: LeaderboardSortKey | null;
@@ -849,11 +852,19 @@ export function LivingLeaderboard({
       header.style.opacity;
     const previousHeaderPointerEvents =
       header.style.pointerEvents;
+    const previousHeaderWillChange =
+      header.style.willChange;
+    const previousHeaderBackfaceVisibility =
+      header.style.backfaceVisibility;
     const previousMobileDisplay =
       mobileNav?.style.display ?? "";
 
     header.style.transition =
       "none";
+    header.style.willChange =
+      "transform";
+    header.style.backfaceVisibility =
+      "hidden";
 
     const measure = () => {
       const nextHeight =
@@ -895,6 +906,10 @@ export function LivingLeaderboard({
         previousHeaderOpacity;
       header.style.pointerEvents =
         previousHeaderPointerEvents;
+      header.style.willChange =
+        previousHeaderWillChange;
+      header.style.backfaceVisibility =
+        previousHeaderBackfaceVisibility;
 
       if (mobileNav) {
         mobileNav.style.display =
@@ -1147,11 +1162,13 @@ export function LivingLeaderboard({
         pulseWarrior(entry),
     ).length;
 
-  const loadedOnline =
-    entries.filter(
-      (entry) =>
-        entry.isOnline,
-    ).length;
+  const onlinePlayers =
+    Math.max(
+      0,
+      Math.floor(
+        activePlayers,
+      ),
+    );
 
   const toggleBookmark = (
     entry: LobbyLeaderboardEntry,
@@ -1240,99 +1257,116 @@ export function LivingLeaderboard({
     setColumnsOpen(false);
   };
 
-  const setReturnRailVisible = (
-    visible: boolean,
-  ) => {
-    const rail =
-      returnRailRef.current;
+  const setReturnRailVisible =
+    useCallback(
+      (
+        visible: boolean,
+      ) => {
+        const rail =
+          returnRailRef.current;
 
-    if (!rail) {
-      return;
-    }
+        if (!rail) {
+          return;
+        }
 
-    rail.style.opacity =
-      visible ? "1" : "0";
-    rail.style.transform =
-      visible
-        ? "translate3d(0, 0, 0)"
-        : "translate3d(0, 0.5rem, 0)";
-    rail.style.pointerEvents =
-      visible ? "auto" : "none";
-  };
-
-  const syncAppChromeToScroll = (
-    scrollTop: number,
-  ) => {
-    const header =
-      appHeaderRef.current;
-
-    if (!header) {
-      return;
-    }
-
-    const travel =
-      Math.max(
-        1,
-        appHeaderHeight ||
-          Math.ceil(
-            header.getBoundingClientRect()
-              .height,
-          ),
-      );
-
-    const offset =
-      Math.min(
-        travel,
-        Math.max(
-          0,
-          scrollTop,
-        ),
-      );
-
-    header.style.transition =
-      "none";
-    header.style.opacity =
-      "1";
-    header.style.transform =
-      `translate3d(0, -${offset}px, 0)`;
-    header.style.pointerEvents =
-      offset >= travel - 1
-        ? "none"
-        : "";
-  };
-
-  const setFocusStageImperatively = (
-    stage:
-      | "overview"
-      | "command"
-      | "table",
-  ) => {
-    focusStageRef.current =
-      stage;
-
-    const viewport =
-      viewportRef.current;
-
-    if (viewport) {
-      viewport.dataset.leaderboardFocus =
-        stage;
-    }
-
-    const mobileNav =
-      mobileNavRef.current;
-
-    if (mobileNav) {
-      mobileNav.style.display =
-        stage === "table"
-          ? "none"
-          : "";
-    }
-
-    setReturnRailVisible(
-      stage !== "overview" ||
-        personalRankViewActive,
+        rail.style.opacity =
+          visible ? "1" : "0";
+        rail.style.transform =
+          visible
+            ? "translate3d(0, 0, 0)"
+            : "translate3d(0, 0.5rem, 0)";
+        rail.style.pointerEvents =
+          visible ? "auto" : "none";
+      },
+      [],
     );
-  };
+
+  const syncAppChromeToScroll =
+    useCallback(
+      (
+        scrollTop: number,
+      ) => {
+        const header =
+          appHeaderRef.current;
+
+        if (!header) {
+          return;
+        }
+
+        const travel =
+          Math.max(
+            1,
+            appHeaderHeight ||
+              Math.ceil(
+                header.getBoundingClientRect()
+                  .height,
+              ),
+          );
+
+        const offset =
+          Math.min(
+            travel,
+            Math.max(
+              0,
+              scrollTop,
+            ),
+          );
+
+        const transform =
+          `translate3d(0, -${offset}px, 0)`;
+
+        if (
+          header.style.transform !==
+          transform
+        ) {
+          header.style.transform =
+            transform;
+        }
+      },
+      [
+        appHeaderHeight,
+      ],
+    );
+
+  const setFocusStageImperatively =
+    useCallback(
+      (
+        stage:
+          | "overview"
+          | "command"
+          | "table",
+      ) => {
+        focusStageRef.current =
+          stage;
+
+        const viewport =
+          viewportRef.current;
+
+        if (viewport) {
+          viewport.dataset.leaderboardFocus =
+            stage;
+        }
+
+        const mobileNav =
+          mobileNavRef.current;
+
+        if (mobileNav) {
+          mobileNav.style.display =
+            stage === "table"
+              ? "none"
+              : "";
+        }
+
+        setReturnRailVisible(
+          stage !== "overview" ||
+            personalRankViewActive,
+        );
+      },
+      [
+        personalRankViewActive,
+        setReturnRailVisible,
+      ],
+    );
 
   useLayoutEffect(() => {
     const rail =
@@ -1397,6 +1431,19 @@ export function LivingLeaderboard({
 
     window.requestAnimationFrame(
       () => {
+        rowScrollRef.current?.scrollTo({
+          top: 0,
+          behavior: "auto",
+        });
+
+        setFocusStageImperatively(
+          "overview",
+        );
+
+        syncAppChromeToScroll(
+          0,
+        );
+
         viewportRef.current?.scrollTo({
           top: 0,
           behavior: "smooth",
@@ -1612,6 +1659,8 @@ export function LivingLeaderboard({
       spotlightTarget;
   }, [
     spotlightTarget,
+    setFocusStageImperatively,
+    syncAppChromeToScroll,
   ]);
 
   const handleViewportScroll = (
@@ -1665,6 +1714,69 @@ export function LivingLeaderboard({
     }
 
   };
+
+  useEffect(() => {
+    const rowsViewport =
+      rowScrollRef.current;
+
+    if (!rowsViewport) {
+      return;
+    }
+
+    const handleColumnHeaderWheel = (
+      event: globalThis.WheelEvent,
+    ) => {
+      const target =
+        event.target;
+
+      if (
+        !(target instanceof Element) ||
+        !target.closest(
+          "[data-leaderboard-column-header]",
+        )
+      ) {
+        return;
+      }
+
+      const viewport =
+        viewportRef.current;
+
+      if (
+        !viewport ||
+        Math.abs(event.deltaY) < 1
+      ) {
+        return;
+      }
+
+      // The sticky column header is chrome, not warrior data.
+      // Wheel over it pulls the whole Leaderboard between its
+      // overview / command / maximum-table focus positions.
+      event.preventDefault();
+      event.stopPropagation();
+
+      viewport.scrollBy({
+        top: event.deltaY,
+        behavior: "auto",
+      });
+    };
+
+    rowsViewport.addEventListener(
+      "wheel",
+      handleColumnHeaderWheel,
+      {
+        capture: true,
+        passive: false,
+      },
+    );
+
+    return () => {
+      rowsViewport.removeEventListener(
+        "wheel",
+        handleColumnHeaderWheel,
+        true,
+      );
+    };
+  }, []);
 
   const handleRowsScroll = (
     event: UIEvent<HTMLDivElement>,
@@ -1778,7 +1890,7 @@ export function LivingLeaderboard({
         focusStageRef.current
       }
       onScroll={handleViewportScroll}
-      className="relative flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain scroll-smooth rounded-[2rem] border border-amber-200/22 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.11),transparent_30%),radial-gradient(circle_at_88%_0%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(145deg,#0b1728,#050b15_56%,#02060d)] shadow-[0_40px_130px_rgba(0,0,0,0.48),0_0_0_1px_rgba(201,155,60,0.045)] [scroll-snap-type:y_mandatory] [scrollbar-gutter:stable]"
+      className="relative flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain scroll-smooth rounded-[2rem] border border-amber-200/22 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.11),transparent_30%),radial-gradient(circle_at_88%_0%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(145deg,#0b1728,#050b15_56%,#02060d)] shadow-[0_40px_130px_rgba(0,0,0,0.48),0_0_0_1px_rgba(201,155,60,0.045)] [scroll-snap-type:y_proximity] [scrollbar-gutter:stable]"
     >
       <div className="pointer-events-none absolute inset-x-16 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/50 to-transparent" />
 
@@ -1987,9 +2099,12 @@ export function LivingLeaderboard({
               </span>
             ) : null}
 
-            {loadedOnline > 0 ? (
-              <span className="rounded-full border border-emerald-300/12 bg-emerald-300/[0.045] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300/80">
-                {loadedOnline} online
+            {onlinePlayers > 0 ? (
+              <span
+                className="rounded-full border border-emerald-300/12 bg-emerald-300/[0.045] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-emerald-300/80"
+                title="Realtime claimed warriors currently online"
+              >
+                {onlinePlayers} online
               </span>
             ) : null}
           </div>

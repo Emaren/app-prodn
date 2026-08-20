@@ -4,7 +4,11 @@ import { redirect } from "next/navigation";
 
 import { ModernLeaderboardPage } from "@/components/leaderboard/ModernLeaderboardPage";
 import { LeaderboardViewPreferenceMarker } from "@/components/leaderboard/LeaderboardViewPreferenceMarker";
-import type { LobbyLeaderboardSummary } from "@/lib/lobby";
+import { PublicPresenceProvider } from "@/components/presence/PublicPresenceProvider";
+import type {
+  LobbyLeaderboardSummary,
+  LobbyOnlineUser,
+} from "@/lib/lobby";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import {
   LEADERBOARD_LANE_COOKIE_KEY,
@@ -15,6 +19,7 @@ import {
   normalizeLeaderboardView,
 } from "@/lib/leaderboardViewPreference";
 import { getPrisma } from "@/lib/prisma";
+import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
 import { buildPreviewDataUrl } from "@/lib/previewDataSource";
 
 export const dynamic = "force-dynamic";
@@ -65,6 +70,9 @@ export default async function LeaderboardPage({
   let initialLeaderboard:
     LobbyLeaderboardSummary | null =
     null;
+
+  let initialOnlineUsers:
+    LobbyOnlineUser[] = [];
 
   try {
     const previewUrl =
@@ -151,17 +159,38 @@ export default async function LeaderboardPage({
     );
   }
 
+  try {
+    const presence =
+      await loadPublicPresenceSnapshot(
+        getPrisma(),
+      );
+
+    initialOnlineUsers =
+      presence.onlineUsers;
+  } catch (error) {
+    console.error(
+      "Failed to render HD leaderboard presence:",
+      error,
+    );
+  }
+
   return (
     <>
       <LeaderboardViewPreferenceMarker
         view="modern"
       />
 
-      <ModernLeaderboardPage
-        initialLeaderboard={
-          initialLeaderboard
+      <PublicPresenceProvider
+        initialOnlineUsers={
+          initialOnlineUsers
         }
-      />
+      >
+        <ModernLeaderboardPage
+          initialLeaderboard={
+            initialLeaderboard
+          }
+        />
+      </PublicPresenceProvider>
     </>
   );
 }

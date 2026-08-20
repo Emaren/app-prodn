@@ -13,6 +13,7 @@ import {
 } from "@/components/leaderboard/LivingLeaderboard";
 import { useLivingLeaderboardPreferences } from "@/components/leaderboard/useLivingLeaderboardPreferences";
 import { LeaderboardLaneToggle } from "@/components/lobby/LeaderboardLaneToggle";
+import { usePublicPresenceContext } from "@/components/presence/PublicPresenceProvider";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import type { LobbyLeaderboardSummary } from "@/lib/lobby";
@@ -115,6 +116,11 @@ export function ModernLeaderboardPage({
   );
   const isExtreme =
     viewMode === "extreme";
+
+  const {
+    activePlayers,
+  } =
+    usePublicPresenceContext();
 
   const {
     preferences: livingPreferences,
@@ -1920,6 +1926,7 @@ export function ModernLeaderboardPage({
           onSearchInputChange={changeSearchInput}
           query={query}
           trackedPlayers={trackedPlayers}
+          activePlayers={activePlayers}
           entries={entries}
           podiumEntries={podiumEntries}
           sortKey={sort.key}

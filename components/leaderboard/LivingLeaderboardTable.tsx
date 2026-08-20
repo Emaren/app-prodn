@@ -1110,7 +1110,10 @@ export function LivingLeaderboardTable({
               : ""
           }`}
         >
-          <thead className="sticky top-0 z-10 bg-[#07101f]/98 shadow-[0_1px_0_rgba(251,191,36,0.22)] backdrop-blur-xl">
+          <thead
+            data-leaderboard-column-header
+            className="sticky top-0 z-10 bg-[#07101f]/98 shadow-[0_1px_0_rgba(251,191,36,0.22)] backdrop-blur-xl"
+          >
             <tr>
               <SortHeader
                 label="Rank"
