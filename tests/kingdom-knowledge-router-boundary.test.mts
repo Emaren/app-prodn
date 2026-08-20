@@ -24,7 +24,11 @@ test("KKR strips sensitive fields from public repository serialization", () => {
 test("KKR is public knowledge while private viewer rails remain surface-gated", () => {
   assert.match(
     docs,
-    /Viewer-private wallet, wager, claim, staking, session and direct-message context/,
+    /Viewer-private wallet, wager, claim, staking, session, direct-message and\s+Profile War Archive document context remains outside KKR/,
+  );
+  assert.match(
+    docs,
+    /Private War\s+Archive bytes are never promoted into the public Kingdom knowledge plane/,
   );
   assert.match(policy, /allowViewerMoneyContext/);
   assert.match(policy, /allowViewerStakingContext/);
