@@ -123,7 +123,7 @@ test("coarse depth remains clamped to the 21-band public contract", () => {
   assert.equal(clampPresenceDepthBand(Number.NaN), 0);
 });
 
-test("global integration remains lazy, room-scoped, private-by-default, and demo-gated", async () => {
+test("global integration remains lazy, room-scoped, default-on, and demo-gated", async () => {
   const [shell, client, overlay, mobileNav, footer, leaderboard] = await Promise.all([
     readFile(new URL("../app/AppShell.tsx", import.meta.url), "utf8"),
     readFile(new URL("../components/presence/LivingKingdomClient.tsx", import.meta.url), "utf8"),
@@ -146,6 +146,8 @@ test("global integration remains lazy, room-scoped, private-by-default, and demo
   assert.match(client, /addEventListener\("door"/);
   assert.match(client, /\/api\/user\/presence-preference/);
   assert.match(client, /featureAllowed/);
+  assert.match(client, /preference\?\.mode === "public_coarse"/);
+  assert.doesNotMatch(client, /showOptIn|preferenceLoaded/);
   assert.match(client, /document\.visibilityState === "visible"/);
   assert.match(client, /connection\?\.saveData/);
   assert.match(client, /process\.env\.NODE_ENV !== "production"/);
@@ -162,6 +164,9 @@ test("global integration remains lazy, room-scoped, private-by-default, and demo
   assert.match(overlay, /role="radiogroup"/);
   assert.match(overlay, /aria-modal="false"/);
   assert.match(overlay, /element\.animate\(/);
+  assert.doesNotMatch(overlay, /OptInPrompt|Join the Living Kingdom|Join the map|Keep me private|showOptIn/);
+  assert.match(overlay, /My roaming avatar/);
+  assert.match(overlay, /aria-label=\{`My roaming avatar:/);
   assert.doesNotMatch(overlay, /aria-live/);
 
   const styles = await readFile(

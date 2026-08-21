@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
   const profile = await loadLivingKingdomIdentityProfile(getPrisma(), auth.uid);
   if (!profile) return json("User not found", 404);
   if (profile.preferenceMode !== "public_coarse") {
-    return json("Presence sharing is off", 403, { code: "opt_in_required" });
+    return json("Presence sharing is disabled", 403, { code: "presence_disabled" });
   }
   if (!profile.displayEligible) {
     return json("A public display identity is required", 422, { code: "display_required" });

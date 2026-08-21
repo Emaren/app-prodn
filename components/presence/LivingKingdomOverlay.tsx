@@ -3,7 +3,7 @@
 import React from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Gauge, MapPinned, X } from "lucide-react";
+import { Eye, EyeOff, Gauge, X } from "lucide-react";
 
 import {
   livingKingdomRealmHref,
@@ -33,7 +33,6 @@ type OverlayProps = {
   preference: LivingKingdomPreference | null;
   preferenceSaving: boolean;
   onPublishModeChange: (mode: LivingKingdomPublishMode) => void;
-  showOptIn: boolean;
   streamHealthy: boolean;
   flights: LivingKingdomFlight[];
   arrivingIds: ReadonlySet<string>;
@@ -361,7 +360,7 @@ function PeoplePanel({
       </div>
 
       {viewerMode === "off" ? (
-        <div className={styles.emptyState}>Living Kingdom is off on this device. Your own sharing choice is separate.</div>
+        <div className={styles.emptyState}>Roaming avatars are hidden on this device. Your avatar setting is below.</div>
       ) : sortedActors.length ? (
         <div className={styles.peopleList} aria-label="Warriors on this page">
           {sortedActors.slice(0, 80).map((actor) => (
@@ -378,7 +377,7 @@ function PeoplePanel({
         </div>
       ) : (
         <div className={styles.emptyState}>
-          {streamHealthy ? "No opted-in warriors are roaming this page yet." : "The kingdom is quiet right now."}
+          {streamHealthy ? "No warriors are roaming this page yet." : "The kingdom is quiet right now."}
         </div>
       )}
 
@@ -391,14 +390,16 @@ function PeoplePanel({
           <div className={styles.sharingCopy}>
             <strong>
               {preference.displayEligible && preference.avatarEligible
-                ? "Share my avatar"
+                ? "My roaming avatar"
                 : preference.avatarEligible
                   ? "Public name required"
                   : "Avatar required"}
             </strong>
             <span>
               {preference.displayEligible && preference.avatarEligible
-                ? "Public, coarse page position only"
+                ? preference.mode === "public_coarse"
+                  ? "Visible in the Living Kingdom"
+                  : "Hidden from the Living Kingdom"
                 : "Complete your public profile to join"}
             </span>
           </div>
@@ -408,6 +409,7 @@ function PeoplePanel({
               className={styles.shareButton}
               disabled={preferenceSaving}
               aria-pressed={preference.mode === "public_coarse"}
+              aria-label={`My roaming avatar: ${preference.mode === "public_coarse" ? "On" : "Off"}`}
               onClick={() =>
                 onPublishModeChange(preference.mode === "public_coarse" ? "off" : "public_coarse")
               }
@@ -419,50 +421,6 @@ function PeoplePanel({
           )}
         </div>
       ) : null}
-    </section>
-  );
-}
-
-function OptInPrompt({
-  preference,
-  saving,
-  onChange,
-}: {
-  preference: LivingKingdomPreference;
-  saving: boolean;
-  onChange: (mode: LivingKingdomPublishMode) => void;
-}) {
-  return (
-    <section className={styles.prompt} role="dialog" aria-modal="false" aria-labelledby="living-kingdom-opt-in-title">
-      <div className={styles.promptHeader}>
-        <div>
-          <div className={styles.eyebrow}>A new kingdom signal</div>
-          <h2 id="living-kingdom-opt-in-title" className={styles.promptTitle}>Join the Living Kingdom?</h2>
-        </div>
-        <MapPinned size={19} color="#fde68a" aria-hidden="true" />
-      </div>
-      <div className={styles.promptIdentity}>
-        {preference.avatarUrl ? (
-          <span className={styles.promptAvatar} aria-hidden="true">
-            <Image src={preference.avatarUrl} alt="" width={34} height={34} unoptimized draggable={false} />
-          </span>
-        ) : null}
-        <div className={styles.personMeta}>
-          <div className={styles.personName}>{preference.displayName || "Your warrior"}</div>
-          <div className={styles.personDepth}>Your existing profile avatar</div>
-        </div>
-      </div>
-      <p className={styles.promptBody}>
-        Let visitors see your avatar moving through public realms and coarse page sections. It never shares your cursor, exact scroll point, private pages, or hidden-tab activity.
-      </p>
-      <div className={styles.promptActions}>
-        <button type="button" className={styles.promptDecline} disabled={saving} onClick={() => onChange("off")}>
-          Keep me private
-        </button>
-        <button type="button" className={styles.promptAccept} disabled={saving} onClick={() => onChange("public_coarse")}>
-          Join the map
-        </button>
-      </div>
     </section>
   );
 }
@@ -540,34 +498,32 @@ export default function LivingKingdomOverlay(props: OverlayProps) {
           : null}
       </div>
 
-      {!props.showOptIn ? (
-        <button
-          type="button"
-          className={styles.roamingButton}
-          aria-expanded={panelOpen}
-          aria-controls="living-kingdom-people-panel"
-          onClick={() => setPanelOpen((open) => !open)}
-        >
-          {previewActors.length ? (
-            <span className={styles.roamingFaces} aria-hidden="true">
-              {previewActors.map((actor) => (
-                <span key={actor.id} className={styles.roamingFace}>
-                  <Image src={actor.avatarUrl} alt="" width={25} height={25} unoptimized draggable={false} />
-                </span>
-              ))}
-            </span>
-          ) : props.viewerMode === "off" ? (
-            <EyeOff size={15} color="#94a3b8" aria-hidden="true" />
-          ) : effectiveCalm ? (
-            <Gauge size={15} color="#fde68a" aria-hidden="true" />
-          ) : (
-            <Eye size={15} color="#fde68a" aria-hidden="true" />
-          )}
-          <span>{props.viewerMode === "off" ? "Kingdom quiet" : `${count} ${count === 1 ? "warrior" : "warriors"} roaming`}</span>
-        </button>
-      ) : null}
+      <button
+        type="button"
+        className={styles.roamingButton}
+        aria-expanded={panelOpen}
+        aria-controls="living-kingdom-people-panel"
+        onClick={() => setPanelOpen((open) => !open)}
+      >
+        {previewActors.length ? (
+          <span className={styles.roamingFaces} aria-hidden="true">
+            {previewActors.map((actor) => (
+              <span key={actor.id} className={styles.roamingFace}>
+                <Image src={actor.avatarUrl} alt="" width={25} height={25} unoptimized draggable={false} />
+              </span>
+            ))}
+          </span>
+        ) : props.viewerMode === "off" ? (
+          <EyeOff size={15} color="#94a3b8" aria-hidden="true" />
+        ) : effectiveCalm ? (
+          <Gauge size={15} color="#fde68a" aria-hidden="true" />
+        ) : (
+          <Eye size={15} color="#fde68a" aria-hidden="true" />
+        )}
+        <span>{props.viewerMode === "off" ? "Kingdom quiet" : `${count} ${count === 1 ? "warrior" : "warriors"} roaming`}</span>
+      </button>
 
-      {panelOpen && !props.showOptIn ? (
+      {panelOpen ? (
         <div id="living-kingdom-people-panel">
           <PeoplePanel
             actors={props.actors}
@@ -581,14 +537,6 @@ export default function LivingKingdomOverlay(props: OverlayProps) {
             streamHealthy={props.streamHealthy}
           />
         </div>
-      ) : null}
-
-      {props.showOptIn && props.preference ? (
-        <OptInPrompt
-          preference={props.preference}
-          saving={props.preferenceSaving}
-          onChange={props.onPublishModeChange}
-        />
       ) : null}
     </>
   );

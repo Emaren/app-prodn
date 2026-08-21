@@ -14,6 +14,17 @@ export const LIVING_KINGDOM_FEATURE_MODES = ["off", "staff", "canary", "public"]
 export type LivingKingdomFeatureMode = (typeof LIVING_KINGDOM_FEATURE_MODES)[number];
 export type LivingKingdomPreferenceMode = "off" | "public_coarse";
 
+type StoredLivingKingdomPreference = {
+  mode: string;
+};
+
+export function resolveLivingKingdomPreferenceMode(
+  preference: StoredLivingKingdomPreference | null | undefined,
+): LivingKingdomPreferenceMode {
+  if (!preference) return "public_coarse";
+  return preference.mode === "public_coarse" ? "public_coarse" : "off";
+}
+
 export const LIVING_KINGDOM_IDENTITY_CACHE_TTL_MS = 15_000;
 const LIVING_KINGDOM_IDENTITY_CACHE_MAX = 1_000;
 const ALLOWLIST_MAX_ENTRIES = 200;
@@ -143,40 +154,50 @@ export async function loadLivingKingdomIdentityProfile(
   }
 
   const avatarTarget = normalizeManagedMediaTarget(`user-${uid}`);
-  const [user, avatar] = await Promise.all([
-    prisma.user.findUnique({
-      where: { uid },
-      select: {
-        id: true,
-        uid: true,
-        inGameName: true,
-        steamPersonaName: true,
-        isAdmin: true,
-        presencePreference: {
-          select: { mode: true, enabledAt: true, updatedAt: true },
-        },
-      },
-    }),
-    avatarTarget
-      ? prisma.managedMediaAsset.findFirst({
-          where: {
-            kind: "avatar",
-            target: avatarTarget,
-            active: true,
-            url: { not: "" },
+  const readIdentitySource = () =>
+    Promise.all([
+      prisma.user.findUnique({
+        where: { uid },
+        select: {
+          id: true,
+          uid: true,
+          inGameName: true,
+          steamPersonaName: true,
+          isAdmin: true,
+          presencePreference: {
+            select: { mode: true, enabledAt: true, updatedAt: true },
           },
-          orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-          select: { id: true, updatedAt: true },
+        },
+      }),
+      avatarTarget
+        ? prisma.managedMediaAsset.findFirst({
+            where: {
+              kind: "avatar",
+              target: avatarTarget,
+              active: true,
+              url: { not: "" },
+            },
+            orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+            select: { id: true, updatedAt: true },
         })
-      : Promise.resolve(null),
-  ]);
+        : Promise.resolve(null),
+    ]);
+
+  let loadGeneration = livingKingdomIdentityGeneration();
+  let [user, avatar] = await readIdentitySource();
+  if (loadGeneration !== livingKingdomIdentityGeneration()) {
+    // An opt-out or avatar change committed while the reads were in flight. Retry once
+    // before any public avatar registration or cache write, then fail closed on more churn.
+    loadGeneration = livingKingdomIdentityGeneration();
+    [user, avatar] = await readIdentitySource();
+    if (loadGeneration !== livingKingdomIdentityGeneration()) return null;
+  }
 
   let profile: LivingKingdomIdentityProfile | null = null;
   if (user) {
     const mode = livingKingdomFeatureMode();
     const displayName = isAiPersonaUid(user.uid) ? null : displayNameForUser(user);
-    const preferenceMode: LivingKingdomPreferenceMode =
-      user.presencePreference?.mode === "public_coarse" ? "public_coarse" : "off";
+    const preferenceMode = resolveLivingKingdomPreferenceMode(user.presencePreference);
     const featureAllowed = livingKingdomFeatureAllowsUser({
       mode,
       uid: user.uid,

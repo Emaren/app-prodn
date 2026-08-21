@@ -13,6 +13,7 @@ import {
 import {
   livingKingdomFeatureAllowsUser,
   livingKingdomFeatureMode,
+  resolveLivingKingdomPreferenceMode,
 } from "../lib/livingKingdom/identity.ts";
 import { livingKingdomRealmForPath } from "../lib/livingKingdom/realms.ts";
 
@@ -110,6 +111,30 @@ test("Living Kingdom feature mode fails closed for missing or malformed values",
   );
 });
 
+test("Living Kingdom is default-on unless an account has an explicit opt-out", () => {
+  assert.equal(resolveLivingKingdomPreferenceMode(null), "public_coarse");
+  assert.equal(resolveLivingKingdomPreferenceMode(undefined), "public_coarse");
+  assert.equal(resolveLivingKingdomPreferenceMode({ mode: "public_coarse" }), "public_coarse");
+  assert.equal(resolveLivingKingdomPreferenceMode({ mode: "off" }), "off");
+  assert.equal(resolveLivingKingdomPreferenceMode({ mode: "invalid" }), "off");
+});
+
+test("Living Kingdom documentation preserves the public-coarse privacy boundary", () => {
+  const architecture = source("../ARCHITECTURE.md");
+  const truthContract = source("../docs/REALTIME_TRUTH_CONTRACT.md");
+  const documentation = `${architecture}\n${truthContract}`;
+
+  assert.match(architecture, /automatically\s+`public_coarse`/);
+  assert.match(truthContract, /No preference row means that automatic default/);
+  assert.match(documentation, /explicit durable `off` preference/);
+  assert.match(documentation, /Anonymous[\s\S]{0,100}(?:observe only|receive-only)/);
+  assert.match(documentation, /AI-controlled persona accounts/);
+  assert.match(documentation, /no exact scroll offset, cursor\s+position, private-route activity/);
+  assert.match(documentation, /no exact[\s\S]{0,120}hidden-tab activity/);
+  assert.match(documentation, /Legal and\s+privacy-compliance conclusions are out of scope/);
+  assert.doesNotMatch(documentation, /opted-in warriors|private-by-default/);
+});
+
 test("movement stays out of Traffic, user ping, activity ledgers, and database writes", () => {
   const stateRoute = source("../app/api/kingdom-presence/state/route.ts");
   const eventsRoute = source("../app/api/kingdom-presence/events/route.ts");
@@ -139,6 +164,8 @@ test("movement stays out of Traffic, user ping, activity ledgers, and database w
   );
   assert.match(stateRoute, /livingKingdomHub\.(?:upsert|door|removeTab)/);
   assert.match(stateRoute, /identityGeneration !== livingKingdomIdentityGeneration\(\)/);
+  assert.match(stateRoute, /code: "presence_disabled"/);
+  assert.doesNotMatch(stateRoute, /opt_in_required/);
 
   const offGate = stateRoute.indexOf('livingKingdomFeatureMode() === "off"');
   const sessionRead = stateRoute.indexOf("getSessionUid(request)");

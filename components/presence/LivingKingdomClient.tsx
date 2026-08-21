@@ -242,7 +242,6 @@ export default function LivingKingdomClient() {
   const [streamHealthy, setStreamHealthy] = React.useState(false);
   const [pageVisible, setPageVisible] = React.useState(true);
   const [preference, setPreference] = React.useState<LivingKingdomPreference | null>(null);
-  const [preferenceLoaded, setPreferenceLoaded] = React.useState(false);
   const [preferenceSaving, setPreferenceSaving] = React.useState(false);
   const [reducedMotion, setReducedMotion] = React.useState(false);
   const [bandwidthCalm, setBandwidthCalm] = React.useState(false);
@@ -313,11 +312,9 @@ export default function LivingKingdomClient() {
 
   React.useEffect(() => {
     let cancelled = false;
-    setPreferenceLoaded(false);
     setPreference(null);
     publisherBlockedRef.current = false;
     if (!uid) {
-      setPreferenceLoaded(true);
       return () => {
         cancelled = true;
       };
@@ -336,9 +333,6 @@ export default function LivingKingdomClient() {
       })
       .catch(() => {
         // Preference and publishing fail closed; ambient viewing remains public.
-      })
-      .finally(() => {
-        if (!cancelled) setPreferenceLoaded(true);
       });
 
     return () => {
@@ -800,17 +794,6 @@ export default function LivingKingdomClient() {
     () => (streamHealthy ? [...actorsById.values()].filter((actor) => actor.realmId === realmId) : []),
     [actorsById, realmId, streamHealthy],
   );
-  const showOptIn = Boolean(
-    !demoEnabled &&
-      uid &&
-      preferenceLoaded &&
-      preference?.featureAllowed &&
-      preference?.displayEligible &&
-      preference?.avatarEligible &&
-      preference.mode === "off" &&
-      !preference.decisionRecorded,
-  );
-
   if (!demoChecked || !realmId) return null;
 
   return (
@@ -823,7 +806,6 @@ export default function LivingKingdomClient() {
       preference={preference}
       preferenceSaving={preferenceSaving}
       onPublishModeChange={(mode) => void changePublishMode(mode)}
-      showOptIn={showOptIn}
       streamHealthy={streamHealthy}
       flights={flights}
       arrivingIds={arrivingIds}

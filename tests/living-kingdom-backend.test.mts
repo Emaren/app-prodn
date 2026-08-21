@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
+import { AI_CONCIERGE_UID } from "../lib/aiConciergeConfig.ts";
 import { LivingKingdomHub } from "../lib/livingKingdom/hub.ts";
 import {
   invalidateLivingKingdomAvatar,
@@ -14,6 +15,8 @@ import {
   livingKingdomIdentityGeneration,
   livingKingdomFeatureAllowsUser,
   livingKingdomFeatureMode,
+  loadLivingKingdomIdentityProfile,
+  resolveLivingKingdomPreferenceMode,
 } from "../lib/livingKingdom/identity.ts";
 import {
   LIVING_KINGDOM_PRESENCE_TTL_MS,
@@ -120,6 +123,224 @@ test("invalid feature modes fail closed and staff/canary allowlists are exact", 
     }),
     true,
   );
+});
+
+test("presence defaults public only when no preference row exists", async () => {
+  assert.equal(resolveLivingKingdomPreferenceMode(null), "public_coarse");
+  assert.equal(resolveLivingKingdomPreferenceMode(undefined), "public_coarse");
+
+  const uid = "default-public-profile";
+  const avatarUpdatedAt = new Date("2026-08-21T19:00:00.000Z");
+  const prisma = {
+    user: {
+      findUnique: async () => ({
+        id: 701,
+        uid,
+        inGameName: "Default Public Warrior",
+        steamPersonaName: null,
+        isAdmin: false,
+        presencePreference: null,
+      }),
+    },
+    managedMediaAsset: {
+      findFirst: async () => ({ id: 801, updatedAt: avatarUpdatedAt }),
+    },
+  };
+
+  const previousFeatureMode = process.env.LIVING_KINGDOM_MODE;
+  process.env.LIVING_KINGDOM_MODE = "public";
+  try {
+    const profile = await loadLivingKingdomIdentityProfile(prisma as never, uid, 1_000);
+    assert.equal(profile?.preferenceExists, false);
+    assert.equal(profile?.preferenceMode, "public_coarse");
+    assert.equal(profile?.displayEligible, true);
+    assert.equal(profile?.avatarEligible, true);
+    assert.ok(profile?.identity, "an eligible signed-in human with an avatar publishes by default");
+  } finally {
+    if (previousFeatureMode === undefined) delete process.env.LIVING_KINGDOM_MODE;
+    else process.env.LIVING_KINGDOM_MODE = previousFeatureMode;
+  }
+});
+
+test("an explicit stored opt-out wins over the public default", async () => {
+  assert.equal(resolveLivingKingdomPreferenceMode({ mode: "off" }), "off");
+  assert.equal(
+    resolveLivingKingdomPreferenceMode({ mode: "unexpected-corrupt-value" }),
+    "off",
+    "an existing malformed row must fail closed instead of erasing an opt-out",
+  );
+
+  const uid = "explicit-private-profile";
+  const updatedAt = new Date("2026-08-21T20:00:00.000Z");
+  const avatarUpdatedAt = new Date("2026-08-21T19:00:00.000Z");
+  const prisma = {
+    user: {
+      findUnique: async () => ({
+        id: 702,
+        uid,
+        inGameName: "Private Warrior",
+        steamPersonaName: null,
+        isAdmin: false,
+        presencePreference: {
+          mode: "off",
+          enabledAt: null,
+          updatedAt,
+        },
+      }),
+    },
+    managedMediaAsset: {
+      findFirst: async () => ({ id: 802, updatedAt: avatarUpdatedAt }),
+    },
+  };
+
+  const previousFeatureMode = process.env.LIVING_KINGDOM_MODE;
+  process.env.LIVING_KINGDOM_MODE = "public";
+  try {
+    const profile = await loadLivingKingdomIdentityProfile(prisma as never, uid, 1_000);
+    assert.equal(profile?.preferenceExists, true);
+    assert.equal(profile?.preferenceMode, "off");
+    assert.equal(profile?.preferenceUpdatedAt, updatedAt);
+    assert.equal(profile?.displayEligible, true);
+    assert.equal(profile?.avatarEligible, true);
+    assert.equal(profile?.identity, null, "the stored opt-out wins despite full eligibility");
+  } finally {
+    if (previousFeatureMode === undefined) delete process.env.LIVING_KINGDOM_MODE;
+    else process.env.LIVING_KINGDOM_MODE = previousFeatureMode;
+  }
+});
+
+test("an in-flight pre-opt-out identity read cannot repopulate public cache or avatar bindings", async () => {
+  const uid = "deferred-opt-out-race";
+  const avatarUpdatedAt = new Date("2026-08-21T19:00:00.000Z");
+  const preferenceUpdatedAt = new Date("2026-08-21T20:00:00.000Z");
+  const publicUser = {
+    id: 704,
+    uid,
+    inGameName: "Deferred Warrior",
+    steamPersonaName: null,
+    isAdmin: false,
+    presencePreference: null,
+  };
+  const offUser = {
+    ...publicUser,
+    presencePreference: {
+      mode: "off",
+      enabledAt: null,
+      updatedAt: preferenceUpdatedAt,
+    },
+  };
+  const avatar = { id: 804, updatedAt: avatarUpdatedAt };
+  const initialPrisma = {
+    user: { findUnique: async () => publicUser },
+    managedMediaAsset: { findFirst: async () => avatar },
+  };
+
+  let releaseStaleRead!: (value: typeof publicUser) => void;
+  let markReadStarted!: () => void;
+  const staleRead = new Promise<typeof publicUser>((resolve) => {
+    releaseStaleRead = resolve;
+  });
+  const readStarted = new Promise<void>((resolve) => {
+    markReadStarted = resolve;
+  });
+  let userReads = 0;
+  const racingPrisma = {
+    user: {
+      findUnique: async () => {
+        userReads += 1;
+        if (userReads === 1) {
+          markReadStarted();
+          return staleRead;
+        }
+        return offUser;
+      },
+    },
+    managedMediaAsset: { findFirst: async () => avatar },
+  };
+
+  const previousFeatureMode = process.env.LIVING_KINGDOM_MODE;
+  process.env.LIVING_KINGDOM_MODE = "public";
+  resetLivingKingdomAvatarRegistryForTests();
+  try {
+    const initial = await loadLivingKingdomIdentityProfile(initialPrisma as never, uid, 1_000);
+    const publicId = initial?.identity?.publicId;
+    assert.ok(publicId);
+
+    invalidateLivingKingdomIdentity(uid);
+    resetLivingKingdomAvatarRegistryForTests();
+
+    const pending = loadLivingKingdomIdentityProfile(racingPrisma as never, uid, 2_000);
+    await readStarted;
+    invalidateLivingKingdomIdentity(uid);
+    releaseStaleRead(publicUser);
+
+    const resolved = await pending;
+    assert.equal(userReads, 2, "the invalidated read is retried exactly once");
+    assert.equal(resolved?.preferenceMode, "off");
+    assert.equal(resolved?.identity, null);
+    assert.equal(resolveLivingKingdomAvatar(publicId, 2_001), null);
+
+    let unexpectedReads = 0;
+    const cached = await loadLivingKingdomIdentityProfile(
+      {
+        user: {
+          findUnique: async () => {
+            unexpectedReads += 1;
+            return publicUser;
+          },
+        },
+        managedMediaAsset: { findFirst: async () => avatar },
+      } as never,
+      uid,
+      2_001,
+    );
+    assert.equal(unexpectedReads, 0, "the retry caches only the post-opt-out profile");
+    assert.equal(cached?.preferenceMode, "off");
+    assert.equal(cached?.identity, null);
+  } finally {
+    invalidateLivingKingdomIdentity(uid);
+    resetLivingKingdomAvatarRegistryForTests();
+    if (previousFeatureMode === undefined) delete process.env.LIVING_KINGDOM_MODE;
+    else process.env.LIVING_KINGDOM_MODE = previousFeatureMode;
+  }
+});
+
+test("default-on never projects a house AI persona", async () => {
+  const prisma = {
+    user: {
+      findUnique: async () => ({
+        id: 703,
+        uid: AI_CONCIERGE_UID,
+        inGameName: "The AI Scribe",
+        steamPersonaName: null,
+        isAdmin: true,
+        presencePreference: null,
+      }),
+    },
+    managedMediaAsset: {
+      findFirst: async () => ({
+        id: 803,
+        updatedAt: new Date("2026-08-21T19:00:00.000Z"),
+      }),
+    },
+  };
+
+  const previousFeatureMode = process.env.LIVING_KINGDOM_MODE;
+  process.env.LIVING_KINGDOM_MODE = "public";
+  try {
+    const profile = await loadLivingKingdomIdentityProfile(
+      prisma as never,
+      AI_CONCIERGE_UID,
+      1_000,
+    );
+    assert.equal(profile?.preferenceMode, "public_coarse");
+    assert.equal(profile?.avatarEligible, true);
+    assert.equal(profile?.displayEligible, false);
+    assert.equal(profile?.identity, null);
+  } finally {
+    if (previousFeatureMode === undefined) delete process.env.LIVING_KINGDOM_MODE;
+    else process.env.LIVING_KINGDOM_MODE = previousFeatureMode;
+  }
 });
 
 test("token bucket enforces a sustained rate while remaining bounded", () => {
@@ -370,6 +591,8 @@ test("routes use strict session auth and never persist or export raw movement id
 
   assert.match(stateRoute, /getSessionUid/);
   assert.match(stateRoute, /loadLivingKingdomIdentityProfile/);
+  assert.match(stateRoute, /presence_disabled/);
+  assert.doesNotMatch(stateRoute, /opt_in_required/);
   assert.doesNotMatch(stateRoute, /resolveRequestUid|UserActivityEvent|recordUserActivity|Traffic/);
   assert.match(eventsRoute, /status: 204/);
   assert.match(eventsRoute, /retry: 3000.*snapshot/s);

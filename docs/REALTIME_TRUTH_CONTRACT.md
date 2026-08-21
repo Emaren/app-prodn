@@ -66,7 +66,7 @@ A fast provisional display must never be mislabeled as settlement authority. Con
 | Homepage Recent Parsed Games | `/api/lobby/recent-matches`, which merges canonical replay rows, current completed-session truth, and adjudication evidence | 5 seconds | Immediate focus/visibility refresh | About 5 seconds plus request time |
 | `/live-games` | `/api/live-games` over the live-session snapshot | 5 seconds | Immediate focus/visibility refresh | About 5 seconds plus request time |
 | `/bets` | `/api/bets` plus event-driven post-ingest market reconciliation | 2 seconds | Immediate focus/visibility refresh | About 2 seconds after market truth; fallback ensure is bounded at 5 seconds |
-| Living Kingdom roaming-now overlay | Authenticated, server-sanitized projections accepted by `/api/kingdom-presence/state`, then fanned out from the process-local hub through `/api/kingdom-presence/events` | Event-driven on depth-band or direction change, normally at or below 1 Hz; a 500 ms client hard throttle permits responsive fast transitions, Save-Data uses at least 1 second, and the server admits at most 2 Hz with burst four | EventSource reconnect receives a fresh bounded snapshot; hidden publishers stop sampling and stale actors expire | About 2 seconds while active; no actor remains public beyond the bounded presence TTL after its last accepted sample |
+| Living Kingdom roaming-now overlay | Authenticated, server-sanitized projections from eligible signed-in human accounts accepted by `/api/kingdom-presence/state`, then fanned out to anonymous or signed-in receive-only viewers through `/api/kingdom-presence/events` | Event-driven on depth-band or direction change, normally at or below 1 Hz; a 500 ms client hard throttle permits responsive fast transitions, Save-Data uses at least 1 second, and the server admits at most 2 Hz with burst four | EventSource reconnect receives a fresh bounded snapshot; hidden publishers stop sampling and stale actors expire | About 2 seconds while active; no actor remains public beyond the bounded presence TTL after its last accepted sample |
 
 All listed client requests use `no-store`. Relevant routes are force-dynamic or return explicit private/no-store headers. Polls pause while the page is hidden, skip or supersede overlapping requests, and refresh immediately when the page becomes visible again.
 
@@ -80,10 +80,17 @@ ledger, an analytics feed, or proof that a person is still looking at an exact
 pixel. Each avatar represents only the latest bounded, quantized projection
 accepted by the web process and expires when its lease becomes stale.
 
+Within a server-enabled rollout cohort, a signed-in human account with an
+eligible personal avatar is automatically `public_coarse` on allowlisted public
+realms. No preference row means that automatic default; it does not mean that
+the user must opt in. An explicit durable `off` preference always wins, and the
+same control may re-enable public coarse presence later. Anonymous sessions
+observe only. AI-controlled persona accounts are excluded from publishing.
+
 The truth path is deliberately separate from legacy online membership:
 
 ```text
-signed-in browser with an eligible avatar and presence preference
+eligible signed-in human browser with a personal avatar and no explicit opt-out
   -> authenticated, rate-limited POST /api/kingdom-presence/state
   -> server resolves identity and normalizes an allowlisted public realm
   -> bounded process-memory hub replaces that actor's latest projection
@@ -108,11 +115,13 @@ The following boundaries are mandatory:
   other private paths fail closed and expose no raw path material.
 - Movement and route samples are ephemeral. They never write through Prisma,
   `UserActivityEvent`, `/api/user/ping`, or the Traffic bridge. The user's
-  explicit visibility preference is durable account state and is the sole
-  allowed database write in this feature path.
+  explicit opt-out or later re-enable override is durable account state and is
+  the sole allowed database write in this feature path. The automatic
+  `public_coarse` default does not require a preference row.
 - Actor identity and avatar metadata are resolved server-side. Accounts without
-  an eligible public display/avatar, opted-out or feature-gated accounts, and
-  disallowed routes cannot publish.
+  an eligible public display/avatar, explicitly opted-out or feature-gated
+  accounts, AI-controlled persona accounts, and disallowed routes cannot
+  publish.
 - Public actor IDs and presence-avatar URLs expose only a process-local opaque
   handle, never a durable account UID or UID-bearing managed-media path. The
   server resolves that handle through a bounded, expiring memory map and must
@@ -123,11 +132,21 @@ The following boundaries are mandatory:
   for a fast transition and at least one second under Save-Data. The server's
   actor limiter sustains at most two requests per second with burst four for
   door/arrival pairs. A restart intentionally forgets all movement.
-- Public viewers are receive-only. Hidden tabs disconnect or suspend work;
-  reduced-motion and data-saving clients receive a quieter presentation.
+- Anonymous and signed-in public viewers are receive-only. Hidden tabs stop
+  publishing; a hidden lifecycle signal removes rather than projects that tab,
+  and the stream disconnects or suspends work. Reduced-motion and data-saving
+  clients receive a quieter presentation.
 - The SSE endpoint is `no-store`, sends keepalives inside the proxy read timeout,
   and is never buffered or cached by Nginx. Network cadence remains low; smooth
   motion comes from client interpolation rather than high-frequency messages.
+
+The browser-to-server contract contains only an allowlisted public realm, one of
+21 coarse depth bands, coarse motion, a visibility lifecycle signal, and
+allowlisted navigation intent. A hidden signal removes state; it is not public
+activity. The public projection contains no exact scroll offset, cursor
+position, private-route activity, raw URL material, or hidden-tab activity. This
+section defines product and technical behavior only. Legal and
+privacy-compliance conclusions are out of scope.
 
 The initial limits are 500 actors, three contributing tabs per actor, 250 SSE
 subscribers by default, a 30-second actor TTL, a 15-second keepalive, and a
@@ -152,8 +171,8 @@ reviewed tolerance after a separate six-second default cooldown, which is long
 enough for the staged Node listener's ordinary five-second HTTP keep-alive
 window; this prevents reusable idle sockets from being mislabeled as leaked SSE
 leases without weakening the tolerance. Every individual admitted stream must
-remain open through
-its hold and deliver its own snapshot bytes. `--proof` requires the actual
+remain open through its hold and deliver its own snapshot bytes. `--proof`
+requires the actual
 process that owns the selected loopback listener plus explicit RSS, open-FD,
 load-generator event-loop p99, and loopback SSE first-byte p95 ceilings. Listener
 ownership is checked before sampling, preventing an unrelated PID from becoming

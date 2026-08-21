@@ -154,14 +154,18 @@ These routes enforce session/admin behavior and often proxy, merge, or reshape b
 ### Living Kingdom presence plane
 
 Living Kingdom is a small, ephemeral presence plane inside the existing Next.js
-web authority. It answers “which opted-in warriors are roaming an allowlisted
-public part of the kingdom now?” It does not establish durable user activity,
-analytics attribution, replay truth, wallet truth, or exact continuous cursor
-or scroll truth.
+web authority. It answers “which eligible warriors are roaming an allowlisted
+public part of the kingdom now?” Within an enabled rollout cohort, a signed-in
+human account with an eligible personal avatar is automatically
+`public_coarse` unless it has an explicit durable `off` preference. Anonymous
+viewers observe only, and AI-controlled persona accounts never publish. The plane
+does not establish durable user activity, analytics attribution, replay truth,
+wallet truth, exact scroll or cursor position, private-route activity, or
+hidden-tab activity.
 
 ```text
-publisher                                           public viewer
-signed-in session                                   anonymous or signed in
+eligible signed-in human publisher                  public viewer (observe only)
+personal avatar; no explicit opt-out                 anonymous or signed in
       |                                                      |
       | POST /api/kingdom-presence/state                     | EventSource
       v                                                      v
@@ -187,7 +191,8 @@ The owning server modules are:
 - `app/api/kingdom-presence/events/route.ts` for the public receive-only SSE
   stream;
 - `app/api/user/presence-preference/route.ts` for the explicit durable account
-  visibility preference.
+  opt-out or re-enable override. No preference row means the eligible account
+  retains the automatic `public_coarse` default; it is not an opt-in gate.
 
 The browser composition lives under `components/presence/`. `AppShell.tsx`
 mounts one deferred `LivingKingdomClient` for the current document.
@@ -202,10 +207,13 @@ interpolate low-frequency server samples without layout writes on scroll.
 
 Movement is never stored in Postgres, sent through `/api/user/ping`, written to
 `UserActivityEvent`, or bridged to Traffic. The preference route is the only
-durable feature write. Raw paths, queries, fragments, arbitrary anchors, and
-client-authored identity/avatar fields never enter the public protocol. A door
-click is intent; only a subsequent accepted route-entry sample changes the
-actor's realm truth.
+durable feature write, and only an explicit override creates or changes that
+row. Raw paths, queries, fragments, arbitrary anchors, exact scroll offsets,
+cursor coordinates, and client-authored identity/avatar fields never enter the
+browser-to-server wire contract. Private-route and hidden-tab activity never
+enter the public projection; hiding removes the tab's actor state. A door click
+is intent; only a subsequent accepted route-entry sample changes the actor's
+realm truth.
 
 Public actor IDs and avatar URLs contain only a process-local HMAC handle. The
 managed-media route resolves that handle in memory and serves bytes directly;
@@ -225,6 +233,9 @@ The initial operating controls are intentionally narrow:
 
 - `LIVING_KINGDOM_MODE=off|staff|canary|public`; a missing or unknown value is
   `off`;
+- within the admitted mode/cohort, an eligible signed-in human with a personal
+  avatar defaults to `public_coarse`; an explicit `off` preference wins, while
+  anonymous viewers and AI-controlled persona accounts cannot publish;
 - `LIVING_KINGDOM_STAFF_UID_ALLOWLIST` and
   `LIVING_KINGDOM_CANARY_UID_ALLOWLIST` bound pre-public publisher cohorts;
 - `LIVING_KINGDOM_MAX_SUBSCRIBERS` defaults to 250 and is clamped to the
@@ -247,6 +258,9 @@ returns no feature surface and the events route returns HTTP 204, which tells
 EventSource clients not to reconnect. A mode change takes effect in the web
 process environment and therefore follows the normal reviewed service/release
 operation; client-side hiding is not authority.
+
+This section defines product and technical behavior. Legal and
+privacy-compliance conclusions are out of scope.
 
 Nginx owns only transport hygiene for the exact events endpoint: HTTP/1.1 to the
 loopback web service, buffering/cache/compression disabled, `Connection` cleared,
