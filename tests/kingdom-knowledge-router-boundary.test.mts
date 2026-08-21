@@ -136,7 +136,12 @@ test("KKR focuses named player evidence before repository truncation", () => {
 
   assert.match(
     router,
-    /loadPlayers[\s\S]*?focusPublicLeaderboardPayload\([\s\S]*?leaderboard\?limit=600/,
+    /loadPlayers[\s\S]*?publicJson\("\/api\/lobby\/leaderboard\?limit=600"\)/,
+  );
+
+  assert.match(
+    router,
+    /loadPlayers[\s\S]*?focusPublicLeaderboardPayload\(\s*payload,\s*args,\s*\)/,
   );
 
   assert.match(

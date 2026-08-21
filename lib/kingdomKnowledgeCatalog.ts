@@ -2,6 +2,7 @@ export const KINGDOM_KNOWLEDGE_REPOSITORY_IDS = [
   "site_map",
   "site_pages",
   "lobby_chat",
+  "traffic",
   "players",
   "leaderboard",
   "recent_battles",
@@ -58,6 +59,7 @@ export const PUBLIC_KINGDOM_PAGES = [
   { path: "/kingdom-forge", label: "Kingdom Forge", repository: "forge" },
   { path: "/lobby", label: "Lobby", repository: "lobby_chat" },
   { path: "/leaderboard", label: "Leaderboard", repository: "leaderboard" },
+  { path: "/traffic", label: "Traffic Observatory", repository: "traffic" },
   { path: "/live-games", label: "Live Games", repository: "live_games" },
   { path: "/market", label: "Marketplace", repository: "marketplace" },
   { path: "/download", label: "Watcher Download", repository: "site_pages" },
@@ -127,6 +129,26 @@ export const KINGDOM_KNOWLEDGE_REPOSITORIES:
     guidance:
       "Lobby messages are public conversation evidence, not authoritative system facts unless corroborated by a canonical repository.",
     priority: 8,
+  },
+  {
+    id: "traffic",
+    label: "Traffic Observatory",
+    description:
+      "Completed UTC-day public Traffic Observatory sessions, human-confidence classifications, and recent growth.",
+    keywords: [
+      "traffic", "visitor", "visitors", "visit", "visits", "session", "sessions",
+      "audience", "confirmed human", "confirmed humans", "potential human",
+      "potential humans", "suspected human", "suspected humans",
+    ],
+    phrases: [
+      "how many visitors", "how many people visited", "traffic today",
+      "traffic yesterday", "visitors today", "visitors yesterday",
+      "confirmed humans", "potential humans",
+    ],
+    pagePaths: ["/traffic"],
+    guidance:
+      "Traffic Observatory points are completed UTC days. Preserve the upstream semantics exactly. Never call a session count unique people, unique visitors, or unique IP addresses unless the supplied Traffic Observatory semantics explicitly establish that identity grain.",
+    priority: 10,
   },
   {
     id: "players",
@@ -363,12 +385,12 @@ export const KINGDOM_KNOWLEDGE_REPOSITORIES:
     id: "marketplace",
     label: "Marketplace",
     description:
-      "Current marketplace configuration for avatar commissions, archetypes, belt placement, and shop proposals.",
-    keywords: ["marketplace", "avatar", "commission", "shop", "visage", "visage forge"],
-    phrases: ["buy an avatar", "avatar price"],
+      "Current live public Marketplace businesses plus marketplace configuration for avatar commissions, archetypes, belt placement, and shop proposals.",
+    keywords: ["marketplace", "business", "businesses", "shop", "shops", "storefront", "avatar", "commission", "visage", "visage forge"],
+    phrases: ["buy an avatar", "avatar price", "how many businesses", "which businesses are open"],
     pagePaths: ["/market"],
     guidance:
-      "Use current marketplace constants for pricing and available commission configuration.",
+      "Use live public Marketplace shop rows for business counts, names, locations, and storefront state. Use marketplace constants for pricing/configuration. Never expose pending proposals, owner-only controls, or private business administration through this public repository.",
     priority: 6,
   },
   {

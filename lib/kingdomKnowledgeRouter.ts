@@ -65,6 +65,7 @@ import {
 import {
   matchesPublicPlayerSearchTerms,
 } from "@/lib/publicPlayerSearch";
+import { isInternalSystemUid } from "@/lib/internalSystemAccounts";
 
 export type KingdomKnowledgeSource =
   | "lobby_public"
@@ -316,6 +317,150 @@ async function loadPageBundle(paths: readonly string[]) {
 
 async function loadLobbyChat() {
   return publicJson("/api/lobby/chat?limit=80");
+}
+
+function looksLikeOnlinePlayerListIntent(message: string) {
+  const query = message.toLowerCase();
+
+  return (
+    /\bonline\b/.test(query) &&
+    /\b(who|name|names|list|which|players?|people|warriors?)\b/.test(query)
+  );
+}
+
+function looksLikeLatestBattleIntent(message: string) {
+  const query = message.toLowerCase();
+
+  return (
+    /\b(last|latest|newest|most recent)\b/.test(query) &&
+    /\b(game|match|battle|replay)\b/.test(query)
+  );
+}
+
+function finiteTrafficNumber(value: unknown) {
+  const parsed =
+    typeof value === "number"
+      ? value
+      : Number(value);
+
+  return Number.isFinite(parsed)
+    ? parsed
+    : null;
+}
+
+function normalizeTrafficPoint(value: unknown) {
+  const row = asEvidenceRecord(value);
+  if (!row || typeof row.date !== "string") {
+    return null;
+  }
+
+  const values =
+    asEvidenceRecord(row.values) ?? row;
+
+  const totalTraffic = finiteTrafficNumber(
+    values.totalTraffic,
+  );
+  const potentialHuman = finiteTrafficNumber(
+    values.potentialHuman ?? values.suspectedHuman,
+  );
+  const confirmedHuman = finiteTrafficNumber(
+    values.confirmedHuman,
+  );
+
+  if (
+    totalTraffic === null ||
+    potentialHuman === null ||
+    confirmedHuman === null
+  ) {
+    return null;
+  }
+
+  return {
+    date: row.date,
+    totalTraffic,
+    potentialHuman,
+    confirmedHuman,
+  };
+}
+
+function trafficGrowth(
+  current: number,
+  previous: number,
+) {
+  return {
+    absolute: current - previous,
+    percent:
+      previous > 0
+        ? Math.round(((current - previous) / previous) * 10_000) / 100
+        : null,
+    multiple:
+      previous > 0
+        ? Math.round((current / previous) * 100) / 100
+        : null,
+  };
+}
+
+async function loadTraffic() {
+  const payload =
+    asEvidenceRecord(
+      await publicJson("/api/traffic/public"),
+    );
+
+  const points = (
+    Array.isArray(payload?.points)
+      ? payload.points
+      : []
+  )
+    .map(normalizeTrafficPoint)
+    .filter(
+      (
+        point,
+      ): point is NonNullable<
+        ReturnType<typeof normalizeTrafficPoint>
+      > => Boolean(point),
+    )
+    .sort((left, right) =>
+      left.date.localeCompare(right.date),
+    );
+
+  const latest =
+    points.length > 0
+      ? points[points.length - 1]
+      : null;
+  const previous =
+    points.length > 1
+      ? points[points.length - 2]
+      : null;
+
+  return {
+    source: "public Traffic Observatory",
+    dayBoundary: "completed UTC days only",
+    semantics: payload?.semantics ?? null,
+    range: payload?.range ?? null,
+    generatedAt: payload?.generatedAt ?? null,
+    latestCompletedUtcDay: latest,
+    previousCompletedUtcDay: previous,
+    latestGrowth:
+      latest && previous
+        ? {
+            totalTraffic: trafficGrowth(
+              latest.totalTraffic,
+              previous.totalTraffic,
+            ),
+            potentialHuman: trafficGrowth(
+              latest.potentialHuman,
+              previous.potentialHuman,
+            ),
+            confirmedHuman: trafficGrowth(
+              latest.confirmedHuman,
+              previous.confirmedHuman,
+            ),
+          }
+        : null,
+    recentCompletedUtcDays: points.slice(-14),
+    truthRule:
+      "Traffic values are Traffic Observatory session/classification counts for completed UTC days. Never relabel them as unique people, unique visitors, or unique IPs unless the supplied semantics explicitly establish that identity grain.",
+  };
 }
 
 
@@ -679,6 +824,12 @@ function focusPublicGamePayload(
 
   return {
     source: "current public battle evidence",
+    latestPublicBattle:
+      rows.length > 0
+        ? compactGameEvidence(rows[0])
+        : null,
+    latestBattleIntent:
+      looksLikeLatestBattleIntent(args.message),
     queryTerms: focused.queryTerms,
     queryMatchedGames: focused.matchedItems,
     pairEvidence: summarizeKingdomPairEvidence(
@@ -691,62 +842,179 @@ function focusPublicGamePayload(
 
 async function loadPlayers(args: RepositoryArgs) {
   if (isShadowMode()) {
+    if (looksLikeOnlinePlayerListIntent(args.message)) {
+      const presencePayload =
+        await publicJson("/api/user/online_users");
+      const presenceRows =
+        Array.isArray(presencePayload)
+          ? presencePayload
+          : [];
+
+      const onlinePlayers = presenceRows
+        .map(asEvidenceRecord)
+        .filter(
+          (
+            row,
+          ): row is Record<string, unknown> =>
+            Boolean(row),
+        )
+        .filter((row) => {
+          const uid =
+            typeof row.uid === "string"
+              ? row.uid
+              : null;
+
+          return (
+            Boolean(uid) &&
+            !isInternalSystemUid(uid)
+          );
+        })
+        .slice(0, 40)
+        .map((row) => ({
+          name:
+            typeof row.in_game_name === "string"
+              ? row.in_game_name
+              : typeof row.uid === "string"
+                ? row.uid
+                : "unknown player",
+          verified: row.verified === true,
+          verificationLevel:
+            typeof row.verificationLevel === "number"
+              ? row.verificationLevel
+              : 0,
+          isOnline: true,
+          claimed: true,
+        }));
+
+      return {
+        source:
+          "canonical request-time public presence",
+        counts: {
+          onlineHumans: onlinePlayers.length,
+        },
+        onlinePlayers,
+        onlineListIntent: true,
+        truthRule:
+          "Online names come from the dedicated public presence endpoint at request time. Canonical internal system identities are excluded.",
+      };
+    }
+
+    const payload =
+      await publicJson("/api/lobby/leaderboard?limit=600");
+
     return focusPublicLeaderboardPayload(
-      await publicJson("/api/lobby/leaderboard?limit=600"),
+      payload,
       args,
     );
   }
 
-  const directory = await loadPublicPlayerDirectory(args.prisma);
-  const matched = directory.allEntries.filter((entry) =>
-    matchesPublicPlayerSearchTerms(
-          {
-            name: entry.name,
-            inGameName:
-              entry.inGameName,
-            steamPersonaName:
-              entry.steamPersonaName,
-            aliases:
-              entry.aliases,
-          },
-          evidenceQueryTerms(args),
-        ),
-  );
+  const directory =
+    await loadPublicPlayerDirectory(
+      args.prisma,
+    );
 
-  const selected = (matched.length > 0 ? matched : directory.allEntries)
-    .slice(0, matched.length > 0 ? 24 : 32)
-    .map((entry) => ({
-      name: entry.name,
-      aliases: entry.aliases,
-      claimed: entry.claimed,
-      verified: entry.verified,
-      verificationLevel: entry.verificationLevel,
-      isOnline: entry.isOnline,
-      totalMatches: entry.totalMatches,
-      wins: entry.wins,
-      losses: entry.losses,
-      unknowns: entry.unknowns,
-      lastPlayedAt: entry.lastPlayedAt,
-      steamRmRating: entry.steamRmRating,
-      steamDmRating: entry.steamDmRating,
-      honors: entry.badges
-        .filter((badge) => badge.displayOnProfile)
-        .map((badge) => ({
-          kind: badge.honorKind,
-          title: badge.title,
-          status: badge.status,
-        })),
-    }));
+  const humanClaimed =
+    directory.claimedEntries.filter(
+      (entry) =>
+        !isInternalSystemUid(entry.uid),
+    );
+  const humanOnline =
+    humanClaimed.filter(
+      (entry) => entry.isOnline,
+    );
+
+  const matched =
+    directory.allEntries.filter((entry) =>
+      matchesPublicPlayerSearchTerms(
+        {
+          name: entry.name,
+          inGameName: entry.inGameName,
+          steamPersonaName:
+            entry.steamPersonaName,
+          aliases: entry.aliases,
+        },
+        evidenceQueryTerms(args),
+      ),
+    );
+
+  const onlineListIntent =
+    looksLikeOnlinePlayerListIntent(
+      args.message,
+    );
+
+  const selectedEntries =
+    onlineListIntent
+      ? humanOnline.slice(0, 40)
+      : (
+          matched.length > 0
+            ? matched
+            : directory.allEntries
+        ).slice(
+          0,
+          matched.length > 0
+            ? 24
+            : 32,
+        );
+
+  const toPlayerEvidence = (
+    entry: (typeof directory.allEntries)[number],
+  ) => ({
+    name: entry.name,
+    aliases: entry.aliases,
+    claimed: entry.claimed,
+    verified: entry.verified,
+    verificationLevel:
+      entry.verificationLevel,
+    isOnline: entry.isOnline,
+    totalMatches: entry.totalMatches,
+    wins: entry.wins,
+    losses: entry.losses,
+    unknowns: entry.unknowns,
+    lastPlayedAt: entry.lastPlayedAt,
+    steamRmRating: entry.steamRmRating,
+    steamDmRating: entry.steamDmRating,
+    honors: entry.badges
+      .filter(
+        (badge) =>
+          badge.displayOnProfile,
+      )
+      .map((badge) => ({
+        kind: badge.honorKind,
+        title: badge.title,
+        status: badge.status,
+      })),
+  });
 
   return {
     counts: {
       all: directory.allEntries.length,
-      claimed: directory.claimedEntries.length,
-      replayOnly: directory.replayEntries.length,
-      onlineClaimed: directory.activeClaimed.length,
+      claimed:
+        directory.claimedEntries.length,
+      replayOnly:
+        directory.replayEntries.length,
+      onlineClaimed:
+        directory.activeClaimed.length,
+      claimedHumans:
+        humanClaimed.length,
+      onlineHumans:
+        humanOnline.length,
+      systemClaimedProfiles:
+        directory.claimedEntries.length -
+        humanClaimed.length,
     },
-    queryMatchedPlayers: matched.length,
-    players: selected,
+    onlinePlayers:
+      humanOnline
+        .slice(0, 40)
+        .map(toPlayerEvidence),
+    onlineListIntent,
+    queryMatchedPlayers:
+      matched.length,
+    players:
+      selectedEntries.map(
+        toPlayerEvidence,
+      ),
+    truthRule:
+      "Human counts and online player names exclude canonical internal system identities. Online state is the current public player-directory presence truth.",
   };
 }
 
@@ -789,6 +1057,12 @@ async function loadRecentBattles(args: RepositoryArgs) {
 
   return {
     totalPublicBattles: archive.total,
+    latestPublicBattle:
+      archive.entries.length > 0
+        ? compactGameEvidence(archive.entries[0])
+        : null,
+    latestBattleIntent:
+      looksLikeLatestBattleIntent(args.message),
     queryTerms: focused.queryTerms,
     queryMatchedGames: focused.matchedItems,
     pairEvidence: summarizeKingdomPairEvidence(
@@ -1648,6 +1922,50 @@ async function loadMarketplace() {
   };
 }
 
+async function loadMarketplaceRuntime(
+  args: RepositoryArgs,
+) {
+  const base = await loadMarketplace();
+
+  const businesses =
+    await args.prisma.marketplaceShop.findMany({
+      where: {
+        status: "active",
+        displayEnabled: true,
+      },
+      orderBy: [
+        { streetKey: "asc" },
+        { slot: "asc" },
+        { id: "asc" },
+      ],
+      select: {
+        slug: true,
+        name: true,
+        proprietorLabel: true,
+        streetKey: true,
+        slot: true,
+        status: true,
+        displayEnabled: true,
+        href: true,
+        approvedAt: true,
+      },
+    });
+
+  return {
+    source: "canonical public Marketplace storefront estate",
+    publicActiveBusinessCount:
+      businesses.length,
+    publicBusinesses: businesses,
+    truthRule:
+      "Count only active, display-enabled public storefronts. Pending proposals and owner/admin controls are not public Marketplace knowledge.",
+    config: base.config,
+    avatarArchetypes:
+      base.avatarArchetypes,
+    beltPlacements:
+      base.beltPlacements,
+  };
+}
+
 async function loadRadio(args: RepositoryArgs) {
   if (isShadowMode()) return loadPageBundle(["/radio"]);
 
@@ -1696,6 +2014,7 @@ const LOADERS: Record<
   site_map: loadSiteMap,
   site_pages: (args) => loadPublicPageText(args.message),
   lobby_chat: loadLobbyChat,
+  traffic: loadTraffic,
   players: loadPlayers,
   leaderboard: loadLeaderboard,
   recent_battles: loadRecentBattles,
@@ -1715,7 +2034,7 @@ const LOADERS: Record<
   bounties: loadBounties,
   governance: loadGovernance,
   requests: loadRequests,
-  marketplace: loadMarketplace,
+  marketplace: loadMarketplaceRuntime,
   radio: loadRadio,
 };
 

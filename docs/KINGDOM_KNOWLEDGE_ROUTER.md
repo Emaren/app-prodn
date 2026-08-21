@@ -266,3 +266,69 @@ requested evidence.
 
 Historical/name-only fallback archives remain bounded. Zero evidence from a
 bounded fallback is not permission to make an absolute historical absence claim.
+
+
+## KKR V2 - Scribe knows the Kingdom
+
+The public knowledge plane now treats several high-value live questions as
+explicit evidence contracts rather than leaving them to generic repository
+sampling.
+
+### Traffic Observatory
+
+`traffic` is a first-class KKR repository backed by `/api/traffic/public`.
+
+The public feed is a completed-UTC-day series. KKR preserves the upstream
+Traffic Observatory semantics and exposes the latest two completed UTC days,
+recent completed days, and deterministic day-over-day deltas/multiples.
+
+Traffic counts must never be relabeled as unique people, unique visitors, or
+unique IP addresses unless the Traffic Observatory semantics explicitly prove
+that identity grain.
+
+The public Traffic API wraps each day's metrics under `point.values`; the KKR
+normalizer consumes that canonical envelope directly while retaining a flat-row
+fallback for compatibility.
+
+
+### Online humans
+
+The player repository now carries explicit human/profile distinctions and an
+`onlinePlayers` lane. Canonical internal system identities are excluded from
+human counts and from the production online-human list.
+
+Questions such as "Who is online?" therefore receive the current names rather
+than only an aggregate count.
+
+In production-shaped shadow mode, online-name questions deliberately bypass the
+bounded leaderboard feed and read the dedicated public presence endpoint
+(`/api/user/online_users`) at request time. This avoids both the leaderboard's
+tracked-player scope and stale shadow `lastSeen` timestamps.
+
+
+### Latest public battle
+
+Recent-battle evidence carries an explicit `latestPublicBattle` record before
+query-focused evidence. "Who played in the last game?" no longer depends on
+generic evidence ranking to preserve the newest battle.
+
+### Live Marketplace
+
+The Marketplace repository keeps its environment-independent configuration
+knowledge, but its runtime loader now adds the canonical active,
+display-enabled `marketplace_shops` estate. Public business counts and names
+therefore come from current storefront truth, not an old static description.
+
+Pending proposals and owner/admin controls remain outside the public KKR
+payload.
+
+### Prediction and conversation truth
+
+The provider may make an evidence-informed prediction when the member clearly
+asks for a prediction, forecast, guess, ranking, or opinion. The uncertainty
+must be clear and the prediction must never be presented as recorded fact.
+
+Hall Scribe must treat supplied Hall history as the literal evidence for its own
+past conversational actions. It may not claim that it previously greeted,
+said, promised, or did something unless the supplied Hall history shows that
+action.

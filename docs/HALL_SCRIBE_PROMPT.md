@@ -118,3 +118,19 @@ claim such as "no public record", "no matches", or "never played".
 In that narrow case AoE2WAR replaces the contradicted provider text with a
 compact deterministic summary derived from the current pair-archive aggregate
 counts. This is a factual safety boundary, not a general response template.
+
+
+## KKR V2 Hall behavior
+
+Hall Scribe remains an OpenAI-backed Hall participant over the shared Kingdom
+Knowledge Router. KKR V2 adds explicit public evidence for Traffic Observatory
+completed UTC days, current online-human names, the latest public battle, and
+the live active Marketplace storefront estate.
+
+Hall conversational memory remains evidence rather than canonical system truth.
+When asked whether it previously said or did something, Hall Scribe must verify
+that action against the supplied Hall history instead of inventing a memory.
+
+Predictions are allowed when a member explicitly asks for one. They must be
+clearly framed as predictions or guesses and remain separate from recorded
+AoE2WAR facts.
