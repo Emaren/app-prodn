@@ -13,6 +13,7 @@ import {
   Swords,
   UserCircle,
 } from "lucide-react";
+import { livingKingdomRealmForPath } from "@/lib/livingKingdom/realms";
 
 export const APP_NAV_ITEMS = [
   { href: "/live-games", label: "Live", icon: Radio },
@@ -121,6 +122,7 @@ export default function MobileFloatingNav() {
             <Link
               key={item.href}
               href={item.href}
+              data-presence-door={livingKingdomRealmForPath(item.href) ?? undefined}
               aria-label={item.label}
               className={`flex flex-col items-center justify-center gap-1 rounded-[11px] font-semibold transition ${
                 expanded ? "min-h-[4.45rem] px-1.5 py-2 text-xs" : "min-h-[3.3rem] px-1 py-1.5 text-[11px]"

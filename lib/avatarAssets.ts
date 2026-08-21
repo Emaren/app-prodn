@@ -86,7 +86,7 @@ export function avatarThumbFallbackForName(name: string | null | undefined) {
 export function managedAvatarUrl(
   target: string,
   fallback = STATIC_AVATAR_FALLBACKS.silhouette,
-  options?: { size?: "thumb" | "card" }
+  options?: { size?: "presence" | "thumb" | "card" }
 ) {
   const normalizedTarget = slugifyAvatarTarget(target) || "silhouette";
   const safeFallback = fallback.startsWith("/") && !fallback.startsWith("//")
@@ -101,6 +101,10 @@ export function managedAvatarUrl(
 
   if (options?.size === "thumb") {
     return appendQueryParam(url, "size", "thumb");
+  }
+
+  if (options?.size === "presence") {
+    return appendQueryParam(url, "size", "presence");
   }
 
   if (options?.size === "card") {
@@ -345,6 +349,26 @@ export function avatarThumbUrlForUser(
     avatarFallbackForName(name),
     { size: "thumb" }
   );
+}
+
+export function avatarPresenceUrlForUser(
+  uid: string | null | undefined,
+  name: string | null | undefined,
+  revision?: string | number | null
+) {
+  const normalizedUid = slugifyAvatarTarget(uid);
+
+  if (!normalizedUid) {
+    return avatarThumbUrlForName(name);
+  }
+
+  const url = managedAvatarUrl(
+    `user-${normalizedUid}`,
+    avatarThumbFallbackForName(name),
+    { size: "presence" }
+  );
+
+  return revision == null ? url : appendQueryParam(url, "rev", String(revision));
 }
 
 export function featuredAvatarCardUrlForUser(

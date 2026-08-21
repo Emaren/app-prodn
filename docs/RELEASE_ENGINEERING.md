@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-08-20"
+reviewed_at: "2026-08-21"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -579,13 +579,25 @@ Foreign-owned or unwritable `.git` metadata blocks release.
 
 ## Database migration boundary
 
-The automatic `aoe2war deploy` lane refuses any release manifest containing
-Prisma migration paths. This is intentional.
+`aoe2war finish` includes one deliberately narrow higher-risk database lane for
+additive Prisma releases. A migration-bearing candidate must pass a `DATABASE`
+or `FINANCIAL` release gate. The migration contract rejects destructive SQL and
+any `UPDATE`, `DELETE`, or `ALTER TABLE` against a table that was not created by
+the same release.
 
-Database releases require an explicit higher-risk procedure covering backup,
-migration-history coherence, compatibility, application order, proof, and
-rollback. Until that lane is deliberately implemented and sealed, fail-closed
-refusal is the correct production behavior.
+After the exact candidate is published and staged, but before activation, the
+lane verifies that the production pending migration frontier exactly equals the
+release manifest. It then writes a durable PostgreSQL custom-format dump,
+records its SHA-256, applies the exact frontier from an isolated worktree, proves
+each migration landed exactly once with no unfinished Prisma rows, and writes a
+release-bound migration receipt. Activation refuses a partial or unexpected
+frontier, a previously applied release without its durable receipt, or any
+missing/invalid proof.
+
+This authority does not extend to destructive migrations, mutation of existing
+tables, arbitrary SQL, manual in-place migration, or database restoration.
+Those remain separately reviewed break-glass procedures. Wolo services and
+settlement state remain outside this lane entirely.
 
 ## WOLO protected boundary
 

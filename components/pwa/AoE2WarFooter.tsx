@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
+import { livingKingdomRealmForPath } from "@/lib/livingKingdom/realms";
 import {
   Activity,
   Coins,
@@ -89,7 +90,11 @@ function FooterLink({
   }
 
   return (
-    <Link href={href} className={className}>
+    <Link
+      href={href}
+      data-presence-door={livingKingdomRealmForPath(href) ?? undefined}
+      className={className}
+    >
       {content}
     </Link>
   );

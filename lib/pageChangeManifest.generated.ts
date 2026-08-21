@@ -15,7 +15,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/leaderboard",
     label: "Leaderboard",
-    version: "src-c65679d98ae4ffa461d3",
+    version: "src-36b662b1e7de568fae1e",
   },
   {
     href: "/champions",
@@ -30,7 +30,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/clans",
     label: "Clans",
-    version: "src-5d5e28e68bf552686233",
+    version: "src-74dd15cdf194c5886601",
   },
   {
     href: "/academy",
@@ -40,7 +40,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/market",
     label: "Marketplace",
-    version: "src-19b658fda9a88d5f7006",
+    version: "src-89591e15f56034d6f6f1",
   },
   {
     href: "/ai",
@@ -65,7 +65,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/workshop",
     label: "The Workshop",
-    version: "src-688cd6f9526f2fce19e3",
+    version: "src-d4d74bbd9a6ff7121fb5",
   },
   {
     href: "/game-stats",

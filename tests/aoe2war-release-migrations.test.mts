@@ -4,6 +4,8 @@ import test from "node:test";
 
 const auto = fs.readFileSync("scripts/aoe2_release_auto.py", "utf8");
 const ship = fs.readFileSync("scripts/aoe2_release_ship.py", "utf8");
+const deployGuide = fs.readFileSync("DEPLOY.md", "utf8");
+const releaseGuide = fs.readFileSync("docs/RELEASE_ENGINEERING.md", "utf8");
 
 test("one-command ship supports only additive DATABASE/FINANCIAL Prisma migrations", () => {
   assert.match(auto, /def migration_contract/);
@@ -49,4 +51,15 @@ test("release plan tells the operator what the migration phase does", () => {
     ship,
     /automated ship does not support migrations yet/
   );
+});
+
+test("operator docs describe the sealed additive lane without stale refusal text", () => {
+  for (const guide of [deployGuide, releaseGuide]) {
+    assert.match(guide, /protected/i);
+    assert.match(guide, /additive migration (?:contract|lane)/i);
+    assert.match(guide, /pre-migration/);
+    assert.match(guide, /exact(?:ly)?(?:-| )once|exact frontier/i);
+    assert.doesNotMatch(guide, /never performs a database migration/i);
+    assert.doesNotMatch(guide, /refuses any release manifest containing\s+Prisma migration paths/i);
+  }
 });

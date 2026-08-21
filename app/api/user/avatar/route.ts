@@ -5,6 +5,7 @@ import {
   saveManagedMediaReference,
   saveManagedMediaUpload,
 } from "@/lib/managedMediaAssets";
+import { invalidateLivingKingdomIdentity } from "@/lib/livingKingdom/identity";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 
@@ -103,6 +104,7 @@ export async function POST(request: NextRequest) {
       alt: `${label} avatar`,
       uploadedByUid: gate.user.uid,
     });
+    invalidateLivingKingdomIdentity(gate.user.uid);
 
     return NextResponse.json(
       {
@@ -201,6 +203,7 @@ export async function PATCH(request: NextRequest) {
       alt: asset.alt || `${label} avatar`,
       uploadedByUid: gate.user.uid,
     });
+    invalidateLivingKingdomIdentity(gate.user.uid);
 
     return NextResponse.json(
       {

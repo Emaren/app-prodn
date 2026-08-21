@@ -33,6 +33,7 @@ import {
 } from "@/lib/pageChangeNotices";
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
 import { UniversalLanguageProvider } from "@/context/UniversalLanguageContext";
+import { livingKingdomRealmForPath } from "@/lib/livingKingdom/realms";
 
 const HeaderInboxControl = dynamic(
   () => import("@/components/contact/HeaderInboxControl"),
@@ -47,6 +48,10 @@ const UserExperienceTracker = dynamic(
 );
 const ClientFlightRecorder = dynamic(
   () => import("@/components/analytics/ClientFlightRecorder"),
+  { ssr: false }
+);
+const LivingKingdomClient = dynamic(
+  () => import("@/components/presence/LivingKingdomClient"),
   { ssr: false }
 );
 const MobileFloatingNav = dynamic(
@@ -317,6 +322,10 @@ function isRouteActive(pathname: string | null, href: string) {
   return pathname === href || Boolean(pathname?.startsWith(`${href}/`));
 }
 
+function presenceDoorForHref(href: string) {
+  return livingKingdomRealmForPath(href) ?? undefined;
+}
+
 function usePageChangeNotices() {
   const pathname = usePathname();
   const { uid } = useUserAuth();
@@ -439,6 +448,7 @@ function HeaderPillLink({
   return (
     <Link
       href={href}
+      data-presence-door={presenceDoorForHref(href)}
       prefetch={false}
       onMouseEnter={() => router.prefetch(href)}
       onFocus={() => router.prefetch(href)}
@@ -529,6 +539,7 @@ function KingdomNavItem({
     >
       <button
         type="button"
+        data-presence-door="kingdom"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t("kingdom.openAria")}
@@ -644,6 +655,7 @@ function KingdomMenuPanel({
             <Link
               key={item.href}
               href={item.href}
+              data-presence-door={presenceDoorForHref(item.href)}
               prefetch={false}
               onMouseEnter={() => router.prefetch(item.href)}
               onFocus={() => router.prefetch(item.href)}
@@ -698,6 +710,7 @@ function HeaderLiveGamesLink({
   return (
     <Link
       href="/live-games"
+      data-presence-door={presenceDoorForHref("/live-games")}
       prefetch={false}
       onMouseEnter={() => router.prefetch("/live-games")}
       onFocus={() => router.prefetch("/live-games")}
@@ -723,6 +736,7 @@ function HeaderWorkshopLiveLink({ active }: { active?: boolean }) {
   return (
     <Link
       href="/workshop"
+      data-presence-door={presenceDoorForHref("/workshop")}
       prefetch={false}
       onMouseEnter={() => router.prefetch("/workshop")}
       onFocus={() => router.prefetch("/workshop")}
@@ -1339,6 +1353,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
           <SpeedProof />
           <UserExperienceTracker />
           <ClientFlightRecorder />
+          <LivingKingdomClient />
         </>
       ) : null}
       <header
@@ -1395,6 +1410,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             <div className="flex min-w-0 items-center justify-between gap-3">
               <Link
                 href="/"
+                data-presence-door="home"
                 prefetch={false}
                 onMouseEnter={() => router.prefetch("/")}
                 onFocus={() => router.prefetch("/")}
@@ -1495,6 +1511,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             <div className="flex min-w-0 items-center gap-2 xl:gap-3">
               <Link
                 href="/"
+                data-presence-door="home"
                 prefetch={false}
                 onMouseEnter={() => router.prefetch("/")}
                 onFocus={() => router.prefetch("/")}

@@ -1939,6 +1939,7 @@ export function LivingLeaderboard({
     <section
       ref={viewportRef}
       data-living-leaderboard-viewport
+      data-presence-scroll-root
       data-leaderboard-focus={
         focusStageRef.current
       }

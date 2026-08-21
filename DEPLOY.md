@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-08-20"
+reviewed_at: "2026-08-21"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -116,17 +116,26 @@ Mutating release operations are serialized across the Mac and production host
 by the canonical release lease, with checkout-local locks as a second guard.
 Do not bypass the lease by manually running overlapping production mutations.
 
-The automatic lane deliberately refuses releases containing Prisma migration
-paths, a changed `yarn.lock`, or changed dependency/package-manager sections in
-`package.json`. A dependency-contract-changing release needs a separately
-reviewed lane that atomically installs, activates, and rolls back `node_modules`;
-the release engine will not silently reuse incompatible production dependencies.
+The automatic lane accepts Prisma migrations only through its protected
+additive migration contract. The release must carry a `DATABASE` or `FINANCIAL`
+gate; every migration must be additive/backward-compatible and limited to tables
+created by that release; the live pending frontier must exactly equal the
+manifest; and activation cannot begin until a durable pre-migration `pg_dump`,
+SHA-256, exactly-once migration proof, and release-bound receipt exist. Any
+destructive SQL, pre-existing-table mutation, partial frontier, unexpected
+pending migration, or missing receipt fails closed.
 
-It also never performs a database migration, Wolo mutation, host reboot,
-kernel/package upgrade, or broad cleanup. Those are separately authorized
-maintenance procedures. Observing exactly one listener on each protected Wolo
-port, `8092` and `8093`, is a health invariant; it is not permission to change
-either service.
+The lane still refuses a changed `yarn.lock` or changed dependency/package-
+manager sections in `package.json`. A dependency-contract-changing release needs
+a separately reviewed lane that atomically installs, activates, and rolls back
+`node_modules`; the release engine will not silently reuse incompatible
+production dependencies.
+
+Outside that protected additive contract, it performs no database mutation. It
+also never performs a Wolo mutation, host reboot, kernel/package upgrade, or
+broad cleanup. Those are separately authorized maintenance procedures.
+Observing exactly one listener on each protected Wolo port, `8092` and `8093`,
+is a health invariant; it is not permission to change either service.
 
 The current mutating release lane owns `app-prodn`. Estate audit observes the
 replay API, Watcher, documentation, storage, and Wolo boundaries, but `finish`
@@ -292,16 +301,16 @@ activation. Production source, `public/`, `.aoe2war-build-version`,
 while `.next-release` is built. Do not use an unbounded pull as the release
 selector.
 
-### 5. Apply migrations only when explicitly required
+### 5. Apply migrations only through the protected additive lane
 
-A deployment does not automatically require Prisma.
-
-Run `npx prisma migrate deploy` only when reviewed migrations belong to the
-sealed release and the backup, migration-history divergence, verification, and
-rollback plan are explicit.
+A deployment does not automatically require Prisma. When the sealed release
+contains reviewed additive migrations, `aoe2war finish` owns their backup-first,
+exact-frontier application and receipt verification before activation. Do not
+run `npx prisma migrate deploy` manually around the governed transaction.
 
 Documentation, presentation, and localization releases must not touch Prisma
-or the database unless their release plan specifically requires it.
+or the database unless their gated release manifest specifically requires it.
+Destructive or existing-table migrations remain separate break-glass work.
 
 ### 6. Build in an isolated temporary worktree
 

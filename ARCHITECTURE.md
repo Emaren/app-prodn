@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-08-20"
+reviewed_at: "2026-08-21"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -48,6 +48,8 @@ It owns:
 - Prisma-backed user, inbox, badge, gift, request, and appearance state
 - server-side proxying to `api-prodn` where game/replay data still lives there
 - premium shell behavior, theme selection, and lobby-level presentation logic
+- the Living Kingdom ambient roaming projection, privacy policy, and public
+  avatar choreography
 
 It does not own:
 - replay parsing truth
@@ -148,6 +150,109 @@ Key browser-facing routes include:
 - `app/api/replay/upload/route.ts`
 
 These routes enforce session/admin behavior and often proxy, merge, or reshape backend data for the browser.
+
+### Living Kingdom presence plane
+
+Living Kingdom is a small, ephemeral presence plane inside the existing Next.js
+web authority. It answers “which opted-in warriors are roaming an allowlisted
+public part of the kingdom now?” It does not establish durable user activity,
+analytics attribution, replay truth, wallet truth, or exact continuous cursor
+or scroll truth.
+
+```text
+publisher                                           public viewer
+signed-in session                                   anonymous or signed in
+      |                                                      |
+      | POST /api/kingdom-presence/state                     | EventSource
+      v                                                      v
+identity + realm policy -> rate limit -> process-local hub -> bounded SSE event
+                                                   |
+                                                   v
+                                      local transform interpolation
+```
+
+The owning server modules are:
+
+- `lib/livingKingdom/protocol.ts` for the bounded wire contract;
+- `lib/livingKingdom/realms.ts` for the allowlisted public route/door registry;
+- `lib/livingKingdom/hub.ts` for latest-only actor state, TTL eviction, bounded
+  stream fanout, snapshots, deltas, and aggregate counters;
+- `lib/livingKingdom/identity.ts` for the fail-closed feature mode,
+  server-authoritative identity, preference eligibility, and cached avatar
+  resolution;
+- `lib/livingKingdom/avatarRegistry.ts` for the bounded process-local mapping
+  from an opaque public actor handle to the internal managed-avatar target;
+- `lib/livingKingdom/rateLimit.ts` for process-local publish admission;
+- `app/api/kingdom-presence/state/route.ts` for authenticated publisher input;
+- `app/api/kingdom-presence/events/route.ts` for the public receive-only SSE
+  stream;
+- `app/api/user/presence-preference/route.ts` for the explicit durable account
+  visibility preference.
+
+The browser composition lives under `components/presence/`. `AppShell.tsx`
+mounts one deferred `LivingKingdomClient` for the current document.
+`LivingKingdomOverlay.tsx` owns markers, clusters, door flights, the People Here
+panel, and sharing controls; `livingKingdomTypes.ts` mirrors the public wire
+types; `presenceLayout.ts` calculates bounded rails, collision spacing, and
+viewport capacity; and `LivingKingdom.module.css` owns transform animation.
+Known navigation elements expose canonical `data-presence-door` values in the
+app shell, mobile navigation, and footer. The living leaderboard exposes
+`data-presence-scroll-root` for its real internal scroller. CSS transforms
+interpolate low-frequency server samples without layout writes on scroll.
+
+Movement is never stored in Postgres, sent through `/api/user/ping`, written to
+`UserActivityEvent`, or bridged to Traffic. The preference route is the only
+durable feature write. Raw paths, queries, fragments, arbitrary anchors, and
+client-authored identity/avatar fields never enter the public protocol. A door
+click is intent; only a subsequent accepted route-entry sample changes the
+actor's realm truth.
+
+Public actor IDs and avatar URLs contain only a process-local HMAC handle. The
+managed-media route resolves that handle in memory and serves bytes directly;
+it never redirects a presence image request to an underlying target or file
+path that can contain a durable account UID. Opt-out and avatar changes clear
+the binding immediately, bindings expire after five minutes, and the presence
+image response is cached for at most five minutes.
+
+The first topology intentionally assumes the one production Next.js process.
+A release restart clears roaming state and EventSource clients reconnect to a
+fresh snapshot. Do not add Postgres `LISTEN/NOTIFY`, Redis on the shared VPS, or
+a second daemon for this phase. Multiple web replicas require an explicitly
+designed external broker or dedicated presence service before activation; a
+process-local hub must never pretend to provide cross-replica truth.
+
+The initial operating controls are intentionally narrow:
+
+- `LIVING_KINGDOM_MODE=off|staff|canary|public`; a missing or unknown value is
+  `off`;
+- `LIVING_KINGDOM_STAFF_UID_ALLOWLIST` and
+  `LIVING_KINGDOM_CANARY_UID_ALLOWLIST` bound pre-public publisher cohorts;
+- `LIVING_KINGDOM_MAX_SUBSCRIBERS` defaults to 250 and is clamped to the
+  absolute application ceiling of 1,000;
+- `LIVING_KINGDOM_MAX_SUBSCRIBERS_PER_IP` defaults to 20 and is clamped to
+  250; signed-in viewers are additionally capped at four streams per UID;
+- actor state is capped at 500, at most three tabs contribute to one actor,
+  stale state expires after 30 seconds, and SSE keepalive is 15 seconds;
+- state bodies are capped at 2 KiB, normal publication is change-driven with a
+  500 ms hard client throttle, and the actor limiter sustains 2 Hz with burst
+  four.
+
+Authenticated operators may read aggregate mode, capacity, actor/tab/realm,
+subscriber, accepted, rate-limited, invalid, expired, and dropped counters from
+`GET /api/admin/kingdom-presence`. That route does not expose identities or
+movement rows and does not mutate the hub.
+
+Setting the mode to `off` is the server-side kill switch. The state route
+returns no feature surface and the events route returns HTTP 204, which tells
+EventSource clients not to reconnect. A mode change takes effect in the web
+process environment and therefore follows the normal reviewed service/release
+operation; client-side hiding is not authority.
+
+Nginx owns only transport hygiene for the exact events endpoint: HTTP/1.1 to the
+loopback web service, buffering/cache/compression disabled, `Connection` cleared,
+and a read timeout longer than the SSE keepalive. EventSource is not a WebSocket.
+The deploy example documents the exact location; any live host change remains a
+separate reviewed operations action with `nginx -t`, reload, and rollback proof.
 
 ### Product/domain libraries
 
