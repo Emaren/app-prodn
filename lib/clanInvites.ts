@@ -57,6 +57,82 @@ export function parseClanInviteStatus(
   return null;
 }
 
+export type ParsedClanInviteBody = {
+  clanName: string;
+  clanSlug: string;
+  inviterName: string;
+  messageId: number;
+  status: ClanInviteStatus;
+};
+
+export function parseClanInviteBody(
+  body: string | null | undefined,
+): ParsedClanInviteBody | null {
+  if (!body) return null;
+
+  const titleMatch =
+    body.match(/^🏰 (.+) invitation$/m);
+  const inviterMatch =
+    body.match(/^(.+) invited you to join (.+)\.$/m);
+  const hallMatch =
+    body.match(/\/clans\/([^?\s]+)\?invite=(\d+)/);
+  const status =
+    parseClanInviteStatus(body);
+
+  if (
+    !titleMatch ||
+    !inviterMatch ||
+    !hallMatch ||
+    !status
+  ) {
+    return null;
+  }
+
+  const clanName =
+    titleMatch[1].trim();
+  const invitedClanName =
+    inviterMatch[2].trim();
+
+  if (
+    !clanName ||
+    invitedClanName !== clanName
+  ) {
+    return null;
+  }
+
+  const messageId =
+    Number.parseInt(
+      hallMatch[2],
+      10,
+    );
+
+  if (
+    !Number.isSafeInteger(messageId) ||
+    messageId <= 0
+  ) {
+    return null;
+  }
+
+  let clanSlug: string;
+  try {
+    clanSlug =
+      decodeURIComponent(
+        hallMatch[1],
+      );
+  } catch {
+    return null;
+  }
+
+  return {
+    clanName,
+    clanSlug,
+    inviterName:
+      inviterMatch[1].trim(),
+    messageId,
+    status,
+  };
+}
+
 export function replaceClanInviteStatus(
   body: string,
   status: ClanInviteStatus,

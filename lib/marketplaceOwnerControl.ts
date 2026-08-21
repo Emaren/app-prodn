@@ -2,6 +2,10 @@ import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import { resolvePrimaryAdminContact } from "@/lib/contactInbox";
 import { buildMarketplaceInboxMessage } from "@/lib/marketplaceInboxMessage";
 import {
+  marketplaceBusinessProposalHeroTarget,
+  marketplaceBusinessProposalSignTarget,
+} from "@/lib/systemMessageMedia";
+import {
   MARKETPLACE_STANDARD_WOLO,
   normalizeMarketplaceLine,
   normalizeMarketplaceText,
@@ -50,7 +54,7 @@ export async function requireMarketplaceKingdomOwner(
 }
 
 export async function loadMarketplaceOwnerConsole(prisma: PrismaClient) {
-  const [proposalEvents, shops] = await Promise.all([
+  const [proposalEvents, shops, activeBusinessArt] = await Promise.all([
     prisma.userActivityEvent.findMany({
       where: { type: "market_shop_proposal" },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -81,7 +85,25 @@ export async function loadMarketplaceOwnerConsole(prisma: PrismaClient) {
         },
       },
     }),
+    prisma.managedMediaAsset.findMany({
+      where: {
+        active: true,
+        target: {
+          startsWith: "business-proposal-",
+        },
+      },
+      select: {
+        kind: true,
+        target: true,
+      },
+    }),
   ]);
+
+  const activeArtKeys = new Set(
+    activeBusinessArt.map(
+      (asset) => `${asset.kind}:${asset.target || ""}`,
+    ),
+  );
 
   const shopByProposal = new Map(
     shops
@@ -93,6 +115,15 @@ export async function loadMarketplaceOwnerConsole(prisma: PrismaClient) {
     proposals: proposalEvents.map((event) => {
       const metadata = asRecord(event.metadata);
       const shop = shopByProposal.get(event.id) || null;
+      const heroTarget =
+        marketplaceBusinessProposalHeroTarget(event.id);
+      const signTarget =
+        marketplaceBusinessProposalSignTarget(event.id);
+      const artHeroReady =
+        activeArtKeys.has(`background:${heroTarget}`);
+      const artSignReady =
+        activeArtKeys.has(`logo:${signTarget}`);
+
       return {
         eventId: event.id,
         createdAt: event.createdAt.toISOString(),
@@ -109,6 +140,10 @@ export async function loadMarketplaceOwnerConsole(prisma: PrismaClient) {
         shopStatus: shop?.status ?? null,
         approvedAt: shop?.approvedAt?.toISOString() ?? null,
         displayEnabled: shop?.displayEnabled ?? false,
+        artHeroReady,
+        artSignReady,
+        artLocked:
+          artHeroReady && artSignReady,
       };
     }),
     shops: shops.map((shop) => ({
@@ -140,7 +175,7 @@ export async function loadMarketplaceOwnerConsole(prisma: PrismaClient) {
   };
 }
 
-async function nextVacantAwning(prisma: Db) {
+export async function nextVacantMarketplaceAwning(prisma: Db) {
   const occupied = await prisma.marketplaceShop.findMany({
     select: { streetKey: true, slot: true },
   });
@@ -152,6 +187,7 @@ async function nextVacantAwning(prisma: Db) {
     "fourth-street",
     "fifth-street",
     "sixth-street",
+    "seventh-street",
   ]) {
     for (const slot of [1, 2, 3]) {
       if (!used.has(`${streetKey}:${slot}`)) return { streetKey, slot };
@@ -189,6 +225,38 @@ export async function approveMarketplaceProposal(
     if (!event) throw new Error("That Marketplace proposal no longer exists.");
 
     const metadata = asRecord(event.metadata);
+
+    const heroTarget =
+      marketplaceBusinessProposalHeroTarget(event.id);
+    const signTarget =
+      marketplaceBusinessProposalSignTarget(event.id);
+
+    const [heroAsset, signAsset] =
+      await Promise.all([
+        tx.managedMediaAsset.findFirst({
+          where: {
+            kind: "background",
+            target: heroTarget,
+            active: true,
+          },
+          select: { id: true },
+        }),
+        tx.managedMediaAsset.findFirst({
+          where: {
+            kind: "logo",
+            target: signTarget,
+            active: true,
+          },
+          select: { id: true },
+        }),
+      ]);
+
+    if (!heroAsset || !signAsset) {
+      throw new Error(
+        "Business authorization is locked until its hero image and business sign are both uploaded and active in Media Armory.",
+      );
+    }
+
     const shopName = normalizeMarketplaceLine(metadata.shopName, 100);
     const offer = normalizeMarketplaceText(metadata.offer, 900);
     const txHash = normalizeMarketplaceLine(metadata.txHash, 128);
@@ -213,13 +281,13 @@ export async function approveMarketplaceProposal(
         where: { id: shop.id },
         data: {
           status: "active",
-          displayEnabled: false,
+          displayEnabled: true,
           approvedAt: now,
           approvedByUserId: input.approvedByUserId,
         },
       });
     } else {
-      const awning = await nextVacantAwning(tx);
+      const awning = await nextVacantMarketplaceAwning(tx);
       const baseSlug = cleanSlug(shopName);
       const collision = await tx.marketplaceShop.findUnique({
         where: { slug: baseSlug },
@@ -241,7 +309,7 @@ export async function approveMarketplaceProposal(
           proprietorLabel,
           streetKey: awning.streetKey,
           slot: awning.slot,
-          displayEnabled: false,
+          displayEnabled: true,
           status: "active",
           charterAmountWolo: MARKETPLACE_STANDARD_WOLO,
           charterState: "verified",
@@ -257,26 +325,22 @@ export async function approveMarketplaceProposal(
     }
 
     if (!shop.approvalMessageId) {
-      const ownerName =
-        event.user.inGameName ||
-        event.user.steamPersonaName ||
-        event.user.uid;
-      const profileHref =
-        `/profile?marketplaceApproved=${encodeURIComponent(shop.publicId)}` +
-        "#my-business";
+      const marketHref =
+        `/market#market-awning-${shop.streetKey}-${shop.slot}`;
 
       const body = buildMarketplaceInboxMessage({
         kind: "approval",
         shop: shop.name,
+        shopSlug: shop.slug,
+        proposalEventId: event.id,
         actor: "The Kingdom",
         amountWolo: 0,
         recordId: shop.publicId,
         payment: "Kingdom approved",
-        profileHref,
+        profileHref: marketHref,
         requestText: [
-          `Congratulations, ${ownerName}.`,
-          "Your business has been approved by the Kingdom.",
-          "Activate it from your profile.",
+          "Congratulations, Citizen.",
+          "The kingdom has approved your business.",
         ].join("\n"),
       });
 

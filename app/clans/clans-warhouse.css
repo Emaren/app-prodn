@@ -715,3 +715,1707 @@ html[data-clan-theme="premium-dark"] .clan-theme-toggle {
 html[data-clan-theme="crimson"] .clan-theme-toggle {
   color: rgb(248 113 113);
 }
+
+
+/* ==========================================================
+   CLAN HALL CHAT V1 — PERMANENT RENDERER FAMILIES
+   V1 War Cards · V2 Discord Dense · V3 Steam Tight
+   V4 AoE2HD Classic · V5 Balloons
+   ========================================================== */
+
+.clan-chat-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.clan-chat-stream .clan-message {
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease;
+}
+
+/* V1 — original AoE2WAR War Cards. Deliberately preserved. */
+.clan-chat-stream--v1 {
+  gap: 0.75rem;
+}
+
+/* V2 — Discord-inspired grouped community transcript. */
+.clan-chat-stream--v2 {
+  gap: 0.12rem;
+}
+
+.clan-chat-stream--v2 .clan-message {
+  padding: 0.28rem 0.4rem !important;
+  border-color: transparent !important;
+  border-radius: 0.5rem !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.clan-chat-stream--v2 .clan-message:hover {
+  background: rgb(255 255 255 / 0.025) !important;
+}
+
+.clan-chat-stream--v2 .clan-message__avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 999px;
+  background: rgb(var(--clan-accent) / 0.10) !important;
+}
+
+.clan-chat-stream--v2 .clan-message__meta {
+  gap: 0.42rem;
+}
+
+.clan-chat-stream--v2 .clan-message__body {
+  margin-top: 0.08rem;
+  line-height: 1.42;
+}
+
+.clan-chat-stream--v2 .clan-message__reactions {
+  min-height: 1.7rem;
+  margin-top: 0.25rem;
+}
+
+.clan-chat-stream--v2 .clan-message--grouped {
+  margin-top: -0.08rem;
+}
+
+.clan-chat-stream--v2 .clan-message--grouped .clan-message__avatar {
+  visibility: hidden;
+}
+
+.clan-chat-stream--v2 .clan-message--grouped .clan-message__meta {
+  display: none;
+}
+
+.clan-chat-stream--v2 .clan-message--grouped .clan-message__body {
+  margin-top: 0;
+}
+
+/* V3 — Steam-inspired compact transcript. */
+.clan-chat-stream--v3 {
+  gap: 0.08rem;
+}
+
+.clan-chat-stream--v3 .clan-message {
+  padding: 0.34rem 0.25rem !important;
+  border: 0 !important;
+  border-radius: 0.3rem !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.clan-chat-stream--v3 .clan-message:hover {
+  background: rgb(var(--clan-accent) / 0.035) !important;
+}
+
+.clan-chat-stream--v3 .clan-message__avatar {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 0.3rem;
+  font-size: 0.6rem;
+}
+
+.clan-chat-stream--v3 .clan-message__meta {
+  gap: 0.3rem;
+}
+
+.clan-chat-stream--v3 .clan-message__role,
+.clan-chat-stream--v3 .clan-message__audience {
+  display: none;
+}
+
+.clan-chat-stream--v3 .clan-message__author {
+  color: rgb(var(--clan-accent-soft) / 0.9);
+  font-size: 0.78rem;
+}
+
+.clan-chat-stream--v3 .clan-message__time {
+  font-size: 0.56rem;
+}
+
+.clan-chat-stream--v3 .clan-message__body {
+  margin-top: 0.04rem;
+  font-size: 0.79rem;
+  line-height: 1.38;
+}
+
+.clan-chat-stream--v3 .clan-message__reactions {
+  min-height: 1.45rem;
+  margin-top: 0.16rem;
+}
+
+/* V4 — AoE2HD heritage: true line-by-line lobby chat. */
+.clan-chat-stream--v4 {
+  gap: 0;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgb(180 125 72 / 0.14);
+  border-radius: 0.5rem;
+  background:
+    linear-gradient(
+      180deg,
+      rgb(94 61 34 / 0.16),
+      rgb(42 29 19 / 0.12)
+    );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.025),
+    inset 0 0 32px rgb(180 125 72 / 0.035);
+}
+
+.clan-chat-stream--v4 .clan-message {
+  display: block !important;
+  padding: 0.1rem 0.18rem !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.clan-chat-stream--v4 .clan-message__avatar {
+  display: none;
+}
+
+.clan-chat-stream--v4 .clan-message__content {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.34rem;
+  align-items: baseline;
+}
+
+.clan-chat-stream--v4 .clan-message__meta {
+  grid-column: 1;
+  flex-wrap: nowrap;
+  gap: 0;
+}
+
+.clan-chat-stream--v4 .clan-message__role,
+.clan-chat-stream--v4 .clan-message__audience,
+.clan-chat-stream--v4 .clan-message__time {
+  display: none;
+}
+
+.clan-chat-stream--v4 .clan-message__author {
+  color: rgb(103 232 249 / 0.86);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.clan-chat-stream--v4 .clan-message--own .clan-message__author {
+  color: rgb(253 230 138 / 0.92);
+}
+
+.clan-chat-stream--v4 .clan-message__author::after {
+  content: ":";
+}
+
+.clan-chat-stream--v4 .clan-message__body {
+  grid-column: 2;
+  margin-top: 0;
+  font-size: 0.78rem;
+  line-height: 1.42;
+  color: rgb(226 232 240 / 0.82);
+}
+
+.clan-chat-stream--v4 .clan-message__editor,
+.clan-chat-stream--v4 .clan-message__reactions {
+  grid-column: 2;
+}
+
+.clan-chat-stream--v4 .clan-message__actions {
+  margin-left: 0.25rem;
+}
+
+.clan-chat-stream--v4 .clan-message__reactions {
+  min-height: 1.35rem;
+  margin-top: 0.12rem;
+}
+
+/* V5 — conversational balloon chat. */
+.clan-chat-stream--v5 {
+  gap: 0.42rem;
+}
+
+.clan-chat-stream--v5 .clan-message {
+  width: fit-content;
+  max-width: 76%;
+  align-self: flex-start;
+  padding: 0.55rem 0.72rem !important;
+  border-radius: 1.2rem 1.2rem 1.2rem 0.35rem !important;
+  border-color: rgb(var(--clan-accent-soft) / 0.16) !important;
+  background:
+    linear-gradient(
+      145deg,
+      rgb(var(--clan-panel-a) / 0.82),
+      rgb(var(--clan-panel-c) / 0.92)
+    ) !important;
+  box-shadow: 0 12px 28px rgb(0 0 0 / 0.18) !important;
+}
+
+.clan-chat-stream--v5 .clan-message--own {
+  align-self: flex-end;
+  border-radius: 1.2rem 1.2rem 0.35rem 1.2rem !important;
+  border-color: rgb(251 191 36 / 0.16) !important;
+  background:
+    linear-gradient(
+      145deg,
+      rgb(120 83 22 / 0.48),
+      rgb(74 50 14 / 0.54)
+    ) !important;
+}
+
+.clan-chat-stream--v5 .clan-message--own .clan-message__avatar {
+  display: none;
+}
+
+.clan-chat-stream--v5 .clan-message__avatar {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+}
+
+.clan-chat-stream--v5 .clan-message__role,
+.clan-chat-stream--v5 .clan-message__audience {
+  display: none;
+}
+
+.clan-chat-stream--v5 .clan-message__meta {
+  gap: 0.35rem;
+}
+
+.clan-chat-stream--v5 .clan-message__author {
+  font-size: 0.72rem;
+}
+
+.clan-chat-stream--v5 .clan-message__body {
+  margin-top: 0.18rem;
+  font-size: 0.8rem;
+  line-height: 1.42;
+}
+
+.clan-chat-stream--v5 .clan-message__reactions {
+  min-height: 1.45rem;
+  margin-top: 0.2rem;
+}
+
+/* Bottom control rail: layout and chat remain separate dimensions. */
+.clan-display-rail__group {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.clan-display-rail__label {
+  font-size: 0.48rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgb(148 163 184 / 0.45);
+}
+
+.clan-display-rail__divider {
+  width: 1px;
+  height: 1.55rem;
+  background: rgb(var(--clan-accent-soft) / 0.10);
+}
+
+.clan-chat-view-picker {
+  position: relative;
+}
+
+.clan-chat-view-trigger {
+  display: inline-flex;
+  height: 2rem;
+  min-width: 3.4rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.34rem;
+  border: 1px solid rgb(var(--clan-accent-soft) / 0.12);
+  border-radius: 999px;
+  padding: 0 0.62rem;
+  color: rgb(var(--clan-accent-soft) / 0.88);
+  background: rgb(0 0 0 / 0.18);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
+}
+
+.clan-chat-view-trigger:hover,
+.clan-chat-view-trigger:focus-visible {
+  border-color: rgb(var(--clan-accent-soft) / 0.28);
+  background: rgb(var(--clan-accent) / 0.09);
+  color: rgb(var(--clan-accent-soft));
+  transform: translateY(-1px);
+}
+
+.clan-chat-view-fan {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.62rem);
+  z-index: 90;
+  display: grid;
+  width: min(43rem, calc(100vw - 2rem));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
+  padding: 0.48rem;
+  border: 1px solid rgb(var(--clan-accent-soft) / 0.18);
+  border-radius: 1rem;
+  background:
+    linear-gradient(
+      145deg,
+      rgb(var(--clan-panel-a) / 0.98),
+      rgb(var(--clan-panel-c) / 0.99)
+    );
+  box-shadow:
+    0 24px 70px rgb(0 0 0 / 0.48),
+    inset 0 1px 0 rgb(255 255 255 / 0.045);
+  backdrop-filter: blur(20px);
+}
+
+.clan-chat-view-option {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 2.8rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem;
+  border: 1px solid rgb(255 255 255 / 0.07);
+  border-radius: 0.75rem;
+  color: rgb(148 163 184);
+  background: rgb(255 255 255 / 0.025);
+  text-align: left;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    transform 140ms ease;
+}
+
+.clan-chat-view-option:hover {
+  border-color: rgb(var(--clan-accent-soft) / 0.22);
+  background: rgb(var(--clan-accent) / 0.075);
+  transform: translateY(-1px);
+}
+
+.clan-chat-view-option--active {
+  border-color: rgb(var(--clan-accent-soft) / 0.26);
+  color: rgb(var(--clan-accent-soft));
+  background: rgb(var(--clan-accent) / 0.10);
+}
+
+.clan-chat-view-preview {
+  display: flex;
+  height: 2rem;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.07);
+  border-radius: 0.45rem;
+  padding: 0.28rem;
+  background: rgb(0 0 0 / 0.24);
+}
+
+.clan-chat-view-preview i {
+  display: block;
+  height: 0.2rem;
+  border-radius: 999px;
+  background: rgb(var(--clan-accent-soft) / 0.48);
+}
+
+.clan-chat-view-preview--v1 i {
+  height: 0.28rem;
+  border: 1px solid rgb(var(--clan-accent-soft) / 0.18);
+  background: rgb(var(--clan-accent) / 0.13);
+}
+
+.clan-chat-view-preview--v2 {
+  gap: 0.12rem;
+}
+
+.clan-chat-view-preview--v2 i:nth-child(2) {
+  margin-left: 0.45rem;
+}
+
+.clan-chat-view-preview--v3 {
+  gap: 0.08rem;
+}
+
+.clan-chat-view-preview--v3 i {
+  height: 0.12rem;
+}
+
+.clan-chat-view-preview--v4 {
+  border-color: rgb(180 125 72 / 0.18);
+  background: rgb(82 52 27 / 0.20);
+}
+
+.clan-chat-view-preview--v4 i {
+  height: 0.1rem;
+  border-radius: 0;
+  background: rgb(103 232 249 / 0.44);
+}
+
+.clan-chat-view-preview--v5 {
+  align-items: flex-start;
+  gap: 0.16rem;
+}
+
+.clan-chat-view-preview--v5 i {
+  width: 72%;
+  height: 0.28rem;
+}
+
+.clan-chat-view-preview--v5 i:nth-child(2) {
+  align-self: flex-end;
+  background: rgb(251 191 36 / 0.46);
+}
+
+@media (max-width: 760px) {
+  .clan-display-rail__label {
+    display: none;
+  }
+
+  .clan-chat-view-fan {
+    right: -2.6rem;
+    width: min(20rem, calc(100vw - 1.5rem));
+    grid-template-columns: 1fr;
+  }
+
+  .clan-chat-stream--v5 .clan-message {
+    max-width: 92%;
+  }
+}
+
+
+/* ==========================================================
+   CLAN HALL V1.1 — CHAT DISCOVERY + VIEWPORT FIT
+   ========================================================== */
+
+.clan-chat-viewport {
+  height: clamp(31rem, 64vh, 68rem);
+  height: clamp(31rem, 64dvh, 68rem);
+  scroll-padding-block: 1rem;
+}
+
+.clan-chat-view-discovery {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.25rem;
+  border: 1px solid rgb(var(--clan-accent-soft) / 0.12);
+  border-radius: 999px;
+  padding: 0.2rem 0.28rem 0.2rem 0.65rem;
+  background:
+    linear-gradient(
+      145deg,
+      rgb(var(--clan-accent) / 0.08),
+      rgb(0 0 0 / 0.18)
+    );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.035);
+}
+
+.clan-chat-view-discovery__label {
+  font-size: 0.52rem;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgb(var(--clan-accent-soft) / 0.54);
+}
+
+.clan-chat-view-trigger--header {
+  min-width: 3.7rem;
+  border-color:
+    rgb(var(--clan-accent-soft) / 0.24);
+  background:
+    rgb(var(--clan-accent) / 0.12);
+  color:
+    rgb(var(--clan-accent-soft));
+  box-shadow:
+    0 8px 22px rgb(0 0 0 / 0.20);
+}
+
+.clan-chat-view-picker--header
+  .clan-chat-view-fan {
+  top: calc(100% + 0.62rem);
+  right: 0;
+  bottom: auto;
+}
+
+@media (min-width: 1280px) and (min-height: 860px) {
+  .clan-chat-viewport {
+    height: clamp(36rem, 68vh, 74rem);
+    height: clamp(36rem, 68dvh, 74rem);
+  }
+}
+
+@media (max-width: 767px) {
+  .clan-chat-viewport {
+    height: clamp(24rem, 58vh, 46rem);
+    height: clamp(24rem, 58dvh, 46rem);
+  }
+
+  .clan-chat-view-discovery__label {
+    display: none;
+  }
+
+  .clan-chat-view-picker--header
+    .clan-chat-view-fan {
+    right: -1rem;
+  }
+}
+
+
+/* ==========================================================
+   CLAN HALL V1.2 — PREMIUM CHAT ACTIONS + DENSITY
+   ========================================================== */
+
+/* Let the chat viewport consume the grid row's spare height. */
+.clan-hall-chat-shell {
+  min-height: 0;
+}
+
+.clan-hall-chat-shell
+  > .clan-chat-viewport {
+  height: auto !important;
+  min-height:
+    clamp(34rem, 64dvh, 70rem);
+  flex: 1 1 auto;
+}
+
+@media (min-width: 1280px) and (min-height: 860px) {
+  .clan-hall-chat-shell
+    > .clan-chat-viewport {
+    min-height:
+      clamp(40rem, 70dvh, 78rem);
+  }
+}
+
+@media (max-width: 767px) {
+  .clan-hall-chat-shell
+    > .clan-chat-viewport {
+    min-height:
+      clamp(25rem, 58dvh, 48rem);
+  }
+}
+
+/* Version fan: invisible pointer bridges plus delayed close eliminate the
+   irritating dead zone between the trigger and its floating chooser. */
+.clan-chat-view-picker--header
+  .clan-chat-view-fan::before,
+.clan-chat-view-picker--rail
+  .clan-chat-view-fan::after {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 0.85rem;
+  content: "";
+}
+
+.clan-chat-view-picker--header
+  .clan-chat-view-fan::before {
+  bottom: 100%;
+}
+
+.clan-chat-view-picker--rail
+  .clan-chat-view-fan::after {
+  top: 100%;
+}
+
+/* One muted tool launcher owns translate / react / edit / delete. */
+.clan-message-tools {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  z-index: 55;
+  opacity: 0.24;
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+
+.clan-message:hover
+  > .clan-message-tools,
+.clan-message:focus-within
+  > .clan-message-tools,
+.clan-message-tools:hover,
+.clan-message-tools:focus-within {
+  opacity: 1;
+}
+
+.clan-message-tools__trigger {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 0.55rem;
+  color: rgb(148 163 184 / 0.78);
+  background: rgb(3 7 18 / 0.22);
+  transition:
+    color 120ms ease,
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.clan-message-tools__trigger:hover,
+.clan-message-tools__trigger:focus-visible {
+  border-color:
+    rgb(255 255 255 / 0.08);
+  color: rgb(226 232 240 / 0.96);
+  background: rgb(15 23 42 / 0.9);
+}
+
+.clan-message-tools__menu {
+  position: absolute;
+  top: calc(100% + 0.16rem);
+  right: 0;
+  z-index: 70;
+  width: min(14.5rem, calc(100vw - 2rem));
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.10);
+  border-radius: 0.85rem;
+  padding: 0.35rem;
+  background: rgb(7 12 22 / 0.985);
+  box-shadow:
+    0 24px 65px rgb(0 0 0 / 0.55),
+    inset 0 1px 0 rgb(255 255 255 / 0.04);
+  backdrop-filter: blur(18px);
+}
+
+.clan-message-tools__row {
+  display: flex;
+  width: 100%;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.55rem;
+  padding: 0 0.55rem;
+  color: rgb(203 213 225 / 0.88);
+  font-size: 0.68rem;
+  font-weight: 650;
+  text-align: left;
+  transition:
+    color 120ms ease,
+    background 120ms ease;
+}
+
+.clan-message-tools__row:hover,
+.clan-message-tools__row:focus-visible {
+  color: white;
+  background: rgb(255 255 255 / 0.06);
+}
+
+.clan-message-tools__row--danger {
+  color: rgb(253 164 175 / 0.72);
+}
+
+.clan-message-tools__row--danger:hover,
+.clan-message-tools__row--danger:focus-visible {
+  color: rgb(255 228 230);
+  background: rgb(244 63 94 / 0.10);
+}
+
+.clan-message-tools__react {
+  margin: 0.25rem 0;
+  border-block:
+    1px solid rgb(255 255 255 / 0.055);
+  padding: 0.42rem 0.35rem;
+}
+
+.clan-message-tools__react-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.2rem 0.35rem;
+  color: rgb(100 116 139 / 0.85);
+  font-size: 0.52rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.clan-message-tools__emoji-row {
+  display: grid;
+  grid-template-columns:
+    repeat(6, minmax(0, 1fr));
+  gap: 0.18rem;
+}
+
+.clan-message-tools__emoji {
+  display: grid;
+  height: 1.8rem;
+  place-items: center;
+  border-radius: 0.45rem;
+  font-size: 0.84rem;
+  transition:
+    background 120ms ease,
+    transform 120ms ease;
+}
+
+.clan-message-tools__emoji:hover {
+  background: rgb(255 255 255 / 0.065);
+  transform: translateY(-1px);
+}
+
+.clan-message-tools__emoji--active {
+  background: rgb(251 191 36 / 0.12);
+  box-shadow:
+    inset 0 0 0 1px
+      rgb(253 230 138 / 0.14);
+}
+
+.clan-message__translation-note {
+  opacity: 0.8;
+}
+
+.clan-message__reactions {
+  min-height: 0 !important;
+}
+
+/* V2 — genuinely Discord-like: neutral room, grouped identity, no card chrome. */
+.clan-chat-stream--v2 {
+  gap: 0 !important;
+  margin-inline: -0.3rem;
+  border-radius: 0.65rem;
+  padding: 0.45rem 0.3rem;
+  background: rgb(23 24 27 / 0.62);
+}
+
+.clan-chat-stream--v2
+  .clan-message,
+.clan-chat-stream--v2
+  .clan-message--own {
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0.3rem !important;
+  padding: 0.38rem 2.3rem 0.38rem 0.52rem !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.clan-chat-stream--v2
+  .clan-message:hover {
+  background:
+    rgb(255 255 255 / 0.025) !important;
+}
+
+.clan-chat-stream--v2
+  .clan-message__avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0 !important;
+  border-radius: 999px;
+  color: rgb(226 232 240 / 0.92);
+  background: rgb(53 56 64) !important;
+}
+
+.clan-chat-stream--v2
+  .clan-message__meta {
+  gap: 0.38rem;
+}
+
+.clan-chat-stream--v2
+  .clan-message__author {
+  color: rgb(244 245 246);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.clan-chat-stream--v2
+  .clan-message--own
+  .clan-message__author {
+  color: rgb(110 231 183 / 0.94);
+}
+
+.clan-chat-stream--v2
+  :is(
+    .clan-message__role,
+    .clan-message__audience,
+    .clan-message__edited
+  ) {
+  display: none;
+}
+
+.clan-chat-stream--v2
+  .clan-message__time {
+  color: rgb(119 122 130 / 0.82);
+  font-size: 0.58rem;
+}
+
+.clan-chat-stream--v2
+  .clan-message__body {
+  margin-top: 0.05rem;
+  color: rgb(219 222 225 / 0.94);
+  font-size: 0.82rem;
+  line-height: 1.38;
+}
+
+.clan-chat-stream--v2
+  .clan-message--grouped {
+  margin-top: -0.05rem !important;
+}
+
+.clan-chat-stream--v2
+  .clan-message--grouped
+  .clan-message__avatar {
+  visibility: hidden;
+}
+
+.clan-chat-stream--v2
+  .clan-message--grouped
+  .clan-message__meta {
+  display: none;
+}
+
+.clan-chat-stream--v2
+  .clan-message--grouped
+  .clan-message__body {
+  margin-top: 0;
+}
+
+.clan-chat-stream--v2
+  .clan-message__reactions {
+  margin-top: 0.18rem;
+}
+
+/* V3 — Steam-tight transcript: flat, restrained, nearly zero framing. */
+.clan-chat-stream--v3 {
+  gap: 0 !important;
+  border-radius: 0.5rem;
+  padding: 0.35rem;
+  background: rgb(8 15 22 / 0.46);
+}
+
+.clan-chat-stream--v3
+  .clan-message,
+.clan-chat-stream--v3
+  .clan-message--own {
+  border: 0 !important;
+  border-radius: 0.25rem !important;
+  padding: 0.28rem 2.15rem 0.28rem 0.35rem !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.clan-chat-stream--v3
+  .clan-message:hover {
+  background:
+    rgb(56 189 248 / 0.025) !important;
+}
+
+/* V4 — AoE2HD Classic: warm transcript, not blue cards or white rails. */
+.clan-chat-stream--v4 {
+  gap: 0 !important;
+  border-color:
+    rgb(180 125 72 / 0.18) !important;
+  border-radius: 0.35rem !important;
+  padding: 0.5rem 0.55rem !important;
+  background:
+    linear-gradient(
+      180deg,
+      rgb(78 54 34 / 0.38),
+      rgb(24 19 15 / 0.56)
+    ) !important;
+  box-shadow:
+    inset 0 1px 0
+      rgb(255 231 190 / 0.035) !important;
+}
+
+.clan-chat-stream--v4
+  .clan-message,
+.clan-chat-stream--v4
+  .clan-message--own {
+  display: block !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  padding: 0.12rem 2.15rem 0.12rem 0.15rem !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.clan-chat-stream--v4
+  .clan-message:hover {
+  background:
+    rgb(255 221 166 / 0.022) !important;
+}
+
+.clan-chat-stream--v4
+  .clan-message__content {
+  display: grid;
+  grid-template-columns:
+    auto minmax(0, 1fr);
+  column-gap: 0.34rem;
+  align-items: baseline;
+}
+
+.clan-chat-stream--v4
+  .clan-message__body {
+  color: rgb(224 211 190 / 0.90);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.clan-chat-stream--v4
+  .clan-message__translation-note,
+.clan-chat-stream--v4
+  .clan-message__translation-error,
+.clan-chat-stream--v4
+  .clan-message__reactions {
+  grid-column: 2;
+}
+
+.clan-chat-stream--v4
+  .clan-message-tools {
+  top: 0.02rem;
+  right: 0.08rem;
+}
+
+/* V5 balloons keep their personality, but the action chrome is one quiet dot. */
+.clan-chat-stream--v5
+  .clan-message {
+  padding-right: 2.25rem !important;
+}
+
+@media (hover: none) {
+  .clan-message-tools {
+    opacity: 0.58;
+  }
+}
+
+
+/* ==========================================================
+   CLAN HALL V1.3 — QUIET CHROME + BOUNDED CHAT + SCRIBE
+   ========================================================== */
+
+/* The Hall owns one bounded chat tile. Messages scroll inside it instead of
+   stretching through the page/grid. This applies equally to V1-V5. */
+.clan-hall-chat-shell {
+  height: clamp(42rem, 78dvh, 66rem);
+  min-height: 0 !important;
+  max-height: 66rem;
+  align-self: start;
+}
+
+.clan-hall-chat-shell
+  > .clan-chat-viewport {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  flex: 1 1 0% !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 767px) {
+  .clan-hall-chat-shell {
+    height: clamp(34rem, 72dvh, 50rem);
+    max-height: 50rem;
+  }
+}
+
+/* V1 — retain War Cards, but the metadata chips should whisper. */
+.clan-chat-stream--v1
+  .clan-message {
+  border-color:
+    rgb(148 163 184 / 0.075) !important;
+}
+
+.clan-chat-stream--v1
+  .clan-message__role {
+  border-color:
+    rgb(255 255 255 / 0.055) !important;
+  background:
+    rgb(255 255 255 / 0.018) !important;
+  color:
+    rgb(203 213 225 / 0.62) !important;
+  box-shadow: none !important;
+}
+
+.clan-chat-stream--v1
+  .clan-message__audience {
+  border-color:
+    rgb(253 230 138 / 0.065) !important;
+  background:
+    rgb(251 191 36 / 0.018) !important;
+  color:
+    rgb(253 230 138 / 0.62) !important;
+  box-shadow: none !important;
+}
+
+/* V2 — one Discord-like room surface. Rows never paint individual gradients. */
+.clan-chat-stream--v2 {
+  gap: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.clan-chat-stream--v2
+  .clan-message,
+.clan-chat-stream--v2
+  .clan-message--own {
+  background: transparent !important;
+  background-image: none !important;
+}
+
+.clan-chat-stream--v2
+  .clan-message:hover {
+  background:
+    rgb(255 255 255 / 0.014) !important;
+  background-image: none !important;
+}
+
+/* V3 — Steam: first line carries identity; immediate follow-ups are text only. */
+.clan-chat-stream--v3 {
+  gap: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.clan-chat-stream--v3
+  .clan-message,
+.clan-chat-stream--v3
+  .clan-message--own {
+  background: transparent !important;
+  background-image: none !important;
+}
+
+.clan-chat-stream--v3
+  .clan-message:hover {
+  background:
+    rgb(125 211 252 / 0.012) !important;
+  background-image: none !important;
+}
+
+.clan-chat-stream--v3
+  .clan-message--grouped {
+  padding-top: 0.08rem !important;
+  padding-bottom: 0.08rem !important;
+}
+
+.clan-chat-stream--v3
+  .clan-message--grouped
+  .clan-message__avatar {
+  visibility: hidden;
+}
+
+.clan-chat-stream--v3
+  .clan-message--grouped
+  .clan-message__meta {
+  display: none;
+}
+
+.clan-chat-stream--v3
+  .clan-message--grouped
+  .clan-message__body {
+  margin-top: 0 !important;
+}
+
+/* V4 — fixed author lane means every message begins at exactly one X position. */
+.clan-chat-stream--v4
+  .clan-message__content {
+  display: grid;
+  grid-template-columns:
+    6.75rem minmax(0, 1fr) !important;
+  column-gap: 0.55rem !important;
+  align-items: baseline;
+}
+
+.clan-chat-stream--v4
+  .clan-message__meta {
+  grid-column: 1;
+  min-width: 0;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.clan-chat-stream--v4
+  .clan-message__author {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  color: rgb(103 232 249 / 0.86);
+  font-size: 0.82rem !important;
+  font-weight: 550;
+  line-height: 1.35;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clan-chat-stream--v4
+  .clan-message__body {
+  grid-column: 2;
+  margin-top: 0 !important;
+  color: rgb(226 232 240 / 0.84);
+  font-size: 0.82rem !important;
+  line-height: 1.38 !important;
+}
+
+.clan-chat-stream--v4
+  :is(
+    .clan-message__translation-note,
+    .clan-message__translation-error,
+    .clan-message__editor,
+    .clan-message__reactions
+  ) {
+  grid-column: 2;
+}
+
+/* Scribe composer control — dormant is deliberately quiet; armed is unmistakable. */
+.clan-scribe-toggle {
+  position: relative;
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid
+    rgb(167 139 250 / 0.07);
+  border-radius: 999px;
+  color:
+    rgb(148 163 184 / 0.42);
+  background:
+    rgb(15 23 42 / 0.20);
+  box-shadow: none;
+  transition:
+    color 150ms ease,
+    border-color 150ms ease,
+    background 150ms ease,
+    box-shadow 180ms ease,
+    transform 150ms ease;
+}
+
+.clan-scribe-toggle:hover,
+.clan-scribe-toggle:focus-visible {
+  border-color:
+    rgb(196 181 253 / 0.14);
+  color:
+    rgb(196 181 253 / 0.66);
+  background:
+    rgb(124 58 237 / 0.045);
+}
+
+.clan-scribe-toggle--active {
+  border-color:
+    rgb(216 180 254 / 0.42);
+  color: rgb(250 245 255);
+  background:
+    radial-gradient(
+      circle at 50% 40%,
+      rgb(216 180 254 / 0.26),
+      rgb(109 40 217 / 0.16) 52%,
+      rgb(15 23 42 / 0.72)
+    );
+  box-shadow:
+    0 0 0 1px
+      rgb(216 180 254 / 0.08),
+    0 0 18px
+      rgb(168 85 247 / 0.23),
+    inset 0 0 12px
+      rgb(233 213 255 / 0.08);
+  transform: translateY(-1px);
+}
+
+.clan-scribe-toggle__sigil {
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: none;
+}
+
+.clan-scribe-toggle--active
+  .clan-scribe-toggle__sigil {
+  text-shadow:
+    0 0 10px
+      rgb(233 213 255 / 0.58);
+}
+
+
+/* ==========================================================
+   CLAN HALL V1.4 — FLAT COMPACT SURFACES + CONTENT-FIT TILE
+   Final visual authority for V2 / V3 / V4.
+   ========================================================== */
+
+/*
+ * The Hall no longer reserves a giant fixed vertical box.
+ * It grows naturally with available messages until the monitor-aware
+ * viewport cap is reached; after that only the message viewport scrolls.
+ * This removes the dead empty band above the composer while preserving
+ * a bounded chat application on busy Halls.
+ */
+.clan-hall-chat-shell {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  align-self: start !important;
+}
+
+.clan-hall-chat-shell
+  > .clan-chat-viewport {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height:
+    clamp(30rem, 65dvh, 56rem) !important;
+  flex: 0 1 auto !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+/*
+ * V2 / V3 / V4 all inherit ONE continuous Hall canvas.
+ * Messages carry no individual gradient, fill, border, or shadow.
+ */
+.clan-chat-stream--v2,
+.clan-chat-stream--v3,
+.clan-chat-stream--v4 {
+  background: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.clan-chat-stream--v2
+  .clan-message,
+.clan-chat-stream--v2
+  .clan-message--own,
+.clan-chat-stream--v2
+  .clan-message:hover,
+.clan-chat-stream--v3
+  .clan-message,
+.clan-chat-stream--v3
+  .clan-message--own,
+.clan-chat-stream--v3
+  .clan-message:hover,
+.clan-chat-stream--v4
+  .clan-message,
+.clan-chat-stream--v4
+  .clan-message--own,
+.clan-chat-stream--v4
+  .clan-message:hover {
+  border: 0 !important;
+  border-color: transparent !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* V2 — Discord Dense: one calm room, soft identity, no row striping. */
+.clan-chat-stream--v2 {
+  gap: 0 !important;
+  margin-inline: 0 !important;
+  padding: 0.35rem 0.2rem !important;
+}
+
+.clan-chat-stream--v2
+  .clan-message {
+  padding:
+    0.32rem 2.15rem
+    0.32rem 0.42rem !important;
+}
+
+.clan-chat-stream--v2
+  .clan-message--grouped {
+  padding-top: 0.08rem !important;
+  padding-bottom: 0.08rem !important;
+}
+
+.clan-chat-stream--v2
+  .clan-message__body {
+  color: rgb(226 232 240 / 0.90);
+}
+
+/* V3 — Steam Tight: repeated same-author messages become text-only lines. */
+.clan-chat-stream--v3 {
+  gap: 0 !important;
+  padding: 0.28rem 0.18rem !important;
+}
+
+.clan-chat-stream--v3
+  .clan-message {
+  padding:
+    0.24rem 2.1rem
+    0.24rem 0.3rem !important;
+}
+
+.clan-chat-stream--v3
+  .clan-message--grouped {
+  padding-top: 0.04rem !important;
+  padding-bottom: 0.04rem !important;
+}
+
+.clan-chat-stream--v3
+  .clan-message--grouped
+  .clan-message__avatar {
+  visibility: hidden !important;
+}
+
+.clan-chat-stream--v3
+  .clan-message--grouped
+  .clan-message__meta {
+  display: none !important;
+}
+
+.clan-chat-stream--v3
+  .clan-message--grouped
+  .clan-message__body {
+  margin-top: 0 !important;
+}
+
+/*
+ * V4 — AoE2HD Classic:
+ * reserve one fixed author lane plus a real breathing gap.
+ * Every message body starts on exactly the same vertical guide.
+ */
+.clan-chat-stream--v4 {
+  gap: 0 !important;
+  padding: 0.42rem 0.5rem !important;
+}
+
+.clan-chat-stream--v4
+  .clan-message {
+  padding:
+    0.1rem 2.05rem
+    0.1rem 0.1rem !important;
+}
+
+.clan-chat-stream--v4
+  .clan-message__content {
+  display: grid !important;
+  grid-template-columns:
+    7.25rem minmax(0, 1fr) !important;
+  column-gap: 0.75rem !important;
+  align-items: baseline;
+}
+
+.clan-chat-stream--v4
+  .clan-message__meta {
+  grid-column: 1 !important;
+  min-width: 0;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+
+.clan-chat-stream--v4
+  .clan-message__author {
+  width: 100%;
+  overflow: hidden;
+  font-size: 0.875rem !important;
+  line-height: 1.4 !important;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clan-chat-stream--v4
+  .clan-message__body {
+  grid-column: 2 !important;
+  margin-top: 0 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.42 !important;
+}
+
+.clan-chat-stream--v4
+  :is(
+    .clan-message__translation-note,
+    .clan-message__translation-error,
+    .clan-message__editor,
+    .clan-message__reactions
+  ) {
+  grid-column: 2 !important;
+}
+
+@media (max-width: 767px) {
+  .clan-hall-chat-shell
+    > .clan-chat-viewport {
+    max-height:
+      clamp(24rem, 58dvh, 44rem) !important;
+  }
+
+  .clan-chat-stream--v4
+    .clan-message__content {
+    grid-template-columns:
+      5.6rem minmax(0, 1fr) !important;
+    column-gap: 0.5rem !important;
+  }
+
+  .clan-chat-stream--v4
+    .clan-message__author,
+  .clan-chat-stream--v4
+    .clan-message__body {
+    font-size: 0.82rem !important;
+  }
+}
+
+
+/* ==========================================================
+   CLAN HALL V1.5 — SINGLE CANVAS + GRID STRETCH
+   Final authority for compact V2/V3/V4 chat rendering.
+   ========================================================== */
+
+/*
+ * Desktop Hall rows are sized by the taller of chat or auxiliary rail.
+ * The chat shell stretches to that row instead of leaving a dead blank
+ * column beneath it. Header and composer remain fixed; the message viewport
+ * owns the spare height and scrolls internally when needed.
+ */
+.clan-hall-chat-shell {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  align-self: stretch !important;
+}
+
+.clan-hall-chat-shell
+  > .clan-chat-viewport {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height:
+    clamp(32rem, 68dvh, 58rem) !important;
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+
+/*
+ * Compact renderers use one uninterrupted inner canvas. This selector is
+ * deliberately tied to data-chat-view on the actual viewport so legacy
+ * message classes, Tailwind utilities, theme rules, and earlier renderer
+ * experiments cannot repaint individual rows.
+ */
+.clan-chat-viewport[data-chat-view="v2"],
+.clan-chat-viewport[data-chat-view="v3"],
+.clan-chat-viewport[data-chat-view="v4"] {
+  padding-top: 0.45rem !important;
+  padding-bottom: 0.45rem !important;
+  background:
+    rgb(4 10 21 / 0.34) !important;
+  background-image: none !important;
+}
+
+.clan-chat-viewport[data-chat-view="v2"]
+  > .clan-chat-stream,
+.clan-chat-viewport[data-chat-view="v3"]
+  > .clan-chat-stream,
+.clan-chat-viewport[data-chat-view="v4"]
+  > .clan-chat-stream {
+  border: 0 !important;
+  outline: 0 !important;
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.clan-chat-viewport[data-chat-view="v2"]
+  > .clan-chat-stream
+  > .clan-message,
+.clan-chat-viewport[data-chat-view="v2"]
+  > .clan-chat-stream
+  > .clan-message--own,
+.clan-chat-viewport[data-chat-view="v2"]
+  > .clan-chat-stream
+  > .clan-message:hover,
+.clan-chat-viewport[data-chat-view="v3"]
+  > .clan-chat-stream
+  > .clan-message,
+.clan-chat-viewport[data-chat-view="v3"]
+  > .clan-chat-stream
+  > .clan-message--own,
+.clan-chat-viewport[data-chat-view="v3"]
+  > .clan-chat-stream
+  > .clan-message:hover,
+.clan-chat-viewport[data-chat-view="v4"]
+  > .clan-chat-stream
+  > .clan-message,
+.clan-chat-viewport[data-chat-view="v4"]
+  > .clan-chat-stream
+  > .clan-message--own,
+.clan-chat-viewport[data-chat-view="v4"]
+  > .clan-chat-stream
+  > .clan-message:hover {
+  border: 0 !important;
+  outline: 0 !important;
+  border-radius: 0 !important;
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.clan-chat-viewport[data-chat-view="v2"]
+  > .clan-chat-stream
+  > .clan-message::before,
+.clan-chat-viewport[data-chat-view="v2"]
+  > .clan-chat-stream
+  > .clan-message::after,
+.clan-chat-viewport[data-chat-view="v3"]
+  > .clan-chat-stream
+  > .clan-message::before,
+.clan-chat-viewport[data-chat-view="v3"]
+  > .clan-chat-stream
+  > .clan-message::after,
+.clan-chat-viewport[data-chat-view="v4"]
+  > .clan-chat-stream
+  > .clan-message::before,
+.clan-chat-viewport[data-chat-view="v4"]
+  > .clan-chat-stream
+  > .clan-message::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+.clan-chat-viewport[data-chat-view="v2"]
+  .clan-message__content,
+.clan-chat-viewport[data-chat-view="v2"]
+  .clan-message__body,
+.clan-chat-viewport[data-chat-view="v3"]
+  .clan-message__content,
+.clan-chat-viewport[data-chat-view="v3"]
+  .clan-message__body,
+.clan-chat-viewport[data-chat-view="v4"]
+  .clan-message__content,
+.clan-chat-viewport[data-chat-view="v4"]
+  .clan-message__body {
+  background: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* Discord dense: soft spacing only; no row slab. */
+.clan-chat-viewport[data-chat-view="v2"]
+  > .clan-chat-stream {
+  gap: 0 !important;
+  padding: 0.18rem 0 !important;
+}
+
+.clan-chat-viewport[data-chat-view="v2"]
+  > .clan-chat-stream
+  > .clan-message {
+  padding:
+    0.3rem 2.15rem
+    0.3rem 0.42rem !important;
+}
+
+/* Steam tight: same-user follow-ups remain text-only and nearly gapless. */
+.clan-chat-viewport[data-chat-view="v3"]
+  > .clan-chat-stream {
+  gap: 0 !important;
+  padding: 0.12rem 0 !important;
+}
+
+.clan-chat-viewport[data-chat-view="v3"]
+  > .clan-chat-stream
+  > .clan-message {
+  padding:
+    0.22rem 2.1rem
+    0.22rem 0.3rem !important;
+}
+
+.clan-chat-viewport[data-chat-view="v3"]
+  .clan-message--grouped
+  .clan-message__avatar {
+  visibility: hidden !important;
+}
+
+.clan-chat-viewport[data-chat-view="v3"]
+  .clan-message--grouped
+  .clan-message__meta {
+  display: none !important;
+}
+
+.clan-chat-viewport[data-chat-view="v3"]
+  .clan-message--grouped
+  .clan-message__body {
+  margin-top: 0 !important;
+}
+
+/* AoE2HD classic: one fixed author column, one fixed body start line. */
+.clan-chat-viewport[data-chat-view="v4"]
+  > .clan-chat-stream {
+  gap: 0 !important;
+  padding: 0.22rem 0 !important;
+}
+
+.clan-chat-viewport[data-chat-view="v4"]
+  > .clan-chat-stream
+  > .clan-message {
+  padding:
+    0.1rem 2rem
+    0.1rem 0 !important;
+}
+
+.clan-chat-viewport[data-chat-view="v4"]
+  .clan-message__content {
+  display: grid !important;
+  grid-template-columns:
+    7.25rem minmax(0, 1fr) !important;
+  column-gap: 0.75rem !important;
+  align-items: baseline;
+}
+
+.clan-chat-viewport[data-chat-view="v4"]
+  .clan-message__meta {
+  grid-column: 1 !important;
+  justify-content: flex-end;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.clan-chat-viewport[data-chat-view="v4"]
+  .clan-message__author {
+  width: 100%;
+  overflow: hidden;
+  font-size: 0.875rem !important;
+  line-height: 1.4 !important;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clan-chat-viewport[data-chat-view="v4"]
+  .clan-message__body {
+  grid-column: 2 !important;
+  margin-top: 0 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.42 !important;
+}
+
+@media (max-width: 767px) {
+  .clan-hall-chat-shell {
+    align-self: auto !important;
+  }
+
+  .clan-hall-chat-shell
+    > .clan-chat-viewport {
+    max-height:
+      clamp(24rem, 58dvh, 44rem) !important;
+  }
+
+  .clan-chat-viewport[data-chat-view="v4"]
+    .clan-message__content {
+    grid-template-columns:
+      5.6rem minmax(0, 1fr) !important;
+    column-gap: 0.5rem !important;
+  }
+}

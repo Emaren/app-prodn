@@ -1,7 +1,10 @@
 export type HallScribeAudience = "public" | "users" | "clan";
 
 export function hallScribeMentioned(value: string) {
-  return /(^|\s)@?hall[\s_-]+scribe\b/i.test(value);
+  return (
+    /(^|\s)@scribe\b/i.test(value) ||
+    /(^|\s)@?hall[\s_-]+scribe\b/i.test(value)
+  );
 }
 
 export function hallScribeVisibleAudiences(

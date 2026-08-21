@@ -160,12 +160,13 @@ export async function maybeCreateAoE2WarHallScribeReply(args: {
   audience: ClanAudience;
   triggerMessageId: number;
   message: string;
+  forceReply?: boolean;
   viewer: { uid: string; displayName: string };
 }) {
   if (
     args.clanSlug !== "aoe2war" ||
     !clanHallFeatureEnabled(args.clanSlug, "hallScribe") ||
-    !hallScribeMentioned(args.message) ||
+    (!args.forceReply && !hallScribeMentioned(args.message)) ||
     isInternalSystemUid(args.viewer.uid)
   ) {
     return { status: "not_triggered" as const };

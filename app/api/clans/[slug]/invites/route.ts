@@ -12,6 +12,7 @@ import { publishClanHallEvent } from "@/lib/clanHallEvents";
 import { clanHallFeatureEnabled } from "@/lib/clanHallFeatures";
 import { getOrCreateConversationByUsers } from "@/lib/contactInbox";
 import { publishDirectMessageEvent } from "@/lib/directMessageEvents";
+import { isInternalSystemUid } from "@/lib/internalSystemAccounts";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 
@@ -294,6 +295,12 @@ export async function POST(
           { status: 404, headers: NO_STORE_HEADERS },
         );
       }
+      if (isInternalSystemUid(target.uid)) {
+        return NextResponse.json(
+          { detail: "System identities cannot receive Clan invitations." },
+          { status: 400, headers: NO_STORE_HEADERS },
+        );
+      }
       if (target.id === manager.viewer.id) {
         return NextResponse.json(
           { detail: "You are already standing in your own Hall." },
@@ -322,6 +329,44 @@ export async function POST(
         manager.viewer.id,
         target.id,
       );
+
+      const recentInviteMessages =
+        await manager.prisma.directMessage.findMany({
+          where: {
+            conversationId: conversation.id,
+            senderUserId: manager.viewer.id,
+            body: {
+              startsWith: `🏰 ${manager.clan.name} invitation\n`,
+            },
+          },
+          orderBy: { id: "desc" },
+          take: 20,
+          select: {
+            id: true,
+            body: true,
+          },
+        });
+
+      const pendingInvite =
+        recentInviteMessages.find((row) =>
+          parseClanInviteStatus(row.body) === "pending" &&
+          looksLikeClanInvite({
+            body: row.body,
+            clanName: manager.clan.name,
+            clanSlug: manager.clan.slug,
+            messageId: row.id,
+          }),
+        );
+
+      if (pendingInvite) {
+        return NextResponse.json(
+          {
+            detail: `An invitation to ${displayName(target)} is already pending.`,
+            messageId: pendingInvite.id,
+          },
+          { status: 409, headers: NO_STORE_HEADERS },
+        );
+      }
 
       const placeholder = await manager.prisma.directMessage.create({
         data: {

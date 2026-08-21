@@ -4,7 +4,7 @@ import test from "node:test";
 
 const shadow = readFileSync("scripts/dev-shadow.py", "utf8");
 
-test("shadow clones social and AI operator control-plane tables", () => {
+test("shadow clones social, AI operator and Marketplace control-plane tables", () => {
   for (const table of [
     "users",
     "clans",
@@ -15,10 +15,19 @@ test("shadow clones social and AI operator control-plane tables", () => {
     "ai_request_traces",
     "betting_bot_configs",
     "bet_counter_actions",
+    "user_activity_events",
+    "marketplace_shops",
   ]) {
     assert.match(shadow, new RegExp(`"${table}"`));
   }
-  assert.match(shadow, /SHADOW_TABLES = SOCIAL_TABLES \+ CONTROL_PLANE_TABLES/);
+  assert.match(
+    shadow,
+    /MARKETPLACE_TABLES = \([\s\S]*"user_activity_events"[\s\S]*"marketplace_shops"[\s\S]*\)/,
+  );
+  assert.match(
+    shadow,
+    /SHADOW_TABLES = \([\s\S]*SOCIAL_TABLES[\s\S]*CONTROL_PLANE_TABLES[\s\S]*MARKETPLACE_TABLES[\s\S]*\)/,
+  );
 });
 
 test("shadow keeps production database and app mutation authority out", () => {

@@ -145,6 +145,7 @@ export default function MarketplaceBusinessCard() {
     if (key === "fourth-street") return "4th Street";
     if (key === "fifth-street") return "5th Street";
     if (key === "sixth-street") return "6th Street";
+    if (key === "seventh-street") return "7th Street";
     return key.replaceAll("-", " ");
   }, [business?.shop.streetKey]);
 

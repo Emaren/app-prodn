@@ -25,6 +25,9 @@ type Proposal = {
   shopStatus: string | null;
   approvedAt: string | null;
   displayEnabled: boolean;
+  artHeroReady: boolean;
+  artSignReady: boolean;
+  artLocked: boolean;
 };
 
 type Shop = {
@@ -62,6 +65,7 @@ function streetLabel(key: string) {
   if (key === "fourth-street") return "4th Street";
   if (key === "fifth-street") return "5th Street";
   if (key === "sixth-street") return "6th Street";
+  if (key === "seventh-street") return "7th Street";
   return key.replaceAll("-", " ");
 }
 
@@ -232,9 +236,38 @@ export default function MarketplaceOwnerConsole() {
                 </p>
 
                 <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <div
+                    className={`inline-flex min-h-9 items-center gap-2 rounded-full border px-3 text-[10px] font-black uppercase tracking-[0.12em] ${
+                      proposal.artLocked
+                        ? "border-emerald-200/18 bg-emerald-300/[0.07] text-emerald-100"
+                        : "border-amber-200/16 bg-amber-300/[0.06] text-amber-100"
+                    }`}
+                  >
+                    {proposal.artLocked ? (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    ) : (
+                      <ImagePlus className="h-3.5 w-3.5" />
+                    )}
+                    {proposal.artLocked
+                      ? "Hero + sign locked · ready"
+                      : `${proposal.artHeroReady ? "Hero ✓" : "Hero missing"} · ${proposal.artSignReady ? "Sign ✓" : "Sign missing"}`}
+                  </div>
+
+                  {!proposal.artLocked ? (
+                    <Link
+                      href="/admin/media-assets"
+                      className="rounded-full border border-cyan-100/12 bg-cyan-300/[0.05] px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/[0.09]"
+                    >
+                      Stage artwork
+                    </Link>
+                  ) : null}
+
                   <button
                     type="button"
-                    disabled={busy !== null}
+                    disabled={
+                      busy !== null ||
+                      !proposal.artLocked
+                    }
                     onClick={() =>
                       void action(
                         {

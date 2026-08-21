@@ -9,7 +9,7 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type InviteSearchResult = {
   uid: string;
@@ -176,11 +176,15 @@ export function ClanInviteDoor({
   const [sendingUid, setSendingUid] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [browseOpen, setBrowseOpen] = useState(false);
+  const [sentUids, setSentUids] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const doorRef = useRef<HTMLElement | null>(null);
   const trimmed = query.trim();
 
   useEffect(() => {
-    if (!enabled || trimmed.length < 2) {
-      setResults([]);
+    if (!enabled || !browseOpen) {
       setSearching(false);
       return;
     }
@@ -197,7 +201,7 @@ export function ClanInviteDoor({
             | { results?: InviteSearchResult[]; detail?: string }
             | null;
           if (!response.ok) {
-            throw new Error(payload?.detail || "Search unavailable.");
+            throw new Error(payload?.detail || "Roster unavailable.");
           }
           setResults(payload?.results || []);
           setError(null);
@@ -207,19 +211,19 @@ export function ClanInviteDoor({
           setError(
             searchError instanceof Error
               ? searchError.message
-              : "Search unavailable.",
+              : "Roster unavailable.",
           );
         })
         .finally(() => {
           if (!controller.signal.aborted) setSearching(false);
         });
-    }, 220);
+    }, trimmed ? 120 : 0);
 
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [enabled, slug, trimmed]);
+  }, [browseOpen, enabled, slug, trimmed]);
 
   const hallLink = useMemo(() => {
     if (typeof window === "undefined") return `/clans/${slug}`;
@@ -250,8 +254,12 @@ export function ClanInviteDoor({
         throw new Error(payload?.detail || "Invitation failed.");
       }
       setNotice(`Invitation sent to ${payload.targetName || target.displayName}.`);
+      setSentUids((current) => {
+        const next = new Set(current);
+        next.add(target.uid);
+        return next;
+      });
       setQuery("");
-      setResults([]);
     } catch (inviteError) {
       setError(
         inviteError instanceof Error ? inviteError.message : "Invitation failed.",
@@ -272,7 +280,30 @@ export function ClanInviteDoor({
   }
 
   return (
-    <section className="rounded-[1.6rem] border border-amber-200/14 bg-[radial-gradient(circle_at_90%_0%,rgba(251,191,36,0.09),transparent_38%),rgba(8,8,8,0.28)] p-4">
+    <section
+      ref={doorRef}
+      className="rounded-[1.6rem] border border-amber-200/14 bg-[radial-gradient(circle_at_90%_0%,rgba(251,191,36,0.09),transparent_38%),rgba(8,8,8,0.28)] p-4"
+      onMouseEnter={() => setBrowseOpen(true)}
+      onMouseLeave={() => {
+        if (
+          doorRef.current?.contains(document.activeElement)
+        ) {
+          return;
+        }
+        setBrowseOpen(false);
+      }}
+      onFocusCapture={() => setBrowseOpen(true)}
+      onBlurCapture={(event) => {
+        const next = event.relatedTarget;
+        if (
+          next instanceof Node &&
+          event.currentTarget.contains(next)
+        ) {
+          return;
+        }
+        setBrowseOpen(false);
+      }}
+    >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.26em] text-amber-200/70">
           <UserPlus className="h-4 w-4" />
@@ -294,42 +325,82 @@ export function ClanInviteDoor({
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Find a warrior…"
+          placeholder="Search or browse warriors…"
           className="h-10 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
         />
       </div>
 
-      {searching ? <div className="mt-3 text-xs text-slate-500">Searching…</div> : null}
+      {browseOpen ? (
+        <div className="mt-3 flex items-center justify-between gap-3 text-[10px] uppercase tracking-[0.14em] text-slate-500">
+          <span>
+            {trimmed ? "Filtered warriors" : "AoE2WAR warriors"}
+          </span>
+          <span className="tabular-nums text-amber-100/65">
+            {searching
+              ? "Loading…"
+              : `${results.filter((result) => !sentUids.has(result.uid)).length} available`}
+          </span>
+        </div>
+      ) : (
+        <div className="mt-3 text-[10px] leading-4 text-slate-600">
+          Hover or focus to browse every eligible warrior. Type only when you want to narrow the roster.
+        </div>
+      )}
 
-      {results.length > 0 ? (
-        <div className="mt-3 space-y-2">
-          {results.map((result) => (
-            <div
-              key={result.uid}
-              className="flex items-center gap-2 rounded-xl border border-white/7 bg-white/[0.025] px-3 py-2"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-white">
-                  {result.displayName}
-                </div>
-                <div className="truncate text-[10px] text-slate-600">{result.uid}</div>
-              </div>
-              <button
-                type="button"
-                onClick={() => void sendInvite(result)}
-                disabled={result.alreadyMember || Boolean(sendingUid)}
-                className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-black/20 text-slate-300 transition hover:border-amber-200/24 hover:text-amber-100 disabled:cursor-not-allowed disabled:opacity-35"
-                title={result.alreadyMember ? "Already in clan" : `Invite ${result.displayName}`}
-                aria-label={`Invite ${result.displayName}`}
+      {browseOpen && results.length > 0 ? (
+        <div className="mt-2 max-h-[18rem] space-y-1.5 overflow-y-auto pr-1 [scrollbar-color:rgba(148,163,184,0.3)_transparent] [scrollbar-width:thin]">
+          {results.map((result) => {
+            const sent = sentUids.has(result.uid);
+
+            return (
+              <div
+                key={result.uid}
+                className="flex items-center gap-2 rounded-xl border border-white/7 bg-white/[0.025] px-3 py-2"
               >
-                {result.alreadyMember ? (
-                  <Check className="h-3.5 w-3.5" />
-                ) : (
-                  <Send className="h-3.5 w-3.5" />
-                )}
-              </button>
-            </div>
-          ))}
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-white">
+                    {result.displayName}
+                  </div>
+                  <div className="truncate text-[10px] text-slate-600">
+                    {sent ? "Invitation sent" : "Ready for Hall invitation"}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void sendInvite(result)}
+                  disabled={
+                    result.alreadyMember ||
+                    sent ||
+                    Boolean(sendingUid)
+                  }
+                  className="inline-flex h-8 min-w-8 items-center justify-center gap-1 rounded-full border border-white/10 bg-black/20 px-2 text-[10px] font-semibold text-slate-300 transition hover:border-amber-200/24 hover:text-amber-100 disabled:cursor-not-allowed disabled:opacity-45"
+                  title={
+                    result.alreadyMember
+                      ? "Already in clan"
+                      : sent
+                        ? "Invitation sent"
+                        : `Invite ${result.displayName}`
+                  }
+                  aria-label={`Invite ${result.displayName}`}
+                >
+                  {result.alreadyMember || sent ? (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      <span>Sent</span>
+                    </>
+                  ) : (
+                    <Send className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      ) : browseOpen && !searching ? (
+        <div className="mt-3 rounded-xl border border-dashed border-white/9 px-3 py-4 text-center text-xs text-slate-500">
+          {trimmed
+            ? "No eligible warriors match that search."
+            : "No eligible warriors are waiting outside this Hall."}
         </div>
       ) : null}
 

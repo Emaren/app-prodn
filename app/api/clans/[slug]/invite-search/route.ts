@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { canSendClanInvite } from "@/lib/clanInvites";
 import { clanHallFeatureEnabled } from "@/lib/clanHallFeatures";
+import { isInternalSystemUid } from "@/lib/internalSystemAccounts";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 
@@ -46,10 +47,8 @@ export async function GET(
       );
     }
 
-    const query = request.nextUrl.searchParams.get("q")?.trim().slice(0, 80);
-    if (!query || query.length < 2) {
-      return NextResponse.json({ results: [] }, { headers: NO_STORE_HEADERS });
-    }
+    const query =
+      request.nextUrl.searchParams.get("q")?.trim().slice(0, 80) ?? "";
 
     const prisma = getPrisma();
     const [viewer, clan] = await Promise.all([
@@ -96,14 +95,28 @@ export async function GET(
     const candidates = await prisma.user.findMany({
       where: {
         id: { not: viewer.id },
-        OR: [
-          { uid: { contains: query, mode: "insensitive" } },
-          { inGameName: { contains: query, mode: "insensitive" } },
-          { steamPersonaName: { contains: query, mode: "insensitive" } },
-        ],
+        ...(query
+          ? {
+              OR: [
+                { uid: { contains: query, mode: "insensitive" as const } },
+                {
+                  inGameName: {
+                    contains: query,
+                    mode: "insensitive" as const,
+                  },
+                },
+                {
+                  steamPersonaName: {
+                    contains: query,
+                    mode: "insensitive" as const,
+                  },
+                },
+              ],
+            }
+          : {}),
       },
       orderBy: [{ inGameName: "asc" }, { id: "asc" }],
-      take: 12,
+      take: 100,
       select: {
         id: true,
         uid: true,
@@ -112,11 +125,17 @@ export async function GET(
       },
     });
 
-    const memberRows = candidates.length
+    const humanCandidates = candidates.filter(
+      (candidate) => !isInternalSystemUid(candidate.uid),
+    );
+
+    const memberRows = humanCandidates.length
       ? await prisma.clanMember.findMany({
           where: {
             clanId: clan.id,
-            userId: { in: candidates.map((candidate) => candidate.id) },
+            userId: {
+              in: humanCandidates.map((candidate) => candidate.id),
+            },
             status: "active",
           },
           select: { userId: true },
@@ -125,18 +144,23 @@ export async function GET(
 
     const memberIds = new Set(memberRows.map((row) => row.userId));
 
+    const results = humanCandidates
+      .filter((candidate) => !memberIds.has(candidate.id))
+      .map((candidate) => ({
+        uid: candidate.uid,
+        displayName: displayName(candidate),
+        alreadyMember: false,
+      }));
+
     return NextResponse.json(
       {
-        results: candidates.map((candidate) => ({
-          uid: candidate.uid,
-          displayName: displayName(candidate),
-          alreadyMember: memberIds.has(candidate.id),
-        })),
+        results,
+        total: results.length,
       },
       { headers: NO_STORE_HEADERS },
     );
   } catch (error) {
-    console.error("Failed to search Clan invite candidates:", error);
+    console.error("Failed to browse Clan invite candidates:", error);
     return NextResponse.json(
       { results: [] },
       { status: 500, headers: NO_STORE_HEADERS },

@@ -42,7 +42,8 @@ test("only AoE2WAR enables Hall Scribe in V1", () => {
   assert.equal(getClanHallFeatures("mystikal").hallScribe, false);
 });
 
-test("Hall Scribe V1 is explicit-mention only", () => {
+test("Hall Scribe accepts @Scribe while preserving the legacy mention", () => {
+  assert.equal(hallScribeMentioned("@Scribe what happened?"), true);
   assert.equal(hallScribeMentioned("@Hall Scribe what happened?"), true);
   assert.equal(hallScribeMentioned("hey Hall Scribe, verdict?"), true);
   assert.equal(hallScribeMentioned("scribe this match"), false);
@@ -119,10 +120,22 @@ test("Admin UI stages Hall Scribe and previews clan_hall", () => {
   assert.match(admin, /clan_hall: "Clan Hall"/);
 });
 
-test("Hall UI exposes mention contract without ambient AI", () => {
+test("Hall UI exposes explicit @Scribe and one-shot Scribe toggle", () => {
   const client = read("components/clans/ClanHallClient.tsx");
-  assert.match(client, /Mention @Hall Scribe/);
-  assert.match(client, /mention @Hall Scribe/);
+  const route = read("app/api/clans/[slug]/route.ts");
+  const scribe = read("lib/clanHallScribe.ts");
+
+  assert.match(client, /Type @Scribe or light the S button/);
+  assert.match(client, /scribeReplyEnabled/);
+  assert.match(client, /aria-label=[\s\S]*Scribe reply armed/);
+  assert.match(client, /scribe: requestScribe/);
+  assert.match(route, /body\.scribe === true/);
+  assert.match(route, /forceReply: requestScribeReply/);
+  assert.match(scribe, /forceReply\?: boolean/);
+  assert.match(
+    scribe,
+    /!args\.forceReply && !hallScribeMentioned\(args\.message\)/,
+  );
   assert.doesNotMatch(client, /ambientHallScribe/i);
 });
 
@@ -146,4 +159,22 @@ test("Hall positive pair evidence vetoes provider false-absence claims", () => {
   assert.match(source, /Canonical positive pair verdict:/);
   assert.match(source, /providerReplyContradictsPositivePairEvidence/);
   assert.match(source, /factualProviderText/);
+});
+
+
+test("@Scribe and the lit S control converge on the same Hall Scribe responder", () => {
+  const client = read("components/clans/ClanHallClient.tsx");
+  const route = read("app/api/clans/[slug]/route.ts");
+  const scribe = read("lib/clanHallScribe.ts");
+  const policy = read("lib/clanHallScribePolicy.ts");
+
+  assert.match(policy, /@scribe\b/i);
+  assert.match(client, /scribe: requestScribe/);
+  assert.match(route, /body\.scribe === true/);
+  assert.match(route, /forceReply: requestScribeReply/);
+  assert.match(route, /maybeCreateAoE2WarHallScribeReply/);
+  assert.match(
+    scribe,
+    /\(!args\.forceReply && !hallScribeMentioned\(args\.message\)\)/,
+  );
 });

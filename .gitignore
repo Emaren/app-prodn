@@ -90,3 +90,6 @@ runtime/
 # Python bytecode/cache
 __pycache__/
 *.py[cod]
+
+# Runtime managed-media uploads
+public/uploads/managed-assets/

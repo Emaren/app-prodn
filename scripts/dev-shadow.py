@@ -31,7 +31,16 @@ CONTROL_PLANE_TABLES = (
     "bet_counter_actions",
 )
 
-SHADOW_TABLES = SOCIAL_TABLES + CONTROL_PLANE_TABLES
+MARKETPLACE_TABLES = (
+    "user_activity_events",
+    "marketplace_shops",
+)
+
+SHADOW_TABLES = (
+    SOCIAL_TABLES
+    + CONTROL_PLANE_TABLES
+    + MARKETPLACE_TABLES
+)
 
 SAFE_PRODUCTION_ENV_KEYS = (
     "AOE2WAR_HALL_SCRIBE_PROMPT_ID",
@@ -325,7 +334,10 @@ def stream_social_data(shadow_url: str) -> None:
     elapsed = time.monotonic() - started
     print(f"PASS: production-shaped shadow slice imported in {elapsed:.1f}s")
     print("PASS: production DATABASE_URL never left the VPS")
-    print("PASS: only selected social/control-plane table data crossed SSH")
+    print(
+        "PASS: only selected social/AI/Marketplace control-plane "
+        "table data crossed SSH"
+    )
     print("PASS: PG17 psql-only meta-commands were filtered")
 
 
@@ -376,6 +388,16 @@ SELECT setval(
   COALESCE((SELECT MAX(id) FROM bet_counter_actions), 1),
   true
 );
+SELECT setval(
+  pg_get_serial_sequence('user_activity_events', 'id'),
+  COALESCE((SELECT MAX(id) FROM user_activity_events), 1),
+  true
+);
+SELECT setval(
+  pg_get_serial_sequence('marketplace_shops', 'id'),
+  COALESCE((SELECT MAX(id) FROM marketplace_shops), 1),
+  true
+);
 '''
 
     subprocess.run(
@@ -392,7 +414,10 @@ SELECT setval(
         stdout=subprocess.DEVNULL,
     )
 
-    print("PASS: local social/control-plane sequences aligned for writable testing")
+    print(
+        "PASS: local social/AI/Marketplace control-plane sequences "
+        "aligned for writable testing"
+    )
 
 
 def refresh_shadow() -> None:
@@ -401,7 +426,7 @@ def refresh_shadow() -> None:
     print("=" * 60)
     print(
         "Production DB is 6.7 GB; local development intentionally "
-        "clones the small social + AI/operator control-plane slice."
+        "clones the small social + AI/operator + Marketplace control-plane slice."
     )
 
     base_url = local_base_database_url()
@@ -441,6 +466,8 @@ def refresh_shadow() -> None:
                 "(SELECT count(*) FROM ai_request_traces),"
                 "(SELECT count(*) FROM betting_bot_configs),"
                 "(SELECT count(*) FROM bet_counter_actions),"
+                "(SELECT count(*) FROM user_activity_events),"
+                "(SELECT count(*) FROM marketplace_shops),"
                 "pg_size_pretty(pg_database_size(current_database()))"
             ),
         ],
@@ -457,6 +484,8 @@ def refresh_shadow() -> None:
         ai_traces,
         betting_bots,
         counter_actions,
+        activity_events,
+        marketplace_shops,
         size,
     ) = proof.split("|")
 
@@ -466,10 +495,12 @@ def refresh_shadow() -> None:
         f"messages={clan_messages}, reactions={reactions}, "
         f"ai_agents={ai_agents}, ai_traces={ai_traces}, "
         f"betting_bots={betting_bots}, counter_actions={counter_actions}, "
-        f"size={size})"
+        f"activity_events={activity_events}, "
+        f"marketplace_shops={marketplace_shops}, size={size})"
     )
     print("PASS: AI Command Center production state is mirrored locally")
     print("PASS: Tony & Paulie operator state is mirrored locally")
+    print("PASS: Marketplace proposals + awning occupancy are mirrored locally")
     print("PASS: direct-message tables exist locally and start empty")
     print("PASS: replay/parser/game corpus was deliberately not cloned")
     print("PASS: shadow database is local, writable, and disposable")

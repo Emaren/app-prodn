@@ -3,6 +3,7 @@
 import { Palette } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import ClanChatViewPicker from "@/components/clans/ClanChatViewPicker";
 import ClanViewToggle from "@/components/clans/ClanViewToggle";
 import type { ClanViewMode } from "@/lib/clans";
 
@@ -98,10 +99,32 @@ export default function ClanDisplayRail({
       className="clan-display-rail"
       aria-label="Clan display controls"
     >
-      <ClanViewToggle
-        view={view}
-        basePath={basePath}
-        label="Clan view mode"
+      <div className="clan-display-rail__group">
+        <span className="clan-display-rail__label">
+          Layout
+        </span>
+        <ClanViewToggle
+          view={view}
+          basePath={basePath}
+          label="Clan view mode"
+        />
+      </div>
+
+      <span
+        className="clan-display-rail__divider"
+        aria-hidden="true"
+      />
+
+      <div className="clan-display-rail__group">
+        <span className="clan-display-rail__label">
+          Chat
+        </span>
+        <ClanChatViewPicker />
+      </div>
+
+      <span
+        className="clan-display-rail__divider"
+        aria-hidden="true"
       />
 
       <button

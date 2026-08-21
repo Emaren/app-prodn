@@ -9,8 +9,10 @@ import {
   Crown,
   Eye,
   Globe2,
+  Languages,
   LockKeyhole,
   MessageSquareText,
+  MoreHorizontal,
   Pencil,
   Radio,
   RotateCcw,
@@ -36,11 +38,20 @@ import {
 } from "react";
 
 import { useUserAuth } from "@/context/UserAuthContext";
+import { useUniversalLanguage } from "@/context/UniversalLanguageContext";
 import ClanDisplayRail from "@/components/clans/ClanDisplayRail";
+import ClanChatViewPicker from "@/components/clans/ClanChatViewPicker";
+import { useClanChatViewPreference } from "@/components/clans/clanChatViewPreference";
+import { usePublicPresence } from "@/components/presence/PublicPresenceProvider";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { ClanInviteDoor, ClanInvitePrompt } from "@/components/clans/ClanInviteDoor";
 import { clanHallFeatureEnabled } from "@/lib/clanHallFeatures";
 import { formatClanRole } from "@/lib/clanRoles";
+import {
+  UNIVERSAL_LANGUAGES,
+  findUniversalLanguage,
+  type UniversalLanguageCode,
+} from "@/lib/i18n/languages";
 import {
   CLAN_AUDIENCES,
   CLAN_AUDIENCE_DETAILS,
@@ -58,7 +69,14 @@ type PendingClanMessage = {
   id: string;
   body: string;
   audience: ClanAudience;
+  requestScribe: boolean;
   status: "sending" | "failed";
+};
+
+type HallPresenceUser = {
+  uid: string;
+  displayName: string;
+  lastSeenAt: string;
 };
 
 function initials(value: string) {
@@ -98,6 +116,102 @@ function audienceTone(audience: ClanAudience) {
   return "border-amber-200/18 bg-amber-300/10 text-amber-100";
 }
 
+function resolveClanTranslationLanguage(
+  selectedLanguage: UniversalLanguageCode | null,
+  languageLoaded: boolean,
+): UniversalLanguageCode {
+  if (selectedLanguage) {
+    return selectedLanguage;
+  }
+
+  if (
+    !languageLoaded ||
+    typeof navigator === "undefined"
+  ) {
+    return "en";
+  }
+
+  const browserLanguages =
+    navigator.languages?.length
+      ? navigator.languages
+      : [navigator.language];
+
+  for (
+    const browserLanguage
+    of browserLanguages
+  ) {
+    const normalized =
+      browserLanguage
+        .trim()
+        .toLowerCase();
+
+    const exact =
+      UNIVERSAL_LANGUAGES.find(
+        (language) =>
+          language.code
+            .toLowerCase() ===
+            normalized ||
+          language.htmlLang
+            .toLowerCase() ===
+            normalized,
+      );
+
+    if (exact) {
+      return exact.code;
+    }
+
+    const base =
+      normalized.split("-")[0];
+
+    const baseMatch =
+      UNIVERSAL_LANGUAGES.find(
+        (language) =>
+          language.code
+            .toLowerCase()
+            .split("-")[0] ===
+          base,
+      );
+
+    if (baseMatch) {
+      return baseMatch.code;
+    }
+  }
+
+  return "en";
+}
+
+function shouldGroupClanMessage(
+  previous: ClanHallSnapshot["messages"][number] | null,
+  current: ClanHallSnapshot["messages"][number],
+) {
+  if (!previous) return false;
+  if (
+    previous.author.uid !== current.author.uid ||
+    previous.audience !== current.audience
+  ) {
+    return false;
+  }
+
+  const previousTime =
+    new Date(previous.createdAt).getTime();
+  const currentTime =
+    new Date(current.createdAt).getTime();
+
+  if (
+    !Number.isFinite(previousTime) ||
+    !Number.isFinite(currentTime)
+  ) {
+    return false;
+  }
+
+  return (
+    Math.abs(
+      currentTime - previousTime,
+    ) <=
+    5 * 60 * 1000
+  );
+}
+
 export default function ClanHallClient({
   initialSnapshot,
   initialView,
@@ -106,9 +220,17 @@ export default function ClanHallClient({
   initialView: ClanViewMode;
 }) {
   const { uid, loading, loginWithSteam } = useUserAuth();
+  const {
+    selectedLanguage,
+    languageLoaded,
+  } = useUniversalLanguage();
+  const { chatViewMode } = useClanChatViewPreference();
+  const { onlineUidSet } = usePublicPresence([]);
   const [snapshot, setSnapshot] = useState(initialSnapshot);
+  const [hallPresence, setHallPresence] = useState<HallPresenceUser[]>([]);
   const [mounted, setMounted] = useState(false);
   const [message, setMessage] = useState("");
+  const [scribeReplyEnabled, setScribeReplyEnabled] = useState(false);
   const [audience, setAudience] = useState<ClanAudience>(() =>
     preferredAudience(initialSnapshot.allowedAudiences)
   );
@@ -119,7 +241,6 @@ export default function ClanHallClient({
   );
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
   const [editingBody, setEditingBody] = useState("");
-  const [reactionDockId, setReactionDockId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pendingMessages, setPendingMessages] = useState<
@@ -130,6 +251,12 @@ export default function ClanHallClient({
   const requestInFlightRef = useRef(false);
 
   const endpoint = `/api/clans/${encodeURIComponent(snapshot.clan.slug)}`;
+  const presenceEndpoint = `${endpoint}/presence`;
+  const translationLanguage =
+    resolveClanTranslationLanguage(
+      selectedLanguage,
+      languageLoaded,
+    );
   const realtimeEnabled = clanHallFeatureEnabled(
     snapshot.clan.slug,
     "realtime",
@@ -208,6 +335,110 @@ export default function ClanHallClient({
   }, [endpoint, realtimeEnabled, refresh, uid]);
 
   useEffect(() => {
+    if (!snapshot.viewer.authenticated || !uid) {
+      setHallPresence([]);
+      return;
+    }
+
+    let disposed = false;
+
+    async function syncHallPresence() {
+      if (
+        document.visibilityState !== "visible"
+      ) {
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          presenceEndpoint,
+          {
+            method: "POST",
+            cache: "no-store",
+          },
+        );
+
+        if (!response.ok) return;
+
+        const payload =
+          (await response.json().catch(
+            () => null,
+          )) as
+            | {
+                users?: HallPresenceUser[];
+              }
+            | null;
+
+        if (
+          !disposed &&
+          Array.isArray(
+            payload?.users,
+          )
+        ) {
+          setHallPresence(
+            payload?.users ?? [],
+          );
+        }
+      } catch {
+        // Presence is supplemental. Hall chat remains usable if it is unavailable.
+      }
+    }
+
+    const refreshIfVisible = () => {
+      if (
+        document.visibilityState ===
+        "visible"
+      ) {
+        void syncHallPresence();
+      }
+    };
+
+    void syncHallPresence();
+
+    const interval =
+      window.setInterval(
+        refreshIfVisible,
+        10_000,
+      );
+
+    window.addEventListener(
+      "focus",
+      refreshIfVisible,
+    );
+    document.addEventListener(
+      "visibilitychange",
+      refreshIfVisible,
+    );
+
+    return () => {
+      disposed = true;
+      window.clearInterval(
+        interval,
+      );
+      window.removeEventListener(
+        "focus",
+        refreshIfVisible,
+      );
+      document.removeEventListener(
+        "visibilitychange",
+        refreshIfVisible,
+      );
+
+      void fetch(
+        presenceEndpoint,
+        {
+          method: "DELETE",
+          keepalive: true,
+        },
+      ).catch(() => {});
+    };
+  }, [
+    presenceEndpoint,
+    snapshot.viewer.authenticated,
+    uid,
+  ]);
+
+  useEffect(() => {
     if (!snapshot.allowedAudiences.includes(audience)) {
       setAudience(preferredAudience(snapshot.allowedAudiences));
     }
@@ -221,6 +452,7 @@ export default function ClanHallClient({
     draft: string,
     draftAudience: ClanAudience,
     pendingId: string,
+    requestScribe: boolean,
   ) {
     setPosting(true);
     setError(null);
@@ -241,6 +473,7 @@ export default function ClanHallClient({
         body: JSON.stringify({
           message: draft,
           audience: draftAudience,
+          scribe: requestScribe,
         }),
       });
       const payload = (await response.json().catch(() => null)) as
@@ -293,6 +526,9 @@ export default function ClanHallClient({
 
     const pendingId =
       `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const requestScribe =
+      hallScribeEnabled &&
+      scribeReplyEnabled;
 
     if (optimisticMessagesEnabled) {
       setPendingMessages((current) => [
@@ -301,6 +537,7 @@ export default function ClanHallClient({
           id: pendingId,
           body: draft,
           audience,
+          requestScribe,
           status: "sending",
         },
       ]);
@@ -308,7 +545,13 @@ export default function ClanHallClient({
       settleChatToBottom("smooth");
     }
 
-    await sendMessageDraft(draft, audience, pendingId);
+    setScribeReplyEnabled(false);
+    await sendMessageDraft(
+      draft,
+      audience,
+      pendingId,
+      requestScribe,
+    );
   }
 
   function retryPendingMessage(pending: PendingClanMessage) {
@@ -317,6 +560,7 @@ export default function ClanHallClient({
       pending.body,
       pending.audience,
       pending.id,
+      pending.requestScribe,
     );
   }
 
@@ -437,7 +681,6 @@ export default function ClanHallClient({
       }
       setSnapshot(payload);
       setEditingMessageId(null);
-      setReactionDockId(null);
       setNotice("Message removed from the hall.");
     } catch (deleteError) {
       setError(
@@ -606,9 +849,12 @@ export default function ClanHallClient({
         clanName={snapshot.clan.name}
       />
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_21rem]">
-        <article className="min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,rgba(8,13,26,0.96),rgba(3,6,13,0.96))] shadow-[0_28px_90px_rgba(0,0,0,0.28)]">
-          <header className="border-b border-white/9 px-4 py-4 sm:px-6 sm:py-5">
+      <section className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1fr)_21rem]">
+        <article
+          data-chat-view={chatViewMode}
+          className="clan-hall-chat-shell flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,rgba(8,13,26,0.96),rgba(3,6,13,0.96))] shadow-[0_28px_90px_rgba(0,0,0,0.28)]"
+        >
+          <header className="shrink-0 border-b border-white/9 px-4 py-4 sm:px-6 sm:py-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="flex items-center gap-3">
@@ -640,10 +886,10 @@ export default function ClanHallClient({
                   {hallScribeEnabled ? (
                     <span
                       className="inline-flex items-center gap-1.5 rounded-full border border-violet-200/14 bg-violet-300/[0.055] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] text-violet-100/80"
-                      title="Mention @Hall Scribe"
+                      title="Type @Scribe or light the S button"
                     >
                       <Sparkles className="h-3 w-3" />
-                      Hall Scribe
+                      Scribe
                     </span>
                   ) : null}
                 </div>
@@ -651,14 +897,22 @@ export default function ClanHallClient({
                   The {snapshot.clan.name} hall
                 </h2>
               </div>
-              <span
-                className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${audienceTone(
-                  snapshot.clan.chatAudiencePolicy
-                )}`}
-              >
-                <Eye className="h-3.5 w-3.5" />
-                Hall ceiling: {policyDetail.shortLabel}
-              </span>
+              <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                <div className="clan-chat-view-discovery">
+                  <span className="clan-chat-view-discovery__label">
+                    Chat view
+                  </span>
+                  <ClanChatViewPicker placement="header" />
+                </div>
+                <span
+                  className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${audienceTone(
+                    snapshot.clan.chatAudiencePolicy
+                  )}`}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Hall ceiling: {policyDetail.shortLabel}
+                </span>
+              </div>
             </div>
             <p className="mt-3 text-sm leading-5 text-slate-400">
               {snapshot.access.notice}
@@ -667,7 +921,8 @@ export default function ClanHallClient({
 
           <div
             ref={chatViewportRef}
-            className="h-[31rem] overflow-y-auto px-3 py-4 [scrollbar-color:rgba(148,163,184,0.38)_transparent] [scrollbar-width:thin] sm:px-5"
+            data-chat-view={chatViewMode}
+            className="clan-chat-viewport flex-1 overflow-y-auto px-3 py-4 [scrollbar-color:rgba(148,163,184,0.38)_transparent] [scrollbar-width:thin] sm:px-5"
           >
             {!snapshot.access.canReadChat ? (
               <LockedHall
@@ -693,24 +948,36 @@ export default function ClanHallClient({
                 </div>
               </div>
             ) : (
-              <div className="space-y-3">
-                {snapshot.messages.map((chatMessage) => (
+              <div
+                className={`clan-chat-stream clan-chat-stream--${chatViewMode}`}
+              >
+                {snapshot.messages.map((chatMessage, index) => (
                   <ClanMessageBubble
                     key={chatMessage.id}
                     message={chatMessage}
+                    grouped={
+                      (chatViewMode === "v2" ||
+                        chatViewMode === "v3") &&
+                      shouldGroupClanMessage(
+                        index > 0
+                          ? snapshot.messages[index - 1]
+                          : null,
+                        chatMessage,
+                      )
+                    }
                     mounted={mounted}
                     ownMessage={chatMessage.author.uid === snapshot.viewer.uid}
                     authenticated={snapshot.viewer.authenticated}
+                    clanSlug={snapshot.clan.slug}
+                    translationLanguage={translationLanguage}
                     editing={editingMessageId === chatMessage.id}
                     editingBody={editingBody}
                     busy={Boolean(
                       messageActionBusy?.includes(`:${chatMessage.id}`)
                     )}
-                    reactionDockOpen={reactionDockId === chatMessage.id}
                     onStartEdit={() => {
                       setEditingMessageId(chatMessage.id);
                       setEditingBody(chatMessage.body);
-                      setReactionDockId(null);
                     }}
                     onCancelEdit={() => {
                       setEditingMessageId(null);
@@ -723,11 +990,6 @@ export default function ClanHallClient({
                     onDelete={() => {
                       void deleteClanMessage(chatMessage.id);
                     }}
-                    onToggleReactionDock={() =>
-                      setReactionDockId((current) =>
-                        current === chatMessage.id ? null : chatMessage.id
-                      )
-                    }
                     onReaction={(emoji) => {
                       void toggleReaction(chatMessage.id, emoji);
                     }}
@@ -746,7 +1008,7 @@ export default function ClanHallClient({
             )}
           </div>
 
-          <footer className="border-t border-white/9 bg-black/20 p-3 sm:p-5">
+          <footer className="shrink-0 border-t border-white/9 bg-black/20 p-3 sm:p-5">
             {loading ? (
               <div className="h-28 animate-pulse rounded-[1.4rem] border border-white/8 bg-white/[0.035]" />
             ) : !snapshot.viewer.authenticated ? (
@@ -824,14 +1086,41 @@ export default function ClanHallClient({
 
                       event.currentTarget.form?.requestSubmit();
                     }}
-                    placeholder={
-                      hallScribeEnabled
-                        ? `Message ${snapshot.clan.name}… mention @Hall Scribe`
-                        : `Message ${snapshot.clan.name}…`
-                    }
+                    placeholder={`Message ${snapshot.clan.name}…`}
                     rows={3}
                     className="min-h-[4.7rem] flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-6 text-white outline-none placeholder:text-slate-600"
                   />
+                  {hallScribeEnabled ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setScribeReplyEnabled((current) => !current)
+                      }
+                      aria-pressed={scribeReplyEnabled}
+                      aria-label={
+                        scribeReplyEnabled
+                          ? "Scribe reply armed"
+                          : "Ask Scribe on next message"
+                      }
+                      title={
+                        scribeReplyEnabled
+                          ? "Scribe will answer your next message"
+                          : "Ask Scribe on your next message"
+                      }
+                      className={`clan-scribe-toggle ${
+                        scribeReplyEnabled
+                          ? "clan-scribe-toggle--active"
+                          : ""
+                      }`}
+                    >
+                      <span
+                        className="clan-scribe-toggle__sigil"
+                        aria-hidden="true"
+                      >
+                        S
+                      </span>
+                    </button>
+                  ) : null}
                   <button
                     type="submit"
                     disabled={posting || !message.trim()}
@@ -899,11 +1188,17 @@ export default function ClanHallClient({
             </section>
           )}
 
+          <ClanHallPresenceCard
+            presence={hallPresence}
+            roster={snapshot.roster}
+            onlineUidSet={onlineUidSet}
+          />
+
           <section className="rounded-[1.6rem] border border-white/10 bg-black/24 p-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.26em] text-slate-500">
                 <UsersRound className="clan-theme-label h-4 w-4" />
-                Roster
+                Clan roster
               </div>
               <span className="rounded-full border border-white/9 bg-white/[0.04] px-2.5 py-1 text-[10px] text-slate-400">
                 {snapshot.clan.memberCount}
@@ -928,8 +1223,33 @@ export default function ClanHallClient({
                       <div className="truncate text-sm font-semibold text-white">
                         {member.displayName}
                       </div>
-                      <div className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                        {formatClanRole(member.role)}
+                      <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
+                        <span>{formatClanRole(member.role)}</span>
+                        <span
+                          className={
+                            hallPresence.some((entry) => entry.uid === member.uid)
+                              ? "text-amber-200/80"
+                              : onlineUidSet.has(member.uid)
+                                ? "text-emerald-200/75"
+                                : "text-slate-600"
+                          }
+                        >
+                          {hallPresence.some((entry) => entry.uid === member.uid)
+                            ? "In Hall"
+                            : onlineUidSet.has(member.uid)
+                              ? "Online"
+                              : "Offline"}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-[9px] leading-4 text-slate-600">
+                        Joined{" "}
+                        <TimeDisplayText
+                          value={member.joinedAt}
+                          includeZone={false}
+                          includeYear
+                          interactive={false}
+                          className="text-slate-500"
+                        />
                       </div>
                     </div>
                     {["owner", "admin"].includes(member.role) ? (
@@ -986,6 +1306,96 @@ function StatPill({
   );
 }
 
+function ClanHallPresenceCard({
+  presence,
+  roster,
+  onlineUidSet,
+}: {
+  presence: HallPresenceUser[];
+  roster: ClanHallSnapshot["roster"];
+  onlineUidSet: Set<string>;
+}) {
+  const rosterByUid = new Map(
+    roster.map((member) => [
+      member.uid,
+      member,
+    ]),
+  );
+
+  return (
+    <section className="rounded-[1.6rem] border border-emerald-200/10 bg-[radial-gradient(circle_at_100%_0%,rgba(16,185,129,0.08),transparent_38%),rgba(0,0,0,0.24)] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.26em] text-slate-500">
+          <Radio className="clan-theme-label h-4 w-4" />
+          In the Hall
+        </div>
+        <span className="rounded-full border border-emerald-200/12 bg-emerald-300/[0.055] px-2.5 py-1 text-[10px] tabular-nums text-emerald-100/75">
+          {presence.length}
+        </span>
+      </div>
+
+      {presence.length === 0 ? (
+        <div className="mt-3 rounded-xl border border-dashed border-white/8 px-3 py-4 text-center text-xs leading-5 text-slate-600">
+          No signed-in warriors are reporting presence in this Hall yet.
+        </div>
+      ) : (
+        <div className="mt-3 space-y-1.5">
+          {presence.map((entry) => {
+            const member =
+              rosterByUid.get(entry.uid);
+            const siteOnline =
+              onlineUidSet.has(entry.uid);
+
+            return (
+              <div
+                key={entry.uid}
+                className="flex items-center gap-3 rounded-xl border border-white/7 bg-white/[0.025] px-3 py-2.5"
+              >
+                <div className="relative grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-emerald-200/10 bg-emerald-300/[0.055] text-xs font-black text-emerald-50">
+                  {initials(entry.displayName)}
+                  <span
+                    className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0a1019] ${
+                      siteOnline
+                        ? "bg-emerald-400"
+                        : "bg-amber-300"
+                    }`}
+                    title={
+                      siteOnline
+                        ? "Online on AoE2WAR"
+                        : "In Hall"
+                    }
+                  />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-white">
+                    {entry.displayName}
+                  </div>
+                  <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[9px] uppercase tracking-[0.14em] text-slate-500">
+                    <span className="text-amber-100/70">
+                      In Hall
+                    </span>
+                    <span>
+                      {member
+                        ? formatClanRole(member.role)
+                        : "Visitor"}
+                    </span>
+                    {siteOnline ? (
+                      <span className="text-emerald-200/65">
+                        Online
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
 function PendingClanMessageBubble({
   pending,
   displayName,
@@ -1002,7 +1412,7 @@ function PendingClanMessageBubble({
 
   return (
     <div
-      className={`relative flex gap-3 rounded-[1.35rem] border p-3 sm:p-4 ${
+      className={`clan-message clan-message--pending clan-message--own relative flex gap-3 rounded-[1.35rem] border p-3 sm:p-4 ${
         failed
           ? "border-red-300/22 bg-red-400/[0.075]"
           : "border-emerald-200/14 bg-emerald-300/[0.045]"
@@ -1066,114 +1476,263 @@ function ClanMessageBubble({
   message,
   mounted,
   ownMessage,
+  grouped,
   authenticated,
+  clanSlug,
+  translationLanguage,
   editing,
   editingBody,
   busy,
-  reactionDockOpen,
   onStartEdit,
   onCancelEdit,
   onEditingBodyChange,
   onSaveEdit,
   onDelete,
-  onToggleReactionDock,
   onReaction,
 }: {
   message: ClanHallSnapshot["messages"][number];
   mounted: boolean;
   ownMessage: boolean;
+  grouped: boolean;
   authenticated: boolean;
+  clanSlug: string;
+  translationLanguage: UniversalLanguageCode;
   editing: boolean;
   editingBody: string;
   busy: boolean;
-  reactionDockOpen: boolean;
   onStartEdit: () => void;
   onCancelEdit: () => void;
   onEditingBodyChange: (value: string) => void;
   onSaveEdit: () => void;
   onDelete: () => void;
-  onToggleReactionDock: () => void;
   onReaction: (emoji: ClanReaction) => void;
 }) {
-  const Icon = audienceIcon(message.audience);
+  const Icon =
+    audienceIcon(message.audience);
+  const [toolsOpen, setToolsOpen] =
+    useState(false);
+  const toolsCloseTimerRef =
+    useRef<number | null>(null);
+  const [
+    translationPending,
+    setTranslationPending,
+  ] = useState(false);
+  const [
+    translationError,
+    setTranslationError,
+  ] = useState<string | null>(
+    null,
+  );
+  const [
+    activeTranslation,
+    setActiveTranslation,
+  ] = useState<{
+    language: UniversalLanguageCode;
+    text: string;
+  } | null>(null);
+
+  const languageDefinition =
+    findUniversalLanguage(
+      translationLanguage,
+    );
+
+  const hasTools =
+    authenticated ||
+    message.canEdit ||
+    message.canDelete;
+
+  function cancelToolsClose() {
+    if (
+      toolsCloseTimerRef.current
+    ) {
+      window.clearTimeout(
+        toolsCloseTimerRef.current,
+      );
+      toolsCloseTimerRef.current =
+        null;
+    }
+  }
+
+  function openTools() {
+    cancelToolsClose();
+    setToolsOpen(true);
+  }
+
+  function scheduleToolsClose() {
+    cancelToolsClose();
+    toolsCloseTimerRef.current =
+      window.setTimeout(
+        () => setToolsOpen(false),
+        180,
+      );
+  }
+
+  useEffect(() => {
+    return () => {
+      if (
+        toolsCloseTimerRef.current
+      ) {
+        window.clearTimeout(
+          toolsCloseTimerRef.current,
+        );
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    setActiveTranslation(null);
+    setTranslationError(null);
+  }, [
+    message.updatedAt,
+    translationLanguage,
+  ]);
+
+  async function translateMessage() {
+    setToolsOpen(false);
+
+    if (
+      activeTranslation?.language ===
+      translationLanguage
+    ) {
+      setActiveTranslation(null);
+      setTranslationError(null);
+      return;
+    }
+
+    setTranslationPending(true);
+    setTranslationError(null);
+
+    try {
+      const response = await fetch(
+        `/api/clans/${encodeURIComponent(clanSlug)}/messages/${message.id}/translate`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            language:
+              translationLanguage,
+          }),
+        },
+      );
+
+      const payload =
+        (await response
+          .json()
+          .catch(() => null)) as
+          | {
+              text?: string;
+              language?: string;
+              detail?: string;
+            }
+          | null;
+
+      if (
+        !response.ok ||
+        !payload?.text
+      ) {
+        throw new Error(
+          payload?.detail ||
+            "Translation failed.",
+        );
+      }
+
+      setActiveTranslation({
+        language:
+          translationLanguage,
+        text: payload.text,
+      });
+    } catch (error) {
+      setTranslationError(
+        error instanceof Error
+          ? error.message
+          : "Translation is temporarily unavailable.",
+      );
+    } finally {
+      setTranslationPending(false);
+    }
+  }
 
   return (
     <div
       className={`clan-message group/message relative flex gap-3 rounded-[1.35rem] border p-3 sm:p-4 ${
+        grouped
+          ? "clan-message--grouped "
+          : ""
+      }${
         ownMessage
           ? "clan-message--own"
           : "border-white/8 bg-white/[0.025]"
       }`}
     >
-      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[1rem] border border-white/10 bg-black/24 text-xs font-black text-white">
-        {initials(message.author.displayName)}
+      <div className="clan-message__avatar grid h-10 w-10 shrink-0 place-items-center rounded-[1rem] border border-white/10 bg-black/24 text-xs font-black text-white">
+        {initials(
+          message.author.displayName,
+        )}
       </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-semibold text-white">
-            {message.author.displayName}
+
+      <div className="clan-message__content min-w-0 flex-1">
+        <div className="clan-message__meta flex flex-wrap items-center gap-2">
+          <span className="clan-message__author text-sm font-semibold text-white">
+            {
+              message.author
+                .displayName
+            }
           </span>
-          {message.author.isClanMember ? (
-            <span className="rounded-full border border-amber-200/14 bg-amber-300/[0.07] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] text-amber-100">
-              {formatClanRole(message.author.role)}
+
+          {message.author
+            .isClanMember ? (
+            <span className="clan-message__role rounded-full border border-amber-200/14 bg-amber-300/[0.07] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] text-amber-100">
+              {formatClanRole(
+                message.author.role,
+              )}
             </span>
           ) : (
-            <span className="rounded-full border border-sky-200/12 bg-sky-300/[0.06] px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-sky-100">
+            <span className="clan-message__role rounded-full border border-sky-200/12 bg-sky-300/[0.06] px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] text-sky-100">
               visitor
             </span>
           )}
+
           <span
-            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold ${audienceTone(
-              message.audience
+            className={`clan-message__audience inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-semibold ${audienceTone(
+              message.audience,
             )}`}
           >
             <Icon className="h-3 w-3" />
-            {CLAN_AUDIENCE_DETAILS[message.audience].shortLabel}
+            {
+              CLAN_AUDIENCE_DETAILS[
+                message.audience
+              ].shortLabel
+            }
           </span>
-          <span className="text-[10px] text-slate-600">
-            {formatMessageTime(message.createdAt, mounted)}
+
+          <span className="clan-message__time text-[10px] text-slate-600">
+            {formatMessageTime(
+              message.createdAt,
+              mounted,
+            )}
           </span>
+
           {message.edited ? (
-            <span className="text-[9px] uppercase tracking-[0.14em] text-slate-600">
+            <span className="clan-message__edited text-[9px] uppercase tracking-[0.14em] text-slate-600">
               reforged
-            </span>
-          ) : null}
-          {message.canEdit || message.canDelete ? (
-            <span className="ml-auto inline-flex items-center gap-1 opacity-60 transition group-hover/message:opacity-100">
-              {message.canEdit ? (
-                <button
-                  type="button"
-                  onClick={onStartEdit}
-                  disabled={busy}
-                  className="clan-theme-action grid h-7 w-7 place-items-center rounded-full border border-white/8 bg-black/20 text-slate-400 transition disabled:opacity-40"
-                  aria-label="Edit clan message"
-                  title="Edit"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
-              {message.canDelete ? (
-                <button
-                  type="button"
-                  onClick={onDelete}
-                  disabled={busy}
-                  className="clan-theme-action grid h-7 w-7 place-items-center rounded-full border border-white/8 bg-black/20 text-slate-400 transition disabled:opacity-40"
-                  aria-label="Delete clan message"
-                  title="Delete"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              ) : null}
             </span>
           ) : null}
         </div>
 
         {editing ? (
-          <div className="clan-theme-outline mt-3 rounded-[1rem] border bg-black/24 p-2">
+          <div className="clan-message__editor clan-theme-outline mt-3 rounded-[1rem] border bg-black/24 p-2">
             <textarea
               value={editingBody}
               onChange={(event) =>
-                onEditingBodyChange(event.target.value.slice(0, 1200))
+                onEditingBodyChange(
+                  event.target.value.slice(
+                    0,
+                    1200,
+                  ),
+                )
               }
               rows={3}
               autoFocus
@@ -1181,12 +1740,15 @@ function ClanMessageBubble({
             />
             <div className="mt-2 flex items-center justify-between gap-3 border-t border-white/7 pt-2">
               <span className="text-[10px] text-slate-600">
-                {editingBody.length}/1200
+                {editingBody.length}
+                /1200
               </span>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={onCancelEdit}
+                  onClick={
+                    onCancelEdit
+                  }
                   disabled={busy}
                   className="inline-flex min-h-8 items-center gap-1 rounded-full border border-white/10 px-3 text-[11px] text-slate-400 transition hover:text-white disabled:opacity-40"
                 >
@@ -1195,8 +1757,13 @@ function ClanMessageBubble({
                 </button>
                 <button
                   type="button"
-                  onClick={onSaveEdit}
-                  disabled={busy || !editingBody.trim()}
+                  onClick={
+                    onSaveEdit
+                  }
+                  disabled={
+                    busy ||
+                    !editingBody.trim()
+                  }
                   className="inline-flex min-h-8 items-center gap-1 rounded-full border border-amber-200/22 bg-amber-300/12 px-3 text-[11px] font-semibold text-amber-100 transition hover:bg-amber-300/18 disabled:opacity-40"
                 >
                   <Check className="h-3.5 w-3.5" />
@@ -1206,85 +1773,238 @@ function ClanMessageBubble({
             </div>
           </div>
         ) : (
-          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">
-            {message.body}
-          </p>
+          <>
+            <p className="clan-message__body mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">
+              {activeTranslation?.text ??
+                message.body}
+            </p>
+
+            {activeTranslation ? (
+              <div className="clan-message__translation-note mt-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-cyan-200/48">
+                Translated ·{" "}
+                {findUniversalLanguage(
+                  activeTranslation.language,
+                )?.nativeName ??
+                  activeTranslation.language}
+              </div>
+            ) : null}
+
+            {translationError ? (
+              <div className="clan-message__translation-error mt-1.5 text-[10px] text-rose-200/75">
+                {translationError}
+              </div>
+            ) : null}
+          </>
         )}
 
-        <div className="relative mt-3 flex min-h-8 flex-wrap items-center gap-1.5">
-          {message.reactions.map((reaction) => (
-            <button
-              key={`${message.id}-${reaction.emoji}`}
-              type="button"
-              onClick={() => onReaction(reaction.emoji)}
-              disabled={!authenticated || busy}
-              aria-pressed={reaction.viewerReacted}
-              className={`group/reaction relative inline-flex min-h-7 items-center gap-1.5 rounded-full border px-2.5 text-[11px] transition ${
-                reaction.viewerReacted
-                  ? "border-amber-200/30 bg-amber-300/12 text-amber-50"
-                  : "border-white/9 bg-black/20 text-slate-300 hover:border-white/18 hover:text-white"
-              } disabled:cursor-default`}
-            >
-              <span className="text-[13px] leading-none">{reaction.emoji}</span>
-              <span className="tabular-nums">{reaction.count}</span>
-              <span className="pointer-events-none absolute bottom-[calc(100%+0.55rem)] left-0 z-40 hidden min-w-max max-w-[18rem] rounded-xl border border-amber-100/18 bg-[#080a11]/[0.98] px-3 py-2 text-left text-[11px] leading-5 text-slate-200 shadow-[0_18px_55px_rgba(0,0,0,0.55)] backdrop-blur-xl group-hover/reaction:block">
-                <span className="block text-[9px] font-bold uppercase tracking-[0.2em] text-amber-100/65">
-                  {reaction.emoji} Reacted
-                </span>
-                <span className="mt-0.5 block">
-                  {reaction.users.map((user) => user.displayName).join(", ")}
-                </span>
-              </span>
-            </button>
-          ))}
+        {message.reactions.length >
+        0 ? (
+          <div className="clan-message__reactions mt-2 flex flex-wrap items-center gap-1.5">
+            {message.reactions.map(
+              (reaction) => (
+                <button
+                  key={`${message.id}-${reaction.emoji}`}
+                  type="button"
+                  onClick={() =>
+                    onReaction(
+                      reaction.emoji,
+                    )
+                  }
+                  disabled={
+                    !authenticated ||
+                    busy
+                  }
+                  aria-pressed={
+                    reaction.viewerReacted
+                  }
+                  className={`group/reaction relative inline-flex min-h-6 items-center gap-1 rounded-full border px-2 text-[10px] transition ${
+                    reaction.viewerReacted
+                      ? "border-amber-200/24 bg-amber-300/10 text-amber-50"
+                      : "border-white/7 bg-black/12 text-slate-400 hover:border-white/14 hover:text-white"
+                  } disabled:cursor-default`}
+                >
+                  <span className="text-[12px] leading-none">
+                    {reaction.emoji}
+                  </span>
+                  <span className="tabular-nums">
+                    {reaction.count}
+                  </span>
 
-          {authenticated ? (
-            <button
-              type="button"
-              onClick={onToggleReactionDock}
-              disabled={busy}
-              className={`grid h-7 w-7 place-items-center rounded-full border transition ${
-                reactionDockOpen
-                  ? "clan-theme-action--active"
-                  : "clan-theme-action border-white/8 bg-black/18 text-slate-500"
-              } disabled:opacity-40`}
-              aria-label={
-                reactionDockOpen ? "Close reaction choices" : "React to message"
-              }
-              aria-expanded={reactionDockOpen}
-            >
-              <SmilePlus className="h-3.5 w-3.5" />
-            </button>
-          ) : null}
+                  <span className="pointer-events-none absolute bottom-[calc(100%+0.45rem)] left-0 z-50 hidden min-w-max max-w-[18rem] rounded-xl border border-amber-100/14 bg-[#080a11]/[0.98] px-3 py-2 text-left text-[11px] leading-5 text-slate-200 shadow-[0_18px_55px_rgba(0,0,0,0.55)] backdrop-blur-xl group-hover/reaction:block">
+                    <span className="block text-[9px] font-bold uppercase tracking-[0.2em] text-amber-100/60">
+                      {reaction.emoji} Reacted
+                    </span>
+                    <span className="mt-0.5 block">
+                      {reaction.users
+                        .map(
+                          (user) =>
+                            user.displayName,
+                        )
+                        .join(", ")}
+                    </span>
+                  </span>
+                </button>
+              ),
+            )}
+          </div>
+        ) : null}
+      </div>
 
-          {reactionDockOpen ? (
-            <div className="clan-reaction-dock flex items-center gap-1 rounded-full border border-amber-100/14 bg-[#080a11]/95 p-1 shadow-[0_14px_40px_rgba(0,0,0,0.38)] backdrop-blur-xl">
-              {CLAN_REACTIONS.map((emoji) => {
-                const active = message.reactions.some(
-                  (reaction) =>
-                    reaction.emoji === emoji && reaction.viewerReacted
-                );
-                return (
+      {hasTools ? (
+        <div
+          className="clan-message-tools"
+          onMouseEnter={openTools}
+          onMouseLeave={
+            scheduleToolsClose
+          }
+          onFocusCapture={openTools}
+          onBlurCapture={(event) => {
+            const next =
+              event.relatedTarget;
+            if (
+              next instanceof Node &&
+              event.currentTarget.contains(
+                next,
+              )
+            ) {
+              return;
+            }
+            scheduleToolsClose();
+          }}
+        >
+          <button
+            type="button"
+            className="clan-message-tools__trigger"
+            onClick={openTools}
+            aria-label="Message tools"
+            aria-haspopup="menu"
+            aria-expanded={toolsOpen}
+            title="Message tools"
+          >
+            <MoreHorizontal className="h-3.5 w-3.5" />
+          </button>
+
+          {toolsOpen ? (
+            <div
+              className="clan-message-tools__menu"
+              role="menu"
+              aria-label="Message tools"
+            >
+              {authenticated ? (
+                <>
                   <button
-                    key={emoji}
                     type="button"
-                    onClick={() => onReaction(emoji)}
-                    disabled={busy}
-                    aria-pressed={active}
-                    className={`grid h-7 w-7 place-items-center rounded-full text-sm transition hover:-translate-y-0.5 ${
-                      active
-                        ? "bg-amber-300/16 shadow-[inset_0_0_0_1px_rgba(253,230,138,0.2)]"
-                        : "hover:bg-white/[0.06]"
-                    } disabled:opacity-40`}
+                    role="menuitem"
+                    onClick={() =>
+                      void translateMessage()
+                    }
+                    disabled={
+                      translationPending
+                    }
+                    className="clan-message-tools__row"
                   >
-                    {emoji}
+                    <Languages className="h-3.5 w-3.5" />
+                    <span className="min-w-0 flex-1 text-left">
+                      {translationPending
+                        ? "Translating…"
+                        : activeTranslation?.language ===
+                            translationLanguage
+                          ? "Show original"
+                          : `Translate · ${
+                              languageDefinition?.nativeName ??
+                              translationLanguage
+                            }`}
+                    </span>
                   </button>
-                );
-              })}
+
+                  <div className="clan-message-tools__react">
+                    <span className="clan-message-tools__react-label">
+                      <SmilePlus className="h-3 w-3" />
+                      React
+                    </span>
+                    <div className="clan-message-tools__emoji-row">
+                      {CLAN_REACTIONS.map(
+                        (emoji) => {
+                          const active =
+                            message.reactions.some(
+                              (
+                                reaction,
+                              ) =>
+                                reaction.emoji ===
+                                  emoji &&
+                                reaction.viewerReacted,
+                            );
+
+                          return (
+                            <button
+                              key={`${message.id}-tool-${emoji}`}
+                              type="button"
+                              onClick={() => {
+                                onReaction(
+                                  emoji,
+                                );
+                                setToolsOpen(
+                                  false,
+                                );
+                              }}
+                              disabled={
+                                busy
+                              }
+                              aria-label={`React ${emoji}`}
+                              aria-pressed={
+                                active
+                              }
+                              className={`clan-message-tools__emoji ${
+                                active
+                                  ? "clan-message-tools__emoji--active"
+                                  : ""
+                              }`}
+                            >
+                              {emoji}
+                            </button>
+                          );
+                        },
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : null}
+
+              {message.canEdit ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setToolsOpen(false);
+                    onStartEdit();
+                  }}
+                  disabled={busy}
+                  className="clan-message-tools__row"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Edit message
+                </button>
+              ) : null}
+
+              {message.canDelete ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setToolsOpen(false);
+                    onDelete();
+                  }}
+                  disabled={busy}
+                  className="clan-message-tools__row clan-message-tools__row--danger"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete message
+                </button>
+              ) : null}
             </div>
           ) : null}
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

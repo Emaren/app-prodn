@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import SystemMessageMediaStudio from "@/components/admin/media/SystemMessageMediaStudio";
+
 import {
   ArrowLeft,
   CheckCircle2,
@@ -944,6 +946,8 @@ export default function AdminMediaAssetsPage() {
           </button>
         ))}
       </nav>
+
+      <SystemMessageMediaStudio />
 
       <section className="grid w-full min-w-0 gap-5 xl:grid-cols-[21rem_minmax(0,1fr)_30rem] min-[1700px]:grid-cols-[23rem_minmax(0,1fr)_34rem]">
         <aside className="grid min-w-0 gap-5 xl:content-start">

@@ -41,8 +41,15 @@ type StreetDefinition = {
     | "third-street"
     | "fourth-street"
     | "fifth-street"
-    | "sixth-street";
-  label: "2nd Street" | "3rd Street" | "4th Street" | "5th Street" | "6th Street";
+    | "sixth-street"
+    | "seventh-street";
+  label:
+    | "2nd Street"
+    | "3rd Street"
+    | "4th Street"
+    | "5th Street"
+    | "6th Street"
+    | "7th Street";
   theme: StreetTheme;
   awnings: readonly [AwningTheme, AwningTheme, AwningTheme];
 };
@@ -327,6 +334,21 @@ const STREETS: readonly StreetDefinition[] = [
     },
     awnings: SIXTH_STREET_AWNINGS,
   },
+  {
+    id: "seventh-street",
+    label: "7th Street",
+    theme: {
+      section:
+        "bg-[radial-gradient(circle_at_12%_0%,rgba(251,191,36,0.065),transparent_30%),radial-gradient(circle_at_90%_92%,rgba(56,189,248,0.055),transparent_31%),linear-gradient(145deg,rgba(13,18,31,0.94),rgba(3,6,14,0.96))]",
+      header: "text-amber-100/65",
+      headerIcon: "text-amber-100/70",
+      topLine: "from-transparent via-amber-100/28 to-transparent",
+      dividerLine: "from-transparent via-sky-100/28 to-transparent",
+      dividerEyebrow: "text-sky-100/55",
+      dividerAccent: "text-[#d6b66f]",
+    },
+    awnings: SIXTH_STREET_AWNINGS,
+  },
 ];
 
 function shopEyebrow(shop: PublicMarketplaceShop) {
@@ -360,7 +382,8 @@ function StreetAwning({
 
     return (
       <article
-        className={`group relative isolate flex min-h-[22rem] flex-col overflow-hidden rounded-[1.7rem] border p-5 transition hover:-translate-y-1 ${awning.card} ${awning.cardHover}`}
+        id={`market-awning-${street.id}-${slot}`}
+        className={`group relative isolate flex min-h-[22rem] scroll-mt-24 flex-col overflow-hidden rounded-[1.7rem] border p-5 transition hover:-translate-y-1 target:ring-2 target:ring-amber-200/55 target:ring-offset-4 target:ring-offset-slate-950 ${awning.card} ${awning.cardHover}`}
       >
         <div
           className={`absolute inset-x-0 top-0 h-5 opacity-90 ${awning.awning}`}
@@ -423,8 +446,9 @@ function StreetAwning({
 
   return (
     <Link
+      id={`market-awning-${street.id}-${slot}`}
       href="#open-shop"
-      className={`group relative flex min-h-[22rem] flex-col overflow-hidden rounded-[1.7rem] border p-5 transition hover:-translate-y-1 ${awning.card} ${awning.cardHover}`}
+      className={`group relative flex min-h-[22rem] scroll-mt-24 flex-col overflow-hidden rounded-[1.7rem] border p-5 transition hover:-translate-y-1 target:ring-2 target:ring-amber-200/55 target:ring-offset-4 target:ring-offset-slate-950 ${awning.card} ${awning.cardHover}`}
     >
       <div
         className={`absolute inset-x-0 top-0 h-5 opacity-90 ${awning.awning}`}

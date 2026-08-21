@@ -383,9 +383,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CLAN_HALLS.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-16",
+      "reviewed_at": "2026-08-20",
       "sensitivity": "internal",
-      "sha256": "0986896bf1ddc2067183af6869681d2b582ccc1d72db2ed264440cda8d565aa3",
+      "sha256": "a1160e0d710eb8557f1109b4a4eafb65849b0832674cab9158c3e46f7507c7af",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1390,9 +1390,9 @@
       "owner": "aoe2war-web",
       "path": "docs/UNIVERSAL_TRANSLATOR.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-04",
+      "reviewed_at": "2026-08-20",
       "sensitivity": "internal",
-      "sha256": "90b5718a81fd261846ddb4a94bb72e6d228ba3ef5fa5e8e114eff163126565b3",
+      "sha256": "f1ab29e00897714682bf96dc308dfef544f3da623ac09ae826017c93f89fb096",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

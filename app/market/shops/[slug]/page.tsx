@@ -42,6 +42,8 @@ export default async function MarketplaceShopPage({
         ownerUid: shop.owner?.uid ?? null,
         displayEnabled: shop.displayEnabled,
         heroImageUrl: shop.heroImageUrl,
+        sourceProposalEventId:
+          shop.sourceProposalEventId,
       }}
     />
   );

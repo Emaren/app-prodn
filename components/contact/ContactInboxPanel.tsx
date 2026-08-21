@@ -6,8 +6,10 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarClock,
+  Check,
   ChevronDown,
   Coins,
+  DoorOpen,
   Hammer,
   Landmark,
   LayoutList,
@@ -26,6 +28,7 @@ import {
   Sparkles,
   Swords,
   Trophy,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
@@ -49,6 +52,10 @@ import {
   parseClanProtocolMessage,
   type ClanProtocolMessage,
 } from "@/lib/clanProtocolMessages";
+import {
+  parseClanInviteBody,
+  type ParsedClanInviteBody,
+} from "@/lib/clanInvites";
 import { summarizeChallengeInboxMessage } from "@/lib/challengeInboxMessages";
 import {
   parseFeatureRequestInboxMessage,
@@ -58,6 +65,14 @@ import {
   parseMarketplaceInboxMessage,
   type MarketplaceInboxMessage,
 } from "@/lib/marketplaceInboxMessage";
+import {
+  clanInviteBackgroundUrl,
+  clanInviteCrestUrl,
+  marketplaceBusinessHeroUrl,
+  marketplaceBusinessSignUrl,
+  marketplaceBusinessProposalHeroUrl,
+  marketplaceBusinessProposalSignUrl,
+} from "@/lib/systemMessageMedia";
 import {
   UNIVERSAL_LANGUAGES,
   findUniversalLanguage,
@@ -584,10 +599,20 @@ function MarketplaceMessageCard({
   message: Extract<ContactInboxMessage, { kind: "text" }>;
   entry: MarketplaceInboxMessage;
 }) {
-  const approval = entry.kind === "approval";
-  const invoice = entry.kind === "invoice" || entry.kind === "invoice_paid";
-  const paid = approval || entry.kind !== "invoice";
-  const icon = invoice ? ReceiptText : entry.kind === "development" ? Hammer : Store;
+  const approval =
+    entry.kind === "approval";
+  const invoice =
+    entry.kind === "invoice" ||
+    entry.kind === "invoice_paid";
+  const paid =
+    approval ||
+    entry.kind !== "invoice";
+  const icon =
+    invoice
+      ? ReceiptText
+      : entry.kind === "development"
+        ? Hammer
+        : Store;
   const Icon = icon;
   const title =
     entry.kind === "inquiry"
@@ -600,10 +625,101 @@ function MarketplaceMessageCard({
             ? "Marketplace Charter Approved"
             : "Marketplace Development Request";
   const href = approval
-    ? entry.profileHref || "/profile#my-business"
+    ? entry.profileHref ||
+      "/profile#my-business"
     : invoice
       ? `/market/invoices/${encodeURIComponent(entry.recordId)}`
       : "/market";
+
+  if (approval) {
+    const artSlug =
+      entry.shopSlug ||
+      entry.shop;
+    const heroUrl =
+      entry.proposalEventId
+        ? marketplaceBusinessProposalHeroUrl(
+            entry.proposalEventId,
+          )
+        : marketplaceBusinessHeroUrl(
+            artSlug,
+          );
+    const signUrl =
+      entry.proposalEventId
+        ? marketplaceBusinessProposalSignUrl(
+            entry.proposalEventId,
+          )
+        : marketplaceBusinessSignUrl(
+            artSlug,
+          );
+
+    return (
+      <div className="flex justify-center py-2">
+        <section className="relative min-h-[14rem] w-full max-w-2xl overflow-hidden rounded-[1.8rem] border border-teal-100/16 bg-[#04090d] shadow-[0_28px_80px_rgba(0,0,0,0.46),inset_0_1px_0_rgba(255,255,255,0.05)]">
+          <img
+            src={heroUrl}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full object-cover opacity-78"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,10,14,0.94)_0%,rgba(2,10,14,0.70)_34%,rgba(2,10,14,0.42)_70%,rgba(2,10,14,0.72)_100%)]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/78 via-transparent to-black/22" />
+
+          <div className="relative flex min-h-[14rem] items-stretch">
+            <div className="flex w-[8.6rem] shrink-0 items-center justify-center p-4 sm:w-[10rem] sm:p-5">
+              <div className="relative grid aspect-square w-full max-w-[7.2rem] place-items-center overflow-hidden rounded-[1.45rem] border border-teal-100/18 bg-black/45 shadow-[0_18px_55px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-sm">
+                <Store className="h-8 w-8 text-teal-100/25" />
+                <img
+                  src={signUrl}
+                  alt={`${entry.shop} sign`}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="flex min-w-0 flex-1 flex-col justify-between px-3 py-5 pr-5 sm:py-6 sm:pr-6">
+              <div>
+                <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.30em] text-teal-100/58">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Kingdom Charter Granted
+                </div>
+
+                <h3 className="mt-2 font-serif text-2xl font-semibold tracking-[-0.025em] text-white sm:text-3xl">
+                  {entry.shop}
+                </h3>
+
+                <p className="mt-3 max-w-md whitespace-pre-line text-sm leading-6 text-slate-300">
+                  {entry.requestText}
+                </p>
+              </div>
+
+              <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
+                <div className="text-[9px] uppercase tracking-[0.15em] text-slate-500">
+                  Charter {entry.recordId.slice(0, 8)}
+                  {" · "}
+                  {formatBubbleTime(message.createdAt)}
+                </div>
+
+                <Link
+                  href={href}
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-teal-100/22 bg-teal-200 px-4 text-[11px] font-black text-slate-950 shadow-[0_0_24px_rgba(45,212,191,0.12)] transition hover:bg-teal-100"
+                >
+                  <Store className="h-3.5 w-3.5" />
+                  Start My Business
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="flex justify-center py-1">
@@ -615,12 +731,22 @@ function MarketplaceMessageCard({
                 <Icon className="h-3.5 w-3.5" />
                 {title}
               </div>
-              <div className="mt-2 text-base font-bold text-white">{entry.shop}</div>
-              <div className="mt-1 text-xs text-slate-500">From {entry.actor}</div>
+              <div className="mt-2 text-base font-bold text-white">
+                {entry.shop}
+              </div>
+              <div className="mt-1 text-xs text-slate-500">
+                From {entry.actor}
+              </div>
             </div>
-            <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] ${paid ? "border-emerald-200/15 bg-emerald-300/[0.08] text-emerald-100" : "border-amber-200/15 bg-amber-300/[0.08] text-amber-100"}`}>
+            <div className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] ${
+              paid
+                ? "border-emerald-200/15 bg-emerald-300/[0.08] text-emerald-100"
+                : "border-amber-200/15 bg-amber-300/[0.08] text-amber-100"
+            }`}>
               <ShieldCheck className="h-3.5 w-3.5" />
-              {approval ? "Kingdom approved" : paid ? "Payment verified" : "Awaiting payment"}
+              {paid
+                ? "Payment verified"
+                : "Awaiting payment"}
             </div>
           </div>
 
@@ -630,26 +756,28 @@ function MarketplaceMessageCard({
 
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[10px] uppercase tracking-[0.16em] text-slate-500">
             <div className="flex items-center gap-2">
-              {approval ? (
-                <ShieldCheck className="h-3.5 w-3.5 text-amber-200/70" />
-              ) : (
-                <Coins className="h-3.5 w-3.5 text-amber-200/70" />
-              )}
-              {approval ? null : <span>{entry.amountWolo.toLocaleString()} WOLO</span>}
-              {approval ? null : <span>·</span>}
+              <Coins className="h-3.5 w-3.5 text-amber-200/70" />
+              <span>
+                {entry.amountWolo.toLocaleString()} WOLO
+              </span>
+              <span>·</span>
               <span>{entry.payment}</span>
             </div>
             <Link
               href={href}
               className="inline-flex items-center gap-1 rounded-full border border-teal-100/16 bg-teal-300/[0.07] px-2.5 py-1 text-[9px] font-black text-teal-50 transition hover:bg-teal-300/[0.12]"
             >
-              {approval ? "Open My Business" : invoice ? "Open invoice" : "Open Marketplace"}
+              {invoice
+                ? "Open invoice"
+                : "Open Marketplace"}
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
 
           <div className="mt-2 text-right text-[9px] uppercase tracking-[0.14em] text-slate-600">
-            {entry.recordId.slice(0, 8)} · {formatBubbleTime(message.createdAt)}
+            {entry.recordId.slice(0, 8)}
+            {" · "}
+            {formatBubbleTime(message.createdAt)}
           </div>
         </div>
       </div>
@@ -1011,6 +1139,232 @@ function HonorActions({
   return null;
 }
 
+
+function ClanInviteDirectArtifact({
+  message,
+  invite,
+  isViewer,
+  onRefresh,
+}: {
+  message: Extract<ContactInboxMessage, { kind: "text" }>;
+  invite: ParsedClanInviteBody;
+  isViewer: boolean;
+  onRefresh?: () => void | Promise<void>;
+}) {
+  const [busy, setBusy] =
+    useState<"accept" | "decline" | null>(null);
+  const [error, setError] =
+    useState<string | null>(null);
+  const isSystemPreview =
+    message.body.includes(
+      "System Preview: true",
+    );
+  const [
+    previewDeclined,
+    setPreviewDeclined,
+  ] = useState(false);
+
+  async function act(
+    action: "accept" | "decline",
+  ) {
+    if (busy) return;
+
+    if (isSystemPreview) {
+      if (action === "accept") {
+        window.location.assign(
+          `/clans/${encodeURIComponent(invite.clanSlug)}`,
+        );
+      } else {
+        setPreviewDeclined(true);
+      }
+      return;
+    }
+
+    setBusy(action);
+    setError(null);
+
+    try {
+      const response = await fetch(
+        `/api/clans/${encodeURIComponent(invite.clanSlug)}/invites`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            action,
+            messageId:
+              message.messageId,
+          }),
+        },
+      );
+
+      const payload =
+        (await response
+          .json()
+          .catch(() => null)) as
+          | {
+              ok?: boolean;
+              detail?: string;
+            }
+          | null;
+
+      if (
+        !response.ok ||
+        !payload?.ok
+      ) {
+        throw new Error(
+          payload?.detail ||
+            "Hall invitation action failed.",
+        );
+      }
+
+      if (action === "accept") {
+        window.location.assign(
+          `/clans/${encodeURIComponent(invite.clanSlug)}`,
+        );
+        return;
+      }
+
+      await onRefresh?.();
+      setBusy(null);
+    } catch (actionError) {
+      setError(
+        actionError instanceof Error
+          ? actionError.message
+          : "Hall invitation action failed.",
+      );
+      setBusy(null);
+    }
+  }
+
+  const effectiveStatus =
+    previewDeclined
+      ? "declined"
+      : invite.status;
+  const pending =
+    effectiveStatus === "pending";
+  const canAct =
+    pending && !isViewer;
+  const declined =
+    effectiveStatus === "declined";
+  const accepted =
+    effectiveStatus === "accepted";
+
+  return (
+    <div className="flex justify-center py-2">
+      <section className="relative min-h-[14rem] w-full max-w-2xl overflow-hidden rounded-[1.8rem] border border-amber-100/16 bg-[#05080f] shadow-[0_28px_80px_rgba(0,0,0,0.46),inset_0_1px_0_rgba(255,255,255,0.05)]">
+        <img
+          src={clanInviteBackgroundUrl()}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover opacity-80"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,12,0.93)_0%,rgba(2,6,12,0.70)_34%,rgba(2,6,12,0.43)_67%,rgba(2,6,12,0.74)_100%)]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/25" />
+
+        <div className="relative flex min-h-[14rem] items-stretch">
+          <div className="flex w-[8.6rem] shrink-0 items-center justify-center p-4 sm:w-[10rem] sm:p-5">
+            <div className="relative grid aspect-square w-full max-w-[7.2rem] place-items-center overflow-hidden rounded-[1.5rem] border border-amber-100/18 bg-black/45 shadow-[0_18px_55px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-sm">
+              <DoorOpen className="h-8 w-8 text-amber-100/30" />
+              <img
+                src={clanInviteCrestUrl(invite.clanSlug)}
+                alt={`${invite.clanName} crest`}
+                className="absolute inset-0 h-full w-full object-cover"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="flex min-w-0 flex-1 flex-col justify-between px-3 py-5 pr-5 sm:py-6 sm:pr-6">
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-[0.30em] text-amber-100/58">
+                Clan Hall Invitation
+              </div>
+              <h3 className="mt-2 font-serif text-2xl font-semibold tracking-[-0.025em] text-white sm:text-3xl">
+                {invite.clanName}
+              </h3>
+
+              {declined ? (
+                <div className="mt-5 max-w-md rounded-[1rem] border border-rose-200/12 bg-black/28 px-4 py-3 font-serif text-lg text-rose-50/90">
+                  You have chosen war.
+                </div>
+              ) : (
+                <p className="mt-3 max-w-md text-sm leading-6 text-slate-300">
+                  {isViewer
+                    ? `Invitation sent by ${invite.inviterName}.`
+                    : `${invite.inviterName} calls you to the Hall.`}
+                </p>
+              )}
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-end justify-between gap-3">
+              <div className="text-[9px] uppercase tracking-[0.15em] text-slate-500">
+                {formatReceiptTimestamp(message.createdAt)}
+              </div>
+
+              {canAct ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void act("decline")
+                    }
+                    disabled={Boolean(busy)}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3 text-[11px] font-semibold text-slate-300 transition hover:border-rose-200/22 hover:text-rose-100 disabled:opacity-40"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Decline
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void act("accept")
+                    }
+                    disabled={Boolean(busy)}
+                    className="inline-flex h-9 items-center gap-1.5 rounded-full border border-amber-100/25 bg-amber-200 px-4 text-[11px] font-black text-slate-950 shadow-[0_0_24px_rgba(251,191,36,0.14)] transition hover:bg-amber-100 disabled:opacity-40"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    Accept
+                  </button>
+                </div>
+              ) : accepted ? (
+                <Link
+                  href={`/clans/${encodeURIComponent(invite.clanSlug)}`}
+                  className="inline-flex h-9 items-center gap-2 rounded-full border border-amber-100/25 bg-amber-200 px-4 text-[11px] font-black text-slate-950 transition hover:bg-amber-100"
+                >
+                  <DoorOpen className="h-3.5 w-3.5" />
+                  Enter Hall
+                </Link>
+              ) : (
+                <span className={`rounded-full border px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.14em] ${
+                  declined
+                    ? "border-rose-200/14 bg-rose-300/[0.07] text-rose-100/75"
+                    : "border-amber-200/14 bg-amber-300/[0.07] text-amber-100/75"
+                }`}>
+                  {effectiveStatus}
+                </span>
+              )}
+            </div>
+
+            {error ? (
+              <div className="mt-3 text-xs text-rose-200">
+                {error}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function DateDivider({ label, viewMode }: { label: string; viewMode: ChatViewMode }) {
   if (viewMode === "v2") {
     return (
@@ -1080,6 +1434,7 @@ function TextMessageBubble({
   const canToggleLobbyShare =
     isPersisted && message.sender.uid === AI_CONCIERGE_UID && !message.attachment && message.body.trim().length > 0;
   const clanProtocolMessage = parseClanProtocolMessage(message.body);
+  const clanInviteMessage = parseClanInviteBody(message.body);
   const compactChallengeNotice = message.body ? challengeNoticeTone(summarizeChallengeInboxMessage(message.body)) : null;
   const featureRequest = parseFeatureRequestInboxMessage(message.body);
   const marketplaceMessage = parseMarketplaceInboxMessage(message.body);
@@ -1271,6 +1626,20 @@ function TextMessageBubble({
       setTranscriptionPending(false);
       setTrayPinnedOpen(false);
     }
+  }
+
+  if (
+    clanInviteMessage &&
+    clanInviteMessage.messageId === message.messageId
+  ) {
+    return (
+      <ClanInviteDirectArtifact
+        message={message}
+        invite={clanInviteMessage}
+        isViewer={isViewer}
+        onRefresh={onRefresh}
+      />
+    );
   }
 
   if (clanProtocolMessage) {

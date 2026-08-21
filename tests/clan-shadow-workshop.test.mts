@@ -22,7 +22,7 @@ test("shadow launcher refuses non-local base databases", () => {
   );
 });
 
-test("shadow refresh clones only the production-shaped social and AI control-plane slice", () => {
+test("shadow refresh clones only the production-shaped social, AI and Marketplace control-plane slice", () => {
   const launcher = read("scripts/dev-shadow.py");
 
   for (const table of [
@@ -35,18 +35,24 @@ test("shadow refresh clones only the production-shaped social and AI control-pla
     "ai_request_traces",
     "betting_bot_configs",
     "bet_counter_actions",
+    "user_activity_events",
+    "marketplace_shops",
   ]) {
     assert.match(launcher, new RegExp(`"${table}"`));
   }
 
   assert.match(
     launcher,
-    /SHADOW_TABLES = SOCIAL_TABLES \+ CONTROL_PLANE_TABLES/,
+    /MARKETPLACE_TABLES = \([\s\S]*"user_activity_events"[\s\S]*"marketplace_shops"[\s\S]*\)/,
+  );
+  assert.match(
+    launcher,
+    /SHADOW_TABLES = \([\s\S]*SOCIAL_TABLES[\s\S]*CONTROL_PLANE_TABLES[\s\S]*MARKETPLACE_TABLES[\s\S]*\)/,
   );
   assert.match(launcher, /--data-only/);
   assert.match(
     launcher,
-    /only selected social\/control-plane table data crossed SSH/,
+    /only selected social\/AI\/Marketplace control-plane[\s\S]*table data crossed SSH/,
   );
   assert.match(
     launcher,

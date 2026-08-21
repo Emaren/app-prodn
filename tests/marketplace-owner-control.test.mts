@@ -43,15 +43,18 @@ test("only the primary Marketplace owner can approve proposals", () => {
   assert.match(ownerApi, /action === "approve"/);
 });
 
-test("approval keeps the storefront closed and sends a lore system card", () => {
-  assert.match(ownerLib, /displayEnabled: false/);
+test("approval opens the storefront and sends the Start My Business system card", () => {
+  assert.match(ownerLib, /displayEnabled: true/);
   assert.match(ownerLib, /approvedAt: now/);
-  assert.match(ownerLib, /Your business has been approved by the Kingdom\./);
-  assert.match(ownerLib, /Activate it from your profile\./);
-  assert.match(ownerLib, /#my-business/);
+  assert.match(ownerLib, /Congratulations, Citizen\./);
+  assert.match(ownerLib, /The kingdom has approved your business\./);
+  assert.match(
+    ownerLib,
+    /\/market#market-awning-\$\{shop\.streetKey\}-\$\{shop\.slot\}/,
+  );
   assert.match(inboxProtocol, /MARKETPLACE CHARTER APPROVED/);
   assert.match(contact, /Marketplace Charter Approved/);
-  assert.match(contact, /Open My Business/);
+  assert.match(contact, /Start My Business/);
 });
 
 test("merchant and Kingdom owner can edit storefront and artwork", () => {

@@ -33,6 +33,40 @@ export async function GET(request: NextRequest) {
     getPreviewIdentity();
 
   if (previewIdentity) {
+    if (
+      process.env.AOE2WAR_SHADOW_MODE ===
+      "true"
+    ) {
+      const prisma = getPrisma();
+
+      const shadowUser =
+        await prisma.user.findUnique({
+          where: {
+            uid: previewIdentity.uid,
+          },
+        });
+
+      const shadowVerification =
+        shadowUser
+          ? await fetchUserVerification(
+              prisma,
+              previewIdentity.uid,
+            )
+          : null;
+
+      return NextResponse.json({
+        uid: previewIdentity.uid,
+        preview: true,
+        shadow: true,
+        user: shadowUser
+          ? toUserApi(
+              shadowUser as unknown as UserCoreRow,
+              shadowVerification,
+            )
+          : null,
+      });
+    }
+
     return NextResponse.json({
       uid: previewIdentity.uid,
       preview: true,

@@ -103,6 +103,8 @@ export async function POST(
       string,
       unknown
     >;
+    const requestScribeReply =
+      body.scribe === true;
 
     if (body.action === "toggle_reaction") {
       const messageId = parseMessageId(body.messageId);
@@ -262,6 +264,7 @@ export async function POST(
         audience,
         triggerMessageId: createdMessage.id,
         message,
+        forceReply: requestScribeReply,
         viewer: {
           uid: viewer.uid,
           displayName:

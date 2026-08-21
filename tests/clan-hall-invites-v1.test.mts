@@ -5,6 +5,10 @@ import test from "node:test";
 
 import { getClanHallFeatures } from "../lib/clanHallFeatures.ts";
 import { formatClanRole } from "../lib/clanRoles.ts";
+import {
+  buildClanInviteBody,
+  parseClanInviteBody,
+} from "../lib/clanInvites.ts";
 
 const root = process.cwd();
 
@@ -81,11 +85,11 @@ test("invitation acceptance re-proves recipient and inviter authority", () => {
   assert.match(route, /looksLikeClanInvite/);
 });
 
-test("Invite Door UI searches users, sends DMs and exposes Enter Hall", () => {
+test("Invite Door UI browses or searches users, sends DMs and exposes Enter Hall", () => {
   const component = read("components/clans/ClanInviteDoor.tsx");
   const client = read("components/clans/ClanHallClient.tsx");
 
-  assert.match(component, /Find a warrior/);
+  assert.match(component, /Search or browse warriors/);
   assert.match(component, /Invite Door/);
   assert.match(component, /Enter Hall/);
   assert.match(component, /action: "send"/);
@@ -102,4 +106,71 @@ test("this release requires no Prisma migration", () => {
     read("docs/CLAN_HALLS.md"),
     /requires no database migration/,
   );
+});
+
+
+test("Invite Door browse returns eligible humans without requiring typed search", () => {
+  const route = read(
+    "app/api/clans/[slug]/invite-search/route.ts",
+  );
+  const component = read(
+    "components/clans/ClanInviteDoor.tsx",
+  );
+
+  assert.match(route, /isInternalSystemUid/);
+  assert.doesNotMatch(route, /query\.length < 2/);
+  assert.match(route, /take: 100/);
+  assert.match(route, /status: "active"/);
+  assert.match(route, /filter\(\(candidate\) => !memberIds\.has/);
+
+  assert.match(component, /onMouseEnter/);
+  assert.match(component, /onFocusCapture/);
+  assert.match(component, /Search or browse warriors/);
+  assert.match(component, /available/);
+});
+
+test("Clan invite protocol parses into a first-class Direct Chat artifact", () => {
+  const body = buildClanInviteBody({
+    clanName: "AoE2WAR",
+    clanSlug: "aoe2war",
+    inviterName: "Emaren",
+    messageId: 123,
+    origin: "https://aoe2war.com",
+    status: "pending",
+  });
+
+  assert.deepEqual(
+    parseClanInviteBody(body),
+    {
+      clanName: "AoE2WAR",
+      clanSlug: "aoe2war",
+      inviterName: "Emaren",
+      messageId: 123,
+      status: "pending",
+    },
+  );
+
+  const contact = read(
+    "components/contact/ContactInboxPanel.tsx",
+  );
+  assert.match(contact, /ClanInviteDirectArtifact/);
+  assert.match(contact, /Clan Hall Invitation/);
+  assert.match(contact, /Enter Hall/);
+});
+
+test("Clan invite send rejects system identities and duplicate pending invitations", () => {
+  const route = read(
+    "app/api/clans/[slug]/invites/route.ts",
+  );
+
+  assert.match(route, /isInternalSystemUid/);
+  assert.match(
+    route,
+    /System identities cannot receive Clan invitations/,
+  );
+  assert.match(
+    route,
+    /An invitation to .* is already pending/,
+  );
+  assert.match(route, /recentInviteMessages/);
 });

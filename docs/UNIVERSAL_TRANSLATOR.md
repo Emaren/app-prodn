@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-04"
+reviewed_at: "2026-08-20"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -69,7 +69,7 @@ The selector's language registry, cookie, local-storage preference, and account 
 
 This release boundary does not claim complete site-wide translation. Routes beyond the global shell and homepage continue through a page-by-page migration, and each completed route must ship all sixteen catalogs together.
 
-User-generated content remains separate. Private chat translation is requested on demand through the AI gateway and cached by message and target language. Original messages, historical records, and immutable chain memos remain authoritative.
+User-generated content remains separate. Private chat translation is requested on demand through the AI gateway and cached by message and target language. Clan Hall translation uses the same viewer language resolution and on-demand AI boundary, re-proves Hall visibility for each requested source message, and uses a bounded process-memory cache keyed by message revision and target language. Original messages, historical records, and immutable chain memos remain authoritative.
 
 These product terms are sacred and should not be translated automatically:
 

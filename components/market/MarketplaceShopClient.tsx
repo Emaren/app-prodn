@@ -4,6 +4,12 @@ import Link from "next/link";
 import { ArrowDown, ArrowLeft, ArrowRight, Coins, ShieldCheck, Store, Wrench } from "lucide-react";
 
 import MarketplaceInquiryComposer from "@/components/market/MarketplaceInquiryComposer";
+import {
+  marketplaceBusinessHeroUrl,
+  marketplaceBusinessSignUrl,
+  marketplaceBusinessProposalHeroUrl,
+  marketplaceBusinessProposalSignUrl,
+} from "@/lib/systemMessageMedia";
 
 export default function MarketplaceShopClient({
   shop,
@@ -16,19 +22,39 @@ export default function MarketplaceShopClient({
     ownerUid: string | null;
     displayEnabled: boolean;
     heroImageUrl: string | null;
+    sourceProposalEventId: number | null;
   };
 }) {
+  const managedHeroUrl =
+    shop.sourceProposalEventId
+      ? marketplaceBusinessProposalHeroUrl(
+          shop.sourceProposalEventId,
+        )
+      : marketplaceBusinessHeroUrl(
+          shop.slug,
+          shop.heroImageUrl,
+        );
+  const managedSignUrl =
+    shop.sourceProposalEventId
+      ? marketplaceBusinessProposalSignUrl(
+          shop.sourceProposalEventId,
+        )
+      : marketplaceBusinessSignUrl(
+          shop.slug,
+        );
+
   return (
     <main className="space-y-6 py-3 text-white sm:space-y-8 sm:py-5">
       <section className="relative isolate min-h-[34rem] overflow-hidden rounded-[2.2rem] border border-teal-100/16 bg-[#03060c] shadow-[0_40px_125px_rgba(0,0,0,0.45)] sm:min-h-[38rem]">
-        {shop.heroImageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={shop.heroImageUrl}
-            alt={`${shop.name} inside the AoE2WAR Marketplace`}
-            className="absolute inset-0 h-full w-full object-cover object-center"
-          />
-        ) : null}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={managedHeroUrl}
+          alt={`${shop.name} inside the AoE2WAR Marketplace`}
+          className="absolute inset-0 h-full w-full object-cover object-center"
+          onError={(event) => {
+            event.currentTarget.style.display = "none";
+          }}
+        />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(2,6,12,0.88)_0%,rgba(2,6,12,0.50)_44%,rgba(2,6,12,0.10)_76%,rgba(2,6,12,0.30)_100%)]" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#03060c] via-transparent to-black/25" />
 
@@ -42,6 +68,19 @@ export default function MarketplaceShopClient({
           </Link>
 
           <div className="pb-3">
+            <div className="relative mb-6 grid h-24 w-24 place-items-center overflow-hidden rounded-[1.45rem] border border-teal-100/18 bg-black/40 shadow-[0_18px_55px_rgba(0,0,0,0.34)] backdrop-blur-sm sm:h-28 sm:w-28">
+              <Store className="h-8 w-8 text-teal-100/25" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={managedSignUrl}
+                alt={`${shop.name} sign`}
+                className="absolute h-24 w-24 object-cover sm:h-28 sm:w-28"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+            </div>
+
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full border border-teal-100/18 bg-teal-300/[0.08] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.23em] text-teal-100">
                 <Store className="h-3.5 w-3.5" />

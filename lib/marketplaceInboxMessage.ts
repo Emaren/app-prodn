@@ -7,6 +7,8 @@ export const MARKETPLACE_APPROVAL_HEADLINE = "🏛️ MARKETPLACE CHARTER APPROV
 export type MarketplaceInboxMessage = {
   kind: "inquiry" | "invoice" | "invoice_paid" | "development" | "approval";
   shop: string;
+  shopSlug?: string | null;
+  proposalEventId?: number | null;
   actor: string;
   amountWolo: number;
   recordId: string;
@@ -40,6 +42,10 @@ export function buildMarketplaceInboxMessage(input: MarketplaceInboxMessage) {
   return [
     headlineForKind(input.kind),
     `Shop: ${input.shop}`,
+    ...(input.shopSlug ? [`Shop Slug: ${input.shopSlug}`] : []),
+    ...(input.proposalEventId
+      ? [`Proposal Event: ${input.proposalEventId}`]
+      : []),
     `From: ${input.actor}`,
     `Amount: ${input.amountWolo} WOLO`,
     `${recordLabelForKind(input.kind)} ${input.recordId}`,
@@ -86,6 +92,14 @@ export function parseMarketplaceInboxMessage(
   const requestText = text.slice(separatorIndex + separator.length).trim();
 
   const shop = readField(metadata, "Shop:");
+  const shopSlug = readField(metadata, "Shop Slug:") || null;
+  const proposalEventRaw =
+    readField(metadata, "Proposal Event:");
+  const proposalEventId =
+    proposalEventRaw &&
+    Number.isInteger(Number(proposalEventRaw))
+      ? Number(proposalEventRaw)
+      : null;
   const actor = readField(metadata, "From:");
   const amountText = readField(metadata, "Amount:")
     .replace(/\s*WOLO$/i, "")
@@ -117,6 +131,8 @@ export function parseMarketplaceInboxMessage(
   return {
     kind: matched.kind,
     shop,
+    shopSlug,
+    proposalEventId,
     actor,
     amountWolo,
     recordId,
