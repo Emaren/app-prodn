@@ -11,7 +11,7 @@ import {
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { publishClanHallEvent } from "@/lib/clanHallEvents";
-import { maybeCreateAoE2WarHallScribeReply } from "@/lib/clanHallScribe";
+import { maybeCreateClanHallScribeReply } from "@/lib/clanHallScribe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -256,7 +256,7 @@ export async function POST(
     });
 
     try {
-      await maybeCreateAoE2WarHallScribeReply({
+      await maybeCreateClanHallScribeReply({
         prisma,
         clanId: clan.id,
         clanSlug: slug,

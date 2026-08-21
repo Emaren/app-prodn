@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "documentation-operations-contract"
-reviewed_at: "2026-08-20"
+reviewed_at: "2026-08-21"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -152,3 +152,12 @@ Documentation OS does not:
 - duplicate the central taxonomy inside app-prodn;
 - mutate production, databases, Wolo, dependencies, or runtime state;
 - make a full documentation audit part of every lightweight status check.
+
+
+## Canonical review clock
+
+Living-document review windows are evaluated against the UTC calendar date.
+Repository-local validation and the operator `aoe2war docs status` surface use
+the same UTC date boundary as the central AoE2WAR-docs taxonomy validator.
+Operator workstation timezone therefore cannot make a document healthy locally
+while the same commit is expired in CI.

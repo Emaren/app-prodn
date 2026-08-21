@@ -13,7 +13,7 @@ export function normalizeAiKnowledgeQuery(
   // original message remains untouched for transcript display and provider input.
   const stripped = original
     .replace(
-      /^\s*@?hall\s+scribe\b\s*[:,\-–—]?\s*/i,
+      /^\s*(?:@?hall[\s_-]+scribe|@(?:scribe|mscribe|jscribe|lscribe|jascribe))\b\s*[:,\-–—]?\s*/i,
       "",
     )
     .trim();

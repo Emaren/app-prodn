@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-08-01"
+reviewed_at: "2026-08-21"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -119,3 +119,25 @@ OpenAI credential over SSH into the local Next child process only. The value is
 memory-only, is never printed or written to disk, and does not weaken the
 production PostgreSQL read-only fence. `INTERNAL_API_KEY` and `ADMIN_TOKEN`
 remain excluded.
+
+
+## 2026-08-21 Kingdom intelligence observability
+
+The AI Command Center now exposes the Kingdom Knowledge Router as an operator
+control-plane view rather than leaving KKR visible only through a raw admin API.
+
+The view shows:
+
+- the full KKR repository catalog and mapped public pages;
+- The AI Scribe and Grimer as `lobby_public` KKR consumers;
+- every active Clan Hall Scribe as a `clan_hall` KKR consumer;
+- Hall-local additive roster/history versus intentionally excluded private
+  context;
+- whether a Hall uses a dedicated agent configuration or inherits the proven
+  AoE2WAR Hall Scribe configuration;
+- stored `knowledgeScopes` alongside the effective runtime contract;
+- a live read-only routing inspector using `/api/admin/ai-knowledge`.
+
+The current panel is observability-first. It does not yet mutate KKR repository
+permissions. Future granular controls can use this topology as the operator
+surface without changing the underlying public-Kingdom/privacy boundary.

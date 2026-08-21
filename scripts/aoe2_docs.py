@@ -375,7 +375,7 @@ def central_state() -> dict[str, Any]:
 
 
 def review_health() -> dict[str, Any]:
-    today = date.today()
+    today = datetime.now(timezone.utc).date()
     overdue: list[dict[str, Any]] = []
     due_soon: list[dict[str, Any]] = []
     documents = registry().get("documents", [])

@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 
-import { AOE2WAR_HALL_SCRIBE_UID } from "@/lib/internalSystemAccounts";
+import { isClanHallScribeSystemUid } from "@/lib/internalSystemAccounts";
 
 export const CLAN_AUDIENCES = ["public", "users", "clan"] as const;
 export type ClanAudience = (typeof CLAN_AUDIENCES)[number];
@@ -504,7 +504,7 @@ export async function loadClanHallSnapshot(
       .reverse()
       .map((message) => {
         const role =
-          message.author.uid === AOE2WAR_HALL_SCRIBE_UID
+          isClanHallScribeSystemUid(message.author.uid)
             ? "hall_scribe"
             : roleByUserId.get(message.author.id) ?? null;
         const groupedReactions = new Map<
@@ -544,7 +544,7 @@ export async function loadClanHallSnapshot(
           createdAt: message.createdAt.toISOString(),
           updatedAt: message.updatedAt.toISOString(),
           edited:
-            message.author.uid === AOE2WAR_HALL_SCRIBE_UID
+            isClanHallScribeSystemUid(message.author.uid)
               ? false
               : message.updatedAt.getTime() > message.createdAt.getTime(),
           canEdit,
@@ -554,7 +554,7 @@ export async function loadClanHallSnapshot(
             displayName: displayName(message.author),
             role,
             isClanMember:
-              message.author.uid === AOE2WAR_HALL_SCRIBE_UID
+              isClanHallScribeSystemUid(message.author.uid)
                 ? false
                 : Boolean(role),
           },

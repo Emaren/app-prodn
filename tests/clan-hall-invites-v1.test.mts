@@ -28,15 +28,15 @@ test("owner storage remains conventional while the Hall says The King", () => {
   );
 });
 
-test("AoE2WAR enables the intended flagship powers for the current Hall release", () => {
+test("AoE2WAR keeps flagship realtime while every V1 Hall receives invite + scribe", () => {
   const aoe2war = getClanHallFeatures("aoe2war");
   const mystikal = getClanHallFeatures("mystikal");
 
   assert.equal(aoe2war.realtime, true);
   assert.equal(aoe2war.optimisticMessages, true);
   assert.equal(aoe2war.inviteDoor, true);
-
   assert.equal(aoe2war.hallScribe, true);
+
   assert.equal(aoe2war.presence, false);
   assert.equal(aoe2war.typing, false);
   assert.equal(aoe2war.delegatedRecruiting, false);
@@ -48,8 +48,8 @@ test("AoE2WAR enables the intended flagship powers for the current Hall release"
 
   assert.equal(mystikal.realtime, false);
   assert.equal(mystikal.optimisticMessages, false);
-  assert.equal(mystikal.inviteDoor, false);
-  assert.equal(mystikal.hallScribe, false);
+  assert.equal(mystikal.inviteDoor, true);
+  assert.equal(mystikal.hallScribe, true);
 });
 
 test("on-site invitations reuse Direct Chat and require explicit acceptance", () => {

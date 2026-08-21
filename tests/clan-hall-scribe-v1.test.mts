@@ -15,6 +15,7 @@ import { getClanHallFeatures } from "../lib/clanHallFeatures.ts";
 import { formatClanRole } from "../lib/clanRoles.ts";
 import {
   AOE2WAR_HALL_SCRIBE_UID,
+  isClanHallScribeSystemUid,
   isInternalSystemUid,
   isLeaderboardExcludedSystemUid,
 } from "../lib/internalSystemAccounts.ts";
@@ -35,11 +36,20 @@ test("Hall Scribe is a reserved non-human system identity", () => {
     true,
   );
   assert.equal(formatClanRole("hall_scribe"), "Hall Scribe");
+  assert.equal(
+    isClanHallScribeSystemUid("aoe2hd_ai_clan_mystikal_hall_scribe"),
+    true,
+  );
 });
 
-test("only AoE2WAR enables Hall Scribe in V1", () => {
+test("Hall Scribe is a V1 Hall baseline capability while realtime stays flagship-only", () => {
   assert.equal(getClanHallFeatures("aoe2war").hallScribe, true);
-  assert.equal(getClanHallFeatures("mystikal").hallScribe, false);
+  assert.equal(getClanHallFeatures("mystikal").hallScribe, true);
+  assert.equal(getClanHallFeatures("jims-clan").hallScribe, true);
+  assert.equal(getClanHallFeatures("legend-clan").hallScribe, true);
+
+  assert.equal(getClanHallFeatures("aoe2war").realtime, true);
+  assert.equal(getClanHallFeatures("mystikal").realtime, false);
 });
 
 test("Hall Scribe accepts @Scribe while preserving the legacy mention", () => {
@@ -87,7 +97,7 @@ test("human Hall message survives Hall Scribe model failure", () => {
   const created = route.indexOf(
     "const createdMessage = await prisma.clanMessage.create",
   );
-  const call = route.indexOf("await maybeCreateAoE2WarHallScribeReply");
+  const call = route.indexOf("await maybeCreateClanHallScribeReply");
   const caught = route.indexOf(
     "Hall Scribe reply failed; human Hall message remains posted",
   );
@@ -99,16 +109,17 @@ test("Hall Scribe keeps triggering audience and does not join roster", () => {
   const clans = read("lib/clans.ts");
   assert.match(scribe, /audience: args\.audience/);
   assert.doesNotMatch(scribe, /clanMember\.(create|upsert)/);
+  assert.match(clans, /isClanHallScribeSystemUid/);
   assert.match(
     clans,
-    /message\.author\.uid === AOE2WAR_HALL_SCRIBE_UID[\s\S]*isClanMember:[\s\S]*false/,
+    /isClanMember:[\s\S]*isClanHallScribeSystemUid\(message\.author\.uid\)[\s\S]*\? false/,
   );
 });
 
 test("Hall Scribe admin edits keep DB truth without public edited scar", () => {
   assert.match(
     read("lib/clans.ts"),
-    /edited:[\s\S]*message\.author\.uid === AOE2WAR_HALL_SCRIBE_UID[\s\S]*\? false/,
+    /edited:[\s\S]*isClanHallScribeSystemUid\(message\.author\.uid\)[\s\S]*\? false/,
   );
 });
 
@@ -125,16 +136,20 @@ test("Hall UI exposes explicit @Scribe and one-shot Scribe toggle", () => {
   const route = read("app/api/clans/[slug]/route.ts");
   const scribe = read("lib/clanHallScribe.ts");
 
-  assert.match(client, /Type @Scribe or light the S button/);
+  assert.match(client, /Type \$\{hallScribeMention\} or light the S button/);
   assert.match(client, /scribeReplyEnabled/);
-  assert.match(client, /aria-label=[\s\S]*Scribe reply armed/);
+  assert.match(
+    client,
+    /aria-label=[\s\S]*\$\{hallScribeMention\} reply armed/,
+  );
   assert.match(client, /scribe: requestScribe/);
   assert.match(route, /body\.scribe === true/);
   assert.match(route, /forceReply: requestScribeReply/);
   assert.match(scribe, /forceReply\?: boolean/);
+  assert.match(scribe, /clanHallScribeMentionAliases\(profile\)/);
   assert.match(
     scribe,
-    /!args\.forceReply && !hallScribeMentioned\(args\.message\)/,
+    /!args\.forceReply[\s\S]*!hallScribeMentioned\([\s\S]*args\.message/,
   );
   assert.doesNotMatch(client, /ambientHallScribe/i);
 });
@@ -172,9 +187,10 @@ test("@Scribe and the lit S control converge on the same Hall Scribe responder",
   assert.match(client, /scribe: requestScribe/);
   assert.match(route, /body\.scribe === true/);
   assert.match(route, /forceReply: requestScribeReply/);
-  assert.match(route, /maybeCreateAoE2WarHallScribeReply/);
+  assert.match(route, /maybeCreateClanHallScribeReply/);
   assert.match(
     scribe,
-    /\(!args\.forceReply && !hallScribeMentioned\(args\.message\)\)/,
+    /maybeCreateAoE2WarHallScribeReply[\s\S]*maybeCreateClanHallScribeReply/,
   );
+  assert.match(scribe, /clanHallScribeMentionAliases\(profile\)/);
 });

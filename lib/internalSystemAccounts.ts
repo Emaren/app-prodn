@@ -28,8 +28,25 @@ const LEADERBOARD_EXCLUDED_SYSTEM_UIDS =
 
 const INTERNAL_SYSTEM_UIDS = new Set(LEADERBOARD_EXCLUDED_SYSTEM_UIDS);
 
+const CLAN_HALL_SCRIBE_UID_PATTERN =
+  /^aoe2hd_ai_clan_[a-z0-9_-]+_hall_scribe$/;
+
+export function isClanHallScribeSystemUid(
+  uid: string | null | undefined,
+) {
+  return Boolean(
+    uid && CLAN_HALL_SCRIBE_UID_PATTERN.test(uid),
+  );
+}
+
 export function isInternalSystemUid(uid: string | null | undefined) {
-  return Boolean(uid && INTERNAL_SYSTEM_UIDS.has(uid));
+  return Boolean(
+    uid &&
+      (
+        INTERNAL_SYSTEM_UIDS.has(uid) ||
+        isClanHallScribeSystemUid(uid)
+      ),
+  );
 }
 
 /**
@@ -43,8 +60,11 @@ export function isLeaderboardExcludedSystemUid(
 ) {
   return Boolean(
     uid &&
-      LEADERBOARD_EXCLUDED_SYSTEM_UIDS.has(
-        uid,
+      (
+        LEADERBOARD_EXCLUDED_SYSTEM_UIDS.has(
+          uid,
+        ) ||
+        isClanHallScribeSystemUid(uid)
       ),
   );
 }

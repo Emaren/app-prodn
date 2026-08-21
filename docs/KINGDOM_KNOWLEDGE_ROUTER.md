@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-08-20"
+reviewed_at: "2026-08-21"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -332,3 +332,31 @@ Hall Scribe must treat supplied Hall history as the literal evidence for its own
 past conversational actions. It may not claim that it previously greeted,
 said, promised, or did something unless the supplied Hall history shows that
 action.
+
+
+## 2026-08-21 AI access topology
+
+The public Lobby Scribe and Grimer already enter `requestAiConciergeReply`
+through the `lobby_public` lane. That concierge path always invokes KKR, so both
+voices are eligible to route across the same public Kingdom repository estate as
+Hall Scribes.
+
+The distinction is additive context, not reduced public knowledge:
+
+- Lobby Scribe / Grimer: KKR + bounded public Lobby context, no Hall
+  roster/history.
+- Hall Scribe family: KKR + current Hall roster + audience-filtered history from
+  that Hall only.
+- Shared/public lanes continue to exclude viewer-private wallet, wager, claim,
+  staking, session and direct-message context.
+
+`/admin/ai` now exposes a read-only KKR topology panel showing the complete
+repository catalog, public page relationships, every current AI access lane,
+its additive/excluded context contract, configuration inheritance, and the
+stored knowledge-scope labels. The panel also drives the existing
+`/api/admin/ai-knowledge` inspector so an operator can test a question and see
+the exact routed repositories, loader traces and bounded context preview.
+
+This visibility layer is intentionally separate from authorization. Granular
+per-agent repository allow/deny controls are a later control-plane feature; V1
+first makes effective access observable.

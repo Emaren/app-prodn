@@ -4,6 +4,11 @@ import {
   hallScribeMentioned,
   hallScribeVisibleAudiences,
 } from "@/lib/clanHallScribePolicy";
+import {
+  clanHallScribeMentionAliases,
+  resolveClanHallScribeProfile,
+  type ClanHallScribeProfile,
+} from "@/lib/clanHallScribeProfiles";
 
 import { requestAiConciergeReply } from "@/lib/aiConcierge";
 import {
@@ -15,7 +20,7 @@ import { clanHallFeatureEnabled } from "@/lib/clanHallFeatures";
 import { formatClanRole } from "@/lib/clanRoles";
 import type { ClanAudience } from "@/lib/clans";
 import {
-  AOE2WAR_HALL_SCRIBE_UID,
+  isClanHallScribeSystemUid,
   isInternalSystemUid,
 } from "@/lib/internalSystemAccounts";
 
@@ -35,11 +40,14 @@ function displayName(user: {
   return user.inGameName || user.steamPersonaName || user.uid;
 }
 
-async function ensureHallScribeUser(prisma: PrismaClient) {
+async function ensureHallScribeUser(
+  prisma: PrismaClient,
+  profile: ClanHallScribeProfile,
+) {
   return prisma.user.upsert({
-    where: { uid: AOE2WAR_HALL_SCRIBE_UID },
+    where: { uid: profile.uid },
     update: {
-      inGameName: AOE2WAR_HALL_SCRIBE_NAME,
+      inGameName: profile.displayName,
       verified: true,
       lockName: true,
       verificationLevel: 1,
@@ -47,8 +55,8 @@ async function ensureHallScribeUser(prisma: PrismaClient) {
       steamPersonaName: null,
     },
     create: {
-      uid: AOE2WAR_HALL_SCRIBE_UID,
-      inGameName: AOE2WAR_HALL_SCRIBE_NAME,
+      uid: profile.uid,
+      inGameName: profile.displayName,
       verified: true,
       lockName: true,
       verificationLevel: 1,
@@ -59,6 +67,42 @@ async function ensureHallScribeUser(prisma: PrismaClient) {
   });
 }
 
+async function loadHallScribeAgentConfig(
+  prisma: PrismaClient,
+  profile: ClanHallScribeProfile,
+): Promise<AiAgentRuntimeConfig | null> {
+  const exact = await loadAiAgentBySlug(
+    prisma,
+    profile.agentSlug,
+    { enabledOnly: true },
+  );
+  if (exact) {
+    return {
+      ...exact,
+      name: profile.displayName,
+    };
+  }
+
+  if (
+    profile.fallbackAgentSlug &&
+    profile.fallbackAgentSlug !== profile.agentSlug
+  ) {
+    const fallback = await loadAiAgentBySlug(
+      prisma,
+      profile.fallbackAgentSlug,
+      { enabledOnly: true },
+    );
+    if (fallback) {
+      return {
+        ...fallback,
+        name: profile.displayName,
+      };
+    }
+  }
+
+  return null;
+}
+
 async function buildHallGroundingContext(args: {
   prisma: PrismaClient;
   clanId: number;
@@ -67,6 +111,7 @@ async function buildHallGroundingContext(args: {
   audience: ClanAudience;
   triggerMessageId: number;
   agentConfig: AiAgentRuntimeConfig;
+  profile: ClanHallScribeProfile;
 }) {
   const visibleAudiences = hallScribeVisibleAudiences(args.audience);
   const [roster, messageRows] = await Promise.all([
@@ -122,7 +167,7 @@ async function buildHallGroundingContext(args: {
     .reverse()
     .map((entry) => {
       const role =
-        entry.author.uid === AOE2WAR_HALL_SCRIBE_UID
+        isClanHallScribeSystemUid(entry.author.uid)
           ? "Hall Scribe"
           : formatClanRole(roleByUserId.get(entry.author.id) ?? null);
       const body = entry.body.replace(/\s+/g, " ").trim().slice(0, 500);
@@ -137,6 +182,8 @@ async function buildHallGroundingContext(args: {
   return [
     `Clan Hall: ${args.clanName}`,
     `Clan slug: ${args.clanSlug}`,
+    `Hall Scribe identity: ${args.profile.displayName}`,
+    `Hall Scribe invocation: ${args.profile.mention}`,
     `Reply audience: ${args.audience}`,
     "Privacy rule: recent Hall conversation below contains only messages visible at this reply audience. Never widen information from a narrower audience into a broader reply.",
     "",
@@ -152,7 +199,7 @@ async function buildHallGroundingContext(args: {
     .slice(0, maxChars);
 }
 
-export async function maybeCreateAoE2WarHallScribeReply(args: {
+export async function maybeCreateClanHallScribeReply(args: {
   prisma: PrismaClient;
   clanId: number;
   clanSlug: string;
@@ -163,19 +210,28 @@ export async function maybeCreateAoE2WarHallScribeReply(args: {
   forceReply?: boolean;
   viewer: { uid: string; displayName: string };
 }) {
+  const profile = resolveClanHallScribeProfile(
+    args.clanSlug,
+    args.clanName,
+  );
+
   if (
-    args.clanSlug !== "aoe2war" ||
     !clanHallFeatureEnabled(args.clanSlug, "hallScribe") ||
-    (!args.forceReply && !hallScribeMentioned(args.message)) ||
+    (
+      !args.forceReply &&
+      !hallScribeMentioned(
+        args.message,
+        clanHallScribeMentionAliases(profile),
+      )
+    ) ||
     isInternalSystemUid(args.viewer.uid)
   ) {
     return { status: "not_triggered" as const };
   }
 
-  const agentConfig = await loadAiAgentBySlug(
+  const agentConfig = await loadHallScribeAgentConfig(
     args.prisma,
-    AOE2WAR_HALL_SCRIBE_AGENT_SLUG,
-    { enabledOnly: true },
+    profile,
   );
   if (!agentConfig) return { status: "unconfigured" as const };
 
@@ -187,6 +243,7 @@ export async function maybeCreateAoE2WarHallScribeReply(args: {
     audience: args.audience,
     triggerMessageId: args.triggerMessageId,
     agentConfig,
+    profile,
   });
 
   const aiReply = await requestAiConciergeReply({
@@ -204,7 +261,10 @@ export async function maybeCreateAoE2WarHallScribeReply(args: {
   const body = aiReply.body.trim().slice(0, 1200);
   if (!body) return { status: "empty" as const };
 
-  const aiUser = await ensureHallScribeUser(args.prisma);
+  const aiUser = await ensureHallScribeUser(
+    args.prisma,
+    profile,
+  );
   const created = await args.prisma.clanMessage.create({
     data: {
       clanId: args.clanId,
@@ -220,5 +280,13 @@ export async function maybeCreateAoE2WarHallScribeReply(args: {
     messageId: created.id,
   });
 
-  return { status: "posted" as const, messageId: created.id };
+  return {
+    status: "posted" as const,
+    messageId: created.id,
+    scribe: profile.mention,
+  };
 }
+
+// Compatibility export for older tests/importers while the generic V1 name becomes canonical.
+export const maybeCreateAoE2WarHallScribeReply =
+  maybeCreateClanHallScribeReply;

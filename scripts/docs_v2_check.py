@@ -307,7 +307,7 @@ def validate_metadata(metadata: dict[str, Any], label: str) -> list[str]:
         and interval > 0
     ):
         due_at = parsed_reviewed_at + timedelta(days=interval)
-        if date.today() > due_at:
+        if datetime.now(timezone.utc).date() > due_at:
             errors.append(
                 f"{label}: documentation review expired on {due_at.isoformat()}"
             )

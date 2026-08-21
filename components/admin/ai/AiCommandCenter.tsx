@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import KingdomKnowledgeRouterPanel from "@/components/admin/ai/KingdomKnowledgeRouterPanel";
+
 type PromptSource =
   | "lobby_public"
   | "contact_thread"
@@ -311,6 +313,8 @@ export default function AiCommandCenter() {
 
       {error ? <div className="rounded-2xl border border-rose-300/25 bg-rose-500/10 p-4 text-rose-100">{error}</div> : null}
       {notice ? <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4 text-emerald-100">{notice}</div> : null}
+
+      <KingdomKnowledgeRouterPanel />
 
       <section className="grid gap-6 lg:grid-cols-[19rem_minmax(0,1fr)]">
         <aside className="space-y-3 rounded-[1.6rem] border border-white/10 bg-slate-950/70 p-4">

@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-20"
+reviewed_at: "2026-08-21"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -33,14 +33,14 @@ separate contracts.
 
 ## Flagship feature profile
 
-`lib/clanHallFeatures.ts` is the explicit capability registry. Baseline Halls
-keep the existing behavior unless a capability is enabled. The AoE2WAR Hall
-currently enables realtime Hall invalidation, optimistic message presentation
-with visible retry on failure, and the on-site Invite Door.
+`lib/clanHallFeatures.ts` is the explicit capability registry. V1 Halls keep
+their existing visual presentation while receiving the common minimum operating
+layer: the on-site Invite Door and one Hall-local Scribe. The AoE2WAR Hall
+remains the flagship laboratory and additionally enables realtime invalidation
+and optimistic message presentation with visible retry on failure.
 
-Presence, typing, delegated recruiting, Hall Scribe, replies, pins, search,
-media, and replay cards remain explicit later capabilities rather than implied
-global behavior.
+Presence, typing, delegated recruiting, replies, pins, search, media, and replay
+cards remain explicit later capabilities rather than implied global behavior.
 
 ## Realtime contract
 
@@ -205,10 +205,12 @@ The production release lane never deploys or migrates the shadow database.
 
 ## Hall Scribe V1
 
-The AoE2WAR flagship Hall enables `hallScribe`; baseline Halls do not. Hall
-Scribe has the reserved system UID `aoe2hd_ai_clan_aoe2war_hall_scribe` and
-agent slug `aoe2war-hall-scribe`. It is excluded from human/competitive counts
-and is not inserted into the Clan roster.
+Every active V1 Hall may use `hallScribe`. Each Hall Scribe has a distinct
+reserved system UID derived from the Clan slug, remains excluded from
+human/competitive counts, and is not inserted into the Clan roster. AoE2WAR
+keeps the canonical `aoe2war-hall-scribe` agent configuration; other V1 Halls
+may inherit that proven configuration until an operator gives the Hall a
+dedicated agent configuration.
 
 V1 is direct-mention only. The human message is persisted first. The model then
 receives audience-filtered Hall context. If the AI call fails, the human message
@@ -235,3 +237,31 @@ the real GPT-4.1 Hall Scribe provider. For the Zodiac/somniosator question the
 agent returned five meetings, Zodiac 2-0 when opposed, and 1-2 together as
 teammates. The validation-only provider-preview route is not part of the
 production release.
+
+
+## 2026-08-21 multi-Hall V1 baseline
+
+The V1 baseline intentionally changes as little Hall presentation as possible.
+Existing Hall layout, colors, cards, roster presentation, B/A/E layout choices,
+and the five-version chat renderer remain unchanged. The shared chat-view picker
+already applies to every Hall.
+
+The minimum operator-ready Hall now adds:
+
+- Invite Door for Hall leadership;
+- the existing shared Clan-invitation background with a Clan-specific crest
+  target in Direct Chat;
+- one Hall-local Scribe using the shared public Kingdom Knowledge Router plus
+  only that Hall's roster and audience-filtered history.
+
+Current summon labels are:
+
+- AoE2WAR: `@Scribe` (`@Hall Scribe` remains a compatibility alias);
+- Mystikal Clan: `@Mscribe`;
+- Jim's Clan: `@Jscribe`;
+- Legend Clan: `@Lscribe`;
+- Julio/Alvarez Hall: `@JAscribe`.
+
+The lit `S` composer control remains a one-message explicit invocation path and
+uses the same Hall-local Scribe profile. A Hall Scribe can never receive another
+Hall's roster/history merely because the public KKR is shared.

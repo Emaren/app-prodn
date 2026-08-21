@@ -46,6 +46,7 @@ import { usePublicPresence } from "@/components/presence/PublicPresenceProvider"
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { ClanInviteDoor, ClanInvitePrompt } from "@/components/clans/ClanInviteDoor";
 import { clanHallFeatureEnabled } from "@/lib/clanHallFeatures";
+import { resolveClanHallScribeProfile } from "@/lib/clanHallScribeProfiles";
 import { formatClanRole } from "@/lib/clanRoles";
 import {
   UNIVERSAL_LANGUAGES,
@@ -269,6 +270,11 @@ export default function ClanHallClient({
     snapshot.clan.slug,
     "hallScribe",
   );
+  const hallScribeProfile = resolveClanHallScribeProfile(
+    snapshot.clan.slug,
+    snapshot.clan.name,
+  );
+  const hallScribeMention = hallScribeProfile.mention;
 
   const settleChatToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
     window.requestAnimationFrame(() => {
@@ -886,10 +892,10 @@ export default function ClanHallClient({
                   {hallScribeEnabled ? (
                     <span
                       className="inline-flex items-center gap-1.5 rounded-full border border-violet-200/14 bg-violet-300/[0.055] px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] text-violet-100/80"
-                      title="Type @Scribe or light the S button"
+                      title={`Type ${hallScribeMention} or light the S button`}
                     >
                       <Sparkles className="h-3 w-3" />
-                      Scribe
+                      {hallScribeMention.replace(/^@/, "")}
                     </span>
                   ) : null}
                 </div>
@@ -1099,13 +1105,13 @@ export default function ClanHallClient({
                       aria-pressed={scribeReplyEnabled}
                       aria-label={
                         scribeReplyEnabled
-                          ? "Scribe reply armed"
-                          : "Ask Scribe on next message"
+                          ? `${hallScribeMention} reply armed`
+                          : `Ask ${hallScribeMention} on next message`
                       }
                       title={
                         scribeReplyEnabled
-                          ? "Scribe will answer your next message"
-                          : "Ask Scribe on your next message"
+                          ? `${hallScribeProfile.displayName} will answer your next message`
+                          : `Ask ${hallScribeMention} on your next message`
                       }
                       className={`clan-scribe-toggle ${
                         scribeReplyEnabled
