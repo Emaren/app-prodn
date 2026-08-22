@@ -14,6 +14,12 @@ const UWOLO_PER_WOLO = STAKING_UWOLO_PER_WOLO;
 export { MIN_STAKING_OPERATING_RESERVE_WOLO };
 export const STAKING_WALLET_TOP_UP_DETAIL =
   "Staking wallet reserve top-up needed.";
+export const STAKING_STAKE_SAFETY_PAUSED = true;
+export const STAKING_STAKE_SAFETY_DETAIL =
+  "New stakes are temporarily paused while one-time wallet intent protection is added.";
+export const STAKING_UNSTAKE_SAFETY_PAUSED = true;
+export const STAKING_UNSTAKE_SAFETY_DETAIL =
+  "Unstaking is temporarily paused while withdrawal protection is upgraded. Your confirmed stake remains recorded.";
 export const STAKING_WALLET_TOP_UP_HELP =
   "This wallet backs app-side staking withdrawals. Its chain balance must cover confirmed staking liability plus the 10,000 WOLO operating reserve target.";
 

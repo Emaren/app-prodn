@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { createConfirmedStakingEvent, StakingActionError } from "@/lib/staking";
+import {
+  STAKING_STAKE_SAFETY_DETAIL,
+  STAKING_STAKE_SAFETY_PAUSED,
+} from "@/lib/stakingExecution";
 import { validateWoloAddress, verifyWoloTransfer } from "@/lib/woloBetSettlement";
 import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
 import { WOLO_MAINNET_NETWORK_ACCOUNTS } from "@/lib/woloMainnetNetworkAccounts";
@@ -32,6 +36,16 @@ function normalizeWholeWolo(value: unknown) {
 
 export async function POST(request: NextRequest) {
   try {
+    if (STAKING_STAKE_SAFETY_PAUSED) {
+      return NextResponse.json(
+        {
+          detail: STAKING_STAKE_SAFETY_DETAIL,
+          code: "STAKE_SAFETY_PAUSED",
+        },
+        { status: 503 },
+      );
+    }
+
     const sessionUid = await getSessionUid(request);
     if (!sessionUid) {
       return NextResponse.json({ detail: "No active session" }, { status: 401 });
