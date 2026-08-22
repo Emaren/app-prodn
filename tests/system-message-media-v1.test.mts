@@ -76,11 +76,11 @@ test("Clan invitation system card resolves shared hero plus current clan crest",
   );
   assert.match(
     contact,
-    />\s*Accept\s*</,
+    /Take Your Seat/,
   );
   assert.match(
     contact,
-    />\s*Enter Hall\s*</,
+    /Enter the Hall/,
   );
 });
 
