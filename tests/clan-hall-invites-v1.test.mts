@@ -28,28 +28,25 @@ test("owner storage remains conventional while the Hall says The King", () => {
   );
 });
 
-test("AoE2WAR keeps flagship realtime while every V1 Hall receives invite + scribe", () => {
+test("every V1 Hall inherits the Clan Social realtime baseline plus invite + scribe", () => {
   const aoe2war = getClanHallFeatures("aoe2war");
   const mystikal = getClanHallFeatures("mystikal");
 
-  assert.equal(aoe2war.realtime, true);
-  assert.equal(aoe2war.optimisticMessages, true);
-  assert.equal(aoe2war.inviteDoor, true);
-  assert.equal(aoe2war.hallScribe, true);
+  for (const hall of [aoe2war, mystikal]) {
+    assert.equal(hall.realtime, true);
+    assert.equal(hall.optimisticMessages, true);
+    assert.equal(hall.presence, true);
+    assert.equal(hall.inviteDoor, true);
+    assert.equal(hall.hallScribe, true);
+    assert.equal(hall.media, true);
 
-  assert.equal(aoe2war.presence, false);
-  assert.equal(aoe2war.typing, false);
-  assert.equal(aoe2war.delegatedRecruiting, false);
-  assert.equal(aoe2war.replies, false);
-  assert.equal(aoe2war.pins, false);
-  assert.equal(aoe2war.search, false);
-  assert.equal(aoe2war.media, false);
-  assert.equal(aoe2war.replayCards, false);
-
-  assert.equal(mystikal.realtime, false);
-  assert.equal(mystikal.optimisticMessages, false);
-  assert.equal(mystikal.inviteDoor, true);
-  assert.equal(mystikal.hallScribe, true);
+    assert.equal(hall.typing, false);
+    assert.equal(hall.delegatedRecruiting, false);
+    assert.equal(hall.replies, false);
+    assert.equal(hall.pins, false);
+    assert.equal(hall.search, false);
+    assert.equal(hall.replayCards, false);
+  }
 });
 
 test("on-site invitations reuse Direct Chat and require explicit acceptance", () => {
@@ -98,14 +95,8 @@ test("Invite Door UI browses or searches users, sends DMs and exposes Enter Hall
   assert.match(client, /<ClanInviteDoor/);
 });
 
-test("this release requires no Prisma migration", () => {
-  const schema = read("prisma/schema.prisma");
-
-  assert.doesNotMatch(schema, /model ClanInvite\b/);
-  assert.match(
-    read("docs/CLAN_HALLS.md"),
-    /requires no database migration/,
-  );
+test("Invite Door remains protocol-backed without a dedicated invite table", () => {
+  assert.doesNotMatch(read("prisma/schema.prisma"), /model ClanInvite\b/);
 });
 
 
@@ -155,7 +146,7 @@ test("Clan invite protocol parses into a first-class Direct Chat artifact", () =
   );
   assert.match(contact, /ClanInviteDirectArtifact/);
   assert.match(contact, /Clan Hall Invitation/);
-  assert.match(contact, /Enter Hall/);
+  assert.match(contact, /Enter the Hall/);
 });
 
 test("Clan invite send rejects system identities and duplicate pending invitations", () => {

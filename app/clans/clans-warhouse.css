@@ -1379,7 +1379,7 @@ html[data-clan-theme="crimson"] .clan-theme-toggle {
   top: calc(100% + 0.16rem);
   right: 0;
   z-index: 70;
-  width: min(14.5rem, calc(100vw - 2rem));
+  width: min(20rem, calc(100vw - 2rem));
   overflow: hidden;
   border: 1px solid rgb(255 255 255 / 0.10);
   border-radius: 0.85rem;
@@ -1389,6 +1389,21 @@ html[data-clan-theme="crimson"] .clan-theme-toggle {
     0 24px 65px rgb(0 0 0 / 0.55),
     inset 0 1px 0 rgb(255 255 255 / 0.04);
   backdrop-filter: blur(18px);
+}
+
+/* Portaled message tools never contribute to Hall layout or scroll extent. */
+.clan-message-tools__floating {
+  pointer-events: auto;
+}
+
+.clan-message-tools__menu--floating {
+  position: static;
+  top: auto;
+  right: auto;
+  width: 100%;
+  max-height: calc(100dvh - 1.25rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .clan-message-tools__row {
@@ -1712,7 +1727,7 @@ html[data-clan-theme="crimson"] .clan-theme-toggle {
   max-height: none !important;
   flex: 1 1 0% !important;
   overflow-y: auto !important;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: auto;
 }
 
 @media (max-width: 767px) {
@@ -1971,7 +1986,7 @@ html[data-clan-theme="crimson"] .clan-theme-toggle {
     clamp(30rem, 65dvh, 56rem) !important;
   flex: 0 1 auto !important;
   overflow-y: auto !important;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: auto;
 }
 
 /*
@@ -2186,7 +2201,7 @@ html[data-clan-theme="crimson"] .clan-theme-toggle {
     clamp(32rem, 68dvh, 58rem) !important;
   flex: 1 1 auto !important;
   overflow-y: auto !important;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: auto;
 }
 
 /*
@@ -2418,4 +2433,262 @@ html[data-clan-theme="crimson"] .clan-theme-toggle {
       5.6rem minmax(0, 1fr) !important;
     column-gap: 0.5rem !important;
   }
+}
+
+/* Clan Hall Social V1: compact viewer controls + rich media. */
+.clan-hall-chat-shell {
+  --clan-chat-font-size: 0.875rem;
+  --clan-chat-line-height: 1.5;
+}
+
+.clan-hall-chat-shell[data-chat-font-size="small"] {
+  --clan-chat-font-size: 0.75rem;
+}
+
+.clan-hall-chat-shell[data-chat-font-size="large"] {
+  --clan-chat-font-size: 1rem;
+}
+
+.clan-hall-chat-shell[data-chat-font-size="xl"] {
+  --clan-chat-font-size: 1.125rem;
+}
+
+.clan-hall-chat-shell[data-chat-line-spacing="tight"] {
+  --clan-chat-line-height: 1.28;
+}
+
+.clan-hall-chat-shell[data-chat-line-spacing="relaxed"] {
+  --clan-chat-line-height: 1.78;
+}
+
+.clan-hall-chat-shell .clan-message__body {
+  font-size: var(--clan-chat-font-size) !important;
+  line-height: var(--clan-chat-line-height) !important;
+}
+
+.clan-chat-appearance {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.22rem;
+}
+
+.clan-chat-appearance__button {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.025);
+  padding: 0 0.48rem;
+  color: rgba(148, 163, 184, 0.7);
+  transition: border-color 140ms ease, color 140ms ease, background 140ms ease;
+}
+
+.clan-chat-appearance__button:hover,
+.clan-chat-appearance__button:focus-visible {
+  border-color: rgba(186, 230, 253, 0.16);
+  background: rgba(125, 211, 252, 0.055);
+  color: rgba(224, 242, 254, 0.95);
+  outline: none;
+}
+
+.clan-chat-appearance--header .clan-chat-appearance__button {
+  width: 1.9rem;
+  padding: 0;
+}
+
+.clan-chat-appearance__value {
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(203, 213, 225, 0.72);
+}
+
+.clan-chat-drop-overlay {
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  background: rgba(3, 8, 18, 0.74);
+  backdrop-filter: blur(8px);
+}
+
+.clan-chat-drop-overlay__badge {
+  display: grid;
+  width: 4.2rem;
+  height: 4.2rem;
+  place-items: center;
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  border-radius: 1.35rem;
+  background: rgba(14, 165, 233, 0.1);
+  color: rgba(224, 242, 254, 0.96);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.34);
+}
+
+.clan-chat-attach {
+  border: 1px solid transparent;
+  color: rgba(148, 163, 184, 0.68);
+}
+
+.clan-chat-attach:hover,
+.clan-chat-attach:focus-visible {
+  border-color: rgba(125, 211, 252, 0.16);
+  background: rgba(125, 211, 252, 0.065);
+  color: rgba(224, 242, 254, 0.92);
+  outline: none;
+}
+
+.clan-composer-media-tray {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.45rem;
+}
+
+.clan-composer-media {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.48rem;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.026);
+  padding: 0.36rem 2rem 0.36rem 0.36rem;
+}
+
+.clan-composer-media__preview {
+  display: grid;
+  width: 2.45rem;
+  height: 2.45rem;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 0.65rem;
+  background: rgba(0, 0, 0, 0.32);
+  color: rgba(203, 213, 225, 0.72);
+}
+
+.clan-composer-media__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.68rem;
+  color: rgba(203, 213, 225, 0.72);
+}
+
+.clan-composer-media__remove {
+  position: absolute;
+  right: 0.46rem;
+  top: 50%;
+  display: grid;
+  width: 1.35rem;
+  height: 1.35rem;
+  transform: translateY(-50%);
+  place-items: center;
+  border-radius: 999px;
+  color: rgba(148, 163, 184, 0.68);
+}
+
+.clan-composer-media__remove:hover,
+.clan-composer-media__remove:focus-visible {
+  background: rgba(248, 113, 113, 0.1);
+  color: rgba(254, 202, 202, 0.96);
+  outline: none;
+}
+
+.clan-message-media-grid {
+  display: grid;
+  max-width: 38rem;
+  gap: 0.38rem;
+  margin-top: 0.52rem;
+}
+
+.clan-message-media-grid--2,
+.clan-message-media-grid--3,
+.clan-message-media-grid--4 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.clan-message-media {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 0.9rem;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.clan-message-media--image {
+  display: block;
+  min-height: 6rem;
+  max-height: 22rem;
+}
+
+.clan-message-media__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 22rem;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.clan-message-media--video {
+  background: #020407;
+}
+
+.clan-message-media__video {
+  display: block;
+  width: 100%;
+  max-height: 24rem;
+  background: #020407;
+}
+
+.clan-message-media--audio {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  color: rgba(186, 230, 253, 0.78);
+}
+
+.clan-message-media--audio audio {
+  height: 2rem;
+}
+
+.clan-message-youtube {
+  position: relative;
+  width: min(38rem, 100%);
+  aspect-ratio: 16 / 9;
+  margin-top: 0.52rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+  border-radius: 0.9rem;
+  background: #020407;
+}
+
+.clan-message-youtube iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.clan-message-tools__row--future:disabled {
+  cursor: default;
+  opacity: 0.78;
+  color: rgba(253, 230, 138, 0.78);
+}
+
+@media (max-width: 640px) {
+  .clan-message-media-grid--2,
+  .clan-message-media-grid--3,
+  .clan-message-media-grid--4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.clan-chat-stream--v4 :is(.clan-message-media-grid, .clan-message-youtube) {
+  grid-column: 2 !important;
 }

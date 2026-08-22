@@ -22,9 +22,9 @@ export type ClanHallFeatureProfile = Record<
 >;
 
 const BASELINE_CLAN_HALL_FEATURES: ClanHallFeatureProfile = {
-  realtime: false,
-  optimisticMessages: false,
-  presence: false,
+  realtime: true,
+  optimisticMessages: true,
+  presence: true,
   typing: false,
   inviteDoor: true,
   delegatedRecruiting: false,
@@ -32,29 +32,19 @@ const BASELINE_CLAN_HALL_FEATURES: ClanHallFeatureProfile = {
   replies: false,
   pins: false,
   search: false,
-  media: false,
+  media: true,
   replayCards: false,
 };
 
-const AOE2WAR_FLAGSHIP_FEATURES: ClanHallFeatureProfile = {
-  ...BASELINE_CLAN_HALL_FEATURES,
-  realtime: true,
-  optimisticMessages: true,
-  inviteDoor: true,
-  hallScribe: true,
-};
-
-const FLAGSHIP_BY_SLUG: Record<string, ClanHallFeatureProfile> = {
-  aoe2war: AOE2WAR_FLAGSHIP_FEATURES,
-};
+const OVERRIDES_BY_SLUG: Record<string, Partial<ClanHallFeatureProfile>> = {};
 
 export function getClanHallFeatures(
   slug: string,
 ): ClanHallFeatureProfile {
-  return (
-    FLAGSHIP_BY_SLUG[slug.trim().toLowerCase()] ??
-    BASELINE_CLAN_HALL_FEATURES
-  );
+  return {
+    ...BASELINE_CLAN_HALL_FEATURES,
+    ...(OVERRIDES_BY_SLUG[slug.trim().toLowerCase()] ?? {}),
+  };
 }
 
 export function clanHallFeatureEnabled(

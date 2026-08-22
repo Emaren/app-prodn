@@ -1,10 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-export type ClanChatViewMode = "v1" | "v2" | "v3" | "v4" | "v5";
+import {
+  isClanChatViewMode,
+  normalizeClanChatViewMode,
+  type ClanChatViewMode,
+} from "@/lib/clanChatViews";
 
-export const CLAN_CHAT_VIEW_STORAGE_KEY = "aoe2war:clans:chat-view";
+export type { ClanChatViewMode } from "@/lib/clanChatViews";
+
+export const CLAN_CHAT_VIEW_STORAGE_PREFIX = "aoe2war:clans:chat-view:";
 export const CLAN_CHAT_VIEW_EVENT = "aoe2war:clans:chat-view-change";
 
 export const CLAN_CHAT_VIEWS: ReadonlyArray<{
@@ -45,92 +51,103 @@ export const CLAN_CHAT_VIEWS: ReadonlyArray<{
   },
 ];
 
-export function isClanChatViewMode(
-  value: string | null,
-): value is ClanChatViewMode {
-  return CLAN_CHAT_VIEWS.some((view) => view.key === value);
+export { isClanChatViewMode };
+
+function normalizeSlug(value: string) {
+  return value.trim().toLowerCase().slice(0, 80) || "unknown";
 }
 
-export function useClanChatViewPreference() {
+export function clanChatViewStorageKey(clanSlug: string) {
+  return `${CLAN_CHAT_VIEW_STORAGE_PREFIX}${normalizeSlug(clanSlug)}`;
+}
+
+type ClanChatViewPreferenceEvent = {
+  clanSlug: string;
+  mode: ClanChatViewMode;
+};
+
+export function useClanChatViewPreference({
+  clanSlug,
+  defaultMode = "v1",
+}: {
+  clanSlug: string;
+  defaultMode?: ClanChatViewMode;
+}) {
+  const normalizedSlug = useMemo(() => normalizeSlug(clanSlug), [clanSlug]);
+  const normalizedDefault = normalizeClanChatViewMode(defaultMode, "v1");
   const [chatViewMode, setChatViewModeState] =
-    useState<ClanChatViewMode>("v1");
+    useState<ClanChatViewMode>(normalizedDefault);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const applySavedMode = (value: string | null) => {
-      if (isClanChatViewMode(value)) {
-        setChatViewModeState(value);
-      }
+    const key = clanChatViewStorageKey(normalizedSlug);
+    const applyPreference = (storedValue: string | null) => {
+      setChatViewModeState(
+        isClanChatViewMode(storedValue) ? storedValue : normalizedDefault,
+      );
     };
 
-    applySavedMode(
-      window.localStorage.getItem(
-        CLAN_CHAT_VIEW_STORAGE_KEY,
-      ),
-    );
+    applyPreference(window.localStorage.getItem(key));
 
     const handleStorage = (event: StorageEvent) => {
-      if (
-        event.key === CLAN_CHAT_VIEW_STORAGE_KEY
-      ) {
-        applySavedMode(event.newValue);
-      }
+      if (event.key === key) applyPreference(event.newValue);
     };
 
-    const handlePreferenceChange = (
-      event: Event,
-    ) => {
-      applySavedMode(
-        (event as CustomEvent<string>).detail,
-      );
+    const handlePreferenceChange = (event: Event) => {
+      const detail = (event as CustomEvent<ClanChatViewPreferenceEvent>).detail;
+      if (!detail || normalizeSlug(detail.clanSlug) !== normalizedSlug) return;
+      applyPreference(detail.mode);
     };
 
-    window.addEventListener(
-      "storage",
-      handleStorage,
-    );
-    window.addEventListener(
-      CLAN_CHAT_VIEW_EVENT,
-      handlePreferenceChange,
-    );
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener(CLAN_CHAT_VIEW_EVENT, handlePreferenceChange);
 
     return () => {
-      window.removeEventListener(
-        "storage",
-        handleStorage,
-      );
-      window.removeEventListener(
-        CLAN_CHAT_VIEW_EVENT,
-        handlePreferenceChange,
-      );
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener(CLAN_CHAT_VIEW_EVENT, handlePreferenceChange);
     };
-  }, []);
+  }, [normalizedDefault, normalizedSlug]);
 
   const setChatViewMode = useCallback(
     (nextMode: ClanChatViewMode) => {
       setChatViewModeState(nextMode);
 
-      if (typeof window === "undefined") {
-        return;
-      }
+      if (typeof window === "undefined") return;
 
-      window.localStorage.setItem(
-        CLAN_CHAT_VIEW_STORAGE_KEY,
-        nextMode,
-      );
+      const key = clanChatViewStorageKey(normalizedSlug);
+      window.localStorage.setItem(key, nextMode);
       window.dispatchEvent(
-        new CustomEvent(
-          CLAN_CHAT_VIEW_EVENT,
-          { detail: nextMode },
-        ),
+        new CustomEvent<ClanChatViewPreferenceEvent>(CLAN_CHAT_VIEW_EVENT, {
+          detail: {
+            clanSlug: normalizedSlug,
+            mode: nextMode,
+          },
+        }),
       );
     },
-    [],
+    [normalizedSlug],
   );
+
+  const clearChatViewOverride = useCallback(() => {
+    setChatViewModeState(normalizedDefault);
+    if (typeof window === "undefined") return;
+
+    const key = clanChatViewStorageKey(normalizedSlug);
+    window.localStorage.removeItem(key);
+    window.dispatchEvent(
+      new CustomEvent<ClanChatViewPreferenceEvent>(CLAN_CHAT_VIEW_EVENT, {
+        detail: {
+          clanSlug: normalizedSlug,
+          mode: normalizedDefault,
+        },
+      }),
+    );
+  }, [normalizedDefault, normalizedSlug]);
 
   return {
     chatViewMode,
     setChatViewMode,
+    clearChatViewOverride,
   };
 }

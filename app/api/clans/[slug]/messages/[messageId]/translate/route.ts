@@ -164,6 +164,7 @@ export async function POST(
       prisma,
       slug,
       sessionUid,
+      { focusMessageId: messageId },
     );
 
   const message =

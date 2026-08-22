@@ -11,7 +11,6 @@ import {
   resolvePrimaryAdminContact,
 } from "@/lib/contactInbox";
 import {
-  DIRECT_MESSAGE_REACTIONS,
   MAX_DIRECT_AUDIO_BYTES,
   MAX_DIRECT_IMAGE_BYTES,
   MAX_DIRECT_IMAGE_LABEL,
@@ -27,6 +26,7 @@ import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { LOBBY_ROOM_SLUG, normalizeChatBody } from "@/lib/lobby";
 import { isChallengeInboxNoticeBody } from "@/lib/challengeInboxMessages";
+import { normalizeReactionEmoji } from "@/lib/reactionEmoji";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -754,10 +754,11 @@ export async function PATCH(request: NextRequest) {
           return NextResponse.json({ detail: "Message id is required" }, { status: 400 });
         }
 
-        if (
-          typeof payload.emoji !== "string" ||
-          !DIRECT_MESSAGE_REACTIONS.includes(payload.emoji as (typeof DIRECT_MESSAGE_REACTIONS)[number])
-        ) {
+        const emoji =
+          payload.emoji === "GG"
+            ? "GG"
+            : normalizeReactionEmoji(payload.emoji);
+        if (!emoji) {
           return NextResponse.json({ detail: "Reaction is not supported" }, { status: 400 });
         }
 
@@ -787,7 +788,7 @@ export async function PATCH(request: NextRequest) {
             messageId_userId_emoji: {
               messageId: message.id,
               userId: viewer.id,
-              emoji: payload.emoji,
+              emoji,
             },
           },
           select: { id: true },
@@ -799,7 +800,7 @@ export async function PATCH(request: NextRequest) {
               messageId_userId_emoji: {
                 messageId: message.id,
                 userId: viewer.id,
-                emoji: payload.emoji,
+                emoji,
               },
             },
           });
@@ -808,7 +809,7 @@ export async function PATCH(request: NextRequest) {
             data: {
               messageId: message.id,
               userId: viewer.id,
-              emoji: payload.emoji,
+              emoji,
             },
           });
         }

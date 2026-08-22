@@ -42,14 +42,11 @@ test("Hall Scribe is a reserved non-human system identity", () => {
   );
 });
 
-test("Hall Scribe is a V1 Hall baseline capability while realtime stays flagship-only", () => {
-  assert.equal(getClanHallFeatures("aoe2war").hallScribe, true);
-  assert.equal(getClanHallFeatures("mystikal").hallScribe, true);
-  assert.equal(getClanHallFeatures("jims-clan").hallScribe, true);
-  assert.equal(getClanHallFeatures("legend-clan").hallScribe, true);
-
-  assert.equal(getClanHallFeatures("aoe2war").realtime, true);
-  assert.equal(getClanHallFeatures("mystikal").realtime, false);
+test("Hall Scribe remains baseline while realtime graduates to every V1 Hall", () => {
+  for (const slug of ["aoe2war", "mystikal", "jims-clan", "legend-clan"]) {
+    assert.equal(getClanHallFeatures(slug).hallScribe, true);
+    assert.equal(getClanHallFeatures(slug).realtime, true);
+  }
 });
 
 test("Hall Scribe accepts @Scribe while preserving the legacy mention", () => {

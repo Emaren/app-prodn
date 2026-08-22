@@ -37,6 +37,7 @@ test("composer does not submit during IME composition", () => {
   assert.match(client, /event\.nativeEvent\.isComposing/);
 });
 
-test("empty or busy composer is not keyboard-submitted", () => {
-  assert.match(client, /if \(posting \|\| !message\.trim\(\)\)/);
+test("empty or busy composer is not keyboard-submitted unless media is attached", () => {
+  assert.match(client, /posting \|\|/);
+  assert.match(client, /!message\.trim\(\) && composerAttachments\.length === 0/);
 });

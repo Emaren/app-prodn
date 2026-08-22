@@ -120,11 +120,11 @@ test("Hall chat picker cycles instantly and is discoverable in both locations", 
   );
   assert.match(
     hall,
-    /<ClanChatViewPicker placement="header" \/>/,
+    /ClanChatViewPicker[\s\S]*placement="header"[\s\S]*clanSlug=\{snapshot\.clan\.slug\}/,
   );
   assert.match(
     rail,
-    /<ClanChatViewPicker \/>/,
+    /ClanChatViewPicker[\s\S]*clanSlug=\{clanSlug\}[\s\S]*defaultMode=\{defaultChatView\}/,
   );
 });
 

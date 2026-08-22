@@ -1,11 +1,15 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 
 import { isClanHallScribeSystemUid } from "@/lib/internalSystemAccounts";
+import { isReactionEmoji } from "@/lib/reactionEmoji";
+import {
+  normalizeClanChatViewMode,
+  type ClanChatViewMode,
+} from "@/lib/clanChatViews";
 
 export const CLAN_AUDIENCES = ["public", "users", "clan"] as const;
 export type ClanAudience = (typeof CLAN_AUDIENCES)[number];
-export const CLAN_REACTIONS = ["⚔️", "🔥", "🛡️", "🏰", "👑", "🩸"] as const;
-export type ClanReaction = (typeof CLAN_REACTIONS)[number];
+export type ClanReaction = string;
 export type ClanViewMode = "basic" | "advanced" | "extreme";
 
 export const CLAN_AUDIENCE_DETAILS: Record<
@@ -125,6 +129,7 @@ export function buildClanFallbackSnapshot(
     clan: {
       ...clan,
       chatAudiencePolicy: "public",
+      defaultChatView: "v1",
     },
     viewer: {
       authenticated,
@@ -136,6 +141,11 @@ export function buildClanFallbackSnapshot(
     },
     allowedAudiences: authenticated ? ["public", "users"] : [],
     messages: [],
+    messagePage: {
+      kind: "latest",
+      hasMore: false,
+      beforeMessageId: null,
+    },
     roster: [],
     access: {
       canReadChat: true,
@@ -159,6 +169,7 @@ export function buildMystikalFallbackSnapshot(
 export type ClanHallSnapshot = {
   clan: ClanDirectoryEntry & {
     chatAudiencePolicy: ClanAudience;
+    defaultChatView: ClanChatViewMode;
   };
   viewer: {
     authenticated: boolean;
@@ -184,6 +195,14 @@ export type ClanHallSnapshot = {
       role: string | null;
       isClanMember: boolean;
     };
+    attachments: Array<{
+      id: number;
+      kind: "image" | "audio" | "video";
+      name: string | null;
+      mimeType: string;
+      sizeBytes: number;
+      url: string;
+    }>;
     reactions: Array<{
       emoji: ClanReaction;
       count: number;
@@ -194,6 +213,11 @@ export type ClanHallSnapshot = {
       }>;
     }>;
   }>;
+  messagePage: {
+    kind: "latest" | "older" | "focus";
+    hasMore: boolean;
+    beforeMessageId: number | null;
+  };
   roster: Array<{
     uid: string;
     displayName: string;
@@ -239,10 +263,7 @@ export function normalizeClanMessage(value: unknown) {
 }
 
 export function isClanReaction(value: unknown): value is ClanReaction {
-  return (
-    typeof value === "string" &&
-    (CLAN_REACTIONS as readonly string[]).includes(value)
-  );
+  return isReactionEmoji(value);
 }
 
 export function audienceAllowedByPolicy(
@@ -294,11 +315,32 @@ export async function loadClanDirectory(
   }));
 }
 
+export type ClanHallLoadOptions = {
+  beforeMessageId?: number | null;
+  focusMessageId?: number | null;
+  messageLimit?: number;
+};
+
 export async function loadClanHallSnapshot(
   prisma: PrismaClient,
   slug: string,
-  viewerUid: string | null
+  viewerUid: string | null,
+  options: ClanHallLoadOptions = {},
 ): Promise<ClanHallSnapshot | null> {
+  const requestedLimit = Number(options.messageLimit ?? 80);
+  const messageLimit = Number.isFinite(requestedLimit)
+    ? Math.max(20, Math.min(100, Math.trunc(requestedLimit)))
+    : 80;
+  const focusMessageId =
+    Number.isSafeInteger(options.focusMessageId) && Number(options.focusMessageId) > 0
+      ? Number(options.focusMessageId)
+      : null;
+  const beforeMessageId =
+    !focusMessageId &&
+    Number.isSafeInteger(options.beforeMessageId) &&
+    Number(options.beforeMessageId) > 0
+      ? Number(options.beforeMessageId)
+      : null;
   const clan = await prisma.clan.findFirst({
     where: {
       slug,
@@ -312,6 +354,11 @@ export async function loadClanHallSnapshot(
       description: true,
       crestUrl: true,
       chatAudiencePolicy: true,
+      hallSetting: {
+        select: {
+          defaultChatView: true,
+        },
+      },
       _count: {
         select: {
           members: {
@@ -384,6 +431,19 @@ export async function loadClanHallSnapshot(
       )
     : [];
 
+  const beforeCursor = beforeMessageId
+    ? await prisma.clanMessage.findFirst({
+        where: {
+          id: beforeMessageId,
+          clanId: clan.id,
+        },
+        select: {
+          id: true,
+          createdAt: true,
+        },
+      })
+    : null;
+
   const [messageRows, rosterRows] = await Promise.all([
     visibleAudiences.length > 0
       ? prisma.clanMessage.findMany({
@@ -392,9 +452,24 @@ export async function loadClanHallSnapshot(
             audience: {
               in: visibleAudiences,
             },
+            ...(focusMessageId
+              ? { id: focusMessageId }
+              : beforeMessageId
+                ? beforeCursor
+                  ? {
+                      OR: [
+                        { createdAt: { lt: beforeCursor.createdAt } },
+                        {
+                          createdAt: beforeCursor.createdAt,
+                          id: { lt: beforeCursor.id },
+                        },
+                      ],
+                    }
+                  : { id: -1 }
+                : {}),
           },
           orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-          take: 80,
+          take: focusMessageId ? 1 : messageLimit + 1,
           select: {
             id: true,
             body: true,
@@ -407,6 +482,16 @@ export async function loadClanHallSnapshot(
                 uid: true,
                 inGameName: true,
                 steamPersonaName: true,
+              },
+            },
+            attachments: {
+              orderBy: [{ id: "asc" }],
+              select: {
+                id: true,
+                kind: true,
+                name: true,
+                mimeType: true,
+                sizeBytes: true,
               },
             },
             reactions: {
@@ -447,8 +532,14 @@ export async function loadClanHallSnapshot(
     }),
   ]);
 
+  const hasMoreMessages =
+    !focusMessageId && messageRows.length > messageLimit;
+  const pageMessageRows = focusMessageId
+    ? messageRows
+    : messageRows.slice(0, messageLimit);
+
   const authorIds = Array.from(
-    new Set(messageRows.map((message) => message.author.id))
+    new Set(pageMessageRows.map((message) => message.author.id))
   );
   const authorMemberships =
     authorIds.length > 0
@@ -489,6 +580,10 @@ export async function loadClanHallSnapshot(
       crestUrl: clan.crestUrl,
       memberCount: clan._count.members,
       chatAudiencePolicy: policy,
+      defaultChatView: normalizeClanChatViewMode(
+        clan.hallSetting?.defaultChatView,
+        "v1",
+      ),
     },
     viewer: {
       authenticated,
@@ -499,7 +594,7 @@ export async function loadClanHallSnapshot(
       canManage,
     },
     allowedAudiences,
-    messages: messageRows
+    messages: pageMessageRows
       .slice()
       .reverse()
       .map((message) => {
@@ -549,6 +644,21 @@ export async function loadClanHallSnapshot(
               : message.updatedAt.getTime() > message.createdAt.getTime(),
           canEdit,
           canDelete: canEdit,
+          attachments: message.attachments
+            .filter(
+              (attachment) =>
+                attachment.kind === "image" ||
+                attachment.kind === "audio" ||
+                attachment.kind === "video",
+            )
+            .map((attachment) => ({
+              id: attachment.id,
+              kind: attachment.kind as "image" | "audio" | "video",
+              name: attachment.name,
+              mimeType: attachment.mimeType,
+              sizeBytes: attachment.sizeBytes,
+              url: `/api/clans/${encodeURIComponent(clan.slug)}/attachments/${attachment.id}`,
+            })),
           author: {
             uid: message.author.uid,
             displayName: displayName(message.author),
@@ -558,12 +668,17 @@ export async function loadClanHallSnapshot(
                 ? false
                 : Boolean(role),
           },
-          reactions: CLAN_REACTIONS.flatMap((emoji) => {
-            const group = groupedReactions.get(emoji);
-            return group ? [group] : [];
-          }),
+          reactions: Array.from(groupedReactions.values()),
         };
       }),
+    messagePage: {
+      kind: focusMessageId ? "focus" : beforeMessageId ? "older" : "latest",
+      hasMore: hasMoreMessages,
+      beforeMessageId:
+        pageMessageRows.length > 0
+          ? pageMessageRows[pageMessageRows.length - 1].id
+          : null,
+    },
     roster: rosterRows.map((member) => ({
       uid: member.user.uid,
       displayName: displayName(member.user),

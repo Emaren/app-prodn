@@ -1,11 +1,13 @@
 "use client";
 
-import { Palette } from "lucide-react";
+import { Crown, Palette } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import ClanChatAppearanceControls from "@/components/clans/ClanChatAppearanceControls";
 import ClanChatViewPicker from "@/components/clans/ClanChatViewPicker";
 import ClanViewToggle from "@/components/clans/ClanViewToggle";
 import type { ClanViewMode } from "@/lib/clans";
+import type { ClanChatViewMode } from "@/lib/clanChatViews";
 
 type ClanTheme =
   | "site"
@@ -37,9 +39,19 @@ function applyTheme(theme: ClanTheme) {
 export default function ClanDisplayRail({
   view,
   basePath,
+  clanSlug,
+  defaultChatView,
+  canManage = false,
+  defaultViewBusy = false,
+  onDefaultChatViewChange,
 }: {
   view: ClanViewMode;
   basePath: string;
+  clanSlug?: string;
+  defaultChatView?: ClanChatViewMode;
+  canManage?: boolean;
+  defaultViewBusy?: boolean;
+  onDefaultChatViewChange?: (mode: ClanChatViewMode) => void;
 }) {
   const [theme, setTheme] =
     useState<ClanTheme>("site");
@@ -110,17 +122,56 @@ export default function ClanDisplayRail({
         />
       </div>
 
-      <span
-        className="clan-display-rail__divider"
-        aria-hidden="true"
-      />
+      {clanSlug && defaultChatView ? (
+        <>
+          <span
+            className="clan-display-rail__divider"
+            aria-hidden="true"
+          />
 
-      <div className="clan-display-rail__group">
-        <span className="clan-display-rail__label">
-          Chat
-        </span>
-        <ClanChatViewPicker />
-      </div>
+          <div className="clan-display-rail__group">
+            <span className="clan-display-rail__label">
+              Chat
+            </span>
+            <ClanChatViewPicker
+              clanSlug={clanSlug}
+              defaultMode={defaultChatView}
+            />
+          </div>
+
+          {canManage && onDefaultChatViewChange ? (
+            <>
+              <span
+                className="clan-display-rail__divider"
+                aria-hidden="true"
+              />
+              <div
+                className={`clan-display-rail__group ${defaultViewBusy ? "opacity-55" : ""}`}
+                aria-label="Clan admin Hall default view"
+              >
+                <span className="clan-display-rail__label inline-flex items-center gap-1">
+                  <Crown className="h-3 w-3 text-amber-200/70" aria-hidden="true" />
+                  Default
+                </span>
+                <ClanChatViewPicker
+                  clanSlug={clanSlug}
+                  defaultMode={defaultChatView}
+                  controlledMode={defaultChatView}
+                  onControlledChange={onDefaultChatViewChange}
+                  labelPrefix="Hall default"
+                />
+              </div>
+            </>
+          ) : null}
+
+          <span
+            className="clan-display-rail__divider"
+            aria-hidden="true"
+          />
+
+          <ClanChatAppearanceControls />
+        </>
+      ) : null}
 
       <span
         className="clan-display-rail__divider"

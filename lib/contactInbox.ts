@@ -21,7 +21,7 @@ import {
   type CommunityBadge,
 } from "@/lib/communityHonors";
 import {
-  DIRECT_MESSAGE_REACTIONS,
+  DIRECT_MESSAGE_QUICK_REACTIONS,
   DIRECT_MESSAGE_MAX_CHARS,
   DIRECT_MESSAGE_TYPING_WINDOW_MS,
 } from "@/lib/contactInboxConfig";
@@ -326,7 +326,9 @@ function buildMessageReactions(
     });
   }
 
-  const order = new Map<string, number>(DIRECT_MESSAGE_REACTIONS.map((emoji, index) => [emoji, index]));
+  const order = new Map<string, number>(
+    DIRECT_MESSAGE_QUICK_REACTIONS.map((emoji, index) => [emoji, index]),
+  );
   return Array.from(grouped.values()).sort((left, right) => {
     if (left.count !== right.count) {
       return right.count - left.count;

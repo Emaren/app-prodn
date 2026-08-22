@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-21"
+reviewed_at: "2026-08-22"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -16,9 +16,9 @@ sensitivity: "internal"
 # Clan Halls
 
 Clan Halls are persistent house rooms built on the `Clan`, `ClanMember`,
-`ClanMessage`, and `ClanMessageReaction` models. The generic Hall remains the
-small baseline; `/clans/aoe2war` is the flagship laboratory where capabilities
-are proven before other houses opt in.
+`ClanMessage`, `ClanMessageAttachment`, and `ClanMessageReaction` models.
+`/clans/aoe2war` remains the proving ground for new Hall capabilities, but Clan
+Social V1 graduates the proven social baseline to every active Hall.
 
 ## Role language and authority
 
@@ -31,25 +31,27 @@ Global AoE2WAR site administrators may administer a Clan Hall without being
 silently treated as clan members. Membership truth and site-admin authority are
 separate contracts.
 
-## Flagship feature profile
+## Social V1 feature profile
 
-`lib/clanHallFeatures.ts` is the explicit capability registry. V1 Halls keep
-their existing visual presentation while receiving the common minimum operating
-layer: the on-site Invite Door and one Hall-local Scribe. The AoE2WAR Hall
-remains the flagship laboratory and additionally enables realtime invalidation
-and optimistic message presentation with visible retry on failure.
+`lib/clanHallFeatures.ts` is the explicit capability registry. Every active V1
+Hall now inherits the same proven social baseline: realtime invalidation,
+optimistic message presentation with visible retry, ephemeral Hall presence,
+the on-site Invite Door, one Hall-local Scribe, and bounded rich media. Per-Hall
+overrides remain available for future experiments without making AoE2WAR-only
+behavior the permanent product contract.
 
-Presence, typing, delegated recruiting, replies, pins, search, media, and replay
-cards remain explicit later capabilities rather than implied global behavior.
+Typing, delegated recruiting, replies, pins, search, and replay cards remain
+explicit later capabilities rather than implied global behavior.
 
 ## Realtime contract
 
 `lib/clanHallEvents.ts` owns the process-wide event bus and
-`/api/clans/[slug]/events` exposes the stream only for enabled Halls. Events are
-content-free invalidations: message bodies and private audience content never
-ride the event stream. The normal permission-aware Hall GET remains the source
-of truth. Baseline Halls retain their existing poll; realtime Halls keep a
-60-second recovery poll behind SSE.
+`/api/clans/[slug]/events` exposes the stream for the Social V1 Hall baseline.
+Events are content-free invalidations: message bodies and private audience
+content never ride the event stream. The permission-aware Hall GET remains the
+source of truth. Every Hall keeps a 60-second recovery poll behind SSE. Targeted
+reaction/edit invalidations refresh only the affected message, while new-message,
+policy, and roster invalidations refresh the latest page.
 
 ## Invite Door V1
 
@@ -106,6 +108,16 @@ removed. The five variants consume the same Hall message, authorization,
 reaction, edit/delete, realtime and Hall Scribe business logic; only presentation
 changes.
 
+Each Hall persists an administrator-owned `defaultChatView` (`v1`-`v5`) in
+the dedicated one-to-one `clan_hall_settings` child table. This keeps Social V1
+inside the protected additive release contract without mutating the pre-existing
+`clans` table and gives future Hall policy its own bounded home. The King/clan
+admins can set the default from Profile Clan Administration or from the
+admin-only control in that Hall's bottom Display rail. Viewer overrides are
+stored locally per Clan rather than globally. Resolution is: per-Clan viewer
+override, then Clan admin default, then V1. Ordinary viewers never see the
+admin-default control.
+
 The bottom Hall display rail therefore exposes B/A/E as the layout dimension and
 one compact version control for chat. During the V1 discovery period, the same
 chat-version control is also shown beside the Hall header so users learn that
@@ -118,7 +130,12 @@ V1-V5 fan for direct selection. The preference is shared by both controls.
 The message viewport is monitor-responsive rather than a fixed 31rem box.
 Desktop and mobile clamps use viewport height so the chat surface shows more
 conversation when the user is focused on the Hall while retaining the right
-auxiliary rail on wide screens.
+auxiliary rail on wide screens. The viewport allows native scroll chaining: at
+the newest boundary continued downward wheel/trackpad motion scrolls the page,
+and once the full retained history boundary is reached upward motion chains back
+to the page as well. Older Hall messages are cursor-paged and prefetched roughly
+900px before the top sentinel; prepends preserve the viewer's visual anchor so
+history appears before the user reaches it.
 
 Signed-in users maintain a short-lived in-memory Hall heartbeat through
 `/api/clans/[slug]/presence`. This distinguishes **in this Hall now** from the
@@ -135,9 +152,18 @@ with `In Hall`, `Online`, or `Offline` state. No Prisma migration is required.
 
 Normal Hall messages expose one deliberately muted `Message tools` launcher
 instead of separate edit, delete, and reaction controls. Hover/focus or click
-opens one compact tray containing translation, the reaction palette, and only
-the edit/delete actions the current viewer is authorized to use. Existing
-reaction summaries remain attached to the message only when reactions exist.
+opens a viewport-fixed portaled tray, so opening the full reaction surface never
+changes transcript geometry or scroll extent. The tray contains translation, the
+universal reaction picker, and only the edit/delete actions the current viewer
+is authorized to use. Existing reaction summaries remain attached to the message
+only when reactions exist.
+
+The universal picker accepts any single Unicode emoji grapheme, provides search,
+categories, and a site-wide recently-used list, and exposes a future custom
+reaction affordance without pretending custom image emoji are wired today. The
+same component is shared with Direct Chat: Full Chat uses the full picker while
+Nav Chat uses its compact presentation. Existing legacy `GG` Direct Chat
+reactions remain valid.
 
 Translation is message-by-message and follows the Universal Translator target:
 an explicit AoE2WAR site language wins; Auto resolves the supported browser
@@ -153,6 +179,34 @@ neutral room background, grouped same-author sequences, avatar/name metadata
 only when needed, and essentially no permanent card borders. V3 and V4 likewise
 keep action chrome out of the transcript so Steam-tight and AoE2HD-classic
 layouts remain genuinely dense.
+
+
+### Social media and viewer density
+
+Every Social V1 Clan Hall reuses the proven Direct Chat attachment storage
+boundary rather than inventing a second writable media root. A message may carry up to four
+bounded attachments: PNG/JPEG/WebP/GIF images, MP4/WebM video, or
+MP3/M4A/OGG/WAV/WebM audio. Files are stored under the existing private chat
+attachment root in a `clan-hall/` namespace; the database stores only immutable
+attachment metadata and the private storage reference. Clan media also fails closed
+before a write would push that filesystem below a 4 GiB safety reserve. Attachment
+reads re-prove the Hall policy, message audience, authentication, and active Clan membership as
+required. Deleting a message cascades attachment metadata and removes its stored
+files.
+
+The composer accepts the same social gestures users expect from mature chat:
+picker selection, drag/drop, and clipboard image paste. Text is optional when a
+message contains media. Ordinary URLs are rendered safely as links, and the first
+YouTube URL in a message receives a privacy-enhanced inline player without an API
+call or persisted embed state.
+
+Viewer density remains presentation-only. Font size and line spacing are local
+preferences shared by the header controls and bottom Display rail; they do not
+change message truth or any V1-V5 renderer identity.
+
+`Wanna Bet` is intentionally present only as a dormant WOLO message-tool affordance.
+This social pass creates no wager, custody, escrow, settlement, dispute, or WoloChain
+mutation path. A later financial feature must open that boundary explicitly.
 
 ### Scribe invocation
 
@@ -189,6 +243,24 @@ low-contrast. V2 uses one continuous room surface with transparent message
 rows. V3 applies the existing five-minute same-author grouping rule so immediate
 follow-up messages omit repeated avatar/name/time metadata. V4 reserves a fixed
 author column so every message body begins on the same vertical line.
+
+## Clan Social V1 graduation — 2026-08-22
+
+The AoE2WAR proving Hall validated image-only posts, drag/drop and clipboard
+media, animated browser-origin GIF import, inline YouTube, viewer font/spacing
+controls, arbitrary Unicode reactions, and the dormant `Wanna Bet` affordance in
+a writable production-shaped shadow. Social V1 promotes those proven chat
+capabilities to all active Clan Halls.
+
+This graduation also makes reaction presentation a shared chat primitive. Clan
+Hall and Full Chat use the full universal picker; Nav Chat uses the compact
+variant. Reaction panels are portaled fixed overlays so they never reflow their
+transcript. Direct Chat's mature cursor history remains authoritative and now
+prefetches 900px ahead on the full page; Clan Hall adds the equivalent
+permission-aware cursor history and anchor-preserving prepend behavior.
+
+Custom image reactions, typing, Hall replies, pins/search, and replay cards are
+not silently included in this release. They remain explicit later boundaries.
 
 ## Writable development shadow
 

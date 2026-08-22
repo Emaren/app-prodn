@@ -383,9 +383,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CLAN_HALLS.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-21",
+      "reviewed_at": "2026-08-22",
       "sensitivity": "internal",
-      "sha256": "4854751c8f3d2c9ddc3491d2e9877bdac2aab78cf2fe48ded1de896ed49f7fa5",
+      "sha256": "b17dd3171a81cb69febf001f791a3a6500e36642a4635d5b3b4546e48e21777e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

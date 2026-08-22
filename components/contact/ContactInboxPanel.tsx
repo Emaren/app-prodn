@@ -33,6 +33,9 @@ import {
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
+import FloatingChatPanel from "@/components/chat/FloatingChatPanel";
+import UniversalReactionPicker from "@/components/chat/UniversalReactionPicker";
+import { rememberReactionEmoji } from "@/components/chat/reactionPreference";
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import ScheduledMatchCard from "@/components/challenge/ScheduledMatchCard";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
@@ -41,7 +44,6 @@ import { useUniversalLanguage } from "@/context/UniversalLanguageContext";
 import {
   DIRECT_MESSAGE_MAX_CHARS,
   DIRECT_MESSAGE_QUICK_REACTIONS,
-  DIRECT_MESSAGE_REACTIONS,
 } from "@/lib/contactInboxConfig";
 import {
   type ChatViewMode,
@@ -1328,19 +1330,43 @@ function ClanInviteDirectArtifact({
                       void act("accept")
                     }
                     disabled={Boolean(busy)}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-full border border-amber-100/25 bg-amber-200 px-4 text-[11px] font-black text-slate-950 shadow-[0_0_24px_rgba(251,191,36,0.14)] transition hover:bg-amber-100 disabled:opacity-40"
+                    className="group relative inline-flex h-11 items-center gap-2.5 overflow-hidden rounded-xl border border-amber-200/40 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.20),transparent_48%),linear-gradient(135deg,rgba(53,34,14,0.98),rgba(23,13,10,0.99)_58%,rgba(9,8,10,0.99))] px-5 text-[10px] font-black uppercase tracking-[0.18em] text-amber-50 shadow-[0_12px_32px_rgba(0,0,0,0.42),0_0_0_1px_rgba(251,191,36,0.06),inset_0_1px_0_rgba(255,245,210,0.18)] transition duration-200 hover:-translate-y-0.5 hover:border-amber-100/70 hover:shadow-[0_16px_38px_rgba(0,0,0,0.46),0_0_30px_rgba(245,158,11,0.20),inset_0_1px_0_rgba(255,248,220,0.26)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <Check className="h-3.5 w-3.5" />
-                    Accept
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/80 to-transparent"
+                    />
+                    <Check className="relative h-4 w-4 text-amber-200 transition group-hover:scale-110" />
+                    <span className="relative">
+                      {busy === "accept"
+                        ? "Entering…"
+                        : "Take Your Seat"}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="relative text-amber-200/75 transition-transform duration-200 group-hover:translate-x-0.5"
+                    >
+                      →
+                    </span>
                   </button>
                 </div>
               ) : accepted ? (
                 <Link
                   href={`/clans/${encodeURIComponent(invite.clanSlug)}`}
-                  className="inline-flex h-9 items-center gap-2 rounded-full border border-amber-100/25 bg-amber-200 px-4 text-[11px] font-black text-slate-950 transition hover:bg-amber-100"
+                  className="group relative inline-flex h-10 items-center gap-2 overflow-hidden rounded-xl border border-amber-200/35 bg-[linear-gradient(135deg,rgba(48,31,14,0.98),rgba(18,12,10,0.99))] px-4 text-[10px] font-black uppercase tracking-[0.16em] text-amber-50 shadow-[0_10px_26px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,245,210,0.16)] transition duration-200 hover:-translate-y-0.5 hover:border-amber-100/65 hover:shadow-[0_14px_32px_rgba(0,0,0,0.44),0_0_24px_rgba(245,158,11,0.16)]"
                 >
-                  <DoorOpen className="h-3.5 w-3.5" />
-                  Enter Hall
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-3 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/70 to-transparent"
+                  />
+                  <DoorOpen className="relative h-4 w-4 text-amber-200" />
+                  <span className="relative">Enter the Hall</span>
+                  <span
+                    aria-hidden="true"
+                    className="relative text-amber-200/70 transition-transform duration-200 group-hover:translate-x-0.5"
+                  >
+                    →
+                  </span>
                 </Link>
               ) : (
                 <span className={`rounded-full border px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.14em] ${
@@ -1439,7 +1465,6 @@ function TextMessageBubble({
   const featureRequest = parseFeatureRequestInboxMessage(message.body);
   const marketplaceMessage = parseMarketplaceInboxMessage(message.body);
   const [trayPinnedOpen, setTrayPinnedOpen] = useState(false);
-  const [trayPlacement, setTrayPlacement] = useState<"above" | "below">("above");
   const [reactionMoreOpen, setReactionMoreOpen] = useState(false);
   const [attachmentPreviewFailed, setAttachmentPreviewFailed] = useState(false);
   const [languagePending, setLanguagePending] = useState(false);
@@ -1493,18 +1518,8 @@ function TextMessageBubble({
     clearHoldTimer();
     holdTimerRef.current = window.setTimeout(() => {
       longPressTriggeredRef.current = true;
-      updateTrayPlacement();
       setTrayPinnedOpen(true);
     }, 360);
-  }
-
-  function updateTrayPlacement() {
-    const bubble = bubbleRef.current;
-    const timeline = bubble?.closest<HTMLElement>("[data-contact-chat-scroll]");
-    if (!bubble || !timeline) return;
-    const bubbleRect = bubble.getBoundingClientRect();
-    const timelineRect = timeline.getBoundingClientRect();
-    setTrayPlacement(bubbleRect.top - timelineRect.top < 190 ? "below" : "above");
   }
 
   function handleBubbleClick() {
@@ -1516,7 +1531,6 @@ function TextMessageBubble({
       setTrayPinnedOpen(false);
       return;
     }
-    updateTrayPlacement();
     setTrayPinnedOpen(true);
   }
 
@@ -1538,6 +1552,7 @@ function TextMessageBubble({
 
   function handleReactionPick(emoji: string) {
     if (!onToggleReaction) return;
+    if (emoji !== "GG") rememberReactionEmoji(emoji);
     onToggleReaction(message.messageId, emoji);
     setTrayPinnedOpen(false);
     setReactionMoreOpen(false);
@@ -1675,9 +1690,10 @@ function TextMessageBubble({
 
   const trayVisible = trayPinnedOpen;
   const hasTray = isPersisted && Boolean(onToggleReaction || canToggleLobbyShare || canManageMessage || onReply);
-  const secondaryReactions = DIRECT_MESSAGE_REACTIONS.filter(
-    (emoji) => !(DIRECT_MESSAGE_QUICK_REACTIONS as readonly string[]).includes(emoji)
-  );
+  const quickReactions =
+    mode === "popover"
+      ? DIRECT_MESSAGE_QUICK_REACTIONS.slice(0, 4)
+      : DIRECT_MESSAGE_QUICK_REACTIONS;
   const senderInitial = message.sender.displayName.trim().charAt(0).toUpperCase() || "?";
 
   return (
@@ -1815,16 +1831,21 @@ function TextMessageBubble({
           </div>
 
           {hasTray ? (
-            <div
-              className={`absolute z-40 max-w-[min(22rem,calc(100vw-2rem))] ${isViewer && viewMode !== "v2" ? "right-0 sm:right-2" : "left-0 sm:left-2"} ${trayPlacement === "above" ? "bottom-full mb-2 origin-bottom" : "top-full mt-2 origin-top"} transition-all duration-150 ${
-                trayVisible
-                  ? "pointer-events-auto translate-y-0 scale-100 opacity-100"
-                  : "pointer-events-none translate-y-1 scale-[0.98] opacity-0"
-              }`}
+            <FloatingChatPanel
+              open={trayVisible}
+              anchorRef={bubbleRef}
+              onRequestClose={() => {
+                setTrayPinnedOpen(false);
+                setReactionMoreOpen(false);
+              }}
+              width={mode === "popover" ? 288 : 352}
+              estimatedHeight={reactionMoreOpen ? (mode === "popover" ? 360 : 440) : 120}
+              align={isViewer && viewMode !== "v2" ? "end" : "start"}
+              className="direct-message-tools-floating"
             >
-              <div className="max-w-full rounded-[1.15rem] border border-white/12 bg-[#09111d]/[0.98] p-2 shadow-[0_24px_64px_rgba(0,0,0,0.68),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-2xl">
+              <div className="max-h-[calc(100dvh-1.25rem)] max-w-full overflow-y-auto overscroll-contain rounded-[1.15rem] border border-white/12 bg-[#09111d]/[0.98] p-2 shadow-[0_24px_64px_rgba(0,0,0,0.68),inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-2xl">
                 <div className="flex items-center gap-1">
-                  {DIRECT_MESSAGE_QUICK_REACTIONS.map((emoji) => {
+                  {quickReactions.map((emoji) => {
                     const existing = message.reactions.find((reaction) => reaction.emoji === emoji);
                     const isActive = Boolean(existing?.viewerReacted);
                     const isTextReaction = emoji === "GG";
@@ -1852,90 +1873,73 @@ function TextMessageBubble({
                     type="button"
                     onClick={() => setReactionMoreOpen((current) => !current)}
                     className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border transition ${reactionMoreOpen ? "rotate-180 border-white/16 bg-white/[0.1] text-white" : "border-transparent bg-white/[0.045] text-slate-400 hover:bg-white/[0.09] hover:text-white"}`}
-                    aria-label={reactionMoreOpen ? "Hide more reactions" : "Show more reactions"}
+                    aria-label={reactionMoreOpen ? "Hide full reaction picker" : "Open full reaction picker"}
                     aria-expanded={reactionMoreOpen}
                   >
                     <ChevronDown className="h-4 w-4" />
                   </button>
                 </div>
 
-                {reactionMoreOpen ? (
-                  <div className="mt-2 grid grid-cols-6 gap-1 border-t border-white/8 pt-2">
-                    {secondaryReactions.map((emoji) => {
-                      const existing = message.reactions.find((reaction) => reaction.emoji === emoji);
-                      return (
-                        <button
-                          key={`${message.messageId}-more-${emoji}`}
-                          type="button"
-                          onClick={() => handleReactionPick(emoji)}
-                          aria-pressed={Boolean(existing?.viewerReacted)}
-                          disabled={reactingMessageId === message.messageId}
-                          className={`grid h-8 min-w-8 place-items-center rounded-full border text-sm transition hover:bg-white/[0.1] ${emoji === "GG" ? "text-[9px] font-black" : ""} ${existing?.viewerReacted ? "border-amber-200/30 bg-amber-300/14" : "border-transparent bg-white/[0.035]"}`}
-                        >
-                          {emoji}
-                        </button>
-                      );
-                    })}
+                {reactionMoreOpen && onToggleReaction ? (
+                  <div className="mt-2 border-t border-white/8 pt-2">
+                    <UniversalReactionPicker
+                      variant={mode === "popover" ? "compact" : "full"}
+                      activeReactions={message.reactions
+                        .filter((reaction) => reaction.viewerReacted)
+                        .map((reaction) => reaction.emoji)}
+                      disabled={reactingMessageId === message.messageId}
+                      onPick={handleReactionPick}
+                    />
                   </div>
                 ) : null}
 
                 {(canToggleLobbyShare || canManageMessage || onReply) ? (
                   <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-white/8 pt-2">
-                {onReply ? (
-                  <button type="button" onClick={() => { onReply(message); setTrayPinnedOpen(false); }} className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200 hover:bg-white/[0.1]">
-                    <Reply className="h-3 w-3" /> Reply
-                  </button>
-                ) : null}
-                <button type="button" onClick={() => { onInboxAction({ action: "toggle_pin", messageId: message.messageId }); setTrayPinnedOpen(false); }} className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200 hover:bg-white/[0.1]">
-                  <Pin className="h-3 w-3" /> {message.isPinned ? "Unpin" : "Pin"}
-                </button>
-                {message.body ? (
-                  <button type="button" disabled={languagePending} onClick={() => void handleTranslate()} className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200 hover:bg-white/[0.1] disabled:opacity-50">
-                    <Languages className="h-3 w-3" /> {languagePending ? "Translating" : activeTranslation?.language === translationLanguage ? "Original" : "Translate"}
-                  </button>
-                ) : null}
-                {message.attachment?.kind === "audio" ? (
-                  <button type="button" disabled={transcriptionPending} onClick={() => void handleTranscribe()} className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200 hover:bg-white/[0.1] disabled:opacity-50">
-                    <Mic className="h-3 w-3" /> {transcriptionPending ? "Transcribing" : message.transcription ? "Transcript" : "Transcribe"}
-                  </button>
-                ) : null}
-                {canToggleLobbyShare ? (
-                  <button
-                    type="button"
-                    onClick={handleLobbyShareToggle}
-                    className={`inline-flex h-7 items-center justify-center rounded-full border px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] transition ${
-                      message.sharedLobbyMessageId
-                        ? "border-cyan-300/22 bg-cyan-400/10 text-cyan-50 hover:border-cyan-200/30 hover:bg-cyan-400/16"
-                        : "border-white/10 bg-white/[0.045] text-slate-200 hover:border-white/18 hover:bg-white/[0.1] hover:text-white"
-                    }`}
-                  >
-                    {message.sharedLobbyMessageId ? "Make Private" : "Make Public"}
-                  </button>
-                ) : null}
-
-                {canManageMessage ? (
-                  <button
-                    type="button"
-                    onClick={handleEditMessage}
-                    className="inline-flex h-7 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-300 transition hover:border-white/18 hover:bg-white/[0.09] hover:text-white"
-                  >
-                    Edit
-                  </button>
-                ) : null}
-
-                {canManageMessage ? (
-                  <button
-                    type="button"
-                    onClick={handleDeleteMessage}
-                    className="inline-flex h-7 items-center justify-center rounded-full border border-rose-300/20 bg-rose-500/8 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-rose-100 transition hover:border-rose-200/30 hover:bg-rose-500/14"
-                  >
-                    Delete
-                  </button>
-                ) : null}
+                    {onReply ? (
+                      <button type="button" onClick={() => { onReply(message); setTrayPinnedOpen(false); }} className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200 hover:bg-white/[0.1]">
+                        <Reply className="h-3 w-3" /> Reply
+                      </button>
+                    ) : null}
+                    <button type="button" onClick={() => { onInboxAction({ action: "toggle_pin", messageId: message.messageId }); setTrayPinnedOpen(false); }} className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200 hover:bg-white/[0.1]">
+                      <Pin className="h-3 w-3" /> {message.isPinned ? "Unpin" : "Pin"}
+                    </button>
+                    {message.body ? (
+                      <button type="button" disabled={languagePending} onClick={() => void handleTranslate()} className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200 hover:bg-white/[0.1] disabled:opacity-50">
+                        <Languages className="h-3 w-3" /> {languagePending ? "Translating" : activeTranslation?.language === translationLanguage ? "Original" : "Translate"}
+                      </button>
+                    ) : null}
+                    {message.attachment?.kind === "audio" ? (
+                      <button type="button" disabled={transcriptionPending} onClick={() => void handleTranscribe()} className="inline-flex h-7 items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-200 hover:bg-white/[0.1] disabled:opacity-50">
+                        <Mic className="h-3 w-3" /> {transcriptionPending ? "Transcribing" : message.transcription ? "Transcript" : "Transcribe"}
+                      </button>
+                    ) : null}
+                    {canToggleLobbyShare ? (
+                      <button
+                        type="button"
+                        onClick={handleLobbyShareToggle}
+                        className={`inline-flex h-7 items-center justify-center rounded-full border px-2.5 text-[9px] font-semibold uppercase tracking-[0.12em] transition ${
+                          message.sharedLobbyMessageId
+                            ? "border-cyan-300/22 bg-cyan-400/10 text-cyan-50 hover:border-cyan-200/30 hover:bg-cyan-400/16"
+                            : "border-white/10 bg-white/[0.045] text-slate-200 hover:border-white/18 hover:bg-white/[0.1] hover:text-white"
+                        }`}
+                      >
+                        {message.sharedLobbyMessageId ? "Make Private" : "Make Public"}
+                      </button>
+                    ) : null}
+                    {canManageMessage ? (
+                      <button type="button" onClick={handleEditMessage} className="inline-flex h-7 items-center justify-center rounded-full border border-white/10 bg-white/[0.05] px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-300 transition hover:border-white/18 hover:bg-white/[0.09] hover:text-white">
+                        Edit
+                      </button>
+                    ) : null}
+                    {canManageMessage ? (
+                      <button type="button" onClick={handleDeleteMessage} className="inline-flex h-7 items-center justify-center rounded-full border border-rose-300/20 bg-rose-500/8 px-2 text-[9px] font-semibold uppercase tracking-[0.16em] text-rose-100 transition hover:border-rose-200/30 hover:bg-rose-500/14">
+                        Delete
+                      </button>
+                    ) : null}
                   </div>
                 ) : null}
               </div>
-            </div>
+            </FloatingChatPanel>
           ) : null}
         </div>
 
@@ -1947,7 +1951,7 @@ function TextMessageBubble({
               <button
                 key={`${message.messageId}-${reaction.emoji}-summary`}
                 type="button"
-                onClick={() => onToggleReaction?.(message.messageId, reaction.emoji)}
+                onClick={() => handleReactionPick(reaction.emoji)}
                 className={`inline-flex items-center justify-center gap-1 rounded-full border font-semibold leading-none transition duration-150 ${viewMode === "v2" ? "min-w-[2.35rem] px-1.5 py-0.5 text-[9px]" : "min-w-[2.65rem] px-2 py-1 text-[10px]"} ${
                   reaction.viewerReacted
                     ? "border-amber-200/32 bg-amber-300/15 text-amber-50 shadow-[0_0_14px_rgba(251,191,36,0.10)]"
@@ -2578,7 +2582,7 @@ export default function ContactInboxPanel({
       },
       {
         root: usesDocumentScroll ? null : viewport,
-        rootMargin: "320px 0px 0px",
+        rootMargin: "900px 0px 0px",
         threshold: 0.01,
       }
     );
@@ -2752,7 +2756,7 @@ export default function ContactInboxPanel({
                 }
               }}
               data-contact-chat-scroll={mode}
-              className={`h-full min-h-0 min-w-0 w-full transform-gpu overflow-x-hidden overflow-y-auto overscroll-contain [overflow-anchor:none] [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [will-change:scroll-position] ${isLineView ? "px-2 py-2 sm:px-3" : isObsidianView ? "px-3 py-3 sm:px-5 sm:py-4" : "px-3 py-3 sm:px-4 sm:py-4"}`}
+              className={`h-full min-h-0 min-w-0 w-full transform-gpu overflow-x-hidden overflow-y-auto ${mode === "page" ? "overscroll-auto" : "overscroll-contain"} [overflow-anchor:none] [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch] [touch-action:pan-y] [will-change:scroll-position] ${isLineView ? "px-2 py-2 sm:px-3" : isObsidianView ? "px-3 py-3 sm:px-5 sm:py-4" : "px-3 py-3 sm:px-4 sm:py-4"}`}
             >
             {loading ? (
               <div className="rounded-[1.35rem] bg-white/[0.045] px-4 py-5 text-sm text-slate-300 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]">

@@ -11,9 +11,10 @@ const DEFAULT_ATTACHMENT_DIR = path.join(
 
 type PersistDirectMessageAttachmentInput = {
   buffer: Buffer;
-  kind: "image" | "audio";
+  kind: "image" | "audio" | "video";
   mimeType: string;
   name: string | null;
+  namespace?: "clan-hall";
 };
 
 export type LoadedDirectMessageAttachment = {
@@ -25,12 +26,16 @@ function getAttachmentRootDir() {
   return process.env.DIRECT_MESSAGE_ATTACHMENT_DIR || DEFAULT_ATTACHMENT_DIR;
 }
 
+export function getDirectMessageAttachmentRootDir() {
+  return getAttachmentRootDir();
+}
+
 function inferAttachmentExtension({
   kind,
   mimeType,
   name,
 }: {
-  kind: "image" | "audio";
+  kind: "image" | "audio" | "video";
   mimeType: string;
   name: string | null;
 }) {
@@ -58,8 +63,12 @@ function inferAttachmentExtension({
       return ".wav";
     case "audio/webm":
       return ".webm";
+    case "video/mp4":
+      return ".mp4";
+    case "video/webm":
+      return ".webm";
     default:
-      return kind === "audio" ? ".bin" : ".img";
+      return kind === "audio" ? ".bin" : kind === "video" ? ".video" : ".img";
   }
 }
 
@@ -68,7 +77,8 @@ function buildRelativeAttachmentPath(input: PersistDirectMessageAttachmentInput)
   const year = String(now.getUTCFullYear());
   const month = String(now.getUTCMonth() + 1).padStart(2, "0");
   const extension = inferAttachmentExtension(input);
-  return `${year}/${month}/${randomUUID()}${extension}`;
+  const namespace = input.namespace === "clan-hall" ? "clan-hall/" : "";
+  return `${namespace}${year}/${month}/${randomUUID()}${extension}`;
 }
 
 function resolveAttachmentPath(reference: string) {

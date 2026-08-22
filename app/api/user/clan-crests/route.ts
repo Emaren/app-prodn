@@ -8,6 +8,8 @@ import {
 import { saveManagedMediaReference } from "@/lib/managedMediaAssets";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import { isClanChatViewMode, normalizeClanChatViewMode } from "@/lib/clanChatViews";
+import { publishClanHallEvent } from "@/lib/clanHallEvents";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,6 +99,13 @@ async function loadManagedClans(
         id: "asc",
       },
     ],
+    include: {
+      hallSetting: {
+        select: {
+          defaultChatView: true,
+        },
+      },
+    },
   });
 
   const targets = clans.flatMap((clan) => [
@@ -166,6 +175,10 @@ async function loadManagedClans(
       slug: clan.slug,
       name: clan.name,
       crestUrl: clan.crestUrl,
+      defaultChatView: normalizeClanChatViewMode(
+        clan.hallSetting?.defaultChatView,
+        "v1",
+      ),
       options: Array.from(
         optionsByUrl.values(),
       ).map((asset) => ({
@@ -212,24 +225,13 @@ export async function PATCH(request: NextRequest) {
     const body = (await request
       .json()
       .catch(() => ({}))) as Record<string, unknown>;
+    const action = String(body.action ?? "set_crest");
     const clanId = Number(body.clanId);
-    const assetId = Number(body.assetId);
 
-    if (
-      !Number.isInteger(clanId) ||
-      clanId < 1 ||
-      !Number.isInteger(assetId) ||
-      assetId < 1
-    ) {
+    if (!Number.isInteger(clanId) || clanId < 1) {
       return NextResponse.json(
-        {
-          detail:
-            "Choose a clan and one of its available crests.",
-        },
-        {
-          status: 400,
-          headers: NO_STORE_HEADERS,
-        },
+        { detail: "Choose a clan to manage." },
+        { status: 400, headers: NO_STORE_HEADERS },
       );
     }
 
@@ -265,12 +267,54 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json(
         {
           detail:
-            "Only a clan owner or clan admin can change its crest.",
+            "Only a clan owner or clan admin can change Hall settings.",
         },
         {
           status: 403,
           headers: NO_STORE_HEADERS,
         },
+      );
+    }
+
+    if (action === "set_default_chat_view") {
+      if (!isClanChatViewMode(body.defaultChatView)) {
+        return NextResponse.json(
+          { detail: "Choose a valid Hall default view." },
+          { status: 400, headers: NO_STORE_HEADERS },
+        );
+      }
+
+      const defaultChatView = normalizeClanChatViewMode(
+        body.defaultChatView,
+        "v1",
+      );
+      await gate.prisma.clanHallSetting.upsert({
+        where: { clanId: clan.id },
+        create: {
+          clanId: clan.id,
+          defaultChatView,
+        },
+        update: {
+          defaultChatView,
+        },
+      });
+      publishClanHallEvent(clan.slug, { type: "policy" });
+
+      return NextResponse.json(
+        {
+          ok: true,
+          defaultChatView,
+          clans: await loadManagedClans(gate.prisma, gate.user),
+        },
+        { headers: NO_STORE_HEADERS },
+      );
+    }
+
+    const assetId = Number(body.assetId);
+    if (!Number.isInteger(assetId) || assetId < 1) {
+      return NextResponse.json(
+        { detail: "Choose one of the clan's available crests." },
+        { status: 400, headers: NO_STORE_HEADERS },
       );
     }
 

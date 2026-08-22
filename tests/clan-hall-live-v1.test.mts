@@ -9,25 +9,15 @@ function read(path: string) {
   return readFileSync(join(root, path), "utf8");
 }
 
-test("AoE2WAR is the only realtime flagship hall", () => {
+test("every V1 Clan Hall inherits the proven realtime social baseline", () => {
   const features = read("lib/clanHallFeatures.ts");
 
-  assert.match(features, /aoe2war: AOE2WAR_FLAGSHIP_FEATURES/);
-  assert.match(
-    features,
-    /AOE2WAR_FLAGSHIP_FEATURES[\s\S]*realtime: true/,
-  );
-  assert.match(
-    features,
-    /AOE2WAR_FLAGSHIP_FEATURES[\s\S]*optimisticMessages: true/,
-  );
-  assert.match(
-    features,
-    /BASELINE_CLAN_HALL_FEATURES[\s\S]*realtime: false/,
-  );
-  assert.doesNotMatch(features, /mystikal:/);
-  assert.doesNotMatch(features, /jims-clan:/);
-  assert.doesNotMatch(features, /legend-clan:/);
+  assert.match(features, /BASELINE_CLAN_HALL_FEATURES[\s\S]*realtime: true/);
+  assert.match(features, /BASELINE_CLAN_HALL_FEATURES[\s\S]*optimisticMessages: true/);
+  assert.match(features, /BASELINE_CLAN_HALL_FEATURES[\s\S]*presence: true/);
+  assert.match(features, /BASELINE_CLAN_HALL_FEATURES[\s\S]*media: true/);
+  assert.doesNotMatch(features, /AOE2WAR_FLAGSHIP_FEATURES/);
+  assert.match(features, /OVERRIDES_BY_SLUG/);
 });
 
 test("live Hall stream carries invalidation signals, not message bodies", () => {
@@ -41,8 +31,9 @@ test("live Hall stream carries invalidation signals, not message bodies", () => 
   assert.match(route, /X-Accel-Buffering/);
 });
 
-test("Clan mutations wake connected AoE2WAR Hall clients", () => {
+test("Clan mutations wake connected Hall clients with targeted message invalidations", () => {
   const route = read("app/api/clans/[slug]/route.ts");
+  const client = read("components/clans/ClanHallClient.tsx");
 
   assert.match(route, /publishClanHallEvent/);
   assert.match(route, /type: "message"/);
@@ -50,15 +41,15 @@ test("Clan mutations wake connected AoE2WAR Hall clients", () => {
   assert.match(route, /type: "message_updated"/);
   assert.match(route, /type: "message_deleted"/);
   assert.match(route, /type: "policy"/);
+  assert.match(client, /refreshFocusedMessage/);
+  assert.match(client, /message_deleted/);
 });
 
-test("AoE2WAR client uses SSE with a safety poll and baseline halls keep polling", () => {
+test("all Hall clients use SSE with a recovery poll", () => {
   const client = read("components/clans/ClanHallClient.tsx");
 
   assert.match(client, /new EventSource\(`\$\{endpoint\}\/events`\)/);
-  assert.match(client, /BASELINE_POLL_INTERVAL_MS = 10_000/);
   assert.match(client, /REALTIME_SAFETY_POLL_INTERVAL_MS = 60_000/);
-  assert.match(client, /realtimeEnabled/);
   assert.match(client, /Live Hall link connected/);
 });
 

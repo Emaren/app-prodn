@@ -31,6 +31,13 @@ test("Hall normal actions collapse into one muted message-tools launcher", () =>
   );
   assert.match(
     hall,
+    /<UniversalReactionPicker/,
+  );
+  const picker = read(
+    "components/chat/UniversalReactionPicker.tsx",
+  );
+  assert.match(
+    picker,
     /<SmilePlus/,
   );
   assert.match(

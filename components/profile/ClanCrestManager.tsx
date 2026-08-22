@@ -1,12 +1,20 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element -- managed clan crest URLs are runtime assets */
+
 import {
   Check,
   Crown,
+  Layers3,
   RefreshCw,
   Shield,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+
+import {
+  CLAN_CHAT_VIEWS,
+  type ClanChatViewMode,
+} from "@/components/clans/clanChatViewPreference";
 
 type CrestOption = {
   id: number;
@@ -21,6 +29,7 @@ type ManagedClan = {
   slug: string;
   name: string;
   crestUrl: string | null;
+  defaultChatView: ClanChatViewMode;
   options: CrestOption[];
 };
 
@@ -140,6 +149,51 @@ export default function ClanCrestManager() {
     }
   }
 
+  async function setDefaultChatView(
+    clan: ManagedClan,
+    defaultChatView: ClanChatViewMode,
+  ) {
+    if (defaultChatView === clan.defaultChatView) return;
+
+    const key = `view:${clan.id}`;
+    setBusyKey(key);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const response = await fetch("/api/user/clan-crests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "set_default_chat_view",
+          clanId: clan.id,
+          defaultChatView,
+        }),
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        clans?: ManagedClan[];
+        detail?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.detail || "Could not set the Hall default view.");
+      }
+
+      if (Array.isArray(payload.clans)) setClans(payload.clans);
+      else await load();
+
+      setNotice(`${clan.name} Hall default set to ${defaultChatView.toUpperCase()}.`);
+    } catch (viewError) {
+      setError(
+        viewError instanceof Error
+          ? viewError.message
+          : "Could not set the Hall default view.",
+      );
+    } finally {
+      setBusyKey(null);
+    }
+  }
+
   if (!loading && clans.length === 0) {
     return null;
   }
@@ -186,6 +240,37 @@ export default function ClanCrestManager() {
                 <Shield className="h-4 w-4 text-red-200" />
                 <div className="font-semibold">
                   {clan.name}
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/7 bg-white/[0.02] px-3 py-2">
+                <Layers3 className="h-3.5 w-3.5 text-amber-100/65" aria-hidden="true" />
+                <span className="text-[9px] font-black uppercase tracking-[0.18em] text-stone-500">
+                  Hall default
+                </span>
+                <div className="ml-auto flex items-center gap-1">
+                  {CLAN_CHAT_VIEWS.map((view) => {
+                    const selected = clan.defaultChatView === view.key;
+                    const busy = busyKey === `view:${clan.id}`;
+                    return (
+                      <button
+                        key={`${clan.id}-view-${view.key}`}
+                        type="button"
+                        onClick={() => void setDefaultChatView(clan, view.key)}
+                        disabled={busy}
+                        aria-pressed={selected}
+                        aria-label={`${clan.name} default ${view.version} ${view.label}`}
+                        title={`${view.version} · ${view.label}`}
+                        className={`grid h-7 min-w-7 place-items-center rounded-md border px-1.5 text-[9px] font-black transition ${
+                          selected
+                            ? "border-amber-200/30 bg-amber-300/12 text-amber-100"
+                            : "border-transparent bg-white/[0.03] text-stone-500 hover:border-white/10 hover:text-stone-200"
+                        } disabled:opacity-45`}
+                      >
+                        {view.version}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

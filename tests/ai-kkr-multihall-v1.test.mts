@@ -20,7 +20,7 @@ test("public Lobby Scribe and Grimer reach KKR through lobby_public", () => {
   assert.match(concierge, /loadKingdomKnowledgeContext/);
 });
 
-test("V1 baseline adds Invite Door and Hall Scribe without promoting realtime", () => {
+test("V1 baseline keeps Invite Door and Hall Scribe while graduating realtime", () => {
   const features = read("lib/clanHallFeatures.ts");
 
   assert.match(
@@ -33,11 +33,11 @@ test("V1 baseline adds Invite Door and Hall Scribe without promoting realtime", 
   );
   assert.match(
     features,
-    /BASELINE_CLAN_HALL_FEATURES[\s\S]*realtime: false/,
+    /BASELINE_CLAN_HALL_FEATURES[\s\S]*realtime: true/,
   );
   assert.match(
     features,
-    /BASELINE_CLAN_HALL_FEATURES[\s\S]*optimisticMessages: false/,
+    /BASELINE_CLAN_HALL_FEATURES[\s\S]*optimisticMessages: true/,
   );
 });
 
@@ -106,7 +106,7 @@ test("all Hall Scribe system UIDs remain excluded from human surfaces", () => {
 test("Hall UI keeps the shared chat picker and uses dynamic Scribe copy", () => {
   const client = read("components/clans/ClanHallClient.tsx");
 
-  assert.match(client, /ClanChatViewPicker placement="header"/);
+  assert.match(client, /ClanChatViewPicker[\s\S]*placement="header"[\s\S]*clanSlug=\{snapshot\.clan\.slug\}/);
   assert.match(client, /resolveClanHallScribeProfile/);
   assert.match(client, /hallScribeMention/);
   assert.match(client, /ClanInviteDoor/);

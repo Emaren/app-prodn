@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import Image from "next/image";
 import Link from "next/link";
@@ -6,20 +7,22 @@ import {
   ArrowLeft,
   Check,
   ChevronRight,
+  Coins,
   Crown,
   Eye,
+  FileAudio,
   Globe2,
   Languages,
   LockKeyhole,
   MessageSquareText,
   MoreHorizontal,
+  Paperclip,
   Pencil,
   Radio,
   RotateCcw,
   Send,
   Settings2,
   Shield,
-  SmilePlus,
   Sparkles,
   Swords,
   Trash2,
@@ -31,16 +34,24 @@ import {
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
+  type ClipboardEvent,
+  type DragEvent,
   type FormEvent,
   type ReactNode,
 } from "react";
 
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useUniversalLanguage } from "@/context/UniversalLanguageContext";
+import UniversalReactionPicker from "@/components/chat/UniversalReactionPicker";
+import { rememberReactionEmoji } from "@/components/chat/reactionPreference";
+import FloatingChatPanel from "@/components/chat/FloatingChatPanel";
+import ClanChatAppearanceControls from "@/components/clans/ClanChatAppearanceControls";
 import ClanDisplayRail from "@/components/clans/ClanDisplayRail";
 import ClanChatViewPicker from "@/components/clans/ClanChatViewPicker";
+import { useClanChatAppearancePreference } from "@/components/clans/clanChatAppearancePreference";
 import { useClanChatViewPreference } from "@/components/clans/clanChatViewPreference";
 import { usePublicPresence } from "@/components/presence/PublicPresenceProvider";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
@@ -48,6 +59,7 @@ import { ClanInviteDoor, ClanInvitePrompt } from "@/components/clans/ClanInviteD
 import { clanHallFeatureEnabled } from "@/lib/clanHallFeatures";
 import { resolveClanHallScribeProfile } from "@/lib/clanHallScribeProfiles";
 import { formatClanRole } from "@/lib/clanRoles";
+import type { ClanChatViewMode } from "@/lib/clanChatViews";
 import {
   UNIVERSAL_LANGUAGES,
   findUniversalLanguage,
@@ -56,7 +68,6 @@ import {
 import {
   CLAN_AUDIENCES,
   CLAN_AUDIENCE_DETAILS,
-  CLAN_REACTIONS,
   type ClanAudience,
   type ClanHallSnapshot,
   type ClanReaction,
@@ -65,6 +76,298 @@ import {
 
 const BASELINE_POLL_INTERVAL_MS = 10_000;
 const REALTIME_SAFETY_POLL_INTERVAL_MS = 60_000;
+const CLAN_HISTORY_PREFETCH_PX = 900;
+
+const CLAN_MEDIA_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+  "video/mp4",
+  "video/webm",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/ogg",
+  "audio/wav",
+  "audio/webm",
+] as const;
+const CLAN_MEDIA_ACCEPT = CLAN_MEDIA_MIME_TYPES.join(",");
+const MAX_CLAN_MEDIA_FILES = 4;
+const MAX_CLAN_MEDIA_TOTAL_BYTES = 32_000_000;
+const MAX_CLAN_MEDIA_BYTES = {
+  image: 10_000_000,
+  audio: 12_000_000,
+  video: 24_000_000,
+} as const;
+const MESSAGE_URL_PATTERN = /(?:https?:\/\/|www\.)[^\s<>]+/gi;
+
+type ClanComposerAttachment = {
+  id: string;
+  file: File;
+  kind: "image" | "audio" | "video";
+  previewUrl: string;
+};
+
+type ClanComposerRemoteImage = {
+  id: string;
+  url: string;
+  previewUrl: string;
+  name: string;
+};
+
+function clanComposerAttachmentKind(file: File) {
+  const supported = CLAN_MEDIA_MIME_TYPES.some((mimeType) => mimeType === file.type);
+  if (file.type.startsWith("image/") && supported) {
+    return "image" as const;
+  }
+  if (file.type.startsWith("audio/") && supported) {
+    return "audio" as const;
+  }
+  if (file.type.startsWith("video/") && supported) {
+    return "video" as const;
+  }
+  return null;
+}
+
+function remoteImageUrlLooksSupported(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+    if (url.protocol !== "https:") return false;
+    return (
+      /\.(?:gif|png|jpe?g|webp)(?:$|[?#])/i.test(url.toString()) ||
+      /(?:^|\.)media\d*\.tenor\.com$/i.test(url.hostname) ||
+      /(?:^|\.)media\.giphy\.com$/i.test(url.hostname) ||
+      /(?:^|\.)i\.giphy\.com$/i.test(url.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function remoteGifUrlLooksAnimated(rawUrl: string) {
+  try {
+    const url = new URL(rawUrl);
+    return (
+      /\.gif(?:$|[?#])/i.test(url.toString()) ||
+      /(?:^|\.)media\d*\.tenor\.com$/i.test(url.hostname) ||
+      /(?:^|\.)media\.giphy\.com$/i.test(url.hostname) ||
+      /(?:^|\.)i\.giphy\.com$/i.test(url.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function remoteImageUrlFromTransfer(dataTransfer: DataTransfer) {
+  const candidates: string[] = [];
+  const html = dataTransfer.getData("text/html");
+  if (html) {
+    try {
+      const document = new DOMParser().parseFromString(html, "text/html");
+      for (const image of Array.from(document.querySelectorAll("img"))) {
+        const source = image.getAttribute("src") || image.getAttribute("data-src");
+        if (source) candidates.push(source);
+      }
+    } catch {
+      // Fall through to URI/text transfer data.
+    }
+  }
+
+  const uriList = dataTransfer
+    .getData("text/uri-list")
+    .split(/\r?\n/)
+    .map((value) => value.trim())
+    .filter((value) => value && !value.startsWith("#"));
+  candidates.push(...uriList);
+
+  const plain = dataTransfer.getData("text/plain").trim();
+  if (/^https:\/\//i.test(plain)) candidates.push(plain);
+
+  return (
+    candidates.find((candidate) => remoteGifUrlLooksAnimated(candidate)) ??
+    candidates.find((candidate) => remoteImageUrlLooksSupported(candidate)) ??
+    null
+  );
+}
+
+function trimMessageUrl(rawUrl: string) {
+  let url = rawUrl;
+  let trailing = "";
+  const moveLastCharacterToTrailing = () => {
+    trailing = `${url.slice(-1)}${trailing}`;
+    url = url.slice(0, -1);
+  };
+
+  while (/[.,!?;:'"]$/.test(url)) moveLastCharacterToTrailing();
+  const bracketPairs = [
+    ["(", ")"],
+    ["[", "]"],
+    ["{", "}"],
+  ] as const;
+  for (const [opening, closing] of bracketPairs) {
+    while (
+      url.endsWith(closing) &&
+      url.split(closing).length > url.split(opening).length
+    ) {
+      moveLastCharacterToTrailing();
+    }
+  }
+
+  return { url, trailing };
+}
+
+function ClanMessageText({ text }: { text: string }) {
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+
+  for (const match of text.matchAll(MESSAGE_URL_PATTERN)) {
+    const index = match.index ?? 0;
+    const rawUrl = match[0];
+    const { url, trailing } = trimMessageUrl(rawUrl);
+    if (index > cursor) nodes.push(text.slice(cursor, index));
+    if (url) {
+      nodes.push(
+        <a
+          key={`${index}-${url}`}
+          href={url.startsWith("www.") ? `https://${url}` : url}
+          target="_blank"
+          rel="noopener noreferrer nofollow ugc"
+          onClick={(event) => event.stopPropagation()}
+          className="font-medium text-cyan-200 underline decoration-cyan-300/40 underline-offset-2 transition hover:text-cyan-100"
+        >
+          {url}
+        </a>,
+      );
+    }
+    if (trailing) nodes.push(trailing);
+    cursor = index + rawUrl.length;
+  }
+
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return <>{nodes.length > 0 ? nodes : text}</>;
+}
+
+function firstYouTubeVideoId(text: string) {
+  for (const match of text.matchAll(MESSAGE_URL_PATTERN)) {
+    const rawUrl = trimMessageUrl(match[0]).url;
+    const normalized = rawUrl.startsWith("www.") ? `https://${rawUrl}` : rawUrl;
+    try {
+      const url = new URL(normalized);
+      const host = url.hostname.replace(/^www\./, "").toLowerCase();
+      let id: string | null = null;
+      if (host === "youtu.be") {
+        id = url.pathname.split("/").filter(Boolean)[0] ?? null;
+      } else if (
+        host === "youtube.com" ||
+        host.endsWith(".youtube.com") ||
+        host === "youtube-nocookie.com" ||
+        host.endsWith(".youtube-nocookie.com")
+      ) {
+        id = url.searchParams.get("v");
+        if (!id) {
+          const parts = url.pathname.split("/").filter(Boolean);
+          if (["embed", "live", "shorts"].includes(parts[0]) && parts[1]) {
+            id = parts[1];
+          }
+        }
+      }
+      if (id && /^[A-Za-z0-9_-]{6,24}$/.test(id)) return id;
+    } catch {
+      // Ordinary links stay ordinary links.
+    }
+  }
+  return null;
+}
+
+function ClanMessageMedia({
+  attachments,
+}: {
+  attachments: ClanHallSnapshot["messages"][number]["attachments"];
+}) {
+  if (attachments.length === 0) return null;
+
+  return (
+    <div
+      className={`clan-message-media-grid clan-message-media-grid--${Math.min(
+        attachments.length,
+        4,
+      )}`}
+    >
+      {attachments.map((attachment) => {
+        if (attachment.kind === "image") {
+          return (
+            <a
+              key={attachment.id}
+              href={attachment.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="clan-message-media clan-message-media--image"
+              title={attachment.name || "Open image"}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <img
+                src={attachment.url}
+                alt={attachment.name || "Clan Hall image"}
+                loading="lazy"
+                className="clan-message-media__image"
+              />
+            </a>
+          );
+        }
+
+        if (attachment.kind === "video") {
+          return (
+            <div
+              key={attachment.id}
+              className="clan-message-media clan-message-media--video"
+              title={attachment.name || "Video"}
+            >
+              <video
+                src={attachment.url}
+                controls
+                playsInline
+                preload="metadata"
+                className="clan-message-media__video"
+              />
+            </div>
+          );
+        }
+
+        return (
+          <div
+            key={attachment.id}
+            className="clan-message-media clan-message-media--audio"
+            title={attachment.name || "Audio"}
+          >
+            <FileAudio className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <audio
+              src={attachment.url}
+              controls
+              preload="metadata"
+              className="min-w-0 flex-1"
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ClanYouTubeEmbed({ videoId }: { videoId: string }) {
+  return (
+    <div className="clan-message-youtube">
+      <iframe
+        src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(videoId)}`}
+        title="YouTube video"
+        loading="lazy"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerPolicy="strict-origin-when-cross-origin"
+        allowFullScreen
+      />
+    </div>
+  );
+}
+
 
 type PendingClanMessage = {
   id: string;
@@ -213,6 +516,55 @@ function shouldGroupClanMessage(
   );
 }
 
+function compareClanMessages(
+  left: ClanHallSnapshot["messages"][number],
+  right: ClanHallSnapshot["messages"][number],
+) {
+  const timeDelta =
+    new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+  return timeDelta || left.id - right.id;
+}
+
+function mergeClanHallSnapshot(
+  current: ClanHallSnapshot,
+  incoming: ClanHallSnapshot,
+): ClanHallSnapshot {
+  if (!incoming.access.canReadChat) return incoming;
+  if (current.clan.chatAudiencePolicy !== incoming.clan.chatAudiencePolicy) {
+    return incoming;
+  }
+
+  const byId = new Map<number, ClanHallSnapshot["messages"][number]>();
+  for (const message of current.messages) byId.set(message.id, message);
+  for (const message of incoming.messages) byId.set(message.id, message);
+  const mergedMessages = Array.from(byId.values()).sort(compareClanMessages);
+
+  if (incoming.messagePage.kind === "focus") {
+    return {
+      ...incoming,
+      messages: mergedMessages,
+      messagePage: current.messagePage,
+    };
+  }
+
+  if (incoming.messagePage.kind === "older") {
+    return {
+      ...incoming,
+      messages: mergedMessages,
+    };
+  }
+
+  if (current.messagePage.kind === "older") {
+    return {
+      ...incoming,
+      messages: mergedMessages,
+      messagePage: current.messagePage,
+    };
+  }
+
+  return incoming;
+}
+
 export default function ClanHallClient({
   initialSnapshot,
   initialView,
@@ -225,12 +577,19 @@ export default function ClanHallClient({
     selectedLanguage,
     languageLoaded,
   } = useUniversalLanguage();
-  const { chatViewMode } = useClanChatViewPreference();
-  const { onlineUidSet } = usePublicPresence([]);
   const [snapshot, setSnapshot] = useState(initialSnapshot);
+  const { chatViewMode } = useClanChatViewPreference({
+    clanSlug: snapshot.clan.slug,
+    defaultMode: snapshot.clan.defaultChatView,
+  });
+  const { chatFontSize, chatLineSpacing } = useClanChatAppearancePreference();
+  const { onlineUidSet } = usePublicPresence([]);
   const [hallPresence, setHallPresence] = useState<HallPresenceUser[]>([]);
   const [mounted, setMounted] = useState(false);
   const [message, setMessage] = useState("");
+  const [composerAttachments, setComposerAttachments] = useState<ClanComposerAttachment[]>([]);
+  const [composerRemoteImages, setComposerRemoteImages] = useState<ClanComposerRemoteImage[]>([]);
+  const [dragActive, setDragActive] = useState(false);
   const [scribeReplyEnabled, setScribeReplyEnabled] = useState(false);
   const [audience, setAudience] = useState<ClanAudience>(() =>
     preferredAudience(initialSnapshot.allowedAudiences)
@@ -248,8 +607,19 @@ export default function ClanHallClient({
     PendingClanMessage[]
   >([]);
   const [liveConnected, setLiveConnected] = useState(false);
+  const [defaultViewBusy, setDefaultViewBusy] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const chatViewportRef = useRef<HTMLDivElement | null>(null);
+  const historySentinelRef = useRef<HTMLDivElement | null>(null);
+  const historyLoadInFlightRef = useRef(false);
+  const historyPrependAnchorRef = useRef<{
+    beforeMessageId: number | null;
+    scrollHeight: number;
+    scrollTop: number;
+  } | null>(null);
+  const mediaInputRef = useRef<HTMLInputElement | null>(null);
   const requestInFlightRef = useRef(false);
+  const shouldStickToBottomRef = useRef(true);
 
   const endpoint = `/api/clans/${encodeURIComponent(snapshot.clan.slug)}`;
   const presenceEndpoint = `${endpoint}/presence`;
@@ -284,7 +654,7 @@ export default function ClanHallClient({
     });
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { stickToBottom?: boolean }) => {
     if (requestInFlightRef.current) return;
     requestInFlightRef.current = true;
 
@@ -292,13 +662,106 @@ export default function ClanHallClient({
       const response = await fetch(endpoint, { cache: "no-store" });
       if (!response.ok) return;
       const payload = (await response.json()) as ClanHallSnapshot;
-      setSnapshot(payload);
+      setSnapshot((current) => mergeClanHallSnapshot(current, payload));
+      if (options?.stickToBottom) settleChatToBottom();
     } catch (refreshError) {
       console.warn("Failed to refresh clan hall:", refreshError);
     } finally {
       requestInFlightRef.current = false;
     }
+  }, [endpoint, settleChatToBottom]);
+
+  const refreshFocusedMessage = useCallback(async (messageId: number) => {
+    try {
+      const response = await fetch(
+        `${endpoint}?focusMessageId=${encodeURIComponent(String(messageId))}`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) return;
+      const payload = (await response.json()) as ClanHallSnapshot;
+      setSnapshot((current) => mergeClanHallSnapshot(current, payload));
+    } catch (refreshError) {
+      console.warn("Failed to refresh Clan Hall message:", refreshError);
+    }
   }, [endpoint]);
+
+  const loadOlderMessages = useCallback(async () => {
+    if (
+      historyLoadInFlightRef.current ||
+      !snapshot.messagePage.hasMore ||
+      !snapshot.messagePage.beforeMessageId
+    ) {
+      return;
+    }
+
+    const viewport = chatViewportRef.current;
+    if (!viewport) return;
+
+    const beforeMessageId = snapshot.messagePage.beforeMessageId;
+    historyLoadInFlightRef.current = true;
+    historyPrependAnchorRef.current = {
+      beforeMessageId,
+      scrollHeight: viewport.scrollHeight,
+      scrollTop: viewport.scrollTop,
+    };
+    setHistoryLoading(true);
+
+    try {
+      const response = await fetch(
+        `${endpoint}?beforeMessageId=${encodeURIComponent(String(beforeMessageId))}`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const payload = (await response.json()) as ClanHallSnapshot;
+      setSnapshot((current) => mergeClanHallSnapshot(current, payload));
+    } catch (historyError) {
+      historyPrependAnchorRef.current = null;
+      console.warn("Failed to prefetch older Clan Hall messages:", historyError);
+    } finally {
+      historyLoadInFlightRef.current = false;
+      setHistoryLoading(false);
+    }
+  }, [endpoint, snapshot.messagePage.beforeMessageId, snapshot.messagePage.hasMore]);
+
+  useLayoutEffect(() => {
+    const anchor = historyPrependAnchorRef.current;
+    const viewport = chatViewportRef.current;
+    if (!anchor || !viewport) return;
+    if (snapshot.messagePage.kind !== "older") return;
+
+    const heightDelta = viewport.scrollHeight - anchor.scrollHeight;
+    viewport.scrollTop = anchor.scrollTop + Math.max(0, heightDelta);
+    historyPrependAnchorRef.current = null;
+  }, [snapshot.messages.length, snapshot.messagePage.kind]);
+
+  useEffect(() => {
+    const viewport = chatViewportRef.current;
+    const sentinel = historySentinelRef.current;
+    if (
+      !viewport ||
+      !sentinel ||
+      !snapshot.messagePage.hasMore ||
+      typeof IntersectionObserver === "undefined"
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void loadOlderMessages();
+        }
+      },
+      {
+        root: viewport,
+        rootMargin: `${CLAN_HISTORY_PREFETCH_PX}px 0px 0px`,
+        threshold: 0.01,
+      },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [loadOlderMessages, snapshot.messagePage.hasMore]);
 
   useEffect(() => {
     setMounted(true);
@@ -322,23 +785,50 @@ export default function ClanHallClient({
     }, REALTIME_SAFETY_POLL_INTERVAL_MS);
 
     const markReady = () => setLiveConnected(true);
-    const refreshFromHall = () => {
+    const refreshFromHall = (event: MessageEvent<string>) => {
       setLiveConnected(true);
-      void refresh();
+      let hallEvent: { type?: string; messageId?: number | null } | null = null;
+      try {
+        hallEvent = JSON.parse(event.data) as {
+          type?: string;
+          messageId?: number | null;
+        };
+      } catch {
+        // A malformed invalidation falls back to a latest-page refresh.
+      }
+
+      const messageId =
+        typeof hallEvent?.messageId === "number" ? hallEvent.messageId : null;
+      if (hallEvent?.type === "message_deleted" && messageId) {
+        setSnapshot((current) => ({
+          ...current,
+          messages: current.messages.filter((message) => message.id !== messageId),
+        }));
+        return;
+      }
+      if (
+        messageId &&
+        (hallEvent?.type === "reaction" || hallEvent?.type === "message_updated")
+      ) {
+        void refreshFocusedMessage(messageId);
+        return;
+      }
+
+      void refresh({ stickToBottom: shouldStickToBottomRef.current });
     };
 
     eventSource.addEventListener("ready", markReady);
-    eventSource.addEventListener("hall", refreshFromHall);
+    eventSource.addEventListener("hall", refreshFromHall as EventListener);
     eventSource.onerror = () => setLiveConnected(false);
 
     return () => {
       window.clearInterval(safetyInterval);
       eventSource.removeEventListener("ready", markReady);
-      eventSource.removeEventListener("hall", refreshFromHall);
+      eventSource.removeEventListener("hall", refreshFromHall as EventListener);
       eventSource.close();
       setLiveConnected(false);
     };
-  }, [endpoint, realtimeEnabled, refresh, uid]);
+  }, [endpoint, realtimeEnabled, refresh, refreshFocusedMessage, uid]);
 
   useEffect(() => {
     if (!snapshot.viewer.authenticated || !uid) {
@@ -450,38 +940,215 @@ export default function ClanHallClient({
     }
   }, [audience, snapshot.allowedAudiences]);
 
-  useEffect(() => {
-    settleChatToBottom();
-  }, [settleChatToBottom, snapshot.messages.length]);
+  function clearComposerAttachments() {
+    setComposerAttachments((current) => {
+      current.forEach((attachment) => URL.revokeObjectURL(attachment.previewUrl));
+      return [];
+    });
+    setComposerRemoteImages([]);
+  }
+
+  function removeComposerAttachment(id: string) {
+    setComposerAttachments((current) => {
+      const target = current.find((attachment) => attachment.id === id);
+      if (target) URL.revokeObjectURL(target.previewUrl);
+      return current.filter((attachment) => attachment.id !== id);
+    });
+  }
+
+  function removeComposerRemoteImage(id: string) {
+    setComposerRemoteImages((current) =>
+      current.filter((attachment) => attachment.id !== id),
+    );
+  }
+
+  function addComposerRemoteImage(rawUrl: string) {
+    const url = rawUrl.trim();
+    if (posting || !remoteImageUrlLooksSupported(url)) return false;
+    if (composerAttachments.length + composerRemoteImages.length >= MAX_CLAN_MEDIA_FILES) {
+      setError(`Choose up to ${MAX_CLAN_MEDIA_FILES} media items per message.`);
+      return false;
+    }
+    if (composerRemoteImages.some((attachment) => attachment.url === url)) return true;
+
+    let name = "Remote image";
+    try {
+      const parsed = new URL(url);
+      const pathnameName = decodeURIComponent(parsed.pathname.split("/").filter(Boolean).pop() || "");
+      if (pathnameName) name = pathnameName.slice(0, 120);
+    } catch {
+      // The support check above already validated the URL.
+    }
+
+    setError(null);
+    setComposerRemoteImages((current) => [
+      ...current,
+      {
+        id: `remote-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        url,
+        previewUrl: url,
+        name,
+      },
+    ]);
+    return true;
+  }
+
+  function addComposerFiles(files: File[]) {
+    if (posting || files.length === 0) return;
+
+    const nextFiles = files.slice(0, MAX_CLAN_MEDIA_FILES);
+    const accepted: ClanComposerAttachment[] = [];
+    let totalBytes = composerAttachments.reduce(
+      (sum, attachment) => sum + attachment.file.size,
+      0,
+    );
+
+    for (const file of nextFiles) {
+      if (composerAttachments.length + composerRemoteImages.length + accepted.length >= MAX_CLAN_MEDIA_FILES) break;
+      const kind = clanComposerAttachmentKind(file);
+      if (!kind) {
+        setError("Use PNG, JPEG, WebP, GIF, MP4, WebM, MP3, M4A, OGG, or WAV media.");
+        continue;
+      }
+      if (file.size < 1 || file.size > MAX_CLAN_MEDIA_BYTES[kind]) {
+        const maxMb = Math.round(MAX_CLAN_MEDIA_BYTES[kind] / 1_000_000);
+        setError(`${kind === "image" ? "Images" : kind === "video" ? "Videos" : "Audio"} must be ${maxMb} MB or smaller.`);
+        continue;
+      }
+      if (totalBytes + file.size > MAX_CLAN_MEDIA_TOTAL_BYTES) {
+        setError("Keep each Hall message at 32 MB or less in total media.");
+        break;
+      }
+
+      totalBytes += file.size;
+      accepted.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        file,
+        kind,
+        previewUrl: URL.createObjectURL(file),
+      });
+    }
+
+    if (accepted.length > 0) {
+      setError(null);
+      setComposerAttachments((current) => [...current, ...accepted]);
+    }
+  }
+
+  function handleComposerPaste(event: ClipboardEvent<HTMLElement>) {
+    if (posting || !snapshot.viewer.authenticated || !snapshot.access.canPost) return;
+    const files = Array.from(event.clipboardData.files || []);
+    const remoteImageUrl = remoteImageUrlFromTransfer(event.clipboardData);
+    const hasRealGif = files.some((file) => file.type.toLowerCase() === "image/gif");
+
+    if (remoteImageUrl && remoteGifUrlLooksAnimated(remoteImageUrl) && !hasRealGif) {
+      event.preventDefault();
+      addComposerRemoteImage(remoteImageUrl);
+      return;
+    }
+    if (files.length === 0) return;
+    event.preventDefault();
+    addComposerFiles(files);
+  }
+
+  function transferHasFiles(event: DragEvent<HTMLElement>) {
+    return (
+      Array.from(event.dataTransfer.types || []).includes("Files") ||
+      Array.from(event.dataTransfer.items || []).some((item) => item.kind === "file")
+    );
+  }
+
+  function handleComposerDragEnter(event: DragEvent<HTMLElement>) {
+    if (posting || !snapshot.viewer.authenticated || !snapshot.access.canPost) return;
+    if (!transferHasFiles(event) && !event.dataTransfer.getData("text/uri-list")) return;
+    event.preventDefault();
+    setDragActive(true);
+  }
+
+  function handleComposerDragOver(event: DragEvent<HTMLElement>) {
+    if (posting || !snapshot.viewer.authenticated || !snapshot.access.canPost) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    setDragActive(true);
+  }
+
+  function handleComposerDragLeave(event: DragEvent<HTMLElement>) {
+    const relatedNode = event.relatedTarget instanceof Node ? event.relatedTarget : null;
+    if (relatedNode && event.currentTarget.contains(relatedNode)) return;
+    setDragActive(false);
+  }
+
+  function handleComposerDrop(event: DragEvent<HTMLElement>) {
+    if (posting || !snapshot.viewer.authenticated || !snapshot.access.canPost) return;
+    event.preventDefault();
+    setDragActive(false);
+
+    const files = Array.from(event.dataTransfer.files || []);
+    const remoteImageUrl = remoteImageUrlFromTransfer(event.dataTransfer);
+    const hasRealGif = files.some((file) => file.type.toLowerCase() === "image/gif");
+
+    if (remoteImageUrl && remoteGifUrlLooksAnimated(remoteImageUrl) && !hasRealGif) {
+      addComposerRemoteImage(remoteImageUrl);
+      return;
+    }
+    if (files.length > 0) {
+      addComposerFiles(files);
+      return;
+    }
+    if (remoteImageUrl && addComposerRemoteImage(remoteImageUrl)) return;
+
+    const droppedUrl =
+      event.dataTransfer.getData("text/uri-list") ||
+      event.dataTransfer.getData("text/plain");
+    if (/^https?:\/\//i.test(droppedUrl.trim())) {
+      setMessage((current) =>
+        `${current}${current.trim() ? "\n" : ""}${droppedUrl.trim()}`.slice(0, 1200),
+      );
+    }
+  }
 
   async function sendMessageDraft(
     draft: string,
     draftAudience: ClanAudience,
-    pendingId: string,
+    pendingId: string | null,
     requestScribe: boolean,
+    attachmentFiles: File[] = [],
+    remoteMediaUrls: string[] = [],
   ) {
     setPosting(true);
     setError(null);
     setNotice(null);
 
-    setPendingMessages((current) =>
-      current.map((entry) =>
-        entry.id === pendingId
-          ? { ...entry, status: "sending" }
-          : entry,
-      ),
-    );
+    if (pendingId) {
+      setPendingMessages((current) =>
+        current.map((entry) =>
+          entry.id === pendingId
+            ? { ...entry, status: "sending" }
+            : entry,
+        ),
+      );
+    }
 
     try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: draft,
-          audience: draftAudience,
-          scribe: requestScribe,
-        }),
-      });
+      const response = attachmentFiles.length > 0 || remoteMediaUrls.length > 0
+        ? await (() => {
+            const formData = new FormData();
+            formData.set("message", draft);
+            formData.set("audience", draftAudience);
+            formData.set("scribe", requestScribe ? "true" : "false");
+            attachmentFiles.forEach((file) => formData.append("attachments", file));
+            remoteMediaUrls.forEach((url) => formData.append("remoteMediaUrls", url));
+            return fetch(endpoint, { method: "POST", body: formData });
+          })()
+        : await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: draft,
+              audience: draftAudience,
+              scribe: requestScribe,
+            }),
+          });
       const payload = (await response.json().catch(() => null)) as
         | ClanHallSnapshot
         | { detail?: string }
@@ -495,25 +1162,33 @@ export default function ClanHallClient({
         );
       }
 
-      setSnapshot(payload);
-      setPendingMessages((current) =>
-        current.filter((entry) => entry.id !== pendingId),
-      );
-      if (!optimisticMessagesEnabled) {
+      setSnapshot((current) => mergeClanHallSnapshot(current, payload));
+      shouldStickToBottomRef.current = true;
+      if (pendingId) {
+        setPendingMessages((current) =>
+          current.filter((entry) => entry.id !== pendingId),
+        );
+      }
+      if (!optimisticMessagesEnabled || attachmentFiles.length > 0 || remoteMediaUrls.length > 0) {
         setMessage("");
+      }
+      if (attachmentFiles.length > 0 || remoteMediaUrls.length > 0) {
+        clearComposerAttachments();
       }
       setNotice(
         `Posted for ${CLAN_AUDIENCE_DETAILS[draftAudience].label}.`,
       );
       settleChatToBottom("smooth");
     } catch (postError) {
-      setPendingMessages((current) =>
-        current.map((entry) =>
-          entry.id === pendingId
-            ? { ...entry, status: "failed" }
-            : entry,
-        ),
-      );
+      if (pendingId) {
+        setPendingMessages((current) =>
+          current.map((entry) =>
+            entry.id === pendingId
+              ? { ...entry, status: "failed" }
+              : entry,
+          ),
+        );
+      }
       setError(
         postError instanceof Error
           ? postError.message
@@ -528,15 +1203,20 @@ export default function ClanHallClient({
     event.preventDefault();
 
     const draft = message.trim();
-    if (posting || !draft) return;
+    const attachmentFiles = composerAttachments.map((attachment) => attachment.file);
+    const remoteMediaUrls = composerRemoteImages.map((attachment) => attachment.url);
+    if (posting || (!draft && attachmentFiles.length === 0 && remoteMediaUrls.length === 0)) return;
 
     const pendingId =
-      `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      attachmentFiles.length === 0 && remoteMediaUrls.length === 0
+        ? `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`
+        : null;
     const requestScribe =
+      Boolean(draft) &&
       hallScribeEnabled &&
       scribeReplyEnabled;
 
-    if (optimisticMessagesEnabled) {
+    if (optimisticMessagesEnabled && pendingId) {
       setPendingMessages((current) => [
         ...current,
         {
@@ -557,6 +1237,8 @@ export default function ClanHallClient({
       audience,
       pendingId,
       requestScribe,
+      attachmentFiles,
+      remoteMediaUrls,
     );
   }
 
@@ -602,7 +1284,7 @@ export default function ClanHallClient({
         );
       }
 
-      setSnapshot(payload);
+      setSnapshot((current) => mergeClanHallSnapshot(current, payload));
       setNotice(
         `Clan hall set to ${CLAN_AUDIENCE_DETAILS[nextPolicy].label}.`
       );
@@ -617,8 +1299,49 @@ export default function ClanHallClient({
     }
   }
 
+  async function updateDefaultChatView(nextMode: ClanChatViewMode) {
+    if (defaultViewBusy || nextMode === snapshot.clan.defaultChatView) return;
+
+    setDefaultViewBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(endpoint, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "set_default_chat_view",
+          defaultChatView: nextMode,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | ClanHallSnapshot
+        | { detail?: string }
+        | null;
+      if (!response.ok || !payload || !("clan" in payload)) {
+        throw new Error(
+          payload && "detail" in payload && payload.detail
+            ? payload.detail
+            : "Hall default view could not be updated.",
+        );
+      }
+      setSnapshot((current) => mergeClanHallSnapshot(current, payload));
+    } catch (defaultViewError) {
+      setError(
+        defaultViewError instanceof Error
+          ? defaultViewError.message
+          : "Hall default view could not be updated.",
+      );
+    } finally {
+      setDefaultViewBusy(false);
+    }
+  }
+
   async function editClanMessage(messageId: number) {
-    if (messageActionBusy || !editingBody.trim()) return;
+    const targetMessage = snapshot.messages.find((entry) => entry.id === messageId);
+    if (
+      messageActionBusy ||
+      (!editingBody.trim() && (targetMessage?.attachments.length ?? 0) === 0)
+    ) return;
     setMessageActionBusy(`edit:${messageId}`);
     setError(null);
     setNotice(null);
@@ -643,7 +1366,7 @@ export default function ClanHallClient({
             : "Clan message could not be edited."
         );
       }
-      setSnapshot(payload);
+      setSnapshot((current) => mergeClanHallSnapshot(current, payload));
       setEditingMessageId(null);
       setEditingBody("");
       setNotice("Message reforged.");
@@ -685,7 +1408,15 @@ export default function ClanHallClient({
             : "Clan message could not be removed."
         );
       }
-      setSnapshot(payload);
+      setSnapshot((current) =>
+        mergeClanHallSnapshot(
+          {
+            ...current,
+            messages: current.messages.filter((message) => message.id !== messageId),
+          },
+          payload,
+        ),
+      );
       setEditingMessageId(null);
       setNotice("Message removed from the hall.");
     } catch (deleteError) {
@@ -701,6 +1432,7 @@ export default function ClanHallClient({
 
   async function toggleReaction(messageId: number, emoji: ClanReaction) {
     if (messageActionBusy || !snapshot.viewer.authenticated) return;
+    rememberReactionEmoji(emoji);
     setMessageActionBusy(`reaction:${messageId}:${emoji}`);
     setError(null);
     try {
@@ -724,7 +1456,7 @@ export default function ClanHallClient({
             : "Reaction could not be placed."
         );
       }
-      setSnapshot(payload);
+      setSnapshot((current) => mergeClanHallSnapshot(current, payload));
     } catch (reactionError) {
       setError(
         reactionError instanceof Error
@@ -858,8 +1590,22 @@ export default function ClanHallClient({
       <section className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1fr)_21rem]">
         <article
           data-chat-view={chatViewMode}
-          className="clan-hall-chat-shell flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,rgba(8,13,26,0.96),rgba(3,6,13,0.96))] shadow-[0_28px_90px_rgba(0,0,0,0.28)]"
+          data-chat-font-size={chatFontSize}
+          data-chat-line-spacing={chatLineSpacing}
+          onPaste={handleComposerPaste}
+          onDragEnter={handleComposerDragEnter}
+          onDragOver={handleComposerDragOver}
+          onDragLeave={handleComposerDragLeave}
+          onDrop={handleComposerDrop}
+          className="clan-hall-chat-shell flex min-h-0 min-w-0 flex-col overflow-hidden relative rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,rgba(8,13,26,0.96),rgba(3,6,13,0.96))] shadow-[0_28px_90px_rgba(0,0,0,0.28)]"
         >
+          {dragActive ? (
+            <div className="clan-chat-drop-overlay pointer-events-none absolute inset-0 z-[90] grid place-items-center">
+              <div className="clan-chat-drop-overlay__badge" aria-hidden="true">
+                <Paperclip className="h-6 w-6" />
+              </div>
+            </div>
+          ) : null}
           <header className="shrink-0 border-b border-white/9 px-4 py-4 sm:px-6 sm:py-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -908,8 +1654,13 @@ export default function ClanHallClient({
                   <span className="clan-chat-view-discovery__label">
                     Chat view
                   </span>
-                  <ClanChatViewPicker placement="header" />
+                  <ClanChatViewPicker
+                    placement="header"
+                    clanSlug={snapshot.clan.slug}
+                    defaultMode={snapshot.clan.defaultChatView}
+                  />
                 </div>
+                <ClanChatAppearanceControls placement="header" />
                 <span
                   className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-1.5 text-xs ${audienceTone(
                     snapshot.clan.chatAudiencePolicy
@@ -928,6 +1679,16 @@ export default function ClanHallClient({
           <div
             ref={chatViewportRef}
             data-chat-view={chatViewMode}
+            aria-busy={historyLoading}
+            onScroll={(event) => {
+              const node = event.currentTarget;
+              const distanceFromBottom =
+                node.scrollHeight - node.scrollTop - node.clientHeight;
+              shouldStickToBottomRef.current = distanceFromBottom < 180;
+              if (node.scrollTop <= CLAN_HISTORY_PREFETCH_PX) {
+                void loadOlderMessages();
+              }
+            }}
             className="clan-chat-viewport flex-1 overflow-y-auto px-3 py-4 [scrollbar-color:rgba(148,163,184,0.38)_transparent] [scrollbar-width:thin] sm:px-5"
           >
             {!snapshot.access.canReadChat ? (
@@ -957,6 +1718,11 @@ export default function ClanHallClient({
               <div
                 className={`clan-chat-stream clan-chat-stream--${chatViewMode}`}
               >
+                <div
+                  ref={historySentinelRef}
+                  className="h-px w-full"
+                  aria-hidden="true"
+                />
                 {snapshot.messages.map((chatMessage, index) => (
                   <ClanMessageBubble
                     key={chatMessage.id}
@@ -1071,6 +1837,80 @@ export default function ClanHallClient({
                   })}
                 </div>
 
+                {composerAttachments.length > 0 || composerRemoteImages.length > 0 ? (
+                  <div className="clan-composer-media-tray mt-3">
+                    {composerAttachments.map((attachment) => (
+                      <div key={attachment.id} className="clan-composer-media">
+                        <div className="clan-composer-media__preview">
+                          {attachment.kind === "image" ? (
+                            <img
+                              src={attachment.previewUrl}
+                              alt={attachment.file.name || "Clan Hall image"}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : attachment.kind === "video" ? (
+                            <video
+                              src={attachment.previewUrl}
+                              muted
+                              playsInline
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <FileAudio className="h-5 w-5" />
+                          )}
+                        </div>
+                        <span className="clan-composer-media__name">
+                          {attachment.file.name || (attachment.kind === "video" ? "Video" : attachment.kind === "audio" ? "Audio" : "Image")}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeComposerAttachment(attachment.id)}
+                          className="clan-composer-media__remove"
+                          aria-label={`Remove ${attachment.file.name || "attachment"}`}
+                          title="Remove"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                    {composerRemoteImages.map((attachment) => (
+                      <div key={attachment.id} className="clan-composer-media">
+                        <div className="clan-composer-media__preview">
+                          <img
+                            src={attachment.previewUrl}
+                            alt={attachment.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                        <span className="clan-composer-media__name">
+                          {attachment.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeComposerRemoteImage(attachment.id)}
+                          className="clan-composer-media__remove"
+                          aria-label={`Remove ${attachment.name}`}
+                          title="Remove"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                <input
+                  ref={mediaInputRef}
+                  type="file"
+                  accept={CLAN_MEDIA_ACCEPT}
+                  multiple
+                  className="hidden"
+                  onChange={(event) => {
+                    addComposerFiles(Array.from(event.target.files || []));
+                    event.currentTarget.value = "";
+                  }}
+                />
+
                 <div className="clan-theme-composer mt-3 flex items-end gap-2 rounded-[1.4rem] border border-white/10 bg-white/[0.04] p-2 focus-within:bg-white/[0.055]">
                   <textarea
                     value={message}
@@ -1086,7 +1926,10 @@ export default function ClanHallClient({
 
                       event.preventDefault();
 
-                      if (posting || !message.trim()) {
+                      if (
+                        posting ||
+                        (!message.trim() && composerAttachments.length === 0 && composerRemoteImages.length === 0)
+                      ) {
                         return;
                       }
 
@@ -1096,6 +1939,16 @@ export default function ClanHallClient({
                     rows={3}
                     className="min-h-[4.7rem] flex-1 resize-none bg-transparent px-2 py-2 text-sm leading-6 text-white outline-none placeholder:text-slate-600"
                   />
+                  <button
+                    type="button"
+                    onClick={() => mediaInputRef.current?.click()}
+                    disabled={posting || composerAttachments.length + composerRemoteImages.length >= MAX_CLAN_MEDIA_FILES}
+                    className="clan-chat-attach grid h-10 w-10 shrink-0 place-items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-35"
+                    aria-label="Attach Clan Hall media"
+                    title="Attach media"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                  </button>
                   {hallScribeEnabled ? (
                     <button
                       type="button"
@@ -1129,7 +1982,10 @@ export default function ClanHallClient({
                   ) : null}
                   <button
                     type="submit"
-                    disabled={posting || !message.trim()}
+                    disabled={
+                      posting ||
+                      (!message.trim() && composerAttachments.length === 0 && composerRemoteImages.length === 0)
+                    }
                     className="clan-theme-send grid h-11 w-11 shrink-0 place-items-center rounded-full transition disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label="Send clan message"
                   >
@@ -1284,6 +2140,13 @@ export default function ClanHallClient({
       <ClanDisplayRail
         view={initialView}
         basePath={`/clans/${snapshot.clan.slug}`}
+        clanSlug={snapshot.clan.slug}
+        defaultChatView={snapshot.clan.defaultChatView}
+        canManage={snapshot.viewer.canManage}
+        defaultViewBusy={defaultViewBusy}
+        onDefaultChatViewChange={(mode) => {
+          void updateDefaultChatView(mode);
+        }}
       />
     </main>
   );
@@ -1470,7 +2333,7 @@ function PendingClanMessageBubble({
             </span>
           ) : null}
         </div>
-        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">
+        <p className="clan-message__body mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">
           {pending.body}
         </p>
       </div>
@@ -1519,6 +2382,8 @@ function ClanMessageBubble({
     useState(false);
   const toolsCloseTimerRef =
     useRef<number | null>(null);
+  const toolsTriggerRef =
+    useRef<HTMLButtonElement | null>(null);
   const [
     translationPending,
     setTranslationPending,
@@ -1546,6 +2411,7 @@ function ClanMessageBubble({
     authenticated ||
     message.canEdit ||
     message.canDelete;
+  const youtubeVideoId = firstYouTubeVideoId(message.body);
 
   function cancelToolsClose() {
     if (
@@ -1768,7 +2634,7 @@ function ClanMessageBubble({
                   }
                   disabled={
                     busy ||
-                    !editingBody.trim()
+                    (!editingBody.trim() && message.attachments.length === 0)
                   }
                   className="inline-flex min-h-8 items-center gap-1 rounded-full border border-amber-200/22 bg-amber-300/12 px-3 text-[11px] font-semibold text-amber-100 transition hover:bg-amber-300/18 disabled:opacity-40"
                 >
@@ -1780,10 +2646,11 @@ function ClanMessageBubble({
           </div>
         ) : (
           <>
-            <p className="clan-message__body mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">
-              {activeTranslation?.text ??
-                message.body}
-            </p>
+            {(activeTranslation?.text ?? message.body) ? (
+              <p className="clan-message__body mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-slate-200">
+                <ClanMessageText text={activeTranslation?.text ?? message.body} />
+              </p>
+            ) : null}
 
             {activeTranslation ? (
               <div className="clan-message__translation-note mt-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-cyan-200/48">
@@ -1800,6 +2667,9 @@ function ClanMessageBubble({
                 {translationError}
               </div>
             ) : null}
+
+            <ClanMessageMedia attachments={message.attachments} />
+            {youtubeVideoId ? <ClanYouTubeEmbed videoId={youtubeVideoId} /> : null}
           </>
         )}
 
@@ -1857,123 +2727,101 @@ function ClanMessageBubble({
       </div>
 
       {hasTools ? (
-        <div
-          className="clan-message-tools"
-          onMouseEnter={openTools}
-          onMouseLeave={
-            scheduleToolsClose
-          }
-          onFocusCapture={openTools}
-          onBlurCapture={(event) => {
-            const next =
-              event.relatedTarget;
-            if (
-              next instanceof Node &&
-              event.currentTarget.contains(
-                next,
-              )
-            ) {
-              return;
-            }
-            scheduleToolsClose();
-          }}
-        >
-          <button
-            type="button"
-            className="clan-message-tools__trigger"
-            onClick={openTools}
-            aria-label="Message tools"
-            aria-haspopup="menu"
-            aria-expanded={toolsOpen}
-            title="Message tools"
+        <>
+          <div
+            className="clan-message-tools"
+            onMouseEnter={openTools}
+            onMouseLeave={scheduleToolsClose}
+            onFocusCapture={openTools}
+            onBlurCapture={() => scheduleToolsClose()}
           >
-            <MoreHorizontal className="h-3.5 w-3.5" />
-          </button>
+            <button
+              ref={toolsTriggerRef}
+              type="button"
+              className="clan-message-tools__trigger"
+              onClick={() => {
+                if (toolsOpen) {
+                  setToolsOpen(false);
+                } else {
+                  openTools();
+                }
+              }}
+              aria-label="Message tools"
+              aria-haspopup="menu"
+              aria-expanded={toolsOpen}
+              title="Message tools"
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </button>
+          </div>
 
-          {toolsOpen ? (
+          <FloatingChatPanel
+            open={toolsOpen}
+            anchorRef={toolsTriggerRef}
+            onRequestClose={() => setToolsOpen(false)}
+            width={320}
+            estimatedHeight={430}
+            align="end"
+            className="clan-message-tools__floating"
+            onPointerEnter={cancelToolsClose}
+            onPointerLeave={scheduleToolsClose}
+          >
             <div
-              className="clan-message-tools__menu"
+              className="clan-message-tools__menu clan-message-tools__menu--floating"
               role="menu"
               aria-label="Message tools"
             >
               {authenticated ? (
                 <>
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() =>
-                      void translateMessage()
-                    }
-                    disabled={
-                      translationPending
-                    }
-                    className="clan-message-tools__row"
-                  >
-                    <Languages className="h-3.5 w-3.5" />
-                    <span className="min-w-0 flex-1 text-left">
-                      {translationPending
-                        ? "Translating…"
-                        : activeTranslation?.language ===
-                            translationLanguage
-                          ? "Show original"
-                          : `Translate · ${
-                              languageDefinition?.nativeName ??
-                              translationLanguage
-                            }`}
-                    </span>
-                  </button>
+                  {message.body.trim() ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => void translateMessage()}
+                      disabled={translationPending}
+                      className="clan-message-tools__row"
+                    >
+                      <Languages className="h-3.5 w-3.5" />
+                      <span className="min-w-0 flex-1 text-left">
+                        {translationPending
+                          ? "Translating…"
+                          : activeTranslation?.language === translationLanguage
+                            ? "Show original"
+                            : `Translate · ${
+                                languageDefinition?.nativeName ??
+                                translationLanguage
+                              }`}
+                      </span>
+                    </button>
+                  ) : null}
 
                   <div className="clan-message-tools__react">
-                    <span className="clan-message-tools__react-label">
-                      <SmilePlus className="h-3 w-3" />
-                      React
-                    </span>
-                    <div className="clan-message-tools__emoji-row">
-                      {CLAN_REACTIONS.map(
-                        (emoji) => {
-                          const active =
-                            message.reactions.some(
-                              (
-                                reaction,
-                              ) =>
-                                reaction.emoji ===
-                                  emoji &&
-                                reaction.viewerReacted,
-                            );
-
-                          return (
-                            <button
-                              key={`${message.id}-tool-${emoji}`}
-                              type="button"
-                              onClick={() => {
-                                onReaction(
-                                  emoji,
-                                );
-                                setToolsOpen(
-                                  false,
-                                );
-                              }}
-                              disabled={
-                                busy
-                              }
-                              aria-label={`React ${emoji}`}
-                              aria-pressed={
-                                active
-                              }
-                              className={`clan-message-tools__emoji ${
-                                active
-                                  ? "clan-message-tools__emoji--active"
-                                  : ""
-                              }`}
-                            >
-                              {emoji}
-                            </button>
-                          );
-                        },
-                      )}
-                    </div>
+                    <UniversalReactionPicker
+                      variant="full"
+                      activeReactions={message.reactions
+                        .filter((reaction) => reaction.viewerReacted)
+                        .map((reaction) => reaction.emoji)}
+                      disabled={busy}
+                      onPick={(emoji) => {
+                        onReaction(emoji);
+                        setToolsOpen(false);
+                      }}
+                    />
                   </div>
                 </>
+              ) : null}
+
+              {authenticated ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled
+                  className="clan-message-tools__row clan-message-tools__row--future"
+                  title="Wanna Bet · coming soon"
+                >
+                  <Coins className="h-3.5 w-3.5" />
+                  Wanna Bet
+                </button>
               ) : null}
 
               {message.canEdit ? (
@@ -2008,8 +2856,8 @@ function ClanMessageBubble({
                 </button>
               ) : null}
             </div>
-          ) : null}
-        </div>
+          </FloatingChatPanel>
+        </>
       ) : null}
     </div>
   );

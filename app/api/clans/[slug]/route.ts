@@ -12,6 +12,13 @@ import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { publishClanHallEvent } from "@/lib/clanHallEvents";
 import { maybeCreateClanHallScribeReply } from "@/lib/clanHallScribe";
+import {
+  persistClanMessageAttachmentFiles,
+  removeClanMessageAttachmentFiles,
+  validateClanMessageAttachmentFiles,
+} from "@/lib/clanMessageAttachments";
+import { importRemoteClanImageFiles } from "@/lib/clanRemoteMedia";
+import { normalizeClanChatViewMode, isClanChatViewMode } from "@/lib/clanChatViews";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -37,6 +44,42 @@ function parseMessageId(value: unknown) {
 async function readSlug(context: { params: Promise<{ slug: string }> }) {
   const params = await context.params;
   return normalizeSlug(params.slug);
+}
+
+async function readClanHallPostInput(request: NextRequest) {
+  const contentType = request.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().includes("multipart/form-data")) {
+    return {
+      body: (await request.json().catch(() => ({}))) as Record<string, unknown>,
+      attachmentFiles: [] as File[],
+      remoteMediaUrls: [] as string[],
+    };
+  }
+
+  const contentLength = Number(request.headers.get("content-length") || "0");
+  if (Number.isFinite(contentLength) && contentLength > 35_000_000) {
+    throw new Error("Clan Hall media payload is too large.");
+  }
+
+  const formData = await request.formData();
+  const attachmentFiles = formData
+    .getAll("attachments")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+  const remoteMediaUrls = formData
+    .getAll("remoteMediaUrls")
+    .map((entry) => String(entry).trim())
+    .filter(Boolean)
+    .slice(0, 4);
+
+  return {
+    body: {
+      message: String(formData.get("message") ?? ""),
+      audience: String(formData.get("audience") ?? ""),
+      scribe: String(formData.get("scribe") ?? "") === "true",
+    } as Record<string, unknown>,
+    attachmentFiles,
+    remoteMediaUrls,
+  };
 }
 
 async function loadViewer(
@@ -65,7 +108,16 @@ export async function GET(
   try {
     const slug = await readSlug(context);
     const viewerUid = await getSessionUid(request);
-    const snapshot = await loadClanHallSnapshot(getPrisma(), slug, viewerUid);
+    const focusMessageId = parseMessageId(
+      request.nextUrl.searchParams.get("focusMessageId"),
+    );
+    const beforeMessageId = focusMessageId
+      ? null
+      : parseMessageId(request.nextUrl.searchParams.get("beforeMessageId"));
+    const snapshot = await loadClanHallSnapshot(getPrisma(), slug, viewerUid, {
+      beforeMessageId,
+      focusMessageId,
+    });
 
     if (!snapshot) {
       return NextResponse.json(
@@ -99,12 +151,22 @@ export async function POST(
       );
     }
 
-    const body = (await request.json().catch(() => ({}))) as Record<
-      string,
-      unknown
-    >;
-    const requestScribeReply =
-      body.scribe === true;
+    let postInput: Awaited<ReturnType<typeof readClanHallPostInput>>;
+    try {
+      postInput = await readClanHallPostInput(request);
+    } catch (error) {
+      return NextResponse.json(
+        {
+          detail:
+            error instanceof Error
+              ? error.message
+              : "Clan Hall media payload could not be read.",
+        },
+        { status: 400, headers: NO_STORE_HEADERS },
+      );
+    }
+    const { body, attachmentFiles, remoteMediaUrls } = postInput;
+    const requestScribeReply = body.scribe === true;
 
     if (body.action === "toggle_reaction") {
       const messageId = parseMessageId(body.messageId);
@@ -115,7 +177,9 @@ export async function POST(
         );
       }
 
-      const current = await loadClanHallSnapshot(prisma, slug, viewer.uid);
+      const current = await loadClanHallSnapshot(prisma, slug, viewer.uid, {
+        focusMessageId: messageId,
+      });
       const visibleMessage = current?.messages.find(
         (entry) => entry.id === messageId
       );
@@ -154,14 +218,46 @@ export async function POST(
         messageId,
       });
 
-      const refreshed = await loadClanHallSnapshot(prisma, slug, viewer.uid);
+      const refreshed = await loadClanHallSnapshot(prisma, slug, viewer.uid, {
+        focusMessageId: messageId,
+      });
       return NextResponse.json(refreshed, { headers: NO_STORE_HEADERS });
     }
 
     const message = normalizeClanMessage(body.message);
-    if (!message) {
+    let remoteAttachmentFiles: File[] = [];
+    if (remoteMediaUrls.length > 0) {
+      try {
+        remoteAttachmentFiles = await importRemoteClanImageFiles(remoteMediaUrls);
+      } catch (error) {
+        return NextResponse.json(
+          {
+            detail:
+              error instanceof Error
+                ? error.message
+                : "Remote Clan Hall media could not be imported.",
+          },
+          { status: 400, headers: NO_STORE_HEADERS },
+        );
+      }
+    }
+    const allAttachmentFiles = [...attachmentFiles, ...remoteAttachmentFiles];
+    try {
+      validateClanMessageAttachmentFiles(allAttachmentFiles);
+    } catch (error) {
       return NextResponse.json(
-        { detail: "Write a message before sending." },
+        {
+          detail:
+            error instanceof Error
+              ? error.message
+              : "Choose supported Clan Hall media.",
+        },
+        { status: 400, headers: NO_STORE_HEADERS },
+      );
+    }
+    if (!message && allAttachmentFiles.length === 0) {
+      return NextResponse.json(
+        { detail: "Write a message or attach media before sending." },
         { status: 400, headers: NO_STORE_HEADERS }
       );
     }
@@ -240,14 +336,45 @@ export async function POST(
       );
     }
 
+    let persistedAttachments: Awaited<
+      ReturnType<typeof persistClanMessageAttachmentFiles>
+    > = [];
+    if (allAttachmentFiles.length > 0) {
+      try {
+        persistedAttachments =
+          await persistClanMessageAttachmentFiles(allAttachmentFiles);
+      } catch (error) {
+        console.warn("Failed to persist Clan Hall media:", error);
+        return NextResponse.json(
+          { detail: "Clan Hall media could not be stored." },
+          { status: 500, headers: NO_STORE_HEADERS },
+        );
+      }
+    }
+
     const createdMessage = await prisma.clanMessage.create({
       data: {
         clanId: clan.id,
         authorUserId: viewer.id,
         body: message,
         audience,
+        attachments:
+          persistedAttachments.length > 0
+            ? {
+                create: persistedAttachments.map((attachment) => ({
+                  kind: attachment.kind,
+                  name: attachment.name,
+                  mimeType: attachment.mimeType,
+                  storageRef: attachment.storageRef,
+                  sizeBytes: attachment.sizeBytes,
+                })),
+              }
+            : undefined,
       },
       select: { id: true },
+    }).catch(async (error) => {
+      await removeClanMessageAttachmentFiles(persistedAttachments);
+      throw error;
     });
 
     publishClanHallEvent(slug, {
@@ -256,7 +383,7 @@ export async function POST(
     });
 
     try {
-      await maybeCreateClanHallScribeReply({
+      if (message) await maybeCreateClanHallScribeReply({
         prisma,
         clanId: clan.id,
         clanSlug: slug,
@@ -322,20 +449,30 @@ export async function PATCH(
     if (body.action === "edit_message") {
       const messageId = parseMessageId(body.messageId);
       const message = normalizeClanMessage(body.message);
-      if (!messageId || !message) {
+      if (!messageId) {
         return NextResponse.json(
-          { detail: "A message and message id are required." },
+          { detail: "A message id is required." },
           { status: 400, headers: NO_STORE_HEADERS }
         );
       }
 
-      const targetMessage = current.messages.find(
+      const focused = await loadClanHallSnapshot(prisma, slug, viewer.uid, {
+        focusMessageId: messageId,
+      });
+      const targetMessage = focused?.messages.find(
         (entry) => entry.id === messageId
       );
-      if (!targetMessage || !targetMessage.canEdit) {
+      if (!focused || !targetMessage || !targetMessage.canEdit) {
         return NextResponse.json(
           { detail: "You can only edit messages under your command." },
           { status: 403, headers: NO_STORE_HEADERS }
+        );
+      }
+
+      if (!message && targetMessage.attachments.length === 0) {
+        return NextResponse.json(
+          { detail: "Keep message text or attached media." },
+          { status: 400, headers: NO_STORE_HEADERS },
         );
       }
 
@@ -352,15 +489,45 @@ export async function PATCH(
         messageId,
       });
 
-      const refreshed = await loadClanHallSnapshot(prisma, slug, viewer.uid);
+      const refreshed = await loadClanHallSnapshot(prisma, slug, viewer.uid, {
+        focusMessageId: messageId,
+      });
       return NextResponse.json(refreshed, { headers: NO_STORE_HEADERS });
     }
 
     if (!current.viewer.canManage) {
       return NextResponse.json(
-        { detail: "Only clan admins can change the hall audience." },
+        { detail: "Only clan admins can change Hall settings." },
         { status: 403, headers: NO_STORE_HEADERS }
       );
+    }
+
+    if (body.action === "set_default_chat_view") {
+      if (!isClanChatViewMode(body.defaultChatView)) {
+        return NextResponse.json(
+          { detail: "Choose a valid Hall default view." },
+          { status: 400, headers: NO_STORE_HEADERS },
+        );
+      }
+
+      const defaultChatView = normalizeClanChatViewMode(
+        body.defaultChatView,
+        "v1",
+      );
+      await prisma.clanHallSetting.upsert({
+        where: { clanId: current.clan.id },
+        create: {
+          clanId: current.clan.id,
+          defaultChatView,
+        },
+        update: {
+          defaultChatView,
+        },
+      });
+
+      publishClanHallEvent(slug, { type: "policy" });
+      const refreshed = await loadClanHallSnapshot(prisma, slug, viewer.uid);
+      return NextResponse.json(refreshed, { headers: NO_STORE_HEADERS });
     }
 
     if (!isClanAudience(body.chatAudiencePolicy)) {
@@ -417,7 +584,9 @@ export async function DELETE(
       );
     }
 
-    const current = await loadClanHallSnapshot(prisma, slug, viewer.uid);
+    const current = await loadClanHallSnapshot(prisma, slug, viewer.uid, {
+      focusMessageId: messageId,
+    });
     const targetMessage = current?.messages.find(
       (entry) => entry.id === messageId
     );
@@ -428,12 +597,23 @@ export async function DELETE(
       );
     }
 
+    const attachments = await prisma.clanMessageAttachment.findMany({
+      where: {
+        messageId,
+        message: {
+          clanId: current.clan.id,
+        },
+      },
+      select: { storageRef: true },
+    });
+
     await prisma.clanMessage.deleteMany({
       where: {
         id: messageId,
         clanId: current.clan.id,
       },
     });
+    await removeClanMessageAttachmentFiles(attachments);
 
     publishClanHallEvent(slug, {
       type: "message_deleted",
