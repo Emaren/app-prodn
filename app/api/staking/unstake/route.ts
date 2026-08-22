@@ -6,6 +6,8 @@ import { createConfirmedStakingEvent, StakingActionError } from "@/lib/staking";
 import {
   getUnstakeReserveCheck,
   loadStakingExecutionLimits,
+  STAKING_UNSTAKE_SAFETY_DETAIL,
+  STAKING_UNSTAKE_SAFETY_PAUSED,
   STAKING_WALLET_TOP_UP_DETAIL,
 } from "@/lib/stakingExecution";
 import { loadMainnetStakingPositionForUser } from "@/lib/mainnetStakingPositions";
@@ -34,6 +36,16 @@ function normalizeWholeWolo(value: unknown) {
 
 export async function POST(request: NextRequest) {
   try {
+    if (STAKING_UNSTAKE_SAFETY_PAUSED) {
+      return NextResponse.json(
+        {
+          detail: STAKING_UNSTAKE_SAFETY_DETAIL,
+          code: "UNSTAKE_SAFETY_PAUSED",
+        },
+        { status: 503 },
+      );
+    }
+
     const sessionUid = await getSessionUid(request);
     if (!sessionUid) {
       return NextResponse.json({ detail: "No active session" }, { status: 401 });
