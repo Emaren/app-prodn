@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
-import { loadStakingExecutionLimits } from "@/lib/stakingExecution";
+import {
+  loadStakingExecutionLimits,
+  STAKING_STAKE_SAFETY_DETAIL,
+  STAKING_STAKE_SAFETY_PAUSED,
+  STAKING_UNSTAKE_SAFETY_DETAIL,
+  STAKING_UNSTAKE_SAFETY_PAUSED,
+} from "@/lib/stakingExecution";
 import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
 
 export const runtime = "nodejs";
@@ -9,6 +15,17 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   const runtimeConfig = getWoloStakingRuntime();
+  const safetyConfig = {
+    ...runtimeConfig,
+    stakeReady: STAKING_STAKE_SAFETY_PAUSED ? false : runtimeConfig.stakeReady,
+    stakeReadyDetail: STAKING_STAKE_SAFETY_PAUSED
+      ? STAKING_STAKE_SAFETY_DETAIL
+      : runtimeConfig.stakeReadyDetail,
+    unstakeReady: STAKING_UNSTAKE_SAFETY_PAUSED ? false : runtimeConfig.unstakeReady,
+    unstakeReadyDetail: STAKING_UNSTAKE_SAFETY_PAUSED
+      ? STAKING_UNSTAKE_SAFETY_DETAIL
+      : runtimeConfig.unstakeReadyDetail,
+  };
   try {
     const funding = await loadStakingExecutionLimits(getPrisma(), 0);
     const visibleStakingWalletReserveWolo =
@@ -16,7 +33,7 @@ export async function GET() {
         ? null
         : Math.max(0, funding.stakingWalletOperatingReserveWolo);
     return NextResponse.json({
-      ...runtimeConfig,
+      ...safetyConfig,
       stakingWalletReserveHeadroomWolo: funding.stakingWalletReserveHeadroomWolo,
       operatorFunding: {
         stakingWalletBalanceWolo: funding.stakingWalletBalanceWolo,
@@ -37,6 +54,6 @@ export async function GET() {
       },
     });
   } catch {
-    return NextResponse.json(runtimeConfig);
+    return NextResponse.json(safetyConfig);
   }
 }
