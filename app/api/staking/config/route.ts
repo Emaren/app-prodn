@@ -20,7 +20,7 @@ export async function GET() {
     stakeReady: STAKING_STAKE_SAFETY_PAUSED ? false : runtimeConfig.stakeReady,
     stakeReadyDetail: STAKING_STAKE_SAFETY_PAUSED
       ? STAKING_STAKE_SAFETY_DETAIL
-      : runtimeConfig.stakeReadyDetail,
+      : null,
     unstakeReady: STAKING_UNSTAKE_SAFETY_PAUSED ? false : runtimeConfig.unstakeReady,
     unstakeReadyDetail: STAKING_UNSTAKE_SAFETY_PAUSED
       ? STAKING_UNSTAKE_SAFETY_DETAIL
