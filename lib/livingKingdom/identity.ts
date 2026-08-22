@@ -1,14 +1,17 @@
 import { createHmac, randomBytes } from "node:crypto";
 
 import type { PrismaClient } from "@/lib/generated/prisma";
-import { isAiPersonaUid } from "@/lib/aiConciergeConfig";
-import { avatarPresenceUrlForUser } from "@/lib/avatarAssets";
-import { normalizeManagedMediaTarget } from "@/lib/managedMediaAssets";
+import { avatarPresenceUrlForTarget } from "@/lib/avatarAssets";
+import { isInternalSystemUid } from "@/lib/internalSystemAccounts";
 import {
   invalidateLivingKingdomAvatar,
   registerLivingKingdomAvatar,
 } from "./avatarRegistry.ts";
-import type { LivingKingdomHubIdentity } from "./hub.ts";
+import {
+  livingKingdomHub,
+  type LivingKingdomHubIdentity,
+} from "./hub.ts";
+import { livingKingdomManagedAvatarTargetsForUid } from "./managedAvatarTargets.ts";
 
 export const LIVING_KINGDOM_FEATURE_MODES = ["off", "staff", "canary", "public"] as const;
 export type LivingKingdomFeatureMode = (typeof LIVING_KINGDOM_FEATURE_MODES)[number];
@@ -21,11 +24,15 @@ type StoredLivingKingdomPreference = {
 export function resolveLivingKingdomPreferenceMode(
   preference: StoredLivingKingdomPreference | null | undefined,
 ): LivingKingdomPreferenceMode {
-  if (!preference) return "public_coarse";
-  return preference.mode === "public_coarse" ? "public_coarse" : "off";
+  // Living Kingdom publication is an account capability, not a user-facing
+  // preference. Legacy rows remain readable for migration/audit history, but
+  // neither `off` nor malformed historical values suppress an eligible human.
+  void preference;
+  return "public_coarse";
 }
 
 export const LIVING_KINGDOM_IDENTITY_CACHE_TTL_MS = 15_000;
+export const LIVING_KINGDOM_INELIGIBLE_CACHE_TTL_MS = 2_000;
 const LIVING_KINGDOM_IDENTITY_CACHE_MAX = 1_000;
 const ALLOWLIST_MAX_ENTRIES = 200;
 
@@ -132,6 +139,10 @@ function enforceCacheBound() {
 export function invalidateLivingKingdomIdentity(uid: string) {
   identityCache.delete(uid);
   invalidateLivingKingdomAvatar(uid);
+  // Never leave a now-revoked or newly-replaced portrait projected from stale
+  // hub state. An eligible active user republishes the fresh identity on the
+  // next bounded heartbeat.
+  livingKingdomHub.removeUser(uid);
   identityGlobal.__livingKingdomIdentityGeneration =
     (identityGlobal.__livingKingdomIdentityGeneration ?? 0) + 1;
 }
@@ -153,7 +164,7 @@ export async function loadLivingKingdomIdentityProfile(
     return cached.profile;
   }
 
-  const avatarTarget = normalizeManagedMediaTarget(`user-${uid}`);
+  const avatarTargets = livingKingdomManagedAvatarTargetsForUid(uid);
   const readIdentitySource = () =>
     Promise.all([
       prisma.user.findUnique({
@@ -169,34 +180,44 @@ export async function loadLivingKingdomIdentityProfile(
           },
         },
       }),
-      avatarTarget
-        ? prisma.managedMediaAsset.findFirst({
+      avatarTargets.length > 0
+        ? prisma.managedMediaAsset.findMany({
             where: {
               kind: "avatar",
-              target: avatarTarget,
+              target: { in: avatarTargets },
               active: true,
               url: { not: "" },
             },
             orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-            select: { id: true, updatedAt: true },
-        })
-        : Promise.resolve(null),
+            take: 12,
+            select: { id: true, target: true, updatedAt: true },
+          })
+        : Promise.resolve([]),
     ]);
 
   let loadGeneration = livingKingdomIdentityGeneration();
-  let [user, avatar] = await readIdentitySource();
+  let [user, avatarRows] = await readIdentitySource();
   if (loadGeneration !== livingKingdomIdentityGeneration()) {
-    // An opt-out or avatar change committed while the reads were in flight. Retry once
-    // before any public avatar registration or cache write, then fail closed on more churn.
+    // An avatar or account identity change committed while the reads were in
+    // flight. Retry once before any public avatar registration or cache write,
+    // then fail closed on more churn.
     loadGeneration = livingKingdomIdentityGeneration();
-    [user, avatar] = await readIdentitySource();
+    [user, avatarRows] = await readIdentitySource();
     if (loadGeneration !== livingKingdomIdentityGeneration()) return null;
   }
+
+  // A directly selected profile avatar wins. Admin-created featured and pool
+  // avatars are immediate fallbacks so a newly avatarized signup enters the
+  // kingdom without waiting for a second, user-driven selection step.
+  const avatar = avatarTargets
+    .map((target) => avatarRows.find((candidate) => candidate.target === target))
+    .find((candidate) => Boolean(candidate)) ?? null;
+  const avatarTarget = avatar?.target ?? null;
 
   let profile: LivingKingdomIdentityProfile | null = null;
   if (user) {
     const mode = livingKingdomFeatureMode();
-    const displayName = isAiPersonaUid(user.uid) ? null : displayNameForUser(user);
+    const displayName = isInternalSystemUid(user.uid) ? null : displayNameForUser(user);
     const preferenceMode = resolveLivingKingdomPreferenceMode(user.presencePreference);
     const featureAllowed = livingKingdomFeatureAllowsUser({
       mode,
@@ -207,14 +228,17 @@ export async function loadLivingKingdomIdentityProfile(
     });
     const avatarUrl =
       avatar && avatarTarget
-        ? avatarPresenceUrlForUser(user.uid, displayName, avatar.updatedAt.getTime())
+        ? avatarPresenceUrlForTarget(
+            avatarTarget,
+            displayName,
+            avatar.updatedAt.getTime(),
+          )
         : null;
     const publicId = publicIdForUid(user.uid);
     const publicAvatarUrl =
       avatar &&
       avatarTarget &&
       displayName &&
-      preferenceMode === "public_coarse" &&
       featureAllowed
         ? registerLivingKingdomAvatar({
             publicId,
@@ -251,7 +275,11 @@ export async function loadLivingKingdomIdentityProfile(
   }
 
   identityCache.set(uid, {
-    expiresAtMs: nowMs + LIVING_KINGDOM_IDENTITY_CACHE_TTL_MS,
+    expiresAtMs:
+      nowMs +
+      (profile?.displayEligible && profile.avatarEligible
+        ? LIVING_KINGDOM_IDENTITY_CACHE_TTL_MS
+        : LIVING_KINGDOM_INELIGIBLE_CACHE_TTL_MS),
     featureSignature: signature,
     profile,
   });

@@ -36,6 +36,7 @@ import {
 import {
   loadPublicLeaderboardRawGames,
 } from "@/lib/publicLeaderboardGameCorpus";
+import { userIsOnline } from "@/lib/userOnlinePresence";
 
 export type PublicPlayerReplayEvidence = {
   gameStatsId: number;
@@ -402,7 +403,7 @@ function playerForCanonicalSnapshot(
 export async function loadPublicPlayerDirectoryFresh(
   prisma: PrismaClient
 ): Promise<PublicPlayerDirectory> {
-  const onlineThreshold = new Date(Date.now() - 2 * 60 * 1000);
+  const onlineSampleAt = Date.now();
 
   const [
     users,
@@ -606,7 +607,7 @@ export async function loadPublicPlayerDirectoryFresh(
       steamId,
       verified: user.verified,
       verificationLevel: user.verificationLevel,
-      isOnline: Boolean(user.lastSeen && user.lastSeen > onlineThreshold),
+      isOnline: userIsOnline(user.uid, user.lastSeen, onlineSampleAt),
       hasFeaturedAvatar: hasFeaturedAvatarForUid(user.uid),
       totalMatches: 0,
       wins: 0,

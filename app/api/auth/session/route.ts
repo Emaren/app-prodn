@@ -14,6 +14,13 @@ import {
   setSessionCookie,
   signSession,
 } from "@/lib/session";
+import {
+  allowUserOnlineSession,
+  forceUserOnlineOffline,
+  userOnlineSessionIsForcedOffline,
+} from "@/lib/userOnlinePresence";
+import { livingKingdomHub } from "@/lib/livingKingdom/hub";
+import { invalidatePublicPlayerDirectoryCache } from "@/lib/publicPlayerDirectory";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,6 +104,14 @@ export async function GET(request: NextRequest) {
   const prisma = getPrisma();
   let user = await prisma.user.findUnique({ where: { uid } });
 
+  if (user && !userOnlineSessionIsForcedOffline(uid)) {
+    // Publish arrival before optional Steam hydration can add network latency.
+    await prisma.user.update({
+      where: { uid },
+      data: { lastSeen: new Date() },
+    });
+  }
+
   let verification = user ? await fetchUserVerification(prisma, uid) : null;
   if (user && verification?.steamId) {
     const hydration = await hydrateSteamIdentity(prisma, uid);
@@ -129,11 +144,13 @@ export async function POST(request: NextRequest) {
     }
 
     uid = newSessionUid();
+    allowUserOnlineSession(uid);
     const user = await prisma.user.create({
       data: {
         uid,
         email: providedEmail,
         isAdmin: false,
+        lastSeen: new Date(),
       },
     });
 
@@ -158,12 +175,21 @@ export async function POST(request: NextRequest) {
         uid,
         email: providedEmail,
         isAdmin: false,
+        lastSeen: new Date(),
       },
     });
   } else if (providedEmail && providedEmail !== user.email) {
     user = await prisma.user.update({
       where: { uid },
-      data: { email: providedEmail },
+      data: {
+        email: providedEmail,
+        lastSeen: new Date(),
+      },
+    });
+  } else {
+    user = await prisma.user.update({
+      where: { uid },
+      data: { lastSeen: new Date() },
     });
   }
 
@@ -175,8 +201,24 @@ export async function POST(request: NextRequest) {
   });
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
+  const uid = await getSessionUid(request);
+  let presenceCleared = false;
+
+  if (uid) {
+    forceUserOnlineOffline(uid);
+    livingKingdomHub.removeUser(uid);
+    invalidatePublicPlayerDirectoryCache();
+    // Preserve the durable last-seen timestamp. The explicit offline fence is
+    // the authoritative immediate logout signal for this server process.
+    presenceCleared = true;
+  }
+
   const response = NextResponse.json({ ok: true });
+  response.headers.set(
+    "X-AoE2WAR-Presence-Cleared",
+    String(presenceCleared),
+  );
   clearSessionCookie(response);
   return response;
 }

@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","auditors","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-contract"
-reviewed_at: "2026-08-21"
+reviewed_at: "2026-08-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -59,18 +59,37 @@ A fast provisional display must never be mislabeled as settlement authority. Con
 
 | Surface | Canonical source | Visible cadence | Resume behavior | Healthy-path stale bound after server truth |
 | --- | --- | ---: | --- | ---: |
-| Homepage Active Players and Online Players | One `users.last_seen` presence snapshot from `/api/user/online_users` | 5 seconds | Immediate focus/visibility refresh | About 5 seconds plus request time |
+| Homepage Active Players and Online Players | One process-local document-lease snapshot with durable `users.last_seen` fallback from `/api/user/online_users` | 5 seconds | Immediate focus/visibility refresh | About 5 seconds plus request time |
 | `/players` presence | Same presence snapshot as homepage | 5 seconds | Immediate focus/visibility refresh | About 5 seconds plus request time |
 | `/players` replay totals, records, and membership | Lightweight public replay/projection generation token followed by a fresh server-component refresh | 5 seconds | Immediate focus/visibility refresh | About 5 seconds plus refresh time |
 | Player profile match feed | Authoritative leading match window plus profile generation | 5 seconds | Immediate focus/visibility refresh | About 5 seconds plus request time |
 | Homepage Recent Parsed Games | `/api/lobby/recent-matches`, which merges canonical replay rows, current completed-session truth, and adjudication evidence | 5 seconds | Immediate focus/visibility refresh | About 5 seconds plus request time |
 | `/live-games` | `/api/live-games` over the live-session snapshot | 5 seconds | Immediate focus/visibility refresh | About 5 seconds plus request time |
 | `/bets` | `/api/bets` plus event-driven post-ingest market reconciliation | 2 seconds | Immediate focus/visibility refresh | About 2 seconds after market truth; fallback ensure is bounded at 5 seconds |
-| Living Kingdom roaming-now overlay | Authenticated, server-sanitized projections from eligible signed-in human accounts accepted by `/api/kingdom-presence/state`, then fanned out to anonymous or signed-in receive-only viewers through `/api/kingdom-presence/events` | Event-driven on depth-band or direction change, normally at or below 1 Hz; a 500 ms client hard throttle permits responsive fast transitions, Save-Data uses at least 1 second, and the server admits at most 2 Hz with burst four | EventSource reconnect receives a fresh bounded snapshot; hidden publishers stop sampling and stale actors expire | About 2 seconds while active; no actor remains public beyond the bounded presence TTL after its last accepted sample |
+| Living Kingdom roaming-now overlay | Authenticated, server-sanitized projections from eligible signed-in human accounts accepted by `/api/kingdom-presence/state`, then fanned out to anonymous or signed-in receive-only viewers through `/api/kingdom-presence/events` | Immediate route-entry publish; event-driven on depth-band or direction change with a 500 ms hard throttle; an 8-second foreground heartbeat (10 seconds under Save-Data); server admission at most 2 Hz with burst four | Immediate focus/pageshow republish; EventSource reconnect receives a fresh bounded snapshot; hidden/minimized tabs renew the last coarse position instead of departing, while pagehide and explicit logout remove the tab/actor immediately | About 2 seconds while active; abrupt disconnect safety bound is the 90-second presence TTL |
 
 All listed client requests use `no-store`. Relevant routes are force-dynamic or return explicit private/no-store headers. Polls pause while the page is hidden, skip or supersede overlapping requests, and refresh immediately when the page becomes visible again.
 
-Presence intentionally has a two-minute membership window because a browser heartbeat is periodic. A disconnected user can therefore remain “online” for up to roughly two minutes plus the next five-second sample. That is liveness policy, not a cache defect. The displayed count and roster must always come from the same sample.
+Online membership is a separate lease rail from Living Kingdom. Each signed-in
+document heartbeats every 15 seconds against a 90-second fallback window, so
+several delayed ticks do not falsely mark a static but connected user offline.
+Mount, focus, pageshow, restored connectivity, and successful authentication
+refresh immediately. Page departure uses a per-document sequenced lease and a
+short 750 ms same-site navigation grace; explicit logout fences older tabs and
+immediately makes live truth offline while preserving durable `users.last_seen`
+as historical last-seen evidence. Pagehide-before-arrival reordering leaves a
+bounded inactive sequence tombstone, so an older in-flight heartbeat cannot
+resurrect a departed document. Public rosters poll every five seconds and
+refresh immediately on mount/focus/pageshow. A browser that cannot deliver its
+departure beacon may remain online only until the 90-second safety window plus
+the next sample. The displayed count and roster always come from one snapshot.
+
+The ping mutation boundary is same-origin and cookie-session authenticated; it
+never accepts legacy UID headers or body-authored identity. It tracks at most
+eight documents per UID and 2,000 UIDs/barriers process-wide, accepts an initial
+eight-document heartbeat burst and then one heartbeat per second, caps streamed
+JSON at 2 KiB, and coalesces durable last-seen writes to one per UID per five
+seconds. Leave cleanup bypasses heartbeat rate limiting.
 
 ## Living Kingdom roaming-now truth
 
@@ -82,15 +101,15 @@ accepted by the web process and expires when its lease becomes stale.
 
 Within a server-enabled rollout cohort, a signed-in human account with an
 eligible personal avatar is automatically `public_coarse` on allowlisted public
-realms. No preference row means that automatic default; it does not mean that
-the user must opt in. An explicit durable `off` preference always wins, and the
-same control may re-enable public coarse presence later. Anonymous sessions
-observe only. AI-controlled persona accounts are excluded from publishing.
+realms. Publication is always on for that eligible account. Legacy `off`,
+`public_coarse`, absent, or malformed preference rows do not gate it, and the
+compatibility mutation route returns HTTP 405. Anonymous sessions observe only.
+AI-controlled persona accounts are excluded from publishing.
 
 The truth path is deliberately separate from legacy online membership:
 
 ```text
-eligible signed-in human browser with a personal avatar and no explicit opt-out
+eligible signed-in human browser with a personal avatar
   -> authenticated, rate-limited POST /api/kingdom-presence/state
   -> server resolves identity and normalizes an allowlisted public realm
   -> bounded process-memory hub replaces that actor's latest projection
@@ -112,44 +131,55 @@ The following boundaries are mandatory:
   overlay in CSS is not a kill switch.
 - Only routes represented by the canonical public realm registry may be
   published. Admin, authentication, inbox/direct-message, wallet/security, and
-  other private paths fail closed and expose no raw path material.
+  other private paths fail closed. Normalized public detail patterns may carry
+  their exact pathname as the bounded room ID, so clan halls, individual bets,
+  matches, players, and other approved detail pages do not collapse into their
+  parent index.
 - Movement and route samples are ephemeral. They never write through Prisma,
-  `UserActivityEvent`, `/api/user/ping`, or the Traffic bridge. The user's
-  explicit opt-out or later re-enable override is durable account state and is
-  the sole allowed database write in this feature path. The automatic
-  `public_coarse` default does not require a preference row.
+  `UserActivityEvent`, `/api/user/ping`, or the Traffic bridge. The active
+  Living Kingdom path performs no preference write; historical preference rows
+  are non-authoritative.
 - Actor identity and avatar metadata are resolved server-side. Accounts without
-  an eligible public display/avatar, explicitly opted-out or feature-gated
-  accounts, AI-controlled persona accounts, and disallowed routes cannot
-  publish.
+  an eligible public display/avatar, feature-gated accounts, AI-controlled
+  persona accounts, and disallowed routes cannot publish. Profile, Featured
+  Warrior, and avatar-pool assignments are eligible, and their admin mutation
+  routes invalidate cached identity immediately.
 - Public actor IDs and presence-avatar URLs expose only a process-local opaque
   handle, never a durable account UID or UID-bearing managed-media path. The
   server resolves that handle through a bounded, expiring memory map and must
   serve the image directly rather than redirecting to its internal asset path.
 - The process map, actor count, stream count, publish rate, payload size, event
-  cadence, and TTL are bounded. Clients send only depth-band or direction
-  changes, normally at or below once per second; their hard throttle is 500 ms
-  for a fast transition and at least one second under Save-Data. The server's
-  actor limiter sustains at most two requests per second with burst four for
-  door/arrival pairs. A restart intentionally forgets all movement.
-- Anonymous and signed-in public viewers are receive-only. Hidden tabs stop
-  publishing; a hidden lifecycle signal removes rather than projects that tab,
-  and the stream disconnects or suspends work. Reduced-motion and data-saving
-  clients receive a quieter presentation.
+  cadence, and TTL are bounded. User-driven samples send only depth-band or
+  direction changes, normally at or below once per second; their hard throttle
+  is 500 ms for a fast transition and at least one second under Save-Data.
+  Interval samples are marked lease-renewal-only: they keep an idle tab alive
+  without stealing the actor's projection from the tab most recently entered,
+  focused, restored, or scrolled. The server's actor limiter sustains at most
+  two requests per second with burst four for door/arrival pairs. A restart
+  intentionally forgets all movement.
+- Anonymous and signed-in public viewers are receive-only. Hidden/minimized
+  publisher tabs renew only their last already-public coarse position and do
+  not report hidden motion or promote activity ordering; the hidden viewer's
+  EventSource suspends until visibility returns. Pagehide and explicit logout
+  remove publication. Clicking one's own faded rail avatar is a local visual
+  hide only (including its own door flight); clicking that portrait in the
+  speed-chip stack restores it, and neither action affects other viewers.
+  Reduced-motion and data-saving clients receive a quieter presentation.
 - The SSE endpoint is `no-store`, sends keepalives inside the proxy read timeout,
   and is never buffered or cached by Nginx. Network cadence remains low; smooth
   motion comes from client interpolation rather than high-frequency messages.
 
 The browser-to-server contract contains only an allowlisted public realm, one of
 21 coarse depth bands, coarse motion, a visibility lifecycle signal, and
-allowlisted navigation intent. A hidden signal removes state; it is not public
-activity. The public projection contains no exact scroll offset, cursor
-position, private-route activity, raw URL material, or hidden-tab activity. This
+allowlisted navigation intent. Hiding or minimizing a tab retains its last
+coarse page position as idle presence; it does not create new motion or promote
+that tab's activity ordering. The public projection contains no exact scroll offset, cursor
+position, private-route activity, or raw URL material. This
 section defines product and technical behavior only. Legal and
 privacy-compliance conclusions are out of scope.
 
 The initial limits are 500 actors, three contributing tabs per actor, 250 SSE
-subscribers by default, a 30-second actor TTL, a 15-second keepalive, and a
+subscribers by default, a 90-second actor TTL, a 10-second keepalive, and a
 2-KiB mutation body. `LIVING_KINGDOM_MAX_SUBSCRIBERS` may tune the stream cap
 but is clamped to an absolute 1,000; raising it requires measured file-descriptor,
 memory, event-loop, and outbound-bandwidth proof. `LIVING_KINGDOM_MODE` owns the

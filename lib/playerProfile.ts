@@ -52,6 +52,7 @@ import {
   publicReplayMapLabel,
   resolveReliableReplayWinner,
 } from "@/lib/unresolvedWatcherResult";
+import { userIsOnline } from "@/lib/userOnlinePresence";
 
 import { loadPublicPlayerDirectory } from "@/lib/publicPlayerDirectory";
 
@@ -2096,7 +2097,9 @@ async function buildProfileFromPlayer(
     createdAt: toIso(input.user?.createdAt ?? null),
     verifiedAt: toIso(input.user?.verifiedAt ?? null),
     lastSeenAt: toIso(input.user?.lastSeen ?? null),
-    isLive: Boolean(input.user?.lastSeen && input.user.lastSeen.getTime() > Date.now() - 2 * 60 * 1000),
+    isLive: input.user
+      ? userIsOnline(input.user.uid, input.user.lastSeen)
+      : false,
     steam: {
       personaName: input.user?.steamPersonaName ?? null,
       steamId,

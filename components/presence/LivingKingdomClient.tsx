@@ -10,6 +10,10 @@ import {
   type LivingKingdomRealmId,
 } from "@/lib/livingKingdom/realms";
 import LivingKingdomOverlay from "./LivingKingdomOverlay";
+import {
+  publishLivingKingdomVisualSnapshot,
+  subscribeLivingKingdomSelfAvatarRequest,
+} from "./livingKingdomVisualStore";
 import type {
   LivingKingdomActor,
   LivingKingdomDelta,
@@ -17,14 +21,11 @@ import type {
   LivingKingdomFlight,
   LivingKingdomMotion,
   LivingKingdomPreference,
-  LivingKingdomPublishMode,
   LivingKingdomSnapshot,
-  LivingKingdomViewerMode,
 } from "./livingKingdomTypes";
 
-const VIEWER_MODE_STORAGE_KEY = "aoe2war.livingKingdom.viewerMode.v1";
 const STATE_SEND_INTERVAL_MS = 500;
-const HEARTBEAT_INTERVAL_MS = 15_000;
+const HEARTBEAT_INTERVAL_MS = 8_000;
 
 type ConnectionNavigator = Navigator & {
   connection?: {
@@ -162,16 +163,6 @@ function parsePreference(value: unknown): LivingKingdomPreference | null {
   };
 }
 
-function readViewerMode(): LivingKingdomViewerMode {
-  try {
-    const stored = window.localStorage.getItem(VIEWER_MODE_STORAGE_KEY);
-    if (stored === "full" || stored === "calm" || stored === "off") return stored;
-  } catch {
-    // Storage may be disabled; the in-memory preference still works.
-  }
-  return "full";
-}
-
 function createTabId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? `lk_${crypto.randomUUID().replace(/-/g, "").slice(0, 28)}`
@@ -235,18 +226,16 @@ export default function LivingKingdomClient() {
   const pathname = usePathname();
   const { uid } = useUserAuth();
   const realmId = pathname ? livingKingdomRealmForPath(pathname) : null;
-  const [viewerMode, setViewerMode] = React.useState<LivingKingdomViewerMode>("full");
   const [actorsById, setActorsById] = React.useState<Map<string, LivingKingdomActor>>(new Map());
   const [selfId, setSelfId] = React.useState<string | null>(null);
+  const [selfVisible, setSelfVisible] = React.useState(true);
   const [overflowCount, setOverflowCount] = React.useState(0);
-  const [streamHealthy, setStreamHealthy] = React.useState(false);
+  const [, setStreamHealthy] = React.useState(false);
   const [pageVisible, setPageVisible] = React.useState(true);
   const [preference, setPreference] = React.useState<LivingKingdomPreference | null>(null);
-  const [preferenceSaving, setPreferenceSaving] = React.useState(false);
   const [reducedMotion, setReducedMotion] = React.useState(false);
   const [bandwidthCalm, setBandwidthCalm] = React.useState(false);
   const [flights, setFlights] = React.useState<LivingKingdomFlight[]>([]);
-  const [arrivingIds, setArrivingIds] = React.useState<Set<string>>(new Set());
   const [demoChecked, setDemoChecked] = React.useState(false);
   const [demoEnabled, setDemoEnabled] = React.useState(false);
   const tabIdRef = React.useRef("");
@@ -258,6 +247,7 @@ export default function LivingKingdomClient() {
   const recentlyRemovedActorsRef = React.useRef<Map<string, { actor: LivingKingdomActor; removedAt: number }>>(new Map());
   const actorsByIdRef = React.useRef<Map<string, LivingKingdomActor>>(new Map());
   const selfIdRef = React.useRef<string | null>(null);
+  const selfVisibleRef = React.useRef(true);
   const pendingDoorPublishRef = React.useRef<PendingDoorPublish | null>(null);
 
   React.useEffect(() => {
@@ -266,7 +256,6 @@ export default function LivingKingdomClient() {
     const nextDemoEnabled =
       process.env.NODE_ENV !== "production" &&
       new URLSearchParams(window.location.search).get("living-kingdom-demo") === "1";
-    setViewerMode(nextDemoEnabled ? "full" : readViewerMode());
     setDemoEnabled(nextDemoEnabled);
     setDemoChecked(true);
   }, []);
@@ -280,13 +269,21 @@ export default function LivingKingdomClient() {
   }, [selfId]);
 
   React.useEffect(() => {
-    if (!demoChecked) return;
-    try {
-      window.localStorage.setItem(VIEWER_MODE_STORAGE_KEY, viewerMode);
-    } catch {
-      // Keep the setting for this page lifetime when storage is unavailable.
-    }
-  }, [demoChecked, viewerMode]);
+    selfVisibleRef.current = selfVisible;
+  }, [selfVisible]);
+
+  React.useEffect(() => {
+    setSelfId(demoEnabled ? "demo-warrior-00" : null);
+    setSelfVisible(true);
+  }, [demoEnabled, uid]);
+
+  React.useEffect(
+    () => subscribeLivingKingdomSelfAvatarRequest(() => {
+      selfVisibleRef.current = true;
+      setSelfVisible(true);
+    }),
+    [],
+  );
 
   React.useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -332,7 +329,8 @@ export default function LivingKingdomClient() {
         if (!cancelled) setPreference(nextPreference);
       })
       .catch(() => {
-        // Preference and publishing fail closed; ambient viewing remains public.
+        // The server still owns publication eligibility; this metadata only
+        // allows an immediate local self portrait while the stream catches up.
       });
 
     return () => {
@@ -340,35 +338,12 @@ export default function LivingKingdomClient() {
     };
   }, [uid]);
 
-  const changePublishMode = React.useCallback(async (mode: LivingKingdomPublishMode) => {
-    if (preferenceSaving) return;
-    setPreferenceSaving(true);
-    try {
-      const response = await fetch("/api/user/presence-preference", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ mode }),
-      });
-      if (!response.ok) return;
-      const saved = parsePreference(await response.json().catch(() => null));
-      if (saved) {
-        publisherBlockedRef.current = false;
-        setPreference(saved);
-      }
-    } catch {
-      // Leave the previous privacy choice intact if saving fails.
-    } finally {
-      setPreferenceSaving(false);
-    }
-  }, [preferenceSaving]);
-
   const queueFlight = React.useCallback(
     (
       actor: LivingKingdomActor,
       fromRealmId: LivingKingdomRealmId,
       toRealmId: LivingKingdomRealmId,
-      direction: "departure" | "arrival",
+      direction: "departure",
     ) => {
       const id = `flight-${Date.now()}-${flightSequenceRef.current++}`;
       setFlights((current) => [
@@ -385,21 +360,10 @@ export default function LivingKingdomClient() {
       window.setTimeout(() => {
         setFlights((current) => current.filter((flight) => flight.id !== id));
       }, 1_300);
-      if (direction === "departure") {
-        const next = new Map(actorsByIdRef.current);
-        next.delete(actor.id);
-        actorsByIdRef.current = next;
-        setActorsById(next);
-      } else {
-        setArrivingIds((current) => new Set(current).add(actor.id));
-        window.setTimeout(() => {
-          setArrivingIds((current) => {
-            const next = new Set(current);
-            next.delete(actor.id);
-            return next;
-          });
-        }, 1_000);
-      }
+      const next = new Map(actorsByIdRef.current);
+      next.delete(actor.id);
+      actorsByIdRef.current = next;
+      setActorsById(next);
     },
     [],
   );
@@ -407,6 +371,7 @@ export default function LivingKingdomClient() {
   const queueDoorFlight = React.useCallback(
     (door: LivingKingdomDoorEvent, currentRealm: LivingKingdomRealmId) => {
       if (door.fromRealmId !== currentRealm) return;
+      if (door.actor.id === selfIdRef.current && !selfVisibleRef.current) return;
       const dedupeKey = `${door.actor.id}:${door.fromRealmId}:${door.toRealmId}`;
       const now = Date.now();
       const previous = flightDedupeRef.current.get(dedupeKey) ?? 0;
@@ -420,15 +385,8 @@ export default function LivingKingdomClient() {
     [queueFlight],
   );
 
-  const queueArrivalFlight = React.useCallback(
-    (actor: LivingKingdomActor, currentRealm: LivingKingdomRealmId) => {
-      queueFlight(actor, currentRealm, currentRealm, "arrival");
-    },
-    [queueFlight],
-  );
-
   React.useEffect(() => {
-    if (!demoChecked || demoEnabled || !realmId || viewerMode === "off" || !pageVisible) {
+    if (!demoChecked || demoEnabled || !realmId || !pageVisible) {
       if (!demoEnabled) {
         setStreamHealthy(false);
         const empty = new Map<string, LivingKingdomActor>();
@@ -454,7 +412,7 @@ export default function LivingKingdomClient() {
       const next = new Map(snapshot.actors.map((actor) => [actor.id, actor]));
       actorsByIdRef.current = next;
       setActorsById(next);
-      setSelfId(snapshot.selfId ?? null);
+      if (snapshot.selfId) setSelfId(snapshot.selfId);
       setOverflowCount(snapshot.overflowCount);
       setStreamHealthy(true);
     };
@@ -468,7 +426,6 @@ export default function LivingKingdomClient() {
         }
       }
       const current = actorsByIdRef.current;
-      const arrivals = delta.upserts.filter((actor) => !current.has(actor.id));
       const next = new Map(current);
       for (const id of delta.removals) {
         const removed = next.get(id);
@@ -478,7 +435,6 @@ export default function LivingKingdomClient() {
       for (const actor of delta.upserts) next.set(actor.id, actor);
       actorsByIdRef.current = next;
       setActorsById(next);
-      for (const actor of arrivals) queueArrivalFlight(actor, realmId);
       setOverflowCount(delta.overflowCount);
       setStreamHealthy(true);
     };
@@ -497,10 +453,6 @@ export default function LivingKingdomClient() {
     };
     const onError = () => {
       setStreamHealthy(false);
-      const next = new Map<string, LivingKingdomActor>();
-      actorsByIdRef.current = next;
-      setActorsById(next);
-      setOverflowCount(0);
     };
 
     source.addEventListener("snapshot", onSnapshot);
@@ -515,7 +467,7 @@ export default function LivingKingdomClient() {
       source.removeEventListener("error", onError);
       source.close();
     };
-  }, [demoChecked, demoEnabled, pageVisible, queueArrivalFlight, queueDoorFlight, realmId, viewerMode]);
+  }, [demoChecked, demoEnabled, pageVisible, queueDoorFlight, realmId]);
 
   const nextSequence = React.useCallback(() => {
     sequenceRef.current += 1;
@@ -537,7 +489,7 @@ export default function LivingKingdomClient() {
         signal,
         body: JSON.stringify(body),
       });
-      if (response.status === 403 || response.status === 404) {
+      if (response.status === 404) {
         publisherBlockedRef.current = true;
         return null;
       }
@@ -568,13 +520,8 @@ export default function LivingKingdomClient() {
     const canPublish =
       Boolean(uid) &&
       Boolean(realmId) &&
-      pageVisible &&
       demoChecked &&
       !demoEnabled &&
-      preference?.mode === "public_coarse" &&
-      preference.featureAllowed &&
-      preference.displayEligible &&
-      preference.avatarEligible &&
       !publisherBlockedRef.current &&
       Boolean(tabIdRef.current);
 
@@ -597,7 +544,11 @@ export default function LivingKingdomClient() {
     let cancelled = false;
     const minimumInterval = bandwidthCalm ? 1_000 : STATE_SEND_INTERVAL_MS;
 
-    const sendState = (motion: LivingKingdomMotion, force = false) => {
+    const sendState = (
+      motion: LivingKingdomMotion,
+      force = false,
+      renewOnly = false,
+    ) => {
       if (!publishReady) {
         queuedBeforeDoor = { motion, force: force || queuedBeforeDoor?.force === true };
         return;
@@ -624,6 +575,7 @@ export default function LivingKingdomClient() {
         depthBand: scroll.band,
         motion,
         visibility: "visible",
+        renewOnly,
       });
     };
 
@@ -656,7 +608,22 @@ export default function LivingKingdomClient() {
         sendState(queued?.motion ?? "idle", true);
       });
     }
-    const heartbeat = window.setInterval(() => sendState("idle", true), bandwidthCalm ? 20_000 : HEARTBEAT_INTERVAL_MS);
+    const heartbeat = window.setInterval(
+      () => sendState("idle", true, true),
+      bandwidthCalm ? 10_000 : HEARTBEAT_INTERVAL_MS,
+    );
+    const republishVisibleState = () => {
+      if (document.visibilityState === "visible") sendState("idle", true);
+    };
+    const renewAcrossVisibilityChange = () => {
+      // Hiding or minimizing a tab is not a departure. Preserve the last
+      // public coarse position without promoting an idle tab's activity rank.
+      sendState(
+        "idle",
+        true,
+        document.visibilityState !== "visible",
+      );
+    };
     const removeUnlessDoorDeparted = () => {
       const departure = doorDepartureRef.current;
       if (
@@ -669,11 +636,17 @@ export default function LivingKingdomClient() {
     };
     const onPageHide = () => removeUnlessDoorDeparted();
     window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("pageshow", republishVisibleState);
+    window.addEventListener("focus", republishVisibleState);
+    document.addEventListener("visibilitychange", renewAcrossVisibilityChange);
 
     return () => {
       cancelled = true;
       scrollTarget.removeEventListener("scroll", onScroll);
       window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("pageshow", republishVisibleState);
+      window.removeEventListener("focus", republishVisibleState);
+      document.removeEventListener("visibilitychange", renewAcrossVisibilityChange);
       window.clearInterval(heartbeat);
       window.clearTimeout(trailingTimer);
       window.clearTimeout(idleTimer);
@@ -681,16 +654,12 @@ export default function LivingKingdomClient() {
       if (frame) window.cancelAnimationFrame(frame);
       removeUnlessDoorDeparted();
     };
-  }, [bandwidthCalm, demoChecked, demoEnabled, nextSequence, pageVisible, preference, publishMutation, realmId, removePublishedPresence, uid]);
+  }, [bandwidthCalm, demoChecked, demoEnabled, nextSequence, publishMutation, realmId, removePublishedPresence, uid]);
 
   React.useEffect(() => {
     if (
       !realmId ||
       !uid ||
-      preference?.mode !== "public_coarse" ||
-      !preference.featureAllowed ||
-      !preference.displayEligible ||
-      !preference.avatarEligible ||
       demoEnabled
     ) {
       return;
@@ -743,7 +712,7 @@ export default function LivingKingdomClient() {
     };
     document.addEventListener("click", onDocumentClick, true);
     return () => document.removeEventListener("click", onDocumentClick, true);
-  }, [demoEnabled, nextSequence, preference, publishMutation, queueDoorFlight, realmId, uid]);
+  }, [demoEnabled, nextSequence, publishMutation, queueDoorFlight, realmId, uid]);
 
   React.useEffect(() => {
     if (process.env.NODE_ENV === "production" || !demoChecked || !demoEnabled || !realmId) return;
@@ -772,9 +741,7 @@ export default function LivingKingdomClient() {
       if (tick % 4 === 0) {
         const actor = demoActors(realmId)[tick % 12];
         const destinationRealmId: LivingKingdomRealmId = realmId === "staking" ? "kingdom" : "staking";
-        if (tick % 8 === 0) {
-          queueArrivalFlight({ ...actor, realmId, depthBand: 0, motion: "idle" }, realmId);
-        } else {
+        if (tick % 8 !== 0 && actor.id !== "demo-warrior-00") {
           queueDoorFlight(
             {
               protocol: 1,
@@ -788,27 +755,59 @@ export default function LivingKingdomClient() {
       }
     }, 1_800);
     return () => window.clearInterval(interval);
-  }, [demoChecked, demoEnabled, queueArrivalFlight, queueDoorFlight, realmId]);
+  }, [demoChecked, demoEnabled, queueDoorFlight, realmId, uid]);
+
+  React.useEffect(() => {
+    if (
+      !selfId ||
+      !realmId ||
+      !preference?.avatarUrl ||
+      !preference.displayName ||
+      actorsByIdRef.current.has(selfId)
+    ) {
+      return;
+    }
+    const scroll = readScrollPosition();
+    const next = new Map(actorsByIdRef.current);
+    next.set(selfId, {
+      id: selfId,
+      displayName: preference.displayName,
+      avatarUrl: preference.avatarUrl,
+      realmId,
+      href: pathname || "/",
+      depthBand: scroll.band,
+      motion: "idle",
+    });
+    actorsByIdRef.current = next;
+    setActorsById(next);
+  }, [pathname, preference, realmId, selfId]);
 
   const actors = React.useMemo(
-    () => (streamHealthy ? [...actorsById.values()].filter((actor) => actor.realmId === realmId) : []),
-    [actorsById, realmId, streamHealthy],
+    () => [...actorsById.values()].filter((actor) => actor.realmId === realmId),
+    [actorsById, realmId],
   );
+
+  React.useEffect(() => {
+    publishLivingKingdomVisualSnapshot({ actors, overflowCount, selfId, selfVisible });
+  }, [actors, overflowCount, selfId, selfVisible]);
+
+  React.useEffect(
+    () => () => publishLivingKingdomVisualSnapshot({ actors: [], overflowCount: 0, selfId: null, selfVisible: true }),
+    [],
+  );
+
   if (!demoChecked || !realmId) return null;
 
   return (
     <LivingKingdomOverlay
       actors={actors}
-      overflowCount={overflowCount}
       selfId={selfId}
-      viewerMode={viewerMode}
-      onViewerModeChange={setViewerMode}
-      preference={preference}
-      preferenceSaving={preferenceSaving}
-      onPublishModeChange={(mode) => void changePublishMode(mode)}
-      streamHealthy={streamHealthy}
+      selfVisible={selfVisible}
+      onHideSelf={() => {
+        selfVisibleRef.current = false;
+        setSelfVisible(false);
+      }}
       flights={flights}
-      arrivingIds={arrivingIds}
       onFlightFinished={(id) => setFlights((current) => current.filter((flight) => flight.id !== id))}
       reducedMotion={reducedMotion}
       bandwidthCalm={bandwidthCalm}

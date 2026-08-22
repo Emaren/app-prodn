@@ -1,7 +1,11 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import type { LobbyOnlineUser } from "@/lib/lobby";
+import {
+  USER_ONLINE_STALE_MS,
+  userIsOnline,
+} from "@/lib/userOnlinePresence";
 
-export const PUBLIC_PRESENCE_WINDOW_MS = 2 * 60 * 1000;
+export const PUBLIC_PRESENCE_WINDOW_MS = USER_ONLINE_STALE_MS;
 export const PUBLIC_PRESENCE_MAX_USERS = 500;
 
 export type PublicPresenceSnapshot = {
@@ -36,13 +40,18 @@ export async function loadPublicPresenceSnapshot(
     select: {
       uid: true,
       inGameName: true,
+      lastSeen: true,
       verified: true,
       verificationLevel: true,
     },
     take: PUBLIC_PRESENCE_MAX_USERS,
   });
 
-  const onlineUsers = users.map(
+  const onlineUsers = users
+    .filter((user) =>
+      userIsOnline(user.uid, user.lastSeen, generatedAt.getTime()),
+    )
+    .map(
     (user) =>
       ({
         uid: user.uid,
@@ -50,7 +59,7 @@ export async function loadPublicPresenceSnapshot(
         verified: user.verified,
         verificationLevel: user.verificationLevel,
       }) satisfies LobbyOnlineUser,
-  );
+    );
 
   return {
     activePlayers: onlineUsers.length,

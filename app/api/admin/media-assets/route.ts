@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/adminSession";
+import { invalidateLivingKingdomIdentity } from "@/lib/livingKingdom/identity";
+import { livingKingdomUidForManagedAvatarTarget } from "@/lib/livingKingdom/managedAvatarTargets";
 import {
   activateManagedMediaAsset,
   MANAGED_MEDIA_KINDS,
@@ -85,6 +87,22 @@ export async function POST(request: NextRequest) {
       replaceActive: !isUserAvatarPoolUpload,
     });
 
+    if (
+      asset.kind === "avatar"
+    ) {
+      const affectedUid =
+        await livingKingdomUidForManagedAvatarTarget(
+          gate.prisma,
+          asset.target
+        );
+
+      if (affectedUid) {
+        invalidateLivingKingdomIdentity(
+          affectedUid
+        );
+      }
+    }
+
     return NextResponse.json({ asset }, { status: 201, headers: NO_STORE_HEADERS });
   } catch (error) {
     return NextResponse.json(
@@ -116,6 +134,23 @@ export async function PATCH(request: NextRequest) {
     }
 
     const asset = await activateManagedMediaAsset(gate.prisma, id, Boolean(body.active));
+
+    if (
+      asset.kind === "avatar"
+    ) {
+      const affectedUid =
+        await livingKingdomUidForManagedAvatarTarget(
+          gate.prisma,
+          asset.target
+        );
+
+      if (affectedUid) {
+        invalidateLivingKingdomIdentity(
+          affectedUid
+        );
+      }
+    }
+
     return NextResponse.json({ asset }, { headers: NO_STORE_HEADERS });
   } catch (error) {
     return NextResponse.json(

@@ -1348,12 +1348,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       ) : null}
       <SpeedRuntime />
       <SpeedWebVitals />
+      <LivingKingdomClient />
       {deferredClientsReady ? (
         <>
           <SpeedProof />
           <UserExperienceTracker />
           <ClientFlightRecorder />
-          <LivingKingdomClient />
         </>
       ) : null}
       <header

@@ -35,6 +35,6 @@ export type LivingKingdomFlight = {
   actor: LivingKingdomActor;
   fromRealmId: LivingKingdomRealmId;
   toRealmId: LivingKingdomRealmId;
-  direction: "departure" | "arrival";
+  direction: "departure";
   createdAt: number;
 };

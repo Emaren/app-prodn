@@ -41,8 +41,7 @@ import {
   WOLO_CHAIN_ID,
   WOLO_CHALLENGE_ESCROW_ADDRESS,
 } from "@/lib/woloChain";
-
-const CHALLENGE_ONLINE_WINDOW_MS = 2 * 60 * 1000;
+import { userIsOnline } from "@/lib/userOnlinePresence";
 const CHALLENGE_LOOKAHEAD_MS = 30 * 24 * 60 * 60 * 1000;
 const CHALLENGE_HISTORY_LOOKBACK_MS = 12 * 60 * 60 * 1000;
 const CHALLENGE_RECENT_LINGER_MS = 15 * 60 * 1000;
@@ -491,11 +490,6 @@ function playerAliases(user: Pick<ChallengeUserRow, "uid" | "inGameName" | "stea
   return Array.from(new Set(values));
 }
 
-function playerIsOnline(lastSeen: Date | null) {
-  if (!lastSeen) return false;
-  return Date.now() - lastSeen.getTime() <= CHALLENGE_ONLINE_WINDOW_MS;
-}
-
 function buildPlayerSurface(user: ChallengeUserRow): ChallengePlayerSurface {
   return {
     uid: user.uid,
@@ -505,7 +499,7 @@ function buildPlayerSurface(user: ChallengeUserRow): ChallengePlayerSurface {
     steamPersonaName: user.steamPersonaName,
     verified: user.verified,
     verificationLevel: user.verificationLevel,
-    isOnline: playerIsOnline(user.lastSeen),
+    isOnline: userIsOnline(user.uid, user.lastSeen),
   };
 }
 

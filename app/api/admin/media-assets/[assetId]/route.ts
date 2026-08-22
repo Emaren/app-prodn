@@ -3,6 +3,8 @@ import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/adminSession";
+import { invalidateLivingKingdomIdentity } from "@/lib/livingKingdom/identity";
+import { livingKingdomUidForManagedAvatarTarget } from "@/lib/livingKingdom/managedAvatarTargets";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -86,6 +88,14 @@ export async function DELETE(
     );
   }
 
+  const affectedUid =
+    existing.kind === "avatar"
+      ? await livingKingdomUidForManagedAvatarTarget(
+          gate.prisma,
+          existing.target
+        )
+      : null;
+
   await gate.prisma.managedMediaAsset.delete({
     where: { id: assetId },
   });
@@ -107,6 +117,12 @@ export async function DELETE(
     } catch {
       removedFile = false;
     }
+  }
+
+  if (affectedUid) {
+    invalidateLivingKingdomIdentity(
+      affectedUid
+    );
   }
 
   return NextResponse.json(

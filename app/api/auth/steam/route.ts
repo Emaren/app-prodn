@@ -15,6 +15,7 @@ import {
   sanitizeReturnTo,
   verifySteamCallback,
 } from "@/lib/steamAuth";
+import { allowUserOnlineSession } from "@/lib/userOnlinePresence";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -118,6 +119,15 @@ export async function GET(request: NextRequest) {
         WHERE uid = ${uid}
       `;
     }
+
+    allowUserOnlineSession(uid);
+
+    // The successful callback is the earliest authoritative arrival signal.
+    // The page heartbeat takes over after the redirect completes.
+    await prisma.user.update({
+      where: { uid },
+      data: { lastSeen: new Date() },
+    });
 
     await hydrateSteamIdentity(prisma, uid);
 

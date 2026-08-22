@@ -18,12 +18,16 @@ export const LIVING_KINGDOM_REALMS = [
   { id: "community", href: "/realm", label: "Realm" },
 ] as const;
 
-export type LivingKingdomRealmId = (typeof LIVING_KINGDOM_REALMS)[number]["id"];
+export type LivingKingdomBaseRealmId = (typeof LIVING_KINGDOM_REALMS)[number]["id"];
+export type LivingKingdomDetailRealmId = `page:${string}`;
+export type LivingKingdomRealmId = LivingKingdomBaseRealmId | LivingKingdomDetailRealmId;
 
 const REALM_IDS = new Set<string>(LIVING_KINGDOM_REALMS.map((realm) => realm.id));
-const REALM_BY_ID = new Map<LivingKingdomRealmId, (typeof LIVING_KINGDOM_REALMS)[number]>(
+const REALM_BY_ID = new Map<LivingKingdomBaseRealmId, (typeof LIVING_KINGDOM_REALMS)[number]>(
   LIVING_KINGDOM_REALMS.map((realm) => [realm.id, realm]),
 );
+const DETAIL_REALM_PREFIX = "page:";
+const MAX_DETAIL_PATH_LENGTH = 220;
 
 const PRIVATE_PATH_PREFIXES = [
   "/admin",
@@ -93,6 +97,27 @@ const COMMUNITY_PATH_PREFIXES = [
   "/zodiac",
 ] as const;
 
+// These are already-public page URLs where the detail segment materially
+// changes what a visitor is viewing. The exact, normalized pathname is the
+// room key; arbitrary paths never become rooms, and private/raw routes are
+// rejected before this allowlist is consulted.
+const PUBLIC_DETAIL_PATH_PATTERNS = [
+  /^\/bets\/[^/]+$/,
+  /^\/challenge\/[^/]+$/,
+  /^\/champions\/[^/]+(?:\/[^/]+)*$/,
+  /^\/clans\/[^/]+$/,
+  /^\/forum\/thread\/[^/]+$/,
+  /^\/game-stats\/[^/]+$/,
+  /^\/leaderboard\/og$/,
+  /^\/market\/(?:kingdom|shops)\/[^/]+$/,
+  /^\/matchups\/(?:team\/)?[^/]+\/[^/]+$/,
+  /^\/oracle\/[^/]+$/,
+  /^\/players\/(?:by-name\/)?[^/]+$/,
+  /^\/staking\/stakers\/[^/]+$/,
+  /^\/tournaments\/[^/]+$/,
+  /^\/watch\/[^/]+$/,
+] as const;
+
 function normalizePathname(pathname: string) {
   const withoutQuery = pathname.split(/[?#]/, 1)[0] || "/";
   let decoded = "";
@@ -117,12 +142,35 @@ function pathMatchesPrefix(pathname: string, prefix: string) {
   return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
+function detailRealmForNormalizedPath(pathname: string): LivingKingdomDetailRealmId | null {
+  if (
+    pathname.length > MAX_DETAIL_PATH_LENGTH ||
+    !PUBLIC_DETAIL_PATH_PATTERNS.some((pattern) => pattern.test(pathname))
+  ) {
+    return null;
+  }
+  return `${DETAIL_REALM_PREFIX}${pathname}`;
+}
+
 export function isLivingKingdomRealmId(value: unknown): value is LivingKingdomRealmId {
-  return typeof value === "string" && REALM_IDS.has(value);
+  if (typeof value !== "string") return false;
+  if (REALM_IDS.has(value)) return true;
+  if (!value.startsWith(DETAIL_REALM_PREFIX)) return false;
+  const pathname = value.slice(DETAIL_REALM_PREFIX.length);
+  const normalized = normalizePathname(pathname);
+  return Boolean(normalized && detailRealmForNormalizedPath(normalized) === value);
 }
 
 export function livingKingdomRealmHref(realmId: LivingKingdomRealmId) {
-  return REALM_BY_ID.get(realmId)?.href ?? "/";
+  if (realmId.startsWith(DETAIL_REALM_PREFIX)) {
+    const pathname = realmId.slice(DETAIL_REALM_PREFIX.length);
+    const normalized = normalizePathname(pathname);
+    if (normalized && detailRealmForNormalizedPath(normalized) === realmId) return normalized;
+    return "/";
+  }
+  return REALM_IDS.has(realmId)
+    ? REALM_BY_ID.get(realmId as LivingKingdomBaseRealmId)?.href ?? "/"
+    : "/";
 }
 
 export function livingKingdomRealmForPath(pathname: string): LivingKingdomRealmId | null {
@@ -134,6 +182,9 @@ export function livingKingdomRealmForPath(pathname: string): LivingKingdomRealmI
   if (/^\/game-stats\/[^/]+\/review(?:\/|$)/.test(normalized)) return null;
   if (pathMatchesPrefix(normalized, "/market/invoices")) return null;
   if (pathMatchesPrefix(normalized, "/bets/broadcast-previews")) return null;
+
+  const detailRealm = detailRealmForNormalizedPath(normalized);
+  if (detailRealm) return detailRealm;
 
   for (const [prefix, realmId] of PREFIX_REALMS) {
     if (pathMatchesPrefix(normalized, prefix)) return realmId;

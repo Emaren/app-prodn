@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/adminSession";
+import { invalidateLivingKingdomIdentity } from "@/lib/livingKingdom/identity";
 import {
   normalizeManagedMediaTarget,
   saveManagedMediaReference,
@@ -202,6 +203,10 @@ export async function POST(request: NextRequest) {
         uploadedByUid:
           gate.user.uid,
       });
+
+    invalidateLivingKingdomIdentity(
+      user.uid
+    );
 
     return NextResponse.json(
       {

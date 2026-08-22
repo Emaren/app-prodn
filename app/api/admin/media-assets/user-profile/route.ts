@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/adminSession";
+import { invalidateLivingKingdomIdentity } from "@/lib/livingKingdom/identity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,6 +79,10 @@ export async function POST(request: NextRequest) {
         genderDivision: true,
       },
     });
+
+    invalidateLivingKingdomIdentity(
+      user.uid
+    );
 
     return NextResponse.json({ user }, { headers: NO_STORE_HEADERS });
   } catch (error) {

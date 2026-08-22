@@ -45,6 +45,24 @@ export function depthBandToRatio(value: number) {
   return clampPresenceDepthBand(value) / (LIVING_KINGDOM_DEPTH_BANDS - 1);
 }
 
+function rebalancePresenceRails(
+  rails: Record<PresenceRailSide, LivingKingdomActor[]>,
+  selfId?: string | null,
+) {
+  const moveOne = (from: PresenceRailSide, to: PresenceRailSide) => {
+    rails[from].sort((left, right) => {
+      const selfDifference = Number(left.id === selfId) - Number(right.id === selfId);
+      if (selfDifference) return selfDifference;
+      return stablePresenceHash(`rail:${left.id}`) - stablePresenceHash(`rail:${right.id}`);
+    });
+    const actor = rails[from].shift();
+    if (actor) rails[to].push(actor);
+  };
+
+  while (rails.left.length > rails.right.length + 1) moveOne("left", "right");
+  while (rails.right.length > rails.left.length + 1) moveOne("right", "left");
+}
+
 export function presenceMaxItemsForViewport({
   height,
   top,
@@ -175,6 +193,7 @@ export function layoutPresenceActors(
   })) {
     rails[options.oneRail ? "right" : presenceSideForId(actor.id)].push(actor);
   }
+  if (!options.oneRail) rebalancePresenceRails(rails, options.selfId);
 
   const sides: PresenceRailSide[] = options.oneRail ? ["right"] : ["left", "right"];
   const perRailCapacity = options.oneRail

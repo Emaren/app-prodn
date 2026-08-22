@@ -15,7 +15,10 @@ import {
   livingKingdomFeatureMode,
   resolveLivingKingdomPreferenceMode,
 } from "../lib/livingKingdom/identity.ts";
-import { livingKingdomRealmForPath } from "../lib/livingKingdom/realms.ts";
+import {
+  isLivingKingdomRealmId,
+  livingKingdomRealmForPath,
+} from "../lib/livingKingdom/realms.ts";
 
 const execFileAsync = promisify(execFile);
 
@@ -59,7 +62,15 @@ test("Living Kingdom wire input is coarse and cannot author public identity", ()
 test("Living Kingdom realm registry fails closed around private and raw routes", () => {
   assert.equal(livingKingdomRealmForPath("/"), "home");
   assert.equal(livingKingdomRealmForPath("/staking?wallet=secret#claim"), "staking");
-  assert.equal(livingKingdomRealmForPath("/leaderboard/og"), "leaderboard");
+  assert.equal(livingKingdomRealmForPath("/leaderboard/og"), "page:/leaderboard/og");
+  assert.equal(livingKingdomRealmForPath("/clans"), "clans");
+  assert.equal(livingKingdomRealmForPath("/clans/jims-clan"), "page:/clans/jims-clan");
+  assert.equal(livingKingdomRealmForPath("/clans/aoe2war"), "page:/clans/aoe2war");
+  assert.equal(livingKingdomRealmForPath("/bets"), "bets");
+  assert.equal(livingKingdomRealmForPath("/bets/123"), "page:/bets/123");
+  assert.equal(isLivingKingdomRealmId("page:/bets/123"), true);
+  assert.equal(isLivingKingdomRealmId("page:/admin/user-list"), false);
+  assert.equal(isLivingKingdomRealmId("page:/unknown/future"), false);
 
   for (const pathname of [
     "/admin",
@@ -111,28 +122,41 @@ test("Living Kingdom feature mode fails closed for missing or malformed values",
   );
 });
 
-test("Living Kingdom is default-on unless an account has an explicit opt-out", () => {
+test("Living Kingdom publication is always-on for eligible avatarized accounts", () => {
   assert.equal(resolveLivingKingdomPreferenceMode(null), "public_coarse");
   assert.equal(resolveLivingKingdomPreferenceMode(undefined), "public_coarse");
   assert.equal(resolveLivingKingdomPreferenceMode({ mode: "public_coarse" }), "public_coarse");
-  assert.equal(resolveLivingKingdomPreferenceMode({ mode: "off" }), "off");
-  assert.equal(resolveLivingKingdomPreferenceMode({ mode: "invalid" }), "off");
+  assert.equal(resolveLivingKingdomPreferenceMode({ mode: "off" }), "public_coarse");
+  assert.equal(resolveLivingKingdomPreferenceMode({ mode: "invalid" }), "public_coarse");
 });
 
-test("Living Kingdom documentation preserves the public-coarse privacy boundary", () => {
+test("Living Kingdom documentation preserves always-on public-coarse publication", () => {
   const architecture = source("../ARCHITECTURE.md");
   const truthContract = source("../docs/REALTIME_TRUTH_CONTRACT.md");
   const documentation = `${architecture}\n${truthContract}`;
 
-  assert.match(architecture, /automatically\s+`public_coarse`/);
-  assert.match(truthContract, /No preference row means that automatic default/);
-  assert.match(documentation, /explicit durable `off` preference/);
+  assert.match(documentation, /always[- ]on/i);
+  assert.match(
+    architecture,
+    /legacy presence-preference rows[\s\S]{0,100}cannot suppress/i,
+  );
+  assert.match(
+    truthContract,
+    /Legacy `off`,[\s\S]{0,160}preference rows do not gate it/i,
+  );
   assert.match(documentation, /Anonymous[\s\S]{0,100}(?:observe only|receive-only)/);
   assert.match(documentation, /AI-controlled persona accounts/);
   assert.match(documentation, /no exact scroll offset, cursor\s+position, private-route activity/);
-  assert.match(documentation, /no exact[\s\S]{0,120}hidden-tab activity/);
+  assert.match(
+    documentation,
+    /hidden\/minimized tabs renew the last coarse position instead of departing/,
+  );
+  assert.match(documentation, /does not create new motion or promote[\s\S]{0,80}activity ordering/);
   assert.match(documentation, /Legal and\s+privacy-compliance conclusions are out of scope/);
-  assert.doesNotMatch(documentation, /opted-in warriors|private-by-default/);
+  assert.doesNotMatch(
+    documentation,
+    /opted-in warriors|private-by-default|explicit durable `off` preference|opt-out/i,
+  );
 });
 
 test("movement stays out of Traffic, user ping, activity ledgers, and database writes", () => {
@@ -164,8 +188,17 @@ test("movement stays out of Traffic, user ping, activity ledgers, and database w
   );
   assert.match(stateRoute, /livingKingdomHub\.(?:upsert|door|removeTab)/);
   assert.match(stateRoute, /identityGeneration !== livingKingdomIdentityGeneration\(\)/);
-  assert.match(stateRoute, /code: "presence_disabled"/);
-  assert.doesNotMatch(stateRoute, /opt_in_required/);
+  assert.match(stateRoute, /userOnlineSessionIsForcedOffline\(auth\.uid\)/);
+  assert.doesNotMatch(stateRoute, /presence_disabled|opt_in_required/);
+
+  const logoutFence = stateRoute.indexOf(
+    "userOnlineSessionIsForcedOffline(auth.uid)",
+  );
+  const hubMutation = stateRoute.indexOf("livingKingdomHub.upsert");
+  assert.ok(
+    logoutFence >= 0 && hubMutation > logoutFence,
+    "logout must be re-checked immediately before any hub publication mutation",
+  );
 
   const offGate = stateRoute.indexOf('livingKingdomFeatureMode() === "off"');
   const sessionRead = stateRoute.indexOf("getSessionUid(request)");
@@ -194,10 +227,14 @@ test("movement stays out of Traffic, user ping, activity ledgers, and database w
   const preferenceRoute = source(
     "../app/api/user/presence-preference/route.ts",
   );
-  assert.match(preferenceRoute, /prisma\.userPresencePreference\.upsert/);
   assert.match(preferenceRoute, /isLivingKingdomSameOrigin/);
-  assert.match(preferenceRoute, /livingKingdomHub\.removeUser/);
-  assert.match(preferenceRoute, /invalidateLivingKingdomIdentity/);
+  assert.match(preferenceRoute, /code: "presence_always_on"/);
+  assert.match(preferenceRoute, /status: 405/);
+  assert.match(preferenceRoute, /Allow: "GET"/);
+  assert.doesNotMatch(
+    preferenceRoute,
+    /userPresencePreference\.(?:create|update|upsert|delete)|livingKingdomHub\.removeUser|invalidateLivingKingdomIdentity/,
+  );
 });
 
 test("client and server enforce the bounded publish cadence", () => {
@@ -206,6 +243,9 @@ test("client and server enforce the bounded publish cadence", () => {
   const stateRoute = source("../app/api/kingdom-presence/state/route.ts");
 
   assert.match(client, /STATE_SEND_INTERVAL_MS\s*=\s*500/);
+  assert.match(client, /HEARTBEAT_INTERVAL_MS\s*=\s*8_000/);
+  assert.match(client, /sendState\("idle", true, true\)/);
+  assert.match(client, /renewOnly/);
   assert.match(client, /bandwidthCalm \? 1_000 : STATE_SEND_INTERVAL_MS/);
   assert.match(client, /const changed = scroll\.band !== lastBand \|\| motion !== lastMotion/);
   assert.match(limits, /ratePerSecond:\s*2,[\s\S]{0,80}burst:\s*4/);

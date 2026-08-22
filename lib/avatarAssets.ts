@@ -351,24 +351,37 @@ export function avatarThumbUrlForUser(
   );
 }
 
+export function avatarPresenceUrlForTarget(
+  target: string | null | undefined,
+  name: string | null | undefined,
+  revision?: string | number | null
+) {
+  const normalizedTarget = slugifyAvatarTarget(target);
+
+  if (!normalizedTarget) {
+    return avatarThumbUrlForName(name);
+  }
+
+  const url = managedAvatarUrl(
+    normalizedTarget,
+    avatarThumbFallbackForName(name),
+    { size: "presence" }
+  );
+
+  return revision == null ? url : appendQueryParam(url, "rev", String(revision));
+}
+
 export function avatarPresenceUrlForUser(
   uid: string | null | undefined,
   name: string | null | undefined,
   revision?: string | number | null
 ) {
   const normalizedUid = slugifyAvatarTarget(uid);
-
-  if (!normalizedUid) {
-    return avatarThumbUrlForName(name);
-  }
-
-  const url = managedAvatarUrl(
-    `user-${normalizedUid}`,
-    avatarThumbFallbackForName(name),
-    { size: "presence" }
+  return avatarPresenceUrlForTarget(
+    normalizedUid ? `user-${normalizedUid}` : null,
+    name,
+    revision
   );
-
-  return revision == null ? url : appendQueryParam(url, "rev", String(revision));
 }
 
 export function featuredAvatarCardUrlForUser(

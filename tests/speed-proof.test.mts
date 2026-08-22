@@ -33,6 +33,14 @@ test("Speed Proof says exactly what was measured instead of making an aggregate 
   assert.doesNotMatch(proof, /site-wide/i);
 });
 
+test("exact clan and bet realms retain a truthful last proof instead of measuring forever", () => {
+  assert.match(proof, /if \(!AUTHORITATIVE_ROUTES\.has\(route\)\)/);
+  assert.match(proof, /getRecentSpeedSamples\(\)\.find\(\(candidate\) => isValidProof\(candidate\)\)/);
+  assert.match(proof, /Last ready/);
+  assert.match(proof, /this detail realm does not make a separate speed claim/);
+  assert.match(proof, /\) : authoritative \? \(/);
+});
+
 test("Speed Proof receives idempotent sample upgrades from the recorder", () => {
   assert.match(store, /SPEED_SAMPLE_UPDATED_EVENT/);
   assert.match(store, /publishSampleUpdate\(next\)/);

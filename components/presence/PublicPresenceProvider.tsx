@@ -95,17 +95,20 @@ export function usePublicPresence(
       }
     };
 
+    refreshIfVisible();
     const interval = window.setInterval(
       refreshIfVisible,
       PUBLIC_PRESENCE_REFRESH_MS,
     );
 
     window.addEventListener("focus", refreshIfVisible);
+    window.addEventListener("pageshow", refreshIfVisible);
     document.addEventListener("visibilitychange", refreshIfVisible);
 
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("focus", refreshIfVisible);
+      window.removeEventListener("pageshow", refreshIfVisible);
       document.removeEventListener("visibilitychange", refreshIfVisible);
     };
   }, [refreshPresence]);

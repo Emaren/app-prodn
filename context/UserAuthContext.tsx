@@ -9,6 +9,10 @@ import {
   useCallback,
 } from "react";
 import { useRouter } from "next/navigation";
+import {
+  USER_ONLINE_HEARTBEAT_MS,
+  USER_ONLINE_TRAFFIC_SYNC_MS,
+} from "@/lib/userOnlinePresenceConfig";
 
 type SessionUser = {
   uid: string;
@@ -42,8 +46,10 @@ type CtxShape = {
   loginWithSteam: (returnTo?: string) => void;
   logout: () => Promise<void>;
   refreshToken: () => Promise<string | null>;
-  refreshSession: () => Promise<void>;
+  refreshSession: () => Promise<boolean>;
 };
+
+const SESSION_REFRESH_RETRY_MS = 5_000;
 
 const Ctx = createContext<CtxShape | undefined>(undefined);
 
@@ -65,16 +71,34 @@ function ensureTrafficId(storage: Storage, key: string, prefix: string) {
   return value;
 }
 
-function currentTrafficPresence() {
-  if (typeof window === "undefined") return null;
+function createPresenceClientId() {
+  const suffix =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID().replace(/-/g, "")
+      : `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+
+  return `presence_${suffix}`;
+}
+
+function currentTrafficPresence(presenceClientId: string) {
+  const base = {
+    presence_client_id: presenceClientId,
+    traffic_path:
+      typeof window === "undefined"
+        ? "/"
+        : `${window.location.pathname}${window.location.search}`,
+  };
+
+  if (typeof window === "undefined") return base;
+
   try {
     return {
+      ...base,
       traffic_visitor_id: ensureTrafficId(localStorage, "traffic_visitor_id", "v"),
       traffic_session_id: ensureTrafficId(sessionStorage, "traffic_session_id", "s"),
-      traffic_path: `${window.location.pathname}${window.location.search}`,
     };
   } catch {
-    return null;
+    return base;
   }
 }
 
@@ -125,7 +149,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
 
       if (response.status === 401) {
         syncUserState(null);
-        return;
+        return true;
       }
 
       if (!response.ok) {
@@ -135,16 +159,19 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       const payload = (await response.json()) as SessionEnvelope;
       if (!payload.user || !payload.uid) {
         syncUserState(null);
-        return;
+        return true;
       }
 
       syncUserState({
         ...payload.user,
         uid: payload.uid,
       });
+      return true;
     } catch (error) {
       console.warn("Failed to refresh session:", error);
-      syncUserState(null);
+      // A transient session lookup failure must not sign out an already
+      // authenticated browser or stop its online heartbeat.
+      return false;
     }
   }, [syncUserState]);
 
@@ -185,16 +212,33 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    let retryTimer: number | null = null;
 
-    (async () => {
-      await refreshSession();
-      if (!cancelled) {
-        setLoading(false);
+    const refreshUntilResolved = async () => {
+      const resolved = await refreshSession();
+
+      if (cancelled) return;
+
+      setLoading(false);
+
+      if (!resolved) {
+        retryTimer = window.setTimeout(
+          () => {
+            void refreshUntilResolved();
+          },
+          SESSION_REFRESH_RETRY_MS,
+        );
       }
-    })();
+    };
+
+    void refreshUntilResolved();
 
     return () => {
       cancelled = true;
+
+      if (retryTimer !== null) {
+        window.clearTimeout(retryTimer);
+      }
     };
   }, [refreshSession]);
 
@@ -209,11 +253,42 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     }
 
     let active = true;
+    let pageDeparted = false;
+    let pingInFlight = false;
+    let pendingPing = false;
+    let pendingTrafficIdentity = false;
+    let presenceSequence = 0;
+    let lastTrafficSyncAttemptAt = 0;
+    const presenceClientId = createPresenceClientId();
 
-    const ping = async () => {
+    const ping = async (forceTrafficIdentity = false) => {
+      if (!active || pageDeparted) return;
+      if (pingInFlight) {
+        // BFCache pageshow/focus can arrive while the pre-pagehide request is
+        // still settling. Queue one prompt, sequenced republish instead of
+        // waiting up to a full heartbeat interval after the leave mutation.
+        pendingPing = true;
+        pendingTrafficIdentity =
+          pendingTrafficIdentity || forceTrafficIdentity;
+        return;
+      }
+
+      pingInFlight = true;
+
       try {
+        const attemptedAt = Date.now();
+        const reportTrafficIdentity =
+          forceTrafficIdentity ||
+          attemptedAt - lastTrafficSyncAttemptAt >=
+            USER_ONLINE_TRAFFIC_SYNC_MS;
+
+        if (reportTrafficIdentity) {
+          lastTrafficSyncAttemptAt = attemptedAt;
+        }
+
         const presence =
-          currentTrafficPresence();
+          currentTrafficPresence(presenceClientId);
+        presenceSequence += 1;
 
         const response =
           await fetch(
@@ -227,7 +302,11 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
               credentials:
                 "same-origin",
               body: JSON.stringify(
-                presence ?? {},
+                {
+                  ...presence,
+                  presence_sequence: presenceSequence,
+                  report_traffic_identity: reportTrafficIdentity,
+                },
               ),
             },
           );
@@ -237,6 +316,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
             .json()
             .catch(() => ({}))
         ) as {
+          status?: string;
           traffic_identity?: {
             status?: string;
             http_status?: number;
@@ -250,12 +330,17 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
           );
         }
 
+        if (payload.status === "stale") {
+          return;
+        }
+
         const bridgeStatus =
           payload
             .traffic_identity
             ?.status;
 
         if (
+          reportTrafficIdentity &&
           bridgeStatus !== "stored"
         ) {
           console.warn(
@@ -275,15 +360,59 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
             error,
           );
         }
+      } finally {
+        pingInFlight = false;
+        if (active && !pageDeparted && pendingPing) {
+          const forcePendingTrafficIdentity = pendingTrafficIdentity;
+          pendingPing = false;
+          pendingTrafficIdentity = false;
+          void ping(forcePendingTrafficIdentity);
+        }
       }
     };
 
-    void ping();
+    const leave = () => {
+      if (pageDeparted) return;
+
+      pageDeparted = true;
+      presenceSequence += 1;
+
+      const payload = JSON.stringify({
+        action: "leave",
+        presence_client_id: presenceClientId,
+        presence_sequence: presenceSequence,
+      });
+
+      if (navigator.sendBeacon) {
+        const accepted = navigator.sendBeacon(
+          "/api/user/ping",
+          new Blob([payload], {
+            type: "application/json",
+          }),
+        );
+
+        if (accepted) return;
+      }
+
+      void fetch("/api/user/ping", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "same-origin",
+        body: payload,
+        keepalive: true,
+      }).catch(() => {});
+    };
+
+    void ping(true);
 
     const interval =
       window.setInterval(
-        ping,
-        60_000,
+        () => {
+          void ping();
+        },
+        USER_ONLINE_HEARTBEAT_MS,
       );
 
     const onVisibilityChange = () => {
@@ -299,6 +428,19 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       void ping();
     };
 
+    const onOnline = () => {
+      void ping(true);
+    };
+
+    const onPageShow = () => {
+      pageDeparted = false;
+      void ping(true);
+    };
+
+    const onPageHide = () => {
+      leave();
+    };
+
     document.addEventListener(
       "visibilitychange",
       onVisibilityChange,
@@ -307,6 +449,21 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     window.addEventListener(
       "focus",
       onFocus,
+    );
+
+    window.addEventListener(
+      "online",
+      onOnline,
+    );
+
+    window.addEventListener(
+      "pageshow",
+      onPageShow,
+    );
+
+    window.addEventListener(
+      "pagehide",
+      onPageHide,
     );
 
     return () => {
@@ -325,6 +482,23 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
         "focus",
         onFocus,
       );
+
+      window.removeEventListener(
+        "online",
+        onOnline,
+      );
+
+      window.removeEventListener(
+        "pageshow",
+        onPageShow,
+      );
+
+      window.removeEventListener(
+        "pagehide",
+        onPageHide,
+      );
+
+      leave();
     };
   }, [uid]);
 

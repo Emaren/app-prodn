@@ -40,6 +40,7 @@ type TabEntry = {
   depthBand: number;
   motion: LivingKingdomStateMutation["motion"];
   visibility: LivingKingdomStateMutation["visibility"];
+  activityAtMs: number;
   lastSeenMs: number;
   identity: LivingKingdomHubIdentity;
 };
@@ -84,7 +85,7 @@ export type LivingKingdomMutationResult =
 export type LivingKingdomHubStats = LivingKingdomMetrics & {
   activeActors: number;
   tabs: number;
-  realms: Record<LivingKingdomRealmId, number>;
+  realms: Record<string, number>;
   subscribers: number;
   caps: {
     actors: number;
@@ -172,6 +173,18 @@ export class LivingKingdomHub {
     const fence = actor.sequences.get(mutation.tabId);
     if (fence && mutation.seq <= fence.seq) return { accepted: false, reason: "stale" };
 
+    const previousTab = actor.tabs.get(mutation.tabId);
+    if (
+      !previousTab &&
+      actor.tabs.size >= this.maxTabsPerActor &&
+      mutation.renewOnly === true
+    ) {
+      // A lease-only tick from an already-evicted background tab must not
+      // evict another static tab or steal the actor's active realm. A real
+      // mount/focus/pageshow update may still reclaim a bounded slot.
+      return { accepted: false, reason: "missing" };
+    }
+
     const previous = this.project(actor, nowMs);
     if (!actor.tabs.has(mutation.tabId) && actor.tabs.size >= this.maxTabsPerActor) {
       this.evictOldestTab(actor);
@@ -184,6 +197,13 @@ export class LivingKingdomHub {
       depthBand: mutation.depthBand,
       motion: mutation.motion,
       visibility: mutation.visibility,
+      // Interval heartbeats may normalize an old motion sample back to idle,
+      // but they renew only the lease. Mount, focus, pageshow, and scroll send
+      // ordinary state and therefore reclaim the actor's active projection.
+      activityAtMs:
+        previousTab && mutation.renewOnly === true
+          ? previousTab.activityAtMs
+          : nowMs,
       lastSeenMs: nowMs,
       identity,
     });
@@ -245,8 +265,15 @@ export class LivingKingdomHub {
     nowMs = Date.now(),
   ): LivingKingdomMutationResult {
     this.pruneMaybe(nowMs);
-    const actor = this.actors.get(uid);
-    if (!actor) return { accepted: true, selfId: null };
+    let actor = this.actors.get(uid);
+    if (!actor) {
+      // pagehide can beat the initial state POST while that POST is awaiting
+      // identity. Keep a bounded, expiring sequence tombstone so the older
+      // publish cannot create a 90-second ghost after the document is gone.
+      if (this.actors.size >= this.maxActors) this.evictOldestActor(nowMs);
+      actor = { tabs: new Map(), sequences: new Map(), touchedAtMs: nowMs };
+      this.actors.set(uid, actor);
+    }
 
     const fence = actor.sequences.get(tabId);
     if (fence && seq <= fence.seq) return { accepted: false, reason: "stale" };
@@ -373,9 +400,9 @@ export class LivingKingdomHub {
 
   stats(nowMs = Date.now()): LivingKingdomHubStats {
     this.prune(nowMs);
-    const realms = Object.fromEntries(
+    const realms: Record<string, number> = Object.fromEntries(
       LIVING_KINGDOM_REALMS.map((realm) => [realm.id, 0]),
-    ) as Record<LivingKingdomRealmId, number>;
+    );
     let tabs = 0;
     let activeActors = 0;
 
@@ -384,7 +411,7 @@ export class LivingKingdomHub {
       const projection = this.project(actor, nowMs);
       if (projection) {
         activeActors += 1;
-        realms[projection.realmId] += 1;
+        realms[projection.realmId] = (realms[projection.realmId] ?? 0) + 1;
       }
     }
 
@@ -445,8 +472,11 @@ export class LivingKingdomHub {
       if (tab.visibility !== "visible") continue;
       if (
         !selected ||
-        tab.lastSeenMs > selected.lastSeenMs ||
-        (tab.lastSeenMs === selected.lastSeenMs && tab.tabId > selected.tabId)
+        tab.activityAtMs > selected.activityAtMs ||
+        (tab.activityAtMs === selected.activityAtMs && tab.lastSeenMs > selected.lastSeenMs) ||
+        (tab.activityAtMs === selected.activityAtMs &&
+          tab.lastSeenMs === selected.lastSeenMs &&
+          tab.tabId > selected.tabId)
       ) {
         selected = tab;
       }

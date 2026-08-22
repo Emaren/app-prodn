@@ -53,6 +53,7 @@ test("older-page append never overwrites the authoritative leading row", () => {
 
 test("homepage presence count and roster use one five-second snapshot", () => {
   const presenceLoader = source("../lib/publicPresence.ts");
+  const presenceConfig = source("../lib/userOnlinePresenceConfig.ts");
   const presenceClient = source(
     "../components/presence/PublicPresenceProvider.tsx",
   );
@@ -60,7 +61,8 @@ test("homepage presence count and roster use one five-second snapshot", () => {
   const lobbySnapshot = source("../lib/lobbySnapshot.ts");
   const onlineRoute = source("../app/api/user/online_users/route.ts");
 
-  assert.match(presenceLoader, /PUBLIC_PRESENCE_WINDOW_MS\s*=\s*2\s*\*\s*60\s*\*\s*1000/);
+  assert.match(presenceLoader, /PUBLIC_PRESENCE_WINDOW_MS\s*=\s*USER_ONLINE_STALE_MS/);
+  assert.match(presenceConfig, /USER_ONLINE_STALE_MS\s*=\s*90_000/);
   assert.match(presenceClient, /PUBLIC_PRESENCE_REFRESH_MS\s*=\s*5_000/);
   assert.match(presenceClient, /visibilitychange/);
   assert.match(presenceClient, /addEventListener\("focus"/);

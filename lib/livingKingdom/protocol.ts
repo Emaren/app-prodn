@@ -2,8 +2,12 @@ import type { LivingKingdomRealmId } from "./realms.ts";
 import { isLivingKingdomRealmId } from "./realms.ts";
 
 export const LIVING_KINGDOM_PROTOCOL_VERSION = 1 as const;
-export const LIVING_KINGDOM_PRESENCE_TTL_MS = 30_000;
-export const LIVING_KINGDOM_SSE_HEARTBEAT_MS = 15_000;
+// Foreground clients publish every 8-10 seconds. Background browsers may
+// throttle interval work to roughly one minute, so a 90-second lease preserves
+// a signed-in warrior's last coarse position while their tab remains open.
+// Normal page departure/logout still uses the immediate DELETE path.
+export const LIVING_KINGDOM_PRESENCE_TTL_MS = 90_000;
+export const LIVING_KINGDOM_SSE_HEARTBEAT_MS = 10_000;
 export const LIVING_KINGDOM_MAX_BODY_BYTES = 2_048;
 export const LIVING_KINGDOM_DEPTH_BANDS = 21;
 
@@ -19,6 +23,8 @@ export type LivingKingdomStateMutation = {
   depthBand: number;
   motion: LivingKingdomMotion;
   visibility: "visible" | "hidden";
+  /** Interval-only lease renewal; user-driven republishes omit this or send false. */
+  renewOnly?: boolean;
 };
 
 export type LivingKingdomDoorMutation = {
@@ -115,7 +121,7 @@ export function parseLivingKingdomPostMutation(
   }
 
   if (input.kind === "state") {
-    const allowed = [
+    const required = [
       "protocol",
       "kind",
       "tabId",
@@ -125,7 +131,10 @@ export function parseLivingKingdomPostMutation(
       "motion",
       "visibility",
     ] as const;
-    if (!hasOnlyKeys(input, allowed)) return { ok: false, error: "Unexpected state field" };
+    const withLeaseHint = [...required, "renewOnly"] as const;
+    if (!hasOnlyKeys(input, required) && !hasOnlyKeys(input, withLeaseHint)) {
+      return { ok: false, error: "Unexpected state field" };
+    }
     if (
       !Number.isInteger(input.depthBand) ||
       Number(input.depthBand) < 0 ||
@@ -138,6 +147,9 @@ export function parseLivingKingdomPostMutation(
     }
     if (input.visibility !== "visible" && input.visibility !== "hidden") {
       return { ok: false, error: "Invalid visibility" };
+    }
+    if (input.renewOnly !== undefined && typeof input.renewOnly !== "boolean") {
+      return { ok: false, error: "Invalid renewOnly" };
     }
     return { ok: true, value: input as LivingKingdomStateMutation };
   }

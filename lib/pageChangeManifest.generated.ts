@@ -95,6 +95,6 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/speed",
     label: "Speed",
-    version: "src-b12768780716a2d4af89",
+    version: "src-d9d14a763f2a25999850",
   },
 ] as const;

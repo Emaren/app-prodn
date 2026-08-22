@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/adminSession";
+import { invalidateLivingKingdomIdentity } from "@/lib/livingKingdom/identity";
 import { normalizeManagedMediaTarget } from "@/lib/managedMediaAssets";
 
 export const runtime = "nodejs";
@@ -274,6 +275,10 @@ export async function POST(request: NextRequest) {
           };
         }
       );
+
+    invalidateLivingKingdomIdentity(
+      user.uid
+    );
 
     return NextResponse.json(
       {

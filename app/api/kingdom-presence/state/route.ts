@@ -20,6 +20,7 @@ import {
   readLivingKingdomJsonBody,
 } from "@/lib/livingKingdom/rateLimit";
 import { livingKingdomRealmForPath } from "@/lib/livingKingdom/realms";
+import { userOnlineSessionIsForcedOffline } from "@/lib/userOnlinePresence";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -107,24 +108,36 @@ export async function POST(request: NextRequest) {
 
   const identityGeneration = livingKingdomIdentityGeneration();
   const profile = await loadLivingKingdomIdentityProfile(getPrisma(), auth.uid);
-  if (!profile) return json("User not found", 404);
-  if (profile.preferenceMode !== "public_coarse") {
-    return json("Presence sharing is disabled", 403, { code: "presence_disabled" });
+  if (!profile) {
+    livingKingdomHub.removeUser(auth.uid);
+    return json("User not found", 404);
   }
   if (!profile.displayEligible) {
+    livingKingdomHub.removeUser(auth.uid);
     return json("A public display identity is required", 422, { code: "display_required" });
   }
   if (!profile.avatarEligible) {
+    livingKingdomHub.removeUser(auth.uid);
     return json("A personal avatar is required", 422, { code: "avatar_required" });
   }
   if (!profile.featureAllowed || !profile.identity) {
+    livingKingdomHub.removeUser(auth.uid);
     return json("Presence is unavailable for this account", 403, { code: "feature_gated" });
   }
   if (identityGeneration !== livingKingdomIdentityGeneration()) {
+    livingKingdomHub.removeUser(auth.uid);
     return json("Presence identity changed; retry", 409, { code: "identity_changed" });
   }
   if (request.signal.aborted) {
     return new Response(null, { status: 204, headers: NO_STORE_HEADERS });
+  }
+  // Authentication and identity loading both await. Logout can therefore land
+  // after this request began but before it reaches the in-memory hub. Re-check
+  // the session fence immediately before the synchronous mutation so an old
+  // in-flight heartbeat cannot resurrect a departed warrior.
+  if (userOnlineSessionIsForcedOffline(auth.uid)) {
+    livingKingdomHub.removeUser(auth.uid);
+    return json("Session is offline", 409, { code: "session_offline" });
   }
 
   const result =
@@ -157,8 +170,9 @@ export async function DELETE(request: NextRequest) {
     return json(parsed.error, 400);
   }
 
-  const limited = rateLimitMutation(request, auth.uid);
-  if (limited) return limited;
+  // A valid authenticated leave only removes the caller's own bounded tab
+  // state. Do not let a preceding scroll burst consume the token needed for
+  // pagehide/logout cleanup; stale sequence fences still reject reordering.
   const result = livingKingdomHub.removeTab(
     auth.uid,
     parsed.value.tabId,

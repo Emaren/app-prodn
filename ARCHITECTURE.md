@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-08-21"
+reviewed_at: "2026-08-22"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -157,15 +157,17 @@ Living Kingdom is a small, ephemeral presence plane inside the existing Next.js
 web authority. It answers “which eligible warriors are roaming an allowlisted
 public part of the kingdom now?” Within an enabled rollout cohort, a signed-in
 human account with an eligible personal avatar is automatically
-`public_coarse` unless it has an explicit durable `off` preference. Anonymous
-viewers observe only, and AI-controlled persona accounts never publish. The plane
-does not establish durable user activity, analytics attribution, replay truth,
-wallet truth, exact scroll or cursor position, private-route activity, or
-hidden-tab activity.
+`public_coarse`. Publication is an account capability, not a user-facing
+preference: legacy presence-preference rows are retained as historical data but
+cannot suppress an eligible publisher. Legacy preference rows are
+non-authoritative and ignored for publication. Anonymous viewers observe only, and
+AI-controlled persona accounts never publish. The plane does not establish
+durable user activity, analytics attribution, replay truth, wallet truth, exact
+scroll or cursor position, private-route activity, or hidden-tab activity.
 
 ```text
 eligible signed-in human publisher                  public viewer (observe only)
-personal avatar; no explicit opt-out                 anonymous or signed in
+personal avatar; automatic publication              anonymous or signed in
       |                                                      |
       | POST /api/kingdom-presence/state                     | EventSource
       v                                                      v
@@ -182,45 +184,54 @@ The owning server modules are:
 - `lib/livingKingdom/hub.ts` for latest-only actor state, TTL eviction, bounded
   stream fanout, snapshots, deltas, and aggregate counters;
 - `lib/livingKingdom/identity.ts` for the fail-closed feature mode,
-  server-authoritative identity, preference eligibility, and cached avatar
-  resolution;
+  server-authoritative identity, automatic eligibility, and cached avatar
+  resolution across profile, Featured Warrior, and avatar-pool targets;
 - `lib/livingKingdom/avatarRegistry.ts` for the bounded process-local mapping
   from an opaque public actor handle to the internal managed-avatar target;
 - `lib/livingKingdom/rateLimit.ts` for process-local publish admission;
 - `app/api/kingdom-presence/state/route.ts` for authenticated publisher input;
 - `app/api/kingdom-presence/events/route.ts` for the public receive-only SSE
   stream;
-- `app/api/user/presence-preference/route.ts` for the explicit durable account
-  opt-out or re-enable override. No preference row means the eligible account
-  retains the automatic `public_coarse` default; it is not an opt-in gate.
+- `app/api/user/presence-preference/route.ts` as a compatibility metadata GET
+  for already-loaded clients. Its mutation boundary returns HTTP 405; it can no
+  longer create a publication toggle.
 
 The browser composition lives under `components/presence/`. `AppShell.tsx`
-mounts one deferred `LivingKingdomClient` for the current document.
-`LivingKingdomOverlay.tsx` owns markers, clusters, door flights, the People Here
-panel, and sharing controls; `livingKingdomTypes.ts` mirrors the public wire
-types; `presenceLayout.ts` calculates bounded rails, collision spacing, and
-viewport capacity; and `LivingKingdom.module.css` owns transform animation.
+mounts one eager `LivingKingdomClient` for the current document so presence is
+published on first hydration rather than waiting for the page-load idle gate.
+`LivingKingdomOverlay.tsx` owns markers, clusters, and deliberate door flights,
+while `SpeedProof.tsx` owns the compact overlapping roster inside
+the existing speed chip. There is no People Here panel or Full/Calm/Off control.
+Clicking one's own faded rail marker hides it only in that browser view; its
+speed-chip portrait restores it, and neither action changes publication for
+other viewers. `livingKingdomTypes.ts` mirrors the public wire types;
+`presenceLayout.ts` calculates bounded rails, collision spacing, and viewport
+capacity; and `LivingKingdom.module.css` owns transform animation.
 Known navigation elements expose canonical `data-presence-door` values in the
 app shell, mobile navigation, and footer. The living leaderboard exposes
 `data-presence-scroll-root` for its real internal scroller. CSS transforms
 interpolate low-frequency server samples without layout writes on scroll.
 
 Movement is never stored in Postgres, sent through `/api/user/ping`, written to
-`UserActivityEvent`, or bridged to Traffic. The preference route is the only
-durable feature write, and only an explicit override creates or changes that
-row. Raw paths, queries, fragments, arbitrary anchors, exact scroll offsets,
-cursor coordinates, and client-authored identity/avatar fields never enter the
-browser-to-server wire contract. Private-route and hidden-tab activity never
-enter the public projection; hiding removes the tab's actor state. A door click
-is intent; only a subsequent accepted route-entry sample changes the actor's
-realm truth.
+`UserActivityEvent`, or bridged to Traffic. The active feature path performs no
+preference write. Raw queries, fragments, arbitrary anchors, exact scroll
+offsets, cursor coordinates, and client-authored identity/avatar fields never
+enter the browser-to-server wire contract. Only normalized allowlisted public
+detail paths become exact realm IDs, so `/clans`, `/clans/jims-clan`,
+`/clans/aoe2war`, `/bets`, and an individual `/bets/{market}` are distinct
+rooms. Private-route and hidden-tab activity never enter the public projection;
+hidden/minimized documents renew only their last already-public coarse position
+and do not report hidden motion or steal active-tab ordering. A door click is
+intent; only a subsequent accepted route-entry sample changes the actor's realm
+truth.
 
 Public actor IDs and avatar URLs contain only a process-local HMAC handle. The
 managed-media route resolves that handle in memory and serves bytes directly;
 it never redirects a presence image request to an underlying target or file
-path that can contain a durable account UID. Opt-out and avatar changes clear
-the binding immediately, bindings expire after five minutes, and the presence
-image response is cached for at most five minutes.
+path that can contain a durable account UID. Avatar assignment, selection,
+deactivation, deletion, and identity changes clear the binding immediately;
+bindings expire after five minutes, and the presence image response is cached
+for at most five minutes.
 
 The first topology intentionally assumes the one production Next.js process.
 A release restart clears roaming state and EventSource clients reconnect to a
@@ -233,9 +244,10 @@ The initial operating controls are intentionally narrow:
 
 - `LIVING_KINGDOM_MODE=off|staff|canary|public`; a missing or unknown value is
   `off`;
-- within the admitted mode/cohort, an eligible signed-in human with a personal
-  avatar defaults to `public_coarse`; an explicit `off` preference wins, while
-  anonymous viewers and AI-controlled persona accounts cannot publish;
+- within the admitted mode/cohort, every eligible signed-in human with a
+  personal avatar publishes `public_coarse`; legacy preference rows never gate
+  publication, while anonymous viewers and AI-controlled persona accounts
+  cannot publish;
 - `LIVING_KINGDOM_STAFF_UID_ALLOWLIST` and
   `LIVING_KINGDOM_CANARY_UID_ALLOWLIST` bound pre-public publisher cohorts;
 - `LIVING_KINGDOM_MAX_SUBSCRIBERS` defaults to 250 and is clamped to the
@@ -243,10 +255,25 @@ The initial operating controls are intentionally narrow:
 - `LIVING_KINGDOM_MAX_SUBSCRIBERS_PER_IP` defaults to 20 and is clamped to
   250; signed-in viewers are additionally capped at four streams per UID;
 - actor state is capped at 500, at most three tabs contribute to one actor,
-  stale state expires after 30 seconds, and SSE keepalive is 15 seconds;
+  foreground clients heartbeat every eight seconds (ten under Save-Data), and
+  hidden/minimized tabs renew rather than depart; stale state expires after a
+  background-throttle-tolerant 90 seconds, and SSE keepalive is 10 seconds;
+- interval heartbeats renew a tab lease without changing the actor's active-tab
+  ordering; mount, focus, pageshow, route entry, and scroll publish ordinary
+  state that can reclaim the public projection;
 - state bodies are capped at 2 KiB, normal publication is change-driven with a
   500 ms hard client throttle, and the actor limiter sustains 2 Hz with burst
   four.
+
+Online-user membership is a separate process-local document-lease rail backed
+by durable `users.last_seen` only when no live lease is known. The signed-session,
+same-origin `/api/user/ping` boundary accepts at most eight sequenced documents
+per UID and 2,000 tracked UIDs, fences pagehide-before-arrival reordering with
+bounded inactive tombstones, and treats explicit logout as an immediate offline
+barrier without erasing historical last-seen evidence. Heartbeats run every 15
+seconds; request bodies are capped at 2 KiB, admission allows an eight-document
+burst then one heartbeat per second, and durable writes coalesce to at most one
+per UID per five seconds. Public online rosters refresh every five seconds.
 
 Authenticated operators may read aggregate mode, capacity, actor/tab/realm,
 subscriber, accepted, rate-limited, invalid, expired, and dropped counters from
