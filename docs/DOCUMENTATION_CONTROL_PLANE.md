@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/workshop-v2` at `f61cb8392ac55b7f85c4fd581d710abba3972760`
+Implementation baseline: `feature/final-corpus-closure` at `8ac7db843094b00743e28275c4f5e2e15f3a18d4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
