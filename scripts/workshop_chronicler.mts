@@ -596,10 +596,6 @@ function isNoiseSubject(subject: string) {
   );
 }
 
-function isGenericSubject(subject: string) {
-  return /^finish aoe2war work\.?$/i.test(subject.trim());
-}
-
 function normalizeSubject(subject: string) {
   let value = subject.trim();
 
@@ -701,13 +697,6 @@ function chooseTitle(topic: Topic, commits: Commit[]) {
   return topic.headline;
 }
 
-
-function desiredEntryCount(commitCount: number) {
-  if (commitCount <= 1) return 1;
-  if (commitCount <= 5) return 2;
-  if (commitCount <= 12) return 3;
-  return 4;
-}
 
 function buildClusters(commits: Commit[]) {
   const byTopic = new Map<string, { topic: Topic; commits: Commit[] }>();
