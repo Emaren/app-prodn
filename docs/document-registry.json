@@ -476,7 +476,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-08-14",
       "sensitivity": "internal",
-      "sha256": "b32a7b4af7b0d31449a235d676beb01f6c5a4bb72eac872f56278135ab81eac4",
+      "sha256": "78ff4d67598911b08253f36c1263407ca030198e1676ab1fb4fd0263baf6ab0b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "49463d73e94895c624e0cc5341751021733bdae60b37a4f7219de254314ca278",
+      "sha256": "70d4476966ee0783ccdb27fe468fcc8eb2a303db2d4a49cae0d82a3dcd5e4f2d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1627,8 +1627,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "media-ingest-v1-1",
-    "commit": "3c62d7f82344e773824ba6f5e554623584092562"
+    "branch": "direct-chat-os-v1-2",
+    "commit": "3874806a2cb9784fe8e499df8ab91f754b3dad70"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
