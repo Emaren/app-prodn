@@ -125,6 +125,42 @@ test("player directory and leaderboard share the same raw replay corpus", () => 
     corpus,
     /prisma\.gameStats\.findMany/,
   );
+  assert.match(
+    corpus,
+    /RAW_CORPUS_PAGE_SIZE/,
+  );
+  assert.match(
+    corpus,
+    /take:\s*RAW_CORPUS_PAGE_SIZE/,
+  );
+  assert.match(
+    corpus,
+    /afterId\s*===\s*null/,
+  );
+  assert.match(
+    corpus,
+    /gt:\s*afterId/,
+  );
+  assert.match(
+    corpus,
+    /orderBy:[\s\S]*?id:\s*"asc"/,
+  );
+  assert.match(
+    corpus,
+    /snapshotMaxId/,
+  );
+  assert.match(
+    corpus,
+    /lte:\s*snapshotMaxId/,
+  );
+  assert.match(
+    corpus,
+    /rawCorpusGeneration/,
+  );
+  assert.match(
+    corpus,
+    /generation\s*===\s*rawCorpusGeneration/,
+  );
 });
 
 test("leaderboard variants share one processed corpus", () => {
