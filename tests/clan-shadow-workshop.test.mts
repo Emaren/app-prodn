@@ -22,8 +22,12 @@ test("shadow launcher refuses non-local base databases", () => {
   );
 });
 
-test("shadow refresh clones only the production-shaped social, AI and Marketplace control-plane slice", () => {
+test("shadow refresh delegates to the FK-complete bounded V1.2 engine", () => {
   const launcher = read("scripts/dev-shadow.py");
+  const engine = read("scripts/aoe2_shadow.py");
+
+  assert.match(launcher, /from aoe2_shadow import/);
+  assert.match(launcher, /refresh_shadow_v12/);
 
   for (const table of [
     "users",
@@ -35,61 +39,49 @@ test("shadow refresh clones only the production-shaped social, AI and Marketplac
     "ai_request_traces",
     "betting_bot_configs",
     "bet_counter_actions",
-    "user_activity_events",
     "marketplace_shops",
   ]) {
-    assert.match(launcher, new RegExp(`"${table}"`));
+    assert.match(engine, new RegExp(`"${table}"`));
   }
 
+  assert.match(engine, /BOUNDED_TABLE = "user_activity_events"/);
+  assert.match(engine, /table\.startswith\(\s*"direct_"\s*\)/);
+  assert.match(engine, /compute_fk_closure/);
+  assert.match(engine, /--data-only/);
+  assert.match(engine, /--disable-triggers/);
   assert.match(
-    launcher,
-    /MARKETPLACE_TABLES = \([\s\S]*"user_activity_events"[\s\S]*"marketplace_shops"[\s\S]*\)/,
+    engine,
+    /automatic FK closure[\s\S]*replaced manual table chasing/,
   );
   assert.match(
-    launcher,
-    /SHADOW_TABLES = \([\s\S]*SOCIAL_TABLES[\s\S]*CONTROL_PLANE_TABLES[\s\S]*MARKETPLACE_TABLES[\s\S]*\)/,
-  );
-  assert.match(launcher, /--data-only/);
-  assert.match(
-    launcher,
-    /only selected social\/AI\/Marketplace control-plane[\s\S]*table data crossed SSH/,
-  );
-  assert.match(
-    launcher,
-    /replay\/parser\/game corpus was deliberately not cloned/,
+    engine,
+    /production DATABASE_URL[\s\S]*never left the VPS/,
   );
 });
 
 test("shadow schema is built from current Prisma schema", () => {
-  const launcher = read("scripts/dev-shadow.py");
+  const engine = read("scripts/aoe2_shadow.py");
 
-  assert.match(launcher, /"prisma",/);
-  assert.match(launcher, /"db",/);
-  assert.match(launcher, /"push",/);
-  assert.match(launcher, /"--accept-data-loss",/);
-  assert.doesNotMatch(launcher, /"--skip-generate"/);
-  assert.doesNotMatch(
-    launcher,
-    /\["npx", "prisma", "migrate", "deploy"\]/,
-  );
+  assert.match(engine, /"prisma",/);
+  assert.match(engine, /"db",/);
+  assert.match(engine, /"push",/);
+  assert.match(engine, /"--accept-data-loss",/);
+  assert.doesNotMatch(engine, /"migrate",\s*"deploy"/);
   assert.match(
-    launcher,
-    /local shadow schema built from current canonical Prisma schema/,
-  );
-  assert.match(
-    launcher,
-    /broken historical migration replay is not part of shadow startup/,
+    engine,
+    /current Prisma schema could not[\s\S]*build the local shadow/,
   );
 });
-test("shadow data stream filters PG17 psql-only commands", () => {
-  const launcher = read("scripts/dev-shadow.py");
 
-  assert.match(launcher, /\\\\restrict/);
-  assert.match(launcher, /\\\\unrestrict/);
-  assert.match(launcher, /SET transaction_timeout = 0;/);
+test("shadow data stream filters PG17 psql-only commands", () => {
+  const engine = read("scripts/aoe2_shadow.py");
+
+  assert.match(engine, /b"\\\\restrict "/);
+  assert.match(engine, /b"\\\\unrestrict "/);
+  assert.match(engine, /SET transaction_timeout = 0;/);
   assert.match(
-    launcher,
-    /PG17 psql-only meta-commands were filtered/,
+    engine,
+    /PostgreSQL compatibility[\s\S]*filter removed/,
   );
 });
 
@@ -122,14 +114,22 @@ test("package exposes explicit shadow commands", () => {
   );
 });
 
+test("shadow precreates dbgenerated battle sequence before Prisma push", () => {
+  const engine = read("scripts/aoe2_shadow.py");
 
-test("shadow precreates dbgenerated battle sequence", () => {
-  const launcher = read("scripts/dev-shadow.py");
-  assert.match(launcher, /AOE2WAR_SHADOW_BATTLE_SEQUENCE_PREREQ/);
-  assert.match(launcher, /CREATE SEQUENCE IF NOT EXISTS battle_public_number_seq/);
-  assert.match(launcher, /START WITH 2820/);
-  const sequenceAt = launcher.indexOf("CREATE SEQUENCE IF NOT EXISTS battle_public_number_seq");
-  const pushAt = launcher.indexOf('"push",');
+  assert.match(
+    engine,
+    /CREATE SEQUENCE IF NOT EXISTS[\s\S]*battle_public_number_seq/,
+  );
+  assert.match(engine, /START WITH 2820/);
+
+  const sequenceAt = engine.indexOf(
+    "CREATE SEQUENCE IF NOT EXISTS",
+  );
+  const pushAt = engine.indexOf(
+    '"push",',
+  );
+
   assert.notEqual(sequenceAt, -1);
   assert.notEqual(pushAt, -1);
   assert.ok(sequenceAt < pushAt);

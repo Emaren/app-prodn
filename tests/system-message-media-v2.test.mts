@@ -188,21 +188,28 @@ test("system-message staging V2 adds no Prisma migration", () => {
 });
 
 test("shadow refresh mirrors Marketplace proposal and awning truth", () => {
-  const shadow = read(
+  const launcher = read(
     "scripts/dev-shadow.py",
+  );
+  const engine = read(
+    "scripts/aoe2_shadow.py",
   );
 
   assert.match(
-    shadow,
-    /"user_activity_events"/,
+    launcher,
+    /refresh_shadow_v12/,
   );
   assert.match(
-    shadow,
+    engine,
+    /BOUNDED_TABLE = "user_activity_events"/,
+  );
+  assert.match(
+    engine,
     /"marketplace_shops"/,
   );
   assert.match(
-    shadow,
-    /Marketplace proposals \+ awning occupancy are mirrored locally/,
+    engine,
+    /shadow_activity_event_limit/,
   );
 });
 
