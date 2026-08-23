@@ -8,6 +8,7 @@ import type { CSSProperties } from "react";
 
 import {
   mergeContactInboxPayload,
+  optimisticallyToggleContactReaction,
   type MergeContactInboxPayloadOptions,
 } from "@/components/contact/contactInboxPayload";
 import type {
@@ -534,7 +535,11 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
               </button>
             </div>
 
-            <div ref={panelRef} className="h-full min-h-0 overflow-hidden rounded-[1.35rem] border border-white/12 bg-[#050c16] shadow-[0_34px_96px_rgba(2,6,23,0.82)] sm:rounded-[1.6rem]">
+            <div
+              ref={panelRef}
+              data-floating-chat-boundary="true"
+              className="h-full min-h-0 overflow-hidden rounded-[1.35rem] border border-white/12 bg-[#050c16] shadow-[0_34px_96px_rgba(2,6,23,0.82)] sm:rounded-[1.6rem]"
+            >
               <ContactInboxPanel
                 data={panelData ?? summary}
                 loading={loading && !(panelData ?? summary)}
@@ -662,37 +667,105 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                   }
                 }}
                 onToggleReaction={async (messageId, emoji) => {
+                  const targetUidAtAction =
+                    selectedTargetUidRef.current;
+
                   setReactingMessageId(messageId);
                   setError(null);
 
-                  try {
-                    const response = await fetch("/api/contact-emaren", {
-                      method: "PATCH",
-                      headers: {
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify({
-                        action: "toggle_reaction",
-                        targetUid: selectedTargetUidRef.current,
+                  setPanelData((current) => {
+                    const base =
+                      current ??
+                      (
+                        summary?.activeTargetUid ===
+                        targetUidAtAction
+                          ? summary
+                          : null
+                      );
+
+                    if (!base) {
+                      return current;
+                    }
+
+                    const optimistic =
+                      optimisticallyToggleContactReaction(
+                        base,
                         messageId,
                         emoji,
-                      }),
-                    });
+                      );
 
-                    const payload = (await response.json().catch(() => ({}))) as
-                      | ContactInboxPayload
-                      | { detail?: string };
+                    if (targetUidAtAction) {
+                      panelCacheRef.current.set(
+                        targetUidAtAction,
+                        optimistic,
+                      );
+                    }
+
+                    return optimistic;
+                  });
+
+                  try {
+                    const response = await fetch(
+                      "/api/contact-emaren",
+                      {
+                        method: "PATCH",
+                        headers: {
+                          "Content-Type":
+                            "application/json",
+                        },
+                        body: JSON.stringify({
+                          action: "toggle_reaction",
+                          targetUid:
+                            targetUidAtAction,
+                          messageId,
+                          emoji,
+                        }),
+                      },
+                    );
+
+                    const payload =
+                      (await response
+                        .json()
+                        .catch(() => ({}))) as
+                        | ContactInboxPayload
+                        | { detail?: string };
 
                     if (!response.ok) {
-                      throw new Error(readDetail(payload) || "Reaction failed.");
+                      throw new Error(
+                        readDetail(payload) ||
+                          "Reaction failed.",
+                      );
+                    }
+
+                    if (
+                      selectedTargetUidRef.current !==
+                      targetUidAtAction
+                    ) {
+                      return;
                     }
 
                     panelRequestIdRef.current += 1;
-                    applyInboxPayload(payload as ContactInboxPayload);
+
+                    applyInboxPayload(
+                      payload as ContactInboxPayload,
+                      { mode: "refresh" },
+                    );
                   } catch (reactionError) {
                     setError(
-                      reactionError instanceof Error ? reactionError.message : "Reaction failed."
+                      reactionError instanceof Error
+                        ? reactionError.message
+                        : "Reaction failed.",
                     );
+
+                    if (
+                      selectedTargetUidRef.current ===
+                      targetUidAtAction
+                    ) {
+                      void refreshPanel(
+                        targetUidAtAction,
+                        { silent: true },
+                      );
+                    }
                   } finally {
                     setReactingMessageId(null);
                   }

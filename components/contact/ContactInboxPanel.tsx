@@ -709,11 +709,31 @@ function MarketplaceMessageCard({
 
                 <Link
                   href={href}
-                  className="inline-flex h-9 items-center gap-2 rounded-full border border-teal-100/22 bg-teal-200 px-4 text-[11px] font-black text-slate-950 shadow-[0_0_24px_rgba(45,212,191,0.12)] transition hover:bg-teal-100"
+                  className="group relative inline-flex h-11 w-[13.75rem] items-center justify-center gap-2 rounded-xl border border-amber-200/38 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.18),transparent_50%),linear-gradient(135deg,rgba(53,34,14,0.98),rgba(23,13,10,0.99)_58%,rgba(9,8,10,0.99))] px-4 text-[10px] font-black uppercase tracking-[0.14em] text-amber-50 shadow-[0_12px_32px_rgba(0,0,0,0.42),inset_0_1px_0_rgba(255,245,210,0.18)] transition duration-200 hover:-translate-y-0.5 hover:border-amber-100/68 hover:shadow-[0_16px_38px_rgba(0,0,0,0.46),0_0_30px_rgba(245,158,11,0.18),inset_0_1px_0_rgba(255,248,220,0.24)]"
                 >
-                  <Store className="h-3.5 w-3.5" />
-                  Start My Business
-                  <ArrowRight className="h-3.5 w-3.5" />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/75 to-transparent"
+                  />
+                  <Store className="relative h-4 w-4 text-amber-200 transition duration-200 group-hover:scale-110" />
+
+                  <span className="relative grid min-w-[9.8rem] place-items-center">
+                    <span className="col-start-1 row-start-1 transition duration-200 group-hover:-translate-y-1 group-hover:opacity-0">
+                      Open My Business
+                    </span>
+                    <span className="col-start-1 row-start-1 translate-y-1 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+                      Thank You, Your Grace
+                    </span>
+                  </span>
+
+                  <ArrowRight className="relative h-3.5 w-3.5 text-amber-200/75 transition duration-200 group-hover:translate-x-0.5" />
+
+                  <img
+                    src="/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.webp"
+                    alt=""
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -right-1 -top-2 h-7 w-7 translate-y-2 rotate-[-12deg] scale-50 opacity-0 drop-shadow-[0_0_10px_rgba(251,191,36,0.45)] transition duration-300 group-hover:-translate-y-2 group-hover:rotate-12 group-hover:scale-100 group-hover:opacity-80"
+                  />
                 </Link>
               </div>
             </div>
@@ -1319,10 +1339,18 @@ function ClanInviteDirectArtifact({
                       void act("decline")
                     }
                     disabled={Boolean(busy)}
-                    className="inline-flex h-9 items-center gap-1.5 rounded-full border border-white/10 bg-black/30 px-3 text-[11px] font-semibold text-slate-300 transition hover:border-rose-200/22 hover:text-rose-100 disabled:opacity-40"
+                    className="group relative inline-flex h-10 min-w-[6.8rem] items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-white/10 bg-black/34 px-3 text-[11px] font-semibold text-slate-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] transition duration-200 hover:-translate-y-0.5 hover:border-rose-200/24 hover:bg-rose-950/20 hover:text-rose-100 disabled:opacity-40"
                   >
-                    <X className="h-3.5 w-3.5" />
-                    Decline
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 grid place-items-center text-[1.65rem] opacity-0 blur-[0.2px] transition duration-300 group-hover:scale-125 group-hover:opacity-[0.13]"
+                    >
+                      👀
+                    </span>
+                    <X className="relative h-3.5 w-3.5" />
+                    <span className="relative">
+                      Decline
+                    </span>
                   </button>
                   <button
                     type="button"
@@ -1330,17 +1358,28 @@ function ClanInviteDirectArtifact({
                       void act("accept")
                     }
                     disabled={Boolean(busy)}
-                    className="group relative inline-flex h-11 items-center gap-2.5 overflow-hidden rounded-xl border border-amber-200/40 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.20),transparent_48%),linear-gradient(135deg,rgba(53,34,14,0.98),rgba(23,13,10,0.99)_58%,rgba(9,8,10,0.99))] px-5 text-[10px] font-black uppercase tracking-[0.18em] text-amber-50 shadow-[0_12px_32px_rgba(0,0,0,0.42),0_0_0_1px_rgba(251,191,36,0.06),inset_0_1px_0_rgba(255,245,210,0.18)] transition duration-200 hover:-translate-y-0.5 hover:border-amber-100/70 hover:shadow-[0_16px_38px_rgba(0,0,0,0.46),0_0_30px_rgba(245,158,11,0.20),inset_0_1px_0_rgba(255,248,220,0.26)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="group relative inline-flex h-11 w-[11.5rem] items-center justify-center gap-2 overflow-hidden rounded-xl border border-amber-200/40 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.20),transparent_48%),linear-gradient(135deg,rgba(53,34,14,0.98),rgba(23,13,10,0.99)_58%,rgba(9,8,10,0.99))] px-4 text-[10px] font-black uppercase tracking-[0.18em] text-amber-50 shadow-[0_12px_32px_rgba(0,0,0,0.42),0_0_0_1px_rgba(251,191,36,0.06),inset_0_1px_0_rgba(255,245,210,0.18)] transition duration-200 hover:-translate-y-0.5 hover:border-amber-100/70 hover:shadow-[0_16px_38px_rgba(0,0,0,0.46),0_0_30px_rgba(245,158,11,0.20),inset_0_1px_0_rgba(255,248,220,0.26)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <span
                       aria-hidden="true"
                       className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/80 to-transparent"
                     />
                     <Check className="relative h-4 w-4 text-amber-200 transition group-hover:scale-110" />
-                    <span className="relative">
-                      {busy === "accept"
-                        ? "Entering…"
-                        : "Take Your Seat"}
+                    <span className="relative grid min-w-[7.4rem] place-items-center">
+                      {busy === "accept" ? (
+                        <span>
+                          Entering…
+                        </span>
+                      ) : (
+                        <>
+                          <span className="col-start-1 row-start-1 transition duration-200 group-hover:-translate-y-1 group-hover:opacity-0">
+                            Accept
+                          </span>
+                          <span className="col-start-1 row-start-1 translate-y-1 opacity-0 transition duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+                            Take Your Seat
+                          </span>
+                        </>
+                      )}
                     </span>
                     <span
                       aria-hidden="true"

@@ -60,31 +60,93 @@ export default function FloatingChatPanel({
     const anchorRect = anchor.getBoundingClientRect();
     const panel = panelRef.current;
     const panelWidth = panel?.offsetWidth || width;
-    const panelHeight = panel?.offsetHeight || estimatedHeight;
-    const roomAbove = anchorRect.top - VIEWPORT_MARGIN - PANEL_GAP;
-    const roomBelow =
-      window.innerHeight - anchorRect.bottom - VIEWPORT_MARGIN - PANEL_GAP;
-    const placeBelow =
-      roomBelow >= Math.min(panelHeight, estimatedHeight) || roomBelow >= roomAbove;
+    const panelHeight =
+      panel?.offsetHeight || estimatedHeight;
 
-    let left = anchorRect.right - panelWidth;
-    if (align === "start") left = anchorRect.left;
-    if (align === "center") {
-      left = anchorRect.left + anchorRect.width / 2 - panelWidth / 2;
+    const boundary =
+      anchor.closest<HTMLElement>(
+        '[data-floating-chat-boundary="true"]',
+      );
+
+    const boundaryRect =
+      boundary?.getBoundingClientRect();
+
+    const minLeft = boundaryRect
+      ? Math.max(
+          VIEWPORT_MARGIN,
+          boundaryRect.left + PANEL_GAP,
+        )
+      : VIEWPORT_MARGIN;
+
+    const maxRight = boundaryRect
+      ? Math.min(
+          window.innerWidth - VIEWPORT_MARGIN,
+          boundaryRect.right - PANEL_GAP,
+        )
+      : window.innerWidth - VIEWPORT_MARGIN;
+
+    const minTop = boundaryRect
+      ? Math.max(
+          VIEWPORT_MARGIN,
+          boundaryRect.top + PANEL_GAP,
+        )
+      : VIEWPORT_MARGIN;
+
+    const maxBottom = boundaryRect
+      ? Math.min(
+          window.innerHeight - VIEWPORT_MARGIN,
+          boundaryRect.bottom - PANEL_GAP,
+        )
+      : window.innerHeight - VIEWPORT_MARGIN;
+
+    const roomAbove =
+      anchorRect.top -
+      minTop -
+      PANEL_GAP;
+
+    const roomBelow =
+      maxBottom -
+      anchorRect.bottom -
+      PANEL_GAP;
+
+    const placeBelow =
+      roomBelow >=
+        Math.min(
+          panelHeight,
+          estimatedHeight,
+        ) ||
+      roomBelow >= roomAbove;
+
+    let left =
+      anchorRect.right - panelWidth;
+
+    if (align === "start") {
+      left = anchorRect.left;
     }
+
+    if (align === "center") {
+      left =
+        anchorRect.left +
+        anchorRect.width / 2 -
+        panelWidth / 2;
+    }
+
     left = clamp(
       left,
-      VIEWPORT_MARGIN,
-      window.innerWidth - panelWidth - VIEWPORT_MARGIN,
+      minLeft,
+      maxRight - panelWidth,
     );
 
     let top = placeBelow
       ? anchorRect.bottom + PANEL_GAP
-      : anchorRect.top - panelHeight - PANEL_GAP;
+      : anchorRect.top -
+        panelHeight -
+        PANEL_GAP;
+
     top = clamp(
       top,
-      VIEWPORT_MARGIN,
-      window.innerHeight - panelHeight - VIEWPORT_MARGIN,
+      minTop,
+      maxBottom - panelHeight,
     );
 
     setPosition({ top, left, visibility: "visible" });

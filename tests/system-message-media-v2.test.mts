@@ -235,7 +235,15 @@ test("authorization defaults the business ON and lands on the exact awning", () 
   );
   assert.match(
     contact,
-    /Start My Business/,
+    /Open My Business/,
+  );
+  assert.match(
+    contact,
+    /Thank You, Your Grace/,
+  );
+  assert.doesNotMatch(
+    contact,
+    />\s*Start My Business\s*</,
   );
   assert.match(
     streets,

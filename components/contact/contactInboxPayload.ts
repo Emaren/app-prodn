@@ -114,3 +114,92 @@ export function mergeContactInboxPayload(
     messagePage: preserveCurrentPage ? current.messagePage : incoming.messagePage,
   };
 }
+
+
+function withOptimisticContactReaction(
+  message: ContactInboxMessage,
+  messageId: number,
+  emoji: string,
+): ContactInboxMessage {
+  if (
+    message.kind !== "text" ||
+    message.messageId !== messageId
+  ) {
+    return message;
+  }
+
+  const existing =
+    message.reactions.find(
+      (reaction) =>
+        reaction.emoji === emoji,
+    );
+
+  if (!existing) {
+    return {
+      ...message,
+      reactions: [
+        ...message.reactions,
+        {
+          emoji,
+          count: 1,
+          viewerReacted: true,
+        },
+      ],
+    };
+  }
+
+  const nextCount =
+    existing.viewerReacted
+      ? Math.max(0, existing.count - 1)
+      : existing.count + 1;
+
+  const reactions =
+    nextCount === 0
+      ? message.reactions.filter(
+          (reaction) =>
+            reaction.emoji !== emoji,
+        )
+      : message.reactions.map(
+          (reaction) =>
+            reaction.emoji === emoji
+              ? {
+                  ...reaction,
+                  count: nextCount,
+                  viewerReacted:
+                    !existing.viewerReacted,
+                }
+              : reaction,
+        );
+
+  return {
+    ...message,
+    reactions,
+  };
+}
+
+export function optimisticallyToggleContactReaction(
+  payload: ContactInboxPayload,
+  messageId: number,
+  emoji: string,
+): ContactInboxPayload {
+  return {
+    ...payload,
+    messages: payload.messages.map(
+      (message) =>
+        withOptimisticContactReaction(
+          message,
+          messageId,
+          emoji,
+        ),
+    ),
+    pinnedMessages:
+      payload.pinnedMessages.map(
+        (message) =>
+          withOptimisticContactReaction(
+            message,
+            messageId,
+            emoji,
+          ) as typeof message,
+      ),
+  };
+}

@@ -57,8 +57,13 @@ async function readClanHallPostInput(request: NextRequest) {
   }
 
   const contentLength = Number(request.headers.get("content-length") || "0");
-  if (Number.isFinite(contentLength) && contentLength > 35_000_000) {
-    throw new Error("Clan Hall media payload is too large.");
+  if (
+    Number.isFinite(contentLength) &&
+    contentLength > 240_000_000
+  ) {
+    throw new Error(
+      "That Hall post carries too much media at once.",
+    );
   }
 
   const formData = await request.formData();

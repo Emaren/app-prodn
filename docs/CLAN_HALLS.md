@@ -337,3 +337,24 @@ Current summon labels are:
 The lit `S` composer control remains a one-message explicit invocation path and
 uses the same Hall-local Scribe profile. A Hall Scribe can never receive another
 Hall's roster/history merely because the public KKR is shared.
+
+
+## Media Ingest V1.1
+
+Clan Hall media is social-first rather than constrained by
+the original conservative V1 limits. Hall posts accept up to
+four media items, with images/GIFs and audio accepted up to
+96 MB, video up to 192 MB, and 230 MB total per post. These
+are extreme safety guards rather than normal product limits.
+
+Remote media remains HTTPS-only, public-host/DNS guarded,
+redirect bounded, timeout bounded, and stream bounded before
+buffering. Large GIFs are silently converted to animated WebP
+when Sharp can save at least 10 percent; otherwise the
+original animation is preserved.
+
+New chat attachment writes prefer the mounted managed-media
+volume. Existing file:v1 attachments remain readable from the
+legacy app-root directory, so no attachment data migration is
+required before release. Storage headroom is evaluated on the
+filesystem that will actually receive new writes.

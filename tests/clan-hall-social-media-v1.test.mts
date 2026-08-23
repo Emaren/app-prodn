@@ -26,7 +26,7 @@ test("Clan Hall composer accepts bounded rich media through picker paste and dra
   }
 
   assert.match(client, /MAX_CLAN_MEDIA_FILES = 4/);
-  assert.match(client, /MAX_CLAN_MEDIA_TOTAL_BYTES = 32_000_000/);
+  assert.match(client, /MAX_CLAN_MEDIA_TOTAL_BYTES = 230_000_000/);
   assert.match(client, /onPaste=\{handleComposerPaste\}/);
   assert.match(client, /onDrop=\{handleComposerDrop\}/);
   assert.match(client, /multiple/);
@@ -50,7 +50,7 @@ test("Clan Hall persists attachments in a dedicated child model and namespaced p
   assert.match(route, /request\.formData\(\)/);
   assert.match(route, /persistClanMessageAttachmentFiles/);
   assert.match(storage, /namespace: "clan-hall"/);
-  assert.match(storage, /CLAN_MEDIA_MIN_FREE_AFTER_WRITE_BYTES = 4 \* 1024 \* 1024 \* 1024/);
+  assert.match(storage, /CLAN_MEDIA_MIN_FREE_AFTER_WRITE_BYTES\s*=\s*4 \* 1024 \* 1024 \* 1024/);
   assert.match(storage, /assertClanMediaStorageHeadroom/);
   assert.match(directStorage, /input\.namespace === "clan-hall"/);
 });
@@ -107,5 +107,5 @@ test("browser-origin GIFs preserve animation by importing the remote source inst
   assert.match(remote, /Remote Hall media must use HTTPS/);
   assert.match(remote, /Remote Hall media host is not public/);
   assert.match(remote, /redirect: "manual"/);
-  assert.match(remote, /MAX_REMOTE_IMAGE_BYTES = 10_000_000/);
+  assert.match(remote, /MAX_REMOTE_IMAGE_BYTES = 96_000_000/);
 });

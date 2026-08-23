@@ -179,7 +179,7 @@ function PlayerCard({
     <Link
       href={entry.href}
       prefetch={false}
-      className={`block rounded-2xl border border-white/8 bg-white/5 p-5 transition [content-visibility:auto] [contain-intrinsic-size:auto_9rem] hover:bg-white/10 ${accentStyles}`}
+      className={`block w-full min-w-0 rounded-2xl border border-white/8 bg-white/5 p-5 transition hover:bg-white/10 ${accentStyles}`}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
@@ -264,7 +264,7 @@ function Panel({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-5 sm:p-6">
+    <section className="min-w-0 rounded-[1.75rem] border border-white/10 bg-slate-950/70 p-5 sm:p-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <div className="text-xs uppercase tracking-[0.35em] text-white/45">{eyebrow}</div>

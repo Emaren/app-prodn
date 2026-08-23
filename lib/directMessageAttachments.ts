@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -23,7 +24,43 @@ export type LoadedDirectMessageAttachment = {
 };
 
 function getAttachmentRootDir() {
-  return process.env.DIRECT_MESSAGE_ATTACHMENT_DIR || DEFAULT_ATTACHMENT_DIR;
+  const explicit =
+    process.env.DIRECT_MESSAGE_ATTACHMENT_DIR?.trim();
+
+  if (explicit) {
+    return explicit;
+  }
+
+  const managedMediaRoot =
+    process.env.MANAGED_MEDIA_UPLOAD_DIR?.trim();
+
+  if (managedMediaRoot) {
+    return path.join(
+      managedMediaRoot,
+      "direct-message-attachments",
+    );
+  }
+
+  const mountedManagedMediaRoot =
+    "/mnt/HC_Volume_105319120/aoe-managed-assets";
+
+  if (existsSync(mountedManagedMediaRoot)) {
+    return path.join(
+      mountedManagedMediaRoot,
+      "direct-message-attachments",
+    );
+  }
+
+  return DEFAULT_ATTACHMENT_DIR;
+}
+
+function getAttachmentReadRootDirs() {
+  const primary = path.resolve(getAttachmentRootDir());
+  const legacy = path.resolve(DEFAULT_ATTACHMENT_DIR);
+
+  return primary === legacy
+    ? [primary]
+    : [primary, legacy];
 }
 
 export function getDirectMessageAttachmentRootDir() {
@@ -81,13 +118,28 @@ function buildRelativeAttachmentPath(input: PersistDirectMessageAttachmentInput)
   return `${namespace}${year}/${month}/${randomUUID()}${extension}`;
 }
 
-function resolveAttachmentPath(reference: string) {
-  const rootDir = path.resolve(getAttachmentRootDir());
+function resolveAttachmentPathAtRoot(
+  root: string,
+  reference: string,
+) {
+  const rootDir = path.resolve(root);
   const absolutePath = path.resolve(rootDir, reference);
-  if (absolutePath !== rootDir && !absolutePath.startsWith(`${rootDir}${path.sep}`)) {
+
+  if (
+    absolutePath !== rootDir &&
+    !absolutePath.startsWith(`${rootDir}${path.sep}`)
+  ) {
     return null;
   }
+
   return absolutePath;
+}
+
+function resolveAttachmentPath(reference: string) {
+  return resolveAttachmentPathAtRoot(
+    getAttachmentRootDir(),
+    reference,
+  );
 }
 
 function decodeDataUrl(dataUrl: string): LoadedDirectMessageAttachment | null {
@@ -131,18 +183,26 @@ export async function persistDirectMessageAttachment(
   return `${FILE_ATTACHMENT_PREFIX}${relativePath}`;
 }
 
-export async function removePersistedDirectMessageAttachment(reference: string | null) {
+export async function removePersistedDirectMessageAttachment(
+  reference: string | null,
+) {
   if (!reference?.startsWith(FILE_ATTACHMENT_PREFIX)) {
     return;
   }
 
-  const relativePath = reference.slice(FILE_ATTACHMENT_PREFIX.length);
-  const absolutePath = resolveAttachmentPath(relativePath);
-  if (!absolutePath) {
-    return;
-  }
+  const relativePath =
+    reference.slice(FILE_ATTACHMENT_PREFIX.length);
 
-  await unlink(absolutePath).catch(() => {});
+  await Promise.all(
+    getAttachmentReadRootDirs().map(async (root) => {
+      const absolutePath =
+        resolveAttachmentPathAtRoot(root, relativePath);
+
+      if (!absolutePath) return;
+
+      await unlink(absolutePath).catch(() => {});
+    }),
+  );
 }
 
 export async function loadDirectMessageAttachmentContent(
@@ -156,18 +216,24 @@ export async function loadDirectMessageAttachmentContent(
     return null;
   }
 
-  const relativePath = storedAttachment.slice(FILE_ATTACHMENT_PREFIX.length);
-  const absolutePath = resolveAttachmentPath(relativePath);
-  if (!absolutePath) {
-    return null;
+  const relativePath =
+    storedAttachment.slice(FILE_ATTACHMENT_PREFIX.length);
+
+  for (const root of getAttachmentReadRootDirs()) {
+    const absolutePath =
+      resolveAttachmentPathAtRoot(root, relativePath);
+
+    if (!absolutePath) continue;
+
+    try {
+      return {
+        mimeType: null,
+        buffer: await readFile(absolutePath),
+      };
+    } catch {
+      // Try the legacy root before declaring the attachment missing.
+    }
   }
 
-  try {
-    return {
-      mimeType: null,
-      buffer: await readFile(absolutePath),
-    };
-  } catch {
-    return null;
-  }
+  return null;
 }

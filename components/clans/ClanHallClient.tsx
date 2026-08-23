@@ -93,11 +93,11 @@ const CLAN_MEDIA_MIME_TYPES = [
 ] as const;
 const CLAN_MEDIA_ACCEPT = CLAN_MEDIA_MIME_TYPES.join(",");
 const MAX_CLAN_MEDIA_FILES = 4;
-const MAX_CLAN_MEDIA_TOTAL_BYTES = 32_000_000;
+const MAX_CLAN_MEDIA_TOTAL_BYTES = 230_000_000;
 const MAX_CLAN_MEDIA_BYTES = {
-  image: 10_000_000,
-  audio: 12_000_000,
-  video: 24_000_000,
+  image: 96_000_000,
+  audio: 96_000_000,
+  video: 192_000_000,
 } as const;
 const MESSAGE_URL_PATTERN = /(?:https?:\/\/|www\.)[^\s<>]+/gi;
 
@@ -1011,12 +1011,13 @@ export default function ClanHallClient({
         continue;
       }
       if (file.size < 1 || file.size > MAX_CLAN_MEDIA_BYTES[kind]) {
-        const maxMb = Math.round(MAX_CLAN_MEDIA_BYTES[kind] / 1_000_000);
-        setError(`${kind === "image" ? "Images" : kind === "video" ? "Videos" : "Audio"} must be ${maxMb} MB or smaller.`);
+        setError(
+          "That media file is unusually large for a single Hall post.",
+        );
         continue;
       }
       if (totalBytes + file.size > MAX_CLAN_MEDIA_TOTAL_BYTES) {
-        setError("Keep each Hall message at 32 MB or less in total media.");
+        setError("That Hall post carries too much media at once.");
         break;
       }
 
@@ -2380,6 +2381,8 @@ function ClanMessageBubble({
     audienceIcon(message.audience);
   const [toolsOpen, setToolsOpen] =
     useState(false);
+  const [toolsPinned, setToolsPinned] =
+    useState(false);
   const toolsCloseTimerRef =
     useRef<number | null>(null);
   const toolsTriggerRef =
@@ -2425,17 +2428,44 @@ function ClanMessageBubble({
     }
   }
 
+  function closeTools() {
+    cancelToolsClose();
+    setToolsPinned(false);
+    setToolsOpen(false);
+  }
+
   function openTools() {
     cancelToolsClose();
     setToolsOpen(true);
   }
 
+  function toggleToolsPinned() {
+    cancelToolsClose();
+
+    if (toolsPinned) {
+      closeTools();
+      return;
+    }
+
+    setToolsOpen(true);
+    setToolsPinned(true);
+  }
+
   function scheduleToolsClose() {
     cancelToolsClose();
+
+    if (toolsPinned) {
+      return;
+    }
+
     toolsCloseTimerRef.current =
       window.setTimeout(
-        () => setToolsOpen(false),
-        180,
+        () => {
+          toolsCloseTimerRef.current =
+            null;
+          setToolsOpen(false);
+        },
+        650,
       );
   }
 
@@ -2460,7 +2490,7 @@ function ClanMessageBubble({
   ]);
 
   async function translateMessage() {
-    setToolsOpen(false);
+    closeTools();
 
     if (
       activeTranslation?.language ===
@@ -2730,6 +2760,11 @@ function ClanMessageBubble({
         <>
           <div
             className="clan-message-tools"
+            data-pinned={
+              toolsPinned
+                ? "true"
+                : "false"
+            }
             onMouseEnter={openTools}
             onMouseLeave={scheduleToolsClose}
             onFocusCapture={openTools}
@@ -2739,17 +2774,12 @@ function ClanMessageBubble({
               ref={toolsTriggerRef}
               type="button"
               className="clan-message-tools__trigger"
-              onClick={() => {
-                if (toolsOpen) {
-                  setToolsOpen(false);
-                } else {
-                  openTools();
-                }
-              }}
+              onClick={
+                toggleToolsPinned
+              }
               aria-label="Message tools"
               aria-haspopup="menu"
               aria-expanded={toolsOpen}
-              title="Message tools"
             >
               <MoreHorizontal className="h-3.5 w-3.5" />
             </button>
@@ -2758,7 +2788,7 @@ function ClanMessageBubble({
           <FloatingChatPanel
             open={toolsOpen}
             anchorRef={toolsTriggerRef}
-            onRequestClose={() => setToolsOpen(false)}
+            onRequestClose={closeTools}
             width={320}
             estimatedHeight={430}
             align="end"
@@ -2804,7 +2834,7 @@ function ClanMessageBubble({
                       disabled={busy}
                       onPick={(emoji) => {
                         onReaction(emoji);
-                        setToolsOpen(false);
+                        closeTools();
                       }}
                     />
                   </div>
@@ -2829,7 +2859,7 @@ function ClanMessageBubble({
                   type="button"
                   role="menuitem"
                   onClick={() => {
-                    setToolsOpen(false);
+                    closeTools();
                     onStartEdit();
                   }}
                   disabled={busy}
@@ -2845,7 +2875,7 @@ function ClanMessageBubble({
                   type="button"
                   role="menuitem"
                   onClick={() => {
-                    setToolsOpen(false);
+                    closeTools();
                     onDelete();
                   }}
                   disabled={busy}

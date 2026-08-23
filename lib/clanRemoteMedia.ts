@@ -1,10 +1,10 @@
 import { lookup } from "node:dns/promises";
 import net from "node:net";
 
-const MAX_REMOTE_IMAGE_BYTES = 10_000_000;
-const MAX_REMOTE_HTML_BYTES = 1_000_000;
-const MAX_REDIRECTS = 3;
-const FETCH_TIMEOUT_MS = 8_000;
+const MAX_REMOTE_IMAGE_BYTES = 96_000_000;
+const MAX_REMOTE_HTML_BYTES = 2_000_000;
+const MAX_REDIRECTS = 5;
+const FETCH_TIMEOUT_MS = 15_000;
 
 const IMAGE_MIME_TYPES = new Set([
   "image/gif",
@@ -157,6 +157,41 @@ function pageImageCandidate(html: string, baseUrl: URL) {
   return null;
 }
 
+async function readResponseBufferBounded(
+  response: Response,
+  limitBytes: number,
+  tooLargeMessage: string,
+) {
+  if (!response.body) {
+    throw new Error(
+      "Remote Hall media returned no body.",
+    );
+  }
+
+  const reader = response.body.getReader();
+  const chunks: Buffer[] = [];
+  let totalBytes = 0;
+
+  for (;;) {
+    const { done, value } =
+      await reader.read();
+
+    if (done) break;
+    if (!value) continue;
+
+    totalBytes += value.byteLength;
+
+    if (totalBytes > limitBytes) {
+      await reader.cancel().catch(() => {});
+      throw new Error(tooLargeMessage);
+    }
+
+    chunks.push(Buffer.from(value));
+  }
+
+  return Buffer.concat(chunks, totalBytes);
+}
+
 async function fetchRemote(url: URL, redirectCount = 0): Promise<{ buffer: Buffer; mimeType: string; finalUrl: URL }> {
   const response = await fetch(url, {
     redirect: "manual",
@@ -177,17 +212,47 @@ async function fetchRemote(url: URL, redirectCount = 0): Promise<{ buffer: Buffe
 
   if (!response.ok) throw new Error("Remote Hall media could not be downloaded.");
 
-  const contentLength = Number(response.headers.get("content-length") || "0");
-  if (Number.isFinite(contentLength) && contentLength > MAX_REMOTE_IMAGE_BYTES) {
-    throw new Error("Remote Hall image must be 10 MB or smaller.");
+  const headerMime =
+    response.headers.get("content-type");
+
+  const normalizedHeader =
+    (headerMime || "")
+      .split(";", 1)[0]
+      .trim()
+      .toLowerCase();
+
+  const limit =
+    normalizedHeader === "text/html"
+      ? MAX_REMOTE_HTML_BYTES
+      : MAX_REMOTE_IMAGE_BYTES;
+
+  const tooLargeMessage =
+    normalizedHeader === "text/html"
+      ? "Remote media page is unusually large."
+      : "That remote animation is unusually large for a single Hall post.";
+
+  const contentLength = Number(
+    response.headers.get("content-length") || "0",
+  );
+
+  if (
+    Number.isFinite(contentLength) &&
+    contentLength > limit
+  ) {
+    throw new Error(tooLargeMessage);
   }
 
-  const headerMime = response.headers.get("content-type");
-  const normalizedHeader = (headerMime || "").split(";", 1)[0].trim().toLowerCase();
-  const limit = normalizedHeader === "text/html" ? MAX_REMOTE_HTML_BYTES : MAX_REMOTE_IMAGE_BYTES;
-  const buffer = Buffer.from(await response.arrayBuffer());
-  if (buffer.length < 1 || buffer.length > limit) {
-    throw new Error(normalizedHeader === "text/html" ? "Remote media page is too large." : "Remote Hall image must be 10 MB or smaller.");
+  const buffer =
+    await readResponseBufferBounded(
+      response,
+      limit,
+      tooLargeMessage,
+    );
+
+  if (buffer.length < 1) {
+    throw new Error(
+      "Remote Hall media returned no usable content.",
+    );
   }
 
   if (normalizedHeader === "text/html") {

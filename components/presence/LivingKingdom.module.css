@@ -2,8 +2,9 @@
   position: fixed;
   inset: 0;
   z-index: 160;
+  overflow: clip;
   pointer-events: none;
-  contain: layout style;
+  contain: strict;
 }
 
 .marker {

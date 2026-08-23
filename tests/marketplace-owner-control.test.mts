@@ -43,7 +43,7 @@ test("only the primary Marketplace owner can approve proposals", () => {
   assert.match(ownerApi, /action === "approve"/);
 });
 
-test("approval opens the storefront and sends the Start My Business system card", () => {
+test("approval opens the storefront and sends the premium business-entry system card", () => {
   assert.match(ownerLib, /displayEnabled: true/);
   assert.match(ownerLib, /approvedAt: now/);
   assert.match(ownerLib, /Congratulations, Citizen\./);
@@ -54,7 +54,12 @@ test("approval opens the storefront and sends the Start My Business system card"
   );
   assert.match(inboxProtocol, /MARKETPLACE CHARTER APPROVED/);
   assert.match(contact, /Marketplace Charter Approved/);
-  assert.match(contact, /Start My Business/);
+  assert.match(contact, /Open My Business/);
+  assert.match(contact, /Thank You, Your Grace/);
+  assert.doesNotMatch(
+    contact,
+    />\s*Start My Business\s*</,
+  );
 });
 
 test("merchant and Kingdom owner can edit storefront and artwork", () => {

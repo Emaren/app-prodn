@@ -1,5 +1,6 @@
 import { statfs } from "node:fs/promises";
 import path from "node:path";
+import sharp from "sharp";
 
 import {
   getDirectMessageAttachmentRootDir,
@@ -10,13 +11,16 @@ import {
 export type ClanMessageAttachmentKind = "image" | "audio" | "video";
 
 export const MAX_CLAN_MESSAGE_ATTACHMENTS = 4;
-export const MAX_CLAN_MESSAGE_TOTAL_BYTES = 32_000_000;
-const CLAN_MEDIA_MIN_FREE_AFTER_WRITE_BYTES = 4 * 1024 * 1024 * 1024;
+export const MAX_CLAN_MESSAGE_TOTAL_BYTES = 230_000_000;
+const CLAN_MEDIA_MIN_FREE_AFTER_WRITE_BYTES =
+  4 * 1024 * 1024 * 1024;
+const CLAN_MEDIA_MIN_FREE_RATIO = 0.05;
+const CLAN_GIF_OPTIMIZE_THRESHOLD_BYTES = 12_000_000;
 
 const MAX_BYTES_BY_KIND: Record<ClanMessageAttachmentKind, number> = {
-  image: 10_000_000,
-  audio: 12_000_000,
-  video: 24_000_000,
+  image: 96_000_000,
+  audio: 96_000_000,
+  video: 192_000_000,
 };
 
 const KIND_BY_MIME: Readonly<Record<string, ClanMessageAttachmentKind>> = {
@@ -64,13 +68,16 @@ export function validateClanMessageAttachmentFiles(files: File[]) {
     }
 
     if (file.size < 1 || file.size > MAX_BYTES_BY_KIND[kind]) {
-      const maxMb = Math.round(MAX_BYTES_BY_KIND[kind] / 1_000_000);
-      throw new Error(`${kind === "image" ? "Images" : kind === "video" ? "Videos" : "Audio"} must be ${maxMb} MB or smaller.`);
+      throw new Error(
+        "That media file is unusually large for a single Hall post.",
+      );
     }
 
     totalBytes += file.size;
     if (totalBytes > MAX_CLAN_MESSAGE_TOTAL_BYTES) {
-      throw new Error("Keep each Clan Hall message at 32 MB or less in total media.");
+      throw new Error(
+        "That Hall post carries too much media at once.",
+      );
     }
 
     return {
@@ -80,6 +87,51 @@ export function validateClanMessageAttachmentFiles(files: File[]) {
       name: attachmentName(file),
     };
   });
+}
+
+async function optimizeLargeClanGif(file: File) {
+  if (
+    file.type.toLowerCase() !== "image/gif" ||
+    file.size < CLAN_GIF_OPTIMIZE_THRESHOLD_BYTES
+  ) {
+    return file;
+  }
+
+  try {
+    const input =
+      Buffer.from(await file.arrayBuffer());
+
+    const output = await sharp(input, {
+      animated: true,
+      failOn: "warning",
+    })
+      .webp({
+        quality: 82,
+        effort: 4,
+      })
+      .toBuffer();
+
+    if (output.length < input.length * 0.9) {
+      const baseName =
+        file.name
+          .replace(/\.gif$/i, "")
+          .slice(0, 220) ||
+        "hall-animation";
+
+      return new File(
+        [output],
+        `${baseName}.webp`,
+        { type: "image/webp" },
+      );
+    }
+  } catch (error) {
+    console.warn(
+      "Clan Hall GIF optimization skipped; preserving original animation:",
+      error,
+    );
+  }
+
+  return file;
 }
 
 async function statClanMediaFilesystem(root: string) {
@@ -109,16 +161,39 @@ async function assertClanMediaStorageHeadroom(requiredBytes: number) {
     getDirectMessageAttachmentRootDir(),
   );
 
-  const freeBytes = stats.bavail * stats.bsize;
-  if (freeBytes - requiredBytes < CLAN_MEDIA_MIN_FREE_AFTER_WRITE_BYTES) {
-    throw new Error("Clan Hall media storage is temporarily at its safety reserve.");
+  const freeBytes =
+    stats.bavail * stats.bsize;
+  const totalBytes =
+    stats.blocks * stats.bsize;
+
+  const safetyReserveBytes = Math.max(
+    CLAN_MEDIA_MIN_FREE_AFTER_WRITE_BYTES,
+    Math.floor(totalBytes * CLAN_MEDIA_MIN_FREE_RATIO),
+  );
+
+  if (freeBytes - requiredBytes < safetyReserveBytes) {
+    throw new Error(
+      "Clan Hall media storage is temporarily at its safety reserve.",
+    );
   }
 }
 
 export async function persistClanMessageAttachmentFiles(files: File[]) {
-  const validated = validateClanMessageAttachmentFiles(files);
+  validateClanMessageAttachmentFiles(files);
+
+  const optimizedFiles = await Promise.all(
+    files.map((file) => optimizeLargeClanGif(file)),
+  );
+
+  const validated =
+    validateClanMessageAttachmentFiles(optimizedFiles);
+
   await assertClanMediaStorageHeadroom(
-    validated.reduce((total, attachment) => total + attachment.file.size, 0),
+    validated.reduce(
+      (total, attachment) =>
+        total + attachment.file.size,
+      0,
+    ),
   );
   const persisted: PersistedClanMessageAttachment[] = [];
 
