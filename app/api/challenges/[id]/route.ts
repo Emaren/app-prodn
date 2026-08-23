@@ -1,19 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
-  CHALLENGE_DEFAULT_GUARANTEE_WOLO,
-  CHALLENGE_DEFAULT_WAGER_WOLO,
-} from "@/lib/challengeConfig";
-import {
   loadChallengeHubSnapshot,
   loadChallengeTileById,
-  normalizeChallengeNote,
   parseScheduledMatchDate,
 } from "@/lib/challenges";
 import {
   buildChallengeEconomySurface,
-  normalizeChallengeWoloAmount,
-  validateChallengeTermsAmounts,
 } from "@/lib/challengeEconomy";
 import { Prisma } from "@/lib/generated/prisma";
 import {
@@ -27,7 +20,9 @@ import {
 import {
   acceptChallenge,
   cancelChallenge,
+  confirmChallengeTime,
   declineChallenge,
+  rescheduleChallenge,
 } from "@/lib/challenge/domain/commands";
 import {
   recordChallengeActivity,
@@ -56,16 +51,6 @@ const FUNDABLE_STATUSES = new Set([
   "creator_funded",
   "opponent_funded",
   "funded",
-]);
-const MANAGEABLE_DISPLAY_STATES = new Set([
-  "proposed",
-  "pending",
-  "terms_accepted",
-  "accepted",
-  "creator_funded",
-  "opponent_funded",
-  "funded",
-  "checkin_open",
 ]);
 
 const VIEWER_SELECT = {
@@ -249,42 +234,6 @@ function challengeTimingNoticeLines(matchTime: Date | null) {
         `Start ISO: ${matchTime.toISOString()}`,
       ]
     : ["Play: Anytime after both sides fund"];
-}
-
-function buildRescheduleMessage(input: {
-  challengerName: string;
-  challengedName: string;
-  scheduledAt: Date;
-  challengeNote: string | null;
-  wagerAmountWolo: number;
-  guaranteeAmountWolo: number;
-  fundingPreserved?: boolean;
-  accepted?: boolean;
-  confirmed?: boolean;
-}) {
-  const totalFunding = input.wagerAmountWolo + input.guaranteeAmountWolo;
-  const lines = [
-    input.confirmed ? "Challenge time confirmed" : "Challenge time proposed",
-    `${input.challengerName} vs ${input.challengedName}`,
-    `${input.confirmed ? "Start" : "Proposed match time"}: ${formatScheduledAtForInbox(input.scheduledAt)}`,
-    `Match time ISO: ${input.scheduledAt.toISOString()}`,
-    `Wolo Wager: ${formatWolo(input.wagerAmountWolo)} WOLO`,
-    `Match Guarantee: ${formatWolo(input.guaranteeAmountWolo)} WOLO`,
-    `Funding: ${formatWolo(totalFunding)} WOLO each`,
-    input.confirmed
-      ? "Status: Exact time confirmed"
-      : input.fundingPreserved
-        ? "Status: Funding preserved · waiting for the other player to confirm the time"
-        : input.accepted
-          ? "Status: Challenge accepted · waiting for the other player to confirm the time"
-          : "Status: Awaiting acceptance",
-  ];
-
-  if (input.challengeNote) {
-    lines.push(`Note: ${input.challengeNote}`);
-  }
-
-  return lines.join("\n");
 }
 
 function buildFundingMessage(input: {
@@ -579,6 +528,9 @@ export async function PATCH(
 
         role:
           viewerRole,
+
+        isAdmin:
+          viewer.isAdmin,
       },
 
       match:
@@ -615,324 +567,34 @@ export async function PATCH(
     }
 
     if (action === "reschedule") {
-      if (!scheduledMatch.acceptedAt && !viewerIsChallenger && !viewer.isAdmin) {
-        return NextResponse.json(
-          { detail: "Only the challenger can change terms or propose a time before acceptance." },
-          { status: 403 }
-        );
-      }
+      await rescheduleChallenge(
+        {
+          ...lifecycleTransitionContext,
 
-      const hasAnyFunding =
-        Boolean(scheduledMatch.challengerFundedAt) || Boolean(scheduledMatch.challengedFundedAt);
-      const hasAnyCheckIn =
-        Boolean(scheduledMatch.challengerCheckedInAt) || Boolean(scheduledMatch.challengedCheckedInAt);
+          request: {
+            matchTime:
+              payload.matchTime,
 
-      if (hasAnyCheckIn || currentSurface.displayState === "live") {
-        return NextResponse.json(
-          { detail: "This match is already checked in or live. Keep it on the existing rail." },
-          { status: 409 }
-        );
-      }
+            scheduledAt:
+              payload.scheduledAt,
 
-      if (!MANAGEABLE_DISPLAY_STATES.has(currentSurface.displayState)) {
-        return NextResponse.json(
-          { detail: "This scheduled match can no longer be reopened." },
-          { status: 409 }
-        );
-      }
+            challengeNote:
+              payload.challengeNote,
 
-      const nextScheduledAt = parseScheduledMatchDate(payload.matchTime ?? payload.scheduledAt);
-      if (!nextScheduledAt) {
-        return NextResponse.json({ detail: "Choose a valid new start time." }, { status: 400 });
-      }
+            wagerAmountWolo:
+              payload.wagerAmountWolo,
 
-      const scheduledAtWindowError = validateScheduledAtWindow(nextScheduledAt);
-      if (scheduledAtWindowError) {
-        return NextResponse.json({ detail: scheduledAtWindowError }, { status: 400 });
-      }
-
-      if (
-        scheduledMatch.playBy &&
-        scheduledMatch.challengerFundedAt &&
-        scheduledMatch.challengedFundedAt &&
-        nextScheduledAt.getTime() > scheduledMatch.playBy.getTime()
-      ) {
-        return NextResponse.json(
-          { detail: "Choose an exact time before this funded challenge's play window expires." },
-          { status: 400 }
-        );
-      }
-
-      const nextChallengeNote = normalizeChallengeNote(payload.challengeNote);
-      const accepted = Boolean(scheduledMatch.acceptedAt);
-      const preserveLifecycle = accepted || hasAnyFunding;
-      const wagerAmountWolo =
-        preserveLifecycle
-          ? scheduledMatch.wagerAmountWolo
-          : normalizeChallengeWoloAmount(payload.wagerAmountWolo) ?? scheduledMatch.wagerAmountWolo ?? CHALLENGE_DEFAULT_WAGER_WOLO;
-      const guaranteeAmountWolo =
-        preserveLifecycle
-          ? scheduledMatch.guaranteeAmountWolo
-          : normalizeChallengeWoloAmount(payload.guaranteeAmountWolo) ?? scheduledMatch.guaranteeAmountWolo ?? CHALLENGE_DEFAULT_GUARANTEE_WOLO;
-      const termsError = validateChallengeTermsAmounts(wagerAmountWolo, guaranteeAmountWolo);
-
-      if (termsError) {
-        return NextResponse.json({ detail: termsError }, { status: 400 });
-      }
-
-      const rescheduledAt = new Date();
-      const targetUserId = viewerIsChallenger
-        ? scheduledMatch.challengedUserId
-        : scheduledMatch.challengerUserId;
-      const nextFundingTotal = wagerAmountWolo + guaranteeAmountWolo;
-      const nextShape = {
-        ...scheduledMatch,
-        scheduledAt: nextScheduledAt,
-        challengeNote: nextChallengeNote,
-        wagerAmountWolo,
-        guaranteeAmountWolo,
-      };
-      const nextSurface = preserveLifecycle
-        ? computeChallengeSurface(
-            {
-              ...nextShape,
-              timingMode: "scheduled",
-              matchTime: nextScheduledAt,
-            },
-            rescheduledAt
-          )
-        : null;
-
-      await prisma.$transaction(async (tx) => {
-        await tx.scheduledMatch.update({
-          where: { id: challengeId },
-          data: preserveLifecycle
-            ? {
-                status: nextSurface?.persistedStatus ?? scheduledMatch.status,
-                scheduledAt: nextScheduledAt,
-                timingMode: "scheduled",
-                matchTime: nextScheduledAt,
-                matchTimeProposedByUserId: viewer.id,
-                matchTimeConfirmedAt: viewer.isAdmin ? rescheduledAt : null,
-                acceptBy:
-                  !scheduledMatch.acceptedAt &&
-                  (!scheduledMatch.acceptBy || nextScheduledAt.getTime() < scheduledMatch.acceptBy.getTime())
-                    ? nextScheduledAt
-                    : undefined,
-                fundBy:
-                  scheduledMatch.acceptedAt &&
-                  scheduledMatch.fundBy &&
-                  nextScheduledAt.getTime() < scheduledMatch.fundBy.getTime()
-                    ? nextScheduledAt
-                    : undefined,
-                challengeNote: nextChallengeNote,
-                wagerAmountWolo,
-                guaranteeAmountWolo,
-                declinedAt: null,
-                cancelledAt: null,
-              }
-            : {
-                status: "proposed",
-                scheduledAt: nextScheduledAt,
-                timingMode: "scheduled",
-                matchTime: nextScheduledAt,
-                matchTimeProposedByUserId: viewer.id,
-                matchTimeConfirmedAt: null,
-                acceptBy:
-                  !scheduledMatch.acceptBy || nextScheduledAt.getTime() < scheduledMatch.acceptBy.getTime()
-                    ? nextScheduledAt
-                    : scheduledMatch.acceptBy,
-                challengeNote: nextChallengeNote,
-                wagerAmountWolo,
-                guaranteeAmountWolo,
-                acceptedAt: null,
-                declinedAt: null,
-                cancelledAt: null,
-                challengerFundingTxHash: null,
-                challengerFundingWalletAddress: null,
-                challengerFundedAt: null,
-                challengedFundingTxHash: null,
-                challengedFundingWalletAddress: null,
-                challengedFundedAt: null,
-                challengerCheckedInAt: null,
-                challengedCheckedInAt: null,
-                liveConfirmedAt: null,
-                resultAt: null,
-                settlementReadyAt: null,
-                linkedSessionKey: null,
-                linkedMapName: null,
-                linkedWinner: null,
-                linkedDurationSeconds: null,
-              },
-        });
-
-        await recordChallengeActivity(tx, {
-          scheduledMatchId: challengeId,
-          actorUserId: viewer.id,
-          eventType: "time_proposed",
-          detail: `${challengeLabel} · exact time proposed for ${formatScheduledAtForInbox(nextScheduledAt)}${
-            hasAnyFunding ? " · funding preserved" : ""
-          }`,
-          metadata: {
-            scheduledAt: nextScheduledAt.toISOString(),
-            matchTime: nextScheduledAt.toISOString(),
-            matchTimeProposedByUid: viewer.uid,
-            matchTimeConfirmed: viewer.isAdmin,
-            wagerAmountWolo,
-            guaranteeAmountWolo,
-            totalFundingWolo: nextFundingTotal,
-            fundingPreserved: hasAnyFunding,
-            accepted,
+            guaranteeAmountWolo:
+              payload.guaranteeAmountWolo,
           },
-          createdAt: rescheduledAt,
-        });
-
-        await postChallengeInboxNotice(tx, {
-          senderUserId: viewer.id,
-          targetUserId,
-          challengeId,
-          body: buildRescheduleMessage({
-            challengerName,
-            challengedName,
-            scheduledAt: nextScheduledAt,
-            challengeNote: nextChallengeNote,
-            wagerAmountWolo,
-            guaranteeAmountWolo,
-            fundingPreserved: hasAnyFunding,
-            accepted,
-            confirmed: viewer.isAdmin,
-          }),
-          now: rescheduledAt,
-        });
-
-        await recordUserActivity(tx, {
-          userId: scheduledMatch.challengerUserId,
-          type: "challenge_rescheduled",
-          path: "/challenge",
-          label: challengeLabel,
-          metadata: {
-            challengeId,
-            updatedByUid: viewer.uid,
-            role: viewerRole,
-            scheduledAt: nextScheduledAt.toISOString(),
-            challengeNote: nextChallengeNote,
-            wagerAmountWolo,
-            guaranteeAmountWolo,
-            totalFundingWolo: nextFundingTotal,
-            fundingPreserved: hasAnyFunding,
-            accepted,
-          },
-        });
-
-        await recordUserActivity(tx, {
-          userId: scheduledMatch.challengedUserId,
-          type: "challenge_rescheduled",
-          path: "/challenge",
-          label: challengeLabel,
-          metadata: {
-            challengeId,
-            updatedByUid: viewer.uid,
-            role: viewerRole === "challenger" ? "challenged" : viewerRole === "challenged" ? "challenger" : "admin",
-            scheduledAt: nextScheduledAt.toISOString(),
-            challengeNote: nextChallengeNote,
-            wagerAmountWolo,
-            guaranteeAmountWolo,
-            totalFundingWolo: nextFundingTotal,
-            fundingPreserved: hasAnyFunding,
-            accepted,
-          },
-        });
-      });
+        },
+      );
     }
 
     if (action === "confirm_time") {
-      if (!scheduledMatch.acceptedAt) {
-        return NextResponse.json(
-          { detail: "Accept the challenge first. Acceptance confirms the initially proposed exact time." },
-          { status: 409 }
-        );
-      }
-      if (!scheduledMatch.matchTime || !scheduledMatch.matchTimeProposedByUserId) {
-        return NextResponse.json({ detail: "There is no proposed exact time to confirm." }, { status: 409 });
-      }
-      if (scheduledMatch.matchTimeConfirmedAt) {
-        return NextResponse.json({ detail: "This exact match time is already confirmed." }, { status: 409 });
-      }
-      if (scheduledMatch.matchTime.getTime() <= Date.now()) {
-        return NextResponse.json(
-          { detail: "That proposed match time has passed. Propose a new exact time instead." },
-          { status: 409 }
-        );
-      }
-      if (!viewer.isAdmin && scheduledMatch.matchTimeProposedByUserId === viewer.id) {
-        return NextResponse.json(
-          { detail: "The other player must confirm the proposed exact time." },
-          { status: 409 }
-        );
-      }
-      const hasAnyCheckIn =
-        Boolean(scheduledMatch.challengerCheckedInAt) || Boolean(scheduledMatch.challengedCheckedInAt);
-      if (hasAnyCheckIn || currentSurface.displayState === "live") {
-        return NextResponse.json(
-          { detail: "This match is already checked in or live. The time can no longer be changed." },
-          { status: 409 }
-        );
-      }
-
-      const confirmedAt = new Date();
-      const targetUserId = viewerIsChallenger
-        ? scheduledMatch.challengedUserId
-        : scheduledMatch.challengerUserId;
-
-      await prisma.$transaction(async (tx) => {
-        const updated = await tx.scheduledMatch.updateMany({
-          where: {
-            id: challengeId,
-            matchTime: scheduledMatch.matchTime,
-            matchTimeProposedByUserId: scheduledMatch.matchTimeProposedByUserId,
-            matchTimeConfirmedAt: null,
-          },
-          data: {
-            timingMode: "scheduled",
-            scheduledAt: scheduledMatch.matchTime!,
-            matchTimeConfirmedAt: confirmedAt,
-          },
-        });
-        if (updated.count !== 1) {
-          throw new ChallengeConflictError("The proposed time changed before confirmation completed.");
-        }
-
-        await recordChallengeActivity(tx, {
-          scheduledMatchId: challengeId,
-          actorUserId: viewer.id,
-          eventType: "time_confirmed",
-          detail: `${challengeLabel} · exact time confirmed for ${formatScheduledAtForInbox(scheduledMatch.matchTime!)}`,
-          metadata: {
-            matchTime: scheduledMatch.matchTime!.toISOString(),
-            confirmedByUid: viewer.uid,
-          },
-          createdAt: confirmedAt,
-        });
-
-        if (viewerIsChallenger || viewerIsChallenged) {
-          await postChallengeInboxNotice(tx, {
-            senderUserId: viewer.id,
-            targetUserId,
-            challengeId,
-            body: buildRescheduleMessage({
-              challengerName,
-              challengedName,
-              scheduledAt: scheduledMatch.matchTime!,
-              challengeNote: scheduledMatch.challengeNote,
-              wagerAmountWolo: scheduledMatch.wagerAmountWolo,
-              guaranteeAmountWolo: scheduledMatch.guaranteeAmountWolo,
-              fundingPreserved: Boolean(scheduledMatch.challengerFundedAt || scheduledMatch.challengedFundedAt),
-              confirmed: true,
-            }),
-            now: confirmedAt,
-          });
-        }
-      });
+      await confirmChallengeTime(
+        lifecycleTransitionContext,
+      );
     }
 
     if (action === "fund") {

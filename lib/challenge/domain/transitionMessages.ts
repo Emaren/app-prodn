@@ -192,3 +192,108 @@ export function buildCancellationMessage(
     "\n",
   );
 }
+
+
+export function formatChallengeScheduledAtForInbox(
+  date: Date,
+) {
+  return formatScheduledAtForInbox(
+    date,
+  );
+}
+
+
+export function buildRescheduleMessage(
+  input: {
+    challengerName:
+      string;
+
+    challengedName:
+      string;
+
+    scheduledAt:
+      Date;
+
+    challengeNote:
+      string | null;
+
+    wagerAmountWolo:
+      number;
+
+    guaranteeAmountWolo:
+      number;
+
+    fundingPreserved?:
+      boolean;
+
+    accepted?:
+      boolean;
+
+    confirmed?:
+      boolean;
+  },
+) {
+  const totalFunding =
+    input.wagerAmountWolo +
+    input.guaranteeAmountWolo;
+
+  const lines = [
+    input.confirmed
+      ? "Challenge time confirmed"
+      : "Challenge time proposed",
+
+    `${input.challengerName} vs ${input.challengedName}`,
+
+    `${
+      input.confirmed
+        ? "Start"
+        : "Proposed match time"
+    }: ${
+      formatScheduledAtForInbox(
+        input.scheduledAt,
+      )
+    }`,
+
+    `Match time ISO: ${
+      input.scheduledAt.toISOString()
+    }`,
+
+    `Wolo Wager: ${
+      formatWolo(
+        input.wagerAmountWolo,
+      )
+    } WOLO`,
+
+    `Match Guarantee: ${
+      formatWolo(
+        input.guaranteeAmountWolo,
+      )
+    } WOLO`,
+
+    `Funding: ${
+      formatWolo(
+        totalFunding,
+      )
+    } WOLO each`,
+
+    input.confirmed
+      ? "Status: Exact time confirmed"
+      : input.fundingPreserved
+        ? "Status: Funding preserved · waiting for the other player to confirm the time"
+        : input.accepted
+          ? "Status: Challenge accepted · waiting for the other player to confirm the time"
+          : "Status: Awaiting acceptance",
+  ];
+
+  if (
+    input.challengeNote
+  ) {
+    lines.push(
+      `Note: ${input.challengeNote}`,
+    );
+  }
+
+  return lines.join(
+    "\n",
+  );
+}
