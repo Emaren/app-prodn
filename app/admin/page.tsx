@@ -611,6 +611,12 @@ export default function AdminPage() {
                 Clan Command
               </Link>
               <Link
+                href="/admin/marketplace"
+                className="inline-flex rounded-full border border-amber-200/22 bg-amber-300/[0.07] px-5 py-3 text-sm text-amber-100 transition hover:border-amber-200/40 hover:bg-amber-300/12"
+              >
+                Marketplace Command
+              </Link>
+              <Link
                 href="/admin/user-list"
                 className="inline-flex rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
               >

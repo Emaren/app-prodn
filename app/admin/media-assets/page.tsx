@@ -902,6 +902,12 @@ export default function AdminMediaAssetsPage() {
             Clan Command
           </Link>
           <Link
+            href="/admin/marketplace"
+            className="inline-flex items-center gap-2 rounded-full border border-amber-200/20 bg-amber-300/[0.06] px-4 py-2 text-sm font-semibold text-amber-100 transition hover:border-amber-200/35 hover:bg-amber-300/10"
+          >
+            Marketplace Command
+          </Link>
+          <Link
             href="/admin"
             className="inline-flex items-center gap-2 rounded-full border border-white/12 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-amber-200/35 hover:text-amber-100"
           >

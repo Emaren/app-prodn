@@ -33,6 +33,11 @@ BASE_ROOTS = (
     "betting_bot_configs",
     "bet_counter_actions",
     "marketplace_shops",
+    "marketplace_inquiries",
+    "marketplace_invoices",
+    "marketplace_payments",
+    "marketplace_tax_payments",
+    "managed_media_assets",
     "workshop_status",
     "workshop_entries",
     "workshop_artifacts",
@@ -45,6 +50,15 @@ CHAT_AUXILIARY_ROOTS = (
 )
 
 BOUNDED_TABLE = "user_activity_events"
+
+# Generic activity remains bounded for speed. These
+# sparse Marketplace events remain durable because
+# they are current profile/operator control-plane truth,
+# not disposable analytics history.
+REQUIRED_ACTIVITY_TYPES = (
+    "market_shop_proposal",
+    "market_avatar_commission",
+)
 
 
 class ShadowError(RuntimeError):
@@ -1101,6 +1115,170 @@ exec psql \
     return count
 
 
+def stream_required_activity_events(
+    shadow_url: str,
+    *,
+    table: str = BOUNDED_TABLE,
+) -> int:
+    if not REQUIRED_ACTIVITY_TYPES:
+        return 0
+
+    if not table.replace(
+        "_",
+        "",
+    ).isalnum():
+        stop(
+            "unsafe required activity table identifier"
+        )
+
+    before = int(
+        query_lines(
+            shadow_url,
+            f"SELECT count(*) FROM {table};",
+        )[0]
+    )
+
+    min_rows = query_lines(
+        shadow_url,
+        (
+            "SELECT COALESCE(MIN(id),0) "
+            f"FROM {table};"
+        ),
+    )
+
+    local_min_id = (
+        int(min_rows[0])
+        if min_rows
+        else 0
+    )
+
+    quoted_types = ", ".join(
+        "'" +
+        value.replace(
+            "'",
+            "''",
+        ) +
+        "'"
+        for value
+        in REQUIRED_ACTIVITY_TYPES
+    )
+
+    older_clause = (
+        f"AND id < {local_min_id}"
+        if local_min_id > 0
+        else ""
+    )
+
+    script = (
+        remote_db_prefix()
+        + f'''
+exec psql \
+  --no-psqlrc \
+  --quiet \
+  --tuples-only \
+  --no-align \
+  --dbname="$DATABASE_URL" \
+  --command="
+    COPY (
+      SELECT *
+      FROM public.{table}
+      WHERE type IN ({quoted_types})
+        {older_clause}
+      ORDER BY id ASC
+    )
+    TO STDOUT;
+  "
+'''
+    )
+
+    ssh = subprocess.Popen(
+        [
+            "ssh",
+            "-T",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "LogLevel=ERROR",
+            remote_target(),
+            "bash",
+            "-s",
+        ],
+        cwd=ROOT,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert ssh.stdin is not None
+    assert ssh.stdout is not None
+
+    ssh.stdin.write(
+        script.encode()
+    )
+
+    ssh.stdin.close()
+
+    local = subprocess.run(
+        [
+            "psql",
+            shadow_url,
+            "--no-psqlrc",
+            "--set",
+            "ON_ERROR_STOP=1",
+            "--quiet",
+            "--command",
+            (
+                f"COPY public.{table} "
+                "FROM STDIN;"
+            ),
+        ],
+        cwd=ROOT,
+        stdin=ssh.stdout,
+        check=False,
+    )
+
+    ssh.stdout.close()
+
+    stderr = (
+        ssh.stderr.read().decode(
+            "utf-8",
+            "replace",
+        )
+        if ssh.stderr
+        else ""
+    )
+
+    ssh_status = ssh.wait()
+
+    if local.returncode != 0:
+        stop(
+            f"required {table} local COPY failed"
+        )
+
+    if ssh_status != 0:
+        if stderr.strip():
+            print(
+                stderr.strip(),
+                file=sys.stderr,
+            )
+
+        stop(
+            f"required {table} production COPY failed"
+        )
+
+    after = int(
+        query_lines(
+            shadow_url,
+            f"SELECT count(*) FROM {table};",
+        )[0]
+    )
+
+    return max(
+        0,
+        after - before,
+    )
+
+
 def reset_sequences(
     shadow_url: str,
     tables: list[str],
@@ -1445,13 +1623,38 @@ def refresh_shadow_v12() -> None:
             f"{activity_limit} max)"
         )
 
+    required_activity_rows = 0
+
+    if (
+        BOUNDED_TABLE
+        in local_available
+        and BOUNDED_TABLE
+        in remote_available
+    ):
+        required_activity_rows = (
+            stream_required_activity_events(
+                shadow_url,
+                table=BOUNDED_TABLE,
+            )
+        )
+
+        print(
+            "PASS: profile-critical Marketplace "
+            "activity restored "
+            f"(+{required_activity_rows} "
+            "historical row(s))"
+        )
+
     sequence_tables = sorted(
         set(snapshot_tables)
         | (
             {
                 BOUNDED_TABLE
             }
-            if bounded_rows
+            if (
+                bounded_rows
+                or required_activity_rows
+            )
             else set()
         )
     )

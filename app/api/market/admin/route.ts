@@ -64,6 +64,7 @@ export async function PATCH(request: NextRequest) {
       displayEnabled?: unknown;
       name?: unknown;
       offer?: unknown;
+      ownerUid?: unknown;
     };
 
     const action = normalizeMarketplaceLine(body.action, 40);
@@ -147,6 +148,65 @@ export async function PATCH(request: NextRequest) {
       await resolved.prisma.marketplaceShop.update({
         where: { id: shop.id },
         data: { name, offer },
+      });
+    } else if (action === "assign") {
+      const ownerUid =
+        normalizeMarketplaceLine(
+          body.ownerUid,
+          100
+        );
+
+      if (!ownerUid) {
+        return NextResponse.json(
+          { detail: "Choose a proprietor." },
+          { status: 400, headers: HEADERS }
+        );
+      }
+
+      const proprietor =
+        await resolved.prisma.user.findUnique({
+          where: { uid: ownerUid },
+          select: {
+            id: true,
+            uid: true,
+            inGameName: true,
+            steamPersonaName: true,
+            walletAddress: true,
+          },
+        });
+
+      if (!proprietor) {
+        return NextResponse.json(
+          {
+            detail:
+              "That AoE2WAR proprietor could not be found.",
+          },
+          {
+            status: 404,
+            headers: HEADERS,
+          }
+        );
+      }
+
+      const proprietorLabel =
+        proprietor.inGameName ||
+        proprietor.steamPersonaName ||
+        proprietor.uid;
+
+      await resolved.prisma.marketplaceShop.update({
+        where: { id: shop.id },
+        data: {
+          ownerUserId: proprietor.id,
+          proprietorLabel,
+
+          // A proprietor without a WOLO wallet may
+          // own the charter, but cannot receive live
+          // Marketplace payments yet.
+          displayEnabled:
+            proprietor.walletAddress
+              ? shop.displayEnabled
+              : false,
+        },
       });
     } else {
       return NextResponse.json(

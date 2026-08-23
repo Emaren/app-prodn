@@ -54,11 +54,10 @@ export async function requireMarketplaceKingdomOwner(
 }
 
 export async function loadMarketplaceOwnerConsole(prisma: PrismaClient) {
-  const [proposalEvents, shops, activeBusinessArt] = await Promise.all([
+  const [proposalEvents, shops, activeBusinessArt, citizens] = await Promise.all([
     prisma.userActivityEvent.findMany({
       where: { type: "market_shop_proposal" },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-      take: 100,
       include: {
         user: {
           select: {
@@ -96,6 +95,20 @@ export async function loadMarketplaceOwnerConsole(prisma: PrismaClient) {
         kind: true,
         target: true,
       },
+    }),
+    prisma.user.findMany({
+      select: {
+        uid: true,
+        inGameName: true,
+        steamPersonaName: true,
+        walletAddress: true,
+        isAdmin: true,
+      },
+      orderBy: [
+        { inGameName: "asc" },
+        { steamPersonaName: "asc" },
+        { uid: "asc" },
+      ],
     }),
   ]);
 
@@ -136,6 +149,16 @@ export async function loadMarketplaceOwnerConsole(prisma: PrismaClient) {
         offer: normalizeMarketplaceText(metadata.offer, 900),
         paymentState: normalizeMarketplaceLine(metadata.paymentState, 32),
         txHash: normalizeMarketplaceLine(metadata.txHash, 128),
+        sponsorship: normalizeMarketplaceLine(metadata.sponsorship, 40),
+        sponsoredByUid: normalizeMarketplaceLine(
+          metadata.sponsoredByUid,
+          100
+        ),
+        beneficiaryUid:
+          normalizeMarketplaceLine(
+            metadata.beneficiaryUid,
+            100
+          ) || event.user.uid,
         shopPublicId: shop?.publicId ?? null,
         shopStatus: shop?.status ?? null,
         approvedAt: shop?.approvedAt?.toISOString() ?? null,
@@ -146,6 +169,15 @@ export async function loadMarketplaceOwnerConsole(prisma: PrismaClient) {
           artHeroReady && artSignReady,
       };
     }),
+    citizens: citizens.map((user) => ({
+      uid: user.uid,
+      name:
+        user.inGameName ||
+        user.steamPersonaName ||
+        user.uid,
+      walletAddress: user.walletAddress,
+      isAdmin: user.isAdmin,
+    })),
     shops: shops.map((shop) => ({
       publicId: shop.publicId,
       slug: shop.slug,
@@ -328,15 +360,23 @@ export async function approveMarketplaceProposal(
       const marketHref =
         `/market#market-awning-${shop.streetKey}-${shop.slot}`;
 
+      const isKingdomSponsored =
+        normalizeMarketplaceLine(
+          metadata.sponsorship,
+          40
+        ) === "kingdom_admin";
+
       const body = buildMarketplaceInboxMessage({
         kind: "approval",
         shop: shop.name,
         shopSlug: shop.slug,
         proposalEventId: event.id,
         actor: "The Kingdom",
-        amountWolo: 0,
+        amountWolo: MARKETPLACE_STANDARD_WOLO,
         recordId: shop.publicId,
-        payment: "Kingdom approved",
+        payment: isKingdomSponsored
+          ? "Kingdom-sponsored charter · 100 WOLO verified"
+          : "100 WOLO charter verified",
         profileHref: marketHref,
         requestText: [
           "Congratulations, Citizen.",
