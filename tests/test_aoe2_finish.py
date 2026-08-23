@@ -265,5 +265,23 @@ class FinishTests(unittest.TestCase):
 
 
 
+    def test_decode_nul_paths_preserves_first_character(self):
+        payload = (
+            b"docs/DOCUMENTATION_CONTROL_PLANE.md\0"
+            b"docs/document-registry.json\0"
+        )
+
+        self.assertEqual(
+            MODULE.decode_nul_paths(
+                payload
+            ),
+            [
+                "docs/DOCUMENTATION_CONTROL_PLANE.md",
+                "docs/document-registry.json",
+            ],
+        )
+
+
+
 if __name__ == "__main__":
     unittest.main()

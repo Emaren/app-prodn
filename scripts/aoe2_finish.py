@@ -406,17 +406,78 @@ def git_output(*args: str) -> str:
     return (process.stdout or "").strip()
 
 
+def decode_nul_paths(
+    payload: bytes,
+) -> list[str]:
+    return [
+        raw.decode(
+            "utf-8",
+            "surrogateescape",
+        )
+        for raw in payload.split(
+            b"\0"
+        )
+        if raw
+    ]
+
+
 def git_paths() -> list[str]:
-    output = git_output("status", "--porcelain=v1", "--untracked-files=all")
-    paths: list[str] = []
-    for line in output.splitlines():
-        if not line:
-            continue
-        value = line[3:]
-        if " -> " in value:
-            value = value.split(" -> ", 1)[1]
-        paths.append(value)
-    return sorted(set(paths))
+    # Return every staged, unstaged and untracked path without
+    # fixed-character porcelain slicing.
+    commands = (
+        [
+            "git",
+            "diff",
+            "--name-only",
+            "-z",
+        ],
+        [
+            "git",
+            "diff",
+            "--cached",
+            "--name-only",
+            "-z",
+        ],
+        [
+            "git",
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+            "-z",
+        ],
+    )
+
+    paths: set[str] = set()
+
+    for args in commands:
+        process = subprocess.run(
+            args,
+            cwd=str(ROOT),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+
+        if process.returncode != 0:
+            raise FinishError(
+                "git path inventory failed for "
+                + shlex.join(args)
+                + ": "
+                + process.stderr.decode(
+                    "utf-8",
+                    "replace",
+                )[-4000:]
+            )
+
+        paths.update(
+            decode_nul_paths(
+                process.stdout
+            )
+        )
+
+    return sorted(
+        paths
+    )
 
 
 def is_ancestor(older: str, newer: str) -> bool:
