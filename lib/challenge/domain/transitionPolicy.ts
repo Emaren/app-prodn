@@ -1031,3 +1031,403 @@ export function planChallengeFundingState(
       input.guaranteeAmountWolo,
   };
 }
+
+
+export function planChallengeCheckIn(
+  input: {
+    actorRole:
+      ChallengeActorRole;
+
+    checkInWindowState:
+      string;
+
+    status:
+      string;
+
+    scheduledAt:
+      Date;
+
+    timingMode:
+      string;
+
+    matchTime:
+      Date | null;
+
+    acceptedAt:
+      Date | null;
+
+    resultAt:
+      Date | null;
+
+    liveConfirmedAt:
+      Date | null;
+
+    settlementReadyAt:
+      Date | null;
+
+    wagerAmountWolo:
+      number;
+
+    guaranteeAmountWolo:
+      number;
+
+    challengerFundingTxHash:
+      string | null;
+
+    challengerFundingWalletAddress:
+      string | null;
+
+    challengerFundedAt:
+      Date | null;
+
+    challengedFundingTxHash:
+      string | null;
+
+    challengedFundingWalletAddress:
+      string | null;
+
+    challengedFundedAt:
+      Date | null;
+
+    challengerCheckedInAt:
+      Date | null;
+
+    challengedCheckedInAt:
+      Date | null;
+
+    now:
+      Date;
+  },
+) {
+  if (
+    input.timingMode !==
+      "scheduled" ||
+    !input.matchTime
+  ) {
+    throw new ChallengeConflictError(
+      "Play-anytime challenges do not require check-in. Propose an exact time first if you want the scheduling rail.",
+    );
+  }
+
+  if (
+    input.actorRole !==
+      "challenger" &&
+    input.actorRole !==
+      "challenged"
+  ) {
+    throw new ChallengeConflictError(
+      "Only match participants can check in.",
+      403,
+    );
+  }
+
+  /*
+   * The actual ten-minute attendance window remains owned by
+   * challengeEconomy. The transition consumes the exact
+   * projection that the HTTP route consumed before extraction.
+   */
+  if (
+    input.checkInWindowState !==
+      "open"
+  ) {
+    throw new ChallengeConflictError(
+      "Check-in opens exactly 10 minutes before the scheduled start and closes at start.",
+    );
+  }
+
+  const participantSide =
+    input.actorRole ===
+      "challenger"
+      ? "left" as const
+      : "right" as const;
+
+  if (
+    participantSide ===
+      "left" &&
+    input.challengerCheckedInAt
+  ) {
+    throw new ChallengeConflictError(
+      "Creator check-in is already on file.",
+    );
+  }
+
+  if (
+    participantSide ===
+      "right" &&
+    input.challengedCheckedInAt
+  ) {
+    throw new ChallengeConflictError(
+      "Opponent check-in is already on file.",
+    );
+  }
+
+  const checkedInAt =
+    input.now;
+
+  const nextShape = {
+    status:
+      input.status,
+
+    scheduledAt:
+      input.scheduledAt,
+
+    timingMode:
+      input.timingMode,
+
+    matchTime:
+      input.matchTime,
+
+    acceptedAt:
+      input.acceptedAt,
+
+    resultAt:
+      input.resultAt,
+
+    liveConfirmedAt:
+      input.liveConfirmedAt,
+
+    settlementReadyAt:
+      input.settlementReadyAt,
+
+    wagerAmountWolo:
+      input.wagerAmountWolo,
+
+    guaranteeAmountWolo:
+      input.guaranteeAmountWolo,
+
+    challengerFundedAt:
+      input.challengerFundedAt,
+
+    challengerFundingTxHash:
+      input.challengerFundingTxHash,
+
+    challengerFundingWalletAddress:
+      input.challengerFundingWalletAddress,
+
+    challengedFundedAt:
+      input.challengedFundedAt,
+
+    challengedFundingTxHash:
+      input.challengedFundingTxHash,
+
+    challengedFundingWalletAddress:
+      input.challengedFundingWalletAddress,
+
+    challengerCheckedInAt:
+      participantSide ===
+        "left"
+        ? checkedInAt
+        : input.challengerCheckedInAt,
+
+    challengedCheckedInAt:
+      participantSide ===
+        "right"
+        ? checkedInAt
+        : input.challengedCheckedInAt,
+  };
+
+  const nextSurface =
+    buildChallengeEconomySurface(
+      nextShape,
+      checkedInAt,
+    );
+
+  return {
+    participantSide,
+
+    checkedInAt,
+
+    nextShape,
+
+    nextSurface,
+  };
+}
+
+
+export function planChallengeNoShowResolution(
+  input: {
+    actorRole:
+      ChallengeActorRole;
+
+    actorIsAdmin:
+      boolean;
+
+    status:
+      string;
+
+    scheduledAt:
+      Date;
+
+    timingMode:
+      string;
+
+    matchTime:
+      Date | null;
+
+    acceptedAt:
+      Date | null;
+
+    resultAt:
+      Date | null;
+
+    liveConfirmedAt:
+      Date | null;
+
+    settlementReadyAt:
+      Date | null;
+
+    wagerAmountWolo:
+      number;
+
+    guaranteeAmountWolo:
+      number;
+
+    challengerFundingTxHash:
+      string | null;
+
+    challengerFundingWalletAddress:
+      string | null;
+
+    challengerFundedAt:
+      Date | null;
+
+    challengedFundingTxHash:
+      string | null;
+
+    challengedFundingWalletAddress:
+      string | null;
+
+    challengedFundedAt:
+      Date | null;
+
+    challengerCheckedInAt:
+      Date | null;
+
+    challengedCheckedInAt:
+      Date | null;
+
+    now:
+      Date;
+  },
+) {
+  const participant =
+    input.actorRole ===
+      "challenger" ||
+    input.actorRole ===
+      "challenged";
+
+  if (
+    !participant &&
+    !input.actorIsAdmin
+  ) {
+    throw new ChallengeConflictError(
+      "Only participants or admins can resolve no-show state.",
+      403,
+    );
+  }
+
+  /*
+   * No-show truth is still projected by challengeEconomy.
+   * This command does not duplicate or reinterpret the
+   * ten-minute attendance law.
+   */
+  const resolvedSurface =
+    buildChallengeEconomySurface(
+      {
+        status:
+          input.status,
+
+        scheduledAt:
+          input.scheduledAt,
+
+        timingMode:
+          input.timingMode,
+
+        matchTime:
+          input.matchTime,
+
+        acceptedAt:
+          input.acceptedAt,
+
+        resultAt:
+          input.resultAt,
+
+        liveConfirmedAt:
+          input.liveConfirmedAt,
+
+        settlementReadyAt:
+          input.settlementReadyAt,
+
+        wagerAmountWolo:
+          input.wagerAmountWolo,
+
+        guaranteeAmountWolo:
+          input.guaranteeAmountWolo,
+
+        challengerFundedAt:
+          input.challengerFundedAt,
+
+        challengerFundingTxHash:
+          input.challengerFundingTxHash,
+
+        challengerFundingWalletAddress:
+          input.challengerFundingWalletAddress,
+
+        challengedFundedAt:
+          input.challengedFundedAt,
+
+        challengedFundingTxHash:
+          input.challengedFundingTxHash,
+
+        challengedFundingWalletAddress:
+          input.challengedFundingWalletAddress,
+
+        challengerCheckedInAt:
+          input.challengerCheckedInAt,
+
+        challengedCheckedInAt:
+          input.challengedCheckedInAt,
+      },
+      input.now,
+    );
+
+  if (
+    resolvedSurface.persistedStatus !==
+      "no_show_left" &&
+    resolvedSurface.persistedStatus !==
+      "no_show_right" &&
+    resolvedSurface.persistedStatus !==
+      "double_no_show"
+  ) {
+    throw new ChallengeConflictError(
+      "This match is not in a no-show resolution state.",
+    );
+  }
+
+  /*
+   * Preserve current route semantics exactly:
+   *
+   * terminal truth is timestamped at scheduled start, not at
+   * the later button-click instant.
+   */
+  const resolvedAt =
+    new Date(
+      input.scheduledAt,
+    );
+
+  return {
+    participant,
+
+    resolvedSurface,
+
+    resolvedAt,
+
+    resultAt:
+      input.resultAt ??
+      resolvedAt,
+
+    settlementReadyAt:
+      input.settlementReadyAt ??
+      resolvedAt,
+  };
+}

@@ -40,16 +40,20 @@ import {
   assertChallengeDeclineAllowed,
   planChallengeAcceptance,
   planChallengeCancellation,
+  planChallengeCheckIn,
   planChallengeFundingIntent,
   planChallengeFundingState,
+  planChallengeNoShowResolution,
   planChallengeReschedule,
   planChallengeTimeConfirmation,
 } from "@/lib/challenge/domain/transitionPolicy";
 
 import {
   buildCancellationMessage,
+  buildCheckInMessage,
   buildDeclineMessage,
   buildFundingMessage,
+  buildNoShowMessage,
   buildRescheduleMessage,
   buildTermsAcceptedMessage,
   formatChallengeScheduledAtForInbox,
@@ -2191,6 +2195,450 @@ export async function fundChallenge(
           },
         },
       );
+    },
+  );
+}
+
+
+export async function checkInChallenge(
+  input:
+    ChallengeTransitionContext & {
+      checkInWindowState:
+        string;
+    },
+) {
+  const {
+    prisma,
+    challengeId,
+    actor,
+    match,
+    challengerName,
+    challengedName,
+    challengeLabel,
+    checkInWindowState,
+  } = input;
+
+  const plan =
+    planChallengeCheckIn({
+      actorRole:
+        actor.role,
+
+      checkInWindowState,
+
+      status:
+        match.status,
+
+      scheduledAt:
+        match.scheduledAt,
+
+      timingMode:
+        match.timingMode,
+
+      matchTime:
+        match.matchTime,
+
+      acceptedAt:
+        match.acceptedAt,
+
+      resultAt:
+        match.resultAt,
+
+      liveConfirmedAt:
+        match.liveConfirmedAt,
+
+      settlementReadyAt:
+        match.settlementReadyAt,
+
+      wagerAmountWolo:
+        match.wagerAmountWolo,
+
+      guaranteeAmountWolo:
+        match.guaranteeAmountWolo,
+
+      challengerFundingTxHash:
+        match.challengerFundingTxHash,
+
+      challengerFundingWalletAddress:
+        match.challengerFundingWalletAddress,
+
+      challengerFundedAt:
+        match.challengerFundedAt,
+
+      challengedFundingTxHash:
+        match.challengedFundingTxHash,
+
+      challengedFundingWalletAddress:
+        match.challengedFundingWalletAddress,
+
+      challengedFundedAt:
+        match.challengedFundedAt,
+
+      challengerCheckedInAt:
+        match.challengerCheckedInAt,
+
+      challengedCheckedInAt:
+        match.challengedCheckedInAt,
+
+      now:
+        new Date(),
+    });
+
+  const targetUserId =
+    plan.participantSide ===
+      "left"
+      ? match.challengedUserId
+      : match.challengerUserId;
+
+  /*
+   * Behavior-preserving extraction:
+   *
+   * This remains the existing plain update rather than
+   * introducing a new CAS semantic during the refactor.
+   * Concurrency hardening can be evaluated separately.
+   */
+  await prisma.$transaction(
+    async (tx) => {
+      await tx
+        .scheduledMatch
+        .update({
+          where: {
+            id:
+              challengeId,
+          },
+
+          data: {
+            status:
+              plan
+                .nextSurface
+                .persistedStatus,
+
+            challengerCheckedInAt:
+              plan.participantSide ===
+                "left"
+                ? plan.checkedInAt
+                : undefined,
+
+            challengedCheckedInAt:
+              plan.participantSide ===
+                "right"
+                ? plan.checkedInAt
+                : undefined,
+          },
+        });
+
+      await recordChallengeActivity(
+        tx,
+        {
+          scheduledMatchId:
+            challengeId,
+
+          actorUserId:
+            actor.id,
+
+          eventType:
+            plan.participantSide ===
+              "left"
+              ? "left_checked_in"
+              : "right_checked_in",
+
+          detail:
+            `${actor.name} checked in before the lock.`,
+
+          createdAt:
+            plan.checkedInAt,
+        },
+      );
+
+      await postChallengeInboxNotice(
+        tx,
+        {
+          senderUserId:
+            actor.id,
+
+          targetUserId,
+
+          challengeId,
+
+          body:
+            buildCheckInMessage({
+              challengerName,
+
+              challengedName,
+
+              scheduledAt:
+                match.scheduledAt,
+
+              actorName:
+                actor.name,
+
+              statusLabel:
+                plan
+                  .nextSurface
+                  .economy
+                  .statusLabel,
+            }),
+
+          now:
+            plan.checkedInAt,
+        },
+      );
+
+      await recordUserActivity(
+        tx,
+        {
+          userId:
+            match.challengerUserId,
+
+          type:
+            "challenge_checkin_recorded",
+
+          path:
+            "/challenge",
+
+          label:
+            challengeLabel,
+
+          metadata: {
+            challengeId,
+
+            actorUid:
+              actor.uid,
+
+            role:
+              actor.role,
+
+            checkedInAt:
+              plan.checkedInAt
+                .toISOString(),
+          },
+        },
+      );
+
+      await recordUserActivity(
+        tx,
+        {
+          userId:
+            match.challengedUserId,
+
+          type:
+            "challenge_checkin_recorded",
+
+          path:
+            "/challenge",
+
+          label:
+            challengeLabel,
+
+          metadata: {
+            challengeId,
+
+            actorUid:
+              actor.uid,
+
+            role:
+              actor.role ===
+                "challenger"
+                ? "challenged"
+                : actor.role ===
+                    "challenged"
+                ? "challenger"
+                : "admin",
+
+            checkedInAt:
+              plan.checkedInAt
+                .toISOString(),
+          },
+        },
+      );
+    },
+  );
+}
+
+
+export async function resolveChallengeNoShow(
+  input:
+    ChallengeTransitionContext,
+) {
+  const {
+    prisma,
+    challengeId,
+    actor,
+    match,
+    challengerName,
+    challengedName,
+  } = input;
+
+  const plan =
+    planChallengeNoShowResolution({
+      actorRole:
+        actor.role,
+
+      actorIsAdmin:
+        actor.isAdmin,
+
+      status:
+        match.status,
+
+      scheduledAt:
+        match.scheduledAt,
+
+      timingMode:
+        match.timingMode,
+
+      matchTime:
+        match.matchTime,
+
+      acceptedAt:
+        match.acceptedAt,
+
+      resultAt:
+        match.resultAt,
+
+      liveConfirmedAt:
+        match.liveConfirmedAt,
+
+      settlementReadyAt:
+        match.settlementReadyAt,
+
+      wagerAmountWolo:
+        match.wagerAmountWolo,
+
+      guaranteeAmountWolo:
+        match.guaranteeAmountWolo,
+
+      challengerFundingTxHash:
+        match.challengerFundingTxHash,
+
+      challengerFundingWalletAddress:
+        match.challengerFundingWalletAddress,
+
+      challengerFundedAt:
+        match.challengerFundedAt,
+
+      challengedFundingTxHash:
+        match.challengedFundingTxHash,
+
+      challengedFundingWalletAddress:
+        match.challengedFundingWalletAddress,
+
+      challengedFundedAt:
+        match.challengedFundedAt,
+
+      challengerCheckedInAt:
+        match.challengerCheckedInAt,
+
+      challengedCheckedInAt:
+        match.challengedCheckedInAt,
+
+      now:
+        new Date(),
+    });
+
+  /*
+   * This command materializes terminal attendance truth only.
+   *
+   * It deliberately creates NO settlement rows and executes
+   * NO WOLO. settlementReadyAt hands the already-persisted
+   * terminal state to the existing settlement engine.
+   */
+  await prisma.$transaction(
+    async (tx) => {
+      await tx
+        .scheduledMatch
+        .update({
+          where: {
+            id:
+              challengeId,
+          },
+
+          data: {
+            status:
+              plan
+                .resolvedSurface
+                .persistedStatus,
+
+            resultAt:
+              plan.resultAt,
+
+            settlementReadyAt:
+              plan.settlementReadyAt,
+          },
+        });
+
+      await recordChallengeActivity(
+        tx,
+        {
+          scheduledMatchId:
+            challengeId,
+
+          actorUserId:
+            plan.participant
+              ? actor.id
+              : undefined,
+
+          eventType:
+            plan
+              .resolvedSurface
+              .persistedStatus,
+
+          detail:
+            plan
+              .resolvedSurface
+              .economy
+              .statusDetail,
+
+          createdAt:
+            plan.resolvedAt,
+        },
+      );
+
+      if (
+        plan.participant
+      ) {
+        const targetUserId =
+          actor.role ===
+            "challenger"
+            ? match.challengedUserId
+            : match.challengerUserId;
+
+        await postChallengeInboxNotice(
+          tx,
+          {
+            senderUserId:
+              actor.id,
+
+            targetUserId,
+
+            challengeId,
+
+            body:
+              buildNoShowMessage({
+                challengerName,
+
+                challengedName,
+
+                scheduledAt:
+                  match.scheduledAt,
+
+                resolutionLabel:
+                  plan
+                    .resolvedSurface
+                    .economy
+                    .resolution
+                    .label,
+
+                statusDetail:
+                  plan
+                    .resolvedSurface
+                    .economy
+                    .statusDetail,
+              }),
+
+            now:
+              plan.resolvedAt,
+          },
+        );
+      }
     },
   );
 }

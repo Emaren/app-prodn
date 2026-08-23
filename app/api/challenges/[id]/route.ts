@@ -16,10 +16,12 @@ import {
 import {
   acceptChallenge,
   cancelChallenge,
+  checkInChallenge,
   confirmChallengeTime,
   declineChallenge,
   fundChallenge,
   rescheduleChallenge,
+  resolveChallengeNoShow,
 } from "@/lib/challenge/domain/commands";
 import {
   recordChallengeActivity,
@@ -221,40 +223,6 @@ function challengeTimingNoticeLines(matchTime: Date | null) {
         `Start ISO: ${matchTime.toISOString()}`,
       ]
     : ["Play: Anytime after both sides fund"];
-}
-
-function buildCheckInMessage(input: {
-  challengerName: string;
-  challengedName: string;
-  scheduledAt: Date;
-  actorName: string;
-  statusLabel: string;
-}) {
-  return [
-    input.statusLabel === "Ready" ? "Challenge ready" : "Challenge check-in recorded",
-    `${input.challengerName} vs ${input.challengedName}`,
-    `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
-    `Start ISO: ${input.scheduledAt.toISOString()}`,
-    `Status: ${input.actorName} checked in`,
-    input.statusLabel === "Ready" ? "Lock: Both players checked in" : "Lock: Waiting on the other side",
-  ].join("\n");
-}
-
-function buildNoShowMessage(input: {
-  challengerName: string;
-  challengedName: string;
-  scheduledAt: Date;
-  resolutionLabel: string | null;
-  statusDetail: string;
-}) {
-  return [
-    "Challenge no-show resolved",
-    `${input.challengerName} vs ${input.challengedName}`,
-    `Start: ${formatScheduledAtForInbox(input.scheduledAt)}`,
-    `Start ISO: ${input.scheduledAt.toISOString()}`,
-    `Status: ${input.resolutionLabel || "No-show resolved"}`,
-    input.statusDetail,
-  ].join("\n");
 }
 
 export async function GET(
@@ -584,153 +552,22 @@ export async function PATCH(
     }
 
     if (action === "check_in") {
-      if (scheduledMatch.timingMode !== "scheduled" || !scheduledMatch.matchTime) {
-        return NextResponse.json(
-          { detail: "Play-anytime challenges do not require check-in. Propose an exact time first if you want the scheduling rail." },
-          { status: 409 }
-        );
-      }
-      if (!viewerIsChallenger && !viewerIsChallenged) {
-        return NextResponse.json({ detail: "Only match participants can check in." }, { status: 403 });
-      }
+      await checkInChallenge(
+        {
+          ...lifecycleTransitionContext,
 
-      if (currentSurface.economy.checkInWindowState !== "open") {
-        return NextResponse.json(
-          { detail: "Check-in opens exactly 10 minutes before the scheduled start and closes at start." },
-          { status: 409 }
-        );
-      }
-
-      if (viewerIsChallenger && scheduledMatch.challengerCheckedInAt) {
-        return NextResponse.json({ detail: "Creator check-in is already on file." }, { status: 409 });
-      }
-
-      if (viewerIsChallenged && scheduledMatch.challengedCheckedInAt) {
-        return NextResponse.json({ detail: "Opponent check-in is already on file." }, { status: 409 });
-      }
-
-      const checkedInAt = new Date();
-      const nextShape = {
-        ...scheduledMatch,
-        challengerCheckedInAt: viewerIsChallenger ? checkedInAt : scheduledMatch.challengerCheckedInAt,
-        challengedCheckedInAt: viewerIsChallenged ? checkedInAt : scheduledMatch.challengedCheckedInAt,
-      };
-      const nextSurface = computeChallengeSurface(nextShape, checkedInAt);
-      const targetUserId = viewerIsChallenger
-        ? scheduledMatch.challengedUserId
-        : scheduledMatch.challengerUserId;
-
-      await prisma.$transaction(async (tx) => {
-        await tx.scheduledMatch.update({
-          where: { id: challengeId },
-          data: {
-            status: nextSurface.persistedStatus,
-            challengerCheckedInAt: viewerIsChallenger ? checkedInAt : undefined,
-            challengedCheckedInAt: viewerIsChallenged ? checkedInAt : undefined,
-          },
-        });
-
-        await recordChallengeActivity(tx, {
-          scheduledMatchId: challengeId,
-          actorUserId: viewer.id,
-          eventType: viewerIsChallenger ? "left_checked_in" : "right_checked_in",
-          detail: `${playerName(viewer)} checked in before the lock.`,
-          createdAt: checkedInAt,
-        });
-
-        await postChallengeInboxNotice(tx, {
-          senderUserId: viewer.id,
-          targetUserId,
-          challengeId,
-          body: buildCheckInMessage({
-            challengerName,
-            challengedName,
-            scheduledAt: scheduledMatch.scheduledAt,
-            actorName: playerName(viewer),
-            statusLabel: nextSurface.economy.statusLabel,
-          }),
-          now: checkedInAt,
-        });
-
-        await recordUserActivity(tx, {
-          userId: scheduledMatch.challengerUserId,
-          type: "challenge_checkin_recorded",
-          path: "/challenge",
-          label: challengeLabel,
-          metadata: {
-            challengeId,
-            actorUid: viewer.uid,
-            role: viewerRole,
-            checkedInAt: checkedInAt.toISOString(),
-          },
-        });
-
-        await recordUserActivity(tx, {
-          userId: scheduledMatch.challengedUserId,
-          type: "challenge_checkin_recorded",
-          path: "/challenge",
-          label: challengeLabel,
-          metadata: {
-            challengeId,
-            actorUid: viewer.uid,
-            role: viewerRole === "challenger" ? "challenged" : viewerRole === "challenged" ? "challenger" : "admin",
-            checkedInAt: checkedInAt.toISOString(),
-          },
-        });
-      });
+          checkInWindowState:
+            currentSurface
+              .economy
+              .checkInWindowState,
+        },
+      );
     }
 
     if (action === "resolve_no_show") {
-      if (!viewerIsChallenger && !viewerIsChallenged && !viewer.isAdmin) {
-        return NextResponse.json({ detail: "Only participants or admins can resolve no-show state." }, { status: 403 });
-      }
-
-      const resolvedSurface = computeChallengeSurface(scheduledMatch, new Date());
-      if (
-        resolvedSurface.persistedStatus !== "no_show_left" &&
-        resolvedSurface.persistedStatus !== "no_show_right" &&
-        resolvedSurface.persistedStatus !== "double_no_show"
-      ) {
-        return NextResponse.json({ detail: "This match is not in a no-show resolution state." }, { status: 409 });
-      }
-
-      const resolvedAt = new Date(scheduledMatch.scheduledAt);
-      await prisma.$transaction(async (tx) => {
-        await tx.scheduledMatch.update({
-          where: { id: challengeId },
-          data: {
-            status: resolvedSurface.persistedStatus,
-            resultAt: scheduledMatch.resultAt ?? resolvedAt,
-            settlementReadyAt: scheduledMatch.settlementReadyAt ?? resolvedAt,
-          },
-        });
-
-        await recordChallengeActivity(tx, {
-          scheduledMatchId: challengeId,
-          actorUserId: viewerIsChallenger || viewerIsChallenged ? viewer.id : undefined,
-          eventType: resolvedSurface.persistedStatus,
-          detail: resolvedSurface.economy.statusDetail,
-          createdAt: resolvedAt,
-        });
-
-        if (viewerIsChallenger || viewerIsChallenged) {
-          await postChallengeInboxNotice(tx, {
-            senderUserId: viewer.id,
-            targetUserId: viewerIsChallenger
-              ? scheduledMatch.challengedUserId
-              : scheduledMatch.challengerUserId,
-            challengeId,
-            body: buildNoShowMessage({
-              challengerName,
-              challengedName,
-              scheduledAt: scheduledMatch.scheduledAt,
-              resolutionLabel: resolvedSurface.economy.resolution.label,
-              statusDetail: resolvedSurface.economy.statusDetail,
-            }),
-            now: resolvedAt,
-          });
-        }
-      });
+      await resolveChallengeNoShow(
+        lifecycleTransitionContext,
+      );
     }
 
     if (action === "mark_completed") {

@@ -342,3 +342,96 @@ export function buildFundingMessage(
     "\n",
   );
 }
+
+
+export function buildCheckInMessage(
+  input: {
+    challengerName:
+      string;
+
+    challengedName:
+      string;
+
+    scheduledAt:
+      Date;
+
+    actorName:
+      string;
+
+    statusLabel:
+      string;
+  },
+) {
+  return [
+    input.statusLabel ===
+      "Ready"
+      ? "Challenge ready"
+      : "Challenge check-in recorded",
+
+    `${input.challengerName} vs ${input.challengedName}`,
+
+    `Start: ${
+      formatScheduledAtForInbox(
+        input.scheduledAt,
+      )
+    }`,
+
+    `Start ISO: ${
+      input.scheduledAt.toISOString()
+    }`,
+
+    `Status: ${input.actorName} checked in`,
+
+    input.statusLabel ===
+      "Ready"
+      ? "Lock: Both players checked in"
+      : "Lock: Waiting on the other side",
+  ].join(
+    "\n",
+  );
+}
+
+
+export function buildNoShowMessage(
+  input: {
+    challengerName:
+      string;
+
+    challengedName:
+      string;
+
+    scheduledAt:
+      Date;
+
+    resolutionLabel:
+      string | null;
+
+    statusDetail:
+      string;
+  },
+) {
+  return [
+    "Challenge no-show resolved",
+
+    `${input.challengerName} vs ${input.challengedName}`,
+
+    `Start: ${
+      formatScheduledAtForInbox(
+        input.scheduledAt,
+      )
+    }`,
+
+    `Start ISO: ${
+      input.scheduledAt.toISOString()
+    }`,
+
+    `Status: ${
+      input.resolutionLabel ||
+      "No-show resolved"
+    }`,
+
+    input.statusDetail,
+  ].join(
+    "\n",
+  );
+}
