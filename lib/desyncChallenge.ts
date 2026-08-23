@@ -558,6 +558,7 @@ export function planDesyncCommissionerAction(input: {
         linkedMapName: null,
         linkedWinner: null,
         linkedDurationSeconds: null,
+        currentReplayClaimId: null,
       },
       activity: {
         eventType: CHALLENGE_DESYNC_REMATCH_EVENT,

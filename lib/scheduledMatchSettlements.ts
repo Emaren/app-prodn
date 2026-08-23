@@ -16,7 +16,6 @@ import {
   ChallengeDesyncError,
   loadDesyncIncidentsForSettlement,
 } from "@/lib/desyncChallenge";
-import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
 import { resolveCommunityTreasuryAddressConfig } from "@/lib/woloCommunityTreasury";
 import { getWoloBetEscrowRuntime } from "@/lib/woloChain";
 import {
@@ -1430,14 +1429,28 @@ async function assertLockedWinnerSettlementAllowed(
     where: { id: matchId },
     select: {
       status: true,
-      linkedSessionKey: true,
+      currentReplayClaim: {
+        select: {
+          gameStatsId: true,
+        },
+      },
     },
   });
   if (!match || !scheduledMatchSettlementRequiresWinnerDesyncGuard(match.status)) return;
 
-  const gameStatsId = match.linkedSessionKey
-    ? await resolveFinalGameStatsIdForSessionKey(tx, match.linkedSessionKey)
-    : null;
+  /*
+   * Settlement consumes durable canonical replay identity.
+   *
+   * linkedSessionKey is provenance/display metadata only and
+   * can no longer choose which GameStats row protects money.
+   *
+   * Commissioner-manual results legitimately have no replay
+   * claim; scheduled-match incident truth still applies.
+   */
+  const gameStatsId =
+    match.currentReplayClaim
+      ?.gameStatsId ??
+    null;
   const preliminaryIncidents = await loadDesyncIncidentsForSettlement(tx, {
     gameStatsId,
     scheduledMatchId: matchId,

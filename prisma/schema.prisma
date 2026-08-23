@@ -187,6 +187,7 @@ model GameStats {
   replayParseAttempts         ReplayParseAttempt[]          @relation("GameStatsParseAttempts")
   replayResultAdjudications   ReplayResultAdjudication[]
   replayDesyncIncidents       ReplayDesyncIncident[]
+  scheduledMatchReplayClaim ScheduledMatchReplayClaim?
   replayParseRuns             ReplayParseRun[]              @relation("ReplayParseRunGameStats")
   warEngineCase               WarEngineCase?
   replayEvidenceLinks         ReplayEvidenceLink[]          @relation("ReplayEvidenceLinkGameStats")
@@ -1005,6 +1006,9 @@ model ScheduledMatch {
   fundingProofs                  ScheduledMatchFundingProof[]
   trophyChallenges               TrophyChallenge[]
   replayDesyncIncidents          ReplayDesyncIncident[]
+  currentReplayClaimId           Int?                        @unique(map: "uq_sched_match_current_replay_claim") @map("current_replay_claim_id")
+  replayClaims                   ScheduledMatchReplayClaim[] @relation("ScheduledMatchReplayClaimHistory")
+  currentReplayClaim             ScheduledMatchReplayClaim?  @relation("ScheduledMatchCurrentReplayClaim", fields: [currentReplayClaimId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   challenger User       @relation("ScheduledMatchChallenger", fields: [challengerUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   challenged User       @relation("ScheduledMatchChallenged", fields: [challengedUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -1020,6 +1024,26 @@ model ScheduledMatch {
   @@index([status, resultAt], map: "ix_scheduled_matches_status_result_at")
   @@index([settlementReadyAt], map: "ix_scheduled_matches_settlement_ready_at")
   @@map("scheduled_matches")
+}
+
+
+/// Immutable exclusive claim binding one verified final replay to one Challenge.
+/// Manual commissioner result authority never creates this row.
+model ScheduledMatchReplayClaim {
+  id                       Int      @id @default(autoincrement())
+  scheduledMatchId         Int      @map("scheduled_match_id")
+  gameStatsId              Int      @unique(map: "uq_sched_match_replay_claim_game") @map("game_stats_id")
+  linkedSessionKeySnapshot String   @map("linked_session_key_snapshot") @db.VarChar(255)
+  claimSource              String   @default("watcher_reconciler") @map("claim_source") @db.VarChar(40)
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  scheduledMatch ScheduledMatch  @relation("ScheduledMatchReplayClaimHistory", fields: [scheduledMatchId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  currentFor     ScheduledMatch? @relation("ScheduledMatchCurrentReplayClaim")
+  gameStats      GameStats       @relation(fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([scheduledMatchId, id], map: "ix_sched_match_replay_claim_match_history")
+  @@index([createdAt], map: "ix_sched_match_replay_claim_created")
+  @@map("scheduled_match_replay_claims")
 }
 
 model ScheduledMatchUserPreference {

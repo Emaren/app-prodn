@@ -139,6 +139,16 @@ type ScheduledMatchRow = {
   linkedMapName: string | null;
   linkedWinner: string | null;
   linkedDurationSeconds: number | null;
+  currentReplayClaim: {
+    id: number;
+    gameStatsId: number;
+    linkedSessionKeySnapshot: string;
+    claimSource: string;
+    createdAt: Date;
+  } | null;
+  replayClaims: Array<{
+    gameStatsId: number;
+  }>;
   challengeNote: string | null;
   challenger: ChallengeUserRow;
   challenged: ChallengeUserRow;
@@ -399,6 +409,20 @@ const SCHEDULED_MATCH_SELECT = {
   linkedMapName: true,
   linkedWinner: true,
   linkedDurationSeconds: true,
+  currentReplayClaim: {
+    select: {
+      id: true,
+      gameStatsId: true,
+      linkedSessionKeySnapshot: true,
+      claimSource: true,
+      createdAt: true,
+    },
+  },
+  replayClaims: {
+    select: {
+      gameStatsId: true,
+    },
+  },
   challengeNote: true,
   challenger: {
     select: CHALLENGE_PLAYER_SELECT,
@@ -875,10 +899,47 @@ function findLinkedSession(
   usedSessionKeys: Set<string>,
   options?: { allowOpenPlayAnytimeCorrelation?: boolean }
 ) {
+  /*
+   * A current verified claim is sovereign while it exists.
+   *
+   * Desync rematch explicitly clears currentReplayClaim while
+   * retaining replayClaims as immutable attempt history.
+   */
+  if (row.currentReplayClaim) {
+    const canonical = sessions.find(
+      (session) =>
+        session.id ===
+          row.currentReplayClaim?.gameStatsId &&
+        !usedSessionKeys.has(
+          session.sessionKey,
+        ) &&
+        sessionMatchesScheduledPlayers(
+          session,
+          row.challenger,
+          row.challenged,
+        )
+    );
+
+    return canonical ?? null;
+  }
+
+  /*
+   * When a rematch reopens correlation, previously consumed
+   * replay attempts may never be selected again.
+   */
+  const historicalReplayIds =
+    new Set(
+      row.replayClaims.map(
+        (claim) =>
+          claim.gameStatsId
+      )
+    );
+
   if (row.linkedSessionKey) {
     const exact = sessions.find(
       (session) =>
         session.sessionKey === row.linkedSessionKey &&
+        !historicalReplayIds.has(session.id) &&
         !usedSessionKeys.has(session.sessionKey) &&
         sessionMatchesScheduledPlayers(session, row.challenger, row.challenged)
     );
@@ -1324,7 +1385,11 @@ function buildScheduledMatchTile(
     linkedMapName: linkedSession?.mapName ?? row.linkedMapName ?? null,
     // The parser/watcher's winner remains in storage as machine evidence, but
     // it must never be projected as competitive truth during human desync review.
-    linkedWinner: desyncReviewActive ? null : linkedSession?.winner ?? row.linkedWinner ?? null,
+    linkedWinner: desyncReviewActive ? null : (
+      row.status === "completed"
+        ? row.linkedWinner ?? null
+        : linkedSession?.winner ?? row.linkedWinner ?? null
+    ),
     durationSeconds: linkedSession?.durationSeconds ?? row.linkedDurationSeconds ?? null,
     desyncIncident: latestDesyncIncident
       ? {
@@ -1714,7 +1779,11 @@ async function persistScheduledMatchResults(
       openPairIsUnambiguous &&
       Boolean(row.challengerFundedAt && row.challengedFundedAt) &&
       ["funded", "ready", "live"].includes(surface.displayState);
-    const canLinkSessions = canLinkScheduledSession || canLinkOpenSession || Boolean(row.linkedSessionKey);
+    const canLinkSessions =
+      canLinkScheduledSession ||
+      canLinkOpenSession ||
+      Boolean(row.currentReplayClaim) ||
+      Boolean(row.linkedSessionKey);
 
     if (canLinkSessions) {
       const completedSession = findLinkedSession(
@@ -1727,86 +1796,549 @@ async function persistScheduledMatchResults(
       if (completedSession) {
         matchedCompletedSessionKeys.add(completedSession.sessionKey);
         const completedAt = new Date(completedSession.completedAt || completedSession.updatedAt);
+
+        /*
+         * Completion freezes competitive-result authority.
+         *
+         * A later verified watcher replay may establish canonical
+         * replay provenance and title-review evidence, but it may
+         * not silently replace an already-completed Challenge's
+         * economic winner or result timestamps.
+         */
+        const preserveCompletedResultAuthority =
+          row.status === "completed";
+
+        const persistedResultAt =
+          preserveCompletedResultAuthority
+            ? row.resultAt ?? completedAt
+            : completedAt;
+
+        const persistedSettlementReadyAt =
+          row.settlementReadyAt ??
+          persistedResultAt;
+
+        const persistedWinner =
+          preserveCompletedResultAuthority
+            ? row.linkedWinner
+            : completedSession.winner ?? null;
+
         const nextRow = {
           ...row,
           status: "completed",
           liveConfirmedAt: row.liveConfirmedAt ?? completedAt,
-          resultAt: completedAt,
-          settlementReadyAt: row.settlementReadyAt ?? completedAt,
+          resultAt: persistedResultAt,
+          settlementReadyAt: persistedSettlementReadyAt,
           linkedSessionKey: completedSession.sessionKey,
           linkedMapName: completedSession.mapName ?? null,
-          linkedWinner: completedSession.winner ?? null,
+          linkedWinner: persistedWinner,
           linkedDurationSeconds: completedSession.durationSeconds ?? null,
         } satisfies ScheduledMatchRow;
 
         const completedData = {
           status: "completed" as const,
           liveConfirmedAt: row.liveConfirmedAt ?? completedAt,
-          resultAt: completedAt,
-          settlementReadyAt: row.settlementReadyAt ?? completedAt,
+          resultAt: persistedResultAt,
+          settlementReadyAt: persistedSettlementReadyAt,
           linkedSessionKey: completedSession.sessionKey,
           linkedMapName: completedSession.mapName,
-          linkedWinner: completedSession.winner,
+          linkedWinner: persistedWinner,
           linkedDurationSeconds: completedSession.durationSeconds,
         };
-        let transitionedToCompleted = false;
+        let completionOutcome: {
+          applied: boolean;
+          transitioned: boolean;
+          replayClaimConflictMatchId: number | null;
+          currentReplayConflictGameStatsId: number | null;
+          canonicalClaim: {
+            id: number;
+            gameStatsId: number;
+            linkedSessionKeySnapshot: string;
+            claimSource: string;
+            createdAt: Date;
+          } | null;
+        } = {
+          applied: false,
+          transitioned: false,
+          replayClaimConflictMatchId: null,
+          currentReplayConflictGameStatsId: null,
+          canonicalClaim: null,
+        };
+
         try {
-          transitionedToCompleted = await prisma.$transaction(async (tx) => {
-            const incidents = await loadLockedScheduledMatchDesyncIncidents(tx, {
-              scheduledMatchId: row.id,
-              gameStatsId: completedSession.id,
-            });
-            assertWinnerSettlementAllowed({
-              incidents,
-              competitiveCandidate: {
-                gameStatsId: completedSession.id,
-                observedAt: completedAt,
+          completionOutcome =
+            await prisma.$transaction(
+              async (tx) => {
+                /*
+                 * Acquire both Challenge and canonical replay locks
+                 * before evaluating ownership or desync authority.
+                 */
+                const incidents =
+                  await loadLockedScheduledMatchDesyncIncidents(
+                    tx,
+                    {
+                      scheduledMatchId:
+                        row.id,
+
+                      gameStatsId:
+                        completedSession.id,
+                    },
+                  );
+
+                assertWinnerSettlementAllowed({
+                  incidents,
+
+                  competitiveCandidate: {
+                    gameStatsId:
+                      completedSession.id,
+
+                    observedAt:
+                      completedAt,
+                  },
+                });
+
+
+                const replayClaim =
+                  await tx
+                    .scheduledMatchReplayClaim
+                    .findUnique({
+                      where: {
+                        gameStatsId:
+                          completedSession.id,
+                      },
+
+                      select: {
+                        id:
+                          true,
+
+                        scheduledMatchId:
+                          true,
+
+                        gameStatsId:
+                          true,
+
+                        linkedSessionKeySnapshot:
+                          true,
+
+                        claimSource:
+                          true,
+
+                        createdAt:
+                          true,
+                      },
+                    });
+
+
+                /*
+                 * One replay can never back two Challenges.
+                 */
+                if (
+                  replayClaim &&
+                  replayClaim
+                    .scheduledMatchId !==
+                    row.id
+                ) {
+                  return {
+                    applied:
+                      false,
+
+                    transitioned:
+                      false,
+
+                    replayClaimConflictMatchId:
+                      replayClaim
+                        .scheduledMatchId,
+
+                    currentReplayConflictGameStatsId:
+                      null,
+
+                    canonicalClaim:
+                      null,
+                  };
+                }
+
+
+                /*
+                 * A Challenge with an explicit current replay cannot
+                 * silently replace it. Only commissioner rematch may
+                 * clear currentReplayClaim first.
+                 */
+                if (
+                  row.currentReplayClaim &&
+                  row.currentReplayClaim
+                    .gameStatsId !==
+                    completedSession.id
+                ) {
+                  return {
+                    applied:
+                      false,
+
+                    transitioned:
+                      false,
+
+                    replayClaimConflictMatchId:
+                      null,
+
+                    currentReplayConflictGameStatsId:
+                      row.currentReplayClaim
+                        .gameStatsId,
+
+                    canonicalClaim:
+                      null,
+                  };
+                }
+
+
+                /*
+                 * Exact Challenge CAS first.
+                 *
+                 * If a concurrent rematch/manual/terminal transition
+                 * moved this row, no replay claim is created.
+                 */
+                const transition =
+                  await tx
+                    .scheduledMatch
+                    .updateMany({
+                      where: {
+                        id:
+                          row.id,
+
+                        status:
+                          row.status,
+
+                        liveConfirmedAt:
+                          row.liveConfirmedAt,
+
+                        resultAt:
+                          row.resultAt,
+
+                        settlementReadyAt:
+                          row.settlementReadyAt,
+
+                        linkedSessionKey:
+                          row.linkedSessionKey,
+
+                        linkedMapName:
+                          row.linkedMapName,
+
+                        linkedWinner:
+                          row.linkedWinner,
+
+                        linkedDurationSeconds:
+                          row
+                            .linkedDurationSeconds,
+
+                        currentReplayClaimId:
+                          row.currentReplayClaim
+                            ?.id ??
+                          null,
+                      },
+
+                      data:
+                        completedData,
+                    });
+
+
+                if (
+                  transition.count ===
+                  0
+                ) {
+                  return {
+                    applied:
+                      false,
+
+                    transitioned:
+                      false,
+
+                    replayClaimConflictMatchId:
+                      null,
+
+                    currentReplayConflictGameStatsId:
+                      null,
+
+                    canonicalClaim:
+                      null,
+                  };
+                }
+
+
+                /*
+                 * Existing same-Challenge claim is safe to reuse
+                 * for retry/idempotency.
+                 *
+                 * Otherwise append a new immutable attempt claim.
+                 *
+                 * Any P2002 rolls back the preceding CAS because
+                 * this all lives inside one transaction.
+                 */
+                const canonicalClaim =
+                  replayClaim ??
+                  await tx
+                    .scheduledMatchReplayClaim
+                    .create({
+                      data: {
+                        scheduledMatchId:
+                          row.id,
+
+                        gameStatsId:
+                          completedSession.id,
+
+                        linkedSessionKeySnapshot:
+                          completedSession
+                            .sessionKey,
+
+                        claimSource:
+                          "watcher_reconciler",
+
+                        createdAt:
+                          completedAt,
+                      },
+
+                      select: {
+                        id:
+                          true,
+
+                        gameStatsId:
+                          true,
+
+                        linkedSessionKeySnapshot:
+                          true,
+
+                        claimSource:
+                          true,
+
+                        createdAt:
+                          true,
+                      },
+                    });
+
+
+                /*
+                 * Make this successful verified attempt the sole
+                 * current competitive replay.
+                 */
+                await tx
+                  .scheduledMatch
+                  .update({
+                    where: {
+                      id:
+                        row.id,
+                    },
+
+                    data: {
+                      currentReplayClaimId:
+                        canonicalClaim.id,
+                    },
+                  });
+
+
+                if (
+                  row.status !==
+                  "completed"
+                ) {
+                  await recordAutoScheduledMatchActivity(
+                    tx,
+                    {
+                      scheduledMatchId:
+                        row.id,
+
+                      eventType:
+                        "completed",
+
+                      detail:
+                        completedSession.winner
+                          ? `Completed. Winner: ${completedSession.winner}.`
+                          : "Completed and stored.",
+
+                      createdAt:
+                        completedAt,
+
+                      metadata: {
+                        linkedSessionKey:
+                          completedSession
+                            .sessionKey,
+
+                        gameStatsId:
+                          completedSession.id,
+
+                        replayClaimId:
+                          canonicalClaim.id,
+
+                        mapName:
+                          completedSession
+                            .mapName ??
+                          null,
+
+                        replayClaim:
+                          "verified_watcher",
+                      },
+                    },
+                  );
+                }
+
+
+                return {
+                  applied:
+                    true,
+
+                  transitioned:
+                    row.status !==
+                    "completed",
+
+                  replayClaimConflictMatchId:
+                    null,
+
+                  currentReplayConflictGameStatsId:
+                    null,
+
+                  canonicalClaim,
+                };
               },
-            });
-
-            if (row.status === "completed") {
-              await tx.scheduledMatch.update({
-                where: { id: row.id },
-                data: completedData,
-              });
-              return false;
-            }
-
-            const transition = await tx.scheduledMatch.updateMany({
-              where: { id: row.id, status: row.status },
-              data: completedData,
-            });
-            if (transition.count === 0) return false;
-
-            await recordAutoScheduledMatchActivity(tx, {
-              scheduledMatchId: row.id,
-              eventType: "completed",
-              detail: completedSession.winner
-                ? `Completed. Winner: ${completedSession.winner}.`
-                : "Completed and stored.",
-              createdAt: completedAt,
-              metadata: {
-                linkedSessionKey: completedSession.sessionKey,
-                mapName: completedSession.mapName ?? null,
-              },
-            });
-            return true;
-          });
+            );
         } catch (error) {
-          if (error instanceof ChallengeDesyncError) {
+          if (
+            error instanceof
+            ChallengeDesyncError
+          ) {
             console.warn(
               `Watcher result held for scheduled match #${row.id} (${error.code}): ${error.message}`
             );
-            updatedRows.push(row);
+
+            updatedRows.push(
+              row,
+            );
+
             continue;
           }
+
+
+          if (
+            error instanceof
+              Prisma.PrismaClientKnownRequestError &&
+            error.code ===
+              "P2002"
+          ) {
+            matchedCompletedSessionKeys.delete(
+              completedSession
+                .sessionKey,
+            );
+
+            console.warn(
+              `Watcher replay claim conflict for scheduled match #${row.id}; canonical replay ${completedSession.id} was claimed concurrently.`
+            );
+
+            updatedRows.push(
+              row,
+            );
+
+            continue;
+          }
+
           throw error;
         }
 
-        if (row.status !== "completed" && !transitionedToCompleted) {
-          updatedRows.push(row);
+
+        if (
+          completionOutcome
+            .replayClaimConflictMatchId !==
+          null
+        ) {
+          matchedCompletedSessionKeys.delete(
+            completedSession
+              .sessionKey,
+          );
+
+          console.warn(
+            `Watcher replay ${completedSession.id} is already canonically claimed by scheduled match #${completionOutcome.replayClaimConflictMatchId}; refusing duplicate claim for #${row.id}.`
+          );
+
+          updatedRows.push(
+            row,
+          );
+
           continue;
         }
+
+
+        if (
+          completionOutcome
+            .currentReplayConflictGameStatsId !==
+          null
+        ) {
+          matchedCompletedSessionKeys.delete(
+            completedSession
+              .sessionKey,
+          );
+
+          console.warn(
+            `Scheduled match #${row.id} already has current canonical replay ${completionOutcome.currentReplayConflictGameStatsId}; commissioner rematch must clear it before replay ${completedSession.id} can become authoritative.`
+          );
+
+          updatedRows.push(
+            row,
+          );
+
+          continue;
+        }
+
+
+        if (
+          !completionOutcome.applied ||
+          !completionOutcome.canonicalClaim
+        ) {
+          updatedRows.push(
+            row,
+          );
+
+          continue;
+        }
+
+
+        const transitionedToCompleted =
+          completionOutcome
+            .transitioned;
+
+
+        if (
+          row.status !==
+            "completed" &&
+          !transitionedToCompleted
+        ) {
+          updatedRows.push(
+            row,
+          );
+
+          continue;
+        }
+
+
+        const canonicalClaim =
+          completionOutcome
+            .canonicalClaim;
+
+
+        const completedNextRow = {
+          ...nextRow,
+
+          currentReplayClaim:
+            canonicalClaim,
+
+          replayClaims:
+            row.replayClaims.some(
+              (claim) =>
+                claim.gameStatsId ===
+                canonicalClaim.gameStatsId
+            )
+              ? row.replayClaims
+              : [
+                  ...row.replayClaims,
+                  {
+                    gameStatsId:
+                      canonicalClaim
+                        .gameStatsId,
+                  },
+                ],
+        } satisfies ScheduledMatchRow;
+
 
         try {
           await recordVerifiedScheduledMatchTitleResults(
@@ -1826,7 +2358,16 @@ async function persistScheduledMatchResults(
           await attemptAutomaticScheduledMatchSettlement(prisma, row.id);
         }
 
-        updatedRows.push(nextRow);
+        updatedRows.push(completedNextRow);
+        continue;
+      }
+
+      /*
+       * Completed is terminal for competitive lifecycle authority.
+       * Do not let an active watcher observation reopen or rewrite it.
+       */
+      if (row.status === "completed") {
+        updatedRows.push(row);
         continue;
       }
 
