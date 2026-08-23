@@ -8,10 +8,6 @@ import {
 import {
   buildChallengeEconomySurface,
 } from "@/lib/challengeEconomy";
-import { Prisma } from "@/lib/generated/prisma";
-import {
-  buildChallengePlayBy,
-} from "@/lib/challengeLifecycle";
 import {
   parseChallengeAction,
   type ChallengeActorRole,
@@ -22,6 +18,7 @@ import {
   cancelChallenge,
   confirmChallengeTime,
   declineChallenge,
+  fundChallenge,
   rescheduleChallenge,
 } from "@/lib/challenge/domain/commands";
 import {
@@ -36,22 +33,12 @@ import { postChallengeCommissionerNotice, postChallengeInboxNotice } from "@/lib
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { recordUserActivity } from "@/lib/userExperience";
-import { verifyChallengeFundingTransfer } from "@/lib/woloBetSettlement";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const SCHEDULE_WINDOW_MIN_MS = 2 * 60 * 1000;
 const SCHEDULE_WINDOW_MAX_MS = 30 * 24 * 60 * 60 * 1000;
-const FUNDABLE_STATUSES = new Set([
-  "proposed",
-  "pending",
-  "terms_accepted",
-  "accepted",
-  "creator_funded",
-  "opponent_funded",
-  "funded",
-]);
 
 const VIEWER_SELECT = {
   id: true,
@@ -234,23 +221,6 @@ function challengeTimingNoticeLines(matchTime: Date | null) {
         `Start ISO: ${matchTime.toISOString()}`,
       ]
     : ["Play: Anytime after both sides fund"];
-}
-
-function buildFundingMessage(input: {
-  challengerName: string;
-  challengedName: string;
-  matchTime: Date | null;
-  actorName: string;
-  totalFundingWolo: number;
-  statusLabel: string;
-}) {
-  return [
-    "Challenge funding recorded",
-    `${input.challengerName} vs ${input.challengedName}`,
-    ...challengeTimingNoticeLines(input.matchTime),
-    `Funding: ${input.actorName} locked ${formatWolo(input.totalFundingWolo)} WOLO`,
-    `Status: ${input.statusLabel}`,
-  ].join("\n");
 }
 
 function buildCheckInMessage(input: {
@@ -598,221 +568,19 @@ export async function PATCH(
     }
 
     if (action === "fund") {
-      const fundingTxHash = payload.fundingTxHash?.trim().toUpperCase() ?? "";
-      const fundingWalletAddress = payload.fundingWalletAddress?.trim() || "";
+      await fundChallenge(
+        {
+          ...lifecycleTransitionContext,
 
-      if (!viewerIsChallenger && !viewerIsChallenged) {
-        return NextResponse.json({ detail: "Only match participants can record funding." }, { status: 403 });
-      }
+          request: {
+            fundingTxHash:
+              payload.fundingTxHash,
 
-      if (!FUNDABLE_STATUSES.has(scheduledMatch.status.toLowerCase())) {
-        return NextResponse.json({ detail: "This match is not open for funding." }, { status: 409 });
-      }
-
-      if (viewerIsChallenged && !scheduledMatch.acceptedAt) {
-        return NextResponse.json(
-          { detail: "Accept the challenge before funding it." },
-          { status: 409 }
-        );
-      }
-
-      if (!fundingTxHash) {
-        return NextResponse.json({ detail: "Add the signed funding tx hash." }, { status: 400 });
-      }
-
-      if (!fundingWalletAddress) {
-        return NextResponse.json(
-          { detail: "The signed funding wallet address is required." },
-          { status: 400 }
-        );
-      }
-
-      const fundingDeadline = viewerIsChallenged
-        ? scheduledMatch.fundBy
-        : scheduledMatch.acceptedAt
-          ? scheduledMatch.fundBy
-          : scheduledMatch.acceptBy;
-      if (fundingDeadline && fundingDeadline.getTime() <= Date.now()) {
-        return NextResponse.json({ detail: "The funding window has expired." }, { status: 409 });
-      }
-
-      if (viewerIsChallenger && scheduledMatch.challengerFundedAt) {
-        return NextResponse.json({ detail: "Creator funding is already on file." }, { status: 409 });
-      }
-
-      if (viewerIsChallenged && scheduledMatch.challengedFundedAt) {
-        return NextResponse.json({ detail: "Opponent funding is already on file." }, { status: 409 });
-      }
-
-      const existingFundingProof = await prisma.scheduledMatch.findFirst({
-        where: {
-          id: { not: challengeId },
-          OR: [
-            { challengerFundingTxHash: fundingTxHash },
-            { challengedFundingTxHash: fundingTxHash },
-          ],
+            fundingWalletAddress:
+              payload.fundingWalletAddress,
+          },
         },
-        select: { id: true },
-      });
-      if (existingFundingProof) {
-        return NextResponse.json(
-          {
-            detail: `That funding tx is already attached to challenge #${existingFundingProof.id}.`,
-          },
-          { status: 409 }
-        );
-      }
-
-      const fundingVerification = await verifyChallengeFundingTransfer({
-        challengeId,
-        txHash: fundingTxHash,
-        fromAddress: fundingWalletAddress,
-        participantSide: viewerIsChallenger ? "left" : "right",
-        wagerAmountWolo: scheduledMatch.wagerAmountWolo,
-        guaranteeAmountWolo: scheduledMatch.guaranteeAmountWolo,
-      });
-      if (!fundingVerification.verified) {
-        return NextResponse.json(
-          {
-            detail:
-              fundingVerification.detail ||
-              "WoloChain could not verify this challenge escrow deposit.",
-          },
-          { status: 409 }
-        );
-      }
-
-      const verifiedFundingTxHash = fundingVerification.txHash || fundingTxHash;
-      const fundedAt = new Date();
-      const nextShape = {
-        ...scheduledMatch,
-        challengerFundedAt: viewerIsChallenger ? fundedAt : scheduledMatch.challengerFundedAt,
-        challengerFundingTxHash: viewerIsChallenger
-          ? verifiedFundingTxHash
-          : scheduledMatch.challengerFundingTxHash,
-        challengerFundingWalletAddress: viewerIsChallenger
-          ? fundingWalletAddress
-          : scheduledMatch.challengerFundingWalletAddress,
-        challengedFundedAt: viewerIsChallenged ? fundedAt : scheduledMatch.challengedFundedAt,
-        challengedFundingTxHash: viewerIsChallenged
-          ? verifiedFundingTxHash
-          : scheduledMatch.challengedFundingTxHash,
-        challengedFundingWalletAddress: viewerIsChallenged
-          ? fundingWalletAddress
-          : scheduledMatch.challengedFundingWalletAddress,
-      };
-      const nextSurface = computeChallengeSurface(nextShape, fundedAt);
-      const bothFunded = Boolean(nextShape.challengerFundedAt && nextShape.challengedFundedAt);
-      const playBy = bothFunded
-        ? scheduledMatch.playBy ?? buildChallengePlayBy(fundedAt)
-        : scheduledMatch.playBy;
-      const targetUserId = viewerIsChallenger
-        ? scheduledMatch.challengedUserId
-        : scheduledMatch.challengerUserId;
-
-      await prisma.$transaction(async (tx) => {
-        await tx.scheduledMatchFundingProof.create({
-          data: {
-            scheduledMatchId: challengeId,
-            participantSide: viewerIsChallenger ? "left" : "right",
-            txHash: verifiedFundingTxHash,
-            walletAddress: fundingWalletAddress,
-            amountWolo: fundingTotal,
-          },
-        }).catch((error) => {
-          if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-            throw new ChallengeConflictError("That funding proof is already attached to a challenge side.");
-          }
-          throw error;
-        });
-
-        const funded = await tx.scheduledMatch.updateMany({
-          where: {
-            id: challengeId,
-            wagerAmountWolo: scheduledMatch.wagerAmountWolo,
-            guaranteeAmountWolo: scheduledMatch.guaranteeAmountWolo,
-            status: { in: Array.from(FUNDABLE_STATUSES) },
-            ...(viewerIsChallenger
-              ? { challengerFundedAt: null }
-              : { challengedFundedAt: null, acceptedAt: { not: null } }),
-            OR: scheduledMatch.acceptedAt
-              ? [{ fundBy: null }, { fundBy: { gt: fundedAt } }]
-              : [{ acceptBy: null }, { acceptBy: { gt: fundedAt } }],
-          },
-          data: {
-            status: nextSurface.persistedStatus,
-            challengerFundedAt: viewerIsChallenger ? fundedAt : undefined,
-            challengerFundingTxHash: viewerIsChallenger ? verifiedFundingTxHash : undefined,
-            challengerFundingWalletAddress: viewerIsChallenger ? fundingWalletAddress : undefined,
-            challengedFundedAt: viewerIsChallenged ? fundedAt : undefined,
-            challengedFundingTxHash: viewerIsChallenged ? verifiedFundingTxHash : undefined,
-            challengedFundingWalletAddress: viewerIsChallenged ? fundingWalletAddress : undefined,
-            playBy: bothFunded ? playBy : undefined,
-          },
-        });
-        if (funded.count !== 1) {
-          throw new ChallengeConflictError("Challenge terms or funding state changed while the chain proof was being verified.");
-        }
-
-        await recordChallengeActivity(tx, {
-          scheduledMatchId: challengeId,
-          actorUserId: viewer.id,
-          eventType: viewerIsChallenger ? "creator_funded" : "opponent_funded",
-          detail: `${playerName(viewer)} locked ${formatWolo(fundingTotal)} WOLO.`,
-          metadata: {
-            fundingTxHash: verifiedFundingTxHash,
-            fundingWalletAddress,
-            totalFundingWolo: fundingTotal,
-            proofUrl: fundingVerification.proofUrl ?? null,
-            verifiedBy: "wolochain",
-            playBy: playBy?.toISOString() ?? null,
-          },
-          createdAt: fundedAt,
-        });
-
-        await postChallengeInboxNotice(tx, {
-          senderUserId: viewer.id,
-          targetUserId,
-          challengeId,
-          body: buildFundingMessage({
-            challengerName,
-            challengedName,
-            matchTime: scheduledMatch.matchTime,
-            actorName: playerName(viewer),
-            totalFundingWolo: fundingTotal,
-            statusLabel: nextSurface.economy.statusLabel,
-          }),
-          now: fundedAt,
-        });
-
-        await recordUserActivity(tx, {
-          userId: scheduledMatch.challengerUserId,
-          type: "challenge_funding_recorded",
-          path: "/challenge",
-          label: challengeLabel,
-          metadata: {
-            challengeId,
-            actorUid: viewer.uid,
-            role: viewerRole,
-            totalFundingWolo: fundingTotal,
-            fundingTxHash: verifiedFundingTxHash,
-          },
-        });
-
-        await recordUserActivity(tx, {
-          userId: scheduledMatch.challengedUserId,
-          type: "challenge_funding_recorded",
-          path: "/challenge",
-          label: challengeLabel,
-          metadata: {
-            challengeId,
-            actorUid: viewer.uid,
-            role: viewerRole === "challenger" ? "challenged" : viewerRole === "challenged" ? "challenger" : "admin",
-            totalFundingWolo: fundingTotal,
-            fundingTxHash: verifiedFundingTxHash,
-          },
-        });
-      });
+      );
     }
 
     if (action === "check_in") {

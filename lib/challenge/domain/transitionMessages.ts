@@ -297,3 +297,48 @@ export function buildRescheduleMessage(
     "\n",
   );
 }
+
+
+export function buildFundingMessage(
+  input: {
+    challengerName:
+      string;
+
+    challengedName:
+      string;
+
+    matchTime:
+      Date | null;
+
+    actorName:
+      string;
+
+    totalFundingWolo:
+      number;
+
+    statusLabel:
+      string;
+  },
+) {
+  return [
+    "Challenge funding recorded",
+
+    `${input.challengerName} vs ${input.challengedName}`,
+
+    ...challengeTimingNoticeLines(
+      input.matchTime,
+    ),
+
+    `Funding: ${
+      input.actorName
+    } locked ${
+      formatWolo(
+        input.totalFundingWolo,
+      )
+    } WOLO`,
+
+    `Status: ${input.statusLabel}`,
+  ].join(
+    "\n",
+  );
+}

@@ -1,5 +1,6 @@
-import type {
-  PrismaClient,
+import {
+  Prisma,
+  type PrismaClient,
 } from "@/lib/generated/prisma";
 
 import {
@@ -19,6 +20,10 @@ import {
 } from "@/lib/userExperience";
 
 import {
+  verifyChallengeFundingTransfer,
+} from "@/lib/woloBetSettlement";
+
+import {
   recordChallengeActivity,
 } from "@/lib/challenge/domain/activity";
 
@@ -31,9 +36,12 @@ import {
 } from "@/lib/challenge/domain/errors";
 
 import {
+  CHALLENGE_FUNDABLE_STATUSES,
   assertChallengeDeclineAllowed,
   planChallengeAcceptance,
   planChallengeCancellation,
+  planChallengeFundingIntent,
+  planChallengeFundingState,
   planChallengeReschedule,
   planChallengeTimeConfirmation,
 } from "@/lib/challenge/domain/transitionPolicy";
@@ -41,6 +49,7 @@ import {
 import {
   buildCancellationMessage,
   buildDeclineMessage,
+  buildFundingMessage,
   buildRescheduleMessage,
   buildTermsAcceptedMessage,
   formatChallengeScheduledAtForInbox,
@@ -1615,6 +1624,573 @@ export async function confirmChallengeTime(
           },
         );
       }
+    },
+  );
+}
+
+
+export type ChallengeFundingRequest = {
+  fundingTxHash?:
+    string | null;
+
+  fundingWalletAddress?:
+    string | null;
+};
+
+
+export async function fundChallenge(
+  input:
+    ChallengeTransitionContext & {
+      request:
+        ChallengeFundingRequest;
+    },
+) {
+  const {
+    prisma,
+    challengeId,
+    actor,
+    match,
+    fundingTotal,
+    challengerName,
+    challengedName,
+    challengeLabel,
+    request,
+  } = input;
+
+  const intent =
+    planChallengeFundingIntent({
+      actorRole:
+        actor.role,
+
+      status:
+        match.status,
+
+      acceptedAt:
+        match.acceptedAt,
+
+      acceptBy:
+        match.acceptBy,
+
+      fundBy:
+        match.fundBy,
+
+      challengerFundedAt:
+        match.challengerFundedAt,
+
+      challengedFundedAt:
+        match.challengedFundedAt,
+
+      fundingTxHash:
+        request.fundingTxHash,
+
+      fundingWalletAddress:
+        request.fundingWalletAddress,
+
+      now:
+        new Date(),
+    });
+
+
+  /*
+   * Preserve the existing early human-readable duplicate check.
+   *
+   * Canonical global identity remains the unique funding-proof
+   * registry inside the transaction below.
+   */
+  const existingFundingProof =
+    await prisma
+      .scheduledMatch
+      .findFirst({
+        where: {
+          id: {
+            not:
+              challengeId,
+          },
+
+          OR: [
+            {
+              challengerFundingTxHash:
+                intent.fundingTxHash,
+            },
+
+            {
+              challengedFundingTxHash:
+                intent.fundingTxHash,
+            },
+          ],
+        },
+
+        select: {
+          id:
+            true,
+        },
+      });
+
+  if (
+    existingFundingProof
+  ) {
+    throw new ChallengeConflictError(
+      `That funding tx is already attached to challenge #${existingFundingProof.id}.`,
+    );
+  }
+
+
+  /*
+   * External proof happens before the DB transaction exactly as
+   * before. The subsequent CAS proves the terms/deadline/funding
+   * state did not change while WoloChain verification was running.
+   */
+  const fundingVerification =
+    await verifyChallengeFundingTransfer({
+      challengeId,
+
+      txHash:
+        intent.fundingTxHash,
+
+      fromAddress:
+        intent.fundingWalletAddress,
+
+      participantSide:
+        intent.participantSide,
+
+      wagerAmountWolo:
+        match.wagerAmountWolo,
+
+      guaranteeAmountWolo:
+        match.guaranteeAmountWolo,
+    });
+
+  if (
+    !fundingVerification.verified
+  ) {
+    throw new ChallengeConflictError(
+      fundingVerification.detail ||
+      "WoloChain could not verify this challenge escrow deposit.",
+    );
+  }
+
+
+  const verifiedFundingTxHash =
+    fundingVerification.txHash ||
+    intent.fundingTxHash;
+
+  const fundedAt =
+    new Date();
+
+  const plan =
+    planChallengeFundingState({
+      participantSide:
+        intent.participantSide,
+
+      verifiedFundingTxHash,
+
+      fundingWalletAddress:
+        intent.fundingWalletAddress,
+
+      fundedAt,
+
+      status:
+        match.status,
+
+      scheduledAt:
+        match.scheduledAt,
+
+      timingMode:
+        match.timingMode,
+
+      matchTime:
+        match.matchTime,
+
+      acceptedAt:
+        match.acceptedAt,
+
+      resultAt:
+        match.resultAt,
+
+      liveConfirmedAt:
+        match.liveConfirmedAt,
+
+      settlementReadyAt:
+        match.settlementReadyAt,
+
+      wagerAmountWolo:
+        match.wagerAmountWolo,
+
+      guaranteeAmountWolo:
+        match.guaranteeAmountWolo,
+
+      challengerFundingTxHash:
+        match.challengerFundingTxHash,
+
+      challengerFundingWalletAddress:
+        match.challengerFundingWalletAddress,
+
+      challengerFundedAt:
+        match.challengerFundedAt,
+
+      challengedFundingTxHash:
+        match.challengedFundingTxHash,
+
+      challengedFundingWalletAddress:
+        match.challengedFundingWalletAddress,
+
+      challengedFundedAt:
+        match.challengedFundedAt,
+
+      challengerCheckedInAt:
+        match.challengerCheckedInAt,
+
+      challengedCheckedInAt:
+        match.challengedCheckedInAt,
+
+      playBy:
+        match.playBy,
+    });
+
+
+  const targetUserId =
+    intent.participantSide ===
+      "left"
+      ? match.challengedUserId
+      : match.challengerUserId;
+
+
+  await prisma.$transaction(
+    async (tx) => {
+      await tx
+        .scheduledMatchFundingProof
+        .create({
+          data: {
+            scheduledMatchId:
+              challengeId,
+
+            participantSide:
+              intent.participantSide,
+
+            txHash:
+              verifiedFundingTxHash,
+
+            walletAddress:
+              intent.fundingWalletAddress,
+
+            amountWolo:
+              fundingTotal,
+          },
+        })
+        .catch(
+          (
+            error,
+          ) => {
+            if (
+              error instanceof
+                Prisma
+                  .PrismaClientKnownRequestError &&
+              error.code ===
+                "P2002"
+            ) {
+              throw new ChallengeConflictError(
+                "That funding proof is already attached to a challenge side.",
+              );
+            }
+
+            throw error;
+          },
+        );
+
+
+      const funded =
+        await tx
+          .scheduledMatch
+          .updateMany({
+            where: {
+              id:
+                challengeId,
+
+              wagerAmountWolo:
+                match.wagerAmountWolo,
+
+              guaranteeAmountWolo:
+                match.guaranteeAmountWolo,
+
+              status: {
+                in: [
+                  ...CHALLENGE_FUNDABLE_STATUSES,
+                ],
+              },
+
+              ...(
+                intent.participantSide ===
+                  "left"
+                  ? {
+                      challengerFundedAt:
+                        null,
+                    }
+                  : {
+                      challengedFundedAt:
+                        null,
+
+                      acceptedAt: {
+                        not:
+                          null,
+                      },
+                    }
+              ),
+
+              OR:
+                match.acceptedAt
+                  ? [
+                      {
+                        fundBy:
+                          null,
+                      },
+
+                      {
+                        fundBy: {
+                          gt:
+                            fundedAt,
+                        },
+                      },
+                    ]
+                  : [
+                      {
+                        acceptBy:
+                          null,
+                      },
+
+                      {
+                        acceptBy: {
+                          gt:
+                            fundedAt,
+                        },
+                      },
+                    ],
+            },
+
+            data: {
+              status:
+                plan
+                  .nextSurface
+                  .persistedStatus,
+
+              challengerFundedAt:
+                intent.participantSide ===
+                  "left"
+                  ? fundedAt
+                  : undefined,
+
+              challengerFundingTxHash:
+                intent.participantSide ===
+                  "left"
+                  ? verifiedFundingTxHash
+                  : undefined,
+
+              challengerFundingWalletAddress:
+                intent.participantSide ===
+                  "left"
+                  ? intent
+                      .fundingWalletAddress
+                  : undefined,
+
+              challengedFundedAt:
+                intent.participantSide ===
+                  "right"
+                  ? fundedAt
+                  : undefined,
+
+              challengedFundingTxHash:
+                intent.participantSide ===
+                  "right"
+                  ? verifiedFundingTxHash
+                  : undefined,
+
+              challengedFundingWalletAddress:
+                intent.participantSide ===
+                  "right"
+                  ? intent
+                      .fundingWalletAddress
+                  : undefined,
+
+              playBy:
+                plan.bothFunded
+                  ? plan.playBy
+                  : undefined,
+            },
+          });
+
+
+      if (
+        funded.count !==
+        1
+      ) {
+        throw new ChallengeConflictError(
+          "Challenge terms or funding state changed while the chain proof was being verified.",
+        );
+      }
+
+
+      await recordChallengeActivity(
+        tx,
+        {
+          scheduledMatchId:
+            challengeId,
+
+          actorUserId:
+            actor.id,
+
+          eventType:
+            intent.participantSide ===
+              "left"
+              ? "creator_funded"
+              : "opponent_funded",
+
+          detail:
+            `${actor.name} locked ${
+              formatChallengeWolo(
+                fundingTotal,
+              )
+            } WOLO.`,
+
+          metadata: {
+            fundingTxHash:
+              verifiedFundingTxHash,
+
+            fundingWalletAddress:
+              intent
+                .fundingWalletAddress,
+
+            totalFundingWolo:
+              fundingTotal,
+
+            proofUrl:
+              fundingVerification
+                .proofUrl ??
+              null,
+
+            verifiedBy:
+              "wolochain",
+
+            playBy:
+              plan.playBy
+                ?.toISOString() ??
+              null,
+          },
+
+          createdAt:
+            fundedAt,
+        },
+      );
+
+
+      await postChallengeInboxNotice(
+        tx,
+        {
+          senderUserId:
+            actor.id,
+
+          targetUserId,
+
+          challengeId,
+
+          body:
+            buildFundingMessage({
+              challengerName,
+
+              challengedName,
+
+              matchTime:
+                match.matchTime,
+
+              actorName:
+                actor.name,
+
+              totalFundingWolo:
+                fundingTotal,
+
+              statusLabel:
+                plan
+                  .nextSurface
+                  .economy
+                  .statusLabel,
+            }),
+
+          now:
+            fundedAt,
+        },
+      );
+
+
+      await recordUserActivity(
+        tx,
+        {
+          userId:
+            match.challengerUserId,
+
+          type:
+            "challenge_funding_recorded",
+
+          path:
+            "/challenge",
+
+          label:
+            challengeLabel,
+
+          metadata: {
+            challengeId,
+
+            actorUid:
+              actor.uid,
+
+            role:
+              actor.role,
+
+            totalFundingWolo:
+              fundingTotal,
+
+            fundingTxHash:
+              verifiedFundingTxHash,
+          },
+        },
+      );
+
+
+      await recordUserActivity(
+        tx,
+        {
+          userId:
+            match.challengedUserId,
+
+          type:
+            "challenge_funding_recorded",
+
+          path:
+            "/challenge",
+
+          label:
+            challengeLabel,
+
+          metadata: {
+            challengeId,
+
+            actorUid:
+              actor.uid,
+
+            role:
+              actor.role ===
+                "challenger"
+                ? "challenged"
+                : actor.role ===
+                    "challenged"
+                ? "challenger"
+                : "admin",
+
+            totalFundingWolo:
+              fundingTotal,
+
+            fundingTxHash:
+              verifiedFundingTxHash,
+          },
+        },
+      );
     },
   );
 }
