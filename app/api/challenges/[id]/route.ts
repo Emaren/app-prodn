@@ -17,7 +17,6 @@ import {
 } from "@/lib/challengeEconomy";
 import { Prisma } from "@/lib/generated/prisma";
 import {
-  buildChallengeFundBy,
   buildChallengePlayBy,
 } from "@/lib/challengeLifecycle";
 import {
@@ -26,11 +25,18 @@ import {
   type ChallengeMutationPayload,
 } from "@/lib/challenge/domain/contracts";
 import {
+  acceptChallenge,
+  cancelChallenge,
+  declineChallenge,
+} from "@/lib/challenge/domain/commands";
+import {
+  recordChallengeActivity,
+} from "@/lib/challenge/domain/activity";
+import {
   ChallengeConflictError,
 } from "@/lib/challenge/domain/errors";
 import { ChallengeDesyncError } from "@/lib/desyncChallenge";
 import { resolveChallengeDesyncDisposition } from "@/lib/desyncChallengeProtocol";
-import { TERMINAL_TITLE_CHALLENGE_STATUSES } from "@/lib/challengeTitlePolicy";
 import { postChallengeCommissionerNotice, postChallengeInboxNotice } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
@@ -245,59 +251,6 @@ function challengeTimingNoticeLines(matchTime: Date | null) {
     : ["Play: Anytime after both sides fund"];
 }
 
-function buildTermsAcceptedMessage(input: {
-  challengerName: string;
-  challengedName: string;
-  matchTime: Date | null;
-  fundBy: Date | null;
-  totalFundingWolo: number;
-  nextStatus: string;
-}) {
-  return [
-    "Challenge terms accepted",
-    `${input.challengerName} vs ${input.challengedName}`,
-    ...challengeTimingNoticeLines(input.matchTime),
-    `Funding: ${formatWolo(input.totalFundingWolo)} WOLO each`,
-    input.fundBy ? `Fund by: ${formatScheduledAtForInbox(input.fundBy)}` : null,
-    input.fundBy ? `Fund by ISO: ${input.fundBy.toISOString()}` : null,
-    `Status: ${input.nextStatus}`,
-  ].filter(Boolean).join("\n");
-}
-
-function buildDeclineMessage(input: {
-  challengerName: string;
-  challengedName: string;
-  matchTime: Date | null;
-}) {
-  return [
-    "Challenge declined",
-    `${input.challengerName} vs ${input.challengedName}`,
-    ...challengeTimingNoticeLines(input.matchTime),
-    "Status: Terms declined",
-  ].join("\n");
-}
-
-function buildCancellationMessage(input: {
-  challengerName: string;
-  challengedName: string;
-  matchTime: Date | null;
-  cancelledByName: string;
-  refundPending?: boolean;
-}) {
-  const lines = [
-    "Challenge cancelled",
-    `${input.challengerName} vs ${input.challengedName}`,
-    ...challengeTimingNoticeLines(input.matchTime),
-    `Status: Cancelled by ${input.cancelledByName}`,
-  ];
-
-  if (input.refundPending) {
-    lines.push("Refund: Pending operator review");
-  }
-
-  return lines.join("\n");
-}
-
 function buildRescheduleMessage(input: {
   challengerName: string;
   challengedName: string;
@@ -383,33 +336,6 @@ function buildNoShowMessage(input: {
     `Status: ${input.resolutionLabel || "No-show resolved"}`,
     input.statusDetail,
   ].join("\n");
-}
-
-async function recordChallengeActivity(
-  tx: {
-    scheduledMatchActivity: {
-      create: (args: { data: Prisma.ScheduledMatchActivityUncheckedCreateInput }) => Promise<unknown>;
-    };
-  },
-  input: {
-    scheduledMatchId: number;
-    actorUserId?: number | null;
-    eventType: string;
-    detail?: string | null;
-    metadata?: Record<string, unknown> | null;
-    createdAt?: Date;
-  }
-) {
-  await tx.scheduledMatchActivity.create({
-    data: {
-      scheduledMatchId: input.scheduledMatchId,
-      actorUserId: input.actorUserId ?? undefined,
-      eventType: input.eventType.slice(0, 32),
-      detail: input.detail?.slice(0, 255) || undefined,
-      metadata: (input.metadata ?? undefined) as Prisma.InputJsonValue | undefined,
-      createdAt: input.createdAt,
-    },
-  });
 }
 
 export async function GET(
@@ -635,332 +561,57 @@ export async function PATCH(
       return NextResponse.json({ ...refreshed, desyncResolution });
     }
 
+    const lifecycleTransitionContext = {
+      prisma,
+      challengeId,
+
+      actor: {
+        id:
+          viewer.id,
+
+        uid:
+          viewer.uid,
+
+        name:
+          playerName(
+            viewer,
+          ),
+
+        role:
+          viewerRole,
+      },
+
+      match:
+        scheduledMatch,
+
+      displayState:
+        currentSurface.displayState,
+
+      fundingTotal,
+
+      challengerName,
+
+      challengedName,
+
+      challengeLabel,
+    };
+
     if (action === "accept") {
-      if (!viewerIsChallenged) {
-        return NextResponse.json(
-          { detail: "Only the challenged player can accept this match." },
-          { status: 403 }
-        );
-      }
-
-      if (!["proposed", "pending", "creator_funded"].includes(currentSurface.displayState)) {
-        return NextResponse.json(
-          { detail: "This challenge is no longer awaiting terms acceptance." },
-          { status: 409 }
-        );
-      }
-
-      const acceptedAt = new Date();
-      if (scheduledMatch.acceptBy && acceptedAt.getTime() >= scheduledMatch.acceptBy.getTime()) {
-        return NextResponse.json(
-          { detail: "This challenge expired before it was accepted." },
-          { status: 409 }
-        );
-      }
-      const fundBy =
-        fundingTotal > 0
-          ? buildChallengeFundBy(acceptedAt, scheduledMatch.matchTime)
-          : null;
-      const playBy = fundingTotal <= 0 ? buildChallengePlayBy(acceptedAt) : null;
-      const nextStatus =
-        fundingTotal > 0
-          ? scheduledMatch.challengerFundedAt && !scheduledMatch.challengedFundedAt
-            ? "creator_funded"
-            : "terms_accepted"
-          : "accepted";
-      await prisma.$transaction(async (tx) => {
-        const accepted = await tx.scheduledMatch.updateMany({
-          where: {
-            id: challengeId,
-            acceptedAt: null,
-            status: { in: ["proposed", "pending", "creator_funded"] },
-            OR: [{ acceptBy: null }, { acceptBy: { gt: acceptedAt } }],
-          },
-          data: {
-            status: nextStatus,
-            acceptedAt,
-            fundBy,
-            playBy,
-            matchTimeConfirmedAt:
-              scheduledMatch.timingMode === "scheduled" && scheduledMatch.matchTime
-                ? acceptedAt
-                : scheduledMatch.matchTimeConfirmedAt,
-            declinedAt: null,
-            cancelledAt: null,
-          },
-        });
-        if (accepted.count !== 1) {
-          throw new ChallengeConflictError("This challenge changed or expired before acceptance completed.");
-        }
-        await tx.trophyChallenge.updateMany({
-          where: {
-            scheduledMatchId: challengeId,
-            status: { notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES] },
-          },
-          data: {
-            status: "accepted",
-          },
-        });
-
-        await recordChallengeActivity(tx, {
-          scheduledMatchId: challengeId,
-          actorUserId: viewer.id,
-          eventType: fundingTotal > 0 ? "terms_accepted" : "accepted",
-          detail:
-            fundingTotal > 0 && scheduledMatch.challengerFundedAt
-              ? `Terms accepted. Opponent funding is next for ${formatWolo(fundingTotal)} WOLO.`
-              : fundingTotal > 0
-              ? `Terms accepted. Creator funding is next for ${formatWolo(fundingTotal)} WOLO.`
-              : "Accepted and ready to lock.",
-          metadata: {
-            acceptBy: scheduledMatch.acceptBy?.toISOString() ?? null,
-            fundBy: fundBy?.toISOString() ?? null,
-            matchTime: scheduledMatch.matchTime?.toISOString() ?? null,
-            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
-            totalFundingWolo: fundingTotal,
-          },
-          createdAt: acceptedAt,
-        });
-
-        await postChallengeInboxNotice(tx, {
-          senderUserId: viewer.id,
-          targetUserId: scheduledMatch.challengerUserId,
-          challengeId,
-          body: buildTermsAcceptedMessage({
-            challengerName,
-            challengedName,
-            matchTime: scheduledMatch.matchTime,
-            fundBy,
-            totalFundingWolo: fundingTotal,
-            nextStatus: scheduledMatch.challengerFundedAt
-              ? "Opponent funding next"
-              : "Creator funding next",
-          }),
-          now: acceptedAt,
-        });
-
-        await recordUserActivity(tx, {
-          userId: scheduledMatch.challengerUserId,
-          type: "challenge_terms_accepted",
-          path: "/challenge",
-          label: challengeLabel,
-          metadata: {
-            challengeId,
-            role: "challenger",
-            acceptedByUid: viewer.uid,
-            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
-            totalFundingWolo: fundingTotal,
-          },
-        });
-
-        await recordUserActivity(tx, {
-          userId: scheduledMatch.challengedUserId,
-          type: "challenge_terms_accepted",
-          path: "/challenge",
-          label: challengeLabel,
-          metadata: {
-            challengeId,
-            role: "challenged",
-            acceptedByUid: viewer.uid,
-            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
-            totalFundingWolo: fundingTotal,
-          },
-        });
-      });
+      await acceptChallenge(
+        lifecycleTransitionContext,
+      );
     }
 
     if (action === "decline") {
-      if (!viewerIsChallenged) {
-        return NextResponse.json(
-          { detail: "Only the challenged player can decline this match." },
-          { status: 403 }
-        );
-      }
-
-      if (!["proposed", "pending", "creator_funded"].includes(currentSurface.displayState)) {
-        return NextResponse.json(
-          { detail: "This challenge is no longer awaiting terms acceptance." },
-          { status: 409 }
-        );
-      }
-
-      const declinedAt = new Date();
-      await prisma.$transaction(async (tx) => {
-        await tx.scheduledMatch.update({
-          where: { id: challengeId },
-          data: {
-            status: "declined",
-            declinedAt,
-          },
-        });
-        await tx.trophyChallenge.updateMany({
-          where: {
-            scheduledMatchId: challengeId,
-            status: { notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES] },
-          },
-          data: {
-            status: "cancelled",
-            settlementStatus: "cancelled",
-          },
-        });
-
-        await recordChallengeActivity(tx, {
-          scheduledMatchId: challengeId,
-          actorUserId: viewer.id,
-          eventType: "declined",
-          detail: "Challenge declined.",
-          createdAt: declinedAt,
-        });
-
-        await postChallengeInboxNotice(tx, {
-          senderUserId: viewer.id,
-          targetUserId: scheduledMatch.challengerUserId,
-          challengeId,
-          body: buildDeclineMessage({
-            challengerName,
-            challengedName,
-            matchTime: scheduledMatch.matchTime,
-          }),
-          now: declinedAt,
-        });
-
-        await recordUserActivity(tx, {
-          userId: scheduledMatch.challengerUserId,
-          type: "challenge_declined",
-          path: "/challenge",
-          label: challengeLabel,
-          metadata: {
-            challengeId,
-            role: "challenger",
-            declinedByUid: viewer.uid,
-            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
-          },
-        });
-
-        await recordUserActivity(tx, {
-          userId: scheduledMatch.challengedUserId,
-          type: "challenge_declined",
-          path: "/challenge",
-          label: challengeLabel,
-          metadata: {
-            challengeId,
-            role: "challenged",
-            declinedByUid: viewer.uid,
-            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
-          },
-        });
-      });
+      await declineChallenge(
+        lifecycleTransitionContext,
+      );
     }
 
     if (action === "cancel") {
-      const hasAnyFunding =
-        Boolean(scheduledMatch.challengerFundedAt) || Boolean(scheduledMatch.challengedFundedAt);
-      const hasAnyCheckIn =
-        Boolean(scheduledMatch.challengerCheckedInAt) || Boolean(scheduledMatch.challengedCheckedInAt);
-
-      if (hasAnyCheckIn || currentSurface.displayState === "live") {
-        return NextResponse.json(
-          { detail: "This match is already checked in or live. Keep it on the rail for result resolution." },
-          { status: 409 }
-        );
-      }
-
-      if (!MANAGEABLE_DISPLAY_STATES.has(currentSurface.displayState)) {
-        return NextResponse.json(
-          { detail: "Only active scheduled matches can be cancelled." },
-          { status: 409 }
-        );
-      }
-
-      const cancelledAt = new Date();
-      const targetUserId = viewerIsChallenger
-        ? scheduledMatch.challengedUserId
-        : scheduledMatch.challengerUserId;
-      const cancelDetail = hasAnyFunding
-        ? `${challengeLabel} · cancelled · refund pending operator review`
-        : `${challengeLabel} · cancelled`;
-
-      await prisma.$transaction(async (tx) => {
-        await tx.scheduledMatch.update({
-          where: { id: challengeId },
-          data: {
-            status: "canceled",
-            cancelledAt,
-            resultAt: hasAnyFunding ? cancelledAt : scheduledMatch.resultAt,
-            settlementReadyAt: hasAnyFunding ? cancelledAt : scheduledMatch.settlementReadyAt,
-          },
-        });
-        await tx.trophyChallenge.updateMany({
-          where: {
-            scheduledMatchId: challengeId,
-            status: { notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES] },
-          },
-          data: {
-            status: "cancelled",
-            settlementStatus: "cancelled",
-          },
-        });
-
-        await recordChallengeActivity(tx, {
-          scheduledMatchId: challengeId,
-          actorUserId: viewer.id,
-          eventType: "canceled",
-          detail: cancelDetail,
-          metadata: hasAnyFunding
-            ? {
-                refundPending: true,
-                challengerFunded: Boolean(scheduledMatch.challengerFundedAt),
-                challengedFunded: Boolean(scheduledMatch.challengedFundedAt),
-                totalFundingWolo: fundingTotal,
-              }
-            : undefined,
-          createdAt: cancelledAt,
-        });
-
-        if (viewerIsChallenger || viewerIsChallenged) {
-          await postChallengeInboxNotice(tx, {
-            senderUserId: viewer.id,
-            targetUserId,
-            challengeId,
-            body: buildCancellationMessage({
-              challengerName,
-              challengedName,
-              matchTime: scheduledMatch.matchTime,
-              cancelledByName: playerName(viewer),
-              refundPending: hasAnyFunding,
-            }),
-            now: cancelledAt,
-          });
-        }
-
-        await recordUserActivity(tx, {
-          userId: scheduledMatch.challengerUserId,
-          type: "challenge_cancelled",
-          path: "/challenge",
-          label: challengeLabel,
-          metadata: {
-            challengeId,
-            cancelledByUid: viewer.uid,
-            role: viewerRole,
-            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
-            refundPending: hasAnyFunding,
-          },
-        });
-
-        await recordUserActivity(tx, {
-          userId: scheduledMatch.challengedUserId,
-          type: "challenge_cancelled",
-          path: "/challenge",
-          label: challengeLabel,
-          metadata: {
-            challengeId,
-            cancelledByUid: viewer.uid,
-            role: viewerRole === "challenger" ? "challenged" : viewerRole === "challenged" ? "challenger" : "admin",
-            scheduledAt: scheduledMatch.scheduledAt.toISOString(),
-            refundPending: hasAnyFunding,
-          },
-        });
-      });
+      await cancelChallenge(
+        lifecycleTransitionContext,
+      );
     }
 
     if (action === "reschedule") {
