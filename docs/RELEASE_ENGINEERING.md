@@ -129,11 +129,14 @@ A feature handoff is eligible only when:
 - the feature is a descendant of that exact main;
 - production is reachable and clean.
 
-The feature worktree owns only candidate completion, local commit, exact
-validation and the fail-closed fast-forward handoff. It never silently chooses a
-merge or rebase. Canonical main continues to own GitHub publication,
-documentation federation, protected deployment, certification, estate audit,
-Doctor and public performance proof.
+The feature worktree owns candidate completion, the implementation commit,
+the generated Documentation Baseline refresh/commit, exact validation and the
+fail-closed fast-forward handoff. The baseline refresh occurs after the
+implementation commit and before the full gate, so documentation validation
+describes a real committed implementation rather than a dirty worktree. It
+never silently chooses a merge or rebase. Canonical main continues to own
+GitHub publication, documentation federation, protected deployment,
+certification, estate audit, Doctor and public performance proof.
 
 ### Development-data safety
 

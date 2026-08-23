@@ -118,11 +118,12 @@ The command may be started from canonical `main` or from a registered
 
 From a feature worktree, `finish` proves that canonical `main` is clean and
 exact with GitHub, proves that the feature descends from that exact main,
-commits the finished feature when necessary, performs the full digest-bound
-feature gate, fast-forwards canonical main only, transfers the validation
-evidence, then re-enters canonical finish for publication, documentation,
-deployment and certification. It never auto-merges or rebases a divergent
-feature history.
+commits the finished feature when necessary, refreshes and commits the governed
+Documentation Baseline against that committed implementation, performs the full
+digest-bound feature gate on the resulting documentation descendant,
+fast-forwards canonical main only, transfers the validation evidence, then
+re-enters canonical finish for publication, documentation, deployment and
+certification. It never auto-merges or rebases a divergent feature history.
 
 `finish` is the canonical human-facing transaction. It owns eligible commit /
 publish reconciliation, documentation and context refresh, deployment when

@@ -245,5 +245,25 @@ class FinishTests(unittest.TestCase):
 
 
 
+    def test_feature_baseline_refresh_allows_generated_paths_only(self):
+        MODULE.validate_feature_baseline_paths(
+            [
+                "docs/DOCUMENTATION_CONTROL_PLANE.md",
+                "docs/document-registry.json",
+            ]
+        )
+
+        with self.assertRaises(
+            MODULE.FinishError
+        ):
+            MODULE.validate_feature_baseline_paths(
+                [
+                    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+                    "docs/RELEASE_ENGINEERING.md",
+                ]
+            )
+
+
+
 if __name__ == "__main__":
     unittest.main()

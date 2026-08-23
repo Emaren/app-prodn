@@ -71,9 +71,11 @@ proves:
 3. production source is reachable and clean;
 4. candidate paths are safe to auto-commit.
 
-It then commits the finished candidate if necessary, runs the full digest-bound
-release gate once, transfers that PASS evidence to canonical release state,
-fast-forwards canonical main, and re-enters ordinary canonical finish.
+It then commits the finished implementation if necessary, refreshes and commits
+the governed Documentation Baseline against that implementation, runs the full
+digest-bound release gate once on the resulting documentation descendant,
+transfers that PASS evidence to canonical release state, fast-forwards canonical
+main, and re-enters ordinary canonical finish.
 
 Generated documentation may create a descendant release commit after the
 validated implementation. The release gate may inherit expensive implementation

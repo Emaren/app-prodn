@@ -2579,6 +2579,157 @@ def commit_feature_candidate(
     return head
 
 
+FEATURE_BASELINE_GENERATED_PATHS = {
+    "docs/DOCUMENTATION_CONTROL_PLANE.md",
+    "docs/document-registry.json",
+}
+
+
+def validate_feature_baseline_paths(
+    paths: list[str],
+) -> None:
+    unexpected = sorted(
+        set(paths)
+        - FEATURE_BASELINE_GENERATED_PATHS
+    )
+
+    if unexpected:
+        raise FinishError(
+            "documentation baseline refresh changed "
+            "unexpected path(s): "
+            + ", ".join(unexpected)
+        )
+
+
+def refresh_feature_documentation_baseline(
+    *,
+    implementation_sha: str,
+    progress: Progress,
+) -> str:
+    progress.start(
+        "Refreshing governed documentation "
+        "baseline to committed implementation..."
+    )
+
+    refresh = run(
+        [
+            sys.executable,
+            "scripts/docs_v2_check.py",
+            "--write",
+            "--refresh-baseline",
+        ],
+        timeout=180,
+    )
+
+    if refresh.returncode != 0:
+        raise FinishError(
+            "feature documentation baseline refresh failed: "
+            + (refresh.stdout or "")[-4000:]
+        )
+
+    verify = run(
+        [
+            sys.executable,
+            "scripts/docs_v2_check.py",
+        ],
+        timeout=120,
+    )
+
+    if verify.returncode != 0:
+        raise FinishError(
+            "feature documentation baseline verification failed: "
+            + (verify.stdout or "")[-4000:]
+        )
+
+    paths = git_paths()
+    validate_feature_baseline_paths(
+        paths
+    )
+
+    if not paths:
+        progress.done(
+            "Documentation baseline already current "
+            f"for implementation {implementation_sha[:10]}"
+        )
+        return implementation_sha
+
+    add = run(
+        [
+            "git",
+            "add",
+            "--",
+            *paths,
+        ],
+        timeout=60,
+    )
+
+    if add.returncode != 0:
+        raise FinishError(
+            "documentation baseline git add failed: "
+            + (add.stdout or "")[-4000:]
+        )
+
+    staged = run(
+        [
+            "git",
+            "diff",
+            "--cached",
+            "--check",
+        ],
+        timeout=60,
+    )
+
+    if staged.returncode != 0:
+        raise FinishError(
+            "documentation baseline staged diff failed: "
+            + (staged.stdout or "")[-4000:]
+        )
+
+    commit = run(
+        [
+            "git",
+            "commit",
+            "-m",
+            "Refresh documentation baseline after feature implementation",
+        ],
+        timeout=120,
+    )
+
+    if commit.returncode != 0:
+        raise FinishError(
+            "documentation baseline commit failed: "
+            + (commit.stdout or "")[-4000:]
+        )
+
+    target_sha = git_output(
+        "rev-parse",
+        "HEAD",
+    )
+
+    if not is_ancestor(
+        implementation_sha,
+        target_sha,
+    ):
+        raise FinishError(
+            "documentation baseline commit is not "
+            "a descendant of implementation"
+        )
+
+    if git_paths():
+        raise FinishError(
+            "documentation baseline commit left "
+            "the feature worktree dirty"
+        )
+
+    progress.done(
+        "Documentation baseline committed "
+        f"({target_sha[:10]}) for implementation "
+        f"{implementation_sha[:10]}"
+    )
+
+    return target_sha
+
+
 def copy_feature_gate_receipts(
     *,
     canonical: Path,
@@ -2773,7 +2924,7 @@ def promote_feature_worktree(
                 "feature handoff"
             )
 
-        target_sha = (
+        implementation_sha = (
             commit_feature_candidate(
                 message=message,
                 progress=progress,
@@ -2782,11 +2933,27 @@ def promote_feature_worktree(
 
         if not is_ancestor(
             base_sha,
+            implementation_sha,
+        ):
+            raise FinishError(
+                "final feature implementation no longer "
+                "descends from canonical main"
+            )
+
+        target_sha = (
+            refresh_feature_documentation_baseline(
+                implementation_sha=implementation_sha,
+                progress=progress,
+            )
+        )
+
+        if not is_ancestor(
+            implementation_sha,
             target_sha,
         ):
             raise FinishError(
-                "final feature commit no longer "
-                "descends from canonical main"
+                "feature release target is not a "
+                "descendant of implementation"
             )
 
         progress.start(
@@ -2921,6 +3088,9 @@ def promote_feature_worktree(
                     ),
                     "base_sha": (
                         base_sha
+                    ),
+                    "implementation_sha": (
+                        implementation_sha
                     ),
                     "target_sha": (
                         target_sha
