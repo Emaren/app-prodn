@@ -33,6 +33,10 @@ BASE_ROOTS = (
     "betting_bot_configs",
     "bet_counter_actions",
     "marketplace_shops",
+    "workshop_status",
+    "workshop_entries",
+    "workshop_artifacts",
+    "workshop_streams",
 )
 
 CHAT_AUXILIARY_ROOTS = (

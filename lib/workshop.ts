@@ -236,7 +236,9 @@ export async function loadPublicWorkshop(prisma: PrismaClient) {
         { occurredAt: "desc" },
         { id: "desc" },
       ],
-      take: 120,
+      // The page shell/feed needs only a compact recent projection.
+      // The complete history belongs to the independently paginated Chronicle.
+      take: 32,
       select: PUBLIC_ENTRY_SELECT,
     }),
     prisma.workshopStream.findFirst({

@@ -206,6 +206,35 @@ authority for the active Node test invocation. Operators and AI agents should
 not manually reconstruct loader flags or substitute raw `node --test` commands
 for the canonical contract.
 
+### Public Workshop Chronicle closure
+
+`aoe2war finish` owns the public Workshop Chronicle as part of ordinary release
+closure. After production is certified, Finish compares Git workdays in
+`America/Edmonton` against published Workshop history and idempotently creates or
+refines a small human-readable set of Chronicle headings for uncovered or
+machine-owned workdays.
+
+The Chronicler deliberately does not publish one row per commit. It strips
+release/documentation noise, groups the meaningful source work into at most four
+daily public records, and keeps hashes plus the underlying commit subjects inside
+the existing click-to-drill-down technical record. Multiple releases on one day
+refine the same deterministic records.
+
+Hand-curated Workshop days remain authoritative and are never overwritten by the
+automatic Chronicler. Automatic rows carry the dedicated
+`aoe2war-finish-chronicler` ownership marker.
+
+Workshop publication occurs only after runtime certification. If the certified
+application is healthy but Chronicle reconciliation fails, release truth remains
+`CERTIFIED` while Finish records `CERTIFIED_WORKSHOP_INCOMPLETE` and stops before
+claiming complete closure. A later Finish run may safely resume the idempotent
+public-history reconciliation.
+
+The Workshop route itself must not make below-the-fold Chronicle history part of
+the initial navigation critical path. A real route-level Workshop hero paints
+immediately, while the Chronicle first page loads only as the reader approaches
+the timeline.
+
 ### Browser evidence
 
 Automated source contracts do not prove every interactive browser behavior.

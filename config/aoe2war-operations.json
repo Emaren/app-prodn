@@ -129,7 +129,14 @@
       "toolchain_digest",
       "validator_digest"
     ],
-    "generated_documentation_revalidation": "cheap-contract-only"
+    "generated_documentation_revalidation": "cheap-contract-only",
+    "workshop_chronicler": {
+      "enabled": true,
+      "start_date": "2026-08-01",
+      "timezone": "America/Edmonton",
+      "max_entries_per_workday": 4,
+      "publication_mode": "post-certification-idempotent-upsert"
+    }
   },
   "semantic_maps": {
     "required_terms": [

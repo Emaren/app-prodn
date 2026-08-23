@@ -138,38 +138,58 @@ function presentation(entry: ChronicleEntry) {
   );
 }
 
-function dateKey(value: string) {
-  const date = new Date(value);
+const WORKSHOP_TIME_ZONE = "America/Edmonton";
+
+const WORKSHOP_DAY_KEY_FORMATTER = new Intl.DateTimeFormat(
+  "en-CA",
+  {
+    timeZone: WORKSHOP_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  },
+);
+
+function dateKey(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  const parts = WORKSHOP_DAY_KEY_FORMATTER.formatToParts(date);
+  const get = (type: string) =>
+    parts.find((part) => part.type === type)?.value ?? "";
 
   return [
-    date.getFullYear(),
-    String(date.getMonth() + 1).padStart(2, "0"),
-    String(date.getDate()).padStart(2, "0"),
+    get("year"),
+    get("month"),
+    get("day"),
   ].join("-");
 }
 
 function dayLabel(value: string) {
   const date = new Date(value);
   const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
+  const yesterday = new Date(today.getTime() - 86_400_000);
 
-  if (dateKey(value) === dateKey(today.toISOString())) return "Today";
-  if (dateKey(value) === dateKey(yesterday.toISOString())) return "Yesterday";
+  if (dateKey(date) === dateKey(today)) return "Today";
+  if (dateKey(date) === dateKey(yesterday)) return "Yesterday";
 
   return date.toLocaleDateString("en-US", {
+    timeZone: WORKSHOP_TIME_ZONE,
     month: "long",
     day: "numeric",
-    year: date.getFullYear() === today.getFullYear() ? undefined : "numeric",
+    year:
+      dateKey(date).slice(0, 4) === dateKey(today).slice(0, 4)
+        ? undefined
+        : "numeric",
   });
 }
 
 function moment(value: string) {
   return new Date(value).toLocaleTimeString("en-US", {
+    timeZone: WORKSHOP_TIME_ZONE,
     hour: "numeric",
     minute: "2-digit",
   });
 }
+
 
 function isMajor(entry: ChronicleEntry) {
   return (
@@ -246,15 +266,18 @@ export default function WorkshopChronicle({
   }, []);
 
   const loadOlder = useCallback(async () => {
-    if (loading || !hasMore || !nextCursor) return;
+    if (loading || (!hasMore && entries.length > 0)) return;
 
     setLoading(true);
 
     try {
       const params = new URLSearchParams({
-        beforeId: String(nextCursor.id),
         limit: "18",
       });
+
+      if (nextCursor) {
+        params.set("beforeId", String(nextCursor.id));
+      }
 
       const response = await fetch(
         `/api/workshop/chronicle?${params.toString()}`,
@@ -284,7 +307,7 @@ export default function WorkshopChronicle({
     } finally {
       setLoading(false);
     }
-  }, [hasMore, loading, nextCursor]);
+  }, [entries.length, hasMore, loading, nextCursor]);
 
   useEffect(() => {
     const node = sentinelRef.current;
@@ -305,8 +328,6 @@ export default function WorkshopChronicle({
 
     return () => observer.disconnect();
   }, [automaticLoadFailed, hasMore, loadOlder]);
-
-  if (entries.length === 0) return null;
 
   return (
     <section
@@ -382,7 +403,15 @@ export default function WorkshopChronicle({
 
           {loading ? (
             <div className="mt-8 pl-12 text-xs uppercase tracking-[0.22em] text-slate-600 sm:pl-16">
-              Opening older pages of the Chronicle…
+              {entries.length === 0
+                ? "Opening the Chronicle…"
+                : "Opening older pages of the Chronicle…"}
+            </div>
+          ) : null}
+
+          {entries.length === 0 && !loading && !automaticLoadFailed ? (
+            <div className="mt-8 pl-12 text-xs uppercase tracking-[0.22em] text-slate-600 sm:pl-16">
+              The Chronicle opens as you approach.
             </div>
           ) : null}
 

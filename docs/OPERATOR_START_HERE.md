@@ -127,7 +127,8 @@ certification. It never auto-merges or rebases a divergent feature history.
 
 `finish` is the canonical human-facing transaction. It owns eligible commit /
 publish reconciliation, documentation and context refresh, deployment when
-needed, certification, estate audit and Doctor.
+needed, certification, public Workshop Chronicle reconciliation, estate audit
+and Doctor.
 
 A deliberately scoped web release may use:
 

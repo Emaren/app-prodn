@@ -1524,6 +1524,216 @@ def run_json_cli(
     return rc, payload
 
 
+def run_workshop_chronicler(
+    *,
+    certified_release: dict[str, Any],
+    progress: Progress,
+) -> dict[str, Any]:
+    contract = aoe2_doctor.load_contract()
+    policy = (
+        contract.get("finish", {})
+        .get("workshop_chronicler", {})
+    )
+
+    if not policy.get("enabled", True):
+        progress.done(
+            "Workshop Chronicler disabled by machine policy"
+        )
+        return {"status": "DISABLED"}
+
+    production = certified_release.get("production", {})
+    local = certified_release.get("local", {})
+    canonical = contract["canonical"]
+
+    host = str(
+        production.get("host")
+        or canonical["production_host"]
+    )
+    repo = str(
+        production.get("repo")
+        or canonical["production_repo"]
+    )
+    service = str(canonical["service"])
+    release_sha = str(local.get("head") or "")
+
+    if not release_sha:
+        raise FinishError(
+            "Workshop Chronicler cannot resolve certified release SHA"
+        )
+
+    progress.start(
+        "Updating the public Workshop Chronicle "
+        "from certified Git history..."
+    )
+
+    remote_script = "\n".join(
+        [
+            "set -euo pipefail",
+            f"cd {shlex.quote(repo)}",
+            'test "$(git rev-parse HEAD)" = ' + shlex.quote(release_sha),
+            'PID="$(systemctl show ' + shlex.quote(service) + ' -p MainPID --value)"',
+            'test -n "$PID"',
+            'test "$PID" != "0"',
+            'DATABASE_URL="$(' ,
+            "python3 - \"$PID\" <<'PYREMOTE'",
+            "import sys",
+            "pid = sys.argv[1]",
+            'for item in open(f"/proc/{pid}/environ", "rb").read().split(b"\\0"):',
+            '    if item.startswith(b"DATABASE_URL="):',
+            '        sys.stdout.write(item.split(b"=", 1)[1].decode("utf-8", "strict"))',
+            "        raise SystemExit(0)",
+            'raise SystemExit("DATABASE_URL missing from production web service")',
+            "PYREMOTE",
+            ')"',
+            'DATABASE_URL="${DATABASE_URL/postgresql+asyncpg:/postgresql:}"',
+            "export DATABASE_URL",
+            (
+                "exec node --no-warnings --experimental-strip-types "
+                "--experimental-loader ./scripts/aoe2-alias-loader.mjs "
+                "scripts/workshop_chronicler.mts --apply "
+                "--confirm PUBLISH-AOE2WAR-WORKSHOP-CHRONICLE "
+                "--release-sha "
+                + shlex.quote(release_sha)
+                + " --json"
+            ),
+        ]
+    )
+
+    try:
+        process = subprocess.run(
+            [
+                "ssh",
+                "-T",
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=8",
+                host,
+                "bash",
+                "-s",
+            ],
+            cwd=str(ROOT),
+            input=remote_script,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=300,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise FinishError(
+            "Workshop Chronicler timed out after certification"
+        ) from exc
+
+    output = process.stdout or ""
+
+    if process.returncode != 0:
+        raise FinishError(
+            "certified release is live, but Workshop Chronicle "
+            "publication failed: "
+            + output[-8000:]
+        )
+
+    try:
+        payload = json.loads(output.strip())
+    except json.JSONDecodeError as exc:
+        raise FinishError(
+            "Workshop Chronicler returned invalid JSON: "
+            + output[-4000:]
+        ) from exc
+
+    if not isinstance(payload, dict) or payload.get("status") != "PASS":
+        raise FinishError("Workshop Chronicler did not return PASS")
+
+    coverage = payload.get("coverage", {})
+    gaps = list(coverage.get("remainingGapDays", []) or [])
+
+    if gaps:
+        raise FinishError(
+            "Workshop Chronicle still has uncovered workdays: "
+            + ", ".join(str(value) for value in gaps)
+        )
+
+    current_ids = list(coverage.get("currentDayPublicIds", []) or [])
+    public_verification = {
+        "status": "DB_VERIFIED",
+        "checked_ids": current_ids,
+    }
+
+    if current_ids:
+        base_url = str(canonical["public_base_url"]).rstrip("/")
+        query = (
+            "/api/workshop/chronicle?limit=40&verify="
+            + release_sha[:12]
+        )
+        last_error = ""
+
+        for attempt in range(1, 6):
+            try:
+                request = urllib.request.Request(
+                    base_url + query,
+                    headers={
+                        "Cache-Control": "no-cache",
+                        "User-Agent": "AoE2WAR-Finish-Workshop-Chronicler/1.0",
+                    },
+                )
+                with urllib.request.urlopen(request, timeout=20) as response:
+                    public_payload = json.loads(
+                        response.read().decode("utf-8")
+                    )
+
+                public_ids = {
+                    str(entry.get("publicId"))
+                    for entry in public_payload.get("entries", [])
+                    if isinstance(entry, dict)
+                }
+                missing = [
+                    value for value in current_ids
+                    if value not in public_ids
+                ]
+
+                if not missing:
+                    public_verification = {
+                        "status": "PASS",
+                        "attempt": attempt,
+                        "checked_ids": current_ids,
+                    }
+                    break
+
+                last_error = (
+                    "missing current-day public IDs: "
+                    + ", ".join(missing)
+                )
+            except Exception as exc:
+                last_error = str(exc)
+
+            time.sleep(1)
+
+        if public_verification.get("status") != "PASS":
+            raise FinishError(
+                "Workshop Chronicle database publication passed, "
+                "but the public Chronicle endpoint did not expose "
+                "the certified work: "
+                + last_error
+            )
+
+    result = {
+        **payload,
+        "public_verification": public_verification,
+    }
+    mutation = payload.get("mutation", {})
+
+    progress.done(
+        "Workshop Chronicle current — "
+        f"created={mutation.get('created', 0)} "
+        f"updated={mutation.get('updated', 0)} "
+        f"deleted={mutation.get('deleted', 0)} · "
+        f"workdays={coverage.get('commitDays', '—')} · gaps=0"
+    )
+
+    return result
+
+
 def storage_retention_cycle(
     *,
     receipt: dict[str, Any],
@@ -1765,6 +1975,7 @@ def plan_payload() -> dict[str, Any]:
             "bounded pre-capture context retention and exact archive verification",
             "isolated stage and protected activation",
             "immediate certified runtime + Wolo proof",
+            "idempotent public Workshop Chronicle workday reconciliation",
             "post-release current-state documentation refresh",
             "independent estate audit and final Doctor",
         ],
@@ -2019,6 +2230,21 @@ def execute_finish(
     receipt["release_certified_at"] = datetime.now(timezone.utc).isoformat()
     finish_phase(receipt, "release_certification", checkpoint)
 
+    start_phase(receipt, "workshop_chronicle", checkpoint)
+    try:
+        receipt["workshop_chronicle"] = run_workshop_chronicler(
+            certified_release=certified_release,
+            progress=progress,
+        )
+    except Exception:
+        # Runtime certification is already authoritative. Preserve that truth
+        # while refusing to call the whole finish complete until its public
+        # work history catches up.
+        receipt["release_outcome"] = "CERTIFIED_WORKSHOP_INCOMPLETE"
+        checkpoint()
+        raise
+    finish_phase(receipt, "workshop_chronicle", checkpoint)
+
     start_phase(receipt, "post_release_storage_retention", checkpoint)
     storage_retention_cycle(
         receipt=receipt,
@@ -2212,6 +2438,16 @@ def print_finish_summary(receipt: dict[str, Any], receipt_path: Path) -> None:
     print(f"Source:          {str(final.get('local', {}).get('head') or '—')[:10]}  exact")
     print("GitHub:          synchronized")
     print("Documentation:   synchronized")
+    workshop = receipt.get("workshop_chronicle", {})
+    coverage = workshop.get("coverage", {}) if isinstance(workshop, dict) else {}
+    print(
+        "Workshop:        "
+        + (
+            f"current · {coverage.get('commitDays', '—')} workday(s) · gaps=0"
+            if workshop.get("status") in {"PASS", "DISABLED"}
+            else "—"
+        )
+    )
     print("Context:         verified by finish/update pipeline")
     print(f"Production:      {certification.get('status') or '—'}")
     print(f"Build:           {production.get('active_build_id') or '—'}")

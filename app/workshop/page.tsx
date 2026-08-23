@@ -7,7 +7,6 @@ import { loadPublicParserObservatory } from "@/lib/parserObservatory";
 import { WATCHER_RELEASE } from "@/lib/watcherRelease";
 import {
   loadCachedPublicWorkshop,
-  loadCachedWorkshopChronicleFirstPage,
 } from "@/lib/workshopCached";
 
 import "./workshop-polish.css";
@@ -21,12 +20,21 @@ export const metadata: Metadata = {
     "Follow AoE2WAR's production truth through replay evidence, Watcher activity, observability, build records, adjudication, and settlement boundaries.",
 };
 
+const DEFERRED_CHRONICLE = {
+  entries: [],
+  hasMore: true,
+  nextCursor: null,
+} as const;
+
 export default async function WorkshopPage() {
-  const [data, chronicle, observatory] = await Promise.all([
+  const [data, observatory] = await Promise.all([
     loadCachedPublicWorkshop(),
-    loadCachedWorkshopChronicleFirstPage(),
     loadPublicParserObservatory(),
   ]);
+
+  // Chronicle history is intentionally not awaited here. The public timeline
+  // is below the initial viewport and hydrates itself only as the reader nears it.
+  const chronicle = DEFERRED_CHRONICLE;
 
   const diagnostics: WorkshopDiagnostics = {
     generatedAt: observatory.generatedAt,

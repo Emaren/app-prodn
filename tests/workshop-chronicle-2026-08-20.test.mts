@@ -63,9 +63,13 @@ test("Workshop keeps force-dynamic route but caches its public DB projection", (
     workshopPage,
     /loadCachedPublicWorkshop/,
   );
-  assert.match(
+  assert.doesNotMatch(
     workshopPage,
     /loadCachedWorkshopChronicleFirstPage/,
+  );
+  assert.match(
+    workshopPage,
+    /DEFERRED_CHRONICLE/,
   );
   assert.match(
     workshopCached,
