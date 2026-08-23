@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "72b797b604b4d1c6953ac1571d92901f7dbc88b5f73ecb9d7d0e50858d87992b",
+      "sha256": "7f6ba75bb9e4a8bd98ff404f446002a39ccb42a17e38bf737276643c75147f24",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1628,7 +1628,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "feature/workshop-v2",
-    "commit": "a04661de87d3e6089455315aa6a5720c106b7160"
+    "commit": "bacf60806f3b12aaa31d97539083df63b834b974"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
