@@ -148,8 +148,8 @@ test("commissioner desync actions are two-step, admin-only, and idempotent", () 
   assert.match(controls, /Confirm Rematch/);
   assert.match(controls, /Confirm Void & Refund/);
   assert.match(controls, /crypto\.randomUUID\(\)/);
-  assert.match(route, /payload\.action === "desync_rematch"/);
-  assert.match(route, /payload\.action === "desync_void_refund"/);
+  assert.match(route, /action === "desync_rematch"/);
+  assert.match(route, /action === "desync_void_refund"/);
   assert.match(route, /if \(!viewer\.isAdmin\)/);
   assert.match(route, /status: 403/);
   assert.match(route, /idempotencyKey/);

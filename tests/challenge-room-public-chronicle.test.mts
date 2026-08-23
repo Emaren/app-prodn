@@ -31,8 +31,7 @@ test("only duelists and commissioner may write to the public room", () => {
 });
 
 test("room messages are stored inside the exact scheduled match activity stream", () => {
-  assert.match(route, /payload\.action !== "room_message"/);
-  assert.match(route, /payload\.action === "room_message"/);
+  assert.match(route, /action === "room_message"/);
   assert.match(route, /scheduledMatchId: challengeId/);
   assert.match(route, /eventType: "room_message"/);
   assert.match(route, /publicMatchRoom: true/);

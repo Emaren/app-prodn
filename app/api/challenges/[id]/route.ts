@@ -20,6 +20,14 @@ import {
   buildChallengeFundBy,
   buildChallengePlayBy,
 } from "@/lib/challengeLifecycle";
+import {
+  parseChallengeAction,
+  type ChallengeActorRole,
+  type ChallengeMutationPayload,
+} from "@/lib/challenge/domain/contracts";
+import {
+  ChallengeConflictError,
+} from "@/lib/challenge/domain/errors";
 import { ChallengeDesyncError } from "@/lib/desyncChallenge";
 import { resolveChallengeDesyncDisposition } from "@/lib/desyncChallengeProtocol";
 import { TERMINAL_TITLE_CHALLENGE_STATUSES } from "@/lib/challengeTitlePolicy";
@@ -53,15 +61,6 @@ const MANAGEABLE_DISPLAY_STATES = new Set([
   "funded",
   "checkin_open",
 ]);
-
-class ChallengeConflictError extends Error {
-  status: number;
-  constructor(message: string, status = 409) {
-    super(message);
-    this.name = "ChallengeConflictError";
-    this.status = status;
-  }
-}
 
 const VIEWER_SELECT = {
   id: true,
@@ -474,25 +473,14 @@ export async function PATCH(
       return NextResponse.json({ detail: "Challenge id is invalid." }, { status: 400 });
     }
 
-    const payload = (await request.json().catch(() => ({}))) as {
-      action?: string;
-      scheduledAt?: string;
-      matchTime?: string;
-      challengeNote?: string;
-      wagerAmountWolo?: string | number | null;
-      guaranteeAmountWolo?: string | number | null;
-      fundingTxHash?: string;
-      fundingWalletAddress?: string;
-      linkedSessionKey?: string;
-      linkedMapName?: string;
-      linkedWinner?: string;
-      linkedDurationSeconds?: number;
-      desyncIncidentId?: number;
-      idempotencyKey?: string;
-      rematchAt?: string;
-      note?: string;
-      message?: string;
-    };
+    const payload =
+      (
+        await request
+          .json()
+          .catch(
+            () => ({}),
+          )
+      ) as ChallengeMutationPayload;
 
     const scheduledMatch = await prisma.scheduledMatch.findUnique({
       where: { id: challengeId },
@@ -515,26 +503,33 @@ export async function PATCH(
     const challengeLabel = buildChallengeLabel({ challengerName, challengedName });
     const currentSurface = computeChallengeSurface(scheduledMatch);
     const fundingTotal = totalFundingWolo(scheduledMatch);
-    const viewerRole = viewerIsChallenger ? "challenger" : viewerIsChallenged ? "challenged" : "admin";
+    const viewerRole:
+      ChallengeActorRole =
+        viewerIsChallenger
+          ? "challenger"
+          : viewerIsChallenged
+          ? "challenged"
+          : "admin";
 
-    if (
-      payload.action !== "accept" &&
-      payload.action !== "decline" &&
-      payload.action !== "cancel" &&
-      payload.action !== "reschedule" &&
-      payload.action !== "confirm_time" &&
-      payload.action !== "fund" &&
-      payload.action !== "check_in" &&
-      payload.action !== "resolve_no_show" &&
-      payload.action !== "mark_completed" &&
-      payload.action !== "desync_rematch" &&
-      payload.action !== "desync_void_refund" &&
-      payload.action !== "room_message"
-    ) {
-      return NextResponse.json({ detail: "Unknown challenge action." }, { status: 400 });
+    const action =
+      parseChallengeAction(
+        payload.action,
+      );
+
+    if (!action) {
+      return NextResponse.json(
+        {
+          detail:
+            "Unknown challenge action.",
+        },
+        {
+          status:
+            400,
+        },
+      );
     }
 
-    if (payload.action === "room_message") {
+    if (action === "room_message") {
       const message =
         typeof payload.message === "string"
           ? payload.message.trim()
@@ -569,8 +564,8 @@ export async function PATCH(
     }
 
     if (
-      payload.action === "desync_rematch" ||
-      payload.action === "desync_void_refund"
+      action === "desync_rematch" ||
+      action === "desync_void_refund"
     ) {
       if (!viewer.isAdmin) {
         return NextResponse.json(
@@ -595,9 +590,24 @@ export async function PATCH(
         );
       }
 
-      const action = payload.action === "desync_rematch" ? "rematch" : "void_refund";
-      const rematchAt = action === "rematch" ? parseScheduledMatchDate(payload.rematchAt) : null;
-      if (action === "rematch") {
+      const dispositionAction =
+        action ===
+        "desync_rematch"
+          ? "rematch"
+          : "void_refund";
+
+      const rematchAt =
+        dispositionAction ===
+        "rematch"
+          ? parseScheduledMatchDate(
+              payload.rematchAt,
+            )
+          : null;
+
+      if (
+        dispositionAction ===
+        "rematch"
+      ) {
         if (!rematchAt) {
           return NextResponse.json(
             { detail: "Choose a valid future time for the rematch." },
@@ -615,7 +625,8 @@ export async function PATCH(
         viewerUid: viewer.uid,
         challengeId,
         incidentId: desyncIncidentId,
-        action,
+        action:
+          dispositionAction,
         idempotencyKey,
         rematchAt,
         note: payload.note?.trim().slice(0, 1_000) || null,
@@ -624,7 +635,7 @@ export async function PATCH(
       return NextResponse.json({ ...refreshed, desyncResolution });
     }
 
-    if (payload.action === "accept") {
+    if (action === "accept") {
       if (!viewerIsChallenged) {
         return NextResponse.json(
           { detail: "Only the challenged player can accept this match." },
@@ -758,7 +769,7 @@ export async function PATCH(
       });
     }
 
-    if (payload.action === "decline") {
+    if (action === "decline") {
       if (!viewerIsChallenged) {
         return NextResponse.json(
           { detail: "Only the challenged player can decline this match." },
@@ -841,7 +852,7 @@ export async function PATCH(
       });
     }
 
-    if (payload.action === "cancel") {
+    if (action === "cancel") {
       const hasAnyFunding =
         Boolean(scheduledMatch.challengerFundedAt) || Boolean(scheduledMatch.challengedFundedAt);
       const hasAnyCheckIn =
@@ -952,7 +963,7 @@ export async function PATCH(
       });
     }
 
-    if (payload.action === "reschedule") {
+    if (action === "reschedule") {
       if (!scheduledMatch.acceptedAt && !viewerIsChallenger && !viewer.isAdmin) {
         return NextResponse.json(
           { detail: "Only the challenger can change terms or propose a time before acceptance." },
@@ -1183,7 +1194,7 @@ export async function PATCH(
       });
     }
 
-    if (payload.action === "confirm_time") {
+    if (action === "confirm_time") {
       if (!scheduledMatch.acceptedAt) {
         return NextResponse.json(
           { detail: "Accept the challenge first. Acceptance confirms the initially proposed exact time." },
@@ -1273,7 +1284,7 @@ export async function PATCH(
       });
     }
 
-    if (payload.action === "fund") {
+    if (action === "fund") {
       const fundingTxHash = payload.fundingTxHash?.trim().toUpperCase() ?? "";
       const fundingWalletAddress = payload.fundingWalletAddress?.trim() || "";
 
@@ -1491,7 +1502,7 @@ export async function PATCH(
       });
     }
 
-    if (payload.action === "check_in") {
+    if (action === "check_in") {
       if (scheduledMatch.timingMode !== "scheduled" || !scheduledMatch.matchTime) {
         return NextResponse.json(
           { detail: "Play-anytime challenges do not require check-in. Propose an exact time first if you want the scheduling rail." },
@@ -1588,7 +1599,7 @@ export async function PATCH(
       });
     }
 
-    if (payload.action === "resolve_no_show") {
+    if (action === "resolve_no_show") {
       if (!viewerIsChallenger && !viewerIsChallenged && !viewer.isAdmin) {
         return NextResponse.json({ detail: "Only participants or admins can resolve no-show state." }, { status: 403 });
       }
@@ -1641,7 +1652,7 @@ export async function PATCH(
       });
     }
 
-    if (payload.action === "mark_completed") {
+    if (action === "mark_completed") {
       if (!viewer.isAdmin) {
         return NextResponse.json(
           { detail: "Only admins can mark this match result-ready for settlement." },
