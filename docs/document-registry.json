@@ -37,7 +37,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-22",
       "sensitivity": "internal",
-      "sha256": "9971699b171999a5d1bbfa65613e65e64dbf7bea0f317b541d909baded3b695b",
+      "sha256": "d36105415f5c2df6c2ff48da65ac5f0ff2b29f8ba1e9612867f52ab526759977",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "70d4476966ee0783ccdb27fe468fcc8eb2a303db2d4a49cae0d82a3dcd5e4f2d",
+      "sha256": "ee3578f03134ca21c48117c40d33361417110c5002d32d652660d186982ce274",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -888,7 +888,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-22",
       "sensitivity": "internal",
-      "sha256": "9ec5594a425724ddefe6a552a5e3173ee5d7a95373fbddf047971cfe2329ade6",
+      "sha256": "c66e0995adc3756e26357d9ad6dc52807b313853cde614c184466f1118ca0f02",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1184,7 +1184,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-22",
       "sensitivity": "internal",
-      "sha256": "d0d43e207b098fb4f5a4e2431148d8a525eebaabb0cdd7bc1b2ed8d2f9cfbe0f",
+      "sha256": "01a113f6d6cc37b2bd811ca174ec30c4c263a94ae4145615c873de0e84740fea",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1628,7 +1628,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "direct-chat-os-v1-2",
-    "commit": "3874806a2cb9784fe8e499df8ab91f754b3dad70"
+    "commit": "6534fec79b53b89873fc73f2a39cc8fb597e5c8c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
