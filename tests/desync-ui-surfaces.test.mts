@@ -132,13 +132,17 @@ test("Challenge room exposes three independent axes without projecting a winner"
   assert.match(challengeTiles, /linkedWinner: desyncReviewActive \? null/);
 });
 
-test("commissioner desync actions are two-step, admin-only, and idempotent", () => {
+test("commissioner desync actions are two-step, admin-only, idempotent, and domain delegated", () => {
   const controls = readFileSync(
     new URL("../components/challenge/ChallengeRoomControls.tsx", import.meta.url),
     "utf8"
   );
   const route = readFileSync(
     new URL("../app/api/challenges/[id]/route.ts", import.meta.url),
+    "utf8"
+  );
+  const commands = readFileSync(
+    new URL("../lib/challenge/domain/commands.ts", import.meta.url),
     "utf8"
   );
 
@@ -148,12 +152,18 @@ test("commissioner desync actions are two-step, admin-only, and idempotent", () 
   assert.match(controls, /Confirm Rematch/);
   assert.match(controls, /Confirm Void & Refund/);
   assert.match(controls, /crypto\.randomUUID\(\)/);
+
   assert.match(route, /action === "desync_rematch"/);
   assert.match(route, /action === "desync_void_refund"/);
-  assert.match(route, /if \(!viewer\.isAdmin\)/);
-  assert.match(route, /status: 403/);
-  assert.match(route, /idempotencyKey/);
-  assert.match(route, /resolveChallengeDesyncDisposition/);
+  assert.match(route, /resolveChallengeDesync\(/);
+  assert.doesNotMatch(route, /resolveChallengeDesyncDisposition/);
+  assert.doesNotMatch(route, /validateScheduledAtWindow/);
+
+  assert.match(commands, /export async function resolveChallengeDesync\(/);
+  assert.match(commands, /!input\.actor\.isAdmin/);
+  assert.match(commands, /idempotencyKey/);
+  assert.match(commands, /validateChallengeScheduledAtWindow\(/);
+  assert.match(commands, /resolveChallengeDesyncDisposition\(/);
 });
 
 test("main lobby match cards project current human-confirmed desync truth", () => {

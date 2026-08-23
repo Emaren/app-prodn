@@ -24,6 +24,10 @@ import {
 } from "@/lib/woloBetSettlement";
 
 import {
+  resolveChallengeDesyncDisposition,
+} from "@/lib/desyncChallengeProtocol";
+
+import {
   recordChallengeActivity,
 } from "@/lib/challenge/domain/activity";
 
@@ -47,6 +51,7 @@ import {
   planChallengeNoShowResolution,
   planChallengeReschedule,
   planChallengeTimeConfirmation,
+  validateChallengeScheduledAtWindow,
 } from "@/lib/challenge/domain/transitionPolicy";
 
 import {
@@ -3033,6 +3038,228 @@ export async function resolveChallengeNoShow(
           },
         );
       }
+    },
+  );
+}
+
+
+export type ChallengeDesyncCommandAction =
+  | "desync_rematch"
+  | "desync_void_refund";
+
+
+export type ChallengeDesyncRequest = {
+  action:
+    ChallengeDesyncCommandAction;
+
+  desyncIncidentId:
+    unknown;
+
+  idempotencyKey:
+    unknown;
+
+  rematchAt?:
+    unknown;
+
+  note?:
+    unknown;
+};
+
+
+function parseChallengeDesyncRematchAt(
+  value:
+    unknown,
+) {
+  if (
+    typeof value !==
+      "string" ||
+    !value.trim()
+  ) {
+    return null;
+  }
+
+  const parsed =
+    new Date(
+      value,
+    );
+
+  if (
+    Number.isNaN(
+      parsed.getTime(),
+    )
+  ) {
+    return null;
+  }
+
+  return parsed;
+}
+
+export async function resolveChallengeDesync(
+  input: {
+    prisma:
+      PrismaClient;
+
+    challengeId:
+      number;
+
+    actor: {
+      uid:
+        string;
+
+      isAdmin:
+        boolean;
+    };
+
+    request:
+      ChallengeDesyncRequest;
+
+    now?:
+      Date;
+  },
+) {
+  if (
+    !input.actor.isAdmin
+  ) {
+    throw new ChallengeConflictError(
+      "Only a site admin can resolve a confirmed desync.",
+      403,
+    );
+  }
+
+
+  const desyncIncidentId =
+    Number(
+      input
+        .request
+        .desyncIncidentId,
+    );
+
+  if (
+    !Number.isSafeInteger(
+      desyncIncidentId,
+    ) ||
+    desyncIncidentId <= 0
+  ) {
+    throw new ChallengeConflictError(
+      "Choose the confirmed desync incident to resolve.",
+      400,
+    );
+  }
+
+
+  const idempotencyKey =
+    typeof input
+      .request
+      .idempotencyKey ===
+      "string"
+      ? input
+          .request
+          .idempotencyKey
+          .trim()
+      : "";
+
+  if (
+    !idempotencyKey ||
+    idempotencyKey.length >
+      128
+  ) {
+    throw new ChallengeConflictError(
+      "A valid idempotency key is required for commissioner disposition.",
+      400,
+    );
+  }
+
+
+  const dispositionAction =
+    input.request.action ===
+    "desync_rematch"
+      ? "rematch"
+      : "void_refund";
+
+
+  const now =
+    input.now ??
+    new Date();
+
+
+  const rematchAt =
+    dispositionAction ===
+    "rematch"
+      ? parseChallengeDesyncRematchAt(
+          input.request.rematchAt,
+        )
+      : null;
+
+
+  if (
+    dispositionAction ===
+    "rematch"
+  ) {
+    if (
+      !rematchAt
+    ) {
+      throw new ChallengeConflictError(
+        "Choose a valid future time for the rematch.",
+        400,
+      );
+    }
+
+    const scheduledAtWindowError =
+      validateChallengeScheduledAtWindow(
+        rematchAt,
+        now,
+      );
+
+    if (
+      scheduledAtWindowError
+    ) {
+      throw new ChallengeConflictError(
+        scheduledAtWindowError,
+        400,
+      );
+    }
+  }
+
+
+  const note =
+    typeof input
+      .request
+      .note ===
+      "string"
+      ? input
+          .request
+          .note
+          .trim()
+          .slice(
+            0,
+            1_000,
+          ) ||
+        null
+      : null;
+
+
+  return resolveChallengeDesyncDisposition(
+    {
+      prisma:
+        input.prisma,
+
+      viewerUid:
+        input.actor.uid,
+
+      challengeId:
+        input.challengeId,
+
+      incidentId:
+        desyncIncidentId,
+
+      action:
+        dispositionAction,
+
+      idempotencyKey,
+
+      rematchAt,
+
+      note,
     },
   );
 }

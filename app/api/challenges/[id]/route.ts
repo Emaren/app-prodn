@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   loadChallengeHubSnapshot,
   loadChallengeTileById,
-  parseScheduledMatchDate,
 } from "@/lib/challenges";
 import {
   buildChallengeEconomySurface,
@@ -22,6 +21,7 @@ import {
   declineChallenge,
   fundChallenge,
   rescheduleChallenge,
+  resolveChallengeDesync,
   resolveChallengeNoShow,
 } from "@/lib/challenge/domain/commands";
 import {
@@ -31,7 +31,6 @@ import {
   ChallengeConflictError,
 } from "@/lib/challenge/domain/errors";
 import { ChallengeDesyncError } from "@/lib/desyncChallenge";
-import { resolveChallengeDesyncDisposition } from "@/lib/desyncChallengeProtocol";
 import { postChallengeCommissionerNotice, postChallengeInboxNotice } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
@@ -40,8 +39,6 @@ import { recordUserActivity } from "@/lib/userExperience";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const SCHEDULE_WINDOW_MIN_MS = 2 * 60 * 1000;
-const SCHEDULE_WINDOW_MAX_MS = 30 * 24 * 60 * 60 * 1000;
 
 const VIEWER_SELECT = {
   id: true,
@@ -127,20 +124,6 @@ function buildChallengeLabel({
   challengedName: string;
 }) {
   return `${challengerName} vs ${challengedName}`;
-}
-
-function validateScheduledAtWindow(scheduledAt: Date) {
-  const now = Date.now();
-
-  if (scheduledAt.getTime() < now + SCHEDULE_WINDOW_MIN_MS) {
-    return "Schedule the game at least two minutes ahead.";
-  }
-
-  if (scheduledAt.getTime() > now + SCHEDULE_WINDOW_MAX_MS) {
-    return "Keep exact match times inside the next 30 days.";
-  }
-
-  return null;
 }
 
 async function requireViewer(request: NextRequest) {
@@ -381,72 +364,51 @@ export async function PATCH(
       action === "desync_rematch" ||
       action === "desync_void_refund"
     ) {
-      if (!viewer.isAdmin) {
-        return NextResponse.json(
-          { detail: "Only a site admin can resolve a confirmed desync." },
-          { status: 403 }
+      const desyncResolution =
+        await resolveChallengeDesync(
+          {
+            prisma,
+
+            challengeId,
+
+            actor: {
+              uid:
+                viewer.uid,
+
+              isAdmin:
+                viewer.isAdmin,
+            },
+
+            request: {
+              action,
+
+              desyncIncidentId:
+                payload.desyncIncidentId,
+
+              idempotencyKey:
+                payload.idempotencyKey,
+
+              rematchAt:
+                payload.rematchAt,
+
+              note:
+                payload.note,
+            },
+          },
         );
-      }
 
-      const desyncIncidentId = Number(payload.desyncIncidentId);
-      if (!Number.isSafeInteger(desyncIncidentId) || desyncIncidentId <= 0) {
-        return NextResponse.json(
-          { detail: "Choose the confirmed desync incident to resolve." },
-          { status: 400 }
+      const refreshed =
+        await loadChallengeHubSnapshot(
+          prisma,
+          viewer.uid,
         );
-      }
 
-      const idempotencyKey = payload.idempotencyKey?.trim() || "";
-      if (!idempotencyKey || idempotencyKey.length > 128) {
-        return NextResponse.json(
-          { detail: "A valid idempotency key is required for commissioner disposition." },
-          { status: 400 }
-        );
-      }
-
-      const dispositionAction =
-        action ===
-        "desync_rematch"
-          ? "rematch"
-          : "void_refund";
-
-      const rematchAt =
-        dispositionAction ===
-        "rematch"
-          ? parseScheduledMatchDate(
-              payload.rematchAt,
-            )
-          : null;
-
-      if (
-        dispositionAction ===
-        "rematch"
-      ) {
-        if (!rematchAt) {
-          return NextResponse.json(
-            { detail: "Choose a valid future time for the rematch." },
-            { status: 400 }
-          );
-        }
-        const scheduledAtWindowError = validateScheduledAtWindow(rematchAt);
-        if (scheduledAtWindowError) {
-          return NextResponse.json({ detail: scheduledAtWindowError }, { status: 400 });
-        }
-      }
-
-      const desyncResolution = await resolveChallengeDesyncDisposition({
-        prisma,
-        viewerUid: viewer.uid,
-        challengeId,
-        incidentId: desyncIncidentId,
-        action:
-          dispositionAction,
-        idempotencyKey,
-        rematchAt,
-        note: payload.note?.trim().slice(0, 1_000) || null,
-      });
-      const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
-      return NextResponse.json({ ...refreshed, desyncResolution });
+      return NextResponse.json(
+        {
+          ...refreshed,
+          desyncResolution,
+        },
+      );
     }
 
     const lifecycleTransitionContext = {
