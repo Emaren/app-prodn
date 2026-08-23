@@ -20,13 +20,11 @@ import {
   confirmChallengeTime,
   declineChallenge,
   fundChallenge,
+  postChallengeRoomMessage,
   rescheduleChallenge,
   resolveChallengeDesync,
   resolveChallengeNoShow,
 } from "@/lib/challenge/domain/commands";
-import {
-  recordChallengeActivity,
-} from "@/lib/challenge/domain/activity";
 import {
   ChallengeConflictError,
 } from "@/lib/challenge/domain/errors";
@@ -327,37 +325,43 @@ export async function PATCH(
     }
 
     if (action === "room_message") {
-      const message =
-        typeof payload.message === "string"
-          ? payload.message.trim()
-          : "";
+      await postChallengeRoomMessage(
+        {
+          prisma,
 
-      if (!message) {
-        return NextResponse.json(
-          { detail: "Write a Match Room message first." },
-          { status: 400 }
-        );
-      }
+          challengeId,
 
-      if (message.length > 2_000) {
-        return NextResponse.json(
-          { detail: "Match Room messages must be 2,000 characters or shorter." },
-          { status: 413 }
-        );
-      }
+          actor: {
+            id:
+              viewer.id,
 
-      await recordChallengeActivity(prisma, {
-        scheduledMatchId: challengeId,
-        actorUserId: viewer.id,
-        eventType: "room_message",
-        metadata: {
-          message,
-          publicMatchRoom: true,
+            isAdmin:
+              viewer.isAdmin,
+          },
+
+          match: {
+            challengerUserId:
+              scheduledMatch
+                .challengerUserId,
+
+            challengedUserId:
+              scheduledMatch
+                .challengedUserId,
+          },
+
+          request: {
+            message:
+              payload.message,
+          },
         },
-        createdAt: new Date(),
-      });
+      );
 
-      return NextResponse.json({ ok: true });
+      return NextResponse.json(
+        {
+          ok:
+            true,
+        },
+      );
     }
 
     if (

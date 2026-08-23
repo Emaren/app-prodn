@@ -688,11 +688,11 @@ test(
 
     assert.doesNotMatch(
       route,
-      /async function recordChallengeActivity/,
+      /recordChallengeActivity/,
     );
 
     assert.match(
-      route,
+      commands,
       /recordChallengeActivity/,
     );
   },

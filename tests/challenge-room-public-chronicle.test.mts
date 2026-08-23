@@ -12,6 +12,16 @@ const route = readFileSync(
   "utf8"
 );
 
+const commands = readFileSync(
+  new URL("../lib/challenge/domain/commands.ts", import.meta.url),
+  "utf8"
+);
+
+const policy = readFileSync(
+  new URL("../lib/challenge/domain/transitionPolicy.ts", import.meta.url),
+  "utf8"
+);
+
 const page = readFileSync(
   new URL("../app/challenge/[id]/page.tsx", import.meta.url),
   "utf8"
@@ -30,11 +40,21 @@ test("only duelists and commissioner may write to the public room", () => {
   assert.match(conversation, /canPost/);
 });
 
-test("room messages are stored inside the exact scheduled match activity stream", () => {
+test("room messages are planned as public Chronicle activity and persisted through the domain command", () => {
   assert.match(route, /action === "room_message"/);
-  assert.match(route, /scheduledMatchId: challengeId/);
-  assert.match(route, /eventType: "room_message"/);
-  assert.match(route, /publicMatchRoom: true/);
+  assert.match(route, /postChallengeRoomMessage\(/);
+  assert.doesNotMatch(route, /recordChallengeActivity\(/);
+
+  assert.match(policy, /export function planChallengeRoomMessage\(/);
+  assert.match(policy, /eventType:\s*"room_message"/);
+  assert.match(policy, /publicMatchRoom:\s*true/);
+
+  assert.match(commands, /export async function postChallengeRoomMessage\(/);
+  assert.match(commands, /planChallengeRoomMessage\(/);
+  assert.match(commands, /recordChallengeActivity\(/);
+  assert.match(commands, /scheduledMatchId:[\s\S]*input\.challengeId/);
+  assert.match(commands, /eventType:[\s\S]*plan\.eventType/);
+  assert.match(commands, /metadata:[\s\S]*plan\.metadata/);
 });
 
 test("public match room interleaves messages and protocol activity chronologically", () => {

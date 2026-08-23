@@ -49,6 +49,7 @@ import {
   planChallengeFundingState,
   planChallengeManualCompletion,
   planChallengeNoShowResolution,
+  planChallengeRoomMessage,
   planChallengeReschedule,
   planChallengeTimeConfirmation,
   validateChallengeScheduledAtWindow,
@@ -3262,4 +3263,88 @@ export async function resolveChallengeDesync(
       note,
     },
   );
+}
+
+
+export type ChallengeRoomMessageRequest = {
+  message:
+    unknown;
+};
+
+
+export async function postChallengeRoomMessage(
+  input: {
+    prisma:
+      PrismaClient;
+
+    challengeId:
+      number;
+
+    actor: {
+      id:
+        number;
+
+      isAdmin:
+        boolean;
+    };
+
+    match: {
+      challengerUserId:
+        number;
+
+      challengedUserId:
+        number;
+    };
+
+    request:
+      ChallengeRoomMessageRequest;
+
+    now?:
+      Date;
+  },
+) {
+  const plan =
+    planChallengeRoomMessage(
+      {
+        actor:
+          input.actor,
+
+        match:
+          input.match,
+
+        message:
+          input.request.message,
+
+        now:
+          input.now ??
+          new Date(),
+      },
+    );
+
+
+  await recordChallengeActivity(
+    input.prisma,
+    {
+      scheduledMatchId:
+        input.challengeId,
+
+      actorUserId:
+        input.actor.id,
+
+      eventType:
+        plan.eventType,
+
+      metadata:
+        plan.metadata,
+
+      createdAt:
+        plan.createdAt,
+    },
+  );
+
+
+  return {
+    ok:
+      true,
+  } as const;
 }

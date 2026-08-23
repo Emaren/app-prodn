@@ -1615,3 +1615,88 @@ export function planChallengeManualCompletion(
     },
   };
 }
+
+export function planChallengeRoomMessage(
+  input: {
+    actor: {
+      id:
+        number;
+
+      isAdmin:
+        boolean;
+    };
+
+    match: {
+      challengerUserId:
+        number;
+
+      challengedUserId:
+        number;
+    };
+
+    message:
+      unknown;
+
+    now:
+      Date;
+  },
+) {
+  const actorMayWrite =
+    input.actor.isAdmin ||
+    input.actor.id ===
+      input.match.challengerUserId ||
+    input.actor.id ===
+      input.match.challengedUserId;
+
+  if (
+    !actorMayWrite
+  ) {
+    throw new ChallengeConflictError(
+      "You are not part of this scheduled match.",
+      403,
+    );
+  }
+
+
+  const message =
+    typeof input.message ===
+      "string"
+      ? input.message.trim()
+      : "";
+
+  if (
+    !message
+  ) {
+    throw new ChallengeConflictError(
+      "Write a Match Room message first.",
+      400,
+    );
+  }
+
+
+  if (
+    message.length >
+      2_000
+  ) {
+    throw new ChallengeConflictError(
+      "Match Room messages must be 2,000 characters or shorter.",
+      413,
+    );
+  }
+
+
+  return {
+    eventType:
+      "room_message",
+
+    metadata: {
+      message,
+
+      publicMatchRoom:
+        true,
+    },
+
+    createdAt:
+      input.now,
+  } as const;
+}
