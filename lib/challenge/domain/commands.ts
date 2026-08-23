@@ -2290,41 +2290,94 @@ export async function checkInChallenge(
       : match.challengerUserId;
 
   /*
-   * Behavior-preserving extraction:
+   * Attendance becomes economic truth after the lock.
    *
-   * This remains the existing plain update rather than
-   * introducing a new CAS semantic during the refactor.
-   * Concurrency hardening can be evaluated separately.
+   * Bind this write to the exact attendance/schedule/economic
+   * snapshot from which the check-in plan was derived. A
+   * concurrent check-in, reschedule, result, or no-show wins
+   * first and makes this stale request fail closed.
    */
   await prisma.$transaction(
     async (tx) => {
-      await tx
-        .scheduledMatch
-        .update({
-          where: {
-            id:
-              challengeId,
-          },
+      const checkedIn =
+        await tx
+          .scheduledMatch
+          .updateMany({
+            where: {
+              id:
+                challengeId,
 
-          data: {
-            status:
-              plan
-                .nextSurface
-                .persistedStatus,
+              status:
+                match.status,
 
-            challengerCheckedInAt:
-              plan.participantSide ===
-                "left"
-                ? plan.checkedInAt
-                : undefined,
+              timingMode:
+                match.timingMode,
 
-            challengedCheckedInAt:
-              plan.participantSide ===
-                "right"
-                ? plan.checkedInAt
-                : undefined,
-          },
-        });
+              scheduledAt:
+                match.scheduledAt,
+
+              matchTime:
+                match.matchTime,
+
+              acceptedAt:
+                match.acceptedAt,
+
+              wagerAmountWolo:
+                match.wagerAmountWolo,
+
+              guaranteeAmountWolo:
+                match.guaranteeAmountWolo,
+
+              challengerFundedAt:
+                match.challengerFundedAt,
+
+              challengedFundedAt:
+                match.challengedFundedAt,
+
+              challengerCheckedInAt:
+                match.challengerCheckedInAt,
+
+              challengedCheckedInAt:
+                match.challengedCheckedInAt,
+
+              liveConfirmedAt:
+                match.liveConfirmedAt,
+
+              resultAt:
+                null,
+
+              settlementReadyAt:
+                null,
+            },
+
+            data: {
+              status:
+                plan
+                  .nextSurface
+                  .persistedStatus,
+
+              challengerCheckedInAt:
+                plan.participantSide ===
+                  "left"
+                  ? plan.checkedInAt
+                  : undefined,
+
+              challengedCheckedInAt:
+                plan.participantSide ===
+                  "right"
+                  ? plan.checkedInAt
+                  : undefined,
+            },
+          });
+
+      if (
+        checkedIn.count !==
+        1
+      ) {
+        throw new ChallengeConflictError(
+          "Attendance state changed before check-in completed. Refresh and try again.",
+        );
+      }
 
       await recordChallengeActivity(
         tx,
@@ -2543,27 +2596,79 @@ export async function resolveChallengeNoShow(
    */
   await prisma.$transaction(
     async (tx) => {
-      await tx
-        .scheduledMatch
-        .update({
-          where: {
-            id:
-              challengeId,
-          },
+      const resolved =
+        await tx
+          .scheduledMatch
+          .updateMany({
+            where: {
+              id:
+                challengeId,
 
-          data: {
-            status:
-              plan
-                .resolvedSurface
-                .persistedStatus,
+              status:
+                match.status,
 
-            resultAt:
-              plan.resultAt,
+              timingMode:
+                match.timingMode,
 
-            settlementReadyAt:
-              plan.settlementReadyAt,
-          },
-        });
+              scheduledAt:
+                match.scheduledAt,
+
+              matchTime:
+                match.matchTime,
+
+              acceptedAt:
+                match.acceptedAt,
+
+              wagerAmountWolo:
+                match.wagerAmountWolo,
+
+              guaranteeAmountWolo:
+                match.guaranteeAmountWolo,
+
+              challengerFundedAt:
+                match.challengerFundedAt,
+
+              challengedFundedAt:
+                match.challengedFundedAt,
+
+              challengerCheckedInAt:
+                match.challengerCheckedInAt,
+
+              challengedCheckedInAt:
+                match.challengedCheckedInAt,
+
+              liveConfirmedAt:
+                match.liveConfirmedAt,
+
+              resultAt:
+                null,
+
+              settlementReadyAt:
+                null,
+            },
+
+            data: {
+              status:
+                plan
+                  .resolvedSurface
+                  .persistedStatus,
+
+              resultAt:
+                plan.resultAt,
+
+              settlementReadyAt:
+                plan.settlementReadyAt,
+            },
+          });
+
+      if (
+        resolved.count !==
+        1
+      ) {
+        throw new ChallengeConflictError(
+          "Attendance state changed before no-show resolution completed. Refresh before resolving it.",
+        );
+      }
 
       await recordChallengeActivity(
         tx,
