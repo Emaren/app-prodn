@@ -24,7 +24,7 @@ const DEFERRED_CHRONICLE = {
   entries: [],
   hasMore: true,
   nextCursor: null,
-} as const;
+};
 
 export default async function WorkshopPage() {
   const [data, observatory] = await Promise.all([
