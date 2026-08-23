@@ -1,5 +1,16 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import {
+  deriveChallengeFinancialConservation,
+} from "@/lib/challengeFinancialConservation";
+import {
+  challengeSettlementSourceAllocationsForAction,
+  challengeSourceAllocationsEqual,
+  reconcileChallengeSettlementSourceAccounting,
+  sumChallengeSourceAllocations,
+  type ChallengeFundingSourceAllocation,
+  type ChallengeTransferSourceAccounting,
+} from "@/lib/challengeEscrowAccounting";
+import {
   acquireChallengeDesyncAdvisoryLock,
   assertWinnerSettlementAllowed,
   ChallengeDesyncError,
@@ -92,6 +103,40 @@ const SCHEDULED_MATCH_SETTLEMENT_SELECT = {
       createdAt: true,
       updatedAt: true,
       executedAt: true,
+
+      allocations: {
+        /*
+         * Persisted allocation equality is order-independent.
+         *
+         * Use one deterministic Prisma order object rather
+         * than a nested array that becomes a readonly tuple
+         * under the surrounding `as const`.
+         */
+        orderBy: {
+          id:
+            "asc",
+        },
+
+        select: {
+          id:
+            true,
+
+          sourceSide:
+            true,
+
+          sourceBucket:
+            true,
+
+          amountWolo:
+            true,
+
+          allocationVersion:
+            true,
+
+          createdAt:
+            true,
+        },
+      },
     },
   },
 } as const;
@@ -129,6 +174,19 @@ export type ScheduledMatchSettlementTransfer = {
   recipientAddress: string | null;
   recipientLabel: string;
   amountWolo: number;
+
+  /*
+   * Exact original funded principal consumed by this
+   * transfer. This is independent from the human-facing
+   * action name.
+   */
+  sourceAllocations: ChallengeFundingSourceAllocation[];
+
+  /*
+   * Historical source-ledger reconciliation.
+   */
+  sourceAccounting: ChallengeTransferSourceAccounting;
+
   requestId: string;
   memo: string;
   eventType: "refund_sent" | "guarantee_forfeited_to_treasury" | "guarantee_awarded" | "wager_awarded";
@@ -144,6 +202,9 @@ export type ScheduledMatchSettlementTransfer = {
     lastAttemptAt: string | null;
     executedAt: string | null;
     updatedAt: string;
+
+    sourceAllocations:
+      ChallengeFundingSourceAllocation[];
   } | null;
 };
 
@@ -186,6 +247,9 @@ export type ScheduledMatchSettlementPlan = {
     refundWolo: number;
     treasuryWolo: number;
     executedWolo: number;
+    remainingLiabilityWolo: number;
+    projectedSettlementWolo: number;
+    conservationOk: boolean;
     failedTransferCount: number;
   };
   blockers: string[];
@@ -339,6 +403,15 @@ function transferRequestId(matchId: number, action: string) {
 function buildExistingSettlementMap(row: ScheduledMatchSettlementRow) {
   const map = new Map<string, ScheduledMatchSettlementTransfer["existingSettlement"]>();
   for (const settlement of row.settlements) {
+    // Superseded rows remain immutable history but are
+    // never the current economic obligation.
+    if (
+      normalizeStatus(settlement.status) ===
+      "superseded"
+    ) {
+      continue;
+    }
+
     const key = settlementKey({
       action: settlement.action,
       recipientAddress: settlement.recipientAddress,
@@ -353,6 +426,24 @@ function buildExistingSettlementMap(row: ScheduledMatchSettlementRow) {
       lastAttemptAt: settlement.lastAttemptAt?.toISOString() ?? null,
       executedAt: settlement.executedAt?.toISOString() ?? null,
       updatedAt: settlement.updatedAt.toISOString(),
+
+      sourceAllocations:
+        settlement.allocations.map(
+          (allocation) => ({
+            side:
+              allocation.sourceSide as
+                | "left"
+                | "right",
+
+            bucket:
+              allocation.sourceBucket as
+                | "wager"
+                | "guarantee",
+
+            amountWolo:
+              allocation.amountWolo,
+          }),
+        ),
     });
   }
   return map;
@@ -412,6 +503,35 @@ function addTransfer(
     recipientAddress: input.recipientAddress,
     recipientLabel: input.recipientLabel,
     amountWolo: input.amountWolo,
+
+    sourceAllocations:
+      challengeSettlementSourceAllocationsForAction({
+        action: input.action,
+        amountWolo: input.amountWolo,
+
+        wagerAmountWolo:
+          row.wagerAmountWolo,
+
+        guaranteeAmountWolo:
+          row.guaranteeAmountWolo,
+
+        leftFunded:
+          Boolean(
+            row.challengerFundingTxHash?.trim(),
+          ),
+
+        rightFunded:
+          Boolean(
+            row.challengedFundingTxHash?.trim(),
+          ),
+      }),
+
+    sourceAccounting: {
+      satisfiedByHistory: false,
+      satisfiedBySettlementIds: [],
+      blocker: null,
+    },
+
     requestId: transferRequestId(row.id, input.action),
     memo: compactMemo(`AoE2 challenge #${row.id} ${input.label}`),
     eventType: input.eventType,
@@ -645,6 +765,54 @@ function transferBlockers(plan: {
     if (transfer.amountWolo < 1) {
       blockers.push(`${transfer.label} has no positive WOLO amount.`);
     }
+
+    const sourceAllocationWolo =
+      sumChallengeSourceAllocations(
+        transfer.sourceAllocations,
+      );
+
+    if (
+      transfer.sourceAllocations.length === 0 ||
+      sourceAllocationWolo !== transfer.amountWolo
+    ) {
+      blockers.push(
+        `${transfer.label} has no exact escrow source accounting: ` +
+        `${sourceAllocationWolo.toLocaleString()} WOLO allocated ` +
+        `for a ${transfer.amountWolo.toLocaleString()} WOLO transfer.`,
+      );
+    }
+
+
+    if (
+      transfer.existingSettlement
+    ) {
+      const persisted =
+        transfer
+          .existingSettlement
+          .sourceAllocations;
+
+      if (
+        persisted.length ===
+        0
+      ) {
+        blockers.push(
+          `PERSISTED ESCROW ALLOCATION MISSING: ` +
+          `settlement #${transfer.existingSettlement.id} ` +
+          `has no durable funded-source allocation.`,
+        );
+      } else if (
+        !challengeSourceAllocationsEqual(
+          persisted,
+          transfer.sourceAllocations,
+        )
+      ) {
+        blockers.push(
+          `PERSISTED ESCROW ALLOCATION MISMATCH: ` +
+          `settlement #${transfer.existingSettlement.id} ` +
+          `does not match the current economic obligation.`,
+        );
+      }
+    }
   }
 
   if (plan.transfers.some((transfer) => transfer.reason === "treasury") && !plan.treasuryAddress) {
@@ -676,9 +844,10 @@ function determinePlanState(input: {
     };
   }
 
-  const executedTransfers = input.transfers.filter(
-    (transfer) => transfer.existingSettlement?.status === "executed" && transfer.existingSettlement.txHash
-  );
+  const executedTransfers =
+    input.transfers.filter(
+      isTransferExecuted,
+    );
   if (input.transfers.length > 0 && executedTransfers.length === input.transfers.length) {
     return {
       state: "executed" as const,
@@ -710,9 +879,22 @@ function determinePlanState(input: {
   };
 }
 
-function isTransferExecuted(transfer: ScheduledMatchSettlementTransfer) {
+function isTransferExecuted(
+  transfer: ScheduledMatchSettlementTransfer,
+) {
   return Boolean(
-    transfer.existingSettlement?.status === "executed" && transfer.existingSettlement.txHash
+    transfer
+      .sourceAccounting
+      .satisfiedByHistory ||
+    (
+      transfer
+        .existingSettlement
+        ?.status ===
+        "executed" &&
+      transfer
+        .existingSettlement
+        .txHash
+    )
   );
 }
 
@@ -744,11 +926,106 @@ export function buildScheduledMatchSettlementPlan(
     treasuryAddress,
     existingMap,
   });
+
+  const sourceAccounting =
+    reconcileChallengeSettlementSourceAccounting({
+      wagerAmountWolo:
+        row.wagerAmountWolo,
+
+      guaranteeAmountWolo:
+        row.guaranteeAmountWolo,
+
+      leftFunded:
+        left.funded,
+
+      rightFunded:
+        right.funded,
+
+      settlements:
+        row.settlements.map(
+          (settlement) => ({
+            id:
+              settlement.id,
+
+            status:
+              settlement.status,
+
+            action:
+              settlement.action,
+
+            recipientAddress:
+              settlement.recipientAddress,
+
+            amountWolo:
+              settlement.amountWolo,
+
+            txHash:
+              settlement.txHash,
+
+            sourceAllocations:
+              settlement.allocations.map(
+                (allocation) => ({
+                  side:
+                    allocation.sourceSide as
+                      | "left"
+                      | "right",
+
+                  bucket:
+                    allocation.sourceBucket as
+                      | "wager"
+                      | "guarantee",
+
+                  amountWolo:
+                    allocation.amountWolo,
+                }),
+              ),
+          }),
+        ),
+
+      transfers:
+        transfers.map(
+          (transfer) => ({
+            label:
+              transfer.label,
+
+            recipientAddress:
+              transfer.recipientAddress,
+
+            amountWolo:
+              transfer.amountWolo,
+
+            sourceAllocations:
+              transfer.sourceAllocations,
+          }),
+        ),
+    });
+
+  sourceAccounting
+    .transferAccounting
+    .forEach(
+      (
+        accounting,
+        index,
+      ) => {
+        const transfer =
+          transfers[index];
+
+        if (transfer) {
+          transfer.sourceAccounting =
+            accounting;
+        }
+      },
+    );
+
   const blockers = transferBlockers({
     sourceWalletAddress,
     treasuryAddress,
     transfers,
   });
+
+  blockers.push(
+    ...sourceAccounting.blockers,
+  );
   if (normalizeStatus(row.status) === "completed") {
     const winnerKey = normalizeIdentity(row.linkedWinner);
     const leftMatches = Boolean(winnerKey) && participantAliases(row.challenger).has(winnerKey);
@@ -760,6 +1037,50 @@ export function buildScheduledMatchSettlementPlan(
       blockers.push("Completed wager settlement requires both participants to have verified funding.");
     }
   }
+  const pendingPlanWolo = transfers
+    .filter(
+      (transfer) =>
+        !isTransferExecuted(transfer),
+    )
+    .reduce(
+      (sum, transfer) =>
+        sum + transfer.amountWolo,
+      0,
+    );
+
+  /*
+   * This is the Challenge V3 financial firewall.
+   *
+   * It deliberately consumes ALL historical rows marked
+   * executed, including rows generated by older planner
+   * action names.
+   *
+   * A renamed or restructured planner therefore cannot
+   * regain spending authority over already-consumed
+   * Challenge principal.
+   */
+  const conservation =
+    deriveChallengeFinancialConservation({
+      fundingEachWolo:
+        row.wagerAmountWolo +
+        row.guaranteeAmountWolo,
+
+      leftFunded:
+        left.funded,
+
+      rightFunded:
+        right.funded,
+
+      settlements:
+        row.settlements,
+
+      pendingPlanWolo,
+    });
+
+  blockers.unshift(
+    ...conservation.blockers,
+  );
+
   const planState = determinePlanState({
     status: row.status,
     fundedCount: fundedParticipants.length,
@@ -767,9 +1088,8 @@ export function buildScheduledMatchSettlementPlan(
     blockers,
   });
   const plannedTransferWolo = transfers.reduce((sum, transfer) => sum + transfer.amountWolo, 0);
-  const executedWolo = transfers
-    .filter((transfer) => transfer.existingSettlement?.status === "executed")
-    .reduce((sum, transfer) => sum + transfer.amountWolo, 0);
+  const executedWolo =
+    conservation.historicalExecutedWolo;
 
   return {
     id: row.id,
@@ -799,7 +1119,7 @@ export function buildScheduledMatchSettlementPlan(
     liability: {
       fundedParticipantCount: fundedParticipants.length,
       fundedLiabilityWolo:
-        fundedParticipants.length * (row.wagerAmountWolo + row.guaranteeAmountWolo),
+        conservation.fundedLiabilityWolo,
       plannedTransferWolo,
       refundWolo: transfers
         .filter((transfer) => transfer.reason === "refund")
@@ -808,6 +1128,12 @@ export function buildScheduledMatchSettlementPlan(
         .filter((transfer) => transfer.reason === "treasury")
         .reduce((sum, transfer) => sum + transfer.amountWolo, 0),
       executedWolo,
+      remainingLiabilityWolo:
+        conservation.remainingLiabilityWolo,
+      projectedSettlementWolo:
+        conservation.projectedSettlementWolo,
+      conservationOk:
+        conservation.ok,
       failedTransferCount: transfers.filter(
         (transfer) => transfer.existingSettlement?.status === "failed"
       ).length,
@@ -1072,8 +1398,25 @@ function assertExecutablePlan(plan: ScheduledMatchSettlementPlan) {
   }
 }
 
-function isRecentExecuting(transfer: ScheduledMatchSettlementTransfer) {
-  if (transfer.existingSettlement?.status !== "executing") return false;
+function isRecentExecuting(
+  transfer: ScheduledMatchSettlementTransfer,
+) {
+  if (
+    isTransferExecuted(
+      transfer,
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    transfer
+      .existingSettlement
+      ?.status !==
+    "executing"
+  ) {
+    return false;
+  }
   const updatedAt = new Date(transfer.existingSettlement.updatedAt).getTime();
   return Number.isFinite(updatedAt) && Date.now() - updatedAt < EXECUTION_STALE_MS;
 }
@@ -1170,7 +1513,11 @@ async function markSettlementExecutionStarted(
     }
 
     for (const transfer of plan.transfers) {
-      if (transfer.existingSettlement?.status === "executed" && transfer.existingSettlement.txHash) {
+      if (
+        isTransferExecuted(
+          transfer,
+        )
+      ) {
         continue;
       }
 
@@ -1194,6 +1541,27 @@ async function markSettlementExecutionStarted(
           errorDetail: null,
           attemptCount: 1,
           lastAttemptAt: new Date(),
+
+          allocations: {
+            create:
+              transfer
+                .sourceAllocations
+                .map(
+                  (allocation) => ({
+                    sourceSide:
+                      allocation.side,
+
+                    sourceBucket:
+                      allocation.bucket,
+
+                    amountWolo:
+                      allocation.amountWolo,
+
+                    allocationVersion:
+                      1,
+                  }),
+                ),
+          },
         },
         update: {
           status: "executing",

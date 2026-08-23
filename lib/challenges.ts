@@ -1,6 +1,10 @@
 
 import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import {
+  deriveChallengeFinancialConservation,
+  effectiveChallengeSettlementRows,
+} from "@/lib/challengeFinancialConservation";
+import {
   buildChallengeEconomySurface,
   type ScheduledMatchDisplayState,
   type ScheduledMatchEconomySurface,
@@ -984,36 +988,174 @@ function challengeMoneyLabel(state: ChallengeMoneyState) {
 }
 
 function buildChallengeMoneySurface(row: ScheduledMatchRow) {
-  const executed = row.settlements.filter((settlement) => settlement.status === "executed" && settlement.txHash);
-  const failed = row.settlements.filter((settlement) => settlement.status === "failed");
-  const terminalStatus = row.status.toLowerCase();
-  const isRefundTerminal = ["canceled", "cancelled", "expired", "funding_expired", "refunded"].includes(terminalStatus);
-  const fundedCount = Number(Boolean(row.challengerFundedAt)) + Number(Boolean(row.challengedFundedAt));
-  const inferredPlannedTransfers = isRefundTerminal ? fundedCount : terminalStatus === "completed" && fundedCount === 2 ? 3 : 0;
-  const plannedTransferCount = Math.max(row.settlements.length, inferredPlannedTransfers);
-  const state = deriveChallengeMoneyState({
-    challengerFunded: Boolean(row.challengerFundedAt),
-    challengedFunded: Boolean(row.challengedFundedAt),
+  /*
+   * Superseded rows are retained as historical evidence,
+   * but they are not part of the effective money plan.
+   */
+  const effectiveSettlements =
+    effectiveChallengeSettlementRows(
+      row.settlements,
+    );
+
+  const executed =
+    effectiveSettlements.filter(
+      (settlement) =>
+        settlement.status === "executed" &&
+        settlement.txHash,
+    );
+
+  const failed =
+    effectiveSettlements.filter(
+      (settlement) =>
+        settlement.status === "failed",
+    );
+
+  const terminalStatus =
+    row.status.toLowerCase();
+
+  const isRefundTerminal = [
+    "canceled",
+    "cancelled",
+    "expired",
+    "funding_expired",
+    "refunded",
+  ].includes(
     terminalStatus,
-    plannedTransferCount,
-    executedTransferCount: executed.length,
-    failedTransferCount: failed.length,
-  });
-  const executedWolo = executed.reduce((sum, settlement) => sum + settlement.amountWolo, 0);
-  const plannedWolo = row.settlements.length > 0
-    ? row.settlements.reduce((sum, settlement) => sum + settlement.amountWolo, 0)
-    : isRefundTerminal
-      ? fundedCount * (row.wagerAmountWolo + row.guaranteeAmountWolo)
-      : terminalStatus === "completed" && fundedCount === 2
-        ? 2 * (row.wagerAmountWolo + row.guaranteeAmountWolo)
+  );
+
+  const challengerFunded =
+    Boolean(
+      row.challengerFundedAt,
+    );
+
+  const challengedFunded =
+    Boolean(
+      row.challengedFundedAt,
+    );
+
+  const fundedCount =
+    Number(challengerFunded) +
+    Number(challengedFunded);
+
+  const inferredPlannedTransfers =
+    isRefundTerminal
+      ? fundedCount
+      : terminalStatus === "completed" &&
+          fundedCount === 2
+        ? 3
         : 0;
+
+  const plannedTransferCount =
+    Math.max(
+      effectiveSettlements.length,
+      inferredPlannedTransfers,
+    );
+
+  let state =
+    deriveChallengeMoneyState({
+      challengerFunded,
+      challengedFunded,
+      terminalStatus,
+      plannedTransferCount,
+      executedTransferCount:
+        executed.length,
+      failedTransferCount:
+        failed.length,
+    });
+
+  const executedWolo =
+    executed.reduce(
+      (sum, settlement) =>
+        sum + settlement.amountWolo,
+      0,
+    );
+
+  const plannedWolo =
+    effectiveSettlements.length > 0
+      ? effectiveSettlements.reduce(
+          (sum, settlement) =>
+            sum +
+            settlement.amountWolo,
+          0,
+        )
+      : isRefundTerminal
+        ? fundedCount *
+          (
+            row.wagerAmountWolo +
+            row.guaranteeAmountWolo
+          )
+        : terminalStatus === "completed" &&
+            fundedCount === 2
+          ? 2 *
+            (
+              row.wagerAmountWolo +
+              row.guaranteeAmountWolo
+            )
+          : 0;
+
+  const pendingEffectiveWolo =
+    effectiveSettlements
+      .filter(
+        (settlement) =>
+          settlement.status !==
+          "executed",
+      )
+      .reduce(
+        (sum, settlement) =>
+          sum +
+          settlement.amountWolo,
+        0,
+      );
+
+  const conservation =
+    deriveChallengeFinancialConservation({
+      fundingEachWolo:
+        row.wagerAmountWolo +
+        row.guaranteeAmountWolo,
+
+      leftFunded:
+        challengerFunded,
+
+      rightFunded:
+        challengedFunded,
+
+      settlements:
+        row.settlements,
+
+      pendingPlanWolo:
+        pendingEffectiveWolo,
+    });
+
+  /*
+   * Financial anomalies are never projected as a clean
+   * refund/settlement merely because transfer counts line up.
+   */
+  if (!conservation.ok) {
+    state =
+      "settlement_failed";
+  }
+
   return {
     state,
-    label: challengeMoneyLabel(state),
+    label:
+      challengeMoneyLabel(
+        state,
+      ),
     executedWolo,
     plannedWolo,
-    chainTxCount: new Set(executed.map((settlement) => settlement.txHash).filter(Boolean)).size,
-    netImpactWolo: state === "refunded" ? 0 : null,
+    chainTxCount:
+      new Set(
+        executed
+          .map(
+            (settlement) =>
+              settlement.txHash,
+          )
+          .filter(Boolean),
+      ).size,
+    netImpactWolo:
+      state === "refunded"
+        ? 0
+        : null,
   };
 }
 
