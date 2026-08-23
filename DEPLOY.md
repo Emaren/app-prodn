@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-08-21"
+reviewed_at: "2026-08-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -49,12 +49,43 @@ This exists because normal Next shutdowns were hanging and making deploys flaky.
 
 ## One-command operator finish
 
-For an ordinary `app-prodn` release, run the same command from Tony's Mac or
-from the production `app-prodn` checkout:
+For ordinary `app-prodn` closure, run the command from the finished registered
+feature worktree, canonical Mac checkout, or the production checkout:
 
 ```bash
-aoe2war finish
+aoe2war finish -m "Ship the finished feature"
 ```
+
+A feature worktree is promoted only by validated fast-forward into an exact,
+clean canonical `main`. A divergent feature is never automatically merged or
+rebased. The production checkout continues to delegate through the Mac Operator
+Bridge rather than becoming a competing Git authority.
+
+### Feature-worktree closure and validation reuse
+
+When `finish` starts in a registered non-main `app-prodn` worktree, it first
+proves:
+
+1. canonical operator `main` is clean and exact with GitHub;
+2. the feature is a descendant of that exact main;
+3. production source is reachable and clean;
+4. candidate paths are safe to auto-commit.
+
+It then commits the finished candidate if necessary, runs the full digest-bound
+release gate once, transfers that PASS evidence to canonical release state,
+fast-forwards canonical main, and re-enters ordinary canonical finish.
+
+Generated documentation may create a descendant release commit after the
+validated implementation. The release gate may inherit expensive implementation
+validation only when implementation, dependency, test-contract, toolchain and
+validator digests remain exact. Cheap documentation, secret, diff and dependency
+checks still run. Any material implementation or validation-contract change
+forces a full gate.
+
+For browser-sensitive UI work, complete the relevant local browser smoke before
+calling `finish`. The local `aoe2hdbets_shadow` exists specifically so
+interaction and persistence behavior can be tested with production-shaped data
+without giving local application code a production write path.
 
 ### Interactive AI/operator shell discipline
 

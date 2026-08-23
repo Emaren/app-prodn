@@ -2,6 +2,64 @@
 set -euo pipefail
 
 BIN_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SELF_ROOT="$(cd -- "$BIN_DIR/.." && pwd -P)"
+
+resolve_git_common_dir() {
+  local repo="$1"
+  local raw
+
+  raw="$(
+    git -C "$repo" \
+      rev-parse \
+      --git-common-dir \
+      2>/dev/null
+  )" || return 1
+
+  if [[ "$raw" = /* ]]; then
+    (
+      cd "$raw"
+      pwd -P
+    )
+  else
+    (
+      cd "$repo/$raw"
+      pwd -P
+    )
+  fi
+}
+
+CALLER_ROOT="$(
+  git -C "$PWD" \
+    rev-parse \
+    --show-toplevel \
+    2>/dev/null \
+  || true
+)"
+
+if (
+  [ -n "$CALLER_ROOT" ] &&
+  [ "$CALLER_ROOT" != "$SELF_ROOT" ] &&
+  [ -x "$CALLER_ROOT/bin/aoe2war" ]
+); then
+  SELF_COMMON="$(
+    resolve_git_common_dir "$SELF_ROOT" \
+    || true
+  )"
+
+  CALLER_COMMON="$(
+    resolve_git_common_dir "$CALLER_ROOT" \
+    || true
+  )"
+
+  if (
+    [ -n "$SELF_COMMON" ] &&
+    [ "$SELF_COMMON" = "$CALLER_COMMON" ]
+  ); then
+    exec \
+      "$CALLER_ROOT/bin/aoe2war" \
+      "$@"
+  fi
+fi
 RELEASE="$BIN_DIR/aoe2war-release"
 AUDIT="$BIN_DIR/../scripts/aoe2_audit.py"
 DOCTOR="$BIN_DIR/../scripts/aoe2_doctor.py"
@@ -17,6 +75,9 @@ WORKSPACE="$BIN_DIR/../scripts/aoe2_workspace.py"
 HOST_OS="$BIN_DIR/../scripts/aoe2_host.py"
 RECOVERY_OS="$BIN_DIR/../scripts/aoe2_recovery.py"
 SPEED_PULSE="$BIN_DIR/../scripts/aoe2_speed_pulse.py"
+FACTS="$BIN_DIR/../scripts/aoe2_facts.py"
+DEV_OS="$BIN_DIR/../scripts/aoe2_dev.py"
+DEPENDENCY_CHECK="$BIN_DIR/../scripts/check_dependency_contract.py"
 
 usage() {
   cat <<'EOF'
@@ -34,6 +95,9 @@ Usage:
   aoe2war storage <status|plan|maintain|verify> [options]
   aoe2war council [--json]
   aoe2war workspace <status|plan|clean> [options]
+  aoe2war facts [--json]
+  aoe2war dev <status|prepare|refresh|serve|new> [options]
+  aoe2war deps
   aoe2war host <status|tidy|maintenance-plan> [options]
   aoe2war recovery <status|plan> [options]
   aoe2war finish [--dry-run] [--json] [-m MESSAGE]
@@ -295,6 +359,18 @@ case "$command" in
   workspace)
     shift
     exec python3 "$WORKSPACE" "$@"
+    ;;
+  facts)
+    shift
+    exec python3 "$FACTS" "$@"
+    ;;
+  dev)
+    shift
+    exec python3 "$DEV_OS" "$@"
+    ;;
+  deps)
+    shift
+    exec python3 "$DEPENDENCY_CHECK" "$@"
     ;;
   host)
     shift

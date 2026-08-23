@@ -8,6 +8,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import shlex
 import subprocess
 import sys
@@ -2175,6 +2176,817 @@ def print_finish_summary(receipt: dict[str, Any], receipt_path: Path) -> None:
     print("You are done.")
 
 
+def git_output_at(
+    repo: Path,
+    *args: str,
+) -> str:
+    process = run(
+        [
+            "git",
+            *args,
+        ],
+        cwd=repo,
+        timeout=120,
+    )
+
+    if process.returncode != 0:
+        raise FinishError(
+            "git "
+            + " ".join(args)
+            + " failed in "
+            + str(repo)
+            + ": "
+            + (
+                process.stdout
+                or ""
+            )[-4000:]
+        )
+
+    return (
+        process.stdout
+        or ""
+    ).strip()
+
+
+def git_common_dir_at(
+    repo: Path,
+) -> Path:
+    raw = git_output_at(
+        repo,
+        "rev-parse",
+        "--git-common-dir",
+    )
+
+    value = Path(raw)
+
+    if not value.is_absolute():
+        value = (
+            repo
+            / value
+        )
+
+    return value.resolve()
+
+
+def canonical_operator_repo() -> Path:
+    contract = (
+        aoe2_doctor.load_contract()
+    )
+
+    value = (
+        contract.get(
+            "canonical",
+            {},
+        ).get(
+            "operator_repo"
+        )
+    )
+
+    if not value:
+        raise FinishError(
+            "operations contract has no "
+            "canonical.operator_repo"
+        )
+
+    return Path(
+        str(value)
+    ).expanduser().resolve()
+
+
+def validate_feature_handoff_state(
+    *,
+    feature_branch: str,
+    feature_head: str,
+    canonical_branch: str,
+    canonical_head: str,
+    github_head: str,
+    canonical_dirty: bool,
+    feature_descends_from_main: bool,
+) -> None:
+    if (
+        not feature_branch
+        or feature_branch
+        == DEFAULT_BRANCH
+    ):
+        raise FinishError(
+            "feature-worktree handoff requires "
+            "a named non-main branch"
+        )
+
+    if canonical_branch != DEFAULT_BRANCH:
+        raise FinishError(
+            "canonical operator worktree "
+            "is not on main"
+        )
+
+    if canonical_dirty:
+        raise FinishError(
+            "canonical main is dirty; refusing "
+            "feature promotion"
+        )
+
+    if canonical_head != github_head:
+        raise FinishError(
+            "canonical main and GitHub main "
+            "must be exact before feature promotion"
+        )
+
+    if not feature_descends_from_main:
+        raise FinishError(
+            "feature branch does not descend "
+            "from current canonical main; "
+            "refusing automatic merge/rebase"
+        )
+
+    if not feature_head:
+        raise FinishError(
+            "feature HEAD is unavailable"
+        )
+
+
+def feature_handoff_plan() -> dict[str, Any]:
+    canonical = (
+        canonical_operator_repo()
+    )
+
+    if not canonical.is_dir():
+        raise FinishError(
+            "canonical operator repository "
+            f"is missing: {canonical}"
+        )
+
+    if (
+        git_common_dir_at(
+            ROOT
+        )
+        != git_common_dir_at(
+            canonical
+        )
+    ):
+        raise FinishError(
+            "current worktree is not part "
+            "of canonical app-prodn"
+        )
+
+    feature_branch = git_output(
+        "branch",
+        "--show-current",
+    )
+
+    feature_head = git_output(
+        "rev-parse",
+        "HEAD",
+    )
+
+    canonical_branch = git_output_at(
+        canonical,
+        "branch",
+        "--show-current",
+    )
+
+    canonical_head = git_output_at(
+        canonical,
+        "rev-parse",
+        "HEAD",
+    )
+
+    canonical_dirty = bool(
+        git_output_at(
+            canonical,
+            "status",
+            "--porcelain",
+            "--untracked-files=all",
+        )
+    )
+
+    github_head = remote_branch_sha()
+
+    feature_descends = is_ancestor(
+        canonical_head,
+        feature_head,
+    )
+
+    validate_feature_handoff_state(
+        feature_branch=feature_branch,
+        feature_head=feature_head,
+        canonical_branch=canonical_branch,
+        canonical_head=canonical_head,
+        github_head=github_head,
+        canonical_dirty=canonical_dirty,
+        feature_descends_from_main=(
+            feature_descends
+        ),
+    )
+
+    release = aoe2_release.collect()
+    production = release[
+        "production"
+    ]
+
+    if not production.get(
+        "reachable"
+    ):
+        raise FinishError(
+            "production inspection failed "
+            "before feature promotion"
+        )
+
+    if int(
+        production.get(
+            "dirty_count"
+        )
+        or 0
+    ):
+        raise FinishError(
+            "production worktree is dirty; "
+            "refusing to advance canonical main"
+        )
+
+    return {
+        "mode": "feature_worktree",
+        "feature_branch": (
+            feature_branch
+        ),
+        "feature_head": (
+            feature_head
+        ),
+        "feature_dirty_paths": (
+            git_paths()
+        ),
+        "canonical_repo": (
+            str(canonical)
+        ),
+        "canonical_head": (
+            canonical_head
+        ),
+        "github_head": (
+            github_head
+        ),
+        "production_head": (
+            production.get(
+                "source_sha"
+            )
+        ),
+    }
+
+
+@contextmanager
+def feature_handoff_lock(
+    canonical: Path,
+):
+    path = (
+        canonical
+        / ".aoe2war-release"
+        / "feature-handoff.lock"
+    )
+
+    path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    with path.open(
+        "a+",
+        encoding="utf-8",
+    ) as handle:
+        try:
+            fcntl.flock(
+                handle.fileno(),
+                fcntl.LOCK_EX
+                | fcntl.LOCK_NB,
+            )
+        except BlockingIOError as exc:
+            raise FinishError(
+                "another feature handoff "
+                "is already active"
+            ) from exc
+
+        try:
+            yield
+        finally:
+            fcntl.flock(
+                handle.fileno(),
+                fcntl.LOCK_UN,
+            )
+
+
+def commit_feature_candidate(
+    *,
+    message: str,
+    progress: Progress,
+) -> str:
+    paths = git_paths()
+
+    if not paths:
+        return git_output(
+            "rev-parse",
+            "HEAD",
+        )
+
+    ensure_safe_candidate_paths(
+        paths
+    )
+
+    diff = run(
+        [
+            "git",
+            "diff",
+            "--check",
+        ],
+        timeout=60,
+    )
+
+    if diff.returncode != 0:
+        raise FinishError(
+            "feature diff check failed: "
+            + (
+                diff.stdout
+                or ""
+            )[-4000:]
+        )
+
+    progress.start(
+        "Committing finished feature "
+        "worktree locally..."
+    )
+
+    add = run(
+        [
+            "git",
+            "add",
+            "-A",
+        ],
+        timeout=60,
+    )
+
+    if add.returncode != 0:
+        raise FinishError(
+            "feature git add failed: "
+            + (
+                add.stdout
+                or ""
+            )[-4000:]
+        )
+
+    staged = run(
+        [
+            "git",
+            "diff",
+            "--cached",
+            "--check",
+        ],
+        timeout=60,
+    )
+
+    if staged.returncode != 0:
+        raise FinishError(
+            "feature staged diff check failed: "
+            + (
+                staged.stdout
+                or ""
+            )[-4000:]
+        )
+
+    commit = run(
+        [
+            "git",
+            "commit",
+            "-m",
+            message,
+        ],
+        timeout=120,
+    )
+
+    if commit.returncode != 0:
+        raise FinishError(
+            "feature commit failed: "
+            + (
+                commit.stdout
+                or ""
+            )[-4000:]
+        )
+
+    head = git_output(
+        "rev-parse",
+        "HEAD",
+    )
+
+    progress.done(
+        "Feature committed locally "
+        f"({head[:10]})"
+    )
+
+    return head
+
+
+def copy_feature_gate_receipts(
+    *,
+    canonical: Path,
+    target_sha: str,
+) -> list[str]:
+    source_dir = (
+        ROOT
+        / ".aoe2war-release"
+        / "gates"
+    )
+
+    target_dir = (
+        canonical
+        / ".aoe2war-release"
+        / "gates"
+    )
+
+    target_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    copied = []
+
+    if not source_dir.is_dir():
+        raise FinishError(
+            "feature release gate produced "
+            "no receipt directory"
+        )
+
+    for source in source_dir.glob(
+        f"{target_sha[:12]}-*.json"
+    ):
+        try:
+            payload = json.loads(
+                source.read_text(
+                    encoding="utf-8"
+                )
+            )
+        except Exception:
+            continue
+
+        if (
+            payload.get(
+                "status"
+            )
+            != "PASS"
+            or payload.get(
+                "target_sha"
+            )
+            != target_sha
+            or int(
+                payload.get(
+                    "schema"
+                )
+                or 0
+            )
+            < 2
+        ):
+            continue
+
+        target = (
+            target_dir
+            / source.name
+        )
+
+        shutil.copy2(
+            source,
+            target,
+        )
+
+        if (
+            hashlib.sha256(
+                source.read_bytes()
+            ).hexdigest()
+            != hashlib.sha256(
+                target.read_bytes()
+            ).hexdigest()
+        ):
+            raise FinishError(
+                "gate receipt copy digest mismatch"
+            )
+
+        copied.append(
+            str(target)
+        )
+
+    if not copied:
+        raise FinishError(
+            "no digest-bound PASS gate receipt "
+            "was found for feature target"
+        )
+
+    return copied
+
+
+def write_feature_handoff_receipt(
+    *,
+    canonical: Path,
+    payload: dict[str, Any],
+) -> Path:
+    directory = (
+        canonical
+        / ".aoe2war-release"
+        / "feature-handoffs"
+    )
+
+    directory.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    stamp = datetime.now(
+        timezone.utc
+    ).strftime(
+        "%Y%m%dT%H%M%S%fZ"
+    )
+
+    path = (
+        directory
+        / (
+            f"{stamp}-"
+            f"{os.getpid()}.json"
+        )
+    )
+
+    path.write_text(
+        json.dumps(
+            payload,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    return path
+
+
+def promote_feature_worktree(
+    *,
+    message: str,
+    json_mode: bool,
+) -> int:
+    progress = Progress(
+        enabled=not json_mode
+    )
+
+    plan = feature_handoff_plan()
+
+    canonical = Path(
+        plan[
+            "canonical_repo"
+        ]
+    )
+
+    base_sha = str(
+        plan[
+            "canonical_head"
+        ]
+    )
+
+    with feature_handoff_lock(
+        canonical
+    ):
+        # Re-prove canonical authority immediately
+        # before any local-main mutation.
+        if git_output_at(
+            canonical,
+            "rev-parse",
+            "HEAD",
+        ) != base_sha:
+            raise FinishError(
+                "canonical main moved during "
+                "feature handoff"
+            )
+
+        if git_output_at(
+            canonical,
+            "status",
+            "--porcelain",
+            "--untracked-files=all",
+        ):
+            raise FinishError(
+                "canonical main became dirty "
+                "during feature handoff"
+            )
+
+        if remote_branch_sha() != base_sha:
+            raise FinishError(
+                "GitHub main moved during "
+                "feature handoff"
+            )
+
+        target_sha = (
+            commit_feature_candidate(
+                message=message,
+                progress=progress,
+            )
+        )
+
+        if not is_ancestor(
+            base_sha,
+            target_sha,
+        ):
+            raise FinishError(
+                "final feature commit no longer "
+                "descends from canonical main"
+            )
+
+        progress.start(
+            "Running one full digest-bound "
+            "feature release gate..."
+        )
+
+        run_live(
+            [
+                str(CLI),
+                "gate",
+            ],
+            label=(
+                "Validating exact feature "
+                "implementation"
+            ),
+            progress=progress,
+            timeout=1800,
+            json_mode=json_mode,
+        )
+
+        copied = (
+            copy_feature_gate_receipts(
+                canonical=canonical,
+                target_sha=target_sha,
+            )
+        )
+
+        progress.done(
+            "Feature validation receipt sealed "
+            "for canonical reuse"
+        )
+
+        # Final authority check before ff-only.
+        if git_output_at(
+            canonical,
+            "rev-parse",
+            "HEAD",
+        ) != base_sha:
+            raise FinishError(
+                "canonical main changed after "
+                "feature validation"
+            )
+
+        if git_output_at(
+            canonical,
+            "status",
+            "--porcelain",
+            "--untracked-files=all",
+        ):
+            raise FinishError(
+                "canonical main became dirty "
+                "after feature validation"
+            )
+
+        if remote_branch_sha() != base_sha:
+            raise FinishError(
+                "GitHub main changed after "
+                "feature validation"
+            )
+
+        progress.start(
+            "Fast-forwarding canonical main "
+            "to validated feature..."
+        )
+
+        merge = run(
+            [
+                "git",
+                "merge",
+                "--ff-only",
+                target_sha,
+            ],
+            cwd=canonical,
+            timeout=120,
+        )
+
+        if merge.returncode != 0:
+            raise FinishError(
+                "canonical main fast-forward "
+                "failed: "
+                + (
+                    merge.stdout
+                    or ""
+                )[-4000:]
+            )
+
+        if (
+            git_output_at(
+                canonical,
+                "rev-parse",
+                "HEAD",
+            )
+            != target_sha
+        ):
+            raise FinishError(
+                "canonical main does not equal "
+                "validated feature target"
+            )
+
+        if git_output_at(
+            canonical,
+            "status",
+            "--porcelain",
+            "--untracked-files=all",
+        ):
+            raise FinishError(
+                "canonical main is dirty "
+                "after feature fast-forward"
+            )
+
+        handoff = (
+            write_feature_handoff_receipt(
+                canonical=canonical,
+                payload={
+                    "schema": 1,
+                    "kind": (
+                        "aoe2war-feature-handoff"
+                    ),
+                    "generated_at": (
+                        datetime.now(
+                            timezone.utc
+                        ).isoformat()
+                    ),
+                    "feature_worktree": (
+                        str(ROOT)
+                    ),
+                    "feature_branch": (
+                        plan[
+                            "feature_branch"
+                        ]
+                    ),
+                    "base_sha": (
+                        base_sha
+                    ),
+                    "target_sha": (
+                        target_sha
+                    ),
+                    "gate_receipts": (
+                        copied
+                    ),
+                    "promotion": (
+                        "ff-only"
+                    ),
+                    "github_mutated": (
+                        False
+                    ),
+                    "production_mutated": (
+                        False
+                    ),
+                    "wolo_mutated": (
+                        False
+                    ),
+                },
+            )
+        )
+
+        progress.done(
+            "Canonical main now owns validated "
+            f"feature ({target_sha[:10]})"
+        )
+
+    # Canonical finish now owns publication,
+    # documentation, deployment and certification.
+    env = os.environ.copy()
+    env[
+        "AOE2WAR_FEATURE_HANDOFF_RECEIPT"
+    ] = str(
+        handoff
+    )
+
+    command = [
+        str(
+            canonical
+            / "bin"
+            / "aoe2war"
+        ),
+        "finish",
+        "-m",
+        message,
+    ]
+
+    if json_mode:
+        command.append(
+            "--json"
+        )
+
+    os.chdir(
+        canonical
+    )
+
+    os.execve(
+        command[0],
+        command,
+        env,
+    )
+
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="aoe2war finish",
@@ -2210,6 +3022,112 @@ def main() -> int:
         else:
             print(f"STOP: {exc}", file=sys.stderr)
         return 2
+
+    if not production_role:
+        current_branch = git_output(
+            "branch",
+            "--show-current",
+        )
+
+        if current_branch != DEFAULT_BRANCH:
+            try:
+                if args.dry_run:
+                    payload = feature_handoff_plan()
+
+                    if args.json:
+                        print(
+                            json.dumps(
+                                {
+                                    "schema": 1,
+                                    "kind": (
+                                        "aoe2war-feature-"
+                                        "finish-plan"
+                                    ),
+                                    "status": "READY",
+                                    **payload,
+                                },
+                                indent=2,
+                                sort_keys=True,
+                            )
+                        )
+                    else:
+                        print(
+                            "⚔️  AOE2WAR FEATURE "
+                            "FINISH PLAN"
+                        )
+                        print()
+                        print(
+                            "Feature:       "
+                            + payload[
+                                "feature_branch"
+                            ]
+                        )
+                        print(
+                            "Feature HEAD:  "
+                            + payload[
+                                "feature_head"
+                            ]
+                        )
+                        print(
+                            "Canonical:     "
+                            + payload[
+                                "canonical_head"
+                            ]
+                        )
+                        print(
+                            "GitHub main:   "
+                            + payload[
+                                "github_head"
+                            ]
+                        )
+                        print(
+                            "Dirty paths:   "
+                            + str(
+                                len(
+                                    payload[
+                                        "feature_dirty_paths"
+                                    ]
+                                )
+                            )
+                        )
+                        print()
+                        print(
+                            "Plan: local commit "
+                            "→ one full gate "
+                            "→ ff canonical main "
+                            "→ canonical finish"
+                        )
+                        print(
+                            "No changes made."
+                        )
+
+                    return 0
+
+                return promote_feature_worktree(
+                    message=args.message,
+                    json_mode=args.json,
+                )
+
+            except Exception as exc:
+                if args.json:
+                    print(
+                        json.dumps(
+                            {
+                                "status": "ERROR",
+                                "feature_worktree": True,
+                                "error": str(exc),
+                            },
+                            indent=2,
+                            sort_keys=True,
+                        )
+                    )
+                else:
+                    print(
+                        f"STOP: {exc}",
+                        file=sys.stderr,
+                    )
+
+                return 2
 
     if production_role:
         try:
@@ -2321,6 +3239,12 @@ def main() -> int:
         "database_mutated": False,
         "host_rebooted": False,
         "packages_upgraded": False,
+        "feature_handoff_receipt": (
+            os.getenv(
+                "AOE2WAR_FEATURE_HANDOFF_RECEIPT"
+            )
+            or None
+        ),
     }
     path: Path | None = None
 

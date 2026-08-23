@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-08-21"
+reviewed_at: "2026-08-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -67,8 +67,16 @@ disagree, stop and reconcile them before production mutation.
 The canonical human-facing command family is:
 
 ```bash
-aoe2war finish
+aoe2war finish -m "Ship the finished feature"
 aoe2war finish --dry-run
+aoe2war facts
+aoe2war dev status
+aoe2war dev prepare
+aoe2war dev refresh
+aoe2war dev serve
+aoe2war dev new feature-name
+aoe2war deps
+aoe2war workspace status
 aoe2war status
 aoe2war context
 aoe2war deploy
@@ -81,14 +89,129 @@ aoe2war manifest
 ```
 
 The repository command is `bin/aoe2war`. Tony's MBP installs a tiny
-`$HOME/bin/aoe2war` wrapper that execs the repository command, so the operator
-surface works from any directory. `bin/aoe2war` delegates to the lower-level
+`$HOME/bin/aoe2war` wrapper that enters the canonical repository command.
+When invoked while the current directory belongs to another registered
+`app-prodn` worktree, the canonical CLI proves the shared Git common directory
+and re-enters that worktree's own `bin/aoe2war`. This makes the command surface
+worktree-aware without treating arbitrary directories as release authority.
+`bin/aoe2war` delegates protected production release phases to the lower-level
 `bin/aoe2war-release` engine.
 
 `aoe2war release <raw release-engine command/options>` exists for bounded
 phase-specific or diagnostic use. Routine end-of-work closure should use
 `aoe2war finish`; direct `aoe2war deploy` is the deliberately scoped lower-level
 web release lane.
+
+## Feature-worktree development and closure
+
+Feature worktrees are first-class inputs to ordinary AoE2WAR closure.
+
+The normal development lifecycle is:
+
+```text
+aoe2war dev new <feature>
+  -> exact dependency/environment preparation
+  -> writable production-shaped localhost shadow
+  -> implementation + browser verification
+  -> aoe2war finish -m "..."
+  -> canonical ff-only promotion
+  -> GitHub publication
+  -> protected deploy/certification
+```
+
+A feature handoff is eligible only when:
+
+- the caller is a registered worktree from the same `app-prodn` Git common
+  repository;
+- it has a named non-`main` branch;
+- canonical operator `main` is clean;
+- canonical `main` exactly equals GitHub `main`;
+- the feature is a descendant of that exact main;
+- production is reachable and clean.
+
+The feature worktree owns only candidate completion, local commit, exact
+validation and the fail-closed fast-forward handoff. It never silently chooses a
+merge or rebase. Canonical main continues to own GitHub publication,
+documentation federation, protected deployment, certification, estate audit,
+Doctor and public performance proof.
+
+### Development-data safety
+
+`aoe2war dev` may mirror selected production-shaped read data into the local
+disposable shadow. It must never provide local application code with a
+production database write credential.
+
+Shadow database lifecycle is intentionally split:
+
+```text
+local PostgreSQL bootstrap authority
+  -> DROP/CREATE disposable shadow
+
+normal aoe2user application role
+  -> owns shadow
+  -> builds current schema
+  -> performs normal local application writes
+  -> remains NOCREATEDB
+```
+
+Snapshot selection begins from bounded product roots and follows referenced
+foreign-key parents from the current local schema. This prevents feature
+fixtures from silently omitting required parents such as Direct Chat shared
+lobby messages. Cycles are permitted in the dependency graph; restore uses
+local bootstrap authority with trigger-safe `pg_dump --disable-triggers`
+evidence while the production credential remains inside the VPS process.
+
+High-volume surfaces are bounded by explicit machine policy. The development
+shadow is realism for testing, never production truth.
+
+### Dependency contract
+
+Every external runtime package imported by tracked application runtime source
+must be explicitly declared in `package.json`. The checker parses JavaScript /
+TypeScript syntax through the TypeScript AST rather than regex, so strings,
+comments and JSX text cannot masquerade as package imports.
+
+The dependency contract runs during `aoe2war dev prepare` and in the protected
+release gate.
+
+### Hash-bound validation reuse
+
+Gate receipts bind validation to:
+
+- release scope digest;
+- target tree digest;
+- implementation digest with documentation-only files excluded;
+- dependency digest;
+- test-execution contract digest;
+- toolchain digest;
+- release-validator digest.
+
+An exact matching target may reuse the complete PASS receipt without rerunning
+validation.
+
+A later descendant that changes only generated/documentation material may
+inherit the expensive implementation validation only when the implementation,
+dependency, test-contract, toolchain and validator digests remain exact. That
+descendant still runs cheap diff, documentation, secret and dependency
+revalidation.
+
+Any implementation, dependency, test-contract, toolchain or validator change
+invalidates inheritance and forces the full gate.
+
+`config/test-contract.json` and `scripts/run_test_contract.py` are the machine
+authority for the active Node test invocation. Operators and AI agents should
+not manually reconstruct loader flags or substitute raw `node --test` commands
+for the canonical contract.
+
+### Browser evidence
+
+Automated source contracts do not prove every interactive browser behavior.
+For UI work whose correctness depends on portal ownership, pointer/focus
+ordering, optimistic reconciliation, browser layout state or persisted
+interaction state, the feature must receive an appropriate browser smoke on the
+writable production-shaped shadow before release. The Direct/Nav Chat
+reaction/reply/edit fix is the reference example: source tests were green before
+a real browser proof exposed the missing data and event-lifecycle requirements.
 
 ## Interactive operator recovery discipline
 
@@ -192,7 +315,13 @@ The release gate:
 - computes the exact release scope;
 - hashes the scope;
 - classifies risk;
-- runs the applicable fail-closed validation plan;
+- binds tree, implementation, dependency, test-contract, toolchain and
+  validator identity;
+- reuses an exact PASS receipt only when every required identity remains exact;
+- may reuse expensive implementation validation across a documentation-only
+  descendant while rerunning cheap documentation/security/dependency checks;
+- runs the full applicable fail-closed validation plan whenever a bound
+  implementation/toolchain/contract identity changes;
 - writes a machine-readable gate receipt beneath
   `.aoe2war-release/gates/`.
 

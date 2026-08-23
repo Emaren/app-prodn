@@ -243,5 +243,38 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertIn("tests/test_aoe2_doctor.py", release_tests[0])
 
 
+    def test_validation_context_matching_can_ignore_tree_for_docs_descendant(self):
+        context = {
+            "tree_digest": "new-tree",
+            "implementation_digest": "impl",
+            "dependency_digest": "deps",
+            "test_contract_digest": "tests",
+            "toolchain_digest": "tools",
+            "validator_digest": "validator",
+        }
+
+        prior = {
+            **context,
+            "tree_digest": "old-tree",
+        }
+
+        self.assertFalse(
+            MODULE.validation_fields_match(
+                prior,
+                context,
+                include_tree=True,
+            )
+        )
+
+        self.assertTrue(
+            MODULE.validation_fields_match(
+                prior,
+                context,
+                include_tree=False,
+            )
+        )
+
+
+
 if __name__ == "__main__":
     unittest.main()

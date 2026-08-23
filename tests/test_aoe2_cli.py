@@ -39,6 +39,9 @@ class AoE2WarCliTests(unittest.TestCase):
             "aoe2_doctor.py",
             "aoe2_finish.py",
             "aoe2_operator_bridge.py",
+            "aoe2_facts.py",
+            "aoe2_dev.py",
+            "check_dependency_contract.py",
         ):
             path = scripts / name
             path.write_text(stub, encoding="utf-8")
@@ -91,6 +94,55 @@ class AoE2WarCliTests(unittest.TestCase):
         self.assertEqual(
             result.stdout.splitlines(),
             ["aoe2_finish.py", "--dry-run"],
+        )
+
+    def test_facts_maps_to_facts_script(self):
+        result = self.run_cli(
+            "facts",
+            "--json",
+        )
+        self.assertEqual(
+            result.returncode,
+            0,
+        )
+        self.assertEqual(
+            result.stdout.splitlines(),
+            [
+                "aoe2_facts.py",
+                "--json",
+            ],
+        )
+
+    def test_dev_maps_to_dev_script(self):
+        result = self.run_cli(
+            "dev",
+            "prepare",
+        )
+        self.assertEqual(
+            result.returncode,
+            0,
+        )
+        self.assertEqual(
+            result.stdout.splitlines(),
+            [
+                "aoe2_dev.py",
+                "prepare",
+            ],
+        )
+
+    def test_deps_maps_to_dependency_checker(self):
+        result = self.run_cli(
+            "deps",
+        )
+        self.assertEqual(
+            result.returncode,
+            0,
+        )
+        self.assertEqual(
+            result.stdout.splitlines(),
+            [
+                "check_dependency_contract.py",
+            ],
         )
 
     def test_unknown_command_fails_closed(self):

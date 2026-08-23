@@ -255,11 +255,20 @@ def path_risk(path: str) -> str:
         "scripts/aoe2_host.py",
         "scripts/aoe2_recovery.py",
         "scripts/aoe2_speed_pulse.py",
+        "scripts/aoe2_facts.py",
+        "scripts/aoe2_dev.py",
+        "scripts/aoe2_shadow.py",
+        "scripts/dev-shadow.py",
+        "scripts/check_dependency_contract.py",
         "tests/test_aoe2_council.py",
         "tests/test_aoe2_workspace.py",
         "tests/test_aoe2_host.py",
         "tests/test_aoe2_recovery.py",
         "tests/test_aoe2_speed_pulse.py",
+        "tests/test_aoe2_facts.py",
+        "tests/test_aoe2_dev.py",
+        "tests/test_aoe2_shadow.py",
+        "tests/test_dependency_contract.py",
         "tests/test_aoe2_os_closure_gate.py",
     }
     if p.startswith(infra_prefixes) or p in infra_exact:
@@ -351,6 +360,13 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
 
     if risk not in {"NO_CHANGE", "DOCUMENTATION"}:
         commands.append(
+            (
+                "dependency-contract",
+                ["python3", "scripts/check_dependency_contract.py"],
+                120,
+            )
+        )
+        commands.append(
             ("active-node-test-contract", ["python3", "scripts/run_test_contract.py"], 300)
         )
 
@@ -397,11 +413,20 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
             "scripts/aoe2_host.py",
             "scripts/aoe2_recovery.py",
             "scripts/aoe2_speed_pulse.py",
+            "scripts/aoe2_facts.py",
+            "scripts/aoe2_dev.py",
+            "scripts/aoe2_shadow.py",
+            "scripts/dev-shadow.py",
+            "scripts/check_dependency_contract.py",
             "tests/test_aoe2_council.py",
             "tests/test_aoe2_workspace.py",
             "tests/test_aoe2_host.py",
             "tests/test_aoe2_recovery.py",
             "tests/test_aoe2_speed_pulse.py",
+            "tests/test_aoe2_facts.py",
+            "tests/test_aoe2_dev.py",
+            "tests/test_aoe2_shadow.py",
+            "tests/test_dependency_contract.py",
             "tests/test_aoe2_os_closure_gate.py",
         }
         for path in paths
@@ -435,6 +460,10 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "tests/test_aoe2_host.py",
                     "tests/test_aoe2_recovery.py",
                     "tests/test_aoe2_speed_pulse.py",
+                    "tests/test_aoe2_facts.py",
+                    "tests/test_aoe2_dev.py",
+                    "tests/test_aoe2_shadow.py",
+                    "tests/test_dependency_contract.py",
                     "tests/test_aoe2_os_closure_gate.py",
                     "tests/test_test_contract.py",
                     "tests/test_scan_tracked_secrets.py",
@@ -469,6 +498,11 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "scripts/aoe2_host.py",
                     "scripts/aoe2_recovery.py",
                     "scripts/aoe2_speed_pulse.py",
+                    "scripts/aoe2_facts.py",
+                    "scripts/aoe2_dev.py",
+                    "scripts/aoe2_shadow.py",
+                    "scripts/dev-shadow.py",
+                    "scripts/check_dependency_contract.py",
                     "scripts/run_test_contract.py",
                     "scripts/scan_tracked_secrets.py",
                 ],
@@ -580,89 +614,821 @@ def sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def gate_release(data: dict, *, json_output: bool = False) -> int:
-    try:
-        scope = release_scope(data)
-        digest = scope_digest(scope)
-        risk = classify_risk(scope["changed_files"])
-        plan = command_plan(scope, risk)
-    except ReleaseGateError as exc:
-        payload = {"schema": 1, "kind": "gate-receipt", "status": "ERROR", "error": str(exc)}
-        if json_output:
-            print(json.dumps(payload, indent=2, sort_keys=True))
+def digest_file_set(
+    paths: tuple[str, ...],
+) -> str:
+    digest = hashlib.sha256()
+
+    for relative in sorted(paths):
+        path = ROOT / relative
+
+        digest.update(
+            relative.encode(
+                "utf-8"
+            )
+        )
+        digest.update(b"\0")
+
+        if path.is_file():
+            digest.update(
+                path.read_bytes()
+            )
         else:
-            print(f"STOP: {exc}")
-        return 2
+            digest.update(
+                b"<missing>"
+            )
 
-    if not json_output:
-        print("⚔️  AOE2WAR RELEASE GATE")
-        print(f"Mode:           {scope['mode']}")
-        print(f"Base:           {scope['base_sha']}")
-        print(f"Target:         {scope['target_sha']}")
-        print(f"Risk:           {risk}")
-        print(f"Changed files:  {len(scope['changed_files'])}")
-        for path in scope["changed_files"]:
-            print(f"  - {path}")
-        print(f"Scope SHA256:   {digest}")
+        digest.update(b"\0")
 
-    ok, results = execute_plan(plan, quiet=json_output)
-    receipt = {
-        "schema": 1,
-        "kind": "gate-receipt",
-        "generated_at": utc_now(),
-        "status": "PASS" if ok else "FAIL",
-        "mode": scope["mode"],
-        "base_sha": scope["base_sha"],
-        "target_sha": scope["target_sha"],
-        "scope_sha256": digest,
-        "risk_class": risk,
-        "changed_files": scope["changed_files"],
-        "commands": results,
-    }
-    stem = (
-        scope["target_sha"][:12]
-        if scope["target_sha"] != "WORKTREE"
-        else f"worktree-{scope['base_sha'][:12]}"
+    return digest.hexdigest()
+
+
+def command_identity(
+    args: list[str],
+) -> str:
+    result = run(
+        args,
+        timeout=30,
     )
-    path = GATE_DIR / f"{stem}-{digest[:12]}.json"
-    write_json(path, receipt)
-    receipt["receipt_path"] = str(path.relative_to(ROOT))
-    receipt["receipt_sha256"] = sha256_file(path)
 
-    if json_output:
-        print(json.dumps(receipt, indent=2, sort_keys=True))
+    if result.returncode != 0:
+        raise ReleaseGateError(
+            "cannot resolve validation "
+            "toolchain identity: "
+            + shlex.join(args)
+        )
+
+    return (
+        result.stdout
+        or ""
+    ).strip()
+
+
+def implementation_digest(
+    scope: dict,
+) -> str:
+    digest = hashlib.sha256()
+
+    digest.update(
+        scope["base_sha"].encode()
+    )
+    digest.update(b"\0")
+
+    implementation_paths = [
+        path
+        for path in scope["changed_files"]
+        if path_risk(path)
+        != "DOCUMENTATION"
+    ]
+
+    for path in implementation_paths:
+        digest.update(
+            path.encode(
+                "utf-8"
+            )
+        )
+        digest.update(b"\0")
+
+    if scope["mode"] == "committed":
+        if implementation_paths:
+            result = run_bytes(
+                [
+                    "git",
+                    "diff",
+                    "--binary",
+                    (
+                        f"{scope['base_sha']}.."
+                        f"{scope['target_sha']}"
+                    ),
+                    "--",
+                    *implementation_paths,
+                ],
+                timeout=120,
+            )
+
+            if result.returncode != 0:
+                raise ReleaseGateError(
+                    "unable to hash implementation diff"
+                )
+
+            digest.update(
+                result.stdout
+            )
+
+    elif scope["mode"] == "worktree":
+        # Worktree receipts are never inherited across
+        # commits. Bind them to the entire unpublished scope.
+        digest.update(
+            scope_digest(
+                scope
+            ).encode()
+        )
+
+    return digest.hexdigest()
+
+
+def validation_context(
+    scope: dict,
+) -> dict[str, str]:
+    if (
+        scope["target_sha"]
+        != "WORKTREE"
+    ):
+        tree_digest = git_text(
+            "rev-parse",
+            (
+                f"{scope['target_sha']}"
+                "^{tree}"
+            ),
+        )
     else:
-        print()
-        print(f"Gate:           {receipt['status']}")
-        print(f"Receipt:        {receipt['receipt_path']}")
-        print(f"Receipt SHA256: {receipt['receipt_sha256']}")
-        if ok:
-            print("PASS: RELEASE GATE")
-        else:
-            print("FAIL: RELEASE GATE")
+        tree_digest = scope_digest(
+            scope
+        )
 
-    return 0 if ok else 1
+    dependency_digest = digest_file_set(
+        (
+            "package.json",
+            "yarn.lock",
+        )
+    )
+
+    test_contract_digest = digest_file_set(
+        (
+            "config/test-contract.json",
+            "scripts/run_test_contract.py",
+            "scripts/aoe2-alias-loader.mjs",
+            "scripts/check_dependency_contract.py",
+        )
+    )
+
+    validator_digest = sha256_file(
+        Path(__file__).resolve()
+    )
+
+    operations = json.loads(
+        (
+            ROOT
+            / "config"
+            / "aoe2war-operations.json"
+        ).read_text()
+    )
+
+    toolchain_payload = {
+        "contract": (
+            operations.get(
+                "toolchain"
+            )
+            or {}
+        ),
+        "node": command_identity(
+            [
+                "node",
+                "--version",
+            ]
+        ),
+        "python": command_identity(
+            [
+                "python3",
+                "--version",
+            ]
+        ),
+        "yarn": command_identity(
+            [
+                "yarn",
+                "--version",
+            ]
+        ),
+    }
+
+    toolchain_digest = hashlib.sha256(
+        json.dumps(
+            toolchain_payload,
+            sort_keys=True,
+            separators=(
+                ",",
+                ":",
+            ),
+        ).encode()
+    ).hexdigest()
+
+    return {
+        "tree_digest": tree_digest,
+        "implementation_digest": (
+            implementation_digest(
+                scope
+            )
+        ),
+        "dependency_digest": (
+            dependency_digest
+        ),
+        "test_contract_digest": (
+            test_contract_digest
+        ),
+        "toolchain_digest": (
+            toolchain_digest
+        ),
+        "validator_digest": (
+            validator_digest
+        ),
+    }
 
 
-def matching_gate(scope: dict, digest: str) -> tuple[Path, dict] | None:
-    if not GATE_DIR.exists():
+VALIDATION_CONTEXT_KEYS = (
+    "tree_digest",
+    "implementation_digest",
+    "dependency_digest",
+    "test_contract_digest",
+    "toolchain_digest",
+    "validator_digest",
+)
+
+
+def validation_fields_match(
+    payload: dict,
+    context: dict[str, str],
+    *,
+    include_tree: bool,
+) -> bool:
+    keys = (
+        VALIDATION_CONTEXT_KEYS
+        if include_tree
+        else tuple(
+            key
+            for key
+            in VALIDATION_CONTEXT_KEYS
+            if key != "tree_digest"
+        )
+    )
+
+    return all(
+        payload.get(key)
+        == context.get(key)
+        for key in keys
+    )
+
+
+def reduced_revalidation_plan(
+    scope: dict,
+) -> list[
+    tuple[
+        str,
+        list[str],
+        int,
+    ]
+]:
+    commands = []
+
+    if scope["mode"] == "committed":
+        commands.append(
+            (
+                "release-diff-check",
+                [
+                    "git",
+                    "diff",
+                    "--check",
+                    (
+                        f"{scope['base_sha']}.."
+                        f"{scope['target_sha']}"
+                    ),
+                ],
+                60,
+            )
+        )
+
+    elif scope["mode"] == "worktree":
+        commands.append(
+            (
+                "diff-check",
+                [
+                    "git",
+                    "diff",
+                    "--check",
+                ],
+                60,
+            )
+        )
+
+    commands.extend(
+        [
+            (
+                "documentation-control-plane",
+                [
+                    "python3",
+                    "scripts/docs_v2_check.py",
+                ],
+                120,
+            ),
+            (
+                "tracked-secret-scan",
+                [
+                    "python3",
+                    "scripts/scan_tracked_secrets.py",
+                ],
+                120,
+            ),
+            (
+                "dependency-contract",
+                [
+                    "python3",
+                    "scripts/check_dependency_contract.py",
+                ],
+                120,
+            ),
+        ]
+    )
+
+    return commands
+
+
+def reusable_validation_gate(
+    scope: dict,
+    context: dict[str, str],
+) -> tuple[
+    Path,
+    dict,
+] | None:
+    if (
+        scope["mode"]
+        != "committed"
+        or not GATE_DIR.exists()
+    ):
         return None
-    matches: list[tuple[float, Path, dict]] = []
-    for path in GATE_DIR.glob("*.json"):
+
+    matches = []
+
+    for path in GATE_DIR.glob(
+        "*.json"
+    ):
         try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
+            payload = json.loads(
+                path.read_text(
+                    encoding="utf-8"
+                )
+            )
         except Exception:
             continue
+
         if (
-            payload.get("status") == "PASS"
-            and payload.get("base_sha") == scope["base_sha"]
-            and payload.get("target_sha") == scope["target_sha"]
-            and payload.get("scope_sha256") == digest
+            payload.get("status")
+            != "PASS"
+            or int(
+                payload.get(
+                    "schema"
+                )
+                or 0
+            )
+            < 2
+            or payload.get(
+                "base_sha"
+            )
+            != scope["base_sha"]
+            or not validation_fields_match(
+                payload,
+                context,
+                include_tree=False,
+            )
         ):
-            matches.append((path.stat().st_mtime, path, payload))
+            continue
+
+        prior_target = str(
+            payload.get(
+                "target_sha"
+            )
+            or ""
+        )
+
+        current_target = str(
+            scope["target_sha"]
+        )
+
+        if (
+            not prior_target
+            or prior_target
+            == "WORKTREE"
+            or prior_target
+            == current_target
+        ):
+            continue
+
+        if not is_ancestor(
+            prior_target,
+            current_target,
+        ):
+            continue
+
+        matches.append(
+            (
+                path.stat().st_mtime,
+                path,
+                payload,
+            )
+        )
+
     if not matches:
         return None
-    _, path, payload = max(matches, key=lambda item: item[0])
+
+    _, path, payload = max(
+        matches,
+        key=lambda item: item[0],
+    )
+
+    return path, payload
+
+
+def gate_release(
+    data: dict,
+    *,
+    json_output: bool = False,
+) -> int:
+    try:
+        scope = release_scope(
+            data
+        )
+        digest = scope_digest(
+            scope
+        )
+        risk = classify_risk(
+            scope["changed_files"]
+        )
+        context = validation_context(
+            scope
+        )
+    except ReleaseGateError as exc:
+        payload = {
+            "schema": 2,
+            "kind": "gate-receipt",
+            "status": "ERROR",
+            "error": str(exc),
+        }
+
+        if json_output:
+            print(
+                json.dumps(
+                    payload,
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            print(
+                f"STOP: {exc}"
+            )
+
+        return 2
+
+    exact = matching_gate(
+        scope,
+        digest,
+        context=context,
+    )
+
+    if exact is not None:
+        path, payload = exact
+
+        result = {
+            **payload,
+            "reused": True,
+            "reuse_mode": "EXACT",
+            "receipt_path": str(
+                path.relative_to(
+                    ROOT
+                )
+            ),
+            "receipt_sha256": (
+                sha256_file(
+                    path
+                )
+            ),
+        }
+
+        if json_output:
+            print(
+                json.dumps(
+                    result,
+                    indent=2,
+                    sort_keys=True,
+                )
+            )
+        else:
+            print(
+                "⚔️  AOE2WAR RELEASE GATE"
+            )
+            print(
+                f"Mode:           {scope['mode']}"
+            )
+            print(
+                f"Base:           {scope['base_sha']}"
+            )
+            print(
+                f"Target:         {scope['target_sha']}"
+            )
+            print(
+                f"Risk:           {risk}"
+            )
+            print(
+                "Validation:     REUSED EXACT"
+            )
+            print(
+                "Receipt:        "
+                + str(
+                    path.relative_to(
+                        ROOT
+                    )
+                )
+            )
+            print(
+                "PASS: RELEASE GATE "
+                "(EXACT RECEIPT REUSED)"
+            )
+
+        return 0
+
+    reusable = reusable_validation_gate(
+        scope,
+        context,
+    )
+
+    if reusable is not None:
+        prior_path, prior_payload = reusable
+        plan = reduced_revalidation_plan(
+            scope
+        )
+        validation_mode = (
+            "IMPLEMENTATION_REUSE"
+        )
+    else:
+        prior_path = None
+        prior_payload = None
+        plan = command_plan(
+            scope,
+            risk,
+        )
+        validation_mode = "FULL"
+
+    if not json_output:
+        print(
+            "⚔️  AOE2WAR RELEASE GATE"
+        )
+        print(
+            f"Mode:           {scope['mode']}"
+        )
+        print(
+            f"Base:           {scope['base_sha']}"
+        )
+        print(
+            f"Target:         {scope['target_sha']}"
+        )
+        print(
+            f"Risk:           {risk}"
+        )
+        print(
+            "Changed files:  "
+            + str(
+                len(
+                    scope[
+                        "changed_files"
+                    ]
+                )
+            )
+        )
+
+        for path in scope[
+            "changed_files"
+        ]:
+            print(
+                f"  - {path}"
+            )
+
+        print(
+            f"Scope SHA256:   {digest}"
+        )
+        print(
+            "Validation:     "
+            + validation_mode
+        )
+
+        if prior_path is not None:
+            print(
+                "Inherited:      "
+                + str(
+                    prior_path.relative_to(
+                        ROOT
+                    )
+                )
+            )
+
+    ok, results = execute_plan(
+        plan,
+        quiet=json_output,
+    )
+
+    receipt = {
+        "schema": 2,
+        "kind": "gate-receipt",
+        "generated_at": utc_now(),
+        "status": (
+            "PASS"
+            if ok
+            else "FAIL"
+        ),
+        "mode": scope["mode"],
+        "base_sha": (
+            scope["base_sha"]
+        ),
+        "target_sha": (
+            scope["target_sha"]
+        ),
+        "scope_sha256": digest,
+        "risk_class": risk,
+        "changed_files": (
+            scope["changed_files"]
+        ),
+        **context,
+        "validation_mode": (
+            validation_mode
+        ),
+        "validation_reused_from": (
+            str(
+                prior_path.relative_to(
+                    ROOT
+                )
+            )
+            if prior_path
+            is not None
+            else None
+        ),
+        "validation_reused_target": (
+            prior_payload.get(
+                "target_sha"
+            )
+            if prior_payload
+            is not None
+            else None
+        ),
+        "commands": results,
+    }
+
+    stem = (
+        scope["target_sha"][:12]
+        if scope["target_sha"]
+        != "WORKTREE"
+        else (
+            "worktree-"
+            + scope[
+                "base_sha"
+            ][:12]
+        )
+    )
+
+    path = (
+        GATE_DIR
+        / (
+            f"{stem}-"
+            f"{digest[:12]}.json"
+        )
+    )
+
+    write_json(
+        path,
+        receipt,
+    )
+
+    receipt["receipt_path"] = str(
+        path.relative_to(
+            ROOT
+        )
+    )
+
+    receipt["receipt_sha256"] = (
+        sha256_file(
+            path
+        )
+    )
+
+    if json_output:
+        print(
+            json.dumps(
+                receipt,
+                indent=2,
+                sort_keys=True,
+            )
+        )
+    else:
+        print()
+        print(
+            "Gate:           "
+            + receipt["status"]
+        )
+        print(
+            "Validation:     "
+            + validation_mode
+        )
+        print(
+            "Receipt:        "
+            + receipt[
+                "receipt_path"
+            ]
+        )
+        print(
+            "Receipt SHA256: "
+            + receipt[
+                "receipt_sha256"
+            ]
+        )
+
+        if ok:
+            print(
+                "PASS: RELEASE GATE"
+            )
+        else:
+            print(
+                "FAIL: RELEASE GATE"
+            )
+
+    return (
+        0
+        if ok
+        else 1
+    )
+
+
+def matching_gate(
+    scope: dict,
+    digest: str,
+    *,
+    context: dict[str, str]
+    | None = None,
+) -> tuple[
+    Path,
+    dict,
+] | None:
+    if not GATE_DIR.exists():
+        return None
+
+    if context is None:
+        context = validation_context(
+            scope
+        )
+
+    matches = []
+
+    for path in GATE_DIR.glob(
+        "*.json"
+    ):
+        try:
+            payload = json.loads(
+                path.read_text(
+                    encoding="utf-8"
+                )
+            )
+        except Exception:
+            continue
+
+        if (
+            payload.get("status")
+            == "PASS"
+            and int(
+                payload.get(
+                    "schema"
+                )
+                or 0
+            )
+            >= 2
+            and payload.get(
+                "base_sha"
+            )
+            == scope["base_sha"]
+            and payload.get(
+                "target_sha"
+            )
+            == scope["target_sha"]
+            and payload.get(
+                "scope_sha256"
+            )
+            == digest
+            and validation_fields_match(
+                payload,
+                context,
+                include_tree=True,
+            )
+        ):
+            matches.append(
+                (
+                    path.stat().st_mtime,
+                    path,
+                    payload,
+                )
+            )
+
+    if not matches:
+        return None
+
+    _, path, payload = max(
+        matches,
+        key=lambda item: item[0],
+    )
+
     return path, payload
 
 

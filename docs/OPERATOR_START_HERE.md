@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","developers","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-08-20"
+reviewed_at: "2026-08-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -32,8 +32,10 @@ From Tony's Mac:
 ```bash
 cd "$HOME/projects/AoE2HDBets/app-prodn"
 
+aoe2war facts
 aoe2war context
 aoe2war status
+aoe2war workspace status
 git status --short
 git log -3 --oneline
 ```
@@ -61,13 +63,66 @@ For mutable AoE2WAR operations, use this order:
 Historical evidence explains how the system got here. It does not override
 fresh certified runtime truth.
 
+## Development OS
+
+Feature worktrees are first-class AoE2WAR development environments. The
+ordinary workflow is:
+
+```bash
+aoe2war dev new feature-name
+cd "$HOME/projects/AoE2HDBets/app-prodn-feature-name"
+
+aoe2war dev prepare
+aoe2war dev refresh
+aoe2war dev serve
+```
+
+`aoe2war dev prepare` owns worktree dependency compatibility, the localhost-only
+development environment, the runtime dependency contract, Prisma validation and
+client generation. It may bridge `node_modules` only from an exact
+`package.json` + `yarn.lock` fingerprint match; otherwise it materializes the
+frozen dependency contract.
+
+`aoe2war dev refresh` rebuilds the disposable `aoe2hdbets_shadow` database
+through local PostgreSQL bootstrap authority while keeping the application role
+least-privileged. `aoe2user` must remain non-superuser and `NOCREATEDB`.
+
+The shadow is production-shaped but mutation-safe:
+
+- production database credentials remain on the VPS;
+- production application/chain mutation credentials do not enter the local app;
+- application writes target localhost only;
+- selected product state is streamed into the disposable shadow;
+- foreign-key parent closure is discovered from the current schema instead of
+  maintained as a hand-written table list;
+- Direct/Nav Chat history, reactions and related dependencies are included;
+- high-volume activity history is bounded by machine policy;
+- production media/public read surfaces may remain available where explicitly
+  supported.
+
+For an interactive UI change, source tests are necessary but not always
+sufficient. When browser event ordering, portals, focus, pointer handling,
+optimistic state or persistence are material to the behavior, perform a real
+browser smoke against the writable production-shaped shadow before release.
+
 ## Release command choice
 
 Ordinary end-of-work closure is:
 
 ```bash
-aoe2war finish
+aoe2war finish -m "Ship the finished feature"
 ```
+
+The command may be started from canonical `main` or from a registered
+`app-prodn` feature worktree.
+
+From a feature worktree, `finish` proves that canonical `main` is clean and
+exact with GitHub, proves that the feature descends from that exact main,
+commits the finished feature when necessary, performs the full digest-bound
+feature gate, fast-forwards canonical main only, transfers the validation
+evidence, then re-enters canonical finish for publication, documentation,
+deployment and certification. It never auto-merges or rebases a divergent
+feature history.
 
 `finish` is the canonical human-facing transaction. It owns eligible commit /
 publish reconciliation, documentation and context refresh, deployment when

@@ -17,7 +17,11 @@
     "bridge_systemd_dropin": "/etc/systemd/system/aoe2hdbets-web.service.d/60-aoe2war-os.conf",
     "bridge_token_file": "~/.config/aoe2war/os-bridge-token",
     "bridge_launchagent": "~/Library/LaunchAgents/com.aoe2war.operator-bridge.plist",
-    "bridge_launchagent_label": "com.aoe2war.operator-bridge"
+    "bridge_launchagent_label": "com.aoe2war.operator-bridge",
+    "operator_repo": "/Users/tonyblum/projects/AoE2HDBets/app-prodn",
+    "managed_media_root": "/mnt/HC_Volume_105319120/aoe2-managed-assets",
+    "deployment_receipt_root": "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts",
+    "durable_rollback_root": "/mnt/HC_Volume_105319120/aoe2war/rollbacks"
   },
   "protected": {
     "wolo_runtime_mutation_policy": "observe-only-unless-explicitly-authorized",
@@ -110,7 +114,22 @@
     "global_serialization": "canonical-production-volume-lease",
     "database_migrations": "not-auto-applied",
     "wolo_runtime_mutation": false,
-    "final_requirement": "certified-production-and-estate-p0-0-p1-0"
+    "final_requirement": "certified-production-and-estate-p0-0-p1-0",
+    "feature_worktree_inputs": true,
+    "feature_worktree_promotion": "fast-forward-only-from-exact-main",
+    "feature_worktree_auto_commit": true,
+    "feature_worktree_auto_publish": true,
+    "validation_receipt_reuse": "exact-or-implementation-equivalent",
+    "validation_receipt_binding": [
+      "scope_digest",
+      "tree_digest",
+      "implementation_digest",
+      "dependency_digest",
+      "test_contract_digest",
+      "toolchain_digest",
+      "validator_digest"
+    ],
+    "generated_documentation_revalidation": "cheap-contract-only"
   },
   "semantic_maps": {
     "required_terms": [
@@ -151,5 +170,29 @@
     "max_block_age_seconds": 20,
     "max_no_progress_seconds": 15,
     "policy": "maintenance-dies-before-sole-validator"
+  },
+  "development": {
+    "shadow_database": "aoe2hdbets_shadow",
+    "preview_user_name": "Emaren",
+    "preview_origin": "https://aoe2war.com",
+    "dependency_strategy": "exact-package-lock-fingerprint-donor-or-frozen-materialization",
+    "production_database_mutation": false,
+    "production_application_mutation_credentials": false,
+    "direct_chat_tables": [
+      "chat_messages",
+      "direct_conversations",
+      "direct_conversation_participants",
+      "direct_messages",
+      "direct_message_reactions",
+      "direct_message_drafts",
+      "direct_message_pins",
+      "direct_message_translations"
+    ],
+    "shadow_app_role": "aoe2user",
+    "shadow_database_lifecycle": "local-bootstrap-authority",
+    "shadow_restore_authority": "local-superuser-only",
+    "shadow_app_role_createdb": false,
+    "shadow_fk_policy": "automatic-referenced-table-closure",
+    "shadow_activity_event_limit": 5000
   }
 }

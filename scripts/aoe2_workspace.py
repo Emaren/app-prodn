@@ -44,10 +44,21 @@ def classify(*, main: bool, dirty: bool, merged: bool, detached: bool) -> str:
     return "CLEANUP_CANDIDATE"
 
 
+
+def parse_worktree_porcelain(
+    raw: str,
+) -> list[str]:
+    """Split `git worktree list --porcelain` records."""
+    return [
+        item
+        for item in raw.split("\n\n")
+        if item.strip()
+    ]
+
 def snapshot() -> dict[str, Any]:
     main_head = git("rev-parse", "main")
     raw = git("worktree", "list", "--porcelain")
-    blocks = [item for item in raw.split("\\n\\n") if item.strip()]
+    blocks = parse_worktree_porcelain(raw)
     items: list[dict[str, Any]] = []
     registered: set[str] = set()
 
@@ -81,7 +92,10 @@ def snapshot() -> dict[str, Any]:
                     check=False,
                 ).returncode == 0
             )
-        is_main = path.resolve() == ROOT.resolve()
+        is_main = (
+            branch == "main"
+            and not detached
+        )
         items.append(
             {
                 "path": str(path),

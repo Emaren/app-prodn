@@ -3,6 +3,34 @@ import scripts.aoe2_workspace as workspace
 
 
 class WorkspaceTests(unittest.TestCase):
+    def test_porcelain_parser_keeps_all_worktrees(self):
+        raw = (
+            "worktree /one\n"
+            "HEAD a\n"
+            "branch refs/heads/main\n"
+            "\n"
+            "worktree /two\n"
+            "HEAD b\n"
+            "detached\n"
+        )
+
+        blocks = workspace.parse_worktree_porcelain(
+            raw
+        )
+
+        self.assertEqual(
+            len(blocks),
+            2,
+        )
+        self.assertIn(
+            "worktree /one",
+            blocks[0],
+        )
+        self.assertIn(
+            "worktree /two",
+            blocks[1],
+        )
+
     def test_clean_merged_is_cleanup_candidate(self):
         self.assertEqual(
             workspace.classify(

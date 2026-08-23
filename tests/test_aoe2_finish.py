@@ -206,5 +206,44 @@ class FinishTests(unittest.TestCase):
         self.assertTrue(any("api-prodn" in item for item in result["blockers"]))
 
 
+    def test_feature_handoff_requires_exact_clean_main(self):
+        MODULE.validate_feature_handoff_state(
+            feature_branch="feature/test",
+            feature_head="b" * 40,
+            canonical_branch="main",
+            canonical_head="a" * 40,
+            github_head="a" * 40,
+            canonical_dirty=False,
+            feature_descends_from_main=True,
+        )
+
+        with self.assertRaises(
+            MODULE.FinishError
+        ):
+            MODULE.validate_feature_handoff_state(
+                feature_branch="feature/test",
+                feature_head="b" * 40,
+                canonical_branch="main",
+                canonical_head="a" * 40,
+                github_head="c" * 40,
+                canonical_dirty=False,
+                feature_descends_from_main=True,
+            )
+
+        with self.assertRaises(
+            MODULE.FinishError
+        ):
+            MODULE.validate_feature_handoff_state(
+                feature_branch="feature/test",
+                feature_head="b" * 40,
+                canonical_branch="main",
+                canonical_head="a" * 40,
+                github_head="a" * 40,
+                canonical_dirty=False,
+                feature_descends_from_main=False,
+            )
+
+
+
 if __name__ == "__main__":
     unittest.main()

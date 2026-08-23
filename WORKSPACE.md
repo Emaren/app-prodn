@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "workspace-reference"
-reviewed_at: "2026-08-20"
+reviewed_at: "2026-08-22"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -104,6 +104,43 @@ implementation authority away from the three source repositories.
 - Watcher client belongs in `aoe2-watcher`
 - Browser-facing product hierarchy belongs in `app-prodn`
 
+## Local Development OS
+
+`app-prodn` feature worktrees are managed development surfaces, not additional
+product repositories.
+
+Create or prepare work with:
+
+```bash
+aoe2war dev new feature-name
+aoe2war dev prepare
+aoe2war dev refresh
+aoe2war dev serve
+```
+
+The Development OS owns:
+
+- registered worktree discovery;
+- exact `package.json` + `yarn.lock` dependency fingerprinting;
+- compatible dependency bridging or frozen dependency materialization;
+- localhost-only `.env.local` proof;
+- explicit runtime dependency declaration checks;
+- Prisma validation and generated client preparation;
+- disposable local PostgreSQL lifecycle through local bootstrap authority;
+- least-privilege `aoe2user` ownership with `NOCREATEDB`;
+- production-shaped data import with automatic FK parent closure;
+- Direct/Nav Chat history for realistic interaction testing;
+- bounded high-volume activity history;
+- Emaren local preview identity;
+- zero production application/database/chain mutation credentials.
+
+`aoe2war facts` is the machine-facing topology authority. Prefer it over
+retyping mutable paths, ports or storage locations from memory.
+
+`aoe2war workspace status` classifies every registered worktree and preserves
+dirty/unmerged work rather than deleting it merely because another branch is
+already merged.
+
 ## Branch / deploy workflow
 
 Branches remain repository-specific:
@@ -116,16 +153,23 @@ Branches remain repository-specific:
 
 ### `app-prodn`
 
-Develop and review locally, then close ordinary work with:
+Develop and review locally in a registered worktree, then close ordinary
+work from that same worktree with:
 
 ```bash
-aoe2war context
-aoe2war status
-aoe2war finish
+aoe2war dev prepare
+aoe2war dev serve
+
+# after implementation + appropriate browser proof
+aoe2war finish -m "Ship the finished feature"
 ```
 
+`finish` proves the feature descends from an exact clean canonical `main`, runs
+the digest-bound feature gate, fast-forwards canonical main only, and then
+continues through canonical publication/documentation/deployment/certification.
+
 Use `aoe2war deploy` directly only for a deliberately scoped lower-level web
-release where the implementation is already committed and the worktree is
+release where canonical `main` is already committed, published as required, and
 clean.
 
 The release engine owns the ordinary web release sequence: documentation
