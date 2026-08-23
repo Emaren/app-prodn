@@ -17,6 +17,7 @@ import {
   acceptChallenge,
   cancelChallenge,
   checkInChallenge,
+  completeChallengeManually,
   confirmChallengeTime,
   declineChallenge,
   fundChallenge,
@@ -571,57 +572,42 @@ export async function PATCH(
     }
 
     if (action === "mark_completed") {
-      if (!viewer.isAdmin) {
-        return NextResponse.json(
-          { detail: "Only admins can mark this match result-ready for settlement." },
-          { status: 403 }
-        );
-      }
+      await completeChallengeManually(
+        {
+          ...lifecycleTransitionContext,
 
-      if (!["ready", "live"].includes(currentSurface.displayState)) {
-        return NextResponse.json(
-          { detail: "Only ready or live-confirmed matches can move to result-ready." },
-          { status: 409 }
-        );
-      }
+          currentDisplayState:
+            currentSurface.displayState,
 
-      const completedAt = new Date();
-      const linkedSessionKey = payload.linkedSessionKey?.trim() || null;
-      const linkedMapName = payload.linkedMapName?.trim() || null;
-      const linkedWinner = payload.linkedWinner?.trim() || null;
-      const linkedDurationSeconds =
-        typeof payload.linkedDurationSeconds === "number" && Number.isFinite(payload.linkedDurationSeconds)
-          ? Math.max(0, Math.floor(payload.linkedDurationSeconds))
-          : null;
+          canonicalReplay: {
+            linkedSessionKey:
+              scheduledMatch.linkedSessionKey,
 
-      await prisma.$transaction(async (tx) => {
-        await tx.scheduledMatch.update({
-          where: { id: challengeId },
-          data: {
-            status: "completed",
-            liveConfirmedAt: scheduledMatch.liveConfirmedAt ?? completedAt,
-            resultAt: completedAt,
-            settlementReadyAt: completedAt,
-            linkedSessionKey,
-            linkedMapName,
-            linkedWinner,
-            linkedDurationSeconds,
+            linkedMapName:
+              scheduledMatch.linkedMapName,
+
+            linkedWinner:
+              scheduledMatch.linkedWinner,
+
+            linkedDurationSeconds:
+              scheduledMatch.linkedDurationSeconds,
           },
-        });
 
-        await recordChallengeActivity(tx, {
-          scheduledMatchId: challengeId,
-          eventType: "completed",
-          detail: linkedWinner ? `Completed. Winner: ${linkedWinner}.` : "Completed and stored.",
-          metadata: {
-            linkedSessionKey,
-            linkedMapName,
-            linkedWinner,
-            linkedDurationSeconds,
+          request: {
+            linkedSessionKey:
+              payload.linkedSessionKey,
+
+            linkedMapName:
+              payload.linkedMapName,
+
+            linkedWinner:
+              payload.linkedWinner,
+
+            linkedDurationSeconds:
+              payload.linkedDurationSeconds,
           },
-          createdAt: completedAt,
-        });
-      });
+        },
+      );
     }
 
     await postChallengeCommissionerNotice(prisma, challengeId).catch((error) => {

@@ -43,6 +43,7 @@ import {
   planChallengeCheckIn,
   planChallengeFundingIntent,
   planChallengeFundingState,
+  planChallengeManualCompletion,
   planChallengeNoShowResolution,
   planChallengeReschedule,
   planChallengeTimeConfirmation,
@@ -2193,6 +2194,294 @@ export async function fundChallenge(
             fundingTxHash:
               verifiedFundingTxHash,
           },
+        },
+      );
+    },
+  );
+}
+
+
+export type ChallengeManualCompletionRequest = {
+  linkedSessionKey?:
+    string | null;
+
+  linkedMapName?:
+    string | null;
+
+  linkedWinner?:
+    string | null;
+
+  linkedDurationSeconds?:
+    number | null;
+};
+
+
+export type ChallengeCanonicalReplayLinkage = {
+  linkedSessionKey:
+    string | null;
+
+  linkedMapName:
+    string | null;
+
+  linkedWinner:
+    string | null;
+
+  linkedDurationSeconds:
+    number | null;
+};
+
+
+export async function completeChallengeManually(
+  input:
+    ChallengeTransitionContext & {
+      currentDisplayState:
+        string;
+
+      canonicalReplay:
+        ChallengeCanonicalReplayLinkage;
+
+      request:
+        ChallengeManualCompletionRequest;
+    },
+) {
+  const {
+    prisma,
+    challengeId,
+    actor,
+    match,
+    currentDisplayState,
+    canonicalReplay,
+    request,
+  } = input;
+
+  const completedAt =
+    new Date();
+
+  const plan =
+    planChallengeManualCompletion({
+      actorIsAdmin:
+        actor.isAdmin,
+
+      currentDisplayState,
+
+      currentLinkedSessionKey:
+        canonicalReplay
+          .linkedSessionKey,
+
+      currentLinkedMapName:
+        canonicalReplay
+          .linkedMapName,
+
+      currentLinkedWinner:
+        canonicalReplay
+          .linkedWinner,
+
+      currentLinkedDurationSeconds:
+        canonicalReplay
+          .linkedDurationSeconds,
+
+      submittedLinkedSessionKey:
+        request.linkedSessionKey,
+
+      submittedMapName:
+        request.linkedMapName,
+
+      submittedWinner:
+        request.linkedWinner,
+
+      submittedDurationSeconds:
+        request.linkedDurationSeconds,
+
+      completedAt,
+    });
+
+  /*
+   * Manual completion establishes commissioner result truth,
+   * not replay provenance.
+   *
+   * Bind the result to the exact lifecycle, attendance,
+   * funding and canonical replay snapshot from which the
+   * commissioner acted.
+   *
+   * Automatic replay completion or any other terminal
+   * transition winning first makes this command fail closed.
+   */
+  await prisma.$transaction(
+    async (tx) => {
+      const completed =
+        await tx
+          .scheduledMatch
+          .updateMany({
+            where: {
+              id:
+                challengeId,
+
+              status:
+                match.status,
+
+              timingMode:
+                match.timingMode,
+
+              scheduledAt:
+                match.scheduledAt,
+
+              matchTime:
+                match.matchTime,
+
+              acceptedAt:
+                match.acceptedAt,
+
+              wagerAmountWolo:
+                match.wagerAmountWolo,
+
+              guaranteeAmountWolo:
+                match.guaranteeAmountWolo,
+
+              challengerFundedAt:
+                match.challengerFundedAt,
+
+              challengedFundedAt:
+                match.challengedFundedAt,
+
+              challengerCheckedInAt:
+                match.challengerCheckedInAt,
+
+              challengedCheckedInAt:
+                match.challengedCheckedInAt,
+
+              liveConfirmedAt:
+                match.liveConfirmedAt,
+
+              resultAt:
+                null,
+
+              settlementReadyAt:
+                null,
+
+              linkedSessionKey:
+                canonicalReplay
+                  .linkedSessionKey,
+
+              linkedMapName:
+                canonicalReplay
+                  .linkedMapName,
+
+              linkedWinner:
+                canonicalReplay
+                  .linkedWinner,
+
+              linkedDurationSeconds:
+                canonicalReplay
+                  .linkedDurationSeconds,
+            },
+
+            data: {
+              status:
+                "completed",
+
+              liveConfirmedAt:
+                match.liveConfirmedAt ??
+                completedAt,
+
+              resultAt:
+                completedAt,
+
+              settlementReadyAt:
+                completedAt,
+
+              /*
+               * Canonical replay linkage is preserved exactly.
+               * A manual request cannot establish or replace it.
+               */
+              linkedSessionKey:
+                plan
+                  .canonicalReplay
+                  .linkedSessionKey,
+
+              linkedMapName:
+                plan
+                  .canonicalReplay
+                  .linkedMapName,
+
+              linkedDurationSeconds:
+                plan
+                  .canonicalReplay
+                  .linkedDurationSeconds,
+
+              /*
+               * linkedWinner remains the legacy persistence
+               * field consumed by the settlement planner, but
+               * its authority is now explicitly commissioner
+               * result truth rather than implied replay proof.
+               */
+              linkedWinner:
+                plan.linkedWinner,
+            },
+          });
+
+      if (
+        completed.count !==
+        1
+      ) {
+        throw new ChallengeConflictError(
+          "Challenge result state changed before manual completion finished. Refresh before recording the result.",
+        );
+      }
+
+      await recordChallengeActivity(
+        tx,
+        {
+          scheduledMatchId:
+            challengeId,
+
+          actorUserId:
+            actor.id,
+
+          eventType:
+            "completed",
+
+          detail:
+            plan.linkedWinner
+              ? `Completed. Winner: ${plan.linkedWinner}.`
+              : "Completed and stored.",
+
+          metadata: {
+            resultAuthority:
+              "commissioner_manual",
+
+            linkedWinner:
+              plan.linkedWinner,
+
+            canonicalLinkedSessionKey:
+              plan
+                .canonicalReplay
+                .linkedSessionKey,
+
+            canonicalLinkedMapName:
+              plan
+                .canonicalReplay
+                .linkedMapName,
+
+            canonicalLinkedDurationSeconds:
+              plan
+                .canonicalReplay
+                .linkedDurationSeconds,
+
+            submittedEvidence:
+              plan.submittedEvidence,
+
+            replayProvenanceVerified:
+              false,
+
+            titleResultAuthority:
+              false,
+
+            settlementExecuted:
+              false,
+          },
+
+          createdAt:
+            completedAt,
         },
       );
     },

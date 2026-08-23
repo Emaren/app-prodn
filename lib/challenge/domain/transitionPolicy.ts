@@ -1431,3 +1431,187 @@ export function planChallengeNoShowResolution(
       resolvedAt,
   };
 }
+
+
+export function planChallengeManualCompletion(
+  input: {
+    actorIsAdmin:
+      boolean;
+
+    currentDisplayState:
+      string;
+
+    currentLinkedSessionKey:
+      string | null;
+
+    currentLinkedMapName:
+      string | null;
+
+    currentLinkedWinner:
+      string | null;
+
+    currentLinkedDurationSeconds:
+      number | null;
+
+    submittedLinkedSessionKey?:
+      string | null;
+
+    submittedMapName?:
+      string | null;
+
+    submittedWinner?:
+      string | null;
+
+    submittedDurationSeconds?:
+      number | null;
+
+    completedAt:
+      Date;
+  },
+) {
+  if (
+    !input.actorIsAdmin
+  ) {
+    throw new ChallengeConflictError(
+      "Only admins can mark this match result-ready for settlement.",
+      403,
+    );
+  }
+
+  if (
+    input.currentDisplayState !==
+      "ready" &&
+    input.currentDisplayState !==
+      "live"
+  ) {
+    throw new ChallengeConflictError(
+      "Only ready or live-confirmed matches can move to result-ready.",
+    );
+  }
+
+  const canonicalLinkedSessionKey =
+    input.currentLinkedSessionKey
+      ?.trim() ||
+    null;
+
+  const canonicalLinkedMapName =
+    input.currentLinkedMapName
+      ?.trim() ||
+    null;
+
+  const canonicalLinkedWinner =
+    input.currentLinkedWinner
+      ?.trim() ||
+    null;
+
+  const canonicalLinkedDurationSeconds =
+    typeof input
+      .currentLinkedDurationSeconds ===
+      "number" &&
+    Number.isFinite(
+      input.currentLinkedDurationSeconds,
+    )
+      ? Math.max(
+          0,
+          Math.floor(
+            input.currentLinkedDurationSeconds,
+          ),
+        )
+      : null;
+
+  const submittedLinkedSessionKey =
+    input.submittedLinkedSessionKey
+      ?.trim() ||
+    null;
+
+  const submittedMapName =
+    input.submittedMapName
+      ?.trim() ||
+    null;
+
+  const submittedDurationSeconds =
+    typeof input
+      .submittedDurationSeconds ===
+      "number" &&
+    Number.isFinite(
+      input.submittedDurationSeconds,
+    )
+      ? Math.max(
+          0,
+          Math.floor(
+            input.submittedDurationSeconds,
+          ),
+        )
+      : null;
+
+  /*
+   * Manual commissioner authority and verified replay
+   * provenance are independent axes.
+   *
+   * A commissioner may declare result truth, but cannot make
+   * an arbitrary string become canonical watcher/replay
+   * identity.
+   *
+   * Supplying the already-linked key is allowed as stale-client
+   * confirmation; establishing or replacing the key is not.
+   */
+  if (
+    submittedLinkedSessionKey &&
+    submittedLinkedSessionKey !==
+      canonicalLinkedSessionKey
+  ) {
+    throw new ChallengeConflictError(
+      "Manual completion cannot establish or replace replay linkage. Link the verified watcher/replay session first.",
+    );
+  }
+
+  /*
+   * Omitted winner preserves existing server-linked winner
+   * evidence. An explicitly supplied blank winner clears it,
+   * preserving the ability to move a match into result review
+   * without manufacturing competitive truth.
+   */
+  const linkedWinner =
+    input.submittedWinner ===
+      undefined
+      ? canonicalLinkedWinner
+      : (
+          input.submittedWinner
+            ?.trim() ||
+          null
+        );
+
+  return {
+    completedAt:
+      input.completedAt,
+
+    linkedWinner,
+
+    canonicalReplay: {
+      linkedSessionKey:
+        canonicalLinkedSessionKey,
+
+      linkedMapName:
+        canonicalLinkedMapName,
+
+      linkedDurationSeconds:
+        canonicalLinkedDurationSeconds,
+    },
+
+    submittedEvidence: {
+      linkedSessionKey:
+        submittedLinkedSessionKey,
+
+      linkedMapName:
+        submittedMapName,
+
+      linkedWinner:
+        input.submittedWinner
+          ?.trim() ||
+        null,
+
+      linkedDurationSeconds:
+        submittedDurationSeconds,
+    },
+  };
+}
