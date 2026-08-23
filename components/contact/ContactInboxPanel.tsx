@@ -1518,23 +1518,6 @@ function TextMessageBubble({
   const bubbleRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!trayPinnedOpen || typeof document === "undefined") {
-      return;
-    }
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!bubbleRef.current?.contains(event.target as Node)) {
-        setTrayPinnedOpen(false);
-      }
-    };
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-    };
-  }, [trayPinnedOpen]);
-
-  useEffect(() => {
     return () => {
       clearHoldTimer();
     };

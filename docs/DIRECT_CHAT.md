@@ -51,6 +51,7 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 - The small expansion control reveals the remaining configured reactions.
 - Edit, delete, and AI public/private actions stay in the same anchored action surface when allowed.
 - Existing reaction summaries remain directly toggleable below the message.
+- The portalled message action tray has exactly one outside-click authority: `FloatingChatPanel`. Message bubbles must not install a competing document-level pointer handler, because reaction, reply, edit, delete, translation, and other tray controls render outside the bubble DOM through the portal.
 
 ## Scroll and performance contract
 
@@ -110,7 +111,7 @@ For changes to this surface, verify:
 3. Initial thread load and conversation switches land on the latest message.
 4. Upward reading is not pulled back to the bottom by polling.
 5. The reaction picker stays inside the chat shell at desktop and narrow popover widths.
-6. Quick and expanded reactions, edit/delete, receipts, typing, attachments, and send/retry behavior still work.
+6. Quick and expanded reactions, reply, edit/delete, receipts, typing, attachments, and send/retry behavior work in both Nav Chat and Full Chat. Portalled message actions must receive a real browser smoke against a writable localhost shadow seeded with production-shaped Direct Chat history before release.
 7. Older-page loading preserves scroll position and never fetches the former 5,000-message payload.
 8. Search, pins, replies, cross-surface drafts, replay cards, translation, and transcription work in V1/V2/V3.
 9. With two signed-in browsers, delivery/read/typing changes arrive without waiting for the fallback poll.
