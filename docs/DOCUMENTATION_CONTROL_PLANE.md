@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `2f5f54c352db41d3587037c7db809a9f8e0a2a03`
+Implementation baseline: `media-ingest-v1-1` at `3c62d7f82344e773824ba6f5e554623584092562`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

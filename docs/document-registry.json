@@ -385,7 +385,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-08-22",
       "sensitivity": "internal",
-      "sha256": "7e014567eaf79a054333635fa224f8b6def6d0e6a82e890b462bf3beae2181bd",
+      "sha256": "bfcd693e706986638604c8672b9a845573f0e0b4702c6728aa11a6ef2981a9e2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "14d39b5a8c39e43168b717d492c85c225140bfb17b6550a6a3f9dc14285f9eb2",
+      "sha256": "49463d73e94895c624e0cc5341751021733bdae60b37a4f7219de254314ca278",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1627,8 +1627,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "2f5f54c352db41d3587037c7db809a9f8e0a2a03"
+    "branch": "media-ingest-v1-1",
+    "commit": "3c62d7f82344e773824ba6f5e554623584092562"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
