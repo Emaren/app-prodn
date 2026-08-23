@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1e2058cb78d1bb6c4a0b5c199090762fc6dbf67e3951ca2368943aa3051652dc",
+      "sha256": "938287d7db0d970d4606c2a06186423add95a01edfe604c5998204ba40137730",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1627,8 +1627,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "feature/final-corpus-closure",
-    "commit": "8ac7db843094b00743e28275c4f5e2e15f3a18d4"
+    "branch": "feature/chat-reflow-clan-signals-v1",
+    "commit": "82c2e739bc6300093ba951c250dfc121d3b3d9f7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

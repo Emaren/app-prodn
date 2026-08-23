@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/final-corpus-closure` at `8ac7db843094b00743e28275c4f5e2e15f3a18d4`
+Implementation baseline: `feature/chat-reflow-clan-signals-v1` at `82c2e739bc6300093ba951c250dfc121d3b3d9f7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
