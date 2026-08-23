@@ -45,6 +45,7 @@ export default async function ClanHallPage({
   params: Promise<{ slug: string }>;
   searchParams?: Promise<{
     view?: string | string[];
+    focusMessageId?: string | string[];
   }>;
 }) {
   const { slug } = await params;
@@ -54,6 +55,23 @@ export default async function ClanHallPage({
   const view = normalizeClanView(
     resolvedSearchParams.view,
   );
+
+  const rawFocusMessageId = Array.isArray(
+    resolvedSearchParams.focusMessageId,
+  )
+    ? resolvedSearchParams.focusMessageId[0]
+    : resolvedSearchParams.focusMessageId;
+
+  const parsedFocusMessageId = Number.parseInt(
+    rawFocusMessageId ?? "",
+    10,
+  );
+
+  const focusMessageId =
+    Number.isSafeInteger(parsedFocusMessageId) &&
+    parsedFocusMessageId > 0
+      ? parsedFocusMessageId
+      : null;
   const cookieStore = await cookies();
   const claims = await verifySession(
     cookieStore.get(SESSION_COOKIE_NAME)?.value,
@@ -68,6 +86,7 @@ export default async function ClanHallPage({
       getPrisma(),
       normalizedSlug,
       claims?.uid ?? null,
+      { focusMessageId },
     );
   } catch (error) {
     console.warn(

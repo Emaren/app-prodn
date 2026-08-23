@@ -2692,3 +2692,34 @@ html[data-clan-theme="crimson"] .clan-theme-toggle {
 .clan-chat-stream--v4 :is(.clan-message-media-grid, .clan-message-youtube) {
   grid-column: 2 !important;
 }
+
+
+/* AOE2WAR_CLAN_SIGNAL_FOCUS_V1 */
+.clan-message:target {
+  scroll-margin-block: 8rem;
+  animation: aoe2war-clan-signal-focus 3.4s ease-out both;
+}
+
+@keyframes aoe2war-clan-signal-focus {
+  0% {
+    outline: 1px solid rgba(253, 230, 138, 0.92);
+    outline-offset: 5px;
+    box-shadow:
+      0 0 0 1px rgba(251, 191, 36, 0.22),
+      0 0 48px rgba(245, 158, 11, 0.28),
+      0 22px 70px rgba(0, 0, 0, 0.42);
+  }
+
+  52% {
+    outline: 1px solid rgba(253, 230, 138, 0.36);
+    outline-offset: 3px;
+    box-shadow:
+      0 0 28px rgba(245, 158, 11, 0.12),
+      0 18px 54px rgba(0, 0, 0, 0.34);
+  }
+
+  100% {
+    outline: 1px solid transparent;
+    outline-offset: 0;
+  }
+}

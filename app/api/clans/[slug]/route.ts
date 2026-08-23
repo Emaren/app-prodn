@@ -8,6 +8,12 @@ import {
   normalizeClanAudience,
   normalizeClanMessage,
 } from "@/lib/clans";
+import {
+  buildClanHallSignalBody,
+  resolveClanHallSignalRecipients,
+} from "@/lib/clanHallSignals";
+import { getOrCreateConversationByUsers } from "@/lib/contactInbox";
+import { publishDirectMessageEvent } from "@/lib/directMessageEvents";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { publishClanHallEvent } from "@/lib/clanHallEvents";
@@ -386,6 +392,120 @@ export async function POST(
       type: "message",
       messageId: createdMessage.id,
     });
+
+    // Clan Signals V1:
+    // - explicit active-roster name calls produce personal Hall signals
+    // - @Clan is an active-member/admin broadcast
+    // - explicit mention wins when both apply
+    // - notification failure never rolls back the human Hall message
+    try {
+      const signalMembers = await prisma.clanMember.findMany({
+        where: {
+          clanId: clan.id,
+          status: "active",
+          userId: { not: viewer.id },
+        },
+        select: {
+          userId: true,
+          user: {
+            select: {
+              uid: true,
+              inGameName: true,
+              steamPersonaName: true,
+            },
+          },
+        },
+      });
+
+      const signalRecipients = resolveClanHallSignalRecipients({
+        body: message,
+        authorUid: viewer.uid,
+        allowClanBroadcast: isMember,
+        roster: signalMembers.map((member) => ({
+          uid: member.user.uid,
+          displayName:
+            member.user.inGameName ||
+            member.user.steamPersonaName ||
+            member.user.uid,
+        })),
+      });
+
+      const deliveryTargets = signalMembers.filter((member) =>
+        signalRecipients.has(member.user.uid),
+      );
+
+      const authorName =
+        viewer.inGameName ||
+        viewer.steamPersonaName ||
+        viewer.uid;
+
+      const deliveryResults: PromiseSettledResult<void>[] = [];
+      const FANOUT_BATCH_SIZE = 8;
+
+      for (
+        let offset = 0;
+        offset < deliveryTargets.length;
+        offset += FANOUT_BATCH_SIZE
+      ) {
+        const batchResults = await Promise.allSettled(
+          deliveryTargets
+            .slice(offset, offset + FANOUT_BATCH_SIZE)
+            .map(async (member) => {
+          const kind = signalRecipients.get(member.user.uid);
+          if (!kind) return;
+
+          const conversation =
+            await getOrCreateConversationByUsers(
+              prisma,
+              viewer.id,
+              member.userId,
+            );
+
+          await prisma.directMessage.create({
+            data: {
+              conversationId: conversation.id,
+              senderUserId: viewer.id,
+              body: buildClanHallSignalBody({
+                kind,
+                clanSlug: slug,
+                clanName: clan.name,
+                messageId: createdMessage.id,
+                authorName,
+                preview: message,
+              }),
+            },
+          });
+
+          await prisma.directConversation.update({
+            where: { id: conversation.id },
+            data: { updatedAt: new Date() },
+          });
+
+          publishDirectMessageEvent(member.user.uid, {
+            type: "message",
+            targetUid: viewer.uid,
+          });
+            }),
+        );
+
+        deliveryResults.push(...batchResults);
+      }
+
+      const failedDeliveries = deliveryResults.filter(
+        (result) => result.status === "rejected",
+      );
+
+      if (failedDeliveries.length > 0) {
+        console.warn(
+          `Clan Hall signal delivery partially failed: ${failedDeliveries.length}/${deliveryResults.length}`,
+        );
+      }
+    } catch (signalError) {
+      console.warn(
+        "Clan Hall signal delivery failed; Hall message remains posted:",
+        signalError,
+      );
+    }
 
     try {
       if (message) await maybeCreateClanHallScribeReply({

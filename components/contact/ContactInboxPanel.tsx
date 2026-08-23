@@ -58,6 +58,10 @@ import {
   parseClanInviteBody,
   type ParsedClanInviteBody,
 } from "@/lib/clanInvites";
+import {
+  parseClanHallSignalBody,
+  type ParsedClanHallSignal,
+} from "@/lib/clanHallSignals";
 import { summarizeChallengeInboxMessage } from "@/lib/challengeInboxMessages";
 import {
   parseFeatureRequestInboxMessage,
@@ -1162,6 +1166,107 @@ function HonorActions({
 }
 
 
+function ClanHallSignalCard({
+  message,
+  signal,
+  isViewer,
+}: {
+  message: Extract<ContactInboxMessage, { kind: "text" }>;
+  signal: ParsedClanHallSignal;
+  isViewer: boolean;
+}) {
+  const isPersonalMention = signal.kind === "mention";
+
+  const eyebrow =
+    isViewer && isPersonalMention
+      ? "Hall Signal Sent"
+      : isPersonalMention
+        ? "You were called in the Hall"
+        : "The Hall calls the Clan";
+
+  const detail =
+    isViewer
+      ? isPersonalMention
+        ? "You called a clanmate from the Hall"
+        : "You called @Clan"
+      : isPersonalMention
+        ? `${signal.authorName} mentioned you`
+        : `${signal.authorName} called @Clan`;
+
+  const actionLabel =
+    !isViewer && isPersonalMention
+      ? "Respond"
+      : "Enter Hall";
+
+  const href =
+    `/clans/${encodeURIComponent(signal.clanSlug)}` +
+    `?focusMessageId=${signal.messageId}` +
+    `#clan-message-${signal.messageId}`;
+
+  return (
+    <div className="w-full max-w-2xl">
+      <section className="group relative overflow-hidden rounded-[1.65rem] border border-amber-100/18 bg-[radial-gradient(circle_at_10%_0%,rgba(251,191,36,0.14),transparent_38%),radial-gradient(circle_at_92%_12%,rgba(99,102,241,0.13),transparent_34%),linear-gradient(145deg,rgba(25,20,15,0.98),rgba(6,12,22,0.99)_58%,rgba(4,8,16,0.99))] px-4 py-4 shadow-[0_22px_70px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.055)] sm:px-5 sm:py-5">
+        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/55 to-transparent" />
+
+        <div className="flex items-start gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[1rem] border border-amber-200/20 bg-amber-300/[0.08] text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+            <Swords className="h-4 w-4" />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="text-[9px] font-black uppercase tracking-[0.28em] text-amber-200/65">
+              {eyebrow}
+            </div>
+
+            <div className="mt-1.5 truncate font-serif text-lg font-semibold tracking-[-0.015em] text-white">
+              {signal.clanName}
+            </div>
+
+            {!isViewer ? (
+              <div className="mt-1 text-xs text-slate-400">
+                {detail}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="shrink-0 text-[10px] text-slate-500">
+            {formatBubbleTime(message.createdAt)}
+          </div>
+        </div>
+
+        {signal.preview ? (
+          <div
+            className="mt-4 overflow-hidden text-sm leading-6 text-slate-200 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]"
+            style={{
+              WebkitMaskImage:
+                "linear-gradient(180deg, black 0%, black 58%, transparent 100%)",
+              maskImage:
+                "linear-gradient(180deg, black 0%, black 58%, transparent 100%)",
+            }}
+          >
+            {signal.preview}
+          </div>
+        ) : null}
+
+        <div className="mt-4 flex justify-end">
+          <Link
+            href={href}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-amber-200/35 bg-[linear-gradient(135deg,rgba(61,40,16,0.98),rgba(24,15,10,0.99))] px-4 text-[10px] font-black uppercase tracking-[0.16em] text-amber-50 shadow-[0_10px_28px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,245,210,0.14)] transition duration-200 hover:-translate-y-0.5 hover:border-amber-100/65 hover:shadow-[0_15px_34px_rgba(0,0,0,0.42),0_0_26px_rgba(245,158,11,0.15)]"
+          >
+            {!isViewer && isPersonalMention ? (
+              <Reply className="h-3.5 w-3.5" />
+            ) : (
+              <Swords className="h-3.5 w-3.5" />
+            )}
+            {actionLabel}
+          </Link>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+
 function ClanInviteDirectArtifact({
   message,
   invite,
@@ -1499,6 +1604,7 @@ function TextMessageBubble({
   const canToggleLobbyShare =
     isPersisted && message.sender.uid === AI_CONCIERGE_UID && !message.attachment && message.body.trim().length > 0;
   const clanProtocolMessage = parseClanProtocolMessage(message.body);
+  const clanHallSignal = parseClanHallSignalBody(message.body);
   const clanInviteMessage = parseClanInviteBody(message.body);
   const compactChallengeNotice = message.body ? challengeNoticeTone(summarizeChallengeInboxMessage(message.body)) : null;
   const featureRequest = parseFeatureRequestInboxMessage(message.body);
@@ -1663,6 +1769,16 @@ function TextMessageBubble({
       setTranscriptionPending(false);
       setTrayPinnedOpen(false);
     }
+  }
+
+  if (clanHallSignal) {
+    return (
+      <ClanHallSignalCard
+        message={message}
+        signal={clanHallSignal}
+        isViewer={isViewer}
+      />
+    );
   }
 
   if (

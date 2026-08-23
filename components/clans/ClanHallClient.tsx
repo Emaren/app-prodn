@@ -554,6 +554,17 @@ function mergeClanHallSnapshot(
     };
   }
 
+  if (
+    current.messagePage.kind === "focus" &&
+    incoming.messagePage.kind === "latest"
+  ) {
+    return {
+      ...incoming,
+      messages: mergedMessages,
+      messagePage: current.messagePage,
+    };
+  }
+
   if (current.messagePage.kind === "older") {
     return {
       ...incoming,
@@ -765,6 +776,26 @@ export default function ClanHallClient({
 
   useEffect(() => {
     setMounted(true);
+
+    const targetId =
+      typeof window !== "undefined" &&
+      /^#clan-message-\d+$/.test(window.location.hash)
+        ? window.location.hash.slice(1)
+        : null;
+
+    if (targetId) {
+      shouldStickToBottomRef.current = false;
+
+      window.requestAnimationFrame(() => {
+        document.getElementById(targetId)?.scrollIntoView({
+          block: "center",
+          behavior: "auto",
+        });
+      });
+
+      return;
+    }
+
     settleChatToBottom();
   }, [settleChatToBottom]);
 
@@ -2559,6 +2590,7 @@ function ClanMessageBubble({
 
   return (
     <div
+      id={`clan-message-${message.id}`}
       className={`clan-message group/message relative flex gap-3 rounded-[1.35rem] border p-3 sm:p-4 ${
         grouped
           ? "clan-message--grouped "

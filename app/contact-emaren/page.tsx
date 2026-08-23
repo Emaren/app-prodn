@@ -58,7 +58,7 @@ export default async function ContactEmarenPage({
 
   return (
     <div className="flex h-full min-h-0 max-h-full flex-col gap-2 overflow-hidden py-0 text-white sm:gap-3">
-      <section className="hidden shrink-0 overflow-hidden rounded-[1.25rem] border border-white/8 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.14),_transparent_30%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#020617)] p-3 sm:block sm:rounded-[1.6rem] sm:p-5">
+      <section className="hidden shrink-0 overflow-hidden rounded-[1.25rem] border border-white/8 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.14),_transparent_30%),linear-gradient(135deg,_#0f172a,_#111827_55%,_#020617)] p-3 sm:block [@media(max-height:50rem)]:!hidden sm:rounded-[1.6rem] sm:p-5">
         <div className="max-w-3xl space-y-1.5">
           <div className="text-[10px] uppercase tracking-[0.28em] text-amber-200/70 sm:text-xs sm:tracking-[0.35em]">
             Direct Line

@@ -824,9 +824,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const [liveGamesCount, setLiveGamesCount] = React.useState(0);
   const [requestCount, setRequestCount] = React.useState(0);
   const [workshopLive, setWorkshopLive] = React.useState(false);
-  // AOE2WAR_CONTACT_PINCH_ZOOM_REFLOW_20260725
+  // AOE2WAR_CONTACT_VIEWPORT_REFLOW_20260823
   const isContactPage = pathname?.startsWith("/contact-emaren");
-  const [contactViewportHeight, setContactViewportHeight] = React.useState<number | null>(null);
   const isLobbySurface = pathname === "/" || pathname?.startsWith("/lobby");
   const isMediaManagerSurface = pathname?.startsWith("/admin/media-assets");
   const isHeroStudioSurface = pathname?.startsWith("/admin/hero-studio");
@@ -991,35 +990,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     isLivingLeaderboardSurface,
   ]);
 
-  React.useEffect(() => {
-    if (!isContactPage) {
-      setContactViewportHeight(null);
-      return;
-    }
-    const visualViewport = window.visualViewport;
-    let resizeFrame: number | null = null;
-    const updateViewportHeight = () => {
-      if (resizeFrame !== null) return;
-      resizeFrame = window.requestAnimationFrame(() => {
-        resizeFrame = null;
-        const nextHeight = Math.round(visualViewport?.height ?? window.innerHeight);
-        setContactViewportHeight((current) => (current === nextHeight ? current : nextHeight));
-        if (window.scrollY !== 0) {
-          window.scrollTo({ top: 0, behavior: "auto" });
-        }
-      });
-    };
-    updateViewportHeight();
-    window.addEventListener("resize", updateViewportHeight);
-    visualViewport?.addEventListener("resize", updateViewportHeight);
-    return () => {
-      window.removeEventListener("resize", updateViewportHeight);
-      visualViewport?.removeEventListener("resize", updateViewportHeight);
-      if (resizeFrame !== null) {
-        window.cancelAnimationFrame(resizeFrame);
-      }
-    };
-  }, [isContactPage]);
+
   React.useEffect(() => {
     if (!isContactPage) return;
     const previousDocumentOverflow = document.documentElement.style.overflow;
@@ -1304,7 +1275,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={`${isAcademySurface ? "academy-route-shell" : ""} flex w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${isContactPage
-        ? "h-[100dvh] min-h-[44rem] max-h-none overflow-y-auto overscroll-contain sm:min-h-[56rem]"
+        ? "h-[100dvh] min-h-0 max-h-[100dvh] overflow-hidden"
         : isLivingLeaderboardSurface
           ? "h-[100dvh] min-h-0 overflow-y-hidden"
           : "min-h-screen"}`}
@@ -1331,12 +1302,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               backgroundImage:
                 "radial-gradient(78rem 38rem at 10% 0%, rgba(68, 9, 21, 0.24), transparent 66%), radial-gradient(58rem 32rem at 90% 0%, rgba(68, 71, 79, 0.12), transparent 70%), linear-gradient(180deg, #05070b 0%, #06070a 42%, #090407 100%)",
             }
-          : {
-              ...pageStyle,
-              ...(isContactPage && contactViewportHeight
-                ? { height: `${contactViewportHeight}px` }
-                : {}),
-            }
+          : pageStyle
       }
       data-text-tone={textColor}
       data-theme-key={themeKey}
