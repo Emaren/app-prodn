@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ee3578f03134ca21c48117c40d33361417110c5002d32d652660d186982ce274",
+      "sha256": "551b4a3776f8d159f4dca4858f2a9833e57a3f3a10614e7411e35eb0c0d29cbb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1628,7 +1628,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "direct-chat-os-v1-2",
-    "commit": "6534fec79b53b89873fc73f2a39cc8fb597e5c8c"
+    "commit": "735809c45defcdcba8649fafea7196396edfae94"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

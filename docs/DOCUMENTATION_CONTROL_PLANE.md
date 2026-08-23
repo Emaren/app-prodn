@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `direct-chat-os-v1-2` at `6534fec79b53b89873fc73f2a39cc8fb597e5c8c`
+Implementation baseline: `direct-chat-os-v1-2` at `735809c45defcdcba8649fafea7196396edfae94`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
