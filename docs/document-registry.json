@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0943e3d06bebbc22a61c1aa84157e441fb518316de21462dc2ac8a7f145dc193",
+      "sha256": "d1aaf6a33101d13757329a337f795786bc1bcb40e05a8a3f3a09717bb19e72e7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1650,7 +1650,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "feature/release-autopilot-v2-2",
-    "commit": "6a03464971266dc1ddd3d34a20020a5f2cc57124"
+    "commit": "55d5fafff4ab61e14711890d54e877a5c99c4357"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

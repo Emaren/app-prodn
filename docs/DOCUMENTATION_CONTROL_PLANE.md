@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/release-autopilot-v2-2` at `6a03464971266dc1ddd3d34a20020a5f2cc57124`
+Implementation baseline: `feature/release-autopilot-v2-2` at `55d5fafff4ab61e14711890d54e877a5c99c4357`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
