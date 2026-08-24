@@ -23,16 +23,15 @@ import {
   postChallengeRoomMessage,
   rescheduleChallenge,
   resolveChallengeDesync,
+  syncChallengeCommissionerNotice,
   resolveChallengeNoShow,
 } from "@/lib/challenge/domain/commands";
 import {
   ChallengeConflictError,
 } from "@/lib/challenge/domain/errors";
 import { ChallengeDesyncError } from "@/lib/desyncChallenge";
-import { postChallengeCommissionerNotice, postChallengeInboxNotice } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
-import { recordUserActivity } from "@/lib/userExperience";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,21 +96,6 @@ function playerName(user: {
   steamPersonaName: string | null;
 }) {
   return user.inGameName || user.steamPersonaName || user.uid;
-}
-
-function formatWolo(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
-function formatScheduledAtForInbox(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
 }
 
 function buildChallengeLabel({
@@ -198,15 +182,6 @@ function totalFundingWolo(scheduledMatch: {
   return scheduledMatch.wagerAmountWolo + scheduledMatch.guaranteeAmountWolo;
 }
 
-function challengeTimingNoticeLines(matchTime: Date | null) {
-  return matchTime
-    ? [
-        `Start: ${formatScheduledAtForInbox(matchTime)}`,
-        `Start ISO: ${matchTime.toISOString()}`,
-      ]
-    : ["Play: Anytime after both sides fund"];
-}
-
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -240,9 +215,21 @@ export async function GET(
     if (!match) {
       return NextResponse.json({ detail: "Scheduled match not found." }, { status: 404 });
     }
-    await postChallengeCommissionerNotice(prisma, challengeId).catch((error) => {
-      console.error(`Failed to retry commissioner notice for challenge #${challengeId}:`, error);
-    });
+    const commissionerNotice =
+      await syncChallengeCommissionerNotice(
+        {
+          prisma,
+          challengeId,
+        },
+      );
+
+    if (!commissionerNotice.ok) {
+      console.error(
+        `Failed to retry commissioner notice for challenge #${challengeId}:`,
+        commissionerNotice.error,
+      );
+    }
+
     return NextResponse.json({ match, serverNow: new Date().toISOString() });
   } catch (error) {
     console.error("Failed to load scheduled match room:", error);
@@ -576,9 +563,21 @@ export async function PATCH(
       );
     }
 
-    await postChallengeCommissionerNotice(prisma, challengeId).catch((error) => {
-      console.error(`Failed to notify commissioner for challenge #${challengeId}:`, error);
-    });
+    const commissionerNotice =
+      await syncChallengeCommissionerNotice(
+        {
+          prisma,
+          challengeId,
+        },
+      );
+
+    if (!commissionerNotice.ok) {
+      console.error(
+        `Failed to notify commissioner for challenge #${challengeId}:`,
+        commissionerNotice.error,
+      );
+    }
+
     const refreshed = await loadChallengeHubSnapshot(prisma, viewer.uid);
     return NextResponse.json(refreshed);
   } catch (error) {

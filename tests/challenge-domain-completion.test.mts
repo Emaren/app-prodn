@@ -369,7 +369,7 @@ test(
 
     const end =
       route.indexOf(
-        "await postChallengeCommissionerNotice",
+        "await syncChallengeCommissionerNotice(",
         start,
       );
 

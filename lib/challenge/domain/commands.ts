@@ -12,6 +12,7 @@ import {
 } from "@/lib/challengeTitlePolicy";
 
 import {
+  postChallengeCommissionerNotice,
   postChallengeInboxNotice,
 } from "@/lib/contactInbox";
 
@@ -3347,4 +3348,49 @@ export async function postChallengeRoomMessage(
     ok:
       true,
   } as const;
+}
+
+export type ChallengeCommissionerNoticeResult =
+  | {
+      ok:
+        true;
+    }
+  | {
+      ok:
+        false;
+
+      error:
+        unknown;
+    };
+
+
+export async function syncChallengeCommissionerNotice(
+  input: {
+    prisma:
+      PrismaClient;
+
+    challengeId:
+      number;
+  },
+): Promise<ChallengeCommissionerNoticeResult> {
+  try {
+    await postChallengeCommissionerNotice(
+      input.prisma,
+      input.challengeId,
+    );
+
+    return {
+      ok:
+        true,
+    };
+  } catch (
+    error
+  ) {
+    return {
+      ok:
+        false,
+
+      error,
+    };
+  }
 }

@@ -700,6 +700,37 @@ test(
 
 
 test(
+  "commissioner notice side effect is domain-delegated and best effort",
+  () => {
+    assert.doesNotMatch(
+      route,
+      /postChallengeCommissionerNotice/,
+    );
+
+    assert.match(
+      route,
+      /syncChallengeCommissionerNotice\(/,
+    );
+
+    assert.match(
+      commands,
+      /export async function syncChallengeCommissionerNotice\(/,
+    );
+
+    assert.match(
+      commands,
+      /postChallengeCommissionerNotice\(/,
+    );
+
+    assert.match(
+      commands,
+      /catch \([\s\S]*error[\s\S]*ok:[\s\S]*false/,
+    );
+  },
+);
+
+
+test(
   "transition policy remains framework and persistence free",
   () => {
     const policy =
