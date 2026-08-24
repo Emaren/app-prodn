@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/release-migration-contract-v2` at `79da5592549b235494a70a98b88b2accbdf67cc8`
+Implementation baseline: `feature/release-autopilot-v2-2` at `6a03464971266dc1ddd3d34a20020a5f2cc57124`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **71**
+- Authoritative repository documents: **72**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 40
+- `reference`: 41
 - `runbook`: 12
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 57
+- `active`: 58
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 1
@@ -103,6 +103,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR Realtime Truth Contract](REALTIME_TRUTH_CONTRACT.md) | `reference` | `active` | `architecture-contract` |
 | [AoE2WAR Release Engineering](RELEASE_ENGINEERING.md) | `reference` | `active` | `release-engineering-contract` |
 | [AoE2WAR Certified Release Engineering Seal — 2026-08-10](RELEASE_ENGINEERING_SEAL_2026-08-10.md) | `historical` | `historical` | `release-evidence` |
+| [AoE2WAR Release Recovery OS](RELEASE_RECOVERY_OS.md) | `reference` | `active` | `release-recovery-contract` |
 | [Replay Corpus and Public Metric Contract](REPLAY_CORPUS_METRICS.md) | `reference` | `active` | `metric-contract` |
 | [Replay Statistics and Operations Release — 2026-07-25](REPLAY_STATS_OPERATIONS_RELEASE_2026-07-25.md) | `historical` | `historical` | `release-evidence` |
 | [Rivalries and the War Vault](RIVALRIES_AND_WAR_VAULT.md) | `reference` | `active` | `product-contract` |

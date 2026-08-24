@@ -35,9 +35,9 @@
       "owner": "aoe2war-web",
       "path": "DEPLOY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-22",
+      "reviewed_at": "2026-08-24",
       "sensitivity": "internal",
-      "sha256": "adc8de231d2a3ec58470b04c9e53552e3761d89a6b1153336ad3d431127560b0",
+      "sha256": "b15525f4d301c5a1806ad0ac41d4d3ce53c6cff86c8e9490006546efa5c5a937",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "134b6383be9069fa07e702dcbfbbdccedc585a6ecb9ae94fe935cf464295cf88",
+      "sha256": "0943e3d06bebbc22a61c1aa84157e441fb518316de21462dc2ac8a7f145dc193",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1182,9 +1182,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_ENGINEERING.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-22",
+      "reviewed_at": "2026-08-24",
       "sensitivity": "internal",
-      "sha256": "345a608b412a68a9b64b9290a9d19c244254120e7b5db6576fbfaf6c81a1160d",
+      "sha256": "f0c6b46ae3b23e3e030efb318da282dffa932e9cea9e72ecfb6032e5ab4ad8ee",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1216,6 +1216,28 @@
       ],
       "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "release-recovery-contract",
+      "id": "aoe2war.app-prodn.docs-release-recovery-os",
+      "owner": "aoe2war-web",
+      "path": "docs/RELEASE_RECOVERY_OS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-24",
+      "sensitivity": "internal",
+      "sha256": "8ecdeed123f8dcd00735bf5fc9e9e16cffcd904b8f4ad14440e5e5f31290cd4b",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "AoE2WAR Release Recovery OS",
+      "type": "reference"
     },
     {
       "audience": [
@@ -1627,8 +1649,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "feature/release-migration-contract-v2",
-    "commit": "79da5592549b235494a70a98b88b2accbdf67cc8"
+    "branch": "feature/release-autopilot-v2-2",
+    "commit": "6a03464971266dc1ddd3d34a20020a5f2cc57124"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

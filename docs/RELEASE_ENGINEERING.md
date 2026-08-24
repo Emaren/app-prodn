@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-08-22"
+reviewed_at: "2026-08-24"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -465,6 +465,36 @@ inside the live production tree.
 
 A failure before `.next-release` / `.node_modules-release` artifact copy leaves
 the certified runtime unchanged and requires no runtime rollback.
+
+### Learned release recovery
+
+`aoe2war finish` includes a bounded learned-recovery layer for failure classes
+whose safe resolution is already machine-provable. The canonical contract is
+[`RELEASE_RECOVERY_OS.md`](RELEASE_RECOVERY_OS.md).
+
+Current automatic recovery classes are:
+
+- **low production-root headroom** — reclaim regenerable APT material first,
+  then bound the journal, then checksum-archive only closed rotated nginx
+  `.log.1` files until the configured floor is restored;
+- **superseded staged candidates** — exact current-release resume remains first,
+  then `.next-release` and `.node_modules-release` may be retired only when one
+  durable receipt proves older provenance and staged trees have zero runtime
+  references;
+- **ambient Prisma generated state** — `npx prisma generate` runs
+  deterministically before TypeScript and Prisma validation.
+
+These conveniences do not expand mutation authority. Ambiguous/current staged
+state, live staged references, insufficient approved reclaim, abnormal Wolo
+listeners, database uncertainty, or runtime identity drift remain fail-closed.
+
+Root recovery never broadly removes `/tmp`, active runtime/dependencies,
+rollback material, PostgreSQL data, or Wolo state. Superseded-stage recovery
+never touches active runtime or restarts Wolo.
+
+Every mutating recovery path leaves durable evidence, and ordinary release
+checks re-prove capacity, runtime identity, service health, and protected Wolo
+state afterward.
 
 ### Protected additive Prisma migration lane
 

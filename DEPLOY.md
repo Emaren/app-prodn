@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-08-22"
+reviewed_at: "2026-08-24"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -141,6 +141,59 @@ for the ordinary lane, or `aoe2war deploy` for a deliberately scoped low-level
 lane. The release engine resumes only the matching stage receipt and artifact;
 it does not blindly rebuild or discard the candidate. During `STAGED`,
 production source correctly remains on the previous live SHA.
+
+### Learned recovery inside `finish`
+
+Known recovery cases are now part of the ordinary one-command path. The full
+contract is
+[`docs/RELEASE_RECOVERY_OS.md`](docs/RELEASE_RECOVERY_OS.md).
+
+When production root is below its release floor, `finish` may use:
+
+~~~text
+regenerable APT material
+        ↓
+bounded journal retention
+        ↓
+closed rotated nginx *.log.1
+        ↓
+durable copy + SHA-256 before root removal
+~~~
+
+The sequence stops when the configured floor is met. It does not perform broad
+`/tmp` cleanup or remove active runtime, dependencies, rollback material,
+PostgreSQL data, or Wolo state. If approved classes cannot restore the floor,
+the release stops.
+
+If `.next-release` exists, exact current-release resume has first priority.
+Retirement is allowed only when exactly one durable receipt proves the live
+staged BUILD_ID belongs to a superseded release and staged trees have zero live
+process references. Retirement removes only `.next-release` and
+`.node_modules-release`, writes durable evidence, and re-proves source,
+BUILD_ID, HTTP health, and Wolo continuity.
+
+Current-release stages with invalid evidence, ambiguous receipts, or live
+references remain fail-closed.
+
+Release validation also runs `npx prisma generate` before TypeScript and Prisma
+validation. This establishes generated client state deterministically and grants
+no database-write authority.
+
+For known conditions the operator still runs:
+
+~~~bash
+aoe2war finish
+~~~
+
+If it stops, inspect:
+
+~~~bash
+aoe2war status
+aoe2war releases --limit 5
+~~~
+
+Do not improvise deploys, migrations, restarts, or broad cleanup merely because
+the automatic lane refused an unsafe state.
 
 The command observes WOLO listeners `8092` and `8093` as protected dependencies
 and requires them to remain unchanged. It does not restart or mutate them.
