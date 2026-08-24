@@ -1,9 +1,22 @@
 import unittest
+from pathlib import Path
 
 import scripts.aoe2_facts as facts
 
 
 class FactsTests(unittest.TestCase):
+    def test_missing_operator_repo_is_nonfatal(self):
+        self.assertIsNone(
+            facts.git_value(
+                Path(
+                    "/definitely/not/a/real/"
+                    "aoe2war/repository"
+                ),
+                "rev-parse",
+                "HEAD",
+            )
+        )
+
     def test_machine_contract_has_development_facts(self):
         payload = facts.collect()
 

@@ -54,6 +54,13 @@ disagree, stop and reconcile them before production mutation.
     SHA-256, migration receipt verification, no destructive SQL, and no writes
     to pre-existing columns. Existing tables may gain nullable columns,
     same-release constraints, and bounded backfills of only those new columns.
+    A recovery-only production-proven-index canonicalization sublane may record
+    an index migration only when every named production index already exists,
+    is valid and ready, and its normalized live `pg_indexes.indexdef` matches an
+    exact migration-bound SHA-256. Missing or differing indexes fail closed.
+    After the ordinary durable pre-migration backup, the controller records the
+    state with `prisma migrate resolve --applied`; it executes no production
+    index DDL.
 13. Mutating release commands are serialized by a deployment lock.
 14. Machine-readable receipts must let a fresh operator or AI reconstruct the
     release state without conversational memory.

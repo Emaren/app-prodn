@@ -532,6 +532,116 @@ ON "users" ("email");""",
                         release
                     )
 
+
+    def test_production_proven_index_canonicalization_is_allowed(self):
+        digest = "a" * 64
+
+        temp, root, manifests, release = (
+            self.with_release(
+                [
+                    (
+                        "20260101000000_proven_index",
+                        f"""-- AOE2WAR-MIGRATION-MODE: PRODUCTION_PROVEN_INDEX_CANONICALIZATION
+-- AOE2WAR-PRODUCTION-INDEX: ix_users_email sha256={digest}
+CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_users_email
+ON public.users USING btree (email);""",
+                    )
+                ]
+            )
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                manifest, names = (
+                    MODULE.migration_contract(
+                        release
+                    )
+                )
+
+                self.assertEqual(
+                    manifest[
+                        "_migration_mode"
+                    ],
+                    "production-proven-index-canonicalization",
+                )
+
+                self.assertEqual(
+                    names,
+                    [
+                        "20260101000000_proven_index"
+                    ],
+                )
+
+                script = (
+                    MODULE.production_migration_script(
+                        release_sha=release,
+                        migration_names=names,
+                        migration_mode=manifest[
+                            "_migration_mode"
+                        ],
+                        index_proofs=manifest[
+                            "_production_proven_indexes"
+                        ],
+                    )
+                )
+
+                self.assertIn(
+                    "production index proof mismatch",
+                    script,
+                )
+                self.assertIn(
+                    "indisvalid",
+                    script,
+                )
+                self.assertIn(
+                    "migrate resolve",
+                    script,
+                )
+
+    def test_proven_index_mode_refuses_missing_concurrent_guard(self):
+        digest = "b" * 64
+
+        temp, root, manifests, release = (
+            self.with_release(
+                [
+                    (
+                        "20260101000000_bad_index",
+                        f"""-- AOE2WAR-MIGRATION-MODE: PRODUCTION_PROVEN_INDEX_CANONICALIZATION
+-- AOE2WAR-PRODUCTION-INDEX: ix_users_email sha256={digest}
+CREATE INDEX IF NOT EXISTS ix_users_email
+ON public.users (email);""",
+                    )
+                ]
+            )
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "CONCURRENTLY",
+                ):
+                    MODULE.migration_contract(
+                        release
+                    )
+
+
     def test_migrations_require_database_or_financial_gate(self):
         temp, root, manifests, release = self.with_release(
             [

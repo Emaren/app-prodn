@@ -214,6 +214,16 @@ insertion/deletion of pre-existing truth, mutation of pre-existing columns, non-
 ALTER TABLE work, a partial frontier, unexpected pending migration, or a missing
 receipt fails closed.
 
+A narrower recovery-only sublane handles **production-proven index
+canonicalization**. It grants no authority to construct or replace a production
+index. The migration binds every expected index to the SHA-256 of its normalized
+live `pg_indexes.indexdef`. Before database mutation the controller requires each
+index to exist, be valid and ready, and match that exact definition. Missing,
+invalid, unready, or differing indexes fail closed. After the ordinary durable
+pre-migration backup, the controller uses `prisma migrate resolve --applied` to
+record the already-existing state in Prisma history; production index DDL is not
+executed. The canonical SQL remains executable for clean/future databases.
+
 The lane still refuses a changed `yarn.lock` or changed dependency/package-
 manager sections in `package.json`. A dependency-contract-changing release needs
 a separately reviewed lane that atomically installs, activates, and rolls back

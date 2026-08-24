@@ -398,7 +398,9 @@ def _sql_dollar_bodies(sql: str) -> list[str]:
     ]
 
 
-def migration_contract(release_sha: str) -> tuple[dict, list[str]]:
+def _additive_migration_contract(
+    release_sha: str,
+) -> tuple[dict, list[str]]:
     manifest = release_manifest(release_sha)
     paths = [str(item) for item in (manifest.get("migration_paths") or [])]
     if not paths:
@@ -933,14 +935,356 @@ def migration_contract(release_sha: str) -> tuple[dict, list[str]]:
     return manifest, names
 
 
+
+def migration_contract(
+    release_sha: str,
+) -> tuple[dict, list[str]]:
+    """
+    Preserve the normal additive migration contract unchanged.
+
+    A separate recovery-only mode exists solely to canonicalize indexes that
+    are already proven to exist exactly in production.
+    """
+    manifest = release_manifest(release_sha)
+    paths = [
+        str(item)
+        for item in (
+            manifest.get("migration_paths")
+            or []
+        )
+    ]
+
+    if not paths:
+        return manifest, []
+
+    mode_token = (
+        "AOE2WAR-MIGRATION-MODE: "
+        "PRODUCTION_PROVEN_INDEX_CANONICALIZATION"
+    )
+
+    allowed_path = re.compile(
+        r"^prisma/migrations/"
+        r"[A-Za-z0-9_.-]+/"
+        r"migration\.sql$"
+    )
+
+    loaded: list[tuple[str, str]] = []
+    mode_flags: list[bool] = []
+
+    for rel in paths:
+        if not allowed_path.fullmatch(rel):
+            return _additive_migration_contract(
+                release_sha
+            )
+
+        path = (ROOT / rel).resolve()
+
+        try:
+            path.relative_to(
+                (
+                    ROOT
+                    / "prisma"
+                    / "migrations"
+                ).resolve()
+            )
+        except ValueError as exc:
+            raise AutoShipError(
+                "migration escapes Prisma "
+                f"migrations: {rel}"
+            ) from exc
+
+        if not path.is_file():
+            raise AutoShipError(
+                f"migration file is missing: {rel}"
+            )
+
+        sql = path.read_text(
+            encoding="utf-8"
+        )
+
+        loaded.append((rel, sql))
+        mode_flags.append(
+            mode_token in sql
+        )
+
+    if not any(mode_flags):
+        return _additive_migration_contract(
+            release_sha
+        )
+
+    if not all(mode_flags):
+        raise AutoShipError(
+            "production-proven index "
+            "canonicalization cannot be mixed "
+            "with ordinary migrations"
+        )
+
+    if manifest.get("risk_class") not in {
+        "DATABASE",
+        "FINANCIAL",
+    }:
+        raise AutoShipError(
+            "production-proven index "
+            "canonicalization requires a "
+            "DATABASE or FINANCIAL gate"
+        )
+
+    marker_re = re.compile(
+        r"^--\s*"
+        r"AOE2WAR-PRODUCTION-INDEX:\s*"
+        r"([A-Za-z_][A-Za-z0-9_]*)\s+"
+        r"sha256=([0-9a-f]{64})\s*$",
+        re.M,
+    )
+
+    create_re = re.compile(
+        r"^CREATE\s+INDEX\s+"
+        r"CONCURRENTLY\s+"
+        r"IF\s+NOT\s+EXISTS\s+"
+        r'"?([A-Za-z_][A-Za-z0-9_]*)"?'
+        r"\s+ON\s+"
+        r'public\."?'
+        r"([A-Za-z_][A-Za-z0-9_]*)"
+        r'"?\b',
+        re.I | re.S,
+    )
+
+    proofs: dict[str, str] = {}
+
+    for rel, sql in loaded:
+        local_markers: dict[str, str] = {}
+
+        for name, digest in (
+            marker_re.findall(sql)
+        ):
+            normalized = (
+                _normalize_sql_ident(name)
+            )
+
+            if (
+                normalized
+                in local_markers
+                or normalized
+                in proofs
+            ):
+                raise AutoShipError(
+                    "duplicate production-index "
+                    f"proof marker for "
+                    f"{normalized!r}"
+                )
+
+            local_markers[
+                normalized
+            ] = digest
+
+        if not local_markers:
+            raise AutoShipError(
+                "production-proven index "
+                f"migration has no proof "
+                f"markers: {rel}"
+            )
+
+        seen: set[str] = set()
+
+        for statement in _sql_statements(
+            sql
+        ):
+            match = create_re.match(
+                statement
+            )
+
+            if not match:
+                raise AutoShipError(
+                    "production-proven index "
+                    "canonicalization permits "
+                    "only CREATE INDEX "
+                    "CONCURRENTLY IF NOT EXISTS "
+                    f"statements in {rel}"
+                )
+
+            name = _normalize_sql_ident(
+                match.group(1)
+            )
+
+            if name in seen:
+                raise AutoShipError(
+                    "duplicate index statement "
+                    f"for {name!r}"
+                )
+
+            digest = local_markers.get(
+                name
+            )
+
+            if not digest:
+                raise AutoShipError(
+                    "missing exact production "
+                    f"proof hash for {name!r}"
+                )
+
+            seen.add(name)
+            proofs[name] = digest
+
+        unused = (
+            set(local_markers)
+            - seen
+        )
+
+        if unused:
+            raise AutoShipError(
+                "production-index proof marker "
+                "has no matching CREATE INDEX "
+                "statement: "
+                + ", ".join(
+                    sorted(unused)
+                )
+            )
+
+    if not proofs:
+        raise AutoShipError(
+            "production-proven index "
+            "canonicalization contains "
+            "no indexes"
+        )
+
+    names = sorted(
+        {
+            Path(rel).parent.name
+            for rel in paths
+        }
+    )
+
+    if len(names) != len(paths):
+        raise AutoShipError(
+            "migration manifest contains "
+            "duplicate migration directories"
+        )
+
+    manifest["_migration_mode"] = (
+        "production-proven-index-canonicalization"
+    )
+
+    manifest[
+        "_production_proven_indexes"
+    ] = [
+        {
+            "name": name,
+            "sha256": proofs[name],
+        }
+        for name in sorted(proofs)
+    ]
+
+    return manifest, names
+
+
+def _production_index_proof_shell(
+    index_proofs: list[dict[str, str]],
+) -> tuple[str, str]:
+    proof_blocks: list[str] = []
+    receipt_lines: list[str] = []
+
+    for proof in index_proofs:
+        name = str(
+            proof.get("name")
+            or ""
+        )
+
+        digest = str(
+            proof.get("sha256")
+            or ""
+        )
+
+        if not re.fullmatch(
+            r"[A-Za-z_][A-Za-z0-9_]*",
+            name,
+        ):
+            raise AutoShipError(
+                "production index proof has "
+                "invalid index name"
+            )
+
+        if not re.fullmatch(
+            r"[0-9a-f]{64}",
+            digest,
+        ):
+            raise AutoShipError(
+                "production index proof has "
+                "invalid SHA-256"
+            )
+
+        proof_blocks.append(
+            f"""
+indexdef="$(psql -X -v ON_ERROR_STOP=1 -Atqc \
+  "select indexdef from pg_indexes where schemaname='public' and indexname='{name}';")"
+
+[ -n "$indexdef" ] \
+  || {{ echo "STOP: production-proven index is missing: {name}" >&2; exit 80; }}
+
+index_ready="$(psql -X -v ON_ERROR_STOP=1 -Atqc \
+  "select case when i.indisvalid and i.indisready then 1 else 0 end from pg_index i join pg_class c on c.oid=i.indexrelid join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relname='{name}';")"
+
+[ "$index_ready" = "1" ] \
+  || {{ echo "STOP: production-proven index is not valid/ready: {name}" >&2; exit 81; }}
+
+actual_index_sha="$(printf '%s' "$indexdef" | python3 -c \
+  'import hashlib,re,sys; value=re.sub(r"\\s+", " ", sys.stdin.read().strip()); print(hashlib.sha256(value.encode()).hexdigest())')"
+
+[ "$actual_index_sha" = "{digest}" ] \
+  || {{ echo "STOP: production index proof mismatch: {name}" >&2; exit 82; }}
+
+printf 'index_proof\\t{name}:%s\\n' "$actual_index_sha"
+"""
+        )
+
+        receipt_lines.append(
+            "printf "
+            f"'index_proof={name}:{digest}\\n' "
+            '>> "$status"'
+        )
+
+    return (
+        "\n".join(proof_blocks),
+        "\n".join(receipt_lines),
+    )
+
+
 def production_migration_script(
     *,
     release_sha: str,
     migration_names: list[str],
+    migration_mode: str = "additive",
+    index_proofs: list[dict[str, str]] | None = None,
 ) -> str:
     q = shlex.quote
     expected = "\n".join(migration_names)
     release_short = release_sha[:12]
+
+    if migration_mode not in {
+        "additive",
+        "production-proven-index-canonicalization",
+    }:
+        raise AutoShipError(
+            "unknown production migration mode: "
+            f"{migration_mode}"
+        )
+
+    (
+        index_proof_script,
+        index_receipt_script,
+    ) = _production_index_proof_shell(
+        index_proofs or []
+    )
+
+    if (
+        migration_mode
+        == "production-proven-index-canonicalization"
+        and not index_proof_script
+    ):
+        raise AutoShipError(
+            "production-proven index "
+            "canonicalization requires exact "
+            "live index proofs"
+        )
 
     return f"""
 set -Eeuo pipefail
@@ -949,6 +1293,7 @@ RELEASE_SHORT={q(release_short)}
 PROD_REPO={q(PROD_REPO)}
 RECEIPT_ROOT={q(MIGRATION_RECEIPT_ROOT)}
 EXPECTED_MIGRATIONS={q(expected)}
+MIGRATION_MODE={q(migration_mode)}
 
 tmp=""
 cred=""
@@ -1028,6 +1373,8 @@ cred=""
 test -n "$PGDATABASE" || {{ echo "STOP: production DB name is empty" >&2; exit 73; }}
 printf 'database\\t%s\\n' "$PGDATABASE"
 
+{index_proof_script}
+
 expected_file="$tmp/.expected-migrations"
 repo_file="$tmp/.repo-migrations"
 applied_file="$tmp/.applied-migrations"
@@ -1087,10 +1434,24 @@ pg_dump -Fc --no-owner --no-acl -f "$dump"
 dump_sha="$(sha256sum "$dump" | awk '{{print $1}}')"
 test -n "$dump_sha"
 
-(
-  cd "$tmp"
-  DATABASE_URL="$DATABASE_URL" ./node_modules/.bin/prisma migrate deploy
-)
+if [ "$MIGRATION_MODE" = "production-proven-index-canonicalization" ]; then
+  while IFS= read -r migration; do
+    [ -n "$migration" ] || continue
+
+    (
+      cd "$tmp"
+      DATABASE_URL="$DATABASE_URL"         ./node_modules/.bin/prisma migrate resolve         --applied "$migration"
+    )
+  done < "$expected_file"
+
+  # Re-prove the exact live indexes after recording migration history.
+{index_proof_script}
+else
+  (
+    cd "$tmp"
+    DATABASE_URL="$DATABASE_URL"       ./node_modules/.bin/prisma migrate deploy
+  )
+fi
 
 for migration in $(cat "$expected_file"); do
   count="$(psql -X -v ON_ERROR_STOP=1 -Atqc \
@@ -1115,6 +1476,8 @@ status="$receipt/migration-status.txt"
     [ -n "$migration" ] && printf 'migration=%s\\n' "$migration"
   done < "$expected_file"
 }} > "$status"
+printf 'mode=%s\n' "$MIGRATION_MODE" >> "$status"
+{index_receipt_script}
 sha256sum "$status" > "$status.sha256"
 
 printf 'mode\\tapplied\\n'
@@ -1128,10 +1491,41 @@ def apply_production_migrations_if_needed(release_sha: str) -> str | None:
     if not migration_names:
         return None
 
+    migration_mode = str(
+        manifest.get("_migration_mode")
+        or "additive"
+    )
+
+    index_proofs = list(
+        manifest.get(
+            "_production_proven_indexes"
+        )
+        or []
+    )
+
     print()
-    print("== PRODUCTION DATABASE MIGRATIONS ==")
-    print("Policy:         additive/backward-compatible only")
-    print(f"Gate:           {manifest.get('risk_class')}")
+    print(
+        "== PRODUCTION DATABASE MIGRATIONS =="
+    )
+
+    if (
+        migration_mode
+        == "production-proven-index-canonicalization"
+    ):
+        print(
+            "Policy:         exact production-proven "
+            "index canonicalization"
+        )
+    else:
+        print(
+            "Policy:         "
+            "additive/backward-compatible only"
+        )
+
+    print(
+        f"Gate:           "
+        f"{manifest.get('risk_class')}"
+    )
     print("Database:       exact pending frontier only")
     print("Backup:         durable pg_dump before first mutation")
     print("WOLO:           untouched")
@@ -1142,6 +1536,8 @@ def apply_production_migrations_if_needed(release_sha: str) -> str | None:
     script = production_migration_script(
         release_sha=release_sha,
         migration_names=migration_names,
+        migration_mode=migration_mode,
+        index_proofs=index_proofs,
     )
     p = run(
         [

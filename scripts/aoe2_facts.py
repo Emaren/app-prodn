@@ -35,6 +35,9 @@ def git_value(
     repo: Path,
     *args: str,
 ) -> str | None:
+    if not repo.is_dir():
+        return None
+
     rc, output = run(
         ["git", *args],
         cwd=repo,

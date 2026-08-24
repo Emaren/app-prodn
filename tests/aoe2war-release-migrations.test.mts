@@ -21,6 +21,15 @@ test("one-command ship supports bounded additive DATABASE/FINANCIAL Prisma migra
   assert.match(auto, /procedural or dynamic SQL mutation/);
 });
 
+test("production-proven index canonicalization is exact-proof-bound", () => {
+  assert.match(auto, /AOE2WAR-PRODUCTION-INDEX/);
+  assert.match(auto, /production index proof mismatch/);
+  assert.match(auto, /production-proven-index-canonicalization/);
+  assert.match(auto, /migrate resolve/);
+  assert.match(auto, /indisvalid/);
+  assert.match(auto, /indisready/);
+});
+
 test("production migrations are exact-frontier, backup-first, and receipt-bound", () => {
   assert.match(auto, /pending migration frontier differs from release manifest/);
   assert.match(auto, /pg_dump -Fc --no-owner --no-acl/);
