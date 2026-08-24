@@ -37,7 +37,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-22",
       "sensitivity": "internal",
-      "sha256": "d36105415f5c2df6c2ff48da65ac5f0ff2b29f8ba1e9612867f52ab526759977",
+      "sha256": "adc8de231d2a3ec58470b04c9e53552e3761d89a6b1153336ad3d431127560b0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9d7f8ad21cd782f2eebc5625807aa8537458057b1f71d191d2fff6d197702776",
+      "sha256": "134b6383be9069fa07e702dcbfbbdccedc585a6ecb9ae94fe935cf464295cf88",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1184,7 +1184,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-22",
       "sensitivity": "internal",
-      "sha256": "5f575f2e63ae861658ccaeb1013acbdabe639958398da9a9fb3963c39f1be57d",
+      "sha256": "345a608b412a68a9b64b9290a9d19c244254120e7b5db6576fbfaf6c81a1160d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1627,8 +1627,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "feature/challenge-foundation-v3",
-    "commit": "0d61b1d63f86e3f87b1b68f2e6e3518a41e13086"
+    "branch": "feature/release-migration-contract-v2",
+    "commit": "79da5592549b235494a70a98b88b2accbdf67cc8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
