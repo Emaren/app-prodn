@@ -537,11 +537,34 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
         )
 
     lintable = existing_lintable(paths)
+    prisma_generate_added = False
+
+    if lintable and (ROOT / "prisma" / "schema.prisma").exists():
+        commands.append(
+            (
+                "prisma-generate",
+                ["npx", "prisma", "generate"],
+                300,
+            )
+        )
+        prisma_generate_added = True
+
     if lintable:
         commands.append(("typescript", ["npx", "tsc", "--noEmit"], 600))
         commands.append(("eslint-changed", ["npx", "eslint", *lintable], 600))
 
     if risk == "DATABASE":
+        if (
+            not prisma_generate_added
+            and (ROOT / "prisma" / "schema.prisma").exists()
+        ):
+            commands.append(
+                (
+                    "prisma-generate",
+                    ["npx", "prisma", "generate"],
+                    300,
+                )
+            )
         commands.append(("prisma-validate", ["npx", "prisma", "validate"], 180))
 
     for script in focused_npm_tests(paths):

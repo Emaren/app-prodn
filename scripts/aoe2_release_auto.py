@@ -1792,6 +1792,359 @@ def activate_and_certify(
     return 0
 
 
+def remote_superseded_stage_retirement_script(
+    *,
+    current_release_sha: str,
+    staged_build_id: str,
+    production: dict,
+) -> str:
+    previous_sha = str(production.get("source_sha") or "")
+    active_build_id = str(production.get("active_build_id") or "")
+    live_build_version = str(production.get("internal_build_version") or "")
+
+    if not _is_lower_hex(current_release_sha, 40):
+        raise AutoShipError(
+            "cannot evaluate staged recovery without exact current release SHA"
+        )
+    if not _is_lower_hex(previous_sha, 40):
+        raise AutoShipError(
+            "cannot evaluate staged recovery without exact production source SHA"
+        )
+    if not staged_build_id or not active_build_id or not live_build_version:
+        raise AutoShipError(
+            "cannot evaluate staged recovery without exact live/staged build identity"
+        )
+    if (
+        production.get("wolo_8092_count") != 1
+        or production.get("wolo_8093_count") != 1
+    ):
+        raise AutoShipError(
+            "cannot evaluate staged recovery while protected WOLO listeners are unsafe"
+        )
+
+    receipt_parent = REMOTE_RECEIPT_ROOT.rsplit("/deploy-receipts", 1)[0]
+    retirement_root = receipt_parent + "/stale-stage-retirements"
+
+    q = shlex.quote
+
+    return f"""set -euo pipefail
+
+APP=/var/www/AoE2HDBets/app-prodn
+RECEIPTS={q(REMOTE_RECEIPT_ROOT)}
+RETIRE_ROOT={q(retirement_root)}
+
+CURRENT={q(current_release_sha)}
+EXPECTED_SOURCE={q(previous_sha)}
+EXPECTED_ACTIVE={q(active_build_id)}
+EXPECTED_STAGED={q(staged_build_id)}
+EXPECTED_VERSION={q(live_build_version)}
+
+cd "$APP"
+
+test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE"
+test -z "$(git status --porcelain --untracked-files=all)"
+
+test -d .next
+test -d node_modules
+test -d .next-release
+test -d .node_modules-release
+
+test "$(cat .next/BUILD_ID)" = "$EXPECTED_ACTIVE"
+test "$(cat .next-release/BUILD_ID)" = "$EXPECTED_STAGED"
+
+test "$(systemctl is-active aoe2hdbets-web.service)" = active
+
+W8092="$(ss -ltn | grep -Ec ':8092[[:space:]]' || true)"
+W8093="$(ss -ltn | grep -Ec ':8093[[:space:]]' || true)"
+
+test "$W8092" = 1
+test "$W8093" = 1
+
+shopt -s nullglob
+MATCHES=()
+
+for receipt in "$RECEIPTS"/stage-*; do
+    status="$receipt/stage-status.txt"
+    [ -f "$status" ] || continue
+
+    if grep -Fqx "staged_build_id=$EXPECTED_STAGED" "$status"; then
+        MATCHES+=("$receipt")
+    fi
+done
+
+printf 'match_count\\t%s\\n' "${{#MATCHES[@]}}"
+
+if [ "${{#MATCHES[@]}}" != 1 ]; then
+    printf 'classification\\tAMBIGUOUS_STAGE\\n'
+    exit 41
+fi
+
+STAGE_RECEIPT="${{MATCHES[0]}}"
+STATUS="$STAGE_RECEIPT/stage-status.txt"
+
+FOUND_RELEASE="$(
+    awk -F= '$1=="release_sha" {{print $2}}' "$STATUS"
+)"
+
+printf 'found_release_sha\\t%s\\n' "$FOUND_RELEASE"
+
+if [ "$FOUND_RELEASE" = "$CURRENT" ]; then
+    printf 'classification\\tCURRENT_STAGE\\n'
+    exit 42
+fi
+
+case "$FOUND_RELEASE" in
+    [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*)
+        ;;
+    *)
+        printf 'classification\\tINVALID_PROVENANCE\\n'
+        exit 43
+        ;;
+esac
+
+test "${{#FOUND_RELEASE}}" = 40
+
+grep -Fqx \
+    "previous_sha=$EXPECTED_SOURCE" \
+    "$STATUS"
+
+grep -Fqx \
+    "active_build_id=$EXPECTED_ACTIVE" \
+    "$STATUS"
+
+grep -Fqx \
+    "staged_build_id=$EXPECTED_STAGED" \
+    "$STATUS"
+
+OPEN_REFS=0
+
+for link in \
+    /proc/[0-9]*/cwd \
+    /proc/[0-9]*/root \
+    /proc/[0-9]*/exe \
+    /proc/[0-9]*/fd/*
+do
+    target="$(readlink "$link" 2>/dev/null || true)"
+
+    case "$target" in
+        "$APP/.next-release"*|"$APP/.node_modules-release"*)
+            OPEN_REFS=$((OPEN_REFS + 1))
+            ;;
+    esac
+done
+
+printf 'open_references\\t%s\\n' "$OPEN_REFS"
+
+if [ "$OPEN_REFS" != 0 ]; then
+    printf 'classification\\tACTIVE_REFERENCE\\n'
+    exit 44
+fi
+
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+RETIRE_DIR="$RETIRE_ROOT/$STAMP-$FOUND_RELEASE"
+
+NEXT_KB="$(du -sk .next-release | awk '{{print $1}}')"
+MODULES_KB="$(du -sk .node_modules-release | awk '{{print $1}}')"
+BEFORE_KB="$(df -Pk / | awk 'NR==2 {{print $4}}')"
+
+install -d -m 0750 "$RETIRE_DIR"
+
+cp -a \
+    "$STATUS" \
+    "$RETIRE_DIR/original-stage-status.txt"
+
+if [ -f "$STAGE_RECEIPT/release-manifest.json" ]; then
+    cp -a \
+        "$STAGE_RECEIPT/release-manifest.json" \
+        "$RETIRE_DIR/original-release-manifest.json"
+fi
+
+cat > "$RETIRE_DIR/retirement.txt" <<EOF
+schema=1
+kind=aoe2war-superseded-stage-retirement
+retired_at=$STAMP
+superseded_release_sha=$FOUND_RELEASE
+current_intended_release_sha=$CURRENT
+production_source_sha=$EXPECTED_SOURCE
+active_build_id=$EXPECTED_ACTIVE
+retired_staged_build_id=$EXPECTED_STAGED
+live_build_version=$EXPECTED_VERSION
+next_release_kb=$NEXT_KB
+node_modules_release_kb=$MODULES_KB
+root_free_before_kb=$BEFORE_KB
+original_stage_receipt=$STAGE_RECEIPT
+service_before=active
+wolo8092_before=1
+wolo8093_before=1
+reason=staged candidate belongs to superseded source authority
+EOF
+
+sha256sum \
+    "$RETIRE_DIR/retirement.txt" \
+    "$RETIRE_DIR/original-stage-status.txt" \
+    > "$RETIRE_DIR/PRE_RETIREMENT_SHA256SUMS"
+
+if [ -f "$RETIRE_DIR/original-release-manifest.json" ]; then
+    sha256sum \
+        "$RETIRE_DIR/original-release-manifest.json" \
+        >> "$RETIRE_DIR/PRE_RETIREMENT_SHA256SUMS"
+fi
+
+sync
+
+rm -rf -- \
+    "$APP/.next-release" \
+    "$APP/.node_modules-release"
+
+sync
+
+test ! -e "$APP/.next-release"
+test ! -e "$APP/.node_modules-release"
+
+test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE"
+test -z "$(git status --porcelain --untracked-files=all)"
+
+test "$(cat .next/BUILD_ID)" = "$EXPECTED_ACTIVE"
+test -d node_modules
+
+test "$(systemctl is-active aoe2hdbets-web.service)" = active
+
+curl -fsS \
+    --max-time 5 \
+    http://127.0.0.1:3030/api/bets \
+    >/dev/null
+
+W8092_AFTER="$(ss -ltn | grep -Ec ':8092[[:space:]]' || true)"
+W8093_AFTER="$(ss -ltn | grep -Ec ':8093[[:space:]]' || true)"
+
+test "$W8092_AFTER" = 1
+test "$W8093_AFTER" = 1
+
+AFTER_KB="$(df -Pk / | awk 'NR==2 {{print $4}}')"
+RECLAIMED_KB=$((AFTER_KB - BEFORE_KB))
+
+cat >> "$RETIRE_DIR/retirement.txt" <<EOF
+root_free_after_kb=$AFTER_KB
+root_reclaimed_kb=$RECLAIMED_KB
+service_after=active
+wolo8092_after=1
+wolo8093_after=1
+status=RETIRED
+EOF
+
+sha256sum \
+    "$RETIRE_DIR/retirement.txt" \
+    > "$RETIRE_DIR/RETIREMENT_SHA256"
+
+sync
+
+printf 'status\\tRETIRED\\n'
+printf 'classification\\tSUPERSEDED_STAGE\\n'
+printf 'retired_release_sha\\t%s\\n' "$FOUND_RELEASE"
+printf 'retired_staged_build_id\\t%s\\n' "$EXPECTED_STAGED"
+printf 'receipt_dir\\t%s\\n' "$RETIRE_DIR"
+printf 'root_reclaimed_kb\\t%s\\n' "$RECLAIMED_KB"
+printf 'wolo_8092_count\\t%s\\n' "$W8092_AFTER"
+printf 'wolo_8093_count\\t%s\\n' "$W8093_AFTER"
+"""
+
+
+def retire_superseded_stage(
+    *,
+    current_release_sha: str,
+    staged_build_id: str,
+    production: dict,
+) -> dict:
+    script = remote_superseded_stage_retirement_script(
+        current_release_sha=current_release_sha,
+        staged_build_id=staged_build_id,
+        production=production,
+    )
+
+    p = run(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=8",
+            PROD_HOST,
+            f"bash -lc {shlex.quote(script)}",
+        ],
+        timeout=300,
+    )
+
+    result = parse_kv(p.stdout or "")
+
+    if p.returncode != 0:
+        classification = result.get("classification")
+
+        if classification == "CURRENT_STAGE":
+            raise AutoShipError(
+                "staged candidate belongs to the current release but exact "
+                "resume evidence is invalid; refusing automatic retirement"
+            )
+
+        if classification == "AMBIGUOUS_STAGE":
+            raise AutoShipError(
+                "superseded-stage recovery requires exactly one durable "
+                "receipt matching the live staged BUILD_ID"
+            )
+
+        if classification == "ACTIVE_REFERENCE":
+            raise AutoShipError(
+                "staged candidate has live process references; refusing "
+                "automatic retirement"
+            )
+
+        detail = ((p.stderr or "") or (p.stdout or "")).strip()
+
+        raise AutoShipError(
+            "superseded-stage recovery could not prove safe retirement"
+            + (f": {detail[-6000:]}" if detail else "")
+        )
+
+    if result.get("status") != "RETIRED":
+        raise AutoShipError(
+            "superseded-stage recovery did not return RETIRED status"
+        )
+
+    if result.get("classification") != "SUPERSEDED_STAGE":
+        raise AutoShipError(
+            "superseded-stage recovery returned unexpected classification"
+        )
+
+    if result.get("retired_staged_build_id") != staged_build_id:
+        raise AutoShipError(
+            "superseded-stage recovery retired the wrong staged BUILD_ID"
+        )
+
+    retired_release = str(result.get("retired_release_sha") or "")
+    if (
+        not _is_lower_hex(retired_release, 40)
+        or retired_release == current_release_sha
+    ):
+        raise AutoShipError(
+            "superseded-stage recovery returned invalid release provenance"
+        )
+
+    receipt = str(result.get("receipt_dir") or "")
+    if "/stale-stage-retirements/" not in receipt:
+        raise AutoShipError(
+            "superseded-stage recovery returned no durable retirement receipt"
+        )
+
+    if (
+        result.get("wolo_8092_count") != "1"
+        or result.get("wolo_8093_count") != "1"
+    ):
+        raise AutoShipError(
+            "superseded-stage recovery did not preserve protected Wolo listeners"
+        )
+
+    return result
+
+
 def ship_all(
     *,
     collect: Callable[[], dict],
@@ -1832,22 +2185,77 @@ def ship_all(
         if staged_build_id:
             release_head = str(initial["local"]["head"])
             print("== RESUME EXACT STAGED RELEASE ==")
-            stage_receipt, hydrated = resolve_stage_receipt(
-                release_head,
-                str(staged_build_id),
-                initial["production"],
-            )
-            print(f"Release HEAD:   {release_head}")
-            print(f"Staged build:   {staged_build_id}")
-            print(f"Stage receipt:  {stage_receipt.relative_to(ROOT)}")
-            if hydrated:
-                print("Receipt source: durable VPS evidence (rehydrated and re-verified)")
-            print("Resume policy:  exact receipt + artifact only; no rebuild or republish")
-            return activate_and_certify(
-                collect=collect,
-                release_head=release_head,
-                stage_receipt=stage_receipt,
-            )
+
+            try:
+                stage_receipt, hydrated = resolve_stage_receipt(
+                    release_head,
+                    str(staged_build_id),
+                    initial["production"],
+                )
+            except AutoShipError as resume_error:
+                print(
+                    "Exact current-release resume evidence is unavailable; "
+                    "evaluating bounded superseded-stage recovery..."
+                )
+
+                retired = retire_superseded_stage(
+                    current_release_sha=release_head,
+                    staged_build_id=str(staged_build_id),
+                    production=initial["production"],
+                )
+
+                print(
+                    "PASS: superseded staged candidate retired — "
+                    f"release={retired.get('retired_release_sha')} "
+                    f"build={retired.get('retired_staged_build_id')}"
+                )
+                print(f"Retirement:     {retired.get('receipt_dir')}")
+                print(
+                    "Recovered root: "
+                    f"{retired.get('root_reclaimed_kb', '—')}KB"
+                )
+                print(
+                    "Recovery policy: exact durable provenance + zero runtime "
+                    "references + service/Wolo proof"
+                )
+                print(
+                    "Prior resume failure was safely classified: "
+                    + str(resume_error)
+                )
+
+                initial = collect()
+
+                if initial["production"].get("staged_build_id"):
+                    raise AutoShipError(
+                        "superseded-stage retirement reported success but "
+                        "production still exposes a staged BUILD_ID"
+                    )
+
+                recovered_errors = preflight_errors(initial)
+                if recovered_errors:
+                    raise AutoShipError(
+                        "post-retirement release preflight is not clean: "
+                        + "; ".join(recovered_errors)
+                    )
+
+            else:
+                print(f"Release HEAD:   {release_head}")
+                print(f"Staged build:   {staged_build_id}")
+                print(f"Stage receipt:  {stage_receipt.relative_to(ROOT)}")
+                if hydrated:
+                    print(
+                        "Receipt source: durable VPS evidence "
+                        "(rehydrated and re-verified)"
+                    )
+                print(
+                    "Resume policy:  exact receipt + artifact only; "
+                    "no rebuild or republish"
+                )
+                return activate_and_certify(
+                    collect=collect,
+                    release_head=release_head,
+                    stage_receipt=stage_receipt,
+                )
 
         print("== DOCUMENTATION BASELINE ==")
         release_head = ensure_documentation_baseline(initial)

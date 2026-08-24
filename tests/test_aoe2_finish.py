@@ -5,6 +5,7 @@ import pathlib
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from unittest.mock import patch
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "aoe2_finish.py"
@@ -281,6 +282,288 @@ class FinishTests(unittest.TestCase):
             ],
         )
 
+
+
+
+class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
+    def contract(self):
+        return {
+            "canonical": {
+                "volume_mount": (
+                    "/mnt/HC_Volume_105319120"
+                ),
+            },
+            "capacity": {
+                "root_free_warn_gib": 5.0,
+                "volume_used_critical_percent": 92.0,
+            },
+            "finish": {
+                "auto_root_headroom_recovery": True,
+                "root_headroom_journal_limit_mib": 100,
+            },
+        }
+
+    def production(self):
+        return {
+            "source_sha": "a" * 40,
+            "active_build_id": "active-build",
+            "wolo_8092_count": 1,
+            "wolo_8093_count": 1,
+        }
+
+    def snapshot(self):
+        return {
+            "root": {
+                "available_bytes": 4 * 1024 ** 3,
+            },
+            "volume": {
+                "used_percent": 60.0,
+            },
+        }
+
+    def test_generated_recovery_script_is_strictly_bounded(self):
+        script = MODULE.remote_root_headroom_recovery_script(
+            volume="/mnt/HC_Volume_105319120",
+            floor_kb=5 * 1024 * 1024,
+            journal_limit_mib=100,
+            expected_source_sha="a" * 40,
+            expected_active_build_id="active-build",
+        )
+
+        # Approved low-value reclaim classes.
+        self.assertIn(
+            "/var/lib/apt/lists",
+            script,
+        )
+        self.assertIn(
+            "/var/cache/apt",
+            script,
+        )
+        self.assertIn(
+            "journalctl",
+            script,
+        )
+        self.assertIn(
+            "--vacuum-size=",
+            script,
+        )
+        self.assertIn(
+            "/var/log/nginx",
+            script,
+        )
+        self.assertIn(
+            "-name '*.log.1'",
+            script,
+        )
+
+        # Rotated logs are preserved before deletion.
+        self.assertIn(
+            "sha256sum",
+            script,
+        )
+        self.assertIn(
+            "NGINX_SHA256SUMS",
+            script,
+        )
+        self.assertIn(
+            "cp -a",
+            script,
+        )
+        self.assertIn(
+            'rm -- "$logfile"',
+            script,
+        )
+
+        self.assertLess(
+            script.index("cp -a"),
+            script.index('rm -- "$logfile"'),
+        )
+
+        # Open rotated logs are never removed.
+        self.assertIn(
+            "/proc/[0-9]*/fd/*",
+            script,
+        )
+        self.assertIn(
+            "NGINX_OPEN_SKIPPED",
+            script,
+        )
+
+        # Runtime + Wolo are proof-only.
+        self.assertIn(
+            'cat .next/BUILD_ID',
+            script,
+        )
+        self.assertIn(
+            "127.0.0.1:3030/api/bets",
+            script,
+        )
+        self.assertIn(
+            ":8092",
+            script,
+        )
+        self.assertIn(
+            ":8093",
+            script,
+        )
+
+        # Explicitly forbidden cleanup classes.
+        self.assertNotIn(
+            'rm -rf -- "$APP/.next"',
+            script,
+        )
+        self.assertNotIn(
+            'rm -rf -- "$APP/node_modules"',
+            script,
+        )
+        self.assertNotIn(
+            "/var/lib/postgresql/",
+            script,
+        )
+        self.assertNotIn(
+            "/usr/local/bin/wolochaind-mainnet",
+            script,
+        )
+        self.assertNotIn(
+            "rm -rf /tmp",
+            script,
+        )
+
+    def test_recovery_accepts_only_capacity_and_identity_proof(self):
+        output = "\n".join(
+            [
+                "status\tRECOVERED",
+                "receipt_dir\t/mnt/HC_Volume_105319120/"
+                "aoe2war/root-headroom-recoveries/test",
+                "before_kb\t4194304",
+                "after_kb\t6291456",
+                "reclaimed_kb\t2097152",
+                "apt_reclaimed_kb\t300000",
+                "journal_reclaimed_kb\t90000",
+                "nginx_reclaimed_kb\t1707152",
+                "nginx_archived_count\t2",
+                "nginx_open_skipped_count\t0",
+                "source_sha\t" + ("a" * 40),
+                "active_build_id\tactive-build",
+                "service\tactive",
+                "wolo_8092_count\t1",
+                "wolo_8093_count\t1",
+            ]
+        )
+
+        with (
+            mock.patch.object(
+                MODULE.aoe2_doctor,
+                "load_contract",
+                return_value=self.contract(),
+            ),
+            mock.patch.object(
+                MODULE,
+                "ssh_text",
+                return_value=(0, output),
+            ),
+        ):
+            result = MODULE.recover_root_headroom(
+                snapshot=self.snapshot(),
+                production=self.production(),
+            )
+
+        self.assertEqual(
+            result["status"],
+            "RECOVERED",
+        )
+
+        self.assertEqual(
+            result["active_build_id"],
+            "active-build",
+        )
+
+    def test_recovery_fails_closed_when_approved_classes_are_insufficient(self):
+        output = "\n".join(
+            [
+                "status\tINSUFFICIENT",
+                "receipt_dir\t/mnt/HC_Volume_105319120/"
+                "aoe2war/root-headroom-recoveries/test",
+                "before_kb\t4194304",
+                "after_kb\t5000000",
+                "reclaimed_kb\t805696",
+            ]
+        )
+
+        with (
+            mock.patch.object(
+                MODULE.aoe2_doctor,
+                "load_contract",
+                return_value=self.contract(),
+            ),
+            mock.patch.object(
+                MODULE,
+                "ssh_text",
+                return_value=(45, output),
+            ),
+        ):
+            with self.assertRaisesRegex(
+                MODULE.FinishError,
+                "approved reclaim classes",
+            ):
+                MODULE.recover_root_headroom(
+                    snapshot=self.snapshot(),
+                    production=self.production(),
+                )
+
+    def test_recovery_refuses_unsafe_wolo_precondition(self):
+        production = self.production()
+        production["wolo_8093_count"] = 0
+
+        with mock.patch.object(
+            MODULE.aoe2_doctor,
+            "load_contract",
+            return_value=self.contract(),
+        ):
+            with self.assertRaisesRegex(
+                MODULE.FinishError,
+                "Wolo listener counts",
+            ):
+                MODULE.recover_root_headroom(
+                    snapshot=self.snapshot(),
+                    production=production,
+                )
+
+    def test_finish_wires_recovery_only_for_low_root(self):
+        import inspect
+
+        source = inspect.getsource(
+            MODULE.execute_finish
+        )
+
+        self.assertIn(
+            "root_below_release_floor",
+            source,
+        )
+
+        self.assertIn(
+            "recover_root_headroom",
+            source,
+        )
+
+        self.assertLess(
+            source.index(
+                "root_below_release_floor"
+            ),
+            source.index(
+                "recover_root_headroom"
+            ),
+        )
+
+        self.assertIn(
+            "preflight_capacity_before_recovery",
+            source,
+        )
+
+        self.assertIn(
+            "root_headroom_recovery",
+            source,
+        )
 
 
 if __name__ == "__main__":

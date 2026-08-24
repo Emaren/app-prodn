@@ -653,6 +653,612 @@ def assert_capacity_headroom(snapshot: dict[str, Any]) -> None:
         )
 
 
+def root_release_floor_bytes() -> int:
+    contract = aoe2_doctor.load_contract()
+    capacity = contract.get("capacity", {})
+    root_warn = float(
+        capacity.get("root_free_warn_gib")
+        or 5.0
+    )
+    return int(root_warn * (1024 ** 3))
+
+
+def root_below_release_floor(
+    snapshot: dict[str, Any],
+) -> bool:
+    return (
+        int(snapshot["root"]["available_bytes"])
+        < root_release_floor_bytes()
+    )
+
+
+def remote_root_headroom_recovery_script(
+    *,
+    volume: str,
+    floor_kb: int,
+    journal_limit_mib: int,
+    expected_source_sha: str,
+    expected_active_build_id: str,
+) -> str:
+    if not volume.startswith("/"):
+        raise FinishError(
+            "root-headroom recovery requires an absolute "
+            "mounted-volume path"
+        )
+
+    if floor_kb < 1024 * 1024:
+        raise FinishError(
+            "root-headroom recovery floor is unexpectedly small"
+        )
+
+    if not 50 <= journal_limit_mib <= 512:
+        raise FinishError(
+            "journal recovery bound must be between 50 and 512 MiB"
+        )
+
+    if len(expected_source_sha) != 40:
+        raise FinishError(
+            "root-headroom recovery requires exact production source SHA"
+        )
+
+    if not expected_active_build_id:
+        raise FinishError(
+            "root-headroom recovery requires exact active BUILD_ID"
+        )
+
+    q = shlex.quote
+
+    return f"""set -euo pipefail
+
+VOL={q(volume)}
+FLOOR_KB={int(floor_kb)}
+JOURNAL_LIMIT_MIB={int(journal_limit_mib)}
+EXPECTED_SOURCE={q(expected_source_sha)}
+EXPECTED_ACTIVE={q(expected_active_build_id)}
+
+APP=/var/www/AoE2HDBets/app-prodn
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+RECEIPT_ROOT="$VOL/aoe2war/root-headroom-recoveries"
+RECEIPT_DIR="$RECEIPT_ROOT/$STAMP"
+
+free_kb() {{
+    df -Pk / | awk 'NR==2 {{print $4}}'
+}}
+
+cd "$APP"
+
+mountpoint -q "$VOL"
+
+test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE"
+test -z "$(git status --porcelain --untracked-files=all)"
+
+test -d .next
+test -d node_modules
+test "$(cat .next/BUILD_ID)" = "$EXPECTED_ACTIVE"
+
+test "$(systemctl is-active aoe2hdbets-web.service)" = active
+
+W8092_BEFORE="$(
+    ss -ltn |
+    grep -Ec ':8092[[:space:]]' ||
+    true
+)"
+
+W8093_BEFORE="$(
+    ss -ltn |
+    grep -Ec ':8093[[:space:]]' ||
+    true
+)"
+
+test "$W8092_BEFORE" = 1
+test "$W8093_BEFORE" = 1
+
+BEFORE_KB="$(free_kb)"
+
+test "$BEFORE_KB" -lt "$FLOOR_KB" || {{
+    printf 'status\\tNOOP\\n'
+    printf 'before_kb\\t%s\\n' "$BEFORE_KB"
+    printf 'after_kb\\t%s\\n' "$BEFORE_KB"
+    printf 'reclaimed_kb\\t0\\n'
+    printf 'source_sha\\t%s\\n' "$EXPECTED_SOURCE"
+    printf 'active_build_id\\t%s\\n' "$EXPECTED_ACTIVE"
+    printf 'wolo_8092_count\\t%s\\n' "$W8092_BEFORE"
+    printf 'wolo_8093_count\\t%s\\n' "$W8093_BEFORE"
+    exit 0
+}}
+
+install -d -m 0750 "$RECEIPT_DIR"
+install -d -m 0750 "$RECEIPT_DIR/nginx"
+
+cat > "$RECEIPT_DIR/recovery.txt" <<EOF
+schema=1
+kind=aoe2war-root-headroom-recovery
+started_at=$STAMP
+production_source_sha=$EXPECTED_SOURCE
+active_build_id=$EXPECTED_ACTIVE
+root_floor_kb=$FLOOR_KB
+root_free_before_kb=$BEFORE_KB
+journal_limit_mib=$JOURNAL_LIMIT_MIB
+wolo8092_before=$W8092_BEFORE
+wolo8093_before=$W8093_BEFORE
+EOF
+
+APT_RECLAIMED_KB=0
+JOURNAL_RECLAIMED_KB=0
+NGINX_RECLAIMED_KB=0
+NGINX_ARCHIVED=0
+NGINX_OPEN_SKIPPED=0
+
+
+# ------------------------------------------------------------
+# TIER 1 — REGENERABLE APT METADATA/CACHE ONLY
+# ------------------------------------------------------------
+
+CURRENT_KB="$(free_kb)"
+
+if [ "$CURRENT_KB" -lt "$FLOOR_KB" ]; then
+    APT_BUSY=0
+
+    for proc in apt apt-get dpkg unattended-upgrade; do
+        if pgrep -x "$proc" >/dev/null 2>&1; then
+            APT_BUSY=1
+        fi
+    done
+
+    if [ "$APT_BUSY" = 0 ]; then
+        TIER_BEFORE="$(free_kb)"
+
+        if [ -d /var/lib/apt/lists ]; then
+            find /var/lib/apt/lists \
+                -mindepth 1 \
+                -maxdepth 1 \
+                -exec rm -rf -- {{}} +
+        fi
+
+        if [ -d /var/cache/apt ]; then
+            find /var/cache/apt \
+                -maxdepth 1 \
+                -type f \
+                -name '*.bin' \
+                -delete
+        fi
+
+        if [ -d /var/cache/apt/archives ]; then
+            find /var/cache/apt/archives \
+                -maxdepth 1 \
+                -type f \
+                -name '*.deb' \
+                -delete
+        fi
+
+        sync
+
+        TIER_AFTER="$(free_kb)"
+        APT_RECLAIMED_KB=$(
+            TIER_AFTER - TIER_BEFORE
+        )
+    fi
+fi
+
+
+# ------------------------------------------------------------
+# TIER 2 — BOUNDED JOURNAL RETENTION
+# ------------------------------------------------------------
+
+CURRENT_KB="$(free_kb)"
+
+if [ "$CURRENT_KB" -lt "$FLOOR_KB" ]; then
+    TIER_BEFORE="$(free_kb)"
+
+    journalctl \
+        --vacuum-size="${{JOURNAL_LIMIT_MIB}}M" \
+        >"$RECEIPT_DIR/journal-vacuum.txt" \
+        2>&1
+
+    sync
+
+    TIER_AFTER="$(free_kb)"
+    JOURNAL_RECLAIMED_KB=$(
+        TIER_AFTER - TIER_BEFORE
+    )
+fi
+
+
+# ------------------------------------------------------------
+# TIER 3 — CLOSED ROTATED NGINX *.log.1 FILES
+# ARCHIVE + SHA-256 BEFORE ROOT REMOVAL
+# ------------------------------------------------------------
+
+CURRENT_KB="$(free_kb)"
+
+if [ "$CURRENT_KB" -lt "$FLOOR_KB" ]; then
+    shopt -s nullglob
+
+    mapfile -t CANDIDATES < <(
+        find /var/log/nginx \
+            -maxdepth 1 \
+            -type f \
+            -name '*.log.1' \
+            -printf '%s\\t%p\\n' \
+        2>/dev/null |
+        sort -nr
+    )
+
+    for row in "${{CANDIDATES[@]}}"; do
+        CURRENT_KB="$(free_kb)"
+
+        if [ "$CURRENT_KB" -ge "$FLOOR_KB" ]; then
+            break
+        fi
+
+        bytes="${{row%%$'\\t'*}}"
+        logfile="${{row#*$'\\t'}}"
+
+        [ -f "$logfile" ] || continue
+
+        OPEN=0
+
+        for fd in /proc/[0-9]*/fd/*; do
+            target="$(
+                readlink "$fd" 2>/dev/null ||
+                true
+            )"
+
+            if [ "$target" = "$logfile" ]; then
+                OPEN=1
+                break
+            fi
+        done
+
+        if [ "$OPEN" = 1 ]; then
+            NGINX_OPEN_SKIPPED=$(
+                NGINX_OPEN_SKIPPED + 1
+            )
+            printf '%s\\n' "$logfile" \
+                >>"$RECEIPT_DIR/nginx-open-skipped.txt"
+            continue
+        fi
+
+        base="$(basename "$logfile")"
+        destination="$RECEIPT_DIR/nginx/$base"
+
+        TIER_BEFORE="$(free_kb)"
+
+        cp -a \
+            "$logfile" \
+            "$destination"
+
+        SOURCE_SHA="$(
+            sha256sum "$logfile" |
+            awk '{{print $1}}'
+        )"
+
+        DEST_SHA="$(
+            sha256sum "$destination" |
+            awk '{{print $1}}'
+        )"
+
+        test "$SOURCE_SHA" = "$DEST_SHA"
+
+        printf '%s  %s\\n' \
+            "$SOURCE_SHA" \
+            "$base" \
+            >>"$RECEIPT_DIR/NGINX_SHA256SUMS"
+
+        sync
+
+        rm -- "$logfile"
+
+        test ! -e "$logfile"
+
+        sync
+
+        TIER_AFTER="$(free_kb)"
+        DELTA=$(
+            TIER_AFTER - TIER_BEFORE
+        )
+
+        NGINX_RECLAIMED_KB=$(
+            NGINX_RECLAIMED_KB + DELTA
+        )
+
+        NGINX_ARCHIVED=$(
+            NGINX_ARCHIVED + 1
+        )
+
+        printf '%s\\t%s\\t%s\\n' \
+            "$bytes" \
+            "$SOURCE_SHA" \
+            "$logfile" \
+            >>"$RECEIPT_DIR/nginx-archived.tsv"
+    done
+fi
+
+
+# ------------------------------------------------------------
+# FINAL SAFETY + CAPACITY PROOF
+# ------------------------------------------------------------
+
+sync
+
+AFTER_KB="$(free_kb)"
+RECLAIMED_KB=$(
+    AFTER_KB - BEFORE_KB
+)
+
+test "$AFTER_KB" -ge "$FLOOR_KB" || {{
+    cat >> "$RECEIPT_DIR/recovery.txt" <<EOF
+root_free_after_kb=$AFTER_KB
+root_reclaimed_kb=$RECLAIMED_KB
+apt_reclaimed_kb=$APT_RECLAIMED_KB
+journal_reclaimed_kb=$JOURNAL_RECLAIMED_KB
+nginx_reclaimed_kb=$NGINX_RECLAIMED_KB
+nginx_archived_count=$NGINX_ARCHIVED
+nginx_open_skipped_count=$NGINX_OPEN_SKIPPED
+status=INSUFFICIENT
+EOF
+
+    sha256sum \
+        "$RECEIPT_DIR/recovery.txt" \
+        >"$RECEIPT_DIR/RECOVERY_SHA256"
+
+    sync
+
+    printf 'status\\tINSUFFICIENT\\n'
+    printf 'receipt_dir\\t%s\\n' "$RECEIPT_DIR"
+    printf 'before_kb\\t%s\\n' "$BEFORE_KB"
+    printf 'after_kb\\t%s\\n' "$AFTER_KB"
+    printf 'reclaimed_kb\\t%s\\n' "$RECLAIMED_KB"
+
+    exit 45
+}}
+
+test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE"
+test -z "$(git status --porcelain --untracked-files=all)"
+
+test "$(cat .next/BUILD_ID)" = "$EXPECTED_ACTIVE"
+test -d node_modules
+
+test "$(systemctl is-active aoe2hdbets-web.service)" = active
+
+curl -fsS \
+    --max-time 5 \
+    http://127.0.0.1:3030/api/bets \
+    >/dev/null
+
+W8092_AFTER="$(
+    ss -ltn |
+    grep -Ec ':8092[[:space:]]' ||
+    true
+)"
+
+W8093_AFTER="$(
+    ss -ltn |
+    grep -Ec ':8093[[:space:]]' ||
+    true
+)"
+
+test "$W8092_AFTER" = 1
+test "$W8093_AFTER" = 1
+
+cat >> "$RECEIPT_DIR/recovery.txt" <<EOF
+root_free_after_kb=$AFTER_KB
+root_reclaimed_kb=$RECLAIMED_KB
+apt_reclaimed_kb=$APT_RECLAIMED_KB
+journal_reclaimed_kb=$JOURNAL_RECLAIMED_KB
+nginx_reclaimed_kb=$NGINX_RECLAIMED_KB
+nginx_archived_count=$NGINX_ARCHIVED
+nginx_open_skipped_count=$NGINX_OPEN_SKIPPED
+service_after=active
+wolo8092_after=$W8092_AFTER
+wolo8093_after=$W8093_AFTER
+status=RECOVERED
+EOF
+
+sha256sum \
+    "$RECEIPT_DIR/recovery.txt" \
+    >"$RECEIPT_DIR/RECOVERY_SHA256"
+
+sync
+
+printf 'status\\tRECOVERED\\n'
+printf 'receipt_dir\\t%s\\n' "$RECEIPT_DIR"
+printf 'before_kb\\t%s\\n' "$BEFORE_KB"
+printf 'after_kb\\t%s\\n' "$AFTER_KB"
+printf 'reclaimed_kb\\t%s\\n' "$RECLAIMED_KB"
+printf 'apt_reclaimed_kb\\t%s\\n' "$APT_RECLAIMED_KB"
+printf 'journal_reclaimed_kb\\t%s\\n' "$JOURNAL_RECLAIMED_KB"
+printf 'nginx_reclaimed_kb\\t%s\\n' "$NGINX_RECLAIMED_KB"
+printf 'nginx_archived_count\\t%s\\n' "$NGINX_ARCHIVED"
+printf 'nginx_open_skipped_count\\t%s\\n' "$NGINX_OPEN_SKIPPED"
+printf 'source_sha\\t%s\\n' "$EXPECTED_SOURCE"
+printf 'active_build_id\\t%s\\n' "$EXPECTED_ACTIVE"
+printf 'service\\tactive\\n'
+printf 'wolo_8092_count\\t%s\\n' "$W8092_AFTER"
+printf 'wolo_8093_count\\t%s\\n' "$W8093_AFTER"
+"""
+
+
+def recover_root_headroom(
+    *,
+    snapshot: dict[str, Any],
+    production: dict[str, Any],
+) -> dict[str, Any]:
+    contract = aoe2_doctor.load_contract()
+    finish = contract.get("finish", {})
+
+    if not bool(
+        finish.get(
+            "auto_root_headroom_recovery",
+            False,
+        )
+    ):
+        raise FinishError(
+            "production root is below the release floor and "
+            "automatic bounded root-headroom recovery is disabled"
+        )
+
+    volume = str(
+        contract["canonical"]["volume_mount"]
+    )
+
+    capacity = contract.get("capacity", {})
+    volume_critical = float(
+        capacity.get(
+            "volume_used_critical_percent"
+        )
+        or 92.0
+    )
+
+    if (
+        float(snapshot["volume"]["used_percent"])
+        >= volume_critical
+    ):
+        raise FinishError(
+            "root is below the release floor but mounted "
+            "volume is too full for recovery evidence"
+        )
+
+    source_sha = str(
+        production.get("source_sha")
+        or ""
+    )
+
+    active_build_id = str(
+        production.get("active_build_id")
+        or ""
+    )
+
+    if (
+        production.get("wolo_8092_count") != 1
+        or production.get("wolo_8093_count") != 1
+    ):
+        raise FinishError(
+            "root-headroom recovery requires protected "
+            "Wolo listener counts to be exact"
+        )
+
+    journal_limit_mib = int(
+        finish.get(
+            "root_headroom_journal_limit_mib",
+            100,
+        )
+    )
+
+    floor_kb = (
+        root_release_floor_bytes()
+        + 1023
+    ) // 1024
+
+    script = remote_root_headroom_recovery_script(
+        volume=volume,
+        floor_kb=floor_kb,
+        journal_limit_mib=journal_limit_mib,
+        expected_source_sha=source_sha,
+        expected_active_build_id=active_build_id,
+    )
+
+    rc, output = ssh_text(
+        ROOT_SSH,
+        "bash -lc " + shlex.quote(script),
+        timeout=600,
+    )
+
+    result: dict[str, str] = {}
+
+    for line in output.splitlines():
+        if "\t" not in line:
+            continue
+
+        key, value = line.split("\t", 1)
+        result[key] = value
+
+    if rc != 0:
+        if result.get("status") == "INSUFFICIENT":
+            raise FinishError(
+                "bounded root-headroom recovery exhausted "
+                "approved reclaim classes but the release "
+                "floor is still unmet"
+            )
+
+        raise FinishError(
+            "bounded root-headroom recovery failed: "
+            + output[-6000:]
+        )
+
+    if result.get("status") == "NOOP":
+        return {
+            **result,
+            "status": "NOOP",
+        }
+
+    if result.get("status") != "RECOVERED":
+        raise FinishError(
+            "root-headroom recovery returned an invalid status"
+        )
+
+    receipt_dir = str(
+        result.get("receipt_dir")
+        or ""
+    )
+
+    if (
+        "/aoe2war/root-headroom-recoveries/"
+        not in receipt_dir
+    ):
+        raise FinishError(
+            "root-headroom recovery returned no durable receipt"
+        )
+
+    try:
+        after_kb = int(
+            result.get("after_kb")
+            or "0"
+        )
+    except ValueError as exc:
+        raise FinishError(
+            "root-headroom recovery returned invalid capacity evidence"
+        ) from exc
+
+    if after_kb < floor_kb:
+        raise FinishError(
+            "root-headroom recovery claimed success below "
+            "the configured release floor"
+        )
+
+    if result.get("source_sha") != source_sha:
+        raise FinishError(
+            "root-headroom recovery changed production source identity"
+        )
+
+    if (
+        result.get("active_build_id")
+        != active_build_id
+    ):
+        raise FinishError(
+            "root-headroom recovery changed active BUILD_ID"
+        )
+
+    if result.get("service") != "active":
+        raise FinishError(
+            "root-headroom recovery did not preserve web service health"
+        )
+
+    if (
+        result.get("wolo_8092_count") != "1"
+        or result.get("wolo_8093_count") != "1"
+    ):
+        raise FinishError(
+            "root-headroom recovery did not preserve "
+            "protected Wolo listener counts"
+        )
+
+    return {
+        **result,
+        "status": "RECOVERED",
+    }
+
+
 def capacity_human(snapshot: dict[str, Any]) -> str:
     root_gib = int(snapshot["root"]["available_bytes"]) / (1024 ** 3)
     volume_gib = int(snapshot["volume"]["available_bytes"]) / (1024 ** 3)
@@ -2073,9 +2679,50 @@ def execute_finish(
     start_phase(receipt, "capacity_preflight", checkpoint)
     progress.start("Proving production root + mounted-volume headroom...")
     preflight_capacity = production_capacity_snapshot()
+    receipt["preflight_capacity_before_recovery"] = preflight_capacity
+
+    if root_below_release_floor(preflight_capacity):
+        progress.done(
+            "Root is below the release floor; "
+            "entering bounded learned recovery"
+        )
+        progress.start(
+            "Recovering approved root headroom "
+            "(APT → journal → archived closed nginx logs)..."
+        )
+
+        recovery = recover_root_headroom(
+            snapshot=preflight_capacity,
+            production=production,
+        )
+
+        receipt["root_headroom_recovery"] = recovery
+        checkpoint()
+
+        progress.done(
+            "Bounded root recovery complete — "
+            f"reclaimed={recovery.get('reclaimed_kb', '0')} KiB"
+        )
+
+        progress.start(
+            "Re-proving production capacity after learned recovery..."
+        )
+
+        preflight_capacity = production_capacity_snapshot()
+
+    else:
+        receipt["root_headroom_recovery"] = {
+            "status": "NOT_REQUIRED",
+        }
+
     assert_capacity_headroom(preflight_capacity)
     receipt["preflight_capacity"] = preflight_capacity
-    progress.done("Capacity preflight passed — " + capacity_human(preflight_capacity))
+    checkpoint()
+
+    progress.done(
+        "Capacity preflight passed — "
+        + capacity_human(preflight_capacity)
+    )
     finish_phase(receipt, "capacity_preflight", checkpoint)
 
     start_phase(receipt, "operational_preflight", checkpoint)

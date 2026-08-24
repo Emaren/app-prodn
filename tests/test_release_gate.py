@@ -276,5 +276,64 @@ class ReleaseGateTests(unittest.TestCase):
 
 
 
+
+class DeterministicPrismaPreparationTests(unittest.TestCase):
+    def test_prisma_generate_precedes_typescript_and_database_validation(self):
+        scope = {
+            "mode": "committed",
+            "base_sha": "a" * 40,
+            "target_sha": "b" * 40,
+            "changed_files": [
+                "app/api/challenges/[id]/route.ts",
+                "prisma/schema.prisma",
+            ],
+        }
+
+        plan = MODULE.command_plan(
+            scope,
+            "DATABASE",
+        )
+
+        labels = [
+            label
+            for label, _command, _timeout
+            in plan
+        ]
+
+        self.assertIn(
+            "prisma-generate",
+            labels,
+        )
+        self.assertIn(
+            "typescript",
+            labels,
+        )
+        self.assertIn(
+            "prisma-validate",
+            labels,
+        )
+
+        self.assertLess(
+            labels.index("prisma-generate"),
+            labels.index("typescript"),
+        )
+        self.assertLess(
+            labels.index("prisma-generate"),
+            labels.index("prisma-validate"),
+        )
+
+        generate = next(
+            command
+            for label, command, _timeout
+            in plan
+            if label == "prisma-generate"
+        )
+
+        self.assertEqual(
+            generate,
+            ["npx", "prisma", "generate"],
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

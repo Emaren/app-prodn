@@ -579,5 +579,137 @@ class AutoShipTests(unittest.TestCase):
         self.assertTrue(DOCS.is_excluded(operational))
         self.assertFalse(DOCS.is_excluded(canonical))
 
+
+class LearnedSupersededStageRecoveryTests(unittest.TestCase):
+    def production(self):
+        return {
+            "source_sha": "a" * 40,
+            "active_build_id": "active-build",
+            "internal_build_version": "20260824000000-test",
+            "wolo_8092_count": 1,
+            "wolo_8093_count": 1,
+        }
+
+    def test_retirement_script_requires_exact_provenance_and_zero_runtime_refs(self):
+        script = MODULE.remote_superseded_stage_retirement_script(
+            current_release_sha="b" * 40,
+            staged_build_id="staged-build",
+            production=self.production(),
+        )
+
+        self.assertIn('MATCHES=()', script)
+        self.assertIn(r"classification\tAMBIGUOUS_STAGE", script)
+        self.assertIn(r"classification\tCURRENT_STAGE", script)
+        self.assertIn('OPEN_REFS=0', script)
+        self.assertIn(r"classification\tACTIVE_REFERENCE", script)
+        self.assertIn('.next-release', script)
+        self.assertIn('.node_modules-release', script)
+        self.assertIn('stale-stage-retirements', script)
+        self.assertIn('original-stage-status.txt', script)
+        self.assertIn('RETIREMENT_SHA256', script)
+        self.assertIn('http://127.0.0.1:3030/api/bets', script)
+        self.assertIn(':8092', script)
+        self.assertIn(':8093', script)
+
+    def test_retirement_accepts_only_superseded_release(self):
+        stdout = "\n".join(
+            [
+                "match_count\t1",
+                "found_release_sha\t" + ("c" * 40),
+                "open_references\t0",
+                "status\tRETIRED",
+                "classification\tSUPERSEDED_STAGE",
+                "retired_release_sha\t" + ("c" * 40),
+                "retired_staged_build_id\tstaged-build",
+                "receipt_dir\t/mnt/HC_Volume_105319120/aoe2war/"
+                "stale-stage-retirements/test",
+                "root_reclaimed_kb\t123",
+                "wolo_8092_count\t1",
+                "wolo_8093_count\t1",
+            ]
+        )
+
+        result = type(
+            "Result",
+            (),
+            {
+                "returncode": 0,
+                "stdout": stdout,
+                "stderr": "",
+            },
+        )()
+
+        with mock.patch.object(
+            MODULE,
+            "run",
+            return_value=result,
+        ):
+            recovered = MODULE.retire_superseded_stage(
+                current_release_sha="b" * 40,
+                staged_build_id="staged-build",
+                production=self.production(),
+            )
+
+        self.assertEqual(
+            recovered["classification"],
+            "SUPERSEDED_STAGE",
+        )
+        self.assertEqual(
+            recovered["retired_release_sha"],
+            "c" * 40,
+        )
+
+    def test_current_release_stage_is_never_auto_retired(self):
+        result = type(
+            "Result",
+            (),
+            {
+                "returncode": 42,
+                "stdout": (
+                    "match_count\t1\n"
+                    "classification\tCURRENT_STAGE\n"
+                ),
+                "stderr": "",
+            },
+        )()
+
+        with mock.patch.object(
+            MODULE,
+            "run",
+            return_value=result,
+        ):
+            with self.assertRaisesRegex(
+                MODULE.AutoShipError,
+                "belongs to the current release",
+            ):
+                MODULE.retire_superseded_stage(
+                    current_release_sha="b" * 40,
+                    staged_build_id="staged-build",
+                    production=self.production(),
+                )
+
+    def test_ship_wires_exact_resume_before_superseded_retirement(self):
+        import inspect
+
+        source = inspect.getsource(MODULE.ship_all)
+
+        self.assertIn(
+            "resolve_stage_receipt",
+            source,
+        )
+        self.assertIn(
+            "retire_superseded_stage",
+            source,
+        )
+        self.assertLess(
+            source.index("resolve_stage_receipt"),
+            source.index("retire_superseded_stage"),
+        )
+        self.assertIn(
+            "post-retirement release preflight",
+            source,
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
