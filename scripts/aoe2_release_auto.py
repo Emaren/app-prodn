@@ -267,6 +267,137 @@ def release_manifest(release_sha: str) -> dict:
     return payload
 
 
+def _normalize_sql_ident(value: str) -> str:
+    return value.strip().strip('"').lower()
+
+
+def _sql_statements(sql: str) -> list[str]:
+    """
+    Split PostgreSQL migration text at top-level semicolons.
+
+    Comments, quoted strings/identifiers, and dollar-quoted bodies remain
+    opaque so trigger clauses such as BEFORE TRUNCATE are not mistaken for
+    destructive TRUNCATE statements.
+    """
+    statements: list[str] = []
+    buf: list[str] = []
+    i = 0
+    n = len(sql)
+
+    while i < n:
+        ch = sql[i]
+
+        if sql.startswith("--", i):
+            end = sql.find("\n", i + 2)
+            if end < 0:
+                break
+            buf.append("\n")
+            i = end + 1
+            continue
+
+        if sql.startswith("/*", i):
+            end = sql.find("*/", i + 2)
+            if end < 0:
+                raise AutoShipError("unterminated SQL block comment")
+            buf.append(" ")
+            i = end + 2
+            continue
+
+        if ch == "'":
+            start = i
+            i += 1
+            while i < n:
+                if sql[i] == "'":
+                    if i + 1 < n and sql[i + 1] == "'":
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                i += 1
+            else:
+                raise AutoShipError("unterminated SQL string literal")
+            buf.append(sql[start:i])
+            continue
+
+        if ch == '"':
+            start = i
+            i += 1
+            while i < n:
+                if sql[i] == '"':
+                    if i + 1 < n and sql[i + 1] == '"':
+                        i += 2
+                        continue
+                    i += 1
+                    break
+                i += 1
+            else:
+                raise AutoShipError("unterminated SQL quoted identifier")
+            buf.append(sql[start:i])
+            continue
+
+        if ch == "$":
+            match = re.match(
+                r"\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$",
+                sql[i:],
+            )
+            if match:
+                tag = match.group(0)
+                body_end = sql.find(tag, i + len(tag))
+                if body_end < 0:
+                    raise AutoShipError(
+                        f"unterminated SQL dollar quote {tag}"
+                    )
+                end = body_end + len(tag)
+                buf.append(sql[i:end])
+                i = end
+                continue
+
+        if ch == ";":
+            statement = "".join(buf).strip()
+            if statement:
+                statements.append(statement)
+            buf = []
+            i += 1
+            continue
+
+        buf.append(ch)
+        i += 1
+
+    statement = "".join(buf).strip()
+    if statement:
+        statements.append(statement)
+
+    return statements
+
+
+def _sql_column_list(raw: str) -> set[str]:
+    return {
+        _normalize_sql_ident(match)
+        for match in re.findall(
+            r'"?([A-Za-z_][A-Za-z0-9_]*)"?',
+            raw,
+        )
+    }
+
+
+def _sql_dollar_bodies(sql: str) -> list[str]:
+    """
+    Return PostgreSQL dollar-quoted bodies for fail-closed procedural scanning.
+
+    Automatic migrations may use read-only validation blocks and trigger
+    functions, but procedural DML/DDL is outside the bounded additive lane.
+    """
+    return [
+        match.group("body")
+        for match in re.finditer(
+            r"\$(?P<tag>[A-Za-z_][A-Za-z0-9_]*|)\$"
+            r"(?P<body>[\s\S]*?)"
+            r"\$(?P=tag)\$",
+            sql,
+        )
+    ]
+
+
 def migration_contract(release_sha: str) -> tuple[dict, list[str]]:
     manifest = release_manifest(release_sha)
     paths = [str(item) for item in (manifest.get("migration_paths") or [])]
@@ -281,78 +412,510 @@ def migration_contract(release_sha: str) -> tuple[dict, list[str]]:
     allowed_path = re.compile(
         r"^prisma/migrations/[A-Za-z0-9_.-]+/migration\.sql$"
     )
-    destructive = [
-        re.compile(r"\bDROP\s+(?:TABLE|COLUMN|TYPE|SCHEMA|INDEX)\b", re.I),
-        re.compile(r"\bTRUNCATE\b", re.I),
-        re.compile(r"\bALTER\s+TABLE\b[\s\S]{0,240}\bRENAME\b", re.I),
-        re.compile(r"\bALTER\s+TABLE\b[\s\S]{0,240}\bALTER\s+COLUMN\b[\s\S]{0,160}\bTYPE\b", re.I),
-    ]
 
     texts: list[tuple[str, str]] = []
+    statements: list[tuple[str, str]] = []
+
     created_tables: set[str] = set()
+    added_columns: dict[str, set[str]] = {}
+
+    create_table = re.compile(
+        r'^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?'
+        r'"?([A-Za-z_][A-Za-z0-9_]*)"?\b',
+        re.I | re.S,
+    )
+
+    alter_table = re.compile(
+        r'^ALTER\s+TABLE\s+"?([A-Za-z_][A-Za-z0-9_]*)"?\s+'
+        r'([\s\S]+)$',
+        re.I,
+    )
+
+    add_column = re.compile(
+        r'^ADD\s+COLUMN\s+(?:IF\s+NOT\s+EXISTS\s+)?'
+        r'"?([A-Za-z_][A-Za-z0-9_]*)"?\s+([\s\S]+)$',
+        re.I,
+    )
 
     for rel in paths:
         if not allowed_path.fullmatch(rel):
-            raise AutoShipError(f"migration path is outside the Prisma contract: {rel}")
+            raise AutoShipError(
+                f"migration path is outside the Prisma contract: {rel}"
+            )
+
         path = (ROOT / rel).resolve()
+
         try:
-            path.relative_to((ROOT / "prisma/migrations").resolve())
+            path.relative_to(
+                (ROOT / "prisma/migrations").resolve()
+            )
         except ValueError as exc:
-            raise AutoShipError(f"migration escapes Prisma migrations: {rel}") from exc
+            raise AutoShipError(
+                f"migration escapes Prisma migrations: {rel}"
+            ) from exc
+
         if not path.is_file():
-            raise AutoShipError(f"migration file is missing: {rel}")
+            raise AutoShipError(
+                f"migration file is missing: {rel}"
+            )
 
         sql = path.read_text(encoding="utf-8")
         texts.append((rel, sql))
-        for table in re.findall(
-            r'\bCREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"?([A-Za-z_][A-Za-z0-9_]*)"?',
-            sql,
-            flags=re.I,
-        ):
-            created_tables.add(table)
 
-        for pattern in destructive:
-            if pattern.search(sql):
-                raise AutoShipError(
-                    f"migration contract rejects destructive SQL in {rel}"
+        for statement in _sql_statements(sql):
+            statements.append((rel, statement))
+
+            match = create_table.match(statement)
+            if match:
+                created_tables.add(
+                    _normalize_sql_ident(match.group(1))
+                )
+                continue
+
+            match = alter_table.match(statement)
+            if not match:
+                continue
+
+            table = _normalize_sql_ident(match.group(1))
+            body = match.group(2).strip()
+
+            column = add_column.match(body)
+            if column:
+                added_columns.setdefault(
+                    table,
+                    set(),
+                ).add(
+                    _normalize_sql_ident(
+                        column.group(1)
+                    )
                 )
 
-    if not created_tables:
+    destructive = [
+        (
+            "DROP",
+            re.compile(
+                r'^DROP\b',
+                re.I | re.S,
+            ),
+        ),
+        (
+            "TRUNCATE",
+            re.compile(
+                r'^TRUNCATE\b',
+                re.I | re.S,
+            ),
+        ),
+        (
+            "CREATE OR REPLACE",
+            re.compile(
+                r'^CREATE\s+OR\s+REPLACE\b',
+                re.I | re.S,
+            ),
+        ),
+        (
+            "ALTER NON-TABLE",
+            re.compile(
+                r'^ALTER\s+(?!TABLE\b)',
+                re.I | re.S,
+            ),
+        ),
+        (
+            "COPY",
+            re.compile(
+                r'^COPY\b',
+                re.I | re.S,
+            ),
+        ),
+        (
+            "ALTER TABLE DROP",
+            re.compile(
+                r'^ALTER\s+TABLE\b[\s\S]*?\bDROP\s+'
+                r'(?:COLUMN|CONSTRAINT)\b',
+                re.I,
+            ),
+        ),
+        (
+            "ALTER TABLE RENAME",
+            re.compile(
+                r'^ALTER\s+TABLE\b[\s\S]*?\bRENAME\b',
+                re.I,
+            ),
+        ),
+        (
+            "ALTER COLUMN TYPE",
+            re.compile(
+                r'^ALTER\s+TABLE\b[\s\S]*?'
+                r'\bALTER\s+COLUMN\b[\s\S]*?\bTYPE\b',
+                re.I,
+            ),
+        ),
+    ]
+
+    for rel, statement in statements:
+        for label, pattern in destructive:
+            if pattern.match(statement):
+                raise AutoShipError(
+                    "migration contract rejects destructive SQL "
+                    f"({label}) in {rel}"
+                )
+
+    procedural_mutation = re.compile(
+        r"\b(?:"
+        r"INSERT\s+INTO|"
+        r"UPDATE\s+[A-Za-z_\"][\s\S]{0,160}?\s+SET|"
+        r"DELETE\s+FROM|"
+        r"MERGE\s+INTO|"
+        r"TRUNCATE\b|"
+        r"DROP\s+|"
+        r"ALTER\s+|"
+        r"COPY\s+|"
+        r"CREATE\s+OR\s+REPLACE|"
+        r"EXECUTE\b"
+        r")",
+        re.I,
+    )
+
+    for rel, statement in statements:
+        for body in _sql_dollar_bodies(statement):
+            if procedural_mutation.search(body):
+                raise AutoShipError(
+                    "procedural or dynamic SQL mutation is outside "
+                    f"the automatic additive migration lane in {rel}"
+                )
+
+    if not created_tables and not any(
+        added_columns.values()
+    ):
         raise AutoShipError(
-            "migration release has no CREATE TABLE authority; "
-            "automatic migration mode is limited to additive/backward-compatible releases"
+            "migration release has no additive CREATE TABLE "
+            "or ADD COLUMN authority"
         )
 
-    for rel, sql in texts:
-        for pattern, verb in [
-            (
-                re.compile(
-                    r'\bUPDATE\s+"?([A-Za-z_][A-Za-z0-9_]*)"?\s+SET\b',
-                    re.I,
-                ),
-                "UPDATE",
-            ),
-            (
-                re.compile(
-                    r'\bDELETE\s+FROM\s+"?([A-Za-z_][A-Za-z0-9_]*)"?\b',
-                    re.I,
-                ),
-                "DELETE",
-            ),
-            (
-                re.compile(
-                    r'\bALTER\s+TABLE\s+"?([A-Za-z_][A-Za-z0-9_]*)"?\b',
-                    re.I,
-                ),
-                "ALTER TABLE",
-            ),
-        ]:
-            for table in pattern.findall(sql):
-                if table not in created_tables:
-                    raise AutoShipError(
-                        f"{verb} targets pre-existing table {table!r} in {rel}; "
-                        "automatic migration mode only mutates tables created by this release"
+    insert = re.compile(
+        r'\bINSERT\s+INTO\s+(?:ONLY\s+)?'
+        r'"?([A-Za-z_][A-Za-z0-9_]*)"?\b',
+        re.I,
+    )
+
+    merge = re.compile(
+        r'\bMERGE\s+INTO\b',
+        re.I,
+    )
+
+    create_index_target = re.compile(
+        r'^CREATE\s+(?:UNIQUE\s+)?INDEX\b'
+        r'[\s\S]*?\bON\s+'
+        r'"?([A-Za-z_][A-Za-z0-9_]*)"?\b',
+        re.I,
+    )
+
+    create_index_columns = re.compile(
+        r'^CREATE\s+(?:UNIQUE\s+)?INDEX\b'
+        r'[\s\S]*?\bON\s+'
+        r'"?[A-Za-z_][A-Za-z0-9_]*"?'
+        r'(?:\s+USING\s+[A-Za-z_][A-Za-z0-9_]*)?'
+        r'\s*\(([^)]+)\)',
+        re.I,
+    )
+
+    create_trigger = re.compile(
+        r'^CREATE\s+TRIGGER\b'
+        r'[\s\S]*?\bON\s+'
+        r'"?([A-Za-z_][A-Za-z0-9_]*)"?\b',
+        re.I,
+    )
+
+    update = re.compile(
+        r'\bUPDATE\s+"?([A-Za-z_][A-Za-z0-9_]*)"?'
+        r'(?:\s+(?:AS\s+)?'
+        r'"?([A-Za-z_][A-Za-z0-9_]*)"?)?'
+        r'\s+SET\s+([\s\S]+)$',
+        re.I,
+    )
+
+    delete = re.compile(
+        r'\bDELETE\s+FROM\s+'
+        r'"?([A-Za-z_][A-Za-z0-9_]*)"?\b',
+        re.I | re.S,
+    )
+
+    add_unique = re.compile(
+        r'^ADD\s+CONSTRAINT\s+'
+        r'"?[A-Za-z_][A-Za-z0-9_]*"?\s+'
+        r'UNIQUE\s*\(([^)]+)\)[\s\S]*$',
+        re.I,
+    )
+
+    add_fk = re.compile(
+        r'^ADD\s+CONSTRAINT\s+'
+        r'"?[A-Za-z_][A-Za-z0-9_]*"?\s+'
+        r'FOREIGN\s+KEY\s*\(([^)]+)\)[\s\S]*$',
+        re.I,
+    )
+
+    for rel, statement in statements:
+        for insert_match in insert.finditer(statement):
+            table = _normalize_sql_ident(
+                insert_match.group(1)
+            )
+
+            if table not in created_tables:
+                raise AutoShipError(
+                    "INSERT targets pre-existing table "
+                    f"{table!r} in {rel}; automatic migration "
+                    "mode forbids inserting new production truth "
+                    "into pre-existing tables"
+                )
+
+        if merge.search(statement):
+            raise AutoShipError(
+                "MERGE is outside the automatic additive "
+                f"migration lane in {rel}"
+            )
+
+        index_match = create_index_target.match(
+            statement
+        )
+
+        if index_match:
+            table = _normalize_sql_ident(
+                index_match.group(1)
+            )
+
+            if table not in created_tables:
+                columns_match = (
+                    create_index_columns.match(
+                        statement
                     )
+                )
+
+                if not columns_match:
+                    raise AutoShipError(
+                        "CREATE INDEX on pre-existing "
+                        f"table {table!r} in {rel} "
+                        "could not be proven additive"
+                    )
+
+                columns = _sql_column_list(
+                    columns_match.group(1)
+                )
+
+                allowed = added_columns.get(
+                    table,
+                    set(),
+                )
+
+                if not columns or not columns.issubset(
+                    allowed
+                ):
+                    raise AutoShipError(
+                        "CREATE INDEX on pre-existing "
+                        f"table {table!r} in {rel} may reference "
+                        "only columns added by this release"
+                    )
+
+        trigger_match = create_trigger.match(
+            statement
+        )
+
+        if trigger_match:
+            table = _normalize_sql_ident(
+                trigger_match.group(1)
+            )
+
+            if table not in created_tables:
+                update_of = re.search(
+                    r'\bUPDATE\s+OF\s+'
+                    r'([\s\S]*?)\s+ON\s+',
+                    statement,
+                    re.I,
+                )
+
+                if not update_of:
+                    raise AutoShipError(
+                        "CREATE TRIGGER on pre-existing "
+                        f"table {table!r} in {rel} must be "
+                        "scoped through UPDATE OF to "
+                        "same-release columns"
+                    )
+
+                trigger_columns = _sql_column_list(
+                    update_of.group(1)
+                )
+
+                allowed = added_columns.get(
+                    table,
+                    set(),
+                )
+
+                if (
+                    not trigger_columns
+                    or not trigger_columns.issubset(
+                        allowed
+                    )
+                ):
+                    raise AutoShipError(
+                        "CREATE TRIGGER on pre-existing "
+                        f"table {table!r} in {rel} may reference "
+                        "only columns added by this release"
+                    )
+
+                trigger_head = statement[
+                    : trigger_match.end()
+                ]
+
+                if re.search(
+                    r'\b(?:DELETE|TRUNCATE)\b',
+                    trigger_head,
+                    re.I,
+                ):
+                    raise AutoShipError(
+                        "DELETE/TRUNCATE trigger events on "
+                        f"pre-existing table {table!r} in {rel} "
+                        "are outside the automatic additive lane"
+                    )
+
+        match = update.search(statement)
+
+        if match:
+            table = _normalize_sql_ident(
+                match.group(1)
+            )
+
+            if table in created_tables:
+                continue
+
+            body = match.group(3)
+
+            set_part = re.split(
+                r'\b(?:FROM|WHERE|RETURNING)\b',
+                body,
+                maxsplit=1,
+                flags=re.I,
+            )[0]
+
+            targets = {
+                _normalize_sql_ident(column)
+                for column in re.findall(
+                    r'(?:'
+                    r'"?[A-Za-z_][A-Za-z0-9_]*"?'
+                    r'\s*\.\s*'
+                    r')?'
+                    r'"?([A-Za-z_][A-Za-z0-9_]*)"?'
+                    r'\s*=',
+                    set_part,
+                )
+            }
+
+            allowed = added_columns.get(
+                table,
+                set(),
+            )
+
+            if not targets or not targets.issubset(
+                allowed
+            ):
+                bad = sorted(targets - allowed)
+                raise AutoShipError(
+                    "UPDATE targets pre-existing column(s) "
+                    f"{bad or sorted(targets)!r} on "
+                    f"pre-existing table {table!r} in {rel}; "
+                    "additive backfills may only populate "
+                    "columns added by this release"
+                )
+
+            if not re.search(
+                r'\bWHERE\b',
+                statement,
+                re.I,
+            ):
+                raise AutoShipError(
+                    "UPDATE backfill against pre-existing "
+                    f"table {table!r} in {rel} requires WHERE"
+                )
+
+            continue
+
+        match = delete.search(statement)
+
+        if match:
+            table = _normalize_sql_ident(
+                match.group(1)
+            )
+
+            if table not in created_tables:
+                raise AutoShipError(
+                    "DELETE targets pre-existing table "
+                    f"{table!r} in {rel}; automatic "
+                    "migration mode forbids deleting "
+                    "pre-existing production truth"
+                )
+
+            continue
+
+        match = alter_table.match(statement)
+
+        if not match:
+            continue
+
+        table = _normalize_sql_ident(
+            match.group(1)
+        )
+        body = match.group(2).strip()
+
+        if table in created_tables:
+            continue
+
+        column = add_column.match(body)
+
+        if column:
+            definition = column.group(2)
+
+            if re.search(
+                r'\bNOT\s+NULL\b',
+                definition,
+                re.I,
+            ):
+                raise AutoShipError(
+                    "ADD COLUMN on pre-existing table "
+                    f"{table!r} in {rel} must remain "
+                    "nullable in the automatic additive lane"
+                )
+
+            continue
+
+        constraint = (
+            add_unique.match(body)
+            or add_fk.match(body)
+        )
+
+        if constraint:
+            columns = _sql_column_list(
+                constraint.group(1)
+            )
+
+            allowed = added_columns.get(
+                table,
+                set(),
+            )
+
+            if not columns or not columns.issubset(
+                allowed
+            ):
+                raise AutoShipError(
+                    "ADD CONSTRAINT on pre-existing table "
+                    f"{table!r} in {rel} may reference "
+                    "only columns added by this release"
+                )
+
+            continue
+
+        raise AutoShipError(
+            "ALTER TABLE targets pre-existing table "
+            f"{table!r} in {rel}; automatic migration "
+            "mode only permits nullable ADD COLUMN "
+            "or constraints over same-release columns"
+        )
 
     names = sorted(
         {
@@ -360,8 +923,13 @@ def migration_contract(release_sha: str) -> tuple[dict, list[str]]:
             for rel in paths
         }
     )
+
     if len(names) != len(paths):
-        raise AutoShipError("migration manifest contains duplicate migration directories")
+        raise AutoShipError(
+            "migration manifest contains duplicate "
+            "migration directories"
+        )
+
     return manifest, names
 
 

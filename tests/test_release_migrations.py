@@ -107,6 +107,431 @@ UPDATE "users" SET "email" = "email";''',
                 ):
                     MODULE.migration_contract(release)
 
+    def test_before_truncate_trigger_is_not_a_destructive_statement(self):
+        temp, root, manifests, release = self.with_release(
+            [
+                (
+                    "20260101000000_create_widget",
+                    """CREATE TABLE "widget" ("id" SERIAL PRIMARY KEY);
+CREATE FUNCTION "prevent_widget_mutation"()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RAISE EXCEPTION 'immutable';
+END;
+$$;
+CREATE TRIGGER "widget_no_truncate"
+BEFORE TRUNCATE ON "widget"
+FOR EACH STATEMENT
+EXECUTE FUNCTION "prevent_widget_mutation"();""",
+                )
+            ]
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                _, names = MODULE.migration_contract(
+                    release
+                )
+                self.assertEqual(
+                    names,
+                    ["20260101000000_create_widget"],
+                )
+
+    def test_additive_existing_table_pointer_backfill_is_allowed(self):
+        temp, root, manifests, release = self.with_release(
+            [
+                (
+                    "20260101000000_create_claim",
+                    """CREATE TABLE "claim" (
+  "id" SERIAL PRIMARY KEY,
+  "owner_id" INTEGER NOT NULL
+);
+
+ALTER TABLE "users"
+ADD COLUMN "current_claim_id" INTEGER;
+
+UPDATE "users" u
+SET "current_claim_id" = claim."id"
+FROM "claim" claim
+WHERE claim."owner_id" = u."id";
+
+ALTER TABLE "users"
+ADD CONSTRAINT "uq_users_current_claim"
+UNIQUE ("current_claim_id");
+
+ALTER TABLE "users"
+ADD CONSTRAINT "users_current_claim_fkey"
+FOREIGN KEY ("current_claim_id")
+REFERENCES "claim"("id")
+ON DELETE SET NULL;""",
+                )
+            ]
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                manifest, names = (
+                    MODULE.migration_contract(
+                        release
+                    )
+                )
+                self.assertEqual(
+                    manifest["risk_class"],
+                    "DATABASE",
+                )
+                self.assertEqual(
+                    names,
+                    ["20260101000000_create_claim"],
+                )
+
+    def test_aliased_update_of_preexisting_column_is_rejected(self):
+        temp, root, manifests, release = self.with_release(
+            [
+                (
+                    "20260101000000_create_widget",
+                    """CREATE TABLE "widget" (
+  "id" SERIAL PRIMARY KEY
+);
+
+UPDATE "users" u
+SET "email" = u."email"
+WHERE u."id" > 0;""",
+                )
+            ]
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "additive backfills may only populate",
+                ):
+                    MODULE.migration_contract(
+                        release
+                    )
+
+    def test_delete_from_preexisting_table_is_rejected(self):
+        temp, root, manifests, release = self.with_release(
+            [
+                (
+                    "20260101000000_create_widget",
+                    """CREATE TABLE "widget" (
+  "id" SERIAL PRIMARY KEY
+);
+DELETE FROM "users"
+WHERE FALSE;""",
+                )
+            ]
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "forbids deleting pre-existing",
+                ):
+                    MODULE.migration_contract(
+                        release
+                    )
+
+    def test_nonadditive_existing_table_alter_is_rejected(self):
+        temp, root, manifests, release = self.with_release(
+            [
+                (
+                    "20260101000000_create_widget",
+                    """CREATE TABLE "widget" (
+  "id" SERIAL PRIMARY KEY
+);
+ALTER TABLE "users"
+ALTER COLUMN "email"
+SET DEFAULT 'nobody@example.invalid';""",
+                )
+            ]
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "only permits nullable ADD COLUMN",
+                ):
+                    MODULE.migration_contract(
+                        release
+                    )
+
+    def test_current_challenge_v3_migrations_fit_additive_contract(self):
+        paths = [
+            "prisma/migrations/20260823202000_challenge_settlement_allocations_v3/migration.sql",
+            "prisma/migrations/20260823224000_challenge_replay_claim_v3/migration.sql",
+        ]
+
+        manifest = {
+            "release_sha": "d" * 40,
+            "risk_class": "DATABASE",
+            "migration_paths": paths,
+        }
+
+        with mock.patch.object(
+            MODULE,
+            "release_manifest",
+            return_value=manifest,
+        ):
+            resolved, names = (
+                MODULE.migration_contract(
+                    "d" * 40
+                )
+            )
+
+        self.assertEqual(
+            resolved["risk_class"],
+            "DATABASE",
+        )
+        self.assertEqual(
+            names,
+            [
+                "20260823202000_challenge_settlement_allocations_v3",
+                "20260823224000_challenge_replay_claim_v3",
+            ],
+        )
+
+    def test_insert_into_preexisting_table_is_rejected(self):
+        temp, root, manifests, release = self.with_release(
+            [
+                (
+                    "20260101000000_create_widget",
+                    """CREATE TABLE "widget" ("id" SERIAL PRIMARY KEY);
+INSERT INTO "users" ("email")
+VALUES ('x@example.invalid');""",
+                )
+            ]
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "INSERT targets pre-existing table",
+                ):
+                    MODULE.migration_contract(
+                        release
+                    )
+
+    def test_cte_update_of_preexisting_column_is_rejected(self):
+        temp, root, manifests, release = self.with_release(
+            [
+                (
+                    "20260101000000_create_widget",
+                    """CREATE TABLE "widget" ("id" SERIAL PRIMARY KEY);
+WITH target AS (
+  SELECT "id" FROM "users"
+)
+UPDATE "users" u
+SET "email" = u."email"
+FROM target
+WHERE target."id" = u."id";""",
+                )
+            ]
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "additive backfills may only populate",
+                ):
+                    MODULE.migration_contract(
+                        release
+                    )
+
+    def test_merge_is_rejected(self):
+        temp, root, manifests, release = self.with_release(
+            [
+                (
+                    "20260101000000_create_widget",
+                    """CREATE TABLE "widget" ("id" SERIAL PRIMARY KEY);
+MERGE INTO "users" u
+USING "widget" w
+ON u."id" = w."id"
+WHEN MATCHED THEN
+  UPDATE SET "email" = u."email";""",
+                )
+            ]
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "MERGE is outside",
+                ):
+                    MODULE.migration_contract(
+                        release
+                    )
+
+    def test_procedural_update_is_rejected(self):
+        temp, root, manifests, release = self.with_release(
+            [
+                (
+                    "20260101000000_create_widget",
+                    """CREATE TABLE "widget" ("id" SERIAL PRIMARY KEY);
+DO $$
+BEGIN
+  UPDATE "users"
+  SET "email" = "email"
+  WHERE "id" > 0;
+END
+$$;""",
+                )
+            ]
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "procedural or dynamic SQL mutation",
+                ):
+                    MODULE.migration_contract(
+                        release
+                    )
+
+    def test_dynamic_execute_is_rejected(self):
+        temp, root, manifests, release = self.with_release(
+            [
+                (
+                    "20260101000000_create_widget",
+                    """CREATE TABLE "widget" ("id" SERIAL PRIMARY KEY);
+DO $$
+BEGIN
+  EXECUTE 'DROP TABLE users';
+END
+$$;""",
+                )
+            ]
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "procedural or dynamic SQL mutation",
+                ):
+                    MODULE.migration_contract(
+                        release
+                    )
+
+    def test_old_table_index_on_old_column_is_rejected(self):
+        temp, root, manifests, release = self.with_release(
+            [
+                (
+                    "20260101000000_create_widget",
+                    """CREATE TABLE "widget" ("id" SERIAL PRIMARY KEY);
+CREATE INDEX "ix_users_email_probe"
+ON "users" ("email");""",
+                )
+            ]
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "CREATE INDEX on pre-existing",
+                ):
+                    MODULE.migration_contract(
+                        release
+                    )
+
     def test_migrations_require_database_or_financial_gate(self):
         temp, root, manifests, release = self.with_release(
             [

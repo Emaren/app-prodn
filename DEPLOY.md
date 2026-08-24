@@ -151,12 +151,15 @@ Do not bypass the lease by manually running overlapping production mutations.
 
 The automatic lane accepts Prisma migrations only through its protected
 additive migration contract. The release must carry a `DATABASE` or `FINANCIAL`
-gate; every migration must be additive/backward-compatible and limited to tables
-created by that release; the live pending frontier must exactly equal the
-manifest; and activation cannot begin until a durable pre-migration `pg_dump`,
-SHA-256, exactly-once migration proof, and release-bound receipt exist. Any
-destructive SQL, pre-existing-table mutation, partial frontier, unexpected
-pending migration, or missing receipt fails closed.
+gate. A migration may create new tables or add nullable columns to pre-existing
+tables; constraints on a pre-existing table may reference only columns added by
+that release, and a bounded backfill may populate only those same-release
+columns. The live pending frontier must exactly equal the manifest, and
+activation cannot begin until a durable pre-migration `pg_dump`, SHA-256,
+exactly-once migration proof, and release-bound receipt exist. Destructive SQL,
+insertion/deletion of pre-existing truth, mutation of pre-existing columns, non-additive
+ALTER TABLE work, a partial frontier, unexpected pending migration, or a missing
+receipt fails closed.
 
 The lane still refuses a changed `yarn.lock` or changed dependency/package-
 manager sections in `package.json`. A dependency-contract-changing release needs
@@ -343,7 +346,7 @@ run `npx prisma migrate deploy` manually around the governed transaction.
 
 Documentation, presentation, and localization releases must not touch Prisma
 or the database unless their gated release manifest specifically requires it.
-Destructive or existing-table migrations remain separate break-glass work.
+Destructive or non-additive existing-table migrations remain separate break-glass work.
 
 ### 6. Build in an isolated temporary worktree
 

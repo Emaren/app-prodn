@@ -7,12 +7,18 @@ const ship = fs.readFileSync("scripts/aoe2_release_ship.py", "utf8");
 const deployGuide = fs.readFileSync("DEPLOY.md", "utf8");
 const releaseGuide = fs.readFileSync("docs/RELEASE_ENGINEERING.md", "utf8");
 
-test("one-command ship supports only additive DATABASE/FINANCIAL Prisma migrations", () => {
+test("one-command ship supports bounded additive DATABASE/FINANCIAL Prisma migrations", () => {
+  assert.match(auto, /def _sql_statements/);
   assert.match(auto, /def migration_contract/);
   assert.match(auto, /Prisma migrations require a DATABASE or FINANCIAL release gate/);
   assert.match(auto, /migration contract rejects destructive SQL/);
-  assert.match(auto, /automatic migration mode only mutates tables created by this release/);
-  assert.match(auto, /DROP\\s\+\(\?:TABLE\|COLUMN\|TYPE\|SCHEMA\|INDEX\)/);
+  assert.match(auto, /additive backfills may only populate/);
+  assert.match(auto, /must remain/);
+  assert.match(auto, /nullable in the automatic additive lane/);
+  assert.match(auto, /only permits nullable ADD COLUMN/);
+  assert.match(auto, /forbids deleting/);
+  assert.match(auto, /forbids inserting new production truth/);
+  assert.match(auto, /procedural or dynamic SQL mutation/);
 });
 
 test("production migrations are exact-frontier, backup-first, and receipt-bound", () => {

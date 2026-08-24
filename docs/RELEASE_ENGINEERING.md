@@ -51,8 +51,9 @@ disagree, stop and reconcile them before production mutation.
 12. Prisma migrations are permitted only through the protected
     `DATABASE`/`FINANCIAL` additive migration lane: exact migration frontier,
     candidate staged before DB mutation, durable pre-migration `pg_dump` plus
-    SHA-256, migration receipt verification, and no destructive SQL/DML
-    against pre-existing production truth.
+    SHA-256, migration receipt verification, no destructive SQL, and no writes
+    to pre-existing columns. Existing tables may gain nullable columns,
+    same-release constraints, and bounded backfills of only those new columns.
 13. Mutating release commands are serialized by a deployment lock.
 14. Machine-readable receipts must let a fresh operator or AI reconstruct the
     release state without conversational memory.
@@ -742,9 +743,11 @@ Foreign-owned or unwritable `.git` metadata blocks release.
 
 `aoe2war finish` includes one deliberately narrow higher-risk database lane for
 additive Prisma releases. A migration-bearing candidate must pass a `DATABASE`
-or `FINANCIAL` release gate. The migration contract rejects destructive SQL and
-any `UPDATE`, `DELETE`, or `ALTER TABLE` against a table that was not created by
-the same release.
+or `FINANCIAL` release gate. The migration contract rejects destructive SQL,
+insertion/deletion of pre-existing production truth, mutation of pre-existing columns,
+and non-additive `ALTER TABLE` work. A pre-existing table may receive nullable
+columns and constraints over columns added by the same release; a bounded
+backfill may populate only those newly added columns.
 
 After the exact candidate is published and staged, but before activation, the
 lane verifies that the production pending migration frontier exactly equals the
