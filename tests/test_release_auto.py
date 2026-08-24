@@ -605,6 +605,11 @@ class LearnedSupersededStageRecoveryTests(unittest.TestCase):
         self.assertIn('.next-release', script)
         self.assertIn('.node_modules-release', script)
         self.assertIn('stale-stage-retirements', script)
+        self.assertIn(
+            'sudo -n /usr/bin/install -d '
+            '-o tony -g tony -m 0750',
+            script,
+        )
         self.assertIn('original-stage-status.txt', script)
         self.assertIn('RETIREMENT_SHA256', script)
         self.assertIn('http://127.0.0.1:3030/api/bets', script)

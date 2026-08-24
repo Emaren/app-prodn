@@ -2343,7 +2343,7 @@ NEXT_KB="$(du -sk .next-release | awk '{{print $1}}')"
 MODULES_KB="$(du -sk .node_modules-release | awk '{{print $1}}')"
 BEFORE_KB="$(df -Pk / | awk 'NR==2 {{print $4}}')"
 
-install -d -m 0750 "$RETIRE_DIR"
+sudo -n /usr/bin/install -d -o tony -g tony -m 0750 "$RETIRE_DIR"
 
 cp -a \
     "$STATUS" \
