@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/chat-reflow-clan-signals-v1` at `82c2e739bc6300093ba951c250dfc121d3b3d9f7`
+Implementation baseline: `feature/challenge-foundation-v3` at `0d61b1d63f86e3f87b1b68f2e6e3518a41e13086`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

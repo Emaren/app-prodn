@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "938287d7db0d970d4606c2a06186423add95a01edfe604c5998204ba40137730",
+      "sha256": "9d7f8ad21cd782f2eebc5625807aa8537458057b1f71d191d2fff6d197702776",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1627,8 +1627,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "feature/chat-reflow-clan-signals-v1",
-    "commit": "82c2e739bc6300093ba951c250dfc121d3b3d9f7"
+    "branch": "feature/challenge-foundation-v3",
+    "commit": "0d61b1d63f86e3f87b1b68f2e6e3518a41e13086"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
