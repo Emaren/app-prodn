@@ -83,7 +83,7 @@ const HEADER_LINKS: ReadonlyArray<{
   label: string;
   countKey?: "requests";
 }> = [
-  { href: "/wargraph", label: "WarGraph" },
+  { href: "/wargraph", label: "WarGraphs" },
   { href: "/bets", label: "Bets" },
   { href: "/watch", label: "Watch" },
   { href: "/players", label: "Players" },
@@ -457,7 +457,7 @@ function HeaderPillLink({
       aria-current={active ? "page" : undefined}
       className={`relative inline-flex min-h-9 shrink-0 items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-[11px] font-semibold tracking-[0.01em] transition duration-200 xl:px-3.5 ${
         active
-          ? "border-amber-200/35 bg-amber-300/12 text-amber-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_24px_rgba(251,191,36,0.08)]"
+          ? "border-white/[0.08] border-b-amber-200/55 bg-transparent text-white shadow-[0_6px_12px_-9px_rgba(251,191,36,0.80)]"
           : className
       }`}
     >
