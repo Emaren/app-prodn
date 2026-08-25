@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/wargraph-v1` at `8f047e0a21b8803428b878e73f3325f1b2e4c2d4`
+Implementation baseline: `main` at `e7b78115bb676eddc54d2b539874b9b5f54b0c69`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
