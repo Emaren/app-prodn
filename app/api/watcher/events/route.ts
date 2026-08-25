@@ -18,6 +18,7 @@ import {
 import {
   watcherTelemetryCoalescer,
 } from "@/lib/watcherTelemetryCoalescer";
+import { recordWarGraphWatcherHealth } from "@/lib/wargraph/watcherHealth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -147,6 +148,25 @@ export async function POST(request: NextRequest) {
     identity.resolved &&
     identity.userUid
   ) {
+    const latestStoredEvent = storedEvents.at(-1);
+    if (latestStoredEvent && identity.userId && identity.apiKeyId) {
+      try {
+        await recordWarGraphWatcherHealth({
+          prisma,
+          userId: identity.userId,
+          apiKeyId: identity.apiKeyId,
+          eventType: latestStoredEvent.eventType,
+          watcherId: latestStoredEvent.watcherId ?? null,
+          sessionId: latestStoredEvent.sessionId ?? null,
+          metadata: latestStoredEvent.metadata,
+        });
+      } catch (error) {
+        // Telemetry remains durable even when the optional WarGraph projection
+        // must retry on a later heartbeat.
+        console.error("WarGraph Watcher health projection deferred:", error);
+      }
+    }
+
     const replayHashes = [
       ...new Set(
         storedEvents

@@ -1,5 +1,14 @@
 import { createHash } from "node:crypto";
 
+import {
+  extractWarGraphWatcherAttestation,
+  type WarGraphWatcherAttestation,
+} from "./wargraph/attestations.ts";
+import type {
+  WarGraphGeneratedPrismaStore,
+  WarGraphReplayEvidencePersistenceResult,
+} from "./wargraph/replayEvidencePersistence.ts";
+
 type JsonRecord = Record<string, unknown>;
 
 export type ReplayIngestReceipt = {
@@ -36,6 +45,10 @@ export type ReplayIngestReceipt = {
   financial: {
     eligible: boolean;
   };
+  warGraph: {
+    attestation: WarGraphWatcherAttestation | null;
+    rejectedReason: string | null;
+  };
   reviewRouted: boolean;
 };
 
@@ -52,6 +65,14 @@ export type ReplayPostIngestAutomationExecution =
     existingCount: number;
     skippedCount: number;
   };
+
+export type ReplayPostIngestWarGraphExecution =
+  ReplayPostIngestStageExecution &
+    Omit<WarGraphReplayEvidencePersistenceResult, "retryableFailure"> & {
+      rejectedCount: number;
+      rejectedReasons: string[];
+      retryableCode: string | null;
+    };
 
 export type ReplayPostIngestReport = {
   idempotencyKey: string;
@@ -85,6 +106,7 @@ export type ReplayPostIngestReport = {
     results: ReplayPostIngestAutomationExecution;
     identities: ReplayPostIngestAutomationExecution;
   };
+  warGraph: ReplayPostIngestWarGraphExecution;
   financial: {
     eligibleCount: number;
     tournament: ReplayPostIngestStageExecution;
@@ -95,12 +117,13 @@ export type ReplayPostIngestReport = {
 export function replayPostIngestReportSucceeded(
   report: Pick<
     ReplayPostIngestReport,
-    "automatic" | "financial"
+    "automatic" | "warGraph" | "financial"
   >
 ) {
   const stages = [
     report.automatic.results,
     report.automatic.identities,
+    report.warGraph,
     report.financial.tournament,
     report.financial.markets,
   ];
@@ -131,6 +154,10 @@ export type ReplayPostIngestDependencies<TPrisma> = {
     existingCount: number;
     skippedCount: number;
   }>;
+  persistWarGraphReplayEvidence?: (
+    prisma: TPrisma,
+    attestations: readonly WarGraphWatcherAttestation[]
+  ) => Promise<WarGraphReplayEvidencePersistenceResult>;
 };
 
 const TRUSTED_FINAL_STATUSES = new Set([
@@ -261,14 +288,27 @@ export function classifyReplayIngestReceipt(
       ) ||
         resultReady)
   );
+  const replayHash =
+    payloadString(payload?.replay_hash ?? payload?.replayHash ?? payload?.hash) ||
+    null;
+  const gameId = payloadIdentifier(
+    payload?.game_id ?? payload?.gameId ?? payload?.id
+  );
+  const warGraphParse = extractWarGraphWatcherAttestation(payload);
+  const warGraphIdentityMatches = Boolean(
+    warGraphParse?.ok === true &&
+      replayHash &&
+      /^[a-f0-9]{64}$/i.test(replayHash) &&
+      replayHash.toLowerCase() === warGraphParse.value.replayHash &&
+      gameId !== null &&
+      String(gameId) === String(warGraphParse.value.gameStatsId)
+  );
 
   return {
     accepted: responseOk,
     finalityStatus,
-    replayHash:
-      payloadString(payload?.replay_hash ?? payload?.replayHash ?? payload?.hash) ||
-      null,
-    gameId: payloadIdentifier(payload?.game_id ?? payload?.gameId ?? payload?.id),
+    replayHash,
+    gameId,
     duplicate: finalityStatus.endsWith("_duplicate"),
     requestedFinal: optionalPayloadFlag(
       payload?.requested_final ?? payload?.requestedFinal
@@ -316,6 +356,18 @@ export function classifyReplayIngestReceipt(
     financial: {
       eligible: bettingEligible,
     },
+    warGraph: {
+      attestation:
+        warGraphParse?.ok === true && warGraphIdentityMatches
+          ? warGraphParse.value
+          : null,
+      rejectedReason:
+        warGraphParse?.ok === false
+          ? warGraphParse.reason
+          : warGraphParse?.ok === true && !warGraphIdentityMatches
+            ? "ATTESTATION_REPLAY_RECEIPT_MISMATCH"
+          : null,
+    },
     reviewRouted: Boolean(responseOk && !resultReady),
   };
 }
@@ -344,6 +396,40 @@ function pendingAutomation(
   };
 }
 
+function pendingWarGraphExecution(
+  receipts: ReplayIngestReceipt[]
+): ReplayPostIngestWarGraphExecution {
+  const rejectedReasons = [
+    ...new Set(
+      receipts
+        .map((receipt) => receipt.warGraph.rejectedReason)
+        .filter((reason): reason is string => Boolean(reason))
+    ),
+  ].sort((left, right) => left.localeCompare(right));
+  const rejectedCount = receipts.filter(
+    (receipt) => receipt.warGraph.rejectedReason !== null
+  ).length;
+  const receivedCount = receipts.filter(
+    (receipt) => receipt.accepted && receipt.warGraph.attestation !== null
+  ).length;
+  const requested = receivedCount > 0 || rejectedCount > 0;
+
+  return {
+    ...pendingExecution(requested),
+    receivedCount,
+    createdCount: 0,
+    existingCount: 0,
+    failedCount: 0,
+    nonqualifyingCount: 0,
+    enqueuedCount: 0,
+    existingJobCount: 0,
+    notEnqueuedCount: 0,
+    rejectedCount,
+    rejectedReasons,
+    retryableCode: null,
+  };
+}
+
 function stableReceiptIdentity(receipt: ReplayIngestReceipt, index: number) {
   if (receipt.replayHash) return `hash:${receipt.replayHash}`;
   if (receipt.gameId !== null) return `game:${receipt.gameId}`;
@@ -353,7 +439,7 @@ function stableReceiptIdentity(receipt: ReplayIngestReceipt, index: number) {
 export function summarizeReplayIngestStages(
   receipts: ReplayIngestReceipt[],
   source: string
-): Omit<ReplayPostIngestReport, "financial" | "automatic"> & {
+): Omit<ReplayPostIngestReport, "financial" | "automatic" | "warGraph"> & {
   financial: Pick<ReplayPostIngestReport["financial"], "eligibleCount">;
 } {
   const accepted = receipts.filter((receipt) => receipt.accepted);
@@ -448,6 +534,19 @@ async function defaultReplayPostIngestDependencies<TPrisma>(): Promise<
   };
 }
 
+async function defaultWarGraphReplayEvidencePersistence<TPrisma>(
+  prisma: TPrisma,
+  attestations: readonly WarGraphWatcherAttestation[]
+) {
+  const { persistWarGraphReplayEvidence } = await import(
+    "./wargraph/replayEvidencePersistence.ts"
+  );
+  return persistWarGraphReplayEvidence({
+    store: prisma as unknown as WarGraphGeneratedPrismaStore,
+    attestations,
+  });
+}
+
 function acceptedFinalGameIds(receipts: ReplayIngestReceipt[]) {
   return [
     ...new Set(
@@ -491,6 +590,52 @@ async function executeAutomation<TPrisma>(input: {
   }
 }
 
+async function executeWarGraphPersistence<TPrisma>(input: {
+  stage: ReplayPostIngestWarGraphExecution;
+  runner:
+    | ReplayPostIngestDependencies<TPrisma>["persistWarGraphReplayEvidence"]
+    | undefined;
+  prisma: TPrisma;
+  attestations: readonly WarGraphWatcherAttestation[];
+}) {
+  if (!input.stage.requested) return;
+  input.stage.attempted = true;
+
+  // Structurally rejected input is intentionally retained only as a bounded
+  // reason code in this report. It is never written into the trusted evidence
+  // table and is not retryable by itself.
+  if (input.attestations.length === 0) {
+    input.stage.succeeded = true;
+    return;
+  }
+
+  try {
+    const result = input.runner
+      ? await input.runner(input.prisma, input.attestations)
+      : await defaultWarGraphReplayEvidencePersistence(
+          input.prisma,
+          input.attestations
+        );
+    input.stage.receivedCount = result.receivedCount;
+    input.stage.createdCount = result.createdCount;
+    input.stage.existingCount = result.existingCount;
+    input.stage.failedCount = result.failedCount;
+    input.stage.nonqualifyingCount = result.nonqualifyingCount;
+    input.stage.enqueuedCount = result.enqueuedCount;
+    input.stage.existingJobCount = result.existingJobCount;
+    input.stage.notEnqueuedCount = result.notEnqueuedCount;
+    input.stage.retryableCode = result.retryableFailure?.code ?? null;
+    input.stage.error = result.retryableFailure
+      ? `${result.retryableFailure.code}: ${result.retryableFailure.message}`
+      : null;
+    input.stage.succeeded = result.retryableFailure === null;
+  } catch (error) {
+    input.stage.succeeded = false;
+    input.stage.retryableCode = "WARGRAPH_EVIDENCE_STAGE_FAILED";
+    input.stage.error = errorMessage(error);
+  }
+}
+
 /**
  * Run the application-owned post-ingest reconciliation pass.
  *
@@ -511,8 +656,24 @@ export async function coordinateReplayPostIngest<TPrisma>(options: {
   const gameStatsIds = acceptedFinalGameIds(options.receipts);
   const automaticResults = pendingAutomation(gameStatsIds.length > 0);
   const automaticIdentities = pendingAutomation(gameStatsIds.length > 0);
+  const warGraph = pendingWarGraphExecution(options.receipts);
+  const warGraphAttestations = options.receipts
+    .filter((receipt) => receipt.accepted)
+    .map((receipt) => receipt.warGraph.attestation)
+    .filter(
+      (attestation): attestation is WarGraphWatcherAttestation =>
+        attestation !== null
+    );
 
   let dependencies = options.dependencies;
+
+  await executeWarGraphPersistence({
+    stage: warGraph,
+    runner: dependencies?.persistWarGraphReplayEvidence,
+    prisma: options.prisma,
+    attestations: warGraphAttestations,
+  });
+
   if (gameStatsIds.length > 0) {
     dependencies =
       dependencies ||
@@ -589,6 +750,7 @@ export async function coordinateReplayPostIngest<TPrisma>(options: {
       results: automaticResults,
       identities: automaticIdentities,
     },
+    warGraph,
     financial: {
       ...summary.financial,
       eligibleCount:

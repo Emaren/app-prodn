@@ -122,6 +122,8 @@ export async function POST(request: NextRequest) {
       "x-watcher-version",
       "x-watcher-platform",
       "x-watcher-architecture",
+      "x-watcher-provenance",
+      "x-watcher-provenance-signature",
       "x-file-role",
       "x-client-sha256",
       "x-replay-fingerprint",
@@ -224,6 +226,10 @@ export async function POST(request: NextRequest) {
           watcherArchitecture: readHeader(
             request,
             "x-watcher-architecture"
+          ),
+          watcherProvenance: readHeader(
+            request,
+            "x-watcher-provenance"
           ),
           fileRole: readHeader(
             request,

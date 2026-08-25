@@ -107,10 +107,10 @@ model User {
   replayPlayerMetricAggregates   ReplayPlayerMetricAggregate[]   @relation("ReplayPlayerMetricAggregateUser")
   replayStatProjections          ReplayStatProjection[]          @relation("ReplayStatProjectionActor")
   warEngineCasesCreated          WarEngineCase[]                 @relation("WarEngineCaseCreator")
-  pageChangeSeen               UserPageChangeSeen[]            @relation("UserPageChangeSeenUser")
+  pageChangeSeen                 UserPageChangeSeen[]            @relation("UserPageChangeSeenUser")
 
   featureRequests             FeatureRequest[]        @relation("FeatureRequestRequester")
-  marketplaceShopsOwned      MarketplaceShop[]       @relation("MarketplaceShopOwner")
+  marketplaceShopsOwned       MarketplaceShop[]       @relation("MarketplaceShopOwner")
   assignedBountyOpportunities BountyOpportunity[]     @relation("BountyOpportunityAssignedUser")
   bountyValuationsChanged     BountyValuation[]       @relation("BountyValuationChangedBy")
   bountyClaims                BountyClaim[]           @relation("BountyClaimUser")
@@ -137,6 +137,13 @@ model User {
   identityResolutionRunsCreated IdentityResolutionRun[]         @relation("IdentityResolutionRunCreator")
   identityPublicationsCreated   IdentityProjectionPublication[] @relation("IdentityProjectionPublicationActor")
 
+  warGraphRulesetsPublished   WarGraphRuleset[]            @relation("WarGraphRulesetPublisher")
+  warGraphMemberships         WarGraphMembership[]         @relation("WarGraphMembershipUser")
+  warGraphWatcherAttestations WarGraphWatcherAttestation[] @relation("WarGraphWatcherAttestationUser")
+  warGraphEventsActed         WarGraphEvent[]              @relation("WarGraphEventActor")
+  warGraphRewards             WarGraphReward[]             @relation("WarGraphRewardUser")
+  warGraphSpectatorSessions   WarGraphSpectatorSession[]   @relation("WarGraphSpectatorUser")
+
   @@map("users")
 }
 
@@ -150,7 +157,8 @@ model ApiKey {
   lastUsedAt DateTime? @map("last_used_at") @db.Timestamp(6)
   revokedAt  DateTime? @map("revoked_at") @db.Timestamp(6)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user                        User                         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  warGraphWatcherAttestations WarGraphWatcherAttestation[]
 
   @@index([userId], map: "ix_api_keys_user_id")
   @@index([keyPrefix], map: "ix_api_keys_prefix")
@@ -187,7 +195,7 @@ model GameStats {
   replayParseAttempts         ReplayParseAttempt[]          @relation("GameStatsParseAttempts")
   replayResultAdjudications   ReplayResultAdjudication[]
   replayDesyncIncidents       ReplayDesyncIncident[]
-  scheduledMatchReplayClaim ScheduledMatchReplayClaim?
+  scheduledMatchReplayClaim   ScheduledMatchReplayClaim?
   replayParseRuns             ReplayParseRun[]              @relation("ReplayParseRunGameStats")
   warEngineCase               WarEngineCase?
   replayEvidenceLinks         ReplayEvidenceLink[]          @relation("ReplayEvidenceLinkGameStats")
@@ -200,6 +208,8 @@ model GameStats {
   trophyEvents                TrophyEvent[]
   trophyChallenges            TrophyChallenge[]
   replayRosterPromotions      ReplayRosterPromotion[]       @relation("ReplayRosterPromotionGameStats")
+  warGraphWatcherAttestations WarGraphWatcherAttestation[]
+  warGraphContest             WarGraphContest?
 
   identityProjections ReplayPlayerIdentityProjection[]
 
@@ -226,9 +236,10 @@ model ReplayParseAttempt {
   gameStatsId      Int?      @map("game_stats_id")
   playedOn         DateTime? @map("played_on") @db.Timestamp(6)
 
-  gameStats            GameStats?        @relation("GameStatsParseAttempts", fields: [gameStatsId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  engineRoomSubmission ReplaySubmission? @relation("ReplaySubmissionLegacyAttempt")
-  engineRoomParseRuns  ReplayParseRun[]  @relation("ReplayParseRunLegacyAttempt")
+  gameStats                   GameStats?                   @relation("GameStatsParseAttempts", fields: [gameStatsId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  engineRoomSubmission        ReplaySubmission?            @relation("ReplaySubmissionLegacyAttempt")
+  engineRoomParseRuns         ReplayParseRun[]             @relation("ReplayParseRunLegacyAttempt")
+  warGraphWatcherAttestations WarGraphWatcherAttestation[]
 
   @@index([createdAt], map: "ix_replay_parse_attempts_created_at")
   @@index([status, createdAt], map: "ix_replay_parse_attempts_status_created_at")
@@ -1006,9 +1017,9 @@ model ScheduledMatch {
   fundingProofs                  ScheduledMatchFundingProof[]
   trophyChallenges               TrophyChallenge[]
   replayDesyncIncidents          ReplayDesyncIncident[]
-  currentReplayClaimId           Int?                        @unique(map: "uq_sched_match_current_replay_claim") @map("current_replay_claim_id")
-  replayClaims                   ScheduledMatchReplayClaim[] @relation("ScheduledMatchReplayClaimHistory")
-  currentReplayClaim             ScheduledMatchReplayClaim?  @relation("ScheduledMatchCurrentReplayClaim", fields: [currentReplayClaimId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  currentReplayClaimId           Int?                           @unique(map: "uq_sched_match_current_replay_claim") @map("current_replay_claim_id")
+  replayClaims                   ScheduledMatchReplayClaim[]    @relation("ScheduledMatchReplayClaimHistory")
+  currentReplayClaim             ScheduledMatchReplayClaim?     @relation("ScheduledMatchCurrentReplayClaim", fields: [currentReplayClaimId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   challenger User       @relation("ScheduledMatchChallenger", fields: [challengerUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   challenged User       @relation("ScheduledMatchChallenged", fields: [challengedUserId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -1025,7 +1036,6 @@ model ScheduledMatch {
   @@index([settlementReadyAt], map: "ix_scheduled_matches_settlement_ready_at")
   @@map("scheduled_matches")
 }
-
 
 /// Immutable exclusive claim binding one verified final replay to one Challenge.
 /// Manual commissioner result authority never creates this row.
@@ -3216,6 +3226,7 @@ model Warrior {
   claims              WarriorClaim[]
   projections         ReplayPlayerIdentityProjection[]
   decisionSubjects    IdentityDecisionSubject[]        @relation("IdentityDecisionSubjectWarrior")
+  warGraphMemberships WarGraphMembership[]
 
   @@index([status, normalizedDisplayName], map: "ix_warriors_status_name")
   @@index([mergedIntoWarriorId], map: "ix_warriors_merged_into")
@@ -3845,33 +3856,33 @@ model OracleEvent {
 }
 
 model MarketplaceShop {
-  id                    Int      @id @default(autoincrement())
-  publicId              String   @unique(map: "uq_marketplace_shops_public_id") @default(uuid()) @map("public_id") @db.Uuid
-  kind                  String   @default("player") @db.VarChar(24)
-  ownerUserId           Int?     @map("owner_user_id")
-  slug                  String   @unique(map: "uq_marketplace_shops_slug") @db.VarChar(80)
-  name                  String   @db.VarChar(120)
-  offer                 String   @db.Text
-  proprietorLabel       String   @map("proprietor_label") @db.VarChar(120)
-  streetKey             String   @map("street_key") @db.VarChar(40)
+  id                    Int       @id @default(autoincrement())
+  publicId              String    @unique(map: "uq_marketplace_shops_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  kind                  String    @default("player") @db.VarChar(24)
+  ownerUserId           Int?      @map("owner_user_id")
+  slug                  String    @unique(map: "uq_marketplace_shops_slug") @db.VarChar(80)
+  name                  String    @db.VarChar(120)
+  offer                 String    @db.Text
+  proprietorLabel       String    @map("proprietor_label") @db.VarChar(120)
+  streetKey             String    @map("street_key") @db.VarChar(40)
   slot                  Int
-  displayEnabled        Boolean  @default(false) @map("display_enabled")
-  status                String   @default("active") @db.VarChar(24)
-  charterAmountWolo     Int      @default(100) @map("charter_amount_wolo")
-  charterState          String   @default("unpaid") @map("charter_state") @db.VarChar(24)
-  charterTxHash         String?  @unique(map: "uq_marketplace_shops_charter_tx_hash") @map("charter_tx_hash") @db.VarChar(128)
+  displayEnabled        Boolean   @default(false) @map("display_enabled")
+  status                String    @default("active") @db.VarChar(24)
+  charterAmountWolo     Int       @default(100) @map("charter_amount_wolo")
+  charterState          String    @default("unpaid") @map("charter_state") @db.VarChar(24)
+  charterTxHash         String?   @unique(map: "uq_marketplace_shops_charter_tx_hash") @map("charter_tx_hash") @db.VarChar(128)
   charterPaidAt         DateTime? @map("charter_paid_at") @db.Timestamp(6)
-  sourceProposalEventId Int?     @unique(map: "uq_marketplace_shops_source_proposal_event_id") @map("source_proposal_event_id")
-  sourceMessageId       Int?     @unique(map: "uq_marketplace_shops_source_message_id") @map("source_message_id")
+  sourceProposalEventId Int?      @unique(map: "uq_marketplace_shops_source_proposal_event_id") @map("source_proposal_event_id")
+  sourceMessageId       Int?      @unique(map: "uq_marketplace_shops_source_message_id") @map("source_message_id")
   heroImageUrl          String?   @map("hero_image_url") @db.VarChar(500)
   href                  String    @db.VarChar(255)
   approvedAt            DateTime? @map("approved_at") @db.Timestamp(6)
   approvedByUserId      Int?      @map("approved_by_user_id")
   approvalMessageId     Int?      @unique(map: "uq_marketplace_shops_approval_message_id") @map("approval_message_id")
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  owner       User?                    @relation("MarketplaceShopOwner", fields: [ownerUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  owner       User?                   @relation("MarketplaceShopOwner", fields: [ownerUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   inquiries   MarketplaceInquiry[]
   invoices    MarketplaceInvoice[]
   payments    MarketplacePayment[]
@@ -3885,30 +3896,30 @@ model MarketplaceShop {
 }
 
 model MarketplaceInquiry {
-  id                             Int       @id @default(autoincrement())
-  publicId                       String    @unique(map: "uq_marketplace_inquiries_public_id") @default(uuid()) @map("public_id") @db.Uuid
-  shopId                         Int       @map("shop_id")
-  kind                           String    @default("customer_request") @db.VarChar(32)
-  requesterUserId                Int       @map("requester_user_id")
-  recipientUserId                Int       @map("recipient_user_id")
-  requesterUidSnapshot           String    @map("requester_uid_snapshot") @db.VarChar(100)
-  requesterDisplayNameSnapshot   String    @map("requester_display_name_snapshot") @db.VarChar(120)
-  recipientUidSnapshot           String    @map("recipient_uid_snapshot") @db.VarChar(100)
-  recipientDisplayNameSnapshot   String    @map("recipient_display_name_snapshot") @db.VarChar(120)
-  requestText                    String    @map("request_text") @db.Text
-  amountWolo                     Int       @default(100) @map("amount_wolo")
-  taxRateBps                     Int       @default(1000) @map("tax_rate_bps")
-  taxAmountWolo                  Int       @default(10) @map("tax_amount_wolo")
-  recipientAddressSnapshot       String    @map("recipient_address_snapshot") @db.VarChar(100)
-  memo                           String    @unique(map: "uq_marketplace_inquiries_memo") @db.VarChar(255)
-  status                         String    @default("awaiting_payment") @db.VarChar(24)
-  directMessageId                Int?      @unique(map: "uq_marketplace_inquiries_direct_message_id") @map("direct_message_id")
-  paidAt                         DateTime? @map("paid_at") @db.Timestamp(6)
-  createdAt                      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  id                           Int       @id @default(autoincrement())
+  publicId                     String    @unique(map: "uq_marketplace_inquiries_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  shopId                       Int       @map("shop_id")
+  kind                         String    @default("customer_request") @db.VarChar(32)
+  requesterUserId              Int       @map("requester_user_id")
+  recipientUserId              Int       @map("recipient_user_id")
+  requesterUidSnapshot         String    @map("requester_uid_snapshot") @db.VarChar(100)
+  requesterDisplayNameSnapshot String    @map("requester_display_name_snapshot") @db.VarChar(120)
+  recipientUidSnapshot         String    @map("recipient_uid_snapshot") @db.VarChar(100)
+  recipientDisplayNameSnapshot String    @map("recipient_display_name_snapshot") @db.VarChar(120)
+  requestText                  String    @map("request_text") @db.Text
+  amountWolo                   Int       @default(100) @map("amount_wolo")
+  taxRateBps                   Int       @default(1000) @map("tax_rate_bps")
+  taxAmountWolo                Int       @default(10) @map("tax_amount_wolo")
+  recipientAddressSnapshot     String    @map("recipient_address_snapshot") @db.VarChar(100)
+  memo                         String    @unique(map: "uq_marketplace_inquiries_memo") @db.VarChar(255)
+  status                       String    @default("awaiting_payment") @db.VarChar(24)
+  directMessageId              Int?      @unique(map: "uq_marketplace_inquiries_direct_message_id") @map("direct_message_id")
+  paidAt                       DateTime? @map("paid_at") @db.Timestamp(6)
+  createdAt                    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                    DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  shop    MarketplaceShop    @relation(fields: [shopId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  payment MarketplacePayment? @relation("MarketplaceInquiryPayment")
+  shop     MarketplaceShop      @relation(fields: [shopId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  payment  MarketplacePayment?  @relation("MarketplaceInquiryPayment")
   invoices MarketplaceInvoice[]
 
   @@index([shopId, kind, status, createdAt], map: "ix_marketplace_inquiries_shop_kind_status_created")
@@ -3918,27 +3929,27 @@ model MarketplaceInquiry {
 }
 
 model MarketplaceInvoice {
-  id                           Int       @id @default(autoincrement())
-  publicId                     String    @unique(map: "uq_marketplace_invoices_public_id") @default(uuid()) @map("public_id") @db.Uuid
-  shopId                       Int       @map("shop_id")
-  inquiryId                    Int       @map("inquiry_id")
-  issuerUserId                 Int       @map("issuer_user_id")
-  customerUserId               Int       @map("customer_user_id")
-  issuerUidSnapshot            String    @map("issuer_uid_snapshot") @db.VarChar(100)
-  issuerDisplayNameSnapshot    String    @map("issuer_display_name_snapshot") @db.VarChar(120)
-  customerUidSnapshot          String    @map("customer_uid_snapshot") @db.VarChar(100)
-  customerDisplayNameSnapshot  String    @map("customer_display_name_snapshot") @db.VarChar(120)
-  description                  String    @db.Text
-  amountWolo                   Int       @map("amount_wolo")
-  taxRateBps                   Int       @default(1000) @map("tax_rate_bps")
-  taxAmountWolo                Int       @map("tax_amount_wolo")
-  recipientAddressSnapshot     String    @map("recipient_address_snapshot") @db.VarChar(100)
-  memo                         String    @unique(map: "uq_marketplace_invoices_memo") @db.VarChar(255)
-  status                       String    @default("awaiting_payment") @db.VarChar(24)
-  directMessageId              Int?      @unique(map: "uq_marketplace_invoices_direct_message_id") @map("direct_message_id")
-  paidAt                       DateTime? @map("paid_at") @db.Timestamp(6)
-  createdAt                    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt                    DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+  id                          Int       @id @default(autoincrement())
+  publicId                    String    @unique(map: "uq_marketplace_invoices_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  shopId                      Int       @map("shop_id")
+  inquiryId                   Int       @map("inquiry_id")
+  issuerUserId                Int       @map("issuer_user_id")
+  customerUserId              Int       @map("customer_user_id")
+  issuerUidSnapshot           String    @map("issuer_uid_snapshot") @db.VarChar(100)
+  issuerDisplayNameSnapshot   String    @map("issuer_display_name_snapshot") @db.VarChar(120)
+  customerUidSnapshot         String    @map("customer_uid_snapshot") @db.VarChar(100)
+  customerDisplayNameSnapshot String    @map("customer_display_name_snapshot") @db.VarChar(120)
+  description                 String    @db.Text
+  amountWolo                  Int       @map("amount_wolo")
+  taxRateBps                  Int       @default(1000) @map("tax_rate_bps")
+  taxAmountWolo               Int       @map("tax_amount_wolo")
+  recipientAddressSnapshot    String    @map("recipient_address_snapshot") @db.VarChar(100)
+  memo                        String    @unique(map: "uq_marketplace_invoices_memo") @db.VarChar(255)
+  status                      String    @default("awaiting_payment") @db.VarChar(24)
+  directMessageId             Int?      @unique(map: "uq_marketplace_invoices_direct_message_id") @map("direct_message_id")
+  paidAt                      DateTime? @map("paid_at") @db.Timestamp(6)
+  createdAt                   DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                   DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   shop    MarketplaceShop     @relation(fields: [shopId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   inquiry MarketplaceInquiry  @relation(fields: [inquiryId], references: [id], onDelete: Restrict, onUpdate: NoAction)
@@ -3951,28 +3962,28 @@ model MarketplaceInvoice {
 }
 
 model MarketplacePayment {
-  id                         Int       @id @default(autoincrement())
-  publicId                   String    @unique(map: "uq_marketplace_payments_public_id") @default(uuid()) @map("public_id") @db.Uuid
-  kind                       String    @db.VarChar(24)
-  shopId                     Int       @map("shop_id")
-  inquiryId                  Int?      @unique(map: "uq_marketplace_payments_inquiry_id") @map("inquiry_id")
-  invoiceId                  Int?      @unique(map: "uq_marketplace_payments_invoice_id") @map("invoice_id")
-  payerUserId                Int       @map("payer_user_id")
-  payeeUserId                Int?      @map("payee_user_id")
-  payerUidSnapshot           String    @map("payer_uid_snapshot") @db.VarChar(100)
-  payerDisplayNameSnapshot   String    @map("payer_display_name_snapshot") @db.VarChar(120)
-  payeeUidSnapshot           String?   @map("payee_uid_snapshot") @db.VarChar(100)
-  payeeDisplayNameSnapshot   String    @map("payee_display_name_snapshot") @db.VarChar(120)
-  amountWolo                 Int       @map("amount_wolo")
-  taxRateBps                 Int       @default(0) @map("tax_rate_bps")
-  taxAmountWolo              Int       @default(0) @map("tax_amount_wolo")
-  senderAddressSnapshot      String    @map("sender_address_snapshot") @db.VarChar(100)
-  recipientAddressSnapshot   String    @map("recipient_address_snapshot") @db.VarChar(100)
-  memo                       String    @unique(map: "uq_marketplace_payments_memo") @db.VarChar(255)
-  txHash                     String    @unique(map: "uq_marketplace_payments_tx_hash") @map("tx_hash") @db.VarChar(128)
-  proofUrl                   String?   @map("proof_url") @db.VarChar(500)
-  verifiedAt                 DateTime  @map("verified_at") @db.Timestamp(6)
-  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  id                       Int      @id @default(autoincrement())
+  publicId                 String   @unique(map: "uq_marketplace_payments_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  kind                     String   @db.VarChar(24)
+  shopId                   Int      @map("shop_id")
+  inquiryId                Int?     @unique(map: "uq_marketplace_payments_inquiry_id") @map("inquiry_id")
+  invoiceId                Int?     @unique(map: "uq_marketplace_payments_invoice_id") @map("invoice_id")
+  payerUserId              Int      @map("payer_user_id")
+  payeeUserId              Int?     @map("payee_user_id")
+  payerUidSnapshot         String   @map("payer_uid_snapshot") @db.VarChar(100)
+  payerDisplayNameSnapshot String   @map("payer_display_name_snapshot") @db.VarChar(120)
+  payeeUidSnapshot         String?  @map("payee_uid_snapshot") @db.VarChar(100)
+  payeeDisplayNameSnapshot String   @map("payee_display_name_snapshot") @db.VarChar(120)
+  amountWolo               Int      @map("amount_wolo")
+  taxRateBps               Int      @default(0) @map("tax_rate_bps")
+  taxAmountWolo            Int      @default(0) @map("tax_amount_wolo")
+  senderAddressSnapshot    String   @map("sender_address_snapshot") @db.VarChar(100)
+  recipientAddressSnapshot String   @map("recipient_address_snapshot") @db.VarChar(100)
+  memo                     String   @unique(map: "uq_marketplace_payments_memo") @db.VarChar(255)
+  txHash                   String   @unique(map: "uq_marketplace_payments_tx_hash") @map("tx_hash") @db.VarChar(128)
+  proofUrl                 String?  @map("proof_url") @db.VarChar(500)
+  verifiedAt               DateTime @map("verified_at") @db.Timestamp(6)
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   shop       MarketplaceShop        @relation(fields: [shopId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   inquiry    MarketplaceInquiry?    @relation("MarketplaceInquiryPayment", fields: [inquiryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
@@ -4006,7 +4017,6 @@ model MarketplaceTaxPayment {
   @@map("marketplace_tax_payments")
 }
 
-
 model PageChangeRevision {
   href            String   @id @db.VarChar(80)
   sourceVersion   String   @map("source_version") @db.VarChar(64)
@@ -4031,4 +4041,778 @@ model UserPageChangeSeen {
   @@unique([userId, href], map: "uq_user_page_change_seen_user_href")
   @@index([href, seenAt], map: "ix_user_page_change_seen_href_seen")
   @@map("user_page_change_seen")
+}
+
+/// Persistent WarGraph identity. Board state never resets; mutable columns are
+/// only the current lifecycle/configuration projection over immutable events.
+model WarGraph {
+  id                    Int      @id @default(autoincrement())
+  publicId              String   @unique(map: "uq_war_graphs_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  slug                  String   @unique(map: "uq_war_graphs_slug") @db.VarChar(64)
+  name                  String   @db.VarChar(120)
+  status                String   @default("draft") @db.VarChar(24)
+  timezone              String   @default("America/Edmonton") @db.VarChar(64)
+  projectionVersion     Int      @default(0) @map("projection_version")
+  currentRulesetVersion Int      @default(1) @map("current_ruleset_version")
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  rulesets           WarGraphRuleset[]
+  layers             WarGraphLayer[]
+  nodes              WarGraphNode[]
+  nights             WarGraphNight[]
+  memberships        WarGraphMembership[]
+  occupancies        WarGraphOccupancy[]
+  presences          WarGraphPresence[]
+  advanceRequests    WarGraphAdvanceRequest[]
+  defenseObligations WarGraphDefenseObligation[]
+  pairings           WarGraphPairing[]
+  engagements        WarGraphEngagement[]
+  contests           WarGraphContest[]
+  actions            WarGraphAction[]
+  movements          WarGraphMovement[]
+  events             WarGraphEvent[]
+  rewards            WarGraphReward[]
+  spectatorSessions  WarGraphSpectatorSession[]
+  jobs               WarGraphJob[]
+
+  @@index([status, updatedAt], map: "ix_war_graphs_status_updated")
+  @@map("war_graphs")
+}
+
+/// Immutable, hash-addressed competitive and economic configuration. A new
+/// publication supersedes an older row; published rules are never edited.
+model WarGraphRuleset {
+  id                       Int      @id @default(autoincrement())
+  graphId                  Int      @map("graph_id")
+  version                  Int
+  idempotencyKey           String   @unique(map: "uq_war_graph_rulesets_idempotency") @map("idempotency_key") @db.VarChar(128)
+  rulesetHash              String   @unique(map: "uq_war_graph_rulesets_hash") @map("ruleset_hash") @db.VarChar(64)
+  supersedesId             Int?     @unique(map: "uq_war_graph_rulesets_supersedes") @map("supersedes_id")
+  timezone                 String   @default("America/Edmonton") @db.VarChar(64)
+  primeStartMinute         Int      @default(1020) @map("prime_start_minute")
+  primeEndMinute           Int      @default(1380) @map("prime_end_minute")
+  responseWindowSeconds    Int      @default(900) @map("response_window_seconds")
+  launchWindowSeconds      Int      @default(1800) @map("launch_window_seconds")
+  maxResolvedActions       Int      @default(2) @map("max_resolved_actions")
+  crownCapacity            Int      @default(1) @map("crown_capacity")
+  ringOneCapacity          Int      @default(2) @map("ring_one_capacity")
+  ringTwoCapacity          Int      @default(6) @map("ring_two_capacity")
+  frontierAdvanceWolo      BigInt   @default(1) @map("frontier_advance_wolo")
+  ringTwoAdvanceWolo       BigInt   @default(2) @map("ring_two_advance_wolo")
+  firstCrownBloodWolo      BigInt   @default(3) @map("first_crown_blood_wolo")
+  crownVictoryWolo         BigInt   @default(50) @map("crown_victory_wolo")
+  nightlyPayoutCeilingWolo BigInt   @map("nightly_payout_ceiling_wolo")
+  treasuryReserveFloorWolo BigInt   @default(0) @map("treasury_reserve_floor_wolo")
+  settings                 Json     @default("{}")
+  effectiveFrom            DateTime @map("effective_from") @db.Timestamp(6)
+  publishedByUserId        Int?     @map("published_by_user_id")
+  publishedAt              DateTime @default(now()) @map("published_at") @db.Timestamp(6)
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  graph           WarGraph                 @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  publishedBy     User?                    @relation("WarGraphRulesetPublisher", fields: [publishedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersedes      WarGraphRuleset?         @relation("WarGraphRulesetSupersession", fields: [supersedesId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  supersededBy    WarGraphRuleset?         @relation("WarGraphRulesetSupersession")
+  nights          WarGraphNight[]
+  advanceRequests WarGraphAdvanceRequest[]
+  pairings        WarGraphPairing[]
+  contests        WarGraphContest[]
+  rewards         WarGraphReward[]
+
+  @@unique([graphId, version], map: "uq_war_graph_rulesets_graph_version")
+  @@index([graphId, effectiveFrom], map: "ix_war_graph_rulesets_graph_effective")
+  @@index([publishedByUserId, publishedAt], map: "ix_war_graph_rulesets_publisher")
+  @@map("war_graph_rulesets")
+}
+
+/// Immutable constitutional layer definitions. V1 is Crown, Ring I, Ring II,
+/// and an elastic Frontier; only Frontier node count grows with population.
+model WarGraphLayer {
+  id            Int      @id @default(autoincrement())
+  graphId       Int      @map("graph_id")
+  key           String   @db.VarChar(24)
+  displayName   String   @map("display_name") @db.VarChar(80)
+  ordinal       Int
+  kind          String   @db.VarChar(24)
+  fixedCapacity Int?     @map("fixed_capacity")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  graph              WarGraph                 @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  nodes              WarGraphNode[]
+  targetedByAdvances WarGraphAdvanceRequest[] @relation("WarGraphAdvanceTargetLayer")
+
+  @@unique([graphId, key], map: "uq_war_graph_layers_graph_key")
+  @@unique([graphId, ordinal], map: "uq_war_graph_layers_graph_ordinal")
+  @@index([graphId, kind], map: "ix_war_graph_layers_graph_kind")
+  @@map("war_graph_layers")
+}
+
+/// Stable board coordinate. Inner nodes are fixed; Frontier nodes are appended
+/// as eligible membership grows. Angular position is presentation, not rank.
+model WarGraphNode {
+  id           Int      @id @default(autoincrement())
+  publicId     String   @unique(map: "uq_war_graph_nodes_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  graphId      Int      @map("graph_id")
+  layerId      Int      @map("layer_id")
+  seatKey      String   @map("seat_key") @db.VarChar(64)
+  ordinal      Int
+  angularSeed  Int      @default(0) @map("angular_seed")
+  presentation Json     @default("{}")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  graph                  WarGraph                 @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  layer                  WarGraphLayer            @relation(fields: [layerId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  occupancy              WarGraphOccupancy?
+  advanceSources         WarGraphAdvanceRequest[] @relation("WarGraphAdvanceSourceNode")
+  pairingAggressorStarts WarGraphPairing[]        @relation("WarGraphPairingAggressorNode")
+  pairingDefenderStarts  WarGraphPairing[]        @relation("WarGraphPairingDefenderNode")
+  contestAggressorStarts WarGraphContest[]        @relation("WarGraphContestAggressorNode")
+  contestDefenderStarts  WarGraphContest[]        @relation("WarGraphContestDefenderNode")
+  movementsFrom          WarGraphMovement[]       @relation("WarGraphMovementFromNode")
+  movementsTo            WarGraphMovement[]       @relation("WarGraphMovementToNode")
+
+  @@unique([id, graphId], map: "uq_war_graph_nodes_id_graph")
+  @@unique([graphId, seatKey], map: "uq_war_graph_nodes_graph_seat")
+  @@unique([layerId, ordinal], map: "uq_war_graph_nodes_layer_ordinal")
+  @@index([graphId, layerId, ordinal], map: "ix_war_graph_nodes_board_order")
+  @@map("war_graph_nodes")
+}
+
+/// Server-materialized WarGraph day in America/Edmonton. Exact UTC boundaries
+/// are stored so DST and browser timezone differences cannot change legality.
+model WarGraphNight {
+  id           Int       @id @default(autoincrement())
+  graphId      Int       @map("graph_id")
+  rulesetId    Int       @map("ruleset_id")
+  localDate    DateTime  @map("local_date") @db.Date
+  timezone     String    @db.VarChar(64)
+  primeOpensAt DateTime  @map("prime_opens_at") @db.Timestamp(6)
+  lastCallAt   DateTime  @map("last_call_at") @db.Timestamp(6)
+  status       String    @default("scheduled") @db.VarChar(24)
+  staticAt     DateTime? @map("static_at") @db.Timestamp(6)
+  settledAt    DateTime? @map("settled_at") @db.Timestamp(6)
+  version      Int       @default(0)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  graph           WarGraph                 @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  ruleset         WarGraphRuleset          @relation(fields: [rulesetId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  advanceRequests WarGraphAdvanceRequest[]
+  pairings        WarGraphPairing[]
+  contests        WarGraphContest[]
+  actions         WarGraphAction[]
+  movements       WarGraphMovement[]
+  events          WarGraphEvent[]
+  rewards         WarGraphReward[]
+
+  @@unique([graphId, localDate], map: "uq_war_graph_nights_graph_date")
+  @@index([graphId, status, primeOpensAt], map: "ix_war_graph_nights_status_open")
+  @@map("war_graph_nights")
+}
+
+/// Automatic graph membership anchored to the authenticated AoE2WAR User.
+/// Steam/player identity is frozen for audit; Warrior remains optional until
+/// the separate identity foundation becomes authoritative for control.
+model WarGraphMembership {
+  id                  Int       @id @default(autoincrement())
+  publicId            String    @unique(map: "uq_war_graph_memberships_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  graphId             Int       @map("graph_id")
+  userId              Int       @map("user_id")
+  warriorId           Int?      @map("warrior_id")
+  playerKey           String    @map("player_key") @db.VarChar(96)
+  userUidSnapshot     String    @map("user_uid_snapshot") @db.VarChar(100)
+  steamIdSnapshot     String    @map("steam_id_snapshot") @db.VarChar(32)
+  displayNameSnapshot String    @map("display_name_snapshot") @db.VarChar(100)
+  avatarUrlSnapshot   String?   @map("avatar_url_snapshot") @db.VarChar(500)
+  status              String    @default("active") @db.VarChar(24)
+  eligibilityReason   String    @map("eligibility_reason") @db.VarChar(80)
+  dormantNights       Int       @default(0) @map("dormant_nights")
+  fossilizationStage  Int       @default(0) @map("fossilization_stage")
+  lastParticipationAt DateTime? @map("last_participation_at") @db.Timestamp(6)
+  lastGravityAt       DateTime? @map("last_gravity_at") @db.Timestamp(6)
+  eligibleAt          DateTime  @map("eligible_at") @db.Timestamp(6)
+  ineligibleAt        DateTime? @map("ineligible_at") @db.Timestamp(6)
+  version             Int       @default(0)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  graph               WarGraph                     @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  user                User                         @relation("WarGraphMembershipUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  warrior             Warrior?                     @relation(fields: [warriorId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  occupancy           WarGraphOccupancy?
+  presence            WarGraphPresence?
+  advances            WarGraphAdvanceRequest[]
+  defenseObligations  WarGraphDefenseObligation[]
+  pairingAggressor    WarGraphPairing[]            @relation("WarGraphPairingAggressor")
+  pairingDefender     WarGraphPairing[]            @relation("WarGraphPairingDefender")
+  engagements         WarGraphEngagement[]
+  contestAggressor    WarGraphContest[]            @relation("WarGraphContestAggressor")
+  contestDefender     WarGraphContest[]            @relation("WarGraphContestDefender")
+  contestsWon         WarGraphContest[]            @relation("WarGraphContestWinner")
+  contestsLost        WarGraphContest[]            @relation("WarGraphContestLoser")
+  contestAttestations WarGraphContestAttestation[]
+  actions             WarGraphAction[]
+  movements           WarGraphMovement[]
+  events              WarGraphEvent[]
+  rewards             WarGraphReward[]
+
+  @@unique([id, graphId], map: "uq_war_graph_memberships_id_graph")
+  @@unique([id, userId], map: "uq_war_graph_memberships_id_user")
+  @@unique([graphId, userId], map: "uq_war_graph_memberships_graph_user")
+  @@unique([graphId, playerKey], map: "uq_war_graph_memberships_graph_player")
+  @@index([graphId, status, updatedAt], map: "ix_war_graph_memberships_status_updated")
+  @@index([warriorId], map: "ix_war_graph_memberships_warrior")
+  @@map("war_graph_memberships")
+}
+
+/// Current single-seat projection. Every successful movement writes immutable
+/// movement/event rows and updates this row with optimistic version control.
+model WarGraphOccupancy {
+  id           Int      @id @default(autoincrement())
+  graphId      Int      @map("graph_id")
+  membershipId Int      @map("membership_id")
+  nodeId       Int      @map("node_id")
+  version      Int      @default(0)
+  occupiedAt   DateTime @map("occupied_at") @db.Timestamp(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  graph      WarGraph           @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  membership WarGraphMembership @relation(fields: [membershipId, graphId], references: [id, graphId], onDelete: Restrict, onUpdate: NoAction)
+  node       WarGraphNode       @relation(fields: [nodeId, graphId], references: [id, graphId], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([membershipId, graphId], map: "uq_war_graph_occupancies_member_graph")
+  @@unique([nodeId, graphId], map: "uq_war_graph_occupancies_node_graph")
+  @@index([graphId, updatedAt], map: "ix_war_graph_occupancies_graph_updated")
+  @@map("war_graph_occupancies")
+}
+
+/// Current evidence projection for public halos and matchmaking priority.
+/// Raw transitions remain in WarGraphEvent / watcher evidence.
+model WarGraphPresence {
+  id                  Int       @id @default(autoincrement())
+  graphId             Int       @map("graph_id")
+  membershipId        Int       @unique(map: "uq_war_graph_presences_membership") @map("membership_id")
+  realmSeenAt         DateTime? @map("realm_seen_at") @db.Timestamp(6)
+  graphSeenAt         DateTime? @map("graph_seen_at") @db.Timestamp(6)
+  readyUntil          DateTime? @map("ready_until") @db.Timestamp(6)
+  watcherSeenAt       DateTime? @map("watcher_seen_at") @db.Timestamp(6)
+  watcherHealthy      Boolean   @default(false) @map("watcher_healthy")
+  watcherIdentityHash String?   @map("watcher_identity_hash") @db.VarChar(64)
+  version             Int       @default(0)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  graph      WarGraph           @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  membership WarGraphMembership @relation(fields: [membershipId, graphId], references: [id, graphId], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([membershipId, graphId], map: "uq_war_graph_presences_member_graph")
+  @@index([graphId, watcherHealthy, watcherSeenAt], map: "ix_war_graph_presences_watcher")
+  @@index([graphId, readyUntil], map: "ix_war_graph_presences_ready")
+  @@map("war_graph_presences")
+}
+
+/// Ring-targeted inward demand. There is intentionally no defender column;
+/// liability and the first atomic acceptance are separate objects.
+model WarGraphAdvanceRequest {
+  id                     Int       @id @default(autoincrement())
+  publicId               String    @unique(map: "uq_war_graph_advance_requests_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  graphId                Int       @map("graph_id")
+  nightId                Int       @map("night_id")
+  rulesetId              Int       @map("ruleset_id")
+  challengerMembershipId Int       @map("challenger_membership_id")
+  sourceNodeId           Int       @map("source_node_id")
+  targetLayerId          Int       @map("target_layer_id")
+  sourceLayerOrdinal     Int       @map("source_layer_ordinal")
+  targetLayerOrdinal     Int       @map("target_layer_ordinal")
+  idempotencyKey         String    @unique(map: "uq_war_graph_advance_requests_idempotency") @map("idempotency_key") @db.VarChar(128)
+  status                 String    @default("open") @db.VarChar(24)
+  requestedAt            DateTime  @map("requested_at") @db.Timestamp(6)
+  responseDeadlineAt     DateTime  @map("response_deadline_at") @db.Timestamp(6)
+  acceptedAt             DateTime? @map("accepted_at") @db.Timestamp(6)
+  resolvedAt             DateTime? @map("resolved_at") @db.Timestamp(6)
+  resolutionCode         String?   @map("resolution_code") @db.VarChar(64)
+  version                Int       @default(0)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  graph             WarGraph                   @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  night             WarGraphNight              @relation(fields: [nightId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  ruleset           WarGraphRuleset            @relation(fields: [rulesetId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  challenger        WarGraphMembership         @relation(fields: [challengerMembershipId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  sourceNode        WarGraphNode               @relation("WarGraphAdvanceSourceNode", fields: [sourceNodeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  targetLayer       WarGraphLayer              @relation("WarGraphAdvanceTargetLayer", fields: [targetLayerId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  defenseObligation WarGraphDefenseObligation?
+  pairing           WarGraphPairing?
+  contests          WarGraphContest[]
+  events            WarGraphEvent[]
+
+  @@index([graphId, nightId, status, requestedAt], map: "ix_war_graph_advance_requests_night_status")
+  @@index([targetLayerId, status, responseDeadlineAt], map: "ix_war_graph_advance_requests_target_deadline")
+  @@index([challengerMembershipId, requestedAt], map: "ix_war_graph_advance_requests_challenger")
+  @@map("war_graph_advance_requests")
+}
+
+/// Fallback accountability created only from confirmed challenge-view evidence.
+model WarGraphDefenseObligation {
+  id                   Int       @id @default(autoincrement())
+  graphId              Int       @map("graph_id")
+  advanceRequestId     Int       @unique(map: "uq_war_graph_defense_obligations_advance") @map("advance_request_id")
+  defenderMembershipId Int       @map("defender_membership_id")
+  idempotencyKey       String    @unique(map: "uq_war_graph_defense_obligations_idempotency") @map("idempotency_key") @db.VarChar(128)
+  viewEvidenceHash     String    @map("view_evidence_hash") @db.VarChar(64)
+  viewedAt             DateTime  @map("viewed_at") @db.Timestamp(6)
+  deadlineAt           DateTime  @map("deadline_at") @db.Timestamp(6)
+  status               String    @default("pending") @db.VarChar(24)
+  resolutionCode       String?   @map("resolution_code") @db.VarChar(64)
+  resolvedAt           DateTime? @map("resolved_at") @db.Timestamp(6)
+  version              Int       @default(0)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  graph          WarGraph               @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  advanceRequest WarGraphAdvanceRequest @relation(fields: [advanceRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  defender       WarGraphMembership     @relation(fields: [defenderMembershipId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([defenderMembershipId, status, deadlineAt], map: "ix_war_graph_defense_obligations_defender")
+  @@index([graphId, status, deadlineAt], map: "ix_war_graph_defense_obligations_deadline")
+  @@map("war_graph_defense_obligations")
+}
+
+/// A specific two-player contract, created by first valid acceptance or by an
+/// organic adjacent-layer game. Starting versions freeze graph eligibility.
+model WarGraphPairing {
+  id                         Int       @id @default(autoincrement())
+  publicId                   String    @unique(map: "uq_war_graph_pairings_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  graphId                    Int       @map("graph_id")
+  nightId                    Int       @map("night_id")
+  rulesetId                  Int       @map("ruleset_id")
+  advanceRequestId           Int?      @unique(map: "uq_war_graph_pairings_advance") @map("advance_request_id")
+  aggressorMembershipId      Int       @map("aggressor_membership_id")
+  defenderMembershipId       Int       @map("defender_membership_id")
+  aggressorStartNodeId       Int       @map("aggressor_start_node_id")
+  defenderStartNodeId        Int       @map("defender_start_node_id")
+  aggressorStartLayerOrdinal Int       @map("aggressor_start_layer_ordinal")
+  defenderStartLayerOrdinal  Int       @map("defender_start_layer_ordinal")
+  aggressorStartVersion      Int       @map("aggressor_start_version")
+  defenderStartVersion       Int       @map("defender_start_version")
+  source                     String    @db.VarChar(24)
+  idempotencyKey             String    @unique(map: "uq_war_graph_pairings_idempotency") @map("idempotency_key") @db.VarChar(128)
+  status                     String    @default("accepted") @db.VarChar(24)
+  acceptedAt                 DateTime  @map("accepted_at") @db.Timestamp(6)
+  launchDeadlineAt           DateTime  @map("launch_deadline_at") @db.Timestamp(6)
+  aggressorReadyAt           DateTime? @map("aggressor_ready_at") @db.Timestamp(6)
+  defenderReadyAt            DateTime? @map("defender_ready_at") @db.Timestamp(6)
+  commencedAt                DateTime? @map("commenced_at") @db.Timestamp(6)
+  resolvedAt                 DateTime? @map("resolved_at") @db.Timestamp(6)
+  version                    Int       @default(0)
+  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                  DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  graph              WarGraph                @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  night              WarGraphNight           @relation(fields: [nightId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  ruleset            WarGraphRuleset         @relation(fields: [rulesetId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  advanceRequest     WarGraphAdvanceRequest? @relation(fields: [advanceRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  aggressor          WarGraphMembership      @relation("WarGraphPairingAggressor", fields: [aggressorMembershipId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  defender           WarGraphMembership      @relation("WarGraphPairingDefender", fields: [defenderMembershipId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  aggressorStartNode WarGraphNode            @relation("WarGraphPairingAggressorNode", fields: [aggressorStartNodeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  defenderStartNode  WarGraphNode            @relation("WarGraphPairingDefenderNode", fields: [defenderStartNodeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  engagements        WarGraphEngagement[]
+  contest            WarGraphContest?
+  events             WarGraphEvent[]
+
+  @@index([graphId, nightId, status, acceptedAt], map: "ix_war_graph_pairings_night_status")
+  @@index([aggressorMembershipId, acceptedAt], map: "ix_war_graph_pairings_aggressor")
+  @@index([defenderMembershipId, acceptedAt], map: "ix_war_graph_pairings_defender")
+  @@map("war_graph_pairings")
+}
+
+/// Cross-role engagement projection. A partial unique database index permits
+/// at most one unreleased engagement per warrior, regardless of combat role.
+model WarGraphEngagement {
+  id           Int       @id @default(autoincrement())
+  graphId      Int       @map("graph_id")
+  pairingId    Int       @map("pairing_id")
+  membershipId Int       @map("membership_id")
+  role         String    @db.VarChar(16)
+  status       String    @default("active") @db.VarChar(16)
+  acquiredAt   DateTime  @map("acquired_at") @db.Timestamp(6)
+  releasedAt   DateTime? @map("released_at") @db.Timestamp(6)
+  version      Int       @default(0)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  graph      WarGraph           @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  pairing    WarGraphPairing    @relation(fields: [pairingId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  membership WarGraphMembership @relation(fields: [membershipId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([pairingId, role], map: "uq_war_graph_engagements_pairing_role")
+  @@unique([pairingId, membershipId], map: "uq_war_graph_engagements_pairing_member")
+  @@index([membershipId, status, acquiredAt], map: "ix_war_graph_engagements_member_status")
+  @@map("war_graph_engagements")
+}
+
+/// Immutable application copy of the replay API's authenticated attestation
+/// receipt. Raw API evidence is retained even when it cannot qualify a contest.
+model WarGraphWatcherAttestation {
+  id                          BigInt    @id @default(autoincrement())
+  sourceSchema                String    @map("source_schema") @db.VarChar(64)
+  sourceAttestationId         String    @unique(map: "uq_war_graph_watcher_attestations_source") @map("source_attestation_id") @db.VarChar(128)
+  idempotencyKey              String    @unique(map: "uq_war_graph_watcher_attestations_idempotency") @map("idempotency_key") @db.VarChar(160)
+  receiptHash                 String    @unique(map: "uq_war_graph_watcher_attestations_receipt_hash") @map("receipt_hash") @db.VarChar(64)
+  uploaderUserId              Int       @map("uploader_user_id")
+  apiKeyId                    Int?      @map("api_key_id")
+  gameStatsId                 Int?      @map("game_stats_id")
+  replayParseAttemptId        Int?      @map("replay_parse_attempt_id")
+  uploaderUidSnapshot         String    @map("uploader_uid_snapshot") @db.VarChar(100)
+  ingestionProvenance         String?   @map("ingestion_provenance") @db.VarChar(32)
+  liveProvenance              Boolean   @default(false) @map("live_provenance")
+  provenanceSignatureVerified Boolean   @default(false) @map("provenance_signature_verified")
+  replayHash                  String    @map("replay_hash") @db.VarChar(64)
+  replayFingerprint           String?   @map("replay_fingerprint") @db.VarChar(160)
+  liveGameFingerprint         String?   @map("live_game_fingerprint") @db.VarChar(160)
+  platformMatchId             String?   @map("platform_match_id") @db.VarChar(128)
+  watcherIdentityHash         String    @map("watcher_identity_hash") @db.VarChar(64)
+  watcherSessionHash          String    @map("watcher_session_hash") @db.VarChar(64)
+  rosterHash                  String?   @map("roster_hash") @db.VarChar(64)
+  rosterPlayerKeyHashes       Json      @map("roster_player_key_hashes")
+  uploaderPlayerKeyHash       String?   @map("uploader_player_key_hash") @db.VarChar(64)
+  participantBound            Boolean   @map("participant_bound")
+  commencedAt                 DateTime? @map("commenced_at") @db.Timestamp(6)
+  isFinal                     Boolean   @map("is_final")
+  archiveVerified             Boolean   @map("archive_verified")
+  fileRole                    String?   @map("file_role") @db.VarChar(24)
+  finalityStatus              String?   @map("finality_status") @db.VarChar(32)
+  resultTrusted               Boolean   @map("result_trusted")
+  resultProvenance            String?   @map("result_provenance") @db.VarChar(48)
+  winningPlayerKeyHashes      Json      @map("winning_player_key_hashes")
+  resultHash                  String?   @map("result_hash") @db.VarChar(64)
+  receipt                     Json
+  receivedAt                  DateTime  @default(now()) @map("received_at") @db.Timestamp(6)
+
+  uploader           User                        @relation("WarGraphWatcherAttestationUser", fields: [uploaderUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  apiKey             ApiKey?                     @relation(fields: [apiKeyId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  gameStats          GameStats?                  @relation(fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  replayParseAttempt ReplayParseAttempt?         @relation(fields: [replayParseAttemptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  contestClaim       WarGraphContestAttestation?
+
+  @@unique([id, uploaderUserId], map: "uq_war_graph_watcher_attestations_id_uploader")
+  @@index([platformMatchId, receivedAt], map: "ix_war_graph_watcher_attestations_platform_match")
+  @@index([liveGameFingerprint, receivedAt], map: "ix_war_graph_watcher_attestations_live_fingerprint")
+  @@index([uploaderUserId, commencedAt], map: "ix_war_graph_watcher_attestations_uploader_commenced")
+  @@index([gameStatsId, receivedAt], map: "ix_war_graph_watcher_attestations_game")
+  @@index([replayHash], map: "ix_war_graph_watcher_attestations_replay_hash")
+  @@map("war_graph_watcher_attestations")
+}
+
+/// Lifecycle projection for one movement-bearing battle/default or one void.
+/// Start position/version snapshots make delayed parser arrival deterministic.
+model WarGraphContest {
+  id                         Int       @id @default(autoincrement())
+  publicId                   String    @unique(map: "uq_war_graph_contests_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  graphId                    Int       @map("graph_id")
+  nightId                    Int       @map("night_id")
+  rulesetId                  Int       @map("ruleset_id")
+  pairingId                  Int?      @unique(map: "uq_war_graph_contests_pairing") @map("pairing_id")
+  advanceRequestId           Int?      @map("advance_request_id")
+  aggressorMembershipId      Int       @map("aggressor_membership_id")
+  defenderMembershipId       Int       @map("defender_membership_id")
+  aggressorStartNodeId       Int       @map("aggressor_start_node_id")
+  defenderStartNodeId        Int       @map("defender_start_node_id")
+  aggressorStartLayerOrdinal Int       @map("aggressor_start_layer_ordinal")
+  defenderStartLayerOrdinal  Int       @map("defender_start_layer_ordinal")
+  aggressorStartVersion      Int       @map("aggressor_start_version")
+  defenderStartVersion       Int       @map("defender_start_version")
+  kind                       String    @db.VarChar(32)
+  provenance                 String    @db.VarChar(32)
+  idempotencyKey             String    @unique(map: "uq_war_graph_contests_idempotency") @map("idempotency_key") @db.VarChar(160)
+  liveGameFingerprint        String?   @unique(map: "uq_war_graph_contests_live_fingerprint") @map("live_game_fingerprint") @db.VarChar(160)
+  platformMatchId            String?   @unique(map: "uq_war_graph_contests_platform_match") @map("platform_match_id") @db.VarChar(128)
+  gameStatsId                Int?      @unique(map: "uq_war_graph_contests_game_stats") @map("game_stats_id")
+  authoritativeOrderKey      String?   @map("authoritative_order_key") @db.VarChar(160)
+  commencedAt                DateTime? @map("commenced_at") @db.Timestamp(6)
+  qualificationStatus        String    @default("pending") @map("qualification_status") @db.VarChar(32)
+  qualificationReason        String?   @map("qualification_reason") @db.VarChar(64)
+  resultStatus               String    @default("unresolved") @map("result_status") @db.VarChar(32)
+  outcomeCode                String?   @map("outcome_code") @db.VarChar(48)
+  winnerMembershipId         Int?      @map("winner_membership_id")
+  loserMembershipId          Int?      @map("loser_membership_id")
+  rosterHash                 String?   @map("roster_hash") @db.VarChar(64)
+  propositionHash            String?   @map("proposition_hash") @db.VarChar(64)
+  resultHash                 String?   @map("result_hash") @db.VarChar(64)
+  settlementKey              String?   @unique(map: "uq_war_graph_contests_settlement") @map("settlement_key") @db.VarChar(160)
+  status                     String    @default("pending") @db.VarChar(24)
+  settledAt                  DateTime? @map("settled_at") @db.Timestamp(6)
+  version                    Int       @default(0)
+  createdAt                  DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                  DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  graph              WarGraph                     @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  night              WarGraphNight                @relation(fields: [nightId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  ruleset            WarGraphRuleset              @relation(fields: [rulesetId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  pairing            WarGraphPairing?             @relation(fields: [pairingId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  advanceRequest     WarGraphAdvanceRequest?      @relation(fields: [advanceRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  aggressor          WarGraphMembership           @relation("WarGraphContestAggressor", fields: [aggressorMembershipId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  defender           WarGraphMembership           @relation("WarGraphContestDefender", fields: [defenderMembershipId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  winner             WarGraphMembership?          @relation("WarGraphContestWinner", fields: [winnerMembershipId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  loser              WarGraphMembership?          @relation("WarGraphContestLoser", fields: [loserMembershipId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  aggressorStartNode WarGraphNode                 @relation("WarGraphContestAggressorNode", fields: [aggressorStartNodeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  defenderStartNode  WarGraphNode                 @relation("WarGraphContestDefenderNode", fields: [defenderStartNodeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  gameStats          GameStats?                   @relation(fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  attestations       WarGraphContestAttestation[]
+  actions            WarGraphAction[]
+  movements          WarGraphMovement[]
+  events             WarGraphEvent[]
+  rewards            WarGraphReward[]
+  focusedSessions    WarGraphSpectatorSession[]
+
+  @@index([graphId, nightId, status, commencedAt], map: "ix_war_graph_contests_night_status")
+  @@index([aggressorMembershipId, commencedAt], map: "ix_war_graph_contests_aggressor")
+  @@index([defenderMembershipId, commencedAt], map: "ix_war_graph_contests_defender")
+  @@index([qualificationStatus, createdAt], map: "ix_war_graph_contests_qualification")
+  @@map("war_graph_contests")
+}
+
+/// Immutable accepted proof claim. Two distinct participant memberships must
+/// each claim one independently authenticated watcher receipt before battle settlement.
+model WarGraphContestAttestation {
+  id              BigInt   @id @default(autoincrement())
+  contestId       Int      @map("contest_id")
+  attestationId   BigInt   @unique(map: "uq_war_graph_contest_attestations_evidence") @map("attestation_id")
+  membershipId    Int      @map("membership_id")
+  uploaderUserId  Int      @map("uploader_user_id")
+  participantRole String   @map("participant_role") @db.VarChar(16)
+  evidencePhase   String   @map("evidence_phase") @db.VarChar(16)
+  validationHash  String   @map("validation_hash") @db.VarChar(64)
+  idempotencyKey  String   @unique(map: "uq_war_graph_contest_attestations_idempotency") @map("idempotency_key") @db.VarChar(160)
+  linkedAt        DateTime @default(now()) @map("linked_at") @db.Timestamp(6)
+
+  contest     WarGraphContest            @relation(fields: [contestId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  attestation WarGraphWatcherAttestation @relation(fields: [attestationId, uploaderUserId], references: [id, uploaderUserId], onDelete: Restrict, onUpdate: NoAction)
+  membership  WarGraphMembership         @relation(fields: [membershipId, uploaderUserId], references: [id, userId], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([attestationId, uploaderUserId], map: "uq_war_graph_contest_attestations_evidence_user")
+  @@unique([contestId, evidencePhase, membershipId], map: "uq_war_graph_contest_attestations_phase_member")
+  @@unique([contestId, evidencePhase, uploaderUserId], map: "uq_war_graph_contest_attestations_phase_uploader")
+  @@unique([contestId, evidencePhase, participantRole], map: "uq_war_graph_contest_attestations_phase_role")
+  @@index([membershipId, linkedAt], map: "ix_war_graph_contest_attestations_member")
+  @@map("war_graph_contest_attestations")
+}
+
+/// Immutable server-authoritative action slot. Slot uniqueness enforces the
+/// constitutional maximum of two resolved contests per warrior and night.
+model WarGraphAction {
+  id             BigInt   @id @default(autoincrement())
+  graphId        Int      @map("graph_id")
+  nightId        Int      @map("night_id")
+  contestId      Int      @map("contest_id")
+  membershipId   Int      @map("membership_id")
+  slot           Int
+  actionType     String   @map("action_type") @db.VarChar(32)
+  idempotencyKey String   @unique(map: "uq_war_graph_actions_idempotency") @map("idempotency_key") @db.VarChar(160)
+  appliedAt      DateTime @map("applied_at") @db.Timestamp(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  graph      WarGraph           @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  night      WarGraphNight      @relation(fields: [nightId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  contest    WarGraphContest    @relation(fields: [contestId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  membership WarGraphMembership @relation(fields: [membershipId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([nightId, membershipId, slot], map: "uq_war_graph_actions_night_member_slot")
+  @@unique([contestId, membershipId], map: "uq_war_graph_actions_contest_member")
+  @@index([graphId, nightId, appliedAt], map: "ix_war_graph_actions_night")
+  @@index([membershipId, appliedAt], map: "ix_war_graph_actions_member")
+  @@map("war_graph_actions")
+}
+
+/// Immutable territory change. Initial assignment, battle movement, defaults,
+/// catastrophic falls, and Gravity are typed separately from battle W/L.
+model WarGraphMovement {
+  id                      BigInt   @id @default(autoincrement())
+  graphId                 Int      @map("graph_id")
+  nightId                 Int?     @map("night_id")
+  contestId               Int?     @map("contest_id")
+  membershipId            Int      @map("membership_id")
+  fromNodeId              Int?     @map("from_node_id")
+  toNodeId                Int      @map("to_node_id")
+  fromLayerOrdinal        Int?     @map("from_layer_ordinal")
+  toLayerOrdinal          Int      @map("to_layer_ordinal")
+  movementType            String   @map("movement_type") @db.VarChar(32)
+  reasonCode              String   @map("reason_code") @db.VarChar(64)
+  sourceKey               String   @unique(map: "uq_war_graph_movements_source") @map("source_key") @db.VarChar(160)
+  idempotencyKey          String   @unique(map: "uq_war_graph_movements_idempotency") @map("idempotency_key") @db.VarChar(160)
+  membershipVersionBefore Int      @map("membership_version_before")
+  membershipVersionAfter  Int      @map("membership_version_after")
+  movedAt                 DateTime @map("moved_at") @db.Timestamp(6)
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  graph      WarGraph           @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  night      WarGraphNight?     @relation(fields: [nightId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  contest    WarGraphContest?   @relation(fields: [contestId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  membership WarGraphMembership @relation(fields: [membershipId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  fromNode   WarGraphNode?      @relation("WarGraphMovementFromNode", fields: [fromNodeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  toNode     WarGraphNode       @relation("WarGraphMovementToNode", fields: [toNodeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([contestId, membershipId], map: "uq_war_graph_movements_contest_member")
+  @@index([graphId, movedAt], map: "ix_war_graph_movements_graph_time")
+  @@index([membershipId, movedAt], map: "ix_war_graph_movements_member_time")
+  @@index([nightId, movementType], map: "ix_war_graph_movements_night_type")
+  @@map("war_graph_movements")
+}
+
+/// Immutable, hash-chained domain event stream. Mutable board state is a
+/// projection of these events plus immutable action/movement/reward ledgers.
+model WarGraphEvent {
+  id                BigInt   @id @default(autoincrement())
+  graphId           Int      @map("graph_id")
+  nightId           Int?     @map("night_id")
+  membershipId      Int?     @map("membership_id")
+  advanceRequestId  Int?     @map("advance_request_id")
+  pairingId         Int?     @map("pairing_id")
+  contestId         Int?     @map("contest_id")
+  actorUserId       Int?     @map("actor_user_id")
+  aggregateType     String   @map("aggregate_type") @db.VarChar(32)
+  aggregateId       String   @map("aggregate_id") @db.VarChar(128)
+  sequence          Int
+  eventType         String   @map("event_type") @db.VarChar(64)
+  idempotencyKey    String   @unique(map: "uq_war_graph_events_idempotency") @map("idempotency_key") @db.VarChar(160)
+  previousEventHash String?  @map("previous_event_hash") @db.VarChar(64)
+  eventHash         String   @unique(map: "uq_war_graph_events_hash") @map("event_hash") @db.VarChar(64)
+  priorVersion      Int?     @map("prior_version")
+  newVersion        Int?     @map("new_version")
+  payload           Json
+  occurredAt        DateTime @map("occurred_at") @db.Timestamp(6)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  graph          WarGraph                @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  night          WarGraphNight?          @relation(fields: [nightId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  membership     WarGraphMembership?     @relation(fields: [membershipId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  advanceRequest WarGraphAdvanceRequest? @relation(fields: [advanceRequestId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  pairing        WarGraphPairing?        @relation(fields: [pairingId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  contest        WarGraphContest?        @relation(fields: [contestId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  actor          User?                   @relation("WarGraphEventActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  rewards        WarGraphReward[]
+
+  @@unique([graphId, aggregateType, aggregateId, sequence], map: "uq_war_graph_events_aggregate_sequence")
+  @@index([graphId, occurredAt], map: "ix_war_graph_events_graph_time")
+  @@index([nightId, occurredAt], map: "ix_war_graph_events_night_time")
+  @@index([membershipId, occurredAt], map: "ix_war_graph_events_member_time")
+  @@index([eventType, occurredAt], map: "ix_war_graph_events_type_time")
+  @@map("war_graph_events")
+}
+
+/// Immutable app-side reward entitlement. WoloChain remains settlement truth;
+/// deterministic payout request IDs and append-only observations make retries safe.
+model WarGraphReward {
+  id                      BigInt   @id @default(autoincrement())
+  graphId                 Int      @map("graph_id")
+  nightId                 Int      @map("night_id")
+  rulesetId               Int      @map("ruleset_id")
+  contestId               Int      @map("contest_id")
+  eventId                 BigInt   @map("event_id")
+  membershipId            Int      @map("membership_id")
+  userId                  Int      @map("user_id")
+  rewardKind              String   @map("reward_kind") @db.VarChar(32)
+  amountWolo              BigInt   @map("amount_wolo")
+  settlementKey           String   @unique(map: "uq_war_graph_rewards_settlement") @map("settlement_key") @db.VarChar(160)
+  payoutRequestId         String   @unique(map: "uq_war_graph_rewards_payout_request") @map("payout_request_id") @db.VarChar(160)
+  recipientWalletSnapshot String?  @map("recipient_wallet_snapshot") @db.VarChar(100)
+  policyHash              String   @map("policy_hash") @db.VarChar(64)
+  entitledAt              DateTime @map("entitled_at") @db.Timestamp(6)
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  graph        WarGraph              @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  night        WarGraphNight         @relation(fields: [nightId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  ruleset      WarGraphRuleset       @relation(fields: [rulesetId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  contest      WarGraphContest       @relation(fields: [contestId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  event        WarGraphEvent         @relation(fields: [eventId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  membership   WarGraphMembership    @relation(fields: [membershipId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  user         User                  @relation("WarGraphRewardUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  payoutEvents WarGraphPayoutEvent[]
+
+  @@unique([contestId, rewardKind], map: "uq_war_graph_rewards_contest_kind")
+  @@index([nightId, entitledAt], map: "ix_war_graph_rewards_night")
+  @@index([userId, entitledAt], map: "ix_war_graph_rewards_user")
+  @@map("war_graph_rewards")
+}
+
+/// Append-only observations for deterministic WoloChain payout requests. A
+/// request may progress through submitted/unknown/failed/succeeded without
+/// rewriting prior evidence.
+model WarGraphPayoutEvent {
+  id             BigInt   @id @default(autoincrement())
+  rewardId       BigInt   @map("reward_id")
+  attemptNumber  Int      @map("attempt_number")
+  stateSequence  Int      @map("state_sequence")
+  requestId      String   @map("request_id") @db.VarChar(160)
+  idempotencyKey String   @unique(map: "uq_war_graph_payout_events_idempotency") @map("idempotency_key") @db.VarChar(180)
+  status         String   @db.VarChar(24)
+  txHash         String?  @map("tx_hash") @db.VarChar(128)
+  errorCode      String?  @map("error_code") @db.VarChar(80)
+  errorDetail    String?  @map("error_detail") @db.Text
+  evidence       Json     @default("{}")
+  observedAt     DateTime @map("observed_at") @db.Timestamp(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  reward WarGraphReward @relation(fields: [rewardId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([rewardId, attemptNumber, stateSequence], map: "uq_war_graph_payout_events_attempt_sequence")
+  @@unique([rewardId, requestId, status], map: "uq_war_graph_payout_events_request_status")
+  @@index([rewardId, observedAt], map: "ix_war_graph_payout_events_reward")
+  @@index([status, observedAt], map: "ix_war_graph_payout_events_status")
+  @@map("war_graph_payout_events")
+}
+
+/// Expiring, privacy-preserving spectator heartbeat. Raw IP and user agent are
+/// never stored; concurrent viewers are sessions whose expiry is server-owned.
+model WarGraphSpectatorSession {
+  id             Int       @id @default(autoincrement())
+  publicId       String    @unique(map: "uq_war_graph_spectator_sessions_public_id") @default(uuid()) @map("public_id") @db.Uuid
+  graphId        Int       @map("graph_id")
+  userId         Int?      @map("user_id")
+  focusContestId Int?      @map("focus_contest_id")
+  sessionKeyHash String    @unique(map: "uq_war_graph_spectator_sessions_key") @map("session_key_hash") @db.VarChar(64)
+  ipHash         String?   @map("ip_hash") @db.VarChar(64)
+  userAgentHash  String?   @map("user_agent_hash") @db.VarChar(64)
+  openedAt       DateTime  @map("opened_at") @db.Timestamp(6)
+  lastSeenAt     DateTime  @map("last_seen_at") @db.Timestamp(6)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamp(6)
+  closedAt       DateTime? @map("closed_at") @db.Timestamp(6)
+  version        Int       @default(0)
+
+  graph        WarGraph         @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  user         User?            @relation("WarGraphSpectatorUser", fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  focusContest WarGraphContest? @relation(fields: [focusContestId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([graphId, expiresAt], map: "ix_war_graph_spectator_sessions_active")
+  @@index([focusContestId, expiresAt], map: "ix_war_graph_spectator_sessions_focus")
+  @@index([userId, lastSeenAt], map: "ix_war_graph_spectator_sessions_user")
+  @@map("war_graph_spectator_sessions")
+}
+
+/// Durable, lease-based async work queue for correlation, settlement, Gravity,
+/// inactivity, and payout reconciliation. Domain effects remain idempotent.
+model WarGraphJob {
+  id             BigInt    @id @default(autoincrement())
+  graphId        Int       @map("graph_id")
+  jobType        String    @map("job_type") @db.VarChar(48)
+  dedupeKey      String    @unique(map: "uq_war_graph_jobs_dedupe") @map("dedupe_key") @db.VarChar(180)
+  payload        Json
+  status         String    @default("queued") @db.VarChar(24)
+  availableAt    DateTime  @map("available_at") @db.Timestamp(6)
+  attemptCount   Int       @default(0) @map("attempt_count")
+  maxAttempts    Int       @default(8) @map("max_attempts")
+  leaseOwner     String?   @map("lease_owner") @db.VarChar(128)
+  leaseExpiresAt DateTime? @map("lease_expires_at") @db.Timestamp(6)
+  lastErrorCode  String?   @map("last_error_code") @db.VarChar(80)
+  lastError      String?   @map("last_error") @db.Text
+  completedAt    DateTime? @map("completed_at") @db.Timestamp(6)
+  version        Int       @default(0)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  graph WarGraph @relation(fields: [graphId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([status, availableAt], map: "ix_war_graph_jobs_claim")
+  @@index([graphId, jobType, status], map: "ix_war_graph_jobs_graph_type")
+  @@index([leaseExpiresAt], map: "ix_war_graph_jobs_lease")
+  @@map("war_graph_jobs")
 }

@@ -83,6 +83,7 @@ const HEADER_LINKS: ReadonlyArray<{
   label: string;
   countKey?: "requests";
 }> = [
+  { href: "/wargraph", label: "WarGraph" },
   { href: "/bets", label: "Bets" },
   { href: "/watch", label: "Watch" },
   { href: "/players", label: "Players" },
@@ -132,6 +133,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/champions", title: "Championship Belts" },
   { prefix: "/kingdom-forge", title: "Kingdom Forge" },
   { prefix: "/kingdom", title: "The Kingdom" },
+  { prefix: "/wargraph", title: "WarGraph" },
   { prefix: "/round-chamber", title: "The Chamber" },
   { prefix: "/oracle", title: "The Oracle" },
   { prefix: "/forum", title: "War Room Forum" },
@@ -174,7 +176,7 @@ function getPageHeading(pathname: string | null) {
 }
 
 
-const HEADER_LINK_KEYS: Readonly<Record<string, string>> = {
+const HEADER_LINK_KEYS: Readonly<Partial<Record<string, string>>> = {
   "/bets": "nav.bets",
   "/watch": "nav.watch",
   "/players": "nav.players",
@@ -907,6 +909,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     );
 
   const isChampionsSurface = pathname === "/champions" || Boolean(pathname?.startsWith("/champions/"));
+  const isWarGraphSurface =
+    pathname === "/wargraph" || Boolean(pathname?.startsWith("/wargraph/"));
   const isFullWidthPrestigeSurface =
     isBetsSurface ||
     isChampionsSurface ||
@@ -1435,22 +1439,16 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   className={headerSkin.surface}
                   active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
                 />
-                {HEADER_LINKS.map((link, index) => (
+                {HEADER_LINKS.map((link) => (
                   <React.Fragment key={link.href}>
                     <HeaderPillLink
                       href={link.href}
-                      label={
-                      t(
-                        HEADER_LINK_KEYS[
-                          link.href
-                        ]
-                      )
-                    }
+                      label={HEADER_LINK_KEYS[link.href] ? t(HEADER_LINK_KEYS[link.href]!) : link.label}
                       className={headerSkin.surface}
                       active={isRouteActive(pathname, link.href)}
                       requestCount={link.countKey === "requests" ? requestCount : undefined}
                     />
-                    {index === 0 ? (
+                    {link.href === "/bets" ? (
                       <>
                         <HeaderLiveGamesLink
                           liveGamesCount={liveGamesCount}
@@ -1504,22 +1502,20 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <nav className="flex max-w-full items-center justify-center gap-1.5 overflow-visible lg:justify-self-center xl:gap-2">
-              {HEADER_LINKS.map((link, index) => (
+              <KingdomNavItem
+                className={headerSkin.surface}
+                active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
+              />
+              {HEADER_LINKS.map((link) => (
                 <React.Fragment key={link.href}>
                   <HeaderPillLink
                     href={link.href}
-                    label={
-                      t(
-                        HEADER_LINK_KEYS[
-                          link.href
-                        ]
-                      )
-                    }
+                    label={HEADER_LINK_KEYS[link.href] ? t(HEADER_LINK_KEYS[link.href]!) : link.label}
                     className={headerSkin.surface}
                     active={isRouteActive(pathname, link.href)}
                     requestCount={link.countKey === "requests" ? requestCount : undefined}
                   />
-                  {index === 0 ? (
+                  {link.href === "/bets" ? (
                     <>
                       <HeaderLiveGamesLink
                         liveGamesCount={liveGamesCount}
@@ -1530,10 +1526,6 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   ) : null}
                 </React.Fragment>
               ))}
-              <KingdomNavItem
-                className={headerSkin.surface}
-                active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
-              />
             </nav>
 
             <div className="flex items-center justify-end gap-2 lg:justify-self-end">
@@ -1603,6 +1595,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                     ? downloadShellMaxWidth
                     : isLobbySurface || isLiveGamesSurface || isForumSurface || isRivalriesSurface
                     ? immersiveShellMaxWidth
+                    : isWarGraphSurface
+                      ? "max-w-[118rem]"
                     : isFullWidthPrestigeSurface || isClanSurface
                       ? "max-w-[90rem]"
                     : isNationalChampionsSurface || isBetDetailSurface

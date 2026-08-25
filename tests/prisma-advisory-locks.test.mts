@@ -77,6 +77,41 @@ async function sourceFiles(
 }
 
 test(
+  "advisory lock regression matcher recognizes every supported unsafe queryRaw form",
+  () => {
+    const examples = [
+      "await tx.$queryRaw`SELECT pg_advisory_xact_lock(1)`;",
+      "await tx.$queryRaw(Prisma.sql`SELECT pg_advisory_xact_lock(1)`);",
+      "await tx.$queryRaw<Array<{ ok: number }>>(Prisma.sql`SELECT pg_advisory_xact_lock(1)`);",
+    ];
+
+    const pattern =
+      /\$queryRaw(?:<[\s\S]*?>)?\s*(?:\(\s*Prisma\.sql\s*)?`([\s\S]*?)`/g;
+
+    for (const source of examples) {
+      const matches =
+        [...source.matchAll(
+          new RegExp(
+            pattern.source,
+            "g"
+          )
+        )];
+
+      assert.equal(
+        matches.length,
+        1,
+        `Regression matcher failed to recognize: ${source}`
+      );
+
+      assert.match(
+        matches[0]?.[1] ?? "",
+        /\bSELECT\s+pg_advisory_xact_lock\s*\(/i
+      );
+    }
+  }
+);
+
+test(
   "runtime advisory locks never deserialize PostgreSQL void through queryRaw",
   async () => {
     const unsafe:
@@ -101,7 +136,7 @@ test(
           );
 
         const pattern =
-          /\$queryRaw(?:<[\s\S]*?>)?\s*`([\s\S]*?)`/g;
+          /\$queryRaw(?:<[\s\S]*?>)?\s*(?:\(\s*Prisma\.sql\s*)?`([\s\S]*?)`/g;
 
         for (
           const match of

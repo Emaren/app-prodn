@@ -30,7 +30,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/clans",
     label: "Clans",
-    version: "src-74dd15cdf194c5886601",
+    version: "src-6ba9ccf343fb55c6afb0",
   },
   {
     href: "/academy",
@@ -40,7 +40,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/market",
     label: "Marketplace",
-    version: "src-89591e15f56034d6f6f1",
+    version: "src-13e9bc367c50f400312c",
   },
   {
     href: "/ai",
@@ -65,7 +65,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/workshop",
     label: "The Workshop",
-    version: "src-d4d74bbd9a6ff7121fb5",
+    version: "src-ecf13b83b470f4e198f0",
   },
   {
     href: "/game-stats",
