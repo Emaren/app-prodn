@@ -92,6 +92,28 @@ const HEADER_LINKS: ReadonlyArray<{
   { href: "/staking", label: "Staking" },
 ];
 
+const NAV_ACTIVE_EFFECT_STORAGE_KEY =
+  "aoe2war:header-active-effect:v1";
+
+const NAV_ACTIVE_EFFECTS = [
+  "shadow-[0_10px_28px_-19px_rgba(251,191,36,0.35)]",
+  "shadow-[0_0_24px_-16px_rgba(253,230,138,0.24)]",
+  "shadow-[0_0_20px_-15px_rgba(226,232,240,0.20)]",
+  "shadow-[0_9px_28px_-19px_rgba(125,211,252,0.28)]",
+  "shadow-[0_9px_28px_-19px_rgba(196,181,253,0.24)]",
+] as const;
+
+function isModifiedHeaderNavClick(
+  event: React.MouseEvent<HTMLElement>
+) {
+  return (
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  );
+}
+
 const KINGDOM_LINKS = [
   { href: "/kingdom", label: "Kingdom", icon: Castle, body: "The realm, crowns, and league map" },
   { href: "/oracle", label: "The Oracle", icon: Eye, body: "Price the future of the Kingdom" },
@@ -430,12 +452,16 @@ function HeaderPillLink({
   className,
   active,
   requestCount,
+  activeEffectClass = "",
+  onCycleActiveEffect,
 }: {
   href: string;
   label: string;
   className: string;
   active?: boolean;
   requestCount?: number;
+  activeEffectClass?: string;
+  onCycleActiveEffect: () => void;
 }) {
   const t = useTranslations("Shell");
   const router = useRouter();
@@ -454,11 +480,14 @@ function HeaderPillLink({
       prefetch={false}
       onMouseEnter={() => router.prefetch(href)}
       onFocus={() => router.prefetch(href)}
+      onClick={(event) => {
+        if (isModifiedHeaderNavClick(event)) return;
+        onCycleActiveEffect();
+        if (active) event.preventDefault();
+      }}
       aria-current={active ? "page" : undefined}
-      className={`relative inline-flex min-h-9 shrink-0 items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-[11px] font-semibold tracking-[0.01em] transition duration-200 xl:px-3.5 ${
-        active
-          ? "border-white/[0.08] border-b-amber-200/55 bg-transparent text-white shadow-[0_6px_12px_-9px_rgba(251,191,36,0.80)]"
-          : className
+      className={`relative inline-flex min-h-9 shrink-0 items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-[11px] font-semibold tracking-[0.01em] transition duration-200 xl:px-3.5 ${className} ${
+        active ? activeEffectClass : ""
       }`}
     >
       <span className="relative z-10">{displayLabel}</span>
@@ -469,12 +498,15 @@ function HeaderPillLink({
 function KingdomNavItem({
   className,
   active,
+  unseenPageChanges,
+  activeEffectClass = "",
 }: {
   className: string;
   active?: boolean;
+  unseenPageChanges: ReadonlySet<string>;
+  activeEffectClass?: string;
 }) {
   const t = useTranslations("Shell");
-  const unseenPageChanges = usePageChangeNotices();
   const hasUnseenPageChanges = unseenPageChanges.size > 0;
   const [open, setOpen] = React.useState(false);
   const [portalReady, setPortalReady] = React.useState(false);
@@ -546,14 +578,10 @@ function KingdomNavItem({
         aria-expanded={open}
         aria-label={t("kingdom.openAria")}
         onClick={() => {
-          if (window.matchMedia("(max-width: 639px), (hover: none)").matches) {
-            setOpen((value) => !value);
-          }
+          setOpen((value) => !value);
         }}
-        className={`relative inline-flex min-h-9 min-w-10 shrink-0 items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-xs transition duration-200 ${
-          active
-            ? "border-amber-200/40 bg-amber-300/12 shadow-[0_0_24px_rgba(251,191,36,0.1)]"
-            : className
+        className={`relative inline-flex min-h-9 min-w-10 shrink-0 items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-xs transition duration-200 ${className} ${
+          active ? activeEffectClass : ""
         }`}
       >
         <span className="relative z-10 text-[16px] leading-none">🏰</span>
@@ -702,9 +730,13 @@ function KingdomMenuPanel({
 function HeaderLiveGamesLink({
   liveGamesCount,
   active,
+  activeEffectClass = "",
+  onCycleActiveEffect,
 }: {
   liveGamesCount: number;
   active?: boolean;
+  activeEffectClass?: string;
+  onCycleActiveEffect: () => void;
 }) {
   const t = useTranslations("Shell");
   const router = useRouter();
@@ -716,11 +748,14 @@ function HeaderLiveGamesLink({
       prefetch={false}
       onMouseEnter={() => router.prefetch("/live-games")}
       onFocus={() => router.prefetch("/live-games")}
+      onClick={(event) => {
+        if (isModifiedHeaderNavClick(event)) return;
+        onCycleActiveEffect();
+        if (active) event.preventDefault();
+      }}
       aria-current={active ? "page" : undefined}
-      className={`inline-flex min-h-9 shrink-0 items-center rounded-full border px-3 py-1.5 text-[11px] font-semibold transition duration-200 ${
-        active
-          ? "border-red-300/45 bg-red-500/18 text-red-50 shadow-[0_0_24px_rgba(248,113,113,0.1)]"
-          : "border-red-400/25 bg-red-500/10 text-red-100 hover:border-red-300/40 hover:bg-red-500/15"
+      className={`inline-flex min-h-9 shrink-0 items-center rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold text-red-100 transition duration-200 hover:border-red-300/40 hover:bg-red-500/15 ${
+        active ? activeEffectClass : ""
       }`}
     >
       {t("liveGames", {
@@ -731,7 +766,15 @@ function HeaderLiveGamesLink({
   );
 }
 
-function HeaderWorkshopLiveLink({ active }: { active?: boolean }) {
+function HeaderWorkshopLiveLink({
+  active,
+  activeEffectClass = "",
+  onCycleActiveEffect,
+}: {
+  active?: boolean;
+  activeEffectClass?: string;
+  onCycleActiveEffect: () => void;
+}) {
   const t = useTranslations("Shell");
   const router = useRouter();
 
@@ -742,11 +785,14 @@ function HeaderWorkshopLiveLink({ active }: { active?: boolean }) {
       prefetch={false}
       onMouseEnter={() => router.prefetch("/workshop")}
       onFocus={() => router.prefetch("/workshop")}
+      onClick={(event) => {
+        if (isModifiedHeaderNavClick(event)) return;
+        onCycleActiveEffect();
+        if (active) event.preventDefault();
+      }}
       aria-current={active ? "page" : undefined}
-      className={`inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-bold transition ${
-        active
-          ? "border-orange-200/45 bg-orange-400/18 text-orange-50"
-          : "border-orange-300/25 bg-orange-400/10 text-orange-100 hover:border-orange-200/40"
+      className={`inline-flex min-h-9 shrink-0 items-center gap-2 rounded-full border border-orange-300/25 bg-orange-400/10 px-3 py-1.5 text-[11px] font-bold text-orange-100 transition hover:border-orange-200/40 ${
+        active ? activeEffectClass : ""
       }`}
     >
       <span className="h-2 w-2 animate-pulse rounded-full bg-red-400 shadow-[0_0_14px_rgba(248,113,113,0.85)]" />
@@ -774,11 +820,57 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const { uid, playerName, isAdmin } = useUserAuth();
   const pathname = usePathname();
   const router = useRouter();
+  const unseenPageChanges = usePageChangeNotices();
+  const [navActiveEffectIndex, setNavActiveEffectIndex] =
+    React.useState(0);
   const isPlayerProfileSurface = pathname.startsWith("/players/");
   const [playerProfileViewMode, setPlayerProfileViewMode] = React.useState<string | null>(null);
   const [deferredClientsReady, setDeferredClientsReady] = React.useState(false);
   const [footerReady, setFooterReady] = React.useState(false);
   const footerWarmupRef = React.useRef<HTMLDivElement | null>(null);
+
+  React.useEffect(() => {
+    try {
+      const stored = Number.parseInt(
+        window.localStorage.getItem(
+          NAV_ACTIVE_EFFECT_STORAGE_KEY
+        ) ?? "",
+        10
+      );
+
+      if (
+        Number.isInteger(stored) &&
+        stored >= 0 &&
+        stored < NAV_ACTIVE_EFFECTS.length
+      ) {
+        setNavActiveEffectIndex(stored);
+      }
+    } catch {
+      // Navigation remains fully functional without persistence.
+    }
+  }, []);
+
+  const cycleNavActiveEffect = React.useCallback(() => {
+    setNavActiveEffectIndex((current) => {
+      const next =
+        (current + 1) % NAV_ACTIVE_EFFECTS.length;
+
+      try {
+        window.localStorage.setItem(
+          NAV_ACTIVE_EFFECT_STORAGE_KEY,
+          String(next)
+        );
+      } catch {
+        // Preserve the in-memory interaction if storage is blocked.
+      }
+
+      return next;
+    });
+  }, []);
+
+  const navActiveEffectClass =
+    NAV_ACTIVE_EFFECTS[navActiveEffectIndex] ??
+    NAV_ACTIVE_EFFECTS[0];
 
   React.useEffect(() => {
     let cancelled = false;
@@ -1438,6 +1530,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                 <KingdomNavItem
                   className={headerSkin.surface}
                   active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
+                  unseenPageChanges={unseenPageChanges}
+                  activeEffectClass={navActiveEffectClass}
                 />
                 {HEADER_LINKS.map((link) => (
                   <React.Fragment key={link.href}>
@@ -1447,18 +1541,34 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                       className={headerSkin.surface}
                       active={isRouteActive(pathname, link.href)}
                       requestCount={link.countKey === "requests" ? requestCount : undefined}
+                      activeEffectClass={navActiveEffectClass}
+                      onCycleActiveEffect={cycleNavActiveEffect}
                     />
                     {link.href === "/bets" ? (
                       <>
                         <HeaderLiveGamesLink
                           liveGamesCount={liveGamesCount}
                           active={isRouteActive(pathname, "/live-games")}
+                          activeEffectClass={navActiveEffectClass}
+                          onCycleActiveEffect={cycleNavActiveEffect}
                         />
-                        {workshopLive ? <HeaderWorkshopLiveLink active={isRouteActive(pathname, "/workshop")} /> : null}
+                        {workshopLive ? (
+                          <HeaderWorkshopLiveLink
+                            active={isRouteActive(pathname, "/workshop")}
+                            activeEffectClass={navActiveEffectClass}
+                            onCycleActiveEffect={cycleNavActiveEffect}
+                          />
+                        ) : null}
                       </>
                     ) : null}
                   </React.Fragment>
                 ))}
+                <KingdomNavItem
+                  className={headerSkin.surface}
+                  active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
+                  unseenPageChanges={unseenPageChanges}
+                  activeEffectClass={navActiveEffectClass}
+                />
                 {isAdmin ? (
                   <Link
                     href="/admin/user-list"
@@ -1505,6 +1615,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               <KingdomNavItem
                 className={headerSkin.surface}
                 active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
+                unseenPageChanges={unseenPageChanges}
+                activeEffectClass={navActiveEffectClass}
               />
               {HEADER_LINKS.map((link) => (
                 <React.Fragment key={link.href}>
@@ -1514,18 +1626,34 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                     className={headerSkin.surface}
                     active={isRouteActive(pathname, link.href)}
                     requestCount={link.countKey === "requests" ? requestCount : undefined}
+                    activeEffectClass={navActiveEffectClass}
+                    onCycleActiveEffect={cycleNavActiveEffect}
                   />
                   {link.href === "/bets" ? (
                     <>
                       <HeaderLiveGamesLink
                         liveGamesCount={liveGamesCount}
                         active={isRouteActive(pathname, "/live-games")}
+                        activeEffectClass={navActiveEffectClass}
+                        onCycleActiveEffect={cycleNavActiveEffect}
                       />
-                      {workshopLive ? <HeaderWorkshopLiveLink active={isRouteActive(pathname, "/workshop")} /> : null}
+                      {workshopLive ? (
+                          <HeaderWorkshopLiveLink
+                            active={isRouteActive(pathname, "/workshop")}
+                            activeEffectClass={navActiveEffectClass}
+                            onCycleActiveEffect={cycleNavActiveEffect}
+                          />
+                        ) : null}
                     </>
                   ) : null}
                 </React.Fragment>
               ))}
+              <KingdomNavItem
+                className={headerSkin.surface}
+                active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
+                unseenPageChanges={unseenPageChanges}
+                activeEffectClass={navActiveEffectClass}
+              />
             </nav>
 
             <div className="flex items-center justify-end gap-2 lg:justify-self-end">
