@@ -936,6 +936,244 @@ def _additive_migration_contract(
 
 
 
+def _production_proven_check_contract(
+    manifest: dict,
+    paths: list[str],
+    loaded: list[tuple[str, str]],
+) -> tuple[dict, list[str]]:
+    """
+    Permit only exact, proof-bound replacement of named PostgreSQL CHECK
+    constraints that already exist in production.
+
+    This mode is intentionally separate from the ordinary additive lane.
+    """
+
+    if manifest.get("risk_class") not in {
+        "DATABASE",
+        "FINANCIAL",
+    }:
+        raise AutoShipError(
+            "production-proven CHECK replacement "
+            "requires a DATABASE or FINANCIAL gate"
+        )
+
+    marker_re = re.compile(
+        r"^--\s*"
+        r"AOE2WAR-PRODUCTION-CHECK:\s*"
+        r"([A-Za-z_][A-Za-z0-9_]*)\s+"
+        r"([A-Za-z_][A-Za-z0-9_]*)\s+"
+        r"before_sha256=([0-9a-f]{64})\s+"
+        r"after_sha256=([0-9a-f]{64})\s*$",
+        re.M,
+    )
+
+    drop_re = re.compile(
+        r'^ALTER\s+TABLE\s+'
+        r'(?:public\.)?'
+        r'"?([A-Za-z_][A-Za-z0-9_]*)"?'
+        r'\s+DROP\s+CONSTRAINT\s+'
+        r'"?([A-Za-z_][A-Za-z0-9_]*)"?'
+        r'\s*$',
+        re.I | re.S,
+    )
+
+    add_re = re.compile(
+        r'^ALTER\s+TABLE\s+'
+        r'(?:public\.)?'
+        r'"?([A-Za-z_][A-Za-z0-9_]*)"?'
+        r'\s+ADD\s+CONSTRAINT\s+'
+        r'"?([A-Za-z_][A-Za-z0-9_]*)"?'
+        r'\s+CHECK\s*\(.+\)\s*$',
+        re.I | re.S,
+    )
+
+    proofs: dict[
+        tuple[str, str],
+        dict[str, str],
+    ] = {}
+
+    for rel, sql in loaded:
+        local: dict[
+            tuple[str, str],
+            dict[str, str],
+        ] = {}
+
+        for (
+            table_raw,
+            constraint_raw,
+            before_sha,
+            after_sha,
+        ) in marker_re.findall(sql):
+            table = _normalize_sql_ident(
+                table_raw
+            )
+            constraint = _normalize_sql_ident(
+                constraint_raw
+            )
+            key = (table, constraint)
+
+            if key in local or key in proofs:
+                raise AutoShipError(
+                    "duplicate production-CHECK "
+                    "proof marker for "
+                    f"{table}.{constraint}"
+                )
+
+            if before_sha == after_sha:
+                raise AutoShipError(
+                    "production-CHECK proof "
+                    "must change definition for "
+                    f"{table}.{constraint}"
+                )
+
+            local[key] = {
+                "table": table,
+                "constraint": constraint,
+                "before_sha256": before_sha,
+                "after_sha256": after_sha,
+            }
+
+        if not local:
+            raise AutoShipError(
+                "production-proven CHECK "
+                "replacement has no proof "
+                f"markers: {rel}"
+            )
+
+        dropped: set[
+            tuple[str, str]
+        ] = set()
+
+        added: set[
+            tuple[str, str]
+        ] = set()
+
+        for statement in _sql_statements(sql):
+            body = statement.strip()
+
+            if body.upper() in {
+                "BEGIN",
+                "COMMIT",
+            }:
+                continue
+
+            drop = drop_re.fullmatch(body)
+
+            if drop:
+                key = (
+                    _normalize_sql_ident(
+                        drop.group(1)
+                    ),
+                    _normalize_sql_ident(
+                        drop.group(2)
+                    ),
+                )
+
+                if key not in local:
+                    raise AutoShipError(
+                        "production-proven CHECK "
+                        "replacement DROP is not "
+                        "proof-bound: "
+                        f"{key[0]}.{key[1]}"
+                    )
+
+                if key in dropped:
+                    raise AutoShipError(
+                        "duplicate DROP CONSTRAINT "
+                        f"for {key[0]}.{key[1]}"
+                    )
+
+                dropped.add(key)
+                continue
+
+            add = add_re.fullmatch(body)
+
+            if add:
+                key = (
+                    _normalize_sql_ident(
+                        add.group(1)
+                    ),
+                    _normalize_sql_ident(
+                        add.group(2)
+                    ),
+                )
+
+                if key not in local:
+                    raise AutoShipError(
+                        "production-proven CHECK "
+                        "replacement ADD is not "
+                        "proof-bound: "
+                        f"{key[0]}.{key[1]}"
+                    )
+
+                if key in added:
+                    raise AutoShipError(
+                        "duplicate ADD CONSTRAINT "
+                        f"for {key[0]}.{key[1]}"
+                    )
+
+                added.add(key)
+                continue
+
+            raise AutoShipError(
+                "production-proven CHECK "
+                "replacement permits only "
+                "BEGIN/COMMIT and exact "
+                "ALTER TABLE DROP CONSTRAINT / "
+                "ADD CONSTRAINT CHECK statements "
+                f"in {rel}"
+            )
+
+        expected = set(local)
+
+        if dropped != expected:
+            raise AutoShipError(
+                "every production-CHECK marker "
+                "must have exactly one matching "
+                f"DROP CONSTRAINT in {rel}"
+            )
+
+        if added != expected:
+            raise AutoShipError(
+                "every production-CHECK marker "
+                "must have exactly one matching "
+                f"ADD CONSTRAINT CHECK in {rel}"
+            )
+
+        proofs.update(local)
+
+    if not proofs:
+        raise AutoShipError(
+            "production-proven CHECK "
+            "replacement contains no checks"
+        )
+
+    names = sorted(
+        {
+            Path(rel).parent.name
+            for rel in paths
+        }
+    )
+
+    if len(names) != len(paths):
+        raise AutoShipError(
+            "migration manifest contains "
+            "duplicate migration directories"
+        )
+
+    resolved = dict(manifest)
+    resolved["_migration_mode"] = (
+        "production-proven-check-replacement"
+    )
+    resolved[
+        "_production_proven_checks"
+    ] = [
+        proofs[key]
+        for key in sorted(proofs)
+    ]
+
+    return resolved, names
+
 def migration_contract(
     release_sha: str,
 ) -> tuple[dict, list[str]]:
@@ -957,9 +1195,13 @@ def migration_contract(
     if not paths:
         return manifest, []
 
-    mode_token = (
+    index_mode_token = (
         "AOE2WAR-MIGRATION-MODE: "
         "PRODUCTION_PROVEN_INDEX_CANONICALIZATION"
+    )
+    check_mode_token = (
+        "AOE2WAR-MIGRATION-MODE: "
+        "PRODUCTION_PROVEN_CHECK_REPLACEMENT"
     )
 
     allowed_path = re.compile(
@@ -969,7 +1211,8 @@ def migration_contract(
     )
 
     loaded: list[tuple[str, str]] = []
-    mode_flags: list[bool] = []
+    index_mode_flags: list[bool] = []
+    check_mode_flags: list[bool] = []
 
     for rel in paths:
         if not allowed_path.fullmatch(rel):
@@ -1003,16 +1246,40 @@ def migration_contract(
         )
 
         loaded.append((rel, sql))
-        mode_flags.append(
-            mode_token in sql
+        index_mode_flags.append(
+            index_mode_token in sql
+        )
+        check_mode_flags.append(
+            check_mode_token in sql
         )
 
-    if not any(mode_flags):
+    if any(check_mode_flags):
+        if any(index_mode_flags):
+            raise AutoShipError(
+                "production-proven CHECK "
+                "replacement cannot be mixed "
+                "with index canonicalization"
+            )
+
+        if not all(check_mode_flags):
+            raise AutoShipError(
+                "production-proven CHECK "
+                "replacement cannot be mixed "
+                "with ordinary migrations"
+            )
+
+        return _production_proven_check_contract(
+            manifest,
+            paths,
+            loaded,
+        )
+
+    if not any(index_mode_flags):
         return _additive_migration_contract(
             release_sha
         )
 
-    if not all(mode_flags):
+    if not all(index_mode_flags):
         raise AutoShipError(
             "production-proven index "
             "canonicalization cannot be mixed "
@@ -1248,12 +1515,185 @@ printf 'index_proof\\t{name}:%s\\n' "$actual_index_sha"
     )
 
 
+def _production_check_proof_shell(
+    checks: list[dict[str, str]],
+) -> tuple[str, str, str, str]:
+    """
+    Render exact live before/after proofs for proof-bound CHECK replacement.
+    """
+
+    if not checks:
+        return "", "", "", ""
+
+    ident = re.compile(
+        r"^[A-Za-z_][A-Za-z0-9_]*$"
+    )
+
+    before_lines: list[str] = []
+    after_lines: list[str] = []
+    receipt_lines: list[str] = []
+    receipt_verify_lines: list[str] = []
+
+    seen: set[tuple[str, str]] = set()
+
+    for proof in checks:
+        table = str(
+            proof.get("table") or ""
+        )
+        constraint = str(
+            proof.get("constraint") or ""
+        )
+        before_sha = str(
+            proof.get("before_sha256") or ""
+        )
+        after_sha = str(
+            proof.get("after_sha256") or ""
+        )
+
+        if (
+            not ident.fullmatch(table)
+            or not ident.fullmatch(constraint)
+            or not re.fullmatch(
+                r"[0-9a-f]{64}",
+                before_sha,
+            )
+            or not re.fullmatch(
+                r"[0-9a-f]{64}",
+                after_sha,
+            )
+        ):
+            raise AutoShipError(
+                "invalid production CHECK proof"
+            )
+
+        key = (table, constraint)
+
+        if key in seen:
+            raise AutoShipError(
+                "duplicate production CHECK proof: "
+                f"{table}.{constraint}"
+            )
+
+        seen.add(key)
+
+        sql = (
+            "SELECT pg_get_constraintdef(c.oid) "
+            "FROM pg_constraint c "
+            "JOIN pg_class t "
+            "ON t.oid=c.conrelid "
+            "JOIN pg_namespace n "
+            "ON n.oid=t.relnamespace "
+            "WHERE n.nspname='public' "
+            f"AND t.relname='{table}' "
+            f"AND c.conname='{constraint}' "
+            "AND c.contype='c';"
+        )
+
+        query = shlex.quote(sql)
+        label = f"{table}.{constraint}"
+
+        before_lines.extend([
+            (
+                "check_def=$(psql -X "
+                "-v ON_ERROR_STOP=1 -Atqc "
+                f"{query})"
+            ),
+            (
+                '[ -n "$check_def" ] || { echo '
+                + shlex.quote(
+                    "STOP: production CHECK missing "
+                    "before migration: " + label
+                )
+                + ' >&2; exit 80; }'
+            ),
+            (
+                'check_sha=$(printf "%s" "$check_def" '
+                "| sha256sum | awk '{print $1}')"
+            ),
+            (
+                '[ "$check_sha" = '
+                + shlex.quote(before_sha)
+                + ' ] || { echo '
+                + shlex.quote(
+                    "STOP: production CHECK "
+                    "before-proof mismatch: " + label
+                )
+                + ' >&2; exit 81; }'
+            ),
+            (
+                "printf 'check_before\\t%s\\t%s\\n' "
+                + shlex.quote(label)
+                + ' "$check_sha"'
+            ),
+        ])
+
+        after_lines.extend([
+            (
+                "check_def=$(psql -X "
+                "-v ON_ERROR_STOP=1 -Atqc "
+                f"{query})"
+            ),
+            (
+                '[ -n "$check_def" ] || { echo '
+                + shlex.quote(
+                    "STOP: production CHECK missing "
+                    "after migration: " + label
+                )
+                + ' >&2; exit 82; }'
+            ),
+            (
+                'check_sha=$(printf "%s" "$check_def" '
+                "| sha256sum | awk '{print $1}')"
+            ),
+            (
+                '[ "$check_sha" = '
+                + shlex.quote(after_sha)
+                + ' ] || { echo '
+                + shlex.quote(
+                    "STOP: production CHECK "
+                    "after-proof mismatch: " + label
+                )
+                + ' >&2; exit 83; }'
+            ),
+            (
+                "printf 'check_after\\t%s\\t%s\\n' "
+                + shlex.quote(label)
+                + ' "$check_sha"'
+            ),
+        ])
+
+        receipt = (
+            f"check={label} "
+            f"before_sha256={before_sha} "
+            f"after_sha256={after_sha}"
+        )
+
+        receipt_lines.append(
+            "printf '%s\\n' "
+            + shlex.quote(receipt)
+            + ' >> "$status"'
+        )
+
+        receipt_verify_lines.append(
+            "grep -Fqx "
+            + shlex.quote(receipt)
+            + ' "$status" || ok=0'
+        )
+
+    return (
+        "\n".join(before_lines),
+        "\n".join(after_lines),
+        "\n".join(receipt_lines),
+        "\n".join(receipt_verify_lines),
+    )
+
 def production_migration_script(
     *,
     release_sha: str,
     migration_names: list[str],
     migration_mode: str = "additive",
     index_proofs: list[dict[str, str]] | None = None,
+    check_proofs: list[dict[str, str]] | None = None,
 ) -> str:
     q = shlex.quote
     expected = "\n".join(migration_names)
@@ -1262,6 +1702,7 @@ def production_migration_script(
     if migration_mode not in {
         "additive",
         "production-proven-index-canonicalization",
+        "production-proven-check-replacement",
     }:
         raise AutoShipError(
             "unknown production migration mode: "
@@ -1275,6 +1716,15 @@ def production_migration_script(
         index_proofs or []
     )
 
+    (
+        check_before_script,
+        check_after_script,
+        check_receipt_script,
+        check_receipt_verify_script,
+    ) = _production_check_proof_shell(
+        check_proofs or []
+    )
+
     if (
         migration_mode
         == "production-proven-index-canonicalization"
@@ -1284,6 +1734,31 @@ def production_migration_script(
             "production-proven index "
             "canonicalization requires exact "
             "live index proofs"
+        )
+
+    if (
+        migration_mode
+        == "production-proven-check-replacement"
+        and (
+            not check_before_script
+            or not check_after_script
+            or not check_receipt_script
+            or not check_receipt_verify_script
+        )
+    ):
+        raise AutoShipError(
+            "production-proven CHECK replacement "
+            "requires exact live before/after proofs"
+        )
+
+    if (
+        migration_mode
+        != "production-proven-check-replacement"
+        and check_proofs
+    ):
+        raise AutoShipError(
+            "production CHECK proofs supplied "
+            "outside CHECK replacement mode"
         )
 
     return f"""
@@ -1406,6 +1881,7 @@ while IFS= read -r candidate; do
     [ -n "$migration" ] || continue
     grep -Fqx "migration=$migration" "$status" || ok=0
   done < "$expected_file"
+{check_receipt_verify_script}
   [ "$ok" = 1 ] && receipt_match="$candidate"
 done < <(
   find "$RECEIPT_ROOT" -mindepth 1 -maxdepth 1 -type d \
@@ -1415,6 +1891,7 @@ done < <(
 if [ "$pending_count" = "0" ]; then
   [ -n "$receipt_match" ] \
     || {{ echo "STOP: release migrations are applied but durable migration receipt is missing" >&2; exit 75; }}
+{check_after_script}
   printf 'mode\\talready-applied\\n'
   printf 'receipt_dir\\t%s\\n' "$receipt_match"
   exit 0
@@ -1424,6 +1901,8 @@ fi
   || {{ echo "STOP: release migration frontier is partially applied" >&2; exit 76; }}
 cmp -s "$pending_file" "$expected_file" \
   || {{ echo "STOP: pending migration frontier differs from release manifest" >&2; exit 77; }}
+
+{check_before_script}
 
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 receipt="$RECEIPT_ROOT/migration-${{stamp}}-${{RELEASE_SHORT}}"
@@ -1453,6 +1932,8 @@ else
   )
 fi
 
+{check_after_script}
+
 for migration in $(cat "$expected_file"); do
   count="$(psql -X -v ON_ERROR_STOP=1 -Atqc \
     "select count(*) from \\"_prisma_migrations\\" where migration_name='$migration' and finished_at is not null and rolled_back_at is null;")"
@@ -1478,6 +1959,7 @@ status="$receipt/migration-status.txt"
 }} > "$status"
 printf 'mode=%s\n' "$MIGRATION_MODE" >> "$status"
 {index_receipt_script}
+{check_receipt_script}
 sha256sum "$status" > "$status.sha256"
 
 printf 'mode\\tapplied\\n'
@@ -1503,6 +1985,13 @@ def apply_production_migrations_if_needed(release_sha: str) -> str | None:
         or []
     )
 
+    check_proofs = list(
+        manifest.get(
+            "_production_proven_checks"
+        )
+        or []
+    )
+
     print()
     print(
         "== PRODUCTION DATABASE MIGRATIONS =="
@@ -1515,6 +2004,14 @@ def apply_production_migrations_if_needed(release_sha: str) -> str | None:
         print(
             "Policy:         exact production-proven "
             "index canonicalization"
+        )
+    elif (
+        migration_mode
+        == "production-proven-check-replacement"
+    ):
+        print(
+            "Policy:         exact production-proven "
+            "CHECK replacement"
         )
     else:
         print(
@@ -1538,6 +2035,7 @@ def apply_production_migrations_if_needed(release_sha: str) -> str | None:
         migration_names=migration_names,
         migration_mode=migration_mode,
         index_proofs=index_proofs,
+        check_proofs=check_proofs,
     )
     p = run(
         [

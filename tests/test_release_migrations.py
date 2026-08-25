@@ -729,5 +729,461 @@ ON public.users (email);""",
                 self.assertEqual(names, ["20260101000000_create_widget"])
 
 
+
+class ProductionProvenCheckReplacementTests(
+    unittest.TestCase
+):
+    def with_release(
+        self,
+        migrations,
+        risk="DATABASE",
+    ):
+        temp = tempfile.TemporaryDirectory()
+        root = pathlib.Path(temp.name)
+
+        manifest_dir = (
+            root
+            / ".aoe2war-release"
+            / "manifests"
+        )
+        manifest_dir.mkdir(parents=True)
+
+        release = "f" * 40
+        paths = []
+
+        for name, sql in migrations:
+            migration = (
+                root
+                / "prisma"
+                / "migrations"
+                / name
+                / "migration.sql"
+            )
+            migration.parent.mkdir(
+                parents=True
+            )
+            migration.write_text(sql)
+            paths.append(
+                str(
+                    migration.relative_to(root)
+                )
+            )
+
+        (
+            manifest_dir
+            / f"{release}.json"
+        ).write_text(
+            json.dumps(
+                {
+                    "release_sha": release,
+                    "risk_class": risk,
+                    "migration_paths": paths,
+                }
+            )
+        )
+
+        return (
+            temp,
+            root,
+            manifest_dir,
+            release,
+        )
+
+    @staticmethod
+    def migration_sql(extra=""):
+        return f"""-- AOE2WAR-MIGRATION-MODE: PRODUCTION_PROVEN_CHECK_REPLACEMENT
+-- AOE2WAR-PRODUCTION-CHECK: widget ck_widget_type before_sha256={'1' * 64} after_sha256={'2' * 64}
+-- AOE2WAR-PRODUCTION-CHECK: widget ck_widget_geometry before_sha256={'3' * 64} after_sha256={'4' * 64}
+
+BEGIN;
+
+ALTER TABLE "widget"
+  DROP CONSTRAINT "ck_widget_type";
+
+ALTER TABLE "widget"
+  ADD CONSTRAINT "ck_widget_type"
+  CHECK ("kind" IN ('a', 'b'));
+
+ALTER TABLE "widget"
+  DROP CONSTRAINT "ck_widget_geometry";
+
+ALTER TABLE "widget"
+  ADD CONSTRAINT "ck_widget_geometry"
+  CHECK ("position" >= 0);
+
+{extra}
+COMMIT;
+"""
+
+    def test_exact_check_replacement_is_allowed(
+        self,
+    ):
+        (
+            temp,
+            root,
+            manifests,
+            release,
+        ) = self.with_release(
+            [
+                (
+                    "20260101000000_replace_checks",
+                    self.migration_sql(),
+                )
+            ]
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                manifest, names = (
+                    MODULE.migration_contract(
+                        release
+                    )
+                )
+
+        self.assertEqual(
+            names,
+            [
+                "20260101000000_replace_checks"
+            ],
+        )
+
+        self.assertEqual(
+            manifest["_migration_mode"],
+            "production-proven-check-replacement",
+        )
+
+        checks = manifest[
+            "_production_proven_checks"
+        ]
+
+        self.assertEqual(len(checks), 2)
+
+        self.assertEqual(
+            {
+                (
+                    item["table"],
+                    item["constraint"],
+                )
+                for item in checks
+            },
+            {
+                (
+                    "widget",
+                    "ck_widget_type",
+                ),
+                (
+                    "widget",
+                    "ck_widget_geometry",
+                ),
+            },
+        )
+
+    def test_unrelated_sql_is_rejected(
+        self,
+    ):
+        (
+            temp,
+            root,
+            manifests,
+            release,
+        ) = self.with_release(
+            [
+                (
+                    "20260101000000_replace_checks",
+                    self.migration_sql(
+                        'UPDATE "users" '
+                        'SET "email"="email";'
+                    ),
+                )
+            ]
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "permits only",
+                ):
+                    MODULE.migration_contract(
+                        release
+                    )
+
+    def test_non_database_gate_is_rejected(
+        self,
+    ):
+        (
+            temp,
+            root,
+            manifests,
+            release,
+        ) = self.with_release(
+            [
+                (
+                    "20260101000000_replace_checks",
+                    self.migration_sql(),
+                )
+            ],
+            risk="STANDARD",
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "DATABASE or FINANCIAL",
+                ):
+                    MODULE.migration_contract(
+                        release
+                    )
+
+    def test_check_mode_cannot_mix_with_ordinary_migration(
+        self,
+    ):
+        (
+            temp,
+            root,
+            manifests,
+            release,
+        ) = self.with_release(
+            [
+                (
+                    "20260101000000_replace_checks",
+                    self.migration_sql(),
+                ),
+                (
+                    "20260101000100_ordinary",
+                    'CREATE TABLE "probe" '
+                    '("id" SERIAL PRIMARY KEY);',
+                ),
+            ]
+        )
+
+        with temp:
+            with mock.patch.object(
+                MODULE,
+                "ROOT",
+                root,
+            ), mock.patch.object(
+                MODULE,
+                "MANIFEST_DIR",
+                manifests,
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "cannot be mixed",
+                ):
+                    MODULE.migration_contract(
+                        release
+                    )
+
+    def test_renderer_orders_before_dump_migrate_after_receipt(
+        self,
+    ):
+        proof = {
+            "table": "widget",
+            "constraint": "ck_widget_type",
+            "before_sha256": "1" * 64,
+            "after_sha256": "2" * 64,
+        }
+
+        rendered = (
+            MODULE.production_migration_script(
+                release_sha="a" * 40,
+                migration_names=[
+                    "20260101000000_replace_checks"
+                ],
+                migration_mode=(
+                    "production-proven-check-replacement"
+                ),
+                check_proofs=[proof],
+            )
+        )
+
+        before = rendered.index(
+            "production CHECK "
+            "before-proof mismatch"
+        )
+
+        dump = rendered.index(
+            "pg_dump -Fc "
+            "--no-owner --no-acl"
+        )
+
+        migrate = rendered.index(
+            "prisma migrate deploy"
+        )
+
+        after = rendered.index(
+            "production CHECK "
+            "after-proof mismatch",
+            migrate,
+        )
+
+        receipt = rendered.index(
+            'status="$receipt/'
+            'migration-status.txt"',
+            after,
+        )
+
+        self.assertLess(before, dump)
+        self.assertLess(dump, migrate)
+        self.assertLess(migrate, after)
+        self.assertLess(after, receipt)
+
+    def test_receipt_records_exact_before_after_hashes(
+        self,
+    ):
+        proof = {
+            "table": "widget",
+            "constraint": "ck_widget_type",
+            "before_sha256": "1" * 64,
+            "after_sha256": "2" * 64,
+        }
+
+        rendered = (
+            MODULE.production_migration_script(
+                release_sha="a" * 40,
+                migration_names=[
+                    "20260101000000_replace_checks"
+                ],
+                migration_mode=(
+                    "production-proven-check-replacement"
+                ),
+                check_proofs=[proof],
+            )
+        )
+
+        expected = (
+            "check=widget.ck_widget_type "
+            f"before_sha256={'1' * 64} "
+            f"after_sha256={'2' * 64}"
+        )
+
+        self.assertIn(
+            expected,
+            rendered,
+        )
+
+    def test_already_applied_replay_requires_exact_receipt_and_live_after(
+        self,
+    ):
+        proof = {
+            "table": "widget",
+            "constraint": "ck_widget_type",
+            "before_sha256": "1" * 64,
+            "after_sha256": "2" * 64,
+        }
+
+        rendered = (
+            MODULE.production_migration_script(
+                release_sha="a" * 40,
+                migration_names=[
+                    "20260101000000_replace_checks"
+                ],
+                migration_mode=(
+                    "production-proven-check-replacement"
+                ),
+                check_proofs=[proof],
+            )
+        )
+
+        receipt_start = rendered.index(
+            'receipt_match=""'
+        )
+
+        receipt_end = rendered.index(
+            'if [ "$pending_count" = "0" ]; then',
+            receipt_start,
+        )
+
+        receipt_loop = rendered[
+            receipt_start:receipt_end
+        ]
+
+        self.assertIn(
+            "grep -Fqx",
+            receipt_loop,
+        )
+
+        self.assertIn(
+            "check=widget.ck_widget_type",
+            receipt_loop,
+        )
+
+        applied_start = receipt_end
+
+        applied_end = rendered.index(
+            "  exit 0",
+            applied_start,
+        )
+
+        applied = rendered[
+            applied_start:applied_end
+        ]
+
+        self.assertIn(
+            "durable migration receipt is missing",
+            applied,
+        )
+
+        self.assertIn(
+            "production CHECK "
+            "after-proof mismatch",
+            applied,
+        )
+
+    def test_additive_renderer_does_not_receive_check_proofs(
+        self,
+    ):
+        rendered = (
+            MODULE.production_migration_script(
+                release_sha="b" * 40,
+                migration_names=[
+                    "20260101000000_probe"
+                ],
+            )
+        )
+
+        self.assertIn(
+            "prisma migrate deploy",
+            rendered,
+        )
+
+        self.assertNotIn(
+            "production CHECK "
+            "before-proof mismatch",
+            rendered,
+        )
+
+        self.assertNotIn(
+            "production CHECK "
+            "after-proof mismatch",
+            rendered,
+        )
+
 if __name__ == "__main__":
     unittest.main()

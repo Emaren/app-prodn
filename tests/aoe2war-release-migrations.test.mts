@@ -78,3 +78,43 @@ test("operator docs describe the sealed additive lane without stale refusal text
     assert.doesNotMatch(guide, /refuses any release manifest containing\s+Prisma migration paths/i);
   }
 });
+
+
+test("production-proven CHECK replacement is exact pre/post proof-bound", () => {
+  assert.match(
+    auto,
+    /PRODUCTION_PROVEN_CHECK_REPLACEMENT/,
+  );
+  assert.match(
+    auto,
+    /production-proven-check-replacement/,
+  );
+  assert.match(
+    auto,
+    /AOE2WAR-PRODUCTION-CHECK/,
+  );
+  assert.match(
+    auto,
+    /before_sha256/,
+  );
+  assert.match(
+    auto,
+    /after_sha256/,
+  );
+  assert.match(
+    auto,
+    /check_receipt_verify_script/,
+  );
+  assert.match(
+    auto,
+    /production CHECK/,
+  );
+  assert.match(
+    auto,
+    /before-proof mismatch/,
+  );
+  assert.match(
+    auto,
+    /after-proof mismatch/,
+  );
+});

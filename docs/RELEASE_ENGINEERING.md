@@ -526,6 +526,31 @@ an ad-hoc production DB rollback. The previous app remains backward-compatible
 with the additive schema while the engine recovers or activates the exact staged
 candidate.
 
+### Production-proven CHECK replacement lane
+
+A separate production-proven CHECK-replacement mode covers the narrow case
+where a release must replace named PostgreSQL CHECK constraints on an existing
+table. It does not widen the ordinary additive lane.
+
+Every participating migration must declare the dedicated mode marker and, for
+each affected CHECK, the exact table and constraint identity plus SHA-256 of
+both the live pre-migration `pg_get_constraintdef` and the required
+post-migration definition. The SQL contract permits only the corresponding
+proof-bound `DROP CONSTRAINT` and `ADD CONSTRAINT ... CHECK` statements plus
+transaction boundaries.
+
+On a wholly pending release frontier, the release engine first proves every
+live BEFORE hash. It then creates the normal durable pre-migration PostgreSQL
+dump, applies the exact Prisma frontier, and proves every live AFTER hash before
+the migration is accepted and its durable receipt is written. That receipt
+records each exact before/after CHECK proof.
+
+For an already-applied release, the engine requires the durable release-bound
+receipt to contain those exact CHECK proof lines and independently re-proves the
+live AFTER definitions. Missing, changed, partial, mixed, duplicated, or
+unrelated SQL fails closed. This mode provides no authority over Wolo or
+settlement state.
+
 ### Activation transport timeout recovery
 
 Transport timeout is **not** equivalent to activation failure.
@@ -795,10 +820,12 @@ release-bound migration receipt. Activation refuses a partial or unexpected
 frontier, a previously applied release without its durable receipt, or any
 missing/invalid proof.
 
-This authority does not extend to destructive migrations, mutation of existing
-tables, arbitrary SQL, manual in-place migration, or database restoration.
-Those remain separately reviewed break-glass procedures. Wolo services and
-settlement state remain outside this lane entirely.
+Outside the separately proof-bound production-proven CHECK-replacement and
+production-proven index-canonicalization modes, this authority does not extend
+to destructive migrations, mutation of existing tables, arbitrary SQL, manual
+in-place migration, or database restoration. Those remain separately reviewed
+break-glass procedures. Wolo services and settlement state remain outside these
+lanes entirely.
 
 ## WOLO protected boundary
 

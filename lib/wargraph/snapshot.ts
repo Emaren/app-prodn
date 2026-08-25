@@ -143,6 +143,13 @@ function movementHistoryReason(
   reasonLabel: string;
   kind: WarGraphPublicHistoryEvent["kind"];
 } {
+  if (movementType === "FOUNDING_CORRECTION") {
+    return {
+      reasonCode: "SEAT_CLAIMED",
+      reasonLabel: "Founding board correction",
+      kind: "movement",
+    };
+  }
   if (movementType === "GRAVITY_MOVE") {
     return {
       reasonCode: "GRAVITY_MOVE",
@@ -586,6 +593,7 @@ export async function loadWarGraphPublicSnapshot(
 
     const nodes: WarGraphPublicNode[] = [];
     for (const layer of graph.layers) {
+      let frontierPresentationSeat = 0;
       for (const node of layer.nodes) {
         const occupancy = node.occupancy;
         if (!occupancy) continue;
@@ -630,7 +638,10 @@ export async function loadWarGraphPublicSnapshot(
         nodes.push({
           id: node.publicId,
           ringId: layer.key,
-          seat: node.ordinal,
+          seat:
+            layer.kind === "frontier"
+              ? frontierPresentationSeat++
+              : node.ordinal,
           displayName: membership.displayNameSnapshot,
           avatarUrl: membership.avatarUrlSnapshot,
           avatarAlt: `${membership.displayNameSnapshot}'s WarGraph table`,

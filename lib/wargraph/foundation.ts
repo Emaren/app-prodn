@@ -92,9 +92,13 @@ const FOUNDING_SEATS = [
   {
     layer: "ring-ii",
     ordinal: 2,
+    aliases: ["julioalvarez"],
+  },
+  {
+    layer: "ring-ii",
+    ordinal: 3,
     aliases: ["sladk0eshka", "sladkoeshka"],
   },
-  { layer: "ring-ii", ordinal: 3, aliases: ["moose"] },
   {
     layer: "ring-ii",
     ordinal: 4,
@@ -102,6 +106,16 @@ const FOUNDING_SEATS = [
   },
   { layer: "ring-ii", ordinal: 5, aliases: ["ra"] },
 ] as const;
+
+const FOUNDING_CORRECTION_V1 = Object.freeze({
+  julioPlayerKey: "steam:76561198190973517",
+  sladkPlayerKey: "steam:76561198075626698",
+  julioTargetSeatKey: "ring-ii:2",
+  sladkTargetSeatKey: "ring-ii:3",
+  movementType: "FOUNDING_CORRECTION",
+  reasonCode: "FOUNDING_BOARD_CORRECTION_V1",
+  sourcePrefix: `wargraph:${WARGRAPH_SLUG}:founding-correction:v1`,
+} as const);
 
 let foundationCache:
   | {
@@ -584,6 +598,361 @@ async function assignInitialSeat(
   return true;
 }
 
+async function applyFoundingBoardCorrectionV1(
+  tx: TransactionClient,
+  graph: {
+    id: number;
+    publicId: string;
+  },
+  now: Date,
+): Promise<boolean> {
+  const completionKey =
+    `${FOUNDING_CORRECTION_V1.sourcePrefix}:complete`;
+  const julioSourceKey =
+    `${FOUNDING_CORRECTION_V1.sourcePrefix}:julio`;
+  const sladkSourceKey =
+    `${FOUNDING_CORRECTION_V1.sourcePrefix}:sladk`;
+
+  const [completion, julioMovement, sladkMovement] =
+    await Promise.all([
+      tx.warGraphEvent.findUnique({
+        where: { idempotencyKey: completionKey },
+      }),
+      tx.warGraphMovement.findUnique({
+        where: { sourceKey: julioSourceKey },
+      }),
+      tx.warGraphMovement.findUnique({
+        where: { sourceKey: sladkSourceKey },
+      }),
+    ]);
+
+  if (completion) {
+    if (
+      completion.graphId !== graph.id ||
+      completion.aggregateType !== "graph" ||
+      completion.aggregateId !== graph.publicId ||
+      completion.eventType !== "WARGRAPH_FOUNDING_BOARD_CORRECTION_V1"
+    ) {
+      throw new Error(
+        "WARGRAPH_FOUNDING_CORRECTION_COMPLETION_COLLISION",
+      );
+    }
+    return false;
+  }
+
+  if (julioMovement || sladkMovement) {
+    throw new Error(
+      "WARGRAPH_FOUNDING_CORRECTION_PARTIAL_STATE",
+    );
+  }
+
+  const [julio, sladk, julioTarget, sladkTarget] =
+    await Promise.all([
+      tx.warGraphMembership.findFirst({
+        where: {
+          graphId: graph.id,
+          playerKey: FOUNDING_CORRECTION_V1.julioPlayerKey,
+        },
+        include: {
+          occupancy: {
+            include: {
+              node: {
+                include: {
+                  layer: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      tx.warGraphMembership.findFirst({
+        where: {
+          graphId: graph.id,
+          playerKey: FOUNDING_CORRECTION_V1.sladkPlayerKey,
+        },
+        include: {
+          occupancy: {
+            include: {
+              node: {
+                include: {
+                  layer: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+      tx.warGraphNode.findUnique({
+        where: {
+          graphId_seatKey: {
+            graphId: graph.id,
+            seatKey: FOUNDING_CORRECTION_V1.julioTargetSeatKey,
+          },
+        },
+        include: {
+          occupancy: {
+            select: {
+              membershipId: true,
+            },
+          },
+          layer: true,
+        },
+      }),
+      tx.warGraphNode.findUnique({
+        where: {
+          graphId_seatKey: {
+            graphId: graph.id,
+            seatKey: FOUNDING_CORRECTION_V1.sladkTargetSeatKey,
+          },
+        },
+        include: {
+          occupancy: {
+            select: {
+              membershipId: true,
+            },
+          },
+          layer: true,
+        },
+      }),
+    ]);
+
+  // A partial historical dataset or a fresh realm without both real players
+  // has nothing to correct yet. The normal founding allocator remains truth.
+  if (
+    !julio ||
+    !sladk ||
+    !julio.occupancy ||
+    !sladk.occupancy ||
+    !julioTarget ||
+    !sladkTarget
+  ) {
+    return false;
+  }
+
+  const desiredState =
+    julio.occupancy.node.seatKey ===
+      FOUNDING_CORRECTION_V1.julioTargetSeatKey &&
+    sladk.occupancy.node.seatKey ===
+      FOUNDING_CORRECTION_V1.sladkTargetSeatKey;
+
+  if (desiredState) {
+    await appendWarGraphEvent(tx, {
+      graphId: graph.id,
+      aggregateType: "graph",
+      aggregateId: graph.publicId,
+      eventType: "WARGRAPH_FOUNDING_BOARD_CORRECTION_V1",
+      idempotencyKey: completionKey,
+      payload: {
+        applied: false,
+        reason: "FOUNDING_AUTHORITY_ALREADY_CORRECT",
+        julioPlayerKey: FOUNDING_CORRECTION_V1.julioPlayerKey,
+        julioSeatKey: FOUNDING_CORRECTION_V1.julioTargetSeatKey,
+        sladkPlayerKey: FOUNDING_CORRECTION_V1.sladkPlayerKey,
+        sladkSeatKey: FOUNDING_CORRECTION_V1.sladkTargetSeatKey,
+      },
+      occurredAt: now,
+    });
+    return true;
+  }
+
+  const legacyState =
+    sladk.occupancy.node.seatKey ===
+      FOUNDING_CORRECTION_V1.julioTargetSeatKey &&
+    julio.occupancy.node.layer.key === "frontier" &&
+    julioTarget.occupancy?.membershipId === sladk.id &&
+    sladkTarget.occupancy === null;
+
+  if (!legacyState) {
+    throw new Error(
+      "WARGRAPH_FOUNDING_CORRECTION_STATE_UNEXPECTED",
+    );
+  }
+
+  const [
+    contestCount,
+    advanceCount,
+    pairingCount,
+    actionCount,
+    rewardCount,
+    nonInitialMovementCount,
+  ] = await Promise.all([
+    tx.warGraphContest.count({
+      where: { graphId: graph.id },
+    }),
+    tx.warGraphAdvanceRequest.count({
+      where: { graphId: graph.id },
+    }),
+    tx.warGraphPairing.count({
+      where: { graphId: graph.id },
+    }),
+    tx.warGraphAction.count({
+      where: { graphId: graph.id },
+    }),
+    tx.warGraphReward.count({
+      where: { graphId: graph.id },
+    }),
+    tx.warGraphMovement.count({
+      where: {
+        graphId: graph.id,
+        movementType: {
+          not: "INITIAL_ASSIGNMENT",
+        },
+      },
+    }),
+  ]);
+
+  if (
+    contestCount !== 0 ||
+    advanceCount !== 0 ||
+    pairingCount !== 0 ||
+    actionCount !== 0 ||
+    rewardCount !== 0 ||
+    nonInitialMovementCount !== 0
+  ) {
+    throw new Error(
+      "WARGRAPH_FOUNDING_CORRECTION_WINDOW_CLOSED",
+    );
+  }
+
+  const sladkVersionBefore = sladk.version;
+  const julioVersionBefore = julio.version;
+
+  await tx.warGraphOccupancy.update({
+    where: { id: sladk.occupancy.id },
+    data: {
+      nodeId: sladkTarget.id,
+      occupiedAt: now,
+      version: { increment: 1 },
+    },
+  });
+
+  const sladkUpdated = await tx.warGraphMembership.update({
+    where: { id: sladk.id },
+    data: {
+      version: { increment: 1 },
+    },
+    select: {
+      version: true,
+    },
+  });
+
+  await tx.warGraphMovement.create({
+    data: {
+      graphId: graph.id,
+      membershipId: sladk.id,
+      fromNodeId: sladk.occupancy.node.id,
+      toNodeId: sladkTarget.id,
+      fromLayerOrdinal: sladk.occupancy.node.layer.ordinal,
+      toLayerOrdinal: sladkTarget.layer.ordinal,
+      movementType: FOUNDING_CORRECTION_V1.movementType,
+      reasonCode: FOUNDING_CORRECTION_V1.reasonCode,
+      sourceKey: sladkSourceKey,
+      idempotencyKey: sladkSourceKey,
+      membershipVersionBefore: sladkVersionBefore,
+      membershipVersionAfter: sladkUpdated.version,
+      movedAt: now,
+    },
+  });
+
+  await appendWarGraphEvent(tx, {
+    graphId: graph.id,
+    membershipId: sladk.id,
+    actorUserId: sladk.userId,
+    aggregateType: "membership",
+    aggregateId: sladk.publicId,
+    eventType: "WARGRAPH_FOUNDING_SEAT_CORRECTED",
+    idempotencyKey: `${sladkSourceKey}:event`,
+    priorVersion: sladkVersionBefore,
+    newVersion: sladkUpdated.version,
+    payload: {
+      movementType: FOUNDING_CORRECTION_V1.movementType,
+      reasonCode: FOUNDING_CORRECTION_V1.reasonCode,
+      fromSeatKey: sladk.occupancy.node.seatKey,
+      toSeatKey: sladkTarget.seatKey,
+    },
+    occurredAt: now,
+  });
+
+  await tx.warGraphOccupancy.update({
+    where: { id: julio.occupancy.id },
+    data: {
+      nodeId: julioTarget.id,
+      occupiedAt: now,
+      version: { increment: 1 },
+    },
+  });
+
+  const julioUpdated = await tx.warGraphMembership.update({
+    where: { id: julio.id },
+    data: {
+      version: { increment: 1 },
+    },
+    select: {
+      version: true,
+    },
+  });
+
+  await tx.warGraphMovement.create({
+    data: {
+      graphId: graph.id,
+      membershipId: julio.id,
+      fromNodeId: julio.occupancy.node.id,
+      toNodeId: julioTarget.id,
+      fromLayerOrdinal: julio.occupancy.node.layer.ordinal,
+      toLayerOrdinal: julioTarget.layer.ordinal,
+      movementType: FOUNDING_CORRECTION_V1.movementType,
+      reasonCode: FOUNDING_CORRECTION_V1.reasonCode,
+      sourceKey: julioSourceKey,
+      idempotencyKey: julioSourceKey,
+      membershipVersionBefore: julioVersionBefore,
+      membershipVersionAfter: julioUpdated.version,
+      movedAt: now,
+    },
+  });
+
+  await appendWarGraphEvent(tx, {
+    graphId: graph.id,
+    membershipId: julio.id,
+    actorUserId: julio.userId,
+    aggregateType: "membership",
+    aggregateId: julio.publicId,
+    eventType: "WARGRAPH_FOUNDING_SEAT_CORRECTED",
+    idempotencyKey: `${julioSourceKey}:event`,
+    priorVersion: julioVersionBefore,
+    newVersion: julioUpdated.version,
+    payload: {
+      movementType: FOUNDING_CORRECTION_V1.movementType,
+      reasonCode: FOUNDING_CORRECTION_V1.reasonCode,
+      fromSeatKey: julio.occupancy.node.seatKey,
+      toSeatKey: julioTarget.seatKey,
+    },
+    occurredAt: now,
+  });
+
+  await appendWarGraphEvent(tx, {
+    graphId: graph.id,
+    aggregateType: "graph",
+    aggregateId: graph.publicId,
+    eventType: "WARGRAPH_FOUNDING_BOARD_CORRECTION_V1",
+    idempotencyKey: completionKey,
+    payload: {
+      applied: true,
+      reason: FOUNDING_CORRECTION_V1.reasonCode,
+      julioPlayerKey: FOUNDING_CORRECTION_V1.julioPlayerKey,
+      julioFromSeatKey: julio.occupancy.node.seatKey,
+      julioToSeatKey: julioTarget.seatKey,
+      sladkPlayerKey: FOUNDING_CORRECTION_V1.sladkPlayerKey,
+      sladkFromSeatKey: sladk.occupancy.node.seatKey,
+      sladkToSeatKey: sladkTarget.seatKey,
+      actionsConsumed: 0,
+      rewardsCreated: 0,
+    },
+    occurredAt: now,
+  });
+
+  return true;
+}
+
 async function ensureNight(
   tx: TransactionClient,
   graphId: number,
@@ -802,6 +1171,12 @@ async function createFoundationOnce(
         layers,
         now,
       );
+      const foundingCorrectionApplied =
+        await applyFoundingBoardCorrectionV1(
+          tx,
+          graph,
+          now,
+        );
       const { night, nightKey } = await ensureNight(
         tx,
         graph.id,
@@ -809,7 +1184,9 @@ async function createFoundationOnce(
         now,
       );
       const currentGraph =
-        graph.projectionVersion === 0 || assignmentsCreated > 0
+        graph.projectionVersion === 0 ||
+        assignmentsCreated > 0 ||
+        foundingCorrectionApplied
           ? await tx.warGraph.update({
               where: { id: graph.id },
               data: { projectionVersion: { increment: 1 } },
