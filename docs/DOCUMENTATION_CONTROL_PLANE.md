@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `a0bf481f35e448ff031940f734bd62d70c8ec920`
+Implementation baseline: `feature/wargraph-v1` at `8f047e0a21b8803428b878e73f3325f1b2e4c2d4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **72**
+- Authoritative repository documents: **73**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 41
+- `reference`: 42
 - `runbook`: 12
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 58
+- `active`: 59
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 1
@@ -112,6 +112,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |
 | [Universal Translator](UNIVERSAL_TRANSLATOR.md) | `reference` | `active` | `product-contract` |
+| [AoE2WAR WarGraph V1](WARGRAPH_V1.md) | `reference` | `active` | `architecture-contract` |
 | [The War Engine](WAR_ENGINE.md) | `reference` | `active` | `replay-evidence-escalation-contract` |
 | [War Room Forum](WAR_ROOM_FORUM.md) | `reference` | `active` | `product-contract` |
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |

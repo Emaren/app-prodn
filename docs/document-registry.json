@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d4f45645bf413d11835b7e8c619d2aafacaaabc67f982caf23aebcb1d266f62e",
+      "sha256": "9312afcd2d11cd273f2622c668365b9831a3e0bce68464007180158f3368c324",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1427,6 +1427,31 @@
       "audience": [
         "developers",
         "operators",
+        "auditors",
+        "ai-agents"
+      ],
+      "authority": "architecture-contract",
+      "id": "aoe2war.app-prodn.docs-wargraph-v1",
+      "owner": "aoe2war-web",
+      "path": "docs/WARGRAPH_V1.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-25",
+      "sensitivity": "internal",
+      "sha256": "7889895949c77453cd540cee05bd474d04c89ea1c9bfd59e173cd888bbfb51bc",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "AoE2WAR WarGraph V1",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
         "ai-agents"
       ],
       "authority": "replay-evidence-escalation-contract",
@@ -1649,8 +1674,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "a0bf481f35e448ff031940f734bd62d70c8ec920"
+    "branch": "feature/wargraph-v1",
+    "commit": "8f047e0a21b8803428b878e73f3325f1b2e4c2d4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
