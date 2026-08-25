@@ -108,28 +108,47 @@ test("staking presentation renders raw occurrence instants while civil ledger-da
   assert.match(action, /occurredAt,/);
 });
 
-test("fixed-zone timestamp formatting is prohibited outside intentional UTC civil grains", () => {
+test("fixed-zone timestamp formatting is prohibited outside intentional civil and WarGraph clocks", () => {
   const paths = [
     ...sourceFilesUnder("app"),
     ...sourceFilesUnder("components"),
     ...sourceFilesUnder("lib"),
   ];
+  const fixedEdmontonPaths = new Set<string>();
   const fixedUtcPaths = new Set<string>();
 
   for (const path of paths) {
     const contents = source(path);
-    assert.doesNotMatch(contents, /timeZone:\s*["']America\/Edmonton["']/);
+
+    if (/timeZone:\s*["\']America\/Edmonton["\']/.test(contents)) {
+      fixedEdmontonPaths.add(path);
+    }
+
     assert.doesNotMatch(contents, /\b\d{1,2}:\d{2}\s*(?:AM|PM)\s*UTC\b/i);
-    if (/timeZone:\s*["']UTC["']/.test(contents)) {
+
+    if (/timeZone:\s*["\']UTC["\']/.test(contents)) {
       fixedUtcPaths.add(path);
     }
   }
+
+  // WarGraph's public operating schedule is intentionally authoritative in
+  // America/Edmonton. All ordinary occurrence timestamps remain browser-local.
+  assert.deepEqual(
+    [...fixedEdmontonPaths].sort(),
+    [
+      "components/wargraph/WarGraphTime.tsx",
+      "lib/wargraph/publicTypes.ts",
+      "lib/wargraph/snapshot.ts",
+    ]
+  );
 
   assert.deepEqual(
     [...fixedUtcPaths].sort(),
     [
       "app/staking/stakers/[slug]/StakerLedgerPanel.tsx",
       "components/observatory/PremiumTimeSeriesChart.tsx",
+      "components/wargraph/WarGraphTime.tsx",
+      "lib/wargraph/snapshot.ts",
     ]
   );
 });
