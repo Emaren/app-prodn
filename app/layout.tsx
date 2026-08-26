@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     type: "website",
     images: [
       {
-        url: "/social/aoe2hdbets-card-war-room.png",
+        url: "/social/aoe2war-wargraph-social-v1.png",
         width: 1200,
         height: 630,
         alt: "AoE2HDBets tournament lobby social card",
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
       "Tournament lobby, replay proof, rivalry pages, and live chat for AoE2HD players.",
     images: [
       {
-        url: "/social/aoe2hdbets-card-war-room.png",
+        url: "/social/aoe2war-wargraph-social-v1.png",
         alt: "AoE2HDBets tournament lobby social card",
       },
     ],
