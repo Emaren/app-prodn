@@ -356,6 +356,25 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             script,
         )
 
+        # Recovery counters are shell arithmetic, never command substitutions.
+        for variable in (
+            "APT_RECLAIMED_KB",
+            "JOURNAL_RECLAIMED_KB",
+            "NGINX_OPEN_SKIPPED",
+            "DELTA",
+            "NGINX_RECLAIMED_KB",
+            "NGINX_ARCHIVED",
+            "RECLAIMED_KB",
+        ):
+            self.assertIn(
+                f"{variable}=$((",
+                script,
+            )
+            self.assertNotIn(
+                f"{variable}=$(\\n",
+                script,
+            )
+
         # Rotated logs are preserved before deletion.
         self.assertIn(
             "sha256sum",

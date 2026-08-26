@@ -834,9 +834,9 @@ if [ "$CURRENT_KB" -lt "$FLOOR_KB" ]; then
         sync
 
         TIER_AFTER="$(free_kb)"
-        APT_RECLAIMED_KB=$(
+        APT_RECLAIMED_KB=$((
             TIER_AFTER - TIER_BEFORE
-        )
+        ))
     fi
 fi
 
@@ -858,9 +858,9 @@ if [ "$CURRENT_KB" -lt "$FLOOR_KB" ]; then
     sync
 
     TIER_AFTER="$(free_kb)"
-    JOURNAL_RECLAIMED_KB=$(
+    JOURNAL_RECLAIMED_KB=$((
         TIER_AFTER - TIER_BEFORE
-    )
+    ))
 fi
 
 
@@ -911,9 +911,9 @@ if [ "$CURRENT_KB" -lt "$FLOOR_KB" ]; then
         done
 
         if [ "$OPEN" = 1 ]; then
-            NGINX_OPEN_SKIPPED=$(
+            NGINX_OPEN_SKIPPED=$((
                 NGINX_OPEN_SKIPPED + 1
-            )
+            ))
             printf '%s\\n' "$logfile" \
                 >>"$RECEIPT_DIR/nginx-open-skipped.txt"
             continue
@@ -954,17 +954,17 @@ if [ "$CURRENT_KB" -lt "$FLOOR_KB" ]; then
         sync
 
         TIER_AFTER="$(free_kb)"
-        DELTA=$(
+        DELTA=$((
             TIER_AFTER - TIER_BEFORE
-        )
+        ))
 
-        NGINX_RECLAIMED_KB=$(
+        NGINX_RECLAIMED_KB=$((
             NGINX_RECLAIMED_KB + DELTA
-        )
+        ))
 
-        NGINX_ARCHIVED=$(
+        NGINX_ARCHIVED=$((
             NGINX_ARCHIVED + 1
-        )
+        ))
 
         printf '%s\\t%s\\t%s\\n' \
             "$bytes" \
@@ -982,9 +982,9 @@ fi
 sync
 
 AFTER_KB="$(free_kb)"
-RECLAIMED_KB=$(
+RECLAIMED_KB=$((
     AFTER_KB - BEFORE_KB
-)
+))
 
 test "$AFTER_KB" -ge "$FLOOR_KB" || {{
     cat >> "$RECEIPT_DIR/recovery.txt" <<EOF
