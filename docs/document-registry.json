@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "21986ec7a7fcb0d5ee6078a1196d64b38b27131b13b5a7c19246eb6b3d1a9b39",
+      "sha256": "f5762d6cd074b19296ba9106de73e4ac259a13590cd46005b7db7fbcd109154f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1675,7 +1675,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "feature/dev-control-plane-v1",
-    "commit": "4e83a04379fc72a3251a22da8ef679af3ce8b673"
+    "commit": "697f4c633c2f6b7f59ac0734e78fdfb65f6844f2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

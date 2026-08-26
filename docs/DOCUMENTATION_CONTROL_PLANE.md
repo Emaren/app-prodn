@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/dev-control-plane-v1` at `4e83a04379fc72a3251a22da8ef679af3ce8b673`
+Implementation baseline: `feature/dev-control-plane-v1` at `697f4c633c2f6b7f59ac0734e78fdfb65f6844f2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
