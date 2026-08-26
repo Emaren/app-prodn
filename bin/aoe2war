@@ -96,7 +96,7 @@ Usage:
   aoe2war storage <status|plan|maintain|verify> [options]
   aoe2war council [--json]
   aoe2war workspace <status|plan|clean> [options]
-  aoe2war parallel <status|plan|claim|handoff|runtime|refresh|serve> [options]
+  aoe2war parallel <status|plan|new|claim|handoff|runtime|refresh|serve> [options]
   aoe2war facts [--json]
   aoe2war dev <status|prepare|refresh|serve|new> [options]
   aoe2war deps

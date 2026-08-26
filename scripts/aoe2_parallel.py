@@ -1,191 +1,1075 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, hashlib, json, os, re, subprocess, sys
+
+import argparse
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-ROOT=Path(__file__).resolve().parents[1]
-CONTRACT=ROOT/"config/aoe2war-operations.json"
-STATES={"PLANNED","BUILDING","TESTING","READY","PAUSED","BLOCKED","CONFLICT","REVIEW_REQUIRED","RECONCILING","INTEGRATING","CERTIFYING","RELEASED","ABANDONED"}
-CRITICAL={"database-schema","financial-truth","replay-finality","battle-identity","watcher-reconciliation","release-engineering","wolo-boundary"}
-RULES=(
-("database-schema",("prisma/schema.prisma","prisma/migrations/")),
-("financial-truth",("lib/bets","lib/scheduledMatchSettlement","lib/challengeFinancial","app/api/bets/","app/api/staking/","app/api/challenges/")),
-("battle-identity",("lib/battleIdentity","lib/liveGames","lib/liveSession","app/api/live-games/")),
-("watcher-reconciliation",("lib/watch","lib/liveGames","lib/liveSession","tests/watcher","tests/live-")),
-("replay-finality",("lib/replay","app/api/replay","tests/hd-replay","tests/replay")),
-("wargraph",("lib/wargraph/","app/wargraph/","app/api/wargraph/")),
-("release-engineering",("bin/aoe2war","scripts/aoe2_","config/aoe2war-operations.json","docs/RELEASE_ENGINEERING.md","DEPLOY.md")),
-("wolo-boundary",("lib/wolo","app/api/wolo","scripts/wolo")),
-)
-class Err(RuntimeError): pass
+ROOT = Path(__file__).resolve().parents[1]
+CONTRACT = ROOT / "config" / "aoe2war-operations.json"
 
-def sh(args,cwd=ROOT):
- p=subprocess.run(args,cwd=cwd,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,check=False)
- return p.returncode,p.stdout.strip()
-def git(*args,cwd=ROOT):
- rc,out=sh(["git",*args],cwd)
- if rc: raise Err(f"git {' '.join(args)} failed in {cwd}: {out}")
- return out
-def contract(): return json.loads(CONTRACT.read_text()).get("parallel_development",{})
-def common(repo=ROOT):
- p=Path(git("rev-parse","--git-common-dir",cwd=repo)); return (p if p.is_absolute() else repo/p).resolve()
-def store(repo=ROOT):
- p=common(repo)/(contract().get("state_store_relative_to_git_common_dir") or "aoe2war-dev/lanes"); p.mkdir(parents=True,exist_ok=True); return p
-def branch(repo): return git("branch","--show-current",cwd=repo)
-def mp(branch_name,repo=ROOT): return store(repo)/(hashlib.sha256(branch_name.encode()).hexdigest()[:16]+".json")
-def load(branch_name,repo=ROOT):
- p=mp(branch_name,repo)
- if not p.is_file(): return None
- x=json.loads(p.read_text());
- if x.get("branch")!=branch_name: raise Err(f"manifest mismatch: {p}")
- return x
-def manifests(repo=ROOT):
- out=[]
- for p in store(repo).glob("*.json"):
-  try: x=json.loads(p.read_text())
-  except Exception: continue
-  if isinstance(x,dict) and x.get("branch"): out.append(x)
- return out
-def atomic(path,payload):
- t=path.with_suffix(".tmp"); t.write_text(json.dumps(payload,indent=2,sort_keys=True)+"\n"); t.replace(path)
-def slug(s): return re.sub(r"[^a-z0-9]+","_",s.lower().replace("feature/","",1)).strip("_") or "lane"
-def dbname(b):
- pre=contract().get("shadow_database_prefix") or "aoe2hdbets_shadow_lane_"; h=hashlib.sha256(b.encode()).hexdigest()[:6]; s=slug(b); n=max(1,63-len(pre)-len(h)-1); return f"{pre}{s[:n]}_{h}"
-def ports(b):
- c=contract(); start=int(c.get("dev_port_start",3100)); end=int(c.get("dev_port_end",3198)); stride=int(c.get("dev_port_stride",2)); vals=list(range(start,end+1,stride)); off=int(hashlib.sha256(b.encode()).hexdigest()[:8],16)%len(vals); return vals[off:]+vals[:off]
-def alloc(b,repo=ROOT):
- old=load(b,repo)
- if old and old.get("dev_port"): return int(old["dev_port"])
- used={int(x["dev_port"]) for x in manifests(repo) if x.get("branch")!=b and x.get("dev_port")}
- for p in ports(b):
-  if p not in used and p+1 not in used: return p
- raise Err("parallel dev port pool exhausted")
-def normalize_state(s):
- s=s.strip().upper().replace("-","_")
- if s not in STATES: raise Err("invalid state: "+s)
- return s
-def merge_base(repo): return git("merge-base","main","HEAD",cwd=repo)
-def register(repo,owner=None,state=None,contracts=None,depends=None,paths=None,note=None):
- b=branch(repo)
- if not b or b=="main": raise Err("claim requires a named non-main worktree")
- x=load(b,repo) or {"schema":1,"branch":b,"base_sha":merge_base(repo),"created_at":datetime.now(timezone.utc).isoformat()}
- x.update({"branch":b,"worktree":str(repo.resolve()),"head_sha":git("rev-parse","HEAD",cwd=repo),"updated_at":datetime.now(timezone.utc).isoformat()})
- x["owner"]=owner if owner is not None else x.get("owner") or os.getenv("AOE2WAR_AI_OWNER") or "unclaimed"
- x["state"]=normalize_state(state or x.get("state") or "BUILDING")
- x.setdefault("dev_port",alloc(b,repo)); x.setdefault("shadow_database",dbname(b))
- if contracts is not None: x["contracts"]=sorted(set(filter(None,map(str.strip,contracts))))
- else: x.setdefault("contracts",[])
- if depends is not None: x["depends_on"]=sorted(set(filter(None,map(str.strip,depends))))
- else: x.setdefault("depends_on",[])
- if paths is not None: x["planned_paths"]=sorted(set(filter(None,map(str.strip,paths))))
- else: x.setdefault("planned_paths",[])
- if note is not None: x["note"]=note
- atomic(mp(b,repo),x); return x
-def changed(repo,base):
- out=set()
- for a in (("diff","--name-only",f"{base}...HEAD"),("diff","--name-only"),("diff","--cached","--name-only"),("ls-files","--others","--exclude-standard")):
-  rc,s=sh(["git",*a],repo)
-  if not rc: out.update(x.strip() for x in s.splitlines() if x.strip())
- return sorted(out)
-def infer(paths):
- out=set()
- for p in paths:
-  for name,needles in RULES:
-   if any(p==n or p.startswith(n) for n in needles): out.add(name)
- return sorted(out)
-def dbfront(paths): return any(p=="prisma/schema.prisma" or p.startswith("prisma/migrations/") for p in paths)
-def count(repo,spec):
- rc,out=sh(["git","rev-list","--count",spec],repo)
- try: return int(out) if not rc else 0
- except: return 0
-def dirty(repo):
- rc,out=sh(["git","status","--porcelain","--untracked-files=all"],repo)
- if rc: return ["<status-error>"]
- return sorted(set((x[3:].split(" -> ",1)[-1]) for x in out.splitlines() if len(x)>=4))
-def lane(repo,main):
- b=branch(repo); h=git("rev-parse","HEAD",cwd=repo); m=load(b,repo) or {}; base=m.get("base_sha") or merge_base(repo); paths=changed(repo,base); d=dirty(repo); rc,_=sh(["git","merge-base","--is-ancestor",main,h],repo); desc=rc==0
- return {"branch":b,"head":h,"base_sha":base,"path":str(repo.resolve()),"owner":m.get("owner","unclaimed"),"state":m.get("state","UNCLAIMED"),"changed_paths":paths,"dirty_paths":d,"dirty":bool(d),"contracts":sorted(set(infer(paths))|set(m.get("contracts",[]))),"depends_on":m.get("depends_on",[]),"database_frontier":dbfront(paths),"dev_port":m.get("dev_port"),"shadow_database":m.get("shadow_database"),"main_drift":count(repo,f"HEAD..{main}"),"feature_ahead":count(repo,f"{main}..HEAD"),"descendant":desc,"next_step":m.get("next_step"),"tests":m.get("tests",{})}
-def severity(a,b):
- files=sorted(set(a["changed_paths"])&set(b["changed_paths"])); sem=sorted(set(a["contracts"])&set(b["contracts"]))
- if a["database_frontier"] and b["database_frontier"]: return "HIGH",files,sorted(set(sem)|{"database-schema"})
- if set(sem)&CRITICAL: return "HIGH",files,sem
- if files or sem: return "MEDIUM",files,sem
- return "LOW",files,sem
-def worktrees():
- raw=git("worktree","list","--porcelain"); out=[]
- for block in [x for x in raw.split("\n\n") if x.strip()]:
-  f={}
-  for line in block.splitlines():
-   if " " in line: k,v=line.split(" ",1); f[k]=v
-  out.append((Path(f["worktree"]),f.get("branch","").replace("refs/heads/","")))
- return out
-def snapshot():
- main=git("rev-parse","main"); origin=git("rev-parse","origin/main"); lanes=[]
- for p,b in worktrees():
-  if b and b!="main":
-   try: lanes.append(lane(p,main))
-   except Exception as e: lanes.append({"branch":b,"path":str(p),"state":"ERROR","owner":"?","error":str(e),"changed_paths":[],"contracts":[],"database_frontier":False,"dirty":True,"main_drift":0,"feature_ahead":0,"descendant":False,"dev_port":None,"shadow_database":None,"depends_on":[]})
- conflicts=[]
- for i,a in enumerate(lanes):
-  for b in lanes[i+1:]:
-   sev,files,sem=severity(a,b)
-   if sev!="LOW": conflicts.append({"severity":sev,"left":a["branch"],"right":b["branch"],"files":files,"contracts":sem})
- return {"main":main,"origin_main":origin,"exact":main==origin,"lanes":lanes,"conflicts":conflicts}
-def print_status(s):
- print("⚔️  AOE2WAR DEVELOPMENT CONTROL PLANE\n"); print(f"Main: {s['main'][:12]}  GitHub: {s['origin_main'][:12]}  exact={'YES' if s['exact'] else 'NO'}"); print(f"Active lanes: {len(s['lanes'])}  conflicts: {len(s['conflicts'])}\n")
- print(f"{'STATE':<15} {'OWNER':<12} {'DRIFT':>5} {'Δ':>4} {'PORT':>5} {'BRANCH'}")
- for x in s["lanes"]: print(f"{x['state']:<15} {x['owner'][:11]:<12} {x['main_drift']:>5} {len(x['changed_paths']):>4} {str(x.get('dev_port') or '—'):>5} {x['branch']}")
- if s["conflicts"]:
-  print("\nCONFLICT FORECAST")
-  for c in s["conflicts"]:
-   print(f"{c['severity']:<6} {c['left']} <-> {c['right']}")
-   if c['files']: print("       files: "+", ".join(c['files'][:8]))
-   if c['contracts']: print("       contracts: "+", ".join(c['contracts']))
- print("\nINTEGRATION READINESS")
- for x in s["lanes"]:
-  ready=x["state"]=="READY" and not x["dirty"] and x["main_drift"]==0 and x["descendant"]
-  print(("READY  " if ready else "WAIT   ")+x["branch"]+("" if ready else f" — state={x['state']} dirty={int(x['dirty'])} drift={x['main_drift']}"))
-def ensure_cert():
- names=("localhost+2.pem","localhost+2-key.pem")
- if all((ROOT/n).is_file() for n in names): return
- canon=Path(json.loads(CONTRACT.read_text())["canonical"]["operator_repo"]).expanduser()
- if all((canon/n).is_file() for n in names):
-  for n in names:
-   p=ROOT/n
-   if not p.exists(): p.symlink_to(canon/n)
-  return
- rc,_=sh(["mkcert","-install"],ROOT)
- if rc: raise Err("mkcert -install failed")
- rc,_=sh(["mkcert","localhost","127.0.0.1","::1"],ROOT)
- if rc: raise Err("mkcert certificate generation failed")
-def runtime_env():
- x=register(ROOT); return x,{**os.environ,"AOE2WAR_DEV_PORT":str(x["dev_port"]),"AOE2WAR_SHADOW_DB":x["shadow_database"]}
-def main():
- p=argparse.ArgumentParser(prog="aoe2war parallel"); sub=p.add_subparsers(dest="cmd")
- for name in ("status","plan"): q=sub.add_parser(name); q.add_argument("--json",action="store_true")
- q=sub.add_parser("claim"); q.add_argument("--owner",required=True); q.add_argument("--state",default="BUILDING",choices=sorted(STATES)); q.add_argument("--contract",action="append",default=[]); q.add_argument("--depends-on",action="append",default=[]); q.add_argument("--path",action="append",default=[]); q.add_argument("--note")
- q=sub.add_parser("handoff"); q.add_argument("--state",required=True,choices=sorted(STATES)); q.add_argument("--next"); q.add_argument("--note"); q.add_argument("--test",action="append",default=[])
- sub.add_parser("runtime"); sub.add_parser("refresh"); sub.add_parser("serve")
- a=p.parse_args(); cmd=a.cmd or "status"
- try:
-  if cmd in {"status","plan"}:
-   s=snapshot(); print(json.dumps(s,indent=2,sort_keys=True)) if getattr(a,"json",False) else print_status(s)
-   if cmd=="plan" and not getattr(a,"json",False): print("\nRULE: develop in parallel; integrate ONE ready lane into main at a time. No auto-merge/rebase.")
-   return 0
-  if cmd=="claim":
-   x=register(ROOT,a.owner,a.state,a.contract,a.depends_on,a.path,a.note); print(json.dumps(x,indent=2,sort_keys=True)); return 0
-  if cmd=="handoff":
-   tests={}
-   for item in a.test:
-    if "=" not in item: raise Err("--test expects NAME=RESULT")
-    k,v=item.split("=",1); tests[k.strip()]=v.strip()
-   x=register(ROOT,state=a.state); x["next_step"]=a.next; x["note"]=a.note if a.note is not None else x.get("note"); x["tests"]=tests; x["updated_at"]=datetime.now(timezone.utc).isoformat(); atomic(mp(x["branch"],ROOT),x); print(json.dumps(x,indent=2,sort_keys=True)); return 0
-  if cmd=="runtime":
-   x,_=runtime_env(); print(f"Branch: {x['branch']}\nHTTPS: https://localhost:{x['dev_port']}\nRedirect: http://localhost:{int(x['dev_port'])+1}\nShadow DB: {x['shadow_database']}"); return 0
-  if cmd in {"refresh","serve"}:
-   x,env=runtime_env(); ensure_cert(); action="refresh" if cmd=="refresh" else "serve"; print(f"PASS: lane={x['branch']} port={x['dev_port']} shadow={x['shadow_database']}"); return subprocess.run([sys.executable,"scripts/dev-shadow.py",action],cwd=ROOT,env=env).returncode
- except Err as e: print(f"STOP: {e}",file=sys.stderr); return 2
- return 2
-if __name__=="__main__": raise SystemExit(main())
+STATES = {
+    "PLANNED",
+    "BUILDING",
+    "TESTING",
+    "READY",
+    "PAUSED",
+    "BLOCKED",
+    "CONFLICT",
+    "REVIEW_REQUIRED",
+    "RECONCILING",
+    "INTEGRATING",
+    "CERTIFYING",
+    "RELEASED",
+    "ABANDONED",
+}
+
+CRITICAL_CONTRACTS = {
+    "database-schema",
+    "financial-truth",
+    "replay-finality",
+    "battle-identity",
+    "watcher-reconciliation",
+    "release-engineering",
+    "wolo-boundary",
+}
+
+CONTRACT_RULES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("database-schema", ("prisma/schema.prisma", "prisma/migrations/")),
+    (
+        "financial-truth",
+        (
+            "lib/bets",
+            "lib/scheduledMatchSettlement",
+            "lib/challengeFinancial",
+            "app/api/bets/",
+            "app/api/staking/",
+            "app/api/challenges/",
+        ),
+    ),
+    (
+        "battle-identity",
+        (
+            "lib/battleIdentity",
+            "lib/liveGames",
+            "lib/liveSession",
+            "app/api/live-games/",
+        ),
+    ),
+    (
+        "watcher-reconciliation",
+        (
+            "lib/watch",
+            "lib/liveGames",
+            "lib/liveSession",
+            "tests/watcher",
+            "tests/live-",
+        ),
+    ),
+    (
+        "replay-finality",
+        (
+            "lib/replay",
+            "app/api/replay",
+            "tests/hd-replay",
+            "tests/replay",
+        ),
+    ),
+    ("wargraph", ("lib/wargraph/", "app/wargraph/", "app/api/wargraph/")),
+    (
+        "release-engineering",
+        (
+            "bin/aoe2war",
+            "scripts/aoe2_",
+            "config/aoe2war-operations.json",
+            "docs/RELEASE_ENGINEERING.md",
+            "DEPLOY.md",
+        ),
+    ),
+    (
+        "documentation-control",
+        (
+            "docs/document-registry.json",
+            "docs/DOCUMENTATION_CONTROL_PLANE.md",
+        ),
+    ),
+    ("wolo-boundary", ("lib/wolo", "app/api/wolo", "scripts/wolo")),
+)
+
+
+class ParallelError(RuntimeError):
+    pass
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def run(
+    args: list[str],
+    *,
+    cwd: Path = ROOT,
+    capture: bool = True,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        args,
+        cwd=cwd,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE if capture else None,
+        stderr=subprocess.STDOUT if capture else None,
+        check=False,
+    )
+
+
+def checked(
+    args: list[str],
+    *,
+    cwd: Path = ROOT,
+    capture: bool = True,
+    env: dict[str, str] | None = None,
+) -> str:
+    proc = run(args, cwd=cwd, capture=capture, env=env)
+    if proc.returncode != 0:
+        tail = (proc.stdout or "")[-5000:] if capture else ""
+        raise ParallelError(
+            "command failed: "
+            + " ".join(args)
+            + (f"\n{tail}" if tail else "")
+        )
+    return (proc.stdout or "").strip() if capture else ""
+
+
+def git(*args: str, cwd: Path = ROOT) -> str:
+    return checked(["git", *args], cwd=cwd)
+
+
+def load_operations() -> dict[str, Any]:
+    return json.loads(CONTRACT.read_text(encoding="utf-8"))
+
+
+def parallel_policy() -> dict[str, Any]:
+    return dict(load_operations().get("parallel_development") or {})
+
+
+def canonical_repo() -> Path:
+    value = load_operations()["canonical"]["operator_repo"]
+    return Path(value).expanduser().resolve()
+
+
+def git_common_dir(repo: Path = ROOT) -> Path:
+    raw = git("rev-parse", "--git-common-dir", cwd=repo)
+    value = Path(raw)
+    if not value.is_absolute():
+        value = repo / value
+    return value.resolve()
+
+
+def state_store(repo: Path = ROOT) -> Path:
+    relative = str(
+        parallel_policy().get("state_store_relative_to_git_common_dir")
+        or "aoe2war-dev/lanes"
+    )
+    path = git_common_dir(repo) / relative
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def current_branch(repo: Path) -> str:
+    return git("branch", "--show-current", cwd=repo)
+
+
+def manifest_path(branch: str, repo: Path = ROOT) -> Path:
+    key = hashlib.sha256(branch.encode("utf-8")).hexdigest()[:16]
+    return state_store(repo) / f"{key}.json"
+
+
+def load_manifest(branch: str, repo: Path = ROOT) -> dict[str, Any] | None:
+    path = manifest_path(branch, repo)
+    if not path.is_file():
+        return None
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("branch") != branch:
+        raise ParallelError(f"lane manifest identity mismatch: {path}")
+    return payload
+
+
+def write_manifest(payload: dict[str, Any], repo: Path = ROOT) -> None:
+    branch = str(payload["branch"])
+    path = manifest_path(branch, repo)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    tmp.replace(path)
+
+
+def all_manifests(repo: Path = ROOT) -> list[dict[str, Any]]:
+    result: list[dict[str, Any]] = []
+    for path in sorted(state_store(repo).glob("*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if isinstance(payload, dict) and payload.get("branch"):
+            result.append(payload)
+    return result
+
+
+def normalize_state(value: str) -> str:
+    state = value.strip().upper().replace("-", "_")
+    if state not in STATES:
+        raise ParallelError(
+            f"invalid lane state {value!r}; expected one of "
+            + ", ".join(sorted(STATES))
+        )
+    return state
+
+
+def slugify(value: str) -> str:
+    value = value.strip().lower()
+    value = re.sub(r"[^a-z0-9]+", "-", value).strip("-")
+    if not value:
+        raise ParallelError("feature name contains no usable characters")
+    return value
+
+
+def database_name(branch: str) -> str:
+    prefix = str(
+        parallel_policy().get("shadow_database_prefix")
+        or "aoe2hdbets_shadow_lane_"
+    )
+    suffix = hashlib.sha256(branch.encode("utf-8")).hexdigest()[:6]
+    slug = re.sub(r"[^a-z0-9]+", "_", branch.lower()).strip("_")
+    maximum = max(1, 63 - len(prefix) - len(suffix) - 1)
+    return f"{prefix}{slug[:maximum]}_{suffix}"
+
+
+def port_candidates(branch: str) -> list[int]:
+    policy = parallel_policy()
+    start = int(policy.get("dev_port_start") or 3100)
+    end = int(policy.get("dev_port_end") or 3198)
+    stride = int(policy.get("dev_port_stride") or 2)
+    if start < 1024 or end <= start or stride < 2:
+        raise ParallelError("invalid parallel-development port policy")
+    pool = list(range(start, end + 1, stride))
+    seed = int(hashlib.sha256(branch.encode("utf-8")).hexdigest()[:8], 16)
+    offset = seed % len(pool)
+    return pool[offset:] + pool[:offset]
+
+
+def allocate_port(branch: str, repo: Path = ROOT) -> int:
+    existing = load_manifest(branch, repo)
+    if existing and existing.get("dev_port"):
+        return int(existing["dev_port"])
+
+    occupied = {
+        int(item["dev_port"])
+        for item in all_manifests(repo)
+        if item.get("branch") != branch and item.get("dev_port")
+    }
+
+    for port in port_candidates(branch):
+        if port not in occupied and (port + 1) not in occupied:
+            return port
+
+    raise ParallelError("parallel development port pool exhausted")
+
+
+def parse_worktrees(repo: Path = ROOT) -> list[tuple[Path, str]]:
+    raw = git("worktree", "list", "--porcelain", cwd=repo)
+    result: list[tuple[Path, str]] = []
+
+    for block in [part for part in raw.split("\n\n") if part.strip()]:
+        fields: dict[str, str] = {}
+        for line in block.splitlines():
+            if " " in line:
+                key, value = line.split(" ", 1)
+                fields[key] = value
+        path = Path(fields["worktree"]).resolve()
+        branch = fields.get("branch", "").replace("refs/heads/", "")
+        result.append((path, branch))
+
+    return result
+
+
+def dirty_paths(repo: Path) -> list[str]:
+    output = checked(
+        ["git", "status", "--porcelain", "--untracked-files=all"],
+        cwd=repo,
+    )
+    result: set[str] = set()
+    for line in output.splitlines():
+        if len(line) < 4:
+            continue
+        value = line[3:]
+        if " -> " in value:
+            value = value.split(" -> ", 1)[1]
+        result.add(value)
+    return sorted(result)
+
+
+def changed_paths(repo: Path, base_sha: str) -> list[str]:
+    result: set[str] = set()
+
+    for arguments in (
+        ["diff", "--name-only", f"{base_sha}...HEAD"],
+        ["diff", "--name-only"],
+        ["diff", "--cached", "--name-only"],
+        ["ls-files", "--others", "--exclude-standard"],
+    ):
+        proc = run(["git", *arguments], cwd=repo)
+        if proc.returncode == 0:
+            result.update(
+                line.strip()
+                for line in (proc.stdout or "").splitlines()
+                if line.strip()
+            )
+
+    return sorted(result)
+
+
+def infer_contracts(paths: list[str]) -> list[str]:
+    result: set[str] = set()
+    for path in paths:
+        for contract, needles in CONTRACT_RULES:
+            if any(path == needle or path.startswith(needle) for needle in needles):
+                result.add(contract)
+    return sorted(result)
+
+
+def owns_database_frontier(paths: list[str]) -> bool:
+    return any(
+        path == "prisma/schema.prisma" or path.startswith("prisma/migrations/")
+        for path in paths
+    )
+
+
+def revision_count(repo: Path, spec: str) -> int:
+    proc = run(["git", "rev-list", "--count", spec], cwd=repo)
+    if proc.returncode != 0:
+        return 0
+    try:
+        return int((proc.stdout or "").strip())
+    except ValueError:
+        return 0
+
+
+def is_ancestor(repo: Path, ancestor: str, descendant: str) -> bool:
+    return (
+        run(
+            ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+            cwd=repo,
+        ).returncode
+        == 0
+    )
+
+
+def register_lane(
+    repo: Path,
+    *,
+    owner: str | None = None,
+    state: str | None = None,
+    contracts: list[str] | None = None,
+    depends_on: list[str] | None = None,
+    planned_paths: list[str] | None = None,
+    note: str | None = None,
+    base_sha: str | None = None,
+) -> dict[str, Any]:
+    branch = current_branch(repo)
+    if not branch or branch == "main":
+        raise ParallelError("lane registration requires a named non-main branch")
+
+    payload = load_manifest(branch, repo) or {
+        "schema": 1,
+        "branch": branch,
+        "base_sha": base_sha
+        or git("merge-base", "main", "HEAD", cwd=repo),
+        "created_at": utc_now(),
+    }
+
+    if base_sha is not None:
+        payload["base_sha"] = base_sha
+
+    payload["branch"] = branch
+    payload["worktree"] = str(repo.resolve())
+    payload["head_sha"] = git("rev-parse", "HEAD", cwd=repo)
+    payload["updated_at"] = utc_now()
+    payload["owner"] = (
+        owner
+        if owner is not None
+        else payload.get("owner")
+        or os.environ.get("AOE2WAR_AI_OWNER")
+        or "unclaimed"
+    )
+    payload["state"] = normalize_state(
+        state if state is not None else str(payload.get("state") or "BUILDING")
+    )
+    payload.setdefault("dev_port", allocate_port(branch, repo))
+    payload.setdefault("shadow_database", database_name(branch))
+
+    if contracts is not None:
+        payload["contracts"] = sorted(
+            {value.strip() for value in contracts if value.strip()}
+        )
+    else:
+        payload.setdefault("contracts", [])
+
+    if depends_on is not None:
+        payload["depends_on"] = sorted(
+            {value.strip() for value in depends_on if value.strip()}
+        )
+    else:
+        payload.setdefault("depends_on", [])
+
+    if planned_paths is not None:
+        payload["planned_paths"] = sorted(
+            {value.strip() for value in planned_paths if value.strip()}
+        )
+    else:
+        payload.setdefault("planned_paths", [])
+
+    if note is not None:
+        payload["note"] = note
+
+    write_manifest(payload, repo)
+    return payload
+
+
+def snapshot_lane(repo: Path, main_head: str) -> dict[str, Any]:
+    branch = current_branch(repo)
+    head = git("rev-parse", "HEAD", cwd=repo)
+    manifest = load_manifest(branch, repo)
+    managed = manifest is not None
+    base_sha = str(
+        (manifest or {}).get("base_sha")
+        or git("merge-base", "main", "HEAD", cwd=repo)
+    )
+    paths = changed_paths(repo, base_sha)
+    dirty = dirty_paths(repo)
+
+    return {
+        "branch": branch,
+        "head": head,
+        "base_sha": base_sha,
+        "path": str(repo.resolve()),
+        "managed": managed,
+        "owner": str((manifest or {}).get("owner") or "unclaimed"),
+        "state": str((manifest or {}).get("state") or "UNCLAIMED"),
+        "changed_paths": paths,
+        "dirty_paths": dirty,
+        "dirty": bool(dirty),
+        "contracts": sorted(
+            set(infer_contracts(paths))
+            | set((manifest or {}).get("contracts") or [])
+        ),
+        "depends_on": list((manifest or {}).get("depends_on") or []),
+        "database_frontier": owns_database_frontier(paths),
+        "dev_port": (manifest or {}).get("dev_port"),
+        "shadow_database": (manifest or {}).get("shadow_database"),
+        "main_drift": revision_count(repo, f"HEAD..{main_head}"),
+        "feature_ahead": revision_count(repo, f"{main_head}..HEAD"),
+        "descendant_of_main": is_ancestor(repo, main_head, head),
+        "next_step": (manifest or {}).get("next_step"),
+        "tests": dict((manifest or {}).get("tests") or {}),
+        "note": (manifest or {}).get("note"),
+    }
+
+
+def conflict_severity(
+    left: dict[str, Any],
+    right: dict[str, Any],
+) -> tuple[str, list[str], list[str]]:
+    file_overlap = sorted(
+        set(left["changed_paths"]) & set(right["changed_paths"])
+    )
+    semantic_overlap = sorted(
+        set(left["contracts"]) & set(right["contracts"])
+    )
+
+    if left["database_frontier"] and right["database_frontier"]:
+        return (
+            "HIGH",
+            file_overlap,
+            sorted(set(semantic_overlap) | {"database-schema"}),
+        )
+
+    if set(semantic_overlap) & CRITICAL_CONTRACTS:
+        return "HIGH", file_overlap, semantic_overlap
+
+    if file_overlap or semantic_overlap:
+        return "MEDIUM", file_overlap, semantic_overlap
+
+    return "LOW", file_overlap, semantic_overlap
+
+
+def dependency_satisfied(repo: Path, dependency: str, main_head: str) -> bool:
+    probe = run(
+        ["git", "rev-parse", "--verify", dependency],
+        cwd=repo,
+    )
+    if probe.returncode != 0:
+        return False
+    dep_head = (probe.stdout or "").strip()
+    return is_ancestor(repo, dep_head, main_head)
+
+
+def integration_reasons(
+    lane: dict[str, Any],
+    *,
+    canonical_dirty: bool,
+    main_head: str,
+    repo: Path = ROOT,
+) -> list[str]:
+    reasons: list[str] = []
+
+    if lane["state"] != "READY":
+        reasons.append(f"state={lane['state']}")
+    if lane["dirty"]:
+        reasons.append("dirty")
+    if lane["main_drift"]:
+        reasons.append(f"main-drift={lane['main_drift']}")
+    if not lane["descendant_of_main"]:
+        reasons.append("not-descendant-of-current-main")
+    if canonical_dirty:
+        reasons.append("canonical-main-occupied")
+
+    missing = [
+        dependency
+        for dependency in lane["depends_on"]
+        if not dependency_satisfied(repo, dependency, main_head)
+    ]
+    if missing:
+        reasons.append("dependency-not-in-main:" + ",".join(missing))
+
+    return reasons
+
+
+def snapshot() -> dict[str, Any]:
+    canonical = canonical_repo()
+    main_head = git("rev-parse", "main", cwd=canonical)
+    origin_main = git("rev-parse", "origin/main", cwd=canonical)
+    canonical_dirty_paths = dirty_paths(canonical)
+
+    main_work = {
+        "branch": "canonical-main-working-tree",
+        "head": main_head,
+        "base_sha": main_head,
+        "path": str(canonical),
+        "managed": True,
+        "owner": "occupied-external-work" if canonical_dirty_paths else "none",
+        "state": "OCCUPIED" if canonical_dirty_paths else "CLEAN",
+        "changed_paths": canonical_dirty_paths,
+        "dirty_paths": canonical_dirty_paths,
+        "dirty": bool(canonical_dirty_paths),
+        "contracts": infer_contracts(canonical_dirty_paths),
+        "depends_on": [],
+        "database_frontier": owns_database_frontier(canonical_dirty_paths),
+        "dev_port": None,
+        "shadow_database": None,
+        "main_drift": 0,
+        "feature_ahead": 0,
+        "descendant_of_main": True,
+        "next_step": None,
+        "tests": {},
+        "note": None,
+    }
+
+    managed_lanes: list[dict[str, Any]] = []
+    legacy_worktrees: list[dict[str, Any]] = []
+
+    for path, branch in parse_worktrees(canonical):
+        if not branch or branch == "main":
+            continue
+        try:
+            lane = snapshot_lane(path, main_head)
+        except Exception as exc:
+            legacy_worktrees.append(
+                {
+                    "branch": branch,
+                    "path": str(path),
+                    "managed": False,
+                    "state": "ERROR",
+                    "error": str(exc),
+                    "changed_paths": [],
+                    "contracts": [],
+                    "database_frontier": False,
+                    "dirty": True,
+                    "main_drift": 0,
+                    "feature_ahead": 0,
+                    "descendant_of_main": False,
+                    "dev_port": None,
+                    "shadow_database": None,
+                    "depends_on": [],
+                }
+            )
+            continue
+
+        if lane["managed"]:
+            if lane["state"] not in {"RELEASED", "ABANDONED"}:
+                managed_lanes.append(lane)
+        else:
+            legacy_worktrees.append(lane)
+
+    conflict_inputs: list[dict[str, Any]] = list(managed_lanes)
+    if canonical_dirty_paths:
+        conflict_inputs.insert(0, main_work)
+
+    conflicts: list[dict[str, Any]] = []
+    for index, left in enumerate(conflict_inputs):
+        for right in conflict_inputs[index + 1 :]:
+            severity, file_overlap, semantic_overlap = conflict_severity(
+                left,
+                right,
+            )
+            if severity == "LOW":
+                continue
+            conflicts.append(
+                {
+                    "severity": severity,
+                    "left": left["branch"],
+                    "right": right["branch"],
+                    "file_overlap": file_overlap,
+                    "semantic_overlap": semantic_overlap,
+                }
+            )
+
+    readiness = []
+    for lane in managed_lanes:
+        reasons = integration_reasons(
+            lane,
+            canonical_dirty=bool(canonical_dirty_paths),
+            main_head=main_head,
+            repo=canonical,
+        )
+        readiness.append(
+            {
+                "branch": lane["branch"],
+                "ready": not reasons,
+                "reasons": reasons,
+            }
+        )
+
+    return {
+        "schema": 2,
+        "generated_at": utc_now(),
+        "main_head": main_head,
+        "origin_main": origin_main,
+        "main_origin_exact": main_head == origin_main,
+        "canonical_main": main_work,
+        "managed_lanes": managed_lanes,
+        "legacy_worktrees": legacy_worktrees,
+        "conflicts": sorted(
+            conflicts,
+            key=lambda item: (
+                0 if item["severity"] == "HIGH" else 1,
+                item["left"],
+                item["right"],
+            ),
+        ),
+        "integration_readiness": readiness,
+    }
+
+
+def print_status(payload: dict[str, Any]) -> None:
+    main = payload["canonical_main"]
+
+    print("⚔️  AOE2WAR DEVELOPMENT CONTROL PLANE")
+    print()
+    print(f"Main:               {payload['main_head'][:12]}")
+    print(f"GitHub main:        {payload['origin_main'][:12]}")
+    print(
+        "Main/GitHub exact:  "
+        + ("YES" if payload["main_origin_exact"] else "NO")
+    )
+    print(
+        "Canonical checkout: "
+        + ("OCCUPIED" if main["dirty"] else "CLEAN")
+    )
+    print(f"Managed lanes:      {len(payload['managed_lanes'])}")
+    print(f"Legacy worktrees:   {len(payload['legacy_worktrees'])}")
+    print(f"Conflicts:          {len(payload['conflicts'])}")
+    print()
+
+    if main["dirty"]:
+        print("CANONICAL MAIN OCCUPANCY")
+        print("-" * 110)
+        print(
+            f"{len(main['changed_paths'])} uncommitted path(s) are preserved. "
+            "Parallel feature development is allowed; main integration is blocked."
+        )
+        if main["contracts"]:
+            print("Contracts: " + ", ".join(main["contracts"]))
+        print()
+
+    if payload["managed_lanes"]:
+        print("MANAGED ACTIVE LANES")
+        print("-" * 110)
+        print(
+            f"{'STATE':<15} {'OWNER':<16} {'DRIFT':>5} {'Δ':>4} "
+            f"{'PORT':>5} {'BRANCH'}"
+        )
+        for lane in payload["managed_lanes"]:
+            print(
+                f"{lane['state']:<15} "
+                f"{lane['owner'][:15]:<16} "
+                f"{lane['main_drift']:>5} "
+                f"{len(lane['changed_paths']):>4} "
+                f"{str(lane.get('dev_port') or '—'):>5} "
+                f"{lane['branch']}"
+            )
+        print()
+
+    if payload["legacy_worktrees"]:
+        print("LEGACY / UNMANAGED WORKTREES")
+        print("-" * 110)
+        for lane in payload["legacy_worktrees"]:
+            print(
+                f"{lane['branch']:<56} "
+                f"drift={lane['main_drift']:<4} "
+                f"dirty={int(bool(lane['dirty']))}"
+            )
+        print()
+
+    if payload["conflicts"]:
+        print("CONFLICT FORECAST")
+        print("-" * 110)
+        for conflict in payload["conflicts"]:
+            print(
+                f"{conflict['severity']:<6} "
+                f"{conflict['left']} <-> {conflict['right']}"
+            )
+            if conflict["file_overlap"]:
+                print(
+                    "       files: "
+                    + ", ".join(conflict["file_overlap"][:8])
+                )
+            if conflict["semantic_overlap"]:
+                print(
+                    "       contracts: "
+                    + ", ".join(conflict["semantic_overlap"])
+                )
+        print()
+
+    print("INTEGRATION READINESS")
+    print("-" * 110)
+    if not payload["integration_readiness"]:
+        print("No managed feature lanes.")
+
+    for item in payload["integration_readiness"]:
+        if item["ready"]:
+            print("READY  " + item["branch"])
+        else:
+            print(
+                "WAIT   "
+                + item["branch"]
+                + " — "
+                + ", ".join(item["reasons"])
+            )
+
+    print()
+    print(
+        "RULE: development may be parallel; canonical main integration and "
+        "production remain serialized."
+    )
+
+
+def ensure_certificate(repo: Path) -> None:
+    names = ("localhost+2.pem", "localhost+2-key.pem")
+    if all((repo / name).is_file() for name in names):
+        return
+
+    canonical = canonical_repo()
+    if all((canonical / name).is_file() for name in names):
+        for name in names:
+            target = repo / name
+            if not target.exists() and not target.is_symlink():
+                target.symlink_to(canonical / name)
+        return
+
+    checked(["mkcert", "-install"], cwd=repo, capture=False)
+    checked(
+        ["mkcert", "localhost", "127.0.0.1", "::1"],
+        cwd=repo,
+        capture=False,
+    )
+
+
+def runtime_environment(repo: Path) -> tuple[dict[str, Any], dict[str, str]]:
+    payload = register_lane(repo)
+    env = os.environ.copy()
+    env["AOE2WAR_DEV_PORT"] = str(payload["dev_port"])
+    env["AOE2WAR_SHADOW_DB"] = str(payload["shadow_database"])
+    return payload, env
+
+
+def create_lane(
+    name: str,
+    *,
+    owner: str,
+    base_mode: str,
+    prepare: bool,
+) -> int:
+    canonical = canonical_repo()
+    slug = slugify(name)
+    branch = f"feature/{slug}"
+    target = canonical.parent / f"app-prodn-{slug}"
+
+    if target.exists():
+        raise ParallelError(f"target already exists: {target}")
+
+    if run(
+        [
+            "git",
+            "show-ref",
+            "--verify",
+            "--quiet",
+            f"refs/heads/{branch}",
+        ],
+        cwd=canonical,
+    ).returncode == 0:
+        raise ParallelError(f"branch already exists: {branch}")
+
+    checked(["git", "fetch", "origin", "main"], cwd=canonical, capture=False)
+    canonical_head = git("rev-parse", "HEAD", cwd=canonical)
+    origin_main = git("rev-parse", "origin/main", cwd=canonical)
+
+    if canonical_head != origin_main:
+        raise ParallelError(
+            "canonical committed HEAD is not exact with origin/main"
+        )
+
+    dependencies: list[str] = []
+
+    if base_mode == "current":
+        source_branch = current_branch(ROOT)
+        if not source_branch or source_branch == "main":
+            raise ParallelError(
+                "--base current requires a clean managed feature worktree"
+            )
+        if dirty_paths(ROOT):
+            raise ParallelError(
+                "--base current requires the current feature worktree to be clean"
+            )
+        if load_manifest(source_branch, ROOT) is None:
+            raise ParallelError(
+                "--base current requires the current branch to be a managed lane"
+            )
+        base_sha = git("rev-parse", "HEAD", cwd=ROOT)
+        dependencies = [source_branch]
+    else:
+        base_sha = canonical_head
+        tooling_probe = run(
+            ["git", "cat-file", "-e", f"{base_sha}:scripts/aoe2_parallel.py"],
+            cwd=canonical,
+        )
+        if tooling_probe.returncode != 0:
+            raise ParallelError(
+                "current main does not contain the parallel control plane yet; "
+                "use --base current until this feature is integrated"
+            )
+
+    checked(
+        [
+            "git",
+            "worktree",
+            "add",
+            "-b",
+            branch,
+            str(target),
+            base_sha,
+        ],
+        cwd=canonical,
+        capture=False,
+    )
+
+    payload = register_lane(
+        target,
+        owner=owner,
+        state="BUILDING",
+        depends_on=dependencies,
+        base_sha=base_sha,
+        note="Created by AoE2WAR Development Control Plane",
+    )
+
+    if prepare:
+        proc = run(
+            ["python3", "scripts/aoe2_dev.py", "prepare"],
+            cwd=target,
+            capture=False,
+        )
+        if proc.returncode != 0:
+            payload["state"] = "BLOCKED"
+            payload["note"] = (
+                "Lane created, but development preparation failed; "
+                "worktree preserved for review."
+            )
+            payload["updated_at"] = utc_now()
+            write_manifest(payload, target)
+            raise ParallelError(
+                "lane worktree was created but development preparation failed"
+            )
+
+    print("PASS: parallel feature lane created")
+    print(f"Branch:   {branch}")
+    print(f"Base:     {base_sha}")
+    print(f"Worktree: {target}")
+    print(f"HTTPS:    https://localhost:{payload['dev_port']}")
+    print(f"Shadow:   {payload['shadow_database']}")
+    if dependencies:
+        print("Depends:  " + ", ".join(dependencies))
+    print()
+    print(f'cd "{target}"')
+    print("aoe2war parallel status")
+    return 0
+
+
+def parse_tests(values: list[str]) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for value in values:
+        if "=" not in value:
+            raise ParallelError("--test expects NAME=RESULT")
+        key, item = value.split("=", 1)
+        key = key.strip()
+        item = item.strip()
+        if not key or not item:
+            raise ParallelError("--test expects NAME=RESULT")
+        result[key] = item
+    return result
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(prog="aoe2war parallel")
+    sub = parser.add_subparsers(dest="command")
+
+    for name in ("status", "plan"):
+        command = sub.add_parser(name)
+        command.add_argument("--json", action="store_true")
+
+    command = sub.add_parser("new")
+    command.add_argument("name")
+    command.add_argument(
+        "--owner",
+        default=os.environ.get("AOE2WAR_AI_OWNER", "unclaimed"),
+    )
+    command.add_argument(
+        "--base",
+        choices=("current", "main"),
+        default="current",
+    )
+    command.add_argument("--no-prepare", action="store_true")
+
+    command = sub.add_parser("claim")
+    command.add_argument("--owner", required=True)
+    command.add_argument("--state", default="BUILDING", choices=sorted(STATES))
+    command.add_argument("--contract", action="append", default=[])
+    command.add_argument("--depends-on", action="append", default=[])
+    command.add_argument("--path", action="append", default=[])
+    command.add_argument("--note")
+
+    command = sub.add_parser("handoff")
+    command.add_argument("--state", required=True, choices=sorted(STATES))
+    command.add_argument("--next")
+    command.add_argument("--note")
+    command.add_argument("--test", action="append", default=[])
+
+    sub.add_parser("runtime")
+    sub.add_parser("refresh")
+    sub.add_parser("serve")
+
+    args = parser.parse_args()
+    command_name = args.command or "status"
+
+    try:
+        if command_name in {"status", "plan"}:
+            payload = snapshot()
+            if getattr(args, "json", False):
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                print_status(payload)
+                if command_name == "plan":
+                    print()
+                    print(
+                        "PLAN: parallel coding is allowed. Choose one READY lane "
+                        "for explicit main reconciliation after canonical main is clean."
+                    )
+            return 0
+
+        if command_name == "new":
+            return create_lane(
+                args.name,
+                owner=args.owner,
+                base_mode=args.base,
+                prepare=not args.no_prepare,
+            )
+
+        if command_name == "claim":
+            payload = register_lane(
+                ROOT,
+                owner=args.owner,
+                state=args.state,
+                contracts=args.contract,
+                depends_on=args.depends_on,
+                planned_paths=args.path,
+                note=args.note,
+            )
+            print(json.dumps(payload, indent=2, sort_keys=True))
+            return 0
+
+        if command_name == "handoff":
+            payload = register_lane(ROOT, state=args.state)
+            payload["next_step"] = args.next
+            if args.note is not None:
+                payload["note"] = args.note
+            payload["tests"] = parse_tests(args.test)
+            payload["updated_at"] = utc_now()
+            payload["head_sha"] = git("rev-parse", "HEAD", cwd=ROOT)
+            write_manifest(payload, ROOT)
+            print(json.dumps(payload, indent=2, sort_keys=True))
+            return 0
+
+        if command_name == "runtime":
+            payload, _ = runtime_environment(ROOT)
+            print(f"Branch:   {payload['branch']}")
+            print(f"HTTPS:    https://localhost:{payload['dev_port']}")
+            print(f"Redirect: http://localhost:{int(payload['dev_port']) + 1}")
+            print(f"Shadow:   {payload['shadow_database']}")
+            return 0
+
+        if command_name in {"refresh", "serve"}:
+            payload, env = runtime_environment(ROOT)
+            ensure_certificate(ROOT)
+            print(
+                f"PASS: lane={payload['branch']} "
+                f"port={payload['dev_port']} "
+                f"shadow={payload['shadow_database']}"
+            )
+            return subprocess.run(
+                [
+                    sys.executable,
+                    "scripts/dev-shadow.py",
+                    "refresh" if command_name == "refresh" else "serve",
+                ],
+                cwd=ROOT,
+                env=env,
+                check=False,
+            ).returncode
+
+    except ParallelError as exc:
+        print(f"STOP: {exc}", file=sys.stderr)
+        return 2
+
+    return 2
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

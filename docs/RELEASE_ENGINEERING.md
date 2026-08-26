@@ -131,6 +131,34 @@ Conflict forecasting surfaces exact changed-path overlap, critical semantic over
 Each lane receives its own localhost port pair and disposable production-shaped local shadow database. Production database mutation credentials remain absent. A paused AI lane may remain untouched while other feature lanes continue. Git plus the lane manifest, not conversational memory, is the durable handoff authority.
 
 
+
+### Parallel-lane occupancy and stacked development
+
+The Development Control Plane distinguishes managed active lanes from legacy
+registered worktrees. Old worktrees remain visible for hygiene but do not count
+as active AI lanes unless they carry a current shared lane manifest.
+
+Uncommitted work in the canonical `main` checkout is treated as an occupied
+working lane for conflict forecasting. Its paths and inferred semantic contracts
+participate in overlap detection. Canonical occupancy blocks integration into
+`main`; it does **not** block creation or development of independent feature
+worktrees from the last committed GitHub-exact authority.
+
+Before the control-plane feature itself reaches `main`, another feature may be
+created as a stacked lane from the clean committed control-plane branch:
+
+```bash
+aoe2war parallel new <feature> --owner <agent>
+```
+
+That lane records the control-plane branch as a dependency and records the exact
+parent HEAD as its base. Once the control plane is integrated into `main`,
+ordinary lanes may instead be based directly on canonical `main`.
+
+No `parallel new` path performs an automatic merge, rebase, production
+deployment, or production database mutation.
+
+
 ## Feature-worktree development and closure
 
 Feature worktrees are first-class inputs to ordinary AoE2WAR closure.
