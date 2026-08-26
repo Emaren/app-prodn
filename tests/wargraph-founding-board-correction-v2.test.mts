@@ -169,3 +169,43 @@ test("WarGraph V2 documentation records the final visible founding board", () =>
   );
   assert.match(docs, /Emaren ↔ - Ra/);
 });
+
+test(
+  "WarGraph V2 never deletes its append-only correction buffer node",
+  () => {
+    const source = readFileSync(
+      new URL(
+        "../lib/wargraph/foundation.ts",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    const correction =
+      source.match(
+        /async function applyFoundingBoardCorrectionV2[\s\S]*?async function ensureNight/,
+      )?.[0] ?? "";
+
+    assert.ok(correction);
+    assert.match(
+      correction,
+      /warGraphNode\.create/,
+    );
+    assert.doesNotMatch(
+      correction,
+      /warGraphNode\.delete/,
+    );
+    assert.doesNotMatch(
+      correction,
+      /warGraphNode\.update/,
+    );
+    assert.doesNotMatch(
+      correction,
+      /warGraphNode\.upsert/,
+    );
+    assert.match(
+      correction,
+      /append-only/,
+    );
+  },
+);

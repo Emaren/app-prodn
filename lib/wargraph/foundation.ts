@@ -1256,8 +1256,10 @@ async function applyFoundingBoardCorrectionV2(
     });
   }
 
-  await tx.warGraphNode.delete({ where: { id: tempNode.id } });
-
+  // war_graph_nodes is append-only. The correction buffer therefore remains
+  // as an unoccupied historical Frontier node after the founding rotation.
+  // Public projection ignores unoccupied nodes, while topology history stays
+  // immutable and auditable.
   for (const change of changes) {
     const sourceKey = `${FOUNDING_CORRECTION_V2.sourcePrefix}:${change.key}`;
     const versionBefore = change.membership.version;
