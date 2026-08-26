@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
 import {
   normalizeWarGraphIdentity,
@@ -72,3 +73,39 @@ test("graph advisory lock keys are stable and reject ambiguous identities", () =
     /WARGRAPH_LOCK_GRAPH_ID_INVALID/,
   );
 });
+
+test(
+  "foundation never updates established append-only topology nodes",
+  () => {
+    const source = readFileSync(
+      new URL(
+        "../lib/wargraph/foundation.ts",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+
+    const topology =
+      source.match(
+        /async function ensureTopology[\s\S]*?async function eligibleUsers/,
+      )?.[0] ?? "";
+
+    assert.ok(topology);
+    assert.doesNotMatch(
+      topology,
+      /warGraphNode\.upsert/,
+    );
+    assert.match(
+      topology,
+      /warGraphNode\.findUnique/,
+    );
+    assert.match(
+      topology,
+      /warGraphNode\.create/,
+    );
+    assert.match(
+      topology,
+      /WARGRAPH_TOPOLOGY_NODE_MISMATCH/,
+    );
+  },
+);

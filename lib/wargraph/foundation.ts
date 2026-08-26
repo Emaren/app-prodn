@@ -387,18 +387,35 @@ async function ensureTopology(
 
     if (seed.capacity !== null) {
       for (let ordinal = 0; ordinal < seed.capacity; ordinal += 1) {
-        await tx.warGraphNode.upsert({
+        const seatKey = `${seed.key}:${ordinal}`;
+        const existingNode = await tx.warGraphNode.findUnique({
           where: {
             graphId_seatKey: {
               graphId,
-              seatKey: `${seed.key}:${ordinal}`,
+              seatKey,
             },
           },
-          update: {},
-          create: {
+          select: {
+            layerId: true,
+            ordinal: true,
+          },
+        });
+
+        if (existingNode) {
+          if (
+            existingNode.layerId !== layer.id ||
+            existingNode.ordinal !== ordinal
+          ) {
+            throw new Error("WARGRAPH_TOPOLOGY_NODE_MISMATCH");
+          }
+          continue;
+        }
+
+        await tx.warGraphNode.create({
+          data: {
             graphId,
             layerId: layer.id,
-            seatKey: `${seed.key}:${ordinal}`,
+            seatKey,
             ordinal,
             angularSeed: ordinal,
             presentation: {},
