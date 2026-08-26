@@ -514,12 +514,23 @@ def refresh(
 ) -> None:
     prepare(target)
 
-    checked(
+    current_branch = checked(
         [
-            "python3",
-            "scripts/dev-shadow.py",
-            "refresh",
+            "git",
+            "branch",
+            "--show-current",
         ],
+        cwd=target,
+    )
+
+    command = (
+        ["python3", "scripts/aoe2_parallel.py", "refresh"]
+        if current_branch and current_branch != "main"
+        else ["python3", "scripts/dev-shadow.py", "refresh"]
+    )
+
+    checked(
+        command,
         cwd=target,
         capture=False,
     )
@@ -539,7 +550,26 @@ def serve(
         "PASS: launching local shadow as Emaren"
     )
 
+    current_branch = checked(
+        [
+            "git",
+            "branch",
+            "--show-current",
+        ],
+        cwd=target,
+    )
+
     os.chdir(target)
+
+    if current_branch and current_branch != "main":
+        os.execvp(
+            "python3",
+            [
+                "python3",
+                "scripts/aoe2_parallel.py",
+                "serve",
+            ],
+        )
 
     os.execvp(
         "npm",
@@ -589,16 +619,63 @@ def new_worktree(
             "canonical operator repo is not on main"
         )
 
-    if checked(
+    # Parallel development may start while another AI owns uncommitted
+    # work in the canonical checkout. The dirty working tree is never copied,
+    # staged, reset, committed, or modified here. New lanes are created from the
+    # exact committed/GitHub main SHA only.
+    dirty = checked(
         [
             "git",
             "status",
             "--porcelain",
+            "--untracked-files=all",
         ],
         cwd=canonical,
-    ):
+    )
+
+    checked(
+        [
+            "git",
+            "fetch",
+            "origin",
+            "main",
+        ],
+        cwd=canonical,
+        capture=False,
+    )
+
+    base_sha = checked(
+        [
+            "git",
+            "rev-parse",
+            "HEAD",
+        ],
+        cwd=canonical,
+    )
+
+    origin_main = checked(
+        [
+            "git",
+            "rev-parse",
+            "origin/main",
+        ],
+        cwd=canonical,
+    )
+
+    if base_sha != origin_main:
         raise DevError(
-            "canonical operator repo is dirty"
+            "canonical committed HEAD is not exact with origin/main; "
+            "refusing parallel lane creation"
+        )
+
+    if dirty:
+        print(
+            "NOTE: canonical main contains another lane's uncommitted work; "
+            "it will remain untouched"
+        )
+        print(
+            "PASS: new lane will branch from exact committed main "
+            + base_sha
         )
 
     slug = slugify(name)
@@ -639,7 +716,7 @@ def new_worktree(
             "-b",
             branch,
             str(target),
-            "main",
+            base_sha,
         ],
         cwd=canonical,
         capture=False,
@@ -647,11 +724,27 @@ def new_worktree(
 
     prepare(target)
 
+    # Register the lane before any local runtime/shadow work so the shared
+    # control plane assigns a stable port pair and a unique disposable DB.
+    checked(
+        [
+            "python3",
+            "scripts/aoe2_parallel.py",
+            "claim",
+            "--owner",
+            os.environ.get("AOE2WAR_AI_OWNER", "unclaimed"),
+            "--state",
+            "BUILDING",
+        ],
+        cwd=target,
+        capture=False,
+    )
+
     if refresh_shadow:
         checked(
             [
                 "python3",
-                "scripts/dev-shadow.py",
+                "scripts/aoe2_parallel.py",
                 "refresh",
             ],
             cwd=target,
@@ -673,7 +766,7 @@ def new_worktree(
         f'cd "{target}"'
     )
     print(
-        "aoe2war dev serve"
+        "aoe2war parallel serve"
     )
 
     return target

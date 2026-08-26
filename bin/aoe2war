@@ -72,6 +72,7 @@ SPEED="$BIN_DIR/../scripts/aoe2_speed.py"
 DOCS_OS="$BIN_DIR/../scripts/aoe2_docs.py"
 COUNCIL="$BIN_DIR/../scripts/aoe2_council.py"
 WORKSPACE="$BIN_DIR/../scripts/aoe2_workspace.py"
+PARALLEL="$BIN_DIR/../scripts/aoe2_parallel.py"
 HOST_OS="$BIN_DIR/../scripts/aoe2_host.py"
 RECOVERY_OS="$BIN_DIR/../scripts/aoe2_recovery.py"
 SPEED_PULSE="$BIN_DIR/../scripts/aoe2_speed_pulse.py"
@@ -95,6 +96,7 @@ Usage:
   aoe2war storage <status|plan|maintain|verify> [options]
   aoe2war council [--json]
   aoe2war workspace <status|plan|clean> [options]
+  aoe2war parallel <status|plan|claim|handoff|runtime|refresh|serve> [options]
   aoe2war facts [--json]
   aoe2war dev <status|prepare|refresh|serve|new> [options]
   aoe2war deps
@@ -359,6 +361,10 @@ case "$command" in
   workspace)
     shift
     exec python3 "$WORKSPACE" "$@"
+    ;;
+  parallel)
+    shift
+    exec python3 "$PARALLEL" "$@"
     ;;
   facts)
     shift

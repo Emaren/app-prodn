@@ -110,6 +110,27 @@ phase-specific or diagnostic use. Routine end-of-work closure should use
 `aoe2war finish`; direct `aoe2war deploy` is the deliberately scoped lower-level
 web release lane.
 
+## Parallel AI development control plane
+
+AoE2WAR permits parallel feature development while keeping canonical main integration and production release serialized. Every concurrent AI feature owns a distinct registered Git worktree and named non-main branch. Agents must not concurrently edit one physical checkout.
+
+The local shared control plane uses `aoe2war parallel` and stores lane manifests under the Git common directory, outside feature branches. Manifests record owner, lifecycle state, original base SHA, isolated local HTTPS port, isolated disposable shadow database, semantic contracts, dependencies, handoff notes and test receipts.
+
+```bash
+aoe2war parallel claim --owner ChatGPT
+aoe2war parallel status
+aoe2war parallel plan
+aoe2war parallel runtime
+aoe2war parallel refresh
+aoe2war parallel serve
+aoe2war parallel handoff --state TESTING --next "..."
+```
+
+Conflict forecasting surfaces exact changed-path overlap, critical semantic overlap, two simultaneous database frontiers and current-main drift. V1 never auto-merges or auto-rebases. Feature coding/testing may be parallel; only one ready lane advances canonical main and enters the existing deployment lock at a time.
+
+Each lane receives its own localhost port pair and disposable production-shaped local shadow database. Production database mutation credentials remain absent. A paused AI lane may remain untouched while other feature lanes continue. Git plus the lane manifest, not conversational memory, is the durable handoff authority.
+
+
 ## Feature-worktree development and closure
 
 Feature worktrees are first-class inputs to ordinary AoE2WAR closure.

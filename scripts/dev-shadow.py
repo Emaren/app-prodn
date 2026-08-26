@@ -12,7 +12,10 @@ from urllib.parse import quote, unquote, urlsplit, urlunsplit
 ROOT = Path(__file__).resolve().parents[1]
 ENV_FILE = ROOT / ".env.local"
 SSH_TARGET = "root@157.180.114.124"
-SHADOW_DB = "aoe2hdbets_shadow"
+SHADOW_DB = os.environ.get("AOE2WAR_SHADOW_DB", "aoe2hdbets_shadow").strip()
+DEV_PORT = int(os.environ.get("AOE2WAR_DEV_PORT", "3000"))
+if DEV_PORT < 1024 or DEV_PORT > 65533:
+    raise SystemExit("STOP: invalid AOE2WAR_DEV_PORT")
 PREVIEW_ORIGIN = "https://aoe2war.com"
 PREVIEW_NAME = "Emaren"
 
@@ -282,7 +285,7 @@ def wait_for_https(process: subprocess.Popen) -> bool:
 
         try:
             with socket.create_connection(
-                ("127.0.0.1", 3000),
+                ("127.0.0.1", DEV_PORT),
                 timeout=0.25,
             ):
                 return True
@@ -365,7 +368,7 @@ def serve_shadow() -> int:
         )
     print("PASS: production media/public read surfaces remain available")
     print()
-    print("> Local code + hot reload: https://localhost:3000")
+    print(f"> Local code + hot reload: https://localhost:{DEV_PORT}")
     print("> Clan/AI control plane: LOCAL WRITABLE PRODUCTION-SHAPED CLONE")
     print("> Heavy game/replay corpus: NOT CLONED")
     print("> Production DB write path: NONE")
@@ -380,7 +383,7 @@ def serve_shadow() -> int:
     try:
         if wait_for_https(node):
             subprocess.Popen(
-                ["open", "https://localhost:3000/clans/aoe2war"],
+                ["open", f"https://localhost:{DEV_PORT}/clans/aoe2war"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )

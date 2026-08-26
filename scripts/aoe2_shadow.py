@@ -1450,11 +1450,12 @@ def refresh_shadow_v12() -> None:
         development_contract()
     )
 
-    database_name = str(
-        development.get(
-            "shadow_database"
+    database_name = (
+        os.environ.get("AOE2WAR_SHADOW_DB", "").strip()
+        or str(
+            development.get("shadow_database")
+            or "aoe2hdbets_shadow"
         )
-        or "aoe2hdbets_shadow"
     )
 
     configured_role = str(

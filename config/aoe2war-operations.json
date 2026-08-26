@@ -203,5 +203,21 @@
     "shadow_app_role_createdb": false,
     "shadow_fk_policy": "automatic-referenced-table-closure",
     "shadow_activity_event_limit": 5000
+  },
+  "parallel_development": {
+    "enabled": true,
+    "integration_policy": "parallel-development-serialized-main-production",
+    "recommended_active_lane_limit": 5,
+    "auto_merge": false,
+    "auto_rebase": false,
+    "database_frontier_policy": "single-owner-or-explicit-stacked-dependency",
+    "state_store_relative_to_git_common_dir": "aoe2war-dev/lanes",
+    "dev_port_start": 3100,
+    "dev_port_end": 3198,
+    "dev_port_stride": 2,
+    "shadow_database_prefix": "aoe2hdbets_shadow_lane_",
+    "feature_lane_authority": "git-worktree-plus-shared-lane-manifest",
+    "main_authority": "canonical-operator-main-only",
+    "production_release_serialization": "existing-global-release-lock"
   }
 }
