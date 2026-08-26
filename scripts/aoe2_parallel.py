@@ -160,6 +160,10 @@ def parallel_policy() -> dict[str, Any]:
     return dict(load_operations().get("parallel_development") or {})
 
 
+def development_policy() -> dict[str, Any]:
+    return dict(load_operations().get("development") or {})
+
+
 def canonical_repo() -> Path:
     value = load_operations()["canonical"]["operator_repo"]
     return Path(value).expanduser().resolve()
@@ -374,6 +378,13 @@ def is_ancestor(repo: Path, ancestor: str, descendant: str) -> bool:
     )
 
 
+def assign_manifest_list(payload: dict[str, Any], key: str, values: list[str] | None) -> None:
+    if values is None:
+        payload.setdefault(key, [])
+        return
+    payload[key] = sorted({value.strip() for value in values if value.strip()})
+
+
 def register_lane(
     repo: Path,
     *,
@@ -416,27 +427,11 @@ def register_lane(
     )
     payload.setdefault("dev_port", allocate_port(branch, repo))
     payload.setdefault("shadow_database", database_name(branch))
+    payload.setdefault("truth_profile", str(development_policy().get("shadow_truth_profile") or "full-lightweight"))
 
-    if contracts is not None:
-        payload["contracts"] = sorted(
-            {value.strip() for value in contracts if value.strip()}
-        )
-    else:
-        payload.setdefault("contracts", [])
-
-    if depends_on is not None:
-        payload["depends_on"] = sorted(
-            {value.strip() for value in depends_on if value.strip()}
-        )
-    else:
-        payload.setdefault("depends_on", [])
-
-    if planned_paths is not None:
-        payload["planned_paths"] = sorted(
-            {value.strip() for value in planned_paths if value.strip()}
-        )
-    else:
-        payload.setdefault("planned_paths", [])
+    assign_manifest_list(payload, "contracts", contracts)
+    assign_manifest_list(payload, "depends_on", depends_on)
+    assign_manifest_list(payload, "planned_paths", planned_paths)
 
     if note is not None:
         payload["note"] = note
@@ -627,6 +622,14 @@ def snapshot() -> dict[str, Any]:
     conflicts: list[dict[str, Any]] = []
     for index, left in enumerate(conflict_inputs):
         for right in conflict_inputs[index + 1 :]:
+            explicitly_stacked = (
+                left["branch"] in right.get("depends_on", [])
+                or right["branch"] in left.get("depends_on", [])
+            )
+
+            if explicitly_stacked:
+                continue
+
             severity, file_overlap, semantic_overlap = conflict_severity(
                 left,
                 right,
@@ -809,6 +812,7 @@ def runtime_environment(repo: Path) -> tuple[dict[str, Any], dict[str, str]]:
     env = os.environ.copy()
     env["AOE2WAR_DEV_PORT"] = str(payload["dev_port"])
     env["AOE2WAR_SHADOW_DB"] = str(payload["shadow_database"])
+    env["AOE2WAR_SHADOW_PROFILE"] = str(payload.get("truth_profile") or development_policy().get("shadow_truth_profile") or "full-lightweight")
     return payload, env
 
 
@@ -971,9 +975,9 @@ def main() -> int:
     command = sub.add_parser("claim")
     command.add_argument("--owner", required=True)
     command.add_argument("--state", default="BUILDING", choices=sorted(STATES))
-    command.add_argument("--contract", action="append", default=[])
-    command.add_argument("--depends-on", action="append", default=[])
-    command.add_argument("--path", action="append", default=[])
+    command.add_argument("--contract", action="append")
+    command.add_argument("--depends-on", action="append")
+    command.add_argument("--path", action="append")
     command.add_argument("--note")
 
     command = sub.add_parser("handoff")
@@ -983,6 +987,7 @@ def main() -> int:
     command.add_argument("--test", action="append", default=[])
 
     sub.add_parser("runtime")
+    sub.add_parser("truth")
     sub.add_parser("refresh")
     sub.add_parser("serve")
 
@@ -1043,7 +1048,12 @@ def main() -> int:
             print(f"HTTPS:    https://localhost:{payload['dev_port']}")
             print(f"Redirect: http://localhost:{int(payload['dev_port']) + 1}")
             print(f"Shadow:   {payload['shadow_database']}")
+            print(f"Truth:    {payload.get('truth_profile') or 'full-lightweight'}")
             return 0
+
+        if command_name == "truth":
+            payload, env = runtime_environment(ROOT)
+            return subprocess.run([sys.executable, "scripts/dev-shadow.py", "truth"], cwd=ROOT, env=env, check=False).returncode
 
         if command_name in {"refresh", "serve"}:
             payload, env = runtime_environment(ROOT)

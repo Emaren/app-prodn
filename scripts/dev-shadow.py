@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import os
+import shutil
 import socket
 import subprocess
 import sys
@@ -146,11 +148,59 @@ def local_pg_cli_args(base_url: str) -> tuple[list[str], dict[str, str]]:
     return args, env
 
 
-def refresh_shadow() -> None:
-    from aoe2_shadow import (
-        refresh_shadow_v12,
-    )
+def port_is_listening(port: int) -> bool:
+    try:
+        with socket.create_connection(("127.0.0.1",port),timeout=0.2): return True
+    except OSError: return False
 
+def assert_refresh_ports_free() -> None:
+    used=[p for p in (DEV_PORT,DEV_PORT+1) if port_is_listening(p)]
+    if used: stop("lane runtime is still serving on port(s) "+", ".join(map(str,used)))
+
+def truth_settings() -> tuple[str,int]:
+    from aoe2_shadow import development_contract, truth_profile_name
+    dev=development_contract()
+    return truth_profile_name(), int(dev.get("shadow_truth_fresh_seconds") or 1800)
+
+def print_truth_receipt() -> int:
+    from aoe2_shadow import read_truth_receipt
+    profile,max_age=truth_settings()
+    print(json.dumps({"database":SHADOW_DB,"profile":profile,"max_age_seconds":max_age,"receipt":read_truth_receipt(SHADOW_DB)},indent=2,sort_keys=True))
+    return 0
+
+def ensure_truth_ready() -> None:
+    from aoe2_shadow import truth_receipt_is_fresh
+    profile,max_age=truth_settings()
+    if truth_receipt_is_fresh(SHADOW_DB,profile,max_age):
+        print(f"PASS: production truth mirror is fresh (profile={profile})")
+        return
+    print("NOTE: production truth mirror missing/stale; refreshing before serve")
+    refresh_shadow()
+
+def instrumentation_hold_path() -> Path:
+    safe="".join(ch if ch.isalnum() else "_" for ch in str(ROOT))[-80:]
+    return Path("/tmp")/f"aoe2war-{safe}-instrumentation.ts"
+
+def suspend_production_instrumentation() -> tuple[Path,Path]:
+    src=ROOT/"instrumentation.ts"; hold=instrumentation_hold_path()
+    if not src.is_file() and hold.is_file():
+        hold.replace(src); print("PASS: recovered stale instrumentation hold")
+    if not src.is_file(): stop("instrumentation.ts is missing")
+    if hold.exists(): stop("stale instrumentation hold collision")
+    src.replace(hold); return src,hold
+
+def restore_production_instrumentation(src: Path, hold: Path) -> None:
+    if hold.is_file():
+        hold.replace(src); print("PASS: instrumentation.ts restored")
+
+def prepare_next_runtime() -> None:
+    shutil.rmtree(ROOT/".next",ignore_errors=True)
+    print("PASS: lane-local Next development cache reset")
+
+
+def refresh_shadow() -> None:
+    from aoe2_shadow import refresh_shadow_v12
+    assert_refresh_ports_free()
     refresh_shadow_v12()
 
 
@@ -296,6 +346,7 @@ def wait_for_https(process: subprocess.Popen) -> bool:
 
 
 def serve_shadow() -> int:
+    ensure_truth_ready()
     base_url = local_base_database_url()
     shadow_url = database_url_with_name(base_url, SHADOW_DB)
 
@@ -374,6 +425,8 @@ def serve_shadow() -> int:
     print("> Production DB write path: NONE")
     print()
 
+    prepare_next_runtime()
+
     node = subprocess.Popen(
         ["node", "server.js"],
         cwd=ROOT,
@@ -383,7 +436,7 @@ def serve_shadow() -> int:
     try:
         if wait_for_https(node):
             subprocess.Popen(
-                ["open", f"https://localhost:{DEV_PORT}/clans/aoe2war"],
+                ["open", f"https://localhost:{DEV_PORT}/"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -401,17 +454,12 @@ def serve_shadow() -> int:
 
 
 def main() -> int:
-    if len(sys.argv) != 2 or sys.argv[1] not in {"refresh", "serve"}:
-        print(
-            "Usage: python3 scripts/dev-shadow.py {refresh|serve}",
-            file=sys.stderr,
-        )
+    if len(sys.argv) != 2 or sys.argv[1] not in {"truth","refresh","serve"}:
+        print("Usage: python3 scripts/dev-shadow.py {truth|refresh|serve}",file=sys.stderr)
         return 2
-
-    if sys.argv[1] == "refresh":
-        refresh_shadow()
-        return 0
-
+    if sys.argv[1]=="truth": return print_truth_receipt()
+    if sys.argv[1]=="refresh":
+        refresh_shadow(); return 0
     return serve_shadow()
 
 

@@ -202,7 +202,16 @@
     "shadow_restore_authority": "local-superuser-only",
     "shadow_app_role_createdb": false,
     "shadow_fk_policy": "automatic-referenced-table-closure",
-    "shadow_activity_event_limit": 5000
+    "shadow_activity_event_limit": 5000,
+    "production_truth_policy": "full-lightweight-local-mirror-plus-heavy-read-through",
+    "shadow_truth_profile": "full-lightweight",
+    "shadow_truth_fresh_seconds": 1800,
+    "shadow_truth_receipt_relative_to_git_common_dir": "aoe2war-dev/truth",
+    "shadow_restore_transaction": "single-transaction",
+    "shadow_refresh_requires_lane_offline": true,
+    "shadow_clean_next_on_serve": true,
+    "shadow_default_open_path": "/",
+    "heavy_truth_policy": "read-only-read-through-or-selective-clone"
   },
   "parallel_development": {
     "enabled": true,

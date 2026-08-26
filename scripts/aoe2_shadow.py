@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shlex
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import (
     quote,
@@ -59,6 +61,81 @@ REQUIRED_ACTIVITY_TYPES = (
     "market_shop_proposal",
     "market_avatar_commission",
 )
+
+FINANCIAL_ROOTS = ("users", "bet_wagers", "pending_wolo_claims")
+HOME_ROOTS = (
+    "hero_playlists", "hero_screens", "hero_playlist_items",
+    "hero_playlist_publications", "event_tiles", "forum_threads",
+    "managed_media_assets", "trophies", "game_stats", "scheduled_matches",
+)
+FULL_LIGHTWEIGHT_PREFIXES = (
+    "ai_", "bet_", "chat_", "clan_", "direct_", "event_", "forum_",
+    "hero_", "marketplace_", "user_", "workshop_",
+)
+TRUTH_PROFILES = {"core", "financial", "home", "full-lightweight"}
+
+def truth_profile_name() -> str:
+    value = os.environ.get("AOE2WAR_SHADOW_PROFILE", "").strip() or str(
+        development_contract().get("shadow_truth_profile") or "full-lightweight"
+    )
+    if value not in TRUTH_PROFILES:
+        stop("unknown shadow truth profile: " + value)
+    return value
+
+def profile_root_tables(profile: str, available: set[str]) -> set[str]:
+    if profile == "core":
+        roots=set(BASE_ROOTS)
+    elif profile == "financial":
+        roots=set(FINANCIAL_ROOTS)
+    elif profile == "home":
+        roots=set(BASE_ROOTS)|set(FINANCIAL_ROOTS)|set(HOME_ROOTS)|{"chat_rooms","chat_messages"}
+    elif profile == "full-lightweight":
+        roots=set(BASE_ROOTS)|set(FINANCIAL_ROOTS)|set(HOME_ROOTS)|set(CHAT_AUXILIARY_ROOTS)|{"chat_rooms","chat_messages"}
+        roots.update(t for t in available if t.startswith(FULL_LIGHTWEIGHT_PREFIXES))
+    else:
+        stop("unknown shadow truth profile: "+profile)
+    roots.discard(BOUNDED_TABLE)
+    return {t for t in roots if t in available}
+
+def _git_common_dir() -> Path:
+    raw=subprocess.check_output(["git","rev-parse","--git-common-dir"],cwd=ROOT,text=True).strip()
+    p=Path(raw)
+    return (p if p.is_absolute() else ROOT/p).resolve()
+
+def truth_receipt_path(database_name: str) -> Path:
+    rel=str(development_contract().get("shadow_truth_receipt_relative_to_git_common_dir") or "aoe2war-dev/truth")
+    root=_git_common_dir()/rel
+    root.mkdir(parents=True,exist_ok=True)
+    return root/(hashlib.sha256(database_name.encode()).hexdigest()[:16]+".json")
+
+def read_truth_receipt(database_name: str) -> dict | None:
+    p=truth_receipt_path(database_name)
+    if not p.is_file(): return None
+    try: data=json.loads(p.read_text())
+    except Exception: return None
+    return data if data.get("database")==database_name else None
+
+def truth_receipt_is_fresh(database_name: str, profile: str, max_age_seconds: int) -> bool:
+    data=read_truth_receipt(database_name)
+    if not data or data.get("profile")!=profile: return False
+    epoch=data.get("generated_epoch")
+    if not isinstance(epoch,(int,float)): return False
+    return max(0.0,time.time()-float(epoch)) <= max(0,max_age_seconds)
+
+def write_truth_receipt(*, database_name: str, profile: str, snapshot_tables: list[str], counts: dict[str,int], elapsed_seconds: float) -> Path:
+    p=truth_receipt_path(database_name)
+    data={
+        "schema":1,"database":database_name,"profile":profile,
+        "generated_at":datetime.now(timezone.utc).isoformat(),
+        "generated_epoch":time.time(),
+        "git_head":subprocess.check_output(["git","rev-parse","HEAD"],cwd=ROOT,text=True).strip(),
+        "table_count":len(snapshot_tables),"tables":snapshot_tables,
+        "core_counts":counts,"elapsed_seconds":round(elapsed_seconds,3),
+        "production_mutation_authority":False,"local_writes_only":True,
+    }
+    tmp=p.with_suffix(".tmp"); tmp.write_text(json.dumps(data,indent=2,sort_keys=True)+"\n"); tmp.replace(p)
+    return p
+
 
 
 class ShadowError(RuntimeError):
@@ -628,44 +705,10 @@ def compute_fk_closure(
     return closure
 
 
-def desired_snapshot_tables(
-    shadow_url: str,
-) -> set[str]:
-    available = local_public_tables(
-        shadow_url
-    )
-
-    roots = {
-        table
-        for table in BASE_ROOTS
-        if table in available
-    }
-
-    roots.update(
-        table
-        for table in CHAT_AUXILIARY_ROOTS
-        if table in available
-    )
-
-    roots.update(
-        table
-        for table in available
-        if table.startswith(
-            "direct_"
-        )
-    )
-
-    roots.discard(
-        BOUNDED_TABLE
-    )
-
-    return compute_fk_closure(
-        roots,
-        local_fk_pairs(
-            shadow_url
-        ),
-    )
-
+def desired_snapshot_tables(shadow_url: str) -> set[str]:
+    available = local_public_tables(shadow_url)
+    roots = profile_root_tables(truth_profile_name(), available)
+    return compute_fk_closure(roots, local_fk_pairs(shadow_url))
 
 def remote_target() -> str:
     host = canonical_contract()[
@@ -883,6 +926,16 @@ def is_pg_dump_compatibility_line(
     )
 
 
+def truncate_snapshot_tables(base_url: str, *, database_name: str, tables: list[str]) -> None:
+    if not tables: return
+    if any(not t.replace("_","").isalnum() for t in tables):
+        stop("unsafe snapshot table identifier")
+    sql="TRUNCATE TABLE "+", ".join(f'public."{t}"' for t in tables)+" RESTART IDENTITY CASCADE;"
+    result=admin_psql(base_url,database=database_name,sql=sql,capture=False)
+    if result.returncode!=0: stop("could not clear local snapshot destination")
+    print("PASS: local snapshot destination cleared before restore")
+
+
 def restore_snapshot(
     base_url: str,
     *,
@@ -907,6 +960,7 @@ def restore_snapshot(
             database_name,
             "--set",
             "ON_ERROR_STOP=1",
+            "--single-transaction",
             "--quiet",
         ],
         cwd=ROOT,
@@ -1295,6 +1349,26 @@ def reset_sequences(
                 + table
             )
 
+        id_column_rows = query_lines(
+            shadow_url,
+            (
+                "SELECT EXISTS ("
+                "SELECT 1 "
+                "FROM information_schema.columns "
+                "WHERE table_schema='public' "
+                f"AND table_name='{table}' "
+                "AND column_name='id'"
+                ");"
+            ),
+        )
+
+        if (
+            not id_column_rows
+            or id_column_rows[0]
+            not in {"t", "true"}
+        ):
+            continue
+
         sequence_rows = query_lines(
             shadow_url,
             (
@@ -1450,6 +1524,9 @@ def refresh_shadow_v12() -> None:
         development_contract()
     )
 
+    profile = truth_profile_name()
+    print("Truth profile: " + profile)
+
     database_name = (
         os.environ.get("AOE2WAR_SHADOW_DB", "").strip()
         or str(
@@ -1579,6 +1656,8 @@ def refresh_shadow_v12() -> None:
             "starts empty: "
             + table
         )
+
+    truncate_snapshot_tables(base_url, database_name=database_name, tables=snapshot_tables)
 
     restore_snapshot(
         base_url,
@@ -1716,10 +1795,18 @@ def refresh_shadow_v12() -> None:
         )
     )
 
+    receipt = write_truth_receipt(
+        database_name=database_name,
+        profile=profile,
+        snapshot_tables=snapshot_tables,
+        counts=counts,
+        elapsed_seconds=elapsed,
+    )
     print(
         "PASS: shadow refresh completed "
         f"in {elapsed:.1f}s"
     )
+    print("PASS: production truth receipt = " + str(receipt))
 
 
 if __name__ == "__main__":

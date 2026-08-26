@@ -34,6 +34,7 @@ module.exports = {
   reactStrictMode: false,
   productionBrowserSourceMaps: false,
 
+
   // The production release sandbox is a 4 GiB cgroup. Keep expensive
   // validation fail-closed, but run it sequentially in prebuild instead of
   // overlapping Next's lint/type workers with the compiled application graph.
@@ -70,7 +71,21 @@ module.exports = {
   // Release staging deliberately discards .next-release/cache before
   // artifact hashing. Do not materialize Webpack's filesystem cache in the
   // isolated release worktree only to delete it immediately afterward.
-  webpack(config) {
+  webpack(config, { dev }) {
+    // instrumentation.ts is production-only, but Next still compiles its
+    // static dependency graph during local development. Replace only the
+    // WarGraph runtime import in dev so Node-only pg/fs dependencies never
+    // enter the development instrumentation bundle.
+    if (dev) {
+      config.resolve.alias = {
+        ...(config.resolve.alias || {}),
+        "./lib/wargraph/runtime$": path.join(
+          __dirname,
+          "lib/wargraph/runtime.dev.ts"
+        ),
+      };
+    }
+
     if (process.env.NEXT_DIST_DIR === ".next-release") {
       config.cache = false;
     }

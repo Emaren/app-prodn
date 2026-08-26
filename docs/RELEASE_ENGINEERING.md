@@ -998,3 +998,19 @@ This is an evidence-based rejection of that cache topology, not a relaxation of
 release guarantees. Frozen dependency inputs, Prisma engine identity, candidate
 dependency hashing, cache-free artifact hashing, activation certification,
 rollback evidence, and Wolo protection remain authoritative.
+
+## Development Control Plane V1.2 — Production Truth Lanes
+
+Parallel AI lanes default to full lightweight production truth with local-only writes.
+Users/profiles, leaderboard/game summary truth, clans/chat, War Chest, Hero Studio,
+marketplace/control-plane data, and managed-media metadata are mirrored into each
+lane's disposable localhost shadow with automatic FK closure. Giant replay,
+telemetry, and immutable-media corpora remain read-only/read-through or selectively
+cloned.
+
+Shadow refresh is exclusive to an offline lane, clears destination tables first,
+restores in one transaction, and writes a git-common-dir truth receipt. `parallel
+serve` auto-refreshes stale/missing truth, resets the lane-local Next cache, suppresses
+production-only instrumentation during local development, restores it on exit, and
+opens `/`. Omitted `parallel claim` list options preserve existing dependencies,
+contracts, and planned paths.
