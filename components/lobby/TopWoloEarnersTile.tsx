@@ -14,6 +14,10 @@ import type { LobbySnapshot } from "@/lib/lobby";
 import type { LobbyWoloEarnersEntry, LobbyWoloEarnersMode } from "@/lib/lobby";
 import { featuredAvatarThumbUrlForUser } from "@/lib/avatarAssets";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
+import {
+  getWarChestModeSeedEntries,
+  getWarChestPeriodMetrics,
+} from "@/lib/warChestPeriodTruth";
 
 const WOLO_LOGO_SRC = "/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.webp";
 
@@ -187,7 +191,12 @@ export function TopWoloEarnersTile({
     if (activeModeRef.current !== mode) {
       activeModeRef.current = mode;
       prefetchedModeRef.current = null;
-      const seedEntries = boardMatchesMode ? boardEntries : [];
+      const seedEntries = getWarChestModeSeedEntries({
+        activeMode: mode,
+        boardMode,
+        boardEntries,
+        prefetchedEntriesByMode: board?.prefetchedEntriesByMode,
+      });
 
       setLazyEntries(seedEntries);
       setTotalParticipants(boardTotal);
@@ -220,7 +229,13 @@ export function TopWoloEarnersTile({
     setHasMoreEntries(nextHasMore);
     lazyLoadingRef.current = false;
     setLazyLoading(false);
-  }, [board?.entries, board?.mode, board?.totalParticipants, mode]);
+  }, [
+    board?.entries,
+    board?.mode,
+    board?.prefetchedEntriesByMode,
+    board?.totalParticipants,
+    mode,
+  ]);
 
   const loadNextBoardPage = useCallback(async () => {
     if (lazyLoadingRef.current || !hasMoreEntries) return;
@@ -462,6 +477,7 @@ export function TopWoloEarnersTile({
                 const primaryMetric =
                   mode === "weekly" ? entry.weeklyTakeWolo : entry.allTimeTakeWolo;
                 const primaryLabel = mode === "weekly" ? h("Weekly take") : h("All-time take");
+                const periodMetrics = getWarChestPeriodMetrics(entry, mode);
                 const avatarSrc = featuredAvatarThumbUrlForUser(entry.uid, entry.name);
                 const rowClassName = isExtreme
                   ? "relative block overflow-hidden rounded-[1.25rem] border border-amber-200/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.018))] px-3 py-3 transition [content-visibility:auto] [contain-intrinsic-size:auto_7rem] hover:border-amber-200/22 hover:bg-amber-300/7 sm:px-4 sm:py-4"
@@ -523,11 +539,11 @@ export function TopWoloEarnersTile({
                       <div className="col-start-2 min-w-0 sm:col-span-2 sm:col-start-2">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-300">
                           <span className="break-words sm:whitespace-nowrap">
-                            <span className="font-medium text-slate-200">{h("Settled")}</span> {formatWolo(entry.settledWolo)} WOLO
+                            <span className="font-medium text-slate-200">{h("Settled")}</span> {formatWolo(periodMetrics.settledWolo)} WOLO
                           </span>
                           <span className="hidden h-1 w-1 rounded-full bg-white/15 sm:inline-block" />
                           <span className="break-words sm:whitespace-nowrap">
-                            <span className="font-medium text-slate-200">{h("Wagered")}</span> {formatWolo(entry.wageredWolo)} WOLO
+                            <span className="font-medium text-slate-200">{h("Wagered")}</span> {formatWolo(periodMetrics.wageredWolo)} WOLO
                           </span>
                         </div>
                       </div>

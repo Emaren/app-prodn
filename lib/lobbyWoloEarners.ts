@@ -22,6 +22,7 @@ const MIN_VISIBLE_SLOTS = 3;
 
 type LoadLobbyWoloEarnersBoardOptions = {
   mode?: LobbyWoloEarnersMode;
+  prefetchAlternate?: boolean;
 };
 
 type UserIdentity = {
@@ -60,6 +61,8 @@ type ActorMetrics = {
   weeklyTakeWolo: number;
   settledWolo: number;
   wageredWolo: number;
+  weeklySettledWolo: number;
+  weeklyWageredWolo: number;
   claimCount: number;
   wagerCount: number;
   claimableWolo: number;
@@ -142,6 +145,22 @@ function sortMetricsForMode(mode: LobbyWoloEarnersMode) {
   };
 }
 
+function buildEntriesForMode(
+  metrics: ActorMetrics[],
+  mode: LobbyWoloEarnersMode,
+) {
+  return metrics
+    .slice()
+    .sort(sortMetricsForMode(mode))
+    .map((entry, index) =>
+      buildEntry(
+        entry,
+        index + 1,
+        entry.weeklyTakeWolo > 0 ? "weekly" : "backfill",
+      ),
+    );
+}
+
 function getCurrentUtcWeekStart(now: Date) {
   const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const daysSinceMonday = (weekStart.getUTCDay() + 6) % 7;
@@ -169,6 +188,8 @@ function buildEntry(
       weeklyTakeWolo: metrics.weeklyTakeWolo,
       settledWolo: metrics.settledWolo,
       wageredWolo: metrics.wageredWolo,
+      weeklySettledWolo: metrics.weeklySettledWolo,
+      weeklyWageredWolo: metrics.weeklyWageredWolo,
       claimCount: metrics.claimCount,
       wagerCount: metrics.wagerCount,
       claimableWolo: metrics.claimableWolo,
@@ -191,6 +212,8 @@ function buildEntry(
     weeklyTakeWolo: metrics.weeklyTakeWolo,
     settledWolo: metrics.settledWolo,
     wageredWolo: metrics.wageredWolo,
+    weeklySettledWolo: metrics.weeklySettledWolo,
+    weeklyWageredWolo: metrics.weeklyWageredWolo,
     claimCount: metrics.claimCount,
     wagerCount: metrics.wagerCount,
     claimableWolo: metrics.claimableWolo,
@@ -293,6 +316,8 @@ function getOrCreateActor(
     weeklyTakeWolo: 0,
     settledWolo: 0,
     wageredWolo: 0,
+    weeklySettledWolo: 0,
+    weeklyWageredWolo: 0,
     claimCount: 0,
     wagerCount: 0,
     claimableWolo: 0,
@@ -343,6 +368,8 @@ function mergeDuplicateActorNames(entries: ActorMetrics[]) {
     current.weeklyTakeWolo += entry.weeklyTakeWolo;
     current.settledWolo += entry.settledWolo;
     current.wageredWolo += entry.wageredWolo;
+    current.weeklySettledWolo += entry.weeklySettledWolo;
+    current.weeklyWageredWolo += entry.weeklyWageredWolo;
     current.claimCount += entry.claimCount;
     current.wagerCount += entry.wagerCount;
     current.claimableWolo += entry.claimableWolo;
@@ -502,6 +529,9 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
     }
     if (claimCountsAsSettled(claim)) {
       actor.settledWolo += claim.amountWolo;
+      if (claim.createdAt.getTime() >= weekStartsAt.getTime()) {
+        actor.weeklySettledWolo += claim.amountWolo;
+      }
     }
     if (claim.status === "pending") {
       actor.claimableWolo += claim.amountWolo;
@@ -521,6 +551,9 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
     });
 
     actor.wageredWolo += wager.amountWolo;
+    if (wager.createdAt.getTime() >= weekStartsAt.getTime()) {
+      actor.weeklyWageredWolo += wager.amountWolo;
+    }
     actor.wagerCount += 1;
     actor.lastActiveAt = setLatestActivity(actor.lastActiveAt, wager.createdAt);
 
@@ -529,6 +562,7 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
       actor.settledWolo += wager.payoutWolo ?? 0;
       if (takeSettledAt.getTime() >= weekStartsAt.getTime()) {
         actor.weeklyTakeWolo += wager.payoutWolo ?? 0;
+        actor.weeklySettledWolo += wager.payoutWolo ?? 0;
       }
       actor.lastActiveAt = setLatestActivity(actor.lastActiveAt, takeSettledAt);
     }
@@ -554,11 +588,19 @@ export async function loadLobbyWoloEarnersBoard(
   const weekStartsAt = getCurrentUtcWeekStart(generatedAt);
   const allMetrics = await loadBoardMetrics(prisma, weekStartsAt);
 
-  const entries = allMetrics
-    .sort(sortMetricsForMode(mode))
-    .map((entry, index) =>
-      buildEntry(entry, index + 1, entry.weeklyTakeWolo > 0 ? "weekly" : "backfill")
-    );
+  const entries = buildEntriesForMode(allMetrics, mode);
+  const prefetchedEntriesByMode = options.prefetchAlternate
+    ? {
+        weekly:
+          mode === "weekly"
+            ? entries
+            : buildEntriesForMode(allMetrics, "weekly"),
+        all_time:
+          mode === "all_time"
+            ? entries
+            : buildEntriesForMode(allMetrics, "all_time"),
+      }
+    : undefined;
 
   return {
     mode,
@@ -569,5 +611,6 @@ export async function loadLobbyWoloEarnersBoard(
     weekStartsAt: weekStartsAt.toISOString(),
     generatedAt: generatedAt.toISOString(),
     entries,
+    prefetchedEntriesByMode,
   };
 }

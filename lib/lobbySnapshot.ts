@@ -89,7 +89,10 @@ async function loadLobbySnapshotFresh(
         includeFeaturedClaimed: true,
         scope: "all",
       }),
-      loadLobbyWoloEarnersBoard(prisma, { mode: "weekly" }),
+      loadLobbyWoloEarnersBoard(prisma, {
+        mode: "weekly",
+        prefetchAlternate: true,
+      }),
       loadAoe2HdPulseSnapshot(),
     ]);
     const visibleLeaderboard = {
@@ -111,6 +114,16 @@ async function loadLobbySnapshotFresh(
         ? {
             ...woloEarners,
             entries: woloEarners.entries.slice(0, 16),
+            prefetchedEntriesByMode: woloEarners.prefetchedEntriesByMode
+              ? {
+                  weekly:
+                    woloEarners.prefetchedEntriesByMode.weekly?.slice(0, 16) ??
+                    [],
+                  all_time:
+                    woloEarners.prefetchedEntriesByMode.all_time?.slice(0, 16) ??
+                    [],
+                }
+              : undefined,
           }
         : woloEarners;
 
