@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-08-26"
 review_interval_days: 30
 sensitivity: "restricted"
 ---

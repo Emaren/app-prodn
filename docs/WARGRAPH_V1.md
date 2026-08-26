@@ -43,6 +43,49 @@ Frontier.
 Each warrior may participate in at most two resolved WarGraph contests per
 WarGraph night.
 
+### Founding board authority — 2026-08-25
+
+The fixed founding seats are:
+
+- Crown: Jim;
+- Ring I, left/right: [BDB]Pigman, Deltaforce;
+- Ring II, clockwise from twelve o'clock: Zodiac, pinoy16, MouldyBoars39381,
+  Sladk0Eshka, Dil_Pascana, Emaren.
+
+Founding correction V2 preserves the `1/2/6/elastic` topology with two exact
+three-warrior rotations and two exact swaps. Every correction is zero-action
+and zero-reward:
+
+- Zodiac takes somniosator's former Ring II seat, somniosator takes
+  [BDB]Pigman's former Frontier seat, and [BDB]Pigman takes Zodiac's former
+  Ring I seat;
+- Deltaforce ↔ c0LoRz;
+- Julio Alvarez takes Sniper's former Frontier seat, Sniper takes
+  MouldyBoars39381's former Frontier seat, and MouldyBoars39381 takes
+  Julio Alvarez's former Ring II seat;
+- Emaren ↔ - Ra.
+
+The correction is exactly-once and is permitted only before real WarGraph
+competition has begun. Unexpected, ambiguous or already-competitive state
+fails closed rather than fabricating movement history. Frontier seat ordinals
+remain elastic: V2 rotates each warrior through the actual Frontier nodes
+present in that realm rather than hard-coding historical Frontier ordinals.
+
+Warrior identity is bound to the stable Steam account, not to a mutable player
+name. WarGraph uses the same canonical name authority as the public leaderboards:
+the durable `steam:<SteamID>` identity is matched to the public player directory,
+and the newest accepted replay observation (`latestObservedName`) is the public
+display name. The membership name snapshot remains historical evidence and is
+used only as a fallback when no current directory observation exists. A rename
+never changes the warrior's seat, record, movement history, or constitutional
+identity.
+
+The Basic, Advanced and Extreme views share one authoritative board but may use
+different explanatory copy. Basic keeps the conceptual founding explanation;
+Advanced and Extreme currently use the operational Watcher / two-battle /
+Prime-hours explanation. These view-specific explanations are presentation
+only and never change WarGraph rules or state.
+
 ## WarGraph night
 
 The authoritative time zone is `America/Edmonton`.
@@ -51,8 +94,9 @@ Prime Window is 5:00 PM inclusive through 11:00 PM exclusive. New advances
 and organic battle qualification begin in Prime.
 
 An already-bound contest may continue through Afterburn using its full
-authoritative response and launch deadlines. Static State preserves the board
-between active windows.
+authoritative response and launch deadlines. Outside active windows the
+underlying `static` phase preserves the board; public presentation labels it
+**Board Locked** before Prime and **Night Complete** after the active window.
 
 Server time and stored deadlines are authoritative.
 

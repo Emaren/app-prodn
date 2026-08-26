@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import * as React from "react";
 import { Crown, RadioTower, Shield, Swords } from "lucide-react";
 
 import type {
@@ -233,6 +234,7 @@ function DesktopWarriorNode({
   selected,
   hasOpenAdvance,
   onSelect,
+  onPreview,
 }: {
   node: WarGraphPublicNode;
   position: NodePosition;
@@ -240,6 +242,7 @@ function DesktopWarriorNode({
   selected: boolean;
   hasOpenAdvance: boolean;
   onSelect: (nodeId: string) => void;
+  onPreview: (nodeId: string | null) => void;
 }) {
   const isCrown = position.radius === 0 || node.isCrownHolder;
   const nodeWidth = isCrown
@@ -255,9 +258,13 @@ function DesktopWarriorNode({
     <button
       type="button"
       onClick={() => onSelect(node.id)}
+      onMouseEnter={() => onPreview(node.id)}
+      onMouseLeave={() => onPreview(null)}
+      onFocus={() => onPreview(node.id)}
+      onBlur={() => onPreview(null)}
       aria-label={`Inspect ${node.displayName}, ${node.stateLabel}`}
       aria-pressed={selected}
-      className={`group absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-[1.35rem] text-left transition duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-100/90 focus-visible:ring-offset-4 focus-visible:ring-offset-[#03070b] motion-reduce:transition-none ${nodeWidth} ${
+      className={`group absolute z-20 -translate-x-1/2 -translate-y-1/2 rounded-[1.35rem] text-left transition-[left,top,transform] duration-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-100/90 focus-visible:ring-offset-4 focus-visible:ring-offset-[#03070b] motion-reduce:transition-none ${nodeWidth} ${
         selected ? "scale-[1.04]" : "hover:scale-[1.025]"
       }`}
       style={{
@@ -427,6 +434,29 @@ function DesktopBoard({
 }: WarGraphBoardProps) {
   const nodeById = new Map(nodes.map((node) => [node.id, node]));
   const geometry = buildBoardGeometry(rings, nodeById);
+  const [previewNodeId, setPreviewNodeId] = React.useState<string | null>(null);
+  const orderedRings = [...rings].sort((left, right) => left.order - right.order);
+  const pathNodeId = previewNodeId ?? focusedNodeId;
+  const focusedNode = pathNodeId ? nodeById.get(pathNodeId) ?? null : null;
+  const focusedRingIndex = focusedNode
+    ? orderedRings.findIndex((ring) => ring.id === focusedNode.ringId)
+    : -1;
+  const focusedPosition = focusedNode
+    ? geometry.positions.get(focusedNode.id) ?? null
+    : null;
+  const inwardTargetRadius =
+    focusedRingIndex > 0
+      ? geometry.ringRadii.get(orderedRings[focusedRingIndex - 1].id) ?? null
+      : null;
+  const inwardPathTarget =
+    focusedPosition && inwardTargetRadius !== null
+      ? inwardTargetRadius === 0
+        ? { x: BOARD_CENTER, y: BOARD_CENTER }
+        : {
+            x: BOARD_CENTER + Math.cos(focusedPosition.angle) * inwardTargetRadius,
+            y: BOARD_CENTER + Math.sin(focusedPosition.angle) * inwardTargetRadius,
+          }
+      : null;
 
   return (
     <div className="relative mx-auto hidden aspect-square w-full max-w-[64rem] lg:block">
@@ -480,6 +510,31 @@ function DesktopBoard({
               </g>
             );
           })}
+
+        {focusedPosition && inwardPathTarget ? (
+          <g key={`focus-path:${pathNodeId}`} aria-hidden="true">
+            <line
+              x1={focusedPosition.x}
+              y1={focusedPosition.y}
+              x2={inwardPathTarget.x}
+              y2={inwardPathTarget.y}
+              stroke="rgba(248,212,119,0.14)"
+              strokeWidth={12}
+              strokeLinecap="round"
+            />
+            <line
+              x1={focusedPosition.x}
+              y1={focusedPosition.y}
+              x2={inwardPathTarget.x}
+              y2={inwardPathTarget.y}
+              stroke="#f8d477"
+              strokeOpacity={0.72}
+              strokeWidth={2.5}
+              strokeDasharray="7 9"
+              strokeLinecap="round"
+            />
+          </g>
+        ) : null}
 
         {mode === "extreme"
           ? geometry.structuralEdges.map((edge) => (
@@ -537,6 +592,7 @@ function DesktopBoard({
             selected={focusedNodeId === node.id}
             hasOpenAdvance={openAdvanceRequesterIds.has(node.id)}
             onSelect={onFocusNode}
+            onPreview={setPreviewNodeId}
           />
         );
       })}

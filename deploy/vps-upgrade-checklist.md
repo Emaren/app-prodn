@@ -2,18 +2,20 @@
 id: "aoe2war.app-prodn.deploy-vps-upgrade-checklist"
 title: "VPS Upgrade Checklist (AoE2HDBets)"
 type: "runbook"
-status: "active"
+status: "superseded"
 owner: "aoe2war-web"
 systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-07-26"
-review_interval_days: 30
+reviewed_at: "2026-08-26"
+review_interval_days: 0
 sensitivity: "internal"
 ---
 
 # VPS Upgrade Checklist (AoE2HDBets)
+
+> **Superseded. Do not use this manual deployment procedure for routine AoE2WAR releases.** The canonical operator workflow is now `aoe2war finish`, governed by [AoE2WAR Release Recovery OS](../docs/RELEASE_RECOVERY_OS.md). The legacy commands below are preserved only as historical operating context.
 
 Run this from the current VPS layout, not the old `/var/www/app-prodn` / `pm2` shape.
 

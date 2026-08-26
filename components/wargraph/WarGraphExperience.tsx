@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -684,7 +685,15 @@ export default function WarGraphExperience({
             </div>
           </div>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-            A persistent board of war tables. Win verified battles, move inward, and claim the Crown.
+            {viewMode === "basic" ? (
+              <>
+                A persistent board of war tables. Win verified battles, move inward, and claim the Crown.
+              </>
+            ) : (
+              <>
+                Run a <Link href="https://aoe2war.com/download" className="cursor-pointer text-inherit no-underline hover:text-inherit hover:no-underline">watcher</Link>. Advance inward. Take the Crown. 2 battles per night. 5–11 PM Mountain Time.
+              </>
+            )}
           </p>
         </div>
 

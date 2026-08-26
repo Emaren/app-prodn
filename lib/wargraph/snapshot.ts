@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 
 import type { PrismaClient } from "../generated/prisma";
 import { getPrisma } from "../prisma";
+import { loadPublicPlayerDirectory } from "../publicPlayerDirectory";
 import {
   SESSION_COOKIE_NAME,
   verifySession,
@@ -520,6 +521,47 @@ export async function loadWarGraphPublicSnapshot(
       }),
     ]);
 
+    const boardMemberships = graph.layers.flatMap(
+      (layer) =>
+        layer.nodes.flatMap((node) =>
+          node.occupancy
+            ? [node.occupancy.membership]
+            : [],
+        ),
+    );
+
+    /*
+     * WarGraph and the public leaderboards share one player-name authority.
+     *
+     * Membership.playerKey is already the durable identity grain
+     * ("steam:<SteamID>" for Steam warriors). The public player directory
+     * uses that same key and promotes the newest accepted replay observation
+     * to latestObservedName.
+     *
+     * WarGraph therefore never invents a second rename policy.
+     */
+    const playerDirectory =
+      await loadPublicPlayerDirectory(prisma);
+
+    const latestObservedNameByPlayerKey =
+      new Map(
+        playerDirectory.allEntries.map((entry) => [
+          entry.key,
+          entry.latestObservedName,
+        ]),
+      );
+
+    const currentDisplayNameByMembershipId =
+      new Map(
+        boardMemberships.map((membership) => [
+          membership.id,
+          latestObservedNameByPlayerKey
+            .get(membership.playerKey)
+            ?.trim() ||
+            membership.displayNameSnapshot,
+        ]),
+      );
+
     const nodeIdByDatabaseId = new Map<number, string>();
     const nodeByMembershipId = new Map<
       number,
@@ -612,6 +654,11 @@ export async function loadWarGraphPublicSnapshot(
         const engaged = activeMembershipIds.has(membership.id);
         const nightComplete = used >= ruleset.maxResolvedActions;
         const watcher = publicWatcher(presence, now);
+        const displayName =
+          currentDisplayNameByMembershipId.get(
+            membership.id,
+          ) ??
+          membership.displayNameSnapshot;
         const state = engaged
           ? "engaged"
           : underSiege
@@ -642,9 +689,9 @@ export async function loadWarGraphPublicSnapshot(
             layer.kind === "frontier"
               ? frontierPresentationSeat++
               : node.ordinal,
-          displayName: membership.displayNameSnapshot,
+          displayName,
           avatarUrl: membership.avatarUrlSnapshot,
-          avatarAlt: `${membership.displayNameSnapshot}'s WarGraph table`,
+          avatarAlt: `${displayName}'s WarGraph table`,
           subtitle: null,
           mapLabel: null,
           state,
@@ -850,6 +897,11 @@ export async function loadWarGraphPublicSnapshot(
         (sum, item) => sum + Number(item.amountWolo),
         0,
       );
+      const displayName =
+        currentDisplayNameByMembershipId.get(
+          movement.membership.id,
+        ) ??
+        movement.membership.displayNameSnapshot;
       return {
         id: movement.id.toString(),
         at: movement.movedAt.toISOString(),
@@ -858,8 +910,8 @@ export async function loadWarGraphPublicSnapshot(
         reasonLabel: reason.reasonLabel,
         headline:
           movement.movementType === "INITIAL_ASSIGNMENT"
-            ? `${movement.membership.displayNameSnapshot} joined the living board`
-            : `${movement.membership.displayNameSnapshot} moved`,
+            ? `${displayName} joined the living board`
+            : `${displayName} moved`,
         detail:
           movement.movementType === "INITIAL_ASSIGNMENT"
             ? `Placed by the founding ${reason.reasonLabel.toLowerCase()} contract.`
@@ -881,20 +933,25 @@ export async function loadWarGraphPublicSnapshot(
       | "prime"
       | "afterburn"
       | "static";
+    const local = getEdmontonLocalDateTime(now);
+    const staticBeforePrime =
+      phase === "static" &&
+      local !== null &&
+      local.minuteOfDay < WARGRAPH_PRIME_START_MINUTE;
     const phaseLabels = {
-      prime: "Prime Window live",
+      prime: "Prime Live",
       afterburn: "Afterburn",
-      static: "Static State",
+      static: staticBeforePrime ? "Board Locked" : "Night Complete",
     } as const;
     const phaseDetails = {
       prime:
         "Eligible organic double-Watcher games and ring advances may bind the board now.",
       afterburn:
         "No new advances; already-bound contracts retain their full response and launch windows.",
-      static: "The board persists at rest until the next Prime Window.",
+      static: staticBeforePrime
+        ? "The board is locked until tonight's Prime Window."
+        : "Tonight's board is complete. The next Prime Window opens tomorrow.",
     } as const;
-
-    const local = getEdmontonLocalDateTime(now);
     let nextTransitionAt: Date | null = null;
     let nextTransitionLabel = "Awaiting authoritative final proof";
     if (phase === "prime") {

@@ -42,10 +42,10 @@ This page is generated from the validated front matter in this repository. Cross
 
 ### Lifecycle
 
-- `active`: 59
+- `active`: 57
 - `generated`: 1
 - `historical`: 12
-- `superseded`: 1
+- `superseded`: 3
 
 ## Documents
 
@@ -56,8 +56,8 @@ This page is generated from the validated front matter in this repository. Cross
 | [app-prodn Product State](../PRODUCT_STATE.md) | `historical` | `historical` | `historical-evidence` |
 | [app-prodn](../README.md) | `reference` | `active` | `repository-entrypoint` |
 | [AoE2HDBets](../WORKSPACE.md) | `reference` | `active` | `workspace-reference` |
-| [AoE2 Access Logging Phase 1](../deploy/aoe2-access-logging-phase1.md) | `runbook` | `active` | `operational-procedure` |
-| [VPS Upgrade Checklist (AoE2HDBets)](../deploy/vps-upgrade-checklist.md) | `runbook` | `active` | `operational-procedure` |
+| [AoE2 Access Logging Phase 1](../deploy/aoe2-access-logging-phase1.md) | `runbook` | `superseded` | `operational-procedure` |
+| [VPS Upgrade Checklist (AoE2HDBets)](../deploy/vps-upgrade-checklist.md) | `runbook` | `superseded` | `operational-procedure` |
 | [Admin Metrics](ADMIN_METRICS.md) | `reference` | `active` | `implementation-contract` |
 | [AI Council and Command Center](AI_COUNCIL_AND_COMMAND_CENTER.md) | `explanation` | `active` | `architecture-explanation` |
 | [Betting Hall Product and Concurrency Contract](BETTING_HALL_PRODUCT_AND_CONCURRENCY.md) | `reference` | `active` | `product-and-concurrency-contract` |

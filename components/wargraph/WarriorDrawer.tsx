@@ -63,8 +63,28 @@ export function WarriorDrawer({
 }) {
   const closeRef = React.useRef<HTMLButtonElement | null>(null);
   const dialogRef = React.useRef<HTMLElement | null>(null);
+  const [shellHeaderOffset, setShellHeaderOffset] = React.useState("5rem");
   const contextualReward = engagement?.winnerRewardWolo ?? openAdvance?.winnerRewardWolo ?? 0;
   const firstBloodBonus = engagement?.firstBloodBonusWolo ?? openAdvance?.firstBloodBonusWolo ?? 0;
+
+  React.useEffect(() => {
+    const header = document.querySelector<HTMLElement>("[data-app-shell-header]");
+    if (!header) return;
+
+    const update = () => {
+      const height = Math.ceil(header.getBoundingClientRect().height);
+      setShellHeaderOffset(`${height + 12}px`);
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(header);
+    window.addEventListener("resize", update);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
 
   React.useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
@@ -125,7 +145,8 @@ export function WarriorDrawer({
         role="dialog"
         aria-modal="true"
         aria-labelledby="wargraph-warrior-drawer-title"
-        className="absolute inset-x-2 bottom-2 max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-[1.65rem] border border-amber-200/20 bg-[linear-gradient(160deg,rgba(13,28,42,0.99),rgba(3,9,15,0.995))] p-4 shadow-[0_35px_100px_rgba(0,0,0,0.7)] sm:inset-y-3 sm:left-auto sm:right-3 sm:w-[25rem] sm:max-h-none sm:rounded-[1.9rem] sm:p-5"
+        className="absolute inset-x-2 bottom-2 max-h-[calc(100dvh-1rem)] overflow-y-auto rounded-[1.65rem] border border-amber-200/20 bg-[linear-gradient(160deg,rgba(13,28,42,0.99),rgba(3,9,15,0.995))] p-4 shadow-[0_35px_100px_rgba(0,0,0,0.7)] sm:bottom-3 sm:left-auto sm:right-3 sm:top-[var(--wargraph-drawer-top)] sm:w-[25rem] sm:max-h-none sm:rounded-[1.9rem] sm:p-5"
+        style={{ "--wargraph-drawer-top": shellHeaderOffset } as React.CSSProperties}
       >
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">

@@ -2,18 +2,20 @@
 id: "aoe2war.app-prodn.deploy-aoe2-access-logging-phase1"
 title: "AoE2 Access Logging Phase 1"
 type: "runbook"
-status: "active"
+status: "superseded"
 owner: "aoe2war-web"
 systems: ["app-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-07-26"
-review_interval_days: 30
+reviewed_at: "2026-08-26"
+review_interval_days: 0
 sensitivity: "internal"
 ---
 
 # AoE2 Access Logging Phase 1
+
+> **Superseded / completed phase.** The dedicated AoE2 nginx access-log configuration described below is already deployed. Preserve this document as implementation history; do not treat it as an outstanding production change checklist.
 
 ## Scope
 

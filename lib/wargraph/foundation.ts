@@ -117,6 +117,24 @@ const FOUNDING_CORRECTION_V1 = Object.freeze({
   sourcePrefix: `wargraph:${WARGRAPH_SLUG}:founding-correction:v1`,
 } as const);
 
+const FOUNDING_CORRECTION_V2 = Object.freeze({
+  movementType: "FOUNDING_CORRECTION",
+  reasonCode: "FOUNDING_BOARD_CORRECTION_V2",
+  sourcePrefix: `wargraph:${WARGRAPH_SLUG}:founding-correction:v2`,
+  playerKeys: {
+    zodiac: "steam:76561198103810510",
+    c0lorz: "steam:76561198138252884",
+    somniosator: "steam:76561198257849801",
+    pigman: "steam:76561198801484390",
+    deltaforce: "steam:76561198087798523",
+    julio: "steam:76561198190973517",
+    sniper: "steam:76561198041444664",
+    mouldy: "steam:76561199024931846",
+    ra: "steam:76561197990322225",
+    emaren: "steam:76561198065420384",
+  },
+} as const);
+
 let foundationCache:
   | {
       expiresAt: number;
@@ -953,6 +971,346 @@ async function applyFoundingBoardCorrectionV1(
   return true;
 }
 
+async function applyFoundingBoardCorrectionV2(
+  tx: TransactionClient,
+  graph: {
+    id: number;
+    publicId: string;
+  },
+  now: Date,
+): Promise<boolean> {
+  const completionKey = `${FOUNDING_CORRECTION_V2.sourcePrefix}:complete`;
+  const completion = await tx.warGraphEvent.findUnique({
+    where: { idempotencyKey: completionKey },
+  });
+  if (completion) {
+    if (
+      completion.graphId !== graph.id ||
+      completion.aggregateType !== "graph" ||
+      completion.aggregateId !== graph.publicId ||
+      completion.eventType !== "WARGRAPH_FOUNDING_BOARD_CORRECTION_V2"
+    ) {
+      throw new Error("WARGRAPH_FOUNDING_CORRECTION_V2_COMPLETION_COLLISION");
+    }
+    return false;
+  }
+
+  const partialMovementCount = await tx.warGraphMovement.count({
+    where: {
+      graphId: graph.id,
+      sourceKey: { startsWith: `${FOUNDING_CORRECTION_V2.sourcePrefix}:` },
+    },
+  });
+  if (partialMovementCount !== 0) {
+    throw new Error("WARGRAPH_FOUNDING_CORRECTION_V2_PARTIAL_STATE");
+  }
+
+  const memberships = await tx.warGraphMembership.findMany({
+    where: { graphId: graph.id },
+    include: {
+      occupancy: {
+        include: {
+          node: {
+            include: {
+              layer: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  function resolveMembership(
+    key: keyof typeof FOUNDING_CORRECTION_V2.playerKeys,
+  ) {
+    const wanted =
+      FOUNDING_CORRECTION_V2.playerKeys[key];
+    const matches = memberships.filter(
+      (membership) => membership.playerKey === wanted,
+    );
+    if (matches.length > 1) {
+      throw new Error(
+        `WARGRAPH_FOUNDING_CORRECTION_V2_${key.toUpperCase()}_IDENTITY_AMBIGUOUS`,
+      );
+    }
+    if (matches.length === 0 || !matches[0].occupancy) return null;
+    return matches[0];
+  }
+
+  const zodiac = resolveMembership("zodiac");
+  const c0lorz = resolveMembership("c0lorz");
+  const somniosator = resolveMembership("somniosator");
+  const pigman = resolveMembership("pigman");
+  const deltaforce = resolveMembership("deltaforce");
+  const julio = resolveMembership("julio");
+  const sniper = resolveMembership("sniper");
+  const mouldy = resolveMembership("mouldy");
+  const ra = resolveMembership("ra");
+  const emaren = resolveMembership("emaren");
+
+  if (
+    !zodiac ||
+    !c0lorz ||
+    !somniosator ||
+    !pigman ||
+    !deltaforce ||
+    !julio ||
+    !sniper ||
+    !mouldy ||
+    !ra ||
+    !emaren
+  ) {
+    return false;
+  }
+
+  const seatOf = (membership: typeof zodiac) =>
+    membership.occupancy?.node.seatKey ?? "";
+  const layerOf = (membership: typeof zodiac) =>
+    membership.occupancy?.node.layer.key ?? "";
+
+  const alreadyDesired =
+    seatOf(pigman) === "ring-i:0" &&
+    seatOf(deltaforce) === "ring-i:1" &&
+    seatOf(zodiac) === "ring-ii:0" &&
+    seatOf(mouldy) === "ring-ii:2" &&
+    seatOf(emaren) === "ring-ii:5" &&
+    layerOf(ra) === "frontier" &&
+    layerOf(somniosator) === "frontier" &&
+    layerOf(c0lorz) === "frontier" &&
+    layerOf(julio) === "frontier" &&
+    layerOf(sniper) === "frontier";
+
+  if (alreadyDesired) {
+    await appendWarGraphEvent(tx, {
+      graphId: graph.id,
+      aggregateType: "graph",
+      aggregateId: graph.publicId,
+      eventType: "WARGRAPH_FOUNDING_BOARD_CORRECTION_V2",
+      idempotencyKey: completionKey,
+      payload: {
+        applied: false,
+        reason: "FOUNDING_AUTHORITY_ALREADY_CORRECT",
+        actionsConsumed: 0,
+        rewardsCreated: 0,
+      },
+      occurredAt: now,
+    });
+    return true;
+  }
+
+  const legacyState =
+    seatOf(zodiac) === "ring-i:0" &&
+    seatOf(c0lorz) === "ring-i:1" &&
+    seatOf(somniosator) === "ring-ii:0" &&
+    seatOf(julio) === "ring-ii:2" &&
+    seatOf(ra) === "ring-ii:5" &&
+    layerOf(emaren) === "frontier" &&
+    layerOf(pigman) === "frontier" &&
+    layerOf(deltaforce) === "frontier" &&
+    layerOf(sniper) === "frontier" &&
+    layerOf(mouldy) === "frontier";
+
+  if (!legacyState) {
+    throw new Error("WARGRAPH_FOUNDING_CORRECTION_V2_STATE_UNEXPECTED");
+  }
+
+  const [
+    contestCount,
+    advanceCount,
+    pairingCount,
+    actionCount,
+    rewardCount,
+    competitiveMovementCount,
+  ] = await Promise.all([
+    tx.warGraphContest.count({ where: { graphId: graph.id } }),
+    tx.warGraphAdvanceRequest.count({ where: { graphId: graph.id } }),
+    tx.warGraphPairing.count({ where: { graphId: graph.id } }),
+    tx.warGraphAction.count({ where: { graphId: graph.id } }),
+    tx.warGraphReward.count({ where: { graphId: graph.id } }),
+    tx.warGraphMovement.count({
+      where: {
+        graphId: graph.id,
+        movementType: {
+          notIn: ["INITIAL_ASSIGNMENT", "FOUNDING_CORRECTION"],
+        },
+      },
+    }),
+  ]);
+
+  if (
+    contestCount !== 0 ||
+    advanceCount !== 0 ||
+    pairingCount !== 0 ||
+    actionCount !== 0 ||
+    rewardCount !== 0 ||
+    competitiveMovementCount !== 0
+  ) {
+    throw new Error("WARGRAPH_FOUNDING_CORRECTION_V2_WINDOW_CLOSED");
+  }
+
+  const frontierLayer = await tx.warGraphLayer.findUnique({
+    where: {
+      graphId_key: {
+        graphId: graph.id,
+        key: "frontier",
+      },
+    },
+  });
+  if (!frontierLayer) {
+    throw new Error("WARGRAPH_FOUNDING_CORRECTION_V2_FRONTIER_MISSING");
+  }
+
+  const latestFrontier = await tx.warGraphNode.findFirst({
+    where: { graphId: graph.id, layerId: frontierLayer.id },
+    orderBy: { ordinal: "desc" },
+    select: { ordinal: true },
+  });
+  const tempOrdinal = (latestFrontier?.ordinal ?? -1) + 1;
+  const tempNode = await tx.warGraphNode.create({
+    data: {
+      graphId: graph.id,
+      layerId: frontierLayer.id,
+      seatKey: `frontier:founding-correction-v2-${tempOrdinal}`,
+      ordinal: tempOrdinal,
+      angularSeed: tempOrdinal,
+      presentation: {},
+    },
+  });
+
+  const cycles = [
+    [zodiac, somniosator, pigman],
+    [deltaforce, c0lorz],
+    [julio, sniper, mouldy],
+    [emaren, ra],
+  ] as const;
+
+  const changes = cycles.flatMap((cycle) =>
+    cycle.map((membership, index) => {
+      const destination =
+        cycle[(index + 1) % cycle.length]!;
+
+      return {
+        key: normalizeWarGraphIdentity(
+          membership.displayNameSnapshot,
+        ),
+        membership,
+        fromNode: membership.occupancy!.node,
+        toNode: destination.occupancy!.node,
+      };
+    }),
+  );
+
+  for (const cycle of cycles) {
+    const first = cycle[0];
+
+    await tx.warGraphOccupancy.update({
+      where: { id: first.occupancy!.id },
+      data: { nodeId: tempNode.id },
+    });
+
+    for (
+      let index = cycle.length - 1;
+      index >= 1;
+      index -= 1
+    ) {
+      const membership = cycle[index]!;
+      const destination =
+        cycle[(index + 1) % cycle.length]!;
+
+      await tx.warGraphOccupancy.update({
+        where: { id: membership.occupancy!.id },
+        data: {
+          nodeId: destination.occupancy!.node.id,
+          occupiedAt: now,
+          version: { increment: 1 },
+        },
+      });
+    }
+
+    const firstDestination = cycle[1];
+
+    await tx.warGraphOccupancy.update({
+      where: { id: first.occupancy!.id },
+      data: {
+        nodeId: firstDestination.occupancy!.node.id,
+        occupiedAt: now,
+        version: { increment: 1 },
+      },
+    });
+  }
+
+  await tx.warGraphNode.delete({ where: { id: tempNode.id } });
+
+  for (const change of changes) {
+    const sourceKey = `${FOUNDING_CORRECTION_V2.sourcePrefix}:${change.key}`;
+    const versionBefore = change.membership.version;
+    const updated = await tx.warGraphMembership.update({
+      where: { id: change.membership.id },
+      data: { version: { increment: 1 } },
+      select: { version: true },
+    });
+
+    await tx.warGraphMovement.create({
+      data: {
+        graphId: graph.id,
+        membershipId: change.membership.id,
+        fromNodeId: change.fromNode.id,
+        toNodeId: change.toNode.id,
+        fromLayerOrdinal: change.fromNode.layer.ordinal,
+        toLayerOrdinal: change.toNode.layer.ordinal,
+        movementType: FOUNDING_CORRECTION_V2.movementType,
+        reasonCode: FOUNDING_CORRECTION_V2.reasonCode,
+        sourceKey,
+        idempotencyKey: sourceKey,
+        membershipVersionBefore: versionBefore,
+        membershipVersionAfter: updated.version,
+        movedAt: now,
+      },
+    });
+
+    await appendWarGraphEvent(tx, {
+      graphId: graph.id,
+      membershipId: change.membership.id,
+      actorUserId: change.membership.userId,
+      aggregateType: "membership",
+      aggregateId: change.membership.publicId,
+      eventType: "WARGRAPH_FOUNDING_SEAT_CORRECTED",
+      idempotencyKey: `${sourceKey}:event`,
+      priorVersion: versionBefore,
+      newVersion: updated.version,
+      payload: {
+        movementType: FOUNDING_CORRECTION_V2.movementType,
+        reasonCode: FOUNDING_CORRECTION_V2.reasonCode,
+        fromSeatKey: change.fromNode.seatKey,
+        toSeatKey: change.toNode.seatKey,
+      },
+      occurredAt: now,
+    });
+  }
+
+  await appendWarGraphEvent(tx, {
+    graphId: graph.id,
+    aggregateType: "graph",
+    aggregateId: graph.publicId,
+    eventType: "WARGRAPH_FOUNDING_BOARD_CORRECTION_V2",
+    idempotencyKey: completionKey,
+    payload: {
+      applied: true,
+      reason: FOUNDING_CORRECTION_V2.reasonCode,
+      movements: changes.map((change) => ({
+        playerKey: change.membership.playerKey,
+        fromSeatKey: change.fromNode.seatKey,
+        toSeatKey: change.toNode.seatKey,
+      })),
+      actionsConsumed: 0,
+      rewardsCreated: 0,
+    },
+    occurredAt: now,
+  });
+
+  return true;
+}
+
 async function ensureNight(
   tx: TransactionClient,
   graphId: number,
@@ -1171,8 +1529,14 @@ async function createFoundationOnce(
         layers,
         now,
       );
-      const foundingCorrectionApplied =
+      const foundingCorrectionV1Applied =
         await applyFoundingBoardCorrectionV1(
+          tx,
+          graph,
+          now,
+        );
+      const foundingCorrectionV2Applied =
+        await applyFoundingBoardCorrectionV2(
           tx,
           graph,
           now,
@@ -1186,7 +1550,8 @@ async function createFoundationOnce(
       const currentGraph =
         graph.projectionVersion === 0 ||
         assignmentsCreated > 0 ||
-        foundingCorrectionApplied
+        foundingCorrectionV1Applied ||
+        foundingCorrectionV2Applied
           ? await tx.warGraph.update({
               where: { id: graph.id },
               data: { projectionVersion: { increment: 1 } },
