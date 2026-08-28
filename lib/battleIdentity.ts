@@ -88,13 +88,37 @@ export async function ensurePublicBattleIdentities(
           SELECT pg_advisory_xact_lock(hashtextextended(${identityKey}, 0))
         `;
 
-        const existing = await tx.battleIdentity.findUnique({
+        const requestedPlatformMatchId = platformMatchIdFromBattleSession(
+          candidate.sessionKey
+        );
+        /*
+         * A fallback identity may already own the immutable public number when
+         * exact platform truth arrives. Promotion records that platform ID on
+         * the original row instead of burning another public number, so exact
+         * platform lookup must take precedence over the newer identity key.
+         */
+        const existingByPlatform = requestedPlatformMatchId
+          ? await tx.battleIdentity.findUnique({
+              where: { platformMatchId: requestedPlatformMatchId },
+              select: {
+                id: true,
+                identityKey: true,
+                publicNumber: true,
+                state: true,
+                platformMatchId: true,
+                startedAt: true,
+                completedAt: true,
+              },
+            })
+          : null;
+        const existing = existingByPlatform ?? await tx.battleIdentity.findUnique({
           where: { identityKey },
           select: {
             id: true,
             identityKey: true,
             publicNumber: true,
             state: true,
+            platformMatchId: true,
             startedAt: true,
             completedAt: true,
           },
@@ -109,7 +133,8 @@ export async function ensurePublicBattleIdentities(
               where: { id: existing.id },
               data: {
                 state: nextState,
-                platformMatchId: platformMatchIdFromBattleSession(candidate.sessionKey),
+                platformMatchId:
+                  requestedPlatformMatchId ?? existing.platformMatchId,
                 startedAt: existing.startedAt ?? candidate.startedAt ?? null,
                 completedAt:
                   existing.completedAt ??
@@ -121,7 +146,7 @@ export async function ensurePublicBattleIdentities(
           : await tx.battleIdentity.create({
               data: {
                 identityKey,
-                platformMatchId: platformMatchIdFromBattleSession(candidate.sessionKey),
+                platformMatchId: requestedPlatformMatchId,
                 state: nextState,
                 startedAt: candidate.startedAt ?? null,
                 completedAt:
@@ -131,14 +156,24 @@ export async function ensurePublicBattleIdentities(
               select: { id: true, identityKey: true, publicNumber: true },
             });
 
-        return row satisfies PublicBattleIdentity;
+        return {
+          requestedIdentityKey: identityKey,
+          row: row satisfies PublicBattleIdentity,
+        };
       })
     )
   );
 
   return new Map(
     resolved
-      .filter((row): row is PublicBattleIdentity => Boolean(row))
-      .map((row) => [row.identityKey, row] as const)
+      .filter(
+        (
+          result
+        ): result is {
+          requestedIdentityKey: string;
+          row: PublicBattleIdentity;
+        } => Boolean(result)
+      )
+      .map((result) => [result.requestedIdentityKey, result.row] as const)
   );
 }

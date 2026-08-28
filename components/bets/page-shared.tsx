@@ -83,9 +83,12 @@ export type BetBoardSide = {
 
 export type BetBoardMarket = {
   id: number;
+  parentMarketId?: number | null;
+  battleNumber?: number | null;
   slug: string;
   title: string;
   eventLabel: string;
+  marketType: string;
   href: string | null;
   linkedSessionKey: string | null;
   linkedGameStatsId: number | null;
@@ -117,6 +120,7 @@ export type BetBoardMarket = {
     stakeLockedAt: string | null;
   } | null;
   winnerSide: BetSide | null;
+  desyncMarket: BetBoardMarket | null;
 };
 
 export type BetBookEntry = {

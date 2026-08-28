@@ -78,8 +78,10 @@ export async function GET(request: NextRequest) {
     // becomes a market without requiring a separate /bets visit.
     queueBetMarketEnsure(prisma, 0);
 
-    const publicSnapshot =
-      await loadPublicLiveGamesSnapshot(prisma, { fresh: true });
+    // The process-wide four-second snapshot cache also coalesces concurrent
+    // refreshes. With a five-second browser poll this stays current while one
+    // watcher pulse cannot trigger an expensive full-corpus query per client.
+    const publicSnapshot = await loadPublicLiveGamesSnapshot(prisma);
     const snapshot = withLiveProofCounts(publicSnapshot as Record<string, unknown>);
     const headers = {
       "Cache-Control": "no-store, max-age=0",

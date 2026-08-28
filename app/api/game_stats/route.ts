@@ -2,10 +2,11 @@
 import { type NextRequest } from "next/server";
 
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
-import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import {
-  isPublicBattleArchiveRow,
-} from "@/lib/publicBattleArchiveEligibility";
+  loadPublicBattleArchivePage,
+  PUBLIC_BATTLE_ARCHIVE_PAGE_MAX,
+} from "@/lib/publicBattleArchive";
+import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import {
   hydrateEffectiveReplayResultAdjudications,
 } from "@/lib/replayAdjudications";
@@ -20,7 +21,7 @@ function parsePositiveInt(value: string | null, fallback: number, max: number) {
 function parseOffset(value: string | null) {
   const parsed = Number.parseInt(String(value ?? ""), 10);
   if (!Number.isFinite(parsed) || parsed < 0) return 0;
-  return Math.min(parsed, 5000);
+  return Math.min(parsed, 10_000_000);
 }
 
 export async function GET(request: NextRequest) {
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       limitRaw,
       12,
       archiveMode
-        ? 5000
+        ? PUBLIC_BATTLE_ARCHIVE_PAGE_MAX
         : 500
     );
 
@@ -56,21 +57,28 @@ export async function GET(request: NextRequest) {
       offsetRaw
     );
 
-  /*
-   * Archive offsets refer to visible public battles, not raw upstream
-   * rows. Pull the bounded archive corpus before filtering and slicing.
-   */
+  if (archiveMode) {
+    const page = await loadPublicBattleArchivePage(getPrisma(), {
+      offset,
+      limit: publicLimit,
+    });
+    return Response.json({
+      matches: page.rows,
+      total: page.total,
+      offset: page.offset,
+      nextOffset: page.nextOffset,
+    });
+  }
+
   const upstreamLimit =
-    archiveMode
-      ? 5000
-      : hasSlice
-        ? Math.min(
-            5000,
-            offset +
-              publicLimit +
-              12
-          )
-        : null;
+    hasSlice
+      ? Math.min(
+          5000,
+          offset +
+            publicLimit +
+            12
+        )
+      : null;
 
   const upstreamUrl = new URL(`${base}/api/game_stats`);
   if (upstreamLimit !== null) {
@@ -93,24 +101,14 @@ export async function GET(request: NextRequest) {
       )
     : data;
 
-  const visiblePublicData =
-    Array.isArray(
-      publicData
-    ) &&
-    archiveMode
-      ? publicData.filter(
-          isPublicBattleArchiveRow
-        )
-      : publicData;
-
   if (
     Array.isArray(
-      visiblePublicData
+      publicData
     ) &&
     hasSlice
   ) {
     return Response.json(
-      visiblePublicData.slice(
+      publicData.slice(
         offset,
         offset +
           publicLimit
@@ -123,7 +121,7 @@ export async function GET(request: NextRequest) {
   }
 
   return Response.json(
-    visiblePublicData,
+    publicData,
     {
       status:
         res.status,

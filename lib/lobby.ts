@@ -32,6 +32,8 @@ export type LobbyMatchPlayer = {
 
 export type LobbyMatchRow = {
   id: number;
+  sessionKey?: string | null;
+  replayHash?: string | null;
   winner: string | null;
   map: { name?: string } | string | null;
   players: LobbyMatchPlayer[] | string;

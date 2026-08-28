@@ -18,9 +18,9 @@ export const DESYNC_SETTLEMENT_COMMISSIONER_REVIEW = "commissioner_review" as co
 export const DESYNC_SETTLEMENT_REMATCH = "rematch" as const;
 export const DESYNC_SETTLEMENT_VOID_REFUND = "void_refund" as const;
 
-// TODO(desync-side-market): a future YES/NO desync proposition may consume the
-// effective human truth from this ledger. It must remain independent of the
-// ordinary winner proposition and its settlement rail.
+// The nested NO/YES desync proposition consumes only the latest effective
+// human truth from this ledger. Its truth and settlement remain independent of
+// the ordinary competitive-winner proposition.
 
 export type ReplayDesyncReviewState =
   | typeof DESYNC_REVIEW_REQUIRED
@@ -402,7 +402,7 @@ export function replayDesyncIncidentDto(incident: DesyncIncidentRow) {
 }
 
 export async function loadReplayDesyncIncidentProvenance(
-  prisma: PrismaClient,
+  prisma: PrismaClient | Prisma.TransactionClient,
   gameStatsId: number
 ) {
   const rows = await prisma.replayDesyncIncident.findMany({
@@ -435,6 +435,21 @@ export async function loadReplayDesyncIncidentProvenance(
     currentDesyncIncident,
     desyncIncidents: incidents,
   };
+}
+
+/**
+ * Serializes every financial consumer of effective human desync truth with
+ * the append-only incident writer for one replay. Call only inside the
+ * transaction that will consume or append that truth.
+ */
+export async function acquireReplayDesyncAdvisoryLock(
+  tx: Pick<Prisma.TransactionClient, "$queryRaw">,
+  gameStatsId: number
+) {
+  await tx.$queryRaw<Array<{ lock_acquired: number }>>`
+    SELECT 1::int AS lock_acquired
+    FROM pg_advisory_xact_lock(${gameStatsId})
+  `;
 }
 
 async function resolveScheduledMatchId(
@@ -533,10 +548,7 @@ export async function submitReplayDesyncIncident(input: {
 
   try {
     const result = await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw<Array<{ lock_acquired: number }>>`
-        SELECT 1::int AS lock_acquired
-        FROM pg_advisory_xact_lock(${gameStatsId})
-      `;
+      await acquireReplayDesyncAdvisoryLock(tx, gameStatsId);
 
       const game = await tx.gameStats.findUnique({
         where: { id: gameStatsId },

@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-08-08"
+reviewed_at: "2026-08-28"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -42,6 +42,48 @@ A fresh heartbeat means connected only. Monitor state comes independently from h
 v1.5.7 captures every upload request from one immutable in-memory replay buffer. The multipart body, known body length, `x-file-size-bytes`, and the size portion of the replay fingerprint therefore describe the same captured bytes even while AoE2HD continues appending to the source file. Upload-queue telemetry counts distinct replay/finality keys rather than inflating the queue for retries or fallback targets.
 
 Heartbeat metadata may include folder kind/validity and basename, folder/replay activity timestamps, active replay basename/size/change time, upload status/queue, batch/stream state, version/platform, and watcher/session IDs. Full private paths and replay contents are excluded.
+
+Replay fingerprints are observation evidence, not durable battle identity. A
+growing replay normally changes its size/mtime fingerprint on every upload.
+Public live and betting projections therefore group first by platform match ID,
+then by a high-entropy UUID/timestamp replay alias when platform identity is
+absent. Generic replay names require watcher-session scope and fall back to
+uploader scope for legacy rows without session metadata. That scope identifies
+the process, not the game: an iteration-1 reset carrying a new replay hash
+mints a persisted per-battle epoch, preventing sequential games from one
+uninterrupted watcher process from sharing a card or market. A completion row
+is final evidence, never a reset boundary. If a platform ID appears after early
+generic pulses, the latest eligible epoch in each watcher context is promoted
+to that exact ID; independent watchers may therefore converge on one battle,
+while competing platform candidates fail closed. Under-specified rows stay
+isolated instead of merging unrelated battles.
+Roster, map, heartbeat, and mutable fingerprint fields do not define this
+fallback, so early partial metadata joins later full iterations. Stream titles,
+URLs, and playback paths are never replay identity. A
+new heartbeat or parse iteration may improve one card's roster, duration, or
+coverage, but it must not replace a different watcher's game or reorder the
+active deck. This conservative legacy fallback can temporarily show duplicate
+cards when independent old watchers have no shared strong game identifier; that
+is safer than silently swallowing a real battle.
+
+When later platform truth proves that exact fallback epochs are one battle,
+the betting projection promotes those exact aliases before it allocates a
+public battle number or upserts a new book. The market transaction preserves
+funded winner and Desync state, retains any market ID already promised in a
+legacy escrow memo, reuses the oldest public battle number, and leaves terminal
+alias tombstones that stale watcher pulses cannot reopen. Ambiguous financial
+state pauses the complete battle family for operator review; names, rosters,
+maps, or stream metadata never authorize the merge.
+
+The same exact alias set reattaches any video feed that started before platform
+truth to the canonical replay card. Stream heartbeat recency may update media
+availability, but it cannot replace the canonical replay/game ID or its
+betting and finality fields.
+
+Once a replay is final, its immutable replay hash becomes the platform-less
+logical archive identity. Archive totals and paging are resolved in Postgres at
+that canonical grain, so a growing watcher population is not constrained by a
+5,000-row application-memory ceiling.
 
 Truth disagreements are operator-visible: server replay without upload telemetry; client success without server row; fresh heartbeat with unknown monitor; active monitor with unknown folder; valid quiet folder; and old client coverage.
 
@@ -423,12 +465,13 @@ where parse_source = 'file_upload'
 The server-rendered `/live-games` page may use the ordinary short-lived snapshot
 path for fast initial paint.
 
-The continuously polled `/api/live-games` endpoint explicitly requests fresh
-live truth. A newly observed watcher session must not wait for a stale
-application snapshot to age out while `/bets` already knows the newer battle.
+The continuously polled `/api/live-games` endpoint uses the same four-second
+process-wide snapshot and single-flight refresh as the server page. This is the
+freshness authority for the board: it avoids both the old long-lived stale
+snapshot and a separate uncached full-database projection per browser.
 
-The KKR `live_games` repository uses the same explicit fresh public snapshot
-path for production queries so AI answers about games live now converge with
+The KKR `live_games` repository is a trusted internal caller and uses the
+explicit fresh snapshot path so AI answers about games live now converge with
 the live board and betting rail.
 
 Client-side reconciliation remains a continuity/grace mechanism. It does not

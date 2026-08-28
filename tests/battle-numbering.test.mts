@@ -145,6 +145,85 @@ test("historical proof and review rows cannot consume the first post-rollout num
   assert.equal(createCalls, 1);
 });
 
+test("a promoted fallback identity serves the canonical platform key without burning a number", async () => {
+  const aliasSessionKey = "watcher-session:jims-watcher:battle:1724695200000";
+  const aliasIdentityKey = canonicalBattleIdentityKey(aliasSessionKey);
+  assert.ok(aliasIdentityKey);
+  const row = {
+    id: 41,
+    identityKey: aliasIdentityKey,
+    publicNumber: 2820,
+    state: "live",
+    platformMatchId: "battle-42",
+    startedAt: new Date("2026-08-26T19:00:00.000Z"),
+    completedAt: null as Date | null,
+  };
+  let createCalls = 0;
+  const tx = {
+    $executeRaw: async () => 0,
+    battleIdentity: {
+      findUnique: async ({ where }: {
+        where: { identityKey?: string; platformMatchId?: string };
+      }) => {
+        if (where.platformMatchId) {
+          return row.platformMatchId === where.platformMatchId ? row : null;
+        }
+        return row.identityKey === where.identityKey ? row : null;
+      },
+      create: async () => {
+        createCalls += 1;
+        throw new Error("promotion must reuse the existing public number");
+      },
+      update: async ({ data }: {
+        where: { id: number };
+        data: {
+          state: string;
+          platformMatchId?: string | null;
+          completedAt?: Date | null;
+        };
+      }) => {
+        row.state = data.state;
+        if (data.platformMatchId !== undefined) {
+          row.platformMatchId = data.platformMatchId;
+        }
+        if (data.completedAt !== undefined) {
+          row.completedAt = data.completedAt;
+        }
+        return {
+          id: row.id,
+          identityKey: row.identityKey,
+          publicNumber: row.publicNumber,
+        };
+      },
+    },
+  };
+  const prisma = {
+    $transaction: async (callback: (client: typeof tx) => Promise<unknown>) => callback(tx),
+  };
+
+  const canonical = await ensurePublicBattleIdentities(prisma as never, [
+    {
+      sessionKey: "platform:battle-42",
+      state: "live",
+      allowCreate: true,
+    },
+  ]);
+  assert.equal(canonical.get("platform:battle-42")?.publicNumber, 2820);
+  assert.equal(canonical.get("platform:battle-42")?.identityKey, aliasIdentityKey);
+  assert.equal(createCalls, 0);
+
+  await ensurePublicBattleIdentities(prisma as never, [
+    {
+      sessionKey: aliasSessionKey,
+      state: "awaiting_final_proof",
+      allowCreate: false,
+    },
+  ]);
+  assert.equal(row.platformMatchId, "battle-42");
+  assert.equal(row.state, "awaiting_final_proof");
+  assert.equal(createCalls, 0);
+});
+
 test("the bet board only allows live seeds to create battle identities", async () => {
   const source = await readFile("lib/bets.ts", "utf8");
   assert.match(source, /allowCreate:\s*seed\.status === "live"/);

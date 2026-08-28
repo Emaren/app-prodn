@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "domain-contract"
-reviewed_at: "2026-08-04"
+reviewed_at: "2026-08-28"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -94,20 +94,54 @@ projection. Replaying an identical request may repair an incomplete projection
 without duplicating the incident, action row, participant cards, or settlement
 request.
 
-## Parser evaluation and future side market
+## Parser evaluation and desync side market
 
 The current parser already emits candidate signals including
-`disconnect_detected`, parse reason, event types, and key-event flags. A future
+`disconnect_detected`, parse reason, event types, and key-event flags. An
 offline evaluation should join the latest effective human incident per
 `gameStatsId` to immutable parser-run evidence, then report candidate true/false
 positives and false negatives by parser version and parse iteration. Corrections
 must be respected by selecting the latest append while retaining historical
 labels for audit.
 
-TODO(desync-side-market): later create a separate binary proposition, **Will
-Match #X desync? YES / NO**, whose settlement evidence consumes effective human
-desync truth. It must not share or rewrite the ordinary match-winner proposition
-or use a commissioner rematch/refund disposition as a proxy for YES/NO truth.
+Each eligible live winner market now owns a separately persisted binary child
+proposition, **Will Match #X desync? NO / YES**. The database rows stay separate
+because pools, wagers, truth, and settlement are independent; the public Bets
+surface nests the child inside the match and never presents it as another match
+row.
+
+The latest effective human incident is the only authority for `YES`. Parser
+candidate evidence and a commissioner rematch/refund disposition are never a
+proxy. An explicit latest human correction to `desyncOccurred: false` resolves
+`NO` immediately. With no human decision, `NO` requires a settlement-safe parent
+winner plus the completed review grace. After the incident append and
+Challenge projection commit, the mutation route requires a betting
+reconciliation pass that starts after that commit. If reconciliation fails,
+the durable incident remains accepted and the route returns a retryable
+deferred result; it never pretends the append rolled back.
+
+Incident append and desync-wager terminalization use the same replay-scoped
+advisory transaction lock. Settlement acquires that lock, re-reads the latest
+effective incident and parent truth, then terminalizes only wagers still active
+inside that transaction. This closes the append-between-check-and-payout race
+and makes a stale concurrent settlement pass a no-op.
+
+Once `YES` or `NO` is provable, that side wins and the opposing side loses even
+when nobody backed the factual side. A one-sided losing book is not a refund.
+Exact original-stake refunds remain limited to a child whose truth cannot be
+proved because its parent proposition is voided or otherwise terminal without
+a safe result.
+
+Already-voided/refunding child markets are terminal. A late confirmation does
+not silently reopen them or revise chain/payment history.
+
+If several watchers initially expose separate fallback identities and later
+converge on one exact platform match, the winner book and Desync child are
+promoted together before normal market upsert. Child linkage, ticket legs,
+wagers, claims, and automation references follow the surviving pair. Multiple
+children, a funded child attached outside the exact winner family, or any
+incompatible frozen proposition fails closed into operator review instead of
+creating a second side bet.
 
 ## Deployment
 

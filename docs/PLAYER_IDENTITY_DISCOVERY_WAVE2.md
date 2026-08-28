@@ -8,12 +8,19 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "implementation-contract"
-reviewed_at: "2026-07-28"
+reviewed_at: "2026-08-28"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Player Identity Wave 2 — Deterministic Discovery V2
+
+Review note (2026-08-28): the implementation and publication-boundary
+contract was re-reviewed against the current schema, discovery command, and
+production release health. The counts, commit references, and receipt hashes
+below remain the sealed 2026-07-28 apply evidence; they are not current release
+version telemetry. Use `aoe2war status`, `aoe2war audit`, and `aoe2war doctor`
+for current estate truth.
 
 ## Release truth
 

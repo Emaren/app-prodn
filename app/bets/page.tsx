@@ -45,7 +45,6 @@ import {
 import { battleLoopForSeed } from "@/lib/battleLoopClips";
 import {
   DESYNC_SIDE_MARKET_TYPE,
-  buildDesyncSideMarketSlug,
 } from "@/lib/desyncSideMarket";
 import { buildBetStakeMemo } from "@/lib/betStakeMemo";
 import {
@@ -183,6 +182,7 @@ type BetBoardMarket = {
     stakeLockedAt: string | null;
   } | null;
   winnerSide: BetSide | null;
+  desyncMarket: BetBoardMarket | null;
 };
 
 type BetFounderChip = {
@@ -1559,22 +1559,7 @@ export default function BetsPage() {
     knownLiveMarketIdsRef.current = currentIds;
   }, [board, orderedBookMarkets]);
 
-  const spotlightDesyncMarket = useMemo(() => {
-    if (!spotlightMarket) {
-      return null;
-    }
-
-    const expectedSlug = buildDesyncSideMarketSlug(spotlightMarket.slug);
-
-    return (
-      board?.openMarkets.find(
-        (market) =>
-          market.marketType === DESYNC_SIDE_MARKET_TYPE &&
-          (market.parentMarketId === spotlightMarket.id ||
-            market.slug === expectedSlug),
-      ) ?? null
-    );
-  }, [board?.openMarkets, spotlightMarket]);
+  const spotlightDesyncMarket = spotlightMarket?.desyncMarket ?? null;
 
   const totalBookPot = useMemo(() => {
     const openPot = orderedBookMarkets.reduce(
@@ -2245,6 +2230,14 @@ export default function BetsPage() {
     });
   }
 
+  function handleDesyncStakeChange(winnerMarketId: number, stake: number) {
+    setSelection((current) =>
+      current && current.marketId === winnerMarketId && current.desync
+        ? { ...current, desync: { ...current.desync, stake } }
+        : current,
+    );
+  }
+
   async function ensureWalletAddress() {
     if (!onchainBetEscrowEnabled) {
       return null;
@@ -2740,7 +2733,12 @@ export default function BetsPage() {
     if (!requireSignIn()) return;
 
     const market =
-      board?.openMarkets.find((entry) => entry.id === marketId) || null;
+      board?.openMarkets
+        .flatMap((entry) => [entry, entry.desyncMarket])
+        .find(
+          (entry): entry is BetBoardMarket =>
+            Boolean(entry && entry.id === marketId),
+        ) ?? null;
     if (market && isOnchainViewerWager(market.viewerWager)) {
       toast.error("Escrowed WOLO slips cannot be cleared from the app.");
       return;
@@ -2760,9 +2758,14 @@ export default function BetsPage() {
         throw new Error(payload.detail || "Could not clear the wager.");
       }
       await refreshBoard(payload);
-      if (selection?.marketId === marketId) {
-        setSelection(null);
-      }
+      setSelection((current) => {
+        if (!current) return current;
+        if (current.marketId === marketId) return null;
+        if (current.desync?.marketId === marketId) {
+          return { ...current, desync: null };
+        }
+        return current;
+      });
       toast.success("Slip cleared.");
     } catch (error) {
       console.error("Failed to clear wager:", error);
@@ -2984,7 +2987,7 @@ export default function BetsPage() {
                       )
                     }
                     onLock={() => handleLock(spotlightMarket)}
-                    onClear={() => handleClear(spotlightMarket.id)}
+                    onClear={handleClear}
                     onOpenFounderBonus={openFounderComposer}
                   />
                   <WarTape
@@ -3030,6 +3033,8 @@ export default function BetsPage() {
               isAdmin={isAdmin}
               maxStakeWolo={maxStakeWolo}
               onSelect={handleSelect}
+              onDesyncSelect={handleDesyncSelection}
+              onDesyncStakeChange={handleDesyncStakeChange}
               onStakeChange={(marketId, stake) =>
                 setSelection((current) =>
                   current && current.marketId === marketId
@@ -3233,7 +3238,7 @@ export default function BetsPage() {
                   )
                 }
                 onLock={() => handleLock(spotlightMarket)}
-                onClear={() => handleClear(spotlightMarket.id)}
+                onClear={handleClear}
                 onOpenFounderBonus={openFounderComposer}
               />
             ) : latestResult ? (
@@ -3255,6 +3260,8 @@ export default function BetsPage() {
             isAdmin={isAdmin}
             maxStakeWolo={maxStakeWolo}
             onSelect={handleSelect}
+            onDesyncSelect={handleDesyncSelection}
+            onDesyncStakeChange={handleDesyncStakeChange}
             onStakeChange={(marketId, stake) =>
               setSelection((current) =>
                 current && current.marketId === marketId
@@ -3493,7 +3500,7 @@ export default function BetsPage() {
                     )
                   }
                   onLock={() => handleLock(spotlightMarket)}
-                  onClear={() => handleClear(spotlightMarket.id)}
+                  onClear={handleClear}
                   onOpenFounderBonus={openFounderComposer}
                 />
               ) : latestResult ? (
@@ -3517,6 +3524,8 @@ export default function BetsPage() {
               isAdmin={isAdmin}
               maxStakeWolo={maxStakeWolo}
               onSelect={handleSelect}
+              onDesyncSelect={handleDesyncSelection}
+              onDesyncStakeChange={handleDesyncStakeChange}
               onStakeChange={(marketId, stake) =>
                 setSelection((current) =>
                   current && current.marketId === marketId
@@ -3908,6 +3917,8 @@ function OpenBooksSection({
   isAdmin,
   maxStakeWolo,
   onSelect,
+  onDesyncSelect,
+  onDesyncStakeChange,
   onStakeChange,
   onLock,
   onClear,
@@ -3929,6 +3940,12 @@ function OpenBooksSection({
   isAdmin: boolean;
   maxStakeWolo: number;
   onSelect: (market: BetBoardMarket, side: BetSide) => void;
+  onDesyncSelect: (
+    winnerMarket: BetBoardMarket,
+    desyncMarket: BetBoardMarket,
+    side: BetSide | null,
+  ) => void;
+  onDesyncStakeChange: (winnerMarketId: number, stake: number) => void;
   onStakeChange: (marketId: number, stake: number) => void;
   onLock: (market: BetBoardMarket) => void;
   onClear: (marketId: number) => void;
@@ -3993,9 +4010,20 @@ function OpenBooksSection({
               isAdmin={isAdmin}
               maxStakeWolo={maxStakeWolo}
               onSelect={onSelect}
+              desyncMarket={market.desyncMarket}
+              onDesyncSideChange={
+                market.desyncMarket
+                  ? (side) => onDesyncSelect(market, market.desyncMarket!, side)
+                  : undefined
+              }
+              onDesyncStakeChange={
+                market.desyncMarket
+                  ? (stake) => onDesyncStakeChange(market.id, stake)
+                  : undefined
+              }
               onStakeChange={(stake) => onStakeChange(market.id, stake)}
               onLock={() => onLock(market)}
-              onClear={() => onClear(market.id)}
+              onClear={onClear}
               onOpenFounderBonus={onOpenFounderBonus}
               accent={index % 2 === 0 ? "warm" : "cool"}
             />
@@ -4158,7 +4186,8 @@ function ResolutionQueueSection({ results }: { results: BetSettledResult[] }) {
 function AwaitingProofSection({ markets }: { markets: BetBoardMarket[] }) {
   if (markets.length === 0) return null;
   const lockedWolo = markets.reduce(
-    (sum, market) => sum + market.totalPotWolo,
+    (sum, market) =>
+      sum + market.totalPotWolo + (market.desyncMarket?.totalPotWolo ?? 0),
     0,
   );
 
@@ -5108,18 +5137,22 @@ function DesyncTicketLeg({
   market,
   activeSelection,
   canEdit,
+  workingKey,
   maxStakeWolo,
   projectedReturn,
   onSideChange,
   onStakeChange,
+  onClear,
 }: {
   market: BetBoardMarket;
   activeSelection: SelectionState | null;
   canEdit: boolean;
+  workingKey: string | null;
   maxStakeWolo: number;
   projectedReturn: number;
   onSideChange: (side: BetSide | null) => void;
   onStakeChange: (stake: number) => void;
+  onClear: (marketId: number) => void;
 }) {
   const generatedInputId = useId();
   const inputId = `bet-desync-stake-${generatedInputId.replace(/:/g, "")}`;
@@ -5144,6 +5177,8 @@ function DesyncTicketLeg({
     maxStakeWolo - (activeSelection?.stake ?? 0),
   );
   const lockedSide = market.viewerWager?.side ?? null;
+  const onchainLocked = isOnchainViewerWager(market.viewerWager);
+  const clearing = workingKey === `clear-${market.id}`;
 
   return (
     <section className="mt-5 rounded-[1.3rem] border border-cyan-200/[0.09] bg-[linear-gradient(135deg,rgba(8,47,73,0.18),rgba(2,6,23,0.22))] px-4 py-4 sm:px-5">
@@ -5158,21 +5193,41 @@ function DesyncTicketLeg({
             </span>
           </div>
           <p className="mt-1 text-xs leading-5 text-slate-400">
-            Add NO or YES to this ticket. It remains a separate proposition, but
-            both legs move in one WOLO transaction.
+            Add NO or YES inside this match ticket. It keeps its own truth and
+            payout, while both legs move in one WOLO transaction.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => onSideChange(null)}
-          disabled={!desyncSelection || !canEdit}
-          className={`self-start rounded-full px-3 py-1.5 text-xs transition ${edgeButton("glass")} ${
-            !desyncSelection || !canEdit ? "cursor-not-allowed opacity-45" : ""
-          }`}
-        >
-          No Desync bet
-        </button>
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          {market.viewerWager ? (
+            onchainLocked ? (
+              <span className="rounded-full border border-cyan-200/15 bg-cyan-300/[0.07] px-3 py-1.5 text-xs text-cyan-100">
+                Desync escrow locked
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onClear(market.id)}
+                disabled={clearing || !canEdit}
+                className={`rounded-full px-3 py-1.5 text-xs transition ${edgeButton("glass")} ${
+                  clearing || !canEdit ? "cursor-not-allowed opacity-60" : ""
+                }`}
+              >
+                {clearing ? "Clearing Desync..." : "Clear Desync slip"}
+              </button>
+            )
+          ) : null}
+          <button
+            type="button"
+            onClick={() => onSideChange(null)}
+            disabled={!desyncSelection || !canEdit}
+            className={`rounded-full px-3 py-1.5 text-xs transition ${edgeButton("glass")} ${
+              !desyncSelection || !canEdit ? "cursor-not-allowed opacity-45" : ""
+            }`}
+          >
+            Remove Desync from ticket
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)] lg:items-end">
@@ -5205,7 +5260,7 @@ function DesyncTicketLeg({
                 <span className="mt-1 block text-xs text-slate-400">
                   {side === "right"
                     ? "A confirmed desync occurs"
-                    : "Final proof clears the review window"}
+                    : "Human NO or a cleared review window"}
                 </span>
               </button>
             );
@@ -5244,7 +5299,7 @@ function DesyncTicketLeg({
             </span>
             <span>
               {desyncSelection
-                ? `If right: ${formatCompact(projectedReturn)} WOLO`
+                ? `If ${desyncSelection.side === "left" ? market.left.name : market.right.name}: ${formatCompact(projectedReturn)} WOLO`
                 : "Optional"}
             </span>
           </div>
@@ -5290,7 +5345,7 @@ function BetSlipComposer({
   onDesyncStakeChange?: (stake: number) => void;
   desyncProjectedReturn?: number;
   onLock: () => void;
-  onClear: () => void;
+  onClear: (marketId: number) => void;
   density: "compact" | "spacious";
 }) {
   const selectedSide =
@@ -5361,10 +5416,12 @@ function BetSlipComposer({
           market={desyncMarket}
           activeSelection={activeSelection}
           canEdit={canEdit}
+          workingKey={workingKey}
           maxStakeWolo={maxStakeWolo}
           projectedReturn={desyncProjectedReturn ?? 0}
           onSideChange={onDesyncSideChange}
           onStakeChange={onDesyncStakeChange}
+          onClear={onClear}
         />
       ) : null}
 
@@ -5381,7 +5438,7 @@ function BetSlipComposer({
           {market.viewerWager && !onchainLocked ? (
             <button
               type="button"
-              onClick={onClear}
+              onClick={() => onClear(market.id)}
               disabled={workingKey === `clear-${market.id}`}
               className={`inline-flex min-w-[6rem] cursor-pointer items-center justify-center rounded-xl px-4 py-3 text-sm transition ${edgeButton(
                 "glass",
@@ -5718,7 +5775,7 @@ function MarketFeature({
   onDesyncSideChange?: (side: BetSide | null) => void;
   onDesyncStakeChange?: (stake: number) => void;
   onLock: () => void;
-  onClear: () => void;
+  onClear: (marketId: number) => void;
   onOpenFounderBonus: (
     market: BetBoardMarket,
     bonusType: FounderBonusType,
@@ -6033,11 +6090,11 @@ function MarketFeature({
           ) : (
             <div className="mt-3">
               <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-200/55">
-                Independent incident market · human desync truth
+                Nested Desync proposition · human-confirmed incident truth
               </div>
               <div className="mt-1.5 text-xs leading-5 text-slate-400">
-                YES settles on confirmed desync · NO after final-result review
-                window
+                YES settles on confirmed desync · NO on a human correction or
+                after the final-result review window
               </div>
             </div>
           )}
@@ -6140,6 +6197,7 @@ function MarketFeature({
 
 function MarketCard({
   market,
+  desyncMarket = null,
   detailMode = "advanced",
   selection,
   workingKey,
@@ -6148,6 +6206,8 @@ function MarketCard({
   isAdmin,
   maxStakeWolo,
   onSelect,
+  onDesyncSideChange,
+  onDesyncStakeChange,
   onStakeChange,
   onLock,
   onClear,
@@ -6155,6 +6215,7 @@ function MarketCard({
   accent,
 }: {
   market: BetBoardMarket;
+  desyncMarket?: BetBoardMarket | null;
   detailMode?: "basic" | "advanced" | "extreme";
   selection: SelectionState | null;
   workingKey: string | null;
@@ -6163,9 +6224,11 @@ function MarketCard({
   isAdmin: boolean;
   maxStakeWolo: number;
   onSelect: (market: BetBoardMarket, side: BetSide) => void;
+  onDesyncSideChange?: (side: BetSide | null) => void;
+  onDesyncStakeChange?: (stake: number) => void;
   onStakeChange: (stake: number) => void;
   onLock: () => void;
-  onClear: () => void;
+  onClear: (marketId: number) => void;
   onOpenFounderBonus: (
     market: BetBoardMarket,
     bonusType: FounderBonusType,
@@ -6206,8 +6269,37 @@ function MarketCard({
           displayOppositePool,
         )
       : 0;
+  const activeDesyncSelection =
+    activeSelection?.desync &&
+    desyncMarket?.id === activeSelection.desync.marketId
+      ? activeSelection.desync
+      : null;
+  const desyncSelectedPool = activeDesyncSelection
+    ? activeDesyncSelection.side === "left"
+      ? (desyncMarket?.left.poolWolo ?? 0)
+      : (desyncMarket?.right.poolWolo ?? 0)
+    : 0;
+  const desyncOppositePool = activeDesyncSelection
+    ? activeDesyncSelection.side === "left"
+      ? (desyncMarket?.right.poolWolo ?? 0)
+      : (desyncMarket?.left.poolWolo ?? 0)
+    : 0;
+  const desyncProjectedReturn = activeDesyncSelection
+    ? projectReturn(
+        activeDesyncSelection.stake,
+        desyncSelectedPool,
+        desyncOppositePool,
+      )
+    : 0;
   const stakeError = activeSelection
-    ? validateStakeAmount(activeSelection.stake, maxStakeWolo)
+    ? validateStakeAmount(activeSelection.stake, maxStakeWolo) ||
+      (activeDesyncSelection
+        ? validateStakeAmount(activeDesyncSelection.stake, maxStakeWolo) ||
+          validateStakeAmount(
+            activeSelection.stake + activeDesyncSelection.stake,
+            maxStakeWolo,
+          )
+        : null)
     : null;
 
   const statusCopy = marketWorkflow
@@ -6217,9 +6309,11 @@ function MarketCard({
         ? "Stake submitted. Waiting for chain confirmation."
         : "Escrow confirmed. Recording the slip."
     : activeSelection
-      ? `Backing ${
-          activeSelection.side === "left" ? market.left.name : market.right.name
-        } for ${activeSelection.stake} WOLO`
+      ? activeDesyncSelection && desyncMarket
+        ? `One ticket: ${activeSelection.stake} WOLO on ${activeSelection.side === "left" ? market.left.name : market.right.name} + ${activeDesyncSelection.stake} WOLO on Desync ${activeDesyncSelection.side === "left" ? desyncMarket.left.name : desyncMarket.right.name}`
+        : `Backing ${
+            activeSelection.side === "left" ? market.left.name : market.right.name
+          } for ${activeSelection.stake} WOLO`
       : market.viewerWager
         ? `Already backing ${
             market.viewerWager.side === "left"
@@ -6235,7 +6329,9 @@ function MarketCard({
         ? "Chain..."
         : "Saving..."
     : activeSelection
-      ? `Lock ${activeSelection.stake} WOLO`
+      ? activeDesyncSelection
+        ? `Lock ${activeSelection.stake + activeDesyncSelection.stake} WOLO · 1 signature`
+        : `Lock ${activeSelection.stake} WOLO`
       : market.viewerWager
         ? "Add WOLO"
         : "Lock WOLO";
@@ -6404,6 +6500,7 @@ function MarketCard({
 
       <BetSlipComposer
         market={market}
+        desyncMarket={desyncMarket}
         activeSelection={activeSelection}
         canEdit={canEditSlip}
         maxStakeWolo={maxStakeWolo}
@@ -6414,6 +6511,9 @@ function MarketCard({
         workingKey={workingKey}
         onchainLocked={onchainLocked}
         onStakeChange={onStakeChange}
+        onDesyncSideChange={onDesyncSideChange}
+        onDesyncStakeChange={onDesyncStakeChange}
+        desyncProjectedReturn={desyncProjectedReturn}
         onLock={onLock}
         onClear={onClear}
         density={isExtremeTeamMarket ? "spacious" : "compact"}

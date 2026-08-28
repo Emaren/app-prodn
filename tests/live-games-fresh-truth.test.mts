@@ -16,14 +16,15 @@ test("public live snapshot exposes an explicit fresh path", () => {
   );
 });
 
-test("live API is fresh while SSR preserves the ordinary initial snapshot", () => {
+test("live API and SSR share the coalesced snapshot path", () => {
   const route = readFileSync("app/api/live-games/route.ts", "utf8");
   const page = readFileSync("app/live-games/page.tsx", "utf8");
 
   assert.match(
     route,
-    /loadPublicLiveGamesSnapshot\(prisma,\s*\{\s*fresh:\s*true\s*\}\)/,
+    /loadPublicLiveGamesSnapshot\(prisma\)/,
   );
+  assert.doesNotMatch(route, /fresh:\s*true/);
 
   assert.match(
     page,

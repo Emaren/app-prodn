@@ -430,6 +430,17 @@ export function publicReplayIdentity(row: PublicGameStatsLike) {
     "replay_file",
     "replayFile"
   );
+  const hash = readString(row, "replayHash", "replay_hash");
+
+  /*
+   * Final artifacts have a stable content hash. Prefer it over a process-wide
+   * watcher session so sequential legacy games that overwrite the same generic
+   * filename remain separate logical battles. Platform identity still wins
+   * across independent watchers when it is available.
+   */
+  if (publicReplayIsFinal(row) && hash) {
+    return `hash:${hash.toLowerCase()}`;
+  }
 
   // Live replay hashes change while the file grows. The watcher session and
   // original filename remain stable across those parse iterations.
@@ -440,7 +451,6 @@ export function publicReplayIdentity(row: PublicGameStatsLike) {
     return `watcher-file:${basename(file).toLowerCase()}`;
   }
 
-  const hash = readString(row, "replayHash", "replay_hash");
   if (hash) return `hash:${hash.toLowerCase()}`;
   if (file) return `file:${basename(file).toLowerCase()}`;
   return `row:${String(row.id ?? "")}`;

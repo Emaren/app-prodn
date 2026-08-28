@@ -9,9 +9,70 @@ import {
   buildDesyncSideMarketSlug,
   desyncReviewDeadlineMs,
   isDesyncSideMarketType,
+  nestDesyncSideMarkets,
   resolveDesyncSideMarketWinner,
   winnerSlugFromDesyncSideMarketSlug,
 } from "../lib/desyncSideMarket.ts";
+
+
+test(
+  "desync propositions are nested under one stable parent and never emitted as rows",
+  () => {
+    const grouped = nestDesyncSideMarkets([
+      {
+        id: 12,
+        parentMarketId: 1,
+        slug: "desync-watcher-live-one",
+        marketType: "desync",
+        linkedSessionKey: "platform:one",
+        label: "YES / NO",
+      },
+      {
+        id: 1,
+        parentMarketId: null,
+        slug: "watcher-live-one",
+        marketType: "winner",
+        linkedSessionKey: "platform:one",
+        label: "Alice vs Bob",
+      },
+      {
+        id: 2,
+        parentMarketId: null,
+        slug: "watcher-live-two",
+        marketType: "winner",
+        linkedSessionKey: "platform:two",
+        label: "Carol vs Dan",
+      },
+      {
+        id: 13,
+        parentMarketId: null,
+        slug: "desync-watcher-live-two",
+        marketType: "desync",
+        linkedSessionKey: "platform:two",
+        label: "YES / NO",
+      },
+      {
+        id: 99,
+        parentMarketId: 404,
+        slug: "desync-orphan",
+        marketType: "desync",
+        linkedSessionKey: "platform:orphan",
+        label: "orphan",
+      },
+    ]);
+
+    assert.deepEqual(
+      grouped.map((market) => market.id),
+      [1, 2],
+    );
+    assert.equal(grouped[0].desyncMarket?.id, 12);
+    assert.equal(grouped[1].desyncMarket?.id, 13);
+    assert.equal(
+      grouped.some((market) => market.marketType === "desync"),
+      false,
+    );
+  },
+);
 
 
 test(
@@ -128,11 +189,43 @@ test(
 
 
 test(
+  "an explicit human false correction immediately resolves NO",
+  () => {
+    assert.equal(
+      resolveDesyncSideMarketWinner({
+        desyncOccurred:
+          false,
+
+        humanDesyncDecisionPresent:
+          true,
+
+        parentStatus:
+          "live",
+
+        parentWinnerSide:
+          null,
+
+        parentSettledAtMs:
+          null,
+
+        nowMs:
+          1,
+      }),
+      "left"
+    );
+  }
+);
+
+
+test(
   "absence of desync truth never resolves NO before safe competitive finality",
   () => {
     assert.equal(
       resolveDesyncSideMarketWinner({
         desyncOccurred:
+          false,
+
+        humanDesyncDecisionPresent:
           false,
 
         parentStatus:
@@ -153,6 +246,9 @@ test(
     assert.equal(
       resolveDesyncSideMarketWinner({
         desyncOccurred:
+          false,
+
+        humanDesyncDecisionPresent:
           false,
 
         parentStatus:

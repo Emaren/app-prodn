@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
+import { ensureBetMarketsAfterCommit } from "@/lib/bets";
 import { ChallengeDesyncError } from "@/lib/desyncChallenge";
 import { applyReplayDesyncIncidentProtocol } from "@/lib/desyncChallengeProtocol";
 import {
@@ -153,10 +154,45 @@ export async function POST(request: NextRequest, context: RouteContext) {
       prisma,
       result.incident
     );
-    return noStoreJson(
-      { ...result, challengeProtocol: protocol },
-      { status: result.created ? 201 : 200 }
-    );
+
+    try {
+      /*
+       * The incident is already durable. Wait out any reconciliation pass
+       * that began before this commit, then require a newer pass so an
+       * unscheduled watcher's YES proposition does not depend on a later
+       * visitor opening /bets.
+       */
+      await ensureBetMarketsAfterCommit(prisma);
+
+      return noStoreJson(
+        {
+          ...result,
+          challengeProtocol: protocol,
+          reconciliation: { status: "completed" },
+        },
+        { status: result.created ? 201 : 200 }
+      );
+    } catch (reconciliationError) {
+      console.error(
+        `Replay desync incident #${result.incident.id} committed, but betting reconciliation failed:`,
+        reconciliationError
+      );
+
+      // Never pretend the append-only incident rolled back. A same-payload
+      // retry or the ordinary betting recovery rail can reconcile it safely.
+      return noStoreJson(
+        {
+          ...result,
+          challengeProtocol: protocol,
+          reconciliation: {
+            status: "deferred",
+            detail:
+              "Desync truth was recorded, but betting reconciliation was deferred. Retry this decision or run the betting reconciliation rail.",
+          },
+        },
+        { status: 202 }
+      );
+    }
   } catch (error) {
     return errorResponse(error);
   }

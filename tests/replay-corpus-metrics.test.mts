@@ -158,3 +158,39 @@ test("a watcher final remains in logical-battle deduplication", () => {
     1
   );
 });
+
+test("sequential generic watcher finals use stable artifact identity, not process identity", () => {
+  const watcherUpload = {
+    watcher_session_id: "one-long-running-process",
+  };
+  const rows = [
+    {
+      id: 7,
+      is_final: true,
+      replayHash: "f".repeat(64),
+      original_filename: "MP Replay.aoe2record",
+      parse_source: "watcher_final",
+      key_events: { watcher_upload: watcherUpload },
+      players: battlePlayers,
+      winner: "Alpha",
+    },
+    {
+      id: 8,
+      is_final: true,
+      replayHash: "9".repeat(64),
+      original_filename: "MP Replay.aoe2record",
+      parse_source: "watcher_final",
+      key_events: { watcher_upload: watcherUpload },
+      players: battlePlayers,
+      winner: "Alpha",
+    },
+  ];
+
+  assert.equal(
+    cleanPublicGameRows(rows, {
+      includeReview: true,
+      includeLive: false,
+    }).length,
+    2
+  );
+});

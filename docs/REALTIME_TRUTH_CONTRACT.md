@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","auditors","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-contract"
-reviewed_at: "2026-08-22"
+reviewed_at: "2026-08-28"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -252,6 +252,173 @@ A metadata-only `hd_metadata_fragment_only_recovery` row may bootstrap a session
 
 Market discovery reads fresh replay truth rather than a stale public display snapshot. A successful replay commit asks the web post-ingest coordinator to reconcile immediately; public GET traffic is only a fallback trigger. `/bets` responses cannot be shared by a CDN, and older overlapping responses cannot overwrite newer board state.
 
+### Concurrent watcher identity and card stability
+
+Every replay pulse is an observation of a battle, not a new battle and not a
+request to reorder the board. The live-session contract is:
+
+- `platform_match_id` is the canonical cross-watcher battle identity when it is
+  present;
+- when that platform ID arrives after early generic observations, the latest
+  eligible per-watcher battle epoch is promoted to the exact platform identity.
+  Multiple independent watcher epochs may converge on one exact battle, while
+  competing candidate IDs remain separate rather than being guessed;
+- without platform identity, a high-entropy replay alias (for example a UUID
+  or timestamped replay name) may correlate independent watchers; a generic
+  replay name is never global identity and is scoped by watcher-session (or
+  legacy uploader) evidence plus a persisted per-battle reset epoch;
+- watcher-session IDs identify a running process, not a battle. For generic
+  overwrite filenames, parse iteration 1 with a new replay hash starts a new
+  battle epoch anchored to that durable reset row, so sequential games from an
+  uninterrupted watcher process cannot inherit one another's card or market.
+  Completion evidence is explicitly excluded from reset boundaries, even when
+  its compatibility row also reports parse iteration 1;
+- mutable roster, map, heartbeat, and replay fingerprint fields never define
+  that fallback identity, so partial metadata can join later full iterations;
+- stream titles, public URLs, and playback paths such as `/manifest` are
+  presentation/transport metadata and never battle aliases;
+- observations with the same canonical identity merge useful roster, watcher,
+  uploader, stream, duration, and parse-iteration coverage instead of deleting
+  one another;
+- observations with different canonical identities remain independent even
+  when they arrive in the same polling interval;
+- a video stream that began under a fallback epoch follows that exact proven
+  alias onto the later platform card. Fresh stream telemetry may enrich the
+  card, but it never replaces the canonical replay row, battle ID, betting
+  eligibility, or finality state;
+- the initial server render and browser reconciliation use one deterministic
+  oldest-battle-first ordering rule; after that, existing browser cards retain
+  their relative slots and genuinely new identities append;
+- heartbeat and parse activity may refresh a card's contents but must never
+  promote that card above another active battle;
+- a missing observation receives only a short multi-poll network grace. A
+  completed identity leaves active immediately, and an absent watcher cannot
+  remain pinned for minutes on client memory alone.
+
+The public `/api/live-games` response remains HTTP `no-store`, but its expensive
+database projection uses the process-wide four-second snapshot cache and
+single-flight refresh. With the five-second visible-page poll, concurrent
+browsers share one projection refresh instead of multiplying full-corpus work
+by viewer count. A direct fresh path remains available to trusted internal
+callers that explicitly need it; the public polling route does not bypass the
+coalescer.
+
+### Financial identity promotion
+
+Live-card convergence and bet-book convergence are one atomic identity
+contract. When exact platform truth promotes one or more earlier fallback
+epochs, the market pass carries only the aliases proven by the fail-closed live
+session grouper. Player names, roster similarity, map, timestamps, stream URLs,
+and generic filenames never authorize a financial merge by themselves.
+
+Promotion runs before public-number allocation and before any canonical market
+upsert. It takes sorted advisory locks for the canonical and every exact alias,
+then row-locks all exact winner/Desync books. The winner proposition and its
+Desync child move as one family. Wagers, wallet-side locks, legacy stake
+intents, ticket legs and ticket hashes, founder bonuses, pending claims,
+automation references, frozen proposition state, and the earliest lock times
+remain attached to the surviving books.
+
+A recoverable legacy single-market stake intent keeps its original market ID
+because its escrow memo names that ID. If two different market IDs have live
+memo promises, or any proposition, side, ticket, wallet, claim, automation,
+terminal-state, parent/child, slug-owner, or battle-identity conflict cannot be
+proved safe, the entire exact battle family enters sticky `under_review` and no
+replacement canonical seed is created. Unexpected reconciliation errors abort
+the ensure pass; they are never logged and ignored while a duplicate book is
+opened.
+
+The lowest previously issued public battle number survives promotion. A
+platform match resolves through that promoted identity even when its historical
+row retains the fallback key, so promotion never burns a second public number.
+Other exact identity rows remain completed reservations and are never reused.
+Transferred legacy slugs become empty terminal
+`merged_into_platform_market` tombstones. Stale legacy pollers therefore cannot
+reopen the old book or strand a signed transfer after promotion.
+
+#### Operator response to a blocked promotion
+
+`watcher_identity_promotion` incidents are intentionally fail-closed. They
+appear with every affected book in `/admin/market-integrity`; the incident
+evidence records the canonical session, exact aliases, and the blocking reason.
+Keep the whole family `under_review` while comparing the winner parent, Desync
+child, wagers, wallet locks, stake intents/tickets, claims, automation rows,
+frozen proposition hashes, and battle identities. Do not delete an alias book,
+edit a market slug, clear a terminal marker, or reopen liquidity to make the
+warning disappear.
+
+There is deliberately no generic automatic override. If the conflict is real,
+follow the existing integrity/void/refund workflow and preserve all payment
+history. If the evidence proves one safe identity but the automatic planner is
+too conservative, the remedy is a separately reviewed, backup-protected repair
+with an immutable receipt, followed by a normal reconciliation and verification
+that exactly one winner/Desync family and one public battle number remain. Only
+then may the incident be resolved; a routine watcher pulse never clears it.
+
+### Exclusive public lifecycle lanes
+
+A battle occupies one public lifecycle lane at a time:
+
+```text
+scheduled/on deck -> playing now -> just finished -> recently played archive
+```
+
+Active identity wins over every completed/archive representation. A completed
+battle is eligible for the short `just finished` presentation window only
+after it has left active; archive cards for the same battle are withheld until
+that window ends. A scheduled battle resolved by replay carries the same
+canonical session identity into this exclusion set even though its public
+result is rendered by the scheduled-match tile. The normal result window is
+fifteen minutes and contracts to
+ten or five minutes under a busy/surge board so a burst of finishes cannot
+crowd out live action. Presentation depth is bounded independently of the
+durable replay corpus.
+
+Archive paging is performed at the logical-battle database grain: platform ID
+first, otherwise immutable final replay hash. Counts and offsets therefore
+refer to visible battles rather than parser rows, and the old 5,000-row
+in-memory/upstream ceiling no longer truncates `Recently played` or its paging
+coordinate space.
+
+This public-lane timing does not shorten financial evidence retention.
+Challenge reconciliation, market final proof, review, settlement, and late
+proof handling continue to consume the longer canonical replay/session
+horizons. UI expiry is never financial expiry.
+
+The canonical-final read is bounded by a fourteen-day proof horizon, never by a
+small raw-row `take`. The non-final completion-compatibility read is narrower:
+it is bounded by the fifteen-minute presentation horizon and Postgres applies a
+completion-candidate predicate before returning rows. Routine rolling pulses
+therefore never cross the database boundary into that lane, while a burst of
+finals from hundreds of games cannot consume a global row allowance and hide
+another game's proof. Standalone native stream discovery is likewise bounded
+by live status and a two-minute freshness window rather than an eight-row
+ceiling.
+
+### Desync child proposition
+
+The desync proposition is stored separately because it has its own pools,
+wagers, truth gate, and settlement, but the public book nests it under the
+matching winner proposition. It is never a peer/top-level match row. Explicit
+`parent_market_id` is authoritative; deterministic slug linkage may repair a
+legacy row, and session fallback is accepted only for an unambiguous one-parent
+and one-child pair.
+
+`YES` requires current human-confirmed desync truth. A parser disconnect,
+incomplete replay, or missing winner is not sufficient. An explicit current
+human correction to `desyncOccurred: false` authorizes `NO` immediately; mere
+absence authorizes `NO` only after the parent has a settlement-safe winner and
+the desync review grace has closed. Once either side is truth-authorized,
+backers of that side receive ordinary won payouts and opposing backers lose;
+the proposition is not converted into a refund merely because it is a side
+bet. A factual side with no backer does not rescue opposing wagers: they remain
+resolved losses and create no bettor payout liability. Exact-stake void/refund
+is reserved for unprovable truth or an otherwise voided proposition. Incident
+append and desync-wager terminalization take the same replay-scoped advisory
+transaction lock, and settlement re-reads effective human truth while holding
+that lock. A concurrent incident therefore cannot commit between the final
+truth check and financial terminalization.
+
 ## Final-proof lifecycle
 
 Every `awaiting_final_proof` parent market receives one persisted proof deadline. Normal realtime transitions anchor the clock to the proof observation that caused the transition and never restart it from mutable `updated_at`. A legacy or anomalous null-deadline parent receives one fresh bounded migration grace when repaired; once persisted, that deadline is immutable. A desync child inherits an already-persisted parent deadline.
@@ -314,6 +481,44 @@ For a release affecting this contract, verify all of the following:
     reconnect cleanup, per-viewer response bytes, target RSS/open-FD headroom,
     load-generator event-loop headroom, and loopback target responsiveness before
     a public canary. It must never target production.
+13. multi-watcher tests exercise dozens of mutable replay observations for each
+    of hundreds of distinct platform sessions, and prove exact session count,
+    stable card order, merged coverage, and no identity loss;
+14. a missed live poll retains a card only inside the short grace, an explicit
+    completed identity removes it immediately, and one match never renders in
+    active, just-finished, and archive lanes simultaneously;
+15. the public live polling route uses the coalesced snapshot path while trusted
+    internal fresh readers remain explicit;
+16. a human desync append triggers an after-commit market pass; executable payout
+    tests prove confirmed `YES`, explicit human `NO`, and review-closed `NO`
+    produce won/lost outcomes; append and wager terminalization share one
+    replay-scoped transaction lock with an in-lock truth re-read,
+    while unprovable truth remains the exact-stake void/refund path and an
+    unbacked factual side produces resolved losses rather than refunds.
+17. loader tests prove generic replay names from different watcher sessions or
+    uploaders remain distinct, partial rosters join their later full iteration,
+    one long-running process receives distinct persisted battle epochs after a
+    generic replay reset, parse-one completion evidence stays in that epoch,
+    multiple early watcher epochs converge after receiving one exact platform
+    ID, ambiguous IDs fail closed, and strong UUID/full-timestamp replay aliases
+    correlate cross-watcher observations;
+18. a 200-session by 50-observation completion burst plus 200 canonical finals
+    returns every logical final with no raw-row cap, while the compatibility
+    query proves its database-side candidate predicate and short UI horizon;
+19. stream tests prove generic titles/URLs/manifests cannot merge battles, bridge
+    aliases form one true transitive union, generic attached and standalone
+    stream keys remain isolated, and at least 250 fresh standalone streams
+    survive discovery;
+20. archive tests page beyond 5,000 logical battles while preserving exact
+    visible offsets, canonical ordering, and the full filed count.
+21. identity-promotion tests prove exact aliases reach market discovery,
+    winner and Desync books reconcile before numbering/upsert, one legacy memo
+    ID survives, malformed/opposing financial state fails closed, stale alias
+    slugs remain terminal, and canonical platform lookup reuses the original
+    public battle number without a sequence insert. A stateful transaction
+    harness must also execute the relation moves, ticket-hash recomputation,
+    tombstones, source-drain assertion, battle-identity rebind, blocked incident
+    path, and an idempotent second reconciliation.
 
 ## Observability identifiers
 

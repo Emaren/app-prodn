@@ -23,6 +23,15 @@ const page =
     "utf8"
   );
 
+const wagerRoute =
+  readFileSync(
+    new URL(
+      "../app/api/bets/wager/route.ts",
+      import.meta.url
+    ),
+    "utf8"
+  );
+
 
 test(
   "board market payload exposes proposition type",
@@ -131,21 +140,16 @@ test(
 
 
 test(
-  "featured winner book resolves its companion desync market",
+  "featured winner book consumes its server-nested desync proposition",
   () => {
     assert.match(
       page,
-      /spotlightDesyncMarket/
+      /const spotlightDesyncMarket = spotlightMarket\?\.desyncMarket \?\? null/
     );
 
-    assert.match(
+    assert.doesNotMatch(
       page,
-      /buildDesyncSideMarketSlug/
-    );
-
-    assert.match(
-      page,
-      /market\.parentMarketId === spotlightMarket\.id/
+      /board\?\.openMarkets\.find\(\s*\(market\)\s*=>\s*market\.marketType === DESYNC_SIDE_MARKET_TYPE/
     );
   }
 );
@@ -167,6 +171,16 @@ test(
     assert.match(
       page,
       /handleCombinedTicketLock/
+    );
+
+    assert.match(
+      page,
+      /desyncMarket=\{market\.desyncMarket\}/
+    );
+
+    assert.match(
+      page,
+      /onDesyncSelect=\{handleDesyncSelection\}/
     );
   }
 );
@@ -215,18 +229,59 @@ test(
 
     assert.match(
       page,
-      /Independent incident market · human desync truth/
+      /Nested Desync proposition · human-confirmed incident truth/
     );
   }
 );
 
 
 test(
-  "desync mini-book explains YES confirmation and delayed NO finality",
+  "desync mini-book explains both authoritative and review-closed NO finality",
   () => {
     assert.match(
       page,
-      /YES settles on confirmed desync · NO after final-result review\s*window/
+      /YES settles on confirmed desync · NO on a human correction or\s*after the final-result review window/
+    );
+
+    assert.match(
+      page,
+      /Human NO or a cleared review window/
+    );
+  }
+);
+
+
+test(
+  "a nested app-side Desync wager retains a direct clear path",
+  () => {
+    assert.match(
+      page,
+      /board\?\.openMarkets\s*\.flatMap\(\(entry\) => \[entry, entry\.desyncMarket\]\)/
+    );
+
+    assert.match(
+      page,
+      /market\.viewerWager[\s\S]*onchainLocked[\s\S]*onClick=\{\(\) => onClear\(market\.id\)\}[\s\S]*Clear Desync slip/
+    );
+
+    assert.match(
+      page,
+      /current\.desync\?\.marketId === marketId[\s\S]*desync: null/
+    );
+
+    assert.match(
+      wagerRoute,
+      /marketId,\s*userId: viewer\.id,\s*status: "active"/
+    );
+
+    assert.match(
+      wagerRoute,
+      /wager\.executionMode === "onchain_escrow" \|\| Boolean\(wager\.stakeTxHash\)/
+    );
+
+    assert.match(
+      wagerRoute,
+      /await prisma\.betWager\.deleteMany\(\{[\s\S]*marketId,[\s\S]*userId: viewer\.id,[\s\S]*status: "active"/
     );
   }
 );

@@ -42,7 +42,10 @@ import { useTileViewPreference } from "@/components/tile-view/useTileViewPrefere
 import { useUserAuth } from "@/context/UserAuthContext";
 import type { LiveGamesSnapshot } from "@/lib/liveGames";
 import {
+  appendLiveArchiveClientPage,
+  buildLiveArchiveClientState,
   liveSessionIdentity,
+  reconcileLiveArchiveClientState,
   reconcileLiveGamesSnapshots,
 } from "@/lib/liveGamesClientReconcile";
 import { getTournamentMatchStatusLabel } from "@/lib/lobby";
@@ -1019,40 +1022,57 @@ function ClassicBoard({
     );
   }, []);
 
-  const [archiveMatches, setArchiveMatches] = useState<LiveGamesSnapshot["recentMatches"]>(snapshot.recentMatches);
-  const [archiveOffset, setArchiveOffset] = useState(snapshot.recentMatches.length);
-  const [archiveLoading, setArchiveLoading] = useState(false);
-  const [archiveHasMore, setArchiveHasMore] = useState(
-    snapshot.recentMatches.length <
+  const [archiveState, setArchiveState] = useState(() =>
+    buildLiveArchiveClientState(
+      snapshot.recentMatches,
+      snapshot.archiveCursor ?? snapshot.recentMatches.length,
       snapshot.archiveTotal
+    )
   );
+  const [archiveLoading, setArchiveLoading] = useState(false);
+  const archiveRequestInFlightRef = useRef(false);
+  const archiveMatches = archiveState.matches;
+  const archiveOffset = archiveState.offset;
+  const archiveHasMore = archiveState.hasMore;
   const [liveTone] = useState<ClassicLiveTone>("violet");
   const [playingControlsOpen, setPlayingControlsOpen] = useState(false);
 
   useEffect(() => {
-    setArchiveMatches(snapshot.recentMatches);
-    setArchiveOffset(snapshot.recentMatches.length);
-    setArchiveHasMore(
-      snapshot.recentMatches.length <
+    setArchiveState((current) =>
+      reconcileLiveArchiveClientState(
+        current,
+        snapshot.recentMatches,
+        snapshot.archiveCursor ?? snapshot.recentMatches.length,
         snapshot.archiveTotal
+      )
     );
   }, [
     snapshot.archiveTotal,
+    snapshot.archiveCursor,
     snapshot.recentMatches,
   ]);
 
   const loadMoreArchiveMatches = useCallback(async () => {
-    if (!advanced || archiveLoading || !archiveHasMore) return;
+    if (
+      !advanced ||
+      archiveLoading ||
+      archiveRequestInFlightRef.current ||
+      !archiveHasMore
+    ) {
+      return;
+    }
 
+    const requestedOffset = archiveOffset;
+    const requestedSeedSignature = archiveState.seedSignature;
+    archiveRequestInFlightRef.current = true;
     setArchiveLoading(true);
 
     try {
-      const response = await fetch(`/api/game_stats?archive=1&limit=12&offset=${archiveOffset}`, {
+      const response = await fetch(`/api/game_stats?archive=1&limit=12&offset=${requestedOffset}`, {
         cache: "no-store",
       });
 
       if (!response.ok) {
-        setArchiveHasMore(false);
         return;
       }
 
@@ -1062,24 +1082,43 @@ function ClassicBoard({
         : Array.isArray(payload?.matches)
           ? (payload.matches as LiveGamesSnapshot["recentMatches"])
           : [];
+      const nextOffset =
+        !Array.isArray(payload) &&
+        Number.isSafeInteger(Number(payload?.nextOffset)) &&
+        Number(payload.nextOffset) >= requestedOffset
+          ? Number(payload.nextOffset)
+          : requestedOffset + nextMatches.length;
+      const total =
+        !Array.isArray(payload) &&
+        Number.isSafeInteger(Number(payload?.total)) &&
+        Number(payload.total) >= 0
+          ? Number(payload.total)
+          : snapshot.archiveTotal;
 
-      setArchiveMatches((current) => {
-        const seen = new Set(current.map((match) => String(match.id)));
-        const unique = nextMatches.filter((match) => !seen.has(String(match.id)));
-        return [...current, ...unique];
-      });
-
-      setArchiveOffset((current) => current + nextMatches.length);
-
-      if (nextMatches.length < 12) {
-        setArchiveHasMore(false);
-      }
+      setArchiveState((current) =>
+        appendLiveArchiveClientPage(current, {
+          requestedSeedSignature,
+          requestedOffset,
+          matches: nextMatches,
+          nextOffset,
+          total,
+        })
+      );
     } catch {
-      setArchiveHasMore(false);
+      // A transient request failure is not evidence that the durable archive
+      // ended. Keep the cursor retryable on the next near-bottom scroll.
     } finally {
+      archiveRequestInFlightRef.current = false;
       setArchiveLoading(false);
     }
-  }, [advanced, archiveHasMore, archiveLoading, archiveOffset]);
+  }, [
+    advanced,
+    archiveHasMore,
+    archiveLoading,
+    archiveOffset,
+    archiveState.seedSignature,
+    snapshot.archiveTotal,
+  ]);
 
   const handleArchiveScroll = useCallback(
     (event: UIEvent<HTMLDivElement>) => {

@@ -14,6 +14,15 @@ const source =
     "utf8"
   );
 
+const incidentRouteSource =
+  readFileSync(
+    new URL(
+      "../app/api/replay-results/[id]/desync-incidents/route.ts",
+      import.meta.url
+    ),
+    "utf8"
+  );
+
 
 test(
   "winner market seeds explicitly retain winner proposition type",
@@ -131,6 +140,32 @@ test(
 
 
 test(
+  "public board nests desync children while retaining flat rows for viewer accounting",
+  () => {
+    assert.match(
+      source,
+      /const openMarkets = nestDesyncSideMarkets\(openMarketRowsWithFeeds\)/
+    );
+
+    assert.match(
+      source,
+      /const awaitingProofMarkets = nestDesyncSideMarkets\(/
+    );
+
+    assert.match(
+      source,
+      /const activeOpenWagers = openMarketRowsWithFeeds/
+    );
+
+    assert.match(
+      source,
+      /desyncMarket: null/
+    );
+  }
+);
+
+
+test(
   "winner replay reconciliation excludes desync side markets",
   () => {
     assert.match(
@@ -152,6 +187,33 @@ test(
     assert.ok(
       staleWinnerGuards.length >= 2,
       `expected at least 2 winner-only stale cleanup guards, found ${staleWinnerGuards.length}`
+    );
+  }
+);
+
+
+test(
+  "durable human desync truth requires a post-commit betting pass",
+  () => {
+    assert.match(
+      incidentRouteSource,
+      /await ensureBetMarketsAfterCommit\(prisma\)/
+    );
+
+    assert.ok(
+      incidentRouteSource.indexOf("submitReplayDesyncIncident") <
+        incidentRouteSource.lastIndexOf("ensureBetMarketsAfterCommit"),
+      "bet reconciliation must run only after the incident append"
+    );
+
+    assert.match(
+      incidentRouteSource,
+      /status:\s*"deferred"/
+    );
+
+    assert.match(
+      incidentRouteSource,
+      /\{ status:\s*202 \}/
     );
   }
 );
