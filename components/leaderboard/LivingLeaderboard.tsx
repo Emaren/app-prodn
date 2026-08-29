@@ -2737,7 +2737,7 @@ export function LivingLeaderboard({
       <div
         ref={tableSnapRef}
         data-leaderboard-snap="table"
-        className="flex h-full min-h-full shrink-0 flex-col overflow-visible border-t border-amber-200/10 bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.04),transparent_24%)] px-2 pb-2 sm:px-3 sm:pb-3 lg:px-4 lg:pb-4 [scroll-snap-align:start] [scroll-snap-stop:always]"
+        className="flex h-full min-h-full shrink-0 flex-col overflow-visible bg-[radial-gradient(circle_at_50%_0%,rgba(34,211,238,0.04),transparent_24%)] px-2 pb-2 sm:px-3 sm:pb-3 lg:px-4 lg:pb-4 [scroll-snap-align:start] [scroll-snap-stop:always]"
         aria-busy={
           loading ||
           loadingMore

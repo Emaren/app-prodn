@@ -704,4 +704,19 @@ test("Extreme leaderboard remains an open-top hanging board", () => {
     living,
     /absolute inset-x-16 top-0 h-px bg-gradient-to-r from-transparent via-amber-100\/50 to-transparent/,
   );
+
+  const tableSnapMatch =
+    living.match(
+      /data-leaderboard-snap="table"[\s\S]*?className="([^"]+)"/,
+    );
+
+  assert.ok(
+    tableSnapMatch,
+    "table focus snap must exist",
+  );
+
+  assert.doesNotMatch(
+    tableSnapMatch[1],
+    /\bborder-t\b/,
+  );
 });
