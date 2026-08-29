@@ -659,3 +659,49 @@ test("navbar movement is compositor-only during Leaderboard focus scroll", () =>
     /style\.opacity/,
   );
 });
+
+test("Extreme leaderboard remains an open-top hanging board", () => {
+  const living = source(
+    "components/leaderboard/LivingLeaderboard.tsx",
+  );
+
+  const chassisMatch =
+    living.match(
+      /onScroll=\{handleViewportScroll\}[\s\S]*?className="([^"]+)"/,
+    );
+
+  assert.ok(
+    chassisMatch,
+    "Extreme leaderboard chassis must exist",
+  );
+
+  const chassis =
+    chassisMatch[1];
+
+  assert.match(
+    chassis,
+    /rounded-b-\[2rem\]/,
+  );
+  assert.match(
+    chassis,
+    /border-x/,
+  );
+  assert.match(
+    chassis,
+    /border-b/,
+  );
+
+  assert.doesNotMatch(
+    chassis,
+    /rounded-\[2rem\]/,
+  );
+  assert.doesNotMatch(
+    chassis,
+    /0_0_0_1px/,
+  );
+
+  assert.doesNotMatch(
+    living,
+    /absolute inset-x-16 top-0 h-px bg-gradient-to-r from-transparent via-amber-100\/50 to-transparent/,
+  );
+});

@@ -1944,9 +1944,8 @@ export function LivingLeaderboard({
         focusStageRef.current
       }
       onScroll={handleViewportScroll}
-      className="relative flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain scroll-smooth rounded-[2rem] border border-amber-200/22 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.11),transparent_30%),radial-gradient(circle_at_88%_0%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(145deg,#0b1728,#050b15_56%,#02060d)] shadow-[0_40px_130px_rgba(0,0,0,0.48),0_0_0_1px_rgba(201,155,60,0.045)] [scroll-snap-type:y_proximity] [scrollbar-gutter:stable]"
+      className="relative flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain scroll-smooth rounded-b-[2rem] border-x border-b border-amber-200/22 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.11),transparent_30%),radial-gradient(circle_at_88%_0%,rgba(251,191,36,0.08),transparent_28%),linear-gradient(145deg,#0b1728,#050b15_56%,#02060d)] shadow-[0_40px_130px_rgba(0,0,0,0.48)] [scroll-snap-type:y_proximity] [scrollbar-gutter:stable]"
     >
-      <div className="pointer-events-none absolute inset-x-16 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/50 to-transparent" />
 
       <div
         ref={returnRailRef}
