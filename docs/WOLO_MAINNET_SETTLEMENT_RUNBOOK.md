@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-07-29"
+reviewed_at: "2026-08-28"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -18,7 +18,15 @@ sensitivity: "restricted"
 This is the AoE2HDBets-side runbook only. WoloChain owns the chain service,
 keys, signer funding, and settlement truth.
 
-## Current mainnet service shape
+Review note (2026-08-28): the app-side signer-role separation, health gate,
+financial containment, and settlement call paths were re-reviewed against the
+current implementation and financial regression suite. Commit identities,
+binary hashes, balances, and inventory counts below are preserved as dated
+2026-07-26/29 evidence only. Before any operation, read current truth with
+`aoe2war status`, `aoe2war audit`, and `aoe2war doctor`; never make the running
+node binary equal the checkout without a separately proven chain-upgrade plan.
+
+## Mainnet service shape and dated evidence
 
 ### Verified source and binary split — 2026-07-26
 

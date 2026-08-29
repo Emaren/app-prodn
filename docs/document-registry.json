@@ -861,9 +861,9 @@
       "owner": "aoe2war-web",
       "path": "docs/MARKET_TEAM_INTEGRITY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-07-29",
+      "reviewed_at": "2026-08-28",
       "sensitivity": "restricted",
-      "sha256": "7bd9fc1e5b9a47686891e6abb81a00c1959751eb78f8c11cb7db7aad842ed4b9",
+      "sha256": "0833549ab9a4cd8e4d40a8acdd861acc4e603c7a4d084a4fcfd75923217fa0ca",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1550,9 +1550,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_MAINNET_SETTLEMENT_RUNBOOK.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-07-29",
+      "reviewed_at": "2026-08-28",
       "sensitivity": "restricted",
-      "sha256": "9c29ec048cc47dc18b8f8f06dea06eb93aefda0d6cab357244b4788cd37bf0e1",
+      "sha256": "162722e84456a01cc001e8ed41ddb6007b4253fddaf2775cf55c020004ffac03",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

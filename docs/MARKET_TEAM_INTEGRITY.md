@@ -8,12 +8,18 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-07-29"
+reviewed_at: "2026-08-28"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Team Market Integrity
+
+Review note (2026-08-28): the immutable proposition, final-roster,
+void/refund, settlement-proof, and watcher-identity promotion boundaries were
+re-reviewed against the current multi-watcher implementation and financial
+regression rail. Historical counts and release hashes below remain dated
+evidence, not current mutable production telemetry.
 
 ## Product law
 
@@ -26,6 +32,17 @@ Watcher-created 2v2, 3v3, and 4v4 books require exactly two complete, equal-size
 `api-prodn/utils/replay_team_contract.py` normalizes replay players once and preserves name, Steam identity, civilization, color, position, team ID, player number, winner flag, score, rating snapshot, EAPM, and achievements when present. The API stores those canonical players in `game_stats.players` and stores `team_resolution` in `key_events`.
 
 `lib/liveSessionSnapshot.ts` merges replay iterations by stable player identity, retains the most complete evidence, and blocks on roster-size or team-assignment conflicts. `lib/teamResolution.ts` is the app-side resolver shared by live presentation, market creation, proposition hashing, final settlement validation, and audit tooling.
+
+When a fallback watcher session later receives an exact platform match ID,
+market identity promotion runs atomically before canonical market upsert. It
+takes deterministic advisory and row locks, moves the winner/desync family and
+all dependent financial/audit rows as one unit, preserves the oldest public
+battle number, drains the source family, and leaves terminal tombstones so a
+late poll cannot recreate the legacy book. Ambiguous or conflicting families
+enter `under_review` with a durable `watcher_identity_promotion` incident; no
+stake, payout, claim, or wallet authority moves on that path. The full
+concurrency contract and operator response live in
+`docs/REALTIME_TRUTH_CONTRACT.md`.
 
 ## Immutable proposition
 
