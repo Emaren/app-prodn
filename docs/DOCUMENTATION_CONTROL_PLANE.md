@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `719d653fc1c23fe569e8c763de1e665b7cfac417`
+Implementation baseline: `main` at `d962263f6b730563db302d361f00fec9f934d21a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **73**
+- Authoritative repository documents: **75**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 42
+- `reference`: 44
 - `runbook`: 12
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 57
+- `active`: 59
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -115,9 +115,11 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR WarGraph V1](WARGRAPH_V1.md) | `reference` | `active` | `architecture-contract` |
 | [The War Engine](WAR_ENGINE.md) | `reference` | `active` | `replay-evidence-escalation-contract` |
 | [War Room Forum](WAR_ROOM_FORUM.md) | `reference` | `active` | `product-contract` |
+| [Watcher Native Stream Handoff](WATCHER_NATIVE_STREAM_HANDOFF.md) | `reference` | `active` | `stream-ingest-contract` |
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |
 | [WoloChain Civic Rail Handoff Prompt](WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md) | `reference` | `active` | `cross-repository-handoff` |
 | [WOLO Mainnet Settlement App Runbook](WOLO_MAINNET_SETTLEMENT_RUNBOOK.md) | `runbook` | `active` | `operational-procedure` |
+| [WOLO Wallet and Holder Projection](WOLO_WALLET_AND_HOLDER_PROJECTION.md) | `reference` | `active` | `wallet-read-model-contract` |
 | [AoE2WAR Workshop Architecture](WORKSHOP_ARCHITECTURE.md) | `explanation` | `active` | `architecture-explanation` |
 | [Apprentice Under Zodiac](ZODIAC_TRAINING_PAGE.md) | `reference` | `active` | `product-contract` |
 | [WOLO Duplicate Tx Audit - 2026-06-05](audits/WOLO_DUPLICATE_TX_AUDIT_2026-06-05.md) | `historical` | `historical` | `audit-evidence` |

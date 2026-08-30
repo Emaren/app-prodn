@@ -269,9 +269,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-01",
+      "reviewed_at": "2026-08-29",
       "sensitivity": "internal",
-      "sha256": "17f9e13889258e83ca87cf47aa39c6ef28e349aba20c0b6deff924042cc6e70d",
+      "sha256": "9eed675d819d6b14b90c238ca116b9ba9aceac252b6c45080be8ac6d7703a485",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "20eba52fce3c0dbcee23c0ffbba3b0b172a4611c30b3efeecfd2c6c37e6e9607",
+      "sha256": "c8c37d14dd6d9557622e90a42dbd2d3c36dffa9acc974efe0a39e02a11fef07f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1160,7 +1160,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-28",
       "sensitivity": "internal",
-      "sha256": "aac7aca8cfd2c944c19061b4188bf55a75540ee0dd2d2463b1eb3a3617c8769e",
+      "sha256": "467dd2823916e71cb67e3ad00b877f234e5bb0b290a5c4a94a591b80023396c4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1499,6 +1499,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "stream-ingest-contract",
+      "id": "aoe2war.app-prodn.docs-watcher-native-stream-handoff",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_NATIVE_STREAM_HANDOFF.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-30",
+      "sensitivity": "internal",
+      "sha256": "45d55c3302b2fbfa49bde29b0057821c2ccbb6ebe4c00a28d2113015010fba20",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher Native Stream Handoff",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "telemetry-contract",
       "id": "aoe2war.app-prodn.docs-watcher-telemetry",
       "owner": "aoe2war-web",
@@ -1506,7 +1529,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-28",
       "sensitivity": "restricted",
-      "sha256": "e5625960b42af996401d558543a99ec02fcadef62aca6a7ad40cf1058bfb0480",
+      "sha256": "6e13612284572f47f07a190b582fa895f5845c663543000345d5fa9645f5f900",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1561,6 +1584,29 @@
       ],
       "title": "WOLO Mainnet Settlement App Runbook",
       "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "wallet-read-model-contract",
+      "id": "aoe2war.app-prodn.docs-wolo-wallet-and-holder-projection",
+      "owner": "aoe2war-web",
+      "path": "docs/WOLO_WALLET_AND_HOLDER_PROJECTION.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-30",
+      "sensitivity": "internal",
+      "sha256": "691b767797ed33c641b8854a5aaa137b154c5377ae1640bf8cb5e7c1c845520f",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "WOLO Wallet and Holder Projection",
+      "type": "reference"
     },
     {
       "audience": [
@@ -1675,7 +1721,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "719d653fc1c23fe569e8c763de1e665b7cfac417"
+    "commit": "d962263f6b730563db302d361f00fec9f934d21a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
