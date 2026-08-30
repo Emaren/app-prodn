@@ -25,7 +25,96 @@ const STORAGE_KEY =
   "aoe2war:radio-wolo-player-mode:v1";
 
 const THEME_STORAGE_KEY =
-  "aoe2war:radio-wolo-player-theme:v1";
+  "aoe2war:radio-wolo-player-theme:v2";
+
+const SKIN_STORAGE_KEY =
+  "aoe2war:radio-wolo-player-skin:v1";
+
+const PLAYER_SKINS = [
+  {
+    id: "ui",
+    label: "UI",
+    kind: "ui",
+  },
+  {
+    id: "mini1",
+    label: "Mini I",
+    kind: "image",
+    src: "/radio-wolo/mini.png",
+  },
+  {
+    id: "mini2",
+    label: "Mini II",
+    kind: "image",
+    src: "/radio-wolo/mini2.png",
+  },
+] as const;
+
+type PlayerSkinId =
+  (typeof PLAYER_SKINS)[number]["id"];
+
+function readStoredSkin(): PlayerSkinId {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
+    return "ui";
+  }
+
+  try {
+    const stored =
+      window.localStorage.getItem(
+        SKIN_STORAGE_KEY,
+      );
+
+    const found =
+      PLAYER_SKINS.find(
+        (skin) =>
+          skin.id === stored,
+      );
+
+    if (found) {
+      return found.id;
+    }
+  } catch {
+    // Player appearance persistence is optional.
+  }
+
+  return "ui";
+}
+
+const AUTOPLAY_STORAGE_KEY =
+  "aoe2war:radio-wolo-autoplay:v1";
+
+function readStoredAutoplay() {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
+    return true;
+  }
+
+  try {
+    const stored =
+      window.localStorage.getItem(
+        AUTOPLAY_STORAGE_KEY,
+      );
+
+    if (stored === "false") {
+      return false;
+    }
+
+    if (stored === "true") {
+      return true;
+    }
+  } catch {
+    // Autoplay preference is optional.
+  }
+
+  // Authenticated Kingdom members default ON.
+  // Anonymous visitors are still gated below.
+  return true;
+}
 
 const PLAYER_THEMES = [
   {
@@ -56,15 +145,15 @@ const PLAYER_THEMES = [
     label: "Imperial",
     accent: "blue",
     dormant:
-      "border-amber-900/70 bg-[#050813]/96 text-amber-500 hover:border-amber-600/70 hover:text-amber-300",
+      "border-[#294c78]/70 bg-[#020817]/98 text-amber-300 shadow-[0_0_24px_rgba(17,52,96,0.26)] hover:border-amber-600/55 hover:text-amber-200",
     shell:
-      "border-amber-900/55 bg-[radial-gradient(circle_at_8%_0%,rgba(30,58,138,0.35),transparent_44%),linear-gradient(145deg,#070b18,#04060b_72%)]",
+      "border-[#294c78]/65 bg-[radial-gradient(circle_at_12%_-8%,rgba(37,99,235,0.24),transparent_42%),radial-gradient(circle_at_92%_110%,rgba(180,83,9,0.10),transparent_38%),linear-gradient(145deg,#07172f_0%,#031022_48%,#020817_100%)]",
     dot:
       "bg-amber-500 shadow-[0_0_11px_rgba(245,158,11,0.86)]",
     control:
-      "border-blue-900/70 bg-blue-950/45 text-amber-500 hover:border-amber-700/70 hover:text-amber-300",
+      "border-[#31547d]/65 bg-[#07172d]/88 text-amber-300 hover:border-amber-600/55 hover:bg-[#0a1d38] hover:text-amber-100",
     play:
-      "border-blue-700/75 bg-[linear-gradient(180deg,#1e40af,#172554)] text-amber-50 hover:border-amber-600/70",
+      "border-amber-700/55 bg-[radial-gradient(circle_at_50%_20%,rgba(59,130,246,0.22),transparent_52%),linear-gradient(180deg,#0d2b55,#06172f)] text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] hover:border-amber-500/70",
     textTone:
       "text-amber-500/80",
     live:
@@ -72,7 +161,7 @@ const PLAYER_THEMES = [
     line:
       "via-amber-700/55",
     progress:
-      "bg-[linear-gradient(90deg,#1e3a8a,#2563eb_58%,#b45309)]",
+      "bg-[linear-gradient(90deg,#1d4ed8,#3b82f6_48%,#d6a52a_100%)]",
   },
   {
     id: "iron",
@@ -127,7 +216,7 @@ type PlayerThemeId =
 
 function readStoredTheme(): PlayerThemeId {
   if (typeof window === "undefined") {
-    return "ember";
+    return "imperial";
   }
 
   try {
@@ -149,7 +238,7 @@ function readStoredTheme(): PlayerThemeId {
     // Theme persistence is optional.
   }
 
-  return "ember";
+  return "imperial";
 }
 
 function readStoredMode(): PlayerMode {
@@ -246,6 +335,9 @@ export default function RadioWoloGlobalPlayer() {
     liveOffsetMs,
     liveElapsedMs,
 
+    targetVolume,
+    setTargetVolume,
+
     startListening,
     stopListening,
     syncStation,
@@ -271,7 +363,7 @@ export default function RadioWoloGlobalPlayer() {
     setThemeId,
   ] =
     React.useState<PlayerThemeId>(
-      "ember",
+      "imperial",
     );
 
   React.useEffect(() => {
@@ -286,31 +378,66 @@ export default function RadioWoloGlobalPlayer() {
         entry.id === themeId,
     ) ?? PLAYER_THEMES[0];
 
-  const cycleTheme =
-    React.useCallback(() => {
-      const index =
-        PLAYER_THEMES.findIndex(
-          (entry) =>
-            entry.id === themeId,
-        );
 
-      const next =
-        PLAYER_THEMES[
-          (index + 1) %
-            PLAYER_THEMES.length
-        ] ?? PLAYER_THEMES[0];
+  const [
+    skinId,
+    setSkinId,
+  ] =
+    React.useState<PlayerSkinId>(
+      "ui",
+    );
 
-      setThemeId(next.id);
+  React.useEffect(() => {
+    setSkinId(
+      readStoredSkin(),
+    );
+  }, []);
 
-      try {
-        window.localStorage.setItem(
-          THEME_STORAGE_KEY,
-          next.id,
-        );
-      } catch {
-        // Theme persistence is optional.
-      }
-    }, [themeId]);
+  const activeSkin =
+    PLAYER_SKINS.find(
+      (skin) =>
+        skin.id === skinId,
+    ) ?? PLAYER_SKINS[0];
+
+  const setStoredSkin =
+    React.useCallback(
+      (
+        next:
+          PlayerSkinId,
+      ) => {
+        setSkinId(next);
+
+        try {
+          window.localStorage.setItem(
+            SKIN_STORAGE_KEY,
+            next,
+          );
+        } catch {
+          // Player appearance persistence is optional.
+        }
+      },
+      [],
+    );
+
+  const setStoredTheme =
+    React.useCallback(
+      (
+        next:
+          PlayerThemeId,
+      ) => {
+        setThemeId(next);
+
+        try {
+          window.localStorage.setItem(
+            THEME_STORAGE_KEY,
+            next,
+          );
+        } catch {
+          // Theme persistence is optional.
+        }
+      },
+      [],
+    );
 
   const setStoredMode =
     React.useCallback(
@@ -327,6 +454,55 @@ export default function RadioWoloGlobalPlayer() {
           );
         } catch {
           // Presentation persistence is optional.
+        }
+      },
+      [],
+    );
+
+  const [
+    autoPlayEnabled,
+    setAutoPlayEnabled,
+  ] =
+    React.useState(true);
+
+  const [
+    autoPlaySuppressed,
+    setAutoPlaySuppressed,
+  ] =
+    React.useState(false);
+
+  const autoPlayAttemptRef =
+    React.useRef<string | null>(
+      null,
+    );
+
+  React.useEffect(() => {
+    setAutoPlayEnabled(
+      readStoredAutoplay(),
+    );
+  }, []);
+
+  const updateAutoplay =
+    React.useCallback(
+      (
+        next:
+          boolean,
+      ) => {
+        setAutoPlayEnabled(
+          next,
+        );
+
+        setAutoPlaySuppressed(
+          false,
+        );
+
+        try {
+          window.localStorage.setItem(
+            AUTOPLAY_STORAGE_KEY,
+            String(next),
+          );
+        } catch {
+          // Preference persistence is optional.
         }
       },
       [],
@@ -402,6 +578,46 @@ export default function RadioWoloGlobalPlayer() {
         : "The transmitter is silent"
     );
 
+  React.useEffect(() => {
+    if (
+      !station?.authenticated ||
+      station.state !== "on_air" ||
+      !station.startedAt ||
+      !station.clock?.current ||
+      !autoPlayEnabled ||
+      autoPlaySuppressed ||
+      isListening
+    ) {
+      return;
+    }
+
+    const attemptKey = [
+      station.startedAt,
+      station.clock.current
+        .position,
+    ].join(":");
+
+    if (
+      autoPlayAttemptRef.current ===
+      attemptKey
+    ) {
+      return;
+    }
+
+    autoPlayAttemptRef.current =
+      attemptKey;
+
+    // Browser policy may reject this. If so, playbackBlocked
+    // leaves the visible Listen control as the graceful fallback.
+    void startListening();
+  }, [
+    autoPlayEnabled,
+    autoPlaySuppressed,
+    isListening,
+    startListening,
+    station,
+  ]);
+
   const handlePlayToggle =
     React.useCallback(
       () => {
@@ -409,11 +625,19 @@ export default function RadioWoloGlobalPlayer() {
           isListening &&
           !playbackBlocked
         ) {
+          setAutoPlaySuppressed(
+            true,
+          );
+
           stopListening();
           return;
         }
 
         if (isOnAir) {
+          setAutoPlaySuppressed(
+            false,
+          );
+
           void startListening();
         }
       },
@@ -464,6 +688,118 @@ export default function RadioWoloGlobalPlayer() {
     );
   }
 
+  if (
+    mode === "compact" &&
+    activeSkin.kind === "image"
+  ) {
+    return (
+      <section
+        data-radio-wolo-player
+        data-radio-wolo-mode="compact"
+        data-radio-wolo-theme={
+          theme.id
+        }
+        data-radio-wolo-skin={
+          skinId
+        }
+        data-radio-wolo-art-face
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.8rem)] left-3 z-[169] aspect-[4/3] w-[min(18rem,calc(100vw-1.5rem))] overflow-hidden rounded-[1.15rem] border border-[#365b85]/70 bg-[#020817] shadow-[0_24px_72px_rgba(0,0,0,0.68),0_0_28px_rgba(24,73,132,0.14)] lg:bottom-4 lg:left-4"
+        style={{
+          backgroundImage:
+            `url("${activeSkin.src}")`,
+          backgroundPosition:
+            "center",
+          backgroundRepeat:
+            "no-repeat",
+          backgroundSize:
+            "cover",
+        }}
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,8,23,0.02)_0%,rgba(2,8,23,0.00)_55%,rgba(2,8,23,0.28)_100%)]"
+        />
+
+        <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full border border-amber-300/20 bg-[#020817]/72 px-2 py-1 backdrop-blur-md">
+          <span
+            aria-hidden="true"
+            className={`h-1.5 w-1.5 rounded-full ${
+              isOnAir
+                ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]"
+                : "bg-slate-500"
+            }`}
+          />
+
+          <span className="text-[7px] font-black uppercase tracking-[0.18em] text-amber-100/80">
+            {signalLabel}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() =>
+            setStoredMode(
+              "dormant",
+            )
+          }
+          className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full border border-amber-300/22 bg-[#020817]/76 text-amber-200/75 backdrop-blur-md transition hover:border-amber-300/45 hover:text-amber-100"
+          aria-label="Close Radio WOLO"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+
+        <button
+          type="button"
+          onClick={
+            handlePlayToggle
+          }
+          disabled={
+            !isOnAir
+          }
+          className="absolute left-1/2 top-[68%] grid h-12 w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-amber-300/45 bg-[#06152b]/88 text-amber-100 shadow-[0_0_22px_rgba(217,160,45,0.22),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm transition hover:border-amber-200/70 hover:bg-[#0a2141]/94 disabled:cursor-default disabled:opacity-35"
+          aria-label={
+            isListening &&
+            !playbackBlocked
+              ? "Pause Radio WOLO"
+              : "Listen to Radio WOLO"
+          }
+        >
+          {isListening &&
+          !playbackBlocked ? (
+            <Pause className="h-5 w-5" />
+          ) : (
+            <Play className="ml-0.5 h-5 w-5" />
+          )}
+        </button>
+
+        <div className="absolute bottom-2 left-2 max-w-[56%] rounded-lg border border-white/[0.07] bg-[#020817]/72 px-2 py-1.5 backdrop-blur-md">
+          <div className="truncate text-[8px] font-black uppercase tracking-[0.16em] text-amber-300/70">
+            Radio WOLO
+          </div>
+
+          <div className="mt-0.5 truncate text-[9px] font-semibold text-white/86">
+            {displayTitle}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            void syncStation();
+
+            setStoredMode(
+              "expanded",
+            );
+          }}
+          className="absolute bottom-2 right-2 rounded-lg border border-amber-300/22 bg-[#020817]/78 px-2.5 py-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-amber-200/80 backdrop-blur-md transition hover:border-amber-300/45 hover:text-amber-100"
+          aria-label="More Radio WOLO controls"
+        >
+          More
+        </button>
+      </section>
+    );
+  }
+
   return (
     <section
       data-radio-wolo-player
@@ -472,6 +808,9 @@ export default function RadioWoloGlobalPlayer() {
       }
       data-radio-wolo-theme={
         theme.id
+      }
+      data-radio-wolo-skin={
+        skinId
       }
       className={`fixed bottom-[calc(env(safe-area-inset-bottom)+5.8rem)] left-3 z-[169] overflow-hidden rounded-[1.2rem] border shadow-[0_22px_70px_rgba(0,0,0,0.64)] backdrop-blur-2xl lg:bottom-4 lg:left-4 ${theme.shell} ${
         mode ===
@@ -576,15 +915,6 @@ export default function RadioWoloGlobalPlayer() {
           )}
         </button>
 
-        <button
-          type="button"
-          onClick={cycleTheme}
-          className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border transition ${theme.control}`}
-          aria-label={`Cycle Radio WOLO color. Current color: ${theme.label}`}
-          title={`Color: ${theme.label}`}
-        >
-          <Palette className="h-3.5 w-3.5" />
-        </button>
 
         <button
           type="button"
@@ -617,6 +947,101 @@ export default function RadioWoloGlobalPlayer() {
         <div className="border-t border-white/[0.055] px-3.5 pb-3.5 pt-3">
           <div className="text-[9px] font-bold uppercase tracking-[0.24em] text-white/35">
             The Kingdom Never Goes Silent.
+          </div>
+
+          <div className="mt-3 rounded-xl border border-amber-300/[0.10] bg-[#020817]/55 px-3 py-3 backdrop-blur-md">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[8px] font-bold uppercase tracking-[0.22em] text-amber-200/55">
+                Player face
+              </div>
+
+              <div className="text-[8px] font-semibold uppercase tracking-[0.18em] text-white/25">
+                {activeSkin.label}
+              </div>
+            </div>
+
+            <div className="mt-2 grid grid-cols-3 gap-1.5">
+              {PLAYER_SKINS.map(
+                (skin) => {
+                  const selected =
+                    skin.id ===
+                    skinId;
+
+                  return (
+                    <button
+                      key={skin.id}
+                      type="button"
+                      onClick={() =>
+                        setStoredSkin(
+                          skin.id,
+                        )
+                      }
+                      className={`relative h-12 overflow-hidden rounded-lg border text-[9px] font-bold uppercase tracking-[0.12em] transition ${
+                        selected
+                          ? "border-amber-400/45 bg-amber-300/[0.10] text-amber-100"
+                          : "border-white/[0.07] bg-[#061126]/70 text-white/40 hover:border-amber-300/20 hover:text-white/70"
+                      }`}
+                      style={
+                        skin.kind ===
+                          "image"
+                          ? {
+                              backgroundImage:
+                                `linear-gradient(rgba(2,8,22,.36),rgba(2,8,22,.68)),url("${skin.src}")`,
+                              backgroundPosition:
+                                "center",
+                              backgroundSize:
+                                "cover",
+                            }
+                          : undefined
+                      }
+                    >
+                      {skin.label}
+                    </button>
+                  );
+                },
+              )}
+            </div>
+
+            <div className="mt-3 flex items-center gap-1.5 border-t border-white/[0.05] pt-3">
+              <Palette className="h-3 w-3 text-amber-400/55" />
+
+              <div className="text-[8px] font-bold uppercase tracking-[0.22em] text-amber-200/55">
+                Warrior tone
+              </div>
+            </div>
+
+            <div className="mt-2 grid grid-cols-4 gap-1.5">
+              {PLAYER_THEMES.map(
+                (entry) => {
+                  const selected =
+                    entry.id ===
+                    themeId;
+
+                  return (
+                    <button
+                      key={entry.id}
+                      type="button"
+                      onClick={() =>
+                        setStoredTheme(
+                          entry.id,
+                        )
+                      }
+                      className={`group flex h-9 items-center justify-center rounded-lg border transition ${
+                        selected
+                          ? "border-amber-400/40 bg-amber-300/[0.10]"
+                          : "border-white/[0.06] bg-[#061126]/65 hover:border-amber-300/20"
+                      }`}
+                      aria-label={`Radio WOLO tone: ${entry.label}`}
+                      title={entry.label}
+                    >
+                      <span
+                        className={`h-3.5 w-3.5 rounded-full border border-white/10 ${entry.dormant}`}
+                      />
+                    </button>
+                  );
+                },
+              )}
+            </div>
           </div>
 
           <div className="mt-3">
@@ -669,6 +1094,72 @@ export default function RadioWoloGlobalPlayer() {
             </>
           ) : null}
 
+          <div className="mt-3 rounded-xl border border-white/[0.055] bg-black/15 px-3 py-2.5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-[8px] font-bold uppercase tracking-[0.18em] text-white/32">
+                Volume
+              </div>
+
+              <div className={`text-[9px] font-semibold tabular-nums ${theme.textTone}`}>
+                {Math.round(
+                  targetVolume *
+                    100,
+                )}%
+              </div>
+            </div>
+
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={Math.round(
+                targetVolume *
+                  100,
+              )}
+              onChange={(event) =>
+                setTargetVolume(
+                  Number(
+                    event.target
+                      .value,
+                  ) / 100,
+                )
+              }
+              className="mt-2 h-1 w-full cursor-pointer accent-amber-600"
+              aria-label="Radio WOLO volume"
+            />
+
+            {station?.authenticated ? (
+              <button
+                type="button"
+                onClick={() =>
+                  updateAutoplay(
+                    !autoPlayEnabled,
+                  )
+                }
+                className="mt-3 flex w-full items-center justify-between border-t border-white/[0.05] pt-2.5 text-left"
+              >
+                <span className="text-[8px] font-bold uppercase tracking-[0.18em] text-white/32">
+                  Auto-enter Radio WOLO
+                </span>
+
+                <span className={`text-[9px] font-bold uppercase tracking-[0.14em] ${
+                  autoPlayEnabled
+                    ? theme.live
+                    : "text-white/28"
+                }`}>
+                  {autoPlayEnabled
+                    ? "ON"
+                    : "OFF"}
+                </span>
+              </button>
+            ) : (
+              <div className="mt-3 border-t border-white/[0.05] pt-2.5 text-[9px] text-white/25">
+                Visitors enter Radio WOLO manually.
+              </div>
+            )}
+          </div>
+
           {programName ? (
             <div className="mt-3 rounded-xl border border-white/[0.055] bg-white/[0.025] px-3 py-2">
               <div className="text-[8px] uppercase tracking-[0.18em] text-white/28">
@@ -693,7 +1184,7 @@ export default function RadioWoloGlobalPlayer() {
 
           {playbackBlocked ? (
             <div className="mt-3 rounded-xl border border-amber-200/12 bg-amber-300/[0.045] px-3 py-2 text-[10px] leading-4 text-amber-50/65">
-              Playback was blocked by the browser. Press Listen again.
+              Your browser requires a tap before Radio WOLO can enter. Press Listen once.
             </div>
           ) : null}
 

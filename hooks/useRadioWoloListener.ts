@@ -18,6 +18,14 @@ import {
   type RadioWoloListenerStation,
 } from "@/lib/radioWoloListenerSync";
 
+import {
+  RADIO_WOLO_DEFAULT_VOLUME,
+  RADIO_WOLO_FADE_IN_MS,
+  RADIO_WOLO_FADE_OUT_MS,
+  clampRadioWoloVolume,
+  radioWoloInterpolatedVolume,
+} from "@/lib/radioWoloVolume";
+
 type ListenerStatus =
   | "idle"
   | "syncing"
@@ -26,6 +34,35 @@ type ListenerStatus =
 
 const STATION_URL =
   "/api/radio/station";
+
+const VOLUME_STORAGE_KEY =
+  "aoe2war:radio-wolo-volume:v1";
+
+function readStoredVolume() {
+  if (
+    typeof window ===
+    "undefined"
+  ) {
+    return RADIO_WOLO_DEFAULT_VOLUME;
+  }
+
+  try {
+    const raw =
+      window.localStorage.getItem(
+        VOLUME_STORAGE_KEY,
+      );
+
+    if (raw !== null) {
+      return clampRadioWoloVolume(
+        Number(raw),
+      );
+    }
+  } catch {
+    // Radio volume persistence is optional.
+  }
+
+  return RADIO_WOLO_DEFAULT_VOLUME;
+}
 
 function monotonicNow() {
   if (
@@ -106,6 +143,17 @@ export function useRadioWoloListener() {
   const requestSequenceRef =
     useRef(0);
 
+  const volumeRampRef =
+    useRef(0);
+
+  const targetVolumeRef =
+    useRef(
+      RADIO_WOLO_DEFAULT_VOLUME,
+    );
+
+  const entranceFadePendingRef =
+    useRef(false);
+
   const [station, setStation] =
     useState<RadioWoloListenerStation | null>(
       null,
@@ -146,6 +194,172 @@ export function useRadioWoloListener() {
     setLiveElapsedMs,
   ] = useState(0);
 
+  const [
+    targetVolume,
+    setTargetVolumeState,
+  ] =
+    useState(
+      RADIO_WOLO_DEFAULT_VOLUME,
+    );
+
+  useEffect(() => {
+    const stored =
+      readStoredVolume();
+
+    targetVolumeRef.current =
+      stored;
+
+    setTargetVolumeState(
+      stored,
+    );
+  }, []);
+
+  const rampVolume =
+    useCallback(
+      (
+        audio:
+          HTMLAudioElement,
+        target:
+          number,
+        durationMs:
+          number,
+      ) => {
+        const token =
+          ++volumeRampRef
+            .current;
+
+        const from =
+          clampRadioWoloVolume(
+            audio.volume,
+          );
+
+        const to =
+          clampRadioWoloVolume(
+            target,
+          );
+
+        if (
+          durationMs <= 0 ||
+          Math.abs(
+            from - to,
+          ) < 0.001
+        ) {
+          audio.volume =
+            to;
+
+          return Promise.resolve(
+            true,
+          );
+        }
+
+        const startedAt =
+          monotonicNow();
+
+        return new Promise<boolean>(
+          (resolve) => {
+            const frame =
+              () => {
+                if (
+                  token !==
+                  volumeRampRef
+                    .current
+                ) {
+                  resolve(false);
+                  return;
+                }
+
+                const elapsed =
+                  Math.max(
+                    0,
+                    monotonicNow() -
+                      startedAt,
+                  );
+
+                const progress =
+                  Math.min(
+                    1,
+                    elapsed /
+                      durationMs,
+                  );
+
+                audio.volume =
+                  radioWoloInterpolatedVolume(
+                    from,
+                    to,
+                    progress,
+                  );
+
+                if (
+                  progress >= 1
+                ) {
+                  resolve(true);
+                  return;
+                }
+
+                window.requestAnimationFrame(
+                  frame,
+                );
+              };
+
+            window.requestAnimationFrame(
+              frame,
+            );
+          },
+        );
+      },
+      [],
+    );
+
+  const updateTargetVolume =
+    useCallback(
+      (
+        next:
+          number,
+      ) => {
+        const normalized =
+          clampRadioWoloVolume(
+            next,
+          );
+
+        targetVolumeRef.current =
+          normalized;
+
+        setTargetVolumeState(
+          normalized,
+        );
+
+        try {
+          window.localStorage.setItem(
+            VOLUME_STORAGE_KEY,
+            String(
+              normalized,
+            ),
+          );
+        } catch {
+          // Volume persistence is optional.
+        }
+
+        const audio =
+          audioRef.current;
+
+        if (
+          audio &&
+          listeningIntentRef
+            .current &&
+          !audio.paused &&
+          !entranceFadePendingRef
+            .current
+        ) {
+          void rampVolume(
+            audio,
+            normalized,
+            160,
+          );
+        }
+      },
+      [rampVolume],
+    );
+
   const attemptPlay =
     useCallback(
       async (
@@ -159,6 +373,17 @@ export function useRadioWoloListener() {
           return false;
         }
 
+        const shouldFadeIn =
+          entranceFadePendingRef
+            .current;
+
+        if (shouldFadeIn) {
+          ++volumeRampRef
+            .current;
+
+          audio.volume = 0;
+        }
+
         try {
           await audio.play();
 
@@ -166,8 +391,34 @@ export function useRadioWoloListener() {
             false,
           );
 
+          if (
+            shouldFadeIn &&
+            entranceFadePendingRef
+              .current
+          ) {
+            entranceFadePendingRef.current =
+              false;
+
+            void rampVolume(
+              audio,
+              targetVolumeRef
+                .current,
+              RADIO_WOLO_FADE_IN_MS,
+            );
+          }
+
           return true;
         } catch {
+          entranceFadePendingRef.current =
+            false;
+
+          listeningIntentRef.current =
+            false;
+
+          setIsListening(
+            false,
+          );
+
           setPlaybackBlocked(
             true,
           );
@@ -175,7 +426,7 @@ export function useRadioWoloListener() {
           return false;
         }
       },
-      [],
+      [rampVolume],
     );
 
   const applyAnchorToAudio =
@@ -422,6 +673,10 @@ export function useRadioWoloListener() {
               audioRef.current;
 
             if (audio) {
+              ++volumeRampRef
+                .current;
+
+              audio.volume = 0;
               audio.pause();
               audio.removeAttribute(
                 "src",
@@ -503,6 +758,14 @@ export function useRadioWoloListener() {
           return false;
         }
 
+        ++volumeRampRef
+          .current;
+
+        entranceFadePendingRef.current =
+          true;
+
+        audio.volume = 0;
+
         listeningIntentRef.current =
           true;
 
@@ -514,21 +777,23 @@ export function useRadioWoloListener() {
           false,
         );
 
-        // Consume the already-polled authoritative anchor immediately.
-        // This keeps audio.play() inside the user's click activation rather
-        // than waiting for another network round trip first.
         applyAnchorToAudio(
           anchor,
         );
 
-        // Refresh truth in parallel; the result will correct meaningful
-        // drift or switch segments if the station advanced meanwhile.
+        // Refresh authoritative truth in parallel.
         void syncStation();
 
-        return true;
+        // Keep play() directly in the caller's activation path when
+        // this came from a user click. Automatic attempts may still
+        // be rejected by browser autoplay policy.
+        return attemptPlay(
+          audio,
+        );
       },
       [
         applyAnchorToAudio,
+        attemptPlay,
         syncStation,
       ],
     );
@@ -536,6 +801,9 @@ export function useRadioWoloListener() {
   const stopListening =
     useCallback(() => {
       listeningIntentRef.current =
+        false;
+
+      entranceFadePendingRef.current =
         false;
 
       setIsListening(
@@ -546,14 +814,36 @@ export function useRadioWoloListener() {
         false,
       );
 
-      audioRef.current?.pause();
-    }, []);
+      const audio =
+        audioRef.current;
+
+      if (!audio) {
+        return;
+      }
+
+      void rampVolume(
+        audio,
+        0,
+        RADIO_WOLO_FADE_OUT_MS,
+      ).then(
+        (completed) => {
+          if (
+            completed &&
+            !listeningIntentRef
+              .current
+          ) {
+            audio.pause();
+          }
+        },
+      );
+    }, [rampVolume]);
 
   useEffect(() => {
     const audio =
       new Audio();
 
     audio.preload = "none";
+    audio.volume = 0;
 
     audioRef.current =
       audio;
@@ -655,6 +945,11 @@ export function useRadioWoloListener() {
         handleEnded,
       );
 
+      // Invalidate any outstanding volume animation.
+      // This effect is unmounting, so this token cannot be reused.
+      volumeRampRef.current = -1;
+
+      audio.volume = 0;
       audio.pause();
       audio.removeAttribute(
         "src",
@@ -739,6 +1034,10 @@ export function useRadioWoloListener() {
 
     liveOffsetMs,
     liveElapsedMs,
+
+    targetVolume,
+    setTargetVolume:
+      updateTargetVolume,
 
     startListening,
     stopListening,

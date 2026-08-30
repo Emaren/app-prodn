@@ -1715,7 +1715,7 @@ test(
 );
 
 test(
-  "Radio WOLO listener requires explicit listening intent before audio playback",
+  "Radio WOLO listener gates audio behind listener intent",
   () => {
     const source =
       read(
@@ -1990,7 +1990,7 @@ test(
 );
 
 test(
-  "Radio WOLO global player requires explicit Listen interaction and trusts server metadata redaction",
+  "Radio WOLO global player keeps anonymous playback manual and trusts server metadata redaction",
   () => {
     const source =
       read(
@@ -2025,11 +2025,6 @@ test(
     assert.doesNotMatch(
       source,
       /useUserAuth/,
-    );
-
-    assert.doesNotMatch(
-      source,
-      /autoplay|autoPlay/,
     );
 
     assert.match(
@@ -2153,7 +2148,7 @@ test(
 );
 
 test(
-  "Radio WOLO global player defaults to a strong Ember warrior palette",
+  "Radio WOLO global player defaults to the Kingdom blue-gold warrior palette",
   () => {
     const source =
       read(
@@ -2182,12 +2177,12 @@ test(
 
     assert.match(
       source,
-      /React\.useState<PlayerThemeId>\(\s*"ember"/,
+      /React\.useState<PlayerThemeId>\(\s*"imperial"/,
     );
 
     assert.match(
       source,
-      /aoe2war:radio-wolo-player-theme:v1/,
+      /aoe2war:radio-wolo-player-theme:v2/,
     );
 
     assert.doesNotMatch(
@@ -2198,7 +2193,7 @@ test(
 );
 
 test(
-  "Radio WOLO player lets the listener cycle and persist warrior colors",
+  "Radio WOLO player lets the listener select and persist warrior colors inside More",
   () => {
     const source =
       read(
@@ -2206,6 +2201,11 @@ test(
       );
 
     assert.match(
+      source,
+      /const setStoredTheme/,
+    );
+
+    assert.doesNotMatch(
       source,
       /const cycleTheme/,
     );
@@ -2217,7 +2217,12 @@ test(
 
     assert.match(
       source,
-      /Cycle Radio WOLO color/,
+      /Radio WOLO tone:/,
+    );
+
+    assert.match(
+      source,
+      /Warrior tone/,
     );
 
     assert.match(
@@ -2228,6 +2233,401 @@ test(
     assert.match(
       source,
       /data-radio-wolo-theme/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO safe-volume model uses a conservative cinematic entrance",
+  async () => {
+    const {
+      RADIO_WOLO_DEFAULT_VOLUME,
+      RADIO_WOLO_FADE_IN_MS,
+      RADIO_WOLO_FADE_OUT_MS,
+      radioWoloEntranceEase,
+      radioWoloInterpolatedVolume,
+    } = await import(
+      "../lib/radioWoloVolume.ts"
+    );
+
+    assert.equal(
+      RADIO_WOLO_DEFAULT_VOLUME,
+      0.35,
+    );
+
+    assert.equal(
+      RADIO_WOLO_FADE_IN_MS,
+      3000,
+    );
+
+    assert.equal(
+      RADIO_WOLO_FADE_OUT_MS,
+      550,
+    );
+
+    assert.equal(
+      radioWoloEntranceEase(0),
+      0,
+    );
+
+    assert.equal(
+      radioWoloEntranceEase(1),
+      1,
+    );
+
+    const midpoint =
+      radioWoloInterpolatedVolume(
+        0,
+        0.35,
+        0.5,
+      );
+
+    assert.ok(
+      midpoint > 0,
+    );
+
+    assert.ok(
+      midpoint < 0.35,
+    );
+  },
+);
+
+test(
+  "Radio WOLO listener fades into remembered volume and fades before Pause",
+  () => {
+    const source =
+      read(
+        "hooks/useRadioWoloListener.ts",
+      );
+
+    assert.match(
+      source,
+      /aoe2war:radio-wolo-volume:v1/,
+    );
+
+    assert.match(
+      source,
+      /RADIO_WOLO_DEFAULT_VOLUME/,
+    );
+
+    assert.match(
+      source,
+      /RADIO_WOLO_FADE_IN_MS/,
+    );
+
+    assert.match(
+      source,
+      /RADIO_WOLO_FADE_OUT_MS/,
+    );
+
+    assert.match(
+      source,
+      /requestAnimationFrame/,
+    );
+
+    assert.match(
+      source,
+      /entranceFadePendingRef/,
+    );
+
+    assert.match(
+      source,
+      /audio\.volume\s*=\s*0/,
+    );
+
+    assert.match(
+      source,
+      /rampVolume\([\s\S]*RADIO_WOLO_FADE_OUT_MS[\s\S]*audio\.pause\(\)/,
+    );
+
+    assert.match(
+      source,
+      /targetVolume/,
+    );
+
+    assert.match(
+      source,
+      /setTargetVolume/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO defaults authenticated listeners to automatic entry while anonymous visitors remain silent",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      source,
+      /aoe2war:radio-wolo-autoplay:v1/,
+    );
+
+    assert.match(
+      source,
+      /!station\?\.authenticated/,
+    );
+
+    assert.match(
+      source,
+      /autoPlayEnabled/,
+    );
+
+    assert.match(
+      source,
+      /autoPlaySuppressed/,
+    );
+
+    assert.match(
+      source,
+      /void startListening\(\)/,
+    );
+
+    assert.match(
+      source,
+      /Auto-enter Radio WOLO/,
+    );
+
+    assert.match(
+      source,
+      /Visitors enter Radio WOLO manually/,
+    );
+
+    assert.match(
+      source,
+      /type="range"/,
+    );
+
+    assert.match(
+      source,
+      /Radio WOLO volume/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO gracefully returns to waiting state when browser playback is blocked",
+  () => {
+    const source =
+      read(
+        "hooks/useRadioWoloListener.ts",
+      );
+
+    const attemptBlock =
+      source.match(
+        /const attemptPlay\s*=[\s\S]*?const applyAnchorToAudio\s*=/,
+      )?.[0] ?? "";
+
+    assert.match(
+      attemptBlock,
+      /catch[\s\S]*entranceFadePendingRef\.current\s*=\s*false/,
+    );
+
+    assert.match(
+      attemptBlock,
+      /listeningIntentRef\.current\s*=\s*false/,
+    );
+
+    assert.match(
+      attemptBlock,
+      /setIsListening\(\s*false/,
+    );
+
+    assert.match(
+      attemptBlock,
+      /setPlaybackBlocked\(\s*true/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO offers UI and two persisted artwork mini-player faces",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      source,
+      /aoe2war:radio-wolo-player-skin:v1/,
+    );
+
+    assert.match(
+      source,
+      /\/radio-wolo\/mini\.png/,
+    );
+
+    assert.match(
+      source,
+      /\/radio-wolo\/mini2\.png/,
+    );
+
+    assert.match(
+      source,
+      /data-radio-wolo-skin/,
+    );
+
+    assert.match(
+      source,
+      /Player face/,
+    );
+
+    assert.match(
+      source,
+      /setStoredSkin/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO keeps color customization inside More instead of the primary player controls",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.equal(
+      (
+        source.match(
+          /<Palette /g,
+        ) ?? []
+      ).length,
+      1,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /onClick=\{cycleTheme\}/,
+    );
+
+    const expanded =
+      source.match(
+        /mode ===\s*"expanded"[\s\S]*?Open station/,
+      )?.[0] ?? "";
+
+    assert.match(
+      expanded,
+      /<Palette /,
+    );
+
+    assert.match(
+      expanded,
+      /Warrior tone/,
+    );
+
+    assert.match(
+      expanded,
+      /PLAYER_SKINS/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO entrance fade gives the listener more quiet reaction time",
+  async () => {
+    const {
+      RADIO_WOLO_FADE_IN_MS,
+      RADIO_WOLO_FADE_OUT_MS,
+      radioWoloEntranceEase,
+    } = await import(
+      "../lib/radioWoloVolume.ts"
+    );
+
+    assert.equal(
+      RADIO_WOLO_FADE_IN_MS,
+      3000,
+    );
+
+    assert.equal(
+      RADIO_WOLO_FADE_OUT_MS,
+      550,
+    );
+
+    assert.ok(
+      radioWoloEntranceEase(
+        0.25,
+      ) < 0.2,
+    );
+
+    assert.equal(
+      radioWoloEntranceEase(
+        0.5,
+      ),
+      0.5,
+    );
+  },
+);
+
+test(
+  "Radio WOLO retires the old red preference and fresh UI opens deep blue Imperial",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      source,
+      /aoe2war:radio-wolo-player-theme:v2/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /aoe2war:radio-wolo-player-theme:v1/,
+    );
+
+    assert.match(
+      source,
+      /React\.useState<PlayerThemeId>\(\s*"imperial"/,
+    );
+
+    assert.match(
+      source,
+      /linear-gradient\(145deg,#07172f_0%,#031022_48%,#020817_100%\)/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO artwork skins become the complete compact face instead of wallpaper under the UI",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      source,
+      /mode === "compact"[\s\S]*activeSkin\.kind === "image"/,
+    );
+
+    assert.match(
+      source,
+      /data-radio-wolo-art-face/,
+    );
+
+    assert.match(
+      source,
+      /aspect-\[4\/3\]/,
+    );
+
+    assert.match(
+      source,
+      /backgroundSize:\s*"cover"/,
+    );
+
+    assert.match(
+      source,
+      /More Radio WOLO controls/,
+    );
+
+    assert.match(
+      source,
+      /setStoredMode\(\s*"expanded"/,
     );
   },
 );
