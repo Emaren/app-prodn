@@ -854,3 +854,108 @@ test(
     );
   },
 );
+
+test(
+  "Radio WOLO BUILD is a real programming board",
+  () => {
+    const desk =
+      read(
+        "components/admin/radio/RadioWoloDesk.tsx",
+      );
+
+    const builder =
+      read(
+        "components/admin/radio/RadioWoloBuilder.tsx",
+      );
+
+    assert.match(
+      desk,
+      /RadioWoloBuilder/,
+    );
+
+    assert.match(
+      desk,
+      /mode ===\s*"build"/,
+    );
+
+    assert.doesNotMatch(
+      desk,
+      /Build comes next/,
+    );
+
+    assert.match(
+      builder,
+      /Target/,
+    );
+
+    assert.match(
+      builder,
+      /Built/,
+    );
+
+    assert.match(
+      builder,
+      /Left/,
+    );
+
+    assert.match(
+      builder,
+      /draggable/,
+    );
+
+    assert.match(
+      builder,
+      /ArrowUp/,
+    );
+
+    assert.match(
+      builder,
+      /ArrowDown/,
+    );
+
+    assert.match(
+      builder,
+      /crossfade/,
+    );
+
+    assert.match(
+      builder,
+      /\/api\/admin\/radio\/programs/,
+    );
+
+    assert.match(
+      builder,
+      /Mark ready/,
+    );
+
+    assert.match(
+      builder,
+      /calculateRadioProgramDurationMs/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO BUILD permits repeated Vault assets in one chain",
+  () => {
+    const builder =
+      read(
+        "components/admin/radio/RadioWoloBuilder.tsx",
+      );
+
+    assert.match(
+      builder,
+      /addAsset/,
+    );
+
+    assert.match(
+      builder,
+      /chainKey/,
+    );
+
+    assert.doesNotMatch(
+      builder,
+      /some\([^)]*asset\\.id/,
+    );
+  },
+);

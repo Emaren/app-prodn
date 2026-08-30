@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import RadioSubmissionInbox from "@/components/admin/radio/RadioSubmissionInbox";
+import RadioWoloBuilder from "@/components/admin/radio/RadioWoloBuilder";
 import RadioWoloVault from "@/components/admin/radio/RadioWoloVault";
 
 type DeskMode =
@@ -135,57 +136,38 @@ export default function RadioWoloDesk() {
       "vault" ? (
         <RadioWoloVault />
       ) : mode ===
+        "build" ? (
+        <RadioWoloBuilder />
+      ) : mode ===
         "inbox" ? (
         <RadioSubmissionInbox />
       ) : (
-        <ComingRail
-          mode={mode}
-        />
+        <ComingRail />
       )}
     </main>
   );
 }
 
-function ComingRail({
-  mode,
-}: {
-  mode:
-    | "build"
-    | "on-air";
-}) {
-  const build =
-    mode === "build";
-
+function ComingRail() {
   return (
     <section className="relative overflow-hidden rounded-[1.8rem] border border-white/8 bg-[radial-gradient(circle_at_50%_0%,rgba(217,70,239,0.08),transparent_48%),rgba(2,6,23,0.70)] px-6 py-16 text-center">
-      {build ? (
-        <ListMusic
-          size={30}
-          className="mx-auto text-fuchsia-100/30"
-        />
-      ) : (
-        <Signal
-          size={30}
-          className="mx-auto text-amber-200/30"
-        />
-      )}
+      <Signal
+        size={30}
+        className="mx-auto text-amber-200/30"
+      />
 
       <div className="mt-4 text-[11px] font-bold uppercase tracking-[0.3em] text-slate-600">
-        {build
-          ? "Program Builder"
-          : "Transmitter"}
+        Transmitter
       </div>
 
       <h2 className="mt-3 font-serif text-3xl text-slate-200">
-        {build
-          ? "Build comes next."
-          : "On Air comes after the chain."}
+        On Air comes after the chain.
       </h2>
 
       <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-slate-500">
-        {build
-          ? "The Vault is the source. The next rail will let you grab assets, order them into a timed program, and see exactly how much broadcast time remains."
-          : "This rail will own the station clock, current program, launch authority, and the eventual GO ON AIR control."}
+        This rail will own the station clock,
+        current program, launch authority, and
+        the GO ON AIR control.
       </p>
     </section>
   );
