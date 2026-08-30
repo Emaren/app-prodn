@@ -1178,3 +1178,104 @@ test(
     }
   },
 );
+
+
+test(
+  "Radio WOLO ON AIR is a real transmitter console",
+  () => {
+    const desk =
+      read(
+        "components/admin/radio/RadioWoloDesk.tsx",
+      );
+
+    const onAir =
+      read(
+        "components/admin/radio/RadioWoloOnAir.tsx",
+      );
+
+    assert.match(
+      desk,
+      /RadioWoloOnAir/,
+    );
+
+    assert.match(
+      desk,
+      /mode ===\s*"on-air"/,
+    );
+
+    assert.doesNotMatch(
+      desk,
+      /On Air comes after the chain/,
+    );
+
+    assert.match(
+      onAir,
+      /Go On Air/i,
+    );
+
+    assert.match(
+      onAir,
+      /Stop Transmission/i,
+    );
+
+    assert.match(
+      onAir,
+      /Transmission Clock/,
+    );
+
+    assert.match(
+      onAir,
+      /\bNow\b/,
+    );
+
+    assert.match(
+      onAir,
+      /\bNext\b/,
+    );
+
+    assert.match(
+      onAir,
+      /\/api\/admin\/radio\/station\/start/,
+    );
+
+    assert.match(
+      onAir,
+      /\/api\/admin\/radio\/station\/stop/,
+    );
+
+    assert.match(
+      onAir,
+      /\/api\/admin\/radio\/station/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO distinguishes automated ON AIR from future GO LIVE",
+  () => {
+    const onAir =
+      read(
+        "components/admin/radio/RadioWoloOnAir.tsx",
+      );
+
+    assert.match(
+      onAir,
+      /GO LIVE · future/,
+    );
+
+    assert.match(
+      onAir,
+      /automated Radio WOLO broadcast/,
+    );
+
+    assert.match(
+      onAir,
+      /program\.status ===\s*"ready"/,
+    );
+
+    assert.match(
+      onAir,
+      /program\.itemCount\s*>/,
+    );
+  },
+);
