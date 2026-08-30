@@ -2,9 +2,13 @@ import {
   NextRequest,
   NextResponse,
 } from "next/server";
+import {
+  redirect,
+} from "next/navigation";
 
 import {
   requireAdmin,
+  requireServerAdmin,
 } from "@/lib/adminSession";
 
 import {
@@ -37,6 +41,22 @@ export async function requireRadioWoloOperator(
         },
       ),
     };
+  }
+
+  return gate;
+}
+
+
+export async function requireServerRadioWoloOperator() {
+  const gate =
+    await requireServerAdmin();
+
+  if (
+    !isRadioWoloOperatorUid(
+      gate.user.uid,
+    )
+  ) {
+    redirect("/admin");
   }
 
   return gate;

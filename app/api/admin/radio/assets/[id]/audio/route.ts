@@ -1,12 +1,6 @@
 import {
-  createReadStream,
-} from "node:fs";
-import {
   stat,
 } from "node:fs/promises";
-import {
-  Readable,
-} from "node:stream";
 import {
   NextRequest,
   NextResponse,
@@ -18,6 +12,9 @@ import {
 import {
   parseRadioByteRange,
 } from "@/lib/radioWoloAssets";
+import {
+  createRadioFileStream,
+} from "@/lib/radioWoloFileStream";
 import {
   requireRadioWoloOperator,
 } from "@/lib/radioWoloOperator";
@@ -82,8 +79,10 @@ export async function GET(
           id,
         },
         select: {
-          audioStorageKey: true,
-          audioMediaType: true,
+          audioStorageKey:
+            true,
+          audioMediaType:
+            true,
         },
       },
     );
@@ -145,16 +144,31 @@ export async function GET(
       );
     }
 
-    if (!requestedRange) {
-      const nodeStream =
-        createReadStream(
-          target,
-        );
+    const start =
+      requestedRange
+        ? requestedRange.start
+        : 0;
 
+    const end =
+      requestedRange
+        ? requestedRange.end
+        : metadata.size - 1;
+
+    const length =
+      end - start + 1;
+
+    const stream =
+      await createRadioFileStream(
+        target,
+        start,
+        end,
+      );
+
+    if (
+      !requestedRange
+    ) {
       return new NextResponse(
-        Readable.toWeb(
-          nodeStream,
-        ) as ReadableStream,
+        stream,
         {
           status: 200,
           headers: {
@@ -162,29 +176,14 @@ export async function GET(
             "Content-Type":
               asset.audioMediaType,
             "Content-Length":
-              String(
-                metadata.size,
-              ),
+              String(length),
           },
         },
       );
     }
 
-    const nodeStream =
-      createReadStream(
-        target,
-        {
-          start:
-            requestedRange.start,
-          end:
-            requestedRange.end,
-        },
-      );
-
     return new NextResponse(
-      Readable.toWeb(
-        nodeStream,
-      ) as ReadableStream,
+      stream,
       {
         status: 206,
         headers: {
@@ -192,15 +191,20 @@ export async function GET(
           "Content-Type":
             asset.audioMediaType,
           "Content-Length":
-            String(
-              requestedRange.length,
-            ),
+            String(length),
           "Content-Range":
-            `bytes ${requestedRange.start}-${requestedRange.end}/${metadata.size}`,
+            `bytes ${start}-${end}/${metadata.size}`,
         },
       },
     );
-  } catch {
+  } catch (
+    error
+  ) {
+    console.warn(
+      "Radio WOLO media unavailable:",
+      error,
+    );
+
     return NextResponse.json(
       {
         detail:

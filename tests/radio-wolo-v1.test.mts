@@ -338,12 +338,32 @@ test(
 
     assert.match(
       audio,
-      /createReadStream/,
+      /createRadioFileStream/,
+    );
+
+    assert.doesNotMatch(
+      audio,
+      /Readable\.toWeb/,
     );
 
     assert.doesNotMatch(
       audio,
       /readFile\(/,
+    );
+
+    const fileStream =
+      read(
+        "lib/radioWoloFileStream.ts",
+      );
+
+    assert.match(
+      fileStream,
+      /async cancel\(\)/,
+    );
+
+    assert.match(
+      fileStream,
+      /cancelled = true/,
     );
 
     assert.match(
@@ -473,5 +493,155 @@ test(
         },
       );
     }
+  },
+);
+
+test(
+  "Radio WOLO control room preserves Inbox and makes Vault primary",
+  () => {
+    const desk =
+      read(
+        "components/admin/radio/RadioWoloDesk.tsx",
+      );
+
+    const inbox =
+      read(
+        "components/admin/radio/RadioSubmissionInbox.tsx",
+      );
+
+    const vault =
+      read(
+        "components/admin/radio/RadioWoloVault.tsx",
+      );
+
+    assert.match(
+      desk,
+      /"vault"/,
+    );
+
+    assert.match(
+      desk,
+      /"build"/,
+    );
+
+    assert.match(
+      desk,
+      /"on-air"/,
+    );
+
+    assert.match(
+      desk,
+      /"inbox"/,
+    );
+
+    assert.match(
+      desk,
+      /The Kingdom Never/,
+    );
+
+    assert.match(
+      inbox,
+      /Private Review Rail/,
+    );
+
+    assert.match(
+      vault,
+      /Drop audio into/,
+    );
+
+    assert.match(
+      vault,
+      /multiple/,
+    );
+
+    assert.match(
+      vault,
+      /audioDurationMs/,
+    );
+
+    assert.match(
+      vault,
+      /\/api\/admin\/radio\/assets/,
+    );
+
+    assert.match(
+      vault,
+      /datalist/,
+    );
+
+    assert.match(
+      vault,
+      /Archive/,
+    );
+  },
+);
+
+test(
+  "all Radio WOLO admin surfaces require the dedicated operator capability",
+  () => {
+    const page =
+      read(
+        "app/admin/radio/page.tsx",
+      );
+
+    const inboxApi =
+      read(
+        "app/api/admin/radio-submissions/route.ts",
+      );
+
+    const inboxMedia =
+      read(
+        "app/api/admin/radio-submissions/[id]/[asset]/route.ts",
+      );
+
+    assert.match(
+      page,
+      /requireServerRadioWoloOperator/,
+    );
+
+    assert.match(
+      inboxApi,
+      /requireRadioWoloOperator/,
+    );
+
+    assert.match(
+      inboxMedia,
+      /requireRadioWoloOperator/,
+    );
+
+    assert.doesNotMatch(
+      inboxApi,
+      /requireAdmin\(/,
+    );
+
+    assert.doesNotMatch(
+      inboxMedia,
+      /requireAdmin\(/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO shadow uses an explicitly isolated local media root",
+  () => {
+    const shadow =
+      read(
+        "scripts/dev-shadow.py",
+      );
+
+    assert.match(
+      shadow,
+      /RADIO_WOLO_MEDIA_DIR/,
+    );
+
+    assert.match(
+      shadow,
+      /radio-wolo-shadow/,
+    );
+
+    assert.match(
+      shadow,
+      /RADIO_WOLO_OPERATOR_UIDS/,
+    );
   },
 );

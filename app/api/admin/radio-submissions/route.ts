@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireAdmin } from "@/lib/adminSession";
+import { requireRadioWoloOperator } from "@/lib/radioWoloOperator";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,14 +10,14 @@ const STATUSES = ["submitted", "reviewing", "approved", "scheduled", "published"
 function text(value: unknown, max: number) { return typeof value === "string" ? value.trim().slice(0, max) : ""; }
 
 export async function GET(request: NextRequest) {
-  const gate = await requireAdmin(request);
+  const gate = await requireRadioWoloOperator(request);
   if ("error" in gate) return gate.error;
   const submissions = await gate.prisma.radioSubmission.findMany({ orderBy: [{ createdAt: "desc" }, { id: "desc" }], take: 250 });
   return NextResponse.json({ submissions: submissions.map((item) => ({ ...item, audioByteSize: item.audioByteSize.toString(), artworkByteSize: item.artworkByteSize?.toString() ?? null, createdAt: item.createdAt.toISOString(), updatedAt: item.updatedAt.toISOString(), scheduledAt: item.scheduledAt?.toISOString() ?? null, publishedAt: item.publishedAt?.toISOString() ?? null })) });
 }
 
 export async function PATCH(request: NextRequest) {
-  const gate = await requireAdmin(request);
+  const gate = await requireRadioWoloOperator(request);
   if ("error" in gate) return gate.error;
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const id = Number(body.id);

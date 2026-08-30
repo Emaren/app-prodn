@@ -327,6 +327,11 @@ def serve_shadow() -> int:
     # Radio WOLO V1 has one explicit operator. In writable local shadow,
     # the sanctioned Emaren preview identity owns that capability.
     env["RADIO_WOLO_OPERATOR_UIDS"] = preview_uid
+    # Shadow Radio media is disposable/local and must never inherit a
+    # production or ordinary development media root from the parent shell.
+    env["RADIO_WOLO_MEDIA_DIR"] = str(
+        ROOT / "storage" / "radio-wolo-shadow"
+    )
 
     env["AOE2_BACKEND_UPSTREAM"] = PREVIEW_ORIGIN
 
