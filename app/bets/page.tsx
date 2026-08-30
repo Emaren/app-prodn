@@ -18,7 +18,7 @@ import type { OfflineSigner } from "@cosmjs/proto-signing";
 import { Monitor, Play } from "lucide-react";
 import { toast } from "sonner";
 
-import BetsViewToggle from "@/components/bets/BetsViewToggle";
+import BetsDisplayRail from "@/components/bets/BetsDisplayRail";
 import ResultCard from "@/components/bets/ResultCard";
 import YourBookSection from "@/components/bets/YourBookSection";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
@@ -33,6 +33,16 @@ import {
   buildBetMarketHistoryHref,
   isRecoveryBookOpen,
 } from "@/components/bets/page-shared";
+import {
+  trackBetsViewEvent,
+} from "@/lib/betsViewTelemetry";
+import {
+  LEGACY_BETS_VIEW_STORAGE_KEY,
+  betsViewFamily,
+  legacyBetsViewToVersion,
+  normalizeBetsViewVersion,
+  type BetsViewVersion,
+} from "@/lib/betsViewVersions";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
@@ -62,7 +72,7 @@ const STAKE_OPTIONS = [10, 25, 50, 100] as const;
 const BETS_POLL_INTERVAL_MS = 5_000;
 const STAKE_RECOVERY_STORAGE_KEY = "aoe2hdbets.betStakeRecovery.v1";
 const TICKET_RECOVERY_STORAGE_KEY = "aoe2hdbets.betTicketRecovery.v1";
-const BETS_VIEW_STORAGE_KEY = "aoe2hdbets.betsView.v4";
+const BETS_VIEW_STORAGE_KEY = "aoe2hdbets.betsViewVersion.v1";
 
 function isSettlementProofState(state: BetSettledResult["payoutState"]) {
   return state === "executed" || state === "corrected";
@@ -77,7 +87,6 @@ type BetStatus =
   | "settled"
   | "voided"
   | "under_review";
-type BetsViewMode = "basic" | "advanced" | "extreme";
 type FounderBonusType = "participants" | "winner";
 type BroadcastViewKey = "left" | "god" | "right";
 
@@ -346,6 +355,378 @@ type BetBoardSnapshot = {
     liveCount: number;
   };
 };
+
+
+type BetsDesignFixture =
+  | "e2-1v1"
+  | "e2-4v4"
+  | "e3-1v1"
+  | "e3-4v4"
+  | "e4-1v1"
+  | "e4-4v4";
+
+function readBetsDesignFixture():
+  BetsDesignFixture | null {
+  if (
+    typeof window === "undefined" ||
+    process.env.NODE_ENV === "production"
+  ) {
+    return null;
+  }
+
+  const value =
+    new URLSearchParams(
+      window.location.search,
+    ).get("fixture");
+
+  if (
+    value === "e2-1v1" ||
+    value === "e2-4v4" ||
+    value === "e3-1v1" ||
+    value === "e3-4v4" ||
+    value === "e4-1v1" ||
+    value === "e4-4v4"
+  ) {
+    return value;
+  }
+
+  return null;
+}
+
+function buildBetsDesignFixture(
+  fixture: BetsDesignFixture,
+): BetBoardSnapshot {
+  const now =
+    new Date().toISOString();
+
+  const isFourVFour =
+    fixture.endsWith("-4v4");
+
+  const feeds: BroadcastFeeds = {
+    left: null,
+    god: null,
+    right: null,
+  };
+
+  const previews: BroadcastPreviewUrls = {
+    left: null,
+    god: null,
+    right: null,
+  };
+
+  function makeSide(
+    key: BetSide,
+    name: string,
+    poolWolo: number,
+    crowdPercent: number,
+    slips: number,
+  ): BetBoardSide {
+    return {
+      key,
+      name,
+      href: null,
+      poolWolo,
+      crowdPercent,
+      slips,
+      seededWolo: 0,
+    };
+  }
+
+  function makeMarket(input: {
+    id: number;
+    battleNumber: number;
+    leftName: string;
+    rightName: string;
+    eventLabel: string;
+    teamFormat: string;
+    leftPool: number;
+    rightPool: number;
+    featured?: boolean;
+    desyncMarket?: BetBoardMarket | null;
+  }): BetBoardMarket {
+    const totalPotWolo =
+      input.leftPool + input.rightPool;
+
+    const leftPercent =
+      totalPotWolo > 0
+        ? Math.round(
+            (input.leftPool /
+              totalPotWolo) *
+              100,
+          )
+        : 50;
+
+    return {
+      id: input.id,
+      parentMarketId: null,
+      battleNumber:
+        input.battleNumber,
+      slug:
+        `design-battle-${input.battleNumber}`,
+      title:
+        `${input.leftName} vs ${input.rightName}`,
+      eventLabel:
+        input.eventLabel,
+      marketType:
+        "winner",
+      href: null,
+      linkedSessionKey:
+        `design:e2:${input.battleNumber}`,
+      linkedGameStatsId: null,
+      status: "live",
+      teamFormat:
+        input.teamFormat,
+      teamResolutionStatus:
+        "resolved",
+      teamResolutionProvenance:
+        "design_fixture",
+      teamConfidence:
+        "high",
+      integrityStatus:
+        "verified",
+      integrityReason: null,
+      rosterLockedAt: now,
+      featured:
+        Boolean(input.featured),
+      closeLabel:
+        "Live",
+      scheduledStartAt: null,
+      totalPotWolo,
+      left: makeSide(
+        "left",
+        input.leftName,
+        input.leftPool,
+        leftPercent,
+        12,
+      ),
+      right: makeSide(
+        "right",
+        input.rightName,
+        input.rightPool,
+        100 - leftPercent,
+        8,
+      ),
+      founderBonuses: [],
+      warTape: [
+        {
+          id:
+            `design-${input.id}-open`,
+          kind: "event",
+          label:
+            "Book opened",
+          actor:
+            "Watcher",
+          amountWolo: null,
+          side: null,
+          note:
+            input.eventLabel,
+          txHash: null,
+          txUrl: null,
+          createdAt: now,
+        },
+      ],
+      broadcastFeeds:
+        feeds,
+      broadcastPreviewUrls:
+        previews,
+      viewerWager: null,
+      winnerSide: null,
+      desyncMarket:
+        input.desyncMarket ??
+        null,
+    };
+  }
+
+  const desyncMarket =
+    makeMarket({
+      id: 990002,
+      battleNumber: 3043,
+      leftName: "NO DESYNC",
+      rightName: "DESYNC",
+      eventLabel:
+        "Watcher Live · Yucatan",
+      teamFormat: "1v1",
+      leftPool: 185,
+      rightPool: 195,
+    });
+
+  desyncMarket.marketType =
+    DESYNC_SIDE_MARKET_TYPE;
+
+  desyncMarket.parentMarketId =
+    990001;
+
+  const featured =
+    makeMarket({
+      id: 990001,
+      battleNumber: 3043,
+      leftName: isFourVFour
+        ? "Matt Rhodes + Hera + TheViper + Liereyy"
+        : "Matt Rhodes",
+      rightName: isFourVFour
+        ? "Zodiac + DauT + Villese + MBL"
+        : "Zodiac",
+      eventLabel:
+        "Watcher Live · Yucatan",
+      teamFormat:
+        isFourVFour
+          ? "4v4"
+          : "1v1",
+      leftPool: 620,
+      rightPool: 380,
+      featured: true,
+      desyncMarket,
+    });
+
+  const capochHera =
+    makeMarket({
+      id: 990003,
+      battleNumber: 3042,
+      leftName: "Capoch",
+      rightName: "Hera",
+      eventLabel:
+        "Watcher Live · Arabia",
+      teamFormat: "1v1",
+      leftPool: 270,
+      rightPool: 430,
+    });
+
+  const viperTeam =
+    makeMarket({
+      id: 990004,
+      battleNumber: 3041,
+      leftName:
+        "TheViper + MBL",
+      rightName:
+        "DauT + Villese",
+      eventLabel:
+        "Watcher Live · Arena",
+      teamFormat: "2v2",
+      leftPool: 760,
+      rightPool: 640,
+    });
+
+  const fourVFour =
+    makeMarket({
+      id: 990005,
+      battleNumber: 3040,
+      leftName:
+        "Jim + Emaren + Ra + MouldyBoars",
+      rightName:
+        "Somniosator + Deltaforce + Zodiac + Hera",
+      eventLabel:
+        "Watcher Live · Hideout",
+      teamFormat: "4v4",
+      leftPool: 1170,
+      rightPool: 930,
+    });
+
+  return {
+    generatedAt: now,
+    viewerName: "Emaren",
+
+    wolo: {
+      betEscrowMode:
+        "optional",
+      betEscrowAddress: null,
+      onchainEscrowEnabled:
+        false,
+      onchainEscrowRequired:
+        false,
+      escrowConfigError: null,
+      betTestMode: true,
+      settlementServiceConfigured:
+        true,
+      settlementAuthConfigured:
+        true,
+      settlementExecutionMode:
+        "settlement_service",
+      groupedRunCapability:
+        "supported",
+      escrowVerifyCapability:
+        "supported",
+      escrowRecentCapability:
+        "supported",
+      settlementSurfaceWarnings:
+        [],
+      settlementSurfaceDetail:
+        null,
+    },
+
+    recovery: {
+      unresolvedStakeIntents:
+        [],
+      unresolvedStakeTickets:
+        [],
+    },
+
+    featuredMarket:
+      featured,
+
+    openMarkets: [
+      featured,
+      capochHera,
+      viperTeam,
+      fourVFour,
+    ],
+
+    awaitingProofMarkets:
+      [],
+
+    settledResults:
+      [],
+
+    yourBook: {
+      activeCount: 1,
+      stakedWolo: 100,
+      projectedReturnWolo: 161,
+      openWagers: [
+        {
+          marketId:
+            featured.id,
+          marketSlug:
+            featured.slug,
+          title:
+            featured.title,
+          eventLabel:
+            featured.eventLabel,
+          side: "left",
+          pickedLabel:
+            featured.left.name,
+          amountWolo: 100,
+          slipCount: 1,
+          projectedReturnWolo:
+            161,
+          closeLabel:
+            "Live",
+          scheduledStartAt:
+            null,
+          status: "live",
+          executionMode:
+            "app_only",
+          stakeTxHash: null,
+          stakeProofUrl: null,
+        },
+      ],
+    },
+
+    heat: {
+      biggestPot: {
+        label:
+          fourVFour.title,
+        potWolo:
+          fourVFour.totalPotWolo,
+      },
+      bestReturn: {
+        label:
+          featured.right.name,
+        returnMultiplier:
+          2.63,
+      },
+      liveCount: 4,
+    },
+  };
+}
 
 type SelectionState = {
   marketId: number;
@@ -1266,7 +1647,10 @@ export default function BetsPage() {
   );
   const nowMs = useNowTicker();
   const [board, setBoard] = useState<BetBoardSnapshot | null>(null);
-  const [betsView, setBetsView] = useState<BetsViewMode>("extreme");
+  const [betsView, setBetsView] =
+    useState<BetsViewVersion>("E3");
+  const [betsViewReady, setBetsViewReady] =
+    useState(false);
   const [selection, setSelection] = useState<SelectionState | null>(null);
   const [loadingBoard, setLoadingBoard] = useState(true);
   const [workingKey, setWorkingKey] = useState<string | null>(null);
@@ -1324,6 +1708,15 @@ export default function BetsPage() {
     signal?: AbortSignal,
   ) => {
     try {
+      const designFixture =
+        readBetsDesignFixture();
+
+      if (designFixture) {
+        return buildBetsDesignFixture(
+          designFixture,
+        );
+      }
+
       const response = await fetch("/api/bets", {
         cache: "no-store",
         signal,
@@ -1351,29 +1744,97 @@ export default function BetsPage() {
       return;
     }
 
-    const storedView = window.localStorage.getItem(BETS_VIEW_STORAGE_KEY);
-    if (
-      storedView === "basic" ||
-      storedView === "advanced" ||
-      storedView === "extreme"
-    ) {
-      setBetsView(storedView);
-    }
-  }, []);
+    const designFixture =
+      readBetsDesignFixture();
 
-  useEffect(() => {
-    if (typeof window === "undefined") {
+    if (designFixture) {
+      setBetsView(
+        designFixture.startsWith("e4-")
+          ? "E4"
+          : designFixture.startsWith("e3-")
+            ? "E3"
+            : "E2",
+      );
+      setBetsViewReady(true);
       return;
     }
 
-    window.localStorage.setItem(BETS_VIEW_STORAGE_KEY, betsView);
-  }, [betsView]);
+    const storedView =
+      normalizeBetsViewVersion(
+        window.localStorage.getItem(
+          BETS_VIEW_STORAGE_KEY,
+        ),
+      );
+
+    const legacyView =
+      legacyBetsViewToVersion(
+        window.localStorage.getItem(
+          LEGACY_BETS_VIEW_STORAGE_KEY,
+        ),
+      );
+
+    const resolvedView =
+      storedView ?? legacyView;
+
+    if (resolvedView) {
+      setBetsView(resolvedView);
+
+      if (!storedView) {
+        window.localStorage.setItem(
+          BETS_VIEW_STORAGE_KEY,
+          resolvedView,
+        );
+      }
+    }
+
+    setBetsViewReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (
+      typeof window === "undefined" ||
+      !betsViewReady
+    ) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      BETS_VIEW_STORAGE_KEY,
+      betsView,
+    );
+
+    trackBetsViewEvent({
+      type: "bets_view_impression",
+      metadata: {
+        view: betsView,
+      },
+    });
+  }, [betsView, betsViewReady]);
 
   useEffect(() => {
     setBattleCamVisibility(readStoredBattleCamVisibility());
   }, []);
 
-  function handleBetsViewChange(next: BetsViewMode) {
+  function handleBetsViewChange(
+    next: BetsViewVersion,
+  ) {
+    if (next === betsView) return;
+
+    trackBetsViewEvent({
+      type: "bets_view_selected",
+      metadata: {
+        from: betsView,
+        to: next,
+      },
+    });
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        BETS_VIEW_STORAGE_KEY,
+        next,
+      );
+    }
+
     setBetsView(next);
   }
 
@@ -1717,9 +2178,27 @@ export default function BetsPage() {
     }
   }
 
+  function handleBetsSignIn(
+    returnTo = "/bets",
+  ) {
+    if (readBetsDesignFixture()) {
+      toast.info(
+        "Design fixture: signing is disabled.",
+      );
+      return;
+    }
+
+    loginWithSteam(returnTo);
+  }
+
   function requireSignIn() {
+    if (fixtureInteractionMode) {
+      return true;
+    }
+
     if (isAuthenticated) return true;
-    loginWithSteam("/bets");
+
+    handleBetsSignIn("/bets");
     return false;
   }
 
@@ -2500,6 +2979,13 @@ export default function BetsPage() {
   }
 
   async function handleLock(market: BetBoardMarket) {
+    if (fixtureInteractionMode) {
+      toast.info(
+        "Design fixture: wager locking is disabled.",
+      );
+      return;
+    }
+
     if (isPendingLivePlaceholderMarket(market)) {
       toast.error(
         "This live 4v4 is still parsing. Betting opens once teams are identified.",
@@ -2782,6 +3268,17 @@ export default function BetsPage() {
     user?.inGameName ||
     user?.steamPersonaName ||
     "Your book";
+  const betsFamily =
+    betsViewFamily(betsView);
+
+  const isExchangeBetsView =
+    betsView === "E2" ||
+    betsView === "E3" ||
+    betsView === "E4";
+
+  const fixtureInteractionMode =
+    betsViewReady &&
+    Boolean(readBetsDesignFixture());
   const broadcastSurface = useMemo(() => {
     if (spotlightMarket) {
       return {
@@ -2817,24 +3314,26 @@ export default function BetsPage() {
       <SpeedReadyMarker route="/bets" ready={!loadingBoard} />
       <BetsMutedToggleCss />
 
-      <BettingHallImageHero />
+      {!isExchangeBetsView ? (
+        <BettingHallImageHero />
+      ) : null}
 
-      <BroadcastHeroTile
-        key={broadcastSurface.key}
-        sessionKey={broadcastSurface.sessionKey}
-        leftName={broadcastSurface.leftName}
-        rightName={broadcastSurface.rightName}
-        marketTitle={broadcastSurface.marketTitle}
-        eventLabel={broadcastSurface.eventLabel}
-        feeds={broadcastSurface.feeds}
-        previews={broadcastSurface.previews}
-        open={battleCamVisibility === "open"}
-        onToggle={handleBattleCamToggle}
-        viewMode={betsView}
-        onViewModeChange={handleBetsViewChange}
-      />
+      {!isExchangeBetsView ? (
+        <BroadcastHeroTile
+          key={broadcastSurface.key}
+          sessionKey={broadcastSurface.sessionKey}
+          leftName={broadcastSurface.leftName}
+          rightName={broadcastSurface.rightName}
+          marketTitle={broadcastSurface.marketTitle}
+          eventLabel={broadcastSurface.eventLabel}
+          feeds={broadcastSurface.feeds}
+          previews={broadcastSurface.previews}
+          open={battleCamVisibility === "open"}
+          onToggle={handleBattleCamToggle}
+        />
+      ) : null}
 
-      {betsView === "extreme" || orderedBookMarkets.length > 1 ? (
+      {betsFamily === "extreme" || orderedBookMarkets.length > 1 ? (
         <LiveBattleDeck
           markets={orderedBookMarkets}
           focusedMarketId={spotlightMarket?.id ?? null}
@@ -2848,7 +3347,7 @@ export default function BetsPage() {
         recoveringTicketId={recoveringTicketId}
       />
 
-      {betsView === "basic" ? (
+      {betsFamily === "basic" ? (
         <>
           <section className="grid gap-5 xl:grid-cols-[0.84fr_1.16fr]">
             <div className={`${shellClass()} p-5 sm:p-6`}>
@@ -3010,7 +3509,7 @@ export default function BetsPage() {
               board={board}
               isAuthenticated={isAuthenticated}
               loadingAuth={loading}
-              loginWithSteam={loginWithSteam}
+              loginWithSteam={handleBetsSignIn}
               unresolvedStakeIntents={unresolvedStakeIntents}
               pendingStakeRecoveries={pendingStakeRecoveries}
               recoveringIntentId={recoveringIntentId}
@@ -3078,7 +3577,7 @@ export default function BetsPage() {
             </div>
           </section>
         </>
-      ) : betsView === "advanced" ? (
+      ) : betsFamily === "advanced" ? (
         <>
           <section
             data-testid="advanced-heritage-betting-hall"
@@ -3285,7 +3784,7 @@ export default function BetsPage() {
               board={board}
               isAuthenticated={isAuthenticated}
               loadingAuth={loading}
-              loginWithSteam={loginWithSteam}
+              loginWithSteam={handleBetsSignIn}
               unresolvedStakeIntents={unresolvedStakeIntents}
               pendingStakeRecoveries={pendingStakeRecoveries}
               recoveringIntentId={recoveringIntentId}
@@ -3300,7 +3799,7 @@ export default function BetsPage() {
             </div>
           </section>
         </>
-      ) : (
+      ) : betsView === "E1" ? (
         <>
           <ExtremeCommandHeader
             openCount={openCount}
@@ -3548,7 +4047,7 @@ export default function BetsPage() {
                 board={board}
                 isAuthenticated={isAuthenticated}
                 loadingAuth={loading}
-                loginWithSteam={loginWithSteam}
+                loginWithSteam={handleBetsSignIn}
                 unresolvedStakeIntents={unresolvedStakeIntents}
                 pendingStakeRecoveries={pendingStakeRecoveries}
                 recoveringIntentId={recoveringIntentId}
@@ -3562,7 +4061,218 @@ export default function BetsPage() {
             </div>
           </section>
         </>
+      ) : (
+        <>
+          <section
+            data-testid="bets-e2-exchange"
+            className="relative isolate overflow-hidden rounded-[2.35rem] border border-white/[0.055] bg-[radial-gradient(circle_at_0%_18%,rgba(14,165,233,0.16),transparent_34%),radial-gradient(circle_at_100%_18%,rgba(245,158,11,0.15),transparent_34%),linear-gradient(180deg,rgba(8,17,31,0.99),rgba(3,9,18,0.99))] px-4 py-6 shadow-[0_38px_120px_rgba(2,6,23,0.52)] sm:px-7 sm:py-8 lg:px-9 lg:py-9"
+          >
+            <div className="pointer-events-none absolute inset-x-[10%] top-0 h-px bg-gradient-to-r from-transparent via-amber-100/35 to-transparent" />
+
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[0.055] pb-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <span
+                  className={`h-2 w-2 rounded-full ${
+                    spotlightMarket?.status === "live"
+                      ? "animate-pulse bg-emerald-300"
+                      : "bg-amber-300"
+                  }`}
+                />
+
+                <div className="min-w-0">
+                  <div className="text-[9px] font-black uppercase tracking-[0.34em] text-cyan-100/60">
+                    Live War Exchange
+                  </div>
+
+                  <div className="mt-1 truncate text-xs text-slate-500">
+                    {spotlightMarket?.eventLabel ||
+                      "Waiting for the next armed battle"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-5 text-right">
+                <div>
+                  <div className="text-[8px] uppercase tracking-[0.24em] text-slate-600">
+                    Live
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-white">
+                    {liveCount}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="text-[8px] uppercase tracking-[0.24em] text-slate-600">
+                    Book Pot
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-amber-100">
+                    {formatCompact(
+                      totalBookPot,
+                    )}{" "}
+                    W
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-6 sm:pt-8">
+              {loadingBoard ? (
+                <LoadingMarket />
+              ) : spotlightMarket ? (
+                <MarketFeature
+                  market={spotlightMarket}
+                  desyncMarket={
+                    spotlightDesyncMarket
+                  }
+                  eyebrowLabel={
+                    spotlightMarket.featured
+                      ? "Featured Market"
+                      : "Current Book"
+                  }
+                  detailMode="exchange"
+                  exchangePresentation={
+                    betsView === "E4"
+                      ? "instrument"
+                      : betsView === "E3"
+                        ? "cinematic"
+                        : "panel"
+                  }
+                  selection={selection}
+                  workingKey={workingKey}
+                  lockWorkflow={
+                    lockWorkflow
+                  }
+                  nowMs={nowMs}
+                  isAuthenticated={isAuthenticated || fixtureInteractionMode}
+                  isAdmin={false}
+                  loadingAuth={loading}
+                  maxStakeWolo={
+                    maxStakeWolo
+                  }
+                  onSelect={
+                    handleSelect
+                  }
+                  onStakeChange={(stake) =>
+                    setSelection(
+                      (current) =>
+                        current &&
+                        current.marketId ===
+                          spotlightMarket.id
+                          ? {
+                              ...current,
+                              stake,
+                            }
+                          : current,
+                    )
+                  }
+                  onDesyncSideChange={(
+                    side,
+                  ) =>
+                    spotlightDesyncMarket
+                      ? handleDesyncSelection(
+                          spotlightMarket,
+                          spotlightDesyncMarket,
+                          side,
+                        )
+                      : undefined
+                  }
+                  onDesyncStakeChange={(
+                    stake,
+                  ) =>
+                    setSelection(
+                      (current) =>
+                        current &&
+                        current.marketId ===
+                          spotlightMarket.id &&
+                        current.desync
+                          ? {
+                              ...current,
+                              desync: {
+                                ...current.desync,
+                                stake,
+                              },
+                            }
+                          : current,
+                    )
+                  }
+                  onLock={() =>
+                    handleLock(
+                      spotlightMarket,
+                    )
+                  }
+                  onClear={
+                    handleClear
+                  }
+                  onOpenFounderBonus={
+                    openFounderComposer
+                  }
+                />
+              ) : latestResult ? (
+                <RecentResultFeature
+                  result={latestResult}
+                />
+              ) : (
+                <EmptyShell label="No books armed yet. The next watcher battle will enter here." />
+              )}
+            </div>
+          </section>
+
+          <section
+            data-testid="bets-e2-ledger"
+            className="grid items-start gap-5 xl:grid-cols-[1.08fr_0.92fr]"
+          >
+            <YourBookSection
+              board={board}
+              isAuthenticated={
+                isAuthenticated
+              }
+              loadingAuth={loading}
+              loginWithSteam={
+                loginWithSteam
+              }
+              unresolvedStakeIntents={
+                unresolvedStakeIntents
+              }
+              pendingStakeRecoveries={
+                pendingStakeRecoveries
+              }
+              recoveringIntentId={
+                recoveringIntentId
+              }
+              onRecover={
+                recoverStakeIntent
+              }
+            />
+
+            <div className="space-y-5">
+              <SettledSection
+                results={
+                  payoutProofResults
+                }
+              />
+              <PayoutQueueSection
+                results={
+                  payoutQueueResults
+                }
+              />
+              <ResolutionQueueSection
+                results={reviewResults}
+              />
+            </div>
+          </section>
+        </>
       )}
+
+      <BetsDisplayRail
+        value={betsView}
+        onChange={handleBetsViewChange}
+        battleCamOpen={
+          battleCamVisibility === "open"
+        }
+        onBattleCamToggle={
+          handleBattleCamToggle
+        }
+      />
 
       <FounderBonusModal
         open={Boolean(founderComposer)}
@@ -4440,8 +5150,6 @@ function BroadcastHeroTile({
   previews,
   open,
   onToggle,
-  viewMode,
-  onViewModeChange,
 }: {
   sessionKey: string | null;
   leftName: string;
@@ -4452,8 +5160,6 @@ function BroadcastHeroTile({
   previews: BroadcastPreviewUrls;
   open: boolean;
   onToggle: () => void;
-  viewMode: BetsViewMode;
-  onViewModeChange: (next: BetsViewMode) => void;
 }) {
   const [selectedView, setSelectedView] = useState<BroadcastViewKey>("god");
   const [playingView, setPlayingView] = useState<BroadcastViewKey | null>(null);
@@ -4610,9 +5316,6 @@ function BroadcastHeroTile({
             </div>
           </div>
 
-          <div className="flex max-w-full flex-wrap items-center justify-end gap-2">
-            <BetsViewToggle value={viewMode} onChange={onViewModeChange} />
-          </div>
         </div>
       </section>
     );
@@ -4635,7 +5338,6 @@ function BroadcastHeroTile({
           <span className="hidden max-w-[14rem] truncate rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-300 sm:block sm:max-w-[22rem]">
             {marketTitle}
           </span>
-          <BetsViewToggle value={viewMode} onChange={onViewModeChange} />
         </div>
       </div>
 
@@ -5309,6 +6011,436 @@ function DesyncTicketLeg({
   );
 }
 
+function InstrumentStakeRail({
+  activeSelection,
+  canEdit,
+  onStakeChange,
+}: {
+  activeSelection: SelectionState | null;
+  canEdit: boolean;
+  onStakeChange: (stake: number) => void;
+}) {
+  const generatedInputId = useId();
+  const inputId =
+    `bet-instrument-${generatedInputId.replace(/:/g, "")}`;
+
+  const [customDraft, setCustomDraft] =
+    useState("");
+
+  const selectionKey =
+    activeSelection
+      ? `${activeSelection.marketId}:${activeSelection.side}`
+      : "none";
+
+  useEffect(() => {
+    setCustomDraft("");
+  }, [selectionKey]);
+
+  return (
+    <div
+      className="
+        flex min-w-0 flex-1
+        flex-wrap items-center gap-1.5
+      "
+      aria-label="Stake amount"
+    >
+      {STAKE_OPTIONS.map((stake) => (
+        <button
+          key={stake}
+          type="button"
+          onClick={() => {
+            if (!activeSelection) return;
+
+            setCustomDraft(
+              String(stake),
+            );
+
+            onStakeChange(stake);
+          }}
+          disabled={
+            !activeSelection ||
+            !canEdit
+          }
+          aria-pressed={
+            activeSelection?.stake ===
+            stake
+          }
+          className={`
+            inline-flex h-9 min-w-10
+            items-center justify-center
+            rounded-full px-3
+            text-xs font-semibold
+            transition
+            ${
+              activeSelection?.stake ===
+              stake
+                ? edgeButton("gold")
+                : edgeButton("glass")
+            }
+            ${
+              !activeSelection ||
+              !canEdit
+                ? "cursor-not-allowed opacity-40"
+                : ""
+            }
+          `}
+        >
+          {stake}
+        </button>
+      ))}
+
+      <div
+        className="
+          flex h-9 min-w-[8.75rem]
+          items-center
+          rounded-full
+          border border-white/[0.07]
+          bg-white/[0.025]
+          px-3
+          transition
+          focus-within:border-amber-200/25
+          focus-within:bg-white/[0.045]
+        "
+      >
+        <input
+          id={inputId}
+          inputMode="numeric"
+          pattern="[0-9]*"
+          value={
+            activeSelection
+              ? customDraft
+              : ""
+          }
+          onChange={(event) => {
+            if (!activeSelection) {
+              return;
+            }
+
+            const digits =
+              event.target.value
+                .replace(/[^0-9]/g, "")
+                .slice(0, 6);
+
+            setCustomDraft(digits);
+
+            onStakeChange(
+              digits
+                ? Number.parseInt(
+                    digits,
+                    10,
+                  )
+                : 0,
+            );
+          }}
+          disabled={
+            !activeSelection ||
+            !canEdit
+          }
+          placeholder="Custom"
+          aria-label="Custom WOLO stake"
+          className="
+            min-w-0 flex-1
+            bg-transparent
+            text-right text-xs
+            text-white outline-none
+            placeholder:text-slate-600
+            disabled:cursor-not-allowed
+          "
+        />
+
+        <label
+          htmlFor={inputId}
+          className="
+            ml-2 cursor-text
+            text-[9px]
+            font-black uppercase
+            tracking-[0.18em]
+            text-slate-600
+          "
+        >
+          W
+        </label>
+      </div>
+    </div>
+  );
+}
+
+
+function InstrumentDesyncControl({
+  market,
+  activeSelection,
+  canEdit,
+  workingKey,
+  maxStakeWolo,
+  projectedReturn,
+  onSideChange,
+  onStakeChange,
+  onClear,
+}: {
+  market: BetBoardMarket;
+  activeSelection: SelectionState | null;
+  canEdit: boolean;
+  workingKey: string | null;
+  maxStakeWolo: number;
+  projectedReturn: number;
+  onSideChange: (
+    side: BetSide | null,
+  ) => void;
+  onStakeChange: (
+    stake: number,
+  ) => void;
+  onClear: (
+    marketId: number,
+  ) => void;
+}) {
+  const generatedInputId = useId();
+  const inputId =
+    `bet-instrument-desync-${generatedInputId.replace(/:/g, "")}`;
+
+  const selection =
+    activeSelection?.desync
+      ?.marketId === market.id
+      ? activeSelection.desync
+      : null;
+
+  const [draft, setDraft] =
+    useState("");
+
+  const selectionKey =
+    selection
+      ? `${selection.marketId}:${selection.side}`
+      : "none";
+
+  const selectionStake =
+    selection?.stake ?? null;
+
+  useEffect(() => {
+    setDraft(
+      selectionStake === null
+        ? ""
+        : String(selectionStake),
+    );
+  }, [selectionKey, selectionStake]);
+
+  const lockedSide =
+    market.viewerWager?.side ??
+    null;
+
+  const onchainLocked =
+    isOnchainViewerWager(
+      market.viewerWager,
+    );
+
+  const clearing =
+    workingKey ===
+    `clear-${market.id}`;
+
+  const remainingLimit =
+    Math.max(
+      0,
+      maxStakeWolo -
+        (activeSelection?.stake ?? 0),
+    );
+
+  return (
+    <div
+      className="
+        flex min-w-0
+        items-center gap-1.5
+      "
+      aria-label="Desync market"
+    >
+      <span
+        className="
+          grid h-9 w-9
+          shrink-0 place-items-center
+          rounded-full
+          border border-cyan-200/[0.08]
+          bg-cyan-300/[0.025]
+          text-sm text-cyan-100/55
+        "
+        title="Optional Desync market"
+        aria-hidden="true"
+      >
+        ↻
+      </span>
+
+      {(["left", "right"] as const)
+        .map((side) => {
+          const selected =
+            selection?.side === side;
+
+          const blocked =
+            Boolean(
+              lockedSide &&
+                lockedSide !== side,
+            );
+
+          return (
+            <button
+              key={side}
+              type="button"
+              onClick={() =>
+                onSideChange(side)
+              }
+              disabled={
+                !activeSelection ||
+                !canEdit ||
+                blocked
+              }
+              aria-pressed={selected}
+              title={
+                side === "left"
+                  ? "No Desync"
+                  : "Desync"
+              }
+              className={`
+                h-9 rounded-full
+                px-3 text-[10px]
+                font-black
+                tracking-[0.12em]
+                transition
+                ${
+                  selected
+                    ? side === "right"
+                      ? "border border-rose-200/25 bg-rose-400/[0.12] text-rose-100"
+                      : "border border-emerald-200/25 bg-emerald-400/[0.10] text-emerald-100"
+                    : "border border-white/[0.07] bg-white/[0.025] text-slate-500 hover:bg-white/[0.05] hover:text-white"
+                }
+                ${
+                  !activeSelection ||
+                  !canEdit ||
+                  blocked
+                    ? "cursor-not-allowed opacity-40"
+                    : ""
+                }
+              `}
+            >
+              {side === "left"
+                ? "NO"
+                : "YES"}
+            </button>
+          );
+        })}
+
+      {selection ? (
+        <>
+          <div
+            className="
+              flex h-9 min-w-[6.5rem]
+              items-center
+              rounded-full
+              border border-white/[0.07]
+              bg-white/[0.025]
+              px-3
+            "
+          >
+            <input
+              id={inputId}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={draft}
+              onChange={(event) => {
+                const digits =
+                  event.target.value
+                    .replace(
+                      /[^0-9]/g,
+                      "",
+                    )
+                    .slice(0, 6);
+
+                setDraft(digits);
+
+                onStakeChange(
+                  digits
+                    ? Number.parseInt(
+                        digits,
+                        10,
+                      )
+                    : 0,
+                );
+              }}
+              disabled={!canEdit}
+              placeholder="0"
+              aria-label="Desync WOLO stake"
+              className="
+                min-w-0 flex-1
+                bg-transparent
+                text-right text-xs
+                text-white outline-none
+              "
+            />
+
+            <label
+              htmlFor={inputId}
+              className="
+                ml-1 text-[9px]
+                uppercase
+                tracking-[0.15em]
+                text-slate-600
+              "
+            >
+              W
+            </label>
+          </div>
+
+          <span
+            className="
+              hidden text-[10px]
+              text-slate-600
+              xl:inline
+            "
+            title={`Remaining ticket limit ${remainingLimit.toLocaleString()} WOLO`}
+          >
+            ↗
+            {formatCompact(
+              projectedReturn,
+            )}
+          </span>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                market.viewerWager &&
+                !onchainLocked
+              ) {
+                onClear(market.id);
+                return;
+              }
+
+              onSideChange(null);
+            }}
+            disabled={
+              clearing ||
+              !canEdit ||
+              onchainLocked
+            }
+            aria-label="Remove Desync"
+            title="Remove Desync"
+            className="
+              grid h-9 w-9
+              place-items-center
+              rounded-full
+              border border-white/[0.06]
+              bg-white/[0.02]
+              text-sm text-slate-600
+              transition
+              hover:bg-white/[0.05]
+              hover:text-white
+              disabled:cursor-not-allowed
+              disabled:opacity-30
+            "
+          >
+            ×
+          </button>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+
 function BetSlipComposer({
   market,
   desyncMarket,
@@ -5346,7 +6478,10 @@ function BetSlipComposer({
   desyncProjectedReturn?: number;
   onLock: () => void;
   onClear: (marketId: number) => void;
-  density: "compact" | "spacious";
+  density:
+    | "compact"
+    | "spacious"
+    | "instrument";
 }) {
   const selectedSide =
     activeSelection?.side ?? market.viewerWager?.side ?? null;
@@ -5357,6 +6492,229 @@ function BetSlipComposer({
       : selectedSide === "right"
         ? market.right.name
         : null;
+
+  if (density === "instrument") {
+    return (
+      <section
+        data-testid="bets-e4-instrument"
+        aria-label="Betting controls"
+        className="
+          mt-6
+          border-y border-white/[0.055]
+          bg-black/[0.12]
+          px-2 py-3
+          sm:px-3
+        "
+      >
+        <div
+          className="
+            flex min-w-0
+            flex-col gap-2.5
+            xl:flex-row
+            xl:items-center
+          "
+        >
+          <InstrumentStakeRail
+            activeSelection={
+              activeSelection
+            }
+            canEdit={canEdit}
+            onStakeChange={
+              onStakeChange
+            }
+          />
+
+          {desyncMarket &&
+          onDesyncSideChange &&
+          onDesyncStakeChange ? (
+            <>
+              <span
+                className="
+                  hidden h-6 w-px
+                  shrink-0
+                  bg-white/[0.065]
+                  xl:block
+                "
+              />
+
+              <InstrumentDesyncControl
+                market={
+                  desyncMarket
+                }
+                activeSelection={
+                  activeSelection
+                }
+                canEdit={canEdit}
+                workingKey={
+                  workingKey
+                }
+                maxStakeWolo={
+                  maxStakeWolo
+                }
+                projectedReturn={
+                  desyncProjectedReturn ??
+                  0
+                }
+                onSideChange={
+                  onDesyncSideChange
+                }
+                onStakeChange={
+                  onDesyncStakeChange
+                }
+                onClear={onClear}
+              />
+            </>
+          ) : null}
+
+          <span
+            className="
+              hidden h-6 w-px
+              shrink-0
+              bg-white/[0.065]
+              xl:block
+            "
+          />
+
+          <div
+            className="
+              flex shrink-0
+              items-center gap-2
+            "
+          >
+            <div
+              className="
+                flex h-9 min-w-[6.5rem]
+                items-center justify-center
+                rounded-full
+                border border-white/[0.06]
+                bg-white/[0.02]
+                px-3
+                text-xs
+                text-slate-400
+              "
+              title="Projected return"
+            >
+              {activeSelection ? (
+                <>
+                  <span
+                    className="
+                      mr-1 text-emerald-300/70
+                    "
+                  >
+                    ↗
+                  </span>
+
+                  <span
+                    className="
+                      font-semibold
+                      text-white
+                    "
+                  >
+                    {formatCompact(
+                      projectedReturn,
+                    )}
+                  </span>
+
+                  <span
+                    className="
+                      ml-1 text-[9px]
+                      text-slate-600
+                    "
+                  >
+                    W
+                  </span>
+                </>
+              ) : (
+                <span>—</span>
+              )}
+            </div>
+
+            {market.viewerWager &&
+            !onchainLocked ? (
+              <button
+                type="button"
+                onClick={() =>
+                  onClear(market.id)
+                }
+                disabled={
+                  workingKey ===
+                  `clear-${market.id}`
+                }
+                aria-label="Clear wager"
+                title="Clear wager"
+                className="
+                  grid h-9 w-9
+                  place-items-center
+                  rounded-full
+                  border border-white/[0.06]
+                  bg-white/[0.02]
+                  text-sm text-slate-600
+                  transition
+                  hover:bg-white/[0.05]
+                  hover:text-white
+                "
+              >
+                ×
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={onLock}
+              title={
+                stakeError ||
+                statusCopy
+              }
+              disabled={
+                !activeSelection ||
+                Boolean(stakeError) ||
+                !canEdit ||
+                workingKey ===
+                  `lock-${market.id}`
+              }
+              className={`
+                inline-flex h-10
+                min-w-[8.5rem]
+                items-center
+                justify-center
+                rounded-full
+                px-5
+                text-xs
+                font-bold
+                transition
+                ${edgeButton("gold")}
+                ${
+                  !activeSelection ||
+                  Boolean(stakeError) ||
+                  !canEdit ||
+                  workingKey ===
+                    `lock-${market.id}`
+                    ? "opacity-45"
+                    : ""
+                }
+              `}
+            >
+              {workingKey ===
+              `lock-${market.id}`
+                ? "…"
+                : lockLabel}
+            </button>
+          </div>
+        </div>
+
+        {stakeError ? (
+          <div
+            className="
+              mt-2 text-[11px]
+              text-rose-200
+            "
+          >
+            {stakeError}
+          </div>
+        ) : null}
+      </section>
+    );
+  }
 
   const shellClassName =
     density === "spacious"
@@ -5742,6 +7100,7 @@ function MarketFeature({
   desyncMarket = null,
   eyebrowLabel = "Featured Market",
   detailMode = "advanced",
+  exchangePresentation = "panel",
   selection,
   workingKey,
   lockWorkflow,
@@ -5761,7 +7120,15 @@ function MarketFeature({
   market: BetBoardMarket;
   desyncMarket?: BetBoardMarket | null;
   eyebrowLabel?: string;
-  detailMode?: "basic" | "advanced" | "extreme";
+  detailMode?:
+    | "basic"
+    | "advanced"
+    | "extreme"
+    | "exchange";
+  exchangePresentation?:
+    | "panel"
+    | "cinematic"
+    | "instrument";
   selection: SelectionState | null;
   workingKey: string | null;
   lockWorkflow: LockWorkflow | null;
@@ -5884,6 +7251,282 @@ function MarketFeature({
   const marketHistoryHref = buildBetMarketHistoryHref(market.id);
   const gameStatsHref = buildBetGameStatsHref(market);
   const gameStatsLabel = market.status === "live" ? "Live Stats" : "Game Stats";
+
+  if (
+    detailMode === "exchange" &&
+    market.marketType !== DESYNC_SIDE_MARKET_TYPE
+  ) {
+    const isTeamGame =
+      extremeRoster.isBalancedTeamGame &&
+      extremeRoster.teamSize > 1;
+
+    const cinematicExchange =
+      exchangePresentation !==
+      "panel";
+
+    const instrumentExchange =
+      exchangePresentation ===
+      "instrument";
+
+    return (
+      <div
+        data-testid="bets-e2-market"
+        className={`relative ${
+          cinematicExchange
+            ? "isolate overflow-hidden"
+            : ""
+        }`}
+      >
+        {cinematicExchange ? (
+          <>
+            <div className="pointer-events-none absolute inset-y-0 left-0 -z-10 w-1/2 bg-[radial-gradient(ellipse_at_8%_36%,rgba(14,165,233,0.12),transparent_62%)]" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 -z-10 w-1/2 bg-[radial-gradient(ellipse_at_92%_36%,rgba(245,158,11,0.11),transparent_62%)]" />
+            <div className="pointer-events-none absolute left-1/2 top-24 -z-10 h-72 w-px bg-gradient-to-b from-transparent via-amber-100/15 to-transparent" />
+          </>
+        ) : null}
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 text-[9px] font-black uppercase tracking-[0.26em] text-slate-500">
+              {market.battleNumber ? (
+                <span className="text-cyan-100/70">
+                  Battle #
+                  {market.battleNumber.toLocaleString()}
+                </span>
+              ) : null}
+
+              <span>
+                {market.status === "live"
+                  ? "Watcher live"
+                  : "Book open"}
+              </span>
+
+              {isTeamGame ? (
+                <span>
+                  {extremeRoster.formatLabel}
+                </span>
+              ) : null}
+            </div>
+
+            <div className="mt-2 text-xs text-slate-500">
+              {market.eventLabel}
+            </div>
+          </div>
+
+          <MarketStatusPill
+            market={market}
+          />
+        </div>
+
+        <div
+          className={`mt-6 grid min-w-0 gap-4 ${
+            isTeamGame
+              ? "lg:grid-cols-[minmax(0,1fr)_13rem_minmax(0,1fr)]"
+              : "lg:grid-cols-[minmax(0,1fr)_12rem_minmax(0,1fr)]"
+          } lg:items-stretch xl:gap-6`}
+        >
+          {isTeamGame ? (
+            <ExtremeTeamPanel
+              roster={extremeRoster.left}
+              selected={
+                displaySide === "left"
+              }
+              disabled={
+                !canEditSlip ||
+                Boolean(
+                  lockedSide &&
+                    lockedSide !== "left",
+                )
+              }
+              tone="blue"
+              onSelect={() =>
+                onSelect(market, "left")
+              }
+            />
+          ) : (
+            <SideChoice
+              side={market.left}
+              selected={
+                displaySide === "left"
+              }
+              emphasis="cool"
+              variant={
+                cinematicExchange
+                  ? "exchange"
+                  : "card"
+              }
+              disabled={
+                !canEditSlip ||
+                Boolean(
+                  lockedSide &&
+                    lockedSide !== "left",
+                )
+              }
+              onSelect={() =>
+                onSelect(market, "left")
+              }
+            />
+          )}
+
+          <div className={
+              cinematicExchange
+                ? "order-first relative flex min-h-[13rem] min-w-0 flex-col items-center justify-center overflow-visible px-2 py-7 text-center lg:order-none sm:min-h-[15rem]"
+                : "order-first flex min-h-44 min-w-0 flex-col items-center justify-center overflow-hidden rounded-[1.8rem] bg-[radial-gradient(circle_at_50%_28%,rgba(251,191,36,0.10),transparent_44%),rgba(2,6,23,0.20)] px-5 py-7 text-center ring-1 ring-white/[0.045] lg:order-none"
+            }>
+            <div className={
+                cinematicExchange
+                  ? "font-serif text-7xl leading-none tracking-[-0.08em] text-[#fff4d0] drop-shadow-[0_0_34px_rgba(251,191,36,0.22)] sm:text-8xl"
+                  : "font-serif text-5xl leading-none text-[#fff4d0] drop-shadow-[0_0_28px_rgba(251,191,36,0.16)]"
+              }>
+              VS
+            </div>
+
+            <div className="mt-5 text-[8px] font-black uppercase tracking-[0.28em] text-slate-600">
+              Total pot
+            </div>
+
+            <div className="mt-2 flex items-center gap-2 text-xl font-semibold text-white">
+              <CoinMark />
+              {formatExactWolo(
+                market.totalPotWolo,
+              )}
+            </div>
+
+            <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.055]">
+              <div className="flex h-full w-full">
+                <span
+                  className="bg-gradient-to-r from-sky-500 to-cyan-300"
+                  style={{
+                    width:
+                      `${market.left.crowdPercent}%`,
+                  }}
+                />
+                <span
+                  className="bg-gradient-to-r from-amber-300 to-amber-500"
+                  style={{
+                    width:
+                      `${market.right.crowdPercent}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="mt-2 text-[10px] text-slate-500">
+              {market.left.crowdPercent}%
+              {" · "}
+              {market.right.crowdPercent}%
+            </div>
+          </div>
+
+          {isTeamGame ? (
+            <ExtremeTeamPanel
+              roster={extremeRoster.right}
+              selected={
+                displaySide === "right"
+              }
+              disabled={
+                !canEditSlip ||
+                Boolean(
+                  lockedSide &&
+                    lockedSide !== "right",
+                )
+              }
+              tone="gold"
+              onSelect={() =>
+                onSelect(market, "right")
+              }
+            />
+          ) : (
+            <SideChoice
+              side={market.right}
+              selected={
+                displaySide === "right"
+              }
+              emphasis="warm"
+              variant={
+                cinematicExchange
+                  ? "exchange"
+                  : "card"
+              }
+              disabled={
+                !canEditSlip ||
+                Boolean(
+                  lockedSide &&
+                    lockedSide !== "right",
+                )
+              }
+              onSelect={() =>
+                onSelect(market, "right")
+              }
+            />
+          )}
+        </div>
+
+        {isTeamGame ? (
+          <ExtremePlayerChips
+            roster={extremeRoster}
+            disabled={
+              !canEditSlip ||
+              Boolean(lockedSide)
+            }
+            selectedSide={displaySide}
+            onSelect={(side) =>
+              onSelect(market, side)
+            }
+          />
+        ) : null}
+
+        <div className="mt-7 border-t border-white/[0.055] pt-6">
+          <BetSlipComposer
+            market={market}
+            desyncMarket={desyncMarket}
+            activeSelection={
+              activeSelection
+            }
+            canEdit={canEditSlip}
+            maxStakeWolo={
+              maxStakeWolo
+            }
+            projectedReturn={
+              projectedReturn
+            }
+            statusCopy={statusCopy}
+            stakeError={stakeError}
+            lockLabel={lockLabel}
+            workingKey={workingKey}
+            onchainLocked={
+              onchainLocked
+            }
+            onStakeChange={
+              onStakeChange
+            }
+            onDesyncSideChange={
+              onDesyncSideChange
+            }
+            onDesyncStakeChange={
+              onDesyncStakeChange
+            }
+            desyncProjectedReturn={
+              desyncProjectedReturn
+            }
+            onLock={onLock}
+            onClear={onClear}
+            density={
+              instrumentExchange
+                ? "instrument"
+                : "compact"
+            }
+          />
+        </div>
+
+        <div className="mt-7 border-t border-white/[0.045] pt-5">
+          <WarTape
+            rows={market.warTape}
+            emptyLabel="No battle tape yet."
+          />
+        </div>
+      </div>
+    );
+  }
 
   if (
     detailMode === "extreme" &&
@@ -6537,14 +8180,181 @@ function SideChoice({
   selected,
   emphasis,
   disabled = false,
+  variant = "card",
   onSelect,
 }: {
   side: BetBoardSide;
   selected: boolean;
   emphasis: "warm" | "cool";
   disabled?: boolean;
+  variant?: "card" | "exchange";
   onSelect: () => void;
 }) {
+  if (variant === "exchange") {
+    const cool =
+      emphasis === "cool";
+
+    return (
+      <button
+        type="button"
+        onClick={onSelect}
+        disabled={disabled}
+        aria-pressed={selected}
+        className={`
+          group relative
+          min-h-[13rem]
+          min-w-0
+          overflow-hidden
+          border-y
+          px-6 py-7
+          transition duration-300
+          sm:min-h-[15rem]
+          sm:px-8 sm:py-9
+          ${
+            cool
+              ? "border-cyan-200/[0.10]"
+              : "border-amber-200/[0.10]"
+          }
+          ${
+            selected
+              ? cool
+                ? "bg-cyan-300/[0.055]"
+                : "bg-amber-300/[0.055]"
+              : "bg-white/[0.008] hover:bg-white/[0.022]"
+          }
+          ${
+            disabled
+              ? "cursor-not-allowed opacity-60"
+              : "cursor-pointer"
+          }
+        `}
+      >
+        <div
+          className={`
+            pointer-events-none
+            absolute inset-0
+            opacity-80
+            transition duration-500
+            group-hover:opacity-100
+            ${
+              cool
+                ? "bg-[radial-gradient(circle_at_12%_48%,rgba(14,165,233,0.18),transparent_42%),linear-gradient(90deg,rgba(14,165,233,0.055),transparent_65%)]"
+                : "bg-[radial-gradient(circle_at_88%_48%,rgba(245,158,11,0.17),transparent_42%),linear-gradient(270deg,rgba(245,158,11,0.05),transparent_65%)]"
+            }
+          `}
+        />
+
+        <div
+          className={`
+            pointer-events-none
+            absolute top-0 h-px w-[72%]
+            ${
+              cool
+                ? "left-0 bg-gradient-to-r from-cyan-200/45 to-transparent"
+                : "right-0 bg-gradient-to-l from-amber-200/45 to-transparent"
+            }
+          `}
+        />
+
+        <div
+          className={`
+            relative z-10
+            flex h-full min-w-0 flex-col
+            justify-center
+            ${
+              cool
+                ? "items-start text-left"
+                : "items-end text-right"
+            }
+          `}
+        >
+          <div
+            className={`
+              text-[9px]
+              font-black uppercase
+              tracking-[0.34em]
+              ${
+                cool
+                  ? "text-cyan-100/45"
+                  : "text-amber-100/45"
+              }
+            `}
+          >
+            Pick
+          </div>
+
+          <div
+            className="
+              mt-3
+              max-w-full
+              break-words
+              font-serif
+              text-3xl
+              leading-[0.96]
+              tracking-[-0.035em]
+              text-[#fff8e8]
+              [overflow-wrap:anywhere]
+              sm:text-4xl
+              xl:text-5xl
+            "
+          >
+            {side.name}
+          </div>
+
+          <div
+            className={`
+              mt-5
+              text-5xl
+              font-semibold
+              tracking-[-0.06em]
+              sm:text-6xl
+              ${
+                cool
+                  ? "text-cyan-200"
+                  : "text-amber-200"
+              }
+            `}
+          >
+            {side.crowdPercent}
+            <span className="ml-1 text-xl opacity-50">
+              %
+            </span>
+          </div>
+
+          <div
+            className={`
+              mt-5
+              flex flex-wrap
+              items-center gap-4
+              text-xs text-slate-400
+              ${
+                cool
+                  ? "justify-start"
+                  : "justify-end"
+              }
+            `}
+          >
+            <span className="flex items-center gap-2">
+              <CoinMark small />
+              {formatCompact(
+                side.poolWolo,
+              )}{" "}
+              WOLO
+            </span>
+
+            <span className="text-slate-600">
+              ·
+            </span>
+
+            <span>
+              {side.slips} slips
+            </span>
+          </div>
+        </div>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -6572,9 +8382,15 @@ function SideChoice({
       <div className="mt-4 flex items-center justify-between gap-3 text-sm text-slate-200">
         <div className="flex items-center gap-2">
           <CoinMark small />
-          <span>{formatCompact(side.poolWolo)}</span>
+          <span>
+            {formatCompact(
+              side.poolWolo,
+            )}
+          </span>
         </div>
-        <span>{side.slips} slips</span>
+        <span>
+          {side.slips} slips
+        </span>
       </div>
     </button>
   );
