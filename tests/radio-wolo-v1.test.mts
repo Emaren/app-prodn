@@ -959,3 +959,222 @@ test(
     );
   },
 );
+
+test(
+  "Radio WOLO station clock resolves deterministic crossfade timing",
+  async () => {
+    const {
+      buildRadioProgramTimeline,
+      resolveRadioStationPosition,
+    } = await import(
+      "../lib/radioWoloStation.ts"
+    );
+
+    const items = [
+      {
+        value: "one",
+        durationMs:
+          10_000,
+        transition:
+          "cut",
+        crossfadeMs: 0,
+      },
+      {
+        value: "two",
+        durationMs:
+          10_000,
+        transition:
+          "crossfade",
+        crossfadeMs:
+          2000,
+      },
+      {
+        value: "three",
+        durationMs:
+          5000,
+        transition:
+          "cut",
+        crossfadeMs: 0,
+      },
+    ];
+
+    const timeline =
+      buildRadioProgramTimeline(
+        items,
+      );
+
+    assert.equal(
+      timeline.durationMs,
+      23_000,
+    );
+
+    assert.deepEqual(
+      timeline.segments.map(
+        (item) => [
+          item.startMs,
+          item.endMs,
+        ],
+      ),
+      [
+        [0, 10_000],
+        [8000, 18_000],
+        [18_000, 23_000],
+      ],
+    );
+
+    const duringCrossfade =
+      resolveRadioStationPosition(
+        items,
+        8500,
+      );
+
+    assert.equal(
+      duringCrossfade.ended,
+      false,
+    );
+
+    assert.equal(
+      duringCrossfade.current?.value,
+      "two",
+    );
+
+    assert.equal(
+      duringCrossfade.current?.offsetMs,
+      500,
+    );
+
+    assert.equal(
+      duringCrossfade.next?.value,
+      "three",
+    );
+
+    const ended =
+      resolveRadioStationPosition(
+        items,
+        23_000,
+      );
+
+    assert.equal(
+      ended.ended,
+      true,
+    );
+  },
+);
+
+test(
+  "Radio WOLO transmitter APIs are dedicated-operator only",
+  () => {
+    for (
+      const file of [
+        "app/api/admin/radio/station/route.ts",
+        "app/api/admin/radio/station/start/route.ts",
+        "app/api/admin/radio/station/stop/route.ts",
+      ]
+    ) {
+      const source =
+        read(file);
+
+      assert.match(
+        source,
+        /requireRadioWoloOperator/,
+      );
+
+      assert.doesNotMatch(
+        source,
+        /requireAdmin\(/,
+      );
+    }
+  },
+);
+
+test(
+  "Radio WOLO launch requires a ready non-empty program and singleton authority",
+  () => {
+    const start =
+      read(
+        "app/api/admin/radio/station/start/route.ts",
+      );
+
+    const station =
+      read(
+        "app/api/admin/radio/station/route.ts",
+      );
+
+    assert.match(
+      start,
+      /program\.status !==\s*"ready"/,
+    );
+
+    assert.match(
+      start,
+      /program\.items\.length ===\s*0/,
+    );
+
+    assert.match(
+      start,
+      /asset\.status !==\s*"ready"/,
+    );
+
+    assert.match(
+      start,
+      /radioStationState\.updateMany/,
+    );
+
+    assert.match(
+      start,
+      /state:\s*"on_air"/,
+    );
+
+    assert.match(
+      station,
+      /radioStationState\.upsert/,
+    );
+
+    assert.match(
+      station,
+      /endedNaturally/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO freezes an active program under the station clock",
+  () => {
+    const metadata =
+      read(
+        "app/api/admin/radio/programs/[id]/route.ts",
+      );
+
+    const chain =
+      read(
+        "app/api/admin/radio/programs/[id]/items/route.ts",
+      );
+
+    for (
+      const source of [
+        metadata,
+        chain,
+      ]
+    ) {
+      assert.match(
+        source,
+        /radioStationState\.findUnique/,
+      );
+
+      assert.match(
+        source,
+        /state === "on_air"/,
+      );
+
+      assert.match(
+        source,
+        /currently on air/,
+      );
+
+      assert.match(
+        source,
+        /status:\s*409/,
+      );
+    }
+  },
+);

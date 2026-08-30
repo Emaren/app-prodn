@@ -111,6 +111,36 @@ export async function PUT(
       },
     );
 
+  const activeStation =
+    await gate.prisma.radioStationState.findUnique(
+      {
+        where: {
+          id: 1,
+        },
+        select: {
+          state: true,
+          programId: true,
+        },
+      },
+    );
+
+  if (
+    activeStation?.state === "on_air" &&
+    activeStation.programId === programId
+  ) {
+    return NextResponse.json(
+      {
+        detail:
+          "That Radio WOLO program is currently on air.",
+      },
+      {
+        status: 409,
+        headers:
+          NO_STORE_HEADERS,
+      },
+    );
+  }
+
   if (!program) {
     return NextResponse.json(
       {
