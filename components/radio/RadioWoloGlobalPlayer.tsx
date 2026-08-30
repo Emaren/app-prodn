@@ -25,7 +25,7 @@ const STORAGE_KEY =
   "aoe2war:radio-wolo-player-mode:v1";
 
 const THEME_STORAGE_KEY =
-  "aoe2war:radio-wolo-player-theme:v2";
+  "aoe2war:radio-wolo-player-theme:v3";
 
 const SKIN_STORAGE_KEY =
   "aoe2war:radio-wolo-player-skin:v1";
@@ -47,6 +47,18 @@ const PLAYER_SKINS = [
     label: "Mini II",
     kind: "image",
     src: "/radio-wolo/mini2.png",
+  },
+  {
+    id: "mini3",
+    label: "Mini III",
+    kind: "image",
+    src: "/radio-wolo/mini3.png",
+  },
+  {
+    id: "mini4",
+    label: "Mini IV",
+    kind: "image",
+    src: "/radio-wolo/mini4.png",
   },
 ] as const;
 
@@ -376,7 +388,13 @@ export default function RadioWoloGlobalPlayer() {
     PLAYER_THEMES.find(
       (entry) =>
         entry.id === themeId,
-    ) ?? PLAYER_THEMES[0];
+    ) ??
+    PLAYER_THEMES.find(
+      (entry) =>
+        entry.id ===
+        "imperial",
+    ) ??
+    PLAYER_THEMES[0];
 
 
   const [
@@ -703,7 +721,7 @@ export default function RadioWoloGlobalPlayer() {
           skinId
         }
         data-radio-wolo-art-face
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.8rem)] left-3 z-[169] aspect-[4/3] w-[min(18rem,calc(100vw-1.5rem))] overflow-hidden rounded-[1.15rem] border border-[#365b85]/70 bg-[#020817] shadow-[0_24px_72px_rgba(0,0,0,0.68),0_0_28px_rgba(24,73,132,0.14)] lg:bottom-4 lg:left-4"
+        className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.8rem)] left-3 z-[169] aspect-[4/3] w-[min(19rem,calc(100vw-1.5rem))] overflow-hidden rounded-[1rem] bg-[#020817] shadow-[0_24px_72px_rgba(0,0,0,0.72),0_0_26px_rgba(20,67,124,0.16)] lg:bottom-4 lg:left-4"
         style={{
           backgroundImage:
             `url("${activeSkin.src}")`,
@@ -715,25 +733,26 @@ export default function RadioWoloGlobalPlayer() {
             "cover",
         }}
       >
+        <span
+          className="sr-only"
+          aria-live="polite"
+        >
+          Radio WOLO:
+          {" "}
+          {signalLabel}
+        </span>
+
+        {!isOnAir ? (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 bg-[#020817]/20"
+          />
+        ) : null}
+
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,8,23,0.02)_0%,rgba(2,8,23,0.00)_55%,rgba(2,8,23,0.28)_100%)]"
+          className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-amber-400/18"
         />
-
-        <div className="absolute left-2 top-2 flex items-center gap-1.5 rounded-full border border-amber-300/20 bg-[#020817]/72 px-2 py-1 backdrop-blur-md">
-          <span
-            aria-hidden="true"
-            className={`h-1.5 w-1.5 rounded-full ${
-              isOnAir
-                ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]"
-                : "bg-slate-500"
-            }`}
-          />
-
-          <span className="text-[7px] font-black uppercase tracking-[0.18em] text-amber-100/80">
-            {signalLabel}
-          </span>
-        </div>
 
         <button
           type="button"
@@ -742,10 +761,12 @@ export default function RadioWoloGlobalPlayer() {
               "dormant",
             )
           }
-          className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full border border-amber-300/22 bg-[#020817]/76 text-amber-200/75 backdrop-blur-md transition hover:border-amber-300/45 hover:text-amber-100"
+          className="absolute right-[2%] top-[2%] h-[15%] w-[14%] rounded-full bg-transparent text-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80"
           aria-label="Close Radio WOLO"
         >
-          <X className="h-3.5 w-3.5" />
+          <span className="sr-only">
+            Close
+          </span>
         </button>
 
         <button
@@ -756,7 +777,7 @@ export default function RadioWoloGlobalPlayer() {
           disabled={
             !isOnAir
           }
-          className="absolute left-1/2 top-[68%] grid h-12 w-12 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-amber-300/45 bg-[#06152b]/88 text-amber-100 shadow-[0_0_22px_rgba(217,160,45,0.22),inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-sm transition hover:border-amber-200/70 hover:bg-[#0a2141]/94 disabled:cursor-default disabled:opacity-35"
+          className="absolute left-[39%] top-[54%] h-[31%] w-[22%] rounded-full bg-transparent text-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80 disabled:cursor-default"
           aria-label={
             isListening &&
             !playbackBlocked
@@ -764,23 +785,13 @@ export default function RadioWoloGlobalPlayer() {
               : "Listen to Radio WOLO"
           }
         >
-          {isListening &&
-          !playbackBlocked ? (
-            <Pause className="h-5 w-5" />
-          ) : (
-            <Play className="ml-0.5 h-5 w-5" />
-          )}
+          <span className="sr-only">
+            {isListening &&
+            !playbackBlocked
+              ? "Pause"
+              : "Listen"}
+          </span>
         </button>
-
-        <div className="absolute bottom-2 left-2 max-w-[56%] rounded-lg border border-white/[0.07] bg-[#020817]/72 px-2 py-1.5 backdrop-blur-md">
-          <div className="truncate text-[8px] font-black uppercase tracking-[0.16em] text-amber-300/70">
-            Radio WOLO
-          </div>
-
-          <div className="mt-0.5 truncate text-[9px] font-semibold text-white/86">
-            {displayTitle}
-          </div>
-        </div>
 
         <button
           type="button"
@@ -791,10 +802,12 @@ export default function RadioWoloGlobalPlayer() {
               "expanded",
             );
           }}
-          className="absolute bottom-2 right-2 rounded-lg border border-amber-300/22 bg-[#020817]/78 px-2.5 py-1.5 text-[8px] font-black uppercase tracking-[0.18em] text-amber-200/80 backdrop-blur-md transition hover:border-amber-300/45 hover:text-amber-100"
+          className="absolute bottom-[2%] right-[2%] h-[18%] w-[31%] rounded-lg bg-transparent text-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80"
           aria-label="More Radio WOLO controls"
         >
-          More
+          <span className="sr-only">
+            More
+          </span>
         </button>
       </section>
     );
@@ -960,7 +973,7 @@ export default function RadioWoloGlobalPlayer() {
               </div>
             </div>
 
-            <div className="mt-2 grid grid-cols-3 gap-1.5">
+            <div className="mt-2 grid grid-cols-5 gap-1.5">
               {PLAYER_SKINS.map(
                 (skin) => {
                   const selected =
@@ -971,11 +984,15 @@ export default function RadioWoloGlobalPlayer() {
                     <button
                       key={skin.id}
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
                         setStoredSkin(
                           skin.id,
-                        )
-                      }
+                        );
+
+                        setStoredMode(
+                          "compact",
+                        );
+                      }}
                       className={`relative h-12 overflow-hidden rounded-lg border text-[9px] font-bold uppercase tracking-[0.12em] transition ${
                         selected
                           ? "border-amber-400/45 bg-amber-300/[0.10] text-amber-100"

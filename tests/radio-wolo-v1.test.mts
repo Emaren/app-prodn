@@ -2182,7 +2182,7 @@ test(
 
     assert.match(
       source,
-      /aoe2war:radio-wolo-player-theme:v2/,
+      /aoe2war:radio-wolo-player-theme:v3/,
     );
 
     assert.doesNotMatch(
@@ -2443,7 +2443,7 @@ test(
 );
 
 test(
-  "Radio WOLO offers UI and two persisted artwork mini-player faces",
+  "Radio WOLO offers the default UI and four persisted artwork mini-player faces",
   () => {
     const source =
       read(
@@ -2463,6 +2463,25 @@ test(
     assert.match(
       source,
       /\/radio-wolo\/mini2\.png/,
+    );
+
+    assert.match(
+      source,
+      /\/radio-wolo\/mini3\.png/,
+    );
+
+    assert.match(
+      source,
+      /\/radio-wolo\/mini4\.png/,
+    );
+
+    assert.equal(
+      (
+        source.match(
+          /kind: "image"/g,
+        ) ?? []
+      ).length,
+      4,
     );
 
     assert.match(
@@ -2572,7 +2591,7 @@ test(
 
     assert.match(
       source,
-      /aoe2war:radio-wolo-player-theme:v2/,
+      /aoe2war:radio-wolo-player-theme:v3/,
     );
 
     assert.doesNotMatch(
@@ -2628,6 +2647,76 @@ test(
     assert.match(
       source,
       /setStoredMode\(\s*"expanded"/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO Player face selection immediately collapses into the selected mini player",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    const selector =
+      source.match(
+        /PLAYER_SKINS\.map\([\s\S]*?Warrior tone/,
+      )?.[0] ?? "";
+
+    assert.match(
+      selector,
+      /setStoredSkin\(\s*skin\.id/,
+    );
+
+    assert.match(
+      selector,
+      /setStoredMode\(\s*"compact"/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO artwork Compact face stays visually clean",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    const artFace =
+      source.match(
+        /mode === "compact"[\s\S]*?activeSkin\.kind === "image"[\s\S]*?(?=\n  return \(\n    <section)/,
+      )?.[0] ?? "";
+
+    assert.match(
+      artFace,
+      /data-radio-wolo-art-face/,
+    );
+
+    assert.match(
+      artFace,
+      /backgroundSize:\s*"cover"/,
+    );
+
+    assert.doesNotMatch(
+      artFace,
+      /displayTitle/,
+    );
+
+    assert.doesNotMatch(
+      artFace,
+      /<Play className/,
+    );
+
+    assert.doesNotMatch(
+      artFace,
+      /<Pause className/,
+    );
+
+    assert.match(
+      artFace,
+      /More Radio WOLO controls/,
     );
   },
 );
