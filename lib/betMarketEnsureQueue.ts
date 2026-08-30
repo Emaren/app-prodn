@@ -8,6 +8,12 @@ let backgroundEnsureTimer: ReturnType<typeof setTimeout> | null = null;
 export const BET_MARKET_ENSURE_MIN_INTERVAL_MS = 5_000;
 
 export function queueBetMarketEnsure(prisma: PrismaClient, delayMs = 1_000) {
+  if (
+    process.env.AOE2WAR_PROD_DB_PREVIEW === "true"
+  ) {
+    return;
+  }
+
   const now = Date.now();
 
   if (

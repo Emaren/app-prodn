@@ -1319,16 +1319,20 @@ export async function loadViewerBetStakeTickets(
   prisma: PrismaClient,
   userId: number
 ) {
-  try {
-    await refreshRecoverableBetStakeTickets(
-      prisma,
-      userId
-    );
-  } catch (error) {
-    console.warn(
-      "Failed to refresh viewer bet stake tickets:",
-      error
-    );
+  if (
+    process.env.AOE2WAR_PROD_DB_PREVIEW !== "true"
+  ) {
+    try {
+      await refreshRecoverableBetStakeTickets(
+        prisma,
+        userId,
+      );
+    } catch (error) {
+      console.warn(
+        "Failed to refresh viewer bet stake tickets:",
+        error,
+      );
+    }
   }
 
   const cutoff = new Date(

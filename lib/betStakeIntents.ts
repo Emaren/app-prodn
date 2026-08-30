@@ -531,10 +531,20 @@ export async function loadViewerBetStakeIntents(
   prisma: PrismaClient,
   userId: number
 ) {
-  try {
-    await refreshRecoverableBetStakeIntents(prisma, userId);
-  } catch (error) {
-    console.warn("Failed to refresh viewer bet stake intents:", error);
+  if (
+    process.env.AOE2WAR_PROD_DB_PREVIEW !== "true"
+  ) {
+    try {
+      await refreshRecoverableBetStakeIntents(
+        prisma,
+        userId,
+      );
+    } catch (error) {
+      console.warn(
+        "Failed to refresh viewer bet stake intents:",
+        error,
+      );
+    }
   }
 
   const pendingProofCutoff = new Date(
