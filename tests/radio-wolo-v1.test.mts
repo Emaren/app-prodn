@@ -1466,3 +1466,485 @@ test(
     );
   },
 );
+
+test(
+  "Radio WOLO listener interpolates forward from the authoritative station offset",
+  async () => {
+    const {
+      createRadioListenerAnchor,
+      radioListenerExpectedElapsedMs,
+      radioListenerExpectedOffsetMs,
+    } = await import(
+      "../lib/radioWoloListenerSync.ts"
+    );
+
+    const station = {
+      identity:
+        "Radio WOLO — The Kingdom Never Goes Silent.",
+      state:
+        "on_air" as const,
+      authenticated:
+        false,
+      startedAt:
+        "2026-08-30T05:00:00.000Z",
+      stoppedAt:
+        null,
+      endedNaturally:
+        false,
+      program:
+        null,
+      clock: {
+        now:
+          "2026-08-30T05:00:05.000Z",
+        elapsedMs:
+          5000,
+        durationMs:
+          60000,
+        remainingMs:
+          55000,
+        current: {
+          position:
+            0,
+          startMs:
+            0,
+          endMs:
+            30000,
+          durationMs:
+            30000,
+          transition:
+            "cut",
+          crossfadeMs:
+            0,
+          overlapMs:
+            0,
+          offsetMs:
+            5000,
+          remainingMs:
+            25000,
+          asset: {
+            mediaUrl:
+              "/api/radio/station/audio/11111111-1111-4111-8111-111111111111",
+            durationMs:
+              30000,
+          },
+        },
+        next:
+          null,
+      },
+    };
+
+    const anchor =
+      createRadioListenerAnchor(
+        station,
+        10_000,
+        200,
+      );
+
+    assert.ok(anchor);
+
+    assert.equal(
+      anchor.offsetAtReceiptMs,
+      5100,
+    );
+
+    assert.equal(
+      anchor.elapsedAtReceiptMs,
+      5100,
+    );
+
+    assert.equal(
+      radioListenerExpectedOffsetMs(
+        anchor,
+        12_000,
+      ),
+      7100,
+    );
+
+    assert.equal(
+      radioListenerExpectedElapsedMs(
+        anchor,
+        12_000,
+      ),
+      7100,
+    );
+  },
+);
+
+test(
+  "Radio WOLO listener treats repeated assets at different positions as different broadcast segments",
+  async () => {
+    const {
+      radioListenerMediaKey,
+    } = await import(
+      "../lib/radioWoloListenerSync.ts"
+    );
+
+    const shared = {
+      stationStartedAt:
+        "2026-08-30T05:00:00.000Z",
+      mediaUrl:
+        "/api/radio/station/audio/11111111-1111-4111-8111-111111111111",
+    };
+
+    const first =
+      radioListenerMediaKey({
+        ...shared,
+        position: 0,
+      });
+
+    const second =
+      radioListenerMediaKey({
+        ...shared,
+        position: 1,
+      });
+
+    assert.notEqual(
+      first,
+      second,
+    );
+
+    assert.match(
+      first,
+      /:0:/,
+    );
+
+    assert.match(
+      second,
+      /:1:/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO listener corrects meaningful drift without chasing tiny timing differences",
+  async () => {
+    const {
+      radioListenerShouldSeek,
+      RADIO_WOLO_DRIFT_SEEK_THRESHOLD_MS,
+    } = await import(
+      "../lib/radioWoloListenerSync.ts"
+    );
+
+    assert.equal(
+      RADIO_WOLO_DRIFT_SEEK_THRESHOLD_MS,
+      1500,
+    );
+
+    assert.equal(
+      radioListenerShouldSeek(
+        8.1,
+        7000,
+      ),
+      false,
+    );
+
+    assert.equal(
+      radioListenerShouldSeek(
+        9.0,
+        7000,
+      ),
+      true,
+    );
+
+    assert.equal(
+      radioListenerShouldSeek(
+        5.0,
+        7000,
+      ),
+      true,
+    );
+  },
+);
+
+test(
+  "Radio WOLO listener has no playable anchor while the transmitter is off air",
+  async () => {
+    const {
+      createRadioListenerAnchor,
+      radioListenerPollDelayMs,
+      RADIO_WOLO_ACTIVE_POLL_MS,
+      RADIO_WOLO_OFF_AIR_POLL_MS,
+    } = await import(
+      "../lib/radioWoloListenerSync.ts"
+    );
+
+    const offAir = {
+      identity:
+        "Radio WOLO — The Kingdom Never Goes Silent.",
+      state:
+        "off_air" as const,
+      authenticated:
+        false,
+      startedAt:
+        null,
+      stoppedAt:
+        null,
+      endedNaturally:
+        false,
+      program:
+        null,
+      clock:
+        null,
+    };
+
+    assert.equal(
+      createRadioListenerAnchor(
+        offAir,
+        1000,
+        100,
+      ),
+      null,
+    );
+
+    assert.equal(
+      radioListenerPollDelayMs(
+        offAir,
+      ),
+      RADIO_WOLO_OFF_AIR_POLL_MS,
+    );
+
+    assert.equal(
+      radioListenerPollDelayMs({
+        ...offAir,
+        state:
+          "on_air",
+      }),
+      RADIO_WOLO_ACTIVE_POLL_MS,
+    );
+  },
+);
+
+test(
+  "Radio WOLO listener requires explicit listening intent before audio playback",
+  () => {
+    const source =
+      read(
+        "hooks/useRadioWoloListener.ts",
+      );
+
+    assert.match(
+      source,
+      /listeningIntentRef\s*=\s*useRef\(false\)/,
+    );
+
+    assert.match(
+      source,
+      /credentials:\s*"same-origin"/,
+    );
+
+    assert.match(
+      source,
+      /cache:\s*"no-store"/,
+    );
+
+    assert.match(
+      source,
+      /radioListenerExpectedOffsetMs/,
+    );
+
+    assert.match(
+      source,
+      /radioListenerShouldSeek/,
+    );
+
+    assert.match(
+      source,
+      /mediaKeyRef\.current\s*!==\s*anchor\.mediaKey/,
+    );
+
+    assert.match(
+      source,
+      /listeningIntentRef\.current\s*=\s*true/,
+    );
+
+    assert.match(
+      source,
+      /audio\.play\(\)/,
+    );
+
+    assert.match(
+      source,
+      /visibilitychange/,
+    );
+
+    assert.match(
+      source,
+      /"ended"/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO listener wakes at authoritative item boundaries instead of waiting for the normal poll",
+  async () => {
+    const {
+      createRadioListenerAnchor,
+      radioListenerNextSyncDelayMs,
+      RADIO_WOLO_ACTIVE_POLL_MS,
+      RADIO_WOLO_BOUNDARY_SYNC_GRACE_MS,
+    } = await import(
+      "../lib/radioWoloListenerSync.ts"
+    );
+
+    const mediaUrl =
+      "/api/radio/station/audio/11111111-1111-4111-8111-111111111111";
+
+    const station = {
+      identity:
+        "Radio WOLO — The Kingdom Never Goes Silent.",
+      state:
+        "on_air" as const,
+      authenticated:
+        false,
+      startedAt:
+        "2026-08-30T05:00:00.000Z",
+      stoppedAt:
+        null,
+      endedNaturally:
+        false,
+      program:
+        null,
+      clock: {
+        now:
+          "2026-08-30T05:00:05.000Z",
+        elapsedMs:
+          5000,
+        durationMs:
+          30000,
+        remainingMs:
+          25000,
+        current: {
+          position: 0,
+          startMs: 0,
+          endMs: 10000,
+          durationMs: 10000,
+          transition: "cut",
+          crossfadeMs: 0,
+          overlapMs: 0,
+          offsetMs: 5000,
+          remainingMs: 5000,
+          asset: {
+            mediaUrl,
+            durationMs: 10000,
+          },
+        },
+        next: {
+          position: 1,
+          startMs: 7000,
+          endMs: 17000,
+          durationMs: 10000,
+          transition: "crossfade",
+          crossfadeMs: 3000,
+          overlapMs: 3000,
+          asset: {
+            mediaUrl,
+            durationMs: 10000,
+          },
+        },
+      },
+    };
+
+    const anchor =
+      createRadioListenerAnchor(
+        station,
+        10000,
+        0,
+      );
+
+    assert.ok(anchor);
+
+    const delay =
+      radioListenerNextSyncDelayMs(
+        station,
+        anchor,
+        10000,
+      );
+
+    assert.equal(
+      delay,
+      2000 +
+        RADIO_WOLO_BOUNDARY_SYNC_GRACE_MS,
+    );
+
+    assert.ok(
+      delay <
+        RADIO_WOLO_ACTIVE_POLL_MS,
+    );
+  },
+);
+
+test(
+  "Radio WOLO listener schedules final program end when no next item remains",
+  async () => {
+    const {
+      createRadioListenerAnchor,
+      radioListenerNextSyncDelayMs,
+      RADIO_WOLO_BOUNDARY_SYNC_GRACE_MS,
+    } = await import(
+      "../lib/radioWoloListenerSync.ts"
+    );
+
+    const station = {
+      identity:
+        "Radio WOLO — The Kingdom Never Goes Silent.",
+      state:
+        "on_air" as const,
+      authenticated:
+        false,
+      startedAt:
+        "2026-08-30T05:00:00.000Z",
+      stoppedAt:
+        null,
+      endedNaturally:
+        false,
+      program:
+        null,
+      clock: {
+        now:
+          "2026-08-30T05:00:08.000Z",
+        elapsedMs:
+          8000,
+        durationMs:
+          10000,
+        remainingMs:
+          2000,
+        current: {
+          position: 0,
+          startMs: 0,
+          endMs: 10000,
+          durationMs: 10000,
+          transition: "cut",
+          crossfadeMs: 0,
+          overlapMs: 0,
+          offsetMs: 8000,
+          remainingMs: 2000,
+          asset: {
+            mediaUrl:
+              "/api/radio/station/audio/11111111-1111-4111-8111-111111111111",
+            durationMs: 10000,
+          },
+        },
+        next: null,
+      },
+    };
+
+    const anchor =
+      createRadioListenerAnchor(
+        station,
+        10000,
+        0,
+      );
+
+    assert.ok(anchor);
+
+    assert.equal(
+      radioListenerNextSyncDelayMs(
+        station,
+        anchor,
+        10000,
+      ),
+      2000 +
+        RADIO_WOLO_BOUNDARY_SYNC_GRACE_MS,
+    );
+  },
+);
