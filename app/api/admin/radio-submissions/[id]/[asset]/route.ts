@@ -1,13 +1,13 @@
 import { readFile } from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireAdmin } from "@/lib/adminSession";
+import { requireRadioWoloOperator } from "@/lib/radioWoloOperator";
 import { radioStoragePath } from "@/lib/radioWolo";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string; asset: string }> }) {
-  const gate = await requireAdmin(request);
+  const gate = await requireRadioWoloOperator(request);
   if ("error" in gate) return gate.error;
   const { id: idValue, asset } = await context.params;
   const id = Number(idValue);

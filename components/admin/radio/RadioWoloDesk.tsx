@@ -1,21 +1,150 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  useState,
+} from "react";
+import {
+  Inbox,
+  ListMusic,
+  RadioTower,
+  Signal,
+  Vault,
+} from "lucide-react";
 
-type Submission = { id: number; publicId: string; artistName: string; trackTitle: string; genre: string | null; contactEmail: string; contactDiscord: string | null; status: string; featured: boolean; adminNote: string | null; scheduledAt: string | null; publishedAt: string | null; audioByteSize: string; artworkByteSize: string | null; audioOriginalName: string; artworkOriginalName: string | null; rightsStatementVersion: string; createdAt: string };
-const STATUSES = ["submitted", "reviewing", "approved", "scheduled", "published", "declined"];
+import RadioSubmissionInbox from "@/components/admin/radio/RadioSubmissionInbox";
+import RadioWoloBuilder from "@/components/admin/radio/RadioWoloBuilder";
+import RadioWoloOnAir from "@/components/admin/radio/RadioWoloOnAir";
+import RadioWoloVault from "@/components/admin/radio/RadioWoloVault";
+
+type DeskMode =
+  | "vault"
+  | "build"
+  | "on-air"
+  | "inbox";
+
+const MODES: Array<{
+  id: DeskMode;
+  label: string;
+  icon:
+    typeof Vault;
+}> = [
+  {
+    id: "vault",
+    label: "Vault",
+    icon: Vault,
+  },
+  {
+    id: "build",
+    label: "Build",
+    icon: ListMusic,
+  },
+  {
+    id: "on-air",
+    label: "On Air",
+    icon: Signal,
+  },
+  {
+    id: "inbox",
+    label: "Inbox",
+    icon: Inbox,
+  },
+];
 
 export default function RadioWoloDesk() {
-  const [items, setItems] = useState<Submission[]>([]);
-  const [drafts, setDrafts] = useState<Record<number, Submission>>({});
-  const [savingId, setSavingId] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  async function load() { const response = await fetch("/api/admin/radio-submissions", { cache: "no-store" }); const payload = (await response.json().catch(() => ({}))) as { submissions?: Submission[]; detail?: string }; if (!response.ok) throw new Error(payload.detail || "Could not load Radio WOLO submissions."); const next = payload.submissions || []; setItems(next); setDrafts(Object.fromEntries(next.map((item) => [item.id, item]))); }
-  useEffect(() => { void load().catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load Radio WOLO submissions.")); }, []);
-  function update(id: number, change: Partial<Submission>) { setDrafts((current) => ({ ...current, [id]: { ...current[id], ...change } })); }
-  async function save(id: number) { const draft = drafts[id]; if (!draft) return; setSavingId(id); setError(null); setNotice(null); try { const response = await fetch("/api/admin/radio-submissions", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ id, status: draft.status, featured: draft.featured, adminNote: draft.adminNote, scheduledAt: draft.scheduledAt }) }); const payload = (await response.json().catch(() => ({}))) as { detail?: string }; if (!response.ok) throw new Error(payload.detail || "Could not update submission."); setNotice(`${draft.artistName} — ${draft.trackTitle} updated.`); await load(); } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not update submission."); } finally { setSavingId(null); } }
-  return <main className="mx-auto max-w-7xl space-y-6 py-8 text-white"><section className="rounded-[2rem] border border-fuchsia-200/15 bg-[radial-gradient(circle_at_12%_0%,rgba(232,121,249,0.16),transparent_34%),linear-gradient(145deg,#17081b,#060811)] p-7 sm:p-9"><div className="text-xs font-bold uppercase tracking-[0.35em] text-fuchsia-100/60">Private Review Rail</div><h1 className="mt-3 font-serif text-4xl">Radio WOLO Desk</h1><p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Review rights-attested creator submissions, schedule programming, and publish explicitly. Contact details and media stay private until an operator changes status to published.</p><div className="mt-5 text-xs text-slate-400">{items.length} submissions · {items.filter((item) => item.status === "submitted").length} awaiting first review</div></section>{error ? <div className="rounded-2xl border border-rose-300/25 bg-rose-500/10 p-4 text-rose-100">{error}</div> : null}{notice ? <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 p-4 text-emerald-100">{notice}</div> : null}<section className="space-y-4">{items.length ? items.map((item) => { const draft = drafts[item.id] || item; return <article key={item.id} className="rounded-[1.5rem] border border-white/10 bg-slate-950/75 p-5 sm:p-6"><div className="flex flex-wrap items-start justify-between gap-4"><div><div className="text-xs uppercase tracking-[0.24em] text-fuchsia-100/55">{item.genre || "Uncategorized"}</div><h2 className="mt-2 text-2xl font-semibold">{item.trackTitle}</h2><div className="mt-1 text-fuchsia-100">{item.artistName}</div></div><div className="text-right text-xs text-slate-500"><div>{new Date(item.createdAt).toLocaleString()}</div><div>{(Number(item.audioByteSize) / 1024 / 1024).toFixed(1)} MB · {item.audioOriginalName}</div></div></div><audio className="mt-5 w-full" controls preload="none" src={`/api/admin/radio-submissions/${item.id}/audio`} /><div className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4"><Field label="Contact email" value={item.contactEmail} readOnly /><Field label="Discord" value={item.contactDiscord || "Not supplied"} readOnly /><label className="space-y-2 text-slate-300"><span>Status</span><select value={draft.status} onChange={(event) => update(item.id, { status: event.target.value })} className="w-full rounded-xl border border-white/10 bg-[#07111f] px-3 py-2.5">{STATUSES.map((status) => <option key={status}>{status}</option>)}</select></label><Field label="Schedule (ISO or blank)" value={draft.scheduledAt || ""} onChange={(scheduledAt) => update(item.id, { scheduledAt })} /></div><label className="mt-4 block space-y-2 text-sm text-slate-300"><span>Operator note</span><textarea rows={3} value={draft.adminNote || ""} onChange={(event) => update(item.id, { adminNote: event.target.value })} className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5" /></label><div className="mt-4 flex flex-wrap items-center gap-3"><label className="text-sm text-slate-300"><input className="mr-2" type="checkbox" checked={draft.featured} onChange={(event) => update(item.id, { featured: event.target.checked })} />Featured broadcast</label>{item.artworkOriginalName ? <a href={`/api/admin/radio-submissions/${item.id}/artwork`} target="_blank" rel="noreferrer" className="text-sm text-cyan-200">Review artwork</a> : null}<span className="text-xs text-slate-500">Rights: {item.rightsStatementVersion}</span><button onClick={() => void save(item.id)} disabled={savingId !== null} className="ml-auto rounded-full bg-fuchsia-200 px-5 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-50">{savingId === item.id ? "Saving…" : "Save Review"}</button></div></article>; }) : <div className="rounded-2xl border border-white/10 bg-slate-950/70 p-8 text-slate-500">No music has been submitted yet.</div>}</section></main>;
-}
+  const [
+    mode,
+    setMode,
+  ] = useState<DeskMode>(
+    "vault",
+  );
 
-function Field({ label, value, onChange, readOnly = false }: { label: string; value: string; onChange?: (value: string) => void; readOnly?: boolean }) { return <label className="space-y-2 text-sm text-slate-300"><span>{label}</span><input value={value} readOnly={readOnly} onChange={(event) => onChange?.(event.target.value)} className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 read-only:text-slate-500" /></label>; }
+  return (
+    <main className="mx-auto max-w-[90rem] space-y-5 py-7 text-white">
+      <section className="relative overflow-hidden rounded-[2.2rem] border border-fuchsia-100/12 bg-[radial-gradient(circle_at_16%_0%,rgba(217,70,239,0.20),transparent_31%),radial-gradient(circle_at_92%_16%,rgba(245,158,11,0.08),transparent_28%),linear-gradient(145deg,#160818,#060811_60%,#050914)] px-6 py-7 sm:px-9 sm:py-8">
+        <div className="pointer-events-none absolute -right-14 -top-20 h-56 w-56 rounded-full border border-fuchsia-100/[0.06]" />
+        <div className="pointer-events-none absolute -right-2 -top-8 h-36 w-36 rounded-full border border-fuchsia-100/[0.055]" />
+
+        <div className="relative flex flex-col gap-7 xl:flex-row xl:items-end xl:justify-between">
+          <div>
+            <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.38em] text-fuchsia-100/60">
+              <RadioTower
+                size={15}
+              />
+              Radio WOLO
+            </div>
+
+            <h1 className="mt-4 font-serif text-4xl leading-none sm:text-5xl">
+              The Kingdom Never
+              Goes Silent.
+            </h1>
+
+            <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-400">
+              Private station
+              control. Preserve the
+              sound, build the chain,
+              then put the kingdom
+              on air.
+            </p>
+          </div>
+
+          <div className="inline-flex max-w-full overflow-x-auto rounded-2xl border border-white/8 bg-black/20 p-1.5">
+            {MODES.map(
+              (item) => {
+                const Icon =
+                  item.icon;
+
+                const active =
+                  mode ===
+                  item.id;
+
+                return (
+                  <button
+                    key={
+                      item.id
+                    }
+                    type="button"
+                    onClick={() =>
+                      setMode(
+                        item.id,
+                      )
+                    }
+                    className={[
+                      "inline-flex shrink-0 items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-[0.16em] transition",
+                      active
+                        ? "bg-fuchsia-100 text-slate-950 shadow-[0_8px_28px_rgba(217,70,239,0.14)]"
+                        : "text-slate-500 hover:bg-white/[0.04] hover:text-white",
+                    ].join(
+                      " ",
+                    )}
+                  >
+                    <Icon
+                      size={
+                        14
+                      }
+                    />
+                    {
+                      item.label
+                    }
+                  </button>
+                );
+              },
+            )}
+          </div>
+        </div>
+      </section>
+
+      {mode ===
+      "vault" ? (
+        <RadioWoloVault />
+      ) : mode ===
+        "build" ? (
+        <RadioWoloBuilder />
+      ) : mode ===
+        "on-air" ? (
+        <RadioWoloOnAir />
+      ) : (
+        <RadioSubmissionInbox />
+      )}
+    </main>
+  );
+}
