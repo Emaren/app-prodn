@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integrate/radio-hardening-release-20260830` at `2667848f8839f3363403d57620556dd3b1676230`
+Implementation baseline: `main` at `8b65d5379326aae43b7838cec97806051021e3e8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
