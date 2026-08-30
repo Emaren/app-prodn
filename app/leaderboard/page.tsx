@@ -28,6 +28,48 @@ export const metadata: Metadata = {
   title: "HD Leaderboard · AoE2WAR",
   description:
     "AoE2WAR's ranked Age of Empires II HD warriors, ratings, records, and streaks.",
+  openGraph: {
+    title:
+      "AoE2WAR HD Leaderboard",
+    description:
+      "The ranked warriors of AoE2WAR — ratings, records, streaks, and the road to the Crown.",
+    url:
+      "https://aoe2war.com/leaderboard",
+    siteName:
+      "AoE2WAR",
+    type:
+      "website",
+    images: [
+      {
+        url:
+          "/social/aoe2war-leaderboard-social-v1.png",
+        width: 1731,
+        height: 909,
+        alt:
+          "AoE2WAR HD Leaderboard — ranked warriors of the realm",
+      },
+    ],
+  },
+  twitter: {
+    card:
+      "summary_large_image",
+    site:
+      "@AoE2HDBets",
+    creator:
+      "@AoE2HDBets",
+    title:
+      "AoE2WAR HD Leaderboard",
+    description:
+      "The ranked warriors of AoE2WAR — ratings, records, streaks, and the road to the Crown.",
+    images: [
+      {
+        url:
+          "/social/aoe2war-leaderboard-social-v1.png",
+        alt:
+          "AoE2WAR HD Leaderboard — ranked warriors of the realm",
+      },
+    ],
+  },
 };
 
 export default async function LeaderboardPage({
