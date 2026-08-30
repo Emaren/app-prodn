@@ -1,7 +1,13 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import { loadMainnetStakingPositions } from "@/lib/mainnetStakingPositions";
-import { isWoloMainnet } from "@/lib/woloChain";
-import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
+import {
+  isWoloMainnet,
+  WOLO_BASE_DENOM,
+  WOLO_CHAIN_ID,
+  WOLO_COIN_DECIMALS,
+} from "@/lib/woloChain";
+import { normalizeMinimalDenomAmount } from "@/lib/woloBalanceRead";
+import { fetchWoloBalanceSnapshot } from "@/lib/woloRuntime";
 import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
 import {
   calculateStakingReservePolicy,
@@ -23,7 +29,7 @@ export const STAKING_UNSTAKE_SAFETY_DETAIL =
 export const STAKING_WALLET_TOP_UP_HELP =
   "This wallet backs app-side staking withdrawals. Its chain balance must cover confirmed staking liability plus the 10,000 WOLO operating reserve target.";
 
-type StakingExecutionLimits = {
+export type StakingExecutionLimits = {
   maxUnstakeWolo: number;
   totalConfirmedStakedWolo: number;
   activeStakers: number;
@@ -43,6 +49,9 @@ type StakingExecutionLimits = {
   currentUnstakeReserveCheck: UnstakeReserveCheck;
   operatorWarning: string | null;
   balanceLookupError: string | null;
+  balanceLookupErrorCode: "wallet_unconfigured" | "upstream_unavailable" | null;
+  stakingWalletBalanceSource: "rest" | "cli" | null;
+  stakingWalletBalanceObservedAt: string | null;
 };
 
 export type UnstakeReserveCheck = {
@@ -87,6 +96,9 @@ export async function loadStakingExecutionLimits(
   const currentStake = Math.max(0, Math.floor(currentStakedWolo || 0));
   let stakingWalletBalanceUWolo: bigint | null = null;
   let balanceLookupError: string | null = null;
+  let balanceLookupErrorCode: StakingExecutionLimits["balanceLookupErrorCode"] = null;
+  let stakingWalletBalanceSource: StakingExecutionLimits["stakingWalletBalanceSource"] = null;
+  let stakingWalletBalanceObservedAt: string | null = null;
   const mainnetPositions = isWoloMainnet()
     ? await loadMainnetStakingPositions(prisma)
     : null;
@@ -109,13 +121,27 @@ export async function loadStakingExecutionLimits(
 
   if (runtime.stakingWalletAddress) {
     try {
-      stakingWalletBalanceUWolo = BigInt(
-        await fetchWoloBalanceAmount(runtime.stakingWalletAddress)
-      );
+      const snapshot = await fetchWoloBalanceSnapshot(runtime.stakingWalletAddress);
+      if (
+        snapshot.chainId !== WOLO_CHAIN_ID ||
+        snapshot.denom !== WOLO_BASE_DENOM ||
+        snapshot.decimals !== WOLO_COIN_DECIMALS
+      ) {
+        throw new Error("Staking wallet balance provenance did not match Wolo Mainnet.");
+      }
+      stakingWalletBalanceUWolo = BigInt(normalizeMinimalDenomAmount(snapshot.amount));
+      stakingWalletBalanceSource = snapshot.source;
+      stakingWalletBalanceObservedAt = snapshot.observedAt;
     } catch (error) {
-      balanceLookupError =
-        error instanceof Error ? error.message : "Staking wallet balance lookup failed.";
+      console.warn("[staking] staking-wallet balance lookup unavailable", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      balanceLookupError = "Staking wallet balance is temporarily unavailable.";
+      balanceLookupErrorCode = "upstream_unavailable";
     }
+  } else {
+    balanceLookupError = "Staking wallet address is not configured.";
+    balanceLookupErrorCode = "wallet_unconfigured";
   }
 
   const reservePolicy = calculateStakingReservePolicy({
@@ -167,10 +193,13 @@ export async function loadStakingExecutionLimits(
     currentUnstakeReserveCheck,
     operatorWarning: walletUnderfunded ? STAKING_WALLET_TOP_UP_DETAIL : null,
     balanceLookupError,
+    balanceLookupErrorCode,
+    stakingWalletBalanceSource,
+    stakingWalletBalanceObservedAt,
   };
 }
 
-function buildUnstakeReserveCheck(input: {
+export function buildUnstakeReserveCheck(input: {
   requestedUnstakeWolo: number;
   userConfirmedStakeWolo: number;
   totalConfirmedStakedWolo: number;
@@ -203,7 +232,7 @@ function buildUnstakeReserveCheck(input: {
 
   return {
     executable:
-      availableAfterUnstakeUWolo == null ||
+      availableAfterUnstakeUWolo != null &&
       availableAfterUnstakeUWolo >= requiredBalanceAfterUnstakeUWolo,
     requestedUnstakeWolo,
     userConfirmedStakeWolo,

@@ -44,6 +44,12 @@ import {
   cappedRewardWeightForWindow,
   KINGDOM_STAKE_REWARD_CAP_WOLO,
 } from "@/lib/stakingRewardCap";
+import { loadBetLifecycleActivityPage } from "@/lib/betLifecycleActivity";
+import type {
+  BetLifecycleEvent,
+  BetLifecycleEventKind,
+  BetLifecycleGroup,
+} from "@/lib/betLifecycleProjection";
 
 export {
   BETTING_FEE_RATE_BPS,
@@ -78,6 +84,19 @@ export type StakingActivityItem = {
   txUrl?: string;
   groupKey?: string;
   children?: StakingActivityItem[];
+  lifecycle?: {
+    schema: "bet-lifecycle-v1";
+    marketId: number;
+    kind?: BetLifecycleEventKind;
+    status?: string;
+    eventCount?: number;
+    payoutDestination?: BetLifecycleEvent["payoutDestination"];
+    stakeTotalWolo?: number;
+    payoutTotalWolo?: number;
+    refundTotalWolo?: number;
+    founderParticipantsWolo?: number;
+    founderWinnerWolo?: number;
+  };
   tone: "amber" | "emerald" | "sky" | "slate";
 };
 
@@ -122,6 +141,7 @@ export type StakingRewardPayoutRun = {
 };
 
 export type StakingLeaderboardRow = {
+  userId: number;
   player: string;
   badge: string;
   stakedWolo: number;
@@ -267,6 +287,129 @@ function formatActivityTimestamp(value: Date | string | null | undefined) {
   }).format(date);
 }
 
+const BET_LIFECYCLE_LABELS: Record<BetLifecycleEventKind, string> = {
+  stake_intent: "Stake awaiting verification",
+  stake_recorded: "App-side stake recorded",
+  escrow_funded: "Verified on-chain stake",
+  founder_participants: "Founder participant bonus",
+  founder_winner: "Founder winner premium",
+  result: "Result",
+  payout: "Payout",
+  refund: "Refund",
+  winner_bounty: "Winner bounty",
+};
+
+function lifecycleDestinationLabel(event: BetLifecycleEvent) {
+  if (event.payoutDestination === "wallet") return "wallet transaction present";
+  if (event.payoutDestination === "awaiting_wallet_link") return "awaiting verified wallet link";
+  if (event.payoutDestination === "settlement_queue") return "settlement queued";
+  if (event.payoutDestination === "failed") return "payout needs operator attention";
+  if (event.payoutDestination === "rescinded") return "rescinded";
+  if (event.payoutDestination === "mixed") {
+    return Object.entries(event.payoutDestinationCounts)
+      .map(([destination, count]) => `${count} ${destination.replace(/_/g, " ")}`)
+      .join(" · ");
+  }
+  return null;
+}
+
+function lifecycleEventTone(event: BetLifecycleEvent): StakingActivityItem["tone"] {
+  if (event.payoutDestination === "failed") return "amber";
+  if (event.payoutDestination === "wallet") return "emerald";
+  if (event.kind === "payout" || event.kind === "refund" || event.kind === "winner_bounty") {
+    return event.payoutDestination === "rescinded" ? "slate" : "sky";
+  }
+  if (event.kind === "result") return "sky";
+  if (event.kind === "stake_recorded" || event.kind === "escrow_funded") return "amber";
+  return "slate";
+}
+
+function betLifecycleGroupToActivityItem(group: BetLifecycleGroup): StakingActivityItem {
+  const children = group.events.map((event) => {
+    const destination = lifecycleDestinationLabel(event);
+    const detail = [
+      event.status,
+      event.eventCount > 1 ? `${event.eventCount} records` : null,
+      event.actors.length > 0 ? event.actors.slice(0, 4).join(", ") : null,
+      destination,
+      event.detail,
+    ].filter(Boolean).join(" · ");
+    const amountLabel =
+      event.amountWolo !== null ? formatActivityWoloAmount(event.amountWolo) : undefined;
+
+    return {
+      key: event.id,
+      label: `${BET_LIFECYCLE_LABELS[event.kind]}${amountLabel ? ` · ${amountLabel}` : ""}`,
+      detail,
+      meta: formatActivityTimestamp(event.occurredAt),
+      eventType: `BET_${event.kind.toUpperCase()}`,
+      amountLabel,
+      timestampLabel: formatActivityTimestamp(event.occurredAt),
+      occurredAt: event.occurredAt,
+      txHash: event.txHash || undefined,
+      txUrl: event.txHash ? `/api/wolo/tx/${event.txHash}` : undefined,
+      groupKey: group.groupKey,
+      lifecycle: {
+        schema: group.schema,
+        marketId: group.marketId,
+        kind: event.kind,
+        status: event.status,
+        eventCount: event.eventCount,
+        payoutDestination: event.payoutDestination,
+      },
+      tone: lifecycleEventTone(event),
+    } satisfies StakingActivityItem;
+  });
+  const phaseSummary = group.events
+    .map((event) => BET_LIFECYCLE_LABELS[event.kind].toLowerCase())
+    .join(" · ");
+  const hasFailedPayout = group.events.some((event) => event.payoutDestination === "failed");
+  const hasPendingPayout = group.events.some((event) =>
+    event.payoutDestination === "awaiting_wallet_link" ||
+    event.payoutDestination === "settlement_queue"
+  );
+  const hasWalletPayout = group.events.some((event) => event.payoutDestination === "wallet");
+  const amountLabel =
+    group.stakeTotalWolo > 0
+      ? formatActivityWoloAmount(group.stakeTotalWolo)
+      : group.refundTotalWolo > 0
+        ? formatActivityWoloAmount(group.refundTotalWolo)
+        : group.payoutTotalWolo > 0
+          ? formatActivityWoloAmount(group.payoutTotalWolo)
+          : undefined;
+
+  return {
+    key: group.id,
+    label: group.marketTitle,
+    detail: phaseSummary || "bet lifecycle",
+    meta: formatActivityTimestamp(group.occurredAt),
+    eventType: "GROUPED BET",
+    amountLabel,
+    timestampLabel: formatActivityTimestamp(group.occurredAt),
+    occurredAt: group.occurredAt,
+    groupKey: group.groupKey,
+    children,
+    lifecycle: {
+      schema: group.schema,
+      marketId: group.marketId,
+      stakeTotalWolo: group.stakeTotalWolo,
+      payoutTotalWolo: group.payoutTotalWolo,
+      refundTotalWolo: group.refundTotalWolo,
+      founderParticipantsWolo: group.founderParticipantsWolo,
+      founderWinnerWolo: group.founderWinnerWolo,
+    },
+    tone: hasFailedPayout
+      ? "amber"
+      : hasPendingPayout
+        ? "sky"
+        : hasWalletPayout
+          ? "emerald"
+          : group.stakeTotalWolo > 0
+            ? "amber"
+            : "slate",
+  };
+}
+
 function extractActivityTxHash(item: StakingActivityItem) {
   const keyMatch = String(item.key || "").match(/tx-([A-Fa-f0-9]{64})/);
   if (keyMatch?.[1]) return keyMatch[1].toUpperCase();
@@ -293,52 +436,6 @@ function attachActivityTxFields(item: StakingActivityItem): StakingActivityItem 
     txHash,
     txUrl: item.txUrl || (txHash ? `/api/wolo/tx/${txHash}` : undefined),
   };
-}
-
-function cleanBetActivityMatchLabel(value: string) {
-  return value
-    .replace(/\bmemo\s+/gi, "")
-    .replace(/\s+/g, " ")
-    .replace(/\s+·.*$/g, "")
-    .trim();
-}
-
-function extractBetActivityMatch(item: StakingActivityItem) {
-  const text = `${item.label || ""} · ${item.detail || ""}`;
-
-  const memoMatch = text.match(/memo\s+([^·]{2,96}?\s+vs\s+[^·]{2,96}?)(?=\s*·|\s*$)/i);
-  if (memoMatch?.[1]) {
-    const label = cleanBetActivityMatchLabel(memoMatch[1]);
-    return label || null;
-  }
-
-  const settlementMatch = text.match(/settlement queue:\s*([^·]{2,96}?\s+vs\s+[^·]{2,96}?)(?=\s*·|\s*$)/i);
-  if (settlementMatch?.[1]) {
-    const label = cleanBetActivityMatchLabel(settlementMatch[1]);
-    return label || null;
-  }
-
-  const looseMatch = text.match(/([^·:]{2,96}?\s+vs\s+[^·]{2,96}?)(?=\s*·|\s*$)/i);
-  if (looseMatch?.[1]) {
-    const label = cleanBetActivityMatchLabel(looseMatch[1]);
-    if (!/^aoe2hdbets bet stake/i.test(label)) return label;
-  }
-
-  return null;
-}
-
-function extractBetActivityGroupKey(item: StakingActivityItem, fallbackMatchLabel: string) {
-  const explicit = item.groupKey?.trim();
-  if (explicit) return explicit;
-
-  const haystack = `${item.key || ""} ${item.label || ""} ${item.detail || ""}`;
-  const marketMatch = haystack.match(/\bmarket\s*[:#-]?\s*(\d{2,})\b/i);
-  if (marketMatch?.[1]) return `market:${marketMatch[1]}`;
-
-  const gameMatch = haystack.match(/\b(?:game|game_stats|replay)\s*[:#-]?\s*(\d{2,})\b/i);
-  if (gameMatch?.[1]) return `game:${gameMatch[1]}`;
-
-  return `match:${fallbackMatchLabel.toLowerCase()}`;
 }
 
 function extractMarketGroupKeyFromText(value: string | null | undefined) {
@@ -409,164 +506,6 @@ async function loadBetMarketGroupKeysForTxHashes(
   for (const row of payoutWagers) remember(row.payoutTxHash, row.marketId);
 
   return resolved;
-}
-
-function groupedBetRowKind(item: StakingActivityItem) {
-  const eventType = String(item.eventType || "").toUpperCase();
-  const text = `${item.label || ""} ${item.detail || ""}`.toLowerCase();
-
-  if (eventType === "SETTLEMENT" || text.includes("settlement queue") || text.includes("pending claim")) {
-    return "pending settlement";
-  }
-  if (eventType === "ESCROW" || text.includes("bet stake") || text.includes("escrow")) {
-    return "escrow";
-  }
-  if (eventType === "PAYOUT" || text.includes("bet_payout") || text.includes("bet payout")) {
-    return "payout";
-  }
-  if (text.includes("founders_win")) return "founder win";
-  if (text.includes("founders_bonus") || text.includes("founders bonus")) return "founder bonus";
-  if (eventType === "DIRECT") return "transfer";
-
-  return eventType ? eventType.toLowerCase() : "activity";
-}
-
-function groupStakingBetActivityItems(items: StakingActivityItem[], limit: number): StakingActivityItem[] {
-  type Group = {
-    label: string;
-    rows: StakingActivityItem[];
-    newestAt: string;
-    key: string;
-    amountTotal: number;
-    hasSettlement: boolean;
-    hasPayout: boolean;
-    hasEscrow: boolean;
-    hasFounder: boolean;
-  };
-
-  const groups = new Map<string, Group>();
-
-  for (const item of items) {
-    const matchLabel = extractBetActivityMatch(item);
-    if (!matchLabel) continue;
-
-    const key = extractBetActivityGroupKey(item, matchLabel);
-    const occurredAt = item.occurredAt || new Date(0).toISOString();
-    const amount = Number.parseFloat(String(item.amountLabel || "0").replace(/[^0-9.]/g, "")) || 0;
-    const kind = groupedBetRowKind(item);
-
-    const group = groups.get(key) ?? {
-      key,
-      label: matchLabel,
-      rows: [],
-      newestAt: occurredAt,
-      amountTotal: 0,
-      hasSettlement: false,
-      hasPayout: false,
-      hasEscrow: false,
-      hasFounder: false,
-    };
-
-    group.rows.push(item);
-    group.amountTotal += amount;
-    group.hasSettlement = group.hasSettlement || kind === "pending settlement";
-    group.hasPayout = group.hasPayout || kind === "payout";
-    group.hasEscrow = group.hasEscrow || kind === "escrow";
-    group.hasFounder = group.hasFounder || kind === "founder bonus" || kind === "founder win";
-
-    if (Date.parse(occurredAt) > Date.parse(group.newestAt)) {
-      group.newestAt = occurredAt;
-    }
-
-    groups.set(key, group);
-  }
-
-  const normalizedGroupLabel = (value: string) =>
-    value
-      .toLowerCase()
-      .replace(/\s+/g, " ")
-      .replace(/\s+·.*$/g, "")
-      .trim();
-
-  const marketGroupsByLabel = new Map<string, Group[]>();
-  for (const group of groups.values()) {
-    if (!group.key.startsWith("market:")) continue;
-
-    const labelKey = normalizedGroupLabel(group.label);
-    const bucket = marketGroupsByLabel.get(labelKey) ?? [];
-    bucket.push(group);
-    marketGroupsByLabel.set(labelKey, bucket);
-  }
-
-  for (const [key, group] of Array.from(groups.entries())) {
-    if (!group.key.startsWith("match:")) continue;
-
-    const candidates = marketGroupsByLabel.get(normalizedGroupLabel(group.label)) ?? [];
-    if (candidates.length !== 1) continue;
-
-    const target = candidates[0];
-    target.rows.push(...group.rows);
-    target.amountTotal += group.amountTotal;
-    target.hasSettlement = target.hasSettlement || group.hasSettlement;
-    target.hasPayout = target.hasPayout || group.hasPayout;
-    target.hasEscrow = target.hasEscrow || group.hasEscrow;
-    target.hasFounder = target.hasFounder || group.hasFounder;
-
-    if (Date.parse(group.newestAt) > Date.parse(target.newestAt)) {
-      target.newestAt = group.newestAt;
-    }
-
-    groups.delete(key);
-  }
-
-  return Array.from(groups.values())
-    .map((group) => {
-      const phases = [
-        group.hasEscrow ? "escrow" : null,
-        group.hasFounder ? "founder rewards" : null,
-        group.hasPayout ? "payout" : null,
-        group.hasSettlement ? "pending settlement" : null,
-      ].filter(Boolean);
-
-      const rowSummary = group.rows
-        .slice(0, 5)
-        .map((row) => {
-          const amount = row.amountLabel ? ` ${row.amountLabel}` : "";
-          return `${groupedBetRowKind(row)}${amount}`;
-        })
-        .join(" · ");
-
-      const children = group.rows
-        .sort((left, right) => {
-          const leftTime = Date.parse(left.occurredAt || "");
-          const rightTime = Date.parse(right.occurredAt || "");
-          return (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
-        })
-        .map((row) => attachActivityTxFields({
-          ...row,
-          label: `${groupedBetRowKind(row)}${row.amountLabel ? ` · ${row.amountLabel}` : ""}`,
-        }));
-
-      return {
-        key: `grouped-bet-${group.key.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`,
-        label: group.label,
-        detail: `${phases.length ? phases.join(" · ") : "bet activity"}${rowSummary ? ` · ${rowSummary}` : ""}`,
-        meta: formatActivityTimestamp(group.newestAt),
-        eventType: "GROUPED BET",
-        amountLabel: group.amountTotal > 0 ? formatActivityWoloAmount(group.amountTotal) : undefined,
-        timestampLabel: formatActivityTimestamp(group.newestAt),
-        occurredAt: group.newestAt,
-        groupKey: group.key,
-        children,
-        tone: group.hasSettlement ? "sky" : group.hasPayout ? "emerald" : group.hasEscrow ? "amber" : "slate",
-      } satisfies StakingActivityItem;
-    })
-    .sort((left, right) => {
-      const leftTime = Date.parse(left.occurredAt || "");
-      const rightTime = Date.parse(right.occurredAt || "");
-      return (Number.isFinite(rightTime) ? rightTime : 0) - (Number.isFinite(leftTime) ? leftTime : 0);
-    })
-    .slice(0, limit);
 }
 
 function formatActivityWolo(value: number) {
@@ -1328,6 +1267,25 @@ export async function loadMainnetTransferStakingActivityPage(
   const validBeforeDate = beforeDate && !Number.isNaN(beforeDate.getTime()) ? beforeDate : null;
 
   const mainnetDisplayStartAt = getWoloMainnetDisplayStartAt();
+  if (
+    mode === "grouped" &&
+    (filter === "all" || filter === "bets" || filter === "bounties")
+  ) {
+    const lifecyclePage = await loadBetLifecycleActivityPage(prisma, {
+      before: validBeforeDate,
+      limit,
+      minimumAt: isWoloMainnet() ? mainnetDisplayStartAt : null,
+      requireBounty: filter === "bounties",
+    });
+
+    return {
+      generatedAt: new Date().toISOString(),
+      rows: lifecyclePage.groups.map(betLifecycleGroupToActivityItem),
+      hasMore: lifecyclePage.hasMore,
+      nextBefore: lifecyclePage.nextBefore,
+    };
+  }
+
   const includeStakingLedgerRows = filter === "all" || filter === "staking" || filter === "compounded";
 
   const [indexedTransferRows, giftRows, mainnetActivityRows, pendingSettlementRows, stakingCycleRows, stakingAllocationRows] = await Promise.all([
@@ -1716,13 +1674,7 @@ export async function loadMainnetTransferStakingActivityPage(
     return true;
   });
 
-  const visibleRows =
-    mode === "grouped" &&
-    filter !== "staking" &&
-    filter !== "compounded" &&
-    filter !== "reserve"
-      ? groupStakingBetActivityItems(filteredCombined, limit + 1)
-      : filteredCombined;
+  const visibleRows = filteredCombined;
 
   const pageSourceRows = visibleRows.slice(0, limit);
   const pageRows = pageSourceRows.map((item) => {
@@ -1741,6 +1693,7 @@ export async function loadMainnetTransferStakingActivityPage(
       txHash: normalized.txHash,
       txUrl: normalized.txUrl,
       children: normalized.children,
+      lifecycle: normalized.lifecycle,
       tone: normalized.tone,
     };
   });
@@ -1819,6 +1772,7 @@ function buildMainnetBoardRows(
 
   return data.positions
     .map((position) => ({
+      userId: position.userId,
       player: position.player,
       badge: "",
       stakedWolo: position.currentStakedWolo,
@@ -1884,6 +1838,7 @@ async function loadBoardRows(
   });
 
   const rows = positions.map((position, index) => ({
+    userId: position.userId,
     player: displayPlayerName(position.user),
     badge: badgeForRank(index, mode === "earned" ? "Fee share" : "Staking seat"),
     stakedWolo: position.currentStakedWolo,
@@ -1930,6 +1885,7 @@ async function loadRecentRewardRows(prisma: PrismaClient): Promise<StakingLeader
   });
 
   return allocations.map((allocation, index) => ({
+    userId: allocation.userId,
     player: displayPlayerName(allocation.user),
     badge: allocation.status === "CREDITED" ? "Credited" : "Daily share",
     stakedWolo: allocation.position?.currentStakedWolo ?? 0,

@@ -20,6 +20,11 @@ import { getPrisma } from "@/lib/prisma";
 import { formatPublicStakingWeight } from "@/lib/stakingDisplay";
 import { loadMainnetStakingPositionForUser } from "@/lib/mainnetStakingPositions";
 import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
+import {
+  resolveActiveStakerProfile,
+  type ActiveStakerProfile,
+  type StakerProfileTone,
+} from "@/lib/stakerProfileResolver";
 import StakerLedgerPanel from "./StakerLedgerPanel";
 import CopyableWalletAddress, { WalletOwnerBalance } from "./CopyableWalletAddress";
 
@@ -30,34 +35,7 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
-type RegistryProfile = {
-  slug: string;
-  player: string;
-  title: string;
-  lane: string;
-  line: string;
-  badge: string;
-  tone: "gold" | "emerald" | "sky";
-  fallbackStake: number;
-  fallbackWeight: string;
-  nextMove: string;
-};
-
-type PositionRow = {
-  user_id: number | null;
-  player: string | null;
-  wallet_address: string | null;
-  current_staked_wolo: number | string | null;
-  accumulated_weight: bigint | number | string | null;
-  created_at: Date | string | null;
-  auto_compound_rewards: boolean | null;
-  status: string | null;
-  lifetime_rewards_wolo: number | string | null;
-  claimed_rewards_wolo: number | string | null;
-  compounded_rewards_wolo: number | string | null;
-  pending_rewards_wolo: number | string | null;
-  micro_reward_carry_uwolo: number | string | null;
-};
+type PositionRow = ActiveStakerProfile["position"];
 
 type AllocationRow = {
   id: number;
@@ -66,54 +44,6 @@ type AllocationRow = {
   occurred_at: Date | string | null;
   distribution_date: Date | string | null;
 };
-
-const REGISTRY: Record<string, RegistryProfile> = {
-  jim: {
-    slug: "jim",
-    player: "Jim",
-    title: "First Guardian",
-    lane: "Crown Lane",
-    line: "The first guardian keeps the gate.",
-    badge: "Mainnet Founder",
-    tone: "gold",
-    fallbackStake: 211_300,
-    fallbackWeight: "104K",
-    nextMove: "Hold the crown through 30 active reward cycles.",
-  },
-  "julio-alvarez": {
-    slug: "julio-alvarez",
-    player: "Julio Alvarez",
-    title: "First Scout",
-    lane: "Early Seat",
-    line: "The first scout lit the road.",
-    badge: "Watcher Pioneer",
-    tone: "emerald",
-    fallbackStake: 100_300,
-    fallbackWeight: "54K",
-    nextMove: "Compound seven cycles to earn Flame Keeper.",
-  },
-  emaren: {
-    slug: "emaren",
-    player: "Emaren",
-    title: "Operator Founder",
-    lane: "Verified Grind",
-    line: "Operator founder, verified grind.",
-    badge: "Verified Wallet",
-    tone: "sky",
-    fallbackStake: 101,
-    fallbackWeight: "115",
-    nextMove: "Keep the rails alive and push the hall forward.",
-  },
-};
-
-function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 function asNumber(value: unknown, fallback = 0) {
   const parsed = typeof value === "bigint" ? Number(value) : Number(value);
@@ -209,7 +139,7 @@ function dateLabel(value?: Date | string | null) {
   return new Intl.DateTimeFormat("en", { month: "short", day: "numeric", year: "numeric" }).format(date);
 }
 
-function toneCard(tone: RegistryProfile["tone"]) {
+function toneCard(tone: StakerProfileTone) {
   if (tone === "gold") {
     return "border-amber-300/25 bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.18),transparent_34%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(3,7,18,0.98))]";
   }
@@ -219,99 +149,55 @@ function toneCard(tone: RegistryProfile["tone"]) {
   return "border-sky-300/25 bg-[radial-gradient(circle_at_top_left,rgba(14,165,233,0.14),transparent_34%),linear-gradient(180deg,rgba(15,23,42,0.96),rgba(3,7,18,0.98))]";
 }
 
-function toneBadge(tone: RegistryProfile["tone"]) {
+function toneBadge(tone: StakerProfileTone) {
   if (tone === "gold") return "border-amber-300/30 bg-amber-300/12 text-amber-100";
   if (tone === "emerald") return "border-emerald-300/20 bg-emerald-500/10 text-emerald-100";
   return "border-sky-300/20 bg-sky-500/10 text-sky-100";
 }
 
 async function loadPosition(slug: string) {
-  const fallback = REGISTRY[slug];
-  if (!fallback) return null;
-
   try {
     const prisma = getPrisma();
-    const rows = await prisma.$queryRawUnsafe<PositionRow[]>(`
-      select
-        sp.user_id,
-        coalesce(u.in_game_name, u.steam_persona_name, u.uid::text, 'Unknown Staker') as player,
-        coalesce(sp.wallet_address, u.wallet_address) as wallet_address,
-        sp.current_staked_wolo,
-        sp.accumulated_weight,
-        sp.created_at,
-        sp.auto_compound_rewards,
-        sp.status,
-        sp.lifetime_rewards_wolo,
-        sp.claimed_rewards_wolo,
-        sp.compounded_rewards_wolo,
-        sp.pending_rewards_wolo
-      from staking_positions sp
-      left join users u on u.id = sp.user_id
-      where coalesce(sp.current_staked_wolo, 0) > 0
-      order by (coalesce(sp.current_staked_wolo, 0) + coalesce(sp.compounded_rewards_wolo, 0)) desc, sp.created_at asc
-      limit 200
-    `);
-
-    const ranked = rows.map((row, index) => ({
-      row,
-      rank: index + 1,
-      slug: slugify(row.player || ""),
-    }));
-
-    const match = ranked.find((item) => item.slug === slug);
-    if (!match) {
-      return {
-        registry: fallback,
-        row: null,
-        rank: fallback.slug === "jim" ? 1 : fallback.slug === "julio-alvarez" ? 2 : 3,
-        totalStake: rows.reduce((sum, item) => sum + seatSizeForRow(item), 0),
-        allocations: [] as AllocationRow[],
-      };
-    }
+    const staker = await resolveActiveStakerProfile(prisma, slug);
+    if (!staker) return null;
 
     const allocations =
-      match.row.user_id == null
-        ? []
-        : await prisma.$queryRawUnsafe<AllocationRow[]>(
-            `
-            select
-              a.id,
-              a.reward_wolo,
-              a.status,
-              coalesce(a.credited_at, a.claimed_at, a.created_at, d.created_at) as occurred_at,
-              d.distribution_date
-            from staking_reward_allocations a
-            join staking_reward_distributions d on d.id = a.distribution_id
-            where a.user_id = $1
-              and d.distribution_date::date >= '2026-05-25'::date
-            order by coalesce(a.credited_at, a.claimed_at, a.created_at, d.created_at) desc, a.id desc
-            limit 18
-            `,
-            match.row.user_id
-          );
+      await prisma.$queryRawUnsafe<AllocationRow[]>(
+        `
+        select
+          a.id,
+          a.reward_wolo,
+          a.status,
+          coalesce(a.credited_at, a.claimed_at, a.created_at, d.created_at) as occurred_at,
+          d.distribution_date
+        from staking_reward_allocations a
+        join staking_reward_distributions d on d.id = a.distribution_id
+        where a.user_id = $1
+          and d.distribution_date::date >= '2026-05-25'::date
+        order by coalesce(a.credited_at, a.claimed_at, a.created_at, d.created_at) desc, a.id desc
+        limit 18
+        `,
+        staker.userId,
+      );
 
     return {
-      registry: fallback,
-      row: match.row,
-      rank: match.rank,
-      totalStake: rows.reduce((sum, item) => sum + seatSizeForRow(item), 0),
+      staker,
       allocations,
     };
   } catch (error) {
     console.warn("Failed to load staker hall profile:", error);
-    return {
-      registry: fallback,
-      row: null,
-      rank: fallback.slug === "jim" ? 1 : fallback.slug === "julio-alvarez" ? 2 : 3,
-      totalStake: 311_701,
-      allocations: [] as AllocationRow[],
-    };
+    return null;
   }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const profile = REGISTRY[slug];
+  let profile: ActiveStakerProfile | null = null;
+  try {
+    profile = await resolveActiveStakerProfile(getPrisma(), slug);
+  } catch {
+    profile = null;
+  }
 
   return {
     title: profile ? `${profile.player} · Staking Hall` : "Staker Not Found",
@@ -329,7 +215,7 @@ function StatCard({
   label: string;
   value: string;
   helper: string;
-  tone: RegistryProfile["tone"];
+  tone: StakerProfileTone;
   icon: React.ReactNode;
 }) {
   return (
@@ -352,21 +238,22 @@ export default async function StakerHallPage({ params }: PageProps) {
 
   if (!profile) notFound();
 
-  const { registry, row, rank, totalStake, allocations } = profile;
-  const mainnetPosition = row?.user_id != null ? await loadMainnetStakingPositionForUser(getPrisma(), Number(row.user_id)) : null;
-  const rawWeight = mainnetPosition?.stakingWeight ?? (row?.accumulated_weight != null ? String(row.accumulated_weight) : registry.fallbackWeight);
-  const wallet = row?.wallet_address || null;
+  const { staker, allocations } = profile;
+  const { position: row, rank, totalStakeWolo: totalStake, presentation } = staker;
+  const mainnetPosition = await loadMainnetStakingPositionForUser(getPrisma(), staker.userId);
+  const rawWeight = mainnetPosition?.stakingWeight ?? String(row.accumulated_weight ?? 0);
+  const wallet = staker.walletAddress;
   const canShowWalletBalance = await viewerOwnsWalletAddress(wallet);
-  const joined = row?.created_at || null;
-  const autoCompound = row?.auto_compound_rewards ?? true;
-  const claimed = row ? asNumber(row.claimed_rewards_wolo) : 0;
-  const compounded = row ? asNumber(row.compounded_rewards_wolo) : 0;
-  const seatSize = row ? seatSizeForRow(row, registry.fallbackStake) : registry.fallbackStake;
+  const joined = row.created_at || null;
+  const autoCompound = row.auto_compound_rewards ?? true;
+  const claimed = asNumber(row.claimed_rewards_wolo);
+  const compounded = asNumber(row.compounded_rewards_wolo);
+  const seatSize = seatSizeForRow(row);
   const visibleSeatTotal = totalStake > 0 ? totalStake : seatSize;
-  const share = visibleSeatTotal > 0 ? `${((seatSize / visibleSeatTotal) * 100).toFixed(2)}%` : "Founding";
-  const microCarryWolo = await loadMicroCarryWolo(row?.user_id);
-  const lifetime = Math.max(row ? asNumber(row.lifetime_rewards_wolo) : 0, allocations.reduce((sum, item) => sum + asNumber(item.reward_wolo), 0));
-  const rawPending = row ? asNumber(row.pending_rewards_wolo) : 0;
+  const share = visibleSeatTotal > 0 ? `${((seatSize / visibleSeatTotal) * 100).toFixed(2)}%` : "--";
+  const microCarryWolo = await loadMicroCarryWolo(staker.userId);
+  const lifetime = Math.max(asNumber(row.lifetime_rewards_wolo), allocations.reduce((sum, item) => sum + asNumber(item.reward_wolo), 0));
+  const rawPending = asNumber(row.pending_rewards_wolo);
   const microCarry = microCarryWolo;
   const allocationDust = allocations.reduce((sum, item) => {
     const reward = asNumber(item.reward_wolo);
@@ -398,15 +285,11 @@ export default async function StakerHallPage({ params }: PageProps) {
           ? "Queued for next compound cycle"
           : "Awaiting payout threshold";
   const pendingLabel = pending >= 1 && autoCompound ? "Pending compound" : "Carry";
-  const championshipTitle = registry.slug === "jim" ? "USA National Champion" : registry.slug === "julio-alvarez" ? "Mexico National Champion" : "Verified Grind";
-  const kingdomBenefit = registry.slug === "jim" ? "US Champion lane · founding staking guardian · public kingdom proof" : registry.slug === "julio-alvarez" ? "Mexico Champion lane · first scout · early staking proof" : "Operator lane · verified wallet · public economy rail";
   const designationRows: Array<{ label: string; meta: string; value: string; tone: "gold" | "emerald" | "sky" }> = [
-    ...(registry.slug === "jim"
-      ? [{ label: "USA National Champion", meta: "National belt", value: "75 WOLO/mo", tone: "gold" as const }]
-      : registry.slug === "julio-alvarez"
-        ? [{ label: "Mexico National Champion", meta: "National belt", value: "75 WOLO/mo", tone: "gold" as const }]
-        : []),
-    { label: registry.title, meta: registry.lane, value: registry.badge, tone: registry.tone },
+    ...(presentation.nationalDesignation
+      ? [{ ...presentation.nationalDesignation, tone: "gold" as const }]
+      : []),
+    { label: presentation.title, meta: presentation.lane, value: presentation.badge, tone: presentation.tone },
     { label: autoCompound ? "Auto-compound" : "Manual claim", meta: "Staking mode", value: "Seat " + formatWoloFull(seatSize), tone: "emerald" },
   ];
 
@@ -421,21 +304,21 @@ export default async function StakerHallPage({ params }: PageProps) {
           Back to staking room
         </Link>
 
-        <section className={`mt-6 rounded-[2rem] border p-6 shadow-[0_28px_110px_rgba(2,6,23,0.48)] sm:p-8 ${toneCard(registry.tone)}`}>
+        <section className={`mt-6 rounded-[2rem] border p-6 shadow-[0_28px_110px_rgba(2,6,23,0.48)] sm:p-8 ${toneCard(presentation.tone)}`}>
           <div className="grid gap-8 lg:grid-cols-[1.35fr_0.65fr] lg:items-end">
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-100">
                 <Crown className="h-3.5 w-3.5" />
                 Staking Hall · Rank #{rank}
               </div>
-              <h1 className="mt-5 text-4xl font-black tracking-tight text-white sm:text-6xl">{registry.player}</h1>
-              <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-300">{registry.line}</p>
+              <h1 className="mt-5 text-4xl font-black tracking-tight text-white sm:text-6xl">{staker.player}</h1>
+              <p className="mt-4 max-w-2xl text-lg leading-8 text-slate-300">{presentation.line}</p>
 
               <div className="mt-6 flex flex-wrap gap-2">
-                {[registry.title, registry.lane, registry.badge, autoCompound ? "Auto-compound" : "Manual claim"].map((badge) => (
+                {[presentation.title, presentation.lane, presentation.badge, autoCompound ? "Auto-compound" : "Manual claim"].map((badge) => (
                   <span
                     key={badge}
-                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${toneBadge(registry.tone)}`}
+                    className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${toneBadge(presentation.tone)}`}
                   >
                     {badge}
                   </span>
@@ -444,8 +327,8 @@ export default async function StakerHallPage({ params }: PageProps) {
             </div>
 
             <div className="rounded-[1.5rem] border border-white/10 bg-black/25 p-5">
-              <div className={`inline-flex rounded-full border p-3 ${toneBadge(registry.tone)}`}>
-                {registry.slug === "jim" ? <ShieldCheck className="h-6 w-6" /> : registry.slug === "julio-alvarez" ? <Swords className="h-6 w-6" /> : <Flame className="h-6 w-6" />}
+              <div className={`inline-flex rounded-full border p-3 ${toneBadge(presentation.tone)}`}>
+                {presentation.heroIcon === "scout" ? <Swords className="h-6 w-6" /> : presentation.heroIcon === "flame" ? <Flame className="h-6 w-6" /> : <ShieldCheck className="h-6 w-6" />}
               </div>
               <div className="mt-4 text-[11px] uppercase tracking-[0.24em] text-slate-500">Wallet</div>
               <CopyableWalletAddress address={wallet} label={shortAddress(wallet)} />
@@ -495,7 +378,7 @@ export default async function StakerHallPage({ params }: PageProps) {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <div className="text-xs uppercase tracking-[0.28em] text-amber-200/60">Championships</div>
-                <h2 className="mt-2 text-2xl font-semibold text-white">{championshipTitle}</h2>
+                <h2 className="mt-2 text-2xl font-semibold text-white">{presentation.championshipTitle}</h2>
                 <p className="mt-2 text-sm leading-6 text-slate-300">
                   Titles, rewards, and receipts live together here.
                 </p>
@@ -511,7 +394,7 @@ export default async function StakerHallPage({ params }: PageProps) {
               <div>
                 <div className="text-xs uppercase tracking-[0.28em] text-emerald-100/60">Kingdom Benefits</div>
                 <h2 className="mt-2 text-2xl font-semibold text-white">Seat benefits</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-300">{kingdomBenefit}</p>
+                <p className="mt-2 text-sm leading-6 text-slate-300">{presentation.kingdomBenefit}</p>
               </div>
               <div className="rounded-full border border-emerald-300/20 bg-emerald-500/10 p-3 text-emerald-100">
                 <ShieldCheck className="h-5 w-5" />
@@ -550,8 +433,8 @@ export default async function StakerHallPage({ params }: PageProps) {
 
         <div className="mt-6">
           <StakerLedgerPanel
-          slug={slug}
-          player={registry.player}
+          slug={staker.slug}
+          player={staker.player}
           rewardStats={{
             lifetime,
             compounded,

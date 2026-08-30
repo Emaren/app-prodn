@@ -5,6 +5,10 @@ import {
   isAoE2WarManagedStream,
   resolveStreamRequestActor,
 } from "@/lib/streamRequestAuth";
+import {
+  normalizeStreamMediaMimeType,
+  normalizeStreamThumbnailUrl,
+} from "@/lib/streamMedia";
 import { maybeEndFinalizedStream } from "@/lib/streamFinalitySentinel";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 
@@ -94,9 +98,28 @@ export async function POST(
   }
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-  const thumbnailUrl = cleanText(body.thumbnailUrl, 200_000) || undefined;
-  const mediaMimeType = cleanText(body.mediaMimeType, 120) || undefined;
+  const rawThumbnailUrl = cleanText(body.thumbnailUrl, 256_001);
+  const thumbnailUrl = rawThumbnailUrl
+    ? normalizeStreamThumbnailUrl(rawThumbnailUrl) ?? undefined
+    : undefined;
+  const rawMediaMimeType = cleanText(body.mediaMimeType, 120);
+  const mediaMimeType = rawMediaMimeType
+    ? normalizeStreamMediaMimeType(rawMediaMimeType) ?? undefined
+    : undefined;
   const status = cleanText(body.status, 24);
+
+  if (rawThumbnailUrl && !thumbnailUrl) {
+    return NextResponse.json(
+      { detail: "Stream thumbnail is invalid." },
+      { status: 400, headers: NO_STORE_HEADERS }
+    );
+  }
+  if (rawMediaMimeType && !mediaMimeType) {
+    return NextResponse.json(
+      { detail: "Only WebM stream media is accepted." },
+      { status: 415, headers: NO_STORE_HEADERS }
+    );
+  }
 
   const stream = await prisma.gameWatchStream.findUnique({
     where: { id },

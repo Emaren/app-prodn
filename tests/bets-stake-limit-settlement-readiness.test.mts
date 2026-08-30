@@ -18,7 +18,12 @@ test(
 
     assert.match(
       page,
-      /const maxStakeWolo = useMemo\(\s*\(\) =>\s*resolveStakeMax/
+      /const maxStakeWolo = useMemo\([\s\S]*?resolveVerifiedWalletStakeCap\(walletBalance\.data\)/
+    );
+
+    assert.doesNotMatch(
+      page,
+      /const maxStakeWolo = useMemo\([\s\S]{0,240}?bettingPaused/
     );
   }
 );

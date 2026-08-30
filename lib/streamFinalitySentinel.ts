@@ -1,5 +1,5 @@
 import { Prisma, type GameWatchStream, type PrismaClient } from "@/lib/generated/prisma";
-import { AOE2WAR_STREAM_SOURCE_TYPES } from "@/lib/streamRequestAuth";
+import { AOE2WAR_STREAM_SOURCE_TYPES } from "@/lib/streamIdentity";
 
 const ACTIVE_STREAM_STATUSES = ["starting", "live"] as const;
 const MANAGED_SOURCE_TYPES = new Set<string>(AOE2WAR_STREAM_SOURCE_TYPES);

@@ -202,3 +202,13 @@ test("detail, staking, replay authority, and recovery surfaces retain ticket pro
   assert.match(recovery, /source: "bet_stake_tickets"/);
   assert.match(recovery, /actionLabel: "One-transfer bet ticket"/);
 });
+
+test("typed public lifecycle uses ticket-aware funding proof without tx-hash event identity", async () => {
+  const source = await readFile("lib/betLifecycleActivity.ts", "utf8");
+
+  assert.match(source, /recordedBetWagerFundingTxHash\(wager\)/);
+  assert.match(source, /stakeLeg:\s*\{[\s\S]*?ticket:\s*\{[\s\S]*?stakeTxHash:\s*true/);
+  assert.match(source, /economicKey:\s*`claim:\$\{claim\.id\}`/);
+  assert.match(source, /economicKey:\s*`payout:wager:\$\{wager\.id\}`/);
+  assert.doesNotMatch(source, /economicKey:\s*`(?:claim|payout):tx:/);
+});

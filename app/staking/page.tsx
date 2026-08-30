@@ -36,6 +36,12 @@ import {
   formatPublicStakingWeightTile,
 } from "@/lib/stakingDisplay";
 import { getStakingWalletReserveHeadroomWolo } from "@/lib/stakingExecution";
+import {
+  loadActiveStakerProfiles,
+  stakerCanonicalSlug,
+  stakerNameSlug,
+  type ActiveStakerProfile,
+} from "@/lib/stakerProfileResolver";
 import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
 import {
   formatWoloAmount,
@@ -101,6 +107,7 @@ type EconomySnapshot = {
 };
 
 type BoardRow = {
+  profileSlug?: string;
   player: string;
   badge: string;
   staked: string;
@@ -205,15 +212,6 @@ function normalizePeriod(value: string | string[] | undefined): PeriodKey {
 function normalizeBoard(value: string | string[] | undefined): BoardKey {
   const raw = firstParam(value);
   return raw === "earners" || raw === "rewards" ? raw : "stakers";
-}
-
-function stakerSlug(player: string) {
-  return player
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
 
 function hrefFor(params: { period: PeriodKey; board: BoardKey }) {
@@ -519,9 +517,14 @@ function fallbackSnapshot(period: PeriodKey): EconomySnapshot {
   };
 }
 
-function mapLeaderboardRow(row: StakingLeaderboardRow): BoardRow {
+function mapLeaderboardRow(
+  row: StakingLeaderboardRow,
+  profilesByUserId: ReadonlyMap<number, ActiveStakerProfile>,
+): BoardRow {
+  const profile = profilesByUserId.get(row.userId);
   return {
-    player: row.player,
+    profileSlug: profile?.slug || stakerCanonicalSlug(row.player, row.userId),
+    player: profile?.player || row.player,
     badge: row.badge,
     staked: row.stakedWolo > 0 ? formatWolo(row.stakedWolo, { compact: false, decimals: 6 }) : "--",
     rewards: row.rewardsWolo > 0 ? formatWolo(row.rewardsWolo, { compact: false, decimals: 6 }) : "--",
@@ -540,9 +543,10 @@ export default async function StakingPage({
   const period = normalizePeriod(resolvedSearchParams?.period);
   const board = normalizeBoard(resolvedSearchParams?.board);
 
-  const [snapshotResult, leaderboardResult] = await Promise.allSettled([
+  const [snapshotResult, leaderboardResult, stakerProfilesResult] = await Promise.allSettled([
     loadEconomySnapshot(period),
     loadStakingLeaderboard(getPrisma(), board),
+    loadActiveStakerProfiles(getPrisma()),
   ]);
   let snapshot: EconomySnapshot;
   if (snapshotResult.status === "fulfilled") {
@@ -555,10 +559,15 @@ export default async function StakingPage({
     snapshot = fallbackSnapshot(period);
   }
   let boardRows = BOARD_ROWS[board];
+  const profilesByUserId = new Map<number, ActiveStakerProfile>(
+    stakerProfilesResult.status === "fulfilled"
+      ? stakerProfilesResult.value.map((profile) => [profile.userId, profile])
+      : [],
+  );
   if (leaderboardResult.status === "fulfilled") {
     const leaderboard = leaderboardResult.value;
     if (leaderboard.rows.length > 0) {
-      boardRows = leaderboard.rows.map(mapLeaderboardRow);
+      boardRows = leaderboard.rows.map((row) => mapLeaderboardRow(row, profilesByUserId));
     }
   } else {
     console.warn(
@@ -567,7 +576,14 @@ export default async function StakingPage({
     );
   }
 
-  const [stakingWallet, treasury, escrowWallet, payoutWallet, dexLiquidityWallet] = await Promise.all([
+  const [
+    stakingWallet,
+    treasury,
+    escrowWallet,
+    payoutWallet,
+    dexLiquidityWallet,
+    txFeeAggregate,
+  ] = await Promise.all([
     loadStakingWalletSnapshot(),
     loadCommunityTreasurySnapshot(),
     loadCustodyWalletSnapshot({
@@ -585,31 +601,29 @@ export default async function StakingPage({
       pendingDetail: "DEX liquidity wallet pending.",
       readyDetail: "DEX liquidity",
     }),
+    getPrisma().$queryRaw<Array<{ total_tx_fees_wolo: string }>>`
+      select coalesce(
+        sum(
+          case
+            when metadata ->> 'txFeeWolo' ~ '^[0-9]+(\.[0-9]+)?$'
+              then (metadata ->> 'txFeeWolo')::numeric
+            else 0
+          end
+        ),
+        0
+      )::text as total_tx_fees_wolo
+      from staking_events
+      where status = 'CONFIRMED'
+    `,
   ]);
   const policyDistributionReserveWallet = applyStakingDistributionReservePolicy(payoutWallet);
 
-  const txFeeEvents = await getPrisma().stakingEvent.findMany({
-    where: {
-      status: "CONFIRMED",
-    },
-    select: {
-      metadata: true,
-    },
-  });
-  snapshot.totalTxFeesAllTimeWolo = txFeeEvents.reduce((sum, event) => {
-    const metadata = event.metadata;
-    if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return sum;
-
-    const raw = (metadata as Record<string, unknown>).txFeeWolo;
-    const value =
-      typeof raw === "number"
-        ? raw
-        : typeof raw === "string"
-          ? Number.parseFloat(raw)
-          : 0;
-
-    return sum + (Number.isFinite(value) ? value : 0);
-  }, 0);
+  const totalTxFeesAllTimeWolo = Number.parseFloat(
+    txFeeAggregate[0]?.total_tx_fees_wolo || "0",
+  );
+  snapshot.totalTxFeesAllTimeWolo = Number.isFinite(totalTxFeesAllTimeWolo)
+    ? totalTxFeesAllTimeWolo
+    : 0;
 
   const stakingWalletReserveHeadroomWolo = getStakingWalletReserveHeadroomWolo();
   const visibleStakingWalletReserveWolo =
@@ -1249,7 +1263,7 @@ function CompactLeaderboardRow({
           ? "border-sky-300/20 bg-sky-500/10 text-sky-100"
           : "border-white/10 bg-white/[0.055] text-slate-200";
 
-  const href = `/staking/stakers/${stakerSlug(row.player)}`;
+  const href = `/staking/stakers/${row.profileSlug || stakerNameSlug(row.player)}`;
 
   return (
     <Link

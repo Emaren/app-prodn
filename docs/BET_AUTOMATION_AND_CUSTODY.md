@@ -8,12 +8,57 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-08-01"
+reviewed_at: "2026-08-29"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Bet Automation and Wolo Custody Boundary
+
+## Public financial activity projection
+
+Grouped public activity is a typed read model. `lib/betLifecycleActivity.ts`
+loads bounded rows from markets, stake intents, wagers, Founder bonuses, and
+pending claims. `lib/betLifecycleProjection.ts` then emits the versioned
+`bet-lifecycle-v1` projection. Presentation labels are consumers of that
+projection; labels and memo text never decide lifecycle identity.
+
+The projection guarantees:
+
+- a verified wager supersedes its matching stake intent, so one economic stake
+  is counted once;
+- `app_only` wagers remain explicitly **app-side stake records**;
+- a wager is called a verified on-chain stake only when its execution mode is
+  `onchain_escrow`, it has a stake transaction hash, and `stakeLockedAt` proves
+  the app accepted the chain movement;
+- participant and winner Founder bonuses aggregate independently, once each;
+- one canonical result is derived from market truth;
+- payout, refund, and winner-bounty claims aggregate by semantic kind, with
+  wallet, awaiting-wallet-link, settlement-queue, failed, or rescinded
+  destination metadata;
+- market groups sort newest first while each lifecycle sorts oldest first, with
+  deterministic identifiers and tie-breaking;
+- a bounded-source overflow fails closed instead of silently presenting a
+  partial financial story.
+
+`/api/staking/activity?mode=grouped` serves this projection. Ledger mode remains
+the lower-level forensic transfer/activity view. The two modes intentionally do
+not share a string-inference grouping function.
+
+## Data-driven staker profiles
+
+An individual Staking Hall profile is admitted by canonical active position
+truth, not by a source-code name registry. `lib/stakerProfileResolver.ts` joins
+active positive staking positions to app identity and produces a neutral
+profile, stable `-u<id>` slug, verified wallet, rank, and totals. The page and
+ledger API use the same resolver. Canonical user-ID slugs use a bounded direct
+query; legacy human-readable aliases remain compatible only when they resolve
+uniquely.
+
+Special Jim, Julio, and Emaren presentation is optional enrichment keyed by
+stable account UID. Matching somebody else's display name cannot grant a
+featured title. Any new eligible staker appears without a TypeScript edit, and
+ambiguous aliases fail closed instead of selecting the wrong financial ledger.
 
 ## Current app capability
 

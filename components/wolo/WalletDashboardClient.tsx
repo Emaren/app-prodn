@@ -5,6 +5,10 @@ import Link from "next/link";
 
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
+import {
+  deriveWoloBalanceReadState,
+  formatMinimalDenomAmount,
+} from "@/lib/woloBalanceRead";
 import { WOLO_KEPLR_DOWNLOAD_URL } from "@/lib/woloChain";
 
 const WALLET_ACTIONS = [
@@ -27,12 +31,6 @@ const WALLET_ACTIONS = [
     className: "border-emerald-300/20 bg-emerald-400/10 text-emerald-100 hover:bg-emerald-400/15",
   },
 ];
-
-function formatWalletBalance(rawBalance?: string) {
-  const amount = Number(rawBalance ?? "0");
-  if (!Number.isFinite(amount)) return "0.00";
-  return (amount / 1_000_000).toFixed(2);
-}
 
 async function copyTextToClipboard(value: string) {
   if (navigator.clipboard && window.isSecureContext) {
@@ -616,17 +614,74 @@ function WalletChainPortfolio({
 
 export default function WalletDashboardClient() {
   const { address, status, connect, disconnect } = useKeplr();
-  const { data: rawBalance, isLoading, refetch } = useWoloBalance(address);
+  const {
+    data: rawBalance,
+    error: balanceError,
+    isError: balanceIsError,
+    isFetching: balanceIsFetching,
+    isLoading: balanceIsLoading,
+    refetch,
+  } = useWoloBalance(address);
   const [walletNotice, setWalletNotice] = useState<string | null>(null);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [isBusy, setIsBusy] = useState(false);
-
-  const formattedBalance = useMemo(() => formatWalletBalance(rawBalance), [rawBalance]);
 
   const keplrMissing = status === "not_installed";
   const connected = status === "connected";
   const checking = status === "checking";
   const connecting = status === "connecting" || checking || isBusy;
+  const balanceState = deriveWoloBalanceReadState({
+    connected,
+    amount: rawBalance,
+    isLoading: balanceIsLoading,
+    isFetching: balanceIsFetching,
+    isError: balanceIsError,
+  });
+  const formattedBalance = useMemo(
+    () => formatMinimalDenomAmount(rawBalance),
+    [rawBalance],
+  );
+  const hasVerifiedBalance =
+    balanceState === "success-zero" ||
+    balanceState === "success-funded" ||
+    (balanceState === "refreshing" && formattedBalance !== null);
+
+  const balanceHeadline =
+    balanceState === "disconnected"
+      ? "Connect wallet"
+      : balanceState === "loading"
+        ? "Loading balance..."
+        : balanceState === "error"
+          ? "Balance unavailable"
+          : formattedBalance === null
+            ? "Balance unavailable"
+            : `${formattedBalance} WOLO`;
+
+  const balanceDetail =
+    balanceState === "success-zero"
+      ? "Verified on WoloChain · zero balance"
+      : balanceState === "success-funded"
+        ? "Verified on WoloChain"
+        : balanceState === "refreshing"
+          ? "Refreshing chain balance..."
+          : balanceState === "error"
+            ? balanceError instanceof Error
+              ? balanceError.message
+              : "WoloChain balance verification failed."
+            : balanceState === "loading"
+              ? "Waiting for a verified WoloChain response."
+              : "Connect Keplr to read this wallet from WoloChain.";
+
+  const connectedBalanceCopy =
+    balanceState === "success-zero"
+      ? "Wallet connected. WoloChain verified a zero balance."
+      : balanceState === "success-funded"
+        ? "Wallet connected. Balance verified from WoloChain."
+        : balanceState === "refreshing"
+          ? "Wallet connected. Refreshing the verified chain balance."
+          : balanceState === "error"
+            ? "Wallet connected, but its chain balance could not be verified."
+            : "Wallet connected. Waiting for WoloChain balance verification.";
 
   const statusLabel =
     connected
@@ -642,7 +697,9 @@ export default function WalletDashboardClient() {
   const primaryLabel = keplrMissing
     ? "Install Keplr"
     : connected
-      ? "Refresh Balance"
+      ? balanceState === "refreshing" || isBusy
+        ? "Refreshing..."
+        : "Refresh Balance"
       : connecting
         ? "Connecting..."
         : "Connect Keplr";
@@ -666,7 +723,10 @@ export default function WalletDashboardClient() {
         return;
       }
 
-      await refetch();
+      const refreshResult = await refetch();
+      if (refreshResult.isError || refreshResult.data === undefined) {
+        throw refreshResult.error || new Error("Balance refresh failed.");
+      }
       setWalletNotice("Balance refreshed.");
     } catch (error) {
       setWalletError(
@@ -706,8 +766,12 @@ export default function WalletDashboardClient() {
                 WoloChain address and WOLO balance.
               </p>
             ) : (
-              <p className="max-w-2xl text-sm leading-6 text-emerald-100">
-                Wallet connected. Your WOLO balance is live.
+              <p
+                className={`max-w-2xl text-sm leading-6 ${
+                  balanceState === "error" ? "text-red-100" : "text-emerald-100"
+                }`}
+              >
+                {connectedBalanceCopy}
               </p>
             )}
           </div>
@@ -740,7 +804,7 @@ export default function WalletDashboardClient() {
           </div>
         </div>
 
-        {walletNotice ? (
+        {walletNotice && balanceState !== "error" ? (
           <div className="mt-5 rounded-2xl border border-emerald-400/25 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
             {walletNotice}
           </div>
@@ -764,7 +828,14 @@ export default function WalletDashboardClient() {
               Balance
             </p>
             <p className="mt-3 text-3xl font-semibold tracking-tight text-white">
-              {isLoading ? "Loading..." : `${formattedBalance} WOLO`}
+              {balanceHeadline}
+            </p>
+            <p
+              className={`mt-2 text-sm ${
+                balanceState === "error" ? "text-red-200" : "text-slate-400"
+              }`}
+            >
+              {balanceDetail}
             </p>
           </div>
 
@@ -792,8 +863,8 @@ export default function WalletDashboardClient() {
           <OnboardingStep
             number="3"
             title="See Balance"
-            body="Your WoloChain address and WOLO balance confirm success."
-            active={connected}
+            body="A verified WoloChain response confirms the balance read."
+            active={hasVerifiedBalance}
           />
         </div>
       </section>

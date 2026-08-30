@@ -61,6 +61,7 @@ model User {
   watcherDownloadEvents          WatcherDownloadEvent[]
   watcherClientEvents            WatcherClientEvent[]
   gameWatchStreams               GameWatchStream[]               @relation("GameWatchStreamOwner")
+  retainedStreamDemos            GameWatchRetainedDemo[]          @relation("GameWatchRetainedDemoActor")
   betWagers                      BetWager[]
   betStakeIntents                BetStakeIntent[]
   betStakeTickets                BetStakeTicket[]
@@ -2804,6 +2805,7 @@ model GameWatchStream {
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
   user User? @relation("GameWatchStreamOwner", fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  retainedDemo GameWatchRetainedDemo?
 
   @@index([sessionKey, isPrimary], map: "ix_game_watch_streams_session_primary")
   @@index([sessionKey, status], map: "ix_game_watch_streams_session_status")
@@ -2811,6 +2813,25 @@ model GameWatchStream {
   @@index([sourceType, status], map: "ix_game_watch_streams_source_status")
   @@index([provider], map: "ix_game_watch_streams_provider")
   @@map("game_watch_streams")
+}
+
+/// Exactly one bounded, operator-selected demonstration recording may be
+/// retained beyond transient stream cleanup. Slot 1 is the database-enforced
+/// singleton; replacing or deleting it is always an explicit admin action.
+model GameWatchRetainedDemo {
+  slot             Int      @id @db.SmallInt
+  streamId         Int      @unique(map: "uq_game_watch_retained_demo_stream") @map("stream_id")
+  retainedByUserId Int      @map("retained_by_user_id")
+  byteCount        BigInt   @map("byte_count")
+  durationSeconds  Int      @map("duration_seconds")
+  retainedAt       DateTime @default(now()) @map("retained_at") @db.Timestamp(6)
+  expiresAt        DateTime @map("expires_at") @db.Timestamp(6)
+
+  stream     GameWatchStream @relation(fields: [streamId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  retainedBy User            @relation("GameWatchRetainedDemoActor", fields: [retainedByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([expiresAt], map: "ix_game_watch_retained_demo_expiry")
+  @@map("game_watch_retained_demo")
 }
 
 /// Durable, operator-owned configuration layered over the built-in AoE2WAR

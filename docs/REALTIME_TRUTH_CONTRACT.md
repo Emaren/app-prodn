@@ -135,6 +135,9 @@ The following boundaries are mandatory:
   their exact pathname as the bounded room ID, so clan halls, individual bets,
   matches, players, and other approved detail pages do not collapse into their
   parent index.
+- `/watch` and `/live-games` are distinct public realms. Watching a selected
+  stream must not make an actor appear to be browsing the live-game directory,
+  and moving between those surfaces must publish an actual realm transition.
 - Movement and route samples are ephemeral. They never write through Prisma,
   `UserActivityEvent`, `/api/user/ping`, or the Traffic bridge. The active
   Living Kingdom path performs no preference write; historical preference rows

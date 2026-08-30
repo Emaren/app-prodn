@@ -46,6 +46,7 @@ import {
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
+import { resolveVerifiedWalletStakeCap } from "@/lib/woloBalanceRead";
 import {
   isExplicitlyAttachedBroadcastFeed,
   readStoredBattleCamVisibility,
@@ -1042,19 +1043,6 @@ function formatExactWolo(value: number) {
   }).format(value);
 }
 
-function fromUWoloAmount(raw?: string | null) {
-  const numeric = Number.parseFloat(raw || "0");
-  if (!Number.isFinite(numeric) || numeric <= 0) {
-    return 0;
-  }
-  return Math.floor(numeric / 10 ** 6);
-}
-
-function resolveStakeMax(balanceRaw?: string | null) {
-  const walletCap = fromUWoloAmount(balanceRaw);
-  return walletCap > 0 ? Math.min(walletCap, 50_000) : 50_000;
-}
-
 function isBettingSettlementRailPaused(
   snapshot: BetBoardSnapshot | null | undefined,
 ) {
@@ -1646,7 +1634,7 @@ export default function BetsPage() {
   const { isAdmin, isAuthenticated, loading, loginWithSteam, user } =
     useUserAuth();
   const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
-  const { data: rawWalletBalance } = useWoloBalance(
+  const walletBalance = useWoloBalance(
     connectedWalletAddress || undefined,
   );
   const nowMs = useNowTicker();
@@ -2112,8 +2100,11 @@ export default function BetsPage() {
   const unresolvedStakeIntents = board?.recovery.unresolvedStakeIntents || [];
   const unresolvedStakeTickets = board?.recovery.unresolvedStakeTickets || [];
   const maxStakeWolo = useMemo(
-    () => resolveStakeMax(rawWalletBalance),
-    [rawWalletBalance],
+    () =>
+      walletBalance.isError
+        ? 0
+        : resolveVerifiedWalletStakeCap(walletBalance.data),
+    [walletBalance.data, walletBalance.isError],
   );
 
   const refreshBoard = useCallback(

@@ -5,7 +5,12 @@ import {
   isAoE2WarManagedStream,
   resolveStreamRequestActor,
 } from "@/lib/streamRequestAuth";
-import { writeStreamChunk } from "@/lib/streamStorage";
+import { normalizeStreamMediaMimeType } from "@/lib/streamMedia";
+import {
+  StreamChunkConflictError,
+  StreamStorageLimitError,
+  writeStreamChunk,
+} from "@/lib/streamStorage";
 import { maybeEndFinalizedStream } from "@/lib/streamFinalitySentinel";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 
@@ -77,6 +82,24 @@ export async function POST(
     );
   }
 
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && (contentLength <= 0 || contentLength > MAX_CHUNK_BYTES)) {
+    return NextResponse.json(
+      { detail: "Stream chunk size is invalid." },
+      { status: 413, headers: NO_STORE_HEADERS }
+    );
+  }
+
+  const mediaMimeType = normalizeStreamMediaMimeType(
+    request.headers.get("content-type") || stream.mediaMimeType
+  );
+  if (!mediaMimeType) {
+    return NextResponse.json(
+      { detail: "Only WebM stream media is accepted." },
+      { status: 415, headers: NO_STORE_HEADERS }
+    );
+  }
+
   const arrayBuffer = await request.arrayBuffer();
   if (arrayBuffer.byteLength <= 0 || arrayBuffer.byteLength > MAX_CHUNK_BYTES) {
     return NextResponse.json(
@@ -85,28 +108,62 @@ export async function POST(
     );
   }
 
-  await writeStreamChunk(id, sequence, Buffer.from(arrayBuffer));
+  let stored;
+  try {
+    stored = await writeStreamChunk(id, sequence, Buffer.from(arrayBuffer));
+  } catch (error) {
+    if (error instanceof StreamChunkConflictError) {
+      return NextResponse.json(
+        { detail: error.message },
+        { status: 409, headers: NO_STORE_HEADERS }
+      );
+    }
+    if (error instanceof StreamStorageLimitError) {
+      return NextResponse.json(
+        { detail: error.message },
+        { status: 413, headers: NO_STORE_HEADERS }
+      );
+    }
+    console.error("[streams/chunks] storage write failed", { streamId: id, sequence, error });
+    return NextResponse.json(
+      { detail: "Stream chunk could not be stored." },
+      { status: 503, headers: NO_STORE_HEADERS }
+    );
+  }
 
-  const mediaMimeType = request.headers.get("content-type")?.trim() || stream.mediaMimeType || "video/webm";
   const now = new Date();
-  const nextLatestSeq = Math.max(stream.latestChunkSeq ?? -1, sequence);
-
-  const updated = await prisma.gameWatchStream.update({
-    where: { id },
+  const updateResult = await prisma.gameWatchStream.updateMany({
+    where: {
+      id,
+      status: { in: ["starting", "live"] },
+    },
     data: {
       status: "live",
-      latestChunkSeq: nextLatestSeq,
-      chunkCount: {
-        increment: sequence > (stream.latestChunkSeq ?? -1) ? 1 : 0,
-      },
+      latestChunkSeq: stored.usage.latestSequence,
+      chunkCount: stored.usage.chunkCount,
       mediaMimeType,
       lastHeartbeatAt: now,
       startedAt: stream.startedAt ?? now,
     },
   });
 
+  if (updateResult.count !== 1) {
+    return NextResponse.json(
+      { detail: "Stream has ended." },
+      { status: 409, headers: NO_STORE_HEADERS }
+    );
+  }
+
+  const updated = await prisma.gameWatchStream.findUnique({ where: { id } });
+  if (!updated) {
+    return NextResponse.json(
+      { detail: "Stream not found." },
+      { status: 404, headers: NO_STORE_HEADERS }
+    );
+  }
+
   return NextResponse.json(
-    { stream: toWatchStreamPayload(updated) },
+    { stream: toWatchStreamPayload(updated), chunkCreated: stored.created },
     { headers: NO_STORE_HEADERS }
   );
 }

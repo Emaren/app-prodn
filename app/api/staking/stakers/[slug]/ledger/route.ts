@@ -2,7 +2,14 @@
 import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
+import { loadBetLifecycleActivityPage } from "@/lib/betLifecycleActivity";
+import type { BetLifecycleEventKind } from "@/lib/betLifecycleProjection";
+import { normalizePendingWoloClaimName } from "@/lib/pendingWoloClaims";
 import { resolveStakerBetLedgerOutcome } from "@/lib/stakerBetLedger";
+import {
+  resolveActiveStakerProfile,
+  type ActiveStakerProfile,
+} from "@/lib/stakerProfileResolver";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,12 +21,6 @@ type RouteContext = {
 };
 
 type LedgerView = "all" | "staking" | "compounded" | "championships" | "bounties" | "bets" | "grouped-bets";
-
-type UserRow = {
-  user_id: number | null;
-  player: string | null;
-  wallet_address: string | null;
-};
 
 type AllocationRow = {
   id: number | null;
@@ -108,34 +109,11 @@ type LedgerRow = {
   txHash?: string | null;
 };
 
-const REGISTRY: Record<string, { player: string; championship?: string; designation?: string }> = {
-  jim: {
-    player: "Jim",
-    championship: "United States Champion",
-    designation: "First Guardian · Crown Lane",
-  },
-  "julio-alvarez": {
-    player: "Julio Alvarez",
-    designation: "First Scout · Early Seat",
-  },
-  emaren: {
-    player: "Emaren",
-    designation: "Operator Founder · Verified Grind",
-  },
+type LedgerRowsPage = {
+  rows: LedgerRow[];
+  hasMore: boolean;
+  nextBefore: string | null;
 };
-
-const KNOWN_STAKER_WALLETS: Record<string, string> = {
-  jim: "wolo10zspyrrphzctrpysh6l9dsqj4wcwmj3tk660sz",
-};
-
-function slugify(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
 
 function asNumber(value: unknown, fallback = 0) {
   const parsed = typeof value === "bigint" ? Number(value) : Number(value);
@@ -145,6 +123,30 @@ function asNumber(value: unknown, fallback = 0) {
 function dayKey(value: Date | string) {
   const date = new Date(value);
   return date.toISOString().slice(0, 10);
+}
+
+function parseOptionalBefore(value: string | null) {
+  if (!value) return { ok: true as const, value: null as string | null };
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime())
+    ? { ok: true as const, value: parsed.toISOString() }
+    : { ok: false as const, value: null };
+}
+
+function parseLimitDays(value: string | null) {
+  const parsed = Number.parseInt(value || "", 10);
+  return Number.isFinite(parsed) ? Math.max(7, Math.min(45, parsed)) : 18;
+}
+
+function combinedNextCursor(
+  ...pages: Array<{ hasMore: boolean; nextBefore: string | null | undefined }>
+) {
+  const candidates = pages
+    .filter((page) => page.hasMore)
+    .map((page) => (page.nextBefore ? new Date(page.nextBefore) : null))
+    .filter((value): value is Date => Boolean(value && Number.isFinite(value.getTime())))
+    .sort((left, right) => right.getTime() - left.getTime());
+  return candidates[0]?.toISOString() ?? null;
 }
 
 function startOfUtcDay(key: string) {
@@ -187,36 +189,18 @@ function amountFromUwolo(value: unknown, fallbackWolo: unknown) {
   return asNumber(fallbackWolo);
 }
 
-async function resolveUser(slug: string): Promise<UserRow | null> {
-  const prisma = getPrisma();
-
-  const rows = await prisma.$queryRawUnsafe<UserRow[]>(`
-    select
-      u.id as user_id,
-      coalesce(u.in_game_name, u.steam_persona_name, u.uid::text) as player,
-      coalesce(sp.wallet_address, u.wallet_address) as wallet_address
-    from users u
-    left join staking_positions sp on sp.user_id = u.id
-    where coalesce(u.in_game_name, u.steam_persona_name, u.uid::text) is not null
-    order by coalesce(sp.current_staked_wolo, 0) desc, u.created_at asc
-    limit 500
-  `);
-
-  return rows.find((row) => slugify(row.player || "") === slug) ?? null;
-}
-
-function registryChampionshipRows(slug: string): LedgerRow[] {
-  const profile = REGISTRY[slug];
-  if (!profile) return [];
+function featuredChampionshipRows(profile: ActiveStakerProfile): LedgerRow[] {
+  const featured = profile.featured;
+  if (!featured) return [];
 
   const rows: LedgerRow[] = [];
 
-  if (profile.championship) {
+  if (featured.ledgerChampionship) {
     rows.push({
-      key: `registry-championship-${slug}`,
+      key: `featured-championship-${profile.userId}`,
       view: "championships",
       tone: "gold",
-      label: profile.championship,
+      label: featured.ledgerChampionship,
       detail: `${profile.player} · Kingdom designation · visible on the staking hall`,
       meta: "KINGDOM",
       metaKind: "label",
@@ -224,12 +208,12 @@ function registryChampionshipRows(slug: string): LedgerRow[] {
     });
   }
 
-  if (profile.designation) {
+  if (featured.ledgerDesignation) {
     rows.push({
-      key: `registry-designation-${slug}`,
+      key: `featured-designation-${profile.userId}`,
       view: "championships",
       tone: "emerald",
-      label: profile.designation,
+      label: featured.ledgerDesignation,
       detail: `${profile.player} · Founding staker designation`,
       meta: "DESIGNATION",
       metaKind: "label",
@@ -427,9 +411,9 @@ async function loadStakingRows(userId: number | null, before: string | null, lim
   };
 }
 
-async function loadChampionshipRows(slug: string, userId: number | null) {
+async function loadChampionshipRows(profile: ActiveStakerProfile, userId: number | null) {
   const prisma = getPrisma();
-  const rows = [...registryChampionshipRows(slug)];
+  const rows = [...featuredChampionshipRows(profile)];
 
   if (userId != null) {
     const [badges, gifts] = await Promise.all([
@@ -488,10 +472,81 @@ async function loadChampionshipRows(slug: string, userId: number | null) {
   return rows;
 }
 
-async function loadBetRows(userId: number | null, grouped: boolean) {
-  if (userId == null) return [] as LedgerRow[];
+const STAKER_LIFECYCLE_LABELS: Record<BetLifecycleEventKind, string> = {
+  stake_intent: "stake awaiting verification",
+  stake_recorded: "app-side stake recorded",
+  escrow_funded: "verified on-chain stake",
+  founder_participants: "Founder participant bonus",
+  founder_winner: "Founder winner premium",
+  result: "result",
+  payout: "payout",
+  refund: "refund",
+  winner_bounty: "winner bounty",
+};
+
+async function loadBetRows(
+  userId: number | null,
+  grouped: boolean,
+  playerName?: string | null,
+  before?: string | null,
+): Promise<LedgerRowsPage> {
+  if (userId == null) return { rows: [], hasMore: false, nextBefore: null };
 
   const prisma = getPrisma();
+
+  if (grouped) {
+    const normalizedPlayerName = normalizePendingWoloClaimName(playerName);
+    const lifecyclePage = await loadBetLifecycleActivityPage(prisma, {
+      limit: 40,
+      minimumAt: new Date(`${MAINNET_START}T00:00:00.000Z`),
+      before,
+      userId,
+      normalizedPlayerNames: normalizedPlayerName ? [normalizedPlayerName] : [],
+    });
+
+    const rows = lifecyclePage.groups.map((group) => {
+      const failed = group.events.some((event) => event.payoutDestination === "failed");
+      const paid = group.events.some((event) => event.payoutDestination === "wallet");
+      const refunded = group.events.some((event) => event.kind === "refund");
+      const pending = group.events.some((event) =>
+        event.payoutDestination === "awaiting_wallet_link" ||
+        event.payoutDestination === "settlement_queue"
+      );
+      const tone: LedgerRow["tone"] = failed
+        ? "red"
+        : paid
+          ? "emerald"
+          : refunded
+            ? "slate"
+            : "sky";
+      const phaseSummary = group.events
+        .map((event) => STAKER_LIFECYCLE_LABELS[event.kind])
+        .join(" · ");
+      const destination = failed
+        ? "payout needs operator attention"
+        : pending
+          ? "settlement is not complete"
+          : paid
+            ? "wallet transaction present"
+            : null;
+
+      return {
+        key: group.id,
+        view: "grouped-bets" as const,
+        tone,
+        label: `${formatWolo(group.stakeTotalWolo)} bet lifecycle`,
+        detail: [group.marketTitle, phaseSummary, destination].filter(Boolean).join(" · "),
+        meta: formatTime(group.occurredAt),
+        occurredAt: group.occurredAt,
+        amountLabel: formatWolo(group.stakeTotalWolo),
+      } satisfies LedgerRow;
+    });
+    return {
+      rows,
+      hasMore: lifecyclePage.hasMore,
+      nextBefore: lifecyclePage.nextBefore,
+    };
+  }
 
   const rows = await prisma.$queryRawUnsafe<BetRow[]>(
     `
@@ -575,148 +630,8 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
     MAINNET_START
   );
 
-  if (grouped) {
-    const groupedRows = new Map<
-      string,
-      {
-        market: string;
-        amount: number;
-        marketPayout: number;
-        count: number;
-        won: number;
-        lost: number;
-        refunded: number;
-        refundQueued: number;
-        stakeRecovery: number;
-        pending: number;
-        occurredAt: string;
-      }
-    >();
-
-    for (const row of rows) {
-      const key = String(row.market_id || row.market_title || row.id);
-      const current =
-        groupedRows.get(key) ||
-        {
-          market: row.market_title || "Bet market",
-          amount: 0,
-          marketPayout: 0,
-          count: 0,
-          won: 0,
-          lost: 0,
-          refunded: 0,
-          refundQueued: 0,
-          stakeRecovery: 0,
-          pending: 0,
-          occurredAt: new Date(row.occurred_at || new Date()).toISOString(),
-        };
-
-      current.amount += asNumber(row.amount_wolo);
-      current.marketPayout = Math.max(
-        current.marketPayout,
-        asNumber(row.market_payout_wolo)
-      );
-      current.count += 1;
-
-      const settlementOutcome = resolveStakerBetLedgerOutcome({
-        kind: row.kind,
-        status: row.status,
-        payoutTxHash: row.payout_tx_hash,
-      });
-
-      if (settlementOutcome === "won") {
-        current.won += 1;
-      } else if (settlementOutcome === "lost") {
-        current.lost += 1;
-      } else if (settlementOutcome === "refunded") {
-        current.refunded += 1;
-      } else if (settlementOutcome === "refund_queued") {
-        current.refundQueued += 1;
-      } else if (settlementOutcome === "stake_recovery") {
-        current.stakeRecovery += 1;
-      } else {
-        current.pending += 1;
-      }
-
-      const occurredAt = new Date(
-        row.occurred_at || new Date()
-      ).toISOString();
-
-      if (new Date(occurredAt) > new Date(current.occurredAt)) {
-        current.occurredAt = occurredAt;
-      }
-
-      groupedRows.set(key, current);
-    }
-
-    return Array.from(groupedRows.entries()).map(([key, row]) => {
-      const outcome =
-        row.won === row.count
-          ? "won"
-          : row.lost === row.count
-            ? "lost"
-            : row.refunded === row.count
-              ? "refunded"
-              : row.refundQueued === row.count
-                ? "refund_queued"
-                : row.stakeRecovery === row.count
-                  ? "stake_recovery"
-                  : row.pending === row.count
-                    ? "pending"
-                    : "mixed";
-
-      const tone: LedgerRow["tone"] =
-        outcome === "won"
-          ? "emerald"
-          : outcome === "lost"
-            ? "red"
-            : outcome === "refunded"
-              ? "slate"
-              : "sky";
-
-      const label =
-        outcome === "won"
-          ? `${formatWolo(row.amount)} won`
-          : outcome === "lost"
-            ? `${formatWolo(row.amount)} lost`
-            : outcome === "refunded"
-              ? `${formatWolo(row.amount)} refunded`
-              : outcome === "refund_queued"
-                ? `${formatWolo(row.amount)} voided`
-                : outcome === "stake_recovery"
-                  ? `${formatWolo(row.amount)} stake recovery`
-                  : outcome === "mixed"
-                    ? `${formatWolo(row.amount)} mixed result`
-                    : `${formatWolo(row.amount)} bet pending`;
-
-      const countLabel =
-        `${row.count} ${row.count === 1 ? "bet" : "bets"}`;
-
-      const payoutLabel =
-        outcome === "pending"
-          ? "awaiting settlement"
-          : outcome === "refunded"
-            ? "exact stake returned"
-            : outcome === "refund_queued"
-              ? "refund awaiting chain proof"
-              : outcome === "stake_recovery"
-                ? "wallet transfer needs reconciliation"
-                : `${formatWolo(row.marketPayout)} payout value`;
-
-      return {
-        key: `grouped-bet-${key}`,
-        view: "grouped-bets" as const,
-        tone,
-        label,
-        detail: `${row.market} · ${countLabel} · ${payoutLabel}`,
-        meta: formatTime(row.occurredAt),
-        occurredAt: row.occurredAt,
-        amountLabel: formatWolo(row.amount),
-      };
-    });
-  }
-
-  return rows.map((row) => {
+  return {
+    rows: rows.map((row) => {
     const occurredAt = new Date(
       row.occurred_at || new Date()
     ).toISOString();
@@ -764,7 +679,7 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
         row.side ? `side ${row.side}` : null,
         status,
         won ? `${formatWolo(payout)} paid out` : null,
-        refunded ? `${formatWolo(payout || amount)} returned` : null,
+        refunded ? `${formatWolo(payout || amount)} exact stake returned` : null,
         refundQueued ? "refund awaiting chain proof" : null,
         stakeRecovery ? "wallet transfer needs reconciliation" : null,
         lost && marketPayout > 0
@@ -777,8 +692,11 @@ async function loadBetRows(userId: number | null, grouped: boolean) {
       occurredAt,
       amountLabel: formatWolo(amount),
       txHash: row.tx_hash,
-    };
-  });
+      };
+    }),
+    hasMore: false,
+    nextBefore: null,
+  };
 }
 
 function shortClaimTx(value?: string | null) {
@@ -797,7 +715,8 @@ function isBetLikeWalletMemo(value?: string | null) {
   return (
     memo.includes("bet stake") ||
     memo.includes("bet_refund") ||
-    memo.includes("founders_bonus")
+    memo.includes("founders_bonus") ||
+    memo.includes("bounty #")
   );
 }
 
@@ -822,8 +741,9 @@ function dedupeLedgerRowsForAll(rows: unknown[]): LedgerRow[] {
 
   for (const raw of rows) {
     const row = raw as LedgerRow;
-    const tx = row.txHash?.trim().toUpperCase();
-    const key = tx ? `tx:${tx}` : row.key;
+    // One chain transaction may fund several economic legs or claims. A hash is
+    // proof, not event identity, so only collapse an exact projected row.
+    const key = row.key;
 
     if (seen.has(key)) continue;
 
@@ -1042,23 +962,37 @@ export async function GET(request: Request, context: RouteContext) {
       ? viewParam
       : "all";
 
-  const before = url.searchParams.get("before");
-  const limitDays = Math.max(7, Math.min(45, Number(url.searchParams.get("limitDays") || 18)));
+  const parsedBefore = parseOptionalBefore(url.searchParams.get("before"));
+  if (!parsedBefore.ok) {
+    return NextResponse.json(
+      { ok: false, rows: [], hasMore: false, nextBefore: null, detail: "Invalid before cursor." },
+      { status: 400 },
+    );
+  }
+  const before = parsedBefore.value;
+  const limitDays = parseLimitDays(url.searchParams.get("limitDays"));
 
-  if (!REGISTRY[slug]) {
-
-  return NextResponse.json({ ok: false, rows: [], hasMore: false, nextBefore: null }, { status: 404 });
+  const profile = await resolveActiveStakerProfile(getPrisma(), slug);
+  if (!profile) {
+    return NextResponse.json(
+      { ok: false, rows: [], hasMore: false, nextBefore: null },
+      { status: 404 },
+    );
   }
 
-  const user = await resolveUser(slug);
-  const walletAddress = KNOWN_STAKER_WALLETS[slug] || user?.wallet_address || null;
+  const userId = profile.userId;
+  const walletAddress = profile.walletAddress;
 
   const [staking, championships, bounties, bets, groupedBets, walletTransfers] = await Promise.all([
-    view === "all" || view === "staking" || view === "compounded" ? loadStakingRows(user?.user_id ?? null, before, limitDays) : Promise.resolve({ rows: [], hasMore: false, nextBefore: null }),
-    view === "all" || view === "championships" ? loadChampionshipRows(slug, user?.user_id ?? null) : Promise.resolve([]),
-    view === "all" || view === "bounties" ? loadBountyRows(user?.user_id ?? null, walletAddress) : Promise.resolve([]),
-    view === "bets" ? loadBetRows(user?.user_id ?? null, false) : Promise.resolve([]),
-    view === "all" || view === "grouped-bets" ? loadBetRows(user?.user_id ?? null, true) : Promise.resolve([]),
+    view === "all" || view === "staking" || view === "compounded" ? loadStakingRows(userId, before, limitDays) : Promise.resolve({ rows: [], hasMore: false, nextBefore: null }),
+    view === "all" || view === "championships" ? loadChampionshipRows(profile, userId) : Promise.resolve([]),
+    view === "all" || view === "bounties" ? loadBountyRows(userId, walletAddress) : Promise.resolve([]),
+    view === "bets"
+      ? loadBetRows(userId, false, profile.player, before)
+      : Promise.resolve({ rows: [], hasMore: false, nextBefore: null }),
+    view === "all" || view === "grouped-bets"
+      ? loadBetRows(userId, true, profile.player, before)
+      : Promise.resolve({ rows: [], hasMore: false, nextBefore: null }),
     view === "all" ? loadWalletTransferRows(walletAddress) : Promise.resolve([]),
   ]);
 
@@ -1090,16 +1024,16 @@ export async function GET(request: Request, context: RouteContext) {
         : view === "bounties"
           ? bounties
           : view === "bets"
-            ? bets
+          ? bets.rows
             : view === "grouped-bets"
-              ? groupedBets
+              ? groupedBets.rows
               : dedupeLedgerRowsForAll(
                   [
                     ...bounties,
                     ...staking.rows.filter((row) => row.view !== "staking-day"),
                     ...walletTransfers,
                     ...championships,
-                    ...groupedBets,
+                    ...groupedBets.rows,
                   ].sort(
                     (left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
                   )
@@ -1107,18 +1041,32 @@ export async function GET(request: Request, context: RouteContext) {
 
   return NextResponse.json({
     ok: true,
-    slug,
-    player: REGISTRY[slug].player,
+    slug: profile.slug,
+    player: profile.player,
     view,
     rows: (rows as unknown as LedgerRow[]).filter(isVisibleStakerLedgerRow),
-    hasMore: view === "all" || view === "staking" || view === "compounded" ? staking.hasMore : false,
-    nextBefore: view === "all" || view === "staking" || view === "compounded" ? staking.nextBefore : null,
+    hasMore:
+      view === "grouped-bets"
+        ? groupedBets.hasMore
+        : view === "all"
+          ? staking.hasMore || groupedBets.hasMore
+          : view === "staking" || view === "compounded"
+            ? staking.hasMore
+            : false,
+    nextBefore:
+      view === "grouped-bets"
+        ? groupedBets.nextBefore
+        : view === "all"
+          ? combinedNextCursor(staking, groupedBets)
+          : view === "staking" || view === "compounded"
+            ? staking.nextBefore
+            : null,
     counts: {
       staking: staking.rows.length,
       championships: championships.length,
       bounties: bounties.length,
-      bets: bets.length,
-      groupedBets: groupedBets.length,
+      bets: bets.rows.length,
+      groupedBets: groupedBets.rows.length,
       walletTransfers: walletTransfers.length,
       compounded: staking.rows.filter((row) => {
         const text = `${row.label} ${row.detail} ${row.txHash || ""}`.toLowerCase();

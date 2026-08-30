@@ -35,6 +35,7 @@ export type StakingMeSnapshot = {
     lastRewardAmountWolo: number;
   };
   execution: {
+    status?: "READY" | "DEGRADED";
     detail: string;
     maxUnstakeWolo?: number;
     totalConfirmedStakedWolo?: number;
@@ -62,6 +63,10 @@ export type StakingMeSnapshot = {
       operatorTopUpNeededWolo: number;
     };
     operatorWarning?: string | null;
+    balanceLookupError?: string | null;
+    balanceLookupErrorCode?: "wallet_unconfigured" | "upstream_unavailable" | null;
+    stakingWalletBalanceSource?: "rest" | "cli" | null;
+    stakingWalletBalanceObservedAt?: string | null;
   };
 };
 

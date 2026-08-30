@@ -15,6 +15,11 @@ import WoloFaucetCard from "@/components/wolo/WoloFaucetCard";
 import { useChainId } from "@/hooks/useChainId";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
+import {
+  deriveWoloBalanceReadState,
+  formatMinimalDenomAmount,
+  normalizeMinimalDenomAmount,
+} from "@/lib/woloBalanceRead";
 
 const WOLOCHAIN_VALOPERS_EXPLORER_URL = "https://wolochain.valopers.com/";
 
@@ -52,15 +57,6 @@ const WoloChainTerminalTile = dynamic(
     loading: () => <WoloChainTerminalSkeleton />,
   }
 );
-
-function formatTokenAmount(raw?: string) {
-  const amount = Number(raw ?? "0");
-  if (!Number.isFinite(amount)) return "0.00";
-  return (amount / 1_000_000).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 async function copyTextToClipboard(value: string) {
   if (navigator.clipboard && window.isSecureContext) {
@@ -111,7 +107,7 @@ function readStoredPremiumPreference(storageKey: string, fallback: boolean) {
 export default function WoloPage() {
   const { data: chainData, isLoading: chainLoading } = useChainId();
   const { address, status, connect } = useKeplr();
-  const { data: rawBalance, isLoading: balanceLoading } = useWoloBalance(address);
+  const balance = useWoloBalance(address);
   const [walletError, setWalletError] = useState<string | null>(null);
   const [balanceOverride, setBalanceOverride] = useState<string | null>(null);
   const [premiumHeroView, setPremiumHeroView] = useState(false);
@@ -136,11 +132,41 @@ export default function WoloPage() {
     setBalanceOverride(null);
   }, [address]);
 
-  const displayedBalance = balanceOverride ?? rawBalance;
+  const displayedBalance = balanceOverride ?? balance.data;
+  const hasVerifiedBalanceOverride = balanceOverride !== null;
+  const balanceState = deriveWoloBalanceReadState({
+    connected: status === "connected",
+    amount: displayedBalance,
+    isLoading: !hasVerifiedBalanceOverride && balance.isLoading,
+    isFetching: !hasVerifiedBalanceOverride && balance.isFetching,
+    isError: !hasVerifiedBalanceOverride && balance.isError,
+  });
   const formattedBalance = useMemo(
-    () => formatTokenAmount(displayedBalance),
-    [displayedBalance]
+    () => formatMinimalDenomAmount(displayedBalance),
+    [displayedBalance],
   );
+  const balanceDisplay =
+    balanceState === "disconnected"
+      ? "Not connected"
+      : balanceState === "loading"
+        ? "Loading..."
+        : balanceState === "error"
+          ? "Unavailable"
+          : formattedBalance === null
+            ? "Unavailable"
+            : `${formattedBalance} WOLO`;
+  const balanceSignal =
+    balanceState === "disconnected"
+      ? "Balance disconnected"
+      : balanceState === "loading"
+        ? "Balance loading"
+        : balanceState === "error"
+          ? "Balance unavailable"
+          : balanceState === "refreshing"
+            ? `Balance ${formattedBalance ?? "verified"} WOLO · refreshing`
+            : balanceState === "success-zero"
+              ? "Balance 0.00 WOLO · verified zero"
+              : `Balance ${formattedBalance} WOLO · verified`;
   const pingPubUrl = useMemo(() => buildPingPubUrl(chainId), [chainId]);
 
   const walletStatus =
@@ -151,10 +177,20 @@ export default function WoloPage() {
         : "Disconnected";
 
   const walletHeadline =
-    status === "connected" ? "Live" : status === "not_installed" ? "Install" : "Offline";
+    status !== "connected"
+      ? status === "not_installed"
+        ? "Install"
+        : "Offline"
+      : balanceState === "error"
+        ? "Read error"
+        : balanceState === "loading"
+          ? "Checking"
+          : balanceState === "refreshing"
+            ? "Refreshing"
+            : "Connected";
   const walletConnectLabel =
     status === "connected"
-      ? "Wallet Live"
+      ? "Wallet Connected"
       : status === "not_installed"
         ? "Install Keplr"
         : "Connect Keplr";
@@ -170,7 +206,11 @@ export default function WoloPage() {
 
   function handleFaucetClaimed(payload: { balanceAfterUwoLo?: string | null }) {
     if (payload.balanceAfterUwoLo) {
-      setBalanceOverride(payload.balanceAfterUwoLo);
+      try {
+        setBalanceOverride(normalizeMinimalDenomAmount(payload.balanceAfterUwoLo));
+      } catch {
+        setBalanceOverride(null);
+      }
     }
   }
 
@@ -227,7 +267,7 @@ export default function WoloPage() {
                 <div className="flex flex-wrap gap-2">
                   <SignalChip label="Denom uwolo" />
                   <SignalChip
-                    label={balanceLoading ? "Balance syncing" : `Balance ${formattedBalance} WOLO`}
+                    label={balanceSignal}
                     tone="emerald"
                   />
                   <SignalChip label={`Wallet ${walletHeadline}`} />
@@ -240,8 +280,7 @@ export default function WoloPage() {
                 <WoloMiniStatCard label="Wallet" value={walletHeadline} />
                 <WoloMiniStatCard
                   label="Balance"
-                  value={balanceLoading ? "..." : formattedBalance}
-                  valueSuffix={balanceLoading ? undefined : "WOLO"}
+                  value={balanceDisplay}
                 />
               </div>
 
@@ -308,7 +347,7 @@ export default function WoloPage() {
                   <PremiumWalletAddressPanel address={address} />
                   <PremiumWalletPanel
                     label="Balance"
-                    value={balanceLoading ? "Loading..." : `${formattedBalance} WOLO`}
+                    value={balanceDisplay}
                     emphasis
                   />
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -384,7 +423,7 @@ export default function WoloPage() {
                 label={chainLoading ? "Syncing chain" : chainId}
                 tone="emerald"
               />
-              <PremiumStatusPill label={`Balance ${formattedBalance} WOLO`} tone="emerald" />
+              <PremiumStatusPill label={balanceSignal} tone="emerald" />
               <PremiumStatusPill label={walletStatus} />
               <PremiumStatusPill label="Rail standby" />
             </div>
@@ -424,16 +463,12 @@ export default function WoloPage() {
               <PremiumHeroCard label="Chain ID" value={chainLoading ? "..." : chainId} />
               <PremiumHeroCard label="Denom" value="uwolo" />
               <PremiumHeroCard label="Wallet" value={walletHeadline} />
-              <PremiumHeroCard label="Balance" value={`${formattedBalance} WOLO`} compact />
+              <PremiumHeroCard label="Balance" value={balanceDisplay} compact />
             </div>
 
             <WoloHeroActionDock
               connectLabel={
-                status === "connected"
-                  ? "Wallet Live"
-                  : status === "not_installed"
-                    ? "Install Keplr"
-                    : "Connect Keplr"
+                walletConnectLabel
               }
               onConnect={handleConnect}
               pingPubUrl={pingPubUrl}
@@ -458,7 +493,7 @@ export default function WoloPage() {
                 <PremiumWalletAddressPanel address={address} />
                 <PremiumWalletPanel
                   label="Balance"
-                  value={balanceLoading ? "Loading..." : `${formattedBalance} WOLO`}
+                  value={balanceDisplay}
                   emphasis
                 />
                 <div className="grid gap-3 sm:grid-cols-2">

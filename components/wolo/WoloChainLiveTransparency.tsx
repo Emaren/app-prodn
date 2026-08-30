@@ -2,262 +2,32 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type NetworkAccount = {
-  label: string;
-  address: string;
-  use: string;
-  role: string;
-  amountWolo: string;
-  amountWoloFormatted?: string;
-  isModule: boolean;
-  isRetired: boolean;
-  isUserFacing: boolean;
-};
-
-type NetworkPayload = {
-  updatedAt?: string;
-  count: number;
-  totalWoloFormatted: string;
-  accounts: NetworkAccount[];
-};
-
 type Holder = {
   rank: number;
   alias: string;
   address: string;
   role: string;
   use: string | null;
-  balanceWolo: string | number | null;
+  classification: "protocol" | "player" | "unclassified";
+  balanceWolo: string | null;
   balanceWoloFormatted: string | null;
-  exactBalanceWolo: string;
+  exactBalanceWolo: string | null;
   balanceHidden: boolean;
   isKnownUser: boolean;
   isInfrastructure: boolean;
   avatarUrl?: string | null;
 };
 
-type WoloNetworkAccountForHolderDisplay = {
-  label?: string | null;
-  address?: string | null;
-  use?: string | null;
-  role?: string | null;
-  amountUwolo?: string | number | null;
-  amountWolo?: string | number | null;
-  amountWoloFormatted?: string | null;
-  balanceUwolo?: string | number | null;
-  balanceWolo?: string | number | null;
-  balanceWoloFormatted?: string | null;
-  hideBalance?: boolean | null;
-  stakedAmountUwolo?: string | number | null;
-  rankingAmountUwolo?: string | number | null;
-};
-
-function getWoloNetworkRowsForHolderDisplay(payload: unknown): WoloNetworkAccountForHolderDisplay[] {
-  const isDisplayRow = (value: unknown): value is WoloNetworkAccountForHolderDisplay => {
-    if (typeof value !== "object" || value === null) {
-      return false;
-    }
-
-    const record = value as Record<string, unknown>;
-
-    return typeof record.address === "string" && (
-      typeof record.label === "string" ||
-      typeof record.use === "string" ||
-      typeof record.amountWolo === "string" ||
-      typeof record.amountWoloFormatted === "string" ||
-      typeof record.balanceWolo === "string" ||
-      typeof record.balanceWoloFormatted === "string"
-    );
-  };
-
-  const fromArray = (value: unknown[]): WoloNetworkAccountForHolderDisplay[] => {
-    const directRows = value.filter(isDisplayRow);
-
-    if (directRows.length > 0) {
-      return directRows;
-    }
-
-    for (const item of value) {
-      const nestedRows = collectRows(item, 1);
-
-      if (nestedRows.length > 0) {
-        return nestedRows;
-      }
-    }
-
-    return [];
-  };
-
-  const collectRows = (value: unknown, depth = 0): WoloNetworkAccountForHolderDisplay[] => {
-    if (depth > 4) {
-      return [];
-    }
-
-    if (Array.isArray(value)) {
-      return fromArray(value);
-    }
-
-    if (typeof value !== "object" || value === null) {
-      return [];
-    }
-
-    const record = value as Record<string, unknown>;
-    const preferredKeys = ["accounts", "rows", "holders", "wallets", "knownAccounts", "networkAccounts"];
-
-    for (const key of preferredKeys) {
-      const maybeRows = collectRows(record[key], depth + 1);
-
-      if (maybeRows.length > 0) {
-        return maybeRows;
-      }
-    }
-
-    for (const value of Object.values(record)) {
-      const maybeRows = collectRows(value, depth + 1);
-
-      if (maybeRows.length > 0) {
-        return maybeRows;
-      }
-    }
-
-    return [];
-  };
-
-  return collectRows(payload);
-}
-
-function parseWoloNumber(value: unknown): number {
-  const numeric = Number(String(value ?? "0").replace(/,/g, ""));
-
-  return Number.isFinite(numeric) ? numeric : 0;
-}
-
-function formatCompactWoloForHolder(value: unknown): string {
-  const numeric = parseWoloNumber(value);
-
-  if (numeric >= 1_000_000) {
-    const millions = numeric / 1_000_000;
-    return `${millions % 1 === 0 ? millions.toFixed(0) : millions.toFixed(1)}M WOLO`;
-  }
-
-  if (numeric >= 1_000) {
-    const thousands = numeric / 1_000;
-    return `${thousands % 1 === 0 ? thousands.toFixed(0) : thousands.toFixed(1)}K WOLO`;
-  }
-
-  if (numeric === 0) {
-    return "0 WOLO";
-  }
-
-  return `${numeric.toLocaleString(undefined, {
-    maximumFractionDigits: numeric < 1 ? 6 : 2,
-  })} WOLO`;
-}
-
-function isProtocolHolderRow(label: string, use: string, role: string) {
-  const haystack = `${label} ${use} ${role}`.toUpperCase();
-
-  return [
-    "FOUNDER",
-    "TREASURY",
-    "COMMUNITY",
-    "DEX",
-    "LIQUIDITY",
-    "RESERVE",
-    "FAUCET",
-    "GROWTH",
-    "VALIDATOR",
-    "OPS",
-    "OPERATING",
-    "ECOSYSTEM",
-    "BOUNTY",
-    "BOUNTIES",
-    "REWARD",
-    "REWARDS",
-    "STAKING",
-    "ESCROW",
-    "PAYOUT",
-    "SIGNER",
-    "MODULE",
-    "RELAYER",
-    "IBC",
-    "HOT WALLET",
-  ].some((token) => haystack.includes(token));
-}
-
-function isUserOrPlayerHolderRow(label: string, use: string, role: string) {
-  const normalizedUse = use.toUpperCase();
-  const normalizedRole = role.toLowerCase();
-  const isProtocol = isProtocolHolderRow(label, use, role);
-
-  if (isProtocol) return false;
-
-  return (
-    normalizedRole === "user" ||
-    normalizedRole === "player" ||
-    normalizedRole === "holder" ||
-    normalizedUse === "USER" ||
-    normalizedUse.includes("USER") ||
-    normalizedUse.includes("PLAYER") ||
-    normalizedUse.includes("DO_NOT_SHOW_BALANCE") ||
-    normalizedUse.includes("WALLET")
-  );
-}
-
-function buildKnownWoloHoldersPayload(networkPayload: unknown): HoldersPayload {
-  const rows = getWoloNetworkRowsForHolderDisplay(networkPayload);
-
-  const holders = rows.map((row, index) => {
-    const address = String(row.address ?? "");
-    const use = String(row.use ?? "");
-    const role = String(row.role ?? "");
-    const label = String(row.label ?? "Unaliased holder");
-
-    const amountWolo =
-      row.amountWolo ??
-      row.balanceWolo ??
-      row.amountWoloFormatted ??
-      row.balanceWoloFormatted ??
-      "0";
-
-    const numericBalance = parseWoloNumber(amountWolo);
-    const exactBalanceWolo = numericBalance.toLocaleString(undefined, {
-      minimumFractionDigits: 6,
-      maximumFractionDigits: 6,
-    });
-
-    const isInfrastructure = isProtocolHolderRow(label, use, role);
-    const isUserFacing = !isInfrastructure && isUserOrPlayerHolderRow(label, use, role);
-
-    return {
-      alias: label,
-      address,
-      role,
-      use,
-      balanceWolo: isUserFacing ? null : amountWolo,
-      balanceWoloFormatted: isUserFacing ? null : formatCompactWoloForHolder(amountWolo),
-      exactBalanceWolo: isUserFacing ? "" : exactBalanceWolo,
-      balanceHidden: Boolean(row.hideBalance) || isUserFacing,
-      isKnown: true,
-      isKnownUser: isUserFacing,
-      isInfrastructure,
-      rank: index + 1,
-    };
-  });
-
-  return {
-    count: holders.length,
-    holders,
-    totalIndexedWolo: "100,000,000",
-    totalWoloFormatted: "100,000,000 WOLO",
-    updatedAt: new Date().toISOString(),
-  } as HoldersPayload;
-}
-
 type HoldersPayload = {
   updatedAt: string;
+  chainId: "wolo-1";
+  denom: "uwolo";
   count: number;
-  totalWoloFormatted: string;
+  observedAddressCount: number;
+  currentNonzeroOwnerCount: number;
+  retainedTransferAddressCount: number;
+  retainedDiscoveryAvailable: boolean;
+  balancePolicy: "protocol_system_only";
   holders: Holder[];
 };
 
@@ -292,11 +62,6 @@ function compactWolo(value: string | number | null | undefined) {
   return `${parsed.toLocaleString(undefined, { maximumFractionDigits: 6 })} WOLO`;
 }
 
-function wholeWolo(value: string | null | undefined) {
-  const raw = (value || "100,000,000.000000").replace(/\s*WOLO\s*$/i, "").trim();
-  return raw.replace(/\.0+$/, "");
-}
-
 function roleLabel(role: string, use?: string | null) {
   const cleanUse = (use || "").trim();
 
@@ -314,16 +79,14 @@ function roleLabel(role: string, use?: string | null) {
   return role.replace(/_/g, " ");
 }
 
-function protocolAccounts(accounts: NetworkAccount[]) {
-  return accounts.filter((account) => {
-    const use = account.use || "";
-    const role = account.role || "";
-    const isUserFacing =
-      use === "Player Wallet" ||
-      role === "user" ||
-      role === "player";
-
-    return !account.isRetired && !account.isModule && !isUserFacing;
+function protocolAccounts(holders: Holder[]) {
+  return holders.filter((holder) => {
+    const descriptor = `${holder.role} ${holder.use || ""}`.toLowerCase();
+    return (
+      holder.classification === "protocol" &&
+      !descriptor.includes("retired") &&
+      !descriptor.includes("module")
+    );
   });
 }
 
@@ -350,13 +113,73 @@ function WalletAddress({
 }
 
 function holderInitials(alias: string) {
-  const cleaned = alias.replace(/\\[[^\\]]+\\]/g, "").trim();
-  const parts = cleaned.split(/\\s+/).filter(Boolean);
+  const cleaned = alias.replace(/\[[^\]]+\]/g, "").trim();
+  const parts = cleaned.split(/\s+/).filter(Boolean);
 
   if (!parts.length) return "W";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
 
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
+
+function isSafeHolderPayload(value: unknown): value is HoldersPayload {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const payload = value as Partial<HoldersPayload>;
+  if (
+    payload.chainId !== "wolo-1" ||
+    payload.denom !== "uwolo" ||
+    payload.balancePolicy !== "protocol_system_only" ||
+    typeof payload.count !== "number" ||
+    typeof payload.observedAddressCount !== "number" ||
+    typeof payload.currentNonzeroOwnerCount !== "number" ||
+    typeof payload.retainedTransferAddressCount !== "number" ||
+    !Number.isSafeInteger(payload.count) ||
+    !Number.isSafeInteger(payload.observedAddressCount) ||
+    !Number.isSafeInteger(payload.currentNonzeroOwnerCount) ||
+    !Number.isSafeInteger(payload.retainedTransferAddressCount) ||
+    typeof payload.retainedDiscoveryAvailable !== "boolean" ||
+    !Array.isArray(payload.holders)
+  ) {
+    return false;
+  }
+
+  if (
+    payload.count < 0 ||
+    payload.observedAddressCount < 0 ||
+    payload.currentNonzeroOwnerCount < 0 ||
+    payload.retainedTransferAddressCount < 0 ||
+    payload.count !== payload.holders.length ||
+    payload.observedAddressCount !== payload.count
+  ) {
+    return false;
+  }
+
+  return payload.holders.every((holder) => {
+    if (
+      !holder ||
+      typeof holder.address !== "string" ||
+      typeof holder.alias !== "string" ||
+      !["protocol", "player", "unclassified"].includes(holder.classification)
+    ) {
+      return false;
+    }
+
+    if (holder.classification !== "protocol") {
+      return (
+        holder.balanceHidden === true &&
+        holder.balanceWolo === null &&
+        holder.balanceWoloFormatted === null &&
+        holder.exactBalanceWolo === null
+      );
+    }
+
+    return (
+      holder.balanceHidden === false &&
+      typeof holder.balanceWolo === "string" &&
+      typeof holder.balanceWoloFormatted === "string" &&
+      typeof holder.exactBalanceWolo === "string"
+    );
+  });
 }
 
 function HolderAvatar({ holder }: { holder: Holder }) {
@@ -390,7 +213,6 @@ function HolderAvatar({ holder }: { holder: Holder }) {
 }
 
 export default function WoloChainLiveTransparency() {
-  const [network, setNetwork] = useState<NetworkPayload | null>(null);
   const [holders, setHolders] = useState<HoldersPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
@@ -399,14 +221,16 @@ export default function WoloChainLiveTransparency() {
     try {
       setError(null);
 
-      const networkResponse = await fetch("/api/wolo/network", { cache: "no-store" });
+      const holdersResponse = await fetch("/api/wolo/holders", { cache: "no-store" });
 
-      if (!networkResponse.ok) throw new Error("Wolo network map unavailable.");
+      if (!holdersResponse.ok) throw new Error("Wolo holder projection unavailable.");
 
-      const networkPayload = await networkResponse.json();
+      const payload = (await holdersResponse.json()) as unknown;
+      if (!isSafeHolderPayload(payload)) {
+        throw new Error("Wolo holder projection was malformed.");
+      }
 
-      setNetwork(networkPayload as NetworkPayload);
-      setHolders(buildKnownWoloHoldersPayload(networkPayload));
+      setHolders(payload);
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : "Live WoloChain data unavailable.");
     }
@@ -429,8 +253,8 @@ export default function WoloChainLiveTransparency() {
   }, []);
 
   const protocolRows = useMemo(
-    () => protocolAccounts(network?.accounts ?? []),
-    [network?.accounts]
+    () => protocolAccounts(holders?.holders ?? []),
+    [holders?.holders]
   );
 
   const holderRows = holders?.holders ?? [];
@@ -451,7 +275,7 @@ export default function WoloChainLiveTransparency() {
             </h2>
           </div>
           <div className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 font-mono text-xs text-slate-400">
-            {wholeWolo(network?.totalWoloFormatted)} WOLO
+            100,000,000 WOLO
           </div>
         </div>
 
@@ -484,7 +308,7 @@ export default function WoloChainLiveTransparency() {
                 <div className="mt-2 text-5xl font-semibold tracking-[-0.045em] text-white">100M</div>
                 <div className="mt-2 text-[11px] uppercase tracking-[0.34em] text-amber-100/76">WOLO</div>
                 <div className="mt-3 font-mono text-xs text-slate-500">
-                  {wholeWolo(network?.totalWoloFormatted)}
+                  100,000,000
                 </div>
               </div>
             </div>
@@ -499,19 +323,19 @@ export default function WoloChainLiveTransparency() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <div className="text-base font-semibold tracking-[-0.015em] text-white">
-                      {account.label}
+                      {account.alias}
                     </div>
                     <div className="mt-1 min-h-10 text-sm leading-5 text-slate-400">
-                      {protocolPurposeByLabel[account.label] || roleLabel(account.role, account.use)}
+                      {protocolPurposeByLabel[account.alias] || roleLabel(account.role, account.use)}
                     </div>
                   </div>
 
                   <div className="shrink-0 text-right">
                     <div className="text-lg font-semibold tracking-[-0.025em] text-white">
-                      {compactWolo(account.amountWoloFormatted || account.amountWolo)}
+                      {compactWolo(account.balanceWoloFormatted || account.balanceWolo)}
                     </div>
                     <div className="mt-1 font-mono text-[11px] text-slate-500">
-                      {account.amountWoloFormatted || account.amountWolo}
+                      {account.balanceWoloFormatted || account.balanceWolo}
                     </div>
                   </div>
                 </div>
@@ -535,20 +359,24 @@ export default function WoloChainLiveTransparency() {
         <div className="relative z-10 flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="text-[11px] uppercase tracking-[0.34em] text-white/45">WOLO holders</div>
-            <div className="mt-2 text-sm text-slate-500">{holders ? `${holders.count} known addresses on the WoloChain network.` : "Known addresses on the WoloChain network."}</div>
+            <div className="mt-2 text-sm text-slate-500">
+              {holders
+                ? `${holders.currentNonzeroOwnerCount} current nonzero owners · ${holders.retainedTransferAddressCount} transfer-observed addresses · ${holders.count} listed.`
+                : "Loading the live denom-owner projection."}
+            </div>
           </div>
 
           <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200">
-            {holders ? `${holders.count} known wallets` : "Loading"}
+            {holders ? `${holders.count} wallets` : "Loading"}
           </div>
         </div>
 
         <div className="relative z-10 mt-5 rounded-[1.35rem] border border-white/10 bg-slate-950/35 p-2 backdrop-blur-[1px]">
           <div className="grid grid-cols-[3rem_minmax(13rem,0.82fr)_minmax(24rem,1fr)_minmax(10rem,0.62fr)] gap-4 px-3 py-2 text-[10px] uppercase tracking-[0.24em] text-slate-500">
-            <div className="text-center">Rank</div>
+            <div className="text-center">Index</div>
             <div className="text-center">Holder</div>
             <div className="text-center">Address</div>
-            <div className="text-center">Balance</div>
+            <div className="text-center">Balance / privacy</div>
           </div>
 
           <div className="max-h-[38rem] space-y-2 overflow-y-auto overscroll-contain pr-1">
@@ -565,7 +393,7 @@ export default function WoloChainLiveTransparency() {
                   <div className="min-w-0">
                     <div className="truncate font-semibold tracking-[-0.015em] text-white">{holder.alias}</div>
                     <div className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-500">
-                      {roleLabel(holder.role, holder.use)}
+                      {roleLabel(holder.role, holder.use)} · {holder.classification}
                     </div>
                   </div>
                 </div>
@@ -573,7 +401,11 @@ export default function WoloChainLiveTransparency() {
                 <WalletAddress address={holder.address} onCopy={copyAddress} />
 
                 <div className="text-center">
-                  {holder.balanceHidden ? null : (
+                  {holder.classification !== "protocol" || holder.balanceHidden ? (
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+                      Private
+                    </span>
+                  ) : (
                     <>
                       <div className="whitespace-nowrap font-semibold text-white">{compactWolo(holder.balanceWolo)}</div>
                       <div className="mt-1 whitespace-nowrap font-mono text-[10px] text-slate-500">{holder.exactBalanceWolo}</div>
@@ -586,9 +418,15 @@ export default function WoloChainLiveTransparency() {
         </div>
 
         <div className="relative z-10 mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
-          <div>Total indexed: {wholeWolo(holders?.totalWoloFormatted)} WOLO</div>
+          <div>
+            Player and unclassified balances are redacted; protocol/system balances remain public.
+            {holders && !holders.retainedDiscoveryAvailable
+              ? " Historical transfer discovery is temporarily unavailable."
+              : " Zero-balance wallets remain discoverable after an indexed transfer."}
+          </div>
           <div>Updated: {holders?.updatedAt ? new Date(holders.updatedAt).toLocaleTimeString() : "loading"}</div>
         </div>
-      </section>    </section>
+      </section>
+    </section>
   );
 }

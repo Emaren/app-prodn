@@ -5,7 +5,12 @@ import {
   AOE2WAR_STREAM_SOURCE_TYPES,
   type AoE2WarStreamSourceType,
 } from "@/lib/streamRequestAuth";
-import { listStreamChunkSequences, readStreamChunk } from "@/lib/streamStorage";
+import { streamMediaResponseHeaders } from "@/lib/streamMedia";
+import {
+  listStreamChunkSequences,
+  readStreamChunksBounded,
+  StreamStorageLimitError,
+} from "@/lib/streamStorage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +21,7 @@ const NO_STORE_HEADERS = {
 
 const DEFAULT_WINDOW_CHUNKS = 18;
 const MAX_WINDOW_CHUNKS = 48;
+const MAX_ROLLING_RESPONSE_BYTES = 32 * 1024 * 1024;
 
 function clampWindowSize(raw: string | null) {
   const value = Number(raw);
@@ -109,22 +115,28 @@ export async function GET(
 
   const chunkSequences = availableSeqs.includes(0) ? [0, ...mediaRun] : mediaRun;
   try {
-    const chunks = await Promise.all(
-      chunkSequences.map((sequence) => readStreamChunk(stream.id, sequence))
+    const { chunks, totalBytes } = await readStreamChunksBounded(
+      stream.id,
+      chunkSequences,
+      MAX_ROLLING_RESPONSE_BYTES
     );
-    const body = Buffer.concat(chunks);
+    const body = Buffer.concat(chunks, totalBytes);
     return new Response(body, {
       headers: {
-        ...NO_STORE_HEADERS,
-        "Content-Type": stream.mediaMimeType || "video/webm",
-        "Content-Length": String(body.byteLength),
+        ...streamMediaResponseHeaders(totalBytes),
         "X-AOE2WAR-Stream-Mode": "rolling-webm",
         "X-AOE2WAR-Start-Seq": String(mediaRun[0]),
         "X-AOE2WAR-End-Seq": String(mediaRun[mediaRun.length - 1]),
         "X-AOE2WAR-Chunk-Count": String(mediaRun.length),
       },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof StreamStorageLimitError) {
+      return NextResponse.json(
+        { detail: "Requested stream window is too large." },
+        { status: 413, headers: NO_STORE_HEADERS }
+      );
+    }
     return NextResponse.json(
       { detail: "Stream chunk window is unavailable." },
       { status: 404, headers: NO_STORE_HEADERS }

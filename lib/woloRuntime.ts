@@ -15,11 +15,15 @@ import {
   WOLO_MONETARY_POLICY_LABEL,
   woloChainConfig,
 } from "@/lib/woloChain";
+import {
+  isValidBech32AccountAddress,
+  normalizeMinimalDenomAmount,
+} from "@/lib/woloBalanceRead";
 
-const insecureHttpsAgent = new https.Agent({
-  rejectUnauthorized: false,
-});
 const execFileAsync = promisify(execFile);
+const WOLO_UPSTREAM_TIMEOUT_MS = 5_000;
+const WOLO_CLI_TIMEOUT_MS = 7_500;
+const MAX_WOLO_UPSTREAM_RESPONSE_BYTES = 1024 * 1024;
 
 const parsedStaleAfterSeconds = Number.parseInt(
   process.env.WOLO_STATUS_STALE_AFTER_SECONDS || "20",
@@ -70,6 +74,21 @@ type BankSupplyPayload = {
   };
 };
 
+type RestNodeInfoPayload = {
+  default_node_info?: {
+    network?: string;
+  };
+};
+
+export type WoloBalanceSnapshot = {
+  amount: string;
+  denom: typeof WOLO_BASE_DENOM;
+  decimals: typeof WOLO_COIN_DECIMALS;
+  chainId: string;
+  source: "rest" | "cli";
+  observedAt: string;
+};
+
 export type WoloConsensusStatus = "advancing" | "stalled" | "catching_up" | "standby";
 
 export type WoloStatusSnapshot = {
@@ -102,6 +121,10 @@ export type WoloStatusSnapshot = {
 function requestText(url: string) {
   return new Promise<string>((resolve, reject) => {
     const target = new URL(url);
+    if (target.protocol !== "http:" && target.protocol !== "https:") {
+      reject(new Error(`Unsupported WoloChain upstream protocol ${target.protocol}`));
+      return;
+    }
     const client = target.protocol === "https:" ? https : http;
 
     const request = client.request(
@@ -111,13 +134,33 @@ function requestText(url: string) {
         headers: {
           accept: "application/json",
         },
-        agent: target.protocol === "https:" ? insecureHttpsAgent : undefined,
       },
       (response) => {
         const chunks: Buffer[] = [];
+        let receivedBytes = 0;
+        const declaredLength = Number.parseInt(
+          response.headers["content-length"] || "0",
+          10,
+        );
+
+        if (
+          Number.isFinite(declaredLength) &&
+          declaredLength > MAX_WOLO_UPSTREAM_RESPONSE_BYTES
+        ) {
+          response.destroy();
+          reject(new Error(`Upstream ${target.hostname} response exceeded the safety bound`));
+          return;
+        }
 
         response.on("data", (chunk) => {
-          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          receivedBytes += buffer.byteLength;
+          if (receivedBytes > MAX_WOLO_UPSTREAM_RESPONSE_BYTES) {
+            response.destroy();
+            reject(new Error(`Upstream ${target.hostname} response exceeded the safety bound`));
+            return;
+          }
+          chunks.push(buffer);
         });
 
         response.on("end", () => {
@@ -130,10 +173,12 @@ function requestText(url: string) {
 
           resolve(body);
         });
+
+        response.on("error", reject);
       }
     );
 
-    request.setTimeout(5000, () => {
+    request.setTimeout(WOLO_UPSTREAM_TIMEOUT_MS, () => {
       request.destroy(new Error(`Timed out reaching ${target.hostname}`));
     });
 
@@ -145,6 +190,29 @@ function requestText(url: string) {
 async function requestJson<T>(url: string) {
   const text = await requestText(url);
   return JSON.parse(text) as T;
+}
+
+function assertWoloChainIdentity(network: unknown, sourceLabel: string) {
+  if (network !== WOLO_CHAIN_ID) {
+    const observed = typeof network === "string" && network ? network : "missing";
+    throw new Error(
+      `Refusing ${sourceLabel} chain ${observed}; expected ${WOLO_CHAIN_ID}.`,
+    );
+  }
+}
+
+async function verifyRestChainIdentity(restSource: string) {
+  const payload = await requestJson<RestNodeInfoPayload>(
+    `${restSource.replace(/\/$/, "")}/cosmos/base/tendermint/v1beta1/node_info`,
+  );
+  assertWoloChainIdentity(payload.default_node_info?.network, "REST");
+}
+
+async function verifyRpcChainIdentity(rpcSource: string) {
+  const payload = await requestJson<TendermintStatusPayload>(
+    `${rpcSource.replace(/\/$/, "")}/status`,
+  );
+  assertWoloChainIdentity(payload.result?.node_info?.network, "RPC");
 }
 
 function trimHash(value: string | null | undefined, length = 16) {
@@ -200,28 +268,67 @@ function getQueryCliNode() {
 }
 
 async function fetchWoloBalanceAmountFromCli(address: string) {
-  const { stdout } = await execFileAsync(
-    getQueryCliPath(),
-    [
-      "query",
-      "bank",
-      "balances",
-      address,
-      "--home",
-      getQueryCliHome(),
-      "--node",
-      getQueryCliNode(),
-      "--output",
-      "json",
-    ],
-    {
-      maxBuffer: 1024 * 1024,
-      timeout: 15_000,
-    }
-  );
+  const cliNode = getQueryCliNode();
+  const [, { stdout }] = await Promise.all([
+    verifyRpcChainIdentity(cliNode),
+    execFileAsync(
+      getQueryCliPath(),
+      [
+        "query",
+        "bank",
+        "balances",
+        address,
+        "--home",
+        getQueryCliHome(),
+        "--node",
+        cliNode,
+        "--chain-id",
+        WOLO_CHAIN_ID,
+        "--output",
+        "json",
+      ],
+      {
+        maxBuffer: MAX_WOLO_UPSTREAM_RESPONSE_BYTES,
+        timeout: WOLO_CLI_TIMEOUT_MS,
+        killSignal: "SIGKILL",
+      },
+    ),
+  ]);
 
   const payload = JSON.parse(stdout) as BankBalancesPayload;
-  return payload.balances?.find((coin) => coin.denom === WOLO_BASE_DENOM)?.amount || "0";
+  return parseBankBalanceAmount(payload, WOLO_BASE_DENOM);
+}
+
+function parseBankBalanceAmount(payload: BankBalancesPayload, expectedDenom: string) {
+  if (!payload || !Array.isArray(payload.balances)) {
+    throw new Error("WoloChain balance response did not include a balances array.");
+  }
+
+  let matchingAmount: string | null = null;
+
+  for (const coin of payload.balances) {
+    if (!coin || typeof coin !== "object") {
+      throw new Error("WoloChain returned a malformed balance coin.");
+    }
+
+    if (
+      typeof coin.denom !== "string" ||
+      !/^[a-zA-Z][a-zA-Z0-9/:._-]{0,127}$/.test(coin.denom)
+    ) {
+      throw new Error("WoloChain returned a malformed balance denom.");
+    }
+
+    const amount = normalizeMinimalDenomAmount(coin.amount);
+
+    if (coin.denom !== expectedDenom) continue;
+    if (matchingAmount !== null) {
+      throw new Error(`WoloChain returned duplicate ${expectedDenom} balance entries.`);
+    }
+
+    matchingAmount = amount;
+  }
+
+  return matchingAmount ?? "0";
 }
 
 function getLastBlockAgeSeconds(value: string | null) {
@@ -304,6 +411,8 @@ export async function fetchWoloStatusSnapshot(): Promise<WoloStatusSnapshot> {
       ),
     ]);
 
+    assertWoloChainIdentity(payload.result?.node_info?.network, "RPC");
+
     const latestBlockTime = payload.result?.sync_info?.latest_block_time || null;
     const catchingUp = Boolean(payload.result?.sync_info?.catching_up);
     const lastBlockAgeSeconds = getLastBlockAgeSeconds(latestBlockTime);
@@ -385,42 +494,64 @@ export async function fetchWoloStatusSnapshot(): Promise<WoloStatusSnapshot> {
   }
 }
 
-export async function fetchWoloBalanceAmount(address: string) {
+export async function fetchWoloBalanceSnapshot(address: string): Promise<WoloBalanceSnapshot> {
   const trimmed = address.trim();
 
   if (!trimmed) {
     throw new Error("Address is required.");
   }
 
-  if (!trimmed.startsWith(`${WOLO_ADDRESS_PREFIX}1`)) {
-    throw new Error(`Address must start with ${WOLO_ADDRESS_PREFIX}1`);
+  if (!isValidBech32AccountAddress(trimmed, WOLO_ADDRESS_PREFIX)) {
+    throw new Error(`Address must be a valid ${WOLO_ADDRESS_PREFIX}1 account address.`);
   }
 
   const restSource = getRestSource();
 
   try {
-    const payload = await requestJson<BankBalancesPayload>(
-      `${restSource.replace(/\/$/, "")}/cosmos/bank/v1beta1/balances/${encodeURIComponent(trimmed)}`
-    );
+    const [payload] = await Promise.all([
+      requestJson<BankBalancesPayload>(
+        `${restSource.replace(/\/$/, "")}/cosmos/bank/v1beta1/balances/${encodeURIComponent(trimmed)}`,
+      ),
+      verifyRestChainIdentity(restSource),
+    ]);
 
-    return payload.balances?.find((coin) => coin.denom === WOLO_BASE_DENOM)?.amount || "0";
+    return {
+      amount: parseBankBalanceAmount(payload, WOLO_BASE_DENOM),
+      denom: WOLO_BASE_DENOM,
+      decimals: WOLO_COIN_DECIMALS,
+      chainId: WOLO_CHAIN_ID,
+      source: "rest",
+      observedAt: new Date().toISOString(),
+    };
   } catch {
-    return fetchWoloBalanceAmountFromCli(trimmed);
+    const amount = await fetchWoloBalanceAmountFromCli(trimmed);
+
+    return {
+      amount,
+      denom: WOLO_BASE_DENOM,
+      decimals: WOLO_COIN_DECIMALS,
+      chainId: WOLO_CHAIN_ID,
+      source: "cli",
+      observedAt: new Date().toISOString(),
+    };
   }
+}
+
+export async function fetchWoloBalanceAmount(address: string) {
+  return (await fetchWoloBalanceSnapshot(address)).amount;
 }
 
 export async function fetchWoloSupplyAmount() {
   const restSource = getRestSource();
-  const payload = await requestJson<BankSupplyPayload>(
-    `${restSource.replace(/\/$/, "")}/cosmos/bank/v1beta1/supply/by_denom?denom=${encodeURIComponent(WOLO_BASE_DENOM)}`
-  );
-  const amount = payload.amount?.denom === WOLO_BASE_DENOM
-    ? payload.amount.amount
-    : null;
-
-  if (!amount || !/^\d+$/.test(amount)) {
-    throw new Error(`WoloChain did not return a valid ${WOLO_BASE_DENOM} supply.`);
+  const [payload] = await Promise.all([
+    requestJson<BankSupplyPayload>(
+      `${restSource.replace(/\/$/, "")}/cosmos/bank/v1beta1/supply/by_denom?denom=${encodeURIComponent(WOLO_BASE_DENOM)}`,
+    ),
+    verifyRestChainIdentity(restSource),
+  ]);
+  if (payload.amount?.denom !== WOLO_BASE_DENOM) {
+    throw new Error(`WoloChain supply denom must be ${WOLO_BASE_DENOM}.`);
   }
 
-  return amount.replace(/^0+(?=\d)/, "");
+  return normalizeMinimalDenomAmount(payload.amount.amount);
 }

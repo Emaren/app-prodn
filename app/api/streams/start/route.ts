@@ -6,6 +6,10 @@ import {
   normalizeAoE2WarStreamSourceType,
   resolveStreamRequestActor,
 } from "@/lib/streamRequestAuth";
+import {
+  normalizeStreamMediaMimeType,
+  normalizeStreamThumbnailUrl,
+} from "@/lib/streamMedia";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 
 export const runtime = "nodejs";
@@ -68,8 +72,23 @@ export async function POST(request: NextRequest) {
   const title = cleanText(body.title, 140) || "AoE2WAR live";
   const label = cleanText(body.label, 80) || "AoE2WAR Live";
   const playerLabel = cleanText(body.playerLabel, 80) || null;
-  const thumbnailUrl = cleanText(body.thumbnailUrl, 200_000) || null;
-  const mediaMimeType = cleanText(body.mediaMimeType, 120) || "video/webm";
+  const rawThumbnailUrl = cleanText(body.thumbnailUrl, 256_001);
+  const thumbnailUrl = normalizeStreamThumbnailUrl(rawThumbnailUrl);
+  const mediaMimeType = normalizeStreamMediaMimeType(
+    cleanText(body.mediaMimeType, 120) || "video/webm"
+  );
+  if (rawThumbnailUrl && !thumbnailUrl) {
+    return NextResponse.json(
+      { detail: "Stream thumbnail is invalid." },
+      { status: 400, headers: NO_STORE_HEADERS }
+    );
+  }
+  if (!mediaMimeType) {
+    return NextResponse.json(
+      { detail: "Only WebM stream media is accepted." },
+      { status: 415, headers: NO_STORE_HEADERS }
+    );
+  }
   const sourceType = normalizeAoE2WarStreamSourceType(
     body.sourceType,
     actor.authMode === "watcher_key" ? "watcher_native" : "browser"

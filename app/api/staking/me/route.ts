@@ -36,9 +36,9 @@ export async function GET(request: NextRequest) {
       execution: {
         ...stakingState.execution,
         ...limits,
-        status: "READY",
+        status: limits.balanceLookupError ? "DEGRADED" : "READY",
         detail: limits.balanceLookupError
-          ? "Staking ledger ready. Wallet balance lookup pending."
+          ? "Staking ledger ready. Wallet reserve balance is temporarily unavailable; execution remains fail-closed."
           : "Staking ledger ready.",
       },
     });

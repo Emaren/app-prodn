@@ -7,6 +7,15 @@ import TimeDisplayText, { useTimeDisplayFormatter } from "@/components/time/Time
 import { useUserAuth } from "@/context/UserAuthContext";
 import { parseWrittenBountyNumber } from "@/lib/bountyHall";
 import type { StakingActivityItem } from "@/lib/staking";
+import {
+  LEGACY_STAKING_ACTIVITY_PREFS_KEY,
+  STAKING_ACTIVITY_PREFS_KEY,
+  resolveStakingActivityPreferences,
+  serializeStakingActivityPreferences,
+  type StakingActivityFilterMode as ActivityFilterMode,
+  type StakingActivityMode as ActivityMode,
+  type StakingBeltPayoutFilterMode as BeltPayoutFilterMode,
+} from "@/lib/stakingActivityPreferences";
 
 type ActivityFeedEvent = CustomEvent<{ item?: StakingActivityItem }>;
 
@@ -15,20 +24,6 @@ type ActivityFeedEvent = CustomEvent<{ item?: StakingActivityItem }>;
 const PAGE_SIZE = 40;
 const STAKING_BOUNTY_ACTIVITY_LIMIT = 500;
 const LIVE_POLL_INTERVAL_MS = 12_000;
-
-type ActivityMode = "ledger" | "grouped";
-const STAKING_ACTIVITY_PREFS_KEY = "aoe2war:staking-activity-prefs:ledger-all-v1";
-
-type ActivityFilterMode =
-  | "all"
-  | "belts"
-  | "staking"
-  | "compounded"
-  | "bounties"
-  | "bets"
-  | "transfers"
-  | "reserve";
-type BeltPayoutFilterMode = "all" | "tributes" | "bounties";
 
 type ActivityPageResponse = {
   rows?: StakingActivityItem[];
@@ -294,98 +289,6 @@ function activityKey(item: StakingActivityItem) {
   return item.key || `${sanitizeActivityCopy(item.label)}:${sanitizeActivityCopy(item.detail)}:${item.meta}`;
 }
 
-function cleanLedgerBetTitle(value: string) {
-  return sanitizeActivityCopy(value)
-    .replace(/\bmemo\s+/gi, "")
-    .replace(
-      /^\s*[\d,.]+(?:\.\d+)?\s*(?:K|M|B|T)?\s+WOLO\s+(?:settlement queue:|bet payout:|bet escrow stake intent:|direct transfer|wager:|payout:)?\s*/i,
-      ""
-    )
-    .replace(/\s+·.*$/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function normalizeLedgerBetTitleKey(value: string) {
-  return cleanLedgerBetTitle(value).toLowerCase();
-}
-
-function ledgerBetTxHash(item: StakingActivityItem) {
-  const direct = item.txHash?.trim();
-  if (direct) return direct.toUpperCase();
-
-  const keyMatch = String(item.key || "").match(/tx-([A-Fa-f0-9]{64})/);
-  if (keyMatch?.[1]) return keyMatch[1].toUpperCase();
-
-  const text = `${item.label || ""} ${item.detail || ""}`;
-  const detailMatch = text.match(/\btx\s+([A-Fa-f0-9]{8,64})(?:\.\.\.[A-Fa-f0-9]{4,8})?\b/i);
-  return detailMatch?.[1] && detailMatch[1].length === 64 ? detailMatch[1].toUpperCase() : null;
-}
-
-function extractLedgerBetTitle(group: StakingActivityItem[]) {
-  for (const item of group) {
-    const text = `${item.label || ""} · ${item.detail || ""}`;
-
-    const memoMatch = text.match(/memo\s+([^·:|]{2,120}?\s+vs\s+[^·:|]{2,120}?)(?=\s*·|\s*$)/i);
-    if (memoMatch?.[1]) {
-      const title = cleanLedgerBetTitle(memoMatch[1]);
-      if (title) return title;
-    }
-
-    const settlementMatch = text.match(/settlement queue:\s*([^·:|]{2,120}?\s+vs\s+[^·:|]{2,120}?)(?=\s*·|\s*$)/i);
-    if (settlementMatch?.[1]) {
-      const title = cleanLedgerBetTitle(settlementMatch[1]);
-      if (title) return title;
-    }
-
-    const looseMatch = text.match(/([^·:|]{2,120}?\s+vs\s+[^·:|]{2,120}?)(?=\s*·|\s*$)/i);
-    if (looseMatch?.[1]) {
-      const title = cleanLedgerBetTitle(looseMatch[1]);
-      if (title) return title;
-    }
-  }
-
-  return "WoloChain bet rail";
-}
-
-function explicitLedgerBetGroupKey(item: StakingActivityItem) {
-  if (item.groupKey?.trim()) return item.groupKey.trim();
-
-  const text = `${item.key || ""} ${item.label || ""} ${item.detail || ""}`;
-  const marketMatch = text.match(/\bmarket\s*[:#-]?\s*(\d{2,})\b/i);
-  if (marketMatch?.[1]) return `market:${marketMatch[1]}`;
-
-  const gameMatch = text.match(/\b(?:game|game_stats|replay)\s*[:#-]?\s*(\d{2,})\b/i);
-  if (gameMatch?.[1]) return `game:${gameMatch[1]}`;
-
-  const title = extractLedgerBetTitle([item]);
-  if (title && title !== "WoloChain bet rail") {
-    return `match:${normalizeLedgerBetTitleKey(title)}`;
-  }
-
-  return null;
-}
-
-function preferLedgerBetGroupKey(current: string | undefined, next: string | null | undefined) {
-  if (!next) return current;
-  if (!current) return next;
-  if (next.startsWith("market:")) return next;
-  if (current.startsWith("market:")) return current;
-  if (next.startsWith("game:")) return next;
-  if (current.startsWith("game:")) return current;
-  return current;
-}
-
-function ledgerBetGroupKey(item: StakingActivityItem, txGroupKeys?: Map<string, string>) {
-  const txHash = ledgerBetTxHash(item);
-  if (txHash) {
-    const peerGroupKey = txGroupKeys?.get(txHash);
-    if (peerGroupKey) return peerGroupKey;
-  }
-
-  return explicitLedgerBetGroupKey(item) || activityKey(item);
-}
-
 function activityTimestamp(item: StakingActivityItem) {
   const parsed = item.occurredAt ? Date.parse(item.occurredAt) : Number.NaN;
   return Number.isFinite(parsed) ? parsed : 0;
@@ -420,295 +323,6 @@ function ActivityDateDivider({ label }: { label: string }) {
   );
 }
 
-function groupedLedgerBetAmountLabel(children: StakingActivityItem[]) {
-  const candidates = children.filter((child) => child.amountLabel?.trim());
-  if (candidates.length === 0) return undefined;
-
-  const settlement =
-    candidates.find((child) => {
-      const text = `${child.eventType || ""} ${child.label || ""} ${child.detail || ""}`.toLowerCase();
-      return text.includes("settlement queue") || text.includes("settlement");
-    }) || null;
-
-  const payout =
-    candidates.find((child) => {
-      const text = `${child.eventType || ""} ${child.label || ""} ${child.detail || ""}`.toLowerCase();
-      return text.includes("bet payout") || text.includes("bet_refund") || text.includes("founders_bonus") || text.includes("founders bonus");
-    }) || null;
-
-  return settlement?.amountLabel || payout?.amountLabel || candidates[0]?.amountLabel;
-}
-
-function collapseLedgerBetRows(rows: StakingActivityItem[], enabled: boolean) {
-  if (!enabled) return rows;
-
-  type LedgerBetGroup = {
-    key: string;
-    title: string;
-    rows: StakingActivityItem[];
-    newestAt: number;
-    firstIndex: number;
-  };
-
-  const txGroupKeys = new Map<string, string>();
-
-  rows.forEach((row) => {
-    if (!isBetActivity(row)) return;
-
-    const txHash = ledgerBetTxHash(row);
-    const explicit = explicitLedgerBetGroupKey(row);
-    if (!txHash || !explicit) return;
-
-    txGroupKeys.set(txHash, preferLedgerBetGroupKey(txGroupKeys.get(txHash), explicit) || explicit);
-  });
-
-  const passthrough: StakingActivityItem[] = [];
-  const groups = new Map<string, LedgerBetGroup>();
-
-  rows.forEach((row, index) => {
-    if (!isBetActivity(row)) {
-      passthrough.push(row);
-      return;
-    }
-
-    const key = ledgerBetGroupKey(row, txGroupKeys);
-    const title = extractLedgerBetTitle([row]);
-    const timestamp = activityTimestamp(row);
-    const group = groups.get(key) || {
-      key,
-      title: title === "WoloChain bet rail" ? "WoloChain bet rail" : title,
-      rows: [],
-      newestAt: timestamp,
-      firstIndex: index,
-    };
-
-    group.rows.push(row);
-    group.firstIndex = Math.min(group.firstIndex, index);
-    if (timestamp >= group.newestAt) group.newestAt = timestamp;
-
-    if (group.title === "WoloChain bet rail" && title !== "WoloChain bet rail") {
-      group.title = title;
-    }
-
-    groups.set(key, group);
-  });
-
-  const marketGroupsByTitle = new Map<string, LedgerBetGroup[]>();
-
-  for (const group of groups.values()) {
-    if (!group.key.startsWith("market:")) continue;
-
-    const titleKey = normalizeLedgerBetTitleKey(group.title);
-    const bucket = marketGroupsByTitle.get(titleKey) || [];
-    bucket.push(group);
-    marketGroupsByTitle.set(titleKey, bucket);
-  }
-
-  for (const [key, group] of Array.from(groups.entries())) {
-    if (!key.startsWith("match:")) continue;
-
-    const candidates = marketGroupsByTitle.get(normalizeLedgerBetTitleKey(group.title)) || [];
-    if (candidates.length !== 1) continue;
-
-    const target = candidates[0];
-    target.rows.push(...group.rows);
-    target.firstIndex = Math.min(target.firstIndex, group.firstIndex);
-    target.newestAt = Math.max(target.newestAt, group.newestAt);
-    if (target.title === "WoloChain bet rail" && group.title !== "WoloChain bet rail") {
-      target.title = group.title;
-    }
-
-    groups.delete(key);
-  }
-
-  const collapsed: StakingActivityItem[] = [...passthrough];
-
-  for (const group of groups.values()) {
-    const children = [...group.rows].sort((left, right) => activityTimestamp(right) - activityTimestamp(left));
-    const first = children[0];
-
-    if (children.length === 1) {
-      collapsed.push(children[0]);
-      continue;
-    }
-
-    collapsed.push({
-      key: `ledger-bet-group-${group.key}`,
-      label: `${group.title} · bet settled`,
-      detail: "WoloChain bet receipts",
-      amountLabel: groupedLedgerBetAmountLabel(children),
-      meta: first.meta,
-      eventType: "GROUPED BET",
-      timestampLabel: first.timestampLabel || first.meta,
-      occurredAt: first.occurredAt,
-      groupKey: group.key,
-      tone: "sky",
-      children,
-    });
-  }
-
-  return collapsed.sort((left, right) => {
-    const byTime = activityTimestamp(right) - activityTimestamp(left);
-    if (byTime !== 0) return byTime;
-    return activityKey(left).localeCompare(activityKey(right));
-  });
-}
-
-function relatedActivityMinuteKey(item: StakingActivityItem) {
-  const parsed = item.occurredAt ? new Date(item.occurredAt) : null;
-
-  if (parsed && !Number.isNaN(parsed.getTime())) {
-    return parsed.toISOString().slice(0, 16);
-  }
-
-  return sanitizeActivityCopy(item.timestampLabel || item.meta || "unknown").toLowerCase();
-}
-
-function extractRelatedActivityActor(item: StakingActivityItem) {
-  const label = sanitizeActivityCopy(item.label || "");
-  const detail = sanitizeActivityCopy(item.detail || "");
-
-  const labelActor = label.match(/:\s*([^:·|]+)$/);
-  if (labelActor?.[1]) return labelActor[1].trim();
-
-  const rolledActor = detail.match(/^([^·]+?)\s*·\s*rolled into/i);
-  if (rolledActor?.[1]) return rolledActor[1].trim();
-
-  const preciseActor = detail.match(/^([^·]+?)\s*·\s*precise micro reward/i);
-  if (preciseActor?.[1]) return preciseActor[1].trim();
-
-  const queuedActor = label.match(/reward queued:\s*(.+)$/i);
-  if (queuedActor?.[1]) return queuedActor[1].trim();
-
-  const payoutActor = label.match(/reward payout:\s*(.+)$/i);
-  if (payoutActor?.[1]) return payoutActor[1].trim();
-
-  return "wallet";
-}
-
-function firstRelatedAmountLabel(group: StakingActivityItem[]) {
-  return (
-    group.find((item) => item.amountLabel)?.amountLabel ||
-    group
-      .map((item) => sanitizeActivityCopy(item.label || ""))
-      .map((label) => label.match(/^([0-9,]+(?:\.[0-9]+)?\s+WOLO)/i)?.[1])
-      .find(Boolean) ||
-    null
-  );
-}
-
-function relatedLedgerGroupKey(item: StakingActivityItem) {
-  if (isBetActivity(item)) return null;
-  if (isBountyActivity(item)) return null;
-  if (isBeltActivity(item)) return null;
-  if (isReserveActivity(item)) return null;
-
-  const eventType = normalizedEventType(item);
-  const text = sanitizeActivityCopy(
-    `${item.label || ""} ${item.detail || ""} ${item.meta || ""} ${item.amountLabel || ""} ${item.eventType || ""}`
-  ).toLowerCase();
-
-  const minute = relatedActivityMinuteKey(item);
-
-  const isTreasuryBundle =
-    text.includes("staking treasury payout") ||
-    text.includes("aoe2 staking treasury") ||
-    text.includes("community treasury");
-
-  if (isTreasuryBundle) {
-    return `treasury:${minute}`;
-  }
-
-  const isRewardBundle =
-    eventType === "REWARD" ||
-    eventType === "COMPOUND" ||
-    text.includes("reward payout") ||
-    text.includes("auto-compounded reward") ||
-    text.includes("reward queued") ||
-    text.includes("staking reward held in carry") ||
-    text.includes("daily staking share") ||
-    text.includes("canonical compounded receipt") ||
-    text.includes("rolled into staking principal") ||
-    text.includes("rolled into principal");
-
-  if (!isRewardBundle) return null;
-
-  const actor = extractRelatedActivityActor(item).toLowerCase();
-
-  return `staking-reward:${actor}:${minute}`;
-}
-
-function summarizeRelatedLedgerGroup(group: StakingActivityItem[]) {
-  const sorted = [...group].sort((left, right) => activityTimestamp(right) - activityTimestamp(left));
-  const preferred =
-    sorted.find((item) => sanitizeActivityCopy(item.label || "").toLowerCase().includes("reward payout")) ||
-    sorted.find((item) => sanitizeActivityCopy(item.label || "").toLowerCase().includes("auto-compounded")) ||
-    sorted[0];
-
-  const key = relatedLedgerGroupKey(preferred) || activityKey(preferred);
-  const actor = extractRelatedActivityActor(preferred);
-  const amountLabel = firstRelatedAmountLabel(sorted);
-
-  const text = sanitizeActivityCopy(
-    sorted.map((item) => `${item.label || ""} ${item.detail || ""}`).join(" ")
-  ).toLowerCase();
-
-  const containsTreasury =
-    text.includes("staking treasury") ||
-    text.includes("community treasury") ||
-    text.includes("aoe2 staking treasury");
-
-  const containsPayout = text.includes("payout") || text.includes("paid");
-  const containsCompound = text.includes("compound") || text.includes("rolled into");
-  const containsQueued = text.includes("queued") || text.includes("waiting on payout");
-  const containsCarry = text.includes("held in carry") || text.includes("micro reward");
-
-  const parts = [
-    containsPayout ? "payout" : null,
-    containsCompound ? "compound" : null,
-    containsQueued ? "queue" : null,
-    containsCarry ? "carry" : null,
-  ].filter(Boolean);
-
-  if (containsTreasury) {
-    const treasuryLead =
-      sorted.find((item) => sanitizeActivityCopy(item.label || "").toLowerCase().includes("direct transfer")) ||
-      sorted.find((item) => sanitizeActivityCopy(item.detail || "").toLowerCase().includes("bet payout signer")) ||
-      preferred;
-
-    return {
-      key: `related-ledger-${key}`,
-      label: treasuryLead.label || (amountLabel ? `${amountLabel} direct transfer` : "Direct transfer"),
-      detail: sanitizeActivityCopy(treasuryLead.detail || "Staking Distribution Reserve -> Community Treasury"),
-      meta: treasuryLead.meta,
-      eventType: "PAYOUT",
-      timestampLabel: treasuryLead.timestampLabel || treasuryLead.meta,
-      occurredAt: treasuryLead.occurredAt,
-      tone: treasuryLead.tone,
-      amountLabel: treasuryLead.amountLabel || amountLabel,
-      txHash: treasuryLead.txHash,
-      txUrl: treasuryLead.txUrl,
-      children: sorted,
-    } as StakingActivityItem;
-  }
-
-  return {
-    key: `related-ledger-${key}`,
-    label: `${amountLabel || "Staking"} reward: ${actor}`,
-    detail: `${parts.length ? parts.join(" / ") : "staking receipts"} · ${sorted.length.toLocaleString()} ledger rows`,
-    meta: preferred.meta,
-    eventType: "REWARD",
-    timestampLabel: preferred.timestampLabel || preferred.meta,
-    occurredAt: preferred.occurredAt,
-    tone: preferred.tone,
-    amountLabel,
-    txHash: preferred.txHash,
-    txUrl: preferred.txUrl,
-    children: sorted,
-  } as StakingActivityItem;
-}
-
-
 function isVisibleActivityItem(item: StakingActivityItem): boolean {
   const label = sanitizeActivityCopy(item.label || "").toLowerCase();
   const detail = sanitizeActivityCopy(item.detail || "").toLowerCase();
@@ -722,48 +336,6 @@ function isVisibleActivityItem(item: StakingActivityItem): boolean {
   return !isFaucetHotWallet;
 }
 
-function collapseRelatedLedgerRows(rows: StakingActivityItem[], enabled: boolean) {
-  if (!enabled) return rows;
-
-  const groups = new Map<string, StakingActivityItem[]>();
-
-  for (const row of rows) {
-    const key = relatedLedgerGroupKey(row);
-    if (!key) continue;
-
-    const bucket = groups.get(key);
-    if (bucket) bucket.push(row);
-    else groups.set(key, [row]);
-  }
-
-  const consumed = new Set<string>();
-  const output: StakingActivityItem[] = [];
-
-  for (const row of rows) {
-    const key = relatedLedgerGroupKey(row);
-
-    if (!key) {
-      output.push(row);
-      continue;
-    }
-
-    const group = groups.get(key) || [row];
-
-    if (group.length <= 1) {
-      output.push(row);
-      continue;
-    }
-
-    if (consumed.has(key)) continue;
-
-    consumed.add(key);
-    output.push(summarizeRelatedLedgerGroup(group));
-  }
-
-  return output;
-}
-
-
 export default function StakingActivityFeed({
   items,
   note,
@@ -776,7 +348,7 @@ export default function StakingActivityFeed({
   const { isAdmin } = useUserAuth();
   const formatTime = useTimeDisplayFormatter();
   const initialRows = useMemo(() => items, [items]);
-  const [mode, setMode] = useState<ActivityMode>("ledger");
+  const [mode, setMode] = useState<ActivityMode>("grouped");
   const [filterMode, setFilterMode] = useState<ActivityFilterMode>("all");
   const [beltPayoutFilterMode, setBeltPayoutFilterMode] = useState<BeltPayoutFilterMode>("all");
   const [activityPrefsLoaded, setActivityPrefsLoaded] = useState(false);
@@ -785,39 +357,14 @@ export default function StakingActivityFeed({
 
   useEffect(() => {
     try {
-      const raw = window.localStorage.getItem(STAKING_ACTIVITY_PREFS_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as {
-          mode?: ActivityMode;
-          filterMode?: ActivityFilterMode;
-          beltPayoutFilterMode?: BeltPayoutFilterMode;
-        };
-
-        const nextFilter =
-          parsed.filterMode === "all" ||
-          parsed.filterMode === "belts" ||
-          parsed.filterMode === "staking" ||
-          parsed.filterMode === "compounded" ||
-          parsed.filterMode === "bounties" ||
-          parsed.filterMode === "bets" ||
-          parsed.filterMode === "transfers" ||
-          (isAdmin && parsed.filterMode === "reserve")
-            ? parsed.filterMode
-            : undefined;
-
-        const nextMode =
-          parsed.mode === "ledger" || parsed.mode === "grouped"
-            ? parsed.mode
-            : undefined;
-
-        if (nextFilter === "bounties" || nextFilter === "reserve") {
-          setMode("ledger");
-          setFilterMode(nextFilter);
-        } else {
-          if (nextMode) setMode(nextMode);
-          if (nextFilter) setFilterMode(nextFilter);
-        }
-      }
+      const { preferences } = resolveStakingActivityPreferences({
+        storedV2: window.localStorage.getItem(STAKING_ACTIVITY_PREFS_KEY),
+        storedLegacy: window.localStorage.getItem(LEGACY_STAKING_ACTIVITY_PREFS_KEY),
+        isAdmin,
+      });
+      setMode(preferences.mode);
+      setFilterMode(preferences.filterMode);
+      setBeltPayoutFilterMode(preferences.beltPayoutFilterMode);
     } catch {
       // Ignore stale or invalid saved preferences.
     } finally {
@@ -837,7 +384,7 @@ export default function StakingActivityFeed({
     try {
       window.localStorage.setItem(
         STAKING_ACTIVITY_PREFS_KEY,
-        JSON.stringify({ mode, filterMode, beltPayoutFilterMode })
+        serializeStakingActivityPreferences({ mode, filterMode, beltPayoutFilterMode })
       );
     } catch {
       // Ignore private-mode/localStorage failures.
@@ -1040,7 +587,8 @@ export default function StakingActivityFeed({
 
   useEffect(() => {
     if (
-      (filterMode === "bounties" || filterMode === "reserve") &&
+      filterMode !== "all" &&
+      filterMode !== "bets" &&
       mode !== "ledger"
     ) {
       setMode("ledger");
@@ -1153,18 +701,10 @@ export default function StakingActivityFeed({
     filterMode === "belts"
       ? filterBeltActivityRows(baseVisibleRows, beltPayoutFilterMode)
       : baseVisibleRows;
-  const displayRows = useMemo(() => {
-    const betCollapsed = collapseLedgerBetRows(
-      visibleRows,
-      mode === "ledger" && filterMode === "all"
-    );
-
-    return collapseRelatedLedgerRows(
-      betCollapsed,
-      mode === "ledger" &&
-        (filterMode === "all" || filterMode === "staking" || filterMode === "compounded")
-    ).filter(isVisibleActivityItem);
-  }, [filterMode, mode, visibleRows]);
+  const displayRows = useMemo(
+    () => visibleRows.filter(isVisibleActivityItem),
+    [visibleRows],
+  );
   const bountySummary = filterMode === "bounties" ? computePublicBountySummary(displayRows) : null;
   const activityFilters = useMemo<ActivityFilterMode[]>(
     () => [

@@ -7,16 +7,11 @@ import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { formatPublicStakingWeight } from "@/lib/stakingDisplay";
+import {
+  deriveWoloBalanceReadState,
+  formatMinimalDenomAmount,
+} from "@/lib/woloBalanceRead";
 import { useStakingState } from "./StakingStateProvider";
-
-function formatTokenAmount(raw?: string) {
-  const amount = Number(raw ?? "0");
-  if (!Number.isFinite(amount)) return "0.00";
-  return (amount / 1_000_000).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 function shortAddress(value: string) {
   if (!value) return "";
@@ -48,15 +43,46 @@ function formatRewardDate(value: string | null | undefined) {
 
 export default function StakingWalletPanel() {
   const { address, status, connect } = useKeplr();
-  const { data: rawBalance, isLoading: balanceLoading } = useWoloBalance(address);
+  const balance = useWoloBalance(address);
   const { isAuthenticated, loading, playerName, loginWithSteam } = useUserAuth();
   const [walletError, setWalletError] = useState<string | null>(null);
   const { stakingState, stakingLoading } = useStakingState();
+  const balanceState = deriveWoloBalanceReadState({
+    connected: status === "connected",
+    amount: balance.data,
+    isLoading: balance.isLoading,
+    isFetching: balance.isFetching,
+    isError: balance.isError,
+  });
+  const formattedBalance = formatMinimalDenomAmount(balance.data);
 
   const balanceLabel = useMemo(
-    () => (balanceLoading ? "Syncing" : `${formatTokenAmount(rawBalance)} WOLO`),
-    [balanceLoading, rawBalance]
+    () =>
+      balanceState === "disconnected"
+        ? "Not connected"
+        : balanceState === "loading"
+          ? "Loading..."
+          : balanceState === "error"
+            ? "Unavailable"
+            : formattedBalance === null
+              ? "Unavailable"
+              : `${formattedBalance} WOLO`,
+    [balanceState, formattedBalance],
   );
+  const balanceHelper =
+    balanceState === "success-zero"
+      ? "Verified zero chain balance"
+      : balanceState === "success-funded"
+        ? "Verified chain balance"
+        : balanceState === "refreshing"
+          ? "Refreshing chain balance"
+          : balanceState === "error"
+            ? balance.error instanceof Error
+              ? balance.error.message
+              : "Chain balance read failed"
+            : balanceState === "loading"
+              ? "Waiting for WoloChain"
+              : "Connect Keplr to verify";
 
   const walletStatus =
     status === "connected"
@@ -133,7 +159,11 @@ export default function StakingWalletPanel() {
 
         <div className="p-5 sm:p-6">
           <div className="grid gap-3 sm:grid-cols-2">
-            <StakingMetric label="Wallet Balance" value={status === "connected" ? balanceLabel : "--"} />
+            <StakingMetric
+              label="Wallet Balance"
+              value={balanceLabel}
+              helper={balanceHelper}
+            />
             <StakingMetric
               label="Currently Staked"
               value={stakingLoading ? "Syncing" : formatWholeWolo(stakingState?.position.currentStakedWolo)}

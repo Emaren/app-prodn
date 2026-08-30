@@ -61,6 +61,12 @@ test("Living Kingdom wire input is coarse and cannot author public identity", ()
 
 test("Living Kingdom realm registry fails closed around private and raw routes", () => {
   assert.equal(livingKingdomRealmForPath("/"), "home");
+  assert.equal(livingKingdomRealmForPath("/watch"), "watch");
+  assert.equal(livingKingdomRealmForPath("/live-games"), "live-games");
+  assert.notEqual(
+    livingKingdomRealmForPath("/watch"),
+    livingKingdomRealmForPath("/live-games"),
+  );
   assert.equal(livingKingdomRealmForPath("/staking?wallet=secret#claim"), "staking");
   assert.equal(livingKingdomRealmForPath("/leaderboard/og"), "page:/leaderboard/og");
   assert.equal(livingKingdomRealmForPath("/clans"), "clans");

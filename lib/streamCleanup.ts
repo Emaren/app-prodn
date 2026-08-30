@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
-import { AOE2WAR_STREAM_SOURCE_TYPES } from "@/lib/streamRequestAuth";
+import { expireRetainedDemoIfNeeded } from "@/lib/retainedStreamDemo";
+import { AOE2WAR_STREAM_SOURCE_TYPES } from "@/lib/streamIdentity";
 import { removeStreamChunks } from "@/lib/streamStorage";
 
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
@@ -101,8 +102,35 @@ export async function cleanupBrowserStreams(prisma: PrismaClient) {
     });
   }
 
+  let protectedRetainedStreamIds: number[];
+  try {
+    await expireRetainedDemoIfNeeded(prisma, now);
+    const retainedRows = await prisma.gameWatchRetainedDemo.findMany({
+      where: { expiresAt: { gt: now } },
+      select: { streamId: true },
+      take: 1,
+    });
+    protectedRetainedStreamIds = retainedRows.map((row) => row.streamId);
+  } catch (error) {
+    // Fail closed: an unreadable retention registry must never cause a selected
+    // archive to be removed by opportunistic transient cleanup.
+    console.warn("[streams/cleanup] retained-demo registry unavailable; chunk pruning skipped", {
+      error,
+    });
+    return {
+      ended: staleStreams.length,
+      endedExternalPlaceholders: staleExternalPlaceholders.length,
+      pruned: 0,
+      pruneFailures: 0,
+      pruneSkipped: true,
+    };
+  }
+
   const removableStreams = await prisma.gameWatchStream.findMany({
     where: {
+      ...(protectedRetainedStreamIds.length > 0
+        ? { id: { notIn: protectedRetainedStreamIds } }
+        : {}),
       sourceType: {
         in: [...AOE2WAR_STREAM_SOURCE_TYPES],
       },
@@ -121,19 +149,40 @@ export async function cleanupBrowserStreams(prisma: PrismaClient) {
     take: 100,
   });
 
-  await Promise.allSettled(removableStreams.map((stream) => removeStreamChunks(stream.id)));
+  const removalResults = await Promise.allSettled(
+    removableStreams.map((stream) => removeStreamChunks(stream.id))
+  );
+  const pruned = removalResults.filter((result) => result.status === "fulfilled").length;
+  const pruneFailures = removalResults.length - pruned;
+
+  if (pruneFailures > 0) {
+    console.warn("[streams/cleanup] some retained chunks could not be pruned", {
+      attempted: removalResults.length,
+      pruned,
+      pruneFailures,
+    });
+  }
 
   return {
     ended: staleStreams.length,
     endedExternalPlaceholders: staleExternalPlaceholders.length,
-    pruned: removableStreams.length,
+    pruned,
+    pruneFailures,
+    pruneSkipped: false,
   };
 }
 
 export async function maybeCleanupBrowserStreams(prisma: PrismaClient) {
   const now = Date.now();
   if (now - lastCleanupAt < CLEANUP_INTERVAL_MS) {
-    return { skipped: true, ended: 0, endedExternalPlaceholders: 0, pruned: 0 };
+    return {
+      skipped: true,
+      ended: 0,
+      endedExternalPlaceholders: 0,
+      pruned: 0,
+      pruneFailures: 0,
+      pruneSkipped: false,
+    };
   }
 
   lastCleanupAt = now;

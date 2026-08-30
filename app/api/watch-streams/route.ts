@@ -18,7 +18,10 @@ const BROWSER_STREAM_STALE_MS = 120_000;
 const BROWSER_STREAM_ARCHIVE_MS = 6 * 60 * 60 * 1000;
 const EXTERNAL_STREAM_STALE_MS = 20 * 60 * 1000;
 
-function isVisibleStream(stream: ReturnType<typeof toWatchStreamPayload>) {
+function isVisibleStream(
+  stream: ReturnType<typeof toWatchStreamPayload>,
+  retainedStreamIds: ReadonlySet<number>,
+) {
   if (stream.sourceType !== "browser" && stream.provider !== "aoe2war") {
     if (stream.status === "removed") return false;
     if (!["starting", "live"].includes(stream.status)) return true;
@@ -34,6 +37,7 @@ function isVisibleStream(stream: ReturnType<typeof toWatchStreamPayload>) {
     ? stream.endedAt || stream.updatedAt
     : stream.lastHeartbeatAt || stream.updatedAt;
   const lastSeenMs = new Date(lastSeen).getTime();
+  if (stream.status === "ended" && retainedStreamIds.has(stream.id)) return true;
   const maxAge = stream.status === "ended" ? BROWSER_STREAM_ARCHIVE_MS : BROWSER_STREAM_STALE_MS;
   return Number.isFinite(lastSeenMs) && Date.now() - lastSeenMs <= maxAge;
 }
@@ -49,6 +53,20 @@ export async function GET(request: NextRequest) {
   }
 
   const prisma = getPrisma();
+  const retainedRows = await prisma.gameWatchRetainedDemo
+    .findMany({
+      where: {
+        expiresAt: { gt: new Date() },
+        stream: { sessionKey },
+      },
+      select: { streamId: true },
+      take: 1,
+    })
+    .catch((error) => {
+      console.warn("Failed to load retained Watch demo:", error);
+      return [];
+    });
+  const retainedStreamIds = new Set(retainedRows.map((row) => row.streamId));
   const streams = await prisma.gameWatchStream
     .findMany({
       where: {
@@ -64,7 +82,9 @@ export async function GET(request: NextRequest) {
       return [];
     });
 
-  const visibleStreams = streams.map(toWatchStreamPayload).filter(isVisibleStream);
+  const visibleStreams = streams
+    .map(toWatchStreamPayload)
+    .filter((stream) => isVisibleStream(stream, retainedStreamIds));
   return NextResponse.json(
     { streams: visibleStreams },
     { headers: NO_STORE_HEADERS }

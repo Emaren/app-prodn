@@ -5,6 +5,7 @@ import {
   AOE2WAR_STREAM_SOURCE_TYPES,
   type AoE2WarStreamSourceType,
 } from "@/lib/streamRequestAuth";
+import { normalizeStreamMediaMimeType } from "@/lib/streamMedia";
 import { listStreamChunkSequences } from "@/lib/streamStorage";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 
@@ -62,7 +63,8 @@ export async function GET(
       stream: toWatchStreamPayload(stream),
       status: stale ? "stale" : stream.status,
       stale,
-      mediaMimeType: stream.mediaMimeType || "video/webm;codecs=vp8,opus",
+      mediaMimeType:
+        normalizeStreamMediaMimeType(stream.mediaMimeType) || "video/webm;codecs=vp8,opus",
       latestSeq,
       newestAvailableSeq,
       chunkCount: stream.chunkCount,

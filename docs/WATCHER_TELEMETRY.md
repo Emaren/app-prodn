@@ -136,6 +136,12 @@ adjudication append-only. Settlement remains a separate authority domain.
 
 The Watcher 1.5.x streaming line uses watcher-native streaming plus rolling AoE2WAR playback and a faster final-candidate contract. Stream telemetry now includes source kind, capture mode, bitrate, one-second chunk cadence, chunk size, upload queue length, upload latency, dropped slices, heartbeat retries, display-capture guidance, and early-stop errors so support can tell whether a user is streaming a window, a full display, a slow network, or a failing capture source. A final upload is settlement-safe only when the upload response includes `should_settle = true` or a trusted finality status. Header-only or unparsed proof can be preserved for diagnostics, but it must not be read as final winner, score, postgame resource, or betting truth.
 
+The exact native media start, chunk, heartbeat, retry, end, playback, cleanup,
+and single-demo retention contract lives in
+`docs/WATCHER_NATIVE_STREAM_HANDOFF.md`. That contract authenticates before
+reading media bytes and treats a transaction hash, stream heartbeat, and replay
+finality as three different kinds of evidence.
+
 Watcher upload bytes are not transformed client-side. Team evidence originates in the server replay parser and must remain in canonical `game_stats.players`; the watcher needs no version change for the team-integrity release. `betting_eligible` for a team final additionally requires two complete explicit replay teams and one coherent winning team. A trusted final can remain valid replay evidence while still being ineligible to settle a team market.
 
 ## Event Types

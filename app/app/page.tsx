@@ -20,6 +20,10 @@ import InstallAppPrompt from "@/components/pwa/InstallAppPrompt";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
+import {
+  deriveWoloBalanceReadState,
+  formatMinimalDenomAmount,
+} from "@/lib/woloBalanceRead";
 
 type UserMePayload = {
   walletAddress?: string | null;
@@ -257,12 +261,40 @@ export default function InstalledAppPage() {
   const recentTransaction = loadState.transactions[0] ?? null;
   const displayName = user?.inGameName || user?.steamPersonaName || "War room";
   const connectedAddress = address || loadState.user?.walletAddress || "";
+  const balanceState = deriveWoloBalanceReadState({
+    connected: walletStatus === "connected",
+    amount: balance.data,
+    isLoading: balance.isLoading,
+    isFetching: balance.isFetching,
+    isError: balance.isError,
+  });
+  const formattedWalletBalance = formatMinimalDenomAmount(balance.data);
   const walletValue =
-    walletStatus === "connected"
-      ? `${formatWolo(Number(balance.data ?? 0))} WOLO`
-      : loadState.user?.pendingClaimAmountWolo
-        ? `${formatWolo(loadState.user.pendingClaimAmountWolo)} WOLO pending`
-        : "Connect wallet";
+    balanceState === "loading"
+      ? "Loading balance..."
+      : balanceState === "error"
+        ? "Balance unavailable"
+        : balanceState === "refreshing" && formattedWalletBalance !== null
+          ? `${formattedWalletBalance} WOLO`
+          : balanceState === "success-zero"
+            ? "0.00 WOLO"
+            : balanceState === "success-funded" && formattedWalletBalance !== null
+              ? `${formattedWalletBalance} WOLO`
+              : loadState.user?.pendingClaimAmountWolo
+                ? `${formatWolo(loadState.user.pendingClaimAmountWolo)} WOLO pending`
+                : "Connect wallet";
+  const walletValueDetail =
+    balanceState === "loading"
+      ? "Waiting for WoloChain"
+      : balanceState === "error"
+        ? "Chain balance read failed"
+        : balanceState === "refreshing"
+          ? "Refreshing chain balance"
+          : balanceState === "success-zero"
+            ? "Verified zero chain balance"
+            : balanceState === "success-funded"
+              ? "Verified chain balance"
+              : `${formatWolo(loadState.user?.pendingClaimCount)} pending claims`;
 
   const handleWalletConnect = async () => {
     if (isOffline) {
@@ -360,11 +392,7 @@ export default function InstalledAppPage() {
           <WarRoomCard
             eyebrow="WOLO"
             title={walletValue}
-            value={
-              walletStatus === "connected"
-                ? "Wallet connected"
-                : `${formatWolo(loadState.user?.pendingClaimCount)} pending claims`
-            }
+            value={walletValueDetail}
             href="/wolo"
             icon={Coins}
             accent="emerald"

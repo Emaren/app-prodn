@@ -106,6 +106,12 @@ test("protocol rejects unknown fields, invalid depth, stale protocol, and short 
 });
 
 test("realm registry is allowlisted and private precedence wins", () => {
+  assert.equal(livingKingdomRealmForPath("/watch"), "watch");
+  assert.equal(livingKingdomRealmForPath("/live-games"), "live-games");
+  assert.notEqual(
+    livingKingdomRealmForPath("/watch"),
+    livingKingdomRealmForPath("/live-games"),
+  );
   assert.equal(livingKingdomRealmForPath("/traffic"), "traffic");
   assert.equal(livingKingdomRealmForPath("/wolochain"), "wolo");
   assert.equal(livingKingdomRealmForPath("/requests"), "community");
@@ -130,6 +136,8 @@ test("realm registry is allowlisted and private precedence wins", () => {
   assert.equal(livingKingdomRealmHref("traffic"), "/traffic");
   assert.equal(livingKingdomRealmHref("tournaments"), "/tournaments/founders-cup");
   assert.equal(livingKingdomRealmHref("matchups"), "/rivalries");
+  assert.equal(livingKingdomRealmHref("watch"), "/watch");
+  assert.equal(livingKingdomRealmHref("live-games"), "/live-games");
   assert.equal(livingKingdomRealmHref("page:/clans/jims-clan"), "/clans/jims-clan");
   assert.equal(livingKingdomRealmHref("page:/bets/481"), "/bets/481");
 });
