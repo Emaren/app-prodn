@@ -645,3 +645,212 @@ test(
     );
   },
 );
+
+test(
+  "Radio WOLO program rules normalize metadata, transitions, and duration",
+  async () => {
+    const {
+      calculateRadioProgramDurationMs,
+      normalizeRadioProgramItems,
+      normalizeRadioProgramName,
+      normalizeRadioProgramTargetDurationMs,
+    } = await import(
+      "../lib/radioWoloPrograms.ts"
+    );
+
+    assert.equal(
+      normalizeRadioProgramName(
+        "  Wolomania   Hour  ",
+      ),
+      "Wolomania Hour",
+    );
+
+    assert.equal(
+      normalizeRadioProgramTargetDurationMs(
+        3_600_000,
+      ),
+      3_600_000,
+    );
+
+    assert.equal(
+      normalizeRadioProgramTargetDurationMs(
+        -1,
+      ),
+      null,
+    );
+
+    assert.deepEqual(
+      normalizeRadioProgramItems(
+        [
+          {
+            assetId: 7,
+            transition:
+              "cut",
+            crossfadeMs:
+              5000,
+          },
+          {
+            assetId: 7,
+            transition:
+              "CROSSFADE",
+            crossfadeMs:
+              3000,
+          },
+          {
+            assetId: 9,
+            transition:
+              "bumper",
+          },
+        ],
+      ),
+      [
+        {
+          assetId: 7,
+          transition:
+            "cut",
+          crossfadeMs: 0,
+        },
+        {
+          assetId: 7,
+          transition:
+            "crossfade",
+          crossfadeMs:
+            3000,
+        },
+        {
+          assetId: 9,
+          transition:
+            "bumper",
+          crossfadeMs: 0,
+        },
+      ],
+    );
+
+    assert.equal(
+      calculateRadioProgramDurationMs(
+        [
+          {
+            durationMs:
+              180_000,
+            transition:
+              "cut",
+            crossfadeMs:
+              0,
+          },
+          {
+            durationMs:
+              120_000,
+            transition:
+              "crossfade",
+            crossfadeMs:
+              3000,
+          },
+        ],
+      ),
+      297_000,
+    );
+  },
+);
+
+test(
+  "Radio WOLO program APIs are operator-only",
+  () => {
+    const programs =
+      read(
+        "app/api/admin/radio/programs/route.ts",
+      );
+
+    const program =
+      read(
+        "app/api/admin/radio/programs/[id]/route.ts",
+      );
+
+    const items =
+      read(
+        "app/api/admin/radio/programs/[id]/items/route.ts",
+      );
+
+    for (
+      const source of [
+        programs,
+        program,
+        items,
+      ]
+    ) {
+      assert.match(
+        source,
+        /requireRadioWoloOperator/,
+      );
+
+      assert.doesNotMatch(
+        source,
+        /requireAdmin\(/,
+      );
+    }
+  },
+);
+
+test(
+  "Radio WOLO chain saves canonical deterministic positions transactionally",
+  () => {
+    const items =
+      read(
+        "app/api/admin/radio/programs/[id]/items/route.ts",
+      );
+
+    assert.match(
+      items,
+      /prisma\.\$transaction/,
+    );
+
+    assert.match(
+      items,
+      /radioProgramItem\.deleteMany/,
+    );
+
+    assert.match(
+      items,
+      /radioProgramItem\.createMany/,
+    );
+
+    assert.match(
+      items,
+      /position:\s*index/,
+    );
+
+    assert.match(
+      items,
+      /status:\s*"ready"/,
+    );
+
+    assert.match(
+      items,
+      /status:\s*"draft"/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO program detail is always returned in broadcast order",
+  () => {
+    const program =
+      read(
+        "app/api/admin/radio/programs/[id]/route.ts",
+      );
+
+    assert.match(
+      program,
+      /position:\s*"asc"/,
+    );
+
+    assert.match(
+      program,
+      /builtDurationMs/,
+    );
+
+    assert.match(
+      program,
+      /calculateRadioProgramDurationMs/,
+    );
+  },
+);
