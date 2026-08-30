@@ -3089,9 +3089,99 @@ model RadioSubmission {
   createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
+  radioAsset RadioAsset?
+
   @@index([status, createdAt], map: "ix_radio_submissions_status_created")
   @@index([featured, publishedAt], map: "ix_radio_submissions_featured_published")
   @@map("radio_submissions")
+}
+
+/// Operator-owned media in the Radio WOLO station Vault.
+/// This is distinct from creator intake: RadioSubmission remains private
+/// submission/review evidence until explicitly imported by the operator.
+model RadioAsset {
+  id                    Int      @id @default(autoincrement())
+  publicId              String   @unique @default(uuid()) @map("public_id") @db.Uuid
+  sourceSubmissionId    Int?     @unique @map("source_submission_id")
+  title                 String   @db.VarChar(200)
+  credit                String?  @db.VarChar(200)
+  kind                  String   @default("uncategorized") @db.VarChar(64)
+  tags                  String[] @default([])
+  notes                 String?  @db.Text
+  audioOriginalFilename String   @map("audio_original_filename") @db.VarChar(255)
+  audioStorageKey       String   @unique @map("audio_storage_key") @db.VarChar(1000)
+  audioMediaType        String   @map("audio_media_type") @db.VarChar(100)
+  audioByteSize         BigInt   @map("audio_byte_size")
+  audioSha256           String   @map("audio_sha256") @db.VarChar(64)
+  durationMs            Int      @map("duration_ms")
+  artworkStorageKey     String?  @unique @map("artwork_storage_key") @db.VarChar(1000)
+  artworkMediaType      String?  @map("artwork_media_type") @db.VarChar(100)
+  status                String   @default("draft") @db.VarChar(24)
+  createdByUid          String?  @map("created_by_uid") @db.VarChar(100)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  sourceSubmission RadioSubmission?   @relation(fields: [sourceSubmissionId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  programItems     RadioProgramItem[]
+
+  @@index([status, createdAt], map: "ix_radio_assets_status_created")
+  @@index([kind, status], map: "ix_radio_assets_kind_status")
+  @@index([audioSha256], map: "ix_radio_assets_audio_sha256")
+  @@map("radio_assets")
+}
+
+/// One operator-authored programming block or chain.
+/// V1 commonly targets one hour, but duration is deliberately configurable.
+model RadioProgram {
+  id               Int      @id @default(autoincrement())
+  publicId         String   @unique @default(uuid()) @map("public_id") @db.Uuid
+  name             String   @db.VarChar(200)
+  targetDurationMs Int      @default(3600000) @map("target_duration_ms")
+  status           String   @default("draft") @db.VarChar(24)
+  createdByUid     String?  @map("created_by_uid") @db.VarChar(100)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  items        RadioProgramItem[]
+  stationState RadioStationState[]
+
+  @@index([status, updatedAt], map: "ix_radio_programs_status_updated")
+  @@map("radio_programs")
+}
+
+/// Ordered membership of one Vault asset in one Radio WOLO program.
+model RadioProgramItem {
+  id          Int      @id @default(autoincrement())
+  programId   Int      @map("program_id")
+  assetId     Int      @map("asset_id")
+  position    Int
+  transition  String   @default("cut") @db.VarChar(32)
+  crossfadeMs Int      @default(0) @map("crossfade_ms")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  program RadioProgram @relation(fields: [programId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  asset   RadioAsset   @relation(fields: [assetId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([programId, position], map: "uq_radio_program_items_program_position")
+  @@index([assetId], map: "ix_radio_program_items_asset")
+  @@map("radio_program_items")
+}
+
+/// Singleton global transmitter authority.
+/// There is one Radio WOLO station, therefore one authoritative station clock.
+model RadioStationState {
+  id            Int       @id @default(1)
+  programId     Int?      @map("program_id")
+  state         String    @default("off_air") @db.VarChar(24)
+  startedAt     DateTime? @map("started_at") @db.Timestamp(6)
+  stoppedAt     DateTime? @map("stopped_at") @db.Timestamp(6)
+  launchedByUid String?   @map("launched_by_uid") @db.VarChar(100)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  program RadioProgram? @relation(fields: [programId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@map("radio_station_state")
 }
 
 /// Operator-controlled public state for the AoE2WAR Workshop. This table is a
