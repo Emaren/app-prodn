@@ -400,7 +400,7 @@ test(
           /<BetSlipComposer/g
         ) || []
       ).length,
-      3
+      4
     );
 
     assert.match(
