@@ -12,6 +12,7 @@ import {
   ArrowDown,
   ArrowUp,
   Clock3,
+  Copy,
   GripVertical,
   ListMusic,
   Loader2,
@@ -65,6 +66,13 @@ type ProgramDetail = {
     crossfadeMs: number;
     asset: Asset;
   }>;
+};
+
+type StationSnapshot = {
+  state: string;
+  program: {
+    id: number;
+  } | null;
 };
 
 type Transition =
@@ -226,6 +234,13 @@ export default function RadioWoloBuilder() {
     string | null
   >(null);
 
+  const [
+    onAirProgramId,
+    setOnAirProgramId,
+  ] = useState<
+    number | null
+  >(null);
+
   const fetchJson =
     useCallback(
       async (
@@ -279,6 +294,34 @@ export default function RadioWoloBuilder() {
         setAssets(
           (payload.assets ||
             []) as Asset[],
+        );
+      },
+      [fetchJson],
+    );
+
+  const loadStation =
+    useCallback(
+      async () => {
+        const payload =
+          await fetchJson(
+            "/api/admin/radio/station",
+            {
+              cache:
+                "no-store",
+            },
+          );
+
+        const station =
+          payload.station as
+            | StationSnapshot
+            | undefined;
+
+        setOnAirProgramId(
+          station?.state ===
+            "on_air"
+            ? station.program
+                ?.id ?? null
+            : null,
         );
       },
       [fetchJson],
@@ -387,6 +430,7 @@ export default function RadioWoloBuilder() {
             [
               loadAssets(),
               loadPrograms(),
+              loadStation(),
             ],
           );
         } catch (
@@ -406,7 +450,30 @@ export default function RadioWoloBuilder() {
     [
       loadAssets,
       loadPrograms,
+      loadStation,
     ],
+  );
+
+  useEffect(
+    () => {
+      const timer =
+        window.setInterval(
+          () => {
+            void loadStation()
+              .catch(
+                () =>
+                  undefined,
+              );
+          },
+          5_000,
+        );
+
+      return () =>
+        window.clearInterval(
+          timer,
+        );
+    },
+    [loadStation],
   );
 
   const builtDurationMs =
@@ -435,6 +502,11 @@ export default function RadioWoloBuilder() {
   const deltaMs =
     targetDurationMs -
     builtDurationMs;
+
+  const selectedProgramIsOnAir =
+    program !== null &&
+    program.id ===
+      onAirProgramId;
 
   const visibleAssets =
     useMemo(
@@ -478,6 +550,16 @@ export default function RadioWoloBuilder() {
             ChainItem[],
         ) => ChainItem[]),
   ) {
+    if (
+      selectedProgramIsOnAir
+    ) {
+      setError(
+        "This program is on air. Duplicate it to a draft before editing.",
+      );
+
+      return;
+    }
+
     setChain(
       next,
     );
@@ -604,6 +686,99 @@ export default function RadioWoloBuilder() {
     setDraggedIndex(
       null,
     );
+  }
+
+  async function duplicateProgramToDraft() {
+    if (!program) {
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const createdPayload =
+        await fetchJson(
+          "/api/admin/radio/programs",
+          {
+            method:
+              "POST",
+            headers: {
+              "content-type":
+                "application/json",
+            },
+            body:
+              JSON.stringify(
+                {
+                  name:
+                    `${program.name} — Draft`,
+                  targetDurationMs:
+                    program.targetDurationMs,
+                },
+              ),
+          },
+        );
+
+      const created =
+        createdPayload.program as
+          ProgramSummary;
+
+      if (chain.length) {
+        await fetchJson(
+          `/api/admin/radio/programs/${created.id}/items`,
+          {
+            method:
+              "PUT",
+            headers: {
+              "content-type":
+                "application/json",
+            },
+            body:
+              JSON.stringify(
+                {
+                  items:
+                    chain.map(
+                      (item) => ({
+                        assetId:
+                          item.asset
+                            .id,
+                        transition:
+                          item.transition,
+                        crossfadeMs:
+                          item.transition ===
+                            "crossfade"
+                            ? item.crossfadeMs
+                            : 0,
+                      }),
+                    ),
+                },
+              ),
+          },
+        );
+      }
+
+      await loadPrograms(
+        created.id,
+      );
+
+      await loadStation();
+
+      setNotice(
+        `"${created.name}" created as an editable draft.`,
+      );
+    } catch (
+      cause
+    ) {
+      setError(
+        cause instanceof
+          Error
+          ? cause.message
+          : "Could not duplicate the live program.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function createProgram() {
@@ -907,6 +1082,35 @@ export default function RadioWoloBuilder() {
         </div>
       ) : null}
 
+      {selectedProgramIsOnAir ? (
+        <div className="flex flex-col gap-4 rounded-2xl border border-rose-300/20 bg-rose-500/[0.09] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.22em] text-rose-200">
+              ON AIR — broadcast chain locked
+            </div>
+
+            <div className="mt-1 text-sm leading-6 text-slate-300">
+              The live chain is immutable so listener timing stays synchronized.
+              Duplicate it to preserve this lineup and continue editing safely.
+            </div>
+          </div>
+
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() =>
+              void duplicateProgramToDraft()
+            }
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-fuchsia-100 px-4 py-2.5 text-xs font-black text-slate-950 transition hover:bg-white disabled:opacity-40"
+          >
+            <Copy
+              size={14}
+            />
+            Duplicate to Draft
+          </button>
+        </div>
+      ) : null}
+
       <section className="rounded-[1.8rem] border border-white/8 bg-[radial-gradient(circle_at_10%_0%,rgba(217,70,239,0.08),transparent_38%),rgba(2,6,23,0.72)] p-5 sm:p-6">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div>
@@ -1092,6 +1296,9 @@ export default function RadioWoloBuilder() {
                   value={
                     program.name
                   }
+                  disabled={
+                    selectedProgramIsOnAir
+                  }
                   onChange={(
                     event,
                   ) => {
@@ -1120,6 +1327,9 @@ export default function RadioWoloBuilder() {
 
                 <input
                   type="number"
+                  disabled={
+                    selectedProgramIsOnAir
+                  }
                   min={1}
                   max={1440}
                   value={Math.round(
@@ -1163,7 +1373,8 @@ export default function RadioWoloBuilder() {
                 type="button"
                 disabled={
                   busy ||
-                  !metadataDirty
+                  !metadataDirty ||
+                  selectedProgramIsOnAir
                 }
                 onClick={() =>
                   void saveMetadata()
@@ -1179,7 +1390,8 @@ export default function RadioWoloBuilder() {
               <button
                 type="button"
                 disabled={
-                  busy
+                  busy ||
+                  selectedProgramIsOnAir
                 }
                 onClick={() =>
                   void archiveProgram()
@@ -1269,12 +1481,20 @@ export default function RadioWoloBuilder() {
                           asset.id
                         }
                         type="button"
+                        disabled={
+                          selectedProgramIsOnAir
+                        }
+                        title={
+                          selectedProgramIsOnAir
+                            ? "Duplicate the live program to a draft before adding audio."
+                            : "Add to broadcast chain"
+                        }
                         onClick={() =>
                           addAsset(
                             asset,
                           )
                         }
-                        className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-fuchsia-100/[0.055]"
+                        className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-fuchsia-100/[0.055] disabled:cursor-not-allowed disabled:opacity-35"
                       >
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/8 bg-white/[0.025] text-slate-600 transition group-hover:border-fuchsia-100/20 group-hover:text-fuchsia-100">
                           <Plus
@@ -1330,7 +1550,8 @@ export default function RadioWoloBuilder() {
                     type="button"
                     disabled={
                       busy ||
-                      !chainDirty
+                      !chainDirty ||
+                      selectedProgramIsOnAir
                     }
                     onClick={() =>
                       void saveChain(
@@ -1350,7 +1571,8 @@ export default function RadioWoloBuilder() {
                     disabled={
                       busy ||
                       chain.length ===
-                        0
+                        0 ||
+                      selectedProgramIsOnAir
                     }
                     onClick={() =>
                       void saveChain(
@@ -1378,7 +1600,9 @@ export default function RadioWoloBuilder() {
                         key={
                           item.key
                         }
-                        draggable
+                        draggable={
+                          !selectedProgramIsOnAir
+                        }
                         onDragStart={() =>
                           setDraggedIndex(
                             index,
@@ -1404,6 +1628,9 @@ export default function RadioWoloBuilder() {
                         }
                         className={[
                           "group grid gap-3 rounded-[1.15rem] border px-3 py-3 transition sm:grid-cols-[28px_36px_minmax(0,1fr)_145px_94px_auto] sm:items-center",
+                          selectedProgramIsOnAir
+                            ? "pointer-events-none opacity-60"
+                            : "",
                           draggedIndex ===
                           index
                             ? "border-fuchsia-100/30 bg-fuchsia-200/[0.07]"

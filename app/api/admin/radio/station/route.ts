@@ -168,38 +168,75 @@ export async function GET(
     return gate.error;
   }
 
-  let station =
-    await gate.prisma.radioStationState.upsert(
-      {
-        where: {
-          id: 1,
-        },
-        create: {
-          id: 1,
-          state:
-            "off_air",
-        },
-        update: {},
-        select: {
-          id: true,
-          programId:
-            true,
-          state: true,
-          startedAt:
-            true,
-          stoppedAt:
-            true,
-          launchedByUid:
-            true,
-          updatedAt:
-            true,
-          program: {
-            select:
-              PROGRAM_SELECT,
+  const stationSelect = {
+    id: true,
+    programId:
+      true,
+    state: true,
+    startedAt:
+      true,
+    stoppedAt:
+      true,
+    launchedByUid:
+      true,
+    updatedAt:
+      true,
+    program: {
+      select:
+        PROGRAM_SELECT,
+    },
+  } as const;
+
+  let station;
+
+  try {
+    station =
+      await gate.prisma.radioStationState.upsert(
+        {
+          where: {
+            id: 1,
           },
+          create: {
+            id: 1,
+            state:
+              "off_air",
+          },
+          update: {},
+          select:
+            stationSelect,
         },
-      },
-    );
+      );
+  } catch (cause) {
+    const isSingletonCreateRace =
+      typeof cause ===
+        "object" &&
+      cause !== null &&
+      "code" in cause &&
+      cause.code ===
+        "P2002";
+
+    if (!isSingletonCreateRace) {
+      throw cause;
+    }
+
+    const racedStation =
+      await gate.prisma.radioStationState.findUnique(
+        {
+          where: {
+            id: 1,
+          },
+          select:
+            stationSelect,
+        },
+      );
+
+    if (!racedStation) {
+      throw cause;
+    }
+
+    station =
+      racedStation;
+  }
 
   const now =
     new Date();
