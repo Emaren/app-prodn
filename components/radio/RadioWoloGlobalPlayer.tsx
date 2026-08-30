@@ -28,7 +28,7 @@ const THEME_STORAGE_KEY =
   "aoe2war:radio-wolo-player-theme:v3";
 
 const SKIN_STORAGE_KEY =
-  "aoe2war:radio-wolo-player-skin:v1";
+  "aoe2war:radio-wolo-player-skin:v2";
 
 const PLAYER_SKINS = [
   {
@@ -70,7 +70,7 @@ function readStoredSkin(): PlayerSkinId {
     typeof window ===
     "undefined"
   ) {
-    return "ui";
+    return "mini4";
   }
 
   try {
@@ -92,7 +92,7 @@ function readStoredSkin(): PlayerSkinId {
     // Player appearance persistence is optional.
   }
 
-  return "ui";
+  return "mini4";
 }
 
 const AUTOPLAY_STORAGE_KEY =
@@ -159,7 +159,7 @@ const PLAYER_THEMES = [
     dormant:
       "border-[#294c78]/70 bg-[#020817]/98 text-amber-300 shadow-[0_0_24px_rgba(17,52,96,0.26)] hover:border-amber-600/55 hover:text-amber-200",
     shell:
-      "border-[#294c78]/65 bg-[radial-gradient(circle_at_12%_-8%,rgba(37,99,235,0.24),transparent_42%),radial-gradient(circle_at_92%_110%,rgba(180,83,9,0.10),transparent_38%),linear-gradient(145deg,#07172f_0%,#031022_48%,#020817_100%)]",
+      "border-amber-800/30 bg-[radial-gradient(circle_at_80%_92%,rgba(37,99,235,0.19),transparent_47%),radial-gradient(circle_at_69%_106%,rgba(217,119,6,0.065),transparent_34%),linear-gradient(168deg,#01040a_0%,#020814_22%,#061326_48%,#0b2444_73%,#12355f_100%)]",
     dot:
       "bg-amber-500 shadow-[0_0_11px_rgba(245,158,11,0.86)]",
     control:
@@ -334,6 +334,111 @@ function progressPercent(
   );
 }
 
+function artFaceBackgroundSize(
+  skinId: PlayerSkinId,
+) {
+  switch (skinId) {
+    case "mini1":
+    case "mini2":
+    case "mini3":
+    case "mini4":
+      return "100% 100%";
+
+    case "ui":
+    default:
+      return "100% 100%";
+  }
+}
+
+function artFaceBackgroundPosition(
+  skinId: PlayerSkinId,
+) {
+  switch (skinId) {
+    case "mini1":
+      return "center center";
+
+    case "mini2":
+      return "center center";
+
+    case "mini3":
+      return "center center";
+
+    case "mini4":
+      return "center center";
+
+    case "ui":
+    default:
+      return "center center";
+  }
+}
+
+function artFaceShellClassName(
+  skinId: PlayerSkinId,
+) {
+  const base =
+    "fixed bottom-[calc(env(safe-area-inset-bottom)+5.8rem)] left-3 z-[169] aspect-[4/3] w-[min(19rem,calc(100vw-1.5rem))] bg-transparent shadow-[0_24px_72px_rgba(0,0,0,0.58)] lg:bottom-4 lg:left-4";
+
+  if (
+    skinId === "mini1"
+  ) {
+    return (
+      base +
+      " overflow-visible rounded-none"
+    );
+  }
+
+  return (
+    base +
+    " overflow-hidden rounded-[1.45rem]"
+  );
+}
+
+function artFaceShowsStandaloneMore(
+  skinId: PlayerSkinId,
+) {
+  return skinId === "mini1";
+}
+
+function artFaceMoreHotspotClassName(
+  skinId: PlayerSkinId,
+) {
+  const focusRing =
+    " focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80";
+
+  switch (skinId) {
+    case "mini1":
+      return (
+        "absolute bottom-[4.0%] right-[4.0%] min-w-[54px] rounded-[10px] border border-amber-300/35 bg-[#060d18]/92 px-2 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-amber-100/95 shadow-[0_3px_10px_rgba(0,0,0,0.42)] backdrop-blur-sm transition hover:border-amber-200/60 hover:text-amber-50" +
+        focusRing
+      );
+
+    case "mini2":
+      return (
+        "absolute bottom-[2.2%] right-[2.6%] h-[14.5%] w-[23%] rounded-[12px] bg-transparent text-transparent" +
+        focusRing
+      );
+
+    case "mini3":
+      return (
+        "absolute bottom-[2.1%] right-[2.4%] h-[14.5%] w-[23%] rounded-[12px] bg-transparent text-transparent" +
+        focusRing
+      );
+
+    case "mini4":
+      return (
+        "absolute bottom-[2.2%] right-[2.4%] h-[14.5%] w-[21.5%] rounded-[12px] bg-transparent text-transparent" +
+        focusRing
+      );
+
+    case "ui":
+    default:
+      return (
+        "absolute bottom-3 right-3 rounded-md border border-amber-300/35 bg-[#060d18]/88 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-amber-100/90 shadow-[0_4px_12px_rgba(0,0,0,0.38)] backdrop-blur-sm transition hover:border-amber-200/60 hover:text-amber-50" +
+        focusRing
+      );
+  }
+}
+
 export default function RadioWoloGlobalPlayer() {
   const {
     station,
@@ -402,7 +507,7 @@ export default function RadioWoloGlobalPlayer() {
     setSkinId,
   ] =
     React.useState<PlayerSkinId>(
-      "ui",
+      "mini4",
     );
 
   React.useEffect(() => {
@@ -721,16 +826,22 @@ export default function RadioWoloGlobalPlayer() {
           skinId
         }
         data-radio-wolo-art-face
-        className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.8rem)] left-3 z-[169] aspect-[4/3] w-[min(19rem,calc(100vw-1.5rem))] overflow-hidden rounded-[1rem] bg-[#020817] shadow-[0_24px_72px_rgba(0,0,0,0.72),0_0_26px_rgba(20,67,124,0.16)] lg:bottom-4 lg:left-4"
+        className={artFaceShellClassName(
+          skinId,
+        )}
         style={{
           backgroundImage:
             `url("${activeSkin.src}")`,
           backgroundPosition:
-            "center",
+            artFaceBackgroundPosition(
+              skinId,
+            ),
           backgroundRepeat:
             "no-repeat",
           backgroundSize:
-            "cover",
+            artFaceBackgroundSize(
+              skinId,
+            ),
         }}
       >
         <span
@@ -748,11 +859,6 @@ export default function RadioWoloGlobalPlayer() {
             className="pointer-events-none absolute inset-0 bg-[#020817]/20"
           />
         ) : null}
-
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-amber-400/18"
-        />
 
         <button
           type="button"
@@ -802,12 +908,21 @@ export default function RadioWoloGlobalPlayer() {
               "expanded",
             );
           }}
-          className="absolute bottom-[2%] right-[2%] h-[18%] w-[31%] rounded-lg bg-transparent text-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300/80"
+          className={artFaceMoreHotspotClassName(
+          skinId,
+        )}
           aria-label="More Radio WOLO controls"
         >
+        {artFaceShowsStandaloneMore(
+          skinId,
+        ) ? (
+          "More"
+        ) : (
           <span className="sr-only">
             More
           </span>
+        )}
+
         </button>
       </section>
     );
@@ -1178,7 +1293,7 @@ export default function RadioWoloGlobalPlayer() {
           </div>
 
           {programName ? (
-            <div className="mt-3 rounded-xl border border-white/[0.055] bg-white/[0.025] px-3 py-2">
+            <div className="hidden mt-3 rounded-xl border border-white/[0.055] bg-white/[0.025] px-3 py-2">
               <div className="text-[8px] uppercase tracking-[0.18em] text-white/28">
                 Program
               </div>
@@ -1189,7 +1304,7 @@ export default function RadioWoloGlobalPlayer() {
           ) : null}
 
           {nextTitle ? (
-            <div className="mt-2 rounded-xl border border-white/[0.045] bg-white/[0.018] px-3 py-2">
+            <div className="hidden mt-2 rounded-xl border border-white/[0.045] bg-white/[0.018] px-3 py-2">
               <div className="text-[8px] uppercase tracking-[0.18em] text-white/25">
                 Next
               </div>
@@ -1200,7 +1315,7 @@ export default function RadioWoloGlobalPlayer() {
           ) : null}
 
           {playbackBlocked ? (
-            <div className="mt-3 rounded-xl border border-amber-200/12 bg-amber-300/[0.045] px-3 py-2 text-[10px] leading-4 text-amber-50/65">
+            <div className="hidden mt-3 rounded-xl border border-amber-200/12 bg-amber-300/[0.045] px-3 py-2 text-[10px] leading-4 text-amber-50/65">
               Your browser requires a tap before Radio WOLO can enter. Press Listen once.
             </div>
           ) : null}

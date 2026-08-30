@@ -2452,7 +2452,7 @@ test(
 
     assert.match(
       source,
-      /aoe2war:radio-wolo-player-skin:v1/,
+      /aoe2war:radio-wolo-player-skin:v2/,
     );
 
     assert.match(
@@ -2606,7 +2606,7 @@ test(
 
     assert.match(
       source,
-      /linear-gradient\(145deg,#07172f_0%,#031022_48%,#020817_100%\)/,
+      /linear-gradient\(168deg,#01040a_0%,#020814_22%,#061326_48%,#0b2444_73%,#12355f_100%\)/,
     );
   },
 );
@@ -2636,7 +2636,7 @@ test(
 
     assert.match(
       source,
-      /backgroundSize:\s*"cover"/,
+      /backgroundSize:\s*artFaceBackgroundSize/,
     );
 
     assert.match(
@@ -2696,7 +2696,7 @@ test(
 
     assert.match(
       artFace,
-      /backgroundSize:\s*"cover"/,
+      /backgroundSize:\s*artFaceBackgroundSize/,
     );
 
     assert.doesNotMatch(
@@ -2717,6 +2717,247 @@ test(
     assert.match(
       artFace,
       /More Radio WOLO controls/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO defaults to Mini IV and lets artwork skins use their baked More controls",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      source,
+      /aoe2war:radio-wolo-player-skin:v2/,
+    );
+
+    assert.match(
+      source,
+      /React\.useState<PlayerSkinId>\(\s*"mini4"/,
+    );
+
+    const storedSkin =
+      source.match(
+        /function readStoredSkin\(\): PlayerSkinId \{[\s\S]*?\n\}/,
+      )?.[0] ?? "";
+
+    assert.match(
+      storedSkin,
+      /return "mini4"/,
+    );
+
+    assert.match(
+      source,
+      /case "mini4":[\s\S]*?return "100% 100%"/,
+    );
+
+    const artFace =
+      source.match(
+        /mode === "compact"[\s\S]*?activeSkin\.kind === "image"[\s\S]*?(?=\n  return \(\n    <section)/,
+      )?.[0] ?? "";
+
+    assert.match(
+      artFace,
+      /bg-transparent/,
+    );
+
+    assert.match(
+      artFace,
+      /backgroundSize:\s*artFaceBackgroundSize/,
+    );
+
+    assert.match(
+      artFace,
+      /More Radio WOLO controls[\s\S]*?More/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO uses standalone More only for Mini I while Mini II III IV use baked hotspots",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      source,
+      /function artFaceShowsStandaloneMore/,
+    );
+
+    assert.match(
+      source,
+      /return skinId === "mini1"/,
+    );
+
+    const hotspots =
+      source.match(
+        /function artFaceMoreHotspotClassName\([\s\S]*?\n\}/,
+      )?.[0] ?? "";
+
+    assert.match(
+      hotspots,
+      /case "mini1":[\s\S]*?min-w-\[54px\]/,
+    );
+
+    assert.match(
+      hotspots,
+      /case "mini2":[\s\S]*?bg-transparent text-transparent/,
+    );
+
+    assert.match(
+      hotspots,
+      /case "mini3":[\s\S]*?bg-transparent text-transparent/,
+    );
+
+    assert.match(
+      hotspots,
+      /case "mini4":[\s\S]*?bg-transparent text-transparent/,
+    );
+
+    const artFace =
+      source.match(
+        /mode === "compact"[\s\S]*?activeSkin\.kind === "image"[\s\S]*?(?=\n  return \(\n    <section)/,
+      )?.[0] ?? "";
+
+    assert.match(
+      artFace,
+      /artFaceMoreHotspotClassName/,
+    );
+
+    assert.match(
+      artFace,
+      /artFaceShowsStandaloneMore/,
+    );
+
+    assert.match(
+      artFace,
+      /<span className="sr-only">\s*More\s*<\/span>/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO artwork faces preserve their complete gold frames without a blue wrapper halo",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    const sizing =
+      source.match(
+        /function artFaceBackgroundSize\([\s\S]*?\n\}/,
+      )?.[0] ?? "";
+
+    assert.match(
+      sizing,
+      /case "mini1":[\s\S]*?case "mini2":[\s\S]*?case "mini3":[\s\S]*?case "mini4":[\s\S]*?return "100% 100%"/,
+    );
+
+    const artFace =
+      source.match(
+        /mode === "compact"[\s\S]*?activeSkin\.kind === "image"[\s\S]*?(?=\n  return \(\n    <section)/,
+      )?.[0] ?? "";
+
+    assert.match(
+      artFace,
+      /artFaceShellClassName/,
+    );
+
+    assert.match(
+      source,
+      /skinId === "mini1"[\s\S]*?overflow-visible rounded-none/,
+    );
+
+    assert.match(
+      source,
+      /overflow-hidden rounded-\[1\.45rem\]/,
+    );
+
+    assert.doesNotMatch(
+      artFace,
+      /rgba\(20,67,124,0\.16\)/,
+    );
+
+    assert.doesNotMatch(
+      artFace,
+      /ring-inset ring-amber-400\/18/,
+    );
+
+    assert.match(
+      source,
+      /min-w-\[54px\]/,
+    );
+  },
+);
+
+
+test(
+  "Radio WOLO preserves More functionality while visually hiding redundant broadcast cards",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      source,
+      /current\?\.asset\.credit/,
+    );
+
+    assert.match(
+      source,
+      /<Palette /,
+    );
+
+    assert.match(
+      source,
+      /Player face/,
+    );
+
+    assert.match(
+      source,
+      /setStoredSkin\(\s*skin\.id/,
+    );
+
+    assert.match(
+      source,
+      /\{programName \? \(\s*<div\s+className="hidden /,
+    );
+
+    assert.match(
+      source,
+      /\{nextTitle \? \(\s*<div\s+className="hidden /,
+    );
+
+    assert.match(
+      source,
+      /\{playbackBlocked \? \(\s*<div\s+className="hidden /,
+    );
+
+    const shell =
+      source.match(
+        /function artFaceShellClassName\([\s\S]*?\n\}/,
+      )?.[0] ?? "";
+
+    assert.match(
+      shell,
+      /skinId === "mini1"/,
+    );
+
+    assert.match(
+      shell,
+      /overflow-visible rounded-none/,
+    );
+
+    assert.match(
+      shell,
+      /overflow-hidden rounded-\[1\.45rem\]/,
     );
   },
 );
