@@ -324,6 +324,9 @@ def serve_shadow() -> int:
     env["AOE2WAR_PREVIEW_DATA_BASE"] = PREVIEW_ORIGIN
     env["AOE2WAR_PREVIEW_USER_NAME"] = PREVIEW_NAME
     env["AOE2WAR_PREVIEW_USER_UID"] = preview_uid
+    # Radio WOLO V1 has one explicit operator. In writable local shadow,
+    # the sanctioned Emaren preview identity owns that capability.
+    env["RADIO_WOLO_OPERATOR_UIDS"] = preview_uid
 
     env["AOE2_BACKEND_UPSTREAM"] = PREVIEW_ORIGIN
 
