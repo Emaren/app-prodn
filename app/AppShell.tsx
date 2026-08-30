@@ -78,6 +78,11 @@ const Toaster = dynamic(
   { ssr: false }
 );
 
+const RadioWoloGlobalPlayer = dynamic(
+  () => import("@/components/radio/RadioWoloGlobalPlayer"),
+  { ssr: false }
+);
+
 const HEADER_LINKS: ReadonlyArray<{
   href: string;
   label: string;
@@ -1761,6 +1766,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
           ) : null}
         </div>
       ) : null}
+      {deferredClientsReady ? <RadioWoloGlobalPlayer /> : null}
       {!isContactPage ? <MobileFloatingNav /> : null}
       {deferredClientsReady ? <Toaster richColors /> : null}
     </div>

@@ -1948,3 +1948,286 @@ test(
     );
   },
 );
+
+test(
+  "Radio WOLO global player defaults to a dormant persisted relic",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      source,
+      /aoe2war:radio-wolo-player-mode:v1/,
+    );
+
+    assert.match(
+      source,
+      /useState<PlayerMode>\(\s*"dormant"/,
+    );
+
+    assert.match(
+      source,
+      /data-radio-wolo-mode="dormant"/,
+    );
+
+    assert.match(
+      source,
+      /setStoredMode\(\s*"dormant"/,
+    );
+
+    assert.match(
+      source,
+      /bottom-\[calc\(env\(safe-area-inset-bottom\)\+5\.8rem\)\]/,
+    );
+
+    assert.match(
+      source,
+      /lg:bottom-4 lg:left-4/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO global player requires explicit Listen interaction and trusts server metadata redaction",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      source,
+      /useRadioWoloListener/,
+    );
+
+    assert.match(
+      source,
+      /void startListening\(\)/,
+    );
+
+    assert.match(
+      source,
+      /stopListening\(\)/,
+    );
+
+    assert.match(
+      source,
+      /current\?\.asset\.title/,
+    );
+
+    assert.match(
+      source,
+      /current\?\.asset\.credit/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /useUserAuth/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /autoplay|autoPlay/,
+    );
+
+    assert.match(
+      source,
+      /playbackBlocked/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO global player is dynamically mounted exactly once by AppShell",
+  () => {
+    const source =
+      read(
+        "app/AppShell.tsx",
+      );
+
+    assert.match(
+      source,
+      /dynamic\(\s*\(\)\s*=>\s*import\("@\/components\/radio\/RadioWoloGlobalPlayer"\)/,
+    );
+
+    assert.match(
+      source,
+      /<RadioWoloGlobalPlayer \/>/,
+    );
+
+    assert.equal(
+      (
+        source.match(
+          /<RadioWoloGlobalPlayer \/>/g,
+        ) ?? []
+      ).length,
+      1,
+    );
+
+    assert.match(
+      source,
+      /deferredClientsReady\s*\?\s*<RadioWoloGlobalPlayer \/>/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO listener clears listening intent when the transmitter goes off air",
+  () => {
+    const source =
+      read(
+        "hooks/useRadioWoloListener.ts",
+      );
+
+    assert.match(
+      source,
+      /nextStation\.state\s*===\s*"off_air"[\s\S]*listeningIntentRef\.current\s*=\s*false[\s\S]*setIsListening\(\s*false/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO Listen consumes the existing station anchor before network resync",
+  () => {
+    const source =
+      read(
+        "hooks/useRadioWoloListener.ts",
+      );
+
+    const startBlock =
+      source.match(
+        /const startListening\s*=[\s\S]*?const stopListening\s*=/,
+      )?.[0] ?? "";
+
+    assert.match(
+      startBlock,
+      /const anchor\s*=\s*anchorRef\.current/,
+    );
+
+    assert.match(
+      startBlock,
+      /currentStation\?\.state\s*!==\s*"on_air"/,
+    );
+
+    assert.match(
+      startBlock,
+      /applyAnchorToAudio\(\s*anchor/,
+    );
+
+    assert.match(
+      startBlock,
+      /void syncStation\(\)/,
+    );
+
+    assert.doesNotMatch(
+      startBlock,
+      /await syncStation\(\)/,
+    );
+
+    assert.ok(
+      startBlock.indexOf(
+        "applyAnchorToAudio",
+      ) <
+        startBlock.lastIndexOf(
+          "void syncStation()",
+        ),
+    );
+  },
+);
+
+test(
+  "Radio WOLO can invoke playback while newly selected media is still loading",
+  () => {
+    const source =
+      read(
+        "hooks/useRadioWoloListener.ts",
+      );
+
+    assert.match(
+      source,
+      /audio\.load\(\);[\s\S]*listeningIntentRef[\s\S]*void attemptPlay\(\s*audio/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO global player defaults to a strong Ember warrior palette",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      source,
+      /id:\s*"ember"/,
+    );
+
+    assert.match(
+      source,
+      /id:\s*"imperial"/,
+    );
+
+    assert.match(
+      source,
+      /id:\s*"iron"/,
+    );
+
+    assert.match(
+      source,
+      /id:\s*"verdant"/,
+    );
+
+    assert.match(
+      source,
+      /React\.useState<PlayerThemeId>\(\s*"ember"/,
+    );
+
+    assert.match(
+      source,
+      /aoe2war:radio-wolo-player-theme:v1/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /fuchsia-/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO player lets the listener cycle and persist warrior colors",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      source,
+      /const cycleTheme/,
+    );
+
+    assert.match(
+      source,
+      /<Palette /,
+    );
+
+    assert.match(
+      source,
+      /Cycle Radio WOLO color/,
+    );
+
+    assert.match(
+      source,
+      /localStorage\.setItem\(\s*THEME_STORAGE_KEY/,
+    );
+
+    assert.match(
+      source,
+      /data-radio-wolo-theme/,
+    );
+  },
+);

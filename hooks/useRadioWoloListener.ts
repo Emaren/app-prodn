@@ -271,6 +271,15 @@ export function useRadioWoloListener() {
             );
 
             audio.load();
+
+            if (
+              listeningIntentRef
+                .current
+            ) {
+              void attemptPlay(
+                audio,
+              );
+            }
           }
 
           return;
@@ -397,6 +406,18 @@ export function useRadioWoloListener() {
                 0,
             );
 
+            if (
+              nextStation.state ===
+              "off_air"
+            ) {
+              listeningIntentRef.current =
+                false;
+
+              setIsListening(
+                false,
+              );
+            }
+
             const audio =
               audioRef.current;
 
@@ -463,6 +484,25 @@ export function useRadioWoloListener() {
   const startListening =
     useCallback(
       async () => {
+        const audio =
+          audioRef.current;
+
+        const anchor =
+          anchorRef.current;
+
+        const currentStation =
+          stationRef.current;
+
+        if (
+          !audio ||
+          !anchor ||
+          currentStation?.state !==
+            "on_air"
+        ) {
+          void syncStation();
+          return false;
+        }
+
         listeningIntentRef.current =
           true;
 
@@ -474,39 +514,21 @@ export function useRadioWoloListener() {
           false,
         );
 
-        const nextStation =
-          await syncStation();
-
-        if (
-          nextStation?.state !==
-          "on_air"
-        ) {
-          return false;
-        }
-
-        const audio =
-          audioRef.current;
-
-        if (!audio) {
-          return false;
-        }
-
-        const anchor =
-          anchorRef.current;
-
-        if (anchor) {
-          applyAnchorToAudio(
-            anchor,
-          );
-        }
-
-        return attemptPlay(
-          audio,
+        // Consume the already-polled authoritative anchor immediately.
+        // This keeps audio.play() inside the user's click activation rather
+        // than waiting for another network round trip first.
+        applyAnchorToAudio(
+          anchor,
         );
+
+        // Refresh truth in parallel; the result will correct meaningful
+        // drift or switch segments if the station advanced meanwhile.
+        void syncStation();
+
+        return true;
       },
       [
         applyAnchorToAudio,
-        attemptPlay,
         syncStation,
       ],
     );
