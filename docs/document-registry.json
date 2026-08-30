@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c8c37d14dd6d9557622e90a42dbd2d3c36dffa9acc974efe0a39e02a11fef07f",
+      "sha256": "3fecf06cadab2cef5d048f166cbbdac5073ea6c703762dfa60071712f3b826ca",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1720,8 +1720,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "d962263f6b730563db302d361f00fec9f934d21a"
+    "branch": "integrate/radio-hardening-release-20260830",
+    "commit": "2667848f8839f3363403d57620556dd3b1676230"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
