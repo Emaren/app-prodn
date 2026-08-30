@@ -1279,3 +1279,190 @@ test(
     );
   },
 );
+
+test(
+  "Radio WOLO public station redacts track identity for anonymous listeners",
+  async () => {
+    const {
+      publicRadioAssetProjection,
+      RADIO_WOLO_TAGLINE,
+    } = await import(
+      "../lib/radioWoloPublicStation.ts"
+    );
+
+    const asset = {
+      publicId:
+        "11111111-1111-4111-8111-111111111111",
+      title:
+        "Secret Battle Track",
+      credit:
+        "Kingdom Artist",
+      kind:
+        "song",
+      durationMs:
+        120000,
+    };
+
+    const anonymous =
+      publicRadioAssetProjection(
+        asset,
+        false,
+      );
+
+    assert.equal(
+      RADIO_WOLO_TAGLINE,
+      "Radio WOLO — The Kingdom Never Goes Silent.",
+    );
+
+    assert.deepEqual(
+      anonymous,
+      {
+        mediaUrl:
+          "/api/radio/station/audio/11111111-1111-4111-8111-111111111111",
+        durationMs:
+          120000,
+      },
+    );
+
+    assert.equal(
+      "title" in anonymous,
+      false,
+    );
+
+    assert.equal(
+      "credit" in anonymous,
+      false,
+    );
+
+    const authenticated =
+      publicRadioAssetProjection(
+        asset,
+        true,
+      );
+
+    assert.equal(
+      authenticated.title,
+      "Secret Battle Track",
+    );
+
+    assert.equal(
+      authenticated.credit,
+      "Kingdom Artist",
+    );
+  },
+);
+
+test(
+  "Radio WOLO public station allows optional auth without admin authority",
+  () => {
+    const station =
+      read(
+        "app/api/radio/station/route.ts",
+      );
+
+    assert.match(
+      station,
+      /getSessionUid/,
+    );
+
+    assert.match(
+      station,
+      /authenticated/,
+    );
+
+    assert.match(
+      station,
+      /publicRadioAssetProjection/,
+    );
+
+    assert.match(
+      station,
+      /resolveRadioStationPosition/,
+    );
+
+    assert.doesNotMatch(
+      station,
+      /requireAdmin\(/,
+    );
+
+    assert.doesNotMatch(
+      station,
+      /requireRadioWoloOperator/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO public media is active-program scoped and seekable",
+  () => {
+    const audio =
+      read(
+        "app/api/radio/station/audio/[publicId]/route.ts",
+      );
+
+    assert.match(
+      audio,
+      /state !==\s*"on_air"/,
+    );
+
+    assert.match(
+      audio,
+      /station\.program\.items\.find/,
+    );
+
+    assert.match(
+      audio,
+      /buildRadioProgramTimeline/,
+    );
+
+    assert.match(
+      audio,
+      /parseRadioByteRange/,
+    );
+
+    assert.match(
+      audio,
+      /createRadioFileStream/,
+    );
+
+    assert.match(
+      audio,
+      /status:\s*requestedRange\s*\?\s*206\s*:\s*200/,
+    );
+
+    assert.doesNotMatch(
+      audio,
+      /audioStorageKey.*NextResponse/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO anonymous station response keeps program identity private",
+  () => {
+    const station =
+      read(
+        "app/api/radio/station/route.ts",
+      );
+
+    assert.match(
+      station,
+      /program:\s*authenticated/,
+    );
+
+    assert.match(
+      station,
+      /\?\s*\{[\s\S]*name:/,
+    );
+
+    assert.match(
+      station,
+      /:\s*null,/,
+    );
+
+    assert.match(
+      station,
+      /RADIO_WOLO_TAGLINE/,
+    );
+  },
+);
