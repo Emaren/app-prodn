@@ -73,6 +73,10 @@ const BETS_POLL_INTERVAL_MS = 5_000;
 const STAKE_RECOVERY_STORAGE_KEY = "aoe2hdbets.betStakeRecovery.v1";
 const TICKET_RECOVERY_STORAGE_KEY = "aoe2hdbets.betTicketRecovery.v1";
 const BETS_VIEW_STORAGE_KEY = "aoe2hdbets.betsViewVersion.v1";
+const BETS_VIEW_ROLLOUT_KEY =
+  "aoe2hdbets.betsViewRollout.v1";
+const BETS_VIEW_ROLLOUT = "E4";
+const BETS_VIEW_DEFAULT: BetsViewVersion = "E4";
 
 function isSettlementProofState(state: BetSettledResult["payoutState"]) {
   return state === "executed" || state === "corrected";
@@ -1648,7 +1652,7 @@ export default function BetsPage() {
   const nowMs = useNowTicker();
   const [board, setBoard] = useState<BetBoardSnapshot | null>(null);
   const [betsView, setBetsView] =
-    useState<BetsViewVersion>("E3");
+    useState<BetsViewVersion>(BETS_VIEW_DEFAULT);
   const [betsViewReady, setBetsViewReady] =
     useState(false);
   const [selection, setSelection] = useState<SelectionState | null>(null);
@@ -1754,6 +1758,32 @@ export default function BetsPage() {
           : designFixture.startsWith("e3-")
             ? "E3"
             : "E2",
+      );
+      setBetsViewReady(true);
+      return;
+    }
+
+    const appliedRollout =
+      window.localStorage.getItem(
+        BETS_VIEW_ROLLOUT_KEY,
+      );
+
+    if (
+      appliedRollout !==
+      BETS_VIEW_ROLLOUT
+    ) {
+      window.localStorage.setItem(
+        BETS_VIEW_ROLLOUT_KEY,
+        BETS_VIEW_ROLLOUT,
+      );
+
+      window.localStorage.setItem(
+        BETS_VIEW_STORAGE_KEY,
+        BETS_VIEW_DEFAULT,
+      );
+
+      setBetsView(
+        BETS_VIEW_DEFAULT,
       );
       setBetsViewReady(true);
       return;

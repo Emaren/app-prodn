@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  useState,
+} from "react";
+
+import {
   Layers3,
   Monitor,
 } from "lucide-react";
@@ -23,6 +27,11 @@ export default function BetsDisplayRail({
   battleCamOpen: boolean;
   onBattleCamToggle: () => void;
 }) {
+  const [
+    viewMenuOpen,
+    setViewMenuOpen,
+  ] = useState(false);
+
   return (
     <section
       data-testid="bets-display-rail"
@@ -73,11 +82,36 @@ export default function BetsDisplayRail({
         aria-hidden="true"
       />
 
-      <div className="group relative">
+      <div
+        className="relative"
+        onMouseEnter={() =>
+          setViewMenuOpen(true)
+        }
+        onMouseLeave={() =>
+          setViewMenuOpen(false)
+        }
+        onFocus={() =>
+          setViewMenuOpen(true)
+        }
+        onBlur={(event) => {
+          if (
+            !event.currentTarget.contains(
+              event.relatedTarget as Node | null,
+            )
+          ) {
+            setViewMenuOpen(false);
+          }
+        }}
+      >
         <button
           type="button"
+          aria-haspopup="menu"
+          aria-expanded={viewMenuOpen}
           aria-label={`Choose Betting Hall view. Current ${value}`}
           title={`View ${value}`}
+          onClick={() =>
+            setViewMenuOpen(true)
+          }
           className="
             grid h-9 w-9 place-items-center
             rounded-full text-slate-500
@@ -98,61 +132,63 @@ export default function BetsDisplayRail({
         </button>
 
         <div
-          className="
-            pointer-events-none
-            absolute
-            bottom-[calc(100%+0.55rem)]
-            right-0
-            w-20
-            translate-y-1
-            rounded-2xl
-            border border-white/[0.09]
-            bg-[#07101e]/95
-            p-1.5
-            opacity-0
-            shadow-[0_22px_60px_rgba(0,0,0,0.48)]
-            backdrop-blur-xl
+          className={`
+            absolute bottom-full right-0
+            w-20 pb-2
             transition
-            group-hover:pointer-events-auto
-            group-hover:translate-y-0
-            group-hover:opacity-100
-            group-focus-within:pointer-events-auto
-            group-focus-within:translate-y-0
-            group-focus-within:opacity-100
-          "
+            ${
+              viewMenuOpen
+                ? "pointer-events-auto translate-y-0 opacity-100"
+                : "pointer-events-none translate-y-1 opacity-0"
+            }
+          `}
         >
-          {BETS_VIEW_VERSIONS
-            .slice()
-            .reverse()
-            .map((version) => (
-              <button
-                key={version}
-                type="button"
-                aria-pressed={
-                  value === version
-                }
-                aria-label={`Use Betting Hall ${version}`}
-                onClick={() =>
-                  onChange(version)
-                }
-                className={`
-                  flex h-9 w-full
-                  items-center justify-center
-                  rounded-xl
-                  text-[10px]
-                  font-black
-                  tracking-[0.18em]
-                  transition
-                  ${
+          <div
+            role="menu"
+            aria-label="Betting Hall views"
+            className="
+              rounded-2xl
+              border border-white/[0.09]
+              bg-[#07101e]/95
+              p-1.5
+              shadow-[0_22px_60px_rgba(0,0,0,0.48)]
+              backdrop-blur-xl
+            "
+          >
+            {BETS_VIEW_VERSIONS
+              .slice()
+              .reverse()
+              .map((version) => (
+                <button
+                  key={version}
+                  type="button"
+                  aria-pressed={
                     value === version
-                      ? "bg-amber-300/[0.11] text-amber-100 ring-1 ring-amber-200/20"
-                      : "text-slate-500 hover:bg-white/[0.05] hover:text-white"
                   }
-                `}
-              >
-                {version}
-              </button>
-            ))}
+                  aria-label={`Use Betting Hall ${version}`}
+                  onClick={() => {
+                    onChange(version);
+                    setViewMenuOpen(false);
+                  }}
+                  className={`
+                    flex h-9 w-full
+                    items-center justify-center
+                    rounded-xl
+                    text-[10px]
+                    font-black
+                    tracking-[0.18em]
+                    transition
+                    ${
+                      value === version
+                        ? "bg-amber-300/[0.11] text-amber-100 ring-1 ring-amber-200/20"
+                        : "text-slate-500 hover:bg-white/[0.05] hover:text-white"
+                    }
+                  `}
+                >
+                  {version}
+                </button>
+              ))}
+          </div>
         </div>
       </div>
     </section>

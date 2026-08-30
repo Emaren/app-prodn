@@ -95,7 +95,7 @@ test(
 );
 
 test(
-  "E3 is the latest default while E1 and E2 remain selectable",
+  "E4 is the rollout default while every historical view remains selectable",
   async () => {
     const page =
       await source(
@@ -109,33 +109,23 @@ test(
 
     assert.match(
       page,
-      /useState<BetsViewVersion>\("E3"\)/,
+      /const BETS_VIEW_DEFAULT:\s*BetsViewVersion\s*=\s*"E4"/,
     );
 
     assert.match(
       page,
-      /aoe2hdbets\.betsViewVersion\.v1/,
+      /useState<BetsViewVersion>\(BETS_VIEW_DEFAULT\)/,
     );
 
     assert.match(
       versions,
-      /"B1",\s*"A1",\s*"E1",\s*"E2",\s*"E3"/s,
-    );
-
-    assert.match(
-      versions,
-      /if \(version === "B1"\) return "basic"/,
-    );
-
-    assert.match(
-      versions,
-      /if \(version === "A1"\) return "advanced"/,
+      /"B1"[\s\S]*"A1"[\s\S]*"E1"[\s\S]*"E2"[\s\S]*"E3"[\s\S]*"E4"/,
     );
   },
 );
 
 test(
-  "the bets display rail is icon-resting and version discovery fans out",
+  "the bets display rail opens by hover click and keyboard without a dead pointer gap",
   async () => {
     const rail =
       await source(
@@ -154,27 +144,37 @@ test(
 
     assert.match(
       rail,
-      /Monitor/,
+      /aria-expanded=\{viewMenuOpen\}/,
     );
 
     assert.match(
       rail,
-      /group-hover:pointer-events-auto/,
+      /onMouseEnter=/,
+    );
+
+    assert.match(
+      rail,
+      /setViewMenuOpen\(true\)/,
+    );
+
+    assert.match(
+      rail,
+      /bottom-full/,
+    );
+
+    assert.match(
+      rail,
+      /pb-2/,
+    );
+
+    assert.match(
+      rail,
+      /onFocus=/,
     );
 
     assert.match(
       rail,
       /BETS_VIEW_VERSIONS/,
-    );
-
-    assert.doesNotMatch(
-      rail,
-      />\s*Layout\s*</,
-    );
-
-    assert.doesNotMatch(
-      rail,
-      />\s*View mode\s*</i,
     );
   },
 );
@@ -265,46 +265,46 @@ test(
 );
 
 test(
-  "legacy B A E preference remains preserved while new users receive E3",
+  "each Betting Hall rollout promotes everyone once and then preserves the new explicit choice",
   async () => {
     const page =
       await source(
         "app/bets/page.tsx",
       );
 
-    const versions =
-      await source(
-        "lib/betsViewVersions.ts",
+    assert.match(
+      page,
+      /const BETS_VIEW_ROLLOUT = "E4"/,
+    );
+
+    const rollout =
+      page.indexOf(
+        "appliedRollout !==",
       );
 
-    assert.match(
-      page,
-      /useState<BetsViewVersion>\("E3"\)/,
+    const restore =
+      page.indexOf(
+        "const storedView =",
+      );
+
+    assert.ok(
+      rollout >= 0,
+      "rollout gate must exist",
+    );
+
+    assert.ok(
+      restore > rollout,
+      "rollout must run before restoring an old preference",
     );
 
     assert.match(
       page,
-      /LEGACY_BETS_VIEW_STORAGE_KEY/,
+      /localStorage\.setItem\(\s*BETS_VIEW_STORAGE_KEY,\s*BETS_VIEW_DEFAULT/,
     );
 
     assert.match(
       page,
-      /storedView \?\? legacyView/,
-    );
-
-    assert.match(
-      versions,
-      /"basic"\) return "B1"/,
-    );
-
-    assert.match(
-      versions,
-      /"advanced"\) return "A1"/,
-    );
-
-    assert.match(
-      versions,
-      /"extreme"\) return "E1"/,
+      /localStorage\.setItem\(\s*BETS_VIEW_STORAGE_KEY,\s*next/,
     );
   },
 );
