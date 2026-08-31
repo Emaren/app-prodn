@@ -167,7 +167,7 @@ export async function POST(
     return NextResponse.json(
       {
         detail:
-          "Choose an MP3, WAV, OGG, or M4A file no larger than 60 MB.",
+          "Choose an MP3, WAV, OGG, or M4A file no larger than 250 MB.",
       },
       {
         status: 400,

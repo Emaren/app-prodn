@@ -1031,7 +1031,7 @@ export default function RadioWoloVault() {
 
           <div className="mt-4 text-[11px] uppercase tracking-[0.2em] text-slate-600">
             MP3 · WAV · OGG ·
-            M4A · 60 MB max each
+            M4A · 250 MB max each
           </div>
         </div>
       </section>

@@ -23,7 +23,7 @@ Radio WOLO is the cultural broadcast wing of AoE2WAR. `/radio` exposes only trac
 
 The form collects artist, title, genre/mood, private email, optional Discord, audio, optional artwork, notes, and an explicit rights checkbox. The accepted statement grants AoE2WAR a non-exclusive, revocable permission to store, review, stream, and promote the submitted work. Copyright remains with the rights holder.
 
-Audio is limited to 60 MB and validated by magic bytes as MP3, WAV, OGG, or M4A. Artwork is limited to 8 MB and validated as PNG, JPEG, or WebP. Extensions and browser MIME labels are not trusted. Original filenames are sanitized; stored files use random keys plus a SHA-256 prefix. Failed database writes remove partial files.
+Private operator Vault audio is limited to 250 MB; public creator submissions remain limited to 60 MB. Audio is validated by magic bytes as MP3, WAV, OGG, or M4A. Artwork is limited to 8 MB and validated as PNG, JPEG, or WebP. Extensions and browser MIME labels are not trusted. Original filenames are sanitized; stored files use random keys plus a SHA-256 prefix. Failed database writes remove partial files.
 
 The intake allows at most three submissions in a rolling day for the same contact email or signed-in user. Publication is never automatic.
 

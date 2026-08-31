@@ -1,7 +1,7 @@
 import path from "node:path";
 
 export const RADIO_ASSET_MAX_AUDIO_BYTES =
-  60 * 1024 * 1024;
+  250 * 1024 * 1024;
 
 export const RADIO_ASSET_MAX_DURATION_MS =
   12 * 60 * 60 * 1000;
