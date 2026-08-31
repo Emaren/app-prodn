@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import {
   type ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -264,16 +265,17 @@ export default function HeroStudio() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  function applySnapshot(next: HeroStudioSnapshot, selectedId?: number | null) {
+  const applySnapshot = useCallback((next: HeroStudioSnapshot, selectedId?: number | null) => {
     setSnapshot(next);
     setPlaylist(purePlaylistSettings(next.draft.playlist));
     setItems(next.draft.items);
-    const targetId = selectedId ?? (draft.id || next.screens[0]?.id);
-    const selected = next.screens.find((screen) => screen.id === targetId);
-    if (selected) setDraft(selected);
-  }
+    setDraft((current) => {
+      const targetId = selectedId ?? (current.id || next.screens[0]?.id);
+      return next.screens.find((screen) => screen.id === targetId) ?? current;
+    });
+  }, []);
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -290,11 +292,11 @@ export default function HeroStudio() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [applySnapshot]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   async function action(
     body: Record<string, unknown>,

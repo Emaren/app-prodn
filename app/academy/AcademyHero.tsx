@@ -1,6 +1,7 @@
 "use client";
 
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -176,6 +177,24 @@ export default function AcademyHero() {
   const [heroVariant, setHeroVariant] = useState<AcademyHeroVariant>(
     DEFAULT_ACADEMY_HERO_VARIANT,
   );
+  const [readyHeroVariant, setReadyHeroVariant] =
+    useState<AcademyHeroVariant | null>(null);
+  const [heroPreferenceSettled, setHeroPreferenceSettled] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setReadyHeroVariant(null);
+
+    void warmAcademyHeroBackground(heroVariant).then(() => {
+      if (!cancelled) {
+        setReadyHeroVariant(heroVariant);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [heroVariant]);
 
   useEffect(() => {
     const legacyVariant = window.localStorage.getItem(
@@ -188,7 +207,10 @@ export default function AcademyHero() {
   }, []);
 
   useEffect(() => {
-    if (!appearanceLoaded) return;
+    if (!appearanceLoaded) {
+      setHeroPreferenceSettled(false);
+      return;
+    }
 
     const accountView = tileViewPreferences.academy_hero;
     let nextVariant: AcademyHeroVariant | null = accountView
@@ -211,14 +233,17 @@ export default function AcademyHero() {
     }
 
     if (!nextVariant || nextVariant === heroVariant) {
+      setHeroPreferenceSettled(true);
       return;
     }
 
     let cancelled = false;
+    setHeroPreferenceSettled(false);
 
     void warmAcademyHeroBackground(nextVariant).then(() => {
       if (!cancelled) {
         setHeroVariant(nextVariant);
+        setHeroPreferenceSettled(true);
       }
     });
 
@@ -324,6 +349,14 @@ export default function AcademyHero() {
       onClick={handleHeroClick}
       onKeyDown={handleHeroKeyDown}
     >
+      <SpeedReadyMarker
+        route="/academy"
+        ready={
+          appearanceLoaded &&
+          heroPreferenceSettled &&
+          readyHeroVariant === heroVariant
+        }
+      />
       <div className="pointer-events-none absolute inset-x-12 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/55 to-transparent" />
 
       <div

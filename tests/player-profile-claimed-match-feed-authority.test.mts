@@ -27,12 +27,12 @@ test("claimed exact-Steam match feeds bypass full public directory resolution", 
 
   assert.match(
     source,
-    /function buildExactSteamClaimedMatchFeedPlayer\([\s\S]*?!currentPlayer\.steamId[\s\S]*?return withProfileAliases/,
+    /function buildExactSteamClaimedPlayer\([\s\S]*?!currentPlayer\.steamId[\s\S]*?return withProfileAliases/,
   );
 
   assert.match(
     resolver,
-    /loadClaimedProfileUser\([\s\S]*?buildExactSteamClaimedMatchFeedPlayer\([\s\S]*?if \(exactSteamPlayer\) \{[\s\S]*?return exactSteamPlayer;[\s\S]*?resolveProfileDirectoryIdentity/,
+    /loadClaimedProfileUser\([\s\S]*?buildExactSteamClaimedPlayer\([\s\S]*?if \(exactSteamPlayer\) \{[\s\S]*?return exactSteamPlayer;[\s\S]*?resolveProfileDirectoryIdentity/,
   );
 });
 
@@ -41,7 +41,7 @@ test("uniquely claimed replay-name match feeds use the same exact-Steam fast pat
 
   assert.match(
     resolver,
-    /if \(claimedUser\) \{[\s\S]*?buildExactSteamClaimedMatchFeedPlayer\([\s\S]*?return exactSteamPlayer;[\s\S]*?resolveProfileDirectoryIdentity/,
+    /if \(claimedUser\) \{[\s\S]*?buildExactSteamClaimedPlayer\([\s\S]*?return exactSteamPlayer;[\s\S]*?resolveProfileDirectoryIdentity/,
   );
 });
 

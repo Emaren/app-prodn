@@ -7,6 +7,7 @@ import { getTrafficCorrelationIds } from "@/lib/speed/clientIds";
 import { createSpeedSampleId, patchSpeedSample, registerSpeedSample } from "@/lib/speed/clientStore";
 import {
   readExplicitSpeedReady,
+  shouldAcceptFirstExplicitReady,
   SPEED_READY_EVENT,
   type SpeedReadySignal,
 } from "@/lib/speed/readiness";
@@ -280,7 +281,19 @@ export default function SpeedRuntime() {
     const applyExplicitReady = (signal: SpeedReadySignal) => {
       const active = activeMeasurementRef.current;
       if (!active || signal.route !== active.route) return;
-      if (signal.atEpochMs < active.startEpochMs) return;
+      // A route may re-render its readiness marker after preference changes,
+      // wallet refreshes, or other in-page interactions. Page readiness is the
+      // first authoritative settled state for this navigation; later signals
+      // are dwell time, not a slower page load.
+      if (
+        !shouldAcceptFirstExplicitReady(
+          active.explicitReadyAtEpochMs,
+          signal.atEpochMs,
+          active.startEpochMs,
+        )
+      ) {
+        return;
+      }
 
       active.explicitReadyAtEpochMs = signal.atEpochMs;
       if (!active.registered) return;
@@ -377,16 +390,19 @@ export default function SpeedRuntime() {
     lastRouteRef.current = route;
     const token = ++measurementTokenRef.current;
     const nowEpoch = absoluteNow();
+    const nowPerf = performance.now();
     const nav = navigationTiming();
     const storedPending = readPendingNavigation();
-    const pendingAge = storedPending ? nowEpoch - storedPending.startedAtEpochMs : Number.POSITIVE_INFINITY;
-    const matchingPending =
-      storedPending &&
-      storedPending.route === route &&
-      pendingAge >= 0 &&
-      pendingAge <= MAX_PENDING_AGE_MS
-        ? storedPending
-        : null;
+    const matchingPending = [inMemoryPendingRef.current, storedPending]
+      .filter((candidate): candidate is PendingNavigation => Boolean(candidate))
+      .find((candidate) => {
+        const pendingAge = nowEpoch - candidate.startedAtEpochMs;
+        return (
+          candidate.route === route &&
+          pendingAge >= 0 &&
+          pendingAge <= MAX_PENDING_AGE_MS
+        );
+      }) ?? null;
 
     if (storedPending && (!matchingPending || storedPending.route === route)) {
       clearPendingNavigation();
@@ -394,8 +410,21 @@ export default function SpeedRuntime() {
 
     const sameDocumentPending =
       matchingPending && Math.abs(matchingPending.timeOriginMs - performance.timeOrigin) < 1;
-    const startEpochMs = matchingPending?.startedAtEpochMs ?? performance.timeOrigin;
-    const startPerfMs = sameDocumentPending ? matchingPending.startedAtPerfMs : 0;
+    /*
+     * A route commit without a captured navigation intent has no trustworthy
+     * start boundary. Starting it at the document time origin manufactures a
+     * tab-age duration (minutes or hours) and can distort the local chart even
+     * though the sample is correctly excluded from aggregation. Anchor that
+     * diagnostic sample at the observed route commit instead; it remains
+     * explicitly invalid, but its timing is no longer fictitious.
+     */
+    const startEpochMs = matchingPending?.startedAtEpochMs ??
+      (isInitialDocumentSample ? performance.timeOrigin : nowEpoch);
+    const startPerfMs = sameDocumentPending
+      ? matchingPending.startedAtPerfMs
+      : isInitialDocumentSample
+        ? 0
+        : nowPerf;
     const navigationKind: SpeedNavigationKind = matchingPending
       ? matchingPending.navigationKind
       : isInitialDocumentSample && nav

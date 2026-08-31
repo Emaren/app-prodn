@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import SystemMessageMediaStudio from "@/components/admin/media/SystemMessageMediaStudio";
 
 import {
@@ -472,7 +472,7 @@ export default function AdminMediaAssetsPage() {
     }
   }
 
-  async function loadUsers(query = userQuery) {
+  const loadUsers = useCallback(async (query: string) => {
     setLoadingUsers(true);
 
     try {
@@ -497,7 +497,7 @@ export default function AdminMediaAssetsPage() {
     } finally {
       setLoadingUsers(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void loadAssets();
@@ -509,7 +509,7 @@ export default function AdminMediaAssetsPage() {
     }, 200);
 
     return () => window.clearTimeout(timer);
-  }, [userQuery]);
+  }, [loadUsers, userQuery]);
 
   function chooseFiles(event: ChangeEvent<HTMLInputElement>) {
     const nextFiles = Array.from(event.target.files || []);

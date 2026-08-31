@@ -6,6 +6,7 @@ import {
   type MouseEvent,
   type ReactNode,
   type RefObject,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -345,7 +346,7 @@ export function LobbyChat(props: LobbyChatProps) {
   }
 
 
-  function pulseOwnTypingHud() {
+  const pulseOwnTypingHud = useCallback(() => {
     if (typeof window === "undefined") return;
     if (typingHudMode !== "pulse") return;
 
@@ -359,7 +360,7 @@ export function LobbyChat(props: LobbyChatProps) {
       setOwnTypingPulse(false);
       ownTypingPulseTimerRef.current = null;
     }, 1150);
-  }
+  }, [typingHudMode]);
 
   function toggleTypingHudMode() {
     setTypingHudMode((current) => {
@@ -487,7 +488,7 @@ export function LobbyChat(props: LobbyChatProps) {
         setOwnTypingPulse(false);
       }
     }
-  }, [messageBody, typingHudMode]);
+  }, [messageBody, pulseOwnTypingHud, typingHudMode]);
 
   return (
     <div

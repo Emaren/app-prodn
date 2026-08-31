@@ -564,10 +564,32 @@ export default function SpeedObservatory() {
     () => explicit.filter((sample) => sample.navigation_kind !== "back_forward"),
     [explicit],
   );
+  const validSamples = useMemo(
+    () =>
+      samples.filter(
+        (sample) =>
+          sample.valid_for_aggregation &&
+          !sample.visibility_tainted,
+      ),
+    [samples],
+  );
+  const chartSamples = useMemo(
+    () =>
+      validSamples.filter(
+        (sample) =>
+          (sample.ready_source === "explicit" ||
+            sample.ready_source === "initial_hydration") &&
+          typeof sample.ready_ms === "number" &&
+          Number.isFinite(sample.ready_ms) &&
+          sample.ready_ms >= 0 &&
+          sample.ready_ms < 600_000,
+      ),
+    [validSamples],
+  );
   const readyValues = freshExplicit
     .map((sample) => sample.ready_ms)
     .filter((value): value is number => typeof value === "number");
-  const latest = explicit[0] || samples[0] || null;
+  const latest = explicit[0] || validSamples[0] || null;
   const p50 = percentile(readyValues, 0.5);
   const p75 = percentile(readyValues, 0.75);
 
@@ -598,7 +620,7 @@ export default function SpeedObservatory() {
   );
 
   const chart = useMemo<ChartModel>(() => {
-    const chronological = [...samples].reverse().slice(-20);
+    const chronological = [...chartSamples].reverse().slice(-20);
     const ready = chronological.map((sample) => sample.ready_ms);
     const ttfb = chronological.map((sample) => sample.ttfb_ms);
     const lcp = chronological.map((sample) => sample.lcp_ms);
@@ -612,7 +634,7 @@ export default function SpeedObservatory() {
       lcpPoints: chartPolyline(lcp, maxValue),
       maxValue,
     };
-  }, [samples]);
+  }, [chartSamples]);
 
   const sendReport = useCallback(async () => {
     if (!latest) return;

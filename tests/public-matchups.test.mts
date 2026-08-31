@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   buildPlayerPairRivalryContext,
+  loadPublicRivalryBoards,
   loadRecentFinalMatchupRows,
   PUBLIC_MATCHUP_SCAN_LIMIT,
   type MatchupGameRow,
@@ -352,5 +353,75 @@ test("the shared matchup scan preserves the full Emaren-Sechma series beyond the
   assert.equal(
     refreshedSummary.leftWins,
     10
+  );
+});
+
+test("the full rivalry board shares one identity and pending-claim projection", async () => {
+  let claimedPlayerQueries = 0;
+  let pendingClaimQueries = 0;
+
+  const prisma = {
+    gameStats: {
+      findFirst: async () => ({
+        id: 30_000,
+        is_final: true,
+        parse_iteration: 1,
+        parse_reason: "recorded_resignation_final",
+        parse_source: "watcher_final",
+        winner: "Emaren",
+      }),
+      findMany: async () => [
+        provenEmarenWin(
+          30_000,
+          "2026-08-30T18:30:26.000Z"
+        ),
+      ],
+    },
+    replayStatProjection: {
+      findFirst: async () => null,
+    },
+    replayPlayerSnapshot: {
+      findFirst: async () => null,
+    },
+    replayResultAdjudication: {
+      findFirst: async () => null,
+    },
+    user: {
+      findMany: async () => {
+        claimedPlayerQueries += 1;
+        return [];
+      },
+    },
+    pendingWoloClaim: {
+      findMany: async () => {
+        pendingClaimQueries += 1;
+        return [];
+      },
+    },
+    betMarket: {
+      findMany: async () => [],
+    },
+    $queryRaw: async () => [
+      { fingerprint: "shared-rivalry-projection" },
+    ],
+  } as unknown as Parameters<
+    typeof loadPublicRivalryBoards
+  >[0];
+
+  const boards = await loadPublicRivalryBoards(
+    prisma,
+    { activityTake: 1 }
+  );
+
+  assert.equal(boards.duels.length > 0, true);
+  assert.equal(
+    claimedPlayerQueries,
+    1,
+    "duels, teams, and activity should share one claimed-player lookup"
+  );
+  assert.equal(
+    pendingClaimQueries,
+    1,
+    "duels, teams, and activity should share one pending-claim lookup"
   );
 });

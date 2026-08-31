@@ -93,7 +93,6 @@ export default async function RivalriesPage({ searchParams }: RivalriesPageProps
   } = await loadPublicRivalryBoards(
     prisma,
     {
-      take: 5000,
       activityTake: 1,
     }
   );

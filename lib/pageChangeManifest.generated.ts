@@ -15,7 +15,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/leaderboard",
     label: "Leaderboard",
-    version: "src-57ddffeedcbb08133fc3",
+    version: "src-65b92df80cb2e0ce6e0d",
   },
   {
     href: "/champions",
@@ -35,7 +35,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/academy",
     label: "Academy",
-    version: "src-a1ca6772804b9f6d30e5",
+    version: "src-034ddbaf1aa63725d54d",
   },
   {
     href: "/market",
@@ -70,7 +70,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/game-stats",
     label: "Parser Observatory",
-    version: "src-d2962c222ebc012ea314",
+    version: "src-27fdec6230e8176737be",
   },
   {
     href: "/traffic",
@@ -95,6 +95,6 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/speed",
     label: "Speed",
-    version: "src-d9d14a763f2a25999850",
+    version: "src-7e3451f55d324cff9b88",
   },
 ] as const;

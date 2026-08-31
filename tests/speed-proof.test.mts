@@ -34,11 +34,24 @@ test("Speed Proof says exactly what was measured instead of making an aggregate 
 });
 
 test("exact clan and bet realms retain a truthful last proof instead of measuring forever", () => {
-  assert.match(proof, /if \(!AUTHORITATIVE_ROUTES\.has\(route\)\)/);
+  assert.match(proof, /if \(!isAuthoritativeRoute\(route\)\)/);
   assert.match(proof, /getRecentSpeedSamples\(\)\.find\(\(candidate\) => isValidProof\(candidate\)\)/);
   assert.match(proof, /Last ready/);
   assert.match(proof, /this detail realm does not make a separate speed claim/);
   assert.match(proof, /\) : authoritative \? \(/);
+});
+
+test("every explicitly instrumented route can surface its own proof", () => {
+  for (const route of [
+    "/leaderboard/og",
+    "/round-chamber",
+    "/statistics",
+    "/workshop",
+  ]) {
+    assert.match(proof, new RegExp(route.replaceAll("/", "\\/")));
+  }
+  assert.match(proof, /\^\\\/game-stats\\\//);
+  assert.match(proof, /isAuthoritativeRoute\(currentRoute\)/);
 });
 
 test("Speed Proof receives idempotent sample upgrades from the recorder", () => {

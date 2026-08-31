@@ -15,6 +15,7 @@ import {
   type ReplayDesyncIncidentView,
 } from "@/components/game-stats/desyncIncidentView";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import {
   formatDurationLabel,
@@ -206,19 +207,6 @@ export default async function GameStatsDetailPage({
     notFound();
   }
 
-  const cookieStore = await cookies();
-  const claims = await verifySession(cookieStore.get(SESSION_COOKIE_NAME)?.value);
-  const viewer = claims?.uid
-    ? await prisma.user.findUnique({
-        where: { uid: claims.uid },
-        select: { isAdmin: true },
-      })
-    : null;
-  const showAdminDiagnostics = canShowReplayParserDiagnostics(
-    detailView,
-    Boolean(viewer?.isAdmin)
-  );
-
   const game = applyReplayAdjudicationToGameStats(rawGame);
   const warEngineStatus =
     resolvePublicWarEngineStatus(rawGame);
@@ -252,28 +240,113 @@ export default async function GameStatsDetailPage({
       ? reviewedResult.reason.trim()
       : "";
 
-  const verdictHistory = reviewedResultVerified
-    ? await prisma.replayResultAdjudication.findMany({
-        where: {
-          gameStatsId: game.id,
-          decisionStatus: "accepted",
-        },
-        orderBy: [
-          { createdAt: "desc" },
-          { id: "desc" },
+  const players = parsePlayers(game.players).filter(
+    (player) => displayPlayerName(player) !== "Roster unresolved"
+  );
+  const battleTapeSessionKey = game.original_filename || game.replay_file || null;
+  const battleTapeHref = battleTapeSessionKey
+    ? `/game-stats/live/${encodeURIComponent(battleTapeSessionKey)}`
+    : null;
+
+  const [
+    viewer,
+    verdictHistory,
+    desyncProvenance,
+    parseAttempts,
+    linkedBetMarket,
+    claimedPlayers,
+    rivalryCandidates,
+  ] = await Promise.all([
+    (async () => {
+      const cookieStore = await cookies();
+      const claims = await verifySession(
+        cookieStore.get(SESSION_COOKIE_NAME)?.value
+      );
+
+      return claims?.uid
+        ? prisma.user.findUnique({
+            where: { uid: claims.uid },
+            select: { isAdmin: true },
+          })
+        : null;
+    })(),
+    reviewedResultVerified
+      ? prisma.replayResultAdjudication.findMany({
+          where: {
+            gameStatsId: game.id,
+            decisionStatus: "accepted",
+          },
+          orderBy: [
+            { createdAt: "desc" },
+            { id: "desc" },
+          ],
+          select: {
+            id: true,
+            decisionStatus: true,
+            actorDisplayNameSnapshot: true,
+            actorRole: true,
+            teamAssignments: true,
+            winningTeamKey: true,
+            reason: true,
+            createdAt: true,
+          },
+        })
+      : Promise.resolve([]),
+    loadReplayDesyncIncidentProvenance(
+      prisma,
+      game.id
+    ),
+    prisma.replayParseAttempt.findMany({
+      where: {
+        OR: [
+          { gameStatsId: game.id },
+          ...(game.original_filename ? [{ originalFilename: game.original_filename }] : []),
+          ...(game.replayHash ? [{ replayHash: game.replayHash }] : []),
         ],
-        select: {
-          id: true,
-          decisionStatus: true,
-          actorDisplayNameSnapshot: true,
-          actorRole: true,
-          teamAssignments: true,
-          winningTeamKey: true,
-          reason: true,
-          createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    }),
+    prisma.betMarket.findFirst({
+      where: {
+        OR: [
+          { linkedGameStatsId: game.id },
+          ...(battleTapeSessionKey ? [{ linkedSessionKey: battleTapeSessionKey }] : []),
+        ],
+      },
+      select: {
+        founderBonuses: {
+          where: {
+            rescindedAt: null,
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          select: {
+            id: true,
+            bonusType: true,
+            totalAmountWolo: true,
+            note: true,
+            status: true,
+            createdAt: true,
+          },
         },
-      })
-    : [];
+      },
+    }),
+    findClaimedUsersForReplayNames(
+      prisma,
+      players.map((player) => displayPlayerName(player))
+    ),
+    players.length === 2
+      ? loadRecentFinalMatchupRows(
+          prisma,
+          PUBLIC_MATCHUP_SCAN_LIMIT
+        )
+      : Promise.resolve([]),
+  ]);
+
+  const showAdminDiagnostics = canShowReplayParserDiagnostics(
+    detailView,
+    Boolean(viewer?.isAdmin)
+  );
 
   const verdictTrailAdjudications =
     verdictHistory.map((entry) => ({
@@ -304,10 +377,6 @@ export default async function GameStatsDetailPage({
       typeof ReplayVerdictTrail
     >["adjudications"];
 
-  const desyncProvenance = await loadReplayDesyncIncidentProvenance(
-    prisma,
-    game.id
-  );
   const verdictTrailDesyncIncidents = desyncProvenance.desyncIncidents.map(
     (incident) => ({
       ...incident,
@@ -322,53 +391,10 @@ export default async function GameStatsDetailPage({
   );
   const confirmedDesync = currentConfirmedDesync(verdictTrailDesyncIncidents);
 
-  const parseAttempts = await prisma.replayParseAttempt.findMany({
-    where: {
-      OR: [
-        { gameStatsId: game.id },
-        ...(game.original_filename ? [{ originalFilename: game.original_filename }] : []),
-        ...(game.replayHash ? [{ replayHash: game.replayHash }] : []),
-      ],
-    },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-  });
-
-  const players = parsePlayers(game.players).filter(
-    (player) => displayPlayerName(player) !== "Roster unresolved"
-  );
   const resultReviewSubmitterUids = [
     game.userUid,
     ...parseAttempts.map((attempt) => attempt.userUid),
   ];
-  const battleTapeSessionKey = game.original_filename || game.replay_file || null;
-  const battleTapeHref = battleTapeSessionKey
-    ? `/game-stats/live/${encodeURIComponent(battleTapeSessionKey)}`
-    : null;
-  const linkedBetMarket = await prisma.betMarket.findFirst({
-    where: {
-      OR: [
-        { linkedGameStatsId: game.id },
-        ...(battleTapeSessionKey ? [{ linkedSessionKey: battleTapeSessionKey }] : []),
-      ],
-    },
-    select: {
-      founderBonuses: {
-        where: {
-          rescindedAt: null,
-        },
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        select: {
-          id: true,
-          bonusType: true,
-          totalAmountWolo: true,
-          note: true,
-          status: true,
-          createdAt: true,
-        },
-      },
-    },
-  });
   const founderBonuses = (linkedBetMarket?.founderBonuses || []).map((bonus) => ({
     id: bonus.id,
     bonusType: (bonus.bonusType === "winner" ? "winner" : "participants") as
@@ -379,10 +405,6 @@ export default async function GameStatsDetailPage({
     status: bonus.status,
     createdAt: bonus.createdAt.toISOString(),
   }));
-  const claimedPlayers = await findClaimedUsersForReplayNames(
-    prisma,
-    players.map((player) => displayPlayerName(player))
-  );
   const playerRefs = players.map((player) =>
     buildPublicPlayerRef(displayPlayerName(player), claimedPlayers)
   );
@@ -423,13 +445,6 @@ export default async function GameStatsDetailPage({
       : replaySides
         ? "Open Team Rivalry"
         : "Open Rivalry";
-  const rivalryCandidates =
-    playerRefs.length === 2
-      ? await loadRecentFinalMatchupRows(
-          prisma,
-          PUBLIC_MATCHUP_SCAN_LIMIT
-        )
-      : [];
   const rivalrySummary =
     playerRefs.length === 2
       ? buildPlayerPairRivalryContext(
@@ -537,6 +552,7 @@ export default async function GameStatsDetailPage({
 
   return (
     <main className={mainShellClassName} data-replay-detail-view={detailView}>
+      <SpeedReadyMarker route={`/game-stats/${game.id}`} />
       <section className={heroSectionClassName}>
         <div className="space-y-6">
           <div className="space-y-4">

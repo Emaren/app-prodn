@@ -181,12 +181,26 @@ export async function GET(request: NextRequest) {
         rows,
         hasMore: false,
         nextBefore: null,
-      });
+      }, { headers: NO_STORE_HEADERS });
+    }
+
+    const beforeParam = request.nextUrl.searchParams.get("before");
+    const before = parseBefore(beforeParam);
+    if (beforeParam && !before) {
+      return NextResponse.json(
+        {
+          detail: "Invalid before cursor.",
+          rows: [],
+          hasMore: false,
+          nextBefore: null,
+        },
+        { status: 400, headers: NO_STORE_HEADERS }
+      );
     }
 
     const payload = await loadMainnetTransferStakingActivityPage(getPrisma(), {
       limit: clampLimit(request.nextUrl.searchParams.get("limit")),
-      before: parseBefore(request.nextUrl.searchParams.get("before")),
+      before,
       mode: request.nextUrl.searchParams.get("mode") === "grouped" ? "grouped" : "ledger",
       filter:
         reserveViewAllowed
@@ -199,10 +213,14 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(payload, { headers: NO_STORE_HEADERS });
   } catch (error) {
-    const detail =
-      error instanceof Error ? error.message : "Staking activity is unavailable.";
+    console.error("Staking activity load failed:", error);
     return NextResponse.json(
-      { detail, rows: [], hasMore: false, nextBefore: null },
+      {
+        detail: "Staking activity is unavailable.",
+        rows: [],
+        hasMore: false,
+        nextBefore: null,
+      },
       { status: 500, headers: NO_STORE_HEADERS }
     );
   }

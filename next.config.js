@@ -78,6 +78,16 @@ module.exports = {
     return config;
   },
 
+  async redirects() {
+    return [
+      {
+        source: "/matchups",
+        destination: "/rivalries",
+        permanent: true,
+      },
+    ];
+  },
+
   async headers() {
     const imageCacheHeader = {
       key: "Cache-Control",

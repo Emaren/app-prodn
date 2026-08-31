@@ -7,6 +7,18 @@ export type SpeedReadySignal = {
   atEpochMs: number;
 };
 
+export function shouldAcceptFirstExplicitReady(
+  currentReadyAtEpochMs: number | null,
+  candidateReadyAtEpochMs: number,
+  measurementStartedAtEpochMs: number,
+) {
+  return (
+    currentReadyAtEpochMs === null &&
+    Number.isFinite(candidateReadyAtEpochMs) &&
+    candidateReadyAtEpochMs >= measurementStartedAtEpochMs
+  );
+}
+
 type SpeedReadyWindow = Window & {
   __AOE2WAR_SPEED_READY__?: Record<string, number>;
 };

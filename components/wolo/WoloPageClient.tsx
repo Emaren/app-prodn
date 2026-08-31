@@ -11,6 +11,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import WoloFaucetCard from "@/components/wolo/WoloFaucetCard";
 import { useChainId } from "@/hooks/useChainId";
 import { useKeplr } from "@/hooks/use-keplr";
@@ -167,6 +168,11 @@ export default function WoloPage() {
             : balanceState === "success-zero"
               ? "Balance 0.00 WOLO · verified zero"
               : `Balance ${formattedBalance} WOLO · verified`;
+  const speedReady =
+    premiumPreferenceLoaded &&
+    !chainLoading &&
+    status !== "checking" &&
+    (status !== "connected" || balanceState !== "loading");
   const pingPubUrl = useMemo(() => buildPingPubUrl(chainId), [chainId]);
 
   const walletStatus =
@@ -222,6 +228,7 @@ export default function WoloPage() {
   if (!premiumHeroView) {
     return (
       <main className="space-y-4 py-2 text-white sm:space-y-6 sm:py-3">
+        <SpeedReadyMarker route="/wolo" ready={speedReady} />
         <section
           onClick={handleHeroToggle}
           className="overflow-hidden rounded-[1.85rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_26%),radial-gradient(circle_at_bottom_right,_rgba(56,189,248,0.10),_transparent_28%),linear-gradient(135deg,_#0f172a,_#111827_56%,_#050816)] p-4 sm:rounded-[2rem] sm:p-6 lg:p-8"
@@ -409,6 +416,7 @@ export default function WoloPage() {
 
   return (
     <main className="space-y-4 py-2 text-white sm:space-y-6 sm:py-3">
+      <SpeedReadyMarker route="/wolo" ready={speedReady} />
       <section
         onClick={handleHeroToggle}
         className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.16),_transparent_24%),radial-gradient(circle_at_82%_18%,_rgba(56,189,248,0.12),_transparent_20%),linear-gradient(135deg,_#08111f,_#0b1324_44%,_#050814)] px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8"

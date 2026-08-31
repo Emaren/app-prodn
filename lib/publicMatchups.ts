@@ -80,6 +80,25 @@ export type MatchupGameRow = {
   warEngineCase?: WarEngineCaseView | null;
 };
 
+type ParsedMatchupCandidate = {
+  match: MatchupGameRow;
+  sides: ParsedReplaySides | null;
+};
+
+type PublicMatchupIdentityContext = {
+  claimedPlayers: Awaited<
+    ReturnType<typeof findClaimedUsersForReplayNames>
+  >;
+  pendingClaimSummaries: Awaited<
+    ReturnType<typeof loadPendingWoloClaimSummariesByName>
+  >;
+};
+
+type SharedRivalryProjectionInput = {
+  parsedCandidates: ParsedMatchupCandidate[];
+  identityContext: Promise<PublicMatchupIdentityContext>;
+};
+
 const PUBLIC_MATCHUP_ROWS_CACHE_TTL_MS = 15_000;
 
 type PublicMatchupRowsCacheEntry = {
@@ -96,6 +115,48 @@ type PublicMatchupRowsPromiseEntry = {
 let publicMatchupRowsCache: PublicMatchupRowsCacheEntry | null = null;
 let publicMatchupRowsPromise: PublicMatchupRowsPromiseEntry | null = null;
 let latestRequestedPublicMatchupGeneration: string | null = null;
+
+function parseMatchupCandidates(
+  candidateMatches: MatchupGameRow[]
+): ParsedMatchupCandidate[] {
+  return candidateMatches.map((match) => ({
+    match,
+    sides: parseReplaySides(match.players),
+  }));
+}
+
+function matchupCandidateNames(
+  candidates: ParsedMatchupCandidate[]
+) {
+  return Array.from(
+    new Set(
+      candidates.flatMap((entry) =>
+        entry.sides
+          ? [
+              ...entry.sides.left.map((member) => member.name),
+              ...entry.sides.right.map((member) => member.name),
+            ]
+          : []
+      )
+    )
+  );
+}
+
+async function loadPublicMatchupIdentityContext(
+  prisma: PrismaClient,
+  candidates: ParsedMatchupCandidate[]
+): Promise<PublicMatchupIdentityContext> {
+  const names = matchupCandidateNames(candidates);
+  const [claimedPlayers, pendingClaimSummaries] = await Promise.all([
+    findClaimedUsersForReplayNames(prisma, names),
+    loadPendingWoloClaimSummariesByName(prisma, names),
+  ]);
+
+  return {
+    claimedPlayers,
+    pendingClaimSummaries,
+  };
+}
 
 export type RivalSummary = {
   ref: PublicPlayerRef;
@@ -1160,13 +1221,13 @@ function sortIndividualRivalries(
 
 async function buildPublicDuelRivalries(
   prisma: PrismaClient,
-  candidateMatches: MatchupGameRow[]
+  candidateMatches: MatchupGameRow[],
+  shared?: SharedRivalryProjectionInput
 ) {
-  const duelSeeds = candidateMatches
-    .map((match) => ({
-      match,
-      sides: parseReplaySides(match.players),
-    }))
+  const parsedCandidates =
+    shared?.parsedCandidates ??
+    parseMatchupCandidates(candidateMatches);
+  const duelSeeds = parsedCandidates
     .filter(
       (
         entry
@@ -1176,26 +1237,16 @@ async function buildPublicDuelRivalries(
       } => entry.sides?.format === "1v1"
     );
 
-  const names = Array.from(
-    new Set(
-      duelSeeds.flatMap((entry) => [
-        entry.sides.left[0].name,
-        entry.sides.right[0].name,
-      ])
+  const {
+    claimedPlayers,
+    pendingClaimSummaries,
+  } = await (
+    shared?.identityContext ??
+    loadPublicMatchupIdentityContext(
+      prisma,
+      duelSeeds
     )
   );
-
-  const claimedPlayers =
-    await findClaimedUsersForReplayNames(
-      prisma,
-      names
-    );
-
-  const pendingClaimSummaries =
-    await loadPendingWoloClaimSummariesByName(
-      prisma,
-      names
-    );
 
   const rivalries = new Map<
     string,
@@ -1621,13 +1672,13 @@ function sortTeamRivalries(
 
 async function buildPublicTeamRivalries(
   prisma: PrismaClient,
-  candidateMatches: MatchupGameRow[]
+  candidateMatches: MatchupGameRow[],
+  shared?: SharedRivalryProjectionInput
 ) {
-  const teamSeeds = candidateMatches
-    .map((match) => ({
-      match,
-      sides: parseReplaySides(match.players),
-    }))
+  const parsedCandidates =
+    shared?.parsedCandidates ??
+    parseMatchupCandidates(candidateMatches);
+  const teamSeeds = parsedCandidates
     .filter(
       (
         entry
@@ -1646,30 +1697,16 @@ async function buildPublicTeamRivalries(
       }
     );
 
-  const names = Array.from(
-    new Set(
-      teamSeeds.flatMap((entry) => [
-        ...entry.sides.left.map(
-          (member) => member.name
-        ),
-        ...entry.sides.right.map(
-          (member) => member.name
-        ),
-      ])
+  const {
+    claimedPlayers,
+    pendingClaimSummaries,
+  } = await (
+    shared?.identityContext ??
+    loadPublicMatchupIdentityContext(
+      prisma,
+      teamSeeds
     )
   );
-
-  const claimedPlayers =
-    await findClaimedUsersForReplayNames(
-      prisma,
-      names
-    );
-
-  const pendingClaimSummaries =
-    await loadPendingWoloClaimSummariesByName(
-      prisma,
-      names
-    );
 
   const rivalries = new Map<
     string,
@@ -1789,49 +1826,31 @@ async function buildPublicTeamRivalries(
 async function buildRecentRivalryActivity(
   prisma: PrismaClient,
   candidateMatches: MatchupGameRow[],
-  take = 18
+  take = 18,
+  shared?: SharedRivalryProjectionInput
 ) {
-  const seeds = candidateMatches
+  const parsedCandidates =
+    shared?.parsedCandidates ??
+    parseMatchupCandidates(candidateMatches);
+  const seeds = parsedCandidates
     .slice(
       0,
       Math.max(take * 4, 80)
     )
-    .map((game) => ({
-      game,
-      sides: parseReplaySides(game.players),
-    }))
     .filter(
       (
         entry
       ): entry is {
-        game: MatchupGameRow;
+        match: MatchupGameRow;
         sides: ParsedReplaySides;
       } => entry.sides !== null
     );
 
-  const names = Array.from(
-    new Set(
-      seeds.flatMap((entry) => [
-        ...entry.sides.left.map(
-          (member) => member.name
-        ),
-        ...entry.sides.right.map(
-          (member) => member.name
-        ),
-      ])
-    )
-  );
-
-  const claimedPlayers =
-    await findClaimedUsersForReplayNames(
+  const identityContext =
+    shared?.identityContext ??
+    loadPublicMatchupIdentityContext(
       prisma,
-      names
-    );
-
-  const pendingClaimSummaries =
-    await loadPendingWoloClaimSummariesByName(
-      prisma,
-      names
+      seeds
     );
 
   const sessionKeysForGame = (
@@ -1852,21 +1871,26 @@ async function buildRecentRivalryActivity(
     );
 
   const gameIds = seeds.map(
-    (entry) => entry.game.id
+    (entry) => entry.match.id
   );
 
   const sessionKeys = Array.from(
     new Set(
       seeds.flatMap((entry) =>
-        sessionKeysForGame(entry.game)
+        sessionKeysForGame(entry.match)
       )
     )
   );
 
   const [
+    {
+      claimedPlayers,
+      pendingClaimSummaries,
+    },
     gameMarketRows,
     sessionMarketRows,
   ] = await Promise.all([
+    identityContext,
     prisma.betMarket.findMany({
       where: {
         linkedGameStatsId: {
@@ -1984,7 +2008,7 @@ async function buildRecentRivalryActivity(
   for (const entry of seeds) {
     const playedAt = updateLastPlayedAt(
       null,
-      readPlayedAt(entry.game)
+      readPlayedAt(entry.match)
     );
 
     if (entry.sides.format === "1v1") {
@@ -2008,7 +2032,7 @@ async function buildRecentRivalryActivity(
 
       const winnerSide =
         resolveParsedWinnerSide(
-          entry.game,
+          entry.match,
           entry.sides
         );
 
@@ -2020,8 +2044,8 @@ async function buildRecentRivalryActivity(
             : null;
 
       activity.push({
-        key: `game:${entry.game.id}`,
-        gameId: entry.game.id,
+        key: `game:${entry.match.id}`,
+        gameId: entry.match.id,
         kind: "duel",
         format: "1v1",
         href: buildMatchupHref(
@@ -2029,15 +2053,15 @@ async function buildRecentRivalryActivity(
           right
         ),
         replayHref:
-          `/game-stats/${entry.game.id}`,
+          `/game-stats/${entry.match.id}`,
         mapName: readMapName(
-          entry.game.map
+          entry.match.map
         ),
         playedAt,
         left: [left],
         right: [right],
         winnerLabel,
-      marketHref: marketHrefForGame(entry.game),
+        marketHref: marketHrefForGame(entry.match),
       });
     } else {
       const rawLeft =
@@ -2073,7 +2097,7 @@ async function buildRecentRivalryActivity(
 
       const rawWinnerSide =
         resolveParsedWinnerSide(
-          entry.game,
+          entry.match,
           entry.sides
         );
 
@@ -2094,8 +2118,8 @@ async function buildRecentRivalryActivity(
             : null;
 
       activity.push({
-        key: `game:${entry.game.id}`,
-        gameId: entry.game.id,
+        key: `game:${entry.match.id}`,
+        gameId: entry.match.id,
         kind: "team",
         format: entry.sides.format,
         href: buildTeamMatchupHref(
@@ -2103,15 +2127,15 @@ async function buildRecentRivalryActivity(
           canonical.right
         ),
         replayHref:
-          `/game-stats/${entry.game.id}`,
+          `/game-stats/${entry.match.id}`,
         mapName: readMapName(
-          entry.game.map
+          entry.match.map
         ),
         playedAt,
         left: canonical.left,
         right: canonical.right,
         winnerLabel,
-      marketHref: marketHrefForGame(entry.game),
+        marketHref: marketHrefForGame(entry.match),
       });
     }
 
@@ -2170,6 +2194,17 @@ export async function loadPublicRivalryBoards(
       options?.take ??
         PUBLIC_MATCHUP_SCAN_LIMIT
     );
+  const parsedCandidates =
+    parseMatchupCandidates(candidateMatches);
+  const identityContext =
+    loadPublicMatchupIdentityContext(
+      prisma,
+      parsedCandidates
+    );
+  const sharedProjection = {
+    parsedCandidates,
+    identityContext,
+  } satisfies SharedRivalryProjectionInput;
 
   const [
     duels,
@@ -2178,16 +2213,19 @@ export async function loadPublicRivalryBoards(
   ] = await Promise.all([
     buildPublicDuelRivalries(
       prisma,
-      candidateMatches
+      candidateMatches,
+      sharedProjection
     ),
     buildPublicTeamRivalries(
       prisma,
-      candidateMatches
+      candidateMatches,
+      sharedProjection
     ),
     buildRecentRivalryActivity(
       prisma,
       candidateMatches,
-      options?.activityTake ?? 18
+      options?.activityTake ?? 18,
+      sharedProjection
     ),
   ]);
 

@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import ContactInboxPanel from "@/components/contact/ContactInboxPanel";
 import ContactRichComposer from "@/components/contact/ContactRichComposer";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import {
   mergeContactInboxPayload,
   type MergeContactInboxPayloadOptions,
@@ -178,6 +179,7 @@ export default function ContactEmarenWorkspace({
   });
   const [pending, setPending] = useState(false);
   const [summaryPending, setSummaryPending] = useState(false);
+  const [initialLoadSettled, setInitialLoadSettled] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reactingMessageId, setReactingMessageId] = useState<number | null>(null);
   const [voiceSupported, setVoiceSupported] = useState(false);
@@ -377,8 +379,12 @@ export default function ContactEmarenWorkspace({
   );
 
   useEffect(() => {
-    if (!uid) return;
+    if (!uid) {
+      setInitialLoadSettled(false);
+      return;
+    }
     let cancelled = false;
+    setInitialLoadSettled(false);
 
     typingActiveRef.current = false;
     if (typingTimerRef.current) {
@@ -406,8 +412,13 @@ export default function ContactEmarenWorkspace({
 
     (async () => {
       const initialTargetUid = requestedUser ?? selectedTargetUidRef.current ?? null;
-      await refreshPanel(initialTargetUid, { silent: false });
-      if (cancelled) return;
+      try {
+        await refreshPanel(initialTargetUid, { silent: false });
+      } finally {
+        if (!cancelled) {
+          setInitialLoadSettled(true);
+        }
+      }
     })();
 
     return () => {
@@ -834,22 +845,27 @@ export default function ContactEmarenWorkspace({
 
   if (!isAuthenticated) {
     return (
-      <div className="flex h-full min-h-0 flex-col justify-center rounded-[1.75rem] border border-white/10 bg-slate-950/70 px-5 py-8 text-white sm:px-6 sm:py-10">
-        <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">Contact Emaren</div>
-        <h1 className="mt-3 text-3xl font-semibold text-white">Sign in to message Emaren.</h1>
-        <p className="mt-4 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">
-          Steam sign-in keeps the line personal and tied to a real AoE2HDBets identity.
-        </p>
-        <div className="mt-6">
-          <SteamLoginButton className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200" />
+      <>
+        <SpeedReadyMarker route="/contact-emaren" />
+        <div className="flex h-full min-h-0 flex-col justify-center rounded-[1.75rem] border border-white/10 bg-slate-950/70 px-5 py-8 text-white sm:px-6 sm:py-10">
+          <div className="text-xs uppercase tracking-[0.35em] text-amber-200/70">Contact Emaren</div>
+          <h1 className="mt-3 text-3xl font-semibold text-white">Sign in to message Emaren.</h1>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-slate-300 sm:text-base">
+            Steam sign-in keeps the line personal and tied to a real AoE2HDBets identity.
+          </p>
+          <div className="mt-6">
+            <SteamLoginButton className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-amber-200" />
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="flex h-full min-h-0 max-h-full flex-col overflow-hidden">
-      <ContactInboxPanel
+    <>
+      <SpeedReadyMarker route="/contact-emaren" ready={initialLoadSettled} />
+      <div className="flex h-full min-h-0 max-h-full flex-col overflow-hidden">
+        <ContactInboxPanel
         data={displayData}
         loading={summaryPending && !displayData ? true : pending}
         error={error}
@@ -952,7 +968,8 @@ export default function ContactEmarenWorkspace({
             }}
           />
         }
-      />
-    </div>
+        />
+      </div>
+    </>
   );
 }

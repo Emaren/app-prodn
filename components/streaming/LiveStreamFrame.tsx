@@ -363,7 +363,7 @@ function BrowserChunkPlayer({
       video.removeEventListener("error", handleVideoError);
       revokeCurrentObjectUrl();
     };
-  }, [compact, stream.id]);
+  }, [compact, stream.id, stream.status]);
 
   return (
     <>

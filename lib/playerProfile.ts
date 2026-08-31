@@ -44,6 +44,10 @@ import {
 } from "@/lib/replayAdjudications";
 import { cleanPublicGameRows, type PublicGameStatsLike } from "@/lib/publicReplayTruth";
 import { PLAYER_MATCH_FEED_RECONCILE_BATCH_SIZE } from "@/lib/playerMatchFeedPagination";
+import {
+  selectVisibleExactSteamAliases,
+  type ExactSteamProfileSnapshot,
+} from "@/lib/playerProfileExactSteam";
 import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
 import { createGenerationKeyedLoader } from "@/lib/generationKeyedLoader";
 import { resolveReplayResultForPlayer } from "@/lib/replayPlayerResult";
@@ -1469,29 +1473,32 @@ async function loadCandidateFinalGamesFresh(
   return dedupePlayerProfileGamesByReplay(publicRows);
 }
 
-async function loadExactSteamCandidateGameIds(
+type ExactSteamCandidateIndex = {
+  snapshots: ExactSteamProfileSnapshot[];
+};
+
+async function loadExactSteamCandidateIndex(
   prisma: PrismaClient,
   steamId: string,
-): Promise<number[] | null> {
+): Promise<ExactSteamCandidateIndex | null> {
   try {
     const snapshots =
       await prisma.replayPlayerSnapshot.findMany({
         where: {
           playerKey: `steam:${steamId}`,
+          projection: {
+            projectionStatus: "accepted",
+            affectsPublicAggregates: true,
+            supersededBy: null,
+          },
         },
         select: {
           gameStatsId: true,
+          displayName: true,
         },
       });
 
-    return [
-      ...new Set(
-        snapshots.map(
-          (snapshot) =>
-            snapshot.gameStatsId,
-        ),
-      ),
-    ];
+    return { snapshots };
   } catch (error) {
     if (!isMissingPrismaStorageError(error)) {
       throw error;
@@ -1510,19 +1517,33 @@ async function loadCandidateFinalGames(
   prisma: PrismaClient,
   generation: string,
   currentPlayer?: PublicPlayerRef,
+  preloadedExactSteamIndex?: ExactSteamCandidateIndex | null,
 ): Promise<PlayerProfileGameRow[]> {
   const exactSteamId =
     currentPlayer?.steamId?.trim();
 
   if (exactSteamId) {
-    const candidateGameIds =
-      await loadExactSteamCandidateGameIds(
-        prisma,
-        exactSteamId,
-      );
+    const exactSteamIndex =
+      preloadedExactSteamIndex === undefined
+        ? await loadExactSteamCandidateIndex(
+            prisma,
+            exactSteamId,
+          )
+        : preloadedExactSteamIndex;
+    const candidateGameIds = exactSteamIndex
+      ? [
+          ...new Set(
+            exactSteamIndex.snapshots.map(
+              (snapshot) => snapshot.gameStatsId,
+            ),
+          ),
+        ]
+      : null;
 
-    // ReplayPlayerSnapshot is only an indexed candidate locator here.
-    // GameStats public cleanup + exact participant matching remain truth.
+    // ReplayPlayerSnapshot is the accepted exact-identity index here.
+    // GameStats public cleanup + exact participant matching remain the game
+    // truth; snapshot display names gain alias authority only after their game
+    // survives that cleaned corpus below.
     // An unavailable or empty snapshot rail fails safely back to the
     // generation-cached whole-estate loader instead of inventing absence.
     if (
@@ -2011,14 +2032,72 @@ async function buildProfileFromPlayer(
   // Read the watermark before the replay query. Truth that lands afterward is
   // guaranteed to produce a different client poll token and another refresh.
   const matchFeedGeneration = await loadPublicReplayGeneration(prisma);
+  const exactSteamId = input.currentPlayer.steamId?.trim();
+  const exactSteamIndex = exactSteamId
+    ? await loadExactSteamCandidateIndex(
+        prisma,
+        exactSteamId,
+      )
+    : undefined;
   const candidateGames = await loadCandidateFinalGames(
     prisma,
     matchFeedGeneration,
     input.currentPlayer,
+    exactSteamIndex,
   );
   const matchedGames = filterGamesForPlayer(candidateGames, input.currentPlayer);
-  const pendingClaimSummaries = await safeLoadPendingWoloClaimSummaries(prisma, input.aliases);
-  const currentPlayer = applyPendingWoloClaimSummary(input.currentPlayer, pendingClaimSummaries);
+  let profileAliases = mergeProfileAliases([
+    ...input.aliases,
+    ...(exactSteamIndex
+      ? selectVisibleExactSteamAliases(
+          exactSteamIndex.snapshots,
+          candidateGames.map((game) => game.id),
+        )
+      : []),
+  ]);
+
+  // If the normalized exact-Steam rail is unavailable on an older schema,
+  // retain completeness by falling back to the full directory only for that
+  // degraded case. A healthy schema keeps the indexed hot path.
+  if (
+    exactSteamId &&
+    exactSteamIndex === null &&
+    input.identity.kind === "claimed"
+  ) {
+    try {
+      const directoryEntry = await resolveProfileDirectoryIdentity(
+        prisma,
+        { uid: input.identity.uid },
+      );
+      profileAliases = mergeProfileAliases([
+        ...profileAliases,
+        directoryEntry?.name,
+        directoryEntry?.latestObservedName,
+        ...(directoryEntry?.aliases ?? []),
+      ]);
+    } catch (error) {
+      if (!isMissingPrismaStorageError(error)) {
+        throw error;
+      }
+      warnOptionalProfileRail(
+        "exact Steam directory alias fallback",
+        error,
+      );
+    }
+  }
+
+  const replayAwarePlayer = withProfileAliases(
+    input.currentPlayer,
+    profileAliases,
+  );
+  const pendingClaimSummaries = await safeLoadPendingWoloClaimSummaries(
+    prisma,
+    profileAliases,
+  );
+  const currentPlayer = applyPendingWoloClaimSummary(
+    replayAwarePlayer,
+    pendingClaimSummaries,
+  );
   let community: UserCommunitySummary = { badges: [], gifts: [], giftedWolo: 0 };
   if (input.user) {
     try {
@@ -2039,12 +2118,12 @@ async function buildProfileFromPlayer(
 
   const [watcher, wolo, stream, rivalries, normalizedStats] = await Promise.all([
     loadWatcherStats(prisma, input.user, matchedGames, input.user?.verificationLevel ?? 0),
-    loadWoloStats(prisma, input.aliases, input.user ? { id: input.user.id } : null, community.giftedWolo),
+    loadWoloStats(prisma, profileAliases, input.user ? { id: input.user.id } : null, community.giftedWolo),
     loadStreamStats(prisma, input.user?.twitchStreamUrl ?? null, matchedGames),
     buildRivalSummaries(prisma, matchedGames.slice(0, 60), currentPlayer),
     loadPlayerNormalizedStats(prisma, {
       userId: input.user?.id ?? null,
-      aliases: input.aliases,
+      aliases: profileAliases,
     }),
   ]);
 
@@ -2089,7 +2168,7 @@ async function buildProfileFromPlayer(
         ? `/profile?claim_name=${encodeURIComponent(input.identity.name)}`
         : null,
     currentPlayer,
-    aliases: input.aliases,
+    aliases: profileAliases,
     isClaimed: Boolean(input.user),
     isVerified: Boolean(input.user?.verified),
     verificationLevel: input.user?.verificationLevel ?? 0,
@@ -2301,21 +2380,25 @@ export async function loadClaimedPlayerProfile(
 
   if (!user) return null;
 
-  const directoryEntry =
-    await resolveProfileDirectoryIdentity(
-      prisma,
-      {
-        uid,
-      },
-    );
+  const exactSteamPlayer =
+    buildExactSteamClaimedPlayer(user);
+  const directoryEntry = exactSteamPlayer
+    ? null
+    : await resolveProfileDirectoryIdentity(
+        prisma,
+        {
+          uid,
+        },
+      );
 
   const displayName =
+    exactSteamPlayer?.name ||
     user.inGameName ||
     directoryEntry?.name ||
     user.steamPersonaName ||
     user.uid;
 
-  const aliases =
+  const aliases = exactSteamPlayer?.aliases ??
     mergeProfileAliases([
       user.inGameName,
       user.steamPersonaName,
@@ -2326,6 +2409,7 @@ export async function loadClaimedPlayerProfile(
     ]);
 
   const currentPlayer =
+    exactSteamPlayer ??
     withProfileAliases(
       buildClaimedPublicPlayerRef(
         user,
@@ -2418,7 +2502,7 @@ export async function loadReplayPlayerProfile(
     : null;
 }
 
-function buildExactSteamClaimedMatchFeedPlayer(
+function buildExactSteamClaimedPlayer(
   user: Parameters<typeof buildClaimedPublicPlayerRef>[0],
 ) {
   const displayName =
@@ -2466,7 +2550,7 @@ async function resolveMatchFeedIdentity(
     if (!user) return null;
 
     const exactSteamPlayer =
-      buildExactSteamClaimedMatchFeedPlayer(
+      buildExactSteamClaimedPlayer(
         user,
       );
 
@@ -2521,7 +2605,7 @@ async function resolveMatchFeedIdentity(
 
   if (claimedUser) {
     const exactSteamPlayer =
-      buildExactSteamClaimedMatchFeedPlayer(
+      buildExactSteamClaimedPlayer(
         claimedUser,
       );
 

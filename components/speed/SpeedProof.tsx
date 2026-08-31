@@ -27,9 +27,23 @@ const AUTHORITATIVE_ROUTES = new Set([
   "/players",
   "/rivalries",
   "/leaderboard",
+  "/leaderboard/og",
   "/war-chest",
   "/staking",
+  "/wolo",
+  "/contact-emaren",
+  "/academy",
+  "/round-chamber",
+  "/statistics",
+  "/workshop",
 ]);
+
+function isAuthoritativeRoute(route: string) {
+  return (
+    AUTHORITATIVE_ROUTES.has(route) ||
+    /^\/game-stats\/[1-9]\d*$/.test(route)
+  );
+}
 
 function isDisplayableProof(sample: SpeedSample | null | undefined, route: string) {
   return Boolean(
@@ -68,7 +82,7 @@ function navigationLabel(kind: SpeedSample["navigation_kind"]) {
 export default function SpeedProof() {
   const pathname = usePathname();
   const route = sanitizeSpeedPath(pathname || "/");
-  const authoritative = AUTHORITATIVE_ROUTES.has(route);
+  const authoritative = isAuthoritativeRoute(route);
   const livingKingdomRealm = livingKingdomRealmForPath(route);
   const [sample, setSample] = useState<SpeedSample | null>(null);
   const [open, setOpen] = useState(false);
@@ -86,7 +100,7 @@ export default function SpeedProof() {
     routeBeganAtRef.current = Date.now() - 3_000;
     setOpen(false);
 
-    if (!AUTHORITATIVE_ROUTES.has(route)) {
+    if (!isAuthoritativeRoute(route)) {
       // Exact detail realms still share the combined presence chip. Reuse the
       // latest valid on-device proof rather than leaving a permanent fake
       // "Measuring…" label on a route that does not claim authoritative proof.
@@ -126,7 +140,7 @@ export default function SpeedProof() {
     const handleSample = (event: Event) => {
       const next = (event as CustomEvent<SpeedSample>).detail;
       const currentRoute = routeRef.current;
-      if (!AUTHORITATIVE_ROUTES.has(currentRoute)) return;
+      if (!isAuthoritativeRoute(currentRoute)) return;
       if (!isDisplayableProof(next, currentRoute)) return;
       setSample(next);
     };

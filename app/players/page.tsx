@@ -24,6 +24,10 @@ export const dynamic = "force-dynamic";
 
 export default async function PlayersDirectoryPage() {
   const prisma = getPrisma();
+  // Read the watermark before the directory query. If replay truth lands
+  // between these reads, the client observes a later generation and refreshes;
+  // reading both concurrently can stamp an older directory with a newer
+  // generation and suppress that corrective refresh.
   const [initialGeneration, presence] = await Promise.all([
     loadPublicReplayGeneration(prisma),
     loadPublicPresenceSnapshot(prisma),

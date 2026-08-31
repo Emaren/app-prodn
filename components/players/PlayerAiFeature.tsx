@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { payAcademyAdvisorOnChain } from "@/lib/clientAcademyPayment";
 
@@ -386,15 +386,17 @@ export function PlayerHeroAiDomBinder(props: PlayerAiFeatureProps) {
   const closeTimerRef = useRef<number | null>(null);
   const stayTimerRef = useRef<number | null>(null);
   const hiddenPanelRef = useRef<HTMLElement | null>(null);
+  const telemetryPropsRef = useRef(props);
+  telemetryPropsRef.current = props;
 
-  const scheduleStayedTelemetry = (mode: PlayerAiMode) => {
+  const scheduleStayedTelemetry = useCallback((mode: PlayerAiMode) => {
     if (stayTimerRef.current) {
       window.clearTimeout(stayTimerRef.current);
     }
 
     stayTimerRef.current = window.setTimeout(() => {
       trackPlayerAiTelemetry(
-        props,
+        telemetryPropsRef.current,
         "player_ai_mode_stayed",
         mode,
         mode === "aoe2_ai"
@@ -403,9 +405,9 @@ export function PlayerHeroAiDomBinder(props: PlayerAiFeatureProps) {
       );
       stayTimerRef.current = null;
     }, 9000);
-  };
+  }, []);
 
-  const openPanel = (panel: HTMLElement) => {
+  const openPanel = useCallback((panel: HTMLElement) => {
     if (closeTimerRef.current) {
       window.clearTimeout(closeTimerRef.current);
       closeTimerRef.current = null;
@@ -427,19 +429,27 @@ export function PlayerHeroAiDomBinder(props: PlayerAiFeatureProps) {
 
     setTarget(panel);
     setIsRendered(true);
-    trackPlayerAiTelemetry(props, "player_ai_mode_selected", "aoe2_ai");
+    trackPlayerAiTelemetry(
+      telemetryPropsRef.current,
+      "player_ai_mode_selected",
+      "aoe2_ai",
+    );
     scheduleStayedTelemetry("aoe2_ai");
     window.requestAnimationFrame(() => setIsVisible(true));
-  };
+  }, [scheduleStayedTelemetry]);
 
-  const closePanel = () => {
+  const closePanel = useCallback(() => {
     setIsVisible(false);
 
     if (closeTimerRef.current) {
       window.clearTimeout(closeTimerRef.current);
     }
 
-    trackPlayerAiTelemetry(props, "player_ai_mode_selected", "regular");
+    trackPlayerAiTelemetry(
+      telemetryPropsRef.current,
+      "player_ai_mode_selected",
+      "regular",
+    );
     scheduleStayedTelemetry("regular");
 
     closeTimerRef.current = window.setTimeout(() => {
@@ -449,7 +459,7 @@ export function PlayerHeroAiDomBinder(props: PlayerAiFeatureProps) {
       setTarget(null);
       closeTimerRef.current = null;
     }, 180);
-  };
+  }, [scheduleStayedTelemetry, target]);
 
   useEffect(() => {
     scheduleStayedTelemetry("regular");
@@ -464,7 +474,7 @@ export function PlayerHeroAiDomBinder(props: PlayerAiFeatureProps) {
       restoreSignalPanelBackground(hiddenPanelRef.current);
       hiddenPanelRef.current = null;
     };
-  }, []);
+  }, [scheduleStayedTelemetry]);
 
   useEffect(() => {
     const markHeroSurfaces = () => {
@@ -513,7 +523,7 @@ export function PlayerHeroAiDomBinder(props: PlayerAiFeatureProps) {
     return () => {
       document.removeEventListener("click", handleDocumentClick, true);
     };
-  }, [isRendered, target]);
+  }, [closePanel, isRendered, openPanel, target]);
 
   if (!target || !isRendered) return null;
 

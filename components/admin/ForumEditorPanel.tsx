@@ -50,7 +50,10 @@ export default function ForumEditorPanel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const threads = snapshot?.threads ?? [];
+  const threads = useMemo(
+    () => snapshot?.threads ?? [],
+    [snapshot?.threads],
+  );
 
   const selectedThread = useMemo(
     () => threads.find((thread) => thread.slug === selectedSlug) ?? null,
