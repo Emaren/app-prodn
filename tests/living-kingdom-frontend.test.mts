@@ -223,5 +223,21 @@ test("global integration publishes eagerly, stays room-scoped/default-on, and ke
   );
   assert.match(styles, /@media \(max-height: 479px\)[\s\S]*\.railRoot,[\s\S]*display: none/);
   assert.match(styles, /\.own \.portrait \{[\s\S]{0,240}opacity: 0\.38/);
+  assert.match(
+    styles,
+    /\.portrait \{[\s\S]{0,320}overflow: visible;[\s\S]{0,160}border: 0;[\s\S]{0,160}border-radius: 0;[\s\S]{0,160}background: transparent;/
+  );
+  assert.match(
+    styles,
+    /\.clusterPortrait \{[\s\S]{0,320}overflow: visible;[\s\S]{0,160}border: 0;[\s\S]{0,160}border-radius: 0;/
+  );
+  assert.match(
+    styles,
+    /\.flight \{[\s\S]{0,360}overflow: visible;[\s\S]{0,160}border: 0;[\s\S]{0,160}border-radius: 0;[\s\S]{0,160}background: transparent;/
+  );
+  assert.match(
+    styles,
+    /\.portrait img,[\s\S]*\.clusterPortrait img,[\s\S]*\.flight img \{[\s\S]{0,220}object-fit: contain;[\s\S]{0,220}drop-shadow/
+  );
   assert.doesNotMatch(styles, /\.panel|\.roamingButton|\.sharingControl|\.modeGroup/);
 });

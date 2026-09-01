@@ -36,23 +36,22 @@
   display: grid;
   width: 32px;
   height: 32px;
-  overflow: hidden;
+  overflow: visible;
   place-items: center;
-  border: 1px solid rgba(226, 232, 240, 0.34);
-  border-radius: 999px;
-  background: #07111e;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   opacity: 0.72;
   transform: translateZ(0) scale(0.94);
-  transition: transform 180ms ease, opacity 180ms ease, border-color 180ms ease;
+  transition: transform 180ms ease, opacity 180ms ease, filter 180ms ease;
 }
 
 .marker:hover .portrait,
 .marker:focus-visible .portrait,
 .moving .portrait {
-  border-color: rgba(226, 232, 240, 0.48);
-  opacity: 0.86;
-  transform: translateZ(0) scale(0.98);
+  opacity: 0.9;
+  transform: translateZ(0) scale(1);
 }
 
 .marker:focus-visible {
@@ -62,16 +61,16 @@
 }
 
 .portrait img,
+.clusterPortrait img,
 .flight img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: top center;
+  object-fit: contain;
+  object-position: center;
+  filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.58));
 }
 
 .own .portrait {
-  border-color: rgba(226, 232, 240, 0.24);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.38);
   opacity: 0.38;
   transform: translateZ(0) scale(0.9);
 }
@@ -79,9 +78,8 @@
 .own:hover .portrait,
 .own:focus-visible .portrait,
 .own.moving .portrait {
-  border-color: rgba(226, 232, 240, 0.38);
-  opacity: 0.55;
-  transform: translateZ(0) scale(0.94);
+  opacity: 0.58;
+  transform: translateZ(0) scale(0.96);
 }
 
 .clusterPortraits {
@@ -95,11 +93,11 @@
   top: 3px;
   width: 28px;
   height: 28px;
-  overflow: hidden;
-  border: 1px solid rgba(226, 232, 240, 0.46);
-  border-radius: 999px;
-  background: #07111e;
-  box-shadow: 0 5px 16px rgba(0, 0, 0, 0.5);
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .clusterPortrait:first-child {
@@ -142,11 +140,11 @@
   left: 0;
   width: 34px;
   height: 34px;
-  overflow: hidden;
-  border: 1px solid rgba(226, 232, 240, 0.46);
-  border-radius: 999px;
-  background: #07111e;
-  box-shadow: 0 9px 26px rgba(0, 0, 0, 0.52);
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   pointer-events: auto;
   will-change: transform, opacity;
 }
