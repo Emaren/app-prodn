@@ -69,12 +69,19 @@ const FUNDING_COPY: Record<
   },
 };
 
+export type BetBattleHistoryCardDensity =
+  | "b1"
+  | "a1"
+  | "a2";
+
 export default function BetBattleHistoryCard({
   group,
   className = "",
+  density = "b1",
 }: {
   group: BetBattleHistoryGroup;
   className?: string;
+  density?: BetBattleHistoryCardDensity;
 }) {
   const [expanded, setExpanded] = useState(false);
   const disclosureId = useId().replace(/:/g, "");
@@ -90,12 +97,73 @@ export default function BetBattleHistoryCard({
     [group.timeline]
   );
 
+  const winnerSummary =
+    outcomeValue(
+      group.winnerOutcome,
+      "Pending",
+    );
+
+  const desyncSummary =
+    outcomeValue(
+      group.desyncOutcome,
+      "Not offered",
+    );
+
+  const normalizedDesync =
+    desyncSummary
+      .trim()
+      .toLowerCase();
+
+  const desyncCode =
+    !group.desyncOutcome
+      ? "—"
+      : normalizedDesync.startsWith("yes")
+        ? "Y"
+        : normalizedDesync.startsWith("no")
+          ? "N"
+          : "•";
+
+  const desyncClassName =
+    desyncCode === "Y"
+      ? "border-rose-300/20 bg-rose-400/[0.07] text-rose-100"
+      : desyncCode === "N"
+        ? "border-emerald-300/20 bg-emerald-400/[0.07] text-emerald-100"
+        : "border-white/[0.07] bg-white/[0.025] text-slate-500";
+
   return (
     <article
       className={`relative min-w-0 overflow-hidden rounded-[1.35rem] border border-cyan-300/16 bg-[radial-gradient(85%_150%_at_0%_50%,rgba(14,116,144,0.14),transparent_54%),linear-gradient(115deg,rgba(3,10,24,0.98),rgba(6,11,24,0.96))] shadow-[inset_3px_0_0_rgba(56,189,248,0.42),0_16px_38px_rgba(0,0,0,0.20)] ${className}`}
       aria-labelledby={`${detailsId}-title`}
     >
-      <div className="w-full min-w-0 px-4 py-4 sm:px-5">
+      {density === "a2" ? (
+      <div
+        id={`${detailsId}-title`}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        aria-controls={detailsId}
+        aria-label={`${battleLabel(group)} — toggle battle proof`}
+        onClick={() =>
+          setExpanded(
+            (value) => !value,
+          )
+        }
+        onKeyDown={(event) => {
+          if (
+            event.key !== "Enter" &&
+            event.key !== " "
+          ) {
+            return;
+          }
+
+          event.preventDefault();
+
+          setExpanded(
+            (value) => !value,
+          );
+        }}
+        className="group/battle w-full min-w-0 cursor-pointer px-4 py-4 outline-none transition duration-150 hover:bg-cyan-300/[0.035] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-200/45 sm:px-5"
+      >
         <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.95fr)] lg:items-center">
           <div className="flex min-w-0 items-start gap-3.5">
             <span className="relative mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-cyan-200/18 bg-cyan-300/[0.07] text-cyan-100 shadow-[0_0_22px_rgba(34,211,238,0.10)]">
@@ -121,7 +189,6 @@ export default function BetBattleHistoryCard({
               </div>
 
               <h3
-                id={`${detailsId}-title`}
                 className="mt-2 line-clamp-2 break-words text-[1.02rem] font-semibold leading-[1.32] text-[#eee7d8] sm:text-[1.08rem]"
               >
                 {battleMatchup(group)}
@@ -166,21 +233,169 @@ export default function BetBattleHistoryCard({
           </div>
         </div>
 
+        <div
+          aria-hidden="true"
+          className="mt-3 flex min-h-11 w-full items-center justify-between border-t border-white/[0.055] pt-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 transition group-hover/battle:text-slate-300"
+        >
+          <span>
+            {expanded
+              ? "Hide battle proof"
+              : "Battle proof"}
+          </span>
+
+          <ChevronDown
+            className={`h-4 w-4 text-amber-100/70 transition-transform duration-200 ${
+              expanded
+                ? "rotate-180"
+                : ""
+            }`}
+            aria-hidden="true"
+          />
+        </div>
+      </div>
+
+      ) : (
         <button
+          id={`${detailsId}-title`}
           type="button"
           aria-expanded={expanded}
           aria-controls={detailsId}
-          onClick={() => setExpanded((value) => !value)}
-          className="mt-3 flex min-h-11 w-full items-center justify-between border-t border-white/[0.055] pt-3 text-left text-[10px] font-black uppercase tracking-[0.18em] text-slate-500 outline-none transition hover:text-slate-300 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-200/55"
+          aria-label={`${battleLabel(group)} — open battle details`}
+          onClick={() =>
+            setExpanded(
+              (value) => !value,
+            )
+          }
+          className={`group/battle grid w-full cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto] items-center text-left outline-none transition duration-150 hover:bg-cyan-300/[0.035] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-cyan-200/45 ${
+            density === "b1"
+              ? "gap-3 px-3 py-2.5 sm:px-4"
+              : "gap-3.5 px-4 py-3.5 sm:px-5"
+          }`}
         >
-          <span>{expanded ? "Hide battle proof" : "Open battle proof"}</span>
-          <ChevronDown
-            className={`h-4 w-4 text-amber-100/70 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
-            aria-hidden="true"
-          />
-        </button>
-      </div>
+          <span
+            className={`relative flex shrink-0 items-center justify-center rounded-xl border border-cyan-200/16 bg-cyan-300/[0.055] text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.07)] transition group-hover/battle:border-cyan-200/28 group-hover/battle:bg-cyan-300/[0.085] ${
+              density === "b1"
+                ? "h-9 w-9"
+                : "h-10 w-10"
+            }`}
+          >
+            <Swords
+              className={
+                density === "b1"
+                  ? "h-4 w-4"
+                  : "h-[1.05rem] w-[1.05rem]"
+              }
+              aria-hidden="true"
+            />
+            <span
+              className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-slate-950 bg-sky-300 shadow-[0_0_8px_rgba(125,211,252,0.65)]"
+              aria-hidden="true"
+            />
+          </span>
 
+          <span className="min-w-0">
+            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5">
+              <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-100/85">
+                {group.publicNumber !== null
+                  ? `Battle #${group.publicNumber.toLocaleString()}`
+                  : `Market #${group.rootMarketId.toLocaleString()}`}
+              </span>
+
+              <span className="text-[9px] font-semibold uppercase tracking-[0.13em] text-slate-600">
+                <TimeDisplayText
+                  value={group.startedAt}
+                  includeZone={false}
+                  includeYear
+                  interactive={false}
+                />
+              </span>
+            </span>
+
+            <span
+              className={`mt-1 block min-w-0 truncate font-semibold leading-5 text-[#eee7d8] ${
+                density === "b1"
+                  ? "text-[13px]"
+                  : "text-sm"
+              }`}
+            >
+              {battleMatchup(group)}
+            </span>
+
+            {density === "a1" ? (
+              <span className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 text-[9px] font-semibold uppercase tracking-[0.11em] text-slate-500">
+                <span>{status.label}</span>
+                <span aria-hidden="true">·</span>
+                <span>
+                  {group.slips.length.toLocaleString()}{" "}
+                  {group.slips.length === 1
+                    ? "slip"
+                    : "slips"}
+                </span>
+
+                {group.rewardWolo > 0 ? (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="text-amber-100/70">
+                      +{formatWolo(group.rewardWolo)} rewards
+                    </span>
+                  </>
+                ) : null}
+              </span>
+            ) : null}
+          </span>
+
+          <span className="flex min-w-0 shrink-0 items-center gap-3">
+            <span className="hidden min-w-0 items-center gap-4 lg:flex">
+              <span className="min-w-[5.8rem] border-l border-white/[0.055] pl-3">
+                <span className="block text-[8px] font-black uppercase tracking-[0.18em] text-slate-600">
+                  Stake
+                </span>
+                <span className="mt-0.5 block truncate text-[11px] font-semibold text-amber-100">
+                  {formatWolo(group.coreStakeWolo)} WOLO
+                </span>
+              </span>
+
+              <span className="min-w-[6.5rem] border-l border-white/[0.055] pl-3">
+                <span className="block text-[8px] font-black uppercase tracking-[0.18em] text-slate-600">
+                  Result
+                </span>
+                <span className="mt-0.5 block max-w-[8.5rem] truncate text-[11px] font-semibold text-slate-200">
+                  {winnerSummary}
+                </span>
+              </span>
+
+              <span className="min-w-[7rem] border-l border-white/[0.055] pl-3">
+                <span className="block text-[8px] font-black uppercase tracking-[0.18em] text-slate-600">
+                  Settlement
+                </span>
+                <span className="mt-0.5 block max-w-[9rem] truncate text-[11px] font-semibold text-emerald-100/90">
+                  {settlementAmount(group)}
+                </span>
+              </span>
+            </span>
+
+            <span
+              title={`Desync: ${desyncSummary}`}
+              aria-label={`Desync: ${desyncSummary}`}
+              className={`inline-flex h-8 min-w-8 shrink-0 items-center justify-center gap-1 rounded-lg border px-1.5 text-[9px] font-black uppercase tracking-[0.08em] ${desyncClassName}`}
+            >
+              <span className="opacity-55">
+                D
+              </span>
+              <span>{desyncCode}</span>
+            </span>
+
+            <ChevronDown
+              className={`h-4 w-4 shrink-0 text-amber-100/55 transition-transform duration-200 group-hover/battle:text-amber-100 ${
+                expanded
+                  ? "rotate-180"
+                  : ""
+              }`}
+              aria-hidden="true"
+            />
+          </span>
+        </button>
+      )}
       {expanded ? (
         <div
           id={detailsId}

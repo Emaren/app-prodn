@@ -380,10 +380,19 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
   );
 }
 
+export function useLobbyAppearanceOptional() {
+  return useContext(LobbyAppearanceContext);
+}
+
 export function useLobbyAppearance() {
-  const context = useContext(LobbyAppearanceContext);
+  const context =
+    useLobbyAppearanceOptional();
+
   if (!context) {
-    throw new Error("useLobbyAppearance must be used within LobbyAppearanceProvider");
+    throw new Error(
+      "useLobbyAppearance must be used within LobbyAppearanceProvider",
+    );
   }
+
   return context;
 }

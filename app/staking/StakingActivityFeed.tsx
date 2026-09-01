@@ -27,6 +27,25 @@ const PAGE_SIZE = 40;
 const STAKING_BOUNTY_ACTIVITY_LIMIT = 500;
 const LIVE_POLL_INTERVAL_MS = 12_000;
 
+type ActivityLayoutMode =
+  | "b1"
+  | "a1"
+  | "a2"
+  | "e1";
+
+type InlineActivityLayoutMode =
+  Exclude<ActivityLayoutMode, "e1">;
+
+const ACTIVITY_LAYOUT_STORAGE_KEY =
+  "aoe2war:staking-recent-activity-layout:v1";
+
+const ACTIVITY_LAYOUT_MODES: ActivityLayoutMode[] = [
+  "b1",
+  "a1",
+  "a2",
+  "e1",
+];
+
 type ActivityPageResponse = {
   rows?: StakingActivityItem[];
   hasMore?: boolean;
@@ -416,9 +435,105 @@ export default function StakingActivityFeed({
   const [mode, setMode] = useState<ActivityMode>("grouped");
   const [filterMode, setFilterMode] = useState<ActivityFilterMode>("all");
   const [beltPayoutFilterMode, setBeltPayoutFilterMode] = useState<BeltPayoutFilterMode>("all");
+
+  const [activityLayout, setActivityLayout] =
+    useState<ActivityLayoutMode>("b1");
+
+  const lastInlineActivityLayoutRef =
+    useRef<InlineActivityLayoutMode>("b1");
+
   const [activityPrefsLoaded, setActivityPrefsLoaded] = useState(false);
   const lastTrackedStakingViewRef = useRef<string | null>(null);
 
+
+  useEffect(() => {
+    try {
+      const stored =
+        window.localStorage.getItem(
+          ACTIVITY_LAYOUT_STORAGE_KEY,
+        );
+
+      if (
+        stored === "b1" ||
+        stored === "a1" ||
+        stored === "a2"
+      ) {
+        lastInlineActivityLayoutRef.current =
+          stored;
+
+        setActivityLayout(
+          stored,
+        );
+      }
+    } catch {
+      // Ignore private-mode/localStorage failures.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (
+      activityLayout !== "e1"
+    ) {
+      return;
+    }
+
+    const previousOverflow =
+      document.body.style.overflow;
+
+    document.body.style.overflow =
+      "hidden";
+
+    const handleKeyDown = (
+      event: KeyboardEvent,
+    ) => {
+      if (
+        event.key === "Escape"
+      ) {
+        setActivityLayout(
+          lastInlineActivityLayoutRef.current,
+        );
+      }
+    };
+
+    window.addEventListener(
+      "keydown",
+      handleKeyDown,
+    );
+
+    return () => {
+      document.body.style.overflow =
+        previousOverflow;
+
+      window.removeEventListener(
+        "keydown",
+        handleKeyDown,
+      );
+    };
+  }, [activityLayout]);
+
+  function selectActivityLayout(
+    nextLayout: ActivityLayoutMode,
+  ) {
+    if (
+      nextLayout !== "e1"
+    ) {
+      lastInlineActivityLayoutRef.current =
+        nextLayout;
+
+      try {
+        window.localStorage.setItem(
+          ACTIVITY_LAYOUT_STORAGE_KEY,
+          nextLayout,
+        );
+      } catch {
+        // Ignore private-mode/localStorage failures.
+      }
+    }
+
+    setActivityLayout(
+      nextLayout,
+    );
+  }
 
   useEffect(() => {
     try {
@@ -825,11 +940,23 @@ export default function StakingActivityFeed({
   const displayRows = useMemo(
     () =>
       visibleActivityRowsForView(
-        rows,
+        mode === "grouped"
+          ? rows.filter(
+              (row) =>
+                Boolean(
+                  row.battleHistory,
+                ),
+            )
+          : rows,
         filterMode,
         beltPayoutFilterMode,
       ),
-    [beltPayoutFilterMode, filterMode, rows],
+    [
+      beltPayoutFilterMode,
+      filterMode,
+      mode,
+      rows,
+    ],
   );
   const bountySummary = filterMode === "bounties" ? computePublicBountySummary(displayRows) : null;
   const activityFilters = useMemo<ActivityFilterMode[]>(
@@ -847,7 +974,29 @@ export default function StakingActivityFeed({
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div
+      data-staking-activity-layout={activityLayout}
+      className={
+        activityLayout === "e1"
+          ? "fixed inset-2 z-[140] flex min-h-0 flex-col overflow-hidden rounded-[1.6rem] border border-white/10 bg-[radial-gradient(circle_at_50%_0%,rgba(14,116,144,0.10),transparent_32%),linear-gradient(180deg,#07101d,#030712)] p-4 shadow-[0_40px_140px_rgba(0,0,0,0.75)] sm:inset-4 sm:p-5"
+          : "flex h-full min-h-0 flex-col overflow-hidden"
+      }
+    >
+      <style>{`
+        #staking-advanced:has(
+          [data-staking-activity-layout="a1"]
+        ) {
+          height: 84svh;
+          max-height: 66rem;
+        }
+
+        #staking-advanced:has(
+          [data-staking-activity-layout="a2"]
+        ) {
+          height: 94svh;
+          max-height: 78rem;
+        }
+      `}</style>
       {note ? (
         <div className="rounded-[1rem] border border-slate-800/55 bg-slate-900/40 px-3.5 py-3 text-xs leading-5 text-slate-400">
           {note}
@@ -900,9 +1049,54 @@ export default function StakingActivityFeed({
               </button>
             ))}
           </div>
+          <div
+            role="group"
+            aria-label="Recent activity view"
+            className="flex items-center gap-1 rounded-full border border-white/[0.055] bg-black/20 p-1"
+          >
+            {ACTIVITY_LAYOUT_MODES.map(
+              (nextLayout) => {
+                const active =
+                  activityLayout ===
+                  nextLayout;
+
+                const title =
+                  nextLayout === "b1"
+                    ? "B1 · Compact"
+                    : nextLayout === "a1"
+                      ? "A1 · Tall"
+                      : nextLayout === "a2"
+                        ? "A2 · Rich"
+                        : "E1 · Full screen";
+
+                return (
+                  <button
+                    key={nextLayout}
+                    type="button"
+                    title={title}
+                    aria-label={title}
+                    aria-pressed={active}
+                    onClick={() =>
+                      selectActivityLayout(
+                        nextLayout,
+                      )
+                    }
+                    className={`min-w-8 rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] outline-none transition focus-visible:ring-2 focus-visible:ring-amber-200/55 ${
+                      active
+                        ? "border-amber-300/45 bg-amber-300/12 text-amber-100"
+                        : "border-transparent text-slate-500 hover:border-white/10 hover:text-slate-200"
+                    }`}
+                  >
+                    {nextLayout.toUpperCase()}
+                  </button>
+                );
+              },
+            )}
+          </div>
+
           <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-[#ded7c3]/70">
             <span>
-              {activityViewReady ? `${rows.length.toLocaleString()} rows loaded` : "Loading activity"}
+              {activityViewReady ? `${displayRows.length.toLocaleString()} rows loaded` : "Loading activity"}
             </span>
             {activityViewReady && pendingVisibleRows.length > 0 ? (
               <button
@@ -1032,6 +1226,13 @@ export default function StakingActivityFeed({
                 {mode === "grouped" && item.battleHistory ? (
                   <BetBattleHistoryCard
                     group={item.battleHistory}
+                    density={
+                      activityLayout === "a2"
+                        ? "a2"
+                        : activityLayout === "b1"
+                          ? "b1"
+                          : "a1"
+                    }
                   />
                 ) : (
                   <ActivityRow

@@ -17,6 +17,9 @@ const NO_STORE_HEADERS = {
   "Cache-Control": "no-store, max-age=0",
 };
 
+const BATTLE_HISTORY_CURSOR_PATTERN =
+  /^bh2\.-?\d+\.\d+\.\d+$/;
+
 function clampLimit(value: string | null) {
   const parsed = Number.parseInt(value ?? "", 10);
   if (!Number.isFinite(parsed)) return 16;
@@ -184,8 +187,25 @@ export async function GET(request: NextRequest) {
       }, { headers: NO_STORE_HEADERS });
     }
 
-    const beforeParam = request.nextUrl.searchParams.get("before");
-    const before = parseBefore(beforeParam);
+    const mode =
+      request.nextUrl.searchParams.get("mode") === "grouped"
+        ? "grouped"
+        : "ledger";
+
+    const beforeParam =
+      request.nextUrl.searchParams.get("before");
+
+    const before =
+      beforeParam &&
+      mode === "grouped" &&
+      BATTLE_HISTORY_CURSOR_PATTERN.test(
+        beforeParam,
+      )
+        ? beforeParam
+        : parseBefore(
+            beforeParam,
+          );
+
     if (beforeParam && !before) {
       return NextResponse.json(
         {
@@ -201,7 +221,7 @@ export async function GET(request: NextRequest) {
     const payload = await loadMainnetTransferStakingActivityPage(getPrisma(), {
       limit: clampLimit(request.nextUrl.searchParams.get("limit")),
       before,
-      mode: request.nextUrl.searchParams.get("mode") === "grouped" ? "grouped" : "ledger",
+      mode,
       filter:
         reserveViewAllowed
           ? "reserve"

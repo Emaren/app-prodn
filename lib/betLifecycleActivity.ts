@@ -252,32 +252,127 @@ export async function loadBetLifecycleActivityPage(
     WITH eligible_markets AS (
       ${Prisma.join(eligibleMarketSources, " UNION ")}
     ),
+
+    /*
+     * Historical Desync propositions may predate parent_market_id and
+     * BattleIdentity. Recover only deterministic Winner relationships.
+     *
+     * This mirrors nestDesyncSideMarkets:
+     *   explicit Winner parent
+     *   -> exact desync-<winner-slug>
+     *   -> unique one-Winner / one-Desync linked session
+     *
+     * Ambiguous rows fail closed and remain independent.
+     */
+    legacy_session_counts AS (
+      SELECT
+        linked_session_key,
+        COUNT(*) FILTER (
+          WHERE market_type = 'winner'
+        ) AS winner_count,
+        MIN(id) FILTER (
+          WHERE market_type = 'winner'
+        ) AS winner_id,
+        COUNT(*) FILTER (
+          WHERE market_type = 'desync'
+        ) AS desync_count
+      FROM bet_markets
+      WHERE linked_session_key IS NOT NULL
+      GROUP BY linked_session_key
+    ),
+
+    legacy_desync_links AS (
+      SELECT
+        child.id AS child_id,
+        COALESCE(
+          explicit_parent.id,
+          slug_parent.id,
+          CASE
+            WHEN session_counts.winner_count = 1
+             AND session_counts.desync_count = 1
+              THEN session_counts.winner_id
+            ELSE NULL
+          END
+        ) AS winner_id
+      FROM bet_markets child
+
+      LEFT JOIN bet_markets explicit_parent
+        ON explicit_parent.id = child.parent_market_id
+       AND explicit_parent.market_type = 'winner'
+
+      LEFT JOIN bet_markets slug_parent
+        ON slug_parent.market_type = 'winner'
+       AND child.slug = 'desync-' || slug_parent.slug
+
+      LEFT JOIN legacy_session_counts session_counts
+        ON session_counts.linked_session_key =
+             child.linked_session_key
+
+      WHERE child.battle_id IS NULL
+        AND child.market_type = 'desync'
+    ),
+
+    market_lineage AS (
+      SELECT
+        bm.id,
+        bm.battle_id,
+        bm.parent_market_id,
+        bm.created_at,
+
+        CASE
+          WHEN bm.battle_id IS NOT NULL
+            THEN NULL
+
+          WHEN bm.market_type = 'desync'
+            THEN COALESCE(
+              desync_link.winner_id,
+              bm.id
+            )
+
+          ELSE COALESCE(
+            bm.parent_market_id,
+            bm.id
+          )
+        END AS legacy_root_market_id
+
+      FROM bet_markets bm
+
+      LEFT JOIN legacy_desync_links desync_link
+        ON desync_link.child_id = bm.id
+    ),
+
     eligible_groups AS (
       SELECT DISTINCT
-        bm.battle_id,
-        CASE
-          WHEN bm.battle_id IS NULL THEN COALESCE(bm.parent_market_id, bm.id)
-          ELSE NULL
-        END AS legacy_root_market_id
+        lineage.battle_id,
+        lineage.legacy_root_market_id
+
       FROM eligible_markets eligible
-      INNER JOIN bet_markets bm ON bm.id = eligible.market_id
+
+      INNER JOIN market_lineage lineage
+        ON lineage.id = eligible.market_id
     ),
+
     expanded_markets AS (
       SELECT DISTINCT
         eligible.battle_id,
         eligible.legacy_root_market_id,
-        bm.id AS market_id,
-        bm.parent_market_id,
-        bm.created_at
+        lineage.id AS market_id,
+        lineage.parent_market_id,
+        lineage.created_at
+
       FROM eligible_groups eligible
-      INNER JOIN bet_markets bm ON (
-        eligible.battle_id IS NOT NULL
-        AND bm.battle_id = eligible.battle_id
-      ) OR (
-        eligible.battle_id IS NULL
-        AND bm.battle_id IS NULL
-        AND COALESCE(bm.parent_market_id, bm.id) = eligible.legacy_root_market_id
-      )
+
+      INNER JOIN market_lineage lineage
+        ON (
+          eligible.battle_id IS NOT NULL
+          AND lineage.battle_id =
+            eligible.battle_id
+        ) OR (
+          eligible.battle_id IS NULL
+          AND lineage.battle_id IS NULL
+          AND lineage.legacy_root_market_id =
+            eligible.legacy_root_market_id
+        )
     ),
     lifecycle_events AS (
       SELECT
@@ -349,8 +444,16 @@ export async function loadBetLifecycleActivityPage(
         em.battle_id,
         battle.public_number,
         COALESCE(
-          MIN(em.market_id) FILTER (WHERE em.parent_market_id IS NULL),
-          MIN(COALESCE(em.parent_market_id, em.market_id))
+          MAX(em.legacy_root_market_id),
+          MIN(em.market_id) FILTER (
+            WHERE em.parent_market_id IS NULL
+          ),
+          MIN(
+            COALESCE(
+              em.parent_market_id,
+              em.market_id
+            )
+          )
         ) AS root_market_id,
         COALESCE(battle.started_at, MIN(em.created_at)) AS started_at,
         MAX(lifecycle.occurred_at) AS latest_activity_at,
@@ -427,6 +530,8 @@ export async function loadBetLifecycleActivityPage(
       where: { id: { in: candidateIds } },
       select: {
         id: true,
+        parentMarketId: true,
+        marketType: true,
         slug: true,
         title: true,
         leftLabel: true,
@@ -543,16 +648,99 @@ export async function loadBetLifecycleActivityPage(
   const intents = boundedRows(intentsRaw, "stake-intent");
   const bonuses = boundedRows(bonusesRaw, "founder-bonus");
   const claims = boundedRows(claimsRaw, "claim");
-  const marketById = new Map(markets.map((market) => [market.id, market] as const));
-  const events: BetBattleHistorySourceEvent[] = [];
+  const candidateByMarketId =
+    new Map<number, Candidate>();
 
-  function marketContext(marketId: number) {
-    const market = marketById.get(marketId);
-    if (!market) return null;
+  for (
+    const candidate of
+    selectedCandidates
+  ) {
+    for (
+      const marketId of
+      candidate.marketIds ?? []
+    ) {
+      candidateByMarketId.set(
+        marketId,
+        candidate,
+      );
+    }
+  }
+
+  const marketById =
+    new Map(
+      markets.map(
+        (market) =>
+          [
+            market.id,
+            market,
+          ] as const,
+      ),
+    );
+
+  const events:
+    BetBattleHistorySourceEvent[] =
+      [];
+
+  function marketContext(
+    marketId: number,
+  ) {
+    const market =
+      marketById.get(
+        marketId,
+      );
+
+    if (!market) {
+      return null;
+    }
+
+    const candidate =
+      candidateByMarketId.get(
+        marketId,
+      );
+
+    const rootMarketId =
+      candidate?.rootMarketId ??
+      market.parentMarketId ??
+      market.id;
+
     return {
       marketId,
-      marketTitle: displayMarketTitle(market),
-      marketHref: marketHref(market),
+      rootMarketId,
+
+      parentMarketId:
+        market.parentMarketId,
+
+      battleId:
+        candidate?.battleId ??
+        null,
+
+      battlePublicNumber:
+        candidate?.publicNumber ??
+        null,
+
+      battleStartedAt:
+        candidate?.startedAt
+          ?.toISOString() ??
+        null,
+
+      marketType:
+        market.marketType,
+
+      marketTitle:
+        displayMarketTitle(
+          market,
+        ),
+
+      marketHref:
+        marketHref(
+          market,
+        ),
+
+      leftLabel:
+        market.leftLabel,
+
+      rightLabel:
+        market.rightLabel,
     };
   }
 
@@ -736,9 +924,8 @@ export async function loadBetLifecycleActivityPage(
   });
 
   const hasMore =
-    groups.length > limit ||
     candidateRows.length >
-      candidateIds.length;
+      limit;
 
   groups = groups.slice(0, limit);
 

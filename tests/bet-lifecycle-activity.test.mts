@@ -536,12 +536,12 @@ test("candidate selection is battle-grain, cursor-safe, and name fallback is unl
 
   assert.match(
     source,
-    /bm\.battle_id = eligible\.battle_id/,
+    /lineage\.battle_id\s*=\s*eligible\.battle_id/,
   );
 
   assert.match(
     source,
-    /COALESCE\(bm\.parent_market_id, bm\.id\)/,
+    /lineage\.legacy_root_market_id\s*=\s*eligible\.legacy_root_market_id/,
   );
 
   assert.match(
@@ -569,3 +569,72 @@ test("candidate selection is battle-grain, cursor-safe, and name fallback is unl
     /economicKey:\s*payoutEconomicKey/,
   );
 });
+
+test(
+  "legacy orphan Desync markets are folded into winner families before pagination",
+  () => {
+    const source =
+      readFileSync(
+        new URL(
+          "../lib/betLifecycleActivity.ts",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+
+    assert.match(
+      source,
+      /legacy_session_counts/,
+    );
+
+    assert.match(
+      source,
+      /legacy_desync_links/,
+    );
+
+    assert.match(
+      source,
+      /explicit_parent\.id/,
+    );
+
+    assert.match(
+      source,
+      /child\.slug = 'desync-' \|\| slug_parent\.slug/,
+    );
+
+    assert.match(
+      source,
+      /winner_count = 1[\s\S]*desync_count = 1/,
+    );
+
+    assert.match(
+      source,
+      /market_lineage/,
+    );
+
+    assert.match(
+      source,
+      /MAX\(em\.legacy_root_market_id\)/,
+    );
+
+    assert.match(
+      source,
+      /candidateByMarketId/,
+    );
+
+    assert.match(
+      source,
+      /rootMarketId[\s\S]*candidate\?\.rootMarketId/,
+    );
+
+    assert.match(
+      source,
+      /marketType:[\s\S]*market\.marketType/,
+    );
+
+    assert.match(
+      source,
+      /candidateRows\.length >[\s\S]*limit/,
+    );
+  },
+);
