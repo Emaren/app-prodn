@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integrate/faucet-responsive-bounties` at `73f007608df0f7927e3f24715ca2d66495b96084`
+Implementation baseline: `integrate/faucet-responsive-bounties` at `4c0d71e3f27dcf35ae0fb7851ad91582530a03e7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

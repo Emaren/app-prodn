@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bac9e26dab76979638339fe943800a70007eb2b13bd28270bf8d19a47b5b65f3",
+      "sha256": "2ceca831a672683752f4e981af7f8add95e3fd7eabeece8190063200ce74bf20",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1744,7 +1744,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "integrate/faucet-responsive-bounties",
-    "commit": "73f007608df0f7927e3f24715ca2d66495b96084"
+    "commit": "4c0d71e3f27dcf35ae0fb7851ad91582530a03e7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
