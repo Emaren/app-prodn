@@ -617,7 +617,12 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
                     attachment: null,
                     reactions: [],
                     sharedLobbyMessageId: null,
-                    replyTo: replyingTo ? { messageId: replyingTo.messageId, senderName: replyingTo.sender.displayName, body: replyingTo.body || replyingTo.transcription || "Attachment" } : null,
+                    replyTo: replyingTo ? {
+                      messageId: replyingTo.messageId,
+                      senderName: replyingTo.sender.displayName,
+                      body: replyingTo.body || replyingTo.transcription || "Attachment",
+                      attachment: replyingTo.attachment,
+                    } : null,
                     isPinned: false,
                     editedAt: null,
                     transcription: null,

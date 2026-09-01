@@ -146,6 +146,79 @@ test("history anchoring waits for the requested cursor and chat routes reject fo
   assert.match(routeSource, /Challenge record formatting is reserved/);
 });
 
+test("reply attachments survive serialization and Nav Chat keeps challenge action compact", () => {
+  const panelSource = readFileSync(
+    new URL("../components/contact/ContactInboxPanel.tsx", import.meta.url),
+    "utf8"
+  );
+  const inboxSource = readFileSync(
+    new URL("../lib/contactInbox.ts", import.meta.url),
+    "utf8"
+  );
+  const typesSource = readFileSync(
+    new URL("../components/contact/types.ts", import.meta.url),
+    "utf8"
+  );
+  const headerSource = readFileSync(
+    new URL("../components/contact/HeaderInboxControl.tsx", import.meta.url),
+    "utf8"
+  );
+  const workspaceSource = readFileSync(
+    new URL("../components/contact/ContactEmarenWorkspace.tsx", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(
+    typesSource,
+    /ContactMessageReply[\s\S]*attachment: ContactMessageAttachment \| null/
+  );
+
+  assert.match(
+    inboxSource,
+    /replyTo:[\s\S]*attachmentName: true,[\s\S]*attachmentMimeType: true,[\s\S]*attachmentDurationSeconds: true/
+  );
+
+  assert.match(
+    inboxSource,
+    /attachment:\s*buildMessageAttachment\(message\.replyTo\)/
+  );
+
+  assert.match(
+    panelSource,
+    /message\.replyTo\.attachment\?\.kind === "image"/
+  );
+
+  assert.match(
+    panelSource,
+    /replyingTo\.attachment\?\.kind === "image"/
+  );
+
+  assert.match(
+    panelSource,
+    /if \(mode === "popover"\) \{\s*return null;\s*\}/
+  );
+
+  assert.match(
+    panelSource,
+    /aria-label=\{`Challenge \$\{counterpart\.displayName\}`\}/
+  );
+
+  assert.match(
+    panelSource,
+    /<Swords className="h-3\.5 w-3\.5" \/>/
+  );
+
+  assert.match(
+    headerSource,
+    /attachment: replyingTo\.attachment/
+  );
+
+  assert.match(
+    workspaceSource,
+    /attachment: replyingTo\.attachment/
+  );
+});
+
 test("opening an already-read direct thread does not rewrite its read timestamp", () => {
   const inboxSource = readFileSync(
     new URL("../lib/contactInbox.ts", import.meta.url),

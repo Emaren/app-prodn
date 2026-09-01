@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-14"
+reviewed_at: "2026-09-01"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -74,6 +74,7 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 
 - Nav Chat is portalled to `document.body`, above the sticky header stacking context, and uses the live visual-viewport height between the site header and bottom safe area. It must never be nested inside the header containing block.
 - The conversation descriptor and inbox eyebrow are intentionally omitted. The active name, honor/champion badges, gifted-WOLO state, unread state, and appearance controls share one compact top row.
+- Nav Chat does not spend a full row on an empty Match Challenge prompt. For a direct thread without an active challenge, a muted crossed-swords action sits immediately left of Search in the top control row. Full Chat retains the descriptive challenge strip, while an actual active scheduled challenge may still render its compact match card.
 - Message character limits remain enforced at 1,000 characters, but persistent counters are intentionally hidden to preserve conversation and composer space.
 - The Nav composer remains a single row at phone widths, with the growing text field and send action side by side.
 - Full Chat uses compact horizontal conversation chips on phones and the full conversation rail on desktop. The global mobile command bar and the explanatory route hero are intentionally absent from the phone chat viewscreen.
@@ -88,7 +89,7 @@ All three modes are available in Nav Chat and Full Chat. A selection made in eit
 - Message action trays deliberately disable `content-visibility` paint containment only while open, then choose an above/below anchor inside the timeline. This keeps reactions, reply, pin, translation, edit, and delete fully visible without giving up off-screen message rendering performance.
 - Opening a thread advances `lastReadAt` only when unread incoming activity actually exists. Reopening, refreshing, or merely checking an already-read Nav Chat / Full Chat thread does not rewrite the read timestamp into a generic "last opened" time. Establishing the live event stream still marks previously undelivered incoming messages delivered, even if that thread is not open.
 - Draft text and quoted-reply targets are debounced to `direct_message_drafts`, shared between Nav Chat and Full Chat, and removed after a successful send.
-- Replies persist a validated same-conversation message reference and render a compact quote in every mode.
+- Replies persist a validated same-conversation message reference and render a compact quote in every mode. When the replied-to message contains an image, the reply payload preserves that attachment identity and both the composer preview and persisted quote render a compact thumbnail; voice-note replies retain their audio identity without duplicating full media controls.
 - Pins are shared conversation state. The header pin drawer exposes the latest twelve pinned messages.
 - Search covers message bodies and voice transcripts with case-insensitive Postgres search and returns the latest forty matches.
 - `/game-stats/{id}` links hydrate into replay intelligence cards from canonical `GameStats` data.

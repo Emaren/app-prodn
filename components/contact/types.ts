@@ -78,6 +78,7 @@ export type ContactMessageReply = {
   messageId: number;
   senderName: string;
   body: string;
+  attachment: ContactMessageAttachment | null;
 };
 
 export type ContactReplayCard = {

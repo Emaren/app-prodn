@@ -830,6 +830,10 @@ function ChallengeThreadStrip({
   }
 
   if (!challenge) {
+    if (mode === "popover") {
+      return null;
+    }
+
     return (
       <div className="mt-3 flex items-center justify-between gap-3 rounded-2xl border border-amber-200/12 bg-amber-300/[0.045] px-3 py-2.5 sm:px-4">
         <div className="min-w-0">
@@ -1878,8 +1882,29 @@ function TextMessageBubble({
           >
             {message.replyTo ? (
               <div className="mb-2 rounded-lg border-l-2 border-cyan-200/45 bg-black/20 px-3 py-2 text-xs text-slate-300">
-                <div className="font-semibold text-cyan-100/80">{message.replyTo.senderName}</div>
-                <div className="mt-0.5 line-clamp-2">{message.replyTo.body}</div>
+                <div className="flex min-w-0 items-center gap-2.5">
+                  {message.replyTo.attachment?.kind === "image" ? (
+                    <img
+                      src={message.replyTo.attachment.url}
+                      alt={message.replyTo.attachment.name || "Replied attachment"}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-14 w-20 shrink-0 rounded-md border border-white/10 bg-slate-950/60 object-cover"
+                    />
+                  ) : message.replyTo.attachment?.kind === "audio" ? (
+                    <div className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-white/10 bg-slate-950/45 text-cyan-100/70">
+                      <Mic className="h-4 w-4" />
+                    </div>
+                  ) : null}
+                  <div className="min-w-0">
+                    <div className="font-semibold text-cyan-100/80">
+                      {message.replyTo.senderName}
+                    </div>
+                    <div className="mt-0.5 line-clamp-2">
+                      {message.replyTo.body}
+                    </div>
+                  </div>
+                </div>
               </div>
             ) : null}
             {message.body ? (
@@ -2804,6 +2829,18 @@ export default function ContactInboxPanel({
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
+              {mode === "popover" &&
+              counterpart?.threadKind === "direct" &&
+              !data?.activeChallenge ? (
+                <Link
+                  href={`/challenge?opponent=${encodeURIComponent(counterpart.uid)}#schedule-game`}
+                  className="grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-white/[0.045] text-slate-400 transition hover:border-amber-200/20 hover:bg-amber-300/[0.07] hover:text-amber-100 sm:h-8 sm:w-8"
+                  aria-label={`Challenge ${counterpart.displayName}`}
+                  title={`Challenge ${counterpart.displayName}`}
+                >
+                  <Swords className="h-3.5 w-3.5" />
+                </Link>
+              ) : null}
               <button type="button" onClick={() => { setSearchOpen((current) => !current); setPinsOpen(false); }} className="grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-white/[0.045] text-slate-300 transition hover:bg-white/[0.09] hover:text-white sm:h-8 sm:w-8" aria-label="Search messages"><Search className="h-3.5 w-3.5" /></button>
               <button type="button" onClick={() => { setPinsOpen((current) => !current); setSearchOpen(false); }} className="relative grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-white/[0.045] text-slate-300 transition hover:bg-white/[0.09] hover:text-white sm:h-8 sm:w-8" aria-label="Pinned messages"><Pin className="h-3.5 w-3.5" />{data?.pinnedMessages.length ? <span className="absolute -right-1 -top-1 rounded-full bg-amber-300 px-1 text-[9px] font-black text-slate-950">{data.pinnedMessages.length}</span> : null}</button>
               <ChatViewSwitcher value={chatViewMode} onChange={setChatViewMode} />
@@ -3037,8 +3074,28 @@ export default function ContactInboxPanel({
             </button>
             {replyingTo ? (
               <div className="mb-2 flex items-center justify-between gap-3 rounded-lg border-l-2 border-cyan-200/45 bg-cyan-300/[0.045] px-3 py-2 text-xs text-slate-300">
-                <div className="min-w-0"><span className="font-semibold text-cyan-100">Replying to {replyingTo.sender.displayName}</span><div className="mt-0.5 truncate">{replyingTo.body || replyingTo.transcription || "Attachment"}</div></div>
-                <button type="button" onClick={onCancelReply} className="text-slate-400 hover:text-white" aria-label="Cancel reply">×</button>
+                <div className="flex min-w-0 items-center gap-2.5">
+                  {replyingTo.attachment?.kind === "image" ? (
+                    <img
+                      src={replyingTo.attachment.url}
+                      alt={replyingTo.attachment.name || "Reply attachment"}
+                      className="h-11 w-16 shrink-0 rounded-md border border-white/10 bg-slate-950/60 object-cover"
+                    />
+                  ) : replyingTo.attachment?.kind === "audio" ? (
+                    <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-white/10 bg-slate-950/45 text-cyan-100/70">
+                      <Mic className="h-4 w-4" />
+                    </div>
+                  ) : null}
+                  <div className="min-w-0">
+                    <span className="font-semibold text-cyan-100">
+                      Replying to {replyingTo.sender.displayName}
+                    </span>
+                    <div className="mt-0.5 truncate">
+                      {replyingTo.body || replyingTo.transcription || "Attachment"}
+                    </div>
+                  </div>
+                </div>
+                <button type="button" onClick={onCancelReply} className="shrink-0 text-slate-400 hover:text-white" aria-label="Cancel reply">×</button>
               </div>
             ) : null}
             {richComposer ? (

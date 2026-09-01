@@ -121,6 +121,7 @@ export type InboxTextMessage = {
     messageId: number;
     senderName: string;
     body: string;
+    attachment: InboxMessageAttachment | null;
   } | null;
   isPinned: boolean;
   editedAt: string | null;
@@ -1463,6 +1464,9 @@ async function loadConversationMessages(
           id: true,
           body: true,
           attachmentKind: true,
+          attachmentName: true,
+          attachmentMimeType: true,
+          attachmentDurationSeconds: true,
           sender: {
             select: {
               uid: true,
@@ -1558,7 +1562,7 @@ async function loadConversationMessages(
         transcription: true,
         transcriptionStatus: true,
         createdAt: true,
-        replyTo: { select: { id: true, body: true, attachmentKind: true, sender: { select: { uid: true, inGameName: true, steamPersonaName: true } } } },
+        replyTo: { select: { id: true, body: true, attachmentKind: true, attachmentName: true, attachmentMimeType: true, attachmentDurationSeconds: true, sender: { select: { uid: true, inGameName: true, steamPersonaName: true } } } },
         reactions: { select: { emoji: true, userId: true } },
         pins: { select: { id: true } },
         translations: { orderBy: { updatedAt: "desc" }, take: 4, select: { language: true, text: true } },
@@ -1630,6 +1634,7 @@ async function loadConversationMessages(
         messageId: message.replyTo.id,
         senderName: displayNameForUser(message.replyTo.sender),
         body: message.replyTo.body?.trim() || (message.replyTo.attachmentKind === "audio" ? "Voice note" : "Attachment"),
+        attachment: buildMessageAttachment(message.replyTo),
       } : null,
       isPinned: message.pins.length > 0,
       editedAt: message.editedAt?.toISOString() ?? null,
