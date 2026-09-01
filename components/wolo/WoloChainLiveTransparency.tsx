@@ -361,7 +361,7 @@ export default function WoloChainLiveTransparency() {
             <div className="text-[11px] uppercase tracking-[0.34em] text-white/45">WOLO holders</div>
             <div className="mt-2 text-sm text-slate-500">
               {holders
-                ? `${holders.currentNonzeroOwnerCount} current nonzero owners · ${holders.retainedTransferAddressCount} transfer-observed addresses · ${holders.count} listed.`
+                ? `${holders.currentNonzeroOwnerCount} current funded owners · ranked by live balance.`
                 : "Loading the live denom-owner projection."}
             </div>
           </div>
@@ -376,7 +376,7 @@ export default function WoloChainLiveTransparency() {
             <div className="text-center">Index</div>
             <div className="text-center">Holder</div>
             <div className="text-center">Address</div>
-            <div className="text-center">Balance / privacy</div>
+            <div className="text-center">Balance</div>
           </div>
 
           <div className="max-h-[38rem] space-y-2 overflow-y-auto overscroll-contain pr-1">
@@ -402,9 +402,7 @@ export default function WoloChainLiveTransparency() {
 
                 <div className="text-center">
                   {holder.classification !== "protocol" || holder.balanceHidden ? (
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                      Private
-                    </span>
+                    <span className="sr-only">Balance hidden</span>
                   ) : (
                     <>
                       <div className="whitespace-nowrap font-semibold text-white">{compactWolo(holder.balanceWolo)}</div>
@@ -419,10 +417,8 @@ export default function WoloChainLiveTransparency() {
 
         <div className="relative z-10 mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
           <div>
-            Player and unclassified balances are redacted; protocol/system balances remain public.
-            {holders && !holders.retainedDiscoveryAvailable
-              ? " Historical transfer discovery is temporarily unavailable."
-              : " Zero-balance wallets remain discoverable after an indexed transfer."}
+            Current funded wallets only. Player and unclassified balances determine rank but
+            remain unpublished; protocol/system balances remain public.
           </div>
           <div>Updated: {holders?.updatedAt ? new Date(holders.updatedAt).toLocaleTimeString() : "loading"}</div>
         </div>

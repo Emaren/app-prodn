@@ -12,7 +12,7 @@ import {
 } from "../lib/woloBalanceRead.ts";
 import {
   classifyPublicWoloHolder,
-  comparePublicWoloHolderIdentity,
+  comparePublicWoloHolderBalance,
   projectPublicWoloHolderBalance,
 } from "../lib/woloPublicHolderPrivacy.ts";
 
@@ -164,17 +164,16 @@ test("player and unclassified holder projections redact every balance representa
   );
 });
 
-test("holder ordering is identity-based rather than a private balance ranking", () => {
+test("public holder ranking follows exact live balances without publishing hidden values", () => {
   const rows = [
-    { classification: "unclassified" as const, alias: "Unknown", address: "wolo1z" },
-    { classification: "player" as const, alias: "Zulu", address: "wolo1y" },
-    { classification: "player" as const, alias: "Alpha", address: "wolo1x" },
-    { classification: "protocol" as const, alias: "Treasury", address: "wolo1t" },
-  ].sort(comparePublicWoloHolderIdentity);
+    { amountUwolo: "2", address: "wolo1player" },
+    { amountUwolo: "10000000", address: "wolo1protocol" },
+    { amountUwolo: "0000009", address: "wolo1other" },
+  ].sort(comparePublicWoloHolderBalance);
 
   assert.deepEqual(
-    rows.map((row) => row.alias),
-    ["Treasury", "Alpha", "Zulu", "Unknown"],
+    rows.map((row) => row.address),
+    ["wolo1protocol", "wolo1other", "wolo1player"],
   );
 });
 
@@ -225,8 +224,10 @@ test("runtime, route, hook, and UI retain the hardening contracts", () => {
   assert.doesNotMatch(hookSource, /return\s+"0"/);
   assert.match(transparencySource, /fetch\("\/api\/wolo\/holders"/);
   assert.doesNotMatch(transparencySource, /fetch\("\/api\/wolo\/network"/);
-  assert.match(transparencySource, /current nonzero owners/);
+  assert.match(holderRouteSource, /const allAddresses = new Set\(ownerByAddress\.keys\(\)\)/);
+  assert.match(transparencySource, /current funded owners/);
   assert.match(transparencySource, /holder\.classification !== "protocol" \|\| holder\.balanceHidden/);
+  assert.doesNotMatch(transparencySource, />\s*Private\s*</i);
 
   const refreshFailureGuard = walletDashboardSource.indexOf(
     "if (refreshResult.isError || refreshResult.data === undefined)",

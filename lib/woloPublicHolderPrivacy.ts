@@ -34,30 +34,17 @@ export function projectPublicWoloHolderBalance(input: {
   } as const;
 }
 
-export function comparePublicWoloHolderIdentity(
-  left: {
-    classification: PublicWoloHolderClassification;
-    alias: string;
-    address: string;
-  },
-  right: {
-    classification: PublicWoloHolderClassification;
-    alias: string;
-    address: string;
-  },
+export function comparePublicWoloHolderBalance(
+  left: { amountUwolo: string; address: string },
+  right: { amountUwolo: string; address: string },
 ) {
-  const order: Record<PublicWoloHolderClassification, number> = {
-    protocol: 0,
-    player: 1,
-    unclassified: 2,
-  };
-  const classificationOrder = order[left.classification] - order[right.classification];
+  const normalize = (value: string) => value.replace(/^0+(?=\d)/, "");
+  const leftAmount = normalize(left.amountUwolo);
+  const rightAmount = normalize(right.amountUwolo);
+  const magnitudeOrder = rightAmount.length - leftAmount.length;
 
-  if (classificationOrder !== 0) return classificationOrder;
+  if (magnitudeOrder !== 0) return magnitudeOrder;
 
-  const aliasOrder = left.alias.localeCompare(right.alias, "en", {
-    sensitivity: "base",
-  });
-
-  return aliasOrder || left.address.localeCompare(right.address);
+  const amountOrder = rightAmount.localeCompare(leftAmount);
+  return amountOrder || left.address.localeCompare(right.address);
 }

@@ -17,7 +17,7 @@ import { getPrisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/adminSession";
 import {
   classifyPublicWoloHolder,
-  comparePublicWoloHolderIdentity,
+  comparePublicWoloHolderBalance,
   projectPublicWoloHolderBalance,
   type PublicWoloHolderClassification,
 } from "@/lib/woloPublicHolderPrivacy";
@@ -584,7 +584,7 @@ function renderTable(holders: HolderRow[], operatorView: boolean) {
     "-".repeat(116),
     ...holders.map((holder) => {
       const displayBalance = holder.balanceHidden
-        ? "PRIVATE"
+        ? ""
         : holder.balanceWoloFormatted || "UNAVAILABLE";
       return `${holder.alias.padEnd(34)} ${holder.address.padEnd(48)} ${displayBalance.padStart(18)} ${holder.role}`;
     }),
@@ -616,11 +616,7 @@ export async function GET(request: NextRequest) {
     const ownerByAddress = new Map(
       owners.map((owner) => [owner.address.toLowerCase(), owner] as const),
     );
-    const allAddresses = new Set([
-      ...ownerByAddress.keys(),
-      ...retained.observedByAddress.keys(),
-      ...WOLO_MAINNET_WALLET_ALIASES.map((wallet) => wallet.address.toLowerCase()),
-    ]);
+    const allAddresses = new Set(ownerByAddress.keys());
 
     if (allAddresses.size > MAX_PUBLIC_HOLDERS) {
       throw new Error(
@@ -633,7 +629,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const holders = [...allAddresses]
+    const currentOwnerAddresses = [...allAddresses].sort((left, right) =>
+      comparePublicWoloHolderBalance(
+        { amountUwolo: ownerByAddress.get(left)?.amountUwolo || "0", address: left },
+        { amountUwolo: ownerByAddress.get(right)?.amountUwolo || "0", address: right },
+      ),
+    );
+
+    const holders = currentOwnerAddresses
       .map((address) => {
         const owner = ownerByAddress.get(address);
         const discovery = retained.observedByAddress.get(address);
@@ -695,7 +698,6 @@ export async function GET(request: NextRequest) {
           ...(operatorView ? { identities: userIdentities } : {}),
         };
       })
-      .sort(comparePublicWoloHolderIdentity)
       .map((holder, index) => ({
         ...holder,
         rank: index + 1,

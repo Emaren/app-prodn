@@ -115,6 +115,12 @@ The staking reliability follow-through locks the surface for future expansion:
   the inflated daily weight.
 - Recent Activity cards retain their established fixed heights and no longer
   swap 132px intrinsic placeholders into the scroll rail.
+- A mode/filter change now establishes one canonical activity view before
+  pagination or polling begins. Later poll and browser-event rows queue behind
+  an explicit `new entries · Show` control instead of inserting above the
+  reader and moving the rail underneath them; equal timestamps use a stable
+  activity-key tie-breaker. Stale responses, duplicate rows, rows outside the
+  active filter, and ledger-shaped browser events in Grouped Bets fail closed.
 - Staking joined the shared B/A/E preference/admin telemetry system with Basic
   preserving the existing width, Advanced slightly wider, and Extreme full
   width.

@@ -680,7 +680,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a9badb198225b250b29bc5e84cb5f33965e9064d51f3db79d77274e40b8c849f",
+      "sha256": "d216ca14e492fc04bc42bf96c17782363fc1df994a952f88061010466ac6711c",
       "source_of_truth": "historical-evidence",
       "status": "superseded",
       "systems": [
@@ -1619,9 +1619,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_WALLET_AND_HOLDER_PROJECTION.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-30",
+      "reviewed_at": "2026-09-01",
       "sensitivity": "internal",
-      "sha256": "691b767797ed33c641b8854a5aaa137b154c5377ae1640bf8cb5e7c1c845520f",
+      "sha256": "b3c9645113cb921cc4498fc19e1af347341cbf00192ef539c207bffe205f8064",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

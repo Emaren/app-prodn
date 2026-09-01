@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "wallet-read-model-contract"
-reviewed_at: "2026-08-30"
+reviewed_at: "2026-09-01"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -52,11 +52,14 @@ unknown reserve balance as executable.
 
 ## Holder discovery
 
-`GET /api/wolo/holders` builds one bounded projection from:
+`GET /api/wolo/holders` builds one bounded projection whose membership comes
+only from live paginated Cosmos `denom_owners`: every listed row is a current
+nonzero `uwolo` owner. Other sources enrich those current owners; they do not
+admit historical zero-balance addresses into the public address book:
 
 - live paginated Cosmos `denom_owners` for every current nonzero `uwolo` owner;
-- the indexed mainnet transfer ledger for previously observed senders and
-  recipients, including wallets whose current balance later becomes zero;
+- the indexed mainnet transfer ledger for discovery timestamps and provenance
+  attached to a current owner;
 - app user wallet links and active staking positions for identity/classification;
 - the governed Wolo network-account and operator alias registries.
 
@@ -74,7 +77,11 @@ The normal public response is `view: "public"` and
 - protocol/system/module accounts include exact balances;
 - player and unclassified accounts include addresses and classification but
   every balance representation is `null`;
-- rows sort by classification, public identity, and address—not private balance;
+- every current funded owner is ranked by its exact live minimal-denom balance,
+  descending, with address as the deterministic tie-breaker;
+- hidden player and unclassified values render as an intentionally blank balance
+  cell rather than a `Private` label. Their relative rank remains visible, but
+  the amount is not published by this bulk app projection;
 - no aggregate private balance total is emitted in JSON or text format.
 
 The admin-authenticated operator response is:
@@ -86,7 +93,7 @@ GET /api/wolo/holders?view=operator
 It requires the normal admin session before any chain scan. It returns
 `balancePolicy: "admin_all_current"`, minimal and display-denom balances,
 identity candidates, classification, first/last indexed observation, and
-discovery sources for every bounded row. Responses are private and no-store.
+discovery sources for every current funded row. Responses are private and no-store.
 This is an operator diagnostic view, not a public player-balance leaderboard.
 
 The address-specific balance route remains intentionally available because a
@@ -100,4 +107,4 @@ Malformed chain identity, denom, owner address, amount, pagination, or oversized
 input fails the complete projection. Failure does not return a partial list
 labeled as current. If indexed-transfer discovery alone is unavailable, the
 response says so explicitly while preserving the independently verified live
-denom-owner view.
+denom-owner membership, balance ranking, and privacy projection.

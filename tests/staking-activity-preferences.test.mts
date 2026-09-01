@@ -7,6 +7,7 @@ import {
   resolveStakingActivityPreferences,
   serializeStakingActivityPreferences,
 } from "../lib/stakingActivityPreferences.ts";
+import { shouldQueueStakingActivityLiveRow } from "../lib/stakingActivityLivePolicy.ts";
 
 test("new and corrupt preferences default Recent Activity to grouped", () => {
   for (const storedV2 of [null, "", "not-json", '{"version":2,"mode":"unknown"}']) {
@@ -111,4 +112,76 @@ test("the feed is wired to the versioned helper and grouped initial render", () 
   assert.match(source, /resolveStakingActivityPreferences\(/);
   assert.match(source, /serializeStakingActivityPreferences\(/);
   assert.match(source, /LEGACY_STAKING_ACTIVITY_PREFS_KEY/);
+  assert.match(source, /pendingLiveRows/);
+  assert.match(source, /new \{pendingVisibleRows\.length === 1 \? "entry" : "entries"\} · Show/);
+  assert.doesNotMatch(source, /setRows\(\(current\) => mergeActivityRows\(nextRows, current\)\)/);
+
+  const pollPayload = source.indexOf(
+    "const payload = (await response.json()) as ActivityPageResponse;",
+    source.indexOf("const poll = async"),
+  );
+  const cancellationFence = source.indexOf("if (cancelled) return;", pollPayload);
+  const pollRows = source.indexOf("const nextRows =", pollPayload);
+  assert.ok(pollPayload >= 0 && cancellationFence > pollPayload && cancellationFence < pollRows);
+});
+
+test("live activity queue policy rejects stale, hidden, duplicate, and grouped browser rows", () => {
+  const base = {
+    mode: "ledger" as const,
+    viewReady: true,
+    matchesView: true,
+    alreadyKnown: false,
+  };
+
+  assert.equal(
+    shouldQueueStakingActivityLiveRow({ ...base, source: "poll" }),
+    true,
+  );
+  assert.equal(
+    shouldQueueStakingActivityLiveRow({
+      ...base,
+      source: "poll",
+      cancelled: true,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldQueueStakingActivityLiveRow({
+      ...base,
+      source: "poll",
+      viewReady: false,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldQueueStakingActivityLiveRow({
+      ...base,
+      source: "poll",
+      matchesView: false,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldQueueStakingActivityLiveRow({
+      ...base,
+      source: "poll",
+      alreadyKnown: true,
+    }),
+    false,
+  );
+  assert.equal(
+    shouldQueueStakingActivityLiveRow({
+      ...base,
+      source: "browser-event",
+      mode: "grouped",
+    }),
+    false,
+  );
+  assert.equal(
+    shouldQueueStakingActivityLiveRow({
+      ...base,
+      source: "browser-event",
+    }),
+    true,
+  );
 });

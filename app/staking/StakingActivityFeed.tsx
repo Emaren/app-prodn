@@ -7,6 +7,7 @@ import TimeDisplayText, { useTimeDisplayFormatter } from "@/components/time/Time
 import { useUserAuth } from "@/context/UserAuthContext";
 import { parseWrittenBountyNumber } from "@/lib/bountyHall";
 import type { StakingActivityItem } from "@/lib/staking";
+import { shouldQueueStakingActivityLiveRow } from "@/lib/stakingActivityLivePolicy";
 import {
   LEGACY_STAKING_ACTIVITY_PREFS_KEY,
   STAKING_ACTIVITY_PREFS_KEY,
@@ -285,6 +286,20 @@ function filterActivityRows(rows: StakingActivityItem[], filter: ActivityFilterM
   return publicRows;
 }
 
+function visibleActivityRowsForView(
+  rows: StakingActivityItem[],
+  filterMode: ActivityFilterMode,
+  beltPayoutFilterMode: BeltPayoutFilterMode,
+) {
+  const filteredRows = filterActivityRows(rows, filterMode);
+  const beltFilteredRows =
+    filterMode === "belts"
+      ? filterBeltActivityRows(filteredRows, beltPayoutFilterMode)
+      : filteredRows;
+
+  return beltFilteredRows.filter(isVisibleActivityItem);
+}
+
 function activityKey(item: StakingActivityItem) {
   return item.key || `${sanitizeActivityCopy(item.label)}:${sanitizeActivityCopy(item.detail)}:${item.meta}`;
 }
@@ -308,7 +323,11 @@ function mergeActivityRows(
     merged.push(item);
   }
 
-  return merged.sort((left, right) => activityTimestamp(right) - activityTimestamp(left));
+  return merged.sort(
+    (left, right) =>
+      activityTimestamp(right) - activityTimestamp(left) ||
+      activityKey(left).localeCompare(activityKey(right)),
+  );
 }
 
 function ActivityDateDivider({ label }: { label: string }) {
@@ -425,6 +444,8 @@ export default function StakingActivityFeed({
   }, [activityPrefsLoaded, filterMode, mode]);
 
   const [rows, setRows] = useState(initialRows);
+  const [activityViewReady, setActivityViewReady] = useState(!loadMoreEndpoint);
+  const [pendingLiveRows, setPendingLiveRows] = useState<StakingActivityItem[]>([]);
   const [freshKey, setFreshKey] = useState<string | null>(
     activityKey(initialRows[0] ?? { label: "", detail: "", meta: "", tone: "slate" })
   );
@@ -458,6 +479,8 @@ export default function StakingActivityFeed({
     let cancelled = false;
 
     async function refreshModeRows() {
+      setActivityViewReady(false);
+      setPendingLiveRows([]);
       try {
         const url = new URL(loadMoreEndpoint as string, window.location.origin);
         url.searchParams.set("limit", String(filterMode === "bounties" ? STAKING_BOUNTY_ACTIVITY_LIMIT : PAGE_SIZE));
@@ -482,6 +505,8 @@ export default function StakingActivityFeed({
         setNextBefore(payload.nextBefore || oldestActivityRowTimestamp(nextRows));
       } catch (error) {
         console.warn("Failed to refresh staking activity mode:", error);
+      } finally {
+        if (!cancelled) setActivityViewReady(true);
       }
     }
 
@@ -497,7 +522,7 @@ export default function StakingActivityFeed({
   }, [rows]);
 
   useEffect(() => {
-    if (!loadMoreEndpoint) return;
+    if (!loadMoreEndpoint || !activityViewReady) return;
 
     let cancelled = false;
     let inFlight = false;
@@ -528,25 +553,36 @@ export default function StakingActivityFeed({
         }
 
         const payload = (await response.json()) as ActivityPageResponse;
+        if (cancelled) return;
+
         const nextRows = Array.isArray(payload.rows) ? payload.rows : [];
         if (nextRows.length > 0) {
-          const knownKeys = new Set(rowsRef.current.map(activityKey));
-          const freshRows = nextRows.filter((row) => !knownKeys.has(activityKey(row)));
-
-          setRows((current) => mergeActivityRows(nextRows, current));
           setHasMore((current) => current || Boolean(payload.hasMore || payload.nextBefore || nextRows.length >= (filterMode === "bounties" ? STAKING_BOUNTY_ACTIVITY_LIMIT : PAGE_SIZE)));
-
-          if (freshRows.length > 0) {
-            const newestFresh = mergeActivityRows(freshRows)[0];
-            setFreshKey(activityKey(newestFresh));
-
-            const nextOldest = oldestActivityRowTimestamp(
-              mergeActivityRows(nextRows, rowsRef.current)
+          setPendingLiveRows((current) => {
+            const knownKeys = new Set(
+              [...rowsRef.current, ...current].map(activityKey),
             );
-            if (nextOldest) {
-              setNextBefore((current) => current || nextOldest);
-            }
-          }
+            const visibleKeys = new Set(
+              visibleActivityRowsForView(
+                nextRows,
+                filterMode,
+                beltPayoutFilterMode,
+              ).map(activityKey),
+            );
+            const freshRows = nextRows.filter((row) =>
+              shouldQueueStakingActivityLiveRow({
+                source: "poll",
+                mode,
+                viewReady: activityViewReady,
+                cancelled,
+                matchesView: visibleKeys.has(activityKey(row)),
+                alreadyKnown: knownKeys.has(activityKey(row)),
+              }),
+            );
+            return freshRows.length > 0
+              ? mergeActivityRows(freshRows, current)
+              : current;
+          });
         }
       } catch (error) {
         console.warn("Failed to refresh staking activity:", error);
@@ -571,19 +607,63 @@ export default function StakingActivityFeed({
       if (timer) window.clearTimeout(timer);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [filterMode, loadMoreEndpoint, mode]);
+  }, [activityViewReady, beltPayoutFilterMode, filterMode, loadMoreEndpoint, mode]);
 
   useEffect(() => {
     function handleActivity(event: Event) {
       const item = (event as ActivityFeedEvent).detail?.item;
       if (!item) return;
-      setRows((current) => mergeActivityRows([item], current));
-      setFreshKey(activityKey(item));
+      const matchesView =
+        visibleActivityRowsForView(
+          [item],
+          filterMode,
+          beltPayoutFilterMode,
+        ).length > 0;
+
+      setPendingLiveRows((current) => {
+        const knownKeys = new Set(
+          [...rowsRef.current, ...current].map(activityKey),
+        );
+        if (
+          !shouldQueueStakingActivityLiveRow({
+            source: "browser-event",
+            mode,
+            viewReady: activityViewReady,
+            matchesView,
+            alreadyKnown: knownKeys.has(activityKey(item)),
+          })
+        ) {
+          return current;
+        }
+
+        return mergeActivityRows([item], current);
+      });
     }
 
     window.addEventListener("staking:activity", handleActivity);
     return () => window.removeEventListener("staking:activity", handleActivity);
-  }, []);
+  }, [activityViewReady, beltPayoutFilterMode, filterMode, mode]);
+
+  const pendingVisibleRows = useMemo(
+    () =>
+      visibleActivityRowsForView(
+        pendingLiveRows,
+        filterMode,
+        beltPayoutFilterMode,
+      ),
+    [beltPayoutFilterMode, filterMode, pendingLiveRows],
+  );
+
+  const applyPendingLiveRows = useCallback(() => {
+    if (!activityViewReady || pendingVisibleRows.length === 0) return;
+    const newestPending = mergeActivityRows(pendingVisibleRows)[0];
+    const appliedKeys = new Set(pendingVisibleRows.map(activityKey));
+    setRows((current) => mergeActivityRows(pendingVisibleRows, current));
+    setFreshKey(activityKey(newestPending));
+    setPendingLiveRows((current) =>
+      current.filter((row) => !appliedKeys.has(activityKey(row))),
+    );
+  }, [activityViewReady, pendingVisibleRows]);
 
   useEffect(() => {
     if (
@@ -663,7 +743,7 @@ export default function StakingActivityFeed({
   }, [filterMode, hasMore, loadMoreEndpoint, mode, nextBefore]);
 
   useEffect(() => {
-    if (!loadMoreEndpoint || !hasMore) return;
+    if (!loadMoreEndpoint || !hasMore || !activityViewReady) return;
 
     const viewKey = `${mode}:${filterMode}`;
     if (autoPrefetchedViewRef.current === viewKey) return;
@@ -676,10 +756,10 @@ export default function StakingActivityFeed({
     }, 220);
 
     return () => window.clearTimeout(timer);
-  }, [filterMode, hasMore, loadMore, loadMoreEndpoint, mode]);
+  }, [activityViewReady, filterMode, hasMore, loadMore, loadMoreEndpoint, mode]);
 
   useEffect(() => {
-    if (!loadMoreEndpoint || !hasMore) return;
+    if (!loadMoreEndpoint || !hasMore || !activityViewReady) return;
     const sentinel = sentinelRef.current;
     const root = scrollRootRef.current;
     if (!sentinel || !root) return;
@@ -694,16 +774,16 @@ export default function StakingActivityFeed({
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMore, loadMore, loadMoreEndpoint]);
+  }, [activityViewReady, hasMore, loadMore, loadMoreEndpoint]);
 
-  const baseVisibleRows = filterActivityRows(rows, filterMode);
-  const visibleRows =
-    filterMode === "belts"
-      ? filterBeltActivityRows(baseVisibleRows, beltPayoutFilterMode)
-      : baseVisibleRows;
   const displayRows = useMemo(
-    () => visibleRows.filter(isVisibleActivityItem),
-    [visibleRows],
+    () =>
+      visibleActivityRowsForView(
+        rows,
+        filterMode,
+        beltPayoutFilterMode,
+      ),
+    [beltPayoutFilterMode, filterMode, rows],
   );
   const bountySummary = filterMode === "bounties" ? computePublicBountySummary(displayRows) : null;
   const activityFilters = useMemo<ActivityFilterMode[]>(
@@ -750,7 +830,7 @@ export default function StakingActivityFeed({
         </div>
       ) : null}
 
-      {displayRows.length === 0 ? (
+      {activityViewReady && displayRows.length === 0 ? (
         <div className="rounded-[1.1rem] border border-transparent ring-1 ring-amber-100/8 bg-white/[0.04] p-3.5 text-sm text-slate-300">
           No mainnet activity rows are visible yet.
         </div>
@@ -775,7 +855,18 @@ export default function StakingActivityFeed({
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-[#ded7c3]/70">
-            <span>{rows.length.toLocaleString()} rows loaded</span>
+            <span>
+              {activityViewReady ? `${rows.length.toLocaleString()} rows loaded` : "Loading activity"}
+            </span>
+            {activityViewReady && pendingVisibleRows.length > 0 ? (
+              <button
+                type="button"
+                onClick={applyPendingLiveRows}
+                className="rounded-full border border-sky-300/35 bg-sky-300/10 px-3 py-1 font-semibold text-sky-100 transition hover:border-sky-200/60 hover:bg-sky-300/15"
+              >
+                {pendingVisibleRows.length.toLocaleString()} new {pendingVisibleRows.length === 1 ? "entry" : "entries"} · Show
+              </button>
+            ) : null}
             <span>
               {hasMore
                 ? mode === "ledger"
@@ -835,7 +926,7 @@ export default function StakingActivityFeed({
         <div
           ref={scrollRootRef}
           style={{ borderColor: "transparent", boxShadow: "none", outline: "none" }}
-          aria-busy={loadingMore ? "true" : "false"}
+          aria-busy={loadingMore || !activityViewReady ? "true" : "false"}
           className="h-0 min-h-0 flex-1 space-y-2.5 overflow-x-hidden overflow-y-auto overscroll-contain pr-1 [scrollbar-gutter:stable]"
         
           tabIndex={0}
@@ -852,7 +943,12 @@ export default function StakingActivityFeed({
             event.stopPropagation();
             el.scrollTop += event.deltaY;
           }}>
-          {displayRows.map((item, index) => {
+          {!activityViewReady ? (
+            <div className="flex min-h-40 items-center justify-center rounded-[1rem] border border-white/[0.045] bg-white/[0.02] text-xs uppercase tracking-[0.18em] text-slate-500">
+              Loading stable activity view
+            </div>
+          ) : null}
+          {activityViewReady ? displayRows.map((item, index) => {
             const key = activityKey(item);
             const currentDay = item.occurredAt
               ? formatTime(item.occurredAt, {
@@ -890,9 +986,9 @@ export default function StakingActivityFeed({
                 <ActivityRow item={item} isFresh={key === freshKey} />
               </div>
             );
-          })}
+          }) : null}
 
-          {loadMoreEndpoint ? (
+          {loadMoreEndpoint && activityViewReady ? (
             <div ref={sentinelRef} className="flex min-h-12 justify-center pt-2">
               {hasMore ? (
                 <button
