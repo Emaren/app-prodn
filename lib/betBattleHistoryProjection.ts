@@ -203,11 +203,17 @@ function economicIdentity(event: BetBattleHistorySourceEvent) {
   return cleanText(event.economicKey) || `${event.kind}:${sourceIdentity(event)}`;
 }
 
-function rootMarketId(event: BetBattleHistorySourceEvent) {
+function rootMarketId(
+  event: BetBattleHistorySourceEvent,
+): number {
   return (
-    positiveInteger(event.rootMarketId) ||
-    positiveInteger(event.parentMarketId) ||
-    positiveInteger(event.marketId)
+    positiveInteger(
+      event.rootMarketId,
+    ) ??
+    positiveInteger(
+      event.parentMarketId,
+    ) ??
+    event.marketId
   );
 }
 

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import BetBattleHistoryCard from "@/components/bets/BetBattleHistoryCard";
 import TimeDisplayText, { useTimeDisplayFormatter } from "@/components/time/TimeDisplayText";
 import { useUserAuth } from "@/context/UserAuthContext";
 import { parseWrittenBountyNumber } from "@/lib/bountyHall";
@@ -1028,7 +1029,16 @@ export default function StakingActivityFeed({
                     }
                   />
                 ) : null}
-                <ActivityRow item={item} isFresh={key === freshKey} />
+                {mode === "grouped" && item.battleHistory ? (
+                  <BetBattleHistoryCard
+                    group={item.battleHistory}
+                  />
+                ) : (
+                  <ActivityRow
+                    item={item}
+                    isFresh={key === freshKey}
+                  />
+                )}
               </div>
             );
           }) : null}

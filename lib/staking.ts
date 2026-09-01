@@ -46,10 +46,10 @@ import {
 } from "@/lib/stakingRewardCap";
 import { loadBetLifecycleActivityPage } from "@/lib/betLifecycleActivity";
 import type {
-  BetLifecycleEvent,
-  BetLifecycleEventKind,
-  BetLifecycleGroup,
-} from "@/lib/betLifecycleProjection";
+  BetBattleHistoryEventKind,
+  BetBattleHistoryGroup,
+  BetBattleHistoryTimelineEvent,
+} from "@/lib/betBattleHistoryProjection";
 
 export {
   BETTING_FEE_RATE_BPS,
@@ -86,18 +86,28 @@ export type StakingActivityItem = {
   writtenBountyNumber?: number;
   groupKey?: string;
   children?: StakingActivityItem[];
+
+  /**
+   * Canonical battle-history payload.
+   *
+   * Present only for Grouped Bets rows. Ledger and all other activity
+   * surfaces remain on the generic StakingActivityItem contract.
+   */
+  battleHistory?: BetBattleHistoryGroup;
+
   lifecycle?: {
-    schema: "bet-lifecycle-v1";
-    marketId: number;
-    kind?: BetLifecycleEventKind;
+    schema: "bet-battle-history-v2";
+    rootMarketId: number;
+    marketId?: number;
+    battleId?: number | null;
+    publicNumber?: number | null;
+    kind?: BetBattleHistoryEventKind;
     status?: string;
-    eventCount?: number;
-    payoutDestination?: BetLifecycleEvent["payoutDestination"];
-    stakeTotalWolo?: number;
-    payoutTotalWolo?: number;
-    refundTotalWolo?: number;
-    founderParticipantsWolo?: number;
-    founderWinnerWolo?: number;
+    payoutDestination?: BetBattleHistoryTimelineEvent["payoutDestination"];
+    coreStakeWolo?: number;
+    corePayoutWolo?: number;
+    coreRefundWolo?: number;
+    rewardWolo?: number;
   };
   tone: "amber" | "emerald" | "sky" | "slate";
 };
@@ -289,126 +299,354 @@ function formatActivityTimestamp(value: Date | string | null | undefined) {
   }).format(date);
 }
 
-const BET_LIFECYCLE_LABELS: Record<BetLifecycleEventKind, string> = {
-  stake_intent: "Stake awaiting verification",
-  stake_recorded: "App-side stake recorded",
-  escrow_funded: "Verified on-chain stake",
-  founder_participants: "Founder participant bonus",
-  founder_winner: "Founder winner premium",
-  result: "Result",
-  payout: "Payout",
-  refund: "Refund",
-  winner_bounty: "Winner bounty",
+const BET_LIFECYCLE_LABELS: Record<
+  BetBattleHistoryEventKind,
+  string
+> = {
+  stake_intent:
+    "Stake awaiting verification",
+  stake_recorded:
+    "App-side stake recorded",
+  escrow_funded:
+    "Verified on-chain stake",
+  founder_participants:
+    "Founder participant bonus",
+  founder_winner:
+    "Founder winner premium",
+  result:
+    "Result",
+  payout:
+    "Payout",
+  refund:
+    "Refund",
+  winner_bounty:
+    "Winner bounty",
 };
 
-function lifecycleDestinationLabel(event: BetLifecycleEvent) {
-  if (event.payoutDestination === "wallet") return "wallet transaction present";
-  if (event.payoutDestination === "awaiting_wallet_link") return "awaiting verified wallet link";
-  if (event.payoutDestination === "settlement_queue") return "settlement queued";
-  if (event.payoutDestination === "failed") return "payout needs operator attention";
-  if (event.payoutDestination === "rescinded") return "rescinded";
-  if (event.payoutDestination === "mixed") {
-    return Object.entries(event.payoutDestinationCounts)
-      .map(([destination, count]) => `${count} ${destination.replace(/_/g, " ")}`)
-      .join(" · ");
+function lifecycleDestinationLabel(
+  event: BetBattleHistoryTimelineEvent,
+) {
+  if (
+    event.payoutDestination ===
+    "wallet"
+  ) {
+    return "wallet transaction present";
   }
+
+  if (
+    event.payoutDestination ===
+    "awaiting_wallet_link"
+  ) {
+    return "awaiting verified wallet link";
+  }
+
+  if (
+    event.payoutDestination ===
+    "settlement_queue"
+  ) {
+    return "settlement queued";
+  }
+
+  if (
+    event.payoutDestination ===
+    "failed"
+  ) {
+    return "payout needs operator attention";
+  }
+
+  if (
+    event.payoutDestination ===
+    "rescinded"
+  ) {
+    return "rescinded";
+  }
+
   return null;
 }
 
-function lifecycleEventTone(event: BetLifecycleEvent): StakingActivityItem["tone"] {
-  if (event.payoutDestination === "failed") return "amber";
-  if (event.payoutDestination === "wallet") return "emerald";
-  if (event.kind === "payout" || event.kind === "refund" || event.kind === "winner_bounty") {
-    return event.payoutDestination === "rescinded" ? "slate" : "sky";
+function lifecycleEventTone(
+  event: BetBattleHistoryTimelineEvent,
+): StakingActivityItem["tone"] {
+  if (
+    event.payoutDestination ===
+    "failed"
+  ) {
+    return "amber";
   }
-  if (event.kind === "result") return "sky";
-  if (event.kind === "stake_recorded" || event.kind === "escrow_funded") return "amber";
+
+  if (
+    event.payoutDestination ===
+    "wallet"
+  ) {
+    return "emerald";
+  }
+
+  if (
+    event.kind === "payout" ||
+    event.kind === "refund" ||
+    event.kind === "winner_bounty"
+  ) {
+    return event.payoutDestination ===
+      "rescinded"
+      ? "slate"
+      : "sky";
+  }
+
+  if (
+    event.kind === "result"
+  ) {
+    return "sky";
+  }
+
+  if (
+    event.kind ===
+      "stake_recorded" ||
+    event.kind ===
+      "escrow_funded"
+  ) {
+    return "amber";
+  }
+
   return "slate";
 }
 
-function betLifecycleGroupToActivityItem(group: BetLifecycleGroup): StakingActivityItem {
-  const children = group.events.map((event) => {
-    const destination = lifecycleDestinationLabel(event);
-    const detail = [
-      event.status,
-      event.eventCount > 1 ? `${event.eventCount} records` : null,
-      event.actors.length > 0 ? event.actors.slice(0, 4).join(", ") : null,
-      destination,
-      event.detail,
-    ].filter(Boolean).join(" · ");
-    const amountLabel =
-      event.amountWolo !== null ? formatActivityWoloAmount(event.amountWolo) : undefined;
+function betBattleHistoryGroupToActivityItem(
+  group: BetBattleHistoryGroup,
+): StakingActivityItem {
+  const children =
+    group.timeline.map(
+      (event) => {
+        const destination =
+          lifecycleDestinationLabel(
+            event,
+          );
 
-    return {
-      key: event.id,
-      label: `${BET_LIFECYCLE_LABELS[event.kind]}${amountLabel ? ` · ${amountLabel}` : ""}`,
-      detail,
-      meta: formatActivityTimestamp(event.occurredAt),
-      eventType: `BET_${event.kind.toUpperCase()}`,
-      amountLabel,
-      timestampLabel: formatActivityTimestamp(event.occurredAt),
-      occurredAt: event.occurredAt,
-      txHash: event.txHash || undefined,
-      txUrl: event.txHash ? `/api/wolo/tx/${event.txHash}` : undefined,
-      groupKey: group.groupKey,
-      lifecycle: {
-        schema: group.schema,
-        marketId: group.marketId,
-        kind: event.kind,
-        status: event.status,
-        eventCount: event.eventCount,
-        payoutDestination: event.payoutDestination,
+        const detail = [
+          event.status,
+          event.actor,
+          destination,
+          event.detail,
+        ]
+          .filter(Boolean)
+          .join(" · ");
+
+        const amountLabel =
+          event.amountWolo !== null
+            ? formatActivityWoloAmount(
+                event.amountWolo,
+              )
+            : undefined;
+
+        return {
+          key: event.key,
+
+          label:
+            `${BET_LIFECYCLE_LABELS[event.kind]}` +
+            `${amountLabel ? ` · ${amountLabel}` : ""}`,
+
+          detail,
+
+          meta:
+            formatActivityTimestamp(
+              event.occurredAt,
+            ),
+
+          eventType:
+            `BET_${event.kind.toUpperCase()}`,
+
+          amountLabel,
+
+          timestampLabel:
+            formatActivityTimestamp(
+              event.occurredAt,
+            ),
+
+          occurredAt:
+            event.occurredAt,
+
+          txHash:
+            event.txHash ||
+            undefined,
+
+          txUrl:
+            event.txHash
+              ? `/api/wolo/tx/${event.txHash}`
+              : undefined,
+
+          groupKey:
+            group.groupKey,
+
+          lifecycle: {
+            schema:
+              group.schema,
+
+            rootMarketId:
+              group.rootMarketId,
+
+            marketId:
+              event.marketId,
+
+            battleId:
+              group.battleId,
+
+            publicNumber:
+              group.publicNumber,
+
+            kind:
+              event.kind,
+
+            status:
+              event.status,
+
+            payoutDestination:
+              event.payoutDestination,
+          },
+
+          tone:
+            lifecycleEventTone(
+              event,
+            ),
+        } satisfies StakingActivityItem;
       },
-      tone: lifecycleEventTone(event),
-    } satisfies StakingActivityItem;
-  });
-  const phaseSummary = group.events
-    .map((event) => BET_LIFECYCLE_LABELS[event.kind].toLowerCase())
-    .join(" · ");
-  const hasFailedPayout = group.events.some((event) => event.payoutDestination === "failed");
-  const hasPendingPayout = group.events.some((event) =>
-    event.payoutDestination === "awaiting_wallet_link" ||
-    event.payoutDestination === "settlement_queue"
-  );
-  const hasWalletPayout = group.events.some((event) => event.payoutDestination === "wallet");
+    );
+
+  const phaseSummary =
+    group.timeline
+      .map(
+        (event) =>
+          BET_LIFECYCLE_LABELS[
+            event.kind
+          ].toLowerCase(),
+      )
+      .join(" · ");
+
+  const hasFailedPayout =
+    group.timeline.some(
+      (event) =>
+        event.payoutDestination ===
+        "failed",
+    );
+
+  const hasPendingPayout =
+    group.timeline.some(
+      (event) =>
+        event.payoutDestination ===
+          "awaiting_wallet_link" ||
+        event.payoutDestination ===
+          "settlement_queue",
+    );
+
+  const hasWalletPayout =
+    group.timeline.some(
+      (event) =>
+        event.payoutDestination ===
+        "wallet",
+    );
+
   const amountLabel =
-    group.stakeTotalWolo > 0
-      ? formatActivityWoloAmount(group.stakeTotalWolo)
-      : group.refundTotalWolo > 0
-        ? formatActivityWoloAmount(group.refundTotalWolo)
-        : group.payoutTotalWolo > 0
-          ? formatActivityWoloAmount(group.payoutTotalWolo)
-          : undefined;
+    group.coreStakeWolo > 0
+      ? formatActivityWoloAmount(
+          group.coreStakeWolo,
+        )
+      : group.coreRefundWolo > 0
+        ? formatActivityWoloAmount(
+            group.coreRefundWolo,
+          )
+        : group.corePayoutWolo > 0
+          ? formatActivityWoloAmount(
+              group.corePayoutWolo,
+            )
+          : group.rewardWolo > 0
+            ? formatActivityWoloAmount(
+                group.rewardWolo,
+              )
+            : undefined;
+
+  const battleLabel =
+    group.publicNumber
+      ? `Battle #${group.publicNumber}`
+      : `Battle · market #${group.rootMarketId}`;
 
   return {
-    key: group.id,
-    label: group.marketTitle,
-    detail: phaseSummary || "bet lifecycle",
-    meta: formatActivityTimestamp(group.occurredAt),
-    eventType: "GROUPED BET",
+    key:
+      group.key,
+
+    label:
+      `${battleLabel} · ${group.title}`,
+
+    detail:
+      phaseSummary ||
+      "bet lifecycle",
+
+    meta:
+      formatActivityTimestamp(
+        group.startedAt,
+      ),
+
+    eventType:
+      "GROUPED BET",
+
     amountLabel,
-    timestampLabel: formatActivityTimestamp(group.occurredAt),
-    occurredAt: group.occurredAt,
-    groupKey: group.groupKey,
+
+    timestampLabel:
+      formatActivityTimestamp(
+        group.startedAt,
+      ),
+
+    // Deliberately stable battle chronology.
+    // Latest payout activity belongs inside children, not outer sorting.
+    occurredAt:
+      group.startedAt,
+
+    groupKey:
+      group.groupKey,
+
+    // Preserve the canonical battle object so Grouped Bets can render
+    // its purpose-built battle-history card instead of flattening the
+    // same truth back through the generic ledger row presentation.
+    battleHistory:
+      group,
+
     children,
+
     lifecycle: {
-      schema: group.schema,
-      marketId: group.marketId,
-      stakeTotalWolo: group.stakeTotalWolo,
-      payoutTotalWolo: group.payoutTotalWolo,
-      refundTotalWolo: group.refundTotalWolo,
-      founderParticipantsWolo: group.founderParticipantsWolo,
-      founderWinnerWolo: group.founderWinnerWolo,
+      schema:
+        group.schema,
+
+      rootMarketId:
+        group.rootMarketId,
+
+      battleId:
+        group.battleId,
+
+      publicNumber:
+        group.publicNumber,
+
+      coreStakeWolo:
+        group.coreStakeWolo,
+
+      corePayoutWolo:
+        group.corePayoutWolo,
+
+      coreRefundWolo:
+        group.coreRefundWolo,
+
+      rewardWolo:
+        group.rewardWolo,
     },
-    tone: hasFailedPayout
-      ? "amber"
-      : hasPendingPayout
-        ? "sky"
-        : hasWalletPayout
-          ? "emerald"
-          : group.stakeTotalWolo > 0
-            ? "amber"
-            : "slate",
+
+    tone:
+      hasFailedPayout
+        ? "amber"
+        : hasPendingPayout
+          ? "sky"
+          : hasWalletPayout
+            ? "emerald"
+            : group.coreRefundWolo > 0
+              ? "slate"
+              : group.coreStakeWolo > 0
+                ? "amber"
+                : "slate",
   };
 }
 
@@ -1274,7 +1512,7 @@ export async function loadMainnetTransferStakingActivityPage(
     (filter === "all" || filter === "bets" || filter === "bounties")
   ) {
     const lifecyclePage = await loadBetLifecycleActivityPage(prisma, {
-      before: validBeforeDate,
+      before,
       limit,
       minimumAt: isWoloMainnet() ? mainnetDisplayStartAt : null,
       requireBounty: filter === "bounties",
@@ -1282,7 +1520,7 @@ export async function loadMainnetTransferStakingActivityPage(
 
     return {
       generatedAt: new Date().toISOString(),
-      rows: lifecyclePage.groups.map(betLifecycleGroupToActivityItem),
+      rows: lifecyclePage.groups.map(betBattleHistoryGroupToActivityItem),
       hasMore: lifecyclePage.hasMore,
       nextBefore: lifecyclePage.nextBefore,
     };

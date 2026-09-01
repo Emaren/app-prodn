@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
 import { loadBetLifecycleActivityPage } from "@/lib/betLifecycleActivity";
-import type { BetLifecycleEventKind } from "@/lib/betLifecycleProjection";
+import type { BetBattleHistoryEventKind } from "@/lib/betBattleHistoryProjection";
 import { normalizePendingWoloClaimName } from "@/lib/pendingWoloClaims";
 import { resolveStakerBetLedgerOutcome } from "@/lib/stakerBetLedger";
 import {
@@ -472,7 +472,7 @@ async function loadChampionshipRows(profile: ActiveStakerProfile, userId: number
   return rows;
 }
 
-const STAKER_LIFECYCLE_LABELS: Record<BetLifecycleEventKind, string> = {
+const STAKER_LIFECYCLE_LABELS: Record<BetBattleHistoryEventKind, string> = {
   stake_intent: "stake awaiting verification",
   stake_recorded: "app-side stake recorded",
   escrow_funded: "verified on-chain stake",
@@ -504,43 +504,110 @@ async function loadBetRows(
       normalizedPlayerNames: normalizedPlayerName ? [normalizedPlayerName] : [],
     });
 
-    const rows = lifecyclePage.groups.map((group) => {
-      const failed = group.events.some((event) => event.payoutDestination === "failed");
-      const paid = group.events.some((event) => event.payoutDestination === "wallet");
-      const refunded = group.events.some((event) => event.kind === "refund");
-      const pending = group.events.some((event) =>
-        event.payoutDestination === "awaiting_wallet_link" ||
-        event.payoutDestination === "settlement_queue"
-      );
-      const tone: LedgerRow["tone"] = failed
-        ? "red"
-        : paid
-          ? "emerald"
-          : refunded
-            ? "slate"
-            : "sky";
-      const phaseSummary = group.events
-        .map((event) => STAKER_LIFECYCLE_LABELS[event.kind])
-        .join(" · ");
-      const destination = failed
-        ? "payout needs operator attention"
-        : pending
-          ? "settlement is not complete"
-          : paid
-            ? "wallet transaction present"
-            : null;
+    const rows =
+      lifecyclePage.groups.map(
+        (group) => {
+          const failed =
+            group.timeline.some(
+              (event) =>
+                event.payoutDestination ===
+                "failed",
+            );
 
-      return {
-        key: group.id,
-        view: "grouped-bets" as const,
-        tone,
-        label: `${formatWolo(group.stakeTotalWolo)} bet lifecycle`,
-        detail: [group.marketTitle, phaseSummary, destination].filter(Boolean).join(" · "),
-        meta: formatTime(group.occurredAt),
-        occurredAt: group.occurredAt,
-        amountLabel: formatWolo(group.stakeTotalWolo),
-      } satisfies LedgerRow;
-    });
+          const paid =
+            group.timeline.some(
+              (event) =>
+                event.payoutDestination ===
+                "wallet",
+            );
+
+          const refunded =
+            group.timeline.some(
+              (event) =>
+                event.kind ===
+                "refund",
+            );
+
+          const pending =
+            group.timeline.some(
+              (event) =>
+                event.payoutDestination ===
+                  "awaiting_wallet_link" ||
+                event.payoutDestination ===
+                  "settlement_queue",
+            );
+
+          const tone:
+            LedgerRow["tone"] =
+              failed
+                ? "red"
+                : paid
+                  ? "emerald"
+                  : refunded
+                    ? "slate"
+                    : "sky";
+
+          const phaseSummary =
+            group.timeline
+              .map(
+                (event) =>
+                  STAKER_LIFECYCLE_LABELS[
+                    event.kind
+                  ],
+              )
+              .join(" · ");
+
+          const destination =
+            failed
+              ? "payout needs operator attention"
+              : pending
+                ? "settlement is not complete"
+                : paid
+                  ? "wallet transaction present"
+                  : null;
+
+          const battleLabel =
+            group.publicNumber
+              ? `Battle #${group.publicNumber}`
+              : `Battle · market #${group.rootMarketId}`;
+
+          return {
+            key:
+              group.key,
+
+            view:
+              "grouped-bets" as const,
+
+            tone,
+
+            label:
+              battleLabel,
+
+            detail:
+              [
+                group.title,
+                phaseSummary,
+                destination,
+              ]
+                .filter(Boolean)
+                .join(" · "),
+
+            meta:
+              formatTime(
+                group.startedAt,
+              ),
+
+            // Stable outer battle chronology.
+            occurredAt:
+              group.startedAt,
+
+            amountLabel:
+              formatWolo(
+                group.coreStakeWolo,
+              ),
+          } satisfies LedgerRow;
+        },
+      );
     return {
       rows,
       hasMore: lifecyclePage.hasMore,

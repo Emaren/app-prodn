@@ -544,7 +544,7 @@ export async function loadBetLifecycleActivityPage(
   const bonuses = boundedRows(bonusesRaw, "founder-bonus");
   const claims = boundedRows(claimsRaw, "claim");
   const marketById = new Map(markets.map((market) => [market.id, market] as const));
-  const events: BetLifecycleSourceEvent[] = [];
+  const events: BetBattleHistorySourceEvent[] = [];
 
   function marketContext(marketId: number) {
     const market = marketById.get(marketId);
@@ -598,6 +598,22 @@ export async function loadBetLifecycleActivityPage(
       occurredAt: (wager.stakeLockedAt || wager.createdAt).toISOString(),
       amountWolo: wager.amountWolo,
       actor: actorName(wager.user),
+
+      // Preserve canonical slip identity through the adapter.
+      //
+      // A modern BetStakeTicket can fund several wager legs with one
+      // chain transfer. The battle projector must see the shared
+      // ticket id, otherwise each leg looks like an unrelated slip.
+      userId: wager.userId,
+      ticketId:
+        wager.stakeLeg?.ticket?.id ??
+        null,
+      stakeLegId:
+        wager.stakeLeg?.id ??
+        wager.stakeLegId ??
+        null,
+      side: wager.side,
+
       txHash,
       economicKey: stakeEconomicKey(wager),
       detail: verifiedEscrow
@@ -697,24 +713,43 @@ export async function loadBetLifecycleActivityPage(
     });
   }
 
-  let groups = projectBetLifecycleGroups(events).filter((group) => {
-    if (before && Date.parse(group.occurredAt) >= before.getTime()) return false;
-    if (minimumAt && Date.parse(group.occurredAt) < minimumAt.getTime()) return false;
+  let groups = projectBetBattleHistory(events).filter((group) => {
+    // minimumAt remains an activity-window bound. Battle ordering itself
+    // is intentionally driven by stable battle identity/start time.
+    if (
+      minimumAt &&
+      Date.parse(group.latestActivityAt) < minimumAt.getTime()
+    ) {
+      return false;
+    }
+
     if (options.requireBounty) {
-      return group.events.some((event) =>
-        event.kind === "winner_bounty" ||
-        event.kind === "founder_participants" ||
-        event.kind === "founder_winner"
+      return group.timeline.some(
+        (event) =>
+          event.kind === "winner_bounty" ||
+          event.kind === "founder_participants" ||
+          event.kind === "founder_winner",
       );
     }
+
     return true;
   });
-  const hasMore = groups.length > limit || candidateRows.length > candidateIds.length;
+
+  const hasMore =
+    groups.length > limit ||
+    candidateRows.length >
+      candidateIds.length;
+
   groups = groups.slice(0, limit);
 
   return {
     groups,
     hasMore,
-    nextBefore: groups.length > 0 ? groups[groups.length - 1].occurredAt : null,
+    nextBefore:
+      groups.length > 0
+        ? encodeBattleCursor(
+            groups[groups.length - 1],
+          )
+        : null,
   };
 }
