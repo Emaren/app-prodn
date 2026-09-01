@@ -310,6 +310,66 @@ export function useRadioWoloListener() {
       [],
     );
 
+  const hardStopListening =
+    useCallback(() => {
+      listeningIntentRef.current =
+        false;
+
+      entranceFadePendingRef.current =
+        false;
+
+      // Invalidate both volume animation and any response that began
+      // before the app left the foreground.
+      ++volumeRampRef.current;
+      ++requestSequenceRef.current;
+
+      mediaKeyRef.current =
+        null;
+
+      anchorRef.current =
+        null;
+
+      setIsListening(false);
+      setIsActuallyPlaying(false);
+      setPlaybackBlocked(false);
+
+      const audio =
+        audioRef.current;
+
+      if (audio) {
+        audio.volume = 0;
+        audio.pause();
+        audio.preload = "none";
+
+        audio.removeAttribute(
+          "src",
+        );
+
+        // WebKit needs load() after src removal to actually release
+        // the media resource/session.
+        audio.load();
+      }
+
+      if (
+        typeof navigator !==
+          "undefined" &&
+        "mediaSession" in
+          navigator
+      ) {
+        try {
+          navigator.mediaSession
+            .playbackState =
+            "none";
+
+          navigator.mediaSession
+            .metadata =
+            null;
+        } catch {
+          // Media Session teardown is best effort on WebKit.
+        }
+      }
+    }, []);
+
   const updateTargetVolume =
     useCallback(
       (
@@ -705,9 +765,14 @@ export function useRadioWoloListener() {
             ),
           );
 
-          applyAnchorToAudio(
-            nextAnchor,
-          );
+          if (
+            document.visibilityState ===
+            "visible"
+          ) {
+            applyAnchorToAudio(
+              nextAnchor,
+            );
+          }
 
           return nextStation;
         } catch (
@@ -969,6 +1034,24 @@ export function useRadioWoloListener() {
           "visible"
         ) {
           void syncStation();
+          return;
+        }
+
+        hardStopListening();
+      };
+
+    const handlePageHide =
+      () => {
+        hardStopListening();
+      };
+
+    const handlePageShow =
+      () => {
+        if (
+          document.visibilityState ===
+          "visible"
+        ) {
+          void syncStation();
         }
       };
 
@@ -977,13 +1060,36 @@ export function useRadioWoloListener() {
       handleVisibility,
     );
 
+    window.addEventListener(
+      "pagehide",
+      handlePageHide,
+    );
+
+    window.addEventListener(
+      "pageshow",
+      handlePageShow,
+    );
+
     return () => {
       document.removeEventListener(
         "visibilitychange",
         handleVisibility,
       );
+
+      window.removeEventListener(
+        "pagehide",
+        handlePageHide,
+      );
+
+      window.removeEventListener(
+        "pageshow",
+        handlePageShow,
+      );
     };
-  }, [syncStation]);
+  }, [
+    hardStopListening,
+    syncStation,
+  ]);
 
   useEffect(() => {
     const timer =

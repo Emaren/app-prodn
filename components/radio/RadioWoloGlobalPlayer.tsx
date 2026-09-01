@@ -6,9 +6,9 @@ import {
   ChevronDown,
   ChevronUp,
   Palette,
-  Pause,
-  Play,
   Radio,
+  Volume2,
+  VolumeX,
   X,
 } from "lucide-react";
 
@@ -28,7 +28,7 @@ const THEME_STORAGE_KEY =
   "aoe2war:radio-wolo-player-theme:v3";
 
 const SKIN_STORAGE_KEY =
-  "aoe2war:radio-wolo-player-skin:v2";
+  "aoe2war:radio-wolo-player-skin:v3";
 
 const PLAYER_SKINS = [
   {
@@ -70,7 +70,7 @@ function readStoredSkin(): PlayerSkinId {
     typeof window ===
     "undefined"
   ) {
-    return "mini4";
+    return "ui";
   }
 
   try {
@@ -92,7 +92,7 @@ function readStoredSkin(): PlayerSkinId {
     // Player appearance persistence is optional.
   }
 
-  return "mini4";
+  return "ui";
 }
 
 const AUTOPLAY_STORAGE_KEY =
@@ -507,7 +507,7 @@ export default function RadioWoloGlobalPlayer() {
     setSkinId,
   ] =
     React.useState<PlayerSkinId>(
-      "mini4",
+      "ui",
     );
 
   React.useEffect(() => {
@@ -631,6 +631,49 @@ export default function RadioWoloGlobalPlayer() {
       [],
     );
 
+  React.useEffect(() => {
+    const suppressBackgroundPlayback =
+      () => {
+        if (
+          document.visibilityState !==
+          "visible"
+        ) {
+          setAutoPlaySuppressed(
+            true,
+          );
+        }
+      };
+
+    const suppressPageHide =
+      () => {
+        setAutoPlaySuppressed(
+          true,
+        );
+      };
+
+    document.addEventListener(
+      "visibilitychange",
+      suppressBackgroundPlayback,
+    );
+
+    window.addEventListener(
+      "pagehide",
+      suppressPageHide,
+    );
+
+    return () => {
+      document.removeEventListener(
+        "visibilitychange",
+        suppressBackgroundPlayback,
+      );
+
+      window.removeEventListener(
+        "pagehide",
+        suppressPageHide,
+      );
+    };
+  }, []);
+
   const current =
     station?.clock?.current ??
     null;
@@ -703,6 +746,8 @@ export default function RadioWoloGlobalPlayer() {
 
   React.useEffect(() => {
     if (
+      document.visibilityState !==
+        "visible" ||
       !station?.authenticated ||
       station.state !== "on_air" ||
       !station.startedAt ||
@@ -741,7 +786,7 @@ export default function RadioWoloGlobalPlayer() {
     station,
   ]);
 
-  const handlePlayToggle =
+  const handleSoundToggle =
     React.useCallback(
       () => {
         if (
@@ -878,7 +923,7 @@ export default function RadioWoloGlobalPlayer() {
         <button
           type="button"
           onClick={
-            handlePlayToggle
+            handleSoundToggle
           }
           disabled={
             !isOnAir
@@ -887,15 +932,15 @@ export default function RadioWoloGlobalPlayer() {
           aria-label={
             isListening &&
             !playbackBlocked
-              ? "Pause Radio WOLO"
-              : "Listen to Radio WOLO"
+              ? "Turn Radio WOLO sound off"
+              : "Turn Radio WOLO sound on"
           }
         >
           <span className="sr-only">
             {isListening &&
             !playbackBlocked
-              ? "Pause"
-              : "Listen"}
+              ? "Sound off"
+              : "Sound on"}
           </span>
         </button>
 
@@ -1019,27 +1064,27 @@ export default function RadioWoloGlobalPlayer() {
             !isListening
           }
           onClick={
-            handlePlayToggle
+            handleSoundToggle
           }
           className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border transition disabled:cursor-default disabled:border-white/[0.06] disabled:bg-white/[0.025] disabled:text-white/20 ${theme.play}`}
           aria-label={
             isListening &&
             !playbackBlocked
-              ? "Pause Radio WOLO"
-              : "Listen to Radio WOLO"
+              ? "Turn Radio WOLO sound off"
+              : "Turn Radio WOLO sound on"
           }
           title={
             isListening &&
             !playbackBlocked
-              ? "Pause"
-              : "Listen"
+              ? "Sound off"
+              : "Sound on"
           }
         >
           {isListening &&
           !playbackBlocked ? (
-            <Pause className="h-3.5 w-3.5" />
+            <Volume2 className="h-3.5 w-3.5" />
           ) : (
-            <Play className="ml-0.5 h-3.5 w-3.5" />
+            <VolumeX className="h-3.5 w-3.5" />
           )}
         </button>
 

@@ -2293,7 +2293,7 @@ test(
 );
 
 test(
-  "Radio WOLO listener fades into remembered volume and fades before Pause",
+  "Radio WOLO listener fades into remembered volume and fades before Sound Off",
   () => {
     const source =
       read(
@@ -2452,7 +2452,7 @@ test(
 
     assert.match(
       source,
-      /aoe2war:radio-wolo-player-skin:v2/,
+      /aoe2war:radio-wolo-player-skin:v3/,
     );
 
     assert.match(
@@ -2722,7 +2722,7 @@ test(
 );
 
 test(
-  "Radio WOLO defaults to Mini IV and lets artwork skins use their baked More controls",
+  "Radio WOLO defaults to the generated UI while artwork skins keep their baked More controls",
   () => {
     const source =
       read(
@@ -2731,12 +2731,12 @@ test(
 
     assert.match(
       source,
-      /aoe2war:radio-wolo-player-skin:v2/,
+      /aoe2war:radio-wolo-player-skin:v3/,
     );
 
     assert.match(
       source,
-      /React\.useState<PlayerSkinId>\(\s*"mini4"/,
+      /React\.useState<PlayerSkinId>\(\s*"ui"/,
     );
 
     const storedSkin =
@@ -2746,7 +2746,7 @@ test(
 
     assert.match(
       storedSkin,
-      /return "mini4"/,
+      /return "ui"/,
     );
 
     assert.match(
@@ -2958,6 +2958,151 @@ test(
     assert.match(
       shell,
       /overflow-hidden rounded-\[1\.45rem\]/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO defaults to the blue UI and models live audio as sound on or off",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      source,
+      /aoe2war:radio-wolo-player-skin:v3/,
+    );
+
+    assert.match(
+      source,
+      /React\.useState<PlayerSkinId>\(\s*"ui",\s*\)/,
+    );
+
+    assert.match(
+      source,
+      /return "ui";/,
+    );
+
+    assert.match(
+      source,
+      /Volume2/,
+    );
+
+    assert.match(
+      source,
+      /VolumeX/,
+    );
+
+    assert.match(
+      source,
+      /Turn Radio WOLO sound off/,
+    );
+
+    assert.match(
+      source,
+      /Turn Radio WOLO sound on/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /Pause Radio WOLO/,
+    );
+
+    assert.doesNotMatch(
+      source,
+      /<Pause\b|<Play\b/,
+    );
+
+    assert.match(
+      source,
+      /document\.visibilityState !==\s*"visible"/,
+    );
+
+    assert.match(
+      source,
+      /setAutoPlaySuppressed\(\s*true,\s*\)/,
+    );
+
+    assert.match(
+      source,
+      /window\.addEventListener\(\s*"pagehide",\s*suppressPageHide/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO hard releases iOS PWA audio when the app leaves the foreground",
+  () => {
+    const source =
+      read(
+        "hooks/useRadioWoloListener.ts",
+      );
+
+    assert.match(
+      source,
+      /const hardStopListening/,
+    );
+
+    assert.match(
+      source,
+      /listeningIntentRef\.current =\s*false/,
+    );
+
+    assert.match(
+      source,
+      /mediaKeyRef\.current =\s*null/,
+    );
+
+    assert.match(
+      source,
+      /anchorRef\.current =\s*null/,
+    );
+
+    assert.match(
+      source,
+      /audio\.volume = 0/,
+    );
+
+    assert.match(
+      source,
+      /audio\.pause\(\)/,
+    );
+
+    assert.match(
+      source,
+      /audio\.preload = "none"/,
+    );
+
+    assert.match(
+      source,
+      /audio\.removeAttribute\(\s*"src"/,
+    );
+
+    assert.match(
+      source,
+      /navigator\.mediaSession[\s\S]{0,220}playbackState =\s*"none"/,
+    );
+
+    assert.match(
+      source,
+      /document\.visibilityState ===\s*"visible"[\s\S]{0,180}applyAnchorToAudio/,
+    );
+
+    assert.match(
+      source,
+      /window\.addEventListener\(\s*"pagehide",\s*handlePageHide/,
+    );
+
+    assert.match(
+      source,
+      /window\.addEventListener\(\s*"pageshow",\s*handlePageShow/,
+    );
+
+    assert.match(
+      source,
+      /document\.visibilityState ===\s*"visible"[\s\S]{0,180}void syncStation\(\);[\s\S]{0,180}hardStopListening\(\);/,
     );
   },
 );

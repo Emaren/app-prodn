@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-09-01"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -42,3 +42,28 @@ Production defaults to:
 `RADIO_WOLO_MEDIA_DIR` may override the root. The web service user must own the directory. Expected layout is `submissions/audio/` and `submissions/artwork/`, with directories mode `0750` and files mode `0640`. This is private application media, not a public nginx or symlink tree.
 
 Back up the database and this directory together before destructive maintenance. Database metadata without the media directory is incomplete; files without their database rows must not be published by filename guessing.
+
+## Global listener contract
+
+The generated Imperial blue UI is the default Radio WOLO miniplayer face.
+Image-based Mini I-IV remain optional presentation faces and may evolve
+independently.
+
+Radio WOLO is a live broadcast, not resumable local media. Listener controls
+therefore communicate **sound on / sound off**, never pause/resume. Turning
+sound back on joins the authoritative current station position rather than
+resuming an old local timestamp.
+
+Foreground lifecycle is fail-safe. When the document becomes hidden or receives
+`pagehide`, the listener synchronously drops listener intent, cancels volume
+ramps, pauses the audio element, detaches its source, resets its media identity,
+and clears best-effort Media Session state. Hidden station synchronization may
+refresh application truth but must never reattach or start audio.
+
+Leaving the foreground also suppresses automatic playback for the remainder of
+that page session. Returning through `visibilitychange` or `pageshow` refreshes
+station truth but remains silent until the listener explicitly selects Sound On.
+
+The hard background stop is intentionally separate from the normal foreground
+Sound Off fade because iOS/WebKit may suspend installed-PWA JavaScript before an
+asynchronous fade callback can complete.
