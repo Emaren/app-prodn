@@ -235,31 +235,79 @@ export function canonicalizeNumberedBountyTransfers<
     },
   );
 
-  return admitted.map(
-    (
-      {
+  const legacy =
+    admitted.filter(
+      (entry) =>
+        entry.writtenNumber <= 50,
+    );
+
+  const explicit =
+    admitted.filter(
+      (entry) =>
+        entry.writtenNumber >= 51,
+    );
+
+  const canonicalized = [
+    ...legacy.map(
+      (
+        {
+          row,
+          normalizedTxHash,
+          writtenNumber,
+        },
+        index,
+      ) => {
+        const canonicalNumber =
+          index + 1;
+
+        return {
+          ...row,
+          txHash:
+            normalizedTxHash,
+          writtenNumber,
+          canonicalNumber,
+          canonicalMemo:
+            canonicalBountyMemo(
+              row.memo || "",
+              canonicalNumber,
+            ),
+        };
+      },
+    ),
+    ...explicit.map(
+      ({
         row,
         normalizedTxHash,
         writtenNumber,
-      },
-      index,
-    ) => {
-      const canonicalNumber =
-        index + 1;
-
-      return {
+      }) => ({
         ...row,
         txHash:
           normalizedTxHash,
         writtenNumber,
-        canonicalNumber,
+        canonicalNumber:
+          writtenNumber,
         canonicalMemo:
           canonicalBountyMemo(
             row.memo || "",
-            canonicalNumber,
+            writtenNumber,
           ),
-      };
-    },
+      }),
+    ),
+  ];
+
+  return canonicalized.sort(
+    (left, right) =>
+      left.canonicalNumber -
+        right.canonicalNumber ||
+      numberedBountyTimestamp(
+        left.timestamp,
+      ) -
+        numberedBountyTimestamp(
+          right.timestamp,
+        ) ||
+      left.id - right.id ||
+      left.transferIndex -
+        right.transferIndex,
   );
 }
 

@@ -106,7 +106,7 @@ test("canonical paid truth requires paid status and transaction proof", () => {
   );
 });
 
-test("numbered bounty chronology closes written gaps without changing chain evidence", () => {
+test("legacy numbered bounty chronology remains frozen through bounty 50", () => {
   const issuer =
     OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES[1];
 
@@ -198,6 +198,63 @@ test("numbered bounty chronology closes written gaps without changing chain evid
   assert.equal(
     rows[1].memo,
     "Bounty #5 — The Tribe Grows.",
+  );
+});
+
+test("late bounty 51 correction stays 51 while existing bounty 52 stays 52", () => {
+  const issuer =
+    OFFICIAL_NUMBERED_BOUNTY_ISSUER_ADDRESSES[0];
+
+  const base = {
+    senderAddress: issuer,
+    recipientAddress:
+      "wolo1scavanger",
+    amountWoloDisplay:
+      "1000.000000",
+    transferIndex: 0,
+  };
+
+  const rows =
+    canonicalizeNumberedBountyTransfers([
+      {
+        ...base,
+        id: 52,
+        txHash: "TX52",
+        timestamp:
+          new Date(
+            "2026-09-01T13:17:00Z",
+          ),
+        memo:
+          "Bounty #52 — Scavanger_Ab Enters The Advisors Council.",
+      },
+      {
+        ...base,
+        id: 51,
+        txHash: "TX51",
+        timestamp:
+          new Date(
+            "2026-09-01T13:30:00Z",
+          ),
+        memo:
+          "Bounty #51 — The Windows Should Always Be Open.",
+      },
+    ]);
+
+  assert.deepEqual(
+    rows.map(
+      (row) => row.canonicalNumber,
+    ),
+    [51, 52],
+  );
+
+  assert.deepEqual(
+    rows.map(
+      (row) => row.canonicalMemo,
+    ),
+    [
+      "Bounty #51 — The Windows Should Always Be Open.",
+      "Bounty #52 — Scavanger_Ab Enters The Advisors Council.",
+    ],
   );
 });
 
@@ -363,6 +420,14 @@ test("public loader admits only official numbered on-chain bounty transfers", ()
   );
   assert.match(
     publicLoader,
+    /entry\.canonicalNumber/,
+  );
+  assert.doesNotMatch(
+    publicLoader,
+    /nextNumber:\s*ledger\.length \+ 1/,
+  );
+  assert.match(
+    publicLoader,
     /entry\.hasFeaturedAvatar/,
   );
   assert.match(
@@ -433,6 +498,10 @@ test("staking bounty history shares the official numbered memo rule", () => {
     route,
     /public-numbered-bounty/,
   );
+  assert.match(
+    route,
+    /if \(filterParam === "bounties"\)/,
+  );
   assert.doesNotMatch(
     route,
     /user_gifts/,
@@ -449,6 +518,10 @@ test("staking bounty history shares the official numbered memo rule", () => {
   assert.match(
     feed,
     /Next bounty/,
+  );
+  assert.match(
+    feed,
+    /bountyActivityNumber/,
   );
   assert.match(
     feed,

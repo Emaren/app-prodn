@@ -419,6 +419,8 @@ export async function loadBountyBoard(prisma: PrismaClient) {
       })
       .sort(
         (left, right) =>
+          right.canonicalNumber -
+            left.canonicalNumber ||
           right.occurredAt.localeCompare(
             left.occurredAt,
           ),
@@ -582,7 +584,14 @@ export async function loadBountyBoard(prisma: PrismaClient) {
       paidCount:
         ledger.length,
       nextNumber:
-        ledger.length + 1,
+        ledger.reduce(
+          (highest, entry) =>
+            Math.max(
+              highest,
+              entry.canonicalNumber,
+            ),
+          0,
+        ) + 1,
     },
     totals: {
       available:

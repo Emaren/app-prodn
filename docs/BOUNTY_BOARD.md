@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-03"
+reviewed_at: "2026-09-01"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -56,8 +56,8 @@ and whose transaction hash and positive WOLO amount are present.
 
 ## Canonical numbered history
 
-The public historical ledger is the chronological sequence of explicit numbered
-WoloChain bounty transfers. Admission requires all of the following:
+The public historical ledger is the numbered sequence of explicit WoloChain
+bounty transfers. Admission requires all of the following:
 
 - the sender is one of the two audited Kingdom bounty issuer addresses;
 - the immutable memo matches `Bounty #<positive integer>`;
@@ -66,10 +66,19 @@ WoloChain bounty transfers. Admission requires all of the following:
 - duplicate chain transfer identities are removed by transaction hash and
   transfer index.
 
-The written memo number remains immutable chain evidence. Public display assigns
-a canonical chronological number beginning at `#1`, closing historical gaps that
-were accidentally reserved for automatic match bonuses. The audited August 3,
-2026 history contains 39 paid bounties, so the next public bounty is `#40`.
+Historical numbered bounties through public Bounty #50 retain the established
+canonical chronology that closed early written-number gaps caused by non-bounty
+automatic rewards. That published history is frozen.
+
+Beginning with written Bounty #51, the explicit number in an admitted official
+on-chain memo is authoritative. A later transfer for Bounty #51 remains #51 even
+when Bounty #52 was transferred earlier, and Bounty #52 must never be shifted to
+#53 merely because transfer chronology differs from bounty sequence.
+
+Bounty-specific views order the explicit-number era by canonical bounty number,
+while raw wallet/chain ledgers remain free to show literal transfer chronology.
+The next public bounty number is one greater than the highest canonical admitted
+number, not one greater than the number of admitted rows.
 
 The following are bonuses, not bounties, and remain excluded from public bounty
 counts, history, numbering, and warrior bounty earnings:

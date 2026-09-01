@@ -94,8 +94,10 @@ function claimedHistory(
     )
     .sort(
       (left, right) =>
+        right.canonicalNumber -
+          left.canonicalNumber ||
         new Date(right.occurredAt).getTime() -
-        new Date(left.occurredAt).getTime(),
+          new Date(left.occurredAt).getTime(),
     );
 }
 
@@ -522,7 +524,7 @@ export default function BountyWarriorCarousel({
                     </h2>
                   </div>
                   {!activeWarrior.mystery ? (
-                    <div className="shrink-0 text-xs text-slate-600">Newest ↑</div>
+                    <div className="shrink-0 text-xs text-slate-600">Bounty order</div>
                   ) : null}
                 </div>
 

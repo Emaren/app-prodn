@@ -171,7 +171,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (filterParam === "bounties" && request.nextUrl.searchParams.get("mode") !== "grouped") {
+    if (filterParam === "bounties") {
       const limitParam = Number(request.nextUrl.searchParams.get("limit") || 500);
       const safeLimit = Number.isFinite(limitParam) ? Math.max(1, Math.min(500, Math.trunc(limitParam))) : 500;
       const rows = await loadPublicNumberedBounties(safeLimit);

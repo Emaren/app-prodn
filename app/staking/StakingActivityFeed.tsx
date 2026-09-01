@@ -222,11 +222,33 @@ function parseBountyWoloAmount(value?: string | null) {
   return match ? Number(match[1]) || 0 : 0;
 }
 
+function bountyActivityNumber(
+  row: StakingActivityItem,
+) {
+  const explicit =
+    row.canonicalBountyNumber ??
+    row.writtenBountyNumber;
+
+  if (
+    Number.isSafeInteger(explicit) &&
+    Number(explicit) > 0
+  ) {
+    return Number(explicit);
+  }
+
+  return (
+    parseWrittenBountyNumber(
+      `${row.label || ""} ${row.detail || ""}`,
+    ) ?? 0
+  );
+}
+
 function computePublicBountySummary(
   rows: StakingActivityItem[],
 ) {
   let paidTotal = 0;
   let paidCount = 0;
+  let highestBountyNumber = 0;
 
   for (const row of rows) {
     if (
@@ -258,13 +280,18 @@ function computePublicBountySummary(
         row.amountLabel ||
           row.label,
       );
+    highestBountyNumber =
+      Math.max(
+        highestBountyNumber,
+        bountyActivityNumber(row),
+      );
   }
 
   return {
     paidTotal,
     paidCount,
     nextNumber:
-      paidCount + 1,
+      highestBountyNumber + 1,
   };
 }
 
@@ -297,7 +324,25 @@ function visibleActivityRowsForView(
       ? filterBeltActivityRows(filteredRows, beltPayoutFilterMode)
       : filteredRows;
 
-  return beltFilteredRows.filter(isVisibleActivityItem);
+  const visibleRows =
+    beltFilteredRows.filter(
+      isVisibleActivityItem,
+    );
+
+  if (filterMode !== "bounties") {
+    return visibleRows;
+  }
+
+  return [...visibleRows].sort(
+    (left, right) =>
+      bountyActivityNumber(right) -
+        bountyActivityNumber(left) ||
+      activityTimestamp(right) -
+        activityTimestamp(left) ||
+      activityKey(left).localeCompare(
+        activityKey(right),
+      ),
+  );
 }
 
 function activityKey(item: StakingActivityItem) {

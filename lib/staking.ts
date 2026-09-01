@@ -82,6 +82,8 @@ export type StakingActivityItem = {
   occurredAt?: string;
   txHash?: string;
   txUrl?: string;
+  canonicalBountyNumber?: number;
+  writtenBountyNumber?: number;
   groupKey?: string;
   children?: StakingActivityItem[];
   lifecycle?: {
