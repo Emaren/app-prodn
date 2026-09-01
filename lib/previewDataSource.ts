@@ -50,6 +50,17 @@ export function getPreviewDataOrigin():
   return parsed.origin;
 }
 
+export function isLiveProductionReadOnlyPreview() {
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
+
+  return (
+    process.env.AOE2WAR_PROD_DB_PREVIEW === "true" &&
+    getPreviewDataOrigin() !== null
+  );
+}
+
 export function buildPreviewDataUrl(
   pathname: string,
   searchParams?:

@@ -114,3 +114,109 @@ test("Kingdom duplication does not duplicate page-change synchronization", () =>
     /onCycleActiveEffect/,
   );
 });
+
+test("desktop Kingdom doors are hover-owned while touch retains tap toggle", () => {
+  const kingdom =
+    source.match(
+      /function KingdomNavItem\([\s\S]*?function KingdomMenuPanel\(/,
+    )?.[0] ?? "";
+
+  assert.match(
+    kingdom,
+    /onMouseEnter=\{openMenu\}/,
+  );
+
+  assert.match(
+    kingdom,
+    /onMouseLeave=\{scheduleClose\}/,
+  );
+
+  assert.match(
+    kingdom,
+    /window\.matchMedia\("\(hover: none\)"\)\.matches/,
+  );
+
+  assert.match(
+    kingdom,
+    /setOpen\(\(value\) => !value\);/,
+  );
+
+  assert.match(
+    kingdom,
+    /return;[\s\S]*openMenu\(\);/,
+  );
+});
+
+test("desktop Kingdom doors hug the center navigation rail", () => {
+  assert.equal(
+    (
+      source.match(
+        /className=\{`\$\{headerSkin\.surface\} -mr-2`\}/g,
+      ) ?? []
+    ).length,
+    1,
+  );
+
+  assert.equal(
+    (
+      source.match(
+        /className=\{`\$\{headerSkin\.surface\} -ml-2`\}/g,
+      ) ?? []
+    ).length,
+    1,
+  );
+});
+
+
+test("Kingdom hover and click cooperate instead of fighting each other", () => {
+  const kingdom =
+    source.match(
+      /function KingdomNavItem\([\s\S]*?function KingdomMenuPanel\(/,
+    )?.[0] ?? "";
+
+  assert.match(
+    kingdom,
+    /const desktopClickLatchRef = React\.useRef\(false\);/,
+  );
+
+  // Hover remains a first-class opener.
+  assert.match(
+    kingdom,
+    /onMouseEnter=\{openMenu\}/,
+  );
+
+  assert.match(
+    kingdom,
+    /onMouseLeave=\{scheduleClose\}/,
+  );
+
+  // Touch keeps an ordinary tap toggle.
+  assert.match(
+    kingdom,
+    /window\.matchMedia\("\(hover: none\)"\)\.matches[\s\S]*setOpen\(\(value\) => !value\);/,
+  );
+
+  // A desktop click on an already hover-open door arms the
+  // click latch and explicitly keeps the menu open.
+  assert.match(
+    kingdom,
+    /if \(!desktopClickLatchRef\.current\)[\s\S]*desktopClickLatchRef\.current = true;[\s\S]*openMenu\(\);[\s\S]*return;/,
+  );
+
+  // A subsequent click may close it.
+  assert.match(
+    kingdom,
+    /desktopClickLatchRef\.current = false;[\s\S]*setOpen\(false\);/,
+  );
+
+  // Leaving resets the cycle and closes naturally.
+  const scheduleClose =
+    kingdom.match(
+      /const scheduleClose = React\.useCallback\([\s\S]*?\}, \[clearCloseTimer\]\);/,
+    )?.[0] ?? "";
+
+  assert.match(
+    scheduleClose,
+    /desktopClickLatchRef\.current = false;/,
+  );
+});

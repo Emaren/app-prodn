@@ -10,16 +10,19 @@ import type { LeaderboardScope } from "@/lib/leaderboardScope";
 const OPTIONS: ReadonlyArray<{
   scope: LeaderboardScope;
   label: string;
+  compactLabel: "W" | "K";
   Icon: typeof UsersRound;
 }> = [
   {
     scope: "all",
     label: "Warriors",
+    compactLabel: "W",
     Icon: UsersRound,
   },
   {
     scope: "claimed",
     label: "Kingdom",
+    compactLabel: "K",
     Icon: UserRound,
   },
 ];
@@ -27,19 +30,37 @@ const OPTIONS: ReadonlyArray<{
 export function LeaderboardScopeToggle({
   value,
   onChange,
+  variant = "default",
+  className = "",
 }: {
   value: LeaderboardScope;
   onChange: (scope: LeaderboardScope) => void;
+  variant?: "default" | "command";
+  className?: string;
 }) {
+  const command =
+    variant === "command";
   return (
     <section
-      className="group relative isolate overflow-hidden rounded-[1.18rem] border border-white/[0.13] bg-[#030610]/94 p-px shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_22px_70px_rgba(0,0,0,0.42)] before:absolute before:inset-0 before:-z-10 before:bg-[radial-gradient(circle_at_18%_0%,rgba(255,215,106,0.08),transparent_34%),radial-gradient(circle_at_82%_100%,rgba(34,211,238,0.08),transparent_36%)] after:absolute after:inset-x-10 after:top-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/34 after:to-transparent"
+      className={`group relative isolate overflow-hidden rounded-[1.18rem] border border-white/[0.13] bg-[#030610]/94 p-px shadow-[inset_0_1px_0_rgba(255,255,255,0.09),0_22px_70px_rgba(0,0,0,0.42)] before:absolute before:inset-0 before:-z-10 before:bg-[radial-gradient(circle_at_18%_0%,rgba(255,215,106,0.08),transparent_34%),radial-gradient(circle_at_82%_100%,rgba(34,211,238,0.08),transparent_36%)] after:absolute after:inset-x-10 after:top-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-white/34 after:to-transparent ${className}`}
       aria-label="Leaderboard players"
     >
-      <div className="relative rounded-[1.1rem] bg-gradient-to-b from-white/[0.065] via-white/[0.022] to-black/40 p-1.5">
+      <div
+        className={`relative rounded-[1.1rem] bg-gradient-to-b from-white/[0.065] via-white/[0.022] to-black/40 ${
+          command
+            ? "p-1 xl:p-1.5"
+            : "p-1.5"
+        }`}
+      >
         <div className="pointer-events-none absolute inset-2 rounded-[1.05rem] border border-white/[0.055]" />
 
-        <div className="relative grid grid-cols-2 gap-2">
+        <div
+          className={`relative grid grid-cols-2 ${
+            command
+              ? "gap-1 xl:gap-2"
+              : "gap-2"
+          }`}
+        >
           {OPTIONS.map((option) => {
             const active = value === option.scope;
             const Icon = option.Icon;
@@ -50,7 +71,11 @@ export function LeaderboardScopeToggle({
                 type="button"
                 aria-pressed={active}
                 onClick={() => onChange(option.scope)}
-                className={`relative min-h-[3.45rem] cursor-pointer overflow-hidden rounded-[1rem] border px-4 py-3 text-left transition duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030610] ${
+                className={`relative cursor-pointer overflow-hidden rounded-[1rem] border text-left transition duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030610] ${
+                  command
+                    ? "min-h-[3.05rem] px-2 py-2 text-center xl:min-h-[3.45rem] xl:px-4 xl:py-3 min-[1680px]:text-left"
+                    : "min-h-[3.45rem] px-4 py-3"
+                } ${
                   active
                     ? "border-amber-200/25 bg-[linear-gradient(145deg,rgba(214,169,72,0.22),rgba(255,255,255,0.055)_40%,rgba(0,0,0,0.42)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.13),0_0_34px_rgba(201,155,60,0.13)]"
                     : "border-white/[0.075] bg-black/18 text-slate-500 hover:border-white/14 hover:bg-white/[0.045]"
@@ -64,17 +89,49 @@ export function LeaderboardScopeToggle({
                   </>
                 ) : null}
 
-                <span className="relative flex items-center justify-between gap-4">
+                <span
+                  className={`relative flex items-center ${
+                    command
+                      ? "justify-center gap-1 min-[1680px]:justify-between min-[1680px]:gap-4"
+                      : "justify-between gap-4"
+                  }`}
+                >
                   <span
-                    className={`block whitespace-nowrap text-[0.78rem] font-black uppercase tracking-[0.18em] ${
+                    className={`block whitespace-nowrap font-black uppercase ${
+                      command
+                        ? "tracking-[0.08em] xl:text-[0.78rem] xl:tracking-[0.18em]"
+                        : "text-[0.78rem] tracking-[0.18em]"
+                    } ${
                       active ? "text-amber-50" : "text-slate-400"
                     }`}
                   >
-                    {option.label}
+                    {command ? (
+                      <>
+                        <span
+                          className={`font-serif text-[1.08rem] font-black tracking-[0.12em] xl:hidden ${
+                            active
+                              ? "text-amber-100/78"
+                              : "text-slate-400/70"
+                          }`}
+                        >
+                          {option.compactLabel}
+                        </span>
+
+                        <span className="hidden xl:inline">
+                          {option.label}
+                        </span>
+                      </>
+                    ) : (
+                      option.label
+                    )}
                   </span>
 
                   <span
-                    className={`grid h-8 w-8 shrink-0 place-items-center rounded-full border transition ${
+                    className={`grid shrink-0 place-items-center rounded-full border transition ${
+                      command
+                        ? "hidden h-8 w-8 min-[1680px]:grid"
+                        : "h-8 w-8"
+                    } ${
                       active
                         ? "border-amber-100/20 bg-black/28 text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.12),0_0_18px_rgba(251,191,36,0.12)]"
                         : "border-white/[0.08] bg-white/[0.025] text-slate-600"

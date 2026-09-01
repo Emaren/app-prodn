@@ -15,7 +15,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/leaderboard",
     label: "Leaderboard",
-    version: "src-65b92df80cb2e0ce6e0d",
+    version: "src-1402a6dc4991630064f2",
   },
   {
     href: "/champions",
@@ -50,7 +50,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/bounties",
     label: "Bounties",
-    version: "src-b9b14e10edf5e17a9aa1",
+    version: "src-3b74eb7ad2558df0c6e1",
   },
   {
     href: "/forum",

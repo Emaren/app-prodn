@@ -7,6 +7,7 @@ import {
 } from "@/lib/bountyHall";
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import { loadPublicPlayerDirectory } from "@/lib/publicPlayerDirectory";
+import { buildPreviewDataUrl } from "@/lib/previewDataSource";
 
 const ACTIVE_OPPORTUNITY_STATUSES = new Set([
   "available",
@@ -51,6 +52,180 @@ export function classifyLegacyBountySource(input: {
   if (input.payoutKind) return "championship_reward";
   if (input.source) return "generic_chain_transfer";
   return "other";
+}
+
+
+type PreviewBountyDirectoryEntry = {
+  key: string;
+  uid: string | null;
+  name: string;
+  aliases: string[];
+  href: string;
+  steamRmRating: number | null;
+  totalMatches: number;
+  hasFeaturedAvatar: boolean;
+  claimed: boolean;
+};
+
+function normalizePreviewLeaderboardEntry(
+  value: unknown,
+): PreviewBountyDirectoryEntry | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const row = value as Record<string, unknown>;
+
+  const name =
+    typeof row.name === "string"
+      ? row.name.trim()
+      : "";
+
+  if (!name) {
+    return null;
+  }
+
+  const aliases =
+    Array.isArray(row.nameHistory)
+      ? row.nameHistory
+          .flatMap((item) => {
+            if (!item || typeof item !== "object") {
+              return [];
+            }
+
+            const candidate =
+              (item as Record<string, unknown>).name;
+
+            return typeof candidate === "string" &&
+              candidate.trim()
+              ? [candidate.trim()]
+              : [];
+          })
+          .filter(
+            (alias, index, values) =>
+              alias !== name &&
+              values.indexOf(alias) === index,
+          )
+      : [];
+
+  return {
+    key:
+      typeof row.key === "string" && row.key.trim()
+        ? row.key
+        : name.toLowerCase(),
+    uid:
+      typeof row.uid === "string" && row.uid.trim()
+        ? row.uid
+        : null,
+    name,
+    aliases,
+    href:
+      typeof row.href === "string" && row.href.startsWith("/")
+        ? row.href
+        : "/players",
+    steamRmRating:
+      typeof row.steamRmRating === "number" &&
+      Number.isFinite(row.steamRmRating)
+        ? row.steamRmRating
+        : null,
+    totalMatches:
+      typeof row.totalMatches === "number" &&
+      Number.isFinite(row.totalMatches)
+        ? Math.max(0, Math.trunc(row.totalMatches))
+        : 0,
+    hasFeaturedAvatar:
+      row.hasFeaturedAvatar === true,
+    claimed:
+      row.claimed === true,
+  };
+}
+
+async function loadPreviewLeaderboardEntries(
+  scope: "all" | "claimed",
+): Promise<PreviewBountyDirectoryEntry[] | null> {
+  const url =
+    buildPreviewDataUrl(
+      "/api/lobby/leaderboard",
+      new URLSearchParams({
+        lane: "rm",
+        scope,
+        offset: "0",
+        limit: "600",
+      }),
+    );
+
+  if (!url) {
+    return null;
+  }
+
+  const response =
+    await fetch(url, {
+      cache: "no-store",
+      headers: {
+        Accept: "application/json",
+        "Cache-Control": "no-cache",
+      },
+      signal: AbortSignal.timeout(15_000),
+    });
+
+  if (!response.ok) {
+    throw new Error(
+      `Production leaderboard preview failed: ${response.status}`,
+    );
+  }
+
+  const payload =
+    await response.json() as {
+      entries?: unknown;
+    };
+
+  if (!Array.isArray(payload.entries)) {
+    throw new Error(
+      "Production leaderboard preview returned an invalid payload",
+    );
+  }
+
+  return payload.entries.flatMap((entry) => {
+    const normalized =
+      normalizePreviewLeaderboardEntry(entry);
+
+    return normalized
+      ? [normalized]
+      : [];
+  });
+}
+
+async function loadBountyDirectory(
+  prisma: PrismaClient,
+) {
+  const claimedPreview =
+    await loadPreviewLeaderboardEntries(
+      "claimed",
+    );
+
+  if (!claimedPreview) {
+    return loadPublicPlayerDirectory(
+      prisma,
+    );
+  }
+
+  const allPreview =
+    (await loadPreviewLeaderboardEntries(
+      "all",
+    )) ?? [];
+
+  return {
+    claimedEntries:
+      claimedPreview.filter(
+        (entry) =>
+          entry.claimed,
+      ),
+    replayEntries:
+      allPreview.filter(
+        (entry) =>
+          !entry.claimed,
+      ),
+  };
 }
 
 export async function loadBountyBoard(prisma: PrismaClient) {
@@ -117,7 +292,7 @@ export async function loadBountyBoard(prisma: PrismaClient) {
         memo: true,
       },
     }),
-    loadPublicPlayerDirectory(prisma),
+    loadBountyDirectory(prisma),
   ]);
 
   const numberedBounties =
@@ -378,14 +553,12 @@ export async function loadBountyBoard(prisma: PrismaClient) {
   ];
 
   const initialWarriorId =
-    warriors.length
-      ? warriors[
-          Math.floor(
-            Math.random() *
-              warriors.length,
-          )
-        ].id
-      : null;
+    warriors.find(
+      (warrior) =>
+        warrior.mystery,
+    )?.id ??
+    warriors[0]?.id ??
+    null;
 
   const paidWolo =
     ledger.reduce(
