@@ -1,29 +1,79 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { recordedBetWagerFundingTxHash } from "@/lib/betStakeFunding";
 import {
-  projectBetLifecycleGroups,
-  type BetLifecycleGroup,
-  type BetLifecyclePayoutDestination,
-  type BetLifecycleSourceEvent,
-} from "@/lib/betLifecycleProjection";
+  projectBetBattleHistory,
+  type BetBattleHistoryGroup,
+  type BetBattleHistoryPayoutDestination,
+  type BetBattleHistorySourceEvent,
+} from "@/lib/betBattleHistoryProjection";
 
 const MAX_PROJECTED_MARKETS = 800;
 const MAX_LIFECYCLE_ROWS_PER_SOURCE = 5_000;
 
 export type BetLifecycleActivityPage = {
-  groups: BetLifecycleGroup[];
+  groups: BetBattleHistoryGroup[];
   hasMore: boolean;
   nextBefore: string | null;
 };
 
 type Candidate = {
-  marketId: number;
-  occurredAt: Date;
+  groupKey?: string;
+  rootMarketId?: number;
+  marketId?: number;
+  battleId?: number | null;
+  publicNumber?: number | null;
+  startedAt?: Date;
+  latestActivityAt?: Date;
+  occurredAt?: Date;
+  marketIds?: number[];
 };
+
+type BattleCursor = {
+  publicNumber: number;
+  startedAt: Date;
+  rootMarketId: number;
+};
+
+const BATTLE_CURSOR_PREFIX = "bh2";
 
 function validDate(value: Date | string | null | undefined) {
   const parsed = value instanceof Date ? value : value ? new Date(value) : null;
   return parsed && Number.isFinite(parsed.getTime()) ? parsed : null;
+}
+
+function decodeBattleCursor(value: Date | string | null | undefined): {
+  cursor: BattleCursor | null;
+  legacyBefore: Date | null;
+} {
+  if (value instanceof Date) return { cursor: null, legacyBefore: validDate(value) };
+  const clean = String(value || "").trim();
+  if (!clean) return { cursor: null, legacyBefore: null };
+  const [prefix, publicRaw, startedRaw, rootRaw, ...rest] = clean.split(".");
+  if (prefix === BATTLE_CURSOR_PREFIX && rest.length === 0) {
+    const publicNumber = Number(publicRaw);
+    const startedAt = new Date(Number(startedRaw));
+    const rootMarketId = Number(rootRaw);
+    if (
+      Number.isSafeInteger(publicNumber) &&
+      publicNumber >= -1 &&
+      Number.isFinite(startedAt.getTime()) &&
+      Number.isSafeInteger(rootMarketId) &&
+      rootMarketId > 0
+    ) {
+      return { cursor: { publicNumber, startedAt, rootMarketId }, legacyBefore: null };
+    }
+    return { cursor: null, legacyBefore: null };
+  }
+  return { cursor: null, legacyBefore: validDate(clean) };
+}
+
+function encodeBattleCursor(group: BetBattleHistoryGroup) {
+  return [
+    BATTLE_CURSOR_PREFIX,
+    group.publicNumber ?? -1,
+    Date.parse(group.startedAt),
+    group.rootMarketId,
+  ].join(".");
 }
 
 function cleanHash(value: string | null | undefined) {
@@ -46,7 +96,7 @@ function claimDestination(claim: {
   payoutTxHash: string | null;
   errorState: string | null;
   claimedByUserId: number | null;
-}): BetLifecyclePayoutDestination {
+}): BetBattleHistoryPayoutDestination {
   if (claim.status === "rescinded") return "rescinded";
   if (
     claim.status === "claimed" &&
@@ -65,17 +115,13 @@ function claimDestination(claim: {
 
 function claimKind(
   value: string,
-): "payout" | "refund" | "winner_bounty" | null {
+): "payout" | "refund" | "winner_bounty" | "founder_participants" | "founder_winner" | null {
   const normalized = value.trim().toLowerCase();
   if (normalized === "winner_bounty") return "winner_bounty";
   if (normalized.includes("refund")) return "refund";
-  if (
-    normalized === "bet_payout" ||
-    normalized === "founders_bonus" ||
-    normalized === "founders_win"
-  ) {
-    return "payout";
-  }
+  if (normalized === "founders_bonus") return "founder_participants";
+  if (normalized === "founders_win") return "founder_winner";
+  if (normalized === "bet_payout") return "payout";
   return null;
 }
 
@@ -116,11 +162,19 @@ function publicFounderDetail(bonusType: string, status: string) {
 }
 
 function publicClaimDetail(
-  kind: "payout" | "refund" | "winner_bounty",
-  destination: BetLifecyclePayoutDestination,
+  kind: "payout" | "refund" | "winner_bounty" | "founder_participants" | "founder_winner",
+  destination: BetBattleHistoryPayoutDestination,
 ) {
   const label =
-    kind === "refund" ? "Refund" : kind === "winner_bounty" ? "Winner bounty" : "Payout";
+    kind === "refund"
+      ? "Refund"
+      : kind === "winner_bounty"
+        ? "Winner bounty"
+        : kind === "founder_participants"
+          ? "Founder participant reward"
+          : kind === "founder_winner"
+            ? "Founder winner reward"
+            : "Payout";
   if (destination === "wallet") return `${label} transaction verified`;
   if (destination === "awaiting_wallet_link") return `${label} awaiting a verified wallet`;
   if (destination === "settlement_queue") return `${label} queued for settlement`;
@@ -140,7 +194,7 @@ export async function loadBetLifecycleActivityPage(
   } = {},
 ): Promise<BetLifecycleActivityPage> {
   const limit = Math.max(1, Math.min(options.limit ?? 16, 40));
-  const before = validDate(options.before);
+  const { cursor, legacyBefore } = decodeBattleCursor(options.before);
   const minimumAt = validDate(options.minimumAt);
   const normalizedPlayerNames = [...new Set(
     (options.normalizedPlayerNames || [])
@@ -193,12 +247,37 @@ export async function loadBetLifecycleActivityPage(
     `);
   }
 
-  const candidateLimit = options.requireBounty
-    ? MAX_PROJECTED_MARKETS + 1
-    : Math.min(MAX_PROJECTED_MARKETS + 1, limit + 1);
+  const candidateLimit = Math.min(MAX_PROJECTED_MARKETS + 1, limit + 1);
   const candidateRows = await prisma.$queryRaw<Candidate[]>(Prisma.sql`
     WITH eligible_markets AS (
       ${Prisma.join(eligibleMarketSources, " UNION ")}
+    ),
+    eligible_groups AS (
+      SELECT DISTINCT
+        bm.battle_id,
+        CASE
+          WHEN bm.battle_id IS NULL THEN COALESCE(bm.parent_market_id, bm.id)
+          ELSE NULL
+        END AS legacy_root_market_id
+      FROM eligible_markets eligible
+      INNER JOIN bet_markets bm ON bm.id = eligible.market_id
+    ),
+    expanded_markets AS (
+      SELECT DISTINCT
+        eligible.battle_id,
+        eligible.legacy_root_market_id,
+        bm.id AS market_id,
+        bm.parent_market_id,
+        bm.created_at
+      FROM eligible_groups eligible
+      INNER JOIN bet_markets bm ON (
+        eligible.battle_id IS NOT NULL
+        AND bm.battle_id = eligible.battle_id
+      ) OR (
+        eligible.battle_id IS NULL
+        AND bm.battle_id IS NULL
+        AND COALESCE(bm.parent_market_id, bm.id) = eligible.legacy_root_market_id
+      )
     ),
     lifecycle_events AS (
       SELECT
@@ -206,7 +285,7 @@ export async function loadBetLifecycleActivityPage(
         COALESCE(bm.settled_at, bm.voided_at, bm.updated_at) AS occurred_at,
         FALSE AS is_bounty
       FROM bet_markets bm
-      INNER JOIN eligible_markets em ON em.market_id = bm.id
+      INNER JOIN expanded_markets em ON em.market_id = bm.id
       WHERE bm.settled_at IS NOT NULL
          OR bm.voided_at IS NOT NULL
          OR bm.winner_side IS NOT NULL
@@ -226,7 +305,7 @@ export async function loadBetLifecycleActivityPage(
         END AS occurred_at,
         FALSE AS is_bounty
       FROM bet_wagers bw
-      INNER JOIN eligible_markets em ON em.market_id = bw.market_id
+      INNER JOIN expanded_markets em ON em.market_id = bw.market_id
 
       UNION ALL
 
@@ -235,7 +314,7 @@ export async function loadBetLifecycleActivityPage(
         COALESCE(bsi.recorded_at, bsi.verified_at, bsi.created_at) AS occurred_at,
         FALSE AS is_bounty
       FROM bet_stake_intents bsi
-      INNER JOIN eligible_markets em ON em.market_id = bsi.market_id
+      INNER JOIN expanded_markets em ON em.market_id = bsi.market_id
 
       UNION ALL
 
@@ -244,7 +323,7 @@ export async function loadBetLifecycleActivityPage(
         COALESCE(bmfb.settled_at, bmfb.rescinded_at, bmfb.created_at) AS occurred_at,
         TRUE AS is_bounty
       FROM bet_market_founder_bonuses bmfb
-      INNER JOIN eligible_markets em ON em.market_id = bmfb.market_id
+      INNER JOIN expanded_markets em ON em.market_id = bmfb.market_id
 
       UNION ALL
 
@@ -253,29 +332,80 @@ export async function loadBetLifecycleActivityPage(
         COALESCE(pwc.claimed_at, pwc.rescinded_at, pwc.updated_at, pwc.created_at) AS occurred_at,
         pwc.claim_kind = 'winner_bounty' AS is_bounty
       FROM pending_wolo_claims pwc
-      INNER JOIN eligible_markets em ON em.market_id = pwc.source_market_id
+      INNER JOIN expanded_markets em ON em.market_id = pwc.source_market_id
       WHERE pwc.source_market_id IS NOT NULL
         AND (
           pwc.claim_kind IN ('winner_bounty', 'bet_payout', 'founders_bonus', 'founders_win')
           OR LOWER(pwc.claim_kind) LIKE '%refund%'
         )
         ${claimIdentitySql}
+    ),
+    grouped_battles AS (
+      SELECT
+        CASE
+          WHEN em.battle_id IS NOT NULL THEN 'battle:' || em.battle_id::text
+          ELSE 'market:' || em.legacy_root_market_id::text
+        END AS group_key,
+        em.battle_id,
+        battle.public_number,
+        COALESCE(
+          MIN(em.market_id) FILTER (WHERE em.parent_market_id IS NULL),
+          MIN(COALESCE(em.parent_market_id, em.market_id))
+        ) AS root_market_id,
+        COALESCE(battle.started_at, MIN(em.created_at)) AS started_at,
+        MAX(lifecycle.occurred_at) AS latest_activity_at,
+        BOOL_OR(COALESCE(lifecycle.is_bounty, FALSE)) AS has_bounty,
+        ARRAY_AGG(DISTINCT em.market_id ORDER BY em.market_id) AS market_ids
+      FROM expanded_markets em
+      LEFT JOIN battle_identities battle ON battle.id = em.battle_id
+      LEFT JOIN lifecycle_events lifecycle ON lifecycle.market_id = em.market_id
+      GROUP BY
+        em.battle_id,
+        em.legacy_root_market_id,
+        battle.public_number,
+        battle.started_at
+      HAVING MAX(lifecycle.occurred_at) IS NOT NULL
     )
     SELECT
-      market_id AS "marketId",
-      MAX(occurred_at) AS "occurredAt"
-    FROM lifecycle_events
-    GROUP BY market_id
-    HAVING TRUE
-      ${before ? Prisma.sql`AND MAX(occurred_at) < ${before}` : Prisma.empty}
-      ${minimumAt ? Prisma.sql`AND MAX(occurred_at) >= ${minimumAt}` : Prisma.empty}
-      ${options.requireBounty ? Prisma.sql`AND BOOL_OR(is_bounty)` : Prisma.empty}
-    ORDER BY MAX(occurred_at) DESC, market_id DESC
+      group_key AS "groupKey",
+      root_market_id AS "rootMarketId",
+      battle_id AS "battleId",
+      public_number AS "publicNumber",
+      started_at AS "startedAt",
+      latest_activity_at AS "latestActivityAt",
+      market_ids AS "marketIds"
+    FROM grouped_battles
+    WHERE TRUE
+      ${cursor ? Prisma.sql`AND (
+        COALESCE(public_number, -1) < ${cursor.publicNumber}
+        OR (
+          COALESCE(public_number, -1) = ${cursor.publicNumber}
+          AND started_at < ${cursor.startedAt}
+        )
+        OR (
+          COALESCE(public_number, -1) = ${cursor.publicNumber}
+          AND started_at = ${cursor.startedAt}
+          AND root_market_id < ${cursor.rootMarketId}
+        )
+      )` : Prisma.empty}
+      ${legacyBefore ? Prisma.sql`AND started_at < ${legacyBefore}` : Prisma.empty}
+      ${minimumAt ? Prisma.sql`AND started_at >= ${minimumAt}` : Prisma.empty}
+      ${options.requireBounty ? Prisma.sql`AND has_bounty` : Prisma.empty}
+    ORDER BY COALESCE(public_number, -1) DESC, started_at DESC, root_market_id DESC
     LIMIT ${candidateLimit}
   `);
-  const candidateIds = candidateRows
-    .slice(0, MAX_PROJECTED_MARKETS)
-    .map((row) => row.marketId);
+  const selectedCandidates = candidateRows.slice(0, limit);
+  const candidateIds = [...new Set(
+    selectedCandidates.flatMap((row) =>
+      row.marketIds?.length
+        ? row.marketIds
+        : row.marketId
+          ? [row.marketId]
+          : row.rootMarketId
+            ? [row.rootMarketId]
+            : [],
+    ),
+  )];
 
   if (candidateIds.length === 0) {
     return { groups: [], hasMore: false, nextBefore: null };
