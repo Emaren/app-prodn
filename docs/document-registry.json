@@ -474,9 +474,9 @@
       "owner": "aoe2war-web",
       "path": "docs/DIRECT_CHAT.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-14",
+      "reviewed_at": "2026-09-01",
       "sensitivity": "internal",
-      "sha256": "78ff4d67598911b08253f36c1263407ca030198e1676ab1fb4fd0263baf6ab0b",
+      "sha256": "8d4e3781cdf35780682cdd555e3307cc969f8ce5a9a1eb8cc608b6d838eccf2e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a3ee7e27d3c0dc46edd82fc5217789c6510f6161a559194b7738642195f05388",
+      "sha256": "3475efbb0412992f63f5469b7c9de478f9d779288adb93fd4638d2aec017e2d2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1744,7 +1744,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "cddb9eff561255ef54afdcb9b1ba8ae21acac518"
+    "commit": "c808d6b89c4208aafb698d022309e121dbd522b7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
