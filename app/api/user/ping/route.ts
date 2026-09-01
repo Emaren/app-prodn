@@ -18,6 +18,7 @@ import {
   userOnlineLastSeenPersister,
 } from "@/lib/userOnlinePresenceGuards";
 import { invalidatePublicPlayerDirectoryCache } from "@/lib/publicPlayerDirectory";
+import { isLiveProductionReadOnlyPreview } from "@/lib/previewDataSource";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -236,6 +237,32 @@ export async function POST(request: NextRequest) {
 
   const prisma = getPrisma();
   const body = parsedBody.value;
+
+  if (isLiveProductionReadOnlyPreview()) {
+    const action =
+      body.action === "leave"
+        ? "leave"
+        : "heartbeat";
+
+    return NextResponse.json(
+      action === "leave"
+        ? {
+            status: "left",
+            active_clients: 0,
+            previewReadOnly: true,
+          }
+        : {
+            status: "ok",
+            active_clients: 0,
+            last_seen_at:
+              new Date().toISOString(),
+            traffic_identity: {
+              status: "disabled",
+            },
+            previewReadOnly: true,
+          },
+    );
+  }
 
   const presenceClientId = resolvePresenceClientId(body);
   const presenceSequence = normalizeUserOnlineSequence(body.presence_sequence);

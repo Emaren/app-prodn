@@ -81,7 +81,11 @@ export default function LeaderboardLaneToggle({
   const h = useHomeCopy();
   const currentLane = normalizeLane(lane ?? value ?? activeLane ?? selectedLane);
   const isBusy = disabled || loading;
-  const isCompact = variant === "compact" || variant === "inline";
+  const isCommand = variant === "command";
+  const isCompact =
+    isCommand ||
+    variant === "compact" ||
+    variant === "inline";
 
   const chooseLane = (nextLane: LeaderboardLane) => {
     if (isBusy || nextLane === currentLane) return;
@@ -108,15 +112,24 @@ export default function LeaderboardLaneToggle({
       <div
         className={cx(
           "relative bg-gradient-to-b from-white/[0.065] via-white/[0.022] to-black/40",
-          isCompact ? "rounded-[1.1rem] p-1.5" : "rounded-[1.48rem] p-2",
+          isCommand
+            ? "rounded-[1.1rem] p-1 xl:p-1.5"
+            : isCompact
+              ? "rounded-[1.1rem] p-1.5"
+              : "rounded-[1.48rem] p-2",
         )}
       >
         <div className="pointer-events-none absolute inset-2 rounded-[1.05rem] border border-white/[0.055]" />
-        <div className="relative grid grid-cols-2 gap-2">
+        <div
+          className={`relative grid grid-cols-2 ${
+            isCommand ? "gap-1 xl:gap-2" : "gap-2"
+          }`}
+        >
           <LaneButton
             meta={LANES.rm}
             active={currentLane === "rm"}
             compact={isCompact}
+            command={isCommand}
             disabled={isBusy}
             onClick={() => chooseLane("rm")}
           />
@@ -125,6 +138,7 @@ export default function LeaderboardLaneToggle({
             meta={LANES.dm}
             active={currentLane === "dm"}
             compact={isCompact}
+            command={isCommand}
             disabled={isBusy}
             onClick={() => chooseLane("dm")}
           />
@@ -138,12 +152,14 @@ function LaneButton({
   meta,
   active,
   compact,
+  command,
   disabled,
   onClick,
 }: {
   meta: (typeof LANES)[LeaderboardLane];
   active: boolean;
   compact: boolean;
+  command: boolean;
   disabled: boolean;
   onClick: () => void;
 }) {
@@ -159,7 +175,11 @@ function LaneButton({
         "relative overflow-hidden rounded-[1rem] border text-left transition duration-300",
         "focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030610]",
         meta.focusRing,
-        compact ? "min-h-[3.45rem] px-3 py-2.5" : "min-h-[4.15rem] px-4 py-3",
+        command
+          ? "min-h-[3.05rem] px-2 py-2 xl:min-h-[3.45rem] xl:px-3 xl:py-2.5"
+          : compact
+            ? "min-h-[3.45rem] px-3 py-2.5"
+            : "min-h-[4.15rem] px-4 py-3",
         active
           ? cx(
               "border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.105),rgba(255,255,255,0.035)_36%,rgba(0,0,0,0.36)_100%)]",
@@ -177,11 +197,27 @@ function LaneButton({
         </>
       )}
 
-      <span className="relative flex items-center justify-between gap-3">
-        <span>
+      <span
+        className={cx(
+          "relative flex items-center",
+          command
+            ? "justify-center gap-1 min-[1800px]:justify-between min-[1800px]:gap-3"
+            : "justify-between gap-3",
+        )}
+      >
+        <span
+          className={cx(
+            command
+              ? "text-center min-[1800px]:text-left"
+              : "",
+          )}
+        >
           <span
             className={cx(
-              "block text-[0.55rem] font-black uppercase tracking-[0.36em]",
+              "block font-black uppercase",
+              command
+                ? "text-[0.45rem] tracking-[0.24em] xl:text-[0.55rem] xl:tracking-[0.36em]"
+                : "text-[0.55rem] tracking-[0.36em]",
               active ? "text-white/45" : "text-slate-600",
             )}
           >
@@ -189,8 +225,14 @@ function LaneButton({
           </span>
           <span
             className={cx(
-              "mt-1 block font-serif font-black leading-none tracking-[0.26em]",
-              compact ? "text-[1.65rem]" : "text-[2rem]",
+              "block font-serif font-black leading-none",
+              command
+                ? "mt-0.5 text-[1.4rem] tracking-[0.18em] xl:mt-1 xl:text-[1.58rem] xl:tracking-[0.22em] min-[1800px]:text-[1.65rem] min-[1800px]:tracking-[0.26em]"
+                : "mt-1 tracking-[0.26em]",
+              !command &&
+                (compact
+                  ? "text-[1.65rem]"
+                  : "text-[2rem]"),
               active ? meta.activeText : meta.idleText,
             )}
           >
@@ -201,7 +243,11 @@ function LaneButton({
         <span
           className={cx(
             "grid place-items-center rounded-full border font-serif font-black transition",
-            compact ? "h-8 w-8 text-sm" : "h-9 w-9 text-base",
+            command
+              ? "hidden h-8 w-8 text-sm min-[1800px]:grid"
+              : compact
+                ? "h-8 w-8 text-sm"
+                : "h-9 w-9 text-base",
             active
               ? "border-white/16 bg-black/24 text-white/82 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
               : "border-white/[0.08] bg-white/[0.025] text-slate-600",

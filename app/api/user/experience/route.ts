@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { recordUserActivity } from "@/lib/userExperience";
 import { getSessionUid } from "@/lib/session";
+import { isLiveProductionReadOnlyPreview } from "@/lib/previewDataSource";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -148,6 +149,14 @@ export async function POST(request: NextRequest) {
 
     if (!payload.type || typeof payload.type !== "string") {
       return NextResponse.json({ detail: "Activity type is required" }, { status: 400 });
+    }
+
+    if (isLiveProductionReadOnlyPreview()) {
+      return NextResponse.json({
+        ok: true,
+        eventId: null,
+        previewReadOnly: true,
+      });
     }
 
     const prisma = getPrisma();

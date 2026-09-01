@@ -491,7 +491,7 @@ function HeaderPillLink({
         if (active) event.preventDefault();
       }}
       aria-current={active ? "page" : undefined}
-      className={`relative inline-flex min-h-9 shrink-0 items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-[11px] font-semibold tracking-[0.01em] transition duration-200 xl:px-3.5 ${className} ${
+      className={`relative inline-flex min-h-8 shrink-0 items-center justify-center overflow-visible rounded-full border px-2 py-1 text-[10px] font-semibold tracking-[0.01em] transition duration-200 lg:px-2.5 xl:min-h-9 xl:px-3.5 xl:py-1.5 xl:text-[11px] ${className} ${
         active ? activeEffectClass : ""
       }`}
     >
@@ -518,6 +518,7 @@ function KingdomNavItem({
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   const panelRef = React.useRef<HTMLDivElement | null>(null);
   const closeTimerRef = React.useRef<number | null>(null);
+  const desktopClickLatchRef = React.useRef(false);
 
   const clearCloseTimer = React.useCallback(() => {
     if (closeTimerRef.current !== null) {
@@ -532,6 +533,7 @@ function KingdomNavItem({
   }, [clearCloseTimer]);
 
   const scheduleClose = React.useCallback(() => {
+    desktopClickLatchRef.current = false;
     clearCloseTimer();
     closeTimerRef.current = window.setTimeout(() => setOpen(false), 130);
   }, [clearCloseTimer]);
@@ -583,9 +585,29 @@ function KingdomNavItem({
         aria-expanded={open}
         aria-label={t("kingdom.openAria")}
         onClick={() => {
-          setOpen((value) => !value);
+          if (window.matchMedia("(hover: none)").matches) {
+            setOpen((value) => !value);
+            return;
+          }
+
+          clearCloseTimer();
+
+          if (!open) {
+            desktopClickLatchRef.current = true;
+            openMenu();
+            return;
+          }
+
+          if (!desktopClickLatchRef.current) {
+            desktopClickLatchRef.current = true;
+            openMenu();
+            return;
+          }
+
+          desktopClickLatchRef.current = false;
+          setOpen(false);
         }}
-        className={`relative inline-flex min-h-9 min-w-10 shrink-0 items-center justify-center overflow-visible rounded-full border px-3 py-1.5 text-xs transition duration-200 ${className} ${
+        className={`relative inline-flex min-h-8 min-w-9 shrink-0 items-center justify-center overflow-visible rounded-full border px-2 py-1 text-xs transition duration-200 xl:min-h-9 xl:min-w-10 xl:px-3 xl:py-1.5 ${className} ${
           active ? activeEffectClass : ""
         }`}
       >
@@ -759,14 +781,19 @@ function HeaderLiveGamesLink({
         if (active) event.preventDefault();
       }}
       aria-current={active ? "page" : undefined}
-      className={`inline-flex min-h-9 shrink-0 items-center rounded-full border border-red-400/25 bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold text-red-100 transition duration-200 hover:border-red-300/40 hover:bg-red-500/15 ${
+      className={`inline-flex min-h-8 shrink-0 items-center rounded-full border border-red-400/25 bg-red-500/10 px-2 py-1 text-[10px] font-semibold text-red-100 transition duration-200 hover:border-red-300/40 hover:bg-red-500/15 xl:min-h-9 xl:px-3 xl:py-1.5 xl:text-[11px] ${
         active ? activeEffectClass : ""
       }`}
     >
-      {t("liveGames", {
-        count:
-          liveGamesCount,
-      })}
+      <span className="xl:hidden">
+        {liveGamesCount} Live🔥
+      </span>
+      <span className="hidden xl:inline">
+        {t("liveGames", {
+          count:
+            liveGamesCount,
+        })}
+      </span>
     </Link>
   );
 }
@@ -1028,10 +1055,6 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isLiveGamesSurface = pathname?.startsWith("/live-games");
   const forumViewMode = getTileViewMode(tileViewPreferences, "forum");
   const isForumSurface = pathname?.startsWith("/forum");
-  const bountiesViewMode = getTileViewMode(
-    tileViewPreferences,
-    "bounties"
-  );
   const isBountiesSurface = pathname === "/bounties";
   const rivalriesViewMode = getTileViewMode(
     tileViewPreferences,
@@ -1158,12 +1181,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         ? "max-w-[82rem]"
         : "max-w-6xl";
 
-  const bountyShellMaxWidth =
-    bountiesViewMode === "extreme"
-      ? "max-w-[96rem]"
-      : bountiesViewMode === "advanced"
-        ? "max-w-[82rem]"
-        : "max-w-6xl";
+  const bountyShellMaxWidth = "max-w-[96rem]";
 
   const pageHeadingKey = getPageHeadingKey(pathname);
   const headerTitle = pageHeadingKey ? t(pageHeadingKey) : getPageHeading(pathname);
@@ -1473,7 +1491,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         <div className={`relative mx-auto w-full overflow-visible ${
           isNationalChampionsSurface || isBetDetailSurface ? "max-w-[96rem]" : "max-w-[90rem]"
         }`}>
-          <div className="lg:hidden">
+          <div className="md:hidden">
             <div className="flex min-w-0 items-center justify-between gap-3">
               <Link
                 href="/"
@@ -1586,7 +1604,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
 
-          <div className="hidden lg:grid lg:grid-cols-[minmax(12rem,0.85fr)_minmax(0,2fr)_auto] lg:items-center lg:gap-4">
+          <div className="hidden md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-2 lg:gap-3 xl:grid-cols-[minmax(12rem,0.85fr)_minmax(0,2fr)_auto] xl:gap-4">
             <div className="flex min-w-0 items-center gap-2 xl:gap-3">
               <Link
                 href="/"
@@ -1603,10 +1621,10 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   width={972}
                   height={155}
                   priority
-                  className="h-auto w-[6.5rem] drop-shadow-[0_5px_18px_rgba(251,191,36,0.16)] transition duration-200 group-hover:brightness-110 xl:w-[8.7rem]"
+                  className="h-auto w-[5.6rem] drop-shadow-[0_5px_18px_rgba(251,191,36,0.16)] transition duration-200 group-hover:brightness-110 lg:w-[6.5rem] xl:w-[8.7rem]"
                 />
               </Link>
-              <div className="min-w-0 border-l border-white/10 pl-2.5 xl:pl-3">
+              <div className="hidden min-w-0 border-l border-white/10 pl-2.5 xl:block xl:pl-3">
                 <div className={`whitespace-nowrap text-[8px] font-semibold uppercase tracking-[0.24em] xl:text-[9px] xl:tracking-[0.3em] ${headerTone.eyebrow}`}>
                   {t("currentPage")}
                 </div>
@@ -1616,52 +1634,60 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            <nav className="flex max-w-full items-center justify-center gap-1.5 overflow-visible lg:justify-self-center xl:gap-2">
+            <nav className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 md:justify-self-stretch xl:gap-2">
               <KingdomNavItem
-                className={headerSkin.surface}
+                className={`${headerSkin.surface} -mr-2`}
                 active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
                 unseenPageChanges={unseenPageChanges}
                 activeEffectClass={navActiveEffectClass}
               />
-              {HEADER_LINKS.map((link) => (
-                <React.Fragment key={link.href}>
-                  <HeaderPillLink
-                    href={link.href}
-                    label={HEADER_LINK_KEYS[link.href] ? t(HEADER_LINK_KEYS[link.href]!) : link.label}
-                    className={headerSkin.surface}
-                    active={isRouteActive(pathname, link.href)}
-                    requestCount={link.countKey === "requests" ? requestCount : undefined}
-                    activeEffectClass={navActiveEffectClass}
-                    onCycleActiveEffect={cycleNavActiveEffect}
-                  />
-                  {link.href === "/bets" ? (
-                    <>
-                      <HeaderLiveGamesLink
-                        liveGamesCount={liveGamesCount}
-                        active={isRouteActive(pathname, "/live-games")}
+
+              <div className="aoe2-nav-scroll min-w-0 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="flex min-w-max items-center justify-start gap-1 px-0.5 lg:gap-1.5 xl:justify-center xl:gap-2">
+                  {HEADER_LINKS.map((link) => (
+                    <React.Fragment key={link.href}>
+                      <HeaderPillLink
+                        href={link.href}
+                        label={HEADER_LINK_KEYS[link.href] ? t(HEADER_LINK_KEYS[link.href]!) : link.label}
+                        className={headerSkin.surface}
+                        active={isRouteActive(pathname, link.href)}
+                        requestCount={link.countKey === "requests" ? requestCount : undefined}
                         activeEffectClass={navActiveEffectClass}
                         onCycleActiveEffect={cycleNavActiveEffect}
                       />
-                      {workshopLive ? (
-                          <HeaderWorkshopLiveLink
-                            active={isRouteActive(pathname, "/workshop")}
+
+                      {link.href === "/bets" ? (
+                        <>
+                          <HeaderLiveGamesLink
+                            liveGamesCount={liveGamesCount}
+                            active={isRouteActive(pathname, "/live-games")}
                             activeEffectClass={navActiveEffectClass}
                             onCycleActiveEffect={cycleNavActiveEffect}
                           />
-                        ) : null}
-                    </>
-                  ) : null}
-                </React.Fragment>
-              ))}
+
+                          {workshopLive ? (
+                            <HeaderWorkshopLiveLink
+                              active={isRouteActive(pathname, "/workshop")}
+                              activeEffectClass={navActiveEffectClass}
+                              onCycleActiveEffect={cycleNavActiveEffect}
+                            />
+                          ) : null}
+                        </>
+                      ) : null}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </div>
+
               <KingdomNavItem
-                className={headerSkin.surface}
+                className={`${headerSkin.surface} -ml-2`}
                 active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
                 unseenPageChanges={unseenPageChanges}
                 activeEffectClass={navActiveEffectClass}
               />
             </nav>
 
-            <div className="flex items-center justify-end gap-2 lg:justify-self-end">
+            <div className="flex min-w-0 items-center justify-end gap-1.5 md:justify-self-end xl:gap-2">
               {uid ? (
                 <>
                   <UniversalTranslator

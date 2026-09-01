@@ -8,6 +8,7 @@ import {
   upsertAppearancePreference,
 } from "@/lib/userExperience";
 import { getSessionUid } from "@/lib/session";
+import { isLiveProductionReadOnlyPreview } from "@/lib/previewDataSource";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -71,6 +72,14 @@ export async function POST(request: NextRequest) {
       ...current,
       ...payload,
     });
+    if (isLiveProductionReadOnlyPreview()) {
+      return NextResponse.json({
+        ...normalized,
+        updatedAt: new Date().toISOString(),
+        previewReadOnly: true,
+      });
+    }
+
     const saved = await upsertAppearancePreference(prisma, user.id, normalized);
 
     await recordUserActivity(prisma, {

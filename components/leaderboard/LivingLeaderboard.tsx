@@ -531,7 +531,7 @@ function CommandButton({
       aria-pressed={active}
       aria-label={label}
       title={label}
-      className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg border transition-[border-color,background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/45 disabled:cursor-not-allowed disabled:opacity-25 ${
+      className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border transition-[border-color,background-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/45 disabled:cursor-not-allowed disabled:opacity-25 xl:h-10 xl:w-10 ${
         active
           ? "border-amber-200/28 bg-amber-300/[0.10] text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_0_24px_rgba(251,191,36,0.08)]"
           : "border-transparent bg-transparent text-slate-500 hover:border-white/[0.08] hover:bg-white/[0.045] hover:text-slate-100"
@@ -667,7 +667,7 @@ function PodiumCard({
     <Link
       href={entry.href}
       title={`Open #${entry.rank} ${entry.currentName}`}
-      className={`group min-w-0 rounded-[1.05rem] border px-4 py-3.5 transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-white/30 hover:shadow-[0_16px_38px_rgba(0,0,0,0.26)] ${podiumMetal(
+      className={`group min-w-0 rounded-[1.05rem] border px-3 py-3 transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-white/30 hover:shadow-[0_16px_38px_rgba(0,0,0,0.26)] xl:px-4 xl:py-3.5 ${podiumMetal(
         entry.rank,
       )}`}
     >
@@ -684,11 +684,11 @@ function PodiumCard({
         ) : null}
       </div>
 
-      <div className="mt-2.5 truncate text-[0.94rem] font-black tracking-[-0.015em] text-slate-100 transition group-hover:text-white">
+      <div className="mt-2 truncate text-[0.86rem] font-black tracking-[-0.015em] text-slate-100 transition group-hover:text-white xl:mt-2.5 xl:text-[0.94rem]">
         {entry.currentName}
       </div>
 
-      <div className="mt-1 text-xs font-bold tabular-nums text-amber-100/80">
+      <div className="mt-1 text-[11px] font-bold tabular-nums text-amber-100/80 xl:text-xs">
         {entry.primaryRatingLabel}
       </div>
     </Link>
@@ -2022,7 +2022,7 @@ export function LivingLeaderboard({
       />
 
       <header
-        className="relative shrink-0 grid gap-7 border-b border-white/[0.07] px-6 py-6 sm:px-9 sm:py-7 lg:grid-cols-[minmax(31rem,0.92fr)_minmax(37rem,1.08fr)] lg:items-center lg:gap-10 lg:px-12 lg:py-7 2xl:grid-cols-[minmax(36rem,0.88fr)_minmax(43rem,1.12fr)] 2xl:gap-14"
+        className="relative shrink-0 grid gap-7 border-b border-white/[0.07] px-6 py-6 sm:px-9 sm:py-7 md:grid-cols-[minmax(19rem,0.9fr)_minmax(21rem,1.1fr)] md:items-center md:gap-4 md:px-5 md:py-6 lg:grid-cols-[minmax(26rem,0.92fr)_minmax(28rem,1.08fr)] lg:gap-5 lg:px-7 lg:py-7 xl:grid-cols-[minmax(29rem,0.92fr)_minmax(34rem,1.08fr)] xl:gap-7 xl:px-9 2xl:grid-cols-[minmax(36rem,0.88fr)_minmax(43rem,1.12fr)] 2xl:gap-14 2xl:px-12"
       >
         <div
           className={`relative min-w-0 ${
@@ -2094,7 +2094,7 @@ export function LivingLeaderboard({
                 className="group/title relative inline-block max-w-full cursor-pointer select-none overflow-visible rounded-lg text-left outline-none transition-[filter] duration-150 hover:brightness-125 focus-visible:ring-2 focus-visible:ring-cyan-200/35"
               >
                 <span
-                  className={`${heroTitleSizeClass} block whitespace-nowrap overflow-visible px-[0.06em] pb-[0.08em] pr-[0.20em] leading-[0.91] tracking-[-0.058em] transition-[filter,opacity] duration-150 ${heroTitleStyle.className}`}
+                  className={`${heroTitleSizeClass} block whitespace-nowrap overflow-visible px-[0.06em] pb-[0.08em] pr-[0.20em] leading-[0.91] tracking-[-0.058em] transition-[filter,opacity] duration-150 md:max-xl:!text-[clamp(2rem,3.2vw,2.6rem)] ${heroTitleStyle.className}`}
                   style={
                     heroTitleStyle.style
                   }
@@ -2163,7 +2163,7 @@ export function LivingLeaderboard({
           </div>
         </div>
 
-        <div className="min-w-0 self-start lg:-mt-1">
+        <div className="min-w-0 self-start md:-mt-1">
           <div className="flex min-h-0 flex-col justify-center">
             <div className="mb-2.5 flex items-center justify-end pr-0.5">
               <LeaderboardViewToggle
@@ -2176,7 +2176,7 @@ export function LivingLeaderboard({
             </div>
 
             {podiumEntries.length > 0 ? (
-              <div className="ml-auto grid w-full max-w-[47rem] grid-cols-3 gap-3">
+              <div className="ml-auto grid w-full max-w-[47rem] grid-cols-3 gap-2 xl:gap-3">
                 {podiumEntries.map(
                   (entry) => (
                     <PodiumCard
@@ -2204,21 +2204,24 @@ export function LivingLeaderboard({
       <div
         ref={commandSnapRef}
         data-leaderboard-snap="command"
-        className="relative shrink-0 grid gap-3 border-b border-white/[0.07] bg-black/20 px-5 py-3 sm:px-8 lg:grid-cols-[auto_auto_minmax(24rem,1fr)_auto_auto] lg:items-center lg:px-10 [scroll-snap-align:start] [scroll-snap-stop:always]"
+        className="relative shrink-0 grid gap-3 border-b border-white/[0.07] bg-black/20 px-5 py-3 sm:px-8 md:grid-cols-[minmax(8.75rem,0.85fr)_minmax(7.25rem,0.62fr)_minmax(13rem,1.53fr)] md:items-center md:gap-2 md:px-5 lg:grid-cols-[minmax(9rem,0.7fr)_minmax(7.5rem,0.6fr)_minmax(12rem,1.7fr)_auto_minmax(4.5rem,auto)] lg:px-6 xl:grid-cols-[auto_auto_minmax(18rem,1fr)_auto_auto] xl:gap-3 xl:px-8 2xl:grid-cols-[auto_auto_minmax(24rem,1fr)_auto_auto] 2xl:px-10 [scroll-snap-align:start] [scroll-snap-stop:always]"
       >
         <LeaderboardLaneToggle
           lane={lane}
           onChange={onLaneChange}
           loading={loading}
-          variant="compact"
+          variant="command"
+          className="min-w-0"
         />
 
         <LeaderboardScopeToggle
           value={scope}
           onChange={onScopeChange}
+          variant="command"
+          className="min-w-0"
         />
 
-        <label className="relative block min-w-0 lg:mx-auto lg:w-full lg:max-w-3xl">
+        <label className="relative block min-w-0 md:col-span-1 lg:mx-auto lg:w-full lg:max-w-3xl">
           <span className="sr-only">
             Search warriors
           </span>
@@ -2249,7 +2252,7 @@ export function LivingLeaderboard({
               caretColor:
                 "#fde68a",
             }}
-            className="h-11 w-full appearance-none rounded-xl border border-cyan-200/12 bg-[#020711] pl-11 pr-11 text-sm font-semibold text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.025),0_8px_28px_rgba(0,0,0,0.18)] outline-none transition-[border-color,box-shadow] placeholder:text-slate-600 hover:border-cyan-200/24 focus:border-amber-200/48 focus:ring-2 focus:ring-amber-200/10 [&::-webkit-search-cancel-button]:appearance-none"
+            className="h-10 w-full appearance-none rounded-xl border border-cyan-200/12 bg-[#020711] pl-11 pr-11 text-sm font-semibold xl:h-11 text-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.025),0_8px_28px_rgba(0,0,0,0.18)] outline-none transition-[border-color,box-shadow] placeholder:text-slate-600 hover:border-cyan-200/24 focus:border-amber-200/48 focus:ring-2 focus:ring-amber-200/10 [&::-webkit-search-cancel-button]:appearance-none"
           />
 
           {searchInput ? (
@@ -2271,7 +2274,7 @@ export function LivingLeaderboard({
           ) : null}
         </label>
 
-        <div className="relative flex items-center gap-1 rounded-xl border border-white/[0.07] bg-[#020711]/75 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)]">
+        <div className="relative flex min-w-0 items-center gap-0 rounded-xl border border-white/[0.07] bg-[#020711]/75 p-0.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] md:col-span-2 xl:p-1 lg:col-span-1 xl:gap-1">
           <CommandButton
             active={
               preferences.spotlightMode !==
@@ -2723,8 +2726,8 @@ export function LivingLeaderboard({
           ) : null}
         </div>
 
-        <div className="min-w-[7rem] text-left lg:text-right">
-          <div className="text-2xl font-black tabular-nums text-white">
+        <div className="min-w-0 text-right md:col-span-1 lg:col-span-1 lg:min-w-[5rem] xl:min-w-[6rem] 2xl:min-w-[7rem]">
+          <div className="text-xl font-black tabular-nums text-white xl:text-2xl">
             {countLabel}
           </div>
 

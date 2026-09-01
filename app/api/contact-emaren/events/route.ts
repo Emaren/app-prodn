@@ -3,6 +3,7 @@ import { NextRequest } from "next/server";
 import { publishDirectMessageEvent, subscribeToDirectMessageEvents } from "@/lib/directMessageEvents";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import { isLiveProductionReadOnlyPreview } from "@/lib/previewDataSource";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +28,10 @@ export async function GET(request: NextRequest) {
     select: { conversationId: true },
   });
   const conversationIds = memberships.map((membership) => membership.conversationId);
-  if (conversationIds.length > 0) {
+  if (
+    !isLiveProductionReadOnlyPreview() &&
+    conversationIds.length > 0
+  ) {
     const pendingSenders = await prisma.directMessage.findMany({
       where: {
         conversationId: { in: conversationIds },

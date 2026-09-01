@@ -4,7 +4,6 @@ import Link from "next/link";
 
 import BountyAdvisor from "@/components/bounties/BountyAdvisor";
 import BountyWarriorCarousel from "@/components/bounties/BountyWarriorCarousel";
-import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { isPublicBountyContract } from "@/lib/bountyHall";
 import type { BountyBoardSnapshot } from "@/lib/bounties";
 import {
@@ -146,50 +145,20 @@ export default function BountyBoardViews({
 }: {
   board: BountyBoardSnapshot;
 }) {
-  const {
-    viewMode,
-    setViewMode,
-  } = useTileViewPreference(
-    "bounties"
-  );
+  // B/A remain deliberately preserved in source for a possible future return.
+  void BasicBountyView;
+  void AdvancedBountyView;
+  void BountyViewToggle;
 
   return (
     <div
       className="relative"
-      data-bounty-view={
-        viewMode
-      }
+      data-bounty-view="extreme"
     >
-      <div className="absolute right-4 top-4 z-40 sm:right-6 sm:top-6">
-        <BountyViewToggle
-          viewMode={viewMode}
-          setViewMode={
-            setViewMode
-          }
-        />
-      </div>
-
-      {viewMode === "basic" ? (
-        <BasicBountyView
-          board={board}
-        />
-      ) : viewMode ===
-        "advanced" ? (
-        <AdvancedBountyView
-          board={board}
-        />
-      ) : (
-        <ExtremeBountyView
-          board={board}
-        />
-      )}
+      <ExtremeBountyView board={board} />
     </div>
   );
 }
-
-/* ============================================================
-   B — CURRENT VIEW, PRESERVED
-   ============================================================ */
 
 function BasicBountyView({
   board,

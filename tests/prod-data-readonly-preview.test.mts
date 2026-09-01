@@ -60,3 +60,81 @@ test("dev:prod is the read-only production parity launcher", () => {
     "npm run kill-ports && npm run cert && python3 scripts/dev-prod-readonly.py",
   );
 });
+
+test("live production preview exposes an explicit non-production read-only mode", () => {
+  const preview = source("lib/previewDataSource.ts");
+
+  assert.match(
+    preview,
+    /isLiveProductionReadOnlyPreview/,
+  );
+  assert.match(
+    preview,
+    /AOE2WAR_PROD_DB_PREVIEW/,
+  );
+  assert.match(
+    preview,
+    /NODE_ENV === "production"/,
+  );
+});
+
+test("Bounty Hall uses public production leaderboard truth in dev:prod", () => {
+  const bounties = source("lib/bounties.ts");
+
+  assert.match(
+    bounties,
+    /buildPreviewDataUrl/,
+  );
+  assert.match(
+    bounties,
+    /\/api\/lobby\/leaderboard/,
+  );
+  assert.match(
+    bounties,
+    /scope,[\s\S]*limit: "600"/,
+  );
+  assert.match(
+    bounties,
+    /loadBountyDirectory\(prisma\)/,
+  );
+  assert.match(
+    bounties,
+    /return loadPublicPlayerDirectory\([\s\S]*prisma/,
+  );
+});
+
+test("dev:prod acknowledges local side effects without production writes", () => {
+  const appearance = source("app/api/user/appearance/route.ts");
+  const experience = source("app/api/user/experience/route.ts");
+  const ping = source("app/api/user/ping/route.ts");
+  const events = source("app/api/contact-emaren/events/route.ts");
+
+  for (const route of [
+    appearance,
+    experience,
+    ping,
+    events,
+  ]) {
+    assert.match(
+      route,
+      /isLiveProductionReadOnlyPreview/,
+    );
+  }
+
+  assert.match(
+    appearance,
+    /previewReadOnly: true/,
+  );
+  assert.match(
+    experience,
+    /eventId: null[\s\S]*previewReadOnly: true/,
+  );
+  assert.match(
+    ping,
+    /status: "ok"[\s\S]*previewReadOnly: true/,
+  );
+  assert.match(
+    events,
+    /!isLiveProductionReadOnlyPreview\(\)[\s\S]*conversationIds\.length > 0/,
+  );
+});
