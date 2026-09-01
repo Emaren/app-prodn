@@ -3106,3 +3106,114 @@ test(
     );
   },
 );
+
+test(
+  "Radio WOLO background policy keeps desktop tabs playing while preserving iOS media-session safety",
+  async () => {
+    const {
+      radioWoloRequiresForegroundTeardown,
+    } = await import(
+      "../lib/radioWoloPlaybackPolicy.ts"
+    );
+
+    assert.equal(
+      radioWoloRequiresForegroundTeardown({
+        userAgent:
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/151 Safari/537.36",
+        platform: "MacIntel",
+        maxTouchPoints: 0,
+      }),
+      false,
+    );
+
+    assert.equal(
+      radioWoloRequiresForegroundTeardown({
+        userAgent:
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/151 Safari/537.36",
+        platform: "Win32",
+        maxTouchPoints: 0,
+      }),
+      false,
+    );
+
+    assert.equal(
+      radioWoloRequiresForegroundTeardown({
+        userAgent:
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 19_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1",
+        platform: "iPhone",
+        maxTouchPoints: 5,
+      }),
+      true,
+    );
+
+    assert.equal(
+      radioWoloRequiresForegroundTeardown({
+        userAgent:
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15",
+        platform: "MacIntel",
+        maxTouchPoints: 5,
+      }),
+      true,
+    );
+  },
+);
+
+test(
+  "Radio WOLO only suppresses hidden-tab autoplay on iOS-like WebKit",
+  () => {
+    const source =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      source,
+      /radioWoloRequiresForegroundTeardown\(\)[\s\S]*document\.visibilityState !==[\s\S]*"visible"/,
+    );
+
+    assert.match(
+      source,
+      /radioWoloRequiresForegroundTeardown\(\)[\s\S]{0,180}setAutoPlaySuppressed/,
+    );
+
+    assert.match(
+      source,
+      /!station\?\.authenticated/,
+    );
+
+    assert.match(
+      source,
+      /return true;/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO keeps desktop playback attached across hidden-tab station boundaries",
+  () => {
+    const source =
+      read(
+        "hooks/useRadioWoloListener.ts",
+      );
+
+    assert.match(
+      source,
+      /document\.visibilityState ===[\s\S]*"visible"[\s\S]*\|\|[\s\S]*!radioWoloRequiresForegroundTeardown\(\)[\s\S]*applyAnchorToAudio/,
+    );
+
+    const visibility =
+      source.match(
+        /const handleVisibility\s*=[\s\S]*?document\.addEventListener\(/,
+      )?.[0] ?? "";
+
+    assert.match(
+      visibility,
+      /radioWoloRequiresForegroundTeardown\(\)[\s\S]*hardStopListening\(\)/,
+    );
+
+    assert.doesNotMatch(
+      visibility,
+      /return;\s*\}\s*hardStopListening\(\)/,
+    );
+  },
+);

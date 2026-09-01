@@ -15,6 +15,9 @@ import {
 import {
   useRadioWoloListener,
 } from "@/hooks/useRadioWoloListener";
+import {
+  radioWoloRequiresForegroundTeardown,
+} from "@/lib/radioWoloPlaybackPolicy";
 
 type PlayerMode =
   | "dormant"
@@ -635,8 +638,9 @@ export default function RadioWoloGlobalPlayer() {
     const suppressBackgroundPlayback =
       () => {
         if (
+          radioWoloRequiresForegroundTeardown() &&
           document.visibilityState !==
-          "visible"
+            "visible"
         ) {
           setAutoPlaySuppressed(
             true,
@@ -646,9 +650,13 @@ export default function RadioWoloGlobalPlayer() {
 
     const suppressPageHide =
       () => {
-        setAutoPlaySuppressed(
-          true,
-        );
+        if (
+          radioWoloRequiresForegroundTeardown()
+        ) {
+          setAutoPlaySuppressed(
+            true,
+          );
+        }
       };
 
     document.addEventListener(
@@ -746,8 +754,11 @@ export default function RadioWoloGlobalPlayer() {
 
   React.useEffect(() => {
     if (
-      document.visibilityState !==
-        "visible" ||
+      (
+        radioWoloRequiresForegroundTeardown() &&
+        document.visibilityState !==
+          "visible"
+      ) ||
       !station?.authenticated ||
       station.state !== "on_air" ||
       !station.startedAt ||

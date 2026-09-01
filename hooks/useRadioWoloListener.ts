@@ -25,6 +25,9 @@ import {
   clampRadioWoloVolume,
   radioWoloInterpolatedVolume,
 } from "@/lib/radioWoloVolume";
+import {
+  radioWoloRequiresForegroundTeardown,
+} from "@/lib/radioWoloPlaybackPolicy";
 
 type ListenerStatus =
   | "idle"
@@ -767,7 +770,8 @@ export function useRadioWoloListener() {
 
           if (
             document.visibilityState ===
-            "visible"
+              "visible" ||
+            !radioWoloRequiresForegroundTeardown()
           ) {
             applyAnchorToAudio(
               nextAnchor,
@@ -1037,12 +1041,20 @@ export function useRadioWoloListener() {
           return;
         }
 
-        hardStopListening();
+        if (
+          radioWoloRequiresForegroundTeardown()
+        ) {
+          hardStopListening();
+        }
       };
 
     const handlePageHide =
       () => {
-        hardStopListening();
+        if (
+          radioWoloRequiresForegroundTeardown()
+        ) {
+          hardStopListening();
+        }
       };
 
     const handlePageShow =
