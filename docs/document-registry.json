@@ -315,9 +315,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BOUNTY_BOARD.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-03",
+      "reviewed_at": "2026-09-01",
       "sensitivity": "internal",
-      "sha256": "b1a8fc4a137cf8db3e15aa627a149317767591849a97c3a40c992b69f8ffd980",
+      "sha256": "22b5e4858282e1bfbb569151f46c950fbf791bfb81ecaef8b7079fad4c8ab3f8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "34c3b79221336f9172dd33d0ec2f7a06b9c213b8e4776fb9feba80b8a0e265bc",
+      "sha256": "a3ee7e27d3c0dc46edd82fc5217789c6510f6161a559194b7738642195f05388",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1744,7 +1744,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "1088d6e4a7f9de242190e0e0153ad8f40dbe2da9"
+    "commit": "cddb9eff561255ef54afdcb9b1ba8ae21acac518"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
