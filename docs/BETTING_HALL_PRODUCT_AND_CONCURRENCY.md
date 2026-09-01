@@ -8,11 +8,10 @@ systems: ["app-prodn", "aoe2-watcher", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "product-and-concurrency-contract"
-reviewed_at: "2026-08-01"
+reviewed_at: "2026-09-01"
 review_interval_days: 30
 sensitivity: "internal"
 ---
-
 # Betting Hall Product and Concurrency Contract
 
 ## View lineage

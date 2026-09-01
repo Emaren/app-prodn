@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `af76494a4170b857542ea9b83b232753b53cb250`
+Implementation baseline: `integrate/faucet-responsive-bounties` at `73f007608df0f7927e3f24715ca2d66495b96084`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **75**
+- Authoritative repository documents: **76**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 44
+- `reference`: 45
 - `runbook`: 12
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 59
+- `active`: 60
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -118,6 +118,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Watcher Native Stream Handoff](WATCHER_NATIVE_STREAM_HANDOFF.md) | `reference` | `active` | `stream-ingest-contract` |
 | [Watcher Telemetry](WATCHER_TELEMETRY.md) | `reference` | `active` | `telemetry-contract` |
 | [WoloChain Civic Rail Handoff Prompt](WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md) | `reference` | `active` | `cross-repository-handoff` |
+| [WOLO Faucet Security](WOLO_FAUCET_SECURITY.md) | `reference` | `active` | `security-contract` |
 | [WOLO Mainnet Settlement App Runbook](WOLO_MAINNET_SETTLEMENT_RUNBOOK.md) | `runbook` | `active` | `operational-procedure` |
 | [WOLO Wallet and Holder Projection](WOLO_WALLET_AND_HOLDER_PROJECTION.md) | `reference` | `active` | `wallet-read-model-contract` |
 | [AoE2WAR Workshop Architecture](WORKSHOP_ARCHITECTURE.md) | `explanation` | `active` | `architecture-explanation` |

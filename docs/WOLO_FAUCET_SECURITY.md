@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.docs-wolo-faucet-security"
+title: "WOLO Faucet Security"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","wolochain"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "security-contract"
+reviewed_at: "2026-09-01"
+review_interval_days: 30
+sensitivity: "restricted"
+---
+
 # WOLO Faucet Security
 
 ## Security model

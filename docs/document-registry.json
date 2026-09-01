@@ -220,9 +220,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_HALL_PRODUCT_AND_CONCURRENCY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-01",
+      "reviewed_at": "2026-09-01",
       "sensitivity": "internal",
-      "sha256": "47e47bc374b9b501af5a62311edc20b445ad2ee7789fe4316c3d927c1746245c",
+      "sha256": "65ad6913c85602abf25e293c4d206234cc33df295a63b52c29d6b536b1441476",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -293,9 +293,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_STAKE_TICKETS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-01",
+      "reviewed_at": "2026-09-01",
       "sensitivity": "internal",
-      "sha256": "e833c6625b8cf651a628fdc680c90b8c88e85da99cc9da7b6d7ad6d01ea6a770",
+      "sha256": "2f9287631733faa00013726ba5f6d022f08de28cc092ccaf47c405667cace804",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b50b31bbeb8d57390826fed843064d95cb4d1b797f4821a5b33355900caf19a9",
+      "sha256": "bac9e26dab76979638339fe943800a70007eb2b13bd28270bf8d19a47b5b65f3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1565,6 +1565,29 @@
     },
     {
       "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "security-contract",
+      "id": "aoe2war.app-prodn.docs-wolo-faucet-security",
+      "owner": "aoe2war-web",
+      "path": "docs/WOLO_FAUCET_SECURITY.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-09-01",
+      "sensitivity": "restricted",
+      "sha256": "cdba005d874f1613c9a0b699d161fdc349eae27c9dc14e7ca4336fba964070aa",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "WOLO Faucet Security",
+      "type": "reference"
+    },
+    {
+      "audience": [
         "operators",
         "ai-agents"
       ],
@@ -1720,8 +1743,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "af76494a4170b857542ea9b83b232753b53cb250"
+    "branch": "integrate/faucet-responsive-bounties",
+    "commit": "73f007608df0f7927e3f24715ca2d66495b96084"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
