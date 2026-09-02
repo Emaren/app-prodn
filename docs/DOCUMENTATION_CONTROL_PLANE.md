@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/watcher-1-5-8-hero-art` at `31148156ee7f27bdd68e5cbde36a869718dc2281`
+Implementation baseline: `feature/wolo-holder-identity-restore` at `a5c298cbf86c7d1569cb09125dbb93d388465f98`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

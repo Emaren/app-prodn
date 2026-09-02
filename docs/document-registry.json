@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "abb4bcd3c08640ed8bcfae913cb261c79eb3598eb21f390552aeb06cfae450c5",
+      "sha256": "196ace56ae09cf7e146efe0e176b173c98967a8817e51f50a3bc18687b5fd733",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1743,8 +1743,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "feature/watcher-1-5-8-hero-art",
-    "commit": "31148156ee7f27bdd68e5cbde36a869718dc2281"
+    "branch": "feature/wolo-holder-identity-restore",
+    "commit": "a5c298cbf86c7d1569cb09125dbb93d388465f98"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
