@@ -181,14 +181,14 @@ export default function DownloadPage() {
       {extreme ? (
         <section
           className="relative overflow-hidden rounded-[2.6rem] border border-white/10 bg-[#020711] shadow-[0_38px_120px_rgba(0,0,0,0.6)]"
-          aria-label="AoE2HDBets Watcher 1.5.7"
+          aria-label="AoE2HDBets Watcher 1.5.8"
         >
           <h1 className="sr-only">
             Download it. Pair once. Stay live.
           </h1>
 
           <p className="sr-only">
-            AoE2HDBets Watcher 1.5.7 automatically captures live and historical
+            AoE2HDBets Watcher 1.5.8 automatically captures live and historical
             AoE2HD replay evidence with recovery, telemetry, result processing,
             and cross-platform support.
           </p>
@@ -203,12 +203,12 @@ export default function DownloadPage() {
           <picture>
             <source
               media="(max-width: 767px)"
-              srcSet="/watcher/watcher-v157-mobile-88aacd9f-lossless.webp"
+              srcSet="/watcher/watcher-v158-mobile.png"
             />
 
             <img
-              src="/watcher/watcher-v157-desktop-61afeeae-lossless.webp"
-              alt="AoE2WAR Watcher 1.5.7 replay companion overview"
+              src="/watcher/watcher-v158-desktop.png"
+              alt="AoE2WAR Watcher 1.5.8 replay companion overview"
               width="1672"
               height="941"
               loading="eager"
@@ -233,7 +233,7 @@ export default function DownloadPage() {
             aria-label="Download Windows Installer"
             title="Download Windows Installer"
             data-watcher-hero-hotspot="windows-installer"
-            className="absolute left-[2.25%] top-[33.45%] z-10 hidden h-[5.75%] w-[18.35%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:block"
+            className="absolute left-[2.15%] top-[34.35%] z-10 hidden h-[6.35%] w-[18.95%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:block"
           >
             <span className="sr-only">
               Download Windows Installer
@@ -245,7 +245,7 @@ export default function DownloadPage() {
             aria-label="Open Profile Pairing"
             title="Open Profile Pairing"
             data-watcher-hero-hotspot="profile-pairing"
-            className="absolute left-[21.45%] top-[33.45%] z-10 hidden h-[5.75%] w-[14.45%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:block"
+            className="absolute left-[21.55%] top-[34.35%] z-10 hidden h-[6.35%] w-[15.55%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:block"
           >
             <span className="sr-only">
               Open Profile Pairing
@@ -258,7 +258,7 @@ export default function DownloadPage() {
             aria-label="Download Windows Installer"
             title="Download Windows Installer"
             data-watcher-hero-hotspot="mobile-windows-installer"
-            className="absolute left-[3.55%] top-[66.8%] z-10 h-[5.55%] w-[92.9%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:hidden"
+            className="absolute left-[9.1%] top-[75.25%] z-10 h-[5.25%] w-[81.0%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:hidden"
           >
             <span className="sr-only">
               Download Windows Installer
@@ -270,7 +270,7 @@ export default function DownloadPage() {
             aria-label="Open Profile Pairing"
             title="Open Profile Pairing"
             data-watcher-hero-hotspot="mobile-profile-pairing"
-            className="absolute left-[14.1%] top-[72.75%] z-10 h-[3.55%] w-[71.8%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:hidden"
+            className="absolute left-[9.4%] top-[80.35%] z-10 h-[3.75%] w-[80.2%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:hidden"
           >
             <span className="sr-only">
               Open Profile Pairing
