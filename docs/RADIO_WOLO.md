@@ -54,16 +54,37 @@ therefore communicate **sound on / sound off**, never pause/resume. Turning
 sound back on joins the authoritative current station position rather than
 resuming an old local timestamp.
 
-Foreground lifecycle is fail-safe. When the document becomes hidden or receives
-`pagehide`, the listener synchronously drops listener intent, cancels volume
-ramps, pauses the audio element, detaches its source, resets its media identity,
-and clears best-effort Media Session state. Hidden station synchronization may
-refresh application truth but must never reattach or start audio.
+Desktop Radio WOLO playback is intentionally persistent across ordinary
+backgrounding. Changing browser tabs, changing windows, foregrounding Steam,
+foregrounding Age of Empires II, or working in another desktop application must
+not itself stop an active broadcast. The originating AoE2WAR page keeps listener
+intent and remains attached to the authoritative station clock until the listener
+selects Sound Off or that page/browser lifecycle actually ends.
 
-Leaving the foreground also suppresses automatic playback for the remainder of
-that page session. Returning through `visibilitychange` or `pageshow` refreshes
-station truth but remains silent until the listener explicitly selects Sound On.
+iPhone/iPad WebKit retains the aggressive foreground teardown. On iOS-like
+WebKit, hidden/pagehide lifecycle synchronously drops listener intent, cancels
+volume ramps, pauses and detaches audio, resets media identity, and clears
+best-effort Media Session state. This protects installed-PWA audio from wedged
+background sessions without weakening desktop persistence.
 
-The hard background stop is intentionally separate from the normal foreground
-Sound Off fade because iOS/WebKit may suspend installed-PWA JavaScript before an
-asynchronous fade callback can complete.
+## Listener signals and ratings
+
+Each browser receives a random persisted Radio WOLO listener UUID. This is not a
+fingerprint and is not derived from IP address, user agent, hardware, or other
+cross-site identifiers. When a signed session exists, listener signals are also
+associated with that AoE2WAR user.
+
+Radio listener state records Sound On, Sound Off, the most recently observed
+authoritative RadioAsset, and bounded heartbeat timestamps. Admin analytics treat
+Sound On as live only while the stored intent is on and its heartbeat remains
+fresh; an expired heartbeat fails closed to OFF.
+
+Track ratings are integers from 1 through 10.
+Emoji stars are the default fresh-listener presentation; the premium icon-star face remains selectable. There is no submit step: clicking
+a star immediately saves or replaces the listener's rating. Signed-in ratings
+are canonical per AoE2WAR account and RadioAsset; anonymous ratings are canonical
+per random browser listener and RadioAsset.
+
+The client never supplies the RadioAsset being rated as authority. The feedback
+endpoint resolves the currently airing asset from RadioStationState and the
+authoritative program clock before writing a rating.

@@ -4,6 +4,7 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 import { loadUserCommunitySummaries } from "@/lib/communityHonors";
 import { loadInboxPayload } from "@/lib/contactInbox";
 import { requireAdmin } from "@/lib/adminSession";
+import { isLiveProductionReadOnlyPreview } from "@/lib/previewDataSource";
 import { loadJourneySummaryMap } from "@/lib/adminJourneyIntelligence";
 import {
   loadAppearancePreferenceMap,
@@ -275,7 +276,11 @@ export async function GET(request: NextRequest) {
     ] as const;
     const escrowRuntime = getWoloBetEscrowRuntime();
 
-    await refreshRecoverableBetStakeIntents(prisma);
+    if (!isLiveProductionReadOnlyPreview()) {
+      await refreshRecoverableBetStakeIntents(
+        prisma,
+      );
+    }
 
     const [
       communityMap,

@@ -7,6 +7,7 @@ import {
   ChevronUp,
   Palette,
   Radio,
+  Star,
   Volume2,
   VolumeX,
   X,
@@ -15,6 +16,9 @@ import {
 import {
   useRadioWoloListener,
 } from "@/hooks/useRadioWoloListener";
+import {
+  useRadioWoloFeedback,
+} from "@/hooks/useRadioWoloFeedback";
 import {
   radioWoloRequiresForegroundTeardown,
 } from "@/lib/radioWoloPlaybackPolicy";
@@ -744,6 +748,30 @@ export default function RadioWoloGlobalPlayer() {
         ? "TUNING"
         : "OFF AIR";
 
+  const radioFeedback =
+    useRadioWoloFeedback({
+      trackKey:
+        current?.asset
+          .mediaUrl ??
+        null,
+      soundEnabled:
+        isListening &&
+        !playbackBlocked,
+    });
+
+  const [
+    ratingHover,
+    setRatingHover,
+  ] =
+    React.useState<
+      number | null
+    >(null);
+
+  const ratingVisual =
+    ratingHover ??
+    radioFeedback.rating ??
+    0;
+
   const displayTitle =
     currentTitle ??
     (
@@ -1253,6 +1281,152 @@ export default function RadioWoloGlobalPlayer() {
               </div>
             ) : null}
           </div>
+
+          {isOnAir ? (
+            <div
+              data-radio-wolo-rating
+              className="mt-3 rounded-xl border border-amber-200/[0.10] bg-black/15 px-3 py-3"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/32">
+                    Rate this track
+                  </div>
+                  <div className="mt-1 text-[9px] text-white/38">
+                    {radioFeedback.rating
+                      ? `${radioFeedback.rating}/10 · click another star to change`
+                      : "Choose 1–10 · saved instantly"}
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 rounded-lg border border-white/[0.06] bg-[#061126]/65 p-0.5">
+                  {(["icons", "emoji"] as const).map(
+                    (style) => (
+                      <button
+                        key={style}
+                        type="button"
+                        onClick={() =>
+                          radioFeedback.setRatingStyle(
+                            style,
+                          )
+                        }
+                        className={`cursor-pointer rounded-md px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] transition ${
+                          radioFeedback.ratingStyle === style
+                            ? "bg-amber-300/[0.12] text-amber-100"
+                            : "text-white/28 hover:text-white/60"
+                        }`}
+                        aria-pressed={
+                          radioFeedback.ratingStyle === style
+                        }
+                      >
+                        {style === "icons"
+                          ? "Icons"
+                          : "Emoji"}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </div>
+
+              <div
+                className="mt-2.5 flex items-center justify-between gap-0.5"
+                onMouseLeave={() =>
+                  setRatingHover(
+                    null,
+                  )
+                }
+              >
+                {Array.from(
+                  {
+                    length: 10,
+                  },
+                  (
+                    _,
+                    index,
+                  ) => {
+                    const value =
+                      index + 1;
+
+                    const active =
+                      value <=
+                      ratingVisual;
+
+                    return (
+                      <button
+                        key={value}
+                        type="button"
+                        onMouseEnter={() =>
+                          setRatingHover(
+                            value,
+                          )
+                        }
+                        onFocus={() =>
+                          setRatingHover(
+                            value,
+                          )
+                        }
+                        onBlur={() =>
+                          setRatingHover(
+                            null,
+                          )
+                        }
+                        onClick={() =>
+                          radioFeedback.saveRating(
+                            value,
+                          )
+                        }
+                        className="group/star grid h-7 w-7 cursor-pointer place-items-center rounded-md outline-none transition hover:bg-amber-300/[0.08] focus-visible:ring-1 focus-visible:ring-amber-300/70"
+                        aria-label={`Rate current Radio WOLO track ${value} out of 10`}
+                        title={`${value}/10`}
+                      >
+                        {radioFeedback.ratingStyle === "emoji" ? (
+                          <span
+                            aria-hidden="true"
+                            className={`text-[15px] leading-none transition ${
+                              active
+                                ? "opacity-100 saturate-100"
+                                : "opacity-20 grayscale group-hover/star:opacity-55"
+                            }`}
+                          >
+                            ⭐
+                          </span>
+                        ) : (
+                          <Star
+                            aria-hidden="true"
+                            className={`h-4 w-4 transition ${
+                              active
+                                ? "fill-amber-300 text-amber-300 drop-shadow-[0_0_6px_rgba(252,211,77,0.25)]"
+                                : "text-white/18 group-hover/star:text-amber-200/55"
+                            }`}
+                          />
+                        )}
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+
+              <div className="mt-2 min-h-4 text-[9px]">
+                {radioFeedback.ratingSaving ? (
+                  <span className="text-amber-100/45">
+                    Saving…
+                  </span>
+                ) : radioFeedback.ratingError ? (
+                  <span className="text-rose-200/60">
+                    {radioFeedback.ratingError}
+                  </span>
+                ) : radioFeedback.rating ? (
+                  <span className="text-emerald-200/45">
+                    Saved · {radioFeedback.rating}/10
+                  </span>
+                ) : (
+                  <span className="text-white/20">
+                    No rating yet
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : null}
 
           {isOnAir ? (
             <>

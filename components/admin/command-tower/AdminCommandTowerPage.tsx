@@ -35,6 +35,7 @@ import {
 } from "@/components/admin/command-tower/utils";
 import { useAdminCommandTowerData } from "@/components/admin/command-tower/useAdminCommandTowerData";
 import { WatcherDownloadRail } from "@/components/admin/WatcherDownloadRail";
+import { RadioWoloListenerSignals } from "@/components/admin/RadioWoloListenerSignals";
 
 type DraftStateByUid = Record<string, DraftState>;
 type JourneyFilterMode =
@@ -751,6 +752,8 @@ export default function AdminCommandTowerPage() {
           </div>
         </section>
       ) : null}
+
+      <RadioWoloListenerSignals />
 
       {data ? (
         <div className="mt-6">

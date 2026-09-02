@@ -145,6 +145,9 @@ model User {
   warGraphRewards             WarGraphReward[]             @relation("WarGraphRewardUser")
   warGraphSpectatorSessions   WarGraphSpectatorSession[]   @relation("WarGraphSpectatorUser")
 
+  radioListenerStates RadioListenerState[]
+  radioTrackRatings   RadioTrackRating[]
+
   @@map("users")
 }
 
@@ -3144,6 +3147,8 @@ model RadioAsset {
 
   sourceSubmission RadioSubmission?   @relation(fields: [sourceSubmissionId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   programItems     RadioProgramItem[]
+  listenerStates   RadioListenerState[]
+  ratings          RadioTrackRating[]
 
   @@index([status, createdAt], map: "ix_radio_assets_status_created")
   @@index([kind, status], map: "ix_radio_assets_kind_status")
@@ -3204,6 +3209,49 @@ model RadioStationState {
 
   @@map("radio_station_state")
 }
+
+model RadioListenerState {
+  id                 Int       @id @default(autoincrement())
+  listenerId         String    @unique @map("listener_id") @db.Uuid
+  userId             Int?      @map("user_id")
+  listening          Boolean   @default(false)
+  currentAssetId     Int?      @map("current_asset_id")
+  lastEvent          String    @default("off") @map("last_event") @db.VarChar(24)
+  startedListeningAt DateTime? @map("started_listening_at") @db.Timestamp(6)
+  stoppedListeningAt DateTime? @map("stopped_listening_at") @db.Timestamp(6)
+  lastSeenAt         DateTime  @default(now()) @map("last_seen_at") @db.Timestamp(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user         User?       @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  currentAsset RadioAsset? @relation(fields: [currentAssetId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([userId, lastSeenAt], map: "ix_radio_listener_states_user_seen")
+  @@index([listening, lastSeenAt], map: "ix_radio_listener_states_listening_seen")
+  @@index([currentAssetId, lastSeenAt], map: "ix_radio_listener_states_asset_seen")
+  @@map("radio_listener_states")
+}
+
+model RadioTrackRating {
+  id         Int      @id @default(autoincrement())
+  assetId    Int      @map("asset_id")
+  raterKey   String   @map("rater_key") @db.VarChar(140)
+  userId     Int?     @map("user_id")
+  listenerId String   @map("listener_id") @db.Uuid
+  rating     Int
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  asset RadioAsset @relation(fields: [assetId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user  User?      @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([assetId, raterKey], map: "uq_radio_track_ratings_asset_rater")
+  @@index([userId, updatedAt], map: "ix_radio_track_ratings_user_updated")
+  @@index([assetId, updatedAt], map: "ix_radio_track_ratings_asset_updated")
+  @@index([listenerId, updatedAt], map: "ix_radio_track_ratings_listener_updated")
+  @@map("radio_track_ratings")
+}
+
 
 /// Operator-controlled public state for the AoE2WAR Workshop. This table is a
 /// curated projection only; it never mirrors terminal output or private AI

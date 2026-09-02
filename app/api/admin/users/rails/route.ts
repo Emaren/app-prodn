@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import type { AdminUsersRailsPayload } from "@/components/admin/command-tower/types";
 import { requireAdmin } from "@/lib/adminSession";
+import { isLiveProductionReadOnlyPreview } from "@/lib/previewDataSource";
 import {
   refreshRecoverableBetStakeIntents,
 } from "@/lib/betStakeIntents";
@@ -187,7 +188,12 @@ export async function GET(request: NextRequest) {
     }
 
     const { prisma } = gate;
-    await refreshRecoverableBetStakeIntents(prisma);
+
+    if (!isLiveProductionReadOnlyPreview()) {
+      await refreshRecoverableBetStakeIntents(
+        prisma,
+      );
+    }
 
     const unresolvedIntentStatuses = [
       "awaiting_signature",

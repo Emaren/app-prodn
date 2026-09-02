@@ -30,9 +30,9 @@ const nationalBeltArt = {
 
 const championNationSlugs: Record<string, string> = {
   canada: "canada",
-  us: "united-states",
+  us: "usa",
   mexico: "mexico",
-  uk: "united-kingdom",
+  uk: "uk",
 };
 
 const nationalBeltTargets: Record<string, string> = {
