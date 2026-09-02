@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/wolo-holder-identity-restore` at `a5c298cbf86c7d1569cb09125dbb93d388465f98`
+Implementation baseline: `feature/wolo-network-full-ledger` at `c206cd093fa11a303be5c997d35c7e076b76d937`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

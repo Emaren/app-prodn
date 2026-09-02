@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "196ace56ae09cf7e146efe0e176b173c98967a8817e51f50a3bc18687b5fd733",
+      "sha256": "f791cb3b105529d0328f7129cfe526e72434893bab03a0ece72409b2ec526f2a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1743,8 +1743,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "feature/wolo-holder-identity-restore",
-    "commit": "a5c298cbf86c7d1569cb09125dbb93d388465f98"
+    "branch": "feature/wolo-network-full-ledger",
+    "commit": "c206cd093fa11a303be5c997d35c7e076b76d937"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
