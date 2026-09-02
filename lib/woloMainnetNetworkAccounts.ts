@@ -42,7 +42,7 @@ export type WoloMainnetNetworkAccount = {
 
 export const WOLO_MAINNET_NETWORK_ACCOUNTS = [
   {
-    label: "Founder Cold",
+    label: "Founder's Cold Reserve",
     address: "wolo1r8kvt7me33rsv9ldaczj03xjrld4yumx0c0jkg",
     use: "Founder Reserve",
     role: "founder",

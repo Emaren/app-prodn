@@ -224,8 +224,23 @@ test("runtime, route, hook, and UI retain the hardening contracts", () => {
   assert.doesNotMatch(hookSource, /return\s+"0"/);
   assert.match(transparencySource, /fetch\("\/api\/wolo\/holders"/);
   assert.doesNotMatch(transparencySource, /fetch\("\/api\/wolo\/network"/);
-  assert.match(holderRouteSource, /const allAddresses = new Set\(ownerByAddress\.keys\(\)\)/);
-  assert.match(transparencySource, /current funded owners/);
+  assert.match(
+    holderRouteSource,
+    /const allAddresses = new Set\(\[\s*\.\.\.ownerByAddress\.keys\(\),\s*\.\.\.stakedUwoloByAddress\.keys\(\),\s*\]\)/,
+  );
+  assert.match(
+    holderRouteSource,
+    /const rankedHolderAddresses = \[\.\.\.allAddresses\]\.sort/,
+  );
+  assert.match(
+    holderRouteSource,
+    /amountUwolo: rankingAmountUwolo\(left\)/,
+  );
+  assert.match(
+    holderRouteSource,
+    /amountUwolo: rankingAmountUwolo\(right\)/,
+  );
+  assert.match(transparencySource, /current holders/);
   assert.match(transparencySource, /holder\.classification !== "protocol" \|\| holder\.balanceHidden/);
   assert.doesNotMatch(transparencySource, />\s*Private\s*</i);
 

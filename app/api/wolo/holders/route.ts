@@ -14,6 +14,7 @@ import {
   WOLO_DISPLAY_DENOM,
 } from "@/lib/woloChain";
 import { getPrisma } from "@/lib/prisma";
+import { loadMainnetStakingPositions } from "@/lib/mainnetStakingPositions";
 import { requireAdmin } from "@/lib/adminSession";
 import {
   classifyPublicWoloHolder,
@@ -44,6 +45,12 @@ const WOLO_REST_TOTAL_TIMEOUT_MS = 15_000;
 const MAX_WOLO_REST_PAGE_BYTES = 2 * 1024 * 1024;
 const MAX_WALLET_ALIAS_FILE_BYTES = 256 * 1024;
 const MAX_PUBLIC_ALIAS_LENGTH = 96;
+
+const FOUNDER_COLD_RESERVE_ADDRESS =
+  "wolo1r8kvt7me33rsv9ldaczj03xjrld4yumx0c0jkg";
+
+const EMAREN_OPERATING_ADDRESS =
+  "wolo1wue7vyque2pssskgdrww0fcadlq9ps6mtn605e";
 
 type DenomOwner = {
   address?: unknown;
@@ -108,6 +115,7 @@ type UserWalletRow = {
   verified: boolean;
   verification_level: number;
   active_staker: boolean;
+  historical_staking_binding: boolean;
 };
 
 function normalizeAmount(value: unknown): string {
@@ -116,6 +124,28 @@ function normalizeAmount(value: unknown): string {
   } catch {
     throw new Error("WoloChain returned a malformed unsigned balance amount.");
   }
+}
+
+function addAmountStrings(left: string, right: string): string {
+  return (
+    BigInt(normalizeAmount(left)) +
+    BigInt(normalizeAmount(right))
+  ).toString();
+}
+
+function woloNumberToUwoloString(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "0";
+  }
+
+  return String(
+    Math.max(
+      0,
+      Math.round(
+        value * 10 ** WOLO_COIN_DECIMALS,
+      ),
+    ),
+  );
 }
 
 function groupWholeNumber(value: string): string {
@@ -288,15 +318,44 @@ function classifyHolder(address: string, knownUserAddresses: ReadonlySet<string>
   const rawRole = networkAccount?.role || walletRole || "holder";
   const use = networkAccount?.use ?? null;
   const isKnown = Boolean(networkAccount || walletRole || WOLO_MAINNET_WALLET_ALIAS_BY_ADDRESS[lower]);
-  const isKnownUser = knownUserAddresses.has(lower) ||
-    rawRole === "user" ||
-    rawRole === "player" ||
-    use === "Player Wallet" ||
-    walletRole === "player";
+  const forceFounderColdReserve =
+    lower === FOUNDER_COLD_RESERVE_ADDRESS;
+
+  const forceEmarenOperating =
+    lower === EMAREN_OPERATING_ADDRESS;
+
+  // Public identity policy:
+  // - the founder cold reserve is protocol infrastructure even when
+  //   an app-user record happens to reference the address;
+  // - the founder operating wallet is Emaren's player identity.
+  const isKnownUser =
+    !forceFounderColdReserve &&
+    (
+      forceEmarenOperating ||
+      knownUserAddresses.has(lower) ||
+      rawRole === "user" ||
+      rawRole === "player" ||
+      use === "Player Wallet" ||
+      walletRole === "player"
+    );
+
   const isInfrastructure =
-    !isKnownUser &&
-    (Boolean(networkAccount) || Boolean(walletRole && publicProtocolWalletRoles.has(walletRole)));
-  const classification = classifyPublicWoloHolder({ isKnownUser, isInfrastructure });
+    forceFounderColdReserve ||
+    (
+      !isKnownUser &&
+      (
+        Boolean(networkAccount) ||
+        Boolean(
+          walletRole &&
+          publicProtocolWalletRoles.has(walletRole)
+        )
+      )
+    );
+
+  const classification = classifyPublicWoloHolder({
+    isKnownUser,
+    isInfrastructure,
+  });
 
   return {
     role: publicHolderRole(rawRole, use),
@@ -315,12 +374,28 @@ function publicHolderAlias(input: {
   if (input.classification === "protocol") {
     return input.configuredAlias || "Protocol wallet";
   }
-  if (input.classification === "player") return input.configuredAlias || "Player wallet";
-  return "Unclassified wallet";
+
+  if (input.classification === "player") {
+    return input.configuredAlias || "Player wallet";
+  }
+
+  // Preserve curated/documented aliases for wallets that are not yet
+  // associated with an app identity. Privacy applies to the balance,
+  // not to an already-public wallet label.
+  return input.configuredAlias || "Unclassified wallet";
 }
 
 async function loadAliases() {
+  const networkAliases: Record<string, string> =
+    Object.fromEntries(
+      WOLO_MAINNET_NETWORK_ACCOUNTS.map((account) => [
+        account.address.toLowerCase(),
+        account.label,
+      ]),
+    );
+
   const staticAliases: Record<string, string> = {
+    ...networkAliases,
     ...WOLO_MAINNET_WALLET_ALIAS_BY_ADDRESS,
   };
   const aliases: Record<string, string> = { ...staticAliases };
@@ -381,27 +456,55 @@ async function loadRetainedWalletDiscovery() {
       limit ${MAX_RETAINED_WALLETS + 1}
     `,
     prisma.$queryRaw<UserWalletRow[]>`
+      with wallet_bindings as (
+        select
+          u.id as user_id,
+          lower(u.wallet_address) as address,
+          false as historical_staking_binding
+        from users u
+        where coalesce(u.wallet_address, '') <> ''
+
+        union all
+
+        select
+          sp.user_id,
+          lower(sp.wallet_address) as address,
+          true as historical_staking_binding
+        from staking_positions sp
+        where coalesce(sp.wallet_address, '') <> ''
+      ),
+      deduped_bindings as (
+        select
+          user_id,
+          address,
+          bool_or(historical_staking_binding)
+            as historical_staking_binding
+        from wallet_bindings
+        group by user_id, address
+      )
       select
         u.id,
         u.uid,
-        lower(u.wallet_address) as address,
+        bindings.address,
         u.in_game_name,
         u.steam_persona_name,
         u.verified,
         u.verification_level,
+        bindings.historical_staking_binding,
         exists (
           select 1
-          from staking_positions sp
-          where sp.user_id = u.id
-            and sp.status = 'active'
+          from staking_positions active_sp
+          where active_sp.user_id = u.id
+            and active_sp.status = 'active'
             and (
-              sp.current_staked_wolo > 0
-              or sp.compounded_rewards_wolo > 0
+              active_sp.current_staked_wolo > 0
+              or active_sp.compounded_rewards_wolo > 0
             )
         ) as active_staker
-      from users u
-      where coalesce(u.wallet_address, '') <> ''
-      order by lower(u.wallet_address), u.id
+      from deduped_bindings bindings
+      join users u
+        on u.id = bindings.user_id
+      order by bindings.address, u.id
       limit ${MAX_RETAINED_WALLETS + 1}
     `,
     ]);
@@ -437,6 +540,7 @@ async function loadRetainedWalletDiscovery() {
         displayName: string;
         identityVerified: boolean;
         activeStaker: boolean;
+        historicalStakingBinding: boolean;
       }>
     >();
     for (const row of userRows) {
@@ -451,6 +555,8 @@ async function loadRetainedWalletDiscovery() {
         displayName,
         identityVerified,
         activeStaker: Boolean(row.active_staker),
+        historicalStakingBinding:
+          Boolean(row.historical_staking_binding),
       };
       const current = userIdentitiesByAddress.get(address) || [];
       current.push(identity);
@@ -461,7 +567,11 @@ async function loadRetainedWalletDiscovery() {
     for (const [address, identities] of userIdentitiesByAddress) {
       if (identities.length !== 1) continue;
       const [identity] = identities;
-      if (identity.identityVerified || identity.activeStaker) {
+      if (
+        identity.identityVerified ||
+        identity.activeStaker ||
+        identity.historicalStakingBinding
+      ) {
         publicUserAliasByAddress.set(address, identity.displayName.slice(0, MAX_PUBLIC_ALIAS_LENGTH));
       }
     }
@@ -484,11 +594,68 @@ async function loadRetainedWalletDiscovery() {
         displayName: string;
         identityVerified: boolean;
         activeStaker: boolean;
+        historicalStakingBinding: boolean;
       }>>(),
       publicUserAliasByAddress: new Map<string, string>(),
       available: false as const,
     };
   }
+}
+
+async function loadStakedUwoloByAddress() {
+  const stakedUwoloByAddress = new Map<string, string>();
+
+  try {
+    const positions = await loadMainnetStakingPositions(
+      getPrisma(),
+      { take: 10_000 },
+    );
+
+    for (const position of positions) {
+      const address =
+        (position.walletAddress || "")
+          .trim()
+          .toLowerCase();
+
+      if (
+        !isValidBech32AccountAddress(
+          address,
+          WOLO_ADDRESS_PREFIX,
+        )
+      ) {
+        continue;
+      }
+
+      // loadMainnetStakingPositions exposes canonical current stake.
+      // That value already includes compounded rewards.
+      const amountUwolo = normalizeAmount(
+        woloNumberToUwoloString(
+          position.currentStakedWolo,
+        ),
+      );
+
+      if (amountUwolo === "0") {
+        continue;
+      }
+
+      stakedUwoloByAddress.set(
+        address,
+        addAmountStrings(
+          stakedUwoloByAddress.get(address) || "0",
+          amountUwolo,
+        ),
+      );
+    }
+  } catch (error) {
+    // Holder projection remains available even if local staking
+    // enrichment is temporarily unavailable.
+    console.warn(
+      "Staked WOLO holder ranking enrichment unavailable:",
+      error,
+    );
+  }
+
+  return stakedUwoloByAddress;
 }
 
 async function loadDenomOwners(restUrl: string, denom: string) {
@@ -608,15 +775,26 @@ export async function GET(request: NextRequest) {
 
     const restUrl = getRestUrl();
     const denom = WOLO_BASE_DENOM;
-    const [aliases, owners, retained] = await Promise.all([
+    const [
+      aliases,
+      owners,
+      retained,
+      stakedUwoloByAddress,
+    ] = await Promise.all([
       loadAliases(),
       loadDenomOwners(restUrl, denom),
       loadRetainedWalletDiscovery(),
+      loadStakedUwoloByAddress(),
     ]);
     const ownerByAddress = new Map(
       owners.map((owner) => [owner.address.toLowerCase(), owner] as const),
     );
-    const allAddresses = new Set(ownerByAddress.keys());
+    // A player can have zero liquid bank balance while still owning
+    // WOLO through an active staking position. Keep those holders ranked.
+    const allAddresses = new Set([
+      ...ownerByAddress.keys(),
+      ...stakedUwoloByAddress.keys(),
+    ]);
 
     if (allAddresses.size > MAX_PUBLIC_HOLDERS) {
       throw new Error(
@@ -629,19 +807,38 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const currentOwnerAddresses = [...allAddresses].sort((left, right) =>
-      comparePublicWoloHolderBalance(
-        { amountUwolo: ownerByAddress.get(left)?.amountUwolo || "0", address: left },
-        { amountUwolo: ownerByAddress.get(right)?.amountUwolo || "0", address: right },
-      ),
+    const rankingAmountUwolo = (address: string) =>
+      addAmountStrings(
+        ownerByAddress.get(address)?.amountUwolo || "0",
+        stakedUwoloByAddress.get(address) || "0",
+      );
+
+    const rankedHolderAddresses = [...allAddresses].sort(
+      (left, right) =>
+        comparePublicWoloHolderBalance(
+          {
+            amountUwolo: rankingAmountUwolo(left),
+            address: left,
+          },
+          {
+            amountUwolo: rankingAmountUwolo(right),
+            address: right,
+          },
+        ),
     );
 
-    const holders = currentOwnerAddresses
+    const holders = rankedHolderAddresses
       .map((address) => {
         const owner = ownerByAddress.get(address);
         const discovery = retained.observedByAddress.get(address);
         const classification = classifyHolder(address, retained.knownUserAddresses);
         const configuredAlias = aliases[address] || null;
+
+        const publicConfiguredAlias =
+          address === EMAREN_OPERATING_ADDRESS
+            ? "Emaren"
+            : configuredAlias;
+
         const amountUwolo = owner?.amountUwolo || "0";
         const balanceWolo = formatWolo(amountUwolo);
         const balanceWoloFormatted = formatWolo(amountUwolo, true);
@@ -673,8 +870,8 @@ export async function GET(request: NextRequest) {
               classification: classification.classification,
               configuredAlias:
                 classification.classification === "player"
-                  ? publicUserAlias || configuredAlias
-                  : configuredAlias,
+                  ? publicUserAlias || publicConfiguredAlias
+                  : publicConfiguredAlias,
             });
 
         return {

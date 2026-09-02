@@ -32,7 +32,7 @@ type HoldersPayload = {
 };
 
 const protocolPurposeByLabel: Record<string, string> = {
-  "Founder Cold": "Long-hold reserve. Hard-anchor scarcity.",
+  "Founder's Cold Reserve": "Long-hold reserve. Hard-anchor scarcity.",
   "Founder Operating / Emaren": "Build speed. Shipping budget. Public receive wallet.",
   "Founder Operating / Emaren Legacy": "Legacy founder receive wallet.",
   "Community Treasury": "Public treasury and betting-fee home.",
@@ -361,7 +361,7 @@ export default function WoloChainLiveTransparency() {
             <div className="text-[11px] uppercase tracking-[0.34em] text-white/45">WOLO holders</div>
             <div className="mt-2 text-sm text-slate-500">
               {holders
-                ? `${holders.currentNonzeroOwnerCount} current funded owners · ranked by live balance.`
+                ? `${holders.count} current holders · ranked by wallet + active stake.`
                 : "Loading the live denom-owner projection."}
             </div>
           </div>
@@ -417,8 +417,8 @@ export default function WoloChainLiveTransparency() {
 
         <div className="relative z-10 mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
           <div>
-            Current funded wallets only. Player and unclassified balances determine rank but
-            remain unpublished; protocol/system balances remain public.
+            Current liquid holders and active stakers. Player and unclassified wallet + stake totals
+            determine rank but remain unpublished; protocol/system balances remain public.
           </div>
           <div>Updated: {holders?.updatedAt ? new Date(holders.updatedAt).toLocaleTimeString() : "loading"}</div>
         </div>

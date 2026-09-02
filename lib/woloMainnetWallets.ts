@@ -23,7 +23,7 @@ export const WOLO_MAINNET_FAUCET_CLAIM_AMOUNT_UWOLO = "2000000";
 
 export const WOLO_MAINNET_WALLET_ALIASES = [
   {
-    label: "Founder Cold",
+    label: "Founder's Cold Reserve",
     address: "wolo1r8kvt7me33rsv9ldaczj03xjrld4yumx0c0jkg",
     role: "founder",
   },
