@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/wolo-network-full-ledger` at `c206cd093fa11a303be5c997d35c7e076b76d937`
+Implementation baseline: `feature/wolo-network-full-ledger` at `fa5241f05c9d78172389c924c899fa064f682212`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

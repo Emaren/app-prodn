@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f791cb3b105529d0328f7129cfe526e72434893bab03a0ece72409b2ec526f2a",
+      "sha256": "93480e7071c3717243b960be4a1155ef1e176465462910013302b36ddd96fcac",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1744,7 +1744,7 @@
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
     "branch": "feature/wolo-network-full-ledger",
-    "commit": "c206cd093fa11a303be5c997d35c7e076b76d937"
+    "commit": "fa5241f05c9d78172389c924c899fa064f682212"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
