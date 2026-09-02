@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bf76d8e1e46a94c76da80cc4ebf7b7620dd68ce4d1806854404e8b3aac4be2de",
+      "sha256": "aabb46d9025dd323d0a01cadd150c6addb15a70dd75f91af3ae768ab40665641",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1527,9 +1527,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-28",
+      "reviewed_at": "2026-09-01",
       "sensitivity": "restricted",
-      "sha256": "6e13612284572f47f07a190b582fa895f5845c663543000345d5fa9645f5f900",
+      "sha256": "b23fe5365a4acd8874761cee22f5492261216e1035b0fa5de15fbb0ad3b347cc",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1743,8 +1743,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "radio-wolo-feedback-v1",
-    "commit": "05fa3b9eb9e2a63c314c8ccd3c5bc224480aa0bf"
+    "branch": "feature/watcher-1-5-8-app-release",
+    "commit": "fe567c2f58b5835f713802b5a02af99e50e555a1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
