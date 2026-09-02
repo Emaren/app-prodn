@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ddc33634b6fa78f6fdadab18d691c3554bf3c5e10a78d1cdf8930c5a678ae9bc",
+      "sha256": "bf76d8e1e46a94c76da80cc4ebf7b7620dd68ce4d1806854404e8b3aac4be2de",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1137,7 +1137,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-09-01",
       "sensitivity": "internal",
-      "sha256": "9fbdcfb6344ee5161adadd3c78a04480fcab33f957f48b8fdfa772bbe9e190f1",
+      "sha256": "6451bb6bbed325c0b388d3431640fe67d2304ff4a63686ae375e9fb1d1df2c0b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1743,8 +1743,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "e9dd0a726c24eec282498259dab1beebe8046481"
+    "branch": "radio-wolo-feedback-v1",
+    "commit": "05fa3b9eb9e2a63c314c8ccd3c5bc224480aa0bf"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

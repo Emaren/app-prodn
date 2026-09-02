@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `e9dd0a726c24eec282498259dab1beebe8046481`
+Implementation baseline: `radio-wolo-feedback-v1` at `05fa3b9eb9e2a63c314c8ccd3c5bc224480aa0bf`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
