@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "aabb46d9025dd323d0a01cadd150c6addb15a70dd75f91af3ae768ab40665641",
+      "sha256": "abb4bcd3c08640ed8bcfae913cb261c79eb3598eb21f390552aeb06cfae450c5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1743,8 +1743,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "feature/watcher-1-5-8-app-release",
-    "commit": "fe567c2f58b5835f713802b5a02af99e50e555a1"
+    "branch": "feature/watcher-1-5-8-hero-art",
+    "commit": "31148156ee7f27bdd68e5cbde36a869718dc2281"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
