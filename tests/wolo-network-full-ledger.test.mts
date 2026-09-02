@@ -10,6 +10,14 @@ const source = readFileSync(
   "utf8",
 );
 
+const accountsSource = readFileSync(
+  new URL(
+    "../lib/woloMainnetNetworkAccounts.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
 test(
   "ledger contains registry live owners player history and active stake",
   () => {
@@ -91,27 +99,50 @@ test(
 );
 
 test(
-  "historical operational use semantics are retained",
+  "network use labels remain canonical human-readable roles",
   () => {
-    assert.match(
+    assert.doesNotMatch(
       source,
-      /NEVER_USER_FACING/,
+      /NEVER_USER_FACING|TREASURY_PUBLIC_BUT_DO_NOT_USE_FOR_RANDOM_USERS|RESERVE_NOT_USER_FACING|PLAYER_DO_NOT_SHOW_BALANCE|OPS_NOT_USER_FACING|PUBLIC_RECEIVE_OK|MODULE_DO_NOT_USE|UNCLASSIFIED_HOLDER/,
     );
 
     assert.match(
       source,
-      /PUBLIC_RECEIVE_OK/,
+      /return account\.use;/,
     );
 
     assert.match(
       source,
-      /BET_DEPOSIT_ADDRESS_IF_MANUAL/,
+      /\? "Player Wallet"[\s\S]*: "Unclassified Holder"/,
     );
 
-    assert.match(
-      source,
-      /MODULE_DO_NOT_USE/,
-    );
+    for (const use of [
+      "Founder Reserve",
+      "Founder Operating",
+      "Community Treasury",
+      "Liquidity Reserve",
+      "Growth Reserve",
+      "Operations Reserve",
+      "Bounty Pool",
+      "Staking Pool",
+      "Faucet Wallet",
+      "Rewards Wallet",
+      "Bet Escrow",
+      "IBC Escrow",
+      "Payout Wallet",
+      "Relayer Wallet",
+      "Player Wallet",
+      "Retired Escrow",
+      "Retired Wallet",
+      "Network Module",
+    ]) {
+      assert.ok(
+        accountsSource.includes(
+          `use: "${use}"`,
+        ),
+        `missing canonical human use: ${use}`,
+      );
+    }
   },
 );
 
@@ -125,7 +156,7 @@ test(
 
     assert.match(
       source,
-      /"UNCLASSIFIED_HOLDER"/,
+      /"Unclassified Holder"/,
     );
   },
 );

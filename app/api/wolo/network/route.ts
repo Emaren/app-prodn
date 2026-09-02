@@ -41,112 +41,6 @@ const MAX_WOLO_REST_RESPONSE_BYTES = 2 * 1024 * 1024;
 const MAX_WALLET_ALIAS_FILE_BYTES = 256 * 1024;
 const MAX_PUBLIC_ALIAS_LENGTH = 96;
 
-/*
- * Operational USE semantics preserved from the historical public
- * Wolo network ledger. Newer addresses fall back to their canonical
- * registry use rather than receiving invented semantics.
- */
-const LEGACY_USE_BY_ADDRESS: Record<string, string> = {
-  "wolo1r8kvt7me33rsv9ldaczj03xjrld4yumx0c0jkg":
-    "NEVER_USER_FACING",
-
-  "wolo1hlfvzuv4dc46ngvh3zlteuegx0xga20hj20zd2":
-    "TREASURY_PUBLIC_BUT_DO_NOT_USE_FOR_RANDOM_USERS",
-
-  "wolo1kwsmr9nzujwul6wmu4hqr90lel4ca4uy3l06en":
-    "RESERVE_NOT_USER_FACING",
-
-  "wolo12c009ektp58rr0gkjz3nk8f4kgvfpfzwfk86l3":
-    "RESERVE_NOT_USER_FACING",
-
-  "wolo1xamdfayrjy8eauyy65uuvkepuvvcdtqlq6q39k":
-    "PLAYER_DO_NOT_SHOW_BALANCE",
-
-  "wolo1nalsh7y0hzp33j996c90yxqgerxxvgpqtumfjt":
-    "OPS_NOT_USER_FACING",
-
-  "wolo1wue7vyque2pssskgdrww0fcadlq9ps6mtn605e":
-    "PUBLIC_RECEIVE_OK",
-
-  "wolo1dmj5dnm7g9hmj005yzy5e5xcygudyt7wxzpxjq":
-    "BOUNTIES_PUBLIC_OK",
-
-  "wolo18v9ugfdrnz2ll2ah5z2yqzm5kzlg3e7l7jy6rn":
-    "STAKING_OPERATIONAL_NOT_GENERAL_RECEIVE",
-
-  "wolo1dshyzxffd0jj39k7gj9tq9hgsx96ylxamyp5g0":
-    "FAUCET_OPERATIONAL",
-
-  "wolo1tg04m57e52evgzjkn9ruwwkz626pfv9qfv27wy":
-    "APP_SIGNER_NOT_USER_FACING",
-
-  "wolo1n0yg6ltqxl05ljaqftvvtgec5qavf9a3uh090h":
-    "USER",
-
-  "wolo1a53udazy8ayufvy0s434pfwjcedzqv347h8lzn":
-    "MODULE_ESCROW_DO_NOT_SEND_DIRECTLY",
-
-  "wolo10zspyrrphzctrpysh6l9dsqj4wcwmj3tk660sz":
-    "USER",
-
-  "wolo1zygwt232ymc4h2g52yvkntffhmd5alx2kglw7p":
-    "BET_DEPOSIT_ADDRESS_IF_MANUAL",
-
-  "wolo1zfa9ssu2gpgqg7yzvhmjt4w66mza07qr2a4rwu":
-    "APP_SIGNER_NOT_USER_FACING",
-
-  "wolo1fl48vsnmsdzcv85q5d2q4z5ajdha8yu3aqv4s2":
-    "MODULE_DO_NOT_USE",
-
-  "wolo1mcmckkr360n47wyc408xmlsv4tzw95kkczvfp9":
-    "USER",
-
-  "wolo1yyuu097eppte7qya48r3dth86smdl3sjyxg284":
-    "USER",
-
-  "wolo1m8qzq92hkktgqp47aewzylkatk6c22vc8c4vgj":
-    "RELAYER_GAS_DO_NOT_USE",
-
-  "wolo1t4jq7wd4x030t9f0yfqfq74pt4pmaep5nu67y4":
-    "RETIRED_DO_NOT_USE",
-
-  "wolo1jv65s3grqf6v6jl3dp4t6c9t9rk99cd80ypxqz":
-    "MODULE_DO_NOT_USE",
-
-  "wolo1ntal93v8c5wryq2d9puhks8l25zedhepyv8n5k":
-    "PLAYER_DO_NOT_SHOW_BALANCE",
-
-  "wolo17xpfvakm2amg962yls6f84z3kell8c5lczx6zq":
-    "MODULE_DO_NOT_USE",
-
-  "wolo10d07y265gmmuvt4z0w9aw880jnsr700jjekllw":
-    "MODULE_DO_NOT_USE",
-
-  "wolo1vlthgax23ca9syk7xgaz347xmf4nunef0nnd9d":
-    "MODULE_DO_NOT_USE",
-
-  "wolo1m3h30wlvsf8llruxtpukdvsy0km2kum8q2zzwa":
-    "MODULE_DO_NOT_USE",
-
-  "wolo1hr93qzcjspaa32px0qqywlh9hf9a8plg8rrvw6":
-    "MODULE_DO_NOT_USE",
-
-  "wolo1tygms3xhhs3yv487phx3dw4a95jn7t7lfqsyx7":
-    "MODULE_DO_NOT_USE",
-
-  "wolo1yl6hdjhmkf37639730gffanpzndzdpmhxynn77":
-    "MODULE_DO_NOT_USE",
-
-  "wolo1rmr39nd5gnnv5y5f66qtq367xfwvx9jt5w7ucr":
-    "RETIRED_DO_NOT_USE",
-
-  "wolo198ajhn5atpw65u6z89z5hwfer2vx90u4ydxe7z":
-    "PLAYER_DO_NOT_SHOW_BALANCE",
-
-  "wolo1cy04t5af0mr9d8n6rrzgr8e9j4vuf42nfg02q5":
-    "RETIRED_DO_NOT_USE",
-};
-
 type WoloNetworkAccountRow = {
   label: string;
   address: string;
@@ -848,32 +742,16 @@ async function loadUserIdentityMap() {
 }
 
 function operationalUse(
-  address: string,
   account: WoloMainnetNetworkAccount | undefined,
   isUser: boolean,
 ) {
-  const historical =
-    LEGACY_USE_BY_ADDRESS[
-      address
-    ];
-
-  if (historical) {
-    return historical;
-  }
-
   if (account) {
-    return account.use
-      .trim()
-      .toUpperCase()
-      .replace(
-        /[^A-Z0-9]+/g,
-        "_",
-      );
+    return account.use;
   }
 
   return isUser
-    ? "USER"
-    : "UNCLASSIFIED_HOLDER";
+    ? "Player Wallet"
+    : "Unclassified Holder";
 }
 
 function sortNetworkRows(rows: WoloNetworkAccountRow[]) {
@@ -933,7 +811,6 @@ function buildNetworkRow(
 
   const use =
     operationalUse(
-      address,
       account,
       isUser,
     );
