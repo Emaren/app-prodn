@@ -8,38 +8,42 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-08-28"
+reviewed_at: "2026-09-01"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Watcher Telemetry
 
-## Production release identity — 2026-08-01
+## Production release identity — 2026-09-01
 
-The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. Current manifests report `version: 1.5.7` for Windows, macOS, and Linux.
+The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. Current manifests report `version: 1.5.8` for Windows, macOS, and Linux.
 
 Release evidence:
 
-- source branch: `release/watcher-1.5.7-20260731-202609`;
-- source SHA: `c3d3af0a2c03a05d631b44eab773bf20650de0f8`;
-- successful Windows Artifact Signing run: `30681192827`.
+- source branch: `release/watcher-1.5.8-20260902`;
+- source SHA: `9875f13da0929c296727f748a86658ec3d912dc9`;
+- successful Windows Artifact Signing run: `33585254366`.
 
-Verified release artifact SHA-256 values:
+Verified release binary SHA-256 values:
 
-- Windows installer: `75aa79ca39f900225f634968f1ae95a0290ad43360a83d5c3c4a30e3c0f2e6ec`;
-- Windows portable EXE: `cbd72712135b396cd837b0b2b93e1045019fd9f220ad69d057b401ebbf3075e3`;
-- Apple Silicon DMG: `dc7a8b0a81606374253a772284db628bcced2a734c4c7aedbdb4539c5eed6cc9`;
-- macOS direct ZIP: `fbeb3822ffc5bbe09f4cea49856256a666065fdba536a824285111791e4d14fa`;
-- Linux AppImage: `983f5daacded263ee376b555f4fd6450c0acdd3c0565223b40772a6d3f420baf`.
+- Windows installer: `af725710d7b8443c14d562e2303d0cc07a54397a79995fbf7b07e30cc91cb501`;
+- Windows portable EXE: `0d760817fb14b6eeea3bf53906cd98b54eba8b7c5c89624fe5a1141b345c4279`;
+- Apple Silicon DMG: `4ec0216f3412aca321511bab5c827f0be2f36b02c716c5d068ac9e82c6dee498`;
+- macOS direct ZIP: `04892912ec43a632b6cda447f11fa7fa80987bb79895bd441af5222c498f3aba`;
+- Linux AppImage: `3719671f864b71f8ef7dbd0e12da4be28db92a38a610b0807c322395d8504ad8`.
 
-The staged `watcher-1.5.7` packages, updater manifests, SHA-256 list, and JSON release manifest form the authoritative release inventory. Older watcher versions remain historical download inventory and must not be mistaken for the advertised current release.
+The certified release manifest contains nine verified entries: the five user-facing binaries, the macOS DMG blockmap, and `latest.yml`, `latest-mac.yml`, and `latest-linux.yml`. `SHA256SUMS-1.5.8.txt` and `watcher-release-manifest-1.5.8.json` are the authoritative inventory receipts. Older watcher versions remain historical download inventory and must not be mistaken for the advertised current release.
 
-## v1.5.7 truth rails
+## v1.5.8 truth rails
 
-A fresh heartbeat means connected only. Monitor state comes independently from heartbeat `monitorAttached`/`isWatching`, start/ready/stop events, server replay receipts, and watchdog events. Production update manifests advertise `1.5.7`. Older clients may lack newer recovery and telemetry fields and should be surfaced as upgrade candidates rather than judged for fields their release never emitted.
+A fresh heartbeat means connected only. Monitor state comes independently from heartbeat `monitorAttached`/`isWatching`, start/ready/stop events, server replay receipts, and watchdog events. Production update manifests advertise `1.5.8`. Older clients may lack newer recovery and telemetry fields and should be surfaced as upgrade candidates rather than judged for fields their release never emitted.
 
-v1.5.7 captures every upload request from one immutable in-memory replay buffer. The multipart body, known body length, `x-file-size-bytes`, and the size portion of the replay fingerprint therefore describe the same captured bytes even while AoE2HD continues appending to the source file. Upload-queue telemetry counts distinct replay/finality keys rather than inflating the queue for retries or fallback targets.
+v1.5.8 adds bounded replay-folder self-healing without expanding the Watcher's authority. Startup, pairing, and watchdog recovery may replace an invalid saved folder only when the HD detector finds a valid candidate. Detection covers the established Documents/OneDrive HD locations plus Steam `Age2HD/SaveGame/multi`, including libraries discovered through Steam `libraryfolders.vdf`. AoE2 DE folders remain rejected. Auto Detect now reports success only for a validated detected folder; it no longer presents an unvalidated fallback as detection.
+
+Folder recovery telemetry is explicit and privacy-safe: `watch_folder_auto_repair_started`, `watch_folder_auto_repaired`, and `watch_folder_auto_repair_failed`. Watchdog diagnostics include `monitor_watchdog_blocked`, `monitor_watchdog_reattach`, and `monitor_watchdog_folder_unavailable`. These events expose bounded problem classifications, folder kind/label, counts, and runtime state; they do not publish full local paths or raw filesystem error strings.
+
+The immutable upload/finality contract from v1.5.7 remains unchanged in v1.5.8. Every upload request is captured from one immutable in-memory replay buffer. The multipart body, known body length, `x-file-size-bytes`, and the size portion of the replay fingerprint therefore describe the same captured bytes even while AoE2HD continues appending to the source file. Upload-queue telemetry counts distinct replay/finality keys rather than inflating the queue for retries or fallback targets.
 
 Heartbeat metadata may include folder kind/validity and basename, folder/replay activity timestamps, active replay basename/size/change time, upload status/queue, batch/stream state, version/platform, and watcher/session IDs. Full private paths and replay contents are excluded.
 
@@ -169,6 +173,12 @@ Allowed `watcher_client_events.event_type` values:
 - `monitor_start`
 - `monitor_stop`
 - `monitor_skip_final`
+- `monitor_watchdog_blocked`
+- `monitor_watchdog_reattach`
+- `monitor_watchdog_folder_unavailable`
+- `watch_folder_auto_repair_started`
+- `watch_folder_auto_repaired`
+- `watch_folder_auto_repair_failed`
 - `replay_detected`
 - `replay_detected_ignored`
 - `skip_unknown`
