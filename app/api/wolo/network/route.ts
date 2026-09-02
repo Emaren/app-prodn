@@ -1056,12 +1056,13 @@ function buildNetworkRow(
 function renderTable(
   rows: WoloNetworkAccountRow[],
   supplyUwolo: string,
-  ledgerBankUwolo: string,
+  knownAddressTotalUwolo: string,
+  totalSource: string,
 ) {
   const untrackedUwolo =
     subtractAmountStrings(
       supplyUwolo,
-      ledgerBankUwolo,
+      knownAddressTotalUwolo,
     );
 
   const lines = [
@@ -1077,13 +1078,18 @@ function renderTable(
 
     `${rows.length} Wolo addresses in complete network ledger`,
 
-    `${formatWolo(
-      supplyUwolo,
-      true,
-    )} WOLO total supply (WoloChain)`,
+    totalSource === "chain_supply"
+      ? `${formatWolo(
+          supplyUwolo,
+          true,
+        )} WOLO total supply (WoloChain)`
+      : `${formatWolo(
+          supplyUwolo,
+          true,
+        )} WOLO subtotal across complete ledger bank balances (chain supply unavailable)`,
 
     `${formatWolo(
-      ledgerBankUwolo,
+      knownAddressTotalUwolo,
       true,
     )} WOLO across ledger bank balances`,
 
@@ -1162,7 +1168,7 @@ export async function GET(
         ),
       );
 
-    const ledgerBankUwolo =
+    const knownAddressTotalUwolo =
       rows.reduce(
         (sum, row) =>
           addAmountStrings(
@@ -1172,15 +1178,25 @@ export async function GET(
         "0",
       );
 
-    const totalUwolo =
-      normalizeAmount(
+    let totalUwolo = knownAddressTotalUwolo;
+    let totalSource = "known_address_balances";
+
+    try {
+      totalUwolo = normalizeAmount(
         await fetchWoloSupplyAmount(),
       );
+      totalSource = "chain_supply";
+    } catch (error) {
+      console.error(
+        "Failed to load canonical WOLO supply; using complete-ledger bank total (chain supply unavailable):",
+        error,
+      );
+    }
 
     const untrackedUwolo =
       subtractAmountStrings(
         totalUwolo,
-        ledgerBankUwolo,
+        knownAddressTotalUwolo,
       );
 
     const format =
@@ -1194,11 +1210,7 @@ export async function GET(
       format === "txt"
     ) {
       return new NextResponse(
-        renderTable(
-          rows,
-          totalUwolo,
-          ledgerBankUwolo,
-        ),
+        renderTable(rows, totalUwolo, knownAddressTotalUwolo, totalSource),
         {
           headers: {
             ...NO_STORE_HEADERS,
@@ -1256,17 +1268,19 @@ export async function GET(
             true,
           ),
 
+        totalSource,
+
         knownAddressTotalUwolo:
-          ledgerBankUwolo,
+          knownAddressTotalUwolo,
 
         knownAddressTotalWolo:
           formatWolo(
-            ledgerBankUwolo,
+            knownAddressTotalUwolo,
           ),
 
         knownAddressTotalWoloFormatted:
           formatWolo(
-            ledgerBankUwolo,
+            knownAddressTotalUwolo,
             true,
           ),
 
