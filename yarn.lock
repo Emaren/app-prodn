@@ -2482,24 +2482,17 @@
   resolved "https://registry.yarnpkg.com/@types/minimatch/-/minimatch-5.1.2.tgz#07508b45797cb81ec3f273011b054cd0755eddca"
   integrity sha512-K0VQKziLUWkVKiRVrx4a40iPaxTUefQmjtkQofBkYRcoaaL/8rhwDWww9qWbrgicNOgnpIsMxyNIUM4+n6dUIA==
 
-"@types/node@*", "@types/node@>=13.7.0":
-  version "22.15.30"
-  resolved "https://registry.npmjs.org/@types/node/-/node-22.15.30.tgz"
-  integrity sha512-6Q7lr06bEHdlfplU6YRbgG1SFBdlsfNC4/lX+SkhiTs0cpJkOElmWls8PxDFv4yY/xKb8Y6SO0OmSX4wgqTZbA==
+"@types/node@*", "@types/node@>=13.7.0", "@types/node@^26":
+  version "26.2.0"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-26.2.0.tgz#5a4875a862fda8fdc57de8faa579bb81ecba1685"
+  integrity sha512-5IviulTZeRNp2vAJ514cc/HUlY5nZ9fCbq9DMyC52BrhFZACo3nI0R7qBxhQmo/d27NFe96ur/b7Wwxklda+kg==
   dependencies:
-    undici-types "~6.21.0"
+    undici-types "~8.3.0"
 
 "@types/node@10.12.18":
   version "10.12.18"
   resolved "https://registry.npmjs.org/@types/node/-/node-10.12.18.tgz"
   integrity sha512-fh+pAqt4xRzPfqA6eh3Z2y6fyZavRIumvjhaCL753+TVkGKGhpPeyrJG2JftD0T9q4GF00KjefsQ+PQNDdWQaQ==
-
-"@types/node@^20":
-  version "20.19.0"
-  resolved "https://registry.npmjs.org/@types/node/-/node-20.19.0.tgz"
-  integrity sha512-hfrc+1tud1xcdVTABC2JiomZJEklMcXYNTVtZLAeqTVWD+qL5jkHKT+1lOtqDdGxt+mB53DTtiz673vfjU8D1Q==
-  dependencies:
-    undici-types "~6.21.0"
 
 "@types/react-dom@^19":
   version "19.1.6"
@@ -8284,10 +8277,10 @@ uncrypto@^0.1.3:
   resolved "https://registry.npmjs.org/uncrypto/-/uncrypto-0.1.3.tgz"
   integrity sha512-Ql87qFHB3s/De2ClA9e0gsnS6zXG27SkTiSJwjCc9MebbfapQfuPzumMIUMi38ezPZVNFcHI9sUIepeQfw8J8Q==
 
-undici-types@~6.21.0:
-  version "6.21.0"
-  resolved "https://registry.npmjs.org/undici-types/-/undici-types-6.21.0.tgz"
-  integrity sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ==
+undici-types@~8.3.0:
+  version "8.3.0"
+  resolved "https://registry.yarnpkg.com/undici-types/-/undici-types-8.3.0.tgz#44e9fc9f3244648cdea35e4f9bb2d681e9410809"
+  integrity sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ==
 
 unicode-canonical-property-names-ecmascript@^2.0.0:
   version "2.0.1"
