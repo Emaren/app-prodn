@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/wolo-network-human-use-labels` at `9bbd88c7cc9f7d5b9baf232e7418823f154a191d`
+Implementation baseline: `feature/living-kingdom-anonymous-traffic-20260903` at `a13b4d58cddbe807dabd86f3a194d75214ca52a2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

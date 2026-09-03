@@ -13,7 +13,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-08-22",
       "sensitivity": "internal",
-      "sha256": "154cef3cd944398d91cc8f9dfad83e002499ca6381733b4a9223a0ee359d0055",
+      "sha256": "dd789e3eebc429141bc42c864d3a0fe696d4644ee548e96ca2e3226268640366",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a75661ca9c61654350b93e858b3ce43e1332c676acc2f432b52a31b2e72e687a",
+      "sha256": "601b69458142f5b15f6c498613f6df56998155e9bd53b95cdf5b0fc53b502fd1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1160,7 +1160,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-28",
       "sensitivity": "internal",
-      "sha256": "467dd2823916e71cb67e3ad00b877f234e5bb0b290a5c4a94a591b80023396c4",
+      "sha256": "697981f678720183e693870079236fa51e8be9707b2fcaca3f0780e6abd2b03a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1743,8 +1743,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "feature/wolo-network-human-use-labels",
-    "commit": "9bbd88c7cc9f7d5b9baf232e7418823f154a191d"
+    "branch": "feature/living-kingdom-anonymous-traffic-20260903",
+    "commit": "a13b4d58cddbe807dabd86f3a194d75214ca52a2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
