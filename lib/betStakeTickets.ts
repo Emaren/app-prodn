@@ -7,6 +7,9 @@ import {
   isPostBroadcastStakeRecovery,
 } from "@/lib/betStakeRecoveryPolicy";
 import {
+  buildFreshBetMarketWriteWhere,
+} from "@/lib/betMarketWagerability";
+import {
   acquireBetStakeTicketLock,
   acquireBetStakeTransferLock,
 } from "@/lib/betStakeFunding";
@@ -844,6 +847,9 @@ export async function commitBetStakeTicket(
         intentCreatedAt: ticket.createdAt,
         broadcastSubmittedAt,
         txTimestamp: verification.txTimestamp ?? null,
+        marketType: context.market.marketType,
+        marketLinkedSessionKey: context.market.linkedSessionKey,
+        marketScheduledMatchId: context.market.scheduledMatchId,
         marketCloseAt: context.market.closeAt,
         marketStatus: context.market.status,
         winnerSide: context.market.winnerSide,
@@ -947,17 +953,20 @@ export async function commitBetStakeTicket(
                 refundStatus: null,
                 settlementExecutedAt: null,
                 propositionHash: leg.propositionHash,
-                bettingLockedAt: market.bettingLockedAt,
+                marketType:
+                   market.marketType,
+                 linkedSessionKey:
+                   market.linkedSessionKey,
+                 scheduledMatchId:
+                   market.scheduledMatchId,
+                 bettingLockedAt: market.bettingLockedAt,
                 closeAt: market.closeAt,
               }
             : {
                 id: leg.marketId,
-                status: {
-                  in:
-                    market.marketType === DESYNC_SIDE_MARKET_TYPE
-                      ? ["open", "live"]
-                      : ["open", "closing", "live"],
-                },
+                ...buildFreshBetMarketWriteWhere(
+                  lockedAt
+                ),
                 integrityStatus: "verified",
                 propositionHash: leg.propositionHash,
                 ...(market.marketType === DESYNC_SIDE_MARKET_TYPE

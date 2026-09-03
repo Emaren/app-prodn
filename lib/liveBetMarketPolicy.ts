@@ -6,7 +6,6 @@ export type LiveBetMarketLike = {
 const LIVE_BETTABLE_STATUSES =
   new Set([
     "open",
-    "live",
   ]);
 
 function normalizedMarketValue(
@@ -18,11 +17,12 @@ function normalizedMarketValue(
 }
 
 /**
- * The primary CTA is exclusively for a currently bettable
+ * The primary CTA is exclusively for a currently PRE-GAME
  * competitive-winner market.
  *
- * Desync side markets, closing markets and settled markets
- * must never replace the main live-battle action.
+ * A market whose lifecycle status is already "live" is no longer
+ * wagerable. Desync side markets, closing markets and terminal
+ * markets must never become a fresh-money action.
  */
 export function isBettableLiveWinnerMarket(
   market:

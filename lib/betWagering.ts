@@ -7,6 +7,10 @@ import {
 import {
   buildBetStakeMemo,
 } from "@/lib/betStakeMemo";
+import {
+  buildFreshBetMarketWriteWhere,
+  freshBettingCloseReason,
+} from "@/lib/betMarketWagerability";
 import { acquireBetStakeTransferLock } from "@/lib/betStakeFunding";
 import { markBetStakeIntentRecorded, markBetStakeIntentVerified } from "@/lib/betStakeIntents";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
@@ -442,19 +446,16 @@ export function assertBetMarketPreflight(
     );
 
   if (!input.allowLockedPostBroadcastRecovery) {
-    if (
-      ["closing", "awaiting_final_proof"].includes(context.market.status) &&
-      context.market.linkedSessionKey &&
-      !context.market.scheduledMatchId
-    ) {
+    const freshCloseReason =
+      freshBettingCloseReason(
+        context.market
+      );
+
+    if (freshCloseReason) {
       throw new BetWagerError(
         409,
-        "This live book is locked while the final replay is being verified."
+        "This book is closed."
       );
-    }
-
-    if (!["open", "closing", "live"].includes(context.market.status)) {
-      throw new BetWagerError(409, "This book is closed.");
     }
 
     if (
@@ -816,6 +817,12 @@ export async function placePooledBetWager(
           txTimestamp:
             stakeVerification.txTimestamp ??
             null,
+          marketType:
+            market.marketType,
+          marketLinkedSessionKey:
+            market.linkedSessionKey,
+          marketScheduledMatchId:
+            market.scheduledMatchId,
           marketCloseAt:
             market.closeAt,
           marketStatus:
@@ -898,7 +905,13 @@ export async function placePooledBetWager(
                   null,
                 propositionHash:
                   market.propositionHash,
-                bettingLockedAt:
+                marketType:
+                   market.marketType,
+                 linkedSessionKey:
+                   market.linkedSessionKey,
+                 scheduledMatchId:
+                   market.scheduledMatchId,
+                 bettingLockedAt:
                   market.bettingLockedAt,
                 closeAt:
                   market.closeAt,
@@ -906,20 +919,9 @@ export async function placePooledBetWager(
             : {
                 id:
                   input.marketId,
-                status: {
-                  in: isDesyncSideMarketType(
-                    market.marketType
-                  )
-                    ? [
-                        "open",
-                        "live",
-                      ]
-                    : [
-                        "open",
-                        "closing",
-                        "live",
-                      ],
-                },
+                ...buildFreshBetMarketWriteWhere(
+                  lockedAt
+                ),
                 integrityStatus:
                   "verified",
                 propositionHash:

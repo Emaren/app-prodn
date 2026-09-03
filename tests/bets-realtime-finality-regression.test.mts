@@ -392,7 +392,7 @@ test(
             side: "left",
           }
         ),
-      /locked while the final replay is being verified/
+      /This book is closed/
     );
   }
 );

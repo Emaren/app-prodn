@@ -1,4 +1,10 @@
+import {
+  WINNER_MARKET_TYPE,
+} from "@/lib/desyncSideMarket";
+
 export const POST_BROADCAST_RECOVERY_MARKET_STATUSES = [
+  "live",
+  "closing",
   "awaiting_final_proof",
   "under_review",
 ] as const;
@@ -11,9 +17,9 @@ export const POST_BROADCAST_RECOVERY_INTENT_STATUSES = [
 ] as const;
 
 /*
- * A chain block timestamp may trail the browser broadcast by
- * a few seconds. This is clock and block-production tolerance,
- * not a general late-betting window.
+ * A transaction initiated near the cutoff may reach chain inclusion
+ * shortly afterward. This bounded tolerance does not prove the literal
+ * wallet broadcast instant and is not a general live-betting window.
  */
 export const POST_BROADCAST_RECOVERY_CHAIN_GRACE_MS =
   30 * 1000;
@@ -43,6 +49,9 @@ export function isPostBroadcastStakeRecovery(input: {
   intentCreatedAt: Date;
   broadcastSubmittedAt: Date | null;
   txTimestamp: string | null;
+  marketType: string;
+  marketLinkedSessionKey: string | null;
+  marketScheduledMatchId: number | null;
   marketCloseAt: Date | null;
   marketStatus: string;
   winnerSide: string | null;
@@ -95,8 +104,69 @@ export function isPostBroadcastStakeRecovery(input: {
         input.marketPropositionHash
     );
 
+  const marketIdentityContextPresent =
+    typeof input.marketType ===
+      "string" &&
+    Object.prototype.hasOwnProperty.call(
+      input,
+      "marketLinkedSessionKey"
+    ) &&
+    Object.prototype.hasOwnProperty.call(
+      input,
+      "marketScheduledMatchId"
+    );
+
+  const normalizedMarketType =
+    typeof input.marketType ===
+      "string"
+      ? input.marketType
+          .trim()
+          .toLowerCase()
+      : "";
+
+  const linkedSessionKey =
+    typeof input.marketLinkedSessionKey ===
+      "string"
+      ? input.marketLinkedSessionKey.trim()
+      : "";
+
+  const hasScheduledMatch =
+    typeof input.marketScheduledMatchId ===
+      "number" &&
+    Number.isSafeInteger(
+      input.marketScheduledMatchId
+    ) &&
+    input.marketScheduledMatchId > 0;
+
+  const recoverableWinnerMarket =
+    normalizedMarketType ===
+      WINNER_MARKET_TYPE;
+
+  /*
+   * Watcher-discovered unscheduled games had already begun before their
+   * market existed. They therefore cannot manufacture a recoverable
+   * "pre-game" commitment.
+   */
+  const watcherStartedWithoutPregame =
+    Boolean(linkedSessionKey) &&
+    !hasScheduledMatch;
+
+  /*
+   * Exact fresh-bet admission closes at closeAt.
+   *
+   * broadcastSubmittedAt is when AoE2WAR learns the transaction hash; the
+   * current browser flow receives that hash only after sendTokens() returns,
+   * and chain-discovery recovery may learn it later still. It therefore
+   * cannot prove the wallet's literal broadcast instant.
+   *
+   * Recovery instead requires an intent created before closeAt plus verified
+   * chain inclusion inside the bounded post-cutoff tolerance below.
+   */
   const intentPredatesClose =
-    createdAt <= closeAt;
+    createdAt < closeAt;
+
+  const broadcastFollowsIntent =
+    broadcastAt >= createdAt;
 
   const txBelongsToIntentWindow =
     txAt >=
@@ -131,7 +201,11 @@ export function isPostBroadcastStakeRecovery(input: {
     Number.isFinite(broadcastAt) &&
     Number.isFinite(txAt) &&
     Number.isFinite(closeAt) &&
+    marketIdentityContextPresent &&
+    recoverableWinnerMarket &&
+    !watcherStartedWithoutPregame &&
     intentPredatesClose &&
+    broadcastFollowsIntent &&
     txBelongsToIntentWindow &&
     txPredatesClose &&
     broadcastFollowsChainProof &&

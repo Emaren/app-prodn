@@ -169,6 +169,8 @@ type BetBoardMarket = {
   linkedSessionKey: string | null;
   linkedGameStatsId: number | null;
   status: BetStatus;
+  bettingOpen: boolean;
+  bettingCloseReason: string | null;
   teamFormat: string | null;
   teamResolutionStatus: string | null;
   teamResolutionProvenance: string | null;
@@ -479,6 +481,9 @@ function buildBetsDesignFixture(
         `design:e2:${input.battleNumber}`,
       linkedGameStatsId: null,
       status: "live",
+      bettingOpen: false,
+      bettingCloseReason:
+        "watcher_battle_already_started",
       teamFormat:
         input.teamFormat,
       teamResolutionStatus:
@@ -3007,9 +3012,16 @@ export default function BetsPage() {
       return;
     }
 
+    if (!market.bettingOpen) {
+      toast.error(
+        "Pre-game betting is closed.",
+      );
+      return;
+    }
+
     if (isPendingLivePlaceholderMarket(market)) {
       toast.error(
-        "This live 4v4 is still parsing. Betting opens once teams are identified.",
+        "This battle is already underway. Pre-game betting is closed.",
       );
       return;
     }
@@ -7177,7 +7189,9 @@ function MarketFeature({
     ? market.viewerWager
     : null;
   const onchainLocked = Boolean(onchainViewerWager);
-  const canEditSlip = !marketWorkflow;
+  const canEditSlip =
+    market.bettingOpen &&
+    !marketWorkflow;
   const lockedSide = market.viewerWager?.side ?? null;
   const displaySide = activeSelection?.side ?? lockedSide;
   const displaySelectedPool = displaySide
@@ -7231,7 +7245,11 @@ function MarketFeature({
       : marketWorkflow.phase === "confirming_chain"
         ? "Stake submitted. Waiting for chain confirmation."
         : `Escrow confirmed${marketWorkflow.stakeTxHash ? ` · ${shortTxHash(marketWorkflow.stakeTxHash)}` : ""}. Recording slip...`
-    : activeSelection
+    : !market.bettingOpen
+      ? market.viewerWager
+        ? "Pre-game betting is closed. Your existing slip remains active."
+        : "Pre-game betting is closed."
+      : activeSelection
       ? activeDesyncSelection && desyncMarket
         ? `One ticket: ${activeSelection.stake} WOLO on ${activeSelection.side === "left" ? market.left.name : market.right.name} + ${activeDesyncSelection.stake} WOLO on Desync ${activeDesyncSelection.side === "left" ? desyncMarket.left.name : desyncMarket.right.name}`
         : `Adding ${activeSelection.stake} WOLO to ${activeSelection.side === "left" ? market.left.name : market.right.name}`
@@ -7261,7 +7279,9 @@ function MarketFeature({
       : marketWorkflow.phase === "confirming_chain"
         ? "Confirming Chain..."
         : "Recording Slip..."
-    : activeSelection
+    : !market.bettingOpen
+      ? "Pre-game closed"
+      : activeSelection
       ? activeDesyncSelection
         ? `Lock ${ticketTotalWolo} WOLO · 1 signature`
         : `Lock ${activeSelection.stake} WOLO`
@@ -7907,7 +7927,9 @@ function MarketCard({
     ? market.viewerWager
     : null;
   const onchainLocked = Boolean(onchainViewerWager);
-  const canEditSlip = !marketWorkflow;
+  const canEditSlip =
+    market.bettingOpen &&
+    !marketWorkflow;
   const lockedSide = market.viewerWager?.side ?? null;
   const displaySide = activeSelection?.side ?? lockedSide;
   const displaySelectedPool = displaySide
@@ -7972,7 +7994,11 @@ function MarketCard({
       : marketWorkflow.phase === "confirming_chain"
         ? "Stake submitted. Waiting for chain confirmation."
         : "Escrow confirmed. Recording the slip."
-    : activeSelection
+    : !market.bettingOpen
+      ? market.viewerWager
+        ? "Pre-game betting is closed. Your existing slip remains active."
+        : "Pre-game betting is closed."
+      : activeSelection
       ? activeDesyncSelection && desyncMarket
         ? `One ticket: ${activeSelection.stake} WOLO on ${activeSelection.side === "left" ? market.left.name : market.right.name} + ${activeDesyncSelection.stake} WOLO on Desync ${activeDesyncSelection.side === "left" ? desyncMarket.left.name : desyncMarket.right.name}`
         : `Backing ${
@@ -7992,7 +8018,9 @@ function MarketCard({
       : marketWorkflow.phase === "confirming_chain"
         ? "Chain..."
         : "Saving..."
-    : activeSelection
+    : !market.bettingOpen
+      ? "Pre-game closed"
+      : activeSelection
       ? activeDesyncSelection
         ? `Lock ${activeSelection.stake + activeDesyncSelection.stake} WOLO · 1 signature`
         : `Lock ${activeSelection.stake} WOLO`

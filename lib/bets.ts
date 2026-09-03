@@ -117,6 +117,9 @@ import {
   BPS_DENOMINATOR,
 } from "@/lib/bettingFees";
 import {
+  freshBettingCloseReason,
+} from "@/lib/betMarketWagerability";
+import {
   toWatchStreamPayload,
   type WatchStreamPayload,
 } from "@/lib/watchStreams";
@@ -194,6 +197,8 @@ export type BetBoardMarket = {
   linkedSessionKey: string | null;
   linkedGameStatsId: number | null;
   status: BetStatus;
+  bettingOpen: boolean;
+  bettingCloseReason: string | null;
   teamFormat: string | null;
   teamResolutionStatus: string | null;
   teamResolutionProvenance: string | null;
@@ -7871,6 +7876,16 @@ function buildMarketCard(
     claimsByMarketId.get(market.id) ?? []
   );
 
+  const bettingCloseReason =
+    freshBettingCloseReason({
+      status: market.status,
+      marketType: market.marketType,
+      closeAt: market.closeAt,
+      linkedSessionKey,
+      scheduledMatchId:
+        market.scheduledMatchId,
+    });
+
   return {
     id: market.id,
     parentMarketId:
@@ -7885,6 +7900,9 @@ function buildMarketCard(
     linkedSessionKey,
     linkedGameStatsId: market.linkedGameStatsId ?? null,
     status: market.status as BetStatus,
+    bettingOpen:
+      bettingCloseReason === null,
+    bettingCloseReason,
     teamFormat: market.teamFormat ?? null,
     teamResolutionStatus: market.teamResolutionStatus ?? null,
     teamResolutionProvenance: market.teamResolutionProvenance ?? null,

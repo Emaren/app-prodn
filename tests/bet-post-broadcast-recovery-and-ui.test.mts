@@ -42,6 +42,12 @@ const validRecovery = {
     ),
   txTimestamp:
     "2026-07-26T01:36:09Z",
+  marketType:
+    "winner",
+  marketLinkedSessionKey:
+    null,
+  marketScheduledMatchId:
+    null,
   marketCloseAt:
     closeAt,
   marketStatus:

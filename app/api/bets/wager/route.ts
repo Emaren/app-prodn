@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
 
     if (isPendingLivePlaceholderMarket(marketForGuard)) {
       return NextResponse.json(
-        { detail: "This live 4v4 is still parsing. Betting opens once teams are identified." },
+        { detail: "This battle is already underway. Pre-game betting is closed." },
         { status: 409 }
       );
     }

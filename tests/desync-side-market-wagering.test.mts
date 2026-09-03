@@ -154,18 +154,16 @@ test(
 
 
 test(
-  "fresh desync stake lock remains closed during closing review",
+  "fresh Desync stake admission is closed and recovery cannot reopen it",
   () => {
     /*
-     * The atomic lock now has two explicit paths:
+     * V1 has one fresh-money law:
      *
-     * 1. A narrowly fenced recovery for WOLO that was already
-     *    broadcast before the market locked.
-     * 2. The ordinary fresh-wager path.
-     *
-     * This assertion protects the ordinary path: desync books
-     * remain open/live only, while winner books retain the
-     * existing open/closing/live behavior.
+     * - fresh admission uses the canonical pre-game DB fence;
+     * - current Desync propositions are live-born and excluded;
+     * - post-broadcast recovery may cross lifecycle transitions only
+     *   for a proposition that independently passes recovery proof;
+     * - Desync is explicitly rejected by that recovery policy.
      */
     assert.match(
       source,
@@ -174,7 +172,7 @@ test(
 
     assert.match(
       source,
-      /status:\s*\{\s*in:\s*isDesyncSideMarketType\(\s*market\.marketType\s*\)\s*\?\s*\[\s*"open",\s*"live",?\s*\]\s*:\s*\[\s*"open",\s*"closing",\s*"live",?\s*\]/
+      /buildFreshBetMarketWriteWhere\(\s*lockedAt\s*\)/
     );
 
     const recoveryPolicySource =
@@ -188,22 +186,17 @@ test(
 
     assert.match(
       recoveryPolicySource,
-      /POST_BROADCAST_RECOVERY_MARKET_STATUSES/
+      /POST_BROADCAST_RECOVERY_MARKET_STATUSES\s*=\s*\[\s*"live",\s*"closing",\s*"awaiting_final_proof",\s*"under_review",?\s*\]/
     );
 
     assert.match(
       recoveryPolicySource,
-      /"awaiting_final_proof"/
+      /recoverableWinnerMarket/
     );
 
     assert.match(
       recoveryPolicySource,
-      /"under_review"/
-    );
-
-    assert.doesNotMatch(
-      recoveryPolicySource,
-      /"closing"/
+      /marketIdentityContextPresent/
     );
   }
 );

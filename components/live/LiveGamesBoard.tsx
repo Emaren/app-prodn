@@ -220,6 +220,7 @@ function liveMarketHref(session: LiveSession) {
   if (
     session.finalProofPending ||
     session.state === "completed" ||
+    session.state === "live" ||
     !isBettableLiveWinnerMarket(
       market
     ) ||
@@ -249,7 +250,6 @@ function sessionStatsHref(session: LiveSession) {
 
 function liveSessionPrimaryActionLabel(session: LiveSession) {
   if (session.finalProofPending) return "Open final proof";
-  if (hasLiveBetMarket(session)) return "Bet live";
   if (session.disposition === "saved_rehost") return "Open session evidence";
   return session.state === "completed" ? "Open final stats" : "Watch live stats";
 }
@@ -257,7 +257,6 @@ function liveSessionPrimaryActionLabel(session: LiveSession) {
 // AOE2WAR_SINGLE_LIVE_BET_CTA_20260724
 function liveSessionStatusLabel(session: LiveSession) {
   if (session.finalProofPending) return "Final proof pending";
-  if (hasLiveBetMarket(session)) return "Betting open";
   if (session.disposition === "saved_rehost") return "Saved / rehosted";
   return session.state === "completed" ? "Final stored" : "Live parse";
 }

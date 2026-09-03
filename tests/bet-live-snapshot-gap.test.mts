@@ -49,12 +49,22 @@ test(
   () => {
     assert.match(
       wageringSource,
-      /\["closing", "awaiting_final_proof"\]/,
+      /freshBettingCloseReason/,
     );
 
     assert.match(
       wageringSource,
-      /This live book is locked while the final replay is being verified/,
+      /buildFreshBetMarketWriteWhere/,
+    );
+
+    /*
+     * Fresh-money admission no longer relies on a special-case
+     * closing/proof status allowlist. Canonical wagerability closes
+     * every non-open lifecycle state.
+     */
+    assert.doesNotMatch(
+      wageringSource,
+      /\["open",\s*"closing",\s*"live"\]/,
     );
   },
 );
