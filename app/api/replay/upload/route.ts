@@ -266,10 +266,20 @@ export async function POST(request: NextRequest) {
         })
       : upstreamBody;
 
+  const responseHeaders = new Headers({
+    "content-type": upstreamContentType,
+  });
+  const retryAfter =
+    upstreamResponse.headers.get("retry-after");
+  if (retryAfter) {
+    responseHeaders.set(
+      "retry-after",
+      retryAfter
+    );
+  }
+
   return new NextResponse(responseBody, {
     status: upstreamResponse.status,
-    headers: {
-      "content-type": upstreamContentType,
-    },
+    headers: responseHeaders,
   });
 }
