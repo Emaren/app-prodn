@@ -8,36 +8,42 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-09-01"
+reviewed_at: "2026-09-03"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Watcher Telemetry
 
-## Production release identity — 2026-09-01
+## Production release identity — 2026-09-03
 
-The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. Current manifests report `version: 1.5.8` for Windows, macOS, and Linux.
+The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. Current manifests report `version: 1.5.9` for Windows, macOS, and Linux.
 
 Release evidence:
 
-- source branch: `release/watcher-1.5.8-20260902`;
-- source SHA: `9875f13da0929c296727f748a86658ec3d912dc9`;
-- successful Windows Artifact Signing run: `33585254366`.
+- source branch: `release/watcher-1.5.9-20260903`;
+- source SHA: `3546b86d3cdc1203baa563ae74f9d5a5e82557d7`;
+- successful Windows Artifact Signing run: `33818322254`.
 
 Verified release binary SHA-256 values:
 
-- Windows installer: `af725710d7b8443c14d562e2303d0cc07a54397a79995fbf7b07e30cc91cb501`;
-- Windows portable EXE: `0d760817fb14b6eeea3bf53906cd98b54eba8b7c5c89624fe5a1141b345c4279`;
-- Apple Silicon DMG: `4ec0216f3412aca321511bab5c827f0be2f36b02c716c5d068ac9e82c6dee498`;
-- macOS direct ZIP: `04892912ec43a632b6cda447f11fa7fa80987bb79895bd441af5222c498f3aba`;
-- Linux AppImage: `3719671f864b71f8ef7dbd0e12da4be28db92a38a610b0807c322395d8504ad8`.
+- Windows installer: `4e6bcde0a2dcae94cbe8401a22d91522ea3010ae22c1c22fc876d1e912f2f4bf`;
+- Windows portable EXE: `742d3c5bbdb47a92bd5583a0f410b04c62bd233ecd14e8aa2065efa4333483b6`;
+- Apple Silicon DMG: `78097ab3ffe11c6d28043d3293bad252626611db14395bf45fbd2af888ee7039`;
+- macOS direct ZIP: `3861ec879fd5261ebdc966b71d3919f3e6ba997125a853b42845e7c46c14dec6`;
+- Linux AppImage: `55681f03167d487efe0314651b3c5d9e5f09bfc3c8bdf56b8b846af850af451e`.
 
-The certified release manifest contains nine verified entries: the five user-facing binaries, the macOS DMG blockmap, and `latest.yml`, `latest-mac.yml`, and `latest-linux.yml`. `SHA256SUMS-1.5.8.txt` and `watcher-release-manifest-1.5.8.json` are the authoritative inventory receipts. Older watcher versions remain historical download inventory and must not be mistaken for the advertised current release.
+The certified release manifest contains nine verified entries: the five user-facing binaries, the macOS DMG blockmap, and `latest.yml`, `latest-mac.yml`, and `latest-linux.yml`. `SHA256SUMS-1.5.9.txt` and `watcher-release-manifest-1.5.9.json` are the authoritative inventory receipts. Older watcher versions remain historical download inventory and must not be mistaken for the advertised current release.
+
+## v1.5.9 replay durability
+
+Watcher 1.5.9 hardens replay transport without increasing replay authority or concurrency. Retryable uploads honor server `Retry-After` guidance, apply bounded retry jitter, and reuse one immutable replay snapshot across ordinary transport retries. A parser-finalizing response begins a new logical observation after the wait so a still-growing replay may be captured again rather than freezing stale bytes indefinitely.
+
+The server-side durability counterpart keeps replay upload admission at one and runs the hot MGZ replay read, parse, and team projection in a spawned parser process with one worker by default. The 2026-09-03 production canary preserved health during a real watcher upload while the replay parser executed outside the API process. Financial settlement authority and replay result authority remain unchanged.
 
 ## v1.5.8 truth rails
 
-A fresh heartbeat means connected only. Monitor state comes independently from heartbeat `monitorAttached`/`isWatching`, start/ready/stop events, server replay receipts, and watchdog events. Production update manifests advertise `1.5.8`. Older clients may lack newer recovery and telemetry fields and should be surfaced as upgrade candidates rather than judged for fields their release never emitted.
+A fresh heartbeat means connected only. Monitor state comes independently from heartbeat `monitorAttached`/`isWatching`, start/ready/stop events, server replay receipts, and watchdog events. The v1.5.8 production update manifests advertised `1.5.8`; current production manifests are documented above. Older clients may lack newer recovery and telemetry fields and should be surfaced as upgrade candidates rather than judged for fields their release never emitted.
 
 v1.5.8 adds bounded replay-folder self-healing without expanding the Watcher's authority. Startup, pairing, and watchdog recovery may replace an invalid saved folder only when the HD detector finds a valid candidate. Detection covers the established Documents/OneDrive HD locations plus Steam `Age2HD/SaveGame/multi`, including libraries discovered through Steam `libraryfolders.vdf`. AoE2 DE folders remain rejected. Auto Detect now reports success only for a validated detected folder; it no longer presents an unvalidated fallback as detection.
 
