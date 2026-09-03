@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/living-kingdom-anonymous-traffic-20260903` at `a13b4d58cddbe807dabd86f3a194d75214ca52a2`
+Implementation baseline: `main` at `fdf72fa0aaeed4c82bb89d7d5ce9eb50d3196b93`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

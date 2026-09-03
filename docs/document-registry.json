@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "601b69458142f5b15f6c498613f6df56998155e9bd53b95cdf5b0fc53b502fd1",
+      "sha256": "a54c400dcfb18da49665e1ca1efa7320afd93f4e2fb7652a38ba23cee85adfc2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1743,8 +1743,8 @@
   ],
   "generated_at": "2026-08-04T02:04:43Z",
   "implementation_baseline": {
-    "branch": "feature/living-kingdom-anonymous-traffic-20260903",
-    "commit": "a13b4d58cddbe807dabd86f3a194d75214ca52a2"
+    "branch": "main",
+    "commit": "fdf72fa0aaeed4c82bb89d7d5ce9eb50d3196b93"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
