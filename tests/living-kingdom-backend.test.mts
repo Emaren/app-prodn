@@ -13,6 +13,16 @@ import {
 } from "../lib/internalSystemAccounts.ts";
 import { LivingKingdomHub, livingKingdomHub } from "../lib/livingKingdom/hub.ts";
 import {
+  LIVING_KINGDOM_ANONYMOUS_FEMALE_AVATAR,
+  LIVING_KINGDOM_ANONYMOUS_MALE_AVATAR,
+  livingKingdomActorIdIsAnonymous,
+  livingKingdomAnonymousIdentity,
+} from "../lib/livingKingdom/anonymous.ts";
+import {
+  browserVisitorIdIsValid,
+  createBrowserVisitorId,
+} from "../lib/browserVisitorId.ts";
+import {
   invalidateLivingKingdomAvatar,
   registerLivingKingdomAvatar,
   resetLivingKingdomAvatarRegistryForTests,
@@ -72,6 +82,111 @@ function state(
     ...overrides,
   };
 }
+
+
+test("anonymous visitor identities are opaque, stable inside one process, and split across both silhouettes", () => {
+  const generated = createBrowserVisitorId();
+  assert.equal(browserVisitorIdIsValid(generated), true);
+  assert.equal(browserVisitorIdIsValid("not-a-uuid"), false);
+
+  const ids = [
+    "00000000-0000-4000-8000-000000000001",
+    "00000000-0000-4000-8000-000000000002",
+    "00000000-0000-4000-8000-000000000003",
+    "00000000-0000-4000-8000-000000000004",
+    "00000000-0000-4000-8000-000000000005",
+    "00000000-0000-4000-8000-000000000006",
+    "00000000-0000-4000-8000-000000000007",
+    "00000000-0000-4000-8000-000000000008",
+  ];
+  const identities = ids.map((visitorId) => livingKingdomAnonymousIdentity(visitorId));
+  assert.equal(identities.every(Boolean), true);
+  const avatars = new Set(identities.map((entry) => entry?.avatarUrl));
+  assert.equal(avatars.has(LIVING_KINGDOM_ANONYMOUS_MALE_AVATAR), true);
+  assert.equal(avatars.has(LIVING_KINGDOM_ANONYMOUS_FEMALE_AVATAR), true);
+
+  const first = livingKingdomAnonymousIdentity(ids[0]);
+  const again = livingKingdomAnonymousIdentity(ids[0]);
+  assert.deepEqual(first, again);
+  assert.equal(first?.displayName, "Unknown Warrior");
+  assert.equal(livingKingdomActorIdIsAnonymous(first?.publicId ?? ""), true);
+  assert.equal(first?.publicId.includes(ids[0]), false);
+});
+
+test("signed-in warriors retain public-room priority when anonymous traffic fills the room", () => {
+  const hub = new LivingKingdomHub({ deltaCoalesceMs: 0 });
+  const now = 50_000;
+
+  for (let index = 0; index < 64; index += 1) {
+    const visitorId = `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
+    const anonymous = livingKingdomAnonymousIdentity(visitorId);
+    assert.ok(anonymous);
+    assert.equal(
+      hub.upsert(anonymous, state(`anon_${String(index).padStart(4, "0")}`, 1), now + index).accepted,
+      true,
+    );
+  }
+
+  assert.equal(
+    hub.upsert(identity("emaren", "lk_signed_emaren"), state("signed_01", 1), now + 100).accepted,
+    true,
+  );
+
+  const room = hub.roomSnapshot("home", now + 101);
+  assert.equal(room.actors.length, 64);
+  assert.equal(room.overflowCount, 1);
+  assert.equal(room.actors.some((actor) => actor.id === "lk_signed_emaren"), true);
+  assert.equal(livingKingdomActorIdIsAnonymous(room.actors[0].id), false);
+});
+
+test("anonymous traffic cannot evict a fully signed-in hub", () => {
+  const hub = new LivingKingdomHub({ maxActors: 2, deltaCoalesceMs: 0 });
+  assert.equal(hub.upsert(identity("one"), state("signed_01", 1), 1_000).accepted, true);
+  assert.equal(hub.upsert(identity("two"), state("signed_02", 1), 1_001).accepted, true);
+
+  const anonymous = livingKingdomAnonymousIdentity(
+    "00000000-0000-4000-8000-000000000099",
+  );
+  assert.ok(anonymous);
+  assert.deepEqual(hub.upsert(anonymous, state("anon_099", 1), 1_002), {
+    accepted: false,
+    reason: "capacity",
+  });
+  assert.equal(hub.snapshot("home", 1_003).length, 2);
+  assert.equal(hub.snapshot("home", 1_003).some((actor) => livingKingdomActorIdIsAnonymous(actor.id)), false);
+});
+
+test("anonymous leave tombstones cannot evict a fully signed-in hub", () => {
+  const hub = new LivingKingdomHub({ maxActors: 2, deltaCoalesceMs: 0 });
+
+  assert.equal(
+    hub.upsert(identity("one"), state("signed_01", 1), 2_000).accepted,
+    true,
+  );
+  assert.equal(
+    hub.upsert(identity("two"), state("signed_02", 1), 2_001).accepted,
+    true,
+  );
+
+  assert.deepEqual(
+    hub.removeTab(
+      "anonymous:00000000-0000-4000-8000-000000000100",
+      "anon_100",
+      1,
+      2_002,
+    ),
+    { accepted: false, reason: "capacity" },
+  );
+
+  assert.equal(hub.snapshot("home", 2_003).length, 2);
+  assert.deepEqual(
+    hub
+      .snapshot("home", 2_003)
+      .map((actor) => actor.displayName)
+      .sort(),
+    ["Citizen one", "Citizen two"],
+  );
+});
 
 test("protocol rejects unknown fields, invalid depth, stale protocol, and short tab ids", () => {
   assert.equal(LIVING_KINGDOM_PRESENCE_TTL_MS, 90_000);

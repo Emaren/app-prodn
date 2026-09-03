@@ -9,115 +9,17 @@ import {
 
 import {
   RADIO_WOLO_LISTENER_HEARTBEAT_MS,
-  radioWoloListenerIdIsValid,
   type RadioWoloRatingStyle,
 } from "@/lib/radioWoloFeedbackPolicy";
+import {
+  readOrCreateBrowserVisitorId,
+} from "@/lib/browserVisitorId";
 
 const FEEDBACK_URL =
   "/api/radio/feedback";
 
-const LISTENER_STORAGE_KEY =
-  "aoe2war:radio-wolo-listener-id:v1";
-
 const RATING_STYLE_STORAGE_KEY =
   "aoe2war:radio-wolo-rating-style:v1";
-
-function generatedUuid() {
-  if (
-    typeof crypto !==
-      "undefined" &&
-    typeof crypto.randomUUID ===
-      "function"
-  ) {
-    return crypto.randomUUID();
-  }
-
-  const bytes =
-    new Uint8Array(16);
-
-  if (
-    typeof crypto !==
-      "undefined" &&
-    typeof crypto.getRandomValues ===
-      "function"
-  ) {
-    crypto.getRandomValues(
-      bytes,
-    );
-  } else {
-    for (
-      let index = 0;
-      index < bytes.length;
-      index += 1
-    ) {
-      bytes[index] =
-        Math.floor(
-          Math.random() *
-            256,
-        );
-    }
-  }
-
-  bytes[6] =
-    (
-      bytes[6] &
-      0x0f
-    ) |
-    0x40;
-
-  bytes[8] =
-    (
-      bytes[8] &
-      0x3f
-    ) |
-    0x80;
-
-  const hex =
-    Array.from(
-      bytes,
-      (value) =>
-        value
-          .toString(16)
-          .padStart(2, "0"),
-    );
-
-  return [
-    hex.slice(0, 4).join(""),
-    hex.slice(4, 6).join(""),
-    hex.slice(6, 8).join(""),
-    hex.slice(8, 10).join(""),
-    hex.slice(10, 16).join(""),
-  ].join("-");
-}
-
-function readOrCreateListenerId() {
-  try {
-    const stored =
-      window.localStorage.getItem(
-        LISTENER_STORAGE_KEY,
-      );
-
-    if (
-      radioWoloListenerIdIsValid(
-        stored,
-      )
-    ) {
-      return stored;
-    }
-
-    const created =
-      generatedUuid();
-
-    window.localStorage.setItem(
-      LISTENER_STORAGE_KEY,
-      created,
-    );
-
-    return created;
-  } catch {
-    return generatedUuid();
-  }
-}
 
 function readRatingStyle():
   RadioWoloRatingStyle {
@@ -253,7 +155,7 @@ export function useRadioWoloFeedback(
 
   useEffect(() => {
     setListenerId(
-      readOrCreateListenerId(),
+      readOrCreateBrowserVisitorId(),
     );
 
     setRatingStyleState(

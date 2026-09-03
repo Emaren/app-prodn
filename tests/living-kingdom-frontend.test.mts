@@ -173,7 +173,11 @@ test("global integration publishes eagerly, stays room-scoped/default-on, and ke
   assert.match(client, /addEventListener\("delta"/);
   assert.match(client, /addEventListener\("door"/);
   assert.match(client, /\/api\/user\/presence-preference/);
-  assert.match(client, /const canPublish =\s*Boolean\(uid\)[\s\S]{0,180}Boolean\(realmId\)/);
+  assert.match(client, /readOrCreateBrowserVisitorId/);
+  assert.match(client, /\/api\/kingdom-presence\/anonymous-state/);
+  assert.match(client, /AOE2WAR_BROWSER_VISITOR_HEADER/);
+  assert.match(client, /if \(authLoading\) return null/);
+  assert.match(client, /const canPublish =\s*Boolean\(presencePublisher\)[\s\S]{0,180}Boolean\(realmId\)/);
   assert.doesNotMatch(client, /const canPublish =[\s\S]{0,300}preference\?\.mode/);
   assert.doesNotMatch(client, /showOptIn|preferenceLoaded/);
   assert.match(client, /document\.visibilityState === "visible"/);

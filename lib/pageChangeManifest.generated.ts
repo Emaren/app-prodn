@@ -25,7 +25,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/national-champions",
     label: "Nations",
-    version: "src-902f6751950262c6d7df",
+    version: "src-ee9b72d5ef1af48582b4",
   },
   {
     href: "/clans",
@@ -50,7 +50,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/bounties",
     label: "Bounties",
-    version: "src-3b74eb7ad2558df0c6e1",
+    version: "src-65cd4e7232513c0c3efb",
   },
   {
     href: "/forum",
@@ -60,7 +60,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/radio",
     label: "Radio WOLO",
-    version: "src-c2cd4b42f125f493f6a5",
+    version: "src-94e3c743ddc0a4bc07df",
   },
   {
     href: "/workshop",

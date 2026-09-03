@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { getPrisma } from "@/lib/prisma";
-import { getSessionUid } from "@/lib/session";
-import { livingKingdomHub } from "@/lib/livingKingdom/hub";
 import {
-  livingKingdomIdentityGeneration,
-  livingKingdomFeatureMode,
-  loadLivingKingdomIdentityProfile,
-} from "@/lib/livingKingdom/identity";
+  LIVING_KINGDOM_ANONYMOUS_HEADER,
+  livingKingdomAnonymousIdentity,
+  livingKingdomAnonymousUid,
+  livingKingdomAnonymousVisitorIdIsValid,
+} from "@/lib/livingKingdom/anonymous";
+import { livingKingdomHub } from "@/lib/livingKingdom/hub";
+import { livingKingdomFeatureMode } from "@/lib/livingKingdom/identity";
 import {
   parseLivingKingdomDeleteMutation,
   parseLivingKingdomPostMutation,
@@ -20,7 +20,6 @@ import {
   readLivingKingdomJsonBody,
 } from "@/lib/livingKingdom/rateLimit";
 import { livingKingdomRealmForPath } from "@/lib/livingKingdom/realms";
-import { userOnlineSessionIsForcedOffline } from "@/lib/userOnlinePresence";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,8 +46,33 @@ function referrerMatchesRealm(request: NextRequest, realmId: string) {
   }
 }
 
-function rateLimitMutation(request: NextRequest, uid: string) {
-  const actorResult = livingKingdomActorRateLimiter.consume(`actor:${uid}`);
+function anonymousVisitorId(request: NextRequest) {
+  const raw = request.headers.get(LIVING_KINGDOM_ANONYMOUS_HEADER)?.trim();
+  return livingKingdomAnonymousVisitorIdIsValid(raw) ? raw.toLowerCase() : null;
+}
+
+function authenticateAnonymousMutation(request: NextRequest) {
+  // Anonymous roaming is a public-mode capability. Staff/canary modes remain
+  // signed-in-only so the feature cannot leak beyond the intended rollout.
+  if (livingKingdomFeatureMode() !== "public") {
+    return { response: json("Not found", 404), visitorId: null };
+  }
+  if (!isLivingKingdomSameOrigin(request)) {
+    livingKingdomHub.recordInvalid();
+    return { response: json("Same-origin request required", 403), visitorId: null };
+  }
+  const visitorId = anonymousVisitorId(request);
+  if (!visitorId) {
+    livingKingdomHub.recordInvalid();
+    return { response: json("Valid anonymous visitor id required", 400), visitorId: null };
+  }
+  return { response: null, visitorId };
+}
+
+function rateLimitMutation(request: NextRequest, visitorId: string) {
+  const actorResult = livingKingdomActorRateLimiter.consume(
+    `anonymous:${visitorId}`,
+  );
   const ipResult = livingKingdomIpRateLimiter.consume(
     `ip:${livingKingdomClientAddress(request)}`,
   );
@@ -71,22 +95,9 @@ function rateLimitMutation(request: NextRequest, uid: string) {
   );
 }
 
-async function authenticateMutation(request: NextRequest) {
-  if (livingKingdomFeatureMode() === "off") {
-    return { response: json("Not found", 404), uid: null };
-  }
-  if (!isLivingKingdomSameOrigin(request)) {
-    livingKingdomHub.recordInvalid();
-    return { response: json("Same-origin request required", 403), uid: null };
-  }
-  const uid = await getSessionUid(request);
-  if (!uid) return { response: json("No active session", 401), uid: null };
-  return { response: null, uid };
-}
-
 export async function POST(request: NextRequest) {
-  const auth = await authenticateMutation(request);
-  if (auth.response || !auth.uid) return auth.response!;
+  const auth = authenticateAnonymousMutation(request);
+  if (auth.response || !auth.visitorId) return auth.response!;
 
   const body = await readLivingKingdomJsonBody(request);
   if (!body.ok) {
@@ -103,50 +114,25 @@ export async function POST(request: NextRequest) {
     return json("Referrer realm mismatch", 403);
   }
 
-  const limited = rateLimitMutation(request, auth.uid);
+  const limited = rateLimitMutation(request, auth.visitorId);
   if (limited) return limited;
 
-  const identityGeneration = livingKingdomIdentityGeneration();
-  const profile = await loadLivingKingdomIdentityProfile(getPrisma(), auth.uid);
-  if (!profile) {
-    livingKingdomHub.removeUser(auth.uid);
-    return json("User not found", 404);
-  }
-  if (!profile.displayEligible) {
-    livingKingdomHub.removeUser(auth.uid);
-    return json("A public display identity is required", 422, { code: "display_required" });
-  }
-  if (!profile.avatarEligible) {
-    livingKingdomHub.removeUser(auth.uid);
-    return json("A personal avatar is required", 422, { code: "avatar_required" });
-  }
-  if (!profile.featureAllowed || !profile.identity) {
-    livingKingdomHub.removeUser(auth.uid);
-    return json("Presence is unavailable for this account", 403, { code: "feature_gated" });
-  }
-  if (identityGeneration !== livingKingdomIdentityGeneration()) {
-    livingKingdomHub.removeUser(auth.uid);
-    return json("Presence identity changed; retry", 409, { code: "identity_changed" });
+  const identity = livingKingdomAnonymousIdentity(auth.visitorId);
+  if (!identity) {
+    livingKingdomHub.recordInvalid();
+    return json("Anonymous identity unavailable", 400);
   }
   if (request.signal.aborted) {
     return new Response(null, { status: 204, headers: NO_STORE_HEADERS });
   }
-  // Authentication and identity loading both await. Logout can therefore land
-  // after this request began but before it reaches the in-memory hub. Re-check
-  // the session fence immediately before the synchronous mutation so an old
-  // in-flight heartbeat cannot resurrect a departed warrior.
-  if (userOnlineSessionIsForcedOffline(auth.uid)) {
-    livingKingdomHub.removeUser(auth.uid);
-    return json("Session is offline", 409, { code: "session_offline" });
-  }
 
   const result =
     parsed.value.kind === "state"
-      ? livingKingdomHub.upsert(profile.identity, parsed.value)
-      : livingKingdomHub.door(profile.identity, parsed.value);
+      ? livingKingdomHub.upsert(identity, parsed.value)
+      : livingKingdomHub.door(identity, parsed.value);
   if (!result.accepted) {
     if (result.reason === "capacity") {
-      return json("Presence capacity reached", 503, { code: result.reason });
+      return json("Anonymous presence capacity reached", 503, { code: result.reason });
     }
     return json(
       result.reason === "stale" ? "Stale sequence" : "Current tab state is required",
@@ -159,8 +145,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await authenticateMutation(request);
-  if (auth.response || !auth.uid) return auth.response!;
+  const auth = authenticateAnonymousMutation(request);
+  if (auth.response || !auth.visitorId) return auth.response!;
 
   const body = await readLivingKingdomJsonBody(request);
   if (!body.ok) {
@@ -173,15 +159,17 @@ export async function DELETE(request: NextRequest) {
     return json(parsed.error, 400);
   }
 
-  // A valid authenticated leave only removes the caller's own bounded tab
-  // state. Do not let a preceding scroll burst consume the token needed for
-  // pagehide/logout cleanup; stale sequence fences still reject reordering.
   const result = livingKingdomHub.removeTab(
-    auth.uid,
+    livingKingdomAnonymousUid(auth.visitorId),
     parsed.value.tabId,
     parsed.value.seq,
   );
   if (!result.accepted) {
+    if (result.reason === "capacity") {
+      return json("Anonymous presence capacity reached", 503, {
+        code: result.reason,
+      });
+    }
     return json("Stale sequence", 409, { code: result.reason });
   }
   return NextResponse.json(result, { headers: NO_STORE_HEADERS });

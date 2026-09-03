@@ -1,11 +1,10 @@
+import { browserVisitorIdIsValid } from "./browserVisitorId.ts";
+
 export const RADIO_WOLO_LISTENER_HEARTBEAT_MS =
   30_000;
 
 export const RADIO_WOLO_LISTENER_ACTIVE_WINDOW_MS =
   150_000;
-
-const LISTENER_UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export type RadioWoloRatingStyle =
   | "icons"
@@ -14,12 +13,7 @@ export type RadioWoloRatingStyle =
 export function radioWoloListenerIdIsValid(
   value: unknown,
 ): value is string {
-  return (
-    typeof value === "string" &&
-    LISTENER_UUID_RE.test(
-      value.trim(),
-    )
-  );
+  return browserVisitorIdIsValid(value);
 }
 
 export function radioWoloRatingIsValid(

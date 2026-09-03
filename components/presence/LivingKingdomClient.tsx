@@ -5,6 +5,10 @@ import { usePathname } from "next/navigation";
 
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
+  AOE2WAR_BROWSER_VISITOR_HEADER,
+  readOrCreateBrowserVisitorId,
+} from "@/lib/browserVisitorId";
+import {
   isLivingKingdomRealmId,
   livingKingdomRealmForPath,
   type LivingKingdomRealmId,
@@ -224,7 +228,7 @@ function demoActors(realmId: LivingKingdomRealmId) {
 
 export default function LivingKingdomClient() {
   const pathname = usePathname();
-  const { uid } = useUserAuth();
+  const { uid, loading: authLoading } = useUserAuth();
   const realmId = pathname ? livingKingdomRealmForPath(pathname) : null;
   const [actorsById, setActorsById] = React.useState<Map<string, LivingKingdomActor>>(new Map());
   const [selfId, setSelfId] = React.useState<string | null>(null);
@@ -233,6 +237,7 @@ export default function LivingKingdomClient() {
   const [, setStreamHealthy] = React.useState(false);
   const [pageVisible, setPageVisible] = React.useState(true);
   const [preference, setPreference] = React.useState<LivingKingdomPreference | null>(null);
+  const [anonymousVisitorId, setAnonymousVisitorId] = React.useState<string | null>(null);
   const [reducedMotion, setReducedMotion] = React.useState(false);
   const [bandwidthCalm, setBandwidthCalm] = React.useState(false);
   const [flights, setFlights] = React.useState<LivingKingdomFlight[]>([]);
@@ -261,6 +266,35 @@ export default function LivingKingdomClient() {
   }, []);
 
   React.useEffect(() => {
+    if (authLoading || uid) {
+      setAnonymousVisitorId(null);
+      return;
+    }
+    setAnonymousVisitorId(readOrCreateBrowserVisitorId());
+  }, [authLoading, uid]);
+
+  const presencePublisher = React.useMemo(() => {
+    if (authLoading) return null;
+    if (uid) {
+      return {
+        key: `user:${uid}`,
+        endpoint: "/api/kingdom-presence/state",
+        visitorId: null as string | null,
+      };
+    }
+    if (!anonymousVisitorId) return null;
+    return {
+      key: `anonymous:${anonymousVisitorId}`,
+      endpoint: "/api/kingdom-presence/anonymous-state",
+      visitorId: anonymousVisitorId,
+    };
+  }, [anonymousVisitorId, authLoading, uid]);
+
+  React.useEffect(() => {
+    publisherBlockedRef.current = false;
+  }, [presencePublisher?.key]);
+
+  React.useEffect(() => {
     actorsByIdRef.current = actorsById;
   }, [actorsById]);
 
@@ -275,7 +309,7 @@ export default function LivingKingdomClient() {
   React.useEffect(() => {
     setSelfId(demoEnabled ? "demo-warrior-00" : null);
     setSelfVisible(true);
-  }, [demoEnabled, uid]);
+  }, [anonymousVisitorId, demoEnabled, uid]);
 
   React.useEffect(
     () => subscribeLivingKingdomSelfAvatarRequest(() => {
@@ -480,9 +514,15 @@ export default function LivingKingdomClient() {
   ) => {
     if (publisherBlockedRef.current) return null;
     try {
-      const response = await fetch("/api/kingdom-presence/state", {
+      if (!presencePublisher) return null;
+      const response = await fetch(presencePublisher.endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(presencePublisher.visitorId
+            ? { [AOE2WAR_BROWSER_VISITOR_HEADER]: presencePublisher.visitorId }
+            : {}),
+        },
         credentials: "same-origin",
         cache: "no-store",
         keepalive: true,
@@ -502,23 +542,28 @@ export default function LivingKingdomClient() {
     } catch {
       return null;
     }
-  }, []);
+  }, [presencePublisher]);
 
   const removePublishedPresence = React.useCallback(() => {
-    if (!tabIdRef.current || publisherBlockedRef.current) return;
-    void fetch("/api/kingdom-presence/state", {
+    if (!tabIdRef.current || publisherBlockedRef.current || !presencePublisher) return;
+    void fetch(presencePublisher.endpoint, {
       method: "DELETE",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(presencePublisher.visitorId
+          ? { [AOE2WAR_BROWSER_VISITOR_HEADER]: presencePublisher.visitorId }
+          : {}),
+      },
       credentials: "same-origin",
       cache: "no-store",
       keepalive: true,
       body: JSON.stringify({ protocol: 1, tabId: tabIdRef.current, seq: nextSequence() }),
     }).catch(() => undefined);
-  }, [nextSequence]);
+  }, [nextSequence, presencePublisher]);
 
   React.useEffect(() => {
     const canPublish =
-      Boolean(uid) &&
+      Boolean(presencePublisher) &&
       Boolean(realmId) &&
       demoChecked &&
       !demoEnabled &&
@@ -654,12 +699,12 @@ export default function LivingKingdomClient() {
       if (frame) window.cancelAnimationFrame(frame);
       removeUnlessDoorDeparted();
     };
-  }, [bandwidthCalm, demoChecked, demoEnabled, nextSequence, publishMutation, realmId, removePublishedPresence, uid]);
+  }, [bandwidthCalm, demoChecked, demoEnabled, nextSequence, presencePublisher, publishMutation, realmId, removePublishedPresence]);
 
   React.useEffect(() => {
     if (
       !realmId ||
-      !uid ||
+      !presencePublisher ||
       demoEnabled
     ) {
       return;
@@ -712,7 +757,7 @@ export default function LivingKingdomClient() {
     };
     document.addEventListener("click", onDocumentClick, true);
     return () => document.removeEventListener("click", onDocumentClick, true);
-  }, [demoEnabled, nextSequence, publishMutation, queueDoorFlight, realmId, uid]);
+  }, [demoEnabled, nextSequence, presencePublisher, publishMutation, queueDoorFlight, realmId]);
 
   React.useEffect(() => {
     if (process.env.NODE_ENV === "production" || !demoChecked || !demoEnabled || !realmId) return;

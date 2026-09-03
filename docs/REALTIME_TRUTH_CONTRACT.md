@@ -66,7 +66,7 @@ A fast provisional display must never be mislabeled as settlement authority. Con
 | Homepage Recent Parsed Games | `/api/lobby/recent-matches`, which merges canonical replay rows, current completed-session truth, and adjudication evidence | 5 seconds | Immediate focus/visibility refresh | About 5 seconds plus request time |
 | `/live-games` | `/api/live-games` over the live-session snapshot | 5 seconds | Immediate focus/visibility refresh | About 5 seconds plus request time |
 | `/bets` | `/api/bets` plus event-driven post-ingest market reconciliation | 2 seconds | Immediate focus/visibility refresh | About 2 seconds after market truth; fallback ensure is bounded at 5 seconds |
-| Living Kingdom roaming-now overlay | Authenticated, server-sanitized projections from eligible signed-in human accounts accepted by `/api/kingdom-presence/state`, then fanned out to anonymous or signed-in receive-only viewers through `/api/kingdom-presence/events` | Immediate route-entry publish; event-driven on depth-band or direction change with a 500 ms hard throttle; an 8-second foreground heartbeat (10 seconds under Save-Data); server admission at most 2 Hz with burst four | Immediate focus/pageshow republish; EventSource reconnect receives a fresh bounded snapshot; hidden/minimized tabs renew the last coarse position instead of departing, while pagehide and explicit logout remove the tab/actor immediately | About 2 seconds while active; abrupt disconnect safety bound is the 90-second presence TTL |
+| Living Kingdom roaming-now overlay | Server-sanitized projections from eligible signed-in humans via `/api/kingdom-presence/state` plus same-origin anonymous browsers via `/api/kingdom-presence/anonymous-state`; both fan out through `/api/kingdom-presence/events`, with signed-in warriors prioritized ahead of anonymous actors in bounded public cohorts | Immediate route-entry publish; event-driven on depth-band or direction change with a 500 ms hard throttle; an 8-second foreground heartbeat (10 seconds under Save-Data); server admission at most 2 Hz per actor with bounded IP admission | Immediate focus/pageshow republish; EventSource reconnect receives a fresh bounded snapshot; hidden/minimized tabs renew the last coarse position instead of departing, while pagehide and explicit logout/anonymous leave remove the tab/actor immediately | About 2 seconds while active; abrupt disconnect safety bound is the 90-second presence TTL |
 
 All listed client requests use `no-store`. Relevant routes are force-dynamic or return explicit private/no-store headers. Polls pause while the page is hidden, skip or supersede overlapping requests, and refresh immediately when the page becomes visible again.
 
@@ -103,16 +103,26 @@ Within a server-enabled rollout cohort, a signed-in human account with an
 eligible personal avatar is automatically `public_coarse` on allowlisted public
 realms. Publication is always on for that eligible account. Legacy `off`,
 `public_coarse`, absent, or malformed preference rows do not gate it, and the
-compatibility mutation route returns HTTP 405. Anonymous sessions observe only.
-AI-controlled persona accounts are excluded from publishing.
+compatibility mutation route returns HTTP 405. In `public` feature mode, an
+unsigned browser may also publish the same bounded coarse movement contract as
+an `Unknown Warrior`. Anonymous identity uses the existing AoE2WAR browser
+visitor UUID, but the public actor handle is process-salted, the raw UUID is not
+fanned out over SSE, and the avatar is deterministically split between the male
+and female silhouettes. Signed-in warriors sort ahead of anonymous actors when
+the bounded room cohort is full. AI-controlled persona accounts are excluded
+from publishing.
 
 The truth path is deliberately separate from legacy online membership:
 
 ```text
 eligible signed-in human browser with a personal avatar
   -> authenticated, rate-limited POST /api/kingdom-presence/state
-  -> server resolves identity and normalizes an allowlisted public realm
+anonymous browser in public mode
+  -> same-origin, visitor-ID validated POST /api/kingdom-presence/anonymous-state
+both
+  -> server normalizes an allowlisted public realm
   -> bounded process-memory hub replaces that actor's latest projection
+  -> signed-in actors receive bounded-room priority over anonymous actors
   -> bounded SSE snapshot/delta on /api/kingdom-presence/events
   -> anonymous or signed-in public viewer interpolates locally
 ```
@@ -123,6 +133,12 @@ It may not author its UID, display name, avatar URL, raw URL, query string,
 fragment, anchor, or arbitrary destination. A navigation intent may animate an
 avatar toward a known public door, but the destination becomes roaming truth
 only after a confirmed route-entry update.
+
+Radio WOLO listener state is not Living Kingdom movement truth. Radio may share
+the browser visitor UUID so operator diagnostics can recognize the same anonymous
+browser, but no Radio track/listening row is converted into a realm, depth band,
+motion sample, or door transition. Living Kingdom movement remains process-local
+and non-durable.
 
 The following boundaries are mandatory:
 
@@ -160,7 +176,8 @@ The following boundaries are mandatory:
   focused, restored, or scrolled. The server's actor limiter sustains at most
   two requests per second with burst four for door/arrival pairs. A restart
   intentionally forgets all movement.
-- Anonymous and signed-in public viewers are receive-only. Hidden/minimized
+- Anonymous and signed-in public viewers consume the same receive stream; anonymous
+  browsers may additionally publish only their own coarse synthetic actor in public mode. Hidden/minimized
   publisher tabs renew only their last already-public coarse position and do
   not report hidden motion or promote activity ordering; the hidden viewer's
   EventSource suspends until visibility returns. Pagehide and explicit logout

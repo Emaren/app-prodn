@@ -8,12 +8,17 @@ import {
   type LivingKingdomStateMutation,
 } from "./protocol.ts";
 import {
+  livingKingdomActorIdIsAnonymous,
+  LIVING_KINGDOM_ANONYMOUS_UID_PREFIX,
+} from "./anonymous.ts";
+import {
   LIVING_KINGDOM_REALMS,
   livingKingdomRealmHref,
   type LivingKingdomRealmId,
 } from "./realms.ts";
 
 export const LIVING_KINGDOM_MAX_ACTORS = 500;
+export const LIVING_KINGDOM_MAX_ANONYMOUS_ACTORS = 400;
 export const LIVING_KINGDOM_MAX_TABS_PER_ACTOR = 3;
 export const LIVING_KINGDOM_MAX_SEQUENCE_FENCES_PER_ACTOR = 12;
 export const LIVING_KINGDOM_MAX_PUBLIC_ACTORS_PER_REALM = 64;
@@ -80,7 +85,7 @@ type PendingDelta = {
 
 export type LivingKingdomMutationResult =
   | { accepted: true; selfId: string | null }
-  | { accepted: false; reason: "stale" | "missing" };
+  | { accepted: false; reason: "stale" | "missing" | "capacity" };
 
 export type LivingKingdomHubStats = LivingKingdomMetrics & {
   activeActors: number;
@@ -126,6 +131,18 @@ function publicActorsEqual(
   );
 }
 
+function publicActorOrder(
+  left: LivingKingdomPublicActor,
+  right: LivingKingdomPublicActor,
+) {
+  const anonymousDelta =
+    Number(livingKingdomActorIdIsAnonymous(left.id)) -
+    Number(livingKingdomActorIdIsAnonymous(right.id));
+  if (anonymousDelta !== 0) return anonymousDelta;
+  return left.id.localeCompare(right.id);
+}
+
+
 export class LivingKingdomHub {
   private readonly actors = new Map<string, ActorEntry>();
   private readonly subscribers = new Map<LivingKingdomRealmId, Set<RoomListener>>();
@@ -165,7 +182,18 @@ export class LivingKingdomHub {
     let actor = this.actors.get(identity.uid);
 
     if (!actor) {
-      if (this.actors.size >= this.maxActors) this.evictOldestActor(nowMs);
+      const anonymous = identity.uid.startsWith(LIVING_KINGDOM_ANONYMOUS_UID_PREFIX);
+      if (anonymous && this.anonymousActorCount() >= LIVING_KINGDOM_MAX_ANONYMOUS_ACTORS) {
+        this.evictOldestAnonymousActor(nowMs);
+      }
+      if (this.actors.size >= this.maxActors) {
+        const evictedAnonymous = this.evictOldestAnonymousActor(nowMs);
+        if (!evictedAnonymous && anonymous) {
+          this.metrics.dropped += 1;
+          return { accepted: false, reason: "capacity" };
+        }
+        if (!evictedAnonymous) this.evictOldestActor(nowMs);
+      }
       actor = { tabs: new Map(), sequences: new Map(), touchedAtMs: nowMs };
       this.actors.set(identity.uid, actor);
     }
@@ -270,7 +298,24 @@ export class LivingKingdomHub {
       // pagehide can beat the initial state POST while that POST is awaiting
       // identity. Keep a bounded, expiring sequence tombstone so the older
       // publish cannot create a 90-second ghost after the document is gone.
-      if (this.actors.size >= this.maxActors) this.evictOldestActor(nowMs);
+      // Anonymous cleanup is never allowed to evict a signed-in warrior merely
+      // to create that tombstone, and anonymous tombstones share the same cap
+      // as live anonymous actors.
+      const anonymous = uid.startsWith(LIVING_KINGDOM_ANONYMOUS_UID_PREFIX);
+      if (
+        anonymous &&
+        this.anonymousActorCount() >= LIVING_KINGDOM_MAX_ANONYMOUS_ACTORS
+      ) {
+        this.evictOldestAnonymousActor(nowMs);
+      }
+      if (this.actors.size >= this.maxActors) {
+        const evictedAnonymous = this.evictOldestAnonymousActor(nowMs);
+        if (!evictedAnonymous && anonymous) {
+          this.metrics.dropped += 1;
+          return { accepted: false, reason: "capacity" };
+        }
+        if (!evictedAnonymous) this.evictOldestActor(nowMs);
+      }
       actor = { tabs: new Map(), sequences: new Map(), touchedAtMs: nowMs };
       this.actors.set(uid, actor);
     }
@@ -311,7 +356,7 @@ export class LivingKingdomHub {
       if (preferred) {
         if (actors.length >= LIVING_KINGDOM_MAX_PUBLIC_ACTORS_PER_REALM) actors.pop();
         actors.push(preferred);
-        actors.sort((left, right) => left.id.localeCompare(right.id));
+        actors.sort(publicActorOrder);
       }
     }
 
@@ -340,7 +385,7 @@ export class LivingKingdomHub {
       allActors.push(projection);
       actorsByUid.set(uid, projection);
     }
-    allActors.sort((left, right) => left.id.localeCompare(right.id));
+    allActors.sort(publicActorOrder);
 
     const baseActors = allActors.slice(0, LIVING_KINGDOM_MAX_PUBLIC_ACTORS_PER_REALM);
     const overflowCount = Math.max(0, allActors.length - baseActors.length);
@@ -543,9 +588,7 @@ export class LivingKingdomHub {
     if (!pending) return;
     this.pendingDeltas.delete(realmId);
 
-    const upserts = Array.from(pending.upserts.values()).sort((left, right) =>
-      left.id.localeCompare(right.id),
-    );
+    const upserts = Array.from(pending.upserts.values()).sort(publicActorOrder);
     const removals = Array.from(pending.removals).sort();
     const overflowedEvents =
       Math.max(0, upserts.length - LIVING_KINGDOM_MAX_PUBLIC_ACTORS_PER_REALM) +
@@ -590,7 +633,34 @@ export class LivingKingdomHub {
       const projection = this.project(actor, nowMs, enforceTtl);
       if (projection?.realmId === realmId) actors.push(projection);
     }
-    return actors.sort((left, right) => left.id.localeCompare(right.id));
+    return actors.sort(publicActorOrder);
+  }
+
+  private anonymousActorCount() {
+    let count = 0;
+    for (const uid of this.actors.keys()) {
+      if (uid.startsWith(LIVING_KINGDOM_ANONYMOUS_UID_PREFIX)) count += 1;
+    }
+    return count;
+  }
+
+  private evictOldestAnonymousActor(nowMs: number) {
+    let oldestUid: string | null = null;
+    let oldestAt = Number.POSITIVE_INFINITY;
+    for (const [uid, actor] of this.actors) {
+      if (!uid.startsWith(LIVING_KINGDOM_ANONYMOUS_UID_PREFIX)) continue;
+      if (actor.touchedAtMs < oldestAt) {
+        oldestUid = uid;
+        oldestAt = actor.touchedAtMs;
+      }
+    }
+    if (!oldestUid) return false;
+    const actor = this.actors.get(oldestUid);
+    const previous = actor ? this.project(actor, nowMs) : null;
+    this.actors.delete(oldestUid);
+    this.publishProjectionChange(previous, null);
+    this.metrics.dropped += 1;
+    return true;
   }
 
   private evictOldestActor(nowMs: number) {

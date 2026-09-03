@@ -154,27 +154,38 @@ These routes enforce session/admin behavior and often proxy, merge, or reshape b
 ### Living Kingdom presence plane
 
 Living Kingdom is a small, ephemeral presence plane inside the existing Next.js
-web authority. It answers “which eligible warriors are roaming an allowlisted
-public part of the kingdom now?” Within an enabled rollout cohort, a signed-in
-human account with an eligible personal avatar is automatically
-`public_coarse`. Publication is an account capability, not a user-facing
+web authority. It answers “which warriors and visitors are roaming an allowlisted
+public part of the kingdom now?” Within public mode, a signed-in human account
+with an eligible personal avatar is automatically `public_coarse`; an unsigned
+browser receives an ephemeral `Unknown Warrior` projection using the existing
+AoE2WAR browser visitor UUID and a deterministic 50/50 male/female silhouette.
+Signed-in warriors retain display priority when a room is crowded. Publication
+for eligible signed-in accounts remains an account capability, not a user-facing
 preference: legacy presence-preference rows are retained as historical data but
 cannot suppress an eligible publisher. Legacy preference rows are
-non-authoritative and ignored for publication. Anonymous viewers observe only, and
-AI-controlled persona accounts never publish. The plane does not establish
-durable user activity, analytics attribution, replay truth, wallet truth, exact
-scroll or cursor position, private-route activity, or hidden-tab activity.
+non-authoritative and ignored for publication. AI-controlled persona accounts
+never publish. The plane does not establish durable user activity, analytics
+attribution, replay truth, wallet truth, exact scroll or cursor position,
+private-route activity, or hidden-tab activity. Radio WOLO listener state is not
+movement truth: the two features may reuse the same browser visitor anchor, but
+Living Kingdom accepts its own bounded coarse movement samples and writes none of
+them to Radio state or Postgres.
 
 ```text
-eligible signed-in human publisher                  public viewer (observe only)
-personal avatar; automatic publication              anonymous or signed in
-      |                                                      |
-      | POST /api/kingdom-presence/state                     | EventSource
-      v                                                      v
-identity + realm policy -> rate limit -> process-local hub -> bounded SSE event
-                                                   |
-                                                   v
-                                      local transform interpolation
+signed-in human publisher                    anonymous browser publisher
+personal avatar                              Unknown Warrior silhouette
+      |                                               |
+      | POST /api/kingdom-presence/state              | POST /api/kingdom-presence/anonymous-state
+      +--------------------------+--------------------+
+                                 v
+                realm policy -> rate limit -> process-local hub
+                                 |
+                                 | EventSource /api/kingdom-presence/events
+                                 v
+                  anonymous or signed-in public viewer
+                                 |
+                                 v
+                    local transform interpolation
 ```
 
 The owning server modules are:
@@ -190,6 +201,9 @@ The owning server modules are:
   from an opaque public actor handle to the internal managed-avatar target;
 - `lib/livingKingdom/rateLimit.ts` for process-local publish admission;
 - `app/api/kingdom-presence/state/route.ts` for authenticated publisher input;
+- `app/api/kingdom-presence/anonymous-state/route.ts` for same-origin anonymous
+  publisher input in public mode, using a validated browser visitor UUID and no
+  database identity lookup;
 - `app/api/kingdom-presence/events/route.ts` for the public receive-only SSE
   stream;
 - `app/api/user/presence-preference/route.ts` as a compatibility metadata GET

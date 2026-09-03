@@ -150,7 +150,8 @@ test("Living Kingdom documentation preserves always-on public-coarse publication
     truthContract,
     /Legacy `off`,[\s\S]{0,160}preference rows do not gate it/i,
   );
-  assert.match(documentation, /Anonymous[\s\S]{0,100}(?:observe only|receive-only)/);
+  assert.match(documentation, /anonymous[\s\S]{0,180}(?:coarse|Unknown Warrior|publish)/i);
+  assert.match(documentation, /signed-in[\s\S]{0,120}(?:priority|ahead of anonymous)/i);
   assert.match(documentation, /AI-controlled persona accounts/);
   assert.match(documentation, /no exact scroll offset, cursor\s+position, private-route activity/);
   assert.match(
@@ -167,10 +168,12 @@ test("Living Kingdom documentation preserves always-on public-coarse publication
 
 test("movement stays out of Traffic, user ping, activity ledgers, and database writes", () => {
   const stateRoute = source("../app/api/kingdom-presence/state/route.ts");
+  const anonymousStateRoute = source("../app/api/kingdom-presence/anonymous-state/route.ts");
   const eventsRoute = source("../app/api/kingdom-presence/events/route.ts");
   const mediaRoute = source("../app/api/media-assets/[kind]/[target]/route.ts");
   const movementSources = [
     stateRoute,
+    anonymousStateRoute,
     eventsRoute,
     source("../lib/livingKingdom/protocol.ts"),
     source("../lib/livingKingdom/realms.ts"),
@@ -196,6 +199,12 @@ test("movement stays out of Traffic, user ping, activity ledgers, and database w
   assert.match(stateRoute, /identityGeneration !== livingKingdomIdentityGeneration\(\)/);
   assert.match(stateRoute, /userOnlineSessionIsForcedOffline\(auth\.uid\)/);
   assert.doesNotMatch(stateRoute, /presence_disabled|opt_in_required/);
+
+  assert.match(anonymousStateRoute, /livingKingdomFeatureMode\(\) !== "public"/);
+  assert.match(anonymousStateRoute, /isLivingKingdomSameOrigin/);
+  assert.match(anonymousStateRoute, /livingKingdomAnonymousIdentity/);
+  assert.match(anonymousStateRoute, /livingKingdomHub\.(?:upsert|door|removeTab)/);
+  assert.doesNotMatch(anonymousStateRoute, /getSessionUid|getPrisma|prisma\./);
 
   const logoutFence = stateRoute.indexOf(
     "userOnlineSessionIsForcedOffline(auth.uid)",
@@ -247,6 +256,7 @@ test("client and server enforce the bounded publish cadence", () => {
   const client = source("../components/presence/LivingKingdomClient.tsx");
   const limits = source("../lib/livingKingdom/rateLimit.ts");
   const stateRoute = source("../app/api/kingdom-presence/state/route.ts");
+  const anonymousStateRoute = source("../app/api/kingdom-presence/anonymous-state/route.ts");
 
   assert.match(client, /STATE_SEND_INTERVAL_MS\s*=\s*500/);
   assert.match(client, /HEARTBEAT_INTERVAL_MS\s*=\s*8_000/);
@@ -256,6 +266,7 @@ test("client and server enforce the bounded publish cadence", () => {
   assert.match(client, /const changed = scroll\.band !== lastBand \|\| motion !== lastMotion/);
   assert.match(limits, /ratePerSecond:\s*2,[\s\S]{0,80}burst:\s*4/);
   assert.match(stateRoute, /consume\(`actor:\$\{uid\}`\)/);
+  assert.match(anonymousStateRoute, /consume\(\s*`anonymous:\$\{visitorId\}`/);
   assert.doesNotMatch(stateRoute, /actor:\$\{uid\}:\$\{tabId\}/);
 });
 
