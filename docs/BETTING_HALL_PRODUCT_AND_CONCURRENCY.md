@@ -190,3 +190,31 @@ The existing Auto Bet Reserve remains preview-only today.
 Future automation may add independent phase presets, but execution must use the
 reviewed prefunded Wolo custody/reservation architecture. Watcher telemetry
 detects game state; it never becomes money authority by itself.
+
+## Premium betting composer implementation — V2 branch
+
+The `feature/betting-phase-books-v2` implementation retires the E4
+`InstrumentStakeRail` horizontal utility strip.
+
+The replacement `PremiumStakeComposer` is a vertical betting interaction:
+
+- large tactile 10 / 25 / 50 / 100 WOLO stake tiles;
+- large full-width custom amount entry;
+- explicit selected pick;
+- explicit stake and projected return;
+- large final lock action;
+- phase/status shell treatment;
+- Desync moved below the primary winner composer instead of sharing one
+  spreadsheet-like horizontal row.
+
+This presentation slice does not alter financial admission, custody, payout,
+market creation, or settlement rules.
+
+The existing authority remains:
+
+`freshBettingCloseReason()` -> board `bettingOpen` projection -> page
+`market.bettingOpen && !marketWorkflow` -> composer `canEdit`.
+
+Wallet signing, stake recovery, settlement, and the certified Betting Fairness
+V1 server-side write fence remain unchanged until the separately reviewed
+Betting Phase Books V2 financial implementation ships.

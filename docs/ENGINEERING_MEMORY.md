@@ -242,3 +242,20 @@ resetting or repeating completed work.
 AoE2WAR pasteable interactive commands must also continue avoiding outer
 `set -e`, `set -u`, `pipefail`, naked `exit`, and naked `return`. Individual
 governed scripts may enforce their own internal fail-closed shell policy.
+
+### Premium betting composer implementation status
+
+The Betting Phase Books V2 feature branch now contains its first visible
+product slice.
+
+The E4 horizontal `InstrumentStakeRail` was removed and replaced with
+`PremiumStakeComposer`.
+
+This slice is presentation-only. The page consumes the existing projected
+`market.bettingOpen` authority and does not independently decide financial
+eligibility.
+
+Do not infer that Opening Minute or Late Book financial admission is live
+merely because the new visual system exists. Certified Betting Fairness V1
+remains authoritative until the phase-book schema and transactional admission
+work ships.

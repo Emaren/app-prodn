@@ -6044,18 +6044,38 @@ function DesyncTicketLeg({
   );
 }
 
-function InstrumentStakeRail({
+function PremiumStakeComposer({
+  market,
   activeSelection,
   canEdit,
+  projectedReturn,
+  statusCopy,
+  stakeError,
+  lockLabel,
+  workingKey,
+  onchainLocked,
   onStakeChange,
+  onLock,
+  onClear,
 }: {
+  market: BetBoardMarket;
   activeSelection: SelectionState | null;
   canEdit: boolean;
+  projectedReturn: number;
+  statusCopy: string;
+  stakeError: string | null;
+  lockLabel: string;
+  workingKey: string | null;
+  onchainLocked: boolean;
   onStakeChange: (stake: number) => void;
+  onLock: () => void;
+  onClear: (marketId: number) => void;
 }) {
-  const generatedInputId = useId();
+  const generatedInputId =
+    useId();
+
   const inputId =
-    `bet-instrument-${generatedInputId.replace(/:/g, "")}`;
+    `bet-premium-stake-${generatedInputId.replace(/:/g, "")}`;
 
   const [customDraft, setCustomDraft] =
     useState("");
@@ -6069,135 +6089,715 @@ function InstrumentStakeRail({
     setCustomDraft("");
   }, [selectionKey]);
 
+  const selectedSide =
+    activeSelection?.side ??
+    market.viewerWager?.side ??
+    null;
+
+  const selectedName =
+    selectedSide === "left"
+      ? market.left.name
+      : selectedSide === "right"
+        ? market.right.name
+        : null;
+
+  const liveWatcherBattle =
+    Boolean(
+      market.linkedSessionKey,
+    );
+
+  const scheduledBook =
+    Boolean(
+      market.scheduledStartAt,
+    );
+
+  const phaseLabel =
+    scheduledBook
+      ? "PRE-GAME BOOK"
+      : liveWatcherBattle
+        ? "WATCHER BATTLE"
+        : "OPEN BOOK";
+
+  const phaseDetail =
+    canEdit
+      ? scheduledBook
+        ? "Challenge betting open"
+        : "Betting open"
+      : liveWatcherBattle
+        ? "Current V1 · pre-game wagering closed"
+        : statusCopy;
+
+  const phaseShell =
+    scheduledBook
+      ? `
+          border-amber-200/[0.12]
+          bg-[radial-gradient(circle_at_15%_0%,rgba(245,158,11,0.17),transparent_34%),linear-gradient(145deg,rgba(35,22,10,0.96),rgba(10,14,24,0.98)_58%,rgba(44,15,15,0.80))]
+          shadow-[0_30px_90px_rgba(245,158,11,0.09)]
+        `
+      : liveWatcherBattle
+        ? `
+            border-cyan-200/[0.12]
+            bg-[radial-gradient(circle_at_15%_0%,rgba(34,211,238,0.16),transparent_34%),linear-gradient(145deg,rgba(7,28,42,0.96),rgba(8,14,25,0.98)_58%,rgba(24,10,40,0.78))]
+            shadow-[0_30px_90px_rgba(34,211,238,0.08)]
+          `
+        : `
+            border-white/[0.08]
+            bg-[linear-gradient(145deg,rgba(18,24,37,0.98),rgba(7,12,22,0.99))]
+            shadow-[0_30px_90px_rgba(0,0,0,0.26)]
+          `;
+
+  const accentText =
+    scheduledBook
+      ? "text-amber-200"
+      : liveWatcherBattle
+        ? "text-cyan-200"
+        : "text-slate-200";
+
+  const activeStake =
+    activeSelection?.stake ?? 0;
+
+  const lockWorking =
+    workingKey ===
+    `lock-${market.id}`;
+
+  const selectedExisting =
+    Boolean(
+      market.viewerWager,
+    );
+
   return (
-    <div
-      className="
-        flex min-w-0 flex-1
-        flex-wrap items-center gap-1.5
-      "
-      aria-label="Stake amount"
+    <section
+      data-testid="bets-premium-stake-composer"
+      aria-label="Stake composer"
+      className={`
+        overflow-hidden
+        rounded-[2rem]
+        border
+        ${phaseShell}
+      `}
     >
-      {STAKE_OPTIONS.map((stake) => (
-        <button
-          key={stake}
-          type="button"
-          onClick={() => {
-            if (!activeSelection) return;
-
-            setCustomDraft(
-              String(stake),
-            );
-
-            onStakeChange(stake);
-          }}
-          disabled={
-            !activeSelection ||
-            !canEdit
-          }
-          aria-pressed={
-            activeSelection?.stake ===
-            stake
-          }
-          className={`
-            inline-flex h-9 min-w-10
-            items-center justify-center
-            rounded-full px-3
-            text-xs font-semibold
-            transition
-            ${
-              activeSelection?.stake ===
-              stake
-                ? edgeButton("gold")
-                : edgeButton("glass")
-            }
-            ${
-              !activeSelection ||
-              !canEdit
-                ? "cursor-not-allowed opacity-40"
-                : ""
-            }
-          `}
+      <div
+        className="
+          border-b border-white/[0.065]
+          px-5 py-5
+          sm:px-7 sm:py-6
+        "
+      >
+        <div
+          className="
+            flex flex-col gap-4
+            sm:flex-row
+            sm:items-start
+            sm:justify-between
+          "
         >
-          {stake}
-        </button>
-      ))}
+          <div>
+            <div
+              className={`
+                text-[10px]
+                font-black uppercase
+                tracking-[0.34em]
+                ${accentText}
+              `}
+            >
+              {phaseLabel}
+            </div>
+
+            <h3
+              className="
+                mt-2
+                text-2xl font-black
+                tracking-[-0.035em]
+                text-white
+                sm:text-3xl
+              "
+            >
+              Stake your WOLO
+            </h3>
+
+            <p
+              className="
+                mt-2 max-w-xl
+                text-sm leading-6
+                text-slate-400
+              "
+            >
+              {selectedName
+                ? `Backing ${selectedName}. Choose a stake below.`
+                : "Pick a team above, then choose your stake."}
+            </p>
+          </div>
+
+          <div
+            className={`
+              inline-flex
+              w-fit items-center gap-2
+              rounded-full
+              border px-3 py-2
+              text-[10px]
+              font-black uppercase
+              tracking-[0.18em]
+              ${
+                canEdit
+                  ? "border-emerald-200/20 bg-emerald-400/[0.09] text-emerald-200"
+                  : "border-white/[0.08] bg-black/20 text-slate-400"
+              }
+            `}
+          >
+            <span
+              className={`
+                h-2 w-2
+                rounded-full
+                ${
+                  canEdit
+                    ? "bg-emerald-300 shadow-[0_0_14px_rgba(110,231,183,0.75)]"
+                    : "bg-slate-600"
+                }
+              `}
+            />
+
+            {canEdit
+              ? "BETTING OPEN"
+              : phaseDetail}
+          </div>
+        </div>
+      </div>
 
       <div
         className="
-          flex h-9 min-w-[8.75rem]
-          items-center
-          rounded-full
-          border border-white/[0.07]
-          bg-white/[0.025]
-          px-3
-          transition
-          focus-within:border-amber-200/25
-          focus-within:bg-white/[0.045]
+          grid gap-6
+          px-5 py-6
+          sm:px-7
+          lg:grid-cols-[minmax(0,1.25fr)_minmax(18rem,0.75fr)]
+          lg:gap-7
+          lg:py-7
         "
       >
-        <input
-          id={inputId}
-          inputMode="numeric"
-          pattern="[0-9]*"
-          value={
-            activeSelection
-              ? customDraft
-              : ""
-          }
-          onChange={(event) => {
-            if (!activeSelection) {
-              return;
-            }
+        <div>
+          <div
+            className="
+              text-[10px]
+              font-black uppercase
+              tracking-[0.28em]
+              text-slate-500
+            "
+          >
+            QUICK STAKE
+          </div>
 
-            const digits =
-              event.target.value
-                .replace(/[^0-9]/g, "")
-                .slice(0, 6);
+          <div
+            className="
+              mt-3 grid
+              grid-cols-2
+              gap-3
+            "
+          >
+            {STAKE_OPTIONS.map(
+              (stake) => {
+                const selected =
+                  activeSelection?.stake ===
+                  stake;
 
-            setCustomDraft(digits);
+                return (
+                  <button
+                    key={stake}
+                    type="button"
+                    onClick={() => {
+                      if (
+                        !activeSelection ||
+                        !canEdit
+                      ) {
+                        return;
+                      }
 
-            onStakeChange(
-              digits
-                ? Number.parseInt(
-                    digits,
-                    10,
-                  )
-                : 0,
-            );
-          }}
-          disabled={
-            !activeSelection ||
-            !canEdit
-          }
-          placeholder="Custom"
-          aria-label="Custom WOLO stake"
+                      setCustomDraft(
+                        String(stake),
+                      );
+
+                      onStakeChange(
+                        stake,
+                      );
+                    }}
+                    disabled={
+                      !activeSelection ||
+                      !canEdit
+                    }
+                    aria-pressed={
+                      selected
+                    }
+                    className={`
+                      group relative
+                      min-h-[6.5rem]
+                      overflow-hidden
+                      rounded-[1.45rem]
+                      border
+                      px-5 py-4
+                      text-left
+                      transition
+                      duration-200
+                      active:scale-[0.985]
+                      ${
+                        selected
+                          ? `
+                              border-amber-200/35
+                              bg-[linear-gradient(145deg,rgba(253,230,138,0.22),rgba(245,158,11,0.13)_48%,rgba(120,53,15,0.18))]
+                              shadow-[0_18px_42px_rgba(245,158,11,0.12),inset_0_1px_0_rgba(255,255,255,0.16)]
+                            `
+                          : `
+                              border-white/[0.075]
+                              bg-[linear-gradient(145deg,rgba(255,255,255,0.055),rgba(255,255,255,0.018))]
+                              hover:-translate-y-0.5
+                              hover:border-white/[0.14]
+                              hover:bg-white/[0.07]
+                              hover:shadow-[0_18px_36px_rgba(0,0,0,0.20)]
+                            `
+                      }
+                      ${
+                        !activeSelection ||
+                        !canEdit
+                          ? "cursor-not-allowed opacity-40"
+                          : ""
+                      }
+                    `}
+                  >
+                    <div
+                      className="
+                        text-[10px]
+                        font-black uppercase
+                        tracking-[0.22em]
+                        text-slate-500
+                      "
+                    >
+                      Stake
+                    </div>
+
+                    <div
+                      className="
+                        mt-2 flex
+                        items-end gap-2
+                      "
+                    >
+                      <span
+                        className="
+                          text-3xl
+                          font-black
+                          tracking-[-0.045em]
+                          text-white
+                          sm:text-4xl
+                        "
+                      >
+                        {stake}
+                      </span>
+
+                      <span
+                        className="
+                          pb-1
+                          text-[10px]
+                          font-black uppercase
+                          tracking-[0.20em]
+                          text-amber-200/70
+                        "
+                      >
+                        WOLO
+                      </span>
+                    </div>
+
+                    <div
+                      className={`
+                        pointer-events-none
+                        absolute inset-x-5
+                        bottom-0 h-px
+                        transition
+                        ${
+                          selected
+                            ? "bg-gradient-to-r from-transparent via-amber-300/70 to-transparent"
+                            : "bg-gradient-to-r from-transparent via-white/10 to-transparent group-hover:via-white/25"
+                        }
+                      `}
+                    />
+                  </button>
+                );
+              },
+            )}
+          </div>
+
+          <div
+            className="
+              mt-5
+              text-[10px]
+              font-black uppercase
+              tracking-[0.28em]
+              text-slate-500
+            "
+          >
+            CUSTOM STAKE
+          </div>
+
+          <div
+            className="
+              mt-3 flex
+              min-h-[5.75rem]
+              items-center
+              rounded-[1.45rem]
+              border border-white/[0.085]
+              bg-black/20
+              px-5
+              transition
+              focus-within:border-amber-200/30
+              focus-within:bg-black/30
+              focus-within:shadow-[0_0_0_1px_rgba(251,191,36,0.05),0_18px_42px_rgba(0,0,0,0.20)]
+            "
+          >
+            <input
+              id={inputId}
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={
+                activeSelection
+                  ? customDraft
+                  : ""
+              }
+              onChange={(event) => {
+                if (
+                  !activeSelection
+                ) {
+                  return;
+                }
+
+                const digits =
+                  event.target.value
+                    .replace(
+                      /[^0-9]/g,
+                      "",
+                    )
+                    .slice(0, 6);
+
+                setCustomDraft(
+                  digits,
+                );
+
+                onStakeChange(
+                  digits
+                    ? Number.parseInt(
+                        digits,
+                        10,
+                      )
+                    : 0,
+                );
+              }}
+              disabled={
+                !activeSelection ||
+                !canEdit
+              }
+              placeholder="Enter amount"
+              aria-label="Custom WOLO stake"
+              className="
+                min-w-0 flex-1
+                bg-transparent
+                text-2xl font-black
+                tracking-[-0.03em]
+                text-white
+                outline-none
+                placeholder:text-slate-700
+                disabled:cursor-not-allowed
+                sm:text-3xl
+              "
+            />
+
+            <label
+              htmlFor={inputId}
+              className="
+                ml-4 cursor-text
+                select-none
+                text-xs font-black
+                uppercase
+                tracking-[0.24em]
+                text-amber-200/65
+              "
+            >
+              WOLO
+            </label>
+          </div>
+        </div>
+
+        <div
           className="
-            min-w-0 flex-1
-            bg-transparent
-            text-right text-xs
-            text-white outline-none
-            placeholder:text-slate-600
-            disabled:cursor-not-allowed
-          "
-        />
-
-        <label
-          htmlFor={inputId}
-          className="
-            ml-2 cursor-text
-            text-[9px]
-            font-black uppercase
-            tracking-[0.18em]
-            text-slate-600
+            flex flex-col
+            rounded-[1.55rem]
+            border border-white/[0.07]
+            bg-black/20
+            p-5
+            sm:p-6
           "
         >
-          W
-        </label>
+          <div
+            className="
+              text-[10px]
+              font-black uppercase
+              tracking-[0.28em]
+              text-slate-500
+            "
+          >
+            YOUR TICKET
+          </div>
+
+          <div
+            className="
+              mt-5 space-y-4
+            "
+          >
+            <div
+              className="
+                flex items-end
+                justify-between gap-4
+                border-b
+                border-white/[0.06]
+                pb-4
+              "
+            >
+              <span
+                className="
+                  text-sm
+                  text-slate-400
+                "
+              >
+                Stake
+              </span>
+
+              <span
+                className="
+                  text-xl font-black
+                  text-white
+                "
+              >
+                {activeStake > 0
+                  ? activeStake.toLocaleString()
+                  : "—"}
+                {activeStake > 0 ? (
+                  <span
+                    className="
+                      ml-1.5
+                      text-[10px]
+                      uppercase
+                      tracking-[0.18em]
+                      text-slate-500
+                    "
+                  >
+                    WOLO
+                  </span>
+                ) : null}
+              </span>
+            </div>
+
+            <div
+              className="
+                flex items-end
+                justify-between gap-4
+                border-b
+                border-white/[0.06]
+                pb-4
+              "
+            >
+              <span
+                className="
+                  text-sm
+                  text-slate-400
+                "
+              >
+                Projected return
+              </span>
+
+              <span
+                className="
+                  text-xl font-black
+                  text-emerald-200
+                "
+              >
+                {activeSelection &&
+                activeStake > 0
+                  ? formatCompact(
+                      projectedReturn,
+                    )
+                  : "—"}
+
+                {activeSelection &&
+                activeStake > 0 ? (
+                  <span
+                    className="
+                      ml-1.5
+                      text-[10px]
+                      uppercase
+                      tracking-[0.18em]
+                      text-emerald-200/50
+                    "
+                  >
+                    WOLO
+                  </span>
+                ) : null}
+              </span>
+            </div>
+
+            <div
+              className="
+                flex items-start
+                justify-between gap-4
+              "
+            >
+              <span
+                className="
+                  text-sm
+                  text-slate-400
+                "
+              >
+                Pick
+              </span>
+
+              <span
+                className="
+                  max-w-[60%]
+                  text-right
+                  text-sm font-semibold
+                  text-white
+                "
+              >
+                {selectedName ?? "Choose a team"}
+              </span>
+            </div>
+          </div>
+
+          <div
+            className="
+              mt-auto pt-6
+            "
+          >
+            {stakeError ? (
+              <div
+                className="
+                  mb-3
+                  rounded-xl
+                  border border-rose-200/10
+                  bg-rose-500/[0.06]
+                  px-3 py-2.5
+                  text-xs
+                  leading-5
+                  text-rose-200
+                "
+              >
+                {stakeError}
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={onLock}
+              disabled={
+                !activeSelection ||
+                Boolean(
+                  stakeError,
+                ) ||
+                !canEdit ||
+                lockWorking
+              }
+              title={
+                stakeError ||
+                statusCopy
+              }
+              className={`
+                relative
+                flex min-h-[4.5rem]
+                w-full
+                items-center
+                justify-center
+                overflow-hidden
+                rounded-[1.3rem]
+                border
+                px-5
+                text-sm
+                font-black
+                uppercase
+                tracking-[0.12em]
+                transition
+                duration-200
+                active:scale-[0.99]
+                ${
+                  canEdit &&
+                  activeSelection &&
+                  !stakeError
+                    ? `
+                        border-amber-200/30
+                        bg-[linear-gradient(135deg,#fff3b0_0%,#f7cf67_26%,#dca735_62%,#8a5a0a_100%)]
+                        text-slate-950
+                        shadow-[0_18px_46px_rgba(245,158,11,0.18)]
+                        hover:brightness-105
+                      `
+                    : `
+                        border-white/[0.07]
+                        bg-white/[0.04]
+                        text-slate-500
+                      `
+                }
+                ${
+                  !activeSelection ||
+                  Boolean(
+                    stakeError,
+                  ) ||
+                  !canEdit ||
+                  lockWorking
+                    ? "cursor-not-allowed opacity-55"
+                    : ""
+                }
+              `}
+            >
+              {lockWorking
+                ? "LOCKING…"
+                : canEdit
+                  ? lockLabel
+                  : "BETTING CLOSED"}
+            </button>
+
+            {selectedExisting &&
+            !onchainLocked ? (
+              <button
+                type="button"
+                onClick={() =>
+                  onClear(
+                    market.id,
+                  )
+                }
+                disabled={
+                  workingKey ===
+                  `clear-${market.id}`
+                }
+                className="
+                  mt-3
+                  w-full
+                  rounded-xl
+                  border border-white/[0.06]
+                  bg-white/[0.025]
+                  px-4 py-3
+                  text-xs
+                  font-semibold
+                  text-slate-400
+                  transition
+                  hover:border-white/[0.11]
+                  hover:bg-white/[0.05]
+                  hover:text-white
+                  disabled:cursor-not-allowed
+                  disabled:opacity-40
+                "
+              >
+                {workingKey ===
+                `clear-${market.id}`
+                  ? "Clearing…"
+                  : "Clear slip"}
+              </button>
+            ) : null}
+          </div>
+        </div>
       </div>
-    </div>
+    </section>
   );
 }
-
 
 function InstrumentDesyncControl({
   market,
@@ -6532,217 +7132,93 @@ function BetSlipComposer({
         data-testid="bets-e4-instrument"
         aria-label="Betting controls"
         className="
-          mt-6
-          border-y border-white/[0.055]
-          bg-black/[0.12]
-          px-2 py-3
-          sm:px-3
+          mt-7
         "
       >
-        <div
-          className="
-            flex min-w-0
-            flex-col gap-2.5
-            xl:flex-row
-            xl:items-center
-          "
-        >
-          <InstrumentStakeRail
-            activeSelection={
-              activeSelection
-            }
-            canEdit={canEdit}
-            onStakeChange={
-              onStakeChange
-            }
-          />
+        <PremiumStakeComposer
+          market={market}
+          activeSelection={
+            activeSelection
+          }
+          canEdit={canEdit}
+          projectedReturn={
+            projectedReturn
+          }
+          statusCopy={
+            statusCopy
+          }
+          stakeError={
+            stakeError
+          }
+          lockLabel={
+            lockLabel
+          }
+          workingKey={
+            workingKey
+          }
+          onchainLocked={
+            onchainLocked
+          }
+          onStakeChange={
+            onStakeChange
+          }
+          onLock={onLock}
+          onClear={onClear}
+        />
 
-          {desyncMarket &&
-          onDesyncSideChange &&
-          onDesyncStakeChange ? (
-            <>
-              <span
-                className="
-                  hidden h-6 w-px
-                  shrink-0
-                  bg-white/[0.065]
-                  xl:block
-                "
-              />
-
-              <InstrumentDesyncControl
-                market={
-                  desyncMarket
-                }
-                activeSelection={
-                  activeSelection
-                }
-                canEdit={canEdit}
-                workingKey={
-                  workingKey
-                }
-                maxStakeWolo={
-                  maxStakeWolo
-                }
-                projectedReturn={
-                  desyncProjectedReturn ??
-                  0
-                }
-                onSideChange={
-                  onDesyncSideChange
-                }
-                onStakeChange={
-                  onDesyncStakeChange
-                }
-                onClear={onClear}
-              />
-            </>
-          ) : null}
-
-          <span
-            className="
-              hidden h-6 w-px
-              shrink-0
-              bg-white/[0.065]
-              xl:block
-            "
-          />
-
+        {desyncMarket &&
+        onDesyncSideChange &&
+        onDesyncStakeChange ? (
           <div
             className="
-              flex shrink-0
-              items-center gap-2
+              mt-4
+              rounded-[1.5rem]
+              border border-white/[0.06]
+              bg-black/[0.14]
+              px-5 py-4
+              sm:px-6
             "
           >
             <div
               className="
-                flex h-9 min-w-[6.5rem]
-                items-center justify-center
-                rounded-full
-                border border-white/[0.06]
-                bg-white/[0.02]
-                px-3
-                text-xs
-                text-slate-400
+                mb-3
+                text-[10px]
+                font-black uppercase
+                tracking-[0.28em]
+                text-slate-600
               "
-              title="Projected return"
             >
-              {activeSelection ? (
-                <>
-                  <span
-                    className="
-                      mr-1 text-emerald-300/70
-                    "
-                  >
-                    ↗
-                  </span>
-
-                  <span
-                    className="
-                      font-semibold
-                      text-white
-                    "
-                  >
-                    {formatCompact(
-                      projectedReturn,
-                    )}
-                  </span>
-
-                  <span
-                    className="
-                      ml-1 text-[9px]
-                      text-slate-600
-                    "
-                  >
-                    W
-                  </span>
-                </>
-              ) : (
-                <span>—</span>
-              )}
+              OPTIONAL · DESYNC SIDE BET
             </div>
 
-            {market.viewerWager &&
-            !onchainLocked ? (
-              <button
-                type="button"
-                onClick={() =>
-                  onClear(market.id)
-                }
-                disabled={
-                  workingKey ===
-                  `clear-${market.id}`
-                }
-                aria-label="Clear wager"
-                title="Clear wager"
-                className="
-                  grid h-9 w-9
-                  place-items-center
-                  rounded-full
-                  border border-white/[0.06]
-                  bg-white/[0.02]
-                  text-sm text-slate-600
-                  transition
-                  hover:bg-white/[0.05]
-                  hover:text-white
-                "
-              >
-                ×
-              </button>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={onLock}
-              title={
-                stakeError ||
-                statusCopy
+            <InstrumentDesyncControl
+              market={
+                desyncMarket
               }
-              disabled={
-                !activeSelection ||
-                Boolean(stakeError) ||
-                !canEdit ||
-                workingKey ===
-                  `lock-${market.id}`
+              activeSelection={
+                activeSelection
               }
-              className={`
-                inline-flex h-10
-                min-w-[8.5rem]
-                items-center
-                justify-center
-                rounded-full
-                px-5
-                text-xs
-                font-bold
-                transition
-                ${edgeButton("gold")}
-                ${
-                  !activeSelection ||
-                  Boolean(stakeError) ||
-                  !canEdit ||
-                  workingKey ===
-                    `lock-${market.id}`
-                    ? "opacity-45"
-                    : ""
-                }
-              `}
-            >
-              {workingKey ===
-              `lock-${market.id}`
-                ? "…"
-                : lockLabel}
-            </button>
-          </div>
-        </div>
-
-        {stakeError ? (
-          <div
-            className="
-              mt-2 text-[11px]
-              text-rose-200
-            "
-          >
-            {stakeError}
+              canEdit={
+                canEdit
+              }
+              workingKey={
+                workingKey
+              }
+              maxStakeWolo={
+                maxStakeWolo
+              }
+              projectedReturn={
+                desyncProjectedReturn ??
+                0
+              }
+              onSideChange={
+                onDesyncSideChange
+              }
+              onStakeChange={
+                onDesyncStakeChange
+              }
+              onClear={onClear}
+            />
           </div>
         ) : null}
       </section>
