@@ -582,3 +582,32 @@ financial/Wolo invariant -> full-corpus truth audit -> durable receipt`
 Do not reuse stale corpus totals as current truth. The Watcher is live and may
 change the denominator between campaigns.
 <!-- AOE2WAR:REPLAY_TRUTH_SCALAR_AUTHORITY_CLOSURE_20260904:END -->
+
+<!-- AOE2WAR:REPLAY_TRUTH_OS_V1_20260904:START -->
+## Replay Truth OS V1 — 2026-09-04
+
+The recurring production replay-truth forensic workflow is now promoted into
+the AoE2WAR operator OS.
+
+The first read-only command family is:
+
+- `aoe2war truth status`;
+- `aoe2war truth census`;
+- `aoe2war truth audit`;
+- `aoe2war truth target GAME_ID`.
+
+Census, audit and target run through the protected root production boundary,
+force `AOE2WAR_PROD_DB_PREVIEW=true`, require PostgreSQL itself to confirm
+transaction read-only mode, and prove production Git/service/Wolo boundaries
+unchanged afterward.
+
+Successful live commands write durable local receipts under
+`.aoe2war-release/truth-receipts/`.
+
+The OS tracks team debt and result debt independently and makes the
+high-level-statistics versus coherent-participant-W/L corpus contract a
+repeatable operator command instead of a one-off shell forensic.
+
+Replay Truth OS V1 is read-only. It has no projection, adjudication, betting,
+settlement, claim, payout or Wolo mutation command.
+<!-- AOE2WAR:REPLAY_TRUTH_OS_V1_20260904:END -->

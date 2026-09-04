@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8334ed8321b85db5386855de8cf6003e444aa07c56f5d4562c83642b40f72db8",
+      "sha256": "088470fca1dd445773740c8a012f02c03d2be24e0327c08af6bee001d633d343",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -542,7 +542,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-04",
       "sensitivity": "internal",
-      "sha256": "8e204207f4856e87c7d67f1e764438bbe975419ed15dac83d6df2be61712c860",
+      "sha256": "89b6bdd10859d241f88ad4e5a33add40970cd4f6ace81f6f28ad9950e6f6d7e2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1311,6 +1311,30 @@
       ],
       "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "operational-procedure",
+      "id": "aoe2war.app-prodn.docs-replay-truth-os",
+      "owner": "aoe2war-web",
+      "path": "docs/REPLAY_TRUTH_OS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-09-04",
+      "sensitivity": "restricted",
+      "sha256": "bc6bd2bca69f819a3b9844329ed6040387207ab6a7240df648118f71b9eb6fc9",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "AoE2WAR Replay Truth OS",
+      "type": "runbook"
     },
     {
       "audience": [

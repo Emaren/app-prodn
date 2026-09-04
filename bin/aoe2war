@@ -77,6 +77,7 @@ RECOVERY_OS="$BIN_DIR/../scripts/aoe2_recovery.py"
 SPEED_PULSE="$BIN_DIR/../scripts/aoe2_speed_pulse.py"
 FACTS="$BIN_DIR/../scripts/aoe2_facts.py"
 DEV_OS="$BIN_DIR/../scripts/aoe2_dev.py"
+TRUTH_OS="$BIN_DIR/../scripts/aoe2_truth.py"
 DEPENDENCY_CHECK="$BIN_DIR/../scripts/check_dependency_contract.py"
 
 usage() {
@@ -97,6 +98,7 @@ Usage:
   aoe2war workspace <status|plan|clean> [options]
   aoe2war facts [--json]
   aoe2war dev <status|prepare|refresh|serve|new> [options]
+  aoe2war truth <status|census|audit|target> [options]
   aoe2war deps
   aoe2war host <status|tidy|maintenance-plan> [options]
   aoe2war recovery <status|plan> [options]
@@ -285,6 +287,24 @@ KINGDOM INTELLIGENCE / HYGIENE
   aoe2war recovery plan
       Show the exact fail-closed steps required before host patch/reboot work.
 
+REPLAY TRUTH
+
+  aoe2war truth status
+      Show the newest durable Replay Truth OS receipt without querying
+      production.
+
+  aoe2war truth census
+      Run a hard read-only production corpus census for team composition,
+      winner/loser coverage, unknown participant debt and routing cohorts.
+
+  aoe2war truth audit
+      Prove the full production cross-layer contract between high-level
+      statistics authority and coherent participant W/L projection.
+
+  aoe2war truth target GAME_ID
+      Show one replay's effective truth, canonical teams, participant outcomes,
+      parser evidence, accepted projection, adjudication and exact blocker.
+
 NORMAL RHYTHM
 
   Before work:
@@ -367,6 +387,10 @@ case "$command" in
   dev)
     shift
     exec python3 "$DEV_OS" "$@"
+    ;;
+  truth)
+    shift
+    exec python3 "$TRUTH_OS" "$@"
     ;;
   deps)
     shift
