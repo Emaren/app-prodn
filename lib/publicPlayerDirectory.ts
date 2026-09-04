@@ -1,10 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import type { CommunityBadge } from "@/lib/communityHonors";
-import {
-  isWatcherCurrentRatingSource,
-  parseReplayRatingObservation,
-  shouldReplaceCurrentReplayRating,
-} from "@/lib/playerRatingRecency";
 import { normalizeManagedMediaTarget } from "@/lib/managedMediaAssets";
 
 import {
@@ -41,6 +36,9 @@ import {
 import {
   loadPublicLeaderboardRawGames,
 } from "@/lib/publicLeaderboardGameCorpus";
+import {
+  loadCurrentWatcherAccountStates,
+} from "@/lib/currentWatcherAccountState";
 import { userIsOnline } from "@/lib/userOnlinePresence";
 
 export type PublicPlayerReplayEvidence = {
@@ -207,75 +205,6 @@ function updateLastPlayedAt(entry: PublicPlayerDirectoryEntry, nextPlayedAt: Dat
   }
 }
 
-function updateSteamRatings(
-  entry: PublicPlayerDirectoryEntry,
-  player: Record<string, unknown>,
-  ratingPlayedOn: Date | string | null,
-  identitySteamId: string | null,
-) {
-  const steamId =
-    entry.identityKind === "steam"
-      ? identitySteamId
-      : null;
-  const steamRmRating = readPlayerSteamRmRating(player);
-  const steamDmRating = readPlayerSteamDmRating(player);
-
-  if (!steamId && steamRmRating === null && steamDmRating === null) {
-    return;
-  }
-
-  if (steamId && !entry.steamId) {
-    entry.steamId = steamId;
-  }
-
-  if (
-    steamRmRating === null &&
-    steamDmRating === null
-  ) {
-    return;
-  }
-
-  const currentHasRating =
-    entry.steamRmRating !== null ||
-    entry.steamDmRating !== null;
-
-  const shouldReplace =
-    shouldReplaceCurrentReplayRating({
-      currentHasRating,
-      currentObservedAt:
-        entry.ratingLastSeenAt,
-      nextPlayedOn:
-        ratingPlayedOn,
-    });
-
-  if (!shouldReplace) {
-    return;
-  }
-
-  const observation =
-    parseReplayRatingObservation(
-      ratingPlayedOn,
-    );
-
-  entry.steamId =
-    steamId ?? entry.steamId;
-
-  if (steamRmRating !== null) {
-    entry.steamRmRating =
-      steamRmRating;
-  }
-
-  if (steamDmRating !== null) {
-    entry.steamDmRating =
-      steamDmRating;
-  }
-
-  if (observation) {
-    entry.ratingLastSeenAt =
-      observation.iso;
-  }
-}
-
 function compareOfficialRatings(left: PublicPlayerDirectoryEntry, right: PublicPlayerDirectoryEntry) {
   const leftSteam = left.steamRmRating ?? Number.NEGATIVE_INFINITY;
   const rightSteam = right.steamRmRating ?? Number.NEGATIVE_INFINITY;
@@ -421,6 +350,15 @@ export async function loadPublicPlayerDirectoryFresh(
   prisma: PrismaClient
 ): Promise<PublicPlayerDirectory> {
   const onlineSampleAt = Date.now();
+
+  /*
+   * Current Watcher state is independent from the historical final-game
+   * corpus, so start it beside the larger history read.
+   */
+  const currentWatcherAccountStatesPromise =
+    loadCurrentWatcherAccountStates(
+      prisma,
+    );
 
   const [
     users,
@@ -807,30 +745,6 @@ export async function loadPublicPlayerDirectoryFresh(
       steamDmRating,
     });
 
-    /*
-     * The leaderboard's big Steam rating is current-Watcher truth.
-     *
-     * Manual/browser/file uploads remain valid historical evidence,
-     * but they cannot redefine the player's current official rating.
-     *
-     * Among Watcher observations, played_on remains the chronology
-     * authority so a newly parsed historical Watcher replay cannot
-     * outrank a genuinely newer Watcher-seen battle.
-     */
-    if (
-      player &&
-      isWatcherCurrentRatingSource(
-        game.parse_source,
-      )
-    ) {
-      updateSteamRatings(
-        entry,
-        player,
-        game.played_on,
-        steamId,
-      );
-    }
-
     updateLastPlayedAt(
       entry,
       playedAt,
@@ -876,6 +790,85 @@ export async function loadPublicPlayerDirectoryFresh(
         },
       );
     }
+  }
+
+  /*
+   * Overlay current exact-Steam account state after historical replay
+   * accounting is complete.
+   *
+   * This rail never changes W/L, replay counts, or accepted history.
+   * It owns only current presentation and current rating.
+   */
+  const currentWatcherAccountStates =
+    await currentWatcherAccountStatesPromise;
+
+  for (
+    const state of
+    currentWatcherAccountStates
+  ) {
+    const entry =
+      directory.get(
+        `steam:${state.steamId}`,
+      );
+
+    /*
+     * Current telemetry may enrich an already accepted account identity,
+     * but raw live telemetry does not create a brand-new public identity.
+     */
+    if (!entry) {
+      continue;
+    }
+
+    const currentName =
+      normalizeLeaderboardDisplayName(
+        state.latestObservedName,
+      );
+
+    if (
+      currentName &&
+      isSafePublicReplayObservedName(
+        currentName,
+      )
+    ) {
+      pushAlias(
+        entry,
+        currentName,
+      );
+
+      entry.latestObservedName =
+        currentName;
+
+      if (!entry.claimed) {
+        entry.name =
+          currentName;
+        entry.href =
+          buildReplayPlayerHref(
+            currentName,
+          );
+      }
+    }
+
+    if (
+      state.steamRmRating !== null
+    ) {
+      entry.steamRmRating =
+        state.steamRmRating;
+    }
+
+    if (
+      state.steamDmRating !== null
+    ) {
+      entry.steamDmRating =
+        state.steamDmRating;
+    }
+
+    entry.ratingLastSeenAt =
+      state.ratingObservedAt;
+
+    updateLastPlayedAt(
+      entry,
+      state.lastObservedAt,
+    );
   }
 
   for (const entry of directory.values()) {

@@ -295,6 +295,12 @@ const snapshots = [
 ];
 
 const prisma = {
+  /*
+   * This historical-directory fixture intentionally supplies no independent
+   * current Watcher account-state observations.
+   */
+  $queryRaw: async () => [],
+
   user: {
     findMany: async () => users,
   },

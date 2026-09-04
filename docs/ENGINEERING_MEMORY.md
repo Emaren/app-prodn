@@ -364,7 +364,8 @@ presentation fallback clock to decide which embedded Steam RM/DM rating is
 current.
 
 The current-rating clock is trustworthy replay `played_on`. Undated historical
-uploads may bootstrap a missing rating but cannot overwrite an existing one.
+observations may remain historical evidence, but they may neither establish nor
+overwrite current rating.
 
 Keep historical-match truth and current-rating truth separate:
 
@@ -378,6 +379,24 @@ Watcher import, and recovery paths.
 
 Profile presentation must not bypass the shared chronology-aware rating
 projection by reading whichever replay row happens to appear first.
+
+Current exact-Steam account state has its own projection boundary:
+
+- historical W/L, replay counts, accepted result evidence, and historical name
+  evidence remain on the accepted final replay corpus;
+- current name and current RM/DM may consume both `watcher_live` and
+  `watcher_final`;
+- current-state observations require an exact SteamID64 and a real
+  `played_on`;
+- never broaden the historical final-only corpus merely to recover a newer
+  current rating;
+- never substitute upload time, parser time, acceptance time, or `created_at`
+  for missing current-state chronology.
+
+A test double exercising the public player directory must model the
+current-Watcher-state query explicitly, even when that model is simply an empty
+`$queryRaw` result. Do not weaken production provenance rules to accommodate an
+older mock shape.
 
 ### Current state must have a stronger source than historical evidence
 

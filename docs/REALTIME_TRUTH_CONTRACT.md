@@ -585,3 +585,25 @@ history but cannot redefine the current rating.
 Among eligible Watcher observations, replay `played_on` is the chronology
 authority. Upload time, parse time, and database creation time do not outrank
 the actual battle date.
+
+### Current Watcher account-state rail
+
+Historical replay truth and current account truth are separate projections.
+
+Historical W/L, replay counts, result evidence, and name history continue to
+use accepted public replay projections.
+
+Current exact-Steam account presentation uses the newest dated
+`watcher_live` / `watcher_final` observations directly from `game_stats`.
+Current name, RM, and DM are selected by exact SteamID64 and actual
+`played_on` chronology.
+
+`watcher_live` may therefore update current account state without becoming
+historical W/L truth.
+
+Upload time, parse time, acceptance time, database creation time, manual
+uploads, browser uploads, file uploads, batch imports, and undated replay
+observations cannot establish or replace current account rating.
+
+Current-state telemetry may enrich an already accepted exact-Steam public
+identity but does not create a new public identity by itself.

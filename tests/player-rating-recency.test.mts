@@ -64,7 +64,7 @@ test(
 );
 
 test(
-  "undated replay may bootstrap only an identity with no known rating",
+  "undated replay cannot establish current rating",
   () => {
     assert.equal(
       shouldReplaceCurrentReplayRating({
@@ -72,7 +72,7 @@ test(
         currentObservedAt: null,
         nextPlayedOn: null,
       }),
-      true,
+      false,
     );
   },
 );
@@ -291,12 +291,17 @@ test(
 
     assert.match(
       directory,
-      /isWatcherCurrentRatingSource\(\s*game\.parse_source/,
+      /loadCurrentWatcherAccountStates/,
     );
 
     assert.match(
       directory,
-      /updateSteamRatings\([\s\S]*game\.played_on/,
+      /steam:\$\{state\.steamId\}/,
+    );
+
+    assert.match(
+      directory,
+      /entry\.ratingLastSeenAt\s*=\s*state\.ratingObservedAt/,
     );
 
     assert.match(

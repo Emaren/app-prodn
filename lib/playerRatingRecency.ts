@@ -53,11 +53,11 @@ export function parseReplayRatingObservation(
 }
 
 /*
- * An undated replay may bootstrap an identity with no known rating.
+ * Current rating requires a real replay-event clock.
  *
- * Once a rating exists, an undated historical import can never replace it.
- * A dated observation may replace an undated bootstrap or an older dated
- * observation.
+ * An undated observation may remain historical evidence, but it can neither
+ * establish nor replace current rating. A dated observation may replace an
+ * older dated observation or repair a legacy undated bootstrap.
  */
 export function shouldReplaceCurrentReplayRating(input: {
   currentHasRating: boolean;
@@ -70,7 +70,7 @@ export function shouldReplaceCurrentReplayRating(input: {
     );
 
   if (!next) {
-    return !input.currentHasRating;
+    return false;
   }
 
   const current =
