@@ -159,9 +159,9 @@ rebuildable from Git/release evidence.
 Recovery selection must preserve irreplaceable mutable truth, not blindly clone
 regenerable runtime generations.
 
-## Betting Fairness V1.1 and Betting Phase Books V2
+## Betting Fairness V1.2 and Betting Phase Books V2
 
-Current production uses the Betting Fairness V1.1 compatibility bridge.
+Current production uses the Betting Fairness V1.2 compatibility bridge.
 
 Scheduled/challenge winner books remain pre-game only. Unscheduled
 Watcher-discovered winner books admit fresh winner bets while their canonical
@@ -255,8 +255,9 @@ The E4 horizontal `InstrumentStakeRail` has been removed and replaced with
 The composer consumes the canonical projected `market.bettingOpen` authority
 and does not invent financial eligibility in the browser.
 
-Betting Fairness V1.1 subsequently restored fresh winner betting for
-unscheduled Watcher markets while canonical status is `open` or `live`.
+Betting Fairness V1.1 first restored fresh winner betting for unscheduled
+Watcher markets while canonical status is `open` or `live`. Betting Fairness
+V1.2 extends the same active-window admission to Watcher-born Desync.
 `buildFreshBetMarketWriteWhere()` independently mirrors that admission at the
 transactional database-write boundary.
 
@@ -299,12 +300,12 @@ The old Betting Fairness V1 rule treated that market as permanently too late,
 which disabled both Team A / Team B selection and real transactional wager
 admission.
 
-V1.1 permits fresh winner bets while such an unscheduled Watcher market is
-`open` or `live`.
+V1.2 permits fresh winner bets and Watcher-born Desync bets while their
+canonical market remains `open` or `live`.
 
-Scheduled/challenge markets retain their strict pre-game cutoff. Desync remains
-closed to fresh post-start money. Closing/proof/review/terminal states fail
-closed.
+Scheduled/challenge winner markets retain their strict pre-game cutoff.
+Closing, final-proof, review, settled, and voided states fail closed for both
+winner and Desync fresh commitments.
 
 Never repair this only in the frontend. The public `bettingOpen` projection and
 the transactional `buildFreshBetMarketWriteWhere()` fence must remain aligned.
@@ -314,3 +315,42 @@ The direct Node test runner must use
 modules. A raw `node --test` failure with `ERR_MODULE_NOT_FOUND` for `@/lib`
 is a test-harness invocation error, not evidence that the financial patch
 failed.
+
+### Watcher-live Desync admission boundary
+
+Watcher-born Desync is a live proposition, not a pre-game book.
+
+Fresh Desync bets are allowed only while canonical Watcher truth keeps the
+child market in `open` or `live`.
+
+The cutoff is **not settlement completion**. The cutoff is the first
+authoritative lifecycle transition out of active battle truth, including
+`closing`, `awaiting_final_proof`, `under_review`, `settled`, or `voided`.
+
+This matches winner-live admission and guarantees that a stale browser cannot
+continue admitting money after Watcher/parser/finality has detected that the
+battle is no longer active.
+
+Detached/manual Desync rows fail closed. Post-broadcast recovery remains a
+separate proof rail and cannot reopen Desync after the active window closes.
+
+Public `bettingOpen` and the transactional
+`buildFreshBetMarketWriteWhere()` guard must always change together.
+
+### Betting-domain release risk classification
+
+Financial risk classification must follow the domain boundary, not one historical
+filename.
+
+Betting implementation paths such as `lib/bet*`, `lib/desync*`, Betting Hall
+routes, and betting/desync regression tests are `FINANCIAL` release scope.
+
+This lesson was captured after the V1.2 live-Desync change was incorrectly
+reported by Documentation OS as `APPLICATION` even though it changed fresh-money
+admission.
+
+A financial betting change must therefore automatically trigger the high-risk
+Documentation OS semantic-review and Engineering Memory requirements.
+
+Do not rely on an operator or AI remembering that a newly named betting file is
+financial.

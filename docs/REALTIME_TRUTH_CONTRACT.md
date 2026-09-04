@@ -554,3 +554,21 @@ TTL expirations, dropped fanout, response bytes, reconnects, event-loop delay,
 process memory, and file descriptors. `/api/admin/kingdom-presence` exposes the
 in-process counters to authenticated operators. Do not log or export exact
 actor positions, public IDs, raw paths, queries, or per-user movement history.
+
+## Betting active-window admission
+
+Watcher-linked betting uses lifecycle truth as a money boundary.
+
+While a canonical Watcher battle remains `open` or `live`, the current
+compatibility lane may accept fresh winner commitments and fresh bets on its
+attached Desync proposition.
+
+The first authoritative transition out of `open`/`live` closes both fresh-money
+surfaces. `closing`, `awaiting_final_proof`, `under_review`, `settled`, and
+`voided` are never fresh-admission states.
+
+The browser is only a projection. Both public `bettingOpen` and the final
+transactional database write independently enforce the same lifecycle fence.
+
+This active-window compatibility behavior precedes the future independent
+Pre-Game, Opening Minute, and Late Book economics.

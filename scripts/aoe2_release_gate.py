@@ -181,6 +181,18 @@ def path_risk(path: str) -> str:
     if p.startswith("prisma/") or p == "prisma.config.ts":
         return "DATABASE"
 
+    financial_prefixes = (
+        "lib/bet",
+        "lib/desync",
+        "app/api/bets/",
+        "app/bets/",
+        "tests/bet",
+        "tests/betting",
+        "tests/desync",
+    )
+    if p.startswith(financial_prefixes):
+        return "FINANCIAL"
+
     financial_tokens = (
         "settlement",
         "financial-authority",

@@ -186,7 +186,7 @@ test(
 );
 
 test(
-  "Desync cannot become a post-start betting loophole",
+  "Watcher Desync accepts fresh bets only while battle truth remains active",
   () => {
     for (const status of [
       "open",
@@ -197,14 +197,55 @@ test(
           {
             marketType: "desync",
             status,
+            closeAt: null,
             linkedSessionKey:
               "watcher-session-123",
+            scheduledMatchId: null,
           },
           NOW
         ),
-        false
+        true,
+        status
       );
     }
+
+    for (const status of [
+      "closing",
+      "awaiting_final_proof",
+      "under_review",
+      "settled",
+      "voided",
+    ]) {
+      assert.equal(
+        isFreshBetMarketWagerable(
+          {
+            marketType: "desync",
+            status,
+            closeAt: null,
+            linkedSessionKey:
+              "watcher-session-123",
+            scheduledMatchId: null,
+          },
+          NOW
+        ),
+        false,
+        status
+      );
+    }
+
+    assert.equal(
+      freshBettingCloseReason(
+        {
+          marketType: "desync",
+          status: "open",
+          closeAt: null,
+          linkedSessionKey: null,
+          scheduledMatchId: null,
+        },
+        NOW
+      ),
+      "market_type_not_wagerable"
+    );
   }
 );
 
@@ -335,6 +376,11 @@ test(
     assert.match(
       serialized,
       /"linkedSessionKey":\{"not":null\}/
+    );
+
+    assert.match(
+      serialized,
+      /"marketType":\{"in":\["winner","desync"\]\}/
     );
   }
 );

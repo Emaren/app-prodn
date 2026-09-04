@@ -78,7 +78,7 @@ test("durable memory carries Replay Durability and index closure", () => {
   );
 });
 
-test("Betting V2 preserves separate future phase books while V1.1 compatibility is live", () => {
+test("Betting V2 preserves future phase books while V1.2 active-window compatibility is live", () => {
   assert.match(
     betting,
     /three independent winner books/,
@@ -101,11 +101,16 @@ test("Betting V2 preserves separate future phase books while V1.1 compatibility 
 
   assert.match(
     betting,
-    /Current production uses the Betting Fairness V1\.1 compatibility bridge/,
+    /Current production uses the Betting Fairness V1\.2 compatibility bridge/,
   );
 
   assert.match(
     betting,
-    /not the final phase-book architecture/,
+    /Watcher-born Desync proposition uses the same authoritative active window/,
+  );
+
+  assert.match(
+    betting,
+    /not the final phase-book\s+architecture/,
   );
 });

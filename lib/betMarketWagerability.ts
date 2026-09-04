@@ -3,6 +3,7 @@ import type {
 } from "@/lib/generated/prisma";
 
 import {
+  DESYNC_SIDE_MARKET_TYPE,
   WINNER_MARKET_TYPE,
 } from "@/lib/desyncSideMarket";
 
@@ -65,8 +66,8 @@ function hasScheduledMatchIdentity(
  * - Scheduled competitive betting remains pre-game only.
  * - Unscheduled watcher winner markets are compatibility live books and may
  *   accept fresh stakes while the market remains authoritatively open/live.
- * - Desync side markets are currently born only from live watcher battles
- *   and therefore cannot accept fresh stakes in V1.
+ * - Watcher-born Desync propositions share that authoritative active window.
+ *   They close with battle finality; recovery does not reopen them.
  * - Scheduled markets must have a real cutoff and must be strictly before it.
  * - Plain manual/static open markets may remain open without closeAt.
  *
@@ -85,13 +86,26 @@ export function freshBettingCloseReason(
     return "market_not_open";
   }
 
-  if (
+  const marketType =
     normalizedText(
       market.marketType,
-    ) !==
+    );
+
+  const winnerMarket =
+    marketType ===
     normalizedText(
       WINNER_MARKET_TYPE,
-    )
+    );
+
+  const desyncMarket =
+    marketType ===
+    normalizedText(
+      DESYNC_SIDE_MARKET_TYPE,
+    );
+
+  if (
+    !winnerMarket &&
+    !desyncMarket
   ) {
     return "market_type_not_wagerable";
   }
@@ -112,23 +126,36 @@ export function freshBettingCloseReason(
       market.status,
     );
 
-  const unscheduledWatcherWinner =
+  /*
+   * Desync is a live Watcher proposition. A detached/manual Desync row must
+   * never manufacture a fresh-money book.
+   */
+  if (
+    desyncMarket &&
+    (
+      !linkedSessionKey ||
+      hasScheduledMatch
+    )
+  ) {
+    return "market_type_not_wagerable";
+  }
+
+  const unscheduledWatcherMarket =
     Boolean(
       linkedSessionKey &&
       !hasScheduledMatch,
     );
 
   /*
-   * Compatibility bridge:
+   * Watcher-active compatibility bridge:
    *
-   * An unscheduled watcher winner market does not exist before the Watcher
-   * discovers the battle. It may therefore accept fresh bets while the
-   * canonical market itself remains open/live.
+   * Winner and Desync propositions may accept fresh bets only while their
+   * canonical Watcher market remains open/live.
    *
-   * Scheduled markets retain their stricter pre-game start fence below.
+   * Scheduled winner books retain the stricter pre-game fence below.
    */
   if (
-    unscheduledWatcherWinner
+    unscheduledWatcherMarket
   ) {
     if (
       status !== "open" &&
@@ -212,19 +239,14 @@ export function buildFreshBetMarketWriteWhere(
   now = new Date(),
 ): Prisma.BetMarketWhereInput {
   return {
-    /*
-     * Desync remains outside fresh-money admission. Winner books alone
-     * participate in this compatibility bridge.
-     */
-    marketType:
-      WINNER_MARKET_TYPE,
-
     OR: [
       /*
-       * Scheduled/challenge book:
-       * open only and strictly before its authoritative cutoff.
+       * Scheduled/challenge winner book:
+       * pre-game only.
        */
       {
+        marketType:
+          WINNER_MARKET_TYPE,
         status:
           "open",
         scheduledMatchId: {
@@ -236,10 +258,11 @@ export function buildFreshBetMarketWriteWhere(
       },
 
       /*
-       * Manual/static winner book:
-       * no watcher identity and open only.
+       * Manual/static winner book.
        */
       {
+        marketType:
+          WINNER_MARKET_TYPE,
         status:
           "open",
         scheduledMatchId:
@@ -259,11 +282,18 @@ export function buildFreshBetMarketWriteWhere(
       },
 
       /*
-       * Unscheduled Watcher winner compatibility book:
-       * admission exists only while the canonical battle market remains
-       * open/live. An explicit closeAt, if one exists, is still honored.
+       * Active Watcher compatibility book.
+       *
+       * Both winner and Desync propositions are wagerable while canonical
+       * Watcher truth still says open/live.
        */
       {
+        marketType: {
+          in: [
+            WINNER_MARKET_TYPE,
+            DESYNC_SIDE_MARKET_TYPE,
+          ],
+        },
         status: {
           in: [
             "open",

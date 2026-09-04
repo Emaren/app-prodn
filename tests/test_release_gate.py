@@ -30,6 +30,21 @@ class ReleaseGateTests(unittest.TestCase):
             "FINANCIAL",
         )
 
+    def test_betting_domain_paths_are_financial_risk(self):
+        for item in (
+            "lib/betMarketWagerability.ts",
+            "lib/betStakeTickets.ts",
+            "lib/betWagering.ts",
+            "lib/desyncSideMarket.ts",
+            "tests/bet-market-wagerability.test.mts",
+            "tests/desync-side-market-wagering.test.mts",
+        ):
+            with self.subTest(item=item):
+                self.assertEqual(
+                    MODULE.path_risk(item),
+                    "FINANCIAL",
+                )
+
     def test_replay_truth_risk(self):
         self.assertEqual(
             MODULE.classify_risk(["lib/unresolvedWatcherResult.ts"]),

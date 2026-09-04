@@ -154,13 +154,13 @@ test(
 
 
 test(
-  "fresh Desync stake admission is closed and recovery cannot reopen it",
+  "fresh Desync uses the active Watcher fence while recovery remains separate",
   () => {
     /*
      * V1 has one fresh-money law:
      *
-     * - fresh admission uses the canonical pre-game DB fence;
-     * - current Desync propositions are live-born and excluded;
+     * - fresh admission uses the canonical transactional DB fence;
+     * - live-born Desync is admitted only while Watcher truth is open/live;
      * - post-broadcast recovery may cross lifecycle transitions only
      *   for a proposition that independently passes recovery proof;
      * - Desync is explicitly rejected by that recovery policy.
