@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `bb58c70d312a435d7950d53e34b936f7852d684f`
+Implementation baseline: `main` at `a548a78df9a274dcfc828212370f122e37158ac8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
