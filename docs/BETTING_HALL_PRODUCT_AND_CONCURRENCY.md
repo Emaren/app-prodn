@@ -172,9 +172,9 @@ Locked earlier books remain visible while later books operate.
 
 ### Presentation direction
 
-The current horizontal `InstrumentStakeRail` is being retired.
+The horizontal `InstrumentStakeRail` has been retired.
 
-The premium composer is vertical and tactile:
+The current premium composer is vertical and tactile:
 
 - large 10 / 25 / 50 / 100 WOLO stake tiles;
 - a large full-width custom amount field;

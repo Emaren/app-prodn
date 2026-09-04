@@ -78,7 +78,7 @@ test("durable memory carries Replay Durability and index closure", () => {
   );
 });
 
-test("Betting V2 uses separate phase books rather than one mixed pool", () => {
+test("Betting V2 preserves separate future phase books while V1.1 compatibility is live", () => {
   assert.match(
     betting,
     /three independent winner books/,
@@ -101,6 +101,11 @@ test("Betting V2 uses separate phase books rather than one mixed pool", () => {
 
   assert.match(
     betting,
-    /Current certified production remains Betting Fairness V1/,
+    /Current production uses the Betting Fairness V1\.1 compatibility bridge/,
+  );
+
+  assert.match(
+    betting,
+    /not the final phase-book architecture/,
   );
 });

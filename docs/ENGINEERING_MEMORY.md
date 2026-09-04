@@ -189,10 +189,11 @@ their wagers, pools, and settlement identity.
 Server timestamps and transactional write fences—not browser clocks—decide
 financial admission.
 
-The current horizontal `InstrumentStakeRail` is intentionally being retired.
-The replacement is a large vertical premium stake composer with tactile 10,
-25, 50, and 100 WOLO tiles, a full-width custom input, phase status/countdown,
-projected return, and a large phase-colored lock action.
+The horizontal `InstrumentStakeRail` has been retired.
+The current premium interaction is a large vertical composer with tactile 10,
+25, 50, and 100 WOLO tiles, a full-width custom input, projected return, and a
+large betting action. Future Phase Books V2 adds true phase identity/countdown
+once those independent financial books exist.
 
 Future Auto Bet Reserve evolves toward phase-specific presets backed by the
 separately reviewed prefunded Wolo custody architecture. Watcher telemetry alone
@@ -248,20 +249,20 @@ governed scripts may enforce their own internal fail-closed shell policy.
 
 ### Premium betting composer implementation status
 
-The Betting Phase Books V2 feature branch now contains its first visible
-product slice.
+The E4 horizontal `InstrumentStakeRail` has been removed and replaced with
+`PremiumStakeComposer` in certified production.
 
-The E4 horizontal `InstrumentStakeRail` was removed and replaced with
-`PremiumStakeComposer`.
+The composer consumes the canonical projected `market.bettingOpen` authority
+and does not invent financial eligibility in the browser.
 
-This slice is presentation-only. The page consumes the existing projected
-`market.bettingOpen` authority and does not independently decide financial
-eligibility.
+Betting Fairness V1.1 subsequently restored fresh winner betting for
+unscheduled Watcher markets while canonical status is `open` or `live`.
+`buildFreshBetMarketWriteWhere()` independently mirrors that admission at the
+transactional database-write boundary.
 
-Do not infer that Opening Minute or Late Book financial admission is live
-merely because the new visual system exists. Certified Betting Fairness V1
-remains authoritative until the phase-book schema and transactional admission
-work ships.
+This still does **not** mean Opening Minute and Late Book phase isolation is
+live. Independent Pre-Game, Opening Minute, and Late books remain the accepted
+Betting Phase Books V2 architecture to build next.
 
 ### Betting vocabulary: bet action vs stake accounting
 
