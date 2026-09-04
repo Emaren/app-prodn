@@ -8,7 +8,7 @@ systems: ["app-prodn", "aoe2-watcher", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "product-and-concurrency-contract"
-reviewed_at: "2026-09-01"
+reviewed_at: "2026-09-04"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -107,3 +107,86 @@ Auto-bet and counter-bettor modes remain server-gated and fail closed. No
 WoloChain consensus upgrade is part of this release; never replace the pinned
 consensus binary. Future reusable auto-bet custody belongs in the Wolo
 settlement service and requires a separate reviewed deployment.
+
+## Betting Phase Books V2 — accepted design, not yet live
+
+Current certified production remains Betting Fairness V1: fresh
+watcher-discovered competitive betting is pre-game only.
+
+The accepted next architecture is Betting Phase Books V2. It must ship through
+a separately reviewed financial/database release before production behavior
+changes.
+
+One canonical battle may own three independent winner books:
+
+### Pre-Game / Challenge Book
+
+An accepted scheduled Challenge may expose a pre-game book up to seven days
+before play.
+
+The pre-game book locks at the authoritative start fence. Browser time never
+decides admission.
+
+### Opening Minute / Live Book
+
+The canonical watcher battle-start identity opens a distinct book for exactly
+60 seconds.
+
+The server owns `opens_at` and `closes_at`. UI countdowns are projections only;
+the transactional write fence independently rejects late commitments.
+
+### Late Book / In-Game
+
+After the opening minute, a separate late book may accept commitments while the
+battle remains authoritatively active.
+
+The first terminal/final observation closes fresh admission. A browser that has
+not refreshed cannot override that server fence.
+
+### Financial isolation invariant
+
+Pregame, opening-minute, and late wagers MUST NOT share one economic pool.
+
+Each phase has independent:
+
+- wager rows / book identity;
+- left and right pool totals;
+- crowd split and implied return;
+- open/close timestamps;
+- financial admission fence;
+- audit/settlement history.
+
+All books resolve from the same canonical Battle/result truth, but late
+information can never dilute, reprice, or subsidize money risked in an earlier
+phase.
+
+Locked earlier books remain visible while later books operate.
+
+### Presentation direction
+
+The current horizontal `InstrumentStakeRail` is being retired.
+
+The premium composer is vertical and tactile:
+
+- large 10 / 25 / 50 / 100 WOLO stake tiles;
+- a large full-width custom amount field;
+- phase identity and server-derived countdown;
+- current pool and projected return;
+- a large phase-colored final lock action.
+
+Semantic presentation:
+
+- Pre-Game: ember / antique gold / deep crimson;
+- Opening Minute: electric cyan / cobalt;
+- Late Book: violet / magenta / dangerous red.
+
+The visual distinction communicates financial information age, not merely
+decoration.
+
+### Auto Bet direction
+
+The existing Auto Bet Reserve remains preview-only today.
+
+Future automation may add independent phase presets, but execution must use the
+reviewed prefunded Wolo custody/reservation architecture. Watcher telemetry
+detects game state; it never becomes money authority by itself.

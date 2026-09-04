@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **76**
+- Authoritative repository documents: **77**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 45
+- `reference`: 46
 - `runbook`: 12
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 60
+- `active`: 61
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -73,6 +73,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Human-Confirmed Desync Protocol](DESYNC_INCIDENT_PROTOCOL.md) | `reference` | `active` | `domain-contract` |
 | [Direct Chat UI](DIRECT_CHAT.md) | `reference` | `active` | `product-contract` |
 | [Documentation OS](DOCUMENTATION_OS.md) | `reference` | `active` | `documentation-operations-contract` |
+| [AoE2WAR Engineering Memory and Learned Invariants](ENGINEERING_MEMORY.md) | `reference` | `active` | `repository-entrypoint` |
 | [AoE2WAR Evidence Vault](EVIDENCE_VAULT.md) | `runbook` | `active` | `disaster-recovery-contract` |
 | [Hall Scribe, Identity and KKR Release - 2026-08-17](HALL_SCRIBE_IDENTITY_KKR_RELEASE_2026-08-17.md) | `reference` | `active` | `release-evidence` |
 | [AoE2WAR Hall Scribe Prompt Stack](HALL_SCRIBE_PROMPT.md) | `reference` | `active` | `product-contract` |

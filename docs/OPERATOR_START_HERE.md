@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","developers","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-08-22"
+reviewed_at: "2026-09-04"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -262,3 +262,18 @@ changes.
 - documentation lifecycle: `docs/DOCUMENTATION_OS.md`
 - private War Archive verification: `docs/PLAYER_WAR_ARCHIVE_OPERATIONS.md`
 - Workshop/publication boundary: `docs/WORKSHOP_ARCHITECTURE.md`
+
+## Engineering memory and anti-relearning rule
+
+After asking live OS commands for mutable truth, read
+`docs/ENGINEERING_MEMORY.md` before reopening a previously investigated
+financial, replay, release, recovery, database, or infrastructure question.
+
+Engineering Memory is not runtime authority. It is the durable record of
+expensive lessons, completed investigations, and consciously deferred work.
+
+High-risk implementation work now remains in Documentation OS semantic-review
+state until both an owning living contract and Engineering Memory have been
+updated. This prevents generated registries from creating the appearance of
+documentation completeness while durable human/AI knowledge remains trapped in
+a chat session.

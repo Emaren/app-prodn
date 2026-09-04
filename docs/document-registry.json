@@ -220,9 +220,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_HALL_PRODUCT_AND_CONCURRENCY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-01",
+      "reviewed_at": "2026-09-04",
       "sensitivity": "internal",
-      "sha256": "65ad6913c85602abf25e293c4d206234cc33df295a63b52c29d6b536b1441476",
+      "sha256": "14c60207e46575793f045012f0bbe7b9a197453be262961d639bbe8210b0a689",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "900855a979de0f876d9014619e2e6615421779938fb27fbd7ff75f6258e0df36",
+      "sha256": "cdac9dfa865eae9253ad86bfdf7eaefadb92bdcca92953ec25499a6bc79729f0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -518,15 +518,40 @@
       "owner": "aoe2war-web",
       "path": "docs/DOCUMENTATION_OS.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-21",
+      "reviewed_at": "2026-09-04",
       "sensitivity": "internal",
-      "sha256": "fccdcbde52a585761b2404989807f4bb5fcaa67cc9338a1195b71e9a75cefe5d",
+      "sha256": "49922030fe736db2a4a2f95a0e9a415481f657d8e6dd153dd89b214531a56d49",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
         "app-prodn"
       ],
       "title": "Documentation OS",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "repository-entrypoint",
+      "id": "aoe2war.app-prodn.docs-engineering-memory",
+      "owner": "aoe2war-web",
+      "path": "docs/ENGINEERING_MEMORY.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-09-04",
+      "sensitivity": "internal",
+      "sha256": "9cc1371da71123e3d44e99ea6b8d8478d3e0be68ea8b9295435be0f9a0bf7424",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "AoE2WAR Engineering Memory and Learned Invariants",
       "type": "reference"
     },
     {
@@ -540,9 +565,9 @@
       "owner": "aoe2war-web",
       "path": "docs/EVIDENCE_VAULT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-10",
+      "reviewed_at": "2026-09-04",
       "sensitivity": "internal",
-      "sha256": "aa8d54de9bcf2b64cdf144d730928f2ea426f79847f6acab84e6e4eda0b97899",
+      "sha256": "067211f5ded71f41c433638beefec33580a7b0d1426d46208627a36f3e308d5d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -610,7 +635,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-04",
       "sensitivity": "restricted",
-      "sha256": "677ea013770fe0974a07be8878988fc8a0f6b202b7fea68fe137d39e4df301b6",
+      "sha256": "f7533b22170fade71b9d8557e2eb49fc5e436f12aeff606aa5e76d14912571de",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -886,9 +911,9 @@
       "owner": "aoe2war-web",
       "path": "docs/OPERATOR_START_HERE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-22",
+      "reviewed_at": "2026-09-04",
       "sensitivity": "internal",
-      "sha256": "7905139ec8140ca9aab7346f0e24ece29454aa7447cb6c579cba099c2444ac14",
+      "sha256": "9a1a1865306143fd3d46b0b68ea6d86345aef412e98bff61bba42f8ff03ee629",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1527,9 +1552,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-03",
+      "reviewed_at": "2026-09-04",
       "sensitivity": "restricted",
-      "sha256": "0a7d8acaa9ac4a2075f22b815279f7323bae5a7fbd6dc7eeb58fb211f452bbd8",
+      "sha256": "1aeb6623ed958de1adfa3d80a4a65f780890ae114120d01fef2cb742f496e108",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

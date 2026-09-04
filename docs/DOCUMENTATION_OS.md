@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "documentation-operations-contract"
-reviewed_at: "2026-08-21"
+reviewed_at: "2026-09-04"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -161,3 +161,19 @@ Repository-local validation and the operator `aoe2war docs status` surface use
 the same UTC date boundary as the central AoE2WAR-docs taxonomy validator.
 Operator workstation timezone therefore cannot make a document healthy locally
 while the same commit is expired in CI.
+
+## Engineering Memory gate
+
+Infrastructure, watcher, replay-truth, financial, and database implementation
+changes now require two kinds of semantic coverage before Documentation OS
+reports `SEMANTIC_REVIEW_COVERED`:
+
+1. at least one living semantic document must change; and
+2. `docs/ENGINEERING_MEMORY.md` must change.
+
+Engineering Memory is deliberately not generated from diffs. The operator or
+AI records only durable lessons, changed invariants, completed investigations,
+and conscious deferrals.
+
+This is the anti-relearning gate: tomorrow's session should inherit the result
+of today's expensive reasoning without treating chat history as authority.

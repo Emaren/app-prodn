@@ -24,6 +24,7 @@ DOCS_REPO = aoe2_audit.DOCS
 CENTRAL_REGISTRY = DOCS_REPO / "catalog" / "registries" / "app-prodn.json"
 CENTRAL_TAXONOMY = DOCS_REPO / "catalog" / "document-taxonomy.json"
 CENTRAL_STATE = DOCS_REPO / "catalog" / "runtime" / "repository-state.json"
+ENGINEERING_MEMORY_PATH = "docs/ENGINEERING_MEMORY.md"
 
 SEMANTIC_REVIEW_RISKS = {
     "INFRASTRUCTURE",
@@ -282,11 +283,12 @@ def impact_payload(base: str | None = None) -> dict[str, Any]:
     risk = aoe2_release_gate.classify_risk(implementation)
     semantic_review = bool(implementation and risk in SEMANTIC_REVIEW_RISKS)
     semantic_changed = semantic_documentation(scope["documentation"])
+    memory_changed = ENGINEERING_MEMORY_PATH in semantic_changed
     candidates = candidate_documents(implementation, risk) if implementation else []
 
     if not implementation:
         state = "NONE"
-    elif semantic_review and semantic_changed:
+    elif semantic_review and semantic_changed and memory_changed:
         state = "SEMANTIC_REVIEW_COVERED"
     elif semantic_review:
         state = "SEMANTIC_REVIEW_DUE"
@@ -299,6 +301,8 @@ def impact_payload(base: str | None = None) -> dict[str, Any]:
         "risk": risk,
         "semantic_review_required": semantic_review,
         "semantic_docs_changed": semantic_changed,
+        "engineering_memory_required": semantic_review,
+        "engineering_memory_changed": memory_changed,
         "candidate_documents": candidates,
         "scope": scope,
     }
@@ -512,6 +516,18 @@ def print_impact(payload: dict[str, Any]) -> None:
     print(f"Implementation paths: {len(scope['implementation'])}")
     print(f"Documentation paths:  {len(scope['documentation'])}")
     print(f"Semantic review:      {'REQUIRED' if payload['semantic_review_required'] else 'NOT REQUIRED'}")
+    print(
+        "Engineering memory:  "
+        + (
+            "UPDATED"
+            if payload.get("engineering_memory_changed")
+            else (
+                "REQUIRED"
+                if payload.get("engineering_memory_required")
+                else "NOT REQUIRED"
+            )
+        )
+    )
 
     if scope["implementation"]:
         print()

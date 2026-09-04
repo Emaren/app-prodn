@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-09-03"
+reviewed_at: "2026-09-04"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -549,3 +549,23 @@ The future high-confidence control rail is deliberately live: paired AoE2WAR
 account + watcher device/session + locally active SteamID64 + a live-growing
 replay + that same SteamID64 appearing as a participant in the replay. Until
 that evidence exists, multi-account human ownership is not inferred.
+
+## Watcher 1.5.9 public durability seal — 2026-09-04
+
+The 1.5.9 publication is complete across Windows, macOS, and Linux.
+
+The final production proxy canary deliberately occupied the single replay
+admission slot, then proved:
+
+- direct API overload HTTP: `429`;
+- direct `Retry-After`: `5`;
+- public Next.js replay proxy overload HTTP: `429`;
+- public `Retry-After`: `5`;
+- overload response body preserved through the proxy.
+
+The canary was bounded to a few seconds and the artificial slow request was
+terminated afterward. API health remained green and the service PID was
+unchanged.
+
+This is end-to-end production proof that Watcher 1.5.9's server-guided retry
+behavior has a real deployed `Retry-After` source to consume.

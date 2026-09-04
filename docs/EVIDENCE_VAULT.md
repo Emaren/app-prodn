@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","auditors","ai-agents"]
 source_of_truth: "git"
 authority: "disaster-recovery-contract"
-reviewed_at: "2026-08-10"
+reviewed_at: "2026-09-04"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -27,9 +27,15 @@ one host failure domain. GitHub source history is useful off-host protection,
 but it is not a backup of production receipts, database dumps, runtime
 provenance, or unique operational evidence.
 
-No vault authority or credential has been supplied, so no upload or transmission
-is implemented or authorized in this pass. This document stops at the reviewed
-architecture and activation/restore contract.
+The full Evidence Vault authority is still not configured in the operations
+contract, but a real independent Mac database/operator-evidence pilot now
+exists. The pilot does not satisfy the complete vault contract because replay,
+media, Wolo settlement/consensus recovery, and independent key custody remain
+open.
+
+The contract therefore correctly remains disabled while the proven pilot is
+recorded as partial recovery evidence rather than mislabeled as complete
+disaster recovery.
 
 Do not change the flag merely to silence Doctor. It may become enabled only
 after an actual encrypted upload, independent remote verification, and a
@@ -183,3 +189,42 @@ until the contract names the chosen independent authority and a dated verified
 restore-proof receipt. This prevents "source is in GitHub" or "a backup exists"
 from being confused with "mutable production state has been restored in a
 drill".
+
+## Verified Mac database pilot — 2026-09-04
+
+Bundle:
+`20260904T021657Z-db-pilot-cff90db92ae0`.
+
+A fresh `aoe2hd_db` PostgreSQL custom-format archive was created without
+database mutation:
+
+- plaintext bytes: `403984404`;
+- plaintext SHA-256:
+  `6ba16607ae02af02be36be36dca38274c0348ea3725caa3dbf80f18f846dd654`;
+- migration state: 99 applied, 0 unfinished, 2 rolled back.
+
+The VPS encrypted the archive before transmission using only the public
+Recovery OS recipient certificate. The RSA recovery private key remained mode
+0600 on the independent Mac and never entered VPS storage or process
+environment.
+
+The Mac isolated restore drill reproduced the exact plaintext hash and size.
+PostgreSQL 17.5 `pg_restore` parsed the PostgreSQL-16-produced archive and
+confirmed expected critical table identities.
+
+The first inspection attempt with PostgreSQL 14.18 returned archive-header
+version 1.15 unsupported. Exact plaintext hashing had already proved the
+encrypted round trip was intact; switching to PostgreSQL 17.5 completed the
+structural proof. Restore tooling must therefore be at least new enough for the
+producer archive version.
+
+The complete local `.aoe2war-release` operator-evidence tree was separately
+encrypted, decrypted, and restored hash-exact.
+
+Restore proof SHA-256:
+`f4bb2c5dd5de29d739ee5623bb67a94579f13212704659a814d04a1963ddb62b`.
+
+All temporary plaintext restore workspaces were removed afterward.
+
+This pilot materially improves total-Hetzner-loss recovery but does not make
+`offsite_evidence.enabled=true` truthful yet.

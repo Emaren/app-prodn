@@ -446,3 +446,23 @@ The live database directly confirmed the following migrations as applied:
 Migration history contains 73 records: 71 applied, zero incomplete, and two historical rolled-back attempts. Prisma reports the 71 source migrations up to date.
 
 The authority-sensitive schema remains fail-closed. Roster and stat promotions expose separate `affects_public_aggregates`, `affects_results`, and `settlement_authority` fields. Player snapshots preserve result eligibility/status; stat projections preserve result eligibility and reason; adjudications preserve explicit financial disposition. A parser pass, screenshot pass, normalized stat projection, or public roster promotion cannot become financial truth merely because it exists.
+
+## Replay Durability V1 production closure — 2026-09-04
+
+Historical Gate 6 is closed.
+
+Production evidence includes:
+
+- spawned-process hot replay parsing with API health remaining responsive;
+- replay upload admission fixed at one concurrent upload;
+- default parser worker count one;
+- Watcher 1.5.9 bounded retry/backoff, immutable ordinary retry snapshots,
+  parser-finalizing snapshot refresh, stale-work coalescing, and jitter;
+- a controlled production overload where direct API replay admission returned
+  HTTP 429 with `Retry-After: 5`;
+- the deployed public `/api/replay/upload` proxy returned the same HTTP 429,
+  preserved `Retry-After: 5` exactly, and preserved the replay-overload body;
+- API health remained 200 after the canary and the API process was not
+  restarted by the proof.
+
+Do not increase replay admission merely because this gate is closed.
