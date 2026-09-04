@@ -32,9 +32,9 @@ commands have written newer receipts.
 `aoe2war truth census`
 
 Runs the current production replay resolvers across every final GameStats row
-and reports team coverage, result coverage, unknown participant results,
-routing cohorts, parse-reason debt, player-count debt, and the cross-layer
-contract state.
+and reports topology coverage, canonical two-team coverage, result coverage,
+unknown participant results, recovery routing, parse-reason debt,
+player-count debt, and the cross-layer contract state.
 
 `aoe2war truth audit`
 
@@ -48,9 +48,10 @@ The required invariants are:
 
 `aoe2war truth target GAME_ID`
 
-Shows a single replay's raw stored winner, effective truth, team resolution,
-participant W/L, parse provenance, current accepted normalized-stat projection,
-effective accepted adjudication, exact routing class, and current blocker.
+Shows a single replay's raw stored winner, effective truth, topology
+classification, canonical two-team resolution, participant W/L, parse
+provenance, current accepted normalized-stat projection, effective accepted
+adjudication, exact routing class, and current blocker.
 
 ## Production safety
 
@@ -70,8 +71,8 @@ They:
 9. prove production source, service and Wolo listener state are unchanged
    afterward.
 
-No Replay Truth OS V1 command performs database, projection, adjudication,
-betting, settlement, claim, payout or Wolo mutation.
+No Replay Truth OS V1.1 command performs database, projection,
+adjudication, betting, settlement, claim, payout or Wolo mutation.
 
 ## Receipts
 
@@ -86,37 +87,51 @@ cannot collide merely because they execute during the same UTC second.
 
 ## Coverage dimensions
 
-Team composition and result truth are tracked independently.
+Topology, canonical two-team resolution and result truth are separate
+dimensions.
 
-The census distinguishes:
+Replay Truth OS V1.1 reports:
 
-- team resolved;
-- team unknown;
+- topology known;
+- topology unresolved;
+- unexplained topology debt;
+- canonical/legacy two-team resolver coverage;
 - result resolved;
 - result unknown;
-- both resolved;
-- both unknown;
 - unknown participant-results.
+
+Topology means the replay's observed side structure, not winner authority.
+Known topology may include balanced two-team games, uneven team games, FFA,
+multi-side games and exact single-group observations.
+
+Exact immutable parser-candidate evidence may establish topology through
+`game.diplomacy` or complete direct-header `player.team_id` observations even
+when the normalized public GameStats roster is incomplete or the canonical
+balanced-team resolver correctly refuses the proposition.
+
+Candidate-file reads are bounded to the immutable parser-output root and occur
+only after the canonical team projection fails to establish topology.
+
+An unresolved topology receives an operational recovery disposition. Missing
+canonical source bytes route to `SOURCE_ARTIFACT_REQUIRED`; a replay with an
+existing parser run whose evidence still cannot establish topology routes to
+`PARSER_RESEARCH_REQUIRED`; an archived but not-yet-parsed source may route to
+`REPARSE_REQUIRED`.
 
 A game is result-resolved only when the participant resolver produces a
 complete coherent proposition containing at least one winner, at least one
 loser and no unknown participant result.
 
-Canonical balanced 1v1 through 4v4 team resolution is recognized.
-
-Team-composition coverage is intentionally independent from result authority.
-When a larger final roster has unique player identities, complete explicit team
-IDs and exactly two observed teams, Replay Truth OS may count the composition as
-known even when no result resolver can lawfully identify the winner.
-
-This diagnostic composition state does not grant statistics or betting
-authority. The stronger explicit uneven-team result lane remains separately
-responsible for proving winner/loser truth.
+Topology evidence never grants winner, statistics, betting, settlement,
+financial or Wolo authority. Those authority lanes remain independently
+governed.
 
 ## Workflow routing
 
-V1 routes unresolved work into operator workflow classes including:
+V1.1 routes unresolved work into operator workflow classes including:
 
+- `SOURCE_ARTIFACT_REQUIRED`;
+- `PARSER_RESEARCH_REQUIRED`;
 - `TEAM_EVIDENCE_REQUIRED`;
 - `REPARSE_REQUIRED`;
 - `RESULT_EVIDENCE_REQUIRED`;

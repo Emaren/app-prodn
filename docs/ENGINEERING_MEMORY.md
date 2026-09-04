@@ -611,3 +611,17 @@ repeatable operator command instead of a one-off shell forensic.
 Replay Truth OS V1 is read-only. It has no projection, adjudication, betting,
 settlement, claim, payout or Wolo mutation command.
 <!-- AOE2WAR:REPLAY_TRUTH_OS_V1_20260904:END -->
+
+
+<!-- AOE2WAR:REPLAY_TRUTH_TOPOLOGY_V1_1_20260904 -->
+
+## Replay Truth topology semantics
+
+Replay Truth OS V1.1 separates observed replay topology from canonical
+two-team result authority. Exact FFA, uneven TG, multi-side and single-group
+parser evidence may establish diagnostic topology while winner/statistics
+authority remains unresolved.
+
+Missing canonical source bytes and parser-evidence insufficiency are explicit
+recovery dispositions. They never justify fabricated team assignments,
+winner inference, betting authority or financial mutation.

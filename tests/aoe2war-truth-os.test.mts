@@ -125,6 +125,87 @@ test("Replay Truth OS tracks explicit team composition independently of result a
   );
 });
 
+test("Replay Truth OS models topology independently of canonical two-team authority", () => {
+  assert.match(
+    remote,
+    /topologyProjection/
+  );
+
+  assert.match(
+    remote,
+    /KNOWN_FFA/
+  );
+
+  assert.match(
+    remote,
+    /KNOWN_TG/
+  );
+
+  assert.match(
+    remote,
+    /KNOWN_SINGLE_GROUP/
+  );
+
+  assert.match(
+    remote,
+    /KNOWN_MULTI_SIDE/
+  );
+
+  assert.match(
+    remote,
+    /topologyKnown/
+  );
+
+  assert.match(
+    remote,
+    /unexplainedTopologyDebt/
+  );
+
+  assert.match(
+    remote,
+    /SOURCE_ARTIFACT_REQUIRED/
+  );
+
+  assert.match(
+    remote,
+    /PARSER_RESEARCH_REQUIRED/
+  );
+});
+
+test("Replay topology candidate reads are bounded to immutable parser storage", () => {
+  assert.match(
+    remote,
+    /TRUTH_CANDIDATE_ROOT/
+  );
+
+  assert.match(
+    remote,
+    /insideTruthRoot/
+  );
+
+  assert.match(
+    remote,
+    /candidate_output_outside_allowed_root/
+  );
+
+  assert.match(
+    remote,
+    /mgz\.summary\.get_diplomacy/
+  );
+
+  assert.match(
+    remote,
+    /mgz\.header\.player\.team_id/
+  );
+});
+
+test("Direct-header topology prefers exact replay slot identity over normalized player identity", () => {
+  assert.match(
+    remote,
+    /subject\.player_number[\s\S]*number:\$\{subject\.player_number\}[\s\S]*cleanTruthText\([\s\S]*subject\.player_key/
+  );
+});
+
 test("Replay Truth status preserves corpus intelligence after target commands", () => {
   assert.match(
     python,

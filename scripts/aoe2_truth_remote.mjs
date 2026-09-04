@@ -1,3 +1,15 @@
+import {
+  readFileSync,
+  readdirSync,
+} from "node:fs";
+import {
+  join,
+  resolve,
+} from "node:path";
+import {
+  gunzipSync,
+} from "node:zlib";
+
 import { getPrisma } from "@/lib/prisma";
 import {
   applyReplayAdjudicationToGameStats,
@@ -66,6 +78,944 @@ function orderedCounts(
           )
       )
   );
+}
+
+
+const TRUTH_CANDIDATE_ROOT =
+  "/mnt/HC_Volume_105319120/aoe2-parser-engine";
+
+const TRUTH_ARCHIVE_ROOT =
+  "/mnt/HC_Volume_105319120/aoe2-replay-archive";
+
+const SHA256_RE =
+  /^[0-9a-f]{64}$/;
+
+function cleanTruthText(
+  value
+) {
+  return typeof value ===
+    "string"
+    ? value.trim()
+    : "";
+}
+
+function truthRecord(
+  value
+) {
+  return (
+    value &&
+    typeof value ===
+      "object" &&
+    !Array.isArray(
+      value
+    )
+  )
+    ? value
+    : {};
+}
+
+function insideTruthRoot(
+  candidate,
+  root
+) {
+  const full =
+    resolve(
+      candidate
+    );
+
+  const fullRoot =
+    resolve(
+      root
+    );
+
+  return (
+    full ===
+      fullRoot ||
+    full.startsWith(
+      fullRoot +
+      "/"
+    )
+  );
+}
+
+function canonicalArchiveAvailable(
+  replayHash
+) {
+  const hash =
+    cleanTruthText(
+      replayHash
+    )
+      .toLowerCase();
+
+  if (
+    !SHA256_RE.test(
+      hash
+    )
+  ) {
+    return false;
+  }
+
+  const directory =
+    join(
+      TRUTH_ARCHIVE_ROOT,
+      hash.slice(
+        0,
+        2
+      ),
+      hash.slice(
+        2,
+        4
+      )
+    );
+
+  try {
+    return readdirSync(
+      directory,
+      {
+        withFileTypes:
+          true,
+      }
+    )
+      .some(
+        (entry) =>
+          entry.isFile() &&
+          entry.name.startsWith(
+            `${hash}.`
+          )
+      );
+  } catch {
+    return false;
+  }
+}
+
+function expectedTopologyPlayerCount(
+  teamSize
+) {
+  const parts =
+    cleanTruthText(
+      teamSize
+    )
+      .match(
+        /\d+/g
+      );
+
+  if (
+    !parts ||
+    parts.length ===
+      0
+  ) {
+    return null;
+  }
+
+  return parts.reduce(
+    (
+      total,
+      part
+    ) =>
+      total +
+      Number(
+        part
+      ),
+    0
+  );
+}
+
+function extractCandidateTopologyEvidence(
+  run
+) {
+  const key =
+    cleanTruthText(
+      run
+        ?.candidateOutputStorageKey
+    );
+
+  if (!key) {
+    return {
+      available:
+        false,
+
+      reason:
+        "candidate_output_missing",
+
+      gameDiplomacy:
+        null,
+
+      playerTeams:
+        [],
+    };
+  }
+
+  const candidatePath =
+    resolve(
+      key
+    );
+
+  if (
+    !insideTruthRoot(
+      candidatePath,
+      TRUTH_CANDIDATE_ROOT
+    )
+  ) {
+    return {
+      available:
+        false,
+
+      reason:
+        "candidate_output_outside_allowed_root",
+
+      gameDiplomacy:
+        null,
+
+      playerTeams:
+        [],
+    };
+  }
+
+  try {
+    const bytes =
+      readFileSync(
+        candidatePath
+      );
+
+    const raw =
+      candidatePath.endsWith(
+        ".gz"
+      )
+        ? gunzipSync(
+            bytes
+          ).toString(
+            "utf8"
+          )
+        : bytes.toString(
+            "utf8"
+          );
+
+    const parsed =
+      JSON.parse(
+        raw
+      );
+
+    let gameDiplomacy =
+      null;
+
+    const playerTeams =
+      [];
+
+    function walk(
+      node
+    ) {
+      if (
+        node === null ||
+        node === undefined
+      ) {
+        return;
+      }
+
+      if (
+        Array.isArray(
+          node
+        )
+      ) {
+        for (
+          const entry
+          of node
+        ) {
+          walk(
+            entry
+          );
+        }
+
+        return;
+      }
+
+      if (
+        typeof node !==
+        "object"
+      ) {
+        return;
+      }
+
+      if (
+        node.field ===
+          "game.diplomacy" &&
+        node.exact ===
+          true &&
+        node.provenance_class ===
+          "derived_coherent" &&
+        node.evidence_source ===
+          "mgz.summary.get_diplomacy"
+      ) {
+        gameDiplomacy = {
+          value:
+            node.value ??
+            null,
+
+          provenanceClass:
+            node.provenance_class,
+
+          evidenceSource:
+            node.evidence_source,
+        };
+      }
+
+      if (
+        node.field ===
+          "player.team_id" &&
+        node.exact ===
+          true &&
+        (
+          node.provenance_class ===
+            "direct_header" ||
+          node.provenance_class ===
+            "absent"
+        ) &&
+        node.evidence_source ===
+          "mgz.header.player.team_id"
+      ) {
+        playerTeams.push({
+          value:
+            node.value ??
+            null,
+
+          subject:
+            node.subject ??
+            null,
+
+          provenanceClass:
+            node.provenance_class,
+
+          evidenceSource:
+            node.evidence_source,
+        });
+      }
+
+      for (
+        const entry
+        of Object.values(
+          node
+        )
+      ) {
+        walk(
+          entry
+        );
+      }
+    }
+
+    walk(
+      parsed
+    );
+
+    return {
+      available:
+        true,
+
+      reason:
+        null,
+
+      candidatePath,
+      gameDiplomacy,
+      playerTeams,
+    };
+  } catch (
+    error
+  ) {
+    return {
+      available:
+        false,
+
+      reason:
+        error instanceof Error
+          ? error.message
+          : String(
+              error
+            ),
+
+      gameDiplomacy:
+        null,
+
+      playerTeams:
+        [],
+    };
+  }
+}
+
+function groupedDirectTopologyTeams(
+  observations
+) {
+  const direct =
+    observations.filter(
+      (entry) =>
+        entry.provenanceClass ===
+          "direct_header" &&
+        entry.value !==
+          null &&
+        entry.value !==
+          undefined
+    );
+
+  const subjects =
+    new Set();
+
+  const grouped =
+    new Map();
+
+  for (
+    const entry
+    of direct
+  ) {
+    const subject =
+      truthRecord(
+        entry.subject
+      );
+
+    /*
+     * Direct-header topology is replay-slot evidence.
+     *
+     * Distinct AI/player slots may legitimately share a normalized name or
+     * stable player key. Prefer the exact replay player number so duplicate
+     * identities cannot erase otherwise complete side composition evidence.
+     */
+    const subjectKey =
+      (
+        subject.player_number !==
+          undefined &&
+        subject.player_number !==
+          null
+          ? `number:${subject.player_number}`
+          : ""
+      ) ||
+      cleanTruthText(
+        subject.player_key
+      );
+
+    if (!subjectKey) {
+      return null;
+    }
+
+    if (
+      subjects.has(
+        subjectKey
+      )
+    ) {
+      return null;
+    }
+
+    subjects.add(
+      subjectKey
+    );
+
+    const teamKey =
+      String(
+        entry.value
+      );
+
+    const members =
+      grouped.get(
+        teamKey
+      ) ??
+      [];
+
+    members.push({
+      name:
+        subject.player_name ??
+        null,
+
+      playerNumber:
+        subject.player_number ??
+        null,
+
+      playerKey:
+        subject.player_key ??
+        null,
+
+      teamId:
+        entry.value,
+    });
+
+    grouped.set(
+      teamKey,
+      members
+    );
+  }
+
+  return {
+    playerCount:
+      direct.length,
+
+    teams:
+      [...grouped.entries()]
+        .map(
+          (
+            [
+              teamKey,
+              members,
+            ]
+          ) => ({
+            teamKey,
+            players:
+              members,
+          })
+        ),
+  };
+}
+
+function candidateTopologyProjection(
+  run
+) {
+  const evidence =
+    extractCandidateTopologyEvidence(
+      run
+    );
+
+  const diplomacy =
+    truthRecord(
+      evidence
+        .gameDiplomacy
+        ?.value
+    );
+
+  const type =
+    cleanTruthText(
+      diplomacy.type
+    )
+      .toUpperCase();
+
+  const teamSize =
+    cleanTruthText(
+      diplomacy.team_size
+    );
+
+  const diplomacyTeams =
+    Array.isArray(
+      diplomacy.teams
+    )
+      ? diplomacy.teams
+      : [];
+
+  if (
+    type ===
+      "FFA"
+  ) {
+    return {
+      known:
+        true,
+
+      classification:
+        "KNOWN_FFA",
+
+      format:
+        teamSize ||
+        "FFA",
+
+      provenance:
+        "exact_game_diplomacy",
+
+      teams:
+        diplomacyTeams,
+
+      candidateEvidence:
+        evidence,
+    };
+  }
+
+  if (
+    diplomacy.coherent ===
+      true &&
+    diplomacyTeams.length >
+      0
+  ) {
+    return {
+      known:
+        true,
+
+      classification:
+        type ===
+          "TG"
+          ? "KNOWN_TG"
+          : diplomacyTeams.length ===
+              1
+            ? "KNOWN_SINGLE_GROUP"
+            : "KNOWN_MULTI_SIDE",
+
+      format:
+        teamSize ||
+        type ||
+        "structured",
+
+      provenance:
+        "exact_game_diplomacy",
+
+      teams:
+        diplomacyTeams,
+
+      candidateEvidence:
+        evidence,
+    };
+  }
+
+  const direct =
+    groupedDirectTopologyTeams(
+      evidence.playerTeams
+    );
+
+  const expected =
+    expectedTopologyPlayerCount(
+      teamSize
+    );
+
+  if (
+    direct &&
+    expected !==
+      null &&
+    expected >
+      0 &&
+    direct.playerCount ===
+      expected
+  ) {
+    if (
+      type ===
+        "TG" &&
+      direct.teams.length >=
+        2
+    ) {
+      return {
+        known:
+          true,
+
+        classification:
+          "KNOWN_TG",
+
+        format:
+          teamSize ||
+          "TG",
+
+        provenance:
+          "exact_direct_header_team_ids",
+
+        teams:
+          direct.teams,
+
+        candidateEvidence:
+          evidence,
+      };
+    }
+
+    if (
+      type ===
+        "OTHER" &&
+      direct.teams.length >=
+        1
+    ) {
+      return {
+        known:
+          true,
+
+        classification:
+          direct.teams.length ===
+            1
+            ? "KNOWN_SINGLE_GROUP"
+            : "KNOWN_MULTI_SIDE",
+
+        format:
+          teamSize ||
+          "Other",
+
+        provenance:
+          "exact_direct_header_team_ids",
+
+        teams:
+          direct.teams,
+
+        candidateEvidence:
+          evidence,
+      };
+    }
+  }
+
+  return {
+    known:
+      false,
+
+    classification:
+      "UNRESOLVED",
+
+    format:
+      teamSize ||
+      type ||
+      "unknown",
+
+    provenance:
+      "candidate_topology_insufficient",
+
+    teams:
+      [],
+
+    candidateEvidence:
+      evidence,
+  };
+}
+
+function observedExplicitTopology(
+  players
+) {
+  if (
+    players.length ===
+      0
+  ) {
+    return null;
+  }
+
+  const identities =
+    players.map(
+      (player) =>
+        player.stablePlayerKey
+    );
+
+  if (
+    new Set(
+      identities
+    ).size !==
+    identities.length
+  ) {
+    return null;
+  }
+
+  if (
+    players.some(
+      (player) =>
+        player.teamId ===
+          null
+    )
+  ) {
+    return null;
+  }
+
+  const grouped =
+    new Map();
+
+  for (
+    const player
+    of players
+  ) {
+    const members =
+      grouped.get(
+        player.teamId
+      ) ??
+      [];
+
+    members.push({
+      name:
+        player.name,
+
+      stablePlayerKey:
+        player.stablePlayerKey,
+
+      steamId:
+        player.steamId,
+
+      playerNumber:
+        player.playerNumber,
+
+      teamId:
+        player.teamId,
+    });
+
+    grouped.set(
+      player.teamId,
+      members
+    );
+  }
+
+  return {
+    teamCount:
+      grouped.size,
+
+    teams:
+      [...grouped.entries()]
+        .map(
+          (
+            [
+              teamKey,
+              members,
+            ]
+          ) => ({
+            teamKey,
+            players:
+              members,
+          })
+        ),
+  };
+}
+
+function topologyProjection(
+  game,
+  team
+) {
+  if (
+    team.known
+  ) {
+    return {
+      known:
+        true,
+
+      classification:
+        team.mode ===
+          "canonical"
+          ? "KNOWN_CANONICAL_TWO_TEAM"
+          : "KNOWN_EXPLICIT_TWO_SIDE",
+
+      format:
+        team.format,
+
+      provenance:
+        team.provenance,
+
+      teams:
+        team.teams,
+
+      structuralDisposition:
+        "KNOWN",
+
+      recoveryRoute:
+        null,
+
+      artifactAvailable:
+        true,
+
+      explained:
+        true,
+    };
+  }
+
+  const run =
+    game.replayParseRuns?.[0] ??
+    null;
+
+  const candidate =
+    candidateTopologyProjection(
+      run
+    );
+
+  if (
+    candidate.known
+  ) {
+    return {
+      ...candidate,
+
+      structuralDisposition:
+        "KNOWN",
+
+      recoveryRoute:
+        null,
+
+      artifactAvailable:
+        true,
+
+      explained:
+        true,
+    };
+  }
+
+  const players =
+    normalizeReplayPlayers(
+      game.players
+    );
+
+  const explicit =
+    observedExplicitTopology(
+      players
+    );
+
+  if (explicit) {
+    return {
+      known:
+        true,
+
+      classification:
+        explicit.teamCount ===
+          1
+          ? "KNOWN_SINGLE_GROUP"
+          : explicit.teamCount ===
+              2
+            ? "KNOWN_EXPLICIT_TWO_SIDE"
+            : "KNOWN_EXPLICIT_MULTI_SIDE",
+
+      format:
+        `${explicit.teamCount}-side`,
+
+      provenance:
+        "explicit_normalized_team_ids",
+
+      teams:
+        explicit.teams,
+
+      structuralDisposition:
+        "KNOWN",
+
+      recoveryRoute:
+        null,
+
+      artifactAvailable:
+        Boolean(
+          run
+        ) ||
+        canonicalArchiveAvailable(
+          game.replayHash
+        ),
+
+      explained:
+        true,
+    };
+  }
+
+  const artifactAvailable =
+    Boolean(
+      run
+    ) ||
+    canonicalArchiveAvailable(
+      game.replayHash
+    );
+
+  const recoveryRoute =
+    !artifactAvailable
+      ? "SOURCE_ARTIFACT_REQUIRED"
+      : run
+        ? "PARSER_RESEARCH_REQUIRED"
+        : "REPARSE_REQUIRED";
+
+  return {
+    known:
+      false,
+
+    classification:
+      "UNRESOLVED",
+
+    format:
+      candidate.format ||
+      "unknown",
+
+    provenance:
+      candidate.provenance,
+
+    teams:
+      [],
+
+    structuralDisposition:
+      players.length <
+        2
+        ? "ROSTER_INCOMPLETE"
+        : "TOPOLOGY_EVIDENCE_INSUFFICIENT",
+
+    recoveryRoute,
+    artifactAvailable,
+
+    explained:
+      true,
+
+    candidateEvidence:
+      candidate
+        .candidateEvidence,
+  };
 }
 
 function participantProjection(
@@ -432,19 +1382,22 @@ function classifyRoute(
   game,
   truth,
   participants,
-  team
+  topology
 ) {
   if (
-    team.known &&
+    topology.known &&
     participants.coherent
   ) {
     return "RESOLVED";
   }
 
   if (
-    !team.known
+    !topology.known
   ) {
-    return "TEAM_EVIDENCE_REQUIRED";
+    return (
+      topology.recoveryRoute ||
+      "TEAM_EVIDENCE_REQUIRED"
+    );
   }
 
   const parseReason =
@@ -526,6 +1479,12 @@ function analyzeGame(
       game
     );
 
+  const topology =
+    topologyProjection(
+      game,
+      team
+    );
+
   const scalarAuthority =
     truth.statsEligible ===
       true &&
@@ -545,6 +1504,7 @@ function analyzeGame(
     truth,
     participants,
     team,
+    topology,
     scalarAuthority,
     contractMismatch,
 
@@ -553,7 +1513,7 @@ function analyzeGame(
         game,
         truth,
         participants,
-        team
+        topology
       ),
   };
 }
@@ -585,6 +1545,38 @@ const baseSelect = {
 
   disconnect_detected:
     true,
+
+  replayHash:
+    true,
+
+  replayParseRuns: {
+    where: {
+      status:
+        "completed",
+    },
+
+    orderBy: [
+      {
+        createdAt:
+          "desc",
+      },
+      {
+        id:
+          "desc",
+      },
+    ],
+
+    take:
+      1,
+
+    select: {
+      id:
+        true,
+
+      candidateOutputStorageKey:
+        true,
+    },
+  },
 
   replayResultAdjudications:
     EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
@@ -660,6 +1652,21 @@ function buildCorpus(
   const routeBuckets =
     {};
 
+  const topologyClassBuckets =
+    {};
+
+  const topologyRecoveryBuckets =
+    {};
+
+  let topologyKnown =
+    0;
+
+  let topologyUnknown =
+    0;
+
+  let unexplainedTopologyDebt =
+    0;
+
   let teamResolved =
     0;
 
@@ -707,6 +1714,37 @@ function buildCorpus(
       analyzeGame(
         game
       );
+
+    increment(
+      topologyClassBuckets,
+      analysis.topology
+        .classification
+    );
+
+    if (
+      analysis.topology.known
+    ) {
+      topologyKnown +=
+        1;
+    } else {
+      topologyUnknown +=
+        1;
+
+      increment(
+        topologyRecoveryBuckets,
+        analysis.topology
+          .recoveryRoute ||
+          "UNEXPLAINED"
+      );
+
+      if (
+        !analysis.topology
+          .explained
+      ) {
+        unexplainedTopologyDebt +=
+          1;
+      }
+    }
 
     if (
       analysis.team.known
@@ -832,6 +1870,9 @@ function buildCorpus(
       games.length,
 
     coverage: {
+      topologyKnown,
+      topologyUnknown,
+      unexplainedTopologyDebt,
       teamResolved,
       teamUnknown,
       resultResolved,
@@ -843,6 +1884,16 @@ function buildCorpus(
     },
 
     debt: {
+      topologyClassBuckets:
+        orderedCounts(
+          topologyClassBuckets
+        ),
+
+      topologyRecoveryBuckets:
+        orderedCounts(
+          topologyRecoveryBuckets
+        ),
+
       parseReasonBuckets:
         orderedCounts(
           parseReasonBuckets
@@ -1044,6 +2095,9 @@ async function runTarget(
             candidateOutputHash:
               true,
 
+            candidateOutputStorageKey:
+              true,
+
             runIdentityHash:
               true,
 
@@ -1183,6 +2237,9 @@ async function runTarget(
 
     team:
       analysis.team,
+
+    topology:
+      analysis.topology,
 
     route:
       analysis.route,

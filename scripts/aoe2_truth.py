@@ -378,6 +378,27 @@ def print_census(
         "contract"
     ]
 
+    topology_known = int(
+        coverage.get(
+            "topologyKnown",
+            coverage["teamResolved"],
+        )
+    )
+
+    topology_unknown = int(
+        coverage.get(
+            "topologyUnknown",
+            coverage["teamUnknown"],
+        )
+    )
+
+    topology_unexplained = int(
+        coverage.get(
+            "unexplainedTopologyDebt",
+            topology_unknown,
+        )
+    )
+
     print(
         "⚔️  AOE2WAR REPLAY TRUTH CENSUS"
     )
@@ -400,7 +421,20 @@ def print_census(
         f"{final_games}"
     )
     print(
-        f"Teams resolved:        "
+        f"Topology known:        "
+        f"{topology_known} "
+        f"({pct(topology_known, final_games)})"
+    )
+    print(
+        f"Topology unresolved:   "
+        f"{topology_unknown}"
+    )
+    print(
+        f"Topology unexplained:  "
+        f"{topology_unexplained}"
+    )
+    print(
+        f"Two-team resolver:     "
         f"{coverage['teamResolved']} "
         f"({pct(coverage['teamResolved'], final_games)})"
     )
@@ -410,12 +444,12 @@ def print_census(
         f"({pct(coverage['resultResolved'], final_games)})"
     )
     print(
-        f"Both resolved:         "
+        f"Legacy both resolved:  "
         f"{coverage['bothResolved']} "
         f"({pct(coverage['bothResolved'], final_games)})"
     )
     print(
-        f"Team debt:             "
+        f"Legacy two-team debt:  "
         f"{coverage['teamUnknown']}"
     )
     print(
@@ -423,7 +457,7 @@ def print_census(
         f"{coverage['resultUnknown']}"
     )
     print(
-        f"Both unknown:          "
+        f"Legacy both unknown:   "
         f"{coverage['bothUnknown']}"
     )
     print(
@@ -451,6 +485,22 @@ def print_census(
     debt = payload[
         "debt"
     ]
+
+    print_counts(
+        "Topology classes",
+        debt.get(
+            "topologyClassBuckets",
+            {},
+        ),
+    )
+
+    print_counts(
+        "Topology recovery",
+        debt.get(
+            "topologyRecoveryBuckets",
+            {},
+        ),
+    )
 
     print_counts(
         "Truth-debt routes",
@@ -564,6 +614,24 @@ def print_target(
         "team"
     ]
 
+    topology = payload.get(
+        "topology",
+        {
+            "known":
+                team.get("known"),
+            "classification":
+                "LEGACY_TEAM_PROJECTION",
+            "format":
+                team.get("format"),
+            "provenance":
+                team.get("provenance"),
+            "structuralDisposition":
+                None,
+            "recoveryRoute":
+                None,
+        },
+    )
+
     print(
         "⚔️  AOE2WAR REPLAY TRUTH TARGET"
     )
@@ -617,7 +685,37 @@ def print_target(
     )
     print()
     print(
-        f"Team known:         {team.get('known')}"
+        f"Topology known:     {topology.get('known')}"
+    )
+    print(
+        f"Topology class:     {topology.get('classification')}"
+    )
+    print(
+        f"Topology format:    {topology.get('format')}"
+    )
+    print(
+        f"Topology source:    {topology.get('provenance')}"
+    )
+    print(
+        f"Topology state:     {topology.get('structuralDisposition')}"
+    )
+    print(
+        "Topology route:     "
+        + (
+            str(
+                topology.get(
+                    "recoveryRoute"
+                )
+            )
+            if topology.get(
+                "recoveryRoute"
+            )
+            else "—"
+        )
+    )
+    print()
+    print(
+        f"Two-team known:     {team.get('known')}"
     )
     print(
         f"Team mode:          {team.get('mode')}"
@@ -784,8 +882,12 @@ def print_status(
                 f"{coverage.get('resultUnknown')}"
             )
             print(
-                f"  Team debt:   "
-                f"{coverage.get('teamUnknown')}"
+                f"  Topology unresolved: "
+                f"{coverage.get('topologyUnknown', coverage.get('teamUnknown'))}"
+            )
+            print(
+                f"  Topology unexplained: "
+                f"{coverage.get('unexplainedTopologyDebt', coverage.get('teamUnknown'))}"
             )
             print(
                 f"  Mismatches:  "
