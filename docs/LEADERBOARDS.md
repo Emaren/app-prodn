@@ -252,3 +252,28 @@ npm run build
 ```
 
 No schema migration is required for these pages.
+
+## Replay backfill and current rating chronology
+
+Manual single-file uploads, package/batch uploads, Watcher imports, and recovery
+may add historical matches after newer matches are already known.
+
+Replay ingestion time is **not** rating chronology.
+
+Current displayed Steam RM/DM rating may advance only from trustworthy replay
+`played_on` chronology. `game_stats.created_at`, parser execution time, upload
+arrival time, and generic timestamp fallbacks must never make an old replay's
+embedded rating become current merely because its bytes were ingested today.
+
+An undated replay may bootstrap an identity that has no known rating. Once a
+rating exists, an undated historical replay cannot replace it. A newer
+trustworthy `played_on` observation may replace an older or undated
+observation.
+
+Historical uploads still belong in battle history and may legitimately change
+reconstructed Site Elo, records, streaks, and aggregate statistics because the
+historical corpus itself changed. They must not regress a player's displayed
+current Steam RM/DM rating.
+
+Player profiles, player directory, and leaderboard surfaces consume the same
+chronology-aware current-rating authority.

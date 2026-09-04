@@ -8,9 +8,7 @@ import {
   readMapName,
   readPlayedAt,
   readPlayerCivilizationLabel,
-  readPlayerSteamDmRating,
   readPlayerSteamId,
-  readPlayerSteamRmRating,
   isEarlyExitNoResult,
 } from "@/lib/gameStatsView";
 import type { PrismaClient } from "@/lib/generated/prisma";
@@ -2139,12 +2137,37 @@ async function buildProfileFromPlayer(
         }
       : wolo;
 
-  const latestPlayerRecord = matchedGames.map((game) => currentPlayerRecord(game, currentPlayer)).find(Boolean);
+  /*
+   * A recently ingested replay is not necessarily a recently played replay.
+   * Current RM/DM presentation therefore consumes the chronology-aware
+   * performance projection instead of blindly trusting the first replay row.
+   */
+  const latestPlayerRecord =
+    matchedGames
+      .map(
+        (game) =>
+          currentPlayerRecord(
+            game,
+            currentPlayer,
+          ),
+      )
+      .find(Boolean);
+
   const steamRmRating =
-    latestPlayerRecord ? readPlayerSteamRmRating(latestPlayerRecord) : performance.steamRating;
+    performance.steamRating;
+
   const steamDmRating =
-    latestPlayerRecord ? readPlayerSteamDmRating(latestPlayerRecord) : performance.ladderRating;
-  const steamId = latestPlayerRecord ? readPlayerSteamId(latestPlayerRecord) : input.user?.steamId ?? null;
+    performance.ladderRating;
+
+  const steamId =
+    input.user?.steamId ??
+    (
+      latestPlayerRecord
+        ? readPlayerSteamId(
+            latestPlayerRecord,
+          )
+        : null
+    );
 
   const profileCore = {
     displayName: input.displayName,

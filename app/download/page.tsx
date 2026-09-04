@@ -203,11 +203,11 @@ export default function DownloadPage() {
           <picture>
             <source
               media="(max-width: 767px)"
-              srcSet="/watcher/watcher-v158-mobile.png"
+              srcSet="/watcher/watcher-v159-mobile.png"
             />
 
             <img
-              src="/watcher/watcher-v158-desktop.png"
+              src="/watcher/watcher-v159-desktop.png"
               alt={`AoE2WAR Watcher ${WATCHER_RELEASE.version} replay companion overview`}
               width="1672"
               height="941"

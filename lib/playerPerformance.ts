@@ -2,10 +2,13 @@ import {
   normalizeDurationSeconds,
   parsePlayers,
   readMapName,
-  readPlayedAt,
   readPlayerSteamDmRating,
   readPlayerSteamRmRating,
 } from "@/lib/gameStatsView";
+import {
+  parseReplayRatingObservation,
+  shouldReplaceCurrentReplayRating,
+} from "@/lib/playerRatingRecency";
 import {
   type PublicPlayerRef,
   publicPlayerMatchesReplayParticipant,
@@ -90,7 +93,6 @@ export function buildPlayerPerformanceStats(
   let steamRating: number | null = null;
   let ladderRating: number | null = null;
   let ratingLastSeenAt: string | null = null;
-  let ratingLastSeenMs = 0;
 
   for (const rawMatch of matches) {
     const match = applyReplayAdjudicationToGameStats(rawMatch);
@@ -106,19 +108,43 @@ export function buildPlayerPerformanceStats(
       const nextSteamRating = readPlayerSteamRmRating(currentRecord);
       const nextLadderRating = readPlayerSteamDmRating(currentRecord);
       if (nextSteamRating !== null || nextLadderRating !== null) {
-        const nextPlayedAt = readPlayedAt(match);
-        const nextPlayedAtMs = nextPlayedAt ? new Date(nextPlayedAt).getTime() : 0;
+        const currentHasRating =
+          steamRating !== null ||
+          ladderRating !== null;
+
         const shouldReplace =
-          ratingLastSeenMs === 0 ||
-          nextPlayedAtMs === 0 ||
-          nextPlayedAtMs >= ratingLastSeenMs;
+          shouldReplaceCurrentReplayRating({
+            currentHasRating,
+            currentObservedAt:
+              ratingLastSeenAt,
+            nextPlayedOn:
+              match.played_on,
+          });
 
         if (shouldReplace) {
-          steamRating = nextSteamRating;
-          ladderRating = nextLadderRating;
-          ratingLastSeenMs = nextPlayedAtMs || ratingLastSeenMs;
-          ratingLastSeenAt =
-            nextPlayedAtMs > 0 ? new Date(nextPlayedAtMs).toISOString() : ratingLastSeenAt;
+          /*
+           * Preserve each lane independently. A replay carrying only one
+           * official rating must not erase the other lane.
+           */
+          if (nextSteamRating !== null) {
+            steamRating =
+              nextSteamRating;
+          }
+
+          if (nextLadderRating !== null) {
+            ladderRating =
+              nextLadderRating;
+          }
+
+          const observation =
+            parseReplayRatingObservation(
+              match.played_on,
+            );
+
+          if (observation) {
+            ratingLastSeenAt =
+              observation.iso;
+          }
         }
       }
     }

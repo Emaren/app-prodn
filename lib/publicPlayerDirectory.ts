@@ -1,5 +1,9 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import type { CommunityBadge } from "@/lib/communityHonors";
+import {
+  parseReplayRatingObservation,
+  shouldReplaceCurrentReplayRating,
+} from "@/lib/playerRatingRecency";
 import { normalizeManagedMediaTarget } from "@/lib/managedMediaAssets";
 
 import {
@@ -205,7 +209,7 @@ function updateLastPlayedAt(entry: PublicPlayerDirectoryEntry, nextPlayedAt: Dat
 function updateSteamRatings(
   entry: PublicPlayerDirectoryEntry,
   player: Record<string, unknown>,
-  nextPlayedAt: Date | string | null,
+  ratingPlayedOn: Date | string | null,
   identitySteamId: string | null,
 ) {
   const steamId =
@@ -230,17 +234,27 @@ function updateSteamRatings(
     return;
   }
 
-  const nextValue = nextPlayedAt ? new Date(nextPlayedAt) : null;
-  const nextTimestamp = nextValue && !Number.isNaN(nextValue.getTime()) ? nextValue.getTime() : null;
-  const currentTimestamp = entry.ratingLastSeenAt ? new Date(entry.ratingLastSeenAt).getTime() : null;
+  const currentHasRating =
+    entry.steamRmRating !== null ||
+    entry.steamDmRating !== null;
+
   const shouldReplace =
-    currentTimestamp === null ||
-    currentTimestamp === 0 ||
-    (nextTimestamp !== null && nextTimestamp >= currentTimestamp);
+    shouldReplaceCurrentReplayRating({
+      currentHasRating,
+      currentObservedAt:
+        entry.ratingLastSeenAt,
+      nextPlayedOn:
+        ratingPlayedOn,
+    });
 
   if (!shouldReplace) {
     return;
   }
+
+  const observation =
+    parseReplayRatingObservation(
+      ratingPlayedOn,
+    );
 
   entry.steamId =
     steamId ?? entry.steamId;
@@ -255,8 +269,10 @@ function updateSteamRatings(
       steamDmRating;
   }
 
-  entry.ratingLastSeenAt =
-    nextTimestamp !== null ? new Date(nextTimestamp).toISOString() : entry.ratingLastSeenAt;
+  if (observation) {
+    entry.ratingLastSeenAt =
+      observation.iso;
+  }
 }
 
 function compareOfficialRatings(left: PublicPlayerDirectoryEntry, right: PublicPlayerDirectoryEntry) {
@@ -794,7 +810,7 @@ export async function loadPublicPlayerDirectoryFresh(
       updateSteamRatings(
         entry,
         player,
-        playedAt,
+        game.played_on,
         steamId,
       );
     }

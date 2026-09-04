@@ -354,3 +354,27 @@ Documentation OS semantic-review and Engineering Memory requirements.
 
 Do not rely on an operator or AI remembering that a newly named betting file is
 financial.
+
+### Historical replay uploads are not current-rating observations
+
+A replay arriving now may have been played years ago.
+
+Never use upload time, `created_at`, parser execution time, or a generic
+presentation fallback clock to decide which embedded Steam RM/DM rating is
+current.
+
+The current-rating clock is trustworthy replay `played_on`. Undated historical
+uploads may bootstrap a missing rating but cannot overwrite an existing one.
+
+Keep historical-match truth and current-rating truth separate:
+
+- old uploads may extend match history;
+- old uploads may alter reconstructed Site Elo when historically appropriate;
+- old uploads must not replace a newer displayed Steam rating simply because
+  their bytes were ingested later.
+
+This invariant applies equally to browser single upload, batch/package upload,
+Watcher import, and recovery paths.
+
+Profile presentation must not bypass the shared chronology-aware rating
+projection by reading whichever replay row happens to appear first.
