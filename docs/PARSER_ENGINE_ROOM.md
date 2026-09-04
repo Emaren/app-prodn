@@ -482,3 +482,30 @@ These counts prove that candidate and normalized-stat infrastructure is populate
 ### Post-seal recovery verification
 
 After 1.00 GiB of regenerable root data was reclaimed, the automatic recovery rail processed the one eligible candidate successfully. `game_stats` 19794 produced parser run 4747 with `status=completed`, `candidateOnly=true`, and `affectsPublicAggregates=false`. The endpoint reported zero failed candidates, zero `game_stats` changes, zero market changes, and no betting or settlement authority. The next timer-fired invocation also completed successfully.
+
+### Watcher terminal parser-stability authority
+
+Automatic stats-only Watcher terminal result policies prove parser stability
+independently from winner authority.
+
+Legacy `GameStats.parse_iteration >= 2` remains valid stability evidence. A
+legacy game with a lower iteration may instead use a matching immutable Engine
+Room parse run only when all of the following are exact:
+
+- replay SHA-256 matches the `GameStats.replayHash`;
+- parser is `aoe2war.mgz_hd` version `1.8.51`;
+- pass is `hd_deterministic_evidence` version `8` or newer under the reviewed
+  deterministic contract;
+- run status is `completed` or `recovered`;
+- the run is candidate-only and does not itself affect public aggregates;
+- the exact `actions.raw_activity_by_player` observation exists for that run.
+
+This substitutes only for the legacy parser-iteration stability proxy. It does
+not establish a winner. Watcher-final provenance, recorder identity, exact
+roster/team evidence, resignation evidence, terminal activity, desync state,
+receipt integrity, and all other result-policy gates remain independently
+required.
+
+Automatic verdicts created through this path remain append-only,
+statistics-only, `affectsBets = false`, and carry the parser-stability
+provenance used to admit the result.

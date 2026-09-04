@@ -2,9 +2,12 @@ import {
   normalizeReplayPlayers,
   type CanonicalReplayPlayer,
 } from "./teamResolution.ts";
+import {
+  evaluateWatcherTerminalParserStability,
+} from "./watcherTerminalParserStability.ts";
 
 export const WATCHER_TEAM_TERMINAL_POLICY_VERSION =
-  "replay-team-terminal-action-tail-v2" as const;
+  "replay-team-terminal-action-tail-v3" as const;
 
 export const WATCHER_TEAM_TERMINAL_MIN_LEAD_MS = 10_000;
 export const WATCHER_TEAM_TERMINAL_MIN_LOSER_SILENCE_MS = 10_000;
@@ -930,11 +933,23 @@ export function evaluateWatcherTeamTerminalResult(
     };
   }
 
-  if (input.parseIteration < 2) {
+  const parserStability =
+    evaluateWatcherTerminalParserStability({
+      parseIteration:
+        input.parseIteration,
+
+      replayHash:
+        input.replayHash,
+
+      parseRun:
+        input.parseRun,
+    });
+
+  if (!parserStability.stable) {
     return {
       eligible: false,
       reason:
-        "parser_iteration_not_stable",
+        "parser_stability_not_proven",
     };
   }
 
@@ -1537,6 +1552,9 @@ export function evaluateWatcherTeamTerminalResult(
 
         financialAuthority:
           false,
+
+        parserStability:
+          parserStability.evidence,
 
         durationSeconds:
           input.durationSeconds,

@@ -268,7 +268,7 @@ test("automatic reconciliation creates provisional recorder-exit stats verdict",
     String(
       stored.idempotencyKey
     ),
-    /replay-terminal-recorder-exit-v1/
+    /replay-terminal-recorder-exit-v2/
   );
 
   const evidence =
@@ -325,7 +325,7 @@ test("automatic watcher evidence uses stats-only append-only authority", () => {
   );
   assert.equal(
     WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION,
-    "replay-terminal-recorder-exit-v1"
+    "replay-terminal-recorder-exit-v2"
   );
   assert.equal(
     WATCHER_TERMINAL_RECORDER_EXIT_RESULT_AUTHORITY,
@@ -903,3 +903,118 @@ test("short or non-final recordings remain unresolved", () => {
   live.isFinal = false;
   assert.equal(evaluateWatcherTerminalOwnerLoss(live).eligible, false);
 });
+
+test(
+  "deterministic pass-8 parse run satisfies recorder stability when legacy iteration is one",
+  () => {
+    const input =
+      baseInput();
+
+    input.parseIteration = 1;
+
+    input.parseRun = {
+      id: 8001,
+      artifactSha256:
+        input.replayHash,
+      parserName:
+        "aoe2war.mgz_hd",
+      parserVersion:
+        "1.8.51",
+      passName:
+        "hd_deterministic_evidence",
+      passVersion:
+        "8",
+      status:
+        "completed",
+      candidateOnly:
+        true,
+      affectsPublicAggregates:
+        false,
+      activityObservationId:
+        7001,
+      activityObservationFieldPath:
+        "actions.raw_activity_by_player",
+    };
+
+    const evaluation =
+      evaluateWatcherRecorderExitResult(
+        input
+      );
+
+    assert.equal(
+      evaluation.eligible,
+      true
+    );
+
+    if (!evaluation.eligible) {
+      return;
+    }
+
+    const evidence =
+      evaluation.evidence as {
+        parserStability?: {
+          source?: unknown;
+          passVersion?: unknown;
+        };
+      };
+
+    assert.equal(
+      evidence
+        .parserStability
+        ?.source,
+      "deterministic_replay_parse_run"
+    );
+
+    assert.equal(
+      evidence
+        .parserStability
+        ?.passVersion,
+      8
+    );
+  },
+);
+
+test(
+  "pass-6 parse run cannot replace recorder legacy stability",
+  () => {
+    const input =
+      baseInput();
+
+    input.parseIteration = 1;
+
+    input.parseRun = {
+      id: 8002,
+      artifactSha256:
+        input.replayHash,
+      parserName:
+        "aoe2war.mgz_hd",
+      parserVersion:
+        "1.8.51",
+      passName:
+        "hd_deterministic_evidence",
+      passVersion:
+        "6",
+      status:
+        "completed",
+      candidateOnly:
+        true,
+      affectsPublicAggregates:
+        false,
+      activityObservationId:
+        7002,
+      activityObservationFieldPath:
+        "actions.raw_activity_by_player",
+    };
+
+    assert.deepEqual(
+      evaluateWatcherRecorderExitResult(
+        input
+      ),
+      {
+        eligible: false,
+        reason:
+          "parser_stability_not_proven",
+      }
+    );
+  },
+);

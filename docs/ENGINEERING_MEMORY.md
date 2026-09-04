@@ -411,3 +411,22 @@ the server accumulator to the rendered row.
 
 General rule: preserve broad historical evidence, but require the strongest
 available provenance before that evidence can redefine a current-state number.
+
+### Parser stability is not the legacy iteration integer
+
+`GameStats.parse_iteration >= 2` is a legacy stability proxy, not winner
+authority.
+
+For automatic Watcher terminal statistics recovery, a lower legacy iteration
+may be superseded as a stability signal by exact immutable Engine Room
+evidence: matching replay SHA, reviewed `aoe2war.mgz_hd` deterministic pass 8,
+completed/recovered candidate run, and exact raw-activity observation.
+
+Never mutate `game_stats.parse_iteration` merely to satisfy a result-policy
+gate. Never treat parser stability itself as winner evidence. Result authority,
+desync protection, financial authority, and parser stability remain separate
+gates.
+
+When deterministic Engine Room stability is used, preserve its provenance in
+the append-only adjudication evidence. Automatic terminal recovery remains
+statistics-only and must keep `affectsBets = false`.

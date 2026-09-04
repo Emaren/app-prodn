@@ -12,6 +12,10 @@ import {
   evaluateWatcherTeamTerminalResult,
   WATCHER_TEAM_TERMINAL_POLICY_VERSION,
 } from "./watcherTeamTerminalResult.ts";
+import {
+  evaluateWatcherTerminalParserStability,
+  WATCHER_TERMINAL_RAW_ACTIVITY_PATH,
+} from "./watcherTerminalParserStability.ts";
 
 export const REPLAY_RESULT_ACCEPTED = "accepted" as const;
 export const REPLAY_RESULT_PENDING_ADMIN = "pending_admin_approval" as const;
@@ -1327,7 +1331,7 @@ export const WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY =
  * production game 21811 proved action ordering is not winner authority.
  */
 export const WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION =
-  "replay-terminal-recorder-exit-v1" as const;
+  "replay-terminal-recorder-exit-v2" as const;
 
 export const WATCHER_TERMINAL_RECORDER_EXIT_RESULT_AUTHORITY =
   true as const;
@@ -1562,10 +1566,23 @@ export function evaluateWatcherRecorderExitResult(
     };
   }
 
-  if (input.parseIteration < 2) {
+  const parserStability =
+    evaluateWatcherTerminalParserStability({
+      parseIteration:
+        input.parseIteration,
+
+      replayHash:
+        input.replayHash,
+
+      parseRun:
+        input.parseRun,
+    });
+
+  if (!parserStability.stable) {
     return {
       eligible: false,
-      reason: "parser_iteration_not_stable",
+      reason:
+        "parser_stability_not_proven",
     };
   }
 
@@ -2098,6 +2115,9 @@ export function evaluateWatcherRecorderExitResult(
 
         provisionalStatsInference:
           true,
+
+        parserStability:
+          parserStability.evidence,
 
         financialAuthority:
           false,
@@ -2798,8 +2818,21 @@ export async function reconcileAutomaticWatcherTerminalResults(
               parseRun.affectsPublicAggregates,
             completedAt:
               parseRun.completedAt,
+
+            /*
+             * The findFirst query above already requires
+             * artifact.sha256 === game.replayHash. Persist that exact
+             * proven artifact identity into the policy input.
+             */
+            artifactSha256:
+              game.replayHash,
+
             activityObservationId:
               activityObservation.id,
+
+            activityObservationFieldPath:
+              WATCHER_TERMINAL_RAW_ACTIVITY_PATH,
+
             activityProvenance:
               activityObservation.provenance,
           },

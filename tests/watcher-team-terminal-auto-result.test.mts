@@ -518,7 +518,7 @@ test(
   () => {
     assert.equal(
       WATCHER_TEAM_TERMINAL_POLICY_VERSION,
-      "replay-team-terminal-action-tail-v2"
+      "replay-team-terminal-action-tail-v3"
     );
 
     assert.equal(
@@ -1281,4 +1281,74 @@ test(
       }
     );
   }
+);
+
+test(
+  "deterministic pass-8 parse run satisfies team stability when legacy iteration is one",
+  () => {
+    const input =
+      teamInput21197();
+
+    input.parseIteration = 1;
+
+    input.parseRun = {
+      id: 9001,
+      artifactSha256:
+        input.replayHash,
+      parserName:
+        "aoe2war.mgz_hd",
+      parserVersion:
+        "1.8.51",
+      passName:
+        "hd_deterministic_evidence",
+      passVersion:
+        "8",
+      status:
+        "completed",
+      candidateOnly:
+        true,
+      affectsPublicAggregates:
+        false,
+      activityObservationId:
+        9002,
+      activityObservationFieldPath:
+        "actions.raw_activity_by_player",
+    };
+
+    const evaluation =
+      evaluateWatcherTeamTerminalResult(
+        input
+      );
+
+    assert.equal(
+      evaluation.eligible,
+      true
+    );
+
+    if (!evaluation.eligible) {
+      return;
+    }
+
+    const evidence =
+      evaluation.evidence as {
+        parserStability?: {
+          source?: unknown;
+          passVersion?: unknown;
+        };
+      };
+
+    assert.equal(
+      evidence
+        .parserStability
+        ?.source,
+      "deterministic_replay_parse_run"
+    );
+
+    assert.equal(
+      evidence
+        .parserStability
+        ?.passVersion,
+      8
+    );
+  },
 );
