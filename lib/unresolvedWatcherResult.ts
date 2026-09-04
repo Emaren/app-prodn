@@ -2,6 +2,12 @@ import {
   resolveExplicitUnevenTeamStats,
 } from "./replayExplicitTeamStats.ts";
 
+import {
+  normalizeReplayPlayerName,
+  normalizeReplayPlayers,
+  resolveReplayTeams,
+} from "./teamResolution.ts";
+
 export const UNRESOLVED_WATCHER_RESULT_CODES = [
   "disconnect_or_desync",
   "roster_missing",
@@ -53,6 +59,7 @@ export const REPLAY_WINNER_TRUTH_REASON_CODES = [
   "generic_inference_rejected",
   "disconnect_or_desync",
   "untrusted_structured_team_result",
+  "stored_winner_not_canonical_team",
   "winner_missing",
   "no_postgame_block",
   "no_scores",
@@ -1319,6 +1326,68 @@ function acceptedReplayResultAdjudicationCandidate(
 }
 
 
+function storedWinnerMapsToCanonicalTeam(
+  input: ReplayWinnerTruthInput,
+  storedWinner: string
+) {
+  const players =
+    normalizeReplayPlayers(
+      input.players
+    );
+
+  const resolution =
+    resolveReplayTeams(
+      players,
+      {
+        final:
+          input.isFinal === true,
+      }
+    );
+
+  if (
+    resolution.status !==
+      "resolved" ||
+    resolution.confidence !==
+      "high" ||
+    resolution.teams.length !==
+      2
+  ) {
+    return false;
+  }
+
+  const normalizedWinner =
+    normalizeReplayPlayerName(
+      storedWinner
+    );
+
+  if (!normalizedWinner) {
+    return false;
+  }
+
+  const matchingTeams =
+    resolution.teams.filter(
+      (team) =>
+        team.players.some(
+          (player) =>
+            player.normalizedName ===
+              normalizedWinner ||
+            player.aliases.some(
+              (alias) =>
+                normalizeReplayPlayerName(
+                  alias
+                ) ===
+                normalizedWinner
+            )
+        )
+    );
+
+  return (
+    matchingTeams.length ===
+    1
+  );
+}
+
+
 export function resolveReplayWinnerTruth(
   input: ReplayWinnerTruthInput
 ): ReplayWinnerTruth {
@@ -1732,6 +1801,46 @@ export function resolveReplayWinnerTruth(
         ? `Candidate ${candidateWinner} came only from a rejected replay inference; decisive winner proof is missing.`
         : "A low-confidence replay inference was rejected because decisive winner proof is missing.",
       neededEvidence: neededWinnerEvidence(truthReasons),
+    };
+  }
+
+  if (
+    storedWinner &&
+    !structuredTeamWinners &&
+    !storedWinnerMapsToCanonicalTeam(
+      input,
+      storedWinner
+    )
+  ) {
+    return {
+      winner:
+        null,
+
+      candidateWinner:
+        storedWinner,
+
+      confidence:
+        "unresolved",
+
+      truthReasons: [
+        "stored_winner_not_canonical_team",
+      ],
+
+      publicLabel:
+        "Result review",
+
+      statsEligible:
+        false,
+
+      bettingEligible:
+        false,
+
+      diagnosticSummary:
+        `Stored winner ${storedWinner} was rejected because it does not map to exactly one side of a high-confidence canonical two-team roster.`,
+
+      neededEvidence: [
+        "a canonical two-team roster that maps the stored winner to exactly one side or commissioner adjudication",
+      ],
     };
   }
 

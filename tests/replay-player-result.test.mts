@@ -94,6 +94,73 @@ test("partial team assignments and partial winner sets stay outside resolved W/L
   );
 });
 
+test("unsupported three-player scalar winner cannot create partial W/L", () => {
+  const game = {
+    winner:
+      "Alpha",
+
+    players: [
+      {
+        name:
+          "Alpha",
+        number:
+          1,
+        winner:
+          true,
+      },
+      {
+        name:
+          "Bravo",
+        number:
+          2,
+        winner:
+          false,
+      },
+      {
+        name:
+          "Charlie",
+        number:
+          3,
+        winner:
+          false,
+      },
+    ],
+
+    parse_reason:
+      "manual_backfill",
+
+    parse_source:
+      "manual_backfill",
+
+    is_final:
+      true,
+  };
+
+  assert.equal(
+    result(
+      game,
+      "Alpha"
+    ),
+    "unknown"
+  );
+
+  assert.equal(
+    result(
+      game,
+      "Bravo"
+    ),
+    "unknown"
+  );
+
+  assert.equal(
+    result(
+      game,
+      "Charlie"
+    ),
+    "unknown"
+  );
+});
+
 test("one isolated team winner flag cannot turn every other player into a loss", () => {
   const players = playersFor(2).map((player, index) => ({
     ...player,

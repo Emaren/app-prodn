@@ -110,10 +110,10 @@ test("archive paging chooses the adjudication-aware canonical proof within each 
   const rich = archiveRow(11, "2026-08-26T12:04:00.000Z", {
     platformMatchId: "shared-platform-id",
     players: [
-      { name: "Alpha", winner: true },
-      { name: "Bravo", winner: false },
-      { name: "Charlie", winner: true },
-      { name: "Delta", winner: false },
+      { name: "Alpha", team_id: 1, winner: true },
+      { name: "Bravo", team_id: 2, winner: false },
+      { name: "Charlie", team_id: 1, winner: true },
+      { name: "Delta", team_id: 2, winner: false },
     ],
     map: { name: "Black Forest" },
     parseIteration: 24,

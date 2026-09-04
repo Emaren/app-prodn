@@ -271,6 +271,143 @@ test("stored scalar winner cannot override an untrusted structured 3v3 result", 
   );
 });
 
+test("stored scalar winner fails closed without canonical two-team mapping", () => {
+  const truth =
+    resolveReplayWinnerTruth({
+      winner:
+        "mexicana.transportes",
+
+      players: [
+        {
+          name:
+            "mexicana.transportes",
+          winner:
+            true,
+        },
+        {
+          name:
+            "Second Player",
+          winner:
+            false,
+        },
+        {
+          name:
+            "Third Player",
+          winner:
+            false,
+        },
+      ],
+
+      parseReason:
+        "manual_backfill",
+
+      parseSource:
+        "manual_backfill",
+
+      isFinal:
+        true,
+    });
+
+  assert.equal(
+    truth.winner,
+    null
+  );
+
+  assert.equal(
+    truth.candidateWinner,
+    "mexicana.transportes"
+  );
+
+  assert.equal(
+    truth.statsEligible,
+    false
+  );
+
+  assert.equal(
+    truth.bettingEligible,
+    false
+  );
+
+  assert.ok(
+    truth.truthReasons.includes(
+      "stored_winner_not_canonical_team"
+    )
+  );
+});
+
+test("stored scalar winner remains authority when it maps to one canonical team", () => {
+  const truth =
+    resolveReplayWinnerTruth({
+      winner:
+        "Alpha",
+
+      players: [
+        {
+          name:
+            "Alpha",
+          team_id:
+            1,
+          winner:
+            true,
+        },
+        {
+          name:
+            "Bravo",
+          team_id:
+            1,
+          winner:
+            false,
+        },
+        {
+          name:
+            "Charlie",
+          team_id:
+            2,
+          winner:
+            false,
+        },
+        {
+          name:
+            "Delta",
+          team_id:
+            2,
+          winner:
+            false,
+        },
+      ],
+
+      parseReason:
+        "manual_backfill",
+
+      parseSource:
+        "manual_backfill",
+
+      isFinal:
+        true,
+    });
+
+  assert.equal(
+    truth.winner,
+    "Alpha"
+  );
+
+  assert.equal(
+    truth.statsEligible,
+    true
+  );
+
+  assert.equal(
+    truth.bettingEligible,
+    true
+  );
+
+  assert.ok(
+    truth.truthReasons.includes(
+      "stored_winner_field"
+    )
+  );
+});
+
 test("disconnect evidence blocks an otherwise stored winner", () => {
   const truth = resolveReplayWinnerTruth({
     winner: "Alpha",
