@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-08-04"
+reviewed_at: "2026-09-04"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -143,34 +143,36 @@ already-reviewed exact result for the existing betting reconciler.
 
 
 <!-- AOE2WAR:AUTOMATIC_TERMINAL_ADJUDICATION_V3:START -->
-## Automatic terminal-evidence adjudications
+## Terminal action-tail evidence — diagnostic only
 
-`replay-terminal-action-tail-v3` may append a non-human, stats-only
-adjudication for a final rated HD 1v1 when one player stops acting first and the
-other remains active through the terminal replay tail. It is not a submitter
-claim, commissioner verdict, resignation guess, or generic
-uploader-versus-opponent inference.
+`replay-terminal-action-tail-v3` remains the historical policy/evidence label
+for the terminal-action ordering experiment, but it is no longer automatic
+winner or adjudication authority.
 
-The row records:
+Production game `21811` supplied a decisive counterexample: the known
+voluntary quitter was the later-active player in the replay packet stream,
+while the opponent's final gameplay packet occurred earlier. The same immutable
+parser candidate contained no raw or normalized resignation event.
 
-- `submittedVia = automatic_replay_terminal_policy`;
-- `policyVersion = replay-terminal-action-tail-v3`;
-- exact submitter, winner, and loser player keys/names;
-- replay hash and parser-run identity;
-- `terminalReceiptMode = exact_watcher_receipt` or
-  `action_tail_fallback`;
-- measured winner lead, loser silence, winner tail, and their policy thresholds;
-- `financialAuthority = false`.
+Current rules:
 
-A current human-confirmed desync, terminal Watcher failure, conflicting receipt,
-serialized result, existing adjudication history, ambiguous roster/activity, or
-insufficient terminal gap blocks the automatic row. The accepted row may update
-profiles, rivalry records, leaderboards, and public battle presentation through
-the existing effective-result projection. It cannot authorize a market.
+- terminal action ordering may be retained as diagnostic evidence;
+- terminal action ordering alone must not append a new accepted result;
+- an exact Watcher terminal receipt proves replay/session provenance, not which
+  AoE2 player won;
+- missing Watcher terminal metadata must not increase result authority;
+- explicit serialized resignation, trusted serialized winner evidence, or an
+  authorized human adjudication remains required result authority;
+- existing historical automatic adjudications remain immutable evidence and
+  must be audited or superseded append-only rather than edited or deleted;
+- terminal action-tail evidence never creates financial or settlement authority.
 
-Human review remains available. Any correction appends a superseding row with
-its own attributable evidence; neither the parser record nor the automatic row
-is edited or deleted.
+`WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY = false` is the forward
+code-level safety gate.
+
+The evaluator may continue measuring terminal action ordering for diagnostics,
+but the automatic reconciler must return `action_tail_diagnostic_only` rather
+than creating a new accepted 1v1 adjudication.
 <!-- AOE2WAR:AUTOMATIC_TERMINAL_ADJUDICATION_V3:END -->
 
 ## Public presentation versus private evidence
