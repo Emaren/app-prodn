@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-08-04"
+reviewed_at: "2026-09-04"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -129,6 +129,35 @@ commits before CPU-bound binary parsing starts. Do not move parser execution
 back inside that transaction: concurrent uploads would hold connections for
 the entire parse and can exhaust the async SQLAlchemy pool before later
 watchers are identified.
+
+### Replay durability rail — 2026-09-04
+
+Replay upload durability now separates HTTP admission, transport retry behavior,
+database identity work, and CPU-heavy MGZ parsing.
+
+Production rules:
+
+- replay upload admission remains bounded by
+  `AOE2_REPLAY_UPLOAD_MAX_INFLIGHT=1`;
+- the hot replay parse runs in a spawned parser process rather than the API
+  event-loop process, with `AOE2_REPLAY_PARSER_WORKERS` defaulting to one;
+- uploader/API-key identity is resolved and committed before parser CPU work,
+  so the database connection is not held across MGZ parsing;
+- overload responses return `429` with `Retry-After`, and the app replay proxy
+  preserves that upstream retry guidance;
+- the desktop watcher honors `Retry-After`, adds bounded retry jitter, and
+  reuses one immutable replay snapshot across ordinary transport retries;
+- parser-finalizing retries begin a new logical observation after the wait,
+  allowing a still-growing replay to be captured again instead of indefinitely
+  retrying stale bytes;
+- parser process failure is recoverable through process-pool recreation, but a
+  fake timeout that abandons a running parser process is not permitted.
+
+The production canary on 2026-09-03 proved the spawned parser worker had a PID
+distinct from the API process, preserved local `/health` responsiveness during
+a real watcher upload, and kept replay admission at exactly one. This durability
+rail changes transport and execution isolation only. It does not create result,
+betting, settlement, payout, claim, or chain authority.
 
 ## Raw replay artifact invariant
 
