@@ -293,3 +293,20 @@ Terminal, proof, review, settled, and voided states fail closed.
 
 This compatibility bridge restores live betting immediately. It does not yet
 provide economic isolation between Opening Minute and Late Book wagers.
+
+## War Chest earnings and period truth
+
+War Chest `Take` is economic gain, not gross payout cashflow.
+
+For a winning wager:
+
+`Take = max(payoutWolo - amountWolo, 0)`
+
+Returned principal, voids, refunds, corrective refunds, and duplicate
+bet-settlement payment claims are not earnings.
+
+Weekly mode presents weekly Take, weekly settled earnings, and weekly gross
+wagered stake. All-Time mode presents the corresponding lifetime values.
+
+`Claimable` remains current claimable cashflow and may include returned
+capital; returned capital does not become Take.

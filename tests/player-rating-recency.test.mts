@@ -3,6 +3,7 @@ import fs from "node:fs";
 import test from "node:test";
 
 import {
+  isWatcherCurrentRatingSource,
   parseReplayRatingObservation,
   shouldReplaceCurrentReplayRating,
 } from "../lib/playerRatingRecency.ts";
@@ -235,6 +236,39 @@ test(
 );
 
 test(
+  "leaderboard current Steam rating accepts only live/final Watcher sources",
+  () => {
+    assert.equal(
+      isWatcherCurrentRatingSource(
+        "watcher_live",
+      ),
+      true,
+    );
+
+    assert.equal(
+      isWatcherCurrentRatingSource(
+        "watcher_final",
+      ),
+      true,
+    );
+
+    assert.equal(
+      isWatcherCurrentRatingSource(
+        "file_upload",
+      ),
+      false,
+    );
+
+    assert.equal(
+      isWatcherCurrentRatingSource(
+        "browser",
+      ),
+      false,
+    );
+  },
+);
+
+test(
   "profile and directory consume chronology-aware current-rating authority",
   () => {
     const directory =
@@ -254,6 +288,11 @@ test(
         ),
         "utf8",
       );
+
+    assert.match(
+      directory,
+      /isWatcherCurrentRatingSource\(\s*game\.parse_source/,
+    );
 
     assert.match(
       directory,

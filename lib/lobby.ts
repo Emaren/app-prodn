@@ -261,6 +261,8 @@ export type LobbyWoloEarnersEntry = {
   weeklyTakeWolo: number;
   settledWolo: number;
   wageredWolo: number;
+  weeklySettledWolo: number;
+  weeklyWageredWolo: number;
   claimCount: number;
   wagerCount: number;
   claimableWolo: number;
@@ -279,6 +281,12 @@ export type LobbyWoloEarnersBoard = {
   weekStartsAt: string;
   generatedAt: string;
   entries: LobbyWoloEarnersEntry[];
+  prefetchedEntriesByMode?: Partial<
+    Record<
+      LobbyWoloEarnersMode,
+      LobbyWoloEarnersEntry[]
+    >
+  >;
 };
 
 export type LobbySnapshot = {

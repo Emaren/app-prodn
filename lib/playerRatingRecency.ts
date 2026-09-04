@@ -9,6 +9,19 @@ export type ReplayRatingObservation = {
   ms: number;
 };
 
+export function isWatcherCurrentRatingSource(
+  value: string | null | undefined,
+) {
+  const normalized = String(value ?? "")
+    .trim()
+    .toLowerCase();
+
+  return (
+    normalized === "watcher_live" ||
+    normalized === "watcher_final"
+  );
+}
+
 /*
  * Current Steam rating chronology is replay-event truth.
  *

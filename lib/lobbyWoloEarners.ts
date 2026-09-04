@@ -16,12 +16,17 @@ import type {
   LobbyWoloEarnersMode,
 } from "@/lib/lobby";
 import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
+import {
+  warChestClaimCountsAsTake,
+  warChestWagerTakeWolo,
+} from "@/lib/warChestWoloAccounting";
 
 const WEEKLY_TIMEFRAME_DAYS = 7;
 const MIN_VISIBLE_SLOTS = 3;
 
 type LoadLobbyWoloEarnersBoardOptions = {
   mode?: LobbyWoloEarnersMode;
+  prefetchAlternate?: boolean;
 };
 
 type UserIdentity = {
@@ -60,9 +65,12 @@ type ActorMetrics = {
   weeklyTakeWolo: number;
   settledWolo: number;
   wageredWolo: number;
+  weeklySettledWolo: number;
+  weeklyWageredWolo: number;
   claimCount: number;
   wagerCount: number;
   claimableWolo: number;
+  claimableTakeWolo: number;
   lastActiveAt: Date | null;
 };
 
@@ -85,8 +93,16 @@ function setLatestActivity(current: Date | null, candidate: Date) {
   return current;
 }
 
-function getAllTimeTakeWolo(metrics: Pick<ActorMetrics, "settledWolo" | "claimableWolo">) {
-  return metrics.settledWolo + metrics.claimableWolo;
+function getAllTimeTakeWolo(
+  metrics: Pick<
+    ActorMetrics,
+    "settledWolo" | "claimableTakeWolo"
+  >,
+) {
+  return (
+    metrics.settledWolo +
+    metrics.claimableTakeWolo
+  );
 }
 
 function compareSharedTieBreakers(a: ActorMetrics, b: ActorMetrics) {
@@ -142,6 +158,22 @@ function sortMetricsForMode(mode: LobbyWoloEarnersMode) {
   };
 }
 
+function buildEntriesForMode(
+  metrics: ActorMetrics[],
+  mode: LobbyWoloEarnersMode,
+) {
+  return metrics
+    .slice()
+    .sort(sortMetricsForMode(mode))
+    .map((entry, index) =>
+      buildEntry(
+        entry,
+        index + 1,
+        entry.weeklyTakeWolo > 0 ? "weekly" : "backfill",
+      ),
+    );
+}
+
 function getCurrentUtcWeekStart(now: Date) {
   const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
   const daysSinceMonday = (weekStart.getUTCDay() + 6) % 7;
@@ -169,6 +201,8 @@ function buildEntry(
       weeklyTakeWolo: metrics.weeklyTakeWolo,
       settledWolo: metrics.settledWolo,
       wageredWolo: metrics.wageredWolo,
+      weeklySettledWolo: metrics.weeklySettledWolo,
+      weeklyWageredWolo: metrics.weeklyWageredWolo,
       claimCount: metrics.claimCount,
       wagerCount: metrics.wagerCount,
       claimableWolo: metrics.claimableWolo,
@@ -191,6 +225,8 @@ function buildEntry(
     weeklyTakeWolo: metrics.weeklyTakeWolo,
     settledWolo: metrics.settledWolo,
     wageredWolo: metrics.wageredWolo,
+    weeklySettledWolo: metrics.weeklySettledWolo,
+    weeklyWageredWolo: metrics.weeklyWageredWolo,
     claimCount: metrics.claimCount,
     wagerCount: metrics.wagerCount,
     claimableWolo: metrics.claimableWolo,
@@ -293,9 +329,12 @@ function getOrCreateActor(
     weeklyTakeWolo: 0,
     settledWolo: 0,
     wageredWolo: 0,
+    weeklySettledWolo: 0,
+    weeklyWageredWolo: 0,
     claimCount: 0,
     wagerCount: 0,
     claimableWolo: 0,
+    claimableTakeWolo: 0,
     lastActiveAt: null,
   };
 
@@ -343,9 +382,13 @@ function mergeDuplicateActorNames(entries: ActorMetrics[]) {
     current.weeklyTakeWolo += entry.weeklyTakeWolo;
     current.settledWolo += entry.settledWolo;
     current.wageredWolo += entry.wageredWolo;
+    current.weeklySettledWolo += entry.weeklySettledWolo;
+    current.weeklyWageredWolo += entry.weeklyWageredWolo;
     current.claimCount += entry.claimCount;
     current.wagerCount += entry.wagerCount;
     current.claimableWolo += entry.claimableWolo;
+    current.claimableTakeWolo +=
+      entry.claimableTakeWolo;
 
     if (entry.lastActiveAt) {
       current.lastActiveAt = setLatestActivity(
@@ -393,8 +436,12 @@ async function loadWagers(prisma: PrismaClient) {
   }) as Promise<WagerSample[]>;
 }
 
-function claimCountsAsWeeklyTake(claim: Pick<ClaimSample, "claimKind">) {
-  return claim.claimKind !== "bet_payout" && claim.claimKind !== "bet_refund";
+function claimCountsAsWeeklyTake(
+  claim: Pick<ClaimSample, "claimKind">,
+) {
+  return warChestClaimCountsAsTake(
+    claim.claimKind,
+  );
 }
 
 function claimCountsAsSettled(claim: Pick<ClaimSample, "claimKind" | "status">) {
@@ -460,10 +507,6 @@ function expandTeamClaimSamples(claims: ClaimSample[]) {
   return expanded;
 }
 
-function wagerCountsAsSettled(wager: Pick<WagerSample, "status" | "payoutWolo">) {
-  return (wager.status === "won" || wager.status === "void") && (wager.payoutWolo ?? 0) > 0;
-}
-
 async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
   const [claims, wagers] = await Promise.all([loadClaims(prisma), loadWagers(prisma)]);
   const expandedClaims = expandTeamClaimSamples(claims);
@@ -502,9 +545,28 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
     }
     if (claimCountsAsSettled(claim)) {
       actor.settledWolo += claim.amountWolo;
+
+      if (
+        claim.createdAt.getTime() >=
+        weekStartsAt.getTime()
+      ) {
+        actor.weeklySettledWolo +=
+          claim.amountWolo;
+      }
     }
+
     if (claim.status === "pending") {
-      actor.claimableWolo += claim.amountWolo;
+      /*
+       * Claimable is cashflow truth.
+       * Claimable Take is earnings truth.
+       */
+      actor.claimableWolo +=
+        claim.amountWolo;
+
+      if (claimCountsAsWeeklyTake(claim)) {
+        actor.claimableTakeWolo +=
+          claim.amountWolo;
+      }
     }
     actor.claimCount += 1;
     actor.lastActiveAt = setLatestActivity(actor.lastActiveAt, claim.createdAt);
@@ -520,17 +582,54 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
       replayName: null,
     });
 
-    actor.wageredWolo += wager.amountWolo;
-    actor.wagerCount += 1;
-    actor.lastActiveAt = setLatestActivity(actor.lastActiveAt, wager.createdAt);
+    actor.wageredWolo +=
+      wager.amountWolo;
 
-    const takeSettledAt = wager.settledAt ?? wager.createdAt;
-    if (wagerCountsAsSettled(wager)) {
-      actor.settledWolo += wager.payoutWolo ?? 0;
-      if (takeSettledAt.getTime() >= weekStartsAt.getTime()) {
-        actor.weeklyTakeWolo += wager.payoutWolo ?? 0;
+    if (
+      wager.createdAt.getTime() >=
+      weekStartsAt.getTime()
+    ) {
+      actor.weeklyWageredWolo +=
+        wager.amountWolo;
+    }
+
+    actor.wagerCount += 1;
+
+    actor.lastActiveAt =
+      setLatestActivity(
+        actor.lastActiveAt,
+        wager.createdAt,
+      );
+
+    const takeSettledAt =
+      wager.settledAt ??
+      wager.createdAt;
+
+    const wagerTakeWolo =
+      warChestWagerTakeWolo(
+        wager,
+      );
+
+    if (wagerTakeWolo > 0) {
+      actor.settledWolo +=
+        wagerTakeWolo;
+
+      if (
+        takeSettledAt.getTime() >=
+        weekStartsAt.getTime()
+      ) {
+        actor.weeklyTakeWolo +=
+          wagerTakeWolo;
+
+        actor.weeklySettledWolo +=
+          wagerTakeWolo;
       }
-      actor.lastActiveAt = setLatestActivity(actor.lastActiveAt, takeSettledAt);
+
+      actor.lastActiveAt =
+        setLatestActivity(
+          actor.lastActiveAt,
+          takeSettledAt,
+        );
     }
   }
 
@@ -554,11 +653,19 @@ export async function loadLobbyWoloEarnersBoard(
   const weekStartsAt = getCurrentUtcWeekStart(generatedAt);
   const allMetrics = await loadBoardMetrics(prisma, weekStartsAt);
 
-  const entries = allMetrics
-    .sort(sortMetricsForMode(mode))
-    .map((entry, index) =>
-      buildEntry(entry, index + 1, entry.weeklyTakeWolo > 0 ? "weekly" : "backfill")
-    );
+  const entries = buildEntriesForMode(allMetrics, mode);
+  const prefetchedEntriesByMode = options.prefetchAlternate
+    ? {
+        weekly:
+          mode === "weekly"
+            ? entries
+            : buildEntriesForMode(allMetrics, "weekly"),
+        all_time:
+          mode === "all_time"
+            ? entries
+            : buildEntriesForMode(allMetrics, "all_time"),
+      }
+    : undefined;
 
   return {
     mode,
@@ -569,5 +676,6 @@ export async function loadLobbyWoloEarnersBoard(
     weekStartsAt: weekStartsAt.toISOString(),
     generatedAt: generatedAt.toISOString(),
     entries,
+    prefetchedEntriesByMode,
   };
 }

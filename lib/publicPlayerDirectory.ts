@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import type { CommunityBadge } from "@/lib/communityHonors";
 import {
+  isWatcherCurrentRatingSource,
   parseReplayRatingObservation,
   shouldReplaceCurrentReplayRating,
 } from "@/lib/playerRatingRecency";
@@ -806,7 +807,22 @@ export async function loadPublicPlayerDirectoryFresh(
       steamDmRating,
     });
 
-    if (player) {
+    /*
+     * The leaderboard's big Steam rating is current-Watcher truth.
+     *
+     * Manual/browser/file uploads remain valid historical evidence,
+     * but they cannot redefine the player's current official rating.
+     *
+     * Among Watcher observations, played_on remains the chronology
+     * authority so a newly parsed historical Watcher replay cannot
+     * outrank a genuinely newer Watcher-seen battle.
+     */
+    if (
+      player &&
+      isWatcherCurrentRatingSource(
+        game.parse_source,
+      )
+    ) {
       updateSteamRatings(
         entry,
         player,

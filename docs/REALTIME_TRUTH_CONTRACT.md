@@ -572,3 +572,16 @@ transactional database write independently enforce the same lifecycle fence.
 
 This active-window compatibility behavior precedes the future independent
 Pre-Game, Opening Minute, and Late Book economics.
+
+### Current Steam rating authority
+
+The HD Leaderboard's current official Steam rating is Watcher-observed truth.
+
+Only `watcher_live` and `watcher_final` replay observations may advance the
+current leaderboard Steam rating. Manual uploads, browser uploads, file
+uploads, backfills, and newly parsed historical material remain valid replay
+history but cannot redefine the current rating.
+
+Among eligible Watcher observations, replay `played_on` is the chronology
+authority. Upload time, parse time, and database creation time do not outrank
+the actual battle date.
