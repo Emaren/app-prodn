@@ -2,12 +2,6 @@ import {
   resolveExplicitUnevenTeamStats,
 } from "./replayExplicitTeamStats.ts";
 
-import {
-  normalizeReplayPlayerName,
-  normalizeReplayPlayers,
-  resolveReplayTeams,
-} from "./teamResolution.ts";
-
 export const UNRESOLVED_WATCHER_RESULT_CODES = [
   "disconnect_or_desync",
   "roster_missing",
@@ -1326,37 +1320,355 @@ function acceptedReplayResultAdjudicationCandidate(
 }
 
 
+type ScalarAuthorityPlayer = {
+  normalizedName: string;
+  stablePlayerKey: string;
+  teamId: string | null;
+  aliases: string[];
+};
+
+function scalarAuthorityText(
+  value: unknown
+) {
+  return typeof value ===
+    "string"
+    ? value
+        .replace(
+          /\\s+/g,
+          " "
+        )
+        .trim()
+    : "";
+}
+
+function scalarAuthorityName(
+  value: unknown
+) {
+  return scalarAuthorityText(
+    value
+  ).toLocaleLowerCase(
+    "en-US"
+  );
+}
+
+function scalarAuthorityNumber(
+  value: unknown
+) {
+  if (
+    typeof value ===
+      "number" &&
+    Number.isFinite(value)
+  ) {
+    return value;
+  }
+
+  if (
+    typeof value ===
+      "string" &&
+    value.trim()
+  ) {
+    const parsed =
+      Number(value);
+
+    if (
+      Number.isFinite(
+        parsed
+      )
+    ) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function scalarAuthorityTeamId(
+  player:
+    Record<string, unknown>
+) {
+  const value =
+    player.team_id ??
+    player.teamId ??
+    player.team_number ??
+    player.teamNumber ??
+    player.team;
+
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return null;
+  }
+
+  const numeric =
+    scalarAuthorityNumber(
+      value
+    );
+
+  if (numeric !== null) {
+    const normalized =
+      String(
+        Math.trunc(
+          numeric
+        )
+      );
+
+    return normalized ===
+      "-1"
+      ? null
+      : normalized;
+  }
+
+  const normalized =
+    scalarAuthorityText(
+      value
+    );
+
+  if (!normalized) {
+    return null;
+  }
+
+  const lower =
+    normalized.toLowerCase();
+
+  if (
+    lower === "none" ||
+    lower === "unknown" ||
+    lower === "null" ||
+    lower === "-1"
+  ) {
+    return null;
+  }
+
+  return normalized;
+}
+
+function scalarAuthoritySteamId(
+  player:
+    Record<string, unknown>
+) {
+  const value =
+    scalarAuthorityText(
+      player.steam_id ??
+      player.steamId ??
+      player.user_id
+    );
+
+  return /^\\d{15,20}$/.test(
+    value
+  )
+    ? value
+    : null;
+}
+
+function scalarAuthorityPlayer(
+  value: unknown
+): ScalarAuthorityPlayer | null {
+  if (
+    !value ||
+    typeof value !==
+      "object" ||
+    Array.isArray(value)
+  ) {
+    return null;
+  }
+
+  const player =
+    value as
+      Record<string, unknown>;
+
+  const name =
+    scalarAuthorityText(
+      player.name ??
+      player.player ??
+      player.player_name ??
+      player.displayName
+    );
+
+  if (!name) {
+    return null;
+  }
+
+  const normalizedName =
+    scalarAuthorityName(
+      name
+    );
+
+  const steamId =
+    scalarAuthoritySteamId(
+      player
+    );
+
+  const aliases =
+    Array.isArray(
+      player.aliases
+    )
+      ? [
+          ...new Set(
+            player.aliases
+              .map(
+                scalarAuthorityName
+              )
+              .filter(Boolean)
+          ),
+        ]
+      : [];
+
+  return {
+    normalizedName,
+
+    stablePlayerKey:
+      steamId
+        ? `steam:${steamId}`
+        : `name:${normalizedName}`,
+
+    teamId:
+      scalarAuthorityTeamId(
+        player
+      ),
+
+    aliases,
+  };
+}
+
 function storedWinnerMapsToCanonicalTeam(
   input: ReplayWinnerTruthInput,
   storedWinner: string
 ) {
   const players =
-    normalizeReplayPlayers(
-      input.players
-    );
-
-  const resolution =
-    resolveReplayTeams(
-      players,
-      {
-        final:
-          input.isFinal === true,
-      }
-    );
+    (
+      Array.isArray(
+        input.players
+      )
+        ? input.players
+        : []
+    )
+      .map(
+        scalarAuthorityPlayer
+      )
+      .filter(
+        (
+          player
+        ): player is ScalarAuthorityPlayer =>
+          Boolean(player)
+      );
 
   if (
-    resolution.status !==
-      "resolved" ||
-    resolution.confidence !==
-      "high" ||
-    resolution.teams.length !==
-      2
+    players.length <
+    2
   ) {
     return false;
   }
 
+  const identityKeys =
+    players.map(
+      (player) =>
+        player.stablePlayerKey
+    );
+
+  if (
+    new Set(
+      identityKeys
+    ).size !==
+    identityKeys.length
+  ) {
+    return false;
+  }
+
+  let teams:
+    ScalarAuthorityPlayer[][];
+
+  if (
+    players.length ===
+    2
+  ) {
+    teams =
+      players.map(
+        (player) => [
+          player,
+        ]
+      );
+  } else {
+    if (
+      ![
+        4,
+        6,
+        8,
+      ].includes(
+        players.length
+      )
+    ) {
+      return false;
+    }
+
+    if (
+      players.some(
+        (player) =>
+          player.teamId ===
+          null
+      )
+    ) {
+      return false;
+    }
+
+    const grouped =
+      new Map<
+        string,
+        ScalarAuthorityPlayer[]
+      >();
+
+    for (
+      const player
+      of players
+    ) {
+      const teamId =
+        player.teamId as string;
+
+      const team =
+        grouped.get(
+          teamId
+        ) ??
+        [];
+
+      team.push(
+        player
+      );
+
+      grouped.set(
+        teamId,
+        team
+      );
+    }
+
+    if (
+      grouped.size !==
+      2
+    ) {
+      return false;
+    }
+
+    const expectedSize =
+      players.length /
+      2;
+
+    if (
+      [...grouped.values()]
+        .some(
+          (team) =>
+            team.length !==
+            expectedSize
+        )
+    ) {
+      return false;
+    }
+
+    teams =
+      [...grouped.values()];
+  }
+
   const normalizedWinner =
-    normalizeReplayPlayerName(
+    scalarAuthorityName(
       storedWinner
     );
 
@@ -1365,18 +1677,14 @@ function storedWinnerMapsToCanonicalTeam(
   }
 
   const matchingTeams =
-    resolution.teams.filter(
+    teams.filter(
       (team) =>
-        team.players.some(
+        team.some(
           (player) =>
             player.normalizedName ===
               normalizedWinner ||
-            player.aliases.some(
-              (alias) =>
-                normalizeReplayPlayerName(
-                  alias
-                ) ===
-                normalizedWinner
+            player.aliases.includes(
+              normalizedWinner
             )
         )
     );

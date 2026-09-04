@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -18,6 +19,23 @@ import {
 } from "../lib/liveGamesClientReconcile.ts";
 import { classifyReplaySessionDisposition } from "../lib/replaySessionDisposition.ts";
 import type { LiveGamesSnapshot } from "../lib/liveGames.ts";
+
+test("client-shared replay truth stays free of server-only team hashing dependencies", async () => {
+  const source = await readFile(
+    "lib/unresolvedWatcherResult.ts",
+    "utf8"
+  );
+
+  assert.doesNotMatch(
+    source,
+    /from\s+["']\.\/teamResolution\.ts["']/
+  );
+
+  assert.doesNotMatch(
+    source,
+    /node:crypto/
+  );
+});
 
 const tell3zEmarenPlayers = [
   {
