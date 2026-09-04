@@ -159,10 +159,13 @@ rebuildable from Git/release evidence.
 Recovery selection must preserve irreplaceable mutable truth, not blindly clone
 regenerable runtime generations.
 
-## Betting Fairness V1 and Betting Phase Books V2
+## Betting Fairness V1.1 and Betting Phase Books V2
 
-Current certified production uses Betting Fairness V1: fresh competitive
-watcher-live wagering is pre-game only.
+Current production uses the Betting Fairness V1.1 compatibility bridge.
+
+Scheduled/challenge winner books remain pre-game only. Unscheduled
+Watcher-discovered winner books admit fresh winner bets while their canonical
+market status remains `open` or `live`.
 
 The accepted next product architecture is Betting Phase Books V2. This is a
 new financial model, not merely a UI relabel.
@@ -281,3 +284,32 @@ For one settlement identity, expose one primary selection surface.
 
 Roster players remain visible inside the team panels. Reintroduce player
 buttons only for independently priced and settled player-level markets.
+
+### Watcher-live winner compatibility admission
+
+A production Watcher winner market is commonly born after battle detection with:
+
+- `scheduledMatchId = null`;
+- non-null `linkedSessionKey`;
+- canonical status `live`;
+- often no `closeAt`.
+
+The old Betting Fairness V1 rule treated that market as permanently too late,
+which disabled both Team A / Team B selection and real transactional wager
+admission.
+
+V1.1 permits fresh winner bets while such an unscheduled Watcher market is
+`open` or `live`.
+
+Scheduled/challenge markets retain their strict pre-game cutoff. Desync remains
+closed to fresh post-start money. Closing/proof/review/terminal states fail
+closed.
+
+Never repair this only in the frontend. The public `bettingOpen` projection and
+the transactional `buildFreshBetMarketWriteWhere()` fence must remain aligned.
+
+The direct Node test runner must use
+`scripts/aoe2-alias-loader.mjs` for tests that transitively import `@/...`
+modules. A raw `node --test` failure with `ERR_MODULE_NOT_FOUND` for `@/lib`
+is a test-harness invocation error, not evidence that the financial patch
+failed.

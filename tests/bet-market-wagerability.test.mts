@@ -125,11 +125,46 @@ test(
 );
 
 test(
-  "watcher-discovered unscheduled battle can never open a fresh book",
+  "watcher-discovered unscheduled winner book accepts bets while active",
   () => {
     for (const status of [
       "open",
       "live",
+    ]) {
+      const market = {
+        marketType: "winner",
+        status,
+        closeAt: null,
+        linkedSessionKey:
+          "watcher-session-123",
+        scheduledMatchId: null,
+      };
+
+      assert.equal(
+        freshBettingCloseReason(
+          market,
+          NOW
+        ),
+        null,
+        status
+      );
+
+      assert.equal(
+        isFreshBetMarketWagerable(
+          market,
+          NOW
+        ),
+        true,
+        status
+      );
+    }
+
+    for (const status of [
+      "closing",
+      "awaiting_final_proof",
+      "under_review",
+      "settled",
+      "voided",
     ]) {
       assert.equal(
         freshBettingCloseReason(
@@ -143,7 +178,8 @@ test(
           },
           NOW
         ),
-        "watcher_battle_already_started"
+        "market_not_open",
+        status
       );
     }
   }
@@ -257,7 +293,7 @@ test(
 );
 
 test(
-  "database write guard carries the same exact-start law",
+  "database write guard separates scheduled, manual, and watcher-live admission",
   () => {
     const serialized =
       JSON.stringify(
@@ -289,6 +325,16 @@ test(
     assert.match(
       serialized,
       /"linkedSessionKey":null/
+    );
+
+    assert.match(
+      serialized,
+      /"status":\{"in":\["open","live"\]\}/
+    );
+
+    assert.match(
+      serialized,
+      /"linkedSessionKey":\{"not":null\}/
     );
   }
 );

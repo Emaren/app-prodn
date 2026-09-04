@@ -62,9 +62,9 @@ function hasScheduledMatchIdentity(
 /**
  * Canonical V1 law for admitting a NEW financial commitment.
  *
- * - Fresh competitive betting is pre-game only.
- * - Watcher-discovered unscheduled battles are already underway by the
- *   time their market exists, so they cannot accept fresh stakes.
+ * - Scheduled competitive betting remains pre-game only.
+ * - Unscheduled watcher winner markets are compatibility live books and may
+ *   accept fresh stakes while the market remains authoritatively open/live.
  * - Desync side markets are currently born only from live watcher battles
  *   and therefore cannot accept fresh stakes in V1.
  * - Scheduled markets must have a real cutoff and must be strictly before it.
@@ -107,22 +107,37 @@ export function freshBettingCloseReason(
       market.scheduledMatchId,
     );
 
-  /*
-   * A watcher session is discovered from an underway battle. Without a
-   * scheduled-match identity there was no authoritative pre-game betting
-   * phase to preserve.
-   */
-  if (
-    linkedSessionKey &&
-    !hasScheduledMatch
-  ) {
-    return "watcher_battle_already_started";
-  }
-
-  if (
+  const status =
     normalizedText(
       market.status,
-    ) !== "open"
+    );
+
+  const unscheduledWatcherWinner =
+    Boolean(
+      linkedSessionKey &&
+      !hasScheduledMatch,
+    );
+
+  /*
+   * Compatibility bridge:
+   *
+   * An unscheduled watcher winner market does not exist before the Watcher
+   * discovers the battle. It may therefore accept fresh bets while the
+   * canonical market itself remains open/live.
+   *
+   * Scheduled markets retain their stricter pre-game start fence below.
+   */
+  if (
+    unscheduledWatcherWinner
+  ) {
+    if (
+      status !== "open" &&
+      status !== "live"
+    ) {
+      return "market_not_open";
+    }
+  } else if (
+    status !== "open"
   ) {
     return "market_not_open";
   }
@@ -197,21 +212,21 @@ export function buildFreshBetMarketWriteWhere(
   now = new Date(),
 ): Prisma.BetMarketWhereInput {
   return {
-    status: "open",
-
     /*
-     * Current Desync markets are created only after watcher gameplay has
-     * begun. They are evidence surfaces in V1, not fresh money markets.
+     * Desync remains outside fresh-money admission. Winner books alone
+     * participate in this compatibility bridge.
      */
     marketType:
       WINNER_MARKET_TYPE,
 
     OR: [
       /*
-       * Scheduled market: the authoritative start clock is mandatory and
-       * must still be strictly in the future.
+       * Scheduled/challenge book:
+       * open only and strictly before its authoritative cutoff.
        */
       {
+        status:
+          "open",
         scheduledMatchId: {
           not: null,
         },
@@ -221,14 +236,45 @@ export function buildFreshBetMarketWriteWhere(
       },
 
       /*
-       * Manual/static market: no watcher-live identity is allowed. An
-       * explicit closeAt, when present, is still authoritative.
+       * Manual/static winner book:
+       * no watcher identity and open only.
        */
       {
+        status:
+          "open",
         scheduledMatchId:
           null,
         linkedSessionKey:
           null,
+        OR: [
+          {
+            closeAt: null,
+          },
+          {
+            closeAt: {
+              gt: now,
+            },
+          },
+        ],
+      },
+
+      /*
+       * Unscheduled Watcher winner compatibility book:
+       * admission exists only while the canonical battle market remains
+       * open/live. An explicit closeAt, if one exists, is still honored.
+       */
+      {
+        status: {
+          in: [
+            "open",
+            "live",
+          ],
+        },
+        scheduledMatchId:
+          null,
+        linkedSessionKey: {
+          not: null,
+        },
         OR: [
           {
             closeAt: null,

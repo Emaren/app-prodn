@@ -110,12 +110,20 @@ settlement service and requires a separate reviewed deployment.
 
 ## Betting Phase Books V2 — accepted design, not yet live
 
-Current certified production remains Betting Fairness V1: fresh
-watcher-discovered competitive betting is pre-game only.
+Current production uses the Betting Fairness V1.1 compatibility bridge:
 
-The accepted next architecture is Betting Phase Books V2. It must ship through
-a separately reviewed financial/database release before production behavior
-changes.
+- scheduled/challenge winner books remain pre-game only and close at their
+  authoritative cutoff;
+- an unscheduled Watcher-discovered winner book accepts fresh bets while its
+  canonical market remains `open` or `live`;
+- closing, proof, review, settled, and voided states reject fresh commitments;
+- Desync remains closed to fresh post-start money.
+
+This restores practical live winner betting for Watcher-discovered games, but
+it remains one live economic pool and is not the final phase-book architecture.
+
+The accepted next architecture remains Betting Phase Books V2 with independent
+Pre-Game, Opening Minute, and Late books.
 
 One canonical battle may own three independent winner books:
 
@@ -207,17 +215,21 @@ The replacement `PremiumStakeComposer` is a vertical betting interaction:
 - Desync moved below the primary winner composer instead of sharing one
   spreadsheet-like horizontal row.
 
-This presentation slice does not alter financial admission, custody, payout,
-market creation, or settlement rules.
-
-The existing authority remains:
+The premium-composer release originally retained the pre-game-only V1
+financial fence. The subsequent V1.1 Watcher Live compatibility hotfix changes
+financial admission for unscheduled Watcher winner markets while preserving the
+same authority chain:
 
 `freshBettingCloseReason()` -> board `bettingOpen` projection -> page
-`market.bettingOpen && !marketWorkflow` -> composer `canEdit`.
+selection/composer eligibility.
 
-Wallet signing, stake recovery, settlement, and the certified Betting Fairness
-V1 server-side write fence remain unchanged until the separately reviewed
-Betting Phase Books V2 financial implementation ships.
+`buildFreshBetMarketWriteWhere()` independently mirrors that rule at the
+transactional database-write boundary.
+
+Scheduled/challenge books remain pre-game only. Unscheduled Watcher winner
+books accept fresh bets while canonical status is `open` or `live`. Desync
+fresh-money restrictions, wallet signing, participant-side rules, recovery,
+and settlement remain unchanged.
 
 ### Betting action language invariant
 
@@ -252,3 +264,26 @@ Roster names stay inside the Team A / Team B panels.
 
 A player-specific control belongs on the page only when it represents a
 genuinely independent player proposition with its own pricing and settlement.
+
+### Watcher Live compatibility bridge
+
+Production Watcher winner markets are normally created after battle detection
+with no scheduled-match identity, a non-null watcher/platform session identity,
+and canonical status `live`.
+
+For that unscheduled Watcher winner lane, fresh winner bets are admitted while
+the market remains `open` or `live`.
+
+Admission is deliberately enforced twice:
+
+1. `freshBettingCloseReason()` controls public `bettingOpen`;
+2. `buildFreshBetMarketWriteWhere()` independently fences the transactional
+   write.
+
+Scheduled/challenge books still require an open market and an authoritative
+future cutoff. Desync remains outside fresh live-money admission.
+
+Terminal, proof, review, settled, and voided states fail closed.
+
+This compatibility bridge restores live betting immediately. It does not yet
+provide economic isolation between Opening Minute and Late Book wagers.
