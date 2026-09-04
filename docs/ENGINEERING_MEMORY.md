@@ -217,3 +217,28 @@ never becomes financial authority.
   release commands.
 - Do not infer mutable production state from this document when `aoe2war
   status` can answer it live.
+
+## zsh operator-shell invariant
+
+In zsh, lowercase `path` is a special array tied directly to the scalar
+`PATH`. Do not use `path` as a loop variable, scratch variable, `read`
+destination, or temporary pathname in interactive AoE2WAR operator commands.
+
+For example, this is unsafe in zsh:
+
+    while IFS= read -r path; do
+        ...
+    done
+
+Assigning to `path` can replace the executable search path and make later
+commands such as `git`, `python3`, or `node` appear to vanish.
+
+Use names such as `item`, `file`, `entry`, `candidate`, or `p` instead.
+
+If this happens, the repository and executables are normally intact; restore
+`PATH`, rehash the shell, prove the current Git state, and resume rather than
+resetting or repeating completed work.
+
+AoE2WAR pasteable interactive commands must also continue avoiding outer
+`set -e`, `set -u`, `pipefail`, naked `exit`, and naked `return`. Individual
+governed scripts may enforce their own internal fail-closed shell policy.
