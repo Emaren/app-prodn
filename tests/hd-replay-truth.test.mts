@@ -302,6 +302,7 @@ test("unknown-like placeholders are never promoted to replay metadata", () => {
     "",
     "Unknown",
     "UNKNOWN",
+    "Opponent",
     "N/A",
     "na",
     "Parsing",
@@ -314,6 +315,69 @@ test("unknown-like placeholders are never promoted to replay metadata", () => {
 
   assert.equal(publicReplayMapLabel({ name: "Unknown" }), "HD Battlefield");
   assert.equal(publicReplayMapLabel({ name: "Yucatan" }), "Yucatan");
+});
+
+test("generic Opponent placeholder never becomes replay result authority", () => {
+  const truth =
+    resolveReplayWinnerTruth({
+      winner:
+        "Opponent",
+
+      players: [
+        {
+          name: "Alpha",
+          winner: false,
+        },
+        {
+          name: "Bravo",
+          winner: false,
+        },
+        {
+          name: "Charlie",
+          winner: false,
+        },
+        {
+          name: "Delta",
+          winner: false,
+        },
+        {
+          name: "Echo",
+          winner: false,
+        },
+        {
+          name: "Foxtrot",
+          winner: false,
+        },
+      ],
+
+      parseReason:
+        "recorded_resignation_final",
+
+      parseSource:
+        "watcher_final",
+
+      isFinal:
+        true,
+
+      eventTypes: [
+        "resign",
+      ],
+    });
+
+  assert.equal(
+    truth.winner,
+    null
+  );
+
+  assert.equal(
+    truth.statsEligible,
+    false
+  );
+
+  assert.equal(
+    truth.bettingEligible,
+    false
+  );
 });
 
 test("active games with known roster and map are not mislabeled as parser review", () => {

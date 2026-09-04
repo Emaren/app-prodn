@@ -117,6 +117,7 @@ const NON_WINNER_VALUES = new Set([
   "unknown map",
   "unknown player",
   "unknown opponent",
+  "opponent",
   "unknown result",
   "unknown battlefield",
   "undetermined",

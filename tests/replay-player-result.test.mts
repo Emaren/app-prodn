@@ -205,6 +205,134 @@ test("canonical stats-eligible final winner flags still project 1v1 W/L", () => 
   );
 });
 
+test("trusted structured 1v1 result outranks raw Unknown scalar winner", () => {
+  const game = {
+    winner:
+      "Unknown",
+
+    players: [
+      {
+        name: "Alpha",
+        number: 1,
+        winner: null,
+      },
+      {
+        name: "Bravo",
+        number: 2,
+        winner: null,
+      },
+    ],
+
+    parse_reason:
+      "hd_metadata_fragment_body_recovery",
+
+    parse_source:
+      "watcher_final",
+
+    is_final:
+      true,
+
+    event_types: [
+      "resign",
+    ],
+
+    key_events: {
+      completed:
+        true,
+
+      result_resolution: {
+        result_status:
+          "resolved",
+
+        result_trusted:
+          true,
+
+        result_provenance:
+          "complete_losing_team_resignation",
+
+        winning_team_id:
+          "name:alpha",
+
+        winning_player_names: [
+          "Alpha",
+        ],
+
+        winning_player_keys: [
+          "name:alpha",
+        ],
+
+        result_evidence: {
+          complete_losing_team_resignation:
+            true,
+
+          resignation_result_conflict:
+            false,
+
+          winner_flags_coherent:
+            false,
+        },
+      },
+
+      team_resolution: {
+        status:
+          "resolved",
+
+        format:
+          "1v1",
+
+        confidence:
+          "high",
+
+        provenance:
+          "one_vs_one_roster",
+
+        teams: [
+          {
+            team_id:
+              "name:alpha",
+
+            players: [
+              "Alpha",
+            ],
+
+            player_keys: [
+              "name:alpha",
+            ],
+          },
+          {
+            team_id:
+              "name:bravo",
+
+            players: [
+              "Bravo",
+            ],
+
+            player_keys: [
+              "name:bravo",
+            ],
+          },
+        ],
+      },
+    },
+  };
+
+  assert.equal(
+    result(
+      game,
+      "Alpha"
+    ),
+    "win"
+  );
+
+  assert.equal(
+    result(
+      game,
+      "Bravo"
+    ),
+    "loss"
+  );
+});
+
 test("conflicting scalar and player winner evidence stays outside resolved W/L", () => {
   const players = playersFor(2).map((player, index) => ({
     ...player,

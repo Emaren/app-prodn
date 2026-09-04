@@ -11,7 +11,10 @@ import {
   type CanonicalReplayPlayer,
   type ReplayTeamResolution,
 } from "./teamResolution.ts";
-import { resolveReplayWinnerTruth } from "./unresolvedWatcherResult.ts";
+import {
+  normalizeResolvedWinner,
+  resolveReplayWinnerTruth,
+} from "./unresolvedWatcherResult.ts";
 
 export type ReplayPlayerResult = "win" | "loss" | "unknown";
 
@@ -606,7 +609,12 @@ function winningTeamIndex(
    * "actgun / CRAZY_ALLOWED" is not a scalar-player conflict;
    * its team was projected from the structured contract above.
    */
-  const scalarWinner = winnerTruth.statsEligible ? text(game.winner) : null;
+  const scalarWinner =
+    winnerTruth.statsEligible
+      ? normalizeResolvedWinner(
+          game.winner
+        )
+      : null;
 
   const scalarWinnerTeam =
     teamIndexForName(
