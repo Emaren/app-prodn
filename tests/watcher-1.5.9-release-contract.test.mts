@@ -36,16 +36,16 @@ const reliabilityEvents = [
 ];
 
 test(
-  "Watcher 1.5.8 public release identity is exact",
+  "Watcher 1.5.9 public release identity is exact",
   () => {
     assert.match(
       release,
-      /version: "1\.5\.8"/,
+      /version: "1\.5\.9"/,
     );
 
     assert.match(
       release,
-      /releasedOn: "Sep 1, 2026"/,
+      /releasedOn: "Sep 3, 2026"/,
     );
 
     assert.match(
@@ -65,7 +65,7 @@ test(
 
     assert.doesNotMatch(
       release,
-      /version: "1\.5\.7"/,
+      /version: "1\.5\.8"/,
     );
   },
 );
@@ -91,7 +91,7 @@ test(
 );
 
 test(
-  "Watcher release sync preserves the 1.5.8 discovery features",
+  "Watcher release sync preserves the current discovery features",
   () => {
     assert.match(
       sync,
@@ -111,21 +111,36 @@ test(
 );
 
 test(
-  "Watcher telemetry docs bind 1.5.8 to certified release evidence",
+  "Watcher telemetry docs bind 1.5.9 to certified release evidence",
   () => {
     assert.match(
       docs,
-      /Current manifests report `version: 1\.5\.8`/,
+      /Current manifests report `version: 1\.5\.9`/,
     );
 
     assert.match(
       docs,
-      /9875f13da0929c296727f748a86658ec3d912dc9/,
+      /3546b86d3cdc1203baa563ae74f9d5a5e82557d7/,
     );
 
     assert.match(
       docs,
-      /33585254366/,
+      /33818322254/,
+    );
+
+    assert.match(
+      docs,
+      /Retry-After/,
+    );
+
+    assert.match(
+      docs,
+      /bounded retry jitter/,
+    );
+
+    assert.match(
+      docs,
+      /spawned parser process/,
     );
 
     for (
@@ -139,7 +154,7 @@ test(
 
     assert.doesNotMatch(
       docs,
-      /Current manifests report `version: 1\.5\.7`/,
+      /Current manifests report `version: 1\.5\.8`/,
     );
   },
 );

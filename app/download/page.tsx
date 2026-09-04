@@ -181,14 +181,14 @@ export default function DownloadPage() {
       {extreme ? (
         <section
           className="relative overflow-hidden rounded-[2.6rem] border border-white/10 bg-[#020711] shadow-[0_38px_120px_rgba(0,0,0,0.6)]"
-          aria-label="AoE2HDBets Watcher 1.5.8"
+          aria-label={`AoE2HDBets Watcher ${WATCHER_RELEASE.version}`}
         >
           <h1 className="sr-only">
             Download it. Pair once. Stay live.
           </h1>
 
           <p className="sr-only">
-            AoE2HDBets Watcher 1.5.8 automatically captures live and historical
+            AoE2HDBets Watcher {WATCHER_RELEASE.version} automatically captures live and historical
             AoE2HD replay evidence with recovery, telemetry, result processing,
             and cross-platform support.
           </p>
@@ -208,7 +208,7 @@ export default function DownloadPage() {
 
             <img
               src="/watcher/watcher-v158-desktop.png"
-              alt="AoE2WAR Watcher 1.5.8 replay companion overview"
+              alt={`AoE2WAR Watcher ${WATCHER_RELEASE.version} replay companion overview`}
               width="1672"
               height="941"
               loading="eager"
