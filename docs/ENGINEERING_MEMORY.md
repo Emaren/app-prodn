@@ -430,3 +430,155 @@ gates.
 When deterministic Engine Room stability is used, preserve its provenance in
 the append-only adjudication evidence. Automatic terminal recovery remains
 statistics-only and must keep `affectsBets = false`.
+
+<!-- AOE2WAR:REPLAY_TRUTH_SCALAR_AUTHORITY_CLOSURE_20260904:START -->
+## Replay truth scalar-authority closure — 2026-09-04
+
+The replay-result authority investigation completed on 2026-09-04 and is
+closed at certified source
+`f50cb7ec6a6bcf256eee4d56ae4e2d667c76e59e`, implementation
+`bb58c70d312a435d7950d53e34b936f7852d684f`, active build
+`GS6jfsCxQcPnAykQ2ezbI`, public version
+`20260904185439-fed8d215d0`.
+
+### Durable scalar-winner law
+
+A legacy stored scalar replay winner is not sufficient authority merely because
+a non-placeholder name exists.
+
+The scalar winner may receive statistics authority only when it maps to exactly
+one side of a canonical high-confidence two-team proposition.
+
+For the legacy automatic scalar path:
+
+- exact 1v1 is eligible when the winner maps to exactly one participant;
+- larger automatic team forms require 4, 6, or 8 players;
+- larger forms require explicit team IDs for every player;
+- exactly two teams must exist;
+- the teams must be equal-sized;
+- canonical player identities must be unique;
+- the stored winner must map to exactly one canonical side.
+
+Unsupported 3-, 5-, and 7-player scalar rows fail closed. Do not infer FFA,
+2v1, or another proposition merely from player count.
+
+Fail-closed scalar state preserves evidence without granting authority:
+
+- effective winner: `null`;
+- candidate winner: preserved stored scalar winner;
+- confidence: `unresolved`;
+- `statsEligible = false`;
+- `bettingEligible = false`;
+- truth reason: `stored_winner_not_canonical_team`;
+- participant W/L remains unknown.
+
+Production games `1541` and `1571` were the corpus counterexamples that exposed
+this defect. They remain intentionally unresolved unless new lawful evidence is
+added.
+
+### Full-corpus closure proof
+
+A production read-only audit at `2026-09-04T19:18:41Z` checked **4,428 final
+GameStats rows** under the certified release.
+
+Results:
+
+- replay truth / participant-result contract mismatches: **0**;
+- scalar-authority rows at that snapshot: **411**;
+- incoherent scalar-authority rows: **0**;
+- game `1541`: fail-closed, 0 wins / 0 losses / 3 unknown;
+- game `1571`: fail-closed, 0 wins / 0 losses / 3 unknown.
+
+Audit receipt:
+
+`/tmp/aoe2war-post-release-truth-contract-20260904T191839Z.json`
+
+The durable cross-layer regression law is:
+
+> A final replay must never have high-level statistics authority when the
+> participant resolver cannot produce a complete coherent W/L projection for
+> the represented proposition.
+
+The post-release proof also confirmed production source remained unchanged, the
+web service remained active, and Wolo listeners `8092` and `8093` remained
+untouched.
+
+### Client/server dependency lesson
+
+The first correct scalar-authority implementation reused
+`lib/teamResolution.ts` from `lib/unresolvedWatcherResult.ts`.
+
+That was architecturally invalid because `unresolvedWatcherResult.ts` is shared
+with client code through `components/game-stats/LiveReplayDetail.tsx`, while
+`teamResolution.ts` legitimately imports `node:crypto` for canonical hashing.
+The isolated production Webpack build correctly rejected the resulting browser
+dependency chain.
+
+Do not solve this by weakening or browser-reimplementing canonical hash
+authority.
+
+The final architecture keeps the narrow scalar structural check browser-safe
+inside `unresolvedWatcherResult.ts` while server-side canonical team hashing
+remains in `teamResolution.ts`.
+
+A permanent regression test requires the client-shared replay-truth module to
+remain free of:
+
+- `from "./teamResolution.ts"`; and
+- `node:crypto`.
+
+General lesson: when a domain module is shared with `"use client"` consumers,
+review its transitive runtime dependencies before importing server-only domain
+helpers.
+
+### Production read-only audit lesson
+
+The production web environment file is root-protected:
+
+`/etc/aoe2hdbets/aoe2hdbets-web.env`
+
+The ordinary SSH operator account cannot source it and must not be granted
+broader secret-file permissions merely to run an audit.
+
+For protected production database audits:
+
+1. use the authorized root operator boundary;
+2. load the existing production environment without printing secrets;
+3. export `AOE2WAR_PROD_DB_PREVIEW=true`;
+4. independently query PostgreSQL and require
+   `current_setting('default_transaction_read_only') = 'on'`;
+5. prove production Git/service/Wolo boundaries before and after the audit.
+
+The environment flag is intent; PostgreSQL's own read-only state is the proof.
+
+### Unknown-debt north star
+
+The objective is **zero unexplained unknowns**, not zero rows containing the
+word `unknown` at any cost.
+
+Every final replay should eventually have an explicit disposition:
+
+1. `AUTOMATICALLY_RESOLVED` — canonical teams/result proven from machine
+   evidence;
+2. `ADJUDICATED_STATS_ONLY` — lawful human/external evidence supplies the
+   result without granting financial authority;
+3. `NON_COMPETITIVE_OR_NON_FINAL` — saved checkpoint, aborted session,
+   continuation/rehost, or otherwise not a completed competitive battle;
+4. `IRRECOVERABLE_RESULT_EVIDENCE` — preserved real evidence exists but no
+   lawful result can currently be established.
+
+A literal 100% historical W/L corpus is permissible only if the final category
+is eliminated through new evidence. Never weaken truth gates to satisfy a
+coverage counter.
+
+### Replay truth campaign discipline
+
+Future historical repair campaigns operate cohort-by-cohort:
+
+`fresh census -> counterfactual -> exact safe set -> candidate -> forensic proof
+-> append-only acceptance -> public canary -> current-DM invariant ->
+financial/Wolo invariant -> full-corpus truth audit -> durable receipt`
+
+Do not reuse stale corpus totals as current truth. The Watcher is live and may
+change the denominator between campaigns.
+<!-- AOE2WAR:REPLAY_TRUTH_SCALAR_AUTHORITY_CLOSURE_20260904:END -->

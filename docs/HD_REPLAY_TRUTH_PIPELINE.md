@@ -466,3 +466,151 @@ Production evidence includes:
   restarted by the proof.
 
 Do not increase replay admission merely because this gate is closed.
+
+<!-- AOE2WAR:REPLAY_TRUTH_FULL_CORPUS_CONTRACT_20260904:START -->
+## Scalar result authority and full-corpus contract — 2026-09-04
+
+### Stored scalar winner authority
+
+A stored scalar `winner` value is legacy evidence, not unconditional result
+authority.
+
+It may establish statistics truth only when the winner maps to exactly one side
+of a canonical high-confidence two-team proposition.
+
+For the automatic scalar path:
+
+- 1v1 may resolve from one unique named participant;
+- 4-, 6-, and 8-player forms require complete explicit team IDs;
+- exactly two teams must exist;
+- the teams must be balanced;
+- player identities must be unique;
+- the scalar winner must map to exactly one side.
+
+Three-, five-, and seven-player scalar rows are unsupported by this automatic
+proposition law and remain unresolved unless another stronger result authority
+applies.
+
+When the scalar field cannot map to a canonical team, the required state is:
+
+    winner          = null
+    candidateWinner = preserved stored value
+    confidence      = unresolved
+    statsEligible   = false
+    bettingEligible = false
+    truth reason    = stored_winner_not_canonical_team
+
+This rule is intentionally statistics-conservative and does not infer FFA,
+uneven teams, or historical game format from roster size alone.
+
+`resolveExplicitUnevenTeamStats()` remains a separate stronger evidence lane for
+rows that actually contain complete explicit uneven two-team truth.
+
+### Cross-layer result contract
+
+Replay truth changes must preserve agreement between:
+
+1. the high-level replay winner/trust resolver; and
+2. participant-level W/L projection.
+
+For every final replay in the audited corpus, high-level statistics authority
+must not exist unless participant projection is complete and coherent for the
+represented proposition.
+
+The certified post-release production audit at `2026-09-04T19:18:41Z` checked
+**4,428 final rows** and proved:
+
+- contract mismatches: **0**;
+- scalar-authority rows: **411** at that timestamp;
+- incoherent scalar-authority rows: **0**.
+
+The scalar-authority row count is a dated runtime metric, not a fixed invariant.
+The zero-incoherence and zero-cross-layer-mismatch properties are the
+invariants.
+
+Production counterexamples `1541` and `1571` now both produce:
+
+- effective winner `null`;
+- preserved candidate winner;
+- `statsEligible = false`;
+- `bettingEligible = false`;
+- three unknown participant outcomes.
+
+They must not be projected or adjudicated without new evidence.
+
+### Mandatory replay-truth release proof
+
+Any source release that changes replay winner authority, team authority, or
+participant result projection should run a full-corpus read-only contract audit
+after activation.
+
+The audit must:
+
+- use the exact certified production source;
+- force `AOE2WAR_PROD_DB_PREVIEW=true`;
+- independently prove PostgreSQL `default_transaction_read_only = on`;
+- inspect all current final replay rows;
+- require zero high-level/participant contract mismatches;
+- require zero incoherent scalar-authority rows;
+- verify production Git and service state before and after;
+- verify protected Wolo listeners before and after;
+- write a timestamped durable receipt.
+
+A replay-truth campaign is not fully closed until this proof passes.
+
+### Truth-debt operating model
+
+Do not treat all unresolved rows as one parser defect. Track team debt and
+result debt independently.
+
+Useful dimensions include:
+
+- canonical roster known/unknown;
+- canonical teams known/unknown;
+- winner/loser known/unknown;
+- disconnect state;
+- artifact availability;
+- current parser/pass version;
+- accepted adjudication state;
+- current public projection state;
+- exact blocking evidence reason.
+
+Recommended routing classes are:
+
+- `AUTO_RECOVERABLE`;
+- `REPARSE_REQUIRED`;
+- `TEAM_EVIDENCE_REQUIRED`;
+- `RESULT_EVIDENCE_REQUIRED`;
+- `EXTERNAL_EVIDENCE_REQUIRED`;
+- `HUMAN_REVIEW_REQUIRED`;
+- `NON_BATTLE_CANDIDATE`;
+- `IRRECOVERABLE_CANDIDATE`.
+
+These are workflow classifications, not winner truth.
+
+Historical repair should optimize both games recovered and participant-results
+recovered. Team-game cohorts can have greater participant-result leverage than
+larger game-count 1v1 cohorts.
+
+### Absolute boundaries
+
+Do not infer teams from player order, color, alias, uploader, score, or action
+order.
+
+Do not infer a winner from:
+
+- uploader/opponent identity;
+- last action;
+- terminal action ordering;
+- chat;
+- score alone;
+- player order;
+- color.
+
+Parser stability is not winner authority. Watcher provenance is not winner
+authority. Disconnect and desync gates remain independent evidence constraints.
+
+Historical statistics repair never directly rewrites current Watcher-owned
+Steam DM rating and never gains betting, settlement, claim, payout, or Wolo
+authority merely because statistics become resolved.
+<!-- AOE2WAR:REPLAY_TRUTH_FULL_CORPUS_CONTRACT_20260904:END -->
