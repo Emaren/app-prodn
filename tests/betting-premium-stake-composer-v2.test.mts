@@ -32,7 +32,12 @@ test("E4 uses the premium vertical stake composer", () => {
 
   assert.match(
     source,
-    /Stake your WOLO/,
+    /Bet your WOLO/,
+  );
+
+  assert.doesNotMatch(
+    source,
+    /Choose a stake below\./,
   );
 
   assert.match(

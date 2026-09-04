@@ -259,3 +259,25 @@ Do not infer that Opening Minute or Late Book financial admission is live
 merely because the new visual system exists. Certified Betting Fairness V1
 remains authoritative until the phase-book schema and transactional admission
 work ships.
+
+### Betting vocabulary: bet action vs stake accounting
+
+Betting Hall presentation uses `bet` for the user's action and reserves `stake`
+primarily for underlying wager amount / escrow / recovery terminology.
+
+Canonical premium copy:
+
+- `Bet your WOLO`
+- `Backing <side>.`
+
+Do not regress the primary CTA to `Stake your WOLO`.
+
+### Team winner selection surface
+
+The Betting V2 `Player pick` layer was removed because every player button
+merely selected that player's Team A / Team B side.
+
+For one settlement identity, expose one primary selection surface.
+
+Roster players remain visible inside the team panels. Reintroduce player
+buttons only for independently priced and settled player-level markets.

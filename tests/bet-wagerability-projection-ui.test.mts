@@ -46,23 +46,21 @@ test(
 );
 
 test(
-  "both bet card renderers disable editing when pre-game betting is closed",
+  "production financial admission remains canonical while fixtures may preview interaction",
   () => {
-    assert.equal(
-      (
-        page.match(
-          /market\.bettingOpen &&\s*!marketWorkflow/g
-        ) ?? []
-      ).length,
-      2
+    assert.match(
+      page,
+      /const visualBettingOpen =\s*market\.bettingOpen \|\|\s*previewInteraction/
     );
 
-    assert.ok(
-      (
-        page.match(
-          /Pre-game closed/g
-        ) ?? []
-      ).length >= 2
+    assert.match(
+      page,
+      /const canEditSlip =\s*visualBettingOpen &&\s*!marketWorkflow/
+    );
+
+    assert.match(
+      page,
+      /if \(!market\.bettingOpen\)/
     );
   }
 );
@@ -78,6 +76,21 @@ test(
     assert.match(
       page,
       /if \(!market\.bettingOpen\)/
+    );
+  }
+);
+
+test(
+  "interactive fixture is visually live but financially dead",
+  () => {
+    assert.match(
+      page,
+      /previewInteraction=\{\s*fixtureInteractionMode\s*\}/
+    );
+
+    assert.match(
+      page,
+      /if \(fixtureInteractionMode\) \{[\s\S]*?Design fixture: wager locking is disabled\.[\s\S]*?return;/
     );
   }
 );

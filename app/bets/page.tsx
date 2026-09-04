@@ -2134,7 +2134,11 @@ export default function BetsPage() {
   ) {
     const roster = buildExtremeMarketRoster(market);
 
-    const participantCount = Math.max(2, roster.players.length);
+    const participantCount = Math.max(
+      2,
+      roster.left.players.length +
+        roster.right.players.length,
+    );
 
     setFounderBonusError(null);
 
@@ -4182,6 +4186,9 @@ export default function BetsPage() {
                   maxStakeWolo={
                     maxStakeWolo
                   }
+                  previewInteraction={
+                    fixtureInteractionMode
+                  }
                   onSelect={
                     handleSelect
                   }
@@ -6212,7 +6219,7 @@ function PremiumStakeComposer({
                 sm:text-3xl
               "
             >
-              Stake your WOLO
+              Bet your WOLO
             </h3>
 
             <p
@@ -6223,8 +6230,8 @@ function PremiumStakeComposer({
               "
             >
               {selectedName
-                ? `Backing ${selectedName}. Choose a stake below.`
-                : "Pick a team above, then choose your stake."}
+                ? `Backing ${selectedName}.`
+                : "Pick a team above."}
             </p>
           </div>
 
@@ -7405,7 +7412,6 @@ type ExtremeMarketRoster = {
   formatLabel: string;
   left: ExtremeRosterSide;
   right: ExtremeRosterSide;
-  players: Array<{ name: string; side: BetSide }>;
 };
 
 function cleanRosterName(value: string | null | undefined) {
@@ -7471,10 +7477,6 @@ function buildExtremeMarketRoster(market: BetBoardMarket): ExtremeMarketRoster {
       players: rightPlayers,
       side: market.right,
     },
-    players: [
-      ...leftPlayers.map((name) => ({ name, side: "left" as BetSide })),
-      ...rightPlayers.map((name) => ({ name, side: "right" as BetSide })),
-    ],
   };
 }
 
@@ -7551,59 +7553,6 @@ function ExtremeTeamPanel({
   );
 }
 
-function ExtremePlayerChips({
-  roster,
-  disabled,
-  selectedSide,
-  onSelect,
-}: {
-  roster: ExtremeMarketRoster;
-  disabled: boolean;
-  selectedSide: BetSide | null;
-  onSelect: (side: BetSide) => void;
-}) {
-  return (
-    <div className="mt-8 border-t border-white/[0.055] pt-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <div className="text-[10px] uppercase tracking-[0.34em] text-slate-500">
-            Player pick
-          </div>
-          <div className="mt-1 text-sm text-slate-300">
-            Player pick backs that player&apos;s team.
-          </div>
-        </div>
-        <div className="rounded-full bg-white/[0.035] px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-400 ring-1 ring-white/[0.05]">
-          Team-settled
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-        {roster.players.map((player) => (
-          <button
-            key={`${player.side}-${player.name}`}
-            type="button"
-            onClick={() => onSelect(player.side)}
-            disabled={disabled}
-            className={`flex min-h-12 min-w-0 items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-left transition ${
-              selectedSide === player.side
-                ? "border-amber-200/[0.14] bg-amber-400/[0.065] text-white shadow-[0_12px_28px_rgba(120,72,8,0.10)]"
-                : "border-white/[0.05] bg-slate-950/20 text-slate-300 hover:border-white/[0.09] hover:bg-white/[0.035] hover:text-white"
-            } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
-          >
-            <span className="min-w-0 break-words text-sm font-semibold leading-snug [overflow-wrap:anywhere]">
-              {player.name}
-            </span>
-            <span className="shrink-0 text-[10px] uppercase tracking-[0.22em] text-slate-500">
-              {player.side === "left" ? "A" : "B"}
-            </span>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function MarketFeature({
   market,
   desyncMarket = null,
@@ -7618,6 +7567,7 @@ function MarketFeature({
   isAdmin,
   loadingAuth,
   maxStakeWolo,
+  previewInteraction = false,
   onSelect,
   onStakeChange,
   onDesyncSideChange,
@@ -7646,6 +7596,7 @@ function MarketFeature({
   isAdmin: boolean;
   loadingAuth: boolean;
   maxStakeWolo: number;
+  previewInteraction?: boolean;
   onSelect: (market: BetBoardMarket, side: BetSide) => void;
   onStakeChange: (stake: number) => void;
   onDesyncSideChange?: (side: BetSide | null) => void;
@@ -7665,8 +7616,17 @@ function MarketFeature({
     ? market.viewerWager
     : null;
   const onchainLocked = Boolean(onchainViewerWager);
+
+  /*
+   * Development fixtures may simulate the betting surface.
+   * Production financial authority remains market.bettingOpen.
+   */
+  const visualBettingOpen =
+    market.bettingOpen ||
+    previewInteraction;
+
   const canEditSlip =
-    market.bettingOpen &&
+    visualBettingOpen &&
     !marketWorkflow;
   const lockedSide = market.viewerWager?.side ?? null;
   const displaySide = activeSelection?.side ?? lockedSide;
@@ -7721,7 +7681,7 @@ function MarketFeature({
       : marketWorkflow.phase === "confirming_chain"
         ? "Stake submitted. Waiting for chain confirmation."
         : `Escrow confirmed${marketWorkflow.stakeTxHash ? ` · ${shortTxHash(marketWorkflow.stakeTxHash)}` : ""}. Recording slip...`
-    : !market.bettingOpen
+    : !visualBettingOpen
       ? market.viewerWager
         ? "Pre-game betting is closed. Your existing slip remains active."
         : "Pre-game betting is closed."
@@ -7755,7 +7715,7 @@ function MarketFeature({
       : marketWorkflow.phase === "confirming_chain"
         ? "Confirming Chain..."
         : "Recording Slip..."
-    : !market.bettingOpen
+    : !visualBettingOpen
       ? "Pre-game closed"
       : activeSelection
       ? activeDesyncSelection
@@ -7978,20 +7938,6 @@ function MarketFeature({
           )}
         </div>
 
-        {isTeamGame ? (
-          <ExtremePlayerChips
-            roster={extremeRoster}
-            disabled={
-              !canEditSlip ||
-              Boolean(lockedSide)
-            }
-            selectedSide={displaySide}
-            onSelect={(side) =>
-              onSelect(market, side)
-            }
-          />
-        ) : null}
-
         <div className="mt-7 border-t border-white/[0.055] pt-6">
           <BetSlipComposer
             market={market}
@@ -8177,13 +8123,6 @@ function MarketFeature({
             onSelect={() => onSelect(market, "right")}
           />
         </div>
-
-        <ExtremePlayerChips
-          roster={extremeRoster}
-          disabled={!canEditSlip || Boolean(lockedSide)}
-          selectedSide={displaySide}
-          onSelect={(side) => onSelect(market, side)}
-        />
 
         <BetSlipComposer
           market={market}
@@ -8636,12 +8575,6 @@ function MarketCard({
               onSelect={() => onSelect(market, "right")}
             />
           </div>
-          <ExtremePlayerChips
-            roster={extremeRoster}
-            disabled={!canEditSlip || Boolean(lockedSide)}
-            selectedSide={displaySide}
-            onSelect={(side) => onSelect(market, side)}
-          />
         </>
       ) : (
         <div className="mt-3 grid grid-cols-2 gap-3">

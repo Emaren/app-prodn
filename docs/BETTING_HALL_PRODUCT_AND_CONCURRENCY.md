@@ -218,3 +218,37 @@ The existing authority remains:
 Wallet signing, stake recovery, settlement, and the certified Betting Fairness
 V1 server-side write fence remain unchanged until the separately reviewed
 Betting Phase Books V2 financial implementation ships.
+
+### Betting action language invariant
+
+The Betting Hall uses **bet** for the player's primary action.
+
+The premium interaction headline is:
+
+`Bet your WOLO`
+
+After a side is chosen, supporting copy is deliberately minimal:
+
+`Backing <side>.`
+
+Do not write `Stake your WOLO` as the primary Betting Hall call to action.
+`Stake` remains valid as a technical noun for wager amount, escrow custody,
+signed stake proofs, recovery records, and settlement accounting.
+
+The product distinction is intentional:
+
+- player action: **bet**;
+- technical/custody amount: **stake**.
+
+### Team winner selection surface invariant
+
+A team-winner book has one primary side-selection surface.
+
+The former `Player pick` section duplicated Team A / Team B without creating a
+different pool, price, wager identity, or settlement outcome. It has therefore
+been removed.
+
+Roster names stay inside the Team A / Team B panels.
+
+A player-specific control belongs on the page only when it represents a
+genuinely independent player proposition with its own pricing and settlement.
