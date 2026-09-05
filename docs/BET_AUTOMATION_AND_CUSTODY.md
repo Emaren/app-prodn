@@ -141,8 +141,8 @@ or legacy manual-bet funds.
 ```text
 Work in /Users/tonyblum/projects/WoloChain-wolo-1.
 
-Read that repo's AGENTS.md, /Users/tonyblum/projects/SYSTEM_MAP.md, and
-/Users/tonyblum/projects/SERVER_STORAGE_MAP.md. Inspect settlement.go,
+Read that repo's AGENTS.md, /Users/tonyblum/projects/VPSSentry/context/SYSTEM_MAP.md, and
+/Users/tonyblum/projects/VPSSentry/context/SERVER_STORAGE_MAP.md. Inspect settlement.go,
 settlement_test.go, settlement_challenge.go, the settlement contracts and
 runbook, env/systemd examples, and backup/restore/verify scripts.
 
