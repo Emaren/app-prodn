@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 
 import ZodiacTrainingPage from "@/components/zodiac/ZodiacTrainingPage";
 import { avatarUrlForUser } from "@/lib/avatarAssets";
-import { loadClaimedPlayerProfile } from "@/lib/playerProfile";
+import { loadClaimedPlayerPreview } from "@/lib/playerProfile";
 import { getPrisma } from "@/lib/prisma";
 import {
   selectFeaturedZodiacMatches,
@@ -30,13 +30,14 @@ export const metadata: Metadata = {
 
 async function loadZodiacProfile() {
   try {
-    return await loadClaimedPlayerProfile(
+    return await loadClaimedPlayerPreview(
       getPrisma(),
-      ZODIAC_TRAINING_CONFIG.userUid
+      ZODIAC_TRAINING_CONFIG.userUid,
+      6
     );
   } catch (error) {
     console.warn(
-      `Zodiac training profile rail unavailable: ${
+      `Zodiac training preview rail unavailable: ${
         error instanceof Error ? error.message : String(error)
       }`
     );
