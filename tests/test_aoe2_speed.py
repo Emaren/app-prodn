@@ -1,16 +1,27 @@
 import importlib.util
 import pathlib
+import sys
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 SPEED = ROOT / "scripts" / "aoe2_speed.py"
+SPEED_CAMPAIGN = ROOT / "scripts" / "aoe2_speed_campaign.py"
 GATE = ROOT / "scripts" / "aoe2_release_gate.py"
 
 SPEED_SPEC = importlib.util.spec_from_file_location("aoe2_speed", SPEED)
 SPEED_MODULE = importlib.util.module_from_spec(SPEED_SPEC)
 assert SPEED_SPEC and SPEED_SPEC.loader
 SPEED_SPEC.loader.exec_module(SPEED_MODULE)
+sys.modules["aoe2_speed"] = SPEED_MODULE
+
+CAMPAIGN_SPEC = importlib.util.spec_from_file_location(
+    "aoe2_speed_campaign",
+    SPEED_CAMPAIGN,
+)
+CAMPAIGN_MODULE = importlib.util.module_from_spec(CAMPAIGN_SPEC)
+assert CAMPAIGN_SPEC and CAMPAIGN_SPEC.loader
+CAMPAIGN_SPEC.loader.exec_module(CAMPAIGN_MODULE)
 
 GATE_SPEC = importlib.util.spec_from_file_location("aoe2_release_gate", GATE)
 GATE_MODULE = importlib.util.module_from_spec(GATE_SPEC)
@@ -240,6 +251,185 @@ class PerformanceOSTests(unittest.TestCase):
         source = (ROOT / "bin" / "aoe2war").read_text(encoding="utf-8")
         self.assertIn('SPEED="$BIN_DIR/../scripts/aoe2_speed.py"', source)
         self.assertIn("  speed)", source)
+
+
+    def test_speed_campaign_material_delta_policy(self):
+        self.assertEqual(
+            CAMPAIGN_MODULE.material_delta(
+                400.0,
+                520.0,
+                floor_ms=100.0,
+            ),
+            "regression",
+        )
+        self.assertEqual(
+            CAMPAIGN_MODULE.material_delta(
+                500.0,
+                380.0,
+                floor_ms=100.0,
+            ),
+            "improvement",
+        )
+        self.assertIsNone(
+            CAMPAIGN_MODULE.material_delta(
+                400.0,
+                450.0,
+                floor_ms=100.0,
+            )
+        )
+
+    def test_speed_campaign_verifies_every_route_and_flags_regression(self):
+        before = {
+            "mode": "quick",
+            "routes": [
+                {
+                    "path": "/",
+                    "median_ttfb_ms": 300.0,
+                    "median_total_ms": 500.0,
+                },
+                {
+                    "path": "/bets",
+                    "median_ttfb_ms": 400.0,
+                    "median_total_ms": 600.0,
+                },
+            ],
+            "cohort": {
+                "ttfb_p50_ms": 350.0,
+                "total_p50_ms": 550.0,
+            },
+        }
+        after = {
+            "mode": "quick",
+            "routes": [
+                {
+                    "path": "/",
+                    "median_ttfb_ms": 300.0,
+                    "median_total_ms": 500.0,
+                },
+                {
+                    "path": "/bets",
+                    "median_ttfb_ms": 550.0,
+                    "median_total_ms": 800.0,
+                },
+            ],
+            "cohort": {
+                "ttfb_p50_ms": 425.0,
+                "total_p50_ms": 650.0,
+            },
+        }
+
+        result = CAMPAIGN_MODULE.verify_routes(before, after)
+
+        self.assertEqual(result["status"], "WARN")
+        self.assertEqual(result["material_regressions"], 1)
+        self.assertEqual(
+            next(
+                row
+                for row in result["routes"]
+                if row["path"] == "/bets"
+            )["verdict"],
+            "regression",
+        )
+
+    def test_speed_campaign_source_is_before_analyze_after_and_non_mutating(self):
+        source = SPEED_CAMPAIGN.read_text(encoding="utf-8")
+        self.assertIn('sub.add_parser("start")', source)
+        self.assertIn('sub.add_parser("analyze")', source)
+        self.assertIn('sub.add_parser("verify")', source)
+        self.assertIn("speed.benchmark", source)
+        self.assertIn("prior_campaign_learning", source)
+        self.assertIn("historical regression", source)
+        self.assertNotIn("aoe2war finish", source)
+        self.assertNotIn("release_ship", source)
+
+    def test_cli_exposes_speed_campaign_family(self):
+        source = (ROOT / "bin" / "aoe2war").read_text(encoding="utf-8")
+        self.assertIn(
+            'SPEED_CAMPAIGN="$BIN_DIR/../scripts/aoe2_speed_campaign.py"',
+            source,
+        )
+        self.assertIn('[ "${1:-}" = "campaign" ]', source)
+
+
+    def test_speed_capacity_advice_prioritizes_delivery_and_rejects_gpu(self):
+        baseline = {
+            "origin_seam": {
+                "ratio": 5.0,
+                "public_median_ttfb_ms": 500.0,
+                "origin_median_ttfb_ms": 50.0,
+            },
+            "cohort": {
+                "ttfb_p75_ms": 420.0,
+            },
+            "production_capacity": {
+                "available": True,
+                "cpu_count": 4,
+                "load1": 1.2,
+                "mem_total_kb": 8 * 1024 * 1024,
+                "mem_available_kb": 3 * 1024 * 1024,
+                "swap_total_kb": 6 * 1024 * 1024,
+                "swap_free_kb": 5 * 1024 * 1024,
+                "root_total_kb": 40 * 1024 * 1024,
+                "root_free_kb": 8 * 1024 * 1024,
+                "volume_total_kb": 300 * 1024 * 1024,
+                "volume_free_kb": 30 * 1024 * 1024,
+            },
+        }
+
+        advice = CAMPAIGN_MODULE.capacity_advice(baseline)
+
+        self.assertEqual(advice["hardware"]["delivery"]["action"], "priority")
+        self.assertEqual(advice["hardware"]["cpu"]["action"], "hold")
+        self.assertEqual(advice["hardware"]["memory"]["action"], "hold")
+        self.assertEqual(
+            advice["hardware"]["storage"]["action"],
+            "expand_for_headroom",
+        )
+        self.assertEqual(advice["hardware"]["gpu"]["action"], "do_not_buy")
+
+    def test_speed_benchmark_records_read_only_capacity_evidence(self):
+        source = SPEED.read_text(encoding="utf-8")
+        self.assertIn("def production_capacity_snapshot", source)
+        self.assertIn('"production_capacity": capacity', source)
+        self.assertIn("systemctl show aoe2hdbets-web.service", source)
+        self.assertIn("df -Pk", source)
+        self.assertNotIn("systemctl restart", source)
+        self.assertNotIn("apt install", source)
+
+
+    def test_full_speed_cohort_v2_covers_current_world_surfaces(self):
+        routes = SPEED_MODULE.route_list(True)
+        self.assertEqual(len(routes), 68)
+        self.assertEqual(len(routes), len(set(routes)))
+        for route in (
+            "/wargraph",
+            "/national-champions",
+            "/kingdom-forge",
+            "/round-chamber",
+            "/oracle",
+            "/speed",
+            "/market/kingdom/chat-effects",
+        ):
+            self.assertIn(route, routes)
+
+    def test_speed_receipts_bind_to_production_source_not_operator_head(self):
+        source = SPEED.read_text(encoding="utf-8")
+        identity_block = source[
+            source.index("def collect_release_identity"):
+            source.index("def route_list")
+        ]
+        self.assertIn(
+            '"release_sha": data.get("production", {}).get("source_sha")',
+            identity_block,
+        )
+        self.assertIn(
+            '"operator_source_sha": data.get("local", {}).get("head")',
+            identity_block,
+        )
+        self.assertNotIn(
+            '"release_sha": data.get("local", {}).get("head")',
+            identity_block,
+        )
 
 
 if __name__ == "__main__":
