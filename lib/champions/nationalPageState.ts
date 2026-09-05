@@ -1,8 +1,9 @@
 import type { ChampionTitleEconomyState } from "@/lib/champions/titleState";
 
 export type NationalChampionBeacon = {
-  id: "canada" | "us" | "mexico" | "uk";
-  titleId: string;
+  id: string;
+  titleId: string | null;
+  supported: boolean;
   country: string;
   representedCountry: string;
   champion: string | null;
@@ -10,14 +11,14 @@ export type NationalChampionBeacon = {
   bountyWolo: number;
   tributeWolo: number;
   tenureDays: number;
-  tier: "lit" | "vacant";
+  tier: "lit" | "vacant" | "planned";
   x: number;
   y: number;
-  beltHref: string;
+  beltHref: string | null;
   assetUrl: string | null;
 };
 
-const NATIONAL_LAYOUT = [
+const SUPPORTED_NATIONAL_LAYOUT = [
   {
     id: "canada",
     titleId: "national-canada",
@@ -48,6 +49,18 @@ const NATIONAL_LAYOUT = [
   },
 ] as const;
 
+const PLANNED_NATIONAL_LAYOUT = [
+  { id: "brazil", country: "Brazil", x: 37, y: 74 },
+  { id: "spain", country: "Spain", x: 48, y: 48 },
+  { id: "germany", country: "Germany", x: 52, y: 38 },
+  { id: "egypt", country: "Egypt", x: 56, y: 57 },
+  { id: "india", country: "India", x: 69, y: 58 },
+  { id: "china", country: "China", x: 78, y: 45 },
+  { id: "japan", country: "Japan", x: 88, y: 48 },
+  { id: "australia", country: "Australia", x: 83, y: 78 },
+  { id: "south-africa", country: "South Africa", x: 56, y: 82 },
+] as const;
+
 function daysHeld(holderSince: string | null | undefined, now: Date) {
   if (!holderSince) return 0;
   const started = new Date(holderSince);
@@ -68,12 +81,13 @@ export function buildNationalChampionBeacons(
       .map((title) => [title.id, title] as const),
   );
 
-  return NATIONAL_LAYOUT.map((layout) => {
+  const supported = SUPPORTED_NATIONAL_LAYOUT.map((layout) => {
     const title = titlesById.get(layout.titleId);
     const holder = title?.holders[0] ?? null;
 
     return {
       ...layout,
+      supported: true,
       representedCountry: title?.country ?? layout.country,
       champion: holder?.name ?? null,
       championHref: holder?.href ?? null,
@@ -83,6 +97,23 @@ export function buildNationalChampionBeacons(
       tier: holder ? "lit" : "vacant",
       beltHref: title?.routeHref ?? `/champions/nations/${layout.id}`,
       assetUrl: title?.assetUrl ?? null,
-    };
+    } satisfies NationalChampionBeacon;
   });
+
+  const planned = PLANNED_NATIONAL_LAYOUT.map((layout) => ({
+    ...layout,
+    titleId: null,
+    supported: false,
+    representedCountry: layout.country,
+    champion: null,
+    championHref: null,
+    bountyWolo: 0,
+    tributeWolo: 0,
+    tenureDays: 0,
+    tier: "planned",
+    beltHref: null,
+    assetUrl: null,
+  } satisfies NationalChampionBeacon));
+
+  return [...supported, ...planned];
 }

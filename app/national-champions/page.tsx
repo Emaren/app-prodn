@@ -91,6 +91,7 @@ function countryPossessive(country: string) {
 }
 
 function flameScore(beacon: NationalBeacon) {
+  if (beacon.tier === "planned") return 0.38;
   if (beacon.champion) return 1.12 + Math.min(0.28, beacon.tenureDays / 90);
   return 0.5;
 }
@@ -148,7 +149,9 @@ function BeaconMarker({ beacon }: { beacon: NationalBeacon }) {
           <div className="text-[10px] uppercase tracking-[0.17em] text-slate-400">
             {beacon.country}
           </div>
-          <div className="mt-1 text-sm font-semibold">{beacon.champion || "Vacant"}</div>
+          <div className="mt-1 text-sm font-semibold">
+            {beacon.tier === "planned" ? "Future crown" : beacon.champion || "Vacant"}
+          </div>
         </div>
       </div>
     </div>
@@ -365,6 +368,47 @@ function VacantCrownCard({ beacon }: { beacon: NationalBeacon }) {
   );
 }
 
+
+function PlannedCrownCard({ beacon }: { beacon: NationalBeacon }) {
+  const shortName = nationalBeltShortName(beacon.id, beacon.country);
+
+  return (
+    <article className="group overflow-hidden rounded-[1.5rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.18))] p-4">
+      <div className="relative overflow-hidden rounded-[1.15rem] border border-dashed border-white/10 bg-black/22 px-4 py-5">
+        <div className="flex h-28 items-center justify-center">
+          <div className="text-center">
+            <Crown className="mx-auto h-9 w-9 text-slate-600" />
+            <div className="mt-3 text-[10px] uppercase tracking-[0.28em] text-amber-100/55">
+              Belt art pending
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
+          {beacon.country}
+        </div>
+        <h3 className="mt-1 text-lg font-semibold text-amber-50">{shortName}</h3>
+        <p className="mt-2 min-h-[3.4rem] text-sm leading-6 text-slate-400">
+          Planned national crown. The throne is deliberately visible before the belt exists so future champions can see where the Kingdom is going.
+        </p>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2">
+            <div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">Belt</div>
+            <div className="mt-1 text-sm font-semibold text-slate-300">Planned</div>
+          </div>
+          <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2">
+            <div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">Economy</div>
+            <div className="mt-1 text-sm font-semibold text-slate-300">Not live</div>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function ProcessCard({
   icon: Icon,
   title,
@@ -388,11 +432,13 @@ function ProcessCard({
 export default async function NationalChampionsPage() {
   const titleState = await loadChampionTitleEconomyState(getPrisma());
   const nationalBeacons = buildNationalChampionBeacons(titleState);
+  const supportedBeacons = nationalBeacons.filter((beacon) => beacon.supported);
+  const plannedBeacons = nationalBeacons.filter((beacon) => beacon.tier === "planned");
   const litBeacons = sortChampionBeacons(
-    nationalBeacons.filter((beacon) => beacon.champion),
+    supportedBeacons.filter((beacon) => beacon.champion),
   );
-  const vacantBeacons = nationalBeacons.filter((beacon) => !beacon.champion);
-  const totalBounty = nationalBeacons.reduce(
+  const vacantBeacons = supportedBeacons.filter((beacon) => !beacon.champion);
+  const totalBounty = supportedBeacons.reduce(
     (sum, beacon) => sum + beacon.bountyWolo,
     0,
   );
@@ -538,6 +584,31 @@ export default async function NationalChampionsPage() {
             ))}
           </div>
         </section>
+      </section>
+
+      <section className="space-y-4">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+          <div>
+            <div className="text-xs uppercase tracking-[0.34em] text-slate-500">
+              Future Crowns
+            </div>
+            <h2 className="mt-2 font-serif text-4xl font-semibold tracking-[-0.04em] text-white">
+              Every country gets a place on the map.
+            </h2>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+              These are deliberate roadmap placeholders, not live Trophy rows. No holder, Tribute, bounty, or challenge right exists until that national belt is actually created.
+            </p>
+          </div>
+          <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-400">
+            {plannedBeacons.length} planned
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {plannedBeacons.map((beacon) => (
+            <PlannedCrownCard key={beacon.id} beacon={beacon} />
+          ))}
+        </div>
       </section>
     </main>
   );

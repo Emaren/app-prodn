@@ -32,6 +32,10 @@ operator intents until a future Warbound chain module exists.
   same `loadChampionTitleEconomyState()` / persistent Trophy authority as the
   main Champions surface; it must not maintain a second handwritten holder
   table.
+- The world map may also show explicit planned-country placeholders before a
+  Trophy definition or belt asset exists. Those placeholders are roadmap
+  visualization only: they have no holder, Tribute, bounty, challenge right, or
+  live Trophy route until the corresponding national title is created.
 - Legacy public spine links should point to `/champions`, not `/belts`, unless
   preserving an intentional redirect.
 
