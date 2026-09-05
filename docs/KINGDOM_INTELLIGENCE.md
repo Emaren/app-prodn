@@ -145,6 +145,21 @@ publish:
 Presentation may have multiple skins or density modes. Truth logic, provenance,
 invariants and mission state may not fork by visual variant.
 
+## Dependency-aware next action
+
+Kingdom Intelligence must recommend the prerequisite that can actually clear the
+current blocker, not merely repeat the failed outer transaction.
+
+If Finish is incomplete because final Doctor is blocked by Storage OS, storage
+headroom outranks `aoe2war finish`. The Brain points first to a read-only
+`aoe2war storage plan --json`; only after the storage blocker is cleared should
+Finish closure be retried.
+
+Likewise, when a frozen analyzed Speed campaign belongs to the previous release
+and production has advanced, that state means **verify the open before/after
+campaign**. It does not mean create another baseline. The Brain should say
+`aoe2war speed campaign verify`.
+
 ## Agent efficiency contract
 
 A capable agent should not spend most of its context rediscovering the project.
