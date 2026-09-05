@@ -522,9 +522,11 @@ function ChronicleCard({
 
 export default function KingdomChroniclesClient({
   citizens,
+  watchers,
   ledgerStats,
 }: {
   citizens: KingdomCitizen[];
+  watchers: KingdomCitizen[];
   ledgerStats: KingdomStat[];
 }) {
   const [chronicleView, setChronicleView] = useState<KingdomChronicleView>("e");
@@ -820,6 +822,28 @@ export default function KingdomChroniclesClient({
             )}
           </div>
         </div>
+
+        <div className="rounded-[1.55rem] border border-cyan-100/12 bg-[radial-gradient(circle_at_85%_10%,rgba(34,211,238,0.10),transparent_34%),rgba(255,255,255,0.035)] p-5">
+          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.26em] text-cyan-100/70">
+            <TowerControl className="h-4 w-4" />
+            Watchers
+          </div>
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            Citizens with at least one final replay successfully uploaded through the Watcher.
+          </p>
+          <div className="mt-4 grid gap-2 text-sm text-slate-300">
+            {watchers.map((watcher) => (
+              <Link
+                key={watcher.name}
+                href={watcher.href}
+                className="hover:text-cyan-100"
+              >
+                {watcher.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+
 
         <div className="rounded-[1.55rem] border border-emerald-100/12 bg-[radial-gradient(circle_at_85%_10%,rgba(16,185,129,0.14),transparent_34%),rgba(255,255,255,0.035)] p-5">
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.26em] text-emerald-100/70">
