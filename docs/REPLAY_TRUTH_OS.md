@@ -161,3 +161,23 @@ Historical repair may improve W/L, records, streaks and Site Elo.
 It must not directly redefine Watcher-owned current Steam DM rating.
 
 Statistics authority remains independent from betting and Wolo authority.
+
+## Full-vault certainty closure
+
+`aoe2war truth closure` complements the census by forcing every final game into
+one explicit current-vault disposition. The closure distinguishes resolved
+truth, reparse work, parser research, source-artifact absence, human
+adjudication/evidence work, non-decisive rows, and candidate winners that are
+not authoritative.
+
+The closure target is **100% disposition accounting**, not manufactured winner
+certainty. `UNPARSEABLE_FROM_CURRENT_VAULT` means the current vault does not
+contain the source/candidate evidence needed for parser recovery; it does not
+claim that missing bytes can be inferred. Candidate winners remain separate
+from statistics/betting authority until the existing provenance rules permit
+promotion.
+
+The per-disposition game-ID manifests are the canonical handoff for bounded
+parser/backfill campaigns. Parser work should target artifact-present reparse
+and parser-research cohorts first; source-missing rows require evidence recovery,
+not looser parsing.
