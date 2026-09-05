@@ -368,6 +368,8 @@ def collect() -> dict[str, Any]:
         "schema": 1,
         "kind": "aoe2war-council",
         "estate": audit.get("estate"),
+        "p0": int(audit.get("p0") or 0),
+        "p1": int(audit.get("p1") or 0),
         "doctor_score": doctor.get("score"),
         "doctor_status": doctor.get("status"),
         "recommendations": recs,
