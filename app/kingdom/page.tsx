@@ -129,7 +129,11 @@ export default async function KingdomPage() {
         </div>
       </section>
 
-      <KingdomChroniclesClient citizens={summary.citizens} ledgerStats={summary.ledgerStats} />
+      <KingdomChroniclesClient
+        citizens={summary.citizens}
+        watchers={summary.watchers}
+        ledgerStats={summary.ledgerStats}
+      />
     </main>
   );
 }
