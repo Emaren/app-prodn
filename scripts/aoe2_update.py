@@ -1658,11 +1658,12 @@ def apply_update(
     *,
     defer_context: bool = False,
     defer_final_audit: bool = False,
+    force_control_refresh: bool = False,
 ) -> int:
     if plan["blocked"]:
         raise UpdateError("update plan is blocked; resolve findings manually")
 
-    if not plan["changes_needed"]:
+    if not plan["changes_needed"] and not force_control_refresh:
         if plan["estate_maps"]["status"] == "deferred":
             print(
                 "AOE2WAR UPDATE: maintenance current; control-state refresh "
@@ -1672,6 +1673,11 @@ def apply_update(
         else:
             print("AOE2WAR UPDATE: already current")
         return 0
+
+    if force_control_refresh and plan["estate_maps"]["status"] == "deferred":
+        raise UpdateError(
+            "forced control refresh requires an exact certified production source"
+        )
 
     if progress:
         progress.start("Revalidating repository parity and clean worktrees...")
@@ -1710,6 +1716,7 @@ def apply_update(
         "context_archives": archives,
         "deferred_context_projects": [],
         "final_audit_deferred": bool(defer_final_audit),
+        "force_control_refresh": bool(force_control_refresh),
     }
 
     try:
@@ -1730,8 +1737,14 @@ def apply_update(
                     f"({result['documentation_commit'][:10]})"
                 )
 
-        if plan["estate_maps"]["status"] == "refresh":
-            estate_map_result = refresh_estate_maps(progress=progress)
+        if (
+            plan["estate_maps"]["status"] == "refresh"
+            or force_control_refresh
+        ):
+            estate_map_result = refresh_estate_maps(
+                progress=progress,
+                force=force_control_refresh,
+            )
             receipt_payload["estate_map_result"] = estate_map_result
 
         if (
@@ -1906,11 +1919,23 @@ def main() -> int:
             "finish's canonical independent final audit"
         ),
     )
+    parser.add_argument(
+        "--force-control-refresh",
+        action="store_true",
+        help=(
+            "refresh all three certified control-state blocks even when their "
+            "source SHA is already current; intended for post-certification finish"
+        ),
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
-    if (args.defer_context or args.defer_final_audit) and not args.apply:
-        parser.error("defer flags require --apply")
+    if (
+        args.defer_context
+        or args.defer_final_audit
+        or args.force_control_refresh
+    ) and not args.apply:
+        parser.error("defer/force flags require --apply")
 
     if not args.apply:
         plan = collect_plan()
@@ -1948,7 +1973,10 @@ def main() -> int:
                     "run `aoe2war update` for details"
                 )
 
-            if not locked_plan["changes_needed"]:
+            if (
+                not locked_plan["changes_needed"]
+                and not args.force_control_refresh
+            ):
                 if locked_plan["estate_maps"]["status"] == "deferred":
                     progress.done(
                         "Maintenance is current; control-state refresh deferred "
@@ -1970,6 +1998,7 @@ def main() -> int:
                 progress=progress,
                 defer_context=args.defer_context,
                 defer_final_audit=args.defer_final_audit,
+                force_control_refresh=args.force_control_refresh,
             )
     except (UpdateError, aoe2_release.DeployLockBusy) as exc:
         print(f"STOP: {exc}", file=os.sys.stderr)
