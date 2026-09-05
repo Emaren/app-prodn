@@ -25,20 +25,13 @@ export type KingdomSummary = {
   stats: KingdomStat[];
   ledgerStats: KingdomStat[];
   citizens: KingdomCitizen[];
+  watchers: KingdomCitizen[];
   chronicleCount: number;
   latestBountyNumber: number;
   kingdomWealthWolo: string | null;
-  activeWatcherCount: number;
+  watcherCount: number;
   humanCitizenCount: number;
 };
-
-const ACTIVE_WATCHER_EVENT_TYPES = [
-  "heartbeat",
-  "app_open",
-  "watcher_started",
-  "watcher_ready",
-  "watching_started",
-] as const;
 
 const KINGDOM_WEALTH_ACCOUNT_LABELS =
   new Set([
@@ -147,17 +140,12 @@ async function loadLatestBountyNumber() {
 
 async function loadKingdomCore() {
   const prisma = getPrisma();
-  const watcherCutoff =
-    new Date(
-      Date.now() -
-        15 * 60 * 1000,
-    );
 
   const [
     users,
     chronicleCount,
     latestBountyNumber,
-    activeWatcherEvents,
+    watcherFinals,
   ] = await Promise.all([
     prisma.user.findMany({
       orderBy: [
@@ -177,34 +165,30 @@ async function loadKingdomCore() {
       },
     }),
     loadLatestBountyNumber(),
-    prisma.watcherClientEvent.findMany({
+    prisma.gameStats.findMany({
       where: {
-        createdAt: {
-          gte: watcherCutoff,
+        is_final: true,
+        parse_source: {
+          startsWith: "watcher",
         },
-        eventType: {
-          in: [
-            ...ACTIVE_WATCHER_EVENT_TYPES,
-          ],
+        userUid: {
+          not: null,
         },
-        OR: [
-          {
-            userId: {
-              not: null,
-            },
-          },
-          {
-            userUid: {
-              not: null,
-            },
-          },
-        ],
       },
+      orderBy: [
+        { createdAt: "asc" },
+        { id: "asc" },
+      ],
+      distinct: [
+        "userUid",
+      ],
       select: {
         userUid: true,
         user: {
           select: {
             uid: true,
+            inGameName: true,
+            steamPersonaName: true,
           },
         },
       },
@@ -233,31 +217,46 @@ async function loadKingdomCore() {
       }),
     );
 
-  const activeWatcherUids =
-    new Set(
-      activeWatcherEvents
-        .map(
-          (event) =>
-            event.user?.uid ||
-            event.userUid,
-        )
-        .filter(
-          (
+  const watchers =
+    watcherFinals
+      .map((row) => {
+        const uid =
+          row.user?.uid ||
+          row.userUid;
+        if (
+          !uid ||
+          isInternalSystemUid(
             uid,
-          ): uid is string =>
-            Boolean(uid) &&
-            !isInternalSystemUid(
+          )
+        ) {
+          return null;
+        }
+
+        return {
+          name:
+            row.user?.inGameName ||
+            row.user?.steamPersonaName ||
+            uid,
+          href:
+            `/players/${encodeURIComponent(
               uid,
-            ),
-        ),
-    );
+            )}`,
+        };
+      })
+      .filter(
+        (
+          watcher,
+        ): watcher is KingdomCitizen =>
+          Boolean(watcher),
+      );
 
   return {
     citizens,
+    watchers,
     chronicleCount,
     latestBountyNumber,
-    activeWatcherCount:
-      activeWatcherUids.size,
+    watcherCount:
+      watchers.length,
     humanCitizenCount:
       humanUsers.length,
   };
@@ -309,9 +308,9 @@ export async function loadKingdomSummary(): Promise<KingdomSummary> {
       value: wealthValue,
     },
     {
-      label: "Watchers Active",
+      label: "Watchers",
       value: String(
-        core.activeWatcherCount,
+        core.watcherCount,
       ),
     },
     {
@@ -344,9 +343,9 @@ export async function loadKingdomSummary(): Promise<KingdomSummary> {
       value: wealthValue,
     },
     {
-      label: "Watchers active",
+      label: "Watchers",
       value: String(
-        core.activeWatcherCount,
+        core.watcherCount,
       ),
     },
     {
