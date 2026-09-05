@@ -658,5 +658,11 @@ or operator should spend context on engineering, not waiting for the sum of
 unrelated diagnostics.
 
 A Speed OS campaign is current-state evidence only when its recorded release SHA
-matches currently certified production. Recency without source identity is not
-enough.
+matches currently certified production. Replay Truth certainty closure follows
+the same source-identity rule. Recency or completeness without matching source
+identity is not enough.
+
+Readiness coverage denominators must come from the current governed Speed OS
+route cohort, not a historical baseline receipt or hand-coded fallback. The
+current cohort is the authority for how many public benchmark representatives
+exist.
