@@ -360,3 +360,19 @@ transient public-network failure is recorded as a post-release performance
 warning rather than rewriting a certified runtime as unshipped. Full 66-route
 and browser readiness/Core Web Vitals campaigns remain explicit higher-cost
 benchmarks.
+
+## Next production-build census
+
+`aoe2war speed build` measures a completed Next production build as a separate
+performance evidence rail. It inventories raw `.next/static` bytes, the largest
+JS/CSS artifacts, and route-referenced bundle footprints from Next build
+manifests.
+
+Raw build bytes are **not** browser transfer bytes and are never substituted for
+Runtime/Web Vitals evidence. Their purpose is to expose code-splitting and bundle
+regressions early, including in CI immediately after `yarn build`.
+
+The command supports optional route and single-chunk regression ceilings, but
+AoE2WAR does not invent a budget before a real baseline exists. Establish the
+current build census first; then tighten thresholds from measured production
+history as refactor campaigns prove sustainable reductions.
