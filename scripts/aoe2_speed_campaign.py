@@ -865,11 +865,17 @@ def verify_campaign(
 
     verification = verify_routes(baseline, after)
     before_inventory = baseline_info.get("source_inventory") or {}
+    inventory_change = inventory_delta(before_inventory, after_inventory)
     verification["source_inventory"] = {
         "before": before_inventory,
         "after": after_inventory,
-        "delta": inventory_delta(before_inventory, after_inventory),
+        "delta": inventory_change,
     }
+    if (
+        inventory_change["added_page_templates"]
+        or inventory_change["removed_page_templates"]
+    ):
+        verification["status"] = "WARN"
     verification["receipt"] = rel(after["_path"])
     verification["release_sha"] = after.get("release_sha")
     verification["build_id"] = after.get("build_id")
@@ -900,6 +906,22 @@ def print_analysis(campaign: dict[str, Any]) -> None:
         f"TTFB p50={float(cohort.get('ttfb_p50_ms') or 0):.1f} ms · "
         f"total p50={float(cohort.get('total_p50_ms') or 0):.1f} ms"
     )
+    source_inventory = baseline.get("source_inventory") or {}
+    source_assets = source_inventory.get("assets") or {}
+    source_coverage = source_inventory.get("coverage") or {}
+    if source_inventory:
+        print(
+            "Source estate:   "
+            f"{source_inventory.get('source_page_count', 0)} pages · "
+            f"{source_coverage.get('coverage_percent', 0):.1f}% public coverage · "
+            f"{source_assets.get('total_files', 0)} public assets / "
+            f"{speed_inventory.human_bytes(int(source_assets.get('total_bytes') or 0))}"
+        )
+        print(
+            "Duplicate bytes: "
+            f"{speed_inventory.human_bytes(int(source_assets.get('duplicate_avoidable_bytes') or 0))} "
+            "exact tracked duplication"
+        )
     print()
     for finding in analysis.get("estate_findings") or []:
         print(f"- {finding}")
@@ -964,6 +986,39 @@ def print_verification(campaign: dict[str, Any]) -> None:
         f"Routes:         {verification.get('material_improvements', 0)} material improvement(s) · "
         f"{verification.get('material_regressions', 0)} regression(s)"
     )
+    inventory_change = (
+        (verification.get("source_inventory") or {}).get("delta") or {}
+    )
+    if inventory_change:
+        before_bytes = int(inventory_change.get("public_asset_bytes_before") or 0)
+        after_bytes = int(inventory_change.get("public_asset_bytes_after") or 0)
+        delta_bytes = int(inventory_change.get("public_asset_bytes_delta") or 0)
+        duplicate_before = int(
+            inventory_change.get("duplicate_avoidable_bytes_before") or 0
+        )
+        duplicate_after = int(
+            inventory_change.get("duplicate_avoidable_bytes_after") or 0
+        )
+        print(
+            "Public assets:  "
+            f"{speed_inventory.human_bytes(before_bytes)} → "
+            f"{speed_inventory.human_bytes(after_bytes)} · "
+            f"delta {delta_bytes:+,} bytes"
+        )
+        print(
+            "Exact dupes:    "
+            f"{speed_inventory.human_bytes(duplicate_before)} → "
+            f"{speed_inventory.human_bytes(duplicate_after)}"
+        )
+        changed_pages = (
+            list(inventory_change.get("added_page_templates") or [])
+            + list(inventory_change.get("removed_page_templates") or [])
+        )
+        if changed_pages:
+            print(
+                "Page universe:   changed during campaign · "
+                + ", ".join(changed_pages)
+            )
     regressions = [
         row
         for row in verification.get("routes") or []
