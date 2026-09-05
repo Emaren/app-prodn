@@ -76,6 +76,11 @@ Performance evidence has an additional identity rule: a campaign is current only
 when its recorded release SHA matches the currently certified production source.
 A recent campaign for an older release is explicitly marked non-current.
 
+Replay Truth certainty uses the same provenance rule. A closure receipt may be
+complete and still be historical if its recorded production source differs from
+the currently certified source. Refresh certainty before calling that evidence
+current.
+
 Finish truth is split deliberately. Runtime certification remains authoritative
 when activation has passed, even if Workshop, documentation, audit, Doctor or
 another later Finish phase fails. The Brain must expose both facts rather than
