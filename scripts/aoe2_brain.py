@@ -372,8 +372,39 @@ def brain_recommendations(
     performance: dict[str, Any],
     truth: dict[str, Any],
     council_recommendations: list[dict[str, Any]],
+    storage: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
+
+    storage = storage or {}
+    storage_health = str(
+        storage.get("health")
+        or storage.get("status")
+        or ""
+    ).upper()
+    storage_used = (
+        storage.get("volume_used_percent")
+        or storage.get("used_percent")
+        or (storage.get("volume") or {}).get(
+            "used_percent"
+        )
+    )
+    if storage_health not in {"HEALTHY", "PASS"}:
+        rows.append(
+            {
+                "rank": 4,
+                "level": "MUST FIX",
+                "key": "storage-blocks-finish",
+                "title": "Relieve storage pressure before rerunning Finish",
+                "reason": (
+                    f"Storage health={storage_health or 'ATTENTION'} "
+                    f"used={storage_used if storage_used is not None else 'unknown'}; "
+                    "rerunning Finish before restoring headroom can only repeat "
+                    "the final Doctor blocker."
+                ),
+                "action": "aoe2war storage plan --json",
+            }
+        )
 
     control_status = str(control.get("status") or "")
     if control_status == "blocked":
@@ -438,25 +469,46 @@ def brain_recommendations(
         performance.get("available")
         and performance.get("matches_current_release") is False
     ):
-        rows.append(
-            {
-                "rank": 7,
-                "level": "MEASURE NOW",
-                "key": "speed-baseline-current-release",
-                "title": "Freeze the current certified Speed OS baseline",
-                "reason": (
-                    "latest 77-route campaign belongs to "
-                    f"{str(performance.get('release_sha') or 'unknown')[:12]}, "
-                    "not current certified production"
-                ),
-                "action": (
-                    "aoe2war speed inventory --require-complete-public-coverage && "
-                    "aoe2war speed build && "
-                    "aoe2war speed campaign start && "
-                    "aoe2war speed campaign analyze"
-                ),
-            }
-        )
+        campaign_status = str(
+            performance.get("status")
+            or ""
+        ).lower()
+        if campaign_status == "analyzed":
+            rows.append(
+                {
+                    "rank": 7,
+                    "level": "MEASURE NOW",
+                    "key": "speed-verify-open-campaign",
+                    "title": "Verify the open Speed campaign against current production",
+                    "reason": (
+                        "the frozen 77-route Before campaign belongs to "
+                        f"{str(performance.get('release_sha') or 'unknown')[:12]}, "
+                        "while production has advanced; this is the intended "
+                        "before/after verification state, not a request for a "
+                        "second baseline."
+                    ),
+                    "action": "aoe2war speed campaign verify",
+                }
+            )
+        else:
+            rows.append(
+                {
+                    "rank": 7,
+                    "level": "MEASURE NOW",
+                    "key": "speed-baseline-current-release",
+                    "title": "Freeze the current certified Speed OS baseline",
+                    "reason": (
+                        "latest 77-route campaign belongs to "
+                        f"{str(performance.get('release_sha') or 'unknown')[:12]}, "
+                        "not current certified production"
+                    ),
+                    "action": (
+                        "aoe2war speed inventory --require-complete-public-coverage && "
+                        "aoe2war speed build && "
+                        "aoe2war speed campaign start"
+                    ),
+                }
+            )
 
     rows.extend(council_recommendations)
     return sorted(rows, key=lambda item: (int(item.get("rank") or 999), str(item.get("key") or "")))
@@ -616,6 +668,7 @@ def collect() -> dict[str, Any]:
         performance=performance,
         truth=truth,
         council_recommendations=list(council.get("recommendations") or []),
+        storage=council.get("storage") or {},
     )
     return {
         "schema": 1,
