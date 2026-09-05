@@ -594,6 +594,90 @@ def print_audit(
     )
 
 
+def print_closure(
+    payload: dict[str, Any],
+    receipt: Path,
+) -> None:
+    closure = payload["closure"]
+    final_games = int(closure["finalGames"])
+    accounted = int(closure["fullyAccounted"])
+    resolved = int(closure["resolved"])
+    unresolved = int(closure["unresolved"])
+
+    print(
+        "⚔️  AOE2WAR REPLAY CERTAINTY CLOSURE"
+    )
+    print()
+    print(
+        f"Production source:     "
+        f"{payload.get('productionSource', '')[:12]}"
+    )
+    print(
+        "Database read-only:    PROVEN"
+    )
+    print()
+    print(
+        f"Final games:           {final_games}"
+    )
+    print(
+        f"Resolved truth:        "
+        f"{resolved} ({pct(resolved, final_games)})"
+    )
+    print(
+        f"Unresolved truth:      {unresolved}"
+    )
+    print(
+        f"Disposition accounted: "
+        f"{accounted} ({pct(accounted, final_games)})"
+    )
+    print(
+        f"Unclassified:          "
+        f"{closure['unclassified']}"
+    )
+    print(
+        f"Parser-work candidates:"
+        f" {closure['parserWorkCandidates']}"
+    )
+    print(
+        f"Human/evidence cases:  "
+        f"{closure['humanEvidenceCandidates']}"
+    )
+    print(
+        f"Terminal current-vault:"
+        f" {closure['terminalForCurrentVault']}"
+    )
+    print()
+
+    print_counts(
+        "Closure dispositions",
+        closure.get(
+            "dispositionBuckets",
+            {},
+        ),
+    )
+
+    print_counts(
+        "Current-vault certainty",
+        closure.get(
+            "currentVaultCertaintyBuckets",
+            {},
+        ),
+    )
+
+    print()
+    print(
+        "CLOSURE CLASSIFICATION: "
+        + (
+            "COMPLETE"
+            if closure.get("complete")
+            else "INCOMPLETE"
+        )
+    )
+    print(
+        f"Receipt: {receipt}"
+    )
+
+
 def print_target(
     payload: dict[str, Any],
     receipt: Path,
@@ -816,6 +900,8 @@ def print_status(
     census_path: Path | None,
     audit_envelope: dict[str, Any] | None,
     audit_path: Path | None,
+    closure_envelope: dict[str, Any] | None,
+    closure_path: Path | None,
 ) -> None:
     print(
         "⚔️  AOE2WAR REPLAY TRUTH OS"
@@ -941,6 +1027,60 @@ def print_status(
             )
 
 
+
+    if (
+        closure_envelope and
+        closure_path
+    ):
+        closure_payload = closure_envelope.get(
+            "payload"
+        )
+
+        if isinstance(
+            closure_payload,
+            dict,
+        ):
+            closure = closure_payload.get(
+                "closure",
+                {},
+            )
+
+            print()
+            print(
+                "Latest certainty closure"
+            )
+            print(
+                f"  Accounted:   "
+                f"{closure.get('fullyAccounted')}/"
+                f"{closure.get('finalGames')} "
+                f"({closure.get('accountedPercent')}%)"
+            )
+            print(
+                f"  Resolved:    "
+                f"{closure.get('resolved')}"
+            )
+            print(
+                f"  Unresolved:  "
+                f"{closure.get('unresolved')}"
+            )
+            print(
+                f"  Unclassified:"
+                f" {closure.get('unclassified')}"
+            )
+            print(
+                f"  State:       "
+                + (
+                    "COMPLETE"
+                    if closure.get("complete")
+                    else "INCOMPLETE"
+                )
+            )
+            print(
+                f"  Receipt:     "
+                f"{closure_path}"
+            )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="aoe2war truth",
@@ -983,6 +1123,18 @@ def main() -> int:
         action="store_true",
     )
 
+    closure_parser = sub.add_parser(
+        "closure",
+        help=(
+            "classify every final game as resolved or one explicit "
+            "current-vault recovery/impossibility disposition"
+        ),
+    )
+    closure_parser.add_argument(
+        "--json",
+        action="store_true",
+    )
+
     target_parser = sub.add_parser(
         "target",
         help="inspect one production GameStats replay",
@@ -1014,6 +1166,12 @@ def main() -> int:
                 )
             )
 
+            closure_receipt = (
+                latest_receipt(
+                    "closure"
+                )
+            )
+
             envelope = (
                 load_json(
                     receipt
@@ -1035,6 +1193,14 @@ def main() -> int:
                     audit_receipt
                 )
                 if audit_receipt
+                else None
+            )
+
+            closure_envelope = (
+                load_json(
+                    closure_receipt
+                )
+                if closure_receipt
                 else None
             )
 
@@ -1065,6 +1231,14 @@ def main() -> int:
 
                             "audit":
                                 audit_envelope,
+
+                            "closureReceipt":
+                                str(closure_receipt)
+                                if closure_receipt
+                                else None,
+
+                            "closure":
+                                closure_envelope,
                         },
                         indent=2,
                         sort_keys=True,
@@ -1078,6 +1252,8 @@ def main() -> int:
                     census_receipt,
                     audit_envelope,
                     audit_receipt,
+                    closure_envelope,
+                    closure_receipt,
                 )
 
             return 0
@@ -1118,6 +1294,11 @@ def main() -> int:
             )
         elif args.command == "audit":
             print_audit(
+                payload,
+                receipt,
+            )
+        elif args.command == "closure":
+            print_closure(
                 payload,
                 receipt,
             )
