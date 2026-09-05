@@ -102,7 +102,7 @@ Usage:
   aoe2war workspace <status|plan|clean> [options]
   aoe2war facts [--json]
   aoe2war dev <status|prepare|refresh|serve|new> [options]
-  aoe2war truth <status|census|audit|target> [options]
+  aoe2war truth <status|census|audit|closure|target> [options]
   aoe2war deps
   aoe2war host <status|tidy|maintenance-plan> [options]
   aoe2war recovery <status|plan> [options]
@@ -304,6 +304,12 @@ REPLAY TRUTH
   aoe2war truth audit
       Prove the full production cross-layer contract between high-level
       statistics authority and coherent participant W/L projection.
+
+  aoe2war truth closure
+      Classify every final battle into one explicit certainty disposition:
+      resolved, current-vault reparse, parser research, source artifact missing,
+      human review, result evidence required, or non-battle candidate. The goal
+      is 100% disposition accounting even when 100% winner recovery is impossible.
 
   aoe2war truth target GAME_ID
       Show one replay's effective truth, canonical teams, participant outcomes,
