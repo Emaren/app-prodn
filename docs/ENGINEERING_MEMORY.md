@@ -640,3 +640,23 @@ Behavior-preserving tests, release proof, and unchanged product semantics remain
 the acceptance boundary. Branch cleanup follows the same rule: a branch is safe
 to remove only after its wanted commits are proven represented elsewhere; age or
 name alone is not authority.
+
+
+## 2026-09-05 — Kingdom Intelligence closure and latency lesson
+
+A release transaction can successfully activate and certify production, then
+fail in a later Finish phase. Preserve both truths: certified runtime provenance
+remains valid, while the Finish transaction remains incomplete until its failed
+closure phase is repaired. Kingdom Intelligence must surface the latest Finish
+status/phase and generated control-state reason instead of presenting source
+parity alone as complete operating closure.
+
+The first `aoe2war brain` implementation also took roughly one minute because
+independent Doctor, Storage, Host, Recovery and Workspace probes were executed
+serially. Independent read-only probes should run concurrently when safe. An AI
+or operator should spend context on engineering, not waiting for the sum of
+unrelated diagnostics.
+
+A Speed OS campaign is current-state evidence only when its recorded release SHA
+matches currently certified production. Recency without source identity is not
+enough.
