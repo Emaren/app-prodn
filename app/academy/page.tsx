@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 
 import { avatarUrlForUser } from "@/lib/avatarAssets";
-import { loadClaimedPlayerProfile } from "@/lib/playerProfile";
+import { loadClaimedPlayerPreview } from "@/lib/playerProfile";
 import { getPrisma } from "@/lib/prisma";
 import { ZODIAC_TRAINING_CONFIG } from "@/lib/zodiacTraining";
 
@@ -67,9 +67,10 @@ async function loadZodiacCard() {
   );
 
   try {
-    const profile = await loadClaimedPlayerProfile(
+    const profile = await loadClaimedPlayerPreview(
       getPrisma(),
-      ZODIAC_TRAINING_CONFIG.userUid
+      ZODIAC_TRAINING_CONFIG.userUid,
+      1
     );
     const name = profile?.displayName || fallbackName;
     const avatarBase = avatarUrlForUser(
@@ -83,7 +84,7 @@ async function loadZodiacCard() {
       matchCount: profile?.matchFeed.totalMatches || 0,
     };
   } catch (error) {
-    console.warn("Academy advisor card could not load replay profile:", error);
+    console.warn("Academy advisor card could not load replay preview:", error);
     return {
       name: fallbackName,
       avatarUrl: `${fallbackAvatar}${

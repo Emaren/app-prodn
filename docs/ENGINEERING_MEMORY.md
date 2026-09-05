@@ -676,3 +676,26 @@ had exact available-byte evidence, and showed dirty/unmerged worktree counts
 without ranking them. KI should preserve the strongest exact field available,
 and dirty/unmerged workspace evidence must become an explicit review action
 rather than passive telemetry.
+
+## 2026-09-05 — First 77-route speed campaign hot-path lesson
+
+Certified source `31f883e4d8ce9a8835e34e46e7387247aae3b4f6`
+established the first current 77-route before-optimization baseline at 400.0 ms
+TTFB p50 and 587.2 ms total p50. The highest total-time routes included
+`/academy` at about 2.98 s and `/rivalries` at about 2.43 s.
+
+Source inspection showed two repeatable design smells:
+
+1. a complete historical replay projection was correctly required for truth but
+   unnecessarily rebuilt on every request even when the replay generation had
+   not changed;
+2. a lightweight public card loaded the complete player command-center profile,
+   including unrelated WOLO, watcher, stream, community, metrics and rivalry
+   work.
+
+The durable rule is to preserve complete truth while caching deterministic
+derived computation by its authoritative generation, and to give small public
+surfaces narrow data loaders that perform only the work they actually render.
+
+Cache invalidation remains tied to truth generation. A cache may save
+computation; it never becomes replay authority.

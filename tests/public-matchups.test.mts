@@ -412,16 +412,21 @@ test("the full rivalry board shares one identity and pending-claim projection", 
     prisma,
     { activityTake: 1 }
   );
+  const repeatedBoards = await loadPublicRivalryBoards(
+    prisma,
+    { activityTake: 1 }
+  );
 
   assert.equal(boards.duels.length > 0, true);
+  assert.equal(repeatedBoards.duels.length, boards.duels.length);
   assert.equal(
     claimedPlayerQueries,
     1,
-    "duels, teams, and activity should share one claimed-player lookup"
+    "same-generation rivalry requests should reuse the complete identity projection"
   );
   assert.equal(
     pendingClaimQueries,
     1,
-    "duels, teams, and activity should share one pending-claim lookup"
+    "same-generation rivalry requests should reuse the complete pending-claim projection"
   );
 });

@@ -314,6 +314,54 @@ Wolo proof, Operator Bridge reload, and the final finish audit remain mandatory.
 7. Keep the cheap release pulse on every ordinary deployment; use the full
    campaign when optimizing the estate.
 
+## September 5, 2026 certified before-optimization baseline
+
+The first full campaign after Kingdom Intelligence V1 was frozen against exact
+certified production source
+`31f883e4d8ce9a8835e34e46e7387247aae3b4f6`.
+
+The 77-route cohort measured:
+
+- TTFB p50: **400.0 ms**;
+- total p50: **587.2 ms**;
+- `/academy`: 604.9 ms TTFB / 2,975.0 ms total;
+- `/rivalries`: 793.0 ms TTFB / 2,434.6 ms total;
+- `/battle-archive`: 596.6 ms TTFB / 1,127.3 ms total;
+- `/zodiac`: 398.5 ms TTFB / 1,354.3 ms total;
+- four physical replay-archive scan budget overruns in the prior hour;
+- nine database/pool error patterns in the prior hour;
+- public `/api/speed/check` TTFB roughly 145x origin during the campaign;
+- mounted-volume headroom below 10%.
+
+This receipt is the Before authority for the first September performance
+campaign. Do not compare a changed release against a different cohort or
+silently substitute the older `67c390...` campaign.
+
+### Generation-keyed public projection rule
+
+Historical rivalry and Battle Archive totals require the complete replay corpus.
+That truth requirement does **not** require reconstructing the same projection
+for every HTTP request.
+
+Expensive deterministic projections may be retained in-process by the exact
+public replay generation plus options that change their result. A replay
+generation change invalidates the projection. Rejected loads are not retained.
+The complete corpus remains the source of truth; the cache is computation reuse,
+not evidence or authority.
+
+### Lightweight card/preview rule
+
+A public card or training landing page must not invoke the complete player
+command-center profile merely to obtain a display name, a bounded recent match
+feed, and a total match count.
+
+Use the narrow claimed-player preview rail for those surfaces. The preview still
+uses exact Steam identity, public replay generation, canonical cleaned replay
+rows, replay deduplication, and the normal match-feed builder. It deliberately
+does not load WOLO history, staking, watcher aggregates, stream stats, community
+honor, normalized metrics, charts, or rivalry summaries that the card does not
+render.
+
 ## Fail-closed rules
 
 - A benchmark never mutates production.
