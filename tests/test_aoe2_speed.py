@@ -434,7 +434,7 @@ class PerformanceOSTests(unittest.TestCase):
 
     def test_full_speed_cohort_v2_covers_current_world_surfaces(self):
         routes = SPEED_MODULE.route_list(True)
-        self.assertEqual(len(routes), 68)
+        self.assertEqual(len(routes), 77)
         self.assertEqual(len(routes), len(set(routes)))
         for route in (
             "/wargraph",
@@ -444,6 +444,15 @@ class PerformanceOSTests(unittest.TestCase):
             "/oracle",
             "/speed",
             "/market/kingdom/chat-effects",
+            "/market/shops/chat-effects",
+            "/about",
+            "/belts",
+            "/nations",
+            "/pending-bets",
+            "/realm",
+            "/roadmap",
+            "/users",
+            "/wolo-1",
         ):
             self.assertIn(route, routes)
 
