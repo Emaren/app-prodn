@@ -140,6 +140,12 @@ source, while `operator_source_sha` records the local tool revision. This
 prevents a newer Mac/GitHub control-plane checkout from being mislabeled as the
 runtime that was actually measured.
 
+An analyzed-but-unverified campaign protects the same certified release from
+accidental replacement. It must not block a new baseline when certified
+production has advanced to a different release SHA: the older campaign remains
+historical evidence and the new release may freeze its own baseline without
+requiring a force override.
+
 ## Capacity and hardware advisor
 
 Every full campaign also captures a read-only production capacity snapshot from
