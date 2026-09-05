@@ -13,9 +13,9 @@ import {
   Trophy,
 } from "lucide-react";
 
-import { nationalBeacons, type NationalBeacon } from "@/lib/aoe2warLeague";
+import { getPrisma } from "@/lib/prisma";\nimport { loadChampionTitleEconomyState } from "@/lib/champions/titleState";\nimport {\n  buildNationalChampionBeacons,\n  type NationalChampionBeacon as NationalBeacon,\n} from "@/lib/champions/nationalPageState";
 
-export const metadata: Metadata = {
+export const dynamic = "force-dynamic";\n\nexport const metadata: Metadata = {
   title: "National Champions",
   description:
     "AoE2WAR national championship belts, active champions, tribute, bounties, and vacant nations.",
@@ -165,7 +165,7 @@ function Continent({ className }: { className: string }) {
   );
 }
 
-function WorldMap() {
+function WorldMap({ beacons }: { beacons: NationalBeacon[] }) {
   return (
     <div className="relative min-h-[31rem] overflow-hidden rounded-[2rem] border border-amber-200/14 bg-[radial-gradient(circle_at_21%_33%,rgba(245,158,11,0.24),transparent_14%),radial-gradient(circle_at_52%_46%,rgba(251,191,36,0.13),transparent_24%),radial-gradient(circle_at_78%_64%,rgba(14,165,233,0.10),transparent_26%),linear-gradient(145deg,#030812,#0b1420_52%,#040608)] shadow-[0_40px_140px_rgba(0,0,0,0.54)] lg:min-h-[35rem]">
       <div className="absolute inset-0 opacity-55 [background-image:linear-gradient(rgba(255,255,255,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:64px_64px]" />
@@ -180,7 +180,7 @@ function WorldMap() {
       <Continent className="left-[49%] top-[61%] h-[15rem] w-[11rem] rotate-[2deg]" />
       <Continent className="left-[75%] top-[68%] h-[10rem] w-[14rem] rotate-[14deg]" />
 
-      {nationalBeacons.map((beacon) => (
+      {beacons.map((beacon) => (
         <BeaconMarker key={beacon.id} beacon={beacon} />
       ))}
     </div>
@@ -201,8 +201,8 @@ function ChampionShowcaseCard({ beacon, priority = false }: { beacon: NationalBe
   const image = nationalBeltImage(beacon.id);
   const shortName = nationalBeltShortName(beacon.id, beacon.country);
   const champion = beacon.champion || "Vacant";
-  const championHref = playerHref(beacon.champion);
-  const beltHref = beltPageHrefForNationalBelt(beacon.id);
+  const championHref = beacon.championHref || playerHref(beacon.champion);
+  const beltHref = beacon.beltHref || beltPageHrefForNationalBelt(beacon.id);
   const challengeHref = challengeHrefForNationalBelt(beacon.id, beacon.champion);
 
   return (
@@ -267,11 +267,11 @@ function ChampionShowcaseCard({ beacon, priority = false }: { beacon: NationalBe
           <div className="mt-5 grid grid-cols-2 gap-3">
             <div className="rounded-[1rem] border border-white/9 bg-black/22 px-4 py-3">
               <div className="text-[9px] uppercase tracking-[0.24em] text-slate-500">Tribute</div>
-              <div className="mt-1 text-lg font-semibold text-amber-100">10 WOLO/day</div>
+              <div className="mt-1 text-lg font-semibold text-amber-100">{beacon.tributeWolo} WOLO/day</div>
             </div>
             <div className="rounded-[1rem] border border-white/9 bg-black/22 px-4 py-3">
               <div className="text-[9px] uppercase tracking-[0.24em] text-slate-500">Bounty</div>
-              <div className="mt-1 text-lg font-semibold text-amber-100">{beacon.bountyWolo} WOLO/day</div>
+              <div className="mt-1 text-lg font-semibold text-amber-100">{beacon.bountyWolo} WOLO</div>
             </div>
           </div>
 
@@ -339,7 +339,7 @@ function VacantCrownCard({ beacon }: { beacon: NationalBeacon }) {
         <div className="mt-4 grid grid-cols-2 gap-2">
           <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2">
             <div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">Tribute</div>
-            <div className="mt-1 text-sm font-semibold text-amber-100">10 WOLO/day</div>
+            <div className="mt-1 text-sm font-semibold text-amber-100">{beacon.tributeWolo} WOLO/day</div>
           </div>
           <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2">
             <div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">Status</div>
@@ -421,7 +421,7 @@ export default function NationalChampionsPage() {
             <div className="grid gap-3 sm:grid-cols-3">
               <HeroStat label="Lit Nations" value={String(litBeacons.length)} detail="Active champions" />
               <HeroStat label="Open Crowns" value={String(vacantBeacons.length)} detail="Ready to claim" />
-              <HeroStat label="Bounty Pool" value={`${totalBounty} WOLO/day`} detail="Total national pull" />
+              <HeroStat label="Bounty Pool" value={`${totalBounty} WOLO`} detail="Current national bounties" />
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
@@ -442,7 +442,7 @@ export default function NationalChampionsPage() {
             </div>
           </div>
 
-          <WorldMap />
+          <WorldMap beacons={nationalBeacons} />
         </div>
       </section>
 
