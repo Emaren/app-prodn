@@ -50,80 +50,6 @@
     {
       "audience": [
         "operators",
-        "auditors",
-        "ai-agents"
-      ],
-      "authority": "historical-evidence",
-      "id": "aoe2war.app-prodn.product-state",
-      "owner": "aoe2war-web",
-      "path": "PRODUCT_STATE.md",
-      "review_interval_days": 0,
-      "reviewed_at": "2026-07-26",
-      "sensitivity": "internal",
-      "sha256": "a6b2b4fa6c4551c8a6ef6fd44a6d9e3185a75a4cef2509e053e4ed64ff2cfeac",
-      "source_of_truth": "historical-evidence",
-      "status": "historical",
-      "systems": [
-        "app-prodn",
-        "api-prodn",
-        "aoe2-watcher",
-        "wolochain"
-      ],
-      "title": "app-prodn Product State",
-      "type": "historical"
-    },
-    {
-      "audience": [
-        "developers",
-        "operators",
-        "ai-agents"
-      ],
-      "authority": "repository-entrypoint",
-      "id": "aoe2war.app-prodn.readme",
-      "owner": "aoe2war-web",
-      "path": "README.md",
-      "review_interval_days": 60,
-      "reviewed_at": "2026-08-20",
-      "sensitivity": "internal",
-      "sha256": "17918bf7c107f0a7d8a0adfe03ceb8db4d2b50c87dd12386520a8032a921b8fe",
-      "source_of_truth": "git",
-      "status": "active",
-      "systems": [
-        "app-prodn",
-        "api-prodn",
-        "aoe2-watcher",
-        "wolochain"
-      ],
-      "title": "app-prodn",
-      "type": "reference"
-    },
-    {
-      "audience": [
-        "developers",
-        "operators",
-        "ai-agents"
-      ],
-      "authority": "workspace-reference",
-      "id": "aoe2war.app-prodn.workspace",
-      "owner": "aoe2war-web",
-      "path": "WORKSPACE.md",
-      "review_interval_days": 60,
-      "reviewed_at": "2026-08-22",
-      "sensitivity": "internal",
-      "sha256": "de60c5293957eed3d5c9a2a867b8d4889267b7e1196c0b86518c819116b44896",
-      "source_of_truth": "git",
-      "status": "active",
-      "systems": [
-        "app-prodn",
-        "api-prodn",
-        "aoe2-watcher"
-      ],
-      "title": "AoE2HDBets",
-      "type": "reference"
-    },
-    {
-      "audience": [
-        "operators",
         "ai-agents"
       ],
       "authority": "operational-procedure",
@@ -211,27 +137,26 @@
     },
     {
       "audience": [
-        "developers",
         "operators",
+        "auditors",
         "ai-agents"
       ],
-      "authority": "product-and-concurrency-contract",
-      "id": "aoe2war.app-prodn.docs-betting-hall-product-and-concurrency",
+      "authority": "audit-evidence",
+      "id": "aoe2war.app-prodn.docs-audits-wolo-duplicate-tx-audit-2026-06-05",
       "owner": "aoe2war-web",
-      "path": "docs/BETTING_HALL_PRODUCT_AND_CONCURRENCY.md",
-      "review_interval_days": 30,
-      "reviewed_at": "2026-09-05",
-      "sensitivity": "internal",
-      "sha256": "792fd1137da393c27c1bc32de4ab5b64dc3c3b15fefc0c4cb35be4dc7a0604e7",
-      "source_of_truth": "git",
-      "status": "active",
+      "path": "docs/audits/WOLO_DUPLICATE_TX_AUDIT_2026-06-05.md",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-07-26",
+      "sensitivity": "restricted",
+      "sha256": "8b7ee6f3718091fadb36778d865843576d65a37bc119815c5a89ba059f1c51e0",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
       "systems": [
         "app-prodn",
-        "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Betting Hall Product and Concurrency Contract",
-      "type": "reference"
+      "title": "WOLO Duplicate Tx Audit - 2026-06-05",
+      "type": "historical"
     },
     {
       "audience": [
@@ -303,6 +228,30 @@
         "wolochain"
       ],
       "title": "Manual Bet Stake Tickets",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-and-concurrency-contract",
+      "id": "aoe2war.app-prodn.docs-betting-hall-product-and-concurrency",
+      "owner": "aoe2war-web",
+      "path": "docs/BETTING_HALL_PRODUCT_AND_CONCURRENCY.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-09-05",
+      "sensitivity": "internal",
+      "sha256": "792fd1137da393c27c1bc32de4ab5b64dc3c3b15fefc0c4cb35be4dc7a0604e7",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "Betting Hall Product and Concurrency Contract",
       "type": "reference"
     },
     {
@@ -498,7 +447,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d5298410720c43183cfa6341488c3dee9758e96702e866ba96ab62d1f87707f8",
+      "sha256": "2be3217fcf0a1942c8e10a1ce255274f08b6f9ce0c8069ce2be8a33d2e6ffa3b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -578,6 +527,28 @@
       ],
       "title": "AoE2WAR Evidence Vault",
       "type": "runbook"
+    },
+    {
+      "audience": [
+        "editors",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "editorial-evidence",
+      "id": "aoe2war.app-prodn.docs-forum-2026-07-04-american-championship-edition",
+      "owner": "aoe2war-web",
+      "path": "docs/forum/2026-07-04-american-championship-edition.md",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-07-26",
+      "sensitivity": "public",
+      "sha256": "88eb27d2a665eef55b1c701706803560a5fb5cde51dfe2a370ae77a48e4d8ad6",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "War Room Forum — Saturday July 4, 2026 Edition",
+      "type": "historical"
     },
     {
       "audience": [
@@ -767,6 +738,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "self-knowledge-contract",
+      "id": "aoe2war.app-prodn.kingdom-intelligence",
+      "owner": "aoe2war-web",
+      "path": "docs/KINGDOM_INTELLIGENCE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-09-05",
+      "sensitivity": "internal",
+      "sha256": "d9e99acb47be11d6eba6b0d3026d05af36cc5e9c8160fa2636fee87aeaacc072",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Kingdom Intelligence",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "architecture-explanation",
       "id": "aoe2war.app-prodn.docs-kingdom-knowledge-router",
       "owner": "aoe2war-web",
@@ -782,28 +775,6 @@
       ],
       "title": "Kingdom Knowledge Router",
       "type": "explanation"
-    },
-    {
-      "audience": [
-        "developers",
-        "ai-agents"
-      ],
-      "authority": "product-contract",
-      "id": "aoe2war.app-prodn.docs-leaderboards",
-      "owner": "aoe2war-web",
-      "path": "docs/LEADERBOARDS.md",
-      "review_interval_days": 90,
-      "reviewed_at": "2026-07-28",
-      "sensitivity": "internal",
-      "sha256": "862d9f59b09c3cd4e672baf5dfa570e5e872aaefca4201a350043c8d4d4271da",
-      "source_of_truth": "git",
-      "status": "active",
-      "systems": [
-        "app-prodn",
-        "api-prodn"
-      ],
-      "title": "AoE2WAR Leaderboards",
-      "type": "reference"
     },
     {
       "audience": [
@@ -826,6 +797,28 @@
         "aoe2-watcher"
       ],
       "title": "HD Leaderboard View Modes",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-leaderboards",
+      "owner": "aoe2war-web",
+      "path": "docs/LEADERBOARDS.md",
+      "review_interval_days": 90,
+      "reviewed_at": "2026-07-28",
+      "sensitivity": "internal",
+      "sha256": "862d9f59b09c3cd4e672baf5dfa570e5e872aaefca4201a350043c8d4d4271da",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn"
+      ],
+      "title": "AoE2WAR Leaderboards",
       "type": "reference"
     },
     {
@@ -859,29 +852,6 @@
         "ai-agents"
       ],
       "authority": "financial-domain-contract",
-      "id": "aoe2war.app-prodn.docs-marketplace-business",
-      "owner": "aoe2war-web",
-      "path": "docs/MARKETPLACE_BUSINESS.md",
-      "review_interval_days": 30,
-      "reviewed_at": "2026-08-18",
-      "sensitivity": "internal",
-      "sha256": "1628552d8406e71e89f5fe9d17be1616774e998e8d865fe4eecb1dd2f0c384d7",
-      "source_of_truth": "git",
-      "status": "active",
-      "systems": [
-        "app-prodn",
-        "wolochain"
-      ],
-      "title": "Marketplace Business V1",
-      "type": "reference"
-    },
-    {
-      "audience": [
-        "developers",
-        "operators",
-        "ai-agents"
-      ],
-      "authority": "financial-domain-contract",
       "id": "aoe2war.app-prodn.docs-market-team-integrity",
       "owner": "aoe2war-web",
       "path": "docs/MARKET_TEAM_INTEGRITY.md",
@@ -902,6 +872,29 @@
     },
     {
       "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "financial-domain-contract",
+      "id": "aoe2war.app-prodn.docs-marketplace-business",
+      "owner": "aoe2war-web",
+      "path": "docs/MARKETPLACE_BUSINESS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-18",
+      "sensitivity": "internal",
+      "sha256": "1628552d8406e71e89f5fe9d17be1616774e998e8d865fe4eecb1dd2f0c384d7",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Marketplace Business V1",
+      "type": "reference"
+    },
+    {
+      "audience": [
         "operators",
         "developers",
         "ai-agents"
@@ -913,7 +906,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-04",
       "sensitivity": "internal",
-      "sha256": "9a1a1865306143fd3d46b0b68ea6d86345aef412e98bff61bba42f8ff03ee629",
+      "sha256": "800c11dd3221310fe4b77ef43d26be3b5dc0e6aca74d87c4ee08d6182d6c270d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1198,29 +1191,6 @@
     },
     {
       "audience": [
-        "developers",
-        "operators",
-        "ai-agents"
-      ],
-      "authority": "release-engineering-contract",
-      "id": "aoe2war.app-prodn.release-engineering",
-      "owner": "aoe2war-web",
-      "path": "docs/RELEASE_ENGINEERING.md",
-      "review_interval_days": 30,
-      "reviewed_at": "2026-08-24",
-      "sensitivity": "internal",
-      "sha256": "80ee6e634bc8f8fdc797e702050e4f30a503578bb5e72de1188dd46e9af2d148",
-      "source_of_truth": "git",
-      "status": "active",
-      "systems": [
-        "app-prodn",
-        "api-prodn"
-      ],
-      "title": "AoE2WAR Release Engineering",
-      "type": "reference"
-    },
-    {
-      "audience": [
         "operators",
         "auditors",
         "ai-agents"
@@ -1241,6 +1211,29 @@
       ],
       "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "release-engineering-contract",
+      "id": "aoe2war.app-prodn.release-engineering",
+      "owner": "aoe2war-web",
+      "path": "docs/RELEASE_ENGINEERING.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-24",
+      "sensitivity": "internal",
+      "sha256": "80ee6e634bc8f8fdc797e702050e4f30a503578bb5e72de1188dd46e9af2d148",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn"
+      ],
+      "title": "AoE2WAR Release Engineering",
+      "type": "reference"
     },
     {
       "audience": [
@@ -1476,31 +1469,6 @@
       "audience": [
         "developers",
         "operators",
-        "auditors",
-        "ai-agents"
-      ],
-      "authority": "architecture-contract",
-      "id": "aoe2war.app-prodn.docs-wargraph-v1",
-      "owner": "aoe2war-web",
-      "path": "docs/WARGRAPH_V1.md",
-      "review_interval_days": 30,
-      "reviewed_at": "2026-08-25",
-      "sensitivity": "internal",
-      "sha256": "9edec7ad91aa10aa5a5d7bd9bea9ecbeb91035adbccb4edf8293970e80484a01",
-      "source_of_truth": "git",
-      "status": "active",
-      "systems": [
-        "app-prodn",
-        "api-prodn",
-        "aoe2-watcher"
-      ],
-      "title": "AoE2WAR WarGraph V1",
-      "type": "reference"
-    },
-    {
-      "audience": [
-        "developers",
-        "operators",
         "ai-agents"
       ],
       "authority": "replay-evidence-escalation-contract",
@@ -1540,6 +1508,31 @@
         "app-prodn"
       ],
       "title": "War Room Forum",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "auditors",
+        "ai-agents"
+      ],
+      "authority": "architecture-contract",
+      "id": "aoe2war.app-prodn.docs-wargraph-v1",
+      "owner": "aoe2war-web",
+      "path": "docs/WARGRAPH_V1.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-25",
+      "sensitivity": "internal",
+      "sha256": "9edec7ad91aa10aa5a5d7bd9bea9ecbeb91035adbccb4edf8293970e80484a01",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "AoE2WAR WarGraph V1",
       "type": "reference"
     },
     {
@@ -1587,29 +1580,6 @@
         "aoe2-watcher"
       ],
       "title": "Watcher Telemetry",
-      "type": "reference"
-    },
-    {
-      "audience": [
-        "developers",
-        "operators",
-        "ai-agents"
-      ],
-      "authority": "cross-repository-handoff",
-      "id": "aoe2war.app-prodn.docs-wolochain-civic-rail-handoff-prompt",
-      "owner": "aoe2war-web",
-      "path": "docs/WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md",
-      "review_interval_days": 30,
-      "reviewed_at": "2026-08-08",
-      "sensitivity": "internal",
-      "sha256": "d8875c194ba1628bfb9b694f34190537d11213f999866c1fe3ec1eaf8adeee3a",
-      "source_of_truth": "git",
-      "status": "active",
-      "systems": [
-        "app-prodn",
-        "wolochain"
-      ],
-      "title": "WoloChain Civic Rail Handoff Prompt",
       "type": "reference"
     },
     {
@@ -1683,6 +1653,29 @@
     {
       "audience": [
         "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "cross-repository-handoff",
+      "id": "aoe2war.app-prodn.docs-wolochain-civic-rail-handoff-prompt",
+      "owner": "aoe2war-web",
+      "path": "docs/WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-08-08",
+      "sensitivity": "internal",
+      "sha256": "d8875c194ba1628bfb9b694f34190537d11213f999866c1fe3ec1eaf8adeee3a",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "WoloChain Civic Rail Handoff Prompt",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
         "ai-agents"
       ],
       "authority": "architecture-explanation",
@@ -1724,51 +1717,6 @@
     },
     {
       "audience": [
-        "operators",
-        "auditors",
-        "ai-agents"
-      ],
-      "authority": "audit-evidence",
-      "id": "aoe2war.app-prodn.docs-audits-wolo-duplicate-tx-audit-2026-06-05",
-      "owner": "aoe2war-web",
-      "path": "docs/audits/WOLO_DUPLICATE_TX_AUDIT_2026-06-05.md",
-      "review_interval_days": 0,
-      "reviewed_at": "2026-07-26",
-      "sensitivity": "restricted",
-      "sha256": "8b7ee6f3718091fadb36778d865843576d65a37bc119815c5a89ba059f1c51e0",
-      "source_of_truth": "historical-evidence",
-      "status": "historical",
-      "systems": [
-        "app-prodn",
-        "wolochain"
-      ],
-      "title": "WOLO Duplicate Tx Audit - 2026-06-05",
-      "type": "historical"
-    },
-    {
-      "audience": [
-        "editors",
-        "developers",
-        "ai-agents"
-      ],
-      "authority": "editorial-evidence",
-      "id": "aoe2war.app-prodn.docs-forum-2026-07-04-american-championship-edition",
-      "owner": "aoe2war-web",
-      "path": "docs/forum/2026-07-04-american-championship-edition.md",
-      "review_interval_days": 0,
-      "reviewed_at": "2026-07-26",
-      "sensitivity": "public",
-      "sha256": "88eb27d2a665eef55b1c701706803560a5fb5cde51dfe2a370ae77a48e4d8ad6",
-      "source_of_truth": "historical-evidence",
-      "status": "historical",
-      "systems": [
-        "app-prodn"
-      ],
-      "title": "War Room Forum — Saturday July 4, 2026 Edition",
-      "type": "historical"
-    },
-    {
-      "audience": [
         "developers",
         "operators",
         "ai-agents"
@@ -1788,12 +1736,86 @@
       ],
       "title": "Prisma Schema and Migration Reference",
       "type": "reference"
+    },
+    {
+      "audience": [
+        "operators",
+        "auditors",
+        "ai-agents"
+      ],
+      "authority": "historical-evidence",
+      "id": "aoe2war.app-prodn.product-state",
+      "owner": "aoe2war-web",
+      "path": "PRODUCT_STATE.md",
+      "review_interval_days": 0,
+      "reviewed_at": "2026-07-26",
+      "sensitivity": "internal",
+      "sha256": "a6b2b4fa6c4551c8a6ef6fd44a6d9e3185a75a4cef2509e053e4ed64ff2cfeac",
+      "source_of_truth": "historical-evidence",
+      "status": "historical",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "app-prodn Product State",
+      "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "repository-entrypoint",
+      "id": "aoe2war.app-prodn.readme",
+      "owner": "aoe2war-web",
+      "path": "README.md",
+      "review_interval_days": 60,
+      "reviewed_at": "2026-08-20",
+      "sensitivity": "internal",
+      "sha256": "6be43750885ad11a34eff99d53cf70da8b137e59cb0d2d7fb1f1d31966a9661f",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "app-prodn",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "workspace-reference",
+      "id": "aoe2war.app-prodn.workspace",
+      "owner": "aoe2war-web",
+      "path": "WORKSPACE.md",
+      "review_interval_days": 60,
+      "reviewed_at": "2026-08-22",
+      "sensitivity": "internal",
+      "sha256": "de60c5293957eed3d5c9a2a867b8d4889267b7e1196c0b86518c819116b44896",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "AoE2HDBets",
+      "type": "reference"
     }
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "511b7cc89682763035c94471ef9acd584c0c53d3"
+    "commit": "ade8432d34708295691c67d89bbc6d0c06baaaf1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
