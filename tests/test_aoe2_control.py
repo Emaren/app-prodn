@@ -3,15 +3,21 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import pathlib
+import sys
 import tempfile
 import unittest
 from unittest import mock
 
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "aoe2_control.py"
+SCRIPTS = SCRIPT.parent
+if str(SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS))
+
 SPEC = importlib.util.spec_from_file_location("aoe2_control", SCRIPT)
 MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
+sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 
