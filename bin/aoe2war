@@ -75,6 +75,7 @@ SPEED_INVENTORY="$BIN_DIR/../scripts/aoe2_speed_inventory.py"
 SPEED_BUILD="$BIN_DIR/../scripts/aoe2_speed_build.py"
 DOCS_OS="$BIN_DIR/../scripts/aoe2_docs.py"
 COUNCIL="$BIN_DIR/../scripts/aoe2_council.py"
+BRAIN="$BIN_DIR/../scripts/aoe2_brain.py"
 WORKSPACE="$BIN_DIR/../scripts/aoe2_workspace.py"
 HOST_OS="$BIN_DIR/../scripts/aoe2_host.py"
 RECOVERY_OS="$BIN_DIR/../scripts/aoe2_recovery.py"
@@ -101,6 +102,7 @@ Usage:
   aoe2war storage-retention [--apply] [--json]
   aoe2war storage <status|plan|maintain|verify> [options]
   aoe2war council [--json]
+  aoe2war brain [--json]
   aoe2war workspace <status|plan|clean> [options]
   aoe2war facts [--json]
   aoe2war dev <status|prepare|refresh|serve|new> [options]
@@ -266,6 +268,12 @@ KINGDOM INTELLIGENCE / HYGIENE
       Host, Recovery, Workspace and Performance evidence into ranked practical
       recommendations with one best next action.
 
+  aoe2war brain
+      Read-only Kingdom Intelligence snapshot. One command explains current
+      source authority, certification, Doctor/Audit health, storage, recovery,
+      Replay Truth certainty, Speed OS campaign state, invariants and the best
+      ranked next action. Use --json for AI/session handoff.
+
   aoe2war speed pulse
       Cheap persisted critical-route public performance pulse. `aoe2war finish`
       runs this automatically after certification without weakening release truth.
@@ -414,6 +422,10 @@ case "$command" in
   council)
     shift
     exec python3 "$COUNCIL" "$@"
+    ;;
+  brain)
+    shift
+    exec python3 "$BRAIN" "$@"
     ;;
   workspace)
     shift
