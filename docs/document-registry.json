@@ -1790,10 +1790,10 @@
       "type": "reference"
     }
   ],
-  "generated_at": "2026-09-05T01:26:00Z",
+  "generated_at": "2026-09-05T01:29:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "7344968f067bdd6820da878053bb4a187afb6d27"
+    "commit": "012e2480d669d762382e1001f9aa16e59ad37a3e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
