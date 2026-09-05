@@ -351,6 +351,41 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertIn('[ "${1:-}" = "campaign" ]', source)
 
 
+    def test_speed_incident_advice_surfaces_archive_and_telemetry_failures(self):
+        baseline = {
+            "performance_incidents": {
+                "available": True,
+                "window_minutes": 60,
+                "counts": {
+                    "physical_archive_scan_timeout": 2,
+                    "speed_telemetry_timeout": 1,
+                    "upstream_timeout": 3,
+                    "database_error": 0,
+                    "memory_pressure": 0,
+                },
+            },
+        }
+
+        advice = CAMPAIGN_MODULE.incident_advice(baseline)
+
+        self.assertEqual(advice["available"], True)
+        self.assertEqual(len(advice["findings"]), 2)
+        self.assertTrue(
+            any("precomputed snapshot" in action for action in advice["actions"])
+        )
+        self.assertTrue(
+            any("Traffic performance-ingest" in action for action in advice["actions"])
+        )
+
+    def test_speed_benchmark_records_recent_incident_counts(self):
+        source = SPEED.read_text(encoding="utf-8")
+        self.assertIn("def production_performance_incidents", source)
+        self.assertIn("journalctl -u aoe2hdbets-web.service", source)
+        self.assertIn("physical archive scan exceeded", source)
+        self.assertIn("Speed telemetry relay failed", source)
+        self.assertIn('"performance_incidents": incidents', source)
+
+
     def test_speed_capacity_advice_prioritizes_delivery_and_rejects_gpu(self):
         baseline = {
             "origin_seam": {
