@@ -2391,6 +2391,105 @@ async function loadClaimedProfileUser(prisma: PrismaClient, uid: string): Promis
   }
 }
 
+export async function loadClaimedPlayerPreview(
+  prisma: PrismaClient,
+  uid: string,
+  limit = 6,
+) {
+  const user =
+    await loadClaimedProfileUser(
+      prisma,
+      uid,
+    );
+
+  if (!user) return null;
+
+  const exactSteamPlayer =
+    buildExactSteamClaimedPlayer(user);
+  const directoryEntry = exactSteamPlayer
+    ? null
+    : await resolveProfileDirectoryIdentity(
+        prisma,
+        {
+          uid,
+        },
+      );
+
+  const displayName =
+    exactSteamPlayer?.name ||
+    user.inGameName ||
+    directoryEntry?.name ||
+    user.steamPersonaName ||
+    user.uid;
+
+  const aliases = exactSteamPlayer?.aliases ??
+    mergeProfileAliases([
+      user.inGameName,
+      user.steamPersonaName,
+      displayName,
+      directoryEntry?.name,
+      directoryEntry?.latestObservedName,
+      ...(directoryEntry?.aliases ?? []),
+    ]);
+
+  const currentPlayer =
+    exactSteamPlayer ??
+    withProfileAliases(
+      buildClaimedPublicPlayerRef(
+        user,
+        displayName,
+      ),
+      aliases,
+    );
+
+  const generationPromise =
+    loadPublicReplayGeneration(
+      prisma,
+    );
+  const exactSteamIndexPromise =
+    currentPlayer.steamId?.trim()
+      ? loadExactSteamCandidateIndex(
+          prisma,
+          currentPlayer.steamId.trim(),
+        )
+      : Promise.resolve(undefined);
+
+  const [generation, exactSteamIndex] =
+    await Promise.all([
+      generationPromise,
+      exactSteamIndexPromise,
+    ]);
+
+  const games =
+    filterGamesForPlayer(
+      await loadCandidateFinalGames(
+        prisma,
+        generation,
+        currentPlayer,
+        exactSteamIndex,
+      ),
+      currentPlayer,
+    );
+
+  return {
+    displayName,
+    href: `/players/${uid}`,
+    matchFeed: buildMatchFeed(
+      games,
+      currentPlayer,
+      generation,
+      0,
+      Math.max(
+        1,
+        Math.min(
+          PLAYER_MATCH_FEED_RECONCILE_BATCH_SIZE,
+          Math.round(limit || 1),
+        ),
+      ),
+    ),
+  };
+}
+
 export async function loadClaimedPlayerProfile(
   prisma: PrismaClient,
   uid: string,
