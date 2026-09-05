@@ -102,6 +102,7 @@ export type Aoe2OsRun = {
   parameters: {
     message?: string;
     dryRun?: boolean;
+    preserveContextHistory?: boolean;
   } | null;
   bridgeId: string | null;
   requestedAt: string;

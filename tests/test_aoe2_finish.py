@@ -43,6 +43,33 @@ class FinishTests(unittest.TestCase):
         self.assertIn("--force-control-refresh", args)
         self.assertEqual(result["result"], "RECONCILED")
 
+    def test_documentation_reconcile_propagates_context_preservation(self):
+        plan = {
+            "blocked": False,
+            "changes_needed": True,
+            "baseline_refreshes": [],
+            "central_sync": True,
+            "context_projects": ["AoE2HDBets"],
+            "blocked_source_docs": [],
+            "unknown_p1": [],
+        }
+        with patch.object(
+            MODULE.aoe2_update,
+            "collect_plan",
+            return_value=plan,
+        ), patch.object(MODULE, "run_live") as run_live:
+            MODULE.reconcile_documentation(
+                label="Pre-release",
+                progress=MODULE.Progress(enabled=False),
+                json_mode=False,
+                defer_context=True,
+                preserve_context_history=True,
+            )
+
+        args = run_live.call_args.args[0]
+        self.assertIn("--preserve-context-history", args)
+        self.assertIn("--defer-context", args)
+
     def test_local_worktree_wins_when_vps_clean(self):
         plan = MODULE.source_plan(
             local_dirty=2,

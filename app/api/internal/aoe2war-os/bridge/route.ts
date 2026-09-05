@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
         parameters: {
           message: text(body.message, 200) || "Finish AoE2WAR work",
           dryRun: body.dryRun === true,
+          preserveContextHistory: body.preserveContextHistory === true,
         },
       });
       return NextResponse.json({ ok: true, run }, { headers: NO_STORE });

@@ -22,7 +22,8 @@ test("update bounds context retention and proves capture headroom", async () => 
 
   assert.match(update, /def prune_context_before_capture/);
   assert.match(update, /"KEEP_N": "1"/);
-  assert.match(update, /env\["PRUNE_LATEST"\] = "1"/);
+  assert.match(update, /env\["PRUNE_LATEST"\] = "0" if preserve_context_history else "1"/);
+  assert.match(update, /Context retention skipped — preserving prior archives/);
   assert.match(update, /def context_capture_headroom/);
   assert.match(update, /expected exactly one .* context archive/);
   assert.match(update, /context SHA mismatch/);

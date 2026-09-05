@@ -63,6 +63,27 @@ class OperatorBridgeTests(unittest.TestCase):
             ],
         )
 
+    def test_finish_can_preserve_context_history(self):
+        self.assertEqual(
+            MODULE.command_for_run(
+                {
+                    "action": "finish",
+                    "parameters": {
+                        "message": "Seal evidence",
+                        "preserveContextHistory": True,
+                    },
+                }
+            ),
+            [
+                str(MODULE.CLI),
+                "finish",
+                "--json",
+                "--message",
+                "Seal evidence",
+                "--preserve-context-history",
+            ],
+        )
+
     def test_token_file(self):
         with tempfile.TemporaryDirectory() as temp:
             token_file = Path(temp) / "token"

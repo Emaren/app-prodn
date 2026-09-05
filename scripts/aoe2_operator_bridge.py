@@ -178,6 +178,8 @@ def command_for_run(run: dict[str, Any]) -> list[str]:
         command = [str(CLI), "finish", "--json", "--message", message]
         if parameters.get("dryRun") is True:
             command.append("--dry-run")
+        if parameters.get("preserveContextHistory") is True:
+            command.append("--preserve-context-history")
         return command
     if action == "rollback_preview":
         return [str(CLI), "rollback", "--dry-run", "--json"]
