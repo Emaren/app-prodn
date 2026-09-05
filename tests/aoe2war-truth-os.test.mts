@@ -20,7 +20,7 @@ const remote = await readFile(
 test("AoE2WAR CLI exposes Replay Truth OS", () => {
   assert.match(
     cli,
-    /aoe2war truth <status\|census\|audit\|target>/
+    /aoe2war truth <status\\|census\\|audit\\|closure\\|target>/
   );
 
   assert.match(
@@ -254,5 +254,48 @@ test("Replay Truth target exposes evidence and current projection", () => {
   assert.match(
     remote,
     /classifyRoute/
+  );
+});
+
+
+test("Replay Truth certainty closure accounts for every final game without guessing settlement truth", () => {
+  assert.match(
+    remote,
+    /buildCertaintyClosure/
+  );
+
+  assert.match(
+    remote,
+    /UNPARSEABLE_FROM_CURRENT_VAULT/
+  );
+
+  assert.match(
+    remote,
+    /ARTIFACT_PRESENT_REPARSE/
+  );
+
+  assert.match(
+    remote,
+    /ARTIFACT_PRESENT_CURRENT_PARSER_INSUFFICIENT/
+  );
+
+  assert.match(
+    remote,
+    /CANDIDATE_WINNER_NOT_AUTHORITY/
+  );
+
+  assert.match(
+    remote,
+    /terminalForCurrentVault/
+  );
+
+  assert.match(
+    python,
+    /Replay certainty closure|REPLAY CERTAINTY CLOSURE/
+  );
+
+  assert.match(
+    python,
+    /latest_receipt\(\s*"closure"\s*\)/
   );
 });
