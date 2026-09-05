@@ -188,6 +188,47 @@ class KingdomIntelligenceTests(unittest.TestCase):
             all(row["status"] == "PASS" for row in payload["invariants"])
         )
 
+    def test_attention_invariant_prevents_false_ready(self):
+        source = MODULE.source_summary(release())
+        perf = performance()
+        perf["matches_current_release"] = True
+        rows = MODULE.invariant_rows(
+            source=source,
+            council=council(),
+            truth=truth(),
+            finish=finish(complete=False),
+            control=control(),
+            performance=perf,
+        )
+        self.assertEqual(
+            MODULE.operating_state(
+                source=source,
+                council=council(),
+                invariants=rows,
+            ),
+            "ATTENTION",
+        )
+
+    def test_storage_summary_uses_storage_available_bytes_and_release_root(self):
+        source = MODULE.source_summary(release())
+        source["production"]["root_free_kb"] = 7 * 1024 * 1024
+        summary = MODULE.storage_summary(
+            {
+                "health": "ATTENTION",
+                "used_percent": 90.44,
+                "available_bytes": 28 * 1024 * 1024 * 1024,
+            },
+            source,
+        )
+        self.assertEqual(
+            summary["volume_free_bytes"],
+            28 * 1024 * 1024 * 1024,
+        )
+        self.assertEqual(
+            summary["root_free_bytes"],
+            7 * 1024 * 1024 * 1024,
+        )
+
     def test_attention_when_production_is_behind_or_p1_exists(self):
         source = MODULE.source_summary(release(exact=False))
         perf = performance()
