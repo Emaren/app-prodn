@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-and-implementation-contract"
-reviewed_at: "2026-08-14"
+reviewed_at: "2026-09-05"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -26,6 +26,23 @@ AoE2WAR owns three connected public products:
 These products share the signed AoE2WAR identity and a durable event record, but
 they do not share ledgers with replay-backed `BetMarket` wagers. Each domain has
 its own tables, lifecycle, and authority boundary.
+
+## Kingdom summary truth
+
+`/kingdom` does not maintain a separate handwritten current-state ledger.
+
+Its top summary and right-side Ledger project from `lib/kingdomSummary.ts`:
+
+- Chronicles are the live count of War Room threads in the canonical `wolo-chronicles` channel.
+- Latest Bounty is derived from the same canonical numbered on-chain bounty-transfer rail used by the Staking bounty view.
+- Citizens and Joined The Quest are the current signed-account population after exact internal-system UIDs are excluded; the visible citizen roll uses that same human-account projection.
+- Watchers Active is the distinct human-account count with fresh Watcher heartbeat/start/ready/open telemetry inside the current 15-minute activity window. Multiple Watcher sessions for one citizen do not inflate the count.
+- Kingdom Wealth is the current summed WoloChain balance of protocol-controlled community reserves: Community Treasury, liquidity, growth/faucet, operations, ecosystem bounty, rewards/payout and relayer rails. It explicitly excludes founder reserve/operating wallets, player wallets, staking principal custody, bet/IBC escrow, network module accounts and retired wallets.
+- Live Wolo balances are cached briefly and fail closed: if the current Kingdom-wealth read cannot be completed and no last-good value exists, the page says the wealth is unavailable instead of substituting max supply or a hand-entered number.
+
+These values are source-derived presentation facts. They do not redefine
+WoloChain ownership or make custody balances spendable merely because they are
+presented in the Kingdom ledger.
 
 ## Route and API contract
 
