@@ -85,7 +85,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-08-20",
       "sensitivity": "internal",
-      "sha256": "17918bf7c107f0a7d8a0adfe03ceb8db4d2b50c87dd12386520a8032a921b8fe",
+      "sha256": "6be43750885ad11a34eff99d53cf70da8b137e59cb0d2d7fb1f1d31966a9661f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d5298410720c43183cfa6341488c3dee9758e96702e866ba96ab62d1f87707f8",
+      "sha256": "2be3217fcf0a1942c8e10a1ce255274f08b6f9ce0c8069ce2be8a33d2e6ffa3b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -767,6 +767,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "self-knowledge-contract",
+      "id": "aoe2war.app-prodn.kingdom-intelligence",
+      "owner": "aoe2war-web",
+      "path": "docs/KINGDOM_INTELLIGENCE.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-09-05",
+      "sensitivity": "internal",
+      "sha256": "d9e99acb47be11d6eba6b0d3026d05af36cc5e9c8160fa2636fee87aeaacc072",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Kingdom Intelligence",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "architecture-explanation",
       "id": "aoe2war.app-prodn.docs-kingdom-knowledge-router",
       "owner": "aoe2war-web",
@@ -913,7 +935,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-04",
       "sensitivity": "internal",
-      "sha256": "9a1a1865306143fd3d46b0b68ea6d86345aef412e98bff61bba42f8ff03ee629",
+      "sha256": "800c11dd3221310fe4b77ef43d26be3b5dc0e6aca74d87c4ee08d6182d6c270d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1793,7 +1815,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "511b7cc89682763035c94471ef9acd584c0c53d3"
+    "commit": "ade8432d34708295691c67d89bbc6d0c06baaaf1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

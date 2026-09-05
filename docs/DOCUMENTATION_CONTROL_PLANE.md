@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `511b7cc89682763035c94471ef9acd584c0c53d3`
+Implementation baseline: `main` at `ade8432d34708295691c67d89bbc6d0c06baaaf1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **78**
+- Authoritative repository documents: **79**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 46
+- `reference`: 47
 - `runbook`: 13
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 62
+- `active`: 63
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -83,6 +83,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2HDBets Improvement Execution Plan](IMPROVEMENT_EXECUTION_PLAN.md) | `working` | `superseded` | `historical-working-record` |
 | [Jim Fast-Ending Team Session Diagnosis](JIM_FAST_GAME_DIAGNOSIS.md) | `historical` | `historical` | `incident-evidence` |
 | [Kingdom Civic Surfaces](KINGDOM_CIVIC_SURFACES.md) | `reference` | `active` | `product-and-implementation-contract` |
+| [Kingdom Intelligence](KINGDOM_INTELLIGENCE.md) | `reference` | `active` | `self-knowledge-contract` |
 | [Kingdom Knowledge Router](KINGDOM_KNOWLEDGE_ROUTER.md) | `explanation` | `active` | `architecture-explanation` |
 | [AoE2WAR Leaderboards](LEADERBOARDS.md) | `reference` | `active` | `product-contract` |
 | [HD Leaderboard View Modes](LEADERBOARD_VIEW_MODES.md) | `reference` | `active` | `product-contract` |

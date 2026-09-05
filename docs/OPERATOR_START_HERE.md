@@ -32,6 +32,7 @@ From Tony's Mac:
 ```bash
 cd "$HOME/projects/AoE2HDBets/app-prodn"
 
+aoe2war brain
 aoe2war facts
 aoe2war context
 aoe2war status
@@ -40,9 +41,16 @@ git status --short
 git log -3 --oneline
 ```
 
-`aoe2war status` is the first authority for current web release state. Read the
-Mac HEAD, GitHub main, Documentation Baseline, production source, active build,
-public build-version parity, protected Wolo listeners and provenance together.
+`aoe2war brain` is the first compact Kingdom Intelligence handoff. It binds
+source authority, certification, Doctor/Audit health, storage, Recovery OS,
+Replay Truth certainty, Speed OS state, invariants and the ranked best next
+action into one read-only snapshot. Use `aoe2war brain --json` when handing the
+project to an AI agent.
+
+`aoe2war status` remains the release-specific authority for current web release
+state. Read the Mac HEAD, GitHub main, Documentation Baseline, production source,
+active build, public build-version parity, protected Wolo listeners and
+provenance together.
 
 If more release history is needed:
 

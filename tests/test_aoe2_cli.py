@@ -39,6 +39,7 @@ class AoE2WarCliTests(unittest.TestCase):
             "aoe2_doctor.py",
             "aoe2_finish.py",
             "aoe2_operator_bridge.py",
+            "aoe2_brain.py",
             "aoe2_facts.py",
             "aoe2_dev.py",
             "check_dependency_contract.py",
@@ -94,6 +95,14 @@ class AoE2WarCliTests(unittest.TestCase):
         self.assertEqual(
             result.stdout.splitlines(),
             ["aoe2_finish.py", "--dry-run"],
+        )
+
+    def test_brain_maps_to_brain_script(self):
+        result = self.run_cli("brain", "--json")
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(
+            result.stdout.splitlines(),
+            ["aoe2_brain.py", "--json"],
         )
 
     def test_facts_maps_to_facts_script(self):
