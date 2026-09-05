@@ -42,6 +42,48 @@ class CouncilTests(unittest.TestCase):
             "WAITING ON RECOVERY",
         )
 
+    def test_dirty_or_unmerged_worktrees_are_never_silent(self):
+        recs = council.build_recommendations(
+            audit={"p0": 0, "p1": 0},
+            doctor={},
+            storage={"health": "HEALTHY"},
+            host={
+                "failed_transient": 0,
+                "traffic_timer_enabled": "enabled",
+                "traffic_timer_active": "active",
+                "reboot_required": False,
+                "updates": 0,
+            },
+            recovery={"status": "VERIFIED"},
+            workspace={
+                "cleanup_candidates": [],
+                "dirty_count": 6,
+                "unmerged_count": 7,
+                "orphans": [],
+            },
+            pulse={"status": "PASS"},
+            due_docs=0,
+            ready={
+                "ready_routes": 13,
+                "baseline_routes": 77,
+            },
+            architecture=[],
+        )
+        preserved = next(
+            item
+            for item in recs
+            if item["key"] == "workspace-preserved-code"
+        )
+        self.assertEqual(preserved["level"], "MUST REVIEW")
+        self.assertIn("dirty=6 unmerged=7", preserved["reason"])
+
+        readiness = next(
+            item
+            for item in recs
+            if item["key"] == "ready-coverage"
+        )
+        self.assertIn("13/77", readiness["reason"])
+
     def test_failed_transients_surface_as_hygiene(self):
         recs = council.build_recommendations(
             audit={"p0": 0, "p1": 0},
