@@ -260,6 +260,23 @@ def build_recommendations(
             action="aoe2war speed pulse",
         )
 
+    dirty_worktrees = int(workspace.get("dirty_count") or 0)
+    unmerged_worktrees = int(workspace.get("unmerged_count") or 0)
+    if dirty_worktrees or unmerged_worktrees:
+        add(
+            items,
+            rank=12,
+            level="MUST REVIEW",
+            key="workspace-preserved-code",
+            title="Review preserved dirty or unmerged worktrees",
+            reason=(
+                f"dirty={dirty_worktrees} unmerged={unmerged_worktrees}; "
+                "these may contain intentional, hidden, or superseded work and "
+                "are never automatic cleanup candidates."
+            ),
+            action="aoe2war workspace status",
+        )
+
     cleanup_count = len(workspace.get("cleanup_candidates") or [])
     if cleanup_count:
         add(
@@ -314,7 +331,9 @@ def build_recommendations(
             ),
         )
 
-    if ready.get("ready_routes", 0) < ready.get("baseline_routes", 66):
+    baseline_routes = int(ready.get("baseline_routes") or 0)
+    ready_routes = int(ready.get("ready_routes") or 0)
+    if baseline_routes and ready_routes < baseline_routes:
         add(
             items,
             rank=70,
@@ -322,9 +341,8 @@ def build_recommendations(
             key="ready-coverage",
             title="Grow route-level readiness coverage",
             reason=(
-                f"{ready.get('ready_routes', 0)}/"
-                f"{ready.get('baseline_routes', 66)} public routes "
-                "have explicit readiness markers."
+                f"{ready_routes}/{baseline_routes} public benchmark "
+                "representatives have explicit readiness markers."
             ),
             action="aoe2war speed diagnose",
         )
