@@ -71,44 +71,39 @@ test("Kingdom summary derives current civic facts from real authorities", () => 
   );
 });
 
-test("Kingdom wealth excludes private, player, custody, module, and retired rails", () => {
+test("Kingdom wealth is an explicit unencumbered community-reserve allowlist", () => {
   for (const included of [
     "Community Treasury",
-    "Liquidity Reserve",
-    "Growth Reserve",
-    "Operations Reserve",
-    "Bounty Pool",
-    "Faucet Wallet",
-    "Rewards Wallet",
-    "Payout Wallet",
-    "Relayer Wallet",
+    "DEX Liquidity Reserve",
+    "Faucet Growth Reserve",
+    "Faucet Hot Wallet",
+    "Validator Ops",
+    "Ecosystem Bounties",
+    "Workshop Sponsorships",
+    "Wolo-Osmosis Relayer Gas",
   ]) {
-    assert.match(
-      summarySource,
-      new RegExp(included),
+    assert.equal(
+      summarySource.includes(included),
+      true,
+      `missing Kingdom wealth account: ${included}`,
     );
   }
 
-  assert.match(
-    summarySource,
-    /account\.role !== "founder"/,
-  );
-  assert.match(
-    summarySource,
-    /account\.role !== "user"/,
-  );
-  assert.match(
-    summarySource,
-    /account\.role !== "module"/,
-  );
-  assert.match(
-    summarySource,
-    /account\.role !== "staking"/,
-  );
-  assert.match(
-    summarySource,
-    /account\.role !== "escrow"/,
-  );
+  for (const excluded of [
+    "Founder's Cold Reserve",
+    "Founder Operating / Emaren",
+    "Founder Rewards",
+    "Staking Distribution Reserve",
+    "Staking Wallet",
+    "Bet Escrow Signer",
+    "IBC Escrow",
+  ]) {
+    assert.equal(
+      summarySource.includes(excluded),
+      false,
+      `encumbered/private account entered Kingdom wealth: ${excluded}`,
+    );
+  }
 });
 
 test("Kingdom page restores Citizens, Join the Quest, Watchers Active, and Kingdom Wealth without hand-entered values", () => {
