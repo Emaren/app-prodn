@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Coins, ExternalLink, Lock, ScrollText, Shield, Swords, TowerControl, Users } from "lucide-react";
 
 import { kingdomChronicles, type KingdomChronicle } from "@/lib/aoe2warLeague";
+import type { KingdomCitizen, KingdomStat } from "@/lib/kingdomSummary";
 import { kingdomChronicleAvatarCardUrlForName } from "@/lib/avatarAssets";
 
 type KingdomChronicleView = "b" | "a" | "e";
@@ -519,7 +520,15 @@ function ChronicleCard({
   );
 }
 
-export default function KingdomChroniclesClient() {
+export default function KingdomChroniclesClient({
+  citizens,
+  watchers,
+  ledgerStats,
+}: {
+  citizens: KingdomCitizen[];
+  watchers: KingdomCitizen[];
+  ledgerStats: KingdomStat[];
+}) {
   const [chronicleView, setChronicleView] = useState<KingdomChronicleView>("e");
   const [baeStorageKey, setBaeStorageKey] = useState<string | null>(null);
   const [showChronicleAvatars, setShowChronicleAvatars] = useState(true);
@@ -798,51 +807,43 @@ export default function KingdomChroniclesClient() {
             Citizens
           </div>
           <div className="mt-4 grid gap-2 text-sm text-slate-300">
-            <Link href="/players/by-name/Emaren" className="hover:text-amber-100">
-              Emaren
-            </Link>
-            <Link href="/players/by-name/%5BBDB%5DPigman" className="hover:text-amber-100">
-              [BDB]Pigman
-            </Link>
-            <Link href="/players/by-name/Julio%20Alvarez" className="hover:text-amber-100">
-              Julio Alvarez
-            </Link>
-            <Link href="/players/by-name/Deltaforce" className="hover:text-amber-100">
-              Deltaforce
-            </Link>
-            <Link href="/players/by-name/Sniper" className="hover:text-amber-100">
-              Sniper
-            </Link>
-            <Link href="/players/by-name/Jim" className="hover:text-amber-100">
-              Jim
-            </Link>
-            <Link href="/players/by-name/Dil_Pascana" className="hover:text-amber-100">
-              Dil_Pascana
-            </Link>
-            <span>- Ra 𓁛𓇳</span>
-            <Link href="/players/by-name/Sladk0Eshka" className="hover:text-amber-100">
-              Sladk0Eshka
-            </Link>
-            <Link href="/zodiac" className="hover:text-amber-100">
-              Zodiac
-            </Link>
-            <Link href="/players/by-name/Maxi" className="hover:text-amber-100">
-              Maxi
-            </Link>
-            <Link href="/players/by-name/Tekki" className="hover:text-amber-100">
-              Tekki
-            </Link>
-            <Link href="/players/by-name/BeTiKo" className="hover:text-amber-100">
-              BeTiKo
-            </Link>
-            <Link href="/players/by-name/LeGenD_Sultan" className="hover:text-amber-100">
-              LeGenD_Sultan
-            </Link>
-            <Link href="/players/by-name/Scavanger_Ab" className="hover:text-amber-100">
-              Scavanger_Ab
-            </Link>
+            {citizens.map((citizen) =>
+              citizen.href ? (
+                <Link
+                  key={citizen.name}
+                  href={citizen.href}
+                  className="hover:text-amber-100"
+                >
+                  {citizen.name}
+                </Link>
+              ) : (
+                <span key={citizen.name}>{citizen.name}</span>
+              ),
+            )}
           </div>
         </div>
+
+        <div className="rounded-[1.55rem] border border-cyan-100/12 bg-[radial-gradient(circle_at_85%_10%,rgba(34,211,238,0.10),transparent_34%),rgba(255,255,255,0.035)] p-5">
+          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.26em] text-cyan-100/70">
+            <TowerControl className="h-4 w-4" />
+            Watchers
+          </div>
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            Citizens with at least one final replay successfully uploaded through the Watcher.
+          </p>
+          <div className="mt-4 grid gap-2 text-sm text-slate-300">
+            {watchers.map((watcher) => (
+              <Link
+                key={watcher.name}
+                href={watcher.href}
+                className="hover:text-cyan-100"
+              >
+                {watcher.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+
 
         <div className="rounded-[1.55rem] border border-emerald-100/12 bg-[radial-gradient(circle_at_85%_10%,rgba(16,185,129,0.14),transparent_34%),rgba(255,255,255,0.035)] p-5">
           <div className="flex items-center gap-2 text-xs font-black uppercase tracking-[0.26em] text-emerald-100/70">
@@ -850,30 +851,17 @@ export default function KingdomChroniclesClient() {
             Ledger
           </div>
           <div className="mt-4 grid gap-3">
-            <div className="border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
-              <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
-                Kingdom wealth
+            {ledgerStats.map((stat) => (
+              <div
+                key={stat.label}
+                className="border-t border-white/10 pt-3 first:border-t-0 first:pt-0"
+              >
+                <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
+                  {stat.label}
+                </div>
+                <div className="mt-1 text-lg font-black text-white">{stat.value}</div>
               </div>
-              <div className="mt-1 text-lg font-black text-white">100,000,000 WOLO</div>
-            </div>
-            <div className="border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
-              <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
-                Watchers active
-              </div>
-              <div className="mt-1 text-lg font-black text-white">3</div>
-            </div>
-            <div className="border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
-              <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
-                Citizens
-              </div>
-              <div className="mt-1 text-lg font-black text-white">18</div>
-            </div>
-            <div className="border-t border-white/10 pt-3 first:border-t-0 first:pt-0">
-              <div className="text-[10px] font-bold uppercase tracking-[0.22em] text-slate-500">
-                Joined the quest
-              </div>
-              <div className="mt-1 text-lg font-black text-white">18</div>
-            </div>
+            ))}
           </div>
         </div>
       </aside>

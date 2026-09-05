@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fe5a7a1e531727006a2cf6ed67ae042080442d92e0ec063a87c28204f3c78a79",
+      "sha256": "ef9e1164cd7cc3cde78b40260c23eae68817c8cdce32d817b29a740ec867608b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -749,9 +749,9 @@
       "owner": "aoe2war-web",
       "path": "docs/KINGDOM_CIVIC_SURFACES.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-14",
+      "reviewed_at": "2026-09-05",
       "sensitivity": "internal",
-      "sha256": "c6fcacb4c46f80ce68f8edfa44c4e1afb16a74bd9214bc1ee30db2e9eef865e9",
+      "sha256": "a7963fdaa407aae310b588fe198f6c741c46010b535677fc6795409713564192",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1793,7 +1793,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "881c0d8e9ebdf493f78cd50f74fe2643f10adf98"
+    "commit": "19d3f5c6a6ca8ee3ce6401998380e2b65cdfc2df"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

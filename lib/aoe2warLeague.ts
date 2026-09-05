@@ -15,16 +15,6 @@ export type KingdomChronicle = {
   status?: string;
 };
 
-export const kingdomStats = [
-  { label: "Current Age", value: "Feudal Age" },
-  { label: "Chronicles", value: "22" },
-  { label: "Bounties", value: "40" },
-  { label: "Kingdom Wealth", value: "100,000,000 WOLO" },
-  { label: "Watchers Active", value: "3" },
-  { label: "Citizens", value: "18" },
-  { label: "Joined The Quest", value: "18" },
-];
-
 const CHRONICLE_ROMAN_NUMERALS = [
   "I",
   "II",
