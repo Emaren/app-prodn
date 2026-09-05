@@ -666,3 +666,13 @@ Readiness coverage denominators must come from the current governed Speed OS
 route cohort, not a historical baseline receipt or hand-coded fallback. The
 current cohort is the authority for how many public benchmark representatives
 exist.
+
+An older analyzed Speed campaign may remain intentionally unverified. That
+historical campaign must not block freezing a baseline for a newer certified
+release; same-release replacement still requires an explicit override.
+
+The first live Brain also exposed null storage byte fields even though Storage OS
+had exact available-byte evidence, and showed dirty/unmerged worktree counts
+without ranking them. KI should preserve the strongest exact field available,
+and dirty/unmerged workspace evidence must become an explicit review action
+rather than passive telemetry.
