@@ -61,6 +61,12 @@ def certified_release(source: str = "a" * 40) -> dict:
 
 
 class UpdateCommandTests(unittest.TestCase):
+    def test_context_preservation_skips_pre_capture_pruning(self):
+        MODULE.prune_context_before_capture(
+            ["AoE2HDBets"],
+            preserve_context_history=True,
+        )
+
     def test_docs_owned_paths(self):
         self.assertTrue(MODULE.docs_owned_path("README.md"))
         self.assertTrue(MODULE.docs_owned_path("docs/x.md"))
