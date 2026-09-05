@@ -65,22 +65,20 @@ def ready_coverage() -> dict[str, Any]:
     try:
         import aoe2_speed
 
+        import aoe2_speed_inventory
+
         ready = aoe2_speed.ready_coverage()
-        baseline = aoe2_speed.baseline_zero_summary() or {}
+        cohort_count = len(aoe2_speed_inventory.cohort_routes())
         return {
             "ready_routes": int(ready.get("ready_route_count") or 0),
             "marker_mounts": int(ready.get("ready_marker_usages") or 0),
-            "baseline_routes": int(
-                baseline.get("route_count")
-                or (baseline.get("cohort") or {}).get("route_count")
-                or 66
-            ),
+            "baseline_routes": cohort_count,
         }
     except Exception:
         return {
             "ready_routes": 0,
             "marker_mounts": 0,
-            "baseline_routes": 66,
+            "baseline_routes": 0,
         }
 
 
