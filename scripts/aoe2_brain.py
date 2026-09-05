@@ -350,6 +350,7 @@ def brain_recommendations(
     finish: dict[str, Any],
     control: dict[str, Any],
     performance: dict[str, Any],
+    truth: dict[str, Any],
     council_recommendations: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
@@ -396,6 +397,22 @@ def brain_recommendations(
                     "action": "aoe2war finish --preserve-context-history",
                 }
             )
+
+    if truth.get("available") and truth.get("matches_current_release") is False:
+        rows.append(
+            {
+                "rank": 8,
+                "level": "MEASURE NOW",
+                "key": "replay-certainty-current-release",
+                "title": "Refresh Replay Truth certainty for current production",
+                "reason": (
+                    "latest certainty closure belongs to "
+                    f"{str(truth.get('production_source') or 'unknown')[:12]}, "
+                    "not current certified production"
+                ),
+                "action": "aoe2war truth closure",
+            }
+        )
 
     if (
         performance.get("available")
@@ -477,11 +494,14 @@ def invariant_rows(
                 if truth.get("available")
                 and truth.get("complete") is True
                 and int(truth.get("unclassified") or 0) == 0
+                and truth.get("matches_current_release") is True
                 else "ATTENTION"
             ),
             "evidence": (
                 f"accounted={truth.get('accounted_percent')}% "
-                f"unclassified={truth.get('unclassified')}"
+                f"unclassified={truth.get('unclassified')} "
+                f"release={str(truth.get('production_source') or '—')[:12]} "
+                f"current={'YES' if truth.get('matches_current_release') else 'NO'}"
                 if truth.get("available")
                 else "closure receipt unavailable"
             ),
@@ -553,6 +573,11 @@ def collect() -> dict[str, Any]:
         and performance.get("release_sha")
         == source.get("production", {}).get("source_sha")
     )
+    truth["matches_current_release"] = bool(
+        truth.get("available")
+        and truth.get("production_source")
+        == source.get("production", {}).get("source_sha")
+    )
     finish = latest_finish()
     control = control_summary(release)
     invariants = invariant_rows(
@@ -568,6 +593,7 @@ def collect() -> dict[str, Any]:
         finish=finish,
         control=control,
         performance=performance,
+        truth=truth,
         council_recommendations=list(council.get("recommendations") or []),
     )
     return {
