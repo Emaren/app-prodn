@@ -38,6 +38,8 @@ jobs:
         run: python3 -m compileall -q scripts tests
       - name: Run Python contracts
         run: python3 -m unittest discover -s tests -p 'test_*.py'
+      - name: Census Code Health
+        run: python3 scripts/aoe2_code_health.py --no-receipt --require-clean-worktree
       - name: Verify documentation control plane
         run: python3 scripts/docs_v2_check.py
       - name: Verify Node test inventory
@@ -76,3 +78,5 @@ jobs:
         run: python3 scripts/run_test_contract.py
       - name: Build production application
         run: yarn build
+      - name: Census Next build performance
+        run: python3 scripts/aoe2_speed_build.py --no-receipt --require-build
