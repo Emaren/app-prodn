@@ -109,7 +109,7 @@ Usage:
   aoe2war deps
   aoe2war host <status|tidy|maintenance-plan> [options]
   aoe2war recovery <status|plan> [options]
-  aoe2war finish [--dry-run] [--json] [-m MESSAGE]
+  aoe2war finish [--dry-run] [--json] [--preserve-context-history] [-m MESSAGE]
   aoe2war bridge [--once] [bridge options]
   aoe2war status [--json]
   aoe2war context [--json]
@@ -225,6 +225,11 @@ PRODUCTION WRITE
       gates and commits unpublished work, refreshes documentation/context,
       deploys if needed, certifies production, runs the final estate audit and
       Doctor, and leaves one aggregate receipt. Wolo remains observe-only.
+
+  aoe2war finish --preserve-context-history
+      Run the same governed finish lane while keeping prior context archives.
+      Fresh context is still captured and verified. Cache-only and rollback
+      retention remain governed by their existing independent policies.
 
   aoe2war deploy
       Ship the current eligible application revision through the protected
