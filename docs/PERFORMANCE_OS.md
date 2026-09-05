@@ -114,6 +114,24 @@ The analyzer turns that evidence into plain-language purchase advice:
 Missing capacity evidence is surfaced as unknown. Speed OS does not guess a
 hardware purchase from an unavailable probe.
 
+## Recent production incident learning
+
+A campaign captures bounded counts from the last hour of the AoE2WAR web
+journal. The probe records performance-shaped incident classes rather than raw
+journal payloads: physical replay-archive scan budget failures, Speed/Traffic
+telemetry relay timeouts, generic upstream timeouts, database/pool failures,
+and memory-pressure/OOM patterns.
+
+The analyzer converts those counts into root-cause actions. In particular,
+recursive replay-archive inventory work in a public request path is treated as
+a design defect to move behind a precomputed snapshot, and a slow Traffic
+telemetry relay is treated as observability debt rather than proof that the
+user-facing page itself is slow.
+
+These incident counts are supporting evidence. They do not override route
+timings, and the absence of a log pattern is not proof that a subsystem is
+fast.
+
 ## Release timing contract
 
 Every instrumented staged release records:
