@@ -1518,6 +1518,366 @@ function analyzeGame(
   };
 }
 
+
+function currentVaultArtifactAvailable(
+  game
+) {
+  return (
+    Boolean(
+      game.replayParseRuns?.[0]
+    ) ||
+    canonicalArchiveAvailable(
+      game.replayHash
+    )
+  );
+}
+
+function certaintyDisposition(
+  game,
+  analysis
+) {
+  const artifactAvailable =
+    currentVaultArtifactAvailable(
+      game
+    );
+
+  if (
+    analysis.topology.known &&
+    analysis.participants.coherent
+  ) {
+    return {
+      disposition:
+        "RESOLVED",
+      currentVaultCertainty:
+        "RESULT_AND_TOPOLOGY_RESOLVED",
+      artifactAvailable,
+      requiresParserWork:
+        false,
+      requiresHumanEvidence:
+        false,
+      terminalForCurrentVault:
+        true,
+      reason:
+        "Current public replay truth has coherent topology and participant win/loss projection.",
+    };
+  }
+
+  const route =
+    analysis.route;
+
+  if (
+    route ===
+      "SOURCE_ARTIFACT_REQUIRED"
+  ) {
+    return {
+      disposition:
+        "SOURCE_ARTIFACT_REQUIRED",
+      currentVaultCertainty:
+        "UNPARSEABLE_FROM_CURRENT_VAULT",
+      artifactAvailable:
+        false,
+      requiresParserWork:
+        false,
+      requiresHumanEvidence:
+        true,
+      terminalForCurrentVault:
+        true,
+      reason:
+        "No canonical replay artifact or completed candidate run exists in the current vault. Parser work cannot recover bytes the vault does not possess.",
+    };
+  }
+
+  if (
+    route ===
+      "REPARSE_REQUIRED"
+  ) {
+    return {
+      disposition:
+        "REPARSE_REQUIRED",
+      currentVaultCertainty:
+        artifactAvailable
+          ? "ARTIFACT_PRESENT_REPARSE"
+          : "SOURCE_ARTIFACT_REQUIRED",
+      artifactAvailable,
+      requiresParserWork:
+        artifactAvailable,
+      requiresHumanEvidence:
+        !artifactAvailable,
+      terminalForCurrentVault:
+        !artifactAvailable,
+      reason:
+        artifactAvailable
+          ? "Replay evidence exists in the current vault and should be rerun through the current deterministic parser stack."
+          : "The row requests a reparse but no current-vault artifact is available.",
+    };
+  }
+
+  if (
+    route ===
+      "PARSER_RESEARCH_REQUIRED"
+  ) {
+    return {
+      disposition:
+        "PARSER_RESEARCH_REQUIRED",
+      currentVaultCertainty:
+        artifactAvailable
+          ? "ARTIFACT_PRESENT_CURRENT_PARSER_INSUFFICIENT"
+          : "SOURCE_ARTIFACT_REQUIRED",
+      artifactAvailable,
+      requiresParserWork:
+        artifactAvailable,
+      requiresHumanEvidence:
+        !artifactAvailable,
+      terminalForCurrentVault:
+        !artifactAvailable,
+      reason:
+        artifactAvailable
+          ? "The current vault has replay/candidate evidence, but the reviewed parser rules cannot yet derive complete truth from it."
+          : "Parser research cannot proceed because the source artifact is absent from the current vault.",
+    };
+  }
+
+  if (
+    route ===
+      "HUMAN_REVIEW_REQUIRED"
+  ) {
+    return {
+      disposition:
+        "HUMAN_REVIEW_REQUIRED",
+      currentVaultCertainty:
+        "MACHINE_EVIDENCE_REQUIRES_ADJUDICATION",
+      artifactAvailable,
+      requiresParserWork:
+        false,
+      requiresHumanEvidence:
+        true,
+      terminalForCurrentVault:
+        false,
+      reason:
+        "Machine evidence is not the remaining authority problem; an existing adjudication/review boundary must be resolved.",
+    };
+  }
+
+  if (
+    route ===
+      "NON_BATTLE_CANDIDATE"
+  ) {
+    return {
+      disposition:
+        "NON_BATTLE_CANDIDATE",
+      currentVaultCertainty:
+        "CURRENT_ROW_NOT_DECISIVE_FINAL_RESULT_EVIDENCE",
+      artifactAvailable,
+      requiresParserWork:
+        false,
+      requiresHumanEvidence:
+        true,
+      terminalForCurrentVault:
+        true,
+      reason:
+        "The preserved evidence is an early-exit, saved-game, checkpoint, or other non-decisive row rather than sufficient terminal result evidence.",
+    };
+  }
+
+  if (
+    route ===
+      "RESULT_EVIDENCE_REQUIRED"
+  ) {
+    return {
+      disposition:
+        "RESULT_EVIDENCE_REQUIRED",
+      currentVaultCertainty:
+        analysis.truth.candidateWinner
+          ? "CANDIDATE_WINNER_NOT_AUTHORITY"
+          : "RESULT_EVIDENCE_INSUFFICIENT",
+      artifactAvailable,
+      requiresParserWork:
+        artifactAvailable,
+      requiresHumanEvidence:
+        true,
+      terminalForCurrentVault:
+        false,
+      reason:
+        analysis.truth.candidateWinner
+          ? "A candidate winner exists, but current provenance/confidence rules do not permit promotion to authoritative participant results."
+          : "Topology may be known, but the current evidence does not establish a defensible winner/loser projection.",
+    };
+  }
+
+  return {
+    disposition:
+      "UNCLASSIFIED",
+    currentVaultCertainty:
+      "UNCLASSIFIED",
+    artifactAvailable,
+    requiresParserWork:
+      false,
+    requiresHumanEvidence:
+      true,
+    terminalForCurrentVault:
+      false,
+    reason:
+      "The Replay Truth OS does not yet have an explicit closure class for this row.",
+  };
+}
+
+function buildCertaintyClosure(
+  games
+) {
+  const buckets = {};
+  const certaintyBuckets = {};
+  const bucketIds = {};
+  let resolved = 0;
+  let unresolved = 0;
+  let fullyAccounted = 0;
+  let unclassified = 0;
+  let parserWorkCandidates = 0;
+  let humanEvidenceCandidates = 0;
+  let terminalForCurrentVault = 0;
+
+  for (
+    const game
+    of games
+  ) {
+    const analysis =
+      analyzeGame(
+        game
+      );
+
+    const disposition =
+      certaintyDisposition(
+        game,
+        analysis
+      );
+
+    increment(
+      buckets,
+      disposition.disposition
+    );
+
+    increment(
+      certaintyBuckets,
+      disposition.currentVaultCertainty
+    );
+
+    if (
+      !bucketIds[
+        disposition.disposition
+      ]
+    ) {
+      bucketIds[
+        disposition.disposition
+      ] = [];
+    }
+
+    bucketIds[
+      disposition.disposition
+    ].push(
+      game.id
+    );
+
+    if (
+      disposition.disposition ===
+        "RESOLVED"
+    ) {
+      resolved +=
+        1;
+    } else {
+      unresolved +=
+        1;
+    }
+
+    if (
+      disposition.disposition !==
+        "UNCLASSIFIED"
+    ) {
+      fullyAccounted +=
+        1;
+    } else {
+      unclassified +=
+        1;
+    }
+
+    if (
+      disposition.requiresParserWork
+    ) {
+      parserWorkCandidates +=
+        1;
+    }
+
+    if (
+      disposition.requiresHumanEvidence
+    ) {
+      humanEvidenceCandidates +=
+        1;
+    }
+
+    if (
+      disposition.terminalForCurrentVault
+    ) {
+      terminalForCurrentVault +=
+        1;
+    }
+  }
+
+  return {
+    finalGames:
+      games.length,
+
+    resolved,
+    unresolved,
+    fullyAccounted,
+    unclassified,
+    parserWorkCandidates,
+    humanEvidenceCandidates,
+    terminalForCurrentVault,
+
+    accountedPercent:
+      games.length > 0
+        ? Number(
+            (
+              100 *
+              fullyAccounted /
+              games.length
+            ).toFixed(
+              2
+            )
+          )
+        : 100,
+
+    complete:
+      unclassified ===
+        0 &&
+      fullyAccounted ===
+        games.length,
+
+    dispositionBuckets:
+      orderedCounts(
+        buckets
+      ),
+
+    currentVaultCertaintyBuckets:
+      orderedCounts(
+        certaintyBuckets
+      ),
+
+    dispositionGameIds:
+      Object.fromEntries(
+        Object.entries(
+          bucketIds
+        ).sort(
+          (
+            [left],
+            [right]
+          ) =>
+            left.localeCompare(
+              right
+            )
+        )
+      ),
+  };
+}
+
 const baseSelect = {
   id:
     true,
@@ -2000,6 +2360,37 @@ async function runAudit(
   };
 }
 
+async function runClosure(
+  prisma,
+  readOnly
+) {
+  const games =
+    await loadFinalGames(
+      prisma
+    );
+
+  return {
+    schema:
+      1,
+
+    kind:
+      "aoe2war-truth-certainty-closure",
+
+    generatedAt:
+      new Date()
+        .toISOString(),
+
+    productionSource,
+    databaseReadOnly:
+      readOnly,
+
+    closure:
+      buildCertaintyClosure(
+        games
+      ),
+  };
+}
+
 async function runTarget(
   prisma,
   readOnly
@@ -2269,6 +2660,7 @@ async function main() {
     ![
       "census",
       "audit",
+      "closure",
       "target",
     ].includes(
       command
@@ -2299,10 +2691,15 @@ async function main() {
               prisma,
               readOnly
             )
-          : await runTarget(
-              prisma,
-              readOnly
-            );
+          : command === "closure"
+            ? await runClosure(
+                prisma,
+                readOnly
+              )
+            : await runTarget(
+                prisma,
+                readOnly
+              );
 
     process.stdout.write(
       JSON.stringify(
