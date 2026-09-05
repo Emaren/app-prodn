@@ -110,10 +110,15 @@ def duplicate_groups(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def branch_inventory() -> dict[str, Any]:
-    try:
-        main = run_git("rev-parse", "main")
-    except CodeHealthError:
-        main = run_git("rev-parse", "HEAD")
+    main_ref = "HEAD"
+    main = run_git("rev-parse", "HEAD")
+    for candidate in ("origin/main", "main"):
+        try:
+            main = run_git("rev-parse", candidate)
+            main_ref = candidate
+            break
+        except CodeHealthError:
+            continue
 
     refs_raw = run_git(
         "for-each-ref",
@@ -131,7 +136,7 @@ def branch_inventory() -> dict[str, Any]:
             epoch = int(epoch_raw)
         except ValueError:
             epoch = 0
-        counts = run_git("rev-list", "--left-right", "--count", f"main...{ref}")
+        counts = run_git("rev-list", "--left-right", "--count", f"{main_ref}...{ref}")
         left_raw, right_raw = counts.split()
         behind = int(left_raw)
         ahead = int(right_raw)
