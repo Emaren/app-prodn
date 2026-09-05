@@ -76,12 +76,30 @@ def analyze_file(path: Path) -> dict[str, Any]:
     text = raw.decode("utf-8", errors="replace")
     lines = text.splitlines()
     rel = path.relative_to(ROOT).as_posix()
+    meaningful = [
+        line.strip()
+        for line in lines[:20]
+        if line.strip() and not line.lstrip().startswith("//")
+    ]
+    client_boundary = bool(
+        path.suffix.lower() in {".ts", ".tsx", ".js", ".jsx"}
+        and meaningful
+        and meaningful[0].rstrip(";") in {'"use client"', "'use client'"}
+    )
+    import_count = sum(
+        1
+        for line in lines
+        if line.lstrip().startswith("import ")
+    )
+
     return {
         "path": rel,
         "bytes": len(raw),
         "lines": len(lines),
         "sha256": hashlib.sha256(raw).hexdigest(),
         "todos": sum(text.count(token) for token in ("TODO", "FIXME", "HACK", "XXX")),
+        "client_boundary": client_boundary,
+        "import_count": import_count,
     }
 
 
@@ -178,6 +196,12 @@ def snapshot() -> dict[str, Any]:
 
     large = [row for row in files if int(row["lines"]) >= LARGE_LINE_THRESHOLD]
     giant = [row for row in files if int(row["lines"]) >= GIANT_LINE_THRESHOLD]
+    client_files = [row for row in files if row.get("client_boundary") is True]
+    client_by_bytes = sorted(
+        client_files,
+        key=lambda row: int(row["bytes"]),
+        reverse=True,
+    )
 
     return {
         "schema": 1,
@@ -197,6 +221,9 @@ def snapshot() -> dict[str, Any]:
             "todo_markers": sum(int(row["todos"]) for row in files),
             "large_file_count": len(large),
             "giant_file_count": len(giant),
+            "client_boundary_file_count": len(client_files),
+            "client_boundary_bytes": sum(int(row["bytes"]) for row in client_files),
+            "largest_client_boundaries": client_by_bytes[:30],
             "largest_by_lines": by_lines[:30],
             "largest_by_bytes": by_bytes[:30],
         },
@@ -254,6 +281,10 @@ def print_status(payload: dict[str, Any], receipt: Path | None) -> None:
     print(f"Large files:        {source['large_file_count']} (>= {LARGE_LINE_THRESHOLD:,} lines)")
     print(f"Giant files:        {source['giant_file_count']} (>= {GIANT_LINE_THRESHOLD:,} lines)")
     print(f"TODO/FIXME markers: {source['todo_markers']}")
+    print(
+        f"Client boundaries:  {source['client_boundary_file_count']} files · "
+        f"{human_bytes(int(source['client_boundary_bytes']))} source"
+    )
     print(f"Exact duplicates:   {duplicates['group_count']} groups · {human_bytes(int(duplicates['avoidable_bytes']))} avoidable")
     print()
     print(f"Remote branches:    {branches['remote_branch_count']}")
@@ -264,6 +295,17 @@ def print_status(payload: dict[str, Any], receipt: Path | None) -> None:
     print("Top refactor candidates:")
     for row in source["largest_by_lines"][:12]:
         print(f"  {int(row['lines']):>6,} lines  {human_bytes(int(row['bytes'])):>10}  {row['path']}")
+
+    client_hotspots = source.get("largest_client_boundaries") or []
+    if client_hotspots:
+        print()
+        print("Largest client-boundary source hotspots:")
+        for row in client_hotspots[:12]:
+            print(
+                f"  {human_bytes(int(row['bytes'])):>10} · "
+                f"{int(row['lines']):>6,} lines · "
+                f"{int(row['import_count']):>3} imports · {row['path']}"
+            )
 
     unique = [row for row in branches["branches"] if not row["contained_in_main"]]
     if unique:
