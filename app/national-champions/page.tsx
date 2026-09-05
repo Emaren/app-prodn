@@ -91,7 +91,6 @@ function countryPossessive(country: string) {
 }
 
 function flameScore(beacon: NationalBeacon) {
-  if (beacon.tier === "world") return 1.5;
   if (beacon.champion) return 1.12 + Math.min(0.28, beacon.tenureDays / 90);
   return 0.5;
 }
@@ -112,7 +111,7 @@ function sortChampionBeacons(beacons: NationalBeacon[]) {
 function BeaconMarker({ beacon }: { beacon: NationalBeacon }) {
   const lit = Boolean(beacon.champion);
   const scale = flameScore(beacon);
-  const href = playerHref(beacon.champion);
+  const href = beacon.championHref || playerHref(beacon.champion);
 
   const markerStyle = {
     left: `${beacon.x}%`,
@@ -205,7 +204,7 @@ function HeroStat({ label, value, detail }: { label: string; value: string; deta
 }
 
 function ChampionShowcaseCard({ beacon, priority = false }: { beacon: NationalBeacon; priority?: boolean }) {
-  const image = nationalBeltImage(beacon.id);
+  const image = beacon.assetUrl || nationalBeltImage(beacon.id);
   const shortName = nationalBeltShortName(beacon.id, beacon.country);
   const champion = beacon.champion || "Vacant";
   const championHref = beacon.championHref || playerHref(beacon.champion);
@@ -309,7 +308,7 @@ function ChampionShowcaseCard({ beacon, priority = false }: { beacon: NationalBe
 
 function VacantCrownCard({ beacon }: { beacon: NationalBeacon }) {
   const image = nationalBeltImage(beacon.id);
-  const beltHref = beltPageHrefForNationalBelt(beacon.id);
+  const beltHref = beacon.beltHref || beltPageHrefForNationalBelt(beacon.id);
   const challengeHref = challengeHrefForNationalBelt(beacon.id, "Emaren");
   const shortName = nationalBeltShortName(beacon.id, beacon.country);
 
@@ -386,10 +385,17 @@ function ProcessCard({
   );
 }
 
-export default function NationalChampionsPage() {
-  const litBeacons = sortChampionBeacons(nationalBeacons.filter((beacon) => beacon.champion));
+export default async function NationalChampionsPage() {
+  const titleState = await loadChampionTitleEconomyState(getPrisma());
+  const nationalBeacons = buildNationalChampionBeacons(titleState);
+  const litBeacons = sortChampionBeacons(
+    nationalBeacons.filter((beacon) => beacon.champion),
+  );
   const vacantBeacons = nationalBeacons.filter((beacon) => !beacon.champion);
-  const totalBounty = nationalBeacons.reduce((sum, beacon) => sum + beacon.bountyWolo, 0);
+  const totalBounty = nationalBeacons.reduce(
+    (sum, beacon) => sum + beacon.bountyWolo,
+    0,
+  );
   const headlineChampions = litBeacons;
   const priorityChampionIds = new Set(["canada", "us"]);
 
