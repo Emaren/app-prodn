@@ -17,6 +17,11 @@ const pageSource = readFileSync(
   "utf8",
 );
 
+const internalAccountsSource = readFileSync(
+  new URL("../lib/internalSystemAccounts.ts", import.meta.url),
+  "utf8",
+);
+
 const clientSource = readFileSync(
   new URL("../app/kingdom/KingdomChroniclesClient.tsx", import.meta.url),
   "utf8",
@@ -38,6 +43,10 @@ test("Kingdom summary derives current civic facts from real authorities", () => 
   assert.match(
     summarySource,
     /isInternalSystemUid/,
+  );
+  assert.match(
+    internalAccountsSource,
+    /MOOSE_SYSTEM_UID\s*=\s*\n?\s*"aoe2hd-moose"/,
   );
   assert.match(
     summarySource,
