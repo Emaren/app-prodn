@@ -896,6 +896,22 @@ def verify_campaign(
     after = speed.benchmark(full=full, rounds=verify_rounds)
 
     verification = verify_routes(baseline, after)
+    recovered_failures = list(
+        after.get("recovered_sample_failures")
+        or []
+    )
+    if recovered_failures:
+        verification["status"] = "WARN"
+        verification["sample_instability"] = {
+            "recovered_failure_count": len(
+                recovered_failures
+            ),
+            "unstable_routes": list(
+                after.get("unstable_routes")
+                or []
+            ),
+            "failures": recovered_failures,
+        }
     before_inventory = baseline_info.get("source_inventory") or {}
     inventory_change = inventory_delta(before_inventory, after_inventory)
     verification["source_inventory"] = {
@@ -1020,6 +1036,17 @@ def print_verification(campaign: dict[str, Any]) -> None:
         f"Routes:         {verification.get('material_improvements', 0)} material improvement(s) · "
         f"{verification.get('material_regressions', 0)} regression(s)"
     )
+    instability = (
+        verification.get("sample_instability")
+        or {}
+    )
+    if instability:
+        print(
+            "Instability:    "
+            f"{instability.get('recovered_failure_count', 0)} "
+            "sample failure(s) recovered by one bounded retry · "
+            f"routes={','.join(instability.get('unstable_routes') or []) or '—'}"
+        )
     inventory_change = (
         (verification.get("source_inventory") or {}).get("delta") or {}
     )
