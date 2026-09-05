@@ -169,6 +169,14 @@ Independent read-only probes should execute concurrently when their safety and
 truth semantics permit it. KI latency is itself an operating metric: the Brain
 should not make an operator wait for the sum of unrelated SSH probes.
 
+Any invariant reported as ATTENTION prevents a READY operating state. A green
+Doctor score cannot override an explicit incomplete Finish, stale control state,
+wrong-release Speed/Replay evidence, or incomplete recovery proof.
+
+Workspace truth is part of KI. Dirty or unmerged registered worktrees are
+preserved evidence and must be surfaced for review; they are never silently
+collapsed into housekeeping or automatic cleanup.
+
 ## Non-goals
 
 Kingdom Intelligence does not:
