@@ -8,14 +8,14 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-09-05"
 review_interval_days: 90
 sensitivity: "internal"
 ---
 
 # Championship Title Economy
 
-Last updated: 2026-06-27
+Last updated: 2026-09-05
 
 AoE2HDBets owns the app-side championship presentation, eligibility settings,
 challenge entry points, Trophy Command workflow, and app-side custody ledger.
