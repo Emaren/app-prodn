@@ -389,7 +389,7 @@ def brain_recommendations(
             "used_percent"
         )
     )
-    if storage_health not in {"HEALTHY", "PASS"}:
+    if storage_health and storage_health not in {"HEALTHY", "PASS"}:
         rows.append(
             {
                 "rank": 4,
