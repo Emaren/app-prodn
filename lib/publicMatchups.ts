@@ -45,6 +45,7 @@ import {
   type ReplaySideFormat,
 } from "@/lib/replaySides";
 import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
+import { createGenerationKeyedLoader } from "@/lib/generationKeyedLoader";
 
 /*
  * Rivalry totals are historical corpus truth, not a recent-feed sample.
@@ -2181,12 +2182,14 @@ export async function loadPublicTeamRivalries(
   );
 }
 
-export async function loadPublicRivalryBoards(
+type PublicRivalryBoardsOptions = {
+  take?: number;
+  activityTake?: number;
+};
+
+async function buildPublicRivalryBoardsFresh(
   prisma: PrismaClient,
-  options?: {
-    take?: number;
-    activityTake?: number;
-  }
+  options?: PublicRivalryBoardsOptions
 ) {
   const candidateMatches =
     await loadRecentFinalMatchupRows(
@@ -2300,24 +2303,50 @@ export async function loadPublicRivalryBoards(
   };
 }
 
-export async function loadPublicBattleArchive(
-  prisma: PrismaClient,
-  options?: {
-    take?: number;
-  }
-) {
-  const take =
-    Math.max(
-      1,
-      Math.min(
-        options?.take ??
-          120,
-        500
-      )
-    );
+const loadGenerationCachedPublicRivalryBoards =
+  createGenerationKeyedLoader<
+    PrismaClient,
+    Awaited<
+      ReturnType<
+        typeof buildPublicRivalryBoardsFresh
+      >
+    >
+  >(4);
 
+export async function loadPublicRivalryBoards(
+  prisma: PrismaClient,
+  options?: PublicRivalryBoardsOptions
+) {
+  const generation =
+    await loadPublicReplayGeneration(
+      prisma
+    );
+  const cacheKey = [
+    generation,
+    "rivalry-boards-v1",
+    options?.take ??
+      PUBLIC_MATCHUP_SCAN_LIMIT ??
+      "all",
+    options?.activityTake ?? 18,
+  ].join(":");
+
+  return loadGenerationCachedPublicRivalryBoards(
+    prisma,
+    cacheKey,
+    () =>
+      buildPublicRivalryBoardsFresh(
+        prisma,
+        options
+      )
+  );
+}
+
+async function buildPublicBattleArchiveFresh(
+  prisma: PrismaClient,
+  take: number
+) {
   /*
-   * Load the bounded final corpus before filtering so the archive total
+   * Load the complete final corpus before filtering so the archive total
    * and newest-page entries represent the same visible battle set.
    */
   const finalReplayRecords =
@@ -2373,6 +2402,47 @@ export async function loadPublicBattleArchive(
           publicBattleRecords.length
       ),
   };
+}
+
+const loadGenerationCachedPublicBattleArchive =
+  createGenerationKeyedLoader<
+    PrismaClient,
+    Awaited<
+      ReturnType<
+        typeof buildPublicBattleArchiveFresh
+      >
+    >
+  >(4);
+
+export async function loadPublicBattleArchive(
+  prisma: PrismaClient,
+  options?: {
+    take?: number;
+  }
+) {
+  const take =
+    Math.max(
+      1,
+      Math.min(
+        options?.take ??
+          120,
+        500
+      )
+    );
+  const generation =
+    await loadPublicReplayGeneration(
+      prisma
+    );
+
+  return loadGenerationCachedPublicBattleArchive(
+    prisma,
+    `${generation}:battle-archive-v1:${take}`,
+    () =>
+      buildPublicBattleArchiveFresh(
+        prisma,
+        take
+      )
+  );
 }
 
 export {
