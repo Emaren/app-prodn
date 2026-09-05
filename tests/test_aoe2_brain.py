@@ -270,7 +270,49 @@ class KingdomIntelligenceTests(unittest.TestCase):
             ],
         )
         self.assertEqual(rows[0]["key"], "control-state-blocked")
-        self.assertEqual(rows[1]["key"], "speed-baseline-current-release")
+        self.assertEqual(rows[1]["key"], "speed-verify-open-campaign")
+
+    def test_storage_pressure_outranks_finish_rerun(self):
+        perf = performance()
+        perf["matches_current_release"] = False
+        rows = MODULE.brain_recommendations(
+            finish=finish(complete=False),
+            control=control(status="current"),
+            performance=perf,
+            truth=truth(),
+            council_recommendations=[],
+            storage={
+                "health": "ATTENTION",
+                "used_percent": 91.0,
+            },
+        )
+        self.assertEqual(rows[0]["key"], "storage-blocks-finish")
+        self.assertEqual(
+            rows[0]["action"],
+            "aoe2war storage plan --json",
+        )
+        self.assertEqual(rows[1]["key"], "finish-closure")
+        self.assertEqual(rows[2]["key"], "speed-verify-open-campaign")
+
+    def test_analyzed_before_campaign_recommends_verify_not_new_baseline(self):
+        perf = performance()
+        perf["matches_current_release"] = False
+        rows = MODULE.brain_recommendations(
+            finish=finish(),
+            control=control(status="current"),
+            performance=perf,
+            truth=truth(),
+            council_recommendations=[],
+            storage={
+                "health": "HEALTHY",
+                "used_percent": 70.0,
+            },
+        )
+        self.assertEqual(rows[0]["key"], "speed-verify-open-campaign")
+        self.assertEqual(
+            rows[0]["action"],
+            "aoe2war speed campaign verify",
+        )
 
     def test_current_control_allows_finish_closure_recommendation(self):
         perf = performance()
