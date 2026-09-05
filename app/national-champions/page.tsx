@@ -13,9 +13,16 @@ import {
   Trophy,
 } from "lucide-react";
 
-import { getPrisma } from "@/lib/prisma";\nimport { loadChampionTitleEconomyState } from "@/lib/champions/titleState";\nimport {\n  buildNationalChampionBeacons,\n  type NationalChampionBeacon as NationalBeacon,\n} from "@/lib/champions/nationalPageState";
+import { getPrisma } from "@/lib/prisma";
+import { loadChampionTitleEconomyState } from "@/lib/champions/titleState";
+import {
+  buildNationalChampionBeacons,
+  type NationalChampionBeacon as NationalBeacon,
+} from "@/lib/champions/nationalPageState";
 
-export const dynamic = "force-dynamic";\n\nexport const metadata: Metadata = {
+export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
   title: "National Champions",
   description:
     "AoE2WAR national championship belts, active champions, tribute, bounties, and vacant nations.",
