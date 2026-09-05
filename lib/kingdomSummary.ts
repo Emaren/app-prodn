@@ -7,7 +7,6 @@ import { getPrisma } from "@/lib/prisma";
 import { createStaleWhileRevalidateCache } from "@/lib/staleWhileRevalidateCache";
 import {
   WOLO_MAINNET_NETWORK_ACCOUNTS,
-  type WoloMainnetNetworkAccountUse,
 } from "@/lib/woloMainnetNetworkAccounts";
 import { formatWoloAmount } from "@/lib/woloChain";
 import { fetchWoloBalanceAmount } from "@/lib/woloRuntime";
@@ -41,30 +40,24 @@ const ACTIVE_WATCHER_EVENT_TYPES = [
   "watching_started",
 ] as const;
 
-const KINGDOM_WEALTH_INCLUDED_USES =
-  new Set<WoloMainnetNetworkAccountUse>([
+const KINGDOM_WEALTH_ACCOUNT_LABELS =
+  new Set([
     "Community Treasury",
-    "Liquidity Reserve",
-    "Growth Reserve",
-    "Operations Reserve",
-    "Bounty Pool",
-    "Faucet Wallet",
-    "Rewards Wallet",
-    "Payout Wallet",
-    "Relayer Wallet",
+    "DEX Liquidity Reserve",
+    "Faucet Growth Reserve",
+    "Faucet Hot Wallet",
+    "Validator Ops",
+    "Ecosystem Bounties",
+    "Workshop Sponsorships",
+    "Wolo-Osmosis Relayer Gas",
   ]);
 
 export const KINGDOM_WEALTH_ACCOUNTS =
   WOLO_MAINNET_NETWORK_ACCOUNTS.filter(
     (account) =>
-      KINGDOM_WEALTH_INCLUDED_USES.has(
-        account.use,
-      ) &&
-      account.role !== "founder" &&
-      account.role !== "user" &&
-      account.role !== "module" &&
-      account.role !== "staking" &&
-      account.role !== "escrow",
+      KINGDOM_WEALTH_ACCOUNT_LABELS.has(
+        account.label,
+      ),
   );
 
 async function loadKingdomWealthWolo() {
