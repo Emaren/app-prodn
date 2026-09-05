@@ -104,9 +104,17 @@ aoe2war speed campaign verify
 ```
 
 `campaign start` defaults to the full current route cohort and three rounds.
-It captures an immutable baseline benchmark before performance code is changed,
-binds that baseline to the exact certified production source/build, and writes a
-campaign receipt under `.aoe2war-release/performance-campaigns/`.
+It refuses to start while an ordinary public source page lacks a benchmark
+representative. The campaign archives the current page/asset inventory alongside
+the immutable timing baseline before performance code is changed, binds that
+baseline to the exact certified production source/build, and writes a campaign
+receipt under `.aoe2war-release/performance-campaigns/`.
+
+Verification captures the source inventory again. Its report therefore includes
+page-universe drift, public asset bytes before/after, and exact duplicate bytes
+before/after in addition to route timing deltas. A changed page universe during
+a performance-only campaign is a warning because speed work must not quietly
+become product-scope work.
 
 The analyzer ranks route-level opportunities from TTFB, total response time,
 download bytes, post-TTFB transfer tail, explicit Ready coverage, origin/public
