@@ -8,7 +8,7 @@ systems: ["app-prodn", "aoe2-watcher", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "product-and-concurrency-contract"
-reviewed_at: "2026-09-04"
+reviewed_at: "2026-09-05"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -287,7 +287,9 @@ Admission is deliberately enforced twice:
    write.
 
 Scheduled/challenge books still require an open market and an authoritative
-future cutoff. Desync remains outside fresh live-money admission.
+future cutoff. A Watcher-born Desync proposition shares the same authoritative
+`open` / `live` admission window as its unscheduled Watcher winner book; it
+does not create a separate longer-lived money window.
 
 Terminal, proof, review, settled, and voided states fail closed.
 

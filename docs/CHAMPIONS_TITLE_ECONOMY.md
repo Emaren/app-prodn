@@ -8,14 +8,14 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-09-05"
 review_interval_days: 90
 sensitivity: "internal"
 ---
 
 # Championship Title Economy
 
-Last updated: 2026-06-27
+Last updated: 2026-09-05
 
 AoE2HDBets owns the app-side championship presentation, eligibility settings,
 challenge entry points, Trophy Command workflow, and app-side custody ledger.
@@ -27,6 +27,11 @@ operator intents until a future Warbound chain module exists.
 - `/champions` is the title-economy hub.
 - `/champions/[...slug]` renders detail pages for belts, national titles, ELO
   titles, tag titles, and designations.
+- `/national-champions` is the cinematic national-title projection. It must
+  derive current holders, Tribute, projected bounty, and reign age from the
+  same `loadChampionTitleEconomyState()` / persistent Trophy authority as the
+  main Champions surface; it must not maintain a second handwritten holder
+  table.
 - Legacy public spine links should point to `/champions`, not `/belts`, unless
   preserving an intentional redirect.
 

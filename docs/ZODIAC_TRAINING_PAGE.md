@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-09-05"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -56,8 +56,12 @@ are unchanged.
 parsed `/game-stats/[id]` pages and are labeled “Replay / stat proof.” An old
 replay file is not described as video unless a separate watch stream exists.
 
-WOLO coaching payment is displayed as “Coming soon” until a real payment flow
-exists. No custody, payment, or settlement is implied by the v1 page.
+The first-lesson checkout is live at 100 WOLO when Zodiac has an advisor wallet.
+`ZodiacLessonCheckout` asks Keplr to sign a direct `wolo-1` transfer to that
+advisor wallet, then `POST /api/academy/zodiac/lesson` independently verifies
+the sender, recipient, exact amount, and Academy memo before recording the
+receipt and opening the private lesson handoff. A wallet broadcast alone is not
+treated as a completed Academy reservation.
 
 ## Future work
 
@@ -66,4 +70,4 @@ exists. No custody, payment, or settlement is implied by the v1 page.
 - Add a downloadable replay archive.
 - Add a full-map replay viewer.
 - Add opt-in AI replay breakdowns.
-- Add a shorts/clips pipeline only for real recorded video or streams.
+- Keep expanding the shorts/clips rail only from real recorded video or streams.
