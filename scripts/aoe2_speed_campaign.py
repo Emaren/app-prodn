@@ -167,6 +167,20 @@ def pct(old: float, new: float) -> float:
     return ((new - old) / old * 100.0) if old else 0.0
 
 
+def faster_pct(old: float, new: float) -> float:
+    return ((old - new) / old * 100.0) if old else 0.0
+
+
+def operator_change(old: float, new: float) -> str:
+    saved = old - new
+    faster = faster_pct(old, new)
+    if abs(saved) < 0.05:
+        return "unchanged"
+    if saved > 0:
+        return f"{faster:.1f}% faster · {saved:.1f} ms saved"
+    return f"{abs(faster):.1f}% slower · {abs(saved):.1f} ms added"
+
+
 def material_delta(
     old: float,
     new: float,
@@ -686,10 +700,14 @@ def verify_routes(
                 "after_ttfb_ms": round(after_ttfb, 3),
                 "ttfb_delta_ms": round(after_ttfb - before_ttfb, 3),
                 "ttfb_delta_percent": round(pct(before_ttfb, after_ttfb), 2),
+                "ttfb_saved_ms": round(before_ttfb - after_ttfb, 3),
+                "ttfb_faster_percent": round(faster_pct(before_ttfb, after_ttfb), 2),
                 "before_total_ms": round(before_total, 3),
                 "after_total_ms": round(after_total, 3),
                 "total_delta_ms": round(after_total - before_total, 3),
                 "total_delta_percent": round(pct(before_total, after_total), 2),
+                "total_saved_ms": round(before_total - after_total, 3),
+                "total_faster_percent": round(faster_pct(before_total, after_total), 2),
                 "verdict": verdict,
             }
         )
@@ -726,9 +744,13 @@ def verify_routes(
             "ttfb_p50_before_ms": round(before_ttfb, 3),
             "ttfb_p50_after_ms": round(after_ttfb, 3),
             "ttfb_delta_percent": round(pct(before_ttfb, after_ttfb), 2),
+            "ttfb_saved_ms": round(before_ttfb - after_ttfb, 3),
+            "ttfb_faster_percent": round(faster_pct(before_ttfb, after_ttfb), 2),
             "total_p50_before_ms": round(before_total, 3),
             "total_p50_after_ms": round(after_total, 3),
             "total_delta_percent": round(pct(before_total, after_total), 2),
+            "total_saved_ms": round(before_total - after_total, 3),
+            "total_faster_percent": round(faster_pct(before_total, after_total), 2),
         },
         "routes": rows,
     }
@@ -970,17 +992,19 @@ def print_verification(campaign: dict[str, Any]) -> None:
     print()
     print(f"Campaign:       {campaign.get('campaign_id')}")
     print(f"Status:         {verification.get('status')}")
+    ttfb_before = float(overall.get("ttfb_p50_before_ms") or 0)
+    ttfb_after = float(overall.get("ttfb_p50_after_ms") or 0)
+    total_before = float(overall.get("total_p50_before_ms") or 0)
+    total_after = float(overall.get("total_p50_after_ms") or 0)
     print(
         "TTFB p50:      "
-        f"{float(overall.get('ttfb_p50_before_ms') or 0):.1f} → "
-        f"{float(overall.get('ttfb_p50_after_ms') or 0):.1f} ms "
-        f"({float(overall.get('ttfb_delta_percent') or 0):+.1f}%)"
+        f"{ttfb_before:.1f} → {ttfb_after:.1f} ms · "
+        f"{operator_change(ttfb_before, ttfb_after)}"
     )
     print(
         "Total p50:     "
-        f"{float(overall.get('total_p50_before_ms') or 0):.1f} → "
-        f"{float(overall.get('total_p50_after_ms') or 0):.1f} ms "
-        f"({float(overall.get('total_delta_percent') or 0):+.1f}%)"
+        f"{total_before:.1f} → {total_after:.1f} ms · "
+        f"{operator_change(total_before, total_after)}"
     )
     print(
         f"Routes:         {verification.get('material_improvements', 0)} material improvement(s) · "
@@ -1019,9 +1043,30 @@ def print_verification(campaign: dict[str, Any]) -> None:
                 "Page universe:   changed during campaign · "
                 + ", ".join(changed_pages)
             )
-    regressions = [
+    route_rows = [
         row
         for row in verification.get("routes") or []
+        if isinstance(row, dict)
+    ]
+    if route_rows:
+        print()
+        print("Page-by-page before → after:")
+        for row in route_rows:
+            before_total = float(row.get("before_total_ms") or 0)
+            after_total = float(row.get("after_total_ms") or 0)
+            before_ttfb = float(row.get("before_ttfb_ms") or 0)
+            after_ttfb = float(row.get("after_ttfb_ms") or 0)
+            print(
+                f"  {str(row.get('path') or ''):<44} "
+                f"total {before_total:>7.1f} → {after_total:>7.1f} ms · "
+                f"{operator_change(before_total, after_total)} · "
+                f"TTFB {before_ttfb:>7.1f} → {after_ttfb:>7.1f} ms · "
+                f"{row.get('verdict', 'neutral')}"
+            )
+
+    regressions = [
+        row
+        for row in route_rows
         if row.get("verdict") == "regression"
     ]
     if regressions:
