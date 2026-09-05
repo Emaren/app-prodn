@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Anvil, ArrowRight, Eye, Flame, Scale } from "lucide-react";
 
-import { kingdomStats } from "@/lib/aoe2warLeague";
+import { loadKingdomSummary } from "@/lib/kingdomSummary";
 
 import KingdomHero from "./KingdomHero";
 import KingdomChroniclesClient from "./KingdomChroniclesClient";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "The Kingdom",
@@ -58,15 +60,16 @@ function StatTile({ label, value }: { label: string; value: string }) {
   );
 }
 
-export default function KingdomPage() {
-  const featuredStats = kingdomStats.slice(0, 3);
+export default async function KingdomPage() {
+  const summary = await loadKingdomSummary();
+  const featuredStats = summary.stats.slice(0, 3);
 
   return (
     <main className="space-y-6 overflow-x-hidden py-3 text-white sm:space-y-8 sm:py-5">
       <KingdomHero featuredStats={featuredStats} />
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
-        {kingdomStats.map((stat) => (
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        {summary.stats.map((stat) => (
           <StatTile key={stat.label} label={stat.label} value={stat.value} />
         ))}
       </section>
@@ -126,7 +129,7 @@ export default function KingdomPage() {
         </div>
       </section>
 
-      <KingdomChroniclesClient />
+      <KingdomChroniclesClient citizens={summary.citizens} ledgerStats={summary.ledgerStats} />
     </main>
   );
 }
