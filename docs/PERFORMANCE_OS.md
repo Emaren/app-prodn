@@ -376,3 +376,15 @@ The command supports optional route and single-chunk regression ceilings, but
 AoE2WAR does not invent a budget before a real baseline exists. Establish the
 current build census first; then tighten thresholds from measured production
 history as refactor campaigns prove sustainable reductions.
+
+### Operator before/after report
+
+A verified campaign prints the overall p50 before/after in plain language and then
+prints **every route in the frozen cohort** with total time, TTFB, milliseconds
+saved or added, percentage faster or slower, and the material verdict. The JSON
+receipt preserves both the signed legacy delta and positive
+`*_faster_percent` / `*_saved_ms` fields so humans and automation do not have
+to mentally invert a negative latency delta.
+
+The site-wide speed campaign is therefore auditable route by route: there is no
+single flattering average that can hide a page regression.
