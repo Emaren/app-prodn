@@ -7,6 +7,7 @@ import re
 import subprocess
 from pathlib import Path
 from typing import Any
+from concurrent.futures import ThreadPoolExecutor
 
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / "bin" / "aoe2war"
@@ -334,19 +335,40 @@ def build_recommendations(
 
 
 def collect() -> dict[str, Any]:
-    doctor = command_json("doctor", "--json", timeout=180)
+    # These read-only probes are independent. Running them concurrently keeps
+    # Kingdom Intelligence bounded by the slowest probe instead of the sum of
+    # five SSH/local diagnostics.
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        doctor_future = pool.submit(
+            command_json, "doctor", "--json", timeout=180
+        )
+        storage_future = pool.submit(
+            command_json, "storage", "status", "--json", timeout=90
+        )
+        host_future = pool.submit(
+            command_json, "host", "status", "--json", timeout=90
+        )
+        recovery_future = pool.submit(
+            command_json, "recovery", "status", "--json", timeout=30
+        )
+        workspace_future = pool.submit(
+            command_json,
+            "workspace",
+            "status",
+            "--json",
+            timeout=60,
+        )
+
+        doctor = doctor_future.result()
+        storage = storage_future.result()
+        host = host_future.result()
+        recovery = recovery_future.result()
+        workspace = workspace_future.result()
+
     audit = ((doctor.get("info") or {}).get("estate") or {})
     if not isinstance(audit, dict) or "p0" not in audit:
         audit = command_json("audit", "--json", timeout=180)
-    storage = command_json("storage", "status", "--json", timeout=90)
-    host = command_json("host", "status", "--json", timeout=90)
-    recovery = command_json("recovery", "status", "--json", timeout=30)
-    workspace = command_json(
-        "workspace",
-        "status",
-        "--json",
-        timeout=60,
-    )
+
     pulse = latest_pulse()
     due = docs_due()
     ready = ready_coverage()
