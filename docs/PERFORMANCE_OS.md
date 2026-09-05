@@ -71,8 +71,13 @@ not an invisible omission.
 
 The same inventory walks `public/` and records total file count/bytes,
 category totals for images, audio, video, fonts, data and downloads, plus the
-largest public artifacts. That source inventory complements the existing
-browser Speed Runtime, which measures actual navigation resources, transferred
+largest public artifacts. Tracked Git blob identity also exposes exact duplicate
+asset groups and the byte footprint that can be removed without recompressing or
+guessing at visual similarity. Duplicate evidence is an optimization candidate,
+not automatic deletion authority: aliases may intentionally preserve stable
+public URLs.
+
+That source inventory complements the existing browser Speed Runtime, which measures actual navigation resources, transferred
 bytes, API request count, slowest APIs/resources, long tasks, network
 characteristics and explicit application-ready time. Source bytes and runtime
 transfer bytes are different evidence and are preserved separately.
