@@ -64,6 +64,9 @@ class SpeedInventoryTests(unittest.TestCase):
         self.assertIsInstance(assets["by_category"], dict)
         self.assertIsInstance(assets["largest"], list)
         self.assertLessEqual(len(assets["largest"]), 20)
+        self.assertGreaterEqual(assets["duplicate_group_count"], 0)
+        self.assertGreaterEqual(assets["duplicate_avoidable_bytes"], 0)
+        self.assertIsInstance(assets["duplicate_groups"], list)
 
     def test_cli_exposes_speed_inventory(self):
         source = (ROOT / "bin" / "aoe2war").read_text(encoding="utf-8")
