@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "performance-operating-contract"
-reviewed_at: "2026-08-19"
+reviewed_at: "2026-09-05"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -34,10 +34,103 @@ aoe2war speed benchmark
 aoe2war speed benchmark --full
 aoe2war speed compare
 aoe2war speed diagnose
+aoe2war speed campaign start
+aoe2war speed campaign analyze
+aoe2war speed campaign status
+aoe2war speed campaign verify
 ```
 
-`benchmark` defaults to a small critical public cohort. `--full` reuses the
-66-route public cohort established by the August 13 performance audit.
+`benchmark` defaults to a small critical public cohort. New `--full`
+benchmarks use the versioned 68-route V2 public cohort in
+`docs/audits/performance-route-cohort-v2.txt`: current static public surfaces
+plus stable representatives of dynamic route families. The frozen August 13
+66-route cohort remains historical comparison evidence only; it is not silently
+mixed with the V2 cohort.
+
+
+## Performance campaign V2
+
+A serious optimization pass uses a durable before/analyze/after campaign rather
+than an isolated stopwatch run.
+
+```bash
+aoe2war speed campaign start
+aoe2war speed campaign analyze
+# apply evidence-supported performance changes through ordinary reviewed code
+aoe2war speed campaign verify
+```
+
+`campaign start` defaults to the full current route cohort and three rounds.
+It captures an immutable baseline benchmark before performance code is changed,
+binds that baseline to the exact certified production source/build, and writes a
+campaign receipt under `.aoe2war-release/performance-campaigns/`.
+
+The analyzer ranks route-level opportunities from TTFB, total response time,
+download bytes, post-TTFB transfer tail, explicit Ready coverage, origin/public
+seam evidence, and prior like-for-like benchmark history. It identifies material
+historical regressions before generic tuning and emits a machine-readable plan
+that an operator or coding agent can use. Recommendations never mutate or deploy
+production.
+
+The learning rail consumes prior verified campaigns. It records which routes
+repeatedly improved or regressed and carries that evidence into later campaign
+analysis. This is statistical operational memory, not a claim that Performance
+OS can infer causation from a timing delta alone.
+
+`campaign verify` reruns the exact baseline cohort after the reviewed changes.
+Every route receives an improvement/regression/neutral verdict. A route is a
+material TTFB regression only when it is both at least 100 ms and 20% slower;
+total-response regression uses at least 150 ms and 20%. Verification preserves
+the before and after release/build identities and refuses mismatched cohorts.
+
+The Speed OS source commit and production release are deliberately separate
+identities. Benchmark receipts bind `release_sha` to the certified production
+source, while `operator_source_sha` records the local tool revision. This
+prevents a newer Mac/GitHub control-plane checkout from being mislabeled as the
+runtime that was actually measured.
+
+## Capacity and hardware advisor
+
+Every full campaign also captures a read-only production capacity snapshot from
+the certified VPS: online CPU count and load, available RAM, swap, root and
+durable-volume headroom, and the live web process RSS/thread count.
+
+The analyzer turns that evidence into plain-language purchase advice:
+
+- CPU is recommended only when elevated origin/route latency coincides with
+  meaningful CPU load. A faster or larger-vCPU VPS is not prescribed merely
+  because a page is slow.
+- More RAM is recommended only when available memory is genuinely low or
+  sustained swap pressure is material during the same performance window.
+- More storage is a reliability/headroom decision unless separate I/O evidence
+  proves disk contention. Free-space pressure must not be mislabeled as a page
+  latency fix.
+- GPU is explicitly not a normal AoE2WAR page-speed purchase. Next.js SSR,
+  PostgreSQL/API work, TLS/proxying, and browser delivery are CPU/network/data
+  workloads.
+- If the public /api/speed/check path is many times slower than the local
+  origin, proxy/CDN/network delivery is prioritized ahead of server hardware.
+
+Missing capacity evidence is surfaced as unknown. Speed OS does not guess a
+hardware purchase from an unavailable probe.
+
+## Recent production incident learning
+
+A campaign captures bounded counts from the last hour of the AoE2WAR web
+journal. The probe records performance-shaped incident classes rather than raw
+journal payloads: physical replay-archive scan budget failures, Speed/Traffic
+telemetry relay timeouts, generic upstream timeouts, database/pool failures,
+and memory-pressure/OOM patterns.
+
+The analyzer converts those counts into root-cause actions. In particular,
+recursive replay-archive inventory work in a public request path is treated as
+a design defect to move behind a precomputed snapshot, and a slow Traffic
+telemetry relay is treated as observability debt rather than proof that the
+user-facing page itself is slow.
+
+These incident counts are supporting evidence. They do not override route
+timings, and the absence of a log pattern is not proof that a subsystem is
+fast.
 
 ## Release timing contract
 
@@ -87,7 +180,8 @@ must not be mistaken for complete route-level Ready coverage.
 
 ## Baseline zero
 
-The August 19, 2026 baseline established:
+The August 19, 2026 Baseline Zero remains the historical 66-route reference and
+established:
 
 - 66/66 public routes passing;
 - median route TTFB improved from 587.5 ms to 383.4 ms versus the August 13
@@ -158,8 +252,10 @@ Wolo proof, Operator Bridge reload, and the final finish audit remain mandatory.
 4. Extend authoritative Ready coverage across important user routes.
 5. Optimize image, JS, CSS, hydration, query and API payload cost without
    degrading the site's visual quality.
-6. Run the full route cohort periodically and after major performance work,
-   not on every ordinary deployment.
+6. Start a full Performance Campaign before major speed work and verify the
+   exact same cohort after the reviewed changes.
+7. Keep the cheap release pulse on every ordinary deployment; use the full
+   campaign when optimizing the estate.
 
 ## Fail-closed rules
 
