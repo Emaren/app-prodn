@@ -281,6 +281,11 @@ def print_status(payload: dict[str, Any]) -> None:
     print(f"Benchmark routes:  {payload['public_campaign_route_count']}")
     print()
     print(f"Public assets:     {assets['total_files']} files · {human_bytes(assets['total_bytes'])}")
+    print(
+        "Exact duplicates:  "
+        f"{assets['duplicate_group_count']} groups · "
+        f"{human_bytes(assets['duplicate_avoidable_bytes'])} avoidable tracked bytes"
+    )
 
     if coverage["uncovered_public_templates"]:
         print()
