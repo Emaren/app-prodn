@@ -141,9 +141,7 @@ class UpdateCommandTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             base = pathlib.Path(temporary)
             vpssentry = base / "VPSSentry"
-            projects = base / "projects"
             (vpssentry / "context").mkdir(parents=True)
-            projects.mkdir()
             block = (
                 MODULE.ESTATE_MAP_BEGIN
                 + "\n## Generated\n\n"
@@ -155,12 +153,20 @@ class UpdateCommandTests(unittest.TestCase):
                 (vpssentry / "context" / name).write_text(
                     block, encoding="utf-8"
                 )
-                (projects / name).write_text(block, encoding="utf-8")
+            closure_block = (
+                MODULE.CLOSURE_STATE_BEGIN
+                + "\n## Generated Closure\n\n"
+                + f"- Current-state source SHA: `{'d' * 40}`\n"
+                + MODULE.CLOSURE_STATE_END
+                + "\n"
+            )
+            (vpssentry / "context" / "AOE2WAR_100_CLOSURE.md").write_text(
+                closure_block, encoding="utf-8"
+            )
 
             plan = MODULE.estate_map_refresh_plan(
                 certified_release(),
                 vpssentry=vpssentry,
-                projects_root=projects,
             )
             self.assertEqual(plan["status"], "refresh")
             self.assertEqual(plan["current_source_sha"], "d" * 40)
@@ -171,7 +177,6 @@ class UpdateCommandTests(unittest.TestCase):
             deferred = MODULE.estate_map_refresh_plan(
                 deferred_release,
                 vpssentry=vpssentry,
-                projects_root=projects,
             )
             self.assertEqual(deferred["status"], "deferred")
 
