@@ -1441,7 +1441,13 @@ def central_sync(
 def prune_context_before_capture(
     projects: list[str],
     progress: Progress | None = None,
+    *,
+    preserve_context_history: bool = False,
 ) -> None:
+    if preserve_context_history:
+        if progress:
+            progress.done("Context retention skipped — preserving prior archives")
+        return
     context_root = VPSSENTRY / "context"
     tool = VPSSENTRY / "bin" / "context-prune-latest"
     if not tool.is_file():
@@ -1526,6 +1532,8 @@ def context_capture_headroom(
 def capture_context(
     projects: list[str],
     progress: Progress | None = None,
+    *,
+    preserve_context_history: bool = False,
 ) -> dict[str, dict[str, Any]]:
     if not projects:
         return {}
@@ -1534,13 +1542,17 @@ def capture_context(
     if not tool.is_file():
         raise UpdateError(f"context tool missing: {tool}")
 
-    prune_context_before_capture(projects, progress)
+    prune_context_before_capture(
+        projects,
+        progress,
+        preserve_context_history=preserve_context_history,
+    )
     context_capture_headroom(projects, progress)
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     env = os.environ.copy()
     env["CTX_TS"] = stamp
-    env["PRUNE_LATEST"] = "1"
+    env["PRUNE_LATEST"] = "0" if preserve_context_history else "1"
     env["PRUNE_DRY_RUN"] = "0"
     env["KEEP_N"] = "1"
     env["CONTEXT_PROFILE"] = "ops"
@@ -1659,6 +1671,7 @@ def apply_update(
     defer_context: bool = False,
     defer_final_audit: bool = False,
     force_control_refresh: bool = False,
+    preserve_context_history: bool = False,
 ) -> int:
     if plan["blocked"]:
         raise UpdateError("update plan is blocked; resolve findings manually")
@@ -1717,6 +1730,7 @@ def apply_update(
         "deferred_context_projects": [],
         "final_audit_deferred": bool(defer_final_audit),
         "force_control_refresh": bool(force_control_refresh),
+        "preserve_context_history": bool(preserve_context_history),
     }
 
     try:
@@ -1786,7 +1800,11 @@ def apply_update(
                     + ", ".join(deferred_context_projects)
                 )
         else:
-            archives = capture_context(ordered, progress=progress)
+            archives = capture_context(
+                ordered,
+                progress=progress,
+                preserve_context_history=preserve_context_history,
+            )
             receipt_payload["context_archives"] = archives
 
         if defer_final_audit:
@@ -1927,6 +1945,14 @@ def main() -> int:
             "source SHA is already current; intended for post-certification finish"
         ),
     )
+    parser.add_argument(
+        "--preserve-context-history",
+        action="store_true",
+        help=(
+            "capture fresh context without pruning prior context archives; "
+            "intended for evidence-preserving campaigns"
+        ),
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -1934,6 +1960,7 @@ def main() -> int:
         args.defer_context
         or args.defer_final_audit
         or args.force_control_refresh
+        or args.preserve_context_history
     ) and not args.apply:
         parser.error("defer/force flags require --apply")
 
@@ -1999,6 +2026,7 @@ def main() -> int:
                 defer_context=args.defer_context,
                 defer_final_audit=args.defer_final_audit,
                 force_control_refresh=args.force_control_refresh,
+                preserve_context_history=args.preserve_context_history,
             )
     except (UpdateError, aoe2_release.DeployLockBusy) as exc:
         print(f"STOP: {exc}", file=os.sys.stderr)
