@@ -19,7 +19,9 @@ from pathlib import Path
 from typing import Any
 
 import aoe2_audit
+import aoe2_doctor
 import aoe2_release
+import aoe2_truth
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = aoe2_audit.WORKSPACE
@@ -59,13 +61,17 @@ CONTEXT_CAPTURE_MARGIN_BYTES = 1 * GIB
 
 ESTATE_MAP_BEGIN = "<!-- BEGIN AOE2WAR GENERATED CURRENT STATE -->"
 ESTATE_MAP_END = "<!-- END AOE2WAR GENERATED CURRENT STATE -->"
+CLOSURE_STATE_BEGIN = "<!-- BEGIN AOE2WAR GENERATED CLOSURE STATE -->"
+CLOSURE_STATE_END = "<!-- END AOE2WAR GENERATED CLOSURE STATE -->"
 ESTATE_MAP_SOURCE_RE = re.compile(
     r"^- Current-state source SHA: `([0-9a-f]{40})`$", re.MULTILINE
 )
 ESTATE_MAP_FILES = ("SYSTEM_MAP.md", "SERVER_STORAGE_MAP.md")
+CONTROL_DOC_FILES = (*ESTATE_MAP_FILES, "AOE2WAR_100_CLOSURE.md")
 ESTATE_MAP_ALLOWED_PATHS = {
     "context/SYSTEM_MAP.md",
     "context/SERVER_STORAGE_MAP.md",
+    "context/AOE2WAR_100_CLOSURE.md",
     "docs/DOCUMENTATION_CONTROL_PLANE.md",
     "docs/document-registry.json",
 }
@@ -382,31 +388,55 @@ def certified_source_ready(
     return True, "exact intended source is active and receipt-certified", intended
 
 
-def estate_map_source(path: Path) -> str:
+def bounded_control_source(
+    path: Path,
+    *,
+    begin_marker: str,
+    end_marker: str,
+    label: str,
+) -> str:
     try:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
-        raise UpdateError(f"estate map cannot be read: {path}: {exc}") from exc
-    if text.count(ESTATE_MAP_BEGIN) != 1 or text.count(ESTATE_MAP_END) != 1:
+        raise UpdateError(f"{label} cannot be read: {path}: {exc}") from exc
+    if text.count(begin_marker) != 1 or text.count(end_marker) != 1:
         raise UpdateError(
-            f"estate map must contain exactly one bounded current-state block: {path}"
+            f"{label} must contain exactly one bounded generated block: {path}"
         )
-    begin = text.index(ESTATE_MAP_BEGIN)
-    end = text.index(ESTATE_MAP_END, begin) + len(ESTATE_MAP_END)
+    begin = text.index(begin_marker)
+    end = text.index(end_marker, begin) + len(end_marker)
     matches = ESTATE_MAP_SOURCE_RE.findall(text[begin:end])
     if len(matches) != 1:
         raise UpdateError(
-            f"estate map current-state block has invalid source identity: {path}"
+            f"{label} generated block has invalid source identity: {path}"
         )
     return matches[0]
+
+
+def estate_map_source(path: Path) -> str:
+    return bounded_control_source(
+        path,
+        begin_marker=ESTATE_MAP_BEGIN,
+        end_marker=ESTATE_MAP_END,
+        label="estate map",
+    )
+
+
+def closure_state_source(path: Path) -> str:
+    return bounded_control_source(
+        path,
+        begin_marker=CLOSURE_STATE_BEGIN,
+        end_marker=CLOSURE_STATE_END,
+        label="closure ledger",
+    )
 
 
 def estate_map_refresh_plan(
     release_data: dict[str, Any],
     *,
     vpssentry: Path = VPSSENTRY,
-    projects_root: Path = PROJECTS_ROOT,
 ) -> dict[str, Any]:
+    """Plan all three generated control surfaces from one certified source."""
     ready, reason, intended = certified_source_ready(release_data)
     if not ready:
         return {
@@ -418,15 +448,12 @@ def estate_map_refresh_plan(
     sources: set[str] = set()
     try:
         for name in ESTATE_MAP_FILES:
-            authoritative = vpssentry / "context" / name
-            mirror = projects_root / name
-            if not mirror.is_file():
-                raise UpdateError(f"estate-map workspace mirror is missing: {mirror}")
-            if authoritative.read_bytes() != mirror.read_bytes():
-                raise UpdateError(
-                    f"estate-map workspace mirror differs from Git authority: {mirror}"
-                )
-            sources.add(estate_map_source(authoritative))
+            sources.add(estate_map_source(vpssentry / "context" / name))
+        sources.add(
+            closure_state_source(
+                vpssentry / "context" / "AOE2WAR_100_CLOSURE.md"
+            )
+        )
     except (OSError, UpdateError) as exc:
         return {
             "status": "blocked",
@@ -437,7 +464,7 @@ def estate_map_refresh_plan(
     if len(sources) != 1:
         return {
             "status": "blocked",
-            "reason": "estate-map generated blocks disagree on current source",
+            "reason": "generated control blocks disagree on current source",
             "intended_source_sha": intended,
         }
 
@@ -445,9 +472,9 @@ def estate_map_refresh_plan(
     return {
         "status": "current" if current == intended else "refresh",
         "reason": (
-            "generated blocks already match certified source"
+            "generated control blocks already match certified source"
             if current == intended
-            else "generated blocks lag exact certified production source"
+            else "generated control blocks lag exact certified production source"
         ),
         "intended_source_sha": intended,
         "current_source_sha": current,
@@ -511,7 +538,7 @@ def build_estate_map_snapshot(
 ) -> dict[str, Any]:
     ready, reason, intended = certified_source_ready(release_data)
     if not ready or intended is None:
-        raise UpdateError(f"estate-map refresh is not eligible: {reason}")
+        raise UpdateError(f"control-state refresh is not eligible: {reason}")
     production = release_data["production"]
     certification = release_data["certification"]
     observed = observed_at or datetime.now(timezone.utc).replace(
@@ -563,6 +590,126 @@ def build_estate_map_snapshot(
             "listener_8093_count": production.get("wolo_8093_count"),
         },
     }
+
+
+def normalize_truth_census(payload: dict[str, Any]) -> dict[str, Any]:
+    coverage = payload.get("coverage") or {}
+    production_source = str(payload.get("productionSource") or "")
+    topology_known = int(
+        coverage.get("topologyKnown", coverage.get("teamResolved", 0)) or 0
+    )
+    topology_unresolved = int(
+        coverage.get("topologyUnknown", coverage.get("teamUnknown", 0)) or 0
+    )
+    return {
+        "generated_at": str(payload.get("generatedAt") or ""),
+        "production_source_sha": production_source,
+        "final_games": int(payload.get("finalGames") or 0),
+        "topology_known": topology_known,
+        "topology_unresolved": topology_unresolved,
+        "topology_unexplained": int(
+            coverage.get("unexplainedTopologyDebt", topology_unresolved) or 0
+        ),
+        "two_team_resolver": int(coverage.get("teamResolved") or 0),
+        "results_resolved": int(coverage.get("resultResolved") or 0),
+        "result_debt": int(coverage.get("resultUnknown") or 0),
+        "unknown_player_results": int(
+            coverage.get("unknownParticipantResults") or 0
+        ),
+    }
+
+
+def build_closure_snapshot(
+    release_data: dict[str, Any],
+    receipt: dict[str, Any],
+    *,
+    observed_at: str,
+    audit: dict[str, Any],
+    doctor: dict[str, Any],
+    truth: dict[str, Any],
+) -> dict[str, Any]:
+    ready, reason, intended = certified_source_ready(release_data)
+    if not ready or intended is None:
+        raise UpdateError(f"closure refresh is not eligible: {reason}")
+    production = release_data["production"]
+    certification = release_data["certification"]
+    normalized_truth = normalize_truth_census(truth)
+    if normalized_truth["production_source_sha"] != intended:
+        raise UpdateError(
+            "fresh Replay Truth census does not match certified production source: "
+            f"truth={normalized_truth['production_source_sha']} intended={intended}"
+        )
+    return {
+        "schema": 1,
+        "kind": "aoe2war-certified-closure-state",
+        "observed_at": _utc_z(observed_at, "closure observation time"),
+        "intended_source_sha": intended,
+        "certification": {
+            "status": certification.get("status"),
+            "release_sha": certification.get("release_sha"),
+            "certified_at": _utc_z(
+                receipt.get("generated_at"), "activation certification time"
+            ),
+            "active_build_id": certification.get("active_build_id"),
+            "build_version": certification.get("build_version"),
+            "risk_class": receipt.get("risk_class"),
+        },
+        "estate": {
+            "p0": int(audit.get("p0") or 0),
+            "p1": int(audit.get("p1") or 0),
+            "status": str(audit.get("estate") or "UNKNOWN"),
+            "generated_at": str(audit.get("generated_at") or observed_at),
+        },
+        "doctor": {
+            "score": int(doctor.get("score") or 0),
+            "warnings": int(doctor.get("warnings") or 0),
+            "blockers": int(doctor.get("blockers") or 0),
+            "status": str(doctor.get("status") or "UNKNOWN"),
+            "generated_at": str(doctor.get("generated_at") or observed_at),
+        },
+        "capacity": {
+            "root_free_kb": int(production.get("root_free_kb") or 0),
+            "volume_free_kb": int(production.get("volume_free_kb") or 0),
+        },
+        "wolo": {
+            "listener_8092_count": production.get("wolo_8092_count"),
+            "listener_8093_count": production.get("wolo_8093_count"),
+            "mutated": receipt.get("wolo_mutated"),
+        },
+        "truth": normalized_truth,
+    }
+
+
+def collect_control_snapshot(
+    release_data: dict[str, Any],
+    receipt: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Observe one certified universe for both maps and the closure ledger."""
+    observed_at = datetime.now(timezone.utc).replace(
+        microsecond=0
+    ).isoformat().replace("+00:00", "Z")
+    audit_payload = aoe2_audit.collect_audit().payload()
+    doctor_payload = aoe2_doctor.collect_doctor(
+        estate_payload=audit_payload,
+        include_estate=True,
+        progress=False,
+    ).payload()
+    truth_payload = aoe2_truth.run_remote("census")
+    aoe2_truth.write_receipt("census", truth_payload)
+    map_snapshot = build_estate_map_snapshot(
+        release_data,
+        receipt,
+        observed_at=observed_at,
+    )
+    closure_snapshot = build_closure_snapshot(
+        release_data,
+        receipt,
+        observed_at=observed_at,
+        audit=audit_payload,
+        doctor=doctor_payload,
+        truth=truth_payload,
+    )
+    return map_snapshot, closure_snapshot
 
 
 def collect_plan(
@@ -721,7 +868,7 @@ def print_plan(plan: dict[str, Any]) -> None:
         map_label = "DEFERRED UNTIL POST-DEPLOY"
     else:
         map_label = "BLOCKED"
-    print(f"Estate-map generated state: {map_label}")
+    print(f"Control-document generated state: {map_label}")
     print(f"  {estate_maps['reason']}")
 
     print()
@@ -871,10 +1018,12 @@ def refresh_source_documentation(
 
 def refresh_estate_maps(
     progress: Progress | None = None,
+    *,
+    force: bool = False,
 ) -> dict[str, Any]:
-    """Refresh VPSSentry map blocks only from exact certified production source."""
+    """Refresh all three VPSSentry control docs from one certified observation."""
     if progress:
-        progress.start("Re-proving certified source for estate-map refresh...")
+        progress.start("Re-proving certified source for control-state refresh...")
     try:
         release_data = aoe2_release.collect()
     except Exception as exc:
@@ -885,73 +1034,88 @@ def refresh_estate_maps(
 
     map_plan = estate_map_refresh_plan(release_data)
     if map_plan["status"] == "blocked":
-        raise UpdateError(f"estate-map refresh is blocked: {map_plan['reason']}")
+        raise UpdateError(f"control-state refresh is blocked: {map_plan['reason']}")
     if map_plan["status"] == "deferred":
         if progress:
             progress.done(
-                "Estate-map refresh deferred until post-deploy certification"
+                "Control-state refresh deferred until post-deploy certification"
             )
         return map_plan
-    if map_plan["status"] == "current":
+    if map_plan["status"] == "current" and not force:
         if progress:
-            progress.done("Estate-map generated state already matches certification")
+            progress.done("Generated control state already matches certification")
         return map_plan
 
     branch, before_head = require_clean_remote("vpssentry", VPSSENTRY)
     receipt = certification_receipt(release_data)
-    snapshot = build_estate_map_snapshot(release_data, receipt)
-    tool = VPSSENTRY / "scripts" / "estate_map_current_state.py"
-    if not tool.is_file():
-        raise UpdateError(f"VPSSentry estate-map renderer is missing: {tool}")
+    map_snapshot, closure_snapshot = collect_control_snapshot(
+        release_data, receipt
+    )
+    map_tool = VPSSENTRY / "scripts" / "estate_map_current_state.py"
+    closure_tool = VPSSENTRY / "scripts" / "closure_current_state.py"
+    if not map_tool.is_file() or not closure_tool.is_file():
+        raise UpdateError("VPSSentry control-state renderer is incomplete")
 
     if progress:
         progress.done(
-            "Certified source is exact across Git, production, and activation receipt"
+            "Certified source is exact across Git, production, activation receipt, "
+            "Doctor, estate audit and Replay Truth census"
         )
-        progress.start("Rendering bounded estate-map current-state blocks...")
+        progress.start("Rendering three bounded control-document state blocks...")
 
     with tempfile.NamedTemporaryFile(
-        mode="w",
-        encoding="utf-8",
-        suffix=".json",
-    ) as handle:
-        json.dump(snapshot, handle, indent=2, sort_keys=True)
-        handle.write("\n")
-        handle.flush()
+        mode="w", encoding="utf-8", suffix=".json"
+    ) as map_handle, tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", suffix=".json"
+    ) as closure_handle:
+        json.dump(map_snapshot, map_handle, indent=2, sort_keys=True)
+        map_handle.write("\n")
+        map_handle.flush()
+        json.dump(closure_snapshot, closure_handle, indent=2, sort_keys=True)
+        closure_handle.write("\n")
+        closure_handle.flush()
+
         rc, out = run(
             [
                 "python3",
-                str(tool),
+                str(map_tool),
                 "--write",
                 "--snapshot",
-                handle.name,
-                "--mirror-root",
-                str(PROJECTS_ROOT),
-                "--require-mirrors",
+                map_handle.name,
             ],
             cwd=VPSSENTRY,
             timeout=120,
         )
-    if rc != 0:
-        raise UpdateError(
-            "estate-map rendering failed: " + aoe2_audit.checker_summary(out)
+        if rc != 0:
+            raise UpdateError(
+                "estate-map rendering failed: " + aoe2_audit.checker_summary(out)
+            )
+
+        rc, out = run(
+            [
+                "python3",
+                str(closure_tool),
+                "--write",
+                "--snapshot",
+                closure_handle.name,
+            ],
+            cwd=VPSSENTRY,
+            timeout=120,
         )
+        if rc != 0:
+            raise UpdateError(
+                "closure-state rendering failed: "
+                + aoe2_audit.checker_summary(out)
+            )
 
     rc, out = run(
-        [
-            "python3",
-            "scripts/docs_v2_check.py",
-            "--write",
-            "--mirror-root",
-            str(PROJECTS_ROOT),
-            "--require-map-mirrors",
-        ],
+        ["python3", "scripts/docs_v2_check.py", "--write"],
         cwd=VPSSENTRY,
         timeout=120,
     )
     if rc != 0:
         raise UpdateError(
-            "VPSSentry registry refresh failed after map rendering: "
+            "VPSSentry registry refresh failed after control rendering: "
             + aoe2_audit.checker_summary(out)
         )
 
@@ -959,7 +1123,7 @@ def refresh_estate_maps(
     unsafe = sorted(path for path in changed if path not in ESTATE_MAP_ALLOWED_PATHS)
     if unsafe:
         raise UpdateError(
-            "estate-map refresh touched paths outside its documentation allowlist: "
+            "control-state refresh touched paths outside its documentation allowlist: "
             f"{unsafe}"
         )
 
@@ -974,54 +1138,52 @@ def refresh_estate_maps(
     rc, out = source_checker(VPSSENTRY)
     if rc != 0:
         raise UpdateError(
-            "VPSSentry checker failed after map refresh: "
+            "VPSSentry checker failed after control refresh: "
             + aoe2_audit.checker_summary(out)
         )
     rc, out = git(VPSSENTRY, "diff", "--check")
     if rc != 0:
-        raise UpdateError(f"VPSSentry estate-map diff check failed: {out}")
+        raise UpdateError(f"VPSSentry control-state diff check failed: {out}")
 
-    rc, out = run(
-        ["git", "add", "--", *sorted(changed)],
-        cwd=VPSSENTRY,
-    )
+    rc, out = run(["git", "add", "--", *sorted(changed)], cwd=VPSSENTRY)
     if rc != 0:
-        raise UpdateError(f"VPSSentry estate-map staging failed: {out}")
+        raise UpdateError(f"VPSSentry control-state staging failed: {out}")
     rc, out = git(VPSSENTRY, "diff", "--cached", "--check")
     if rc != 0:
-        raise UpdateError(f"VPSSentry staged estate-map diff check failed: {out}")
+        raise UpdateError(f"VPSSentry staged control-state diff check failed: {out}")
 
     rc, out = run(
-        ["git", "commit", "-m", "Refresh certified estate-map current state"],
+        ["git", "commit", "-m", "Refresh certified AoE2WAR control state"],
         cwd=VPSSENTRY,
     )
     if rc != 0:
-        raise UpdateError(f"VPSSentry estate-map commit failed: {out}")
+        raise UpdateError(f"VPSSentry control-state commit failed: {out}")
     after_head = git_output(VPSSENTRY, "rev-parse", "HEAD")
     push_and_verify("vpssentry", VPSSENTRY, branch)
 
     rc, out = source_checker(VPSSENTRY)
     if rc != 0:
         raise UpdateError(
-            "VPSSentry checker failed after estate-map commit: "
+            "VPSSentry checker failed after control-state commit: "
             + aoe2_audit.checker_summary(out)
         )
     final_plan = estate_map_refresh_plan(release_data)
     if final_plan["status"] != "current":
         raise UpdateError(
-            "estate-map current source did not converge after refresh: "
+            "control-state source did not converge after refresh: "
             f"{final_plan}"
         )
     if progress:
         progress.done(
-            f"Certified estate-map state pushed ({after_head[:10]})"
+            f"Certified three-document control state pushed ({after_head[:10]})"
         )
     return {
         **final_plan,
         "status": "refreshed",
         "before": before_head,
         "after": after_head,
-        "observed_at": snapshot["observed_at"],
+        "observed_at": map_snapshot["observed_at"],
+        "truth_receipt": str(aoe2_truth.latest_receipt("census") or ""),
     }
 
 
@@ -1503,7 +1665,7 @@ def apply_update(
     if not plan["changes_needed"]:
         if plan["estate_maps"]["status"] == "deferred":
             print(
-                "AOE2WAR UPDATE: maintenance current; estate-map refresh "
+                "AOE2WAR UPDATE: maintenance current; control-state refresh "
                 "deferred until post-deploy certification"
             )
             print(plan["estate_maps"]["reason"])
@@ -1666,7 +1828,7 @@ def apply_update(
                 f"docs={result['documentation_commit'][:10]}"
             )
         print(
-            "Estate maps: "
+            "Control docs: "
             f"{estate_map_result.get('status')} · "
             f"{estate_map_result.get('reason')}"
         )
@@ -1789,7 +1951,7 @@ def main() -> int:
             if not locked_plan["changes_needed"]:
                 if locked_plan["estate_maps"]["status"] == "deferred":
                     progress.done(
-                        "Maintenance is current; estate-map refresh deferred "
+                        "Maintenance is current; control-state refresh deferred "
                         "until post-deploy certification"
                     )
                 else:
@@ -1798,7 +1960,7 @@ def main() -> int:
                 print("UPDATE: ALREADY CURRENT")
                 if locked_plan["estate_maps"]["status"] == "deferred":
                     print(
-                        "Estate maps: DEFERRED — "
+                        "Control docs: DEFERRED — "
                         + locked_plan["estate_maps"]["reason"]
                     )
                 return 0
