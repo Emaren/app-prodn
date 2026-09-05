@@ -625,3 +625,18 @@ authority remains unresolved.
 Missing canonical source bytes and parser-evidence insufficiency are explicit
 recovery dispositions. They never justify fabricated team assignments,
 winner inference, betting authority or financial mutation.
+
+## Code Health OS refactor invariant
+
+AoE2WAR treats refactoring as a measured structural campaign, not a rewrite impulse.
+
+`aoe2war code-health` captures the current source-file census, exact duplicate
+source groups, TODO/FIXME/HACK markers, giant-file hotspots, working-tree
+cleanliness, and remote-branch authority. Its receipts are durable comparison
+evidence for later refactors.
+
+A large file is a prioritization signal, never deletion or rewrite authority.
+Behavior-preserving tests, release proof, and unchanged product semantics remain
+the acceptance boundary. Branch cleanup follows the same rule: a branch is safe
+to remove only after its wanted commits are proven represented elsewhere; age or
+name alone is not authority.
