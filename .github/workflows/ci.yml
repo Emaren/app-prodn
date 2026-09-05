@@ -76,3 +76,5 @@ jobs:
         run: python3 scripts/run_test_contract.py
       - name: Build production application
         run: yarn build
+      - name: Census Next build performance
+        run: python3 scripts/aoe2_speed_build.py --no-receipt --require-build
