@@ -10,6 +10,8 @@ export const BETTING_BOT_TONY_UID =
   "aoe2hd_betting_bot_tony";
 export const BETTING_BOT_PAULIE_UID =
   "aoe2hd_betting_bot_paulie";
+export const MOOSE_SYSTEM_UID =
+  "aoe2hd-moose";
 export const CHALLENGE_PROTOCOL_UID =
   "challenge-protocol";
 export const CHALLENGE_PROTOCOL_NAME =
@@ -23,6 +25,7 @@ const LEADERBOARD_EXCLUDED_SYSTEM_UIDS =
     AOE2WAR_HALL_SCRIBE_UID,
     BETTING_BOT_TONY_UID,
     BETTING_BOT_PAULIE_UID,
+    MOOSE_SYSTEM_UID,
     CHALLENGE_PROTOCOL_UID,
   ]);
 
