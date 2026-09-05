@@ -22,8 +22,8 @@ Work only in `/Users/tonyblum/projects/WoloChain-wolo-1`.
 
 Start by writing a concrete execution plan. Then inspect the real repo and
 implement, test, and document the requested local/test-only settlement work.
-Read that repo's `AGENTS.md`, `/Users/tonyblum/projects/SYSTEM_MAP.md`,
-`/Users/tonyblum/projects/SERVER_STORAGE_MAP.md`, `README.md`,
+Read that repo's `AGENTS.md`, `/Users/tonyblum/projects/VPSSentry/context/SYSTEM_MAP.md`,
+`/Users/tonyblum/projects/VPSSentry/context/SERVER_STORAGE_MAP.md`, `README.md`,
 `docs/mainnet-settlement-runbook.md`, `docs/mainnet-services-and-ports.md`,
 `docs/warbound-trophies.md`, `cmd/wolochaind/cmd/settlement.go`,
 `cmd/wolochaind/cmd/settlement_challenge.go`, `app/app_config.go`, and
