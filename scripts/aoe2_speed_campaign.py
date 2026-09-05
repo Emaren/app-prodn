@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import aoe2_speed as speed
+import aoe2_speed_inventory as speed_inventory
 
 ROOT = Path(__file__).resolve().parents[1]
 CAMPAIGN_DIR = speed.STATE / "performance-campaigns"
@@ -733,6 +734,59 @@ def verify_routes(
     }
 
 
+def campaign_source_inventory() -> dict[str, Any]:
+    payload = speed_inventory.snapshot()
+    uncovered = payload.get("coverage", {}).get("uncovered_public_templates") or []
+    if uncovered:
+        raise CampaignError(
+            "Speed OS source inventory has unbenchmarked public routes: "
+            + ", ".join(str(route) for route in uncovered)
+        )
+    return payload
+
+
+def inventory_delta(
+    before: dict[str, Any],
+    after: dict[str, Any],
+) -> dict[str, Any]:
+    before_assets = before.get("assets") or {}
+    after_assets = after.get("assets") or {}
+    before_pages = {
+        str(row.get("template"))
+        for row in before.get("pages") or []
+        if isinstance(row, dict) and row.get("template")
+    }
+    after_pages = {
+        str(row.get("template"))
+        for row in after.get("pages") or []
+        if isinstance(row, dict) and row.get("template")
+    }
+    return {
+        "source_page_count_before": before.get("source_page_count"),
+        "source_page_count_after": after.get("source_page_count"),
+        "added_page_templates": sorted(after_pages - before_pages),
+        "removed_page_templates": sorted(before_pages - after_pages),
+        "public_asset_files_before": before_assets.get("total_files"),
+        "public_asset_files_after": after_assets.get("total_files"),
+        "public_asset_bytes_before": before_assets.get("total_bytes"),
+        "public_asset_bytes_after": after_assets.get("total_bytes"),
+        "public_asset_bytes_delta": (
+            int(after_assets.get("total_bytes") or 0)
+            - int(before_assets.get("total_bytes") or 0)
+        ),
+        "duplicate_avoidable_bytes_before": before_assets.get(
+            "duplicate_avoidable_bytes"
+        ),
+        "duplicate_avoidable_bytes_after": after_assets.get(
+            "duplicate_avoidable_bytes"
+        ),
+        "duplicate_avoidable_bytes_delta": (
+            int(after_assets.get("duplicate_avoidable_bytes") or 0)
+            - int(before_assets.get("duplicate_avoidable_bytes") or 0)
+        ),
+    }
+
+
 def start_campaign(*, full: bool, rounds: int, force_new: bool) -> dict[str, Any]:
     existing = latest_campaign(open_only=True)
     if existing and not force_new:
@@ -741,6 +795,7 @@ def start_campaign(*, full: bool, rounds: int, force_new: bool) -> dict[str, Any
             f"{existing.get('campaign_id')}; verify or explicitly use --force-new"
         )
 
+    source_inventory = campaign_source_inventory()
     baseline = speed.benchmark(full=full, rounds=rounds)
     mode = str(baseline["mode"])
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -764,6 +819,7 @@ def start_campaign(*, full: bool, rounds: int, force_new: bool) -> dict[str, Any
             "rounds": baseline.get("rounds"),
             "route_count": baseline.get("route_count"),
             "cohort": baseline.get("cohort"),
+            "source_inventory": source_inventory,
         },
         "analysis": analysis,
         "verification": None,
@@ -804,9 +860,16 @@ def verify_campaign(
     mode = str(baseline.get("mode") or "")
     full = mode == "full"
     verify_rounds = rounds if rounds is not None else int(baseline.get("rounds") or 3)
+    after_inventory = campaign_source_inventory()
     after = speed.benchmark(full=full, rounds=verify_rounds)
 
     verification = verify_routes(baseline, after)
+    before_inventory = baseline_info.get("source_inventory") or {}
+    verification["source_inventory"] = {
+        "before": before_inventory,
+        "after": after_inventory,
+        "delta": inventory_delta(before_inventory, after_inventory),
+    }
     verification["receipt"] = rel(after["_path"])
     verification["release_sha"] = after.get("release_sha")
     verification["build_id"] = after.get("build_id")
