@@ -515,6 +515,64 @@ printf 'web_threads=%s\n' "${web_threads:-0}"
         "web_threads": integer("web_threads"),
     }
 
+def production_performance_incidents() -> dict[str, Any]:
+    script = r'''
+logs="$(journalctl -u aoe2hdbets-web.service --since '-60 minutes' --no-pager -n 2500 2>/dev/null || true)"
+count_pattern() {
+  printf '%s\n' "$logs" | grep -Eic "$1" 2>/dev/null || true
+}
+printf 'physical_archive_scan_timeout=%s\n' "$(count_pattern 'physical archive scan exceeded')"
+printf 'speed_telemetry_timeout=%s\n' "$(count_pattern 'Speed telemetry relay failed|Speed report service unavailable')"
+printf 'upstream_timeout=%s\n' "$(count_pattern 'TimeoutError|timed out|timeout exceeded')"
+printf 'database_error=%s\n' "$(count_pattern 'Prisma.*(error|timeout)|database.*(error|timeout)|connection pool.*timeout')"
+printf 'memory_pressure=%s\n' "$(count_pattern 'heap out of memory|ENOMEM|allocation failed|JavaScript heap')"
+'''
+
+    try:
+        proc = subprocess.run(
+            [
+                "ssh",
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=8",
+                PRODUCTION_HOST,
+                "bash",
+                "-s",
+            ],
+            input=script,
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=20,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"available": False, "error": str(exc)}
+
+    if proc.returncode != 0:
+        return {
+            "available": False,
+            "error": (proc.stderr or proc.stdout or "").strip()[-1000:],
+        }
+
+    counts: dict[str, int] = {}
+    for line in proc.stdout.splitlines():
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        try:
+            counts[key.strip()] = max(0, int(value.strip() or "0"))
+        except ValueError:
+            counts[key.strip()] = 0
+
+    return {
+        "available": True,
+        "window_minutes": 60,
+        "counts": counts,
+    }
+
 def collect_release_identity() -> dict[str, Any]:
     sys.path.insert(0, str(ROOT / "scripts"))
     import aoe2_release  # type: ignore
@@ -607,6 +665,7 @@ def benchmark(*, full: bool, rounds: int) -> dict[str, Any]:
     seam = origin_seam()
     ready = ready_coverage()
     capacity = production_capacity_snapshot()
+    incidents = production_performance_incidents()
 
     payload = {
         "schema": 1,
@@ -622,6 +681,7 @@ def benchmark(*, full: bool, rounds: int) -> dict[str, Any]:
         "origin_seam": seam,
         "ready_coverage": ready,
         "production_capacity": capacity,
+        "performance_incidents": incidents,
         "routes": per_route,
     }
 
