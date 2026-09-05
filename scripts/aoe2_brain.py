@@ -11,10 +11,12 @@ import aoe2_council
 import aoe2_release
 import aoe2_speed_campaign
 import aoe2_truth
+import aoe2_update
 
 ROOT = Path(__file__).resolve().parents[1]
 TRUTH_STALE_SECONDS = 24 * 60 * 60
 PERFORMANCE_STALE_SECONDS = 7 * 24 * 60 * 60
+FINISH_RECEIPT_DIR = ROOT / ".aoe2war-release" / "finish-receipts"
 
 
 def now_utc() -> datetime:
@@ -265,11 +267,172 @@ def storage_summary(storage: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def latest_finish() -> dict[str, Any]:
+    if not FINISH_RECEIPT_DIR.is_dir():
+        return {
+            "available": False,
+            "status": None,
+            "release_outcome": None,
+            "closure_complete": False,
+            "receipt": None,
+        }
+
+    paths = sorted(
+        FINISH_RECEIPT_DIR.glob("*.json"),
+        key=lambda path: (path.stat().st_mtime_ns, path.name),
+        reverse=True,
+    )
+    for path in paths:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+
+        failed_phase = None
+        failed_detail: dict[str, Any] | None = None
+        for name, detail in (payload.get("phases") or {}).items():
+            if isinstance(detail, dict) and detail.get("status") == "FAILED":
+                failed_phase = str(name)
+                failed_detail = detail
+
+        status = payload.get("status")
+        release_outcome = payload.get("release_outcome")
+        closure_complete = status == "CERTIFIED"
+        certified_runtime = str(release_outcome or "").startswith("CERTIFIED")
+
+        try:
+            receipt = str(path.relative_to(ROOT))
+        except ValueError:
+            receipt = str(path)
+
+        return {
+            "available": True,
+            "status": status,
+            "release_outcome": release_outcome,
+            "closure_complete": closure_complete,
+            "certified_runtime": certified_runtime,
+            "active_phase": payload.get("active_phase"),
+            "failed_phase": failed_phase,
+            "error": (
+                (failed_detail or {}).get("error")
+                or payload.get("error")
+                or payload.get("failure")
+            ),
+            "release_certified_at": payload.get("release_certified_at"),
+            "completed_at": payload.get("completed_at"),
+            "updated_at": payload.get("updated_at"),
+            "receipt": receipt,
+        }
+
+    return {
+        "available": False,
+        "status": None,
+        "release_outcome": None,
+        "closure_complete": False,
+        "receipt": None,
+    }
+
+
+def control_summary(release: dict[str, Any]) -> dict[str, Any]:
+    plan = aoe2_update.estate_map_refresh_plan(release)
+    return {
+        "status": plan.get("status"),
+        "reason": plan.get("reason"),
+        "intended_source_sha": plan.get("intended_source_sha"),
+        "current_source_sha": plan.get("current_source_sha"),
+    }
+
+
+def brain_recommendations(
+    *,
+    finish: dict[str, Any],
+    control: dict[str, Any],
+    performance: dict[str, Any],
+    council_recommendations: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+
+    control_status = str(control.get("status") or "")
+    if control_status == "blocked":
+        rows.append(
+            {
+                "rank": 5,
+                "level": "MUST CLOSE",
+                "key": "control-state-blocked",
+                "title": "Repair certified control-state documentation",
+                "reason": str(control.get("reason") or "control state is blocked"),
+                "action": "aoe2war control status --json",
+            }
+        )
+    elif control_status == "refresh":
+        rows.append(
+            {
+                "rank": 5,
+                "level": "DO NOW",
+                "key": "control-state-refresh",
+                "title": "Refresh certified control-state documentation",
+                "reason": str(
+                    control.get("reason")
+                    or "generated control state lags certified production"
+                ),
+                "action": "aoe2war control refresh --no-context",
+            }
+        )
+
+    if finish.get("available") and not finish.get("closure_complete"):
+        if control_status == "current":
+            rows.append(
+                {
+                    "rank": 6,
+                    "level": "DO NOW",
+                    "key": "finish-closure",
+                    "title": "Complete the certified Finish transaction",
+                    "reason": (
+                        f"latest finish status={finish.get('status')} "
+                        f"phase={finish.get('failed_phase') or finish.get('active_phase')}"
+                    ),
+                    "action": "aoe2war finish --preserve-context-history",
+                }
+            )
+
+    if (
+        performance.get("available")
+        and performance.get("matches_current_release") is False
+    ):
+        rows.append(
+            {
+                "rank": 7,
+                "level": "MEASURE NOW",
+                "key": "speed-baseline-current-release",
+                "title": "Freeze the current certified Speed OS baseline",
+                "reason": (
+                    "latest 77-route campaign belongs to "
+                    f"{str(performance.get('release_sha') or 'unknown')[:12]}, "
+                    "not current certified production"
+                ),
+                "action": (
+                    "aoe2war speed inventory --require-complete-public-coverage && "
+                    "aoe2war speed build && "
+                    "aoe2war speed campaign start && "
+                    "aoe2war speed campaign analyze"
+                ),
+            }
+        )
+
+    rows.extend(council_recommendations)
+    return sorted(rows, key=lambda item: (int(item.get("rank") or 999), str(item.get("key") or "")))
+
+
 def invariant_rows(
     *,
     source: dict[str, Any],
     council: dict[str, Any],
     truth: dict[str, Any],
+    finish: dict[str, Any],
+    control: dict[str, Any],
+    performance: dict[str, Any],
 ) -> list[dict[str, str]]:
     production = source.get("production") or {}
     recovery = council.get("recovery") or {}
@@ -323,6 +486,39 @@ def invariant_rows(
                 else "closure receipt unavailable"
             ),
         },
+        {
+            "key": "finish-closure-complete",
+            "status": "PASS" if finish.get("closure_complete") else "ATTENTION",
+            "evidence": (
+                f"status={finish.get('status')} "
+                f"phase={finish.get('failed_phase') or finish.get('active_phase') or '—'}"
+                if finish.get("available")
+                else "finish receipt unavailable"
+            ),
+        },
+        {
+            "key": "control-state-current",
+            "status": "PASS" if control.get("status") == "current" else "ATTENTION",
+            "evidence": (
+                f"status={control.get('status')} "
+                f"reason={control.get('reason') or '—'}"
+            ),
+        },
+        {
+            "key": "speed-baseline-current-release",
+            "status": (
+                "PASS"
+                if performance.get("available")
+                and performance.get("matches_current_release") is True
+                else "ATTENTION"
+            ),
+            "evidence": (
+                f"campaign={performance.get('campaign_id')} "
+                f"release={str(performance.get('release_sha') or '—')[:12]}"
+                if performance.get("available")
+                else "performance campaign unavailable"
+            ),
+        },
     ]
     return rows
 
@@ -352,13 +548,28 @@ def collect() -> dict[str, Any]:
     source = source_summary(release)
     truth = latest_truth(now)
     performance = latest_performance(now)
+    performance["matches_current_release"] = bool(
+        performance.get("available")
+        and performance.get("release_sha")
+        == source.get("production", {}).get("source_sha")
+    )
+    finish = latest_finish()
+    control = control_summary(release)
     invariants = invariant_rows(
         source=source,
         council=council,
         truth=truth,
+        finish=finish,
+        control=control,
+        performance=performance,
     )
 
-    recommendations = council.get("recommendations") or []
+    recommendations = brain_recommendations(
+        finish=finish,
+        control=control,
+        performance=performance,
+        council_recommendations=list(council.get("recommendations") or []),
+    )
     return {
         "schema": 1,
         "kind": "aoe2war-kingdom-intelligence",
@@ -370,6 +581,8 @@ def collect() -> dict[str, Any]:
             invariants=invariants,
         ),
         "source": source,
+        "finish": finish,
+        "control_state": control,
         "health": {
             "estate": council.get("estate"),
             "p0": int(council.get("p0") or 0),
@@ -392,7 +605,7 @@ def collect() -> dict[str, Any]:
         },
         "invariants": invariants,
         "recommendations": recommendations,
-        "best_next_action": council.get("best_next_action"),
+        "best_next_action": recommendations[0] if recommendations else None,
     }
 
 
@@ -406,6 +619,8 @@ def print_payload(payload: dict[str, Any]) -> None:
     storage = payload["storage"]
     truth = payload["replay_truth"]
     performance = payload["performance"]
+    finish = payload.get("finish") or {}
+    control = payload.get("control_state") or {}
     best = payload.get("best_next_action")
 
     print("🧠  AOE2WAR KINGDOM INTELLIGENCE")
@@ -423,6 +638,16 @@ def print_payload(payload: dict[str, Any]) -> None:
         "Certification:   "
         f"{source['certification'].get('status') or '—'} · "
         f"exact={'YES' if source.get('exact') else 'NO'}"
+    )
+    print(
+        "Finish closure:  "
+        f"{finish.get('status') or '—'} · "
+        f"phase={finish.get('failed_phase') or finish.get('active_phase') or '—'}"
+    )
+    print(
+        "Control state:   "
+        f"{control.get('status') or '—'} · "
+        f"{control.get('reason') or '—'}"
     )
     print(
         "Health:          "
@@ -457,7 +682,8 @@ def print_payload(payload: dict[str, Any]) -> None:
             f"{performance.get('status')} · "
             f"{performance.get('route_count')} routes · "
             f"TTFB p50={baseline.get('ttfb_p50_ms')} ms · "
-            f"total p50={baseline.get('total_p50_ms')} ms"
+            f"total p50={baseline.get('total_p50_ms')} ms · "
+            f"current={'YES' if performance.get('matches_current_release') else 'NO'}"
         )
     else:
         print("Performance:     no campaign receipt")
