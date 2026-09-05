@@ -4399,8 +4399,14 @@ def main() -> int:
         return 0
 
     except Exception as exc:
+        failed_phase = receipt.get("active_phase")
         fail_active_phase(receipt, str(exc))
-        if receipt.get("release_outcome") == "CERTIFIED":
+        if (
+            receipt.get("release_outcome") == "CERTIFIED"
+            and failed_phase == "post_release_documentation"
+        ):
+            receipt["status"] = "CERTIFIED_CONTROL_DOCS_STALE"
+        elif receipt.get("release_outcome") == "CERTIFIED":
             receipt["status"] = "CERTIFIED_WITH_POSTCHECK_FAILURE"
         else:
             receipt["status"] = "FAILED"
