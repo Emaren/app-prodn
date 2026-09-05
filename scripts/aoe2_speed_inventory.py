@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -118,11 +119,37 @@ def asset_category(path: Path) -> str:
     return "other"
 
 
+def tracked_public_blobs() -> dict[str, str]:
+    proc = subprocess.run(
+        ["git", "ls-files", "-s", "--", "public"],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return {}
+
+    result: dict[str, str] = {}
+    for line in proc.stdout.splitlines():
+        metadata, separator, path = line.partition("\t")
+        if not separator or not path:
+            continue
+        fields = metadata.split()
+        if len(fields) < 2:
+            continue
+        result[path] = fields[1]
+    return result
+
+
 def asset_inventory() -> dict[str, Any]:
     totals: dict[str, dict[str, int]] = defaultdict(lambda: {"files": 0, "bytes": 0})
     largest: list[dict[str, Any]] = []
     total_files = 0
     total_bytes = 0
+    blobs = tracked_public_blobs()
+    blob_groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
 
     if PUBLIC_ROOT.is_dir():
         for path in PUBLIC_ROOT.rglob("*"):
@@ -132,25 +159,49 @@ def asset_inventory() -> dict[str, Any]:
                 size = path.stat().st_size
             except OSError:
                 continue
+            relative = str(path.relative_to(ROOT))
             category = asset_category(path)
             totals[category]["files"] += 1
             totals[category]["bytes"] += size
             total_files += 1
             total_bytes += size
-            largest.append(
-                {
-                    "path": str(path.relative_to(ROOT)),
-                    "category": category,
-                    "bytes": size,
-                }
-            )
+            row = {
+                "path": relative,
+                "category": category,
+                "bytes": size,
+            }
+            largest.append(row)
+            blob = blobs.get(relative)
+            if blob:
+                blob_groups[blob].append(row)
 
+    duplicate_groups: list[dict[str, Any]] = []
+    for blob, rows in blob_groups.items():
+        if len(rows) < 2:
+            continue
+        bytes_each = int(rows[0]["bytes"])
+        duplicate_groups.append(
+            {
+                "blob": blob,
+                "copies": len(rows),
+                "bytes_each": bytes_each,
+                "avoidable_bytes": bytes_each * (len(rows) - 1),
+                "paths": [str(row["path"]) for row in rows],
+            }
+        )
+
+    duplicate_groups.sort(key=lambda row: int(row["avoidable_bytes"]), reverse=True)
     largest.sort(key=lambda row: int(row["bytes"]), reverse=True)
     return {
         "total_files": total_files,
         "total_bytes": total_bytes,
         "by_category": dict(sorted(totals.items())),
         "largest": largest[:20],
+        "duplicate_group_count": len(duplicate_groups),
+        "duplicate_avoidable_bytes": sum(
+            int(row["avoidable_bytes"]) for row in duplicate_groups
+        ),
+        "duplicate_groups": duplicate_groups[:20],
     }
 
 
