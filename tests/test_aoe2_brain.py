@@ -94,6 +94,7 @@ def truth() -> dict:
         "resolved": 3189,
         "unresolved": 1249,
         "parser_work_candidates": 1159,
+        "production_source": "a" * 40,
         "freshness": {
             "generated_at": "2026-09-05T20:00:00Z",
             "age_seconds": 0,
@@ -215,6 +216,7 @@ class KingdomIntelligenceTests(unittest.TestCase):
             finish=finish(complete=False),
             control=control(status="blocked"),
             performance=perf,
+            truth=truth(),
             council_recommendations=[
                 {
                     "rank": 10,
@@ -236,6 +238,7 @@ class KingdomIntelligenceTests(unittest.TestCase):
             finish=finish(complete=False),
             control=control(status="current"),
             performance=perf,
+            truth=truth(),
             council_recommendations=[],
         )
         self.assertEqual(rows[0]["key"], "finish-closure")
@@ -243,6 +246,35 @@ class KingdomIntelligenceTests(unittest.TestCase):
             rows[0]["action"],
             "aoe2war finish --preserve-context-history",
         )
+
+    def test_old_replay_closure_is_not_current_truth(self):
+        old_truth = truth()
+        old_truth["production_source"] = "b" * 40
+        old_truth["matches_current_release"] = False
+        perf = performance()
+        perf["matches_current_release"] = True
+        rows = MODULE.invariant_rows(
+            source=MODULE.source_summary(release()),
+            council=council(),
+            truth=old_truth,
+            finish=finish(),
+            control=control(),
+            performance=perf,
+        )
+        replay = next(
+            row for row in rows
+            if row["key"] == "replay-certainty-accounted"
+        )
+        self.assertEqual(replay["status"], "ATTENTION")
+
+        recs = MODULE.brain_recommendations(
+            finish=finish(),
+            control=control(),
+            performance=perf,
+            truth=old_truth,
+            council_recommendations=[],
+        )
+        self.assertEqual(recs[0]["key"], "replay-certainty-current-release")
 
     def test_wolo_boundary_failure_blocks(self):
         broken_release = release()
