@@ -1,59 +1,71 @@
 # AoE2WAR Performance OS full public cohort V2
 # One route per line. Static public surfaces plus stable representatives of dynamic route families.
 # Redirect-only aliases and authenticated admin routes are intentionally excluded.
+# Source inventory currently covers every ordinary public page template. User-specific invoice
+# pages are separately classified as sensitive_dynamic and require a real isolated/authenticated
+# fixture rather than a fabricated publicId.
 # This cohort supersedes the frozen August 13 66-route comparison set for new campaigns.
 /
+/about
 /academy
 /ai
+/app
 /battle-archive
+/belts
 /bets
 /betting-mechanics
 /bounties
 /challenge
 /champions
 /clans
+/connect-wallet
+/contact-emaren
 /download
 /forum
 /game-stats
 /kingdom
+/kingdom-forge
 /leaderboard
 /leaderboard/og
 /live-games
 /lobby
 /market
 /national-champions
+/nations
+/offline
+/oracle
+/past-earnings
+/pending-bets
 /players
+/profile
 /radio
+/realm
 /replay-parser
 /requests
 /rivalries
+/roadmap
+/round-chamber
+/settings
+/speed
 /staking
 /statistics
+/submit
 /traffic
+/upload
+/users
+/wallet
 /war-chest
+/war-engine
 /wargraph
 /watch
 /wolo
+/wolo-1
 /wolochain
 /wolomania
 /workshop
 /zodiac
-/app
-/connect-wallet
-/contact-emaren
-/kingdom-forge
-/offline
-/oracle
-/past-earnings
-/profile
-/round-chamber
-/settings
-/speed
-/submit
-/upload
-/wallet
-/war-engine
 /market/kingdom/chat-effects
+/market/shops/chat-effects
 /bets/562774
 /challenge/24
 /champions/world
