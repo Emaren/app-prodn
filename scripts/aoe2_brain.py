@@ -106,6 +106,8 @@ def source_summary(release: dict[str, Any]) -> dict[str, Any]:
             "service": production.get("service"),
             "version_parity": production.get("version_parity"),
             "active_build_id": production.get("active_build_id"),
+            "root_free_kb": production.get("root_free_kb"),
+            "volume_free_kb": production.get("volume_free_kb"),
             "wolo_8092_count": production.get("wolo_8092_count"),
             "wolo_8093_count": production.get("wolo_8093_count"),
         },
@@ -246,8 +248,14 @@ def latest_performance(now: datetime) -> dict[str, Any]:
     }
 
 
-def storage_summary(storage: dict[str, Any]) -> dict[str, Any]:
+def storage_summary(
+    storage: dict[str, Any],
+    source: dict[str, Any],
+) -> dict[str, Any]:
     volume = storage.get("volume") or {}
+    production = source.get("production") or {}
+    root_free_kb = production.get("root_free_kb")
+    volume_free_kb = production.get("volume_free_kb")
     return {
         "health": storage.get("health") or storage.get("status"),
         "volume_used_percent": (
@@ -257,12 +265,24 @@ def storage_summary(storage: dict[str, Any]) -> dict[str, Any]:
         ),
         "volume_free_bytes": (
             storage.get("volume_free_bytes")
+            or storage.get("available_bytes")
             or storage.get("free_bytes")
+            or volume.get("available_bytes")
             or volume.get("free_bytes")
+            or (
+                int(volume_free_kb) * 1024
+                if isinstance(volume_free_kb, (int, float))
+                else None
+            )
         ),
         "root_free_bytes": (
             storage.get("root_free_bytes")
             or (storage.get("root") or {}).get("free_bytes")
+            or (
+                int(root_free_kb) * 1024
+                if isinstance(root_free_kb, (int, float))
+                else None
+            )
         ),
     }
 
@@ -552,7 +572,8 @@ def operating_state(
     if any(row["status"] == "FAIL" for row in invariants):
         return "BLOCKED"
     if (
-        not source.get("exact")
+        any(row["status"] == "ATTENTION" for row in invariants)
+        or not source.get("exact")
         or int(council.get("p1") or 0) > 0
         or str(council.get("doctor_status") or "").upper()
         not in {"HEALTHY", "PASS"}
@@ -616,7 +637,10 @@ def collect() -> dict[str, Any]:
             "doctor_score": council.get("doctor_score"),
             "doctor_status": council.get("doctor_status"),
         },
-        "storage": storage_summary(council.get("storage") or {}),
+        "storage": storage_summary(
+            council.get("storage") or {},
+            source,
+        ),
         "host": council.get("host") or {},
         "recovery": council.get("recovery") or {},
         "workspace": council.get("workspace") or {},
