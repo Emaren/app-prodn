@@ -213,6 +213,77 @@ def historical_route_median(
     return (values[middle - 1] + values[middle]) / 2.0
 
 
+def incident_advice(baseline: dict[str, Any]) -> dict[str, Any]:
+    probe = baseline.get("performance_incidents") or {}
+    if not probe.get("available"):
+        return {
+            "available": False,
+            "findings": [],
+            "actions": [],
+        }
+
+    counts = probe.get("counts") or {}
+
+    def count(name: str) -> int:
+        raw = counts.get(name)
+        return int(raw) if isinstance(raw, (int, float)) else 0
+
+    findings: list[str] = []
+    actions: list[str] = []
+
+    archive = count("physical_archive_scan_timeout")
+    if archive:
+        findings.append(
+            f"Physical replay-archive scans exceeded their request budget {archive} time(s) in the last hour."
+        )
+        actions.append(
+            "Move recursive replay-archive inventory/stat work out of public Next.js request paths and serve a precomputed snapshot instead."
+        )
+
+    relay = count("speed_telemetry_timeout")
+    if relay:
+        findings.append(
+            f"Speed telemetry/report relay timed out {relay} time(s) in the last hour."
+        )
+        actions.append(
+            "Profile the Traffic performance-ingest path and preserve browser telemetry asynchronously so observability cannot stall or disappear behind a slow relay."
+        )
+
+    database = count("database_error")
+    if database:
+        findings.append(
+            f"Database/pool error patterns appeared {database} time(s) in the last hour."
+        )
+        actions.append(
+            "Inspect the exact slow query or pool saturation before adding database capacity."
+        )
+
+    memory = count("memory_pressure")
+    if memory:
+        findings.append(
+            f"Memory-pressure/OOM patterns appeared {memory} time(s) in the last hour."
+        )
+        actions.append(
+            "Treat RAM pressure as an active performance incident and correlate it with the capacity snapshot before deployment."
+        )
+
+    generic_timeout = count("upstream_timeout")
+    if generic_timeout and not (archive or relay or database):
+        findings.append(
+            f"Generic timeout patterns appeared {generic_timeout} time(s) in the last hour."
+        )
+        actions.append(
+            "Resolve the upstream/caller identity from the journal before tuning unrelated routes."
+        )
+
+    return {
+        "available": True,
+        "window_minutes": probe.get("window_minutes"),
+        "counts": counts,
+        "findings": findings,
+        "actions": actions,
+    }
+
 def capacity_advice(baseline: dict[str, Any]) -> dict[str, Any]:
     capacity = baseline.get("production_capacity") or {}
     seam = baseline.get("origin_seam") or {}
@@ -530,7 +601,10 @@ def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
         if route not in ready_routes
     ]
 
+    incidents = incident_advice(baseline)
+
     estate_findings: list[str] = []
+    estate_findings.extend(incidents.get("findings") or [])
     if seam_ratio is not None and seam_ratio >= 4.0:
         estate_findings.append(
             f"Public speed-check TTFB is {seam_ratio:.1f}x origin; delivery seam remains material."
@@ -556,6 +630,7 @@ def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
         "ready_gaps": missing_ready,
         "learning": prior_learning,
         "capacity_advice": capacity_advice(baseline),
+        "incident_advice": incidents,
         "targets": rows[:20],
     }
 
@@ -778,6 +853,14 @@ def print_analysis(campaign: dict[str, Any]) -> None:
         recommendation = "; ".join(row.get("recommendation") or [])
         if recommendation:
             print(f"    → {recommendation}")
+
+    incidents = analysis.get("incident_advice") or {}
+    actions = incidents.get("actions") or []
+    if actions:
+        print()
+        print("Production incidents:")
+        for action in actions:
+            print(f"  → {action}")
 
     advice = analysis.get("capacity_advice") or {}
     hardware = advice.get("hardware") or {}
