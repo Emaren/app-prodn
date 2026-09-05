@@ -49,6 +49,8 @@ for ChatGPT, Codex, future agents and automated operator surfaces.
 V1 combines:
 
 - local, GitHub, production and certified release identity;
+- latest Finish transaction status, including a certified runtime whose later closure phase failed;
+- generated control-state status and exact blocker/reason;
 - Audit/Doctor severity;
 - Storage, Host, Recovery and Workspace state;
 - the latest persisted Speed OS campaign;
@@ -69,6 +71,20 @@ Source/release state is collected live through the existing release collector.
 
 A stale receipt remains valid historical evidence; it is not current-state
 authority.
+
+Performance evidence has an additional identity rule: a campaign is current only
+when its recorded release SHA matches the currently certified production source.
+A recent campaign for an older release is explicitly marked non-current.
+
+Replay Truth certainty uses the same provenance rule. A closure receipt may be
+complete and still be historical if its recorded production source differs from
+the currently certified source. Refresh certainty before calling that evidence
+current.
+
+Finish truth is split deliberately. Runtime certification remains authoritative
+when activation has passed, even if Workshop, documentation, audit, Doctor or
+another later Finish phase fails. The Brain must expose both facts rather than
+collapsing them into one misleading green/red status.
 
 ## War Date
 
@@ -148,6 +164,18 @@ KI snapshot and immediately know:
 When an AI discovers a recurring diagnostic fact that required expensive
 repository excavation, the preferred response is to teach KI to expose that
 fact deterministically for the next session.
+
+Independent read-only probes should execute concurrently when their safety and
+truth semantics permit it. KI latency is itself an operating metric: the Brain
+should not make an operator wait for the sum of unrelated SSH probes.
+
+Any invariant reported as ATTENTION prevents a READY operating state. A green
+Doctor score cannot override an explicit incomplete Finish, stale control state,
+wrong-release Speed/Replay evidence, or incomplete recovery proof.
+
+Workspace truth is part of KI. Dirty or unmerged registered worktrees are
+preserved evidence and must be surfaced for review; they are never silently
+collapsed into housekeeping or automatic cleanup.
 
 ## Non-goals
 

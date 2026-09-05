@@ -94,6 +94,7 @@ def truth() -> dict:
         "resolved": 3189,
         "unresolved": 1249,
         "parser_work_candidates": 1159,
+        "production_source": "a" * 40,
         "freshness": {
             "generated_at": "2026-09-05T20:00:00Z",
             "age_seconds": 0,
@@ -108,6 +109,7 @@ def performance() -> dict:
         "campaign_id": "baseline",
         "status": "analyzed",
         "route_count": 77,
+        "release_sha": "a" * 40,
         "baseline": {
             "ttfb_p50_ms": 398.3,
             "total_p50_ms": 583.5,
@@ -117,6 +119,33 @@ def performance() -> dict:
             "age_seconds": 0,
             "stale": False,
         },
+    }
+
+
+def finish(*, complete: bool = True) -> dict:
+    return {
+        "available": True,
+        "status": "CERTIFIED" if complete else "FAILED",
+        "release_outcome": "CERTIFIED" if complete else "CERTIFIED",
+        "closure_complete": complete,
+        "certified_runtime": True,
+        "active_phase": None,
+        "failed_phase": None if complete else "post_release_documentation",
+        "error": None if complete else "control state blocked",
+        "receipt": ".aoe2war-release/finish-receipts/test.json",
+    }
+
+
+def control(*, status: str = "current") -> dict:
+    return {
+        "status": status,
+        "reason": (
+            "generated control blocks already match certified source"
+            if status == "current"
+            else "generated control blocks lag exact certified production source"
+        ),
+        "intended_source_sha": "a" * 40,
+        "current_source_sha": "a" * 40 if status == "current" else "b" * 40,
     }
 
 
@@ -142,6 +171,8 @@ class KingdomIntelligenceTests(unittest.TestCase):
             patch.object(MODULE.aoe2_council, "collect", return_value=council()),
             patch.object(MODULE, "latest_truth", return_value=truth()),
             patch.object(MODULE, "latest_performance", return_value=performance()),
+            patch.object(MODULE, "latest_finish", return_value=finish()),
+            patch.object(MODULE, "control_summary", return_value=control()),
         ):
             payload = MODULE.collect()
 
@@ -157,12 +188,58 @@ class KingdomIntelligenceTests(unittest.TestCase):
             all(row["status"] == "PASS" for row in payload["invariants"])
         )
 
+    def test_attention_invariant_prevents_false_ready(self):
+        source = MODULE.source_summary(release())
+        perf = performance()
+        perf["matches_current_release"] = True
+        rows = MODULE.invariant_rows(
+            source=source,
+            council=council(),
+            truth=truth(),
+            finish=finish(complete=False),
+            control=control(),
+            performance=perf,
+        )
+        self.assertEqual(
+            MODULE.operating_state(
+                source=source,
+                council=council(),
+                invariants=rows,
+            ),
+            "ATTENTION",
+        )
+
+    def test_storage_summary_uses_storage_available_bytes_and_release_root(self):
+        source = MODULE.source_summary(release())
+        source["production"]["root_free_kb"] = 7 * 1024 * 1024
+        summary = MODULE.storage_summary(
+            {
+                "health": "ATTENTION",
+                "used_percent": 90.44,
+                "available_bytes": 28 * 1024 * 1024 * 1024,
+            },
+            source,
+        )
+        self.assertEqual(
+            summary["volume_free_bytes"],
+            28 * 1024 * 1024 * 1024,
+        )
+        self.assertEqual(
+            summary["root_free_bytes"],
+            7 * 1024 * 1024 * 1024,
+        )
+
     def test_attention_when_production_is_behind_or_p1_exists(self):
         source = MODULE.source_summary(release(exact=False))
+        perf = performance()
+        perf["matches_current_release"] = True
         rows = MODULE.invariant_rows(
             source=source,
             council=council(p1=1),
             truth=truth(),
+            finish=finish(),
+            control=control(),
+            performance=perf,
         )
         self.assertEqual(
             MODULE.operating_state(
@@ -173,14 +250,86 @@ class KingdomIntelligenceTests(unittest.TestCase):
             "ATTENTION",
         )
 
+    def test_control_blocker_outranks_recovery_and_speed_work(self):
+        perf = performance()
+        perf["matches_current_release"] = False
+        rows = MODULE.brain_recommendations(
+            finish=finish(complete=False),
+            control=control(status="blocked"),
+            performance=perf,
+            truth=truth(),
+            council_recommendations=[
+                {
+                    "rank": 10,
+                    "key": "offsite-evidence",
+                    "level": "MUST FIX",
+                    "title": "Complete off-host recovery proof",
+                    "reason": "shared failure domain",
+                    "action": "aoe2war recovery plan",
+                }
+            ],
+        )
+        self.assertEqual(rows[0]["key"], "control-state-blocked")
+        self.assertEqual(rows[1]["key"], "speed-baseline-current-release")
+
+    def test_current_control_allows_finish_closure_recommendation(self):
+        perf = performance()
+        perf["matches_current_release"] = True
+        rows = MODULE.brain_recommendations(
+            finish=finish(complete=False),
+            control=control(status="current"),
+            performance=perf,
+            truth=truth(),
+            council_recommendations=[],
+        )
+        self.assertEqual(rows[0]["key"], "finish-closure")
+        self.assertEqual(
+            rows[0]["action"],
+            "aoe2war finish --preserve-context-history",
+        )
+
+    def test_old_replay_closure_is_not_current_truth(self):
+        old_truth = truth()
+        old_truth["production_source"] = "b" * 40
+        old_truth["matches_current_release"] = False
+        perf = performance()
+        perf["matches_current_release"] = True
+        rows = MODULE.invariant_rows(
+            source=MODULE.source_summary(release()),
+            council=council(),
+            truth=old_truth,
+            finish=finish(),
+            control=control(),
+            performance=perf,
+        )
+        replay = next(
+            row for row in rows
+            if row["key"] == "replay-certainty-accounted"
+        )
+        self.assertEqual(replay["status"], "ATTENTION")
+
+        recs = MODULE.brain_recommendations(
+            finish=finish(),
+            control=control(),
+            performance=perf,
+            truth=old_truth,
+            council_recommendations=[],
+        )
+        self.assertEqual(recs[0]["key"], "replay-certainty-current-release")
+
     def test_wolo_boundary_failure_blocks(self):
         broken_release = release()
         broken_release["production"]["wolo_8092_count"] = 0
         source = MODULE.source_summary(broken_release)
+        perf = performance()
+        perf["matches_current_release"] = True
         rows = MODULE.invariant_rows(
             source=source,
             council=council(),
             truth=truth(),
+            finish=finish(),
+            control=control(),
+            performance=perf,
         )
         self.assertEqual(
             next(

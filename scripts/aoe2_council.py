@@ -7,6 +7,7 @@ import re
 import subprocess
 from pathlib import Path
 from typing import Any
+from concurrent.futures import ThreadPoolExecutor
 
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / "bin" / "aoe2war"
@@ -64,22 +65,20 @@ def ready_coverage() -> dict[str, Any]:
     try:
         import aoe2_speed
 
+        import aoe2_speed_inventory
+
         ready = aoe2_speed.ready_coverage()
-        baseline = aoe2_speed.baseline_zero_summary() or {}
+        cohort_count = len(aoe2_speed_inventory.cohort_routes())
         return {
             "ready_routes": int(ready.get("ready_route_count") or 0),
             "marker_mounts": int(ready.get("ready_marker_usages") or 0),
-            "baseline_routes": int(
-                baseline.get("route_count")
-                or (baseline.get("cohort") or {}).get("route_count")
-                or 66
-            ),
+            "baseline_routes": cohort_count,
         }
     except Exception:
         return {
             "ready_routes": 0,
             "marker_mounts": 0,
-            "baseline_routes": 66,
+            "baseline_routes": 0,
         }
 
 
@@ -261,6 +260,23 @@ def build_recommendations(
             action="aoe2war speed pulse",
         )
 
+    dirty_worktrees = int(workspace.get("dirty_count") or 0)
+    unmerged_worktrees = int(workspace.get("unmerged_count") or 0)
+    if dirty_worktrees or unmerged_worktrees:
+        add(
+            items,
+            rank=12,
+            level="MUST REVIEW",
+            key="workspace-preserved-code",
+            title="Review preserved dirty or unmerged worktrees",
+            reason=(
+                f"dirty={dirty_worktrees} unmerged={unmerged_worktrees}; "
+                "these may contain intentional, hidden, or superseded work and "
+                "are never automatic cleanup candidates."
+            ),
+            action="aoe2war workspace status",
+        )
+
     cleanup_count = len(workspace.get("cleanup_candidates") or [])
     if cleanup_count:
         add(
@@ -315,7 +331,9 @@ def build_recommendations(
             ),
         )
 
-    if ready.get("ready_routes", 0) < ready.get("baseline_routes", 66):
+    baseline_routes = int(ready.get("baseline_routes") or 0)
+    ready_routes = int(ready.get("ready_routes") or 0)
+    if baseline_routes and ready_routes < baseline_routes:
         add(
             items,
             rank=70,
@@ -323,9 +341,8 @@ def build_recommendations(
             key="ready-coverage",
             title="Grow route-level readiness coverage",
             reason=(
-                f"{ready.get('ready_routes', 0)}/"
-                f"{ready.get('baseline_routes', 66)} public routes "
-                "have explicit readiness markers."
+                f"{ready_routes}/{baseline_routes} public benchmark "
+                "representatives have explicit readiness markers."
             ),
             action="aoe2war speed diagnose",
         )
@@ -334,19 +351,40 @@ def build_recommendations(
 
 
 def collect() -> dict[str, Any]:
-    doctor = command_json("doctor", "--json", timeout=180)
+    # These read-only probes are independent. Running them concurrently keeps
+    # Kingdom Intelligence bounded by the slowest probe instead of the sum of
+    # five SSH/local diagnostics.
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        doctor_future = pool.submit(
+            command_json, "doctor", "--json", timeout=180
+        )
+        storage_future = pool.submit(
+            command_json, "storage", "status", "--json", timeout=90
+        )
+        host_future = pool.submit(
+            command_json, "host", "status", "--json", timeout=90
+        )
+        recovery_future = pool.submit(
+            command_json, "recovery", "status", "--json", timeout=30
+        )
+        workspace_future = pool.submit(
+            command_json,
+            "workspace",
+            "status",
+            "--json",
+            timeout=60,
+        )
+
+        doctor = doctor_future.result()
+        storage = storage_future.result()
+        host = host_future.result()
+        recovery = recovery_future.result()
+        workspace = workspace_future.result()
+
     audit = ((doctor.get("info") or {}).get("estate") or {})
     if not isinstance(audit, dict) or "p0" not in audit:
         audit = command_json("audit", "--json", timeout=180)
-    storage = command_json("storage", "status", "--json", timeout=90)
-    host = command_json("host", "status", "--json", timeout=90)
-    recovery = command_json("recovery", "status", "--json", timeout=30)
-    workspace = command_json(
-        "workspace",
-        "status",
-        "--json",
-        timeout=60,
-    )
+
     pulse = latest_pulse()
     due = docs_due()
     ready = ready_coverage()

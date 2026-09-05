@@ -1800,6 +1800,7 @@ def documentation_plan_summary(plan: dict[str, Any]) -> dict[str, Any]:
         "context_projects": list(plan.get("context_projects") or []),
         "blocked_source_docs": list(plan.get("blocked_source_docs") or []),
         "unknown_p1": list(plan.get("unknown_p1") or []),
+        "estate_maps": dict(plan.get("estate_maps") or {}),
     }
 
 

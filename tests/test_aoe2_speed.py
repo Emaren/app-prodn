@@ -2,6 +2,7 @@ import importlib.util
 import pathlib
 import sys
 import unittest
+from unittest.mock import patch
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -287,6 +288,104 @@ class PerformanceOSTests(unittest.TestCase):
                 floor_ms=100.0,
             )
         )
+
+    def test_old_release_campaign_does_not_block_new_release_baseline(self):
+        existing = {
+            "campaign_id": "old",
+            "status": "analyzed",
+            "baseline": {"release_sha": "a" * 40},
+        }
+        baseline = {
+            "mode": "full",
+            "release_sha": "b" * 40,
+            "build_id": "build",
+            "build_version": "version",
+            "rounds": 3,
+            "route_count": 1,
+            "cohort": {
+                "ttfb_p50_ms": 100.0,
+                "total_p50_ms": 200.0,
+            },
+            "routes": [
+                {
+                    "path": "/",
+                    "median_ttfb_ms": 100.0,
+                    "median_total_ms": 200.0,
+                }
+            ],
+            "_path": ROOT / ".aoe2war-release" / "performance" / "new.json",
+        }
+        with (
+            patch.object(
+                CAMPAIGN_MODULE,
+                "latest_campaign",
+                return_value=existing,
+            ),
+            patch.object(
+                SPEED_MODULE,
+                "collect_release_identity",
+                return_value={"release_sha": "b" * 40},
+            ),
+            patch.object(
+                CAMPAIGN_MODULE,
+                "campaign_source_inventory",
+                return_value={},
+            ),
+            patch.object(
+                SPEED_MODULE,
+                "benchmark",
+                return_value=baseline,
+            ),
+            patch.object(
+                CAMPAIGN_MODULE,
+                "analyze_baseline",
+                return_value={},
+            ),
+            patch.object(
+                CAMPAIGN_MODULE,
+                "write_campaign",
+            ),
+            patch.object(
+                CAMPAIGN_MODULE,
+                "git_head",
+                return_value="b" * 40,
+            ),
+        ):
+            campaign = CAMPAIGN_MODULE.start_campaign(
+                full=True,
+                rounds=3,
+                force_new=False,
+            )
+
+        self.assertEqual(
+            campaign["baseline"]["release_sha"],
+            "b" * 40,
+        )
+
+    def test_same_release_open_campaign_still_requires_explicit_override(self):
+        existing = {
+            "campaign_id": "same",
+            "status": "analyzed",
+            "baseline": {"release_sha": "b" * 40},
+        }
+        with (
+            patch.object(
+                CAMPAIGN_MODULE,
+                "latest_campaign",
+                return_value=existing,
+            ),
+            patch.object(
+                SPEED_MODULE,
+                "collect_release_identity",
+                return_value={"release_sha": "b" * 40},
+            ),
+        ):
+            with self.assertRaises(CAMPAIGN_MODULE.CampaignError):
+                CAMPAIGN_MODULE.start_campaign(
+                    full=True,
+                    rounds=3,
+                    force_new=False,
+                )
 
     def test_speed_campaign_verifies_every_route_and_flags_regression(self):
         before = {
