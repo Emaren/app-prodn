@@ -187,6 +187,7 @@ def delegate_finish_from_production(
     message: str,
     dry_run: bool,
     json_mode: bool,
+    preserve_context_history: bool = False,
 ) -> int:
     contract = aoe2_doctor.load_contract()
     canonical = contract["canonical"]
@@ -209,6 +210,7 @@ def delegate_finish_from_production(
             "hostname": os.uname().nodename,
             "message": message,
             "dryRun": dry_run,
+            "preserveContextHistory": preserve_context_history,
         },
     )
     run_value = queued.get("run")
@@ -1976,6 +1978,7 @@ def reconcile_documentation(
     defer_context: bool = False,
     defer_final_audit: bool = False,
     force_control_refresh: bool = False,
+    preserve_context_history: bool = False,
 ) -> dict[str, Any]:
     plan = aoe2_update.collect_plan()
     summary = documentation_plan_summary(plan)
@@ -1994,6 +1997,8 @@ def reconcile_documentation(
         update_args.append("--defer-context")
     if defer_final_audit:
         update_args.append("--defer-final-audit")
+    if preserve_context_history:
+        update_args.append("--preserve-context-history")
 
     run_live(
         update_args,
@@ -2011,6 +2016,7 @@ def start_pre_release_context_overlap(
     receipt: dict[str, Any],
     checkpoint: Callable[[], None],
     progress: Progress,
+    preserve_context_history: bool = False,
 ) -> dict[str, Any] | None:
     selected = set(projects)
     ordered = [
@@ -2037,12 +2043,14 @@ def start_pre_release_context_overlap(
         aoe2_update.capture_context,
         ordered,
         None,
+        preserve_context_history=preserve_context_history,
     )
 
     receipt["pre_release_context_overlap"] = {
         "status": "RUNNING",
         "projects": ordered,
         "started_at": started_at,
+        "preserve_context_history": preserve_context_history,
     }
     checkpoint()
     progress.done(
@@ -2469,7 +2477,7 @@ def assert_no_competing_operator_process() -> None:
         )
 
 
-def plan_payload() -> dict[str, Any]:
+def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
     data = aoe2_release.collect()
     local = data["local"]
     production = data["production"]
@@ -2491,6 +2499,8 @@ def plan_payload() -> dict[str, Any]:
     )
     external_sources = external_source_authority_snapshot()
     capacity_snapshot = production_capacity_snapshot()
+    documentation_plan = aoe2_update.collect_plan()
+    documentation_summary = documentation_plan_summary(documentation_plan)
 
     quiet_progress = Progress(enabled=False)
     storage_rc, storage_preview = run_json_cli(
@@ -2573,6 +2583,16 @@ def plan_payload() -> dict[str, Any]:
         "doctor": doctor,
         "storage_retention": storage_preview,
         "capacity": capacity_snapshot,
+        "documentation_plan": documentation_summary,
+        "evidence_retention": {
+            "preserve_context_history": preserve_context_history,
+            "context_capture_projects": documentation_summary["context_projects"],
+            "context_archive_pruning": (
+                "DISABLED"
+                if preserve_context_history
+                else "BOUNDED_KEEP_N_1"
+            ),
+        },
         "blockers": blockers,
         "automatic_remediations": remediated_blockers,
         "validation_plan": [
@@ -2593,6 +2613,14 @@ def plan_payload() -> dict[str, Any]:
             "wolo": False,
             "host_reboot": False,
             "package_upgrade": False,
+            "context_archive_pruning": bool(
+                documentation_summary["context_projects"]
+                and not preserve_context_history
+            ),
+            "cache_retention": bool(
+                int(storage_preview.get("candidate_count") or 0) > 0
+                and auto_retention
+            ),
         },
     }
     if plan.mode == "vps_worktree":
@@ -2614,11 +2642,16 @@ def execute_finish(
     message: str,
     dry_run: bool,
     json_mode: bool,
+    preserve_context_history: bool = False,
 ) -> tuple[int, dict[str, Any]]:
     progress = Progress(enabled=not json_mode)
 
     if dry_run:
-        receipt.update(plan_payload())
+        receipt.update(
+            plan_payload(
+                preserve_context_history=preserve_context_history,
+            )
+        )
         receipt["dry_run"] = True
         checkpoint()
         return (2 if receipt.get("status") == "BLOCKED" else 0), receipt
@@ -2657,6 +2690,7 @@ def execute_finish(
             "documentation_reconciled": False,
             "production_deployed": False,
             "release_outcome": "NOT_ATTEMPTED",
+            "preserve_context_history": preserve_context_history,
         }
     )
     external_sources = external_source_authority_snapshot()
@@ -2825,6 +2859,7 @@ def execute_finish(
         json_mode=json_mode,
         defer_context=True,
         defer_final_audit=True,
+        preserve_context_history=preserve_context_history,
     )
     receipt["documentation_reconciled"] = True
     finish_phase(receipt, "pre_release_documentation", checkpoint)
@@ -2845,6 +2880,7 @@ def execute_finish(
         receipt=receipt,
         checkpoint=checkpoint,
         progress=progress,
+        preserve_context_history=preserve_context_history,
     )
 
     post_update = aoe2_release.collect()
@@ -2919,6 +2955,7 @@ def execute_finish(
         json_mode=json_mode,
         defer_final_audit=True,
         force_control_refresh=True,
+        preserve_context_history=preserve_context_history,
     )
     finish_phase(receipt, "post_release_documentation", checkpoint)
 
@@ -3821,6 +3858,7 @@ def promote_feature_worktree(
     *,
     message: str,
     json_mode: bool,
+    preserve_context_history: bool = False,
 ) -> int:
     progress = Progress(
         enabled=not json_mode
@@ -4091,6 +4129,10 @@ def promote_feature_worktree(
         command.append(
             "--json"
         )
+    if preserve_context_history:
+        command.append(
+            "--preserve-context-history"
+        )
 
     os.chdir(
         canonical
@@ -4129,6 +4171,14 @@ def main() -> int:
         "--json",
         action="store_true",
         help="emit the final plan/result as JSON; child command output is captured",
+    )
+    parser.add_argument(
+        "--preserve-context-history",
+        action="store_true",
+        help=(
+            "capture fresh context while preserving prior context archives; "
+            "other governed cache/rollback retention remains unchanged"
+        ),
     )
     args = parser.parse_args()
 
@@ -4224,6 +4274,7 @@ def main() -> int:
                 return promote_feature_worktree(
                     message=args.message,
                     json_mode=args.json,
+                    preserve_context_history=args.preserve_context_history,
                 )
 
             except Exception as exc:
@@ -4253,6 +4304,7 @@ def main() -> int:
                 message=args.message,
                 dry_run=args.dry_run,
                 json_mode=args.json,
+                preserve_context_history=args.preserve_context_history,
             )
         except Exception as exc:
             if args.json:
@@ -4273,7 +4325,9 @@ def main() -> int:
 
     if args.dry_run:
         try:
-            payload = plan_payload()
+            payload = plan_payload(
+                preserve_context_history=args.preserve_context_history,
+            )
         except Exception as exc:
             if args.json:
                 print(json.dumps({"status": "ERROR", "error": str(exc)}, indent=2))
@@ -4385,6 +4439,7 @@ def main() -> int:
                     message=args.message,
                     dry_run=False,
                     json_mode=args.json,
+                    preserve_context_history=args.preserve_context_history,
                 )
 
         if args.json:
