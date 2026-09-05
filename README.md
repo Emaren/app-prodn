@@ -17,8 +17,8 @@ sensitivity: "internal"
 
 > Fresh operator or AI session: read
 > [AoE2WAR Operator Start Here](docs/OPERATOR_START_HERE.md), then run
-> `aoe2war context` and `aoe2war status`. Mutable production truth is not
-> inferred from dated prose.
+> `aoe2war brain --json`. Use `aoe2war status` for release-specific detail.
+> Mutable production truth is not inferred from dated prose.
 
 ## Certified release-engineering baseline — 2026-08-10
 
