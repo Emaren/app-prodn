@@ -70,6 +70,7 @@ BRIDGE="$BIN_DIR/../scripts/aoe2_operator_bridge.py"
 STORAGE_RETENTION="$BIN_DIR/../scripts/aoe2_storage_retention.py"
 STORAGE="$BIN_DIR/../scripts/aoe2_storage.py"
 SPEED="$BIN_DIR/../scripts/aoe2_speed.py"
+SPEED_CAMPAIGN="$BIN_DIR/../scripts/aoe2_speed_campaign.py"
 DOCS_OS="$BIN_DIR/../scripts/aoe2_docs.py"
 COUNCIL="$BIN_DIR/../scripts/aoe2_council.py"
 WORKSPACE="$BIN_DIR/../scripts/aoe2_workspace.py"
@@ -93,7 +94,7 @@ Usage:
   aoe2war update [--apply] [--json]
   aoe2war control <status|refresh> [options]
   aoe2war docs <status|impact|audit|update> [options]
-  aoe2war speed [status|release-history|benchmark|compare|diagnose|pulse]
+  aoe2war speed [status|release-history|benchmark|compare|diagnose|campaign|pulse]
   aoe2war storage-retention [--apply] [--json]
   aoe2war storage <status|plan|maintain|verify> [options]
   aoe2war council [--json]
@@ -375,6 +376,10 @@ case "$command" in
     if [ "${1:-}" = "pulse" ]; then
       shift
       exec python3 "$SPEED_PULSE" "$@"
+    fi
+    if [ "${1:-}" = "campaign" ]; then
+      shift
+      exec python3 "$SPEED_CAMPAIGN" "$@"
     fi
     exec python3 "$SPEED" "$@"
     ;;
