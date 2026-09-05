@@ -29,6 +29,24 @@ class CodeHealthTests(unittest.TestCase):
         self.assertEqual(row["todos"], 1)
         self.assertEqual(len(row["sha256"]), 64)
 
+
+    def test_analyze_file_marks_client_boundary_and_imports(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            old_root = code_health.ROOT
+            try:
+                code_health.ROOT = Path(tmp)
+                path = Path(tmp) / "client.tsx"
+                path.write_text(
+                    '"use client";\n\nimport x from "x";\nimport y from "y";\nexport default function A() { return null; }\n',
+                    encoding="utf-8",
+                )
+                row = code_health.analyze_file(path)
+            finally:
+                code_health.ROOT = old_root
+
+        self.assertTrue(row["client_boundary"])
+        self.assertEqual(row["import_count"], 2)
+
     def test_duplicate_groups_counts_avoidable_bytes(self):
         rows = [
             {"path": "a.ts", "bytes": 1000, "sha256": "a" * 64},
