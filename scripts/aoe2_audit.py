@@ -475,42 +475,67 @@ def check_central_quality_gates(audit: Audit) -> None:
 
 
 def check_maps(audit: Audit) -> None:
-    pairs = [
-        (
-            "SYSTEM_MAP",
-            VPSSENTRY / "context" / "SYSTEM_MAP.md",
-            PROJECTS_ROOT / "SYSTEM_MAP.md",
-        ),
-        (
-            "SERVER_STORAGE_MAP",
-            VPSSENTRY / "context" / "SERVER_STORAGE_MAP.md",
-            PROJECTS_ROOT / "SERVER_STORAGE_MAP.md",
-        ),
-    ]
+    """Validate the three canonical VPSSentry control documents.
+
+    Workspace-root map copies are retired. This audit checks only the
+    Git-authoritative files under VPSSentry/context and requires their generated
+    source identities to agree.
+    """
+    paths = {
+        "SYSTEM_MAP": VPSSENTRY / "context" / "SYSTEM_MAP.md",
+        "SERVER_STORAGE_MAP": VPSSENTRY / "context" / "SERVER_STORAGE_MAP.md",
+        "AOE2WAR_100_CLOSURE": VPSSENTRY / "context" / "AOE2WAR_100_CLOSURE.md",
+    }
+    source_re = re.compile(
+        r"^- Current-state source SHA: \`([0-9a-f]{40})\`$",
+        re.MULTILINE,
+    )
     results: dict[str, Any] = {}
-    for label, authoritative, mirror in pairs:
-        if not authoritative.is_file() or not mirror.is_file():
+    sources: set[str] = set()
+
+    for label, path in paths.items():
+        if not path.is_file():
             audit.add(
                 "P0",
                 "Estate Maps",
-                "map-missing",
-                f"{label}: authoritative={authoritative.is_file()} "
-                f"mirror={mirror.is_file()}",
+                "control-doc-missing",
+                f"{label}: missing {path}",
             )
             continue
-        auth_sha = sha256(authoritative)
-        mirror_sha = sha256(mirror)
-        results[label] = {
-            "authoritative_sha256": auth_sha,
-            "mirror_sha256": mirror_sha,
-        }
-        if authoritative.read_bytes() != mirror.read_bytes():
+        try:
+            text = path.read_text(encoding="utf-8")
+        except OSError as exc:
             audit.add(
                 "P0",
                 "Estate Maps",
-                "mirror-drift",
-                f"{label}: authoritative={auth_sha} mirror={mirror_sha}",
+                "control-doc-unreadable",
+                f"{label}: {exc}",
             )
+            continue
+        matches = source_re.findall(text)
+        if len(matches) != 1:
+            audit.add(
+                "P0",
+                "Estate Maps",
+                "control-source-invalid",
+                f"{label}: expected one generated current-state source SHA, got {len(matches)}",
+            )
+            continue
+        source = matches[0]
+        sources.add(source)
+        results[label] = {
+            "sha256": sha256(path),
+            "current_source_sha": source,
+            "path": str(path),
+        }
+
+    if len(results) == len(paths) and len(sources) != 1:
+        audit.add(
+            "P0",
+            "Estate Maps",
+            "control-source-drift",
+            "canonical control documents disagree on generated source identity",
+        )
     audit.info["estate_maps"] = results
 
 

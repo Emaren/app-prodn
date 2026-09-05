@@ -1975,6 +1975,7 @@ def reconcile_documentation(
     json_mode: bool,
     defer_context: bool = False,
     defer_final_audit: bool = False,
+    force_control_refresh: bool = False,
 ) -> dict[str, Any]:
     plan = aoe2_update.collect_plan()
     summary = documentation_plan_summary(plan)
@@ -1983,10 +1984,12 @@ def reconcile_documentation(
             f"{label} documentation plan is blocked: "
             + json.dumps(summary, sort_keys=True)
         )
-    if not plan.get("changes_needed"):
+    if not plan.get("changes_needed") and not force_control_refresh:
         progress.done(f"{label} documentation/context already current")
         return {**summary, "result": "ALREADY_CURRENT"}
     update_args = [str(CLI), "update", "--apply"]
+    if force_control_refresh:
+        update_args.append("--force-control-refresh")
     if defer_context:
         update_args.append("--defer-context")
     if defer_final_audit:
@@ -2915,6 +2918,7 @@ def execute_finish(
         progress=progress,
         json_mode=json_mode,
         defer_final_audit=True,
+        force_control_refresh=True,
     )
     finish_phase(receipt, "post_release_documentation", checkpoint)
 
@@ -4399,8 +4403,14 @@ def main() -> int:
         return 0
 
     except Exception as exc:
+        failed_phase = receipt.get("active_phase")
         fail_active_phase(receipt, str(exc))
-        if receipt.get("release_outcome") == "CERTIFIED":
+        if (
+            receipt.get("release_outcome") == "CERTIFIED"
+            and failed_phase == "post_release_documentation"
+        ):
+            receipt["status"] = "CERTIFIED_CONTROL_DOCS_STALE"
+        elif receipt.get("release_outcome") == "CERTIFIED":
             receipt["status"] = "CERTIFIED_WITH_POSTCHECK_FAILURE"
         else:
             receipt["status"] = "FAILED"

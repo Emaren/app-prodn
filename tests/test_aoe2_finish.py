@@ -21,6 +21,28 @@ SPEC.loader.exec_module(MODULE)
 
 
 class FinishTests(unittest.TestCase):
+    def test_forced_post_release_docs_refresh_even_when_plan_is_current(self):
+        plan = {"blocked": False, "changes_needed": False}
+        with patch.object(
+            MODULE.aoe2_update,
+            "collect_plan",
+            return_value=plan,
+        ), patch.object(
+            MODULE,
+            "documentation_plan_summary",
+            return_value={},
+        ), patch.object(MODULE, "run_live") as run_live:
+            result = MODULE.reconcile_documentation(
+                label="Post-release current-state",
+                progress=MODULE.Progress(enabled=False),
+                json_mode=False,
+                force_control_refresh=True,
+            )
+
+        args = run_live.call_args.args[0]
+        self.assertIn("--force-control-refresh", args)
+        self.assertEqual(result["result"], "RECONCILED")
+
     def test_local_worktree_wins_when_vps_clean(self):
         plan = MODULE.source_plan(
             local_dirty=2,
