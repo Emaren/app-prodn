@@ -341,6 +341,31 @@ class PerformanceOSTests(unittest.TestCase):
             "regression",
         )
 
+        bets = next(
+            row
+            for row in result["routes"]
+            if row["path"] == "/bets"
+        )
+        self.assertLess(bets["total_faster_percent"], 0)
+        self.assertLess(bets["total_saved_ms"], 0)
+        self.assertIn(
+            "slower",
+            CAMPAIGN_MODULE.operator_change(
+                bets["before_total_ms"],
+                bets["after_total_ms"],
+            ),
+        )
+
+    def test_speed_operator_change_uses_positive_faster_language(self):
+        self.assertEqual(
+            CAMPAIGN_MODULE.operator_change(500.0, 300.0),
+            "40.0% faster · 200.0 ms saved",
+        )
+        self.assertEqual(
+            CAMPAIGN_MODULE.operator_change(300.0, 450.0),
+            "50.0% slower · 150.0 ms added",
+        )
+
     def test_speed_campaign_source_is_before_analyze_after_and_non_mutating(self):
         source = SPEED_CAMPAIGN.read_text(encoding="utf-8")
         self.assertIn('sub.add_parser("start")', source)
