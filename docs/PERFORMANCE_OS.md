@@ -34,6 +34,7 @@ aoe2war speed benchmark
 aoe2war speed benchmark --full
 aoe2war speed compare
 aoe2war speed diagnose
+aoe2war speed inventory
 aoe2war speed campaign start
 aoe2war speed campaign analyze
 aoe2war speed campaign status
@@ -41,12 +42,54 @@ aoe2war speed campaign verify
 ```
 
 `benchmark` defaults to a small critical public cohort. New `--full`
-benchmarks use the versioned 68-route V2 public cohort in
+benchmarks use the versioned 77-route V2 public cohort in
 `docs/audits/performance-route-cohort-v2.txt`: current static public surfaces
 plus stable representatives of dynamic route families. The frozen August 13
 66-route cohort remains historical comparison evidence only; it is not silently
 mixed with the V2 cohort.
 
+## Source page and asset inventory
+
+`aoe2war speed inventory` derives the performance estate from the current
+Next.js source tree instead of relying on a hand-maintained page count. At this
+revision the application contains 100 page entry points: 22 authenticated admin
+pages, 77 ordinary public page templates, and one sensitive dynamic public
+invoice template.
+
+Every ordinary public page template must have a stable representative in
+`docs/audits/performance-route-cohort-v2.txt`. The inventory command maps
+dynamic templates such as player, battle, clan, marketplace-shop, matchup and
+watch routes onto stable real representatives. CI fails when a new ordinary
+public page is added without a benchmark representative, so the Speed OS route
+universe grows with the product instead of silently falling behind.
+
+`/market/invoices/[publicId]` is intentionally classified separately. An
+invoice is user-specific state; a made-up UUID would measure an error path, not
+the real product. It must enter an authenticated or isolated-fixture performance
+lane before being claimed as measured. This is an explicit coverage boundary,
+not an invisible omission.
+
+The same inventory walks `public/` and records total file count/bytes,
+category totals for images, audio, video, fonts, data and downloads, plus the
+largest public artifacts. Tracked Git blob identity also exposes exact duplicate
+asset groups and the byte footprint that can be removed without recompressing or
+guessing at visual similarity. Duplicate evidence is an optimization candidate,
+not automatic deletion authority: aliases may intentionally preserve stable
+public URLs.
+
+That source inventory complements the existing browser Speed Runtime, which measures actual navigation resources, transferred
+bytes, API request count, slowest APIs/resources, long tasks, network
+characteristics and explicit application-ready time. Source bytes and runtime
+transfer bytes are different evidence and are preserved separately.
+
+The intended rhythm is:
+
+```bash
+aoe2war speed inventory --require-complete-public-coverage
+aoe2war speed campaign start
+# optimize only after the baseline receipt exists
+aoe2war speed campaign verify
+```
 
 ## Performance campaign V2
 
@@ -61,9 +104,17 @@ aoe2war speed campaign verify
 ```
 
 `campaign start` defaults to the full current route cohort and three rounds.
-It captures an immutable baseline benchmark before performance code is changed,
-binds that baseline to the exact certified production source/build, and writes a
-campaign receipt under `.aoe2war-release/performance-campaigns/`.
+It refuses to start while an ordinary public source page lacks a benchmark
+representative. The campaign archives the current page/asset inventory alongside
+the immutable timing baseline before performance code is changed, binds that
+baseline to the exact certified production source/build, and writes a campaign
+receipt under `.aoe2war-release/performance-campaigns/`.
+
+Verification captures the source inventory again. Its report therefore includes
+page-universe drift, public asset bytes before/after, and exact duplicate bytes
+before/after in addition to route timing deltas. A changed page universe during
+a performance-only campaign is a warning because speed work must not quietly
+become product-scope work.
 
 The analyzer ranks route-level opportunities from TTFB, total response time,
 download bytes, post-TTFB transfer tail, explicit Ready coverage, origin/public
