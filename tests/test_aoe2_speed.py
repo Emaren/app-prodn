@@ -7,6 +7,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 SPEED = ROOT / "scripts" / "aoe2_speed.py"
 SPEED_CAMPAIGN = ROOT / "scripts" / "aoe2_speed_campaign.py"
+SPEED_INVENTORY = ROOT / "scripts" / "aoe2_speed_inventory.py"
 GATE = ROOT / "scripts" / "aoe2_release_gate.py"
 
 SPEED_SPEC = importlib.util.spec_from_file_location("aoe2_speed", SPEED)
@@ -14,6 +15,15 @@ SPEED_MODULE = importlib.util.module_from_spec(SPEED_SPEC)
 assert SPEED_SPEC and SPEED_SPEC.loader
 SPEED_SPEC.loader.exec_module(SPEED_MODULE)
 sys.modules["aoe2_speed"] = SPEED_MODULE
+
+INVENTORY_SPEC = importlib.util.spec_from_file_location(
+    "aoe2_speed_inventory",
+    SPEED_INVENTORY,
+)
+INVENTORY_MODULE = importlib.util.module_from_spec(INVENTORY_SPEC)
+assert INVENTORY_SPEC and INVENTORY_SPEC.loader
+INVENTORY_SPEC.loader.exec_module(INVENTORY_MODULE)
+sys.modules["aoe2_speed_inventory"] = INVENTORY_MODULE
 
 CAMPAIGN_SPEC = importlib.util.spec_from_file_location(
     "aoe2_speed_campaign",
@@ -455,6 +465,41 @@ class PerformanceOSTests(unittest.TestCase):
             "/wolo-1",
         ):
             self.assertIn(route, routes)
+
+    def test_campaign_inventory_delta_tracks_asset_and_page_changes(self):
+        before = {
+            "source_page_count": 2,
+            "pages": [{"template": "/"}, {"template": "/bets"}],
+            "assets": {
+                "total_files": 10,
+                "total_bytes": 1_000,
+                "duplicate_avoidable_bytes": 200,
+            },
+        }
+        after = {
+            "source_page_count": 2,
+            "pages": [{"template": "/"}, {"template": "/bets"}],
+            "assets": {
+                "total_files": 8,
+                "total_bytes": 700,
+                "duplicate_avoidable_bytes": 50,
+            },
+        }
+
+        delta = CAMPAIGN_MODULE.inventory_delta(before, after)
+
+        self.assertEqual(delta["added_page_templates"], [])
+        self.assertEqual(delta["removed_page_templates"], [])
+        self.assertEqual(delta["public_asset_bytes_delta"], -300)
+        self.assertEqual(delta["duplicate_avoidable_bytes_delta"], -150)
+
+    def test_campaign_source_inventory_is_archived_in_baseline(self):
+        source = SPEED_CAMPAIGN.read_text(encoding="utf-8")
+
+        self.assertIn("source_inventory = campaign_source_inventory()", source)
+        self.assertIn('"source_inventory": source_inventory', source)
+        self.assertIn('verification["source_inventory"]', source)
+
 
     def test_speed_receipts_bind_to_production_source_not_operator_head(self):
         source = SPEED.read_text(encoding="utf-8")
