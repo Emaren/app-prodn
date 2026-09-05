@@ -27,6 +27,11 @@ operator intents until a future Warbound chain module exists.
 - `/champions` is the title-economy hub.
 - `/champions/[...slug]` renders detail pages for belts, national titles, ELO
   titles, tag titles, and designations.
+- `/national-champions` is the cinematic national-title projection. It must
+  derive current holders, Tribute, projected bounty, and reign age from the
+  same `loadChampionTitleEconomyState()` / persistent Trophy authority as the
+  main Champions surface; it must not maintain a second handwritten holder
+  table.
 - Legacy public spine links should point to `/champions`, not `/belts`, unless
   preserving an intentional redirect.
 
