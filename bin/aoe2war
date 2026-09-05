@@ -72,6 +72,7 @@ STORAGE="$BIN_DIR/../scripts/aoe2_storage.py"
 SPEED="$BIN_DIR/../scripts/aoe2_speed.py"
 SPEED_CAMPAIGN="$BIN_DIR/../scripts/aoe2_speed_campaign.py"
 SPEED_INVENTORY="$BIN_DIR/../scripts/aoe2_speed_inventory.py"
+SPEED_BUILD="$BIN_DIR/../scripts/aoe2_speed_build.py"
 DOCS_OS="$BIN_DIR/../scripts/aoe2_docs.py"
 COUNCIL="$BIN_DIR/../scripts/aoe2_council.py"
 WORKSPACE="$BIN_DIR/../scripts/aoe2_workspace.py"
@@ -81,6 +82,7 @@ SPEED_PULSE="$BIN_DIR/../scripts/aoe2_speed_pulse.py"
 FACTS="$BIN_DIR/../scripts/aoe2_facts.py"
 DEV_OS="$BIN_DIR/../scripts/aoe2_dev.py"
 TRUTH_OS="$BIN_DIR/../scripts/aoe2_truth.py"
+CODE_HEALTH="$BIN_DIR/../scripts/aoe2_code_health.py"
 DEPENDENCY_CHECK="$BIN_DIR/../scripts/check_dependency_contract.py"
 
 usage() {
@@ -95,14 +97,15 @@ Usage:
   aoe2war update [--apply] [--json]
   aoe2war control <status|refresh> [options]
   aoe2war docs <status|impact|audit|update> [options]
-  aoe2war speed [status|release-history|benchmark|compare|diagnose|inventory|campaign|pulse]
+  aoe2war speed [status|release-history|benchmark|compare|diagnose|inventory|build|campaign|pulse]
   aoe2war storage-retention [--apply] [--json]
   aoe2war storage <status|plan|maintain|verify> [options]
   aoe2war council [--json]
   aoe2war workspace <status|plan|clean> [options]
   aoe2war facts [--json]
   aoe2war dev <status|prepare|refresh|serve|new> [options]
-  aoe2war truth <status|census|audit|target> [options]
+  aoe2war truth <status|census|audit|closure|target> [options]
+  aoe2war code-health [--json] [--no-receipt] [--require-clean-worktree]
   aoe2war deps
   aoe2war host <status|tidy|maintenance-plan> [options]
   aoe2war recovery <status|plan> [options]
@@ -262,6 +265,11 @@ KINGDOM INTELLIGENCE / HYGIENE
       Cheap persisted critical-route public performance pulse. `aoe2war finish`
       runs this automatically after certification without weakening release truth.
 
+  aoe2war speed build
+      Inspect the completed Next production build for route-referenced JS/CSS,
+      largest static artifacts and bundle-size hotspots. Raw build size is kept
+      separate from browser/runtime transfer evidence.
+
   aoe2war workspace status
       Classify registered worktrees as main, clean+merged cleanup candidates,
       dirty preserved review, or active unmerged work. Unregistered siblings are
@@ -304,6 +312,12 @@ REPLAY TRUTH
   aoe2war truth audit
       Prove the full production cross-layer contract between high-level
       statistics authority and coherent participant W/L projection.
+
+  aoe2war truth closure
+      Classify every final battle into one explicit certainty disposition:
+      resolved, current-vault reparse, parser research, source artifact missing,
+      human review, result evidence required, or non-battle candidate. The goal
+      is 100% disposition accounting without manufacturing winner authority.
 
   aoe2war truth target GAME_ID
       Show one replay's effective truth, canonical teams, participant outcomes,
@@ -386,6 +400,10 @@ case "$command" in
       shift
       exec python3 "$SPEED_INVENTORY" "$@"
     fi
+    if [ "${1:-}" = "build" ]; then
+      shift
+      exec python3 "$SPEED_BUILD" "$@"
+    fi
     exec python3 "$SPEED" "$@"
     ;;
   council)
@@ -407,6 +425,10 @@ case "$command" in
   truth)
     shift
     exec python3 "$TRUTH_OS" "$@"
+    ;;
+  code-health)
+    shift
+    exec python3 "$CODE_HEALTH" "$@"
     ;;
   deps)
     shift
