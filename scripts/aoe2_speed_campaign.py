@@ -812,10 +812,20 @@ def inventory_delta(
 def start_campaign(*, full: bool, rounds: int, force_new: bool) -> dict[str, Any]:
     existing = latest_campaign(open_only=True)
     if existing and not force_new:
-        raise CampaignError(
-            "an open performance campaign already exists: "
-            f"{existing.get('campaign_id')}; verify or explicitly use --force-new"
+        current_identity = speed.collect_release_identity()
+        current_release = str(current_identity.get("release_sha") or "")
+        existing_release = str(
+            ((existing.get("baseline") or {}).get("release_sha")) or ""
         )
+        # An analyzed-but-unverified campaign remains protected for the same
+        # certified release. A campaign from an older release is historical
+        # evidence and must not block freezing a new release baseline.
+        if not current_release or existing_release == current_release:
+            raise CampaignError(
+                "an open performance campaign already exists for the current "
+                f"release: {existing.get('campaign_id')}; verify it or "
+                "explicitly use --force-new"
+            )
 
     source_inventory = campaign_source_inventory()
     baseline = speed.benchmark(full=full, rounds=rounds)
