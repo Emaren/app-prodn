@@ -64,6 +64,7 @@ RELEASE="$BIN_DIR/aoe2war-release"
 AUDIT="$BIN_DIR/../scripts/aoe2_audit.py"
 DOCTOR="$BIN_DIR/../scripts/aoe2_doctor.py"
 UPDATE="$BIN_DIR/../scripts/aoe2_update.py"
+CONTROL="$BIN_DIR/../scripts/aoe2_control.py"
 FINISH="$BIN_DIR/../scripts/aoe2_finish.py"
 BRIDGE="$BIN_DIR/../scripts/aoe2_operator_bridge.py"
 STORAGE_RETENTION="$BIN_DIR/../scripts/aoe2_storage_retention.py"
@@ -90,6 +91,7 @@ Usage:
   aoe2war audit [--json]
   aoe2war doctor [--json] [--strict]
   aoe2war update [--apply] [--json]
+  aoe2war control <status|refresh> [options]
   aoe2war docs <status|impact|audit|update> [options]
   aoe2war speed [status|release-history|benchmark|compare|diagnose|pulse]
   aoe2war storage-retention [--apply] [--json]
@@ -355,6 +357,10 @@ case "$command" in
   update)
     shift
     exec python3 "$UPDATE" "$@"
+    ;;
+  control)
+    shift
+    exec python3 "$CONTROL" "$@"
     ;;
   storage-retention)
     shift
