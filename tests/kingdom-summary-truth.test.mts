@@ -50,9 +50,21 @@ test("Kingdom summary derives current civic facts from real authorities", () => 
   );
   assert.match(
     summarySource,
-    /watcherClientEvent\.findMany/,
+    /gameStats\.findMany/,
   );
   assert.match(
+    summarySource,
+    /parse_source:\s*\{\s*startsWith:\s*"watcher"/,
+  );
+  assert.match(
+    summarySource,
+    /is_final:\s*true/,
+  );
+  assert.match(
+    summarySource,
+    /distinct:\s*\[\s*"userUid"/,
+  );
+  assert.doesNotMatch(
     summarySource,
     /15 \* 60 \* 1000/,
   );
@@ -106,7 +118,7 @@ test("Kingdom wealth is an explicit unencumbered community-reserve allowlist", (
   }
 });
 
-test("Kingdom page restores Citizens, Join the Quest, Watchers Active, and Kingdom Wealth without hand-entered values", () => {
+test("Kingdom page restores Citizens, Join the Quest, proven Watchers, and Kingdom Wealth without hand-entered values", () => {
   assert.match(
     pageSource,
     /loadKingdomSummary\(\)/,
@@ -116,6 +128,10 @@ test("Kingdom page restores Citizens, Join the Quest, Watchers Active, and Kingd
     /summary\.citizens/,
   );
   assert.match(
+    pageSource,
+    /watchers=\{summary\.watchers\}/,
+  );
+  assert.match(
     clientSource,
     /ledgerStats\.map/,
   );
@@ -123,10 +139,18 @@ test("Kingdom page restores Citizens, Join the Quest, Watchers Active, and Kingd
     clientSource,
     /citizens\.map/,
   );
+  assert.match(
+    clientSource,
+    /watchers\.map/,
+  );
+  assert.match(
+    clientSource,
+    /final replay successfully uploaded through the Watcher/,
+  );
 
   for (const label of [
     "Kingdom Wealth",
-    "Watchers Active",
+    "Watchers",
     "Citizens",
     "Joined The Quest",
   ]) {
@@ -139,6 +163,7 @@ test("Kingdom page restores Citizens, Join the Quest, Watchers Active, and Kingd
   for (const staleLiteral of [
     "100,000,000 WOLO",
     "Watchers active</div><div",
+    "Watchers Active",
     ">18<",
     ">3<",
   ]) {
