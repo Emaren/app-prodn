@@ -24,6 +24,9 @@ BASELINE_DIR = STATE / "performance-baselines"
 HISTORICAL_ROUTE_CSV = (
     ROOT / "docs" / "audits" / "performance-route-comparison-2026-08-13.csv"
 )
+FULL_ROUTE_COHORT_V2 = (
+    ROOT / "docs" / "audits" / "performance-route-cohort-v2.txt"
+)
 PUBLIC_BASE = "https://aoe2war.com"
 PRODUCTION_HOST = "hel1"
 ORIGIN_SPEED_URL = "http://127.0.0.1:3030/api/speed/check"
@@ -404,13 +407,123 @@ done
     }
 
 
+def production_capacity_snapshot() -> dict[str, Any]:
+    script = r'''
+cpu_count="$(getconf _NPROCESSORS_ONLN 2>/dev/null || nproc 2>/dev/null || echo 0)"
+load1="$(awk '{print $1}' /proc/loadavg 2>/dev/null || echo 0)"
+load5="$(awk '{print $2}' /proc/loadavg 2>/dev/null || echo 0)"
+mem_total_kb="$(awk '/^MemTotal:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+mem_available_kb="$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+swap_total_kb="$(awk '/^SwapTotal:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+swap_free_kb="$(awk '/^SwapFree:/ {print $2}' /proc/meminfo 2>/dev/null || echo 0)"
+root_total_kb="$(df -Pk / 2>/dev/null | awk 'NR==2 {print $2}')"
+root_free_kb="$(df -Pk / 2>/dev/null | awk 'NR==2 {print $4}')"
+volume_mount="/mnt/HC_Volume_105319120"
+if [ -d "$volume_mount" ]; then
+  volume_total_kb="$(df -Pk "$volume_mount" 2>/dev/null | awk 'NR==2 {print $2}')"
+  volume_free_kb="$(df -Pk "$volume_mount" 2>/dev/null | awk 'NR==2 {print $4}')"
+else
+  volume_total_kb=0
+  volume_free_kb=0
+fi
+web_pid="$(systemctl show aoe2hdbets-web.service -p MainPID --value 2>/dev/null || echo 0)"
+web_rss_kb=0
+web_threads=0
+if [ "${web_pid:-0}" -gt 0 ] 2>/dev/null && [ -r "/proc/$web_pid/status" ]; then
+  web_rss_kb="$(awk '/^VmRSS:/ {print $2}' "/proc/$web_pid/status" 2>/dev/null || echo 0)"
+  web_threads="$(awk '/^Threads:/ {print $2}' "/proc/$web_pid/status" 2>/dev/null || echo 0)"
+fi
+printf 'cpu_count=%s\n' "${cpu_count:-0}"
+printf 'load1=%s\n' "${load1:-0}"
+printf 'load5=%s\n' "${load5:-0}"
+printf 'mem_total_kb=%s\n' "${mem_total_kb:-0}"
+printf 'mem_available_kb=%s\n' "${mem_available_kb:-0}"
+printf 'swap_total_kb=%s\n' "${swap_total_kb:-0}"
+printf 'swap_free_kb=%s\n' "${swap_free_kb:-0}"
+printf 'root_total_kb=%s\n' "${root_total_kb:-0}"
+printf 'root_free_kb=%s\n' "${root_free_kb:-0}"
+printf 'volume_total_kb=%s\n' "${volume_total_kb:-0}"
+printf 'volume_free_kb=%s\n' "${volume_free_kb:-0}"
+printf 'web_pid=%s\n' "${web_pid:-0}"
+printf 'web_rss_kb=%s\n' "${web_rss_kb:-0}"
+printf 'web_threads=%s\n' "${web_threads:-0}"
+'''
+
+    try:
+        proc = subprocess.run(
+            [
+                "ssh",
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=8",
+                PRODUCTION_HOST,
+                "bash",
+                "-s",
+            ],
+            input=script,
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=20,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"available": False, "error": str(exc)}
+
+    if proc.returncode != 0:
+        return {
+            "available": False,
+            "error": (proc.stderr or proc.stdout or "").strip()[-1000:],
+        }
+
+    raw: dict[str, str] = {}
+    for line in proc.stdout.splitlines():
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        raw[key.strip()] = value.strip()
+
+    def integer(key: str) -> int:
+        try:
+            return int(float(raw.get(key, "0")))
+        except ValueError:
+            return 0
+
+    def number(key: str) -> float:
+        try:
+            return float(raw.get(key, "0"))
+        except ValueError:
+            return 0.0
+
+    return {
+        "available": True,
+        "cpu_count": integer("cpu_count"),
+        "load1": number("load1"),
+        "load5": number("load5"),
+        "mem_total_kb": integer("mem_total_kb"),
+        "mem_available_kb": integer("mem_available_kb"),
+        "swap_total_kb": integer("swap_total_kb"),
+        "swap_free_kb": integer("swap_free_kb"),
+        "root_total_kb": integer("root_total_kb"),
+        "root_free_kb": integer("root_free_kb"),
+        "volume_total_kb": integer("volume_total_kb"),
+        "volume_free_kb": integer("volume_free_kb"),
+        "web_pid": integer("web_pid"),
+        "web_rss_kb": integer("web_rss_kb"),
+        "web_threads": integer("web_threads"),
+    }
+
 def collect_release_identity() -> dict[str, Any]:
     sys.path.insert(0, str(ROOT / "scripts"))
     import aoe2_release  # type: ignore
 
     data = aoe2_release.collect()
     return {
-        "release_sha": data.get("local", {}).get("head"),
+        "release_sha": data.get("production", {}).get("source_sha"),
+        "operator_source_sha": data.get("local", {}).get("head"),
+        "github_main_sha": data.get("github", {}).get("main_sha"),
         "build_id": data.get("production", {}).get("active_build_id"),
         "build_version": data.get("production", {}).get("internal_build_version"),
         "certification": data.get("certification", {}).get("status"),
@@ -420,13 +533,27 @@ def collect_release_identity() -> dict[str, Any]:
 def route_list(full: bool) -> list[str]:
     if not full:
         return QUICK_ROUTES.copy()
-    if not HISTORICAL_ROUTE_CSV.is_file():
-        raise SpeedError(f"historical route cohort missing: {HISTORICAL_ROUTE_CSV}")
-    with HISTORICAL_ROUTE_CSV.open(newline="") as handle:
-        rows = list(csv.DictReader(handle))
-    paths = [str(row["path"]) for row in rows if row.get("path")]
-    if len(paths) != 66:
-        raise SpeedError(f"expected 66 full-cohort routes, found {len(paths)}")
+
+    if not FULL_ROUTE_COHORT_V2.is_file():
+        raise SpeedError(
+            f"full performance route cohort missing: {FULL_ROUTE_COHORT_V2}"
+        )
+
+    paths = [
+        line.strip()
+        for line in FULL_ROUTE_COHORT_V2.read_text(
+            encoding="utf-8",
+        ).splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+
+    if len(paths) != len(set(paths)):
+        raise SpeedError("full performance route cohort contains duplicate paths")
+    if not paths:
+        raise SpeedError("full performance route cohort is empty")
+    if any(not path.startswith("/") for path in paths):
+        raise SpeedError("full performance route cohort contains a non-route entry")
+
     return paths
 
 
@@ -479,6 +606,7 @@ def benchmark(*, full: bool, rounds: int) -> dict[str, Any]:
 
     seam = origin_seam()
     ready = ready_coverage()
+    capacity = production_capacity_snapshot()
 
     payload = {
         "schema": 1,
@@ -493,6 +621,7 @@ def benchmark(*, full: bool, rounds: int) -> dict[str, Any]:
         "cohort": summarize_route_cohort(per_route),
         "origin_seam": seam,
         "ready_coverage": ready,
+        "production_capacity": capacity,
         "routes": per_route,
     }
 
