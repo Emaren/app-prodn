@@ -1195,3 +1195,17 @@ Preferred live setup:
 - fee: `5000uwolo`
 
 Do not route staking unstake through the generic betting payout service. That path has different settlement headroom semantics and can block valid staking returns.
+
+
+## Evidence-preserving finish mode
+
+Ordinary `aoe2war finish` may apply the existing bounded context-retention policy before a fresh context capture. When a campaign requires prior context archives to remain byte-preserved, use:
+
+```bash
+aoe2war finish --preserve-context-history
+```
+
+This does **not** bypass the release lane. It still captures and verifies fresh context, runs the normal gate/deploy/certification/audit/Doctor sequence, and leaves Wolo observe-only. It disables only context-archive pruning for that finish transaction. Independent cache-only storage retention and certified rollback retention remain governed by their existing policies.
+
+The dry-run reports `evidence_retention` and `automatic_mutation_boundaries`, including whether context pruning and cache retention are expected. Use `--preserve-context-history` when historical context itself is part of the evidence being protected; do not use it as a substitute for Storage OS or Recovery OS.
+
