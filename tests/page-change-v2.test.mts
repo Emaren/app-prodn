@@ -16,10 +16,10 @@ const hrefs = [
   "/kingdom", "/oracle", "/leaderboard", "/champions", "/national-champions",
   "/clans", "/academy", "/market", "/ai", "/bounties", "/forum", "/radio",
   "/workshop", "/game-stats", "/traffic", "/kingdom-forge", "/round-chamber",
-  "/statistics", "/speed",
+  "/statistics", "/speed", "/kingdom-intelligence",
 ];
 
-test("all 19 Kingdom-menu pages have generated source editions", () => {
+test("all 20 Kingdom-menu pages have generated source editions", () => {
   for (const href of hrefs) assert.ok(manifest.includes(`href: "${href}"`));
   assert.equal((manifest.match(/href: "\//g) ?? []).length, 19);
   assert.match(manifest, /version: "src-[a-f0-9]{20}"/);
