@@ -71,6 +71,19 @@ test("explicit team IDs recover team presentation when team_resolution is absent
   );
 });
 
+test("a complete two-player roster remains an inherent 1v1", () => {
+  const result = resolveReplayTeamPresentation({
+    players: [
+      { name: "Emaren" },
+      { name: "Jim" },
+    ],
+  });
+
+  assert.equal(result.status, "resolved");
+  assert.equal(result.format, "1v1");
+  assert.equal(result.matchupLabel, "Emaren vs Jim");
+});
+
 test("incomplete team truth never invents versus sides from roster order", () => {
   const result = resolveReplayTeamPresentation({
     players: roster.map(({ name }) => ({ name })),
