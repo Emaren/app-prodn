@@ -22,6 +22,7 @@ PAGES = [
     ("/forum", "Forum"),
     ("/radio", "Radio WOLO"),
     ("/workshop", "The Workshop"),
+    ("/kingdom-intelligence", "Kingdom Intelligence"),
     ("/game-stats", "Parser Observatory"),
     ("/traffic", "Traffic Observatory"),
     ("/kingdom-forge", "Kingdom Forge"),
