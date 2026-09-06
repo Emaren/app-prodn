@@ -101,6 +101,7 @@ def refresh_control_state(
                 result["context_archives"] = aoe2_update.capture_context(
                     ["VPSSentry", "AoE2WAR-docs"],
                     progress=own_progress,
+                    include_host_context=True,
                 )
                 own_progress.done("Control-plane context evidence verified")
             else:
