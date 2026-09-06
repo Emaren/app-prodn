@@ -6,6 +6,7 @@ import pathlib
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "aoe2_update.py"
 SCRIPTS = SCRIPT.parent
@@ -90,6 +91,107 @@ class UpdateCommandTests(unittest.TestCase):
             )
         )
         self.assertFalse(MODULE.baseline_refresh_needed("candidate document found"))
+
+    def test_collect_plan_allows_central_quality_p0_self_remediation(self):
+        audit = mock.Mock()
+        audit.payload.return_value = {
+            "p0": 2,
+            "p1": 1,
+            "findings": [
+                {
+                    "severity": "P0",
+                    "area": "Documentation",
+                    "key": "docs-check",
+                    "detail": "stale federated registry",
+                },
+                {
+                    "severity": "P0",
+                    "area": "Documentation",
+                    "key": "strict-build",
+                    "detail": "stale federated registry",
+                },
+                {
+                    "severity": "P1",
+                    "area": "Documentation",
+                    "key": "central-source-snapshot-stale",
+                    "detail": "vpssentry central snapshot is stale",
+                },
+            ],
+        }
+
+        with mock.patch.object(
+            MODULE.aoe2_audit,
+            "collect_audit",
+            return_value=audit,
+        ), mock.patch.object(
+            MODULE,
+            "source_checker",
+            return_value=(0, "PASS"),
+        ), mock.patch.object(
+            MODULE,
+            "estate_map_refresh_plan",
+            return_value={
+                "status": "deferred",
+                "reason": "post-deploy",
+                "intended_source_sha": "a" * 40,
+            },
+        ):
+            plan = MODULE.collect_plan(release_data=certified_release())
+
+        self.assertFalse(plan["blocked"])
+        self.assertTrue(plan["central_sync"])
+        self.assertEqual(
+            {item["key"] for item in plan["auto_remediable_p0"]},
+            {"docs-check", "strict-build"},
+        )
+        self.assertEqual(plan["unknown_p0"], [])
+
+    def test_collect_plan_keeps_nonremediable_p0_blocking(self):
+        audit = mock.Mock()
+        audit.payload.return_value = {
+            "p0": 1,
+            "p1": 1,
+            "findings": [
+                {
+                    "severity": "P0",
+                    "area": "Documentation",
+                    "key": "docs-venv-missing",
+                    "detail": "central docs venv is missing",
+                },
+                {
+                    "severity": "P1",
+                    "area": "Documentation",
+                    "key": "central-source-snapshot-stale",
+                    "detail": "vpssentry central snapshot is stale",
+                },
+            ],
+        }
+
+        with mock.patch.object(
+            MODULE.aoe2_audit,
+            "collect_audit",
+            return_value=audit,
+        ), mock.patch.object(
+            MODULE,
+            "source_checker",
+            return_value=(0, "PASS"),
+        ), mock.patch.object(
+            MODULE,
+            "estate_map_refresh_plan",
+            return_value={
+                "status": "deferred",
+                "reason": "post-deploy",
+                "intended_source_sha": "a" * 40,
+            },
+        ):
+            plan = MODULE.collect_plan(release_data=certified_release())
+
+        self.assertTrue(plan["blocked"])
+        self.assertEqual(plan["auto_remediable_p0"], [])
+        self.assertEqual(
+            [item["key"] for item in plan["unknown_p0"]],
+            ["docs-venv-missing"],
+        )
 
     def test_deferred_context_audit_allows_only_selected_archive_stale(self):
         audit = {
