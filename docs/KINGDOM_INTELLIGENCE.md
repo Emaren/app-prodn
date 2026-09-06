@@ -163,6 +163,9 @@ including:
 - a protected **Refresh Kingdom State** action that runs the certified control
   refresh and regenerates the coherent AoE2HDBets/WoloChain/VPSSentry/
   AoE2WAR-docs/MBP/VPS context camera set;
+- direct read-only **Storage Status**, **Storage Plan**, and **Storage Campaign**
+  controls so capacity health, the next bounded archival candidate, and detached
+  campaign lifecycle can be inspected without opening a terminal;
 - separate documentation planning/synchronization controls so a documentation
   maintenance operation is not confused with a full kingdom-state refresh.
 
