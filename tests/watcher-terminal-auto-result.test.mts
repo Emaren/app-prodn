@@ -872,7 +872,7 @@ test(
       activityObservationId:
         7001,
       activityObservationFieldPath:
-        "actions.raw_activity_by_player",
+        WATCHER_TERMINAL_RAW_ACTIVITY_FIELD_PATH,
     };
 
     const evaluation =
@@ -942,7 +942,7 @@ test(
       activityObservationId:
         7002,
       activityObservationFieldPath:
-        "actions.raw_activity_by_player",
+        WATCHER_TERMINAL_RAW_ACTIVITY_FIELD_PATH,
     };
 
     assert.deepEqual(
