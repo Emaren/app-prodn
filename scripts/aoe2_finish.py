@@ -800,7 +800,7 @@ from pathlib import Path
     wolo_pid, wolo_restarts, wolo_height_before, wolo_height_after,
 ) = sys.argv[1:]
 
-payload = {
+payload = {{
     "schema": 1,
     "kind": "aoe2war-maintenance-runner-reconciliation",
     "status": status,
@@ -816,10 +816,10 @@ payload = {
     "wolo_height_after": int(wolo_height_after),
     "wolo_mutated": False,
     "reconciled_at": datetime.now(timezone.utc).isoformat(),
-}
+}}
 
 path = Path(receipt)
-tmp = path.with_name(path.name + f".partial.{os.getpid()}")
+tmp = path.with_name(path.name + f".partial.{{os.getpid()}}")
 tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 os.chmod(tmp, 0o444)
 os.replace(tmp, path)

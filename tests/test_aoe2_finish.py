@@ -394,6 +394,43 @@ class MaintenanceRunnerHandoffTests(unittest.TestCase):
         self.assertIn("maintenance-runner-sync-receipts", source)
         self.assertIn('os.chmod(tmp, 0o444)', source)
 
+    def test_runner_reconciliation_template_renders_before_remote_execution(self):
+        contract = MODULE.aoe2_doctor.load_contract()
+        source = (
+            MODULE.ROOT
+            / contract["maintenance_safety"]["runner_source"]
+        )
+        source_text = source.read_text(encoding="utf-8")
+        expected_sha = MODULE.hashlib.sha256(
+            source_text.encode("utf-8")
+        ).hexdigest()
+
+        completed = mock.Mock(
+            returncode=0,
+            stdout=(
+                "status\tNOOP\n"
+                f"installed_sha256\t{expected_sha}\n"
+                "receipt_path\t"
+                "/tmp/maintenance-runner-sync-receipts/test.json\n"
+            ),
+        )
+
+        with patch.object(
+            MODULE,
+            "git_output",
+            return_value="a" * 40,
+        ), patch.object(
+            MODULE.subprocess,
+            "run",
+            return_value=completed,
+        ):
+            result = MODULE.reconcile_maintenance_runner(
+                progress=MODULE.Progress(enabled=False),
+            )
+
+        self.assertEqual(result["status"], "NOOP")
+        self.assertEqual(result["installed_sha256"], expected_sha)
+
     def test_runner_reconciliation_is_enabled_in_operations_contract(self):
         contract_path = pathlib.Path(__file__).resolve().parents[1] / "config" / "aoe2war-operations.json"
         contract = MODULE.json.loads(contract_path.read_text(encoding="utf-8"))
