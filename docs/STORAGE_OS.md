@@ -27,6 +27,10 @@ aoe2war storage status
 aoe2war storage plan
 aoe2war storage maintain
 aoe2war storage maintain --apply
+aoe2war storage campaign start --max-generations 25
+aoe2war storage campaign status
+aoe2war storage campaign pause
+aoe2war storage campaign resume
 aoe2war storage verify
 ```
 
@@ -122,6 +126,38 @@ Rollback compression uses zstd's available worker threads; the systemd CPU
 quota remains the aggregate governor. Replacement receipts record total
 transaction duration so Storage OS can compare throughput across generations
 and future governor revisions.
+
+## Terminal-independent campaign controller
+
+Long archival campaigns no longer need to remain attached to an interactive
+terminal. `aoe2war storage campaign start` binds a campaign to one exact
+certified app source SHA and BUILD_ID, writes atomic durable local campaign
+state, then launches the controller in a detached process group with its output
+redirected to a durable campaign log.
+
+The controller still invokes the existing proven **one-generation** archive
+worker. It does not weaken or enlarge the transaction mutation unit. After each
+successful generation it persists the completed generation, resulting volume
+usage, and verified-receipt count before it is allowed to plan the next one.
+
+Campaign lifecycle:
+
+- `start` creates a new source/build-bound campaign and detaches it from the
+  operator terminal;
+- `status` reports durable progress, current generation, process liveness,
+  completion reason, and log path;
+- `pause` is cooperative and only takes effect **between generations**; there
+  is intentionally no campaign SIGKILL/SIGTERM operator path;
+- `resume` restarts a stopped/failed/paused controller only when the canonical
+  source and certified build still equal the campaign authorization;
+- if source/build authority changes, planning becomes inconsistent, or a
+  transaction dies in an ambiguous evidence state, the controller fails closed
+  rather than manufacture continuity.
+
+Closing a terminal therefore does not stop an active campaign. A machine reboot
+or controller crash may require `resume`; if the previous interruption occurred
+inside a one-generation transaction and exact evidence cannot be re-established,
+resume remains blocked for explicit census/recovery rather than guessing.
 
 ## Storage lifecycle direction
 
