@@ -325,8 +325,25 @@ KINGDOM INTELLIGENCE / HYGIENE
   aoe2war recovery campaign plan
       Run one read-only live recovery census and turn it into a finite,
       capacity-aware evidence campaign. It resolves the live Wolo home from the
-      running process, classifies parser evidence, preserves the separate key
-      custody boundary, and performs no backup/service/Wolo mutation.
+      running process, classifies parser evidence and preserves the separate key
+      custody boundary.
+
+  aoe2war recovery campaign preflight
+      Verify the current plan, clean main source, required local tools, Mac
+      capacity and the public recovery certificate matching the verified pilot.
+      Makes no backup/service/Wolo change.
+
+  aoe2war recovery campaign start --authorize-ordinary-capture
+      Start a detached bounded capture of only the five ordinary non-Wolo
+      recovery classes. Each class streams from production through SSH into an
+      encrypted CMS artifact on the Mac, hashes the plaintext tar stream and
+      ciphertext, structurally parses the CMS object and writes immutable proof.
+      Settlement, Wolo quiescence and key custody are not authorized.
+
+  aoe2war recovery campaign status
+      Show the latest ordinary capture campaign, progress, active class, bundle
+      and durable log. Pause is cooperative between classes; resume refuses an
+      ambiguous interruption inside a class.
 
 REPLAY TRUTH
 
