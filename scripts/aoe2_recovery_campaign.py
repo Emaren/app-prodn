@@ -22,6 +22,9 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[1]
 CAMPAIGN_DIR = ROOT / ".aoe2war-release" / "recovery-campaigns"
 LOCK_PATH = CAMPAIGN_DIR / "campaign.lock"
+RECOVERY_KEY_ROOT = Path.home() / "Library" / "Application Support" / "AoE2WAR Recovery" / "keys"
+CANONICAL_RECOVERY_PRIVATE_KEY = RECOVERY_KEY_ROOT / "recovery-v1-private.pem"
+CANONICAL_RECOVERY_CERTIFICATE = RECOVERY_KEY_ROOT / "recovery-v1-recipient.pem"
 ORDINARY_CLASSES = (
     "managed_user_media",
     "legacy_direct_message_attachments",
@@ -167,6 +170,66 @@ def certificate_fingerprint(path: Path) -> str:
     return normalize_fingerprint(proc.stdout.strip())
 
 
+def private_key_matches_certificate(
+    private_key: Path,
+    certificate: Path,
+) -> bool:
+    private_proc = subprocess.run(
+        [
+            "openssl",
+            "pkey",
+            "-in",
+            str(private_key),
+            "-pubout",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    cert_proc = subprocess.run(
+        [
+            "openssl",
+            "x509",
+            "-in",
+            str(certificate),
+            "-pubkey",
+            "-noout",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    return (
+        private_proc.returncode == 0
+        and cert_proc.returncode == 0
+        and private_proc.stdout == cert_proc.stdout
+    )
+
+
+def verify_canonical_private_key(certificate: Path) -> dict[str, Any]:
+    private_key = CANONICAL_RECOVERY_PRIVATE_KEY
+    if not private_key.is_file():
+        raise CampaignError(
+            "canonical recovery private key is missing: "
+            f"{private_key}"
+        )
+    mode = private_key.stat().st_mode & 0o777
+    if mode != 0o600:
+        raise CampaignError(
+            "canonical recovery private key must have mode 0600: "
+            f"{private_key} mode={mode:03o}"
+        )
+    if not private_key_matches_certificate(private_key, certificate):
+        raise CampaignError(
+            "canonical recovery private key does not match recipient certificate"
+        )
+    return {
+        "path": str(private_key.resolve()),
+        "mode": f"{mode:03o}",
+        "certificate_match": True,
+    }
+
+
 def resolve_recipient_certificate(
     requested: str | None,
     pilot: dict[str, Any],
@@ -190,6 +253,12 @@ def resolve_recipient_certificate(
             )
         return candidate, actual
 
+    canonical = CANONICAL_RECOVERY_CERTIFICATE
+    if canonical.is_file():
+        actual = certificate_fingerprint(canonical)
+        if actual == expected:
+            return canonical.resolve(), actual
+
     matches: list[Path] = []
     if recovery.RECOVERY_VAULT_ROOT.is_dir():
         for candidate in recovery.RECOVERY_VAULT_ROOT.rglob("*"):
@@ -207,7 +276,8 @@ def resolve_recipient_certificate(
     if not unique:
         raise CampaignError(
             "recipient certificate matching the verified pilot was not found "
-            "under ~/aoe2war-recovery; pass --recipient-cert PATH"
+            "at the canonical Mac key authority or under ~/aoe2war-recovery; "
+            "pass --recipient-cert PATH"
         )
     raise CampaignError(
         "multiple matching recipient certificates found; pass --recipient-cert PATH"
@@ -255,6 +325,7 @@ def preflight(recipient_cert: str | None) -> dict[str, Any]:
     if not isinstance(pilot, dict):
         raise CampaignError("verified database/operator pilot is required")
     cert, fingerprint = resolve_recipient_certificate(recipient_cert, pilot)
+    private_key = verify_canonical_private_key(cert)
     stages = ordinary_stages(plan)
     source = source_identity()
 
@@ -267,6 +338,7 @@ def preflight(recipient_cert: str | None) -> dict[str, Any]:
         "authority": plan.get("authority"),
         "recipient_certificate": str(cert),
         "recipient_certificate_fingerprint": fingerprint,
+        "canonical_private_key": private_key,
         "ordinary_classes": [stage["class"] for stage in stages],
         "ordinary_payload_bytes": sum(
             int(stage.get("estimated_bytes") or 0) for stage in stages
@@ -816,6 +888,15 @@ def print_preflight(payload: dict[str, Any]) -> None:
     print(f"Tool source:   {payload['tool_source'][:12]}")
     print(f"Authority:     {payload['authority']}")
     print(f"Certificate:   {payload['recipient_certificate']}")
+    key = payload.get("canonical_private_key") or {}
+    print(
+        "Private key:   "
+        + (
+            f"READY · mode={key.get('mode')} · certificate_match=PASS"
+            if key.get("certificate_match")
+            else "NOT VERIFIED"
+        )
+    )
     print(
         "Ordinary data: "
         f"{payload['ordinary_payload_bytes'] / (1024 ** 3):.2f} GiB"
