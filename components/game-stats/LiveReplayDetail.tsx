@@ -823,6 +823,135 @@ function BattleMatrixLayoutIcon({ fullWidth }: { fullWidth: boolean }) {
   );
 }
 
+function rosterNameKey(value: string) {
+  return value.trim().toLocaleLowerCase("en-US");
+}
+
+function findMatrixPlayerIndex(
+  players: LiveReplayPlayerRecord[],
+  name: string
+) {
+  const key = rosterNameKey(name);
+  return players.findIndex(
+    (player) => rosterNameKey(displayPlayerName(player)) === key
+  );
+}
+
+function BattleMatrixBoard({
+  players,
+  teamPresentation,
+  summaries,
+  series,
+  globalPeakEapm,
+  warming,
+  historyRows,
+  durationSeconds,
+  fullWidth,
+}: {
+  players: LiveReplayPlayerRecord[];
+  teamPresentation: ReplayTeamPresentation;
+  summaries: PlayerPulseSummary[];
+  series: PlayerPulsePoint[][];
+  globalPeakEapm: number;
+  warming: boolean;
+  historyRows: number;
+  durationSeconds: number | null;
+  fullWidth: boolean;
+}) {
+  if (players.length === 0) {
+    return (
+      <div className="mt-6">
+        <EmptyPanel message="No player pulse payload has landed yet for the battle matrix." />
+      </div>
+    );
+  }
+
+  if (warming) {
+    return (
+      <div className="mt-6">
+        <SignalWarmupPanel
+          players={players}
+          historyRows={historyRows}
+          durationSeconds={durationSeconds}
+        />
+      </div>
+    );
+  }
+
+  if (
+    teamPresentation.status !== "resolved" ||
+    teamPresentation.teams.length !== 2
+  ) {
+    return (
+      <div className="mt-6">
+        <div className="mb-4 rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] px-4 py-3 text-sm leading-6 text-amber-100">
+          Team truth is not complete enough to claim sides yet. The lanes below show the live roster without inventing a matchup.
+        </div>
+        <div className={`grid gap-4 ${fullWidth ? "" : "xl:grid-cols-2"}`}>
+          {players.map((player, index) => (
+            <BattleMatrixLane
+              key={`${displayPlayerName(player)}-${index}`}
+              player={player}
+              summary={summaries[index]}
+              series={series[index]}
+              globalPeakEapm={globalPeakEapm}
+              tone="neutral"
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`mt-6 grid items-start gap-5 ${fullWidth ? "" : "xl:grid-cols-2"}`}>
+      {teamPresentation.teams.map((team, teamIndex) => {
+        const tone = teamIndex === 0 ? "sky" : "amber";
+        const sideShell =
+          tone === "sky"
+            ? "border-sky-300/20 bg-sky-400/[0.035]"
+            : "border-amber-300/20 bg-amber-400/[0.035]";
+        const sideLabel = tone === "sky" ? "text-sky-200" : "text-amber-200";
+
+        return (
+          <section
+            key={team.teamKey}
+            className={`min-w-0 rounded-[1.9rem] border p-3 sm:p-4 ${sideShell}`}
+          >
+            <div className="min-w-0 px-1 pb-3">
+              <div className={`text-[11px] uppercase tracking-[0.28em] ${sideLabel}`}>
+                Team {teamIndex === 0 ? "A" : "B"}
+                {teamPresentation.format ? ` · ${teamPresentation.format}` : ""}
+              </div>
+              <div className="mt-2 break-words text-lg font-semibold leading-6 text-white [overflow-wrap:anywhere]">
+                {team.names.join(" / ")}
+              </div>
+            </div>
+
+            <div className="grid gap-4">
+              {team.names.map((name) => {
+                const playerIndex = findMatrixPlayerIndex(players, name);
+                if (playerIndex < 0) return null;
+
+                return (
+                  <BattleMatrixLane
+                    key={`${team.teamKey}-${name}`}
+                    player={players[playerIndex]}
+                    summary={summaries[playerIndex]}
+                    series={series[playerIndex]}
+                    globalPeakEapm={globalPeakEapm}
+                    tone={tone}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
 function BattleMatrixLane({
   player,
   summary,
@@ -834,7 +963,7 @@ function BattleMatrixLane({
   summary: PlayerPulseSummary;
   series: PlayerPulsePoint[];
   globalPeakEapm: number;
-  tone: "sky" | "amber";
+  tone: "sky" | "amber" | "neutral";
 }) {
   const civilization = normalizePublicReplayText(readPlayerCivilizationLabel(player)) ?? "HD warrior";
   const rmRating = readPlayerSteamRmRating(player);
@@ -850,19 +979,26 @@ function BattleMatrixLane({
           rail: "from-amber-200 via-amber-300 to-rose-300",
           active: "bg-amber-300/18 text-amber-50 border-amber-300/24",
         }
-      : {
-          shell: "border-sky-300/20 bg-[linear-gradient(180deg,rgba(56,189,248,0.09),rgba(56,189,248,0.03))]",
-          accent: "text-sky-100",
-          rail: "from-sky-300 via-cyan-300 to-emerald-300",
-          active: "bg-sky-300/18 text-sky-50 border-sky-300/24",
-        };
+      : tone === "sky"
+        ? {
+            shell: "border-sky-300/20 bg-[linear-gradient(180deg,rgba(56,189,248,0.09),rgba(56,189,248,0.03))]",
+            accent: "text-sky-100",
+            rail: "from-sky-300 via-cyan-300 to-emerald-300",
+            active: "bg-sky-300/18 text-sky-50 border-sky-300/24",
+          }
+        : {
+            shell: "border-white/10 bg-[linear-gradient(180deg,rgba(148,163,184,0.08),rgba(15,23,42,0.04))]",
+            accent: "text-slate-100",
+            rail: "from-slate-400 via-slate-300 to-white",
+            active: "bg-slate-300/10 text-slate-100 border-slate-300/15",
+          };
 
   return (
-    <div className={`min-w-0 overflow-hidden rounded-[1.75rem] border p-5 sm:p-6 ${toneClass.shell}`}>
-      <div className="flex flex-wrap items-start justify-between gap-6">
-        <div className="min-w-0">
+    <div className={`min-w-0 overflow-hidden rounded-[1.6rem] border p-4 sm:p-5 ${toneClass.shell}`}>
+      <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+        <div className="min-w-0 flex-1">
           <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Activity lane</div>
-          <div className={`mt-2 break-words text-2xl font-semibold ${toneClass.accent}`}>
+          <div className={`mt-2 break-words text-xl font-semibold leading-7 sm:text-2xl ${toneClass.accent} [overflow-wrap:anywhere]`}>
             {displayPlayerName(player)}
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -872,10 +1008,10 @@ function BattleMatrixLane({
           </div>
         </div>
 
-        <div className="rounded-[1.35rem] border border-white/8 bg-slate-950/30 px-4 py-3 text-right">
-          <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Current EAPM</div>
-          <div className="mt-2 text-4xl font-semibold text-white">{formatActivityMetric(summary.currentEapm)}</div>
-          <div className="mt-1 text-sm text-slate-300">{formatDeltaMetric(summary.eapmDelta)} from opening</div>
+        <div className="w-[7.4rem] shrink-0 rounded-[1.25rem] border border-white/8 bg-slate-950/30 px-3 py-3 text-right">
+          <div className="text-[9px] uppercase leading-4 tracking-[0.18em] text-slate-500">Current EAPM</div>
+          <div className="mt-1.5 text-3xl font-semibold leading-none text-white">{formatActivityMetric(summary.currentEapm)}</div>
+          <div className="mt-2 text-[11px] leading-4 text-slate-300">{formatDeltaMetric(summary.eapmDelta)} from opening</div>
         </div>
       </div>
 
@@ -896,7 +1032,7 @@ function BattleMatrixLane({
               }}
             />
           </div>
-          <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mt-5 grid grid-cols-[repeat(auto-fit,minmax(5.25rem,1fr))] gap-3">
             {summary.openingEapm !== null ? <MatrixMetric label="Opening" value={formatActivityMetric(summary.openingEapm)} /> : null}
             {summary.peakEapm !== null ? <MatrixMetric label="Peak" value={formatActivityMetric(summary.peakEapm)} /> : null}
             <MatrixMetric label="Coverage" value={`${summary.pulseCount}/${Math.max(1, visibleSeries.length)}`} />
@@ -912,7 +1048,7 @@ function BattleMatrixLane({
             <span>Pulse strip</span>
             <span>{visibleSeries.length} pulses</span>
           </div>
-          <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(3.65rem,1fr))] gap-2.5">
+          <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(3.25rem,1fr))] gap-2.5">
             {visibleSeries.map((point) => (
               <div
                 key={`${summary.name}-${point.parseIteration}`}
@@ -980,7 +1116,7 @@ function MatrixMetric({ label, value }: { label: string; value: string }) {
       <div className="break-words text-[10px] uppercase leading-4 tracking-[0.16em] text-slate-500">
         {label}
       </div>
-      <div className="mt-2 text-base font-semibold leading-none text-slate-100">{value}</div>
+      <div className="mt-2 break-words text-base font-semibold leading-5 text-slate-100 [overflow-wrap:anywhere]">{value}</div>
     </div>
   );
 }
