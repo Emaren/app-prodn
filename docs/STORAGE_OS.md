@@ -145,6 +145,27 @@ creation itself:
 Until off-host authority and restore proof exist, unique verified archives are
 not automatic deletion candidates.
 
+
+## Live handoff into a newer Storage OS
+
+A Storage OS implementation may be upgraded without abandoning a proven
+one-generation transaction. The canonical seam is the boundary after a worker
+has sealed its replacement receipt and released the release, retention and
+archive locks, but before the local batch orchestrator starts the next
+generation.
+
+Finish now reconciles the installed root-owned maintenance runner at exactly
+that serialized boundary. If a worker is still active, the same locks make the
+handoff fail closed. Once the seam is free, the new runner is atomically
+installed with exact SHA, syntax, owner/mode, durable receipt and Wolo
+continuity proof before the normal operational Doctor proceeds.
+
+This permits a controlled "mid-air refuel": finish the current exact
+transaction, freeze the old batch from replanning, certify the new control
+plane, then resume the remaining storage backlog under the new governor. No
+partially verified generation is discarded or reinterpreted.
+
+
 ## Deployment boundary
 
 Cold archival is deliberately outside the latency-critical `aoe2war finish`

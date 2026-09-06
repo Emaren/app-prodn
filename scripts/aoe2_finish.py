@@ -601,6 +601,301 @@ def ssh_text(
     return process.returncode, process.stdout or ""
 
 
+
+def reconcile_maintenance_runner(
+    *,
+    progress: Progress,
+) -> dict[str, Any]:
+    contract = aoe2_doctor.load_contract()
+    finish = contract.get("finish") or {}
+    if not bool(finish.get("auto_maintenance_runner_reconcile", False)):
+        return {"status": "DISABLED"}
+
+    policy = contract.get("maintenance_safety") or {}
+    archive = contract.get("rollback_archive") or {}
+    canonical = contract.get("canonical") or {}
+
+    source_rel = str(policy.get("runner_source") or "")
+    installed = str(policy.get("runner_installed") or "")
+    service = str(policy.get("wolo_service") or "")
+    release_lock = str(canonical.get("global_release_lock") or "")
+    retention_lock = str(
+        (contract.get("storage_retention") or {}).get("lock_path") or ""
+    )
+    archive_lock = str(archive.get("lock_path") or "")
+    control_store = str(canonical.get("control_store") or "")
+
+    required = {
+        "runner_source": source_rel,
+        "runner_installed": installed,
+        "wolo_service": service,
+        "release_lock": release_lock,
+        "retention_lock": retention_lock,
+        "archive_lock": archive_lock,
+        "control_store": control_store,
+    }
+    missing = [key for key, value in required.items() if not value]
+    if missing:
+        raise FinishError(
+            "maintenance runner reconciliation contract is incomplete: "
+            + ", ".join(missing)
+        )
+
+    source = ROOT / source_rel
+    if not source.is_file():
+        raise FinishError(f"maintenance runner source is missing: {source}")
+
+    syntax = run(["bash", "-n", str(source)], timeout=20)
+    if syntax.returncode != 0:
+        raise FinishError(
+            "maintenance runner source fails bash syntax validation: "
+            + (syntax.stdout or "")[-2000:]
+        )
+
+    source_text = source.read_text(encoding="utf-8")
+    expected_sha = hashlib.sha256(source_text.encode("utf-8")).hexdigest()
+    release_sha = git_output("rev-parse", "HEAD")
+    receipt_root = control_store.rstrip("/") + "/maintenance-runner-sync-receipts"
+
+    q = shlex.quote
+    remote = f"""
+set -euo pipefail
+
+EXPECTED_SHA={q(expected_sha)}
+RELEASE_SHA={q(release_sha)}
+INSTALLED={q(installed)}
+NODE={q(service)}
+RELEASE_LOCK={q(release_lock)}
+RETENTION_LOCK={q(retention_lock)}
+ARCHIVE_LOCK={q(archive_lock)}
+RECEIPT_ROOT={q(receipt_root)}
+RPC=http://127.0.0.1:27657
+
+height_now() {{
+  curl -fsS --max-time 4 "$RPC/status" | python3 -c '
+import json,sys
+p=json.load(sys.stdin)
+s=p["result"]["sync_info"]
+if bool(s.get("catching_up")):
+    raise SystemExit(41)
+print(int(s["latest_block_height"]))
+'
+}}
+
+block_age_now() {{
+  curl -fsS --max-time 4 "$RPC/status" | python3 -c '
+import json,sys,time
+from datetime import datetime
+p=json.load(sys.stdin)
+s=p["result"]["sync_info"]
+if bool(s.get("catching_up")):
+    raise SystemExit(41)
+stamp=s["latest_block_time"].replace("Z","+00:00")
+print(max(0, int(time.time()) - int(datetime.fromisoformat(stamp).timestamp())))
+'
+}}
+
+listener_count() {{
+  ss -ltnH "sport = :$1" | awk 'NF {{n++}} END {{print n+0}}'
+}}
+
+test -f "$RELEASE_LOCK"
+test -f "$RETENTION_LOCK"
+test -f "$ARCHIVE_LOCK"
+
+exec 8<>"$RELEASE_LOCK"
+flock -n 8 || {{
+  echo "STOP: release/storage transaction is active"
+  exit 75
+}}
+exec 7<>"$RETENTION_LOCK"
+flock -n 7 || {{
+  echo "STOP: storage-retention transaction is active"
+  exit 75
+}}
+exec 9<>"$ARCHIVE_LOCK"
+flock -n 9 || {{
+  echo "STOP: rollback-archive transaction is active"
+  exit 75
+}}
+
+test "$(systemctl is-active "$NODE")" = "active"
+test "$(listener_count 8092)" = "1"
+test "$(listener_count 8093)" = "1"
+
+PID_BEFORE="$(systemctl show "$NODE" -p MainPID --value)"
+RESTART_BEFORE="$(systemctl show "$NODE" -p NRestarts --value)"
+test -n "$PID_BEFORE"
+test "$(systemctl show "$NODE" -p OOMScoreAdjust --value)" = "-900"
+test "$(cat "/proc/$PID_BEFORE/oom_score_adj")" = "-900"
+
+H1="$(height_now)"
+AGE1="$(block_age_now)"
+test "$AGE1" -le 20
+sleep 6
+H2="$(height_now)"
+AGE2="$(block_age_now)"
+test "$H2" -gt "$H1"
+test "$AGE2" -le 20
+
+OLD_SHA="$(sha256sum "$INSTALLED" 2>/dev/null | awk '{{print $1}}' || true)"
+STATUS=NOOP
+
+if [ "$OLD_SHA" != "$EXPECTED_SHA" ]; then
+  install -d -m 0755 "$(dirname "$INSTALLED")"
+  TMP="$INSTALLED.partial.$"
+  trap 'rm -f "$TMP"' EXIT
+
+  cat > "$TMP"
+  chown root:root "$TMP"
+  chmod 0755 "$TMP"
+  bash -n "$TMP"
+  test "$(sha256sum "$TMP" | awk '{{print $1}}')" = "$EXPECTED_SHA"
+  mv -f "$TMP" "$INSTALLED"
+  trap - EXIT
+  sync
+  STATUS=UPDATED
+fi
+
+test "$(sha256sum "$INSTALLED" | awk '{{print $1}}')" = "$EXPECTED_SHA"
+test "$(stat -c '%a' "$INSTALLED")" = "755"
+test "$(stat -c '%u:%g' "$INSTALLED")" = "0:0"
+
+PID_AFTER="$(systemctl show "$NODE" -p MainPID --value)"
+RESTART_AFTER="$(systemctl show "$NODE" -p NRestarts --value)"
+test "$PID_AFTER" = "$PID_BEFORE"
+test "$RESTART_AFTER" = "$RESTART_BEFORE"
+test "$(listener_count 8092)" = "1"
+test "$(listener_count 8093)" = "1"
+
+H3="$(height_now)"
+sleep 6
+H4="$(height_now)"
+AGE4="$(block_age_now)"
+test "$H4" -gt "$H3"
+test "$AGE4" -le 20
+
+install -d -m 0750 -o root -g root "$RECEIPT_ROOT"
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+SHORT_SHA="$(printf '%s' "$EXPECTED_SHA" | cut -c1-12)"
+RECEIPT="$RECEIPT_ROOT/$STAMP-$SHORT_SHA.json"
+
+python3 - \
+  "$RECEIPT" \
+  "$STATUS" \
+  "$RELEASE_SHA" \
+  "$OLD_SHA" \
+  "$EXPECTED_SHA" \
+  "$INSTALLED" \
+  "$PID_BEFORE" \
+  "$RESTART_BEFORE" \
+  "$H1" \
+  "$H4" <<'PY'
+import json, os, sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+(
+    receipt, status, release_sha, previous_sha, installed_sha, installed_path,
+    wolo_pid, wolo_restarts, wolo_height_before, wolo_height_after,
+) = sys.argv[1:]
+
+payload = {
+    "schema": 1,
+    "kind": "aoe2war-maintenance-runner-reconciliation",
+    "status": status,
+    "release_sha": release_sha,
+    "previous_sha256": previous_sha or None,
+    "installed_sha256": installed_sha,
+    "installed_path": installed_path,
+    "mode": "0755",
+    "owner": "root:root",
+    "wolo_pid": int(wolo_pid),
+    "wolo_restart_counter": int(wolo_restarts),
+    "wolo_height_before": int(wolo_height_before),
+    "wolo_height_after": int(wolo_height_after),
+    "wolo_mutated": False,
+    "reconciled_at": datetime.now(timezone.utc).isoformat(),
+}
+
+path = Path(receipt)
+tmp = path.with_name(path.name + f".partial.{os.getpid()}")
+tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+os.chmod(tmp, 0o444)
+os.replace(tmp, path)
+PY
+
+test -f "$RECEIPT"
+test "$(stat -c '%a' "$RECEIPT")" = "444"
+
+printf 'status\t%s\n' "$STATUS"
+printf 'previous_sha256\t%s\n' "$OLD_SHA"
+printf 'installed_sha256\t%s\n' "$EXPECTED_SHA"
+printf 'installed_path\t%s\n' "$INSTALLED"
+printf 'receipt_path\t%s\n' "$RECEIPT"
+printf 'wolo_pid\t%s\n' "$PID_AFTER"
+printf 'wolo_restart_counter\t%s\n' "$RESTART_AFTER"
+printf 'wolo_height_before\t%s\n' "$H1"
+printf 'wolo_height_after\t%s\n' "$H4"
+"""
+
+    progress.start(
+        "Reconciling the protected maintenance runner at a transaction seam..."
+    )
+    process = subprocess.run(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=8",
+            ROOT_SSH,
+            "bash -lc " + shlex.quote(remote),
+        ],
+        input=source_text,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=90,
+        check=False,
+    )
+    output = process.stdout or ""
+    if process.returncode != 0:
+        raise FinishError(
+            "maintenance runner reconciliation failed; "
+            "a release/storage transaction may still own the seam: "
+            + output[-6000:]
+        )
+
+    result: dict[str, str] = {}
+    for line in output.splitlines():
+        if "\t" in line:
+            key, value = line.split("\t", 1)
+            result[key] = value
+
+    if result.get("status") not in {"NOOP", "UPDATED"}:
+        raise FinishError(
+            "maintenance runner reconciliation returned an invalid status"
+        )
+    if result.get("installed_sha256") != expected_sha:
+        raise FinishError(
+            "maintenance runner reconciliation did not prove the expected SHA"
+        )
+    if "/maintenance-runner-sync-receipts/" not in result.get(
+        "receipt_path", ""
+    ):
+        raise FinishError(
+            "maintenance runner reconciliation returned no durable receipt"
+        )
+
+    progress.done(
+        "Maintenance runner "
+        + ("already exact" if result["status"] == "NOOP" else "atomically updated")
+        + f" · {expected_sha[:12]} · Wolo advancing"
+    )
+    return result
+
+
 def production_capacity_snapshot() -> dict[str, Any]:
     contract = aoe2_doctor.load_contract()
     volume = str(contract["canonical"]["volume_mount"])
@@ -2599,6 +2894,7 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
         "validation_plan": [
             "safe storage retention preview/apply when policy permits",
             "explicit root + mounted-volume release headroom proof",
+            "transaction-seam maintenance runner reconciliation",
             "pre-mutation operational Doctor",
             "source authority reconciliation and release gate",
             "clean AoE2WAR-docs history reconciliation",
@@ -2614,6 +2910,7 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
             "wolo": False,
             "host_reboot": False,
             "package_upgrade": False,
+            "maintenance_runner_reconcile": True,
             "context_archive_pruning": bool(
                 documentation_summary["context_projects"]
                 and not preserve_context_history
@@ -2762,6 +3059,16 @@ def execute_finish(
         + capacity_human(preflight_capacity)
     )
     finish_phase(receipt, "capacity_preflight", checkpoint)
+
+    start_phase(receipt, "maintenance_runner_reconciliation", checkpoint)
+    receipt["maintenance_runner_reconciliation"] = reconcile_maintenance_runner(
+        progress=progress,
+    )
+    finish_phase(
+        receipt,
+        "maintenance_runner_reconciliation",
+        checkpoint,
+    )
 
     start_phase(receipt, "operational_preflight", checkpoint)
     progress.start("Running pre-mutation operational Doctor...")

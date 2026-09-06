@@ -80,6 +80,26 @@ last block, but maintenance is no longer permitted to rely on `nice`, `ionice`,
 or single-threading alone. Those controls influence scheduling; they are not a
 memory-isolation boundary.
 
+
+### Managed maintenance-runner handoff
+
+`aoe2war finish` owns the source-to-host handoff for the maintenance runner.
+Before the pre-mutation Doctor, Finish acquires the canonical release,
+storage-retention, and rollback-archive locks in that order. If any storage or
+release transaction still owns the seam, reconciliation fails closed instead
+of replacing a runner beneath an active transaction.
+
+At an idle seam, Finish validates the source runner with `bash -n`, copies it
+to a root-owned partial path, verifies the exact SHA-256, mode and ownership,
+then atomically replaces `/usr/local/sbin/aoe2war-maintenance-run`. Wolo
+must be active, have exactly one listener on both protected ports, keep the same
+PID and restart counter, and advance before and after the replacement. Every
+NOOP or UPDATED reconciliation seals an immutable root-owned receipt under the
+AoE2WAR control store.
+
+This is a managed code-authority synchronization, not a package upgrade, reboot,
+or Wolo mutation.
+
 `aoe2war doctor` must verify that the installed runner/drop-in are byte-identical
 to their source authorities and that both the effective systemd OOM priority and
 the live validator process OOM priority remain `-900`.
