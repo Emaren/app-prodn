@@ -3,13 +3,15 @@ from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
+import subprocess
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
 import aoe2_council
 import aoe2_release
 import aoe2_speed_campaign
+import aoe2_storage_campaign
 import aoe2_truth
 import aoe2_update
 
@@ -634,6 +636,68 @@ def operating_state(
     return "READY"
 
 
+def storage_campaign_summary() -> dict[str, Any]:
+    try:
+        payload = aoe2_storage_campaign.status_payload(None)
+    except Exception as exc:
+        return {
+            "status": "UNAVAILABLE",
+            "error": str(exc),
+        }
+    if not isinstance(payload, dict):
+        return {"status": "UNAVAILABLE"}
+    return payload
+
+
+def activity_24h(now: datetime) -> dict[str, Any]:
+    since = iso_z(now - timedelta(hours=24))
+    try:
+        output = subprocess.check_output(
+            ["git", "rev-list", "--count", f"--since={since}", "HEAD"],
+            cwd=str(ROOT),
+            text=True,
+            timeout=10,
+        ).strip()
+        source_commits = int(output)
+    except Exception:
+        source_commits = None
+
+    finish_runs = 0
+    certified_finishes = 0
+    cutoff = now - timedelta(hours=24)
+    if FINISH_RECEIPT_DIR.is_dir():
+        for path in FINISH_RECEIPT_DIR.glob("*.json"):
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            when = parse_time(
+                payload.get("completed_at")
+                or payload.get("generated_at")
+                or payload.get("started_at")
+            )
+            if when is None or when < cutoff:
+                continue
+            finish_runs += 1
+            if str(payload.get("status") or "").upper() in {
+                "CERTIFIED",
+                "COMPLETE",
+                "SUCCEEDED",
+                "SUCCESS",
+            } and str(payload.get("release_outcome") or "").upper() not in {
+                "NOT_ATTEMPTED",
+                "FAILED",
+            }:
+                certified_finishes += 1
+
+    return {
+        "window_hours": 24,
+        "source_commits": source_commits,
+        "finish_runs": finish_runs,
+        "certified_finishes": certified_finishes,
+    }
+
+
 def collect() -> dict[str, Any]:
     now = now_utc()
     release = aoe2_release.collect()
@@ -653,6 +717,8 @@ def collect() -> dict[str, Any]:
     )
     finish = latest_finish()
     control = control_summary(release)
+    storage_campaign = storage_campaign_summary()
+    activity = activity_24h(now)
     invariants = invariant_rows(
         source=source,
         council=council,
@@ -694,6 +760,8 @@ def collect() -> dict[str, Any]:
             council.get("storage") or {},
             source,
         ),
+        "storage_campaign": storage_campaign,
+        "activity_24h": activity,
         "host": council.get("host") or {},
         "recovery": council.get("recovery") or {},
         "workspace": council.get("workspace") or {},

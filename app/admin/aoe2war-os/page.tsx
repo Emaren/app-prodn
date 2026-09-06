@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   Activity,
   ArrowLeft,
+  BrainCircuit,
   BookOpenCheck,
   CloudCog,
   DatabaseZap,
@@ -75,11 +76,23 @@ type Snapshot = {
   payload: Record<string, unknown>;
 };
 
+type IntelligenceSnapshot = {
+  bridgeId: string;
+  runId: string | null;
+  sourceAction: string;
+  generatedAt: string;
+  receivedAt: string;
+  warDate: string | null;
+  operatingState: string;
+  payload: Record<string, unknown>;
+};
+
 type Dashboard = {
   bridgeTokenConfigured: boolean;
   storeDir: string;
   bridge: Bridge | null;
   snapshot: Snapshot | null;
+  kingdomIntelligence: IntelligenceSnapshot | null;
   activeRun: Run | null;
   recentRuns: Run[];
   actions: ActionDefinition[];
@@ -220,6 +233,19 @@ export default function AoE2WarOsAdminPage() {
     const interval = window.setInterval(() => setClock(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, []);
+
+  const brainSnapshot = dashboard?.kingdomIntelligence ?? null;
+  const brainPayload = record(brainSnapshot?.payload);
+  const brainHealth = record(brainPayload.health);
+  const brainStorage = record(brainPayload.storage);
+  const brainCampaign = record(brainPayload.storage_campaign);
+  const brainReplay = record(brainPayload.replay_truth);
+  const brainPerformance = record(brainPayload.performance);
+  const brainWorkspace = record(brainPayload.workspace);
+  const brainActivity = record(brainPayload.activity_24h);
+  const brainBest = record(brainPayload.best_next_action);
+  const brainInvariants = arrayOfRecords(brainPayload.invariants);
+  const brainAge = brainSnapshot ? relativeAge(brainSnapshot.receivedAt) : "never";
 
   const snapshotPayload = record(dashboard?.snapshot?.payload);
   const areas = record(snapshotPayload.areas);
@@ -493,6 +519,127 @@ export default function AoE2WarOsAdminPage() {
             safe to view, but remote controls remain offline until bridge setup is completed.
           </div>
         ) : null}
+
+        <section className="mt-6 overflow-hidden rounded-[1.8rem] border border-amber-200/14 bg-[radial-gradient(circle_at_12%_0%,rgba(245,158,11,0.12),transparent_34%),linear-gradient(145deg,rgba(17,12,6,0.86),rgba(2,6,23,0.92))] p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="flex items-start gap-4">
+              <div className="rounded-2xl border border-amber-200/15 bg-amber-300/8 p-3 text-amber-100">
+                <BrainCircuit className="h-6 w-6" />
+              </div>
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[0.32em] text-amber-100/55">
+                  Kingdom Intelligence · The Brain
+                </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <h2 className="text-2xl font-semibold text-white">
+                    {brainSnapshot ? "The kingdom knows its state." : "Waiting for the first Brain snapshot."}
+                  </h2>
+                  <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.15em] ${statusTone(brainSnapshot?.operatingState ?? "UNKNOWN")}`}>
+                    {brainSnapshot?.operatingState ?? "UNKNOWN"}
+                  </span>
+                </div>
+                <div className="mt-2 text-xs text-slate-500">
+                  War Date {brainSnapshot?.warDate ?? "—"} · received {brainAge} · source {brainSnapshot?.sourceAction ?? "—"}
+                </div>
+              </div>
+            </div>
+            <Link
+              href="/kingdom-intelligence"
+              className="rounded-full border border-amber-200/15 bg-amber-300/8 px-4 py-2 text-xs font-semibold text-amber-100 transition hover:bg-amber-300/12"
+            >
+              Open public Kingdom Intelligence ↗
+            </Link>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+            <TruthTile
+              label="Doctor"
+              value={brainHealth.doctor_score != null ? String(brainHealth.doctor_score) + "/100" : "—"}
+              detail={String(brainHealth.doctor_status ?? "No Brain evidence")}
+              ok={numberValue(brainHealth.p0) === 0}
+            />
+            <TruthTile
+              label="Storage"
+              value={brainStorage.volume_used_percent != null ? Number(brainStorage.volume_used_percent).toFixed(2) + "%" : "—"}
+              detail={String(brainStorage.health ?? "No storage evidence")}
+              ok={String(brainStorage.health ?? "").toUpperCase() === "HEALTHY"}
+            />
+            <TruthTile
+              label="Replay truth"
+              value={
+                brainReplay.resolved != null && brainReplay.final_games != null
+                  ? String(brainReplay.resolved) + "/" + String(brainReplay.final_games)
+                  : "—"
+              }
+              detail={brainReplay.matches_current_release === true ? "Current release evidence" : "Refresh/current-release proof needed"}
+              ok={brainReplay.matches_current_release === true}
+            />
+            <TruthTile
+              label="Speed"
+              value={brainPerformance.route_count != null ? String(brainPerformance.route_count) + " routes" : "—"}
+              detail={brainPerformance.matches_current_release === true ? "Current release baseline" : "Baseline is historical/stale"}
+              ok={brainPerformance.matches_current_release === true}
+            />
+            <TruthTile
+              label="Agent work"
+              value={String(brainWorkspace.active_agent_count ?? 0)}
+              detail={String(brainWorkspace.unmerged_count ?? 0) + " unmerged workstream(s)"}
+              ok={numberValue(brainWorkspace.canonical_drift_count) === 0}
+            />
+            <TruthTile
+              label="24h commits"
+              value={brainActivity.source_commits != null ? String(brainActivity.source_commits) : "—"}
+              detail={String(brainActivity.certified_finishes ?? 0) + " certified Finish run(s)"}
+              ok={brainSnapshot ? true : null}
+            />
+          </div>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-2xl border border-white/8 bg-black/20 p-4">
+              <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">
+                Deterministic Council directive
+              </div>
+              <div className="mt-2 text-base font-semibold text-white">
+                {stringValue(brainBest.title) ?? "No Brain directive published yet."}
+              </div>
+              <div className="mt-2 text-xs leading-5 text-slate-400">
+                {stringValue(brainBest.reason) ?? "The Brain ranks prerequisites from current evidence before outer goals."}
+              </div>
+              {stringValue(brainBest.action) ? (
+                <div className="mt-3 rounded-xl border border-cyan-200/10 bg-cyan-300/[0.035] px-3 py-2 font-mono text-xs text-cyan-100/80">
+                  {stringValue(brainBest.action)}
+                </div>
+              ) : null}
+            </div>
+            <div className="rounded-2xl border border-white/8 bg-black/20 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-[10px] font-bold uppercase tracking-[0.25em] text-slate-500">
+                  Active long-running mission
+                </div>
+                <span className={`rounded-full border px-2 py-1 text-[9px] font-bold ${statusTone(String(brainCampaign.status ?? "NONE"))}`}>
+                  {String(brainCampaign.status ?? "NONE")}
+                </span>
+              </div>
+              <div className="mt-3 text-sm text-slate-300">
+                Storage campaign {String(brainCampaign.completed_generations ?? 0)}/{String(brainCampaign.max_generations ?? "—")}
+              </div>
+              <div className="mt-2 truncate font-mono text-xs text-slate-500">
+                {String(brainCampaign.current_generation ?? "No active generation")}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {brainInvariants.map((row) => (
+              <span
+                key={String(row.key)}
+                className={`rounded-full border px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] ${statusTone(String(row.status ?? "UNKNOWN"))}`}
+              >
+                {String(row.key ?? "invariant")} · {String(row.status ?? "UNKNOWN")}
+              </span>
+            ))}
+          </div>
+        </section>
 
         <section className="mt-6 grid gap-4 rounded-[1.6rem] border border-slate-700/55 bg-slate-950/55 p-5 lg:grid-cols-[1.1fr_0.9fr]">
           <div>

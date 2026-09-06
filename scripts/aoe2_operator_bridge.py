@@ -29,12 +29,17 @@ DEFAULT_TOKEN_FILE = Path(
     )
 ).expanduser()
 
-VERSION = "1.2.0"
+VERSION = "1.3.0"
 
 ACTIONS = {
     "status",
     "audit",
     "doctor",
+    "brain",
+    "control_refresh",
+    "storage_status",
+    "storage_plan",
+    "storage_campaign_status",
     "update_plan",
     "update_apply",
     "deploy_plan",
@@ -155,6 +160,16 @@ def command_for_run(run: dict[str, Any]) -> list[str]:
         return [str(CLI), "audit", "--json"]
     if action == "doctor":
         return [str(CLI), "doctor"]
+    if action == "brain":
+        return [str(CLI), "brain", "--json"]
+    if action == "control_refresh":
+        return [str(CLI), "control", "refresh"]
+    if action == "storage_status":
+        return [str(CLI), "storage", "status", "--json"]
+    if action == "storage_plan":
+        return [str(CLI), "storage", "plan", "--json"]
+    if action == "storage_campaign_status":
+        return [str(CLI), "storage", "campaign", "status", "--json"]
     if action == "update_plan":
         return [str(CLI), "update", "--json"]
     if action == "update_apply":
@@ -238,6 +253,94 @@ def publish_snapshot(
         base_url=base_url,
         timeout=45,
     )
+
+
+def publish_kingdom_intelligence(
+    *,
+    token: str,
+    base_url: str,
+    run_id: str | None,
+    source_action: str,
+    payload: dict[str, Any],
+) -> None:
+    post_bridge(
+        {
+            "op": "kingdom_intelligence",
+            "runId": run_id,
+            "sourceAction": source_action,
+            "payload": payload,
+        },
+        token=token,
+        base_url=base_url,
+        timeout=45,
+    )
+
+
+def run_kingdom_intelligence_snapshot(
+    *,
+    token: str,
+    base_url: str,
+    run_id: str | None,
+    source_action: str,
+) -> dict[str, Any] | None:
+    process = subprocess.run(
+        [str(CLI), "brain", "--json"],
+        cwd=str(ROOT),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=240,
+    )
+    if process.returncode not in (0, 1):
+        return None
+
+    payload = try_parse_json(process.stdout)
+    if not isinstance(payload, dict):
+        return None
+    if payload.get("kind") != "aoe2war-kingdom-intelligence":
+        return None
+
+    publish_kingdom_intelligence(
+        token=token,
+        base_url=base_url,
+        run_id=run_id,
+        source_action=source_action,
+        payload=payload,
+    )
+    return payload
+
+
+def kingdom_intelligence_loop(
+    stop: threading.Event,
+    *,
+    token: str,
+    base_url: str,
+    interval_seconds: float,
+) -> None:
+    interval = max(120.0, interval_seconds)
+    while not stop.wait(interval):
+        if finish_in_progress():
+            continue
+        try:
+            snapshot = run_kingdom_intelligence_snapshot(
+                token=token,
+                base_url=base_url,
+                run_id=None,
+                source_action="bridge_periodic",
+            )
+            if snapshot:
+                print(
+                    "[kingdom intelligence] "
+                    f"{snapshot.get('war_date')} · "
+                    f"{snapshot.get('operating_state')}",
+                    flush=True,
+                )
+        except Exception as exc:
+            print(
+                f"[kingdom intelligence warning] {exc}",
+                file=sys.stderr,
+                flush=True,
+            )
 
 
 def run_audit_snapshot(
@@ -396,7 +499,15 @@ def execute_run(
     )
 
     if exit_code == 0:
-        if action == "audit" and isinstance(result, dict):
+        if action == "brain" and isinstance(result, dict):
+            publish_kingdom_intelligence(
+                token=token,
+                base_url=base_url,
+                run_id=run_id,
+                source_action=action,
+                payload=result,
+            )
+        elif action == "audit" and isinstance(result, dict):
             publish_snapshot(
                 token=token,
                 base_url=base_url,
@@ -404,13 +515,32 @@ def execute_run(
                 source_action=action,
                 payload=result,
             )
-        elif action in {"update_apply", "deploy", "finish", "rollback"}:
+        elif action in {
+            "control_refresh",
+            "update_apply",
+            "deploy",
+            "finish",
+            "rollback",
+        }:
             run_audit_snapshot(
                 token=token,
                 base_url=base_url,
                 run_id=run_id,
                 source_action=action,
             )
+            try:
+                run_kingdom_intelligence_snapshot(
+                    token=token,
+                    base_url=base_url,
+                    run_id=run_id,
+                    source_action=action,
+                )
+            except Exception as exc:
+                print(
+                    f"[kingdom intelligence warning] {exc}",
+                    file=sys.stderr,
+                    flush=True,
+                )
 
     return exit_code
 
@@ -450,6 +580,46 @@ def run_bridge(
             ),
             flush=True,
         )
+
+    print("publishing initial Kingdom Intelligence snapshot...", flush=True)
+    try:
+        intelligence = run_kingdom_intelligence_snapshot(
+            token=token,
+            base_url=base_url,
+            run_id=None,
+            source_action="bridge_startup",
+        )
+        print(
+            "Kingdom Intelligence: "
+            + (
+                f"{intelligence.get('war_date')} · "
+                f"{intelligence.get('operating_state')}"
+                if intelligence
+                else "unavailable"
+            ),
+            flush=True,
+        )
+    except Exception as exc:
+        print(
+            f"[kingdom intelligence warning] {exc}",
+            file=sys.stderr,
+            flush=True,
+        )
+
+    intelligence_stop = threading.Event()
+    intelligence_thread = threading.Thread(
+        target=kingdom_intelligence_loop,
+        kwargs={
+            "stop": intelligence_stop,
+            "token": token,
+            "base_url": base_url,
+            "interval_seconds": float(
+                os.getenv("AOE2WAR_KI_REFRESH_SECONDS", "300")
+            ),
+        },
+        daemon=True,
+    )
+    intelligence_thread.start()
 
     while True:
         if finish_in_progress():

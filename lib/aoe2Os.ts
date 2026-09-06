@@ -25,16 +25,53 @@ export const AOE2_OS_ACTIONS = {
     confirmation: null,
     requiresSourceSha: false,
   },
+  brain: {
+    label: "Refresh Kingdom Intelligence",
+    description:
+      "Rebuild the read-only Kingdom Intelligence snapshot from current truth, provenance, invariants, replay certainty, performance, storage, workspace and Council state.",
+    risk: "read",
+    confirmation: null,
+    requiresSourceSha: false,
+  },
+  control_refresh: {
+    label: "Refresh Kingdom State",
+    description:
+      "Refresh certified control documents and one coherent core context camera set: AoE2HDBets, WoloChain, VPSSentry, AoE2WAR docs, MBP and VPS.",
+    risk: "docs_write",
+    confirmation: "REFRESH",
+    requiresSourceSha: false,
+  },
+  storage_status: {
+    label: "Storage Status",
+    description: "Read current mounted-volume Storage OS health and thresholds.",
+    risk: "read",
+    confirmation: null,
+    requiresSourceSha: false,
+  },
+  storage_plan: {
+    label: "Storage Plan",
+    description: "Compute the next bounded Storage OS maintenance candidate without changing storage.",
+    risk: "read",
+    confirmation: null,
+    requiresSourceSha: false,
+  },
+  storage_campaign_status: {
+    label: "Storage Campaign",
+    description: "Read the latest detached Storage OS campaign lifecycle and progress.",
+    risk: "read",
+    confirmation: null,
+    requiresSourceSha: false,
+  },
   update_plan: {
-    label: "Plan Update",
-    description: "Show documentation/context maintenance that would be performed.",
+    label: "Plan Documentation Sync",
+    description: "Show documentation/federation/context maintenance that would be performed.",
     risk: "read",
     confirmation: null,
     requiresSourceSha: false,
   },
   update_apply: {
-    label: "Apply Update",
-    description: "Reconcile documentation, federation state and stale context archives.",
+    label: "Synchronize Documentation",
+    description: "Reconcile documentation baselines, federation state and stale context evidence.",
     risk: "docs_write",
     confirmation: "UPDATE",
     requiresSourceSha: false,
@@ -145,10 +182,22 @@ export type Aoe2OsSnapshot = {
   payload: Record<string, unknown>;
 };
 
+export type Aoe2KingdomIntelligenceSnapshot = {
+  bridgeId: string;
+  runId: string | null;
+  sourceAction: string;
+  generatedAt: string;
+  receivedAt: string;
+  warDate: string | null;
+  operatingState: string;
+  payload: Record<string, unknown>;
+};
+
 export type Aoe2OsDashboard = {
   storeDir: string;
   bridge: (Aoe2OsBridgeHeartbeat & { online: boolean }) | null;
   snapshot: Aoe2OsSnapshot | null;
+  kingdomIntelligence: Aoe2KingdomIntelligenceSnapshot | null;
   activeRun: (Aoe2OsRun & { events: Aoe2OsRunEvent[] }) | null;
   recentRuns: Aoe2OsRun[];
   actions: Array<
@@ -207,6 +256,10 @@ function bridgePath() {
 
 function snapshotPath() {
   return path.join(stateDir(), "snapshot.json");
+}
+
+function kingdomIntelligencePath() {
+  return path.join(stateDir(), "kingdom-intelligence.json");
 }
 
 async function ensureStore() {
@@ -515,6 +568,48 @@ export async function writeAoe2OsSnapshot(input: {
   return snapshot;
 }
 
+export async function writeAoe2OsKingdomIntelligence(input: {
+  bridgeId: string;
+  runId?: string | null;
+  sourceAction: string;
+  payload: Record<string, unknown>;
+}) {
+  const generatedAt =
+    typeof input.payload.generated_at === "string"
+      ? input.payload.generated_at
+      : nowIso();
+  const warDate =
+    typeof input.payload.war_date === "string"
+      ? input.payload.war_date.slice(0, 64)
+      : null;
+  const operatingState =
+    typeof input.payload.operating_state === "string"
+      ? input.payload.operating_state.slice(0, 64)
+      : "UNKNOWN";
+
+  const snapshot: Aoe2KingdomIntelligenceSnapshot = {
+    bridgeId: input.bridgeId,
+    runId: input.runId ?? null,
+    sourceAction: input.sourceAction,
+    generatedAt,
+    receivedAt: nowIso(),
+    warDate,
+    operatingState,
+    payload: input.payload,
+  };
+
+  await serializeMutation(() =>
+    atomicWriteJson(kingdomIntelligencePath(), snapshot)
+  );
+  return snapshot;
+}
+
+export async function readAoe2OsKingdomIntelligence() {
+  return readJson<Aoe2KingdomIntelligenceSnapshot>(
+    kingdomIntelligencePath()
+  );
+}
+
 export async function readAoe2OsRunEvents(runId: string, limit = 240) {
   try {
     const text = await fs.readFile(eventsPath(runId), "utf8");
@@ -531,9 +626,10 @@ export async function readAoe2OsRunEvents(runId: string, limit = 240) {
 
 export async function loadAoe2OsDashboard(): Promise<Aoe2OsDashboard> {
   await ensureStore();
-  const [bridge, snapshot, runs] = await Promise.all([
+  const [bridge, snapshot, kingdomIntelligence, runs] = await Promise.all([
     readJson<Aoe2OsBridgeHeartbeat>(bridgePath()),
     readJson<Aoe2OsSnapshot>(snapshotPath()),
+    readAoe2OsKingdomIntelligence(),
     listRuns(20),
   ]);
 
@@ -554,6 +650,7 @@ export async function loadAoe2OsDashboard(): Promise<Aoe2OsDashboard> {
         }
       : null,
     snapshot,
+    kingdomIntelligence,
     activeRun,
     recentRuns: runs.slice(0, 12),
     actions: (Object.keys(AOE2_OS_ACTIONS) as Aoe2OsAction[]).map((action) => ({

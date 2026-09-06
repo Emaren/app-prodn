@@ -12,6 +12,7 @@ import {
   readAoe2OsRun,
   readAoe2OsRunEvents,
   writeAoe2OsBridgeHeartbeat,
+  writeAoe2OsKingdomIntelligence,
   writeAoe2OsSnapshot,
 } from "@/lib/aoe2Os";
 
@@ -226,6 +227,24 @@ export async function POST(request: NextRequest) {
         payload,
       });
       return NextResponse.json({ ok: true, snapshot }, { headers: NO_STORE });
+    }
+
+    if (op === "kingdom_intelligence") {
+      const payload = record(body.payload);
+      if (!payload) {
+        return NextResponse.json(
+          { detail: "Kingdom Intelligence payload is required." },
+          { status: 400, headers: NO_STORE }
+        );
+      }
+
+      const intelligence = await writeAoe2OsKingdomIntelligence({
+        bridgeId: bridge.bridgeId,
+        runId: text(body.runId, 100) || null,
+        sourceAction: text(body.sourceAction, 64) || "brain",
+        payload,
+      });
+      return NextResponse.json({ ok: true, intelligence }, { headers: NO_STORE });
     }
 
     return NextResponse.json(

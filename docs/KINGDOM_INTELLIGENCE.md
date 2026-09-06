@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "self-knowledge-contract"
-reviewed_at: "2026-09-05"
+reviewed_at: "2026-09-06"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -53,8 +53,10 @@ V1 combines:
 - generated control-state status and exact blocker/reason;
 - Audit/Doctor severity;
 - Storage, Host, Recovery and Workspace state;
+- the active durable Storage Campaign OS mission, when one exists;
 - the latest persisted Speed OS campaign;
 - the latest persisted Replay Truth certainty closure;
+- bounded 24-hour source-motion and Finish activity counts;
 - explicit invariant status;
 - ranked Council recommendations and one best next action.
 
@@ -127,20 +129,76 @@ Council answers **what should we do next?**
 The Brain answers **what is the state of the kingdom, why, what cannot break,
 and what should we do next?**
 
-## Relationship to the public Kingdom Intelligence page
+## Public and operator surfaces
 
-The future `/kingdom-intelligence` page is a presentation consumer of KI, not
-a second source of truth.
+Kingdom Intelligence has two presentation surfaces over one authority.
 
-The public page must use a deliberately sanitized projection. It must never
-publish:
+### Public: `/kingdom-intelligence`
+
+The public page is the visible nervous system of the kingdom. It presents the
+current operating state, War Date, bounded 24-hour source/release activity,
+sanitized Release/Storage/Replay Truth/Speed/Workspace/Council modules, active
+long-running mission progress, and a whitelist of invariant names/statuses.
+
+The public page is deliberately theatrical in presentation and conservative in
+truth. Its "ancient kingdom discovering computation" visual language may be
+dramatic; the numbers and statuses still come only from the deterministic Brain.
+
+The public API at `/api/kingdom-intelligence` is a bounded projection. It never
+returns the raw Brain payload.
+
+### Operator: `/admin/aoe2war-os`
+
+The existing AoE2WAR OS War Room is the private operator home for KI. It exposes
+the full Brain snapshot alongside estate/release evidence and protected commands,
+including:
+
+- exact War Date and operating state;
+- deterministic Council directive, reason and protected CLI action;
+- current Storage Campaign OS lifecycle and generation progress;
+- Replay Truth and Speed release-freshness;
+- Workspace OS agent/worktree state;
+- invariant evidence;
+- an explicit read-only **Refresh Kingdom Intelligence** action;
+- a protected **Refresh Kingdom State** action that runs the certified control
+  refresh and regenerates the coherent AoE2HDBets/WoloChain/VPSSentry/
+  AoE2WAR-docs/MBP/VPS context camera set;
+- direct read-only **Storage Status**, **Storage Plan**, and **Storage Campaign**
+  controls so capacity health, the next bounded archival candidate, and detached
+  campaign lifecycle can be inspected without opening a terminal;
+- separate documentation planning/synchronization controls so a documentation
+  maintenance operation is not confused with a full kingdom-state refresh.
+
+Successful state-changing bridge actions immediately republish both the estate
+audit and Kingdom Intelligence snapshots. The dashboard therefore catches up
+after a control refresh, documentation sync, deploy, Finish, or rollback instead
+of waiting for the periodic Brain interval.
+
+This is intentionally not a second admin dashboard. Release OS, Workspace OS,
+Storage OS, Council and the Brain belong in one operating command center. The
+separate AI Command Center remains responsible for user-facing AI agents,
+persona/prompt configuration and request telemetry; it does not own system truth.
+
+### Publication path
+
+The Mac Operator Bridge executes `aoe2war brain --json` and publishes the result
+through its existing outbound-only authenticated channel. AoE2WAR stores that
+snapshot atomically in the OS control store. The bridge publishes a snapshot at
+startup, after an explicit Brain action, and periodically (five minutes by
+default, bounded to no faster than two minutes). The public page then reads only
+the sanitized server projection.
+
+The raw Brain snapshot must never be exposed publicly. The public projection must
+never publish:
 
 - chain-of-thought;
 - private prompts;
 - raw unrestricted shell/stdout;
 - secrets or tokens;
 - private filesystem paths;
-- sensitive operator evidence.
+- raw receipt/evidence paths;
+- process identifiers or private campaign logs;
+- sensitive operator reasons/commands.
 
 Presentation may have multiple skins or density modes. Truth logic, provenance,
 invariants and mission state may not fork by visual variant.
@@ -188,9 +246,17 @@ Any invariant reported as ATTENTION prevents a READY operating state. A green
 Doctor score cannot override an explicit incomplete Finish, stale control state,
 wrong-release Speed/Replay evidence, or incomplete recovery proof.
 
-Workspace truth is part of KI. Dirty or unmerged registered worktrees are
-preserved evidence and must be surfaced for review; they are never silently
+Workspace truth is part of KI. Canonical source drift, preserved legacy dirty
+work, unmerged work and registered agent work are distinct states. A dirty
+registered agent worktree is expected active engineering and must not be counted
+as canonical source corruption merely because it contains WIP. Unique or
+unclassified dirty work remains preserved review debt and is never silently
 collapsed into housekeeping or automatic cleanup.
+
+The bounded 24-hour activity counters are evidence of source/release motion, not
+a claim that a language model was continuously generating code every second.
+The public presentation may celebrate sustained automated engineering, but it
+must not overstate what the deterministic evidence proves.
 
 ## Non-goals
 

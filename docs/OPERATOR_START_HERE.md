@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","developers","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-04"
+reviewed_at: "2026-09-06"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -57,6 +57,27 @@ If more release history is needed:
 ```bash
 aoe2war releases --limit 5
 ```
+
+## Refresh the kingdom's self-knowledge
+
+When code is not being deployed but the operating handoff itself should become
+current, use:
+
+```bash
+aoe2war control status
+aoe2war control refresh
+```
+
+`control refresh` is the canonical bounded self-knowledge transaction. It
+refreshes the certified generated blocks in `SYSTEM_MAP.md`,
+`SERVER_STORAGE_MAP.md`, and `AOE2WAR_100_CLOSURE.md`, synchronizes the
+documentation federation, and captures one coherent core context camera set for
+AoE2HDBets, WoloChain, VPSSentry, AoE2WAR-docs, MBP, and VPS. It does not deploy
+production or mutate the database/Wolo runtime.
+
+The Admin AoE2WAR OS exposes the same fixed operation as **Refresh Kingdom
+State** through the outbound-only Operator Bridge. Documentation synchronization
+remains a separate control.
 
 ## Authority order
 
