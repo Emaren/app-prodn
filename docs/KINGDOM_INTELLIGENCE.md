@@ -159,7 +159,17 @@ including:
 - Replay Truth and Speed release-freshness;
 - Workspace OS agent/worktree state;
 - invariant evidence;
-- an explicit read-only **Refresh Kingdom Intelligence** action.
+- an explicit read-only **Refresh Kingdom Intelligence** action;
+- a protected **Refresh Kingdom State** action that runs the certified control
+  refresh and regenerates the coherent AoE2HDBets/WoloChain/VPSSentry/
+  AoE2WAR-docs/MBP/VPS context camera set;
+- separate documentation planning/synchronization controls so a documentation
+  maintenance operation is not confused with a full kingdom-state refresh.
+
+Successful state-changing bridge actions immediately republish both the estate
+audit and Kingdom Intelligence snapshots. The dashboard therefore catches up
+after a control refresh, documentation sync, deploy, Finish, or rollback instead
+of waiting for the periodic Brain interval.
 
 This is intentionally not a second admin dashboard. Release OS, Workspace OS,
 Storage OS, Council and the Brain belong in one operating command center. The
