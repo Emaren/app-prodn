@@ -41,3 +41,14 @@ test("operator controls explain protected migration behavior instead of hiding i
   assert.match(os, /backup-first additive Prisma migrations/);
   assert.match(os, /backup and apply approved additive Prisma migrations/);
 });
+
+
+test("AoE2WAR OS presents Kingdom Intelligence as the operator Brain", () => {
+  assert.match(page, /Kingdom Intelligence · The Brain/);
+  assert.match(page, /Deterministic Council directive/);
+  assert.match(page, /Active long-running mission/);
+  assert.match(page, /Open public Kingdom Intelligence/);
+  assert.match(page, /brainSnapshot/);
+  assert.match(os, /Refresh Kingdom Intelligence/);
+  assert.match(os, /kingdomIntelligence/);
+});
