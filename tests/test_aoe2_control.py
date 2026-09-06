@@ -100,12 +100,27 @@ class ControlDocsTests(unittest.TestCase):
             payload = MODULE.refresh_control_state(capture_context=True)
 
         capture_call.assert_called_once_with(
-            ["VPSSentry", "AoE2WAR-docs"],
+            [
+                "AoE2HDBets",
+                "WoloChain-wolo-1",
+                "VPSSentry",
+                "AoE2WAR-docs",
+            ],
             progress=mock.ANY,
             include_host_context=True,
         )
         self.assertEqual(payload["status"], "VERIFIED")
-        self.assertEqual(set(payload["context_archives"]), {"VPSSentry", "AoE2WAR-docs", "MBP", "VPS"})
+        self.assertEqual(
+            set(payload["context_archives"]),
+            {
+                "AoE2HDBets",
+                "WoloChain-wolo-1",
+                "VPSSentry",
+                "AoE2WAR-docs",
+                "MBP",
+                "VPS",
+            },
+        )
 
 
 if __name__ == "__main__":
