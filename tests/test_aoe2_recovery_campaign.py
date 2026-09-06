@@ -94,6 +94,15 @@ class RecoveryCampaignTests(unittest.TestCase):
                     "resolve_recipient_certificate",
                     return_value=(cert, "AABB"),
                 ),
+                patch.object(
+                    campaign,
+                    "verify_canonical_private_key",
+                    return_value={
+                        "path": "/private/recovery-v1-private.pem",
+                        "mode": "600",
+                        "certificate_match": True,
+                    },
+                ),
                 patch.object(campaign, "source_identity", return_value="a" * 40),
             ):
                 result = campaign.preflight(None)
@@ -102,6 +111,73 @@ class RecoveryCampaignTests(unittest.TestCase):
         self.assertFalse(result["wolo_mutation_authorized"])
         self.assertFalse(result["settlement_mutation_authorized"])
         self.assertFalse(result["key_material_in_general_vault"])
+
+
+    def test_canonical_certificate_is_preferred_when_fingerprint_matches(self):
+        pilot = {
+            "recipient_certificate_fingerprint": "AA:BB",
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            cert = Path(temporary) / "recovery-v1-recipient.pem"
+            cert.write_text("certificate placeholder")
+            with (
+                patch.object(
+                    campaign,
+                    "CANONICAL_RECOVERY_CERTIFICATE",
+                    cert,
+                ),
+                patch.object(
+                    campaign,
+                    "certificate_fingerprint",
+                    return_value="AABB",
+                ),
+            ):
+                resolved, fingerprint = campaign.resolve_recipient_certificate(
+                    None,
+                    pilot,
+                )
+        self.assertEqual(resolved, cert.resolve())
+        self.assertEqual(fingerprint, "AABB")
+
+    def test_private_key_verification_requires_0600_and_key_match(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            private_key = root / "recovery-v1-private.pem"
+            certificate = root / "recovery-v1-recipient.pem"
+            private_key.write_text("private placeholder")
+            certificate.write_text("certificate placeholder")
+            private_key.chmod(0o600)
+
+            with (
+                patch.object(
+                    campaign,
+                    "CANONICAL_RECOVERY_PRIVATE_KEY",
+                    private_key,
+                ),
+                patch.object(
+                    campaign,
+                    "private_key_matches_certificate",
+                    return_value=True,
+                ),
+            ):
+                result = campaign.verify_canonical_private_key(certificate)
+
+            self.assertEqual(result["mode"], "600")
+            self.assertTrue(result["certificate_match"])
+
+            private_key.chmod(0o644)
+            with (
+                patch.object(
+                    campaign,
+                    "CANONICAL_RECOVERY_PRIVATE_KEY",
+                    private_key,
+                ),
+                self.assertRaisesRegex(
+                    campaign.CampaignError,
+                    "mode 0600",
+                ),
+            ):
+                campaign.verify_canonical_private_key(certificate)
 
     def test_resume_fails_closed_when_interrupted_inside_class(self):
         state = {
