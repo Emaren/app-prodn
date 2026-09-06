@@ -703,21 +703,35 @@ test -f "$RELEASE_LOCK"
 test -f "$RETENTION_LOCK"
 test -f "$ARCHIVE_LOCK"
 
+lock_holders() {{
+  local path="$1"
+  if command -v fuser >/dev/null 2>&1; then
+    fuser "$path" 2>/dev/null || true
+  elif command -v lslocks >/dev/null 2>&1; then
+    lslocks -n -o PID,PATH 2>/dev/null | awk -v p="$path" '$2 == p {{print $1}}'
+  fi
+}}
+
 exec 8<>"$RELEASE_LOCK"
-flock -n 8 || {{
-  echo "STOP: release/storage transaction is active"
+if ! flock -w 300 8; then
+  echo "STOP: release lock did not clear within 300s"
+  echo "LOCK: $RELEASE_LOCK holders=$(lock_holders "$RELEASE_LOCK" | tr '\n' ' ')"
   exit 75
-}}
+fi
+
 exec 7<>"$RETENTION_LOCK"
-flock -n 7 || {{
-  echo "STOP: storage-retention transaction is active"
+if ! flock -w 15 7; then
+  echo "STOP: storage-retention lock did not clear after release seam"
+  echo "LOCK: $RETENTION_LOCK holders=$(lock_holders "$RETENTION_LOCK" | tr '\n' ' ')"
   exit 75
-}}
+fi
+
 exec 9<>"$ARCHIVE_LOCK"
-flock -n 9 || {{
-  echo "STOP: rollback-archive transaction is active"
+if ! flock -w 15 9; then
+  echo "STOP: rollback-archive lock did not clear after release seam"
+  echo "LOCK: $ARCHIVE_LOCK holders=$(lock_holders "$ARCHIVE_LOCK" | tr '\n' ' ')"
   exit 75
-}}
+fi
 
 test "$(systemctl is-active "$NODE")" = "active"
 test "$(listener_count 8092)" = "1"
