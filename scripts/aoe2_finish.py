@@ -655,7 +655,19 @@ def reconcile_maintenance_runner(
     source_text = source.read_text(encoding="utf-8")
     expected_sha = hashlib.sha256(source_text.encode("utf-8")).hexdigest()
     release_sha = git_output("rev-parse", "HEAD")
+    lease_token = os.getenv(aoe2_release.GLOBAL_LEASE_ENV, "").strip()
+    lease_owner_pid = os.getenv(
+        aoe2_release.GLOBAL_LEASE_OWNER_ENV,
+        "",
+    ).strip()
+    if not lease_token or not lease_owner_pid.isdigit():
+        raise FinishError(
+            "maintenance runner reconciliation requires the canonical "
+            "release lease to already be owned by Finish"
+        )
+
     receipt_root = control_store.rstrip("/") + "/maintenance-runner-sync-receipts"
+    release_meta = release_lock + ".meta"
 
     q = shlex.quote
     remote = f"""
@@ -666,6 +678,9 @@ RELEASE_SHA={q(release_sha)}
 INSTALLED={q(installed)}
 NODE={q(service)}
 RELEASE_LOCK={q(release_lock)}
+RELEASE_META={q(release_meta)}
+LEASE_TOKEN={q(lease_token)}
+LEASE_OWNER_PID={q(lease_owner_pid)}
 RETENTION_LOCK={q(retention_lock)}
 ARCHIVE_LOCK={q(archive_lock)}
 RECEIPT_ROOT={q(receipt_root)}
@@ -712,12 +727,29 @@ lock_holders() {{
   fi
 }}
 
+# Finish already owns the canonical release lease through the persistent
+# remote lease process in aoe2_release.global_release_lease(). Re-acquiring the
+# same flock here would self-deadlock. Prove the lock is held and that its
+# metadata belongs to this exact Finish process instead.
 exec 8<>"$RELEASE_LOCK"
-if ! flock -w 300 8; then
-  echo "STOP: release lock did not clear within 300s"
-  echo "LOCK: $RELEASE_LOCK holders=$(lock_holders "$RELEASE_LOCK" | tr '\n' ' ')"
+if flock -n 8; then
+  flock -u 8
+  echo "STOP: canonical release lease is unexpectedly free"
   exit 75
 fi
+
+python3 - "$RELEASE_META" "$LEASE_TOKEN" "$LEASE_OWNER_PID" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+meta, expected_token, expected_pid = sys.argv[1:]
+payload = json.loads(Path(meta).read_text(encoding="utf-8"))
+if payload.get("token") != expected_token:
+    raise SystemExit("release lease ownership mismatch: token")
+if str(payload.get("pid")) != expected_pid:
+    raise SystemExit("release lease ownership mismatch: pid")
+PY
 
 exec 7<>"$RETENTION_LOCK"
 if ! flock -w 15 7; then
@@ -870,7 +902,7 @@ printf 'wolo_height_after\t%s\n' "$H4"
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        timeout=90,
+        timeout=120,
         check=False,
     )
     output = process.stdout or ""
