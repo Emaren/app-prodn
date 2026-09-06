@@ -1563,6 +1563,7 @@ def capture_context(
     progress: Progress | None = None,
     *,
     preserve_context_history: bool = False,
+    include_host_context: bool = False,
 ) -> dict[str, dict[str, Any]]:
     if not projects:
         return {}
@@ -1587,15 +1588,20 @@ def capture_context(
     env["CONTEXT_PROFILE"] = "ops"
 
     capture_label = "Capturing context: " + ", ".join(projects)
+    if include_host_context:
+        capture_label += " + MBP/VPS host cameras"
     if progress:
         progress.start(capture_label + "...")
 
-    capture_args = [
-        str(tool),
-        "--only-projects",
-        "--projects",
-        " ".join(projects),
-    ]
+    capture_args = [str(tool)]
+    if not include_host_context:
+        capture_args.append("--only-projects")
+    capture_args.extend(
+        [
+            "--projects",
+            " ".join(projects),
+        ]
+    )
     rc, out = (
         run_with_heartbeat(
             capture_args,
@@ -1624,8 +1630,11 @@ def capture_context(
     tgz_dir = VPSSENTRY / "context" / "tgz"
     sha_dir = VPSSENTRY / "context" / "sha256"
     result: dict[str, dict[str, Any]] = {}
+    verification_series = list(projects)
+    if include_host_context:
+        verification_series.extend(["MBP", "VPS"])
 
-    for project in projects:
+    for project in verification_series:
         if progress:
             progress.start(f"Verifying {project} context archive...")
 
@@ -1833,6 +1842,7 @@ def apply_update(
                 ordered,
                 progress=progress,
                 preserve_context_history=preserve_context_history,
+                include_host_context=True,
             )
             receipt_payload["context_archives"] = archives
 
