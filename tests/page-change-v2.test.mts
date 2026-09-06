@@ -21,7 +21,7 @@ const hrefs = [
 
 test("all 20 Kingdom-menu pages have generated source editions", () => {
   for (const href of hrefs) assert.ok(manifest.includes(`href: "${href}"`));
-  assert.equal((manifest.match(/href: "\//g) ?? []).length, 19);
+  assert.equal((manifest.match(/href: "\//g) ?? []).length, 20);
   assert.match(manifest, /version: "src-[a-f0-9]{20}"/);
   assert.match(notices, /PAGE_CHANGE_MANIFEST/);
 });
