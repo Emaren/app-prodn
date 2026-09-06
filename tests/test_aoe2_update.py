@@ -500,5 +500,49 @@ class UpdateCommandTests(unittest.TestCase):
         self.assertIn("… heartbeat test", stream.getvalue())
 
 
+    def test_context_capture_can_include_host_cameras(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            vpssentry = pathlib.Path(temporary)
+            tool = vpssentry / "bin" / "full-context-tgz"
+            tool.parent.mkdir(parents=True)
+            tool.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            tool.chmod(0o755)
+            (vpssentry / "context").mkdir()
+
+            with mock.patch.object(MODULE, "VPSSENTRY", vpssentry), \
+                 mock.patch.object(MODULE, "prune_context_before_capture"), \
+                 mock.patch.object(MODULE, "context_capture_headroom"), \
+                 mock.patch.object(MODULE, "run", return_value=(0, "ok")) as run_call:
+                with self.assertRaises(MODULE.UpdateError):
+                    MODULE.capture_context(
+                        ["VPSSentry"],
+                        include_host_context=True,
+                    )
+
+            command = run_call.call_args_list[0].args[0]
+            self.assertNotIn("--only-projects", command)
+            self.assertIn("--projects", command)
+            self.assertIn("VPSSentry", command)
+
+    def test_context_capture_keeps_project_only_mode_for_overlap(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            vpssentry = pathlib.Path(temporary)
+            tool = vpssentry / "bin" / "full-context-tgz"
+            tool.parent.mkdir(parents=True)
+            tool.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            tool.chmod(0o755)
+            (vpssentry / "context").mkdir()
+
+            with mock.patch.object(MODULE, "VPSSENTRY", vpssentry), \
+                 mock.patch.object(MODULE, "prune_context_before_capture"), \
+                 mock.patch.object(MODULE, "context_capture_headroom"), \
+                 mock.patch.object(MODULE, "run", return_value=(0, "ok")) as run_call:
+                with self.assertRaises(MODULE.UpdateError):
+                    MODULE.capture_context(["AoE2HDBets"])
+
+            command = run_call.call_args_list[0].args[0]
+            self.assertIn("--only-projects", command)
+
+
 if __name__ == "__main__":
     unittest.main()
