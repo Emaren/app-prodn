@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "29dd820f6202df6de18c16da3c21b2889119f4d4239793af57b67c9869a24e62",
+      "sha256": "a34db349c84b182bcd8a25be12125f2258cd7ac7da893cd6ec2679bc88a91726",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -772,9 +772,9 @@
       "owner": "aoe2war-web",
       "path": "docs/KINGDOM_INTELLIGENCE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-05",
+      "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "7a94377457d42c6f0466824e6cd939ec9b94a9514a0820dfc7643b7a9e7fcf6c",
+      "sha256": "6d9912097b78db5327ed67d803aab73003a3b2a0186e1d1df9e073e2d3824af9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1815,7 +1815,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "2d28bc8abe3f883a04352f5417885bb433a00e60"
+    "commit": "4e0db02d33bf1fccf7c9d85634b6e117285a2273"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
