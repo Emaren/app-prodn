@@ -216,8 +216,14 @@ The read-only planner remains incapable of writing recovery artifacts.
 `aoe2war recovery campaign preflight` validates the current read-only plan,
 requires a clean local `main`, verifies local SSH/OpenSSL tooling, proves Mac
 capacity, and resolves the exact public recovery certificate whose SHA-256
-fingerprint matches the verified database/operator pilot. It makes no backup or
-service mutation.
+fingerprint matches the verified database/operator pilot. The canonical Mac key
+authority is `~/Library/Application Support/AoE2WAR Recovery/keys`, with
+`recovery-v1-recipient.pem` as the public certificate and
+`recovery-v1-private.pem` as the private key. Preflight requires the private
+key to exist at mode 0600 and proves that its public key matches the selected
+recipient certificate before any ordinary capture may begin. Private key
+contents and hashes are never printed or transmitted. Preflight makes no backup
+or service mutation.
 
 `aoe2war recovery campaign start --authorize-ordinary-capture` is the first
 bounded write lane. It is deliberately limited to the five ordinary non-Wolo
