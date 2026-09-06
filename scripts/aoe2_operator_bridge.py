@@ -37,6 +37,9 @@ ACTIONS = {
     "doctor",
     "brain",
     "control_refresh",
+    "storage_status",
+    "storage_plan",
+    "storage_campaign_status",
     "update_plan",
     "update_apply",
     "deploy_plan",
@@ -161,6 +164,12 @@ def command_for_run(run: dict[str, Any]) -> list[str]:
         return [str(CLI), "brain", "--json"]
     if action == "control_refresh":
         return [str(CLI), "control", "refresh"]
+    if action == "storage_status":
+        return [str(CLI), "storage", "status", "--json"]
+    if action == "storage_plan":
+        return [str(CLI), "storage", "plan", "--json"]
+    if action == "storage_campaign_status":
+        return [str(CLI), "storage", "campaign", "status", "--json"]
     if action == "update_plan":
         return [str(CLI), "update", "--json"]
     if action == "update_apply":
