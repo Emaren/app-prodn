@@ -5,6 +5,8 @@ import argparse
 import json
 import shlex
 import subprocess
+
+import aoe2_recovery
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -126,24 +128,21 @@ printf 'kernel\t%s\n' "$(uname -r)"
 
 def maintenance_plan() -> dict[str, Any]:
     snap = snapshot()
-    contract = load_contract()
-    evidence = contract.get("offsite_evidence") or {}
-    recovery_ready = bool(
-        evidence.get("enabled")
-        and evidence.get("authority")
-        and evidence.get("restore_proof")
-    )
+    recovery = aoe2_recovery.evaluate()
+    recovery_ready = recovery.get("status") == "VERIFIED"
     return {
         "schema": 1,
         "kind": "aoe2war-host-maintenance-plan",
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": "READY" if recovery_ready else "BLOCKED",
         "reason": (
-            "off-host recovery proof is configured"
+            "off-host recovery proof is cryptographically VERIFIED"
             if recovery_ready
-            else "off-host recovery proof must be configured before package/reboot maintenance"
+            else "Recovery OS must be VERIFIED before package/reboot maintenance"
         ),
         "recovery_ready": recovery_ready,
+        "recovery_status": recovery.get("status"),
+        "recovery_blockers": recovery.get("blockers", []),
         "host": snap,
         "mutates_packages": False,
         "reboots_host": False,
