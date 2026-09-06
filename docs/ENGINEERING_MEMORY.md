@@ -159,6 +159,14 @@ remaining recovery scope. Doctor and Host OS consume this same verifier.
 The 2026-09-04 schema-1 `PILOT_VERIFIED` bundle remains valid pilot evidence
 but is structurally incapable of satisfying full Recovery OS verification.
 
+Recovery campaign planning is now a first-class read-only OS operation. The
+planner inventories the live recovery classes, resolves Wolo home from the
+running process rather than templated systemd text, preserves all parser
+top-level evidence except disposable `tmp/`, keeps Wolo key custody outside the
+general vault, computes Mac capacity/headroom, and declares when streaming
+restore verification is required. Planning performs no backup or service
+mutation; future campaign execution requires explicit authorization.
+
 ## Storage estate lesson
 
 Do not mirror the entire VPS or all durable rollback generations to the Mac.
