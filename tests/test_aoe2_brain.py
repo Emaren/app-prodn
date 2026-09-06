@@ -173,6 +173,21 @@ class KingdomIntelligenceTests(unittest.TestCase):
             patch.object(MODULE, "latest_performance", return_value=performance()),
             patch.object(MODULE, "latest_finish", return_value=finish()),
             patch.object(MODULE, "control_summary", return_value=control()),
+            patch.object(
+                MODULE,
+                "storage_campaign_summary",
+                return_value={"status": "NONE"},
+            ),
+            patch.object(
+                MODULE,
+                "activity_24h",
+                return_value={
+                    "window_hours": 24,
+                    "source_commits": 42,
+                    "finish_runs": 3,
+                    "certified_finishes": 2,
+                },
+            ),
         ):
             payload = MODULE.collect()
 
@@ -184,6 +199,9 @@ class KingdomIntelligenceTests(unittest.TestCase):
         self.assertEqual(payload["health"]["p1"], 0)
         self.assertEqual(payload["replay_truth"]["accounted_percent"], 100.0)
         self.assertEqual(payload["performance"]["route_count"], 77)
+        self.assertEqual(payload["storage_campaign"]["status"], "NONE")
+        self.assertEqual(payload["activity_24h"]["source_commits"], 42)
+        self.assertEqual(payload["activity_24h"]["certified_finishes"], 2)
         self.assertTrue(
             all(row["status"] == "PASS" for row in payload["invariants"])
         )
