@@ -28,6 +28,10 @@ class OperatorBridgeTests(unittest.TestCase):
             [str(MODULE.CLI), "doctor"],
         )
         self.assertEqual(
+            MODULE.command_for_run({"action": "brain"}),
+            [str(MODULE.CLI), "brain", "--json"],
+        )
+        self.assertEqual(
             MODULE.command_for_run({"action": "update_plan"}),
             [str(MODULE.CLI), "update", "--json"],
         )
