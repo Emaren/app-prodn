@@ -490,6 +490,16 @@ class MaintenanceRunnerHandoffTests(unittest.TestCase):
         self.assertNotIn("flock -w 300 8", command)
         self.assertIn("lease-token", command)
 
+        rendered = MODULE.shlex.split(command)[2]
+        marker = "<<'PY'\n"
+        self.assertIn(marker, rendered)
+        receipt_python = rendered.rsplit(marker, 1)[1].split("\nPY\n", 1)[0]
+        compile(receipt_python, "<runner-receipt-heredoc>", "exec")
+        self.assertIn(
+            'tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\\n")',
+            receipt_python,
+        )
+
     def test_runner_reconciliation_refuses_without_inherited_release_lease(self):
         with patch.dict(
             MODULE.os.environ,
