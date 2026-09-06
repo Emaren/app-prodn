@@ -1549,13 +1549,6 @@ export type WatcherRecorderExitEvaluation =
 export function evaluateWatcherRecorderExitResult(
   input: WatcherTerminalOwnerLossInput
 ): WatcherRecorderExitEvaluation {
-  if (!WATCHER_TERMINAL_RECORDER_EXIT_RESULT_AUTHORITY) {
-    return {
-      eligible: false,
-      reason: "recorder_exit_is_not_result_authority",
-    };
-  }
-
   if (!input.isFinal) {
     return { eligible: false, reason: "not_final" };
   }
@@ -2848,9 +2841,14 @@ export async function reconcileAutomaticWatcherTerminalResults(
 
         const evaluation =
           automaticRoster.length === 2
-            ? evaluateWatcherRecorderExitResult(
-                terminalEvaluationInput
-              )
+            ? WATCHER_TERMINAL_RECORDER_EXIT_RESULT_AUTHORITY
+              ? evaluateWatcherRecorderExitResult(
+                  terminalEvaluationInput
+                )
+              : {
+                  eligible: false as const,
+                  reason: "recorder_exit_is_not_result_authority",
+                }
             : evaluateWatcherTeamTerminalResult(
                 terminalEvaluationInput
               );
