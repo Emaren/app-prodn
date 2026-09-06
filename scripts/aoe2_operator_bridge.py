@@ -36,6 +36,7 @@ ACTIONS = {
     "audit",
     "doctor",
     "brain",
+    "control_refresh",
     "update_plan",
     "update_apply",
     "deploy_plan",
@@ -158,6 +159,8 @@ def command_for_run(run: dict[str, Any]) -> list[str]:
         return [str(CLI), "doctor"]
     if action == "brain":
         return [str(CLI), "brain", "--json"]
+    if action == "control_refresh":
+        return [str(CLI), "control", "refresh"]
     if action == "update_plan":
         return [str(CLI), "update", "--json"]
     if action == "update_apply":
@@ -503,13 +506,32 @@ def execute_run(
                 source_action=action,
                 payload=result,
             )
-        elif action in {"update_apply", "deploy", "finish", "rollback"}:
+        elif action in {
+            "control_refresh",
+            "update_apply",
+            "deploy",
+            "finish",
+            "rollback",
+        }:
             run_audit_snapshot(
                 token=token,
                 base_url=base_url,
                 run_id=run_id,
                 source_action=action,
             )
+            try:
+                run_kingdom_intelligence_snapshot(
+                    token=token,
+                    base_url=base_url,
+                    run_id=run_id,
+                    source_action=action,
+                )
+            except Exception as exc:
+                print(
+                    f"[kingdom intelligence warning] {exc}",
+                    file=sys.stderr,
+                    flush=True,
+                )
 
     return exit_code
 
