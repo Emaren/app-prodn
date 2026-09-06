@@ -65,6 +65,48 @@ class WorkspaceTests(unittest.TestCase):
             "api-prodn--codex-hd-parser-closure-v1",
         )
 
+    def test_retirement_normalizes_registered_worktree_path_aliases(self):
+        meta = {
+            "workspace_id": "api-prodn--codex-test",
+            "repo_id": "api-prodn",
+            "path": "/tmp/api-prodn-codex-test",
+        }
+        row = {
+            "path": "/tmp/alias/../api-prodn-codex-test",
+            "branch": "codex/test",
+            "head": "a" * 40,
+            "dirty": False,
+            "merged_into_canonical": False,
+        }
+        with (
+            mock.patch.object(workspace, "find_workspace", return_value=meta),
+            mock.patch.object(
+                workspace,
+                "repo_spec",
+                return_value={
+                    "repo_id": "api-prodn",
+                    "path": Path("/tmp/api-prodn"),
+                    "branch": "main",
+                },
+            ),
+            mock.patch.object(workspace, "worktree_rows", return_value=[row]),
+            mock.patch.object(
+                workspace,
+                "upstream_state",
+                return_value={
+                    "upstream": "origin/codex/test",
+                    "upstream_head": "a" * 40,
+                    "fully_pushed": True,
+                },
+            ),
+        ):
+            plan = workspace.retirement_plan(
+                "api-prodn--codex-test"
+            )
+
+        self.assertTrue(plan["safe"])
+        self.assertEqual(plan["status"], "READY")
+
     def test_retirement_blocks_dirty_agent_workspace(self):
         meta = {
             "workspace_id": "api-prodn--codex-test",

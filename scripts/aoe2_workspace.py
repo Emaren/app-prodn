@@ -485,7 +485,10 @@ def adopt_workspace(
     spec = repo_spec(repo_id)
     canonical = ensure_canonical_clean(spec)
     target = path.expanduser().resolve()
-    rows = {row["path"]: row for row in worktree_rows(spec)}
+    rows = {
+        str(Path(str(row["path"])).resolve()): row
+        for row in worktree_rows(spec)
+    }
     row = rows.get(str(target))
     if not row or row["canonical"]:
         raise WorkspaceError(
@@ -535,7 +538,10 @@ def retirement_plan(identifier: str) -> dict[str, Any]:
     repo_id = str(meta["repo_id"])
     spec = repo_spec(repo_id)
     target = Path(str(meta["path"])).resolve()
-    rows = {row["path"]: row for row in worktree_rows(spec)}
+    rows = {
+        str(Path(str(row["path"])).resolve()): row
+        for row in worktree_rows(spec)
+    }
     row = rows.get(str(target))
     if not row:
         return {
