@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","auditors","ai-agents"]
 source_of_truth: "git"
 authority: "disaster-recovery-contract"
-reviewed_at: "2026-09-04"
+reviewed_at: "2026-09-06"
 review_interval_days: 30
 sensitivity: "internal"
 ---
