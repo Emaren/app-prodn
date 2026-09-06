@@ -58,8 +58,8 @@
     "node_policy": "build-and-production-use-node-22; operator-node-22-or-24-supported"
   },
   "capacity": {
-    "root_free_warn_gib": 5.0,
-    "root_free_preferred_gib": 6.0,
+    "root_free_warn_gib": 5,
+    "root_free_preferred_gib": 6,
     "volume_used_warn_percent": 85,
     "volume_used_critical_percent": 92
   },
@@ -178,7 +178,49 @@
     "emergency_mem_available_mib": 1024,
     "max_block_age_seconds": 20,
     "max_no_progress_seconds": 15,
-    "policy": "maintenance-dies-before-sole-validator"
+    "policy": "maintenance-dies-before-sole-validator",
+    "adaptive_governor": {
+      "enabled": true,
+      "selection": "per-bounded-stage-from-live-host-headroom",
+      "profiles": {
+        "conservative": {
+          "cpu_quota_percent": 20,
+          "cpu_weight": 1,
+          "io_weight": 1,
+          "memory_high_mib": 256,
+          "memory_max_mib": 384,
+          "nice": 19,
+          "io_scheduling_class": "idle"
+        },
+        "balanced": {
+          "cpu_quota_percent_per_vcpu": 50,
+          "cpu_quota_cap_percent": 200,
+          "cpu_weight": 10,
+          "io_weight": 10,
+          "memory_high_mib": 384,
+          "memory_max_mib": 512,
+          "nice": 15,
+          "io_scheduling_class": "best-effort"
+        },
+        "burst": {
+          "cpu_quota_percent_per_vcpu": 75,
+          "cpu_quota_cap_percent": 300,
+          "cpu_weight": 25,
+          "io_weight": 25,
+          "memory_high_mib": 512,
+          "memory_max_mib": 768,
+          "nice": 10,
+          "io_scheduling_class": "best-effort"
+        }
+      },
+      "burst_min_mem_available_mib": 3072,
+      "balanced_min_mem_available_mib": 2560,
+      "soft_memory_pressure_mib": 1536,
+      "soft_block_age_seconds": 13,
+      "soft_no_progress_seconds": 9,
+      "demotion": "immediate-to-conservative",
+      "hard_abort_policy": "unchanged"
+    }
   },
   "development": {
     "shadow_database": "aoe2hdbets_shadow",
