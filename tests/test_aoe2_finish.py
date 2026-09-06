@@ -334,6 +334,77 @@ class FinishTests(unittest.TestCase):
 
 
 
+class MaintenanceRunnerHandoffTests(unittest.TestCase):
+    def test_finish_reconciles_runner_before_operational_doctor(self):
+        import inspect
+
+        source = inspect.getsource(MODULE.execute_finish)
+
+        self.assertIn(
+            '"maintenance_runner_reconciliation"',
+            source,
+        )
+        self.assertIn(
+            "reconcile_maintenance_runner",
+            source,
+        )
+        self.assertIn(
+            '"operational_preflight"',
+            source,
+        )
+        self.assertLess(
+            source.index('"maintenance_runner_reconciliation"'),
+            source.index('"operational_preflight"'),
+        )
+
+    def test_runner_reconciliation_is_lock_serialized_and_wolo_guarded(self):
+        import inspect
+
+        source = inspect.getsource(MODULE.reconcile_maintenance_runner)
+
+        self.assertIn('exec 8<>"$RELEASE_LOCK"', source)
+        self.assertIn('exec 7<>"$RETENTION_LOCK"', source)
+        self.assertIn('exec 9<>"$ARCHIVE_LOCK"', source)
+        self.assertLess(
+            source.index('exec 8<>"$RELEASE_LOCK"'),
+            source.index('exec 7<>"$RETENTION_LOCK"'),
+        )
+        self.assertLess(
+            source.index('exec 7<>"$RETENTION_LOCK"'),
+            source.index('exec 9<>"$ARCHIVE_LOCK"'),
+        )
+
+        self.assertIn('test "$(listener_count 8092)" = "1"', source)
+        self.assertIn('test "$(listener_count 8093)" = "1"', source)
+        self.assertIn('test "$PID_AFTER" = "$PID_BEFORE"', source)
+        self.assertIn('test "$RESTART_AFTER" = "$RESTART_BEFORE"', source)
+        self.assertIn('test "$H4" -gt "$H3"', source)
+        self.assertIn('"wolo_mutated": False', source)
+
+    def test_runner_reconciliation_is_atomic_and_receipted(self):
+        import inspect
+
+        source = inspect.getsource(MODULE.reconcile_maintenance_runner)
+
+        self.assertIn('TMP="$INSTALLED.partial.$"', source)
+        self.assertIn('bash -n "$TMP"', source)
+        self.assertIn('mv -f "$TMP" "$INSTALLED"', source)
+        self.assertIn('chmod 0755 "$TMP"', source)
+        self.assertIn('chown root:root "$TMP"', source)
+        self.assertIn("maintenance-runner-sync-receipts", source)
+        self.assertIn('os.chmod(tmp, 0o444)', source)
+
+    def test_runner_reconciliation_is_enabled_in_operations_contract(self):
+        contract_path = pathlib.Path(__file__).resolve().parents[1] / "config" / "aoe2war-operations.json"
+        contract = MODULE.json.loads(contract_path.read_text(encoding="utf-8"))
+
+        self.assertIs(
+            contract["finish"]["auto_maintenance_runner_reconcile"],
+            True,
+        )
+
+
+
 class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
     def contract(self):
         return {
