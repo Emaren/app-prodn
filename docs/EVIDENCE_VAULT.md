@@ -137,6 +137,46 @@ Only then may the operations contract name the authority and exact restore
 proof. Review the change as disaster-recovery infrastructure, not as a
 documentation-only toggle.
 
+## Recovery OS V2 proof-verification contract
+
+Recovery status is now evidence-derived rather than configuration-derived.
+Setting `offsite_evidence.enabled=true`, naming an authority, and typing a
+restore-proof path are necessary but never sufficient to produce
+`VERIFIED`.
+
+The configured restore proof must live beneath the independent operator
+recovery vault, carry a matching SHA-256 sidecar, and use the schema-2
+`aoe2war-recovery-proof` / `RECOVERY_VERIFIED` contract. The proof authority
+must exactly match the operations contract. It must declare no remaining
+full-recovery scope and must include PASS coverage for all required recovery
+classes:
+
+- database;
+- operator evidence;
+- raw replay archive;
+- parser evidence corpus;
+- managed/user media;
+- Radio WOLO private media;
+- legacy direct-message attachments;
+- Wolo settlement state;
+- consistency-safe Wolo consensus recovery;
+- separate Wolo key-custody proof.
+
+Every coverage class must bind to a local non-secret proof file by relative path
+and SHA-256. A successful isolated restore drill must itself bind to a hashed
+proof file. The secrets policy must explicitly prove that database credentials,
+environment files, validator private keys, Wolo keyrings, and the recovery
+private key were not placed into the general recovery payload.
+
+Doctor consumes this same Recovery OS verifier, and Host OS maintenance planning
+is READY only when Recovery OS itself is `VERIFIED`. No independent code path
+may award the disaster-recovery score or authorize package/reboot maintenance
+from configuration strings alone.
+
+The existing 2026-09-04 database/operator-evidence pilot remains valid
+`PILOT_VERIFIED` evidence, but schema 1 pilot proof can never satisfy the full
+schema-2 verification contract.
+
 ## Restore drill
 
 1. Choose a sealed bundle and record its immutable remote version ID.

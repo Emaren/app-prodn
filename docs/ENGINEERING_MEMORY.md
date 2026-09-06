@@ -148,6 +148,17 @@ and separate Wolo/recovery-key custody proof.
 Never flip `offsite_evidence.enabled=true` merely because the database pilot is
 green.
 
+Recovery OS V2 closes the prior configuration-only verification loophole.
+`enabled=true`, a non-empty authority, and a restore-proof string can no longer
+produce `VERIFIED` by themselves. Full recovery verification now requires a
+schema-2 hashed proof beneath the independent recovery vault, exact authority
+binding, hashed proof files for every required recovery class, a hashed isolated
+restore-drill proof, an explicit no-secrets boundary, and zero declared
+remaining recovery scope. Doctor and Host OS consume this same verifier.
+
+The 2026-09-04 schema-1 `PILOT_VERIFIED` bundle remains valid pilot evidence
+but is structurally incapable of satisfying full Recovery OS verification.
+
 ## Storage estate lesson
 
 Do not mirror the entire VPS or all durable rollback generations to the Mac.

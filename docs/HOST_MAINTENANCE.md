@@ -265,9 +265,10 @@ A successful `aoe2war finish` invokes only the transient-cleanup lane before the
 final Doctor, preventing historical failed build instances from permanently
 polluting current host health.
 
-`aoe2war host maintenance-plan` remains read-only and fail-closed while the
-independent mutable-state Recovery OS contract lacks a named authority and
-verified restore proof. Package upgrades and reboot stay explicit maintenance
+`aoe2war host maintenance-plan` remains read-only and fail-closed until
+Recovery OS itself returns `VERIFIED` from its cryptographically checked
+schema-2 proof contract. Configuration strings alone cannot make host
+maintenance READY. Package upgrades and reboot stay explicit maintenance
 operations.
 
 ## Traffic rollup timer rearm proof
