@@ -99,7 +99,12 @@ def refresh_control_state(
                     "Capturing reset-ready control-plane context evidence..."
                 )
                 result["context_archives"] = aoe2_update.capture_context(
-                    ["VPSSentry", "AoE2WAR-docs"],
+                    [
+                        "AoE2HDBets",
+                        "WoloChain-wolo-1",
+                        "VPSSentry",
+                        "AoE2WAR-docs",
+                    ],
                     progress=own_progress,
                     include_host_context=True,
                 )
