@@ -34,10 +34,33 @@ const REPLAY_ADJUDICATIONS: ReplayAdjudication[] = [
     settlementNote:
       "Linked market was already settled from rejected parser inference. This overlay does not mutate wagers, markets, claims, or settlement history.",
   },
+  {
+    gameStatsId: 32173,
+    winner: "Emaren",
+    source: "commissioner_review",
+    adjudicatedBy: "Emaren",
+    reason:
+      "Commissioner verified Emaren won the Yucatan 1v1 against 久居妒海的猫 after converting the opponent's final remaining unit. The automatic recorder-exit loss inference was rejected because recorder shutdown is not winner evidence.",
+    affectsStats: true,
+    affectsBets: false,
+    settlementNote:
+      "Stats-only correction. This overlay does not mutate wagers, markets, claims, settlements, or chain state.",
+  },
 ];
 
+const DISABLED_RESULT_ADJUDICATION_PREFIXES = [
+  "evidence:auto:replay-terminal-recorder-exit-v2:",
+] as const;
+
 export const EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION = {
-  where: { decisionStatus: "accepted" },
+  where: {
+    decisionStatus: "accepted",
+    NOT: DISABLED_RESULT_ADJUDICATION_PREFIXES.map((prefix) => ({
+      idempotencyKey: {
+        startsWith: prefix,
+      },
+    })),
+  },
   orderBy: [{ createdAt: "desc" }, { id: "desc" }],
   take: 1,
   select: {

@@ -1319,22 +1319,23 @@ export const WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY =
   false as const;
 
 /*
- * Modern watcher finals can support a narrower practical inference that
- * does NOT claim the replay bytes contained a player-specific leave packet.
+ * Recorder shutdown is not result authority.
  *
- * If an authenticated watcher recorder exactly matches one participant in
- * a final rated HD 1v1, the replay terminated unresolved, and every stronger
- * result source is explicitly absent, treat the recorder as a PROVISIONAL
- * losing-side candidate for public/stats projection only.
+ * Production game 32173 proved the missing counterexample: the authenticated
+ * recorder can WIN a rated HD 1v1 and then stop recording after the opponent
+ * is eliminated (including a final-unit conversion) even when the replay has
+ * no serialized resignation/postgame winner block.
  *
- * This is deliberately separate from replay-terminal-action-tail-v3:
- * production game 21811 proved action ordering is not winner authority.
+ * Keep the historical v2 policy identity so existing append-only rows remain
+ * recognizable and correctable, but never create or project a new winner from
+ * "recorder ended => recorder lost". Unknown result stays unknown until
+ * stronger replay, screenshot, or commissioner evidence exists.
  */
 export const WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION =
   "replay-terminal-recorder-exit-v2" as const;
 
 export const WATCHER_TERMINAL_RECORDER_EXIT_RESULT_AUTHORITY =
-  true as const;
+  false as const;
 
 export function isProvisionalWatcherRecorderExitAdjudication(
   value:
@@ -2840,9 +2841,14 @@ export async function reconcileAutomaticWatcherTerminalResults(
 
         const evaluation =
           automaticRoster.length === 2
-            ? evaluateWatcherRecorderExitResult(
-                terminalEvaluationInput
-              )
+            ? WATCHER_TERMINAL_RECORDER_EXIT_RESULT_AUTHORITY
+              ? evaluateWatcherRecorderExitResult(
+                  terminalEvaluationInput
+                )
+              : {
+                  eligible: false as const,
+                  reason: "recorder_exit_is_not_result_authority",
+                }
             : evaluateWatcherTeamTerminalResult(
                 terminalEvaluationInput
               );
