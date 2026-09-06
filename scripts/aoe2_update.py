@@ -52,6 +52,11 @@ AUTO_P1_KEYS = {
     "archive-stale",
 }
 
+AUTO_REMEDIABLE_CENTRAL_P0_KEYS = {
+    "docs-check",
+    "strict-build",
+}
+
 RECEIPT_DIR = ROOT / ".aoe2war-release" / "update-receipts"
 UPDATE_LOCK = ROOT / ".aoe2war-release" / "update.lock"
 
@@ -784,8 +789,30 @@ def collect_plan(
     if estate_maps["status"] == "refresh":
         context_projects.add("VPSSentry")
 
+    p0_findings = [
+        finding
+        for finding in payload["findings"]
+        if finding["severity"] == "P0"
+    ]
+    auto_remediable_p0 = [
+        finding
+        for finding in p0_findings
+        if (
+            central_sync_needed
+            and not blocked_source_docs
+            and finding.get("area") == "Documentation"
+            and finding.get("key") in AUTO_REMEDIABLE_CENTRAL_P0_KEYS
+        )
+    ]
+    auto_remediable_p0_ids = {id(finding) for finding in auto_remediable_p0}
+    unknown_p0 = [
+        finding
+        for finding in p0_findings
+        if id(finding) not in auto_remediable_p0_ids
+    ]
+
     blocked = bool(
-        payload["p0"]
+        unknown_p0
         or blocked_source_docs
         or unknown_p1
         or estate_maps["status"] == "blocked"
@@ -796,6 +823,8 @@ def collect_plan(
         "audit": payload,
         "baseline_refreshes": sorted(baseline_refreshes),
         "blocked_source_docs": blocked_source_docs,
+        "auto_remediable_p0": auto_remediable_p0,
+        "unknown_p0": unknown_p0,
         "unknown_p1": unknown_p1,
         "estate_maps": estate_maps,
         "central_sync": central_sync_needed,

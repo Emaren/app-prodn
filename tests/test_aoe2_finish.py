@@ -43,6 +43,36 @@ class FinishTests(unittest.TestCase):
         self.assertIn("--force-control-refresh", args)
         self.assertEqual(result["result"], "RECONCILED")
 
+    def test_documentation_plan_summary_exposes_p0_remediation_truth(self):
+        plan = {
+            "blocked": False,
+            "changes_needed": True,
+            "baseline_refreshes": [],
+            "central_sync": True,
+            "context_projects": ["AoE2WAR-docs"],
+            "blocked_source_docs": [],
+            "auto_remediable_p0": [
+                {
+                    "severity": "P0",
+                    "area": "Documentation",
+                    "key": "docs-check",
+                    "detail": "stale central registry",
+                }
+            ],
+            "unknown_p0": [],
+            "unknown_p1": [],
+            "estate_maps": {"status": "deferred"},
+        }
+
+        summary = MODULE.documentation_plan_summary(plan)
+
+        self.assertFalse(summary["blocked"])
+        self.assertEqual(
+            [item["key"] for item in summary["auto_remediable_p0"]],
+            ["docs-check"],
+        )
+        self.assertEqual(summary["unknown_p0"], [])
+
     def test_documentation_reconcile_propagates_context_preservation(self):
         plan = {
             "blocked": False,
