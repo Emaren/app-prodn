@@ -416,12 +416,14 @@ def collect() -> dict[str, Any]:
         "host": host,
         "recovery": recovery,
         "workspace": {
+            "canonical_drift_count": workspace.get("canonical_drift_count"),
+            "active_agent_count": workspace.get("active_agent_count"),
+            "dirty_agent_count": workspace.get("dirty_agent_count"),
             "cleanup_candidates": len(
                 workspace.get("cleanup_candidates") or []
             ),
-            "dirty_count": workspace.get("dirty_count"),
             "unmerged_count": workspace.get("unmerged_count"),
-            "orphans": workspace.get("orphans"),
+            "stale_metadata": len(workspace.get("stale_metadata") or []),
         },
         "performance_pulse": pulse,
         "ready_coverage": ready,
