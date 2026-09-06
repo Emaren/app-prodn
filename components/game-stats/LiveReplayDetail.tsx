@@ -855,15 +855,17 @@ function LiveReplayTeamMatchup({
   return (
     <div className="grid max-w-4xl gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-stretch">
       {cards[0]}
-      <div className="hidden items-center justify-center px-1 text-center sm:flex">
-        <div className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-2 text-sm font-semibold text-amber-100">
-          VS
+      <div className="flex items-center justify-center px-1 text-center">
+        <div className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-2">
+          <div className="text-sm font-semibold text-amber-100">VS</div>
+          {presentation.format ? (
+            <div className="mt-0.5 text-[9px] uppercase tracking-[0.18em] text-slate-500">
+              {presentation.format}
+            </div>
+          ) : null}
         </div>
       </div>
       {cards[1]}
-      <div className="text-center text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 sm:hidden">
-        {presentation.format ?? "Versus"}
-      </div>
     </div>
   );
 }
