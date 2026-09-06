@@ -73,5 +73,40 @@ class ControlDocsTests(unittest.TestCase):
         self.assertFalse(payload["wolo_mutated"])
 
 
+    def test_refresh_captures_mbp_and_vps_host_context_with_control_docs(self):
+        audit = mock.Mock()
+        audit.payload.return_value = {"p0": 0, "p1": 0, "estate": "HEALTHY"}
+        refresh = {
+            "status": "refreshed",
+            "intended_source_sha": "a" * 40,
+        }
+        with tempfile.TemporaryDirectory() as temporary, \
+             mock.patch.object(MODULE, "RECEIPT_DIR", pathlib.Path(temporary)), \
+             mock.patch.object(
+                 MODULE.aoe2_update, "update_lock", return_value=contextlib.nullcontext()
+             ), \
+             mock.patch.object(
+                 MODULE.aoe2_update, "refresh_estate_maps", return_value=refresh
+             ), \
+             mock.patch.object(
+                 MODULE.aoe2_update, "central_sync", return_value={"status": "already-current"}
+             ), \
+             mock.patch.object(
+                 MODULE.aoe2_update,
+                 "capture_context",
+                 return_value={"VPSSentry": {}, "AoE2WAR-docs": {}, "MBP": {}, "VPS": {}},
+             ) as capture_call, \
+             mock.patch.object(MODULE.aoe2_audit, "collect_audit", return_value=audit):
+            payload = MODULE.refresh_control_state(capture_context=True)
+
+        capture_call.assert_called_once_with(
+            ["VPSSentry", "AoE2WAR-docs"],
+            progress=mock.ANY,
+            include_host_context=True,
+        )
+        self.assertEqual(payload["status"], "VERIFIED")
+        self.assertEqual(set(payload["context_archives"]), {"VPSSentry", "AoE2WAR-docs", "MBP", "VPS"})
+
+
 if __name__ == "__main__":
     unittest.main()
