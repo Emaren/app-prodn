@@ -264,11 +264,13 @@ export default function LiveReplayDetail({
             <h1 className="break-words text-4xl font-semibold text-white sm:text-5xl [overflow-wrap:anywhere]">
               {publicMapName}
             </h1>
-            <p className="max-w-3xl break-words text-base leading-7 text-slate-300 sm:text-lg [overflow-wrap:anywhere]">
-              {players.length > 0
-                ? teamPresentation.matchupLabel
-                : displayReplayFilename(game.originalFilename, game.replayFile)}
-            </p>
+            {players.length > 0 ? (
+              <LiveReplayTeamMatchup presentation={teamPresentation} />
+            ) : (
+              <p className="max-w-3xl break-words text-base leading-7 text-slate-300 sm:text-lg [overflow-wrap:anywhere]">
+                {displayReplayFilename(game.originalFilename, game.replayFile)}
+              </p>
+            )}
             <p className="max-w-3xl text-sm leading-6 text-slate-400 sm:text-base">
               {isBattleArchive
                 ? "The live battle tape stays here after the match closes so users can study the pulse flow, then jump into the locked final stats page when they want the official record."
@@ -793,6 +795,75 @@ function SignalTile({
     <div className={`rounded-2xl border px-4 py-4 ${toneClass}`}>
       <div className="text-[11px] uppercase tracking-[0.22em] opacity-70">{label}</div>
       <div className="mt-2 text-lg font-semibold">{value}</div>
+    </div>
+  );
+}
+
+function LiveReplayTeamMatchup({
+  presentation,
+}: {
+  presentation: ReplayTeamPresentation;
+}) {
+  if (
+    presentation.status !== "resolved" ||
+    presentation.teams.length !== 2
+  ) {
+    return (
+      <div className="max-w-3xl rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] px-4 py-3">
+        <div className="text-[10px] uppercase tracking-[0.24em] text-amber-200/75">
+          Roster live · teams unresolved
+        </div>
+        <div className="mt-2 break-words text-base font-medium leading-6 text-slate-200 [overflow-wrap:anywhere]">
+          {presentation.matchupLabel}
+        </div>
+      </div>
+    );
+  }
+
+  const cards = presentation.teams.map((team, index) => {
+    const left = index === 0;
+    return (
+      <div
+        key={team.teamKey}
+        className={`min-w-0 rounded-2xl border px-4 py-3 ${
+          left
+            ? "border-sky-300/20 bg-sky-400/[0.055]"
+            : "border-amber-300/20 bg-amber-400/[0.055]"
+        }`}
+      >
+        <div
+          className={`text-[10px] uppercase tracking-[0.25em] ${
+            left ? "text-sky-200/75" : "text-amber-200/75"
+          }`}
+        >
+          Team {left ? "A" : "B"}
+        </div>
+        <div className="mt-2 space-y-1">
+          {team.names.map((name) => (
+            <div
+              key={name}
+              className="break-words text-sm font-semibold leading-5 text-white sm:text-base [overflow-wrap:anywhere]"
+            >
+              {name}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  });
+
+  return (
+    <div className="grid max-w-4xl gap-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] sm:items-stretch">
+      {cards[0]}
+      <div className="hidden items-center justify-center px-1 text-center sm:flex">
+        <div className="rounded-full border border-white/10 bg-slate-950/60 px-3 py-2 text-sm font-semibold text-amber-100">
+          VS
+        </div>
+      </div>
+      {cards[1]}
+      <div className="text-center text-xs font-semibold uppercase tracking-[0.24em] text-slate-500 sm:hidden">
+        {presentation.format ?? "Versus"}
+      </div>
     </div>
   );
 }
