@@ -178,6 +178,17 @@ future seams. Cooperative pause is between classes only; an interruption inside
 a class is ambiguous and resume must fail closed rather than overwrite partial
 evidence.
 
+The canonical Recovery OS Mac key authority is
+`~/Library/Application Support/AoE2WAR Recovery/keys`. The current V1 private
+key is `recovery-v1-private.pem` at mode 0600 and the matching public
+certificate is `recovery-v1-recipient.pem`. The certificate SHA-256
+fingerprint is
+`7A31A5E8D552DF043EA5D4AB96562A257D9397C50A78781292C5FF85AF28B2C0`.
+A live 2026-09-06 proof confirmed both certificate fingerprint continuity and
+private-key/public-certificate keypair equality. Recovery preflight must verify
+those conditions itself before encrypting any new ordinary recovery payload.
+Private key contents and hashes must never be printed or transmitted.
+
 ## Storage estate lesson
 
 Do not mirror the entire VPS or all durable rollback generations to the Mac.
