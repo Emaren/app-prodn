@@ -394,6 +394,19 @@ class MaintenanceRunnerHandoffTests(unittest.TestCase):
         self.assertIn("maintenance-runner-sync-receipts", source)
         self.assertIn('os.chmod(tmp, 0o444)', source)
 
+    def test_runner_reconciliation_waits_for_release_seam_and_reports_holders(self):
+        import inspect
+
+        source = inspect.getsource(MODULE.reconcile_maintenance_runner)
+
+        self.assertIn("flock -w 300 8", source)
+        self.assertIn("flock -w 15 7", source)
+        self.assertIn("flock -w 15 9", source)
+        self.assertIn("lock_holders()", source)
+        self.assertIn("release lock did not clear within 300s", source)
+        self.assertIn("holders=", source)
+
+
     def test_runner_reconciliation_template_renders_before_remote_execution(self):
         contract = MODULE.aoe2_doctor.load_contract()
         source = (
