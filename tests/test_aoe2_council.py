@@ -84,6 +84,88 @@ class CouncilTests(unittest.TestCase):
         )
         self.assertIn("13/77", readiness["reason"])
 
+    def test_registered_agent_wip_is_not_counted_as_dirty_review_debt(self):
+        recs = council.build_recommendations(
+            audit={"p0": 0, "p1": 0},
+            doctor={},
+            storage={"health": "HEALTHY"},
+            host={
+                "failed_transient": 0,
+                "traffic_timer_enabled": "enabled",
+                "traffic_timer_active": "active",
+                "reboot_required": False,
+                "updates": 0,
+            },
+            recovery={"status": "VERIFIED"},
+            workspace={
+                "worktrees": [
+                    {
+                        "classification": "AGENT_ACTIVE_DIRTY",
+                        "agent_workspace": True,
+                    }
+                ],
+                "dirty_agent_count": 1,
+                "unmerged_count": 0,
+                "cleanup_candidates": [],
+                "stale_metadata": [],
+            },
+            pulse={"status": "PASS"},
+            due_docs=0,
+            ready={
+                "ready_routes": 77,
+                "baseline_routes": 77,
+            },
+            architecture=[],
+        )
+
+        self.assertFalse(
+            any(
+                item["key"] == "workspace-preserved-code"
+                for item in recs
+            )
+        )
+
+    def test_non_agent_dirty_worktree_remains_review_debt(self):
+        recs = council.build_recommendations(
+            audit={"p0": 0, "p1": 0},
+            doctor={},
+            storage={"health": "HEALTHY"},
+            host={
+                "failed_transient": 0,
+                "traffic_timer_enabled": "enabled",
+                "traffic_timer_active": "active",
+                "reboot_required": False,
+                "updates": 0,
+            },
+            recovery={"status": "VERIFIED"},
+            workspace={
+                "worktrees": [
+                    {
+                        "classification": "PRESERVE_DIRTY_REVIEW",
+                        "agent_workspace": False,
+                    }
+                ],
+                "dirty_agent_count": 0,
+                "unmerged_count": 0,
+                "cleanup_candidates": [],
+                "stale_metadata": [],
+            },
+            pulse={"status": "PASS"},
+            due_docs=0,
+            ready={
+                "ready_routes": 77,
+                "baseline_routes": 77,
+            },
+            architecture=[],
+        )
+
+        preserved = next(
+            item
+            for item in recs
+            if item["key"] == "workspace-preserved-code"
+        )
+        self.assertIn("dirty=1 unmerged=0", preserved["reason"])
+
     def test_failed_transients_surface_as_hygiene(self):
         recs = council.build_recommendations(
             audit={"p0": 0, "p1": 0},
