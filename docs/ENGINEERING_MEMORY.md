@@ -165,7 +165,18 @@ running process rather than templated systemd text, preserves all parser
 top-level evidence except disposable `tmp/`, keeps Wolo key custody outside the
 general vault, computes Mac capacity/headroom, and declares when streaming
 restore verification is required. Planning performs no backup or service
-mutation; future campaign execution requires explicit authorization.
+mutation.
+
+The first Recovery campaign write lane is deliberately narrower than the full
+plan. `recovery campaign start --authorize-ordinary-capture` may capture only
+managed media, direct-message attachments, Radio WOLO media, parser evidence and
+the replay archive. It streams each class over SSH directly into Mac-side CMS
+encryption, hashes plaintext and ciphertext, writes a hashed
+`CAPTURED_PENDING_RESTORE` proof, and never stages plaintext on the Mac.
+Settlement state, Wolo quiescence and key custody remain separately authorized
+future seams. Cooperative pause is between classes only; an interruption inside
+a class is ambiguous and resume must fail closed rather than overwrite partial
+evidence.
 
 ## Storage estate lesson
 
