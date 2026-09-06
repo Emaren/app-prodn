@@ -2108,6 +2108,8 @@ def documentation_plan_summary(plan: dict[str, Any]) -> dict[str, Any]:
         "central_sync": bool(plan.get("central_sync")),
         "context_projects": list(plan.get("context_projects") or []),
         "blocked_source_docs": list(plan.get("blocked_source_docs") or []),
+        "auto_remediable_p0": list(plan.get("auto_remediable_p0") or []),
+        "unknown_p0": list(plan.get("unknown_p0") or []),
         "unknown_p1": list(plan.get("unknown_p1") or []),
         "estate_maps": dict(plan.get("estate_maps") or {}),
     }
@@ -2866,6 +2868,23 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
         assert_capacity_headroom(capacity_snapshot)
     except FinishError as exc:
         blockers.append(str(exc))
+
+    if documentation_summary["blocked"]:
+        blockers.append(
+            "documentation/update plan is blocked by non-remediable findings"
+        )
+    elif documentation_summary.get("auto_remediable_p0"):
+        keys = sorted(
+            {
+                str(item.get("key") or "unknown")
+                for item in documentation_summary["auto_remediable_p0"]
+                if isinstance(item, dict)
+            }
+        )
+        remediated_blockers.append(
+            "central documentation quality gates will be regenerated and re-gated "
+            "before deployment: " + ", ".join(keys)
+        )
 
     docs_entry = external_sources.get("repositories", {}).get("AoE2WAR-docs", {})
     if docs_entry.get("status") == "RECONCILABLE":
