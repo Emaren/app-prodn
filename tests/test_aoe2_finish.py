@@ -424,16 +424,20 @@ class MaintenanceRunnerHandoffTests(unittest.TestCase):
         self.assertIn("maintenance-runner-sync-receipts", source)
         self.assertIn('os.chmod(tmp, 0o444)', source)
 
-    def test_runner_reconciliation_waits_for_release_seam_and_reports_holders(self):
+    def test_runner_reconciliation_proves_inherited_release_lease_without_relocking(self):
         import inspect
 
         source = inspect.getsource(MODULE.reconcile_maintenance_runner)
 
-        self.assertIn("flock -w 300 8", source)
+        self.assertIn("GLOBAL_LEASE_ENV", source)
+        self.assertIn("GLOBAL_LEASE_OWNER_ENV", source)
+        self.assertIn('RELEASE_META=', source)
+        self.assertIn("if flock -n 8", source)
+        self.assertNotIn("flock -w 300 8", source)
+        self.assertIn("release lease ownership mismatch: token", source)
+        self.assertIn("release lease ownership mismatch: pid", source)
         self.assertIn("flock -w 15 7", source)
         self.assertIn("flock -w 15 9", source)
-        self.assertIn("lock_holders()", source)
-        self.assertIn("release lock did not clear within 300s", source)
         self.assertIn("holders=", source)
 
 
@@ -462,17 +466,48 @@ class MaintenanceRunnerHandoffTests(unittest.TestCase):
             MODULE,
             "git_output",
             return_value="a" * 40,
+        ), patch.dict(
+            MODULE.os.environ,
+            {
+                MODULE.aoe2_release.GLOBAL_LEASE_ENV: "lease-token",
+                MODULE.aoe2_release.GLOBAL_LEASE_OWNER_ENV: "4242",
+            },
+            clear=False,
         ), patch.object(
             MODULE.subprocess,
             "run",
             return_value=completed,
-        ):
+        ) as run_remote:
             result = MODULE.reconcile_maintenance_runner(
                 progress=MODULE.Progress(enabled=False),
             )
 
         self.assertEqual(result["status"], "NOOP")
         self.assertEqual(result["installed_sha256"], expected_sha)
+
+        command = run_remote.call_args.args[0][-1]
+        self.assertIn("partial.$", command)
+        self.assertNotIn("flock -w 300 8", command)
+        self.assertIn("lease-token", command)
+
+    def test_runner_reconciliation_refuses_without_inherited_release_lease(self):
+        with patch.dict(
+            MODULE.os.environ,
+            {
+                MODULE.aoe2_release.GLOBAL_LEASE_ENV: "",
+                MODULE.aoe2_release.GLOBAL_LEASE_OWNER_ENV: "",
+            },
+            clear=False,
+        ):
+            with self.assertRaises(MODULE.FinishError) as raised:
+                MODULE.reconcile_maintenance_runner(
+                    progress=MODULE.Progress(enabled=False),
+                )
+
+        self.assertIn(
+            "requires the canonical release lease",
+            str(raised.exception),
+        )
 
     def test_runner_reconciliation_is_enabled_in_operations_contract(self):
         contract_path = pathlib.Path(__file__).resolve().parents[1] / "config" / "aoe2war-operations.json"
