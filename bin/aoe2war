@@ -110,7 +110,7 @@ Usage:
   aoe2war code-health [--json] [--no-receipt] [--require-clean-worktree]
   aoe2war deps
   aoe2war host <status|tidy|maintenance-plan> [options]
-  aoe2war recovery <status|plan> [options]
+  aoe2war recovery <status|plan|campaign> [options]
   aoe2war finish [--dry-run] [--json] [--preserve-context-history] [-m MESSAGE]
   aoe2war bridge [--once] [bridge options]
   aoe2war status [--json]
@@ -321,6 +321,12 @@ KINGDOM INTELLIGENCE / HYGIENE
 
   aoe2war recovery plan
       Show the exact fail-closed steps required before host patch/reboot work.
+
+  aoe2war recovery campaign plan
+      Run one read-only live recovery census and turn it into a finite,
+      capacity-aware evidence campaign. It resolves the live Wolo home from the
+      running process, classifies parser evidence, preserves the separate key
+      custody boundary, and performs no backup/service/Wolo mutation.
 
 REPLAY TRUTH
 
