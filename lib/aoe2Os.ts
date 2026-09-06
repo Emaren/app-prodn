@@ -41,6 +41,27 @@ export const AOE2_OS_ACTIONS = {
     confirmation: "REFRESH",
     requiresSourceSha: false,
   },
+  storage_status: {
+    label: "Storage Status",
+    description: "Read current mounted-volume Storage OS health and thresholds.",
+    risk: "read",
+    confirmation: null,
+    requiresSourceSha: false,
+  },
+  storage_plan: {
+    label: "Storage Plan",
+    description: "Compute the next bounded Storage OS maintenance candidate without changing storage.",
+    risk: "read",
+    confirmation: null,
+    requiresSourceSha: false,
+  },
+  storage_campaign_status: {
+    label: "Storage Campaign",
+    description: "Read the latest detached Storage OS campaign lifecycle and progress.",
+    risk: "read",
+    confirmation: null,
+    requiresSourceSha: false,
+  },
   update_plan: {
     label: "Plan Documentation Sync",
     description: "Show documentation/federation/context maintenance that would be performed.",
