@@ -90,8 +90,8 @@ require_chain_healthy() {
 
 host_load_ok() {
   local multiplier="$1"
-  awk -v load="$(awk '{print $1}' /proc/loadavg)" -v cpus="$(nproc)" -v m="$multiplier" \
-    'BEGIN { exit !(load <= cpus * m) }'
+  awk -v current_load="$(awk '{print $1}' /proc/loadavg)" -v cpus="$(nproc)" -v m="$multiplier" \
+    'BEGIN { exit !(current_load <= cpus * m) }'
 }
 
 choose_profile() {
