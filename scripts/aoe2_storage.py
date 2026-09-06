@@ -569,6 +569,8 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("--force", action="store_true")
     q = sub.add_parser("verify")
     q.add_argument("--json", action="store_true")
+    q = sub.add_parser("campaign")
+    q.add_argument("campaign_args", nargs=argparse.REMAINDER)
     return p
 
 
@@ -592,6 +594,13 @@ def main() -> int:
         return maintain(apply=args.apply, until_target=args.until_target, max_generations=args.max_generations, force=args.force)
     if args.command == "verify":
         return verify_archives(json_mode=args.json)
+    if args.command == "campaign":
+        cmd = [
+            sys.executable,
+            str(ROOT / "scripts" / "aoe2_storage_campaign.py"),
+            *args.campaign_args,
+        ]
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
     raise StorageError(f"unknown command: {args.command}")
 
 
