@@ -1068,8 +1068,8 @@ function BattleMatrixLane({
 
   return (
     <div className={`min-w-0 overflow-hidden rounded-[1.6rem] border p-4 sm:p-5 ${toneClass.shell}`}>
-      <div className="flex min-w-0 items-start gap-3 sm:gap-4">
-        <div className="min-w-0 flex-1">
+      <div className="flex min-w-0 flex-wrap items-start gap-3 sm:gap-4">
+        <div className="min-w-[10rem] flex-1">
           <div className="text-[11px] uppercase tracking-[0.24em] text-slate-500">Activity lane</div>
           <div className={`mt-2 break-words text-xl font-semibold leading-7 sm:text-2xl ${toneClass.accent} [overflow-wrap:anywhere]`}>
             {displayPlayerName(player)}
@@ -1081,7 +1081,7 @@ function BattleMatrixLane({
           </div>
         </div>
 
-        <div className="w-[7.4rem] shrink-0 rounded-[1.25rem] border border-white/8 bg-slate-950/30 px-3 py-3 text-right">
+        <div className="ml-auto w-[7.4rem] max-w-full shrink-0 rounded-[1.25rem] border border-white/8 bg-slate-950/30 px-3 py-3 text-right">
           <div className="text-[9px] uppercase leading-4 tracking-[0.18em] text-slate-500">Current EAPM</div>
           <div className="mt-1.5 text-3xl font-semibold leading-none text-white">{formatActivityMetric(summary.currentEapm)}</div>
           <div className="mt-2 text-[11px] leading-4 text-slate-300">{formatDeltaMetric(summary.eapmDelta)} from opening</div>
