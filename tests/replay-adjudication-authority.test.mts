@@ -5,6 +5,10 @@ import {
   resolveReplayWinnerTruth,
   resolveReliableReplayWinner,
 } from "../lib/unresolvedWatcherResult.ts";
+import {
+  EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
+  getReplayAdjudicationForGameStatsId,
+} from "../lib/replayAdjudications.ts";
 
 function adjudicationEvidence(
   winningPlayerKeys: string[],
@@ -200,5 +204,54 @@ test(
 
     assert.equal(truth.winner, null);
     assert.equal(truth.statsEligible, false);
+  }
+);
+
+
+test(
+  "disabled recorder-exit rows are excluded from effective public adjudication",
+  () => {
+    assert.deepEqual(
+      EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION.where,
+      {
+        decisionStatus: "accepted",
+        NOT: [
+          {
+            idempotencyKey: {
+              startsWith:
+                "evidence:auto:replay-terminal-recorder-exit-v2:",
+            },
+          },
+        ],
+      }
+    );
+  }
+);
+
+test(
+  "game 32173 commissioner correction projects Emaren stats truth only",
+  () => {
+    const correction =
+      getReplayAdjudicationForGameStatsId(
+        32173
+      );
+
+    assert.ok(correction);
+    assert.equal(
+      correction.winner,
+      "Emaren"
+    );
+    assert.equal(
+      correction.affectsStats,
+      true
+    );
+    assert.equal(
+      correction.affectsBets,
+      false
+    );
+    assert.match(
+      correction.reason,
+      /final remaining unit/
+    );
   }
 );
