@@ -162,6 +162,13 @@ class StorageOSTests(unittest.TestCase):
         self.assertIn('demote_to_conservative', runner)
         self.assertIn('OOMScoreAdjust=800', runner)
 
+    def test_adaptive_runner_avoids_gawk_builtin_load_variable(self):
+        runner = RUNNER.read_text(encoding="utf-8")
+
+        self.assertIn('-v current_load=', runner)
+        self.assertIn('current_load <= cpus * m', runner)
+        self.assertNotIn('-v load=', runner)
+
     def test_adaptive_runner_shell_syntax(self):
         proc = subprocess.run(
             ["bash", "-n", str(RUNNER)],
