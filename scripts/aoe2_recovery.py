@@ -427,7 +427,7 @@ if pid > 0:
         raw = pathlib.Path(f"/proc/{pid}/cmdline").read_bytes()
         args = [
             item.decode(errors="replace")
-            for item in raw.split(b"\\0")
+            for item in raw.split(b"\0")
             if item
         ]
         for index, arg in enumerate(args):
