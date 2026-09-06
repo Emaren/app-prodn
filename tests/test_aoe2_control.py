@@ -94,7 +94,14 @@ class ControlDocsTests(unittest.TestCase):
              mock.patch.object(
                  MODULE.aoe2_update,
                  "capture_context",
-                 return_value={"VPSSentry": {}, "AoE2WAR-docs": {}, "MBP": {}, "VPS": {}},
+                 return_value={
+                     "AoE2HDBets": {},
+                     "WoloChain-wolo-1": {},
+                     "VPSSentry": {},
+                     "AoE2WAR-docs": {},
+                     "MBP": {},
+                     "VPS": {},
+                 },
              ) as capture_call, \
              mock.patch.object(MODULE.aoe2_audit, "collect_audit", return_value=audit):
             payload = MODULE.refresh_control_state(capture_context=True)
