@@ -48,19 +48,30 @@ The canonical safety rails are:
 - installed runner:
   `/usr/local/sbin/aoe2war-maintenance-run`;
 - Wolo `OOMScoreAdjust=-900`;
-- maintenance `OOMScoreAdjust=800`;
-- maintenance `MemoryHigh=256M`, `MemoryMax=384M`,
-  `MemorySwapMax=128M`;
-- maintenance `CPUQuota=20%`, `IOWeight=1`;
+- maintenance always keeps `OOMScoreAdjust=800` and remains subordinate to Wolo;
+- adaptive resource profiles are chosen independently for each bounded stage:
+  - **CONSERVATIVE**: the proven `CPUQuota=20%`, `IOWeight=1`,
+    `MemoryHigh=256M`, `MemoryMax=384M` lane;
+  - **BALANCED**: up to 50% CPU quota per vCPU (cap 200%), low best-effort
+    I/O weight, `MemoryHigh=384M`, `MemoryMax=512M`;
+  - **BURST**: up to 75% CPU quota per vCPU (cap 300%), still-low best-effort
+    I/O weight, `MemoryHigh=512M`, `MemoryMax=768M`;
+- BURST requires at least 3 GiB MemAvailable and low host load;
+- BALANCED requires at least 2.5 GiB MemAvailable and bounded host load;
 - preflight minimum `MemAvailable=2 GiB`;
+- soft pressure at 1.5 GiB, Wolo block age above 13 seconds, or Wolo
+  no-progress above 9 seconds immediately demotes an active fast profile to
+  CONSERVATIVE;
 - emergency abort floor `MemAvailable=1 GiB`;
 - Wolo block age must remain at most 20 seconds;
 - Wolo height must not stop progressing for more than 15 seconds.
 
-The runner continuously observes Wolo while the bounded transient systemd unit
-executes. If Wolo RPC disappears, block age becomes stale, consensus stops
-progressing, or emergency memory headroom is crossed, the maintenance unit is
-stopped and the maintenance command fails closed.
+The runner continuously observes Wolo while each bounded transient systemd unit
+executes. Healthy host headroom is leased to maintenance instead of being
+permanently stranded behind a 20% ceiling. The lease is revocable: soft Wolo or
+memory pressure immediately collapses the active unit back to the proven
+conservative resource lane, while RPC loss, stale blocks, stopped consensus, or
+the emergency memory floor still terminate maintenance fail-closed.
 
 These rails were introduced after an August 18, 2026 storage-compression proof
 created global host memory pressure and Linux selected the sole validator as the

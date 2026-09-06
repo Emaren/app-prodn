@@ -4,6 +4,8 @@
 # aae6f7f3c367a8a6f59c918b37ba2cafc6897cf25d18e6cc212373ca925420ae
 set -euo pipefail
 
+TRANSACTION_STARTED_EPOCH="$(date +%s)"
+
 RELEASE="$1"
 BUILD="$2"
 GEN="$3"
@@ -326,7 +328,7 @@ echo "-- B. Create zstd archive inside bounded runner --"
       --one-file-system \
       -C "$roll" \
       -cf - "$gen" \
-    | zstd -q -T1 -3 -c > "$out"
+    | zstd -q -T0 -3 -c > "$out"
     test -s "$out"
   ' bash "$ROLL" "$GEN" "$ARCHIVE_PARTIAL"
 
@@ -342,7 +344,7 @@ echo
 echo "-- C. Compressed-stream integrity test inside bounded runner --"
 
 "$RUNNER" rollback-zstd-test -- \
-  zstd -q -T1 -t "$ARCHIVE_PARTIAL"
+  zstd -q -T0 -t "$ARCHIVE_PARTIAL"
 
 echo
 echo "-- D. Validate archive member namespace =="
@@ -596,6 +598,7 @@ free_after_kb="$(df -Pk "$VOL" | awk 'NR==2 {print $4}')"
 used_after_pct="$(df -P "$VOL" | awk 'NR==2 {gsub("%","",$5); print $5}')"
 
 replaced_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+transaction_duration_seconds=$(( $(date +%s) - TRANSACTION_STARTED_EPOCH ))
 
 python3 - \
   "$REPLACED_RECEIPT" \
@@ -613,7 +616,8 @@ python3 - \
   "$pid_after" \
   "$restart_after" \
   "$post_h2" \
-  "$replaced_at" <<'PY'
+  "$replaced_at" \
+  "$transaction_duration_seconds" <<'PY'
 import hashlib
 import json
 import os
@@ -637,6 +641,7 @@ from pathlib import Path
     wolo_restarts,
     wolo_height_after,
     replaced_at,
+    transaction_duration_seconds,
 ) = sys.argv[1:]
 
 verified_sha = hashlib.sha256(Path(verified_receipt).read_bytes()).hexdigest()
@@ -662,6 +667,7 @@ payload = {
     "wolo_height_after": int(wolo_height_after),
     "wolo_mutated": False,
     "expanded_generation_present_after": False,
+    "transaction_duration_seconds": int(transaction_duration_seconds),
     "replaced_at": replaced_at,
 }
 
@@ -691,6 +697,7 @@ echo "Reclaimed est.:   ${reclaimed_kb} KB"
 echo "Volume after:     ${used_after_pct}% used · ${free_after_kb} KB free"
 echo "Wolo:             PID unchanged · restarts unchanged"
 echo "Wolo height:      $post_h1 -> $post_h2 · ADVANCING"
+echo "Transaction time: ${transaction_duration_seconds}s"
 echo "Verified receipt: $VERIFIED_RECEIPT"
 echo "Replace receipt:  $REPLACED_RECEIPT"
 echo "============================================================"
