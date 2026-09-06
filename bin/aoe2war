@@ -189,12 +189,22 @@ SAFE / READ-ONLY
       Plan documentation/context maintenance. Shows exactly what would change.
       Makes no changes.
 
+  aoe2war control status
+      Show whether SYSTEM_MAP, SERVER_STORAGE_MAP and the 100/100 closure
+      evidence block match the exact certified production source.
+
   aoe2war storage-retention
       Preview the exact regenerable .next/cache material eligible inside older
       durable activation rollback generations. Protects the newest two and
       makes no production or receipt change.
 
 DOCUMENTATION / CONTEXT WRITE
+
+  aoe2war control refresh
+      Refresh the three certified control documents and one coherent core
+      context-camera set: AoE2HDBets, WoloChain, VPSSentry, AoE2WAR-docs,
+      MBP and VPS. This is the canonical "refresh the kingdom's self-knowledge"
+      transaction. It does NOT deploy production, mutate the database or Wolo.
 
   aoe2war update --apply
       Reconcile repository documentation baselines, the central AoE2WAR-docs
@@ -343,6 +353,9 @@ NORMAL RHYTHM
 
   Want full confidence:
       aoe2war audit
+
+  Refresh maps + context cameras without deploying:
+      aoe2war control refresh
 
   Finished coding:
       aoe2war finish
