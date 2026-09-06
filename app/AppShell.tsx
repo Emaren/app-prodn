@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Anvil, BarChart3, Bot, Castle, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, UsersRound, X, Zap } from "lucide-react";
+import { Anvil, BarChart3, Bot, BrainCircuit, Castle, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, UsersRound, X, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
 import SpeedRuntime from "@/components/speed/SpeedRuntime";
 import SpeedWebVitals from "@/components/speed/SpeedWebVitals";
@@ -129,6 +129,7 @@ const KINGDOM_LINKS = [
   { href: "/academy", label: "Academy", icon: GraduationCap, body: "Lessons, build orders, replay study" },
   { href: "/market", label: "Marketplace", icon: Store, body: "Player shops, craft, and commissions" },
   { href: "/ai", label: "AI Council", icon: Bot, body: "Ask the public house council" },
+  { href: "/kingdom-intelligence", label: "Kingdom Intelligence", icon: BrainCircuit, body: "Watch the kingdom reason about itself" },
   { href: "/bounties", label: "Bounties", icon: Target, body: "Open opportunities and payout proof" },
   { href: "/forum", label: "Forum", icon: MessageSquare, body: "War Room threads and community" },
   { href: "/radio", label: "Radio WOLO", icon: Radio, body: "Kingdom music and creator submissions" },
@@ -159,6 +160,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/market", title: "Marketplace" },
   { prefix: "/champions", title: "Championship Belts" },
   { prefix: "/kingdom-forge", title: "Kingdom Forge" },
+  { prefix: "/kingdom-intelligence", title: "Kingdom Intelligence" },
   { prefix: "/kingdom", title: "The Kingdom" },
   { prefix: "/wargraph", title: "WarGraph" },
   { prefix: "/round-chamber", title: "The Chamber" },
@@ -1041,6 +1043,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     pathname?.startsWith("/academy") ||
     pathname?.startsWith("/market") ||
     pathname?.startsWith("/kingdom") ||
+    pathname?.startsWith("/kingdom-intelligence") ||
     pathname?.startsWith("/round-chamber") ||
     pathname?.startsWith("/oracle") ||
     pathname?.startsWith("/leaderboard") ||
