@@ -11,9 +11,9 @@
       "owner": "aoe2war-web",
       "path": "ARCHITECTURE.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-22",
+      "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "dd789e3eebc429141bc42c864d3a0fe696d4644ee548e96ca2e3226268640366",
+      "sha256": "243486daa882c08dbb2007f649f7ff8266a0f782ec0b358f1421a7f9eb2cce80",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "cdb6f9ec85140032e1c48cca31fd4bcbc5d7c5250417a110fe17a2d3aa17236f",
+      "sha256": "a3d2a56e869359f84b99839350b182639127895831d60823080c16bd2149591f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1815,7 +1815,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "da77515a7b7f71b37f9168b4c578de9d6a008ce3"
+    "commit": "33cf22e70e9257932decd6aa60c1097f00c35fa7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

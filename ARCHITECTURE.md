@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-08-22"
+reviewed_at: "2026-09-06"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -130,7 +130,7 @@ Important public surfaces include:
 
 The current public spine is no longer just a homepage plus a few leaf pages. The real first-impression product path is now the lobby/community shell and its linked destinations.
 
-Live replay detail presentation is currently owned by `components/game-stats/LiveReplayDetail.tsx`. The Battle Matrix defaults to a two-column versus layout, with a header layout toggle that can switch to one full-width player lane per row. Inside each lane, keep the activity rail stacked above the pulse strip and metric labels wrap-safe so EAPM/history chips stay readable instead of squeezing into fixed-width micro-columns or overlapping their values.
+Live replay detail presentation is currently owned by `components/game-stats/LiveReplayDetail.tsx`. Team presentation is truth-bound: `lib/replayTeamDisplay.ts` consumes the parser's canonical `key_events.team_resolution` first, preserves the inherent two-singleton 1v1 case, otherwise falls back only to complete explicit player team IDs, and never turns raw team-game roster array order into invented versus sides. The Battle Matrix renders two team columns with teammates stacked inside their actual side; unresolved team truth renders a neutral roster instead. The layout toggle switches between team-split and full-width team stacks. Inside each player lane, the identity region owns flexible width, the EAPM badge is bounded, and metric/pulse grids use wrap-safe auto-fit sizing so long names and history chips cannot overrun neighboring tiles. Client presentation must stay on the crypto-free `replayTeamDisplay` seam rather than importing server-only `teamResolution.ts`.
 
 Live-board presentation is owned by `components/live/LiveGamesBoard.tsx`, with snapshot assembly and stream selection in `lib/liveGames.ts`. `/live-games` has its own persisted Basic / Advanced / Extreme preference under the `live_games` tile key. Extreme is the default and expands the app shell to `96rem`; Advanced uses `75rem`; Basic preserves the focused `65rem` board. The just-finished spotlight is capped at three outcomes so upload batches move into Recently Played instead of filling the live rail. An external stream may be the primary card feed when it is explicitly primary on a live session or its player label matches a participant. Completed cards require participant attribution for external footage; an unlabeled Twitch/YouTube row must never fall through as another player's saved match video.
 
