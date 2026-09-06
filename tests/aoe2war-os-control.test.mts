@@ -13,6 +13,7 @@ import {
   loadAoe2OsDashboard,
   readAoe2OsRun,
   writeAoe2OsBridgeHeartbeat,
+  writeAoe2OsKingdomIntelligence,
   writeAoe2OsSnapshot,
   appendAoe2OsRunEvent,
   type Aoe2OsBridgeHeartbeat,
@@ -34,6 +35,7 @@ async function withStore(fn: (root: string) => Promise<void>) {
 test("confirmation policy is server-side", () => {
   assert.equal(confirmationMatches("audit", ""), true);
   assert.equal(confirmationMatches("doctor", ""), true);
+  assert.equal(confirmationMatches("brain", ""), true);
   assert.equal(confirmationMatches("update_apply", "UPDATE"), true);
   assert.equal(confirmationMatches("update_apply", "update"), false);
   assert.equal(confirmationMatches("deploy", "DEPLOY"), true);
@@ -114,9 +116,23 @@ test("file-backed control plane queues, claims, streams and completes", async ()
       },
     });
 
+    await writeAoe2OsKingdomIntelligence({
+      bridgeId: "bridge",
+      runId: run.id,
+      sourceAction: "brain",
+      payload: {
+        kind: "aoe2war-kingdom-intelligence",
+        generated_at: new Date().toISOString(),
+        war_date: "2026.249.1700Z",
+        operating_state: "ATTENTION",
+      },
+    });
+
     const dashboard = await loadAoe2OsDashboard();
     assert.equal(dashboard.activeRun, null);
     assert.equal(dashboard.recentRuns[0]?.status, "succeeded");
     assert.equal(dashboard.snapshot?.estate, "HEALTHY");
+    assert.equal(dashboard.kingdomIntelligence?.warDate, "2026.249.1700Z");
+    assert.equal(dashboard.kingdomIntelligence?.operatingState, "ATTENTION");
   });
 });
