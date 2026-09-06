@@ -493,7 +493,7 @@ class MaintenanceRunnerHandoffTests(unittest.TestCase):
         rendered = MODULE.shlex.split(command)[2]
         marker = "<<'PY'\n"
         self.assertIn(marker, rendered)
-        receipt_python = rendered.split(marker, 1)[1].split("\nPY\n", 1)[0]
+        receipt_python = rendered.rsplit(marker, 1)[1].split("\nPY\n", 1)[0]
         compile(receipt_python, "<runner-receipt-heredoc>", "exec")
         self.assertIn(
             'tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\\n")',
