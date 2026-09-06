@@ -34,6 +34,10 @@ import {
 } from "@/lib/gameStatsView";
 import type { LiveReplayDetailSnapshot, LiveReplayPlayerRecord } from "@/lib/liveReplayDetail";
 import {
+  resolveReplayTeamPresentation,
+  type ReplayTeamPresentation,
+} from "@/lib/replayTeamDisplay";
+import {
   normalizePublicReplayText,
   publicReplayMapLabel,
   resolveReliableReplayWinner,
@@ -181,6 +185,15 @@ export default function LiveReplayDetail({
   const isBattleArchive = snapshot.mode === "final" || game.isFinal;
   const finalStatsReady = Boolean(snapshot.finalGameId);
   const players = parsePlayers(game.players);
+  const teamPresentation = resolveReplayTeamPresentation(
+    {
+      players: game.players,
+      keyEvents: game.keyEvents,
+    },
+    players.length > 0
+      ? players.map((player) => displayPlayerName(player)).join(" · ")
+      : "Roster unresolved"
+  );
   const playedAt = readPlayedAt(game);
   const keyEvents =
     game.keyEvents && typeof game.keyEvents === "object" && !Array.isArray(game.keyEvents)
@@ -253,7 +266,7 @@ export default function LiveReplayDetail({
             </h1>
             <p className="max-w-3xl break-words text-base leading-7 text-slate-300 sm:text-lg [overflow-wrap:anywhere]">
               {players.length > 0
-                ? players.map((player) => displayPlayerName(player)).join(" vs ")
+                ? teamPresentation.matchupLabel
                 : displayReplayFilename(game.originalFilename, game.replayFile)}
             </p>
             <p className="max-w-3xl text-sm leading-6 text-slate-400 sm:text-base">
@@ -358,32 +371,17 @@ export default function LiveReplayDetail({
           </div>
         </div>
 
-        <div
-          className={`mt-6 grid gap-4 ${
-            battleMatrixFullWidth ? "" : "xl:grid-cols-2"
-          }`}
-        >
-          {players.length === 0 ? (
-            <EmptyPanel message="No player pulse payload has landed yet for the battle matrix." />
-          ) : battleMatrixWarming ? (
-            <SignalWarmupPanel
-              players={players}
-              historyRows={snapshot.history.length}
-              durationSeconds={liveDurationSeconds}
-            />
-          ) : (
-            players.map((player, index) => (
-              <BattleMatrixLane
-                key={`${displayPlayerName(player)}-${index}`}
-                player={player}
-                summary={playerPulseSummaries[index]}
-                series={playerPulseSeries[index]}
-                globalPeakEapm={globalPeakEapm}
-                tone={index % 2 === 0 ? "sky" : "amber"}
-              />
-            ))
-          )}
-        </div>
+        <BattleMatrixBoard
+          players={players}
+          teamPresentation={teamPresentation}
+          summaries={playerPulseSummaries}
+          series={playerPulseSeries}
+          globalPeakEapm={globalPeakEapm}
+          warming={battleMatrixWarming}
+          historyRows={snapshot.history.length}
+          durationSeconds={liveDurationSeconds}
+          fullWidth={battleMatrixFullWidth}
+        />
       </section> : null}
 
       <section className={`grid gap-6 ${showDiagnostics ? "xl:grid-cols-[1.15fr_0.85fr]" : ""}`}>
