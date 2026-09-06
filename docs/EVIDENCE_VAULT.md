@@ -209,9 +209,46 @@ not from an unexpanded systemd template string. Key-custody discovery reads only
 path, byte-size, owner, and mode metadata; it never prints key contents or key
 hashes.
 
-The planner is deliberately incapable of writing recovery artifacts. A future
-`recovery campaign start` lane must remain a separately reviewed, explicitly
-authorized bounded write transaction.
+The read-only planner remains incapable of writing recovery artifacts.
+
+## Recovery ordinary capture campaign
+
+`aoe2war recovery campaign preflight` validates the current read-only plan,
+requires a clean local `main`, verifies local SSH/OpenSSL tooling, proves Mac
+capacity, and resolves the exact public recovery certificate whose SHA-256
+fingerprint matches the verified database/operator pilot. It makes no backup or
+service mutation.
+
+`aoe2war recovery campaign start --authorize-ordinary-capture` is the first
+bounded write lane. It is deliberately limited to the five ordinary non-Wolo
+classes:
+
+- managed/user media;
+- legacy direct-message attachments;
+- Radio WOLO private media;
+- parser evidence corpus, preserving every top-level tree except `tmp/`;
+- raw replay archive.
+
+The controller is terminal-independent and processes one class at a time. The
+remote source is streamed as a tar archive over SSH; the Mac hashes that
+plaintext stream while OpenSSL CMS encrypts it directly into the independent
+survival vault. No plaintext staging copy is retained. After each class the CMS
+container must parse structurally, ciphertext bytes/hash and plaintext-stream
+bytes/hash are recorded, and a hashed
+`CAPTURED_PENDING_RESTORE` class proof is written. These capture receipts do
+not count as final Recovery OS PASS evidence until the later isolated decrypt
+and restore drill verifies them.
+
+Campaign authorization is intentionally narrow. Ordinary capture does not
+authorize settlement mutation, Wolo service quiescence, validator/node keys,
+Wolo keyrings, host package upgrades, or reboot. The controller can pause only
+between classes. If it dies inside a class, the partial artifact is preserved
+and resume fails closed rather than guessing around ambiguous evidence; a fresh
+campaign must supersede that attempt.
+
+The existing database/operator pilot is reused rather than recopied. Settlement,
+consensus recovery, separate key custody and the final streaming restore drill
+remain subsequent explicit authorization seams.
 
 ## Restore drill
 
