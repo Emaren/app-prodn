@@ -13,6 +13,16 @@ export type ReplayTeamDisplayInput = {
   keyEvents?: unknown;
 };
 
+export type ReplayTeamPresentation = {
+  status: "resolved" | "unresolved";
+  format: string | null;
+  matchupLabel: string;
+  teams: Array<{
+    teamKey: string;
+    names: string[];
+  }>;
+};
+
 type UnknownRecord =
   Record<string, unknown>;
 
@@ -152,7 +162,7 @@ function fallbackRosterLabel(
     2
   ) {
     return names.join(
-      " vs "
+      " · "
     );
   }
 
@@ -166,11 +176,44 @@ function fallbackRosterLabel(
   return unavailableLabel;
 }
 
-export function formatReplayTeamMatchup(
+function matchupLabel(
+  teams: Array<{
+    names: string[];
+  }>
+) {
+  return teams
+    .map(
+      (team) =>
+        team.names.join(
+          " / "
+        )
+    )
+    .join(
+      " vs "
+    );
+}
+
+function resolvedPresentation(
+  teams: Array<{
+    teamKey: string;
+    names: string[];
+  }>,
+  format: string | null
+): ReplayTeamPresentation {
+  return {
+    status: "resolved",
+    format,
+    matchupLabel:
+      matchupLabel(teams),
+    teams,
+  };
+}
+
+export function resolveReplayTeamPresentation(
   game: ReplayTeamDisplayInput,
   unavailableLabel =
     "Roster unresolved"
-) {
+): ReplayTeamPresentation {
   const players =
     parsedRoster(
       game.players
@@ -181,11 +224,16 @@ export function formatReplayTeamMatchup(
       players
     );
 
-  const fallback = () =>
-    fallbackRosterLabel(
-      visibleNames,
-      unavailableLabel
-    );
+  const fallback = (): ReplayTeamPresentation => ({
+    status: "unresolved",
+    format: null,
+    matchupLabel:
+      fallbackRosterLabel(
+        visibleNames,
+        unavailableLabel
+      ),
+    teams: [],
+  });
 
   const keyEvents =
     readRecord(
@@ -209,7 +257,7 @@ export function formatReplayTeamMatchup(
   const resolvedTeams =
     rawTeams
       .map(
-        (value) => {
+        (value, index) => {
           const team =
             readRecord(
               value
@@ -232,8 +280,14 @@ export function formatReplayTeamMatchup(
               : [];
 
           return {
-            teamId:
-              team.team_id,
+            teamKey:
+              String(
+                team.team_key ??
+                team.teamKey ??
+                team.team_id ??
+                team.teamId ??
+                index
+              ),
 
             names,
           };
@@ -265,16 +319,21 @@ export function formatReplayTeamMatchup(
         visibleNames
       )
     ) {
-      return resolvedTeams
-        .map(
-          (team) =>
-            team.names.join(
-              " / "
-            )
-        )
-        .join(
-          " vs "
+      const format =
+        normalizedName(
+          teamResolution.format
+        ) ??
+        (
+          resolvedTeams[0].names.length ===
+          resolvedTeams[1].names.length
+            ? `${resolvedTeams[0].names.length}v${resolvedTeams[1].names.length}`
+            : null
         );
+
+      return resolvedPresentation(
+        resolvedTeams,
+        format
+      );
     }
   }
 
@@ -380,28 +439,43 @@ export function formatReplayTeamMatchup(
           }
         )
         .map(
-          ([, names]) =>
-            names
+          ([teamKey, names]) => ({
+            teamKey,
+            names,
+          })
         );
 
     if (
       sameNameMultiset(
-        groupedTeams.flat(),
+        groupedTeams.flatMap(
+          (team) => team.names
+        ),
         visibleNames
       )
     ) {
-      return groupedTeams
-        .map(
-          (names) =>
-            names.join(
-              " / "
-            )
-        )
-        .join(
-          " vs "
-        );
+      const format =
+        groupedTeams[0].names.length ===
+        groupedTeams[1].names.length
+          ? `${groupedTeams[0].names.length}v${groupedTeams[1].names.length}`
+          : null;
+
+      return resolvedPresentation(
+        groupedTeams,
+        format
+      );
     }
   }
 
   return fallback();
+}
+
+export function formatReplayTeamMatchup(
+  game: ReplayTeamDisplayInput,
+  unavailableLabel =
+    "Roster unresolved"
+) {
+  return resolveReplayTeamPresentation(
+    game,
+    unavailableLabel
+  ).matchupLabel;
 }
