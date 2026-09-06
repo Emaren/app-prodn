@@ -36,6 +36,8 @@ test("confirmation policy is server-side", () => {
   assert.equal(confirmationMatches("audit", ""), true);
   assert.equal(confirmationMatches("doctor", ""), true);
   assert.equal(confirmationMatches("brain", ""), true);
+  assert.equal(confirmationMatches("control_refresh", "REFRESH"), true);
+  assert.equal(confirmationMatches("control_refresh", "refresh"), false);
   assert.equal(confirmationMatches("update_apply", "UPDATE"), true);
   assert.equal(confirmationMatches("update_apply", "update"), false);
   assert.equal(confirmationMatches("deploy", "DEPLOY"), true);
