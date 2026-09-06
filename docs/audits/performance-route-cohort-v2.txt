@@ -24,6 +24,7 @@
 /forum
 /game-stats
 /kingdom
+/kingdom-intelligence
 /kingdom-forge
 /leaderboard
 /leaderboard/og
