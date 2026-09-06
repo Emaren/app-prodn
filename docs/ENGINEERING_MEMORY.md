@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-09-04"
+reviewed_at: "2026-09-06"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -158,6 +158,14 @@ remaining recovery scope. Doctor and Host OS consume this same verifier.
 
 The 2026-09-04 schema-1 `PILOT_VERIFIED` bundle remains valid pilot evidence
 but is structurally incapable of satisfying full Recovery OS verification.
+
+Recovery campaign planning is now a first-class read-only OS operation. The
+planner inventories the live recovery classes, resolves Wolo home from the
+running process rather than templated systemd text, preserves all parser
+top-level evidence except disposable `tmp/`, keeps Wolo key custody outside the
+general vault, computes Mac capacity/headroom, and declares when streaming
+restore verification is required. Planning performs no backup or service
+mutation; future campaign execution requires explicit authorization.
 
 ## Storage estate lesson
 

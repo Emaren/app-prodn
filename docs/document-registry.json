@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fb9f1c3afd4fe03e949ca46bf84bd52d83c5f3d1be69d5f0be85bac2c0e9ec2f",
+      "sha256": "6ba08bcafaaa2202dfea5bdddf05df43bf93212174b69b44977f5114a3da4c8f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -540,9 +540,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-09-04",
+      "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "bda02d38757d4e70df210ce7878ce9958af9e59f958ab597e7162dbd3de0425d",
+      "sha256": "a8c225170184de08e0df15cbf6825d6f883f523e25b673f9ca5353f508f66506",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -565,9 +565,9 @@
       "owner": "aoe2war-web",
       "path": "docs/EVIDENCE_VAULT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-04",
+      "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "fa922f7aae347bd4b6d66cbad040735abad7a6aafe743a3e08f617c03a311186",
+      "sha256": "0bd721df5c74b303109737b1882aa5280fefeea338bb1f43b56f34b60e434eff",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1815,7 +1815,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "f1fd86456afe6211c83a937d3092b06d1f53cbab"
+    "commit": "1469092111733a65c335897d3742a22b7b9af379"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
