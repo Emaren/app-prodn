@@ -260,9 +260,19 @@ def build_recommendations(
             action="aoe2war speed pulse",
         )
 
-    dirty_worktrees = int(workspace.get("dirty_count") or 0)
+    worktree_rows = workspace.get("worktrees") or []
+    if not isinstance(worktree_rows, list):
+        worktree_rows = []
+    dirty_review_worktrees = sum(
+        1
+        for row in worktree_rows
+        if isinstance(row, dict)
+        and row.get("classification") == "PRESERVE_DIRTY_REVIEW"
+    )
+    if not worktree_rows:
+        dirty_review_worktrees = int(workspace.get("dirty_count") or 0)
     unmerged_worktrees = int(workspace.get("unmerged_count") or 0)
-    if dirty_worktrees or unmerged_worktrees:
+    if dirty_review_worktrees or unmerged_worktrees:
         add(
             items,
             rank=12,
@@ -270,9 +280,9 @@ def build_recommendations(
             key="workspace-preserved-code",
             title="Review preserved dirty or unmerged worktrees",
             reason=(
-                f"dirty={dirty_worktrees} unmerged={unmerged_worktrees}; "
-                "these may contain intentional, hidden, or superseded work and "
-                "are never automatic cleanup candidates."
+                f"dirty={dirty_review_worktrees} unmerged={unmerged_worktrees}; "
+                "registered active-agent WIP is tracked separately and does not "
+                "count as canonical source drift."
             ),
             action="aoe2war workspace status",
         )
@@ -292,17 +302,15 @@ def build_recommendations(
             action="aoe2war workspace clean --apply",
         )
 
-    if workspace.get("orphans"):
+    stale_metadata = workspace.get("stale_metadata") or []
+    if isinstance(stale_metadata, list) and stale_metadata:
         add(
             items,
             rank=55,
             level="REVIEW",
-            key="workspace-orphans",
-            title="Classify unregistered project directories",
-            reason=(
-                f"{len(workspace['orphans'])} app-prodn-* sibling(s) "
-                "are not registered worktrees."
-            ),
+            key="workspace-stale-metadata",
+            title="Review stale Workspace OS metadata",
+            reason=f"{len(stale_metadata)} registered workspace record(s) no longer map to an active worktree.",
             action="aoe2war workspace status",
         )
 
