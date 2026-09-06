@@ -33,16 +33,24 @@ export const AOE2_OS_ACTIONS = {
     confirmation: null,
     requiresSourceSha: false,
   },
+  control_refresh: {
+    label: "Refresh Kingdom State",
+    description:
+      "Refresh certified control documents and one coherent core context camera set: AoE2HDBets, WoloChain, VPSSentry, AoE2WAR docs, MBP and VPS.",
+    risk: "docs_write",
+    confirmation: "REFRESH",
+    requiresSourceSha: false,
+  },
   update_plan: {
-    label: "Plan Update",
-    description: "Show documentation/context maintenance that would be performed.",
+    label: "Plan Documentation Sync",
+    description: "Show documentation/federation/context maintenance that would be performed.",
     risk: "read",
     confirmation: null,
     requiresSourceSha: false,
   },
   update_apply: {
-    label: "Apply Update",
-    description: "Reconcile documentation, federation state and stale context archives.",
+    label: "Synchronize Documentation",
+    description: "Reconcile documentation baselines, federation state and stale context evidence.",
     risk: "docs_write",
     confirmation: "UPDATE",
     requiresSourceSha: false,
