@@ -96,6 +96,44 @@ Its private Git remote is
 and governance line. Synchronizing its copied registries never transfers
 implementation authority away from the three source repositories.
 
+## Agent Workspace OS
+
+Canonical source-authority checkouts are control-plane evidence. They are not
+general-purpose feature sandboxes.
+
+For parallel human, Codex, or other agent work:
+
+- keep canonical `app-prodn` and `api-prodn` on their authority branch and clean;
+- create or adopt a dedicated Git worktree with `aoe2war workspace`;
+- record repo, branch, base SHA, purpose, agent, path, and lifecycle status in the
+  Workspace OS registry;
+- treat dirty agent worktrees as active work, not production/source-authority drift;
+- never deploy directly from an agent worktree; merge/reconcile through the
+  protected release lane first;
+- retire an agent workspace only when it is clean and its commits are proven
+  pushed to an upstream branch or merged into canonical history.
+
+Examples:
+
+```bash
+aoe2war workspace create \
+  --repo api-prodn \
+  --branch codex/hd-parser-closure-v1 \
+  --purpose "HD parser closure" \
+  --agent codex
+
+aoe2war workspace adopt \
+  --repo api-prodn \
+  --path "$HOME/projects/AoE2HDBets/api-prodn-codex-hd-parser" \
+  --purpose "HD parser closure" \
+  --agent codex
+
+aoe2war workspace retire api-prodn--codex-hd-parser-closure-v1
+```
+
+The retirement command is read-only unless `--apply` is supplied and fails
+closed rather than discard dirty or unique unpushed work.
+
 ## Repo count guidance
 
 - Keep this directory at **3 repos** unless you intentionally split a new bounded service
