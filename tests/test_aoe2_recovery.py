@@ -9,6 +9,35 @@ import scripts.aoe2_recovery as recovery
 
 
 class RecoveryTests(unittest.TestCase):
+    def test_campaign_start_flags_are_forwarded_verbatim(self):
+        completed = type("Completed", (), {"returncode": 0})()
+        with patch.object(recovery.subprocess, "run", return_value=completed) as run:
+            rc = recovery.forward_campaign_cli(
+                [
+                    "campaign",
+                    "start",
+                    "--authorize-ordinary-capture",
+                    "--json",
+                ]
+            )
+
+        self.assertEqual(rc, 0)
+        command = run.call_args.args[0]
+        self.assertEqual(command[0], recovery.sys.executable)
+        self.assertEqual(
+            command[1],
+            str(recovery.ROOT / "scripts" / "aoe2_recovery_campaign.py"),
+        )
+        self.assertEqual(
+            command[2:],
+            ["start", "--authorize-ordinary-capture", "--json"],
+        )
+
+    def test_campaign_plan_is_not_intercepted_by_forwarder(self):
+        self.assertIsNone(
+            recovery.forward_campaign_cli(["campaign", "plan", "--json"])
+        )
+
     def test_current_contract_shape_is_evaluable(self):
         payload = recovery.evaluate()
         self.assertIn(payload["status"], {"VERIFIED", "NOT_VERIFIED"})
