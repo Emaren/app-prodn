@@ -138,7 +138,8 @@
       "publication_mode": "post-certification-idempotent-upsert"
     },
     "auto_root_headroom_recovery": true,
-    "root_headroom_journal_limit_mib": 100
+    "root_headroom_journal_limit_mib": 100,
+    "auto_maintenance_runner_reconcile": true
   },
   "semantic_maps": {
     "required_terms": [
