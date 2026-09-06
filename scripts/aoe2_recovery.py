@@ -6,6 +6,7 @@ import hashlib
 import json
 import shutil
 import subprocess
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -858,16 +859,28 @@ def main() -> int:
     campaign_sub = campaign.add_subparsers(dest="campaign_command", required=True)
     campaign_plan_parser = campaign_sub.add_parser("plan")
     campaign_plan_parser.add_argument("--json", action="store_true")
+    for name in ("preflight", "start", "status", "pause", "resume"):
+        q = campaign_sub.add_parser(name)
+        q.add_argument("campaign_args", nargs=argparse.REMAINDER)
 
     args = parser.parse_args()
 
     if args.command == "campaign":
-        payload = campaign_plan()
-        if getattr(args, "json", False):
-            print(json.dumps(payload, indent=2, sort_keys=True))
-        else:
-            print_campaign_plan(payload)
-        return 0 if payload["capacity_ready"] else 1
+        if args.campaign_command == "plan":
+            payload = campaign_plan()
+            if getattr(args, "json", False):
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                print_campaign_plan(payload)
+            return 0 if payload["capacity_ready"] else 1
+
+        cmd = [
+            sys.executable,
+            str(ROOT / "scripts" / "aoe2_recovery_campaign.py"),
+            str(args.campaign_command),
+            *list(getattr(args, "campaign_args", [])),
+        ]
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
 
     payload = evaluate()
     if getattr(args, "json", False):
