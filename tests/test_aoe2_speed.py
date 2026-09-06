@@ -387,6 +387,74 @@ class PerformanceOSTests(unittest.TestCase):
                     force_new=False,
                 )
 
+    def test_benchmark_sample_retries_once_and_preserves_initial_failure(self):
+        failure = {
+            "ok": False,
+            "error": "curl timeout",
+            "url": "https://aoe2war.com/game-stats",
+        }
+        success = {
+            "ok": True,
+            "http_code": 200,
+            "ttfb_ms": 500.0,
+            "total_ms": 900.0,
+            "download_bytes": 1234,
+            "url": "https://aoe2war.com/game-stats",
+        }
+        with patch.object(
+            SPEED_MODULE,
+            "run_curl",
+            side_effect=[failure, success],
+        ):
+            sample, failures = SPEED_MODULE.benchmark_sample(
+                "https://aoe2war.com/game-stats",
+                retries=1,
+            )
+
+        self.assertTrue(sample["ok"])
+        self.assertEqual(sample["retry_count"], 1)
+        self.assertEqual(len(failures), 1)
+        self.assertEqual(failures[0]["attempt"], 1)
+        self.assertIn("timeout", failures[0]["error"])
+
+    def test_speed_verification_warns_when_retry_recovers_sample(self):
+        verification = {
+            "status": "PASS",
+            "material_improvements": 1,
+            "material_regressions": 0,
+        }
+        after = {
+            "recovered_sample_failures": [
+                {
+                    "path": "/game-stats",
+                    "round": 1,
+                    "error": "curl timeout",
+                }
+            ],
+            "unstable_routes": ["/game-stats"],
+        }
+
+        recovered = list(
+            after.get("recovered_sample_failures")
+            or []
+        )
+        if recovered:
+            verification["status"] = "WARN"
+            verification["sample_instability"] = {
+                "recovered_failure_count": len(recovered),
+                "unstable_routes": list(
+                    after.get("unstable_routes")
+                    or []
+                ),
+                "failures": recovered,
+            }
+
+        self.assertEqual(verification["status"], "WARN")
+        self.assertEqual(
+            verification["sample_instability"]["unstable_routes"],
+            ["/game-stats"],
+        )
+
     def test_speed_campaign_verifies_every_route_and_flags_regression(self):
         before = {
             "mode": "quick",

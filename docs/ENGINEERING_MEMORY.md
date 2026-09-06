@@ -699,3 +699,26 @@ surfaces narrow data loaders that perform only the work they actually render.
 
 Cache invalidation remains tied to truth generation. A cache may save
 computation; it never becomes replay authority.
+
+## 2026-09-05 — Certified Wave 1 verification and storage-blocker lesson
+
+Performance Wave 1 certified successfully at
+`908e4103a037a434924f751002b12ba2914f9906`, with Wolo untouched, but the
+larger Finish transaction later failed in `final_doctor` because the mounted
+evidence volume reached the critical operating band. Runtime certification
+remained valid.
+
+The Brain initially recommended rerunning Finish even though that would simply
+repeat the same storage prerequisite failure. Durable rule: rank the actionable
+prerequisite above the enclosing transaction. Storage pressure that blocks
+Doctor means plan/remediate Storage OS first, then rerun Finish.
+
+The first exact 77-route verification attempt also timed out on `/game-stats`
+after 15 seconds. A single failed sample must not disappear because an operator
+reruns the whole benchmark. Preserve the failed attempt, allow at most one
+bounded retry, and mark an otherwise successful verification WARN when a retry
+was needed.
+
+An analyzed campaign from the previous certified release is a frozen Before
+waiting for verification against the new release. Do not mistake that source
+mismatch for a request to start a second baseline.

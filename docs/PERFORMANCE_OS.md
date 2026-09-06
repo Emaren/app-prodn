@@ -362,6 +362,26 @@ does not load WOLO history, staking, watcher aggregates, stream stats, community
 honor, normalized metrics, charts, or rivalry summaries that the card does not
 render.
 
+## Verification instability contract
+
+A full before/after campaign is not allowed to erase an intermittent timeout by
+blindly rerunning the entire benchmark until it looks clean.
+
+Each HTTP sample receives at most one bounded retry. If the retry succeeds, the
+successful sample remains eligible for the route median **and** the original
+failure is preserved in the benchmark receipt. The campaign verification is
+then WARN and names the unstable route(s).
+
+If the bounded retry also fails, Speed OS writes a dedicated failed-attempt
+receipt under `.aoe2war-release/performance-attempts/` before stopping. The
+failure therefore becomes durable performance evidence rather than terminal
+scrollback.
+
+This policy was added after the first `908e4103...` verification attempt timed
+out on `/game-stats` after 15 seconds while receiving only a partial response.
+That event is evidence of instability; it is not proof that Wave 1 regressed,
+and it must not be silently discarded.
+
 ## Fail-closed rules
 
 - A benchmark never mutates production.

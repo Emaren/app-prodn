@@ -20,6 +20,7 @@ FINISH_RECEIPTS = STATE / "finish-receipts"
 STAGE_RECEIPTS = STATE / "stage-receipts"
 ACTIVATION_RECEIPTS = STATE / "activation-receipts"
 PERFORMANCE_RECEIPTS = STATE / "performance-receipts"
+PERFORMANCE_ATTEMPTS = STATE / "performance-attempts"
 BASELINE_DIR = STATE / "performance-baselines"
 HISTORICAL_ROUTE_CSV = (
     ROOT / "docs" / "audits" / "performance-route-comparison-2026-08-13.csv"
@@ -314,6 +315,81 @@ def run_curl(url: str, timeout: int = 15) -> dict[str, Any]:
         "effective_url": effective,
         "url": url,
     }
+
+
+def benchmark_sample(
+    url: str,
+    *,
+    retries: int = 1,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    failures: list[dict[str, Any]] = []
+    sample = run_curl(url)
+
+    if sample.get("ok"):
+        return sample, failures
+
+    failures.append({**sample, "attempt": 1})
+
+    for retry_no in range(1, retries + 1):
+        retry = run_curl(url)
+        if retry.get("ok"):
+            retry["retry_count"] = retry_no
+            return retry, failures
+        failures.append(
+            {
+                **retry,
+                "attempt": retry_no + 1,
+            }
+        )
+        sample = retry
+
+    return sample, failures
+
+
+def persist_failed_benchmark_attempt(
+    *,
+    identity: dict[str, Any],
+    full: bool,
+    rounds: int,
+    elapsed_seconds: float,
+    failures: list[dict[str, Any]],
+) -> Path:
+    PERFORMANCE_ATTEMPTS.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+    payload = {
+        "schema": 1,
+        "kind": "aoe2war-performance-benchmark-attempt",
+        "status": "FAILED",
+        "generated_at": utc_now(),
+        "mode": "full" if full else "quick",
+        "rounds": rounds,
+        "route_count": len(route_list(full)),
+        "elapsed_seconds": round(elapsed_seconds, 3),
+        **identity,
+        "failed_samples": failures,
+    }
+    stamp = datetime.now(
+        timezone.utc
+    ).strftime("%Y%m%dT%H%M%SZ")
+    release_short = str(
+        identity.get("release_sha") or "unknown"
+    )[:12]
+    path = PERFORMANCE_ATTEMPTS / (
+        f"{stamp}-{release_short}-"
+        f"{payload['mode']}-failed.json"
+    )
+    path.write_text(
+        json.dumps(
+            payload,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return path
 
 
 def summarize_route_cohort(
@@ -625,20 +701,62 @@ def benchmark(*, full: bool, rounds: int) -> dict[str, Any]:
 
     routes = route_list(full)
     samples: list[dict[str, Any]] = []
+    recovered_failures: list[dict[str, Any]] = []
+    failed_attempts: list[dict[str, Any]] = []
     started = time.monotonic()
 
     for round_no in range(1, rounds + 1):
         for path in routes:
-            sample = run_curl(PUBLIC_BASE + path)
-            sample.update({"round": round_no, "path": path})
+            sample, failures = benchmark_sample(
+                PUBLIC_BASE + path,
+                retries=1,
+            )
+            enriched_failures = [
+                {
+                    **failure,
+                    "round": round_no,
+                    "path": path,
+                }
+                for failure in failures
+            ]
+            failed_attempts.extend(
+                enriched_failures
+            )
+            if failures and sample.get("ok"):
+                recovered_failures.extend(
+                    enriched_failures
+                )
+            sample.update(
+                {
+                    "round": round_no,
+                    "path": path,
+                }
+            )
             samples.append(sample)
 
     elapsed = time.monotonic() - started
-    passing = [sample for sample in samples if sample.get("ok")]
-    failed = [sample for sample in samples if not sample.get("ok")]
+    passing = [
+        sample
+        for sample in samples
+        if sample.get("ok")
+    ]
+    failed = [
+        sample
+        for sample in samples
+        if not sample.get("ok")
+    ]
     if failed:
+        attempt_path = persist_failed_benchmark_attempt(
+            identity=identity,
+            full=full,
+            rounds=rounds,
+            elapsed_seconds=elapsed,
+            failures=failed_attempts,
+        )
         raise SpeedError(
-            f"{len(failed)} HTTP benchmark sample(s) failed; first={failed[0]}"
+            f"{len(failed)} HTTP benchmark sample(s) failed after one "
+            f"bounded retry; first={failed[0]}; "
+            f"receipt={attempt_path}"
         )
 
     per_route: list[dict[str, Any]] = []
@@ -676,6 +794,17 @@ def benchmark(*, full: bool, rounds: int) -> dict[str, Any]:
         "route_count": len(routes),
         "request_count": len(passing),
         "elapsed_seconds": round(elapsed, 3),
+        "recovered_sample_failure_count": len(
+            recovered_failures
+        ),
+        "recovered_sample_failures": recovered_failures,
+        "unstable_routes": sorted(
+            {
+                str(row.get("path"))
+                for row in recovered_failures
+                if row.get("path")
+            }
+        ),
         **identity,
         "cohort": summarize_route_cohort(per_route),
         "origin_seam": seam,
