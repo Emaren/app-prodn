@@ -338,6 +338,26 @@ export function resolveReplayTeamPresentation(
   }
 
   /*
+   * A complete two-player roster is inherently a 1v1. No array-order
+   * side inference is needed because each player is a singleton side.
+   */
+  if (visibleNames.length === 2) {
+    return resolvedPresentation(
+      [
+        {
+          teamKey: "1v1:0",
+          names: [visibleNames[0]],
+        },
+        {
+          teamKey: "1v1:1",
+          names: [visibleNames[1]],
+        },
+      ],
+      "1v1"
+    );
+  }
+
+  /*
    * Older rows may lack team_resolution while every player
    * still carries a complete explicit team ID.
    */
