@@ -848,7 +848,26 @@ def print_plan(payload: dict[str, Any]) -> None:
     )
 
 
+def forward_campaign_cli(argv: list[str]) -> int | None:
+    if len(argv) < 2 or argv[0] != "campaign":
+        return None
+    command = argv[1]
+    if command not in {"preflight", "start", "status", "pause", "resume"}:
+        return None
+    cmd = [
+        sys.executable,
+        str(ROOT / "scripts" / "aoe2_recovery_campaign.py"),
+        command,
+        *argv[2:],
+    ]
+    return subprocess.run(cmd, cwd=ROOT, check=False).returncode
+
+
 def main() -> int:
+    forwarded = forward_campaign_cli(sys.argv[1:])
+    if forwarded is not None:
+        return forwarded
+
     parser = argparse.ArgumentParser(prog="aoe2war recovery")
     sub = parser.add_subparsers(dest="command")
     for name in ("status", "plan"):
