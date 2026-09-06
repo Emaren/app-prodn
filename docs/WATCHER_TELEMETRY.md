@@ -112,28 +112,27 @@ through Watcher source `0519ce64b6e4aadd42dc3b34e27f8628bf0558bc`. A completion 
 transport evidence. For Watcher 1.5.7, omission of `finalStored` is neutral;
 explicit `finalStored=false` or identity/hash/session conflicts remain blocking.
 
-`replay-terminal-recorder-exit-v1` is the narrow current automatic 1v1 recovery
-policy. It requires a modern authenticated Watcher final rated 1v1, an exact
-canonical recorder identity, and absence of stronger serialized
-winner/resignation/postgame evidence. The authenticated recorder is treated as
-a provisional statistical loser and the canonical opponent as provisional
-statistical winner.
+The historical `replay-terminal-recorder-exit-v2` policy is now diagnostic
+only and has **no result authority**. Production game 32173 supplied the missing
+counterexample: an authenticated recorder may win a rated HD 1v1 and then stop
+recording after the opponent is eliminated, including by converting the
+opponent's final remaining unit. Therefore `recorder ended => recorder lost`
+is not a valid winner rule.
 
-Recorder-exit adjudications are append-only and explicitly carry the equivalent
-of:
+Existing append-only adjudications from that policy remain durable historical
+evidence, but the effective public/stats relation excludes them. No new
+recorder-exit adjudication may be created. An unresolved 1v1 remains unresolved
+until stronger replay, screenshot, or commissioner evidence proves a winner.
 
-- `replayPacketLeaveProof=false`;
-- `provisionalStatsInference=true`;
-- `affectsStats=true`;
-- `affectsBets=false`;
-- `financialAuthority=false`.
-
-The prior 1v1 `replay-terminal-action-tail-v3` policy remains disabled as
+The prior 1v1 `replay-terminal-action-tail-v3` policy also remains disabled as
 result authority. Standard mgz action-tail ordering is diagnostic evidence only
 and must not automatically create a 1v1 winner.
 
-Stronger screenshot or human evidence may supersede a provisional recorder-exit
-adjudication append-only. Settlement remains a separate authority domain.
+Game 32173 is corrected through the existing stats-only commissioner overlay:
+Emaren is the declared winner over 久居妒海的猫. The correction does not mutate
+wagers, markets, claims, settlements, or chain state. The parser/Engine Room
+should still pursue deterministic elimination/conversion evidence so future
+matches do not require commissioner intervention.
 <!-- AOE2WAR:TERMINAL_RESULT_RECEIPTS_V3:END -->
 
 ## Signal Layers
