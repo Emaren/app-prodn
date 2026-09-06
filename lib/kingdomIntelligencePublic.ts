@@ -113,7 +113,14 @@ export async function loadPublicKingdomIntelligence() {
   const stale = ageSeconds === null || ageSeconds > 15 * 60;
 
   const invariants = Array.isArray(payload.invariants)
-    ? payload.invariants.map(publicInvariant).filter(Boolean)
+    ? payload.invariants
+        .map(publicInvariant)
+        .filter(
+          (
+            item
+          ): item is NonNullable<ReturnType<typeof publicInvariant>> =>
+            Boolean(item)
+        )
     : [];
 
   const resolved = numberValue(replay.resolved);
