@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any
 
 import aoe2_audit
+import aoe2_recovery
 import aoe2_release
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1110,16 +1111,26 @@ def check_architecture(
 
 
 def check_disaster_recovery(doctor: Doctor, contract: dict[str, Any]) -> None:
-    offsite = contract.get("offsite_evidence", {})
-    enabled = bool(offsite.get("enabled"))
-    doctor.info["offsite_evidence"] = offsite
-    if not enabled:
+    del contract
+    recovery = aoe2_recovery.evaluate()
+    doctor.info["offsite_evidence"] = recovery
+    if recovery.get("status") != "VERIFIED":
+        blockers = [
+            str(item)
+            for item in recovery.get("blockers", [])
+            if str(item).strip()
+        ]
+        detail = (
+            "Recovery OS is not VERIFIED; VPS root and mounted volume still "
+            "share a failure domain"
+        )
+        if blockers:
+            detail += ": " + "; ".join(blockers[:3])
         doctor.add(
             "WARN",
             "Disaster Recovery",
             "offsite-evidence",
-            "encrypted off-host production evidence/restore proof is not yet "
-            "configured; VPS root and mounted volume still share a failure domain",
+            detail,
             3,
         )
 
