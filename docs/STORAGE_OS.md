@@ -94,6 +94,57 @@ The pilot archived `activate-20260818T003527Z-1a4e983b86d4`, round-trip verified
 it exactly, retained immutable receipts, replaced only the expanded generation,
 and kept Wolo advancing without a process restart.
 
+
+## Adaptive maintenance governor
+
+Cold archival no longer assumes that the safest useful maintenance budget is a
+permanent 20% CPU ceiling. Every expensive archival stage is still isolated in
+its own transient systemd unit, but the runner now leases currently unused host
+headroom when live evidence supports it.
+
+The governor selects one of three profiles before each bounded stage:
+
+- **CONSERVATIVE** preserves the proven 20% CPU / idle-I/O lane.
+- **BALANCED** may use up to 50% CPU quota per vCPU, capped at 200%.
+- **BURST** may use up to 75% CPU quota per vCPU, capped at 300%.
+
+BALANCED/BURST require stronger free-memory and host-load evidence. During the
+stage, Wolo remains the hard authority. A soft Wolo-staleness, no-progress, or
+memory-pressure signal immediately revokes the lease and demotes the active
+unit to CONSERVATIVE. The existing hard abort conditions remain unchanged.
+
+This is deliberately not "run maintenance at maximum speed." It is
+**revocable headroom leasing**: use spare capacity aggressively while proving
+the protected workload remains healthy, then surrender that capacity before
+the protected workload is endangered.
+
+Rollback compression uses zstd's available worker threads; the systemd CPU
+quota remains the aggregate governor. Replacement receipts record total
+transaction duration so Storage OS can compare throughput across generations
+and future governor revisions.
+
+## Storage lifecycle direction
+
+Five expanded activation generations remain the hot rollback window. Keeping
+every older generation expanded is not a long-term retention strategy; older
+generations belong in exact verified cold form.
+
+The next architectural step after the adaptive governor is to remove backlog
+creation itself:
+
+1. create/retain exact generation manifests at release time;
+2. when a generation falls out of the newest-five hot window, enqueue one
+   asynchronous verified cold-archive transaction rather than waiting for disk
+   pressure;
+3. preserve milestone releases and unique evidence explicitly;
+4. add an encrypted off-host evidence authority plus restore drill before any
+   policy is allowed to expire unique local cold archives;
+5. evaluate content-addressed/deduplicated generation storage so growth tracks
+   changed bytes rather than repeatedly storing identical dependency trees.
+
+Until off-host authority and restore proof exist, unique verified archives are
+not automatic deletion candidates.
+
 ## Deployment boundary
 
 Cold archival is deliberately outside the latency-critical `aoe2war finish`
