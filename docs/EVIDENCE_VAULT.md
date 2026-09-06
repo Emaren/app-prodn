@@ -177,6 +177,42 @@ The existing 2026-09-04 database/operator-evidence pilot remains valid
 `PILOT_VERIFIED` evidence, but schema 1 pilot proof can never satisfy the full
 schema-2 verification contract.
 
+## Recovery campaign planner
+
+`aoe2war recovery campaign plan` is the canonical read-only bridge between the
+Recovery OS proof contract and live mutable-state inventory.
+
+It performs one bounded live census over the production host and converts the
+result into an ordered evidence campaign without copying data, stopping
+services, changing settlement state, or touching Wolo key material.
+
+The planner currently enforces these campaign semantics:
+
+- database and operator evidence reuse the existing verified Mac pilot;
+- managed media, direct-message attachments, Radio WOLO media, parser evidence,
+  and the raw replay archive are ordinary encrypted stream-copy candidates;
+- parser recovery preserves every top-level evidence tree except disposable
+  `tmp/`; this intentionally includes cold archives, bounded jobs, reports,
+  evidence, golden fixtures, promotions, and backups;
+- Wolo settlement state requires a consistency seam rather than a blind live
+  recursive copy;
+- Wolo consensus recovery requires a two-phase consistency-safe snapshot with
+  explicit authorization before any service quiesce;
+- validator keys, node keys, and Wolo keyrings remain outside the general
+  Evidence Vault and require a separate secret-custody attestation;
+- if final Mac headroom is smaller than the campaign's largest retained class,
+  restore verification must be streaming/per-class rather than assuming a full
+  extracted second copy will fit.
+
+The planner resolves the active Wolo home from the running process command line,
+not from an unexpanded systemd template string. Key-custody discovery reads only
+path, byte-size, owner, and mode metadata; it never prints key contents or key
+hashes.
+
+The planner is deliberately incapable of writing recovery artifacts. A future
+`recovery campaign start` lane must remain a separately reviewed, explicitly
+authorized bounded write transaction.
+
 ## Restore drill
 
 1. Choose a sealed bundle and record its immutable remote version ID.
