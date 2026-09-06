@@ -134,12 +134,9 @@ test("empty automatic reconciliation is a safe no-op", async () => {
   });
 });
 
-test("automatic reconciliation creates provisional recorder-exit stats verdict", async () => {
+test("automatic reconciliation refuses recorder-exit winner authority", async () => {
   const input = baseInput();
-  let createdData: Record<string, unknown> | null = null;
-  let parseRunFindFirstArgs:
-    | Record<string, unknown>
-    | null = null;
+  let created = false;
 
   const game = {
     id: input.id,
@@ -181,8 +178,8 @@ test("automatic reconciliation creates provisional recorder-exit stats verdict",
     replayResultAdjudication: {
       findUnique: async () => null,
       findFirst: async () => null,
-      create: async (args: { data: Record<string, unknown> }) => {
-        createdData = args.data;
+      create: async () => {
+        created = true;
         return { id: 9001 };
       },
     },
@@ -194,13 +191,8 @@ test("automatic reconciliation creates provisional recorder-exit stats verdict",
       count: async () => 0,
     },
     replayParseRun: {
-      findFirst: async (
-        args: Record<string, unknown>
-      ) => {
-        parseRunFindFirstArgs = args;
-
-        return {
-          id: 4965,
+      findFirst: async () => ({
+        id: 4965,
         parserName: "mgz",
         parserVersion: "8",
         parserBuild: "test",
@@ -218,8 +210,7 @@ test("automatic reconciliation creates provisional recorder-exit stats verdict",
             provenance: { source: "test" },
           },
         ],
-        };
-      },
+      }),
     },
     betMarket: {
       findMany: async () => [],
@@ -240,70 +231,18 @@ test("automatic reconciliation creates provisional recorder-exit stats verdict",
     [input.id]
   );
 
-  assert.equal(report.createdCount, 1);
+  assert.equal(report.createdCount, 0);
   assert.equal(report.existingCount, 0);
-  assert.equal(report.skippedCount, 0);
+  assert.equal(report.skippedCount, 1);
+  assert.equal(created, false);
   assert.deepEqual(report.outcomes, [
     {
       gameStatsId: input.id,
-      outcome: "created",
-      detail: "provisional_1v1_authenticated_recorder_exit",
-      adjudicationId: 9001,
+      outcome: "skipped",
+      detail: "recorder_exit_is_not_result_authority",
+      adjudicationId: null,
     },
   ]);
-
-  assert.ok(createdData);
-  const stored =
-    createdData as Record<string, unknown>;
-
-  assert.equal(
-    stored.affectsStats,
-    true
-  );
-  assert.equal(
-    stored.affectsBets,
-    false
-  );
-  assert.match(
-    String(
-      stored.idempotencyKey
-    ),
-    /replay-terminal-recorder-exit-v2/
-  );
-
-  const evidence =
-    stored.evidence as
-      | Record<string, unknown>
-      | undefined;
-
-  assert.equal(
-    evidence?.provisionalStatsInference,
-    true
-  );
-  assert.equal(
-    evidence?.replayPacketLeaveProof,
-    false
-  );
-  assert.equal(
-    evidence?.financialAuthority,
-    false
-  );
-
-  assert.deepEqual(
-    (
-      parseRunFindFirstArgs as {
-        where?: {
-          observations?: unknown;
-        };
-      } | null
-    )?.where?.observations,
-    {
-      some: {
-        fieldPath:
-          WATCHER_TERMINAL_RAW_ACTIVITY_FIELD_PATH,
-      },
-    }
-  );
 });
 
 test("automatic watcher evidence uses stats-only append-only authority", () => {
@@ -329,7 +268,7 @@ test("automatic watcher evidence uses stats-only append-only authority", () => {
   );
   assert.equal(
     WATCHER_TERMINAL_RECORDER_EXIT_RESULT_AUTHORITY,
-    true
+    false
   );
 });
 
