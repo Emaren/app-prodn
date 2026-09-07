@@ -98,8 +98,8 @@ export default function AgentConstellationPanel({
             agent.key === "recovery" && liveRecovery?.available === true;
           const effectiveProgress =
             recoveryLive &&
-            typeof liveRecovery.overallPercent === "number"
-              ? liveRecovery.overallPercent
+            typeof liveRecovery?.overallPercent === "number"
+              ? liveRecovery?.overallPercent
               : agent.progress;
 
           return (
