@@ -170,10 +170,11 @@ export default function ProcessDrilldown({
   const liveRecoveryActive =
     key === "recovery" && liveRecovery?.available === true;
 
-  const effectiveProgress =
+  const liveProgress =
     liveRecoveryActive && typeof liveRecovery?.overallPercent === "number"
-      ? liveRecovery?.overallPercent
-      : progress;
+      ? liveRecovery.overallPercent
+      : null;
+  const effectiveProgress = liveProgress ?? progress;
 
   const startedMs = startedAt ? new Date(startedAt).getTime() : NaN;
   const elapsedSeconds = Number.isFinite(startedMs)
