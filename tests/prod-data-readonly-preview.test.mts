@@ -139,6 +139,20 @@ test("dev:prod acknowledges local side effects without production writes", () =>
   );
 });
 
+test("local preview reads canonical AoE2WAR OS state without allowing OS mutations", () => {
+  const launcher = source("scripts/dev-prod-readonly.py");
+  const route = source("app/api/admin/aoe2war-os/route.ts");
+
+  assert.match(launcher, /canonical_os_store_for_preview/);
+  assert.match(launcher, /AOE2WAR_OS_STORE_DIR/);
+  assert.match(launcher, /storage" \/ "aoe2war-os"/);
+
+  assert.match(route, /AOE2WAR_PROD_DB_PREVIEW/);
+  assert.match(route, /Local production-data preview is read-only/);
+  assert.match(route, /export async function POST/);
+  assert.match(route, /export async function DELETE/);
+});
+
 test("dev:prod opens the page inferred from the active work lane", () => {
   const launcher = source("scripts/dev-prod-readonly.py");
 
