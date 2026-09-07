@@ -455,6 +455,96 @@ class PerformanceOSTests(unittest.TestCase):
             ["/game-stats"],
         )
 
+    def test_campaign_verify_replays_exact_frozen_baseline_routes(self):
+        baseline = {
+            "mode": "full",
+            "rounds": 3,
+            "routes": [
+                {
+                    "path": "/",
+                    "median_ttfb_ms": 300.0,
+                    "median_total_ms": 500.0,
+                },
+                {
+                    "path": "/bets",
+                    "median_ttfb_ms": 400.0,
+                    "median_total_ms": 600.0,
+                },
+            ],
+            "cohort": {
+                "ttfb_p50_ms": 350.0,
+                "total_p50_ms": 550.0,
+            },
+        }
+        after = {
+            "mode": "full",
+            "rounds": 3,
+            "routes": [
+                {
+                    "path": "/",
+                    "median_ttfb_ms": 250.0,
+                    "median_total_ms": 450.0,
+                },
+                {
+                    "path": "/bets",
+                    "median_ttfb_ms": 350.0,
+                    "median_total_ms": 550.0,
+                },
+            ],
+            "cohort": {
+                "ttfb_p50_ms": 300.0,
+                "total_p50_ms": 500.0,
+            },
+            "recovered_sample_failures": [],
+            "_path": str(
+                ROOT
+                / ".aoe2war-release"
+                / "performance-receipts"
+                / "after.json"
+            ),
+            "release_sha": "b" * 40,
+            "build_id": "after-build",
+            "build_version": "after-version",
+        }
+        campaign = {
+            "campaign_id": "frozen",
+            "status": "analyzed",
+            "baseline": {
+                "receipt": ".aoe2war-release/performance-receipts/before.json",
+                "rounds": 3,
+                "source_inventory": {},
+            },
+        }
+
+        with patch.object(
+            CAMPAIGN_MODULE,
+            "load_receipt",
+            return_value=baseline,
+        ), patch.object(
+            CAMPAIGN_MODULE,
+            "campaign_source_inventory",
+            return_value={},
+        ), patch.object(
+            CAMPAIGN_MODULE.speed,
+            "benchmark",
+            return_value=after,
+        ) as benchmark, patch.object(
+            CAMPAIGN_MODULE,
+            "write_campaign",
+        ):
+            result = CAMPAIGN_MODULE.verify_campaign(
+                campaign,
+                rounds=None,
+            )
+
+        self.assertEqual(
+            benchmark.call_args.kwargs["routes_override"],
+            ["/", "/bets"],
+        )
+        self.assertTrue(benchmark.call_args.kwargs["full"])
+        self.assertEqual(benchmark.call_args.kwargs["rounds"], 3)
+        self.assertEqual(result["status"], "verified")
+
     def test_speed_campaign_verifies_every_route_and_flags_regression(self):
         before = {
             "mode": "quick",
