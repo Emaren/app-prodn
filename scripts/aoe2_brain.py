@@ -976,6 +976,12 @@ def system_agent_rows(
                 if storage_total
                 else "capacity"
             ),
+            "active_process": storage_active,
+            "active_since": (
+                storage_campaign.get("started_at")
+                if storage_active
+                else None
+            ),
         },
         {
             "key": "host",
@@ -1019,6 +1025,13 @@ def system_agent_rows(
                 f"{recovery_completed}/{recovery_total} ordinary classes"
                 if recovery_total
                 else "full recovery proof"
+            ),
+            "active_process": recovery_active,
+            "active_since": (
+                recovery_campaign.get("current_class_started_at")
+                or recovery_campaign.get("started_at")
+                if recovery_active
+                else None
             ),
         },
         {
