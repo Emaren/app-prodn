@@ -136,7 +136,9 @@ test("Kingdom Intelligence samples live Recovery bytes every five seconds withou
   const hook = source("app/kingdom-intelligence/useLiveRecoveryProgress.ts");
   const route = source("app/api/kingdom-intelligence/live-recovery/route.ts");
 
-  assert.match(hook, /setTimeout\(poll, 5000\)/);
+  assert.match(hook, /setTimeout\(\(\) => \{/);
+  assert.match(hook, /void pollSharedRecovery\(\)/);
+  assert.match(hook, /listeners = new Set<Listener>\(\)/);
   assert.match(hook, /cache: "no-store"/);
   assert.match(hook, /formatLiveRecoveryProgressLabel/);
   assert.match(hook, /GiB/);
