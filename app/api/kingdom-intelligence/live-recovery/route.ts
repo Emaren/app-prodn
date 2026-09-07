@@ -1,14 +1,32 @@
+import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 
 import { NextResponse } from "next/server";
+
+const execFileAsync = promisify(execFile);
 
 const NO_STORE = {
   "Cache-Control": "no-store, max-age=0",
 };
 
 const CHUNK_PLAINTEXT_LIMIT = 256 * 1024 * 1024;
+
+const LEGACY_ESTIMATE_CACHE_MS = 6 * 60 * 60 * 1000;
+
+let legacyEstimateCache:
+  | {
+      key: string;
+      at: number;
+      expectedBytes: number | null;
+    }
+  | null = null;
+
+let legacyEstimatePromise:
+  | Promise<number | null>
+  | null = null;
 
 function canonicalRoot() {
   const explicit = process.env.AOE2WAR_CANONICAL_APP_ROOT?.trim();
@@ -72,6 +90,76 @@ async function latestRunningCampaign(root: string) {
   }
 
   return null;
+}
+
+async function legacyExpectedBytes(
+  root: string,
+  campaignId: string,
+  className: string,
+) {
+  const key = `${campaignId}:${className}`;
+  const now = Date.now();
+
+  if (
+    legacyEstimateCache &&
+    legacyEstimateCache.key === key &&
+    now - legacyEstimateCache.at < LEGACY_ESTIMATE_CACHE_MS
+  ) {
+    return legacyEstimateCache.expectedBytes;
+  }
+
+  if (legacyEstimatePromise) return legacyEstimatePromise;
+
+  legacyEstimatePromise = (async () => {
+    try {
+      const script = path.join(root, "scripts", "aoe2_recovery.py");
+      const { stdout } = await execFileAsync(
+        "/usr/bin/python3",
+        [script, "campaign", "plan", "--json"],
+        {
+          cwd: root,
+          env: process.env,
+          timeout: 45_000,
+          maxBuffer: 4 * 1024 * 1024,
+        },
+      );
+
+      const payload = JSON.parse(stdout) as {
+        stages?: Array<{
+          class?: string;
+          estimated_bytes?: number;
+        }>;
+      };
+
+      const stage = Array.isArray(payload.stages)
+        ? payload.stages.find((item) => item.class === className)
+        : null;
+      const bytes = Number(stage?.estimated_bytes ?? 0);
+      const expectedBytes =
+        Number.isFinite(bytes) && bytes > 0 ? bytes : null;
+
+      legacyEstimateCache = {
+        key,
+        at: Date.now(),
+        expectedBytes,
+      };
+
+      return expectedBytes;
+    } catch {
+      legacyEstimateCache = {
+        key,
+        at: Date.now(),
+        expectedBytes: null,
+      };
+      return null;
+    }
+  })();
+
+  try {
+    return await legacyEstimatePromise;
+  } finally {
+    legacyEstimatePromise = null;
+  }
 }
 
 async function observedChunkBytes(
@@ -185,7 +273,23 @@ export async function GET() {
       typeof campaign.ordinary_stage_estimates === "object"
         ? (campaign.ordinary_stage_estimates as Record<string, unknown>)
         : {};
-    const expectedBytes = Number(stageEstimates[className] ?? 0);
+
+    const persistedEstimate = Number(stageEstimates[className] ?? 0);
+    const campaignId = String(campaign.campaign_id ?? "unknown");
+    const legacyEstimate =
+      persistedEstimate > 0
+        ? null
+        : await legacyExpectedBytes(root, campaignId, className);
+    const expectedBytes =
+      persistedEstimate > 0
+        ? persistedEstimate
+        : Number(legacyEstimate ?? 0);
+    const denominatorSource =
+      persistedEstimate > 0
+        ? "campaign_state"
+        : expectedBytes > 0
+          ? "one_time_read_only_inventory"
+          : "unavailable";
 
     const observedBytes = observed.sealedBytes + observed.partialBytes;
     const classFraction =
@@ -260,6 +364,7 @@ export async function GET() {
             ? null
             : Math.max(0, Math.round(etaSeconds)),
         throughputBytesPerSecond,
+        denominatorSource,
         progressBasis:
           expectedBytes > 0
             ? "sealed + active encrypted chunk bytes"
