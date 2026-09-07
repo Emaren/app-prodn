@@ -37,15 +37,15 @@ test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and bo
   assert.match(premiumOracle, /data-oracle-advanced-banner="workshop-advanced-exact"/);
   assert.match(
     premiumOracle,
-    /data-oracle-advanced-hero="workshop-advanced-exact"[\s\S]*?rounded-\[2\.35rem\][\s\S]*?border border-cyan-100\/13[\s\S]*?p-6[\s\S]*?sm:p-9[\s\S]*?lg:p-10/,
+    /className="relative overflow-hidden rounded-\[2\.35rem\][^"]*border border-cyan-100\/13[^"]*p-6[^"]*sm:p-9[^"]*lg:p-10"\s*data-oracle-advanced-hero="workshop-advanced-exact"/,
   );
   assert.match(
     premiumOracle,
-    /data-oracle-advanced-banner="workshop-advanced-exact"[\s\S]*?aspect-\[16\/7\][\s\S]*?sm:min-h-\[20rem\][\s\S]*?lg:min-h-\[24rem\]/,
+    /className="relative min-h-\[16rem\] aspect-\[16\/7\][^"]*sm:min-h-\[20rem\][^"]*lg:min-h-\[24rem\][^"]*"\s*data-oracle-advanced-banner="workshop-advanced-exact"/,
   );
   assert.match(
     premiumOracle,
-    /className="mx-auto w-full max-w-\[90rem\]" data-oracle-extreme-frame="workshop-advanced-width"/,
+    /className="mx-auto w-full max-w-\[90rem\]"\s*data-oracle-extreme-frame="workshop-advanced-width"/,
   );
   assert.match(premiumOracle, /data-oracle-extreme-hero="workshop-advanced-exact"/);
   assert.match(premiumOracle, /data-oracle-extreme-banner="workshop-advanced-exact"/);
@@ -59,11 +59,19 @@ test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and bo
   );
   assert.match(
     premiumOracle,
-    /rounded-\[2\.35rem\][\s\S]*?border border-cyan-100\/13[\s\S]*?p-6[\s\S]*?sm:p-9[\s\S]*?lg:p-10/,
+    /className="oracle-workshop-a-shell[^"]*rounded-\[2\.35rem\][^"]*border border-cyan-100\/13[^"]*p-6[^"]*sm:p-9[^"]*lg:p-10"\s*data-oracle-extreme-hero="workshop-advanced-exact"/,
   );
   assert.match(
-    premiumOracle,
-    /aspect-\[16\/7\][\s\S]*?sm:min-h-\[20rem\][\s\S]*?lg:min-h-\[24rem\]/,
+    oraclePolish,
+    /\.oracle-workshop-a-banner \{[\s\S]*?aspect-ratio: 16 \/ 7;[\s\S]*?min-height: 16rem;/,
+  );
+  assert.match(
+    oraclePolish,
+    /@media \(min-width: 640px\)[\s\S]*?\.oracle-workshop-a-banner \{[\s\S]*?min-height: 20rem;[\s\S]*?margin: -2\.25rem -2\.25rem 2\.35rem;/,
+  );
+  assert.match(
+    oraclePolish,
+    /@media \(min-width: 1024px\)[\s\S]*?\.oracle-workshop-a-banner \{[\s\S]*?min-height: 24rem;[\s\S]*?margin: -2\.5rem -2\.5rem 2\.5rem;/,
   );
   assert.match(premiumOracle, /mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-6/);
   assert.match(premiumOracle, /OracleWorkshopViewToggle/);
