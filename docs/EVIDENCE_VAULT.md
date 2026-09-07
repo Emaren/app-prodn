@@ -237,33 +237,44 @@ classes:
 
 The controller is terminal-independent and processes one class at a time. The
 remote source is streamed as a tar archive over SSH; the Mac hashes that
-plaintext stream while OpenSSL CMS encrypts it directly into the independent
-survival vault. CMS encryption must use OpenSSL streaming I/O (`-stream`) so
-multi-GiB classes are processed in a single pass rather than buffered as a whole
-message. OpenSSL emits an indefinite-length BER CMS container in this mode even
-when the binary ASN.1 output path is selected; the capture proof records that
-encoding explicitly.
+plaintext stream while Recovery OS splits it at deterministic bounded plaintext
+chunk boundaries. Each chunk is independently OpenSSL CMS-encrypted into the
+survival vault with the pilot-bound recipient certificate. The default maximum
+plaintext chunk is 256 MiB, deliberately far below the multi-GiB CMS parse/decrypt
+ceiling observed in OpenSSL 3.x. No plaintext staging copy is retained. Each
+sealed chunk carries its own plaintext/ciphertext byte counts and SHA-256 proof,
+and the class manifest binds the ordered chunk set to the SHA-256 and byte count
+of the complete original tar stream.
 
 Pause control is out-of-band from the mutable campaign JSON. An operator pause
 creates a per-campaign durable marker under the Recovery campaign state
 directory. The controller checks that marker only between classes, so an
-in-flight class is never interrupted, and stale controller state writes cannot
-erase a requested pause. Resume is allowed only at a clean class boundary and
-explicitly removes the durable marker before spawning a new controller.
+in-flight class is never deliberately interrupted, and stale controller state
+writes cannot erase a requested pause.
 
-No plaintext staging copy is retained. After each class
-the CMS container must parse structurally, ciphertext bytes/hash and
-plaintext-stream bytes/hash are recorded, and a hashed
-`CAPTURED_PENDING_RESTORE` class proof is written. These capture receipts do
-not count as final Recovery OS PASS evidence until the later isolated decrypt
-and restore drill verifies them.
+Unexpected controller loss inside a chunked class is recoverable only from
+sealed chunk boundaries. A partially written chunk lives in an unsealed
+temporary directory and is discarded on resume. Before any later chunk is
+accepted, Recovery OS replays the remote tar prefix and requires every sealed
+chunk's plaintext byte count and SHA-256 to match exactly. Any source drift
+fails closed rather than splicing two generations. If the complete class
+manifest was already sealed, resume can finish from local encrypted chunks
+without reopening the remote source.
+
+After each chunk, Recovery OS decrypt-verifies that bounded CMS object against
+its plaintext hash before atomically sealing the chunk directory. After the
+class completes, all chunks are decrypted in order and streamed through
+`tar -tf -`; the reconstructed tar bytes/hash must match the capture identity.
+Only then is the hashed `CAPTURED_PENDING_RESTORE` class proof written. These
+capture receipts do not count as final Recovery OS PASS evidence until the later
+isolated restore drill verifies the full recovery contract.
 
 Campaign authorization is intentionally narrow. Ordinary capture does not
 authorize settlement mutation, Wolo service quiescence, validator/node keys,
 Wolo keyrings, host package upgrades, or reboot. The controller can pause only
-between classes. If it dies inside a class, the partial artifact is preserved
-and resume fails closed rather than guessing around ambiguous evidence; a fresh
-campaign must supersede that attempt.
+between classes. A legacy single-CMS interruption still fails closed and requires
+a fresh campaign. A chunked interruption may resume only when sealed chunk
+checkpoints exist and the replayed source prefix matches them exactly.
 
 The existing database/operator pilot is reused rather than recopied. Settlement,
 consensus recovery, separate key custody and the final streaming restore drill

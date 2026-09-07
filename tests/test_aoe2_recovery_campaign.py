@@ -1,3 +1,6 @@
+import hashlib
+import io
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -60,6 +63,111 @@ class RecoveryCampaignTests(unittest.TestCase):
         self.assertIn("-aes256", command)
         self.assertEqual(command[0:3], ["openssl", "cms", "-encrypt"])
         self.assertEqual(command[-2:], ["-out", "/tmp/output.cms.partial"])
+
+    def test_recovery_cms_chunk_ceiling_stays_well_below_multigib_limit(self):
+        self.assertLessEqual(
+            campaign.CMS_CHUNK_PLAINTEXT_BYTES,
+            512 * 1024 * 1024,
+        )
+        self.assertGreater(campaign.CMS_CHUNK_PLAINTEXT_BYTES, 0)
+
+    def test_cms_decrypt_command_binds_certificate_and_private_key(self):
+        command = campaign.cms_decrypt_command(
+            Path("/tmp/recipient.pem"),
+            Path("/tmp/private.pem"),
+            Path("/tmp/chunk.cms"),
+        )
+        self.assertEqual(command[0:3], ["openssl", "cms", "-decrypt"])
+        self.assertIn("-binary", command)
+        self.assertIn("-inform", command)
+        self.assertIn("DER", command)
+        self.assertEqual(command[-4:], [
+            "-recip",
+            "/tmp/recipient.pem",
+            "-inkey",
+            "/tmp/private.pem",
+        ])
+
+    @unittest.skipUnless(
+        campaign.shutil.which("openssl") and campaign.shutil.which("tar"),
+        "OpenSSL and tar are required for the chunked CMS integration test",
+    )
+    def test_chunked_cms_round_trip_reconstructs_tar_across_multiple_chunks(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cert = root / "recipient.pem"
+            key = root / "private.pem"
+            campaign.subprocess.run(
+                [
+                    "openssl",
+                    "req",
+                    "-x509",
+                    "-newkey",
+                    "rsa:2048",
+                    "-keyout",
+                    str(key),
+                    "-out",
+                    str(cert),
+                    "-nodes",
+                    "-subj",
+                    "/CN=AoE2WAR Recovery Test",
+                    "-days",
+                    "1",
+                ],
+                stdout=campaign.subprocess.DEVNULL,
+                stderr=campaign.subprocess.DEVNULL,
+                check=True,
+            )
+
+            payload = b"AOE2WAR-RECOVERY-" * 24000
+            tar_buffer = io.BytesIO()
+            with tarfile.open(fileobj=tar_buffer, mode="w") as archive:
+                info = tarfile.TarInfo("payload.bin")
+                info.size = len(payload)
+                archive.addfile(info, io.BytesIO(payload))
+            tar_bytes = tar_buffer.getvalue()
+
+            chunk_root = root / "chunks"
+            chunk_root.mkdir()
+            source = io.BytesIO(tar_bytes)
+            whole = hashlib.sha256()
+            receipts = []
+
+            with patch.object(
+                campaign,
+                "CMS_CHUNK_PLAINTEXT_BYTES",
+                64 * 1024,
+            ):
+                while True:
+                    receipt = campaign._capture_new_chunk(
+                        source=source,
+                        root=chunk_root,
+                        index=len(receipts),
+                        recipient_cert=cert,
+                        private_key=key,
+                        recipient_fingerprint="A" * 64,
+                        whole_digest=whole,
+                    )
+                    if receipt is None:
+                        break
+                    receipts.append(receipt)
+
+                restored_bytes, restored_sha = (
+                    campaign._verify_chunked_tar_restore(
+                        chunk_root,
+                        receipts,
+                        recipient_cert=cert,
+                        private_key=key,
+                    )
+                )
+
+            self.assertGreater(len(receipts), 1)
+            self.assertEqual(restored_bytes, len(tar_bytes))
+            self.assertEqual(
+                restored_sha,
+                hashlib.sha256(tar_bytes).hexdigest(),
+            )
+            self.assertEqual(whole.hexdigest(), restored_sha)
 
     def test_create_state_requires_explicit_ordinary_capture_authorization(self):
         with self.assertRaisesRegex(
@@ -252,18 +360,44 @@ class RecoveryCampaignTests(unittest.TestCase):
                 self.assertFalse(result["pause_requested"])
                 self.assertIsNone(result["pause_requested_at"])
 
-    def test_resume_fails_closed_when_interrupted_inside_class(self):
+    def test_resume_fails_closed_when_interrupted_inside_legacy_class(self):
         state = {
             "status": "FAILED",
             "current_class": "raw_replay_archive",
             "pid": None,
         }
-        with patch.object(campaign, "load_state", return_value=state):
+        with (
+            patch.object(campaign, "load_state", return_value=state),
+            patch.object(campaign, "chunk_capture_has_checkpoint", return_value=False),
+        ):
             with self.assertRaisesRegex(
                 campaign.CampaignError,
-                "partial artifact",
+                "partial evidence",
             ):
                 campaign.resume("test-campaign")
+
+    def test_resume_allows_sealed_chunk_checkpoint(self):
+        state = {
+            "schema": 1,
+            "kind": "aoe2war-recovery-campaign",
+            "campaign_id": "chunk-resume",
+            "status": "FAILED",
+            "current_class": "parser_evidence_corpus",
+            "pid": None,
+            "pause_requested": False,
+            "pause_requested_at": None,
+        }
+        with (
+            patch.object(campaign, "load_state", return_value=state),
+            patch.object(campaign, "chunk_capture_has_checkpoint", return_value=True),
+            patch.object(campaign, "validate_campaign_source"),
+            patch.object(campaign, "clear_pause_marker"),
+            patch.object(campaign, "save_state"),
+            patch.object(campaign, "spawn", return_value=24680),
+        ):
+            result = campaign.resume("chunk-resume")
+        self.assertEqual(result["spawned_pid"], 24680)
+        self.assertEqual(state["status"], "RESUME_REQUESTED")
 
 
 if __name__ == "__main__":
