@@ -1,3 +1,8 @@
+import hashlib
+import io
+import shutil
+import subprocess
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -60,6 +65,144 @@ class RecoveryCampaignTests(unittest.TestCase):
         self.assertIn("-aes256", command)
         self.assertEqual(command[0:3], ["openssl", "cms", "-encrypt"])
         self.assertEqual(command[-2:], ["-out", "/tmp/output.cms.partial"])
+
+    def test_cms_decrypt_command_uses_local_private_key_and_der_input(self):
+        command = campaign.cms_decrypt_command(
+            Path("/tmp/archive.cms"),
+            Path("/tmp/recipient.pem"),
+            Path("/tmp/private.pem"),
+        )
+        self.assertEqual(command[0:3], ["openssl", "cms", "-decrypt"])
+        self.assertIn("-binary", command)
+        self.assertEqual(
+            command[command.index("-inform") + 1],
+            "DER",
+        )
+        self.assertEqual(
+            command[command.index("-inkey") + 1],
+            "/tmp/private.pem",
+        )
+
+    def test_stream_tar_inspection_hashes_full_archive_and_restores_representative(self):
+        payload = b"recovery proof payload\n"
+        raw = io.BytesIO()
+        with tarfile.open(fileobj=raw, mode="w") as archive:
+            info = tarfile.TarInfo("safe/example.txt")
+            info.size = len(payload)
+            info.mode = 0o640
+            archive.addfile(info, io.BytesIO(payload))
+        data = raw.getvalue()
+
+        result = campaign.inspect_plaintext_tar(
+            io.BytesIO(data),
+            representative_max_bytes=1024,
+        )
+
+        self.assertEqual(result["plaintext_tar_bytes"], len(data))
+        self.assertEqual(
+            result["plaintext_tar_sha256"],
+            hashlib.sha256(data).hexdigest(),
+        )
+        self.assertEqual(result["tar_structure"], "PASS")
+        self.assertEqual(result["member_count"], 1)
+        self.assertEqual(
+            result["representative_restore"]["status"],
+            "PASS",
+        )
+        self.assertEqual(
+            result["representative_restore"]["sha256"],
+            hashlib.sha256(payload).hexdigest(),
+        )
+        self.assertTrue(
+            result["representative_restore"]["workspace_removed_after_drill"]
+        )
+
+    @unittest.skipUnless(shutil.which("openssl"), "OpenSSL is required")
+    def test_streamed_cms_round_trip_restores_hash_exact_tar(self):
+        payload = b"AoE2WAR streamed restore integration test\n"
+        raw = io.BytesIO()
+        with tarfile.open(fileobj=raw, mode="w") as archive:
+            info = tarfile.TarInfo("evidence/sample.txt")
+            info.size = len(payload)
+            info.mode = 0o600
+            archive.addfile(info, io.BytesIO(payload))
+        tar_bytes = raw.getvalue()
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            key = root / "private.pem"
+            cert = root / "recipient.pem"
+            encrypted = root / "archive.cms"
+
+            subprocess.run(
+                [
+                    "openssl",
+                    "req",
+                    "-x509",
+                    "-newkey",
+                    "rsa:2048",
+                    "-nodes",
+                    "-subj",
+                    "/CN=AoE2WAR Recovery Test",
+                    "-keyout",
+                    str(key),
+                    "-out",
+                    str(cert),
+                    "-days",
+                    "1",
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=True,
+            )
+
+            encrypted_proc = subprocess.run(
+                campaign.cms_encrypt_command(cert, encrypted),
+                input=tar_bytes,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            self.assertEqual(
+                encrypted_proc.returncode,
+                0,
+                encrypted_proc.stderr.decode(errors="replace"),
+            )
+
+            decrypt = subprocess.Popen(
+                campaign.cms_decrypt_command(encrypted, cert, key),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            self.assertIsNotNone(decrypt.stdout)
+            result = campaign.inspect_plaintext_tar(decrypt.stdout)
+            decrypt.stdout.close()
+            stderr = decrypt.stderr.read() if decrypt.stderr else b""
+            self.assertEqual(
+                decrypt.wait(),
+                0,
+                stderr.decode(errors="replace"),
+            )
+
+        self.assertEqual(result["plaintext_tar_bytes"], len(tar_bytes))
+        self.assertEqual(
+            result["plaintext_tar_sha256"],
+            hashlib.sha256(tar_bytes).hexdigest(),
+        )
+        self.assertEqual(
+            result["representative_restore"]["status"],
+            "PASS",
+        )
+
+    def test_restore_state_requires_explicit_authorization(self):
+        with self.assertRaisesRegex(
+            campaign.CampaignError,
+            "--authorize-ordinary-restore-drill",
+        ):
+            campaign.create_restore_state(
+                "test-campaign",
+                authorize_ordinary_restore_drill=False,
+            )
 
     def test_create_state_requires_explicit_ordinary_capture_authorization(self):
         with self.assertRaisesRegex(
