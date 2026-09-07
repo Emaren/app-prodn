@@ -745,6 +745,36 @@ without ranking them. KI should preserve the strongest exact field available,
 and dirty/unmerged workspace evidence must become an explicit review action
 rather than passive telemetry.
 
+## 2026-09-06 — Browser Ready and independent-upstream scheduling lesson
+
+A real-user Speed Observatory session exposed three dominant readiness samples:
+`/wolo` at about 10.5 s explicit Ready, `/staking` at about 5.71 s explicit
+Ready, and `/kingdom-intelligence` at about 10.9 s route-paint Ready. The same
+session still showed an initial `/` TTFB around 0.19 s and a live browser round
+trip around 0.72 s, proving that the slowdown was not one uniform origin-TTFB
+failure.
+
+The WOLO result came from an over-broad readiness contract. Its primary
+interface already rendered usable fallback/refreshing states, but its explicit
+Ready marker waited for chain-id refresh, stored Keplr restoration, and wallet
+balance resolution. Keplr restoration itself carries an 8-second timeout.
+Durable rule: primary-page Ready must not wait on secondary wallet/chain proof
+when the page remains safely usable while that proof resolves.
+
+The staking route contained a separate scheduling smell: one independent
+Postgres economy/profile batch completed before the page even started its Wolo
+trust-wallet/chain batch. Those evidence families have no authority dependency
+and must run concurrently, while preserving their existing error/fallback
+semantics.
+
+Also distinguish `explicit` Ready from `route_paint`. Session median and p75
+use fresh authoritative explicit samples only; a slow route-paint sample remains
+valuable diagnosis but must not be described as the same kind of proof.
+
+Never improve the chart by merely moving a marker earlier than actual usability.
+Change the readiness boundary only when the interface is genuinely operable, and
+then verify the source change against a fresh same-release browser campaign.
+
 ## 2026-09-05 — First 77-route speed campaign hot-path lesson
 
 Certified source `31f883e4d8ce9a8835e34e46e7387247aae3b4f6`
