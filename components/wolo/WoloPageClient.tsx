@@ -168,11 +168,10 @@ export default function WoloPage() {
             : balanceState === "success-zero"
               ? "Balance 0.00 WOLO · verified zero"
               : `Balance ${formattedBalance} WOLO · verified`;
-  const speedReady =
-    premiumPreferenceLoaded &&
-    !chainLoading &&
-    status !== "checking" &&
-    (status !== "connected" || balanceState !== "loading");
+  // Page Ready means the primary interface is usable. Chain identity,
+  // Keplr restoration, and balance proof remain live secondary evidence and
+  // must not hold the entire route hostage when their upstreams are slow.
+  const speedReady = premiumPreferenceLoaded;
   const pingPubUrl = useMemo(() => buildPingPubUrl(chainId), [chainId]);
 
   const walletStatus =
