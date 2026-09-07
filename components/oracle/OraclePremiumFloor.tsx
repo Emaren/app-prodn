@@ -389,68 +389,76 @@ function PremiumHero({
 
   return (
     <section
-      className="relative isolate min-h-[36rem] overflow-hidden rounded-[2.65rem] border border-amber-100/14 bg-[#02050a] shadow-[0_48px_150px_rgba(0,0,0,0.58)]"
-      data-oracle-extreme-hero="cinematic"
+      className="overflow-hidden rounded-[2.65rem] border border-cyan-100/13 bg-[#03060c] shadow-[0_48px_150px_rgba(0,0,0,0.58)]"
+      data-oracle-extreme-hero="workshop-open-image"
     >
-      <Image
-        src="/oracle/oracle-hero-bg.webp"
-        alt="The Oracle chamber and its celestial brass prediction instrument"
-        fill
-        priority
-        sizes="100vw"
-        className="object-cover object-center brightness-[1.18] saturate-[1.1]"
-      />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(1,3,8,0.86)_0%,rgba(1,3,8,0.58)_31%,rgba(1,3,8,0.12)_68%,rgba(1,3,8,0.03)_100%),linear-gradient(180deg,rgba(1,3,8,0.02),rgba(1,3,8,0.12)_58%,rgba(1,3,8,0.84)_100%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_69%_45%,rgba(96,165,250,0.12),transparent_20%),radial-gradient(circle_at_82%_22%,rgba(251,191,36,0.09),transparent_24%)]" />
-
-      <div className="absolute left-8 top-8 z-20 flex flex-wrap gap-2">
-        <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/20 bg-black/38 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.24em] text-amber-50 backdrop-blur-md">
-          <Sparkles className="h-3.5 w-3.5" />
-          The Oracle
-        </span>
-        <span className="inline-flex items-center gap-2 rounded-full border border-cyan-100/16 bg-black/38 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-cyan-50 backdrop-blur-md">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          Exact rules
-        </span>
+      <div className="relative min-h-[24rem] aspect-[16/7] overflow-hidden border-b border-cyan-100/12 bg-[#020711] sm:min-h-[30rem] xl:min-h-[34rem]">
+        <Image
+          src="/oracle/oracle-hero-bg.webp"
+          alt="The Oracle chamber and its celestial brass prediction instrument"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center brightness-[1.22] saturate-[1.1] contrast-[1.03]"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.01),rgba(2,6,23,0.05)_52%,rgba(2,6,23,0.34)_100%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_46%,rgba(96,165,250,0.09),transparent_22%),radial-gradient(circle_at_28%_18%,rgba(251,191,36,0.06),transparent_28%)]" />
+        <div className="pointer-events-none absolute inset-x-[7%] bottom-0 h-px bg-gradient-to-r from-transparent via-amber-100/30 to-transparent" />
       </div>
 
-      <div className="absolute bottom-10 left-8 z-20 max-w-[48rem] lg:left-12">
-        <p className="text-[10px] font-black uppercase tracking-[0.46em] text-slate-300/72">
-          AoE2WAR presents
-        </p>
-        <h1 className="mt-3 font-serif text-6xl font-semibold leading-none tracking-[-0.055em] text-white drop-shadow-[0_8px_35px_rgba(0,0,0,0.82)] lg:text-8xl">
-          The Oracle
-        </h1>
-        <p className="mt-4 max-w-[36rem] font-serif text-2xl leading-8 text-slate-100">
-          The future is not merely awaited. It is priced.
-        </p>
-        <p className="mt-3 max-w-[38rem] text-sm leading-6 text-slate-300">
-          Pick a side. Watch the probability move. Resolve against one published source.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <a
-            href="#markets"
-            className="oracle-wolo-button group inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
-          >
-            Open markets
-            <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-          </a>
-          <button
-            type="button"
-            onClick={onPropose}
-            className="oracle-arcane-button inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
-          >
-            <Plus className="h-4 w-4" />
-            Create market
-          </button>
+      <div className="bg-[linear-gradient(145deg,#03060c,#05070d_62%,#100905)] px-7 py-7 sm:px-10 sm:py-9 lg:px-12 xl:px-14">
+        <div className="flex flex-wrap items-start justify-between gap-8">
+          <div className="max-w-[54rem]">
+            <div className="flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/18 bg-amber-300/[0.055] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.22em] text-amber-50">
+                <Sparkles className="h-3.5 w-3.5" />
+                The Oracle
+              </span>
+              <span className="inline-flex items-center gap-2 rounded-full border border-cyan-100/15 bg-cyan-300/[0.045] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-cyan-50">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                Exact rules
+              </span>
+            </div>
+
+            <p className="mt-5 text-[10px] font-black uppercase tracking-[0.44em] text-slate-500">
+              AoE2WAR presents
+            </p>
+            <h1 className="mt-2 font-serif text-6xl font-semibold leading-none tracking-[-0.055em] text-white sm:text-7xl xl:text-8xl">
+              The Oracle
+            </h1>
+            <p className="mt-4 max-w-[38rem] font-serif text-2xl leading-8 text-slate-100">
+              The future is not merely awaited. It is priced.
+            </p>
+            <p className="mt-3 max-w-[42rem] text-sm leading-6 text-slate-400">
+              Pick a side. Watch the probability move. Resolve against one published source.
+            </p>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <a
+                href="#markets"
+                className="oracle-wolo-button group inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
+              >
+                Open markets
+                <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+              </a>
+              <button
+                type="button"
+                onClick={onPropose}
+                className="oracle-arcane-button inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
+              >
+                <Plus className="h-4 w-4" />
+                Create market
+              </button>
+            </div>
+          </div>
+
+          <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-[28rem]">
+            <HeroStat label="Live markets" value={fmt(snapshot.pulse.activeMarkets)} />
+            <HeroStat label="Forecasters" value={fmt(snapshot.pulse.forecasters)} />
+            <HeroStat label="Citizens" value={fmt(snapshot.pulse.registeredCitizens)} />
+            <HeroStat label="Final battles" value={fmt(snapshot.pulse.verifiedBattles)} />
+          </div>
         </div>
-      </div>
-
-      <div className="absolute bottom-10 right-8 z-20 hidden w-[27rem] grid-cols-2 gap-2 lg:grid xl:right-10">
-        <HeroStat label="Live markets" value={fmt(snapshot.pulse.activeMarkets)} />
-        <HeroStat label="Forecasters" value={fmt(snapshot.pulse.forecasters)} />
-        <HeroStat label="Citizens" value={fmt(snapshot.pulse.registeredCitizens)} />
-        <HeroStat label="Final battles" value={fmt(snapshot.pulse.verifiedBattles)} />
       </div>
     </section>
   );
