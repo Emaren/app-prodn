@@ -21,8 +21,9 @@ import type {
   OracleMarketView,
   OracleSnapshot,
 } from "@/lib/oracle";
-import type {
-  TileViewMode,
+import {
+  TILE_VIEW_MODES,
+  type TileViewMode,
 } from "@/lib/tileViewPreferences";
 
 type MutationMethod = "POST" | "PATCH";
@@ -33,6 +34,7 @@ type Props = {
   snapshot: OracleSnapshot;
   busy: boolean;
   viewMode: PremiumViewMode;
+  setViewMode: (mode: TileViewMode) => void;
   onMutate: (
     method: MutationMethod,
     body: Record<string, unknown>,
@@ -148,6 +150,7 @@ export default function OraclePremiumFloor({
   snapshot,
   busy,
   viewMode,
+  setViewMode,
   onMutate,
   onSignIn,
 }: Props) {
@@ -220,6 +223,7 @@ export default function OraclePremiumFloor({
       <PremiumHero
         snapshot={snapshot}
         viewMode={viewMode}
+        setViewMode={setViewMode}
         onPropose={focusProposalDesk}
       />
 
@@ -316,10 +320,12 @@ export default function OraclePremiumFloor({
 function PremiumHero({
   snapshot,
   viewMode,
+  setViewMode,
   onPropose,
 }: {
   snapshot: OracleSnapshot;
   viewMode: PremiumViewMode;
+  setViewMode: (mode: TileViewMode) => void;
   onPropose: () => void;
 }) {
   if (viewMode === "advanced") {
@@ -392,19 +398,28 @@ function PremiumHero({
     );
   }
 
+  const resolvedMarkets = snapshot.markets.filter(
+    (market) => market.status === "settled" || market.status === "voided",
+  ).length;
+
   return (
-    <div className="mx-auto w-full max-w-[90rem]" data-oracle-extreme-frame="workshop-advanced-width">
+    <div
+      className="mx-auto w-full max-w-[90rem]"
+      data-oracle-extreme-frame="workshop-advanced-width"
+    >
       <section
-        className="relative overflow-hidden rounded-[2.35rem] border border-cyan-100/13 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.18),transparent_30%),radial-gradient(circle_at_88%_12%,rgba(251,191,36,0.14),transparent_28%),linear-gradient(145deg,#061521,#060912_57%,#120a05)] p-6 shadow-[0_32px_110px_rgba(0,0,0,0.38)] sm:p-9 lg:p-10"
+        className="oracle-workshop-a-shell relative overflow-hidden rounded-[2.35rem] border border-cyan-100/13 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.18),transparent_30%),radial-gradient(circle_at_88%_12%,rgba(251,191,36,0.14),transparent_28%),linear-gradient(145deg,#061521,#060912_57%,#120a05)] p-6 shadow-[0_32px_110px_rgba(0,0,0,0.38)] sm:p-9 lg:p-10"
         data-oracle-extreme-hero="workshop-advanced-exact"
       >
         <div
-          className="relative min-h-[16rem] aspect-[16/7] overflow-hidden border-b border-cyan-100/16 bg-[#020711] shadow-[0_30px_90px_rgba(0,0,0,0.28),inset_0_-1px_0_rgba(255,255,255,0.035)] -mx-6 -mt-6 mb-8 sm:min-h-[20rem] sm:-mx-9 sm:-mt-9 sm:mb-[2.35rem] lg:min-h-[24rem] lg:-mx-10 lg:-mt-10 lg:mb-10"
+          className="oracle-workshop-a-banner"
           data-oracle-extreme-banner="workshop-advanced-exact"
+          role="img"
+          aria-label="The Oracle chamber and its celestial brass prediction instrument"
         >
           <Image
             src="/oracle/oracle-hero-bg.webp"
-            alt="The Oracle chamber and its celestial brass prediction instrument"
+            alt=""
             fill
             priority
             sizes="(max-width: 1024px) 100vw, 1200px"
@@ -432,10 +447,10 @@ function PremiumHero({
               The future is not merely awaited. It is priced. Pick a side, watch the probability move, and resolve against one published source.
             </p>
 
-            <div className="mt-5 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-wrap items-center gap-3">
               <a
                 href="#markets"
-                className="oracle-wolo-button group inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
+                className="oracle-wolo-button group inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-5 text-xs font-black"
               >
                 Open markets
                 <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
@@ -443,22 +458,101 @@ function PremiumHero({
               <button
                 type="button"
                 onClick={onPropose}
-                className="oracle-arcane-button inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
+                className="oracle-arcane-button inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-5 text-xs font-black"
               >
                 <Plus className="h-4 w-4" />
                 Create market
               </button>
+              <span className="inline-flex min-h-11 items-center rounded-full border border-cyan-100/12 bg-cyan-300/[0.05] px-4 text-xs text-cyan-50/80">
+                Exact rules · public resolution
+              </span>
             </div>
           </div>
+
+          <OracleWorkshopViewToggle
+            viewMode={viewMode}
+            setViewMode={setViewMode}
+          />
         </div>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <HeroStat label="Live markets" value={fmt(snapshot.pulse.activeMarkets)} />
-          <HeroStat label="Forecasters" value={fmt(snapshot.pulse.forecasters)} />
-          <HeroStat label="Citizens" value={fmt(snapshot.pulse.registeredCitizens)} />
-          <HeroStat label="Final battles" value={fmt(snapshot.pulse.verifiedBattles)} />
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+          <OracleWorkshopMetric label="Live markets" value={fmt(snapshot.pulse.activeMarkets)} accent />
+          <OracleWorkshopMetric label="Forecasters" value={fmt(snapshot.pulse.forecasters)} />
+          <OracleWorkshopMetric label="Citizens" value={fmt(snapshot.pulse.registeredCitizens)} />
+          <OracleWorkshopMetric label="Final battles" value={fmt(snapshot.pulse.verifiedBattles)} />
+          <OracleWorkshopMetric label="Active stake" value={compact(snapshot.pulse.stakedWolo)} alert />
+          <OracleWorkshopMetric label="Resolved" value={fmt(resolvedMarkets)} accent />
         </div>
       </section>
+    </div>
+  );
+}
+
+function OracleWorkshopViewToggle({
+  viewMode,
+  setViewMode,
+}: {
+  viewMode: PremiumViewMode;
+  setViewMode: (mode: TileViewMode) => void;
+}) {
+  return (
+    <div
+      className="inline-flex items-center rounded-full border border-amber-200/20 bg-[#050910]/90 p-1 shadow-[0_12px_34px_rgba(0,0,0,0.42)] backdrop-blur-xl"
+      role="group"
+      aria-label="Oracle view"
+    >
+      {TILE_VIEW_MODES.map((mode) => (
+        <button
+          key={mode}
+          type="button"
+          onClick={() => setViewMode(mode)}
+          aria-pressed={viewMode === mode}
+          className={`flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-full px-2 text-[11px] font-bold uppercase tracking-[0.16em] transition ${
+            viewMode === mode
+              ? "bg-amber-300 text-slate-950 shadow-[0_6px_20px_rgba(251,191,36,0.22)]"
+              : "text-slate-400 hover:bg-white/[0.07] hover:text-amber-50"
+          }`}
+        >
+          {mode[0]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function OracleWorkshopMetric({
+  label,
+  value,
+  alert = false,
+  accent = false,
+}: {
+  label: string;
+  value: string;
+  alert?: boolean;
+  accent?: boolean;
+}) {
+  return (
+    <div
+      className={`oracle-workshop-a-metric rounded-[1.35rem] border p-4 ${
+        alert
+          ? "border-amber-200/16 bg-amber-300/[0.055]"
+          : "border-white/9 bg-black/20"
+      }`}
+    >
+      <div
+        className={`text-2xl font-semibold ${
+          alert
+            ? "text-amber-100"
+            : accent
+              ? "text-cyan-100"
+              : "text-white"
+        }`}
+      >
+        {value}
+      </div>
+      <div className="mt-2 text-[9px] font-bold uppercase tracking-[0.22em] text-slate-500">
+        {label}
+      </div>
     </div>
   );
 }

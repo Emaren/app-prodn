@@ -14,6 +14,7 @@ test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and bo
   const intelligence = source("app/kingdom-intelligence/page.tsx");
   const bar = source("components/tile-view/PageWidthSettingsBar.tsx");
   const globalCss = source("app/globals.css");
+  const oraclePolish = source("app/oracle/oracle-polish.css");
 
   assert.match(preferences, /"oracle"/);
   assert.match(preferences, /"kingdom_intelligence"/);
@@ -64,7 +65,10 @@ test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and bo
     premiumOracle,
     /aspect-\[16\/7\][\s\S]*?sm:min-h-\[20rem\][\s\S]*?lg:min-h-\[24rem\]/,
   );
-  assert.match(premiumOracle, /mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4/);
+  assert.match(premiumOracle, /mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-6/);
+  assert.match(premiumOracle, /OracleWorkshopViewToggle/);
+  assert.match(premiumOracle, /Active stake/);
+  assert.match(premiumOracle, /Resolved/);
   assert.doesNotMatch(premiumOracle, /data-oracle-extreme-hero="cinematic"/);
   assert.match(premiumOracle, /oracle-wolo-button/);
   assert.match(premiumOracle, /oracle-arcane-button/);
@@ -88,6 +92,11 @@ test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and bo
   assert.match(bar, /TILE_VIEW_MODES\.map/);
   assert.match(bar, /Page view/);
   assert.match(globalCss, /AOE2WAR ORACLE PREMIUM CONTROLS START/);
+  assert.match(oraclePolish, /oracle-workshop-a-shell::after/);
+  assert.match(oraclePolish, /rgb\(var\(--oracle-workshop-cyan\) \/ 0\.42\)/);
+  assert.match(oraclePolish, /oracle-workshop-a-banner/);
+  assert.match(oraclePolish, /margin: -2\.5rem -2\.5rem 2\.5rem/);
+  assert.match(oraclePolish, /border-bottom: 1px solid rgb\(165 243 252 \/ 0\.16\)/);
   assert.match(globalCss, /oracle-arcane-mist/);
   assert.match(globalCss, /#ffe85b/);
   assert.match(oracle, /new Intl\.DateTimeFormat\("en-US",[\s\S]*?timeZone: "America\/Edmonton"/);

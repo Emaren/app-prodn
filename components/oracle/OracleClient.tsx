@@ -136,7 +136,7 @@ function proposalDefaults(generatedAt: string) {
 
 export default function OracleClient({ initialSnapshot, focusSlug }: OracleClientProps) {
   const { uid, loading: authLoading, loginWithSteam } = useUserAuth();
-  const { viewMode } = useTileViewPreference("oracle");
+  const { viewMode, setViewMode } = useTileViewPreference("oracle");
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -247,6 +247,7 @@ export default function OracleClient({ initialSnapshot, focusSlug }: OracleClien
           snapshot={snapshot}
           busy={busy}
           viewMode={viewMode}
+          setViewMode={setViewMode}
           onMutate={mutate}
           onSignIn={() => loginWithSteam("/oracle")}
         />
