@@ -220,7 +220,8 @@ test("public Kingdom Intelligence page makes its authority and privacy boundary 
   assert.match(page, /Victory ledger/);
   assert.match(page, /Memory vault/);
   assert.match(page, /chain-of-thought/);
-  assert.match(page, /api\/kingdom-intelligence/);
+  assert.match(page, /loadPublicKingdomIntelligence/);
+  assert.doesNotMatch(page, /fetch\("\/api\/kingdom-intelligence"/);
   assert.match(shell, /\/kingdom-intelligence/);
   assert.match(shell, /Kingdom Intelligence/);
 });

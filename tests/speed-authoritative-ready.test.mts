@@ -165,3 +165,29 @@ test("SPEED III authoritative readiness remains globally wired", () => {
   const shell = source("app/AppShell.tsx");
   assert.match(shell, /<SpeedRuntime \/>/);
 });
+
+
+test("Kingdom Intelligence renders its primary board on the server", () => {
+  const page = source("app/kingdom-intelligence/page.tsx");
+  const refresh = source(
+    "app/kingdom-intelligence/KingdomIntelligenceRefresh.tsx",
+  );
+  const loading = source("app/kingdom-intelligence/loading.tsx");
+
+  assert.doesNotMatch(page, /^"use client"/);
+  assert.match(
+    page,
+    /export default async function KingdomIntelligencePage\(\)/,
+  );
+  assert.match(page, /await loadPublicKingdomIntelligence\(\)/);
+  assert.match(
+    page,
+    /<SpeedReadyMarker route="\/kingdom-intelligence" \/>/,
+  );
+  assert.doesNotMatch(page, /fetch\("\/api\/kingdom-intelligence"/);
+  assert.match(refresh, /^"use client"/);
+  assert.match(refresh, /router\.refresh\(\)/);
+  assert.match(refresh, /REFRESH_INTERVAL_MS = 20_000/);
+  assert.match(loading, /Synchronizing the nervous system/);
+  assert.doesNotMatch(loading, /SpeedReadyMarker/);
+});

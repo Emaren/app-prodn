@@ -767,6 +767,17 @@ trust-wallet/chain batch. Those evidence families have no authority dependency
 and must run concurrently, while preserving their existing error/fallback
 semantics.
 
+The Kingdom Intelligence sample exposed a third class: the entire flagship
+read-only page was one `"use client"` island. Same-document navigation could not
+commit the real route until that large client module and icon/UI dependency graph
+loaded and executed, even though the page's bounded sanitized authority was
+already available through a server-safe loader. Durable rule: read-only
+observability surfaces should server-render their primary authoritative state
+when possible, isolate only true interactivity into small client islands, and
+use an App Router loading boundary for immediate honest feedback. The loading
+shell must never emit the authoritative Ready marker; the real board publishes
+explicit Ready only after its server snapshot resolves.
+
 Also distinguish `explicit` Ready from `route_paint`. Session median and p75
 use fresh authoritative explicit samples only; a slow route-paint sample remains
 valuable diagnosis but must not be described as the same kind of proof.
