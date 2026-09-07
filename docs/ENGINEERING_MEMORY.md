@@ -926,4 +926,7 @@ materialized only inside a disposable isolated directory and must be removed
 after inspection. Do not persist plaintext member names in proofs; hash the tar
 member index instead. Successful five-class verification is
 ORDINARY_RESTORE_VERIFIED, never RECOVERY_VERIFIED. Wolo settlement, consensus,
-key custody and final schema-2 proof remain separate authority seams.
+key custody and final schema-2 proof remain separate authority seams. Long
+restore drills use the same out-of-band control principle as capture: pause is a
+separate durable marker checked only between classes, and resume clears it
+explicitly while refusing an interrupted class that already has immutable proof.
