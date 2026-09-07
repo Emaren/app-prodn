@@ -214,6 +214,11 @@ export default async function KingdomIntelligencePage() {
   const campaign = data?.storageCampaign;
   const systemAgents = data?.systemAgents ?? [];
   const orderedSystemAgents = [...systemAgents].sort((left, right) => {
+    const processDelta =
+      Number(right.activeProcess) -
+      Number(left.activeProcess);
+    if (processDelta) return processDelta;
+
     const activeDelta =
       Number(isActiveProcessState(right.state)) -
       Number(isActiveProcessState(left.state));
@@ -246,10 +251,18 @@ export default async function KingdomIntelligencePage() {
       progressLabel: null as string | null,
     }));
     const activeAgentRows = systemAgents
-      .filter((item) => isActiveProcessState(item.state))
+      .filter(
+        (item) =>
+          item.activeProcess &&
+          isActiveProcessState(item.state),
+      )
       .map((item) => ({
         key: "agent-" + item.key,
-        at: data?.receivedAt ?? data?.generatedAt ?? new Date(0).toISOString(),
+        at:
+          item.activeSince ??
+          data?.receivedAt ??
+          data?.generatedAt ??
+          new Date(0).toISOString(),
         system: item.label,
         label: item.summary,
         status: item.state,
