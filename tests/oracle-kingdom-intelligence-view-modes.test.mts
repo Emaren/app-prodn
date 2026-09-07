@@ -95,6 +95,12 @@ test("Kingdom Intelligence cycles the whole War Pulse tile through plain and two
   assert.match(panel, /rowShell\(theme, item\.current\)/);
   assert.match(panel, /PANEL_SHELL/);
   assert.match(panel, /progressFill\(theme\)/);
+
+  // The black tile uses the full matched column height; its scroll body fills
+  // the remaining vertical space instead of wasting the lower half.
+  assert.match(panel, /flex h-full min-h-0[\s\S]*flex-col/);
+  assert.match(panel, /min-h-0 flex-1 overflow-y-auto/);
+  assert.doesNotMatch(panel, /max-h-\[34rem\]/);
 });
 
 test("Kingdom Intelligence row cards drill into noob-friendly process detail without changing the parent theme", () => {
@@ -134,6 +140,14 @@ test("Kingdom Intelligence samples live Recovery bytes every five seconds withou
   assert.match(hook, /cache: "no-store"/);
   assert.match(hook, /formatLiveRecoveryProgressLabel/);
   assert.match(hook, /GiB/);
+
+  // A cold preview must never present the old coarse 4/5 = 80% as if it were
+  // the live byte-level result. It shows a syncing state until denominator-backed
+  // live telemetry arrives.
+  assert.match(pulse, /live signal syncing/);
+  assert.match(pulse, /denominatorSource !== "unavailable"/);
+  assert.match(agent, /live signal syncing/);
+  assert.match(agent, /denominatorSource !== "unavailable"/);
 
   assert.match(route, /AOE2WAR_PROD_DB_PREVIEW/);
   assert.match(route, /operator_preview_only/);
