@@ -139,6 +139,17 @@ test("dev:prod acknowledges local side effects without production writes", () =>
   );
 });
 
+test("dev:prod launcher remains compatible with the preview shell Python", () => {
+  const launcher = source("scripts/dev-prod-readonly.py");
+
+  assert.match(launcher, /from typing import Optional/);
+  assert.match(
+    launcher,
+    /def canonical_os_store_for_preview\(\) -> Optional\[Path\]:/,
+  );
+  assert.doesNotMatch(launcher, /-> Path \| None/);
+});
+
 test("local preview reads canonical AoE2WAR OS state without allowing OS mutations", () => {
   const launcher = source("scripts/dev-prod-readonly.py");
   const route = source("app/api/admin/aoe2war-os/route.ts");
