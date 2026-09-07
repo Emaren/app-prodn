@@ -1,4 +1,4 @@
-import { readAoe2OsKingdomIntelligence } from "@/lib/aoe2Os";
+import { loadAoe2OsDashboard, readAoe2OsKingdomIntelligence } from "@/lib/aoe2Os";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -50,6 +50,87 @@ function publicInvariant(value: unknown) {
   };
 }
 
+const PUBLIC_SYSTEM_LABELS = new Set([
+  "Release OS",
+  "Documentation OS",
+  "Storage OS",
+  "Host OS",
+  "Recovery OS",
+  "Workspace OS",
+  "Speed OS",
+  "Replay Truth OS",
+  "System Doctor",
+]);
+
+function safeSystemAgent(value: unknown) {
+  const row = record(value);
+  const label = stringValue(row.label);
+  if (!label || !PUBLIC_SYSTEM_LABELS.has(label)) return null;
+  return {
+    key: stringValue(row.key) ?? label.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    label,
+    state: stringValue(row.state) ?? "UNKNOWN",
+    summary: stringValue(row.summary) ?? "Awaiting evidence.",
+    progressPercent: numberValue(row.progress_percent),
+    progressLabel: stringValue(row.progress_label),
+  };
+}
+
+function safeSourceActivity(value: unknown) {
+  const row = record(value);
+  const sha = shortSha(row.sha);
+  const title = stringValue(row.title);
+  const createdAt = stringValue(row.created_at);
+  if (!sha || !title || !createdAt) return null;
+  return {
+    sha,
+    title: title.slice(0, 150),
+    createdAt,
+    system: stringValue(row.system) ?? "Kingdom Intelligence",
+    status: "SUCCEEDED",
+  };
+}
+
+function safeMemorySeal(value: unknown) {
+  const row = record(value);
+  const sha = shortSha(row.sha);
+  const title = stringValue(row.title);
+  const createdAt = stringValue(row.created_at);
+  if (!sha || !title || !createdAt) return null;
+  return {
+    sha,
+    title: title.slice(0, 150),
+    createdAt,
+    status: "SEALED",
+  };
+}
+
+function systemForAction(action: string) {
+  if (["status", "deploy_plan", "deploy", "finish", "rollback_preview", "rollback"].includes(action)) return "Release OS";
+  if (["control_refresh", "update_plan", "update_apply"].includes(action)) return "Documentation OS";
+  if (["storage_status", "storage_plan", "storage_campaign_status"].includes(action)) return "Storage OS";
+  if (action === "doctor" || action === "audit") return "System Doctor";
+  if (action === "brain") return "Kingdom Intelligence";
+  return "AoE2WAR OS";
+}
+
+function safeRunActivity(value: unknown) {
+  const row = record(value);
+  const action = stringValue(row.action);
+  const label = stringValue(row.label);
+  const status = stringValue(row.status);
+  const requestedAt = stringValue(row.requestedAt);
+  if (!action || !label || !status || !requestedAt) return null;
+  return {
+    id: stringValue(row.id)?.slice(0, 40) ?? null,
+    system: systemForAction(action),
+    label: label.slice(0, 120),
+    status: status.toUpperCase(),
+    requestedAt,
+    completedAt: stringValue(row.completedAt),
+  };
+}
+
 function safeCampaign(payload: JsonRecord) {
   const status = stringValue(payload.status) ?? "NONE";
   const completed = numberValue(payload.completed_generations) ?? 0;
@@ -69,7 +150,10 @@ function safeCampaign(payload: JsonRecord) {
 }
 
 export async function loadPublicKingdomIntelligence() {
-  const snapshot = await readAoe2OsKingdomIntelligence();
+  const [snapshot, dashboard] = await Promise.all([
+    readAoe2OsKingdomIntelligence(),
+    loadAoe2OsDashboard(),
+  ]);
   if (!snapshot) {
     return {
       available: false as const,
@@ -87,6 +171,10 @@ export async function loadPublicKingdomIntelligence() {
       performance: null,
       workspace: null,
       activity24h: null,
+      systemAgents: [],
+      liveActivity: [],
+      recentSourceActivity: [],
+      memorySeals: [],
       invariants: [],
       directive: null,
     };
@@ -105,6 +193,21 @@ export async function loadPublicKingdomIntelligence() {
   const workspace = record(payload.workspace);
   const activity = record(payload.activity_24h);
   const best = record(payload.best_next_action);
+  const systemAgents = Array.isArray(payload.system_agents)
+    ? payload.system_agents
+        .map(safeSystemAgent)
+        .filter((item): item is NonNullable<ReturnType<typeof safeSystemAgent>> => Boolean(item))
+    : [];
+  const recentSourceActivity = Array.isArray(payload.recent_source_activity)
+    ? payload.recent_source_activity
+        .map(safeSourceActivity)
+        .filter((item): item is NonNullable<ReturnType<typeof safeSourceActivity>> => Boolean(item))
+    : [];
+  const memorySeals = Array.isArray(payload.memory_seals)
+    ? payload.memory_seals
+        .map(safeMemorySeal)
+        .filter((item): item is NonNullable<ReturnType<typeof safeMemorySeal>> => Boolean(item))
+    : [];
 
   const receivedMs = new Date(snapshot.receivedAt).getTime();
   const ageSeconds = Number.isFinite(receivedMs)
@@ -129,6 +232,14 @@ export async function loadPublicKingdomIntelligence() {
     resolved !== null && finalGames && finalGames > 0
       ? Math.round((resolved / finalGames) * 10_000) / 100
       : null;
+
+  const liveActivity = [
+    ...(dashboard.activeRun ? [safeRunActivity(dashboard.activeRun)] : []),
+    ...dashboard.recentRuns.map(safeRunActivity),
+  ]
+    .filter((item): item is NonNullable<ReturnType<typeof safeRunActivity>> => Boolean(item))
+    .filter((item, index, all) => all.findIndex((other) => other.id === item.id) === index)
+    .slice(0, 12);
 
   return {
     available: true as const,
@@ -185,6 +296,10 @@ export async function loadPublicKingdomIntelligence() {
       finishRuns: numberValue(activity.finish_runs) ?? 0,
       certifiedFinishes: numberValue(activity.certified_finishes) ?? 0,
     },
+    systemAgents,
+    liveActivity,
+    recentSourceActivity,
+    memorySeals,
     invariants,
     directive: stringValue(best.title)
       ? {
