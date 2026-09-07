@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   Activity,
   ArrowLeft,
+  Bot,
   BrainCircuit,
   BookOpenCheck,
   CloudCog,
@@ -13,10 +14,13 @@ import {
   LoaderCircle,
   Play,
   RefreshCw,
+  Radio,
   RotateCcw,
+  ScrollText,
   ServerCog,
   ShieldCheck,
   TerminalSquare,
+  Trophy,
   UploadCloud,
   Wifi,
   WifiOff,
@@ -168,6 +172,23 @@ function statusTone(status: string) {
   return "text-slate-300 bg-slate-400/10 border-slate-500/20";
 }
 
+function agentDot(state: string) {
+  const value = state.toUpperCase();
+  if (value === "ACTIVE") {
+    return "bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,.8)] animate-pulse";
+  }
+  if (["HEALTHY", "PASS", "COMPLETE", "CERTIFIED"].includes(value)) {
+    return "bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.45)]";
+  }
+  if (["FAILED", "FAIL", "BLOCKED", "UNSAFE"].includes(value)) {
+    return "bg-rose-400 shadow-[0_0_12px_rgba(251,113,133,.5)]";
+  }
+  if (["ATTENTION", "WAITING", "WATCH"].includes(value)) {
+    return "bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,.45)] animate-pulse";
+  }
+  return "bg-slate-600";
+}
+
 function StatusCard({
   label,
   value,
@@ -245,6 +266,10 @@ export default function AoE2WarOsAdminPage() {
   const brainActivity = record(brainPayload.activity_24h);
   const brainBest = record(brainPayload.best_next_action);
   const brainInvariants = arrayOfRecords(brainPayload.invariants);
+  const brainSystemAgents = arrayOfRecords(brainPayload.system_agents);
+  const brainExternalAgents = arrayOfRecords(brainPayload.external_agents);
+  const brainSourceActivity = arrayOfRecords(brainPayload.recent_source_activity);
+  const brainMemorySeals = arrayOfRecords(brainPayload.memory_seals);
   const brainAge = brainSnapshot ? relativeAge(brainSnapshot.receivedAt) : "never";
 
   const snapshotPayload = record(dashboard?.snapshot?.payload);
