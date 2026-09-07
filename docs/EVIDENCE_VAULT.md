@@ -286,7 +286,9 @@ authority, and read-only against production. It refuses to start unless the
 capture campaign is complete, all five capture proofs are hash-valid, every
 encrypted artifact exists at the recorded byte size, the campaign certificate
 still matches the canonical mode-0600 recovery private key, and current local
-`main` is clean.
+`main` is clean. Restore pause uses its own durable out-of-band marker and is
+honored only between classes. Resume clears that marker explicitly and refuses
+an interrupted class when an immutable proof already exists for it.
 
 For each ordinary class the drill:
 
