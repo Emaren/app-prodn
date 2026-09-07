@@ -217,6 +217,14 @@ export default async function KingdomIntelligencePage() {
       current: isActiveProcessState(item.status),
       progress: null as number | null,
       progressLabel: null as string | null,
+      currentStep: null as string | null,
+      etaSeconds: null as number | null,
+      elapsedSeconds: null as number | null,
+      sealedChunks: null as number | null,
+      observedBytes: null as number | null,
+      expectedBytes: null as number | null,
+      throughputBytesPerSecond: null as number | null,
+      progressBasis: null as string | null,
     }));
     const activeAgentRows = systemAgents
       .filter(isConcreteBackgroundProcess)
@@ -234,6 +242,14 @@ export default async function KingdomIntelligencePage() {
         current: true,
         progress: item.progressPercent,
         progressLabel: item.progressLabel,
+        currentStep: item.currentStep,
+        etaSeconds: item.etaSeconds,
+        elapsedSeconds: item.elapsedSeconds,
+        sealedChunks: item.sealedChunks,
+        observedBytes: item.observedBytes,
+        expectedBytes: item.expectedBytes,
+        throughputBytesPerSecond: item.throughputBytesPerSecond,
+        progressBasis: item.progressBasis,
       }));
     const sourceRows = (data?.recentSourceActivity ?? []).map((item) => ({
       key: "src-" + item.sha,
@@ -245,6 +261,14 @@ export default async function KingdomIntelligencePage() {
       current: false,
       progress: null as number | null,
       progressLabel: null as string | null,
+      currentStep: null as string | null,
+      etaSeconds: null as number | null,
+      elapsedSeconds: null as number | null,
+      sealedChunks: null as number | null,
+      observedBytes: null as number | null,
+      expectedBytes: null as number | null,
+      throughputBytesPerSecond: null as number | null,
+      progressBasis: null as string | null,
     }));
 
     return [...activeAgentRows, ...runRows, ...sourceRows]
@@ -379,6 +403,14 @@ export default async function KingdomIntelligencePage() {
             progress: agent.progressPercent,
             progressLabel: agent.progressLabel,
             activeSince: agent.activeSince,
+            currentStep: agent.currentStep,
+            etaSeconds: agent.etaSeconds,
+            elapsedSeconds: agent.elapsedSeconds,
+            sealedChunks: agent.sealedChunks,
+            observedBytes: agent.observedBytes,
+            expectedBytes: agent.expectedBytes,
+            throughputBytesPerSecond: agent.throughputBytesPerSecond,
+            progressBasis: agent.progressBasis,
             beaconClass: beacon(agent.state),
             statusToneClass: tone(agent.state),
           }))}
