@@ -100,6 +100,47 @@ def log_path(campaign_id: str) -> Path:
     return CAMPAIGN_DIR / f"{campaign_id}.log"
 
 
+def pause_path(campaign_id: str) -> Path:
+    state_path(campaign_id)
+    return CAMPAIGN_DIR / f"{campaign_id}.pause"
+
+
+def pause_marker(campaign_id: str) -> dict[str, Any] | None:
+    path = pause_path(campaign_id)
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CampaignError(
+            f"invalid recovery pause marker: {path}"
+        ) from exc
+    if (
+        payload.get("schema") != 1
+        or payload.get("kind") != "aoe2war-recovery-pause-request"
+        or payload.get("campaign_id") != campaign_id
+    ):
+        raise CampaignError(f"invalid recovery pause marker: {path}")
+    return payload
+
+
+def write_pause_marker(campaign_id: str) -> dict[str, Any]:
+    payload = {
+        "schema": 1,
+        "kind": "aoe2war-recovery-pause-request",
+        "campaign_id": campaign_id,
+        "requested_at": utc_now(),
+    }
+    atomic_write(pause_path(campaign_id), payload)
+    return payload
+
+
+def clear_pause_marker(campaign_id: str) -> None:
+    path = pause_path(campaign_id)
+    if path.exists():
+        path.unlink()
+
+
 def load_state(campaign_id: str) -> dict[str, Any]:
     path = state_path(campaign_id)
     if not path.is_file():
@@ -737,8 +778,12 @@ def run_campaign(campaign_id: str) -> int:
             if class_name in completed:
                 continue
 
+            state = load_state(campaign_id)
             validate_campaign_source(state)
-            if state.get("pause_requested"):
+            pause = pause_marker(campaign_id)
+            if pause is not None:
+                state["pause_requested"] = True
+                state["pause_requested_at"] = pause.get("requested_at")
                 mark_terminal(
                     state,
                     status="PAUSED",
@@ -776,6 +821,11 @@ def run_campaign(campaign_id: str) -> int:
                 ),
             )
 
+            state = load_state(campaign_id)
+            pause = pause_marker(campaign_id)
+            if pause is not None:
+                state["pause_requested"] = True
+                state["pause_requested_at"] = pause.get("requested_at")
             history = list(state.get("history") or [])
             history.append(receipt)
             completed.add(str(class_name))
@@ -853,8 +903,9 @@ def request_pause(campaign_id: str) -> dict[str, Any]:
     state = load_state(campaign_id)
     if state.get("status") in {"COMPLETE", "FAILED", "PAUSED"}:
         return state
+    pause = write_pause_marker(campaign_id)
     state["pause_requested"] = True
-    state["pause_requested_at"] = utc_now()
+    state["pause_requested_at"] = pause["requested_at"]
     save_state(state)
     return state
 
@@ -872,7 +923,9 @@ def resume(campaign_id: str) -> dict[str, Any]:
     if process_alive(pid if isinstance(pid, int) else None):
         raise CampaignError(f"campaign is still active with pid={pid}")
     validate_campaign_source(state)
+    clear_pause_marker(campaign_id)
     state["pause_requested"] = False
+    state["pause_requested_at"] = None
     state["status"] = "RESUME_REQUESTED"
     state["pid"] = None
     save_state(state)
@@ -889,6 +942,11 @@ def status_payload(campaign_id: str | None) -> dict[str, Any]:
             "status": "NONE",
         }
     state = load_state(selected)
+    pause = pause_marker(selected)
+    state["pause_requested"] = pause is not None
+    state["pause_requested_at"] = (
+        pause.get("requested_at") if pause is not None else None
+    )
     pid = state.get("pid")
     state["process_alive"] = process_alive(pid if isinstance(pid, int) else None)
     return state

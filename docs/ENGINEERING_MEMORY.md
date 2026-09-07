@@ -891,3 +891,20 @@ reader. Capture proofs record streaming and encoding explicitly. If this defect
 is discovered during a live campaign, request a pause and let the current class
 finish; never kill a class mid-stream unless accepting that the campaign must be
 superseded because partial artifacts cannot be resumed safely.
+
+## 2026-09-06 — Recovery pause requests must be out-of-band
+
+During the first ordinary Recovery campaign, the operator requested pause while
+`managed_user_media` was in flight. The controller held a stale in-memory copy
+of campaign JSON with `pause_requested=false`. When the class completed it
+saved that stale state, erasing the operator's pause request, and immediately
+started `legacy_direct_message_attachments`.
+
+Durable rule: operator control signals must not share the same mutable state file
+that a long-running controller rewrites. Recovery pause now uses a separate
+per-campaign durable marker. The controller reloads state and checks the marker
+only between classes; stale campaign-state writes cannot clear it. Resume
+explicitly removes the marker at a clean boundary. If an older controller with
+the race is already running, a deliberately dirty untracked sentinel may be used
+as an emergency fail-closed interlock because the old controller re-validates a
+clean authorized source before every new class.
