@@ -29,7 +29,7 @@ import {
   isLiveProductionReadOnlyPreview,
 } from "@/lib/previewDataSource";
 
-import AgentConstellationTile from "./AgentConstellationTile";
+import AgentConstellationPanel from "./AgentConstellationPanel";
 import BrowserLocalTime from "./BrowserLocalTime";
 import KingdomIntelligenceRefresh from "./KingdomIntelligenceRefresh";
 
@@ -449,35 +449,18 @@ export default async function KingdomIntelligencePage() {
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-amber-100/10 bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,.08),transparent_32%),rgba(2,6,23,.82)] p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-[9px] font-black uppercase tracking-[0.32em] text-amber-100/45">
-                Agent constellation
-              </div>
-              <h2 className="mt-2 font-serif text-2xl text-[#f4e5bd]">Eight OS agents. One Doctor.</h2>
-            </div>
-            <Cpu className="h-5 w-5 text-amber-200/60" />
-          </div>
-          <div className="mt-4 space-y-2.5">
-            {orderedSystemAgents.map((agent) => (
-              <AgentConstellationTile
-                key={agent.key}
-                label={agent.label}
-                state={agent.state}
-                summary={agent.summary}
-                progress={agent.progressPercent}
-                progressLabel={agent.progressLabel}
-                active={isActiveProcessState(agent.state)}
-                beaconClass={beacon(agent.state)}
-                statusToneClass={tone(agent.state)}
-              />
-            ))}
-          </div>
-          <div className="mt-4 border-t border-white/6 pt-4 text-[11px] leading-5 text-slate-600">
-            Beacon law: cyan pulse = working · green solid = healthy/closed · amber pulse = waiting/attention · red = failed/blocked · slate = idle.
-          </div>
-        </div>
+        <AgentConstellationPanel
+          agents={orderedSystemAgents.map((agent) => ({
+            key: agent.key,
+            label: agent.label,
+            state: agent.state,
+            summary: agent.summary,
+            progress: agent.progressPercent,
+            progressLabel: agent.progressLabel,
+            beaconClass: beacon(agent.state),
+            statusToneClass: tone(agent.state),
+          }))}
+        />
       </section>
 
       <section className="grid gap-5 xl:grid-cols-2">
