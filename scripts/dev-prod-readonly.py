@@ -438,6 +438,18 @@ def main() -> int:
         env["NODE_ENV"] = "development"
         env["DATABASE_URL"] = local_database_url(parsed)
 
+        # Next.js dev + the generated Prisma client can legitimately cross
+        # Node's ~4 GiB default old-space ceiling during long hot-reload
+        # sessions. This is a process-local ceiling, not host-memory pressure.
+        # Give only the local preview server a measured 6 GiB heap budget.
+        # Preserve any unrelated caller NODE_OPTIONS.
+        node_options = env.get("NODE_OPTIONS", "").strip()
+        if "--max-old-space-size" not in node_options:
+            node_options = (
+                f"{node_options} --max-old-space-size=6144"
+            ).strip()
+        env["NODE_OPTIONS"] = node_options
+
         # Two independent fences:
         # 1. PGOPTIONS covers PostgreSQL clients that honor libpq-style env.
         # 2. lib/prisma.ts also sends the read-only startup option explicitly.
@@ -511,6 +523,7 @@ def main() -> int:
         else:
             print("PASS: production OpenAI credential not imported")
         print("PASS: backend reads use public https://aoe2war.com")
+        print("PASS: local preview Node heap ceiling = 6144 MiB")
         print()
         print(
             f"> Local source + hot reload: "

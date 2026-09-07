@@ -139,6 +139,15 @@ test("dev:prod acknowledges local side effects without production writes", () =>
   );
 });
 
+test("dev:prod raises only the local preview Node heap ceiling above the default 4 GiB", () => {
+  const launcher = source("scripts/dev-prod-readonly.py");
+
+  assert.match(launcher, /--max-old-space-size=6144/);
+  assert.match(launcher, /local preview Node heap ceiling = 6144 MiB/);
+  assert.match(launcher, /if "--max-old-space-size" not in node_options/);
+  assert.match(launcher, /env\["NODE_OPTIONS"\] = node_options/);
+});
+
 test("dev:prod reports signal exits without wrapping them into opaque shell status 250", () => {
   const launcher = source("scripts/dev-prod-readonly.py");
 
