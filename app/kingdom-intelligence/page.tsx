@@ -378,6 +378,7 @@ export default async function KingdomIntelligencePage() {
             summary: agent.summary,
             progress: agent.progressPercent,
             progressLabel: agent.progressLabel,
+            activeSince: agent.activeSince,
             beaconClass: beacon(agent.state),
             statusToneClass: tone(agent.state),
           }))}
