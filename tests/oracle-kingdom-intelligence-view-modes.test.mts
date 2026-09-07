@@ -33,19 +33,29 @@ test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and bo
   assert.match(premiumOracle, /ProbabilityChart/);
   assert.match(premiumOracle, /Create market/);
   assert.match(premiumOracle, /data-oracle-advanced-hero="workshop-open-image"/);
-  assert.match(premiumOracle, /data-oracle-extreme-hero="workshop-advanced-frame"/);
-  assert.match(premiumOracle, /data-oracle-extreme-banner="workshop-advanced"/);
+  assert.match(premiumOracle, /data-oracle-extreme-frame="workshop-advanced-width"/);
+  assert.match(premiumOracle, /data-oracle-extreme-hero="workshop-advanced-exact"/);
+  assert.match(premiumOracle, /data-oracle-extreme-banner="workshop-advanced-exact"/);
   assert.match(
     premiumOracle,
-    /max-w-\[82rem\][\s\S]*?rounded-\[2\.35rem\][\s\S]*?border border-cyan-100\/13[\s\S]*?p-6[\s\S]*?sm:p-9[\s\S]*?lg:p-10/,
+    /rounded-\[2\.35rem\][\s\S]*?border border-cyan-100\/13[\s\S]*?p-6[\s\S]*?sm:p-9[\s\S]*?lg:p-10/,
   );
   assert.match(
     premiumOracle,
     /aspect-\[16\/7\][\s\S]*?sm:min-h-\[20rem\][\s\S]*?lg:min-h-\[24rem\]/,
   );
+  assert.match(premiumOracle, /mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4/);
   assert.doesNotMatch(premiumOracle, /data-oracle-extreme-hero="cinematic"/);
   assert.match(premiumOracle, /oracle-wolo-button/);
   assert.match(premiumOracle, /oracle-arcane-button/);
+  assert.match(premiumOracle, /data-oracle-create-market="always-visible"/);
+  assert.match(premiumOracle, /Create a prediction market\./);
+  assert.match(premiumOracle, /Question/);
+  assert.match(premiumOracle, /Resolution source/);
+  assert.match(premiumOracle, /Trading closes/);
+  assert.match(premiumOracle, /YES resolves when/);
+  assert.match(premiumOracle, /VOID rule · optional/);
+  assert.doesNotMatch(premiumOracle, /proposalOpen/);
   assert.doesNotMatch(
     premiumOracle,
     /Read the Kingdom in motion|One clean probability field|Ask one question the Kingdom can actually settle|Question\. Close\. Source\. Exact YES rule/,
@@ -60,6 +70,8 @@ test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and bo
   assert.match(globalCss, /AOE2WAR ORACLE PREMIUM CONTROLS START/);
   assert.match(globalCss, /oracle-arcane-mist/);
   assert.match(globalCss, /#ffe85b/);
+  assert.match(oracle, /new Intl\.DateTimeFormat\("en-US",[\s\S]*?timeZone: "America\/Edmonton"/);
+  assert.match(premiumOracle, /new Intl\.DateTimeFormat\("en-US",[\s\S]*?timeZone: "America\/Edmonton"/);
 });
 
 test("Kingdom Intelligence falls back to the sanitized production signal in read-only preview", () => {

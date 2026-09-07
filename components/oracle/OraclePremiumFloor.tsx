@@ -10,7 +10,6 @@ import {
   Plus,
   ShieldCheck,
   Sparkles,
-  X,
 } from "lucide-react";
 import {
   FormEvent,
@@ -86,17 +85,29 @@ function probability(bps: number) {
 function dateLabel(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Date unavailable";
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    timeZone: "America/Edmonton",
+    timeZoneName: "short",
   }).format(date);
 }
 
 function datetimeLocal(value: Date) {
-  const offset = value.getTimezoneOffset() * 60_000;
-  return new Date(value.getTime() - offset).toISOString().slice(0, 16);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Edmonton",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(value);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((entry) => entry.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
 }
 
 function proposalDefaults(generatedAt: string) {
@@ -142,7 +153,6 @@ export default function OraclePremiumFloor({
 }: Props) {
   const [category, setCategory] = useState("live");
   const [sort, setSort] = useState<SortMode>("trending");
-  const [proposalOpen, setProposalOpen] = useState(false);
   const [proposal, setProposal] = useState(() => proposalDefaults(snapshot.generatedAt));
 
   const markets = useMemo(() => {
@@ -196,16 +206,21 @@ export default function OraclePremiumFloor({
 
     if (succeeded) {
       setProposal(proposalDefaults(new Date().toISOString()));
-      setProposalOpen(false);
     }
   }
+
+  const focusProposalDesk = () => {
+    document
+      .getElementById("oracle-create-market")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <>
       <PremiumHero
         snapshot={snapshot}
         viewMode={viewMode}
-        onPropose={() => setProposalOpen(true)}
+        onPropose={focusProposalDesk}
       />
 
       <section
@@ -226,7 +241,7 @@ export default function OraclePremiumFloor({
           </select>
           <button
             type="button"
-            onClick={() => setProposalOpen(true)}
+            onClick={focusProposalDesk}
             className="oracle-arcane-button inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-5 text-xs font-black"
           >
             <Plus className="h-4 w-4" />
@@ -286,13 +301,11 @@ export default function OraclePremiumFloor({
       </section>
 
       <ProposalDesk
-        open={proposalOpen}
         proposal={proposal}
         busy={busy}
         viewerLabel={snapshot.viewer?.displayName ?? null}
         pending={snapshot.proposals}
         onChange={setProposal}
-        onClose={() => setProposalOpen(false)}
         onSubmit={submitProposal}
         onSignIn={onSignIn}
       />
@@ -388,80 +401,73 @@ function PremiumHero({
   }
 
   return (
-    <section
-      className="relative mx-auto w-full max-w-[82rem] overflow-hidden rounded-[2.35rem] border border-cyan-100/13 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.18),transparent_30%),radial-gradient(circle_at_88%_12%,rgba(251,191,36,0.14),transparent_28%),linear-gradient(145deg,#061521,#060912_57%,#120a05)] p-6 shadow-[0_32px_110px_rgba(0,0,0,0.38)] sm:p-9 lg:p-10"
-      data-oracle-extreme-hero="workshop-advanced-frame"
-    >
-      <div
-        className="relative -mx-6 -mt-6 mb-8 min-h-[16rem] aspect-[16/7] overflow-hidden border-b border-cyan-100/16 bg-[#020711] shadow-[0_30px_90px_rgba(0,0,0,0.28),inset_0_-1px_0_rgba(255,255,255,0.035)] sm:-mx-9 sm:-mt-9 sm:mb-[2.35rem] sm:min-h-[20rem] lg:-mx-10 lg:-mt-10 lg:mb-10 lg:min-h-[24rem]"
-        data-oracle-extreme-banner="workshop-advanced"
+    <div className="mx-auto w-full max-w-[82rem]" data-oracle-extreme-frame="workshop-advanced-width">
+      <section
+        className="relative overflow-hidden rounded-[2.35rem] border border-cyan-100/13 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.18),transparent_30%),radial-gradient(circle_at_88%_12%,rgba(251,191,36,0.14),transparent_28%),linear-gradient(145deg,#061521,#060912_57%,#120a05)] p-6 shadow-[0_32px_110px_rgba(0,0,0,0.38)] sm:p-9 lg:p-10"
+        data-oracle-extreme-hero="workshop-advanced-exact"
       >
-        <Image
-          src="/oracle/oracle-hero-bg.webp"
-          alt="The Oracle chamber and its celestial brass prediction instrument"
-          fill
-          priority
-          sizes="(max-width: 1024px) 100vw, 1200px"
-          className="object-cover object-center brightness-[1.18] saturate-[1.08] contrast-[1.03]"
-        />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.04),rgba(2,6,23,0.14)_48%,rgba(2,6,23,0.72)_100%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(251,191,36,0.10),transparent_30%),radial-gradient(circle_at_82%_16%,rgba(56,189,248,0.12),transparent_30%)]" />
-        <div className="pointer-events-none absolute inset-x-[8%] bottom-0 h-px bg-gradient-to-r from-transparent via-amber-100/32 to-transparent" />
-      </div>
+        <div
+          className="relative min-h-[16rem] aspect-[16/7] overflow-hidden border-b border-cyan-100/16 bg-[#020711] shadow-[0_30px_90px_rgba(0,0,0,0.28),inset_0_-1px_0_rgba(255,255,255,0.035)] -mx-6 -mt-6 mb-8 sm:min-h-[20rem] sm:-mx-9 sm:-mt-9 sm:mb-[2.35rem] lg:min-h-[24rem] lg:-mx-10 lg:-mt-10 lg:mb-10"
+          data-oracle-extreme-banner="workshop-advanced-exact"
+        >
+          <Image
+            src="/oracle/oracle-hero-bg.webp"
+            alt="The Oracle chamber and its celestial brass prediction instrument"
+            fill
+            priority
+            sizes="(max-width: 1024px) 100vw, 1200px"
+            className="object-cover object-[68%_center] brightness-[1.2] saturate-[1.08] contrast-[1.03] scale-[1.04]"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.04),rgba(2,6,23,0.14)_48%,rgba(2,6,23,0.72)_100%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(251,191,36,0.10),transparent_30%),radial-gradient(circle_at_82%_16%,rgba(56,189,248,0.12),transparent_30%)]" />
+          <div className="pointer-events-none absolute inset-x-[8%] bottom-0 h-px bg-gradient-to-r from-transparent via-amber-100/32 to-transparent" />
+        </div>
 
-      <div className="flex flex-wrap items-start justify-between gap-7">
-        <div className="max-w-[50rem]">
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/18 bg-amber-300/[0.055] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.22em] text-amber-50">
-              <Sparkles className="h-3.5 w-3.5" />
+        <div className="flex flex-wrap items-start justify-between gap-5">
+          <div className="max-w-4xl">
+            <div className="inline-flex items-center gap-3 rounded-full border border-amber-100/16 bg-amber-300/[0.07] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.28em] text-amber-50">
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-300 shadow-[0_0_18px_rgba(252,211,77,0.6)]" />
+              The Oracle is open
+            </div>
+
+            <div className="mt-5 text-[10px] font-bold uppercase tracking-[0.38em] text-cyan-100/55">
+              The Oracle · Extreme
+            </div>
+            <h1 className="mt-3 font-serif text-5xl leading-[0.94] text-white sm:text-7xl">
               The Oracle
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-cyan-100/15 bg-cyan-300/[0.045] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-cyan-50">
-              <ShieldCheck className="h-3.5 w-3.5" />
-              Exact rules
-            </span>
-          </div>
+            </h1>
+            <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
+              The future is not merely awaited. It is priced. Pick a side, watch the probability move, and resolve against one published source.
+            </p>
 
-          <div className="mt-5 text-[10px] font-black uppercase tracking-[0.38em] text-cyan-100/55">
-            The Oracle · Extreme
-          </div>
-          <h1 className="mt-3 font-serif text-5xl font-semibold leading-[0.94] tracking-[-0.045em] text-white sm:text-7xl">
-            The Oracle
-          </h1>
-          <p className="mt-4 max-w-[36rem] font-serif text-xl leading-8 text-slate-100 sm:text-2xl">
-            The future is not merely awaited. It is priced.
-          </p>
-          <p className="mt-3 max-w-[40rem] text-sm leading-6 text-slate-300 sm:text-base">
-            Pick a side. Watch the probability move. Resolve against one published source.
-          </p>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <a
-              href="#markets"
-              className="oracle-wolo-button group inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
-            >
-              Open markets
-              <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-            </a>
-            <button
-              type="button"
-              onClick={onPropose}
-              className="oracle-arcane-button inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
-            >
-              <Plus className="h-4 w-4" />
-              Create market
-            </button>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <a
+                href="#markets"
+                className="oracle-wolo-button group inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
+              >
+                Open markets
+                <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+              </a>
+              <button
+                type="button"
+                onClick={onPropose}
+                className="oracle-arcane-button inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
+              >
+                <Plus className="h-4 w-4" />
+                Create market
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-[27rem]">
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <HeroStat label="Live markets" value={fmt(snapshot.pulse.activeMarkets)} />
           <HeroStat label="Forecasters" value={fmt(snapshot.pulse.forecasters)} />
           <HeroStat label="Citizens" value={fmt(snapshot.pulse.registeredCitizens)} />
           <HeroStat label="Final battles" value={fmt(snapshot.pulse.verifiedBattles)} />
         </div>
-      </div>
-    </section>
+      </section>
+    </div>
   );
 }
 
@@ -759,23 +765,19 @@ function CardStat({
 }
 
 function ProposalDesk({
-  open,
   proposal,
   busy,
   viewerLabel,
   pending,
   onChange,
-  onClose,
   onSubmit,
   onSignIn,
 }: {
-  open: boolean;
   proposal: ReturnType<typeof proposalDefaults>;
   busy: boolean;
   viewerLabel: string | null;
   pending: OracleSnapshot["proposals"];
   onChange: (proposal: ReturnType<typeof proposalDefaults>) => void;
-  onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
   onSignIn: () => void;
 }) {
@@ -785,188 +787,203 @@ function ProposalDesk({
   ) => onChange({ ...proposal, [key]: value });
 
   return (
-    <section className="overflow-hidden rounded-[2rem] border border-amber-100/14 bg-[linear-gradient(145deg,rgba(33,22,14,0.88),rgba(7,10,18,0.96)_45%,rgba(22,12,34,0.82))] shadow-[0_28px_90px_rgba(0,0,0,0.34)]">
-      <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[0.78fr_1.22fr]">
-        <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-amber-100/16 bg-amber-300/[0.06] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-amber-100">
+    <section
+      id="oracle-create-market"
+      className="scroll-mt-24 overflow-hidden rounded-[2.15rem] border border-cyan-100/14 bg-[radial-gradient(circle_at_8%_0%,rgba(251,191,36,0.10),transparent_28%),radial-gradient(circle_at_92%_10%,rgba(59,130,246,0.12),transparent_32%),linear-gradient(145deg,#080b12,#050811_58%,#10091a)] shadow-[0_32px_100px_rgba(0,0,0,0.38)]"
+      data-oracle-create-market="always-visible"
+    >
+      <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[0.72fr_1.28fr] lg:p-8">
+        <div className="flex flex-col">
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-amber-100/18 bg-amber-300/[0.06] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-amber-100">
             <CircleGauge className="h-3.5 w-3.5" />
             Citizen market desk
           </div>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-            <DeskFact icon={CalendarClock} label="Close first" copy="No moving the finish line after trading begins." />
-            <DeskFact icon={Database} label="Name the source" copy="The resolution source is part of the market contract." />
-            <DeskFact icon={ShieldCheck} label="Write the YES rule" copy="A stranger should be able to resolve it from the same evidence." />
+
+          <h2 className="mt-5 max-w-md font-serif text-3xl font-semibold leading-tight text-white sm:text-4xl">
+            Create a prediction market.
+          </h2>
+          <p className="mt-3 max-w-md text-sm leading-6 text-slate-400">
+            Ask one measurable YES / NO question. Lock the close time, name the evidence, and publish the rule before anyone takes a side.
+          </p>
+
+          <div className="mt-6 grid gap-3">
+            <DeskFact icon={CalendarClock} label="1 · Set the close" copy="Trading stops at the published time. The finish line cannot move later." />
+            <DeskFact icon={Database} label="2 · Name the evidence" copy="Choose the ledger, page, result, or other source that can prove the answer." />
+            <DeskFact icon={ShieldCheck} label="3 · Write the YES rule" copy="A stranger should be able to resolve the market from the same evidence." />
           </div>
 
-          <button
-            type="button"
-            onClick={() => (viewerLabel ? (open ? onClose() : null) : onSignIn())}
-            className="oracle-arcane-button mt-6 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-5 text-xs font-black"
-          >
-            {viewerLabel ? (open ? "Close desk" : "Create market") : "Sign in to create"}
-            {!open ? <ArrowRight className="h-4 w-4" /> : <X className="h-4 w-4" />}
-          </button>
+          <div className="mt-6 rounded-[1.25rem] border border-white/8 bg-black/20 p-4">
+            <div className="text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+              Who can create
+            </div>
+            <div className="mt-2 text-sm font-semibold text-white">
+              {viewerLabel ? viewerLabel : "Any signed-in citizen"}
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              Market proposals enter the same public review and rule trail regardless of who submits them.
+            </p>
+          </div>
+
+          {pending.length > 0 ? (
+            <div className="mt-5 rounded-[1.25rem] border border-cyan-100/10 bg-cyan-300/[0.035] p-4">
+              <div className="text-[9px] font-black uppercase tracking-[0.18em] text-cyan-100/55">
+                {pending.length} pending citizen {pending.length === 1 ? "market" : "markets"}
+              </div>
+              <div className="mt-2 line-clamp-2 text-sm text-slate-300">
+                {pending[0]?.question}
+              </div>
+            </div>
+          ) : null}
         </div>
 
-        {open ? (
-          <form onSubmit={(event) => void onSubmit(event)} className="rounded-[1.5rem] border border-white/9 bg-black/24 p-4 sm:p-5">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="sm:col-span-2">
-                <span className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">
-                  Market question
-                </span>
-                <input
-                  required
-                  minLength={12}
-                  maxLength={240}
-                  value={proposal.question}
-                  onChange={(event) => field("question", event.target.value)}
-                  placeholder="Will AoE2WAR reach 3,000 registered citizens before October 1?"
-                  className="mt-2 min-h-12 w-full rounded-xl border border-white/10 bg-[#050810] px-4 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-200/28"
-                />
-              </label>
-
-              <label>
-                <span className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">
-                  Category
-                </span>
-                <select
-                  value={proposal.category}
-                  onChange={(event) => field("category", event.target.value)}
-                  className="mt-2 min-h-12 w-full rounded-xl border border-white/10 bg-[#050810] px-4 text-sm text-white outline-none focus:border-cyan-200/28"
-                >
-                  {CATEGORY_TABS.filter((tab) => !["live", "resolved"].includes(tab.key)).map((tab) => (
-                    <option key={tab.key} value={tab.key}>{tab.label}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
-                <span className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">
-                  Resolution source
-                </span>
-                <input
-                  required
-                  minLength={3}
-                  maxLength={160}
-                  value={proposal.sourceLabel}
-                  onChange={(event) => field("sourceLabel", event.target.value)}
-                  placeholder="Kingdom Metrics Ledger"
-                  className="mt-2 min-h-12 w-full rounded-xl border border-white/10 bg-[#050810] px-4 text-sm text-white outline-none placeholder:text-slate-700 focus:border-cyan-200/28"
-                />
-              </label>
-
-              <label>
-                <span className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">
-                  Trading closes
-                </span>
-                <input
-                  required
-                  type="datetime-local"
-                  value={proposal.closesAt}
-                  onChange={(event) => field("closesAt", event.target.value)}
-                  className="mt-2 min-h-12 w-full rounded-xl border border-white/10 bg-[#050810] px-4 text-sm text-white outline-none focus:border-cyan-200/28"
-                />
-              </label>
-
-              <label>
-                <span className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">
-                  Resolve by
-                </span>
-                <input
-                  required
-                  type="datetime-local"
-                  value={proposal.resolvesAt}
-                  onChange={(event) => field("resolvesAt", event.target.value)}
-                  className="mt-2 min-h-12 w-full rounded-xl border border-white/10 bg-[#050810] px-4 text-sm text-white outline-none focus:border-cyan-200/28"
-                />
-              </label>
-
-              <label className="sm:col-span-2">
-                <span className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">
-                  YES resolves when
-                </span>
-                <textarea
-                  required
-                  minLength={20}
-                  maxLength={4000}
-                  value={proposal.resolutionRule}
-                  onChange={(event) => field("resolutionRule", event.target.value)}
-                  placeholder="YES if the named source reports..."
-                  className="mt-2 min-h-28 w-full resize-y rounded-xl border border-white/10 bg-[#050810] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-700 focus:border-cyan-200/28"
-                />
-              </label>
-
-              <label className="sm:col-span-2">
-                <span className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">
-                  VOID only if needed
-                </span>
-                <textarea
-                  maxLength={4000}
-                  value={proposal.voidRule}
-                  onChange={(event) => field("voidRule", event.target.value)}
-                  placeholder="Leave blank to use the standard unavailable-or-ambiguous-source rule."
-                  className="mt-2 min-h-20 w-full resize-y rounded-xl border border-white/10 bg-[#050810] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-700 focus:border-cyan-200/28"
-                />
-              </label>
-            </div>
-
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-4">
-              <span className="text-[10px] text-slate-600">
-                Signed-in citizens can create. Resolution rules stay public.
-              </span>
-              <button
-                type="submit"
-                disabled={busy}
-                className="oracle-wolo-button inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-5 text-xs font-black disabled:cursor-wait disabled:opacity-50"
-              >
-                {busy ? "Submitting…" : "Submit market"}
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          </form>
-        ) : (
-          <div className="rounded-[1.5rem] border border-white/8 bg-black/18 p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-600">
-                  Upcoming citizen markets
-                </div>
-                <h3 className="mt-2 text-lg font-semibold text-white">
-                  The slate stays small and readable.
-                </h3>
+        <form
+          onSubmit={(event) => void onSubmit(event)}
+          className="rounded-[1.65rem] border border-white/10 bg-[linear-gradient(180deg,rgba(3,7,15,0.88),rgba(2,5,12,0.96))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-5"
+        >
+          <div className="flex items-center justify-between gap-3 border-b border-white/8 pb-4">
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-[0.2em] text-cyan-100/55">
+                New market
               </div>
-              <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-xs font-bold text-slate-400">
-                {pending.length}
-              </span>
+              <div className="mt-1 text-sm font-semibold text-white">
+                Publish the contract the Kingdom will resolve.
+              </div>
             </div>
-            <div className="mt-4 space-y-2">
-              {pending.slice(0, 5).map((item) => (
-                <div
-                  key={item.publicId}
-                  className="rounded-xl border border-white/7 bg-white/[0.025] px-4 py-3"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="text-sm font-semibold leading-5 text-slate-200">
-                      {item.question}
-                    </span>
-                    <span className="shrink-0 text-[8px] font-black uppercase tracking-[0.15em] text-amber-100/55">
-                      {item.status.replace(/_/g, " ")}
-                    </span>
-                  </div>
-                  <div className="mt-2 text-[10px] text-slate-600">
-                    {item.sourceLabel}
-                  </div>
-                </div>
-              ))}
-              {pending.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/8 px-4 py-8 text-center text-sm text-slate-600">
-                  No citizen markets are waiting.
-                </div>
-              ) : null}
-            </div>
+            <span className="rounded-full border border-white/8 bg-white/[0.03] px-3 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+              YES / NO
+            </span>
           </div>
-        )}
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <label className="sm:col-span-2">
+              <span className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">
+                Question
+              </span>
+              <input
+                required
+                minLength={12}
+                maxLength={240}
+                value={proposal.question}
+                onChange={(event) => field("question", event.target.value)}
+                placeholder="Will AoE2WAR reach 3,000 registered citizens before October 1?"
+                className="mt-2 min-h-12 w-full rounded-xl border border-white/10 bg-[#030711] px-4 text-sm text-white outline-none placeholder:text-slate-700 transition focus:border-cyan-200/35 focus:shadow-[0_0_0_3px_rgba(34,211,238,0.06)]"
+              />
+            </label>
+
+            <label>
+              <span className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">
+                Category
+              </span>
+              <select
+                value={proposal.category}
+                onChange={(event) => field("category", event.target.value)}
+                className="mt-2 min-h-12 w-full rounded-xl border border-white/10 bg-[#030711] px-4 text-sm text-white outline-none transition focus:border-cyan-200/35"
+              >
+                {CATEGORY_TABS.filter((tab) => !["live", "resolved"].includes(tab.key)).map((tab) => (
+                  <option key={tab.key} value={tab.key}>{tab.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">
+                Resolution source
+              </span>
+              <input
+                required
+                minLength={3}
+                maxLength={160}
+                value={proposal.sourceLabel}
+                onChange={(event) => field("sourceLabel", event.target.value)}
+                placeholder="Kingdom Metrics Ledger"
+                className="mt-2 min-h-12 w-full rounded-xl border border-white/10 bg-[#030711] px-4 text-sm text-white outline-none placeholder:text-slate-700 transition focus:border-cyan-200/35"
+              />
+            </label>
+
+            <label>
+              <span className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">
+                Trading closes
+              </span>
+              <input
+                required
+                type="datetime-local"
+                value={proposal.closesAt}
+                onChange={(event) => field("closesAt", event.target.value)}
+                className="mt-2 min-h-12 w-full rounded-xl border border-white/10 bg-[#030711] px-4 text-sm text-white outline-none transition focus:border-cyan-200/35"
+              />
+            </label>
+
+            <label>
+              <span className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">
+                Resolve by
+              </span>
+              <input
+                required
+                type="datetime-local"
+                value={proposal.resolvesAt}
+                onChange={(event) => field("resolvesAt", event.target.value)}
+                className="mt-2 min-h-12 w-full rounded-xl border border-white/10 bg-[#030711] px-4 text-sm text-white outline-none transition focus:border-cyan-200/35"
+              />
+            </label>
+
+            <label className="sm:col-span-2">
+              <span className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">
+                YES resolves when
+              </span>
+              <textarea
+                required
+                minLength={20}
+                maxLength={4000}
+                value={proposal.resolutionRule}
+                onChange={(event) => field("resolutionRule", event.target.value)}
+                placeholder="YES if the named source reports the threshold was reached before the published deadline."
+                className="mt-2 min-h-28 w-full resize-y rounded-xl border border-white/10 bg-[#030711] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-700 transition focus:border-cyan-200/35 focus:shadow-[0_0_0_3px_rgba(34,211,238,0.06)]"
+              />
+            </label>
+
+            <label className="sm:col-span-2">
+              <span className="text-[9px] font-black uppercase tracking-[0.19em] text-slate-500">
+                VOID rule · optional
+              </span>
+              <textarea
+                maxLength={4000}
+                value={proposal.voidRule}
+                onChange={(event) => field("voidRule", event.target.value)}
+                placeholder="Leave blank to use the standard unavailable-or-ambiguous-source rule."
+                className="mt-2 min-h-20 w-full resize-y rounded-xl border border-white/10 bg-[#030711] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-700 transition focus:border-cyan-200/35"
+              />
+            </label>
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/8 pt-4">
+            <span className="max-w-md text-[10px] leading-5 text-slate-600">
+              The question, source, close time, YES rule, and VOID rule become the public market contract.
+            </span>
+
+            <button
+              type="submit"
+              disabled={busy}
+              className="oracle-wolo-button inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-xs font-black disabled:cursor-wait disabled:opacity-50"
+            >
+              {busy
+                ? "Submitting…"
+                : viewerLabel
+                  ? "Submit market"
+                  : "Sign in to submit"}
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          {!viewerLabel ? (
+            <button
+              type="button"
+              onClick={onSignIn}
+              className="mt-3 text-xs font-semibold text-cyan-100/70 underline decoration-cyan-200/25 underline-offset-4 transition hover:text-cyan-50"
+            >
+              Sign in before filling this out
+            </button>
+          ) : null}
+        </form>
       </div>
     </section>
   );
