@@ -543,11 +543,61 @@ export default async function StakingPage({
   const period = normalizePeriod(resolvedSearchParams?.period);
   const board = normalizeBoard(resolvedSearchParams?.board);
 
-  const [snapshotResult, leaderboardResult, stakerProfilesResult] = await Promise.allSettled([
+  // The staking page has two independent evidence families: economy/profile
+  // data from Postgres and trust-wallet/chain proof. Start both families at the
+  // same time so route readiness is bounded by the slower family instead of
+  // paying both waits serially.
+  const overviewPromise = Promise.allSettled([
     loadEconomySnapshot(period),
     loadStakingLeaderboard(getPrisma(), board),
     loadActiveStakerProfiles(getPrisma()),
   ]);
+  const trustRailPromise = Promise.all([
+    loadStakingWalletSnapshot(),
+    loadCommunityTreasurySnapshot(),
+    loadCustodyWalletSnapshot({
+      address: getWoloBetEscrowRuntime().escrowAddress,
+      pendingDetail: "Bet escrow address pending.",
+      readyDetail: "Bet escrow",
+    }),
+    loadCustodyWalletSnapshot({
+      address: resolveAddressFromNames(PAYOUT_ADDRESS_ENV_NAMES),
+      pendingDetail: "Payout signer address pending.",
+      readyDetail: "Payout signer",
+    }),
+    loadCustodyWalletSnapshot({
+      address: resolveAddressFromNames(DEX_LIQUIDITY_ADDRESS_ENV_NAMES),
+      pendingDetail: "DEX liquidity wallet pending.",
+      readyDetail: "DEX liquidity",
+    }),
+    getPrisma().$queryRaw<Array<{ total_tx_fees_wolo: string }>>`
+      select coalesce(
+        sum(
+          case
+            when metadata ->> 'txFeeWolo' ~ '^[0-9]+(\\.[0-9]+)?$'
+              then (metadata ->> 'txFeeWolo')::numeric
+            else 0
+          end
+        ),
+        0
+      )::text as total_tx_fees_wolo
+      from staking_events
+      where status = 'CONFIRMED'
+    `,
+  ]);
+
+  const [
+    [snapshotResult, leaderboardResult, stakerProfilesResult],
+    [
+      stakingWallet,
+      treasury,
+      escrowWallet,
+      payoutWallet,
+      dexLiquidityWallet,
+      txFeeAggregate,
+    ],
+  ] = await Promise.all([overviewPromise, trustRailPromise]);
+
   let snapshot: EconomySnapshot;
   if (snapshotResult.status === "fulfilled") {
     snapshot = snapshotResult.value;
@@ -576,46 +626,6 @@ export default async function StakingPage({
     );
   }
 
-  const [
-    stakingWallet,
-    treasury,
-    escrowWallet,
-    payoutWallet,
-    dexLiquidityWallet,
-    txFeeAggregate,
-  ] = await Promise.all([
-    loadStakingWalletSnapshot(),
-    loadCommunityTreasurySnapshot(),
-    loadCustodyWalletSnapshot({
-      address: getWoloBetEscrowRuntime().escrowAddress,
-      pendingDetail: "Bet escrow address pending.",
-      readyDetail: "Bet escrow",
-    }),
-    loadCustodyWalletSnapshot({
-      address: resolveAddressFromNames(PAYOUT_ADDRESS_ENV_NAMES),
-      pendingDetail: "Payout signer address pending.",
-      readyDetail: "Payout signer",
-    }),
-    loadCustodyWalletSnapshot({
-      address: resolveAddressFromNames(DEX_LIQUIDITY_ADDRESS_ENV_NAMES),
-      pendingDetail: "DEX liquidity wallet pending.",
-      readyDetail: "DEX liquidity",
-    }),
-    getPrisma().$queryRaw<Array<{ total_tx_fees_wolo: string }>>`
-      select coalesce(
-        sum(
-          case
-            when metadata ->> 'txFeeWolo' ~ '^[0-9]+(\.[0-9]+)?$'
-              then (metadata ->> 'txFeeWolo')::numeric
-            else 0
-          end
-        ),
-        0
-      )::text as total_tx_fees_wolo
-      from staking_events
-      where status = 'CONFIRMED'
-    `,
-  ]);
   const policyDistributionReserveWallet = applyStakingDistributionReservePolicy(payoutWallet);
 
   const totalTxFeesAllTimeWolo = Number.parseFloat(

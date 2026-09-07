@@ -9,10 +9,19 @@ test("staking page aggregates lifetime transaction fees in Postgres without load
   assert.match(source, /where status = 'CONFIRMED'/);
   assert.doesNotMatch(source, /stakingEvent\.findMany\(\{[\s\S]*?metadata:\s*true/);
 
-  const parallelStart = source.indexOf("txFeeAggregate,");
+  const parallelStart = source.indexOf("const trustRailPromise = Promise.all([");
   const query = source.indexOf("total_tx_fees_wolo", parallelStart);
-  const parallelEnd = source.indexOf("]);", query);
-  assert.ok(parallelStart >= 0 && query > parallelStart && parallelEnd > query);
+  const parallelEnd = source.indexOf("  ]);", query);
+  const joinedAwait = source.indexOf(
+    "await Promise.all([overviewPromise, trustRailPromise])",
+    parallelEnd,
+  );
+  assert.ok(
+    parallelStart >= 0 &&
+      query > parallelStart &&
+      parallelEnd > query &&
+      joinedAwait > parallelEnd,
+  );
 });
 
 test("recent activity owns a bounded flex viewport with internal scrolling", async () => {
