@@ -209,6 +209,10 @@ test("public Kingdom Intelligence is a bounded sanitized projection", async () =
 test("public Kingdom Intelligence page makes its authority and privacy boundary explicit", async () => {
   const fs = await import("node:fs");
   const page = fs.readFileSync("app/kingdom-intelligence/page.tsx", "utf8");
+  const pulse = fs.readFileSync(
+    "app/kingdom-intelligence/WarPulsePanel.tsx",
+    "utf8",
+  );
   const constellation = fs.readFileSync(
     "app/kingdom-intelligence/AgentConstellationPanel.tsx",
     "utf8",
@@ -219,7 +223,8 @@ test("public Kingdom Intelligence page makes its authority and privacy boundary 
   assert.match(page, /HAS A MIND/);
   assert.match(page, /Truth · Provenance · Invariants · Action/);
   assert.match(page, /Public projection · sensitive operator evidence withheld/);
-  assert.match(page, /War Pulse · live chronicle/);
+  assert.match(page, /WarPulsePanel/);
+  assert.match(pulse, /War Pulse · live chronicle/);
   assert.match(page, /AgentConstellationPanel/);
   assert.match(constellation, /Eight OS agents\. One Doctor\./);
   assert.match(page, /Victory ledger/);
