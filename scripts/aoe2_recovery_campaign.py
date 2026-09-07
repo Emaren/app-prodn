@@ -943,6 +943,19 @@ def capture_stage(
             source_rc = source.wait()
 
         if source_rc != 0:
+            # A failed producer can look like EOF to the consumer and therefore
+            # leave one short, individually valid CMS chunk. That short tail is
+            # not a proven archive boundary. Discard only that tail so a later
+            # resume can revalidate the sealed full-chunk prefix and continue.
+            if (
+                receipts
+                and int(receipts[-1]["plaintext_bytes"])
+                < CMS_CHUNK_PLAINTEXT_BYTES
+            ):
+                shutil.rmtree(
+                    _chunk_dir(root, int(receipts[-1]["index"])),
+                    ignore_errors=True,
+                )
             raise CampaignError(
                 f"{class_name} remote tar failed with exit={source_rc}; "
                 f"see {stderr_log}"
