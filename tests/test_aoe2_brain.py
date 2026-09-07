@@ -300,6 +300,38 @@ class KingdomIntelligenceTests(unittest.TestCase):
         self.assertEqual(recovery_agent["progress_percent"], 20.0)
         self.assertEqual(agents[-1]["label"], "System Doctor")
 
+        live_agents = MODULE.system_agent_rows(
+            source=source,
+            council=current_council,
+            truth=current_truth,
+            performance=perf,
+            control=control(),
+            storage_campaign={"status": "NONE"},
+            recovery_campaign={
+                "status": "RUNNING_CAPTURE",
+                "completed_classes": ["managed_user_media"],
+                "ordinary_classes": list(MODULE.aoe2_recovery_campaign.ORDINARY_CLASSES),
+                "current_class": "raw_replay_archive",
+                "live_capture": {
+                    "overall_percent": 37.4,
+                    "sealed_chunks": 7,
+                    "eta_seconds": 1234,
+                    "elapsed_seconds": 456,
+                    "observed_bytes": 700,
+                    "expected_bytes": 1900,
+                    "throughput_bytes_per_second": 12.5,
+                    "progress_basis": "sealed + active encrypted chunk bytes",
+                },
+            },
+        )
+        live_recovery = next(
+            item for item in live_agents if item["key"] == "recovery"
+        )
+        self.assertEqual(live_recovery["progress_percent"], 37.4)
+        self.assertEqual(live_recovery["sealed_chunks"], 7)
+        self.assertEqual(live_recovery["eta_seconds"], 1234)
+        self.assertIn("7 chunks", live_recovery["progress_label"])
+
         external = MODULE.external_agent_rows(current_council)
         self.assertEqual(external[0]["name"], "Codex")
         self.assertEqual(external[0]["state"], "ACTIVE")
