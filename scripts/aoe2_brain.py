@@ -671,7 +671,16 @@ def classify_source_system(paths: list[str], subject: str) -> str:
         ("Speed OS", ("speed", "performance", "latency")),
         ("Workspace OS", ("workspace", "worktree")),
         ("Host OS", ("host", "vps", "systemd")),
-        ("Documentation OS", ("docs/", "documentation", "engineering_memory")),
+        (
+            "Documentation OS",
+            (
+                "documentation_os",
+                "aoe2_docs",
+                "document-registry",
+                "documentation_control_plane",
+                "docs_v2",
+            ),
+        ),
         ("Release OS", ("release", "finish", "deploy", "rollback")),
     )
     matches = [
