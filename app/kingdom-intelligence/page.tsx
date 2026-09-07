@@ -24,6 +24,10 @@ import {
   loadPublicKingdomIntelligence,
   type PublicKingdomIntelligence,
 } from "@/lib/kingdomIntelligencePublic";
+import {
+  buildPreviewDataUrl,
+  isLiveProductionReadOnlyPreview,
+} from "@/lib/previewDataSource";
 
 import BrowserLocalTime from "./BrowserLocalTime";
 import KingdomIntelligenceRefresh from "./KingdomIntelligenceRefresh";
@@ -204,6 +208,23 @@ export default async function KingdomIntelligencePage() {
 
   try {
     data = await loadPublicKingdomIntelligence();
+
+    if (!data.available && isLiveProductionReadOnlyPreview()) {
+      const previewUrl = buildPreviewDataUrl("/api/kingdom-intelligence");
+
+      if (previewUrl) {
+        const response = await fetch(previewUrl, {
+          cache: "no-store",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (response.ok) {
+          data = (await response.json()) as PublicKingdomIntelligence;
+        }
+      }
+    }
   } catch {
     error = "The Kingdom Intelligence signal could not be reached.";
   }
