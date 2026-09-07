@@ -12,7 +12,7 @@ const NO_STORE = {
   "Cache-Control": "no-store, max-age=0",
 };
 
-const PLAN_CACHE_MS = 15 * 60 * 1000;
+const PLAN_CACHE_MS = 6 * 60 * 60 * 1000;
 const CHUNK_PLAINTEXT_LIMIT = 256 * 1024 * 1024;
 
 let planCache:
