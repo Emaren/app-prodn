@@ -4,6 +4,8 @@ import { Bot, Radio } from "lucide-react";
 import { useState } from "react";
 
 import BrowserLocalTime from "./BrowserLocalTime";
+import ProcessDrilldown from "./ProcessDrilldown";
+import { useLiveRecoveryProgress } from "./useLiveRecoveryProgress";
 
 type WarPulseItem = {
   key: string;
@@ -59,7 +61,9 @@ export default function WarPulsePanel({
   items: WarPulseItem[];
 }) {
   const [themeIndex, setThemeIndex] = useState(0);
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const theme = THEMES[themeIndex] ?? "plain";
+  const liveRecovery = useLiveRecoveryProgress(true);
 
   const cycleTheme = () => {
     setThemeIndex((current) => (current + 1) % THEMES.length);
@@ -113,11 +117,41 @@ export default function WarPulsePanel({
 
       <div className="relative z-10 max-h-[34rem] overflow-y-auto px-4 py-3 font-mono text-xs sm:px-5">
         {items.length ? (
-          items.map((item) => (
+          items.map((item) => {
+            const expanded = expandedKey === item.key;
+            const recoveryLive =
+              item.current &&
+              item.system === "Recovery OS" &&
+              liveRecovery?.available === true;
+            const effectiveProgress =
+              recoveryLive &&
+              typeof liveRecovery.overallPercent === "number"
+                ? liveRecovery.overallPercent
+                : item.progress;
+
+            return (
             <div
               key={item.key}
+              role="button"
+              tabIndex={0}
+              aria-expanded={expanded}
+              onClick={(event) => {
+                event.stopPropagation();
+                setExpandedKey((current) =>
+                  current === item.key ? null : item.key,
+                );
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setExpandedKey((current) =>
+                    current === item.key ? null : item.key,
+                  );
+                }
+              }}
               className={
-                "relative grid grid-cols-[9px_62px_minmax(0,1fr)] gap-3 py-3 transition-all duration-500 " +
+                "relative grid cursor-pointer grid-cols-[9px_62px_minmax(0,1fr)] gap-3 py-3 transition-all duration-500 " +
                 rowShell(theme, item.current)
               }
             >
@@ -189,7 +223,7 @@ export default function WarPulsePanel({
                   {item.label}
                 </div>
 
-                {item.current && item.progress !== null ? (
+                {item.current && effectiveProgress !== null ? (
                   <div className="mt-2">
                     <div className="h-1 overflow-hidden rounded-full bg-white/8">
                       <div
@@ -199,15 +233,15 @@ export default function WarPulsePanel({
                         }
                         style={{
                           width:
-                            Math.max(0, Math.min(100, item.progress)) + "%",
+                            Math.max(0, Math.min(100, effectiveProgress)) + "%",
                         }}
                       />
                     </div>
                     <div className="mt-1 flex items-center justify-between gap-3 text-[9px] uppercase tracking-[0.14em] text-cyan-100/45">
                       <span>{item.progressLabel ?? "process progress"}</span>
                       <span>
-                        {item.progress.toFixed(
-                          item.progress % 1 === 0 ? 0 : 1,
+                        {effectiveProgress.toFixed(
+                          recoveryLive || effectiveProgress % 1 !== 0 ? 1 : 0,
                         )}
                         %
                       </span>
@@ -221,8 +255,30 @@ export default function WarPulsePanel({
                   </div>
                 ) : null}
               </div>
+
+              {expanded ? (
+                <div className="col-span-3">
+                  <ProcessDrilldown
+                    systemKey={
+                      item.system === "Recovery OS"
+                        ? "recovery"
+                        : null
+                    }
+                    system={item.system}
+                    status={item.status}
+                    summary={item.label}
+                    progress={effectiveProgress}
+                    progressLabel={item.progressLabel}
+                    startedAt={item.current ? item.at : null}
+                    proof={item.proof}
+                    current={item.current}
+                    liveRecovery={recoveryLive ? liveRecovery : null}
+                  />
+                </div>
+              ) : null}
             </div>
-          ))
+            );
+          })
         ) : (
           <div className="flex min-h-64 flex-col items-center justify-center text-center text-slate-600">
             <Bot className="mb-3 h-7 w-7" />
