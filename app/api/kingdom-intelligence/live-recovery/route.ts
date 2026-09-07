@@ -1,30 +1,12 @@
-import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
 
 import { NextResponse } from "next/server";
-
-const execFileAsync = promisify(execFile);
 
 const NO_STORE = {
   "Cache-Control": "no-store, max-age=0",
 };
-
-const PLAN_CACHE_MS = 6 * 60 * 60 * 1000;
-const CHUNK_PLAINTEXT_LIMIT = 256 * 1024 * 1024;
-
-let planCache:
-  | {
-      at: number;
-      stages: Array<{ class?: string; estimated_bytes?: number }>;
-    }
-  | null = null;
-
-let planPromise:
-  | Promise<Array<{ class?: string; estimated_bytes?: number }>>
-  | null = null;
 
 function canonicalRoot() {
   const explicit = process.env.AOE2WAR_CANONICAL_APP_ROOT?.trim();
@@ -88,43 +70,6 @@ async function latestRunningCampaign(root: string) {
   }
 
   return null;
-}
-
-async function recoveryPlan(root: string) {
-  const now = Date.now();
-  if (planCache && now - planCache.at < PLAN_CACHE_MS) {
-    return planCache.stages;
-  }
-
-  if (planPromise) return planPromise;
-
-  planPromise = (async () => {
-    const script = path.join(root, "scripts", "aoe2_recovery.py");
-    const { stdout } = await execFileAsync(
-      "/usr/bin/python3",
-      [script, "campaign", "plan", "--json"],
-      {
-        cwd: root,
-        env: process.env,
-        timeout: 45_000,
-        maxBuffer: 4 * 1024 * 1024,
-      },
-    );
-
-    const parsed = JSON.parse(stdout) as {
-      stages?: Array<{ class?: string; estimated_bytes?: number }>;
-    };
-
-    const stages = Array.isArray(parsed.stages) ? parsed.stages : [];
-    planCache = { at: Date.now(), stages };
-    return stages;
-  })();
-
-  try {
-    return await planPromise;
-  } finally {
-    planPromise = null;
-  }
 }
 
 async function observedChunkBytes(
@@ -231,14 +176,14 @@ export async function GET() {
       );
     }
 
-    const [observed, stages] = await Promise.all([
-      observedChunkBytes(bundleRoot, className),
-      recoveryPlan(root),
-    ]);
+    const observed = await observedChunkBytes(bundleRoot, className);
 
-    const expectedBytes = Number(
-      stages.find((stage) => stage.class === className)?.estimated_bytes ?? 0,
-    );
+    const stageEstimates =
+      campaign.ordinary_stage_estimates &&
+      typeof campaign.ordinary_stage_estimates === "object"
+        ? (campaign.ordinary_stage_estimates as Record<string, unknown>)
+        : {};
+    const expectedBytes = Number(stageEstimates[className] ?? 0);
 
     const observedBytes = observed.sealedBytes + observed.partialBytes;
     const classFraction =
@@ -313,7 +258,10 @@ export async function GET() {
             ? null
             : Math.max(0, Math.round(etaSeconds)),
         throughputBytesPerSecond,
-        progressBasis: "sealed + active encrypted chunk bytes",
+        progressBasis:
+          expectedBytes > 0
+            ? "sealed + active encrypted chunk bytes"
+            : "live chunk bytes; stage denominator unavailable for this legacy campaign",
         sampledAt: new Date().toISOString(),
       },
       { headers: NO_STORE },
