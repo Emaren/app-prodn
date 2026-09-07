@@ -203,6 +203,7 @@ export default function AgentConstellationPanel({
                 onKeyDown={(event) => event.stopPropagation()}
               >
                 <ProcessDrilldown
+                  kind="agent"
                   systemKey={agent.key}
                   system={agent.label}
                   status={agent.state}
