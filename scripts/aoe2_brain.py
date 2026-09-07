@@ -924,9 +924,22 @@ def system_agent_rows(
 
     recovery_completed = len(recovery_campaign.get("completed_classes") or [])
     recovery_total = len(recovery_campaign.get("ordinary_classes") or [])
+    recovery_live = recovery_campaign.get("live_capture") or {}
     recovery_current_class = str(
         recovery_campaign.get("current_class") or ""
     ).replace("_", " ").strip()
+    recovery_live_percent = recovery_live.get("overall_percent")
+    recovery_progress_percent = (
+        float(recovery_live_percent)
+        if isinstance(recovery_live_percent, (int, float))
+        else round((recovery_completed / recovery_total) * 100, 1)
+        if recovery_total > 0
+        else 100
+        if recovery_status == "VERIFIED"
+        else 20
+        if (recovery.get("pilot") or {}).get("status") == "PILOT_VERIFIED"
+        else None
+    )
     storage_completed = int(storage_campaign.get("completed_generations") or 0)
     storage_total = int(storage_campaign.get("max_generations") or 0)
 
@@ -1012,17 +1025,16 @@ def system_agent_rows(
                 if recovery_total
                 else f"Recovery proof: {recovery_status}."
             ),
-            "progress_percent": (
-                round((recovery_completed / recovery_total) * 100, 1)
-                if recovery_total > 0
-                else 100
-                if recovery_status == "VERIFIED"
-                else 20
-                if (recovery.get("pilot") or {}).get("status") == "PILOT_VERIFIED"
-                else None
-            ),
+            "progress_percent": recovery_progress_percent,
             "progress_label": (
-                f"{recovery_completed}/{recovery_total} ordinary classes"
+                (
+                    f"{recovery_completed}/{recovery_total} ordinary classes"
+                    + (
+                        f" · {int(recovery_live.get('sealed_chunks') or 0)} chunks"
+                        if recovery_live.get("sealed_chunks") is not None
+                        else ""
+                    )
+                )
                 if recovery_total
                 else "full recovery proof"
             ),
@@ -1033,6 +1045,16 @@ def system_agent_rows(
                 if recovery_active
                 else None
             ),
+            "current_step": recovery_current_class or None,
+            "eta_seconds": recovery_live.get("eta_seconds"),
+            "elapsed_seconds": recovery_live.get("elapsed_seconds"),
+            "sealed_chunks": recovery_live.get("sealed_chunks"),
+            "observed_bytes": recovery_live.get("observed_bytes"),
+            "expected_bytes": recovery_live.get("expected_bytes"),
+            "throughput_bytes_per_second": recovery_live.get(
+                "throughput_bytes_per_second"
+            ),
+            "progress_basis": recovery_live.get("progress_basis"),
         },
         {
             "key": "workspace",
