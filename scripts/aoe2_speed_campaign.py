@@ -892,8 +892,15 @@ def verify_campaign(
     mode = str(baseline.get("mode") or "")
     full = mode == "full"
     verify_rounds = rounds if rounds is not None else int(baseline.get("rounds") or 3)
+    baseline_routes = cohort_routes(baseline)
+    if not baseline_routes:
+        raise CampaignError("campaign baseline route cohort is empty")
     after_inventory = campaign_source_inventory()
-    after = speed.benchmark(full=full, rounds=verify_rounds)
+    after = speed.benchmark(
+        full=full,
+        rounds=verify_rounds,
+        routes_override=baseline_routes,
+    )
 
     verification = verify_routes(baseline, after)
     recovered_failures = list(
