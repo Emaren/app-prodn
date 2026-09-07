@@ -301,9 +301,9 @@ export default function ProcessDrilldown({
       </div>
 
       {detailCurrentStep ||
-      detailSealedChunks !== null ||
-      detailObservedBytes !== null ||
-      detailThroughput !== null ? (
+      detailSealedChunks != null ||
+      detailObservedBytes != null ||
+      detailThroughput != null ? (
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div className="rounded-lg border border-cyan-200/8 bg-cyan-300/[0.025] p-2.5">
             <div className="text-[8px] uppercase tracking-[0.18em] text-slate-600">
