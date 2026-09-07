@@ -6,17 +6,18 @@ function source(path: string) {
   return readFileSync(path, "utf8");
 }
 
-test("Oracle and Kingdom Intelligence preserve Basic and add B/A/E width provenance", () => {
+test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and both keep B/A/E width provenance", () => {
   const preferences = source("lib/tileViewPreferences.ts");
   const shell = source("app/AppShell.tsx");
   const oracle = source("components/oracle/OracleClient.tsx");
+  const premiumOracle = source("components/oracle/OraclePremiumFloor.tsx");
   const intelligence = source("app/kingdom-intelligence/page.tsx");
   const bar = source("components/tile-view/PageWidthSettingsBar.tsx");
 
   assert.match(preferences, /"oracle"/);
   assert.match(preferences, /"kingdom_intelligence"/);
   assert.match(preferences, /oracle: "basic"/);
-  assert.match(preferences, /kingdom_intelligence: "basic"/);
+  assert.match(preferences, /kingdom_intelligence: "advanced"/);
 
   assert.match(shell, /getTileViewMode\([\s\S]*?"oracle"/);
   assert.match(shell, /getTileViewMode\([\s\S]*?"kingdom_intelligence"/);
@@ -25,6 +26,12 @@ test("Oracle and Kingdom Intelligence preserve Basic and add B/A/E width provena
   assert.match(shell, /"max-w-6xl"/);
 
   assert.match(oracle, /PageWidthSettingsBar tileKey="oracle" label="Oracle"/);
+  assert.match(oracle, /viewMode === "basic"/);
+  assert.match(oracle, /<OraclePremiumFloor/);
+  assert.match(premiumOracle, /data-oracle-premium-floor=\{viewMode\}/);
+  assert.match(premiumOracle, /ProbabilityChart/);
+  assert.match(premiumOracle, /Create market/);
+  assert.doesNotMatch(premiumOracle, /Oracle Marks|whale advantage/i);
   assert.match(
     intelligence,
     /tileKey="kingdom_intelligence"[\s\S]*?label="Kingdom Intelligence"/,
