@@ -342,6 +342,21 @@ def normalize_preview_path(value: str) -> str:
     return path
 
 
+def canonical_os_store_for_preview() -> Path | None:
+    explicit = os.environ.get("AOE2WAR_OS_STORE_DIR", "").strip()
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+
+    cwd = Path.cwd().resolve()
+    canonical_root = (
+        cwd
+        if cwd.name == "app-prodn"
+        else cwd.parent / "app-prodn"
+    )
+    candidate = canonical_root / "storage" / "aoe2war-os"
+    return candidate if candidate.is_dir() else None
+
+
 def infer_preview_path() -> str:
     explicit = os.environ.get("AOE2WAR_PREVIEW_PATH", "").strip()
 
@@ -433,6 +448,14 @@ def main() -> int:
         )
         env["AOE2WAR_PROD_DB_PREVIEW"] = "true"
 
+        # Feature worktrees should read the canonical local AoE2WAR OS control
+        # store so Kingdom Intelligence shows the same proven local process
+        # state as the operator checkout. Mutation routes are separately fenced
+        # in preview mode.
+        canonical_os_store = canonical_os_store_for_preview()
+        if canonical_os_store is not None:
+            env["AOE2WAR_OS_STORE_DIR"] = str(canonical_os_store)
+
         # Existing preview identity and safe production read machinery.
         env["AOE2WAR_PREVIEW_DATA_BASE"] = PREVIEW_ORIGIN
         env["AOE2WAR_PREVIEW_USER_NAME"] = PREVIEW_NAME
@@ -477,6 +500,11 @@ def main() -> int:
         )
         print("PASS: production DATABASE_URL remains memory-only")
         print("PASS: production INTERNAL_API_KEY/ADMIN_TOKEN not imported")
+        if canonical_os_store is not None:
+            print(
+                "PASS: local AoE2WAR OS reads use canonical control store "
+                f"({canonical_os_store})"
+            )
         if with_openai:
             print("PASS: production OpenAI credential injected memory-only")
         else:
