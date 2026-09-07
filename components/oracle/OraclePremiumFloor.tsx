@@ -393,7 +393,7 @@ function PremiumHero({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[82rem]" data-oracle-extreme-frame="workshop-advanced-width">
+    <div className="mx-auto w-full max-w-[90rem]" data-oracle-extreme-frame="workshop-advanced-width">
       <section
         className="relative overflow-hidden rounded-[2.35rem] border border-cyan-100/13 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.18),transparent_30%),radial-gradient(circle_at_88%_12%,rgba(251,191,36,0.14),transparent_28%),linear-gradient(145deg,#061521,#060912_57%,#120a05)] p-6 shadow-[0_32px_110px_rgba(0,0,0,0.38)] sm:p-9 lg:p-10"
         data-oracle-extreme-hero="workshop-advanced-exact"
@@ -408,7 +408,7 @@ function PremiumHero({
             fill
             priority
             sizes="(max-width: 1024px) 100vw, 1200px"
-            className="object-cover object-[68%_center] brightness-[1.2] saturate-[1.08] contrast-[1.03] scale-[1.04]"
+            className="object-cover object-center"
           />
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.04),rgba(2,6,23,0.14)_48%,rgba(2,6,23,0.72)_100%)]" />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(251,191,36,0.10),transparent_30%),radial-gradient(circle_at_82%_16%,rgba(56,189,248,0.12),transparent_30%)]" />
