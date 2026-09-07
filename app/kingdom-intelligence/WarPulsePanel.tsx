@@ -17,6 +17,14 @@ type WarPulseItem = {
   current: boolean;
   progress: number | null;
   progressLabel: string | null;
+  currentStep: string | null;
+  etaSeconds: number | null;
+  elapsedSeconds: number | null;
+  sealedChunks: number | null;
+  observedBytes: number | null;
+  expectedBytes: number | null;
+  throughputBytesPerSecond: number | null;
+  progressBasis: string | null;
   beaconClass: string;
   statusToneClass: string;
 };
@@ -277,6 +285,16 @@ export default function WarPulsePanel({
                     startedAt={item.current ? item.at : null}
                     proof={item.proof}
                     current={item.current}
+                    currentStep={item.currentStep}
+                    etaSeconds={item.etaSeconds}
+                    elapsedSeconds={item.elapsedSeconds}
+                    sealedChunks={item.sealedChunks}
+                    observedBytes={item.observedBytes}
+                    expectedBytes={item.expectedBytes}
+                    throughputBytesPerSecond={
+                      item.throughputBytesPerSecond
+                    }
+                    progressBasis={item.progressBasis}
                     liveRecovery={recoveryLive ? liveRecovery : null}
                   />
                 </div>
