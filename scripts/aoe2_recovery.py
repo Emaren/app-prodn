@@ -862,6 +862,8 @@ def forward_campaign_cli(argv: list[str]) -> int | None:
         "restore-preflight",
         "restore-start",
         "restore-status",
+        "restore-resume",
+        "restore-pause",
     }:
         return None
     cmd = [
