@@ -404,6 +404,81 @@ class KingdomIntelligenceTests(unittest.TestCase):
         self.assertEqual(rows[0]["key"], "control-state-blocked")
         self.assertEqual(rows[1]["key"], "speed-verify-open-campaign")
 
+    def test_verified_campaign_uses_after_release_as_current_performance_truth(self):
+        now = datetime(2026, 9, 7, 2, 10, tzinfo=timezone.utc)
+        campaign = {
+            "campaign_id": "before-after",
+            "status": "verified",
+            "started_at": "2026-09-05T22:44:24Z",
+            "verified_at": "2026-09-07T02:10:00Z",
+            "baseline": {
+                "release_sha": "b" * 40,
+                "build_id": "before-build",
+                "route_count": 77,
+                "cohort": {
+                    "ttfb_p50_ms": 400.0,
+                    "total_p50_ms": 587.2,
+                },
+            },
+            "analysis": {"targets": []},
+            "verification": {
+                "status": "WARN",
+                "release_sha": "a" * 40,
+                "build_id": "after-build",
+                "build_version": "after-version",
+                "material_improvements": 7,
+                "material_regressions": 3,
+                "overall": {
+                    "ttfb_p50_before_ms": 400.0,
+                    "ttfb_p50_after_ms": 384.4,
+                    "total_p50_before_ms": 587.2,
+                    "total_p50_after_ms": 556.1,
+                },
+            },
+        }
+        with patch.object(
+            MODULE.aoe2_speed_campaign,
+            "latest_campaign",
+            return_value=campaign,
+        ):
+            perf = MODULE.latest_performance(now)
+
+        self.assertEqual(perf["release_sha"], "a" * 40)
+        self.assertEqual(perf["baseline_release_sha"], "b" * 40)
+        self.assertEqual(perf["verification_release_sha"], "a" * 40)
+        self.assertEqual(perf["build_id"], "after-build")
+        self.assertEqual(
+            perf["verification"]["total_p50_after_ms"],
+            556.1,
+        )
+
+    def test_certified_finish_demotes_storage_to_maintenance(self):
+        perf = performance()
+        perf["matches_current_release"] = True
+        rows = MODULE.brain_recommendations(
+            finish=finish(complete=True),
+            control=control(status="current"),
+            performance=perf,
+            truth=truth(),
+            council_recommendations=[],
+            storage={
+                "health": "MAINTENANCE_DUE",
+                "used_percent": 84.5,
+            },
+        )
+        storage_row = next(
+            row
+            for row in rows
+            if row["key"] == "storage-headroom-maintenance"
+        )
+        self.assertEqual(storage_row["rank"], 9)
+        self.assertEqual(storage_row["level"], "MAINTENANCE")
+        self.assertNotIn("rerunning Finish", storage_row["title"])
+        self.assertNotIn(
+            "storage-blocks-finish",
+            [row["key"] for row in rows],
+        )
+
     def test_storage_pressure_outranks_finish_rerun(self):
         perf = performance()
         perf["matches_current_release"] = False
