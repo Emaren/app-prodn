@@ -25,6 +25,7 @@ import {
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import OracleMarketDetail from "@/components/oracle/OracleMarketDetail";
+import PageWidthSettingsBar from "@/components/tile-view/PageWidthSettingsBar";
 import { useUserAuth } from "@/context/UserAuthContext";
 import type {
   OracleMarketView,
@@ -228,6 +229,8 @@ export default function OracleClient({ initialSnapshot, focusSlug }: OracleClien
           onSignIn={() => loginWithSteam("/oracle")}
         />
       )}
+
+      <PageWidthSettingsBar tileKey="oracle" label="Oracle" />
     </main>
   );
 }
