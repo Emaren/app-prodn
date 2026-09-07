@@ -63,7 +63,7 @@ test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and bo
   );
   assert.match(
     oraclePolish,
-    /\.oracle-workshop-a-banner \{[\s\S]*?aspect-ratio: 16 \/ 7;[\s\S]*?min-height: 16rem;/,
+    /\.oracle-workshop-a-banner \{[\s\S]*?min-height: 16rem;[\s\S]*?aspect-ratio: 16 \/ 7;/,
   );
   assert.match(
     oraclePolish,
