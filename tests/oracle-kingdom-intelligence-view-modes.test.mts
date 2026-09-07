@@ -42,18 +42,30 @@ test("Kingdom Intelligence falls back to the sanitized production signal in read
   assert.match(intelligence, /if \(!data\.available/);
 });
 
-test("Kingdom Intelligence agent tiles use a distinct premium clickable cool palette", () => {
+test("Kingdom Intelligence cycles the whole Agent Constellation tile through plain and two premium themes", () => {
   const intelligence = source("app/kingdom-intelligence/page.tsx");
-  const tile = source("app/kingdom-intelligence/AgentConstellationTile.tsx");
+  const panel = source("app/kingdom-intelligence/AgentConstellationPanel.tsx");
 
-  assert.match(intelligence, /<AgentConstellationTile/);
-  assert.match(tile, /cursor-pointer/);
-  assert.match(tile, /aria-pressed=\{focusedTheme\}/);
-  assert.match(tile, /Click to change tile theme/);
-  assert.match(tile, /from-cyan-300\/80 via-sky-300\/80 to-indigo-300\/70/);
-  assert.match(tile, /radial-gradient\(circle_at_86%_14%/);
-  assert.doesNotMatch(tile, /amber-300/);
-  assert.doesNotMatch(tile, /emerald-300/);
+  assert.match(intelligence, /<AgentConstellationPanel/);
+  assert.doesNotMatch(intelligence, /<AgentConstellationTile/);
+
+  assert.match(panel, /const THEMES: ThemeKey\[\] = \["plain", "sapphire", "aurora"\]/);
+  assert.match(panel, /data-agent-constellation-theme=\{theme\}/);
+  assert.match(panel, /cursor-pointer/);
+  assert.match(panel, /Click to change Agent Constellation theme/);
+  assert.match(panel, /\(current \+ 1\) % THEMES\.length/);
+
+  // Plain is the preserved pre-gradient presentation.
+  assert.match(panel, /border-white\/8 bg-white\/\[0\.025\]/);
+  assert.match(panel, /border-amber-100\/10 bg-\[radial-gradient\(circle_at_20%_0%/);
+  assert.match(panel, /from-cyan-400\/70 via-amber-300\/80 to-emerald-300\/85/);
+
+  // The two optional display skins theme the panel and every contained row together.
+  assert.match(panel, /theme === "sapphire"/);
+  assert.match(panel, /theme === "aurora"/);
+  assert.match(panel, /rowShell\(theme\)/);
+  assert.match(panel, /panelShell\(theme\)/);
+  assert.match(panel, /progressFill\(theme\)/);
 });
 
 test("Kingdom Intelligence renders activity clocks in the browser locale", () => {
