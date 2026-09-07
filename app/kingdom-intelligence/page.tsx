@@ -213,10 +213,18 @@ export default async function KingdomIntelligencePage() {
   const awake = Boolean(data?.available && liveAge !== null && liveAge < 15 * 60);
   const campaign = data?.storageCampaign;
   const systemAgents = data?.systemAgents ?? [];
+  const isConcreteBackgroundProcess = (item: (typeof systemAgents)[number]) =>
+    isActiveProcessState(item.state) &&
+    (
+      item.activeProcess ||
+      item.key === "recovery" ||
+      item.key === "storage"
+    );
+
   const orderedSystemAgents = [...systemAgents].sort((left, right) => {
     const processDelta =
-      Number(right.activeProcess) -
-      Number(left.activeProcess);
+      Number(isConcreteBackgroundProcess(right)) -
+      Number(isConcreteBackgroundProcess(left));
     if (processDelta) return processDelta;
 
     const activeDelta =
@@ -251,11 +259,7 @@ export default async function KingdomIntelligencePage() {
       progressLabel: null as string | null,
     }));
     const activeAgentRows = systemAgents
-      .filter(
-        (item) =>
-          item.activeProcess &&
-          isActiveProcessState(item.state),
-      )
+      .filter(isConcreteBackgroundProcess)
       .map((item) => ({
         key: "agent-" + item.key,
         at:
