@@ -14,6 +14,14 @@ type Props = {
   startedAt?: string | null;
   proof?: string | null;
   current?: boolean;
+  currentStep?: string | null;
+  etaSeconds?: number | null;
+  elapsedSeconds?: number | null;
+  sealedChunks?: number | null;
+  observedBytes?: number | null;
+  expectedBytes?: number | null;
+  throughputBytesPerSecond?: number | null;
+  progressBasis?: string | null;
   liveRecovery?: LiveRecoveryProgress | null;
 };
 
@@ -144,6 +152,14 @@ export default function ProcessDrilldown({
   startedAt,
   proof,
   current = false,
+  currentStep,
+  etaSeconds: snapshotEtaSeconds,
+  elapsedSeconds: snapshotElapsedSeconds,
+  sealedChunks: snapshotSealedChunks,
+  observedBytes: snapshotObservedBytes,
+  expectedBytes: snapshotExpectedBytes,
+  throughputBytesPerSecond: snapshotThroughput,
+  progressBasis: snapshotProgressBasis,
   liveRecovery,
 }: Props) {
   const [now, setNow] = useState(Date.now());
@@ -180,21 +196,49 @@ export default function ProcessDrilldown({
   const elapsedSeconds = Number.isFinite(startedMs)
     ? Math.max(0, Math.round((now - startedMs) / 1000))
     : liveRecoveryActive
-      ? liveRecovery?.elapsedSeconds ?? null
-      : null;
+      ? liveRecovery?.elapsedSeconds ?? snapshotElapsedSeconds ?? null
+      : snapshotElapsedSeconds ?? null;
 
   const etaSeconds =
     liveRecoveryActive && typeof liveRecovery?.etaSeconds === "number"
       ? liveRecovery.etaSeconds
-      : null;
+      : snapshotEtaSeconds ?? null;
+
+  const detailCurrentStep =
+    liveRecoveryActive
+      ? liveRecovery?.currentClass ?? currentStep
+      : currentStep;
+  const detailSealedChunks =
+    liveRecoveryActive
+      ? liveRecovery?.sealedChunks ?? snapshotSealedChunks
+      : snapshotSealedChunks;
+  const detailObservedBytes =
+    liveRecoveryActive
+      ? liveRecovery?.observedBytes ?? snapshotObservedBytes
+      : snapshotObservedBytes;
+  const detailExpectedBytes =
+    liveRecoveryActive
+      ? liveRecovery?.expectedBytes ?? snapshotExpectedBytes
+      : snapshotExpectedBytes;
+  const detailThroughput =
+    liveRecoveryActive
+      ? liveRecovery?.throughputBytesPerSecond ?? snapshotThroughput
+      : snapshotThroughput;
+  const detailProgressBasis =
+    liveRecoveryActive
+      ? liveRecovery?.progressBasis ?? snapshotProgressBasis
+      : snapshotProgressBasis;
 
   const progressCopy = useMemo(() => {
     if (effectiveProgress === null) return "No percentage is proven yet.";
     if (liveRecoveryActive) {
       return "Estimated from sealed and active Recovery chunk bytes. The remote source-size estimate is cached, so the 5-second browser poll stays light.";
     }
+    if (detailProgressBasis) {
+      return `Measured from ${detailProgressBasis}.`;
+    }
     return "This percentage comes from the latest Kingdom Intelligence snapshot.";
-  }, [effectiveProgress, liveRecoveryActive]);
+  }, [effectiveProgress, liveRecoveryActive, detailProgressBasis]);
 
   return (
     <div className="mt-3 rounded-xl border border-white/8 bg-black/20 p-3 text-left">
@@ -256,14 +300,17 @@ export default function ProcessDrilldown({
         </div>
       </div>
 
-      {liveRecoveryActive ? (
+      {detailCurrentStep ||
+      detailSealedChunks !== null ||
+      detailObservedBytes !== null ||
+      detailThroughput !== null ? (
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div className="rounded-lg border border-cyan-200/8 bg-cyan-300/[0.025] p-2.5">
             <div className="text-[8px] uppercase tracking-[0.18em] text-slate-600">
               Current step
             </div>
             <div className="mt-1 text-[11px] font-semibold text-cyan-100/80">
-              {liveRecovery.currentClass ?? "Recovery capture"}
+              {detailCurrentStep ?? "Active process"}
             </div>
           </div>
 
@@ -272,7 +319,7 @@ export default function ProcessDrilldown({
               Sealed chunks
             </div>
             <div className="mt-1 text-[11px] font-semibold text-cyan-100/80">
-              {liveRecovery.sealedChunks ?? "—"}
+              {detailSealedChunks ?? "—"}
             </div>
           </div>
 
@@ -281,7 +328,7 @@ export default function ProcessDrilldown({
               Captured
             </div>
             <div className="mt-1 text-[11px] font-semibold text-cyan-100/80">
-              {friendlyBytes(liveRecovery.observedBytes)}
+              {friendlyBytes(detailObservedBytes)}
             </div>
           </div>
 
@@ -290,7 +337,7 @@ export default function ProcessDrilldown({
               Current pace
             </div>
             <div className="mt-1 text-[11px] font-semibold text-cyan-100/80">
-              {friendlyRate(liveRecovery.throughputBytesPerSecond)}
+              {friendlyRate(detailThroughput)}
             </div>
           </div>
         </div>
@@ -305,6 +352,11 @@ export default function ProcessDrilldown({
           {progressLabel ? `${progressLabel} · ` : ""}
           {progressCopy}
         </p>
+        {detailExpectedBytes !== null && detailExpectedBytes !== undefined ? (
+          <p className="mt-1 text-[10px] leading-4 text-slate-700">
+            expected {friendlyBytes(detailExpectedBytes)}
+          </p>
+        ) : null}
         {proof ? (
           <p className="mt-1 font-mono text-[9px] text-slate-700">
             proof {proof}
