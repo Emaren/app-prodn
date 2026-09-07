@@ -363,6 +363,15 @@ KINGDOM INTELLIGENCE / HYGIENE
       five-class drill ends at ORDINARY_RESTORE_VERIFIED while Wolo settlement,
       consensus recovery, key custody and final schema-2 proof remain open.
 
+  aoe2war recovery campaign restore-pause [CAMPAIGN]
+      Request a durable pause between restore classes. The active class finishes
+      cleanly; a separate marker prevents stale controller state from erasing the
+      request.
+
+  aoe2war recovery campaign restore-resume [CAMPAIGN]
+      Resume a paused or safely interrupted restore drill. Refuses ambiguity if
+      the interrupted class already produced an immutable restore proof.
+
 REPLAY TRUTH
 
   aoe2war truth status
