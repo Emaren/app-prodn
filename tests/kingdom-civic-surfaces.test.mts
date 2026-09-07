@@ -21,6 +21,7 @@ import {
   normalizeOracleTerminalResult,
   oracleNextAllocatedMarks,
   oraclePoolProbabilityBps,
+  oracleProbabilityHistoryFromEvents,
 } from "../lib/oracle.ts";
 
 const stakingWallet = "wolo1staking000000000000000000000000000000000";
@@ -121,6 +122,67 @@ test("Oracle probability and the global Mark allowance remain deterministic", ()
     }),
     1_000,
   );
+});
+
+
+
+test("Oracle probability history aggregates net user position changes instead of counting transactions", () => {
+  const history = oracleProbabilityHistoryFromEvents({
+    seedYes: 500,
+    seedNo: 500,
+    createdAt: "2026-09-01T00:00:00.000Z",
+    events: [
+      {
+        eventType: "position_opened",
+        createdAt: "2026-09-01T01:00:00.000Z",
+        metadata: {
+          side: "yes",
+          amountMarks: 100,
+          previousSide: null,
+          previousAmountMarks: null,
+        },
+      },
+      {
+        eventType: "position_opened",
+        createdAt: "2026-09-01T02:00:00.000Z",
+        metadata: {
+          side: "no",
+          amountMarks: 200,
+          previousSide: null,
+          previousAmountMarks: null,
+        },
+      },
+      {
+        eventType: "position_updated",
+        createdAt: "2026-09-01T03:00:00.000Z",
+        metadata: {
+          side: "no",
+          amountMarks: 150,
+          previousSide: "yes",
+          previousAmountMarks: 100,
+        },
+      },
+      {
+        eventType: "position_cleared",
+        createdAt: "2026-09-01T04:00:00.000Z",
+        metadata: {
+          previousSide: "no",
+          previousAmountMarks: 150,
+        },
+      },
+    ],
+  });
+
+  assert.deepEqual(
+    history.map((point) => point.yesProbabilityBps),
+    [5000, 5455, 4615, 3704, 4167],
+  );
+  assert.deepEqual(history.at(-1), {
+    at: "2026-09-01T04:00:00.000Z",
+    yesProbabilityBps: 4167,
+    yesWeight: 500,
+    noWeight: 700,
+  });
 });
 
 test("Oracle terminal result truth is exact and rejects ambiguous lifecycle data", () => {

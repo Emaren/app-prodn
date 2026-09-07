@@ -25,6 +25,8 @@ import {
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import OracleMarketDetail from "@/components/oracle/OracleMarketDetail";
+import OraclePremiumFloor from "@/components/oracle/OraclePremiumFloor";
+import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import PageWidthSettingsBar from "@/components/tile-view/PageWidthSettingsBar";
 import { useUserAuth } from "@/context/UserAuthContext";
 import type {
@@ -123,6 +125,7 @@ function proposalDefaults(generatedAt: string) {
 
 export default function OracleClient({ initialSnapshot, focusSlug }: OracleClientProps) {
   const { uid, loading: authLoading, loginWithSteam } = useUserAuth();
+  const { viewMode } = useTileViewPreference("oracle");
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -220,12 +223,20 @@ export default function OracleClient({ initialSnapshot, focusSlug }: OracleClien
           onSetStatus={setMarketStatus}
           onSignIn={() => loginWithSteam(`/oracle/${encodeURIComponent(focusedMarket.slug)}`)}
         />
-      ) : (
+      ) : viewMode === "basic" ? (
         <OracleMarketFloor
           snapshot={snapshot}
           busy={busy}
           onMutate={mutate}
           onPlacePosition={placePosition}
+          onSignIn={() => loginWithSteam("/oracle")}
+        />
+      ) : (
+        <OraclePremiumFloor
+          snapshot={snapshot}
+          busy={busy}
+          viewMode={viewMode}
+          onMutate={mutate}
           onSignIn={() => loginWithSteam("/oracle")}
         />
       )}

@@ -74,6 +74,13 @@ export type OracleEventView = {
   actorLabel: string | null;
 };
 
+export type OracleProbabilityPoint = {
+  at: string;
+  yesProbabilityBps: number;
+  yesWeight: number;
+  noWeight: number;
+};
+
 export type OraclePositionView = {
   side: OracleSide;
   amountMarks: number;
@@ -115,6 +122,7 @@ export type OracleMarketView = {
   placedMarks: number;
   uniqueForecasters: number;
   yesProbabilityBps: number;
+  probabilityHistory: OracleProbabilityPoint[];
   createdByLabel: string;
   createdAt: string;
   updatedAt: string;
@@ -318,6 +326,114 @@ function slugifyQuestion(question: string, publicId: string) {
 export function oraclePoolProbabilityBps(yesMarks: number, noMarks: number) {
   const total = yesMarks + noMarks;
   return total > 0 ? Math.round((yesMarks / total) * 10_000) : 5_000;
+}
+
+
+type OraclePositionHistoryEvent = {
+  eventType: string;
+  metadata: unknown;
+  createdAt: Date | string;
+};
+
+function oracleEventMetadataRecord(metadata: unknown): Record<string, unknown> | null {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+  return metadata as Record<string, unknown>;
+}
+
+function oracleMetadataAmount(
+  metadata: Record<string, unknown>,
+  key: "amountMarks" | "previousAmountMarks",
+) {
+  const value = metadata[key];
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+    ? value
+    : null;
+}
+
+function oracleMetadataSide(
+  metadata: Record<string, unknown>,
+  key: "side" | "previousSide",
+): OracleSide | null {
+  const value = metadata[key];
+  return value === "yes" || value === "no" ? value : null;
+}
+
+function compactOracleProbabilityHistory(
+  points: OracleProbabilityPoint[],
+  maximum = 120,
+) {
+  if (points.length <= maximum) return points;
+  const output: OracleProbabilityPoint[] = [points[0]];
+  const interior = points.length - 2;
+  const slots = maximum - 2;
+  const stride = interior / Math.max(1, slots);
+  for (let slot = 0; slot < slots; slot += 1) {
+    const index = 1 + Math.min(interior - 1, Math.floor(slot * stride));
+    const point = points[index];
+    if (point && output[output.length - 1] !== point) output.push(point);
+  }
+  const last = points[points.length - 1];
+  if (output[output.length - 1] !== last) output.push(last);
+  return output;
+}
+
+export function oracleProbabilityHistoryFromEvents(input: {
+  seedYes: number;
+  seedNo: number;
+  createdAt: Date | string;
+  events: OraclePositionHistoryEvent[];
+}): OracleProbabilityPoint[] {
+  let yesWeight = Math.max(0, Math.trunc(input.seedYes));
+  let noWeight = Math.max(0, Math.trunc(input.seedNo));
+
+  const point = (at: Date | string): OracleProbabilityPoint => ({
+    at: new Date(at).toISOString(),
+    yesProbabilityBps: oraclePoolProbabilityBps(yesWeight, noWeight),
+    yesWeight,
+    noWeight,
+  });
+
+  const points = [point(input.createdAt)];
+  const ordered = [...input.events].sort((left, right) => {
+    const timeDelta =
+      new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+    return timeDelta;
+  });
+
+  for (const event of ordered) {
+    const metadata = oracleEventMetadataRecord(event.metadata);
+    if (!metadata) continue;
+
+    const previousSide = oracleMetadataSide(metadata, "previousSide");
+    const previousAmount = oracleMetadataAmount(metadata, "previousAmountMarks");
+    const side = oracleMetadataSide(metadata, "side");
+    const amount = oracleMetadataAmount(metadata, "amountMarks");
+
+    if (event.eventType === "position_cleared") {
+      if (!previousSide || previousAmount === null) continue;
+      if (previousSide === "yes") yesWeight = Math.max(0, yesWeight - previousAmount);
+      else noWeight = Math.max(0, noWeight - previousAmount);
+    } else if (
+      event.eventType === "position_opened" ||
+      event.eventType === "position_updated"
+    ) {
+      if (previousSide && previousAmount !== null) {
+        if (previousSide === "yes") yesWeight = Math.max(0, yesWeight - previousAmount);
+        else noWeight = Math.max(0, noWeight - previousAmount);
+      }
+      if (!side || amount === null) continue;
+      if (side === "yes") yesWeight += amount;
+      else noWeight += amount;
+    } else {
+      continue;
+    }
+
+    points.push(point(event.createdAt));
+  }
+
+  return compactOracleProbabilityHistory(points);
 }
 
 export function oracleNextAllocatedMarks(input: {
@@ -574,6 +690,32 @@ export async function loadOracleSnapshot(
       }),
     ]);
 
+  const positionHistoryEvents =
+    markets.length === 0
+      ? []
+      : await prisma.oracleEvent.findMany({
+          where: {
+            marketId: { in: markets.map((market) => market.id) },
+            eventType: {
+              in: ["position_opened", "position_updated", "position_cleared"],
+            },
+          },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          select: {
+            marketId: true,
+            eventType: true,
+            metadata: true,
+            createdAt: true,
+          },
+        });
+  const positionHistoryByMarket = new Map<number, typeof positionHistoryEvents>();
+  for (const event of positionHistoryEvents) {
+    if (event.marketId === null) continue;
+    const existing = positionHistoryByMarket.get(event.marketId) ?? [];
+    existing.push(event);
+    positionHistoryByMarket.set(event.marketId, existing);
+  }
+
   const allocated = allocatedAggregate._sum.amountMarks ?? 0;
   const marketViews = markets.map<OracleMarketView>((market) => {
     const yesPlaced = market.positions.reduce(
@@ -623,6 +765,12 @@ export async function loadOracleSnapshot(
       placedMarks: yesPlaced + noPlaced,
       uniqueForecasters: market.positions.length,
       yesProbabilityBps: oraclePoolProbabilityBps(yesMarks, noMarks),
+      probabilityHistory: oracleProbabilityHistoryFromEvents({
+        seedYes: market.seedYesMarks,
+        seedNo: market.seedNoMarks,
+        createdAt: market.createdAt,
+        events: positionHistoryByMarket.get(market.id) ?? [],
+      }),
       createdByLabel: market.createdByLabel,
       createdAt: market.createdAt.toISOString(),
       updatedAt: market.updatedAt.toISOString(),
