@@ -292,7 +292,7 @@ export default function ProcessDrilldown({
 
         <div className="rounded-lg border border-white/6 bg-white/[0.02] p-2.5">
           <div className="text-[8px] uppercase tracking-[0.18em] text-slate-600">
-            ETA
+            ETA (rough)
           </div>
           <div className="mt-1 text-xs font-semibold text-slate-200">
             {etaSeconds !== null ? friendlyDuration(etaSeconds) : "Learning…"}
@@ -312,6 +312,12 @@ export default function ProcessDrilldown({
             <div className="mt-1 text-[11px] font-semibold text-cyan-100/80">
               {detailCurrentStep ?? "Active process"}
             </div>
+            {liveRecoveryActive &&
+            typeof liveRecovery?.classPercent === "number" ? (
+              <div className="mt-1 text-[9px] text-cyan-100/40">
+                step {liveRecovery.classPercent.toFixed(1)}%
+              </div>
+            ) : null}
           </div>
 
           <div className="rounded-lg border border-cyan-200/8 bg-cyan-300/[0.025] p-2.5">
