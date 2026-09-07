@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "performance-operating-contract"
-reviewed_at: "2026-09-05"
+reviewed_at: "2026-09-06"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -47,6 +47,30 @@ benchmarks use the versioned 77-route V2 public cohort in
 plus stable representatives of dynamic route families. The frozen August 13
 66-route cohort remains historical comparison evidence only; it is not silently
 mixed with the V2 cohort.
+
+## Browser Ready hot-path discipline
+
+`Ready` measures the first authoritative state in which the marked primary
+interface is usable. It must not be delayed by secondary evidence that can
+continue resolving after the page is already operable.
+
+For the WOLO landing page, chain-id refresh, stored Keplr restoration, and
+balance proof are secondary live evidence. They may update the wallet panels
+after first paint; they do not define whether the primary WOLO interface can be
+used. The authoritative marker therefore waits only for the local presentation
+preference to settle, avoiding an 8-second wallet-restore timeout from becoming
+a fabricated page-load cost.
+
+Server-rendered routes must also overlap independent evidence families when
+truth semantics allow it. The staking page's Postgres economy/profile work and
+its Wolo trust-wallet/chain work are independent. Start both families
+concurrently and await them together; never pay one complete upstream wait and
+then begin the other.
+
+These optimizations do not permit truth weakening. A secondary wallet value may
+remain pending/error, and a database result may still fall back according to
+its existing contract. Performance work changes scheduling and readiness
+boundaries, not financial or chain authority.
 
 ## Source page and asset inventory
 
