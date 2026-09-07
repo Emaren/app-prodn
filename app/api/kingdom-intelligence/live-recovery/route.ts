@@ -111,9 +111,11 @@ async function legacyExpectedBytes(
   if (legacyEstimatePromise) return legacyEstimatePromise;
 
   legacyEstimatePromise = (async () => {
+    const script = path.join(root, "scripts", "aoe2_recovery.py");
+    let stdout = "";
+
     try {
-      const script = path.join(root, "scripts", "aoe2_recovery.py");
-      const { stdout } = await execFileAsync(
+      const result = await execFileAsync(
         "/usr/bin/python3",
         [script, "campaign", "plan", "--json"],
         {
@@ -123,7 +125,26 @@ async function legacyExpectedBytes(
           maxBuffer: 4 * 1024 * 1024,
         },
       );
+      stdout = result.stdout;
+    } catch (error) {
+      const failed = error as {
+        stdout?: string | Buffer;
+      };
 
+      stdout =
+        typeof failed.stdout === "string"
+          ? failed.stdout
+          : failed.stdout
+            ? failed.stdout.toString("utf8")
+            : "";
+
+      // campaign plan intentionally exits non-zero when full-campaign
+      // capacity is not ready. Its JSON inventory is still valid
+      // read-only evidence, so only fail when no JSON was produced.
+      if (!stdout.trim()) return null;
+    }
+
+    try {
       const payload = JSON.parse(stdout) as {
         stages?: Array<{
           class?: string;
@@ -138,19 +159,16 @@ async function legacyExpectedBytes(
       const expectedBytes =
         Number.isFinite(bytes) && bytes > 0 ? bytes : null;
 
-      legacyEstimateCache = {
-        key,
-        at: Date.now(),
-        expectedBytes,
-      };
+      if (expectedBytes !== null) {
+        legacyEstimateCache = {
+          key,
+          at: Date.now(),
+          expectedBytes,
+        };
+      }
 
       return expectedBytes;
     } catch {
-      legacyEstimateCache = {
-        key,
-        at: Date.now(),
-        expectedBytes: null,
-      };
       return null;
     }
   })();
