@@ -20,6 +20,38 @@ export type LiveRecoveryProgress = {
   sampledAt?: string;
 };
 
+export function formatLiveRecoveryProgressLabel(
+  value: LiveRecoveryProgress | null,
+  fallback: string | null,
+) {
+  if (!value?.available) return fallback;
+
+  const parts: string[] = [];
+
+  if (
+    typeof value.completedClasses === "number" &&
+    typeof value.totalClasses === "number" &&
+    value.totalClasses > 0
+  ) {
+    parts.push(`${value.completedClasses}/${value.totalClasses} classes`);
+  }
+
+  if (typeof value.sealedChunks === "number") {
+    parts.push(`${value.sealedChunks} chunks`);
+  }
+
+  if (
+    typeof value.observedBytes === "number" &&
+    Number.isFinite(value.observedBytes)
+  ) {
+    parts.push(
+      `${(value.observedBytes / 1024 ** 3).toFixed(2)} GiB`,
+    );
+  }
+
+  return parts.length ? parts.join(" · ") : fallback;
+}
+
 export function useLiveRecoveryProgress(enabled = true) {
   const [value, setValue] = useState<LiveRecoveryProgress | null>(null);
 
