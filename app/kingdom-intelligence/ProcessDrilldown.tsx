@@ -167,7 +167,7 @@ function Metric({
   accent?: boolean;
 }) {
   return (
-    <div className="min-w-0 border-l border-white/8 pl-3 first:border-l-0 first:pl-0">
+    <div className="min-w-0">
       <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-600">
         {label}
       </div>
@@ -327,6 +327,12 @@ export default function ProcessDrilldown({
               <div className="mt-1 truncate text-sm font-semibold text-slate-100">
                 {detailCurrentStep ?? summary}
               </div>
+              {liveRecoveryActive &&
+              typeof liveRecovery?.classPercent === "number" ? (
+                <div className="mt-1 text-[9px] text-slate-600">
+                  current step {liveRecovery.classPercent.toFixed(1)}%
+                </div>
+              ) : null}
             </div>
 
             <div className="shrink-0 text-right">
@@ -405,7 +411,7 @@ export default function ProcessDrilldown({
   return (
     <div
       data-process-drilldown-kind="agent"
-      className="mt-3 rounded-xl border border-white/8 bg-black/16 px-4 py-3 text-left"
+      className="mt-3 rounded-xl border border-white/8 bg-black/[0.16] px-4 py-3 text-left"
     >
       <div className="flex items-center justify-between gap-3">
         <div>
