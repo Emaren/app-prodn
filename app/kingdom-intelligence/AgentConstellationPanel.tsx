@@ -13,6 +13,14 @@ type AgentRow = {
   progress: number | null;
   progressLabel: string | null;
   activeSince: string | null;
+  currentStep: string | null;
+  etaSeconds: number | null;
+  elapsedSeconds: number | null;
+  sealedChunks: number | null;
+  observedBytes: number | null;
+  expectedBytes: number | null;
+  throughputBytesPerSecond: number | null;
+  progressBasis: string | null;
   beaconClass: string;
   statusToneClass: string;
 };
@@ -197,6 +205,16 @@ export default function AgentConstellationPanel({
                   progressLabel={agent.progressLabel}
                   startedAt={agent.activeSince}
                   current={agent.state === "ACTIVE"}
+                  currentStep={agent.currentStep}
+                  etaSeconds={agent.etaSeconds}
+                  elapsedSeconds={agent.elapsedSeconds}
+                  sealedChunks={agent.sealedChunks}
+                  observedBytes={agent.observedBytes}
+                  expectedBytes={agent.expectedBytes}
+                  throughputBytesPerSecond={
+                    agent.throughputBytesPerSecond
+                  }
+                  progressBasis={agent.progressBasis}
                   liveRecovery={recoveryLive ? liveRecovery : null}
                 />
               </div>
