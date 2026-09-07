@@ -8,6 +8,8 @@ const NO_STORE = {
   "Cache-Control": "no-store, max-age=0",
 };
 
+const CHUNK_PLAINTEXT_LIMIT = 256 * 1024 * 1024;
+
 function canonicalRoot() {
   const explicit = process.env.AOE2WAR_CANONICAL_APP_ROOT?.trim();
   if (explicit) return path.resolve(explicit);
