@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  Bot,
   BrainCircuit,
   CheckCircle2,
   Cpu,
@@ -11,10 +12,13 @@ import {
   HardDrive,
   History,
   Radar,
+  Radio,
   RefreshCw,
+  ScrollText,
   ShieldCheck,
   Sparkles,
   Swords,
+  Trophy,
   Workflow,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -56,6 +60,68 @@ function Stat({ label, value, detail }: { label: string; value: string; detail: 
       <div className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-500">{label}</div>
       <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
       <div className="mt-1 text-xs leading-5 text-slate-400">{detail}</div>
+    </div>
+  );
+}
+
+function beacon(state: string | null | undefined) {
+  const value = String(state || "").toUpperCase();
+  if (value === "ACTIVE") {
+    return "bg-cyan-300 shadow-[0_0_18px_rgba(103,232,249,.8)] animate-pulse";
+  }
+  if (["HEALTHY", "PASS", "COMPLETE", "CERTIFIED"].includes(value)) {
+    return "bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,.5)]";
+  }
+  if (["FAILED", "FAIL", "BLOCKED", "UNSAFE"].includes(value)) {
+    return "bg-rose-400 shadow-[0_0_14px_rgba(251,113,133,.55)]";
+  }
+  if (["ATTENTION", "WAITING", "WATCH"].includes(value)) {
+    return "bg-amber-300 shadow-[0_0_14px_rgba(252,211,77,.5)] animate-pulse";
+  }
+  return "bg-slate-600";
+}
+
+function AgentLine({
+  label,
+  state,
+  summary,
+  progress,
+  progressLabel,
+}: {
+  label: string;
+  state: string;
+  summary: string;
+  progress: number | null;
+  progressLabel: string | null;
+}) {
+  return (
+    <div className="group rounded-2xl border border-white/8 bg-white/[0.025] px-4 py-3 transition hover:border-cyan-200/15 hover:bg-cyan-300/[0.025]">
+      <div className="flex items-start gap-3">
+        <span className={"mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full " + beacon(state)} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm font-semibold text-white">{label}</div>
+            <span className={"rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] " + tone(state)}>
+              {state}
+            </span>
+          </div>
+          <div className="mt-1 text-xs leading-5 text-slate-400">{summary}</div>
+          {progress !== null ? (
+            <div className="mt-2">
+              <div className="h-1 overflow-hidden rounded-full bg-white/6">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-cyan-400/70 via-amber-300/80 to-emerald-300/85"
+                  style={{ width: Math.max(0, Math.min(100, progress)) + "%" }}
+                />
+              </div>
+              <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.15em] text-slate-600">
+                <span>{progressLabel ?? "progress"}</span>
+                <span>{progress.toFixed(progress % 1 === 0 ? 0 : 1)}%</span>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -133,6 +199,32 @@ export default function KingdomIntelligencePage() {
 
   const awake = Boolean(data?.available && liveAge !== null && liveAge < 15 * 60);
   const campaign = data?.storageCampaign;
+  const systemAgents = data?.systemAgents ?? [];
+  const activeSystemCount = systemAgents.filter((item) => item.state === "ACTIVE").length;
+  const attentionSystemCount = systemAgents.filter((item) =>
+    ["ATTENTION", "BLOCKED", "FAILED"].includes(item.state)
+  ).length;
+  const nerveFeed = useMemo(() => {
+    const runRows = (data?.liveActivity ?? []).map((item) => ({
+      key: "run-" + (item.id ?? item.requestedAt),
+      at: item.completedAt ?? item.requestedAt,
+      system: item.system,
+      label: item.label,
+      status: item.status,
+      proof: item.id,
+    }));
+    const sourceRows = (data?.recentSourceActivity ?? []).map((item) => ({
+      key: "src-" + item.sha,
+      at: item.createdAt,
+      system: item.system,
+      label: item.title,
+      status: item.status,
+      proof: item.sha,
+    }));
+    return [...runRows, ...sourceRows]
+      .sort((left, right) => new Date(right.at).getTime() - new Date(left.at).getTime())
+      .slice(0, 14);
+  }, [data]);
 
   return (
     <div className="mx-auto w-full max-w-[92rem] space-y-6 pb-16">
@@ -198,11 +290,21 @@ export default function KingdomIntelligencePage() {
         </div>
       ) : null}
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Stat
           label="24h source motion"
           value={numberLabel(data?.activity24h?.sourceCommits)}
-          detail="app-prodn commits in the last 24 hours"
+          detail="sealed app-prodn commits observed"
+        />
+        <Stat
+          label="OS agent array"
+          value={systemAgents.length ? String(systemAgents.length) : "—"}
+          detail="8 operating systems + System Doctor"
+        />
+        <Stat
+          label="Working now"
+          value={String(activeSystemCount)}
+          detail={attentionSystemCount + " system(s) waiting or under attention"}
         />
         <Stat
           label="Certified finishes"
@@ -210,15 +312,149 @@ export default function KingdomIntelligencePage() {
           detail={numberLabel(data?.activity24h?.finishRuns) + " Finish run(s) observed"}
         />
         <Stat
-          label="Active engineering"
-          value={numberLabel(data?.workspace?.activeAgentCount)}
-          detail={numberLabel(data?.workspace?.unmergedCount) + " unmerged workstream(s) preserved"}
-        />
-        <Stat
           label="System doctor"
           value={data?.health?.doctorScore === null || data?.health?.doctorScore === undefined ? "—" : data.health.doctorScore + "/100"}
           detail={(data?.health?.doctorStatus ?? "UNKNOWN") + " · P0 " + (data?.health?.p0 ?? "—") + " · P1 " + (data?.health?.p1 ?? "—")}
         />
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="overflow-hidden rounded-[2rem] border border-cyan-200/10 bg-[#02060c] shadow-[0_24px_90px_rgba(0,0,0,.28)]">
+          <div className="flex items-center justify-between border-b border-white/7 px-5 py-4 sm:px-6">
+            <div className="flex items-center gap-3">
+              <div className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200/10 bg-cyan-300/[0.05]">
+                <Radio className="h-4 w-4 text-cyan-200/80" />
+                <span className={"absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full " + (activeSystemCount ? beacon("ACTIVE") : beacon("IDLE"))} />
+              </div>
+              <div>
+                <div className="text-[9px] font-black uppercase tracking-[0.32em] text-cyan-100/45">
+                  War Pulse · live chronicle
+                </div>
+                <h2 className="mt-1 font-serif text-2xl text-white">The nervous system speaks.</h2>
+              </div>
+            </div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-600">
+              polls every 20s
+            </div>
+          </div>
+
+          <div className="max-h-[34rem] overflow-y-auto px-4 py-3 font-mono text-xs sm:px-5">
+            {nerveFeed.length ? (
+              nerveFeed.map((item) => (
+                <div
+                  key={item.key}
+                  className="grid grid-cols-[9px_62px_minmax(0,1fr)] gap-3 border-b border-white/[0.045] py-3 last:border-0"
+                >
+                  <span className={"mt-1 h-2 w-2 rounded-full " + beacon(item.status === "SUCCEEDED" ? "HEALTHY" : item.status)} />
+                  <span className="text-slate-600">
+                    {new Date(item.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="font-semibold text-cyan-100/80">{item.system}</span>
+                      <span className={tone(item.status) + " rounded-full border px-1.5 py-0.5 text-[8px] font-black tracking-[0.14em]"}>
+                        {item.status}
+                      </span>
+                    </div>
+                    <div className="mt-1 truncate text-slate-300">{item.label}</div>
+                    {item.proof ? (
+                      <div className="mt-1 text-[10px] text-slate-700">proof {item.proof}</div>
+                    ) : null}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="flex min-h-64 flex-col items-center justify-center text-center text-slate-600">
+                <Bot className="mb-3 h-7 w-7" />
+                <div>No proven activity line is available yet.</div>
+                <div className="mt-2 max-w-md text-[11px] leading-5 text-slate-700">
+                  Kingdom Intelligence does not invent an agent heartbeat. Registered work, OS receipts and sealed source events appear here when evidence exists.
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-amber-100/10 bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,.08),transparent_32%),rgba(2,6,23,.82)] p-5 sm:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-[0.32em] text-amber-100/45">
+                Agent constellation
+              </div>
+              <h2 className="mt-2 font-serif text-2xl text-[#f4e5bd]">Eight OS agents. One Doctor.</h2>
+            </div>
+            <Cpu className="h-5 w-5 text-amber-200/60" />
+          </div>
+          <div className="mt-4 space-y-2.5">
+            {systemAgents.map((agent) => (
+              <AgentLine
+                key={agent.key}
+                label={agent.label}
+                state={agent.state}
+                summary={agent.summary}
+                progress={agent.progressPercent}
+                progressLabel={agent.progressLabel}
+              />
+            ))}
+          </div>
+          <div className="mt-4 border-t border-white/6 pt-4 text-[11px] leading-5 text-slate-600">
+            Beacon law: cyan pulse = working · green solid = healthy/closed · amber pulse = waiting/attention · red = failed/blocked · slate = idle.
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-2">
+        <div className="rounded-[2rem] border border-emerald-200/10 bg-[linear-gradient(145deg,rgba(3,20,16,.72),rgba(2,6,23,.9))] p-5 sm:p-6">
+          <div className="flex items-center gap-3">
+            <Trophy className="h-5 w-5 text-emerald-200/70" />
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-[0.32em] text-emerald-100/40">
+                Victory ledger
+              </div>
+              <h2 className="mt-1 font-serif text-2xl text-white">Recent seals in the source forge.</h2>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            {(data?.recentSourceActivity ?? []).slice(0, 8).map((item) => (
+              <div key={item.sha} className="rounded-xl border border-white/7 bg-black/20 px-4 py-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-semibold text-emerald-100/80">{item.system}</span>
+                  <span className="font-mono text-[10px] text-slate-600">{item.sha}</span>
+                </div>
+                <div className="mt-1 text-sm text-slate-300">{item.title}</div>
+              </div>
+            ))}
+            {!data?.recentSourceActivity?.length ? (
+              <div className="py-8 text-center text-sm text-slate-600">No recent source seals published.</div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-violet-200/10 bg-[radial-gradient(circle_at_90%_0%,rgba(139,92,246,.10),transparent_35%),rgba(2,6,23,.86)] p-5 sm:p-6">
+          <div className="flex items-center gap-3">
+            <ScrollText className="h-5 w-5 text-violet-200/70" />
+            <div>
+              <div className="text-[9px] font-black uppercase tracking-[0.32em] text-violet-100/40">
+                Memory vault
+              </div>
+              <h2 className="mt-1 font-serif text-2xl text-white">Lessons that became machine memory.</h2>
+            </div>
+          </div>
+          <div className="mt-4 space-y-2">
+            {(data?.memorySeals ?? []).slice(0, 8).map((item) => (
+              <div key={item.sha} className="flex gap-3 rounded-xl border border-white/7 bg-black/20 px-4 py-3">
+                <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-violet-300 shadow-[0_0_12px_rgba(196,181,253,.45)]" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm text-slate-300">{item.title}</div>
+                  <div className="mt-1 font-mono text-[10px] text-slate-650">memory seal {item.sha}</div>
+                </div>
+              </div>
+            ))}
+            {!data?.memorySeals?.length ? (
+              <div className="py-8 text-center text-sm text-slate-600">No recent Engineering Memory seal published.</div>
+            ) : null}
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
