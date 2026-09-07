@@ -183,17 +183,22 @@ export default function AgentConstellationPanel({
             </div>
 
             {expanded ? (
-              <ProcessDrilldown
-                systemKey={agent.key}
-                system={agent.label}
-                status={agent.state}
-                summary={agent.summary}
-                progress={effectiveProgress}
-                progressLabel={agent.progressLabel}
-                startedAt={agent.activeSince}
-                current={agent.state === "ACTIVE"}
-                liveRecovery={recoveryLive ? liveRecovery : null}
-              />
+              <div
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+              >
+                <ProcessDrilldown
+                  systemKey={agent.key}
+                  system={agent.label}
+                  status={agent.state}
+                  summary={agent.summary}
+                  progress={effectiveProgress}
+                  progressLabel={agent.progressLabel}
+                  startedAt={agent.activeSince}
+                  current={agent.state === "ACTIVE"}
+                  liveRecovery={recoveryLive ? liveRecovery : null}
+                />
+              </div>
             ) : null}
           </div>
           );
