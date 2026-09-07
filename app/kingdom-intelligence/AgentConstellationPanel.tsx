@@ -84,7 +84,7 @@ export default function AgentConstellationPanel({
         }
       }}
       className={
-        "group/constellation relative cursor-pointer overflow-hidden rounded-[2rem] border p-5 transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/35 sm:p-6 " +
+        "group/constellation relative cursor-pointer overflow-hidden rounded-[2rem] border p-5 transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/35 " +
         PANEL_SHELL
       }
     >
@@ -99,7 +99,7 @@ export default function AgentConstellationPanel({
         </div>
       </div>
 
-      <div className="relative z-10 mt-4 space-y-2.5">
+      <div className="relative z-10 mt-3 space-y-2">
         {agents.map((agent) => {
           const expanded = expandedKey === agent.key;
           const recoveryItem = agent.key === "recovery";
@@ -145,7 +145,7 @@ export default function AgentConstellationPanel({
               }
             }}
             className={
-              "cursor-pointer rounded-2xl border px-4 py-3 transition-all duration-500 " +
+              "cursor-pointer rounded-2xl border px-4 py-2.5 transition-all duration-500 " +
               rowShell(theme)
             }
           >
@@ -247,7 +247,7 @@ export default function AgentConstellationPanel({
         })}
       </div>
 
-      <div className="relative z-10 mt-4 border-t border-white/6 pt-4 text-[11px] leading-5 text-slate-600">
+      <div className="relative z-10 mt-3 border-t border-white/6 pt-3 text-[10px] leading-4 text-slate-600">
         Beacon law: cyan pulse = working · green solid = healthy/closed · amber pulse = waiting/attention · red = failed/blocked · slate = idle.
       </div>
     </section>
