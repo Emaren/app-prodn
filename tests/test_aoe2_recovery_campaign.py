@@ -50,6 +50,17 @@ class RecoveryCampaignTests(unittest.TestCase):
         self.assertIn("cold-archives", command)
         self.assertIn("jobs", command)
 
+    def test_cms_encrypt_command_requires_streaming_for_large_payloads(self):
+        command = campaign.cms_encrypt_command(
+            Path("/tmp/recipient.pem"),
+            Path("/tmp/output.cms.partial"),
+        )
+        self.assertIn("-stream", command)
+        self.assertIn("-binary", command)
+        self.assertIn("-aes256", command)
+        self.assertEqual(command[0:3], ["openssl", "cms", "-encrypt"])
+        self.assertEqual(command[-2:], ["-out", "/tmp/output.cms.partial"])
+
     def test_create_state_requires_explicit_ordinary_capture_authorization(self):
         with self.assertRaisesRegex(
             campaign.CampaignError,

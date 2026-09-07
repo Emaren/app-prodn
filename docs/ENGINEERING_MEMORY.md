@@ -875,3 +875,19 @@ maintenance. For a verified before/after performance campaign, current evidence
 identity is the verification After release/build, while the baseline release
 remains historical comparison truth. Preserve both identities and never confuse
 “what the experiment started from” with “what production was just measured.”
+
+## 2026-09-06 — Recovery CMS must be truly streaming
+
+The first ordinary Recovery campaign reached `RUNNING_CAPTURE` for
+`managed_user_media`, but its CMS command used `openssl cms -encrypt` without
+`-stream`. OpenSSL documents streaming as off by default for this operation;
+without it, large payloads may require whole-message buffering before output.
+That is unacceptable for parser/replay recovery classes measured in many GiB.
+
+Durable rule: every ordinary Recovery CMS encryption command must include
+`-stream`, and tests must assert that invariant. The resulting CMS encoding is
+indefinite-length BER while remaining parseable/decryptable by OpenSSL's CMS
+reader. Capture proofs record streaming and encoding explicitly. If this defect
+is discovered during a live campaign, request a pause and let the current class
+finish; never kill a class mid-stream unless accepting that the campaign must be
+superseded because partial artifacts cannot be resumed safely.
