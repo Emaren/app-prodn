@@ -1598,7 +1598,7 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-04",
+      "reviewed_at": "2026-09-06",
       "sensitivity": "restricted",
       "sha256": "3be27a5de1817b7db642953e233bd824375c0ab23ce8d4dc0d0e4f57897aff26",
       "source_of_truth": "git",
