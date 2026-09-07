@@ -188,6 +188,37 @@ class KingdomIntelligenceTests(unittest.TestCase):
                     "certified_finishes": 2,
                 },
             ),
+            patch.object(
+                MODULE,
+                "recovery_campaign_summary",
+                return_value={"status": "NONE"},
+            ),
+            patch.object(
+                MODULE,
+                "recent_source_activity",
+                return_value=[
+                    {
+                        "sha": "d" * 40,
+                        "created_at": "2026-09-05T20:30:00Z",
+                        "title": "Seal Recovery OS proof",
+                        "system": "Recovery OS",
+                        "file_count": 2,
+                        "status": "SUCCEEDED",
+                    }
+                ],
+            ),
+            patch.object(
+                MODULE,
+                "memory_seals",
+                return_value=[
+                    {
+                        "sha": "e" * 40,
+                        "created_at": "2026-09-05T20:35:00Z",
+                        "title": "Record recovery invariant",
+                        "status": "SEALED",
+                    }
+                ],
+            ),
         ):
             payload = MODULE.collect()
 
@@ -202,8 +233,91 @@ class KingdomIntelligenceTests(unittest.TestCase):
         self.assertEqual(payload["storage_campaign"]["status"], "NONE")
         self.assertEqual(payload["activity_24h"]["source_commits"], 42)
         self.assertEqual(payload["activity_24h"]["certified_finishes"], 2)
+        self.assertEqual(len(payload["system_agents"]), 9)
+        self.assertEqual(payload["system_agents"][0]["label"], "Release OS")
+        self.assertEqual(payload["recent_source_activity"][0]["system"], "Recovery OS")
+        self.assertEqual(payload["memory_seals"][0]["status"], "SEALED")
         self.assertTrue(
             all(row["status"] == "PASS" for row in payload["invariants"])
+        )
+
+    def test_agent_roster_is_eight_os_agents_plus_doctor(self):
+        source = MODULE.source_summary(release())
+        perf = performance()
+        perf["matches_current_release"] = True
+        current_truth = truth()
+        current_truth["matches_current_release"] = True
+        current_council = council()
+        current_council["workspace"] = {
+            "canonical_drift_count": 0,
+            "active_agent_count": 1,
+            "unmerged_count": 1,
+            "agents": [
+                {
+                    "agent": "Codex",
+                    "purpose": "Recovery backend",
+                    "branch": "feature/recovery",
+                    "classification": "AGENT_ACTIVE_UNMERGED",
+                    "head": "f" * 40,
+                }
+            ],
+        }
+        agents = MODULE.system_agent_rows(
+            source=source,
+            council=current_council,
+            truth=current_truth,
+            performance=perf,
+            control=control(),
+            storage_campaign={"status": "NONE"},
+            recovery_campaign={
+                "status": "RUNNING_CAPTURE",
+                "completed_classes": ["managed_user_media"],
+                "ordinary_classes": [
+                    "managed_user_media",
+                    "legacy_direct_message_attachments",
+                    "radio_wolo_private_media",
+                    "parser_evidence_corpus",
+                    "raw_replay_archive",
+                ],
+            },
+        )
+        self.assertEqual(len(agents), 9)
+        self.assertEqual(
+            [item["label"] for item in agents[:-1]],
+            [
+                "Release OS",
+                "Documentation OS",
+                "Storage OS",
+                "Host OS",
+                "Recovery OS",
+                "Workspace OS",
+                "Speed OS",
+                "Replay Truth OS",
+            ],
+        )
+        recovery_agent = next(item for item in agents if item["key"] == "recovery")
+        self.assertEqual(recovery_agent["state"], "ACTIVE")
+        self.assertEqual(recovery_agent["progress_percent"], 20.0)
+        self.assertEqual(agents[-1]["label"], "System Doctor")
+
+        external = MODULE.external_agent_rows(current_council)
+        self.assertEqual(external[0]["name"], "Codex")
+        self.assertEqual(external[0]["state"], "ACTIVE")
+
+    def test_source_system_classification_is_deterministic(self):
+        self.assertEqual(
+            MODULE.classify_source_system(
+                ["scripts/aoe2_recovery.py", "docs/EVIDENCE_VAULT.md"],
+                "Harden recovery proof",
+            ),
+            "Recovery OS",
+        )
+        self.assertEqual(
+            MODULE.classify_source_system(
+                ["scripts/aoe2_recovery.py", "scripts/aoe2_storage.py"],
+                "Cross-system contract",
+            ),
+            "Kingdom Intelligence",
         )
 
     def test_attention_invariant_prevents_false_ready(self):
