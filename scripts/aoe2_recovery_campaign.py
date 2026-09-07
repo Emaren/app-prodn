@@ -685,6 +685,47 @@ def restore_log_path(campaign_id: str) -> Path:
     return RESTORE_DIR / f"{campaign_id}.log"
 
 
+def restore_pause_path(campaign_id: str) -> Path:
+    restore_state_path(campaign_id)
+    return RESTORE_DIR / f"{campaign_id}.pause"
+
+
+def restore_pause_marker(campaign_id: str) -> dict[str, Any] | None:
+    path = restore_pause_path(campaign_id)
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CampaignError(
+            f"invalid restore pause marker: {path}"
+        ) from exc
+    if (
+        payload.get("schema") != 1
+        or payload.get("kind") != "aoe2war-recovery-restore-pause-request"
+        or payload.get("campaign_id") != campaign_id
+    ):
+        raise CampaignError(f"invalid restore pause marker: {path}")
+    return payload
+
+
+def write_restore_pause_marker(campaign_id: str) -> dict[str, Any]:
+    payload = {
+        "schema": 1,
+        "kind": "aoe2war-recovery-restore-pause-request",
+        "campaign_id": campaign_id,
+        "requested_at": utc_now(),
+    }
+    atomic_write(restore_pause_path(campaign_id), payload)
+    return payload
+
+
+def clear_restore_pause_marker(campaign_id: str) -> None:
+    path = restore_pause_path(campaign_id)
+    if path.exists():
+        path.unlink()
+
+
 def load_restore_state(campaign_id: str) -> dict[str, Any]:
     path = restore_state_path(campaign_id)
     if not path.is_file():
@@ -1157,6 +1198,8 @@ def create_restore_state(
         "current_class": None,
         "current_class_started_at": None,
         "pid": None,
+        "pause_requested": False,
+        "pause_requested_at": None,
         "history": [],
         "last_error": None,
         "completion_reason": None,
@@ -1249,6 +1292,19 @@ def run_restore(campaign_id: str) -> int:
 
             state = load_restore_state(campaign_id)
             validate_restore_source(state)
+            pause = restore_pause_marker(campaign_id)
+            if pause is not None:
+                state["pause_requested"] = True
+                state["pause_requested_at"] = pause.get("requested_at")
+                state["status"] = "PAUSED"
+                state["completion_reason"] = "OPERATOR_PAUSE_BETWEEN_RESTORE_CLASSES"
+                state["current_class"] = None
+                state["current_class_started_at"] = None
+                state["pid"] = None
+                state["finished_at"] = utc_now()
+                save_restore_state(state)
+                return 0
+
             state["status"] = "RUNNING_RESTORE"
             state["current_class"] = class_name
             state["current_class_started_at"] = utc_now()
@@ -1393,9 +1449,59 @@ def restore_status_payload(campaign_id: str | None) -> dict[str, Any]:
             "status": "NONE",
         }
     state = load_restore_state(selected)
+    pause = restore_pause_marker(selected)
+    state["pause_requested"] = pause is not None
+    state["pause_requested_at"] = (
+        pause.get("requested_at") if pause is not None else None
+    )
     pid = state.get("pid")
     state["process_alive"] = process_alive(pid if isinstance(pid, int) else None)
     return state
+
+
+def request_restore_pause(campaign_id: str) -> dict[str, Any]:
+    state = load_restore_state(campaign_id)
+    if state.get("status") in {"COMPLETE", "FAILED", "PAUSED"}:
+        return state
+    pause = write_restore_pause_marker(campaign_id)
+    state["pause_requested"] = True
+    state["pause_requested_at"] = pause["requested_at"]
+    save_restore_state(state)
+    return state
+
+
+def resume_restore(campaign_id: str) -> dict[str, Any]:
+    state = load_restore_state(campaign_id)
+    if state.get("status") == "COMPLETE":
+        raise CampaignError("completed restore drill cannot be resumed")
+    pid = state.get("pid")
+    if process_alive(pid if isinstance(pid, int) else None):
+        raise CampaignError(f"restore drill is still active with pid={pid}")
+
+    current = state.get("current_class")
+    if isinstance(current, str) and current:
+        proof_path = (
+            Path(str(state["bundle_root"])).expanduser().resolve()
+            / "restore-proofs"
+            / f"{current}.json"
+        )
+        if proof_path.exists():
+            raise CampaignError(
+                "interrupted restore class already has an immutable proof; "
+                "inspect state before resume"
+            )
+
+    validate_restore_source(state)
+    clear_restore_pause_marker(campaign_id)
+    state["pause_requested"] = False
+    state["pause_requested_at"] = None
+    state["status"] = "RESUME_REQUESTED"
+    state["current_class"] = None
+    state["current_class_started_at"] = None
+    state["pid"] = None
+    save_restore_state(state)
+    new_pid = spawn_restore(campaign_id)
+    return {**load_restore_state(campaign_id), "spawned_pid": new_pid}
 
 
 def print_restore_preflight(payload: dict[str, Any]) -> None:
@@ -1836,6 +1942,14 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("campaign_id", nargs="?")
     q.add_argument("--json", action="store_true")
 
+    q = sub.add_parser("restore-pause")
+    q.add_argument("campaign_id", nargs="?")
+    q.add_argument("--json", action="store_true")
+
+    q = sub.add_parser("restore-resume")
+    q.add_argument("campaign_id", nargs="?")
+    q.add_argument("--json", action="store_true")
+
     q = sub.add_parser("_run")
     q.add_argument("campaign_id")
 
@@ -1892,6 +2006,36 @@ def main() -> int:
             print(json.dumps(payload, indent=2, sort_keys=True))
         else:
             print_restore_status(payload)
+        return 0
+
+    if args.command == "restore-pause":
+        campaign_id = args.campaign_id
+        if not campaign_id:
+            latest = restore_status_payload(None)
+            campaign_id = latest.get("campaign_id")
+        if not campaign_id:
+            raise CampaignError("no restore drill exists")
+        payload = request_restore_pause(str(campaign_id))
+        if args.json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print_restore_status(restore_status_payload(str(campaign_id)))
+        return 0
+
+    if args.command == "restore-resume":
+        campaign_id = args.campaign_id
+        if not campaign_id:
+            latest = restore_status_payload(None)
+            campaign_id = latest.get("campaign_id")
+        if not campaign_id:
+            raise CampaignError("no restore drill exists")
+        payload = resume_restore(str(campaign_id))
+        if args.json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print_restore_status(restore_status_payload(str(campaign_id)))
+            if payload.get("spawned_pid"):
+                print(f"Spawned PID: {payload['spawned_pid']}")
         return 0
 
     if args.command == "start":
