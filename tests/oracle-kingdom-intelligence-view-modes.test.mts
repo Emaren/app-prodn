@@ -147,6 +147,8 @@ test("Kingdom Intelligence samples live Recovery bytes every five seconds withou
   assert.match(route, /one_time_read_only_inventory/);
   assert.match(route, /campaign", "plan", "--json"/);
   assert.match(route, /legacyEstimatePromise/);
+  assert.match(route, /failed\.stdout/);
+  assert.match(route, /full-campaign[\s\S]*capacity is not ready/);
   assert.doesNotMatch(route, /writeFile|unlink|rmSync|rmdir|rename/);
 });
 
