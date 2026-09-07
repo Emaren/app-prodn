@@ -23,18 +23,8 @@ type ThemeKey = "plain" | "signal" | "cosmic";
 
 const THEMES: ThemeKey[] = ["plain", "signal", "cosmic"];
 
-function panelShell(theme: ThemeKey) {
-  if (theme === "signal") {
-    return "border-cyan-200/14 bg-[linear-gradient(118deg,rgba(2,6,12,0.99),rgba(8,47,73,0.30),rgba(120,53,15,0.18),rgba(6,78,59,0.18),rgba(2,6,12,0.99))] shadow-[0_24px_90px_rgba(0,0,0,.30),0_0_34px_rgba(34,211,238,0.045)]";
-  }
-
-  if (theme === "cosmic") {
-    return "border-violet-200/16 bg-[radial-gradient(circle_at_16%_8%,rgba(34,211,238,0.10),transparent_26%),radial-gradient(circle_at_84%_14%,rgba(139,92,246,0.14),transparent_28%),radial-gradient(circle_at_72%_86%,rgba(236,72,153,0.08),transparent_30%),linear-gradient(145deg,rgba(2,5,12,0.99),rgba(8,11,28,0.99)_56%,rgba(2,6,16,0.99))] shadow-[0_24px_100px_rgba(0,0,0,.34),0_0_42px_rgba(124,58,237,0.06)]";
-  }
-
-  return "border-cyan-200/10 bg-[#02060c] shadow-[0_24px_90px_rgba(0,0,0,.28)]";
-}
-
+const PANEL_SHELL =
+  "border-cyan-200/10 bg-[#02060c] shadow-[0_24px_90px_rgba(0,0,0,.28)]";
 function rowShell(theme: ThemeKey, current: boolean) {
   if (theme === "signal") {
     return current
@@ -80,8 +70,7 @@ export default function WarPulsePanel({
       role="button"
       tabIndex={0}
       data-war-pulse-theme={theme}
-      aria-label={`War Pulse display tile. Current theme: ${theme}. Click to change theme.`}
-      title="Click to change War Pulse theme"
+      aria-label={`War Pulse display tile. Current theme: ${theme}.`}
       onClick={cycleTheme}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -91,30 +80,9 @@ export default function WarPulsePanel({
       }}
       className={
         "group/warpulse relative cursor-pointer overflow-hidden rounded-[2rem] border transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/35 " +
-        panelShell(theme)
+        PANEL_SHELL
       }
     >
-      {theme !== "plain" ? (
-        <>
-          <span
-            className={
-              "pointer-events-none absolute -left-20 top-28 h-40 w-44 rounded-full blur-3xl transition-opacity duration-500 " +
-              (theme === "signal"
-                ? "bg-cyan-300/[0.055]"
-                : "bg-cyan-300/[0.075]")
-            }
-          />
-          <span
-            className={
-              "pointer-events-none absolute -right-20 top-40 h-44 w-48 rounded-full blur-3xl transition-opacity duration-500 " +
-              (theme === "signal"
-                ? "bg-amber-300/[0.045]"
-                : "bg-violet-300/[0.08]")
-            }
-          />
-        </>
-      ) : null}
-
       <div className="relative z-10 flex items-center justify-between border-b border-white/7 px-5 py-4 sm:px-6">
         <div className="flex items-center gap-3">
           <div className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200/10 bg-cyan-300/[0.05]">
@@ -138,16 +106,8 @@ export default function WarPulsePanel({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div
-            aria-hidden="true"
-            className="hidden text-[9px] font-black uppercase tracking-[0.18em] text-slate-700 opacity-0 transition-opacity duration-200 group-hover/warpulse:opacity-100 sm:block"
-          >
-            click to change
-          </div>
-          <div className="text-[10px] uppercase tracking-[0.18em] text-slate-600">
-            polls every 20s
-          </div>
+        <div className="text-[10px] uppercase tracking-[0.18em] text-slate-600">
+          polls every 20s
         </div>
       </div>
 
