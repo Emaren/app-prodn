@@ -52,7 +52,7 @@ test("Kingdom Intelligence cycles the whole Agent Constellation tile through pla
   assert.match(panel, /const THEMES: ThemeKey\[\] = \["plain", "sapphire", "aurora"\]/);
   assert.match(panel, /data-agent-constellation-theme=\{theme\}/);
   assert.match(panel, /cursor-pointer/);
-  assert.match(panel, /Click to change Agent Constellation theme/);
+  assert.doesNotMatch(panel, /click to change/i);
   assert.match(panel, /\(current \+ 1\) % THEMES\.length/);
 
   // Plain is the preserved pre-gradient presentation.
@@ -76,14 +76,19 @@ test("Kingdom Intelligence cycles the whole War Pulse tile through plain and two
   assert.match(panel, /const THEMES: ThemeKey\[\] = \["plain", "signal", "cosmic"\]/);
   assert.match(panel, /data-war-pulse-theme=\{theme\}/);
   assert.match(panel, /cursor-pointer/);
-  assert.match(panel, /Click to change War Pulse theme/);
+  assert.doesNotMatch(panel, /click to change/i);
   assert.match(panel, /\(current \+ 1\) % THEMES\.length/);
 
-  // Plain preserves the original black War Pulse presentation.
+  // The outer War Pulse display tile stays black in every theme.
+  assert.match(panel, /const PANEL_SHELL/);
   assert.match(panel, /border-cyan-200\/10 bg-\[#02060c\]/);
+  assert.doesNotMatch(panel, /function panelShell/);
+  assert.doesNotMatch(panel, /panelShell\(theme\)/);
+
+  // Plain preserves the original row presentation.
   assert.match(panel, /my-1 rounded-xl border border-cyan-200\/12 bg-white\/\[0\.018\]/);
 
-  // Signal preserves the hot process gradient; Cosmic is the second premium skin.
+  // Signal preserves the hot row gradient; Cosmic is the second premium row skin.
   assert.match(panel, /theme === "signal"/);
   assert.match(panel, /theme === "cosmic"/);
   assert.match(panel, /linear-gradient\(115deg,rgba\(8,47,73,0\.42\)/);
