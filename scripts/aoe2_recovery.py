@@ -789,8 +789,9 @@ def print_campaign_plan(payload: dict[str, Any]) -> None:
     print()
     print("WRITE ACTIONS: NONE")
     print(
-        "Next implementation seam: bounded recovery campaign start, "
-        "which must require explicit authorization."
+        "Next authorization seam after ordinary capture + restore proof: "
+        "consistency-safe Wolo settlement/consensus recovery and separate "
+        "key custody."
     )
 
 
