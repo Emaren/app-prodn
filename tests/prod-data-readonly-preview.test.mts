@@ -139,6 +139,14 @@ test("dev:prod acknowledges local side effects without production writes", () =>
   );
 });
 
+test("dev:prod streams operator proof lines immediately under nohup", () => {
+  const launcher = source("scripts/dev-prod-readonly.py");
+
+  assert.match(launcher, /for stream in \(sys\.stdout, sys\.stderr\):/);
+  assert.match(launcher, /reconfigure = getattr\(stream, "reconfigure", None\)/);
+  assert.match(launcher, /reconfigure\(line_buffering=True\)/);
+});
+
 test("dev:prod raises only the local preview Node heap ceiling above the default 4 GiB", () => {
   const launcher = source("scripts/dev-prod-readonly.py");
 

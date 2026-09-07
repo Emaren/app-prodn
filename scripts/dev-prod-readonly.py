@@ -422,6 +422,14 @@ def infer_preview_path() -> str:
     return "/"
 
 def main() -> int:
+    # nohup/file redirection makes Python stdout block-buffered by default.
+    # The preview launcher is an operator console, so make every status line
+    # immediately observable while the long-lived Node child is still running.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(line_buffering=True)
+
     print("============================================================")
     print("AOE2WAR — LOCAL CODE / LIVE PRODUCTION DATA")
     print("============================================================")
