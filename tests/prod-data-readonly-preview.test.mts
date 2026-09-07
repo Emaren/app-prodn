@@ -138,3 +138,37 @@ test("dev:prod acknowledges local side effects without production writes", () =>
     /!isLiveProductionReadOnlyPreview\(\)[\s\S]*conversationIds\.length > 0/,
   );
 });
+
+test("dev:prod opens the page inferred from the active work lane", () => {
+  const launcher = source("scripts/dev-prod-readonly.py");
+
+  assert.match(
+    launcher,
+    /AOE2WAR_PREVIEW_PATH/,
+  );
+
+  assert.match(
+    launcher,
+    /infer_preview_path/,
+  );
+
+  assert.match(
+    launcher,
+    /git", "branch", "--show-current/,
+  );
+
+  assert.match(
+    launcher,
+    /Path\.cwd\(\) \/ "app"/,
+  );
+
+  assert.match(
+    launcher,
+    /preview_url/,
+  );
+
+  assert.doesNotMatch(
+    launcher,
+    /https:\/\/localhost:3000\/clans\/aoe2war/,
+  );
+});

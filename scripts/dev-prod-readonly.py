@@ -2,6 +2,8 @@
 
 import json
 import os
+from pathlib import Path
+import re
 import socket
 import subprocess
 import sys
@@ -322,10 +324,93 @@ def wait_for_local_https(process) -> bool:
     return False
 
 
+
+def normalize_preview_path(value: str) -> str:
+    path = value.strip()
+
+    if not path:
+        return "/"
+
+    if (
+        not path.startswith("/")
+        or path.startswith("//")
+        or "://" in path
+        or any(ord(ch) < 32 for ch in path)
+    ):
+        stop("AOE2WAR_PREVIEW_PATH must be a local absolute path")
+
+    return path
+
+
+def infer_preview_path() -> str:
+    explicit = os.environ.get("AOE2WAR_PREVIEW_PATH", "").strip()
+
+    if explicit:
+        return normalize_preview_path(explicit)
+
+    branch = subprocess.run(
+        ["git", "branch", "--show-current"],
+        text=True,
+        capture_output=True,
+        check=False,
+    ).stdout.strip()
+
+    worktree = Path.cwd().name
+
+    def key(value: str) -> str:
+        return re.sub(
+            r"[^a-z0-9]+",
+            "-",
+            value.lower(),
+        ).strip("-")
+
+    haystacks = [
+        f"-{key(branch)}-",
+        f"-{key(worktree)}-",
+    ]
+
+    app_root = Path.cwd() / "app"
+    candidates: list[tuple[int, str, str]] = []
+
+    if app_root.is_dir():
+        for page in app_root.glob("*/page.tsx"):
+            slug = page.parent.name
+
+            if slug.startswith(("[", "(")):
+                continue
+
+            token = key(slug)
+
+            if token:
+                candidates.append(
+                    (
+                        len(token),
+                        token,
+                        f"/{slug}",
+                    )
+                )
+
+    # Longest route wins, so kingdom-intelligence beats kingdom.
+    for _, token, route in sorted(
+        candidates,
+        reverse=True,
+    ):
+        needle = f"-{token}-"
+
+        if any(
+            needle in haystack
+            for haystack in haystacks
+        ):
+            return route
+
+    return "/"
+
 def main() -> int:
     print("============================================================")
     print("AOE2WAR — LOCAL CODE / LIVE PRODUCTION DATA")
     print("============================================================")
+
+    preview_path = infer_preview_path()
 
     prod_database_url = read_prod_database_url()
     parsed = parse_prod_database(prod_database_url)
@@ -398,7 +483,10 @@ def main() -> int:
             print("PASS: production OpenAI credential not imported")
         print("PASS: backend reads use public https://aoe2war.com")
         print()
-        print("> Local source + hot reload: https://localhost:3000")
+        print(
+            f"> Local source + hot reload: "
+            f"https://localhost:3000{preview_path}"
+        )
         print("> Production data: LIVE")
         print("> Production DB writes: READ-ONLY fenced")
         print()
@@ -412,10 +500,20 @@ def main() -> int:
             if no_browser:
                 print("PASS: localhost browser auto-open disabled")
             else:
+                preview_url = (
+                    f"https://localhost:3000"
+                    f"{preview_path}"
+                )
+
                 subprocess.Popen(
-                    ["open", "https://localhost:3000/clans/aoe2war"],
+                    ["open", preview_url],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
+                )
+
+                print(
+                    "PASS: opened local preview: "
+                    f"{preview_url}"
                 )
 
         return node.wait()
