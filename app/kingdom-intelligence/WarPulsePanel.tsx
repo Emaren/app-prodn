@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import BrowserLocalTime from "./BrowserLocalTime";
 import ProcessDrilldown from "./ProcessDrilldown";
-import { useLiveRecoveryProgress } from "./useLiveRecoveryProgress";
+import { formatLiveRecoveryProgressLabel, useLiveRecoveryProgress } from "./useLiveRecoveryProgress";
 
 type WarPulseItem = {
   key: string;
@@ -137,6 +137,12 @@ export default function WarPulsePanel({
                 ? liveRecovery.overallPercent
                 : null;
             const effectiveProgress = liveProgress ?? item.progress;
+            const effectiveProgressLabel = recoveryLive
+              ? formatLiveRecoveryProgressLabel(
+                  liveRecovery,
+                  item.progressLabel,
+                )
+              : item.progressLabel;
 
             return (
             <div
@@ -247,7 +253,7 @@ export default function WarPulsePanel({
                       />
                     </div>
                     <div className="mt-1 flex items-center justify-between gap-3 text-[9px] uppercase tracking-[0.14em] text-cyan-100/45">
-                      <span>{item.progressLabel ?? "process progress"}</span>
+                      <span>{effectiveProgressLabel ?? "process progress"}</span>
                       <span>
                         {effectiveProgress.toFixed(
                           recoveryLive || effectiveProgress % 1 !== 0 ? 1 : 0,
@@ -281,7 +287,7 @@ export default function WarPulsePanel({
                     status={item.status}
                     summary={item.label}
                     progress={effectiveProgress}
-                    progressLabel={item.progressLabel}
+                    progressLabel={effectiveProgressLabel}
                     startedAt={item.current ? item.at : null}
                     proof={item.proof}
                     current={item.current}
