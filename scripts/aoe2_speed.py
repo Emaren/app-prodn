@@ -351,6 +351,7 @@ def persist_failed_benchmark_attempt(
     identity: dict[str, Any],
     full: bool,
     rounds: int,
+    route_count: int,
     elapsed_seconds: float,
     failures: list[dict[str, Any]],
 ) -> Path:
@@ -365,7 +366,7 @@ def persist_failed_benchmark_attempt(
         "generated_at": utc_now(),
         "mode": "full" if full else "quick",
         "rounds": rounds,
-        "route_count": len(route_list(full)),
+        "route_count": route_count,
         "elapsed_seconds": round(elapsed_seconds, 3),
         **identity,
         "failed_samples": failures,
@@ -691,7 +692,12 @@ def route_list(full: bool) -> list[str]:
     return paths
 
 
-def benchmark(*, full: bool, rounds: int) -> dict[str, Any]:
+def benchmark(
+    *,
+    full: bool,
+    rounds: int,
+    routes_override: list[str] | None = None,
+) -> dict[str, Any]:
     if rounds < 1 or rounds > 10:
         raise SpeedError("rounds must be between 1 and 10")
 
@@ -699,7 +705,17 @@ def benchmark(*, full: bool, rounds: int) -> dict[str, Any]:
     if identity.get("certification") != "CERTIFIED":
         raise SpeedError("production is not CERTIFIED")
 
-    routes = route_list(full)
+    routes = (
+        list(routes_override)
+        if routes_override is not None
+        else route_list(full)
+    )
+    if not routes:
+        raise SpeedError("performance route cohort is empty")
+    if len(routes) != len(set(routes)):
+        raise SpeedError("performance route cohort contains duplicate paths")
+    if any(not path.startswith("/") for path in routes):
+        raise SpeedError("performance route cohort contains a non-route entry")
     samples: list[dict[str, Any]] = []
     recovered_failures: list[dict[str, Any]] = []
     failed_attempts: list[dict[str, Any]] = []
@@ -750,6 +766,7 @@ def benchmark(*, full: bool, rounds: int) -> dict[str, Any]:
             identity=identity,
             full=full,
             rounds=rounds,
+            route_count=len(routes),
             elapsed_seconds=elapsed,
             failures=failed_attempts,
         )
