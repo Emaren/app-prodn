@@ -257,7 +257,11 @@ export default function WarPulsePanel({
               </div>
 
               {expanded ? (
-                <div className="col-span-3">
+                <div
+                  className="col-span-3"
+                  onClick={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
                   <ProcessDrilldown
                     systemKey={
                       item.system === "Recovery OS"
