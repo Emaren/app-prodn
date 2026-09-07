@@ -924,6 +924,9 @@ def system_agent_rows(
 
     recovery_completed = len(recovery_campaign.get("completed_classes") or [])
     recovery_total = len(recovery_campaign.get("ordinary_classes") or [])
+    recovery_current_class = str(
+        recovery_campaign.get("current_class") or ""
+    ).replace("_", " ").strip()
     storage_completed = int(storage_campaign.get("completed_generations") or 0)
     storage_total = int(storage_campaign.get("max_generations") or 0)
 
@@ -992,7 +995,14 @@ def system_agent_rows(
             "label": "Recovery OS",
             "state": recovery_state,
             "summary": (
-                f"Ordinary encrypted capture {recovery_completed}/{recovery_total}."
+                (
+                    f"Ordinary encrypted capture {recovery_completed}/{recovery_total}"
+                    + (
+                        f" · {recovery_current_class}."
+                        if recovery_current_class
+                        else "."
+                    )
+                )
                 if recovery_total
                 else f"Recovery proof: {recovery_status}."
             ),
