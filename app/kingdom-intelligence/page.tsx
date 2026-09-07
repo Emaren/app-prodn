@@ -1,5 +1,3 @@
-"use client";
-
 import {
   Activity,
   Bot,
@@ -13,7 +11,6 @@ import {
   History,
   Radar,
   Radio,
-  RefreshCw,
   ScrollText,
   ShieldCheck,
   Sparkles,
@@ -21,9 +18,16 @@ import {
   Trophy,
   Workflow,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
+import {
+  loadPublicKingdomIntelligence,
+  type PublicKingdomIntelligence,
+} from "@/lib/kingdomIntelligencePublic";
 
-import type { PublicKingdomIntelligence } from "@/lib/kingdomIntelligencePublic";
+import KingdomIntelligenceRefresh from "./KingdomIntelligenceRefresh";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function tone(status: string | null | undefined) {
   const value = String(status || "").toUpperCase();
@@ -164,38 +168,17 @@ function ModuleCard({
   );
 }
 
-export default function KingdomIntelligencePage() {
-  const [data, setData] = useState<PublicKingdomIntelligence | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [clock, setClock] = useState(() => Date.now());
+export default async function KingdomIntelligencePage() {
+  let data: PublicKingdomIntelligence | null = null;
+  let error: string | null = null;
 
-  const load = useCallback(async () => {
-    try {
-      const response = await fetch("/api/kingdom-intelligence", { cache: "no-store" });
-      const payload = (await response.json()) as PublicKingdomIntelligence;
-      setData(payload);
-      setError(response.ok ? null : "The latest Kingdom Intelligence signal is unavailable.");
-    } catch {
-      setError("The Kingdom Intelligence signal could not be reached.");
-    }
-  }, []);
+  try {
+    data = await loadPublicKingdomIntelligence();
+  } catch {
+    error = "The Kingdom Intelligence signal could not be reached.";
+  }
 
-  useEffect(() => {
-    void load();
-    const poll = window.setInterval(() => void load(), 20_000);
-    const tick = window.setInterval(() => setClock(Date.now()), 1_000);
-    return () => {
-      window.clearInterval(poll);
-      window.clearInterval(tick);
-    };
-  }, [load]);
-
-  const liveAge = useMemo(() => {
-    if (!data?.receivedAt) return data?.ageSeconds ?? null;
-    const received = new Date(data.receivedAt).getTime();
-    if (!Number.isFinite(received)) return data.ageSeconds;
-    return Math.max(0, Math.floor((clock - received) / 1000));
-  }, [clock, data]);
+  const liveAge = data?.ageSeconds ?? null;
 
   const awake = Boolean(data?.available && liveAge !== null && liveAge < 15 * 60);
   const campaign = data?.storageCampaign;
@@ -204,7 +187,7 @@ export default function KingdomIntelligencePage() {
   const attentionSystemCount = systemAgents.filter((item) =>
     ["ATTENTION", "BLOCKED", "FAILED"].includes(item.state)
   ).length;
-  const nerveFeed = useMemo(() => {
+  const nerveFeed = (() => {
     const runRows = (data?.liveActivity ?? []).map((item) => ({
       key: "run-" + (item.id ?? item.requestedAt),
       at: item.completedAt ?? item.requestedAt,
@@ -224,10 +207,11 @@ export default function KingdomIntelligencePage() {
     return [...runRows, ...sourceRows]
       .sort((left, right) => new Date(right.at).getTime() - new Date(left.at).getTime())
       .slice(0, 14);
-  }, [data]);
+  })();
 
   return (
     <div className="mx-auto w-full max-w-[92rem] space-y-6 pb-16">
+      <SpeedReadyMarker route="/kingdom-intelligence" />
       <section className="relative min-h-[32rem] overflow-hidden rounded-[2.3rem] border border-amber-100/12 bg-[#04070c] shadow-[0_32px_120px_rgba(0,0,0,0.42)]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_40%,rgba(217,119,6,0.18),transparent_18%),radial-gradient(circle_at_72%_40%,rgba(251,191,36,0.08),transparent_38%),linear-gradient(135deg,#08101c_0%,#030609_56%,#0b0805_100%)]" />
         <div className="absolute inset-0 opacity-20 [background-image:linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px)] [background-size:42px_42px]" />
@@ -641,14 +625,7 @@ export default function KingdomIntelligencePage() {
             filesystem paths or unrestricted operator output.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.035] px-4 py-2 text-xs font-semibold text-slate-200 hover:bg-white/[0.06]"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh signal
-        </button>
+        <KingdomIntelligenceRefresh />
       </section>
     </div>
   );
