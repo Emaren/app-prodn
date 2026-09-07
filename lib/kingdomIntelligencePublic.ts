@@ -73,6 +73,8 @@ function safeSystemAgent(value: unknown) {
     summary: stringValue(row.summary) ?? "Awaiting evidence.",
     progressPercent: numberValue(row.progress_percent),
     progressLabel: stringValue(row.progress_label),
+    activeProcess: booleanValue(row.active_process),
+    activeSince: stringValue(row.active_since),
   };
 }
 
