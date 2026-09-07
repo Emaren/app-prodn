@@ -179,6 +179,88 @@ class RecoveryCampaignTests(unittest.TestCase):
                 authorize_ordinary_capture=False,
             )
 
+    def test_preflight_uses_ordinary_capacity_even_when_full_campaign_is_not_ready(self):
+        plan = {
+            "capacity_ready": False,
+            "authority": "Mac encrypted survival vault",
+            "operator_free_bytes": 1000,
+            "stages": [
+                {
+                    "class": name,
+                    "state": "READY_TO_CAPTURE",
+                    "estimated_bytes": 100,
+                }
+                for name in campaign.ORDINARY_CLASSES
+            ] + [
+                {
+                    "class": "wolo_consensus_recovery",
+                    "state": "AUTHORIZATION_REQUIRED",
+                    "estimated_bytes": 800,
+                }
+            ],
+        }
+        pilot = {
+            "status": "PILOT_VERIFIED",
+            "recipient_certificate_fingerprint": "sha256 Fingerprint=AA:BB",
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            cert = Path(temporary) / "recipient.crt"
+            cert.write_text("certificate placeholder")
+            with (
+                patch.object(campaign, "require_tools"),
+                patch.object(campaign.recovery, "campaign_plan", return_value=plan),
+                patch.object(
+                    campaign.recovery,
+                    "evaluate",
+                    return_value={"pilot": pilot},
+                ),
+                patch.object(
+                    campaign,
+                    "resolve_recipient_certificate",
+                    return_value=(cert, "AABB"),
+                ),
+                patch.object(
+                    campaign,
+                    "verify_canonical_private_key",
+                    return_value={
+                        "path": "/private/recovery-v1-private.pem",
+                        "mode": "600",
+                        "certificate_match": True,
+                    },
+                ),
+                patch.object(campaign, "source_identity", return_value="a" * 40),
+            ):
+                result = campaign.preflight(None)
+
+        self.assertEqual(result["status"], "READY")
+        self.assertEqual(result["ordinary_payload_bytes"], 500)
+        self.assertEqual(result["headroom_after_ordinary_bytes"], 500)
+        self.assertFalse(result["full_campaign_capacity_ready"])
+
+    def test_preflight_fails_when_ordinary_capture_itself_does_not_fit(self):
+        plan = {
+            "capacity_ready": False,
+            "authority": "Mac encrypted survival vault",
+            "operator_free_bytes": 499,
+            "stages": [
+                {
+                    "class": name,
+                    "state": "READY_TO_CAPTURE",
+                    "estimated_bytes": 100,
+                }
+                for name in campaign.ORDINARY_CLASSES
+            ],
+        }
+        with (
+            patch.object(campaign, "require_tools"),
+            patch.object(campaign.recovery, "campaign_plan", return_value=plan),
+        ):
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "ordinary-capture capacity is not ready",
+            ):
+                campaign.preflight(None)
+
     def test_preflight_keeps_all_wolo_mutation_unauthorized(self):
         plan = {
             "capacity_ready": True,

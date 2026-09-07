@@ -366,15 +366,25 @@ def ordinary_stages(plan: dict[str, Any]) -> list[dict[str, Any]]:
 def preflight(recipient_cert: str | None) -> dict[str, Any]:
     require_tools()
     plan = recovery.campaign_plan()
-    if not plan.get("capacity_ready"):
-        raise CampaignError("Recovery OS campaign capacity is not ready")
+    stages = ordinary_stages(plan)
+    ordinary_payload_bytes = sum(
+        int(stage.get("estimated_bytes") or 0) for stage in stages
+    )
+    operator_free_bytes = int(plan["operator_free_bytes"])
+    headroom_after_ordinary_bytes = operator_free_bytes - ordinary_payload_bytes
+    if headroom_after_ordinary_bytes <= 0:
+        raise CampaignError(
+            "Recovery OS ordinary-capture capacity is not ready: "
+            f"free={operator_free_bytes} ordinary={ordinary_payload_bytes} "
+            f"headroom={headroom_after_ordinary_bytes}"
+        )
+
     status = recovery.evaluate()
     pilot = status.get("pilot")
     if not isinstance(pilot, dict):
         raise CampaignError("verified database/operator pilot is required")
     cert, fingerprint = resolve_recipient_certificate(recipient_cert, pilot)
     private_key = verify_canonical_private_key(cert)
-    stages = ordinary_stages(plan)
     source = source_identity()
 
     return {
@@ -388,12 +398,10 @@ def preflight(recipient_cert: str | None) -> dict[str, Any]:
         "recipient_certificate_fingerprint": fingerprint,
         "canonical_private_key": private_key,
         "ordinary_classes": [stage["class"] for stage in stages],
-        "ordinary_payload_bytes": sum(
-            int(stage.get("estimated_bytes") or 0) for stage in stages
-        ),
-        "operator_free_bytes": int(plan["operator_free_bytes"]),
-        "headroom_after_ordinary_bytes": int(plan["operator_free_bytes"])
-        - sum(int(stage.get("estimated_bytes") or 0) for stage in stages),
+        "ordinary_payload_bytes": ordinary_payload_bytes,
+        "operator_free_bytes": operator_free_bytes,
+        "headroom_after_ordinary_bytes": headroom_after_ordinary_bytes,
+        "full_campaign_capacity_ready": bool(plan.get("capacity_ready")),
         "wolo_mutation_authorized": False,
         "settlement_mutation_authorized": False,
         "key_material_in_general_vault": False,
