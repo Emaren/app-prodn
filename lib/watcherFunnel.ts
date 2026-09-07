@@ -10,6 +10,7 @@ const RECENT_EVENT_SCAN_LIMIT = 5000;
 const SESSION_ROW_LIMIT = 50;
 const FOCUS_USER_EVENT_LIMIT = 5000;
 const JULIO_UID_PREFIX = "u_79ce46af3d";
+const SCAVANGER_UID = "u_79fdf670637b4acd9c61ca3c49162cd1";
 const SUPPORT_USER_TILE_LIMIT = 10;
 const SUPPORT_USER_TARGETS: WatcherSupportUserTarget[] = [
   {
@@ -21,6 +22,16 @@ const SUPPORT_USER_TARGETS: WatcherSupportUserTarget[] = [
   {
     label: "Emaren",
     nameMatches: ["Emaren"],
+    tileKind: "dedicated",
+  },
+  {
+    label: "Scavanger_Ab",
+    userUid: SCAVANGER_UID,
+    nameMatches: [
+      "Scavanger_Ab",
+      "Savanger_Ab",
+      "Scavenger_Ab",
+    ],
     tileKind: "dedicated",
   },
 ];
