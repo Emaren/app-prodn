@@ -899,6 +899,8 @@ def main() -> int:
         "restore-preflight",
         "restore-start",
         "restore-status",
+        "restore-pause",
+        "restore-resume",
     ):
         q = campaign_sub.add_parser(name)
         q.add_argument("campaign_args", nargs=argparse.REMAINDER)
