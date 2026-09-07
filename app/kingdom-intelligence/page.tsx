@@ -120,11 +120,17 @@ function AgentLine({
       className={
         "group rounded-2xl border px-4 py-3 transition " +
         (active
-          ? "kingdom-current-process border-cyan-200/22 bg-cyan-300/[0.045] shadow-[0_0_34px_rgba(34,211,238,0.08)]"
+          ? "relative overflow-hidden border-cyan-200/22 bg-[linear-gradient(115deg,rgba(8,47,73,0.44),rgba(15,23,42,0.30),rgba(120,53,15,0.28),rgba(6,78,59,0.26),rgba(8,47,73,0.44))] shadow-[0_0_34px_rgba(34,211,238,0.08)]"
           : "border-white/8 bg-white/[0.025] hover:border-cyan-200/15 hover:bg-cyan-300/[0.025]")
       }
     >
-      <div className="flex items-start gap-3">
+      {active ? (
+        <>
+          <span className="pointer-events-none absolute -left-16 top-1/2 h-24 w-36 -translate-y-1/2 rounded-full bg-cyan-300/10 blur-2xl animate-[pulse_4.8s_ease-in-out_infinite]" />
+          <span className="pointer-events-none absolute -right-12 top-1/2 h-28 w-40 -translate-y-1/2 rounded-full bg-amber-300/[0.08] blur-3xl animate-[pulse_7s_ease-in-out_infinite]" />
+        </>
+      ) : null}
+      <div className="relative z-10 flex items-start gap-3">
         <span className={"mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full " + beacon(state)} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -403,15 +409,21 @@ export default async function KingdomIntelligencePage() {
                   className={
                     "relative grid grid-cols-[9px_62px_minmax(0,1fr)] gap-3 py-3 " +
                     (item.current
-                      ? "kingdom-current-process my-1 rounded-xl border border-cyan-200/20 px-3 shadow-[0_0_34px_rgba(34,211,238,0.08)]"
+                      ? "relative my-1 overflow-hidden rounded-xl border border-cyan-200/20 bg-[linear-gradient(115deg,rgba(8,47,73,0.42),rgba(15,23,42,0.24),rgba(120,53,15,0.30),rgba(6,78,59,0.28),rgba(8,47,73,0.42))] px-3 shadow-[0_0_34px_rgba(34,211,238,0.08)]"
                       : "border-b border-white/[0.045] last:border-0")
                   }
                 >
-                  <span className={"mt-1 h-2 w-2 rounded-full " + beacon(item.status === "SUCCEEDED" ? "HEALTHY" : item.status)} />
-                  <span className={item.current ? "font-semibold text-cyan-100/70" : "text-slate-600"}>
+                  {item.current ? (
+                    <>
+                      <span className="pointer-events-none absolute -left-14 top-1/2 h-20 w-32 -translate-y-1/2 rounded-full bg-cyan-300/12 blur-2xl animate-[pulse_4.5s_ease-in-out_infinite]" />
+                      <span className="pointer-events-none absolute -right-10 top-1/2 h-24 w-36 -translate-y-1/2 rounded-full bg-amber-300/10 blur-3xl animate-[pulse_6.5s_ease-in-out_infinite]" />
+                    </>
+                  ) : null}
+                  <span className={"relative z-10 mt-1 h-2 w-2 rounded-full " + beacon(item.status === "SUCCEEDED" ? "HEALTHY" : item.status)} />
+                  <span className={(item.current ? "font-semibold text-cyan-100/70" : "text-slate-600") + " relative z-10"}>
                     <BrowserLocalTime value={item.at} />
                   </span>
-                  <div className="min-w-0">
+                  <div className="relative z-10 min-w-0">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="font-semibold text-cyan-100/80">{item.system}</span>
                       {item.current ? (
