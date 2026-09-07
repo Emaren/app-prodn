@@ -8,6 +8,9 @@ import json
 import os
 import shlex
 import shutil
+import tarfile
+import tempfile
+import time
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -22,6 +25,9 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[1]
 CAMPAIGN_DIR = ROOT / ".aoe2war-release" / "recovery-campaigns"
 LOCK_PATH = CAMPAIGN_DIR / "campaign.lock"
+RESTORE_DIR = CAMPAIGN_DIR / "restore-drills"
+RESTORE_LOCK_PATH = RESTORE_DIR / "restore.lock"
+REPRESENTATIVE_MAX_BYTES = 64 * 1024 * 1024
 RECOVERY_KEY_ROOT = Path.home() / "Library" / "Application Support" / "AoE2WAR Recovery" / "keys"
 CANONICAL_RECOVERY_PRIVATE_KEY = RECOVERY_KEY_ROOT / "recovery-v1-private.pem"
 CANONICAL_RECOVERY_CERTIFICATE = RECOVERY_KEY_ROOT / "recovery-v1-recipient.pem"
@@ -647,6 +653,793 @@ def capture_stage(
     }
 
 
+
+def cms_decrypt_command(
+    artifact: Path,
+    recipient_cert: Path,
+    private_key: Path,
+) -> list[str]:
+    return [
+        "openssl",
+        "cms",
+        "-decrypt",
+        "-binary",
+        "-inform",
+        "DER",
+        "-in",
+        str(artifact),
+        "-recip",
+        str(recipient_cert),
+        "-inkey",
+        str(private_key),
+    ]
+
+
+def restore_state_path(campaign_id: str) -> Path:
+    state_path(campaign_id)
+    return RESTORE_DIR / f"{campaign_id}.json"
+
+
+def restore_log_path(campaign_id: str) -> Path:
+    state_path(campaign_id)
+    return RESTORE_DIR / f"{campaign_id}.log"
+
+
+def load_restore_state(campaign_id: str) -> dict[str, Any]:
+    path = restore_state_path(campaign_id)
+    if not path.is_file():
+        raise CampaignError(f"restore drill state not found: {campaign_id}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if (
+        payload.get("schema") != 1
+        or payload.get("kind") != "aoe2war-recovery-ordinary-restore-drill"
+        or payload.get("campaign_id") != campaign_id
+    ):
+        raise CampaignError(f"invalid restore drill state: {path}")
+    return payload
+
+
+def save_restore_state(state: dict[str, Any]) -> None:
+    state["updated_at"] = utc_now()
+    atomic_write(
+        restore_state_path(str(state["campaign_id"])),
+        state,
+    )
+
+
+def _capture_proof(
+    bundle_root: Path,
+    campaign_id: str,
+    class_name: str,
+    *,
+    verify_ciphertext: bool,
+) -> tuple[dict[str, Any], str, Path]:
+    proof_path = bundle_root / "proofs" / f"{class_name}.json"
+    payload, proof_sha, error = recovery._load_hashed_json(proof_path)
+    if error or payload is None or proof_sha is None:
+        raise CampaignError(
+            f"{class_name} capture proof is invalid: {error or 'unknown error'}"
+        )
+    if (
+        payload.get("schema") != 1
+        or payload.get("kind") != "aoe2war-recovery-capture-proof"
+        or payload.get("campaign_id") != campaign_id
+        or payload.get("class") != class_name
+        or payload.get("status") != "CAPTURED_PENDING_RESTORE"
+    ):
+        raise CampaignError(
+            f"{class_name} capture proof does not match the authorized campaign"
+        )
+    if payload.get("cms_streaming") is not True:
+        raise CampaignError(
+            f"{class_name} capture proof does not prove CMS streaming"
+        )
+
+    artifact_name = payload.get("ciphertext_file")
+    if not isinstance(artifact_name, str) or not artifact_name:
+        raise CampaignError(f"{class_name} capture proof has no ciphertext file")
+    artifact = recovery._safe_bundle_file(bundle_root, artifact_name)
+    if artifact is None or not artifact.is_file():
+        raise CampaignError(
+            f"{class_name} encrypted artifact is missing or escapes the bundle"
+        )
+
+    expected_bytes = payload.get("ciphertext_bytes")
+    if (
+        not isinstance(expected_bytes, int)
+        or expected_bytes <= 0
+        or artifact.stat().st_size != expected_bytes
+    ):
+        raise CampaignError(
+            f"{class_name} encrypted artifact byte size does not match capture proof"
+        )
+
+    expected_sha = payload.get("ciphertext_sha256")
+    if not isinstance(expected_sha, str) or len(expected_sha) != 64:
+        raise CampaignError(
+            f"{class_name} capture proof has no valid ciphertext SHA-256"
+        )
+    if verify_ciphertext and recovery.sha256(artifact) != expected_sha:
+        raise CampaignError(
+            f"{class_name} encrypted artifact SHA-256 does not match capture proof"
+        )
+
+    return payload, proof_sha, artifact
+
+
+def restore_preflight(campaign_id: str | None) -> dict[str, Any]:
+    selected = campaign_id or latest_campaign_id()
+    if not selected:
+        raise CampaignError("no recovery campaign exists")
+
+    require_tools()
+    restore_source = source_identity()
+    state = load_state(selected)
+    if (
+        state.get("status") != "COMPLETE"
+        or state.get("completion_reason")
+        != "ORDINARY_CAPTURE_COMPLETE_WOLO_AUTHORIZATION_REQUIRED"
+        or list(state.get("completed_classes") or []) != list(ORDINARY_CLASSES)
+    ):
+        raise CampaignError(
+            "ordinary restore drill requires a complete five-class capture campaign"
+        )
+
+    bundle_root = Path(str(state.get("bundle_root") or "")).expanduser().resolve()
+    try:
+        bundle_root.relative_to(recovery.RECOVERY_VAULT_ROOT.resolve())
+    except ValueError as exc:
+        raise CampaignError(
+            "capture bundle is outside the independent recovery vault"
+        ) from exc
+
+    summary_path = bundle_root / "ordinary-capture-summary.json"
+    summary, summary_sha, summary_error = recovery._load_hashed_json(summary_path)
+    if summary_error or summary is None or summary_sha is None:
+        raise CampaignError(
+            "ordinary capture summary is missing or invalid: "
+            + str(summary_error or "unknown error")
+        )
+    if (
+        summary.get("campaign_id") != selected
+        or summary.get("status") != "ORDINARY_CAPTURE_COMPLETE"
+        or list(summary.get("completed_classes") or []) != list(ORDINARY_CLASSES)
+    ):
+        raise CampaignError("ordinary capture summary does not close all five classes")
+
+    cert = Path(str(state.get("recipient_certificate") or "")).expanduser().resolve()
+    if not cert.is_file():
+        raise CampaignError("campaign recipient certificate is missing")
+    expected_fingerprint = normalize_fingerprint(
+        str(state.get("recipient_certificate_fingerprint") or "")
+    )
+    if certificate_fingerprint(cert) != expected_fingerprint:
+        raise CampaignError(
+            "campaign recipient certificate fingerprint no longer matches"
+        )
+    key = verify_canonical_private_key(cert)
+
+    capture_proofs: dict[str, dict[str, Any]] = {}
+    ciphertext_bytes = 0
+    for class_name in ORDINARY_CLASSES:
+        proof, proof_sha, artifact = _capture_proof(
+            bundle_root,
+            selected,
+            class_name,
+            verify_ciphertext=False,
+        )
+        capture_proofs[class_name] = {
+            "proof_file": str(
+                (bundle_root / "proofs" / f"{class_name}.json").relative_to(
+                    bundle_root
+                )
+            ),
+            "proof_sha256": proof_sha,
+            "ciphertext_file": artifact.name,
+            "ciphertext_bytes": int(proof["ciphertext_bytes"]),
+        }
+        ciphertext_bytes += int(proof["ciphertext_bytes"])
+
+    free_bytes = shutil.disk_usage(Path.home()).free
+    if free_bytes < REPRESENTATIVE_MAX_BYTES * 2:
+        raise CampaignError(
+            "insufficient Mac headroom for isolated representative restore workspace"
+        )
+
+    return {
+        "schema": 1,
+        "kind": "aoe2war-recovery-ordinary-restore-preflight",
+        "generated_at": utc_now(),
+        "status": "READY",
+        "campaign_id": selected,
+        "capture_tool_source": state.get("tool_source"),
+        "restore_tool_source": restore_source,
+        "authority": state.get("authority"),
+        "bundle_root": str(bundle_root),
+        "capture_summary_sha256": summary_sha,
+        "recipient_certificate": str(cert),
+        "recipient_certificate_fingerprint": expected_fingerprint,
+        "canonical_private_key": key,
+        "ordinary_classes": list(ORDINARY_CLASSES),
+        "capture_proofs": capture_proofs,
+        "ciphertext_bytes": ciphertext_bytes,
+        "operator_free_bytes": free_bytes,
+        "representative_max_bytes": REPRESENTATIVE_MAX_BYTES,
+        "production_mutation_authorized": False,
+        "wolo_mutation_authorized": False,
+        "plaintext_full_archive_staging": False,
+    }
+
+
+class HashingReader:
+    def __init__(self, raw: Any):
+        self.raw = raw
+        self.digest = hashlib.sha256()
+        self.bytes_read = 0
+
+    def read(self, size: int = -1) -> bytes:
+        data = self.raw.read(size)
+        if data:
+            self.digest.update(data)
+            self.bytes_read += len(data)
+        return data
+
+
+def _member_kind(member: tarfile.TarInfo) -> str:
+    if member.isfile():
+        return "file"
+    if member.isdir():
+        return "directory"
+    if member.issym():
+        return "symlink"
+    if member.islnk():
+        return "hardlink"
+    if member.ischr():
+        return "character_device"
+    if member.isblk():
+        return "block_device"
+    if member.isfifo():
+        return "fifo"
+    return "other"
+
+
+def inspect_plaintext_tar(
+    raw: Any,
+    *,
+    representative_max_bytes: int = REPRESENTATIVE_MAX_BYTES,
+) -> dict[str, Any]:
+    reader = HashingReader(raw)
+    index_digest = hashlib.sha256()
+    counts: dict[str, int] = {}
+    member_count = 0
+    logical_bytes = 0
+    representative: dict[str, Any] | None = None
+
+    with tempfile.TemporaryDirectory(
+        prefix="aoe2war-ordinary-restore-"
+    ) as temporary:
+        workspace = Path(temporary)
+        with tarfile.open(fileobj=reader, mode="r|*") as archive:
+            for member in archive:
+                member_count += 1
+                kind = _member_kind(member)
+                counts[kind] = counts.get(kind, 0) + 1
+                logical_bytes += int(member.size or 0)
+
+                name_sha = hashlib.sha256(
+                    member.name.encode("utf-8", errors="surrogateescape")
+                ).hexdigest()
+                index_digest.update(
+                    (
+                        f"{name_sha}|{kind}|{int(member.size or 0)}|"
+                        f"{int(member.mode or 0)}\n"
+                    ).encode("ascii")
+                )
+
+                if (
+                    representative is None
+                    and member.isfile()
+                    and 0 <= member.size <= representative_max_bytes
+                ):
+                    source = archive.extractfile(member)
+                    if source is not None:
+                        target = workspace / "representative.bin"
+                        digest = hashlib.sha256()
+                        written = 0
+                        with target.open("wb") as output:
+                            while True:
+                                chunk = source.read(1024 * 1024)
+                                if not chunk:
+                                    break
+                                digest.update(chunk)
+                                written += len(chunk)
+                                output.write(chunk)
+                        if written != member.size:
+                            raise CampaignError(
+                                "representative restore byte size does not match tar member"
+                            )
+                        representative = {
+                            "status": "PASS",
+                            "member_name_sha256": name_sha,
+                            "bytes": written,
+                            "sha256": digest.hexdigest(),
+                            "workspace": "DISPOSABLE_ISOLATED_DIRECTORY",
+                        }
+
+        while reader.read(1024 * 1024):
+            pass
+
+        if representative is not None:
+            representative["workspace_removed_after_drill"] = False
+
+    if representative is None:
+        representative = {
+            "status": "NOT_APPLICABLE_NO_SAFE_SMALL_REGULAR_FILE",
+            "max_bytes": representative_max_bytes,
+            "workspace_removed_after_drill": True,
+        }
+    else:
+        representative["workspace_removed_after_drill"] = True
+
+    return {
+        "plaintext_tar_bytes": reader.bytes_read,
+        "plaintext_tar_sha256": reader.digest.hexdigest(),
+        "tar_structure": "PASS",
+        "member_count": member_count,
+        "member_type_counts": counts,
+        "logical_member_bytes": logical_bytes,
+        "tar_member_index_sha256": index_digest.hexdigest(),
+        "representative_restore": representative,
+    }
+
+
+def restore_stage(
+    *,
+    campaign_id: str,
+    bundle_root: Path,
+    class_name: str,
+    recipient_cert: Path,
+    private_key: Path,
+    restore_tool_source: str,
+) -> dict[str, Any]:
+    capture, capture_proof_sha, artifact = _capture_proof(
+        bundle_root,
+        campaign_id,
+        class_name,
+        verify_ciphertext=True,
+    )
+    proof_path = bundle_root / "restore-proofs" / f"{class_name}.json"
+    if proof_path.exists() or proof_path.with_name(
+        proof_path.name + ".sha256"
+    ).exists():
+        raise CampaignError(
+            f"restore proof already exists for {class_name}; refusing overwrite"
+        )
+    proof_path.parent.mkdir(parents=True, exist_ok=True)
+
+    started_at = utc_now()
+    started = time.monotonic()
+    command = cms_decrypt_command(
+        artifact,
+        recipient_cert,
+        private_key,
+    )
+    decrypt = subprocess.Popen(
+        command,
+        cwd=ROOT,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if decrypt.stdout is None:
+        raise CampaignError(f"failed to open {class_name} CMS plaintext stream")
+
+    inspection: dict[str, Any] | None = None
+    inspection_error: Exception | None = None
+    try:
+        inspection = inspect_plaintext_tar(decrypt.stdout)
+    except Exception as exc:
+        inspection_error = exc
+    finally:
+        try:
+            decrypt.stdout.close()
+        except Exception:
+            pass
+
+    stderr = b""
+    if decrypt.stderr is not None:
+        stderr = decrypt.stderr.read()
+    decrypt_rc = decrypt.wait()
+
+    if inspection_error is not None:
+        raise CampaignError(
+            f"{class_name} isolated restore inspection failed: {inspection_error}"
+        )
+    if decrypt_rc != 0:
+        detail = stderr.decode(errors="replace").strip()
+        raise CampaignError(
+            f"{class_name} CMS decryption failed with exit={decrypt_rc}: {detail}"
+        )
+    if inspection is None:
+        raise CampaignError(f"{class_name} restore inspection produced no evidence")
+
+    expected_plaintext_bytes = capture.get("plaintext_tar_bytes")
+    expected_plaintext_sha = capture.get("plaintext_tar_sha256")
+    if (
+        inspection["plaintext_tar_bytes"] != expected_plaintext_bytes
+        or inspection["plaintext_tar_sha256"] != expected_plaintext_sha
+    ):
+        raise CampaignError(
+            f"{class_name} restored plaintext does not match capture hash/size"
+        )
+
+    proof = {
+        "schema": 1,
+        "kind": "aoe2war-recovery-ordinary-restore-class-proof",
+        "status": "PASS",
+        "campaign_id": campaign_id,
+        "class": class_name,
+        "started_at": started_at,
+        "completed_at": utc_now(),
+        "elapsed_seconds": round(time.monotonic() - started, 3),
+        "capture_tool_source": capture.get("tool_source"),
+        "restore_tool_source": restore_tool_source,
+        "capture_proof_file": f"proofs/{class_name}.json",
+        "capture_proof_sha256": capture_proof_sha,
+        "ciphertext_file": artifact.name,
+        "ciphertext_bytes": capture["ciphertext_bytes"],
+        "ciphertext_sha256": capture["ciphertext_sha256"],
+        "ciphertext_hash_verified_before_decryption": True,
+        "plaintext_tar_bytes": inspection["plaintext_tar_bytes"],
+        "plaintext_tar_sha256": inspection["plaintext_tar_sha256"],
+        "plaintext_matches_capture": True,
+        "tar_structure": inspection["tar_structure"],
+        "member_count": inspection["member_count"],
+        "member_type_counts": inspection["member_type_counts"],
+        "logical_member_bytes": inspection["logical_member_bytes"],
+        "tar_member_index_sha256": inspection["tar_member_index_sha256"],
+        "representative_restore": inspection["representative_restore"],
+        "full_plaintext_archive_staged": False,
+        "production_mutated": False,
+        "wolo_mutated": False,
+        "secrets_policy": {
+            "private_recovery_key_transmitted_to_vps": False,
+            "validator_private_keys_included": False,
+            "wolo_keyrings_included": False,
+        },
+    }
+    proof_sha = write_json_with_sidecar(proof_path, proof)
+    return {
+        "class": class_name,
+        "proof_path": str(proof_path),
+        "proof_file": str(proof_path.relative_to(bundle_root)),
+        "proof_sha256": proof_sha,
+        "representative_restore": inspection["representative_restore"],
+        "completed_at": proof["completed_at"],
+        "elapsed_seconds": proof["elapsed_seconds"],
+    }
+
+
+def create_restore_state(
+    campaign_id: str | None,
+    *,
+    authorize_ordinary_restore_drill: bool,
+) -> dict[str, Any]:
+    if not authorize_ordinary_restore_drill:
+        raise CampaignError(
+            "ordinary restore drill requires --authorize-ordinary-restore-drill"
+        )
+    check = restore_preflight(campaign_id)
+    selected = str(check["campaign_id"])
+    path = restore_state_path(selected)
+    if path.exists():
+        raise CampaignError(
+            f"ordinary restore drill already exists for campaign {selected}"
+        )
+
+    state = {
+        "schema": 1,
+        "kind": "aoe2war-recovery-ordinary-restore-drill",
+        "campaign_id": selected,
+        "status": "CREATED",
+        "created_at": utc_now(),
+        "updated_at": utc_now(),
+        "capture_tool_source": check["capture_tool_source"],
+        "restore_tool_source": check["restore_tool_source"],
+        "authority": check["authority"],
+        "bundle_root": check["bundle_root"],
+        "recipient_certificate": check["recipient_certificate"],
+        "recipient_certificate_fingerprint": check[
+            "recipient_certificate_fingerprint"
+        ],
+        "ordinary_classes": list(check["ordinary_classes"]),
+        "completed_classes": [],
+        "current_class": None,
+        "current_class_started_at": None,
+        "pid": None,
+        "history": [],
+        "last_error": None,
+        "completion_reason": None,
+        "authorization": {
+            "ordinary_restore_drill": True,
+            "production_mutation": False,
+            "wolo_mutation": False,
+            "full_schema2_verification": False,
+        },
+        "log_path": str(restore_log_path(selected)),
+    }
+    save_restore_state(state)
+    return state
+
+
+def spawn_restore(campaign_id: str) -> int:
+    state = load_restore_state(campaign_id)
+    pid = state.get("pid")
+    if process_alive(pid if isinstance(pid, int) else None):
+        raise CampaignError(f"restore drill already running with pid={pid}")
+
+    RESTORE_DIR.mkdir(parents=True, exist_ok=True)
+    log = restore_log_path(campaign_id).open("a", encoding="utf-8")
+    proc = subprocess.Popen(
+        [
+            sys.executable,
+            str(Path(__file__).resolve()),
+            "_restore_run",
+            campaign_id,
+        ],
+        cwd=ROOT,
+        stdin=subprocess.DEVNULL,
+        stdout=log,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+        close_fds=True,
+    )
+    log.close()
+    return int(proc.pid)
+
+
+def validate_restore_source(state: dict[str, Any]) -> None:
+    current = source_identity()
+    if current != state.get("restore_tool_source"):
+        raise CampaignError(
+            "app-prodn source changed since restore drill authorization: "
+            f"drill={state.get('restore_tool_source')} current={current}"
+        )
+
+
+def run_restore(campaign_id: str) -> int:
+    RESTORE_DIR.mkdir(parents=True, exist_ok=True)
+    lock_file = RESTORE_LOCK_PATH.open("a+")
+    try:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        raise CampaignError(
+            "another Recovery OS restore drill is active"
+        ) from exc
+
+    state = load_restore_state(campaign_id)
+    state["status"] = "RUNNING"
+    state["pid"] = os.getpid()
+    state["started_at"] = utc_now()
+    save_restore_state(state)
+
+    try:
+        validate_restore_source(state)
+        capture_state = load_state(campaign_id)
+        if capture_state.get("status") != "COMPLETE":
+            raise CampaignError(
+                "capture campaign is no longer complete"
+            )
+
+        bundle_root = Path(str(state["bundle_root"])).expanduser().resolve()
+        cert = Path(str(state["recipient_certificate"])).expanduser().resolve()
+        key_info = verify_canonical_private_key(cert)
+        private_key = Path(str(key_info["path"])).expanduser().resolve()
+
+        completed = set(str(item) for item in state.get("completed_classes", []))
+        representative_count = 0
+        for receipt in state.get("history") or []:
+            representative = receipt.get("representative_restore") or {}
+            if representative.get("status") == "PASS":
+                representative_count += 1
+
+        for class_name in state["ordinary_classes"]:
+            if class_name in completed:
+                continue
+
+            state = load_restore_state(campaign_id)
+            validate_restore_source(state)
+            state["status"] = "RUNNING_RESTORE"
+            state["current_class"] = class_name
+            state["current_class_started_at"] = utc_now()
+            save_restore_state(state)
+
+            print()
+            print("=" * 68, flush=True)
+            print(
+                f"RECOVERY RESTORE DRILL {campaign_id} · {class_name}",
+                flush=True,
+            )
+            print("=" * 68, flush=True)
+
+            receipt = restore_stage(
+                campaign_id=campaign_id,
+                bundle_root=bundle_root,
+                class_name=str(class_name),
+                recipient_cert=cert,
+                private_key=private_key,
+                restore_tool_source=str(state["restore_tool_source"]),
+            )
+
+            state = load_restore_state(campaign_id)
+            history = list(state.get("history") or [])
+            history.append(receipt)
+            completed.add(str(class_name))
+            if (
+                (receipt.get("representative_restore") or {}).get("status")
+                == "PASS"
+            ):
+                representative_count += 1
+            state["history"] = history
+            state["completed_classes"] = [
+                item
+                for item in state["ordinary_classes"]
+                if item in completed
+            ]
+            state["current_class"] = None
+            state["current_class_started_at"] = None
+            state["status"] = "RUNNING"
+            save_restore_state(state)
+
+        if representative_count < 1:
+            raise CampaignError(
+                "ordinary restore drill found no safe representative regular file"
+            )
+
+        coverage = {
+            str(item["class"]): {
+                "status": "PASS",
+                "proof_file": item["proof_file"],
+                "proof_sha256": item["proof_sha256"],
+            }
+            for item in state.get("history") or []
+        }
+        summary_path = bundle_root / "ordinary-restore-summary.json"
+        summary = {
+            "schema": 1,
+            "kind": "aoe2war-recovery-ordinary-restore-summary",
+            "campaign_id": campaign_id,
+            "status": "ORDINARY_RESTORE_VERIFIED",
+            "created_at": utc_now(),
+            "capture_tool_source": state["capture_tool_source"],
+            "restore_tool_source": state["restore_tool_source"],
+            "authority": state["authority"],
+            "coverage": coverage,
+            "representative_restores": representative_count,
+            "full_plaintext_archive_staged": False,
+            "production_mutated": False,
+            "wolo_mutated": False,
+            "remaining_before_full_recovery_verification": [
+                "wolo_settlement_state",
+                "wolo_consensus_recovery",
+                "wolo_key_custody",
+                "full_schema2_restore_proof",
+            ],
+            "secrets_policy": {
+                "database_credentials_included": False,
+                "environment_files_included": False,
+                "private_recovery_key_transmitted_to_vps": False,
+                "validator_private_keys_included": False,
+                "wolo_keyrings_included": False,
+            },
+        }
+        summary_sha = write_json_with_sidecar(summary_path, summary)
+        state = load_restore_state(campaign_id)
+        state["summary_path"] = str(summary_path)
+        state["summary_sha256"] = summary_sha
+        state["status"] = "COMPLETE"
+        state["completion_reason"] = (
+            "ORDINARY_RESTORE_VERIFIED_WOLO_AUTHORIZATION_REQUIRED"
+        )
+        state["current_class"] = None
+        state["current_class_started_at"] = None
+        state["pid"] = None
+        state["finished_at"] = utc_now()
+        save_restore_state(state)
+        return 0
+    except Exception as exc:
+        state = load_restore_state(campaign_id)
+        state["status"] = "FAILED"
+        state["last_error"] = str(exc)
+        state["pid"] = None
+        state["failed_at"] = utc_now()
+        save_restore_state(state)
+        print(f"STOP: {exc}", file=sys.stderr, flush=True)
+        return 2
+    finally:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        finally:
+            lock_file.close()
+
+
+def start_restore(
+    campaign_id: str | None,
+    *,
+    authorize_ordinary_restore_drill: bool,
+) -> dict[str, Any]:
+    state = create_restore_state(
+        campaign_id,
+        authorize_ordinary_restore_drill=authorize_ordinary_restore_drill,
+    )
+    pid = spawn_restore(str(state["campaign_id"]))
+    return {**state, "spawned_pid": pid}
+
+
+def restore_status_payload(campaign_id: str | None) -> dict[str, Any]:
+    selected = campaign_id
+    if not selected:
+        candidates = sorted(
+            RESTORE_DIR.glob("*.json"),
+            key=lambda item: item.stat().st_mtime,
+            reverse=True,
+        ) if RESTORE_DIR.is_dir() else []
+        selected = candidates[0].stem if candidates else None
+    if not selected:
+        return {
+            "schema": 1,
+            "kind": "aoe2war-recovery-ordinary-restore-status",
+            "status": "NONE",
+        }
+    state = load_restore_state(selected)
+    pid = state.get("pid")
+    state["process_alive"] = process_alive(pid if isinstance(pid, int) else None)
+    return state
+
+
+def print_restore_preflight(payload: dict[str, Any]) -> None:
+    print("⚔️  AOE2WAR ORDINARY RESTORE DRILL PREFLIGHT")
+    print()
+    print(f"Status:         {payload['status']}")
+    print(f"Campaign:       {payload['campaign_id']}")
+    print(f"Capture source: {str(payload['capture_tool_source'])[:12]}")
+    print(f"Restore source: {str(payload['restore_tool_source'])[:12]}")
+    print(
+        "Encrypted data: "
+        f"{payload['ciphertext_bytes'] / (1024 ** 3):.2f} GiB"
+    )
+    print(
+        "Mac free:       "
+        f"{payload['operator_free_bytes'] / (1024 ** 3):.2f} GiB"
+    )
+    print(
+        "Restore mode:   STREAM VERIFY + DISPOSABLE REPRESENTATIVE"
+    )
+    print("Full staging:   NO")
+    print("Production:     READ-ONLY")
+    print("Wolo mutation:  NOT AUTHORIZED")
+
+
+def print_restore_status(payload: dict[str, Any]) -> None:
+    print("⚔️  AOE2WAR ORDINARY RESTORE DRILL")
+    print()
+    if payload.get("status") == "NONE":
+        print("Status: NONE")
+        return
+    print(f"Campaign:    {payload['campaign_id']}")
+    print(f"Status:      {payload['status']}")
+    print(
+        f"Progress:    {len(payload.get('completed_classes') or [])}/"
+        f"{len(payload.get('ordinary_classes') or [])}"
+    )
+    print(f"PID:         {payload.get('pid') or '—'}")
+    print(f"Alive:       {payload.get('process_alive', False)}")
+    print(f"Current:     {payload.get('current_class') or '—'}")
+    print(f"Reason:      {payload.get('completion_reason') or '—'}")
+    print(f"Last error:  {payload.get('last_error') or '—'}")
+    print(f"Bundle:      {payload.get('bundle_root') or '—'}")
+    print(f"Log:         {payload.get('log_path') or '—'}")
+
+
 def create_state(
     *,
     recipient_cert: str | None,
@@ -1028,7 +1821,23 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("campaign_id", nargs="?")
     q.add_argument("--json", action="store_true")
 
+    q = sub.add_parser("restore-preflight")
+    q.add_argument("campaign_id", nargs="?")
+    q.add_argument("--json", action="store_true")
+
+    q = sub.add_parser("restore-start")
+    q.add_argument("campaign_id", nargs="?")
+    q.add_argument("--authorize-ordinary-restore-drill", action="store_true")
+    q.add_argument("--json", action="store_true")
+
+    q = sub.add_parser("restore-status")
+    q.add_argument("campaign_id", nargs="?")
+    q.add_argument("--json", action="store_true")
+
     q = sub.add_parser("_run")
+    q.add_argument("campaign_id")
+
+    q = sub.add_parser("_restore_run")
     q.add_argument("campaign_id")
 
     return p
@@ -1039,6 +1848,8 @@ def main() -> int:
 
     if args.command == "_run":
         return run_campaign(args.campaign_id)
+    if args.command == "_restore_run":
+        return run_restore(args.campaign_id)
 
     if args.command == "preflight":
         payload = preflight(args.recipient_cert)
@@ -1046,6 +1857,39 @@ def main() -> int:
             print(json.dumps(payload, indent=2, sort_keys=True))
         else:
             print_preflight(payload)
+        return 0
+
+    if args.command == "restore-preflight":
+        payload = restore_preflight(args.campaign_id)
+        if args.json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print_restore_preflight(payload)
+        return 0
+
+    if args.command == "restore-start":
+        payload = start_restore(
+            args.campaign_id,
+            authorize_ordinary_restore_drill=(
+                args.authorize_ordinary_restore_drill
+            ),
+        )
+        if args.json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print_restore_status(
+                restore_status_payload(str(payload["campaign_id"]))
+            )
+            if payload.get("spawned_pid"):
+                print(f"Spawned PID: {payload['spawned_pid']}")
+        return 0
+
+    if args.command == "restore-status":
+        payload = restore_status_payload(args.campaign_id)
+        if args.json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print_restore_status(payload)
         return 0
 
     if args.command == "start":
