@@ -386,10 +386,10 @@ export default function LiveReplayDetail({
         />
       </section> : null}
 
-      <section className={`grid gap-6 ${showDiagnostics ? "xl:grid-cols-[1.15fr_0.85fr]" : ""}`}>
+      <section className="grid min-w-0 gap-6">
         <div className="space-y-6">
           {showDiagnostics ? <Panel title="Pulse Board" eyebrow="Spectator Mode">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr))]">
               <SignalTile
                 label="Current winner signal"
                 value={winnerLabel(game.winner, game.parseReason)}
@@ -436,7 +436,7 @@ export default function LiveReplayDetail({
           </Panel> : null}
 
           <Panel title="Live Match Summary" eyebrow="Overview">
-            <dl className="grid gap-4 sm:grid-cols-2">
+            <dl className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),1fr))]">
               <StatRow label="Session Key" value={snapshot.sessionKey} />
               <StatRow label="Live State" value={isBattleArchive ? "Battle archive" : "Watcher replay stream"} />
               {reliableWinner ? <StatRow label="Winner" value={reliableWinner} /> : null}
@@ -457,7 +457,7 @@ export default function LiveReplayDetail({
           </Panel>
 
           <Panel title="Players" eyebrow="Roster">
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
               {players.length === 0 ? (
                 <EmptyPanel message="Battle tape live in the HD War Room." />
               ) : (
@@ -633,7 +633,7 @@ export default function LiveReplayDetail({
 
         {showDiagnostics ? <div className="space-y-6">
           <Panel title="Fog Of War" eyebrow="Truth Boundary">
-            <div className="space-y-3">
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr))]">
               {fogItems.length === 0 ? (
                 <EmptyPanel message="This live replay is surfacing every signal the current watcher pipeline expects." />
               ) : (
@@ -654,7 +654,7 @@ export default function LiveReplayDetail({
               {Object.keys(settingsSummary).length > 0 ? (
                 <div>
                   <div className="text-xs uppercase tracking-[0.25em] text-slate-500">Settings</div>
-                  <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <dl className="mt-3 grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr))]">
                     {Object.entries(settingsSummary).map(([key, value]) => (
                       <StatRow key={key} label={humanizeKey(key)} value={formatPrimitive(value)} compact />
                     ))}
@@ -665,7 +665,7 @@ export default function LiveReplayDetail({
               {chatPreview.length > 0 ? (
                 <div>
                   <div className="text-xs uppercase tracking-[0.25em] text-slate-500">Chat Preview</div>
-                  <div className="mt-3 space-y-2">
+                  <div className="mt-3 grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
                     {chatPreview.map((entry, index) => (
                       <div
                         key={`${String(entry.player_number || "system")}-${index}`}
@@ -705,7 +705,7 @@ export default function LiveReplayDetail({
           </Panel>
 
           <Panel title="Parse Attempts" eyebrow="Trail">
-            <div className="space-y-3">
+            <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(min(100%,20rem),1fr))]">
               {snapshot.parseAttempts.length === 0 ? (
                 <EmptyPanel message="No parse attempts recorded for this session yet." />
               ) : (
@@ -792,9 +792,9 @@ function SignalTile({
         : "border-white/8 bg-white/5 text-slate-100";
 
   return (
-    <div className={`rounded-2xl border px-4 py-4 ${toneClass}`}>
-      <div className="text-[11px] uppercase tracking-[0.22em] opacity-70">{label}</div>
-      <div className="mt-2 text-lg font-semibold">{value}</div>
+    <div className={`min-w-0 rounded-2xl border px-4 py-4 ${toneClass}`}>
+      <div className="break-words text-[11px] uppercase leading-4 tracking-[0.18em] opacity-70 [overflow-wrap:anywhere]">{label}</div>
+      <div className="mt-2 break-words text-lg font-semibold leading-6 [overflow-wrap:anywhere]">{value}</div>
     </div>
   );
 }
@@ -1196,9 +1196,9 @@ function MatrixMetric({ label, value }: { label: string; value: string }) {
 
 function JsonPanel({ title, value }: { title: string; value: unknown }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="text-xs uppercase tracking-[0.25em] text-slate-500">{title}</div>
-      <pre className="mt-3 overflow-x-auto rounded-2xl border border-white/8 bg-slate-950/70 p-4 text-xs leading-6 text-slate-200">
+      <pre className="mt-3 max-w-full overflow-x-auto rounded-2xl border border-white/8 bg-slate-950/70 p-4 text-xs leading-6 text-slate-200">
         {stringifyJson(value)}
       </pre>
     </div>
