@@ -3,7 +3,6 @@ import {
   Bot,
   BrainCircuit,
   CheckCircle2,
-  Cpu,
   Database,
   Gauge,
   GitBranch,
