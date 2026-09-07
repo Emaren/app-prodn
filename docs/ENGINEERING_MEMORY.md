@@ -908,3 +908,21 @@ explicitly removes the marker at a clean boundary. If an older controller with
 the race is already running, a deliberately dirty untracked sentinel may be used
 as an emergency fail-closed interlock because the old controller re-validates a
 clean authorized source before every new class.
+
+## 2026-09-06 — Watcher replay ownership must come from the key
+
+Scavanger_Ab exposed a cross-surface contradiction: his claimed profile had
+active Watcher keys and fresh Watcher telemetry, while the Kingdom's proven
+Watcher-operator roster did not include him. Telemetry already resolved the
+Watcher API key server-side, but the replay upload proxy accepted the client's
+`x-user-uid` as replay ownership whenever both headers were present. A stale or
+incorrect cached client UID could therefore disagree with the API-key owner and
+break final replay attribution even while telemetry remained correctly linked.
+
+Durable rule: a Watcher-formatted API key is the replay ownership authority. The
+web proxy must resolve it against `api_keys`, reject unresolved/revoked keys,
+and forward the server-resolved owner UID. Client-supplied Watcher UID is never
+ownership authority. Keep the separate internal server-key upload path explicit
+and keep browser uploads session-owned. Support tooling must pin known problem
+accounts by stable UID rather than allowing missing telemetry or spelling drift
+to make the diagnostic tile disappear.

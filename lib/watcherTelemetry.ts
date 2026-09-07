@@ -116,6 +116,10 @@ type WatcherIdentityOptions = {
 };
 
 const WATCHER_KEY_RE = /^wolo_([a-f0-9]{12})_(.+)$/i;
+
+export function isWatcherApiKeyCandidate(value: string | null | undefined) {
+  return Boolean((value?.trim() || "").match(WATCHER_KEY_RE));
+}
 const SECRET_METADATA_KEY_RE = /(token|secret|password|api[-_]?key|auth|authorization|header|cookie|mnemonic|private[-_]?key)/i;
 const MAX_STRING_LENGTH = 500;
 const MAX_METADATA_DEPTH = 3;
