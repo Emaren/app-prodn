@@ -152,7 +152,7 @@ function safeCampaign(payload: JsonRecord) {
 export async function loadPublicKingdomIntelligence() {
   const [snapshot, dashboard] = await Promise.all([
     readAoe2OsKingdomIntelligence(),
-    loadAoe2OsDashboard(),
+    loadAoe2OsDashboard().catch(() => null),
   ]);
   if (!snapshot) {
     return {
@@ -234,8 +234,8 @@ export async function loadPublicKingdomIntelligence() {
       : null;
 
   const liveActivity = [
-    ...(dashboard.activeRun ? [safeRunActivity(dashboard.activeRun)] : []),
-    ...dashboard.recentRuns.map(safeRunActivity),
+    ...(dashboard?.activeRun ? [safeRunActivity(dashboard.activeRun)] : []),
+    ...(dashboard?.recentRuns ?? []).map(safeRunActivity),
   ]
     .filter((item): item is NonNullable<ReturnType<typeof safeRunActivity>> => Boolean(item))
     .filter((item, index, all) => all.findIndex((other) => other.id === item.id) === index)
