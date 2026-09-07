@@ -19,22 +19,37 @@ import {
   Workflow,
 } from "lucide-react";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
+import PageWidthSettingsBar from "@/components/tile-view/PageWidthSettingsBar";
 import {
   loadPublicKingdomIntelligence,
   type PublicKingdomIntelligence,
 } from "@/lib/kingdomIntelligencePublic";
 
+import BrowserLocalTime from "./BrowserLocalTime";
 import KingdomIntelligenceRefresh from "./KingdomIntelligenceRefresh";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const ACTIVE_PROCESS_STATES = new Set([
+  "ACTIVE",
+  "RUNNING",
+  "RUNNING_CAPTURE",
+  "RUNNING_TRANSACTION",
+  "RESUME_REQUESTED",
+  "CLAIMED",
+]);
+
+function isActiveProcessState(value: string | null | undefined) {
+  return ACTIVE_PROCESS_STATES.has(String(value || "").toUpperCase());
+}
 
 function tone(status: string | null | undefined) {
   const value = String(status || "").toUpperCase();
   if (["PASS", "READY", "HEALTHY", "CERTIFIED", "COMPLETE"].includes(value)) {
     return "border-emerald-300/20 bg-emerald-300/10 text-emerald-100";
   }
-  if (["ATTENTION", "ATTENTION_REQUIRED", "MAINTENANCE_DUE", "WATCH", "RUNNING", "RUNNING_TRANSACTION", "DO NOW", "MUST FIX"].includes(value)) {
+  if (["ATTENTION", "ATTENTION_REQUIRED", "MAINTENANCE_DUE", "WATCH", "RUNNING", "RUNNING_CAPTURE", "RUNNING_TRANSACTION", "RESUME_REQUESTED", "DO NOW", "MUST FIX"].includes(value)) {
     return "border-amber-300/20 bg-amber-300/10 text-amber-100";
   }
   if (["FAIL", "FAILED", "BLOCKED", "UNSAFE"].includes(value)) {
@@ -70,7 +85,7 @@ function Stat({ label, value, detail }: { label: string; value: string; detail: 
 
 function beacon(state: string | null | undefined) {
   const value = String(state || "").toUpperCase();
-  if (value === "ACTIVE") {
+  if (isActiveProcessState(value)) {
     return "bg-cyan-300 shadow-[0_0_18px_rgba(103,232,249,.8)] animate-pulse";
   }
   if (["HEALTHY", "PASS", "COMPLETE", "CERTIFIED"].includes(value)) {
@@ -98,8 +113,17 @@ function AgentLine({
   progress: number | null;
   progressLabel: string | null;
 }) {
+  const active = isActiveProcessState(state);
+
   return (
-    <div className="group rounded-2xl border border-white/8 bg-white/[0.025] px-4 py-3 transition hover:border-cyan-200/15 hover:bg-cyan-300/[0.025]">
+    <div
+      className={
+        "group rounded-2xl border px-4 py-3 transition " +
+        (active
+          ? "kingdom-current-process border-cyan-200/22 bg-cyan-300/[0.045] shadow-[0_0_34px_rgba(34,211,238,0.08)]"
+          : "border-white/8 bg-white/[0.025] hover:border-cyan-200/15 hover:bg-cyan-300/[0.025]")
+      }
+    >
       <div className="flex items-start gap-3">
         <span className={"mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full " + beacon(state)} />
         <div className="min-w-0 flex-1">
@@ -183,7 +207,23 @@ export default async function KingdomIntelligencePage() {
   const awake = Boolean(data?.available && liveAge !== null && liveAge < 15 * 60);
   const campaign = data?.storageCampaign;
   const systemAgents = data?.systemAgents ?? [];
-  const activeSystemCount = systemAgents.filter((item) => item.state === "ACTIVE").length;
+  const orderedSystemAgents = [...systemAgents].sort((left, right) => {
+    const activeDelta =
+      Number(isActiveProcessState(right.state)) -
+      Number(isActiveProcessState(left.state));
+    if (activeDelta) return activeDelta;
+
+    const attention = new Set(["ATTENTION", "BLOCKED", "FAILED"]);
+    const attentionDelta =
+      Number(attention.has(right.state)) -
+      Number(attention.has(left.state));
+    if (attentionDelta) return attentionDelta;
+
+    return left.label.localeCompare(right.label);
+  });
+  const activeSystemCount = systemAgents.filter((item) =>
+    isActiveProcessState(item.state)
+  ).length;
   const attentionSystemCount = systemAgents.filter((item) =>
     ["ATTENTION", "BLOCKED", "FAILED"].includes(item.state)
   ).length;
@@ -195,7 +235,23 @@ export default async function KingdomIntelligencePage() {
       label: item.label,
       status: item.status,
       proof: item.id,
+      current: isActiveProcessState(item.status),
+      progress: null as number | null,
+      progressLabel: null as string | null,
     }));
+    const activeAgentRows = systemAgents
+      .filter((item) => isActiveProcessState(item.state))
+      .map((item) => ({
+        key: "agent-" + item.key,
+        at: data?.receivedAt ?? data?.generatedAt ?? new Date(0).toISOString(),
+        system: item.label,
+        label: item.summary,
+        status: item.state,
+        proof: null as string | null,
+        current: true,
+        progress: item.progressPercent,
+        progressLabel: item.progressLabel,
+      }));
     const sourceRows = (data?.recentSourceActivity ?? []).map((item) => ({
       key: "src-" + item.sha,
       at: item.createdAt,
@@ -203,14 +259,31 @@ export default async function KingdomIntelligencePage() {
       label: item.title,
       status: item.status,
       proof: item.sha,
+      current: false,
+      progress: null as number | null,
+      progressLabel: null as string | null,
     }));
-    return [...runRows, ...sourceRows]
-      .sort((left, right) => new Date(right.at).getTime() - new Date(left.at).getTime())
+
+    return [...activeAgentRows, ...runRows, ...sourceRows]
+      .filter(
+        (item, index, all) =>
+          all.findIndex(
+            (other) =>
+              other.system === item.system &&
+              other.label === item.label &&
+              other.status === item.status,
+          ) === index,
+      )
+      .sort((left, right) => {
+        const currentDelta = Number(right.current) - Number(left.current);
+        if (currentDelta) return currentDelta;
+        return new Date(right.at).getTime() - new Date(left.at).getTime();
+      })
       .slice(0, 14);
   })();
 
   return (
-    <div className="mx-auto w-full max-w-[92rem] space-y-6 pb-16">
+    <div className="mx-auto w-full space-y-6 pb-16">
       <SpeedReadyMarker route="/kingdom-intelligence" />
       <section className="relative min-h-[32rem] overflow-hidden rounded-[2.3rem] border border-amber-100/12 bg-[#04070c] shadow-[0_32px_120px_rgba(0,0,0,0.42)]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_40%,rgba(217,119,6,0.18),transparent_18%),radial-gradient(circle_at_72%_40%,rgba(251,191,36,0.08),transparent_38%),linear-gradient(135deg,#08101c_0%,#030609_56%,#0b0805_100%)]" />
@@ -327,20 +400,46 @@ export default async function KingdomIntelligencePage() {
               nerveFeed.map((item) => (
                 <div
                   key={item.key}
-                  className="grid grid-cols-[9px_62px_minmax(0,1fr)] gap-3 border-b border-white/[0.045] py-3 last:border-0"
+                  className={
+                    "relative grid grid-cols-[9px_62px_minmax(0,1fr)] gap-3 py-3 " +
+                    (item.current
+                      ? "kingdom-current-process my-1 rounded-xl border border-cyan-200/20 px-3 shadow-[0_0_34px_rgba(34,211,238,0.08)]"
+                      : "border-b border-white/[0.045] last:border-0")
+                  }
                 >
                   <span className={"mt-1 h-2 w-2 rounded-full " + beacon(item.status === "SUCCEEDED" ? "HEALTHY" : item.status)} />
-                  <span className="text-slate-600">
-                    {new Date(item.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  <span className={item.current ? "font-semibold text-cyan-100/70" : "text-slate-600"}>
+                    <BrowserLocalTime value={item.at} />
                   </span>
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <span className="font-semibold text-cyan-100/80">{item.system}</span>
+                      {item.current ? (
+                        <span className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-cyan-100">
+                          Live process
+                        </span>
+                      ) : null}
                       <span className={tone(item.status) + " rounded-full border px-1.5 py-0.5 text-[8px] font-black tracking-[0.14em]"}>
                         {item.status}
                       </span>
                     </div>
-                    <div className="mt-1 truncate text-slate-300">{item.label}</div>
+                    <div className={"mt-1 " + (item.current ? "font-semibold text-slate-100" : "truncate text-slate-300")}>
+                      {item.label}
+                    </div>
+                    {item.current && item.progress !== null ? (
+                      <div className="mt-2">
+                        <div className="h-1 overflow-hidden rounded-full bg-white/8">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-amber-200 to-emerald-300"
+                            style={{ width: Math.max(0, Math.min(100, item.progress)) + "%" }}
+                          />
+                        </div>
+                        <div className="mt-1 flex items-center justify-between gap-3 text-[9px] uppercase tracking-[0.14em] text-cyan-100/45">
+                          <span>{item.progressLabel ?? "process progress"}</span>
+                          <span>{item.progress.toFixed(item.progress % 1 === 0 ? 0 : 1)}%</span>
+                        </div>
+                      </div>
+                    ) : null}
                     {item.proof ? (
                       <div className="mt-1 text-[10px] text-slate-700">proof {item.proof}</div>
                     ) : null}
@@ -370,7 +469,7 @@ export default async function KingdomIntelligencePage() {
             <Cpu className="h-5 w-5 text-amber-200/60" />
           </div>
           <div className="mt-4 space-y-2.5">
-            {systemAgents.map((agent) => (
+            {orderedSystemAgents.map((agent) => (
               <AgentLine
                 key={agent.key}
                 label={agent.label}
@@ -627,6 +726,11 @@ export default async function KingdomIntelligencePage() {
         </div>
         <KingdomIntelligenceRefresh />
       </section>
+
+      <PageWidthSettingsBar
+        tileKey="kingdom_intelligence"
+        label="Kingdom Intelligence"
+      />
     </div>
   );
 }
