@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+from typing import Optional
 import re
 import socket
 import subprocess
@@ -342,7 +343,7 @@ def normalize_preview_path(value: str) -> str:
     return path
 
 
-def canonical_os_store_for_preview() -> Path | None:
+def canonical_os_store_for_preview() -> Optional[Path]:
     explicit = os.environ.get("AOE2WAR_OS_STORE_DIR", "").strip()
     if explicit:
         return Path(explicit).expanduser().resolve()
