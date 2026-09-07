@@ -172,7 +172,7 @@ export default function ProcessDrilldown({
 
   const effectiveProgress =
     liveRecoveryActive && typeof liveRecovery?.overallPercent === "number"
-      ? liveRecovery.overallPercent
+      ? liveRecovery?.overallPercent
       : progress;
 
   const startedMs = startedAt ? new Date(startedAt).getTime() : NaN;
