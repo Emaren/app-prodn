@@ -451,13 +451,10 @@ class RecoveryCampaignTests(unittest.TestCase):
                 }
             ]
 
-            with (
-                patch.object(
-                    campaign,
-                    "_load_existing_chunk_receipts",
-                    return_value=receipts,
-                ),
-                patch.object(campaign, "datetime", wraps=campaign.datetime),
+            with patch.object(
+                campaign,
+                "_load_existing_chunk_receipts",
+                return_value=receipts,
             ):
                 progress = campaign._live_capture_progress(state)
 
