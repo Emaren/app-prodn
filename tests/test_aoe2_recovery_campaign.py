@@ -395,6 +395,79 @@ class RecoveryCampaignTests(unittest.TestCase):
                 self.assertFalse(result["pause_requested"])
                 self.assertIsNone(result["pause_requested_at"])
 
+    def test_restore_pause_marker_survives_stale_state_write(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            restore_dir = Path(temporary)
+            campaign_id = "restore-pause-race"
+            state = {
+                "schema": 1,
+                "kind": "aoe2war-recovery-ordinary-restore-drill",
+                "campaign_id": campaign_id,
+                "status": "RUNNING_RESTORE",
+                "pid": None,
+                "pause_requested": False,
+                "pause_requested_at": None,
+                "ordinary_classes": list(campaign.ORDINARY_CLASSES),
+                "completed_classes": [],
+                "bundle_root": temporary,
+            }
+            with patch.object(campaign, "RESTORE_DIR", restore_dir):
+                campaign.save_restore_state(state)
+                requested = campaign.request_restore_pause(campaign_id)
+                self.assertTrue(requested["pause_requested"])
+                self.assertTrue(
+                    campaign.restore_pause_path(campaign_id).is_file()
+                )
+
+                stale = dict(state)
+                stale["pause_requested"] = False
+                stale["pause_requested_at"] = None
+                campaign.save_restore_state(stale)
+
+                marker = campaign.restore_pause_marker(campaign_id)
+                self.assertIsNotNone(marker)
+                status = campaign.restore_status_payload(campaign_id)
+                self.assertTrue(status["pause_requested"])
+                self.assertEqual(
+                    status["pause_requested_at"],
+                    marker["requested_at"],
+                )
+
+    def test_restore_resume_clears_marker_at_clean_boundary(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            restore_dir = Path(temporary) / "restore"
+            bundle = Path(temporary) / "bundle"
+            bundle.mkdir()
+            campaign_id = "restore-resume"
+            state = {
+                "schema": 1,
+                "kind": "aoe2war-recovery-ordinary-restore-drill",
+                "campaign_id": campaign_id,
+                "status": "PAUSED",
+                "pid": None,
+                "current_class": None,
+                "current_class_started_at": None,
+                "pause_requested": True,
+                "pause_requested_at": "2026-09-07T00:00:00+00:00",
+                "ordinary_classes": list(campaign.ORDINARY_CLASSES),
+                "completed_classes": [],
+                "bundle_root": str(bundle),
+            }
+            with (
+                patch.object(campaign, "RESTORE_DIR", restore_dir),
+                patch.object(campaign, "validate_restore_source"),
+                patch.object(campaign, "spawn_restore", return_value=54321),
+            ):
+                campaign.save_restore_state(state)
+                campaign.write_restore_pause_marker(campaign_id)
+                result = campaign.resume_restore(campaign_id)
+
+                self.assertFalse(
+                    campaign.restore_pause_path(campaign_id).exists()
+                )
+                self.assertFalse(result["pause_requested"])
+                self.assertIsNone(result["pause_requested_at"])
+
     def test_resume_fails_closed_when_interrupted_inside_class(self):
         state = {
             "status": "FAILED",
