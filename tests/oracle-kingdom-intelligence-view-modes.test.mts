@@ -135,6 +135,8 @@ test("Kingdom Intelligence row cards drill into noob-friendly process detail wit
 test("Kingdom Intelligence samples live Recovery bytes every five seconds without mutating the campaign", () => {
   const hook = source("app/kingdom-intelligence/useLiveRecoveryProgress.ts");
   const route = source("app/api/kingdom-intelligence/live-recovery/route.ts");
+  const pulse = source("app/kingdom-intelligence/WarPulsePanel.tsx");
+  const agent = source("app/kingdom-intelligence/AgentConstellationPanel.tsx");
 
   assert.match(hook, /setTimeout\(\(\) => \{/);
   assert.match(hook, /void pollSharedRecovery\(\)/);
