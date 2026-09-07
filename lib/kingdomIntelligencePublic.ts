@@ -75,6 +75,14 @@ function safeSystemAgent(value: unknown) {
     progressLabel: stringValue(row.progress_label),
     activeProcess: booleanValue(row.active_process),
     activeSince: stringValue(row.active_since),
+    currentStep: stringValue(row.current_step),
+    etaSeconds: numberValue(row.eta_seconds),
+    elapsedSeconds: numberValue(row.elapsed_seconds),
+    sealedChunks: numberValue(row.sealed_chunks),
+    observedBytes: numberValue(row.observed_bytes),
+    expectedBytes: numberValue(row.expected_bytes),
+    throughputBytesPerSecond: numberValue(row.throughput_bytes_per_second),
+    progressBasis: stringValue(row.progress_basis),
   };
 }
 
