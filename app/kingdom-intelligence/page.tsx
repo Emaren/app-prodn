@@ -29,6 +29,7 @@ import {
   isLiveProductionReadOnlyPreview,
 } from "@/lib/previewDataSource";
 
+import AgentConstellationTile from "./AgentConstellationTile";
 import BrowserLocalTime from "./BrowserLocalTime";
 import KingdomIntelligenceRefresh from "./KingdomIntelligenceRefresh";
 
@@ -102,66 +103,6 @@ function beacon(state: string | null | undefined) {
     return "bg-amber-300 shadow-[0_0_14px_rgba(252,211,77,.5)] animate-pulse";
   }
   return "bg-slate-600";
-}
-
-function AgentLine({
-  label,
-  state,
-  summary,
-  progress,
-  progressLabel,
-}: {
-  label: string;
-  state: string;
-  summary: string;
-  progress: number | null;
-  progressLabel: string | null;
-}) {
-  const active = isActiveProcessState(state);
-
-  return (
-    <div
-      className={
-        "group rounded-2xl border px-4 py-3 transition " +
-        (active
-          ? "relative overflow-hidden border-cyan-200/22 bg-[linear-gradient(115deg,rgba(8,47,73,0.44),rgba(15,23,42,0.30),rgba(120,53,15,0.28),rgba(6,78,59,0.26),rgba(8,47,73,0.44))] shadow-[0_0_34px_rgba(34,211,238,0.08)]"
-          : "border-white/8 bg-white/[0.025] hover:border-cyan-200/15 hover:bg-cyan-300/[0.025]")
-      }
-    >
-      {active ? (
-        <>
-          <span className="pointer-events-none absolute -left-16 top-1/2 h-24 w-36 -translate-y-1/2 rounded-full bg-cyan-300/10 blur-2xl animate-[pulse_4.8s_ease-in-out_infinite]" />
-          <span className="pointer-events-none absolute -right-12 top-1/2 h-28 w-40 -translate-y-1/2 rounded-full bg-amber-300/[0.08] blur-3xl animate-[pulse_7s_ease-in-out_infinite]" />
-        </>
-      ) : null}
-      <div className="relative z-10 flex items-start gap-3">
-        <span className={"mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full " + beacon(state)} />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-sm font-semibold text-white">{label}</div>
-            <span className={"rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] " + tone(state)}>
-              {state}
-            </span>
-          </div>
-          <div className="mt-1 text-xs leading-5 text-slate-400">{summary}</div>
-          {progress !== null ? (
-            <div className="mt-2">
-              <div className="h-1 overflow-hidden rounded-full bg-white/6">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-cyan-400/70 via-amber-300/80 to-emerald-300/85"
-                  style={{ width: Math.max(0, Math.min(100, progress)) + "%" }}
-                />
-              </div>
-              <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.15em] text-slate-600">
-                <span>{progressLabel ?? "progress"}</span>
-                <span>{progress.toFixed(progress % 1 === 0 ? 0 : 1)}%</span>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function ModuleCard({
@@ -520,13 +461,16 @@ export default async function KingdomIntelligencePage() {
           </div>
           <div className="mt-4 space-y-2.5">
             {orderedSystemAgents.map((agent) => (
-              <AgentLine
+              <AgentConstellationTile
                 key={agent.key}
                 label={agent.label}
                 state={agent.state}
                 summary={agent.summary}
                 progress={agent.progressPercent}
                 progressLabel={agent.progressLabel}
+                active={isActiveProcessState(agent.state)}
+                beaconClass={beacon(agent.state)}
+                statusToneClass={tone(agent.state)}
               />
             ))}
           </div>
