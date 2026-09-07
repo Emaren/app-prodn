@@ -70,8 +70,7 @@ export default function AgentConstellationPanel({
       role="button"
       tabIndex={0}
       data-agent-constellation-theme={theme}
-      aria-label={`Agent constellation display tile. Current theme: ${theme}. Click to change theme.`}
-      title="Click to change Agent Constellation theme"
+      aria-label={`Agent constellation display tile. Current theme: ${theme}.`}
       onClick={cycleTheme}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -103,12 +102,6 @@ export default function AgentConstellationPanel({
           <h2 className="mt-2 font-serif text-2xl text-[#f4e5bd]">
             Eight OS agents. One Doctor.
           </h2>
-        </div>
-        <div
-          aria-hidden="true"
-          className="mt-0.5 text-[9px] font-black uppercase tracking-[0.18em] text-slate-700 opacity-0 transition-opacity duration-200 group-hover/constellation:opacity-100"
-        >
-          click to change
         </div>
       </div>
 
