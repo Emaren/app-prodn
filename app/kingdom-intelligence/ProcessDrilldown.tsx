@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { LiveRecoveryProgress } from "./useLiveRecoveryProgress";
 
+type DetailKind = "agent" | "event" | "process";
+
 type Props = {
+  kind?: DetailKind;
   systemKey?: string | null;
   system: string;
   status: string;
@@ -31,17 +34,17 @@ const EXPLAINERS: Record<
 > = {
   recovery: {
     what:
-      "Recovery OS makes encrypted survival copies of important AoE2WAR data that GitHub alone cannot restore.",
+      "Recovery OS is making encrypted survival copies of AoE2WAR data that source control cannot restore.",
     why:
-      "If a server or storage volume dies, this is what lets the kingdom rebuild instead of starting from zero.",
+      "If a server or storage volume dies, these copies are what let the kingdom rebuild instead of starting over.",
     next:
-      "Seal the current recovery class, verify that it can be read back safely, then move to the next authorized class.",
+      "Finish this class, verify the encrypted chunks can be restored, then seal the class before moving on.",
   },
   release: {
     what:
-      "Release OS keeps GitHub, the deployed site, and the certified build lined up.",
+      "Release OS keeps GitHub, the deployed site, and the certified runtime aligned.",
     why:
-      "It prevents the live site from quietly drifting away from the code we think is running.",
+      "It prevents the live site from quietly drifting away from the source we believe is running.",
     next:
       "Bring certified production to the intended source and prove the exact release.",
   },
@@ -55,17 +58,17 @@ const EXPLAINERS: Record<
   },
   storage: {
     what:
-      "Storage OS watches disk capacity, retained generations, and the health of the storage estate.",
+      "Storage OS watches disk capacity, retained generations, and storage health.",
     why:
       "Healthy free space keeps captures, builds, databases, and backups from colliding with a full disk.",
     next:
-      "Reclaim or rotate storage when thresholds say maintenance is due.",
+      "Reclaim or rotate storage when the evidence says maintenance is due.",
   },
   replay_truth: {
     what:
-      "Replay Truth OS works out what the replay evidence can prove about games, teams, and winners.",
+      "Replay Truth OS decides what replay evidence can actually prove about games, teams, and winners.",
     why:
-      "The site should never invent a winner just because the answer would be convenient.",
+      "AoE2WAR should never invent a winner just because the answer would be convenient.",
     next:
       "Resolve the next deterministic evidence frontier without weakening proof standards.",
   },
@@ -87,7 +90,7 @@ const EXPLAINERS: Record<
   },
   host: {
     what:
-      "Host OS watches the server itself: updates, reboot requirements, service health, and basic machine hygiene.",
+      "Host OS watches the server itself: updates, reboot requirements, service health, and machine hygiene.",
     why:
       "A perfect application still fails if the machine underneath it is unhealthy.",
     next:
@@ -95,9 +98,9 @@ const EXPLAINERS: Record<
   },
   doctor: {
     what:
-      "System Doctor combines health evidence from the whole estate into a simple operating score.",
+      "System Doctor combines health evidence from the estate into one operating score.",
     why:
-      "It gives us one quick answer to whether something important needs attention.",
+      "It gives us a fast answer to whether something important needs attention.",
     next:
       "Clear the highest-severity finding first, then re-run the health proof.",
   },
@@ -107,7 +110,6 @@ function friendlyDuration(seconds: number | null | undefined) {
   if (seconds === null || seconds === undefined || !Number.isFinite(seconds)) {
     return "—";
   }
-
   if (seconds < 60) return "< 1 min";
 
   const minutes = Math.round(seconds / 60);
@@ -142,7 +144,47 @@ function friendlyRate(value: number | null | undefined) {
   return `${friendlyBytes(value)}/s`;
 }
 
+function friendlyTimestamp(value: string | null | undefined) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function Metric({
+  label,
+  value,
+  accent = false,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="min-w-0 border-l border-white/8 pl-3 first:border-l-0 first:pl-0">
+      <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-600">
+        {label}
+      </div>
+      <div
+        className={
+          "mt-1 truncate text-xs font-semibold " +
+          (accent ? "text-cyan-100" : "text-slate-200")
+        }
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
 export default function ProcessDrilldown({
+  kind = "agent",
   systemKey,
   system,
   status,
@@ -179,8 +221,8 @@ export default function ProcessDrilldown({
       "The row exists because the system has evidence worth exposing without dumping raw operator internals.",
     next:
       current
-        ? "Let the active work finish, then seal or verify its result."
-        : "Watch the next state change or open the related system when deeper evidence becomes available.",
+        ? "Let the active work finish, then verify its result."
+        : "Watch the next state change and inspect the evidence when it moves.",
   };
 
   const liveRecoveryActive =
@@ -193,7 +235,7 @@ export default function ProcessDrilldown({
   const effectiveProgress = liveProgress ?? progress;
 
   const startedMs = startedAt ? new Date(startedAt).getTime() : NaN;
-  const elapsedSeconds = Number.isFinite(startedMs)
+  const elapsedSeconds = Number.isFinite(startedMs) && current
     ? Math.max(0, Math.round((now - startedMs) / 1000))
     : liveRecoveryActive
       ? liveRecovery?.elapsedSeconds ?? snapshotElapsedSeconds ?? null
@@ -229,152 +271,188 @@ export default function ProcessDrilldown({
       ? liveRecovery?.progressBasis ?? snapshotProgressBasis
       : snapshotProgressBasis;
 
-  const progressCopy = useMemo(() => {
-    if (effectiveProgress === null) return "No percentage is proven yet.";
-    if (liveRecoveryActive) {
-      return "Estimated from sealed and active Recovery chunk bytes. The remote source-size estimate is cached, so the 5-second browser poll stays light.";
-    }
-    if (detailProgressBasis) {
-      return `Measured from ${detailProgressBasis}.`;
-    }
-    return "This percentage comes from the latest Kingdom Intelligence snapshot.";
-  }, [effectiveProgress, liveRecoveryActive, detailProgressBasis]);
+  const processMode = kind === "process" || liveRecoveryActive;
 
-  return (
-    <div className="mt-3 rounded-xl border border-white/8 bg-black/20 p-3 text-left">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg border border-white/6 bg-white/[0.025] p-3">
+  if (kind === "event" && !processMode) {
+    return (
+      <div
+        data-process-drilldown-kind="event"
+        className="mt-3 rounded-xl border border-white/8 bg-white/[0.018] px-4 py-3 text-left"
+      >
+        <div className="flex items-center justify-between gap-3">
           <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">
-            What this is
+            Sealed event
           </div>
-          <p className="mt-1 text-[11px] leading-5 text-slate-300">
+          <span className="rounded-full border border-white/8 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
+            {status}
+          </span>
+        </div>
+
+        <div className="mt-2 text-[11px] leading-5 text-slate-200">
+          {summary}
+        </div>
+
+        <div className="mt-3 border-t border-white/6 pt-3 text-[10px] leading-5 text-slate-500">
+          This is a completed {system} event, not a running process. There is no
+          live ETA to estimate.
+        </div>
+
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[9px] text-slate-700">
+          <span>recorded {friendlyTimestamp(startedAt)}</span>
+          {proof ? <span>proof {proof}</span> : null}
+        </div>
+      </div>
+    );
+  }
+
+  if (processMode) {
+    const progressText =
+      effectiveProgress === null ? "LIVE" : `${effectiveProgress.toFixed(1)}%`;
+    const capturedText =
+      detailExpectedBytes !== null && detailExpectedBytes !== undefined
+        ? `${friendlyBytes(detailObservedBytes)} / ${friendlyBytes(detailExpectedBytes)}`
+        : friendlyBytes(detailObservedBytes);
+
+    return (
+      <div
+        data-process-drilldown-kind="process"
+        className="mt-3 overflow-hidden rounded-xl border border-cyan-200/12 bg-[#040a12] text-left shadow-[inset_0_1px_0_rgba(255,255,255,.02)]"
+      >
+        <div className="p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-[8px] font-black uppercase tracking-[0.22em] text-cyan-100/45">
+                Live process
+              </div>
+              <div className="mt-1 truncate text-sm font-semibold text-slate-100">
+                {detailCurrentStep ?? summary}
+              </div>
+            </div>
+
+            <div className="shrink-0 text-right">
+              <div className="text-xl font-semibold tracking-tight text-cyan-100">
+                {progressText}
+              </div>
+              <div className="mt-0.5 text-[8px] uppercase tracking-[0.16em] text-slate-600">
+                overall
+              </div>
+            </div>
+          </div>
+
+          {effectiveProgress !== null ? (
+            <div className="mt-3">
+              <div className="h-1.5 overflow-hidden rounded-full bg-white/7">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-amber-200 to-emerald-300 transition-[width] duration-700"
+                  style={{
+                    width:
+                      Math.max(0, Math.min(100, effectiveProgress)) + "%",
+                  }}
+                />
+              </div>
+              <div className="mt-1.5 flex items-center justify-between gap-3 text-[9px] text-slate-600">
+                <span className="truncate">
+                  {progressLabel ?? detailProgressBasis ?? "live evidence"}
+                </span>
+                {liveRecoveryActive ? <span>5s signal</span> : null}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="grid grid-cols-2 gap-y-4 border-t border-white/6 px-4 py-3">
+          <Metric
+            label="ETA"
+            value={
+              etaSeconds !== null
+                ? friendlyDuration(etaSeconds)
+                : "Calculating…"
+            }
+            accent
+          />
+          <Metric label="Captured" value={capturedText} />
+          <Metric label="Pace" value={friendlyRate(detailThroughput)} />
+          <Metric label="Elapsed" value={friendlyDuration(elapsedSeconds)} />
+        </div>
+
+        <div className="border-t border-white/6 px-4 py-3">
+          <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">
+            What it does
+          </div>
+          <p className="mt-1 text-[10px] leading-5 text-slate-400">
             {explainer.what}
           </p>
-        </div>
 
-        <div className="rounded-lg border border-white/6 bg-white/[0.025] p-3">
-          <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">
-            Why it matters
+          <div className="mt-3 text-[8px] font-black uppercase tracking-[0.2em] text-amber-100/40">
+            Next
           </div>
-          <p className="mt-1 text-[11px] leading-5 text-slate-300">
-            {explainer.why}
+          <p className="mt-1 text-[10px] leading-5 text-slate-400">
+            {explainer.next}
           </p>
         </div>
-      </div>
 
-      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <div className="rounded-lg border border-white/6 bg-white/[0.02] p-2.5">
-          <div className="text-[8px] uppercase tracking-[0.18em] text-slate-600">
-            Status
-          </div>
-          <div className="mt-1 text-xs font-semibold text-slate-200">{status}</div>
-        </div>
-
-        <div className="rounded-lg border border-white/6 bg-white/[0.02] p-2.5">
-          <div className="text-[8px] uppercase tracking-[0.18em] text-slate-600">
-            Progress
-          </div>
-          <div className="mt-1 text-xs font-semibold text-slate-200">
-            {effectiveProgress === null
-              ? "—"
-              : `${effectiveProgress.toFixed(1)}%`}
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-white/6 bg-white/[0.02] p-2.5">
-          <div className="text-[8px] uppercase tracking-[0.18em] text-slate-600">
-            Elapsed
-          </div>
-          <div className="mt-1 text-xs font-semibold text-slate-200">
-            {friendlyDuration(elapsedSeconds)}
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-white/6 bg-white/[0.02] p-2.5">
-          <div className="text-[8px] uppercase tracking-[0.18em] text-slate-600">
-            ETA (rough)
-          </div>
-          <div className="mt-1 text-xs font-semibold text-slate-200">
-            {etaSeconds !== null ? friendlyDuration(etaSeconds) : "Learning…"}
-          </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-white/6 px-4 py-2.5 font-mono text-[9px] text-slate-700">
+          {detailSealedChunks !== null && detailSealedChunks !== undefined ? (
+            <span>{detailSealedChunks} sealed chunks</span>
+          ) : null}
+          {detailProgressBasis ? <span>{detailProgressBasis}</span> : null}
+          {proof ? <span>proof {proof}</span> : null}
         </div>
       </div>
+    );
+  }
 
-      {detailCurrentStep ||
-      detailSealedChunks != null ||
-      detailObservedBytes != null ||
-      detailThroughput != null ? (
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <div className="rounded-lg border border-cyan-200/8 bg-cyan-300/[0.025] p-2.5">
-            <div className="text-[8px] uppercase tracking-[0.18em] text-slate-600">
-              Current step
-            </div>
-            <div className="mt-1 text-[11px] font-semibold text-cyan-100/80">
-              {detailCurrentStep ?? "Active process"}
-            </div>
-            {liveRecoveryActive &&
-            typeof liveRecovery?.classPercent === "number" ? (
-              <div className="mt-1 text-[9px] text-cyan-100/40">
-                step {liveRecovery.classPercent.toFixed(1)}%
-              </div>
-            ) : null}
+  return (
+    <div
+      data-process-drilldown-kind="agent"
+      className="mt-3 rounded-xl border border-white/8 bg-black/16 px-4 py-3 text-left"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">
+            System state
           </div>
+          <div className="mt-1 text-sm font-semibold text-slate-100">{system}</div>
+        </div>
+        <span className="rounded-full border border-white/8 px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-slate-400">
+          {status}
+        </span>
+      </div>
 
-          <div className="rounded-lg border border-cyan-200/8 bg-cyan-300/[0.025] p-2.5">
-            <div className="text-[8px] uppercase tracking-[0.18em] text-slate-600">
-              Sealed chunks
-            </div>
-            <div className="mt-1 text-[11px] font-semibold text-cyan-100/80">
-              {detailSealedChunks ?? "—"}
-            </div>
+      <p className="mt-3 text-[10px] leading-5 text-slate-400">{summary}</p>
+
+      {effectiveProgress !== null ? (
+        <div className="mt-3">
+          <div className="flex items-center justify-between text-[9px] text-slate-600">
+            <span>{progressLabel ?? "progress"}</span>
+            <span>{effectiveProgress.toFixed(1)}%</span>
           </div>
-
-          <div className="rounded-lg border border-cyan-200/8 bg-cyan-300/[0.025] p-2.5">
-            <div className="text-[8px] uppercase tracking-[0.18em] text-slate-600">
-              Captured
-            </div>
-            <div className="mt-1 text-[11px] font-semibold text-cyan-100/80">
-              {friendlyBytes(detailObservedBytes)}
-            </div>
-          </div>
-
-          <div className="rounded-lg border border-cyan-200/8 bg-cyan-300/[0.025] p-2.5">
-            <div className="text-[8px] uppercase tracking-[0.18em] text-slate-600">
-              Current pace
-            </div>
-            <div className="mt-1 text-[11px] font-semibold text-cyan-100/80">
-              {friendlyRate(detailThroughput)}
-            </div>
+          <div className="mt-1 h-1 overflow-hidden rounded-full bg-white/7">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-cyan-300/80 to-emerald-300/80"
+              style={{
+                width:
+                  Math.max(0, Math.min(100, effectiveProgress)) + "%",
+              }}
+            />
           </div>
         </div>
       ) : null}
 
-      <div className="mt-3 rounded-lg border border-white/6 bg-white/[0.018] p-3">
+      <div className="mt-3 border-t border-white/6 pt-3">
         <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">
-          Current evidence
+          What this means
         </div>
-        <p className="mt-1 text-[11px] leading-5 text-slate-300">{summary}</p>
-        <p className="mt-2 text-[10px] leading-4 text-slate-600">
-          {progressLabel ? `${progressLabel} · ` : ""}
-          {progressCopy}
+        <p className="mt-1 text-[10px] leading-5 text-slate-400">
+          {explainer.what} {explainer.why}
         </p>
-        {detailExpectedBytes !== null && detailExpectedBytes !== undefined ? (
-          <p className="mt-1 text-[10px] leading-4 text-slate-700">
-            expected {friendlyBytes(detailExpectedBytes)}
-          </p>
-        ) : null}
-        {proof ? (
-          <p className="mt-1 font-mono text-[9px] text-slate-700">
-            proof {proof}
-          </p>
-        ) : null}
       </div>
 
-      <div className="mt-3 rounded-lg border border-amber-100/8 bg-amber-200/[0.025] p-3">
-        <div className="text-[8px] font-black uppercase tracking-[0.2em] text-amber-100/45">
-          What happens next
+      <div className="mt-3 border-t border-white/6 pt-3">
+        <div className="text-[8px] font-black uppercase tracking-[0.2em] text-amber-100/40">
+          Next
         </div>
-        <p className="mt-1 text-[11px] leading-5 text-slate-300">
+        <p className="mt-1 text-[10px] leading-5 text-slate-400">
           {explainer.next}
         </p>
       </div>
