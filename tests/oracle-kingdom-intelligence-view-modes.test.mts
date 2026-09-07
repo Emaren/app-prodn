@@ -13,6 +13,7 @@ test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and bo
   const premiumOracle = source("components/oracle/OraclePremiumFloor.tsx");
   const intelligence = source("app/kingdom-intelligence/page.tsx");
   const bar = source("components/tile-view/PageWidthSettingsBar.tsx");
+  const globalCss = source("app/globals.css");
 
   assert.match(preferences, /"oracle"/);
   assert.match(preferences, /"kingdom_intelligence"/);
@@ -31,6 +32,14 @@ test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and bo
   assert.match(premiumOracle, /data-oracle-premium-floor=\{viewMode\}/);
   assert.match(premiumOracle, /ProbabilityChart/);
   assert.match(premiumOracle, /Create market/);
+  assert.match(premiumOracle, /data-oracle-advanced-hero="workshop-open-image"/);
+  assert.match(premiumOracle, /data-oracle-extreme-hero="cinematic"/);
+  assert.match(premiumOracle, /oracle-wolo-button/);
+  assert.match(premiumOracle, /oracle-arcane-button/);
+  assert.doesNotMatch(
+    premiumOracle,
+    /Read the Kingdom in motion|One clean probability field|Ask one question the Kingdom can actually settle|Question\. Close\. Source\. Exact YES rule/,
+  );
   assert.doesNotMatch(premiumOracle, /Oracle Marks|whale advantage/i);
   assert.match(
     intelligence,
@@ -38,6 +47,9 @@ test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and bo
   );
   assert.match(bar, /TILE_VIEW_MODES\.map/);
   assert.match(bar, /Page view/);
+  assert.match(globalCss, /AOE2WAR ORACLE PREMIUM CONTROLS START/);
+  assert.match(globalCss, /oracle-arcane-mist/);
+  assert.match(globalCss, /#ffe85b/);
 });
 
 test("Kingdom Intelligence falls back to the sanitized production signal in read-only preview", () => {

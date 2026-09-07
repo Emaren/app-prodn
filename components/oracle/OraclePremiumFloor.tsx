@@ -213,40 +213,25 @@ export default function OraclePremiumFloor({
         className="scroll-mt-24 space-y-5"
         data-oracle-premium-floor={viewMode}
       >
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <div className="text-[10px] font-black uppercase tracking-[0.34em] text-cyan-100/48">
-              Live probability
-            </div>
-            <h2 className="mt-2 font-serif text-3xl font-semibold text-white sm:text-4xl">
-              Read the Kingdom in motion.
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
-              One clean probability field, a real history line, a published close,
-              and an exact resolution rule.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <select
-              value={sort}
-              onChange={(event) => setSort(event.target.value as SortMode)}
-              className="min-h-11 rounded-full border border-white/10 bg-[#060a12] px-4 text-xs font-bold text-white outline-none transition focus:border-cyan-200/30"
-              aria-label="Sort Oracle markets"
-            >
-              <option value="trending">Trending</option>
-              <option value="closing">Closing soon</option>
-              <option value="new">Newest</option>
-            </select>
-            <button
-              type="button"
-              onClick={() => setProposalOpen(true)}
-              className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full border border-amber-100/20 bg-amber-300/[0.08] px-4 text-xs font-black text-amber-50 transition hover:border-amber-100/35 hover:bg-amber-300/[0.12]"
-            >
-              <Plus className="h-4 w-4" />
-              Create market
-            </button>
-          </div>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <select
+            value={sort}
+            onChange={(event) => setSort(event.target.value as SortMode)}
+            className="min-h-11 rounded-full border border-white/10 bg-[#060a12] px-4 text-xs font-bold text-white outline-none transition focus:border-cyan-200/30"
+            aria-label="Sort Oracle markets"
+          >
+            <option value="trending">Trending</option>
+            <option value="closing">Closing soon</option>
+            <option value="new">Newest</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => setProposalOpen(true)}
+            className="oracle-arcane-button inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-5 text-xs font-black"
+          >
+            <Plus className="h-4 w-4" />
+            Create market
+          </button>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -259,7 +244,7 @@ export default function OraclePremiumFloor({
                 onClick={() => setCategory(tab.key)}
                 className={`min-h-9 cursor-pointer rounded-full border px-4 text-[10px] font-black uppercase tracking-[0.17em] transition ${
                   active
-                    ? "border-cyan-100/35 bg-cyan-200 text-slate-950"
+                    ? "border-cyan-200/34 bg-cyan-300/[0.10] text-cyan-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_0_20px_rgba(34,211,238,0.08)]"
                     : "border-white/8 bg-white/[0.025] text-slate-500 hover:border-white/16 hover:text-white"
                 }`}
               >
@@ -324,12 +309,88 @@ function PremiumHero({
   viewMode: PremiumViewMode;
   onPropose: () => void;
 }) {
-  const extreme = viewMode === "extreme";
+  if (viewMode === "advanced") {
+    return (
+      <section
+        className="overflow-hidden rounded-[2.35rem] border border-cyan-100/13 bg-[#03060c] shadow-[0_36px_120px_rgba(0,0,0,0.48)]"
+        data-oracle-advanced-hero="workshop-open-image"
+      >
+        <div className="relative min-h-[20rem] aspect-[16/7] overflow-hidden border-b border-cyan-100/12 bg-[#020711] sm:min-h-[24rem]">
+          <Image
+            src="/oracle/oracle-hero-bg.webp"
+            alt="The Oracle chamber and its celestial brass prediction instrument"
+            fill
+            priority
+            sizes="(max-width: 1024px) 100vw, 1312px"
+            className="object-cover object-center brightness-[1.2] saturate-[1.08] contrast-[1.03]"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.02),rgba(2,6,23,0.08)_52%,rgba(2,6,23,0.42)_100%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_46%,rgba(96,165,250,0.08),transparent_22%),radial-gradient(circle_at_28%_18%,rgba(251,191,36,0.055),transparent_28%)]" />
+          <div className="pointer-events-none absolute inset-x-[8%] bottom-0 h-px bg-gradient-to-r from-transparent via-amber-100/28 to-transparent" />
+        </div>
+
+        <div className="bg-[linear-gradient(145deg,#03060c,#05070d_62%,#100905)] px-6 py-6 sm:px-9 sm:py-8 lg:px-10">
+          <div className="flex flex-wrap items-start justify-between gap-7">
+            <div className="max-w-[46rem]">
+              <div className="flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/18 bg-amber-300/[0.055] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.22em] text-amber-50">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  The Oracle
+                </span>
+                <span className="inline-flex items-center gap-2 rounded-full border border-cyan-100/15 bg-cyan-300/[0.045] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-cyan-50">
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  Exact rules
+                </span>
+              </div>
+
+              <p className="mt-5 text-[10px] font-black uppercase tracking-[0.42em] text-slate-500">
+                AoE2WAR presents
+              </p>
+              <h1 className="mt-2 font-serif text-5xl font-semibold leading-none tracking-[-0.055em] text-white sm:text-6xl">
+                The Oracle
+              </h1>
+              <p className="mt-4 max-w-[34rem] font-serif text-xl leading-8 text-slate-100 sm:text-2xl">
+                The future is not merely awaited. It is priced.
+              </p>
+              <p className="mt-3 max-w-[38rem] text-sm leading-6 text-slate-400">
+                Pick a side. Watch the probability move. Resolve against one published source.
+              </p>
+
+              <div className="mt-6 flex flex-wrap gap-3">
+                <a
+                  href="#markets"
+                  className="oracle-wolo-button group inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
+                >
+                  Open markets
+                  <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+                </a>
+                <button
+                  type="button"
+                  onClick={onPropose}
+                  className="oracle-arcane-button inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create market
+                </button>
+              </div>
+            </div>
+
+            <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-[25rem]">
+              <HeroStat label="Live markets" value={fmt(snapshot.pulse.activeMarkets)} />
+              <HeroStat label="Forecasters" value={fmt(snapshot.pulse.forecasters)} />
+              <HeroStat label="Citizens" value={fmt(snapshot.pulse.registeredCitizens)} />
+              <HeroStat label="Final battles" value={fmt(snapshot.pulse.verifiedBattles)} />
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section
-      className={`relative isolate overflow-hidden rounded-[2.35rem] border border-amber-100/16 bg-[#03050a] shadow-[0_42px_125px_rgba(0,0,0,0.5)] ${
-        extreme ? "min-h-[34rem]" : "min-h-[31rem]"
-      }`}
+      className="relative isolate min-h-[36rem] overflow-hidden rounded-[2.65rem] border border-amber-100/14 bg-[#02050a] shadow-[0_48px_150px_rgba(0,0,0,0.58)]"
+      data-oracle-extreme-hero="cinematic"
     >
       <Image
         src="/oracle/oracle-hero-bg.webp"
@@ -337,48 +398,47 @@ function PremiumHero({
         fill
         priority
         sizes="100vw"
-        className="object-cover object-center brightness-[1.12] saturate-[1.08]"
+        className="object-cover object-center brightness-[1.18] saturate-[1.1]"
       />
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(2,4,10,0.86)_0%,rgba(2,4,10,0.62)_34%,rgba(2,4,10,0.16)_66%,rgba(2,4,10,0.05)_100%),linear-gradient(180deg,rgba(2,4,10,0.04),rgba(2,4,10,0.12)_58%,rgba(2,4,10,0.86)_100%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_69%_45%,rgba(96,165,250,0.10),transparent_20%),radial-gradient(circle_at_82%_22%,rgba(251,191,36,0.08),transparent_24%)]" />
-      <div className="pointer-events-none absolute inset-x-[8%] top-0 h-px bg-gradient-to-r from-transparent via-amber-100/48 to-transparent" />
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(1,3,8,0.86)_0%,rgba(1,3,8,0.58)_31%,rgba(1,3,8,0.12)_68%,rgba(1,3,8,0.03)_100%),linear-gradient(180deg,rgba(1,3,8,0.02),rgba(1,3,8,0.12)_58%,rgba(1,3,8,0.84)_100%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_69%_45%,rgba(96,165,250,0.12),transparent_20%),radial-gradient(circle_at_82%_22%,rgba(251,191,36,0.09),transparent_24%)]" />
 
-      <div className="absolute left-6 top-6 z-20 flex flex-wrap gap-2 sm:left-9 sm:top-8">
+      <div className="absolute left-8 top-8 z-20 flex flex-wrap gap-2">
         <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/20 bg-black/38 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.24em] text-amber-50 backdrop-blur-md">
           <Sparkles className="h-3.5 w-3.5" />
           The Oracle
         </span>
-        <span className="inline-flex items-center gap-2 rounded-full border border-emerald-100/16 bg-black/38 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-emerald-100 backdrop-blur-md">
+        <span className="inline-flex items-center gap-2 rounded-full border border-cyan-100/16 bg-black/38 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-cyan-50 backdrop-blur-md">
           <ShieldCheck className="h-3.5 w-3.5" />
           Exact rules
         </span>
       </div>
 
-      <div className="absolute bottom-8 left-6 z-20 max-w-[44rem] sm:bottom-10 sm:left-9 lg:left-12">
+      <div className="absolute bottom-10 left-8 z-20 max-w-[48rem] lg:left-12">
         <p className="text-[10px] font-black uppercase tracking-[0.46em] text-slate-300/72">
           AoE2WAR presents
         </p>
-        <h1 className="mt-3 font-serif text-5xl font-semibold leading-none tracking-[-0.055em] text-white drop-shadow-[0_8px_35px_rgba(0,0,0,0.82)] sm:text-7xl">
+        <h1 className="mt-3 font-serif text-6xl font-semibold leading-none tracking-[-0.055em] text-white drop-shadow-[0_8px_35px_rgba(0,0,0,0.82)] lg:text-8xl">
           The Oracle
         </h1>
-        <p className="mt-4 max-w-[34rem] font-serif text-xl leading-8 text-slate-100 sm:text-2xl">
+        <p className="mt-4 max-w-[36rem] font-serif text-2xl leading-8 text-slate-100">
           The future is not merely awaited. It is priced.
         </p>
-        <p className="mt-3 max-w-[36rem] text-sm leading-6 text-slate-300">
+        <p className="mt-3 max-w-[38rem] text-sm leading-6 text-slate-300">
           Pick a side. Watch the probability move. Resolve against one published source.
         </p>
         <div className="mt-6 flex flex-wrap gap-3">
           <a
             href="#markets"
-            className="inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full bg-amber-100 px-6 text-sm font-black text-slate-950 shadow-[0_14px_38px_rgba(251,191,36,0.18)] transition hover:bg-white"
+            className="oracle-wolo-button group inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
           >
             Open markets
-            <ArrowRight className="h-4 w-4" />
+            <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
           </a>
           <button
             type="button"
             onClick={onPropose}
-            className="inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full border border-white/18 bg-black/34 px-6 text-sm font-bold text-white backdrop-blur-md transition hover:border-amber-100/30 hover:bg-white/[0.07]"
+            className="oracle-arcane-button inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
           >
             <Plus className="h-4 w-4" />
             Create market
@@ -386,7 +446,7 @@ function PremiumHero({
         </div>
       </div>
 
-      <div className="absolute bottom-8 right-6 z-20 hidden w-[25rem] grid-cols-2 gap-2 lg:grid xl:right-9">
+      <div className="absolute bottom-10 right-8 z-20 hidden w-[27rem] grid-cols-2 gap-2 lg:grid xl:right-10">
         <HeroStat label="Live markets" value={fmt(snapshot.pulse.activeMarkets)} />
         <HeroStat label="Forecasters" value={fmt(snapshot.pulse.forecasters)} />
         <HeroStat label="Citizens" value={fmt(snapshot.pulse.registeredCitizens)} />
@@ -723,14 +783,7 @@ function ProposalDesk({
             <CircleGauge className="h-3.5 w-3.5" />
             Citizen market desk
           </div>
-          <h2 className="mt-4 max-w-md font-serif text-3xl font-semibold leading-tight text-white">
-            Ask one question the Kingdom can actually settle.
-          </h2>
-          <p className="mt-3 max-w-md text-sm leading-6 text-slate-400">
-            Question. Close. Source. Exact YES rule. That is the market.
-          </p>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
             <DeskFact icon={CalendarClock} label="Close first" copy="No moving the finish line after trading begins." />
             <DeskFact icon={Database} label="Name the source" copy="The resolution source is part of the market contract." />
             <DeskFact icon={ShieldCheck} label="Write the YES rule" copy="A stranger should be able to resolve it from the same evidence." />
@@ -739,7 +792,7 @@ function ProposalDesk({
           <button
             type="button"
             onClick={() => (viewerLabel ? (open ? onClose() : null) : onSignIn())}
-            className="mt-6 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-amber-100 px-5 text-xs font-black text-slate-950 transition hover:bg-white"
+            className="oracle-arcane-button mt-6 inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-5 text-xs font-black"
           >
             {viewerLabel ? (open ? "Close desk" : "Create market") : "Sign in to create"}
             {!open ? <ArrowRight className="h-4 w-4" /> : <X className="h-4 w-4" />}
@@ -856,7 +909,7 @@ function ProposalDesk({
               <button
                 type="submit"
                 disabled={busy}
-                className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full bg-amber-100 px-5 text-xs font-black text-slate-950 transition hover:bg-white disabled:cursor-wait disabled:opacity-50"
+                className="oracle-wolo-button inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-5 text-xs font-black disabled:cursor-wait disabled:opacity-50"
               >
                 {busy ? "Submitting…" : "Submit market"}
                 <ArrowRight className="h-4 w-4" />
