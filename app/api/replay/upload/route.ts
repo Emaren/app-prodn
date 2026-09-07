@@ -9,6 +9,10 @@ import {
   type ReplayPostIngestReport,
 } from "@/lib/replayPostIngest";
 import { recordUserActivity } from "@/lib/userExperience";
+import {
+  isWatcherApiKeyCandidate,
+  resolveWatcherTelemetryIdentity,
+} from "@/lib/watcherTelemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,30 +57,59 @@ function parseJsonBody(value: string, contentType: string | null) {
 }
 
 export async function POST(request: NextRequest) {
-  const watcherApiKey = readHeader(request, "x-api-key");
-  const watcherUid = readHeader(request, "x-user-uid");
-  const isWatcherProxyUpload = Boolean(watcherApiKey && watcherUid);
+  const suppliedApiKey = readHeader(request, "x-api-key");
+  const suppliedUid = readHeader(request, "x-user-uid");
   const isFinalUpload = readBooleanHeader(request, "x-is-final", false);
+  const prisma = getPrisma();
 
-  const sessionUid = isWatcherProxyUpload ? null : await getSessionUid(request);
-  const uid = watcherUid || sessionUid;
+  const isWatcherKey = isWatcherApiKeyCandidate(suppliedApiKey);
+  const watcherIdentity = isWatcherKey
+    ? await resolveWatcherTelemetryIdentity(prisma, suppliedApiKey)
+    : null;
 
-  if (!uid) {
-    return NextResponse.json({ detail: "Sign in with Steam before uploading replays." }, { status: 401 });
+  if (isWatcherKey && !watcherIdentity?.resolved) {
+    return NextResponse.json(
+      { detail: "Watcher key is not authorized." },
+      { status: 401 },
+    );
   }
 
-  const prisma = getPrisma();
-  let playerName: string | null = readHeader(request, "x-player-name");
+  const internalApiKey = process.env.INTERNAL_API_KEY?.trim() || null;
+  const isInternalProxyUpload = Boolean(
+    suppliedApiKey &&
+      suppliedUid &&
+      internalApiKey &&
+      suppliedApiKey === internalApiKey
+  );
+  const isWatcherProxyUpload = Boolean(
+    watcherIdentity?.resolved &&
+      watcherIdentity.userUid
+  );
+
+  const sessionUid =
+    isWatcherProxyUpload || isInternalProxyUpload
+      ? null
+      : await getSessionUid(request);
+
+  const uid =
+    watcherIdentity?.userUid ||
+    (isInternalProxyUpload ? suppliedUid : sessionUid);
+
+  if (!uid) {
+    return NextResponse.json(
+      { detail: "Sign in with Steam before uploading replays." },
+      { status: 401 },
+    );
+  }
+
+  let playerName: string | null = null;
   let user:
     | {
         id: number;
         uid: string;
         inGameName: string | null;
       }
-    | null = null;
-
-  if (!isWatcherProxyUpload) {
-    user = await prisma.user.findUnique({
+    | null = await prisma.user.findUnique({
       where: { uid },
       select: {
         id: true,
@@ -84,21 +117,24 @@ export async function POST(request: NextRequest) {
         inGameName: true,
       },
     });
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          uid,
-          isAdmin: false,
-        },
-        select: {
-          id: true,
-          uid: true,
-          inGameName: true,
-        },
-      });
-    }
-    playerName = user.inGameName || null;
+
+  if (!user && !isWatcherProxyUpload && !isInternalProxyUpload) {
+    user = await prisma.user.create({
+      data: {
+        uid,
+        isAdmin: false,
+      },
+      select: {
+        id: true,
+        uid: true,
+        inGameName: true,
+      },
+    });
   }
+
+  playerName =
+    user?.inGameName ||
+    readHeader(request, "x-player-name");
 
   const base = getBackendUpstreamBase();
   const contentType = request.headers.get("content-type");
@@ -110,8 +146,8 @@ export async function POST(request: NextRequest) {
   if (playerName) {
     headers.set("x-player-name", playerName);
   }
-  if (isWatcherProxyUpload && watcherApiKey) {
-    headers.set("x-api-key", watcherApiKey);
+  if (isWatcherProxyUpload && suppliedApiKey) {
+    headers.set("x-api-key", suppliedApiKey);
     for (const headerName of [
       "x-parse-iteration",
       "x-is-final",
@@ -136,6 +172,8 @@ export async function POST(request: NextRequest) {
         headers.set(headerName, value);
       }
     }
+  } else if (isInternalProxyUpload && internalApiKey) {
+    headers.set("x-api-key", internalApiKey);
   } else if (process.env.INTERNAL_API_KEY) {
     headers.set("x-api-key", process.env.INTERNAL_API_KEY);
   }
@@ -206,6 +244,15 @@ export async function POST(request: NextRequest) {
         label: playerName || "Replay upload",
         metadata: {
           viaWatcher: isWatcherProxyUpload,
+          watcherUidSource: isWatcherProxyUpload
+            ? "server_resolved_api_key"
+            : isInternalProxyUpload
+              ? "trusted_internal_proxy"
+              : "steam_session",
+          suppliedWatcherUidMatched:
+            isWatcherProxyUpload && suppliedUid
+              ? suppliedUid === uid
+              : null,
           parseIteration: readHeader(request, "x-parse-iteration"),
           isFinal: readHeader(request, "x-is-final"),
           parseSource: readHeader(request, "x-parse-source"),
