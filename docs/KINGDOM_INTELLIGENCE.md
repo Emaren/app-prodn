@@ -218,6 +218,17 @@ and production has advanced, that state means **verify the open before/after
 campaign**. It does not mean create another baseline. The Brain should say
 `aoe2war speed campaign verify`.
 
+After verification, current performance truth belongs to the verification's
+After release/build, while the frozen Before release remains historical
+comparison evidence. A verified campaign must therefore satisfy current-release
+freshness when its After release matches certified production; it must not ask
+for a redundant new baseline merely because the baseline SHA is older.
+
+Storage recommendations are also phase-aware. Storage pressure may block a
+Finish retry only while Finish closure is incomplete. Once the latest Finish is
+CERTIFIED, the same storage state remains maintenance/Doctor attention but is no
+longer described as a prerequisite to rerunning an already-complete release.
+
 ## OS agent constellation and chronicle
 
 Kingdom Intelligence presents the operating estate as **eight OS agents plus one
