@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import ProcessDrilldown from "./ProcessDrilldown";
-import { useLiveRecoveryProgress } from "./useLiveRecoveryProgress";
+import { formatLiveRecoveryProgressLabel, useLiveRecoveryProgress } from "./useLiveRecoveryProgress";
 
 type AgentRow = {
   key: string;
@@ -110,6 +110,12 @@ export default function AgentConstellationPanel({
               ? liveRecovery.overallPercent
               : null;
           const effectiveProgress = liveProgress ?? agent.progress;
+          const effectiveProgressLabel = recoveryLive
+            ? formatLiveRecoveryProgressLabel(
+                liveRecovery,
+                agent.progressLabel,
+              )
+            : agent.progressLabel;
 
           return (
           <div
@@ -178,7 +184,7 @@ export default function AgentConstellationPanel({
                       />
                     </div>
                     <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.15em] text-slate-600">
-                      <span>{agent.progressLabel ?? "progress"}</span>
+                      <span>{effectiveProgressLabel ?? "progress"}</span>
                       <span>
                         {effectiveProgress.toFixed(
                           recoveryLive || effectiveProgress % 1 !== 0 ? 1 : 0,
@@ -202,7 +208,7 @@ export default function AgentConstellationPanel({
                   status={agent.state}
                   summary={agent.summary}
                   progress={effectiveProgress}
-                  progressLabel={agent.progressLabel}
+                  progressLabel={effectiveProgressLabel}
                   startedAt={agent.activeSince}
                   current={agent.state === "ACTIVE"}
                   currentStep={agent.currentStep}
