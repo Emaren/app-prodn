@@ -33,6 +33,15 @@ test("Oracle and Kingdom Intelligence preserve Basic and add B/A/E width provena
   assert.match(bar, /Page view/);
 });
 
+test("Kingdom Intelligence falls back to the sanitized production signal in read-only preview", () => {
+  const intelligence = source("app/kingdom-intelligence/page.tsx");
+
+  assert.match(intelligence, /isLiveProductionReadOnlyPreview/);
+  assert.match(intelligence, /buildPreviewDataUrl\("\/api\/kingdom-intelligence"\)/);
+  assert.match(intelligence, /cache: "no-store"/);
+  assert.match(intelligence, /if \(!data\.available/);
+});
+
 test("Kingdom Intelligence renders activity clocks in the browser locale", () => {
   const intelligence = source("app/kingdom-intelligence/page.tsx");
   const browserTime = source("app/kingdom-intelligence/BrowserLocalTime.tsx");
