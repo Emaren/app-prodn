@@ -91,7 +91,7 @@ export default function WarPulsePanel({
         }
       }}
       className={
-        "group/warpulse relative flex h-full min-h-0 cursor-pointer flex-col overflow-hidden rounded-[2rem] border transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/35 " +
+        "group/warpulse relative flex h-full min-h-0 cursor-pointer flex-col overflow-hidden rounded-[2rem] border transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/35 xl:[contain:size] " +
         PANEL_SHELL
       }
     >
