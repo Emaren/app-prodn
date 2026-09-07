@@ -221,12 +221,25 @@ def latest_performance(now: datetime) -> dict[str, Any]:
             }
         )
 
+    effective_release_sha = (
+        verification.get("release_sha")
+        if verification
+        else baseline.get("release_sha")
+    )
+    effective_build_id = (
+        verification.get("build_id")
+        if verification
+        else baseline.get("build_id")
+    )
+
     return {
         "available": True,
         "campaign_id": campaign.get("campaign_id"),
         "status": campaign.get("status"),
-        "release_sha": baseline.get("release_sha"),
-        "build_id": baseline.get("build_id"),
+        "release_sha": effective_release_sha,
+        "build_id": effective_build_id,
+        "baseline_release_sha": baseline.get("release_sha"),
+        "verification_release_sha": verification.get("release_sha") if verification else None,
         "route_count": baseline.get("route_count"),
         "baseline": {
             "ttfb_p50_ms": cohort.get("ttfb_p50_ms"),
@@ -234,6 +247,9 @@ def latest_performance(now: datetime) -> dict[str, Any]:
         },
         "verification": {
             "status": verification.get("status"),
+            "release_sha": verification.get("release_sha"),
+            "build_id": verification.get("build_id"),
+            "build_version": verification.get("build_version"),
             "ttfb_p50_before_ms": overall.get("ttfb_p50_before_ms"),
             "ttfb_p50_after_ms": overall.get("ttfb_p50_after_ms"),
             "total_p50_before_ms": overall.get("total_p50_before_ms"),
@@ -394,21 +410,38 @@ def brain_recommendations(
         )
     )
     if storage_health and storage_health not in {"HEALTHY", "PASS"}:
-        rows.append(
-            {
-                "rank": 4,
-                "level": "MUST FIX",
-                "key": "storage-blocks-finish",
-                "title": "Relieve storage pressure before rerunning Finish",
-                "reason": (
-                    f"Storage health={storage_health or 'ATTENTION'} "
-                    f"used={storage_used if storage_used is not None else 'unknown'}; "
-                    "rerunning Finish before restoring headroom can only repeat "
-                    "the final Doctor blocker."
-                ),
-                "action": "aoe2war storage plan --json",
-            }
-        )
+        if finish.get("available") and not finish.get("closure_complete"):
+            rows.append(
+                {
+                    "rank": 4,
+                    "level": "MUST FIX",
+                    "key": "storage-blocks-finish",
+                    "title": "Relieve storage pressure before rerunning Finish",
+                    "reason": (
+                        f"Storage health={storage_health or 'ATTENTION'} "
+                        f"used={storage_used if storage_used is not None else 'unknown'}; "
+                        "rerunning Finish before restoring headroom can only repeat "
+                        "the final Doctor blocker."
+                    ),
+                    "action": "aoe2war storage plan --json",
+                }
+            )
+        else:
+            rows.append(
+                {
+                    "rank": 9,
+                    "level": "MAINTENANCE",
+                    "key": "storage-headroom-maintenance",
+                    "title": "Restore storage headroom",
+                    "reason": (
+                        f"Storage health={storage_health or 'ATTENTION'} "
+                        f"used={storage_used if storage_used is not None else 'unknown'}; "
+                        "the latest Finish is already certified, so this is "
+                        "maintenance work rather than a release prerequisite."
+                    ),
+                    "action": "aoe2war storage plan --json",
+                }
+            )
 
     control_status = str(control.get("status") or "")
     if control_status == "blocked":
@@ -1279,14 +1312,27 @@ def print_payload(payload: dict[str, Any]) -> None:
 
     if performance.get("available"):
         baseline = performance.get("baseline") or {}
-        print(
-            "Performance:     "
-            f"{performance.get('status')} · "
-            f"{performance.get('route_count')} routes · "
-            f"TTFB p50={baseline.get('ttfb_p50_ms')} ms · "
-            f"total p50={baseline.get('total_p50_ms')} ms · "
-            f"current={'YES' if performance.get('matches_current_release') else 'NO'}"
-        )
+        verification = performance.get("verification") or {}
+        if verification:
+            print(
+                "Performance:     "
+                f"{performance.get('status')} · "
+                f"{performance.get('route_count')} routes · "
+                f"TTFB p50={verification.get('ttfb_p50_before_ms')}→"
+                f"{verification.get('ttfb_p50_after_ms')} ms · "
+                f"total p50={verification.get('total_p50_before_ms')}→"
+                f"{verification.get('total_p50_after_ms')} ms · "
+                f"current={'YES' if performance.get('matches_current_release') else 'NO'}"
+            )
+        else:
+            print(
+                "Performance:     "
+                f"{performance.get('status')} · "
+                f"{performance.get('route_count')} routes · "
+                f"TTFB p50={baseline.get('ttfb_p50_ms')} ms · "
+                f"total p50={baseline.get('total_p50_ms')} ms · "
+                f"current={'YES' if performance.get('matches_current_release') else 'NO'}"
+            )
     else:
         print("Performance:     no campaign receipt")
 
