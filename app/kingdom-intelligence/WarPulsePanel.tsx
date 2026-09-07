@@ -91,7 +91,7 @@ export default function WarPulsePanel({
         }
       }}
       className={
-        "group/warpulse relative cursor-pointer overflow-hidden rounded-[2rem] border transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/35 " +
+        "group/warpulse relative flex h-full min-h-0 cursor-pointer flex-col overflow-hidden rounded-[2rem] border transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/35 " +
         PANEL_SHELL
       }
     >
@@ -123,26 +123,31 @@ export default function WarPulsePanel({
         </div>
       </div>
 
-      <div className="relative z-10 max-h-[34rem] overflow-y-auto px-4 py-3 font-mono text-xs sm:px-5">
+      <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 py-3 pb-6 font-mono text-xs sm:px-5">
         {items.length ? (
           items.map((item) => {
             const expanded = expandedKey === item.key;
+            const recoveryItem =
+              item.current && item.system === "Recovery OS";
             const recoveryLive =
-              item.current &&
-              item.system === "Recovery OS" &&
-              liveRecovery?.available === true;
-            const liveProgress =
+              recoveryItem && liveRecovery?.available === true;
+            const trustworthyLiveProgress =
               recoveryLive &&
+              liveRecovery?.denominatorSource !== "unavailable" &&
               typeof liveRecovery?.overallPercent === "number"
                 ? liveRecovery.overallPercent
                 : null;
-            const effectiveProgress = liveProgress ?? item.progress;
+            const effectiveProgress = recoveryItem
+              ? trustworthyLiveProgress
+              : item.progress;
             const effectiveProgressLabel = recoveryLive
               ? formatLiveRecoveryProgressLabel(
                   liveRecovery,
                   item.progressLabel,
                 )
-              : item.progressLabel;
+              : recoveryItem
+                ? "live signal syncing"
+                : item.progressLabel;
 
             return (
             <div
@@ -260,6 +265,16 @@ export default function WarPulsePanel({
                         )}
                         %
                       </span>
+                    </div>
+                  </div>
+                ) : item.current && recoveryItem ? (
+                  <div className="mt-2">
+                    <div className="relative h-1 overflow-hidden rounded-full bg-white/8">
+                      <div className="absolute inset-y-0 left-0 w-1/3 animate-[pulse_1.8s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-transparent via-cyan-200/80 to-transparent" />
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-[9px] uppercase tracking-[0.14em] text-cyan-100/40">
+                      <span>live signal syncing</span>
+                      <span>—</span>
                     </div>
                   </div>
                 ) : null}
