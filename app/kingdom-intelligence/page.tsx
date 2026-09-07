@@ -446,7 +446,7 @@ export default function KingdomIntelligencePage() {
                 <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-violet-300 shadow-[0_0_12px_rgba(196,181,253,.45)]" />
                 <div className="min-w-0 flex-1">
                   <div className="text-sm text-slate-300">{item.title}</div>
-                  <div className="mt-1 font-mono text-[10px] text-slate-650">memory seal {item.sha}</div>
+                  <div className="mt-1 font-mono text-[10px] text-slate-600">memory seal {item.sha}</div>
                 </div>
               </div>
             ))}
