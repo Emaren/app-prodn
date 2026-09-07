@@ -235,6 +235,10 @@ class RecoveryCampaignTests(unittest.TestCase):
         self.assertEqual(result["status"], "READY")
         self.assertEqual(result["ordinary_payload_bytes"], 500)
         self.assertEqual(result["headroom_after_ordinary_bytes"], 500)
+        self.assertEqual(
+            result["ordinary_stage_estimates"],
+            {name: 100 for name in campaign.ORDINARY_CLASSES},
+        )
         self.assertFalse(result["full_campaign_capacity_ready"])
 
     def test_preflight_fails_when_ordinary_capture_itself_does_not_fit(self):
@@ -414,6 +418,60 @@ class RecoveryCampaignTests(unittest.TestCase):
                     status["pause_requested_at"],
                     marker["requested_at"],
                 )
+
+    def test_live_capture_progress_refines_class_checkpoint_without_writes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle = Path(temporary)
+            chunk_root = (
+                bundle
+                / "raw_replay_archive.cms.chunks"
+            )
+            chunk_root.mkdir(parents=True)
+
+            state = {
+                "current_class": "raw_replay_archive",
+                "bundle_root": str(bundle),
+                "completed_classes": [
+                    "managed_user_media",
+                    "legacy_direct_message_attachments",
+                    "radio_wolo_private_media",
+                    "parser_evidence_corpus",
+                ],
+                "ordinary_classes": list(campaign.ORDINARY_CLASSES),
+                "ordinary_stage_estimates": {
+                    "raw_replay_archive": 200,
+                },
+                "current_class_started_at": "2026-09-07T20:00:00+00:00",
+            }
+
+            receipts = [
+                {
+                    "plaintext_bytes": 100,
+                    "created_at": "2026-09-07T20:00:10+00:00",
+                }
+            ]
+
+            with (
+                patch.object(
+                    campaign,
+                    "_load_existing_chunk_receipts",
+                    return_value=receipts,
+                ),
+                patch.object(campaign, "datetime", wraps=campaign.datetime),
+            ):
+                progress = campaign._live_capture_progress(state)
+
+        self.assertIsNotNone(progress)
+        assert progress is not None
+        self.assertEqual(progress["sealed_chunks"], 1)
+        self.assertEqual(progress["observed_bytes"], 100)
+        self.assertEqual(progress["expected_bytes"], 200)
+        self.assertEqual(progress["class_percent"], 50.0)
+        self.assertEqual(progress["overall_percent"], 90.0)
+        self.assertEqual(
+            progress["progress_basis"],
+            "sealed + active encrypted chunk bytes",
+        )
 
     def test_resume_clears_durable_pause_marker(self):
         with tempfile.TemporaryDirectory() as temporary:
