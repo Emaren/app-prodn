@@ -141,19 +141,31 @@ async function observedChunkBytes(
       sealedChunks: 0,
       sealedBytes: 0,
       partialBytes: 0,
+      firstChunkCreatedAt: null as string | null,
     };
   }
 
   let sealedChunks = 0;
   let sealedBytes = 0;
   let partialBytes = 0;
+  let firstChunkCreatedAt: string | null = null;
 
   for (const name of names) {
     if (/^chunk-\d{6}$/.test(name)) {
       try {
         const proof = JSON.parse(
           await fs.readFile(path.join(root, name, "proof.json"), "utf8"),
-        ) as { plaintext_bytes?: number };
+        ) as { plaintext_bytes?: number; created_at?: string };
+
+        if (typeof proof.created_at === "string") {
+          if (
+            firstChunkCreatedAt === null ||
+            new Date(proof.created_at).getTime() <
+              new Date(firstChunkCreatedAt).getTime()
+          ) {
+            firstChunkCreatedAt = proof.created_at;
+          }
+        }
 
         const bytes = Number(proof.plaintext_bytes);
         if (Number.isFinite(bytes) && bytes > 0) {
@@ -179,7 +191,12 @@ async function observedChunkBytes(
     }
   }
 
-  return { sealedChunks, sealedBytes, partialBytes };
+  return {
+    sealedChunks,
+    sealedBytes,
+    partialBytes,
+    firstChunkCreatedAt,
+  };
 }
 
 export async function GET() {
@@ -243,7 +260,15 @@ export async function GET() {
           ? (completed / total) * 100
           : null;
 
-    const startedSeconds = isoSeconds(campaign.current_class_started_at);
+    const campaignStepStarted = isoSeconds(
+      campaign.current_class_started_at,
+    );
+    const firstChunkStarted = isoSeconds(observed.firstChunkCreatedAt);
+    const startedSeconds =
+      campaignStepStarted !== null && firstChunkStarted !== null
+        ? Math.min(campaignStepStarted, firstChunkStarted)
+        : campaignStepStarted ?? firstChunkStarted;
+
     const nowSeconds = Date.now() / 1000;
     const elapsedSeconds =
       startedSeconds !== null
