@@ -242,7 +242,16 @@ survival vault. CMS encryption must use OpenSSL streaming I/O (`-stream`) so
 multi-GiB classes are processed in a single pass rather than buffered as a whole
 message. OpenSSL emits an indefinite-length BER CMS container in this mode even
 when the binary ASN.1 output path is selected; the capture proof records that
-encoding explicitly. No plaintext staging copy is retained. After each class
+encoding explicitly.
+
+Pause control is out-of-band from the mutable campaign JSON. An operator pause
+creates a per-campaign durable marker under the Recovery campaign state
+directory. The controller checks that marker only between classes, so an
+in-flight class is never interrupted, and stale controller state writes cannot
+erase a requested pause. Resume is allowed only at a clean class boundary and
+explicitly removes the durable marker before spawning a new controller.
+
+No plaintext staging copy is retained. After each class
 the CMS container must parse structurally, ciphertext bytes/hash and
 plaintext-stream bytes/hash are recorded, and a hashed
 `CAPTURED_PENDING_RESTORE` class proof is written. These capture receipts do
