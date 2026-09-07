@@ -786,6 +786,21 @@ Never improve the chart by merely moving a marker earlier than actual usability.
 Change the readiness boundary only when the interface is genuinely operable, and
 then verify the source change against a fresh same-release browser campaign.
 
+## 2026-09-06 — Release provenance observation retry lesson
+
+A pre-mutation Finish Doctor failed immediately after `aoe2war status` had
+proved the same active runtime `CERTIFIED` with public/internal build-version
+parity. No deployment occurred between those observations. The release collector
+used one public `/api/deployment-version` request; one empty, failed, or malformed
+response therefore made parity false and caused the otherwise matching activation
+receipt to fall back to `legacy-unmanifested`.
+
+Durable rule: a safety decision may retry a transient observation, but must never
+relax the underlying invariant. Public build-version probes may retry only
+transport/empty/malformed results within a small bound. A valid mismatched build
+version remains immediate mismatch evidence, and exhausting the bounded retries
+still fails closed.
+
 ## 2026-09-05 — First 77-route speed campaign hot-path lesson
 
 Certified source `31f883e4d8ce9a8835e34e46e7387247aae3b4f6`
