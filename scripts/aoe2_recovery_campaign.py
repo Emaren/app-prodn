@@ -621,6 +621,8 @@ def _verify_cms_chunk(
         total += len(chunk)
     proc.stdout.close()
     stderr = proc.stderr.read() if proc.stderr is not None else b""
+    if proc.stderr is not None:
+        proc.stderr.close()
     rc = proc.wait()
     if rc != 0:
         raise CampaignError(
@@ -694,6 +696,8 @@ def _capture_new_chunk(
             pass
 
     stderr = encrypt.stderr.read() if encrypt.stderr is not None else b""
+    if encrypt.stderr is not None:
+        encrypt.stderr.close()
     rc = encrypt.wait()
     if stream_error is not None:
         raise CampaignError(f"CMS chunk stream failed: {stream_error}")
@@ -779,6 +783,8 @@ def _verify_chunked_tar_restore(
             decrypt_stderr = (
                 decrypt.stderr.read() if decrypt.stderr is not None else b""
             )
+            if decrypt.stderr is not None:
+                decrypt.stderr.close()
             decrypt_rc = decrypt.wait()
             if decrypt_rc != 0:
                 raise CampaignError(
@@ -803,6 +809,8 @@ def _verify_chunked_tar_restore(
 
     tar.stdin.close()
     tar_stderr = tar.stderr.read() if tar.stderr is not None else b""
+    if tar.stderr is not None:
+        tar.stderr.close()
     tar_rc = tar.wait()
     if tar_rc != 0:
         raise CampaignError(
