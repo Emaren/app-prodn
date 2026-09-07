@@ -128,7 +128,7 @@ test("Kingdom Intelligence samples live Recovery bytes every five seconds withou
 
   assert.match(route, /AOE2WAR_PROD_DB_PREVIEW/);
   assert.match(route, /operator_preview_only/);
-  assert.match(route, /PLAN_CACHE_MS = 15 \* 60 \* 1000/);
+  assert.match(route, /PLAN_CACHE_MS = 6 \* 60 \* 60 \* 1000/);
   assert.match(route, /sealedChunks/);
   assert.match(route, /observedBytes/);
   assert.match(route, /overallPercent/);
