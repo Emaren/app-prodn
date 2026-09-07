@@ -153,6 +153,10 @@ analysis. This is statistical operational memory, not a claim that Performance
 OS can infer causation from a timing delta alone.
 
 `campaign verify` reruns the exact baseline cohort after the reviewed changes.
+If the current public cohort has gained or lost routes since the baseline, those
+page-universe changes are reported separately through source-inventory drift;
+they must not change the frozen timing comparison set. New routes enter the next
+campaign baseline instead of invalidating an older before/after experiment.
 Every route receives an improvement/regression/neutral verdict. A route is a
 material TTFB regression only when it is both at least 100 ms and 20% slower;
 total-response regression uses at least 150 ms and 20%. Verification preserves
