@@ -68,6 +68,47 @@ class ReleaseEngineeringTests(unittest.TestCase):
     def test_version_value(self):
         self.assertEqual(MODULE.version_value('{"buildVersion":"20260809-test"}'), "20260809-test")
 
+    def test_public_version_retries_transient_probe_failures(self):
+        responses = [
+            (28, "", "timeout"),
+            (0, "not-json", ""),
+            (0, '{"buildVersion":"20260907-good"}', ""),
+        ]
+        with patch.object(MODULE, "run", side_effect=responses) as mocked_run, patch.object(
+            MODULE.time, "sleep"
+        ) as mocked_sleep:
+            self.assertEqual(
+                MODULE.public_version(attempts=3, retry_delay_seconds=0.01),
+                "20260907-good",
+            )
+        self.assertEqual(mocked_run.call_count, 3)
+        self.assertEqual(mocked_sleep.call_count, 2)
+
+    def test_public_version_returns_first_valid_version_without_masking_mismatch(self):
+        with patch.object(
+            MODULE,
+            "run",
+            return_value=(0, '{"buildVersion":"20260907-other"}', ""),
+        ) as mocked_run, patch.object(MODULE.time, "sleep") as mocked_sleep:
+            self.assertEqual(
+                MODULE.public_version(attempts=3, retry_delay_seconds=0.01),
+                "20260907-other",
+            )
+        self.assertEqual(mocked_run.call_count, 1)
+        mocked_sleep.assert_not_called()
+
+    def test_public_version_fails_closed_after_bounded_transient_failures(self):
+        with patch.object(
+            MODULE,
+            "run",
+            return_value=(28, "", "timeout"),
+        ) as mocked_run, patch.object(MODULE.time, "sleep") as mocked_sleep:
+            self.assertIsNone(
+                MODULE.public_version(attempts=3, retry_delay_seconds=0.01)
+            )
+        self.assertEqual(mocked_run.call_count, 3)
+        self.assertEqual(mocked_sleep.call_count, 2)
+
     def test_dirty_paths_handles_rename(self):
         self.assertEqual(MODULE.dirty_paths([" M app/a.ts", "R  old.ts -> new.ts"]), ["app/a.ts", "new.ts"])
 

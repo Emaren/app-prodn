@@ -352,36 +352,45 @@ def production() -> tuple[dict[str, str], str | None]:
     return parse_kv(out), None
 
 
-def public_version() -> str | None:
+def public_version(
+    *,
+    attempts: int = 3,
+    retry_delay_seconds: float = 0.4,
+) -> str | None:
     url = f"{PUBLIC.rstrip('/')}/api/deployment-version"
+    total_attempts = max(1, int(attempts))
 
-    rc, out, _ = run(
-        [
-            "curl",
-            "-fsS",
-            "--connect-timeout",
-            "4",
-            "--max-time",
-            "6",
-            "-H",
-            "Accept: application/json",
-            "-H",
-            "Cache-Control: no-cache",
-            url,
-        ],
-        timeout=8,
-    )
+    for attempt in range(total_attempts):
+        rc, out, _ = run(
+            [
+                "curl",
+                "-fsS",
+                "--connect-timeout",
+                "4",
+                "--max-time",
+                "6",
+                "-H",
+                "Accept: application/json",
+                "-H",
+                "Cache-Control: no-cache",
+                url,
+            ],
+            timeout=8,
+        )
 
-    if rc != 0 or not out:
-        return None
+        if rc == 0 and out:
+            try:
+                payload = json.loads(out)
+            except json.JSONDecodeError:
+                payload = {}
+            value = payload.get("buildVersion")
+            if value:
+                return str(value)
 
-    try:
-        payload = json.loads(out)
-    except json.JSONDecodeError:
-        return None
+        if attempt + 1 < total_attempts and retry_delay_seconds > 0:
+            time.sleep(retry_delay_seconds)
 
-    value = payload.get("buildVersion")
-    return str(value) if value else None
+    return None
 
 
 def version_value(raw: str | None) -> str | None:
