@@ -54,7 +54,7 @@ function progressFill(theme: ThemeKey) {
 }
 
 const PANEL_SHELL =
-  "border-amber-100/10 bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,.08),transparent_32%),rgba(2,6,23,.82)]";
+  "border-white/10 bg-[#071426] shadow-[0_24px_72px_rgba(2,8,23,0.18)]";
 
 export default function AgentConstellationPanel({
   agents,
