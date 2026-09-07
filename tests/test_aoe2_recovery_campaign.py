@@ -1,3 +1,6 @@
+import hashlib
+import io
+import tarfile
 import tempfile
 import unittest
 from pathlib import Path
@@ -84,6 +87,87 @@ class RecoveryCampaignTests(unittest.TestCase):
             "-inkey",
             "/tmp/private.pem",
         ])
+
+    @unittest.skipUnless(
+        campaign.shutil.which("openssl") and campaign.shutil.which("tar"),
+        "OpenSSL and tar are required for the chunked CMS integration test",
+    )
+    def test_chunked_cms_round_trip_reconstructs_tar_across_multiple_chunks(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            cert = root / "recipient.pem"
+            key = root / "private.pem"
+            campaign.subprocess.run(
+                [
+                    "openssl",
+                    "req",
+                    "-x509",
+                    "-newkey",
+                    "rsa:2048",
+                    "-keyout",
+                    str(key),
+                    "-out",
+                    str(cert),
+                    "-nodes",
+                    "-subj",
+                    "/CN=AoE2WAR Recovery Test",
+                    "-days",
+                    "1",
+                ],
+                stdout=campaign.subprocess.DEVNULL,
+                stderr=campaign.subprocess.DEVNULL,
+                check=True,
+            )
+
+            payload = b"AOE2WAR-RECOVERY-" * 24000
+            tar_buffer = io.BytesIO()
+            with tarfile.open(fileobj=tar_buffer, mode="w") as archive:
+                info = tarfile.TarInfo("payload.bin")
+                info.size = len(payload)
+                archive.addfile(info, io.BytesIO(payload))
+            tar_bytes = tar_buffer.getvalue()
+
+            chunk_root = root / "chunks"
+            chunk_root.mkdir()
+            source = io.BytesIO(tar_bytes)
+            whole = hashlib.sha256()
+            receipts = []
+
+            with patch.object(
+                campaign,
+                "CMS_CHUNK_PLAINTEXT_BYTES",
+                64 * 1024,
+            ):
+                while True:
+                    receipt = campaign._capture_new_chunk(
+                        source=source,
+                        root=chunk_root,
+                        index=len(receipts),
+                        recipient_cert=cert,
+                        private_key=key,
+                        recipient_fingerprint="A" * 64,
+                        whole_digest=whole,
+                    )
+                    if receipt is None:
+                        break
+                    receipts.append(receipt)
+
+                restored_bytes, restored_sha = (
+                    campaign._verify_chunked_tar_restore(
+                        chunk_root,
+                        receipts,
+                        recipient_cert=cert,
+                        private_key=key,
+                    )
+                )
+
+            self.assertGreater(len(receipts), 1)
+            self.assertEqual(restored_bytes, len(tar_bytes))
+            self.assertEqual(
+                restored_sha,
+                hashlib.sha256(tar_bytes).hexdigest(),
+            )
+            self.assertEqual(whole.hexdigest(), restored_sha)
 
     def test_create_state_requires_explicit_ordinary_capture_authorization(self):
         with self.assertRaisesRegex(
