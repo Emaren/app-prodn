@@ -238,9 +238,13 @@ classes:
 The controller is terminal-independent and processes one class at a time. The
 remote source is streamed as a tar archive over SSH; the Mac hashes that
 plaintext stream while OpenSSL CMS encrypts it directly into the independent
-survival vault. No plaintext staging copy is retained. After each class the CMS
-container must parse structurally, ciphertext bytes/hash and plaintext-stream
-bytes/hash are recorded, and a hashed
+survival vault. CMS encryption must use OpenSSL streaming I/O (`-stream`) so
+multi-GiB classes are processed in a single pass rather than buffered as a whole
+message. OpenSSL emits an indefinite-length BER CMS container in this mode even
+when the binary ASN.1 output path is selected; the capture proof records that
+encoding explicitly. No plaintext staging copy is retained. After each class
+the CMS container must parse structurally, ciphertext bytes/hash and
+plaintext-stream bytes/hash are recorded, and a hashed
 `CAPTURED_PENDING_RESTORE` class proof is written. These capture receipts do
 not count as final Recovery OS PASS evidence until the later isolated decrypt
 and restore drill verifies them.
