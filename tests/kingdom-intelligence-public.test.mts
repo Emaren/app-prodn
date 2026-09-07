@@ -195,6 +195,8 @@ test("public Kingdom Intelligence is a bounded sanitized projection", async () =
       publicView.systemAgents[0]?.progressBasis,
       "sealed + active encrypted chunk bytes",
     );
+    assert.equal(publicView.systemAgents[1]?.etaSeconds, null);
+    assert.equal(publicView.systemAgents[1]?.observedBytes, null);
     assert.equal(publicView.recentSourceActivity[0]?.sha, "dddddddddddd");
     assert.equal(publicView.memorySeals[0]?.sha, "eeeeeeeeeeee");
     assert.equal(publicView.liveActivity[0]?.system, "System Doctor");
