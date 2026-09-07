@@ -10,8 +10,6 @@ import {
   Plus,
   ShieldCheck,
   Sparkles,
-  Swords,
-  UsersRound,
   X,
 } from "lucide-react";
 import {
