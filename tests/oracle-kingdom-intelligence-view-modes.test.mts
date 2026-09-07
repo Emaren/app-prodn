@@ -33,7 +33,16 @@ test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and bo
   assert.match(premiumOracle, /ProbabilityChart/);
   assert.match(premiumOracle, /Create market/);
   assert.match(premiumOracle, /data-oracle-advanced-hero="workshop-open-image"/);
-  assert.match(premiumOracle, /data-oracle-extreme-hero="workshop-open-image"/);
+  assert.match(premiumOracle, /data-oracle-extreme-hero="workshop-advanced-frame"/);
+  assert.match(premiumOracle, /data-oracle-extreme-banner="workshop-advanced"/);
+  assert.match(
+    premiumOracle,
+    /max-w-\[82rem\][\s\S]*?rounded-\[2\.35rem\][\s\S]*?border border-cyan-100\/13[\s\S]*?p-6[\s\S]*?sm:p-9[\s\S]*?lg:p-10/,
+  );
+  assert.match(
+    premiumOracle,
+    /aspect-\[16\/7\][\s\S]*?sm:min-h-\[20rem\][\s\S]*?lg:min-h-\[24rem\]/,
+  );
   assert.doesNotMatch(premiumOracle, /data-oracle-extreme-hero="cinematic"/);
   assert.match(premiumOracle, /oracle-wolo-button/);
   assert.match(premiumOracle, /oracle-arcane-button/);

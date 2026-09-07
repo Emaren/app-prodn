@@ -389,75 +389,76 @@ function PremiumHero({
 
   return (
     <section
-      className="overflow-hidden rounded-[2.65rem] border border-cyan-100/13 bg-[#03060c] shadow-[0_48px_150px_rgba(0,0,0,0.58)]"
-      data-oracle-extreme-hero="workshop-open-image"
+      className="relative mx-auto w-full max-w-[82rem] overflow-hidden rounded-[2.35rem] border border-cyan-100/13 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.18),transparent_30%),radial-gradient(circle_at_88%_12%,rgba(251,191,36,0.14),transparent_28%),linear-gradient(145deg,#061521,#060912_57%,#120a05)] p-6 shadow-[0_32px_110px_rgba(0,0,0,0.38)] sm:p-9 lg:p-10"
+      data-oracle-extreme-hero="workshop-advanced-frame"
     >
-      <div className="relative min-h-[24rem] aspect-[16/7] overflow-hidden border-b border-cyan-100/12 bg-[#020711] sm:min-h-[30rem] xl:min-h-[34rem]">
+      <div
+        className="relative -mx-6 -mt-6 mb-8 min-h-[16rem] aspect-[16/7] overflow-hidden border-b border-cyan-100/16 bg-[#020711] shadow-[0_30px_90px_rgba(0,0,0,0.28),inset_0_-1px_0_rgba(255,255,255,0.035)] sm:-mx-9 sm:-mt-9 sm:mb-[2.35rem] sm:min-h-[20rem] lg:-mx-10 lg:-mt-10 lg:mb-10 lg:min-h-[24rem]"
+        data-oracle-extreme-banner="workshop-advanced"
+      >
         <Image
           src="/oracle/oracle-hero-bg.webp"
           alt="The Oracle chamber and its celestial brass prediction instrument"
           fill
           priority
-          sizes="100vw"
-          className="object-cover object-center brightness-[1.22] saturate-[1.1] contrast-[1.03]"
+          sizes="(max-width: 1024px) 100vw, 1200px"
+          className="object-cover object-center brightness-[1.18] saturate-[1.08] contrast-[1.03]"
         />
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.01),rgba(2,6,23,0.05)_52%,rgba(2,6,23,0.34)_100%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_46%,rgba(96,165,250,0.09),transparent_22%),radial-gradient(circle_at_28%_18%,rgba(251,191,36,0.06),transparent_28%)]" />
-        <div className="pointer-events-none absolute inset-x-[7%] bottom-0 h-px bg-gradient-to-r from-transparent via-amber-100/30 to-transparent" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.04),rgba(2,6,23,0.14)_48%,rgba(2,6,23,0.72)_100%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(251,191,36,0.10),transparent_30%),radial-gradient(circle_at_82%_16%,rgba(56,189,248,0.12),transparent_30%)]" />
+        <div className="pointer-events-none absolute inset-x-[8%] bottom-0 h-px bg-gradient-to-r from-transparent via-amber-100/32 to-transparent" />
       </div>
 
-      <div className="bg-[linear-gradient(145deg,#03060c,#05070d_62%,#100905)] px-7 py-7 sm:px-10 sm:py-9 lg:px-12 xl:px-14">
-        <div className="flex flex-wrap items-start justify-between gap-8">
-          <div className="max-w-[54rem]">
-            <div className="flex flex-wrap gap-2">
-              <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/18 bg-amber-300/[0.055] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.22em] text-amber-50">
-                <Sparkles className="h-3.5 w-3.5" />
-                The Oracle
-              </span>
-              <span className="inline-flex items-center gap-2 rounded-full border border-cyan-100/15 bg-cyan-300/[0.045] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-cyan-50">
-                <ShieldCheck className="h-3.5 w-3.5" />
-                Exact rules
-              </span>
-            </div>
-
-            <p className="mt-5 text-[10px] font-black uppercase tracking-[0.44em] text-slate-500">
-              AoE2WAR presents
-            </p>
-            <h1 className="mt-2 font-serif text-6xl font-semibold leading-none tracking-[-0.055em] text-white sm:text-7xl xl:text-8xl">
+      <div className="flex flex-wrap items-start justify-between gap-7">
+        <div className="max-w-[50rem]">
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-2 rounded-full border border-amber-100/18 bg-amber-300/[0.055] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.22em] text-amber-50">
+              <Sparkles className="h-3.5 w-3.5" />
               The Oracle
-            </h1>
-            <p className="mt-4 max-w-[38rem] font-serif text-2xl leading-8 text-slate-100">
-              The future is not merely awaited. It is priced.
-            </p>
-            <p className="mt-3 max-w-[42rem] text-sm leading-6 text-slate-400">
-              Pick a side. Watch the probability move. Resolve against one published source.
-            </p>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <a
-                href="#markets"
-                className="oracle-wolo-button group inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
-              >
-                Open markets
-                <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
-              </a>
-              <button
-                type="button"
-                onClick={onPropose}
-                className="oracle-arcane-button inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
-              >
-                <Plus className="h-4 w-4" />
-                Create market
-              </button>
-            </div>
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-cyan-100/15 bg-cyan-300/[0.045] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-cyan-50">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Exact rules
+            </span>
           </div>
 
-          <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-[28rem]">
-            <HeroStat label="Live markets" value={fmt(snapshot.pulse.activeMarkets)} />
-            <HeroStat label="Forecasters" value={fmt(snapshot.pulse.forecasters)} />
-            <HeroStat label="Citizens" value={fmt(snapshot.pulse.registeredCitizens)} />
-            <HeroStat label="Final battles" value={fmt(snapshot.pulse.verifiedBattles)} />
+          <div className="mt-5 text-[10px] font-black uppercase tracking-[0.38em] text-cyan-100/55">
+            The Oracle · Extreme
           </div>
+          <h1 className="mt-3 font-serif text-5xl font-semibold leading-[0.94] tracking-[-0.045em] text-white sm:text-7xl">
+            The Oracle
+          </h1>
+          <p className="mt-4 max-w-[36rem] font-serif text-xl leading-8 text-slate-100 sm:text-2xl">
+            The future is not merely awaited. It is priced.
+          </p>
+          <p className="mt-3 max-w-[40rem] text-sm leading-6 text-slate-300 sm:text-base">
+            Pick a side. Watch the probability move. Resolve against one published source.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <a
+              href="#markets"
+              className="oracle-wolo-button group inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
+            >
+              Open markets
+              <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+            </a>
+            <button
+              type="button"
+              onClick={onPropose}
+              className="oracle-arcane-button inline-flex min-h-12 cursor-pointer items-center gap-2 rounded-full px-6 text-sm font-black"
+            >
+              <Plus className="h-4 w-4" />
+              Create market
+            </button>
+          </div>
+        </div>
+
+        <div className="grid w-full gap-2 sm:grid-cols-2 lg:w-[27rem]">
+          <HeroStat label="Live markets" value={fmt(snapshot.pulse.activeMarkets)} />
+          <HeroStat label="Forecasters" value={fmt(snapshot.pulse.forecasters)} />
+          <HeroStat label="Citizens" value={fmt(snapshot.pulse.registeredCitizens)} />
+          <HeroStat label="Final battles" value={fmt(snapshot.pulse.verifiedBattles)} />
         </div>
       </div>
     </section>
