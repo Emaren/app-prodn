@@ -68,19 +68,52 @@ test("Kingdom Intelligence cycles the whole Agent Constellation tile through pla
   assert.match(panel, /progressFill\(theme\)/);
 });
 
-test("Kingdom Intelligence renders activity clocks in the browser locale", () => {
+test("Kingdom Intelligence cycles the whole War Pulse tile through plain and two premium themes", () => {
   const intelligence = source("app/kingdom-intelligence/page.tsx");
+  const panel = source("app/kingdom-intelligence/WarPulsePanel.tsx");
+
+  assert.match(intelligence, /<WarPulsePanel/);
+  assert.match(panel, /const THEMES: ThemeKey\[\] = \["plain", "signal", "cosmic"\]/);
+  assert.match(panel, /data-war-pulse-theme=\{theme\}/);
+  assert.match(panel, /cursor-pointer/);
+  assert.match(panel, /Click to change War Pulse theme/);
+  assert.match(panel, /\(current \+ 1\) % THEMES\.length/);
+
+  // Plain preserves the original black War Pulse presentation.
+  assert.match(panel, /border-cyan-200\/10 bg-\[#02060c\]/);
+  assert.match(panel, /my-1 rounded-xl border border-cyan-200\/12 bg-white\/\[0\.018\]/);
+
+  // Signal preserves the hot process gradient; Cosmic is the second premium skin.
+  assert.match(panel, /theme === "signal"/);
+  assert.match(panel, /theme === "cosmic"/);
+  assert.match(panel, /linear-gradient\(115deg,rgba\(8,47,73,0\.42\)/);
+  assert.match(panel, /from-cyan-300 via-violet-300 to-fuchsia-300/);
+  assert.match(panel, /rowShell\(theme, item\.current\)/);
+  assert.match(panel, /panelShell\(theme\)/);
+  assert.match(panel, /progressFill\(theme\)/);
+});
+
+test("Kingdom Intelligence renders activity clocks in the browser locale", () => {
+  const pulse = source("app/kingdom-intelligence/WarPulsePanel.tsx");
   const browserTime = source("app/kingdom-intelligence/BrowserLocalTime.tsx");
 
-  assert.match(intelligence, /<BrowserLocalTime value=\{item\.at\} \/>/);
-  assert.doesNotMatch(intelligence, /item\.at\)\.toLocaleTimeString/);
+  assert.match(pulse, /<BrowserLocalTime value=\{item\.at\} \/>/);
+  assert.doesNotMatch(pulse, /item\.at\)\.toLocaleTimeString/);
   assert.match(browserTime, /Intl\.DateTimeFormat\(undefined/);
   assert.match(browserTime, /hour: "numeric"/);
   assert.match(browserTime, /minute: "2-digit"/);
 });
 
+test("Kingdom Intelligence keeps all server-rendered ModuleCard icons imported", () => {
+  const intelligence = source("app/kingdom-intelligence/page.tsx");
+
+  assert.match(intelligence, /\n  Cpu,\n/);
+  assert.match(intelligence, /icon=\{Cpu\}/);
+});
+
 test("Kingdom Intelligence promotes active OS work above historical activity", () => {
   const intelligence = source("app/kingdom-intelligence/page.tsx");
+  const pulse = source("app/kingdom-intelligence/WarPulsePanel.tsx");
   const brain = source("scripts/aoe2_brain.py");
 
   assert.match(intelligence, /ACTIVE_PROCESS_STATES/);
@@ -90,9 +123,9 @@ test("Kingdom Intelligence promotes active OS work above historical activity", (
   assert.match(intelligence, /item\.key === "storage"/);
   assert.match(intelligence, /item\.activeSince/);
   assert.match(intelligence, /Number\(right\.current\) - Number\(left\.current\)/);
-  assert.match(intelligence, /Live process/);
-  assert.match(intelligence, /animate-\[pulse_4\.5s_ease-in-out_infinite\]/);
   assert.match(intelligence, /orderedSystemAgents/);
+  assert.match(pulse, /Live process/);
+  assert.match(pulse, /animate-\[pulse_4\.5s_ease-in-out_infinite\]/);
 
   assert.match(brain, /recovery_current_class/);
   assert.match(brain, /current_class/);
