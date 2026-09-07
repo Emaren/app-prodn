@@ -22,6 +22,10 @@ let planCache:
     }
   | null = null;
 
+let planPromise:
+  | Promise<Array<{ class?: string; estimated_bytes?: number }>>
+  | null = null;
+
 function canonicalRoot() {
   const explicit = process.env.AOE2WAR_CANONICAL_APP_ROOT?.trim();
   if (explicit) return path.resolve(explicit);
@@ -92,25 +96,35 @@ async function recoveryPlan(root: string) {
     return planCache.stages;
   }
 
-  const script = path.join(root, "scripts", "aoe2_recovery.py");
-  const { stdout } = await execFileAsync(
-    "/usr/bin/python3",
-    [script, "campaign", "plan", "--json"],
-    {
-      cwd: root,
-      env: process.env,
-      timeout: 45_000,
-      maxBuffer: 4 * 1024 * 1024,
-    },
-  );
+  if (planPromise) return planPromise;
 
-  const parsed = JSON.parse(stdout) as {
-    stages?: Array<{ class?: string; estimated_bytes?: number }>;
-  };
+  planPromise = (async () => {
+    const script = path.join(root, "scripts", "aoe2_recovery.py");
+    const { stdout } = await execFileAsync(
+      "/usr/bin/python3",
+      [script, "campaign", "plan", "--json"],
+      {
+        cwd: root,
+        env: process.env,
+        timeout: 45_000,
+        maxBuffer: 4 * 1024 * 1024,
+      },
+    );
 
-  const stages = Array.isArray(parsed.stages) ? parsed.stages : [];
-  planCache = { at: now, stages };
-  return stages;
+    const parsed = JSON.parse(stdout) as {
+      stages?: Array<{ class?: string; estimated_bytes?: number }>;
+    };
+
+    const stages = Array.isArray(parsed.stages) ? parsed.stages : [];
+    planCache = { at: Date.now(), stages };
+    return stages;
+  })();
+
+  try {
+    return await planPromise;
+  } finally {
+    planPromise = null;
+  }
 }
 
 async function observedChunkBytes(
