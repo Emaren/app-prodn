@@ -846,3 +846,17 @@ was needed.
 An analyzed campaign from the previous certified release is a frozen Before
 waiting for verification against the new release. Do not mistake that source
 mismatch for a request to start a second baseline.
+## 2026-09-06 — Frozen performance cohort verification lesson
+
+A Speed campaign baseline was frozen at 77 routes. Before verification, the
+public route universe legitimately grew by one route (`/kingdom-intelligence`).
+The verifier benchmarked the current 78-route cohort and only afterward compared
+cohort identity, causing a completed After measurement to be rejected as a
+mismatch.
+
+Durable rule: before/after verification must replay the baseline receipt's exact
+route list. Current page-universe drift is separate evidence: record additions or
+removals in the source-inventory delta, warn when scope changed, and admit new
+routes into the next campaign baseline. Never let a growing product silently
+rewrite a frozen experiment.
+
