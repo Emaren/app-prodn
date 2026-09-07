@@ -30,7 +30,7 @@ test("Download Extreme hero is release-dynamic for Watcher 1.5.10", () => {
 
   assert.match(
     page,
-    /WATCHER_RELEASE\.version/,
+    /WATCHER_RELEASE\.label/,
   );
 });
 
