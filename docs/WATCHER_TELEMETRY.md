@@ -8,32 +8,42 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-09-04"
+reviewed_at: "2026-09-06"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Watcher Telemetry
 
-## Production release identity — 2026-09-03
+## Production release identity — 2026-09-06
 
-The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. Current manifests report `version: 1.5.9` for Windows, macOS, and Linux.
+The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. The Watcher 1.5.10 release contract requires the Windows, macOS, and Linux updater manifests to report `version: 1.5.10` before the web metadata is considered publishable.
 
 Release evidence:
 
-- source branch: `release/watcher-1.5.9-20260903`;
-- source SHA: `3546b86d3cdc1203baa563ae74f9d5a5e82557d7`;
-- successful Windows Artifact Signing run: `33818322254`.
+- Watcher runtime source: `f499e5a64e48a048fe3506ab52a9681c8f3b5966`;
+- successful Windows Artifact Signing run: `34082963205`;
+- signed Windows build source: `56ac9abe0c0a4f9f089cd502cdeac5b509ada0f0`;
+- successful macOS/Linux release build run: `34083586837`;
+- macOS/Linux build source: `a4893a0b75c7dff4441d1a798842cdca3b0e9198`.
 
 Verified release binary SHA-256 values:
 
-- Windows installer: `4e6bcde0a2dcae94cbe8401a22d91522ea3010ae22c1c22fc876d1e912f2f4bf`;
-- Windows portable EXE: `742d3c5bbdb47a92bd5583a0f410b04c62bd233ecd14e8aa2065efa4333483b6`;
-- Apple Silicon DMG: `78097ab3ffe11c6d28043d3293bad252626611db14395bf45fbd2af888ee7039`;
-- macOS direct ZIP: `3861ec879fd5261ebdc966b71d3919f3e6ba997125a853b42845e7c46c14dec6`;
-- Linux AppImage: `55681f03167d487efe0314651b3c5d9e5f09bfc3c8bdf56b8b846af850af451e`.
+- Windows installer: `294b5b39f8347cf17c72ab992be79d55e0494f33c7432a9452d7e0b54154ab63`;
+- Windows portable EXE: `a389d4cedd11a354ab87f46175194b7030ccf45717c4d8907ddaa5eb6d637b81`;
+- Apple Silicon DMG: `93c580bd42727cb68c94e9c2959403703a874099f6b382214c058edef5d7fc14`;
+- macOS direct ZIP: `d4cc8dd10a3be7bae4c1027b4580d1d8595b6404252fcdafec3dc11ebba70a02`;
+- Linux AppImage: `f2511e68f383642b7478b08abc588201dbe30c1ba1640650b34d5ff1d7449421`.
 
-The certified release manifest contains nine verified entries: the five user-facing binaries, the macOS DMG blockmap, and `latest.yml`, `latest-mac.yml`, and `latest-linux.yml`. `SHA256SUMS-1.5.9.txt` and `watcher-release-manifest-1.5.9.json` are the authoritative inventory receipts. Older watcher versions remain historical download inventory and must not be mistaken for the advertised current release.
+The certified release inventory contains nine canonical entries: the five user-facing binaries, the macOS DMG blockmap, and `latest.yml`, `latest-mac.yml`, and `latest-linux.yml`. `SHA256SUMS-1.5.10.txt` and `watcher-release-manifest-1.5.10.json` are the authoritative inventory receipts. The Windows updater manifest is regenerated from the **signed** installer bytes so its SHA-512 and size cannot point at the pre-signing binary.
+
+## v1.5.10 active-folder and replay-priority recovery
+
+Watcher 1.5.10 separates **structural folder validity** from **current replay activity**. A valid HD SaveGame directory is no longer assumed to be the active directory forever. The watchdog may switch away from a valid-but-stale folder only when a different proven HD candidate has materially fresher replay writes. This closes the Scavanger_Ab failure mode where the Watcher could stay green and monitor-attached while AoE2HD was writing the live replay into another Documents, OneDrive, or Steam-library SaveGame directory.
+
+Replay truth also has explicit network priority over optional native video. When a replay upload begins, the Watcher can abort an in-flight video chunk, invalidate queued stale video slices, drop newly recorded video slices while replay bytes own the lane, pause the recorder to reduce encoding pressure, and suppress thumbnail refresh. The lightweight stream heartbeat remains alive. Video resumes from fresh capture after replay transfer clears; stale backlog is not flushed into the same constrained upstream connection. Video is expendable; replay live/final delivery is not.
+
+The app-side ownership counterpart resolves Watcher replay ownership from the authenticated Watcher API key rather than trusting a client-supplied UID. A stale cached UID therefore cannot split telemetry ownership from final replay ownership.
 
 ## v1.5.9 replay durability
 

@@ -926,3 +926,35 @@ ownership authority. Keep the separate internal server-key upload path explicit
 and keep browser uploads session-owned. Support tooling must pin known problem
 accounts by stable UID rather than allowing missing telemetry or spelling drift
 to make the diagnostic tile disappear.
+
+## 2026-09-06 — Watcher validity, activity, and network priority are separate truths
+
+Scavanger_Ab exposed two Watcher failure modes that can look healthy from a
+single status field. First, a replay directory can be structurally valid while
+being the wrong active directory: the monitor remains attached and the folder
+looks like AoE2HD, but the current game is writing to another Documents,
+OneDrive, or Steam-library SaveGame path. Second, optional native video can
+consume upstream bandwidth while replay live/final bytes are trying to reach
+AoE2WAR.
+
+Durable rule: **valid folder != active folder**. A healthy monitor may
+conservatively move from a valid-but-stale folder only when another proven HD
+candidate has materially fresher replay writes. Never choose an old folder just
+because it contains more historical replay files.
+
+Durable rule: **replay truth outranks video**. On replay upload start, optional
+video transport may be preempted: abort an in-flight video chunk, invalidate
+stale queued slices, suppress new video slices and thumbnails, and pause video
+encoding while replay bytes own the lane. Keep only the lightweight stream
+heartbeat alive, then resume from fresh video after replay transfer clears.
+Never flush stale video backlog into the same constrained upstream connection.
+
+Replay ownership has the same authority principle: the server-resolved Watcher
+API-key owner is authoritative. A client-supplied UID is not replay ownership
+authority.
+
+Release lesson: source version, signed artifacts, updater manifests, public
+download metadata, and visible hero copy are separate publication surfaces. A
+Watcher release is not production until all of them agree on the same certified
+version and artifact hashes. Version text painted into artwork is release debt;
+prefer dynamic release metadata for version-bearing UI.

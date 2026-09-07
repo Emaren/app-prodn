@@ -23,6 +23,8 @@ const FEATURE_CHIPS = [
   "Steam HD multiplayer folder detection",
   "Custom Steam library detection",
   "Replay folder self-healing",
+  "Active replay-folder recovery",
+  "Replay-priority streaming",
   "Mid-game replay recovery",
   "Bounded monitor watchdog",
   "Privacy-safe rich heartbeat",
