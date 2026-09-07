@@ -42,6 +42,20 @@ test("Kingdom Intelligence falls back to the sanitized production signal in read
   assert.match(intelligence, /if \(!data\.available/);
 });
 
+test("Kingdom Intelligence agent tiles use a distinct premium clickable cool palette", () => {
+  const intelligence = source("app/kingdom-intelligence/page.tsx");
+  const tile = source("app/kingdom-intelligence/AgentConstellationTile.tsx");
+
+  assert.match(intelligence, /<AgentConstellationTile/);
+  assert.match(tile, /cursor-pointer/);
+  assert.match(tile, /aria-pressed=\{focusedTheme\}/);
+  assert.match(tile, /Click to change tile theme/);
+  assert.match(tile, /from-cyan-300\/80 via-sky-300\/80 to-indigo-300\/70/);
+  assert.match(tile, /radial-gradient\(circle_at_86%_14%/);
+  assert.doesNotMatch(tile, /amber-300/);
+  assert.doesNotMatch(tile, /emerald-300/);
+});
+
 test("Kingdom Intelligence renders activity clocks in the browser locale", () => {
   const intelligence = source("app/kingdom-intelligence/page.tsx");
   const browserTime = source("app/kingdom-intelligence/BrowserLocalTime.tsx");
