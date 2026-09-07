@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 
+import ProcessDrilldown from "./ProcessDrilldown";
+import { useLiveRecoveryProgress } from "./useLiveRecoveryProgress";
+
 type AgentRow = {
   key: string;
   label: string;
@@ -9,6 +12,7 @@ type AgentRow = {
   summary: string;
   progress: number | null;
   progressLabel: string | null;
+  activeSince: string | null;
   beaconClass: string;
   statusToneClass: string;
 };
@@ -41,17 +45,8 @@ function progressFill(theme: ThemeKey) {
   return "from-cyan-400/70 via-amber-300/80 to-emerald-300/85";
 }
 
-function panelShell(theme: ThemeKey) {
-  if (theme === "sapphire") {
-    return "border-sky-200/16 bg-[radial-gradient(circle_at_86%_4%,rgba(56,189,248,0.08),transparent_30%),linear-gradient(160deg,rgba(7,18,34,0.94),rgba(3,9,19,0.98))] shadow-[0_24px_72px_rgba(2,8,23,0.24)]";
-  }
-
-  if (theme === "aurora") {
-    return "border-violet-200/14 bg-[radial-gradient(circle_at_14%_0%,rgba(139,92,246,0.10),transparent_30%),radial-gradient(circle_at_94%_86%,rgba(20,184,166,0.07),transparent_34%),linear-gradient(155deg,rgba(13,11,25,0.96),rgba(3,8,18,0.99))] shadow-[0_24px_72px_rgba(2,8,23,0.26)]";
-  }
-
-  return "border-amber-100/10 bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,.08),transparent_32%),rgba(2,6,23,.82)]";
-}
+const PANEL_SHELL =
+  "border-amber-100/10 bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,.08),transparent_32%),rgba(2,6,23,.82)]";
 
 export default function AgentConstellationPanel({
   agents,
@@ -59,7 +54,9 @@ export default function AgentConstellationPanel({
   agents: AgentRow[];
 }) {
   const [themeIndex, setThemeIndex] = useState(0);
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const theme = THEMES[themeIndex] ?? "plain";
+  const liveRecovery = useLiveRecoveryProgress(true);
 
   const cycleTheme = () => {
     setThemeIndex((current) => (current + 1) % THEMES.length);
@@ -80,20 +77,9 @@ export default function AgentConstellationPanel({
       }}
       className={
         "group/constellation relative cursor-pointer overflow-hidden rounded-[2rem] border p-5 transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200/35 sm:p-6 " +
-        panelShell(theme)
+        PANEL_SHELL
       }
     >
-      {theme !== "plain" ? (
-        <span
-          className={
-            "pointer-events-none absolute -right-20 top-24 h-44 w-44 rounded-full blur-3xl transition-opacity duration-500 " +
-            (theme === "sapphire"
-              ? "bg-cyan-300/[0.055]"
-              : "bg-violet-300/[0.06]")
-          }
-        />
-      ) : null}
-
       <div className="relative z-10 flex items-start justify-between gap-4">
         <div>
           <div className="text-[9px] font-black uppercase tracking-[0.32em] text-amber-100/45">
@@ -106,11 +92,39 @@ export default function AgentConstellationPanel({
       </div>
 
       <div className="relative z-10 mt-4 space-y-2.5">
-        {agents.map((agent) => (
+        {agents.map((agent) => {
+          const expanded = expandedKey === agent.key;
+          const recoveryLive =
+            agent.key === "recovery" && liveRecovery?.available === true;
+          const effectiveProgress =
+            recoveryLive &&
+            typeof liveRecovery.overallPercent === "number"
+              ? liveRecovery.overallPercent
+              : agent.progress;
+
+          return (
           <div
             key={agent.key}
+            role="button"
+            tabIndex={0}
+            aria-expanded={expanded}
+            onClick={(event) => {
+              event.stopPropagation();
+              setExpandedKey((current) =>
+                current === agent.key ? null : agent.key,
+              );
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                event.stopPropagation();
+                setExpandedKey((current) =>
+                  current === agent.key ? null : agent.key,
+                );
+              }
+            }}
             className={
-              "rounded-2xl border px-4 py-3 transition-all duration-500 " +
+              "cursor-pointer rounded-2xl border px-4 py-3 transition-all duration-500 " +
               rowShell(theme)
             }
           >
@@ -140,7 +154,7 @@ export default function AgentConstellationPanel({
                   {agent.summary}
                 </div>
 
-                {agent.progress !== null ? (
+                {effectiveProgress !== null ? (
                   <div className="mt-2">
                     <div className="h-1 overflow-hidden rounded-full bg-white/6">
                       <div
@@ -150,15 +164,15 @@ export default function AgentConstellationPanel({
                         }
                         style={{
                           width:
-                            Math.max(0, Math.min(100, agent.progress)) + "%",
+                            Math.max(0, Math.min(100, effectiveProgress)) + "%",
                         }}
                       />
                     </div>
                     <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.15em] text-slate-600">
                       <span>{agent.progressLabel ?? "progress"}</span>
                       <span>
-                        {agent.progress.toFixed(
-                          agent.progress % 1 === 0 ? 0 : 1,
+                        {effectiveProgress.toFixed(
+                          recoveryLive || effectiveProgress % 1 !== 0 ? 1 : 0,
                         )}
                         %
                       </span>
@@ -167,8 +181,23 @@ export default function AgentConstellationPanel({
                 ) : null}
               </div>
             </div>
+
+            {expanded ? (
+              <ProcessDrilldown
+                systemKey={agent.key}
+                system={agent.label}
+                status={agent.state}
+                summary={agent.summary}
+                progress={effectiveProgress}
+                progressLabel={agent.progressLabel}
+                startedAt={agent.activeSince}
+                current={agent.state === "ACTIVE"}
+                liveRecovery={recoveryLive ? liveRecovery : null}
+              />
+            ) : null}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="relative z-10 mt-4 border-t border-white/6 pt-4 text-[11px] leading-5 text-slate-600">
