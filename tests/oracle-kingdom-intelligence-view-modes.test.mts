@@ -107,9 +107,11 @@ test("Kingdom Intelligence row cards drill into noob-friendly process detail wit
   assert.match(agent, /event\.stopPropagation\(\)/);
   assert.match(agent, /aria-expanded=\{expanded\}/);
   assert.match(agent, /<ProcessDrilldown/);
+  assert.match(agent, /formatLiveRecoveryProgressLabel/);
   assert.match(pulse, /event\.stopPropagation\(\)/);
   assert.match(pulse, /aria-expanded=\{expanded\}/);
   assert.match(pulse, /<ProcessDrilldown/);
+  assert.match(pulse, /formatLiveRecoveryProgressLabel/);
 
   assert.match(detail, /What this is/);
   assert.match(detail, /Why it matters/);
@@ -125,6 +127,8 @@ test("Kingdom Intelligence samples live Recovery bytes every five seconds withou
 
   assert.match(hook, /setTimeout\(poll, 5000\)/);
   assert.match(hook, /cache: "no-store"/);
+  assert.match(hook, /formatLiveRecoveryProgressLabel/);
+  assert.match(hook, /GiB/);
 
   assert.match(route, /AOE2WAR_PROD_DB_PREVIEW/);
   assert.match(route, /operator_preview_only/);
