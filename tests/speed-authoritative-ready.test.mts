@@ -172,6 +172,7 @@ test("Kingdom Intelligence renders its primary board on the server", () => {
   const refresh = source(
     "app/kingdom-intelligence/KingdomIntelligenceRefresh.tsx",
   );
+  const loading = source("app/kingdom-intelligence/loading.tsx");
 
   assert.doesNotMatch(page, /^"use client"/);
   assert.match(
@@ -187,4 +188,6 @@ test("Kingdom Intelligence renders its primary board on the server", () => {
   assert.match(refresh, /^"use client"/);
   assert.match(refresh, /router\.refresh\(\)/);
   assert.match(refresh, /REFRESH_INTERVAL_MS = 20_000/);
+  assert.match(loading, /Synchronizing the nervous system/);
+  assert.doesNotMatch(loading, /SpeedReadyMarker/);
 });
