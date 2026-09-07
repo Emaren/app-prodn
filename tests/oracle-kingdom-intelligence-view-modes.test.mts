@@ -53,9 +53,9 @@ test("Kingdom Intelligence keeps Agent Constellation shell plain while rows cycl
   assert.doesNotMatch(panel, /click to change/i);
   assert.match(panel, /\(current \+ 1\) % THEMES\.length/);
 
-  // The outer display tile is invariant and preserves the original plain blue shell.
+  // The outer display tile is invariant and truly flat blue.
   assert.match(panel, /const PANEL_SHELL/);
-  assert.match(panel, /border-amber-100\/10 bg-\[radial-gradient\(circle_at_20%_0%/);
+  assert.match(panel, /border-white\/10 bg-\[#071426\]/);
   assert.doesNotMatch(panel, /function panelShell/);
   assert.doesNotMatch(panel, /panelShell\(theme\)/);
 
@@ -113,12 +113,17 @@ test("Kingdom Intelligence row cards drill into noob-friendly process detail wit
   assert.match(pulse, /<ProcessDrilldown/);
   assert.match(pulse, /formatLiveRecoveryProgressLabel/);
 
-  assert.match(detail, /What this is/);
-  assert.match(detail, /Why it matters/);
+  assert.match(agent, /kind="agent"/);
+  assert.match(pulse, /kind=\{item\.current \? "process" : "event"\}/);
+  assert.match(detail, /data-process-drilldown-kind="process"/);
+  assert.match(detail, /data-process-drilldown-kind="event"/);
+  assert.match(detail, /data-process-drilldown-kind="agent"/);
+  assert.match(detail, /What it does/);
+  assert.match(detail, /What this means/);
   assert.match(detail, /Elapsed/);
   assert.match(detail, /ETA/);
-  assert.match(detail, /What happens next/);
-  assert.match(detail, /Current evidence/);
+  assert.match(detail, /Sealed event/);
+  assert.doesNotMatch(detail, /Learning…/);
 });
 
 test("Kingdom Intelligence samples live Recovery bytes every five seconds without mutating the campaign", () => {
@@ -138,7 +143,10 @@ test("Kingdom Intelligence samples live Recovery bytes every five seconds withou
   assert.match(route, /overallPercent/);
   assert.match(route, /etaSeconds/);
   assert.match(route, /CHUNK_PLAINTEXT_LIMIT/);
-  assert.doesNotMatch(route, /execFile|campaign plan|planPromise/);
+  assert.match(route, /LEGACY_ESTIMATE_CACHE_MS = 6 \* 60 \* 60 \* 1000/);
+  assert.match(route, /one_time_read_only_inventory/);
+  assert.match(route, /campaign", "plan", "--json"/);
+  assert.match(route, /legacyEstimatePromise/);
   assert.doesNotMatch(route, /writeFile|unlink|rmSync|rmdir|rename/);
 });
 
