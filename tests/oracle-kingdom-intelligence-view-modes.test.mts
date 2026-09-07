@@ -50,6 +50,8 @@ test("Kingdom Intelligence promotes active OS work above historical activity", (
 
   assert.match(intelligence, /ACTIVE_PROCESS_STATES/);
   assert.match(intelligence, /activeAgentRows/);
+  assert.match(intelligence, /item\.activeProcess/);
+  assert.match(intelligence, /item\.activeSince/);
   assert.match(intelligence, /Number\(right\.current\) - Number\(left\.current\)/);
   assert.match(intelligence, /Live process/);
   assert.match(intelligence, /animate-\[pulse_4\.5s_ease-in-out_infinite\]/);
@@ -57,5 +59,7 @@ test("Kingdom Intelligence promotes active OS work above historical activity", (
 
   assert.match(brain, /recovery_current_class/);
   assert.match(brain, /current_class/);
+  assert.match(brain, /"active_process": recovery_active/);
+  assert.match(brain, /current_class_started_at/);
   assert.match(brain, /Ordinary encrypted capture/);
 });
