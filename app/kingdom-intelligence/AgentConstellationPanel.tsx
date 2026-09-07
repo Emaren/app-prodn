@@ -102,20 +102,26 @@ export default function AgentConstellationPanel({
       <div className="relative z-10 mt-4 space-y-2.5">
         {agents.map((agent) => {
           const expanded = expandedKey === agent.key;
+          const recoveryItem = agent.key === "recovery";
           const recoveryLive =
-            agent.key === "recovery" && liveRecovery?.available === true;
-          const liveProgress =
+            recoveryItem && liveRecovery?.available === true;
+          const trustworthyLiveProgress =
             recoveryLive &&
+            liveRecovery?.denominatorSource !== "unavailable" &&
             typeof liveRecovery?.overallPercent === "number"
               ? liveRecovery.overallPercent
               : null;
-          const effectiveProgress = liveProgress ?? agent.progress;
+          const effectiveProgress = recoveryItem
+            ? trustworthyLiveProgress
+            : agent.progress;
           const effectiveProgressLabel = recoveryLive
             ? formatLiveRecoveryProgressLabel(
                 liveRecovery,
                 agent.progressLabel,
               )
-            : agent.progressLabel;
+            : recoveryItem
+              ? "live signal syncing"
+              : agent.progressLabel;
 
           return (
           <div
@@ -191,6 +197,16 @@ export default function AgentConstellationPanel({
                         )}
                         %
                       </span>
+                    </div>
+                  </div>
+                ) : recoveryItem ? (
+                  <div className="mt-2">
+                    <div className="relative h-1 overflow-hidden rounded-full bg-white/6">
+                      <div className="absolute inset-y-0 left-0 w-1/3 animate-[pulse_1.8s_ease-in-out_infinite] rounded-full bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
+                    </div>
+                    <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.15em] text-slate-600">
+                      <span>live signal syncing</span>
+                      <span>—</span>
                     </div>
                   </div>
                 ) : null}
