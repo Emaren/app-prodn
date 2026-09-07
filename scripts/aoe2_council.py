@@ -432,6 +432,21 @@ def collect() -> dict[str, Any]:
             ),
             "unmerged_count": workspace.get("unmerged_count"),
             "stale_metadata": len(workspace.get("stale_metadata") or []),
+            "agents": [
+                {
+                    "agent": row.get("agent"),
+                    "purpose": row.get("purpose"),
+                    "branch": row.get("branch"),
+                    "classification": row.get("classification"),
+                    "head": row.get("head"),
+                    "dirty": bool(row.get("dirty")),
+                    "merged_into_canonical": bool(
+                        row.get("merged_into_canonical")
+                    ),
+                }
+                for row in (workspace.get("worktrees") or [])
+                if isinstance(row, dict) and row.get("agent_workspace")
+            ],
         },
         "performance_pulse": pulse,
         "ready_coverage": ready,
