@@ -403,6 +403,26 @@ def remote_tar_command(
     ]
 
 
+def cms_encrypt_command(
+    recipient_cert: Path,
+    output: Path,
+) -> list[str]:
+    return [
+        "openssl",
+        "cms",
+        "-encrypt",
+        "-binary",
+        "-stream",
+        "-outform",
+        "DER",
+        "-aes256",
+        "-recip",
+        str(recipient_cert),
+        "-out",
+        str(output),
+    ]
+
+
 def capture_stage(
     *,
     campaign_id: str,
@@ -441,19 +461,10 @@ def capture_stage(
         recovery._root_maintenance_host(),
         shlex.join(tar_args),
     ]
-    openssl_cmd = [
-        "openssl",
-        "cms",
-        "-encrypt",
-        "-binary",
-        "-outform",
-        "DER",
-        "-aes256",
-        "-recip",
-        str(recipient_cert),
-        "-out",
-        str(partial),
-    ]
+    openssl_cmd = cms_encrypt_command(
+        recipient_cert,
+        partial,
+    )
 
     with stderr_log.open("wb") as source_stderr:
         source = subprocess.Popen(
@@ -558,6 +569,8 @@ def capture_stage(
         "ciphertext_bytes": ciphertext_bytes,
         "ciphertext_sha256": ciphertext_sha,
         "cms_structure_test": "PASS",
+        "cms_streaming": True,
+        "cms_encoding": "BER_INDEFINITE_LENGTH",
         "recipient_certificate_fingerprint": recipient_fingerprint,
         "source_inventory": (
             (plan.get("inventory") or {}).get("classes", {}).get(class_name)
