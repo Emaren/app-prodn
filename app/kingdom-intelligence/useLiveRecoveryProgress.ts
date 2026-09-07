@@ -53,43 +53,84 @@ export function formatLiveRecoveryProgressLabel(
   return parts.length ? parts.join(" · ") : fallback;
 }
 
+type Listener = (value: LiveRecoveryProgress | null) => void;
+
+let sharedValue: LiveRecoveryProgress | null = null;
+let sharedTimer: ReturnType<typeof setTimeout> | null = null;
+let sharedPollPromise: Promise<void> | null = null;
+const listeners = new Set<Listener>();
+
+function publish(value: LiveRecoveryProgress | null) {
+  sharedValue = value;
+  for (const listener of listeners) listener(value);
+}
+
+async function pollSharedRecovery() {
+  if (sharedPollPromise) return sharedPollPromise;
+
+  sharedPollPromise = (async () => {
+    try {
+      const response = await fetch(
+        "/api/kingdom-intelligence/live-recovery",
+        {
+          cache: "no-store",
+        },
+      );
+
+      if (response.ok) {
+        const payload = (await response.json()) as LiveRecoveryProgress;
+        publish(payload);
+      }
+    } catch {
+      // Best-effort operator enhancement. Published KI remains authoritative.
+    } finally {
+      sharedPollPromise = null;
+
+      if (listeners.size > 0) {
+        sharedTimer = setTimeout(() => {
+          void pollSharedRecovery();
+        }, 5000);
+      }
+    }
+  })();
+
+  return sharedPollPromise;
+}
+
+function subscribe(listener: Listener) {
+  listeners.add(listener);
+  listener(sharedValue);
+
+  if (listeners.size === 1) {
+    if (sharedTimer) {
+      clearTimeout(sharedTimer);
+      sharedTimer = null;
+    }
+    void pollSharedRecovery();
+  }
+
+  return () => {
+    listeners.delete(listener);
+
+    if (listeners.size === 0 && sharedTimer) {
+      clearTimeout(sharedTimer);
+      sharedTimer = null;
+    }
+  };
+}
+
 export function useLiveRecoveryProgress(enabled = true) {
-  const [value, setValue] = useState<LiveRecoveryProgress | null>(null);
+  const [value, setValue] = useState<LiveRecoveryProgress | null>(
+    sharedValue,
+  );
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      setValue(null);
+      return;
+    }
 
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const poll = async () => {
-      try {
-        const response = await fetch(
-          "/api/kingdom-intelligence/live-recovery",
-          {
-            cache: "no-store",
-          },
-        );
-
-        if (response.ok) {
-          const payload = (await response.json()) as LiveRecoveryProgress;
-          if (!cancelled) setValue(payload);
-        }
-      } catch {
-        // Best-effort operator enhancement. Published KI remains authoritative.
-      } finally {
-        if (!cancelled) {
-          timer = setTimeout(poll, 5000);
-        }
-      }
-    };
-
-    void poll();
-
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
+    return subscribe(setValue);
   }, [enabled]);
 
   return value;
