@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { writeAoe2OsKingdomIntelligence } from "../lib/aoe2Os.ts";
+import { createAoe2OsRun, writeAoe2OsKingdomIntelligence } from "../lib/aoe2Os.ts";
 import { loadPublicKingdomIntelligence } from "../lib/kingdomIntelligencePublic.ts";
 
 async function withStore(fn: () => Promise<void>) {
@@ -90,6 +90,50 @@ test("public Kingdom Intelligence is a bounded sanitized projection", async () =
           finish_runs: 3,
           certified_finishes: 1,
         },
+        system_agents: [
+          {
+            key: "recovery",
+            label: "Recovery OS",
+            state: "ACTIVE",
+            summary: "Ordinary encrypted capture 1/5.",
+            progress_percent: 20,
+            progress_label: "1/5 ordinary classes",
+            private_path: "/Users/operator/recovery",
+          },
+          {
+            key: "doctor",
+            label: "System Doctor",
+            state: "ATTENTION",
+            summary: "Doctor 94/100.",
+            progress_percent: 94,
+            progress_label: "system health",
+          },
+          {
+            key: "secret",
+            label: "Secret OS",
+            state: "ACTIVE",
+            summary: "must not publish",
+          },
+        ],
+        recent_source_activity: [
+          {
+            sha: "d".repeat(40),
+            created_at: new Date().toISOString(),
+            title: "Seal Recovery OS key authority",
+            system: "Recovery OS",
+            status: "SUCCEEDED",
+            private_path: "/Users/operator/source",
+          },
+        ],
+        memory_seals: [
+          {
+            sha: "e".repeat(40),
+            created_at: new Date().toISOString(),
+            title: "Record Recovery OS invariant",
+            status: "SEALED",
+            private_detail: "do not publish",
+          },
+        ],
         invariants: [
           {
             key: "source-authority-exact",
@@ -114,6 +158,12 @@ test("public Kingdom Intelligence is a bounded sanitized projection", async () =
       },
     });
 
+    await createAoe2OsRun({
+      action: "doctor",
+      requestedByUserId: 1,
+      requestedByUid: "operator",
+    });
+
     const publicView = await loadPublicKingdomIntelligence();
     assert.equal(publicView.available, true);
     assert.equal(publicView.warDate, "2026.249.1720Z");
@@ -122,6 +172,13 @@ test("public Kingdom Intelligence is a bounded sanitized projection", async () =
     assert.equal(publicView.storageCampaign?.completedGenerations, 1);
     assert.equal(publicView.workspace?.activeAgentCount, 1);
     assert.equal(publicView.activity24h?.sourceCommits, 48);
+    assert.equal(publicView.systemAgents.length, 2);
+    assert.equal(publicView.systemAgents[0]?.label, "Recovery OS");
+    assert.equal(publicView.systemAgents[0]?.progressPercent, 20);
+    assert.equal(publicView.recentSourceActivity[0]?.sha, "dddddddddddd");
+    assert.equal(publicView.memorySeals[0]?.sha, "eeeeeeeeeeee");
+    assert.equal(publicView.liveActivity[0]?.system, "System Doctor");
+    assert.equal(publicView.liveActivity[0]?.status, "QUEUED");
     assert.equal(publicView.directive?.title, "Return Storage OS to healthy band");
     assert.deepEqual(publicView.invariants, [
       {
@@ -158,6 +215,10 @@ test("public Kingdom Intelligence page makes its authority and privacy boundary 
   assert.match(page, /HAS A MIND/);
   assert.match(page, /Truth · Provenance · Invariants · Action/);
   assert.match(page, /Public projection · sensitive operator evidence withheld/);
+  assert.match(page, /War Pulse · live chronicle/);
+  assert.match(page, /Eight OS agents\. One Doctor\./);
+  assert.match(page, /Victory ledger/);
+  assert.match(page, /Memory vault/);
   assert.match(page, /chain-of-thought/);
   assert.match(page, /api\/kingdom-intelligence/);
   assert.match(shell, /\/kingdom-intelligence/);

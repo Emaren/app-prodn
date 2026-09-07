@@ -189,6 +189,33 @@ private-key/public-certificate keypair equality. Recovery preflight must verify
 those conditions itself before encrypting any new ordinary recovery payload.
 Private key contents and hashes must never be printed or transmitted.
 
+## Kingdom Intelligence agent-memory model
+
+Kingdom Intelligence must show work as evidence-backed activity, not decorative
+animation. The canonical operating array is eight OS agents plus System Doctor:
+Release, Documentation, Storage, Host, Recovery, Workspace, Speed, Replay Truth,
+and Doctor. Brain/Council coordinate that array but are not counted as another OS.
+
+Public activity uses one beacon language: cyan pulse for proven active work,
+green solid for healthy/complete/certified, amber pulse for attention/waiting,
+red for failed/blocked/unsafe, and slate for idle. External workers such as
+ChatGPT and Codex are separate from OS agents and appear only when Workspace OS
+or an authenticated heartbeat proves their activity.
+
+Chronology and memory are different layers. The War Pulse shows recent active
+or completed operating/source events. The Victory Ledger points to sealed Git
+changes. The Memory Vault points to Engineering Memory commits. A failed attempt
+must never be rewritten as success; instead, a parent campaign may later close
+successfully while the failed attempt remains immutable provenance underneath it.
+
+Commit trailers may identify future agent-authored source work:
+
+- `AoE2WAR-Agent: <agent>`;
+- `AoE2WAR-System: <OS domain>`.
+
+These trailers are attribution evidence only. They do not prove deployment,
+runtime success, financial authority, or continuous agent activity.
+
 ## Storage estate lesson
 
 Do not mirror the entire VPS or all durable rollback generations to the Mac.

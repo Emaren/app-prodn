@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   Activity,
   ArrowLeft,
+  Bot,
   BrainCircuit,
   BookOpenCheck,
   CloudCog,
@@ -13,10 +14,13 @@ import {
   LoaderCircle,
   Play,
   RefreshCw,
+  Radio,
   RotateCcw,
+  ScrollText,
   ServerCog,
   ShieldCheck,
   TerminalSquare,
+  Trophy,
   UploadCloud,
   Wifi,
   WifiOff,
@@ -168,6 +172,23 @@ function statusTone(status: string) {
   return "text-slate-300 bg-slate-400/10 border-slate-500/20";
 }
 
+function agentDot(state: string) {
+  const value = state.toUpperCase();
+  if (value === "ACTIVE") {
+    return "bg-cyan-300 shadow-[0_0_14px_rgba(103,232,249,.8)] animate-pulse";
+  }
+  if (["HEALTHY", "PASS", "COMPLETE", "CERTIFIED"].includes(value)) {
+    return "bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.45)]";
+  }
+  if (["FAILED", "FAIL", "BLOCKED", "UNSAFE"].includes(value)) {
+    return "bg-rose-400 shadow-[0_0_12px_rgba(251,113,133,.5)]";
+  }
+  if (["ATTENTION", "WAITING", "WATCH"].includes(value)) {
+    return "bg-amber-300 shadow-[0_0_12px_rgba(252,211,77,.45)] animate-pulse";
+  }
+  return "bg-slate-600";
+}
+
 function StatusCard({
   label,
   value,
@@ -245,6 +266,10 @@ export default function AoE2WarOsAdminPage() {
   const brainActivity = record(brainPayload.activity_24h);
   const brainBest = record(brainPayload.best_next_action);
   const brainInvariants = arrayOfRecords(brainPayload.invariants);
+  const brainSystemAgents = arrayOfRecords(brainPayload.system_agents);
+  const brainExternalAgents = arrayOfRecords(brainPayload.external_agents);
+  const brainSourceActivity = arrayOfRecords(brainPayload.recent_source_activity);
+  const brainMemorySeals = arrayOfRecords(brainPayload.memory_seals);
   const brainAge = brainSnapshot ? relativeAge(brainSnapshot.receivedAt) : "never";
 
   const snapshotPayload = record(dashboard?.snapshot?.payload);
@@ -641,6 +666,141 @@ export default function AoE2WarOsAdminPage() {
           </div>
         </section>
 
+        <section className="mt-6 overflow-hidden rounded-[1.8rem] border border-cyan-200/10 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,.08),transparent_30%),linear-gradient(145deg,rgba(2,8,16,.92),rgba(2,6,23,.96))] p-5 sm:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.32em] text-cyan-100/50">
+                Agent Operations
+              </div>
+              <h2 className="mt-2 text-2xl font-semibold text-white">
+                Eight OS agents. One Doctor. External minds when proven.
+              </h2>
+              <p className="mt-2 max-w-3xl text-xs leading-5 text-slate-500">
+                State comes from the deterministic Brain. Cyan means active work, green is healthy or closed, amber is waiting/attention, red is failed/blocked. No agent is shown as working without evidence.
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200/10 bg-cyan-300/[0.04] px-3 py-2 text-xs text-cyan-100/75">
+              <Radio className="h-3.5 w-3.5" />
+              Neural chronicle
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {brainSystemAgents.map((agent) => {
+              const state = String(agent.state ?? "UNKNOWN");
+              const progress = numberValue(agent.progress_percent);
+              return (
+                <div key={String(agent.key ?? agent.label)} className="rounded-2xl border border-white/7 bg-black/20 p-4">
+                  <div className="flex items-start gap-3">
+                    <span className={"mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full " + agentDot(state)} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-sm font-semibold text-white">{String(agent.label ?? "OS Agent")}</div>
+                        <span className={"rounded-full border px-2 py-0.5 text-[8px] font-bold uppercase tracking-[0.14em] " + statusTone(state)}>
+                          {state}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-xs leading-5 text-slate-500">
+                        {String(agent.summary ?? "Awaiting evidence.")}
+                      </div>
+                      {progress !== null ? (
+                        <div className="mt-2">
+                          <div className="h-1 overflow-hidden rounded-full bg-white/5">
+                            <div
+                              className="h-full rounded-full bg-gradient-to-r from-cyan-400/70 via-amber-300/80 to-emerald-300/85"
+                              style={{ width: Math.max(0, Math.min(100, progress)) + "%" }}
+                            />
+                          </div>
+                          <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.12em] text-slate-600">
+                            <span>{String(agent.progress_label ?? "progress")}</span>
+                            <span>{progress.toFixed(progress % 1 === 0 ? 0 : 1)}%</span>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-5 grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
+            <div className="rounded-2xl border border-violet-200/10 bg-violet-300/[0.025] p-4">
+              <div className="flex items-center gap-2">
+                <Bot className="h-4 w-4 text-violet-200/70" />
+                <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-violet-100/45">
+                  External Minds
+                </div>
+              </div>
+              <div className="mt-3 space-y-2">
+                {brainExternalAgents.length ? (
+                  brainExternalAgents.map((agent, index) => {
+                    const state = String(agent.state ?? "IDLE");
+                    return (
+                      <div key={String(agent.head ?? index)} className="rounded-xl border border-white/7 bg-black/20 px-3 py-3">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={"h-2 w-2 rounded-full " + agentDot(state)} />
+                            <span className="text-sm font-semibold text-white">{String(agent.name ?? "Agent")}</span>
+                          </div>
+                          <span className="text-[9px] uppercase tracking-[0.14em] text-slate-600">{state}</span>
+                        </div>
+                        <div className="mt-1 text-xs leading-5 text-slate-500">{String(agent.purpose ?? "Registered engineering work")}</div>
+                        <div className="mt-1 truncate font-mono text-[10px] text-slate-700">{String(agent.branch ?? "—")}</div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="rounded-xl border border-dashed border-white/8 px-3 py-5 text-center text-xs leading-5 text-slate-600">
+                    No external AI workspace heartbeat is registered in the current Brain snapshot. ChatGPT/Codex appear only after Workspace OS or an authenticated heartbeat proves activity.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-emerald-200/10 bg-emerald-300/[0.025] p-4">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-emerald-200/70" />
+                  <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-emerald-100/45">
+                    Recent Source Seals
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {brainSourceActivity.slice(0, 6).map((item) => (
+                    <div key={String(item.sha)} className="rounded-xl border border-white/6 bg-black/20 px-3 py-2.5">
+                      <div className="flex items-center justify-between gap-2 text-[10px]">
+                        <span className="font-semibold text-emerald-100/70">{String(item.system ?? "Kingdom Intelligence")}</span>
+                        <span className="font-mono text-slate-700">{shortSha(item.sha)}</span>
+                      </div>
+                      <div className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{String(item.title ?? "Source change")}</div>
+                    </div>
+                  ))}
+                  {!brainSourceActivity.length ? <div className="py-5 text-center text-xs text-slate-600">No source chronicle in this snapshot.</div> : null}
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-violet-200/10 bg-violet-300/[0.025] p-4">
+                <div className="flex items-center gap-2">
+                  <ScrollText className="h-4 w-4 text-violet-200/70" />
+                  <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-violet-100/45">
+                    Memory Seals
+                  </div>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {brainMemorySeals.slice(0, 6).map((item) => (
+                    <div key={String(item.sha)} className="rounded-xl border border-white/6 bg-black/20 px-3 py-2.5">
+                      <div className="line-clamp-2 text-xs leading-5 text-slate-400">{String(item.title ?? "Engineering lesson")}</div>
+                      <div className="mt-1 font-mono text-[10px] text-slate-700">seal {shortSha(item.sha)}</div>
+                    </div>
+                  ))}
+                  {!brainMemorySeals.length ? <div className="py-5 text-center text-xs text-slate-600">No recent Engineering Memory seal.</div> : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="mt-6 grid gap-4 rounded-[1.6rem] border border-slate-700/55 bg-slate-950/55 p-5 lg:grid-cols-[1.1fr_0.9fr]">
           <div>
             <div className="text-[10px] uppercase tracking-[0.32em] text-slate-500">
@@ -954,12 +1114,12 @@ export default function AoE2WarOsAdminPage() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800/70 px-6 py-5">
             <div>
               <div className="text-xs uppercase tracking-[0.32em] text-slate-500">
-                Live run
+                Neural stream · operator
               </div>
               <h2 className="mt-2 text-xl font-semibold">
                 {dashboard?.activeRun
                   ? `${dashboard.activeRun.label} · ${dashboard.activeRun.status}`
-                  : "Operator Console"}
+                  : "Operator Nerve Console"}
               </h2>
             </div>
             {dashboard?.activeRun?.status === "queued" ? (

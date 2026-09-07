@@ -10,6 +10,7 @@ from typing import Any
 
 import aoe2_council
 import aoe2_release
+import aoe2_recovery_campaign
 import aoe2_speed_campaign
 import aoe2_storage_campaign
 import aoe2_truth
@@ -19,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TRUTH_STALE_SECONDS = 24 * 60 * 60
 PERFORMANCE_STALE_SECONDS = 7 * 24 * 60 * 60
 FINISH_RECEIPT_DIR = ROOT / ".aoe2war-release" / "finish-receipts"
+ENGINEERING_MEMORY_PATH = ROOT / "docs" / "ENGINEERING_MEMORY.md"
 
 
 def now_utc() -> datetime:
@@ -649,6 +651,417 @@ def storage_campaign_summary() -> dict[str, Any]:
     return payload
 
 
+def recovery_campaign_summary() -> dict[str, Any]:
+    try:
+        payload = aoe2_recovery_campaign.status_payload(None)
+    except Exception as exc:
+        return {
+            "status": "UNAVAILABLE",
+            "error": str(exc),
+        }
+    return payload if isinstance(payload, dict) else {"status": "UNAVAILABLE"}
+
+
+def classify_source_system(paths: list[str], subject: str) -> str:
+    joined = " ".join(paths).lower() + " " + subject.lower()
+    rules = (
+        ("Recovery OS", ("recovery", "evidence_vault")),
+        ("Storage OS", ("storage", "retention")),
+        ("Replay Truth OS", ("truth", "replay", "parser")),
+        ("Speed OS", ("speed", "performance", "latency")),
+        ("Workspace OS", ("workspace", "worktree")),
+        ("Host OS", ("host", "vps", "systemd")),
+        (
+            "Documentation OS",
+            (
+                "documentation_os",
+                "aoe2_docs",
+                "document-registry",
+                "documentation_control_plane",
+                "docs_v2",
+            ),
+        ),
+        ("Release OS", ("release", "finish", "deploy", "rollback")),
+    )
+    matches = [
+        label
+        for label, tokens in rules
+        if any(token in joined for token in tokens)
+    ]
+    return matches[0] if len(matches) == 1 else "Kingdom Intelligence"
+
+
+def recent_source_activity(limit: int = 14) -> list[dict[str, Any]]:
+    try:
+        raw = subprocess.check_output(
+            [
+                "git",
+                "log",
+                "-n",
+                str(limit),
+                "--date=iso-strict",
+                "--pretty=format:%x1e%H%x1f%cI%x1f%s",
+                "--name-only",
+                "HEAD",
+            ],
+            cwd=str(ROOT),
+            text=True,
+            timeout=12,
+        )
+    except Exception:
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for block in raw.split("\x1e"):
+        block = block.strip()
+        if not block:
+            continue
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        if not lines or "\x1f" not in lines[0]:
+            continue
+        parts = lines[0].split("\x1f", 2)
+        if len(parts) != 3:
+            continue
+        sha, created_at, subject = parts
+        paths = lines[1:]
+        rows.append(
+            {
+                "sha": sha,
+                "created_at": created_at,
+                "title": subject[:180],
+                "system": classify_source_system(paths, subject),
+                "file_count": len(paths),
+                "status": "SUCCEEDED",
+            }
+        )
+    return rows
+
+
+def memory_seals(limit: int = 8) -> list[dict[str, Any]]:
+    if not ENGINEERING_MEMORY_PATH.is_file():
+        return []
+    try:
+        raw = subprocess.check_output(
+            [
+                "git",
+                "log",
+                "-n",
+                str(limit),
+                "--date=iso-strict",
+                "--pretty=format:%H%x1f%cI%x1f%s",
+                "--",
+                str(ENGINEERING_MEMORY_PATH.relative_to(ROOT)),
+            ],
+            cwd=str(ROOT),
+            text=True,
+            timeout=10,
+        )
+    except Exception:
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for line in raw.splitlines():
+        parts = line.split("\x1f", 2)
+        if len(parts) != 3:
+            continue
+        sha, created_at, title = parts
+        rows.append(
+            {
+                "sha": sha,
+                "created_at": created_at,
+                "title": title[:180],
+                "status": "SEALED",
+            }
+        )
+    return rows
+
+
+def system_agent_rows(
+    *,
+    source: dict[str, Any],
+    council: dict[str, Any],
+    truth: dict[str, Any],
+    performance: dict[str, Any],
+    control: dict[str, Any],
+    storage_campaign: dict[str, Any],
+    recovery_campaign: dict[str, Any],
+) -> list[dict[str, Any]]:
+    storage = council.get("storage") or {}
+    host = council.get("host") or {}
+    recovery = council.get("recovery") or {}
+    workspace = council.get("workspace") or {}
+    health = str(council.get("doctor_status") or "UNKNOWN").upper()
+
+    storage_campaign_status = str(storage_campaign.get("status") or "NONE").upper()
+    storage_active = storage_campaign_status in {
+        "RUNNING",
+        "RUNNING_TRANSACTION",
+        "RESUME_REQUESTED",
+    }
+    recovery_campaign_status = str(recovery_campaign.get("status") or "NONE").upper()
+    recovery_active = recovery_campaign_status in {
+        "RUNNING",
+        "RUNNING_CAPTURE",
+        "RESUME_REQUESTED",
+        "CREATED",
+    }
+
+    source_state = (
+        "HEALTHY"
+        if source.get("exact")
+        else "ACTIVE"
+        if source.get("production_behind_github")
+        else "ATTENTION"
+    )
+    control_status = str(control.get("status") or "unknown").lower()
+    docs_due = int(council.get("docs_due_7d") or 0)
+    docs_state = (
+        "HEALTHY"
+        if control_status == "current" and docs_due == 0
+        else "ACTIVE"
+        if control_status == "refresh"
+        else "ATTENTION"
+    )
+
+    storage_health = str(
+        storage.get("health") or storage.get("status") or "UNKNOWN"
+    ).upper()
+    storage_state = (
+        "ACTIVE"
+        if storage_active
+        else "HEALTHY"
+        if storage_health in {"HEALTHY", "PASS"}
+        else "ATTENTION"
+    )
+
+    host_attention = bool(
+        host.get("reboot_required")
+        or int(host.get("updates") or 0)
+        or int(host.get("failed_transient") or 0)
+    )
+    host_state = "ATTENTION" if host_attention else "HEALTHY"
+
+    recovery_status = str(recovery.get("status") or "NOT_VERIFIED").upper()
+    recovery_state = (
+        "ACTIVE"
+        if recovery_active
+        else "HEALTHY"
+        if recovery_status == "VERIFIED"
+        else "ATTENTION"
+    )
+
+    canonical_drift = int(workspace.get("canonical_drift_count") or 0)
+    active_agents = int(workspace.get("active_agent_count") or 0)
+    workspace_state = (
+        "ATTENTION"
+        if canonical_drift
+        else "ACTIVE"
+        if active_agents
+        else "IDLE"
+    )
+
+    performance_current = bool(
+        performance.get("available")
+        and performance.get("matches_current_release") is True
+    )
+    speed_state = "HEALTHY" if performance_current else "ATTENTION"
+
+    resolved = int(truth.get("resolved") or 0)
+    final_games = int(truth.get("final_games") or 0)
+    replay_percent = (
+        round((resolved / final_games) * 100, 2)
+        if final_games > 0
+        else None
+    )
+    replay_state = (
+        "HEALTHY"
+        if truth.get("complete") is True
+        and truth.get("matches_current_release") is True
+        and replay_percent == 100
+        else "ATTENTION"
+    )
+
+    doctor_state = (
+        "HEALTHY"
+        if health in {"HEALTHY", "PASS"}
+        else "BLOCKED"
+        if int(council.get("p0") or 0) > 0
+        else "ATTENTION"
+    )
+
+    recovery_completed = len(recovery_campaign.get("completed_classes") or [])
+    recovery_total = len(recovery_campaign.get("ordinary_classes") or [])
+    storage_completed = int(storage_campaign.get("completed_generations") or 0)
+    storage_total = int(storage_campaign.get("max_generations") or 0)
+
+    return [
+        {
+            "key": "release",
+            "label": "Release OS",
+            "state": source_state,
+            "summary": (
+                "GitHub source is ahead of certified production."
+                if source.get("production_behind_github")
+                else "Source, runtime and certification are exact."
+                if source.get("exact")
+                else "Source authority needs reconciliation."
+            ),
+            "progress_percent": 100 if source.get("exact") else None,
+            "progress_label": "source authority",
+        },
+        {
+            "key": "documentation",
+            "label": "Documentation OS",
+            "state": docs_state,
+            "summary": (
+                f"{docs_due} document review(s) due within seven days."
+                if docs_due
+                else f"Control state: {control_status}."
+            ),
+            "progress_percent": 100 if docs_state == "HEALTHY" else None,
+            "progress_label": "knowledge control",
+        },
+        {
+            "key": "storage",
+            "label": "Storage OS",
+            "state": storage_state,
+            "summary": (
+                f"Detached storage campaign {storage_completed}/{storage_total}."
+                if storage_active and storage_total
+                else f"Storage health: {storage_health}."
+            ),
+            "progress_percent": (
+                round((storage_completed / storage_total) * 100, 1)
+                if storage_total > 0
+                else None
+            ),
+            "progress_label": (
+                f"{storage_completed}/{storage_total} generations"
+                if storage_total
+                else "capacity"
+            ),
+        },
+        {
+            "key": "host",
+            "label": "Host OS",
+            "state": host_state,
+            "summary": (
+                f"Maintenance pending: {int(host.get('updates') or 0)} update(s)"
+                + (" and reboot." if host.get("reboot_required") else ".")
+                if host_attention
+                else "Host hygiene is clear."
+            ),
+            "progress_percent": 100 if host_state == "HEALTHY" else None,
+            "progress_label": "host hygiene",
+        },
+        {
+            "key": "recovery",
+            "label": "Recovery OS",
+            "state": recovery_state,
+            "summary": (
+                f"Ordinary encrypted capture {recovery_completed}/{recovery_total}."
+                if recovery_total
+                else f"Recovery proof: {recovery_status}."
+            ),
+            "progress_percent": (
+                round((recovery_completed / recovery_total) * 100, 1)
+                if recovery_total > 0
+                else 100
+                if recovery_status == "VERIFIED"
+                else 20
+                if (recovery.get("pilot") or {}).get("status") == "PILOT_VERIFIED"
+                else None
+            ),
+            "progress_label": (
+                f"{recovery_completed}/{recovery_total} ordinary classes"
+                if recovery_total
+                else "full recovery proof"
+            ),
+        },
+        {
+            "key": "workspace",
+            "label": "Workspace OS",
+            "state": workspace_state,
+            "summary": (
+                f"{active_agents} registered agent workstream(s); "
+                f"{int(workspace.get('unmerged_count') or 0)} unmerged."
+                if active_agents
+                else "No registered agent workspace is active."
+            ),
+            "progress_percent": None,
+            "progress_label": "parallel engineering",
+        },
+        {
+            "key": "speed",
+            "label": "Speed OS",
+            "state": speed_state,
+            "summary": (
+                f"{int(performance.get('route_count') or 0)} route benchmark is current."
+                if performance_current
+                else "Performance evidence needs current-release verification."
+            ),
+            "progress_percent": 100 if performance_current else None,
+            "progress_label": "release performance proof",
+        },
+        {
+            "key": "replay_truth",
+            "label": "Replay Truth OS",
+            "state": replay_state,
+            "summary": (
+                f"{resolved}/{final_games} final battles have resolved winner authority."
+                if final_games
+                else "Replay certainty evidence is unavailable."
+            ),
+            "progress_percent": replay_percent,
+            "progress_label": "winner authority",
+        },
+        {
+            "key": "doctor",
+            "label": "System Doctor",
+            "state": doctor_state,
+            "summary": (
+                f"Doctor {council.get('doctor_score')}/100 · "
+                f"P0={int(council.get('p0') or 0)} "
+                f"P1={int(council.get('p1') or 0)}."
+            ),
+            "progress_percent": (
+                float(council.get("doctor_score"))
+                if isinstance(council.get("doctor_score"), (int, float))
+                else None
+            ),
+            "progress_label": "system health",
+        },
+    ]
+
+
+def external_agent_rows(council: dict[str, Any]) -> list[dict[str, Any]]:
+    workspace = council.get("workspace") or {}
+    rows = []
+    for item in workspace.get("agents") or []:
+        if not isinstance(item, dict):
+            continue
+        classification = str(item.get("classification") or "")
+        rows.append(
+            {
+                "name": str(item.get("agent") or "Agent"),
+                "purpose": str(item.get("purpose") or "Registered engineering work"),
+                "state": (
+                    "ACTIVE"
+                    if classification in {
+                        "AGENT_ACTIVE_DIRTY",
+                        "AGENT_ACTIVE_UNMERGED",
+                    }
+                    else "COMPLETE"
+                    if classification == "AGENT_RETIREABLE"
+                    else "IDLE"
+                ),
+                "branch": item.get("branch"),
+                "head": item.get("head"),
+            }
+        )
+    return rows
+
+
 def activity_24h(now: datetime) -> dict[str, Any]:
     since = iso_z(now - timedelta(hours=24))
     try:
@@ -718,7 +1131,10 @@ def collect() -> dict[str, Any]:
     finish = latest_finish()
     control = control_summary(release)
     storage_campaign = storage_campaign_summary()
+    recovery_campaign = recovery_campaign_summary()
     activity = activity_24h(now)
+    source_activity = recent_source_activity()
+    memories = memory_seals()
     invariants = invariant_rows(
         source=source,
         council=council,
@@ -736,6 +1152,16 @@ def collect() -> dict[str, Any]:
         council_recommendations=list(council.get("recommendations") or []),
         storage=council.get("storage") or {},
     )
+    system_agents = system_agent_rows(
+        source=source,
+        council=council,
+        truth=truth,
+        performance=performance,
+        control=control,
+        storage_campaign=storage_campaign,
+        recovery_campaign=recovery_campaign,
+    )
+    external_agents = external_agent_rows(council)
     return {
         "schema": 1,
         "kind": "aoe2war-kingdom-intelligence",
@@ -761,7 +1187,12 @@ def collect() -> dict[str, Any]:
             source,
         ),
         "storage_campaign": storage_campaign,
+        "recovery_campaign": recovery_campaign,
         "activity_24h": activity,
+        "system_agents": system_agents,
+        "external_agents": external_agents,
+        "recent_source_activity": source_activity,
+        "memory_seals": memories,
         "host": council.get("host") or {},
         "recovery": council.get("recovery") or {},
         "workspace": council.get("workspace") or {},
