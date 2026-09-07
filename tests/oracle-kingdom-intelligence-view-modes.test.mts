@@ -65,6 +65,12 @@ test("Kingdom Intelligence keeps Agent Constellation shell plain while rows cycl
   assert.match(panel, /theme === "aurora"/);
   assert.match(panel, /rowShell\(theme\)/);
   assert.match(panel, /progressFill\(theme\)/);
+
+  // Keep the blue authority tile compact; it is the vertical sizing authority
+  // for the paired War Pulse tile on desktop.
+  assert.match(panel, /mt-3 space-y-2/);
+  assert.match(panel, /px-4 py-2\.5/);
+  assert.match(panel, /mt-3 border-t border-white\/6 pt-3 text-\[10px\] leading-4/);
 });
 
 test("Kingdom Intelligence cycles the whole War Pulse tile through plain and two premium themes", () => {
@@ -96,9 +102,10 @@ test("Kingdom Intelligence cycles the whole War Pulse tile through plain and two
   assert.match(panel, /PANEL_SHELL/);
   assert.match(panel, /progressFill\(theme\)/);
 
-  // The black tile uses the full matched column height; its scroll body fills
-  // the remaining vertical space instead of wasting the lower half.
+  // The black tile contributes no intrinsic desktop row height. The grid row is
+  // therefore sized by Agent Constellation and War Pulse stretches to exactly it.
   assert.match(panel, /flex h-full min-h-0[\s\S]*flex-col/);
+  assert.match(panel, /xl:\[contain:size\]/);
   assert.match(panel, /min-h-0 flex-1 overflow-y-auto/);
   assert.doesNotMatch(panel, /max-h-\[34rem\]/);
 });
