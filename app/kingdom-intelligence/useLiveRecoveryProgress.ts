@@ -17,6 +17,7 @@ export type LiveRecoveryProgress = {
   etaSeconds?: number | null;
   throughputBytesPerSecond?: number | null;
   progressBasis?: string;
+  denominatorSource?: string;
   sampledAt?: string;
 };
 
