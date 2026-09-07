@@ -19,6 +19,8 @@ export const TILE_VIEW_KEYS = [
   "staking",
   "leaderboard",
   "workshop",
+  "oracle",
+  "kingdom_intelligence",
 ] as const;
 
 export const TILE_VIEW_MODES = ["basic", "advanced", "extreme"] as const;
@@ -42,6 +44,8 @@ const DEFAULT_TILE_VIEW_MODES: TileViewPreferences = {
   staking: "basic",
   leaderboard: "extreme",
   workshop: "extreme",
+  oracle: "basic",
+  kingdom_intelligence: "basic",
 };
 
 export function isTileViewKey(value: string | null | undefined): value is TileViewKey {
