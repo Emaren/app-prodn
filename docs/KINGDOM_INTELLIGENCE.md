@@ -218,6 +218,73 @@ and production has advanced, that state means **verify the open before/after
 campaign**. It does not mean create another baseline. The Brain should say
 `aoe2war speed campaign verify`.
 
+## OS agent constellation and chronicle
+
+Kingdom Intelligence presents the operating estate as **eight OS agents plus one
+System Doctor**:
+
+1. Release OS;
+2. Documentation OS;
+3. Storage OS;
+4. Host OS;
+5. Recovery OS;
+6. Workspace OS;
+7. Speed OS;
+8. Replay Truth OS;
+9. System Doctor.
+
+The Brain and Council sit above that array as coordinator/recommendation layers;
+they are not counted as a ninth operating-system agent.
+
+Each OS agent publishes one compact state line: label, evidence-backed state,
+current summary, and a progress measure only when a deterministic denominator
+exists. Presentation uses one shared beacon language:
+
+- cyan pulse — proven active work;
+- green solid — healthy, complete or certified;
+- amber pulse — waiting, due, stale or attention;
+- red solid — failed, blocked or unsafe;
+- slate — idle/no proven current work.
+
+The public page must never animate an agent merely because an AI model is
+connected. Activity requires a deterministic receipt, registered Workspace OS
+workstream, active bounded campaign, bridge run, or other explicit provenance.
+
+External workers such as ChatGPT and Codex are distinct from the OS agents.
+Workspace OS may expose an external worker name, purpose and activity state when
+that workstream was explicitly registered. Future authenticated agent heartbeat
+sources may extend this, but absence of a heartbeat must render as idle or
+unavailable rather than fabricated activity.
+
+### War Pulse
+
+The public **War Pulse** is a sanitized chronicle that merges:
+
+- active/recent allow-listed Operator Bridge runs;
+- recent sealed app-prodn source changes;
+- current OS-agent state and campaign progress.
+
+It exposes no raw stdout, filesystem path, process ID, private prompt, secret,
+unrestricted command, or chain-of-thought.
+
+### Victory ledger and memory vault
+
+The **Victory Ledger** presents recent sealed source changes with a short Git SHA
+and deterministic OS-domain classification. A commit proves that source work was
+sealed; it does not by itself prove production deployment or runtime success.
+
+The **Memory Vault** presents recent commits that sealed changes to
+'docs/ENGINEERING_MEMORY.md'. These are provenance pointers to machine memory,
+not a replacement for the living contract itself.
+
+Failures are never rewritten out of history. An individual failed attempt remains
+failed forever. A parent campaign or workstream may later become COMPLETE when a
+subsequent attempt closes the problem. The UI may visually collapse resolved
+failures beneath the successful campaign, but provenance remains immutable.
+
+This distinction is constitutional: the kingdom may celebrate a win without
+erasing the road that produced it.
+
 ## Agent efficiency contract
 
 A capable agent should not spend most of its context rediscovering the project.
