@@ -239,6 +239,15 @@ The watcher posts to `POST /api/watcher/events`. The endpoint accepts a single e
 
 If the watcher has an `x-api-key`, the server resolves `user_id` and `user_uid` from the existing watcher key model. The key is only sent as a request header and is never stored in telemetry rows.
 
+Replay upload ownership follows the same authority rule. A Watcher-formatted key
+(`wolo_<prefix>_<secret>`) must resolve server-side before any replay bytes are
+proxied. The resolved key owner is the canonical `x-user-uid` forwarded to the
+replay API; a client-supplied Watcher UID is diagnostic only and cannot override
+the key owner. A malformed, revoked, or unresolved Watcher key returns `401`.
+The separate internal server API key retains its trusted server-to-server UID
+path for upload-package workflows, and ordinary browser uploads continue to use
+the Steam session identity.
+
 Unauthenticated events still store:
 
 - `event_type`
@@ -289,7 +298,7 @@ settlement. Only `trusted_final*` and `reviewed_match*` statuses should set
 `watcher_client_events`, `replay_parse_attempts`, and watcher-backed
 `game_stats` rows.
 
-`/admin/watcher-funnel` adds a conversion/diagnostic command surface, including dedicated support tiles for known watcher users and any signed-in user who emits runtime telemetry. Use it while users are running the watcher to inspect start/stop/heartbeat, auth, replay detection, final-candidate deferrals, upload failures, finality status, version, platform, watcher id, session id, streamer status, source choice, upload chunks, heartbeat freshness, and streamer errors.
+`/admin/watcher-funnel` adds a conversion/diagnostic command surface, including dedicated support tiles for known watcher users and any signed-in user who emits runtime telemetry. Scavanger_Ab is a permanent support target keyed to account UID `u_79fdf670637b4acd9c61ca3c49162cd1`, with the historical `Scavanger_Ab`, `Savanger_Ab`, and `Scavenger_Ab` spellings accepted only as lookup fallbacks. Use it while users are running the watcher to inspect start/stop/heartbeat, auth, replay detection, final-candidate deferrals, upload failures, finality status, version, platform, watcher id, session id, streamer status, source choice, upload chunks, heartbeat freshness, and streamer errors.
 
 The recent-event rail translates finality telemetry into operator language:
 
