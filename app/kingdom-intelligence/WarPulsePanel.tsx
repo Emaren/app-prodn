@@ -278,6 +278,7 @@ export default function WarPulsePanel({
                   onKeyDown={(event) => event.stopPropagation()}
                 >
                   <ProcessDrilldown
+                    kind={item.current ? "process" : "event"}
                     systemKey={
                       item.system === "Recovery OS"
                         ? "recovery"
@@ -288,7 +289,7 @@ export default function WarPulsePanel({
                     summary={item.label}
                     progress={effectiveProgress}
                     progressLabel={effectiveProgressLabel}
-                    startedAt={item.current ? item.at : null}
+                    startedAt={item.at}
                     proof={item.proof}
                     current={item.current}
                     currentStep={item.currentStep}
