@@ -100,14 +100,20 @@ test("all primary battlefield routes publish explicit readiness", () => {
   }
 });
 
-test("WOLO and Contact Emaren wait for their critical data paths", () => {
+test("WOLO Ready reflects primary usability, not secondary wallet proof", () => {
   const wolo = source("components/wolo/WoloPageClient.tsx");
   const contact = source("components/contact/ContactEmarenWorkspace.tsx");
   const proof = source("components/speed/SpeedProof.tsx");
 
-  assert.match(wolo, /const speedReady =/);
-  assert.match(wolo, /!chainLoading/);
-  assert.match(wolo, /balanceState !== "loading"/);
+  assert.match(wolo, /const speedReady = premiumPreferenceLoaded;/);
+  assert.doesNotMatch(
+    wolo,
+    /const speedReady =[\s\S]*?!chainLoading[\s\S]*?balanceState !== "loading"/,
+  );
+  assert.match(
+    wolo,
+    /Keplr restoration, and balance proof remain live secondary evidence/,
+  );
   assert.match(contact, /const \[initialLoadSettled, setInitialLoadSettled\]/);
   assert.match(
     contact,
@@ -120,6 +126,17 @@ test("WOLO and Contact Emaren wait for their critical data paths", () => {
   const academy = source("app/academy/AcademyHero.tsx");
   assert.match(academy, /heroPreferenceSettled/);
   assert.match(academy, /readyHeroVariant === heroVariant/);
+});
+
+test("staking overlaps independent economy and trust-rail evidence", () => {
+  const staking = source("app/staking/page.tsx");
+
+  assert.match(staking, /const overviewPromise = Promise\.allSettled\(/);
+  assert.match(staking, /const trustRailPromise = Promise\.all\(/);
+  assert.match(
+    staking,
+    /await Promise\.all\(\[overviewPromise, trustRailPromise\]\)/,
+  );
 });
 
 test("Leaderboard does not claim authoritative ready until its board exists", () => {
