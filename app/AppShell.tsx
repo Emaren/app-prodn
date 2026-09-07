@@ -1033,6 +1033,12 @@ function InnerShell({ children }: { children: React.ReactNode }) {
         /^\/game-stats\/\d+\/review(?:\/|$)/
       )
     );
+  const isLiveReplayDetailSurface =
+    Boolean(
+      pathname?.startsWith(
+        "/game-stats/live/"
+      )
+    );
 
   const isChampionsSurface = pathname === "/champions" || Boolean(pathname?.startsWith("/champions/"));
   const isWarGraphSurface =
@@ -1746,6 +1752,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               ? "max-w-none px-1 sm:px-2 2xl:px-3"
             : isGameStatsReviewSurface
               ? "max-w-none px-3 sm:px-4 2xl:px-6"
+            : isLiveReplayDetailSurface
+              ? "max-w-[96rem] px-3 sm:px-4 2xl:px-6"
             : isObservatorySurface
               ? "max-w-none px-0"
             : isLivingLeaderboardSurface
