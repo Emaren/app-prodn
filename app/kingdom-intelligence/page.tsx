@@ -1,15 +1,14 @@
 import {
   Activity,
-  Bot,
   BrainCircuit,
   CheckCircle2,
+  Cpu,
   Database,
   Gauge,
   GitBranch,
   HardDrive,
   History,
   Radar,
-  Radio,
   ScrollText,
   ShieldCheck,
   Sparkles,
@@ -29,7 +28,7 @@ import {
 } from "@/lib/previewDataSource";
 
 import AgentConstellationPanel from "./AgentConstellationPanel";
-import BrowserLocalTime from "./BrowserLocalTime";
+import WarPulsePanel from "./WarPulsePanel";
 import KingdomIntelligenceRefresh from "./KingdomIntelligenceRefresh";
 
 export const dynamic = "force-dynamic";
@@ -360,93 +359,16 @@ export default async function KingdomIntelligencePage() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="overflow-hidden rounded-[2rem] border border-cyan-200/10 bg-[#02060c] shadow-[0_24px_90px_rgba(0,0,0,.28)]">
-          <div className="flex items-center justify-between border-b border-white/7 px-5 py-4 sm:px-6">
-            <div className="flex items-center gap-3">
-              <div className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200/10 bg-cyan-300/[0.05]">
-                <Radio className="h-4 w-4 text-cyan-200/80" />
-                <span className={"absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full " + (activeSystemCount ? beacon("ACTIVE") : beacon("IDLE"))} />
-              </div>
-              <div>
-                <div className="text-[9px] font-black uppercase tracking-[0.32em] text-cyan-100/45">
-                  War Pulse · live chronicle
-                </div>
-                <h2 className="mt-1 font-serif text-2xl text-white">The nervous system speaks.</h2>
-              </div>
-            </div>
-            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-600">
-              polls every 20s
-            </div>
-          </div>
-
-          <div className="max-h-[34rem] overflow-y-auto px-4 py-3 font-mono text-xs sm:px-5">
-            {nerveFeed.length ? (
-              nerveFeed.map((item) => (
-                <div
-                  key={item.key}
-                  className={
-                    "relative grid grid-cols-[9px_62px_minmax(0,1fr)] gap-3 py-3 " +
-                    (item.current
-                      ? "relative my-1 overflow-hidden rounded-xl border border-cyan-200/20 bg-[linear-gradient(115deg,rgba(8,47,73,0.42),rgba(15,23,42,0.24),rgba(120,53,15,0.30),rgba(6,78,59,0.28),rgba(8,47,73,0.42))] px-3 shadow-[0_0_34px_rgba(34,211,238,0.08)]"
-                      : "border-b border-white/[0.045] last:border-0")
-                  }
-                >
-                  {item.current ? (
-                    <>
-                      <span className="pointer-events-none absolute -left-14 top-1/2 h-20 w-32 -translate-y-1/2 rounded-full bg-cyan-300/12 blur-2xl animate-[pulse_4.5s_ease-in-out_infinite]" />
-                      <span className="pointer-events-none absolute -right-10 top-1/2 h-24 w-36 -translate-y-1/2 rounded-full bg-amber-300/10 blur-3xl animate-[pulse_6.5s_ease-in-out_infinite]" />
-                    </>
-                  ) : null}
-                  <span className={"relative z-10 mt-1 h-2 w-2 rounded-full " + beacon(item.status === "SUCCEEDED" ? "HEALTHY" : item.status)} />
-                  <span className={(item.current ? "font-semibold text-cyan-100/70" : "text-slate-600") + " relative z-10"}>
-                    <BrowserLocalTime value={item.at} />
-                  </span>
-                  <div className="relative z-10 min-w-0">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="font-semibold text-cyan-100/80">{item.system}</span>
-                      {item.current ? (
-                        <span className="rounded-full border border-cyan-200/20 bg-cyan-300/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.14em] text-cyan-100">
-                          Live process
-                        </span>
-                      ) : null}
-                      <span className={tone(item.status) + " rounded-full border px-1.5 py-0.5 text-[8px] font-black tracking-[0.14em]"}>
-                        {item.status}
-                      </span>
-                    </div>
-                    <div className={"mt-1 " + (item.current ? "font-semibold text-slate-100" : "truncate text-slate-300")}>
-                      {item.label}
-                    </div>
-                    {item.current && item.progress !== null ? (
-                      <div className="mt-2">
-                        <div className="h-1 overflow-hidden rounded-full bg-white/8">
-                          <div
-                            className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-amber-200 to-emerald-300"
-                            style={{ width: Math.max(0, Math.min(100, item.progress)) + "%" }}
-                          />
-                        </div>
-                        <div className="mt-1 flex items-center justify-between gap-3 text-[9px] uppercase tracking-[0.14em] text-cyan-100/45">
-                          <span>{item.progressLabel ?? "process progress"}</span>
-                          <span>{item.progress.toFixed(item.progress % 1 === 0 ? 0 : 1)}%</span>
-                        </div>
-                      </div>
-                    ) : null}
-                    {item.proof ? (
-                      <div className="mt-1 text-[10px] text-slate-700">proof {item.proof}</div>
-                    ) : null}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="flex min-h-64 flex-col items-center justify-center text-center text-slate-600">
-                <Bot className="mb-3 h-7 w-7" />
-                <div>No proven activity line is available yet.</div>
-                <div className="mt-2 max-w-md text-[11px] leading-5 text-slate-700">
-                  Kingdom Intelligence does not invent an agent heartbeat. Registered work, OS receipts and sealed source events appear here when evidence exists.
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        <WarPulsePanel
+          activeSystemCount={activeSystemCount}
+          items={nerveFeed.map((item) => ({
+            ...item,
+            beaconClass: beacon(
+              item.status === "SUCCEEDED" ? "HEALTHY" : item.status,
+            ),
+            statusToneClass: tone(item.status),
+          }))}
+        />
 
         <AgentConstellationPanel
           agents={orderedSystemAgents.map((agent) => ({
