@@ -1000,6 +1000,7 @@ def restore_stage(
     class_name: str,
     recipient_cert: Path,
     private_key: Path,
+    capture_tool_source: str,
     restore_tool_source: str,
 ) -> dict[str, Any]:
     capture, capture_proof_sha, artifact = _capture_proof(
@@ -1081,7 +1082,7 @@ def restore_stage(
         "started_at": started_at,
         "completed_at": utc_now(),
         "elapsed_seconds": round(time.monotonic() - started, 3),
-        "capture_tool_source": capture.get("tool_source"),
+        "capture_tool_source": capture_tool_source,
         "restore_tool_source": restore_tool_source,
         "capture_proof_file": f"proofs/{class_name}.json",
         "capture_proof_sha256": capture_proof_sha,
@@ -1267,6 +1268,7 @@ def run_restore(campaign_id: str) -> int:
                 class_name=str(class_name),
                 recipient_cert=cert,
                 private_key=private_key,
+                capture_tool_source=str(state["capture_tool_source"]),
                 restore_tool_source=str(state["restore_tool_source"]),
             )
 
