@@ -94,7 +94,7 @@ test("Kingdom Intelligence cycles the whole War Pulse tile through plain and two
   assert.match(panel, /linear-gradient\(115deg,rgba\(8,47,73,0\.42\)/);
   assert.match(panel, /from-cyan-300 via-violet-300 to-fuchsia-300/);
   assert.match(panel, /rowShell\(theme, item\.current\)/);
-  assert.match(panel, /panelShell\(theme\)/);
+  assert.match(panel, /PANEL_SHELL/);
   assert.match(panel, /progressFill\(theme\)/);
 });
 
