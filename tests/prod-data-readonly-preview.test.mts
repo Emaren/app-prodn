@@ -139,6 +139,29 @@ test("dev:prod acknowledges local side effects without production writes", () =>
   );
 });
 
+test("dev:prod reports signal exits without wrapping them into opaque shell status 250", () => {
+  const launcher = source("scripts/dev-prod-readonly.py");
+
+  assert.match(launcher, /node_returncode = node\.wait\(\)/);
+  assert.match(launcher, /if node_returncode < 0:/);
+  assert.match(launcher, /Signals\(signal_number\)\.name/);
+  assert.match(launcher, /return 128 \+ signal_number/);
+  assert.match(launcher, /SIGABRT becomes 134/);
+});
+
+test("radio fire-and-forget presence never becomes an unhandled preview rejection", () => {
+  const hook = source("hooks/useRadioWoloFeedback.ts");
+
+  assert.match(
+    hook,
+    /return postFeedback\(\{[\s\S]*?listenerId,[\s\S]*?event,[\s\S]*?\}\)\.then\([\s\S]*?\)\.catch\([\s\S]*?=> undefined/,
+  );
+  assert.match(
+    hook,
+    /event: "off",[\s\S]*?\}\)\.catch\([\s\S]*?=> undefined/,
+  );
+});
+
 test("dev:prod launcher remains compatible with the preview shell Python", () => {
   const launcher = source("scripts/dev-prod-readonly.py");
 

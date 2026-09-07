@@ -545,7 +545,26 @@ def main() -> int:
                     f"{preview_url}"
                 )
 
-        return node.wait()
+        node_returncode = node.wait()
+
+        if node_returncode < 0:
+            signal_number = -node_returncode
+            try:
+                signal_name = __import__("signal").Signals(signal_number).name
+            except (ValueError, AttributeError):
+                signal_name = f"signal {signal_number}"
+
+            print(
+                "STOP: local preview Node process terminated by "
+                f"{signal_name} ({signal_number})",
+                file=sys.stderr,
+            )
+
+            # Shell-visible convention for signal termination. In particular,
+            # SIGABRT becomes 134 instead of Python wrapping -6 to 250.
+            return 128 + signal_number
+
+        return node_returncode
 
     except KeyboardInterrupt:
         return 130

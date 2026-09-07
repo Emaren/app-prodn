@@ -180,6 +180,8 @@ export function useRadioWoloFeedback(
           event,
         }).then(
           () => undefined,
+        ).catch(
+          () => undefined,
         );
       },
       [listenerId],
@@ -286,7 +288,9 @@ export function useRadioWoloFeedback(
         void postFeedback({
           listenerId,
           event: "off",
-        });
+        }).catch(
+          () => undefined,
+        );
       };
 
     window.addEventListener(
