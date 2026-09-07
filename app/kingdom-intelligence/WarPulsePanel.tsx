@@ -125,8 +125,8 @@ export default function WarPulsePanel({
               liveRecovery?.available === true;
             const effectiveProgress =
               recoveryLive &&
-              typeof liveRecovery.overallPercent === "number"
-                ? liveRecovery.overallPercent
+              typeof liveRecovery?.overallPercent === "number"
+                ? liveRecovery?.overallPercent
                 : item.progress;
 
             return (
