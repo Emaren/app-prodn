@@ -860,3 +860,18 @@ removals in the source-inventory delta, warn when scope changed, and admit new
 routes into the next campaign baseline. Never let a growing product silently
 rewrite a frozen experiment.
 
+## 2026-09-06 — Post-Finish intelligence freshness lesson
+
+A certified Finish was followed by Kingdom Intelligence recommending “Relieve
+storage pressure before rerunning Finish,” even though Finish had already
+completed. The same snapshot also carried an open Speed campaign whose frozen
+Before release was old. Once that campaign verified successfully against current
+production, Brain would still have treated performance as stale because it keyed
+freshness only to the Before release SHA.
+
+Durable rule: recommendation semantics must be phase-aware. Storage can block a
+Finish retry only while Finish closure is incomplete; after certification it is
+maintenance. For a verified before/after performance campaign, current evidence
+identity is the verification After release/build, while the baseline release
+remains historical comparison truth. Preserve both identities and never confuse
+“what the experiment started from” with “what production was just measured.”
