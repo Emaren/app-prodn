@@ -1,0 +1,1521 @@
+{
+  "capturedAt": "2026-09-07T17:50:41.336273+00:00",
+  "productionSource": "7aa4176ecef094db8389b6fb6696593162b5cd30",
+  "buildId": "q9_SPSbBq5egbIB638yZL",
+  "rawResponseSha256": "17006ab23e5afcf84eac3af660c28c560e7b3b69c2ddac341693dde3440f8977",
+  "lobbyResponseSha256": "ca8754bbfaf0f64b6a45cea49c564dd56a1ba450dc64ffbe831f85e6d844d579",
+  "cases": [
+    {
+      "raw": {
+        "id": 32538,
+        "replay_hash": "28b5bef63e3e6802d7c36da5a69e4dc745fdfa5dff6fa5eefe868ab7b9a6c2db",
+        "is_final": true,
+        "disconnect_detected": false,
+        "winner": "JPKBARTENDER",
+        "parse_reason": "recorded_resignation_final",
+        "parse_source": "watcher_final",
+        "parse_iteration": 129,
+        "event_types": [
+          "order",
+          "de_queue",
+          "build",
+          "gather_point",
+          "move",
+          "delete",
+          "research",
+          "game",
+          "special",
+          "sell",
+          "buy",
+          "ungarrison",
+          "attack_ground",
+          "flare",
+          "tribute",
+          "de_attack_move",
+          "guard",
+          "formation",
+          "wall",
+          "stance",
+          "gate",
+          "add_waypoint",
+          "patrol",
+          "hd_unknown_34",
+          "resign"
+        ],
+        "played_at": "2026-09-07T04:14:09.430000Z",
+        "created_at": "2026-09-07T03:25:39.203455Z",
+        "timestamp": "2026-09-07T04:14:36.700490Z",
+        "map": {
+          "name": "FN 7x7",
+          "size": "giant"
+        },
+        "players": [
+          {
+            "name": "Jim",
+            "steam_id": "76561198166409520",
+            "user_id": "76561198166409520",
+            "number": 1,
+            "team_id": 0,
+            "winner": true
+          },
+          {
+            "name": "Scavanger_Ab",
+            "steam_id": "76561198124349731",
+            "user_id": "76561198124349731",
+            "number": 2,
+            "team_id": 0,
+            "winner": true
+          },
+          {
+            "name": "JPKBARTENDER",
+            "steam_id": "76561198009273916",
+            "user_id": "76561198009273916",
+            "number": 3,
+            "team_id": 0,
+            "winner": true
+          },
+          {
+            "name": "juandajds",
+            "steam_id": "76561198647369285",
+            "user_id": "76561198647369285",
+            "number": 4,
+            "team_id": 1,
+            "winner": false
+          },
+          {
+            "name": "jb007bsa",
+            "steam_id": "76561197968406946",
+            "user_id": "76561197968406946",
+            "number": 5,
+            "team_id": 1,
+            "winner": false
+          },
+          {
+            "name": "Subzero",
+            "steam_id": "76561199052802013",
+            "user_id": "76561199052802013",
+            "number": 6,
+            "team_id": 1,
+            "winner": false
+          }
+        ],
+        "key_events": {
+          "completed": true,
+          "postgame_available": false,
+          "has_scores": false,
+          "has_achievements": false,
+          "resigned_player_names": [
+            "juandajds",
+            "jb007bsa",
+            "Subzero"
+          ],
+          "resigned_player_numbers": [
+            4,
+            5,
+            6
+          ],
+          "result_resolution": {
+            "result_status": "resolved",
+            "result_trusted": true,
+            "result_evidence": {
+              "sources": [
+                "complete_losing_team_resignation",
+                "coherent_player_winner_flags"
+              ],
+              "resignation_state": "exactly_one_complete_team",
+              "postgame_available": false,
+              "winner_flag_team_id": 0,
+              "scoreboard_available": false,
+              "winner_flags_coherent": true,
+              "fully_resigned_team_ids": [
+                1
+              ],
+              "winner_flags_single_team": false,
+              "resignation_counts_by_team": [
+                {
+                  "team_id": 0,
+                  "player_count": 3,
+                  "resigned_player_count": 0
+                },
+                {
+                  "team_id": 1,
+                  "player_count": 3,
+                  "resigned_player_count": 3
+                }
+              ],
+              "partially_resigned_team_ids": [],
+              "resignation_result_conflict": false,
+              "single_team_winner_flag_team_id": null,
+              "complete_losing_team_resignation": true,
+              "team_completion_from_resignations": true,
+              "resignation_derived_winning_team_id": 0
+            },
+            "winning_team_id": 0,
+            "result_confidence": "high",
+            "result_provenance": "complete_losing_team_resignation",
+            "winning_player_keys": [
+              "steam:76561198009273916",
+              "steam:76561198124349731",
+              "steam:76561198166409520"
+            ],
+            "winning_player_names": [
+              "JPKBARTENDER",
+              "Scavanger_Ab",
+              "Jim"
+            ]
+          },
+          "team_resolution": {
+            "teams": [
+              {
+                "players": [
+                  "JPKBARTENDER",
+                  "Scavanger_Ab",
+                  "Jim"
+                ],
+                "team_id": 0,
+                "player_keys": [
+                  "steam:76561198009273916",
+                  "steam:76561198124349731",
+                  "steam:76561198166409520"
+                ]
+              },
+              {
+                "players": [
+                  "jb007bsa",
+                  "juandajds",
+                  "Subzero"
+                ],
+                "team_id": 1,
+                "player_keys": [
+                  "steam:76561197968406946",
+                  "steam:76561198647369285",
+                  "steam:76561199052802013"
+                ]
+              }
+            ],
+            "format": "3v3",
+            "status": "resolved",
+            "confidence": "high",
+            "provenance": "explicit_final_team_ids",
+            "team_count": 2,
+            "player_count": 6,
+            "reason_codes": [],
+            "result_status": "resolved",
+            "result_trusted": true,
+            "result_evidence": {
+              "sources": [
+                "complete_losing_team_resignation",
+                "coherent_player_winner_flags"
+              ],
+              "resignation_state": "exactly_one_complete_team",
+              "postgame_available": false,
+              "winner_flag_team_id": 0,
+              "scoreboard_available": false,
+              "winner_flags_coherent": true,
+              "fully_resigned_team_ids": [
+                1
+              ],
+              "winner_flags_single_team": false,
+              "resignation_counts_by_team": [
+                {
+                  "team_id": 0,
+                  "player_count": 3,
+                  "resigned_player_count": 0
+                },
+                {
+                  "team_id": 1,
+                  "player_count": 3,
+                  "resigned_player_count": 3
+                }
+              ],
+              "partially_resigned_team_ids": [],
+              "resignation_result_conflict": false,
+              "single_team_winner_flag_team_id": null,
+              "complete_losing_team_resignation": true,
+              "team_completion_from_resignations": true,
+              "resignation_derived_winning_team_id": 0
+            },
+            "winning_team_id": 0,
+            "result_confidence": "high",
+            "result_provenance": "complete_losing_team_resignation",
+            "winning_player_keys": [
+              "steam:76561198009273916",
+              "steam:76561198124349731",
+              "steam:76561198166409520"
+            ],
+            "winning_player_names": [
+              "JPKBARTENDER",
+              "Scavanger_Ab",
+              "Jim"
+            ]
+          }
+        }
+      },
+      "public": {
+        "id": 32538,
+        "replay_hash": "28b5bef63e3e6802d7c36da5a69e4dc745fdfa5dff6fa5eefe868ab7b9a6c2db",
+        "is_final": true,
+        "disconnect_detected": false,
+        "winner": "JPKBARTENDER / Scavanger_Ab / Jim",
+        "parse_reason": "recorded_resignation_final",
+        "parse_source": "watcher_final",
+        "parse_iteration": 129,
+        "event_types": [
+          "order",
+          "de_queue",
+          "build",
+          "gather_point",
+          "move",
+          "delete",
+          "research",
+          "game",
+          "special",
+          "sell",
+          "buy",
+          "ungarrison",
+          "attack_ground",
+          "flare",
+          "tribute",
+          "de_attack_move",
+          "guard",
+          "formation",
+          "wall",
+          "stance",
+          "gate",
+          "add_waypoint",
+          "patrol",
+          "hd_unknown_34",
+          "resign"
+        ],
+        "played_at": "2026-09-07T04:14:09.430000Z",
+        "created_at": "2026-09-07T03:25:39.203455Z",
+        "timestamp": "2026-09-07T04:14:36.700490Z",
+        "map": {
+          "name": "FN 7x7",
+          "size": "giant"
+        },
+        "players": [
+          {
+            "name": "Jim",
+            "steam_id": "76561198166409520",
+            "user_id": "76561198166409520",
+            "number": 1,
+            "team_id": 0,
+            "winner": true
+          },
+          {
+            "name": "Scavanger_Ab",
+            "steam_id": "76561198124349731",
+            "user_id": "76561198124349731",
+            "number": 2,
+            "team_id": 0,
+            "winner": true
+          },
+          {
+            "name": "JPKBARTENDER",
+            "steam_id": "76561198009273916",
+            "user_id": "76561198009273916",
+            "number": 3,
+            "team_id": 0,
+            "winner": true
+          },
+          {
+            "name": "juandajds",
+            "steam_id": "76561198647369285",
+            "user_id": "76561198647369285",
+            "number": 4,
+            "team_id": 1,
+            "winner": false
+          },
+          {
+            "name": "jb007bsa",
+            "steam_id": "76561197968406946",
+            "user_id": "76561197968406946",
+            "number": 5,
+            "team_id": 1,
+            "winner": false
+          },
+          {
+            "name": "Subzero",
+            "steam_id": "76561199052802013",
+            "user_id": "76561199052802013",
+            "number": 6,
+            "team_id": 1,
+            "winner": false
+          }
+        ],
+        "key_events": {
+          "completed": true,
+          "postgame_available": false,
+          "has_scores": false,
+          "has_achievements": false,
+          "resigned_player_names": [
+            "juandajds",
+            "jb007bsa",
+            "Subzero"
+          ],
+          "resigned_player_numbers": [
+            4,
+            5,
+            6
+          ],
+          "result_resolution": {
+            "result_status": "resolved",
+            "result_trusted": true,
+            "result_evidence": {
+              "sources": [
+                "complete_losing_team_resignation",
+                "coherent_player_winner_flags"
+              ],
+              "resignation_state": "exactly_one_complete_team",
+              "postgame_available": false,
+              "winner_flag_team_id": 0,
+              "scoreboard_available": false,
+              "winner_flags_coherent": true,
+              "fully_resigned_team_ids": [
+                1
+              ],
+              "winner_flags_single_team": false,
+              "resignation_counts_by_team": [
+                {
+                  "team_id": 0,
+                  "player_count": 3,
+                  "resigned_player_count": 0
+                },
+                {
+                  "team_id": 1,
+                  "player_count": 3,
+                  "resigned_player_count": 3
+                }
+              ],
+              "partially_resigned_team_ids": [],
+              "resignation_result_conflict": false,
+              "single_team_winner_flag_team_id": null,
+              "complete_losing_team_resignation": true,
+              "team_completion_from_resignations": true,
+              "resignation_derived_winning_team_id": 0
+            },
+            "winning_team_id": 0,
+            "result_confidence": "high",
+            "result_provenance": "complete_losing_team_resignation",
+            "winning_player_keys": [
+              "steam:76561198009273916",
+              "steam:76561198124349731",
+              "steam:76561198166409520"
+            ],
+            "winning_player_names": [
+              "JPKBARTENDER",
+              "Scavanger_Ab",
+              "Jim"
+            ]
+          },
+          "team_resolution": {
+            "teams": [
+              {
+                "players": [
+                  "JPKBARTENDER",
+                  "Scavanger_Ab",
+                  "Jim"
+                ],
+                "team_id": 0,
+                "player_keys": [
+                  "steam:76561198009273916",
+                  "steam:76561198124349731",
+                  "steam:76561198166409520"
+                ]
+              },
+              {
+                "players": [
+                  "jb007bsa",
+                  "juandajds",
+                  "Subzero"
+                ],
+                "team_id": 1,
+                "player_keys": [
+                  "steam:76561197968406946",
+                  "steam:76561198647369285",
+                  "steam:76561199052802013"
+                ]
+              }
+            ],
+            "format": "3v3",
+            "status": "resolved",
+            "confidence": "high",
+            "provenance": "explicit_final_team_ids",
+            "team_count": 2,
+            "player_count": 6,
+            "reason_codes": [],
+            "result_status": "resolved",
+            "result_trusted": true,
+            "result_evidence": {
+              "sources": [
+                "complete_losing_team_resignation",
+                "coherent_player_winner_flags"
+              ],
+              "resignation_state": "exactly_one_complete_team",
+              "postgame_available": false,
+              "winner_flag_team_id": 0,
+              "scoreboard_available": false,
+              "winner_flags_coherent": true,
+              "fully_resigned_team_ids": [
+                1
+              ],
+              "winner_flags_single_team": false,
+              "resignation_counts_by_team": [
+                {
+                  "team_id": 0,
+                  "player_count": 3,
+                  "resigned_player_count": 0
+                },
+                {
+                  "team_id": 1,
+                  "player_count": 3,
+                  "resigned_player_count": 3
+                }
+              ],
+              "partially_resigned_team_ids": [],
+              "resignation_result_conflict": false,
+              "single_team_winner_flag_team_id": null,
+              "complete_losing_team_resignation": true,
+              "team_completion_from_resignations": true,
+              "resignation_derived_winning_team_id": 0
+            },
+            "winning_team_id": 0,
+            "result_confidence": "high",
+            "result_provenance": "complete_losing_team_resignation",
+            "winning_player_keys": [
+              "steam:76561198009273916",
+              "steam:76561198124349731",
+              "steam:76561198166409520"
+            ],
+            "winning_player_names": [
+              "JPKBARTENDER",
+              "Scavanger_Ab",
+              "Jim"
+            ]
+          }
+        },
+        "winnerProof": "trusted_structured_result",
+        "reviewNeeded": false,
+        "unresolvedResult": null
+      },
+      "expectedWinner": "JPKBARTENDER / Scavanger_Ab / Jim"
+    },
+    {
+      "raw": {
+        "id": 32491,
+        "replay_hash": "80e51e1b5182e5996d8943a796d1845b1b844e56b30f7ba1a209483e2089379d",
+        "is_final": true,
+        "disconnect_detected": false,
+        "winner": "wasscabluejays123",
+        "parse_reason": "recorded_resignation_final",
+        "parse_source": "watcher_final",
+        "parse_iteration": 46,
+        "event_types": [
+          "de_queue",
+          "order",
+          "gather_point",
+          "special",
+          "research",
+          "move",
+          "build",
+          "delete",
+          "game",
+          "ungarrison",
+          "sell",
+          "buy",
+          "formation",
+          "flare",
+          "town_bell",
+          "patrol",
+          "tribute",
+          "resign"
+        ],
+        "played_at": "2026-09-07T02:38:38.307000Z",
+        "created_at": "2026-09-07T02:39:04.820935Z",
+        "timestamp": "2026-09-07T02:39:04.820945Z",
+        "map": {
+          "name": "FN 5x5",
+          "size": "giant"
+        },
+        "players": [
+          {
+            "name": "Jim",
+            "steam_id": "76561198166409520",
+            "user_id": "76561198166409520",
+            "number": 1,
+            "team_id": 0,
+            "winner": true
+          },
+          {
+            "name": "...A warm gun",
+            "steam_id": "76561199122596275",
+            "user_id": "76561199122596275",
+            "number": 2,
+            "team_id": 1,
+            "winner": false
+          },
+          {
+            "name": "Scavanger_Ab",
+            "steam_id": "76561198124349731",
+            "user_id": "76561198124349731",
+            "number": 3,
+            "team_id": 0,
+            "winner": true
+          },
+          {
+            "name": "THE SUPPLER",
+            "steam_id": "76561198094508523",
+            "user_id": "76561198094508523",
+            "number": 4,
+            "team_id": 1,
+            "winner": false
+          },
+          {
+            "name": "JPKBARTENDER",
+            "steam_id": "76561198009273916",
+            "user_id": "76561198009273916",
+            "number": 5,
+            "team_id": 1,
+            "winner": false
+          },
+          {
+            "name": "JESSICA <3",
+            "steam_id": "76561198992576190",
+            "user_id": "76561198992576190",
+            "number": 6,
+            "team_id": 1,
+            "winner": false
+          },
+          {
+            "name": "andronicus2000",
+            "steam_id": "76561198930256721",
+            "user_id": "76561198930256721",
+            "number": 7,
+            "team_id": 0,
+            "winner": true
+          },
+          {
+            "name": "wasscabluejays123",
+            "steam_id": "76561198732107016",
+            "user_id": "76561198732107016",
+            "number": 8,
+            "team_id": 0,
+            "winner": true
+          }
+        ],
+        "key_events": {
+          "completed": true,
+          "postgame_available": false,
+          "has_scores": false,
+          "has_achievements": false,
+          "resigned_player_names": [
+            "...A warm gun",
+            "THE SUPPLER",
+            "JPKBARTENDER",
+            "JESSICA <3"
+          ],
+          "resigned_player_numbers": [
+            2,
+            4,
+            5,
+            6
+          ],
+          "result_resolution": {
+            "result_status": "resolved",
+            "result_trusted": true,
+            "result_evidence": {
+              "sources": [
+                "complete_losing_team_resignation",
+                "coherent_player_winner_flags"
+              ],
+              "resignation_state": "exactly_one_complete_team",
+              "postgame_available": false,
+              "winner_flag_team_id": 0,
+              "scoreboard_available": false,
+              "winner_flags_coherent": true,
+              "fully_resigned_team_ids": [
+                1
+              ],
+              "winner_flags_single_team": false,
+              "resignation_counts_by_team": [
+                {
+                  "team_id": 0,
+                  "player_count": 4,
+                  "resigned_player_count": 0
+                },
+                {
+                  "team_id": 1,
+                  "player_count": 4,
+                  "resigned_player_count": 4
+                }
+              ],
+              "partially_resigned_team_ids": [],
+              "resignation_result_conflict": false,
+              "single_team_winner_flag_team_id": null,
+              "complete_losing_team_resignation": true,
+              "team_completion_from_resignations": true,
+              "resignation_derived_winning_team_id": 0
+            },
+            "winning_team_id": 0,
+            "result_confidence": "high",
+            "result_provenance": "complete_losing_team_resignation",
+            "winning_player_keys": [
+              "steam:76561198124349731",
+              "steam:76561198166409520",
+              "steam:76561198732107016",
+              "steam:76561198930256721"
+            ],
+            "winning_player_names": [
+              "Scavanger_Ab",
+              "Jim",
+              "wasscabluejays123",
+              "andronicus2000"
+            ]
+          },
+          "team_resolution": {
+            "teams": [
+              {
+                "players": [
+                  "Scavanger_Ab",
+                  "Jim",
+                  "wasscabluejays123",
+                  "andronicus2000"
+                ],
+                "team_id": 0,
+                "player_keys": [
+                  "steam:76561198124349731",
+                  "steam:76561198166409520",
+                  "steam:76561198732107016",
+                  "steam:76561198930256721"
+                ]
+              },
+              {
+                "players": [
+                  "JPKBARTENDER",
+                  "THE SUPPLER",
+                  "JESSICA <3",
+                  "...A warm gun"
+                ],
+                "team_id": 1,
+                "player_keys": [
+                  "steam:76561198009273916",
+                  "steam:76561198094508523",
+                  "steam:76561198992576190",
+                  "steam:76561199122596275"
+                ]
+              }
+            ],
+            "format": "4v4",
+            "status": "resolved",
+            "confidence": "high",
+            "provenance": "explicit_final_team_ids",
+            "team_count": 2,
+            "player_count": 8,
+            "reason_codes": [],
+            "result_status": "resolved",
+            "result_trusted": true,
+            "result_evidence": {
+              "sources": [
+                "complete_losing_team_resignation",
+                "coherent_player_winner_flags"
+              ],
+              "resignation_state": "exactly_one_complete_team",
+              "postgame_available": false,
+              "winner_flag_team_id": 0,
+              "scoreboard_available": false,
+              "winner_flags_coherent": true,
+              "fully_resigned_team_ids": [
+                1
+              ],
+              "winner_flags_single_team": false,
+              "resignation_counts_by_team": [
+                {
+                  "team_id": 0,
+                  "player_count": 4,
+                  "resigned_player_count": 0
+                },
+                {
+                  "team_id": 1,
+                  "player_count": 4,
+                  "resigned_player_count": 4
+                }
+              ],
+              "partially_resigned_team_ids": [],
+              "resignation_result_conflict": false,
+              "single_team_winner_flag_team_id": null,
+              "complete_losing_team_resignation": true,
+              "team_completion_from_resignations": true,
+              "resignation_derived_winning_team_id": 0
+            },
+            "winning_team_id": 0,
+            "result_confidence": "high",
+            "result_provenance": "complete_losing_team_resignation",
+            "winning_player_keys": [
+              "steam:76561198124349731",
+              "steam:76561198166409520",
+              "steam:76561198732107016",
+              "steam:76561198930256721"
+            ],
+            "winning_player_names": [
+              "Scavanger_Ab",
+              "Jim",
+              "wasscabluejays123",
+              "andronicus2000"
+            ]
+          }
+        }
+      },
+      "public": {
+        "id": 32491,
+        "replay_hash": "80e51e1b5182e5996d8943a796d1845b1b844e56b30f7ba1a209483e2089379d",
+        "is_final": true,
+        "disconnect_detected": false,
+        "winner": "Scavanger_Ab / Jim / wasscabluejays123 / andronicus2000",
+        "parse_reason": "recorded_resignation_final",
+        "parse_source": "watcher_final",
+        "parse_iteration": 46,
+        "event_types": [
+          "de_queue",
+          "order",
+          "gather_point",
+          "special",
+          "research",
+          "move",
+          "build",
+          "delete",
+          "game",
+          "ungarrison",
+          "sell",
+          "buy",
+          "formation",
+          "flare",
+          "town_bell",
+          "patrol",
+          "tribute",
+          "resign"
+        ],
+        "played_at": "2026-09-07T02:38:38.307000Z",
+        "created_at": "2026-09-07T02:39:04.820935Z",
+        "timestamp": "2026-09-07T02:39:04.820945Z",
+        "map": {
+          "name": "FN 5x5",
+          "size": "giant"
+        },
+        "players": [
+          {
+            "name": "Jim",
+            "steam_id": "76561198166409520",
+            "user_id": "76561198166409520",
+            "number": 1,
+            "team_id": 0,
+            "winner": true
+          },
+          {
+            "name": "...A warm gun",
+            "steam_id": "76561199122596275",
+            "user_id": "76561199122596275",
+            "number": 2,
+            "team_id": 1,
+            "winner": false
+          },
+          {
+            "name": "Scavanger_Ab",
+            "steam_id": "76561198124349731",
+            "user_id": "76561198124349731",
+            "number": 3,
+            "team_id": 0,
+            "winner": true
+          },
+          {
+            "name": "THE SUPPLER",
+            "steam_id": "76561198094508523",
+            "user_id": "76561198094508523",
+            "number": 4,
+            "team_id": 1,
+            "winner": false
+          },
+          {
+            "name": "JPKBARTENDER",
+            "steam_id": "76561198009273916",
+            "user_id": "76561198009273916",
+            "number": 5,
+            "team_id": 1,
+            "winner": false
+          },
+          {
+            "name": "JESSICA <3",
+            "steam_id": "76561198992576190",
+            "user_id": "76561198992576190",
+            "number": 6,
+            "team_id": 1,
+            "winner": false
+          },
+          {
+            "name": "andronicus2000",
+            "steam_id": "76561198930256721",
+            "user_id": "76561198930256721",
+            "number": 7,
+            "team_id": 0,
+            "winner": true
+          },
+          {
+            "name": "wasscabluejays123",
+            "steam_id": "76561198732107016",
+            "user_id": "76561198732107016",
+            "number": 8,
+            "team_id": 0,
+            "winner": true
+          }
+        ],
+        "key_events": {
+          "completed": true,
+          "postgame_available": false,
+          "has_scores": false,
+          "has_achievements": false,
+          "resigned_player_names": [
+            "...A warm gun",
+            "THE SUPPLER",
+            "JPKBARTENDER",
+            "JESSICA <3"
+          ],
+          "resigned_player_numbers": [
+            2,
+            4,
+            5,
+            6
+          ],
+          "result_resolution": {
+            "result_status": "resolved",
+            "result_trusted": true,
+            "result_evidence": {
+              "sources": [
+                "complete_losing_team_resignation",
+                "coherent_player_winner_flags"
+              ],
+              "resignation_state": "exactly_one_complete_team",
+              "postgame_available": false,
+              "winner_flag_team_id": 0,
+              "scoreboard_available": false,
+              "winner_flags_coherent": true,
+              "fully_resigned_team_ids": [
+                1
+              ],
+              "winner_flags_single_team": false,
+              "resignation_counts_by_team": [
+                {
+                  "team_id": 0,
+                  "player_count": 4,
+                  "resigned_player_count": 0
+                },
+                {
+                  "team_id": 1,
+                  "player_count": 4,
+                  "resigned_player_count": 4
+                }
+              ],
+              "partially_resigned_team_ids": [],
+              "resignation_result_conflict": false,
+              "single_team_winner_flag_team_id": null,
+              "complete_losing_team_resignation": true,
+              "team_completion_from_resignations": true,
+              "resignation_derived_winning_team_id": 0
+            },
+            "winning_team_id": 0,
+            "result_confidence": "high",
+            "result_provenance": "complete_losing_team_resignation",
+            "winning_player_keys": [
+              "steam:76561198124349731",
+              "steam:76561198166409520",
+              "steam:76561198732107016",
+              "steam:76561198930256721"
+            ],
+            "winning_player_names": [
+              "Scavanger_Ab",
+              "Jim",
+              "wasscabluejays123",
+              "andronicus2000"
+            ]
+          },
+          "team_resolution": {
+            "teams": [
+              {
+                "players": [
+                  "Scavanger_Ab",
+                  "Jim",
+                  "wasscabluejays123",
+                  "andronicus2000"
+                ],
+                "team_id": 0,
+                "player_keys": [
+                  "steam:76561198124349731",
+                  "steam:76561198166409520",
+                  "steam:76561198732107016",
+                  "steam:76561198930256721"
+                ]
+              },
+              {
+                "players": [
+                  "JPKBARTENDER",
+                  "THE SUPPLER",
+                  "JESSICA <3",
+                  "...A warm gun"
+                ],
+                "team_id": 1,
+                "player_keys": [
+                  "steam:76561198009273916",
+                  "steam:76561198094508523",
+                  "steam:76561198992576190",
+                  "steam:76561199122596275"
+                ]
+              }
+            ],
+            "format": "4v4",
+            "status": "resolved",
+            "confidence": "high",
+            "provenance": "explicit_final_team_ids",
+            "team_count": 2,
+            "player_count": 8,
+            "reason_codes": [],
+            "result_status": "resolved",
+            "result_trusted": true,
+            "result_evidence": {
+              "sources": [
+                "complete_losing_team_resignation",
+                "coherent_player_winner_flags"
+              ],
+              "resignation_state": "exactly_one_complete_team",
+              "postgame_available": false,
+              "winner_flag_team_id": 0,
+              "scoreboard_available": false,
+              "winner_flags_coherent": true,
+              "fully_resigned_team_ids": [
+                1
+              ],
+              "winner_flags_single_team": false,
+              "resignation_counts_by_team": [
+                {
+                  "team_id": 0,
+                  "player_count": 4,
+                  "resigned_player_count": 0
+                },
+                {
+                  "team_id": 1,
+                  "player_count": 4,
+                  "resigned_player_count": 4
+                }
+              ],
+              "partially_resigned_team_ids": [],
+              "resignation_result_conflict": false,
+              "single_team_winner_flag_team_id": null,
+              "complete_losing_team_resignation": true,
+              "team_completion_from_resignations": true,
+              "resignation_derived_winning_team_id": 0
+            },
+            "winning_team_id": 0,
+            "result_confidence": "high",
+            "result_provenance": "complete_losing_team_resignation",
+            "winning_player_keys": [
+              "steam:76561198124349731",
+              "steam:76561198166409520",
+              "steam:76561198732107016",
+              "steam:76561198930256721"
+            ],
+            "winning_player_names": [
+              "Scavanger_Ab",
+              "Jim",
+              "wasscabluejays123",
+              "andronicus2000"
+            ]
+          }
+        },
+        "winnerProof": "trusted_structured_result",
+        "reviewNeeded": false,
+        "unresolvedResult": null
+      },
+      "expectedWinner": "Scavanger_Ab / Jim / wasscabluejays123 / andronicus2000"
+    },
+    {
+      "raw": {
+        "id": 32444,
+        "replay_hash": "1d5a4ac5f8f922d1d2893bb16481abb09a0f2672b195b9f05ece07939c0fffd9",
+        "is_final": true,
+        "disconnect_detected": false,
+        "winner": "AT",
+        "parse_reason": "recorded_resignation_final",
+        "parse_source": "watcher_final",
+        "parse_iteration": 55,
+        "event_types": [
+          "order",
+          "de_queue",
+          "gather_point",
+          "special",
+          "ungarrison",
+          "move",
+          "research",
+          "build",
+          "delete",
+          "game",
+          "sell",
+          "buy",
+          "flare",
+          "patrol",
+          "formation",
+          "de_attack_move",
+          "stance",
+          "resign"
+        ],
+        "played_at": "2026-09-07T01:54:34.366000Z",
+        "created_at": "2026-09-07T01:54:27.651442Z",
+        "timestamp": "2026-09-07T01:55:02.799181Z",
+        "map": {
+          "name": "Forest Nothing Feitoria",
+          "size": "large"
+        },
+        "players": [
+          {
+            "name": "Jim",
+            "steam_id": "76561198166409520",
+            "user_id": "76561198166409520",
+            "number": 1,
+            "team_id": 0,
+            "winner": false
+          },
+          {
+            "name": "Scavanger_Ab",
+            "steam_id": "76561198124349731",
+            "user_id": "76561198124349731",
+            "number": 2,
+            "team_id": 1,
+            "winner": true
+          },
+          {
+            "name": "...A warm gun",
+            "steam_id": "76561199122596275",
+            "user_id": "76561199122596275",
+            "number": 3,
+            "team_id": 0,
+            "winner": false
+          },
+          {
+            "name": "JPKBARTENDER",
+            "steam_id": "76561198009273916",
+            "user_id": "76561198009273916",
+            "number": 4,
+            "team_id": 0,
+            "winner": false
+          },
+          {
+            "name": "THE SUPPLER",
+            "steam_id": "76561198094508523",
+            "user_id": "76561198094508523",
+            "number": 5,
+            "team_id": 1,
+            "winner": true
+          },
+          {
+            "name": "AT",
+            "steam_id": "76561198436476540",
+            "user_id": "76561198436476540",
+            "number": 6,
+            "team_id": 1,
+            "winner": true
+          }
+        ],
+        "key_events": {
+          "completed": true,
+          "postgame_available": false,
+          "has_scores": false,
+          "has_achievements": false,
+          "resigned_player_names": [
+            "Jim",
+            "...A warm gun",
+            "JPKBARTENDER"
+          ],
+          "resigned_player_numbers": [
+            1,
+            3,
+            4
+          ],
+          "result_resolution": {
+            "result_status": "resolved",
+            "result_trusted": true,
+            "result_evidence": {
+              "sources": [
+                "complete_losing_team_resignation",
+                "coherent_player_winner_flags"
+              ],
+              "resignation_state": "exactly_one_complete_team",
+              "postgame_available": false,
+              "winner_flag_team_id": 1,
+              "scoreboard_available": false,
+              "winner_flags_coherent": true,
+              "fully_resigned_team_ids": [
+                0
+              ],
+              "winner_flags_single_team": false,
+              "resignation_counts_by_team": [
+                {
+                  "team_id": 0,
+                  "player_count": 3,
+                  "resigned_player_count": 3
+                },
+                {
+                  "team_id": 1,
+                  "player_count": 3,
+                  "resigned_player_count": 0
+                }
+              ],
+              "partially_resigned_team_ids": [],
+              "resignation_result_conflict": false,
+              "single_team_winner_flag_team_id": null,
+              "complete_losing_team_resignation": true,
+              "team_completion_from_resignations": true,
+              "resignation_derived_winning_team_id": 1
+            },
+            "winning_team_id": 1,
+            "result_confidence": "high",
+            "result_provenance": "complete_losing_team_resignation",
+            "winning_player_keys": [
+              "steam:76561198094508523",
+              "steam:76561198124349731",
+              "steam:76561198436476540"
+            ],
+            "winning_player_names": [
+              "THE SUPPLER",
+              "Scavanger_Ab",
+              "AT"
+            ]
+          },
+          "team_resolution": {
+            "teams": [
+              {
+                "players": [
+                  "JPKBARTENDER",
+                  "Jim",
+                  "...A warm gun"
+                ],
+                "team_id": 0,
+                "player_keys": [
+                  "steam:76561198009273916",
+                  "steam:76561198166409520",
+                  "steam:76561199122596275"
+                ]
+              },
+              {
+                "players": [
+                  "THE SUPPLER",
+                  "Scavanger_Ab",
+                  "AT"
+                ],
+                "team_id": 1,
+                "player_keys": [
+                  "steam:76561198094508523",
+                  "steam:76561198124349731",
+                  "steam:76561198436476540"
+                ]
+              }
+            ],
+            "format": "3v3",
+            "status": "resolved",
+            "confidence": "high",
+            "provenance": "explicit_final_team_ids",
+            "team_count": 2,
+            "player_count": 6,
+            "reason_codes": [],
+            "result_status": "resolved",
+            "result_trusted": true,
+            "result_evidence": {
+              "sources": [
+                "complete_losing_team_resignation",
+                "coherent_player_winner_flags"
+              ],
+              "resignation_state": "exactly_one_complete_team",
+              "postgame_available": false,
+              "winner_flag_team_id": 1,
+              "scoreboard_available": false,
+              "winner_flags_coherent": true,
+              "fully_resigned_team_ids": [
+                0
+              ],
+              "winner_flags_single_team": false,
+              "resignation_counts_by_team": [
+                {
+                  "team_id": 0,
+                  "player_count": 3,
+                  "resigned_player_count": 3
+                },
+                {
+                  "team_id": 1,
+                  "player_count": 3,
+                  "resigned_player_count": 0
+                }
+              ],
+              "partially_resigned_team_ids": [],
+              "resignation_result_conflict": false,
+              "single_team_winner_flag_team_id": null,
+              "complete_losing_team_resignation": true,
+              "team_completion_from_resignations": true,
+              "resignation_derived_winning_team_id": 1
+            },
+            "winning_team_id": 1,
+            "result_confidence": "high",
+            "result_provenance": "complete_losing_team_resignation",
+            "winning_player_keys": [
+              "steam:76561198094508523",
+              "steam:76561198124349731",
+              "steam:76561198436476540"
+            ],
+            "winning_player_names": [
+              "THE SUPPLER",
+              "Scavanger_Ab",
+              "AT"
+            ]
+          }
+        }
+      },
+      "public": {
+        "id": 32444,
+        "replay_hash": "1d5a4ac5f8f922d1d2893bb16481abb09a0f2672b195b9f05ece07939c0fffd9",
+        "is_final": true,
+        "disconnect_detected": false,
+        "winner": "THE SUPPLER / Scavanger_Ab / AT",
+        "parse_reason": "recorded_resignation_final",
+        "parse_source": "watcher_final",
+        "parse_iteration": 55,
+        "event_types": [
+          "order",
+          "de_queue",
+          "gather_point",
+          "special",
+          "ungarrison",
+          "move",
+          "research",
+          "build",
+          "delete",
+          "game",
+          "sell",
+          "buy",
+          "flare",
+          "patrol",
+          "formation",
+          "de_attack_move",
+          "stance",
+          "resign"
+        ],
+        "played_at": "2026-09-07T01:54:34.366000Z",
+        "created_at": "2026-09-07T01:54:27.651442Z",
+        "timestamp": "2026-09-07T01:55:02.799181Z",
+        "map": {
+          "name": "Forest Nothing Feitoria",
+          "size": "large"
+        },
+        "players": [
+          {
+            "name": "Jim",
+            "steam_id": "76561198166409520",
+            "user_id": "76561198166409520",
+            "number": 1,
+            "team_id": 0,
+            "winner": false
+          },
+          {
+            "name": "Scavanger_Ab",
+            "steam_id": "76561198124349731",
+            "user_id": "76561198124349731",
+            "number": 2,
+            "team_id": 1,
+            "winner": true
+          },
+          {
+            "name": "...A warm gun",
+            "steam_id": "76561199122596275",
+            "user_id": "76561199122596275",
+            "number": 3,
+            "team_id": 0,
+            "winner": false
+          },
+          {
+            "name": "JPKBARTENDER",
+            "steam_id": "76561198009273916",
+            "user_id": "76561198009273916",
+            "number": 4,
+            "team_id": 0,
+            "winner": false
+          },
+          {
+            "name": "THE SUPPLER",
+            "steam_id": "76561198094508523",
+            "user_id": "76561198094508523",
+            "number": 5,
+            "team_id": 1,
+            "winner": true
+          },
+          {
+            "name": "AT",
+            "steam_id": "76561198436476540",
+            "user_id": "76561198436476540",
+            "number": 6,
+            "team_id": 1,
+            "winner": true
+          }
+        ],
+        "key_events": {
+          "completed": true,
+          "postgame_available": false,
+          "has_scores": false,
+          "has_achievements": false,
+          "resigned_player_names": [
+            "Jim",
+            "...A warm gun",
+            "JPKBARTENDER"
+          ],
+          "resigned_player_numbers": [
+            1,
+            3,
+            4
+          ],
+          "result_resolution": {
+            "result_status": "resolved",
+            "result_trusted": true,
+            "result_evidence": {
+              "sources": [
+                "complete_losing_team_resignation",
+                "coherent_player_winner_flags"
+              ],
+              "resignation_state": "exactly_one_complete_team",
+              "postgame_available": false,
+              "winner_flag_team_id": 1,
+              "scoreboard_available": false,
+              "winner_flags_coherent": true,
+              "fully_resigned_team_ids": [
+                0
+              ],
+              "winner_flags_single_team": false,
+              "resignation_counts_by_team": [
+                {
+                  "team_id": 0,
+                  "player_count": 3,
+                  "resigned_player_count": 3
+                },
+                {
+                  "team_id": 1,
+                  "player_count": 3,
+                  "resigned_player_count": 0
+                }
+              ],
+              "partially_resigned_team_ids": [],
+              "resignation_result_conflict": false,
+              "single_team_winner_flag_team_id": null,
+              "complete_losing_team_resignation": true,
+              "team_completion_from_resignations": true,
+              "resignation_derived_winning_team_id": 1
+            },
+            "winning_team_id": 1,
+            "result_confidence": "high",
+            "result_provenance": "complete_losing_team_resignation",
+            "winning_player_keys": [
+              "steam:76561198094508523",
+              "steam:76561198124349731",
+              "steam:76561198436476540"
+            ],
+            "winning_player_names": [
+              "THE SUPPLER",
+              "Scavanger_Ab",
+              "AT"
+            ]
+          },
+          "team_resolution": {
+            "teams": [
+              {
+                "players": [
+                  "JPKBARTENDER",
+                  "Jim",
+                  "...A warm gun"
+                ],
+                "team_id": 0,
+                "player_keys": [
+                  "steam:76561198009273916",
+                  "steam:76561198166409520",
+                  "steam:76561199122596275"
+                ]
+              },
+              {
+                "players": [
+                  "THE SUPPLER",
+                  "Scavanger_Ab",
+                  "AT"
+                ],
+                "team_id": 1,
+                "player_keys": [
+                  "steam:76561198094508523",
+                  "steam:76561198124349731",
+                  "steam:76561198436476540"
+                ]
+              }
+            ],
+            "format": "3v3",
+            "status": "resolved",
+            "confidence": "high",
+            "provenance": "explicit_final_team_ids",
+            "team_count": 2,
+            "player_count": 6,
+            "reason_codes": [],
+            "result_status": "resolved",
+            "result_trusted": true,
+            "result_evidence": {
+              "sources": [
+                "complete_losing_team_resignation",
+                "coherent_player_winner_flags"
+              ],
+              "resignation_state": "exactly_one_complete_team",
+              "postgame_available": false,
+              "winner_flag_team_id": 1,
+              "scoreboard_available": false,
+              "winner_flags_coherent": true,
+              "fully_resigned_team_ids": [
+                0
+              ],
+              "winner_flags_single_team": false,
+              "resignation_counts_by_team": [
+                {
+                  "team_id": 0,
+                  "player_count": 3,
+                  "resigned_player_count": 3
+                },
+                {
+                  "team_id": 1,
+                  "player_count": 3,
+                  "resigned_player_count": 0
+                }
+              ],
+              "partially_resigned_team_ids": [],
+              "resignation_result_conflict": false,
+              "single_team_winner_flag_team_id": null,
+              "complete_losing_team_resignation": true,
+              "team_completion_from_resignations": true,
+              "resignation_derived_winning_team_id": 1
+            },
+            "winning_team_id": 1,
+            "result_confidence": "high",
+            "result_provenance": "complete_losing_team_resignation",
+            "winning_player_keys": [
+              "steam:76561198094508523",
+              "steam:76561198124349731",
+              "steam:76561198436476540"
+            ],
+            "winning_player_names": [
+              "THE SUPPLER",
+              "Scavanger_Ab",
+              "AT"
+            ]
+          }
+        },
+        "winnerProof": "trusted_structured_result",
+        "reviewNeeded": false,
+        "unresolvedResult": null
+      },
+      "expectedWinner": "THE SUPPLER / Scavanger_Ab / AT"
+    }
+  ]
+}

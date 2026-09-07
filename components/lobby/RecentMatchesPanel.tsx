@@ -22,6 +22,7 @@ import {
 } from "@/lib/gameStatsView";
 import type { LobbyMatchRow } from "@/lib/lobby";
 import { pickLobbyMatchPlayedAt } from "@/lib/lobbyMatchTime";
+import { presentSanitizedLobbyWinner } from "@/lib/lobbyMatchResultPresentation";
 import { formatReplayTeamMatchup } from "@/lib/replayTeamDisplay";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 import type { HomeCopy } from "@/lib/i18n/homeCopy";
@@ -803,6 +804,17 @@ function getLobbyMatchResultDisplay(match: LobbyMatchRow, h: HomeCopy) {
           acceptedAdjudicatedWinner
             ? h("Reviewed result")
             : h("Replay result"),
+      };
+    }
+
+    // The public sanitizer already validated these winners with the complete
+    // roster and result proof. The scalar label helper cannot revalidate them
+    // after that evidence has been removed from its arguments.
+    const sanitizedWinner = presentSanitizedLobbyWinner(match);
+    if (sanitizedWinner) {
+      return {
+        headline: sanitizedWinner.headline,
+        pill: h(sanitizedWinner.pill),
       };
     }
 
