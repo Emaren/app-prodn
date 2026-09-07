@@ -711,7 +711,7 @@ export default function AoE2WarOsAdminPage() {
                               style={{ width: Math.max(0, Math.min(100, progress)) + "%" }}
                             />
                           </div>
-                          <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.12em] text-slate-650">
+                          <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.12em] text-slate-600">
                             <span>{String(agent.progress_label ?? "progress")}</span>
                             <span>{progress.toFixed(progress % 1 === 0 ? 0 : 1)}%</span>
                           </div>
@@ -776,7 +776,7 @@ export default function AoE2WarOsAdminPage() {
                       <div className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{String(item.title ?? "Source change")}</div>
                     </div>
                   ))}
-                  {!brainSourceActivity.length ? <div className="py-5 text-center text-xs text-slate-650">No source chronicle in this snapshot.</div> : null}
+                  {!brainSourceActivity.length ? <div className="py-5 text-center text-xs text-slate-600">No source chronicle in this snapshot.</div> : null}
                 </div>
               </div>
 
@@ -794,7 +794,7 @@ export default function AoE2WarOsAdminPage() {
                       <div className="mt-1 font-mono text-[10px] text-slate-700">seal {shortSha(item.sha)}</div>
                     </div>
                   ))}
-                  {!brainMemorySeals.length ? <div className="py-5 text-center text-xs text-slate-650">No recent Engineering Memory seal.</div> : null}
+                  {!brainMemorySeals.length ? <div className="py-5 text-center text-xs text-slate-600">No recent Engineering Memory seal.</div> : null}
                 </div>
               </div>
             </div>
