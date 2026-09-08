@@ -120,12 +120,22 @@ def page_source_profile(path: Path) -> dict[str, Any]:
 
     dependency_sources = [(item, source_text(item)) for item in dependencies]
     combined = "\n".join([page, *(text for _, text in dependency_sources)])
-    client_dependencies = [
-        item
+    client_dependency_sources = [
+        (item, text)
         for item, text in dependency_sources
         if text.lstrip().startswith('"use client"')
         or text.lstrip().startswith("'use client'")
     ]
+    client_dependencies = [item for item, _ in client_dependency_sources]
+    server_dependency_sources = [
+        (item, text)
+        for item, text in dependency_sources
+        if item not in set(client_dependencies)
+    ]
+    server_surface = "\n".join(
+        [page, *(text for _, text in server_dependency_sources)]
+    )
+    client_surface = "\n".join(text for _, text in client_dependency_sources)
 
     prisma_calls = len(re.findall(r"\bprisma\.[A-Za-z_$][A-Za-z0-9_$]*", combined))
     promise_all_calls = len(re.findall(r"\bPromise\.all(?:Settled)?\s*\(", combined))
@@ -149,6 +159,31 @@ def page_source_profile(path: Path) -> dict[str, Any]:
     force_dynamic = bool(re.search(r'export\s+const\s+dynamic\s*=\s*["\']force-dynamic["\']', page))
     revalidate_zero = bool(re.search(r"export\s+const\s+revalidate\s*=\s*0\b", page))
     page_is_client = page.lstrip().startswith('"use client"') or page.lstrip().startswith("'use client'")
+    server_request_personalization_signal = bool(
+        re.search(
+            r"from\s+[\"']next/headers[\"']|"
+            r"\bcookies\s*\(|\bheaders\s*\(|"
+            r"\bverifySession\s*\(|\bgetServerSession\s*\(|"
+            r"\bSESSION_COOKIE_NAME\b",
+            server_surface,
+        )
+    )
+    client_personalization_signal = bool(
+        re.search(
+            r"\buseUserAuth\s*\(|\buseKeplr\s*\(|"
+            r"\bviewerWager\b|\bconnectedWalletAddress\b|"
+            r"\bwalletAddress\b",
+            page + "\n" + client_surface,
+        )
+    )
+    if server_request_personalization_signal:
+        edge_cache_classification = "server_personalized_do_not_cache"
+    elif page_is_client:
+        edge_cache_classification = "static_client_shell_candidate"
+    elif force_dynamic or revalidate_zero:
+        edge_cache_classification = "anonymous_dynamic_candidate_review"
+    else:
+        edge_cache_classification = "static_or_revalidated_public_candidate"
 
     first_hop_bytes = sum(
         len(text.encode("utf-8"))
@@ -179,6 +214,9 @@ def page_source_profile(path: Path) -> dict[str, Any]:
         "revalidate_zero": revalidate_zero,
         "page_is_client": page_is_client,
         "client_first_hop_dependencies": len(client_dependencies),
+        "server_request_personalization_signal": server_request_personalization_signal,
+        "client_personalization_signal": client_personalization_signal,
+        "edge_cache_classification": edge_cache_classification,
         "direct_or_first_hop_prisma_calls": prisma_calls,
         "promise_all_signals": promise_all_calls,
         "fetch_signals": fetch_calls,
@@ -441,6 +479,18 @@ def print_status(payload: dict[str, Any]) -> None:
             f"dynamic={profile['force_dynamic']} prisma={profile['direct_or_first_hop_prisma_calls']} "
             f"client_deps={profile['client_first_hop_dependencies']}"
         )
+
+    cache_counts: dict[str, int] = {}
+    for row in public_profiles:
+        classification = str(
+            (row.get("source_profile") or {}).get("edge_cache_classification")
+            or "unknown"
+        )
+        cache_counts[classification] = cache_counts.get(classification, 0) + 1
+    print()
+    print("Edge-cache safety evidence (static source classification):")
+    for classification, count in sorted(cache_counts.items()):
+        print(f"  {count:>3}  {classification}")
 
     print()
     print("Largest public assets:")

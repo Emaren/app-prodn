@@ -702,6 +702,27 @@ def analyze_baseline(
             recommendation.append("profile SSR/data/cache path; route-specific origin evidence is materially expensive")
         if "large warm public-to-origin delivery gap" in reasons:
             recommendation.append("optimize CDN/proxy/geography path; route-specific origin is already materially faster")
+            edge_class = (
+                str(source_profile.get("edge_cache_classification") or "")
+                if isinstance(source_profile, dict)
+                else ""
+            )
+            if edge_class == "server_personalized_do_not_cache":
+                recommendation.append(
+                    "do not blanket edge-cache this route; preserve server session isolation and consider public-shell/personalized-overlay separation"
+                )
+            elif edge_class == "static_client_shell_candidate":
+                recommendation.append(
+                    "strong edge-shell candidate; keep personalized wallet/session/wager state in client/API layers"
+                )
+            elif edge_class == "anonymous_dynamic_candidate_review":
+                recommendation.append(
+                    "review bounded ISR/edge freshness only after proving anonymous response equivalence and an explicit staleness budget"
+                )
+            elif edge_class == "static_or_revalidated_public_candidate":
+                recommendation.append(
+                    "verify CDN HTML/RSC caching is actually active; source appears static or revalidated"
+                )
         elif "high persistent public TTFB" in reasons:
             if seam_ratio is not None and seam_ratio >= 4.0:
                 recommendation.append("inspect persistent CDN/proxy/public delivery seam before blaming origin")
@@ -756,6 +777,11 @@ def analyze_baseline(
                 "origin_share_of_public_ttfb": round(origin_share, 4) if origin_share is not None else None,
                 "dominant_layer": dominant_layer,
                 "source_profile": source_profile,
+                "edge_cache_classification": (
+                    source_profile.get("edge_cache_classification")
+                    if isinstance(source_profile, dict)
+                    else None
+                ),
                 "historical_ttfb_ms": (
                     round(old_ttfb, 3) if old_ttfb is not None else None
                 ),

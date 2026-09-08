@@ -67,6 +67,26 @@ overrides exist for explicit operator/test isolation. They are not a mechanism f
 pointing release authority at arbitrary candidate source. Receipt references remain
 portable as `.aoe2war-release/...` regardless of which worktree invoked Speed OS.
 
+## Edge-cache safety classification
+
+Speed OS never equates "delivery dominated" with "safe to cache." The source
+inventory records a conservative cache-safety classification for each page:
+
+- `server_personalized_do_not_cache` — server request/session evidence is visible;
+  blanket edge caching is prohibited.
+- `static_client_shell_candidate` — the page shell is client-rendered and server
+  request personalization is absent; personalized API/client state must remain
+  outside any shared shell cache.
+- `anonymous_dynamic_candidate_review` — dynamic public SSR with no visible server
+  personalization; any ISR/edge policy requires explicit response-equivalence and
+  freshness proof before activation.
+- `static_or_revalidated_public_candidate` — source appears static/revalidated and
+  should be checked for actual CDN HTML/RSC cache participation.
+
+This is static evidence, not an authorization to change cache policy. Session, wallet,
+wager, settlement and financial truth remain fail-closed until runtime equivalence is
+proven.
+
 ## Per-route cost stack
 
 Speed OS V2 supplements public cold and warm measurements with a bounded,
