@@ -45,7 +45,11 @@ test("open player directory refreshes only after a five-second generation change
   assert.match(boundary, /router\.refresh\(\)/);
   assert.match(boundary, /addEventListener\("focus"/);
   assert.match(boundary, /visibilitychange/);
-  assert.match(page, /loadPublicPlayerDirectoryFresh\(prisma\)/);
+  assert.match(
+    page,
+    /loadPublicPlayerDirectory\(\s*prisma,\s*initialGeneration/,
+  );
+  assert.doesNotMatch(page, /loadPublicPlayerDirectoryFresh/);
   assert.match(page, /PlayerDirectoryRealtimeRefresh initialGeneration=/);
 });
 
