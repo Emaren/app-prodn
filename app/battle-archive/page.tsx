@@ -5,7 +5,7 @@ import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { getPrisma } from "@/lib/prisma";
 import { loadPublicBattleArchivePage } from "@/lib/publicBattleArchive";
 import {
-  buildPublicBattleArchiveActivity,
+  buildPublicRivalryActivity,
   teamRivalryFormatLabel,
   type PublicRivalryActivityEntry,
 } from "@/lib/publicMatchups";
@@ -19,7 +19,7 @@ export default async function BattleArchivePage() {
     offset: 0,
     limit: 120,
   });
-  const entries = await buildPublicBattleArchiveActivity(
+  const entries = await buildPublicRivalryActivity(
     prisma,
     archive.rows,
     120,
