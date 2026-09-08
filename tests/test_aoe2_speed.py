@@ -803,6 +803,123 @@ class PerformanceOSTests(unittest.TestCase):
             identity_block,
         )
 
+    def test_keepalive_summary_separates_connection_setup_from_warm_ttfb(self):
+        rows = [
+            {"ok": True, "ttfb_ms": 420.0, "total_ms": 500.0, "dns_ms": 18.0,
+             "connect_ms": 42.0, "tls_ms": 155.0, "new_connections": 1},
+            {"ok": True, "ttfb_ms": 95.0, "total_ms": 130.0, "dns_ms": 0.0,
+             "connect_ms": 0.0, "tls_ms": 0.0, "new_connections": 0},
+            {"ok": True, "ttfb_ms": 105.0, "total_ms": 140.0, "dns_ms": 0.0,
+             "connect_ms": 0.0, "tls_ms": 0.0, "new_connections": 0},
+        ]
+
+        summary = SPEED_MODULE.keepalive_summary(rows)
+
+        self.assertTrue(summary["available"])
+        self.assertEqual(summary["warm_median_ttfb_ms"], 100.0)
+        self.assertEqual(summary["connection_setup_delta_ms"], 320.0)
+        self.assertEqual(summary["warm_reused_connection_transfers"], 2)
+
+    def test_curl_sequence_uses_one_process_and_parses_connection_reuse(self):
+        fake = type(
+            "Proc",
+            (),
+            {
+                "returncode": 0,
+                "stderr": "",
+                "stdout": (
+                    "200\\t0.010\\t0.020\\t0.050\\t0.100\\t0.120\\t10\\t1\\thttps://aoe2war.com/\\n"
+                    "200\\t0.000\\t0.000\\t0.000\\t0.040\\t0.060\\t11\\t0\\thttps://aoe2war.com/bets\\n"
+                ),
+            },
+        )()
+
+        with patch.object(SPEED_MODULE.subprocess, "run", return_value=fake) as run:
+            rows = SPEED_MODULE.run_curl_sequence(
+                ["https://aoe2war.com/", "https://aoe2war.com/bets"],
+                timeout=7,
+            )
+
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["new_connections"], 1)
+        self.assertEqual(rows[1]["new_connections"], 0)
+        command = run.call_args.args[0]
+        self.assertEqual(command.count("curl"), 1)
+        self.assertIn("https://aoe2war.com/bets", command)
+
+    def test_capacity_advice_prefers_warm_seam_over_misleading_cold_ratio(self):
+        baseline = {
+            "origin_seam": {
+                "ratio": 12.0,
+                "legacy_isolated_process_ratio": 12.0,
+                "public_median_ttfb_ms": 480.0,
+                "origin_median_ttfb_ms": 40.0,
+                "warm_ratio": 1.5,
+                "public_keepalive": {
+                    "available": True,
+                    "warm_median_ttfb_ms": 45.0,
+                },
+                "origin_keepalive": {
+                    "available": True,
+                    "warm_median_ttfb_ms": 30.0,
+                },
+                "public_connection_setup_delta_ms": 330.0,
+            },
+            "cohort": {"ttfb_p75_ms": 420.0},
+            "production_capacity": {"available": False},
+        }
+
+        advice = CAMPAIGN_MODULE.capacity_advice(baseline)
+
+        self.assertEqual(advice["hardware"]["delivery"]["action"], "hold")
+        self.assertIn("warm_keepalive_v2", advice["hardware"]["delivery"]["reason"])
+
+    def test_speed_analysis_labels_connection_setup_without_blaming_origin(self):
+        baseline = {
+            "mode": "quick",
+            "generated_at": "2026-09-08T00:00:00Z",
+            "cohort": {
+                "ttfb_p50_ms": 400.0,
+                "ttfb_p75_ms": 450.0,
+                "total_p50_ms": 520.0,
+                "total_p75_ms": 600.0,
+            },
+            "warm_cohort": {
+                "ttfb_p50_ms": 100.0,
+                "ttfb_p75_ms": 110.0,
+                "total_p50_ms": 160.0,
+                "total_p75_ms": 180.0,
+            },
+            "origin_seam": {
+                "ratio": 10.0,
+                "legacy_isolated_process_ratio": 10.0,
+                "warm_ratio": 1.4,
+                "public_keepalive": {"available": True, "warm_median_ttfb_ms": 42.0},
+                "origin_keepalive": {"available": True, "warm_median_ttfb_ms": 30.0},
+                "public_connection_setup_delta_ms": 300.0,
+            },
+            "ready_coverage": {"ready_routes": ["/"]},
+            "routes": [{
+                "path": "/",
+                "median_ttfb_ms": 430.0,
+                "median_total_ms": 510.0,
+                "median_download_bytes": 10_000,
+                "warm_median_ttfb_ms": 90.0,
+                "warm_median_total_ms": 140.0,
+            }],
+            "production_capacity": {"available": False},
+            "performance_incidents": {"available": False},
+        }
+
+        with patch.object(CAMPAIGN_MODULE, "comparable_history", return_value=[]), patch.object(
+            CAMPAIGN_MODULE, "prior_campaign_learning", return_value={"verified_campaigns": 0}
+        ):
+            analysis = CAMPAIGN_MODULE.analyze_baseline(baseline)
+
+        self.assertEqual(analysis["origin_public_contract"], "warm_keepalive_v2")
+        self.assertEqual(analysis["targets"][0]["dominant_layer"], "connection_setup")
+        self.assertIn("large cold-to-warm connection gap", analysis["targets"][0]["reasons"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -48,6 +48,37 @@ plus stable representatives of dynamic route families. The frozen August 13
 66-route cohort remains historical comparison evidence only; it is not silently
 mixed with the V2 cohort.
 
+## Cold versus warm latency contract
+
+Speed OS V2 preserves the historical isolated-process route benchmark and adds
+same-process keep-alive evidence. These answer different questions and must not
+be silently substituted for one another.
+
+- **Cold / isolated-process** TTFB includes a fresh command process and, for a
+  public HTTPS route, may include DNS, TCP and TLS setup. It remains the
+  comparable first-visit metric used by existing receipts.
+- **Warm / keep-alive** TTFB is measured after priming the same curl connection
+  cache. It better approximates repeated in-site navigation on an already-open
+  browser connection.
+- **Connection-setup delta** is the observed cold-first-transfer TTFB minus the
+  median warm TTFB on the lightweight speed check. It is diagnostic evidence,
+  not a promise that every browser will save exactly that amount.
+- **Warm public/origin seam** is preferred for deciding whether persistent
+  CDN/proxy/network delivery is actually slower than the local Next origin.
+  The legacy cold ratio remains in receipts for historical comparability.
+
+Full benchmarks also collect a bounded warm route pass in one curl process,
+primed on the lightweight speed endpoint. Route receipts therefore preserve
+both the original cold medians and supplemental warm medians without rewriting
+the old benchmark contract. Performance Campaign analysis can distinguish
+connection setup, persistent delivery/proxy cost, server/data work,
+post-TTFB payload transfer, and missing browser Ready evidence.
+
+This separation is deliberately conservative: a large cold/public ratio alone
+no longer justifies blaming the CDN or buying server hardware. Speed OS first
+asks whether the gap survives connection reuse.
+
+
 ## Browser Ready hot-path discipline
 
 `Ready` measures the first authoritative state in which the marked primary
