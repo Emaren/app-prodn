@@ -8,6 +8,7 @@ test("public hot paths keep expensive work off request-critical rails", () => {
   const players = readFileSync("app/players/page.tsx", "utf8");
   const directory = readFileSync("lib/publicPlayerDirectory.ts", "utf8");
   const academy = readFileSync("app/academy/page.tsx", "utf8");
+  const betDetail = readFileSync("app/bets/[marketId]/page.tsx", "utf8");
   const observatory = readFileSync("lib/parserObservatory.ts", "utf8");
 
   assert.match(staking, /const overviewPromise = Promise\.allSettled/);
@@ -29,6 +30,13 @@ test("public hot paths keep expensive work off request-critical rails", () => {
   assert.match(academy, /prisma\.replayPlayerSnapshot\.count/);
   assert.match(academy, /ZODIAC_TRAINING_CONFIG\.userId/);
   assert.doesNotMatch(academy, /loadClaimedPlayerPreview/);
+
+  assert.match(betDetail, /const prefetchedMarketActivity =/);
+  assert.match(betDetail, /loadBetMarketActivity\(prisma, numericMarketId\)/);
+  assert.match(
+    betDetail,
+    /prefetchedMarketActivity \?\?[\s\S]*loadBetMarketActivity\(prisma, market\.id\)/,
+  );
 
   assert.doesNotMatch(observatory, /from "node:fs\/promises"/);
   assert.doesNotMatch(observatory, /recursive: true/);
