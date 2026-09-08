@@ -12,7 +12,7 @@ import { validateDistinctClaimPayoutTx } from "@/lib/woloClaimPayoutGuards";
 import {
   executeFounderWoloPayout,
   executeWoloPayout,
-  executeWoloSettlementRun,
+  executeWoloEscrowSettlementRun,
   findConfirmedWoloPayoutByMemo,
   getWoloPayoutExecutionBlocker,
   type SettlementRunResult,
@@ -455,7 +455,7 @@ async function executeMarketClaimSettlementRun(input: {
     matchedUserId: input.matchedUserId,
   });
 
-  const execution = await executeWoloSettlementRun({
+  const execution = await executeWoloEscrowSettlementRun({
     settlementRunId,
     sourceApp: "aoe2hdbets",
     sourceEventId: `pending-claim-${input.claimId}`,
