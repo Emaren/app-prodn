@@ -33,9 +33,7 @@ import type {
   WarGraphPublicHistoryEvent,
   WarGraphPublicNode,
   WarGraphPublicSnapshot,
-  WarGraphViewMode,
 } from "@/lib/wargraph/publicTypes";
-import { WARGRAPH_VIEW_MODES } from "@/lib/wargraph/publicTypes";
 
 const PRESENCE_INTERVAL_MS = 20_000;
 const SNAPSHOT_INTERVAL_MS = 12_000;
