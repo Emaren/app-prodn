@@ -123,17 +123,19 @@ const PLAYER_DIRECTORY_CACHE_TTL_MS = 15_000;
 
 type PublicPlayerDirectoryCacheEntry = {
   expiresAt: number;
+  replayGeneration: string | null;
   value: PublicPlayerDirectory;
 };
 
 let publicPlayerDirectoryCache: PublicPlayerDirectoryCacheEntry | null = null;
-let publicPlayerDirectoryPromise: Promise<PublicPlayerDirectory> | null = null;
+const publicPlayerDirectoryPromises =
+  new Map<string, Promise<PublicPlayerDirectory>>();
 let publicPlayerDirectoryCacheGeneration = 0;
 
 export function invalidatePublicPlayerDirectoryCache() {
   publicPlayerDirectoryCacheGeneration += 1;
   publicPlayerDirectoryCache = null;
-  publicPlayerDirectoryPromise = null;
+  publicPlayerDirectoryPromises.clear();
 }
 
 function normalizeDirectoryKey(value: string | null | undefined) {
@@ -1020,19 +1022,32 @@ export async function loadPublicPlayerDirectoryFresh(
 }
 
 export async function loadPublicPlayerDirectory(
-  prisma: PrismaClient
+  prisma: PrismaClient,
+  replayGeneration: string | null = null,
 ): Promise<PublicPlayerDirectory> {
   const now = Date.now();
+  const cacheMatchesGeneration =
+    replayGeneration === null ||
+    publicPlayerDirectoryCache?.replayGeneration === replayGeneration;
 
   if (
     publicPlayerDirectoryCache &&
-    publicPlayerDirectoryCache.expiresAt > now
+    publicPlayerDirectoryCache.expiresAt > now &&
+    cacheMatchesGeneration
   ) {
     return publicPlayerDirectoryCache.value;
   }
 
-  if (publicPlayerDirectoryPromise) {
-    return publicPlayerDirectoryPromise;
+  const promiseKey =
+    replayGeneration === null
+      ? "generic"
+      : `generation:${replayGeneration}`;
+  const existing =
+    publicPlayerDirectoryPromises.get(
+      promiseKey
+    );
+  if (existing) {
+    return existing;
   }
 
   const generation = publicPlayerDirectoryCacheGeneration;
@@ -1041,6 +1056,7 @@ export async function loadPublicPlayerDirectory(
       if (generation === publicPlayerDirectoryCacheGeneration) {
         publicPlayerDirectoryCache = {
           expiresAt: Date.now() + PLAYER_DIRECTORY_CACHE_TTL_MS,
+          replayGeneration,
           value,
         };
       }
@@ -1048,11 +1064,20 @@ export async function loadPublicPlayerDirectory(
       return value;
     })
     .finally(() => {
-      if (publicPlayerDirectoryPromise === run) {
-        publicPlayerDirectoryPromise = null;
+      if (
+        publicPlayerDirectoryPromises.get(
+          promiseKey
+        ) === run
+      ) {
+        publicPlayerDirectoryPromises.delete(
+          promiseKey
+        );
       }
     });
 
-  publicPlayerDirectoryPromise = run;
+  publicPlayerDirectoryPromises.set(
+    promiseKey,
+    run
+  );
   return run;
 }
