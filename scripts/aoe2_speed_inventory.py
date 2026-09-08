@@ -53,18 +53,141 @@ def route_from_page(path: Path) -> str:
     raise InventoryError(f"not a Next page path: {path}")
 
 
-def source_route_templates() -> list[str]:
+def source_page_files() -> list[Path]:
     if not APP_ROOT.is_dir():
         raise InventoryError(f"app directory missing: {APP_ROOT}")
-    pages = [
+    pages = sorted(
         path
         for path in APP_ROOT.rglob("page.*")
         if path.is_file() and path.name in PAGE_SUFFIXES
-    ]
-    routes = sorted({route_from_page(path) for path in pages})
-    if not routes:
+    )
+    if not pages:
         raise InventoryError("no Next page routes discovered")
-    return routes
+    return pages
+
+
+def source_route_templates() -> list[str]:
+    return sorted({route_from_page(path) for path in source_page_files()})
+
+
+LOCAL_IMPORT_PATTERN = re.compile(
+    r"""from\s+["'](?P<module>@/[^"']+|\.{1,2}/[^"']+)["']"""
+)
+
+
+def resolve_local_module(importer: Path, module: str) -> Path | None:
+    if module.startswith("@/"):
+        stem = ROOT / module[2:]
+    else:
+        stem = importer.parent / module
+
+    candidates = [
+        stem,
+        stem.with_suffix(".ts"),
+        stem.with_suffix(".tsx"),
+        stem.with_suffix(".js"),
+        stem.with_suffix(".jsx"),
+        stem / "index.ts",
+        stem / "index.tsx",
+        stem / "index.js",
+        stem / "index.jsx",
+    ]
+    for candidate in candidates:
+        if candidate.is_file() and ROOT in candidate.resolve().parents:
+            return candidate.resolve()
+    return None
+
+
+def source_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return ""
+
+
+def page_source_profile(path: Path) -> dict[str, Any]:
+    """Static first-hop source evidence. This is not a runtime latency claim."""
+    page = source_text(path)
+    dependencies: list[Path] = []
+    seen: set[Path] = set()
+
+    for match in LOCAL_IMPORT_PATTERN.finditer(page):
+        dependency = resolve_local_module(path, match.group("module"))
+        if dependency is None or dependency in seen:
+            continue
+        seen.add(dependency)
+        dependencies.append(dependency)
+
+    dependency_sources = [(item, source_text(item)) for item in dependencies]
+    combined = "\n".join([page, *(text for _, text in dependency_sources)])
+    client_dependencies = [
+        item
+        for item, text in dependency_sources
+        if text.lstrip().startswith('"use client"')
+        or text.lstrip().startswith("'use client'")
+    ]
+
+    prisma_calls = len(re.findall(r"\bprisma\.[A-Za-z_$][A-Za-z0-9_$]*", combined))
+    promise_all_calls = len(re.findall(r"\bPromise\.all(?:Settled)?\s*\(", combined))
+    fetch_calls = len(re.findall(r"\bfetch\s*\(", combined))
+    suspense_usages = len(re.findall(r"<Suspense\b", page))
+    image_usages = len(re.findall(r"<Image\b", combined))
+    generation_cache_signal = bool(
+        re.search(
+            r"createGenerationKeyedLoader|replayGeneration|generationKeyed|CacheGeneration",
+            combined,
+        )
+    )
+    complete_corpus_signal = bool(
+        re.search(
+            r"PUBLIC_MATCHUP_SCAN_LIMIT|loadPublicRivalryBoards|loadPublicBattleArchive|"
+            r"loadPublicPlayerDirectory|complete[-_ ]corpus|full corpus",
+            combined,
+            re.IGNORECASE,
+        )
+    )
+    force_dynamic = bool(re.search(r'export\s+const\s+dynamic\s*=\s*["\']force-dynamic["\']', page))
+    revalidate_zero = bool(re.search(r"export\s+const\s+revalidate\s*=\s*0\b", page))
+    page_is_client = page.lstrip().startswith('"use client"') or page.lstrip().startswith("'use client'")
+
+    first_hop_bytes = sum(
+        len(text.encode("utf-8"))
+        for _, text in dependency_sources
+    )
+    static_complexity_score = (
+        (2.0 if force_dynamic else 0.0)
+        + min(prisma_calls, 12) * 0.35
+        + min(promise_all_calls, 8) * 0.10
+        + min(len(client_dependencies), 8) * 0.20
+        + min((len(page.encode("utf-8")) + first_hop_bytes) / 100_000.0, 4.0) * 0.25
+        + (1.5 if complete_corpus_signal else 0.0)
+        - (0.5 if generation_cache_signal else 0.0)
+        - (0.25 if suspense_usages else 0.0)
+    )
+
+    return {
+        "evidence_scope": "static_page_plus_first_hop_imports_not_runtime_proof",
+        "source_path": path.relative_to(ROOT).as_posix(),
+        "page_source_bytes": len(page.encode("utf-8")),
+        "first_hop_dependency_count": len(dependencies),
+        "first_hop_source_bytes": first_hop_bytes,
+        "first_hop_dependencies": [
+            item.relative_to(ROOT).as_posix()
+            for item in dependencies[:40]
+        ],
+        "force_dynamic": force_dynamic,
+        "revalidate_zero": revalidate_zero,
+        "page_is_client": page_is_client,
+        "client_first_hop_dependencies": len(client_dependencies),
+        "direct_or_first_hop_prisma_calls": prisma_calls,
+        "promise_all_signals": promise_all_calls,
+        "fetch_signals": fetch_calls,
+        "suspense_usages": suspense_usages,
+        "image_usages": image_usages,
+        "generation_cache_signal": generation_cache_signal,
+        "complete_corpus_signal": complete_corpus_signal,
+        "static_complexity_score": round(max(0.0, static_complexity_score), 3),
+    }
 
 
 def cohort_routes() -> list[str]:
@@ -206,7 +329,12 @@ def asset_inventory() -> dict[str, Any]:
 
 
 def snapshot() -> dict[str, Any]:
-    source = source_route_templates()
+    page_files = source_page_files()
+    page_by_template = {
+        route_from_page(path): path
+        for path in page_files
+    }
+    source = sorted(page_by_template)
     cohort = cohort_routes()
 
     page_rows: list[dict[str, Any]] = []
@@ -227,6 +355,7 @@ def snapshot() -> dict[str, Any]:
                 "reason": reason,
                 "benchmark_representative": representative,
                 "covered_by_public_campaign": covered if classification == "public" else False,
+                "source_profile": page_source_profile(page_by_template[template]),
             }
         )
 
@@ -292,6 +421,26 @@ def print_status(payload: dict[str, Any]) -> None:
         print("UNBENCHMARKED PUBLIC ROUTES:")
         for route in coverage["uncovered_public_templates"]:
             print(f"  - {route}")
+
+    public_profiles = [
+        row
+        for row in payload["pages"]
+        if row["classification"] == "public"
+    ]
+    public_profiles.sort(
+        key=lambda row: float((row.get("source_profile") or {}).get("static_complexity_score") or 0.0),
+        reverse=True,
+    )
+
+    print()
+    print("Highest static source-complexity signals (not measured latency):")
+    for row in public_profiles[:10]:
+        profile = row["source_profile"]
+        print(
+            f"  {profile['static_complexity_score']:>5.2f}  {row['template']:<32} "
+            f"dynamic={profile['force_dynamic']} prisma={profile['direct_or_first_hop_prisma_calls']} "
+            f"client_deps={profile['client_first_hop_dependencies']}"
+        )
 
     print()
     print("Largest public assets:")

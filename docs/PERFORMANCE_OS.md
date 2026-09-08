@@ -48,6 +48,25 @@ plus stable representatives of dynamic route families. The frozen August 13
 66-route cohort remains historical comparison evidence only; it is not silently
 mixed with the V2 cohort.
 
+## Route source-cost map
+
+`aoe2war speed inventory` now attaches a conservative static source profile to
+every source page. The profile scans the page and its first-hop local imports
+for evidence such as dynamic SSR, Prisma calls, generation-cache signals,
+parallel `Promise.all` work, Suspense boundaries, client-component boundaries,
+images and complete-corpus loaders.
+
+This is deliberately called **source evidence**, not measured latency. A large
+static profile does not prove that a route is slow, and a tiny profile does not
+prove that an upstream dependency is cheap. Performance Campaign joins this
+map to measured route timings only to shorten diagnosis: for example, a warm
+server/data bottleneck plus a complete-corpus signal points toward incremental
+or generation-keyed derived projections, while a browser-Ready bottleneck plus
+client boundaries points toward hydration/media profiling.
+
+The inventory never recommends truncating complete replay truth merely to make
+a page benchmark look faster.
+
 ## Cold versus warm latency contract
 
 Speed OS V2 preserves the historical isolated-process route benchmark and adds

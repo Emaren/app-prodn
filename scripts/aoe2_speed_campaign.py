@@ -523,7 +523,26 @@ def prior_campaign_learning() -> dict[str, Any]:
     }
 
 
-def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
+def source_profile_by_benchmark_route(
+    source_inventory: dict[str, Any] | None,
+) -> dict[str, dict[str, Any]]:
+    if not isinstance(source_inventory, dict):
+        return {}
+    result: dict[str, dict[str, Any]] = {}
+    for row in source_inventory.get("pages") or []:
+        if not isinstance(row, dict):
+            continue
+        representative = row.get("benchmark_representative")
+        profile = row.get("source_profile")
+        if isinstance(representative, str) and isinstance(profile, dict):
+            result[representative] = profile
+    return result
+
+
+def analyze_baseline(
+    baseline: dict[str, Any],
+    source_inventory: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     cohort = baseline.get("cohort") or {}
     persistent_cohort = baseline.get("warm_cohort") or cohort
     p50_ttfb = float(cohort.get("ttfb_p50_ms") or 1.0)
@@ -550,6 +569,7 @@ def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
     ready_routes = set(str(route) for route in ready.get("ready_routes") or [])
     history = comparable_history(baseline)
     prior_learning = prior_campaign_learning()
+    source_profiles = source_profile_by_benchmark_route(source_inventory)
 
     rows: list[dict[str, Any]] = []
     for route_row in baseline.get("routes") or []:
@@ -558,6 +578,7 @@ def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
         route = str(route_row.get("path") or "")
         if not route:
             continue
+        source_profile = source_profiles.get(route)
         ttfb = float(route_row.get("median_ttfb_ms") or 0.0)
         total = float(route_row.get("median_total_ms") or 0.0)
         download = int(route_row.get("median_download_bytes") or 0)
@@ -657,6 +678,29 @@ def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
             recommendation.append("trim RSC/HTML/API payload and optimize route-critical images/assets")
         if "no explicit browser Ready marker" in reasons:
             recommendation.append("add authoritative SpeedReadyMarker before client-readiness claims")
+        if isinstance(source_profile, dict):
+            if (
+                dominant_layer == "server_data"
+                and source_profile.get("complete_corpus_signal")
+            ):
+                recommendation.append(
+                    "preserve complete truth; optimize generation-keyed/incremental derived projection instead of truncating corpus"
+                )
+            if (
+                dominant_layer == "server_data"
+                and int(source_profile.get("direct_or_first_hop_prisma_calls") or 0) > 0
+                and not source_profile.get("generation_cache_signal")
+            ):
+                recommendation.append(
+                    "profile and narrow the first-hop database projection; no cache signal is visible in the static source map"
+                )
+            if (
+                dominant_layer in {"transfer_payload", "browser_ready_unknown"}
+                and int(source_profile.get("client_first_hop_dependencies") or 0) > 0
+            ):
+                recommendation.append(
+                    "inspect client-boundary and media hydration using browser Ready/Web Vitals evidence"
+                )
         if not recommendation:
             recommendation.append("preserve; not a first-wave optimization target")
 
@@ -672,6 +716,7 @@ def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
                 "warm_median_total_ms": round(warm_total, 3) if warm_total is not None else None,
                 "cold_warm_ttfb_gap_ms": round(cold_warm_gap, 3) if cold_warm_gap is not None else None,
                 "dominant_layer": dominant_layer,
+                "source_profile": source_profile,
                 "historical_ttfb_ms": (
                     round(old_ttfb, 3) if old_ttfb is not None else None
                 ),
@@ -932,7 +977,7 @@ def start_campaign(*, full: bool, rounds: int, force_new: bool) -> dict[str, Any
     release_short = str(baseline.get("release_sha") or "unknown")[:12]
     campaign_id = f"{stamp}-{release_short}-{mode}"
 
-    analysis = analyze_baseline(baseline)
+    analysis = analyze_baseline(baseline, source_inventory)
     payload: dict[str, Any] = {
         "schema": 1,
         "kind": "aoe2war-performance-campaign",
@@ -964,7 +1009,11 @@ def analyze_campaign(campaign: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(receipt, str):
         raise CampaignError("campaign baseline receipt is missing")
     baseline = load_receipt(receipt)
-    analysis = analyze_baseline(baseline)
+    source_inventory = baseline_info.get("source_inventory")
+    analysis = analyze_baseline(
+        baseline,
+        source_inventory if isinstance(source_inventory, dict) else None,
+    )
     campaign["analysis"] = analysis
     if campaign.get("status") != "verified":
         campaign["status"] = "analyzed"

@@ -77,6 +77,38 @@ class SpeedInventoryTests(unittest.TestCase):
         )
         self.assertIn('[ "${1:-}" = "inventory" ]', source)
 
+    def test_source_profiles_are_static_evidence_not_runtime_claims(self):
+        payload = MODULE.snapshot()
+        rivalry = next(
+            page
+            for page in payload["pages"]
+            if page["template"] == "/rivalries"
+        )
+        profile = rivalry["source_profile"]
+
+        self.assertEqual(
+            profile["evidence_scope"],
+            "static_page_plus_first_hop_imports_not_runtime_proof",
+        )
+        self.assertTrue(profile["force_dynamic"])
+        self.assertTrue(profile["complete_corpus_signal"])
+        self.assertTrue(profile["generation_cache_signal"])
+        self.assertGreater(profile["direct_or_first_hop_prisma_calls"], 0)
+
+    def test_academy_profile_sees_streaming_and_client_hero_boundary(self):
+        payload = MODULE.snapshot()
+        academy = next(
+            page
+            for page in payload["pages"]
+            if page["template"] == "/academy"
+        )
+        profile = academy["source_profile"]
+
+        self.assertTrue(profile["force_dynamic"])
+        self.assertGreaterEqual(profile["suspense_usages"], 1)
+        self.assertGreaterEqual(profile["client_first_hop_dependencies"], 1)
+        self.assertGreater(profile["page_source_bytes"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
