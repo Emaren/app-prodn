@@ -123,60 +123,17 @@ export async function loadWarChestSnapshot(
   const mode = options.mode ?? "weekly";
 
   // Reconciliation may call external settlement rails and should not hold the
-  // public page response open. Queue it once, then render committed market and
-  // claim truth with the same bounded settlement mode used by /api/bets.
+  // public page response open. Queue it once, then start every independent
+  // evidence family immediately. Weekly aggregates alone depend on the earners
+  // window, so only that small rail waits for the period boundary.
   queueBetMarketEnsure(prisma);
-  const betBoard = await loadBetBoardSnapshot(prisma, viewerUid, {
-    ensureMarkets: false,
-    settlementSurfaceMode: "fast",
-  });
-  const [wolo, earners] = await Promise.all([
+
+  const sharedSnapshotPromise = Promise.all([
+    loadBetBoardSnapshot(prisma, viewerUid, {
+      ensureMarkets: false,
+      settlementSurfaceMode: "fast",
+    }),
     loadWoloDevSnapshot(),
-    loadLobbyWoloEarnersBoard(prisma, { mode }),
-  ]);
-
-  const weekStartsAt = new Date(earners.weekStartsAt);
-  const weeklyWindowStart = Number.isNaN(weekStartsAt.getTime())
-    ? new Date(Date.now() - earners.timeframeDays * 24 * 60 * 60 * 1000)
-    : weekStartsAt;
-
-  const weeklyWagerWhere = visibleMainnetWagerWhere({
-    createdAt: { gte: weeklyWindowStart },
-  });
-
-  const [
-    weeklyWagerSummary,
-    weeklyBettors,
-    weeklyOnchainEscrow,
-    lifetimeWagers,
-    pendingSummary,
-    recentWagersRaw,
-    recentClaimsRaw,
-    settledMarketCount,
-  ] = await Promise.all([
-    prisma.betWager.aggregate({
-      where: weeklyWagerWhere,
-      _sum: {
-        amountWolo: true,
-        payoutWolo: true,
-      },
-      _count: {
-        _all: true,
-      },
-    }),
-    prisma.betWager.groupBy({
-      by: ["userId"],
-      where: weeklyWagerWhere,
-    }),
-    prisma.betWager.aggregate({
-      where: visibleMainnetWagerWhere({
-        createdAt: { gte: weeklyWindowStart },
-        executionMode: "onchain_escrow",
-      }),
-      _sum: {
-        amountWolo: true,
-      },
-    }),
     prisma.betWager.aggregate({
       where: visibleMainnetWagerWhere(),
       _sum: {
@@ -260,6 +217,64 @@ export async function loadWarChestSnapshot(
           : {}),
       },
     }),
+  ]);
+
+  const earners = await loadLobbyWoloEarnersBoard(
+    prisma,
+    { mode },
+  );
+  const weekStartsAt = new Date(earners.weekStartsAt);
+  const weeklyWindowStart = Number.isNaN(weekStartsAt.getTime())
+    ? new Date(Date.now() - earners.timeframeDays * 24 * 60 * 60 * 1000)
+    : weekStartsAt;
+  const weeklyWagerWhere = visibleMainnetWagerWhere({
+    createdAt: { gte: weeklyWindowStart },
+  });
+
+  const weeklySnapshotPromise = Promise.all([
+    prisma.betWager.aggregate({
+      where: weeklyWagerWhere,
+      _sum: {
+        amountWolo: true,
+        payoutWolo: true,
+      },
+      _count: {
+        _all: true,
+      },
+    }),
+    prisma.betWager.groupBy({
+      by: ["userId"],
+      where: weeklyWagerWhere,
+    }),
+    prisma.betWager.aggregate({
+      where: visibleMainnetWagerWhere({
+        createdAt: { gte: weeklyWindowStart },
+        executionMode: "onchain_escrow",
+      }),
+      _sum: {
+        amountWolo: true,
+      },
+    }),
+  ]);
+
+  const [
+    [
+      weeklyWagerSummary,
+      weeklyBettors,
+      weeklyOnchainEscrow,
+    ],
+    [
+      betBoard,
+      wolo,
+      lifetimeWagers,
+      pendingSummary,
+      recentWagersRaw,
+      recentClaimsRaw,
+      settledMarketCount,
+    ],
+  ] = await Promise.all([
+    weeklySnapshotPromise,
+    sharedSnapshotPromise,
   ]);
 
   const recentWagers = recentWagersRaw.map((wager) => ({
