@@ -846,7 +846,13 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
         `;
 
   const market = markets[0];
-  if (!market) notFound();
+  if (!market) {
+    // The speculative numeric-ID reads are read-only. Attach a rejection
+    // handler before returning the 404 so a concurrent database failure cannot
+    // become an unhandled promise rejection on a nonexistent market path.
+    void prefetchedMarketActivity?.catch(() => undefined);
+    notFound();
+  }
 
   const [intents, wagers, bonuses, claims, integrityIncidents] = await (
     prefetchedMarketActivity ??
