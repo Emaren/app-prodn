@@ -39,4 +39,3 @@ test("support diagnostics warn when a watcher trails the public release", () => 
     /Restart Watcher or use Check Update\./,
   );
 });
-
