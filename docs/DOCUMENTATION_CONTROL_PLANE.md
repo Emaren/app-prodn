@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/speed-os-v3` at `b2d55ed45efc9e86be01062073f85a1ba2e3b764`
+Implementation baseline: `fix/bets-wallet-connect-cap-20260908` at `6ffb1c361853ba0e1f340c461d7a24889b79a316`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
