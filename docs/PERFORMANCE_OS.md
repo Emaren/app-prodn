@@ -67,6 +67,30 @@ overrides exist for explicit operator/test isolation. They are not a mechanism f
 pointing release authority at arbitrary candidate source. Receipt references remain
 portable as `.aoe2war-release/...` regardless of which worktree invoked Speed OS.
 
+## Edge Delivery audit rail
+
+`aoe2war speed edge audit` joins the latest full per-route cost-stack receipt to
+source cache-safety evidence and live public response headers. It records Cloudflare
+cache status, Next cache status, cache-control directives, Set-Cookie presence and
+the measured warm public-to-origin delivery gap.
+
+The audit is deliberately non-mutating. It ranks safe opportunities and keeps
+server-personalized or runtime-cookie responses in a fail-closed blocked class.
+This creates a durable deployment manifest before any Cloudflare Cache Rule or
+other edge mutation is authorized.
+
+`aoe2war speed edge plan` converts that live audit into a non-mutating exact-route
+Cloudflare expression only for responses that also prove `x-nextjs-cache: HIT`, do
+not prohibit shared caching and do not emit `Set-Cookie`. The generated plan always
+bypasses requests carrying any known AoE2WAR cookie discovered from source (including
+`aoe2hdbets_session`), leaves `/api/` contracts untouched,
+and records `mutation_authorized: false` until external Cloudflare authority is
+explicitly connected. Ancestor Next layouts participate in the static
+personalization scan, so a future layout-level session read automatically revokes
+edge eligibility. The plan reuses a recent live audit only when the certified
+production release and a cache-safety source signature still match; `--refresh`
+forces a new live header census.
+
 ## Edge-cache safety classification
 
 Speed OS never equates "delivery dominated" with "safe to cache." The source

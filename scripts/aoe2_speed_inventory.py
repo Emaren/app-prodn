@@ -16,6 +16,7 @@ PUBLIC_ROOT = ROOT / "public"
 COHORT_PATH = ROOT / "docs" / "audits" / "performance-route-cohort-v2.txt"
 
 PAGE_SUFFIXES = ("page.tsx", "page.ts", "page.jsx", "page.js")
+LAYOUT_SUFFIXES = ("layout.tsx", "layout.ts", "layout.jsx", "layout.js")
 
 SENSITIVE_ROUTE_EXCLUSIONS = {
     "/market/invoices/[publicId]": (
@@ -105,6 +106,47 @@ def source_text(path: Path) -> str:
         return ""
 
 
+SERVER_PERSONALIZATION_PATTERN = re.compile(
+    r"from\s+[\"']next/headers[\"']|"
+    r"\bcookies\s*\(|\bheaders\s*\(|"
+    r"\bverifySession\s*\(|\bgetServerSession\s*\(|"
+    r"\bSESSION_COOKIE_NAME\b"
+)
+
+
+def applicable_layout_files(page: Path) -> list[Path]:
+    current = page.parent
+    found: list[Path] = []
+    while True:
+        for name in LAYOUT_SUFFIXES:
+            candidate = current / name
+            if candidate.is_file():
+                found.append(candidate)
+                break
+        if current == APP_ROOT:
+            break
+        if APP_ROOT not in current.parents:
+            break
+        current = current.parent
+    return list(reversed(found))
+
+
+def first_hop_server_surface(path: Path) -> str:
+    primary = source_text(path)
+    pieces = [primary]
+    seen: set[Path] = set()
+    for match in LOCAL_IMPORT_PATTERN.finditer(primary):
+        dependency = resolve_local_module(path, match.group("module"))
+        if dependency is None or dependency in seen:
+            continue
+        seen.add(dependency)
+        text = source_text(dependency)
+        if text.lstrip().startswith('"use client"') or text.lstrip().startswith("'use client'"):
+            continue
+        pieces.append(text)
+    return "\n".join(pieces)
+
+
 def page_source_profile(path: Path) -> dict[str, Any]:
     """Static first-hop source evidence. This is not a runtime latency claim."""
     page = source_text(path)
@@ -159,14 +201,18 @@ def page_source_profile(path: Path) -> dict[str, Any]:
     force_dynamic = bool(re.search(r'export\s+const\s+dynamic\s*=\s*["\']force-dynamic["\']', page))
     revalidate_zero = bool(re.search(r"export\s+const\s+revalidate\s*=\s*0\b", page))
     page_is_client = page.lstrip().startswith('"use client"') or page.lstrip().startswith("'use client'")
-    server_request_personalization_signal = bool(
-        re.search(
-            r"from\s+[\"']next/headers[\"']|"
-            r"\bcookies\s*\(|\bheaders\s*\(|"
-            r"\bverifySession\s*\(|\bgetServerSession\s*\(|"
-            r"\bSESSION_COOKIE_NAME\b",
-            server_surface,
-        )
+    layout_files = applicable_layout_files(path)
+    layout_server_surface = "\n".join(
+        first_hop_server_surface(layout) for layout in layout_files
+    )
+    page_server_personalization_signal = bool(
+        SERVER_PERSONALIZATION_PATTERN.search(server_surface)
+    )
+    layout_server_personalization_signal = bool(
+        SERVER_PERSONALIZATION_PATTERN.search(layout_server_surface)
+    )
+    server_request_personalization_signal = (
+        page_server_personalization_signal or layout_server_personalization_signal
     )
     client_personalization_signal = bool(
         re.search(
@@ -215,6 +261,9 @@ def page_source_profile(path: Path) -> dict[str, Any]:
         "page_is_client": page_is_client,
         "client_first_hop_dependencies": len(client_dependencies),
         "server_request_personalization_signal": server_request_personalization_signal,
+        "page_server_personalization_signal": page_server_personalization_signal,
+        "layout_server_personalization_signal": layout_server_personalization_signal,
+        "applicable_layouts": [layout.relative_to(ROOT).as_posix() for layout in layout_files],
         "client_personalization_signal": client_personalization_signal,
         "edge_cache_classification": edge_cache_classification,
         "direct_or_first_hop_prisma_calls": prisma_calls,

@@ -111,6 +111,9 @@ class SpeedInventoryTests(unittest.TestCase):
             "static_client_shell_candidate",
         )
         self.assertTrue(by_template["/bets"]["client_personalization_signal"])
+        self.assertFalse(by_template["/bets"]["layout_server_personalization_signal"])
+        self.assertIn("app/layout.tsx", by_template["/bets"]["applicable_layouts"])
+        self.assertIn("app/bets/layout.tsx", by_template["/bets"]["applicable_layouts"])
         self.assertEqual(
             by_template["/kingdom"]["edge_cache_classification"],
             "anonymous_dynamic_candidate_review",
