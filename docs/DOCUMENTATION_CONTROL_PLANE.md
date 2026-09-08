@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/live-truth-labeling-20260908` at `da34234da68543c39de84d5ab26eb3475b5de4d5`
+Implementation baseline: `feature/speed-os-v2` at `d5200d3695ebaad09aec51796b63e77968973fe2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
