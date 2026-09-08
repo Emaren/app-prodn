@@ -9,7 +9,6 @@ import {
   Database,
   Plus,
   ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import {
   FormEvent,
