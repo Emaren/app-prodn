@@ -216,8 +216,8 @@ async function editMarket(
     const maxPoolWolo = wholeNumber(
       payload.maxPoolWolo,
       "WOLO ceiling",
-      1_000n,
-      100_000_000n,
+      BigInt(1_000),
+      BigInt(100_000_000),
     );
     const seedYesMarks = integerField(payload.seedYesMarks, "YES seed", 0, 1_000_000);
     const seedNoMarks = integerField(payload.seedNoMarks, "NO seed", 0, 1_000_000);
