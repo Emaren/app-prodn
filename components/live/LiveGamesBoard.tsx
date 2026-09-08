@@ -61,7 +61,10 @@ import {
   type TileViewMode,
   writeStoredLiveGamesViewMode,
 } from "@/lib/tileViewPreferences";
-import type { WatchStreamPayload } from "@/lib/watchStreams";
+import {
+  watchStreamPresentationLabel,
+  type WatchStreamPayload,
+} from "@/lib/watchStreams";
 
 type LiveGamesBoardProps = {
   initialSnapshot: LiveGamesSnapshot;
@@ -2271,6 +2274,9 @@ function ClassicLiveSessionCard({
   const gameHref = sessionStatsHref(session);
   const watchHref = `/watch/${encodeURIComponent(session.sessionKey)}`;
   const primaryStream = session.primaryStream ?? session.streams?.[0] ?? null;
+  const primaryStreamLabel = primaryStream
+    ? watchStreamPresentationLabel(primaryStream, { completed: isCompleted })
+    : null;
   const uploaders =
     session.uploaders?.length > 0
       ? session.uploaders
@@ -2354,9 +2360,17 @@ function ClassicLiveSessionCard({
                 Winner {normalizeResolvedWinner(session.winner)}
               </span>
             ) : null}
-            {primaryStream ? (
-              <span className="rounded-full border border-red-300/25 bg-red-400/10 px-3 py-1 text-xs text-red-100">
-                {isCompleted ? "Video saved" : "Video live"}
+            {primaryStreamLabel ? (
+              <span
+                className={
+                  primaryStreamLabel === "Video live"
+                    ? "rounded-full border border-red-300/25 bg-red-400/10 px-3 py-1 text-xs text-red-100"
+                    : primaryStreamLabel === "Video saved"
+                      ? "rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs text-emerald-100"
+                      : "rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-xs text-sky-100"
+                }
+              >
+                {primaryStreamLabel}
               </span>
             ) : null}
           </div>

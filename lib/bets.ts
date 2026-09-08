@@ -5796,6 +5796,7 @@ export async function reconcileDetachedWatcherMarkets(
     },
     select: {
       id: true,
+      battleId: true,
       title: true,
       linkedSessionKey: true,
       linkedGameStatsId: true,
@@ -6088,38 +6089,58 @@ export async function reconcileDetachedWatcherMarkets(
         new Date();
       const mapName = readMapName(finalGame.map);
 
-      const settled = await prisma.betMarket.updateMany({
-        where: {
-          id: market.id,
-          status: {
-            in: RECONCILABLE_WATCHER_STATUSES,
+      const settled = await prisma.$transaction(async (tx) => {
+        const transitioned = await tx.betMarket.updateMany({
+          where: {
+            id: market.id,
+            status: {
+              in: RECONCILABLE_WATCHER_STATUSES,
+            },
+            voidedAt: null,
           },
-          voidedAt: null,
-        },
-        data: {
-          status: "settled",
-          featured: false,
-          closeAt: null,
-          settledAt,
-          winnerSide,
-          proofDeadlineAt: null,
-          resolutionReason: "trusted_final_received",
-          integrityStatus: "verified",
-          integrityReason: null,
-          commissionerReviewState: null,
-          underReviewAt: null,
-          linkedGameStatsId: finalGame?.id ?? market.linkedGameStatsId ?? null,
-          eventLabel: buildWatcherEventLabel(
-            "Final",
-            mapName &&
-              mapName !== "Unknown Map" &&
-              mapName !== "Map unresolved"
-              ? mapName
-              : market.eventLabel.includes("•")
-                ? market.eventLabel.split("•").slice(1).join("•").trim() || null
-                : null
-          ),
-        },
+          data: {
+            status: "settled",
+            featured: false,
+            closeAt: null,
+            settledAt,
+            winnerSide,
+            proofDeadlineAt: null,
+            resolutionReason: "trusted_final_received",
+            integrityStatus: "verified",
+            integrityReason: null,
+            commissionerReviewState: null,
+            underReviewAt: null,
+            linkedGameStatsId: finalGame?.id ?? market.linkedGameStatsId ?? null,
+            eventLabel: buildWatcherEventLabel(
+              "Final",
+              mapName &&
+                mapName !== "Unknown Map" &&
+                mapName !== "Map unresolved"
+                ? mapName
+                : market.eventLabel.includes("•")
+                  ? market.eventLabel.split("•").slice(1).join("•").trim() || null
+                  : null
+            ),
+          },
+        });
+
+        if (transitioned.count === 1 && market.battleId) {
+          await tx.battleIdentity.updateMany({
+            where: {
+              id: market.battleId,
+              state: {
+                not: "completed",
+              },
+            },
+            data: {
+              state: "completed",
+              completedAt: settledAt,
+              lastSeenAt: new Date(),
+            },
+          });
+        }
+
+        return transitioned;
       });
 
       if (

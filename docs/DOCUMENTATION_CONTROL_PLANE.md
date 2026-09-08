@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/release-node22-selection-20260908` at `92ec69e0eb74b30804e26943acf7258550f71b02`
+Implementation baseline: `fix/live-truth-labeling-20260908` at `da34234da68543c39de84d5ab26eb3475b5de4d5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

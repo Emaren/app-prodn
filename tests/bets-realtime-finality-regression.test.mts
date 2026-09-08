@@ -398,6 +398,148 @@ test(
 );
 
 test(
+  "trusted detached watcher final atomically completes its battle identity",
+  async () => {
+    const sessionKey = "platform:trusted-final-battle";
+    const players = [
+      {
+        name: "Alpha",
+        steam_id: "76561198000001001",
+        team_id: 0,
+        number: 1,
+        winner: true,
+      },
+      {
+        name: "Bravo",
+        steam_id: "76561198000001002",
+        team_id: 1,
+        number: 2,
+        winner: false,
+      },
+    ];
+    const resolution = resolveReplayTeams(players, {
+      final: true,
+      provenance: "explicit_final_team_ids",
+    });
+    assert.equal(resolution.status, "resolved");
+    assert.equal(resolution.confidence, "high");
+
+    const settledAt = new Date("2026-09-08T05:27:56.148Z");
+    const marketUpdates: Array<{
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
+    }> = [];
+    const battleUpdates: Array<{
+      where: Record<string, unknown>;
+      data: Record<string, unknown>;
+    }> = [];
+
+    const market = {
+      id: 703349,
+      battleId: 297,
+      title: "Alpha vs Bravo",
+      linkedSessionKey: sessionKey,
+      linkedGameStatsId: null,
+      leftLabel: "Alpha",
+      rightLabel: "Bravo",
+      propositionHash: resolution.propositionHash,
+      leftRosterSnapshot: rosterSnapshot(resolution.teams[0]),
+      rightRosterSnapshot: rosterSnapshot(resolution.teams[1]),
+      eventLabel: "Watcher Live",
+      updatedAt: new Date("2026-09-08T05:27:00.000Z"),
+      closeAt: new Date("2026-09-08T05:27:00.000Z"),
+      status: "closing",
+      integrityReason: null,
+      commissionerReviewState: null,
+      underReviewAt: null,
+      proofDeadlineAt: null,
+      resolutionReason: "live_snapshot_revalidating",
+      createdAt: new Date("2026-09-08T04:57:21.351Z"),
+    };
+
+    const tx = {
+      betMarket: {
+        updateMany: async (input: {
+          where: Record<string, unknown>;
+          data: Record<string, unknown>;
+        }) => {
+          marketUpdates.push(input);
+          return { count: 1 };
+        },
+      },
+      battleIdentity: {
+        updateMany: async (input: {
+          where: Record<string, unknown>;
+          data: Record<string, unknown>;
+        }) => {
+          battleUpdates.push(input);
+          return { count: 1 };
+        },
+      },
+    };
+
+    const prisma = {
+      betMarket: {
+        findMany: async () => [market],
+      },
+      gameStats: {
+        findFirst: async () => ({ id: 33107 }),
+        findUnique: async () => ({
+          id: 33107,
+          replayHash: "a".repeat(64),
+          winner: "Alpha",
+          players,
+          parse_reason: "recorded_resignation_final",
+          key_events: {
+            completed: true,
+            team_resolution: {
+              status: "resolved",
+              confidence: "high",
+              provenance: "explicit_final_team_ids",
+              teams: resolution.teams,
+              result_status: "resolved",
+              result_trusted: true,
+              winning_team_id: 0,
+              winning_player_names: ["Alpha"],
+            },
+          },
+          disconnect_detected: false,
+          map: { name: "FN 5x5" },
+          timestamp: settledAt,
+          createdAt: settledAt,
+          replayResultAdjudications: [],
+        }),
+      },
+      $transaction: async (
+        operation: (transaction: typeof tx) => Promise<unknown>
+      ) => operation(tx),
+    };
+
+    await reconcileDetachedWatcherMarkets(
+      prisma as never,
+      new Set()
+    );
+
+    assert.equal(marketUpdates.length, 1);
+    assert.equal(marketUpdates[0].data.status, "settled");
+    assert.equal(marketUpdates[0].data.resolutionReason, "trusted_final_received");
+    assert.equal(marketUpdates[0].data.linkedGameStatsId, 33107);
+    assert.equal(marketUpdates[0].data.settledAt, settledAt);
+
+    assert.equal(battleUpdates.length, 1);
+    assert.deepEqual(battleUpdates[0].where, {
+      id: 297,
+      state: {
+        not: "completed",
+      },
+    });
+    assert.equal(battleUpdates[0].data.state, "completed");
+    assert.equal(battleUpdates[0].data.completedAt, settledAt);
+    assert.ok(battleUpdates[0].data.lastSeenAt instanceof Date);
+  }
+);
+
+test(
   "detached watcher transitions use one observed proof clock",
   () => {
     const transitionCalls =
