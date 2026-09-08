@@ -533,7 +533,7 @@ def remote_origin_keepalive(samples: int) -> list[dict[str, Any]]:
     )
     script = (
         "curl -fsS -L --compressed --max-time 5 "
-        f"-w '{CURL_METRIC_FORMAT}\\\\n' {operands}\\n"
+        f"-w '{CURL_METRIC_FORMAT}\\\\n' {operands}\n"
     )
     proc = subprocess.run(
         [

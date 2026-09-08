@@ -525,10 +525,11 @@ def prior_campaign_learning() -> dict[str, Any]:
 
 def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
     cohort = baseline.get("cohort") or {}
+    persistent_cohort = baseline.get("warm_cohort") or cohort
     p50_ttfb = float(cohort.get("ttfb_p50_ms") or 1.0)
-    p75_ttfb = float(cohort.get("ttfb_p75_ms") or p50_ttfb)
+    p75_ttfb = float(persistent_cohort.get("ttfb_p75_ms") or p50_ttfb)
     p50_total = float(cohort.get("total_p50_ms") or 1.0)
-    p75_total = float(cohort.get("total_p75_ms") or p50_total)
+    p75_total = float(persistent_cohort.get("total_p75_ms") or p50_total)
     seam = preferred_seam(baseline)
     seam_ratio = (
         float(seam["ratio"])
