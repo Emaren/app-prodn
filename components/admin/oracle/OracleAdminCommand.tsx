@@ -2,25 +2,27 @@
 
 import Link from "next/link";
 import {
-  AlertTriangle,
   ArrowRight,
   CheckCircle2,
   CircleGauge,
-  Clock3,
   Eye,
   FileClock,
   Gauge,
   Orbit,
-  Pause,
-  Play,
   RefreshCw,
   ShieldCheck,
   Sparkles,
   Trash2,
-  UsersRound,
   XCircle,
+  type LucideIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 import type {
   OracleMarketView,
@@ -739,7 +741,7 @@ function Field({
 }: {
   label: string;
   wide?: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
 }) {
   return (
     <label className={wide ? "md:col-span-2" : ""}>
@@ -756,7 +758,7 @@ function CommandLink({
   copy,
 }: {
   href: string;
-  icon: typeof Eye;
+  icon: LucideIcon;
   title: string;
   copy: string;
 }) {

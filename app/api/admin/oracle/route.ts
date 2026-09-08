@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import type { PrismaClient } from "@/lib/generated/prisma";
+
 import { requireAdmin } from "@/lib/adminSession";
 import {
   loadOracleSnapshot,
@@ -113,7 +115,7 @@ function actorLabel(actor: {
 }
 
 async function adminPayload(
-  prisma: Awaited<ReturnType<typeof requireAdmin>>["prisma"],
+  prisma: PrismaClient,
   uid: string,
 ) {
   const [snapshot, recentEvents, totalPositions, totalEvents] = await Promise.all([
@@ -165,7 +167,7 @@ async function adminPayload(
 }
 
 async function editMarket(
-  prisma: Awaited<ReturnType<typeof requireAdmin>>["prisma"],
+  prisma: PrismaClient,
   actor: Awaited<ReturnType<typeof requireOracleActor>>,
   payload: Record<string, unknown>,
 ) {
@@ -258,7 +260,7 @@ async function editMarket(
 }
 
 async function deleteMarket(
-  prisma: Awaited<ReturnType<typeof requireAdmin>>["prisma"],
+  prisma: PrismaClient,
   actor: Awaited<ReturnType<typeof requireOracleActor>>,
   slug: string,
   confirmation: string,
@@ -306,7 +308,7 @@ async function deleteMarket(
 }
 
 async function deleteLegacyStock(
-  prisma: Awaited<ReturnType<typeof requireAdmin>>["prisma"],
+  prisma: PrismaClient,
   actor: Awaited<ReturnType<typeof requireOracleActor>>,
   confirmation: string,
 ) {
