@@ -41,6 +41,8 @@ export async function loadPublicBattleArchivePage(
       battleIdentity: string | null;
       pageOrdinal: bigint | number | null;
       total: bigint | number;
+      finalReplayRecords: bigint | number;
+      publicBattleRecords: bigint | number;
     }>
   >`
     with source as (
@@ -161,14 +163,18 @@ export async function loadPublicBattleArchivePage(
         ) as page_ordinal
       from page
     ), totals as (
-      select count(*)::bigint as total
-      from battles
+      select
+        (select count(*)::bigint from battles) as total,
+        (select count(*)::bigint from source) as final_replay_records,
+        (select count(*)::bigint from eligible) as public_battle_records
     )
     select
       candidates.id,
       candidates.battle_identity as "battleIdentity",
       candidates.page_ordinal as "pageOrdinal",
-      totals.total
+      totals.total,
+      totals.final_replay_records as "finalReplayRecords",
+      totals.public_battle_records as "publicBattleRecords"
     from totals
     left join lateral (
       select
@@ -205,8 +211,17 @@ export async function loadPublicBattleArchivePage(
     )
   );
   const total = Number(candidateRows[0]?.total ?? 0);
+  const finalReplayRecords = Number(candidateRows[0]?.finalReplayRecords ?? 0);
+  const publicBattleRecords = Number(candidateRows[0]?.publicBattleRecords ?? 0);
+  const archiveCensus = {
+    total,
+    finalReplayRecords,
+    publicBattleRecords,
+    duplicateBattleRecords: Math.max(0, publicBattleRecords - total),
+    excludedFinalRecords: Math.max(0, finalReplayRecords - publicBattleRecords),
+  };
   if (candidateIds.length === 0) {
-    return { rows: [], total, offset, nextOffset: offset };
+    return { rows: [], ...archiveCensus, offset, nextOffset: offset };
   }
 
   const rows = await prisma.gameStats.findMany({
@@ -263,7 +278,7 @@ export async function loadPublicBattleArchivePage(
 
   return {
     rows: publicRows,
-    total,
+    ...archiveCensus,
     offset,
     // Offset is the logical database coordinate. Advance by identities
     // consumed even if a concurrent delete makes their selected proof row

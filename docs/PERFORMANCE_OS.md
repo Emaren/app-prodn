@@ -48,6 +48,142 @@ plus stable representatives of dynamic route families. The frozen August 13
 66-route cohort remains historical comparison evidence only; it is not silently
 mixed with the V2 cohort.
 
+## Shared Speed OS evidence across worktrees
+
+Performance research is intentionally isolated in feature worktrees, but Speed OS
+evidence is project memory rather than branch-local scratch state. Speed OS therefore
+discovers the canonical Git `main` worktree and uses its ignored
+`.aoe2war-release` tree as the default shared evidence store for certified release
+receipts, historical benchmarks and performance campaigns.
+
+This does **not** weaken Release OS ownership. Certified production state is still
+validated by the canonical main worktree's own `aoe2_release.py` and receipt chain.
+A performance worktree records its own HEAD separately as `operator_source_sha`, so
+benchmark evidence distinguishes the production release being measured from the
+Speed implementation performing the measurement.
+
+The optional `AOE2_SPEED_AUTHORITY_ROOT` and `AOE2_SPEED_STATE_ROOT` environment
+overrides exist for explicit operator/test isolation. They are not a mechanism for
+pointing release authority at arbitrary candidate source. Receipt references remain
+portable as `.aoe2war-release/...` regardless of which worktree invoked Speed OS.
+
+## Edge Delivery audit rail
+
+`aoe2war speed edge audit` joins the latest full per-route cost-stack receipt to
+source cache-safety evidence and live public response headers. It records Cloudflare
+cache status, Next cache status, cache-control directives, Set-Cookie presence and
+the measured warm public-to-origin delivery gap.
+
+The audit is deliberately non-mutating. It ranks safe opportunities and keeps
+server-personalized or runtime-cookie responses in a fail-closed blocked class.
+This creates a durable deployment manifest before any Cloudflare Cache Rule or
+other edge mutation is authorized.
+
+`aoe2war speed edge plan` converts that live audit into a non-mutating exact-route
+Cloudflare expression only for responses that also prove `x-nextjs-cache: HIT`, do
+not prohibit shared caching and do not emit `Set-Cookie`. The generated plan always
+bypasses requests carrying any known AoE2WAR cookie discovered from source (including
+`aoe2hdbets_session`), leaves `/api/` contracts untouched,
+and records `mutation_authorized: false` until external Cloudflare authority is
+explicitly connected. Ancestor Next layouts participate in the static
+personalization scan, so a future layout-level session read automatically revokes
+edge eligibility. The plan reuses a recent live audit only when the certified
+production release and a cache-safety source signature still match; `--refresh`
+forces a new live header census.
+
+## Edge-cache safety classification
+
+Speed OS never equates "delivery dominated" with "safe to cache." The source
+inventory records a conservative cache-safety classification for each page:
+
+- `server_personalized_do_not_cache` — server request/session evidence is visible;
+  blanket edge caching is prohibited.
+- `static_client_shell_candidate` — the page shell is client-rendered and server
+  request personalization is absent; personalized API/client state must remain
+  outside any shared shell cache.
+- `anonymous_dynamic_candidate_review` — dynamic public SSR with no visible server
+  personalization; any ISR/edge policy requires explicit response-equivalence and
+  freshness proof before activation.
+- `static_or_revalidated_public_candidate` — source appears static/revalidated and
+  should be checked for actual CDN HTML/RSC cache participation.
+
+This is static evidence, not an authorization to change cache policy. Session, wallet,
+wager, settlement and financial truth remain fail-closed until runtime equivalence is
+proven.
+
+## Per-route cost stack
+
+Speed OS V2 supplements public cold and warm measurements with a bounded,
+read-only loopback probe executed on the production host. The probe requests the
+same governed public route cohort directly from the local Next origin over a
+reused connection. Each route can therefore carry:
+
+- cold public TTFB;
+- warm public TTFB;
+- warm loopback-origin TTFB;
+- cold-to-warm connection setup delta;
+- warm public-to-origin delivery gap and ratio;
+- post-TTFB transfer tail;
+- static source-cost evidence;
+- browser Ready coverage.
+
+Route-specific origin evidence outranks the old global public/origin ratio when
+classifying a target as `server_data` versus `delivery_proxy`. A route whose
+origin is already fast must not trigger speculative Prisma/SSR work merely
+because its public TTFB is high. Conversely, a genuinely expensive loopback
+origin remains an application/data target even when the estate also has a large
+network seam.
+
+## Route source-cost map
+
+`aoe2war speed inventory` now attaches a conservative static source profile to
+every source page. The profile scans the page and its first-hop local imports
+for evidence such as dynamic SSR, Prisma calls, generation-cache signals,
+parallel `Promise.all` work, Suspense boundaries, client-component boundaries,
+images and complete-corpus loaders.
+
+This is deliberately called **source evidence**, not measured latency. A large
+static profile does not prove that a route is slow, and a tiny profile does not
+prove that an upstream dependency is cheap. Performance Campaign joins this
+map to measured route timings only to shorten diagnosis: for example, a warm
+server/data bottleneck plus a complete-corpus signal points toward incremental
+or generation-keyed derived projections, while a browser-Ready bottleneck plus
+client boundaries points toward hydration/media profiling.
+
+The inventory never recommends truncating complete replay truth merely to make
+a page benchmark look faster.
+
+## Cold versus warm latency contract
+
+Speed OS V2 preserves the historical isolated-process route benchmark and adds
+same-process keep-alive evidence. These answer different questions and must not
+be silently substituted for one another.
+
+- **Cold / isolated-process** TTFB includes a fresh command process and, for a
+  public HTTPS route, may include DNS, TCP and TLS setup. It remains the
+  comparable first-visit metric used by existing receipts.
+- **Warm / keep-alive** TTFB is measured after priming the same curl connection
+  cache. It better approximates repeated in-site navigation on an already-open
+  browser connection.
+- **Connection-setup delta** is the observed cold-first-transfer TTFB minus the
+  median warm TTFB on the lightweight speed check. It is diagnostic evidence,
+  not a promise that every browser will save exactly that amount.
+- **Warm public/origin seam** is preferred for deciding whether persistent
+  CDN/proxy/network delivery is actually slower than the local Next origin.
+  The legacy cold ratio remains in receipts for historical comparability.
+
+Full benchmarks also collect a bounded warm route pass in one curl process,
+primed on the lightweight speed endpoint. Route receipts therefore preserve
+both the original cold medians and supplemental warm medians without rewriting
+the old benchmark contract. Performance Campaign analysis can distinguish
+connection setup, persistent delivery/proxy cost, server/data work,
+post-TTFB payload transfer, and missing browser Ready evidence.
+
+This separation is deliberately conservative: a large cold/public ratio alone
+no longer justifies blaming the CDN or buying server hardware. Speed OS first
+asks whether the gap survives connection reuse.
+
+
 ## Browser Ready hot-path discipline
 
 `Ready` measures the first authoritative state in which the marked primary

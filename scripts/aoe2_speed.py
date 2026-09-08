@@ -3,8 +3,11 @@ from __future__ import annotations
 
 import argparse
 import csv
+import importlib.util
 import json
+import os
 import math
+import shlex
 import re
 import statistics
 import subprocess
@@ -15,13 +18,87 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-STATE = ROOT / ".aoe2war-release"
+
+
+def parse_worktree_porcelain(text: str) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    current: dict[str, str] = {}
+    for raw in text.splitlines():
+        line = raw.rstrip("\n")
+        if not line:
+            if current:
+                rows.append(current)
+                current = {}
+            continue
+        key, _, value = line.partition(" ")
+        if key in {"worktree", "HEAD", "branch"}:
+            current[key] = value
+    if current:
+        rows.append(current)
+    return rows
+
+
+def canonical_main_worktree() -> Path:
+    override = os.getenv("AOE2_SPEED_AUTHORITY_ROOT", "").strip()
+    if override:
+        candidate = Path(override).expanduser().resolve()
+        if not (candidate / ".git").exists():
+            raise RuntimeError(
+                f"AOE2_SPEED_AUTHORITY_ROOT is not a git worktree: {candidate}"
+            )
+        return candidate
+
+    proc = subprocess.run(
+        ["git", "worktree", "list", "--porcelain"],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode == 0:
+        for row in parse_worktree_porcelain(proc.stdout):
+            if row.get("branch") == "refs/heads/main" and row.get("worktree"):
+                return Path(row["worktree"]).resolve()
+    return ROOT
+
+
+AUTHORITY_ROOT = canonical_main_worktree()
+STATE = Path(
+    os.getenv(
+        "AOE2_SPEED_STATE_ROOT",
+        str(AUTHORITY_ROOT / ".aoe2war-release"),
+    )
+).expanduser().resolve()
 FINISH_RECEIPTS = STATE / "finish-receipts"
 STAGE_RECEIPTS = STATE / "stage-receipts"
 ACTIVATION_RECEIPTS = STATE / "activation-receipts"
 PERFORMANCE_RECEIPTS = STATE / "performance-receipts"
 PERFORMANCE_ATTEMPTS = STATE / "performance-attempts"
 BASELINE_DIR = STATE / "performance-baselines"
+
+
+def evidence_ref(path: str | Path) -> str:
+    value = Path(path).expanduser().resolve()
+    try:
+        relative = value.relative_to(STATE)
+        return str(Path(".aoe2war-release") / relative)
+    except ValueError:
+        pass
+    try:
+        return str(value.relative_to(ROOT))
+    except ValueError:
+        return str(value)
+
+
+def resolve_evidence_ref(value: str | Path) -> Path:
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    parts = path.parts
+    if parts and parts[0] == ".aoe2war-release":
+        return STATE.joinpath(*parts[1:])
+    return ROOT / path
 HISTORICAL_ROUTE_CSV = (
     ROOT / "docs" / "audits" / "performance-route-comparison-2026-08-13.csv"
 )
@@ -30,7 +107,8 @@ FULL_ROUTE_COHORT_V2 = (
 )
 PUBLIC_BASE = "https://aoe2war.com"
 PRODUCTION_HOST = "hel1"
-ORIGIN_SPEED_URL = "http://127.0.0.1:3030/api/speed/check"
+ORIGIN_BASE = "http://127.0.0.1:3030"
+ORIGIN_SPEED_URL = f"{ORIGIN_BASE}/api/speed/check"
 PUBLIC_SPEED_URL = f"{PUBLIC_BASE}/api/speed/check"
 
 QUICK_ROUTES = [
@@ -217,7 +295,7 @@ def baseline_zero_summary() -> dict[str, Any] | None:
         if not passing:
             continue
         return {
-            "source": str(summary_path.relative_to(ROOT)),
+            "source": evidence_ref(summary_path),
             "route_count": len(passing),
             "median_ttfb_ms": statistics.median(
                 float(row["current_ttfb_ms"]) for row in passing
@@ -263,12 +341,37 @@ def ready_coverage() -> dict[str, Any]:
     }
 
 
+CURL_METRIC_FORMAT = (
+    "%{http_code}\\t%{time_namelookup}\\t%{time_connect}\\t"
+    "%{time_appconnect}\\t%{time_starttransfer}\\t%{time_total}\\t"
+    "%{size_download}\\t%{num_connects}\\t%{url_effective}"
+)
+
+
+def parse_curl_metric_line(line: str, url: str) -> dict[str, Any] | None:
+    fields = line.rstrip("\n").split("\t")
+    if len(fields) != 9:
+        return None
+    code, dns, connect, tls, ttfb, total, size_download, connects, effective = fields
+    try:
+        return {
+            "ok": int(code) == 200,
+            "http_code": int(code),
+            "dns_ms": float(dns) * 1000,
+            "connect_ms": float(connect) * 1000,
+            "tls_ms": float(tls) * 1000,
+            "ttfb_ms": float(ttfb) * 1000,
+            "total_ms": float(total) * 1000,
+            "download_bytes": int(float(size_download)),
+            "new_connections": int(float(connects)),
+            "effective_url": effective,
+            "url": url,
+        }
+    except (TypeError, ValueError):
+        return None
+
+
 def run_curl(url: str, timeout: int = 15) -> dict[str, Any]:
-    fmt = (
-        "%{http_code}\\t%{time_namelookup}\\t%{time_connect}\\t"
-        "%{time_appconnect}\\t%{time_starttransfer}\\t%{time_total}\\t"
-        "%{size_download}\\t%{url_effective}"
-    )
     proc = subprocess.run(
         [
             "curl",
@@ -280,7 +383,7 @@ def run_curl(url: str, timeout: int = 15) -> dict[str, Any]:
             "-o",
             "/dev/null",
             "-w",
-            fmt,
+            CURL_METRIC_FORMAT,
             url,
         ],
         cwd=ROOT,
@@ -295,26 +398,61 @@ def run_curl(url: str, timeout: int = 15) -> dict[str, Any]:
             "error": (proc.stderr or "").strip()[-500:],
             "url": url,
         }
-    fields = proc.stdout.rstrip("\n").split("\t")
-    if len(fields) != 8:
+    parsed = parse_curl_metric_line(proc.stdout, url)
+    if parsed is None:
         return {
             "ok": False,
             "error": "unexpected curl metric output",
             "url": url,
         }
-    code, dns, connect, tls, ttfb, total, size_download, effective = fields
-    return {
-        "ok": code == "200",
-        "http_code": int(code),
-        "dns_ms": float(dns) * 1000,
-        "connect_ms": float(connect) * 1000,
-        "tls_ms": float(tls) * 1000,
-        "ttfb_ms": float(ttfb) * 1000,
-        "total_ms": float(total) * 1000,
-        "download_bytes": int(float(size_download)),
-        "effective_url": effective,
-        "url": url,
-    }
+    return parsed
+
+
+def run_curl_sequence(
+    urls: list[str],
+    *,
+    timeout: int = 15,
+) -> list[dict[str, Any]]:
+    """Measure several transfers in one curl process so its connection cache survives."""
+    if not urls:
+        return []
+
+    command = [
+        "curl",
+        "-sS",
+        "-L",
+        "--compressed",
+        "--max-time",
+        str(timeout),
+        "-w",
+        CURL_METRIC_FORMAT + "\\n",
+    ]
+    for url in urls:
+        command.extend(["-o", "/dev/null", url])
+
+    proc = subprocess.run(
+        command,
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return []
+
+    lines = proc.stdout.splitlines()
+    if len(lines) != len(urls):
+        return []
+
+    rows: list[dict[str, Any]] = []
+    for index, (line, url) in enumerate(zip(lines, urls, strict=True)):
+        parsed = parse_curl_metric_line(line, url)
+        if parsed is None:
+            return []
+        parsed["sequence_index"] = index
+        rows.append(parsed)
+    return rows
 
 
 def benchmark_sample(
@@ -428,7 +566,89 @@ def cohort_identity(payload: dict[str, Any]) -> tuple[str, tuple[str, ...]]:
     return mode, routes
 
 
+def keepalive_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    if len(rows) < 2 or not rows[0].get("ok"):
+        return {
+            "available": False,
+            "reason": "at least two successful same-process transfers are required",
+        }
+    warm = [row for row in rows[1:] if row.get("ok")]
+    if not warm:
+        return {
+            "available": False,
+            "reason": "no successful warm transfer followed the priming request",
+        }
+
+    cold_ttfb = float(rows[0]["ttfb_ms"])
+    warm_ttfb = statistics.median(float(row["ttfb_ms"]) for row in warm)
+    warm_total = statistics.median(float(row["total_ms"]) for row in warm)
+    return {
+        "available": True,
+        "transfer_count": len(rows),
+        "warm_samples": len(warm),
+        "cold_ttfb_ms": cold_ttfb,
+        "cold_total_ms": float(rows[0]["total_ms"]),
+        "warm_median_ttfb_ms": warm_ttfb,
+        "warm_median_total_ms": warm_total,
+        "cold_dns_ms": float(rows[0]["dns_ms"]),
+        "cold_connect_ms": float(rows[0]["connect_ms"]),
+        "cold_tls_complete_ms": float(rows[0]["tls_ms"]),
+        "connection_setup_delta_ms": max(0.0, cold_ttfb - warm_ttfb),
+        "warm_new_connection_transfers": sum(
+            1 for row in warm if int(row.get("new_connections") or 0) > 0
+        ),
+        "warm_reused_connection_transfers": sum(
+            1 for row in warm if int(row.get("new_connections") or 0) == 0
+        ),
+    }
+
+
+def remote_origin_keepalive(samples: int) -> list[dict[str, Any]]:
+    count = max(2, samples)
+    operands = " ".join(
+        f"-o /dev/null {ORIGIN_SPEED_URL}"
+        for _ in range(count)
+    )
+    script = (
+        "curl -fsS -L --compressed --max-time 5 "
+        f"-w '{CURL_METRIC_FORMAT}\\n' {operands}\n"
+    )
+    proc = subprocess.run(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=8",
+            PRODUCTION_HOST,
+            "bash",
+            "-s",
+        ],
+        input=script,
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return []
+    lines = proc.stdout.splitlines()
+    if len(lines) != count:
+        return []
+    rows: list[dict[str, Any]] = []
+    for index, line in enumerate(lines):
+        parsed = parse_curl_metric_line(line, ORIGIN_SPEED_URL)
+        if parsed is None:
+            return []
+        parsed["sequence_index"] = index
+        rows.append(parsed)
+    return rows
+
+
 def origin_seam(samples: int = 5) -> dict[str, Any]:
+    # Preserve the historical isolated-process metric exactly. It remains useful
+    # for cold first-visit latency and keeps old receipts comparable.
     public: list[float] = []
     origin: list[float] = []
 
@@ -471,17 +691,236 @@ done
             except ValueError:
                 continue
 
+    sequence_count = max(3, samples)
+    public_keepalive = keepalive_summary(
+        run_curl_sequence(
+            [PUBLIC_SPEED_URL] * sequence_count,
+            timeout=10,
+        )
+    )
+    origin_keepalive = keepalive_summary(
+        remote_origin_keepalive(sequence_count)
+    )
+
+    warm_ratio = None
+    warm_gap = None
+    if public_keepalive.get("available") and origin_keepalive.get("available"):
+        public_warm = float(public_keepalive["warm_median_ttfb_ms"])
+        origin_warm = float(origin_keepalive["warm_median_ttfb_ms"])
+        if origin_warm > 0:
+            warm_ratio = public_warm / origin_warm
+            warm_gap = public_warm - origin_warm
+
+    legacy_ratio = (
+        statistics.median(public) / statistics.median(origin)
+        if public and origin and statistics.median(origin) > 0
+        else None
+    )
+
     return {
+        "measurement_contract": "isolated_process_legacy_plus_keepalive_v2",
         "public_samples": len(public),
         "origin_samples": len(origin),
         "public_median_ttfb_ms": statistics.median(public) if public else None,
         "origin_median_ttfb_ms": statistics.median(origin) if origin else None,
-        "ratio": (
-            statistics.median(public) / statistics.median(origin)
-            if public and origin and statistics.median(origin) > 0
+        "ratio": legacy_ratio,
+        "legacy_isolated_process_ratio": legacy_ratio,
+        "public_keepalive": public_keepalive,
+        "origin_keepalive": origin_keepalive,
+        "warm_ratio": warm_ratio,
+        "warm_delivery_gap_ms": warm_gap,
+        "public_connection_setup_delta_ms": (
+            public_keepalive.get("connection_setup_delta_ms")
+            if public_keepalive.get("available")
             else None
         ),
     }
+
+
+def warm_route_probe(
+    routes: list[str],
+    rounds: int,
+) -> dict[str, Any]:
+    """Supplement the legacy cold route benchmark with browser-like connection reuse."""
+    warm_rounds = min(max(1, rounds), 3)
+    urls = [PUBLIC_SPEED_URL]
+    labels: list[tuple[int, str]] = []
+    for round_no in range(1, warm_rounds + 1):
+        for path in routes:
+            urls.append(PUBLIC_BASE + path)
+            labels.append((round_no, path))
+
+    rows = run_curl_sequence(urls, timeout=15)
+    if len(rows) != len(urls) or not rows[0].get("ok"):
+        return {
+            "available": False,
+            "rounds": warm_rounds,
+            "sample_count": 0,
+            "reason": "same-process public route sequence failed or was incomplete",
+            "samples": [],
+        }
+
+    route_rows = rows[1:]
+    for row, (round_no, path) in zip(route_rows, labels, strict=True):
+        row["round"] = round_no
+        row["path"] = path
+
+    if any(not row.get("ok") for row in route_rows):
+        return {
+            "available": False,
+            "rounds": warm_rounds,
+            "sample_count": len(route_rows),
+            "reason": "one or more warm route transfers failed",
+            "samples": route_rows,
+        }
+
+    reused = sum(
+        1 for row in route_rows if int(row.get("new_connections") or 0) == 0
+    )
+    return {
+        "available": True,
+        "rounds": warm_rounds,
+        "sample_count": len(route_rows),
+        "prime_ttfb_ms": float(rows[0]["ttfb_ms"]),
+        "reused_connection_transfers": reused,
+        "new_connection_transfers": len(route_rows) - reused,
+        "reused_connection_percent": reused / len(route_rows) * 100.0 if route_rows else 0.0,
+        "samples": route_rows,
+    }
+
+
+def remote_origin_route_probe(
+    routes: list[str],
+    rounds: int,
+) -> dict[str, Any]:
+    """Measure route compute at the local Next origin over one reused connection."""
+    origin_rounds = min(max(1, rounds), 3)
+    urls = [ORIGIN_SPEED_URL]
+    labels: list[tuple[int, str]] = []
+    for round_no in range(1, origin_rounds + 1):
+        for path in routes:
+            urls.append(ORIGIN_BASE + path)
+            labels.append((round_no, path))
+
+    operands = " ".join(
+        f"-o /dev/null {shlex.quote(url)}"
+        for url in urls
+    )
+    script = (
+        "curl -fsS -L --compressed --max-time 15 "
+        "-H 'Host: aoe2war.com' "
+        f"-w '{CURL_METRIC_FORMAT}\n' {operands}\n"
+    )
+    try:
+        proc = subprocess.run(
+            [
+                "ssh",
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=8",
+                PRODUCTION_HOST,
+                "bash",
+                "-s",
+            ],
+            input=script,
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=min(300, max(45, len(urls) * 2)),
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {
+            "available": False,
+            "rounds": origin_rounds,
+            "sample_count": 0,
+            "reason": str(exc),
+            "samples": [],
+        }
+
+    if proc.returncode != 0:
+        return {
+            "available": False,
+            "rounds": origin_rounds,
+            "sample_count": 0,
+            "reason": (proc.stderr or proc.stdout or "origin route probe failed").strip()[-1000:],
+            "samples": [],
+        }
+
+    lines = proc.stdout.splitlines()
+    if len(lines) != len(urls):
+        return {
+            "available": False,
+            "rounds": origin_rounds,
+            "sample_count": 0,
+            "reason": f"origin route probe returned {len(lines)} records for {len(urls)} transfers",
+            "samples": [],
+        }
+
+    parsed_rows: list[dict[str, Any]] = []
+    for line, url in zip(lines, urls, strict=True):
+        parsed = parse_curl_metric_line(line, url)
+        if parsed is None or not parsed.get("ok"):
+            return {
+                "available": False,
+                "rounds": origin_rounds,
+                "sample_count": len(parsed_rows),
+                "reason": "origin route probe contained an invalid or non-200 transfer",
+                "samples": parsed_rows,
+            }
+        parsed_rows.append(parsed)
+
+    prime = parsed_rows[0]
+    route_rows = parsed_rows[1:]
+    for row, (round_no, path) in zip(route_rows, labels, strict=True):
+        row["round"] = round_no
+        row["path"] = path
+
+    reused = sum(
+        1 for row in route_rows if int(row.get("new_connections") or 0) == 0
+    )
+    return {
+        "available": True,
+        "rounds": origin_rounds,
+        "sample_count": len(route_rows),
+        "prime_ttfb_ms": float(prime["ttfb_ms"]),
+        "reused_connection_transfers": reused,
+        "new_connection_transfers": len(route_rows) - reused,
+        "reused_connection_percent": reused / len(route_rows) * 100.0 if route_rows else 0.0,
+        "samples": route_rows,
+    }
+
+
+def origin_route_cohort(per_route: list[dict[str, Any]]) -> dict[str, float] | None:
+    rows = [
+        {
+            "median_ttfb_ms": row["origin_warm_median_ttfb_ms"],
+            "median_total_ms": row["origin_warm_median_total_ms"],
+        }
+        for row in per_route
+        if isinstance(row.get("origin_warm_median_ttfb_ms"), (int, float))
+        and isinstance(row.get("origin_warm_median_total_ms"), (int, float))
+    ]
+    if len(rows) != len(per_route) or not rows:
+        return None
+    return summarize_route_cohort(rows)
+
+
+def warm_route_cohort(per_route: list[dict[str, Any]]) -> dict[str, float] | None:
+    rows = [
+        {
+            "median_ttfb_ms": row["warm_median_ttfb_ms"],
+            "median_total_ms": row["warm_median_total_ms"],
+        }
+        for row in per_route
+        if isinstance(row.get("warm_median_ttfb_ms"), (int, float))
+        and isinstance(row.get("warm_median_total_ms"), (int, float))
+    ]
+    if len(rows) != len(per_route) or not rows:
+        return None
+    return summarize_route_cohort(rows)
 
 
 def production_capacity_snapshot() -> dict[str, Any]:
@@ -650,18 +1089,46 @@ printf 'memory_pressure=%s\n' "$(count_pattern 'heap out of memory|ENOMEM|alloca
         "counts": counts,
     }
 
-def collect_release_identity() -> dict[str, Any]:
-    sys.path.insert(0, str(ROOT / "scripts"))
-    import aoe2_release  # type: ignore
+def git_head(root: Path = ROOT) -> str | None:
+    proc = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=root,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    value = proc.stdout.strip()
+    return value if proc.returncode == 0 and value else None
 
-    data = aoe2_release.collect()
+
+def release_authority_data() -> dict[str, Any]:
+    release_tool = AUTHORITY_ROOT / "scripts" / "aoe2_release.py"
+    spec = importlib.util.spec_from_file_location(
+        "aoe2_speed_release_authority",
+        release_tool,
+    )
+    if not spec or not spec.loader:
+        raise SpeedError(f"cannot load release authority: {release_tool}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    data = module.collect()
+    if not isinstance(data, dict):
+        raise SpeedError("release authority returned invalid state")
+    return data
+
+
+def collect_release_identity() -> dict[str, Any]:
+    data = release_authority_data()
     return {
         "release_sha": data.get("production", {}).get("source_sha"),
-        "operator_source_sha": data.get("local", {}).get("head"),
+        "operator_source_sha": git_head(ROOT),
         "github_main_sha": data.get("github", {}).get("main_sha"),
         "build_id": data.get("production", {}).get("active_build_id"),
         "build_version": data.get("production", {}).get("internal_build_version"),
         "certification": data.get("certification", {}).get("status"),
+        "release_authority_root": str(AUTHORITY_ROOT),
+        "performance_state_root": str(STATE),
     }
 
 
@@ -776,26 +1243,97 @@ def benchmark(
             f"receipt={attempt_path}"
         )
 
+    warm_probe = warm_route_probe(routes, rounds)
+    warm_samples = list(warm_probe.get("samples") or [])
+    origin_route_probe = remote_origin_route_probe(routes, rounds)
+    origin_route_samples = list(origin_route_probe.get("samples") or [])
+
     per_route: list[dict[str, Any]] = []
     for path in routes:
         route_samples = [sample for sample in passing if sample["path"] == path]
-        per_route.append(
-            {
-                "path": path,
-                "samples": len(route_samples),
-                "median_ttfb_ms": statistics.median(
-                    float(sample["ttfb_ms"]) for sample in route_samples
-                ),
-                "median_total_ms": statistics.median(
-                    float(sample["total_ms"]) for sample in route_samples
-                ),
-                "median_download_bytes": int(
-                    statistics.median(
-                        int(sample["download_bytes"]) for sample in route_samples
-                    )
-                ),
-            }
-        )
+        row: dict[str, Any] = {
+            "path": path,
+            "samples": len(route_samples),
+            "median_ttfb_ms": statistics.median(
+                float(sample["ttfb_ms"]) for sample in route_samples
+            ),
+            "median_total_ms": statistics.median(
+                float(sample["total_ms"]) for sample in route_samples
+            ),
+            "median_download_bytes": int(
+                statistics.median(
+                    int(sample["download_bytes"]) for sample in route_samples
+                )
+            ),
+        }
+        warm_for_route = [
+            sample
+            for sample in warm_samples
+            if sample.get("path") == path and sample.get("ok")
+        ]
+        if warm_probe.get("available") and warm_for_route:
+            row.update(
+                {
+                    "warm_samples": len(warm_for_route),
+                    "warm_median_ttfb_ms": statistics.median(
+                        float(sample["ttfb_ms"]) for sample in warm_for_route
+                    ),
+                    "warm_median_total_ms": statistics.median(
+                        float(sample["total_ms"]) for sample in warm_for_route
+                    ),
+                    "warm_median_download_bytes": int(
+                        statistics.median(
+                            int(sample["download_bytes"])
+                            for sample in warm_for_route
+                        )
+                    ),
+                    "warm_reused_connection_percent": (
+                        sum(
+                            1
+                            for sample in warm_for_route
+                            if int(sample.get("new_connections") or 0) == 0
+                        )
+                        / len(warm_for_route)
+                        * 100.0
+                    ),
+                }
+            )
+
+        origin_for_route = [
+            sample
+            for sample in origin_route_samples
+            if sample.get("path") == path and sample.get("ok")
+        ]
+        if origin_route_probe.get("available") and origin_for_route:
+            origin_ttfb = statistics.median(
+                float(sample["ttfb_ms"]) for sample in origin_for_route
+            )
+            origin_total = statistics.median(
+                float(sample["total_ms"]) for sample in origin_for_route
+            )
+            row.update(
+                {
+                    "origin_warm_samples": len(origin_for_route),
+                    "origin_warm_median_ttfb_ms": origin_ttfb,
+                    "origin_warm_median_total_ms": origin_total,
+                    "origin_warm_reused_connection_percent": (
+                        sum(
+                            1
+                            for sample in origin_for_route
+                            if int(sample.get("new_connections") or 0) == 0
+                        )
+                        / len(origin_for_route)
+                        * 100.0
+                    ),
+                }
+            )
+            if isinstance(row.get("warm_median_ttfb_ms"), (int, float)):
+                public_warm = float(row["warm_median_ttfb_ms"])
+                row["warm_public_origin_gap_ms"] = max(0.0, public_warm - origin_ttfb)
+                row["warm_public_origin_ratio"] = (
+                    public_warm / origin_ttfb if origin_ttfb > 0 else None
+                )
+        per_route.append(row)
 
     seam = origin_seam()
     ready = ready_coverage()
@@ -824,6 +1362,18 @@ def benchmark(
         ),
         **identity,
         "cohort": summarize_route_cohort(per_route),
+        "warm_cohort": warm_route_cohort(per_route),
+        "origin_route_cohort": origin_route_cohort(per_route),
+        "connection_reuse_probe": {
+            key: value
+            for key, value in warm_probe.items()
+            if key != "samples"
+        },
+        "origin_route_probe": {
+            key: value
+            for key, value in origin_route_probe.items()
+            if key != "samples"
+        },
         "origin_seam": seam,
         "ready_coverage": ready,
         "production_capacity": capacity,
@@ -1168,12 +1718,31 @@ def main() -> int:
             )
             if seam.get("public_median_ttfb_ms") and seam.get("origin_median_ttfb_ms"):
                 print(
-                    "Public/origin:   "
+                    "Cold public/origin: "
                     f"{seam['public_median_ttfb_ms']:.1f} / "
                     f"{seam['origin_median_ttfb_ms']:.2f} ms · "
                     f"{seam['ratio']:.1f}×"
                 )
-            print(f"Receipt:         {Path(payload['_path']).relative_to(ROOT)}")
+            public_keepalive = seam.get("public_keepalive") or {}
+            origin_keepalive = seam.get("origin_keepalive") or {}
+            if (
+                seam.get("warm_ratio") is not None
+                and public_keepalive.get("available")
+                and origin_keepalive.get("available")
+            ):
+                print(
+                    "Warm public/origin: "
+                    f"{public_keepalive['warm_median_ttfb_ms']:.1f} / "
+                    f"{origin_keepalive['warm_median_ttfb_ms']:.2f} ms · "
+                    f"{seam['warm_ratio']:.1f}×"
+                )
+            if seam.get("public_connection_setup_delta_ms") is not None:
+                print(
+                    "Connection setup:   "
+                    f"~{float(seam['public_connection_setup_delta_ms']):.1f} ms "
+                    "cold-to-warm delta"
+                )
+            print(f"Receipt:         {evidence_ref(payload['_path'])}")
             print()
             print("PASS: performance benchmark captured")
             return 0

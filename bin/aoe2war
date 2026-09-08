@@ -72,6 +72,7 @@ STORAGE="$BIN_DIR/../scripts/aoe2_storage.py"
 SPEED="$BIN_DIR/../scripts/aoe2_speed.py"
 SPEED_CAMPAIGN="$BIN_DIR/../scripts/aoe2_speed_campaign.py"
 SPEED_INVENTORY="$BIN_DIR/../scripts/aoe2_speed_inventory.py"
+SPEED_EDGE="$BIN_DIR/../scripts/aoe2_speed_edge.py"
 SPEED_BUILD="$BIN_DIR/../scripts/aoe2_speed_build.py"
 DOCS_OS="$BIN_DIR/../scripts/aoe2_docs.py"
 COUNCIL="$BIN_DIR/../scripts/aoe2_council.py"
@@ -98,7 +99,7 @@ Usage:
   aoe2war update [--apply] [--json]
   aoe2war control <status|refresh> [options]
   aoe2war docs <status|impact|audit|update> [options]
-  aoe2war speed [status|release-history|benchmark|compare|diagnose|inventory|build|campaign|pulse]
+  aoe2war speed [status|release-history|benchmark|compare|diagnose|inventory|edge|build|campaign|pulse]
   aoe2war storage-retention [--apply] [--json]
   aoe2war storage <status|plan|maintain|verify> [options]
   aoe2war council [--json]
@@ -448,6 +449,10 @@ case "$command" in
     if [ "${1:-}" = "inventory" ]; then
       shift
       exec python3 "$SPEED_INVENTORY" "$@"
+    fi
+    if [ "${1:-}" = "edge" ]; then
+      shift
+      exec python3 "$SPEED_EDGE" "$@"
     fi
     if [ "${1:-}" = "build" ]; then
       shift

@@ -43,11 +43,7 @@ def git_head() -> str:
 
 
 def rel(path: str | Path) -> str:
-    value = Path(path)
-    try:
-        return str(value.resolve().relative_to(ROOT))
-    except Exception:
-        return str(value)
+    return speed.evidence_ref(path)
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -117,10 +113,7 @@ def resolve_campaign(value: str | None, *, open_only: bool = False) -> dict[str,
 
 
 def receipt_path(value: str) -> Path:
-    path = Path(value)
-    if not path.is_absolute():
-        path = ROOT / path
-    return path
+    return speed.resolve_evidence_ref(value)
 
 
 def load_receipt(value: str) -> dict[str, Any]:
@@ -299,10 +292,40 @@ def incident_advice(baseline: dict[str, Any]) -> dict[str, Any]:
         "actions": actions,
     }
 
+def preferred_seam(baseline: dict[str, Any]) -> dict[str, Any]:
+    seam = baseline.get("origin_seam") or {}
+    warm_ratio = seam.get("warm_ratio")
+    public_keepalive = seam.get("public_keepalive") or {}
+    origin_keepalive = seam.get("origin_keepalive") or {}
+    if (
+        isinstance(warm_ratio, (int, float))
+        and public_keepalive.get("available")
+        and origin_keepalive.get("available")
+        and isinstance(public_keepalive.get("warm_median_ttfb_ms"), (int, float))
+        and isinstance(origin_keepalive.get("warm_median_ttfb_ms"), (int, float))
+    ):
+        return {
+            "contract": "warm_keepalive_v2",
+            "ratio": float(warm_ratio),
+            "public_ttfb_ms": float(public_keepalive["warm_median_ttfb_ms"]),
+            "origin_ttfb_ms": float(origin_keepalive["warm_median_ttfb_ms"]),
+            "connection_setup_delta_ms": seam.get("public_connection_setup_delta_ms"),
+            "legacy_ratio": seam.get("legacy_isolated_process_ratio") or seam.get("ratio"),
+        }
+    return {
+        "contract": "legacy_isolated_process",
+        "ratio": seam.get("ratio"),
+        "public_ttfb_ms": seam.get("public_median_ttfb_ms"),
+        "origin_ttfb_ms": seam.get("origin_median_ttfb_ms"),
+        "connection_setup_delta_ms": None,
+        "legacy_ratio": seam.get("ratio"),
+    }
+
+
 def capacity_advice(baseline: dict[str, Any]) -> dict[str, Any]:
     capacity = baseline.get("production_capacity") or {}
-    seam = baseline.get("origin_seam") or {}
-    cohort = baseline.get("cohort") or {}
+    seam = preferred_seam(baseline)
+    cohort = baseline.get("warm_cohort") or baseline.get("cohort") or {}
 
     result: dict[str, Any] = {
         "available": bool(capacity.get("available")),
@@ -320,8 +343,8 @@ def capacity_advice(baseline: dict[str, Any]) -> dict[str, Any]:
     }
 
     ratio = seam.get("ratio")
-    public_ttfb = seam.get("public_median_ttfb_ms")
-    origin_ttfb = seam.get("origin_median_ttfb_ms")
+    public_ttfb = seam.get("public_ttfb_ms")
+    origin_ttfb = seam.get("origin_ttfb_ms")
     if (
         isinstance(ratio, (int, float))
         and isinstance(public_ttfb, (int, float))
@@ -331,9 +354,9 @@ def capacity_advice(baseline: dict[str, Any]) -> dict[str, Any]:
             result["hardware"]["delivery"] = {
                 "action": "priority",
                 "reason": (
-                    f"The public speed-check is {float(ratio):.1f}x slower than origin "
+                    f"The {seam.get('contract')} public speed-check is {float(ratio):.1f}x slower than origin "
                     f"({float(public_ttfb):.0f} ms vs {float(origin_ttfb):.0f} ms). "
-                    "Fix proxy/CDN/network delivery before buying server hardware."
+                    "Fix persistent proxy/CDN/network delivery before buying server hardware."
                 ),
             }
             result["summary"].append(
@@ -343,8 +366,8 @@ def capacity_advice(baseline: dict[str, Any]) -> dict[str, Any]:
             result["hardware"]["delivery"] = {
                 "action": "hold",
                 "reason": (
-                    f"Public/origin seam is {float(ratio):.1f}x; it is not yet strong evidence that "
-                    "the network edge is the dominant bottleneck."
+                    f"{seam.get('contract')} public/origin seam is {float(ratio):.1f}x; it is not strong evidence that "
+                    "persistent delivery is the dominant bottleneck."
                 ),
             }
 
@@ -493,22 +516,53 @@ def prior_campaign_learning() -> dict[str, Any]:
     }
 
 
-def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
+def source_profile_by_benchmark_route(
+    source_inventory: dict[str, Any] | None,
+) -> dict[str, dict[str, Any]]:
+    if not isinstance(source_inventory, dict):
+        return {}
+    result: dict[str, dict[str, Any]] = {}
+    for row in source_inventory.get("pages") or []:
+        if not isinstance(row, dict):
+            continue
+        representative = row.get("benchmark_representative")
+        profile = row.get("source_profile")
+        if isinstance(representative, str) and isinstance(profile, dict):
+            result[representative] = profile
+    return result
+
+
+def analyze_baseline(
+    baseline: dict[str, Any],
+    source_inventory: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     cohort = baseline.get("cohort") or {}
+    persistent_cohort = baseline.get("warm_cohort") or cohort
     p50_ttfb = float(cohort.get("ttfb_p50_ms") or 1.0)
-    p75_ttfb = float(cohort.get("ttfb_p75_ms") or p50_ttfb)
+    p75_ttfb = float(persistent_cohort.get("ttfb_p75_ms") or p50_ttfb)
     p50_total = float(cohort.get("total_p50_ms") or 1.0)
-    p75_total = float(cohort.get("total_p75_ms") or p50_total)
-    seam = baseline.get("origin_seam") or {}
+    p75_total = float(persistent_cohort.get("total_p75_ms") or p50_total)
+    seam = preferred_seam(baseline)
     seam_ratio = (
         float(seam["ratio"])
         if isinstance(seam.get("ratio"), (int, float))
+        else None
+    )
+    legacy_seam_ratio = (
+        float(seam["legacy_ratio"])
+        if isinstance(seam.get("legacy_ratio"), (int, float))
+        else None
+    )
+    connection_setup_delta = (
+        float(seam["connection_setup_delta_ms"])
+        if isinstance(seam.get("connection_setup_delta_ms"), (int, float))
         else None
     )
     ready = baseline.get("ready_coverage") or {}
     ready_routes = set(str(route) for route in ready.get("ready_routes") or [])
     history = comparable_history(baseline)
     prior_learning = prior_campaign_learning()
+    source_profiles = source_profile_by_benchmark_route(source_inventory)
 
     rows: list[dict[str, Any]] = []
     for route_row in baseline.get("routes") or []:
@@ -517,10 +571,49 @@ def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
         route = str(route_row.get("path") or "")
         if not route:
             continue
+        source_profile = source_profiles.get(route)
         ttfb = float(route_row.get("median_ttfb_ms") or 0.0)
         total = float(route_row.get("median_total_ms") or 0.0)
         download = int(route_row.get("median_download_bytes") or 0)
         transfer_tail = max(0.0, total - ttfb)
+        warm_ttfb = (
+            float(route_row["warm_median_ttfb_ms"])
+            if isinstance(route_row.get("warm_median_ttfb_ms"), (int, float))
+            else None
+        )
+        warm_total = (
+            float(route_row["warm_median_total_ms"])
+            if isinstance(route_row.get("warm_median_total_ms"), (int, float))
+            else None
+        )
+        cold_warm_gap = (
+            max(0.0, ttfb - warm_ttfb)
+            if warm_ttfb is not None
+            else None
+        )
+        persistent_ttfb = warm_ttfb if warm_ttfb is not None else ttfb
+        persistent_total = warm_total if warm_total is not None else total
+        persistent_transfer_tail = max(0.0, persistent_total - persistent_ttfb)
+        origin_route_ttfb = (
+            float(route_row["origin_warm_median_ttfb_ms"])
+            if isinstance(route_row.get("origin_warm_median_ttfb_ms"), (int, float))
+            else None
+        )
+        delivery_gap = (
+            max(0.0, persistent_ttfb - origin_route_ttfb)
+            if origin_route_ttfb is not None
+            else None
+        )
+        delivery_ratio = (
+            persistent_ttfb / origin_route_ttfb
+            if origin_route_ttfb is not None and origin_route_ttfb > 0
+            else None
+        )
+        origin_share = (
+            origin_route_ttfb / persistent_ttfb
+            if origin_route_ttfb is not None and persistent_ttfb > 0
+            else None
+        )
 
         old_ttfb = historical_route_median(
             history,
@@ -546,11 +639,32 @@ def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
         reasons: list[str] = []
         if trend_ttfb == "regression" or trend_total == "regression":
             reasons.append("historical regression")
-        if ttfb >= max(500.0, p75_ttfb * 1.10):
-            reasons.append("high server/public TTFB")
+        if persistent_ttfb >= max(500.0, p75_ttfb * 1.10):
+            reasons.append("high persistent public TTFB")
+        if (
+            origin_route_ttfb is not None
+            and origin_route_ttfb >= 150.0
+            and origin_share is not None
+            and origin_share >= 0.35
+        ):
+            reasons.append("high origin route TTFB")
+        if (
+            delivery_gap is not None
+            and delivery_gap >= 150.0
+            and delivery_ratio is not None
+            and delivery_ratio >= 2.0
+        ):
+            reasons.append("large warm public-to-origin delivery gap")
+        if (
+            cold_warm_gap is not None
+            and cold_warm_gap >= 150.0
+            and ttfb > 0
+            and cold_warm_gap / ttfb >= 0.25
+        ):
+            reasons.append("large cold-to-warm connection gap")
         if total >= max(750.0, p75_total * 1.10):
             reasons.append("high total response time")
-        if transfer_tail >= 300.0:
+        if persistent_transfer_tail >= 300.0:
             reasons.append("large post-TTFB transfer tail")
         if download >= 750_000:
             reasons.append("large response payload")
@@ -566,18 +680,83 @@ def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
         if "historical regression" in reasons:
             score += 1.0
 
+        if "high origin route TTFB" in reasons:
+            dominant_layer = "server_data"
+        elif "large warm public-to-origin delivery gap" in reasons:
+            dominant_layer = "delivery_proxy"
+        elif "high persistent public TTFB" in reasons:
+            dominant_layer = "delivery_proxy" if seam_ratio is not None and seam_ratio >= 4.0 else "server_data"
+        elif "large cold-to-warm connection gap" in reasons:
+            dominant_layer = "connection_setup"
+        elif "large response payload" in reasons or "large post-TTFB transfer tail" in reasons:
+            dominant_layer = "transfer_payload"
+        elif route not in ready_routes:
+            dominant_layer = "browser_ready_unknown"
+        else:
+            dominant_layer = "mixed_or_healthy"
+
         recommendation: list[str] = []
         if "historical regression" in reasons:
             recommendation.append("diff recent route/data changes before broad tuning")
-        if "high server/public TTFB" in reasons:
+        if "high origin route TTFB" in reasons:
+            recommendation.append("profile SSR/data/cache path; route-specific origin evidence is materially expensive")
+        if "large warm public-to-origin delivery gap" in reasons:
+            recommendation.append("optimize CDN/proxy/geography path; route-specific origin is already materially faster")
+            edge_class = (
+                str(source_profile.get("edge_cache_classification") or "")
+                if isinstance(source_profile, dict)
+                else ""
+            )
+            if edge_class == "server_personalized_do_not_cache":
+                recommendation.append(
+                    "do not blanket edge-cache this route; preserve server session isolation and consider public-shell/personalized-overlay separation"
+                )
+            elif edge_class == "static_client_shell_candidate":
+                recommendation.append(
+                    "strong edge-shell candidate; keep personalized wallet/session/wager state in client/API layers"
+                )
+            elif edge_class == "anonymous_dynamic_candidate_review":
+                recommendation.append(
+                    "review bounded ISR/edge freshness only after proving anonymous response equivalence and an explicit staleness budget"
+                )
+            elif edge_class == "static_or_revalidated_public_candidate":
+                recommendation.append(
+                    "verify CDN HTML/RSC caching is actually active; source appears static or revalidated"
+                )
+        elif "high persistent public TTFB" in reasons:
             if seam_ratio is not None and seam_ratio >= 4.0:
-                recommendation.append("inspect CDN/proxy/public delivery seam before blaming origin")
+                recommendation.append("inspect persistent CDN/proxy/public delivery seam before blaming origin")
             else:
                 recommendation.append("profile SSR/data/cache path and remove avoidable blocking work")
+        if "large cold-to-warm connection gap" in reasons:
+            recommendation.append("treat DNS/TCP/TLS connection setup separately from persistent route work")
         if "large response payload" in reasons or "large post-TTFB transfer tail" in reasons:
             recommendation.append("trim RSC/HTML/API payload and optimize route-critical images/assets")
         if "no explicit browser Ready marker" in reasons:
             recommendation.append("add authoritative SpeedReadyMarker before client-readiness claims")
+        if isinstance(source_profile, dict):
+            if (
+                dominant_layer == "server_data"
+                and source_profile.get("complete_corpus_signal")
+            ):
+                recommendation.append(
+                    "preserve complete truth; optimize generation-keyed/incremental derived projection instead of truncating corpus"
+                )
+            if (
+                dominant_layer == "server_data"
+                and int(source_profile.get("direct_or_first_hop_prisma_calls") or 0) > 0
+                and not source_profile.get("generation_cache_signal")
+            ):
+                recommendation.append(
+                    "profile and narrow the first-hop database projection; no cache signal is visible in the static source map"
+                )
+            if (
+                dominant_layer in {"transfer_payload", "browser_ready_unknown"}
+                and int(source_profile.get("client_first_hop_dependencies") or 0) > 0
+            ):
+                recommendation.append(
+                    "inspect client-boundary and media hydration using browser Ready/Web Vitals evidence"
+                )
         if not recommendation:
             recommendation.append("preserve; not a first-wave optimization target")
 
@@ -589,6 +768,20 @@ def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
                 "median_total_ms": round(total, 3),
                 "median_download_bytes": download,
                 "post_ttfb_ms": round(transfer_tail, 3),
+                "warm_median_ttfb_ms": round(warm_ttfb, 3) if warm_ttfb is not None else None,
+                "warm_median_total_ms": round(warm_total, 3) if warm_total is not None else None,
+                "cold_warm_ttfb_gap_ms": round(cold_warm_gap, 3) if cold_warm_gap is not None else None,
+                "origin_warm_median_ttfb_ms": round(origin_route_ttfb, 3) if origin_route_ttfb is not None else None,
+                "warm_public_origin_gap_ms": round(delivery_gap, 3) if delivery_gap is not None else None,
+                "warm_public_origin_ratio": round(delivery_ratio, 3) if delivery_ratio is not None else None,
+                "origin_share_of_public_ttfb": round(origin_share, 4) if origin_share is not None else None,
+                "dominant_layer": dominant_layer,
+                "source_profile": source_profile,
+                "edge_cache_classification": (
+                    source_profile.get("edge_cache_classification")
+                    if isinstance(source_profile, dict)
+                    else None
+                ),
                 "historical_ttfb_ms": (
                     round(old_ttfb, 3) if old_ttfb is not None else None
                 ),
@@ -622,11 +815,33 @@ def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
     estate_findings.extend(incidents.get("findings") or [])
     if seam_ratio is not None and seam_ratio >= 4.0:
         estate_findings.append(
-            f"Public speed-check TTFB is {seam_ratio:.1f}x origin; delivery seam remains material."
+            f"Warm keep-alive speed-check TTFB is {seam_ratio:.1f}x origin; persistent delivery seam remains material."
+        )
+    elif (
+        legacy_seam_ratio is not None
+        and legacy_seam_ratio >= 4.0
+        and seam.get("contract") == "warm_keepalive_v2"
+    ):
+        estate_findings.append(
+            f"Cold isolated-process seam is {legacy_seam_ratio:.1f}x but the warm seam is only {seam_ratio:.1f}x; do not mislabel connection setup as persistent proxy latency."
+        )
+    if connection_setup_delta is not None and connection_setup_delta >= 100.0:
+        estate_findings.append(
+            f"The lightweight public check sheds about {connection_setup_delta:.0f} ms after connection reuse; DNS/TCP/TLS setup is now tracked separately."
         )
     if missing_ready:
         estate_findings.append(
             f"{len(missing_ready)} benchmark route(s) lack explicit authoritative Ready coverage."
+        )
+    delivery_dominated = sum(1 for row in rows if row.get("dominant_layer") == "delivery_proxy")
+    server_dominated = sum(1 for row in rows if row.get("dominant_layer") == "server_data")
+    if delivery_dominated:
+        estate_findings.append(
+            f"{delivery_dominated} benchmark route(s) are currently classified as delivery/proxy dominated from route-specific evidence where available."
+        )
+    if server_dominated:
+        estate_findings.append(
+            f"{server_dominated} benchmark route(s) are currently classified as server/data dominated."
         )
     if history:
         estate_findings.append(
@@ -641,6 +856,9 @@ def analyze_baseline(baseline: dict[str, Any]) -> dict[str, Any]:
         "generated_at": utc_now(),
         "history_receipts_used": len(history),
         "origin_public_ratio": seam_ratio,
+        "origin_public_contract": seam.get("contract"),
+        "legacy_isolated_process_ratio": legacy_seam_ratio,
+        "connection_setup_delta_ms": connection_setup_delta,
         "estate_findings": estate_findings,
         "ready_gaps": missing_ready,
         "learning": prior_learning,
@@ -834,7 +1052,7 @@ def start_campaign(*, full: bool, rounds: int, force_new: bool) -> dict[str, Any
     release_short = str(baseline.get("release_sha") or "unknown")[:12]
     campaign_id = f"{stamp}-{release_short}-{mode}"
 
-    analysis = analyze_baseline(baseline)
+    analysis = analyze_baseline(baseline, source_inventory)
     payload: dict[str, Any] = {
         "schema": 1,
         "kind": "aoe2war-performance-campaign",
@@ -866,7 +1084,11 @@ def analyze_campaign(campaign: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(receipt, str):
         raise CampaignError("campaign baseline receipt is missing")
     baseline = load_receipt(receipt)
-    analysis = analyze_baseline(baseline)
+    source_inventory = baseline_info.get("source_inventory")
+    analysis = analyze_baseline(
+        baseline,
+        source_inventory if isinstance(source_inventory, dict) else None,
+    )
     campaign["analysis"] = analysis
     if campaign.get("status") != "verified":
         campaign["status"] = "analyzed"

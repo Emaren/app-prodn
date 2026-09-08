@@ -83,6 +83,7 @@ test("all primary battlefield routes publish explicit readiness", () => {
     ["components/live/LiveGamesBoard.tsx", '<SpeedReadyMarker route="/live-games" />'],
     ["app/players/page.tsx", '<SpeedReadyMarker route="/players" />'],
     ["app/rivalries/page.tsx", '<SpeedReadyMarker route="/rivalries" />'],
+    ["app/battle-archive/page.tsx", '<SpeedReadyMarker route="/battle-archive" />'],
     ["app/war-chest/page.tsx", '<SpeedReadyMarker route="/war-chest" />'],
     ["app/staking/page.tsx", '<SpeedReadyMarker route="/staking" />'],
     [
@@ -128,12 +129,15 @@ test("WOLO Ready reflects primary usability, not secondary wallet proof", () => 
   assert.match(academy, /readyHeroVariant === heroVariant/);
 });
 
-test("staking overlaps independent economy and trust-rail evidence", () => {
+test("staking streams secondary chain proof without delaying primary readiness", () => {
   const staking = source("app/staking/page.tsx");
 
   assert.match(staking, /const overviewPromise = Promise\.allSettled\(/);
-  assert.match(staking, /const trustRailPromise = Promise\.all\(/);
-  assert.match(
+  assert.match(staking, /async function StakingTrustRail/);
+  assert.match(staking, /<Suspense fallback=\{<StakingTrustRailFallback \/>\}>/);
+  assert.match(staking, /<SpeedReadyMarker route="\/staking" \/>/);
+  assert.doesNotMatch(staking, /trustRailPromise/);
+  assert.doesNotMatch(
     staking,
     /await Promise\.all\(\[overviewPromise, trustRailPromise\]\)/,
   );

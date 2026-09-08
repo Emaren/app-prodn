@@ -77,6 +77,65 @@ class SpeedInventoryTests(unittest.TestCase):
         )
         self.assertIn('[ "${1:-}" = "inventory" ]', source)
 
+    def test_source_profiles_are_static_evidence_not_runtime_claims(self):
+        payload = MODULE.snapshot()
+        rivalry = next(
+            page
+            for page in payload["pages"]
+            if page["template"] == "/rivalries"
+        )
+        profile = rivalry["source_profile"]
+
+        self.assertEqual(
+            profile["evidence_scope"],
+            "static_page_plus_first_hop_imports_not_runtime_proof",
+        )
+        self.assertTrue(profile["force_dynamic"])
+        self.assertTrue(profile["complete_corpus_signal"])
+        self.assertTrue(profile["generation_cache_signal"])
+        self.assertGreater(profile["direct_or_first_hop_prisma_calls"], 0)
+
+    def test_edge_cache_safety_distinguishes_personalized_shell_and_anonymous_dynamic(self):
+        payload = MODULE.snapshot()
+        by_template = {page["template"]: page["source_profile"] for page in payload["pages"]}
+
+        self.assertEqual(
+            by_template["/war-chest"]["edge_cache_classification"],
+            "server_personalized_do_not_cache",
+        )
+        self.assertTrue(
+            by_template["/war-chest"]["server_request_personalization_signal"]
+        )
+        self.assertEqual(
+            by_template["/bets"]["edge_cache_classification"],
+            "static_client_shell_candidate",
+        )
+        self.assertTrue(by_template["/bets"]["client_personalization_signal"])
+        self.assertFalse(by_template["/bets"]["layout_server_personalization_signal"])
+        self.assertIn("app/layout.tsx", by_template["/bets"]["applicable_layouts"])
+        self.assertIn("app/bets/layout.tsx", by_template["/bets"]["applicable_layouts"])
+        self.assertEqual(
+            by_template["/kingdom"]["edge_cache_classification"],
+            "anonymous_dynamic_candidate_review",
+        )
+        self.assertFalse(
+            by_template["/kingdom"]["server_request_personalization_signal"]
+        )
+
+    def test_academy_profile_sees_streaming_and_client_hero_boundary(self):
+        payload = MODULE.snapshot()
+        academy = next(
+            page
+            for page in payload["pages"]
+            if page["template"] == "/academy"
+        )
+        profile = academy["source_profile"]
+
+        self.assertTrue(profile["force_dynamic"])
+        self.assertGreaterEqual(profile["suspense_usages"], 1)
+        self.assertGreaterEqual(profile["client_first_hop_dependencies"], 1)
+        self.assertGreater(profile["page_source_bytes"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()

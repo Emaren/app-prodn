@@ -784,6 +784,30 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertIn('verification["source_inventory"]', source)
 
 
+    def test_worktree_parser_preserves_main_authority(self):
+        rows = SPEED_MODULE.parse_worktree_porcelain(
+            "worktree /tmp/app-main\nHEAD aaaa\nbranch refs/heads/main\n\n"
+            "worktree /tmp/app-speed\nHEAD bbbb\nbranch refs/heads/feature/speed-os-v2\n"
+        )
+
+        self.assertEqual(rows[0]["worktree"], "/tmp/app-main")
+        self.assertEqual(rows[0]["branch"], "refs/heads/main")
+        self.assertEqual(rows[1]["branch"], "refs/heads/feature/speed-os-v2")
+
+    def test_shared_speed_evidence_refs_round_trip(self):
+        shared = ROOT / ".aoe2war-release-test-shared"
+        path = shared / "performance-receipts" / "sample.json"
+        with patch.object(SPEED_MODULE, "STATE", shared):
+            reference = SPEED_MODULE.evidence_ref(path)
+            self.assertEqual(
+                reference,
+                ".aoe2war-release/performance-receipts/sample.json",
+            )
+            self.assertEqual(
+                SPEED_MODULE.resolve_evidence_ref(reference),
+                path.resolve(),
+            )
+
     def test_speed_receipts_bind_to_production_source_not_operator_head(self):
         source = SPEED.read_text(encoding="utf-8")
         identity_block = source[
@@ -795,13 +819,184 @@ class PerformanceOSTests(unittest.TestCase):
             identity_block,
         )
         self.assertIn(
-            '"operator_source_sha": data.get("local", {}).get("head")',
+            '"operator_source_sha": git_head(ROOT)',
+            identity_block,
+        )
+        self.assertIn(
+            '"release_authority_root": str(AUTHORITY_ROOT)',
             identity_block,
         )
         self.assertNotIn(
             '"release_sha": data.get("local", {}).get("head")',
             identity_block,
         )
+
+    def test_keepalive_summary_separates_connection_setup_from_warm_ttfb(self):
+        rows = [
+            {"ok": True, "ttfb_ms": 420.0, "total_ms": 500.0, "dns_ms": 18.0,
+             "connect_ms": 42.0, "tls_ms": 155.0, "new_connections": 1},
+            {"ok": True, "ttfb_ms": 95.0, "total_ms": 130.0, "dns_ms": 0.0,
+             "connect_ms": 0.0, "tls_ms": 0.0, "new_connections": 0},
+            {"ok": True, "ttfb_ms": 105.0, "total_ms": 140.0, "dns_ms": 0.0,
+             "connect_ms": 0.0, "tls_ms": 0.0, "new_connections": 0},
+        ]
+
+        summary = SPEED_MODULE.keepalive_summary(rows)
+
+        self.assertTrue(summary["available"])
+        self.assertEqual(summary["warm_median_ttfb_ms"], 100.0)
+        self.assertEqual(summary["connection_setup_delta_ms"], 320.0)
+        self.assertEqual(summary["warm_reused_connection_transfers"], 2)
+
+    def test_curl_sequence_uses_one_process_and_parses_connection_reuse(self):
+        fake = type(
+            "Proc",
+            (),
+            {
+                "returncode": 0,
+                "stderr": "",
+                "stdout": (
+                    "200\t0.010\t0.020\t0.050\t0.100\t0.120\t10\t1\thttps://aoe2war.com/\n"
+                    "200\t0.000\t0.000\t0.000\t0.040\t0.060\t11\t0\thttps://aoe2war.com/bets\n"
+                ),
+            },
+        )()
+
+        with patch.object(SPEED_MODULE.subprocess, "run", return_value=fake) as run:
+            rows = SPEED_MODULE.run_curl_sequence(
+                ["https://aoe2war.com/", "https://aoe2war.com/bets"],
+                timeout=7,
+            )
+
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[0]["new_connections"], 1)
+        self.assertEqual(rows[1]["new_connections"], 0)
+        command = run.call_args.args[0]
+        self.assertEqual(command.count("curl"), 1)
+        self.assertIn("https://aoe2war.com/bets", command)
+
+    def test_remote_origin_keepalive_parses_curl_record_newlines(self):
+        fake = type(
+            "Proc",
+            (),
+            {
+                "returncode": 0,
+                "stderr": "",
+                "stdout": (
+                    "200\t0.00001\t0.00020\t0.00000\t0.00200\t0.00210\t123\t1\thttp://127.0.0.1:3030/api/speed/check\n"
+                    "200\t0.00001\t0.00000\t0.00000\t0.00080\t0.00090\t123\t0\thttp://127.0.0.1:3030/api/speed/check\n"
+                    "200\t0.00001\t0.00000\t0.00000\t0.00070\t0.00080\t123\t0\thttp://127.0.0.1:3030/api/speed/check\n"
+                ),
+            },
+        )()
+
+        with patch.object(SPEED_MODULE.subprocess, "run", return_value=fake) as run:
+            rows = SPEED_MODULE.remote_origin_keepalive(3)
+
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(rows[0]["new_connections"], 1)
+        self.assertEqual(rows[1]["new_connections"], 0)
+        script = run.call_args.kwargs["input"]
+        self.assertIn("\\n", script)
+        self.assertNotIn("\\\\n", script)
+
+    def test_origin_route_probe_labels_reused_route_samples(self):
+        fake = type(
+            "Proc",
+            (),
+            {
+                "returncode": 0,
+                "stderr": "",
+                "stdout": (
+                    "200\t0.00001\t0.00020\t0.00000\t0.00200\t0.00210\t123\t1\thttp://127.0.0.1:3030/api/speed/check\n"
+                    "200\t0.00001\t0.00000\t0.00000\t0.01000\t0.01100\t1000\t0\thttp://127.0.0.1:3030/a\n"
+                    "200\t0.00001\t0.00000\t0.00000\t0.02000\t0.02100\t2000\t0\thttp://127.0.0.1:3030/b\n"
+                ),
+            },
+        )()
+
+        with patch.object(SPEED_MODULE.subprocess, "run", return_value=fake):
+            probe = SPEED_MODULE.remote_origin_route_probe(["/a", "/b"], 1)
+
+        self.assertTrue(probe["available"])
+        self.assertEqual(probe["sample_count"], 2)
+        self.assertEqual(probe["reused_connection_transfers"], 2)
+        self.assertEqual(probe["samples"][0]["path"], "/a")
+        self.assertEqual(probe["samples"][1]["path"], "/b")
+        self.assertEqual(probe["samples"][0]["ttfb_ms"], 10.0)
+
+    def test_capacity_advice_prefers_warm_seam_over_misleading_cold_ratio(self):
+        baseline = {
+            "origin_seam": {
+                "ratio": 12.0,
+                "legacy_isolated_process_ratio": 12.0,
+                "public_median_ttfb_ms": 480.0,
+                "origin_median_ttfb_ms": 40.0,
+                "warm_ratio": 1.5,
+                "public_keepalive": {
+                    "available": True,
+                    "warm_median_ttfb_ms": 45.0,
+                },
+                "origin_keepalive": {
+                    "available": True,
+                    "warm_median_ttfb_ms": 30.0,
+                },
+                "public_connection_setup_delta_ms": 330.0,
+            },
+            "cohort": {"ttfb_p75_ms": 420.0},
+            "production_capacity": {"available": False},
+        }
+
+        advice = CAMPAIGN_MODULE.capacity_advice(baseline)
+
+        self.assertEqual(advice["hardware"]["delivery"]["action"], "hold")
+        self.assertIn("warm_keepalive_v2", advice["hardware"]["delivery"]["reason"])
+
+    def test_speed_analysis_labels_connection_setup_without_blaming_origin(self):
+        baseline = {
+            "mode": "quick",
+            "generated_at": "2026-09-08T00:00:00Z",
+            "cohort": {
+                "ttfb_p50_ms": 400.0,
+                "ttfb_p75_ms": 450.0,
+                "total_p50_ms": 520.0,
+                "total_p75_ms": 600.0,
+            },
+            "warm_cohort": {
+                "ttfb_p50_ms": 100.0,
+                "ttfb_p75_ms": 110.0,
+                "total_p50_ms": 160.0,
+                "total_p75_ms": 180.0,
+            },
+            "origin_seam": {
+                "ratio": 10.0,
+                "legacy_isolated_process_ratio": 10.0,
+                "warm_ratio": 1.4,
+                "public_keepalive": {"available": True, "warm_median_ttfb_ms": 42.0},
+                "origin_keepalive": {"available": True, "warm_median_ttfb_ms": 30.0},
+                "public_connection_setup_delta_ms": 300.0,
+            },
+            "ready_coverage": {"ready_routes": ["/"]},
+            "routes": [{
+                "path": "/",
+                "median_ttfb_ms": 430.0,
+                "median_total_ms": 510.0,
+                "median_download_bytes": 10_000,
+                "warm_median_ttfb_ms": 90.0,
+                "warm_median_total_ms": 140.0,
+            }],
+            "production_capacity": {"available": False},
+            "performance_incidents": {"available": False},
+        }
+
+        with patch.object(CAMPAIGN_MODULE, "comparable_history", return_value=[]), patch.object(
+            CAMPAIGN_MODULE, "prior_campaign_learning", return_value={"verified_campaigns": 0}
+        ):
+            analysis = CAMPAIGN_MODULE.analyze_baseline(baseline)
+
+        self.assertEqual(analysis["origin_public_contract"], "warm_keepalive_v2")
+        self.assertEqual(analysis["targets"][0]["dominant_layer"], "connection_setup")
+        self.assertIn("large cold-to-warm connection gap", analysis["targets"][0]["reasons"])
 
 
 if __name__ == "__main__":

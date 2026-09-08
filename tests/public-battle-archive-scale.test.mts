@@ -67,12 +67,16 @@ test("archive paging keeps visible offsets and totals beyond the former 5,000-ro
           battleIdentity: "platform:battle-6001",
           pageOrdinal: 1n,
           total: 6_001n,
+          finalReplayRecords: 6_050n,
+          publicBattleRecords: 6_020n,
         },
         {
           id: 1,
           battleIdentity: "platform:battle-6000",
           pageOrdinal: 2n,
           total: 6_001n,
+          finalReplayRecords: 6_050n,
+          publicBattleRecords: 6_020n,
         },
       ];
     },
@@ -92,6 +96,10 @@ test("archive paging keeps visible offsets and totals beyond the former 5,000-ro
   assert.deepEqual(queryValues, [12, 5_001]);
   assert.deepEqual(selectedIds, [2, 1]);
   assert.equal(page.total, 6_001);
+  assert.equal(page.finalReplayRecords, 6_050);
+  assert.equal(page.publicBattleRecords, 6_020);
+  assert.equal(page.duplicateBattleRecords, 19);
+  assert.equal(page.excludedFinalRecords, 30);
   assert.equal(page.offset, 5_001);
   assert.equal(page.nextOffset, 5_003);
   assert.deepEqual(page.rows.map((row) => row.id), [2, 1]);
@@ -170,6 +178,16 @@ test("archive route pages canonical database battles instead of loading a bounde
   assert.doesNotMatch(source, /archiveMode\s*\?\s*5000/);
 });
 
+
+test("battle archive page uses database-grain paging instead of whole-corpus compatibility loader", async () => {
+  const source = await readFile("app/battle-archive/page.tsx", "utf8");
+
+  assert.match(source, /loadPublicBattleArchivePage\(prisma/);
+  assert.match(source, /buildPublicRivalryActivity\(/);
+  assert.match(source, /<SpeedReadyMarker route="\/battle-archive" \/>/);
+  assert.doesNotMatch(source, /loadPublicBattleArchive\(/);
+});
+
 test("archive SQL mirrors public identity and eligibility normalization", async () => {
   const source = await readFile("lib/publicBattleArchive.ts", "utf8");
 
@@ -180,7 +198,9 @@ test("archive SQL mirrors public identity and eligibility normalization", async 
   assert.match(source, /archive_filename not like '%\.aoe2mpgame'/);
   assert.match(source, /normalized_parse_reason <> 'watcher_final_unparsed'/);
   assert.match(source, /or named_player_count >= 2/);
-  assert.match(source, /select count\(\*\)::bigint as total[\s\S]*from battles/);
+  assert.match(source, /\(select count\(\*\)::bigint from battles\) as total/);
+  assert.match(source, /\(select count\(\*\)::bigint from source\) as final_replay_records/);
+  assert.match(source, /\(select count\(\*\)::bigint from eligible\) as public_battle_records/);
 });
 
 test("identical live polls preserve loaded archive pages while refreshing seed metadata", () => {

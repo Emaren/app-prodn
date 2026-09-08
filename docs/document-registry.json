@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "48cd7b0e39a6296aae352f8ae3d5f2b19ecb6d0f3d8e9f48c1675ae304c28dfb",
+      "sha256": "c048baa5f45f16e4f98a20907249aeeffec49a1f52c26294781103576cab03b0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1093,7 +1093,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "e2281b877314bc577d1e978b717b15a746c151f26296eea38e680337c42f59fb",
+      "sha256": "1c03b836469bf5402ae1d864e724de17e9dc2ae8c3fe5abefe673e3c34fae954",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1814,8 +1814,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/live-truth-labeling-20260908",
-    "commit": "da34234da68543c39de84d5ab26eb3475b5de4d5"
+    "branch": "feature/speed-os-v2",
+    "commit": "f7672b63fe8d3f768268350a7b3ff6e3e666e493"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

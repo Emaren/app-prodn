@@ -16,11 +16,15 @@ test("player replay generation is lightweight, coalesced, and no-store", () => {
   const route = source("../app/api/players/generation/route.ts");
 
   assert.match(generation, /PUBLIC_REPLAY_GENERATION_CACHE_MS\s*=\s*1_000/);
+  assert.match(generation, /PUBLIC_USER_IDENTITY_CACHE_MS\s*=\s*5_000/);
+  assert.match(generation, /loadPublicUserIdentityFingerprint/);
+  assert.match(generation, /userIdentityPromise/);
   assert.match(generation, /prisma\.gameStats\.findFirst/);
   assert.match(generation, /prisma\.replayStatProjection\.findFirst/);
   assert.match(generation, /prisma\.replayPlayerSnapshot\.findFirst/);
   assert.match(generation, /prisma\.replayResultAdjudication\.findFirst/);
   assert.match(generation, /jsonb_agg/);
+  assert.match(generation, /loadPublicUserIdentityFingerprint\(prisma\)/);
   assert.match(generation, /users\.in_game_name/);
   assert.match(generation, /users\.steam_persona_name/);
   assert.match(generation, /users\.verification_level/);
