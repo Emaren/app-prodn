@@ -397,6 +397,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
             "scripts/aoe2_doctor.py",
             "scripts/aoe2_finish.py",
             "scripts/aoe2_operator_bridge.py",
+            "scripts/aoe2_node_runtime.py",
             "scripts/aoe2_storage_retention.py",
             "scripts/aoe2_storage.py",
             "scripts/aoe2_storage_campaign.py",
@@ -448,6 +449,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
             "tests/test_aoe2_shadow.py",
             "tests/test_dependency_contract.py",
             "tests/test_aoe2_os_closure_gate.py",
+            "tests/test_aoe2_node_runtime.py",
         }
         for path in paths
     )
@@ -487,6 +489,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "tests/test_aoe2_shadow.py",
                     "tests/test_dependency_contract.py",
                     "tests/test_aoe2_os_closure_gate.py",
+                    "tests/test_aoe2_node_runtime.py",
                     "tests/test_test_contract.py",
                     "tests/test_scan_tracked_secrets.py",
                 ],
@@ -511,6 +514,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "scripts/aoe2_doctor.py",
                     "scripts/aoe2_finish.py",
                     "scripts/aoe2_operator_bridge.py",
+                    "scripts/aoe2_node_runtime.py",
                     "scripts/aoe2_storage_retention.py",
                     "scripts/aoe2_storage.py",
                     "scripts/aoe2_storage_campaign.py",

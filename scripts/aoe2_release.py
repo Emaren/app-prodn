@@ -16,6 +16,7 @@ import uuid
 from contextlib import contextmanager, nullcontext
 from pathlib import Path
 
+
 ROOT = Path(__file__).resolve().parents[1]
 PROD_HOST = os.getenv("AOE2_RELEASE_HOST", "hel1")
 PROD_REPO = os.getenv("AOE2_RELEASE_PROD_REPO", "/var/www/AoE2HDBets/app-prodn")
@@ -749,6 +750,15 @@ def main() -> int:
     parser.add_argument("--activate", metavar="STAGE_RECEIPT")
     parser.add_argument("--limit", type=int, default=10)
     args = parser.parse_args()
+
+    if args.command in {"gate", "manifest", "ship"}:
+        import aoe2_node_runtime
+
+        try:
+            aoe2_node_runtime.ensure_build_node_runtime()
+        except aoe2_node_runtime.BuildNodeError as exc:
+            print(f"STOP: {exc}", file=sys.stderr)
+            return 2
 
     if args.command == "releases":
         if args.dry_run or args.stage or args.activate:
