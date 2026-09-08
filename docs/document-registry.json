@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "93567ecb9fd9a562b75f9f453948ca28e381feacf776f9902a2ec812e6884ed4",
+      "sha256": "1ca2a029d07b3de1e20cf1f354d367e56fda2005bbdec3b7f3ffdd5fb91c7890",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1026,7 +1026,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "c1074ae6345e9de1ed0deab60c380e9b729b031877b59cb9563f0ecf4264b909",
+      "sha256": "bfa052a25da9c8481b9d7e99aa760eabb869fb05e43aaefd326bbb55e9bf0f4d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1093,7 +1093,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "3bef7d04d18f02acaaeb7ac980ce06308955a77a0a8e90adb5b305f5355299f8",
+      "sha256": "e2281b877314bc577d1e978b717b15a746c151f26296eea38e680337c42f59fb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1814,8 +1814,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "53a0ffb16dbde2f477f80151c34e79ecfcba25cb"
+    "branch": "feature/high-roi-speed-pass-20260907",
+    "commit": "442173008fe77091710d39b758a547fe5e9ab3e2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
