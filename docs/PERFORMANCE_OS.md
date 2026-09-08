@@ -208,10 +208,11 @@ telemetry relay timeouts, generic upstream timeouts, database/pool failures,
 and memory-pressure/OOM patterns.
 
 The analyzer converts those counts into root-cause actions. In particular,
-recursive replay-archive inventory work in a public request path is treated as
-a design defect to move behind a precomputed snapshot, and a slow Traffic
-telemetry relay is treated as observability debt rather than proof that the
-user-facing page itself is slow.
+recursive replay-archive inventory work is forbidden in a public request path.
+The current web source no longer performs that filesystem walk and reports the
+physical cross-check as unavailable until an operator/background snapshot owns
+it. A slow Traffic telemetry relay is likewise observability debt rather than
+proof that the user-facing page itself is slow.
 
 These incident counts are supporting evidence. They do not override route
 timings, and the absence of a log pattern is not proof that a subsystem is
