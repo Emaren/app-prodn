@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import argparse
 import csv
+import importlib.util
 import json
+import os
 import math
 import re
 import statistics
@@ -15,13 +17,87 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-STATE = ROOT / ".aoe2war-release"
+
+
+def parse_worktree_porcelain(text: str) -> list[dict[str, str]]:
+    rows: list[dict[str, str]] = []
+    current: dict[str, str] = {}
+    for raw in text.splitlines():
+        line = raw.rstrip("\n")
+        if not line:
+            if current:
+                rows.append(current)
+                current = {}
+            continue
+        key, _, value = line.partition(" ")
+        if key in {"worktree", "HEAD", "branch"}:
+            current[key] = value
+    if current:
+        rows.append(current)
+    return rows
+
+
+def canonical_main_worktree() -> Path:
+    override = os.getenv("AOE2_SPEED_AUTHORITY_ROOT", "").strip()
+    if override:
+        candidate = Path(override).expanduser().resolve()
+        if not (candidate / ".git").exists():
+            raise RuntimeError(
+                f"AOE2_SPEED_AUTHORITY_ROOT is not a git worktree: {candidate}"
+            )
+        return candidate
+
+    proc = subprocess.run(
+        ["git", "worktree", "list", "--porcelain"],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode == 0:
+        for row in parse_worktree_porcelain(proc.stdout):
+            if row.get("branch") == "refs/heads/main" and row.get("worktree"):
+                return Path(row["worktree"]).resolve()
+    return ROOT
+
+
+AUTHORITY_ROOT = canonical_main_worktree()
+STATE = Path(
+    os.getenv(
+        "AOE2_SPEED_STATE_ROOT",
+        str(AUTHORITY_ROOT / ".aoe2war-release"),
+    )
+).expanduser().resolve()
 FINISH_RECEIPTS = STATE / "finish-receipts"
 STAGE_RECEIPTS = STATE / "stage-receipts"
 ACTIVATION_RECEIPTS = STATE / "activation-receipts"
 PERFORMANCE_RECEIPTS = STATE / "performance-receipts"
 PERFORMANCE_ATTEMPTS = STATE / "performance-attempts"
 BASELINE_DIR = STATE / "performance-baselines"
+
+
+def evidence_ref(path: str | Path) -> str:
+    value = Path(path).expanduser().resolve()
+    try:
+        relative = value.relative_to(STATE)
+        return str(Path(".aoe2war-release") / relative)
+    except ValueError:
+        pass
+    try:
+        return str(value.relative_to(ROOT))
+    except ValueError:
+        return str(value)
+
+
+def resolve_evidence_ref(value: str | Path) -> Path:
+    path = Path(value)
+    if path.is_absolute():
+        return path
+    parts = path.parts
+    if parts and parts[0] == ".aoe2war-release":
+        return STATE.joinpath(*parts[1:])
+    return ROOT / path
 HISTORICAL_ROUTE_CSV = (
     ROOT / "docs" / "audits" / "performance-route-comparison-2026-08-13.csv"
 )
@@ -217,7 +293,7 @@ def baseline_zero_summary() -> dict[str, Any] | None:
         if not passing:
             continue
         return {
-            "source": str(summary_path.relative_to(ROOT)),
+            "source": evidence_ref(summary_path),
             "route_count": len(passing),
             "median_ttfb_ms": statistics.median(
                 float(row["current_ttfb_ms"]) for row in passing
@@ -892,18 +968,46 @@ printf 'memory_pressure=%s\n' "$(count_pattern 'heap out of memory|ENOMEM|alloca
         "counts": counts,
     }
 
-def collect_release_identity() -> dict[str, Any]:
-    sys.path.insert(0, str(ROOT / "scripts"))
-    import aoe2_release  # type: ignore
+def git_head(root: Path = ROOT) -> str | None:
+    proc = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=root,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    value = proc.stdout.strip()
+    return value if proc.returncode == 0 and value else None
 
-    data = aoe2_release.collect()
+
+def release_authority_data() -> dict[str, Any]:
+    release_tool = AUTHORITY_ROOT / "scripts" / "aoe2_release.py"
+    spec = importlib.util.spec_from_file_location(
+        "aoe2_speed_release_authority",
+        release_tool,
+    )
+    if not spec or not spec.loader:
+        raise SpeedError(f"cannot load release authority: {release_tool}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    data = module.collect()
+    if not isinstance(data, dict):
+        raise SpeedError("release authority returned invalid state")
+    return data
+
+
+def collect_release_identity() -> dict[str, Any]:
+    data = release_authority_data()
     return {
         "release_sha": data.get("production", {}).get("source_sha"),
-        "operator_source_sha": data.get("local", {}).get("head"),
+        "operator_source_sha": git_head(ROOT),
         "github_main_sha": data.get("github", {}).get("main_sha"),
         "build_id": data.get("production", {}).get("active_build_id"),
         "build_version": data.get("production", {}).get("internal_build_version"),
         "certification": data.get("certification", {}).get("status"),
+        "release_authority_root": str(AUTHORITY_ROOT),
+        "performance_state_root": str(STATE),
     }
 
 
@@ -1455,7 +1559,7 @@ def main() -> int:
                     f"{seam['origin_median_ttfb_ms']:.2f} ms · "
                     f"{seam['ratio']:.1f}×"
                 )
-            print(f"Receipt:         {Path(payload['_path']).relative_to(ROOT)}")
+            print(f"Receipt:         {evidence_ref(payload['_path'])}")
             print()
             print("PASS: performance benchmark captured")
             return 0

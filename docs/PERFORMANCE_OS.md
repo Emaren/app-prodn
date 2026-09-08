@@ -48,6 +48,25 @@ plus stable representatives of dynamic route families. The frozen August 13
 66-route cohort remains historical comparison evidence only; it is not silently
 mixed with the V2 cohort.
 
+## Shared Speed OS evidence across worktrees
+
+Performance research is intentionally isolated in feature worktrees, but Speed OS
+evidence is project memory rather than branch-local scratch state. Speed OS therefore
+discovers the canonical Git `main` worktree and uses its ignored
+`.aoe2war-release` tree as the default shared evidence store for certified release
+receipts, historical benchmarks and performance campaigns.
+
+This does **not** weaken Release OS ownership. Certified production state is still
+validated by the canonical main worktree's own `aoe2_release.py` and receipt chain.
+A performance worktree records its own HEAD separately as `operator_source_sha`, so
+benchmark evidence distinguishes the production release being measured from the
+Speed implementation performing the measurement.
+
+The optional `AOE2_SPEED_AUTHORITY_ROOT` and `AOE2_SPEED_STATE_ROOT` environment
+overrides exist for explicit operator/test isolation. They are not a mechanism for
+pointing release authority at arbitrary candidate source. Receipt references remain
+portable as `.aoe2war-release/...` regardless of which worktree invoked Speed OS.
+
 ## Route source-cost map
 
 `aoe2war speed inventory` now attaches a conservative static source profile to

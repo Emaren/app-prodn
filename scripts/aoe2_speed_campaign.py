@@ -43,11 +43,7 @@ def git_head() -> str:
 
 
 def rel(path: str | Path) -> str:
-    value = Path(path)
-    try:
-        return str(value.resolve().relative_to(ROOT))
-    except Exception:
-        return str(value)
+    return speed.evidence_ref(path)
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -117,10 +113,7 @@ def resolve_campaign(value: str | None, *, open_only: bool = False) -> dict[str,
 
 
 def receipt_path(value: str) -> Path:
-    path = Path(value)
-    if not path.is_absolute():
-        path = ROOT / path
-    return path
+    return speed.resolve_evidence_ref(value)
 
 
 def load_receipt(value: str) -> dict[str, Any]:

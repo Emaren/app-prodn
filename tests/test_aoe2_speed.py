@@ -784,6 +784,30 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertIn('verification["source_inventory"]', source)
 
 
+    def test_worktree_parser_preserves_main_authority(self):
+        rows = SPEED_MODULE.parse_worktree_porcelain(
+            "worktree /tmp/app-main\nHEAD aaaa\nbranch refs/heads/main\n\n"
+            "worktree /tmp/app-speed\nHEAD bbbb\nbranch refs/heads/feature/speed-os-v2\n"
+        )
+
+        self.assertEqual(rows[0]["worktree"], "/tmp/app-main")
+        self.assertEqual(rows[0]["branch"], "refs/heads/main")
+        self.assertEqual(rows[1]["branch"], "refs/heads/feature/speed-os-v2")
+
+    def test_shared_speed_evidence_refs_round_trip(self):
+        shared = ROOT / ".aoe2war-release-test-shared"
+        path = shared / "performance-receipts" / "sample.json"
+        with patch.object(SPEED_MODULE, "STATE", shared):
+            reference = SPEED_MODULE.evidence_ref(path)
+            self.assertEqual(
+                reference,
+                ".aoe2war-release/performance-receipts/sample.json",
+            )
+            self.assertEqual(
+                SPEED_MODULE.resolve_evidence_ref(reference),
+                path.resolve(),
+            )
+
     def test_speed_receipts_bind_to_production_source_not_operator_head(self):
         source = SPEED.read_text(encoding="utf-8")
         identity_block = source[
@@ -795,7 +819,11 @@ class PerformanceOSTests(unittest.TestCase):
             identity_block,
         )
         self.assertIn(
-            '"operator_source_sha": data.get("local", {}).get("head")',
+            '"operator_source_sha": git_head(ROOT)',
+            identity_block,
+        )
+        self.assertIn(
+            '"release_authority_root": str(AUTHORITY_ROOT)',
             identity_block,
         )
         self.assertNotIn(
