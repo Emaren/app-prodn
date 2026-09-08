@@ -269,9 +269,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-29",
+      "reviewed_at": "2026-09-08",
       "sensitivity": "internal",
-      "sha256": "d273cc2a5310c9b13caf9a624a0d7653337d3d83685defb40154232fe5255416",
+      "sha256": "d3c9e7261ad45677dcef802697711d046cf376c497729e1be291dcdc65208b50",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -293,9 +293,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_STAKE_TICKETS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-01",
+      "reviewed_at": "2026-09-08",
       "sensitivity": "internal",
-      "sha256": "2f9287631733faa00013726ba5f6d022f08de28cc092ccaf47c405667cace804",
+      "sha256": "029b0295281c2e8fd75cd03601e93cdeadf7cd54ce8a5517f769eba72270bc06",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "42162b68709e2421bb807dd4008d886897ee1d7afde97e8f9d0315c1c98b4615",
+      "sha256": "8bf56fe6cdf793038441f1911ce24092736281cfee47db0bd331e430039cd6f7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1814,8 +1814,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/speed-os-v3",
-    "commit": "b2d55ed45efc9e86be01062073f85a1ba2e3b764"
+    "branch": "fix/bets-wallet-connect-cap-20260908",
+    "commit": "6ffb1c361853ba0e1f340c461d7a24889b79a316"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

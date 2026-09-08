@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-08-29"
+reviewed_at: "2026-09-08"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -59,6 +59,20 @@ Special Jim, Julio, and Emaren presentation is optional enrichment keyed by
 stable account UID. Matching somebody else's display name cannot grant a
 featured title. Any new eligible staker appears without a TypeScript edit, and
 ambiguous aliases fail closed instead of selecting the wrong financial ledger.
+
+## Manual bet wallet custody invariant
+
+Manual betting may open Keplr before the app knows the wallet balance; absence
+of a connected address must never be represented as a verified `0 WOLO` balance.
+The UI can keep a bounded provisional input ceiling only to let the wallet
+connection flow start. Before creating a manual stake intent or multi-leg ticket,
+and before broadcasting any transfer to Bet Escrow, the app must refresh the
+exact connected address through the authoritative Wolo balance endpoint and
+enforce the resulting verified stake cap. A failed or malformed balance read
+fails closed and no WOLO moves.
+
+This ordering is a custody boundary, not presentation policy: `connect -> fresh
+verified balance -> amount validation -> intent/ticket -> chain transfer`.
 
 ## Current app capability
 
