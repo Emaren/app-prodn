@@ -828,8 +828,8 @@ class PerformanceOSTests(unittest.TestCase):
                 "returncode": 0,
                 "stderr": "",
                 "stdout": (
-                    "200\\t0.010\\t0.020\\t0.050\\t0.100\\t0.120\\t10\\t1\\thttps://aoe2war.com/\\n"
-                    "200\\t0.000\\t0.000\\t0.000\\t0.040\\t0.060\\t11\\t0\\thttps://aoe2war.com/bets\\n"
+                    "200\t0.010\t0.020\t0.050\t0.100\t0.120\t10\t1\thttps://aoe2war.com/\n"
+                    "200\t0.000\t0.000\t0.000\t0.040\t0.060\t11\t0\thttps://aoe2war.com/bets\n"
                 ),
             },
         )()

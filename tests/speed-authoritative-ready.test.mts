@@ -129,12 +129,15 @@ test("WOLO Ready reflects primary usability, not secondary wallet proof", () => 
   assert.match(academy, /readyHeroVariant === heroVariant/);
 });
 
-test("staking overlaps independent economy and trust-rail evidence", () => {
+test("staking streams secondary chain proof without delaying primary readiness", () => {
   const staking = source("app/staking/page.tsx");
 
   assert.match(staking, /const overviewPromise = Promise\.allSettled\(/);
-  assert.match(staking, /const trustRailPromise = Promise\.all\(/);
-  assert.match(
+  assert.match(staking, /async function StakingTrustRail/);
+  assert.match(staking, /<Suspense fallback=\{<StakingTrustRailFallback \/>\}>/);
+  assert.match(staking, /<SpeedReadyMarker route="\/staking" \/>/);
+  assert.doesNotMatch(staking, /trustRailPromise/);
+  assert.doesNotMatch(
     staking,
     /await Promise\.all\(\[overviewPromise, trustRailPromise\]\)/,
   );
