@@ -25,6 +25,7 @@ function stringValue(value: unknown) {
 }
 
 function numberValue(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -73,6 +74,16 @@ function safeSystemAgent(value: unknown) {
     summary: stringValue(row.summary) ?? "Awaiting evidence.",
     progressPercent: numberValue(row.progress_percent),
     progressLabel: stringValue(row.progress_label),
+    activeProcess: booleanValue(row.active_process),
+    activeSince: stringValue(row.active_since),
+    currentStep: stringValue(row.current_step),
+    etaSeconds: numberValue(row.eta_seconds),
+    elapsedSeconds: numberValue(row.elapsed_seconds),
+    sealedChunks: numberValue(row.sealed_chunks),
+    observedBytes: numberValue(row.observed_bytes),
+    expectedBytes: numberValue(row.expected_bytes),
+    throughputBytesPerSecond: numberValue(row.throughput_bytes_per_second),
+    progressBasis: stringValue(row.progress_basis),
   };
 }
 

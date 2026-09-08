@@ -15,11 +15,18 @@ export const ADMIN_TILE_VIEW_SURFACES = [
   { tileKey: "community_lobby", label: "Community Lobby" },
   { tileKey: "live_games", label: "Live Games" },
   { tileKey: "forum", label: "Forum" },
+  { tileKey: "bounties", label: "Bounty Hall" },
   { tileKey: "kingdom_chronicle", label: "Kingdom Chronicle" },
   { tileKey: "rivalries", label: "Rivalries" },
+  { tileKey: "wargraph", label: "WarGraph" },
+  { tileKey: "speed", label: "Speed Observatory" },
   { tileKey: "academy_hero", label: "Academy Hero" },
   { tileKey: "download_watcher", label: "Download Watcher" },
   { tileKey: "staking", label: "Staking" },
+  { tileKey: "leaderboard", label: "Leaderboard" },
+  { tileKey: "workshop", label: "Workshop" },
+  { tileKey: "oracle", label: "The Oracle" },
+  { tileKey: "kingdom_intelligence", label: "Kingdom Intelligence" },
 ] as const satisfies ReadonlyArray<{ tileKey: TileViewKey; label: string }>;
 
 type UserWithTileViewPreferences = {

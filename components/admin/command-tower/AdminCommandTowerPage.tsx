@@ -15,6 +15,7 @@ import {
   Home,
   Hammer,
   Images,
+  Orbit,
   LayoutGrid,
   Palette,
   RadioTower,
@@ -79,6 +80,7 @@ const ADMIN_NAV_LINKS = [
   { href: "/admin/bounties", label: "Bounty Command", Icon: Target },
   { href: "/admin/radio", label: "Radio WOLO Desk", Icon: RadioTower },
   { href: "/admin/workshop", label: "Workshop Command", Icon: Hammer },
+  { href: "/admin/oracle", label: "Oracle Command", Icon: Orbit },
   { href: "/admin/wolochain", label: "WoloChain", Icon: Coins },
   { href: "/admin/user-list", label: "User List / Command Tower", Icon: UsersRound },
 ] as const;

@@ -8,6 +8,7 @@ import {
 import { normalizeLeaderboardLane } from "../lib/leaderboardLane.ts";
 import {
   applyTileViewDefaultMigration,
+  getTileViewMode,
   LIVE_GAMES_VIEW_STORAGE_KEY,
   readStoredLiveGamesViewMode,
   TILE_VIEW_DEFAULT_VERSION_KEY,
@@ -237,4 +238,34 @@ test("download watcher BAE defaults to Extreme and tracks explicit choices", () 
     defaultCount: 1,
     preferredMode: "extreme",
   });
+});
+
+test("BAE analytics cover every current public BAE surface and Kingdom Intelligence defaults to Advanced", () => {
+  const breakdown = buildAdminTileViewBreakdown([
+    { appearance: { tileViewPreferences: {} } },
+  ]);
+
+  const keys = new Set(breakdown.map((entry) => entry.tileKey));
+  for (const key of [
+    "bounties",
+    "wargraph",
+    "speed",
+    "staking",
+    "leaderboard",
+    "workshop",
+    "oracle",
+    "kingdom_intelligence",
+  ]) {
+    assert.equal(keys.has(key as never), true, `missing admin BAE surface: ${key}`);
+  }
+
+  assert.equal(getTileViewMode({}, "kingdom_intelligence"), "advanced");
+  assert.equal(getTileViewMode({}, "wargraph"), "basic");
+
+  const kingdomIntelligence = breakdown.find(
+    (entry) => entry.tileKey === "kingdom_intelligence",
+  );
+  assert.equal(kingdomIntelligence?.advancedCount, 1);
+  assert.equal(kingdomIntelligence?.basicCount, 0);
+  assert.equal(kingdomIntelligence?.defaultCount, 1);
 });

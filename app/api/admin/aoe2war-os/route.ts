@@ -18,6 +18,18 @@ const NO_STORE = {
   "Cache-Control": "no-store, max-age=0",
 };
 
+function previewMutationBlocked() {
+  if (process.env.AOE2WAR_PROD_DB_PREVIEW !== "true") return null;
+
+  return NextResponse.json(
+    {
+      detail:
+        "Local production-data preview is read-only. AoE2WAR OS mutations are disabled.",
+    },
+    { status: 409, headers: NO_STORE }
+  );
+}
+
 function validSha(value: unknown) {
   return typeof value === "string" && /^[0-9a-f]{40}$/i.test(value.trim());
 }
@@ -54,6 +66,9 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const admin = await requireAdmin(request);
   if ("error" in admin) return admin.error;
+
+  const previewBlock = previewMutationBlocked();
+  if (previewBlock) return previewBlock;
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const action = body.action;
@@ -120,6 +135,9 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const admin = await requireAdmin(request);
   if ("error" in admin) return admin.error;
+
+  const previewBlock = previewMutationBlocked();
+  if (previewBlock) return previewBlock;
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const runId = typeof body.runId === "string" ? body.runId.trim() : "";

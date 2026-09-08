@@ -25,6 +25,9 @@ import {
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import OracleMarketDetail from "@/components/oracle/OracleMarketDetail";
+import OraclePremiumFloor from "@/components/oracle/OraclePremiumFloor";
+import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
+import PageWidthSettingsBar from "@/components/tile-view/PageWidthSettingsBar";
 import { useUserAuth } from "@/context/UserAuthContext";
 import type {
   OracleMarketView,
@@ -83,7 +86,7 @@ function probability(bps: number) {
 function dateLabel(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Date unavailable";
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -97,8 +100,17 @@ function statusLabel(value: string) {
 }
 
 function datetimeLocal(value: Date) {
-  const offset = value.getTimezoneOffset() * 60_000;
-  return new Date(value.getTime() - offset).toISOString().slice(0, 16);
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(value);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((entry) => entry.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
 }
 
 function proposalDefaults(generatedAt: string) {
@@ -122,6 +134,7 @@ function proposalDefaults(generatedAt: string) {
 
 export default function OracleClient({ initialSnapshot, focusSlug }: OracleClientProps) {
   const { uid, loading: authLoading, loginWithSteam } = useUserAuth();
+  const { viewMode, setViewMode } = useTileViewPreference("oracle");
   const [snapshot, setSnapshot] = useState(initialSnapshot);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -219,7 +232,7 @@ export default function OracleClient({ initialSnapshot, focusSlug }: OracleClien
           onSetStatus={setMarketStatus}
           onSignIn={() => loginWithSteam(`/oracle/${encodeURIComponent(focusedMarket.slug)}`)}
         />
-      ) : (
+      ) : viewMode === "basic" ? (
         <OracleMarketFloor
           snapshot={snapshot}
           busy={busy}
@@ -227,7 +240,18 @@ export default function OracleClient({ initialSnapshot, focusSlug }: OracleClien
           onPlacePosition={placePosition}
           onSignIn={() => loginWithSteam("/oracle")}
         />
+      ) : (
+        <OraclePremiumFloor
+          snapshot={snapshot}
+          busy={busy}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          onMutate={mutate}
+          onSignIn={() => loginWithSteam("/oracle")}
+        />
       )}
+
+      <PageWidthSettingsBar tileKey="oracle" label="Oracle" />
     </main>
   );
 }

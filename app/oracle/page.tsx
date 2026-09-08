@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
 import OracleClient from "@/components/oracle/OracleClient";
+
+import "./oracle-polish.css";
 import { loadOracleSnapshot } from "@/lib/oracle";
 import { getPrisma } from "@/lib/prisma";
 import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";

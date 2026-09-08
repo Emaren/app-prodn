@@ -255,7 +255,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release — 2026-07-29",
+      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
       "type": "historical"
     },
     {
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "93567ecb9fd9a562b75f9f453948ca28e381feacf776f9902a2ec812e6884ed4",
+      "sha256": "156461e2c786a41e12fa560b8aefcd5ffbe7a727f42648f4802bc318d50ec03c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1026,7 +1026,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "c1074ae6345e9de1ed0deab60c380e9b729b031877b59cb9563f0ecf4264b909",
+      "sha256": "bfa052a25da9c8481b9d7e99aa760eabb869fb05e43aaefd326bbb55e9bf0f4d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1055,7 +1055,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
       "type": "historical"
     },
     {
@@ -1077,7 +1077,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
       "type": "historical"
     },
     {
@@ -1093,7 +1093,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "3bef7d04d18f02acaaeb7ac980ce06308955a77a0a8e90adb5b305f5355299f8",
+      "sha256": "e2281b877314bc577d1e978b717b15a746c151f26296eea38e680337c42f59fb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1122,7 +1122,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1169,7 +1169,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
       "type": "historical"
     },
     {
@@ -1261,7 +1261,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
       "type": "historical"
     },
     {
@@ -1331,7 +1331,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release — 2026-07-25",
+      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
       "type": "historical"
     },
     {
@@ -1622,9 +1622,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-08",
+      "reviewed_at": "2026-09-07",
       "sensitivity": "internal",
-      "sha256": "d8875c194ba1628bfb9b694f34190537d11213f999866c1fe3ec1eaf8adeee3a",
+      "sha256": "781f0ab21d509efcdf740eaaba233301ce8c96a0db14dd5c23cf0fdeb03dd90f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1786,7 +1786,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum — Saturday July 4, 2026 Edition",
+      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -1814,8 +1814,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "53a0ffb16dbde2f477f80151c34e79ecfcba25cb"
+    "branch": "feature/high-roi-speed-pass-20260907",
+    "commit": "9be92c933dcb108bc0bd03d0504facdfb7dfe30c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -39,11 +39,12 @@ The physical archive contains 7,990 file paths. Only 2,093 unique artifacts are
 currently indexed, leaving 5,897 physical files unindexed or unclassified.
 That remainder is not confirmed junk.
 
-The public page obtains the physical-file census from a bounded recursive scan
-of the immutable archive and caches it for one hour. Database metrics refresh
-every five minutes. The page prints both generation and archive-scan times so
-operators can distinguish a real zero from unavailable or stale storage
-telemetry.
+The July census above was produced while the public page still performed a
+bounded recursive archive scan. That request-time filesystem walk is now
+retired: public Parser Observatory requests use indexed database truth and
+report physical-file cross-check metrics as unavailable until a separately
+refreshed operator/background snapshot is wired in. A missing physical census
+is therefore explicit unknown telemetry, never an empty archive claim.
 
 See [Replay Corpus and Public Metric Contract](REPLAY_CORPUS_METRICS.md) for
 the complete definitions, parser-mode census, identity denominators, equations,

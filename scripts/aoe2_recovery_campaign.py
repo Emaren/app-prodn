@@ -398,6 +398,10 @@ def preflight(recipient_cert: str | None) -> dict[str, Any]:
         "recipient_certificate_fingerprint": fingerprint,
         "canonical_private_key": private_key,
         "ordinary_classes": [stage["class"] for stage in stages],
+        "ordinary_stage_estimates": {
+            str(stage["class"]): int(stage.get("estimated_bytes") or 0)
+            for stage in stages
+        },
         "ordinary_payload_bytes": ordinary_payload_bytes,
         "operator_free_bytes": operator_free_bytes,
         "headroom_after_ordinary_bytes": headroom_after_ordinary_bytes,
@@ -617,6 +621,8 @@ def _verify_cms_chunk(
         total += len(chunk)
     proc.stdout.close()
     stderr = proc.stderr.read() if proc.stderr is not None else b""
+    if proc.stderr is not None:
+        proc.stderr.close()
     rc = proc.wait()
     if rc != 0:
         raise CampaignError(
@@ -690,6 +696,8 @@ def _capture_new_chunk(
             pass
 
     stderr = encrypt.stderr.read() if encrypt.stderr is not None else b""
+    if encrypt.stderr is not None:
+        encrypt.stderr.close()
     rc = encrypt.wait()
     if stream_error is not None:
         raise CampaignError(f"CMS chunk stream failed: {stream_error}")
@@ -775,6 +783,8 @@ def _verify_chunked_tar_restore(
             decrypt_stderr = (
                 decrypt.stderr.read() if decrypt.stderr is not None else b""
             )
+            if decrypt.stderr is not None:
+                decrypt.stderr.close()
             decrypt_rc = decrypt.wait()
             if decrypt_rc != 0:
                 raise CampaignError(
@@ -799,6 +809,8 @@ def _verify_chunked_tar_restore(
 
     tar.stdin.close()
     tar_stderr = tar.stderr.read() if tar.stderr is not None else b""
+    if tar.stderr is not None:
+        tar.stderr.close()
     tar_rc = tar.wait()
     if tar_rc != 0:
         raise CampaignError(
@@ -1115,6 +1127,9 @@ def create_state(
         },
         "bundle_root": str(bundle_root),
         "ordinary_classes": list(check["ordinary_classes"]),
+        "ordinary_stage_estimates": dict(
+            check.get("ordinary_stage_estimates") or {}
+        ),
         "completed_classes": [],
         "current_class": None,
         "current_class_started_at": None,
@@ -1367,6 +1382,132 @@ def resume(campaign_id: str) -> dict[str, Any]:
     return {**load_state(campaign_id), "spawned_pid": new_pid}
 
 
+def _parse_iso_epoch(value: object) -> float | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip().replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.timestamp()
+
+
+def _live_capture_progress(state: dict[str, Any]) -> dict[str, Any] | None:
+    class_name = str(state.get("current_class") or "")
+    bundle = str(state.get("bundle_root") or "")
+    if class_name not in ORDINARY_CLASSES or not bundle:
+        return None
+
+    root = _chunk_root(Path(bundle).expanduser().resolve(), class_name)
+    if not root.is_dir():
+        return None
+
+    try:
+        receipts = _load_existing_chunk_receipts(root)
+    except Exception:
+        receipts = []
+
+    sealed_bytes = sum(
+        int(item.get("plaintext_bytes") or 0)
+        for item in receipts
+    )
+    partial_bytes = 0
+    for item in root.iterdir():
+        if (
+            item.is_dir()
+            and item.name.startswith(".chunk-")
+            and item.name.endswith(".partial")
+        ):
+            payload = item / "payload.cms"
+            try:
+                partial_bytes = max(
+                    partial_bytes,
+                    min(payload.stat().st_size, CMS_CHUNK_PLAINTEXT_BYTES),
+                )
+            except OSError:
+                continue
+
+    observed_bytes = sealed_bytes + partial_bytes
+    estimates = state.get("ordinary_stage_estimates") or {}
+    expected_bytes = int(estimates.get(class_name) or 0)
+
+    completed = len(state.get("completed_classes") or [])
+    total = len(state.get("ordinary_classes") or [])
+    class_fraction = (
+        max(0.0, min(1.0, observed_bytes / expected_bytes))
+        if expected_bytes > 0
+        else None
+    )
+    overall_percent = (
+        round(((completed + class_fraction) / total) * 100, 1)
+        if total > 0 and class_fraction is not None
+        else round((completed / total) * 100, 1)
+        if total > 0
+        else None
+    )
+
+    candidates = [
+        _parse_iso_epoch(state.get("current_class_started_at")),
+        *[
+            _parse_iso_epoch(item.get("created_at"))
+            for item in receipts
+        ],
+    ]
+    starts = [item for item in candidates if item is not None]
+    started_epoch = min(starts) if starts else None
+    elapsed_seconds = (
+        max(0.0, datetime.now(timezone.utc).timestamp() - started_epoch)
+        if started_epoch is not None
+        else None
+    )
+    throughput = (
+        observed_bytes / elapsed_seconds
+        if elapsed_seconds is not None
+        and elapsed_seconds > 30
+        and observed_bytes > 0
+        else None
+    )
+    eta_seconds = (
+        max(0.0, (expected_bytes - observed_bytes) / throughput)
+        if throughput
+        and throughput > 0
+        and expected_bytes > observed_bytes
+        else 0.0
+        if expected_bytes > 0 and observed_bytes >= expected_bytes
+        else None
+    )
+
+    return {
+        "current_class": class_name,
+        "sealed_chunks": len(receipts),
+        "sealed_bytes": sealed_bytes,
+        "partial_bytes": partial_bytes,
+        "observed_bytes": observed_bytes,
+        "expected_bytes": expected_bytes if expected_bytes > 0 else None,
+        "class_percent": (
+            round(class_fraction * 100, 1)
+            if class_fraction is not None
+            else None
+        ),
+        "overall_percent": overall_percent,
+        "elapsed_seconds": (
+            round(elapsed_seconds)
+            if elapsed_seconds is not None
+            else None
+        ),
+        "eta_seconds": (
+            round(eta_seconds)
+            if eta_seconds is not None
+            else None
+        ),
+        "throughput_bytes_per_second": throughput,
+        "progress_basis": "sealed + active encrypted chunk bytes",
+    }
+
+
 def status_payload(campaign_id: str | None) -> dict[str, Any]:
     selected = campaign_id or latest_campaign_id()
     if not selected:
@@ -1383,6 +1524,7 @@ def status_payload(campaign_id: str | None) -> dict[str, Any]:
     )
     pid = state.get("pid")
     state["process_alive"] = process_alive(pid if isinstance(pid, int) else None)
+    state["live_capture"] = _live_capture_progress(state)
     return state
 
 

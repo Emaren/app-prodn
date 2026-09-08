@@ -123,43 +123,17 @@ export async function loadWarChestSnapshot(
   const mode = options.mode ?? "weekly";
 
   // Reconciliation may call external settlement rails and should not hold the
-  // public page response open. Queue it once, then render committed market and
-  // claim truth with the same bounded settlement mode used by /api/bets.
+  // public page response open. Queue it once, then start every independent
+  // evidence family immediately. Weekly aggregates alone depend on the earners
+  // window, so only that small rail waits for the period boundary.
   queueBetMarketEnsure(prisma);
-  const betBoard = await loadBetBoardSnapshot(prisma, viewerUid, {
-    ensureMarkets: false,
-    settlementSurfaceMode: "fast",
-  });
-  const [wolo, earners] = await Promise.all([
-    loadWoloDevSnapshot(),
-    loadLobbyWoloEarnersBoard(prisma, { mode }),
-  ]);
 
-  const weekStartsAt = new Date(earners.weekStartsAt);
-  const weeklyWindowStart = Number.isNaN(weekStartsAt.getTime())
-    ? new Date(Date.now() - earners.timeframeDays * 24 * 60 * 60 * 1000)
-    : weekStartsAt;
-
-  const [
-    weeklyWagers,
-    lifetimeWagers,
-    pendingSummary,
-    recentWagersRaw,
-    recentClaimsRaw,
-    settledMarketCount,
-  ] = await Promise.all([
-    prisma.betWager.findMany({
-      where: visibleMainnetWagerWhere({
-        createdAt: { gte: weeklyWindowStart },
-      }),
-      select: {
-        userId: true,
-        amountWolo: true,
-        payoutWolo: true,
-        executionMode: true,
-        status: true,
-      },
+  const sharedSnapshotPromise = Promise.all([
+    loadBetBoardSnapshot(prisma, viewerUid, {
+      ensureMarkets: false,
+      settlementSurfaceMode: "fast",
     }),
+    loadWoloDevSnapshot(),
     prisma.betWager.aggregate({
       where: visibleMainnetWagerWhere(),
       _sum: {
@@ -245,6 +219,64 @@ export async function loadWarChestSnapshot(
     }),
   ]);
 
+  const earners = await loadLobbyWoloEarnersBoard(
+    prisma,
+    { mode },
+  );
+  const weekStartsAt = new Date(earners.weekStartsAt);
+  const weeklyWindowStart = Number.isNaN(weekStartsAt.getTime())
+    ? new Date(Date.now() - earners.timeframeDays * 24 * 60 * 60 * 1000)
+    : weekStartsAt;
+  const weeklyWagerWhere = visibleMainnetWagerWhere({
+    createdAt: { gte: weeklyWindowStart },
+  });
+
+  const weeklySnapshotPromise = Promise.all([
+    prisma.betWager.aggregate({
+      where: weeklyWagerWhere,
+      _sum: {
+        amountWolo: true,
+        payoutWolo: true,
+      },
+      _count: {
+        _all: true,
+      },
+    }),
+    prisma.betWager.groupBy({
+      by: ["userId"],
+      where: weeklyWagerWhere,
+    }),
+    prisma.betWager.aggregate({
+      where: visibleMainnetWagerWhere({
+        createdAt: { gte: weeklyWindowStart },
+        executionMode: "onchain_escrow",
+      }),
+      _sum: {
+        amountWolo: true,
+      },
+    }),
+  ]);
+
+  const [
+    [
+      weeklyWagerSummary,
+      weeklyBettors,
+      weeklyOnchainEscrow,
+    ],
+    [
+      betBoard,
+      wolo,
+      lifetimeWagers,
+      pendingSummary,
+      recentWagersRaw,
+      recentClaimsRaw,
+      settledMarketCount,
+    ],
+  ] = await Promise.all([
+    weeklySnapshotPromise,
+    sharedSnapshotPromise,
+  ]);
+
   const recentWagers = recentWagersRaw.map((wager) => ({
     id: wager.id,
     actorName: displayActorName(wager.user),
@@ -284,14 +316,11 @@ export async function loadWarChestSnapshot(
     earners,
     betBoard,
     weekly: {
-      volumeWolo: weeklyWagers.reduce((sum, wager) => sum + wager.amountWolo, 0),
-      paidOutWolo: weeklyWagers.reduce((sum, wager) => sum + (wager.payoutWolo ?? 0), 0),
-      activeBettors: new Set(weeklyWagers.map((wager) => wager.userId)).size,
-      slips: weeklyWagers.length,
-      onchainEscrowedWolo: weeklyWagers.reduce(
-        (sum, wager) => sum + (wager.executionMode === "onchain_escrow" ? wager.amountWolo : 0),
-        0
-      ),
+      volumeWolo: weeklyWagerSummary._sum.amountWolo ?? 0,
+      paidOutWolo: weeklyWagerSummary._sum.payoutWolo ?? 0,
+      activeBettors: weeklyBettors.length,
+      slips: weeklyWagerSummary._count._all,
+      onchainEscrowedWolo: weeklyOnchainEscrow._sum.amountWolo ?? 0,
       pendingClaims: pendingSummary._count._all,
       pendingWolo: pendingSummary._sum.amountWolo ?? 0,
     },

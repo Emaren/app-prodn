@@ -13,12 +13,15 @@ export const TILE_VIEW_KEYS = [
   "bounties",
   "kingdom_chronicle",
   "rivalries",
+  "wargraph",
   "speed",
   "academy_hero",
   "download_watcher",
   "staking",
   "leaderboard",
   "workshop",
+  "oracle",
+  "kingdom_intelligence",
 ] as const;
 
 export const TILE_VIEW_MODES = ["basic", "advanced", "extreme"] as const;
@@ -36,12 +39,15 @@ const DEFAULT_TILE_VIEW_MODES: TileViewPreferences = {
   bounties: "extreme",
   kingdom_chronicle: "extreme",
   rivalries: "extreme",
+  wargraph: "basic",
   speed: "extreme",
   academy_hero: "extreme",
   download_watcher: "extreme",
   staking: "basic",
   leaderboard: "extreme",
   workshop: "extreme",
+  oracle: "basic",
+  kingdom_intelligence: "advanced",
 };
 
 export function isTileViewKey(value: string | null | undefined): value is TileViewKey {

@@ -14,7 +14,7 @@ import SteamLinkedBadge from "@/components/SteamLinkedBadge";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { getPrisma } from "@/lib/prisma";
 import {
-  loadPublicPlayerDirectoryFresh,
+  loadPublicPlayerDirectory,
   type PublicPlayerDirectoryEntry,
 } from "@/lib/publicPlayerDirectory";
 import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
@@ -32,9 +32,13 @@ export default async function PlayersDirectoryPage() {
     loadPublicReplayGeneration(prisma),
     loadPublicPresenceSnapshot(prisma),
   ]);
-  // A client refresh only happens after the lightweight generation changes,
-  // so this request must bypass the older shared directory snapshot.
-  const directory = await loadPublicPlayerDirectoryFresh(prisma);
+  // Bind the directory cache to the same replay-generation watermark. This
+  // preserves corrective client refreshes while avoiding a full corpus rebuild
+  // on every request inside one unchanged replay generation.
+  const directory = await loadPublicPlayerDirectory(
+    prisma,
+    initialGeneration,
+  );
   const boardCount = directory.allEntries.length;
   const claimedUids = directory.claimedEntries.flatMap((entry) =>
     entry.uid ? [entry.uid] : [],

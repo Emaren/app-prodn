@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 
 import { avatarUrlForUser } from "@/lib/avatarAssets";
-import { loadClaimedPlayerPreview } from "@/lib/playerProfile";
 import { getPrisma } from "@/lib/prisma";
 import { ZODIAC_TRAINING_CONFIG } from "@/lib/zodiacTraining";
 
@@ -67,12 +66,32 @@ async function loadZodiacCard() {
   );
 
   try {
-    const profile = await loadClaimedPlayerPreview(
-      getPrisma(),
-      ZODIAC_TRAINING_CONFIG.userUid,
-      1
-    );
-    const name = profile?.displayName || fallbackName;
+    const prisma = getPrisma();
+    const [user, matchCount] = await Promise.all([
+      prisma.user.findUnique({
+        where: {
+          id: ZODIAC_TRAINING_CONFIG.userId,
+        },
+        select: {
+          inGameName: true,
+          steamPersonaName: true,
+        },
+      }),
+      prisma.replayPlayerSnapshot.count({
+        where: {
+          userId: ZODIAC_TRAINING_CONFIG.userId,
+          projection: {
+            projectionStatus: "accepted",
+            affectsPublicAggregates: true,
+            supersededBy: null,
+          },
+        },
+      }),
+    ]);
+    const name =
+      user?.inGameName?.trim() ||
+      user?.steamPersonaName?.trim() ||
+      fallbackName;
     const avatarBase = avatarUrlForUser(
       ZODIAC_TRAINING_CONFIG.userUid,
       name
@@ -81,10 +100,10 @@ async function loadZodiacCard() {
     return {
       name,
       avatarUrl: `${avatarBase}${avatarBase.includes("?") ? "&" : "?"}size=card`,
-      matchCount: profile?.matchFeed.totalMatches || 0,
+      matchCount,
     };
   } catch (error) {
-    console.warn("Academy advisor card could not load replay preview:", error);
+    console.warn("Academy advisor card could not load lightweight replay evidence:", error);
     return {
       name: fallbackName,
       avatarUrl: `${fallbackAvatar}${

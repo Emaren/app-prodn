@@ -1,13 +1,4 @@
 import { unstable_cache } from "next/cache";
-import {
-  readdir,
-  stat,
-} from "node:fs/promises";
-import {
-  extname,
-  join,
-  resolve,
-} from "node:path";
 
 import { displayPlayerName, parsePlayers, readMapName } from "@/lib/gameStatsView";
 import { isPublicBattleArchiveRow } from "@/lib/publicBattleArchiveEligibility";
@@ -135,153 +126,10 @@ function candidateModeLabel(mode: string) {
 }
 
 const EXACT_STEAM_ID_64 = /^\d{17}$/;
-const DEFAULT_REPLAY_ARCHIVE_DIR =
-  "/mnt/HC_Volume_105319120/aoe2-replay-archive";
-const PHYSICAL_ARCHIVE_SCAN_BUDGET_MS =
-  20_000;
-const REPLAY_ARCHIVE_SUFFIXES =
-  new Set([
-    ".aoe2record",
-    ".aoe2mpgame",
-  ]);
-
-async function loadPhysicalReplayArchiveSnapshot() {
-  const scanStartedAt = Date.now();
-  const root = resolve(
-    process.env.REPLAY_ARCHIVE_DIR?.trim() ||
-      DEFAULT_REPLAY_ARCHIVE_DIR
-  );
-
-  try {
-    const entries = await readdir(
-      root,
-      {
-        recursive: true,
-        withFileTypes: true,
-      }
-    );
-    const files: string[] = [];
-    const extensionCounts =
-      new Map<string, number>();
-
-    if (
-      Date.now() - scanStartedAt >
-      PHYSICAL_ARCHIVE_SCAN_BUDGET_MS
-    ) {
-      throw new Error(
-        `physical archive scan exceeded its ${PHYSICAL_ARCHIVE_SCAN_BUDGET_MS / 1_000}-second budget`
-      );
-    }
-
-    for (const entry of entries) {
-      if (!entry.isFile()) continue;
-
-      const extension =
-        extname(entry.name)
-          .toLowerCase();
-
-      if (
-        !REPLAY_ARCHIVE_SUFFIXES.has(
-          extension
-        )
-      ) {
-        continue;
-      }
-
-      files.push(
-        join(
-          entry.parentPath,
-          entry.name
-        )
-      );
-      bump(
-        extensionCounts,
-        extension
-      );
-    }
-
-    let byteSize = 0;
-
-    for (
-      let index = 0;
-      index < files.length;
-      index += 256
-    ) {
-      if (
-        Date.now() - scanStartedAt >
-        PHYSICAL_ARCHIVE_SCAN_BUDGET_MS
-      ) {
-        throw new Error(
-          `physical archive scan exceeded its ${PHYSICAL_ARCHIVE_SCAN_BUDGET_MS / 1_000}-second budget`
-        );
-      }
-
-      const sizes =
-        await Promise.all(
-          files
-            .slice(index, index + 256)
-            .map(async (path) =>
-              (await stat(path)).size
-            )
-        );
-
-      byteSize += sizes.reduce(
-        (sum, size) => sum + size,
-        0
-      );
-    }
-
-    return {
-      available: true,
-      scannedAt:
-        new Date().toISOString(),
-      root,
-      files,
-      objectCount: files.length,
-      byteSize,
-      recordedObjectCount:
-        extensionCounts.get(
-          ".aoe2record"
-        ) ?? 0,
-      savedCheckpointObjectCount:
-        extensionCounts.get(
-          ".aoe2mpgame"
-        ) ?? 0,
-    };
-  } catch (error) {
-    console.warn(
-      "Physical replay archive telemetry unavailable:",
-      error
-    );
-
-    return {
-      available: false,
-      scannedAt:
-        new Date().toISOString(),
-      root,
-      files: [] as string[],
-      objectCount: null,
-      byteSize: null,
-      recordedObjectCount: null,
-      savedCheckpointObjectCount: null,
-    };
-  }
-}
-
-const loadCachedPhysicalReplayArchiveSnapshot =
-  unstable_cache(
-    loadPhysicalReplayArchiveSnapshot,
-    [
-      "physical-replay-archive-snapshot-v2",
-    ],
-    {
-      revalidate: 3_600,
-      tags: [
-        "physical-replay-archive",
-      ],
-    }
-  );
-
+// Physical archive enumeration is an operator/background responsibility.
+// Public requests consume indexed database truth only; they never recurse or
+// stat the immutable replay filesystem. The physical-file cross-check stays
+// explicitly unavailable until a separately refreshed snapshot is wired in.
 function explicitArtifactDisposition(metrics: unknown) {
   const source = record(metrics);
 
@@ -356,8 +204,6 @@ async function buildPublicParserObservatory() {
     latestArtifactRuns,
     effectiveProjectionReceipts,
     acceptedIdentitySnapshots,
-    artifactStorageKeys,
-    physicalArchive,
     identityFoundation,
   ] = await Promise.all([
     loadCorpusRows(),
@@ -450,12 +296,6 @@ async function buildPublicParserObservatory() {
         steamId: true,
       },
     }),
-    prisma.replayArtifact.findMany({
-      select: {
-        storageKey: true,
-      },
-    }),
-    loadCachedPhysicalReplayArchiveSnapshot(),
     (async () => {
       const [
         provisionalWarriors,
@@ -519,50 +359,17 @@ async function buildPublicParserObservatory() {
   ]);
 
   const rows = applyReplayAdjudicationsToGameStatsRows(rawRows);
-  const physicalArchivePaths =
-    new Set(
-      physicalArchive.files
-    );
-  const indexedArchivePaths =
-    new Set(
-      artifactStorageKeys
-        .map((artifact) =>
-          resolve(
-            physicalArchive.root,
-            artifact.storageKey
-          )
-        )
-    );
-  const indexedStorageKeysPresent =
-    physicalArchive.available
-      ? Array.from(
-          indexedArchivePaths
-        ).filter((path) =>
-          physicalArchivePaths.has(
-            path
-          )
-        ).length
-      : null;
-  const missingIndexedStorageKeys =
-    physicalArchive.available
-      ? Math.max(
-          0,
-          indexedArchivePaths.size -
-            (indexedStorageKeysPresent ??
-              0)
-        )
-      : null;
-  const unindexedOrUnclassifiedObjects =
-    physicalArchive.available
-      ? Array.from(
-          physicalArchivePaths
-        ).filter(
-          (path) =>
-            !indexedArchivePaths.has(
-              path
-            )
-        ).length
-      : null;
+  const physicalArchive = {
+    available: false,
+    scannedAt: null as string | null,
+    objectCount: null as number | null,
+    byteSize: null as number | null,
+    recordedObjectCount: null as number | null,
+    savedCheckpointObjectCount: null as number | null,
+  };
+  const indexedStorageKeysPresent = null as number | null;
+  const missingIndexedStorageKeys = null as number | null;
+  const unindexedOrUnclassifiedObjects = null as number | null;
   const unknownOwner = new Map<string, number>();
   const unknownRoster = new Map<string, number>();
   const unknownFormat = new Map<string, number>();

@@ -652,6 +652,111 @@ function BetDetailBaeToggle({
     </div>
   );
 }
+async function loadBetMarketActivity(
+  prisma: ReturnType<typeof getPrisma>,
+  marketId: number,
+) {
+  return Promise.all([
+    prisma.$queryRaw<IntentRow[]>`
+      select
+        i.id,
+        i.side,
+        i.amount_wolo as "amountWolo",
+        i.status,
+        i.stake_tx_hash as "stakeTxHash",
+        coalesce(u.in_game_name, u.steam_persona_name, u.uid::text, 'User #' || i.user_id::text) as player,
+        i.created_at as "createdAt",
+        i.verified_at as "verifiedAt"
+      from bet_stake_intents i
+      left join users u on u.id = i.user_id
+      where i.market_id = ${marketId}
+      order by i.created_at asc, i.id asc
+    `,
+    prisma.$queryRaw<WagerRow[]>`
+      select
+        w.id,
+        w.side,
+        w.amount_wolo as "amountWolo",
+        w.payout_wolo as "payoutWolo",
+        w.status,
+        w.execution_mode as "executionMode",
+        coalesce(
+          w.stake_tx_hash,
+          case
+            when ticket.status = 'recorded' then ticket.stake_tx_hash
+            else null
+          end
+        ) as "stakeTxHash",
+        w.payout_tx_hash as "payoutTxHash",
+        coalesce(u.in_game_name, u.steam_persona_name, u.uid::text, 'User #' || w.user_id::text) as player,
+        w.created_at as "createdAt",
+        w.settled_at as "settledAt"
+      from bet_wagers w
+      left join users u on u.id = w.user_id
+      left join bet_stake_legs leg on leg.id = w.stake_leg_id
+      left join bet_stake_tickets ticket on ticket.id = leg.ticket_id
+      where w.market_id = ${marketId}
+      order by w.created_at asc, w.id asc
+    `,
+    prisma.$queryRaw<BonusRow[]>`
+      select
+        id,
+        bonus_type as "bonusType",
+        total_amount_wolo as "totalAmountWolo",
+        status,
+        note,
+        created_at as "createdAt",
+        settled_at as "settledAt"
+      from bet_market_founder_bonuses
+      where market_id = ${marketId}
+        and rescinded_at is null
+      order by created_at asc, id asc
+    `,
+    prisma.$queryRaw<ClaimRow[]>`
+      select
+        id,
+        display_player_name as "displayPlayerName",
+        amount_wolo as "amountWolo",
+        claim_kind as "claimKind",
+        claim_group_key as "claimGroupKey",
+        status,
+        payout_tx_hash as "payoutTxHash",
+        created_at as "createdAt",
+        claimed_at as "claimedAt"
+      from pending_wolo_claims
+      where source_market_id = ${marketId}
+        and rescinded_at is null
+      order by created_at asc, id asc
+    `,
+    prisma.$queryRaw<IntegrityIncidentRow[]>`
+      select
+        incident.id,
+        incident.status,
+        incident.incident_type as "incidentType",
+        incident.public_summary as "publicSummary",
+        incident.original_left_label as "originalLeftLabel",
+        incident.original_right_label as "originalRightLabel",
+        incident.verified_left_roster as "verifiedLeftRoster",
+        incident.verified_right_roster as "verifiedRightRoster",
+        incident.original_payout_wolo as "originalPayoutWolo",
+        incident.void_entitlement_wolo as "voidEntitlementWolo",
+        incident.underpayment_wolo as "underpaymentWolo",
+        incident.overpayment_wolo as "overpaymentWolo",
+        incident.betting_fee_reversed_wolo as "bettingFeeReversedWolo",
+        incident.operator_return_status as "operatorReturnStatus",
+        incident.resolved_at as "resolvedAt",
+        coalesce(sum(adjustment.amount_still_owed_wolo), 0)::int as "amountStillOwedWolo"
+      from bet_market_integrity_incidents incident
+      left join bet_market_financial_adjustments adjustment
+        on adjustment.incident_id = incident.id
+      where incident.market_id = ${marketId}
+      group by incident.id
+      order by incident.created_at desc, incident.id desc
+      limit 1
+    `,
+  ]);
+}
+
 export default async function BetMarketDetailPage({ params, searchParams }: PageProps) {
   const { marketId } = await params;
   const resolvedSearchParams = searchParams ? await searchParams : {};
@@ -660,6 +765,14 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
 
   const prisma = getPrisma();
   const numericMarketId = /^\d+$/.test(marketId) ? Number(marketId) : null;
+
+  // Numeric public market routes already contain the exact market identity.
+  // Start the independent ledger rail now instead of paying a complete market
+  // lookup round trip before launching these five queries.
+  const prefetchedMarketActivity =
+    numericMarketId != null
+      ? loadBetMarketActivity(prisma, numericMarketId)
+      : null;
 
   const markets =
     numericMarketId != null
@@ -733,107 +846,18 @@ export default async function BetMarketDetailPage({ params, searchParams }: Page
         `;
 
   const market = markets[0];
-  if (!market) notFound();
+  if (!market) {
+    // The speculative numeric-ID reads are read-only. Attach a rejection
+    // handler before returning the 404 so a concurrent database failure cannot
+    // become an unhandled promise rejection on a nonexistent market path.
+    void prefetchedMarketActivity?.catch(() => undefined);
+    notFound();
+  }
 
-  const [intents, wagers, bonuses, claims, integrityIncidents] = await Promise.all([
-    prisma.$queryRaw<IntentRow[]>`
-      select
-        i.id,
-        i.side,
-        i.amount_wolo as "amountWolo",
-        i.status,
-        i.stake_tx_hash as "stakeTxHash",
-        coalesce(u.in_game_name, u.steam_persona_name, u.uid::text, 'User #' || i.user_id::text) as player,
-        i.created_at as "createdAt",
-        i.verified_at as "verifiedAt"
-      from bet_stake_intents i
-      left join users u on u.id = i.user_id
-      where i.market_id = ${market.id}
-      order by i.created_at asc, i.id asc
-    `,
-    prisma.$queryRaw<WagerRow[]>`
-      select
-        w.id,
-        w.side,
-        w.amount_wolo as "amountWolo",
-        w.payout_wolo as "payoutWolo",
-        w.status,
-        w.execution_mode as "executionMode",
-        coalesce(
-          w.stake_tx_hash,
-          case
-            when ticket.status = 'recorded' then ticket.stake_tx_hash
-            else null
-          end
-        ) as "stakeTxHash",
-        w.payout_tx_hash as "payoutTxHash",
-        coalesce(u.in_game_name, u.steam_persona_name, u.uid::text, 'User #' || w.user_id::text) as player,
-        w.created_at as "createdAt",
-        w.settled_at as "settledAt"
-      from bet_wagers w
-      left join users u on u.id = w.user_id
-      left join bet_stake_legs leg on leg.id = w.stake_leg_id
-      left join bet_stake_tickets ticket on ticket.id = leg.ticket_id
-      where w.market_id = ${market.id}
-      order by w.created_at asc, w.id asc
-    `,
-    prisma.$queryRaw<BonusRow[]>`
-      select
-        id,
-        bonus_type as "bonusType",
-        total_amount_wolo as "totalAmountWolo",
-        status,
-        note,
-        created_at as "createdAt",
-        settled_at as "settledAt"
-      from bet_market_founder_bonuses
-      where market_id = ${market.id}
-        and rescinded_at is null
-      order by created_at asc, id asc
-    `,
-    prisma.$queryRaw<ClaimRow[]>`
-      select
-        id,
-        display_player_name as "displayPlayerName",
-        amount_wolo as "amountWolo",
-        claim_kind as "claimKind",
-        claim_group_key as "claimGroupKey",
-        status,
-        payout_tx_hash as "payoutTxHash",
-        created_at as "createdAt",
-        claimed_at as "claimedAt"
-      from pending_wolo_claims
-      where source_market_id = ${market.id}
-        and rescinded_at is null
-      order by created_at asc, id asc
-    `,
-    prisma.$queryRaw<IntegrityIncidentRow[]>`
-      select
-        incident.id,
-        incident.status,
-        incident.incident_type as "incidentType",
-        incident.public_summary as "publicSummary",
-        incident.original_left_label as "originalLeftLabel",
-        incident.original_right_label as "originalRightLabel",
-        incident.verified_left_roster as "verifiedLeftRoster",
-        incident.verified_right_roster as "verifiedRightRoster",
-        incident.original_payout_wolo as "originalPayoutWolo",
-        incident.void_entitlement_wolo as "voidEntitlementWolo",
-        incident.underpayment_wolo as "underpaymentWolo",
-        incident.overpayment_wolo as "overpaymentWolo",
-        incident.betting_fee_reversed_wolo as "bettingFeeReversedWolo",
-        incident.operator_return_status as "operatorReturnStatus",
-        incident.resolved_at as "resolvedAt",
-        coalesce(sum(adjustment.amount_still_owed_wolo), 0)::int as "amountStillOwedWolo"
-      from bet_market_integrity_incidents incident
-      left join bet_market_financial_adjustments adjustment
-        on adjustment.incident_id = incident.id
-      where incident.market_id = ${market.id}
-      group by incident.id
-      order by incident.created_at desc, incident.id desc
-      limit 1
-    `,
-  ]);
+  const [intents, wagers, bonuses, claims, integrityIncidents] = await (
+    prefetchedMarketActivity ??
+    loadBetMarketActivity(prisma, market.id)
+  );
   const integrityIncident = integrityIncidents[0] ?? null;
 
   const seededWolo = market.seedLeftWolo + market.seedRightWolo;

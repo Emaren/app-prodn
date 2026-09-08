@@ -96,8 +96,18 @@ test("public Kingdom Intelligence is a bounded sanitized projection", async () =
             label: "Recovery OS",
             state: "ACTIVE",
             summary: "Ordinary encrypted capture 1/5.",
-            progress_percent: 20,
-            progress_label: "1/5 ordinary classes",
+            progress_percent: 84.6,
+            progress_label: "4/5 ordinary classes · 21 chunks",
+            active_process: true,
+            active_since: "2026-09-07T20:00:00Z",
+            current_step: "raw replay archive",
+            eta_seconds: 1234,
+            elapsed_seconds: 4567,
+            sealed_chunks: 21,
+            observed_bytes: 5800000000,
+            expected_bytes: 21400000000,
+            throughput_bytes_per_second: 720000,
+            progress_basis: "sealed + active encrypted chunk bytes",
             private_path: "/Users/operator/recovery",
           },
           {
@@ -174,7 +184,19 @@ test("public Kingdom Intelligence is a bounded sanitized projection", async () =
     assert.equal(publicView.activity24h?.sourceCommits, 48);
     assert.equal(publicView.systemAgents.length, 2);
     assert.equal(publicView.systemAgents[0]?.label, "Recovery OS");
-    assert.equal(publicView.systemAgents[0]?.progressPercent, 20);
+    assert.equal(publicView.systemAgents[0]?.progressPercent, 84.6);
+    assert.equal(publicView.systemAgents[0]?.activeProcess, true);
+    assert.equal(publicView.systemAgents[0]?.currentStep, "raw replay archive");
+    assert.equal(publicView.systemAgents[0]?.etaSeconds, 1234);
+    assert.equal(publicView.systemAgents[0]?.sealedChunks, 21);
+    assert.equal(publicView.systemAgents[0]?.observedBytes, 5800000000);
+    assert.equal(publicView.systemAgents[0]?.expectedBytes, 21400000000);
+    assert.equal(
+      publicView.systemAgents[0]?.progressBasis,
+      "sealed + active encrypted chunk bytes",
+    );
+    assert.equal(publicView.systemAgents[1]?.etaSeconds, null);
+    assert.equal(publicView.systemAgents[1]?.observedBytes, null);
     assert.equal(publicView.recentSourceActivity[0]?.sha, "dddddddddddd");
     assert.equal(publicView.memorySeals[0]?.sha, "eeeeeeeeeeee");
     assert.equal(publicView.liveActivity[0]?.system, "System Doctor");
@@ -209,14 +231,24 @@ test("public Kingdom Intelligence is a bounded sanitized projection", async () =
 test("public Kingdom Intelligence page makes its authority and privacy boundary explicit", async () => {
   const fs = await import("node:fs");
   const page = fs.readFileSync("app/kingdom-intelligence/page.tsx", "utf8");
+  const pulse = fs.readFileSync(
+    "app/kingdom-intelligence/WarPulsePanel.tsx",
+    "utf8",
+  );
+  const constellation = fs.readFileSync(
+    "app/kingdom-intelligence/AgentConstellationPanel.tsx",
+    "utf8",
+  );
   const shell = fs.readFileSync("app/AppShell.tsx", "utf8");
 
   assert.match(page, /THE KINGDOM/);
   assert.match(page, /HAS A MIND/);
   assert.match(page, /Truth · Provenance · Invariants · Action/);
   assert.match(page, /Public projection · sensitive operator evidence withheld/);
-  assert.match(page, /War Pulse · live chronicle/);
-  assert.match(page, /Eight OS agents\. One Doctor\./);
+  assert.match(page, /WarPulsePanel/);
+  assert.match(pulse, /War Pulse · live chronicle/);
+  assert.match(page, /AgentConstellationPanel/);
+  assert.match(constellation, /Eight OS agents\. One Doctor\./);
   assert.match(page, /Victory ledger/);
   assert.match(page, /Memory vault/);
   assert.match(page, /chain-of-thought/);

@@ -1,6 +1,5 @@
 import {
   Activity,
-  Bot,
   BrainCircuit,
   CheckCircle2,
   Cpu,
@@ -10,7 +9,6 @@ import {
   HardDrive,
   History,
   Radar,
-  Radio,
   ScrollText,
   ShieldCheck,
   Sparkles,
@@ -19,22 +17,42 @@ import {
   Workflow,
 } from "lucide-react";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
+import PageWidthSettingsBar from "@/components/tile-view/PageWidthSettingsBar";
 import {
   loadPublicKingdomIntelligence,
   type PublicKingdomIntelligence,
 } from "@/lib/kingdomIntelligencePublic";
+import {
+  buildPreviewDataUrl,
+  isLiveProductionReadOnlyPreview,
+} from "@/lib/previewDataSource";
 
+import AgentConstellationPanel from "./AgentConstellationPanel";
+import WarPulsePanel from "./WarPulsePanel";
 import KingdomIntelligenceRefresh from "./KingdomIntelligenceRefresh";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+const ACTIVE_PROCESS_STATES = new Set([
+  "ACTIVE",
+  "RUNNING",
+  "RUNNING_CAPTURE",
+  "RUNNING_TRANSACTION",
+  "RESUME_REQUESTED",
+  "CLAIMED",
+]);
+
+function isActiveProcessState(value: string | null | undefined) {
+  return ACTIVE_PROCESS_STATES.has(String(value || "").toUpperCase());
+}
 
 function tone(status: string | null | undefined) {
   const value = String(status || "").toUpperCase();
   if (["PASS", "READY", "HEALTHY", "CERTIFIED", "COMPLETE"].includes(value)) {
     return "border-emerald-300/20 bg-emerald-300/10 text-emerald-100";
   }
-  if (["ATTENTION", "ATTENTION_REQUIRED", "MAINTENANCE_DUE", "WATCH", "RUNNING", "RUNNING_TRANSACTION", "DO NOW", "MUST FIX"].includes(value)) {
+  if (["ATTENTION", "ATTENTION_REQUIRED", "MAINTENANCE_DUE", "WATCH", "RUNNING", "RUNNING_CAPTURE", "RUNNING_TRANSACTION", "RESUME_REQUESTED", "DO NOW", "MUST FIX"].includes(value)) {
     return "border-amber-300/20 bg-amber-300/10 text-amber-100";
   }
   if (["FAIL", "FAILED", "BLOCKED", "UNSAFE"].includes(value)) {
@@ -70,7 +88,7 @@ function Stat({ label, value, detail }: { label: string; value: string; detail: 
 
 function beacon(state: string | null | undefined) {
   const value = String(state || "").toUpperCase();
-  if (value === "ACTIVE") {
+  if (isActiveProcessState(value)) {
     return "bg-cyan-300 shadow-[0_0_18px_rgba(103,232,249,.8)] animate-pulse";
   }
   if (["HEALTHY", "PASS", "COMPLETE", "CERTIFIED"].includes(value)) {
@@ -83,51 +101,6 @@ function beacon(state: string | null | undefined) {
     return "bg-amber-300 shadow-[0_0_14px_rgba(252,211,77,.5)] animate-pulse";
   }
   return "bg-slate-600";
-}
-
-function AgentLine({
-  label,
-  state,
-  summary,
-  progress,
-  progressLabel,
-}: {
-  label: string;
-  state: string;
-  summary: string;
-  progress: number | null;
-  progressLabel: string | null;
-}) {
-  return (
-    <div className="group rounded-2xl border border-white/8 bg-white/[0.025] px-4 py-3 transition hover:border-cyan-200/15 hover:bg-cyan-300/[0.025]">
-      <div className="flex items-start gap-3">
-        <span className={"mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full " + beacon(state)} />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-sm font-semibold text-white">{label}</div>
-            <span className={"rounded-full border px-2 py-0.5 text-[8px] font-black uppercase tracking-[0.18em] " + tone(state)}>
-              {state}
-            </span>
-          </div>
-          <div className="mt-1 text-xs leading-5 text-slate-400">{summary}</div>
-          {progress !== null ? (
-            <div className="mt-2">
-              <div className="h-1 overflow-hidden rounded-full bg-white/6">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-cyan-400/70 via-amber-300/80 to-emerald-300/85"
-                  style={{ width: Math.max(0, Math.min(100, progress)) + "%" }}
-                />
-              </div>
-              <div className="mt-1 flex justify-between text-[9px] uppercase tracking-[0.15em] text-slate-600">
-                <span>{progressLabel ?? "progress"}</span>
-                <span>{progress.toFixed(progress % 1 === 0 ? 0 : 1)}%</span>
-              </div>
-            </div>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function ModuleCard({
@@ -174,6 +147,23 @@ export default async function KingdomIntelligencePage() {
 
   try {
     data = await loadPublicKingdomIntelligence();
+
+    if (!data.available && isLiveProductionReadOnlyPreview()) {
+      const previewUrl = buildPreviewDataUrl("/api/kingdom-intelligence");
+
+      if (previewUrl) {
+        const response = await fetch(previewUrl, {
+          cache: "no-store",
+          headers: {
+            Accept: "application/json",
+          },
+        });
+
+        if (response.ok) {
+          data = (await response.json()) as PublicKingdomIntelligence;
+        }
+      }
+    }
   } catch {
     error = "The Kingdom Intelligence signal could not be reached.";
   }
@@ -183,7 +173,36 @@ export default async function KingdomIntelligencePage() {
   const awake = Boolean(data?.available && liveAge !== null && liveAge < 15 * 60);
   const campaign = data?.storageCampaign;
   const systemAgents = data?.systemAgents ?? [];
-  const activeSystemCount = systemAgents.filter((item) => item.state === "ACTIVE").length;
+  const isConcreteBackgroundProcess = (item: (typeof systemAgents)[number]) =>
+    isActiveProcessState(item.state) &&
+    (
+      item.activeProcess ||
+      item.key === "recovery" ||
+      item.key === "storage"
+    );
+
+  const orderedSystemAgents = [...systemAgents].sort((left, right) => {
+    const processDelta =
+      Number(isConcreteBackgroundProcess(right)) -
+      Number(isConcreteBackgroundProcess(left));
+    if (processDelta) return processDelta;
+
+    const activeDelta =
+      Number(isActiveProcessState(right.state)) -
+      Number(isActiveProcessState(left.state));
+    if (activeDelta) return activeDelta;
+
+    const attention = new Set(["ATTENTION", "BLOCKED", "FAILED"]);
+    const attentionDelta =
+      Number(attention.has(right.state)) -
+      Number(attention.has(left.state));
+    if (attentionDelta) return attentionDelta;
+
+    return left.label.localeCompare(right.label);
+  });
+  const activeSystemCount = systemAgents.filter((item) =>
+    isActiveProcessState(item.state)
+  ).length;
   const attentionSystemCount = systemAgents.filter((item) =>
     ["ATTENTION", "BLOCKED", "FAILED"].includes(item.state)
   ).length;
@@ -195,7 +214,43 @@ export default async function KingdomIntelligencePage() {
       label: item.label,
       status: item.status,
       proof: item.id,
+      current: isActiveProcessState(item.status),
+      progress: null as number | null,
+      progressLabel: null as string | null,
+      currentStep: null as string | null,
+      etaSeconds: null as number | null,
+      elapsedSeconds: null as number | null,
+      sealedChunks: null as number | null,
+      observedBytes: null as number | null,
+      expectedBytes: null as number | null,
+      throughputBytesPerSecond: null as number | null,
+      progressBasis: null as string | null,
     }));
+    const activeAgentRows = systemAgents
+      .filter(isConcreteBackgroundProcess)
+      .map((item) => ({
+        key: "agent-" + item.key,
+        at:
+          item.activeSince ??
+          data?.receivedAt ??
+          data?.generatedAt ??
+          new Date(0).toISOString(),
+        system: item.label,
+        label: item.summary,
+        status: item.state,
+        proof: null as string | null,
+        current: true,
+        progress: item.progressPercent,
+        progressLabel: item.progressLabel,
+        currentStep: item.currentStep,
+        etaSeconds: item.etaSeconds,
+        elapsedSeconds: item.elapsedSeconds,
+        sealedChunks: item.sealedChunks,
+        observedBytes: item.observedBytes,
+        expectedBytes: item.expectedBytes,
+        throughputBytesPerSecond: item.throughputBytesPerSecond,
+        progressBasis: item.progressBasis,
+      }));
     const sourceRows = (data?.recentSourceActivity ?? []).map((item) => ({
       key: "src-" + item.sha,
       at: item.createdAt,
@@ -203,14 +258,39 @@ export default async function KingdomIntelligencePage() {
       label: item.title,
       status: item.status,
       proof: item.sha,
+      current: false,
+      progress: null as number | null,
+      progressLabel: null as string | null,
+      currentStep: null as string | null,
+      etaSeconds: null as number | null,
+      elapsedSeconds: null as number | null,
+      sealedChunks: null as number | null,
+      observedBytes: null as number | null,
+      expectedBytes: null as number | null,
+      throughputBytesPerSecond: null as number | null,
+      progressBasis: null as string | null,
     }));
-    return [...runRows, ...sourceRows]
-      .sort((left, right) => new Date(right.at).getTime() - new Date(left.at).getTime())
+
+    return [...activeAgentRows, ...runRows, ...sourceRows]
+      .filter(
+        (item, index, all) =>
+          all.findIndex(
+            (other) =>
+              other.system === item.system &&
+              other.label === item.label &&
+              other.status === item.status,
+          ) === index,
+      )
+      .sort((left, right) => {
+        const currentDelta = Number(right.current) - Number(left.current);
+        if (currentDelta) return currentDelta;
+        return new Date(right.at).getTime() - new Date(left.at).getTime();
+      })
       .slice(0, 14);
   })();
 
   return (
-    <div className="mx-auto w-full max-w-[92rem] space-y-6 pb-16">
+    <div className="mx-auto w-full space-y-6 pb-16">
       <SpeedReadyMarker route="/kingdom-intelligence" />
       <section className="relative min-h-[32rem] overflow-hidden rounded-[2.3rem] border border-amber-100/12 bg-[#04070c] shadow-[0_32px_120px_rgba(0,0,0,0.42)]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_40%,rgba(217,119,6,0.18),transparent_18%),radial-gradient(circle_at_72%_40%,rgba(251,191,36,0.08),transparent_38%),linear-gradient(135deg,#08101c_0%,#030609_56%,#0b0805_100%)]" />
@@ -303,88 +383,38 @@ export default async function KingdomIntelligencePage() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="overflow-hidden rounded-[2rem] border border-cyan-200/10 bg-[#02060c] shadow-[0_24px_90px_rgba(0,0,0,.28)]">
-          <div className="flex items-center justify-between border-b border-white/7 px-5 py-4 sm:px-6">
-            <div className="flex items-center gap-3">
-              <div className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200/10 bg-cyan-300/[0.05]">
-                <Radio className="h-4 w-4 text-cyan-200/80" />
-                <span className={"absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full " + (activeSystemCount ? beacon("ACTIVE") : beacon("IDLE"))} />
-              </div>
-              <div>
-                <div className="text-[9px] font-black uppercase tracking-[0.32em] text-cyan-100/45">
-                  War Pulse · live chronicle
-                </div>
-                <h2 className="mt-1 font-serif text-2xl text-white">The nervous system speaks.</h2>
-              </div>
-            </div>
-            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-600">
-              polls every 20s
-            </div>
-          </div>
+        <WarPulsePanel
+          activeSystemCount={activeSystemCount}
+          items={nerveFeed.map((item) => ({
+            ...item,
+            beaconClass: beacon(
+              item.status === "SUCCEEDED" ? "HEALTHY" : item.status,
+            ),
+            statusToneClass: tone(item.status),
+          }))}
+        />
 
-          <div className="max-h-[34rem] overflow-y-auto px-4 py-3 font-mono text-xs sm:px-5">
-            {nerveFeed.length ? (
-              nerveFeed.map((item) => (
-                <div
-                  key={item.key}
-                  className="grid grid-cols-[9px_62px_minmax(0,1fr)] gap-3 border-b border-white/[0.045] py-3 last:border-0"
-                >
-                  <span className={"mt-1 h-2 w-2 rounded-full " + beacon(item.status === "SUCCEEDED" ? "HEALTHY" : item.status)} />
-                  <span className="text-slate-600">
-                    {new Date(item.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </span>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="font-semibold text-cyan-100/80">{item.system}</span>
-                      <span className={tone(item.status) + " rounded-full border px-1.5 py-0.5 text-[8px] font-black tracking-[0.14em]"}>
-                        {item.status}
-                      </span>
-                    </div>
-                    <div className="mt-1 truncate text-slate-300">{item.label}</div>
-                    {item.proof ? (
-                      <div className="mt-1 text-[10px] text-slate-700">proof {item.proof}</div>
-                    ) : null}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="flex min-h-64 flex-col items-center justify-center text-center text-slate-600">
-                <Bot className="mb-3 h-7 w-7" />
-                <div>No proven activity line is available yet.</div>
-                <div className="mt-2 max-w-md text-[11px] leading-5 text-slate-700">
-                  Kingdom Intelligence does not invent an agent heartbeat. Registered work, OS receipts and sealed source events appear here when evidence exists.
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-[2rem] border border-amber-100/10 bg-[radial-gradient(circle_at_20%_0%,rgba(245,158,11,.08),transparent_32%),rgba(2,6,23,.82)] p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-[9px] font-black uppercase tracking-[0.32em] text-amber-100/45">
-                Agent constellation
-              </div>
-              <h2 className="mt-2 font-serif text-2xl text-[#f4e5bd]">Eight OS agents. One Doctor.</h2>
-            </div>
-            <Cpu className="h-5 w-5 text-amber-200/60" />
-          </div>
-          <div className="mt-4 space-y-2.5">
-            {systemAgents.map((agent) => (
-              <AgentLine
-                key={agent.key}
-                label={agent.label}
-                state={agent.state}
-                summary={agent.summary}
-                progress={agent.progressPercent}
-                progressLabel={agent.progressLabel}
-              />
-            ))}
-          </div>
-          <div className="mt-4 border-t border-white/6 pt-4 text-[11px] leading-5 text-slate-600">
-            Beacon law: cyan pulse = working · green solid = healthy/closed · amber pulse = waiting/attention · red = failed/blocked · slate = idle.
-          </div>
-        </div>
+        <AgentConstellationPanel
+          agents={orderedSystemAgents.map((agent) => ({
+            key: agent.key,
+            label: agent.label,
+            state: agent.state,
+            summary: agent.summary,
+            progress: agent.progressPercent,
+            progressLabel: agent.progressLabel,
+            activeSince: agent.activeSince,
+            currentStep: agent.currentStep,
+            etaSeconds: agent.etaSeconds,
+            elapsedSeconds: agent.elapsedSeconds,
+            sealedChunks: agent.sealedChunks,
+            observedBytes: agent.observedBytes,
+            expectedBytes: agent.expectedBytes,
+            throughputBytesPerSecond: agent.throughputBytesPerSecond,
+            progressBasis: agent.progressBasis,
+            beaconClass: beacon(agent.state),
+            statusToneClass: tone(agent.state),
+          }))}
+        />
       </section>
 
       <section className="grid gap-5 xl:grid-cols-2">
@@ -627,6 +657,11 @@ export default async function KingdomIntelligencePage() {
         </div>
         <KingdomIntelligenceRefresh />
       </section>
+
+      <PageWidthSettingsBar
+        tileKey="kingdom_intelligence"
+        label="Kingdom Intelligence"
+      />
     </div>
   );
 }

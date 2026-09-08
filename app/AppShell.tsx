@@ -143,6 +143,7 @@ const KINGDOM_LINKS = [
 ] as const;
 
 const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
+  { prefix: "/admin/oracle", title: "Oracle Command Center" },
   { prefix: "/admin/ai", title: "AI Command Center" },
   { prefix: "/admin/bounties", title: "Bounty Command Center" },
   { prefix: "/admin/radio", title: "Radio WOLO Desk" },
@@ -1025,6 +1026,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   }, [isClanSurface]);
   const isNationalChampionsSurface = pathname?.startsWith("/national-champions");
   const isBetsSurface = pathname === "/bets";
+  const isOracleAdminSurface = pathname === "/admin/oracle";
   const isBetDetailSurface = Boolean(pathname?.match(/^\/bets\/[^/]+/));
 
   const isGameStatsReviewSurface =
@@ -1084,6 +1086,30 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isLivingLeaderboardSurface =
     pathname === "/leaderboard" &&
     leaderboardViewMode === "extreme";
+  const oracleViewMode = getTileViewMode(
+    tileViewPreferences,
+    "oracle"
+  );
+  const kingdomIntelligenceViewMode = getTileViewMode(
+    tileViewPreferences,
+    "kingdom_intelligence"
+  );
+  const isOracleSurface =
+    pathname === "/oracle" ||
+    Boolean(pathname?.startsWith("/oracle/"));
+  const isKingdomIntelligenceSurface =
+    pathname === "/kingdom-intelligence";
+  const pageWidthSurfaceViewMode = isOracleSurface
+    ? oracleViewMode
+    : isKingdomIntelligenceSurface
+      ? kingdomIntelligenceViewMode
+      : null;
+  const pageWidthShellMaxWidth =
+    pageWidthSurfaceViewMode === "extreme"
+      ? "max-w-none"
+      : pageWidthSurfaceViewMode === "advanced"
+        ? "max-w-[82rem]"
+        : "max-w-6xl";
 
   React.useEffect(() => {
     if (
@@ -1758,6 +1784,10 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               ? "max-w-none px-0"
             : isLivingLeaderboardSurface
               ? "max-w-[118rem] px-3 sm:px-4 2xl:px-5"
+            : isOracleAdminSurface
+              ? "max-w-[118rem] px-3 sm:px-5 2xl:px-7"
+            : pageWidthSurfaceViewMode
+              ? `px-3 sm:px-4 2xl:px-5 ${pageWidthShellMaxWidth}`
             : `px-3 sm:px-4 ${
                 isBountiesSurface
                   ? bountyShellMaxWidth

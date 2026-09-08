@@ -138,3 +138,102 @@ test("dev:prod acknowledges local side effects without production writes", () =>
     /!isLiveProductionReadOnlyPreview\(\)[\s\S]*conversationIds\.length > 0/,
   );
 });
+
+test("dev:prod streams operator proof lines immediately under nohup", () => {
+  const launcher = source("scripts/dev-prod-readonly.py");
+
+  assert.match(launcher, /for stream in \(sys\.stdout, sys\.stderr\):/);
+  assert.match(launcher, /reconfigure = getattr\(stream, "reconfigure", None\)/);
+  assert.match(launcher, /reconfigure\(line_buffering=True\)/);
+});
+
+test("dev:prod raises only the local preview Node heap ceiling above the default 4 GiB", () => {
+  const launcher = source("scripts/dev-prod-readonly.py");
+
+  assert.match(launcher, /--max-old-space-size=6144/);
+  assert.match(launcher, /local preview Node heap ceiling = 6144 MiB/);
+  assert.match(launcher, /if "--max-old-space-size" not in node_options/);
+  assert.match(launcher, /env\["NODE_OPTIONS"\] = node_options/);
+});
+
+test("dev:prod reports signal exits without wrapping them into opaque shell status 250", () => {
+  const launcher = source("scripts/dev-prod-readonly.py");
+
+  assert.match(launcher, /node_returncode = node\.wait\(\)/);
+  assert.match(launcher, /if node_returncode < 0:/);
+  assert.match(launcher, /Signals\(signal_number\)\.name/);
+  assert.match(launcher, /return 128 \+ signal_number/);
+  assert.match(launcher, /SIGABRT becomes 134/);
+});
+
+test("radio fire-and-forget presence never becomes an unhandled preview rejection", () => {
+  const hook = source("hooks/useRadioWoloFeedback.ts");
+
+  assert.match(
+    hook,
+    /return postFeedback\(\{[\s\S]*?listenerId,[\s\S]*?event,[\s\S]*?\}\)\.then\([\s\S]*?\)\.catch\([\s\S]*?=> undefined/,
+  );
+  assert.match(
+    hook,
+    /event: "off",[\s\S]*?\}\)\.catch\([\s\S]*?=> undefined/,
+  );
+});
+
+test("dev:prod launcher remains compatible with the preview shell Python", () => {
+  const launcher = source("scripts/dev-prod-readonly.py");
+
+  assert.match(launcher, /from typing import Optional/);
+  assert.match(
+    launcher,
+    /def canonical_os_store_for_preview\(\) -> Optional\[Path\]:/,
+  );
+  assert.doesNotMatch(launcher, /-> Path \| None/);
+});
+
+test("local preview reads canonical AoE2WAR OS state without allowing OS mutations", () => {
+  const launcher = source("scripts/dev-prod-readonly.py");
+  const route = source("app/api/admin/aoe2war-os/route.ts");
+
+  assert.match(launcher, /canonical_os_store_for_preview/);
+  assert.match(launcher, /AOE2WAR_OS_STORE_DIR/);
+  assert.match(launcher, /storage" \/ "aoe2war-os"/);
+
+  assert.match(route, /AOE2WAR_PROD_DB_PREVIEW/);
+  assert.match(route, /Local production-data preview is read-only/);
+  assert.match(route, /export async function POST/);
+  assert.match(route, /export async function DELETE/);
+});
+
+test("dev:prod opens the page inferred from the active work lane", () => {
+  const launcher = source("scripts/dev-prod-readonly.py");
+
+  assert.match(
+    launcher,
+    /AOE2WAR_PREVIEW_PATH/,
+  );
+
+  assert.match(
+    launcher,
+    /infer_preview_path/,
+  );
+
+  assert.match(
+    launcher,
+    /git", "branch", "--show-current/,
+  );
+
+  assert.match(
+    launcher,
+    /Path\.cwd\(\) \/ "app"/,
+  );
+
+  assert.match(
+    launcher,
+    /preview_url/,
+  );
+
+  assert.doesNotMatch(
+    launcher,
+    /https:\/\/localhost:3000\/clans\/aoe2war/,
+  );
+});

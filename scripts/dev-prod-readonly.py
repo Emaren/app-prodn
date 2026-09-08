@@ -2,6 +2,9 @@
 
 import json
 import os
+from pathlib import Path
+from typing import Optional
+import re
 import socket
 import subprocess
 import sys
@@ -322,10 +325,116 @@ def wait_for_local_https(process) -> bool:
     return False
 
 
+
+def normalize_preview_path(value: str) -> str:
+    path = value.strip()
+
+    if not path:
+        return "/"
+
+    if (
+        not path.startswith("/")
+        or path.startswith("//")
+        or "://" in path
+        or any(ord(ch) < 32 for ch in path)
+    ):
+        stop("AOE2WAR_PREVIEW_PATH must be a local absolute path")
+
+    return path
+
+
+def canonical_os_store_for_preview() -> Optional[Path]:
+    explicit = os.environ.get("AOE2WAR_OS_STORE_DIR", "").strip()
+    if explicit:
+        return Path(explicit).expanduser().resolve()
+
+    cwd = Path.cwd().resolve()
+    canonical_root = (
+        cwd
+        if cwd.name == "app-prodn"
+        else cwd.parent / "app-prodn"
+    )
+    candidate = canonical_root / "storage" / "aoe2war-os"
+    return candidate if candidate.is_dir() else None
+
+
+def infer_preview_path() -> str:
+    explicit = os.environ.get("AOE2WAR_PREVIEW_PATH", "").strip()
+
+    if explicit:
+        return normalize_preview_path(explicit)
+
+    branch = subprocess.run(
+        ["git", "branch", "--show-current"],
+        text=True,
+        capture_output=True,
+        check=False,
+    ).stdout.strip()
+
+    worktree = Path.cwd().name
+
+    def key(value: str) -> str:
+        return re.sub(
+            r"[^a-z0-9]+",
+            "-",
+            value.lower(),
+        ).strip("-")
+
+    haystacks = [
+        f"-{key(branch)}-",
+        f"-{key(worktree)}-",
+    ]
+
+    app_root = Path.cwd() / "app"
+    candidates: list[tuple[int, str, str]] = []
+
+    if app_root.is_dir():
+        for page in app_root.glob("*/page.tsx"):
+            slug = page.parent.name
+
+            if slug.startswith(("[", "(")):
+                continue
+
+            token = key(slug)
+
+            if token:
+                candidates.append(
+                    (
+                        len(token),
+                        token,
+                        f"/{slug}",
+                    )
+                )
+
+    # Longest route wins, so kingdom-intelligence beats kingdom.
+    for _, token, route in sorted(
+        candidates,
+        reverse=True,
+    ):
+        needle = f"-{token}-"
+
+        if any(
+            needle in haystack
+            for haystack in haystacks
+        ):
+            return route
+
+    return "/"
+
 def main() -> int:
+    # nohup/file redirection makes Python stdout block-buffered by default.
+    # The preview launcher is an operator console, so make every status line
+    # immediately observable while the long-lived Node child is still running.
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(line_buffering=True)
+
     print("============================================================")
     print("AOE2WAR — LOCAL CODE / LIVE PRODUCTION DATA")
     print("============================================================")
+
+    preview_path = infer_preview_path()
 
     prod_database_url = read_prod_database_url()
     parsed = parse_prod_database(prod_database_url)
@@ -337,6 +446,18 @@ def main() -> int:
         env["NODE_ENV"] = "development"
         env["DATABASE_URL"] = local_database_url(parsed)
 
+        # Next.js dev + the generated Prisma client can legitimately cross
+        # Node's ~4 GiB default old-space ceiling during long hot-reload
+        # sessions. This is a process-local ceiling, not host-memory pressure.
+        # Give only the local preview server a measured 6 GiB heap budget.
+        # Preserve any unrelated caller NODE_OPTIONS.
+        node_options = env.get("NODE_OPTIONS", "").strip()
+        if "--max-old-space-size" not in node_options:
+            node_options = (
+                f"{node_options} --max-old-space-size=6144"
+            ).strip()
+        env["NODE_OPTIONS"] = node_options
+
         # Two independent fences:
         # 1. PGOPTIONS covers PostgreSQL clients that honor libpq-style env.
         # 2. lib/prisma.ts also sends the read-only startup option explicitly.
@@ -347,6 +468,14 @@ def main() -> int:
             "-c application_name=aoe2war_local_prod_preview"
         )
         env["AOE2WAR_PROD_DB_PREVIEW"] = "true"
+
+        # Feature worktrees should read the canonical local AoE2WAR OS control
+        # store so Kingdom Intelligence shows the same proven local process
+        # state as the operator checkout. Mutation routes are separately fenced
+        # in preview mode.
+        canonical_os_store = canonical_os_store_for_preview()
+        if canonical_os_store is not None:
+            env["AOE2WAR_OS_STORE_DIR"] = str(canonical_os_store)
 
         # Existing preview identity and safe production read machinery.
         env["AOE2WAR_PREVIEW_DATA_BASE"] = PREVIEW_ORIGIN
@@ -392,13 +521,22 @@ def main() -> int:
         )
         print("PASS: production DATABASE_URL remains memory-only")
         print("PASS: production INTERNAL_API_KEY/ADMIN_TOKEN not imported")
+        if canonical_os_store is not None:
+            print(
+                "PASS: local AoE2WAR OS reads use canonical control store "
+                f"({canonical_os_store})"
+            )
         if with_openai:
             print("PASS: production OpenAI credential injected memory-only")
         else:
             print("PASS: production OpenAI credential not imported")
         print("PASS: backend reads use public https://aoe2war.com")
+        print("PASS: local preview Node heap ceiling = 6144 MiB")
         print()
-        print("> Local source + hot reload: https://localhost:3000")
+        print(
+            f"> Local source + hot reload: "
+            f"https://localhost:3000{preview_path}"
+        )
         print("> Production data: LIVE")
         print("> Production DB writes: READ-ONLY fenced")
         print()
@@ -412,13 +550,42 @@ def main() -> int:
             if no_browser:
                 print("PASS: localhost browser auto-open disabled")
             else:
+                preview_url = (
+                    f"https://localhost:3000"
+                    f"{preview_path}"
+                )
+
                 subprocess.Popen(
-                    ["open", "https://localhost:3000/clans/aoe2war"],
+                    ["open", preview_url],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )
 
-        return node.wait()
+                print(
+                    "PASS: opened local preview: "
+                    f"{preview_url}"
+                )
+
+        node_returncode = node.wait()
+
+        if node_returncode < 0:
+            signal_number = -node_returncode
+            try:
+                signal_name = __import__("signal").Signals(signal_number).name
+            except (ValueError, AttributeError):
+                signal_name = f"signal {signal_number}"
+
+            print(
+                "STOP: local preview Node process terminated by "
+                f"{signal_name} ({signal_number})",
+                file=sys.stderr,
+            )
+
+            # Shell-visible convention for signal termination. In particular,
+            # SIGABRT becomes 134 instead of Python wrapping -6 to 250.
+            return 128 + signal_number
+
+        return node_returncode
 
     except KeyboardInterrupt:
         return 130

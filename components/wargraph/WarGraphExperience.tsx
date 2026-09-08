@@ -19,6 +19,7 @@ import {
   Users,
 } from "lucide-react";
 
+import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import { WarGraphBoard } from "@/components/wargraph/WarGraphBoard";
 import { WarGraphTime } from "@/components/wargraph/WarGraphTime";
 import { WarGraphViewToggle } from "@/components/wargraph/WarGraphViewToggle";
@@ -32,18 +33,11 @@ import type {
   WarGraphPublicHistoryEvent,
   WarGraphPublicNode,
   WarGraphPublicSnapshot,
-  WarGraphViewMode,
 } from "@/lib/wargraph/publicTypes";
-import { WARGRAPH_VIEW_MODES } from "@/lib/wargraph/publicTypes";
 
-const VIEW_STORAGE_KEY = "aoe2war.wargraph.view.v1";
 const PRESENCE_INTERVAL_MS = 20_000;
 const SNAPSHOT_INTERVAL_MS = 12_000;
 const ACTION_TIMEOUT_MS = 12_000;
-
-function isViewMode(value: unknown): value is WarGraphViewMode {
-  return typeof value === "string" && WARGRAPH_VIEW_MODES.includes(value as WarGraphViewMode);
-}
 
 function Countdown({ target }: { target: string | null }) {
   const [remaining, setRemaining] = React.useState<string>("—");
@@ -366,7 +360,7 @@ export default function WarGraphExperience({
 }) {
   const router = useRouter();
   const [snapshot, setSnapshot] = React.useState(initialSnapshot);
-  const [viewMode, setViewMode] = React.useState<WarGraphViewMode>("basic");
+  const { viewMode, setViewMode: updateViewMode } = useTileViewPreference("wargraph");
   const [focusedNodeId, setFocusedNodeId] = React.useState<string | null>(null);
   const [pendingAction, setPendingAction] = React.useState<
     { kind: WarGraphActionKind; targetId?: string } | null
@@ -492,24 +486,6 @@ export default function WarGraphExperience({
       visibleIds.clear();
     };
   }, [snapshot.openAdvances]);
-
-  React.useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(VIEW_STORAGE_KEY);
-      if (isViewMode(stored)) setViewMode(stored);
-    } catch {
-      // Private browsing can deny storage. Basic remains the deterministic default.
-    }
-  }, []);
-
-  const updateViewMode = React.useCallback((mode: WarGraphViewMode) => {
-    setViewMode(mode);
-    try {
-      window.localStorage.setItem(VIEW_STORAGE_KEY, mode);
-    } catch {
-      // View selection remains valid for the current visit.
-    }
-  }, []);
 
   React.useEffect(() => {
     let cancelled = false;
