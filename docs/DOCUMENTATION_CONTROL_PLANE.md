@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/watcher-1510-art-updater-20260908` at `718c70f92497a59a588c409fbdd68b2f571a9cad`
+Implementation baseline: `fix/scav-watcher-support-release-audit-20260908` at `139367eb3a2eac1847f2dfb505c58c1de0f9ccc5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

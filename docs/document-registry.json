@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "77f55533a1d07a3cdc160633e25039d326b5ea940473f81d8043f399d5c73820",
+      "sha256": "6bf0917375ae5f9d82f01a3e1b12181b73dea90919877977938e5db8121fc7ef",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1814,8 +1814,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/watcher-1510-art-updater-20260908",
-    "commit": "718c70f92497a59a588c409fbdd68b2f571a9cad"
+    "branch": "fix/scav-watcher-support-release-audit-20260908",
+    "commit": "139367eb3a2eac1847f2dfb505c58c1de0f9ccc5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
