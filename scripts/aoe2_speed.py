@@ -7,6 +7,7 @@ import importlib.util
 import json
 import os
 import math
+import shlex
 import re
 import statistics
 import subprocess
@@ -106,7 +107,8 @@ FULL_ROUTE_COHORT_V2 = (
 )
 PUBLIC_BASE = "https://aoe2war.com"
 PRODUCTION_HOST = "hel1"
-ORIGIN_SPEED_URL = "http://127.0.0.1:3030/api/speed/check"
+ORIGIN_BASE = "http://127.0.0.1:3030"
+ORIGIN_SPEED_URL = f"{ORIGIN_BASE}/api/speed/check"
 PUBLIC_SPEED_URL = f"{PUBLIC_BASE}/api/speed/check"
 
 QUICK_ROUTES = [
@@ -787,6 +789,125 @@ def warm_route_probe(
     }
 
 
+def remote_origin_route_probe(
+    routes: list[str],
+    rounds: int,
+) -> dict[str, Any]:
+    """Measure route compute at the local Next origin over one reused connection."""
+    origin_rounds = min(max(1, rounds), 3)
+    urls = [ORIGIN_SPEED_URL]
+    labels: list[tuple[int, str]] = []
+    for round_no in range(1, origin_rounds + 1):
+        for path in routes:
+            urls.append(ORIGIN_BASE + path)
+            labels.append((round_no, path))
+
+    operands = " ".join(
+        f"-o /dev/null {shlex.quote(url)}"
+        for url in urls
+    )
+    script = (
+        "curl -fsS -L --compressed --max-time 15 "
+        "-H 'Host: aoe2war.com' "
+        f"-w '{CURL_METRIC_FORMAT}\n' {operands}\n"
+    )
+    try:
+        proc = subprocess.run(
+            [
+                "ssh",
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "ConnectTimeout=8",
+                PRODUCTION_HOST,
+                "bash",
+                "-s",
+            ],
+            input=script,
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=min(300, max(45, len(urls) * 2)),
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {
+            "available": False,
+            "rounds": origin_rounds,
+            "sample_count": 0,
+            "reason": str(exc),
+            "samples": [],
+        }
+
+    if proc.returncode != 0:
+        return {
+            "available": False,
+            "rounds": origin_rounds,
+            "sample_count": 0,
+            "reason": (proc.stderr or proc.stdout or "origin route probe failed").strip()[-1000:],
+            "samples": [],
+        }
+
+    lines = proc.stdout.splitlines()
+    if len(lines) != len(urls):
+        return {
+            "available": False,
+            "rounds": origin_rounds,
+            "sample_count": 0,
+            "reason": f"origin route probe returned {len(lines)} records for {len(urls)} transfers",
+            "samples": [],
+        }
+
+    parsed_rows: list[dict[str, Any]] = []
+    for line, url in zip(lines, urls, strict=True):
+        parsed = parse_curl_metric_line(line, url)
+        if parsed is None or not parsed.get("ok"):
+            return {
+                "available": False,
+                "rounds": origin_rounds,
+                "sample_count": len(parsed_rows),
+                "reason": "origin route probe contained an invalid or non-200 transfer",
+                "samples": parsed_rows,
+            }
+        parsed_rows.append(parsed)
+
+    prime = parsed_rows[0]
+    route_rows = parsed_rows[1:]
+    for row, (round_no, path) in zip(route_rows, labels, strict=True):
+        row["round"] = round_no
+        row["path"] = path
+
+    reused = sum(
+        1 for row in route_rows if int(row.get("new_connections") or 0) == 0
+    )
+    return {
+        "available": True,
+        "rounds": origin_rounds,
+        "sample_count": len(route_rows),
+        "prime_ttfb_ms": float(prime["ttfb_ms"]),
+        "reused_connection_transfers": reused,
+        "new_connection_transfers": len(route_rows) - reused,
+        "reused_connection_percent": reused / len(route_rows) * 100.0 if route_rows else 0.0,
+        "samples": route_rows,
+    }
+
+
+def origin_route_cohort(per_route: list[dict[str, Any]]) -> dict[str, float] | None:
+    rows = [
+        {
+            "median_ttfb_ms": row["origin_warm_median_ttfb_ms"],
+            "median_total_ms": row["origin_warm_median_total_ms"],
+        }
+        for row in per_route
+        if isinstance(row.get("origin_warm_median_ttfb_ms"), (int, float))
+        and isinstance(row.get("origin_warm_median_total_ms"), (int, float))
+    ]
+    if len(rows) != len(per_route) or not rows:
+        return None
+    return summarize_route_cohort(rows)
+
+
 def warm_route_cohort(per_route: list[dict[str, Any]]) -> dict[str, float] | None:
     rows = [
         {
@@ -1124,6 +1245,8 @@ def benchmark(
 
     warm_probe = warm_route_probe(routes, rounds)
     warm_samples = list(warm_probe.get("samples") or [])
+    origin_route_probe = remote_origin_route_probe(routes, rounds)
+    origin_route_samples = list(origin_route_probe.get("samples") or [])
 
     per_route: list[dict[str, Any]] = []
     for path in routes:
@@ -1175,6 +1298,41 @@ def benchmark(
                     ),
                 }
             )
+
+        origin_for_route = [
+            sample
+            for sample in origin_route_samples
+            if sample.get("path") == path and sample.get("ok")
+        ]
+        if origin_route_probe.get("available") and origin_for_route:
+            origin_ttfb = statistics.median(
+                float(sample["ttfb_ms"]) for sample in origin_for_route
+            )
+            origin_total = statistics.median(
+                float(sample["total_ms"]) for sample in origin_for_route
+            )
+            row.update(
+                {
+                    "origin_warm_samples": len(origin_for_route),
+                    "origin_warm_median_ttfb_ms": origin_ttfb,
+                    "origin_warm_median_total_ms": origin_total,
+                    "origin_warm_reused_connection_percent": (
+                        sum(
+                            1
+                            for sample in origin_for_route
+                            if int(sample.get("new_connections") or 0) == 0
+                        )
+                        / len(origin_for_route)
+                        * 100.0
+                    ),
+                }
+            )
+            if isinstance(row.get("warm_median_ttfb_ms"), (int, float)):
+                public_warm = float(row["warm_median_ttfb_ms"])
+                row["warm_public_origin_gap_ms"] = max(0.0, public_warm - origin_ttfb)
+                row["warm_public_origin_ratio"] = (
+                    public_warm / origin_ttfb if origin_ttfb > 0 else None
+                )
         per_route.append(row)
 
     seam = origin_seam()
@@ -1205,9 +1363,15 @@ def benchmark(
         **identity,
         "cohort": summarize_route_cohort(per_route),
         "warm_cohort": warm_route_cohort(per_route),
+        "origin_route_cohort": origin_route_cohort(per_route),
         "connection_reuse_probe": {
             key: value
             for key, value in warm_probe.items()
+            if key != "samples"
+        },
+        "origin_route_probe": {
+            key: value
+            for key, value in origin_route_probe.items()
             if key != "samples"
         },
         "origin_seam": seam,

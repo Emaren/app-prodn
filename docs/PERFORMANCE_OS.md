@@ -67,6 +67,29 @@ overrides exist for explicit operator/test isolation. They are not a mechanism f
 pointing release authority at arbitrary candidate source. Receipt references remain
 portable as `.aoe2war-release/...` regardless of which worktree invoked Speed OS.
 
+## Per-route cost stack
+
+Speed OS V2 supplements public cold and warm measurements with a bounded,
+read-only loopback probe executed on the production host. The probe requests the
+same governed public route cohort directly from the local Next origin over a
+reused connection. Each route can therefore carry:
+
+- cold public TTFB;
+- warm public TTFB;
+- warm loopback-origin TTFB;
+- cold-to-warm connection setup delta;
+- warm public-to-origin delivery gap and ratio;
+- post-TTFB transfer tail;
+- static source-cost evidence;
+- browser Ready coverage.
+
+Route-specific origin evidence outranks the old global public/origin ratio when
+classifying a target as `server_data` versus `delivery_proxy`. A route whose
+origin is already fast must not trigger speculative Prisma/SSR work merely
+because its public TTFB is high. Conversely, a genuinely expensive loopback
+origin remains an application/data target even when the estate also has a large
+network seam.
+
 ## Route source-cost map
 
 `aoe2war speed inventory` now attaches a conservative static source profile to

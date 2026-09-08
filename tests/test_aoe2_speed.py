@@ -900,6 +900,31 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertIn("\\n", script)
         self.assertNotIn("\\\\n", script)
 
+    def test_origin_route_probe_labels_reused_route_samples(self):
+        fake = type(
+            "Proc",
+            (),
+            {
+                "returncode": 0,
+                "stderr": "",
+                "stdout": (
+                    "200\t0.00001\t0.00020\t0.00000\t0.00200\t0.00210\t123\t1\thttp://127.0.0.1:3030/api/speed/check\n"
+                    "200\t0.00001\t0.00000\t0.00000\t0.01000\t0.01100\t1000\t0\thttp://127.0.0.1:3030/a\n"
+                    "200\t0.00001\t0.00000\t0.00000\t0.02000\t0.02100\t2000\t0\thttp://127.0.0.1:3030/b\n"
+                ),
+            },
+        )()
+
+        with patch.object(SPEED_MODULE.subprocess, "run", return_value=fake):
+            probe = SPEED_MODULE.remote_origin_route_probe(["/a", "/b"], 1)
+
+        self.assertTrue(probe["available"])
+        self.assertEqual(probe["sample_count"], 2)
+        self.assertEqual(probe["reused_connection_transfers"], 2)
+        self.assertEqual(probe["samples"][0]["path"], "/a")
+        self.assertEqual(probe["samples"][1]["path"], "/b")
+        self.assertEqual(probe["samples"][0]["ttfb_ms"], 10.0)
+
     def test_capacity_advice_prefers_warm_seam_over_misleading_cold_ratio(self):
         baseline = {
             "origin_seam": {

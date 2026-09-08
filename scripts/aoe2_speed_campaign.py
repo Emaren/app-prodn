@@ -594,6 +594,26 @@ def analyze_baseline(
         persistent_ttfb = warm_ttfb if warm_ttfb is not None else ttfb
         persistent_total = warm_total if warm_total is not None else total
         persistent_transfer_tail = max(0.0, persistent_total - persistent_ttfb)
+        origin_route_ttfb = (
+            float(route_row["origin_warm_median_ttfb_ms"])
+            if isinstance(route_row.get("origin_warm_median_ttfb_ms"), (int, float))
+            else None
+        )
+        delivery_gap = (
+            max(0.0, persistent_ttfb - origin_route_ttfb)
+            if origin_route_ttfb is not None
+            else None
+        )
+        delivery_ratio = (
+            persistent_ttfb / origin_route_ttfb
+            if origin_route_ttfb is not None and origin_route_ttfb > 0
+            else None
+        )
+        origin_share = (
+            origin_route_ttfb / persistent_ttfb
+            if origin_route_ttfb is not None and persistent_ttfb > 0
+            else None
+        )
 
         old_ttfb = historical_route_median(
             history,
@@ -622,6 +642,20 @@ def analyze_baseline(
         if persistent_ttfb >= max(500.0, p75_ttfb * 1.10):
             reasons.append("high persistent public TTFB")
         if (
+            origin_route_ttfb is not None
+            and origin_route_ttfb >= 150.0
+            and origin_share is not None
+            and origin_share >= 0.35
+        ):
+            reasons.append("high origin route TTFB")
+        if (
+            delivery_gap is not None
+            and delivery_gap >= 150.0
+            and delivery_ratio is not None
+            and delivery_ratio >= 2.0
+        ):
+            reasons.append("large warm public-to-origin delivery gap")
+        if (
             cold_warm_gap is not None
             and cold_warm_gap >= 150.0
             and ttfb > 0
@@ -646,7 +680,11 @@ def analyze_baseline(
         if "historical regression" in reasons:
             score += 1.0
 
-        if "high persistent public TTFB" in reasons:
+        if "high origin route TTFB" in reasons:
+            dominant_layer = "server_data"
+        elif "large warm public-to-origin delivery gap" in reasons:
+            dominant_layer = "delivery_proxy"
+        elif "high persistent public TTFB" in reasons:
             dominant_layer = "delivery_proxy" if seam_ratio is not None and seam_ratio >= 4.0 else "server_data"
         elif "large cold-to-warm connection gap" in reasons:
             dominant_layer = "connection_setup"
@@ -660,7 +698,11 @@ def analyze_baseline(
         recommendation: list[str] = []
         if "historical regression" in reasons:
             recommendation.append("diff recent route/data changes before broad tuning")
-        if "high persistent public TTFB" in reasons:
+        if "high origin route TTFB" in reasons:
+            recommendation.append("profile SSR/data/cache path; route-specific origin evidence is materially expensive")
+        if "large warm public-to-origin delivery gap" in reasons:
+            recommendation.append("optimize CDN/proxy/geography path; route-specific origin is already materially faster")
+        elif "high persistent public TTFB" in reasons:
             if seam_ratio is not None and seam_ratio >= 4.0:
                 recommendation.append("inspect persistent CDN/proxy/public delivery seam before blaming origin")
             else:
@@ -708,6 +750,10 @@ def analyze_baseline(
                 "warm_median_ttfb_ms": round(warm_ttfb, 3) if warm_ttfb is not None else None,
                 "warm_median_total_ms": round(warm_total, 3) if warm_total is not None else None,
                 "cold_warm_ttfb_gap_ms": round(cold_warm_gap, 3) if cold_warm_gap is not None else None,
+                "origin_warm_median_ttfb_ms": round(origin_route_ttfb, 3) if origin_route_ttfb is not None else None,
+                "warm_public_origin_gap_ms": round(delivery_gap, 3) if delivery_gap is not None else None,
+                "warm_public_origin_ratio": round(delivery_ratio, 3) if delivery_ratio is not None else None,
+                "origin_share_of_public_ttfb": round(origin_share, 4) if origin_share is not None else None,
                 "dominant_layer": dominant_layer,
                 "source_profile": source_profile,
                 "historical_ttfb_ms": (
@@ -760,6 +806,16 @@ def analyze_baseline(
     if missing_ready:
         estate_findings.append(
             f"{len(missing_ready)} benchmark route(s) lack explicit authoritative Ready coverage."
+        )
+    delivery_dominated = sum(1 for row in rows if row.get("dominant_layer") == "delivery_proxy")
+    server_dominated = sum(1 for row in rows if row.get("dominant_layer") == "server_data")
+    if delivery_dominated:
+        estate_findings.append(
+            f"{delivery_dominated} benchmark route(s) are currently classified as delivery/proxy dominated from route-specific evidence where available."
+        )
+    if server_dominated:
+        estate_findings.append(
+            f"{server_dominated} benchmark route(s) are currently classified as server/data dominated."
         )
     if history:
         estate_findings.append(
