@@ -18,12 +18,45 @@ test(
 
     assert.match(
       page,
-      /const maxStakeWolo = useMemo\([\s\S]*?resolveVerifiedWalletStakeCap\(walletBalance\.data\)/
+      /const maxStakeWolo = useMemo\([\s\S]*?resolveVerifiedWalletStakeCap\([\s\S]{0,120}?walletBalance\.data[\s\S]{0,120}?BET_STAKE_APP_CAP_WOLO/
     );
 
     assert.doesNotMatch(
       page,
       /const maxStakeWolo = useMemo\([\s\S]{0,240}?bettingPaused/
+    );
+  }
+);
+
+
+test(
+  "disconnected wallet does not deadlock the lock action at Max 0",
+  () => {
+    assert.match(
+      page,
+      /walletBalance\.data === undefined[\s\S]{0,180}?BET_STAKE_APP_CAP_WOLO/
+    );
+    assert.doesNotMatch(
+      page,
+      /walletBalance\.isError\s*\?\s*0/
+    );
+    assert.match(
+      page,
+      /preparedWallet = await prepareStakeWallet\(market\);[\s\S]{0,320}?fetchVerifiedWalletStakeCap/
+    );
+  }
+);
+
+test(
+  "wallet cap is freshly verified before stake intent or combined ticket preparation",
+  () => {
+    assert.match(
+      page,
+      /fetchVerifiedWalletStakeCap\([\s\S]{0,260}?verifiedStakeError[\s\S]{0,260}?intentId = await createStakeIntent/
+    );
+    assert.match(
+      page,
+      /fetchVerifiedWalletStakeCap\([\s\S]{0,700}?verifiedTotalError[\s\S]{0,500}?prepareStakeTicket/
     );
   }
 );

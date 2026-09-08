@@ -46,7 +46,10 @@ import {
 import { useUserAuth } from "@/context/UserAuthContext";
 import { useKeplr } from "@/hooks/use-keplr";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
-import { resolveVerifiedWalletStakeCap } from "@/lib/woloBalanceRead";
+import {
+  parseWoloBalanceApiPayload,
+  resolveVerifiedWalletStakeCap,
+} from "@/lib/woloBalanceRead";
 import {
   isExplicitlyAttachedBroadcastFeed,
   readStoredBattleCamVisibility,
@@ -61,6 +64,7 @@ import { buildBetStakeMemo } from "@/lib/betStakeMemo";
 import {
   WOLO_BASE_DENOM,
   WOLO_CHAIN_ID,
+  WOLO_COIN_DECIMALS,
   WOLO_DEFAULT_GAS_PRICE,
   WOLO_RPC_URL,
   toUwoLoAmount,
@@ -70,6 +74,7 @@ import {
 const WOLO_LOGO_SRC = "/legacy/wolo-logo-transparent.webp";
 const BETTING_HALL_HERO_SRC = "/bets/betting_hall2.png";
 const STAKE_OPTIONS = [10, 25, 50, 100] as const;
+const BET_STAKE_APP_CAP_WOLO = 50_000;
 const BETS_POLL_INTERVAL_MS = 5_000;
 const STAKE_RECOVERY_STORAGE_KEY = "aoe2hdbets.betStakeRecovery.v1";
 const TICKET_RECOVERY_STORAGE_KEY = "aoe2hdbets.betTicketRecovery.v1";
@@ -1068,17 +1073,57 @@ function isBettingSettlementRailPaused(
   );
 }
 
-function validateStakeAmount(stake: number, maxStake: number) {
+function validateStakeAmountShape(stake: number) {
   if (!Number.isFinite(stake) || !Number.isInteger(stake)) {
     return "Whole numbers only.";
   }
   if (stake < 1) {
     return "Enter at least 1 WOLO.";
   }
+  return null;
+}
+
+function validateStakeAmount(stake: number, maxStake: number) {
+  const shapeError = validateStakeAmountShape(stake);
+  if (shapeError) return shapeError;
   if (stake > maxStake) {
     return `Max ${maxStake.toLocaleString()} WOLO with the current wallet/app limit.`;
   }
   return null;
+}
+
+async function fetchVerifiedWalletStakeCap(address: string) {
+  const normalizedAddress = address.trim();
+  const response = await fetch(
+    `/api/wolo/balance/${encodeURIComponent(normalizedAddress)}`,
+    {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    },
+  );
+  const payload = (await response.json().catch(() => null)) as unknown;
+
+  if (!response.ok) {
+    const detail =
+      typeof payload === "object" &&
+      payload !== null &&
+      typeof (payload as { detail?: unknown }).detail === "string"
+        ? (payload as { detail: string }).detail
+        : "WOLO balance verification is temporarily unavailable.";
+    throw new Error(detail);
+  }
+
+  const verified = parseWoloBalanceApiPayload(payload, {
+    address: normalizedAddress,
+    denom: WOLO_BASE_DENOM,
+    decimals: WOLO_COIN_DECIMALS,
+    chainId: WOLO_CHAIN_ID,
+  });
+
+  return resolveVerifiedWalletStakeCap(
+    verified.amount,
+    BET_STAKE_APP_CAP_WOLO,
+  );
 }
 
 function formatSettledTime(value: string | null) {
@@ -2106,10 +2151,13 @@ export default function BetsPage() {
   const unresolvedStakeTickets = board?.recovery.unresolvedStakeTickets || [];
   const maxStakeWolo = useMemo(
     () =>
-      walletBalance.isError
-        ? 0
-        : resolveVerifiedWalletStakeCap(walletBalance.data),
-    [walletBalance.data, walletBalance.isError],
+      walletBalance.data === undefined
+        ? BET_STAKE_APP_CAP_WOLO
+        : resolveVerifiedWalletStakeCap(
+            walletBalance.data,
+            BET_STAKE_APP_CAP_WOLO,
+          ),
+    [walletBalance.data],
   );
 
   const refreshBoard = useCallback(
@@ -2898,10 +2946,9 @@ export default function BetsPage() {
 
     const totalAmountWolo =
       ticketSelection.stake + ticketSelection.desync.stake;
-    const totalError = validateStakeAmount(totalAmountWolo, maxStakeWolo);
-    const desyncError = validateStakeAmount(
+    const totalError = validateStakeAmountShape(totalAmountWolo);
+    const desyncError = validateStakeAmountShape(
       ticketSelection.desync.stake,
-      maxStakeWolo,
     );
     if (desyncError || totalError) {
       toast.error(
@@ -2921,6 +2968,30 @@ export default function BetsPage() {
 
     try {
       preparedWallet = await prepareStakeWallet(market);
+      const verifiedStakeCapWolo = await fetchVerifiedWalletStakeCap(
+        preparedWallet.walletAddress,
+      );
+      const verifiedWinnerError = validateStakeAmount(
+        ticketSelection.stake,
+        verifiedStakeCapWolo,
+      );
+      const verifiedDesyncError = validateStakeAmount(
+        ticketSelection.desync.stake,
+        verifiedStakeCapWolo,
+      );
+      const verifiedTotalError = validateStakeAmount(
+        totalAmountWolo,
+        verifiedStakeCapWolo,
+      );
+      if (verifiedWinnerError || verifiedDesyncError || verifiedTotalError) {
+        throw new Error(
+          verifiedWinnerError ||
+            verifiedDesyncError ||
+            verifiedTotalError ||
+            "The combined ticket amount exceeds the verified wallet limit.",
+        );
+      }
+
       const clientRequestId = newClientRequestId("manual-ticket");
       const ticket = await prepareStakeTicket({
         clientRequestId,
@@ -3071,7 +3142,9 @@ export default function BetsPage() {
       }
     }
 
-    const stakeValidation = validateStakeAmount(selection.stake, maxStakeWolo);
+    const stakeValidation = onchainBetEscrowEnabled
+      ? validateStakeAmountShape(selection.stake)
+      : validateStakeAmount(selection.stake, maxStakeWolo);
     if (stakeValidation) {
       toast.error(stakeValidation);
       return;
@@ -3112,6 +3185,16 @@ export default function BetsPage() {
       if (onchainBetEscrowEnabled && runtimeBetEscrowAddress) {
         workflowStep = "awaiting_wallet";
         preparedWallet = await prepareStakeWallet(market);
+        const verifiedStakeCapWolo = await fetchVerifiedWalletStakeCap(
+          preparedWallet.walletAddress,
+        );
+        const verifiedStakeError = validateStakeAmount(
+          selection.stake,
+          verifiedStakeCapWolo,
+        );
+        if (verifiedStakeError) {
+          throw new Error(verifiedStakeError);
+        }
         workflowStep = "stake_intent";
         intentId = await createStakeIntent({
           marketId: market.id,

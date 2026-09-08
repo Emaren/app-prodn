@@ -8,7 +8,7 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-09-01"
+reviewed_at: "2026-09-08"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -58,6 +58,18 @@ The request carries `version=1`, a per-attempt `clientRequestId`, connected
 wallet metadata, the exact combined total, and one or two market/side/amount
 legs. Reusing the request ID with identical immutable input is a no-op; reusing
 it with different input is a conflict.
+
+### Wallet funding preflight
+
+A disconnected browser is not a zero-balance wallet. The betting composer may
+accept an amount and invite Keplr connection before a wallet balance is known,
+but it must not create a stake intent/ticket or broadcast WOLO on that
+provisional state. After Keplr returns the exact WoloChain sender address, the
+client performs a fresh no-store read from `/api/wolo/balance/<address>`,
+validates address/chain/denom/decimals/provenance, derives the verified whole-WOLO
+stake cap, and re-validates every ticket leg plus the combined total. Any balance
+read failure, zero balance, or amount above the verified cap fails closed before
+ticket preparation or chain transfer.
 
 After Keplr signs one transfer, record it with:
 
