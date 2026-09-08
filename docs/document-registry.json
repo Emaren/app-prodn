@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6b02d33f2657792eacbc34ab8c40bf9044d291292e11e9933ec4a7030045c8a5",
+      "sha256": "bc12f9425bbf4f834b8843af37dc4f97d3633b8c81afd2f30d882df26134b19b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1814,8 +1814,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/scav-release-gate-eof-20260908",
-    "commit": "d96570ba05faaf45c6235e3b56e48aa5ca585a1b"
+    "branch": "fix/core-bet-claim-escrow-retry-20260908",
+    "commit": "bdf4f995d460ddcfd0c2d824d9d9902d32571a03"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
