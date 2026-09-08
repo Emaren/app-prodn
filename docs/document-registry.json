@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6bf0917375ae5f9d82f01a3e1b12181b73dea90919877977938e5db8121fc7ef",
+      "sha256": "6b02d33f2657792eacbc34ab8c40bf9044d291292e11e9933ec4a7030045c8a5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1814,8 +1814,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/scav-watcher-support-release-audit-20260908",
-    "commit": "139367eb3a2eac1847f2dfb505c58c1de0f9ccc5"
+    "branch": "fix/scav-release-gate-eof-20260908",
+    "commit": "d96570ba05faaf45c6235e3b56e48aa5ca585a1b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

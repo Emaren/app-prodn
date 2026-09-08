@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/scav-watcher-support-release-audit-20260908` at `139367eb3a2eac1847f2dfb505c58c1de0f9ccc5`
+Implementation baseline: `fix/scav-release-gate-eof-20260908` at `d96570ba05faaf45c6235e3b56e48aa5ca585a1b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
