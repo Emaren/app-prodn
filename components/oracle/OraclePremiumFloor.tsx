@@ -92,14 +92,12 @@ function dateLabel(value: string) {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
-    timeZone: "America/Edmonton",
     timeZoneName: "short",
   }).format(date);
 }
 
 function datetimeLocal(value: Date) {
   const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Edmonton",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
