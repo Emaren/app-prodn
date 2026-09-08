@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/scav-release-gate-eof-20260908` at `d96570ba05faaf45c6235e3b56e48aa5ca585a1b`
+Implementation baseline: `fix/release-test-py39-20260908` at `ddfa4e655e0c6712e3b955404296622061cc5f73`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6b02d33f2657792eacbc34ab8c40bf9044d291292e11e9933ec4a7030045c8a5",
+      "sha256": "1d1377b990fe866c531ee65867a073a69a2a031c345ae230de6ba940f5f8a32b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1814,8 +1814,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/scav-release-gate-eof-20260908",
-    "commit": "d96570ba05faaf45c6235e3b56e48aa5ca585a1b"
+    "branch": "fix/release-test-py39-20260908",
+    "commit": "ddfa4e655e0c6712e3b955404296622061cc5f73"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
