@@ -20,7 +20,7 @@ test("claimed exact-Steam profiles bypass the full public directory", () => {
   assert.match(loader, /const currentPlayer\s*=\s*exactSteamPlayer \?\?/);
 });
 
-test("Academy and Zodiac use the lightweight claimed-player preview rail", () => {
+test("Academy uses direct lightweight advisor evidence while Zodiac keeps the preview rail", () => {
   assert.match(
     profile,
     /export async function loadClaimedPlayerPreview\([\s\S]*?loadCandidateFinalGames\([\s\S]*?buildMatchFeed\(/,
@@ -32,8 +32,10 @@ test("Academy and Zodiac use the lightweight claimed-player preview rail", () =>
     ),
     /loadWoloStats|loadWatcherStats|loadStreamStats|buildRivalSummaries|loadUserCommunitySummaries/,
   );
-  assert.match(academyPage, /loadClaimedPlayerPreview\([\s\S]*?,\s*1\s*\)/);
-  assert.doesNotMatch(academyPage, /loadClaimedPlayerProfile/);
+  assert.match(academyPage, /prisma\.user\.findUnique\(/);
+  assert.match(academyPage, /prisma\.replayPlayerSnapshot\.count\(/);
+  assert.match(academyPage, /projectionStatus:\s*"accepted"/);
+  assert.doesNotMatch(academyPage, /loadClaimedPlayerPreview|loadClaimedPlayerProfile/);
   assert.match(zodiacPage, /loadClaimedPlayerPreview\([\s\S]*?,\s*6\s*\)/);
   assert.doesNotMatch(zodiacPage, /loadClaimedPlayerProfile/);
 });
@@ -41,11 +43,12 @@ test("Academy and Zodiac use the lightweight claimed-player preview rail", () =>
 test("the player directory preserves its generation-before-corpus watermark", () => {
   assert.match(
     directoryPage,
-    /const \[initialGeneration, presence\] = await Promise\.all\(\[[\s\S]*?loadPublicReplayGeneration\(prisma\)[\s\S]*?loadPublicPresenceSnapshot\(prisma\)[\s\S]*?const directory = await loadPublicPlayerDirectoryFresh\(prisma\)/,
+    /const \[initialGeneration, presence\] = await Promise\.all\(\[[\s\S]*?loadPublicReplayGeneration\(prisma\)[\s\S]*?loadPublicPresenceSnapshot\(prisma\)[\s\S]*?const directory = await loadPublicPlayerDirectory\(\s*prisma,\s*initialGeneration/,
   );
   assert.ok(
-    directoryPage.indexOf("await loadPublicReplayGeneration(prisma)") <
-      directoryPage.indexOf("loadPublicPlayerDirectoryFresh(prisma)"),
-    "the replay generation watermark must be captured before the fresh corpus read starts",
+    directoryPage.indexOf("loadPublicReplayGeneration(prisma)") <
+      directoryPage.indexOf("loadPublicPlayerDirectory("),
+    "the replay generation watermark must be captured before the generation-bound directory read starts",
   );
+  assert.doesNotMatch(directoryPage, /loadPublicPlayerDirectoryFresh/);
 });
