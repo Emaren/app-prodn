@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `53a0ffb16dbde2f477f80151c34e79ecfcba25cb`
+Implementation baseline: `feature/high-roi-speed-pass-20260907` at `442173008fe77091710d39b758a547fe5e9ab3e2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
