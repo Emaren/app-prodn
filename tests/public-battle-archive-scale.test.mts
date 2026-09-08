@@ -183,7 +183,7 @@ test("battle archive page uses database-grain paging instead of whole-corpus com
   const source = await readFile("app/battle-archive/page.tsx", "utf8");
 
   assert.match(source, /loadPublicBattleArchivePage\(prisma/);
-  assert.match(source, /buildPublicBattleArchiveActivity\(/);
+  assert.match(source, /buildPublicRivalryActivity\(/);
   assert.match(source, /<SpeedReadyMarker route="\/battle-archive" \/>/);
   assert.doesNotMatch(source, /loadPublicBattleArchive\(/);
 });
@@ -198,7 +198,9 @@ test("archive SQL mirrors public identity and eligibility normalization", async 
   assert.match(source, /archive_filename not like '%\.aoe2mpgame'/);
   assert.match(source, /normalized_parse_reason <> 'watcher_final_unparsed'/);
   assert.match(source, /or named_player_count >= 2/);
-  assert.match(source, /select count\(\*\)::bigint as total[\s\S]*from battles/);
+  assert.match(source, /\(select count\(\*\)::bigint from battles\) as total/);
+  assert.match(source, /\(select count\(\*\)::bigint from source\) as final_replay_records/);
+  assert.match(source, /\(select count\(\*\)::bigint from eligible\) as public_battle_records/);
 });
 
 test("identical live polls preserve loaded archive pages while refreshing seed metadata", () => {
