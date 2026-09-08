@@ -599,20 +599,84 @@ def analyze_baseline(
             if isinstance(route_row.get("origin_warm_median_ttfb_ms"), (int, float))
             else None
         )
+        origin_distribution = (
+            route_row.get("origin_warm_ttfb_distribution")
+            if isinstance(route_row.get("origin_warm_ttfb_distribution"), dict)
+            else {}
+        )
+        stability_probe = (
+            route_row.get("origin_stability_probe")
+            if isinstance(route_row.get("origin_stability_probe"), dict)
+            else {}
+        )
+        stability_ttfb = (
+            stability_probe.get("ttfb")
+            if isinstance(stability_probe.get("ttfb"), dict)
+            else {}
+        )
+        stabilized_origin_ttfb = (
+            float(stability_ttfb["median_ms"])
+            if stability_ttfb.get("confidence") == "high"
+            and isinstance(stability_ttfb.get("median_ms"), (int, float))
+            else None
+        )
+        origin_phase_variance_normalized = bool(
+            origin_route_ttfb is not None
+            and stabilized_origin_ttfb is not None
+            and origin_route_ttfb - stabilized_origin_ttfb >= 15.0
+            and origin_route_ttfb >= stabilized_origin_ttfb * 1.75
+        )
+        effective_origin_ttfb = (
+            stabilized_origin_ttfb
+            if origin_phase_variance_normalized
+            else origin_route_ttfb
+        )
         delivery_gap = (
-            max(0.0, persistent_ttfb - origin_route_ttfb)
-            if origin_route_ttfb is not None
+            max(0.0, persistent_ttfb - effective_origin_ttfb)
+            if effective_origin_ttfb is not None
             else None
         )
         delivery_ratio = (
-            persistent_ttfb / origin_route_ttfb
-            if origin_route_ttfb is not None and origin_route_ttfb > 0
+            persistent_ttfb / effective_origin_ttfb
+            if effective_origin_ttfb is not None and effective_origin_ttfb > 0
             else None
         )
         origin_share = (
-            origin_route_ttfb / persistent_ttfb
-            if origin_route_ttfb is not None and persistent_ttfb > 0
+            effective_origin_ttfb / persistent_ttfb
+            if effective_origin_ttfb is not None and persistent_ttfb > 0
             else None
+        )
+
+        browser_telemetry = (
+            route_row.get("browser_telemetry")
+            if isinstance(route_row.get("browser_telemetry"), dict)
+            else {}
+        )
+        browser_ready = (
+            browser_telemetry.get("ready")
+            if isinstance(browser_telemetry.get("ready"), dict)
+            else {}
+        )
+        browser_ready_confidence = str(
+            browser_telemetry.get("ready_confidence") or "none"
+        )
+        browser_ready_count = int(browser_ready.get("count") or 0)
+        browser_ready_p50 = (
+            float(browser_ready["p50"])
+            if isinstance(browser_ready.get("p50"), (int, float))
+            else None
+        )
+        browser_ready_p75 = (
+            float(browser_ready["p75"])
+            if isinstance(browser_ready.get("p75"), (int, float))
+            else None
+        )
+        browser_ready_decision_grade = browser_ready_confidence in {"moderate", "high"}
+        browser_ready_slow = bool(
+            route in ready_routes
+            and browser_ready_decision_grade
+            and browser_ready_p75 is not None
+            and browser_ready_p75 >= 2000.0
         )
 
         old_ttfb = historical_route_median(
@@ -639,11 +703,15 @@ def analyze_baseline(
         reasons: list[str] = []
         if trend_ttfb == "regression" or trend_total == "regression":
             reasons.append("historical regression")
+        if origin_phase_variance_normalized:
+            reasons.append("origin phase variance normalized on focused probe")
+        if browser_ready_slow:
+            reasons.append("high browser Ready p75")
         if persistent_ttfb >= max(500.0, p75_ttfb * 1.10):
             reasons.append("high persistent public TTFB")
         if (
-            origin_route_ttfb is not None
-            and origin_route_ttfb >= 150.0
+            effective_origin_ttfb is not None
+            and effective_origin_ttfb >= 150.0
             and origin_share is not None
             and origin_share >= 0.35
         ):
@@ -679,6 +747,8 @@ def analyze_baseline(
         )
         if "historical regression" in reasons:
             score += 1.0
+        if "high browser Ready p75" in reasons:
+            score += min((browser_ready_p75 or 0.0) / 2000.0, 2.0) * 0.50
 
         if "high origin route TTFB" in reasons:
             dominant_layer = "server_data"
@@ -688,6 +758,8 @@ def analyze_baseline(
             dominant_layer = "delivery_proxy" if seam_ratio is not None and seam_ratio >= 4.0 else "server_data"
         elif "large cold-to-warm connection gap" in reasons:
             dominant_layer = "connection_setup"
+        elif "high browser Ready p75" in reasons:
+            dominant_layer = "browser_ready"
         elif "large response payload" in reasons or "large post-TTFB transfer tail" in reasons:
             dominant_layer = "transfer_payload"
         elif route not in ready_routes:
@@ -698,6 +770,14 @@ def analyze_baseline(
         recommendation: list[str] = []
         if "historical regression" in reasons:
             recommendation.append("diff recent route/data changes before broad tuning")
+        if "origin phase variance normalized on focused probe" in reasons:
+            recommendation.append(
+                "preserve the focused stability evidence; treat the initial origin spike as cache/generation phase variance rather than a persistent server regression"
+            )
+        if "high browser Ready p75" in reasons:
+            recommendation.append(
+                "profile client hydration, route-critical API/resource timing and long tasks using durable browser telemetry"
+            )
         if "high origin route TTFB" in reasons:
             recommendation.append("profile SSR/data/cache path; route-specific origin evidence is materially expensive")
         if "large warm public-to-origin delivery gap" in reasons:
@@ -772,6 +852,32 @@ def analyze_baseline(
                 "warm_median_total_ms": round(warm_total, 3) if warm_total is not None else None,
                 "cold_warm_ttfb_gap_ms": round(cold_warm_gap, 3) if cold_warm_gap is not None else None,
                 "origin_warm_median_ttfb_ms": round(origin_route_ttfb, 3) if origin_route_ttfb is not None else None,
+                "origin_warm_ttfb_distribution": origin_distribution,
+                "stabilized_origin_ttfb_ms": (
+                    round(stabilized_origin_ttfb, 3)
+                    if stabilized_origin_ttfb is not None
+                    else None
+                ),
+                "effective_origin_ttfb_ms": (
+                    round(effective_origin_ttfb, 3)
+                    if effective_origin_ttfb is not None
+                    else None
+                ),
+                "origin_phase_variance_normalized": origin_phase_variance_normalized,
+                "origin_stability_probe": stability_probe,
+                "browser_ready_count": browser_ready_count,
+                "browser_ready_confidence": browser_ready_confidence,
+                "browser_ready_p50_ms": (
+                    round(browser_ready_p50, 3)
+                    if browser_ready_p50 is not None
+                    else None
+                ),
+                "browser_ready_p75_ms": (
+                    round(browser_ready_p75, 3)
+                    if browser_ready_p75 is not None
+                    else None
+                ),
+                "browser_ready_decision_grade": browser_ready_decision_grade,
                 "warm_public_origin_gap_ms": round(delivery_gap, 3) if delivery_gap is not None else None,
                 "warm_public_origin_ratio": round(delivery_ratio, 3) if delivery_ratio is not None else None,
                 "origin_share_of_public_ttfb": round(origin_share, 4) if origin_share is not None else None,

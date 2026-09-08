@@ -99,7 +99,7 @@ Usage:
   aoe2war update [--apply] [--json]
   aoe2war control <status|refresh> [options]
   aoe2war docs <status|impact|audit|update> [options]
-  aoe2war speed [status|release-history|benchmark|compare|diagnose|inventory|edge|build|campaign|pulse]
+  aoe2war speed [status|release-history|benchmark|compare|browser|diagnose|inventory|edge|build|campaign|pulse]
   aoe2war storage-retention [--apply] [--json]
   aoe2war storage <status|plan|maintain|verify> [options]
   aoe2war council [--json]
