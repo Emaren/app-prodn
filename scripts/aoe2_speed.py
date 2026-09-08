@@ -609,7 +609,7 @@ def remote_origin_keepalive(samples: int) -> list[dict[str, Any]]:
     )
     script = (
         "curl -fsS -L --compressed --max-time 5 "
-        f"-w '{CURL_METRIC_FORMAT}\\\\n' {operands}\n"
+        f"-w '{CURL_METRIC_FORMAT}\\n' {operands}\n"
     )
     proc = subprocess.run(
         [
@@ -1554,10 +1554,29 @@ def main() -> int:
             )
             if seam.get("public_median_ttfb_ms") and seam.get("origin_median_ttfb_ms"):
                 print(
-                    "Public/origin:   "
+                    "Cold public/origin: "
                     f"{seam['public_median_ttfb_ms']:.1f} / "
                     f"{seam['origin_median_ttfb_ms']:.2f} ms · "
                     f"{seam['ratio']:.1f}×"
+                )
+            public_keepalive = seam.get("public_keepalive") or {}
+            origin_keepalive = seam.get("origin_keepalive") or {}
+            if (
+                seam.get("warm_ratio") is not None
+                and public_keepalive.get("available")
+                and origin_keepalive.get("available")
+            ):
+                print(
+                    "Warm public/origin: "
+                    f"{public_keepalive['warm_median_ttfb_ms']:.1f} / "
+                    f"{origin_keepalive['warm_median_ttfb_ms']:.2f} ms · "
+                    f"{seam['warm_ratio']:.1f}×"
+                )
+            if seam.get("public_connection_setup_delta_ms") is not None:
+                print(
+                    "Connection setup:   "
+                    f"~{float(seam['public_connection_setup_delta_ms']):.1f} ms "
+                    "cold-to-warm delta"
                 )
             print(f"Receipt:         {evidence_ref(payload['_path'])}")
             print()

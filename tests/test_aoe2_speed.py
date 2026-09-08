@@ -875,6 +875,31 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertEqual(command.count("curl"), 1)
         self.assertIn("https://aoe2war.com/bets", command)
 
+    def test_remote_origin_keepalive_parses_curl_record_newlines(self):
+        fake = type(
+            "Proc",
+            (),
+            {
+                "returncode": 0,
+                "stderr": "",
+                "stdout": (
+                    "200\t0.00001\t0.00020\t0.00000\t0.00200\t0.00210\t123\t1\thttp://127.0.0.1:3030/api/speed/check\n"
+                    "200\t0.00001\t0.00000\t0.00000\t0.00080\t0.00090\t123\t0\thttp://127.0.0.1:3030/api/speed/check\n"
+                    "200\t0.00001\t0.00000\t0.00000\t0.00070\t0.00080\t123\t0\thttp://127.0.0.1:3030/api/speed/check\n"
+                ),
+            },
+        )()
+
+        with patch.object(SPEED_MODULE.subprocess, "run", return_value=fake) as run:
+            rows = SPEED_MODULE.remote_origin_keepalive(3)
+
+        self.assertEqual(len(rows), 3)
+        self.assertEqual(rows[0]["new_connections"], 1)
+        self.assertEqual(rows[1]["new_connections"], 0)
+        script = run.call_args.kwargs["input"]
+        self.assertIn("\\n", script)
+        self.assertNotIn("\\\\n", script)
+
     def test_capacity_advice_prefers_warm_seam_over_misleading_cold_ratio(self):
         baseline = {
             "origin_seam": {
