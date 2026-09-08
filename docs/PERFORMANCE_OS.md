@@ -134,6 +134,57 @@ because its public TTFB is high. Conversely, a genuinely expensive loopback
 origin remains an application/data target even when the estate also has a large
 network seam.
 
+## Speed OS V3: confidence, browser truth, and stability
+
+Speed OS V3 adds two evidence families without replacing the V2 measurements.
+
+### Durable browser performance evidence
+
+`SpeedReadyMarker` coverage proves that a route has an explicit semantic Ready
+boundary. It does **not** prove what users actually observed. Browser timing is
+durably ingested by Traffic and is joined back into Speed OS by exact build
+version and Traffic's canonical route-group contract.
+
+`aoe2war speed browser` reads the existing Traffic performance overview through
+the VPS-local admin API. The Traffic admin credential is sourced and consumed
+only on the production host; it is never printed, copied to the operator Mac, or
+stored in a Speed receipt. The read is observational and does not mutate Traffic.
+
+Route Ready evidence carries an explicit sample-confidence class:
+
+- `none`: zero samples;
+- `single_sample`: one sample;
+- `low`: two through four samples;
+- `moderate`: five through nineteen samples;
+- `high`: twenty or more samples.
+
+Only `moderate` or `high` route evidence may authorize a browser-readiness
+diagnosis. A single slow navigation is preserved as evidence but can never by
+itself label a route slow. The campaign currently treats a decision-grade Ready
+p75 of at least 2,000 ms as browser-readiness debt, matching Traffic's durable
+slow-sample threshold. Ready and LCP values remain separate metrics.
+
+### Origin stability evidence
+
+The normal route-origin pass remains the primary benchmark evidence. Each route
+now also records its sample distribution (minimum, median, p75, p95, maximum and
+spread). If that bounded pass looks expensive or internally unstable, Speed OS
+may perform a focused seven-sample loopback reprobe of only the suspicious
+route. The focused probe primes the local connection first, so all seven
+measured route samples use the already-established loopback connection.
+
+The focused probe is additive evidence. It never overwrites or deletes the
+original route median. When a high-confidence focused median is at least 15 ms
+lower and the original median is at least 1.75 times the stabilized median, the
+campaign records `origin phase variance normalized on focused probe` and uses
+the stabilized value only for diagnosis. This prevents cache/generation phase
+noise from becoming fake persistent server debt while preserving the raw first
+observation for audit.
+
+This contract deliberately favors false negatives over false claims: sparse
+browser samples and one-off origin spikes remain visible, but neither may
+authorize broad performance work without stronger evidence.
+
 ## Route source-cost map
 
 `aoe2war speed inventory` now attaches a conservative static source profile to
@@ -387,7 +438,9 @@ A benchmark receipt binds measurements to:
 - sample count;
 - public TTFB and total-response percentiles;
 - public-vs-origin `/api/speed/check` seam;
-- explicit route-level Ready marker coverage.
+- per-route origin sample distribution and bounded stability evidence when warranted;
+- explicit route-level Ready marker coverage;
+- build-matched durable Traffic Ready/LCP aggregates with route-level confidence.
 
 Cohort percentiles are calculated across per-route medians so one noisy route or
 extra request sample does not silently reweight the estate. Comparisons are always like-for-like:

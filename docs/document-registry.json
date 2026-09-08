@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c048baa5f45f16e4f98a20907249aeeffec49a1f52c26294781103576cab03b0",
+      "sha256": "42162b68709e2421bb807dd4008d886897ee1d7afde97e8f9d0315c1c98b4615",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1093,7 +1093,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "1c03b836469bf5402ae1d864e724de17e9dc2ae8c3fe5abefe673e3c34fae954",
+      "sha256": "490bfee2a571c67134b91d554f161e1b80947b51bf46e7845077dabaae424e27",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1814,8 +1814,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/speed-os-v2",
-    "commit": "f7672b63fe8d3f768268350a7b3ff6e3e666e493"
+    "branch": "feature/speed-os-v3",
+    "commit": "b2d55ed45efc9e86be01062073f85a1ba2e3b764"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

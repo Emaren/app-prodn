@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/speed-os-v2` at `f7672b63fe8d3f768268350a7b3ff6e3e666e493`
+Implementation baseline: `feature/speed-os-v3` at `b2d55ed45efc9e86be01062073f85a1ba2e3b764`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

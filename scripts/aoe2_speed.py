@@ -107,6 +107,8 @@ FULL_ROUTE_COHORT_V2 = (
 )
 PUBLIC_BASE = "https://aoe2war.com"
 PRODUCTION_HOST = "hel1"
+ROOT_PRODUCTION_HOST = os.getenv("AOE2_SPEED_ROOT_HOST", "root@hel1")
+TRAFFIC_LOCAL_BASE = "http://127.0.0.1:3345"
 ORIGIN_BASE = "http://127.0.0.1:3030"
 ORIGIN_SPEED_URL = f"{ORIGIN_BASE}/api/speed/check"
 PUBLIC_SPEED_URL = f"{PUBLIC_BASE}/api/speed/check"
@@ -340,6 +342,279 @@ def ready_coverage() -> dict[str, Any]:
         "speed_runtime_mounts": runtime_mounts,
     }
 
+
+
+_BROWSER_UUID_SEGMENT_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+)
+_BROWSER_WOLO_ADDRESS_RE = re.compile(r"^wolo1[0-9a-z]{20,}$")
+_BROWSER_LONG_OPAQUE_SEGMENT_RE = re.compile(r"^[A-Za-z0-9_-]{24,}$")
+
+
+def browser_route_group(route: str) -> str:
+    """Mirror Traffic's durable performance route grouping contract."""
+    text = str(route or "/").split("?", 1)[0].split("#", 1)[0] or "/"
+    if text == "/":
+        return "/"
+    grouped: list[str] = []
+    for segment in text.strip("/").split("/"):
+        if not segment:
+            continue
+        if segment.isdigit() or _BROWSER_UUID_SEGMENT_RE.match(segment):
+            grouped.append(":id")
+        elif _BROWSER_WOLO_ADDRESS_RE.match(segment):
+            grouped.append(":address")
+        elif _BROWSER_LONG_OPAQUE_SEGMENT_RE.match(segment):
+            grouped.append(":value")
+        else:
+            grouped.append(segment[:120])
+    return "/" + "/".join(grouped)
+
+
+def browser_sample_confidence(count: int) -> str:
+    if count <= 0:
+        return "none"
+    if count == 1:
+        return "single_sample"
+    if count < 5:
+        return "low"
+    if count < 20:
+        return "moderate"
+    return "high"
+
+
+def remote_browser_performance_overview(
+    build_version: str,
+    *,
+    since_hours: int = 24,
+) -> dict[str, Any]:
+    """Read durable Traffic aggregates while keeping the admin secret on VPS."""
+    build = str(build_version or "").strip()
+    if not build:
+        return {"available": False, "reason": "build version is unavailable"}
+    hours = max(1, min(int(since_hours or 24), 336))
+    script = f"""\
+set -e
+set -a
+. /etc/traffic-api.env
+set +a
+python3 - {shlex.quote(build)} {hours} <<'PY_REMOTE'
+import json
+import os
+import sys
+import urllib.parse
+import urllib.request
+
+build = sys.argv[1]
+hours = int(sys.argv[2])
+key = os.environ.get("TRAFFIC_ADMIN_API_KEY", "").strip()
+if not key:
+    raise SystemExit("Traffic admin API key is unavailable")
+query = urllib.parse.urlencode({{
+    "project_slug": "aoe2hdbets",
+    "since_hours": hours,
+    "build_version": build,
+}})
+request = urllib.request.Request(
+    "{TRAFFIC_LOCAL_BASE}/api/admin/performance/overview?" + query,
+    headers={{"X-Admin-Key": key}},
+)
+with urllib.request.urlopen(request, timeout=10) as response:
+    payload = json.load(response)
+print(json.dumps(payload, sort_keys=True, separators=(",", ":")))
+PY_REMOTE
+"""
+    try:
+        proc = subprocess.run(
+            [
+                "ssh",
+                "-o", "BatchMode=yes",
+                "-o", "ConnectTimeout=8",
+                ROOT_PRODUCTION_HOST,
+                "bash", "-s",
+            ],
+            input=script,
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=20,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"available": False, "reason": str(exc)}
+    if proc.returncode != 0:
+        return {
+            "available": False,
+            "reason": (proc.stderr or proc.stdout or "Traffic browser telemetry read failed").strip()[-1000:],
+        }
+    try:
+        payload = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        return {"available": False, "reason": f"invalid Traffic overview JSON: {exc}"}
+    if not isinstance(payload, dict) or payload.get("ok") is not True:
+        return {"available": False, "reason": "Traffic overview did not return ok=true"}
+
+    routes: list[dict[str, Any]] = []
+    for row in payload.get("routes") or []:
+        if not isinstance(row, dict):
+            continue
+        ready = row.get("ready") if isinstance(row.get("ready"), dict) else {}
+        ready_count = int(ready.get("count") or 0)
+        routes.append({
+            "route_group": str(row.get("route_group") or "/"),
+            "samples": int(row.get("samples") or 0),
+            "ready": ready,
+            "lcp": row.get("lcp") if isinstance(row.get("lcp"), dict) else {},
+            "slow_samples": int(row.get("slow_samples") or 0),
+            "ready_confidence": browser_sample_confidence(ready_count),
+        })
+
+    metrics = payload.get("metrics") if isinstance(payload.get("metrics"), dict) else {}
+    global_ready = metrics.get("ready_ms") if isinstance(metrics.get("ready_ms"), dict) else {}
+    return {
+        "available": True,
+        "source": "traffic_admin_performance_overview",
+        "project_slug": str(payload.get("project_slug") or "aoe2hdbets"),
+        "generated_at": payload.get("generated_at"),
+        "since_hours": int(payload.get("since_hours") or hours),
+        "build_version": str(payload.get("build_version") or build),
+        "samples": int(payload.get("samples") or 0),
+        "valid_samples": int(payload.get("valid_samples") or 0),
+        "invalid_samples": int(payload.get("invalid_samples") or 0),
+        "slow_samples": int(payload.get("slow_samples") or 0),
+        "global_ready": global_ready,
+        "global_ready_confidence": browser_sample_confidence(int(global_ready.get("count") or 0)),
+        "routes": routes,
+    }
+
+
+def sample_distribution(values: list[float]) -> dict[str, Any]:
+    if not values:
+        return {"samples": 0, "confidence": "none"}
+    med = statistics.median(values)
+    low = min(values)
+    high = max(values)
+    spread = high - low
+    return {
+        "samples": len(values),
+        "min_ms": low,
+        "median_ms": med,
+        "p75_ms": percentile(values, 0.75),
+        "p95_ms": percentile(values, 0.95),
+        "max_ms": high,
+        "spread_ms": spread,
+        "spread_ratio": (spread / med) if med > 0 else None,
+        "confidence": "low" if len(values) < 3 else "moderate" if len(values) < 7 else "high",
+    }
+
+
+def origin_route_needs_stability_probe(distribution: dict[str, Any]) -> bool:
+    if int(distribution.get("samples") or 0) < 2:
+        return False
+    median = float(distribution.get("median_ms") or 0.0)
+    spread = float(distribution.get("spread_ms") or 0.0)
+    ratio = distribution.get("spread_ratio")
+    return bool(
+        median >= 25.0
+        or spread >= 20.0
+        or (
+            spread >= 15.0
+            and isinstance(ratio, (int, float))
+            and float(ratio) >= 1.0
+        )
+    )
+
+
+def remote_origin_stability_probe(
+    routes: list[str],
+    *,
+    samples_per_route: int = 7,
+) -> dict[str, Any]:
+    unique = sorted({str(route) for route in routes if str(route).startswith("/")})
+    if not unique:
+        return {
+            "available": True,
+            "routes": {},
+            "route_count": 0,
+            "samples_per_route": samples_per_route,
+        }
+    count = max(3, min(int(samples_per_route or 7), 15))
+    script_parts = ["set -e", "printf 'BEGIN\\n'"]
+    for path in unique:
+        url = ORIGIN_BASE + path
+        script_parts.append(f"printf 'ROUTE\\t%s\\n' {shlex.quote(path)}")
+        operands = " ".join(
+            [f"-o /dev/null {shlex.quote(ORIGIN_SPEED_URL)}"]
+            + [f"-o /dev/null {shlex.quote(url)}" for _ in range(count)]
+        )
+        script_parts.append(
+            "curl -fsS -L --compressed --max-time 20 -H 'Host: aoe2war.com' "
+            f"-w '{CURL_METRIC_FORMAT}\\n' {operands}"
+        )
+    script = "\n".join(script_parts) + "\n"
+    try:
+        proc = subprocess.run(
+            [
+                "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8",
+                PRODUCTION_HOST, "bash", "-s",
+            ],
+            input=script,
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+            timeout=min(180, max(30, len(unique) * count * 3)),
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {"available": False, "reason": str(exc), "routes": {}}
+    if proc.returncode != 0:
+        return {
+            "available": False,
+            "reason": (proc.stderr or proc.stdout or "stability probe failed").strip()[-1000:],
+            "routes": {},
+        }
+
+    by_route: dict[str, list[dict[str, Any]]] = {route: [] for route in unique}
+    current: str | None = None
+    for line in proc.stdout.splitlines():
+        if line == "BEGIN":
+            continue
+        if line.startswith("ROUTE\t"):
+            current = line.split("\t", 1)[1]
+            continue
+        if current is None:
+            continue
+        parsed = parse_curl_metric_line(line, ORIGIN_BASE + current)
+        if parsed is None or not parsed.get("ok"):
+            return {"available": False, "reason": f"invalid stability sample for {current}", "routes": {}}
+        by_route[current].append(parsed)
+    expected = count + 1
+    if any(len(rows) != expected for rows in by_route.values()):
+        return {"available": False, "reason": "stability probe returned incomplete route samples", "routes": {}}
+
+    result: dict[str, Any] = {}
+    for route, rows in by_route.items():
+        prime = rows[0]
+        measured = rows[1:]
+        ttfb = [float(row["ttfb_ms"]) for row in measured]
+        total = [float(row["total_ms"]) for row in measured]
+        result[route] = {
+            "prime_ttfb_ms": float(prime["ttfb_ms"]),
+            "ttfb": sample_distribution(ttfb),
+            "total": sample_distribution(total),
+            "reused_connection_percent": (
+                sum(1 for row in measured if int(row.get("new_connections") or 0) == 0)
+                / len(measured) * 100.0
+            ),
+        }
+    return {
+        "available": True,
+        "route_count": len(result),
+        "samples_per_route": count,
+        "routes": result,
+    }
 
 CURL_METRIC_FORMAT = (
     "%{http_code}\\t%{time_namelookup}\\t%{time_connect}\\t"
@@ -1311,11 +1586,19 @@ def benchmark(
             origin_total = statistics.median(
                 float(sample["total_ms"]) for sample in origin_for_route
             )
+            origin_ttfb_values = [
+                float(sample["ttfb_ms"]) for sample in origin_for_route
+            ]
+            origin_total_values = [
+                float(sample["total_ms"]) for sample in origin_for_route
+            ]
             row.update(
                 {
                     "origin_warm_samples": len(origin_for_route),
                     "origin_warm_median_ttfb_ms": origin_ttfb,
                     "origin_warm_median_total_ms": origin_total,
+                    "origin_warm_ttfb_distribution": sample_distribution(origin_ttfb_values),
+                    "origin_warm_total_distribution": sample_distribution(origin_total_values),
                     "origin_warm_reused_connection_percent": (
                         sum(
                             1
@@ -1334,6 +1617,45 @@ def benchmark(
                     public_warm / origin_ttfb if origin_ttfb > 0 else None
                 )
         per_route.append(row)
+
+    suspicious_origin_routes = [
+        str(row["path"])
+        for row in per_route
+        if origin_route_needs_stability_probe(
+            row.get("origin_warm_ttfb_distribution")
+            if isinstance(row.get("origin_warm_ttfb_distribution"), dict)
+            else {}
+        )
+    ]
+    origin_stability = remote_origin_stability_probe(suspicious_origin_routes)
+    stability_routes = (
+        origin_stability.get("routes") or {}
+        if origin_stability.get("available")
+        else {}
+    )
+    for row in per_route:
+        evidence = stability_routes.get(str(row.get("path")))
+        if isinstance(evidence, dict):
+            row["origin_stability_probe"] = evidence
+
+    browser_telemetry = remote_browser_performance_overview(
+        str(identity.get("build_version") or "")
+    )
+    browser_by_route = (
+        {
+            str(item.get("route_group")): item
+            for item in (browser_telemetry.get("routes") or [])
+            if isinstance(item, dict) and item.get("route_group")
+        }
+        if browser_telemetry.get("available")
+        else {}
+    )
+    for row in per_route:
+        route_group = browser_route_group(str(row.get("path") or "/"))
+        row["browser_route_group"] = route_group
+        browser_row = browser_by_route.get(route_group)
+        if browser_row is not None:
+            row["browser_telemetry"] = browser_row
 
     seam = origin_seam()
     ready = ready_coverage()
@@ -1374,6 +1696,12 @@ def benchmark(
             for key, value in origin_route_probe.items()
             if key != "samples"
         },
+        "origin_stability_probe": {
+            key: value
+            for key, value in origin_stability.items()
+            if key != "routes"
+        },
+        "browser_telemetry": browser_telemetry,
         "origin_seam": seam,
         "ready_coverage": ready,
         "production_capacity": capacity,
@@ -1678,6 +2006,9 @@ def main() -> int:
     bench.add_argument("--rounds", type=int, default=3)
 
     sub.add_parser("compare")
+    browser = sub.add_parser("browser")
+    browser.add_argument("--build-version", default="")
+    browser.add_argument("--since-hours", type=int, default=24)
     sub.add_parser("diagnose")
     sub.add_parser("self-test")
     parser.add_argument("--self-test", action="store_true", dest="legacy_self_test")
@@ -1748,6 +2079,49 @@ def main() -> int:
             return 0
         if args.command == "compare":
             compare()
+            return 0
+        if args.command == "browser":
+            identity = collect_release_identity()
+            build_version = args.build_version or str(identity.get("build_version") or "")
+            telemetry = remote_browser_performance_overview(
+                build_version,
+                since_hours=args.since_hours,
+            )
+            if not telemetry.get("available"):
+                raise SpeedError(
+                    str(telemetry.get("reason") or "browser telemetry unavailable")
+                )
+            print("⚔️  AOE2WAR BROWSER PERFORMANCE EVIDENCE")
+            print()
+            print(f"Build:           {telemetry['build_version']}")
+            print(f"Window:          {telemetry['since_hours']}h")
+            print(
+                f"Samples:         {telemetry['valid_samples']} valid / "
+                f"{telemetry['samples']} total"
+            )
+            ready = telemetry.get("global_ready") or {}
+            print(
+                "Ready:           "
+                f"p50={ready.get('p50')} ms · p75={ready.get('p75')} · "
+                f"p95={ready.get('p95')} · "
+                f"confidence={telemetry.get('global_ready_confidence')}"
+            )
+            print()
+            print("Route browser evidence:")
+            route_rows = sorted(
+                telemetry.get("routes") or [],
+                key=lambda item: float((item.get("ready") or {}).get("p75") or -1),
+                reverse=True,
+            )
+            for row in route_rows[:25]:
+                route_ready = row.get("ready") or {}
+                print(
+                    f"  {str(row.get('route_group')):<34} "
+                    f"n={int(route_ready.get('count') or 0):>3} "
+                    f"p50={str(route_ready.get('p50')):>8} "
+                    f"p75={str(route_ready.get('p75')):>8} "
+                    f"confidence={row.get('ready_confidence')}"
+                )
             return 0
         if args.command == "diagnose":
             diagnose()

@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import pathlib
 import sys
 import unittest
@@ -263,6 +264,8 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertIn('SPEED="$BIN_DIR/../scripts/aoe2_speed.py"', source)
         self.assertIn("  speed)", source)
 
+
+        self.assertIn("browser", (ROOT / "bin" / "aoe2war").read_text(encoding="utf-8"))
 
     def test_speed_campaign_material_delta_policy(self):
         self.assertEqual(
@@ -900,6 +903,143 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertIn("\\n", script)
         self.assertNotIn("\\\\n", script)
 
+    def test_browser_route_group_matches_traffic_contract(self):
+        self.assertEqual(SPEED_MODULE.browser_route_group("/"), "/")
+        self.assertEqual(
+            SPEED_MODULE.browser_route_group("/game-stats/16218"),
+            "/game-stats/:id",
+        )
+        self.assertEqual(
+            SPEED_MODULE.browser_route_group(
+                "/players/626ea649-7a98-4dab-bc23-38ef54c5d333"
+            ),
+            "/players/:id",
+        )
+        self.assertEqual(
+            SPEED_MODULE.browser_route_group("/staking?view=grouped"),
+            "/staking",
+        )
+
+    def test_browser_sample_confidence_is_fail_closed_for_sparse_routes(self):
+        self.assertEqual(SPEED_MODULE.browser_sample_confidence(0), "none")
+        self.assertEqual(SPEED_MODULE.browser_sample_confidence(1), "single_sample")
+        self.assertEqual(SPEED_MODULE.browser_sample_confidence(4), "low")
+        self.assertEqual(SPEED_MODULE.browser_sample_confidence(5), "moderate")
+        self.assertEqual(SPEED_MODULE.browser_sample_confidence(19), "moderate")
+        self.assertEqual(SPEED_MODULE.browser_sample_confidence(20), "high")
+
+    def test_browser_overview_reads_vps_local_admin_api_without_exporting_secret(self):
+        payload = {
+            "ok": True,
+            "generated_at": "2026-09-08T21:00:00Z",
+            "project_slug": "aoe2hdbets",
+            "since_hours": 24,
+            "build_version": "build-v3",
+            "samples": 6,
+            "valid_samples": 5,
+            "invalid_samples": 1,
+            "slow_samples": 1,
+            "metrics": {
+                "ready_ms": {
+                    "count": 5, "p50": 400.0, "p75": 700.0,
+                    "p95": 1200.0, "min": 100.0, "max": 1300.0,
+                }
+            },
+            "routes": [{
+                "route_group": "/staking",
+                "samples": 5,
+                "ready": {
+                    "count": 5, "p50": 350.0, "p75": 500.0,
+                    "p95": 900.0, "min": 100.0, "max": 1000.0,
+                },
+                "lcp": {"count": 0, "p50": None, "p75": None, "p95": None},
+                "slow_samples": 0,
+            }],
+        }
+        fake = type(
+            "Proc",
+            (),
+            {"returncode": 0, "stderr": "", "stdout": json.dumps(payload)},
+        )()
+
+        with patch.object(SPEED_MODULE.subprocess, "run", return_value=fake) as run:
+            result = SPEED_MODULE.remote_browser_performance_overview("build-v3")
+
+        self.assertTrue(result["available"])
+        self.assertEqual(result["global_ready_confidence"], "moderate")
+        self.assertEqual(result["routes"][0]["ready_confidence"], "moderate")
+        call = run.call_args
+        self.assertIn("root@hel1", call.args[0])
+        remote_script = call.kwargs["input"]
+        self.assertIn(". /etc/traffic-api.env", remote_script)
+        self.assertIn("TRAFFIC_ADMIN_API_KEY", remote_script)
+        self.assertNotIn("X-Admin-Key: ", remote_script)
+
+    def test_sample_distribution_records_spread_and_confidence(self):
+        result = SPEED_MODULE.sample_distribution(
+            [6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0]
+        )
+        self.assertEqual(result["samples"], 7)
+        self.assertEqual(result["median_ms"], 9.0)
+        self.assertEqual(result["spread_ms"], 6.0)
+        self.assertEqual(result["confidence"], "high")
+
+    def test_origin_stability_trigger_targets_phase_variance(self):
+        self.assertTrue(
+            SPEED_MODULE.origin_route_needs_stability_probe({
+                "samples": 3, "median_ms": 70.0, "spread_ms": 15.0,
+                "spread_ratio": 0.21,
+            })
+        )
+        self.assertTrue(
+            SPEED_MODULE.origin_route_needs_stability_probe({
+                "samples": 3, "median_ms": 10.0, "spread_ms": 25.0,
+                "spread_ratio": 2.5,
+            })
+        )
+        self.assertFalse(
+            SPEED_MODULE.origin_route_needs_stability_probe({
+                "samples": 3, "median_ms": 5.0, "spread_ms": 6.0,
+                "spread_ratio": 1.2,
+            })
+        )
+        self.assertFalse(
+            SPEED_MODULE.origin_route_needs_stability_probe({
+                "samples": 3, "median_ms": 8.0, "spread_ms": 2.0,
+                "spread_ratio": 0.25,
+            })
+        )
+
+    def test_origin_stability_probe_keeps_focused_evidence_separate(self):
+        metric = (
+            "200\t0.00001\t0.00000\t0.00000\t0.01000\t0.04000"
+            "\t1000\t0\thttp://127.0.0.1:3030/leaderboard"
+        )
+        fake = type(
+            "Proc",
+            (),
+            {
+                "returncode": 0,
+                "stderr": "",
+                "stdout": "BEGIN\nROUTE\t/leaderboard\n" + "\n".join([metric] * 4) + "\n",
+            },
+        )()
+        with patch.object(SPEED_MODULE.subprocess, "run", return_value=fake):
+            result = SPEED_MODULE.remote_origin_stability_probe(
+                ["/leaderboard"], samples_per_route=3
+            )
+
+        self.assertTrue(result["available"])
+        self.assertEqual(result["route_count"], 1)
+        self.assertEqual(
+            result["routes"]["/leaderboard"]["ttfb"]["median_ms"],
+            10.0,
+        )
+        self.assertEqual(
+            result["routes"]["/leaderboard"]["ttfb"]["samples"],
+            3,
+        )
+
     def test_origin_route_probe_labels_reused_route_samples(self):
         fake = type(
             "Proc",
@@ -951,6 +1091,144 @@ class PerformanceOSTests(unittest.TestCase):
 
         self.assertEqual(advice["hardware"]["delivery"]["action"], "hold")
         self.assertIn("warm_keepalive_v2", advice["hardware"]["delivery"]["reason"])
+
+    def test_speed_analysis_normalizes_origin_phase_variance_without_erasing_raw_sample(self):
+        baseline = {
+            "mode": "full",
+            "generated_at": "2026-09-08T21:00:00Z",
+            "cohort": {
+                "ttfb_p50_ms": 300.0, "ttfb_p75_ms": 350.0,
+                "total_p50_ms": 400.0, "total_p75_ms": 500.0,
+            },
+            "warm_cohort": {
+                "ttfb_p50_ms": 280.0, "ttfb_p75_ms": 320.0,
+                "total_p50_ms": 350.0, "total_p75_ms": 430.0,
+            },
+            "origin_seam": {
+                "warm_ratio": 8.0,
+                "public_keepalive": {"available": True, "warm_median_ttfb_ms": 240.0},
+                "origin_keepalive": {"available": True, "warm_median_ttfb_ms": 30.0},
+                "public_connection_setup_delta_ms": 50.0,
+            },
+            "ready_coverage": {"ready_routes": ["/leaderboard"]},
+            "routes": [{
+                "path": "/leaderboard",
+                "median_ttfb_ms": 320.0,
+                "median_total_ms": 400.0,
+                "median_download_bytes": 30_000,
+                "warm_median_ttfb_ms": 300.0,
+                "warm_median_total_ms": 360.0,
+                "origin_warm_median_ttfb_ms": 74.6,
+                "origin_warm_median_total_ms": 125.0,
+                "origin_warm_ttfb_distribution": {
+                    "samples": 3, "median_ms": 74.6, "spread_ms": 70.0,
+                    "spread_ratio": 0.94, "confidence": "moderate",
+                },
+                "origin_stability_probe": {
+                    "ttfb": {
+                        "samples": 7, "median_ms": 10.6, "spread_ms": 16.0,
+                        "spread_ratio": 1.51, "confidence": "high",
+                    },
+                    "total": {
+                        "samples": 7, "median_ms": 44.0, "spread_ms": 40.0,
+                        "spread_ratio": 0.91, "confidence": "high",
+                    },
+                },
+            }],
+            "production_capacity": {"available": False},
+            "performance_incidents": {"available": False},
+        }
+        with patch.object(CAMPAIGN_MODULE, "comparable_history", return_value=[]), patch.object(
+            CAMPAIGN_MODULE, "prior_campaign_learning", return_value={"verified_campaigns": 0}
+        ):
+            analysis = CAMPAIGN_MODULE.analyze_baseline(baseline)
+
+        row = analysis["targets"][0]
+        self.assertEqual(row["origin_warm_median_ttfb_ms"], 74.6)
+        self.assertEqual(row["stabilized_origin_ttfb_ms"], 10.6)
+        self.assertEqual(row["effective_origin_ttfb_ms"], 10.6)
+        self.assertTrue(row["origin_phase_variance_normalized"])
+        self.assertNotEqual(row["dominant_layer"], "server_data")
+        self.assertIn(
+            "origin phase variance normalized on focused probe", row["reasons"]
+        )
+
+    def test_sparse_browser_ready_cannot_authorize_browser_regression(self):
+        baseline = {
+            "mode": "quick",
+            "generated_at": "2026-09-08T21:00:00Z",
+            "cohort": {
+                "ttfb_p50_ms": 100.0, "ttfb_p75_ms": 120.0,
+                "total_p50_ms": 160.0, "total_p75_ms": 200.0,
+            },
+            "warm_cohort": {
+                "ttfb_p50_ms": 90.0, "ttfb_p75_ms": 110.0,
+                "total_p50_ms": 140.0, "total_p75_ms": 180.0,
+            },
+            "origin_seam": {},
+            "ready_coverage": {"ready_routes": ["/staking"]},
+            "routes": [{
+                "path": "/staking",
+                "median_ttfb_ms": 100.0,
+                "median_total_ms": 150.0,
+                "median_download_bytes": 20_000,
+                "warm_median_ttfb_ms": 90.0,
+                "warm_median_total_ms": 130.0,
+                "browser_telemetry": {
+                    "ready_confidence": "single_sample",
+                    "ready": {"count": 1, "p50": 3000.0, "p75": 3000.0},
+                },
+            }],
+            "production_capacity": {"available": False},
+            "performance_incidents": {"available": False},
+        }
+        with patch.object(CAMPAIGN_MODULE, "comparable_history", return_value=[]), patch.object(
+            CAMPAIGN_MODULE, "prior_campaign_learning", return_value={"verified_campaigns": 0}
+        ):
+            analysis = CAMPAIGN_MODULE.analyze_baseline(baseline)
+        row = analysis["targets"][0]
+        self.assertEqual(row["browser_ready_confidence"], "single_sample")
+        self.assertFalse(row["browser_ready_decision_grade"])
+        self.assertNotIn("high browser Ready p75", row["reasons"] )
+        self.assertNotEqual(row["dominant_layer"], "browser_ready")
+
+    def test_moderate_browser_ready_can_identify_client_readiness_debt(self):
+        baseline = {
+            "mode": "quick",
+            "generated_at": "2026-09-08T21:00:00Z",
+            "cohort": {
+                "ttfb_p50_ms": 100.0, "ttfb_p75_ms": 120.0,
+                "total_p50_ms": 160.0, "total_p75_ms": 200.0,
+            },
+            "warm_cohort": {
+                "ttfb_p50_ms": 90.0, "ttfb_p75_ms": 110.0,
+                "total_p50_ms": 140.0, "total_p75_ms": 180.0,
+            },
+            "origin_seam": {},
+            "ready_coverage": {"ready_routes": ["/staking"]},
+            "routes": [{
+                "path": "/staking",
+                "median_ttfb_ms": 100.0,
+                "median_total_ms": 150.0,
+                "median_download_bytes": 20_000,
+                "warm_median_ttfb_ms": 90.0,
+                "warm_median_total_ms": 130.0,
+                "browser_telemetry": {
+                    "ready_confidence": "moderate",
+                    "ready": {"count": 5, "p50": 1800.0, "p75": 2500.0},
+                },
+            }],
+            "production_capacity": {"available": False},
+            "performance_incidents": {"available": False},
+        }
+        with patch.object(CAMPAIGN_MODULE, "comparable_history", return_value=[]), patch.object(
+            CAMPAIGN_MODULE, "prior_campaign_learning", return_value={"verified_campaigns": 0}
+        ):
+            analysis = CAMPAIGN_MODULE.analyze_baseline(baseline)
+        row = analysis["targets"][0]
+        self.assertTrue(row["browser_ready_decision_grade"])
+        self.assertIn("high browser Ready p75", row["reasons"] )
+        self.assertEqual(row["dominant_layer"], "browser_ready")
 
     def test_speed_analysis_labels_connection_setup_without_blaming_origin(self):
         baseline = {
