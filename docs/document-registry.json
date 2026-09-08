@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "156461e2c786a41e12fa560b8aefcd5ffbe7a727f42648f4802bc318d50ec03c",
+      "sha256": "77f55533a1d07a3cdc160633e25039d326b5ea940473f81d8043f399d5c73820",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1814,8 +1814,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/high-roi-speed-pass-20260907",
-    "commit": "9be92c933dcb108bc0bd03d0504facdfb7dfe30c"
+    "branch": "fix/watcher-1510-art-updater-20260908",
+    "commit": "718c70f92497a59a588c409fbdd68b2f571a9cad"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
