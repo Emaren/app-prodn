@@ -107,8 +107,10 @@ test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and bo
   assert.match(oraclePolish, /border-bottom: 1px solid rgb\(165 243 252 \/ 0\.16\)/);
   assert.match(globalCss, /oracle-arcane-mist/);
   assert.match(globalCss, /#ffe85b/);
-  assert.match(oracle, /new Intl\.DateTimeFormat\("en-US",[\s\S]*?timeZone: "America\/Edmonton"/);
-  assert.match(premiumOracle, /new Intl\.DateTimeFormat\("en-US",[\s\S]*?timeZone: "America\/Edmonton"/);
+  assert.match(oracle, /new Intl\.DateTimeFormat\("en-US",[\s\S]*?timeZoneName: "short"/);
+  assert.match(premiumOracle, /new Intl\.DateTimeFormat\("en-US",[\s\S]*?timeZoneName: "short"/);
+  assert.doesNotMatch(oracle, /timeZone:\s*"America\/Edmonton"/);
+  assert.doesNotMatch(premiumOracle, /timeZone:\s*"America\/Edmonton"/);
 });
 
 test("Kingdom Intelligence falls back to the sanitized production signal in read-only preview", () => {
