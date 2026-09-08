@@ -4555,6 +4555,17 @@ def main() -> int:
     )
     args = parser.parse_args()
 
+    import aoe2_node_runtime
+
+    try:
+        aoe2_node_runtime.ensure_build_node_runtime()
+    except aoe2_node_runtime.BuildNodeError as exc:
+        if args.json:
+            print(json.dumps({"status": "ERROR", "error": str(exc)}, indent=2))
+        else:
+            print(f"STOP: {exc}", file=sys.stderr)
+        return 2
+
     try:
         production_role = is_production_checkout()
     except Exception as exc:

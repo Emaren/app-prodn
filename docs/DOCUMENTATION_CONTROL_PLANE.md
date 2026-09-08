@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/release-test-py39-20260908` at `ddfa4e655e0c6712e3b955404296622061cc5f73`
+Implementation baseline: `fix/release-node22-selection-20260908` at `92ec69e0eb74b30804e26943acf7258550f71b02`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
