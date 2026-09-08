@@ -73,7 +73,7 @@ test("Oracle preserves Basic while Kingdom Intelligence defaults Advanced and bo
     oraclePolish,
     /@media \(min-width: 1024px\)[\s\S]*?\.oracle-workshop-a-banner \{[\s\S]*?min-height: 24rem;[\s\S]*?margin: -2\.5rem -2\.5rem 2\.5rem;/,
   );
-  assert.match(premiumOracle, /mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-6/);
+  assert.match(premiumOracle, /mt-8 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6/);
   assert.match(premiumOracle, /OracleWorkshopViewToggle/);
   assert.match(premiumOracle, /Active stake/);
   assert.match(premiumOracle, /Resolved/);
