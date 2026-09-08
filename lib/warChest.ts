@@ -140,24 +140,41 @@ export async function loadWarChestSnapshot(
     ? new Date(Date.now() - earners.timeframeDays * 24 * 60 * 60 * 1000)
     : weekStartsAt;
 
+  const weeklyWagerWhere = visibleMainnetWagerWhere({
+    createdAt: { gte: weeklyWindowStart },
+  });
+
   const [
-    weeklyWagers,
+    weeklyWagerSummary,
+    weeklyBettors,
+    weeklyOnchainEscrow,
     lifetimeWagers,
     pendingSummary,
     recentWagersRaw,
     recentClaimsRaw,
     settledMarketCount,
   ] = await Promise.all([
-    prisma.betWager.findMany({
-      where: visibleMainnetWagerWhere({
-        createdAt: { gte: weeklyWindowStart },
-      }),
-      select: {
-        userId: true,
+    prisma.betWager.aggregate({
+      where: weeklyWagerWhere,
+      _sum: {
         amountWolo: true,
         payoutWolo: true,
-        executionMode: true,
-        status: true,
+      },
+      _count: {
+        _all: true,
+      },
+    }),
+    prisma.betWager.groupBy({
+      by: ["userId"],
+      where: weeklyWagerWhere,
+    }),
+    prisma.betWager.aggregate({
+      where: visibleMainnetWagerWhere({
+        createdAt: { gte: weeklyWindowStart },
+        executionMode: "onchain_escrow",
+      }),
+      _sum: {
+        amountWolo: true,
       },
     }),
     prisma.betWager.aggregate({
@@ -284,14 +301,11 @@ export async function loadWarChestSnapshot(
     earners,
     betBoard,
     weekly: {
-      volumeWolo: weeklyWagers.reduce((sum, wager) => sum + wager.amountWolo, 0),
-      paidOutWolo: weeklyWagers.reduce((sum, wager) => sum + (wager.payoutWolo ?? 0), 0),
-      activeBettors: new Set(weeklyWagers.map((wager) => wager.userId)).size,
-      slips: weeklyWagers.length,
-      onchainEscrowedWolo: weeklyWagers.reduce(
-        (sum, wager) => sum + (wager.executionMode === "onchain_escrow" ? wager.amountWolo : 0),
-        0
-      ),
+      volumeWolo: weeklyWagerSummary._sum.amountWolo ?? 0,
+      paidOutWolo: weeklyWagerSummary._sum.payoutWolo ?? 0,
+      activeBettors: weeklyBettors.length,
+      slips: weeklyWagerSummary._count._all,
+      onchainEscrowedWolo: weeklyOnchainEscrow._sum.amountWolo ?? 0,
       pendingClaims: pendingSummary._count._all,
       pendingWolo: pendingSummary._sum.amountWolo ?? 0,
     },
