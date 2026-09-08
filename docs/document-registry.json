@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2d5863b7fa59ee73b6ed3ccffcb46ee3ced58eeffeee097700d14bd0d0861945",
+      "sha256": "48cd7b0e39a6296aae352f8ae3d5f2b19ecb6d0f3d8e9f48c1675ae304c28dfb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1814,8 +1814,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/release-node22-selection-20260908",
-    "commit": "92ec69e0eb74b30804e26943acf7258550f71b02"
+    "branch": "fix/live-truth-labeling-20260908",
+    "commit": "da34234da68543c39de84d5ab26eb3475b5de4d5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
