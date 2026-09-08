@@ -232,45 +232,50 @@ export default function OraclePremiumFloor({
         className="scroll-mt-24 space-y-5"
         data-oracle-premium-floor={viewMode}
       >
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <select
-            value={sort}
-            onChange={(event) => setSort(event.target.value as SortMode)}
-            className="min-h-11 rounded-full border border-white/10 bg-[#060a12] px-4 text-xs font-bold text-white outline-none transition focus:border-cyan-200/30"
-            aria-label="Sort Oracle markets"
-          >
-            <option value="trending">Trending</option>
-            <option value="closing">Closing soon</option>
-            <option value="new">Newest</option>
-          </select>
-          <button
-            type="button"
-            onClick={focusProposalDesk}
-            className="oracle-arcane-button inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-full px-5 text-xs font-black"
-          >
-            <Plus className="h-4 w-4" />
-            Create market
-          </button>
-        </div>
+        <div
+          className="flex flex-col gap-3 rounded-[1.45rem] border border-cyan-100/10 bg-[#040811]/76 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between"
+          data-oracle-market-toolbar="unified"
+        >
+          <div className="flex min-w-0 flex-wrap gap-2">
+            {CATEGORY_TABS.map((tab) => {
+              const active = tab.key === category;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setCategory(tab.key)}
+                  className={`min-h-9 cursor-pointer rounded-full border px-4 text-[10px] font-black uppercase tracking-[0.17em] transition ${
+                    active
+                      ? "border-cyan-200/34 bg-cyan-300/[0.10] text-cyan-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_0_20px_rgba(34,211,238,0.08)]"
+                      : "border-white/8 bg-white/[0.025] text-slate-500 hover:border-white/16 hover:text-white"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
 
-        <div className="flex flex-wrap gap-2">
-          {CATEGORY_TABS.map((tab) => {
-            const active = tab.key === category;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setCategory(tab.key)}
-                className={`min-h-9 cursor-pointer rounded-full border px-4 text-[10px] font-black uppercase tracking-[0.17em] transition ${
-                  active
-                    ? "border-cyan-200/34 bg-cyan-300/[0.10] text-cyan-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_0_20px_rgba(34,211,238,0.08)]"
-                    : "border-white/8 bg-white/[0.025] text-slate-500 hover:border-white/16 hover:text-white"
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
+          <div className="flex shrink-0 flex-wrap items-center gap-2 lg:justify-end">
+            <select
+              value={sort}
+              onChange={(event) => setSort(event.target.value as SortMode)}
+              className="min-h-10 rounded-full border border-white/10 bg-[#060a12] px-4 text-xs font-bold text-white outline-none transition focus:border-cyan-200/30"
+              aria-label="Sort Oracle markets"
+            >
+              <option value="trending">Trending</option>
+              <option value="closing">Closing soon</option>
+              <option value="new">Newest</option>
+            </select>
+            <button
+              type="button"
+              onClick={focusProposalDesk}
+              className="oracle-arcane-button inline-flex min-h-10 cursor-pointer items-center gap-2 rounded-full px-5 text-xs font-black"
+            >
+              <Plus className="h-4 w-4" />
+              Create market
+            </button>
+          </div>
         </div>
 
         {featured ? (
@@ -475,7 +480,7 @@ function PremiumHero({
           />
         </div>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
           <OracleWorkshopMetric label="Live markets" value={fmt(snapshot.pulse.activeMarkets)} accent />
           <OracleWorkshopMetric label="Forecasters" value={fmt(snapshot.pulse.forecasters)} />
           <OracleWorkshopMetric label="Citizens" value={fmt(snapshot.pulse.registeredCitizens)} />

@@ -617,6 +617,12 @@ export default function AdminPage() {
                 Marketplace Command
               </Link>
               <Link
+                href="/admin/oracle"
+                className="inline-flex rounded-full border border-violet-200/22 bg-violet-300/[0.07] px-5 py-3 text-sm text-violet-100 transition hover:border-violet-200/40 hover:bg-violet-300/12"
+              >
+                Oracle Command
+              </Link>
+              <Link
                 href="/admin/user-list"
                 className="inline-flex rounded-full border border-white/15 px-5 py-3 text-sm text-white/85 transition hover:border-white/30 hover:text-white"
               >

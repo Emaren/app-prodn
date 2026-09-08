@@ -143,6 +143,7 @@ const KINGDOM_LINKS = [
 ] as const;
 
 const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
+  { prefix: "/admin/oracle", title: "Oracle Command Center" },
   { prefix: "/admin/ai", title: "AI Command Center" },
   { prefix: "/admin/bounties", title: "Bounty Command Center" },
   { prefix: "/admin/radio", title: "Radio WOLO Desk" },
