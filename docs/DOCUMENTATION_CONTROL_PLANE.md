@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/high-roi-speed-pass-20260907` at `9be92c933dcb108bc0bd03d0504facdfb7dfe30c`
+Implementation baseline: `fix/watcher-1510-art-updater-20260908` at `718c70f92497a59a588c409fbdd68b2f571a9cad`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
