@@ -12,26 +12,30 @@ const release = fs.readFileSync(
   "utf8",
 );
 
-test("Download Extreme hero is release-dynamic for Watcher 1.5.10", () => {
+test("Download Extreme hero is explicitly bound to Watcher 1.5.10 artwork", () => {
   assert.match(
     release,
     /version: "1\.5\.10"/,
   );
 
+  assert.match(page, /watcher-v1510-desktop\.png/);
+  assert.match(page, /watcher-v1510-mobile\.png/);
+  assert.doesNotMatch(page, /watcher-v159-(?:desktop|mobile)\.png/);
   assert.match(
     page,
-    /<section className=\{heroClass\}>/,
+    /<section className=\{extreme \? "hidden" : heroClass\}>/,
   );
+  assert.match(page, /WATCHER_RELEASE\.label/);
 
-  assert.doesNotMatch(
-    page,
-    /watcher-v159-(?:desktop|mobile)\.png/,
-  );
-
-  assert.match(
-    page,
-    /WATCHER_RELEASE\.label/,
-  );
+  for (const artwork of [
+    "public/watcher/watcher-v1510-desktop.png",
+    "public/watcher/watcher-v1510-mobile.png",
+  ]) {
+    assert.ok(
+      fs.statSync(new URL("../" + artwork, import.meta.url)).size > 1_000_000,
+      artwork + " should be a real release image",
+    );
+  }
 });
 
 test("Watcher 1.5.10 release advertises the Scavanger reliability fixes", () => {
