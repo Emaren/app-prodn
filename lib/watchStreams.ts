@@ -41,6 +41,40 @@ export type WatchStreamPayload = {
   updatedAt: string;
 };
 
+export const FIRST_PARTY_LIVE_VIDEO_STALE_MS = 2 * 60 * 1000;
+
+export function watchStreamHasProvenLiveVideo(
+  stream: WatchStreamPayload,
+  nowMs = Date.now()
+) {
+  if (stream.provider !== "aoe2war") return false;
+  if (!["starting", "live"].includes(stream.status)) return false;
+  if (stream.chunkCount <= 0 || stream.latestChunkSeq < 0) return false;
+
+  const lastSeen = stream.lastHeartbeatAt || stream.updatedAt;
+  const lastSeenMs = new Date(lastSeen).getTime();
+  return (
+    Number.isFinite(lastSeenMs) &&
+    nowMs >= lastSeenMs &&
+    nowMs - lastSeenMs <= FIRST_PARTY_LIVE_VIDEO_STALE_MS
+  );
+}
+
+export function watchStreamPresentationLabel(
+  stream: WatchStreamPayload,
+  options: { completed: boolean; nowMs?: number }
+) {
+  if (options.completed) {
+    return stream.provider === "aoe2war" && stream.chunkCount > 0
+      ? "Video saved"
+      : "Watch feed";
+  }
+
+  return watchStreamHasProvenLiveVideo(stream, options.nowMs)
+    ? "Video live"
+    : "Watch feed";
+}
+
 const ROLE_LABELS: Record<WatchStreamRole, string> = {
   caster: "Main Cast",
   observer: "Observer",

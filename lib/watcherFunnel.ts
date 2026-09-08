@@ -368,6 +368,18 @@ function metadataNumber(metadata: Prisma.JsonValue | null | undefined, key: stri
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function metadataStringArray(metadata: Prisma.JsonValue | null | undefined, key: string) {
+  const value = metadataObject(metadata)[key];
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function metadataPlayerCount(metadata: Prisma.JsonValue | null | undefined) {
   const record = metadataObject(metadata);
   for (const key of ["playerCount", "playersCount", "parsedPlayerCount", "rosterCount"]) {
@@ -1020,6 +1032,8 @@ async function loadFocusUserDiagnostics(
           parseSource: event.parseSource,
           finalityStatus,
           finalAccepted,
+          isFinal: metadataBoolean(event.metadata, "isFinal"),
+          unknownFields: metadataStringArray(event.metadata, "unknownFields"),
           unparsedFinal,
           reason,
           waitMs,

@@ -111,6 +111,7 @@ type UnresolvedWatcherResultInput = {
   waitMs?: number | null;
   watcherCount?: number | null;
   disconnectDetected?: boolean | null;
+  unknownFields?: string[] | null;
 };
 
 const NON_WINNER_VALUES = new Set([
@@ -2271,6 +2272,31 @@ function result(
   return { code, label, explanation, reviewNeeded };
 }
 
+export function shouldEscalateParserUnknownFields(input: {
+  isFinal?: boolean | null;
+  unknownFields?: string[] | null;
+}) {
+  if (input.isFinal === false) {
+    return false;
+  }
+
+  const fields = (input.unknownFields ?? [])
+    .map((field) => String(field || "").trim().toLowerCase())
+    .filter(Boolean);
+
+  if (fields.length === 0) {
+    return true;
+  }
+
+  return fields.some(
+    (field) =>
+      !field.endsWith(".players.name") &&
+      field !== "players.name" &&
+      !field.endsWith(".single_team_winner_flag_team_id") &&
+      field !== "single_team_winner_flag_team_id"
+  );
+}
+
 export function classifyUnresolvedWatcherResult(
   input: UnresolvedWatcherResultInput
 ): UnresolvedWatcherResult | null {
@@ -2393,6 +2419,18 @@ export function classifyUnresolvedWatcherResult(
     Boolean(completionSource) ||
     combined.includes("final") ||
     combined.includes("resignation");
+
+  if (
+    eventType === "parse_result_unknown_fields" &&
+    !shouldEscalateParserUnknownFields({
+      isFinal: input.isFinal,
+      unknownFields: input.unknownFields,
+    })
+  ) {
+    // Live winner/finality gaps and known legacy diagnostic false positives are
+    // preserved as telemetry without becoming parser-review debt.
+    return null;
+  }
 
   if (
     eventType === "final_candidate_reopened" ||

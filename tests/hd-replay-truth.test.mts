@@ -551,6 +551,53 @@ test("active games with known roster and map are not mislabeled as parser review
   assert.equal(unresolved, null);
 });
 
+test("watcher funnel live partial unknown fields are not escalated to parser review", () => {
+  const unresolved = classifyUnresolvedWatcherResult({
+    winner: "Unknown",
+    playerCount: 6,
+    eventType: "parse_result_unknown_fields",
+    parseReason: "watcher_live_iteration",
+    parseSource: "watcher_live",
+    isFinal: false,
+  });
+
+  assert.equal(unresolved, null);
+});
+
+test("legacy benign final unknown-field paths do not create review debt", () => {
+  const unresolved = classifyUnresolvedWatcherResult({
+    playerCount: 6,
+    eventType: "parse_result_unknown_fields",
+    parseReason: "watcher_final_submission",
+    parseSource: "watcher_final",
+    isFinal: true,
+    unknownFields: [
+      "team_resolution.teams.0.players.name",
+      "team_resolution.teams.1.players.name",
+      "team_resolution.result_evidence.single_team_winner_flag_team_id",
+      "result_evidence.single_team_winner_flag_team_id",
+    ],
+  });
+
+  assert.equal(unresolved, null);
+});
+
+test("final watcher unknown fields remain reviewable", () => {
+  const unresolved = classifyUnresolvedWatcherResult({
+    winner: "Unknown",
+    playerCount: 6,
+    eventType: "parse_result_unknown_fields",
+    parseReason: "watcher_final_submission",
+    parseSource: "watcher_final",
+    isFinal: true,
+    unknownFields: ["winner"],
+  });
+
+  assert.equal(unresolved?.code, "winner_missing");
+  assert.equal(unresolved?.label, "Winner under review");
+  assert.equal(unresolved?.reviewNeeded, true);
+});
+
 test("completed replay metadata names the missing winner instead of generic unknown fields", () => {
   const unresolved = classifyUnresolvedWatcherResult({
     winner: "Unknown",
