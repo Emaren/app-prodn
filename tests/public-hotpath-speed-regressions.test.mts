@@ -12,8 +12,11 @@ test("public hot paths keep expensive work off request-critical rails", () => {
   const observatory = readFileSync("lib/parserObservatory.ts", "utf8");
 
   assert.match(staking, /const overviewPromise = Promise\.allSettled/);
-  assert.match(staking, /const trustRailPromise = Promise\.all/);
-  assert.match(staking, /Promise\.all\(\[overviewPromise, trustRailPromise\]\)/);
+  assert.match(staking, /async function StakingTrustRail/);
+  assert.match(staking, /<Suspense fallback=\{<StakingTrustRailFallback \/>\}>/);
+  assert.match(staking, /totalStakedWolo=\{snapshot\.totalStakedWolo\}/);
+  assert.doesNotMatch(staking, /const trustRailPromise = Promise\.all/);
+  assert.doesNotMatch(staking, /Promise\.all\(\[overviewPromise, trustRailPromise\]\)/);
 
   assert.match(warChest, /const weeklyWagerWhere = visibleMainnetWagerWhere/);
   assert.match(warChest, /prisma\.betWager\.groupBy\(\{\s*by: \["userId"\]/);

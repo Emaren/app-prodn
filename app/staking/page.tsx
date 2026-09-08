@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import {
   ArrowRight,
   BadgeDollarSign,
@@ -534,25 +534,19 @@ function mapLeaderboardRow(
   };
 }
 
-export default async function StakingPage({
-  searchParams,
-}: {
-  searchParams?: StakingSearchParams;
-}) {
-  const resolvedSearchParams = await searchParams;
-  const period = normalizePeriod(resolvedSearchParams?.period);
-  const board = normalizeBoard(resolvedSearchParams?.board);
 
-  // The staking page has two independent evidence families: economy/profile
-  // data from Postgres and trust-wallet/chain proof. Start both families at the
-  // same time so route readiness is bounded by the slower family instead of
-  // paying both waits serially.
-  const overviewPromise = Promise.allSettled([
-    loadEconomySnapshot(period),
-    loadStakingLeaderboard(getPrisma(), board),
-    loadActiveStakerProfiles(getPrisma()),
-  ]);
-  const trustRailPromise = Promise.all([
+async function StakingTrustRail({
+  totalStakedWolo,
+}: {
+  totalStakedWolo: number | null;
+}) {
+  const [
+    stakingWallet,
+    treasury,
+    escrowWallet,
+    payoutWallet,
+    dexLiquidityWallet,
+  ] = await Promise.all([
     loadStakingWalletSnapshot(),
     loadCommunityTreasurySnapshot(),
     loadCustodyWalletSnapshot({
@@ -570,6 +564,84 @@ export default async function StakingPage({
       pendingDetail: "DEX liquidity wallet pending.",
       readyDetail: "DEX liquidity",
     }),
+  ]);
+
+  const policyDistributionReserveWallet =
+    applyStakingDistributionReservePolicy(payoutWallet);
+  const stakingWalletReserveHeadroomWolo =
+    getStakingWalletReserveHeadroomWolo();
+  const visibleStakingWalletReserveWolo =
+    stakingWallet.balanceWolo == null || totalStakedWolo == null
+      ? null
+      : Math.max(0, stakingWallet.balanceWolo - totalStakedWolo);
+
+  return (
+    <>
+      <StakingWalletTrustTile
+        wallet={stakingWallet}
+        visibleReserveWolo={visibleStakingWalletReserveWolo}
+        requiredReserveWolo={stakingWalletReserveHeadroomWolo}
+      />
+      <CommunityTreasuryTile treasury={treasury} />
+      <section className="grid gap-3">
+        <CustodyRailTile
+          title="Bet Escrow"
+          wallet={escrowWallet}
+          icon={<ShieldCheck className="h-4 w-4" />}
+          tone="amber"
+        />
+        <CustodyRailTile
+          title="Staking Distribution Reserve"
+          wallet={policyDistributionReserveWallet}
+          icon={<HandCoins className="h-4 w-4" />}
+          tone="sky"
+        />
+        <CustodyRailTile
+          title="DEX Liquidity Reserve"
+          wallet={dexLiquidityWallet}
+          icon={<Coins className="h-4 w-4" />}
+          tone="emerald"
+        />
+      </section>
+    </>
+  );
+}
+
+function StakingTrustRailFallback() {
+  return (
+    <>
+      <section
+        aria-busy="true"
+        className="min-h-40 animate-pulse rounded-[1.55rem] border border-white/8 bg-white/[0.025]"
+      />
+      <section
+        aria-busy="true"
+        className="min-h-40 animate-pulse rounded-[1.55rem] border border-white/8 bg-white/[0.025]"
+      />
+      <section
+        aria-busy="true"
+        className="grid min-h-52 animate-pulse rounded-[1.55rem] border border-white/8 bg-white/[0.025]"
+      />
+    </>
+  );
+}
+
+export default async function StakingPage({
+  searchParams,
+}: {
+  searchParams?: StakingSearchParams;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const period = normalizePeriod(resolvedSearchParams?.period);
+  const board = normalizeBoard(resolvedSearchParams?.board);
+
+  // Economy/profile data is request-critical. Chain wallet proof is intentionally
+  // streamed behind its own Suspense boundary below so a slow REST/LCD lookup
+  // cannot hold the entire staking page TTFB hostage.
+  const overviewPromise = Promise.allSettled([
+    loadEconomySnapshot(period),
+    loadStakingLeaderboard(getPrisma(), board),
+    loadActiveStakerProfiles(getPrisma()),
     getPrisma().$queryRaw<Array<{ total_tx_fees_wolo: string }>>`
       select coalesce(
         sum(
@@ -587,16 +659,11 @@ export default async function StakingPage({
   ]);
 
   const [
-    [snapshotResult, leaderboardResult, stakerProfilesResult],
-    [
-      stakingWallet,
-      treasury,
-      escrowWallet,
-      payoutWallet,
-      dexLiquidityWallet,
-      txFeeAggregate,
-    ],
-  ] = await Promise.all([overviewPromise, trustRailPromise]);
+    snapshotResult,
+    leaderboardResult,
+    stakerProfilesResult,
+    txFeeAggregateResult,
+  ] = await overviewPromise;
 
   let snapshot: EconomySnapshot;
   if (snapshotResult.status === "fulfilled") {
@@ -626,20 +693,16 @@ export default async function StakingPage({
     );
   }
 
-  const policyDistributionReserveWallet = applyStakingDistributionReservePolicy(payoutWallet);
-
-  const totalTxFeesAllTimeWolo = Number.parseFloat(
-    txFeeAggregate[0]?.total_tx_fees_wolo || "0",
-  );
+  const totalTxFeesAllTimeWolo =
+    txFeeAggregateResult.status === "fulfilled"
+      ? Number.parseFloat(
+          txFeeAggregateResult.value[0]?.total_tx_fees_wolo || "0",
+        )
+      : 0;
   snapshot.totalTxFeesAllTimeWolo = Number.isFinite(totalTxFeesAllTimeWolo)
     ? totalTxFeesAllTimeWolo
     : 0;
 
-  const stakingWalletReserveHeadroomWolo = getStakingWalletReserveHeadroomWolo();
-  const visibleStakingWalletReserveWolo =
-    stakingWallet.balanceWolo == null || snapshot.totalStakedWolo == null
-      ? null
-      : Math.max(0, stakingWallet.balanceWolo - snapshot.totalStakedWolo);
   const activityRows = snapshot.activity.slice(0, 16);
   const bettingFeeLabel = formatBpsPercent(BETTING_FEE_RATE_BPS);
   const stakerShareLabel = formatBpsPercent(
@@ -809,32 +872,11 @@ export default async function StakingPage({
               </div>
             </section>
 
-            <StakingWalletTrustTile
-              wallet={stakingWallet}
-              visibleReserveWolo={visibleStakingWalletReserveWolo}
-              requiredReserveWolo={stakingWalletReserveHeadroomWolo}
-            />
-            <CommunityTreasuryTile treasury={treasury} />
-            <section className="grid gap-3">
-              <CustodyRailTile
-                title="Bet Escrow"
-                wallet={escrowWallet}
-                icon={<ShieldCheck className="h-4 w-4" />}
-                tone="amber"
+            <Suspense fallback={<StakingTrustRailFallback />}>
+              <StakingTrustRail
+                totalStakedWolo={snapshot.totalStakedWolo}
               />
-              <CustodyRailTile
-                title="Staking Distribution Reserve"
-                wallet={policyDistributionReserveWallet}
-                icon={<HandCoins className="h-4 w-4" />}
-                tone="sky"
-              />
-              <CustodyRailTile
-                title="DEX Liquidity Reserve"
-                wallet={dexLiquidityWallet}
-                icon={<Coins className="h-4 w-4" />}
-                tone="emerald"
-              />
-            </section>
+            </Suspense>
           </div>
         </div>
       </section>
