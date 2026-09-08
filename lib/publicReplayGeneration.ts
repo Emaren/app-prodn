@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import type { PrismaClient } from "@/lib/generated/prisma";
 
 const PUBLIC_REPLAY_GENERATION_CACHE_MS = 1_000;
+const PUBLIC_USER_IDENTITY_CACHE_MS = 5_000;
 
 type GenerationCacheEntry = {
   expiresAt: number;
@@ -11,6 +12,64 @@ type GenerationCacheEntry = {
 
 let generationCache: GenerationCacheEntry | null = null;
 let generationPromise: Promise<string> | null = null;
+let userIdentityCache: GenerationCacheEntry | null = null;
+let userIdentityPromise: Promise<string> | null = null;
+
+async function loadPublicUserIdentityFingerprint(
+  prisma: PrismaClient,
+): Promise<string> {
+  const now = Date.now();
+  if (userIdentityCache && userIdentityCache.expiresAt > now) {
+    return userIdentityCache.value;
+  }
+  if (userIdentityPromise) {
+    return userIdentityPromise;
+  }
+
+  const run = prisma.$queryRaw<Array<{ fingerprint: string }>>`
+    SELECT md5(
+      COALESCE(
+        jsonb_agg(
+          jsonb_build_array(
+            users.id,
+            users.uid,
+            users.in_game_name,
+            users.steam_id,
+            users.steam_persona_name,
+            users.twitch_stream_url,
+            users.verified,
+            users.lock_name,
+            users.verification_level,
+            users.verification_method,
+            users.verified_at,
+            users.represented_country,
+            users.represented_country_updated_at,
+            users.gender_division,
+            users.gender_division_updated_at
+          ) ORDER BY users.id
+        )::text,
+        '[]'
+      )
+    ) AS fingerprint
+    FROM public.users
+  `
+    .then((rows) => rows[0]?.fingerprint ?? "")
+    .then((value) => {
+      userIdentityCache = {
+        expiresAt: Date.now() + PUBLIC_USER_IDENTITY_CACHE_MS,
+        value,
+      };
+      return value;
+    })
+    .finally(() => {
+      if (userIdentityPromise === run) {
+        userIdentityPromise = null;
+      }
+    });
+
+  userIdentityPromise = run;
+  return run;
+}
 
 /**
  * Lightweight public replay/projection watermark.
@@ -61,35 +120,9 @@ export async function loadPublicReplayGeneration(
       orderBy: { id: "desc" },
       select: { id: true, createdAt: true },
     }),
-    prisma.$queryRaw<Array<{ fingerprint: string }>>`
-      SELECT md5(
-        COALESCE(
-          jsonb_agg(
-            jsonb_build_array(
-              users.id,
-              users.uid,
-              users.in_game_name,
-              users.steam_id,
-              users.steam_persona_name,
-              users.twitch_stream_url,
-              users.verified,
-              users.lock_name,
-              users.verification_level,
-              users.verification_method,
-              users.verified_at,
-              users.represented_country,
-              users.represented_country_updated_at,
-              users.gender_division,
-              users.gender_division_updated_at
-            ) ORDER BY users.id
-          )::text,
-          '[]'
-        )
-      ) AS fingerprint
-      FROM public.users
-    `,
+    loadPublicUserIdentityFingerprint(prisma),
   ])
-    .then(([game, projection, playerSnapshot, adjudication, userIdentityRows]) =>
+    .then(([game, projection, playerSnapshot, adjudication, userIdentity]) =>
       createHash("sha256")
         .update(
           JSON.stringify({
@@ -97,7 +130,7 @@ export async function loadPublicReplayGeneration(
             game,
             playerSnapshot,
             projection,
-            userIdentity: userIdentityRows[0]?.fingerprint ?? null,
+            userIdentity: userIdentity || null,
           }),
         )
         .digest("hex")
