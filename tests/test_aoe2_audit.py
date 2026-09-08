@@ -95,5 +95,13 @@ class AuditCommandTests(unittest.TestCase):
             )
 
 
+    def test_legacy_archive_validation_contract_is_fail_closed(self):
+        source = SCRIPT.read_text()
+        self.assertIn("except TypeError:", source)
+        self.assertIn("member.issym() or member.islnk()", source)
+        self.assertIn("member.isdev() or member.isfifo()", source)
+        self.assertIn("archive member escapes checkout", source)
+
+
 if __name__ == "__main__":
     unittest.main()

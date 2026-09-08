@@ -407,7 +407,21 @@ def copy_central_head_to_temp() -> tuple[tempfile.TemporaryDirectory[str], Path]
         raise RuntimeError(f"git archive failed: {out}")
 
     with tarfile.open(archive, "r") as tar:
-        tar.extractall(checkout, filter="data")
+        try:
+            tar.extractall(checkout, filter="data")
+        except TypeError:
+            checkout_root = checkout.resolve()
+            for member in tar.getmembers():
+                if member.issym() or member.islnk() or member.isdev() or member.isfifo():
+                    raise RuntimeError(
+                        f"unsafe archive member type in legacy extraction path: {member.name}"
+                    )
+                target = (checkout / member.name).resolve()
+                if target != checkout_root and checkout_root not in target.parents:
+                    raise RuntimeError(
+                        f"archive member escapes checkout in legacy extraction path: {member.name}"
+                    )
+            tar.extractall(checkout)
 
     return temp, checkout
 

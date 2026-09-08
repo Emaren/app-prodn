@@ -30,3 +30,13 @@ test("Scavanger_Ab has a permanent Watcher support target", () => {
     /tileKind: "dedicated"/,
   );
 });
+
+test("support diagnostics warn when a watcher trails the public release", () => {
+  assert.match(source, /import \{ WATCHER_RELEASE \} from "@\/lib\/watcherRelease"/);
+  assert.match(source, /watcherVersionIsBehind\(appVersion, WATCHER_RELEASE\.version\)/);
+  assert.match(
+    source,
+    /Restart Watcher or use Check Update\./,
+  );
+});
+
