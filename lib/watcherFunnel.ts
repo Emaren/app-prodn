@@ -3,6 +3,7 @@ import {
   classifyUnresolvedWatcherResult,
   type UnresolvedWatcherResult,
 } from "@/lib/unresolvedWatcherResult";
+import { WATCHER_RELEASE } from "@/lib/watcherRelease";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const WATCHER_PARSE_SOURCES = ["watcher_live", "watcher_final"] as const;
@@ -396,6 +397,28 @@ function isoOrNull(value: Date | null | undefined) {
   return value ? value.toISOString() : null;
 }
 
+
+function watcherVersionTuple(value: string | null | undefined) {
+  if (!value) return null;
+  const match = value.trim().match(/^(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/);
+  if (!match) return null;
+  return [Number(match[1]), Number(match[2]), Number(match[3])] as const;
+}
+
+function watcherVersionIsBehind(
+  current: string | null | undefined,
+  latest: string,
+) {
+  const currentTuple = watcherVersionTuple(current);
+  const latestTuple = watcherVersionTuple(latest);
+  if (!currentTuple || !latestTuple) return false;
+  for (let index = 0; index < latestTuple.length; index += 1) {
+    if (currentTuple[index] < latestTuple[index]) return true;
+    if (currentTuple[index] > latestTuple[index]) return false;
+  }
+  return false;
+}
+
 function firstEventAt(events: FocusWatcherEventRow[], eventTypes: string[]) {
   const eventTypeSet = new Set(eventTypes);
   return events.find((event) => eventTypeSet.has(event.eventType))?.createdAt ?? null;
@@ -464,6 +487,11 @@ function deriveIndependentWatcherState(events: FocusWatcherEventRow[], appVersio
   if (connected && monitorState === "unknown") warnings.push("Heartbeat fresh but monitor state unknown.");
   if (monitorState === "active" && folderState === "unknown") warnings.push("Monitoring active but folder state unknown.");
   if (!modern && appVersion) warnings.push("Limited diagnostics · upgrade watcher to v1.5.3");
+  if (watcherVersionIsBehind(appVersion, WATCHER_RELEASE.version)) {
+    warnings.push(
+      "Watcher " + appVersion + " is behind public release " + WATCHER_RELEASE.version + ". Restart Watcher or use Check Update.",
+    );
+  }
   return { connected, monitorState, folderState, currentReplay, warnings } as const;
 }
 
