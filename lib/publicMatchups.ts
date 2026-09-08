@@ -1824,7 +1824,7 @@ async function buildPublicTeamRivalries(
   );
 }
 
-async function buildRecentRivalryActivity(
+export async function buildPublicBattleArchiveActivity(
   prisma: PrismaClient,
   candidateMatches: MatchupGameRow[],
   take = 18,
@@ -2224,7 +2224,7 @@ async function buildPublicRivalryBoardsFresh(
       candidateMatches,
       sharedProjection
     ),
-    buildRecentRivalryActivity(
+    buildPublicBattleArchiveActivity(
       prisma,
       candidateMatches,
       options?.activityTake ?? 18,
@@ -2370,7 +2370,7 @@ async function buildPublicBattleArchiveFresh(
     ) as MatchupGameRow[];
 
   const entries =
-    await buildRecentRivalryActivity(
+    await buildPublicBattleArchiveActivity(
       prisma,
       candidateMatches,
       take

@@ -1,9 +1,11 @@
 import Link from "next/link";
 
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { getPrisma } from "@/lib/prisma";
+import { loadPublicBattleArchivePage } from "@/lib/publicBattleArchive";
 import {
-  loadPublicBattleArchive,
+  buildPublicBattleArchiveActivity,
   teamRivalryFormatLabel,
   type PublicRivalryActivityEntry,
 } from "@/lib/publicMatchups";
@@ -12,25 +14,30 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function BattleArchivePage() {
+  const prisma = getPrisma();
+  const archive = await loadPublicBattleArchivePage(prisma, {
+    offset: 0,
+    limit: 120,
+  });
+  const entries = await buildPublicBattleArchiveActivity(
+    prisma,
+    archive.rows,
+    120,
+  );
   const {
-    entries,
     total,
     publicBattleRecords,
     duplicateBattleRecords,
     finalReplayRecords,
     excludedFinalRecords,
-  } = await loadPublicBattleArchive(
-    getPrisma(),
-    {
-      take: 120,
-    }
-  );
+  } = archive;
 
   return (
     <main
       className="mx-auto w-full max-w-[96rem] space-y-7 py-5 text-white sm:py-7"
       data-battle-archive-style="iron-vault"
     >
+      <SpeedReadyMarker route="/battle-archive" />
       <section className="relative overflow-hidden rounded-[2.35rem] border border-white/10 bg-[radial-gradient(circle_at_10%_0%,rgba(148,163,184,0.11),transparent_28%),radial-gradient(circle_at_92%_100%,rgba(245,158,11,0.075),transparent_30%),linear-gradient(135deg,#0a101c,#07101e_56%,#05070d)] px-7 py-9 shadow-[0_34px_120px_rgba(0,0,0,0.46)] sm:px-10 xl:px-12">
         <div className="pointer-events-none absolute inset-x-[12%] top-0 h-px bg-gradient-to-r from-transparent via-slate-200/35 to-transparent" />
 

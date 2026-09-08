@@ -67,12 +67,16 @@ test("archive paging keeps visible offsets and totals beyond the former 5,000-ro
           battleIdentity: "platform:battle-6001",
           pageOrdinal: 1n,
           total: 6_001n,
+          finalReplayRecords: 6_050n,
+          publicBattleRecords: 6_020n,
         },
         {
           id: 1,
           battleIdentity: "platform:battle-6000",
           pageOrdinal: 2n,
           total: 6_001n,
+          finalReplayRecords: 6_050n,
+          publicBattleRecords: 6_020n,
         },
       ];
     },
@@ -92,6 +96,10 @@ test("archive paging keeps visible offsets and totals beyond the former 5,000-ro
   assert.deepEqual(queryValues, [12, 5_001]);
   assert.deepEqual(selectedIds, [2, 1]);
   assert.equal(page.total, 6_001);
+  assert.equal(page.finalReplayRecords, 6_050);
+  assert.equal(page.publicBattleRecords, 6_020);
+  assert.equal(page.duplicateBattleRecords, 19);
+  assert.equal(page.excludedFinalRecords, 30);
   assert.equal(page.offset, 5_001);
   assert.equal(page.nextOffset, 5_003);
   assert.deepEqual(page.rows.map((row) => row.id), [2, 1]);
@@ -168,6 +176,16 @@ test("archive route pages canonical database battles instead of loading a bounde
   assert.match(source, /matches: page\.rows/);
   assert.match(source, /nextOffset: page\.nextOffset/);
   assert.doesNotMatch(source, /archiveMode\s*\?\s*5000/);
+});
+
+
+test("battle archive page uses database-grain paging instead of whole-corpus compatibility loader", async () => {
+  const source = await readFile("app/battle-archive/page.tsx", "utf8");
+
+  assert.match(source, /loadPublicBattleArchivePage\(prisma/);
+  assert.match(source, /buildPublicBattleArchiveActivity\(/);
+  assert.match(source, /<SpeedReadyMarker route="\/battle-archive" \/>/);
+  assert.doesNotMatch(source, /loadPublicBattleArchive\(/);
 });
 
 test("archive SQL mirrors public identity and eligibility normalization", async () => {

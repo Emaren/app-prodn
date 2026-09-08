@@ -83,6 +83,7 @@ test("all primary battlefield routes publish explicit readiness", () => {
     ["components/live/LiveGamesBoard.tsx", '<SpeedReadyMarker route="/live-games" />'],
     ["app/players/page.tsx", '<SpeedReadyMarker route="/players" />'],
     ["app/rivalries/page.tsx", '<SpeedReadyMarker route="/rivalries" />'],
+    ["app/battle-archive/page.tsx", '<SpeedReadyMarker route="/battle-archive" />'],
     ["app/war-chest/page.tsx", '<SpeedReadyMarker route="/war-chest" />'],
     ["app/staking/page.tsx", '<SpeedReadyMarker route="/staking" />'],
     [
