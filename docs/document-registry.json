@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fbdcfea4c3570aa25046a624a1e397784fd23e1b5f5981a853014ff3d809eef6",
+      "sha256": "6ed2fc20fcca9edd9006dc5028edf94c87812abf3d40b29dd210c8928868c766",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1815,7 +1815,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/high-roi-speed-pass-20260907",
-    "commit": "db438d4ab780333037525841da0093a11d2bb507"
+    "commit": "500baeb4cce96663f9dadc47aea5816e6c6025fa"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
