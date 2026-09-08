@@ -315,7 +315,7 @@ export default function OracleAdminCommand() {
   if (loading && !payload) {
     return (
       <main className="min-h-screen bg-[#060d19] px-5 py-10 text-white">
-        <div className="mx-auto max-w-[96rem] rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
+        <div className="mx-auto max-w-[118rem] rounded-[2rem] border border-white/10 bg-slate-950/70 p-8">
           <div className="flex items-center gap-3 text-slate-300">
             <RefreshCw className="h-5 w-5 animate-spin" />
             Reading the Oracle ledger…
@@ -328,7 +328,7 @@ export default function OracleAdminCommand() {
   if (!payload) {
     return (
       <main className="min-h-screen bg-[#060d19] px-5 py-10 text-white">
-        <div className="mx-auto max-w-[96rem] rounded-[2rem] border border-rose-300/20 bg-rose-400/[0.06] p-8 text-rose-100">
+        <div className="mx-auto max-w-[118rem] rounded-[2rem] border border-rose-300/20 bg-rose-400/[0.06] p-8 text-rose-100">
           {error ?? "Oracle Command is unavailable."}
         </div>
       </main>
@@ -339,7 +339,7 @@ export default function OracleAdminCommand() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_50%_0%,rgba(37,99,235,0.10),transparent_32%),#060d19] px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-[96rem] space-y-6">
+      <div className="mx-auto max-w-[118rem] space-y-6">
         <header className="overflow-hidden rounded-[2.2rem] border border-violet-200/14 bg-[radial-gradient(circle_at_0%_0%,rgba(124,58,237,0.16),transparent_34%),radial-gradient(circle_at_100%_0%,rgba(34,211,238,0.09),transparent_30%),linear-gradient(145deg,#080b14,#050811_62%,#120a12)] p-6 shadow-[0_30px_100px_rgba(0,0,0,0.35)] sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div>
@@ -431,7 +431,7 @@ export default function OracleAdminCommand() {
               </button>
             </div>
 
-            <div className="mt-5 space-y-4">
+            <div className="mt-5 grid gap-4 2xl:grid-cols-2">
               {markets.length ? markets.map((market) => {
                 const legacy = legacySet.has(market.slug);
                 const editable = ["draft", "review", "approved"].includes(market.status) && market.uniqueForecasters === 0;
@@ -479,7 +479,7 @@ export default function OracleAdminCommand() {
                       </div>
                     </div>
 
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+                    <div className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-3">
                       {[
                         ["YES", percent(market.yesProbabilityBps)],
                         ["NO", percent(10_000 - market.yesProbabilityBps)],
@@ -588,7 +588,7 @@ export default function OracleAdminCommand() {
             </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6 lg:sticky lg:top-24 lg:self-start">
             <section className="rounded-[2rem] border border-rose-300/12 bg-[radial-gradient(circle_at_100%_0%,rgba(244,63,94,0.10),transparent_35%),rgba(2,6,23,0.72)] p-6">
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-rose-100/65">
                 <Trash2 className="h-4 w-4" />

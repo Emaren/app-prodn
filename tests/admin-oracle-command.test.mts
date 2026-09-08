@@ -29,6 +29,12 @@ test("Oracle admin command owns markets, proposals, lifecycle, deletion, and pag
   assert.match(route, /AOE2WAR_PROD_DB_PREVIEW/);
   assert.match(admin, /href="\/admin\/oracle"/);
   assert.match(tower, /href: "\/admin\/oracle"/);
+  const shell = source("app/AppShell.tsx");
+  assert.match(shell, /isOracleAdminSurface = pathname === "\/admin\/oracle"/);
+  assert.match(shell, /isOracleAdminSurface[\s\S]*?max-w-\[118rem\]/);
+  assert.match(client, /mx-auto max-w-\[118rem\]/);
+  assert.match(client, /2xl:grid-cols-2/);
+  assert.match(client, /lg:sticky lg:top-24 lg:self-start/);
   assert.match(oracle, /data-oracle-market-toolbar="unified"/);
   assert.doesNotMatch(
     oracle,
