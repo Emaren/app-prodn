@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/live-count-final-proof-20260908` at `301c39e1b0bb283c0e25020f9ddd8fc427009833`
+Implementation baseline: `feature/speed-shell-v1` at `dcb18d3ecee0c2dbb038c2a0348281070c9c6554`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
