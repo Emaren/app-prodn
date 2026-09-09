@@ -950,6 +950,28 @@ the race is already running, a deliberately dirty untracked sentinel may be used
 as an emergency fail-closed interlock because the old controller re-validates a
 clean authorized source before every new class.
 
+## 2026-09-06 — Ordinary restore proof must remain streaming and scoped
+
+Once ordinary Recovery capture became a real encrypted five-class write lane,
+the next missing seam was not another backup copy but proof that those artifacts
+could actually be decrypted and understood without staging another ~30 GiB of
+plaintext on the Mac. The recovery verifier already knew how to judge a final
+schema-2 proof, but no command produced the intermediate ordinary restore
+evidence.
+
+Durable rule: ordinary restore verification is a detached local read-only lane.
+Each class must verify ciphertext hash/size before decryption, stream the
+plaintext tar through exact hash/byte accounting and structural parsing, and
+write immutable hashed restore evidence. A bounded representative file may be
+materialized only inside a disposable isolated directory and must be removed
+after inspection. Do not persist plaintext member names in proofs; hash the tar
+member index instead. Successful five-class verification is
+ORDINARY_RESTORE_VERIFIED, never RECOVERY_VERIFIED. Wolo settlement, consensus,
+key custody and final schema-2 proof remain separate authority seams. Long
+restore drills use the same out-of-band control principle as capture: pause is a
+separate durable marker checked only between classes, and resume clears it
+explicitly while refusing an interrupted class that already has immutable proof.
+
 ## 2026-09-06 — Watcher replay ownership must come from the key
 
 Scavanger_Ab exposed a cross-surface contradiction: his claimed profile had

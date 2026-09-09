@@ -1,5 +1,7 @@
 import hashlib
 import io
+import shutil
+import subprocess
 import tarfile
 import tempfile
 import unittest
@@ -535,6 +537,233 @@ class RecoveryCampaignTests(unittest.TestCase):
             result = campaign.resume("chunk-resume")
         self.assertEqual(result["spawned_pid"], 24680)
         self.assertEqual(state["status"], "RESUME_REQUESTED")
+
+
+    def test_cms_decrypt_command_uses_local_private_key_and_der_input(self):
+        command = campaign.cms_stream_restore_decrypt_command(
+            Path("/tmp/archive.cms"),
+            Path("/tmp/recipient.pem"),
+            Path("/tmp/private.pem"),
+        )
+        self.assertEqual(command[0:3], ["openssl", "cms", "-decrypt"])
+        self.assertIn("-binary", command)
+        self.assertEqual(
+            command[command.index("-inform") + 1],
+            "DER",
+        )
+        self.assertEqual(
+            command[command.index("-inkey") + 1],
+            "/tmp/private.pem",
+        )
+
+    def test_stream_tar_inspection_hashes_full_archive_and_restores_representative(self):
+        payload = b"recovery proof payload\n"
+        raw = io.BytesIO()
+        with tarfile.open(fileobj=raw, mode="w") as archive:
+            info = tarfile.TarInfo("safe/example.txt")
+            info.size = len(payload)
+            info.mode = 0o640
+            archive.addfile(info, io.BytesIO(payload))
+        data = raw.getvalue()
+
+        result = campaign.inspect_plaintext_tar(
+            io.BytesIO(data),
+            representative_max_bytes=1024,
+        )
+
+        self.assertEqual(result["plaintext_tar_bytes"], len(data))
+        self.assertEqual(
+            result["plaintext_tar_sha256"],
+            hashlib.sha256(data).hexdigest(),
+        )
+        self.assertEqual(result["tar_structure"], "PASS")
+        self.assertEqual(result["member_count"], 1)
+        self.assertEqual(
+            result["representative_restore"]["status"],
+            "PASS",
+        )
+        self.assertEqual(
+            result["representative_restore"]["sha256"],
+            hashlib.sha256(payload).hexdigest(),
+        )
+        self.assertTrue(
+            result["representative_restore"]["workspace_removed_after_drill"]
+        )
+
+    @unittest.skipUnless(shutil.which("openssl"), "OpenSSL is required")
+    def test_streamed_cms_round_trip_restores_hash_exact_tar(self):
+        payload = b"AoE2WAR streamed restore integration test\n"
+        raw = io.BytesIO()
+        with tarfile.open(fileobj=raw, mode="w") as archive:
+            info = tarfile.TarInfo("evidence/sample.txt")
+            info.size = len(payload)
+            info.mode = 0o600
+            archive.addfile(info, io.BytesIO(payload))
+        tar_bytes = raw.getvalue()
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            key = root / "private.pem"
+            cert = root / "recipient.pem"
+            encrypted = root / "archive.cms"
+
+            subprocess.run(
+                [
+                    "openssl",
+                    "req",
+                    "-x509",
+                    "-newkey",
+                    "rsa:2048",
+                    "-nodes",
+                    "-subj",
+                    "/CN=AoE2WAR Recovery Test",
+                    "-keyout",
+                    str(key),
+                    "-out",
+                    str(cert),
+                    "-days",
+                    "1",
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=True,
+            )
+
+            encrypted_proc = subprocess.run(
+                campaign.cms_encrypt_command(cert, encrypted),
+                input=tar_bytes,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+            self.assertEqual(
+                encrypted_proc.returncode,
+                0,
+                encrypted_proc.stderr.decode(errors="replace"),
+            )
+
+            decrypt = subprocess.Popen(
+                campaign.cms_stream_restore_decrypt_command(encrypted, cert, key),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            self.assertIsNotNone(decrypt.stdout)
+            result = campaign.inspect_plaintext_tar(decrypt.stdout)
+            decrypt.stdout.close()
+            stderr = decrypt.stderr.read() if decrypt.stderr else b""
+            if decrypt.stderr is not None:
+                decrypt.stderr.close()
+            self.assertEqual(
+                decrypt.wait(),
+                0,
+                stderr.decode(errors="replace"),
+            )
+
+        self.assertEqual(result["plaintext_tar_bytes"], len(tar_bytes))
+        self.assertEqual(
+            result["plaintext_tar_sha256"],
+            hashlib.sha256(tar_bytes).hexdigest(),
+        )
+        self.assertEqual(
+            result["representative_restore"]["status"],
+            "PASS",
+        )
+
+    def test_restore_state_requires_explicit_authorization(self):
+        with self.assertRaisesRegex(
+            campaign.CampaignError,
+            "--authorize-ordinary-restore-drill",
+        ):
+            campaign.create_restore_state(
+                "test-campaign",
+                authorize_ordinary_restore_drill=False,
+            )
+
+    def test_restore_pause_marker_survives_stale_state_write(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            restore_dir = Path(temporary)
+            campaign_id = "restore-pause-race"
+            state = {
+                "schema": 1,
+                "kind": "aoe2war-recovery-ordinary-restore-drill",
+                "campaign_id": campaign_id,
+                "status": "RUNNING_RESTORE",
+                "pid": None,
+                "pause_requested": False,
+                "pause_requested_at": None,
+                "ordinary_classes": list(campaign.ORDINARY_CLASSES),
+                "completed_classes": [],
+                "bundle_root": temporary,
+            }
+            with patch.object(campaign, "RESTORE_DIR", restore_dir):
+                campaign.save_restore_state(state)
+                requested = campaign.request_restore_pause(campaign_id)
+                self.assertTrue(requested["pause_requested"])
+                self.assertTrue(
+                    campaign.restore_pause_path(campaign_id).is_file()
+                )
+
+                stale = dict(state)
+                stale["pause_requested"] = False
+                stale["pause_requested_at"] = None
+                campaign.save_restore_state(stale)
+
+                marker = campaign.restore_pause_marker(campaign_id)
+                self.assertIsNotNone(marker)
+                status = campaign.restore_status_payload(campaign_id)
+                self.assertTrue(status["pause_requested"])
+                self.assertEqual(
+                    status["pause_requested_at"],
+                    marker["requested_at"],
+                )
+
+    def test_restore_resume_clears_marker_at_clean_boundary(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            restore_dir = Path(temporary) / "restore"
+            bundle = Path(temporary) / "bundle"
+            bundle.mkdir()
+            campaign_id = "restore-resume"
+            state = {
+                "schema": 1,
+                "kind": "aoe2war-recovery-ordinary-restore-drill",
+                "campaign_id": campaign_id,
+                "status": "PAUSED",
+                "pid": None,
+                "current_class": None,
+                "current_class_started_at": None,
+                "pause_requested": True,
+                "pause_requested_at": "2026-09-07T00:00:00+00:00",
+                "ordinary_classes": list(campaign.ORDINARY_CLASSES),
+                "completed_classes": [],
+                "bundle_root": str(bundle),
+            }
+            with (
+                patch.object(campaign, "RESTORE_DIR", restore_dir),
+                patch.object(campaign, "validate_restore_source"),
+                patch.object(campaign, "spawn_restore", return_value=54321),
+            ):
+                campaign.save_restore_state(state)
+                campaign.write_restore_pause_marker(campaign_id)
+                result = campaign.resume_restore(campaign_id)
+
+                self.assertFalse(
+                    campaign.restore_pause_path(campaign_id).exists()
+                )
+                self.assertFalse(result["pause_requested"])
+                self.assertIsNone(result["pause_requested_at"])
+
+    def test_resume_fails_closed_when_interrupted_inside_class(self):
+        state = {
+            "status": "FAILED",
+            "current_class": "raw_replay_archive",
+            "pid": None,
+        }
+        with patch.object(campaign, "load_state", return_value=state):
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "partial evidence",
+            ):
+                campaign.resume("test-campaign")
 
 
 if __name__ == "__main__":

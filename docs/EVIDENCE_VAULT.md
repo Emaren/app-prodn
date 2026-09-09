@@ -280,6 +280,54 @@ The existing database/operator pilot is reused rather than recopied. Settlement,
 consensus recovery, separate key custody and the final streaming restore drill
 remain subsequent explicit authorization seams.
 
+## Ordinary streaming restore drill
+
+After a five-class ordinary capture reaches
+`ORDINARY_CAPTURE_COMPLETE_WOLO_AUTHORIZATION_REQUIRED`, the canonical next
+local proof lane is:
+
+```bash
+aoe2war recovery campaign restore-preflight CAMPAIGN_ID
+aoe2war recovery campaign restore-start CAMPAIGN_ID --authorize-ordinary-restore-drill
+aoe2war recovery campaign restore-status CAMPAIGN_ID
+```
+
+The ordinary restore drill is detached, local to the independent Mac recovery
+authority, and read-only against production. It refuses to start unless the
+capture campaign is complete, all five capture proofs are hash-valid, every
+encrypted artifact exists at the recorded byte size, the campaign certificate
+still matches the canonical mode-0600 recovery private key, and current local
+`main` is clean. Restore pause uses its own durable out-of-band marker and is
+honored only between classes. Resume clears that marker explicitly and refuses
+an interrupted class when an immutable proof already exists for it.
+
+For each ordinary class the drill:
+
+1. verifies the encrypted artifact SHA-256 and byte size against its capture
+   proof before decryption;
+2. decrypts CMS locally with the recovery private key;
+3. streams the plaintext tar through exact SHA-256 and byte-count verification;
+4. parses every tar header without extracting the archive wholesale;
+5. hashes a privacy-preserving member index instead of persisting plaintext
+   member names;
+6. when a regular file no larger than the bounded representative limit exists,
+   restores that one member only to a disposable isolated directory, hashes it,
+   and deletes the workspace immediately afterward;
+7. writes a hashed immutable per-class restore proof.
+
+The full plaintext archive is never staged to disk. This matters because the
+largest ordinary class can exceed available Mac headroom even though streaming
+verification is safe.
+
+Successful completion writes
+`ordinary-restore-summary.json` with status
+`ORDINARY_RESTORE_VERIFIED`; the controller state closes separately with
+completion reason `ORDINARY_RESTORE_VERIFIED_WOLO_AUTHORIZATION_REQUIRED`.
+That proof covers the five ordinary non-Wolo classes only. It is deliberately
+not schema-2 `RECOVERY_VERIFIED`. Wolo
+settlement state, consistency-safe consensus recovery, separate Wolo key
+custody, and final schema-2 proof assembly remain explicit gates.
+
 ## Restore drill
 
 1. Choose a sealed bundle and record its immutable remote version ID.

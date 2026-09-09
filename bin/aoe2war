@@ -366,6 +366,33 @@ KINGDOM INTELLIGENCE / HYGIENE
       and durable log. Pause is cooperative between classes; resume refuses an
       ambiguous interruption inside a class.
 
+  aoe2war recovery campaign restore-preflight [CAMPAIGN]
+      Verify a completed five-class ordinary capture, hashed capture proofs,
+      encrypted artifact sizes, clean main source, matching recovery key/cert,
+      and enough headroom for a streaming isolated restore drill. Makes no
+      production or Wolo change and never stages a full plaintext archive.
+
+  aoe2war recovery campaign restore-start [CAMPAIGN] --authorize-ordinary-restore-drill
+      Start a detached local restore drill. Each encrypted class is hash-checked,
+      decrypted locally, streamed through exact plaintext SHA/byte verification
+      and tar structural inspection, and may restore one bounded representative
+      file only inside a disposable isolated directory. This does not claim
+      final schema-2 Recovery OS verification.
+
+  aoe2war recovery campaign restore-status [CAMPAIGN]
+      Show ordinary restore-drill progress and the active class. A successful
+      five-class drill ends at ORDINARY_RESTORE_VERIFIED while Wolo settlement,
+      consensus recovery, key custody and final schema-2 proof remain open.
+
+  aoe2war recovery campaign restore-pause [CAMPAIGN]
+      Request a durable pause between restore classes. The active class finishes
+      cleanly; a separate marker prevents stale controller state from erasing the
+      request.
+
+  aoe2war recovery campaign restore-resume [CAMPAIGN]
+      Resume a paused or safely interrupted restore drill. Refuses ambiguity if
+      the interrupted class already produced an immutable restore proof.
+
 REPLAY TRUTH
 
   aoe2war truth status
