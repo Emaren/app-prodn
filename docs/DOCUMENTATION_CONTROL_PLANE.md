@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/current-chain-admin-retry-gate-v2` at `c3724eac63fbc24277ed0032eb3ce39b0dd01040`
+Implementation baseline: `fix/recovery-chunked-restore-v1` at `d99d7fa7c4b1b115e7ce1562c95f7f8ccd7e505e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
