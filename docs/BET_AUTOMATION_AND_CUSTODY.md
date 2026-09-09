@@ -74,21 +74,6 @@ fails closed and no WOLO moves.
 This ordering is a custody boundary, not presentation policy: `connect -> fresh
 verified balance -> amount validation -> intent/ticket -> chain transfer`.
 
-### Bet-board bootstrap boundary
-
-The initial `/bets` board may be server-bootstrapped to remove an avoidable
-post-hydration public API round trip. The bootstrap is a read-model optimization
-only: it uses the signed app session, the same canonical `loadBetBoardSnapshot`
-loader used by `/api/bets`, disables synchronous market ensuring, and selects the
-existing fast settlement-surface mode. It does not create markets, stake intents,
-wagers, tickets, claims, settlements, or chain movement.
-
-The client treats the serialized snapshot as initial presentation state and keeps
-the existing `/api/bets` visibility/focus/poll refresh path for ongoing freshness.
-If server bootstrap fails, the page fails open to that established client fetch
-path. No bootstrap value may bypass the fresh verified-wallet-cap check required
-before any financial action.
-
 ## Current app capability
 
 The profile Auto Bet Reserve is a preview-only configuration surface.

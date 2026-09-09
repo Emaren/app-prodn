@@ -159,20 +159,9 @@ test("Leaderboard does not claim authoritative ready until its board exists", ()
   );
 });
 
-test("Bets uses server-bootstrap truth as its authoritative ready boundary", () => {
+test("Bets does not claim authoritative ready until its board fetch resolves", () => {
   const bets = source("app/bets/page.tsx");
-  const layout = source("app/bets/layout.tsx");
-
-  assert.match(layout, /loadBetBoardSnapshot\(/);
-  assert.match(layout, /BetsInitialSnapshotProvider/);
-  assert.match(
-    bets,
-    /const \[loadingBoard, setLoadingBoard\] = useState\(initialSnapshot === null\)/,
-  );
-  assert.match(
-    bets,
-    /else if \(!initialSnapshot\) \{\s*refreshBoard\(false\);\s*\}/,
-  );
+  assert.match(bets, /const \[loadingBoard, setLoadingBoard\] = useState\(true\)/);
   assert.match(bets, /<SpeedReadyMarker route="\/bets" ready={!loadingBoard} \/>/);
 });
 

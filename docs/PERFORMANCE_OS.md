@@ -272,19 +272,16 @@ not bind `audio.src`, select `preload=auto`, or call `load()` until explicit or
 autoplay listening intent exists. This keeps multi-megabyte audio transfers from
 competing with route HTML, hydration, critical APIs, Watcher traffic, or Ready.
 
-When a client route's first useful state is an authoritative server read model,
-an avoidable same-origin API round trip may be removed by server-bootstrap only
-when the bootstrap uses the same session identity and the same canonical loader
-as the API contract. The serialized snapshot is presentation input, not a new
-authority layer. Existing client refresh/polling remains responsible for ongoing
-freshness, and bootstrap failure must fall open to that proven path rather than
-blocking the route.
+Cache-safety class is part of the performance contract. A route classified as a
+`static_client_shell_candidate` must not become server-personalized merely to
+remove one client API round trip unless measured production evidence proves that
+the trade is superior to the lost shared-cache option. Speed work must compare
+the whole delivery architecture, not optimize one waterfall edge in isolation.
 
-Local production builds and source contracts can prove scheduling, serialization,
-and media-request boundaries, but they do not substitute for production browser
-A/B evidence when local fixture data cannot reproduce the authoritative dataset.
-Speed OS records those proof classes separately and waits for decision-grade
-browser samples before claiming a route-level latency improvement.
+Local production builds and source contracts can prove scheduling and media-request
+boundaries, but they do not substitute for production browser A/B evidence. Speed
+OS records those proof classes separately and waits for decision-grade browser
+samples before claiming a route-level latency improvement.
 
 ## Source page and asset inventory
 

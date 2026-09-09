@@ -19,7 +19,6 @@ import { Monitor, Play } from "lucide-react";
 import { toast } from "sonner";
 
 import BetsDisplayRail from "@/components/bets/BetsDisplayRail";
-import { useBetsInitialSnapshot } from "@/components/bets/BetsInitialSnapshotContext";
 import ResultCard from "@/components/bets/ResultCard";
 import YourBookSection from "@/components/bets/YourBookSection";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
@@ -1682,7 +1681,6 @@ function BetsMutedToggleCss() {
 }
 
 export default function BetsPage() {
-  const initialSnapshot = useBetsInitialSnapshot() as BetBoardSnapshot | null;
   const { isAdmin, isAuthenticated, loading, loginWithSteam, user } =
     useUserAuth();
   const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
@@ -1690,13 +1688,13 @@ export default function BetsPage() {
     connectedWalletAddress || undefined,
   );
   const nowMs = useNowTicker();
-  const [board, setBoard] = useState<BetBoardSnapshot | null>(initialSnapshot);
+  const [board, setBoard] = useState<BetBoardSnapshot | null>(null);
   const [betsView, setBetsView] =
     useState<BetsViewVersion>(BETS_VIEW_DEFAULT);
   const [betsViewReady, setBetsViewReady] =
     useState(false);
   const [selection, setSelection] = useState<SelectionState | null>(null);
-  const [loadingBoard, setLoadingBoard] = useState(initialSnapshot === null);
+  const [loadingBoard, setLoadingBoard] = useState(true);
   const [workingKey, setWorkingKey] = useState<string | null>(null);
   const [lockWorkflow, setLockWorkflow] = useState<LockWorkflow | null>(null);
   const [recoveringIntentId, setRecoveringIntentId] = useState<number | null>(
@@ -1957,13 +1955,7 @@ export default function BetsPage() {
       }
     }
 
-    const designFixture = readBetsDesignFixture();
-    if (designFixture) {
-      setBoard(buildBetsDesignFixture(designFixture));
-      setLoadingBoard(false);
-    } else if (!initialSnapshot) {
-      refreshBoard(false);
-    }
+    refreshBoard(false);
 
     const interval = window.setInterval(() => {
       if (document.visibilityState === "visible") {
@@ -1981,7 +1973,7 @@ export default function BetsPage() {
       window.removeEventListener("focus", handleForegroundRefresh);
       document.removeEventListener("visibilitychange", handleForegroundRefresh);
     };
-  }, [initialSnapshot, loadBoard]);
+  }, [loadBoard]);
 
   const [focusedMarketId, setFocusedMarketId] = useState<number | null>(null);
   const marketOrderRef = useRef<Map<number, number>>(new Map());
