@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type CSSProperties,
   type ReactNode,
@@ -30,6 +31,11 @@ import {
   type LobbyThemeKey,
   type LobbyViewMode,
 } from "@/components/lobby/lobbyPresentation";
+import {
+  appearancePreferenceFingerprint,
+  appearancePreferenceNeedsSave,
+  type AppearancePreferenceInput,
+} from "@/lib/appearancePreference";
 import {
   fetchUserAppearancePreference,
   saveUserAppearancePreference,
@@ -106,9 +112,16 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     DEFAULT_LEADERBOARD_LANE
   );
   const [appearanceLoaded, setAppearanceLoaded] = useState(false);
+  const persistedAppearanceFingerprintRef = useRef<string | null>(null);
+  const pendingAppearanceFingerprintRef = useRef<string | null>(null);
+  const appearanceSaveSequenceRef = useRef(0);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    persistedAppearanceFingerprintRef.current = null;
+    pendingAppearanceFingerprintRef.current = null;
+    appearanceSaveSequenceRef.current += 1;
 
     let cancelled = false;
     const storedTheme = readStoredLobbyTheme();
@@ -167,19 +180,23 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
           markAccountTimeDisplayDefaultMigration(user.uid);
         }
         if (cancelled) return;
+        const hydratedBrowserTimeZone = resolveBrowserTimeZone(
+          detectedBrowserTimeZone,
+          preference.timezoneOverride || storedBrowserTimeZone
+        );
+        const hydratedTileViewPreferences = applyTileViewDefaultMigration(
+          preference.tileViewPreferences ?? {}
+        );
+        persistedAppearanceFingerprintRef.current = appearancePreferenceFingerprint(preference);
+        pendingAppearanceFingerprintRef.current = null;
         setThemeKey(preference.themeKey);
         setTileThemeKey(preference.tileThemeKey);
         setViewMode(preference.viewMode);
         setTextColor(preference.textColor);
         setTimeDisplayMode(preference.timeDisplayMode);
         setTimeClockMode(preference.timeClockMode);
-        setBrowserTimeZone(
-          resolveBrowserTimeZone(
-            detectedBrowserTimeZone,
-            preference.timezoneOverride || storedBrowserTimeZone
-          )
-        );
-        setTileViewPreferences(applyTileViewDefaultMigration(preference.tileViewPreferences ?? {}));
+        setBrowserTimeZone(hydratedBrowserTimeZone);
+        setTileViewPreferences(hydratedTileViewPreferences);
         setLeaderboardLane(preference.leaderboardLane);
         markTileViewDefaultMigrationApplied();
       } catch (error) {
@@ -256,7 +273,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!appearanceLoaded || !user?.uid) return;
 
-    void saveUserAppearancePreference({
+    const nextPreference: AppearancePreferenceInput = {
       themeKey,
       tileThemeKey,
       viewMode,
@@ -266,9 +283,34 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
       timezoneOverride: browserTimeZone,
       tileViewPreferences,
       leaderboardLane,
-    }).catch((error) => {
-      console.warn("Failed to save appearance preference:", error);
-    });
+    };
+    const nextFingerprint = appearancePreferenceFingerprint(nextPreference);
+    if (
+      !appearancePreferenceNeedsSave(
+        persistedAppearanceFingerprintRef.current,
+        pendingAppearanceFingerprintRef.current,
+        nextFingerprint
+      )
+    ) {
+      return;
+    }
+
+    pendingAppearanceFingerprintRef.current = nextFingerprint;
+    const sequence = ++appearanceSaveSequenceRef.current;
+    void saveUserAppearancePreference(nextPreference)
+      .then((saved) => {
+        if (sequence === appearanceSaveSequenceRef.current) {
+          persistedAppearanceFingerprintRef.current = appearancePreferenceFingerprint(saved);
+        }
+      })
+      .catch((error) => {
+        console.warn("Failed to save appearance preference:", error);
+      })
+      .finally(() => {
+        if (pendingAppearanceFingerprintRef.current === nextFingerprint) {
+          pendingAppearanceFingerprintRef.current = null;
+        }
+      });
   }, [
     appearanceLoaded,
     browserTimeZone,

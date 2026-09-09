@@ -278,6 +278,14 @@ remove one client API round trip unless measured production evidence proves that
 the trade is superior to the lost shared-cache option. Speed work must compare
 the whole delivery architecture, not optimize one waterfall edge in isolation.
 
+Hydration must also remain observational until state actually changes. When an
+authenticated client loads an authoritative preference/read model and the
+normalized hydrated state is identical, it must not immediately echo that state
+back as a mutation. Client effects should suppress identical and duplicate
+in-flight writes, while the mutation endpoint independently treats an identical
+normalized payload as a no-op before database upsert/activity work. Real browser
+timezone migrations, versioned defaults, and explicit user changes remain writes.
+
 Local production builds and source contracts can prove scheduling and media-request
 boundaries, but they do not substitute for production browser A/B evidence. Speed
 OS records those proof classes separately and waits for decision-grade browser

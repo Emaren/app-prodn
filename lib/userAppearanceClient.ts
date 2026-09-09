@@ -1,24 +1,8 @@
 "use client";
 
-import type {
-  LobbyTextColor,
-  LobbyThemeKey,
-  LobbyViewMode,
-} from "@/components/lobby/lobbyPresentation";
-import type { TimeClockMode, TimeDisplayMode } from "@/lib/timeDisplay";
-import type { TileViewPreferences } from "@/lib/tileViewPreferences";
-import type { LeaderboardLane } from "@/lib/leaderboardLane";
+import type { AppearancePreferenceInput } from "@/lib/appearancePreference";
 
-export type AppearancePayload = {
-  themeKey: LobbyThemeKey;
-  tileThemeKey: LobbyThemeKey;
-  viewMode: LobbyViewMode;
-  textColor: LobbyTextColor;
-  timeDisplayMode: TimeDisplayMode;
-  timeClockMode: TimeClockMode;
-  timezoneOverride: string | null;
-  tileViewPreferences: TileViewPreferences;
-  leaderboardLane: LeaderboardLane;
+export type AppearancePayload = AppearancePreferenceInput & {
   updatedAt: string | null;
 };
 
@@ -31,17 +15,7 @@ export async function fetchUserAppearancePreference() {
   return (await response.json()) as AppearancePayload;
 }
 
-export async function saveUserAppearancePreference(input: {
-  themeKey: LobbyThemeKey;
-  tileThemeKey: LobbyThemeKey;
-  viewMode: LobbyViewMode;
-  textColor: LobbyTextColor;
-  timeDisplayMode: TimeDisplayMode;
-  timeClockMode: TimeClockMode;
-  timezoneOverride: string | null;
-  tileViewPreferences: TileViewPreferences;
-  leaderboardLane: LeaderboardLane;
-}) {
+export async function saveUserAppearancePreference(input: AppearancePreferenceInput) {
   const response = await fetch("/api/user/appearance", {
     method: "POST",
     headers: {

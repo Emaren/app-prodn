@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { appearancePreferenceFingerprint } from "@/lib/appearancePreference";
 import { getPrisma } from "@/lib/prisma";
 import {
   loadAppearancePreferenceForUser,
@@ -78,6 +79,13 @@ export async function POST(request: NextRequest) {
         updatedAt: new Date().toISOString(),
         previewReadOnly: true,
       });
+    }
+
+    if (
+      appearancePreferenceFingerprint(current) ===
+      appearancePreferenceFingerprint(normalized)
+    ) {
+      return NextResponse.json(current);
     }
 
     const saved = await upsertAppearancePreference(prisma, user.id, normalized);
