@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7f001914d5a5085e4db9f5d957105a5237b67b61ee211f30b95e80e154c2f25d",
+      "sha256": "373966119b2ef75648604f610f0455d3931bf4db54c98a6c7b91060677591834",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "04aa4f0b05fe5a3f655c684aaf349a2c33842170cff64f6169027b1d37eb7aeb",
+      "sha256": "5208388e332c9a6be97b1cff2802bab8c6f2119bc06197dea8ee445e23a445ad",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -590,7 +590,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "f079b7dfa6f6bd5fb91728982eed7803e2a44dfdb435a534cf1beb2541a015c9",
+      "sha256": "3c621bbf45c136debd63009c15282d50f786e3c35df72186884bd4ddfbfc4caa",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/staking-receipt-concurrency-v1",
-    "commit": "ef492b094d64e80bb7711df85c5a46201fe506d8"
+    "branch": "feat/recovery-ordinary-restore-drill-v2",
+    "commit": "f3bf70355c52c2920129b4bc196e285b84bb92c9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

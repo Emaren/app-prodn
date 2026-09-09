@@ -789,8 +789,9 @@ def print_campaign_plan(payload: dict[str, Any]) -> None:
     print()
     print("WRITE ACTIONS: NONE")
     print(
-        "Next implementation seam: bounded recovery campaign start, "
-        "which must require explicit authorization."
+        "Next authorization seam after ordinary capture + restore proof: "
+        "consistency-safe Wolo settlement/consensus recovery and separate "
+        "key custody."
     )
 
 
@@ -852,7 +853,18 @@ def forward_campaign_cli(argv: list[str]) -> int | None:
     if len(argv) < 2 or argv[0] != "campaign":
         return None
     command = argv[1]
-    if command not in {"preflight", "start", "status", "pause", "resume"}:
+    if command not in {
+        "preflight",
+        "start",
+        "status",
+        "pause",
+        "resume",
+        "restore-preflight",
+        "restore-start",
+        "restore-status",
+        "restore-resume",
+        "restore-pause",
+    }:
         return None
     cmd = [
         sys.executable,
@@ -878,7 +890,18 @@ def main() -> int:
     campaign_sub = campaign.add_subparsers(dest="campaign_command", required=True)
     campaign_plan_parser = campaign_sub.add_parser("plan")
     campaign_plan_parser.add_argument("--json", action="store_true")
-    for name in ("preflight", "start", "status", "pause", "resume"):
+    for name in (
+        "preflight",
+        "start",
+        "status",
+        "pause",
+        "resume",
+        "restore-preflight",
+        "restore-start",
+        "restore-status",
+        "restore-pause",
+        "restore-resume",
+    ):
         q = campaign_sub.add_parser(name)
         q.add_argument("campaign_args", nargs=argparse.REMAINDER)
 
