@@ -449,7 +449,7 @@ test(
 );
 
 test(
-  "the bets board has a bounded foreground refresh and explicit no-store response",
+  "the bets board has a bounded foreground refresh, explicit no-store response, and canonical financial session source",
   () => {
     assert.match(
       betsPageSource,
@@ -476,6 +476,10 @@ test(
       /BET_MARKET_ENSURE_MIN_INTERVAL_MS = 5_000/
     );
     assert.match(
+      betsSource,
+      /loadLiveSessionSnapshot\(prisma\)/
+    );
+    assert.doesNotMatch(
       betsSource,
       /loadLiveGamesSnapshotFresh\(prisma\)/
     );

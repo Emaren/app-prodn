@@ -844,6 +844,10 @@ function buildRecentOutcomeSession(
       parseReason,
       keyEvents: (match as unknown as Record<string, unknown>).key_events,
     }),
+    // This row is synthesized from the public/archive presentation surface.
+    // It may carry statistics-authorized winner truth, but it is never
+    // standalone financial authority for a betting market.
+    bettingEligible: false,
     parseReason,
     parseSource,
     unresolvedResult: classifyUnresolvedWatcherResult({
@@ -1076,6 +1080,7 @@ async function loadStandaloneLiveStreamSessions(
       originalFilename: title || "Watcher Live",
       disconnectDetected: false,
       winner: null,
+      bettingEligible: false,
       parseReason: null,
       parseSource: "watcher_stream",
       unresolvedResult: null,

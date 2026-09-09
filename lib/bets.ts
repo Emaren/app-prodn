@@ -38,7 +38,6 @@ import {
   loadReplayDesyncIncidentProvenance,
 } from "@/lib/replayDesyncIncidents";
 import { loadLiveSessionSnapshot, type LiveGameSession } from "@/lib/liveSessionSnapshot";
-import { loadLiveGamesSnapshotFresh } from "@/lib/liveGames";
 import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
 import {
   isUnknownishReplayValue,
@@ -562,6 +561,46 @@ function describeSessionSides(session: LiveGameSession): SessionSideDescription 
 function inferWinnerSideFromSession(session: LiveGameSession): BetSide | null {
   const winningIndex = resolveWinningTeamIndex(session.players, session.teamResolution);
   return winningIndex === 0 ? "left" : winningIndex === 1 ? "right" : null;
+}
+
+export function watcherSessionCanSeedSettledWinnerMarket(input: {
+  state: string;
+  finalProofPending: boolean;
+  parseSource: string | null | undefined;
+  bettingEligible: boolean;
+}) {
+  const parseSource = normalizeName(input.parseSource).toLowerCase();
+  const hasCanonicalFinalReplay =
+    input.state === "completed" &&
+    parseSource !== "watcher_live" &&
+    parseSource !== "watcher_stream";
+
+  return Boolean(
+    hasCanonicalFinalReplay &&
+      !input.finalProofPending &&
+      input.bettingEligible
+  );
+}
+
+export function expiredWatcherMarketResolutionReason(input: {
+  resolutionReason: string | null | undefined;
+  linkedGameStatsId: number | null | undefined;
+}) {
+  if (input.resolutionReason === "explicit_desync_without_safe_winner") {
+    return input.resolutionReason;
+  }
+
+  if (input.linkedGameStatsId) {
+    if (
+      input.resolutionReason &&
+      input.resolutionReason !== "final_replay_pending"
+    ) {
+      return input.resolutionReason;
+    }
+    return "final_result_not_betting_eligible";
+  }
+
+  return "final_replay_not_received";
 }
 
 type MarketSeed = {
@@ -1623,16 +1662,27 @@ function buildSessionMarketSeed(
     (session.state === "completed" || session.finalProofPending) &&
     session.parseSource !== "watcher_live";
   const settlementReadyFinalReplay =
-    hasCanonicalFinalReplay && !session.finalProofPending;
+    watcherSessionCanSeedSettledWinnerMarket(session);
 
   const resolvedWinnerSide =
     settlementReadyFinalReplay
       ? inferWinnerSideFromSession(session)
       : null;
 
-  // Canonical completed team games without one coherent winning team are
-  // evidence for review, never an implicitly voided betting proposition.
-  if (settlementReadyFinalReplay && !resolvedWinnerSide) return null;
+  /*
+   * Completed presentation/statistics truth is not financial authority.
+   * A public/archive projection can legitimately know who won while the
+   * betting rail remains locked (for example an accepted adjudication with
+   * affects_bets=false). Such a row must never manufacture a fresh settled
+   * market. Existing live books are handled by detached final reconciliation.
+   */
+  if (
+    session.state === "completed" &&
+    !session.finalProofPending &&
+    (!settlementReadyFinalReplay || !resolvedWinnerSide)
+  ) {
+    return null;
+  }
 
   const watcherMarketStatus: BetStatus =
     session.finalProofPending
@@ -3989,7 +4039,11 @@ async function voidExpiredWatcherMarkets(prisma: PrismaClient) {
       status: "awaiting_final_proof",
       proofDeadlineAt: { lte: now },
     },
-    select: { id: true, resolutionReason: true },
+    select: {
+      id: true,
+      resolutionReason: true,
+      linkedGameStatsId: true,
+    },
   });
   if (expired.length === 0) return;
 
@@ -4006,9 +4060,7 @@ async function voidExpiredWatcherMarkets(prisma: PrismaClient) {
           voidedAt: now,
           refundStatus: "queued",
           resolutionReason:
-            market.resolutionReason === "explicit_desync_without_safe_winner"
-              ? market.resolutionReason
-              : "final_replay_not_received",
+            expiredWatcherMarketResolutionReason(market),
         },
       });
       await tx.betMarketFounderBonus.updateMany({
@@ -4199,12 +4251,14 @@ async function linkLateFinalEvidence(prisma: PrismaClient) {
 
 async function buildOpenMarketSeeds(prisma: PrismaClient) {
   /*
-   * Market discovery is a financial projection and must read current replay
-   * truth. The public live-games surface may use its short SWR cache, but a
-   * stale snapshot here can suppress a newly eligible proposition until the
-   * next background ensure window.
+   * Financial market discovery is a financial projection and must consume the
+   * canonical replay/session snapshot directly.
+   * snapshot directly. loadLiveGamesSnapshotFresh is a presentation surface
+   * that intentionally mixes in public/archive fallback outcome rows; those
+   * rows may carry statistics-authorized winner truth and must never become a
+   * second betting proposition for an already-live watcher battle.
    */
-  const sessionSnapshot = await loadLiveGamesSnapshotFresh(prisma);
+  const sessionSnapshot = await loadLiveSessionSnapshot(prisma);
   const {
     tiles: scheduledMatchTiles,
     matchedActiveSessionKeys,
@@ -4382,6 +4436,7 @@ function loadDetachedWatcherFinalGame(
       players: true,
       parse_reason: true,
       key_events: true,
+      disconnect_detected: true,
       map: true,
       timestamp: true,
       createdAt: true,
@@ -4633,6 +4688,7 @@ export async function reconcileDetachedWatcherMarkets(
           return;
         }
         const disconnectEvidence = Boolean(
+          finalGame.disconnect_detected ||
           (finalGame.key_events &&
             typeof finalGame.key_events === "object" &&
             !Array.isArray(finalGame.key_events) &&

@@ -13,6 +13,8 @@ import {
   isRecoverableUnknownScalarWinnerReview,
   resolveMarketSettlementStatus,
   watcherFinalProofDeadline,
+  watcherSessionCanSeedSettledWinnerMarket,
+  expiredWatcherMarketResolutionReason,
 } from "../lib/bets.ts";
 import {
   buildRosterHash,
@@ -477,5 +479,59 @@ test("undersized core proof never marks the full bettor liability executed", () 
       ],
     }),
     "partial"
+  );
+});
+
+test("presentation/statistics-only final truth cannot seed a settled winner market", () => {
+  assert.equal(
+    watcherSessionCanSeedSettledWinnerMarket({
+      state: "completed",
+      finalProofPending: false,
+      parseSource: "watcher_final",
+      bettingEligible: false,
+    }),
+    false
+  );
+  assert.equal(
+    watcherSessionCanSeedSettledWinnerMarket({
+      state: "completed",
+      finalProofPending: false,
+      parseSource: "watcher_final",
+      bettingEligible: true,
+    }),
+    true
+  );
+  assert.equal(
+    watcherSessionCanSeedSettledWinnerMarket({
+      state: "completed",
+      finalProofPending: false,
+      parseSource: "watcher_live",
+      bettingEligible: true,
+    }),
+    false
+  );
+});
+
+test("proof expiry never says final replay not received when final evidence is already linked", () => {
+  assert.equal(
+    expiredWatcherMarketResolutionReason({
+      resolutionReason: "final_replay_pending",
+      linkedGameStatsId: 24404,
+    }),
+    "final_result_not_betting_eligible"
+  );
+  assert.equal(
+    expiredWatcherMarketResolutionReason({
+      resolutionReason: "explicit_desync_without_safe_winner",
+      linkedGameStatsId: 24404,
+    }),
+    "explicit_desync_without_safe_winner"
+  );
+  assert.equal(
+    expiredWatcherMarketResolutionReason({
+      resolutionReason: "final_replay_pending",
+      linkedGameStatsId: null,
+    }),
+    "final_replay_not_received"
   );
 });
