@@ -37,6 +37,12 @@ type StreamedLiveGameSession = LiveGameSession & {
   primaryStream: WatchStreamPayload | null;
 };
 
+export function countGenuinelyLiveSessions(
+  sessions: Array<Pick<LiveGameSession, "finalProofPending">>
+) {
+  return sessions.filter((session) => !session.finalProofPending).length;
+}
+
 const BROWSER_STREAM_STALE_MS = 120_000;
 const BROWSER_STREAM_ARCHIVE_MS = 6 * 60 * 60 * 1000;
 const EXTERNAL_STREAM_STALE_MS = 20 * 60 * 1000;
@@ -782,7 +788,10 @@ export async function loadLiveGamesSnapshotFresh(
   ).length;
 
   return {
-    liveCount: liveMatches.length + streamedActiveSessions.length + scheduledLiveCount,
+    liveCount:
+      liveMatches.length +
+      countGenuinelyLiveSessions(streamedActiveSessions) +
+      scheduledLiveCount,
     readyCount: readyMatches.length + scheduledReadyCount,
     onDeckCount: readyMatches.length + scheduledOnDeckCount,
     updatedAt: new Date().toISOString(),

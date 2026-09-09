@@ -18,6 +18,7 @@ import {
 } from "../lib/liveSessionOrdering.ts";
 import {
   collectLiveLaneIdentities,
+  countGenuinelyLiveSessions,
   excludeOccupiedLiveLaneItems,
   projectArchiveLane,
   projectArchiveLaneAcrossPages,
@@ -92,6 +93,34 @@ function snapshot(activeSessions: LiveSession[]): LiveGamesSnapshot {
     archiveTotal: 0,
   };
 }
+
+test("final-proof review rows stay visible without inflating the genuinely live count", () => {
+  const genuineLive = liveSession(1);
+  const pendingFinal = liveSession(2, {
+    completedAt: "2026-08-26T12:02:30.000Z",
+    parseSource: "watcher_final",
+    parseReason: "watcher_final_submission",
+    finalProofPending: true,
+    unresolvedResult: {
+      code: "disconnect_result_unproven",
+      label: "Result unproven",
+      explanation: "Final replay exists but canonical winner proof is pending.",
+      reviewNeeded: true,
+    },
+  });
+  const promotedNativeStream = liveSession(3, {
+    completedAt: null,
+    state: "live",
+    finalProofPending: false,
+    parseSource: "watcher_final",
+  });
+
+  const activeSurface = [genuineLive, pendingFinal, promotedNativeStream];
+
+  assert.equal(activeSurface.length, 3);
+  assert.equal(countGenuinelyLiveSessions(activeSurface), 2);
+  assert.equal(pendingFinal.finalProofPending, true);
+});
 
 test("250 simultaneous platform sessions survive heartbeat and fingerprint churn without overtaking", () => {
   const initialSessions = Array.from({ length: 250 }, (_, index) => liveSession(index));

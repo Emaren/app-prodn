@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-08"
+reviewed_at: "2026-09-08"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -34,6 +34,8 @@ During that window:
 - the battle is labeled **Final proof pending**;
 - the previously captured roster and battle context remain visible;
 - the session is excluded from active market lookup;
+- the session remains review-visible in the active surface but does **not**
+  contribute to the public `liveCount` or "Live Games" navigation badge;
 - no live betting call to action is enabled;
 - market status is `awaiting_final_proof`;
 - settlement is not eligible;

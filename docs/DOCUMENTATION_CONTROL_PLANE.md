@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/bets-wallet-connect-cap-20260908` at `6ffb1c361853ba0e1f340c461d7a24889b79a316`
+Implementation baseline: `fix/live-count-final-proof-20260908` at `301c39e1b0bb283c0e25020f9ddd8fc427009833`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
