@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `hotfix/financial-p0-escrow-v2` at `68e2d43a3c18a7626d7f418f068edaf7b7c013d3`
+Implementation baseline: `hotfix/staking-reward-safety-v1` at `e1a08b3f70f6246c2fb3641432c6702d2ddf78b0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
