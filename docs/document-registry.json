@@ -271,7 +271,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-08",
       "sensitivity": "internal",
-      "sha256": "d3c9e7261ad45677dcef802697711d046cf376c497729e1be291dcdc65208b50",
+      "sha256": "3aaf13fe9398a1e70ced1129b6247702f18c0a8a374bc87a36af87d62b1b2a38",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1093,7 +1093,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "490bfee2a571c67134b91d554f161e1b80947b51bf46e7845077dabaae424e27",
+      "sha256": "662fc6e3ccef00dfa320e0ae0119073e4fa7c8935d1bb0dca93459695b3d5e2b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1182,9 +1182,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RADIO_WOLO.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-09-01",
+      "reviewed_at": "2026-09-08",
       "sensitivity": "internal",
-      "sha256": "6451bb6bbed325c0b388d3431640fe67d2304ff4a63686ae375e9fb1d1df2c0b",
+      "sha256": "1c30bc4cb3a6ed149f4c96e74934431a13be738d0845891aa8a2acbe3fe81a02",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

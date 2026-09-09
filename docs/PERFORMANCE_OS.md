@@ -259,6 +259,33 @@ remain pending/error, and a database result may still fall back according to
 its existing contract. Performance work changes scheduling and readiness
 boundaries, not financial or chain authority.
 
+### Global-shell critical-path discipline
+
+Responsive shell variants may coexist in the DOM for presentation, but they must
+not duplicate equivalent network work. When desktop/mobile mounts observe the
+same authenticated summary or event stream, they share a bounded request/event
+broker so CSS-hidden controls do not double the first-second API load.
+
+Global media follows the same rule. Station/program metadata may hydrate before a
+listener acts, but media bytes are not page-readiness evidence. Radio WOLO must
+not bind `audio.src`, select `preload=auto`, or call `load()` until explicit or
+autoplay listening intent exists. This keeps multi-megabyte audio transfers from
+competing with route HTML, hydration, critical APIs, Watcher traffic, or Ready.
+
+When a client route's first useful state is an authoritative server read model,
+an avoidable same-origin API round trip may be removed by server-bootstrap only
+when the bootstrap uses the same session identity and the same canonical loader
+as the API contract. The serialized snapshot is presentation input, not a new
+authority layer. Existing client refresh/polling remains responsible for ongoing
+freshness, and bootstrap failure must fall open to that proven path rather than
+blocking the route.
+
+Local production builds and source contracts can prove scheduling, serialization,
+and media-request boundaries, but they do not substitute for production browser
+A/B evidence when local fixture data cannot reproduce the authoritative dataset.
+Speed OS records those proof classes separately and waits for decision-grade
+browser samples before claiming a route-level latency improvement.
+
 ## Source page and asset inventory
 
 `aoe2war speed inventory` derives the performance estate from the current

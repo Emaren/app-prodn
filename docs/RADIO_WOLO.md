@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-01"
+reviewed_at: "2026-09-08"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -66,6 +66,20 @@ WebKit, hidden/pagehide lifecycle synchronously drops listener intent, cancels
 volume ramps, pauses and detaches audio, resets media identity, and clears
 best-effort Media Session state. This protects installed-PWA audio from wedged
 background sessions without weakening desktop persistence.
+
+### Media readiness boundary
+
+Radio WOLO may refresh station metadata before the listener chooses Sound On,
+but an idle global player must not consume audio bytes. Until listening intent is
+true, the client does not bind the authoritative media URL to `audio.src`, does
+not select eager preload, and does not call `audio.load()`. Sound On (or an
+explicitly supported autoplay intent) establishes listening intent first and then
+applies the current authoritative station anchor.
+
+This is a performance and coexistence contract, not a change to Radio truth. The
+station clock, asset identity, feedback eligibility, and signed/anonymous listener
+semantics remain authoritative exactly as before; only unnecessary idle media
+transfer is deferred.
 
 ## Listener signals and ratings
 
