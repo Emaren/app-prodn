@@ -215,6 +215,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "betting-constitution-ratification-candidate",
+      "id": "aoe2war.app-prodn.betting-constitution",
+      "owner": "aoe2war-web",
+      "path": "docs/BETTING_CONSTITUTION.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-09-09",
+      "sensitivity": "internal",
+      "sha256": "cac4488be2231893e6085976fbe97d274def0ac9f396baad6a4a247656245385",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "AoE2WAR Betting Constitution",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "product-and-concurrency-contract",
       "id": "aoe2war.app-prodn.docs-betting-hall-product-and-concurrency",
       "owner": "aoe2war-web",
@@ -222,7 +245,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-05",
       "sensitivity": "internal",
-      "sha256": "792fd1137da393c27c1bc32de4ab5b64dc3c3b15fefc0c4cb35be4dc7a0604e7",
+      "sha256": "e60cc20d259219195cec7940f0bfd79e5499423d935ba57e262290f20a8aac6c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a52fc3b398e63eb6db1b770b1dededfe79de165e184198599ae2aaf7006a0a18",
+      "sha256": "fa63a896ed6b31af1e8531f6f87cfa951f87ec03826cc447959708f5affb9c32",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -542,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "307c7aa3d2f34debf1a7770515d6943e12da04e603957170725715294111ca6a",
+      "sha256": "85088490e6a9bb9c35e446b5be10bc169faf3770d8f7406942ba7080178dd0c5",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
