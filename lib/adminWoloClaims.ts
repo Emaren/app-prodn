@@ -410,18 +410,22 @@ function hashValue(value: string) {
   return Math.abs(hash);
 }
 
-function buildAdminMarketClaimSettlementRunId(sourceMarketId: number, claimId: number) {
-  return `aoe2-market-claim-${sourceMarketId}-${claimId}`;
+const ADMIN_MARKET_CLAIM_ESCROW_ID_VERSION = "escrow-v2";
+
+export function buildAdminMarketClaimSettlementRunId(sourceMarketId: number, claimId: number) {
+  return `aoe2-market-claim-${sourceMarketId}-${claimId}-${ADMIN_MARKET_CLAIM_ESCROW_ID_VERSION}`;
 }
 
-function buildAdminMarketClaimRequestId(input: {
+export function buildAdminMarketClaimRequestId(input: {
   claimId: number;
   claimKind: string;
   matchedUserId: number;
 }) {
   const claimKind = input.claimKind.trim() || "market_claim";
-  const fingerprint = hashValue(`${input.matchedUserId}:${input.claimId}:${claimKind}`);
-  return `aoe2-claim-${input.claimId}-${claimKind}-${fingerprint}`;
+  const fingerprint = hashValue(
+    `${ADMIN_MARKET_CLAIM_ESCROW_ID_VERSION}:${input.matchedUserId}:${input.claimId}:${claimKind}`
+  );
+  return `aoe2-claim-${input.claimId}-${claimKind}-${fingerprint}-${ADMIN_MARKET_CLAIM_ESCROW_ID_VERSION}`;
 }
 
 function summarizeSettlementRunFailure(

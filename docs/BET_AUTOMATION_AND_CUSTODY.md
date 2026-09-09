@@ -89,6 +89,12 @@ share one source-of-funds invariant:
 - the stored winning-wager/refund entitlement, matched wallet, request ID,
   recipient, amount, and source market remain part of the existing retry truth
   gate and distinct-send proof;
+- the escrow recovery namespace is explicitly versioned as `escrow-v2` for both
+  grouped `settlement_run_id` and per-payout `request_id`. Legacy failed
+  payout-signer retry IDs remain immutable historical evidence; the escrow
+  migration must never reinterpret one of those stored IDs with a different
+  signer payload. Repeating the same `escrow-v2` retry remains deterministic
+  and idempotent;
 - a failed dry-run leaves the claim pending and records the failure. It never
   converts a reserve shortage or signer mismatch into a manual ad-hoc send;
 - Founder rewards remain a separate payout domain and retain their dedicated

@@ -4,6 +4,8 @@ import test from "node:test";
 
 import {
   assertAdminRetryWinnerTruthGate,
+  buildAdminMarketClaimRequestId,
+  buildAdminMarketClaimSettlementRunId,
   type AdminRetryWinnerTruthMarket,
 } from "../lib/adminWoloClaims.ts";
 
@@ -163,6 +165,33 @@ test(
       /ADMIN_RETRY_WINNER_TRUTH_MISMATCH/
     );
   }
+);
+
+test(
+  "escrow recovery uses a deterministic v2 idempotency namespace distinct from legacy payout retries",
+  () => {
+    const runId = buildAdminMarketClaimSettlementRunId(700393, 9375);
+    const requestId = buildAdminMarketClaimRequestId({
+      claimId: 9375,
+      claimKind: "bet_payout",
+      matchedUserId: 18168,
+    });
+
+    assert.equal(
+      runId,
+      "aoe2-market-claim-700393-9375-escrow-v2",
+    );
+    assert.equal(
+      requestId,
+      "aoe2-claim-9375-bet_payout-202727-escrow-v2",
+    );
+
+    assert.notEqual(runId, "aoe2-market-claim-700393-9375");
+    assert.notEqual(
+      requestId,
+      "aoe2-claim-9375-bet_payout-962247",
+    );
+  },
 );
 
 test(
