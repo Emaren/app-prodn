@@ -60,6 +60,26 @@ if (
       "$@"
   fi
 fi
+
+# Resolve the tracked operator Python contract once so every Python-backed
+# AoE2WAR command uses the same runtime even when another "python3" wins PATH.
+AOE2WAR_PYTHON="python3"
+AOE2WAR_OPERATIONS_CONTRACT="$SELF_ROOT/config/aoe2war-operations.json"
+if [ -r "$AOE2WAR_OPERATIONS_CONTRACT" ]; then
+  AOE2WAR_PYTHON_MAJOR_MINOR="$(
+    sed -n 's/.*"python_major_minor":[[:space:]]*"\([^"]*\)".*/\1/p'       "$AOE2WAR_OPERATIONS_CONTRACT" |
+      head -n 1
+  )"
+  if (
+    [ -n "$AOE2WAR_PYTHON_MAJOR_MINOR" ] &&
+    command -v "python$AOE2WAR_PYTHON_MAJOR_MINOR" >/dev/null 2>&1
+  ); then
+    AOE2WAR_PYTHON="$(
+      command -v "python$AOE2WAR_PYTHON_MAJOR_MINOR"
+    )"
+  fi
+fi
+
 RELEASE="$BIN_DIR/aoe2war-release"
 AUDIT="$BIN_DIR/../scripts/aoe2_audit.py"
 DOCTOR="$BIN_DIR/../scripts/aoe2_doctor.py"
@@ -410,103 +430,103 @@ case "$command" in
     ;;
   audit)
     shift
-    exec python3 "$AUDIT" "$@"
+    exec "$AOE2WAR_PYTHON" "$AUDIT" "$@"
     ;;
   doctor)
     shift
-    exec python3 "$DOCTOR" "$@"
+    exec "$AOE2WAR_PYTHON" "$DOCTOR" "$@"
     ;;
   docs)
     shift
-    exec python3 "$DOCS_OS" "$@"
+    exec "$AOE2WAR_PYTHON" "$DOCS_OS" "$@"
     ;;
   update)
     shift
-    exec python3 "$UPDATE" "$@"
+    exec "$AOE2WAR_PYTHON" "$UPDATE" "$@"
     ;;
   control)
     shift
-    exec python3 "$CONTROL" "$@"
+    exec "$AOE2WAR_PYTHON" "$CONTROL" "$@"
     ;;
   storage-retention)
     shift
-    exec python3 "$STORAGE_RETENTION" "$@"
+    exec "$AOE2WAR_PYTHON" "$STORAGE_RETENTION" "$@"
     ;;
   storage)
     shift
-    exec python3 "$STORAGE" "$@"
+    exec "$AOE2WAR_PYTHON" "$STORAGE" "$@"
     ;;
   speed)
     shift
     if [ "${1:-}" = "pulse" ]; then
       shift
-      exec python3 "$SPEED_PULSE" "$@"
+      exec "$AOE2WAR_PYTHON" "$SPEED_PULSE" "$@"
     fi
     if [ "${1:-}" = "campaign" ]; then
       shift
-      exec python3 "$SPEED_CAMPAIGN" "$@"
+      exec "$AOE2WAR_PYTHON" "$SPEED_CAMPAIGN" "$@"
     fi
     if [ "${1:-}" = "inventory" ]; then
       shift
-      exec python3 "$SPEED_INVENTORY" "$@"
+      exec "$AOE2WAR_PYTHON" "$SPEED_INVENTORY" "$@"
     fi
     if [ "${1:-}" = "edge" ]; then
       shift
-      exec python3 "$SPEED_EDGE" "$@"
+      exec "$AOE2WAR_PYTHON" "$SPEED_EDGE" "$@"
     fi
     if [ "${1:-}" = "build" ]; then
       shift
-      exec python3 "$SPEED_BUILD" "$@"
+      exec "$AOE2WAR_PYTHON" "$SPEED_BUILD" "$@"
     fi
-    exec python3 "$SPEED" "$@"
+    exec "$AOE2WAR_PYTHON" "$SPEED" "$@"
     ;;
   council)
     shift
-    exec python3 "$COUNCIL" "$@"
+    exec "$AOE2WAR_PYTHON" "$COUNCIL" "$@"
     ;;
   brain)
     shift
-    exec python3 "$BRAIN" "$@"
+    exec "$AOE2WAR_PYTHON" "$BRAIN" "$@"
     ;;
   workspace)
     shift
-    exec python3 "$WORKSPACE" "$@"
+    exec "$AOE2WAR_PYTHON" "$WORKSPACE" "$@"
     ;;
   facts)
     shift
-    exec python3 "$FACTS" "$@"
+    exec "$AOE2WAR_PYTHON" "$FACTS" "$@"
     ;;
   dev)
     shift
-    exec python3 "$DEV_OS" "$@"
+    exec "$AOE2WAR_PYTHON" "$DEV_OS" "$@"
     ;;
   truth)
     shift
-    exec python3 "$TRUTH_OS" "$@"
+    exec "$AOE2WAR_PYTHON" "$TRUTH_OS" "$@"
     ;;
   code-health)
     shift
-    exec python3 "$CODE_HEALTH" "$@"
+    exec "$AOE2WAR_PYTHON" "$CODE_HEALTH" "$@"
     ;;
   deps)
     shift
-    exec python3 "$DEPENDENCY_CHECK" "$@"
+    exec "$AOE2WAR_PYTHON" "$DEPENDENCY_CHECK" "$@"
     ;;
   host)
     shift
-    exec python3 "$HOST_OS" "$@"
+    exec "$AOE2WAR_PYTHON" "$HOST_OS" "$@"
     ;;
   recovery)
     shift
-    exec python3 "$RECOVERY_OS" "$@"
+    exec "$AOE2WAR_PYTHON" "$RECOVERY_OS" "$@"
     ;;
   finish)
     shift
-    exec python3 "$FINISH" "$@"
+    exec "$AOE2WAR_PYTHON" "$FINISH" "$@"
     ;;
   bridge)
     shift
-    exec python3 "$BRIDGE" "$@"
+    exec "$AOE2WAR_PYTHON" "$BRIDGE" "$@"
     ;;
   status|context|releases|rollback|gate|manifest)
     shift

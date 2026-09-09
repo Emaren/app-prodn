@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","developers","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-06"
+reviewed_at: "2026-09-09"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -57,6 +57,19 @@ If more release history is needed:
 ```bash
 aoe2war releases --limit 5
 ```
+
+## Operator Python contract
+
+The tracked interpreter authority is
+`config/aoe2war-operations.json -> toolchain.python_major_minor`. The
+`bin/aoe2war` launcher resolves the matching versioned interpreter (currently
+`python3.13`) once and uses it for every Python-backed AoE2WAR OS command.
+Do not rely on the gitignored local `.python-version` file or whichever generic
+`python3` happens to win shell PATH ordering.
+
+If the versioned interpreter is unavailable, the launcher falls back to
+`python3`; Doctor reports the interpreter it is actually running under and
+keeps a version mismatch visible instead of silently treating PATH as authority.
 
 ## Refresh the kingdom's self-knowledge
 
