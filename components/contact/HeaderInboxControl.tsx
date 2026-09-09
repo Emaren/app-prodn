@@ -74,6 +74,61 @@ async function requestInbox(
   return payload as ContactInboxPayload;
 }
 
+type HeaderInboxEventPayload = {
+  type?: string;
+  targetUid?: string | null;
+};
+
+const sharedSummaryRequests = new Map<string, Promise<ContactInboxPayload>>();
+const sharedInboxEventSubscribers = new Set<(payload: HeaderInboxEventPayload) => void>();
+let sharedInboxEventSource: EventSource | null = null;
+
+function requestInboxSummaryShared(targetUid?: string | null) {
+  const key = targetUid ?? "";
+  const existing = sharedSummaryRequests.get(key);
+  if (existing) return existing;
+
+  const request = requestInbox(targetUid, true).finally(() => {
+    if (sharedSummaryRequests.get(key) === request) {
+      sharedSummaryRequests.delete(key);
+    }
+  });
+
+  sharedSummaryRequests.set(key, request);
+  return request;
+}
+
+function subscribeSharedInboxEvents(
+  subscriber: (payload: HeaderInboxEventPayload) => void
+) {
+  sharedInboxEventSubscribers.add(subscriber);
+
+  if (!sharedInboxEventSource) {
+    const events = new EventSource("/api/contact-emaren/events");
+    sharedInboxEventSource = events;
+    events.onmessage = (event) => {
+      let payload: HeaderInboxEventPayload;
+      try {
+        payload = JSON.parse(event.data || "{}") as HeaderInboxEventPayload;
+      } catch {
+        return;
+      }
+      if (payload.type === "connected") return;
+      for (const listener of sharedInboxEventSubscribers) {
+        listener(payload);
+      }
+    };
+  }
+
+  return () => {
+    sharedInboxEventSubscribers.delete(subscriber);
+    if (sharedInboxEventSubscribers.size === 0 && sharedInboxEventSource) {
+      sharedInboxEventSource.close();
+      sharedInboxEventSource = null;
+    }
+  };
+}
+
 type HeaderInboxControlProps = {
   buttonClassName?: string;
 };
@@ -105,7 +160,6 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   const panelRequestIdRef = useRef(0);
   const summaryRequestIdRef = useRef(0);
   const panelAbortRef = useRef<AbortController | null>(null);
-  const summaryAbortRef = useRef<AbortController | null>(null);
   const draftHydratedTargetRef = useRef<string | null>(null);
 
   const updateDesktopAnchor = useCallback(() => {
@@ -203,18 +257,12 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   const refreshSummary = useCallback(async (targetUid?: string | null) => {
     if (!uid) return null;
 
-    summaryAbortRef.current?.abort();
-    const controller = new AbortController();
-    summaryAbortRef.current = controller;
     const requestId = summaryRequestIdRef.current + 1;
     summaryRequestIdRef.current = requestId;
 
     try {
-      const payload = await requestInbox(
-        targetUid ?? selectedTargetUidRef.current ?? undefined,
-        true,
-        undefined,
-        controller.signal
+      const payload = await requestInboxSummaryShared(
+        targetUid ?? selectedTargetUidRef.current ?? undefined
       );
       if (summaryRequestIdRef.current !== requestId) return null;
       setSummary(payload);
@@ -223,11 +271,8 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
       }
       return payload;
     } catch (fetchError) {
-      if (fetchError instanceof DOMException && fetchError.name === "AbortError") return null;
       console.warn("Failed to refresh inbox summary:", fetchError);
       return null;
-    } finally {
-      if (summaryRequestIdRef.current === requestId) summaryAbortRef.current = null;
     }
   }, [applySelectedTargetUid, uid]);
 
@@ -309,16 +354,8 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
 
   useEffect(() => {
     if (!uid) return;
-    const events = new EventSource("/api/contact-emaren/events");
     let timer: number | null = null;
-    events.onmessage = (event) => {
-      let payload: { type?: string; targetUid?: string | null };
-      try {
-        payload = JSON.parse(event.data || "{}") as typeof payload;
-      } catch {
-        return;
-      }
-      if (payload.type === "connected") return;
+    const unsubscribe = subscribeSharedInboxEvents((payload) => {
       if (timer) window.clearTimeout(timer);
       timer = window.setTimeout(() => {
         const affectsOpenThread =
@@ -329,9 +366,9 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
           void refreshSummary();
         }
       }, 80);
-    };
+    });
     return () => {
-      events.close();
+      unsubscribe();
       if (timer) window.clearTimeout(timer);
     };
   }, [open, refreshPanel, refreshSummary, uid]);
@@ -377,7 +414,6 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
   useEffect(() => {
     return () => {
       panelAbortRef.current?.abort();
-      summaryAbortRef.current?.abort();
       if (typingTimerRef.current) {
         window.clearTimeout(typingTimerRef.current);
         typingTimerRef.current = null;

@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "027cbfcd4b4691de6bf7a3dc16e842e0b99538035a6c9f60100e1dbbae659a15",
+      "sha256": "f4926092831047e714a2007c7f8450ebf71cb6cc456cd50a05dac76853423b23",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1093,7 +1093,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "490bfee2a571c67134b91d554f161e1b80947b51bf46e7845077dabaae424e27",
+      "sha256": "9d8af78067e9270cc0c39290e56a4d096a193e0988bec09073d675752e959055",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1182,9 +1182,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RADIO_WOLO.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-09-01",
+      "reviewed_at": "2026-09-08",
       "sensitivity": "internal",
-      "sha256": "6451bb6bbed325c0b388d3431640fe67d2304ff4a63686ae375e9fb1d1df2c0b",
+      "sha256": "1c30bc4cb3a6ed149f4c96e74934431a13be738d0845891aa8a2acbe3fe81a02",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1814,8 +1814,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/live-count-final-proof-20260908",
-    "commit": "301c39e1b0bb283c0e25020f9ddd8fc427009833"
+    "branch": "feature/speed-shell-v1",
+    "commit": "1d42dc53be1a24fed9ccd42bbd65eb0ebf2e2ecb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

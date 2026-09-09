@@ -5,12 +5,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom",
     label: "Kingdom",
-    version: "src-192988f1d1ef468c60bf",
+    version: "src-315cad348f8bd0244ea9",
   },
   {
     href: "/oracle",
     label: "The Oracle",
-    version: "src-5a941636c8ddd95aed89",
+    version: "src-7ffd15040a57dea8e395",
   },
   {
     href: "/leaderboard",
@@ -20,12 +20,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/champions",
     label: "Champions",
-    version: "src-f4f44d05bb6f3a4e4180",
+    version: "src-6e4460b0d7219adcc942",
   },
   {
     href: "/national-champions",
     label: "Nations",
-    version: "src-ee9b72d5ef1af48582b4",
+    version: "src-bf8952bf2878cc78bed5",
   },
   {
     href: "/clans",
@@ -35,7 +35,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/academy",
     label: "Academy",
-    version: "src-034ddbaf1aa63725d54d",
+    version: "src-5b6ee7e99e39ab934ea4",
   },
   {
     href: "/market",
@@ -70,12 +70,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom-intelligence",
     label: "Kingdom Intelligence",
-    version: "src-9f74b389a9f11ccfba2a",
+    version: "src-ce639e4a3f1c4d0456d8",
   },
   {
     href: "/game-stats",
     label: "Parser Observatory",
-    version: "src-27fdec6230e8176737be",
+    version: "src-1ac51bba50e0446d5576",
   },
   {
     href: "/traffic",

@@ -505,6 +505,13 @@ export function useRadioWoloListener() {
           return;
         }
 
+        // Station metadata is useful globally, but media bytes are not part of
+        // the critical page-readiness path. Only bind/preload the audio source
+        // after explicit or autoplay listening intent exists.
+        if (!listeningIntentRef.current) {
+          return;
+        }
+
         const now =
           monotonicNow();
 

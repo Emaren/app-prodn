@@ -259,6 +259,30 @@ remain pending/error, and a database result may still fall back according to
 its existing contract. Performance work changes scheduling and readiness
 boundaries, not financial or chain authority.
 
+### Global-shell critical-path discipline
+
+Responsive shell variants may coexist in the DOM for presentation, but they must
+not duplicate equivalent network work. When desktop/mobile mounts observe the
+same authenticated summary or event stream, they share a bounded request/event
+broker so CSS-hidden controls do not double the first-second API load.
+
+Global media follows the same rule. Station/program metadata may hydrate before a
+listener acts, but media bytes are not page-readiness evidence. Radio WOLO must
+not bind `audio.src`, select `preload=auto`, or call `load()` until explicit or
+autoplay listening intent exists. This keeps multi-megabyte audio transfers from
+competing with route HTML, hydration, critical APIs, Watcher traffic, or Ready.
+
+Cache-safety class is part of the performance contract. A route classified as a
+`static_client_shell_candidate` must not become server-personalized merely to
+remove one client API round trip unless measured production evidence proves that
+the trade is superior to the lost shared-cache option. Speed work must compare
+the whole delivery architecture, not optimize one waterfall edge in isolation.
+
+Local production builds and source contracts can prove scheduling and media-request
+boundaries, but they do not substitute for production browser A/B evidence. Speed
+OS records those proof classes separately and waits for decision-grade browser
+samples before claiming a route-level latency improvement.
+
 ## Source page and asset inventory
 
 `aoe2war speed inventory` derives the performance estate from the current
