@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f067bf8b5132e76cf24a5ecc14951d5288a66c347a67617ddadb1f450cdb0413",
+      "sha256": "d2d86619e1505830a3c4897adda3ac8b28f022a7316052163ef3960e746b2b19",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1838,7 +1838,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/staking-compound-custody-v1",
-    "commit": "bdbdeed2139af32aef44d6bb6d70d29261f7f5b2"
+    "commit": "44522d0f2ad2d3f3daf66253d129de099b1533c5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
