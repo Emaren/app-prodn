@@ -39,6 +39,17 @@ REQUIRED_FALSE_SECRET_FLAGS = (
     "wolo_keyrings_included",
 )
 
+ORDINARY_RESTORE_SUMMARY_SCHEMA = 1
+ORDINARY_RESTORE_SUMMARY_KIND = "aoe2war-recovery-ordinary-restore-summary"
+ORDINARY_RESTORE_SUMMARY_STATUS = "ORDINARY_RESTORE_VERIFIED"
+ORDINARY_RECOVERY_CLASSES = (
+    "managed_user_media",
+    "legacy_direct_message_attachments",
+    "radio_wolo_private_media",
+    "parser_evidence_corpus",
+    "raw_replay_archive",
+)
+
 
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -224,6 +235,171 @@ def verify_configured_recovery(evidence: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def verify_ordinary_restore_summary(proof: Path) -> dict[str, Any]:
+    payload, proof_sha, error = _load_hashed_json(proof)
+    blockers: list[str] = []
+    if error:
+        blockers.append(error)
+    if payload is None:
+        return {
+            "status": "NOT_VERIFIED",
+            "blockers": blockers,
+            "proof_path": str(proof),
+            "proof_sha256": proof_sha,
+            "proof": None,
+        }
+
+    if payload.get("schema") != ORDINARY_RESTORE_SUMMARY_SCHEMA:
+        blockers.append(
+            f"ordinary restore summary schema must be {ORDINARY_RESTORE_SUMMARY_SCHEMA}"
+        )
+    if payload.get("kind") != ORDINARY_RESTORE_SUMMARY_KIND:
+        blockers.append(
+            f"ordinary restore summary kind must be {ORDINARY_RESTORE_SUMMARY_KIND}"
+        )
+    if payload.get("status") != ORDINARY_RESTORE_SUMMARY_STATUS:
+        blockers.append(
+            f"ordinary restore summary status must be {ORDINARY_RESTORE_SUMMARY_STATUS}"
+        )
+    if payload.get("production_mutated") is not False:
+        blockers.append("ordinary restore summary must prove production_mutated=false")
+    if payload.get("wolo_mutated") is not False:
+        blockers.append("ordinary restore summary must prove wolo_mutated=false")
+    if payload.get("full_plaintext_archive_staged") is not False:
+        blockers.append(
+            "ordinary restore summary must prove full_plaintext_archive_staged=false"
+        )
+
+    coverage = payload.get("coverage")
+    if not isinstance(coverage, dict):
+        blockers.append("ordinary restore summary has no coverage map")
+    else:
+        for class_name in ORDINARY_RECOVERY_CLASSES:
+            if class_name not in coverage:
+                blockers.append(
+                    f"ordinary restore summary lacks {class_name} coverage"
+                )
+                continue
+            blockers.extend(
+                _validate_coverage_evidence(
+                    proof.parent,
+                    class_name,
+                    coverage[class_name],
+                )
+            )
+
+    representative = payload.get("representative_restores")
+    if representative != len(ORDINARY_RECOVERY_CLASSES):
+        blockers.append(
+            "ordinary restore summary representative restore count does not "
+            f"equal {len(ORDINARY_RECOVERY_CLASSES)}"
+        )
+
+    remaining = payload.get("remaining_before_full_recovery_verification")
+    if isinstance(remaining, list):
+        ordinary_remaining = [
+            str(item)
+            for item in remaining
+            if str(item) in ORDINARY_RECOVERY_CLASSES
+        ]
+        if ordinary_remaining:
+            blockers.append(
+                "ordinary restore summary still declares ordinary recovery scope: "
+                + ", ".join(ordinary_remaining)
+            )
+    else:
+        blockers.append(
+            "ordinary restore summary has no remaining recovery scope list"
+        )
+
+    secrets = payload.get("secrets_policy")
+    if not isinstance(secrets, dict):
+        blockers.append("ordinary restore summary has no secrets policy")
+    else:
+        for key in REQUIRED_FALSE_SECRET_FLAGS:
+            if secrets.get(key) is not False:
+                blockers.append(
+                    f"ordinary restore secret boundary is not proven: {key}=false"
+                )
+
+    return {
+        "status": "VERIFIED" if not blockers else "NOT_VERIFIED",
+        "blockers": blockers,
+        "proof_path": str(proof),
+        "proof_sha256": proof_sha,
+        "proof": payload,
+    }
+
+
+def latest_verified_ordinary_restore() -> dict[str, Any] | None:
+    if not RECOVERY_VAULT_ROOT.is_dir():
+        return None
+
+    candidates: list[dict[str, Any]] = []
+    for proof in RECOVERY_VAULT_ROOT.glob("*/ordinary-restore-summary.json"):
+        verification = verify_ordinary_restore_summary(proof)
+        payload = verification.get("proof")
+        if verification.get("status") != "VERIFIED" or not isinstance(payload, dict):
+            continue
+        item = dict(payload)
+        item["proof_path"] = verification["proof_path"]
+        item["proof_sha256"] = verification["proof_sha256"]
+        item["verification_status"] = "VERIFIED"
+        candidates.append(item)
+
+    if not candidates:
+        return None
+
+    candidates.sort(
+        key=lambda item: str(item.get("created_at") or ""),
+        reverse=True,
+    )
+    return candidates[0]
+
+
+def recovery_progress(
+    pilot: dict[str, Any] | None,
+    ordinary_restore: dict[str, Any] | None,
+    verification: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    if (verification or {}).get("status") == "VERIFIED":
+        proven = list(REQUIRED_RECOVERY_CLASSES)
+    else:
+        proven = []
+        if (pilot or {}).get("status") == "PILOT_VERIFIED":
+            proven.extend(["database", "operator_evidence"])
+        if (
+            (ordinary_restore or {}).get("status")
+            == ORDINARY_RESTORE_SUMMARY_STATUS
+            and (ordinary_restore or {}).get("verification_status") == "VERIFIED"
+        ):
+            proven.extend(ORDINARY_RECOVERY_CLASSES)
+
+    proven_set = set(proven)
+    ordered_proven = [
+        class_name
+        for class_name in REQUIRED_RECOVERY_CLASSES
+        if class_name in proven_set
+    ]
+    remaining = [
+        class_name
+        for class_name in REQUIRED_RECOVERY_CLASSES
+        if class_name not in proven_set
+    ]
+    return {
+        "status": (
+            "COMPLETE"
+            if not remaining
+            else ("PARTIAL_VERIFIED" if ordered_proven else "OPEN")
+        ),
+        "proven_classes": ordered_proven,
+        "remaining_classes": remaining,
+        "proven_count": len(ordered_proven),
+        "required_count": len(REQUIRED_RECOVERY_CLASSES),
+        "final_schema2_proof_required": (verification or {}).get("status") != "VERIFIED",
+    }
+
+
 def latest_verified_pilot() -> dict[str, Any] | None:
     if not RECOVERY_VAULT_ROOT.is_dir():
         return None
@@ -261,7 +437,9 @@ def evaluate() -> dict[str, Any]:
     contract = load_contract()
     evidence = contract.get("offsite_evidence") or {}
     pilot = latest_verified_pilot()
+    ordinary_restore = latest_verified_ordinary_restore()
     verification = verify_configured_recovery(evidence)
+    progress = recovery_progress(pilot, ordinary_restore, verification)
     usage = shutil.disk_usage(Path.home())
 
     return {
@@ -274,6 +452,10 @@ def evaluate() -> dict[str, Any]:
         "restore_proof": evidence.get("restore_proof"),
         "verification": verification,
         "pilot": pilot,
+        "ordinary_restore": ordinary_restore,
+        "progress": progress,
+        "proven_recovery_classes": progress["proven_classes"],
+        "remaining_recovery_classes": progress["remaining_classes"],
         "note": evidence.get("note"),
         "blockers": verification["blockers"],
         "required_recovery_classes": list(REQUIRED_RECOVERY_CLASSES),
@@ -530,6 +712,7 @@ def build_campaign_plan(
     inventory: dict[str, Any],
     pilot: dict[str, Any] | None,
     operator_free_bytes: int,
+    ordinary_restore: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     classes = inventory.get("classes") or {}
     parser_top = inventory.get("parser_top_level") or {}
@@ -556,6 +739,31 @@ def build_campaign_plan(
         ((wolo.get("home_identity") or {}).get("bytes") or 0)
     )
 
+    ordinary_proven = (
+        (ordinary_restore or {}).get("status")
+        == ORDINARY_RESTORE_SUMMARY_STATUS
+        and (ordinary_restore or {}).get("verification_status") == "VERIFIED"
+    )
+
+    def ordinary_stage(
+        class_name: str,
+        *,
+        strategy: str,
+        estimated_bytes: int,
+        **extra: Any,
+    ) -> dict[str, Any]:
+        if ordinary_proven:
+            strategy = "REUSE_VERIFIED_ORDINARY_RESTORE"
+            estimated_bytes = 0
+        return {
+            "class": class_name,
+            "strategy": strategy,
+            "estimated_bytes": estimated_bytes,
+            "state": "PROVEN" if ordinary_proven else "READY_TO_CAPTURE",
+            "requires_quiesce": False,
+            **extra,
+        }
+
     stages = [
         {
             "order": 0,
@@ -577,53 +785,53 @@ def build_campaign_plan(
         },
         {
             "order": 1,
-            "class": "managed_user_media",
-            "strategy": "ENCRYPTED_STREAM_COPY",
-            "estimated_bytes": int(
-                (classes.get("managed_user_media") or {}).get("bytes") or 0
+            **ordinary_stage(
+                "managed_user_media",
+                strategy="ENCRYPTED_STREAM_COPY",
+                estimated_bytes=int(
+                    (classes.get("managed_user_media") or {}).get("bytes") or 0
+                ),
             ),
-            "state": "READY_TO_CAPTURE",
-            "requires_quiesce": False,
         },
         {
             "order": 2,
-            "class": "legacy_direct_message_attachments",
-            "strategy": "ENCRYPTED_STREAM_COPY",
-            "estimated_bytes": int(
-                (classes.get("legacy_direct_message_attachments") or {}).get("bytes") or 0
+            **ordinary_stage(
+                "legacy_direct_message_attachments",
+                strategy="ENCRYPTED_STREAM_COPY",
+                estimated_bytes=int(
+                    (classes.get("legacy_direct_message_attachments") or {}).get("bytes") or 0
+                ),
             ),
-            "state": "READY_TO_CAPTURE",
-            "requires_quiesce": False,
         },
         {
             "order": 3,
-            "class": "radio_wolo_private_media",
-            "strategy": "ENCRYPTED_STREAM_COPY",
-            "estimated_bytes": int(
-                (classes.get("radio_wolo_private_media") or {}).get("bytes") or 0
+            **ordinary_stage(
+                "radio_wolo_private_media",
+                strategy="ENCRYPTED_STREAM_COPY",
+                estimated_bytes=int(
+                    (classes.get("radio_wolo_private_media") or {}).get("bytes") or 0
+                ),
             ),
-            "state": "READY_TO_CAPTURE",
-            "requires_quiesce": False,
         },
         {
             "order": 4,
-            "class": "parser_evidence_corpus",
-            "strategy": "ENCRYPTED_STREAM_COPY_SELECTED_ROOT",
-            "estimated_bytes": parser_selected_bytes,
-            "state": "READY_TO_CAPTURE",
-            "requires_quiesce": False,
-            "include_top_level": parser_selected,
-            "exclude_top_level": sorted(parser_excluded),
+            **ordinary_stage(
+                "parser_evidence_corpus",
+                strategy="ENCRYPTED_STREAM_COPY_SELECTED_ROOT",
+                estimated_bytes=parser_selected_bytes,
+                include_top_level=parser_selected,
+                exclude_top_level=sorted(parser_excluded),
+            ),
         },
         {
             "order": 5,
-            "class": "raw_replay_archive",
-            "strategy": "ENCRYPTED_STREAM_COPY",
-            "estimated_bytes": int(
-                (classes.get("raw_replay_archive") or {}).get("bytes") or 0
+            **ordinary_stage(
+                "raw_replay_archive",
+                strategy="ENCRYPTED_STREAM_COPY",
+                estimated_bytes=int(
+                    (classes.get("raw_replay_archive") or {}).get("bytes") or 0
+                ),
             ),
-            "state": "READY_TO_CAPTURE",
-            "requires_quiesce": False,
         },
         {
             "order": 6,
@@ -670,7 +878,11 @@ def build_campaign_plan(
             "class": "restore_drill",
             "strategy": "STREAM_VERIFY_EACH_CLASS_AND_SEAL_SCHEMA2",
             "estimated_bytes": 0,
-            "state": "WAITING_FOR_COVERAGE",
+            "state": (
+                "WAITING_FOR_WOLO_COVERAGE"
+                if ordinary_proven
+                else "WAITING_FOR_COVERAGE"
+            ),
             "requires_quiesce": False,
         },
     ]
@@ -722,6 +934,7 @@ def campaign_plan() -> dict[str, Any]:
         inventory,
         status.get("pilot"),
         int(shutil.disk_usage(Path.home()).free),
+        status.get("ordinary_restore"),
     )
 
 
@@ -817,6 +1030,25 @@ def print_status(payload: dict[str, Any]) -> None:
         print(f"Pilot proof:   {pilot['proof_path']}")
     if pilot.get("proof_sha256"):
         print(f"Pilot SHA:     {pilot['proof_sha256']}")
+    ordinary = payload.get("ordinary_restore") or {}
+    print(
+        "Ordinary:      "
+        + (
+            "VERIFIED"
+            if ordinary.get("verification_status") == "VERIFIED"
+            else "NOT VERIFIED"
+        )
+    )
+    if ordinary.get("proof_path"):
+        print(f"Ordinary proof: {ordinary['proof_path']}")
+    if ordinary.get("proof_sha256"):
+        print(f"Ordinary SHA:  {ordinary['proof_sha256']}")
+    progress = payload.get("progress") or {}
+    if progress:
+        print(
+            f"Coverage:      {progress.get('proven_count', 0)}/"
+            f"{progress.get('required_count', len(REQUIRED_RECOVERY_CLASSES))}"
+        )
     print(f"Mac free:      {payload['operator_free_gib']:.2f} GiB")
     if payload["blockers"]:
         print()
@@ -829,17 +1061,22 @@ def print_plan(payload: dict[str, Any]) -> None:
     print_status(payload)
     print()
     print("PLAN — FAIL CLOSED")
-    pilot = payload.get("pilot") or {}
-    remaining = pilot.get("remaining_before_full_recovery_verification")
-    if isinstance(remaining, list) and remaining:
-        print("Current pilot still declares these recovery classes incomplete:")
+    progress = payload.get("progress") or {}
+    proven = progress.get("proven_classes") or []
+    remaining = progress.get("remaining_classes") or []
+    if proven:
+        print("Evidence-backed recovery classes already proven:")
+        for item in proven:
+            print(f"  ✓ {item}")
+        print()
+    if remaining:
+        print("Remaining recovery classes before final schema-2 assembly:")
         for item in remaining:
             print(f"  - {item}")
         print()
-    print("Full verification requires:")
-    for item in payload["required_recovery_classes"]:
-        print(f"  - {item}")
-    print()
+    else:
+        print("All required recovery classes have evidence coverage.")
+        print()
     print("Every class must bind to a hashed local proof file in a schema-2")
     print("RECOVERY_VERIFIED receipt, with an isolated restore-drill proof.")
     print("Secrets/key material remain outside the general evidence payload.")

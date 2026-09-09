@@ -337,6 +337,23 @@ not schema-2 `RECOVERY_VERIFIED`. Wolo
 settlement state, consistency-safe consensus recovery, separate Wolo key
 custody, and final schema-2 proof assembly remain explicit gates.
 
+Recovery OS consumes a hash-valid `ordinary-restore-summary.json` as partial
+evidence rather than ignoring it or promoting it to full verification. The
+summary is accepted only when all five ordinary coverage entries bind to their
+recorded proof files and SHA-256 values, all five representative restores are
+present, no ordinary class remains declared incomplete, the secrets boundary
+is intact, and both production/Wolo mutation plus full plaintext archive staging
+are explicitly false. Combined with the verified database/operator pilot, this
+means Recovery OS can report seven of ten required recovery classes as proven
+while overall status remains `NOT_VERIFIED`.
+
+The campaign planner must reuse those seven proven classes instead of proposing
+another ordinary capture. After ordinary restore verification, only Wolo
+settlement state, consistency-safe Wolo consensus recovery, separate Wolo key
+custody, and final schema-2 proof assembly remain. The Wolo stages keep their
+explicit authorization requirements; partial proof recognition grants no Wolo
+mutation or service-quiesce authority.
+
 ## Restore drill
 
 1. Choose a sealed bundle and record its immutable remote version ID.

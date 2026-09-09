@@ -95,6 +95,94 @@ class RecoveryTests(unittest.TestCase):
         )
         return proof
 
+    def _ordinary_restore_summary(self, bundle: Path) -> Path:
+        coverage: dict[str, dict[str, str]] = {}
+        for class_name in recovery.ORDINARY_RECOVERY_CLASSES:
+            evidence = bundle / "restore-proofs" / f"{class_name}.json"
+            self._write_json_with_sidecar(
+                evidence,
+                {"class": class_name, "status": "PASS"},
+            )
+            coverage[class_name] = {
+                "status": "PASS",
+                "proof_file": str(evidence.relative_to(bundle)),
+                "proof_sha256": hashlib.sha256(evidence.read_bytes()).hexdigest(),
+            }
+
+        summary = bundle / "ordinary-restore-summary.json"
+        self._write_json_with_sidecar(
+            summary,
+            {
+                "schema": recovery.ORDINARY_RESTORE_SUMMARY_SCHEMA,
+                "kind": recovery.ORDINARY_RESTORE_SUMMARY_KIND,
+                "status": recovery.ORDINARY_RESTORE_SUMMARY_STATUS,
+                "campaign_id": bundle.name,
+                "created_at": "2026-09-09T23:08:40+00:00",
+                "coverage": coverage,
+                "representative_restores": len(recovery.ORDINARY_RECOVERY_CLASSES),
+                "production_mutated": False,
+                "wolo_mutated": False,
+                "full_plaintext_archive_staged": False,
+                "remaining_before_full_recovery_verification": [
+                    "wolo_settlement_state",
+                    "wolo_consensus_recovery",
+                    "wolo_key_custody",
+                    "full_schema2_restore_proof",
+                ],
+                "secrets_policy": {
+                    key: False
+                    for key in recovery.REQUIRED_FALSE_SECRET_FLAGS
+                },
+            },
+        )
+        return summary
+
+    def test_hashed_ordinary_restore_summary_verifies_five_classes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle = Path(temporary) / "ordinary"
+            summary = self._ordinary_restore_summary(bundle)
+            result = recovery.verify_ordinary_restore_summary(summary)
+
+        self.assertEqual(result["status"], "VERIFIED")
+        self.assertEqual(result["blockers"], [])
+        self.assertEqual(len(result["proof_sha256"]), 64)
+
+    def test_tampered_ordinary_restore_class_fails_partial_verification(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle = Path(temporary) / "ordinary"
+            summary = self._ordinary_restore_summary(bundle)
+            target = bundle / "restore-proofs" / "raw_replay_archive.json"
+            target.write_text('{\"status\":\"TAMPERED\"}\n', encoding="utf-8")
+            result = recovery.verify_ordinary_restore_summary(summary)
+
+        self.assertEqual(result["status"], "NOT_VERIFIED")
+        self.assertTrue(
+            any(
+                "raw_replay_archive proof_file SHA-256 mismatch" in item
+                for item in result["blockers"]
+            )
+        )
+
+    def test_partial_progress_reduces_remaining_scope_to_wolo_classes(self):
+        pilot = {"status": "PILOT_VERIFIED"}
+        ordinary = {
+            "status": recovery.ORDINARY_RESTORE_SUMMARY_STATUS,
+            "verification_status": "VERIFIED",
+        }
+        progress = recovery.recovery_progress(pilot, ordinary)
+
+        self.assertEqual(progress["status"], "PARTIAL_VERIFIED")
+        self.assertEqual(progress["proven_count"], 7)
+        self.assertEqual(
+            progress["remaining_classes"],
+            [
+                "wolo_settlement_state",
+                "wolo_consensus_recovery",
+                "wolo_key_custody",
+            ],
+        )
+        self.assertTrue(progress["final_schema2_proof_required"])
+
     def test_campaign_plan_is_read_only_and_capacity_aware(self):
         inventory = {
             "classes": {
@@ -173,6 +261,62 @@ class RecoveryTests(unittest.TestCase):
             custody["strategy"],
             "SEPARATE_SECRET_CUSTODY_ATTESTATION",
         )
+
+    def test_campaign_plan_reuses_verified_ordinary_restore(self):
+        inventory = {
+            "classes": {
+                "raw_replay_archive": {"bytes": 21_000},
+                "parser_evidence_corpus": {"bytes": 8_000},
+                "managed_user_media": {"bytes": 500},
+                "radio_wolo_private_media": {"bytes": 1_700},
+                "legacy_direct_message_attachments": {"bytes": 90},
+                "wolo_settlement_state": {"bytes": 3},
+                "wolo_founder_rewards_settlement_state": {"bytes": 1},
+            },
+            "parser_top_level": {
+                "evidence": {"bytes": 8_000},
+            },
+            "wolo": {
+                "home": "/var/lib/wolochaind-mainnet",
+                "home_identity": {"bytes": 6_100},
+                "key_custody_metadata": [],
+            },
+            "listeners": ["8092", "8093"],
+        }
+        ordinary = {
+            "status": recovery.ORDINARY_RESTORE_SUMMARY_STATUS,
+            "verification_status": "VERIFIED",
+        }
+
+        with patch.object(recovery, "_bundle_file_bytes", return_value=400):
+            plan = recovery.build_campaign_plan(
+                inventory,
+                {"proof_path": "/tmp/pilot/restore-proof.json"},
+                operator_free_bytes=40_000,
+                ordinary_restore=ordinary,
+            )
+
+        ordinary_stages = {
+            stage["class"]: stage
+            for stage in plan["stages"]
+            if stage["class"] in recovery.ORDINARY_RECOVERY_CLASSES
+        }
+        self.assertEqual(set(ordinary_stages), set(recovery.ORDINARY_RECOVERY_CLASSES))
+        for stage in ordinary_stages.values():
+            self.assertEqual(stage["state"], "PROVEN")
+            self.assertEqual(
+                stage["strategy"],
+                "REUSE_VERIFIED_ORDINARY_RESTORE",
+            )
+            self.assertEqual(stage["estimated_bytes"], 0)
+
+        self.assertEqual(plan["new_payload_bytes"], 6_104)
+        restore = next(
+            stage
+            for stage in plan["stages"]
+            if stage["class"] == "restore_drill"
+        )
+        self.assertEqual(restore["state"], "WAITING_FOR_WOLO_COVERAGE")
 
     def test_campaign_plan_requires_streaming_when_final_headroom_is_small(self):
         inventory = {
