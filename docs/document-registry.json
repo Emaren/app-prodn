@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7f001914d5a5085e4db9f5d957105a5237b67b61ee211f30b95e80e154c2f25d",
+      "sha256": "373966119b2ef75648604f610f0455d3931bf4db54c98a6c7b91060677591834",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/staking-receipt-concurrency-v1",
-    "commit": "ef492b094d64e80bb7711df85c5a46201fe506d8"
+    "branch": "feat/recovery-ordinary-restore-drill-v2",
+    "commit": "f3bf70355c52c2920129b4bc196e285b84bb92c9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

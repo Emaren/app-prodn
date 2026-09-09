@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/staking-receipt-concurrency-v1` at `ef492b094d64e80bb7711df85c5a46201fe506d8`
+Implementation baseline: `feat/recovery-ordinary-restore-drill-v2` at `f3bf70355c52c2920129b4bc196e285b84bb92c9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
