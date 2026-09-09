@@ -178,6 +178,11 @@ or hiding their indexed ledger rows.
   `signer_role=escrow` from the configured Bet Escrow signer. The dry-run must
   prove the exact escrow role/address before execution; a generic payout/staking
   reserve signer is not an allowed fallback for escrow-backed market debt.
+- Legacy retry state is immutable. When a historical claim was already attempted
+  on the old payout-signer rail, the escrow migration uses deterministic
+  `escrow-v2` run and request IDs rather than reusing an existing idempotency
+  key with a changed signer payload. Repeating that v2 identity must replay the
+  same stored result and cannot create a second payment.
 - Pending claim retries should distinguish unresolved wallet identity from
   settlement service or signer unavailability.
 - Team-market settlement must pass the immutable proposition/final-roster gate before any payout plan, betting fee, winner bounty, or founder bonus is created.

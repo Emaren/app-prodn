@@ -271,7 +271,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-09",
       "sensitivity": "internal",
-      "sha256": "aeb821e4d085ce202bb61743411d1354aa62df113dc7f0a5576dca60e08d9f51",
+      "sha256": "7b5d21b5f06b46c03bd808d04182382a93109ff88f8618ae4fda8ab5a0a3037d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "40986d79ff0dbe0fe1cb3c5dddc978f5c9f7a05155263a3b43bbce2a0ec88ec6",
+      "sha256": "a52fc3b398e63eb6db1b770b1dededfe79de165e184198599ae2aaf7006a0a18",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1669,7 +1669,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-09",
       "sensitivity": "restricted",
-      "sha256": "dbde2a2055d78311dc6d5b3f9d726d3d8c30d6df9d1301848e79e460c0bf345a",
+      "sha256": "1dd6d2b36afde4a0b70ca1c21dfb66f4f6991d49a1199bc6f9a9f7a24fe691d0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1814,8 +1814,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "hotfix/financial-p0-escrow-retry",
-    "commit": "f3a3dff055a71e8a42c2529d001080165e3a0d06"
+    "branch": "hotfix/financial-p0-escrow-v2",
+    "commit": "68e2d43a3c18a7626d7f418f068edaf7b7c013d3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
