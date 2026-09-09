@@ -6,6 +6,10 @@ import {
   withFounderPayoutTargetLock,
 } from "@/lib/betFounderBonuses";
 import { buildFounderPayoutIdentity } from "@/lib/founderPayoutIdentity";
+import {
+  buildBetStakeMemo,
+  buildBetStakeTicketMemo,
+} from "@/lib/betStakeMemo";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
 import { getWoloBetEscrowRuntime } from "@/lib/woloChain";
@@ -17,6 +21,7 @@ import {
   validateWoloEscrowSettlementRun,
   findConfirmedWoloPayoutByMemo,
   getWoloPayoutExecutionBlocker,
+  verifyCurrentWoloEscrowStakeTransfer,
   type SettlementRunResult,
 } from "@/lib/woloBetSettlement";
 
@@ -113,6 +118,211 @@ export type AdminRetryWinnerTruthMarket = {
     status: string;
   }>;
 };
+
+export type AdminRetryEscrowFundingWager = {
+  id: number;
+  userId: number;
+  status: string;
+  amountWolo: number;
+  payoutWolo: number | null;
+  executionMode: string;
+  stakeTxHash: string | null;
+  stakeWalletAddress: string | null;
+  stakeLeg: {
+    ticket: {
+      id: number;
+      version: number;
+      totalAmountWolo: number;
+      walletAddress: string;
+      stakeTxHash: string | null;
+    };
+  } | null;
+};
+
+export type AdminRetryEscrowFundingRequirement = {
+  key: string;
+  wagerIds: number[];
+  txHash: string;
+  fromAddress: string;
+  expectedAmountWolo: number;
+  expectedMemo: string;
+};
+
+const ADMIN_RETRY_CURRENT_CHAIN_ESCROW_KINDS = new Set([
+  "bet_payout",
+  "bet_refund",
+  "winner_bounty",
+]);
+
+function adminRetryFundingRequirementForWager(
+  marketId: number,
+  wager: AdminRetryEscrowFundingWager
+): AdminRetryEscrowFundingRequirement | null {
+  if (wager.executionMode !== "onchain_escrow") {
+    return null;
+  }
+
+  const ticket = wager.stakeLeg?.ticket ?? null;
+  if (ticket) {
+    const txHash = ticket.stakeTxHash?.trim() || "";
+    const fromAddress = ticket.walletAddress?.trim() || "";
+    if (!txHash || !fromAddress || ticket.totalAmountWolo < 1) {
+      return null;
+    }
+
+    return {
+      key: `ticket:${ticket.id}`,
+      wagerIds: [wager.id],
+      txHash,
+      fromAddress,
+      expectedAmountWolo: ticket.totalAmountWolo,
+      expectedMemo: buildBetStakeTicketMemo(ticket.id, ticket.version),
+    };
+  }
+
+  const txHash = wager.stakeTxHash?.trim() || "";
+  const fromAddress = wager.stakeWalletAddress?.trim() || "";
+  if (!txHash || !fromAddress || wager.amountWolo < 1) {
+    return null;
+  }
+
+  return {
+    key: `wager:${wager.id}`,
+    wagerIds: [wager.id],
+    txHash,
+    fromAddress,
+    expectedAmountWolo: wager.amountWolo,
+    expectedMemo: buildBetStakeMemo(marketId),
+  };
+}
+
+export function buildAdminRetryEscrowFundingRequirements(input: {
+  claimId: number;
+  claimKind: string | null;
+  claimAmountWolo: number;
+  marketId: number;
+  matchedUserId: number;
+  wagers: AdminRetryEscrowFundingWager[];
+}) {
+  const claimKind = (input.claimKind || "").trim();
+  if (!ADMIN_RETRY_CURRENT_CHAIN_ESCROW_KINDS.has(claimKind)) {
+    return {
+      mode: "none" as const,
+      requirements: [] as AdminRetryEscrowFundingRequirement[],
+    };
+  }
+
+  const targetedWagers =
+    claimKind === "winner_bounty"
+      ? input.wagers
+      : input.wagers.filter(
+          (wager) =>
+            wager.userId === input.matchedUserId &&
+            wager.status === (claimKind === "bet_refund" ? "void" : "won")
+        );
+
+  if (targetedWagers.length === 0) {
+    throw new Error(
+      `ADMIN_RETRY_CURRENT_CHAIN_ESCROW_MISMATCH: claim ${input.claimId} has no escrow-funded source wager candidates on market ${input.marketId}`
+    );
+  }
+
+  if (claimKind === "bet_payout" || claimKind === "bet_refund") {
+    const entitlementWolo = targetedWagers.reduce(
+      (total, wager) => total + (wager.payoutWolo ?? 0),
+      0
+    );
+    if (entitlementWolo !== input.claimAmountWolo) {
+      throw new Error(
+        `ADMIN_RETRY_CURRENT_CHAIN_ESCROW_MISMATCH: claim ${input.claimId} amount ${input.claimAmountWolo} does not match stored ${claimKind} entitlement ${entitlementWolo} on market ${input.marketId}`
+      );
+    }
+  }
+
+  const requirementsByKey = new Map<
+    string,
+    AdminRetryEscrowFundingRequirement
+  >();
+
+  for (const wager of targetedWagers) {
+    const requirement = adminRetryFundingRequirementForWager(
+      input.marketId,
+      wager
+    );
+
+    if (!requirement) {
+      if (claimKind === "winner_bounty") {
+        continue;
+      }
+      throw new Error(
+        `ADMIN_RETRY_CURRENT_CHAIN_ESCROW_MISMATCH: claim ${input.claimId} wager ${wager.id} has no durable escrow funding proof`
+      );
+    }
+
+    const existing = requirementsByKey.get(requirement.key);
+    if (existing) {
+      if (!existing.wagerIds.includes(wager.id)) {
+        existing.wagerIds.push(wager.id);
+      }
+      continue;
+    }
+
+    requirementsByKey.set(requirement.key, requirement);
+  }
+
+  const requirements = Array.from(requirementsByKey.values());
+  if (requirements.length === 0) {
+    throw new Error(
+      `ADMIN_RETRY_CURRENT_CHAIN_ESCROW_MISMATCH: claim ${input.claimId} has no durable escrow funding proof on market ${input.marketId}`
+    );
+  }
+
+  return {
+    mode: claimKind === "winner_bounty" ? ("any" as const) : ("all" as const),
+    requirements,
+  };
+}
+
+async function assertAdminRetryCurrentChainEscrowAuthority(input: {
+  claimId: number;
+  plan: ReturnType<typeof buildAdminRetryEscrowFundingRequirements>;
+}) {
+  if (input.plan.mode === "none") {
+    return;
+  }
+
+  const failures: string[] = [];
+
+  for (const requirement of input.plan.requirements) {
+    const verification = await verifyCurrentWoloEscrowStakeTransfer({
+      txHash: requirement.txHash,
+      fromAddress: requirement.fromAddress,
+      expectedAmountWolo: requirement.expectedAmountWolo,
+      expectedMemo: requirement.expectedMemo,
+    });
+
+    if (verification.verified) {
+      if (input.plan.mode === "any") {
+        return;
+      }
+      continue;
+    }
+
+    failures.push(`${requirement.key}: ${verification.detail}`);
+
+    if (input.plan.mode === "all") {
+      throw new Error(
+        `ADMIN_RETRY_CURRENT_CHAIN_ESCROW_MISMATCH: claim ${input.claimId} funding proof failed: ${failures.join("; ")}`
+      );
+    }
+  }
+
+  if (input.plan.mode === "any") {
+    throw new Error(
+      `ADMIN_RETRY_CURRENT_CHAIN_ESCROW_MISMATCH: claim ${input.claimId} source market has no wager proven on the current WoloChain: ${failures.join("; ")}`
+    );
+  }
+}
 
 function adminRetryTruthName(value: string | null | undefined) {
   return normalizePublicPlayerName(value).toLowerCase();
@@ -862,6 +1072,52 @@ export async function retryPendingClaimSettlement(
       matchedUserId: matchedUser.id,
       market,
     });
+
+    if (useGroupedMarketSettlement && market) {
+      const fundingWagers = await prisma.betWager.findMany({
+        where: {
+          marketId: market.id,
+        },
+        orderBy: { id: "asc" },
+        select: {
+          id: true,
+          userId: true,
+          status: true,
+          amountWolo: true,
+          payoutWolo: true,
+          executionMode: true,
+          stakeTxHash: true,
+          stakeWalletAddress: true,
+          stakeLeg: {
+            select: {
+              ticket: {
+                select: {
+                  id: true,
+                  version: true,
+                  totalAmountWolo: true,
+                  walletAddress: true,
+                  stakeTxHash: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const fundingPlan = buildAdminRetryEscrowFundingRequirements({
+        claimId: claim.id,
+        claimKind: claim.claimKind,
+        claimAmountWolo: claim.amountWolo,
+        marketId: market.id,
+        matchedUserId: matchedUser.id,
+        wagers: fundingWagers,
+      });
+
+      await assertAdminRetryCurrentChainEscrowAuthority({
+        claimId: claim.id,
+        plan: fundingPlan,
+      });
+    }
 
     /*
      * A broadcast can land after the first REST lookup timed out. A pending

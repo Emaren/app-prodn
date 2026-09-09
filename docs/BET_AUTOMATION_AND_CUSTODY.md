@@ -89,6 +89,17 @@ share one source-of-funds invariant:
 - the stored winning-wager/refund entitlement, matched wallet, request ID,
   recipient, amount, and source market remain part of the existing retry truth
   gate and distinct-send proof;
+- an `onchain_escrow` label or historical transaction hash is not sufficient
+  custody authority for recovery. Before any retry dry-run or execution, the
+  original funding must be re-proven against the current WoloChain escrow
+  verifier by transaction hash, bettor sender, exact funded amount, and exact
+  canonical stake memo. Direct wagers use the market stake memo; ticket-funded
+  wagers prove the ticket's single total transfer and ticket memo;
+- bettor payouts and refunds require every contributing funding source to pass
+  that current-chain proof, and the stored per-user entitlement must exactly
+  equal the claim amount. Winner bounties require at least one source-market
+  wager with current-chain escrow proof. Missing, legacy-chain, stale-chain, or
+  unverifiable funding fails closed before WOLO can move;
 - the escrow recovery namespace is explicitly versioned as `escrow-v2` for both
   grouped `settlement_run_id` and per-payout `request_id`. Legacy failed
   payout-signer retry IDs remain immutable historical evidence; the escrow
