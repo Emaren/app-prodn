@@ -41,7 +41,19 @@ ORDINARY_CLASSES = (
 
 WOLO_MAINNET_HOME = "/var/lib/wolochaind-mainnet"
 WOLO_MAINNET_SERVICE = "wolochaind-mainnet.service"
+WOLO_SETTLEMENT_SERVICE = "wolochain-mainnet-settlement.service"
+WOLO_FOUNDER_REWARDS_SERVICE = "wolochain-founder-rewards-settlement.service"
 WOLO_PROTECTED_LISTENER_PORTS = ("8092", "8093")
+WOLO_QUIESCE_ORDER = (
+    WOLO_FOUNDER_REWARDS_SERVICE,
+    WOLO_SETTLEMENT_SERVICE,
+    WOLO_MAINNET_SERVICE,
+)
+WOLO_RESTART_ORDER = (
+    WOLO_MAINNET_SERVICE,
+    WOLO_SETTLEMENT_SERVICE,
+    WOLO_FOUNDER_REWARDS_SERVICE,
+)
 WOLO_PROTECTED_KEY_PATHS = (
     "config/priv_validator_key.json",
     "config/node_key.json",
@@ -474,6 +486,34 @@ def build_wolo_preflight(
                 f"protected Wolo listener {port} count must be exactly 1, got {count}"
             )
 
+    services = wolo.get("services") or {}
+    protected_services = {}
+    for service_name in (
+        WOLO_MAINNET_SERVICE,
+        WOLO_SETTLEMENT_SERVICE,
+        WOLO_FOUNDER_REWARDS_SERVICE,
+    ):
+        service = services.get(service_name) or {}
+        protected_services[service_name] = service
+        if service.get("id") != service_name:
+            blockers.append(
+                f"Wolo service metadata missing or mismatched: {service_name}"
+            )
+        if service.get("active") != "active" or service.get("sub_state") != "running":
+            blockers.append(
+                f"Wolo service is not active/running: {service_name} "
+                f"active={service.get('active')!r} sub={service.get('sub_state')!r}"
+            )
+        if int(service.get("main_pid") or 0) <= 0:
+            blockers.append(f"Wolo service has no live MainPID: {service_name}")
+
+    for service_name in (WOLO_SETTLEMENT_SERVICE, WOLO_FOUNDER_REWARDS_SERVICE):
+        requires = set((protected_services.get(service_name) or {}).get("requires") or [])
+        if WOLO_MAINNET_SERVICE not in requires:
+            blockers.append(
+                f"Wolo settlement dependency mismatch: {service_name} does not require {WOLO_MAINNET_SERVICE}"
+            )
+
     settlement_names = (
         "wolo_settlement_state",
         "wolo_founder_rewards_settlement_state",
@@ -553,7 +593,10 @@ def build_wolo_preflight(
             "data_identity": wolo.get("data_identity"),
             "config_identity": wolo.get("config_identity"),
             "listener_counts": listener_counts,
+            "services": protected_services,
         },
+        "proposed_quiesce_order": list(WOLO_QUIESCE_ORDER),
+        "proposed_restart_order": list(WOLO_RESTART_ORDER),
         "settlement_state": settlement_state,
         "settlement_state_bytes": settlement_bytes,
         "consensus_estimated_bytes": consensus_bytes,
@@ -613,6 +656,9 @@ def print_wolo_preflight(payload: dict[str, Any]) -> None:
             for port in WOLO_PROTECTED_LISTENER_PORTS
         )
     )
+
+    print("Stop plan:    " + " -> ".join(payload.get("proposed_quiesce_order") or []))
+    print("Start plan:   " + " -> ".join(payload.get("proposed_restart_order") or []))
     print(
         "Payload est:  "
         f"{int(payload.get('estimated_encrypted_payload_bytes') or 0) / (1024 ** 3):.2f} GiB"

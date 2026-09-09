@@ -370,6 +370,16 @@ authorization false. Settlement and consensus recovery still require a
 separately authorized clean-main capture command, and key custody remains a
 separate secret-custody proof outside the general recovery vault.
 
+The live Wolo service graph is part of that preflight contract. The canonical
+node is `wolochaind-mainnet.service`; the payout rail is
+`wolochain-mainnet-settlement.service`; and the founder-reward rail is
+`wolochain-founder-rewards-settlement.service`. Both settlement services must
+be active/running with live PIDs and must explicitly require the canonical node.
+The proposed quiesce order is founder-reward settlement, main settlement, then
+the node. The proposed restart order is the exact dependency-safe reverse:
+node, main settlement, then founder-reward settlement. Merely printing these
+orders performs no systemd action.
+
 ## Restore drill
 
 1. Choose a sealed bundle and record its immutable remote version ID.

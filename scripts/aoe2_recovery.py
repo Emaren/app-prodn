@@ -573,6 +573,46 @@ def identity(path):
     }
 
 
+
+def unit_status(name):
+    raw = run(
+        "systemctl",
+        "show",
+        name,
+        "-p",
+        "Id",
+        "-p",
+        "ActiveState",
+        "-p",
+        "SubState",
+        "-p",
+        "MainPID",
+        "-p",
+        "Requires",
+        "-p",
+        "After",
+        "--no-pager",
+    )
+    values = {}
+    for line in raw.splitlines():
+        if "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        values[key] = value
+    try:
+        main_pid = int(values.get("MainPID") or "0")
+    except ValueError:
+        main_pid = 0
+    return {
+        "id": values.get("Id") or name,
+        "active": values.get("ActiveState") or "unknown",
+        "sub_state": values.get("SubState") or "unknown",
+        "main_pid": main_pid,
+        "requires": sorted(filter(None, (values.get("Requires") or "").split())),
+        "after": sorted(filter(None, (values.get("After") or "").split())),
+    }
+
+
 sources = {
     "raw_replay_archive": "/mnt/HC_Volume_105319120/aoe2-replay-archive",
     "parser_evidence_corpus": "/mnt/HC_Volume_105319120/aoe2-parser-engine",
@@ -623,6 +663,15 @@ if pid > 0:
     except Exception:
         pass
 
+wolo_services = {
+    name: unit_status(name)
+    for name in (
+        "wolochaind-mainnet.service",
+        "wolochain-mainnet-settlement.service",
+        "wolochain-founder-rewards-settlement.service",
+    )
+}
+
 wolo = {
     "service": "wolochaind-mainnet.service",
     "main_pid": pid,
@@ -631,6 +680,7 @@ wolo = {
     "home_identity": identity(wolo_home) if wolo_home else None,
     "data_identity": identity(os.path.join(wolo_home, "data")) if wolo_home else None,
     "config_identity": identity(os.path.join(wolo_home, "config")) if wolo_home else None,
+    "services": wolo_services,
     "key_custody_metadata": [],
 }
 

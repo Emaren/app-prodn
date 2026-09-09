@@ -455,6 +455,32 @@ class RecoveryCampaignTests(unittest.TestCase):
                 "home_identity": {"exists": True, "path": home, "bytes": 6_000},
                 "data_identity": {"exists": True, "path": home + "/data", "bytes": 5_000},
                 "config_identity": {"exists": True, "path": home + "/config", "bytes": 500},
+                "services": {
+                    campaign.WOLO_MAINNET_SERVICE: {
+                        "id": campaign.WOLO_MAINNET_SERVICE,
+                        "active": "active",
+                        "sub_state": "running",
+                        "main_pid": 987,
+                        "requires": ["system.slice"],
+                        "after": ["network-online.target"],
+                    },
+                    campaign.WOLO_SETTLEMENT_SERVICE: {
+                        "id": campaign.WOLO_SETTLEMENT_SERVICE,
+                        "active": "active",
+                        "sub_state": "running",
+                        "main_pid": 994,
+                        "requires": [campaign.WOLO_MAINNET_SERVICE],
+                        "after": [campaign.WOLO_MAINNET_SERVICE],
+                    },
+                    campaign.WOLO_FOUNDER_REWARDS_SERVICE: {
+                        "id": campaign.WOLO_FOUNDER_REWARDS_SERVICE,
+                        "active": "active",
+                        "sub_state": "running",
+                        "main_pid": 992,
+                        "requires": [campaign.WOLO_MAINNET_SERVICE],
+                        "after": [campaign.WOLO_MAINNET_SERVICE],
+                    },
+                },
                 "key_custody_metadata": [
                     {
                         "path": home + "/config/priv_validator_key.json",
@@ -493,6 +519,17 @@ class RecoveryCampaignTests(unittest.TestCase):
         self.assertEqual(result["status"], "READY")
         self.assertEqual(result["blockers"], [])
         self.assertEqual(result["wolo"]["listener_counts"], {"8092": 1, "8093": 1})
+
+        self.assertEqual(
+            set(result["wolo"]["services"]),
+            {
+                campaign.WOLO_MAINNET_SERVICE,
+                campaign.WOLO_SETTLEMENT_SERVICE,
+                campaign.WOLO_FOUNDER_REWARDS_SERVICE,
+            },
+        )
+        self.assertEqual(result["proposed_quiesce_order"], list(campaign.WOLO_QUIESCE_ORDER))
+        self.assertEqual(result["proposed_restart_order"], list(campaign.WOLO_RESTART_ORDER))
         self.assertEqual(result["settlement_state_bytes"], 4_000)
         self.assertEqual(result["consensus_estimated_bytes"], 6_000)
         self.assertEqual(result["estimated_encrypted_payload_bytes"], 10_000)
@@ -558,6 +595,34 @@ class RecoveryCampaignTests(unittest.TestCase):
             any("keyring-file" in item and "missing" in item for item in result["blockers"])
         )
         self.assertFalse(result["key_custody"]["secret_contents_read"])
+
+    def test_wolo_preflight_blocks_settlement_service_dependency_drift(self):
+        inventory = self._wolo_inventory()
+        inventory["wolo"]["services"][campaign.WOLO_SETTLEMENT_SERVICE]["requires"] = []
+        result = campaign.build_wolo_preflight(
+            inventory,
+            20_000,
+            tool_source="a" * 40,
+            tool_branch="main",
+            tool_dirty=False,
+        )
+
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertTrue(
+            any(
+                campaign.WOLO_SETTLEMENT_SERVICE in item
+                and "does not require" in item
+                for item in result["blockers"]
+            )
+        )
+        self.assertEqual(
+            result["proposed_quiesce_order"],
+            list(campaign.WOLO_QUIESCE_ORDER),
+        )
+        self.assertEqual(
+            result["proposed_restart_order"],
+            list(campaign.WOLO_RESTART_ORDER),
+        )
 
     def test_wolo_preflight_blocks_insufficient_mac_capacity(self):
         result = campaign.build_wolo_preflight(
