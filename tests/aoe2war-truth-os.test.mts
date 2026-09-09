@@ -30,7 +30,7 @@ test("AoE2WAR CLI exposes Replay Truth OS", () => {
 
   assert.match(
     cli,
-    /truth\)\s*[\s\S]*exec python3 "\$TRUTH_OS"/
+    /truth\)\s*[\s\S]*exec "\$AOE2WAR_PYTHON" "\$TRUTH_OS"/
   );
 });
 
