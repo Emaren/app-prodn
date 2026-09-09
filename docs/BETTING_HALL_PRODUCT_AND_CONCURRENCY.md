@@ -108,6 +108,20 @@ WoloChain consensus upgrade is part of this release; never replace the pinned
 consensus binary. Future reusable auto-bet custody belongs in the Wolo
 settlement service and requires a separate reviewed deployment.
 
+## Betting Constitution V1 — ratification candidate
+
+The future economic law for phase-book matching, fees, grandfathering, and
+chain-proof settlement is defined in `docs/BETTING_CONSTITUTION.md`.
+
+The September 9 Jim audit is the first frozen precedent: current-mainnet winning
+payouts fully reconciled to both the production settlement formula and indexed
+WoloChain receipts, so no corrective payment was due. A strict 1:1 FIFO
+counterfactual would have paid Jim less than the historical pooled rule, so
+settled markets remain grandfathered and are never silently clawed back.
+
+The constitution is documentation-only until a separately reviewed financial
+implementation, migration, tests, and certified release activate it.
+
 ## Betting Phase Books V2 — accepted design, not yet live
 
 Current production uses the Betting Fairness V1.2 compatibility bridge:

@@ -315,6 +315,22 @@ AoE2WAR pasteable interactive commands must also continue avoiding outer
 `set -e`, `set -u`, `pipefail`, naked `exit`, and naked `return`. Individual
 governed scripts may enforce their own internal fail-closed shell policy.
 
+### September 9 betting entitlement audit and constitution precedent
+
+A read-only audit of Jim's canonical current-mainnet wager history proved 64
+winning wagers and 4,118,681 WOLO of winning payouts with zero current-contract
+math mismatches and exact indexed WoloChain receipt parity. No corrective
+payment was due.
+
+The same settled corpus showed that the pooled settlement rule had allocated
+242,581 more gross opposing WOLO to Jim than a strict 1:1 FIFO counterfactual.
+Do not retroactively recompute or claw back settled books.
+
+Future economic changes belong in `docs/BETTING_CONSTITUTION.md`. The
+ratification candidate defines three isolated phase books and a one-winning-
+WOLO-to-one-opposing-WOLO FIFO ceiling. It is documentation only until a
+separately reviewed financial implementation is certified.
+
 ### Premium betting composer implementation status
 
 The E4 horizontal `InstrumentStakeRail` has been removed and replaced with

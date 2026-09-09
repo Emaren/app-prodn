@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **79**
+- Authoritative repository documents: **80**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 47
+- `reference`: 48
 - `runbook`: 13
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 63
+- `active`: 64
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -60,6 +60,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [VPS Upgrade Checklist (AoE2HDBets)](../deploy/vps-upgrade-checklist.md) | `runbook` | `superseded` | `operational-procedure` |
 | [Admin Metrics](ADMIN_METRICS.md) | `reference` | `active` | `implementation-contract` |
 | [AI Council and Command Center](AI_COUNCIL_AND_COMMAND_CENTER.md) | `explanation` | `active` | `architecture-explanation` |
+| [AoE2WAR Betting Constitution](BETTING_CONSTITUTION.md) | `reference` | `active` | `betting-constitution-ratification-candidate` |
 | [Betting Hall Product and Concurrency Contract](BETTING_HALL_PRODUCT_AND_CONCURRENCY.md) | `reference` | `active` | `product-and-concurrency-contract` |
 | [Bet and Replay Reliability Release — 2026-07-29](BET_AND_REPLAY_RELIABILITY_2026-07-29.md) | `historical` | `historical` | `release-evidence` |
 | [Bet Automation and Wolo Custody Boundary](BET_AUTOMATION_AND_CUSTODY.md) | `reference` | `active` | `financial-domain-contract` |
