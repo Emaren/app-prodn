@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bc601bc94cba0b45a24b1e7e2eee18c244e6370de13b302fdb463f6957e45b41",
+      "sha256": "475e83ea98408650e14d179c07b03c63ed2bec9e38657aa36708e15b329d26a2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -590,7 +590,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "809b88d8d3631094d169f11d84ec02cc6fb1decf73c920c675a778f5ac515b0c",
+      "sha256": "f6a42abc1a7c51e5af59fb397e1f811c2ed5ee406ed6ddce231f4d06a7fbc193",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/recovery-chunked-restore-v1",
-    "commit": "d99d7fa7c4b1b115e7ce1562c95f7f8ccd7e505e"
+    "branch": "fix/recovery-progress-v1",
+    "commit": "9941671d914b0c3f4f941567c1d5b97bba8df69a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
