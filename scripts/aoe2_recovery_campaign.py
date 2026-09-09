@@ -523,7 +523,12 @@ def _chunk_partial_dir(root: Path, index: int) -> Path:
     return root / f".chunk-{index:06d}.partial"
 
 
-def _read_chunk_receipt(path: Path, expected_index: int) -> dict[str, Any]:
+def _read_chunk_receipt(
+    path: Path,
+    expected_index: int,
+    *,
+    verify_ciphertext: bool = True,
+) -> dict[str, Any]:
     proof_path = path / "proof.json"
     payload, _, error = recovery._load_hashed_json(proof_path)
     if error or payload is None:
@@ -541,7 +546,9 @@ def _read_chunk_receipt(path: Path, expected_index: int) -> dict[str, Any]:
     if not cms_path.is_file():
         raise CampaignError(f"sealed recovery chunk is missing payload: {path.name}")
     expected_ciphertext = str(payload.get("ciphertext_sha256") or "")
-    if len(expected_ciphertext) != 64 or recovery.sha256(cms_path) != expected_ciphertext:
+    if len(expected_ciphertext) != 64:
+        raise CampaignError(f"sealed recovery chunk SHA-256 is invalid: {path.name}")
+    if verify_ciphertext and recovery.sha256(cms_path) != expected_ciphertext:
         raise CampaignError(f"sealed recovery chunk SHA-256 mismatch: {path.name}")
     if int(payload.get("ciphertext_bytes") or 0) != cms_path.stat().st_size:
         raise CampaignError(f"sealed recovery chunk byte-size mismatch: {path.name}")
@@ -558,7 +565,11 @@ def _read_chunk_receipt(path: Path, expected_index: int) -> dict[str, Any]:
     return dict(payload)
 
 
-def _load_existing_chunk_receipts(root: Path) -> list[dict[str, Any]]:
+def _load_existing_chunk_receipts(
+    root: Path,
+    *,
+    verify_ciphertext: bool = True,
+) -> list[dict[str, Any]]:
     if not root.is_dir():
         return []
     chunk_dirs = sorted(
@@ -573,7 +584,13 @@ def _load_existing_chunk_receipts(root: Path) -> list[dict[str, Any]]:
                 "recovery chunk sequence has a gap or unexpected directory: "
                 f"{path.name}"
             )
-        receipts.append(_read_chunk_receipt(path, index))
+        receipts.append(
+            _read_chunk_receipt(
+                path,
+                index,
+                verify_ciphertext=verify_ciphertext,
+            )
+        )
     return receipts
 
 
@@ -1194,13 +1211,135 @@ def save_restore_state(state: dict[str, Any]) -> None:
     )
 
 
+def _chunk_capture_source(
+    bundle_root: Path,
+    campaign_id: str,
+    class_name: str,
+    capture: dict[str, Any],
+    *,
+    verify_ciphertext: bool,
+) -> dict[str, Any]:
+    manifest_name = capture.get("chunk_manifest_file")
+    if not isinstance(manifest_name, str) or not manifest_name:
+        raise CampaignError(
+            f"{class_name} chunked capture proof has no manifest file"
+        )
+    manifest_path = recovery._safe_bundle_file(bundle_root, manifest_name)
+    if manifest_path is None or not manifest_path.is_file():
+        raise CampaignError(
+            f"{class_name} chunked manifest is missing or escapes the bundle"
+        )
+    expected_root = _chunk_root(bundle_root, class_name).resolve()
+    if manifest_path.parent.resolve() != expected_root:
+        raise CampaignError(
+            f"{class_name} chunked manifest is outside the canonical class root"
+        )
+
+    manifest, manifest_sha, error = recovery._load_hashed_json(manifest_path)
+    if error or manifest is None or manifest_sha is None:
+        raise CampaignError(
+            f"{class_name} chunked manifest is invalid: {error or 'unknown error'}"
+        )
+    expected_manifest_sha = str(capture.get("chunk_manifest_sha256") or "")
+    if len(expected_manifest_sha) != 64 or manifest_sha != expected_manifest_sha:
+        raise CampaignError(
+            f"{class_name} chunked manifest SHA-256 does not match capture proof"
+        )
+    if (
+        manifest.get("schema") != 1
+        or manifest.get("kind") != "aoe2war-recovery-cms-chunk-manifest"
+        or manifest.get("format") != CMS_CHUNK_FORMAT
+        or manifest.get("campaign_id") != campaign_id
+        or manifest.get("class") != class_name
+    ):
+        raise CampaignError(
+            f"{class_name} chunked manifest does not match the authorized campaign"
+        )
+
+    receipts = _load_existing_chunk_receipts(
+        expected_root,
+        verify_ciphertext=verify_ciphertext,
+    )
+    chunk_count = int(capture.get("chunk_count") or 0)
+    manifest_chunks = manifest.get("chunks")
+    if (
+        chunk_count <= 0
+        or int(manifest.get("chunk_count") or 0) != chunk_count
+        or not isinstance(manifest_chunks, list)
+        or len(manifest_chunks) != chunk_count
+        or len(receipts) != chunk_count
+    ):
+        raise CampaignError(f"{class_name} chunked capture count is inconsistent")
+
+    for index, (sealed, receipt) in enumerate(zip(manifest_chunks, receipts)):
+        if not isinstance(sealed, dict):
+            raise CampaignError(f"{class_name} chunk manifest entry {index} is invalid")
+        expected = {
+            "index": index,
+            "directory": f"chunk-{index:06d}",
+            "plaintext_bytes": int(receipt["plaintext_bytes"]),
+            "plaintext_sha256": receipt["plaintext_sha256"],
+            "ciphertext_bytes": int(receipt["ciphertext_bytes"]),
+            "ciphertext_sha256": receipt["ciphertext_sha256"],
+        }
+        for key, value in expected.items():
+            if sealed.get(key) != value:
+                raise CampaignError(
+                    f"{class_name} chunk manifest entry {index} disagrees on {key}"
+                )
+
+    checks = (
+        ("ciphertext_bytes", int(capture.get("ciphertext_bytes") or 0)),
+        ("plaintext_tar_bytes", int(capture.get("plaintext_tar_bytes") or 0)),
+        ("plaintext_tar_sha256", str(capture.get("plaintext_tar_sha256") or "")),
+    )
+    for key, expected in checks:
+        if manifest.get(key) != expected:
+            raise CampaignError(
+                f"{class_name} chunked manifest {key} does not match capture proof"
+            )
+    if int(capture.get("ciphertext_bytes") or 0) != sum(
+        int(item["ciphertext_bytes"]) for item in receipts
+    ):
+        raise CampaignError(
+            f"{class_name} chunked ciphertext total does not match sealed receipts"
+        )
+
+    capture_fingerprint = normalize_fingerprint(
+        str(capture.get("recipient_certificate_fingerprint") or "")
+    )
+    manifest_fingerprint = normalize_fingerprint(
+        str(manifest.get("recipient_certificate_fingerprint") or "")
+    )
+    for index, receipt in enumerate(receipts):
+        receipt_fingerprint = normalize_fingerprint(
+            str(receipt.get("recipient_certificate_fingerprint") or "")
+        )
+        if receipt_fingerprint != capture_fingerprint:
+            raise CampaignError(
+                f"{class_name} chunk {index} certificate fingerprint mismatch"
+            )
+    if not capture_fingerprint or manifest_fingerprint != capture_fingerprint:
+        raise CampaignError(
+            f"{class_name} chunked certificate fingerprint is inconsistent"
+        )
+
+    return {
+        "format": CMS_CHUNK_FORMAT,
+        "manifest_path": manifest_path,
+        "manifest_sha256": manifest_sha,
+        "chunk_root": expected_root,
+        "receipts": receipts,
+    }
+
+
 def _capture_proof(
     bundle_root: Path,
     campaign_id: str,
     class_name: str,
     *,
     verify_ciphertext: bool,
-) -> tuple[dict[str, Any], str, Path]:
+) -> tuple[dict[str, Any], str, dict[str, Any]]:
     proof_path = bundle_root / "proofs" / f"{class_name}.json"
     payload, proof_sha, error = recovery._load_hashed_json(proof_path)
     if error or payload is None or proof_sha is None:
@@ -1221,6 +1360,16 @@ def _capture_proof(
         raise CampaignError(
             f"{class_name} capture proof does not prove CMS streaming"
         )
+
+    if payload.get("artifact_format") == CMS_CHUNK_FORMAT:
+        source = _chunk_capture_source(
+            bundle_root,
+            campaign_id,
+            class_name,
+            payload,
+            verify_ciphertext=verify_ciphertext,
+        )
+        return payload, proof_sha, source
 
     artifact_name = payload.get("ciphertext_file")
     if not isinstance(artifact_name, str) or not artifact_name:
@@ -1251,7 +1400,10 @@ def _capture_proof(
             f"{class_name} encrypted artifact SHA-256 does not match capture proof"
         )
 
-    return payload, proof_sha, artifact
+    return payload, proof_sha, {
+        "format": "legacy-single-cms",
+        "artifact": artifact,
+    }
 
 
 def restore_preflight(campaign_id: str | None) -> dict[str, Any]:
@@ -1309,22 +1461,34 @@ def restore_preflight(campaign_id: str | None) -> dict[str, Any]:
     capture_proofs: dict[str, dict[str, Any]] = {}
     ciphertext_bytes = 0
     for class_name in ORDINARY_CLASSES:
-        proof, proof_sha, artifact = _capture_proof(
+        proof, proof_sha, source = _capture_proof(
             bundle_root,
             selected,
             class_name,
             verify_ciphertext=False,
         )
-        capture_proofs[class_name] = {
+        entry: dict[str, Any] = {
             "proof_file": str(
                 (bundle_root / "proofs" / f"{class_name}.json").relative_to(
                     bundle_root
                 )
             ),
             "proof_sha256": proof_sha,
-            "ciphertext_file": artifact.name,
+            "artifact_format": source["format"],
             "ciphertext_bytes": int(proof["ciphertext_bytes"]),
         }
+        if source["format"] == CMS_CHUNK_FORMAT:
+            manifest_path = Path(source["manifest_path"])
+            entry.update(
+                {
+                    "chunk_manifest_file": str(manifest_path.relative_to(bundle_root)),
+                    "chunk_manifest_sha256": source["manifest_sha256"],
+                    "chunk_count": len(source["receipts"]),
+                }
+            )
+        else:
+            entry["ciphertext_file"] = Path(source["artifact"]).name
+        capture_proofs[class_name] = entry
         ciphertext_bytes += int(proof["ciphertext_bytes"])
 
     free_bytes = shutil.disk_usage(Path.home()).free
@@ -1357,6 +1521,133 @@ def restore_preflight(campaign_id: str | None) -> dict[str, Any]:
         "plaintext_full_archive_staging": False,
     }
 
+
+
+class ChunkedCMSReader:
+    """Bounded file-like plaintext stream over sealed CMS chunks.
+
+    The reader never stages the full plaintext archive. Each encrypted chunk is
+    already size/hash verified by `_load_existing_chunk_receipts` before this
+    reader is constructed; this layer additionally verifies each decrypted
+    plaintext chunk against its sealed receipt while presenting one continuous
+    tar stream to `inspect_plaintext_tar`.
+    """
+
+    def __init__(
+        self,
+        root: Path,
+        receipts: list[dict[str, Any]],
+        *,
+        recipient_cert: Path,
+        private_key: Path,
+    ):
+        self.root = root
+        self.receipts = receipts
+        self.recipient_cert = recipient_cert
+        self.private_key = private_key
+        self.index = 0
+        self.proc: subprocess.Popen[bytes] | None = None
+        self.chunk_digest: Any | None = None
+        self.chunk_bytes = 0
+        self.closed = False
+
+    def _start_chunk(self) -> bool:
+        if self.index >= len(self.receipts):
+            return False
+        cms_path = _chunk_dir(self.root, self.index) / "payload.cms"
+        self.proc = subprocess.Popen(
+            cms_decrypt_command(
+                self.recipient_cert,
+                self.private_key,
+                cms_path,
+            ),
+            cwd=ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if self.proc.stdout is None:
+            raise CampaignError(
+                f"failed to open chunk {self.index} CMS plaintext stream"
+            )
+        self.chunk_digest = hashlib.sha256()
+        self.chunk_bytes = 0
+        return True
+
+    def _finish_chunk(self) -> None:
+        if self.proc is None or self.chunk_digest is None:
+            return
+        if self.proc.stdout is not None:
+            self.proc.stdout.close()
+        stderr = self.proc.stderr.read() if self.proc.stderr is not None else b""
+        if self.proc.stderr is not None:
+            self.proc.stderr.close()
+        rc = self.proc.wait()
+        receipt = self.receipts[self.index]
+        if rc != 0:
+            raise CampaignError(
+                f"chunk {self.index} restore failed: "
+                + stderr.decode(errors="replace").strip()
+            )
+        if (
+            self.chunk_bytes != int(receipt["plaintext_bytes"])
+            or self.chunk_digest.hexdigest() != receipt["plaintext_sha256"]
+        ):
+            raise CampaignError(
+                f"chunk {self.index} restore plaintext does not match sealed proof"
+            )
+        self.index += 1
+        self.proc = None
+        self.chunk_digest = None
+        self.chunk_bytes = 0
+
+    def read(self, size: int = -1) -> bytes:
+        if self.closed or size == 0:
+            return b""
+        # This reader is internal to tar streaming. Keep an unbounded/default
+        # request bounded rather than ever materializing a multi-GiB archive.
+        if size is None or size < 0:
+            size = 1024 * 1024
+
+        output = bytearray()
+        while len(output) < size:
+            if self.proc is None and not self._start_chunk():
+                break
+            assert self.proc is not None
+            assert self.proc.stdout is not None
+            assert self.chunk_digest is not None
+            data = self.proc.stdout.read(size - len(output))
+            if data:
+                self.chunk_digest.update(data)
+                self.chunk_bytes += len(data)
+                output.extend(data)
+                continue
+            self._finish_chunk()
+        return bytes(output)
+
+    def close(self) -> None:
+        if self.closed:
+            return
+        self.closed = True
+        if self.proc is not None:
+            try:
+                if self.proc.stdout is not None:
+                    self.proc.stdout.close()
+            except Exception:
+                pass
+            try:
+                self.proc.kill()
+            except Exception:
+                pass
+            try:
+                self.proc.wait()
+            except Exception:
+                pass
+            if self.proc.stderr is not None:
+                try:
+                    self.proc.stderr.close()
+                except Exception:
+                    pass
+            self.proc = None
 
 class HashingReader:
     def __init__(self, raw: Any):
@@ -1480,33 +1771,31 @@ def inspect_plaintext_tar(
     }
 
 
-def restore_stage(
+
+def inspect_capture_source(
+    source: dict[str, Any],
     *,
-    campaign_id: str,
-    bundle_root: Path,
     class_name: str,
     recipient_cert: Path,
     private_key: Path,
-    capture_tool_source: str,
-    restore_tool_source: str,
 ) -> dict[str, Any]:
-    capture, capture_proof_sha, artifact = _capture_proof(
-        bundle_root,
-        campaign_id,
-        class_name,
-        verify_ciphertext=True,
-    )
-    proof_path = bundle_root / "restore-proofs" / f"{class_name}.json"
-    if proof_path.exists() or proof_path.with_name(
-        proof_path.name + ".sha256"
-    ).exists():
-        raise CampaignError(
-            f"restore proof already exists for {class_name}; refusing overwrite"
+    if source["format"] == CMS_CHUNK_FORMAT:
+        stream = ChunkedCMSReader(
+            Path(source["chunk_root"]),
+            list(source["receipts"]),
+            recipient_cert=recipient_cert,
+            private_key=private_key,
         )
-    proof_path.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            return inspect_plaintext_tar(stream)
+        except Exception as exc:
+            raise CampaignError(
+                f"{class_name} isolated chunked restore inspection failed: {exc}"
+            ) from exc
+        finally:
+            stream.close()
 
-    started_at = utc_now()
-    started = time.monotonic()
+    artifact = Path(source["artifact"])
     command = cms_stream_restore_decrypt_command(
         artifact,
         recipient_cert,
@@ -1538,7 +1827,6 @@ def restore_stage(
         stderr = decrypt.stderr.read()
         decrypt.stderr.close()
     decrypt_rc = decrypt.wait()
-
     if inspection_error is not None:
         raise CampaignError(
             f"{class_name} isolated restore inspection failed: {inspection_error}"
@@ -1550,6 +1838,43 @@ def restore_stage(
         )
     if inspection is None:
         raise CampaignError(f"{class_name} restore inspection produced no evidence")
+    return inspection
+
+
+def restore_stage(
+    *,
+    campaign_id: str,
+    bundle_root: Path,
+    class_name: str,
+    recipient_cert: Path,
+    private_key: Path,
+    capture_tool_source: str,
+    restore_tool_source: str,
+) -> dict[str, Any]:
+    bundle_root = bundle_root.expanduser().resolve()
+    capture, capture_proof_sha, source = _capture_proof(
+        bundle_root,
+        campaign_id,
+        class_name,
+        verify_ciphertext=True,
+    )
+    proof_path = bundle_root / "restore-proofs" / f"{class_name}.json"
+    if proof_path.exists() or proof_path.with_name(
+        proof_path.name + ".sha256"
+    ).exists():
+        raise CampaignError(
+            f"restore proof already exists for {class_name}; refusing overwrite"
+        )
+    proof_path.parent.mkdir(parents=True, exist_ok=True)
+
+    started_at = utc_now()
+    started = time.monotonic()
+    inspection = inspect_capture_source(
+        source,
+        class_name=class_name,
+        recipient_cert=recipient_cert,
+        private_key=private_key,
+    )
 
     expected_plaintext_bytes = capture.get("plaintext_tar_bytes")
     expected_plaintext_sha = capture.get("plaintext_tar_sha256")
@@ -1574,9 +1899,8 @@ def restore_stage(
         "restore_tool_source": restore_tool_source,
         "capture_proof_file": f"proofs/{class_name}.json",
         "capture_proof_sha256": capture_proof_sha,
-        "ciphertext_file": artifact.name,
+        "artifact_format": source["format"],
         "ciphertext_bytes": capture["ciphertext_bytes"],
-        "ciphertext_sha256": capture["ciphertext_sha256"],
         "ciphertext_hash_verified_before_decryption": True,
         "plaintext_tar_bytes": inspection["plaintext_tar_bytes"],
         "plaintext_tar_sha256": inspection["plaintext_tar_sha256"],
@@ -1596,6 +1920,23 @@ def restore_stage(
             "wolo_keyrings_included": False,
         },
     }
+    if source["format"] == CMS_CHUNK_FORMAT:
+        manifest_path = Path(source["manifest_path"])
+        proof.update(
+            {
+                "chunk_manifest_file": str(manifest_path.relative_to(bundle_root)),
+                "chunk_manifest_sha256": source["manifest_sha256"],
+                "chunk_count": len(source["receipts"]),
+            }
+        )
+    else:
+        artifact = Path(source["artifact"])
+        proof.update(
+            {
+                "ciphertext_file": artifact.name,
+                "ciphertext_sha256": capture["ciphertext_sha256"],
+            }
+        )
     proof_sha = write_json_with_sidecar(proof_path, proof)
     return {
         "class": class_name,

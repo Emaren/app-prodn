@@ -1,5 +1,6 @@
 import hashlib
 import io
+import json
 import shutil
 import subprocess
 import tarfile
@@ -9,6 +10,112 @@ from pathlib import Path
 from unittest.mock import patch
 
 import scripts.aoe2_recovery_campaign as campaign
+
+
+def build_chunked_restore_fixture(
+    root: Path,
+    *,
+    campaign_id: str = "chunked-restore",
+    class_name: str = "managed_user_media",
+):
+    cert = root / "recipient.pem"
+    key = root / "private.pem"
+    campaign.subprocess.run(
+        [
+            "openssl", "req", "-x509", "-newkey", "rsa:2048",
+            "-keyout", str(key), "-out", str(cert), "-nodes",
+            "-subj", "/CN=AoE2WAR Chunked Restore Test", "-days", "1",
+        ],
+        stdout=campaign.subprocess.DEVNULL,
+        stderr=campaign.subprocess.DEVNULL,
+        check=True,
+    )
+    fingerprint = "A" * 64
+    payload = b"AOE2WAR-CHUNKED-RESTORE-" * 12000
+    tar_buffer = io.BytesIO()
+    with tarfile.open(fileobj=tar_buffer, mode="w") as archive:
+        info = tarfile.TarInfo("payload.bin")
+        info.size = len(payload)
+        archive.addfile(info, io.BytesIO(payload))
+    tar_bytes = tar_buffer.getvalue()
+
+    chunk_root = root / f"{class_name}.cms.chunks"
+    chunk_root.mkdir(parents=True)
+    source = io.BytesIO(tar_bytes)
+    whole = hashlib.sha256()
+    receipts = []
+    with patch.object(campaign, "CMS_CHUNK_PLAINTEXT_BYTES", 64 * 1024):
+        while True:
+            receipt = campaign._capture_new_chunk(
+                source=source,
+                root=chunk_root,
+                index=len(receipts),
+                recipient_cert=cert,
+                private_key=key,
+                recipient_fingerprint=fingerprint,
+                whole_digest=whole,
+            )
+            if receipt is None:
+                break
+            receipts.append(receipt)
+
+    manifest = {
+        "schema": 1,
+        "kind": "aoe2war-recovery-cms-chunk-manifest",
+        "format": campaign.CMS_CHUNK_FORMAT,
+        "campaign_id": campaign_id,
+        "class": class_name,
+        "created_at": campaign.utc_now(),
+        "chunk_plaintext_limit_bytes": 64 * 1024,
+        "chunk_count": len(receipts),
+        "plaintext_tar_bytes": len(tar_bytes),
+        "plaintext_tar_sha256": hashlib.sha256(tar_bytes).hexdigest(),
+        "ciphertext_bytes": sum(int(item["ciphertext_bytes"]) for item in receipts),
+        "recipient_certificate_fingerprint": fingerprint,
+        "chunks": [
+            {
+                "index": index,
+                "directory": f"chunk-{index:06d}",
+                "plaintext_bytes": int(item["plaintext_bytes"]),
+                "plaintext_sha256": item["plaintext_sha256"],
+                "ciphertext_bytes": int(item["ciphertext_bytes"]),
+                "ciphertext_sha256": item["ciphertext_sha256"],
+            }
+            for index, item in enumerate(receipts)
+        ],
+        "streamed_tar_restore_test": "PASS",
+    }
+    manifest_path = chunk_root / "manifest.json"
+    manifest_sha = campaign.write_json_with_sidecar(manifest_path, manifest)
+    proof = {
+        "schema": 1,
+        "kind": "aoe2war-recovery-capture-proof",
+        "campaign_id": campaign_id,
+        "class": class_name,
+        "status": "CAPTURED_PENDING_RESTORE",
+        "created_at": campaign.utc_now(),
+        "artifact_format": campaign.CMS_CHUNK_FORMAT,
+        "chunk_count": len(receipts),
+        "chunk_manifest_file": str(manifest_path.relative_to(root)),
+        "chunk_manifest_sha256": manifest_sha,
+        "plaintext_tar_bytes": len(tar_bytes),
+        "plaintext_tar_sha256": hashlib.sha256(tar_bytes).hexdigest(),
+        "ciphertext_bytes": manifest["ciphertext_bytes"],
+        "cms_streaming": True,
+        "recipient_certificate_fingerprint": fingerprint,
+    }
+    proof_path = root / "proofs" / f"{class_name}.json"
+    campaign.write_json_with_sidecar(proof_path, proof)
+    return {
+        "campaign_id": campaign_id,
+        "class_name": class_name,
+        "cert": cert,
+        "key": key,
+        "tar_bytes": tar_bytes,
+        "proof_path": proof_path,
+        "manifest_path": manifest_path,
+        "receipts": receipts,
+    }
 
 
 class RecoveryCampaignTests(unittest.TestCase):
@@ -668,6 +775,96 @@ class RecoveryCampaignTests(unittest.TestCase):
             result["representative_restore"]["status"],
             "PASS",
         )
+
+
+
+    @unittest.skipUnless(
+        campaign.shutil.which("openssl") and campaign.shutil.which("tar"),
+        "OpenSSL and tar are required for chunked restore tests",
+    )
+    def test_chunked_capture_source_restores_exact_tar_without_full_staging(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = build_chunked_restore_fixture(root)
+            capture, proof_sha, source = campaign._capture_proof(
+                root,
+                fixture["campaign_id"],
+                fixture["class_name"],
+                verify_ciphertext=True,
+            )
+            inspection = campaign.inspect_capture_source(
+                source,
+                class_name=fixture["class_name"],
+                recipient_cert=fixture["cert"],
+                private_key=fixture["key"],
+            )
+
+        self.assertEqual(source["format"], campaign.CMS_CHUNK_FORMAT)
+        self.assertEqual(len(source["receipts"]), len(fixture["receipts"]))
+        self.assertEqual(len(proof_sha), 64)
+        self.assertEqual(inspection["plaintext_tar_bytes"], len(fixture["tar_bytes"]))
+        self.assertEqual(
+            inspection["plaintext_tar_sha256"],
+            hashlib.sha256(fixture["tar_bytes"]).hexdigest(),
+        )
+        self.assertEqual(inspection["representative_restore"]["status"], "PASS")
+        self.assertEqual(capture["plaintext_tar_sha256"], inspection["plaintext_tar_sha256"])
+
+    @unittest.skipUnless(
+        campaign.shutil.which("openssl") and campaign.shutil.which("tar"),
+        "OpenSSL and tar are required for chunked restore tests",
+    )
+    def test_chunked_capture_rejects_manifest_sha_drift(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = build_chunked_restore_fixture(root)
+            proof = json.loads(fixture["proof_path"].read_text(encoding="utf-8"))
+            proof["chunk_manifest_sha256"] = "B" * 64
+            campaign.write_json_with_sidecar(fixture["proof_path"], proof)
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "manifest SHA-256 does not match capture proof",
+            ):
+                campaign._capture_proof(
+                    root,
+                    fixture["campaign_id"],
+                    fixture["class_name"],
+                    verify_ciphertext=False,
+                )
+
+    @unittest.skipUnless(
+        campaign.shutil.which("openssl") and campaign.shutil.which("tar"),
+        "OpenSSL and tar are required for chunked restore tests",
+    )
+    def test_restore_stage_writes_chunked_immutable_proof(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = build_chunked_restore_fixture(root)
+            receipt = campaign.restore_stage(
+                campaign_id=fixture["campaign_id"],
+                bundle_root=root,
+                class_name=fixture["class_name"],
+                recipient_cert=fixture["cert"],
+                private_key=fixture["key"],
+                capture_tool_source="capture-source",
+                restore_tool_source="restore-source",
+            )
+            proof_path = Path(receipt["proof_path"])
+            proof = json.loads(proof_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(proof["status"], "PASS")
+        self.assertEqual(proof["artifact_format"], campaign.CMS_CHUNK_FORMAT)
+        self.assertEqual(proof["chunk_count"], len(fixture["receipts"]))
+        self.assertEqual(
+            proof["chunk_manifest_file"],
+            f"{fixture['class_name']}.cms.chunks/manifest.json",
+        )
+        self.assertTrue(proof["ciphertext_hash_verified_before_decryption"])
+        self.assertTrue(proof["plaintext_matches_capture"])
+        self.assertFalse(proof["full_plaintext_archive_staged"])
+        self.assertFalse(proof["production_mutated"])
+        self.assertFalse(proof["wolo_mutated"])
+        self.assertEqual(len(receipt["proof_sha256"]), 64)
 
     def test_restore_state_requires_explicit_authorization(self):
         with self.assertRaisesRegex(

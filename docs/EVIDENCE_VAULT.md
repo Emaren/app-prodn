@@ -297,16 +297,25 @@ authority, and read-only against production. It refuses to start unless the
 capture campaign is complete, all five capture proofs are hash-valid, every
 encrypted artifact exists at the recorded byte size, the campaign certificate
 still matches the canonical mode-0600 recovery private key, and current local
-`main` is clean. Restore pause uses its own durable out-of-band marker and is
-honored only between classes. Resume clears that marker explicitly and refuses
-an interrupted class when an immutable proof already exists for it.
+`main` is clean. Restore understands both the legacy single-CMS evidence format
+and the current `aoe2war-recovery-chunked-cms-v1` format. For chunked evidence,
+preflight binds the capture proof to the sealed class manifest, exact ordered
+chunk count, per-chunk receipts, aggregate ciphertext bytes, complete plaintext
+tar hash/size, and recipient-certificate fingerprint without rehashing the full
+32+ GiB ciphertext corpus. Restore pause uses its own durable out-of-band marker
+and is honored only between classes. Resume clears that marker explicitly and
+refuses an interrupted class when an immutable proof already exists for it.
 
 For each ordinary class the drill:
 
-1. verifies the encrypted artifact SHA-256 and byte size against its capture
-   proof before decryption;
-2. decrypts CMS locally with the recovery private key;
-3. streams the plaintext tar through exact SHA-256 and byte-count verification;
+1. verifies the legacy ciphertext SHA-256/size or, for chunked evidence, every
+   sealed chunk ciphertext SHA-256/size against its immutable receipt before
+   decryption;
+2. decrypts CMS locally with the recovery private key; chunked evidence is
+   decrypted sequentially and each plaintext chunk must match its own sealed
+   hash/size before joining the continuous tar stream;
+3. streams the reconstructed plaintext tar through exact whole-stream SHA-256
+   and byte-count verification against the capture proof;
 4. parses every tar header without extracting the archive wholesale;
 5. hashes a privacy-preserving member index instead of persisting plaintext
    member names;
