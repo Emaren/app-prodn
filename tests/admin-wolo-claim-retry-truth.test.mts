@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -161,5 +162,30 @@ test(
         }),
       /ADMIN_RETRY_WINNER_TRUTH_MISMATCH/
     );
+  }
+);
+
+test(
+  "grouped core market claim retries preserve escrow signer authority",
+  async () => {
+    const source = await readFile(
+      new URL("../lib/adminWoloClaims.ts", import.meta.url),
+      "utf8",
+    );
+
+    const helperStart = source.indexOf("async function executeMarketClaimSettlementRun");
+    const helperEnd = source.indexOf("\n}\n\nexport async function findMatchedClaimUser", helperStart);
+    assert.ok(helperStart >= 0 && helperEnd > helperStart);
+
+    const helper = source.slice(helperStart, helperEnd);
+    assert.match(helper, /validateWoloEscrowSettlementRun\(runInput\)/);
+    assert.match(helper, /executeWoloEscrowSettlementRun\(runInput\)/);
+    assert.match(helper, /validation\.signerRole !== "escrow"/);
+    assert.match(
+      helper,
+      /validatedSignerAddress !== expectedEscrowAddress/,
+    );
+    assert.match(helper, /Escrow claim retry dry-run failed closed/);
+    assert.doesNotMatch(helper, /executeWoloSettlementRun\(/);
   }
 );

@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-09-08"
+reviewed_at: "2026-09-09"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -73,6 +73,29 @@ fails closed and no WOLO moves.
 
 This ordering is a custody boundary, not presentation policy: `connect -> fresh
 verified balance -> amount validation -> intent/ticket -> chain transfer`.
+
+## Core market retry custody invariant
+
+A core market claim is funded by the same Bet Escrow custody rail that accepted
+the wager stake. Normal settlement and later operator/admin recovery therefore
+share one source-of-funds invariant:
+
+- `bet_payout`, `bet_refund`, and `winner_bounty` retries use
+  `signer_role=escrow`; they must never fall back to the generic payout/staking
+  distribution signer;
+- before a retry can mutate chain state, the exact deterministic grouped run is
+  dry-run against WoloChain and must return `ok=true`, signer role `escrow`,
+  and the exact escrow signer address configured by the app;
+- the stored winning-wager/refund entitlement, matched wallet, request ID,
+  recipient, amount, and source market remain part of the existing retry truth
+  gate and distinct-send proof;
+- a failed dry-run leaves the claim pending and records the failure. It never
+  converts a reserve shortage or signer mismatch into a manual ad-hoc send;
+- Founder rewards remain a separate payout domain and retain their dedicated
+  founder settlement authority.
+
+This prevents a fully funded Bet Escrow from stranding a bettor merely because a
+separate payout or staking-distribution reserve is below its operating floor.
 
 ## Current app capability
 
