@@ -4,6 +4,7 @@ import importlib.util
 import pathlib
 import sys
 import unittest
+from unittest.mock import patch
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "aoe2_doctor.py"
 SCRIPTS = SCRIPT.parent
@@ -106,6 +107,82 @@ class DoctorTests(unittest.TestCase):
         self.assertTrue(any("service_state" in value for value in problems))
         self.assertTrue(any("live_oom" in value for value in problems))
         self.assertTrue(any("runner" in value for value in problems))
+
+    def test_staking_custody_healthy_has_no_blocker(self):
+        doctor = MODULE.Doctor()
+        contract = {"canonical": {"public_base_url": "https://aoe2war.example"}}
+        payload = {
+            "rewardDistributionReady": False,
+            "operatorFunding": {
+                "stakingWalletBalanceWolo": 120,
+                "totalConfirmedStakedWolo": 100,
+                "requiredStakingWalletBalanceWolo": 110,
+                "operatorTopUpNeededWolo": 0,
+                "walletUnderfunded": False,
+                "operationalReserveHealthy": True,
+            },
+        }
+        with patch.object(MODULE, "run", return_value=(0, MODULE.json.dumps(payload))):
+            MODULE.check_staking_custody(doctor, contract)
+
+        keys = {item.key for item in doctor.findings}
+        self.assertNotIn("staking-custody-underfunded", keys)
+        self.assertNotIn("staking-reward-distribution-unsafe", keys)
+        self.assertFalse(doctor.info["staking_custody"]["reward_distribution_ready"])
+
+    def test_staking_custody_underfunded_but_rewards_paused(self):
+        doctor = MODULE.Doctor()
+        contract = {"canonical": {"public_base_url": "https://aoe2war.example"}}
+        payload = {
+            "rewardDistributionReady": False,
+            "rewardDistributionReadyDetail": "paused",
+            "operatorFunding": {
+                "stakingWalletBalanceWolo": 90,
+                "totalConfirmedStakedWolo": 100,
+                "requiredStakingWalletBalanceWolo": 110,
+                "operatorTopUpNeededWolo": 20,
+                "walletUnderfunded": True,
+                "operationalReserveHealthy": False,
+            },
+        }
+        with patch.object(MODULE, "run", return_value=(0, MODULE.json.dumps(payload))):
+            MODULE.check_staking_custody(doctor, contract)
+
+        keys = {item.key for item in doctor.findings}
+        self.assertIn("staking-custody-underfunded", keys)
+        self.assertNotIn("staking-reward-distribution-unsafe", keys)
+
+    def test_staking_custody_underfunded_without_reward_pause_is_second_blocker(self):
+        doctor = MODULE.Doctor()
+        contract = {"canonical": {"public_base_url": "https://aoe2war.example"}}
+        payload = {
+            "operatorFunding": {
+                "stakingWalletBalanceWolo": 90,
+                "totalConfirmedStakedWolo": 100,
+                "requiredStakingWalletBalanceWolo": 110,
+                "operatorTopUpNeededWolo": 20,
+                "walletUnderfunded": True,
+                "operationalReserveHealthy": False,
+            },
+        }
+        with patch.object(MODULE, "run", return_value=(0, MODULE.json.dumps(payload))):
+            MODULE.check_staking_custody(doctor, contract)
+
+        keys = {item.key for item in doctor.findings}
+        self.assertIn("staking-custody-underfunded", keys)
+        self.assertIn("staking-reward-distribution-unsafe", keys)
+
+    def test_staking_custody_probe_failure_warns(self):
+        doctor = MODULE.Doctor()
+        contract = {"canonical": {"public_base_url": "https://aoe2war.example"}}
+        with patch.object(MODULE, "run", return_value=(22, "curl failed")):
+            MODULE.check_staking_custody(doctor, contract)
+
+        findings = {item.key: item for item in doctor.findings}
+        self.assertEqual(
+            findings["staking-custody-observability"].severity,
+            "WARN",
+        )
 
 
 if __name__ == "__main__":

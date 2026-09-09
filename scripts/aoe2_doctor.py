@@ -1264,6 +1264,136 @@ printf 'migration_current\\t%s\\n' "$(venv/bin/alembic current 2>/dev/null | tai
     doctor.info["replay_api"] = result
 
 
+def check_staking_custody(
+    doctor: Doctor,
+    contract: dict[str, Any],
+) -> None:
+    base_url = str(
+        contract.get("canonical", {}).get("public_base_url") or ""
+    ).rstrip("/")
+    if not base_url:
+        doctor.add(
+            "WARN",
+            "Production",
+            "staking-custody-observability",
+            "canonical public_base_url is unavailable; staking custody could not be checked",
+            2,
+        )
+        return
+
+    url = f"{base_url}/api/staking/config"
+    rc, output = run(
+        ["curl", "-fsS", "--max-time", "8", url],
+        timeout=10,
+    )
+    result: dict[str, Any] = {
+        "url": url,
+        "rc": rc,
+    }
+    if rc != 0:
+        result["error"] = output
+        doctor.info["staking_custody"] = result
+        doctor.add(
+            "WARN",
+            "Production",
+            "staking-custody-observability",
+            f"staking config probe failed: {output or f'curl rc={rc}'}",
+            2,
+        )
+        return
+
+    try:
+        payload = json.loads(output)
+    except Exception as exc:
+        result["error"] = f"invalid staking config JSON: {exc}"
+        doctor.info["staking_custody"] = result
+        doctor.add(
+            "WARN",
+            "Production",
+            "staking-custody-observability",
+            result["error"],
+            2,
+        )
+        return
+
+    if not isinstance(payload, dict):
+        result["error"] = "staking config payload is not an object"
+        doctor.info["staking_custody"] = result
+        doctor.add(
+            "WARN",
+            "Production",
+            "staking-custody-observability",
+            result["error"],
+            2,
+        )
+        return
+
+    funding = payload.get("operatorFunding")
+    if not isinstance(funding, dict):
+        result["error"] = "staking config has no operatorFunding object"
+        result["reward_distribution_ready"] = payload.get(
+            "rewardDistributionReady"
+        )
+        doctor.info["staking_custody"] = result
+        doctor.add(
+            "WARN",
+            "Production",
+            "staking-custody-observability",
+            result["error"],
+            2,
+        )
+        return
+
+    for key in (
+        "stakingWalletBalanceWolo",
+        "totalConfirmedStakedWolo",
+        "stakingWalletOperatingReserveWolo",
+        "stakingWalletReserveTargetWolo",
+        "requiredStakingWalletBalanceWolo",
+        "operatorTopUpNeededWolo",
+        "walletUnderfunded",
+        "operationalReserveHealthy",
+    ):
+        result[key] = funding.get(key)
+    result["reward_distribution_ready"] = payload.get(
+        "rewardDistributionReady"
+    )
+    result["reward_distribution_ready_detail"] = payload.get(
+        "rewardDistributionReadyDetail"
+    )
+    doctor.info["staking_custody"] = result
+
+    underfunded = (
+        funding.get("walletUnderfunded") is True
+        or funding.get("operationalReserveHealthy") is False
+    )
+    if underfunded:
+        doctor.add(
+            "BLOCKER",
+            "Production",
+            "staking-custody-underfunded",
+            (
+                "staking custody does not cover confirmed liability plus reserve: "
+                f"balance={funding.get('stakingWalletBalanceWolo')!r} "
+                f"liability={funding.get('totalConfirmedStakedWolo')!r} "
+                f"required={funding.get('requiredStakingWalletBalanceWolo')!r} "
+                f"top_up={funding.get('operatorTopUpNeededWolo')!r}"
+            ),
+            10,
+        )
+        if payload.get("rewardDistributionReady") is not False:
+            doctor.add(
+                "BLOCKER",
+                "Production",
+                "staking-reward-distribution-unsafe",
+                (
+                    "staking custody is underfunded but public config does not "
+                    "prove reward distribution is safety-paused"
+                ),
+                8,
+            )
+
+
 def check_production_summary(
     doctor: Doctor,
     data: dict[str, Any],
@@ -1354,6 +1484,7 @@ def collect_doctor(
         print("→ Production: verifying certified runtime and Wolo boundary...", flush=True)
     release_data = aoe2_release.collect()
     check_production_summary(doctor, release_data)
+    check_staking_custody(doctor, contract)
     check_replay_api(doctor, contract)
 
     if progress:

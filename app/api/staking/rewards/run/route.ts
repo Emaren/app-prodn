@@ -10,6 +10,10 @@ import {
   executeStakingTreasuryPayout,
   StakingTreasuryPayoutError,
 } from "@/lib/stakingTreasuryPayouts";
+import {
+  STAKING_REWARD_DISTRIBUTION_SAFETY_DETAIL,
+  STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED,
+} from "@/lib/stakingExecution";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,6 +56,16 @@ export async function POST(request: NextRequest) {
 
   if (bearerToken(request) !== configuredToken) {
     return NextResponse.json({ detail: "Unauthorized staking reward run." }, { status: 401 });
+  }
+
+  if (STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED) {
+    return NextResponse.json(
+      {
+        detail: STAKING_REWARD_DISTRIBUTION_SAFETY_DETAIL,
+        code: "STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED",
+      },
+      { status: 503 }
+    );
   }
 
   try {
