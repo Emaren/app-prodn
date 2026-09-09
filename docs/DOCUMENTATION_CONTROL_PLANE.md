@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/operator-python-pin-v1` at `7088159b8afc4327c1aa3792075a7b6e1fd374ce`
+Implementation baseline: `feature/operator-python-pin-v1` at `1ff465d613c6bc46312e14ddacf6a2dddd444095`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

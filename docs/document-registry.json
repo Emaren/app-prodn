@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6a2a5a88eaa37318869eca18f3f040ff3817505d2290f10c220e7aea31436c55",
+      "sha256": "c3bdc4e1700701e191e135bf25153f4ad4269d3e86972f23e92925abd16b320f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1815,7 +1815,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/operator-python-pin-v1",
-    "commit": "7088159b8afc4327c1aa3792075a7b6e1fd374ce"
+    "commit": "1ff465d613c6bc46312e14ddacf6a2dddd444095"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
