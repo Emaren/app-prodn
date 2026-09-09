@@ -60,7 +60,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/radio",
     label: "Radio WOLO",
-    version: "src-94e3c743ddc0a4bc07df",
+    version: "src-70bff92716d0d92b7f3b",
   },
   {
     href: "/workshop",
