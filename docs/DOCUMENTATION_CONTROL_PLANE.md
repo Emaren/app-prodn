@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `hotfix/staking-reward-safety-v1` at `e1a08b3f70f6246c2fb3641432c6702d2ddf78b0`
+Implementation baseline: `fix/staking-compound-custody-v1` at `bdbdeed2139af32aef44d6bb6d70d29261f7f5b2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

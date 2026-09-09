@@ -1739,10 +1739,14 @@ async function loadWoloStats(
   const pendingGiftWolo = pendingGiftRows.reduce((sum, gift) => sum + (gift.amount ?? 0), 0);
   const visibleWagers = wagers.filter(isMainnetVisibleFundedBetWager);
   const payoutWolo = visibleWagers.reduce((sum, wager) => sum + (wager.payoutTxHash ? wager.payoutWolo ?? 0 : 0), 0);
-  const stakingRewardsWolo =
-    (position?.pendingRewardsWolo ?? 0) +
-    (position?.claimedRewardsWolo ?? 0) +
-    allocations.reduce((sum, allocation) => sum + (isAtOrAfterWoloMainnetStart(allocation.createdAt) ? allocation.rewardWolo : 0), 0);
+  const stakingRewardsWolo = allocations.reduce(
+    (sum, allocation) =>
+      sum +
+      (isAtOrAfterWoloMainnetStart(allocation.createdAt)
+        ? allocation.rewardWolo
+        : 0),
+    0,
+  );
 
   const claimedClaimWolo = claimedClaims.reduce((sum, claim) => sum + claim.amountWolo, 0);
 

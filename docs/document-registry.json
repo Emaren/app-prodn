@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-09",
       "sensitivity": "internal",
-      "sha256": "7b5d21b5f06b46c03bd808d04182382a93109ff88f8618ae4fda8ab5a0a3037d",
+      "sha256": "02d51ffba8155896e7aa56f1046a61b87f730333b1bc76722d4e966a721a5ba5",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5d2c741c315551e12e558f7ad18ecb9f10f55f9b9ac278e0003fb90797630025",
+      "sha256": "f067bf8b5132e76cf24a5ecc14951d5288a66c347a67617ddadb1f450cdb0413",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "85088490e6a9bb9c35e446b5be10bc169faf3770d8f7406942ba7080178dd0c5",
+      "sha256": "04aa4f0b05fe5a3f655c684aaf349a2c33842170cff64f6169027b1d37eb7aeb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1692,7 +1692,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-09",
       "sensitivity": "restricted",
-      "sha256": "451d5d4e3a748809b04ffad27587ee8c714db6a3a0e6a382ef8ee84bd8a4329e",
+      "sha256": "2edd2951bd88bea69652408a30ca39e92b7563f0b3fcbfa8b63d9f49725fbd0d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "hotfix/staking-reward-safety-v1",
-    "commit": "e1a08b3f70f6246c2fb3641432c6702d2ddf78b0"
+    "branch": "fix/staking-compound-custody-v1",
+    "commit": "bdbdeed2139af32aef44d6bb6d70d29261f7f5b2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

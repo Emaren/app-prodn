@@ -331,6 +331,31 @@ ratification candidate defines three isolated phase books and a one-winning-
 WOLO-to-one-opposing-WOLO FIFO ceiling. It is documentation only until a
 separately reviewed financial implementation is certified.
 
+### September 9 staking custody incident and chain-backed compound rule
+
+A read-only production reconciliation proved that current direct staking
+principal is essentially chain-backed while the historical auto-compound layer
+is not. The frozen incident contained **92,285 WOLO** of confirmed compounded
+liability across 109 synthetic `COMPOUND-*` events with zero indexed
+WoloChain transaction matches. Staking custody was **13,774.265 WOLO** below
+confirmed liability and **23,774.265 WOLO** below liability plus the 10,000-WOLO
+operating reserve target.
+
+The durable rule is: **app accounting must never turn an earned reward into
+confirmed staking liability before equivalent custody is proven on WoloChain**.
+Future mainnet auto-compound therefore follows
+`COMPOUND_PENDING -> escrow-funded transfer -> staking custody proof -> COMPOUNDED`.
+Bet Escrow is the economic source rail for the staker share of betting fees;
+the staking custody wallet is the destination. Dry-run and execution must prove
+the escrow signer, exact recipient, exact minimal-denom amount, and real tx hash.
+Finalization must be atomic and retry-safe.
+
+The September 9 containment release keeps stake, unstake, and reward
+distribution fail-closed. The new source state machine does not authorize
+activation by itself. Historical compound liability, custody deficit, and
+reserve must be reconciled before any reward timer or application reward gate
+is re-enabled.
+
 ### Premium betting composer implementation status
 
 The E4 horizontal `InstrumentStakeRail` has been removed and replaced with

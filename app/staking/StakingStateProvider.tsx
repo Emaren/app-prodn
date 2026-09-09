@@ -24,6 +24,7 @@ export type StakingMeSnapshot = {
     currentStakedWolo: number;
     stakingWeight: string;
     pendingRewardsWolo: number;
+    compoundPendingRewardsWolo: number;
     lifetimeRewardsWolo: number;
     claimedRewardsWolo?: number;
     autoCompoundRewards: boolean;
