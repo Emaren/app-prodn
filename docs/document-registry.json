@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-09",
       "sensitivity": "internal",
-      "sha256": "02d51ffba8155896e7aa56f1046a61b87f730333b1bc76722d4e966a721a5ba5",
+      "sha256": "85b329a801bdbdb45d9e9cfefa6001f10fb3955be266b192a49714f950f96a22",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "373966119b2ef75648604f610f0455d3931bf4db54c98a6c7b91060677591834",
+      "sha256": "2d2f339589b5d2ada24ff0c4fd351b9148ff0d7a232e83bc9d951249e8791f7a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1692,7 +1692,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-09",
       "sensitivity": "restricted",
-      "sha256": "3ab1ad537cf39108fbaf33c048a95673227fa2415809c534195d84fdf14be87f",
+      "sha256": "d182d03b31481700dc7803e2741637b58965b49f40c0989863279d4d236bbaa6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/recovery-ordinary-restore-drill-v2",
-    "commit": "f3bf70355c52c2920129b4bc196e285b84bb92c9"
+    "branch": "fix/current-chain-admin-retry-gate-v2",
+    "commit": "c3724eac63fbc24277ed0032eb3ce39b0dd01040"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -89,7 +89,20 @@ test("COMPOUND_PENDING becomes liability only after a real receipt", async () =>
     "COMPOUNDED",
   );
   const eventWrite = writes.find((row) => row.kind === "event.create")!;
-  const eventData = (eventWrite.args as { data: Record<string, any> }).data;
+  const eventData = (eventWrite.args as {
+    data: {
+      type: string;
+      status: string;
+      amountWolo: number;
+      txHash: string;
+      balanceBefore: number;
+      balanceAfter: number;
+      metadata: {
+        chainBackedCompound: boolean;
+        compoundCustodyAddress: string;
+      };
+    };
+  }).data;
   assert.equal(eventData.type, "COMPOUND");
   assert.equal(eventData.status, "CONFIRMED");
   assert.equal(eventData.amountWolo, 7);

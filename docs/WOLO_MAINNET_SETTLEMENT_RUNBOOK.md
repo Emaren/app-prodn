@@ -262,6 +262,15 @@ or hiding their indexed ledger rows.
   `signer_role=escrow` from the configured Bet Escrow signer. The dry-run must
   prove the exact escrow role/address before execution; a generic payout/staking
   reserve signer is not an allowed fallback for escrow-backed market debt.
+- Before that payout dry-run, Admin recovery must independently prove the
+  original stake exists on the current WoloChain. The proof binds transaction
+  hash, bettor sender, exact funded amount, and the exact market or ticket stake
+  memo to the configured Bet Escrow. `execution_mode=onchain_escrow`, a stored
+  stake hash, timestamps, or historical chain evidence alone are never enough.
+  Payout/refund recovery requires all contributing funding sources; winner
+  bounties require at least one current-chain-funded wager on the source market.
+  A chain-era mismatch or unavailable escrow verifier fails closed without
+  broadcasting a payout.
 - Legacy retry state is immutable. When a historical claim was already attempted
   on the old payout-signer rail, the escrow migration uses deterministic
   `escrow-v2` run and request IDs rather than reusing an existing idempotency

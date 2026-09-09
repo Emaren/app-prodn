@@ -1274,6 +1274,25 @@ async function verifyStakeTransferViaSettlementService(input: {
   };
 }
 
+export async function verifyCurrentWoloEscrowStakeTransfer(input: {
+  txHash: string;
+  fromAddress: string;
+  expectedAmountWolo: number;
+  expectedMemo: string;
+}): Promise<StakeVerificationResult> {
+  const verification = await verifyStakeTransferViaSettlementService(input);
+  if (verification) {
+    return verification;
+  }
+
+  return {
+    verified: false,
+    detail:
+      "Current-chain escrow verification is unavailable. Admin recovery fails closed until the WoloChain escrow verification service is reachable.",
+    txHash: normalizeTxHash(input.txHash),
+  };
+}
+
 export async function listRecentEscrowDeposits(input: {
   sender?: string | null;
   limit?: number;

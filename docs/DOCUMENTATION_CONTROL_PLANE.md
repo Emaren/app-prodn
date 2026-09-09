@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/recovery-ordinary-restore-drill-v2` at `f3bf70355c52c2920129b4bc196e285b84bb92c9`
+Implementation baseline: `fix/current-chain-admin-retry-gate-v2` at `c3724eac63fbc24277ed0032eb3ce39b0dd01040`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
