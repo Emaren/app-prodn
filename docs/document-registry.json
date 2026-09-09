@@ -269,9 +269,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-08",
+      "reviewed_at": "2026-09-09",
       "sensitivity": "internal",
-      "sha256": "d3c9e7261ad45677dcef802697711d046cf376c497729e1be291dcdc65208b50",
+      "sha256": "aeb821e4d085ce202bb61743411d1354aa62df113dc7f0a5576dca60e08d9f51",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c3bdc4e1700701e191e135bf25153f4ad4269d3e86972f23e92925abd16b320f",
+      "sha256": "40986d79ff0dbe0fe1cb3c5dddc978f5c9f7a05155263a3b43bbce2a0ec88ec6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1667,9 +1667,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_MAINNET_SETTLEMENT_RUNBOOK.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-28",
+      "reviewed_at": "2026-09-09",
       "sensitivity": "restricted",
-      "sha256": "162722e84456a01cc001e8ed41ddb6007b4253fddaf2775cf55c020004ffac03",
+      "sha256": "dbde2a2055d78311dc6d5b3f9d726d3d8c30d6df9d1301848e79e460c0bf345a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1814,8 +1814,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/operator-python-pin-v1",
-    "commit": "1ff465d613c6bc46312e14ddacf6a2dddd444095"
+    "branch": "hotfix/financial-p0-escrow-retry",
+    "commit": "f3a3dff055a71e8a42c2529d001080165e3a0d06"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

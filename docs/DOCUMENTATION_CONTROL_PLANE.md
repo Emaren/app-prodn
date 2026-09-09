@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/operator-python-pin-v1` at `1ff465d613c6bc46312e14ddacf6a2dddd444095`
+Implementation baseline: `hotfix/financial-p0-escrow-retry` at `f3a3dff055a71e8a42c2529d001080165e3a0d06`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
