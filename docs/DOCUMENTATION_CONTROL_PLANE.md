@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/staking-compound-custody-v1` at `44522d0f2ad2d3f3daf66253d129de099b1533c5`
+Implementation baseline: `fix/staking-receipt-concurrency-v1` at `ef492b094d64e80bb7711df85c5a46201fe506d8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -148,6 +148,10 @@ new mainnet distributions:
 - reward read models treat the mainnet allocation ledger as canonical across
   both historical position-less rows and v2 position-linked rows; `position_id
   IS NULL` is a historical storage shape, not reward-authority semantics.
+- confirmed stake/unstake receipt ingestion serializes both normalized tx-hash
+  reuse and per-user balance mutation with transaction-scoped PostgreSQL advisory
+  locks before checking or writing the staking event, preventing concurrent
+  requests from double-crediting one chain receipt or overwriting balance state.
 
 Historical distributions that do not carry the v2 settlement-policy metadata
 remain on their legacy semantics and are not silently rewritten or replayed.
