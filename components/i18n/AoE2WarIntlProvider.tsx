@@ -11,6 +11,7 @@ import {
 import {
   HomeCatalogProvider,
 } from "@/components/i18n/HomeCatalogContext";
+import SiteTranslationLayer from "@/components/i18n/SiteTranslationLayer";
 import {
   useUniversalLanguage,
 } from "@/context/UniversalLanguageContext";
@@ -350,7 +351,9 @@ export default function AoE2WarIntlProvider({
       timeZone="UTC"
     >
       <HomeCatalogProvider catalog={activeBundle.home}>
-        {children}
+        <SiteTranslationLayer locale={activeBundle.locale}>
+          {children}
+        </SiteTranslationLayer>
       </HomeCatalogProvider>
     </NextIntlClientProvider>
   );
