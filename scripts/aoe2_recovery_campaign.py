@@ -39,6 +39,15 @@ ORDINARY_CLASSES = (
     "raw_replay_archive",
 )
 
+WOLO_MAINNET_HOME = "/var/lib/wolochaind-mainnet"
+WOLO_MAINNET_SERVICE = "wolochaind-mainnet.service"
+WOLO_PROTECTED_LISTENER_PORTS = ("8092", "8093")
+WOLO_PROTECTED_KEY_PATHS = (
+    "config/priv_validator_key.json",
+    "config/node_key.json",
+    "keyring-file",
+)
+
 # OpenSSL's CMS CLI still buffers inbound CMS content during parse/decrypt.
 # Keep every independently encrypted object comfortably below the multi-GiB
 # ceiling so Recovery OS scales with the evidence corpus rather than OpenSSL's
@@ -416,6 +425,213 @@ def preflight(recipient_cert: str | None) -> dict[str, Any]:
         "settlement_mutation_authorized": False,
         "key_material_in_general_vault": False,
     }
+
+
+def _listener_counts(listeners: list[str]) -> dict[str, int]:
+    return {
+        port: sum(f":{port}" in line for line in listeners)
+        for port in WOLO_PROTECTED_LISTENER_PORTS
+    }
+
+
+def build_wolo_preflight(
+    inventory: dict[str, Any],
+    operator_free_bytes: int,
+    *,
+    tool_source: str,
+    tool_branch: str,
+    tool_dirty: bool,
+) -> dict[str, Any]:
+    blockers: list[str] = []
+    classes = inventory.get("classes") or {}
+    wolo = inventory.get("wolo") or {}
+    listeners = [str(item) for item in inventory.get("listeners") or []]
+    listener_counts = _listener_counts(listeners)
+
+    if wolo.get("service") != WOLO_MAINNET_SERVICE:
+        blockers.append(
+            f"Wolo service identity mismatch: {wolo.get('service')!r}"
+        )
+    if wolo.get("active") != "active":
+        blockers.append(
+            f"Wolo service is not active: {wolo.get('active')!r}"
+        )
+    if int(wolo.get("main_pid") or 0) <= 0:
+        blockers.append("Wolo service has no live MainPID")
+    if wolo.get("home") != WOLO_MAINNET_HOME:
+        blockers.append(
+            f"Wolo home mismatch: expected {WOLO_MAINNET_HOME}, got {wolo.get('home')!r}"
+        )
+
+    for identity_name in ("home_identity", "data_identity", "config_identity"):
+        identity = wolo.get(identity_name) or {}
+        if identity.get("exists") is not True:
+            blockers.append(f"Wolo {identity_name} is missing")
+
+    for port, count in listener_counts.items():
+        if count != 1:
+            blockers.append(
+                f"protected Wolo listener {port} count must be exactly 1, got {count}"
+            )
+
+    settlement_names = (
+        "wolo_settlement_state",
+        "wolo_founder_rewards_settlement_state",
+    )
+    settlement_bytes = 0
+    settlement_state: dict[str, Any] = {}
+    for class_name in settlement_names:
+        identity = classes.get(class_name) or {}
+        settlement_state[class_name] = identity
+        if identity.get("exists") is not True:
+            blockers.append(f"{class_name} is missing")
+        settlement_bytes += int(identity.get("bytes") or 0)
+
+    key_metadata = [
+        item
+        for item in (wolo.get("key_custody_metadata") or [])
+        if isinstance(item, dict)
+    ]
+    by_relative_path: dict[str, dict[str, Any]] = {}
+    for item in key_metadata:
+        path = str(item.get("path") or "")
+        prefix = WOLO_MAINNET_HOME + "/"
+        if path.startswith(prefix):
+            by_relative_path[path[len(prefix):]] = item
+
+    protected_keys: dict[str, dict[str, Any]] = {}
+    for relative in WOLO_PROTECTED_KEY_PATHS:
+        metadata = by_relative_path.get(relative) or {
+            "path": f"{WOLO_MAINNET_HOME}/{relative}",
+            "exists": False,
+        }
+        protected_keys[relative] = metadata
+        if metadata.get("exists") is not True:
+            blockers.append(f"protected Wolo custody path is missing: {relative}")
+            continue
+        expected_mode = "600" if relative.endswith(".json") else "700"
+        if str(metadata.get("mode") or "") != expected_mode:
+            blockers.append(
+                f"protected Wolo custody mode mismatch for {relative}: "
+                f"expected {expected_mode}, got {metadata.get('mode')!r}"
+            )
+        if metadata.get("owner") != "root:root":
+            blockers.append(
+                f"protected Wolo custody owner mismatch for {relative}: "
+                f"{metadata.get('owner')!r}"
+            )
+
+    consensus_bytes = int(
+        ((wolo.get("home_identity") or {}).get("bytes") or 0)
+    )
+    estimated_payload_bytes = settlement_bytes + consensus_bytes
+    headroom_after = int(operator_free_bytes) - estimated_payload_bytes
+    if headroom_after <= 0:
+        blockers.append(
+            "Mac recovery-vault capacity is insufficient for the estimated Wolo payload: "
+            f"free={operator_free_bytes} estimated={estimated_payload_bytes} "
+            f"headroom={headroom_after}"
+        )
+
+    return {
+        "schema": 1,
+        "kind": "aoe2war-recovery-wolo-preflight",
+        "generated_at": utc_now(),
+        "status": "READY" if not blockers else "BLOCKED",
+        "blockers": blockers,
+        "tool_source": tool_source,
+        "tool_branch": tool_branch,
+        "tool_dirty": bool(tool_dirty),
+        "capture_activation_requires_clean_main": True,
+        "inventory_schema": inventory.get("schema"),
+        "wolo": {
+            "service": wolo.get("service"),
+            "active": wolo.get("active"),
+            "main_pid": wolo.get("main_pid"),
+            "home": wolo.get("home"),
+            "home_identity": wolo.get("home_identity"),
+            "data_identity": wolo.get("data_identity"),
+            "config_identity": wolo.get("config_identity"),
+            "listener_counts": listener_counts,
+        },
+        "settlement_state": settlement_state,
+        "settlement_state_bytes": settlement_bytes,
+        "consensus_estimated_bytes": consensus_bytes,
+        "estimated_encrypted_payload_bytes": estimated_payload_bytes,
+        "operator_free_bytes": int(operator_free_bytes),
+        "headroom_after_estimated_payload_bytes": headroom_after,
+        "capacity_ready": headroom_after > 0,
+        "key_custody": {
+            "protected_paths": protected_keys,
+            "secret_contents_read": False,
+            "general_vault_payload": False,
+            "separate_custody_required": True,
+        },
+        "authorization": {
+            "settlement_capture": False,
+            "wolo_quiesce": False,
+            "consensus_capture": False,
+            "key_custody": False,
+        },
+        "requires_quiesce": {
+            "wolo_settlement_state": True,
+            "wolo_consensus_recovery": True,
+            "wolo_key_custody": False,
+        },
+        "production_mutated": False,
+        "wolo_mutated": False,
+    }
+
+
+def wolo_preflight() -> dict[str, Any]:
+    if shutil.which("ssh") is None:
+        raise CampaignError("required local tool is missing: ssh")
+    inventory = recovery.recovery_inventory()
+    return build_wolo_preflight(
+        inventory,
+        int(shutil.disk_usage(Path.home()).free),
+        tool_source=git_output("rev-parse", "HEAD"),
+        tool_branch=git_output("branch", "--show-current"),
+        tool_dirty=bool(
+            git_output("status", "--porcelain", "--untracked-files=all")
+        ),
+    )
+
+
+def print_wolo_preflight(payload: dict[str, Any]) -> None:
+    print("⚔️  AOE2WAR WOLO RECOVERY PREFLIGHT")
+    print()
+    print(f"Status:       {payload['status']}")
+    wolo = payload.get("wolo") or {}
+    print(f"Service:      {wolo.get('active') or 'unknown'}")
+    print(f"Home:         {wolo.get('home') or 'UNRESOLVED'}")
+    counts = wolo.get("listener_counts") or {}
+    print(
+        "Listeners:    "
+        + "  ".join(
+            f"{port}={counts.get(port, 0)}"
+            for port in WOLO_PROTECTED_LISTENER_PORTS
+        )
+    )
+    print(
+        "Payload est:  "
+        f"{int(payload.get('estimated_encrypted_payload_bytes') or 0) / (1024 ** 3):.2f} GiB"
+    )
+    print(
+        "Mac headroom: "
+        f"{int(payload.get('headroom_after_estimated_payload_bytes') or 0) / (1024 ** 3):.2f} GiB"
+    )
+    print("Secrets read: NO")
+    print("Wolo mutate:  NO")
+    print("Quiesce auth: NO")
+    if payload.get("blockers"):
+        print()
+        print("Blocking preflight gaps:")
+        for item in payload["blockers"]:
+            print(f"  - {item}")
+    else:
+        print()
+        print("READY FOR A SEPARATELY AUTHORIZED WOLO RECOVERY CAPTURE.")
 
 
 def _stage_source(
@@ -2851,6 +3067,10 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("campaign_id", nargs="?")
     q.add_argument("--json", action="store_true")
 
+
+    q = sub.add_parser("wolo-preflight")
+    q.add_argument("--json", action="store_true")
+
     q = sub.add_parser("restore-start")
     q.add_argument("campaign_id", nargs="?")
     q.add_argument("--authorize-ordinary-restore-drill", action="store_true")
@@ -2899,6 +3119,15 @@ def main() -> int:
             print(json.dumps(payload, indent=2, sort_keys=True))
         else:
             print_restore_preflight(payload)
+        return 0
+
+
+    if args.command == "wolo-preflight":
+        payload = wolo_preflight()
+        if args.json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print_wolo_preflight(payload)
         return 0
 
     if args.command == "restore-start":

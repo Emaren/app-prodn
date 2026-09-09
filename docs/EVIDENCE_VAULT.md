@@ -354,6 +354,22 @@ custody, and final schema-2 proof assembly remain. The Wolo stages keep their
 explicit authorization requirements; partial proof recognition grants no Wolo
 mutation or service-quiesce authority.
 
+
+Before any Wolo recovery mutation is eligible, run
+`aoe2war recovery campaign wolo-preflight`. This command is observational: it
+reuses Recovery OS live inventory to prove the canonical `wolochaind-mainnet`
+service/home identity, exact protected listener cardinality on 8092/8093,
+settlement and founder-reward state presence, consensus home/data/config
+identity, operator-vault capacity, and protected key-custody metadata. It reads
+only key path/owner/mode/size metadata; validator keys, node keys, and keyring
+contents are never read into the general evidence path.
+
+A `READY` Wolo preflight is not authorization. The receipt must continue to
+declare settlement capture, Wolo quiesce, consensus capture, and key custody
+authorization false. Settlement and consensus recovery still require a
+separately authorized clean-main capture command, and key custody remains a
+separate secret-custody proof outside the general recovery vault.
+
 ## Restore drill
 
 1. Choose a sealed bundle and record its immutable remote version ID.
