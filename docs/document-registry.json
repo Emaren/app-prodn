@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "111916650f212b472c69c1c0433d1b90e525330d4644e033a48158248756cfae",
+      "sha256": "2d2f339589b5d2ada24ff0c4fd351b9148ff0d7a232e83bc9d951249e8791f7a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1838,7 +1838,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/current-chain-admin-retry-gate-v2",
-    "commit": "899189d0bd3e975d590cdb15a2c22ab7842fcf68"
+    "commit": "c3724eac63fbc24277ed0032eb3ce39b0dd01040"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
