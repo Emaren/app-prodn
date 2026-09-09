@@ -6,6 +6,11 @@ import {
   Store,
 } from "lucide-react";
 
+import {
+  findMarketplaceShopForAwning,
+  type MarketplaceShopListing,
+} from "@/lib/marketplaceShops";
+
 type StreetTheme = {
   section: string;
   header: string;
@@ -139,9 +144,75 @@ function StreetAwning({
   slot,
 }: {
   street: StreetDefinition;
-  slot: number;
+  slot: 1 | 2 | 3;
 }) {
   const { theme } = street;
+  const shop = findMarketplaceShopForAwning(
+    street.id as MarketplaceShopListing["streetKey"],
+    slot
+  );
+
+  if (shop) {
+    return (
+      <article
+        className={`group relative flex min-h-[22rem] flex-col overflow-hidden rounded-[1.7rem] border p-5 transition hover:-translate-y-1 ${theme.card} ${theme.cardHover}`}
+      >
+        <div
+          className={`absolute inset-x-0 top-0 h-5 opacity-85 ${theme.awning}`}
+        />
+
+        <div className="relative mt-5 flex items-center justify-between gap-3">
+          <span
+            className={`rounded-full border px-3 py-1 text-[9px] font-black uppercase tracking-[0.2em] ${theme.badge}`}
+          >
+            Open for trade
+          </span>
+
+          <Store className={`h-5 w-5 ${theme.headerIcon}`} />
+        </div>
+
+        <div className="relative mt-auto">
+          <div
+            className={`text-[10px] font-bold uppercase tracking-[0.26em] ${theme.eyebrow}`}
+          >
+            {street.label} · Awning 0{slot}
+          </div>
+
+          <h3
+            className={`market-display-title ${theme.title} mt-2 min-h-[5rem] font-serif text-[2rem] font-medium leading-[1.05] tracking-[-0.035em]`}
+          >
+            {shop.name}
+          </h3>
+
+          <p className="min-h-[3.25rem] text-sm leading-6 text-slate-400">
+            {shop.offer}
+          </p>
+
+          <div className="mt-4 flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+            <span>{shop.proprietorLabel}</span>
+            <span>{shop.charterWolo} WOLO charter</span>
+          </div>
+
+          <div className="mt-5 grid grid-cols-[auto_1fr] items-center gap-3 border-t border-white/10 pt-4">
+            <Link
+              href={shop.counterHref}
+              className="text-xs font-semibold text-slate-400 transition hover:text-white"
+            >
+              {shop.counterLabel}
+            </Link>
+
+            <Link
+              href={shop.href}
+              className={`inline-flex items-center justify-end gap-2 text-sm font-bold ${theme.action}`}
+            >
+              {shop.actionLabel}
+              <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" />
+            </Link>
+          </div>
+        </div>
+      </article>
+    );
+  }
 
   return (
     <Link
@@ -229,7 +300,7 @@ function MarketplaceStreet({
       </div>
 
       <div className="relative mt-5 grid gap-4 lg:grid-cols-3">
-        {[1, 2, 3].map((slot) => (
+        {([1, 2, 3] as const).map((slot) => (
           <StreetAwning
             key={slot}
             street={street}
