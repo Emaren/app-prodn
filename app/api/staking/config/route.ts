@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import {
   loadStakingExecutionLimits,
+  STAKING_REWARD_DISTRIBUTION_SAFETY_DETAIL,
+  STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED,
   STAKING_STAKE_SAFETY_DETAIL,
   STAKING_STAKE_SAFETY_PAUSED,
   STAKING_UNSTAKE_SAFETY_DETAIL,
@@ -25,6 +27,10 @@ export async function GET() {
     unstakeReadyDetail: STAKING_UNSTAKE_SAFETY_PAUSED
       ? STAKING_UNSTAKE_SAFETY_DETAIL
       : runtimeConfig.unstakeReadyDetail,
+    rewardDistributionReady: !STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED,
+    rewardDistributionReadyDetail: STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED
+      ? STAKING_REWARD_DISTRIBUTION_SAFETY_DETAIL
+      : null,
   };
   try {
     const funding = await loadStakingExecutionLimits(getPrisma(), 0);

@@ -104,21 +104,67 @@ The app keeps health diagnostics split by audience:
 
 ## Staking custody liability versus operating reserve
 
-The staking wallet chain balance contains two different kinds of funds:
+The staking wallet and app ledger must distinguish three economic classes:
 
-- confirmed user stake, including deposits made through the site Stake button;
-- operator funding held only to keep unstake execution liquid.
+- **direct staking principal** — user WOLO proven by the canonical staking
+  position and its chain-backed deposit/withdrawal history;
+- **compounded reward liability** — earned rewards that may become additional
+  staking principal only after equivalent custody backing is independently
+  proven on WoloChain;
+- **operator reserve funding** — non-user-liability WOLO held only to keep
+  withdrawals liquid.
 
-Only confirmed user stake contributes to staking principal, staking weight,
-auto-compound principal, withdrawable liability, leaderboard order, or staker
-status-room totals. Current values come from the canonical app position; daily
-reward weight and strict reconciliation replay the complete confirmed staking
-event ledger across retired and current custody wallets. Raw indexed transfers
-remain audit input and cannot independently create liability. Operational
-reserve funding remains visible in the indexed audit trail as `RESERVE` /
-`Admin operational funding`, but it is
-excluded from those calculations and from the default public staking feed.
-Admins can inspect it explicitly through the `Reserve/Admin` activity filter.
+Direct principal and confirmed compounded rewards both contribute to displayed
+withdrawable liability, but they do not share the same evidence path. A
+compound allocation must not become `COMPOUNDED` merely because an app row was
+written. The target invariant is:
+
+`earned reward -> COMPOUND_PENDING -> chain custody proven -> COMPOUNDED`.
+
+Until that invariant is implemented, new mainnet reward distribution is
+safety-paused.
+
+Current direct-principal values come from the canonical app position; strict
+reconciliation uses confirmed staking events across retired and current custody
+wallets plus chain evidence for wallet migrations. Raw indexed transfers remain
+audit input and cannot independently create liability. Operational reserve
+funding remains visible in the indexed audit trail as `RESERVE` /
+`Admin operational funding`, but is excluded from principal, weight,
+leaderboard order, and staker status-room totals. Admins can inspect it
+explicitly through the `Reserve/Admin` activity filter.
+
+### September 9, 2026 custody containment
+
+A read-only production audit at `2026-09-09T14:27:58Z` established:
+
+- active direct staking principal: **5,356,076 WOLO**;
+- confirmed compounded reward liability: **92,285 WOLO** across 109
+  `COMPOUND` events;
+- all 109 compound event hashes were synthetic `COMPOUND-*` identifiers;
+- indexed WoloChain matches for those compound hashes: **0**;
+- public staking-wallet balance: **5,434,586.735 WOLO**;
+- total confirmed displayed liability: **5,448,361 WOLO**;
+- operating reserve before target: **-13,774.265 WOLO**;
+- operating reserve target: **10,000 WOLO**;
+- operator top-up needed to satisfy liability plus target: **23,774.265 WOLO**.
+
+Current-wallet chain reconciliation separately proved Jim and Julio's active
+principal against their exact current-wallet deposits. Emaren's surviving
+100-WOLO legacy principal is explained by the old-custody-wallet migration.
+Historical pre-migration event rows must not be treated as current-wallet
+principal authority.
+
+The staking wallet also contains **101,055.015 WOLO** of explicitly memoed
+manual/reserve top-ups. These top-ups are custody funding, not user stake, and
+do not excuse synthetic compound confirmation.
+
+At the containment check the systemd reward timer was already
+`disabled`/`inactive`, and the application now has a second fail-closed barrier:
+authenticated reward-run requests return
+`STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED` before Prisma is acquired.
+
+No staking balance, reward allocation, or WoloChain transfer is rewritten by
+that containment change.
 
 Unstake checks and confirmed-event finalization must use that same combined
 mainnet liability. Finalization consumes direct principal before compounded

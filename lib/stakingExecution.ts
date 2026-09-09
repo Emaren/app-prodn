@@ -26,6 +26,9 @@ export const STAKING_STAKE_SAFETY_DETAIL =
 export const STAKING_UNSTAKE_SAFETY_PAUSED = true;
 export const STAKING_UNSTAKE_SAFETY_DETAIL =
   "Unstaking is temporarily paused while withdrawal protection is upgraded. Your confirmed stake remains recorded.";
+export const STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED = true;
+export const STAKING_REWARD_DISTRIBUTION_SAFETY_DETAIL =
+  "Staking reward distribution is temporarily paused while compounded rewards are upgraded to require chain-backed custody before confirmed staking liability can increase.";
 export const STAKING_WALLET_TOP_UP_HELP =
   "This wallet backs app-side staking withdrawals. Its chain balance must cover confirmed staking liability plus the 10,000 WOLO operating reserve target.";
 

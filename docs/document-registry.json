@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fa63a896ed6b31af1e8531f6f87cfa951f87ec03826cc447959708f5affb9c32",
+      "sha256": "5d2c741c315551e12e558f7ad18ecb9f10f55f9b9ac278e0003fb90797630025",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1692,7 +1692,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-09",
       "sensitivity": "restricted",
-      "sha256": "1dd6d2b36afde4a0b70ca1c21dfb66f4f6991d49a1199bc6f9a9f7a24fe691d0",
+      "sha256": "451d5d4e3a748809b04ffad27587ee8c714db6a3a0e6a382ef8ee84bd8a4329e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "hotfix/financial-p0-escrow-v2",
-    "commit": "68e2d43a3c18a7626d7f418f068edaf7b7c013d3"
+    "branch": "hotfix/staking-reward-safety-v1",
+    "commit": "e1a08b3f70f6246c2fb3641432c6702d2ddf78b0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
