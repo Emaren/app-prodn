@@ -296,11 +296,15 @@ def check_contract(doctor: Doctor, contract: dict[str, Any]) -> None:
 
 def check_toolchain(doctor: Doctor, contract: dict[str, Any]) -> None:
     expected = contract.get("toolchain", {})
-    results: dict[str, Any] = {}
+    results: dict[str, Any] = {
+        "python": {
+            "rc": 0,
+            "version": f"Python {sys.version.split()[0]}",
+        }
+    }
 
     for label, command in (
         ("node", ["node", "--version"]),
-        ("python", ["python3", "--version"]),
         ("yarn", ["yarn", "--version"]),
     ):
         rc, output = run(command, timeout=15)

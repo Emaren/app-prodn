@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/speed-shell-v3` at `81df89482bcf77460f95a5d4a618c22a24394074`
+Implementation baseline: `feature/operator-python-pin-v1` at `1ff465d613c6bc46312e14ddacf6a2dddd444095`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
