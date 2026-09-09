@@ -2455,29 +2455,39 @@ export async function createConfirmedStakingEvent(
     throw new StakingActionError("A confirmed chain tx hash is required.", 400);
   }
 
-  const existing = await prisma.stakingEvent.findFirst({
-    where: { txHash: normalizedTxHash },
-  });
-  if (existing) {
-    const sameUser = existing.userId === input.userId;
-    const sameType = existing.type === input.type;
-    const sameAmount = existing.amountWolo === input.amountWolo;
-    const sameWallet =
-      !input.walletAddress ||
-      !existing.walletAddress ||
-      existing.walletAddress.toLowerCase() === input.walletAddress.toLowerCase();
+  return prisma.$transaction(async (tx) => {
+    // Historical mainnet rows predate a unique txHash constraint. Serialize both
+    // proof reuse and per-user balance changes in Postgres so concurrent requests
+    // cannot credit the same receipt twice or overwrite one another's balance.
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(hashtextextended(${`staking-tx:${normalizedTxHash}`}, 0))
+    `;
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(hashtextextended(${`staking-user:${input.userId}`}, 0))
+    `;
 
-    if (sameUser && sameType && sameAmount && sameWallet) {
-      return existing;
+    const existing = await tx.stakingEvent.findFirst({
+      where: { txHash: normalizedTxHash },
+    });
+    if (existing) {
+      const sameUser = existing.userId === input.userId;
+      const sameType = existing.type === input.type;
+      const sameAmount = existing.amountWolo === input.amountWolo;
+      const sameWallet =
+        !input.walletAddress ||
+        !existing.walletAddress ||
+        existing.walletAddress.toLowerCase() === input.walletAddress.toLowerCase();
+
+      if (sameUser && sameType && sameAmount && sameWallet) {
+        return existing;
+      }
+
+      throw new StakingActionError(
+        "That transaction hash is already attached to a different staking record.",
+        409
+      );
     }
 
-    throw new StakingActionError(
-      "That transaction hash is already attached to a different staking record.",
-      409
-    );
-  }
-
-  return prisma.$transaction(async (tx) => {
     const now = new Date();
     const position = await tx.stakingPosition.upsert({
       where: { userId: input.userId },

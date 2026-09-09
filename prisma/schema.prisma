@@ -61,7 +61,7 @@ model User {
   watcherDownloadEvents          WatcherDownloadEvent[]
   watcherClientEvents            WatcherClientEvent[]
   gameWatchStreams               GameWatchStream[]               @relation("GameWatchStreamOwner")
-  retainedStreamDemos            GameWatchRetainedDemo[]          @relation("GameWatchRetainedDemoActor")
+  retainedStreamDemos            GameWatchRetainedDemo[]         @relation("GameWatchRetainedDemoActor")
   betWagers                      BetWager[]
   betStakeIntents                BetStakeIntent[]
   betStakeTickets                BetStakeTicket[]
@@ -72,6 +72,7 @@ model User {
   createdBetFounderBonuses       BetMarketFounderBonus[]         @relation("BetMarketFounderBonusCreator")
   stakingPosition                StakingPosition?
   stakingEvents                  StakingEvent[]
+  stakingUnstakeIntents          StakingUnstakeIntent[]
   stakingRewardAllocations       StakingRewardAllocation[]
   scheduledChallengesCreated     ScheduledMatch[]                @relation("ScheduledMatchChallenger")
   scheduledChallengesReceived    ScheduledMatch[]                @relation("ScheduledMatchChallenged")
@@ -2673,13 +2674,44 @@ model StakingEvent {
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   confirmedAt   DateTime? @map("confirmed_at") @db.Timestamp(6)
 
-  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  position StakingPosition? @relation(fields: [positionId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  position      StakingPosition?      @relation(fields: [positionId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  unstakeIntent StakingUnstakeIntent?
 
   @@index([userId, status, createdAt], map: "ix_staking_events_user_status_created")
   @@index([status, createdAt], map: "ix_staking_events_status_created")
   @@index([txHash], map: "ix_staking_events_tx_hash")
   @@map("staking_events")
+}
+
+model StakingUnstakeIntent {
+  id                   Int       @id @default(autoincrement())
+  publicId             String    @unique(map: "uq_staking_unstake_intents_public_id") @map("public_id") @db.VarChar(64)
+  userId               Int       @map("user_id")
+  clientRequestId      String    @map("client_request_id") @db.VarChar(128)
+  walletAddress        String    @map("wallet_address") @db.VarChar(100)
+  amountWolo           Int       @map("amount_wolo")
+  status               String    @default("prepared") @db.VarChar(32)
+  memo                 String    @db.VarChar(180)
+  txHash               String?   @unique(map: "uq_staking_unstake_intents_tx_hash") @map("tx_hash") @db.VarChar(128)
+  stakingEventId       Int?      @unique(map: "uq_staking_unstake_intents_event_id") @map("staking_event_id")
+  reserveSnapshot      Json?     @map("reserve_snapshot")
+  errorDetail          String?   @map("error_detail") @db.VarChar(500)
+  version              Int       @default(0)
+  executionStartedAt   DateTime? @map("execution_started_at") @db.Timestamp(6)
+  broadcastSubmittedAt DateTime? @map("broadcast_submitted_at") @db.Timestamp(6)
+  confirmedAt          DateTime? @map("confirmed_at") @db.Timestamp(6)
+  resolvedAt           DateTime? @map("resolved_at") @db.Timestamp(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  stakingEvent StakingEvent? @relation(fields: [stakingEventId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([userId, clientRequestId], map: "uq_staking_unstake_intents_user_request")
+  @@index([userId, status, updatedAt], map: "ix_staking_unstake_intents_user_status_updated")
+  @@index([status, updatedAt], map: "ix_staking_unstake_intents_status_updated")
+  @@map("staking_unstake_intents")
 }
 
 model WoloIndexedTransfer {
@@ -2807,7 +2839,7 @@ model GameWatchStream {
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  user User? @relation("GameWatchStreamOwner", fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  user         User?                  @relation("GameWatchStreamOwner", fields: [userId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   retainedDemo GameWatchRetainedDemo?
 
   @@index([sessionKey, isPrimary], map: "ix_game_watch_streams_session_primary")
@@ -3145,7 +3177,7 @@ model RadioAsset {
   createdAt             DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
 
-  sourceSubmission RadioSubmission?   @relation(fields: [sourceSubmissionId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  sourceSubmission RadioSubmission?     @relation(fields: [sourceSubmissionId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   programItems     RadioProgramItem[]
   listenerStates   RadioListenerState[]
   ratings          RadioTrackRating[]
@@ -3251,7 +3283,6 @@ model RadioTrackRating {
   @@index([listenerId, updatedAt], map: "ix_radio_track_ratings_listener_updated")
   @@map("radio_track_ratings")
 }
-
 
 /// Operator-controlled public state for the AoE2WAR Workshop. This table is a
 /// curated projection only; it never mirrors terminal output or private AI
