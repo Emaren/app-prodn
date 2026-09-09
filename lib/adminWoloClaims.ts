@@ -8,11 +8,13 @@ import {
 import { buildFounderPayoutIdentity } from "@/lib/founderPayoutIdentity";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
+import { getWoloBetEscrowRuntime } from "@/lib/woloChain";
 import { validateDistinctClaimPayoutTx } from "@/lib/woloClaimPayoutGuards";
 import {
   executeFounderWoloPayout,
   executeWoloPayout,
   executeWoloEscrowSettlementRun,
+  validateWoloEscrowSettlementRun,
   findConfirmedWoloPayoutByMemo,
   getWoloPayoutExecutionBlocker,
   type SettlementRunResult,
@@ -455,7 +457,7 @@ async function executeMarketClaimSettlementRun(input: {
     matchedUserId: input.matchedUserId,
   });
 
-  const execution = await executeWoloEscrowSettlementRun({
+  const runInput = {
     settlementRunId,
     sourceApp: "aoe2hdbets",
     sourceEventId: `pending-claim-${input.claimId}`,
@@ -469,8 +471,34 @@ async function executeMarketClaimSettlementRun(input: {
         memo: `${input.marketTitle} · ${input.claimKind} · ${input.memoTag}`,
       },
     ],
-  });
+  };
 
+  const validation = await validateWoloEscrowSettlementRun(runInput);
+  const validationPayout =
+    validation?.payouts.find((candidate) => candidate.requestId === requestId) ||
+    validation?.payouts[0] ||
+    null;
+  const expectedEscrowAddress =
+    getWoloBetEscrowRuntime().escrowAddress?.trim().toLowerCase() || null;
+  const validatedSignerAddress =
+    validation?.signerAddress?.trim().toLowerCase() || null;
+
+  if (
+    !validation?.ok ||
+    !validationPayout?.ok ||
+    validation.signerRole !== "escrow" ||
+    !expectedEscrowAddress ||
+    validatedSignerAddress !== expectedEscrowAddress
+  ) {
+    const detail = validation
+      ? summarizeSettlementRunFailure(validation, validationPayout)
+      : "WOLO escrow settlement dry-run is unavailable.";
+    throw new Error(
+      `Escrow claim retry dry-run failed closed: ${detail}`
+    );
+  }
+
+  const execution = await executeWoloEscrowSettlementRun(runInput);
   const payout =
     execution.payouts.find((candidate) => candidate.requestId === requestId) ||
     execution.payouts[0] ||

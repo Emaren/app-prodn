@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-08-28"
+reviewed_at: "2026-09-09"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -173,6 +173,11 @@ or hiding their indexed ledger rows.
   execute only when the dry-run is ok and signer role/address are verified.
 - Scheduled-match escrow settlement uses `signer_role=escrow` and refuses local
   payout-signer fallback.
+- Pending core market claim retries must preserve custody authority: bettor
+  payouts, exact refunds, and winner bounties dry-run and execute with
+  `signer_role=escrow` from the configured Bet Escrow signer. The dry-run must
+  prove the exact escrow role/address before execution; a generic payout/staking
+  reserve signer is not an allowed fallback for escrow-backed market debt.
 - Pending claim retries should distinguish unresolved wallet identity from
   settlement service or signer unavailability.
 - Team-market settlement must pass the immutable proposition/final-roster gate before any payout plan, betting fee, winner bounty, or founder bonus is created.

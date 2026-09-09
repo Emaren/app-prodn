@@ -178,7 +178,14 @@ test(
     assert.ok(helperStart >= 0 && helperEnd > helperStart);
 
     const helper = source.slice(helperStart, helperEnd);
-    assert.match(helper, /executeWoloEscrowSettlementRun\(\{/);
-    assert.doesNotMatch(helper, /executeWoloSettlementRun\(\{/);
+    assert.match(helper, /validateWoloEscrowSettlementRun\(runInput\)/);
+    assert.match(helper, /executeWoloEscrowSettlementRun\(runInput\)/);
+    assert.match(helper, /validation\.signerRole !== "escrow"/);
+    assert.match(
+      helper,
+      /validatedSignerAddress !== expectedEscrowAddress/,
+    );
+    assert.match(helper, /Escrow claim retry dry-run failed closed/);
+    assert.doesNotMatch(helper, /executeWoloSettlementRun\(/);
   }
 );
