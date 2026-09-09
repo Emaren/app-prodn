@@ -498,7 +498,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "757b16fb85b0c2d8e0bdd14fc4cc7c54db0449bd8f142b94eb0f6575c952b006",
+      "sha256": "f4926092831047e714a2007c7f8450ebf71cb6cc456cd50a05dac76853423b23",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1815,7 +1815,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/speed-shell-v1",
-    "commit": "dcb18d3ecee0c2dbb038c2a0348281070c9c6554"
+    "commit": "1d42dc53be1a24fed9ccd42bbd65eb0ebf2e2ecb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
