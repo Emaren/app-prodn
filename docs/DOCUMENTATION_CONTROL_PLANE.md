@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/recovery-wolo-preflight-v1` at `aaa5b8489f44be259e694efa0b8788b14900b025`
+Implementation baseline: `fix/recovery-wolo-preflight-v1` at `222c356b87db3fc91eadd13de4de34e22b2ae151`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
