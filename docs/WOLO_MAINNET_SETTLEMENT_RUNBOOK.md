@@ -117,12 +117,46 @@ The staking wallet and app ledger must distinguish three economic classes:
 Direct principal and confirmed compounded rewards both contribute to displayed
 withdrawable liability, but they do not share the same evidence path. A
 compound allocation must not become `COMPOUNDED` merely because an app row was
-written. The target invariant is:
+written. The mainnet invariant is:
 
-`earned reward -> COMPOUND_PENDING -> chain custody proven -> COMPOUNDED`.
+`earned reward -> COMPOUND_PENDING -> escrow-funded chain transfer -> staking custody proven -> COMPOUNDED`.
 
-Until that invariant is implemented, new mainnet reward distribution is
-safety-paused.
+The chain-backed compound v1 source implementation enforces that invariant for
+new mainnet distributions:
+
+- the distribution freezes `rewardSettlementPolicy=chain_backed_compound_v1`
+  and the explicit staking custody address;
+- auto-compound allocations are created as `COMPOUND_PENDING`, not
+  `COMPOUNDED`;
+- the historical inline synthetic `COMPOUND-*` confirmation path is disabled
+  on mainnet;
+- reward settlement uses the grouped **Bet Escrow** rail because betting fees
+  are the economic source of the staker reward pool;
+- the dry-run must prove `signerRole=escrow`, the exact configured Bet Escrow
+  signer address, every recipient, and every minimal-denom amount;
+- execution must again prove the escrow signer, and each returned payout must
+  match the exact planned recipient and `uwolo` amount with a real tx hash;
+- only after that receipt is proven may the allocation transition to
+  `COMPOUNDED`, increment `compoundedRewardsWolo`, and create a confirmed
+  `COMPOUND` event using the real chain tx hash;
+- direct `currentStakedWolo` principal is never incremented by compounding;
+- allocation finalization uses an atomic conditional state claim so concurrent
+  retries cannot double-credit liability;
+- v2 settlement run IDs and per-allocation request IDs are deterministic and
+  versioned, and retries reconstruct the complete original positive-reward
+  payout set so grouped-run identity cannot drift after partial success.
+- reward read models treat the mainnet allocation ledger as canonical across
+  both historical position-less rows and v2 position-linked rows; `position_id
+  IS NULL` is a historical storage shape, not reward-authority semantics.
+
+Historical distributions that do not carry the v2 settlement-policy metadata
+remain on their legacy semantics and are not silently rewritten or replayed.
+
+**Activation remains safety-paused.** Source implementation alone does not
+authorize reward distribution. The September 9 historical compound liability,
+staking custody deficit, and operating reserve must be reconciled and an
+explicitly certified activation decision must occur before the reward timer or
+application reward gate is re-enabled.
 
 Current direct-principal values come from the canonical app position; strict
 reconciliation uses confirmed staking events across retired and current custody

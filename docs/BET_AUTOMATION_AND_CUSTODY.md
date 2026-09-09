@@ -103,6 +103,39 @@ share one source-of-funds invariant:
 This prevents a fully funded Bet Escrow from stranding a bettor merely because a
 separate payout or staking-distribution reserve is below its operating floor.
 
+## Staking reward custody invariant
+
+The staker share of betting fees is also economically born in Bet Escrow.
+Mainnet reward distribution therefore must not create a second synthetic source
+of funds or treat an app-side reward allocation as custody proof.
+
+For new chain-backed reward distributions:
+
+- auto-compound creates `COMPOUND_PENDING`; it does not immediately increase
+  confirmed staking liability;
+- the distribution freezes its settlement-policy version and explicit staking
+  custody address so later configuration changes cannot alter retry payloads;
+- both cash rewards and compound-funding transfers execute through the grouped
+  **escrow** settlement rail, never the generic payout/staking-distribution
+  signer;
+- the dry-run and actual execution must prove the configured Bet Escrow signer,
+  exact request ID, recipient, integer `uwolo` amount, and a real successful
+  transaction;
+- compound funding is sent to the staking custody wallet; only after that
+  receipt is proven may `compoundedRewardsWolo` increase or a confirmed
+  `COMPOUND` event be written;
+- direct `currentStakedWolo` principal remains a separate user-deposit bucket;
+- per-allocation state claims are conditional and atomic so concurrent retries
+  cannot double-credit liability;
+- v2 run/request IDs are deterministic and the full original positive-reward
+  payout set is reconstructed on retry so grouped-run identity cannot drift;
+- historical synthetic compounds are evidence to reconcile, not rows to
+  silently rewrite.
+
+Reward distribution remains safety-paused until historical compounded liability,
+staking custody, and operating reserve are reconciled and activation is
+separately certified.
+
 ## Current app capability
 
 The profile Auto Bet Reserve is a preview-only configuration surface.

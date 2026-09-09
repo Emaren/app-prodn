@@ -9,10 +9,13 @@ import {
 } from "@/lib/betStakeFunding";
 import { buildStakingTreasuryPayoutRequestId } from "@/lib/stakingTreasuryPayouts";
 import {
+  executeWoloEscrowSettlementRun,
   executeWoloSettlementRun,
   getWoloPayoutExecutionBlocker,
+  hasWoloEscrowSettlementExecutionConfigured,
   hasWoloPayoutExecutionConfigured,
   validateWoloAddress,
+  validateWoloEscrowSettlementRun,
   validateWoloSettlementRun,
   type SettlementRunResult,
 } from "@/lib/woloBetSettlement";
@@ -35,7 +38,13 @@ import {
   loadIndexedWoloTransferActivityRows,
   type WoloIndexedTransferActivityRow,
 } from "@/lib/woloMainnetTransfers";
-import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
+import {
+  getWoloBetEscrowRuntime,
+  getWoloMainnetDisplayStartAt,
+  isWoloMainnet,
+  toUwoLoAmount,
+} from "@/lib/woloChain";
+import { getWoloStakingRuntime } from "@/lib/woloStakingRuntime";
 import {
   canExposePublicStakingActivityEvent,
   stakingTransferLedgerPresentation,
@@ -1245,7 +1254,6 @@ export async function loadStakingSummary(
       where: {
         rewardWolo: { gt: 0 },
         status: { not: "CLAIMED" },
-        ...(isWoloMainnet() ? { positionId: null } : {}),
         ...mainnetDisplayDateWhere(),
       },
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -1734,6 +1742,7 @@ export async function loadMainnetTransferStakingActivityPage(
       const status = String(allocation.status || "REWARD").toUpperCase();
       const isMicro = displayRewardWolo > 0 && displayRewardWolo < 1;
       const isCompounded = status === "COMPOUNDED";
+      const isCompoundPending = status === "COMPOUND_PENDING";
 
       return {
         key: `staking-allocation-${allocation.id}`,
@@ -1741,12 +1750,16 @@ export async function loadMainnetTransferStakingActivityPage(
           ? `${amountLabel} staking reward held in carry: ${player}`
           : isCompounded
             ? `${amountLabel} auto-compounded reward: ${player}`
-            : `${amountLabel} staking reward payout: ${player}`,
+            : isCompoundPending
+              ? `${amountLabel} auto-compound awaiting custody: ${player}`
+              : `${amountLabel} staking reward payout: ${player}`,
         detail: isMicro
           ? `${player} · precise micro reward accrued · held in staking carry · Distribution ${distributionDate}`
           : isCompounded
             ? `${player} · rolled into staking principal · canonical compounded receipt · Distribution ${distributionDate}`
-            : `${player} · ${status.toLowerCase()} reward allocation · Distribution ${distributionDate}`,
+            : isCompoundPending
+              ? `${player} · earned reward · awaiting escrow-funded staking custody proof · Distribution ${distributionDate}`
+              : `${player} · ${status.toLowerCase()} reward allocation · Distribution ${distributionDate}`,
         meta: formatMoment(createdAt),
         eventType: "REWARD",
         amountLabel,
@@ -1982,7 +1995,6 @@ async function loadMainnetLeaderboardData(
     prisma.stakingRewardAllocation.groupBy({
       by: ["userId"],
       where: {
-        positionId: null,
         ...mainnetDisplayDateWhere(),
       },
       _sum: { rewardWolo: true },
@@ -2103,7 +2115,6 @@ async function loadBoardRows(
 async function loadRecentRewardRows(prisma: PrismaClient): Promise<StakingLeaderboardRow[]> {
   const allocations = await prisma.stakingRewardAllocation.findMany({
     where: {
-      ...(isWoloMainnet() ? { positionId: null } : {}),
       ...mainnetDisplayDateWhere(),
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -2127,7 +2138,14 @@ async function loadRecentRewardRows(prisma: PrismaClient): Promise<StakingLeader
   return allocations.map((allocation, index) => ({
     userId: allocation.userId,
     player: displayPlayerName(allocation.user),
-    badge: allocation.status === "CREDITED" ? "Credited" : "Daily share",
+    badge:
+      allocation.status === "CREDITED"
+        ? "Credited"
+        : allocation.status === "COMPOUND_PENDING"
+          ? "Custody pending"
+          : allocation.status === "COMPOUNDED"
+            ? "Compounded"
+            : "Daily share",
     stakedWolo: allocation.position?.currentStakedWolo ?? 0,
     rewardsWolo: allocation.rewardWolo,
     stakingWeight: allocation.userWeight.toString(),
@@ -2136,53 +2154,63 @@ async function loadRecentRewardRows(prisma: PrismaClient): Promise<StakingLeader
   }));
 }
 
-async function loadMainnetRewardSnapshotForUser(
+export async function loadMainnetRewardSnapshotForUser(
   prisma: PrismaClient,
   userId: number,
 ) {
-  const [unpaidAllocation, claimedAllocation, lifetimeAllocation] = await Promise.all([
-      prisma.stakingRewardAllocation.aggregate({
-        where: {
-          userId,
-          positionId: null,
-          rewardWolo: { gt: 0 },
-          status: { not: "CLAIMED" },
-          ...mainnetDisplayDateWhere(),
-        },
-        _sum: { rewardWolo: true },
-      }),
-      prisma.stakingRewardAllocation.aggregate({
-        where: {
-          userId,
-          positionId: null,
-          rewardWolo: { gt: 0 },
-          status: "CLAIMED",
-          ...mainnetDisplayDateWhere(),
-        },
-        _sum: { rewardWolo: true },
-      }),
-      prisma.stakingRewardAllocation.aggregate({
-        where: {
-          userId,
-          positionId: null,
-          rewardWolo: { gt: 0 },
-          ...mainnetDisplayDateWhere(),
-        },
-        _sum: { rewardWolo: true },
-      }),
-    ]);
+  const [
+    pendingCashAllocation,
+    compoundPendingAllocation,
+    claimedAllocation,
+    lifetimeAllocation,
+  ] = await Promise.all([
+    prisma.stakingRewardAllocation.aggregate({
+      where: {
+        userId,
+        rewardWolo: { gt: 0 },
+        status: { in: [...creditedRewardStatuses()] },
+        ...mainnetDisplayDateWhere(),
+      },
+      _sum: { rewardWolo: true },
+    }),
+    prisma.stakingRewardAllocation.aggregate({
+      where: {
+        userId,
+        rewardWolo: { gt: 0 },
+        status: "COMPOUND_PENDING",
+        ...mainnetDisplayDateWhere(),
+      },
+      _sum: { rewardWolo: true },
+    }),
+    prisma.stakingRewardAllocation.aggregate({
+      where: {
+        userId,
+        rewardWolo: { gt: 0 },
+        status: "CLAIMED",
+        ...mainnetDisplayDateWhere(),
+      },
+      _sum: { rewardWolo: true },
+    }),
+    prisma.stakingRewardAllocation.aggregate({
+      where: {
+        userId,
+        rewardWolo: { gt: 0 },
+        ...mainnetDisplayDateWhere(),
+      },
+      _sum: { rewardWolo: true },
+    }),
+  ]);
 
-  const pendingAllocatedWolo = unpaidAllocation._sum.rewardWolo ?? 0;
+  const pendingRewardsWolo =
+    pendingCashAllocation._sum.rewardWolo ?? 0;
+  const compoundPendingRewardsWolo =
+    compoundPendingAllocation._sum.rewardWolo ?? 0;
   const claimedRewardsWolo = claimedAllocation._sum.rewardWolo ?? 0;
-  const lifetimeAllocatedWolo = lifetimeAllocation._sum.rewardWolo ?? 0;
-  const pendingRewardsWolo = pendingAllocatedWolo;
-  const lifetimeRewardsWolo = Math.max(
-    lifetimeAllocatedWolo,
-    pendingRewardsWolo + claimedRewardsWolo
-  );
+  const lifetimeRewardsWolo = lifetimeAllocation._sum.rewardWolo ?? 0;
 
   return {
     pendingRewardsWolo,
+    compoundPendingRewardsWolo,
     lifetimeRewardsWolo,
     claimedRewardsWolo,
   };
@@ -2286,10 +2314,15 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
     prisma.stakingRewardAllocation.findFirst({
       where: {
         userId,
-        ...(isWoloMainnet() ? { positionId: null, ...mainnetDisplayDateWhere() } : {}),
+        ...(isWoloMainnet()
+          ? {
+              status: { in: ["CLAIMED", "COMPOUNDED"] },
+              ...mainnetDisplayDateWhere(),
+            }
+          : {}),
         OR: [{ creditedAt: { not: null } }, { claimedAt: { not: null } }],
       },
-      orderBy: [{ creditedAt: "desc" }, { claimedAt: "desc" }, { createdAt: "desc" }],
+      orderBy: [{ claimedAt: "desc" }, { creditedAt: "desc" }, { createdAt: "desc" }],
       select: {
         creditedAt: true,
         claimedAt: true,
@@ -2309,6 +2342,7 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
     ? await loadMainnetRewardSnapshotForUser(prisma, userId)
     : {
         pendingRewardsWolo: 0,
+        compoundPendingRewardsWolo: 0,
         lifetimeRewardsWolo: 0,
         claimedRewardsWolo: 0,
       };
@@ -2340,6 +2374,9 @@ export async function loadStakingMe(prisma: PrismaClient, userId: number) {
       pendingRewardsWolo: useMainnetPosition
         ? mainnetRewardSnapshot.pendingRewardsWolo
         : position?.pendingRewardsWolo ?? 0,
+      compoundPendingRewardsWolo: useMainnetPosition
+        ? mainnetRewardSnapshot.compoundPendingRewardsWolo
+        : 0,
       lifetimeRewardsWolo: useMainnetPosition
         ? mainnetRewardSnapshot.lifetimeRewardsWolo
         : position?.lifetimeRewardsWolo ?? 0,
@@ -2573,8 +2610,38 @@ function buildStakingRewardSettlementRunId(distributionId: number, distributionD
   return `aoe2-staking-${stakingDistributionDateKey(distributionDate)}-${distributionId}`;
 }
 
+function buildStakingRewardSettlementRunIdV2(
+  distributionId: number,
+  distributionDate: Date,
+) {
+  return `aoe2-staking-v2-${stakingDistributionDateKey(distributionDate)}-${distributionId}`;
+}
+
+function normalizeWoloAddress(value: string | null | undefined) {
+  return (value || "").trim().toLowerCase();
+}
+
+const STAKING_REWARD_SETTLEMENT_POLICY_V2 = "chain_backed_compound_v1";
+
 function creditedRewardStatuses() {
   return ["CREDITED", "PENDING"] as const;
+}
+
+function chainBackedRewardStatuses() {
+  return [
+    "CREDITED",
+    "PENDING",
+    "CLAIMED",
+    "COMPOUND_PENDING",
+    "COMPOUNDED",
+  ] as const;
+}
+
+function isChainBackedRewardDistribution(metadata: Prisma.JsonValue | null | undefined) {
+  return (
+    String(jsonObject(metadata).rewardSettlementPolicy || "") ===
+    STAKING_REWARD_SETTLEMENT_POLICY_V2
+  );
 }
 
 export async function calculateDailyStakingRewardDistribution(
@@ -2685,6 +2752,23 @@ export async function calculateDailyStakingRewardDistribution(
       }));
   const settledVolumeWolo = settledAggregate._sum.amountWolo ?? 0;
   const feePools = calculateLedgerFeePools(settledVolumeWolo);
+  const stakingRuntime = getWoloStakingRuntime();
+  const compoundCustodyAddress =
+    isWoloMainnet() && stakingRuntime.walletSource === "staking"
+      ? stakingRuntime.stakingWalletAddress.trim()
+      : "";
+
+  if (
+    isWoloMainnet() &&
+    positions.length > 0 &&
+    feePools.stakerPoolWolo > 0 &&
+    !compoundCustodyAddress
+  ) {
+    throw new StakingActionError(
+      "Mainnet staking reward distribution requires an explicitly configured staking custody wallet.",
+      409,
+    );
+  }
   const rewardWindowSeconds = Math.max(
     0,
     Math.floor((periodEnd.getTime() - periodStart.getTime()) / 1000),
@@ -2740,6 +2824,13 @@ export async function calculateDailyStakingRewardDistribution(
               unit: "uwolo",
               rewardWeightPolicy: "linked_identity_cap_v1",
               rewardWeightCapWolo: KINGDOM_STAKE_REWARD_CAP_WOLO,
+              ...(isWoloMainnet()
+                ? {
+                    rewardSettlementPolicy: STAKING_REWARD_SETTLEMENT_POLICY_V2,
+                    compoundCustodyAddress,
+                    compoundCustodySource: stakingRuntime.walletSource,
+                  }
+                : {}),
             },
           },
         })
@@ -2761,6 +2852,13 @@ export async function calculateDailyStakingRewardDistribution(
               unit: "uwolo",
               rewardWeightPolicy: "linked_identity_cap_v1",
               rewardWeightCapWolo: KINGDOM_STAKE_REWARD_CAP_WOLO,
+              ...(isWoloMainnet()
+                ? {
+                    rewardSettlementPolicy: STAKING_REWARD_SETTLEMENT_POLICY_V2,
+                    compoundCustodyAddress,
+                    compoundCustodySource: stakingRuntime.walletSource,
+                  }
+                : {}),
             },
           },
         });
@@ -2808,7 +2906,14 @@ export async function calculateDailyStakingRewardDistribution(
               userWeight: position.userWeight,
               totalWeight,
               rewardWolo,
-              status: rewardWolo > 0 ? (shouldCompound ? "COMPOUNDED" : "CREDITED") : "MICRO_ACCRUED",
+              status:
+                rewardWolo > 0
+                  ? shouldCompound
+                    ? isWoloMainnet()
+                      ? "COMPOUND_PENDING"
+                      : "COMPOUNDED"
+                    : "CREDITED"
+                  : "MICRO_ACCRUED",
               creditedAt,
             },
           });
@@ -2827,7 +2932,7 @@ export async function calculateDailyStakingRewardDistribution(
             );
           }
 
-          if (shouldCompound && rewardWolo > 0) {
+          if (shouldCompound && rewardWolo > 0 && !isWoloMainnet()) {
             const balanceBefore = position.currentStakedWolo;
             const balanceAfter = balanceBefore + rewardWolo;
             const compoundTxHash = `COMPOUND-${distribution.id}-${position.userId}`;
@@ -2921,6 +3026,239 @@ export async function calculateDailyStakingRewardDistribution(
   });
 }
 
+export async function finalizeChainBackedCompoundAllocation(
+  tx: Prisma.TransactionClient,
+  input: {
+    allocationId: number;
+    distributionId: number;
+    frozenCompoundCustodyAddress: string;
+    payoutRequestId: string;
+    payoutTxHash: string;
+    payoutProofUrl: string | null;
+    settlementRunId: string;
+    settlementStatus: string;
+    settlementDetail: string | null;
+    settlementSignerAddress: string | null;
+    paidAt: Date;
+  },
+) {
+  const allocation = await tx.stakingRewardAllocation.findUnique({
+    where: { id: input.allocationId },
+  });
+  if (!allocation) return false;
+  if (allocation.status === "COMPOUNDED") return true;
+  if (allocation.status !== "COMPOUND_PENDING") return false;
+
+  const claimed = await tx.stakingRewardAllocation.updateMany({
+    where: {
+      id: allocation.id,
+      status: "COMPOUND_PENDING",
+    },
+    data: {
+      status: "COMPOUNDED",
+    },
+  });
+  if (claimed.count !== 1) {
+    const refreshed = await tx.stakingRewardAllocation.findUnique({
+      where: { id: allocation.id },
+      select: { status: true },
+    });
+    return refreshed?.status === "COMPOUNDED";
+  }
+
+  const position = allocation.positionId
+    ? await tx.stakingPosition.findUnique({
+        where: { id: allocation.positionId },
+      })
+    : await tx.stakingPosition.findUnique({
+        where: { userId: allocation.userId },
+      });
+
+  const balanceBefore = position
+    ? resolvePublicCurrentStakedWolo(position)
+    : 0;
+  const weightBefore = position
+    ? computeCurrentStakingWeight(
+        {
+          currentStakedWolo: balanceBefore,
+          accumulatedWeight: position.accumulatedWeight,
+          lastWeightUpdateAt: position.lastWeightUpdateAt,
+        },
+        input.paidAt,
+      )
+    : BigInt(0);
+
+  const compoundPosition = position
+    ? await tx.stakingPosition.update({
+        where: { id: position.id },
+        data: {
+          walletAddress: allocation.walletAddress ?? position.walletAddress,
+          compoundedRewardsWolo: { increment: allocation.rewardWolo },
+          lifetimeRewardsWolo: { increment: allocation.rewardWolo },
+          accumulatedWeight: weightBefore,
+          lastWeightUpdateAt: input.paidAt,
+          status: "active",
+        },
+      })
+    : await tx.stakingPosition.create({
+        data: {
+          userId: allocation.userId,
+          walletAddress: allocation.walletAddress,
+          currentStakedWolo: 0,
+          compoundedRewardsWolo: allocation.rewardWolo,
+          lifetimeRewardsWolo: allocation.rewardWolo,
+          autoCompoundRewards: true,
+          accumulatedWeight: weightBefore,
+          lastWeightUpdateAt: input.paidAt,
+          status: "active",
+        },
+      });
+
+  await tx.stakingEvent.create({
+    data: {
+      userId: allocation.userId,
+      positionId: compoundPosition.id,
+      walletAddress: allocation.walletAddress,
+      type: "COMPOUND",
+      amountWolo: allocation.rewardWolo,
+      txHash: input.payoutTxHash,
+      status: "CONFIRMED",
+      weightBefore,
+      weightAfter: weightBefore,
+      balanceBefore,
+      balanceAfter: balanceBefore + allocation.rewardWolo,
+      confirmedAt: input.paidAt,
+      metadata: {
+        chainBackedCompound: true,
+        compoundCustodyAddress: input.frozenCompoundCustodyAddress,
+        stakingRewardDistributionId: input.distributionId,
+        stakingRewardAllocationId: allocation.id,
+        payoutRequestId: input.payoutRequestId,
+        payoutProofUrl: input.payoutProofUrl,
+        settlementRunId: input.settlementRunId,
+        settlementStatus: input.settlementStatus,
+        settlementDetail: input.settlementDetail,
+        settlementSignerAddress: input.settlementSignerAddress,
+      },
+    },
+  });
+
+  return true;
+}
+
+export async function finalizeChainBackedCashAllocation(
+  tx: Prisma.TransactionClient,
+  input: {
+    allocationId: number;
+    distributionId: number;
+    payoutWalletAddress: string;
+    payoutRequestId: string;
+    payoutTxHash: string;
+    payoutProofUrl: string | null;
+    settlementRunId: string;
+    settlementStatus: string;
+    settlementDetail: string | null;
+    paidAt: Date;
+  },
+) {
+  const allocation = await tx.stakingRewardAllocation.findUnique({
+    where: { id: input.allocationId },
+  });
+  if (!allocation) return false;
+  if (allocation.status === "CLAIMED") return true;
+  if (
+    !creditedRewardStatuses().includes(
+      allocation.status as (ReturnType<typeof creditedRewardStatuses>)[number],
+    )
+  ) {
+    return false;
+  }
+
+  const claimed = await tx.stakingRewardAllocation.updateMany({
+    where: {
+      id: allocation.id,
+      status: { in: [...creditedRewardStatuses()] },
+    },
+    data: {
+      status: "CLAIMED",
+      claimedAt: input.paidAt,
+    },
+  });
+  if (claimed.count !== 1) {
+    const refreshed = await tx.stakingRewardAllocation.findUnique({
+      where: { id: allocation.id },
+      select: { status: true },
+    });
+    return refreshed?.status === "CLAIMED";
+  }
+
+  const position = allocation.positionId
+    ? await tx.stakingPosition.findUnique({
+        where: { id: allocation.positionId },
+      })
+    : await tx.stakingPosition.findUnique({
+        where: { userId: allocation.userId },
+      });
+  const balanceWolo = position
+    ? resolvePublicCurrentStakedWolo(position)
+    : 0;
+  const weightBefore = position
+    ? computeCurrentStakingWeight(
+        {
+          currentStakedWolo: balanceWolo,
+          accumulatedWeight: position.accumulatedWeight,
+          lastWeightUpdateAt: position.lastWeightUpdateAt,
+        },
+        input.paidAt,
+      )
+    : allocation.userWeight;
+
+  if (position) {
+    await tx.stakingPosition.update({
+      where: { id: position.id },
+      data: {
+        pendingRewardsWolo: {
+          decrement: Math.min(
+            position.pendingRewardsWolo,
+            allocation.rewardWolo,
+          ),
+        },
+        claimedRewardsWolo: { increment: allocation.rewardWolo },
+        accumulatedWeight: weightBefore,
+        lastWeightUpdateAt: input.paidAt,
+      },
+    });
+  }
+
+  await tx.stakingEvent.create({
+    data: {
+      userId: allocation.userId,
+      positionId: position?.id ?? allocation.positionId,
+      walletAddress: input.payoutWalletAddress,
+      type: "CLAIM",
+      amountWolo: allocation.rewardWolo,
+      txHash: input.payoutTxHash,
+      status: "CONFIRMED",
+      weightBefore,
+      weightAfter: weightBefore,
+      balanceBefore: balanceWolo,
+      balanceAfter: balanceWolo,
+      confirmedAt: input.paidAt,
+      metadata: {
+        stakingRewardDistributionId: input.distributionId,
+        stakingRewardAllocationId: allocation.id,
+        payoutRequestId: input.payoutRequestId,
+        payoutProofUrl: input.payoutProofUrl,
+        settlementRunId: input.settlementRunId,
+        settlementStatus: input.settlementStatus,
+        settlementDetail: input.settlementDetail,
+      },
+    },
+  });
+
+  return true;
+}
+
 export async function executeDailyStakingRewardPayouts(
   prisma: PrismaClient,
   distributionId: number
@@ -2931,7 +3269,6 @@ export async function executeDailyStakingRewardPayouts(
       allocations: {
         where: {
           rewardWolo: { gt: 0 },
-          status: { in: [...creditedRewardStatuses()] },
         },
         orderBy: [{ id: "asc" }],
         include: {
@@ -2952,20 +3289,97 @@ export async function executeDailyStakingRewardPayouts(
   }
 
   const distributionDate = stakingDistributionDateKey(distribution.distributionDate);
-  const payoutExecutionConfigured = hasWoloPayoutExecutionConfigured();
-  const validPlans = distribution.allocations
+  const chainBackedCompound = isChainBackedRewardDistribution(distribution.metadata);
+  const payoutExecutionConfigured = chainBackedCompound
+    ? hasWoloEscrowSettlementExecutionConfigured()
+    : hasWoloPayoutExecutionConfigured();
+  const distributionMetadata = jsonObject(distribution.metadata);
+  const frozenCompoundCustodyAddress = chainBackedCompound
+    ? String(distributionMetadata.compoundCustodyAddress || "").trim()
+    : "";
+  const expectedEscrowAddress = chainBackedCompound
+    ? normalizeWoloAddress(getWoloBetEscrowRuntime().escrowAddress)
+    : "";
+
+  if (chainBackedCompound) {
+    const currentStakingRuntime = getWoloStakingRuntime();
+    const currentCustodyAddress =
+      currentStakingRuntime.walletSource === "staking"
+        ? currentStakingRuntime.stakingWalletAddress.trim()
+        : "";
+    const frozenAddressError = frozenCompoundCustodyAddress
+      ? validateWoloAddress(frozenCompoundCustodyAddress)
+      : "Staking custody address is missing.";
+
+    if (frozenAddressError) {
+      throw new StakingActionError(
+        `Chain-backed staking reward distribution has an invalid frozen custody address: ${frozenAddressError}`,
+        409,
+      );
+    }
+    if (
+      !currentCustodyAddress ||
+      normalizeWoloAddress(currentCustodyAddress) !==
+        normalizeWoloAddress(frozenCompoundCustodyAddress)
+    ) {
+      throw new StakingActionError(
+        "Current staking custody does not match the address frozen into this reward distribution; operator reconciliation is required before payout.",
+        409,
+      );
+    }
+
+    const allowedStatuses = new Set<string>(chainBackedRewardStatuses());
+    const unsupportedAllocation = distribution.allocations.find(
+      (allocation) => !allowedStatuses.has(allocation.status),
+    );
+    if (unsupportedAllocation) {
+      throw new StakingActionError(
+        `Chain-backed reward distribution contains unsupported allocation status ${unsupportedAllocation.status}; refusing a non-deterministic retry.`,
+        409,
+      );
+    }
+  }
+
+  const eligibleAllocations = chainBackedCompound
+    ? distribution.allocations
+    : distribution.allocations.filter((allocation) =>
+        creditedRewardStatuses().includes(
+          allocation.status as (ReturnType<typeof creditedRewardStatuses>)[number],
+        ),
+      );
+
+  const validPlans = eligibleAllocations
     .map((allocation) => {
-      const walletAddress = allocation.walletAddress?.trim() || "";
-      const addressError = walletAddress ? validateWoloAddress(walletAddress) : "Wallet address is required.";
+      const compound =
+        chainBackedCompound &&
+        (allocation.status === "COMPOUND_PENDING" ||
+          allocation.status === "COMPOUNDED");
+      const walletAddress = compound
+        ? frozenCompoundCustodyAddress
+        : allocation.walletAddress?.trim() || "";
+      const addressError = walletAddress
+        ? validateWoloAddress(walletAddress)
+        : "Wallet address is required.";
+      const requestId = chainBackedCompound
+        ? `staking-reward-v2-${distribution.id}-${allocation.id}:${
+            compound ? "compound" : "cash"
+          }`
+        : `staking-reward-${distributionDate}-${allocation.userId}`;
+      const memo = compound
+        ? `AoE2 staking compound ${distributionDate}`
+        : `AoE2 staking reward ${distributionDate}`;
+
       return {
         allocation,
+        compound,
         walletAddress,
         addressError,
-        requestId: `staking-reward-${distributionDate}-${allocation.userId}`,
+        requestId,
+        memo,
       };
     })
     .filter((plan) => !plan.addressError);
-  const skippedPayouts = distribution.allocations.length - validPlans.length;
+  const skippedPayouts = eligibleAllocations.length - validPlans.length;
 
   if (validPlans.length === 0) {
     return {
@@ -2997,32 +3411,43 @@ export async function executeDailyStakingRewardPayouts(
       skippedPayouts,
       status: "not_configured",
       detail:
-        getWoloPayoutExecutionBlocker() ||
-        "WOLO payout execution is not configured; rewards remain queued in the app ledger.",
+        chainBackedCompound
+          ? "WOLO escrow settlement execution is not configured; chain-backed staking rewards remain queued without increasing staking liability."
+          : getWoloPayoutExecutionBlocker() ||
+            "WOLO payout execution is not configured; rewards remain queued in the app ledger.",
       validation: null,
       execution: null,
     };
   }
 
-  const settlementRunId = buildStakingRewardSettlementRunId(
-    distribution.id,
-    distribution.distributionDate
-  );
+  const settlementRunId = chainBackedCompound
+    ? buildStakingRewardSettlementRunIdV2(
+        distribution.id,
+        distribution.distributionDate,
+      )
+    : buildStakingRewardSettlementRunId(
+        distribution.id,
+        distribution.distributionDate,
+      );
   const payouts = validPlans.map((plan) => ({
     requestId: plan.requestId,
     toAddress: plan.walletAddress,
     amountWolo: plan.allocation.rewardWolo,
-    memo: `AoE2 staking reward ${distributionDate}`,
+    memo: plan.memo,
   }));
 
-  const validation = await validateWoloSettlementRun({
+  const settlementInput = {
     settlementRunId,
     sourceApp: "aoe2hdbets",
     sourceEventId: `staking-reward-${distribution.id}`,
     note: `Staking reward distribution ${distributionDate}`,
     memo: `AoE2 staking rewards ${distributionDate}`,
     payouts,
-  });
+  };
+
+  const validation = chainBackedCompound
+    ? await validateWoloEscrowSettlementRun(settlementInput)
+    : await validateWoloSettlementRun(settlementInput);
   if (!validation) {
     return {
       distributionId: distribution.id,
@@ -3039,6 +3464,49 @@ export async function executeDailyStakingRewardPayouts(
       execution: null,
     };
   }
+  if (chainBackedCompound) {
+    const validatedSignerAddress = normalizeWoloAddress(
+      validation.signerAddress,
+    );
+    const validationByRequestId = new Map(
+      validation.payouts.map((payout) => [payout.requestId, payout] as const),
+    );
+    const dryRunMatchesPlan = validPlans.every((plan) => {
+      const payout = validationByRequestId.get(plan.requestId);
+      return Boolean(
+        payout?.ok &&
+          normalizeWoloAddress(payout.toAddress) ===
+            normalizeWoloAddress(plan.walletAddress) &&
+          payout.amountUWolo === toUwoLoAmount(plan.allocation.rewardWolo),
+      );
+    });
+
+    if (
+      !validation.ok ||
+      validation.signerRole !== "escrow" ||
+      !expectedEscrowAddress ||
+      validatedSignerAddress !== expectedEscrowAddress ||
+      !dryRunMatchesPlan
+    ) {
+      return {
+        distributionId: distribution.id,
+        distributionDate,
+        payoutExecutionConfigured,
+        settlementRunId,
+        requestedPayouts: validPlans.length,
+        executedPayouts: 0,
+        skippedPayouts,
+        status: "failed",
+        detail:
+          validation.detail ||
+          validation.failureCode ||
+          "Chain-backed staking reward dry-run failed escrow authority, recipient, or amount validation.",
+        validation,
+        execution: null,
+      };
+    }
+  }
+
   if (!validation.ok) {
     return {
       distributionId: distribution.id,
@@ -3058,14 +3526,35 @@ export async function executeDailyStakingRewardPayouts(
     };
   }
 
-  const execution = await executeWoloSettlementRun({
-    settlementRunId,
-    sourceApp: "aoe2hdbets",
-    sourceEventId: `staking-reward-${distribution.id}`,
-    note: `Staking reward distribution ${distributionDate}`,
-    memo: `AoE2 staking rewards ${distributionDate}`,
-    payouts,
-  });
+  const execution = chainBackedCompound
+    ? await executeWoloEscrowSettlementRun(settlementInput)
+    : await executeWoloSettlementRun(settlementInput);
+
+  if (
+    chainBackedCompound &&
+    (
+      execution.signerRole !== "escrow" ||
+      normalizeWoloAddress(execution.signerAddress) !== expectedEscrowAddress
+    )
+  ) {
+    return {
+      distributionId: distribution.id,
+      distributionDate,
+      payoutExecutionConfigured,
+      settlementRunId,
+      requestedPayouts: validPlans.length,
+      executedPayouts: 0,
+      skippedPayouts,
+      status: "failed",
+      detail:
+        execution.detail ||
+        execution.failureCode ||
+        "Chain-backed staking reward execution did not prove the configured escrow signer.",
+      validation,
+      execution,
+    };
+  }
+
   const payoutByRequestId = new Map(
     execution.payouts.map((payout) => [payout.requestId, payout] as const)
   );
@@ -3076,11 +3565,59 @@ export async function executeDailyStakingRewardPayouts(
     for (const plan of validPlans) {
       const payout = payoutByRequestId.get(plan.requestId);
       if (!payout?.ok || !payout.txHash) continue;
+      if (
+        normalizeWoloAddress(payout.toAddress) !==
+        normalizeWoloAddress(plan.walletAddress)
+      ) {
+        continue;
+      }
+      if (payout.amountUWolo !== toUwoLoAmount(plan.allocation.rewardWolo)) {
+        continue;
+      }
 
       const allocation = await tx.stakingRewardAllocation.findUnique({
         where: { id: plan.allocation.id },
       });
-      if (!allocation || !creditedRewardStatuses().includes(allocation.status as "CREDITED" | "PENDING")) {
+      if (!allocation) continue;
+
+      if (chainBackedCompound) {
+        const finalized = plan.compound
+          ? await finalizeChainBackedCompoundAllocation(tx, {
+              allocationId: allocation.id,
+              distributionId: distribution.id,
+              frozenCompoundCustodyAddress,
+              payoutRequestId: plan.requestId,
+              payoutTxHash: payout.txHash,
+              payoutProofUrl: payout.proofUrl ?? null,
+              settlementRunId,
+              settlementStatus: execution.status,
+              settlementDetail: payout.detail ?? execution.detail ?? null,
+              settlementSignerAddress:
+                payout.signerAddress ?? execution.signerAddress ?? null,
+              paidAt,
+            })
+          : await finalizeChainBackedCashAllocation(tx, {
+              allocationId: allocation.id,
+              distributionId: distribution.id,
+              payoutWalletAddress: plan.walletAddress,
+              payoutRequestId: plan.requestId,
+              payoutTxHash: payout.txHash,
+              payoutProofUrl: payout.proofUrl ?? null,
+              settlementRunId,
+              settlementStatus: execution.status,
+              settlementDetail: payout.detail ?? execution.detail ?? null,
+              paidAt,
+            });
+
+        if (finalized) executedPayouts += 1;
+        continue;
+      }
+
+      if (
+        !creditedRewardStatuses().includes(
+          allocation.status as "CREDITED" | "PENDING",
+        )
+      ) {
         continue;
       }
 
@@ -3163,7 +3700,9 @@ export async function executeDailyStakingRewardPayouts(
     detail:
       execution.detail ||
       (status === "confirmed"
-        ? "All staking rewards were paid on WoloChain."
+        ? chainBackedCompound
+          ? "All staking reward payouts and compound custody transfers were confirmed on WoloChain."
+          : "All staking rewards were paid on WoloChain."
         : "One or more staking reward payouts did not execute."),
     validation,
     execution,

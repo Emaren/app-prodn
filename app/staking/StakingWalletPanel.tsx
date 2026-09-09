@@ -177,7 +177,12 @@ export default function StakingWalletPanel() {
             <StakingMetric
               label="Pending Rewards"
               value={stakingLoading ? "Syncing" : formatWholeWolo(stakingState?.position.pendingRewardsWolo)}
-              helper="Claims open next"
+              helper="Cash rewards awaiting payout"
+            />
+            <StakingMetric
+              label="Compound Pending"
+              value={stakingLoading ? "Syncing" : formatWholeWolo(stakingState?.position.compoundPendingRewardsWolo)}
+              helper="Awaiting chain custody proof"
             />
             <StakingMetric
               label="Lifetime Rewards"
