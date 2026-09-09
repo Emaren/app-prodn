@@ -272,6 +272,12 @@ not bind `audio.src`, select `preload=auto`, or call `load()` until explicit or
 autoplay listening intent exists. This keeps multi-megabyte audio transfers from
 competing with route HTML, hydration, critical APIs, Watcher traffic, or Ready.
 
+Global-shell data reads must also follow visible capability. Radio WOLO rating
+truth is required only while the player is expanded and the 1–10 rating controls
+can actually be used. Dormant and compact mounts keep listener ON/OFF, heartbeat,
+pagehide, station identity, and Admin intelligence intact, but do not spend a
+session/current-asset/rating query merely to hydrate invisible controls.
+
 Cache-safety class is part of the performance contract. A route classified as a
 `static_client_shell_candidate` must not become server-personalized merely to
 remove one client API round trip unless measured production evidence proves that

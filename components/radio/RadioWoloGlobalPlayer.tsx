@@ -757,6 +757,9 @@ export default function RadioWoloGlobalPlayer() {
       soundEnabled:
         isListening &&
         !playbackBlocked,
+      ratingEnabled:
+        mode ===
+        "expanded",
     });
 
   const [

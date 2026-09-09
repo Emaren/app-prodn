@@ -99,6 +99,12 @@ a star immediately saves or replaces the listener's rating. Signed-in ratings
 are canonical per AoE2WAR account and RadioAsset; anonymous ratings are canonical
 per random browser listener and RadioAsset.
 
+Rating truth is loaded only while the global player is expanded, because that is
+the only mode in which the rating controls are usable. Dormant and compact modes
+still report the full listener lifecycle — initial Sound Off observation, Sound
+On/Off transitions, heartbeat, pagehide teardown, and Admin listener intelligence
+— but they do not issue the rating GET for invisible controls.
+
 The client never supplies the RadioAsset being rated as authority. The feedback
 endpoint resolves the currently airing asset from RadioStationState and the
 authoritative program clock before writing a rating.

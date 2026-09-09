@@ -94,6 +94,8 @@ export function useRadioWoloFeedback(
       | null;
     soundEnabled:
       boolean;
+    ratingEnabled:
+      boolean;
   },
 ) {
   const [
@@ -314,6 +316,7 @@ export function useRadioWoloFeedback(
     setRatingError(null);
 
     if (
+      !input.ratingEnabled ||
       !listenerId ||
       !input.trackKey
     ) {
@@ -401,6 +404,7 @@ export function useRadioWoloFeedback(
         },
       );
   }, [
+    input.ratingEnabled,
     input.trackKey,
     listenerId,
   ]);

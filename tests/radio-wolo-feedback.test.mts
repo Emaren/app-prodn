@@ -266,6 +266,36 @@ test(
 );
 
 test(
+  "Radio WOLO loads rating truth only while the rating UI is usable",
+  () => {
+    const hook =
+      read(
+        "hooks/useRadioWoloFeedback.ts",
+      );
+
+    const player =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      player,
+      /ratingEnabled:\s*mode ===\s*"expanded"/,
+    );
+
+    assert.match(
+      hook,
+      /!input\.ratingEnabled\s*\|\|\s*!listenerId\s*\|\|\s*!input\.trackKey/,
+    );
+
+    assert.match(
+      hook,
+      /input\.ratingEnabled,\s*input\.trackKey,\s*listenerId/,
+    );
+  },
+);
+
+test(
   "Radio WOLO exposes ten immediate stars and icon emoji presentation choices",
   () => {
     const player =
