@@ -14,6 +14,22 @@ function normalizeAddress(value: string | null | undefined) {
   return (value || "").trim().toLowerCase();
 }
 
+export function isAuthoritativeMainnetStakingEvent(event: {
+  type: string;
+  txHash?: string | null;
+  metadata?: unknown;
+}) {
+  if (event.type !== "COMPOUND") return true;
+  const metadata =
+    event.metadata && typeof event.metadata === "object" && !Array.isArray(event.metadata)
+      ? (event.metadata as Record<string, unknown>)
+      : {};
+  return (
+    metadata.chainBackedCompound === true &&
+    /^[A-F0-9]{64}$/i.test((event.txHash || "").trim())
+  );
+}
+
 function displayUserName(user: {
   uid: string;
   inGameName: string | null;
@@ -157,6 +173,7 @@ export async function loadMainnetStakingPositions(
               type: true,
               amountWolo: true,
               txHash: true,
+              metadata: true,
               walletAddress: true,
               createdAt: true,
               confirmedAt: true,
@@ -206,7 +223,9 @@ export async function loadMainnetStakingPositions(
   // logical event ledger spans both current and retired custody wallets. Raw
   // indexed sends remain transfer-audit input and cannot change staking
   // liability, reward weight, max-unstake, or public current stake.
-  const eventTransfers: MainnetStakingTransferInput[] = events.map((event) => {
+  const eventTransfers: MainnetStakingTransferInput[] = events
+    .filter(isAuthoritativeMainnetStakingEvent)
+    .map((event) => {
     const walletAddress = normalizeAddress(
       event.walletAddress || event.user.walletAddress,
     );

@@ -35,6 +35,16 @@ test("new mainnet auto-compound allocations remain pending until custody", () =>
   );
   assert.match(calculate, /compoundCustodyAddress/);
 });
+test("legacy compound-pending rewards are quarantined from the legacy payout rail", () => {
+  const execute = source.slice(
+    source.indexOf("export async function executeDailyStakingRewardPayouts"),
+  );
+
+  assert.match(execute, /!chainBackedCompound/);
+  assert.match(execute, /allocation\.status === "COMPOUND_PENDING"/);
+  assert.match(execute, /Legacy compound-pending staking rewards require explicit custody reconciliation/);
+});
+
 test("v2 reward settlement is escrow-authorized and versioned", () => {
   const execute = source.slice(
     source.indexOf("export async function executeDailyStakingRewardPayouts"),
