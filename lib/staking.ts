@@ -3303,6 +3303,17 @@ export async function executeDailyStakingRewardPayouts(
   const payoutExecutionConfigured = chainBackedCompound
     ? hasWoloEscrowSettlementExecutionConfigured()
     : hasWoloPayoutExecutionConfigured();
+  if (
+    !chainBackedCompound &&
+    distribution.allocations.some(
+      (allocation) => allocation.status === "COMPOUND_PENDING",
+    )
+  ) {
+    throw new StakingActionError(
+      "Legacy compound-pending staking rewards require explicit custody reconciliation; refusing to route them through the legacy payout rail.",
+      409,
+    );
+  }
   const distributionMetadata = jsonObject(distribution.metadata);
   const frozenCompoundCustodyAddress = chainBackedCompound
     ? String(distributionMetadata.compoundCustodyAddress || "").trim()

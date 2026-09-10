@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2b4347767296a9d88fa90d7353d4082fa9510d3980e42dfaaa54b88edeff0965",
+      "sha256": "eb0f48320221b3d654705d0892fd64107cebfbcb74a091988b92efc62197da6a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-10",
       "sensitivity": "internal",
-      "sha256": "41f19895b580226b12bb3ce8156c79d214283a76e507bac00e83aa16cf35886a",
+      "sha256": "3ea5653f2e955b42ce12135d8e198e5d800f8c7a4bc9ab200cdb09a6f336d8e8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1690,9 +1690,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_MAINNET_SETTLEMENT_RUNBOOK.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-09",
+      "reviewed_at": "2026-09-10",
       "sensitivity": "restricted",
-      "sha256": "d182d03b31481700dc7803e2741637b58965b49f40c0989863279d4d236bbaa6",
+      "sha256": "2cd41cdd4480cf5c246e45d7bfaa232b30ade04584f84bf4f705874877571042",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/recovery-wolo-offhost-v1",
-    "commit": "406c6b9b6e62bc6924b66a01fb3f8ec9720923d6"
+    "branch": "fix/staking-legacy-compound-reconciliation-v1",
+    "commit": "3b2ed999dd70b065bfa5000792060d17ae2640b3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
