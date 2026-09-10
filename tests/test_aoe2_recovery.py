@@ -74,6 +74,30 @@ class RecoveryTests(unittest.TestCase):
             ],
         )
 
+    def test_campaign_wolo_offhost_start_is_forwarded_verbatim(self):
+        completed = type("Completed", (), {"returncode": 0})()
+        with patch.object(recovery.subprocess, "run", return_value=completed) as run:
+            rc = recovery.forward_campaign_cli(
+                [
+                    "campaign",
+                    "wolo-offhost-start",
+                    "ordinary-test",
+                    "--authorize-wolo-offhost-capture",
+                    "--json",
+                ]
+            )
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(
+            run.call_args.args[0][2:],
+            [
+                "wolo-offhost-start",
+                "ordinary-test",
+                "--authorize-wolo-offhost-capture",
+                "--json",
+            ],
+        )
+
     def test_campaign_plan_is_not_intercepted_by_forwarder(self):
         self.assertIsNone(
             recovery.forward_campaign_cli(["campaign", "plan", "--json"])
@@ -178,6 +202,48 @@ class RecoveryTests(unittest.TestCase):
         )
         return summary
 
+    def _wolo_offhost_summary(self, bundle: Path) -> Path:
+        coverage: dict[str, dict[str, str]] = {}
+        for class_name in recovery.WOLO_OFFHOST_RECOVERY_CLASSES:
+            evidence = bundle / "restore-proofs" / f"{class_name}.json"
+            self._write_json_with_sidecar(
+                evidence,
+                {"class": class_name, "status": "PASS"},
+            )
+            coverage[class_name] = {
+                "status": "PASS",
+                "proof_file": str(evidence.relative_to(bundle)),
+                "proof_sha256": hashlib.sha256(evidence.read_bytes()).hexdigest(),
+            }
+
+        summary = bundle / "wolo-offhost-summary.json"
+        self._write_json_with_sidecar(
+            summary,
+            {
+                "schema": recovery.WOLO_OFFHOST_SUMMARY_SCHEMA,
+                "kind": recovery.WOLO_OFFHOST_SUMMARY_KIND,
+                "status": recovery.WOLO_OFFHOST_SUMMARY_STATUS,
+                "campaign_id": bundle.name,
+                "created_at": "2026-09-10T01:00:00+00:00",
+                "coverage": coverage,
+                "encrypted_capture_classes": len(recovery.WOLO_OFFHOST_RECOVERY_CLASSES),
+                "isolated_restore_classes": len(recovery.WOLO_OFFHOST_RECOVERY_CLASSES),
+                "production_mutated": False,
+                "wolo_mutated": False,
+                "wolo_quiesced_during_offhost_capture": False,
+                "full_plaintext_archive_staged": False,
+                "remaining_before_full_recovery_verification": [
+                    "wolo_key_custody",
+                    "full_schema2_restore_proof",
+                ],
+                "secrets_policy": {
+                    key: False
+                    for key in recovery.REQUIRED_FALSE_SECRET_FLAGS
+                },
+            },
+        )
+        return summary
+
     def test_hashed_ordinary_restore_summary_verifies_five_classes(self):
         with tempfile.TemporaryDirectory() as temporary:
             bundle = Path(temporary) / "ordinary"
@@ -203,6 +269,50 @@ class RecoveryTests(unittest.TestCase):
                 for item in result["blockers"]
             )
         )
+
+    def test_hashed_wolo_offhost_summary_verifies_two_classes(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle = Path(temporary) / "wolo"
+            summary = self._wolo_offhost_summary(bundle)
+            result = recovery.verify_wolo_offhost_summary(summary)
+
+        self.assertEqual(result["status"], "VERIFIED")
+        self.assertEqual(result["blockers"], [])
+        self.assertEqual(len(result["proof_sha256"]), 64)
+
+    def test_tampered_wolo_offhost_class_fails_verification(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle = Path(temporary) / "wolo"
+            summary = self._wolo_offhost_summary(bundle)
+            target = bundle / "restore-proofs" / "wolo_consensus_recovery.json"
+            target.write_text('{"status":"TAMPERED"}\n', encoding="utf-8")
+            result = recovery.verify_wolo_offhost_summary(summary)
+
+        self.assertEqual(result["status"], "NOT_VERIFIED")
+        self.assertTrue(
+            any(
+                "wolo_consensus_recovery proof_file SHA-256 mismatch" in item
+                for item in result["blockers"]
+            )
+        )
+
+    def test_wolo_offhost_progress_reduces_scope_to_key_custody_only(self):
+        pilot = {"status": "PILOT_VERIFIED"}
+        ordinary = {
+            "status": recovery.ORDINARY_RESTORE_SUMMARY_STATUS,
+            "verification_status": "VERIFIED",
+        }
+        wolo = {
+            "status": recovery.WOLO_OFFHOST_SUMMARY_STATUS,
+            "verification_status": "VERIFIED",
+        }
+        progress = recovery.recovery_progress(pilot, ordinary, wolo)
+
+        self.assertEqual(progress["status"], "PARTIAL_VERIFIED")
+        self.assertEqual(progress["proven_count"], 9)
+        self.assertEqual(progress["required_count"], 10)
+        self.assertEqual(progress["remaining_classes"], ["wolo_key_custody"])
+        self.assertTrue(progress["final_schema2_proof_required"])
 
     def test_partial_progress_reduces_remaining_scope_to_wolo_classes(self):
         pilot = {"status": "PILOT_VERIFIED"}

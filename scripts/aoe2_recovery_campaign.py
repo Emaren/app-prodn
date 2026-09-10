@@ -60,6 +60,14 @@ WOLO_SNAPSHOT_STATE_DIR = CAMPAIGN_DIR / "wolo-snapshots"
 WOLO_SNAPSHOT_RUNNING_STATUS = "AUTHORIZED_SNAPSHOT_RUNNING"
 WOLO_SNAPSHOT_STATUS = "STAGED_PENDING_ENCRYPTED_CAPTURE"
 WOLO_SNAPSHOT_UNCERTAIN_STATUS = "UNKNOWN_REQUIRES_RECONCILIATION"
+WOLO_OFFHOST_STATE_DIR = CAMPAIGN_DIR / "wolo-offhost"
+WOLO_OFFHOST_LOCK_PATH = WOLO_OFFHOST_STATE_DIR / "capture.lock"
+WOLO_OFFHOST_CLASSES = (
+    "wolo_settlement_state",
+    "wolo_consensus_recovery",
+)
+WOLO_OFFHOST_RUNNING_STATUS = "WOLO_OFFHOST_CAPTURE_RUNNING"
+WOLO_OFFHOST_COMPLETE_STATUS = "WOLO_OFFHOST_RESTORE_VERIFIED"
 WOLO_RPC_STATUS_URL = "https://rpc-mainnet.aoe2war.com/status"
 WOLO_REST_NODE_INFO_URL = "https://rest-mainnet.aoe2war.com/cosmos/base/tendermint/v1beta1/node_info"
 WOLO_PROTECTED_KEY_PATHS = (
@@ -792,6 +800,7 @@ def wolo_snapshot_remote_script(
     return f'''
 set -euo pipefail
 umask 077
+export LC_ALL=C
 
 SNAPSHOT_ID={q(snapshot_id)}
 TOOL_SOURCE={q(tool_source)}
@@ -810,6 +819,17 @@ QUIESCED=0
 QUIESCE_STARTED=0
 
 fail() {{ echo "FAIL: $*" >&2; exit 1; }}
+tar_identity() {{
+  base="$1"
+  shift
+  tar --sort=name --numeric-owner -C "$base" -cf - -- "$@" \
+    | python3 -c 'import hashlib,sys; h=hashlib.sha256(); n=0
+while True:
+ b=sys.stdin.buffer.read(1048576)
+ if not b: break
+ h.update(b); n += len(b)
+print(f"{{n}} {{h.hexdigest()}}")'
+}}
 listener_count() {{ ss -ltn | grep -Ec ":$1[[:space:]]" || true; }}
 require_listener_owner() {{
   port="$1"
@@ -1032,6 +1052,17 @@ CATCHING="$(
 [ ! -e "$STAGE/.wolochain" ] \
   || fail "nested .wolochain leaked into staging"
 
+read -r SETTLEMENT_TAR_BYTES SETTLEMENT_TAR_SHA <<EOF_SETTLEMENT
+$(tar_identity "$STAGE" settlement-state founder-rewards-settlement-state)
+EOF_SETTLEMENT
+read -r CONSENSUS_TAR_BYTES CONSENSUS_TAR_SHA <<EOF_CONSENSUS
+$(tar_identity "$STAGE" consensus)
+EOF_CONSENSUS
+[ "$SETTLEMENT_TAR_BYTES" -gt 0 ] || fail "settlement tar identity has zero bytes"
+[ "${{#SETTLEMENT_TAR_SHA}}" = 64 ] || fail "settlement tar identity SHA is invalid"
+[ "$CONSENSUS_TAR_BYTES" -gt 0 ] || fail "consensus tar identity has zero bytes"
+[ "${{#CONSENSUS_TAR_SHA}}" = 64 ] || fail "consensus tar identity SHA is invalid"
+
 DATA_BYTES="$(du -sb "$STAGE/consensus/data" | awk '{{print $1}}')"
 CONFIG_BYTES="$(du -sb "$STAGE/consensus/config" | awk '{{print $1}}')"
 SETTLEMENT_BYTES="$(du -sb "$STAGE/settlement-state" | awk '{{print $1}}')"
@@ -1050,7 +1081,11 @@ python3 - \
   "$DATA_BYTES" \
   "$CONFIG_BYTES" \
   "$SETTLEMENT_BYTES" \
-  "$FOUNDER_BYTES" <<'PYREC'
+  "$FOUNDER_BYTES" \
+  "$SETTLEMENT_TAR_BYTES" \
+  "$SETTLEMENT_TAR_SHA" \
+  "$CONSENSUS_TAR_BYTES" \
+  "$CONSENSUS_TAR_SHA" <<'PYREC'
 import json
 import pathlib
 import sys
@@ -1068,6 +1103,10 @@ import sys
     config_bytes,
     settlement_bytes,
     founder_bytes,
+    settlement_tar_bytes,
+    settlement_tar_sha,
+    consensus_tar_bytes,
+    consensus_tar_sha,
 ) = sys.argv[1:]
 
 payload = {{
@@ -1100,6 +1139,26 @@ payload = {{
         "settlement_state": int(settlement_bytes),
         "founder_rewards_settlement_state": int(founder_bytes),
     }},
+    "static_tar_identities": {{
+        "wolo_settlement_state": {{
+            "members": [
+                "settlement-state",
+                "founder-rewards-settlement-state",
+            ],
+            "tar_bytes": int(settlement_tar_bytes),
+            "tar_sha256": settlement_tar_sha,
+            "tar_sort": "name",
+            "numeric_owner": True,
+        }},
+        "wolo_consensus_recovery": {{
+            "members": ["consensus"],
+            "tar_bytes": int(consensus_tar_bytes),
+            "tar_sha256": consensus_tar_sha,
+            "tar_sort": "name",
+            "numeric_owner": True,
+        }},
+    }},
+    "static_source_sealed_after_restart": True,
 }}
 
 path = pathlib.Path(receipt)
@@ -1299,6 +1358,566 @@ def wolo_snapshot_status(campaign_id: str) -> dict[str, Any]:
     return result
 
 
+def wolo_offhost_state_path(campaign_id: str) -> Path:
+    state_path(campaign_id)
+    return WOLO_OFFHOST_STATE_DIR / f"{campaign_id}.json"
+
+
+def wolo_offhost_log_path(campaign_id: str) -> Path:
+    state_path(campaign_id)
+    return WOLO_OFFHOST_STATE_DIR / f"{campaign_id}.log"
+
+
+def load_wolo_offhost_state(campaign_id: str) -> dict[str, Any]:
+    path = wolo_offhost_state_path(campaign_id)
+    if not path.is_file():
+        raise CampaignError(f"Wolo off-host state not found: {campaign_id}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if (
+        payload.get("schema") != 1
+        or payload.get("kind") != "aoe2war-recovery-wolo-offhost-state"
+        or payload.get("campaign_id") != campaign_id
+    ):
+        raise CampaignError(f"invalid Wolo off-host state: {path}")
+    return payload
+
+
+def save_wolo_offhost_state(state: dict[str, Any]) -> None:
+    state["updated_at"] = utc_now()
+    atomic_write(wolo_offhost_state_path(str(state["campaign_id"])), state)
+
+
+def _validated_wolo_snapshot(campaign_id: str) -> dict[str, Any]:
+    snapshot = wolo_snapshot_status(campaign_id)
+    if snapshot.get("status") != WOLO_SNAPSHOT_STATUS:
+        raise CampaignError(
+            "Wolo off-host capture requires a successful staged Wolo snapshot"
+        )
+    if snapshot.get("requires_operator_reconciliation") is True:
+        raise CampaignError("Wolo staged snapshot still requires reconciliation")
+    remote = snapshot.get("remote")
+    if not isinstance(remote, dict):
+        raise CampaignError("Wolo staged snapshot has no remote receipt")
+    if remote.get("status") != WOLO_SNAPSHOT_STATUS:
+        raise CampaignError("Wolo remote staged snapshot status is invalid")
+    if remote.get("service_restarted") is not True:
+        raise CampaignError("Wolo staged snapshot does not prove service restart")
+    if remote.get("static_source_sealed_after_restart") is not True:
+        raise CampaignError("Wolo staged snapshot has no post-restart static seal")
+    if remote.get("general_vault_secret_contents_included") is not False:
+        raise CampaignError("Wolo staged snapshot secret boundary is not proven")
+    if remote.get("wolo_chain_data_mutated") is not False:
+        raise CampaignError("Wolo staged snapshot reports chain-data mutation")
+    if remote.get("settlement_state_mutated") is not False:
+        raise CampaignError("Wolo staged snapshot reports settlement mutation")
+    remote_stage = str(remote.get("remote_stage") or "")
+    if remote_stage != snapshot.get("remote_stage"):
+        raise CampaignError("Wolo staged snapshot remote path mismatch")
+    prefix = WOLO_REMOTE_STAGING_ROOT.rstrip("/") + "/"
+    if not remote_stage.startswith(prefix) or ".." in Path(remote_stage).parts:
+        raise CampaignError("Wolo staged snapshot remote path is unsafe")
+    identities = remote.get("static_tar_identities")
+    if not isinstance(identities, dict):
+        raise CampaignError("Wolo staged snapshot has no static tar identities")
+    expected_members = {
+        "wolo_settlement_state": [
+            "settlement-state",
+            "founder-rewards-settlement-state",
+        ],
+        "wolo_consensus_recovery": ["consensus"],
+    }
+    for class_name in WOLO_OFFHOST_CLASSES:
+        identity = identities.get(class_name)
+        if not isinstance(identity, dict):
+            raise CampaignError(f"Wolo staged snapshot lacks {class_name} identity")
+        if identity.get("members") != expected_members[class_name]:
+            raise CampaignError(f"Wolo staged snapshot {class_name} members mismatch")
+        if identity.get("tar_sort") != "name" or identity.get("numeric_owner") is not True:
+            raise CampaignError(f"Wolo staged snapshot {class_name} tar policy mismatch")
+        if not isinstance(identity.get("tar_bytes"), int) or int(identity["tar_bytes"]) <= 0:
+            raise CampaignError(f"Wolo staged snapshot {class_name} byte identity invalid")
+        sha = identity.get("tar_sha256")
+        if (
+            not isinstance(sha, str)
+            or len(sha) != 64
+            or any(ch not in "0123456789abcdefABCDEF" for ch in sha)
+        ):
+            raise CampaignError(f"Wolo staged snapshot {class_name} SHA identity invalid")
+    return snapshot
+
+
+def verify_remote_wolo_stage_receipt(snapshot: dict[str, Any]) -> dict[str, Any]:
+    remote_stage = str(snapshot.get("remote_stage") or "")
+    prefix = WOLO_REMOTE_STAGING_ROOT.rstrip("/") + "/"
+    if not remote_stage.startswith(prefix) or ".." in Path(remote_stage).parts:
+        raise CampaignError("unsafe Wolo remote stage path")
+    command = (
+        f"cd {shlex.quote(remote_stage)} && "
+        "sha256sum -c stage-receipt.json.sha256 >/dev/null && "
+        "cat stage-receipt.json"
+    )
+    proc = subprocess.run(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=8",
+            recovery._root_maintenance_host(),
+            command,
+        ],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=30,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise CampaignError(
+            "Wolo remote stage receipt verification failed: "
+            + proc.stderr.strip()[-2000:]
+        )
+    try:
+        payload = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise CampaignError("Wolo remote stage receipt is invalid JSON") from exc
+    if payload != snapshot.get("remote"):
+        raise CampaignError("Wolo remote stage receipt no longer matches local sealed state")
+    return payload
+
+
+def build_wolo_offhost_stages(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
+    remote = snapshot["remote"]
+    identities = remote["static_tar_identities"]
+    stages: list[dict[str, Any]] = []
+    for class_name in WOLO_OFFHOST_CLASSES:
+        identity = identities[class_name]
+        stages.append(
+            {
+                "class": class_name,
+                "strategy": "STATIC_QUIESCED_STAGE_CHUNKED_CMS",
+                "source_root": str(snapshot["remote_stage"]),
+                "include_top_level": list(identity["members"]),
+                "tar_sort": "name",
+                "expected_plaintext_tar_bytes": int(identity["tar_bytes"]),
+                "expected_plaintext_tar_sha256": str(identity["tar_sha256"]),
+                "source_evidence": {
+                    "snapshot_id": snapshot["snapshot_id"],
+                    "snapshot_state_sha256": snapshot["proof_sha256"],
+                    "staged_priv_validator_height": remote.get("staged_priv_validator_height"),
+                    "post_restart_height": remote.get("post_restart_height"),
+                    "static_source_sealed_after_restart": True,
+                },
+            }
+        )
+    return stages
+
+
+def wolo_offhost_preflight(campaign_id: str) -> dict[str, Any]:
+    require_tools()
+    source = source_identity()
+    capture_state = load_state(campaign_id)
+    if (
+        capture_state.get("status") != "COMPLETE"
+        or capture_state.get("completion_reason")
+        != "ORDINARY_CAPTURE_COMPLETE_WOLO_AUTHORIZATION_REQUIRED"
+    ):
+        raise CampaignError("Wolo off-host capture requires ordinary capture closure")
+    restore = restore_status_payload(campaign_id)
+    if (
+        restore.get("status") != "COMPLETE"
+        or restore.get("completion_reason")
+        != "ORDINARY_RESTORE_VERIFIED_WOLO_AUTHORIZATION_REQUIRED"
+    ):
+        raise CampaignError("Wolo off-host capture requires ordinary restore closure")
+    snapshot = _validated_wolo_snapshot(campaign_id)
+    if snapshot.get("tool_source") != source:
+        raise CampaignError(
+            "app-prodn source changed since Wolo snapshot authorization: "
+            f"snapshot={snapshot.get('tool_source')} current={source}"
+        )
+    verify_remote_wolo_stage_receipt(snapshot)
+
+    bundle_root = Path(str(capture_state.get("bundle_root") or "")).expanduser().resolve()
+    try:
+        bundle_root.relative_to(recovery.RECOVERY_VAULT_ROOT.resolve())
+    except ValueError as exc:
+        raise CampaignError("Wolo off-host bundle escapes recovery vault") from exc
+    cert = Path(str(capture_state.get("recipient_certificate") or "")).expanduser().resolve()
+    if not cert.is_file():
+        raise CampaignError("Wolo off-host recipient certificate is missing")
+    fingerprint = normalize_fingerprint(
+        str(capture_state.get("recipient_certificate_fingerprint") or "")
+    )
+    if certificate_fingerprint(cert) != fingerprint:
+        raise CampaignError("Wolo off-host recipient certificate fingerprint mismatch")
+    key_info = verify_canonical_private_key(cert)
+    stages = build_wolo_offhost_stages(snapshot)
+    expected_bytes = sum(int(item["expected_plaintext_tar_bytes"]) for item in stages)
+    free_bytes = int(shutil.disk_usage(Path.home()).free)
+    if free_bytes <= expected_bytes:
+        raise CampaignError(
+            "Mac recovery vault lacks headroom for Wolo off-host capture: "
+            f"free={free_bytes} expected={expected_bytes}"
+        )
+    summary_path = bundle_root / "wolo-offhost-summary.json"
+    if summary_path.exists() or summary_path.with_name(summary_path.name + ".sha256").exists():
+        raise CampaignError("Wolo off-host summary already exists for campaign")
+    return {
+        "schema": 1,
+        "kind": "aoe2war-recovery-wolo-offhost-preflight",
+        "status": "READY",
+        "campaign_id": campaign_id,
+        "tool_source": source,
+        "bundle_root": str(bundle_root),
+        "recipient_certificate": str(cert),
+        "recipient_certificate_fingerprint": fingerprint,
+        "canonical_private_key": key_info,
+        "snapshot_id": snapshot["snapshot_id"],
+        "snapshot_state_sha256": snapshot["proof_sha256"],
+        "remote_stage": snapshot["remote_stage"],
+        "stages": stages,
+        "expected_plaintext_tar_bytes": expected_bytes,
+        "operator_free_bytes": free_bytes,
+        "production_mutated": False,
+        "wolo_mutated": False,
+        "wolo_quiesce_required": False,
+        "key_custody_included": False,
+    }
+
+
+def create_wolo_offhost_state(
+    campaign_id: str,
+    *,
+    authorize_wolo_offhost_capture: bool,
+) -> dict[str, Any]:
+    if not authorize_wolo_offhost_capture:
+        raise CampaignError(
+            "Wolo off-host capture requires --authorize-wolo-offhost-capture"
+        )
+    check = wolo_offhost_preflight(campaign_id)
+    path = wolo_offhost_state_path(campaign_id)
+    if path.exists():
+        raise CampaignError(f"Wolo off-host state already exists: {campaign_id}")
+    state = {
+        "schema": 1,
+        "kind": "aoe2war-recovery-wolo-offhost-state",
+        "campaign_id": campaign_id,
+        "status": "CREATED",
+        "created_at": utc_now(),
+        "tool_source": check["tool_source"],
+        "bundle_root": check["bundle_root"],
+        "recipient_certificate": check["recipient_certificate"],
+        "recipient_certificate_fingerprint": check["recipient_certificate_fingerprint"],
+        "snapshot_id": check["snapshot_id"],
+        "snapshot_state_sha256": check["snapshot_state_sha256"],
+        "remote_stage": check["remote_stage"],
+        "classes": list(WOLO_OFFHOST_CLASSES),
+        "stages": check["stages"],
+        "completed_classes": [],
+        "history": [],
+        "current_class": None,
+        "pid": None,
+        "last_error": None,
+        "completion_reason": None,
+        "authorization": {
+            "offhost_encrypted_capture": True,
+            "wolo_quiesce": False,
+            "wolo_mutation": False,
+            "key_custody": False,
+        },
+        "log_path": str(wolo_offhost_log_path(campaign_id)),
+    }
+    save_wolo_offhost_state(state)
+    return state
+
+
+def validate_wolo_offhost_source(state: dict[str, Any]) -> None:
+    current = source_identity()
+    if current != state.get("tool_source"):
+        raise CampaignError(
+            "app-prodn source changed since Wolo off-host authorization: "
+            f"capture={state.get('tool_source')} current={current}"
+        )
+
+
+def validate_existing_wolo_capture(
+    bundle_root: Path,
+    campaign_id: str,
+    class_name: str,
+    stage: dict[str, Any],
+) -> dict[str, Any]:
+    capture, _, _ = _capture_proof(
+        bundle_root, campaign_id, class_name, verify_ciphertext=False
+    )
+    assert_expected_tar_identity(stage, capture)
+    if capture.get("source_evidence") != stage.get("source_evidence"):
+        raise CampaignError(
+            f"existing {class_name} capture belongs to different snapshot evidence"
+        )
+    return capture
+
+
+def _existing_wolo_restore_receipt(
+    bundle_root: Path,
+    campaign_id: str,
+    class_name: str,
+    stage: dict[str, Any],
+) -> dict[str, Any] | None:
+    path = bundle_root / "restore-proofs" / f"{class_name}.json"
+    if not path.exists():
+        return None
+    payload, digest, error = recovery._load_hashed_json(path)
+    if error or payload is None or digest is None:
+        raise CampaignError(f"existing {class_name} restore proof is invalid: {error}")
+    if (
+        payload.get("schema") != 1
+        or payload.get("kind") != "aoe2war-recovery-wolo-restore-class-proof"
+        or payload.get("status") != "PASS"
+        or payload.get("campaign_id") != campaign_id
+        or payload.get("class") != class_name
+    ):
+        raise CampaignError(f"existing {class_name} restore proof is not reusable")
+    capture = validate_existing_wolo_capture(
+        bundle_root, campaign_id, class_name, stage
+    )
+    if (
+        payload.get("plaintext_tar_bytes")
+        != capture.get("plaintext_tar_bytes")
+        or payload.get("plaintext_tar_sha256")
+        != capture.get("plaintext_tar_sha256")
+    ):
+        raise CampaignError(
+            f"existing {class_name} restore proof does not match capture identity"
+        )
+    return {
+        "class": class_name,
+        "proof_path": str(path),
+        "proof_file": str(path.relative_to(bundle_root)),
+        "proof_sha256": digest,
+        "completed_at": payload.get("completed_at"),
+        "elapsed_seconds": payload.get("elapsed_seconds"),
+        "representative_restore": payload.get("representative_restore"),
+    }
+
+
+def spawn_wolo_offhost(campaign_id: str) -> int:
+    state = load_wolo_offhost_state(campaign_id)
+    pid = state.get("pid")
+    if process_alive(pid if isinstance(pid, int) else None):
+        raise CampaignError(f"Wolo off-host capture already running with pid={pid}")
+    WOLO_OFFHOST_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    log = wolo_offhost_log_path(campaign_id).open("a", encoding="utf-8")
+    proc = subprocess.Popen(
+        [
+            sys.executable,
+            str(Path(__file__).resolve()),
+            "_wolo_offhost_run",
+            campaign_id,
+        ],
+        cwd=ROOT,
+        stdin=subprocess.DEVNULL,
+        stdout=log,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+        close_fds=True,
+    )
+    log.close()
+    return int(proc.pid)
+
+
+def run_wolo_offhost(campaign_id: str) -> int:
+    WOLO_OFFHOST_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    lock_file = WOLO_OFFHOST_LOCK_PATH.open("a+")
+    try:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        lock_file.close()
+        raise CampaignError("another Wolo off-host capture is active") from exc
+    state = load_wolo_offhost_state(campaign_id)
+    state["status"] = WOLO_OFFHOST_RUNNING_STATUS
+    state["pid"] = os.getpid()
+    state["started_at"] = state.get("started_at") or utc_now()
+    save_wolo_offhost_state(state)
+    try:
+        validate_wolo_offhost_source(state)
+        snapshot = _validated_wolo_snapshot(campaign_id)
+        if snapshot.get("proof_sha256") != state.get("snapshot_state_sha256"):
+            raise CampaignError("Wolo snapshot state changed after off-host authorization")
+        verify_remote_wolo_stage_receipt(snapshot)
+        bundle_root = Path(str(state["bundle_root"])).expanduser().resolve()
+        cert = Path(str(state["recipient_certificate"])).expanduser().resolve()
+        key_info = verify_canonical_private_key(cert)
+        private_key = Path(str(key_info["path"])).expanduser().resolve()
+        stages = {str(item["class"]): item for item in state["stages"]}
+        completed = set(str(item) for item in state.get("completed_classes") or [])
+        history_by_class = {
+            str(item.get("class")): item
+            for item in state.get("history") or []
+            if isinstance(item, dict) and item.get("class")
+        }
+        for class_name in state["classes"]:
+            if class_name in completed:
+                continue
+            state = load_wolo_offhost_state(campaign_id)
+            validate_wolo_offhost_source(state)
+            snapshot = _validated_wolo_snapshot(campaign_id)
+            verify_remote_wolo_stage_receipt(snapshot)
+            stage = stages[class_name]
+            state["current_class"] = class_name
+            state["current_class_started_at"] = utc_now()
+            save_wolo_offhost_state(state)
+
+            receipt = _existing_wolo_restore_receipt(
+                bundle_root, campaign_id, class_name, stage
+            )
+            if receipt is None:
+                capture_proof_path = bundle_root / "proofs" / f"{class_name}.json"
+                if not capture_proof_path.exists():
+                    capture_stage(
+                        campaign_id=campaign_id,
+                        bundle_root=bundle_root,
+                        plan={"inventory": {}},
+                        stage=stage,
+                        recipient_cert=cert,
+                        recipient_fingerprint=str(state["recipient_certificate_fingerprint"]),
+                    )
+                else:
+                    validate_existing_wolo_capture(
+                        bundle_root, campaign_id, class_name, stage
+                    )
+                receipt = restore_stage(
+                    campaign_id=campaign_id,
+                    bundle_root=bundle_root,
+                    class_name=class_name,
+                    recipient_cert=cert,
+                    private_key=private_key,
+                    capture_tool_source=str(state["tool_source"]),
+                    restore_tool_source=str(state["tool_source"]),
+                    proof_kind="aoe2war-recovery-wolo-restore-class-proof",
+                )
+
+            history_by_class[class_name] = receipt
+            completed.add(class_name)
+            state = load_wolo_offhost_state(campaign_id)
+            state["history"] = [
+                history_by_class[item]
+                for item in state["classes"]
+                if item in history_by_class
+            ]
+            state["completed_classes"] = [
+                item for item in state["classes"] if item in completed
+            ]
+            state["current_class"] = None
+            state["current_class_started_at"] = None
+            save_wolo_offhost_state(state)
+
+        state = load_wolo_offhost_state(campaign_id)
+        coverage = {
+            str(item["class"]): {
+                "status": "PASS",
+                "proof_file": item["proof_file"],
+                "proof_sha256": item["proof_sha256"],
+            }
+            for item in state.get("history") or []
+        }
+        if list(coverage) != list(WOLO_OFFHOST_CLASSES):
+            raise CampaignError("Wolo off-host coverage is incomplete")
+        summary_path = bundle_root / "wolo-offhost-summary.json"
+        summary = {
+            "schema": 1,
+            "kind": "aoe2war-recovery-wolo-offhost-summary",
+            "status": WOLO_OFFHOST_COMPLETE_STATUS,
+            "campaign_id": campaign_id,
+            "created_at": utc_now(),
+            "tool_source": state["tool_source"],
+            "snapshot_id": state["snapshot_id"],
+            "snapshot_state_sha256": state["snapshot_state_sha256"],
+            "remote_stage": state["remote_stage"],
+            "coverage": coverage,
+            "encrypted_capture_classes": len(coverage),
+            "isolated_restore_classes": len(coverage),
+            "full_plaintext_archive_staged": False,
+            "production_mutated": False,
+            "wolo_mutated": False,
+            "wolo_quiesced_during_offhost_capture": False,
+            "remaining_before_full_recovery_verification": [
+                "wolo_key_custody",
+                "full_schema2_restore_proof",
+            ],
+            "secrets_policy": {
+                "database_credentials_included": False,
+                "environment_files_included": False,
+                "private_recovery_key_transmitted_to_vps": False,
+                "validator_private_keys_included": False,
+                "wolo_keyrings_included": False,
+            },
+        }
+        summary_sha = write_json_with_sidecar(summary_path, summary)
+        state["summary_path"] = str(summary_path)
+        state["summary_sha256"] = summary_sha
+        state["status"] = "COMPLETE"
+        state["completion_reason"] = WOLO_OFFHOST_COMPLETE_STATUS
+        state["finished_at"] = utc_now()
+        state["pid"] = None
+        save_wolo_offhost_state(state)
+        return 0
+    except Exception as exc:
+        state = load_wolo_offhost_state(campaign_id)
+        state["status"] = "FAILED"
+        state["last_error"] = str(exc)
+        state["failed_at"] = utc_now()
+        state["pid"] = None
+        save_wolo_offhost_state(state)
+        print(f"STOP: {exc}", file=sys.stderr, flush=True)
+        return 2
+    finally:
+        try:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        finally:
+            lock_file.close()
+
+
+def start_wolo_offhost(
+    campaign_id: str,
+    *,
+    authorize_wolo_offhost_capture: bool,
+) -> dict[str, Any]:
+    state = create_wolo_offhost_state(
+        campaign_id,
+        authorize_wolo_offhost_capture=authorize_wolo_offhost_capture,
+    )
+    state["status"] = "SPAWN_REQUESTED"
+    save_wolo_offhost_state(state)
+    pid = spawn_wolo_offhost(campaign_id)
+    return {**load_wolo_offhost_state(campaign_id), "spawned_pid": pid}
+
+
+def resume_wolo_offhost(campaign_id: str) -> dict[str, Any]:
+    state = load_wolo_offhost_state(campaign_id)
+    if state.get("status") == "COMPLETE":
+        raise CampaignError("completed Wolo off-host capture cannot be resumed")
+    pid = state.get("pid")
+    if process_alive(pid if isinstance(pid, int) else None):
+        raise CampaignError(f"Wolo off-host capture is still active with pid={pid}")
+    validate_wolo_offhost_source(state)
+    state["status"] = "RESUME_REQUESTED"
+    state["pid"] = None
+    state["last_error"] = None
+    save_wolo_offhost_state(state)
+    new_pid = spawn_wolo_offhost(campaign_id)
+    return {**load_wolo_offhost_state(campaign_id), "spawned_pid": new_pid}
+
+
+def wolo_offhost_status(campaign_id: str) -> dict[str, Any]:
+    state = load_wolo_offhost_state(campaign_id)
+    pid = state.get("pid")
+    result = dict(state)
+    result["process_alive"] = process_alive(pid if isinstance(pid, int) else None)
+    return result
+
+
 def print_wolo_snapshot_plan(payload: dict[str, Any]) -> None:
     print("⚔️  AOE2WAR WOLO SNAPSHOT PLAN")
     print()
@@ -1335,6 +1954,17 @@ def _stage_source(
     inventory = plan.get("inventory") or {}
     classes = inventory.get("classes") or {}
 
+    source_root = str(stage.get("source_root") or "")
+    explicit_names = [
+        str(item) for item in stage.get("include_top_level") or []
+    ]
+    if source_root:
+        if not explicit_names:
+            raise CampaignError(
+                f"explicit source root for {class_name} requires include_top_level"
+            )
+        return source_root, explicit_names
+
     if class_name == "parser_evidence_corpus":
         source = str(
             (classes.get(class_name) or {}).get("path") or ""
@@ -1366,16 +1996,48 @@ def remote_tar_command(
         for name in names
     ):
         raise CampaignError(f"unsafe remote archive members: {names!r}")
-    return [
+    command = [
         "tar",
         "--numeric-owner",
-        "-C",
-        base,
-        "-cf",
-        "-",
-        "--",
-        *names,
     ]
+    if stage.get("tar_sort") == "name":
+        command.append("--sort=name")
+    command.extend(
+        [
+            "-C",
+            base,
+            "-cf",
+            "-",
+            "--",
+            *names,
+        ]
+    )
+    return command
+
+
+def assert_expected_tar_identity(
+    stage: dict[str, Any],
+    manifest: dict[str, Any],
+) -> None:
+    expected_bytes = stage.get("expected_plaintext_tar_bytes")
+    expected_sha = stage.get("expected_plaintext_tar_sha256")
+    if expected_bytes is None and expected_sha is None:
+        return
+    if (
+        not isinstance(expected_bytes, int)
+        or expected_bytes <= 0
+        or not isinstance(expected_sha, str)
+        or len(expected_sha) != 64
+        or any(ch not in "0123456789abcdefABCDEF" for ch in expected_sha)
+    ):
+        raise CampaignError("expected staged tar identity is incomplete or invalid")
+    actual_bytes = int(manifest.get("plaintext_tar_bytes") or 0)
+    actual_sha = str(manifest.get("plaintext_tar_sha256") or "")
+    if actual_bytes != expected_bytes or actual_sha != expected_sha:
+        raise CampaignError(
+            "captured plaintext tar does not match the sealed staged snapshot: "
+            f"bytes={actual_bytes}/{expected_bytes} sha={actual_sha}/{expected_sha}"
+        )
 
 
 def cms_encrypt_command(
@@ -1843,7 +2505,7 @@ def capture_stage(
             "-o",
             "ConnectTimeout=8",
             recovery._root_maintenance_host(),
-            shlex.join(tar_args),
+            "LC_ALL=C " + shlex.join(tar_args),
         ]
 
         with stderr_log.open("ab") as source_stderr:
@@ -1965,6 +2627,7 @@ def capture_stage(
             f"{class_name} manifest seal is invalid: {error or 'missing SHA'}"
         )
     receipts = _load_existing_chunk_receipts(root)
+    assert_expected_tar_identity(stage, manifest)
 
     proof = {
         "schema": 1,
@@ -1990,6 +2653,13 @@ def capture_stage(
         "recipient_certificate_fingerprint": recipient_fingerprint,
         "source_inventory": (
             (plan.get("inventory") or {}).get("classes", {}).get(class_name)
+        ),
+        "source_evidence": stage.get("source_evidence"),
+        "expected_plaintext_tar_bytes": stage.get(
+            "expected_plaintext_tar_bytes"
+        ),
+        "expected_plaintext_tar_sha256": stage.get(
+            "expected_plaintext_tar_sha256"
         ),
         "parser_include_top_level": (
             stage.get("include_top_level")
@@ -2759,6 +3429,7 @@ def restore_stage(
     private_key: Path,
     capture_tool_source: str,
     restore_tool_source: str,
+    proof_kind: str = "aoe2war-recovery-ordinary-restore-class-proof",
 ) -> dict[str, Any]:
     bundle_root = bundle_root.expanduser().resolve()
     capture, capture_proof_sha, source = _capture_proof(
@@ -2797,7 +3468,7 @@ def restore_stage(
 
     proof = {
         "schema": 1,
-        "kind": "aoe2war-recovery-ordinary-restore-class-proof",
+        "kind": proof_kind,
         "status": "PASS",
         "campaign_id": campaign_id,
         "class": class_name,
@@ -3779,6 +4450,23 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("campaign_id")
     q.add_argument("--json", action="store_true")
 
+    q = sub.add_parser("wolo-offhost-preflight")
+    q.add_argument("campaign_id")
+    q.add_argument("--json", action="store_true")
+
+    q = sub.add_parser("wolo-offhost-start")
+    q.add_argument("campaign_id")
+    q.add_argument("--authorize-wolo-offhost-capture", action="store_true")
+    q.add_argument("--json", action="store_true")
+
+    q = sub.add_parser("wolo-offhost-status")
+    q.add_argument("campaign_id")
+    q.add_argument("--json", action="store_true")
+
+    q = sub.add_parser("wolo-offhost-resume")
+    q.add_argument("campaign_id")
+    q.add_argument("--json", action="store_true")
+
     q = sub.add_parser("restore-start")
     q.add_argument("campaign_id", nargs="?")
     q.add_argument("--authorize-ordinary-restore-drill", action="store_true")
@@ -3802,6 +4490,9 @@ def parser() -> argparse.ArgumentParser:
     q = sub.add_parser("_restore_run")
     q.add_argument("campaign_id")
 
+    q = sub.add_parser("_wolo_offhost_run")
+    q.add_argument("campaign_id")
+
     return p
 
 
@@ -3812,6 +4503,9 @@ def main() -> int:
         return run_campaign(args.campaign_id)
     if args.command == "_restore_run":
         return run_restore(args.campaign_id)
+
+    if args.command == "_wolo_offhost_run":
+        return run_wolo_offhost(args.campaign_id)
 
     if args.command == "preflight":
         payload = preflight(args.recipient_cert)
@@ -3858,6 +4552,29 @@ def main() -> int:
 
     if args.command == "wolo-snapshot-status":
         payload = wolo_snapshot_status(args.campaign_id)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "wolo-offhost-preflight":
+        payload = wolo_offhost_preflight(args.campaign_id)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "wolo-offhost-start":
+        payload = start_wolo_offhost(
+            args.campaign_id,
+            authorize_wolo_offhost_capture=args.authorize_wolo_offhost_capture,
+        )
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "wolo-offhost-status":
+        payload = wolo_offhost_status(args.campaign_id)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "wolo-offhost-resume":
+        payload = resume_wolo_offhost(args.campaign_id)
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
 
