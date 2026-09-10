@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-09-06"
+reviewed_at: "2026-09-10"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -1021,3 +1021,22 @@ download metadata, and visible hero copy are separate publication surfaces. A
 Watcher release is not production until all of them agree on the same certified
 version and artifact hashes. Version text painted into artwork is release debt;
 prefer dynamic release metadata for version-bearing UI.
+
+## 2026-09-10 — Static Wolo staging must be cryptographically rebound before Recovery credit
+
+A consistency-safe Wolo snapshot can minimize validator downtime by pre-seeding
+while live, checksum-converging while quiesced, then restarting immediately. But
+that staging copy is still only a VPS-local recovery source. Allowing a later
+off-host capture to trust its pathname would create an evidence gap: staged
+bytes could drift after restart without changing the original quiesce receipt.
+
+Durable rule: after restart health is proven, seal deterministic tar byte counts
+and SHA-256 identities for each non-secret Wolo recovery class. Later encrypted
+capture must reproduce those exact identities with the same locale, member order
+and numeric-owner policy before it may emit proof. Resume may reuse ciphertext
+only when both tar identity and source-evidence provenance bind it to the exact
+snapshot. Then perform local isolated restore and issue a dedicated Wolo restore
+proof kind. Two successful classes may advance Recovery OS from 7/10 to 9/10,
+never to full verification: Wolo key custody and final schema-2 proof remain
+separate authority seams. The Mac recovery private key never crosses to the VPS,
+and off-host capture must never require a second Wolo quiesce.
