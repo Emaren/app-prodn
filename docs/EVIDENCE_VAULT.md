@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","auditors","ai-agents"]
 source_of_truth: "git"
 authority: "disaster-recovery-contract"
-reviewed_at: "2026-09-06"
+reviewed_at: "2026-09-10"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -440,6 +440,62 @@ This is not off-host recovery evidence and must not mark either
 advance only after the staged copy is encrypted into the independent Mac vault
 and passes its later restore proof. Separate Wolo key custody remains outside
 the general recovery payload.
+
+## Wolo encrypted off-host capture and isolated restore
+
+A successful staged snapshot is intentionally only a static VPS source. Before
+either Wolo recovery class can count as evidence, run the separate read-only
+preflight from the same clean source identity:
+
+```bash
+aoe2war recovery campaign wolo-offhost-preflight CAMPAIGN_ID
+aoe2war recovery campaign wolo-offhost-start CAMPAIGN_ID \
+  --authorize-wolo-offhost-capture
+aoe2war recovery campaign wolo-offhost-status CAMPAIGN_ID
+```
+
+The snapshot controller seals deterministic post-restart tar identities for the
+two general-vault Wolo classes using `LC_ALL=C`, numeric ownership and sorted tar
+members. `wolo_settlement_state` contains only `settlement-state/` plus
+`founder-rewards-settlement-state/`; `wolo_consensus_recovery` contains only the
+non-secret staged `consensus/` tree. The off-host controller rereads and
+SHA-verifies the VPS `stage-receipt.json`, requires it to match the hashed local
+snapshot state byte-for-byte, and refuses any missing, malformed or changed
+static identity.
+
+Off-host capture does **not** quiesce Wolo again. Wolo has already been restarted
+and health-proven by the snapshot transaction. Each immutable staged tar stream
+is replayed over SSH with the same deterministic locale/sort policy, split into
+the existing bounded chunked-CMS format, and encrypted into the independent Mac
+recovery vault. The controller requires the complete captured plaintext tar byte
+count and SHA-256 to equal the snapshot's sealed post-restart identity before a
+capture proof may exist. Source drift therefore fails closed rather than
+encrypting an ambiguous later generation.
+
+Each encrypted Wolo class then passes the same local isolated restore machinery
+as ordinary Recovery: ciphertext receipts are verified before decryption, chunks
+reconstruct one continuous tar stream, full plaintext SHA/byte identity and tar
+structure are verified, and at most one bounded representative regular file may
+exist temporarily in a disposable restore directory. Wolo proofs use the
+dedicated `aoe2war-recovery-wolo-restore-class-proof` kind so they cannot be
+confused with ordinary restore evidence. The recovery private key remains on the
+Mac and is never transmitted to the VPS.
+
+The detached controller is resumable at already sealed local evidence. A sealed
+chunk/capture may be reused only when its expected tar identity **and**
+`source_evidence` still bind it to the same Wolo snapshot. An already completed
+class restore proof must also match the capture plaintext identity. A stale
+ciphertext object from another snapshot is rejected rather than silently reused.
+
+After both classes pass isolated restore, the controller writes hashed
+`wolo-offhost-summary.json` with status `WOLO_OFFHOST_RESTORE_VERIFIED`. Recovery
+OS independently verifies that summary and its two hashed class proofs before
+counting the classes. Combined with the database/operator pilot and five-class
+ordinary restore, this advances measured class coverage from seven of ten to
+**nine of ten**. Overall Recovery remains `NOT_VERIFIED`: separate
+`wolo_key_custody` and final schema-2 `RECOVERY_VERIFIED` proof assembly remain
+explicit gates. Off-host Wolo capture grants no package/reboot authorization and
+performs no Wolo settlement, signer, chain-data or key-custody mutation.
 
 ## Restore drill
 

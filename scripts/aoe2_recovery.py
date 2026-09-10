@@ -50,6 +50,14 @@ ORDINARY_RECOVERY_CLASSES = (
     "raw_replay_archive",
 )
 
+WOLO_OFFHOST_SUMMARY_SCHEMA = 1
+WOLO_OFFHOST_SUMMARY_KIND = "aoe2war-recovery-wolo-offhost-summary"
+WOLO_OFFHOST_SUMMARY_STATUS = "WOLO_OFFHOST_RESTORE_VERIFIED"
+WOLO_OFFHOST_RECOVERY_CLASSES = (
+    "wolo_settlement_state",
+    "wolo_consensus_recovery",
+)
+
 
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
@@ -331,6 +339,123 @@ def verify_ordinary_restore_summary(proof: Path) -> dict[str, Any]:
     }
 
 
+def verify_wolo_offhost_summary(proof: Path) -> dict[str, Any]:
+    payload, proof_sha, error = _load_hashed_json(proof)
+    blockers: list[str] = []
+    if error:
+        blockers.append(error)
+    if payload is None:
+        return {
+            "status": "NOT_VERIFIED",
+            "blockers": blockers,
+            "proof_path": str(proof),
+            "proof_sha256": proof_sha,
+            "proof": None,
+        }
+
+    if payload.get("schema") != WOLO_OFFHOST_SUMMARY_SCHEMA:
+        blockers.append(
+            f"Wolo off-host summary schema must be {WOLO_OFFHOST_SUMMARY_SCHEMA}"
+        )
+    if payload.get("kind") != WOLO_OFFHOST_SUMMARY_KIND:
+        blockers.append(
+            f"Wolo off-host summary kind must be {WOLO_OFFHOST_SUMMARY_KIND}"
+        )
+    if payload.get("status") != WOLO_OFFHOST_SUMMARY_STATUS:
+        blockers.append(
+            f"Wolo off-host summary status must be {WOLO_OFFHOST_SUMMARY_STATUS}"
+        )
+    if payload.get("production_mutated") is not False:
+        blockers.append("Wolo off-host summary must prove production_mutated=false")
+    if payload.get("wolo_mutated") is not False:
+        blockers.append("Wolo off-host summary must prove wolo_mutated=false")
+    if payload.get("wolo_quiesced_during_offhost_capture") is not False:
+        blockers.append(
+            "Wolo off-host summary must prove no second Wolo quiesce during capture"
+        )
+    if payload.get("full_plaintext_archive_staged") is not False:
+        blockers.append(
+            "Wolo off-host summary must prove full_plaintext_archive_staged=false"
+        )
+
+    coverage = payload.get("coverage")
+    if not isinstance(coverage, dict):
+        blockers.append("Wolo off-host summary has no coverage map")
+    else:
+        for class_name in WOLO_OFFHOST_RECOVERY_CLASSES:
+            if class_name not in coverage:
+                blockers.append(f"Wolo off-host summary lacks {class_name} coverage")
+                continue
+            blockers.extend(
+                _validate_coverage_evidence(
+                    proof.parent,
+                    class_name,
+                    coverage[class_name],
+                )
+            )
+
+    if payload.get("encrypted_capture_classes") != len(WOLO_OFFHOST_RECOVERY_CLASSES):
+        blockers.append("Wolo off-host encrypted capture count is incomplete")
+    if payload.get("isolated_restore_classes") != len(WOLO_OFFHOST_RECOVERY_CLASSES):
+        blockers.append("Wolo off-host isolated restore count is incomplete")
+
+    remaining = payload.get("remaining_before_full_recovery_verification")
+    if not isinstance(remaining, list):
+        blockers.append("Wolo off-host summary has no remaining recovery scope list")
+    else:
+        stale = [
+            str(item)
+            for item in remaining
+            if str(item) in WOLO_OFFHOST_RECOVERY_CLASSES
+        ]
+        if stale:
+            blockers.append(
+                "Wolo off-host summary still declares completed Wolo scope: "
+                + ", ".join(stale)
+            )
+
+    secrets = payload.get("secrets_policy")
+    if not isinstance(secrets, dict):
+        blockers.append("Wolo off-host summary has no secrets policy")
+    else:
+        for key in REQUIRED_FALSE_SECRET_FLAGS:
+            if secrets.get(key) is not False:
+                blockers.append(
+                    f"Wolo off-host secret boundary is not proven: {key}=false"
+                )
+
+    return {
+        "status": "VERIFIED" if not blockers else "NOT_VERIFIED",
+        "blockers": blockers,
+        "proof_path": str(proof),
+        "proof_sha256": proof_sha,
+        "proof": payload,
+    }
+
+
+def latest_verified_wolo_offhost() -> dict[str, Any] | None:
+    if not RECOVERY_VAULT_ROOT.is_dir():
+        return None
+    candidates: list[dict[str, Any]] = []
+    for proof in RECOVERY_VAULT_ROOT.glob("*/wolo-offhost-summary.json"):
+        verification = verify_wolo_offhost_summary(proof)
+        payload = verification.get("proof")
+        if verification.get("status") != "VERIFIED" or not isinstance(payload, dict):
+            continue
+        item = dict(payload)
+        item["proof_path"] = verification["proof_path"]
+        item["proof_sha256"] = verification["proof_sha256"]
+        item["verification_status"] = "VERIFIED"
+        candidates.append(item)
+    if not candidates:
+        return None
+    candidates.sort(
+        key=lambda item: str(item.get("created_at") or ""),
+        reverse=True,
+    )
+    return candidates[0]
+
+
 def latest_verified_ordinary_restore() -> dict[str, Any] | None:
     if not RECOVERY_VAULT_ROOT.is_dir():
         return None
@@ -360,6 +485,7 @@ def latest_verified_ordinary_restore() -> dict[str, Any] | None:
 def recovery_progress(
     pilot: dict[str, Any] | None,
     ordinary_restore: dict[str, Any] | None,
+    wolo_offhost: dict[str, Any] | None = None,
     verification: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if (verification or {}).get("status") == "VERIFIED":
@@ -374,6 +500,12 @@ def recovery_progress(
             and (ordinary_restore or {}).get("verification_status") == "VERIFIED"
         ):
             proven.extend(ORDINARY_RECOVERY_CLASSES)
+        if (
+            (wolo_offhost or {}).get("status")
+            == WOLO_OFFHOST_SUMMARY_STATUS
+            and (wolo_offhost or {}).get("verification_status") == "VERIFIED"
+        ):
+            proven.extend(WOLO_OFFHOST_RECOVERY_CLASSES)
 
     proven_set = set(proven)
     ordered_proven = [
@@ -438,8 +570,14 @@ def evaluate() -> dict[str, Any]:
     evidence = contract.get("offsite_evidence") or {}
     pilot = latest_verified_pilot()
     ordinary_restore = latest_verified_ordinary_restore()
+    wolo_offhost = latest_verified_wolo_offhost()
     verification = verify_configured_recovery(evidence)
-    progress = recovery_progress(pilot, ordinary_restore, verification)
+    progress = recovery_progress(
+        pilot,
+        ordinary_restore,
+        wolo_offhost,
+        verification,
+    )
     usage = shutil.disk_usage(Path.home())
 
     return {
@@ -453,6 +591,7 @@ def evaluate() -> dict[str, Any]:
         "verification": verification,
         "pilot": pilot,
         "ordinary_restore": ordinary_restore,
+        "wolo_offhost": wolo_offhost,
         "progress": progress,
         "proven_recovery_classes": progress["proven_classes"],
         "remaining_recovery_classes": progress["remaining_classes"],
@@ -1157,6 +1296,10 @@ def forward_campaign_cli(argv: list[str]) -> int | None:
         "wolo-snapshot-status",
         "wolo-snapshot-start",
         "wolo-snapshot-plan",
+        "wolo-offhost-preflight",
+        "wolo-offhost-start",
+        "wolo-offhost-status",
+        "wolo-offhost-resume",
         "restore-start",
         "restore-status",
         "restore-resume",
@@ -1198,6 +1341,10 @@ def main() -> int:
         "wolo-snapshot-status",
         "wolo-snapshot-start",
         "wolo-snapshot-plan",
+        "wolo-offhost-preflight",
+        "wolo-offhost-start",
+        "wolo-offhost-status",
+        "wolo-offhost-resume",
         "restore-start",
         "restore-status",
         "restore-pause",

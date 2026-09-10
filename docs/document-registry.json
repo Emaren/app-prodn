@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0581383c5be666e74f77481940146d52f9b5f826b7f988471dcabe51d146573a",
+      "sha256": "2b4347767296a9d88fa90d7353d4082fa9510d3980e42dfaaa54b88edeff0965",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -563,9 +563,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-09-06",
+      "reviewed_at": "2026-09-10",
       "sensitivity": "internal",
-      "sha256": "5208388e332c9a6be97b1cff2802bab8c6f2119bc06197dea8ee445e23a445ad",
+      "sha256": "41f19895b580226b12bb3ce8156c79d214283a76e507bac00e83aa16cf35886a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -588,9 +588,9 @@
       "owner": "aoe2war-web",
       "path": "docs/EVIDENCE_VAULT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-06",
+      "reviewed_at": "2026-09-10",
       "sensitivity": "internal",
-      "sha256": "106250dbf15160189834b6f707bc55acad5417b490aec4825584cd4614a89352",
+      "sha256": "32f3ffc92eb1cfa00629831676ba3a5c9091c200ee7fcb5cdfe3b770fd2913cf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/recovery-wolo-snapshot-v1",
-    "commit": "079d3789be966349b8ce9f923b6934bd25b54b68"
+    "branch": "fix/recovery-wolo-offhost-v1",
+    "commit": "406c6b9b6e62bc6924b66a01fb3f8ec9720923d6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

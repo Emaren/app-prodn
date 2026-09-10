@@ -118,6 +118,62 @@ def build_chunked_restore_fixture(
     }
 
 
+def wolo_snapshot_fixture(campaign_id: str = "ordinary-test") -> dict:
+    remote_stage = (
+        f"{campaign.WOLO_REMOTE_STAGING_ROOT}/"
+        f"{campaign_id}-wolo-20260910T010000Z-aaaaaaaaaaaa"
+    )
+    remote = {
+        "schema": 1,
+        "kind": "aoe2war-recovery-wolo-staged-snapshot",
+        "status": campaign.WOLO_SNAPSHOT_STATUS,
+        "snapshot_id": "snapshot-test",
+        "tool_source": "a" * 40,
+        "remote_stage": remote_stage,
+        "service_restarted": True,
+        "static_source_sealed_after_restart": True,
+        "general_vault_secret_contents_included": False,
+        "wolo_chain_data_mutated": False,
+        "settlement_state_mutated": False,
+        "staged_priv_validator_height": 123,
+        "post_restart_height": 125,
+        "static_tar_identities": {
+            "wolo_settlement_state": {
+                "members": [
+                    "settlement-state",
+                    "founder-rewards-settlement-state",
+                ],
+                "tar_bytes": 10240,
+                "tar_sha256": "1" * 64,
+                "tar_sort": "name",
+                "numeric_owner": True,
+            },
+            "wolo_consensus_recovery": {
+                "members": ["consensus"],
+                "tar_bytes": 20480,
+                "tar_sha256": "2" * 64,
+                "tar_sort": "name",
+                "numeric_owner": True,
+            },
+        },
+    }
+    return {
+        "schema": 1,
+        "kind": "aoe2war-recovery-wolo-snapshot-state",
+        "campaign_id": campaign_id,
+        "snapshot_id": "snapshot-test",
+        "status": campaign.WOLO_SNAPSHOT_STATUS,
+        "tool_source": "a" * 40,
+        "remote_stage": remote_stage,
+        "requires_operator_reconciliation": False,
+        "remote": remote,
+        "proof_path": "/tmp/wolo-snapshot.json",
+        "proof_sha256": "3" * 64,
+    }
+
+
+
+
 class RecoveryCampaignTests(unittest.TestCase):
     def test_ordinary_stage_set_excludes_wolo_authorization_classes(self):
         stages = [
@@ -802,6 +858,305 @@ class RecoveryCampaignTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_wolo_snapshot_script_seals_deterministic_static_tar_identities(self):
+        script = campaign.wolo_snapshot_remote_script(
+            snapshot_id="campaign-wolo-static-seal",
+            tool_source="a" * 40,
+        )
+
+        self.assertIn("export LC_ALL=C", script)
+        self.assertIn("tar --sort=name --numeric-owner", script)
+        self.assertIn("SETTLEMENT_TAR_BYTES", script)
+        self.assertIn("SETTLEMENT_TAR_SHA", script)
+        self.assertIn("CONSENSUS_TAR_BYTES", script)
+        self.assertIn("CONSENSUS_TAR_SHA", script)
+        self.assertIn('"static_tar_identities"', script)
+        self.assertIn('"static_source_sealed_after_restart": True', script)
+
+    def test_remote_tar_command_supports_static_wolo_stage_source(self):
+        stage = {
+            "class": "wolo_settlement_state",
+            "source_root": "/mnt/recovery/wolo/snapshot-1",
+            "include_top_level": [
+                "settlement-state",
+                "founder-rewards-settlement-state",
+            ],
+            "tar_sort": "name",
+        }
+        command = campaign.remote_tar_command({"inventory": {}}, stage)
+
+        self.assertEqual(
+            command,
+            [
+                "tar",
+                "--numeric-owner",
+                "--sort=name",
+                "-C",
+                "/mnt/recovery/wolo/snapshot-1",
+                "-cf",
+                "-",
+                "--",
+                "settlement-state",
+                "founder-rewards-settlement-state",
+            ],
+        )
+
+    def test_expected_tar_identity_accepts_exact_and_rejects_drift(self):
+        stage = {
+            "expected_plaintext_tar_bytes": 12345,
+            "expected_plaintext_tar_sha256": "a" * 64,
+        }
+        exact = {
+            "plaintext_tar_bytes": 12345,
+            "plaintext_tar_sha256": "a" * 64,
+        }
+        campaign.assert_expected_tar_identity(stage, exact)
+
+        with self.assertRaisesRegex(
+            campaign.CampaignError,
+            "does not match the sealed staged snapshot",
+        ):
+            campaign.assert_expected_tar_identity(
+                stage,
+                {
+                    "plaintext_tar_bytes": 12346,
+                    "plaintext_tar_sha256": "a" * 64,
+                },
+            )
+        with self.assertRaisesRegex(
+            campaign.CampaignError,
+            "does not match the sealed staged snapshot",
+        ):
+            campaign.assert_expected_tar_identity(
+                stage,
+                {
+                    "plaintext_tar_bytes": 12345,
+                    "plaintext_tar_sha256": "b" * 64,
+                },
+            )
+
+    def test_expected_tar_identity_rejects_incomplete_expectation(self):
+        with self.assertRaisesRegex(
+            campaign.CampaignError,
+            "expected staged tar identity is incomplete or invalid",
+        ):
+            campaign.assert_expected_tar_identity(
+                {"expected_plaintext_tar_bytes": 12345},
+                {
+                    "plaintext_tar_bytes": 12345,
+                    "plaintext_tar_sha256": "a" * 64,
+                },
+            )
+
+    def test_validated_wolo_snapshot_requires_post_restart_static_seal(self):
+        value = wolo_snapshot_fixture()
+        with patch.object(campaign, "wolo_snapshot_status", return_value=value):
+            result = campaign._validated_wolo_snapshot("ordinary-test")
+        self.assertEqual(result["snapshot_id"], "snapshot-test")
+
+        broken = wolo_snapshot_fixture()
+        broken["remote"]["static_source_sealed_after_restart"] = False
+        with patch.object(campaign, "wolo_snapshot_status", return_value=broken):
+            with self.assertRaisesRegex(campaign.CampaignError, "post-restart static seal"):
+                campaign._validated_wolo_snapshot("ordinary-test")
+
+    def test_validated_wolo_snapshot_rejects_non_hex_tar_identity(self):
+        broken = wolo_snapshot_fixture()
+        broken["remote"]["static_tar_identities"]["wolo_consensus_recovery"]["tar_sha256"] = "Z" * 64
+        with patch.object(campaign, "wolo_snapshot_status", return_value=broken):
+            with self.assertRaisesRegex(campaign.CampaignError, "SHA identity invalid"):
+                campaign._validated_wolo_snapshot("ordinary-test")
+
+    def test_wolo_offhost_stage_map_is_exact_and_non_secret(self):
+        snapshot = wolo_snapshot_fixture()
+        stages = campaign.build_wolo_offhost_stages(snapshot)
+        self.assertEqual([item["class"] for item in stages], list(campaign.WOLO_OFFHOST_CLASSES))
+        settlement, consensus = stages
+        self.assertEqual(
+            settlement["include_top_level"],
+            ["settlement-state", "founder-rewards-settlement-state"],
+        )
+        self.assertEqual(consensus["include_top_level"], ["consensus"])
+        self.assertEqual(settlement["source_root"], snapshot["remote_stage"])
+        self.assertEqual(consensus["source_root"], snapshot["remote_stage"])
+        self.assertNotIn("priv_validator_key.json", repr(stages))
+        self.assertNotIn("keyring", repr(stages).lower())
+
+    def test_wolo_offhost_start_requires_explicit_authorization(self):
+        with patch.object(campaign, "wolo_offhost_preflight") as preflight:
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "--authorize-wolo-offhost-capture",
+            ):
+                campaign.create_wolo_offhost_state(
+                    "ordinary-test",
+                    authorize_wolo_offhost_capture=False,
+                )
+        preflight.assert_not_called()
+
+    def test_remote_wolo_stage_receipt_must_match_local_sealed_state(self):
+        snapshot = wolo_snapshot_fixture()
+        changed = dict(snapshot["remote"])
+        changed["post_restart_height"] = 999
+        completed = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=json.dumps(changed),
+            stderr="",
+        )
+        with patch.object(campaign.subprocess, "run", return_value=completed):
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "no longer matches local sealed state",
+            ):
+                campaign.verify_remote_wolo_stage_receipt(snapshot)
+
+    def test_existing_wolo_capture_rejects_different_snapshot_evidence(self):
+        stage = campaign.build_wolo_offhost_stages(wolo_snapshot_fixture())[0]
+        capture = {
+            "plaintext_tar_bytes": stage["expected_plaintext_tar_bytes"],
+            "plaintext_tar_sha256": stage["expected_plaintext_tar_sha256"],
+            "source_evidence": {"snapshot_id": "other-snapshot"},
+        }
+        with patch.object(campaign, "_capture_proof", return_value=(capture, "a" * 64, {})):
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "different snapshot evidence",
+            ):
+                campaign.validate_existing_wolo_capture(
+                    Path("/tmp/bundle"),
+                    "ordinary-test",
+                    "wolo_settlement_state",
+                    stage,
+                )
+
+    def test_wolo_offhost_detached_start_does_not_clobber_child_state(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            state_dir = Path(temporary) / "offhost"
+            initial = {
+                "schema": 1,
+                "kind": "aoe2war-recovery-wolo-offhost-state",
+                "campaign_id": "ordinary-test",
+                "status": "CREATED",
+                "pid": None,
+            }
+
+            def create(*args, **kwargs):
+                campaign.atomic_write(state_dir / "ordinary-test.json", dict(initial))
+                return dict(initial)
+
+            def spawn(_campaign_id):
+                child = dict(initial)
+                child["status"] = campaign.WOLO_OFFHOST_RUNNING_STATUS
+                child["pid"] = 777
+                campaign.atomic_write(state_dir / "ordinary-test.json", child)
+                return 777
+
+            with (
+                patch.object(campaign, "WOLO_OFFHOST_STATE_DIR", state_dir),
+                patch.object(campaign, "create_wolo_offhost_state", side_effect=create),
+                patch.object(campaign, "spawn_wolo_offhost", side_effect=spawn),
+            ):
+                result = campaign.start_wolo_offhost(
+                    "ordinary-test",
+                    authorize_wolo_offhost_capture=True,
+                )
+
+        self.assertEqual(result["status"], campaign.WOLO_OFFHOST_RUNNING_STATUS)
+        self.assertEqual(result["pid"], 777)
+        self.assertEqual(result["spawned_pid"], 777)
+
+    def test_wolo_offhost_run_writes_two_class_verified_summary(self):
+        snapshot = wolo_snapshot_fixture()
+        stages = campaign.build_wolo_offhost_stages(snapshot)
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            state_dir = root / "state"
+            bundle = root / "bundle"
+            bundle.mkdir()
+            cert = root / "recipient.pem"
+            cert.write_text("test-cert", encoding="utf-8")
+            key = root / "private.pem"
+            key.write_text("test-key", encoding="utf-8")
+            state = {
+                "schema": 1,
+                "kind": "aoe2war-recovery-wolo-offhost-state",
+                "campaign_id": "ordinary-test",
+                "status": "CREATED",
+                "tool_source": "a" * 40,
+                "bundle_root": str(bundle),
+                "recipient_certificate": str(cert),
+                "recipient_certificate_fingerprint": "A" * 64,
+                "snapshot_id": snapshot["snapshot_id"],
+                "snapshot_state_sha256": snapshot["proof_sha256"],
+                "remote_stage": snapshot["remote_stage"],
+                "classes": list(campaign.WOLO_OFFHOST_CLASSES),
+                "stages": stages,
+                "completed_classes": [],
+                "history": [],
+                "current_class": None,
+                "pid": None,
+                "last_error": None,
+                "completion_reason": None,
+            }
+
+            def restore(**kwargs):
+                class_name = kwargs["class_name"]
+                stage = next(item for item in stages if item["class"] == class_name)
+                proof_path = bundle / "restore-proofs" / f"{class_name}.json"
+                proof = {
+                    "schema": 1,
+                    "kind": kwargs["proof_kind"],
+                    "status": "PASS",
+                    "campaign_id": "ordinary-test",
+                    "class": class_name,
+                    "plaintext_tar_bytes": stage["expected_plaintext_tar_bytes"],
+                    "plaintext_tar_sha256": stage["expected_plaintext_tar_sha256"],
+                    "completed_at": campaign.utc_now(),
+                    "elapsed_seconds": 0.1,
+                    "representative_restore": {"status": "PASS"},
+                }
+                digest = campaign.write_json_with_sidecar(proof_path, proof)
+                return {
+                    "class": class_name,
+                    "proof_path": str(proof_path),
+                    "proof_file": str(proof_path.relative_to(bundle)),
+                    "proof_sha256": digest,
+                    "completed_at": proof["completed_at"],
+                    "elapsed_seconds": 0.1,
+                    "representative_restore": proof["representative_restore"],
+                }
+
+            with (
+                patch.object(campaign, "WOLO_OFFHOST_STATE_DIR", state_dir),
+                patch.object(campaign, "WOLO_OFFHOST_LOCK_PATH", state_dir / "capture.lock"),
+                patch.object(campaign, "source_identity", return_value="a" * 40),
+                patch.object(campaign, "_validated_wolo_snapshot", return_value=snapshot),
+                patch.object(campaign, "verify_remote_wolo_stage_receipt", return_value=snapshot["remote"]),
+                patch.object(
+                    campaign,
+                    "verify_canonical_private_key",
+                    return_value={"path": str(key), "mode": "600", "certificate_match": True},
+                ),
+                patch.object(campaign, "capture_stage") as capture,
+                patch.object(campaign, "restore_stage", side_effect=restore) as restore_mock,
+            ):
+                campaign.save_wolo_offhost_state(state)
+                rc = campaign.run_wolo_offhost("ordinary-test")
+                final = campaign.load_wolo_offhost_state("ordinary-test")
+
+            self.assertEqual(rc, 0)
+            self.assertEqual(final["status"], "COMPLETE")
+            self.assertEqual(final["completion_reason"], campaign.WOLO_OFFHOST_COMPLETE_STATUS)
+            self.assertEqual(final["completed_classes"], list(campaign.WOLO_OFFHOST_CLASSES))
+            self.assertEqual(capture.call_count, 2)
+            self.assertEqual(restore_mock.call_count, 2)
+            summary = campaign.recovery.verify_wolo_offhost_summary(
+                bundle / "wolo-offhost-summary.json"
+            )
+            self.assertEqual(summary["status"], "VERIFIED")
+            self.assertEqual(summary["blockers"], [])
+
     def test_wolo_snapshot_lock_contention_refuses_second_transaction(self):
         with tempfile.TemporaryDirectory() as temporary:
             snapshot_dir = Path(temporary) / "states"
@@ -1098,6 +1453,30 @@ class RecoveryCampaignTests(unittest.TestCase):
         self.assertTrue(start.authorize_wolo_quiesced_snapshot)
         self.assertEqual(status.command, "wolo-snapshot-status")
 
+
+    def test_parser_exposes_wolo_offhost_commands(self):
+        preflight = campaign.parser().parse_args(
+            ["wolo-offhost-preflight", "ordinary-test", "--json"]
+        )
+        start = campaign.parser().parse_args(
+            [
+                "wolo-offhost-start",
+                "ordinary-test",
+                "--authorize-wolo-offhost-capture",
+                "--json",
+            ]
+        )
+        status = campaign.parser().parse_args(
+            ["wolo-offhost-status", "ordinary-test", "--json"]
+        )
+        resume = campaign.parser().parse_args(
+            ["wolo-offhost-resume", "ordinary-test", "--json"]
+        )
+        self.assertEqual(preflight.command, "wolo-offhost-preflight")
+        self.assertEqual(start.command, "wolo-offhost-start")
+        self.assertTrue(start.authorize_wolo_offhost_capture)
+        self.assertEqual(status.command, "wolo-offhost-status")
+        self.assertEqual(resume.command, "wolo-offhost-resume")
 
     def test_canonical_certificate_is_preferred_when_fingerprint_matches(self):
         pilot = {
@@ -1537,6 +1916,43 @@ class RecoveryCampaignTests(unittest.TestCase):
         self.assertFalse(proof["production_mutated"])
         self.assertFalse(proof["wolo_mutated"])
         self.assertEqual(len(receipt["proof_sha256"]), 64)
+
+    @unittest.skipUnless(
+        campaign.shutil.which("openssl") and campaign.shutil.which("tar"),
+        "OpenSSL and tar are required for chunked restore tests",
+    )
+    def test_restore_stage_writes_dedicated_wolo_proof_kind(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            fixture = build_chunked_restore_fixture(
+                root,
+                class_name="wolo_settlement_state",
+            )
+            receipt = campaign.restore_stage(
+                campaign_id=fixture["campaign_id"],
+                bundle_root=root,
+                class_name=fixture["class_name"],
+                recipient_cert=fixture["cert"],
+                private_key=fixture["key"],
+                capture_tool_source="capture-source",
+                restore_tool_source="restore-source",
+                proof_kind="aoe2war-recovery-wolo-restore-class-proof",
+            )
+            proof = json.loads(
+                Path(receipt["proof_path"]).read_text(encoding="utf-8")
+            )
+
+        self.assertEqual(
+            proof["kind"],
+            "aoe2war-recovery-wolo-restore-class-proof",
+        )
+        self.assertEqual(proof["class"], "wolo_settlement_state")
+        self.assertEqual(proof["status"], "PASS")
+        self.assertTrue(proof["plaintext_matches_capture"])
+        self.assertFalse(proof["full_plaintext_archive_staged"])
+        self.assertFalse(
+            proof["secrets_policy"]["private_recovery_key_transmitted_to_vps"]
+        )
 
     def test_restore_state_requires_explicit_authorization(self):
         with self.assertRaisesRegex(
