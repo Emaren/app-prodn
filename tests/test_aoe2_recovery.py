@@ -33,6 +33,19 @@ class RecoveryTests(unittest.TestCase):
             ["start", "--authorize-ordinary-capture", "--json"],
         )
 
+    def test_campaign_wolo_preflight_is_forwarded_verbatim(self):
+        completed = type("Completed", (), {"returncode": 0})()
+        with patch.object(recovery.subprocess, "run", return_value=completed) as run:
+            rc = recovery.forward_campaign_cli(
+                ["campaign", "wolo-preflight", "--json"]
+            )
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(
+            run.call_args.args[0][2:],
+            ["wolo-preflight", "--json"],
+        )
+
     def test_campaign_plan_is_not_intercepted_by_forwarder(self):
         self.assertIsNone(
             recovery.forward_campaign_cli(["campaign", "plan", "--json"])

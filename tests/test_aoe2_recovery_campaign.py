@@ -427,6 +427,224 @@ class RecoveryCampaignTests(unittest.TestCase):
         self.assertFalse(result["key_material_in_general_vault"])
 
 
+    def _wolo_inventory(self):
+        home = campaign.WOLO_MAINNET_HOME
+        return {
+            "schema": 1,
+            "classes": {
+                "wolo_settlement_state": {
+                    "exists": True,
+                    "path": "/mnt/wolo/settlement-state",
+                    "bytes": 3_000,
+                },
+                "wolo_founder_rewards_settlement_state": {
+                    "exists": True,
+                    "path": "/mnt/wolo/founder-rewards-settlement-state",
+                    "bytes": 1_000,
+                },
+            },
+            "listeners": [
+                "LISTEN 0 4096 127.0.0.1:8092 0.0.0.0:*",
+                "LISTEN 0 4096 127.0.0.1:8093 0.0.0.0:*",
+            ],
+            "wolo": {
+                "service": campaign.WOLO_MAINNET_SERVICE,
+                "active": "active",
+                "main_pid": 987,
+                "home": home,
+                "home_identity": {"exists": True, "path": home, "bytes": 6_000},
+                "data_identity": {"exists": True, "path": home + "/data", "bytes": 5_000},
+                "config_identity": {"exists": True, "path": home + "/config", "bytes": 500},
+                "services": {
+                    campaign.WOLO_MAINNET_SERVICE: {
+                        "id": campaign.WOLO_MAINNET_SERVICE,
+                        "active": "active",
+                        "sub_state": "running",
+                        "main_pid": 987,
+                        "requires": ["system.slice"],
+                        "after": ["network-online.target"],
+                    },
+                    campaign.WOLO_SETTLEMENT_SERVICE: {
+                        "id": campaign.WOLO_SETTLEMENT_SERVICE,
+                        "active": "active",
+                        "sub_state": "running",
+                        "main_pid": 994,
+                        "requires": [campaign.WOLO_MAINNET_SERVICE],
+                        "after": [campaign.WOLO_MAINNET_SERVICE],
+                    },
+                    campaign.WOLO_FOUNDER_REWARDS_SERVICE: {
+                        "id": campaign.WOLO_FOUNDER_REWARDS_SERVICE,
+                        "active": "active",
+                        "sub_state": "running",
+                        "main_pid": 992,
+                        "requires": [campaign.WOLO_MAINNET_SERVICE],
+                        "after": [campaign.WOLO_MAINNET_SERVICE],
+                    },
+                },
+                "key_custody_metadata": [
+                    {
+                        "path": home + "/config/priv_validator_key.json",
+                        "exists": True,
+                        "bytes": 345,
+                        "mode": "600",
+                        "owner": "root:root",
+                    },
+                    {
+                        "path": home + "/config/node_key.json",
+                        "exists": True,
+                        "bytes": 148,
+                        "mode": "600",
+                        "owner": "root:root",
+                    },
+                    {
+                        "path": home + "/keyring-file",
+                        "exists": True,
+                        "bytes": 2712,
+                        "mode": "700",
+                        "owner": "root:root",
+                    },
+                ],
+            },
+        }
+
+    def test_wolo_preflight_ready_is_observational_and_unauthorized(self):
+        result = campaign.build_wolo_preflight(
+            self._wolo_inventory(),
+            20_000,
+            tool_source="a" * 40,
+            tool_branch="feature/recovery-preflight",
+            tool_dirty=False,
+        )
+
+        self.assertEqual(result["status"], "READY")
+        self.assertEqual(result["blockers"], [])
+        self.assertEqual(result["wolo"]["listener_counts"], {"8092": 1, "8093": 1})
+
+        self.assertEqual(
+            set(result["wolo"]["services"]),
+            {
+                campaign.WOLO_MAINNET_SERVICE,
+                campaign.WOLO_SETTLEMENT_SERVICE,
+                campaign.WOLO_FOUNDER_REWARDS_SERVICE,
+            },
+        )
+        self.assertEqual(result["proposed_quiesce_order"], list(campaign.WOLO_QUIESCE_ORDER))
+        self.assertEqual(result["proposed_restart_order"], list(campaign.WOLO_RESTART_ORDER))
+        self.assertEqual(result["settlement_state_bytes"], 4_000)
+        self.assertEqual(result["consensus_estimated_bytes"], 6_000)
+        self.assertEqual(result["estimated_encrypted_payload_bytes"], 10_000)
+        self.assertEqual(result["headroom_after_estimated_payload_bytes"], 10_000)
+        self.assertTrue(result["capacity_ready"])
+        self.assertFalse(result["key_custody"]["secret_contents_read"])
+        self.assertFalse(result["key_custody"]["general_vault_payload"])
+        self.assertTrue(result["key_custody"]["separate_custody_required"])
+        self.assertEqual(
+            result["authorization"],
+            {
+                "settlement_capture": False,
+                "wolo_quiesce": False,
+                "consensus_capture": False,
+                "key_custody": False,
+            },
+        )
+        self.assertFalse(result["production_mutated"])
+        self.assertFalse(result["wolo_mutated"])
+
+    def test_wolo_preflight_blocks_duplicate_protected_listener(self):
+        inventory = self._wolo_inventory()
+        inventory["listeners"].append(
+            "LISTEN 0 4096 127.0.0.1:8092 0.0.0.0:*"
+        )
+        result = campaign.build_wolo_preflight(
+            inventory,
+            20_000,
+            tool_source="a" * 40,
+            tool_branch="main",
+            tool_dirty=False,
+        )
+
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertIn(
+            "protected Wolo listener 8092 count must be exactly 1, got 2",
+            result["blockers"],
+        )
+        self.assertFalse(result["authorization"]["wolo_quiesce"])
+
+    def test_wolo_preflight_blocks_weak_or_missing_key_custody_metadata(self):
+        inventory = self._wolo_inventory()
+        metadata = inventory["wolo"]["key_custody_metadata"]
+        metadata[0]["mode"] = "644"
+        metadata[:] = [
+            item
+            for item in metadata
+            if not str(item["path"]).endswith("/keyring-file")
+        ]
+        result = campaign.build_wolo_preflight(
+            inventory,
+            20_000,
+            tool_source="a" * 40,
+            tool_branch="main",
+            tool_dirty=False,
+        )
+
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertTrue(
+            any("priv_validator_key.json" in item and "mode mismatch" in item for item in result["blockers"])
+        )
+        self.assertTrue(
+            any("keyring-file" in item and "missing" in item for item in result["blockers"])
+        )
+        self.assertFalse(result["key_custody"]["secret_contents_read"])
+
+    def test_wolo_preflight_blocks_settlement_service_dependency_drift(self):
+        inventory = self._wolo_inventory()
+        inventory["wolo"]["services"][campaign.WOLO_SETTLEMENT_SERVICE]["requires"] = []
+        result = campaign.build_wolo_preflight(
+            inventory,
+            20_000,
+            tool_source="a" * 40,
+            tool_branch="main",
+            tool_dirty=False,
+        )
+
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertTrue(
+            any(
+                campaign.WOLO_SETTLEMENT_SERVICE in item
+                and "does not require" in item
+                for item in result["blockers"]
+            )
+        )
+        self.assertEqual(
+            result["proposed_quiesce_order"],
+            list(campaign.WOLO_QUIESCE_ORDER),
+        )
+        self.assertEqual(
+            result["proposed_restart_order"],
+            list(campaign.WOLO_RESTART_ORDER),
+        )
+
+    def test_wolo_preflight_blocks_insufficient_mac_capacity(self):
+        result = campaign.build_wolo_preflight(
+            self._wolo_inventory(),
+            9_999,
+            tool_source="a" * 40,
+            tool_branch="main",
+            tool_dirty=False,
+        )
+
+        self.assertEqual(result["status"], "BLOCKED")
+        self.assertFalse(result["capacity_ready"])
+        self.assertTrue(
+            any("capacity is insufficient" in item for item in result["blockers"])
+        )
+
+    def test_parser_exposes_wolo_preflight(self):
+        args = campaign.parser().parse_args(["wolo-preflight", "--json"])
+        self.assertEqual(args.command, "wolo-preflight")
+        self.assertTrue(args.json)
+
+
     def test_canonical_certificate_is_preferred_when_fingerprint_matches(self):
         pilot = {
             "recipient_certificate_fingerprint": "AA:BB",
