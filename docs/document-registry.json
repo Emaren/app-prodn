@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b95c7c2295b229839f036ac238de990e6fdc1d060aae12b1256e26608d7d6d95",
+      "sha256": "0581383c5be666e74f77481940146d52f9b5f826b7f988471dcabe51d146573a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/recovery-wolo-preflight-v1",
-    "commit": "222c356b87db3fc91eadd13de4de34e22b2ae151"
+    "branch": "fix/recovery-wolo-snapshot-v1",
+    "commit": "079d3789be966349b8ce9f923b6934bd25b54b68"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
