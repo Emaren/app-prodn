@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-09"
+reviewed_at: "2026-09-10"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -203,6 +203,57 @@ authenticated reward-run requests return
 
 No staking balance, reward allocation, or WoloChain transfer is rewritten by
 that containment change.
+
+### September 10 UTC legacy synthetic-compound reconciliation
+
+A second read-only production census proved the 109 synthetic events map
+one-to-one to exactly 109 `COMPOUNDED` allocations totaling **92,285 WOLO**:
+Emaren 4 WOLO across 3 rows, Julio 23,619 across 45 rows, and Jim 68,662 across
+61 rows. There were zero missing allocation links, user mismatches, amount
+mismatches, distribution mismatches, unexpected confirmed `COMPOUND` events,
+or unmapped `COMPOUNDED` allocations. There were still zero chain-backed
+compound events.
+
+The one-time repair is intentionally an accounting/provenance correction, not
+a treasury top-up and not a reward haircut. It keeps all historical synthetic
+`COMPOUND-*` events immutable, keeps `lifetimeRewardsWolo` unchanged, changes
+the 109 linked allocations from `COMPOUNDED` to `COMPOUND_PENDING`, and removes
+exactly 92,285 unbacked WOLO from `compoundedRewardsWolo`. Any independently
+chain-backed compound principal is preserved.
+
+The source read model separately rejects compound principal unless the event
+has both `chainBackedCompound=true` and a real 64-hex WoloChain transaction
+hash. Legacy `COMPOUND_PENDING` rows on distributions without
+`rewardSettlementPolicy=chain_backed_compound_v1` are quarantined from the
+legacy payout rail and surface an operator-reconciliation error rather than
+being silently skipped or paid through the wrong signer path.
+
+Run the production tool only from the clean deployed `main` checkout after the
+merged source has been certified and while stake, unstake, and reward mutation
+remain safety-paused and `aoe2hdbets-staking-rewards.timer` is disabled:
+
+```bash
+set -a
+. /etc/aoe2hdbets/aoe2hdbets-web.env
+set +a
+
+node scripts/reconcile-legacy-synthetic-staking-compounds.mjs
+node scripts/reconcile-legacy-synthetic-staking-compounds.mjs \
+  --apply \
+  --confirm RECONCILE-LEGACY-SYNTHETIC-COMPOUNDS-109-92285
+node scripts/reconcile-legacy-synthetic-staking-compounds.mjs --verify
+```
+
+Dry-run is the default. Apply rechecks the exact cohort inside a PostgreSQL
+transaction under an advisory lock, writes mode-0600 precondition evidence and
+a pre-commit receipt, and refuses source/timer drift. It performs no WoloChain
+transaction. Re-running apply after a successful correction is an idempotent
+no-op; `--verify` is the canonical postcondition check.
+
+Do **not** fund the apparent historical 23,774.265-WOLO deficit as a substitute
+for this reconciliation. After repair, re-measure custody against real direct
+principal and any independently proven chain-backed compound liability, then
+make any later reserve-funding decision from that corrected state.
 
 Unstake checks and confirmed-event finalization must use that same combined
 mainnet liability. Finalization consumes direct principal before compounded

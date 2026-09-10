@@ -356,6 +356,24 @@ activation by itself. Historical compound liability, custody deficit, and
 reserve must be reconciled before any reward timer or application reward gate
 is re-enabled.
 
+A September 10 UTC follow-up proved the apparent **23,774.265 WOLO** reserve
+top-up was not, by itself, evidence that treasury funding was needed. The
+staking wallet already exceeded direct principal plus the 10,000-WOLO reserve
+target; the deficit appeared only because all **92,285 WOLO** of historical
+compound principal was synthetic. The durable repair rule is therefore:
+**correct false custody provenance before adding reserve funds**. Preserve the
+earned reward entitlement, preserve the historical synthetic events as
+forensic evidence, demote the linked allocation to `COMPOUND_PENDING`, and
+remove only the unbacked amount from `compoundedRewardsWolo`. A future real
+chain-backed compound must survive that reconciliation unchanged.
+
+Mainnet historical reconstruction must also reject a compound event unless it
+has both `chainBackedCompound=true` and a real 64-hex WoloChain transaction
+hash. A legacy `COMPOUND-*` identifier can never become principal merely by
+changing metadata. Legacy `COMPOUND_PENDING` allocations are quarantined from
+the legacy payout rail and require an explicit, separately reviewed custody
+reconciliation before settlement.
+
 ### Premium betting composer implementation status
 
 The E4 horizontal `InstrumentStakeRail` has been removed and replaced with
