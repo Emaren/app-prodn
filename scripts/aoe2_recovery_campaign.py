@@ -54,6 +54,14 @@ WOLO_RESTART_ORDER = (
     WOLO_SETTLEMENT_SERVICE,
     WOLO_FOUNDER_REWARDS_SERVICE,
 )
+WOLO_REMOTE_STAGING_ROOT = "/mnt/HC_Volume_105319120/aoe2war/recovery-staging/wolo"
+WOLO_REMOTE_MIN_HEADROOM_BYTES = 8 * 1024 * 1024 * 1024
+WOLO_SNAPSHOT_STATE_DIR = CAMPAIGN_DIR / "wolo-snapshots"
+WOLO_SNAPSHOT_RUNNING_STATUS = "AUTHORIZED_SNAPSHOT_RUNNING"
+WOLO_SNAPSHOT_STATUS = "STAGED_PENDING_ENCRYPTED_CAPTURE"
+WOLO_SNAPSHOT_UNCERTAIN_STATUS = "UNKNOWN_REQUIRES_RECONCILIATION"
+WOLO_RPC_STATUS_URL = "https://rpc-mainnet.aoe2war.com/status"
+WOLO_REST_NODE_INFO_URL = "https://rest-mainnet.aoe2war.com/cosmos/base/tendermint/v1beta1/node_info"
 WOLO_PROTECTED_KEY_PATHS = (
     "config/priv_validator_key.json",
     "config/node_key.json",
@@ -678,6 +686,645 @@ def print_wolo_preflight(payload: dict[str, Any]) -> None:
     else:
         print()
         print("READY FOR A SEPARATELY AUTHORIZED WOLO RECOVERY CAPTURE.")
+
+
+def build_wolo_snapshot_plan(
+    preflight: dict[str, Any],
+    *,
+    remote_volume_free_bytes: int,
+) -> dict[str, Any]:
+    blockers = list(preflight.get("blockers") or [])
+    estimated = int(preflight.get("estimated_encrypted_payload_bytes") or 0)
+    headroom = int(remote_volume_free_bytes) - estimated
+    if preflight.get("status") != "READY" and not blockers:
+        blockers.append("Wolo recovery preflight is not READY")
+    if headroom < WOLO_REMOTE_MIN_HEADROOM_BYTES:
+        blockers.append(
+            "VPS recovery staging would leave insufficient HC-volume headroom: "
+            f"free={remote_volume_free_bytes} estimated={estimated} "
+            f"headroom={headroom} minimum={WOLO_REMOTE_MIN_HEADROOM_BYTES}"
+        )
+    return {
+        "schema": 1,
+        "kind": "aoe2war-recovery-wolo-snapshot-plan",
+        "generated_at": utc_now(),
+        "status": "READY" if not blockers else "BLOCKED",
+        "blockers": blockers,
+        "preflight": preflight,
+        "remote_staging_root": WOLO_REMOTE_STAGING_ROOT,
+        "remote_volume_free_bytes": int(remote_volume_free_bytes),
+        "estimated_staged_bytes": estimated,
+        "remote_headroom_after_estimate_bytes": headroom,
+        "minimum_remote_headroom_bytes": WOLO_REMOTE_MIN_HEADROOM_BYTES,
+        "strategy": "LIVE_PRESEED_THEN_CHECKSUM_QUIESCED_CONVERGENCE",
+        "consensus_payload_whitelist": ["data/", "config/"],
+        "config_secret_exclusions": [
+            "priv_validator_key.json",
+            "node_key.json",
+        ],
+        "home_paths_not_in_general_snapshot": [
+            ".wolochain/",
+            "keyring-file/",
+            "keyring-test/",
+        ],
+        "proposed_quiesce_order": list(WOLO_QUIESCE_ORDER),
+        "proposed_restart_order": list(WOLO_RESTART_ORDER),
+        "activation_requires_clean_main": True,
+        "activation_flag": "--authorize-wolo-quiesced-snapshot",
+        "wolo_service_mutation_authorized": False,
+        "wolo_data_mutation_authorized": False,
+        "recovery_class_proven_after_staging": False,
+    }
+
+
+def wolo_snapshot_plan() -> dict[str, Any]:
+    inventory = recovery.recovery_inventory()
+    preflight = build_wolo_preflight(
+        inventory,
+        int(shutil.disk_usage(Path.home()).free),
+        tool_source=git_output("rev-parse", "HEAD"),
+        tool_branch=git_output("branch", "--show-current"),
+        tool_dirty=bool(
+            git_output("status", "--porcelain", "--untracked-files=all")
+        ),
+    )
+    remote_capacity = inventory.get("capacity") or {}
+    return build_wolo_snapshot_plan(
+        preflight,
+        remote_volume_free_bytes=int(
+            remote_capacity.get("volume_free_bytes") or 0
+        ),
+    )
+
+
+def wolo_snapshot_state_path(campaign_id: str) -> Path:
+    state_path(campaign_id)
+    return WOLO_SNAPSHOT_STATE_DIR / f"{campaign_id}.json"
+
+
+def wolo_snapshot_lock_path() -> Path:
+    return WOLO_SNAPSHOT_STATE_DIR / "snapshot.lock"
+
+
+def _validate_snapshot_id(value: str) -> str:
+    if (
+        not value
+        or any(
+            ch
+            not in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_."
+            for ch in value
+        )
+        or value in {".", ".."}
+        or ".." in value
+    ):
+        raise CampaignError(f"unsafe Wolo snapshot id: {value!r}")
+    return value
+
+
+def wolo_snapshot_remote_script(
+    *,
+    snapshot_id: str,
+    tool_source: str,
+) -> str:
+    q = shlex.quote
+    snapshot_id = _validate_snapshot_id(snapshot_id)
+    stage = f"{WOLO_REMOTE_STAGING_ROOT}/{snapshot_id}"
+    return f'''
+set -euo pipefail
+umask 077
+
+SNAPSHOT_ID={q(snapshot_id)}
+TOOL_SOURCE={q(tool_source)}
+STAGING_ROOT={q(WOLO_REMOTE_STAGING_ROOT)}
+STAGE={q(stage)}
+WOLO_HOME={q(WOLO_MAINNET_HOME)}
+SETTLEMENT=/mnt/HC_Volume_105319120/wolochain-mainnet/settlement-state
+FOUNDER=/mnt/HC_Volume_105319120/wolochain-mainnet/founder-rewards-settlement-state
+NODE={q(WOLO_MAINNET_SERVICE)}
+SETTLE={q(WOLO_SETTLEMENT_SERVICE)}
+FOUNDER_UNIT={q(WOLO_FOUNDER_REWARDS_SERVICE)}
+RPC_URL={q(WOLO_RPC_STATUS_URL)}
+REST_URL={q(WOLO_REST_NODE_INFO_URL)}
+MIN_HEADROOM={WOLO_REMOTE_MIN_HEADROOM_BYTES}
+QUIESCED=0
+QUIESCE_STARTED=0
+
+fail() {{ echo "FAIL: $*" >&2; exit 1; }}
+listener_count() {{ ss -ltn | grep -Ec ":$1[[:space:]]" || true; }}
+require_listener_owner() {{
+  port="$1"
+  unit="$2"
+  pid="$(systemctl show "$unit" -p MainPID --value)"
+  [ "${{pid:-0}}" -gt 0 ] || fail "$unit has no MainPID for port $port"
+  ss -ltnp \
+    | grep -E ":$port[[:space:]]" \
+    | grep -F "pid=$pid," >/dev/null \
+    || fail "port $port is not owned by $unit pid=$pid"
+}}
+require_active() {{ systemctl is-active --quiet "$1" || fail "$1 inactive"; }}
+require_inactive() {{
+  if systemctl is-active --quiet "$1"; then
+    fail "$1 still active"
+  fi
+}}
+
+restart_all() {{
+  [ "$QUIESCED" = 1 ] || return 0
+  restart_rc=0
+  systemctl start "$NODE" || restart_rc=1
+  systemctl start "$SETTLE" || restart_rc=1
+  systemctl start "$FOUNDER_UNIT" || restart_rc=1
+  for unit in "$NODE" "$SETTLE" "$FOUNDER_UNIT"; do
+    systemctl is-active --quiet "$unit" || restart_rc=1
+  done
+  if [ "$restart_rc" = 0 ]; then
+    QUIESCED=0
+    return 0
+  fi
+  return 1
+}}
+emergency_restart() {{
+  rc=$?
+  trap - EXIT HUP INT TERM
+  if ! restart_all; then
+    echo "FATAL: emergency Wolo restart failed" >&2
+    exit 125
+  fi
+  exit "$rc"
+}}
+trap emergency_restart EXIT HUP INT TERM
+
+for tool in rsync systemctl ss curl python3 sha256sum sync find du df seq; do
+  command -v "$tool" >/dev/null || fail "missing required tool: $tool"
+done
+
+case "$STAGE" in
+  "$STAGING_ROOT"/*) ;;
+  *) fail "unsafe staging path" ;;
+esac
+[ ! -e "$STAGE" ] || fail "staging path already exists: $STAGE"
+
+mkdir -p \
+  "$STAGE/consensus/data" \
+  "$STAGE/consensus/config" \
+  "$STAGE/settlement-state" \
+  "$STAGE/founder-rewards-settlement-state"
+chmod 0700 \
+  "$STAGE" \
+  "$STAGE/consensus" \
+  "$STAGE/settlement-state" \
+  "$STAGE/founder-rewards-settlement-state"
+
+for unit in "$NODE" "$SETTLE" "$FOUNDER_UNIT"; do
+  require_active "$unit"
+done
+[ "$(listener_count 8092)" = 1 ] || fail "8092 listener count is not 1 before snapshot"
+[ "$(listener_count 8093)" = 1 ] || fail "8093 listener count is not 1 before snapshot"
+require_listener_owner 8092 "$SETTLE"
+require_listener_owner 8093 "$FOUNDER_UNIT"
+
+for unit in "$SETTLE" "$FOUNDER_UNIT"; do
+  systemctl show "$unit" -p Requires --value \
+    | tr ' ' '\n' \
+    | grep -Fx "$NODE" >/dev/null \
+    || fail "$unit no longer requires $NODE"
+done
+
+FREE_BYTES="$(df -B1 --output=avail "$STAGING_ROOT" | tail -1 | tr -d ' ')"
+ESTIMATED_BYTES="$(
+  du -sb "$WOLO_HOME" "$SETTLEMENT" "$FOUNDER" \
+    | awk '{{s+=$1}} END{{print s+0}}'
+)"
+[ $((FREE_BYTES - ESTIMATED_BYTES)) -ge "$MIN_HEADROOM" ] \
+  || fail "insufficient HC-volume staging headroom"
+
+live_rsync() {{
+  set +e
+  rsync "$@"
+  rc=$?
+  set -e
+  [ "$rc" = 0 ] || [ "$rc" = 24 ] || return "$rc"
+}}
+
+sync_live_seed() {{
+  live_rsync -a --delete \
+    "$WOLO_HOME/data/" \
+    "$STAGE/consensus/data/"
+  live_rsync -a --delete --delete-excluded \
+    --exclude='priv_validator_key.json' \
+    --exclude='node_key.json' \
+    "$WOLO_HOME/config/" \
+    "$STAGE/consensus/config/"
+  live_rsync -a --delete \
+    "$SETTLEMENT/" \
+    "$STAGE/settlement-state/"
+  live_rsync -a --delete \
+    "$FOUNDER/" \
+    "$STAGE/founder-rewards-settlement-state/"
+}}
+
+sync_final_checksum() {{
+  rsync -a --checksum --delete \
+    "$WOLO_HOME/data/" \
+    "$STAGE/consensus/data/"
+  rsync -a --checksum --delete --delete-excluded \
+    --exclude='priv_validator_key.json' \
+    --exclude='node_key.json' \
+    "$WOLO_HOME/config/" \
+    "$STAGE/consensus/config/"
+  rsync -a --checksum --delete \
+    "$SETTLEMENT/" \
+    "$STAGE/settlement-state/"
+  rsync -a --checksum --delete \
+    "$FOUNDER/" \
+    "$STAGE/founder-rewards-settlement-state/"
+}}
+
+# Phase 1: most bytes move while all Wolo services remain online.
+sync_live_seed
+
+# Phase 2: establish one consistency seam, converge by checksum, flush, restart.
+QUIESCED=1
+QUIESCE_STARTED="$(date +%s)"
+systemctl stop "$FOUNDER_UNIT"
+systemctl stop "$SETTLE"
+systemctl stop "$NODE"
+
+require_inactive "$FOUNDER_UNIT"
+require_inactive "$SETTLE"
+require_inactive "$NODE"
+[ "$(listener_count 8092)" = 0 ] || fail "8092 remained live during quiesce"
+[ "$(listener_count 8093)" = 0 ] || fail "8093 remained live during quiesce"
+
+sync_final_checksum
+sync -f "$STAGE"
+
+STAGED_VALIDATOR_HEIGHT="$(
+  python3 - "$STAGE/consensus/data/priv_validator_state.json" <<'PYHEIGHT'
+import json
+import sys
+value = json.load(open(sys.argv[1], encoding="utf-8")).get("height")
+print(int(value))
+PYHEIGHT
+)"
+[ "$STAGED_VALIDATOR_HEIGHT" -ge 0 ] \
+  || fail "staged priv-validator height is invalid"
+
+restart_all || fail "dependency-safe Wolo restart failed"
+for unit in "$NODE" "$SETTLE" "$FOUNDER_UNIT"; do
+  require_active "$unit"
+done
+QUIESCE_ENDED="$(date +%s)"
+
+for _ in $(seq 1 30); do
+  if [ "$(listener_count 8092)" = 1 ] && [ "$(listener_count 8093)" = 1 ]; then
+    break
+  fi
+  sleep 1
+done
+[ "$(listener_count 8092)" = 1 ] || fail "8092 did not return exactly once"
+[ "$(listener_count 8093)" = 1 ] || fail "8093 did not return exactly once"
+require_listener_owner 8092 "$SETTLE"
+require_listener_owner 8093 "$FOUNDER_UNIT"
+
+RPC_JSON="$(
+  curl -fsS \
+    --retry 8 \
+    --retry-delay 1 \
+    --retry-all-errors \
+    --max-time 8 \
+    "$RPC_URL"
+)" || fail "Wolo RPC health is unreachable after restart"
+curl -fsS \
+  --retry 8 \
+  --retry-delay 1 \
+  --retry-all-errors \
+  --max-time 8 \
+  "$REST_URL" >/dev/null \
+  || fail "Wolo REST health is unreachable after restart"
+
+NETWORK="$(
+  printf '%s' "$RPC_JSON" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["node_info"]["network"])'
+)"
+HEIGHT="$(
+  printf '%s' "$RPC_JSON" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["sync_info"]["latest_block_height"])'
+)"
+CATCHING="$(
+  printf '%s' "$RPC_JSON" \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin)["result"]["sync_info"]["catching_up"])'
+)"
+[ "$NETWORK" = wolo-1 ] || fail "network is $NETWORK after restart"
+[ "$CATCHING" = False ] || fail "catching_up is $CATCHING after restart"
+[ "$HEIGHT" -ge "$STAGED_VALIDATOR_HEIGHT" ] \
+  || fail "post-restart chain height $HEIGHT is below staged validator height $STAGED_VALIDATOR_HEIGHT"
+
+# General recovery staging must not contain protected or ambiguous key material.
+[ ! -e "$STAGE/consensus/config/priv_validator_key.json" ] \
+  || fail "validator key leaked into staging"
+[ ! -e "$STAGE/consensus/config/node_key.json" ] \
+  || fail "node key leaked into staging"
+[ ! -e "$STAGE/keyring-file" ] \
+  || fail "keyring-file leaked into staging"
+[ ! -e "$STAGE/keyring-test" ] \
+  || fail "keyring-test leaked into staging"
+[ ! -e "$STAGE/.wolochain" ] \
+  || fail "nested .wolochain leaked into staging"
+
+DATA_BYTES="$(du -sb "$STAGE/consensus/data" | awk '{{print $1}}')"
+CONFIG_BYTES="$(du -sb "$STAGE/consensus/config" | awk '{{print $1}}')"
+SETTLEMENT_BYTES="$(du -sb "$STAGE/settlement-state" | awk '{{print $1}}')"
+FOUNDER_BYTES="$(du -sb "$STAGE/founder-rewards-settlement-state" | awk '{{print $1}}')"
+RECEIPT="$STAGE/stage-receipt.json"
+
+python3 - \
+  "$RECEIPT" \
+  "$SNAPSHOT_ID" \
+  "$TOOL_SOURCE" \
+  "$STAGE" \
+  "$QUIESCE_STARTED" \
+  "$QUIESCE_ENDED" \
+  "$STAGED_VALIDATOR_HEIGHT" \
+  "$HEIGHT" \
+  "$DATA_BYTES" \
+  "$CONFIG_BYTES" \
+  "$SETTLEMENT_BYTES" \
+  "$FOUNDER_BYTES" <<'PYREC'
+import json
+import pathlib
+import sys
+
+(
+    receipt,
+    snapshot_id,
+    tool_source,
+    stage,
+    started,
+    ended,
+    staged_validator_height,
+    height,
+    data_bytes,
+    config_bytes,
+    settlement_bytes,
+    founder_bytes,
+) = sys.argv[1:]
+
+payload = {{
+    "schema": 1,
+    "kind": "aoe2war-recovery-wolo-staged-snapshot",
+    "status": "STAGED_PENDING_ENCRYPTED_CAPTURE",
+    "snapshot_id": snapshot_id,
+    "tool_source": tool_source,
+    "remote_stage": stage,
+    "strategy": "LIVE_PRESEED_THEN_CHECKSUM_QUIESCED_CONVERGENCE",
+    "quiesce_seconds": max(0, int(ended) - int(started)),
+    "staged_priv_validator_height": int(staged_validator_height),
+    "post_restart_network": "wolo-1",
+    "post_restart_height": int(height),
+    "post_restart_catching_up": False,
+    "service_restarted": True,
+    "wolo_service_quiesced": True,
+    "wolo_chain_data_mutated": False,
+    "settlement_state_mutated": False,
+    "checksum_convergence": True,
+    "general_vault_secret_contents_included": False,
+    "consensus_whitelist": ["data/", "config/"],
+    "config_secret_exclusions": [
+        "priv_validator_key.json",
+        "node_key.json",
+    ],
+    "staged_bytes": {{
+        "consensus_data": int(data_bytes),
+        "consensus_config": int(config_bytes),
+        "settlement_state": int(settlement_bytes),
+        "founder_rewards_settlement_state": int(founder_bytes),
+    }},
+}}
+
+path = pathlib.Path(receipt)
+path.write_text(
+    json.dumps(payload, indent=2, sort_keys=True) + "\n",
+    encoding="utf-8",
+)
+print(json.dumps(payload, sort_keys=True))
+PYREC
+
+sha256sum "$RECEIPT" \
+  | awk '{{print $1 "  stage-receipt.json"}}' \
+  > "$RECEIPT.sha256"
+
+trap - EXIT HUP INT TERM
+'''
+
+
+def execute_wolo_snapshot_remote(script: str) -> dict[str, Any]:
+    proc = subprocess.run(
+        [
+            "ssh",
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=8",
+            recovery._root_maintenance_host(),
+            "bash -s",
+        ],
+        cwd=ROOT,
+        input=script,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=1800,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise CampaignError(
+            "Wolo snapshot remote controller failed: "
+            + (proc.stdout.strip()[-4000:] or f"exit={proc.returncode}")
+        )
+    lines = [line for line in proc.stdout.splitlines() if line.strip()]
+    for line in reversed(lines):
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if (
+            isinstance(payload, dict)
+            and payload.get("kind")
+            == "aoe2war-recovery-wolo-staged-snapshot"
+        ):
+            return payload
+    raise CampaignError(
+        "Wolo snapshot controller returned no staged-snapshot receipt"
+    )
+
+
+def start_wolo_snapshot(
+    campaign_id: str,
+    *,
+    authorize_wolo_quiesced_snapshot: bool,
+) -> dict[str, Any]:
+    if not authorize_wolo_quiesced_snapshot:
+        raise CampaignError(
+            "Wolo snapshot start requires --authorize-wolo-quiesced-snapshot"
+        )
+
+    WOLO_SNAPSHOT_STATE_DIR.mkdir(parents=True, exist_ok=True)
+    lock_file = wolo_snapshot_lock_path().open("a+")
+    locked = False
+    try:
+        try:
+            fcntl.flock(
+                lock_file.fileno(),
+                fcntl.LOCK_EX | fcntl.LOCK_NB,
+            )
+            locked = True
+        except BlockingIOError as exc:
+            raise CampaignError(
+                "another Wolo Recovery snapshot transaction is active"
+            ) from exc
+
+        source = source_identity()
+        state = load_state(campaign_id)
+        if (
+            state.get("status") != "COMPLETE"
+            or state.get("completion_reason")
+            != "ORDINARY_CAPTURE_COMPLETE_WOLO_AUTHORIZATION_REQUIRED"
+        ):
+            raise CampaignError(
+                "Wolo snapshot requires a completed ordinary capture campaign"
+            )
+
+        restore = restore_status_payload(campaign_id)
+        if (
+            restore.get("status") != "COMPLETE"
+            or restore.get("completion_reason")
+            != "ORDINARY_RESTORE_VERIFIED_WOLO_AUTHORIZATION_REQUIRED"
+        ):
+            raise CampaignError(
+                "Wolo snapshot requires ORDINARY_RESTORE_VERIFIED first"
+            )
+
+        plan = wolo_snapshot_plan()
+        if plan.get("status") != "READY":
+            raise CampaignError(
+                "Wolo snapshot plan is not READY: "
+                + "; ".join(
+                    str(item) for item in plan.get("blockers") or []
+                )
+            )
+
+        snapshot_path = wolo_snapshot_state_path(campaign_id)
+        if snapshot_path.exists():
+            raise CampaignError(
+                f"Wolo snapshot state already exists for campaign: {campaign_id}"
+            )
+
+        snapshot_id = _validate_snapshot_id(
+            f"{campaign_id}-wolo-{stamp()}-{source[:12]}"
+        )
+        remote_stage = f"{WOLO_REMOTE_STAGING_ROOT}/{snapshot_id}"
+        transaction = {
+            "schema": 1,
+            "kind": "aoe2war-recovery-wolo-snapshot-state",
+            "campaign_id": campaign_id,
+            "snapshot_id": snapshot_id,
+            "status": WOLO_SNAPSHOT_RUNNING_STATUS,
+            "created_at": utc_now(),
+            "tool_source": source,
+            "remote_stage": remote_stage,
+            "authorization": {
+                "wolo_quiesced_snapshot": True,
+                "wolo_chain_data_mutation": False,
+                "settlement_state_mutation": False,
+                "key_custody": False,
+            },
+            "encrypted_capture_complete": False,
+            "recovery_class_proven": False,
+            "wolo_chain_data_mutated": False,
+            "settlement_state_mutated": False,
+            "requires_operator_reconciliation": False,
+            "last_error": None,
+        }
+        write_json_with_sidecar(snapshot_path, transaction)
+
+        try:
+            remote = execute_wolo_snapshot_remote(
+                wolo_snapshot_remote_script(
+                    snapshot_id=snapshot_id,
+                    tool_source=source,
+                )
+            )
+        except Exception as exc:
+            transaction["status"] = WOLO_SNAPSHOT_UNCERTAIN_STATUS
+            transaction["last_error"] = str(exc)
+            transaction["failed_at"] = utc_now()
+            transaction["requires_operator_reconciliation"] = True
+            write_json_with_sidecar(snapshot_path, transaction)
+            raise
+
+        transaction.update(
+            {
+                "status": WOLO_SNAPSHOT_STATUS,
+                "remote": remote,
+                "finished_at": utc_now(),
+                "requires_operator_reconciliation": False,
+            }
+        )
+        write_json_with_sidecar(snapshot_path, transaction)
+        return transaction
+    finally:
+        try:
+            if locked:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+        finally:
+            lock_file.close()
+
+
+def wolo_snapshot_status(campaign_id: str) -> dict[str, Any]:
+    path = wolo_snapshot_state_path(campaign_id)
+    payload, digest, error = recovery._load_hashed_json(path)
+    if error or payload is None:
+        raise CampaignError(
+            error or "Wolo snapshot state is unavailable"
+        )
+    if (
+        payload.get("kind")
+        != "aoe2war-recovery-wolo-snapshot-state"
+    ):
+        raise CampaignError("invalid Wolo snapshot state kind")
+    result = dict(payload)
+    result["proof_path"] = str(path)
+    result["proof_sha256"] = digest
+    return result
+
+
+def print_wolo_snapshot_plan(payload: dict[str, Any]) -> None:
+    print("⚔️  AOE2WAR WOLO SNAPSHOT PLAN")
+    print()
+    print(f"Status:       {payload['status']}")
+    print(f"Strategy:     {payload['strategy']}")
+    print(f"Staging:      {payload['remote_staging_root']}")
+    print(
+        "HC headroom:  "
+        f"{int(payload['remote_headroom_after_estimate_bytes']) / (1024 ** 3):.2f} GiB"
+    )
+    print(
+        "Stop plan:    "
+        + " -> ".join(payload["proposed_quiesce_order"])
+    )
+    print(
+        "Start plan:   "
+        + " -> ".join(payload["proposed_restart_order"])
+    )
+    print(
+        "Authorization: REQUIRED — plan performs no service action"
+    )
+    if payload.get("blockers"):
+        print()
+        print("Blocking gaps:")
+        for item in payload["blockers"]:
+            print(f"  - {item}")
 
 
 def _stage_source(
@@ -3117,6 +3764,21 @@ def parser() -> argparse.ArgumentParser:
     q = sub.add_parser("wolo-preflight")
     q.add_argument("--json", action="store_true")
 
+    q = sub.add_parser("wolo-snapshot-plan")
+    q.add_argument("--json", action="store_true")
+
+    q = sub.add_parser("wolo-snapshot-start")
+    q.add_argument("campaign_id")
+    q.add_argument(
+        "--authorize-wolo-quiesced-snapshot",
+        action="store_true",
+    )
+    q.add_argument("--json", action="store_true")
+
+    q = sub.add_parser("wolo-snapshot-status")
+    q.add_argument("campaign_id")
+    q.add_argument("--json", action="store_true")
+
     q = sub.add_parser("restore-start")
     q.add_argument("campaign_id", nargs="?")
     q.add_argument("--authorize-ordinary-restore-drill", action="store_true")
@@ -3174,6 +3836,29 @@ def main() -> int:
             print(json.dumps(payload, indent=2, sort_keys=True))
         else:
             print_wolo_preflight(payload)
+        return 0
+
+    if args.command == "wolo-snapshot-plan":
+        payload = wolo_snapshot_plan()
+        if args.json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print_wolo_snapshot_plan(payload)
+        return 0 if payload.get("status") == "READY" else 1
+
+    if args.command == "wolo-snapshot-start":
+        payload = start_wolo_snapshot(
+            args.campaign_id,
+            authorize_wolo_quiesced_snapshot=(
+                args.authorize_wolo_quiesced_snapshot
+            ),
+        )
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "wolo-snapshot-status":
+        payload = wolo_snapshot_status(args.campaign_id)
+        print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
 
     if args.command == "restore-start":

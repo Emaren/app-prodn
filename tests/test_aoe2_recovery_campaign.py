@@ -645,6 +645,460 @@ class RecoveryCampaignTests(unittest.TestCase):
         self.assertTrue(args.json)
 
 
+    def test_wolo_snapshot_plan_requires_remote_staging_headroom(self):
+        preflight = {
+            "status": "READY",
+            "blockers": [],
+            "estimated_encrypted_payload_bytes": 1_000,
+        }
+        ready = campaign.build_wolo_snapshot_plan(
+            preflight,
+            remote_volume_free_bytes=(
+                campaign.WOLO_REMOTE_MIN_HEADROOM_BYTES + 1_001
+            ),
+        )
+        blocked = campaign.build_wolo_snapshot_plan(
+            preflight,
+            remote_volume_free_bytes=(
+                campaign.WOLO_REMOTE_MIN_HEADROOM_BYTES + 999
+            ),
+        )
+
+        self.assertEqual(ready["status"], "READY")
+        self.assertEqual(
+            ready["remote_headroom_after_estimate_bytes"],
+            campaign.WOLO_REMOTE_MIN_HEADROOM_BYTES + 1,
+        )
+        self.assertFalse(ready["wolo_service_mutation_authorized"])
+        self.assertFalse(ready["wolo_data_mutation_authorized"])
+        self.assertFalse(ready["recovery_class_proven_after_staging"])
+        self.assertEqual(blocked["status"], "BLOCKED")
+        self.assertTrue(
+            any(
+                "insufficient HC-volume headroom" in item
+                for item in blocked["blockers"]
+            )
+        )
+
+    def test_wolo_snapshot_remote_script_is_whitelist_and_fail_safe(self):
+        script = campaign.wolo_snapshot_remote_script(
+            snapshot_id="campaign-wolo-test",
+            tool_source="a" * 40,
+        )
+
+        self.assertIn('"$WOLO_HOME/data/"', script)
+        self.assertIn('"$WOLO_HOME/config/"', script)
+        self.assertIn("--exclude='priv_validator_key.json'", script)
+        self.assertIn("--exclude='node_key.json'", script)
+        self.assertNotIn(
+            'live_rsync -a --delete "$WOLO_HOME/"',
+            script,
+        )
+        self.assertNotIn(
+            'rsync -a --checksum --delete "$WOLO_HOME/"',
+            script,
+        )
+        self.assertIn("rsync -a --checksum --delete", script)
+        self.assertIn("sync -f \"$STAGE\"", script)
+        self.assertIn(
+            '[ ! -e "$STAGE/keyring-file" ]',
+            script,
+        )
+        self.assertIn(
+            '[ ! -e "$STAGE/keyring-test" ]',
+            script,
+        )
+        self.assertIn(
+            '[ ! -e "$STAGE/.wolochain" ]',
+            script,
+        )
+
+        phase = script.index("# Phase 2:")
+        trap_index = script.index(
+            "trap emergency_restart EXIT HUP INT TERM"
+        )
+        armed = script.index("QUIESCED=1", phase)
+        stop_founder = script.index(
+            'systemctl stop "$FOUNDER_UNIT"',
+            armed,
+        )
+        stop_settle = script.index(
+            'systemctl stop "$SETTLE"',
+            stop_founder,
+        )
+        stop_node = script.index(
+            'systemctl stop "$NODE"',
+            stop_settle,
+        )
+        helper_start_node = script.index(
+            'systemctl start "$NODE"',
+        )
+        helper_start_settle = script.index(
+            'systemctl start "$SETTLE"',
+            helper_start_node,
+        )
+        helper_start_founder = script.index(
+            'systemctl start "$FOUNDER_UNIT"',
+            helper_start_settle,
+        )
+        checksum = script.index("sync_final_checksum", phase)
+        flush = script.index('sync -f "$STAGE"', checksum)
+        normal_restart = script.index(
+            'restart_all || fail "dependency-safe Wolo restart failed"',
+            flush,
+        )
+
+        self.assertLess(trap_index, phase)
+        self.assertLess(helper_start_node, helper_start_settle)
+        self.assertLess(helper_start_settle, helper_start_founder)
+        self.assertLess(armed, stop_founder)
+        self.assertLess(stop_founder, stop_settle)
+        self.assertLess(stop_settle, stop_node)
+        self.assertLess(stop_node, checksum)
+        self.assertLess(checksum, flush)
+        self.assertLess(flush, normal_restart)
+        self.assertIn(campaign.WOLO_RPC_STATUS_URL, script)
+        self.assertIn(campaign.WOLO_REST_NODE_INFO_URL, script)
+        self.assertIn(
+            'require_listener_owner 8092 "$SETTLE"',
+            script,
+        )
+        self.assertIn(
+            'require_listener_owner 8093 "$FOUNDER_UNIT"',
+            script,
+        )
+        self.assertIn("STAGED_VALIDATOR_HEIGHT", script)
+        self.assertIn(
+            '"staged_priv_validator_height": int(staged_validator_height)',
+            script,
+        )
+        self.assertIn(
+            '[ "$HEIGHT" -ge "$STAGED_VALIDATOR_HEIGHT" ]',
+            script,
+        )
+        self.assertIn('"wolo_chain_data_mutated": False', script)
+        self.assertIn('"settlement_state_mutated": False', script)
+        self.assertIn(
+            '"general_vault_secret_contents_included": False',
+            script,
+        )
+
+    @unittest.skipUnless(
+        campaign.shutil.which("bash"),
+        "bash is required for generated controller syntax validation",
+    )
+    def test_wolo_snapshot_remote_script_is_valid_bash(self):
+        script = campaign.wolo_snapshot_remote_script(
+            snapshot_id="campaign-wolo-syntax",
+            tool_source="a" * 40,
+        )
+        result = subprocess.run(
+            ["bash", "-n"],
+            input=script,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_wolo_snapshot_lock_contention_refuses_second_transaction(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            snapshot_dir = Path(temporary) / "states"
+            with (
+                patch.object(
+                    campaign,
+                    "WOLO_SNAPSHOT_STATE_DIR",
+                    snapshot_dir,
+                ),
+                patch.object(
+                    campaign.fcntl,
+                    "flock",
+                    side_effect=BlockingIOError,
+                ),
+                patch.object(
+                    campaign,
+                    "execute_wolo_snapshot_remote",
+                ) as execute,
+            ):
+                with self.assertRaisesRegex(
+                    campaign.CampaignError,
+                    "another Wolo Recovery snapshot transaction is active",
+                ):
+                    campaign.start_wolo_snapshot(
+                        "ordinary-test",
+                        authorize_wolo_quiesced_snapshot=True,
+                    )
+        execute.assert_not_called()
+
+    def test_wolo_snapshot_start_requires_explicit_authorization(self):
+        with patch.object(
+            campaign,
+            "execute_wolo_snapshot_remote",
+        ) as execute:
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "--authorize-wolo-quiesced-snapshot",
+            ):
+                campaign.start_wolo_snapshot(
+                    "ordinary-test",
+                    authorize_wolo_quiesced_snapshot=False,
+                )
+        execute.assert_not_called()
+
+    def test_wolo_snapshot_start_requires_real_capture_and_restore_closure(self):
+        with (
+            patch.object(
+                campaign,
+                "source_identity",
+                return_value="a" * 40,
+            ),
+            patch.object(
+                campaign,
+                "load_state",
+                return_value={
+                    "status": "COMPLETE",
+                    "completion_reason": "WRONG_REASON",
+                },
+            ),
+            patch.object(
+                campaign,
+                "execute_wolo_snapshot_remote",
+            ) as execute,
+        ):
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "completed ordinary capture",
+            ):
+                campaign.start_wolo_snapshot(
+                    "ordinary-test",
+                    authorize_wolo_quiesced_snapshot=True,
+                )
+        execute.assert_not_called()
+
+        with (
+            patch.object(
+                campaign,
+                "source_identity",
+                return_value="a" * 40,
+            ),
+            patch.object(
+                campaign,
+                "load_state",
+                return_value={
+                    "status": "COMPLETE",
+                    "completion_reason": (
+                        "ORDINARY_CAPTURE_COMPLETE_WOLO_AUTHORIZATION_REQUIRED"
+                    ),
+                },
+            ),
+            patch.object(
+                campaign,
+                "restore_status_payload",
+                return_value={
+                    "status": "COMPLETE",
+                    "completion_reason": "WRONG_REASON",
+                },
+            ),
+            patch.object(
+                campaign,
+                "execute_wolo_snapshot_remote",
+            ) as execute,
+        ):
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "ORDINARY_RESTORE_VERIFIED",
+            ):
+                campaign.start_wolo_snapshot(
+                    "ordinary-test",
+                    authorize_wolo_quiesced_snapshot=True,
+                )
+        execute.assert_not_called()
+
+    def test_wolo_snapshot_success_seals_pending_receipt_without_promotion(self):
+        remote = {
+            "schema": 1,
+            "kind": "aoe2war-recovery-wolo-staged-snapshot",
+            "status": campaign.WOLO_SNAPSHOT_STATUS,
+            "snapshot_id": "remote-id",
+            "service_restarted": True,
+            "wolo_chain_data_mutated": False,
+            "settlement_state_mutated": False,
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            snapshot_dir = Path(temporary) / "states"
+            with (
+                patch.object(
+                    campaign,
+                    "WOLO_SNAPSHOT_STATE_DIR",
+                    snapshot_dir,
+                ),
+                patch.object(
+                    campaign,
+                    "source_identity",
+                    return_value="a" * 40,
+                ),
+                patch.object(
+                    campaign,
+                    "load_state",
+                    return_value={
+                        "status": "COMPLETE",
+                        "completion_reason": (
+                            "ORDINARY_CAPTURE_COMPLETE_WOLO_AUTHORIZATION_REQUIRED"
+                        ),
+                    },
+                ),
+                patch.object(
+                    campaign,
+                    "restore_status_payload",
+                    return_value={
+                        "status": "COMPLETE",
+                        "completion_reason": (
+                            "ORDINARY_RESTORE_VERIFIED_WOLO_AUTHORIZATION_REQUIRED"
+                        ),
+                    },
+                ),
+                patch.object(
+                    campaign,
+                    "wolo_snapshot_plan",
+                    return_value={
+                        "status": "READY",
+                        "blockers": [],
+                    },
+                ),
+                patch.object(
+                    campaign,
+                    "execute_wolo_snapshot_remote",
+                    return_value=remote,
+                ) as execute,
+                patch.object(
+                    campaign,
+                    "stamp",
+                    return_value="20260910T000000Z",
+                ),
+            ):
+                result = campaign.start_wolo_snapshot(
+                    "ordinary-test",
+                    authorize_wolo_quiesced_snapshot=True,
+                )
+                status = campaign.wolo_snapshot_status(
+                    "ordinary-test"
+                )
+
+        execute.assert_called_once()
+        self.assertEqual(
+            result["status"],
+            campaign.WOLO_SNAPSHOT_STATUS,
+        )
+        self.assertFalse(result["encrypted_capture_complete"])
+        self.assertFalse(result["recovery_class_proven"])
+        self.assertFalse(result["wolo_chain_data_mutated"])
+        self.assertFalse(result["settlement_state_mutated"])
+        self.assertEqual(status["status"], campaign.WOLO_SNAPSHOT_STATUS)
+        self.assertEqual(len(status["proof_sha256"]), 64)
+
+    def test_wolo_snapshot_remote_failure_seals_uncertain_state(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            snapshot_dir = Path(temporary) / "states"
+            with (
+                patch.object(
+                    campaign,
+                    "WOLO_SNAPSHOT_STATE_DIR",
+                    snapshot_dir,
+                ),
+                patch.object(
+                    campaign,
+                    "source_identity",
+                    return_value="a" * 40,
+                ),
+                patch.object(
+                    campaign,
+                    "load_state",
+                    return_value={
+                        "status": "COMPLETE",
+                        "completion_reason": (
+                            "ORDINARY_CAPTURE_COMPLETE_WOLO_AUTHORIZATION_REQUIRED"
+                        ),
+                    },
+                ),
+                patch.object(
+                    campaign,
+                    "restore_status_payload",
+                    return_value={
+                        "status": "COMPLETE",
+                        "completion_reason": (
+                            "ORDINARY_RESTORE_VERIFIED_WOLO_AUTHORIZATION_REQUIRED"
+                        ),
+                    },
+                ),
+                patch.object(
+                    campaign,
+                    "wolo_snapshot_plan",
+                    return_value={
+                        "status": "READY",
+                        "blockers": [],
+                    },
+                ),
+                patch.object(
+                    campaign,
+                    "execute_wolo_snapshot_remote",
+                    side_effect=campaign.CampaignError("transport lost"),
+                ),
+                patch.object(
+                    campaign,
+                    "stamp",
+                    return_value="20260910T000000Z",
+                ),
+            ):
+                with self.assertRaisesRegex(
+                    campaign.CampaignError,
+                    "transport lost",
+                ):
+                    campaign.start_wolo_snapshot(
+                        "ordinary-test",
+                        authorize_wolo_quiesced_snapshot=True,
+                    )
+                status = campaign.wolo_snapshot_status(
+                    "ordinary-test"
+                )
+
+        self.assertEqual(
+            status["status"],
+            campaign.WOLO_SNAPSHOT_UNCERTAIN_STATUS,
+        )
+        self.assertTrue(status["requires_operator_reconciliation"])
+        self.assertEqual(status["last_error"], "transport lost")
+        self.assertFalse(status["encrypted_capture_complete"])
+        self.assertFalse(status["recovery_class_proven"])
+        self.assertFalse(status["wolo_chain_data_mutated"])
+        self.assertFalse(status["settlement_state_mutated"])
+        self.assertEqual(len(status["proof_sha256"]), 64)
+
+    def test_parser_exposes_wolo_snapshot_commands(self):
+        plan = campaign.parser().parse_args(
+            ["wolo-snapshot-plan", "--json"]
+        )
+        start = campaign.parser().parse_args(
+            [
+                "wolo-snapshot-start",
+                "ordinary-test",
+                "--authorize-wolo-quiesced-snapshot",
+                "--json",
+            ]
+        )
+        status = campaign.parser().parse_args(
+            [
+                "wolo-snapshot-status",
+                "ordinary-test",
+                "--json",
+            ]
+        )
+        self.assertEqual(plan.command, "wolo-snapshot-plan")
+        self.assertEqual(start.command, "wolo-snapshot-start")
+        self.assertTrue(start.authorize_wolo_quiesced_snapshot)
+        self.assertEqual(status.command, "wolo-snapshot-status")
+
+
     def test_canonical_certificate_is_preferred_when_fingerprint_matches(self):
         pilot = {
             "recipient_certificate_fingerprint": "AA:BB",
