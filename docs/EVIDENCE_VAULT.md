@@ -380,6 +380,67 @@ the node. The proposed restart order is the exact dependency-safe reverse:
 node, main settlement, then founder-reward settlement. Merely printing these
 orders performs no systemd action.
 
+## Wolo consistency-safe staged snapshot
+
+`aoe2war recovery campaign wolo-snapshot-plan` is read-only. It combines the
+live Wolo preflight with current HC-volume capacity and refuses readiness unless
+the temporary VPS staging copy would still leave at least 8 GiB free. The plan
+does not authorize service changes or promote any Recovery class.
+
+The mutating entry point is intentionally separate:
+
+```bash
+aoe2war recovery campaign wolo-snapshot-start CAMPAIGN_ID \
+  --authorize-wolo-quiesced-snapshot
+```
+
+It is eligible only from clean canonical `main`, after the ordinary capture and
+ordinary restore states both carry their exact Wolo-authorization-required
+completion reasons. A dedicated nonblocking lock permits only one Wolo snapshot
+transaction at a time.
+
+The snapshot uses a two-pass consistency seam so the sole validator is not held
+offline for the full multi-GiB transfer. First, while all three Wolo services
+remain active, `rsync` pre-seeds a new mode-0700 directory beneath
+`/mnt/HC_Volume_105319120/aoe2war/recovery-staging/wolo`. The general consensus
+payload is whitelisted to `data/` plus `config/`; `priv_validator_key.json` and
+`node_key.json` are excluded from config, while `.wolochain/`, `keyring-file/`,
+and `keyring-test/` are never source roots for this snapshot.
+
+The emergency restart trap is armed before snapshot work begins but is inert
+while `QUIESCED=0`. Only after the live pre-seed succeeds does the controller
+set `QUIESCED=1` and establish the consistency seam:
+
+1. stop founder-reward settlement, then main settlement, then the node;
+2. require all three units inactive and protected 8092/8093 listeners absent;
+3. rerun all four snapshot copies with `rsync --checksum --delete` while the
+   sources are quiescent;
+4. flush the staging filesystem;
+5. read only the staged non-secret `data/priv_validator_state.json` height;
+6. restart node, main settlement, then founder-reward settlement;
+7. require all units active, exactly one 8092/8093 listener with each listener
+   owned by its expected settlement-service PID, public RPC network `wolo-1`,
+   REST reachability, `catching_up=false`, and post-restart chain height greater
+   than or equal to the staged validator height.
+
+The EXIT/HUP/INT/TERM trap attempts the dependency-safe restart whenever a
+failure occurs after quiesce begins and fails loudly if the emergency restart
+cannot prove all three units active.
+
+Authorization is journaled locally before the remote transaction begins. If
+transport or controller execution fails before a verified remote result returns,
+the hashed local state becomes `UNKNOWN_REQUIRES_RECONCILIATION`; a later start
+refuses the existing state rather than guessing whether a quiesce transaction
+completed.
+
+Successful staging transitions that receipt to
+`STAGED_PENDING_ENCRYPTED_CAPTURE` and also leaves a durable VPS stage receipt.
+This is not off-host recovery evidence and must not mark either
+`wolo_settlement_state` or `wolo_consensus_recovery` as proven. Those classes
+advance only after the staged copy is encrypted into the independent Mac vault
+and passes its later restore proof. Separate Wolo key custody remains outside
+the general recovery payload.
+
 ## Restore drill
 
 1. Choose a sealed bundle and record its immutable remote version ID.

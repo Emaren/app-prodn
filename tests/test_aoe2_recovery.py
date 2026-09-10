@@ -46,6 +46,34 @@ class RecoveryTests(unittest.TestCase):
             ["wolo-preflight", "--json"],
         )
 
+    def test_campaign_wolo_snapshot_start_is_forwarded_verbatim(self):
+        completed = type("Completed", (), {"returncode": 0})()
+        with patch.object(
+            recovery.subprocess,
+            "run",
+            return_value=completed,
+        ) as run:
+            rc = recovery.forward_campaign_cli(
+                [
+                    "campaign",
+                    "wolo-snapshot-start",
+                    "ordinary-test",
+                    "--authorize-wolo-quiesced-snapshot",
+                    "--json",
+                ]
+            )
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(
+            run.call_args.args[0][2:],
+            [
+                "wolo-snapshot-start",
+                "ordinary-test",
+                "--authorize-wolo-quiesced-snapshot",
+                "--json",
+            ],
+        )
+
     def test_campaign_plan_is_not_intercepted_by_forwarder(self):
         self.assertIsNone(
             recovery.forward_campaign_cli(["campaign", "plan", "--json"])
@@ -259,8 +287,20 @@ class RecoveryTests(unittest.TestCase):
             if item["class"] == "wolo_consensus_recovery"
         )
         self.assertEqual(consensus["state"], "AUTHORIZATION_REQUIRED")
+        self.assertEqual(
+            consensus["payload_whitelist"],
+            ["data/", "config/"],
+        )
         self.assertIn(
             "config/priv_validator_key.json",
+            consensus["secret_exclusions"],
+        )
+        self.assertIn(
+            "keyring-test/",
+            consensus["secret_exclusions"],
+        )
+        self.assertIn(
+            ".wolochain/",
             consensus["secret_exclusions"],
         )
 
