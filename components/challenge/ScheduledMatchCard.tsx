@@ -143,6 +143,9 @@ function formatRelativeDuration(diffMs: number) {
 }
 
 function formatCountdownLabel(match: ScheduledMatchTile, nowMs: number) {
+  if (match.displayState === "result_pending") {
+    return "Result review";
+  }
   if (match.displayState === "desync_review") {
     return "Commissioner review";
   }
@@ -203,6 +206,13 @@ function fundingWorkflowLabel(state: FundingWorkflowState, totalFundingWolo: num
 
 function accentClasses(displayState: ScheduledMatchTile["displayState"]) {
   switch (displayState) {
+    case "result_pending":
+      return {
+        shell: "border-amber-200/24 bg-[linear-gradient(180deg,rgba(251,191,36,0.08),rgba(15,23,42,0.48))]",
+        badge: "border-amber-200/28 bg-amber-300/12 text-amber-50",
+        icon: "border-amber-200/22 bg-amber-300/10 text-amber-100",
+        eyebrow: "text-amber-100/78",
+      };
     case "desync_review":
       return {
         shell: "border-fuchsia-200/32 bg-[radial-gradient(circle_at_16%_0%,rgba(232,121,249,0.25),transparent_30%),radial-gradient(circle_at_86%_12%,rgba(251,146,60,0.18),transparent_34%),linear-gradient(135deg,rgba(88,28,135,0.82),rgba(49,16,70,0.84)_45%,rgba(2,6,23,0.92)_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_0_34px_rgba(217,70,239,0.18),0_22px_70px_rgba(0,0,0,0.42)]",
@@ -321,6 +331,13 @@ function defaultCardViewMode({
 }
 
 function buildWatcherStatus(match: ScheduledMatchTile) {
+  if (match.displayState === "result_pending") {
+    return {
+      label: "Replay linked · winner review",
+      ready: false,
+    };
+  }
+
   if (match.displayState === "desync_review") {
     return {
       label: "Replay linked · result quarantined",
@@ -522,12 +539,15 @@ export function CompactScheduledMatchHistoryRow({
 }) {
   const winner = match.linkedWinner || null;
   const viewerWon = Boolean(
-    winner &&
-      viewerUid &&
-      (winner.toLowerCase() === match.challenger.name.toLowerCase() ||
-        winner.toLowerCase() === match.challenged.name.toLowerCase()) &&
-      ((viewerUid === match.challenger.uid && winner.toLowerCase() === match.challenger.name.toLowerCase()) ||
-        (viewerUid === match.challenged.uid && winner.toLowerCase() === match.challenged.name.toLowerCase()))
+    viewerUid && (
+      match.protocol.resultWinnerUid
+        ? match.protocol.resultWinnerUid === viewerUid
+        : winner &&
+          (winner.toLowerCase() === match.challenger.name.toLowerCase() ||
+            winner.toLowerCase() === match.challenged.name.toLowerCase()) &&
+          ((viewerUid === match.challenger.uid && winner.toLowerCase() === match.challenger.name.toLowerCase()) ||
+            (viewerUid === match.challenged.uid && winner.toLowerCase() === match.challenged.name.toLowerCase()))
+    )
   );
   const resultLabel =
     match.displayState === "completed" && winner
@@ -793,7 +813,7 @@ export default function ScheduledMatchCard({
   const threadHref = `/challenge/${match.id}`;
   const statsHref = match.desyncIncident
     ? `/game-stats/${match.desyncIncident.gameStatsId}`
-    : (match.displayState === "completed" || match.displayState === "live") && match.linkedSessionKey
+    : (match.displayState === "completed" || match.displayState === "result_pending" || match.displayState === "live") && match.linkedSessionKey
       ? `/game-stats/live/${encodeURIComponent(match.linkedSessionKey)}`
       : null;
 
@@ -804,7 +824,11 @@ export default function ScheduledMatchCard({
     if (canCheckIn) return "Check In";
     if (statsHref) {
       if (desyncHold) return "Review DESYNC Proof";
-      return match.displayState === "completed" ? "View Result" : "Watch Live";
+      return match.displayState === "result_pending"
+        ? "Review Result Proof"
+        : match.displayState === "completed"
+          ? "View Result"
+          : "Watch Live";
     }
     if (viewerIsChallenger && ["proposed", "pending"].includes(match.displayState) && !creatorFunded) {
       return `Fund ${formatWolo(match.terms.totalFundingWolo)} WOLO`;
@@ -1200,6 +1224,22 @@ export default function ScheduledMatchCard({
           <div className={`${compact ? "mt-1 text-base" : "mt-2 text-xl"} break-words font-semibold text-white`}>
             {match.challenger.name} vs {match.challenged.name}
           </div>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
+            {match.protocol.steamBound ? (
+              <span title="Steam identities locked at challenge creation" className="text-emerald-200/80">
+                <ShieldCheck className="mr-1 inline h-3 w-3" />Steam locked
+              </span>
+            ) : null}
+            {[match.challenger, match.challenged].map((player) => (
+              <span
+                key={`watcher-${match.id}-${player.uid}`}
+                title={`${player.name} · Watcher ${player.watcher.label}${player.watcher.appVersion ? ` · v${player.watcher.appVersion}` : ""}`}
+                className={player.watcher.state === "ready" ? "text-emerald-200/80" : "text-slate-500"}
+              >
+                <Radio className="mr-1 inline h-3 w-3" />{player.watcher.state === "ready" ? "Ready" : player.watcher.label}
+              </span>
+            ))}
+          </div>
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -1405,7 +1445,7 @@ export default function ScheduledMatchCard({
           icon={<Swords className="h-4 w-4" />}
           label="State"
           value={match.economy.statusLabel}
-          active={["ready", "live", "completed", "desync_review"].includes(match.displayState)}
+          active={["ready", "live", "result_pending", "completed", "desync_review"].includes(match.displayState)}
         />
       </div>
 

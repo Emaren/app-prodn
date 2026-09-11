@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "26f56b33ae7e4d247f7ca17f2c3b05bfdf07e4375ad618868da7d4f95c79645c",
+      "sha256": "85f264af4516fd9ea658b23463ce1366c9c77bbf08ef41ec4aa2d9feb0d5bcaf",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/reconciliation-test-lint-v1",
-    "commit": "d2c7ab1927050b9f07a318f0cb77c1d8340e44cb"
+    "branch": "feature/challenge-protocol-v1",
+    "commit": "34eea0a932ec9caf868f2f7272d1d207627c2625"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

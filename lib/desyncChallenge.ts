@@ -557,6 +557,7 @@ export function planDesyncCommissionerAction(input: {
         linkedSessionKey: null,
         linkedMapName: null,
         linkedWinner: null,
+        resultWinnerUserId: null,
         linkedDurationSeconds: null,
         currentReplayClaimId: null,
       },
@@ -583,6 +584,7 @@ export function planDesyncCommissionerAction(input: {
       resultAt: now,
       settlementReadyAt: now,
       linkedWinner: null,
+      resultWinnerUserId: null,
     },
     activity: {
       eventType: CHALLENGE_DESYNC_VOID_EVENT,

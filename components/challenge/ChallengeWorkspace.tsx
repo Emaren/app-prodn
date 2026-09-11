@@ -13,6 +13,7 @@ import {
   Gem,
   MessageSquareMore,
   Plus,
+  Radio,
   ShieldCheck,
   Sparkles,
   Swords,
@@ -871,9 +872,12 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     () => (trophyTarget ? [trophyTarget] : []),
     [trophyTarget]
   );
+  const steamIdentityReady = Boolean(snapshot.viewer?.steamId && selectedOpponent?.steamId);
   const createButtonLabel = !challengeEscrowReady
     ? "Escrow Not Wired"
-    : savingPhase === "connecting"
+    : challengedUid && !steamIdentityReady
+      ? "Steam Required"
+      : savingPhase === "connecting"
       ? "Connecting..."
       : walletStatus !== "connected"
         ? "Connect Wallet"
@@ -1211,6 +1215,13 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
 
     if (!snapshot.fundingRail.configured || !snapshot.fundingRail.escrowAddress) {
       setError("Challenge escrow is not configured yet.");
+      setSaving(false);
+      setSavingPhase("idle");
+      return;
+    }
+
+    if (!snapshot.viewer?.steamId || !selectedOpponent?.steamId) {
+      setError("Both players must link Steam before issuing a WOLO challenge.");
       setSaving(false);
       setSavingPhase("idle");
       return;
@@ -1600,10 +1611,10 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                     >
                       <option value="">Choose a warrior</option>
                       {snapshot.candidates.map((candidate) => (
-                        <option key={candidate.uid} value={candidate.uid}>
+                        <option key={candidate.uid} value={candidate.uid} disabled={!candidate.steamId}>
                           {candidate.name}
-                          {candidate.isOnline ? " · Online" : ""}
-                          {candidate.verified ? " · Verified" : ""}
+                          {!candidate.steamId ? " · Steam needed" : ""}
+                          {candidate.watcher.state === "ready" ? " · Watcher ready" : ""}
                         </option>
                       ))}
                     </select>
@@ -1615,18 +1626,45 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                             <button
                               key={`rival-${candidate.uid}`}
                               type="button"
-                              onClick={() => setChallengedUid(candidate.uid)}
-                              className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition ${
+                              disabled={!candidate.steamId}
+                              title={`${candidate.steamId ? "Steam linked" : "Steam link required"} · Watcher ${candidate.watcher.label}`}
+                              onClick={() => candidate.steamId && setChallengedUid(candidate.uid)}
+                              className={`shrink-0 rounded-full border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${
                                 active
                                   ? "border-amber-200/35 bg-amber-300/16 text-amber-50"
                                   : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/25 hover:text-white"
                               }`}
                             >
-                              <span className={`mr-2 inline-block h-2 w-2 rounded-full ${candidate.isOnline ? "bg-emerald-300" : "bg-slate-600"}`} />
+                              <span className={`mr-2 inline-block h-2 w-2 rounded-full ${
+                                candidate.watcher.state === "ready"
+                                  ? "bg-emerald-300"
+                                  : candidate.watcher.state === "connected"
+                                    ? "bg-sky-300"
+                                    : candidate.watcher.state === "seen"
+                                      ? "bg-amber-300"
+                                      : "bg-slate-600"
+                              }`} />
                               {candidate.name}
                             </button>
                           );
                         })}
+                      </div>
+                    ) : null}
+
+                    {selectedOpponent ? (
+                      <div className="mt-3 flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                        <span
+                          title={selectedOpponent.steamId ? "Steam identity will be locked into this Challenge" : "Steam link required"}
+                          className={selectedOpponent.steamId ? "text-emerald-200" : "text-rose-200"}
+                        >
+                          <ShieldCheck className="mr-1 inline h-3 w-3" />Steam
+                        </span>
+                        <span
+                          title={`Watcher ${selectedOpponent.watcher.label}${selectedOpponent.watcher.appVersion ? ` · v${selectedOpponent.watcher.appVersion}` : ""}`}
+                          className={selectedOpponent.watcher.state === "ready" ? "text-emerald-200" : "text-slate-400"}
+                        >
+                          <Radio className="mr-1 inline h-3 w-3" />{selectedOpponent.watcher.label}
+                        </span>
                       </div>
                     ) : null}
 
@@ -1946,7 +1984,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                     </div>
                     <button
                       type="submit"
-                      disabled={saving || !challengeEscrowReady || !challengedUid}
+                      disabled={saving || !challengeEscrowReady || !challengedUid || !steamIdentityReady}
                       className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#fde68a,#fbbf24)] px-5 py-3 text-sm font-black text-slate-950 shadow-[0_14px_34px_rgba(251,191,36,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 sm:mt-0 sm:w-auto"
                     >
                       {walletStatus !== "connected" ? <Wallet className="h-4 w-4" /> : saving ? <Sparkles className="h-4 w-4" /> : <Swords className="h-4 w-4" />}

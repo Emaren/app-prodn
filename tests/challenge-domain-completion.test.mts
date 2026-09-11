@@ -664,21 +664,36 @@ test(
 
 
 test(
-  "manual winner remains explicit commissioner economic authority downstream",
+  "manual winner remains explicit stable commissioner economic authority downstream",
   () => {
     assert.match(
-      settlements,
-      /const winnerKey = normalizeIdentity\(input\.row\.linkedWinner\)/,
+      commands,
+      /resultWinnerUserId:\s*requestedWinnerUserId/,
     );
 
     assert.match(
       settlements,
-      /participantAliases\(input\.row\.challenger\)/,
+      /if \(row\.resultWinnerUserId !== null\)/,
     );
 
     assert.match(
       settlements,
-      /participantAliases\(input\.row\.challenged\)/,
+      /row\.resultWinnerUserId === row\.challenger\.id/,
+    );
+
+    assert.match(
+      settlements,
+      /row\.resultWinnerUserId === row\.challenged\.id/,
+    );
+
+    assert.match(
+      settlements,
+      /if \(row\.protocolVersion === CHALLENGE_PROTOCOL_VERSION\) return null/,
+    );
+
+    assert.match(
+      settlements,
+      /const winnerKey = normalizeIdentity\(row\.linkedWinner\)/,
     );
 
     assert.match(

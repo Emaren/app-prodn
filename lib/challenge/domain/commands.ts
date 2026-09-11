@@ -147,6 +147,12 @@ export type ChallengeTransitionMatch = {
 
   challengedUserId:
     number;
+
+  protocolVersion?:
+    string | null;
+
+  resultWinnerUserId?:
+    number | null;
 };
 
 
@@ -1245,6 +1251,9 @@ export async function rescheduleChallenge(
                   linkedWinner:
                     null,
 
+                  resultWinnerUserId:
+                    null,
+
                   linkedDurationSeconds:
                     null,
                 },
@@ -2218,6 +2227,9 @@ export type ChallengeManualCompletionRequest = {
   linkedWinner?:
     string | null;
 
+  resultWinnerUserId?:
+    number | null;
+
   linkedDurationSeconds?:
     number | null;
 };
@@ -2302,6 +2314,32 @@ export async function completeChallengeManually(
       completedAt,
     });
 
+  const requestedWinnerUserId =
+    request.resultWinnerUserId ??
+    null;
+
+  if (
+    requestedWinnerUserId !== null &&
+    requestedWinnerUserId !== match.challengerUserId &&
+    requestedWinnerUserId !== match.challengedUserId
+  ) {
+    throw new ChallengeConflictError(
+      "Commissioner winner must be one of the two Challenge participants.",
+      422,
+    );
+  }
+
+  if (
+    match.protocolVersion === "steam_wolo_v1" &&
+    plan.linkedWinner &&
+    requestedWinnerUserId === null
+  ) {
+    throw new ChallengeConflictError(
+      "Commissioner winner could not be resolved to a Steam-bound Challenge participant.",
+      422,
+    );
+  }
+
   /*
    * Manual completion establishes commissioner result truth,
    * not replay provenance.
@@ -2377,6 +2415,10 @@ export async function completeChallengeManually(
                 canonicalReplay
                   .linkedWinner,
 
+              resultWinnerUserId:
+                match.resultWinnerUserId ??
+                null,
+
               linkedDurationSeconds:
                 canonicalReplay
                   .linkedDurationSeconds,
@@ -2423,6 +2465,9 @@ export async function completeChallengeManually(
                */
               linkedWinner:
                 plan.linkedWinner,
+
+              resultWinnerUserId:
+                requestedWinnerUserId,
             },
           });
 
@@ -2458,6 +2503,9 @@ export async function completeChallengeManually(
 
             linkedWinner:
               plan.linkedWinner,
+
+            resultWinnerUserId:
+              requestedWinnerUserId,
 
             canonicalLinkedSessionKey:
               plan

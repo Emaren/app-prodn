@@ -11,6 +11,13 @@ import {
   type ScheduledMatchPersistedStatus,
 } from "@/lib/challengeEconomy";
 import {
+  CHALLENGE_PROTOCOL_VERSION,
+  challengeWinnerUserIdFromSteam,
+  resolveBoundSteamWinnerId,
+  sessionMatchesBoundSteamDuel,
+  type ChallengeReplayParticipant,
+} from "@/lib/challengeProtocol";
+import {
   deriveChallengeLifecycle,
   deriveChallengeMoneyState,
   type ChallengeLifecyclePhase,
@@ -46,6 +53,11 @@ import {
   WOLO_CHALLENGE_ESCROW_ADDRESS,
 } from "@/lib/woloChain";
 import { userIsOnline } from "@/lib/userOnlinePresence";
+import {
+  ABSENT_CHALLENGE_WATCHER_READINESS,
+  loadChallengeWatcherReadinessByUserId,
+  type ChallengeWatcherReadiness,
+} from "@/lib/challengeWatcherReadiness";
 const CHALLENGE_LOOKAHEAD_MS = 30 * 24 * 60 * 60 * 1000;
 const CHALLENGE_HISTORY_LOOKBACK_MS = 12 * 60 * 60 * 1000;
 const CHALLENGE_RECENT_LINGER_MS = 15 * 60 * 1000;
@@ -75,6 +87,7 @@ const ACTIVE_SCHEDULED_STATUSES = [
   "right_checked_in",
   "ready",
   "live_confirmed",
+  "result_pending",
   "desync_review",
 ] as const;
 const RESOLVED_SCHEDULED_STATUSES = [
@@ -96,6 +109,7 @@ type ChallengeUserRow = {
   uid: string;
   inGameName: string | null;
   steamPersonaName: string | null;
+  steamId: string | null;
   verified: boolean;
   verificationLevel: number;
   lastSeen: Date | null;
@@ -117,6 +131,10 @@ type ScheduledMatchRow = {
   expiredAt: Date | null;
   reconciledAt: Date | null;
   creationRequestId: string | null;
+  protocolVersion: string | null;
+  challengerSteamIdSnapshot: string | null;
+  challengedSteamIdSnapshot: string | null;
+  resultWinnerUserId: number | null;
   createdAt: Date;
   updatedAt: Date;
   acceptedAt: Date | null;
@@ -197,7 +215,7 @@ type ComparableSession = {
   mapName: string | null;
   winner: string | null;
   durationSeconds: number | null;
-  players: Array<{ name: string }>;
+  players: ChallengeReplayParticipant[];
   state: "live" | "completed";
 };
 
@@ -207,15 +225,24 @@ export type ChallengePlayerSurface = {
   name: string;
   inGameName: string | null;
   steamPersonaName: string | null;
+  steamId: string | null;
   verified: boolean;
   verificationLevel: number;
   isOnline: boolean;
+  watcher: ChallengeWatcherReadiness;
 };
 
 export type ScheduledMatchTile = {
   id: number;
   status: ScheduledMatchPersistedStatus;
   displayState: ScheduledMatchDisplayState;
+  protocol: {
+    version: string | null;
+    steamBound: boolean;
+    challengerSteamIdSnapshot: string | null;
+    challengedSteamIdSnapshot: string | null;
+    resultWinnerUid: string | null;
+  };
   lifecycle: {
     phase: ChallengeLifecyclePhase;
     timingMode: ChallengeTimingMode;
@@ -366,6 +393,7 @@ const CHALLENGE_PLAYER_SELECT = {
   uid: true,
   inGameName: true,
   steamPersonaName: true,
+  steamId: true,
   verified: true,
   verificationLevel: true,
   lastSeen: true,
@@ -387,6 +415,10 @@ const SCHEDULED_MATCH_SELECT = {
   expiredAt: true,
   reconciledAt: true,
   creationRequestId: true,
+  protocolVersion: true,
+  challengerSteamIdSnapshot: true,
+  challengedSteamIdSnapshot: true,
+  resultWinnerUserId: true,
   createdAt: true,
   updatedAt: true,
   acceptedAt: true,
@@ -518,16 +550,21 @@ function playerAliases(user: Pick<ChallengeUserRow, "uid" | "inGameName" | "stea
   return Array.from(new Set(values));
 }
 
-function buildPlayerSurface(user: ChallengeUserRow): ChallengePlayerSurface {
+function buildPlayerSurface(
+  user: ChallengeUserRow,
+  watcher: ChallengeWatcherReadiness = ABSENT_CHALLENGE_WATCHER_READINESS,
+): ChallengePlayerSurface {
   return {
     uid: user.uid,
     href: buildClaimedPlayerHref(user.uid),
     name: challengePlayerName(user),
     inGameName: user.inGameName,
     steamPersonaName: user.steamPersonaName,
+    steamId: user.steamId,
     verified: user.verified,
     verificationLevel: user.verificationLevel,
     isOnline: userIsOnline(user.uid, user.lastSeen),
+    watcher,
   };
 }
 
@@ -870,16 +907,49 @@ function readSessionTime(session: Pick<ComparableSession, "updatedAt" | "complet
 
 function sessionMatchesScheduledPlayers(
   session: ComparableSession,
-  challenger: ChallengeUserRow,
-  challenged: ChallengeUserRow
+  row: ScheduledMatchRow,
 ) {
+  if (row.protocolVersion === CHALLENGE_PROTOCOL_VERSION) {
+    return sessionMatchesBoundSteamDuel({
+      players: session.players,
+      challengerSteamIdSnapshot: row.challengerSteamIdSnapshot,
+      challengedSteamIdSnapshot: row.challengedSteamIdSnapshot,
+    });
+  }
+
   const names = session.players.map((player) => normalizeNameKey(player.name)).filter(Boolean);
-  const challengerAliases = playerAliases(challenger);
-  const challengedAliases = playerAliases(challenged);
-
+  const challengerAliases = playerAliases(row.challenger);
+  const challengedAliases = playerAliases(row.challenged);
   const includesAlias = (aliases: string[]) => aliases.some((alias) => names.includes(alias));
-
   return includesAlias(challengerAliases) && includesAlias(challengedAliases);
+}
+
+function resolveScheduledMatchWinnerUserId(
+  row: ScheduledMatchRow,
+  session: ComparableSession,
+) {
+  if (row.protocolVersion === CHALLENGE_PROTOCOL_VERSION) {
+    const winnerSteamId = resolveBoundSteamWinnerId({
+      players: session.players,
+      winnerName: session.winner,
+      challengerSteamIdSnapshot: row.challengerSteamIdSnapshot,
+      challengedSteamIdSnapshot: row.challengedSteamIdSnapshot,
+    });
+    return challengeWinnerUserIdFromSteam({
+      winnerSteamId,
+      challengerUserId: row.challenger.id,
+      challengedUserId: row.challenged.id,
+      challengerSteamIdSnapshot: row.challengerSteamIdSnapshot,
+      challengedSteamIdSnapshot: row.challengedSteamIdSnapshot,
+    });
+  }
+
+  const winnerKey = normalizeNameKey(session.winner);
+  if (!winnerKey) return null;
+  const leftMatches = playerAliases(row.challenger).includes(winnerKey);
+  const rightMatches = playerAliases(row.challenged).includes(winnerKey);
+  if (leftMatches === rightMatches) return null;
+  return leftMatches ? row.challenger.id : row.challenged.id;
 }
 
 function readSessionStartTime(session: ComparableSession) {
@@ -915,8 +985,7 @@ function findLinkedSession(
         ) &&
         sessionMatchesScheduledPlayers(
           session,
-          row.challenger,
-          row.challenged,
+          row,
         )
     );
 
@@ -941,7 +1010,7 @@ function findLinkedSession(
         session.sessionKey === row.linkedSessionKey &&
         !historicalReplayIds.has(session.id) &&
         !usedSessionKeys.has(session.sessionKey) &&
-        sessionMatchesScheduledPlayers(session, row.challenger, row.challenged)
+        sessionMatchesScheduledPlayers(session, row)
     );
     if (exact) return exact;
   }
@@ -967,7 +1036,7 @@ function findLinkedSession(
     for (const session of sessions) {
       if (usedSessionKeys.has(session.sessionKey)) continue;
       if (session.players.length !== 2) continue;
-      if (!sessionMatchesScheduledPlayers(session, row.challenger, row.challenged)) continue;
+      if (!sessionMatchesScheduledPlayers(session, row)) continue;
       const startedAt = readSessionStartTime(session);
       if (startedAt === null || startedAt < readyAt || startedAt > playBy) continue;
       if (startedAt < earliestStart) {
@@ -991,7 +1060,7 @@ function findLinkedSession(
     const sessionTime = readSessionTime(session);
     if (sessionTime < scheduledAt - SESSION_MATCH_LOOKBACK_MS) continue;
     if (sessionTime > scheduledAt + SESSION_MATCH_LOOKAHEAD_MS) continue;
-    if (!sessionMatchesScheduledPlayers(session, row.challenger, row.challenged)) continue;
+    if (!sessionMatchesScheduledPlayers(session, row)) continue;
 
     const delta = Math.abs(sessionTime - scheduledAt);
     if (delta < bestDelta) {
@@ -1227,6 +1296,7 @@ function buildScheduledMatchTile(
   viewerPreference: ScheduledMatchViewerPreference = EMPTY_SCHEDULED_MATCH_VIEWER_PREFERENCE
 ): ScheduledMatchTile {
   const latestDesyncIncident = row.replayDesyncIncidents[0] ?? null;
+  const resultReviewActive = row.status === "result_pending";
   const desyncReviewActive = Boolean(
     row.status === "desync_review" &&
       latestDesyncIncident?.desyncOccurred &&
@@ -1237,7 +1307,9 @@ function buildScheduledMatchTile(
     (row.status === "completed" ? "completed" : row.status === "live_confirmed" ? "live" : null);
   const surface = buildChallengeEconomySurface(
     {
-      status: desyncReviewActive
+      status: resultReviewActive
+        ? "result_pending"
+        : desyncReviewActive
         ? "desync_review"
         : linkedSessionState === "live"
           ? "live_confirmed"
@@ -1266,7 +1338,9 @@ function buildScheduledMatchTile(
   );
   const lifecycle = deriveChallengeLifecycle(
     {
-      status: desyncReviewActive
+      status: resultReviewActive
+        ? "result_pending"
+        : desyncReviewActive
         ? "desync_review"
         : linkedSessionState === "live"
           ? "live_confirmed"
@@ -1293,7 +1367,9 @@ function buildScheduledMatchTile(
     },
     now
   );
-  const displayState = desyncReviewActive
+  const displayState = resultReviewActive
+    ? "result_pending"
+    : desyncReviewActive
     ? "desync_review"
     : linkedSessionState === "live"
       ? "live"
@@ -1311,6 +1387,18 @@ function buildScheduledMatchTile(
     id: row.id,
     status: normalizeChallengeStatusForTile(row.status),
     displayState,
+    protocol: {
+      version: row.protocolVersion,
+      steamBound: row.protocolVersion === CHALLENGE_PROTOCOL_VERSION,
+      challengerSteamIdSnapshot: row.challengerSteamIdSnapshot,
+      challengedSteamIdSnapshot: row.challengedSteamIdSnapshot,
+      resultWinnerUid:
+        row.resultWinnerUserId === row.challenger.id
+          ? row.challenger.uid
+          : row.resultWinnerUserId === row.challenged.id
+            ? row.challenged.uid
+            : null,
+    },
     lifecycle: {
       phase: lifecycle.phase,
       timingMode: lifecycle.timingMode,
@@ -1350,7 +1438,9 @@ function buildScheduledMatchTile(
     economy: {
       ...surface.economy,
       statusLabel:
-        desyncReviewActive
+        resultReviewActive
+          ? "Result review"
+          : desyncReviewActive
           ? "DESYNCED"
           : linkedSessionState === "live"
           ? "Live confirmed"
@@ -1358,7 +1448,9 @@ function buildScheduledMatchTile(
             ? "Completed"
             : surface.economy.statusLabel,
       statusDetail:
-        desyncReviewActive
+        resultReviewActive
+          ? "Replay identity is verified, but winner identity is unresolved. WOLO payout and title movement remain frozen."
+          : desyncReviewActive
           ? "Human-confirmed desync. Competitive result, winner payout, and title movement are halted pending commissioner disposition."
           : linkedSessionState === "live"
           ? "The match session is linked and underway."
@@ -1366,13 +1458,13 @@ function buildScheduledMatchTile(
             ? "Result is ready for Match Guarantee return and Wolo Wager settlement."
             : surface.economy.statusDetail,
       readyForSettlement:
-        desyncReviewActive
+        resultReviewActive || desyncReviewActive
           ? false
           : linkedSessionState === "completed"
             ? true
             : surface.economy.readyForSettlement,
       settlementReadyAt:
-        desyncReviewActive
+        resultReviewActive || desyncReviewActive
           ? null
           : linkedSessionState === "completed"
           ? row.settlementReadyAt?.toISOString() ?? row.resultAt?.toISOString() ?? null
@@ -1385,7 +1477,7 @@ function buildScheduledMatchTile(
     linkedMapName: linkedSession?.mapName ?? row.linkedMapName ?? null,
     // The parser/watcher's winner remains in storage as machine evidence, but
     // it must never be projected as competitive truth during human desync review.
-    linkedWinner: desyncReviewActive ? null : (
+    linkedWinner: desyncReviewActive ? null : resultReviewActive ? null : (
       row.status === "completed"
         ? row.linkedWinner ?? null
         : linkedSession?.winner ?? row.linkedWinner ?? null
@@ -1526,12 +1618,10 @@ async function recordVerifiedScheduledMatchTitleResults(
   session: ComparableSession,
   completedAt: Date
 ) {
-  const winnerKey = normalizeNameKey(session.winner);
-  if (!winnerKey) return;
-
-  const winner = playerAliases(row.challenger).includes(winnerKey)
+  const winnerUserId = resolveScheduledMatchWinnerUserId(row, session);
+  const winner = winnerUserId === row.challenger.id
     ? row.challenger
-    : playerAliases(row.challenged).includes(winnerKey)
+    : winnerUserId === row.challenged.id
       ? row.challenged
       : null;
   if (!winner) return;
@@ -1808,40 +1898,53 @@ async function persistScheduledMatchResults(
         const preserveCompletedResultAuthority =
           row.status === "completed";
 
-        const persistedResultAt =
-          preserveCompletedResultAuthority
-            ? row.resultAt ?? completedAt
+        const resolvedWinnerUserId = resolveScheduledMatchWinnerUserId(row, completedSession);
+        const protocolWinnerUnresolved =
+          row.protocolVersion === CHALLENGE_PROTOCOL_VERSION &&
+          !preserveCompletedResultAuthority &&
+          resolvedWinnerUserId === null;
+        const targetStatus = protocolWinnerUnresolved ? "result_pending" : "completed";
+        const persistedResultWinnerUserId = preserveCompletedResultAuthority
+          ? row.resultWinnerUserId
+          : resolvedWinnerUserId;
+        const persistedResultAt = preserveCompletedResultAuthority
+          ? row.resultAt ?? completedAt
+          : protocolWinnerUnresolved
+            ? null
             : completedAt;
-
-        const persistedSettlementReadyAt =
-          row.settlementReadyAt ??
-          persistedResultAt;
-
-        const persistedWinner =
-          preserveCompletedResultAuthority
-            ? row.linkedWinner
+        const persistedSettlementReadyAt = preserveCompletedResultAuthority
+          ? row.settlementReadyAt ?? persistedResultAt
+          : protocolWinnerUnresolved
+            ? null
+            : completedAt;
+        const persistedWinner = preserveCompletedResultAuthority
+          ? row.linkedWinner
+          : protocolWinnerUnresolved
+            ? null
             : completedSession.winner ?? null;
 
         const nextRow = {
           ...row,
-          status: "completed",
+          status: targetStatus,
           liveConfirmedAt: row.liveConfirmedAt ?? completedAt,
           resultAt: persistedResultAt,
           settlementReadyAt: persistedSettlementReadyAt,
           linkedSessionKey: completedSession.sessionKey,
           linkedMapName: completedSession.mapName ?? null,
           linkedWinner: persistedWinner,
+          resultWinnerUserId: persistedResultWinnerUserId,
           linkedDurationSeconds: completedSession.durationSeconds ?? null,
         } satisfies ScheduledMatchRow;
 
         const completedData = {
-          status: "completed" as const,
+          status: targetStatus,
           liveConfirmedAt: row.liveConfirmedAt ?? completedAt,
           resultAt: persistedResultAt,
           settlementReadyAt: persistedSettlementReadyAt,
           linkedSessionKey: completedSession.sessionKey,
           linkedMapName: completedSession.mapName,
           linkedWinner: persistedWinner,
+          resultWinnerUserId: persistedResultWinnerUserId,
           linkedDurationSeconds: completedSession.durationSeconds,
         };
         let completionOutcome: {
@@ -2023,6 +2126,9 @@ async function persistScheduledMatchResults(
                         linkedWinner:
                           row.linkedWinner,
 
+                        resultWinnerUserId:
+                          row.resultWinnerUserId,
+
                         linkedDurationSeconds:
                           row
                             .linkedDurationSeconds,
@@ -2131,10 +2237,7 @@ async function persistScheduledMatchResults(
                   });
 
 
-                if (
-                  row.status !==
-                  "completed"
-                ) {
+                if (row.status !== targetStatus) {
                   await recordAutoScheduledMatchActivity(
                     tx,
                     {
@@ -2142,12 +2245,16 @@ async function persistScheduledMatchResults(
                         row.id,
 
                       eventType:
-                        "completed",
+                        targetStatus === "result_pending"
+                          ? "result_review_required"
+                          : "completed",
 
                       detail:
-                        completedSession.winner
-                          ? `Completed. Winner: ${completedSession.winner}.`
-                          : "Completed and stored.",
+                        targetStatus === "result_pending"
+                          ? "Replay verified. Winner identity requires review; WOLO settlement remains frozen."
+                          : completedSession.winner
+                            ? `Completed. Winner: ${completedSession.winner}.`
+                            : "Completed and stored.",
 
                       createdAt:
                         completedAt,
@@ -2159,6 +2266,9 @@ async function persistScheduledMatchResults(
 
                         gameStatsId:
                           completedSession.id,
+
+                        resultWinnerUserId:
+                          persistedResultWinnerUserId,
 
                         replayClaimId:
                           canonicalClaim.id,
@@ -2181,8 +2291,7 @@ async function persistScheduledMatchResults(
                     true,
 
                   transitioned:
-                    row.status !==
-                    "completed",
+                    row.status !== targetStatus,
 
                   replayClaimConflictMatchId:
                     null,
@@ -2293,15 +2402,17 @@ async function persistScheduledMatchResults(
         }
 
 
-        const transitionedToCompleted =
+        const transitionedToTarget =
           completionOutcome
             .transitioned;
+        const transitionedToCompleted =
+          targetStatus === "completed" &&
+          completionOutcome.transitioned;
 
 
         if (
-          row.status !==
-            "completed" &&
-          !transitionedToCompleted
+          row.status !== targetStatus &&
+          !transitionedToTarget
         ) {
           updatedRows.push(
             row,
@@ -2340,22 +2451,51 @@ async function persistScheduledMatchResults(
         } satisfies ScheduledMatchRow;
 
 
-        try {
-          await recordVerifiedScheduledMatchTitleResults(
-            prisma,
-            row,
-            completedSession,
-            completedAt
-          );
-        } catch (error) {
-          console.error(
-            `Failed to record title results for scheduled match #${row.id}:`,
-            error
-          );
+        if (row.protocolVersion === CHALLENGE_PROTOCOL_VERSION) {
+          const winnerName =
+            persistedResultWinnerUserId === row.challenger.id
+              ? challengePlayerName(row.challenger)
+              : persistedResultWinnerUserId === row.challenged.id
+                ? challengePlayerName(row.challenged)
+                : null;
+          const noticeBody = [
+            targetStatus === "result_pending"
+              ? "Challenge result review"
+              : "Challenge result ready",
+            `${challengePlayerName(row.challenger)} vs ${challengePlayerName(row.challenged)}`,
+            targetStatus === "result_pending"
+              ? "Status: Replay verified · winner unresolved · WOLO held"
+              : `Status: ${winnerName ? `Winner ${winnerName} · ` : ""}replay verified · settlement queued`,
+          ].join("\n");
+          const { postChallengeProtocolNoticeToParticipants } = await import("@/lib/contactInbox");
+          await postChallengeProtocolNoticeToParticipants(prisma, {
+            challengeId: row.id,
+            body: noticeBody,
+            deliveryKey: `verified-replay:${canonicalClaim.gameStatsId}:${targetStatus}`,
+            now: completedAt,
+          }).catch((error) => {
+            console.error(`Failed to deliver Challenge Protocol result notice for #${row.id}:`, error);
+          });
         }
 
-        if (transitionedToCompleted) {
-          await attemptAutomaticScheduledMatchSettlement(prisma, row.id);
+        if (targetStatus === "completed") {
+          try {
+            await recordVerifiedScheduledMatchTitleResults(
+              prisma,
+              row,
+              completedSession,
+              completedAt
+            );
+          } catch (error) {
+            console.error(
+              `Failed to record title results for scheduled match #${row.id}:`,
+              error
+            );
+          }
+
+          if (transitionedToCompleted) {
+            await attemptAutomaticScheduledMatchSettlement(prisma, row.id);
+          }
         }
 
         updatedRows.push(completedNextRow);
@@ -2437,6 +2577,7 @@ async function persistScheduledMatchResults(
           linkedSessionKey: null,
           linkedMapName: null,
           linkedWinner: null,
+          resultWinnerUserId: null,
           linkedDurationSeconds: null,
         } satisfies ScheduledMatchRow;
 
@@ -2454,6 +2595,7 @@ async function persistScheduledMatchResults(
             linkedSessionKey: null,
             linkedMapName: null,
             linkedWinner: null,
+            resultWinnerUserId: null,
             linkedDurationSeconds: null,
           },
         });
@@ -2518,6 +2660,7 @@ async function persistScheduledMatchResults(
         linkedSessionKey: null,
         linkedMapName: null,
         linkedWinner: null,
+        resultWinnerUserId: null,
         linkedDurationSeconds: null,
       } satisfies ScheduledMatchRow;
 
@@ -2530,6 +2673,7 @@ async function persistScheduledMatchResults(
           linkedSessionKey: null,
           linkedMapName: null,
           linkedWinner: null,
+          resultWinnerUserId: null,
           linkedDurationSeconds: null,
         },
       });
@@ -2547,6 +2691,8 @@ async function persistScheduledMatchResults(
 function compareScheduledTileOrder(left: ScheduledMatchTile, right: ScheduledMatchTile) {
   const priority = (tile: ScheduledMatchTile) => {
     switch (tile.displayState) {
+      case "result_pending":
+        return 0;
       case "desync_review":
         return 0;
       case "live":
@@ -2608,6 +2754,7 @@ function compareScheduledTileOrder(left: ScheduledMatchTile, right: ScheduledMat
       "left_checked_in",
       "right_checked_in",
       "ready",
+      "result_pending",
       "desync_review",
     ].includes(left.displayState)
   ) {
@@ -2635,6 +2782,7 @@ function isActiveChallengeDisplayState(displayState: ScheduledMatchTile["display
     "right_checked_in",
     "ready",
     "live",
+    "result_pending",
     "desync_review",
   ].includes(displayState);
 }
@@ -2668,7 +2816,7 @@ function deriveMatchedSessionKeys(tiles: ScheduledMatchTile[]) {
       matchedActiveSessionKeys.add(tile.linkedSessionKey);
     }
 
-    if (tile.displayState === "completed") {
+    if (tile.displayState === "completed" || tile.displayState === "result_pending") {
       matchedCompletedSessionKeys.add(tile.linkedSessionKey);
     }
   }
@@ -2722,6 +2870,7 @@ async function loadScheduledMatchRows(
     // Commissioner review is an explicit hold and must remain visible even
     // when the original match time has fallen outside the active runway.
     { status: "desync_review" },
+    { status: "result_pending" },
     {
       status: {
         in: [...ACTIVE_SCHEDULED_STATUSES],
@@ -3000,7 +3149,10 @@ function buildChallengeRecordSummary(
         break;
       case "completed":
         summary.completed += 1;
-        if (tile.linkedWinner && aliases.has(normalizeNameKey(tile.linkedWinner))) {
+        if (row.resultWinnerUserId !== null) {
+          if (row.resultWinnerUserId === viewer.id) summary.wins += 1;
+          else summary.losses += 1;
+        } else if (tile.linkedWinner && aliases.has(normalizeNameKey(tile.linkedWinner))) {
           summary.wins += 1;
         } else if (tile.linkedWinner) {
           summary.losses += 1;
@@ -3183,6 +3335,25 @@ export async function loadChallengeHubSnapshot(
     loadLiveSessionSnapshot(prisma),
   ]);
 
+  const challengeUsers = new Map<number, ChallengeUserRow>();
+  challengeUsers.set(viewer.id, viewer);
+  for (const candidate of candidateRows) challengeUsers.set(candidate.id, candidate);
+  for (const row of historySnapshot.rows) {
+    challengeUsers.set(row.challenger.id, row.challenger);
+    challengeUsers.set(row.challenged.id, row.challenged);
+  }
+  const watcherReadinessByUserId = await loadChallengeWatcherReadinessByUserId(
+    prisma,
+    [...challengeUsers.keys()],
+    new Date(nowIso),
+  );
+  const watcherReadinessByUid = new Map(
+    [...challengeUsers.values()].map((user) => [
+      user.uid,
+      watcherReadinessByUserId.get(user.id) ?? ABSENT_CHALLENGE_WATCHER_READINESS,
+    ]),
+  );
+
   const reconciledRows = await persistScheduledMatchResults(
     prisma,
     historySnapshot.rows,
@@ -3214,8 +3385,16 @@ export async function loadChallengeHubSnapshot(
       normalizeScheduledMatchViewerPreference(row),
     ])
   );
-  const attachPreference = (tile: ScheduledMatchTile) => ({
+  const attachPreference = (tile: ScheduledMatchTile): ScheduledMatchTile => ({
     ...tile,
+    challenger: {
+      ...tile.challenger,
+      watcher: watcherReadinessByUid.get(tile.challenger.uid) ?? ABSENT_CHALLENGE_WATCHER_READINESS,
+    },
+    challenged: {
+      ...tile.challenged,
+      watcher: watcherReadinessByUid.get(tile.challenged.uid) ?? ABSENT_CHALLENGE_WATCHER_READINESS,
+    },
     viewerPreference:
       preferenceByMatchId.get(tile.id) ?? EMPTY_SCHEDULED_MATCH_VIEWER_PREFERENCE,
   });
@@ -3240,10 +3419,18 @@ export async function loadChallengeHubSnapshot(
   const record = buildChallengeRecordSummary(viewerRows, viewer);
 
   return {
-    viewer: buildPlayerSurface(viewer),
+    viewer: buildPlayerSurface(
+      viewer,
+      watcherReadinessByUserId.get(viewer.id) ?? ABSENT_CHALLENGE_WATCHER_READINESS,
+    ),
     historyScope: viewer.isAdmin ? "global" : "participant",
     historyPage: historySnapshot.page,
-    candidates: candidateRows.map((candidate) => buildPlayerSurface(candidate)),
+    candidates: candidateRows.map((candidate) =>
+      buildPlayerSurface(
+        candidate,
+        watcherReadinessByUserId.get(candidate.id) ?? ABSENT_CHALLENGE_WATCHER_READINESS,
+      )
+    ),
     scheduledMatches: tiles.map(attachPreference),
     historyMatches: historyMatches.map(attachPreference),
     activities,

@@ -18,6 +18,7 @@ export type ScheduledMatchPersistedStatus =
   | "right_checked_in"
   | "ready"
   | "live_confirmed"
+  | "result_pending"
   | "desync_review"
   | "no_show_left"
   | "no_show_right"
@@ -44,6 +45,7 @@ export type ScheduledMatchDisplayState =
   | "right_checked_in"
   | "ready"
   | "live"
+  | "result_pending"
   | "desync_review"
   | "no_show_left"
   | "no_show_right"
@@ -207,7 +209,9 @@ export function buildChallengeEconomySurface(
 
   if (!hasTerms) {
     const legacyDisplayState: ScheduledMatchDisplayState =
-      rawStatus === "desync_review"
+      rawStatus === "result_pending"
+        ? "result_pending"
+        : rawStatus === "desync_review"
         ? "desync_review"
         : rawStatus === "accepted"
         ? "accepted"
@@ -230,7 +234,9 @@ export function buildChallengeEconomySurface(
                         : "pending";
 
     const legacyStatusLabel =
-      legacyDisplayState === "desync_review"
+      legacyDisplayState === "result_pending"
+        ? "Result review"
+        : legacyDisplayState === "desync_review"
         ? "DESYNCED"
         : legacyDisplayState === "accepted"
         ? "Accepted"
@@ -252,7 +258,9 @@ export function buildChallengeEconomySurface(
                         ? "Cancelled"
                         : "Awaiting acceptance";
     const legacyStatusDetail =
-      legacyDisplayState === "desync_review"
+      legacyDisplayState === "result_pending"
+        ? "Replay identity is verified, but winner identity is not yet proven."
+        : legacyDisplayState === "desync_review"
         ? "Human-confirmed desync. Competitive result and settlement are unresolved pending commissioner disposition."
         : legacyDisplayState === "accepted"
         ? "Legacy scheduled match without economy terms."
@@ -305,6 +313,7 @@ export function buildChallengeEconomySurface(
         },
         readyForSettlement:
           legacyDisplayState !== "desync_review" &&
+          legacyDisplayState !== "result_pending" &&
           (legacyDisplayState === "completed" || legacyDisplayState === "forfeited"),
         settlementReadyAt: input.settlementReadyAt?.toISOString() ?? null,
       },
@@ -322,7 +331,9 @@ export function buildChallengeEconomySurface(
 
   let displayState: ScheduledMatchDisplayState;
 
-  if (rawStatus === "desync_review") {
+  if (rawStatus === "result_pending") {
+    displayState = "result_pending";
+  } else if (rawStatus === "desync_review") {
     displayState = "desync_review";
   } else if (rawStatus === "expired") {
     displayState = "expired";
@@ -370,6 +381,7 @@ export function buildChallengeEconomySurface(
     bothFunded &&
     rawStatus !== "completed" &&
     rawStatus !== "live_confirmed" &&
+    rawStatus !== "result_pending" &&
     rawStatus !== "desync_review"
   ) {
     if (leftCheckedIn && rightCheckedIn) {
@@ -414,6 +426,17 @@ export function buildChallengeEconomySurface(
   };
 
   switch (displayState) {
+    case "result_pending":
+      statusLabel = "Result review";
+      statusDetail =
+        "Replay identity is verified, but a unique winner is not yet proven. WOLO payout and title movement remain frozen.";
+      resolution = {
+        label: "Winner proof required",
+        guarantee: "Match Guarantees remain locked until the competitive result is proven.",
+        wager: "No winner payout may execute while winner identity is unresolved.",
+        treasury: null,
+      };
+      break;
     case "desync_review":
       statusLabel = "DESYNCED";
       statusDetail =

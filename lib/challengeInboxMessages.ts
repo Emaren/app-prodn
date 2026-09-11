@@ -12,6 +12,8 @@ export type ChallengeInboxNoticeState =
   | "desync"
   | "no_show"
   | "result_ready"
+  | "result_review"
+  | "settled"
   | "declined"
   | "cancelled"
   | "rescheduled";
@@ -85,6 +87,14 @@ export const CHALLENGE_NOTICE_HEADLINES: Record<
   "Challenge result ready": {
     state: "result_ready",
     compactHeadline: "Result ready",
+  },
+  "Challenge result review": {
+    state: "result_review",
+    compactHeadline: "Result review",
+  },
+  "Challenge settled": {
+    state: "settled",
+    compactHeadline: "WOLO settled",
   },
   "Challenge desync confirmed": {
     state: "desync",
