@@ -60,7 +60,7 @@ const SCHEDULED_MATCH_SELECT = {
   reconciledAt: true,
   creationRequestId: true,
   protocolVersion: true,
-  resultWinnerUserId: true,
+  resultWinnerSide: true,
   challengeNote: true,
   acceptedAt: true,
   declinedAt: true,

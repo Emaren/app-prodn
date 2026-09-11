@@ -5,6 +5,8 @@ export type ChallengeProtocolVersion =
   | typeof CHALLENGE_PROTOCOL_VERSION
   | typeof LEGACY_CHALLENGE_PROTOCOL_VERSION;
 
+export type ChallengeWinnerSide = "challenger" | "challenged";
+
 export type ChallengeProtocolErrorCode =
   | "CHALLENGE_STEAM_IDENTITY_REQUIRED"
   | "CHALLENGE_STEAM_IDENTITY_CONFLICT"
@@ -109,6 +111,42 @@ export function resolveBoundSteamWinnerId(input: {
   return matching.length === 1 ? normalizeChallengeSteamId(matching[0]?.steamId) : null;
 }
 
+export function challengeWinnerSideFromUserId(input: {
+  winnerUserId: number | null | undefined;
+  challengerUserId: number;
+  challengedUserId: number;
+}): ChallengeWinnerSide | null {
+  if (input.winnerUserId === input.challengerUserId) return "challenger";
+  if (input.winnerUserId === input.challengedUserId) return "challenged";
+  return null;
+}
+
+export function challengeWinnerUserIdFromSide(input: {
+  winnerSide: string | null | undefined;
+  challengerUserId: number;
+  challengedUserId: number;
+}) {
+  if (input.winnerSide === "challenger") return input.challengerUserId;
+  if (input.winnerSide === "challenged") return input.challengedUserId;
+  return null;
+}
+
+export function challengeWinnerSideFromSteam(input: {
+  winnerSteamId: string | null | undefined;
+  challengerSteamIdSnapshot: string | null | undefined;
+  challengedSteamIdSnapshot: string | null | undefined;
+}): ChallengeWinnerSide | null {
+  const winnerSteamId = normalizeChallengeSteamId(input.winnerSteamId);
+  if (!winnerSteamId) return null;
+  if (winnerSteamId === normalizeChallengeSteamId(input.challengerSteamIdSnapshot)) {
+    return "challenger";
+  }
+  if (winnerSteamId === normalizeChallengeSteamId(input.challengedSteamIdSnapshot)) {
+    return "challenged";
+  }
+  return null;
+}
+
 export function challengeWinnerUserIdFromSteam(input: {
   winnerSteamId: string | null | undefined;
   challengerUserId: number;
@@ -116,13 +154,9 @@ export function challengeWinnerUserIdFromSteam(input: {
   challengerSteamIdSnapshot: string | null | undefined;
   challengedSteamIdSnapshot: string | null | undefined;
 }) {
-  const winnerSteamId = normalizeChallengeSteamId(input.winnerSteamId);
-  if (!winnerSteamId) return null;
-  if (winnerSteamId === normalizeChallengeSteamId(input.challengerSteamIdSnapshot)) {
-    return input.challengerUserId;
-  }
-  if (winnerSteamId === normalizeChallengeSteamId(input.challengedSteamIdSnapshot)) {
-    return input.challengedUserId;
-  }
-  return null;
+  return challengeWinnerUserIdFromSide({
+    winnerSide: challengeWinnerSideFromSteam(input),
+    challengerUserId: input.challengerUserId,
+    challengedUserId: input.challengedUserId,
+  });
 }

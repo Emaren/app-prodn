@@ -668,22 +668,27 @@ test(
   () => {
     assert.match(
       commands,
-      /resultWinnerUserId:\s*requestedWinnerUserId/,
+      /resultWinnerSide:\s*requestedWinnerSide/,
+    );
+
+    assert.match(
+      commands,
+      /challengeWinnerSideFromUserId/,
     );
 
     assert.match(
       settlements,
-      /if \(row\.resultWinnerUserId !== null\)/,
+      /if \(row\.resultWinnerSide !== null\)/,
     );
 
     assert.match(
       settlements,
-      /row\.resultWinnerUserId === row\.challenger\.id/,
+      /row\.resultWinnerSide === "challenger"/,
     );
 
     assert.match(
       settlements,
-      /row\.resultWinnerUserId === row\.challenged\.id/,
+      /row\.resultWinnerSide === "challenged"/,
     );
 
     assert.match(

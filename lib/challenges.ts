@@ -12,6 +12,8 @@ import {
 } from "@/lib/challengeEconomy";
 import {
   CHALLENGE_PROTOCOL_VERSION,
+  challengeWinnerSideFromUserId,
+  challengeWinnerUserIdFromSide,
   challengeWinnerUserIdFromSteam,
   resolveBoundSteamWinnerId,
   sessionMatchesBoundSteamDuel,
@@ -134,7 +136,7 @@ type ScheduledMatchRow = {
   protocolVersion: string | null;
   challengerSteamIdSnapshot: string | null;
   challengedSteamIdSnapshot: string | null;
-  resultWinnerUserId: number | null;
+  resultWinnerSide: string | null;
   createdAt: Date;
   updatedAt: Date;
   acceptedAt: Date | null;
@@ -418,7 +420,7 @@ const SCHEDULED_MATCH_SELECT = {
   protocolVersion: true,
   challengerSteamIdSnapshot: true,
   challengedSteamIdSnapshot: true,
-  resultWinnerUserId: true,
+  resultWinnerSide: true,
   createdAt: true,
   updatedAt: true,
   acceptedAt: true,
@@ -1393,9 +1395,9 @@ function buildScheduledMatchTile(
       challengerSteamIdSnapshot: row.challengerSteamIdSnapshot,
       challengedSteamIdSnapshot: row.challengedSteamIdSnapshot,
       resultWinnerUid:
-        row.resultWinnerUserId === row.challenger.id
+        row.resultWinnerSide === "challenger"
           ? row.challenger.uid
-          : row.resultWinnerUserId === row.challenged.id
+          : row.resultWinnerSide === "challenged"
             ? row.challenged.uid
             : null,
     },
@@ -1904,9 +1906,18 @@ async function persistScheduledMatchResults(
           !preserveCompletedResultAuthority &&
           resolvedWinnerUserId === null;
         const targetStatus = protocolWinnerUnresolved ? "result_pending" : "completed";
-        const persistedResultWinnerUserId = preserveCompletedResultAuthority
-          ? row.resultWinnerUserId
-          : resolvedWinnerUserId;
+        const persistedResultWinnerSide = preserveCompletedResultAuthority
+          ? row.resultWinnerSide
+          : challengeWinnerSideFromUserId({
+              winnerUserId: resolvedWinnerUserId,
+              challengerUserId: row.challenger.id,
+              challengedUserId: row.challenged.id,
+            });
+        const persistedResultWinnerUserId = challengeWinnerUserIdFromSide({
+          winnerSide: persistedResultWinnerSide,
+          challengerUserId: row.challenger.id,
+          challengedUserId: row.challenged.id,
+        });
         const persistedResultAt = preserveCompletedResultAuthority
           ? row.resultAt ?? completedAt
           : protocolWinnerUnresolved
@@ -1932,7 +1943,7 @@ async function persistScheduledMatchResults(
           linkedSessionKey: completedSession.sessionKey,
           linkedMapName: completedSession.mapName ?? null,
           linkedWinner: persistedWinner,
-          resultWinnerUserId: persistedResultWinnerUserId,
+          resultWinnerSide: persistedResultWinnerSide,
           linkedDurationSeconds: completedSession.durationSeconds ?? null,
         } satisfies ScheduledMatchRow;
 
@@ -1944,7 +1955,7 @@ async function persistScheduledMatchResults(
           linkedSessionKey: completedSession.sessionKey,
           linkedMapName: completedSession.mapName,
           linkedWinner: persistedWinner,
-          resultWinnerUserId: persistedResultWinnerUserId,
+          resultWinnerSide: persistedResultWinnerSide,
           linkedDurationSeconds: completedSession.durationSeconds,
         };
         let completionOutcome: {
@@ -2126,8 +2137,8 @@ async function persistScheduledMatchResults(
                         linkedWinner:
                           row.linkedWinner,
 
-                        resultWinnerUserId:
-                          row.resultWinnerUserId,
+                        resultWinnerSide:
+                          row.resultWinnerSide,
 
                         linkedDurationSeconds:
                           row
@@ -2577,7 +2588,7 @@ async function persistScheduledMatchResults(
           linkedSessionKey: null,
           linkedMapName: null,
           linkedWinner: null,
-          resultWinnerUserId: null,
+          resultWinnerSide: null,
           linkedDurationSeconds: null,
         } satisfies ScheduledMatchRow;
 
@@ -2595,7 +2606,7 @@ async function persistScheduledMatchResults(
             linkedSessionKey: null,
             linkedMapName: null,
             linkedWinner: null,
-            resultWinnerUserId: null,
+            resultWinnerSide: null,
             linkedDurationSeconds: null,
           },
         });
@@ -2660,7 +2671,7 @@ async function persistScheduledMatchResults(
         linkedSessionKey: null,
         linkedMapName: null,
         linkedWinner: null,
-        resultWinnerUserId: null,
+        resultWinnerSide: null,
         linkedDurationSeconds: null,
       } satisfies ScheduledMatchRow;
 
@@ -2673,7 +2684,7 @@ async function persistScheduledMatchResults(
           linkedSessionKey: null,
           linkedMapName: null,
           linkedWinner: null,
-          resultWinnerUserId: null,
+          resultWinnerSide: null,
           linkedDurationSeconds: null,
         },
       });
@@ -3149,8 +3160,13 @@ function buildChallengeRecordSummary(
         break;
       case "completed":
         summary.completed += 1;
-        if (row.resultWinnerUserId !== null) {
-          if (row.resultWinnerUserId === viewer.id) summary.wins += 1;
+        const resultWinnerUserId = challengeWinnerUserIdFromSide({
+          winnerSide: row.resultWinnerSide,
+          challengerUserId: row.challenger.id,
+          challengedUserId: row.challenged.id,
+        });
+        if (resultWinnerUserId !== null) {
+          if (resultWinnerUserId === viewer.id) summary.wins += 1;
           else summary.losses += 1;
         } else if (tile.linkedWinner && aliases.has(normalizeNameKey(tile.linkedWinner))) {
           summary.wins += 1;

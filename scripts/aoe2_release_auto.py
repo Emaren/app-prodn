@@ -655,6 +655,13 @@ def _additive_migration_contract(
         re.I,
     )
 
+    add_check = re.compile(
+        r'^ADD\s+CONSTRAINT\s+'
+        r'"?[A-Za-z_][A-Za-z0-9_]*"?\s+'
+        r'CHECK\s*\(([\s\S]+)\)\s*$',
+        re.I,
+    )
+
     for rel, statement in statements:
         for insert_match in insert.finditer(statement):
             table = _normalize_sql_ident(
@@ -882,6 +889,90 @@ def _additive_migration_contract(
                     "ADD COLUMN on pre-existing table "
                     f"{table!r} in {rel} must remain "
                     "nullable in the automatic additive lane"
+                )
+
+            continue
+
+        check_constraint = add_check.match(body)
+
+        if check_constraint:
+            expression = check_constraint.group(1)
+            columns = {
+                _normalize_sql_ident(column)
+                for column in re.findall(
+                    r'"([A-Za-z_][A-Za-z0-9_]*)"',
+                    expression,
+                )
+            }
+            allowed = added_columns.get(
+                table,
+                set(),
+            )
+
+            if not columns or not columns.issubset(
+                allowed
+            ):
+                raise AutoShipError(
+                    "ADD CHECK CONSTRAINT on pre-existing table "
+                    f"{table!r} in {rel} may reference only "
+                    "columns added by this release"
+                )
+
+            scrubbed = re.sub(
+                r"'(?:''|[^'])*'",
+                " ",
+                expression,
+            )
+            scrubbed = re.sub(
+                r'"[A-Za-z_][A-Za-z0-9_]*"',
+                " ",
+                scrubbed,
+            )
+            words = {
+                word.upper()
+                for word in re.findall(
+                    r'\b[A-Za-z_][A-Za-z0-9_]*\b',
+                    scrubbed,
+                )
+            }
+            safe_words = {
+                "AND",
+                "DISTINCT",
+                "FALSE",
+                "FROM",
+                "IN",
+                "IS",
+                "NOT",
+                "NULL",
+                "OR",
+                "TRUE",
+            }
+            unsafe_words = sorted(words - safe_words)
+            if unsafe_words:
+                raise AutoShipError(
+                    "ADD CHECK CONSTRAINT on pre-existing table "
+                    f"{table!r} in {rel} uses unsupported "
+                    f"expression token(s) {unsafe_words!r}"
+                )
+
+            grammar_probe = re.sub(
+                r'\b[A-Za-z_][A-Za-z0-9_]*\b',
+                " ",
+                scrubbed,
+            )
+            grammar_probe = re.sub(
+                r'\b[0-9]+(?:\.[0-9]+)?\b',
+                " ",
+                grammar_probe,
+            )
+            if not re.fullmatch(
+                r'[\s(),=<>~!+*/%.-]*',
+                grammar_probe,
+            ):
+                raise AutoShipError(
+                    "ADD CHECK CONSTRAINT on pre-existing table "
+                    f"{table!r} in {rel} is outside the "
+                    "same-release CHECK expression grammar"
                 )
 
             continue
