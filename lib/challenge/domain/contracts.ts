@@ -72,6 +72,7 @@ export type ChallengeMutationPayload = {
   linkedSessionKey?: string;
   linkedMapName?: string;
   linkedWinner?: string;
+  resultWinnerUid?: string;
   linkedDurationSeconds?: number;
 
   desyncIncidentId?: number;

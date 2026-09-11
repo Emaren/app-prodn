@@ -13,7 +13,7 @@ import {
   isChallengeInboxNoticeBody,
   summarizeChallengeInboxMessage,
 } from "@/lib/challengeInboxMessages";
-import { loadChallengeThreadTile, type ScheduledMatchTile } from "@/lib/challenges";
+import type { ScheduledMatchTile } from "@/lib/challenges";
 import {
   loadUserCommunitySummaries,
   normalizeGiftKind,
@@ -1953,12 +1953,15 @@ export async function loadInboxPayload(
     activeTargetUser &&
     activeTargetUser.id !== viewer.id &&
     activeTargetUser.uid !== AI_CONCIERGE_UID
-      ? await loadChallengeThreadTile(
-          prisma,
-          viewer.id,
-          activeTargetUser.id,
-          options?.challengeId
-        )
+      ? await (async () => {
+          const { loadChallengeThreadTile } = await import("@/lib/challenges");
+          return loadChallengeThreadTile(
+            prisma,
+            viewer.id,
+            activeTargetUser.id,
+            options?.challengeId
+          );
+        })()
       : null;
 
   if (options?.summaryOnly || !activeTargetUser || activeTargetUser.id === viewer.id) {

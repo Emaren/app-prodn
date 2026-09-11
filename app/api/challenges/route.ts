@@ -19,6 +19,10 @@ import {
   validateChallengeTermsAmounts,
 } from "@/lib/challengeEconomy";
 import {
+  ChallengeProtocolError,
+  bindChallengeSteamIdentities,
+} from "@/lib/challengeProtocol";
+import {
   buildChallengeAcceptBy,
   CHALLENGE_DEFAULT_ACCEPTANCE_WINDOW_HOURS,
   normalizeAcceptanceWindowHours,
@@ -48,6 +52,7 @@ const VIEWER_SELECT = {
   uid: true,
   inGameName: true,
   steamPersonaName: true,
+  steamId: true,
   walletAddress: true,
   representedCountry: true,
 } as const;
@@ -286,6 +291,7 @@ export async function POST(request: NextRequest) {
         uid: true,
         inGameName: true,
         steamPersonaName: true,
+        steamId: true,
         walletAddress: true,
         representedCountry: true,
       },
@@ -313,6 +319,11 @@ export async function POST(request: NextRequest) {
         });
       }
     }
+
+    const steamIdentity = bindChallengeSteamIdentities({
+      challengerSteamId: viewer.steamId,
+      challengedSteamId: challenged.steamId,
+    });
 
     const existingActiveMatch = await loadChallengeThreadTile(prisma, viewer.id, challenged.id);
     const duplicateWarning = existingActiveMatch
@@ -495,6 +506,9 @@ export async function POST(request: NextRequest) {
           matchTimeProposedByUserId: matchTime ? viewer.id : null,
           matchTimeConfirmedAt: null,
           creationRequestId,
+          protocolVersion: steamIdentity.protocolVersion,
+          challengerSteamIdSnapshot: steamIdentity.challengerSteamIdSnapshot,
+          challengedSteamIdSnapshot: steamIdentity.challengedSteamIdSnapshot,
           challengeNote,
           status: "proposed",
           wagerAmountWolo,
@@ -589,6 +603,9 @@ export async function POST(request: NextRequest) {
             wagerAmountWolo,
             guaranteeAmountWolo,
             totalFundingWolo,
+            protocolVersion: steamIdentity.protocolVersion,
+            challengerSteamIdSnapshot: steamIdentity.challengerSteamIdSnapshot,
+            challengedSteamIdSnapshot: steamIdentity.challengedSteamIdSnapshot,
             trophyIds: titleStakePlans.map((plan) => plan.trophy.trophyId),
             trophyChallengeIds: linkedTrophyChallengeIds,
           },
@@ -629,6 +646,7 @@ export async function POST(request: NextRequest) {
           wagerAmountWolo,
           guaranteeAmountWolo,
           totalFundingWolo,
+          protocolVersion: steamIdentity.protocolVersion,
           trophyIds: titleStakePlans.map((plan) => plan.trophy.trophyId),
           trophyChallengeIds: linkedTrophyChallengeIds,
         },
@@ -652,6 +670,7 @@ export async function POST(request: NextRequest) {
           wagerAmountWolo,
           guaranteeAmountWolo,
           totalFundingWolo,
+          protocolVersion: steamIdentity.protocolVersion,
           trophyIds: titleStakePlans.map((plan) => plan.trophy.trophyId),
           trophyChallengeIds: linkedTrophyChallengeIds,
         },
@@ -696,6 +715,12 @@ export async function POST(request: NextRequest) {
       duplicateWarning,
     });
   } catch (error) {
+    if (error instanceof ChallengeProtocolError) {
+      return NextResponse.json(
+        { detail: error.message, code: error.code },
+        { status: error.status },
+      );
+    }
     if (error instanceof TitleChallengeConflictError) {
       return NextResponse.json({ detail: error.message }, { status: 409 });
     }

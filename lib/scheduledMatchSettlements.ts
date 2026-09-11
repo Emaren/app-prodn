@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
+import { CHALLENGE_PROTOCOL_VERSION } from "@/lib/challengeProtocol";
 import {
   deriveChallengeFinancialConservation,
 } from "@/lib/challengeFinancialConservation";
@@ -63,6 +64,8 @@ const SCHEDULED_MATCH_SETTLEMENT_SELECT = {
   challengerCheckedInAt: true,
   challengedCheckedInAt: true,
   linkedWinner: true,
+  protocolVersion: true,
+  resultWinnerUserId: true,
   updatedAt: true,
   challenger: {
     select: {
@@ -324,6 +327,25 @@ function participantAliases(user: ScheduledMatchSettlementRow["challenger"]) {
       .map(normalizeIdentity)
       .filter(Boolean)
   );
+}
+
+function resolvedWinnerParticipantSide(
+  row: ScheduledMatchSettlementRow,
+): "left" | "right" | null {
+  if (row.resultWinnerUserId !== null) {
+    if (row.resultWinnerUserId === row.challenger.id) return "left";
+    if (row.resultWinnerUserId === row.challenged.id) return "right";
+    return null;
+  }
+
+  // New protocol rows never let mutable display text regain economic authority.
+  if (row.protocolVersion === CHALLENGE_PROTOCOL_VERSION) return null;
+
+  const winnerKey = normalizeIdentity(row.linkedWinner);
+  const leftMatches = Boolean(winnerKey) && participantAliases(row.challenger).has(winnerKey);
+  const rightMatches = Boolean(winnerKey) && participantAliases(row.challenged).has(winnerKey);
+  if (!winnerKey || leftMatches === rightMatches) return null;
+  return leftMatches ? "left" : "right";
 }
 
 function titleForMatch(row: ScheduledMatchSettlementRow) {
@@ -655,10 +677,8 @@ function buildRawTransfers(input: {
   }
 
   if (status === "completed") {
-    const winnerKey = normalizeIdentity(input.row.linkedWinner);
-    const leftMatches = Boolean(winnerKey) && participantAliases(input.row.challenger).has(winnerKey);
-    const rightMatches = Boolean(winnerKey) && participantAliases(input.row.challenged).has(winnerKey);
-    const winner = leftMatches === rightMatches ? null : leftMatches ? input.left : input.right;
+    const winnerSide = resolvedWinnerParticipantSide(input.row);
+    const winner = winnerSide === "left" ? input.left : winnerSide === "right" ? input.right : null;
 
     if (!winner || !input.left.funded || !input.right.funded) {
       return transfers;
@@ -1026,10 +1046,7 @@ export function buildScheduledMatchSettlementPlan(
     ...sourceAccounting.blockers,
   );
   if (normalizeStatus(row.status) === "completed") {
-    const winnerKey = normalizeIdentity(row.linkedWinner);
-    const leftMatches = Boolean(winnerKey) && participantAliases(row.challenger).has(winnerKey);
-    const rightMatches = Boolean(winnerKey) && participantAliases(row.challenged).has(winnerKey);
-    if (!winnerKey || leftMatches === rightMatches) {
+    if (!resolvedWinnerParticipantSide(row)) {
       blockers.push("Completed match winner does not resolve uniquely to one challenge participant.");
     }
     if (!left.funded || !right.funded) {
@@ -1820,6 +1837,20 @@ export async function executeScheduledMatchSettlement(
     const execution = await executeWoloEscrowSettlementRun(buildSettlementRunInput(markedPlan));
     const guardedExecution = enforceEscrowRunSource(markedPlan, execution) ?? execution;
     const plan = await recordExecutionResult(prisma, markedPlan, guardedExecution, adminUserId);
+    if (plan.state === "executed") {
+      const { postChallengeProtocolNoticeToParticipants } = await import("@/lib/contactInbox");
+      await postChallengeProtocolNoticeToParticipants(prisma, {
+        challengeId: plan.id,
+        body: [
+          "Challenge settled",
+          plan.title,
+          `Status: ${plan.liability.executedWolo.toLocaleString()} WOLO settled · chain proof recorded`,
+        ].join("\n"),
+        deliveryKey: `settlement:${plan.settlementRunId}:completed`,
+      }).catch((noticeError) => {
+        console.error(`Failed to deliver Challenge Protocol settlement notice for #${plan.id}:`, noticeError);
+      });
+    }
     return {
       ok: guardedExecution.ok,
       plan,

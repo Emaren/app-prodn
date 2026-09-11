@@ -96,6 +96,8 @@ function eventLabel(eventType: string) {
       return "Title cancelled";
     case "title_result_verified":
       return "Title result verified";
+    case "result_review_required":
+      return "Result review required";
     case "title_result_pending_review":
       return "Title result pending review";
     case "title_settlement_dry_run":
@@ -129,6 +131,8 @@ function statusLabel(status: string, leftName: string, rightName: string) {
       return `${rightName} missed check-in`;
     case "double_no_show":
       return "Double no-show";
+    case "result_pending":
+      return "Result review";
     case "completed":
       return "Completed";
     case "live":

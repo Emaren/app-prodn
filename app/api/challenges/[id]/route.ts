@@ -59,6 +59,8 @@ const SCHEDULED_MATCH_SELECT = {
   expiredAt: true,
   reconciledAt: true,
   creationRequestId: true,
+  protocolVersion: true,
+  resultWinnerUserId: true,
   challengeNote: true,
   acceptedAt: true,
   declinedAt: true,
@@ -96,6 +98,43 @@ function playerName(user: {
   steamPersonaName: string | null;
 }) {
   return user.inGameName || user.steamPersonaName || user.uid;
+}
+
+function normalizeParticipantIdentity(value: unknown) {
+  return typeof value === "string"
+    ? value.trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US")
+    : "";
+}
+
+function resolveManualWinnerUserId(
+  winnerUid: unknown,
+  winnerLabel: unknown,
+  match: typeof SCHEDULED_MATCH_SELECT extends never ? never : {
+    challengerUserId: number;
+    challengedUserId: number;
+    challenger: { uid: string; inGameName: string | null; steamPersonaName: string | null };
+    challenged: { uid: string; inGameName: string | null; steamPersonaName: string | null };
+  },
+) {
+  const directUid = normalizeParticipantIdentity(winnerUid);
+  if (directUid) {
+    if (directUid === normalizeParticipantIdentity(match.challenger.uid)) return match.challengerUserId;
+    if (directUid === normalizeParticipantIdentity(match.challenged.uid)) return match.challengedUserId;
+    return null;
+  }
+
+  const label = normalizeParticipantIdentity(winnerLabel);
+  if (!label) return null;
+  const matches = [
+    { id: match.challengerUserId, user: match.challenger },
+    { id: match.challengedUserId, user: match.challenged },
+  ].filter(({ user }) =>
+    [user.uid, user.inGameName, user.steamPersonaName]
+      .map(normalizeParticipantIdentity)
+      .filter(Boolean)
+      .includes(label),
+  );
+  return matches.length === 1 ? matches[0]!.id : null;
 }
 
 function buildChallengeLabel({
@@ -555,6 +594,13 @@ export async function PATCH(
 
             linkedWinner:
               payload.linkedWinner,
+
+            resultWinnerUserId:
+              resolveManualWinnerUserId(
+                payload.resultWinnerUid,
+                payload.linkedWinner,
+                scheduledMatch,
+              ),
 
             linkedDurationSeconds:
               payload.linkedDurationSeconds,

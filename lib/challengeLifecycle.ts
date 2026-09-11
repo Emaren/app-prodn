@@ -122,6 +122,7 @@ export function deriveChallengeLifecycle(
     "right_checked_in",
     "ready",
     "live_confirmed",
+    "result_pending",
     "completed",
   ].includes(status);
   const exactTime = input.matchTime ?? null;
@@ -145,6 +146,22 @@ export function deriveChallengeLifecycle(
       timingMode,
       terminal: true,
       active: false,
+      awaitingActor: null,
+      deadlineAt: null,
+      shouldExpireAcceptance: false,
+      shouldExpireFunding: false,
+      shouldExpirePlayWindow: false,
+      exactTime,
+      canPlayAnytime: false,
+    };
+  }
+
+  if (status === "result_pending") {
+    return {
+      phase: "result_pending",
+      timingMode,
+      terminal: false,
+      active: true,
       awaitingActor: null,
       deadlineAt: null,
       shouldExpireAcceptance: false,
