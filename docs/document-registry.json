@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "eb0f48320221b3d654705d0892fd64107cebfbcb74a091988b92efc62197da6a",
+      "sha256": "26f56b33ae7e4d247f7ca17f2c3b05bfdf07e4375ad618868da7d4f95c79645c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/staking-legacy-compound-reconciliation-v1",
-    "commit": "3b2ed999dd70b065bfa5000792060d17ae2640b3"
+    "branch": "fix/reconciliation-test-lint-v1",
+    "commit": "d2c7ab1927050b9f07a318f0cb77c1d8340e44cb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

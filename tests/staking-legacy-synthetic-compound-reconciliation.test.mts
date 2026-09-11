@@ -14,9 +14,46 @@ const users = {
   18168: { rows: 61, wolo: 68_662 },
 };
 
-function fixture(state: "before" | "after") {
-  const events: Record<string, unknown>[] = [];
-  const allocations: Record<string, unknown>[] = [];
+type SnapshotEvent = {
+  id: number;
+  user_id: number;
+  type: string;
+  amount_wolo: number;
+  tx_hash: string;
+  status: string;
+  metadata: {
+    internalCompound?: boolean;
+    chainBackedCompound?: boolean;
+    stakingRewardAllocationId?: number;
+    stakingRewardDistributionId?: number;
+  };
+};
+
+type SnapshotAllocation = {
+  id: number;
+  user_id: number;
+  distribution_id: number;
+  reward_wolo: number;
+  status: string;
+};
+
+type SnapshotPosition = {
+  user_id: number;
+  compounded_rewards_wolo: number;
+};
+
+type SnapshotFixture = {
+  events: SnapshotEvent[];
+  allocations: SnapshotAllocation[];
+  positions: SnapshotPosition[];
+  chainBackedEvents: SnapshotEvent[];
+  unexpectedCompoundEvents: Array<{ id: number }>;
+  unmappedCompoundedAllocations: Array<{ id: number }>;
+};
+
+function fixture(state: "before" | "after"): SnapshotFixture {
+  const events: SnapshotEvent[] = [];
+  const allocations: SnapshotAllocation[] = [];
   let id = 1;
   for (const [userIdText, expected] of Object.entries(users)) {
     const userId = Number(userIdText);
@@ -57,6 +94,8 @@ function fixture(state: "before" | "after") {
       compounded_rewards_wolo: state === "before" ? expected.wolo : 0,
     })),
     chainBackedEvents: [],
+    unexpectedCompoundEvents: [],
+    unmappedCompoundedAllocations: [],
   };
 }
 
@@ -105,8 +144,8 @@ test("exact production legacy cohort passes before and after reconciliation stat
 });
 
 test("reconciliation preserves independently chain-backed compound principal", () => {
-  const before = fixture("before") as any;
-  const after = fixture("after") as any;
+  const before = fixture("before");
+  const after = fixture("after");
   const txHash = "A".repeat(64);
   const chainBacked = {
     id: 9001,
@@ -119,24 +158,24 @@ test("reconciliation preserves independently chain-backed compound principal", (
   };
   before.chainBackedEvents = [chainBacked];
   after.chainBackedEvents = [chainBacked];
-  before.positions.find((row: any) => row.user_id === 18168).compounded_rewards_wolo += 7;
-  after.positions.find((row: any) => row.user_id === 18168).compounded_rewards_wolo = 7;
+  before.positions.find((row) => row.user_id === 18168)!.compounded_rewards_wolo += 7;
+  after.positions.find((row) => row.user_id === 18168)!.compounded_rewards_wolo = 7;
 
   assert.equal(inspectLegacySyntheticCompoundSnapshot(before, "before").ok, true);
   assert.equal(inspectLegacySyntheticCompoundSnapshot(after, "after").ok, true);
 });
 
 test("repair census fails closed on amount, mapping, status, or position drift", () => {
-  const cases = [
-    (value: any) => { value.events[0].amount_wolo += 1; },
-    (value: any) => { value.events[0].metadata.stakingRewardAllocationId = 999999; },
-    (value: any) => { value.allocations[0].status = "CLAIMED"; },
-    (value: any) => { value.positions[0].compounded_rewards_wolo += 1; },
-    (value: any) => { value.unexpectedCompoundEvents = [{ id: 999 }]; },
-    (value: any) => { value.unmappedCompoundedAllocations = [{ id: 999 }]; },
+  const cases: Array<(value: SnapshotFixture) => void> = [
+    (value) => { value.events[0].amount_wolo += 1; },
+    (value) => { value.events[0].metadata.stakingRewardAllocationId = 999999; },
+    (value) => { value.allocations[0].status = "CLAIMED"; },
+    (value) => { value.positions[0].compounded_rewards_wolo += 1; },
+    (value) => { value.unexpectedCompoundEvents = [{ id: 999 }]; },
+    (value) => { value.unmappedCompoundedAllocations = [{ id: 999 }]; },
   ];
   for (const mutate of cases) {
-    const value = fixture("before") as any;
+    const value = fixture("before");
     mutate(value);
     assert.equal(inspectLegacySyntheticCompoundSnapshot(value, "before").ok, false);
   }
