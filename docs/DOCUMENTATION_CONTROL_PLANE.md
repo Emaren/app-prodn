@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/staking-legacy-compound-reconciliation-v1` at `3b2ed999dd70b065bfa5000792060d17ae2640b3`
+Implementation baseline: `fix/reconciliation-test-lint-v1` at `d2c7ab1927050b9f07a318f0cb77c1d8340e44cb`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
