@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/reconciliation-test-lint-v1` at `d2c7ab1927050b9f07a318f0cb77c1d8340e44cb`
+Implementation baseline: `feature/challenge-protocol-v1` at `34eea0a932ec9caf868f2f7272d1d207627c2625`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
