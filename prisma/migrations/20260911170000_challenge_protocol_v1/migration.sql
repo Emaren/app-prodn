@@ -4,10 +4,16 @@
  * historical proof and must never be fabricated into old Challenge records.
  */
 ALTER TABLE "scheduled_matches"
-  ADD COLUMN "protocol_version" VARCHAR(32),
-  ADD COLUMN "challenger_steam_id_snapshot" VARCHAR(32),
-  ADD COLUMN "challenged_steam_id_snapshot" VARCHAR(32),
-  ADD COLUMN "result_winner_user_id" INTEGER;
+  ADD COLUMN "protocol_version" VARCHAR(32);
+
+ALTER TABLE "scheduled_matches"
+  ADD COLUMN "challenger_steam_id_snapshot" VARCHAR(32);
+
+ALTER TABLE "scheduled_matches"
+  ADD COLUMN "challenged_steam_id_snapshot" VARCHAR(32);
+
+ALTER TABLE "scheduled_matches"
+  ADD COLUMN "result_winner_side" VARCHAR(16);
 
 ALTER TABLE "scheduled_matches"
   ADD CONSTRAINT "ck_scheduled_matches_protocol_version"
@@ -27,18 +33,8 @@ ALTER TABLE "scheduled_matches"
   );
 
 ALTER TABLE "scheduled_matches"
-  ADD CONSTRAINT "ck_scheduled_matches_result_winner_participant"
+  ADD CONSTRAINT "ck_scheduled_matches_result_winner_side"
   CHECK (
-    "result_winner_user_id" IS NULL OR
-    "result_winner_user_id" IN ("challenger_user_id", "challenged_user_id")
+    "result_winner_side" IS NULL OR
+    "result_winner_side" IN ('challenger', 'challenged')
   );
-
-ALTER TABLE "scheduled_matches"
-  ADD CONSTRAINT "scheduled_matches_result_winner_user_id_fkey"
-  FOREIGN KEY ("result_winner_user_id")
-  REFERENCES "users"("id")
-  ON DELETE RESTRICT
-  ON UPDATE NO ACTION;
-
-CREATE INDEX "ix_scheduled_matches_result_winner_user_id"
-  ON "scheduled_matches"("result_winner_user_id");

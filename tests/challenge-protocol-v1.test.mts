@@ -6,6 +6,9 @@ import {
   CHALLENGE_PROTOCOL_VERSION,
   ChallengeProtocolError,
   bindChallengeSteamIdentities,
+  challengeWinnerSideFromSteam,
+  challengeWinnerSideFromUserId,
+  challengeWinnerUserIdFromSide,
   challengeWinnerUserIdFromSteam,
   resolveBoundSteamWinnerId,
   sessionMatchesBoundSteamDuel,
@@ -107,13 +110,31 @@ test("winner name fallback is only allowed inside an already exact Steam duel", 
   }), RIGHT);
 });
 
-test("stable winner user id is derived from frozen Steam identity", () => {
+test("stable winner side and user id are derived from frozen Steam identity", () => {
+  assert.equal(challengeWinnerSideFromSteam({
+    winnerSteamId: RIGHT,
+    challengerSteamIdSnapshot: LEFT,
+    challengedSteamIdSnapshot: RIGHT,
+  }), "challenged");
+
   assert.equal(challengeWinnerUserIdFromSteam({
     winnerSteamId: RIGHT,
     challengerUserId: 11,
     challengedUserId: 22,
     challengerSteamIdSnapshot: LEFT,
     challengedSteamIdSnapshot: RIGHT,
+  }), 22);
+
+  assert.equal(challengeWinnerSideFromUserId({
+    winnerUserId: 11,
+    challengerUserId: 11,
+    challengedUserId: 22,
+  }), "challenger");
+
+  assert.equal(challengeWinnerUserIdFromSide({
+    winnerSide: "challenged",
+    challengerUserId: 11,
+    challengedUserId: 22,
   }), 22);
 });
 
@@ -125,7 +146,8 @@ test("migration adds constraints without manufacturing historical Steam identity
   assert.match(sql, /protocol_version/);
   assert.match(sql, /challenger_steam_id_snapshot/);
   assert.match(sql, /challenged_steam_id_snapshot/);
-  assert.match(sql, /result_winner_user_id/);
-  assert.match(sql, /ck_scheduled_matches_result_winner_participant/);
+  assert.match(sql, /result_winner_side/);
+  assert.match(sql, /ck_scheduled_matches_result_winner_side/);
+  assert.doesNotMatch(sql, /result_winner_user_id/);
   assert.doesNotMatch(sql, /UPDATE\s+"scheduled_matches"/i);
 });

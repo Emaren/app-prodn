@@ -8,6 +8,10 @@ import {
 } from "@/lib/challengeEconomy";
 
 import {
+  challengeWinnerSideFromUserId,
+} from "@/lib/challengeProtocol";
+
+import {
   TERMINAL_TITLE_CHALLENGE_STATUSES,
 } from "@/lib/challengeTitlePolicy";
 
@@ -151,8 +155,8 @@ export type ChallengeTransitionMatch = {
   protocolVersion?:
     string | null;
 
-  resultWinnerUserId?:
-    number | null;
+  resultWinnerSide?:
+    string | null;
 };
 
 
@@ -1251,7 +1255,7 @@ export async function rescheduleChallenge(
                   linkedWinner:
                     null,
 
-                  resultWinnerUserId:
+                  resultWinnerSide:
                     null,
 
                   linkedDurationSeconds:
@@ -2329,6 +2333,13 @@ export async function completeChallengeManually(
     );
   }
 
+  const requestedWinnerSide =
+    challengeWinnerSideFromUserId({
+      winnerUserId: requestedWinnerUserId,
+      challengerUserId: match.challengerUserId,
+      challengedUserId: match.challengedUserId,
+    });
+
   if (
     match.protocolVersion === "steam_wolo_v1" &&
     plan.linkedWinner &&
@@ -2415,8 +2426,8 @@ export async function completeChallengeManually(
                 canonicalReplay
                   .linkedWinner,
 
-              resultWinnerUserId:
-                match.resultWinnerUserId ??
+              resultWinnerSide:
+                match.resultWinnerSide ??
                 null,
 
               linkedDurationSeconds:
@@ -2458,16 +2469,15 @@ export async function completeChallengeManually(
                   .linkedDurationSeconds,
 
               /*
-               * linkedWinner remains the legacy persistence
-               * field consumed by the settlement planner, but
-               * its authority is now explicitly commissioner
-               * result truth rather than implied replay proof.
+               * linkedWinner remains human-readable legacy evidence.
+               * Economic authority for protocol rows is persisted as
+               * resultWinnerSide, which can only name one participant.
                */
               linkedWinner:
                 plan.linkedWinner,
 
-              resultWinnerUserId:
-                requestedWinnerUserId,
+              resultWinnerSide:
+                requestedWinnerSide,
             },
           });
 

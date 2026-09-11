@@ -65,7 +65,7 @@ const SCHEDULED_MATCH_SETTLEMENT_SELECT = {
   challengedCheckedInAt: true,
   linkedWinner: true,
   protocolVersion: true,
-  resultWinnerUserId: true,
+  resultWinnerSide: true,
   updatedAt: true,
   challenger: {
     select: {
@@ -332,9 +332,9 @@ function participantAliases(user: ScheduledMatchSettlementRow["challenger"]) {
 function resolvedWinnerParticipantSide(
   row: ScheduledMatchSettlementRow,
 ): "left" | "right" | null {
-  if (row.resultWinnerUserId !== null) {
-    if (row.resultWinnerUserId === row.challenger.id) return "left";
-    if (row.resultWinnerUserId === row.challenged.id) return "right";
+  if (row.resultWinnerSide !== null) {
+    if (row.resultWinnerSide === "challenger") return "left";
+    if (row.resultWinnerSide === "challenged") return "right";
     return null;
   }
 

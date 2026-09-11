@@ -268,6 +268,72 @@ WHERE FALSE;""",
                         release
                     )
 
+    def test_same_release_check_constraint_is_allowed(self):
+        temp, root, manifests, release = self.with_release(
+            [
+                (
+                    "20260101000000_add_mode",
+                    """ALTER TABLE \"users\"
+ADD COLUMN \"mode\" TEXT;
+ALTER TABLE \"users\"
+ADD CONSTRAINT \"ck_users_mode\"
+CHECK (\"mode\" IS NULL OR \"mode\" IN ('a', 'b'));""",
+                )
+            ]
+        )
+        with temp:
+            with mock.patch.object(MODULE, "ROOT", root), mock.patch.object(
+                MODULE, "MANIFEST_DIR", manifests
+            ):
+                _, names = MODULE.migration_contract(release)
+                self.assertEqual(names, ["20260101000000_add_mode"])
+
+    def test_check_constraint_over_existing_column_is_rejected(self):
+        temp, root, manifests, release = self.with_release(
+            [
+                (
+                    "20260101000000_add_mode",
+                    """ALTER TABLE \"users\"
+ADD COLUMN \"mode\" TEXT;
+ALTER TABLE \"users\"
+ADD CONSTRAINT \"ck_users_mode_email\"
+CHECK (\"mode\" IS NULL OR \"email\" IS NOT NULL);""",
+                )
+            ]
+        )
+        with temp:
+            with mock.patch.object(MODULE, "ROOT", root), mock.patch.object(
+                MODULE, "MANIFEST_DIR", manifests
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "may reference only columns added by this release",
+                ):
+                    MODULE.migration_contract(release)
+
+    def test_check_constraint_function_call_is_rejected(self):
+        temp, root, manifests, release = self.with_release(
+            [
+                (
+                    "20260101000000_add_mode",
+                    """ALTER TABLE \"users\"
+ADD COLUMN \"mode\" TEXT;
+ALTER TABLE \"users\"
+ADD CONSTRAINT \"ck_users_mode_lower\"
+CHECK (lower(\"mode\") = 'a');""",
+                )
+            ]
+        )
+        with temp:
+            with mock.patch.object(MODULE, "ROOT", root), mock.patch.object(
+                MODULE, "MANIFEST_DIR", manifests
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "unsupported expression token",
+                ):
+                    MODULE.migration_contract(release)
+
     def test_nonadditive_existing_table_alter_is_rejected(self):
         temp, root, manifests, release = self.with_release(
             [
@@ -334,6 +400,32 @@ SET DEFAULT 'nobody@example.invalid';""",
                 "20260823202000_challenge_settlement_allocations_v3",
                 "20260823224000_challenge_replay_claim_v3",
             ],
+        )
+
+    def test_current_challenge_protocol_v1_migration_fits_additive_contract(self):
+        path = (
+            "prisma/migrations/"
+            "20260911170000_challenge_protocol_v1/migration.sql"
+        )
+        manifest = {
+            "release_sha": "e" * 40,
+            "risk_class": "DATABASE",
+            "migration_paths": [path],
+        }
+
+        with mock.patch.object(
+            MODULE,
+            "release_manifest",
+            return_value=manifest,
+        ):
+            resolved, names = MODULE.migration_contract(
+                "e" * 40
+            )
+
+        self.assertEqual(resolved["risk_class"], "DATABASE")
+        self.assertEqual(
+            names,
+            ["20260911170000_challenge_protocol_v1"],
         )
 
     def test_insert_into_preexisting_table_is_rejected(self):
