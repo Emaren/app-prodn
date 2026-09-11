@@ -612,3 +612,123 @@ test(
     );
   },
 );
+
+test(
+  "historical treasury disposition survives Treasury wallet rotation without replaying principal",
+  () => {
+    const result =
+      reconcileChallengeSettlementSourceAccounting({
+        ...TERMS,
+        settlements: [
+          {
+            id: 5,
+            status: "executed",
+            action: "guarantees_to_treasury",
+            recipientAddress: "wolo-old-treasury",
+            amountWolo: 20,
+            txHash: "CHAIN_PROOF",
+          },
+        ],
+        transfers: [
+          {
+            label: "match guarantees to treasury",
+            recipientAddress: "wolo-new-treasury",
+            amountWolo: 20,
+            destinationKind: "treasury",
+            sourceAllocations:
+              allocations("guarantees_to_treasury", 20),
+          },
+        ],
+      });
+
+    assert.equal(result.ok, true);
+    assert.equal(
+      result.transferAccounting[0]?.satisfiedByHistory,
+      true,
+    );
+    assert.deepEqual(
+      result.transferAccounting[0]?.satisfiedBySettlementIds,
+      [5],
+    );
+  },
+);
+
+test(
+  "Challenge #19 historical 50 WOLO disposition remains fully satisfied after Treasury rotation",
+  () => {
+    const terms = {
+      wagerAmountWolo: 15,
+      guaranteeAmountWolo: 10,
+      leftFunded: true,
+      rightFunded: true,
+    };
+    const historical = [
+      {
+        id: 3,
+        status: "executed",
+        action: "left_wager_refund",
+        recipientAddress: "left",
+        amountWolo: 15,
+        txHash: "LEFT_REFUND",
+      },
+      {
+        id: 4,
+        status: "executed",
+        action: "right_wager_refund",
+        recipientAddress: "right",
+        amountWolo: 15,
+        txHash: "RIGHT_REFUND",
+      },
+      {
+        id: 5,
+        status: "executed",
+        action: "guarantees_to_treasury",
+        recipientAddress: "old-treasury",
+        amountWolo: 20,
+        txHash: "TREASURY_PROOF",
+      },
+    ];
+    const allocationFor = (action: string, amountWolo: number) =>
+      challengeSettlementSourceAllocationsForAction({
+        ...terms,
+        action,
+        amountWolo,
+      });
+    const transfers = [
+      {
+        label: "left wager refund",
+        recipientAddress: "left",
+        amountWolo: 15,
+        destinationKind: "recipient" as const,
+        sourceAllocations: allocationFor("left_wager_refund", 15),
+      },
+      {
+        label: "right wager refund",
+        recipientAddress: "right",
+        amountWolo: 15,
+        destinationKind: "recipient" as const,
+        sourceAllocations: allocationFor("right_wager_refund", 15),
+      },
+      {
+        label: "match guarantees to treasury",
+        recipientAddress: "new-treasury",
+        amountWolo: 20,
+        destinationKind: "treasury" as const,
+        sourceAllocations: allocationFor("guarantees_to_treasury", 20),
+      },
+    ];
+
+    const accounting = reconcileChallengeSettlementSourceAccounting({
+      ...terms,
+      settlements: historical,
+      transfers,
+    });
+
+    assert.equal(accounting.ok, true);
+    assert.deepEqual(
+      accounting.transferAccounting.map((row) => row.satisfiedByHistory),
+      [true, true, true],
+    );
+    assert.equal(accounting.executedSourceWolo, 50);
+  },
+);

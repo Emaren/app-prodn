@@ -342,8 +342,8 @@ def build_plan(
         },
         {
             "phase": "activate",
-            "command": f"systemctl stop {SERVICE}; mv .next .next-rollback-<UTC>; mv .next-release .next; git reset --hard {release_sha}; write-build-version; systemctl start {SERVICE}",
-            "action": "While the web service is stopped, advance runtime, source, and build-version identity together, then start only the AoE2WAR web service.",
+            "command": f"systemctl stop {SERVICE}; mv .next .next-rollback-<UTC>; mv .next-release .next; git reset --hard {release_sha}; prisma generate; write-build-version; systemctl start {SERVICE}",
+            "action": "While the web service is stopped, advance runtime and source, regenerate the ignored operator-side Prisma client from the activated schema, bind build-version identity, then start only the AoE2WAR web service.",
         },
         {
             "phase": "prove",
@@ -831,6 +831,11 @@ cleanup_release_only_paths() {{
   done < "$RELEASE_ONLY_PATHS"
   return "$cleanup_release_only_rc"
 }}
+refresh_source_prisma() {{
+  test -x ./node_modules/.bin/prisma || return 1
+  ./node_modules/.bin/prisma generate >/dev/null || return 1
+  test -f lib/generated/prisma/client.ts || return 1
+}}
 critical_get() {{
   curl -fsS --max-time 12 --retry 3 --retry-delay 1 --retry-all-errors -o /dev/null "$1"
 }}
@@ -1054,6 +1059,11 @@ rollback_activation() {{
     rollback_source_reset=1
     git reset --hard "$PREVIOUS" >/dev/null 2>&1
     rollback_source_reset_rc=$?
+    rollback_prisma_generate_rc=1
+    if [ "$rollback_source_reset_rc" = "0" ]; then
+      refresh_source_prisma >/dev/null 2>&1
+      rollback_prisma_generate_rc=$?
+    fi
     rollback_release_only_cleanup_rc=0
     if [ "$SOURCE_MUTATION_STARTED" = "1" ]; then
       cleanup_release_only_paths
@@ -1085,6 +1095,7 @@ rollback_activation() {{
     rb_wolo8093="$(wolo_count 8093)"
     if [ "$rb_service" = "active" ] \
       && [ "$rollback_source_reset_rc" = "0" ] \
+      && [ "$rollback_prisma_generate_rc" = "0" ] \
       && [ "$rollback_release_only_cleanup_rc" = "0" ] \
       && [ "$rb_dirty_rc" = "0" ] \
       && [ "$rb_source_state_rc" = "0" ] \
@@ -1108,6 +1119,7 @@ rollback_activation() {{
       "pre_rollback_dirty_count=$rollback_pre_dirty" \
       "source_reset_attempted=$rollback_source_reset" \
       "source_reset_exit_code=$rollback_source_reset_rc" \
+      "source_prisma_generate_exit_code=$rollback_prisma_generate_rc" \
       "release_only_cleanup_exit_code=$rollback_release_only_cleanup_rc" \
       "source_sha=$rb_head" \
       "dirty_count=$rb_dirty" \
@@ -1169,6 +1181,7 @@ test -d "$FAST_OLD_MODULES"
 SOURCE_MUTATION_STARTED=1
 git reset --hard "$RELEASE"
 test "$(git rev-parse HEAD)" = "$RELEASE"
+refresh_source_prisma
 test -z "$(source_status)"
 printf '%s\\n' "$CANDIDATE_VERSION" > .aoe2war-build-version
 test "$(cat .aoe2war-build-version | tr -d '\\r\\n')" = "$CANDIDATE_VERSION"

@@ -1013,6 +1013,12 @@ export function buildScheduledMatchSettlementPlan(
             amountWolo:
               transfer.amountWolo,
 
+            destinationKind:
+              transfer.reason ===
+                "treasury"
+                ? "treasury"
+                : "recipient",
+
             sourceAllocations:
               transfer.sourceAllocations,
           }),

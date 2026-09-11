@@ -364,6 +364,7 @@ export type ChallengeMoneyState =
   | "refunded"
   | "settlement_pending"
   | "settled"
+  | "historical_review"
   | "settlement_failed";
 
 export function deriveChallengeMoneyState(input: {

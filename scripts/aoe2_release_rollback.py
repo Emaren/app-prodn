@@ -343,6 +343,11 @@ source_status() {{
     ':(exclude).node_modules-rollback*' \
     ':(exclude).node_modules-rollback*/**'
 }}
+refresh_source_prisma() {{
+  test -x ./node_modules/.bin/prisma || return 1
+  ./node_modules/.bin/prisma generate >/dev/null || return 1
+  test -f lib/generated/prisma/client.ts || return 1
+}}
 
 before_head="$(git rev-parse HEAD)"
 before_dirty="$(source_status | wc -l | tr -d ' ')"
@@ -507,7 +512,13 @@ rollback_failure() {{
       mv "$FORWARD_FAST" .next
     fi
 
-    git reset --hard "$CURRENT" >/dev/null 2>&1 || true
+    recovery_source_reset_rc=0
+    git reset --hard "$CURRENT" >/dev/null 2>&1 || recovery_source_reset_rc=$?
+    recovery_prisma_generate_rc=1
+    if [ "$recovery_source_reset_rc" = "0" ]; then
+      refresh_source_prisma >/dev/null 2>&1
+      recovery_prisma_generate_rc=$?
+    fi
     printf '%s\n' "$CURRENT_VERSION" > .aoe2war-build-version
     sudo -n /usr/bin/systemctl start "$SERVICE" >/dev/null 2>&1 || true
     for _ in $(seq 1 30); do
@@ -522,7 +533,9 @@ rollback_failure() {{
     rb_public="$(curl -fsS --max-time 8 "$PUBLIC/api/deployment-version" 2>/dev/null | build_version 2>/dev/null || true)"
     rb_wolo8092="$(wolo_count 8092)"
     rb_wolo8093="$(wolo_count 8093)"
-    if [ "$rb_head" = "$CURRENT" ] \
+    if [ "$recovery_source_reset_rc" = "0" ] \
+      && [ "$recovery_prisma_generate_rc" = "0" ] \
+      && [ "$rb_head" = "$CURRENT" ] \
       && [ "$rb_build" = "$CURRENT_BUILD" ] \
       && [ "$rb_dependency" = "$CURRENT_DEPENDENCY_SHA" ] \
       && [ "$rb_internal" = "$CURRENT_VERSION" ] \
@@ -535,6 +548,8 @@ rollback_failure() {{
   printf '%s\n' \
     "status=$status" \
     "original_exit_code=$rc" \
+    "source_reset_exit_code=${{recovery_source_reset_rc:-not_attempted}}" \
+    "source_prisma_generate_exit_code=${{recovery_prisma_generate_rc:-not_attempted}}" \
     > "$RECEIPT/failure-recovery.txt" 2>/dev/null || true
 }}
 trap rollback_failure EXIT
@@ -548,6 +563,7 @@ mv "$TARGET_MODULES_TMP" node_modules
 mv "$TARGET_TMP" .next
 
 git reset --hard "$TARGET"
+refresh_source_prisma
 printf '%s\n' "$TARGET_VERSION" > .aoe2war-build-version
 test -z "$(source_status)"
 test "$(cat .next/BUILD_ID)" = "$TARGET_BUILD"

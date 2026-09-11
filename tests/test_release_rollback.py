@@ -105,6 +105,55 @@ class ReleaseRollbackTests(unittest.TestCase):
             script,
         )
 
+
+    def test_manual_rollback_regenerates_operator_prisma_for_target_and_failure_restore(self):
+        script = MODULE.remote_rollback_script(
+            self.plan(),
+            dry_run=False,
+            receipt_dir=(
+                "/mnt/HC_Volume_105319120/aoe2war/"
+                "deploy-receipts/rollback-test"
+            ),
+        )
+
+        self.assertIn(
+            "refresh_source_prisma()",
+            script,
+        )
+
+        target_reset = script.index('git reset --hard "$TARGET"')
+        target_generate = script.index("refresh_source_prisma", target_reset)
+        target_start = script.index(
+            'sudo -n /usr/bin/systemctl start "$SERVICE"',
+            target_generate,
+        )
+        self.assertLess(target_reset, target_generate)
+        self.assertLess(target_generate, target_start)
+
+        recovery_start = script.index("rollback_failure()")
+        current_reset = script.index(
+            'git reset --hard "$CURRENT"',
+            recovery_start,
+        )
+        current_generate = script.index(
+            "refresh_source_prisma",
+            current_reset,
+        )
+        current_start = script.index(
+            'sudo -n /usr/bin/systemctl start "$SERVICE"',
+            current_generate,
+        )
+        self.assertLess(current_reset, current_generate)
+        self.assertLess(current_generate, current_start)
+        self.assertIn(
+            '[ "$recovery_prisma_generate_rc" = "0" ]',
+            script,
+        )
+        self.assertIn(
+            "source_prisma_generate_exit_code=",
+            script,
+        )
+
     def test_manual_rollback_requires_certified_dependency_identity(self):
         script = MODULE.remote_rollback_script(
             self.plan(),

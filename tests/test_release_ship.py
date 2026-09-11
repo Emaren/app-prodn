@@ -887,9 +887,13 @@ class ShipTests(unittest.TestCase):
         )
         runtime_swap = script.index('mv .next-release .next', stopped)
         source_advance = script.index('git reset --hard "$RELEASE"', runtime_swap)
+        prisma_generate = script.index(
+            "refresh_source_prisma",
+            source_advance,
+        )
         version_advance = script.index(
             'printf \'%s\\n\' "$CANDIDATE_VERSION" > .aoe2war-build-version',
-            source_advance,
+            prisma_generate,
         )
         started = script.index(
             'sudo -n /usr/bin/systemctl start "$SERVICE"\n', version_advance
@@ -897,7 +901,8 @@ class ShipTests(unittest.TestCase):
         self.assertLess(armed, stopped)
         self.assertLess(stopped, runtime_swap)
         self.assertLess(runtime_swap, source_advance)
-        self.assertLess(source_advance, version_advance)
+        self.assertLess(source_advance, prisma_generate)
+        self.assertLess(prisma_generate, version_advance)
         self.assertLess(version_advance, started)
         self.assertNotIn('systemctl restart "$SERVICE"', script)
 
@@ -1048,6 +1053,17 @@ class ShipTests(unittest.TestCase):
             rollback_dir="/mnt/rollback",
         )
         self.assertIn('git reset --hard "$PREVIOUS"', script)
+        rollback_reset = script.index('git reset --hard "$PREVIOUS"')
+        rollback_generate = script.index(
+            "refresh_source_prisma",
+            rollback_reset,
+        )
+        rollback_start = script.index(
+            'sudo -n /usr/bin/systemctl start "$SERVICE"',
+            rollback_generate,
+        )
+        self.assertLess(rollback_reset, rollback_generate)
+        self.assertLess(rollback_generate, rollback_start)
         self.assertIn(
             'printf \'%s\\n\' "$LIVE_VERSION" > .aoe2war-build-version',
             script,
@@ -1079,6 +1095,14 @@ class ShipTests(unittest.TestCase):
             rollback,
         )
         self.assertIn('source_reset_exit_code=$rollback_source_reset_rc', rollback)
+        self.assertIn(
+            'source_prisma_generate_exit_code=$rollback_prisma_generate_rc',
+            rollback,
+        )
+        self.assertIn(
+            '[ "$rollback_prisma_generate_rc" = "0" ]',
+            rollback,
+        )
         self.assertIn(
             'release_only_cleanup_exit_code=$rollback_release_only_cleanup_rc',
             rollback,

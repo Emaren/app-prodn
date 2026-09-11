@@ -3,6 +3,7 @@ import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import {
   deriveChallengeFinancialConservation,
   effectiveChallengeSettlementRows,
+  isHistoricalChallengeWithNoCurrentLiability,
 } from "@/lib/challengeFinancialConservation";
 import {
   buildChallengeEconomySurface,
@@ -51,6 +52,7 @@ import {
   ScheduledMatchSettlementError,
 } from "@/lib/scheduledMatchSettlements";
 import {
+  getWoloMainnetDisplayStartAt,
   WOLO_CHAIN_ID,
   WOLO_CHALLENGE_ESCROW_ADDRESS,
 } from "@/lib/woloChain";
@@ -1115,6 +1117,7 @@ function challengeMoneyLabel(state: ChallengeMoneyState) {
     case "refunded": return "Refunded";
     case "settlement_pending": return "Settlement pending";
     case "settled": return "Settled";
+    case "historical_review": return "Historical · no WOLO due";
     case "settlement_failed": return "Settlement needs attention";
   }
 }
@@ -1263,8 +1266,25 @@ function buildChallengeMoneySurface(row: ScheduledMatchRow) {
    * refund/settlement merely because transfer counts line up.
    */
   if (!conservation.ok) {
+    const historicalNoCurrentLiability =
+      isHistoricalChallengeWithNoCurrentLiability({
+        challengerFundedAt:
+          row.challengerFundedAt,
+
+        challengedFundedAt:
+          row.challengedFundedAt,
+
+        mainnetStartAt:
+          getWoloMainnetDisplayStartAt(),
+
+        remainingLiabilityWolo:
+          conservation.remainingLiabilityWolo,
+      });
+
     state =
-      "settlement_failed";
+      historicalNoCurrentLiability
+        ? "historical_review"
+        : "settlement_failed";
   }
 
   return {
