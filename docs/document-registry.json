@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "85f264af4516fd9ea658b23463ce1366c9c77bbf08ef41ec4aa2d9feb0d5bcaf",
+      "sha256": "0891139808af0f7d1c9edb68b7564a4d6e51770570fc51904cecf9b09962e3c8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/challenge-protocol-v1",
-    "commit": "34eea0a932ec9caf868f2f7272d1d207627c2625"
+    "branch": "fix/challenge-release-migration-v1",
+    "commit": "baa39bf38180c03f94dd384e6668c0d3bf3e6d71"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

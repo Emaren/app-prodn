@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/challenge-protocol-v1` at `34eea0a932ec9caf868f2f7272d1d207627c2625`
+Implementation baseline: `fix/challenge-release-migration-v1` at `baa39bf38180c03f94dd384e6668c0d3bf3e6d71`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
