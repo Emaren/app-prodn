@@ -196,31 +196,35 @@ class ReleaseRollbackTests(unittest.TestCase):
 
         # Hashing must use the same deterministic artifact contract as ship.
         self.assertIn(
-            "artifact_hash()",
+            "dependency_hash()",
+            script,
+        )
+        self.assertIn(
+            "--exclude='./.cache' --exclude='./.cache/*'",
             script,
         )
 
         # Before mutation, prove both the currently-active dependency tree
         # and the selected rollback dependency source.
         self.assertIn(
-            'test "$(artifact_hash node_modules)" = "$CURRENT_DEPENDENCY_SHA"',
+            'test "$(dependency_hash node_modules)" = "$CURRENT_DEPENDENCY_SHA"',
             script,
         )
         self.assertIn(
-            'test "$(artifact_hash "$SOURCE_MODULES_PATH")" = "$TARGET_DEPENDENCY_SHA"',
+            'test "$(dependency_hash "$SOURCE_MODULES_PATH")" = "$TARGET_DEPENDENCY_SHA"',
             script,
         )
 
         # After rollback, prove the dependency tree that became live.
         self.assertIn(
-            'test "$(artifact_hash node_modules)" = "$TARGET_DEPENDENCY_SHA"',
+            'test "$(dependency_hash node_modules)" = "$TARGET_DEPENDENCY_SHA"',
             script,
         )
 
         # Failure recovery must likewise prove restoration of current deps
         # before it may claim RESTORED_CURRENT.
         self.assertIn(
-            'rb_dependency="$(artifact_hash node_modules',
+            'rb_dependency="$(dependency_hash node_modules',
             script,
         )
         self.assertIn(

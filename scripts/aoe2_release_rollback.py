@@ -329,8 +329,11 @@ EXPECTED_WOLO8093={q(str(plan['wolo_8093_count']))}
 wolo_count() {{ ss -ltn | grep -Ec ":$1[[:space:]]" || true; }}
 build_version() {{ python3 -c 'import json,sys; print(json.load(sys.stdin).get("buildVersion",""))'; }}
 critical_get() {{ curl -fsS --max-time 12 --retry 3 --retry-delay 1 --retry-all-errors -o /dev/null "$1"; }}
-artifact_hash() {{
-  tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner     -C "$1" -cf - .   | sha256sum | awk '{{print $1}}'
+dependency_hash() {{
+  tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+    --exclude='./.cache' --exclude='./.cache/*' \
+    -C "$1" -cf - . \
+  | sha256sum | awk '{{print $1}}'
 }}
 source_status() {{
   git status --porcelain=v1 --untracked-files=normal -- . \
@@ -370,7 +373,7 @@ test "$before_internal" = "$CURRENT_VERSION"
 test "$before_public" = "$CURRENT_VERSION"
 test "$before_wolo8092" = "$EXPECTED_WOLO8092"
 test "$before_wolo8093" = "$EXPECTED_WOLO8093"
-test "$(artifact_hash node_modules)" = "$CURRENT_DEPENDENCY_SHA"
+test "$(dependency_hash node_modules)" = "$CURRENT_DEPENDENCY_SHA"
 git cat-file -e "$TARGET^{{commit}}"
 test -d "$DURABLE_TARGET/next"
 test "$(cat "$DURABLE_TARGET/next/BUILD_ID")" = "$TARGET_BUILD"
@@ -388,7 +391,7 @@ if [ -d "$FAST_TARGET" ] \
   SOURCE_MODULES_PATH="$FAST_TARGET_MODULES"
 fi
 
-test "$(artifact_hash "$SOURCE_MODULES_PATH")" = "$TARGET_DEPENDENCY_SHA"
+test "$(dependency_hash "$SOURCE_MODULES_PATH")" = "$TARGET_DEPENDENCY_SHA"
 
 critical_get http://127.0.0.1:3030/
 critical_get http://127.0.0.1:3030/api/lobby
@@ -466,7 +469,7 @@ test "$(cat "$RECEIPT/current-next/BUILD_ID")" = "$CURRENT_BUILD"
 
 cp -a node_modules "$RECEIPT/current-node_modules"
 test -d "$RECEIPT/current-node_modules"
-test "$(artifact_hash "$RECEIPT/current-node_modules")" = "$CURRENT_DEPENDENCY_SHA"
+test "$(dependency_hash "$RECEIPT/current-node_modules")" = "$CURRENT_DEPENDENCY_SHA"
 
 if [ -f .aoe2war-build-version ]; then
   cp -p .aoe2war-build-version "$RECEIPT/current-build-version"
@@ -488,7 +491,7 @@ test "$(cat "$TARGET_TMP/BUILD_ID")" = "$TARGET_BUILD"
 
 cp -a "$SOURCE_MODULES_PATH" "$TARGET_MODULES_TMP"
 test -d "$TARGET_MODULES_TMP"
-test "$(artifact_hash "$TARGET_MODULES_TMP")" = "$TARGET_DEPENDENCY_SHA"
+test "$(dependency_hash "$TARGET_MODULES_TMP")" = "$TARGET_DEPENDENCY_SHA"
 
 MUTATED=0
 COMMITTED=0
@@ -530,7 +533,7 @@ rollback_failure() {{
     done
     rb_head="$(git rev-parse HEAD 2>/dev/null || true)"
     rb_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
-    rb_dependency="$(artifact_hash node_modules 2>/dev/null || true)"
+    rb_dependency="$(dependency_hash node_modules 2>/dev/null || true)"
     rb_internal="$(curl -fsS --max-time 6 http://127.0.0.1:3030/api/deployment-version 2>/dev/null | build_version 2>/dev/null || true)"
     rb_public="$(curl -fsS --max-time 8 "$PUBLIC/api/deployment-version" 2>/dev/null | build_version 2>/dev/null || true)"
     rb_wolo8092="$(wolo_count 8092)"
@@ -579,7 +582,7 @@ for _ in $(seq 1 30); do
 done
 test "$READY" = "1"
 
-test "$(artifact_hash node_modules)" = "$TARGET_DEPENDENCY_SHA"
+test "$(dependency_hash node_modules)" = "$TARGET_DEPENDENCY_SHA"
 
 after_head="$(git rev-parse HEAD)"
 after_dirty="$(source_status | wc -l | tr -d ' ')"

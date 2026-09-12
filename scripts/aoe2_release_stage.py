@@ -497,6 +497,8 @@ candidate_node_modules_sha="$(
     --owner=0 \
     --group=0 \
     --numeric-owner \
+    --exclude='./.cache' \
+    --exclude='./.cache/*' \
     -C "$build_worktree/node_modules" -cf - . \
   | sha256sum \
   | awk '{{print $1}}'
