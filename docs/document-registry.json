@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7a297fb553c68a3c9a0e166ba884e6969c8efcff63b37c461ebf66c4e262e959",
+      "sha256": "7a8a56a5ed07cd3930c5f1b5687db2e26158238894846d6c96b6e34452cd5284",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/release-prisma-client-js-proof-v1",
-    "commit": "48721f76bed396b8caa5e44cc025b4afdc55de31"
+    "branch": "fix/release-node-modules-cache-proof-v1",
+    "commit": "d47e42a6a7b8e985e1673a4892fc29951f2afb46"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

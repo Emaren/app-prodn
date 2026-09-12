@@ -714,6 +714,12 @@ artifact_hash() {{
     -C "$1" -cf - . \
   | sha256sum | awk '{{print $1}}'
 }}
+dependency_hash() {{
+  tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
+    --exclude='./.cache' --exclude='./.cache/*' \
+    -C "$1" -cf - . \
+  | sha256sum | awk '{{print $1}}'
+}}
 content_hash() {{
   tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner \
     --exclude='./cache' --exclude='./cache/*' \
@@ -911,7 +917,7 @@ test -d .node_modules-release
 candidate_artifact="$(artifact_hash .next-release)"
 test "$candidate_artifact" = "$ARTIFACT"
 
-candidate_dependency_artifact="$(artifact_hash .node_modules-release)"
+candidate_dependency_artifact="$(dependency_hash .node_modules-release)"
 test "$candidate_dependency_artifact" = "$DEPENDENCY_ARTIFACT"
 
 candidate_dependency_kb="$(du -sk .node_modules-release | awk '{{print $1}}')"
@@ -969,7 +975,7 @@ test "${{#release_only_paths_sha}}" = "64"
 release_only_list_integrity
 validate_release_only_paths
 
-old_dependency_artifact="$(artifact_hash node_modules)"
+old_dependency_artifact="$(dependency_hash node_modules)"
 test "${{#old_dependency_artifact}}" = "64"
 
 # Fail closed before creating either durable rollback runtime half.
@@ -1020,7 +1026,7 @@ test ! -e "$ROLLBACK/next/cache"
 
 mkdir "$ROLLBACK/node_modules"
 rsync -a node_modules/ "$ROLLBACK/node_modules/"
-test "$(artifact_hash "$ROLLBACK/node_modules")" = "$old_dependency_artifact"
+test "$(dependency_hash "$ROLLBACK/node_modules")" = "$old_dependency_artifact"
 printf '%s\\n' "$PREVIOUS" > "$ROLLBACK/source-sha"
 printf '%s\\n' "$LIVE_VERSION" > "$ROLLBACK/build-version"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -1364,10 +1370,10 @@ while [ "$soak_elapsed" -lt "$SOAK_SECONDS" ]; do
   SOAK_SAMPLES=$((SOAK_SAMPLES + 1))
 done
 
-certified_dependency_artifact="$(artifact_hash node_modules)"
+certified_dependency_artifact="$(dependency_hash node_modules)"
 test "$certified_dependency_artifact" = "$DEPENDENCY_ARTIFACT"
 
-previous_fast_dependency_artifact="$(artifact_hash "$FAST_OLD_MODULES")"
+previous_fast_dependency_artifact="$(dependency_hash "$FAST_OLD_MODULES")"
 test "$previous_fast_dependency_artifact" = "$old_dependency_artifact"
 
 printf '%s\\n' \

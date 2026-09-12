@@ -485,6 +485,10 @@ class StageTests(unittest.TestCase):
             regular_file_proof,
         )
         dependency_hash = script.index('candidate_node_modules_sha="$(', engine_copy)
+        dependency_cache_exclusion = script.index(
+            "--exclude='./.cache'", dependency_hash
+        )
+        self.assertIn("--exclude='./.cache/*'", script[dependency_hash:])
 
         self.assertIn(version_proof, script)
         self.assertIn(hash_proof, script)
@@ -500,6 +504,7 @@ class StageTests(unittest.TestCase):
         self.assertLess(regular_file_proof, target_realpath_proof)
         self.assertLess(engine_copy, script.index(hash_proof))
         self.assertLess(script.index(hash_proof), dependency_hash)
+        self.assertGreater(dependency_cache_exclusion, dependency_hash)
         self.assertIn('test ! -L "$build_worktree/node_modules"', script)
         self.assertIn('test ! -L "$build_worktree/node_modules/@prisma"', script)
         self.assertIn('test ! -L "$candidate_prisma_engine_dir"', script)

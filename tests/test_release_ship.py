@@ -945,7 +945,12 @@ class ShipTests(unittest.TestCase):
         )
 
         self.assertIn(
-            'candidate_dependency_artifact="$(artifact_hash .node_modules-release)"',
+            'candidate_dependency_artifact="$(dependency_hash .node_modules-release)"',
+            script,
+        )
+        self.assertIn("dependency_hash()", script)
+        self.assertIn(
+            "--exclude='./.cache' --exclude='./.cache/*'",
             script,
         )
         self.assertIn(
