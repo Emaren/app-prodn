@@ -76,6 +76,42 @@ export function isEffectiveChallengeSettlement(
   );
 }
 
+export function isHistoricalChallengeWithNoCurrentLiability(input: {
+  challengerFundedAt?: Date | null;
+  challengedFundedAt?: Date | null;
+  mainnetStartAt: Date;
+  remainingLiabilityWolo: number;
+}) {
+  if (
+    input.remainingLiabilityWolo !== 0 ||
+    Number.isNaN(
+      input.mainnetStartAt.getTime(),
+    )
+  ) {
+    return false;
+  }
+
+  const fundedAt = [
+    input.challengerFundedAt,
+    input.challengedFundedAt,
+  ].filter(
+    (value): value is Date =>
+      value instanceof Date &&
+      !Number.isNaN(
+        value.getTime(),
+      ),
+  );
+
+  return (
+    fundedAt.length > 0 &&
+    fundedAt.every(
+      (value) =>
+        value.getTime() <
+        input.mainnetStartAt.getTime(),
+    )
+  );
+}
+
 export function effectiveChallengeSettlementRows<
   T extends Pick<
     ChallengeSettlementLedgerRow,

@@ -1,11 +1,10 @@
-"use client";
-
-import { useEffect, useState } from "react";
-
 import PremiumTimeSeriesChart, {
-  type ObservatoryPoint,
   type ObservatorySeries,
 } from "@/components/observatory/PremiumTimeSeriesChart";
+import {
+  loadPublicTraffic,
+  type PublicTrafficPoint,
+} from "@/lib/publicTraffic";
 
 const SERIES: ObservatorySeries[] = [
   {
@@ -31,41 +30,18 @@ const SERIES: ObservatorySeries[] = [
   },
 ];
 
-export default function TrafficPage() {
-  const [points, setPoints] = useState<ObservatoryPoint[]>([]);
+export const dynamic = "force-dynamic";
 
-  const [failed, setFailed] = useState(false);
+export default async function TrafficPage() {
+  let points: PublicTrafficPoint[] = [];
+  let failed = false;
 
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch("/api/traffic/public", {
-      cache: "no-store",
-    })
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error("Traffic unavailable");
-        }
-
-        return response.json();
-      })
-      .then((payload) => {
-        if (cancelled) {
-          return;
-        }
-
-        setPoints(Array.isArray(payload.points) ? payload.points : []);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFailed(true);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  try {
+    points = (await loadPublicTraffic()).points;
+  } catch (error) {
+    failed = true;
+    console.error("Traffic page preload failed:", error);
+  }
 
   return (
     <main className="relative min-h-screen w-full overflow-hidden bg-[#02070d] text-white">
@@ -80,7 +56,7 @@ export default function TrafficPage() {
             variant="traffic"
           />
         ) : (
-          <div className="min-h-[80vh] animate-pulse rounded-[2.5rem] border border-white/[0.06] bg-white/[0.025]" />
+          <div className="min-h-[80vh] rounded-[2.5rem] border border-white/[0.06] bg-white/[0.025]" />
         )}
 
         {failed ? (

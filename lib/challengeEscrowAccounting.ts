@@ -42,6 +42,17 @@ export type ChallengePlannedAccountingTransfer = {
   recipientAddress: string | null;
   amountWolo: number;
 
+  /*
+   * Player payouts/refunds require the exact recipient address.
+   * Treasury disposition is an economic destination class because
+   * the canonical Treasury wallet can rotate over time. Historical
+   * treasury rows may therefore satisfy a later planner without
+   * granting spending authority to a different player address.
+   */
+  destinationKind?:
+    | "recipient"
+    | "treasury";
+
   sourceAllocations:
     readonly ChallengeFundingSourceAllocation[];
 };
@@ -450,7 +461,26 @@ type SourceClaim = {
   settlementId: number;
   amountWolo: number;
   recipientAddress: string;
+  destinationKind:
+    | "recipient"
+    | "treasury";
 };
+
+function settlementDestinationKind(
+  action: string,
+): "recipient" | "treasury" {
+  switch (
+    normalizeStatus(action)
+  ) {
+    case "guarantees_to_treasury":
+    case "left_guarantee_to_treasury":
+    case "right_guarantee_to_treasury":
+      return "treasury";
+
+    default:
+      return "recipient";
+  }
+}
 
 export function reconcileChallengeSettlementSourceAccounting(
   input: {
@@ -665,6 +695,11 @@ export function reconcileChallengeSettlementSourceAccounting(
             settlement
               .recipientAddress,
           ),
+
+        destinationKind:
+          settlementDestinationKind(
+            settlement.action,
+          ),
       });
 
       claims.set(
@@ -811,14 +846,23 @@ export function reconcileChallengeSettlementSourceAccounting(
               0,
             );
 
+          const destinationKind =
+            transfer
+              .destinationKind ??
+            "recipient";
+
           const sameRecipientRows =
             rows.filter(
               (
                 row,
               ) =>
-                row
-                  .recipientAddress ===
-                recipient,
+                destinationKind ===
+                  "treasury"
+                  ? row.destinationKind ===
+                    "treasury"
+                  : row
+                      .recipientAddress ===
+                    recipient,
             );
 
           const sameRecipientConsumed =

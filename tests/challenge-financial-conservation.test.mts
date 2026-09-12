@@ -8,7 +8,51 @@ import {
   deriveChallengeFinancialConservation,
   effectiveChallengeSettlementRows,
   historicalChallengeSettlementExecutedWolo,
+  isHistoricalChallengeWithNoCurrentLiability,
 } from "../lib/challengeFinancialConservation.ts";
+
+
+test(
+  "pre-mainnet Challenge with zero remaining liability is historical, not a current payout",
+  () => {
+    const mainnetStartAt =
+      new Date("2026-05-25T00:00:00.000Z");
+
+    assert.equal(
+      isHistoricalChallengeWithNoCurrentLiability({
+        challengerFundedAt:
+          new Date("2026-04-25T16:28:16.190Z"),
+        challengedFundedAt:
+          new Date("2026-04-25T17:01:03.692Z"),
+        mainnetStartAt,
+        remainingLiabilityWolo: 0,
+      }),
+      true,
+    );
+
+    assert.equal(
+      isHistoricalChallengeWithNoCurrentLiability({
+        challengerFundedAt:
+          new Date("2026-07-04T02:02:26.984Z"),
+        challengedFundedAt: null,
+        mainnetStartAt,
+        remainingLiabilityWolo: 0,
+      }),
+      false,
+    );
+
+    assert.equal(
+      isHistoricalChallengeWithNoCurrentLiability({
+        challengerFundedAt:
+          new Date("2026-04-25T16:28:16.190Z"),
+        challengedFundedAt: null,
+        mainnetStartAt,
+        remainingLiabilityWolo: 35,
+      }),
+      false,
+    );
+  },
+);
 
 test(
   "Challenge #12 ledger shape can never settle again",
@@ -307,7 +351,17 @@ test(
 
     assert.match(
       source,
-      /state =\s*"settlement_failed"/,
+      /historicalNoCurrentLiability/,
+    );
+
+    assert.match(
+      source,
+      /"historical_review"/,
+    );
+
+    assert.match(
+      source,
+      /"settlement_failed"/,
     );
   },
 );
