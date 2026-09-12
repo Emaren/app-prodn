@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/challenge-room-conservation-truth-v1` at `5de8a9000c5caa9a1ca8c74aceb1daf289799d35`
+Implementation baseline: `feature/workshop-brain-panel-v1` at `92216d24bfe42b141cfabc33ab9a19041455fac1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import WorkshopExperience, {
   type WorkshopDiagnostics,
 } from "@/components/workshop/WorkshopExperience";
+import { loadPublicKingdomIntelligence } from "@/lib/kingdomIntelligencePublic";
+import { buildWorkshopBrainSnapshot } from "@/lib/workshopBrain";
 import { loadPublicParserObservatory } from "@/lib/parserObservatory";
 import { WATCHER_RELEASE } from "@/lib/watcherRelease";
 import {
@@ -27,10 +29,13 @@ const DEFERRED_CHRONICLE = {
 };
 
 export default async function WorkshopPage() {
-  const [data, observatory] = await Promise.all([
+  const [data, observatory, kingdomIntelligence] = await Promise.all([
     loadCachedPublicWorkshop(),
     loadPublicParserObservatory(),
+    loadPublicKingdomIntelligence().catch(() => null),
   ]);
+
+  const brain = buildWorkshopBrainSnapshot(kingdomIntelligence);
 
   // Chronicle history is intentionally not awaited here. The public timeline
   // is below the initial viewport and hydrates itself only as the reader nears it.
@@ -116,6 +121,7 @@ export default async function WorkshopPage() {
       data={data}
       chronicle={chronicle}
       diagnostics={diagnostics}
+      brain={brain}
     />
   );
 }
