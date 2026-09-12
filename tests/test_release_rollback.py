@@ -153,6 +153,22 @@ class ReleaseRollbackTests(unittest.TestCase):
             "source_prisma_generate_exit_code=",
             script,
         )
+        self.assertIn(
+            "test -f lib/generated/prisma/client.js",
+            script,
+        )
+        self.assertIn(
+            "test -f lib/generated/prisma/index.d.ts",
+            script,
+        )
+        self.assertIn(
+            "test -f lib/generated/prisma/schema.prisma",
+            script,
+        )
+        self.assertNotIn(
+            "test -f lib/generated/prisma/client.ts",
+            script,
+        )
 
     def test_manual_rollback_requires_certified_dependency_identity(self):
         script = MODULE.remote_rollback_script(

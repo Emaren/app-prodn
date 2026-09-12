@@ -834,7 +834,9 @@ cleanup_release_only_paths() {{
 refresh_source_prisma() {{
   test -x ./node_modules/.bin/prisma || return 1
   ./node_modules/.bin/prisma generate >/dev/null || return 1
-  test -f lib/generated/prisma/client.ts || return 1
+  test -f lib/generated/prisma/client.js || return 1
+  test -f lib/generated/prisma/index.d.ts || return 1
+  test -f lib/generated/prisma/schema.prisma || return 1
 }}
 critical_get() {{
   curl -fsS --max-time 12 --retry 3 --retry-delay 1 --retry-all-errors -o /dev/null "$1"

@@ -346,7 +346,9 @@ source_status() {{
 refresh_source_prisma() {{
   test -x ./node_modules/.bin/prisma || return 1
   ./node_modules/.bin/prisma generate >/dev/null || return 1
-  test -f lib/generated/prisma/client.ts || return 1
+  test -f lib/generated/prisma/client.js || return 1
+  test -f lib/generated/prisma/index.d.ts || return 1
+  test -f lib/generated/prisma/schema.prisma || return 1
 }}
 
 before_head="$(git rev-parse HEAD)"
