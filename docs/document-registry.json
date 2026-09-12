@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d3a37805ca3fa9f52851bf79486657e3322a0fac52501816fefe4a4008587d7e",
+      "sha256": "7a297fb553c68a3c9a0e166ba884e6969c8efcff63b37c461ebf66c4e262e959",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/challenge-history-speed-v1",
-    "commit": "fdda0c852fecf07df961807d7b0d93c15e5b24c9"
+    "branch": "fix/release-prisma-client-js-proof-v1",
+    "commit": "48721f76bed396b8caa5e44cc025b4afdc55de31"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

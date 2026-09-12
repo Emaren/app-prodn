@@ -905,6 +905,22 @@ class ShipTests(unittest.TestCase):
         self.assertLess(prisma_generate, version_advance)
         self.assertLess(version_advance, started)
         self.assertNotIn('systemctl restart "$SERVICE"', script)
+        self.assertIn(
+            "test -f lib/generated/prisma/client.js",
+            script,
+        )
+        self.assertIn(
+            "test -f lib/generated/prisma/index.d.ts",
+            script,
+        )
+        self.assertIn(
+            "test -f lib/generated/prisma/schema.prisma",
+            script,
+        )
+        self.assertNotIn(
+            "test -f lib/generated/prisma/client.ts",
+            script,
+        )
 
 
     def test_activation_binds_staged_dependency_identity(self):
