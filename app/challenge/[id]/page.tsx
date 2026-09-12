@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import ChallengeRoomControls from "@/components/challenge/ChallengeRoomControls";
 import ChallengeRoomConversation from "@/components/challenge/ChallengeRoomConversation";
+import { deriveChallengeFinancialConservation } from "@/lib/challengeFinancialConservation";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -374,6 +375,13 @@ export default async function ChallengeDetailPage({
     (sum, settlement) => sum + settlement.amountWolo,
     0
   );
+  const financialConservation = deriveChallengeFinancialConservation({
+    fundingEachWolo: totalEach,
+    leftFunded: Boolean(match.challengerFundedAt),
+    rightFunded: Boolean(match.challengedFundedAt),
+    settlements: match.settlements,
+  });
+  const conservationBreach = financialConservation.overSettledWolo > 0;
   const refundTerminal = ["canceled", "cancelled", "expired", "funding_expired", "refunded"].includes(match.status);
   const fundedSides = Number(Boolean(match.challengerFundedAt)) + Number(Boolean(match.challengedFundedAt));
   const expectedRefundWolo = refundTerminal ? fundedSides * totalEach : 0;
@@ -392,6 +400,7 @@ export default async function ChallengeDetailPage({
           ? (match.wagerAmountWolo > 0 ? fundedSides : 0) + (match.guaranteeAmountWolo > 0 ? 2 : 0)
           : 0;
   const settlementComplete =
+    !conservationBreach &&
     expectedSettlementTransfers > 0 &&
     match.settlements.length >= expectedSettlementTransfers &&
     match.settlements.every(
@@ -399,7 +408,9 @@ export default async function ChallengeDetailPage({
     );
   const settlementHeadline = activeDesync
     ? "Halted · commissioner disposition required"
-    : refundConfirmed
+    : conservationBreach
+      ? `Reconciliation conflict · ${fmtWolo(financialConservation.historicalExecutedWolo)} WOLO recorded against ${fmtWolo(financialConservation.fundedLiabilityWolo)} WOLO funded`
+      : refundConfirmed
       ? `${fmtWolo(executedSettlementWolo)} WOLO returned`
       : settlementComplete
         ? `${fmtWolo(executedSettlementWolo)} WOLO settlement confirmed`
@@ -674,7 +685,11 @@ export default async function ChallengeDetailPage({
                 <div className="mt-4 rounded-[1rem] border border-amber-100/14 bg-amber-100/[0.055] p-4">
                   <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-100/55">Current truth</div>
                   <div className="mt-1 text-lg font-black text-amber-50">{settlementHeadline}</div>
-                  {activeDesync ? (
+                  {conservationBreach ? (
+                    <div className="mt-1 text-xs leading-5 text-rose-100/80">
+                      Historical settlement records exceed funded principal by {fmtWolo(financialConservation.overSettledWolo)} WOLO. Further settlement is blocked pending operator reconciliation; no additional payout is authorized.
+                    </div>
+                  ) : activeDesync ? (
                     <div className="mt-1 text-xs leading-5 text-fuchsia-100/75">
                       Winner payout, belts, titles, and artifacts are blocked. Existing funding remains locked until Rematch or authenticated Void &amp; Refund.
                     </div>

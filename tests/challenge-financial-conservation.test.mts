@@ -365,3 +365,39 @@ test(
     );
   },
 );
+
+test(
+  "public Challenge room surfaces conservation breaches instead of impossible settlement confirmation",
+  () => {
+    const source =
+      readFileSync(
+        "app/challenge/[id]/page.tsx",
+        "utf8",
+      );
+
+    assert.match(
+      source,
+      /deriveChallengeFinancialConservation/,
+    );
+
+    assert.match(
+      source,
+      /const conservationBreach = financialConservation\.overSettledWolo > 0/,
+    );
+
+    assert.match(
+      source,
+      /Reconciliation conflict/,
+    );
+
+    assert.match(
+      source,
+      /Further settlement is blocked pending operator reconciliation/,
+    );
+
+    assert.match(
+      source,
+      /const settlementComplete =\s*!conservationBreach/,
+    );
+  },
+);

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/release-node-modules-cache-proof-v1` at `d47e42a6a7b8e985e1673a4892fc29951f2afb46`
+Implementation baseline: `fix/challenge-room-conservation-truth-v1` at `5de8a9000c5caa9a1ca8c74aceb1daf289799d35`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

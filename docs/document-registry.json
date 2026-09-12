@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7a8a56a5ed07cd3930c5f1b5687db2e26158238894846d6c96b6e34452cd5284",
+      "sha256": "7109c2ad1c36e6ee021aa38ece6fecda8b578c8b9bbc9bcede3d2ad18fe3e8d1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/release-node-modules-cache-proof-v1",
-    "commit": "d47e42a6a7b8e985e1673a4892fc29951f2afb46"
+    "branch": "fix/challenge-room-conservation-truth-v1",
+    "commit": "5de8a9000c5caa9a1ca8c74aceb1daf289799d35"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
