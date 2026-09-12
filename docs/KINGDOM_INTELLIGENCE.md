@@ -147,6 +147,14 @@ dramatic; the numbers and statuses still come only from the deterministic Brain.
 The public API at `/api/kingdom-intelligence` is a bounded projection. It never
 returns the raw Brain payload.
 
+The public `/workshop` surface also carries a compact **Kingdom Intelligence ·
+The Brain** panel in Basic, Advanced and Extreme views. That panel consumes only
+the existing sanitized public projection and reduces it again to War Date,
+operating state, certified source identity, Doctor/P0/P1, invariant/system counts
+and the ranked next directive. It links to the full Brain instead of creating a
+second telemetry loop, truth model or operator surface. Raw evidence, private
+reasoning and unrestricted operator detail remain withheld.
+
 ### Operator: `/admin/aoe2war-os`
 
 The existing AoE2WAR OS War Room is the private operator home for KI. It exposes

@@ -25,6 +25,7 @@ import Link from "next/link";
 
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
 import WorkshopAsk from "@/components/workshop/WorkshopAsk";
+import WorkshopBrainPanel from "@/components/workshop/WorkshopBrainPanel";
 import WorkshopChronicle from "@/components/workshop/WorkshopChronicle";
 import WorkshopSponsor from "@/components/workshop/WorkshopSponsor";
 import {
@@ -32,6 +33,7 @@ import {
   type TileViewMode,
 } from "@/lib/tileViewPreferences";
 import type { PublicWorkshop } from "@/lib/workshop";
+import type { WorkshopBrainSnapshot } from "@/lib/workshopBrain";
 
 export type WorkshopDiagnostics = {
   generatedAt: string;
@@ -110,6 +112,7 @@ type Props = {
   data: PublicWorkshop;
   chronicle: ChroniclePage;
   diagnostics: WorkshopDiagnostics;
+  brain: WorkshopBrainSnapshot;
 };
 
 type ViewProps = Props & {
@@ -190,7 +193,7 @@ function statusLabel(data: PublicWorkshop) {
   return "THE WORKSHOP IS OPEN";
 }
 
-export default function WorkshopExperience({ data, chronicle, diagnostics }: Props) {
+export default function WorkshopExperience({ data, chronicle, diagnostics, brain }: Props) {
   const { viewMode, setViewMode } = useTileViewPreference("workshop");
   const feed = data.entries
     .filter((entry) => entry.lane === "work_feed" || entry.pinned)
@@ -200,6 +203,7 @@ export default function WorkshopExperience({ data, chronicle, diagnostics }: Pro
     data,
     chronicle,
     diagnostics,
+    brain,
     feed,
     viewMode,
     setViewMode,
@@ -308,7 +312,7 @@ function WorkshopHeroBanner({
 }
 
 function BasicView(props: ViewProps) {
-  const { data, chronicle, diagnostics, feed, viewMode, setViewMode } = props;
+  const { data, chronicle, diagnostics, brain, feed, viewMode, setViewMode } = props;
   return (
     <>
       <section
@@ -424,6 +428,8 @@ function BasicView(props: ViewProps) {
         </div>
       </section>
 
+      <WorkshopBrainPanel brain={brain} />
+
       <section className="rounded-[2rem] border border-cyan-100/12 bg-[linear-gradient(145deg,#061521,#080b12_58%,#120a05)] p-6 sm:p-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -462,7 +468,7 @@ function BasicView(props: ViewProps) {
 }
 
 function AdvancedView(props: ViewProps) {
-  const { data, chronicle, diagnostics, feed, viewMode, setViewMode } = props;
+  const { data, chronicle, diagnostics, brain, feed, viewMode, setViewMode } = props;
   const fullTruth = diagnostics.corpus.logicalBattleTruthCoverageBps / 100;
   const result = diagnostics.corpus.logicalResultCoverageBps / 100;
   const roster = diagnostics.corpus.logicalRosterCoverageBps / 100;
@@ -495,6 +501,8 @@ function AdvancedView(props: ViewProps) {
           <Metric label="Watcher" value={`v${diagnostics.watcherVersion}`} accent />
         </div>
       </section>
+
+      <WorkshopBrainPanel brain={brain} />
 
       <section className="grid gap-5 xl:grid-cols-[1.28fr_0.72fr]">
         <div className="rounded-[2rem] border border-white/10 bg-slate-950/78 p-6 sm:p-8">
@@ -569,7 +577,7 @@ function AdvancedView(props: ViewProps) {
 }
 
 function ExtremeView(props: ViewProps) {
-  const { data, chronicle, diagnostics, feed, viewMode, setViewMode } = props;
+  const { data, chronicle, diagnostics, brain, feed, viewMode, setViewMode } = props;
   const [heroBackgroundVisible, setHeroBackgroundVisible] = useState(false);
   const fullTruth = diagnostics.corpus.logicalBattleTruthCoverageBps / 100;
   const result = diagnostics.corpus.logicalResultCoverageBps / 100;
@@ -623,6 +631,8 @@ function ExtremeView(props: ViewProps) {
           </div>
         </div>
       </section>
+
+      <WorkshopBrainPanel brain={brain} />
 
       <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="rounded-[2.1rem] border border-cyan-100/12 bg-[#050b14]/95 p-6 sm:p-8">

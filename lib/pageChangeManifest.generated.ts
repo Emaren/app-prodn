@@ -65,7 +65,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/workshop",
     label: "The Workshop",
-    version: "src-ecf13b83b470f4e198f0",
+    version: "src-a28832c985f7451e8263",
   },
   {
     href: "/kingdom-intelligence",

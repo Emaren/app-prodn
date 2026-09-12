@@ -6,6 +6,7 @@ import test from "node:test";
 
 import { createAoe2OsRun, writeAoe2OsKingdomIntelligence } from "../lib/aoe2Os.ts";
 import { loadPublicKingdomIntelligence } from "../lib/kingdomIntelligencePublic.ts";
+import { buildWorkshopBrainSnapshot } from "../lib/workshopBrain.ts";
 
 async function withStore(fn: () => Promise<void>) {
   const root = await mkdtemp(path.join(os.tmpdir(), "aoe2war-ki-public-"));
@@ -202,6 +203,17 @@ test("public Kingdom Intelligence is a bounded sanitized projection", async () =
     assert.equal(publicView.liveActivity[0]?.system, "System Doctor");
     assert.equal(publicView.liveActivity[0]?.status, "QUEUED");
     assert.equal(publicView.directive?.title, "Return Storage OS to healthy band");
+
+    const workshopBrain = buildWorkshopBrainSnapshot(publicView);
+    assert.equal(workshopBrain.available, true);
+    assert.equal(workshopBrain.warDate, "2026.249.1720Z");
+    assert.equal(workshopBrain.productionRelease, "aaaaaaaaaaaa");
+    assert.equal(workshopBrain.doctorScore, 94);
+    assert.equal(workshopBrain.p0, 0);
+    assert.equal(workshopBrain.activeSystemCount, 1);
+    assert.equal(workshopBrain.attentionSystemCount, 1);
+    assert.equal(workshopBrain.directiveTitle, "Return Storage OS to healthy band");
+
     assert.deepEqual(publicView.invariants, [
       {
         key: "source-authority-exact",
@@ -256,4 +268,29 @@ test("public Kingdom Intelligence page makes its authority and privacy boundary 
   assert.doesNotMatch(page, /fetch\("\/api\/kingdom-intelligence"/);
   assert.match(shell, /\/kingdom-intelligence/);
   assert.match(shell, /Kingdom Intelligence/);
+});
+
+test("Workshop carries one bounded Brain panel in every presentation variant", async () => {
+  const fs = await import("node:fs");
+  const page = fs.readFileSync("app/workshop/page.tsx", "utf8");
+  const experience = fs.readFileSync(
+    "components/workshop/WorkshopExperience.tsx",
+    "utf8",
+  );
+  const panel = fs.readFileSync(
+    "components/workshop/WorkshopBrainPanel.tsx",
+    "utf8",
+  );
+  const snapshot = fs.readFileSync("lib/workshopBrain.ts", "utf8");
+
+  assert.match(page, /loadPublicKingdomIntelligence/);
+  assert.match(page, /buildWorkshopBrainSnapshot/);
+  assert.equal((experience.match(/<WorkshopBrainPanel brain=\{brain\} \/>/g) ?? []).length, 3);
+  assert.match(panel, /Kingdom Intelligence · The Brain/);
+  assert.match(panel, /Open Kingdom Intelligence/);
+  assert.match(panel, /Public-safe projection only/);
+  assert.match(panel, /data-workshop-brain-panel/);
+  assert.match(snapshot, /WorkshopBrainSnapshot/);
+  assert.doesNotMatch(panel, /chain_of_thought|private_prompt|secret_receipt_path|log_path|private_operator_path/);
+  assert.doesNotMatch(snapshot, /chain_of_thought|private_prompt|secret_receipt_path|log_path|private_operator_path/);
 });
