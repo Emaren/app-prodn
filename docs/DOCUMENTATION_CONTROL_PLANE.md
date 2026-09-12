@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/challenge-history-speed-v1` at `fdda0c852fecf07df961807d7b0d93c15e5b24c9`
+Implementation baseline: `fix/release-prisma-client-js-proof-v1` at `48721f76bed396b8caa5e44cc025b4afdc55de31`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
