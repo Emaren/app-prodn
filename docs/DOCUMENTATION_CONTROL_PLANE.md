@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/release-prisma-client-js-proof-v1` at `48721f76bed396b8caa5e44cc025b4afdc55de31`
+Implementation baseline: `fix/release-node-modules-cache-proof-v1` at `d47e42a6a7b8e985e1673a4892fc29951f2afb46`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
