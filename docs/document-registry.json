@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0891139808af0f7d1c9edb68b7564a4d6e51770570fc51904cecf9b09962e3c8",
+      "sha256": "d3a37805ca3fa9f52851bf79486657e3322a0fac52501816fefe4a4008587d7e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/challenge-release-migration-v1",
-    "commit": "baa39bf38180c03f94dd384e6668c0d3bf3e6d71"
+    "branch": "fix/challenge-history-speed-v1",
+    "commit": "fdda0c852fecf07df961807d7b0d93c15e5b24c9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
