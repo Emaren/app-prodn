@@ -9,6 +9,20 @@ SPEC=importlib.util.spec_from_file_location('expiry',Path(__file__).resolve().pa
 M=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(M)
 
 class ExpiryTest(unittest.TestCase):
+    def test_archive_with_unique_database_evidence_is_refused(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/'manifest'
+            rows=[{'path':name,'type':'file'} for name in ['source-sha','build-version','next/BUILD_ID','database.dump']]
+            p.write_text('\n'.join(json.dumps(r) for r in rows))
+            with self.assertRaises(RuntimeError):M.archive_namespace(p)
+
+    def test_archive_runtime_namespace_is_accepted(self):
+        with tempfile.TemporaryDirectory() as d:
+            p=Path(d)/'manifest'
+            rows=[{'path':name,'type':'file'} for name in ['source-sha','build-version','next/BUILD_ID','node_modules/next/index.js']]
+            p.write_text('\n'.join(json.dumps(r) for r in rows))
+            self.assertEqual(M.archive_namespace(p),4)
+
     def test_minimum_checkpoints_are_distinct_and_milestone_is_retained(self):
         hot,cold=M.select_checkpoints(['activate-20260912T063110Z-aaaaaaaaaaaa','activate-20260912T025417Z-bbbbbbbbbbbb'],
           ['activate-20260908T223055Z-cccccccccccc','activate-20260908T204051Z-dddddddddddd',

@@ -137,6 +137,20 @@ def select_checkpoints(modern, archives):
         raise RuntimeError('two hot and three proven cold checkpoints required')
     return hot,cold
 
+def archive_namespace(manifest):
+    count=0
+    with Path(manifest).open() as f:
+        for line in f:
+            row=json.loads(line);name=row['path'];parts=Path(name).parts
+            if (name!='.' and (not parts or parts[0] not in RUNTIME_NAMES
+                               or '..' in parts or Path(name).is_absolute())):
+                raise RuntimeError('archive contains non-runtime evidence')
+            if row.get('type') not in {'dir','file','symlink'}:
+                raise RuntimeError('archive manifest has unsupported member')
+            count+=1
+    if count<4: raise RuntimeError('archive manifest incomplete')
+    return count
+
 def inspect_inventory():
     rows=[]
     for p in sorted(ROLL.iterdir()):
@@ -209,6 +223,7 @@ def prepare(directory):
         elif r['kind']=='archive':
             if digest(r['path'])!=r['archive_sha256']: raise RuntimeError('archive hash mismatch')
             if digest(r['tree_manifest_path'])!=r['tree_manifest_sha256']: raise RuntimeError('archive manifest mismatch')
+            archive_namespace(r['tree_manifest_path'])
             if digest(r['verified_receipt'])!=r['verified_receipt_sha256'] or digest(r['replaced_receipt'])!=r['replaced_receipt_sha256']:
                 raise RuntimeError('archive receipt changed')
         else:
@@ -233,6 +248,7 @@ def verify_row(r):
         if p.parent!=ARCH or p.name!=r['generation']+'.tar.zst': raise RuntimeError('archive namespace')
         if identity(p)!=r['archive_identity'] or digest(p)!=r['archive_sha256']: raise RuntimeError('archive drift')
         if digest(r['tree_manifest_path'])!=r['tree_manifest_sha256']: raise RuntimeError('archive manifest drift')
+        archive_namespace(r['tree_manifest_path'])
         for k in ['verified_receipt','replaced_receipt']:
             if digest(r[k])!=r[k+'_sha256']: raise RuntimeError('receipt drift')
     else: raise RuntimeError('only proven application runtime bodies may expire')

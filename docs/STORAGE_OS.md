@@ -253,7 +253,7 @@ archival from intentionally mutating the recovery estate concurrently.
 - Wolo mutation forbidden.
 - Database mutation forbidden.
 - Legacy metadata and unique source/data mutation forbidden; generated runtime bodies require their own exact reviewed ledger.
-- Newest-five rollback mutation forbidden.
+- Newest-two rollback mutation forbidden.
 - One archive transaction = one generation.
 - Missing/inconsistent evidence fails closed.
 - Deploy receipts remain protected evidence.
