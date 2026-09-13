@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "eae31735cee8a9ae69bd7277d9052b9104c47c99ff61a932c810323e77a2e665",
+      "sha256": "9f2d8b22ba8f6962376885b8d3e9649bed048feab3d4c3a816eb4784e889559f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1484,7 +1484,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-13",
       "sensitivity": "internal",
-      "sha256": "588accbe23db03ed908f496c8e70ef259bd983371a06972336b497e747471dc0",
+      "sha256": "06d588986e1326eb9703a3e3cc3f7f2e415e1710511f007d0460ba4c160d5658",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1838,7 +1838,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/storage-runtime-expiry-v1",
-    "commit": "72554362bb0afb40dcf8a4c5cebfa4ab1e198149"
+    "commit": "a0a8dbcd55d2ac79613ab706c95c49ef3b921ab4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

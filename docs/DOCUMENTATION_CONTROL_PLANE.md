@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/storage-runtime-expiry-v1` at `72554362bb0afb40dcf8a4c5cebfa4ab1e198149`
+Implementation baseline: `fix/storage-runtime-expiry-v1` at `a0a8dbcd55d2ac79613ab706c95c49ef3b921ab4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
