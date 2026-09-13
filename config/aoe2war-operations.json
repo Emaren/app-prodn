@@ -94,7 +94,7 @@
     "verify_root": "/mnt/HC_Volume_105319120/aoe2war/os-control/rollback-archive-verify",
     "lock_path": "/mnt/HC_Volume_105319120/aoe2war/os-control/locks/rollback-archive.lock",
     "maintenance_runner": "/usr/local/sbin/aoe2war-maintenance-run",
-    "protect_newest_activation_generations": 5,
+    "protect_newest_activation_generations": 2,
     "healthy_target_percent": 78,
     "maintenance_due_percent": 82,
     "automatic_archive_threshold_percent": 85,
@@ -247,5 +247,16 @@
     "shadow_app_role_createdb": false,
     "shadow_fk_policy": "automatic-referenced-table-closure",
     "shadow_activity_event_limit": 5000
+  },
+  "runtime_expiry": {
+    "policy": "lean-two-hot-three-cold",
+    "protect_hot": 2,
+    "compressed_checkpoints": 3,
+    "milestone_generation": "activate-20260818T003527Z-1a4e983b86d4",
+    "default_mode": "explicit-ledger-required",
+    "max_generations_per_transaction": 1,
+    "retain_receipts_and_manifests": true,
+    "unique_evidence_mutation": false,
+    "wolo_mutation_allowed": false
   }
 }

@@ -9,6 +9,8 @@ TRANSACTION_STARTED_EPOCH="$(date +%s)"
 RELEASE="$1"
 BUILD="$2"
 GEN="$3"
+KEEP="${4:-2}"
+[[ "$KEEP" =~ ^([2-9]|10)$ ]] || exit 2
 
 APP="/var/www/AoE2HDBets/app-prodn"
 VOL="/mnt/HC_Volume_105319120"
@@ -116,15 +118,15 @@ mapfile -t generations < <(
   | sort -r
 )
 
-test "${#generations[@]}" -ge 6
+test "${#generations[@]}" -gt "$KEEP"
 
-protected=("${generations[@]:0:5}")
-printf 'Protected newest five:\n'
+protected=("${generations[@]:0:KEEP}")
+printf "Protected newest %s:\n" "$KEEP"
 printf '  %s\n' "${protected[@]}"
 
 for item in "${protected[@]}"; do
   if [ "$item" = "$GEN" ]; then
-    echo "STOP: archive target is one of newest five protected generations"
+    echo "STOP: archive target is one of newest protected generations"
     exit 1
   fi
 done

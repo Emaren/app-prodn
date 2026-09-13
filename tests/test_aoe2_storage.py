@@ -60,6 +60,7 @@ class StorageOSTests(unittest.TestCase):
     ):
         policy_mock.return_value = {
             "root_maintenance_host": "root@hel1",
+            "protected_newest": 2,
         }
 
         run_mock.return_value.returncode = 0

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/storage-lean-retention-v1` at `6455f000ed2e7ef23bef573590b9934aa863a032`
+Implementation baseline: `fix/storage-runtime-expiry-v1` at `a0a8dbcd55d2ac79613ab706c95c49ef3b921ab4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
