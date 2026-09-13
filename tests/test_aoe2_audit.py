@@ -5,8 +5,10 @@ import json
 import pathlib
 import sys
 import tempfile
+import threading
 import unittest
 from datetime import timezone
+from unittest.mock import patch
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "aoe2_audit.py"
 SPEC = importlib.util.spec_from_file_location("aoe2_audit", SCRIPT)
@@ -93,6 +95,61 @@ class AuditCommandTests(unittest.TestCase):
                 MODULE.sha256(path),
                 "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
             )
+
+    def test_merge_audit_preserves_order_and_rejects_info_collisions(self):
+        target = MODULE.Audit()
+        target.add("P1", "Git", "first", "one")
+        target.info["one"] = 1
+        source = MODULE.Audit()
+        source.add("P1", "Documentation", "second", "two")
+        source.info["two"] = 2
+        MODULE.merge_audit(target, source)
+        self.assertEqual([item.key for item in target.findings], ["first", "second"])
+        self.assertEqual(target.info, {"one": 1, "two": 2})
+
+        duplicate = MODULE.Audit()
+        duplicate.info["one"] = 3
+        with self.assertRaisesRegex(RuntimeError, "namespace collision"):
+            MODULE.merge_audit(target, duplicate)
+
+    def test_collect_audit_overlaps_independent_domains_and_merges_serial_order(self):
+        source_started = threading.Event()
+        docs_started = threading.Event()
+        snapshots = {"app-prodn": {"head": "a" * 40}}
+
+        def source_check(audit):
+            source_started.set()
+            self.assertTrue(docs_started.wait(1.0))
+            audit.add("P1", "Git", "source", "source")
+            return snapshots
+
+        def checker(key, area):
+            def run(audit, *args):
+                if key == "docs":
+                    docs_started.set()
+                    self.assertTrue(source_started.wait(1.0))
+                if key == "central":
+                    self.assertEqual(args[0], snapshots)
+                audit.add("P1", area, key, key)
+            return run
+
+        with (
+            patch.object(MODULE, "check_source_repositories", side_effect=source_check),
+            patch.object(MODULE, "check_source_documentation", side_effect=checker("docs", "Documentation")),
+            patch.object(MODULE, "check_central_state", side_effect=checker("central", "Documentation")),
+            patch.object(MODULE, "check_taxonomy", side_effect=checker("taxonomy", "Documentation")),
+            patch.object(MODULE, "check_central_quality_gates", side_effect=checker("quality", "Documentation")),
+            patch.object(MODULE, "check_maps", side_effect=checker("maps", "Estate Maps")),
+            patch.object(MODULE, "check_context_archives", side_effect=checker("context", "Context Durability")),
+            patch.object(MODULE, "check_production", side_effect=checker("production", "Production")),
+            patch.object(MODULE, "check_wolo_vps_split", side_effect=checker("wolo", "WoloChain")),
+        ):
+            audit = MODULE.collect_audit()
+
+        self.assertEqual(
+            [item.key for item in audit.findings],
+            ["source", "docs", "central", "taxonomy", "quality", "maps", "context", "production", "wolo"],
+        )
 
 
     def test_legacy_archive_validation_contract_is_fail_closed(self):

@@ -9,6 +9,7 @@ import re
 import subprocess
 import tarfile
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -797,17 +798,65 @@ def check_wolo_vps_split(audit: Audit) -> None:
         )
 
 
+def merge_audit(target: Audit, source: Audit) -> None:
+    collisions = set(target.info).intersection(source.info)
+    if collisions:
+        raise RuntimeError(
+            "audit info namespace collision: " + ", ".join(sorted(collisions))
+        )
+    target.findings.extend(source.findings)
+    target.notes.extend(source.notes)
+    target.info.update(source.info)
+
+
+def run_audit_check(checker: Any, *args: Any) -> Audit:
+    local = Audit()
+    checker(local, *args)
+    return local
+
+
+def source_repository_check() -> tuple[Audit, dict[str, dict[str, Any]]]:
+    local = Audit()
+    snapshots = check_source_repositories(local)
+    return local, snapshots
+
+
 def collect_audit() -> Audit:
+    # Audit domains are read-only and largely independent. Keep each worker's
+    # mutable Audit private, then merge results in the historical serial order
+    # so receipts and human diffs remain deterministic. Central repository
+    # state is the only second-stage check because it consumes the exact source
+    # snapshots produced by check_source_repositories.
+    with ThreadPoolExecutor(max_workers=8, thread_name_prefix="aoe2war-audit") as pool:
+        source_future = pool.submit(source_repository_check)
+        docs_future = pool.submit(run_audit_check, check_source_documentation)
+        taxonomy_future = pool.submit(run_audit_check, check_taxonomy)
+        quality_future = pool.submit(run_audit_check, check_central_quality_gates)
+        maps_future = pool.submit(run_audit_check, check_maps)
+        context_future = pool.submit(run_audit_check, check_context_archives)
+        production_future = pool.submit(run_audit_check, check_production)
+        wolo_future = pool.submit(run_audit_check, check_wolo_vps_split)
+
+        source_audit, snapshots = source_future.result()
+        central_future = pool.submit(
+            run_audit_check, check_central_state, snapshots
+        )
+
+        ordered = (
+            source_audit,
+            docs_future.result(),
+            central_future.result(),
+            taxonomy_future.result(),
+            quality_future.result(),
+            maps_future.result(),
+            context_future.result(),
+            production_future.result(),
+            wolo_future.result(),
+        )
+
     audit = Audit()
-    snapshots = check_source_repositories(audit)
-    check_source_documentation(audit)
-    check_central_state(audit, snapshots)
-    check_taxonomy(audit)
-    check_central_quality_gates(audit)
-    check_maps(audit)
-    check_context_archives(audit)
-    check_production(audit)
-    check_wolo_vps_split(audit)
+    for partial in ordered:
+        merge_audit(audit, partial)
     return audit
 
 
