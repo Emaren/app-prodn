@@ -4,11 +4,14 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import aoe2_audit
+import aoe2_brain
+import aoe2_finish
 import aoe2_release
 import aoe2_update
 
@@ -51,6 +54,95 @@ def status_payload() -> dict[str, Any]:
         "runtime_mutated": False,
         "database_mutated": False,
         "wolo_mutated": False,
+    }
+
+
+def fast_source_plan(brain: dict[str, Any]) -> dict[str, Any]:
+    source = brain.get("source") or {}
+    local = source.get("local") or {}
+    github = source.get("github") or {}
+    production = source.get("production") or {}
+
+    local_head = str(local.get("head") or "")
+    github_head = str(github.get("main_sha") or "")
+    production_head = str(production.get("source_sha") or "")
+    if not local_head or not github_head or not production_head:
+        return {
+            "status": "BLOCKED",
+            "error": "source authority snapshot is incomplete",
+            "seal_preflight": "REQUIRED",
+        }
+
+    try:
+        plan = aoe2_finish.source_plan(
+            local_dirty=0 if local.get("clean") is True else 1,
+            production_dirty=0 if production.get("clean") is True else 1,
+            local_head=local_head,
+            github_head=github_head,
+            production_head=production_head,
+        )
+    except aoe2_finish.FinishError as exc:
+        return {
+            "status": "BLOCKED",
+            "error": str(exc),
+            "seal_preflight": "REQUIRED",
+        }
+
+    return {
+        "status": "READY",
+        "mode": plan.mode,
+        "detail": plan.detail,
+        "deploy_expected": bool(
+            plan.mode != "clean" or production_head != github_head
+        ),
+        "seal_preflight": "DEFERRED_TO_AOE2WAR_FINISH",
+    }
+
+
+def fast_payload() -> dict[str, Any]:
+    """Collect one fresh read-only Kingdom view; defer exhaustive work to SEAL."""
+    started = time.monotonic()
+    brain = aoe2_brain.collect()
+    brain_seconds = time.monotonic() - started
+    source_plan = fast_source_plan(brain)
+
+    health = brain.get("health") or {}
+    doctor_status = str(health.get("doctor_status") or "UNKNOWN").upper()
+    p0 = int(health.get("p0") or 0)
+    p1 = int(health.get("p1") or 0)
+
+    if source_plan.get("status") == "BLOCKED" or p0 > 0 or doctor_status == "UNSAFE":
+        status = "BLOCKED"
+    elif p1 > 0 or doctor_status not in {"HEALTHY", "PASS"}:
+        status = "ATTENTION"
+    else:
+        status = "READY"
+
+    elapsed = time.monotonic() - started
+    return {
+        "schema": 1,
+        "kind": "aoe2war-control-fast",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "mode": "FAST",
+        "status": status,
+        "read_only": True,
+        "runtime_mutated": False,
+        "database_mutated": False,
+        "wolo_mutated": False,
+        "seal_command": "aoe2war finish",
+        "seal_preflight": "NOT_RUN",
+        "timing": {
+            "elapsed_seconds": round(elapsed, 3),
+            "brain_seconds": round(brain_seconds, 3),
+            "collection_strategy": "fresh-shared-live-observation",
+        },
+        "health": health,
+        "operating_state": brain.get("operating_state"),
+        "best_next_action": brain.get("best_next_action"),
+        "storage": brain.get("storage") or {},
+        "workspace": brain.get("workspace") or {},
+        "source_plan": source_plan,
+        "brain": brain,
     }
 
 
@@ -149,6 +241,11 @@ def main() -> int:
     sub = parser.add_subparsers(dest="command")
     status = sub.add_parser("status")
     status.add_argument("--json", action="store_true")
+    fast = sub.add_parser(
+        "fast",
+        help="run the read-only fast Kingdom loop; SEAL remains aoe2war finish",
+    )
+    fast.add_argument("--json", action="store_true")
     refresh = sub.add_parser("refresh")
     refresh.add_argument("--json", action="store_true")
     refresh.add_argument(
@@ -174,6 +271,30 @@ def main() -> int:
                 for item in payload["authoritative_files"]:
                     print(f"  {item}")
             return 0 if payload.get("status") == "current" else 1
+
+        if command == "fast":
+            payload = fast_payload()
+            if getattr(args, "json", False):
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                timing = payload["timing"]
+                health = payload["health"]
+                source_plan = payload["source_plan"]
+                print("⚡ AOE2WAR FAST LOOP")
+                print()
+                print(f"State:     {payload['status']}")
+                print(f"Elapsed:   {timing['elapsed_seconds']:.2f}s")
+                print(f"Doctor:    {health.get('doctor_score')}/100 · {health.get('doctor_status')}")
+                print(f"Estate:    P0={int(health.get('p0') or 0)} P1={int(health.get('p1') or 0)}")
+                print(f"Source:    {source_plan.get('status')} · {source_plan.get('mode') or '—'}")
+                print(f"Deploy:    {'yes' if source_plan.get('deploy_expected') else 'no'}")
+                print("Preflight: deferred to SEAL")
+                action = payload.get("best_next_action") or {}
+                if isinstance(action, dict) and action.get("title"):
+                    print(f"Next:      {action.get('title')}")
+                print()
+                print("SEAL:      aoe2war finish")
+            return 2 if payload["status"] == "BLOCKED" else 1 if payload["status"] == "ATTENTION" else 0
 
         if command == "refresh":
             progress = (

@@ -42,6 +42,79 @@ class ControlDocsTests(unittest.TestCase):
         self.assertFalse(payload["runtime_mutated"])
         self.assertFalse(payload["wolo_mutated"])
 
+    def test_fast_uses_brain_snapshot_and_defers_exhaustive_seal_preflight(self):
+        brain = {
+            "source": {
+                "local": {"head": "a" * 40, "clean": True},
+                "github": {"main_sha": "a" * 40},
+                "production": {"source_sha": "a" * 40, "clean": True},
+            },
+            "health": {"p0": 0, "p1": 0, "doctor_score": 100, "doctor_status": "HEALTHY"},
+            "operating_state": "READY",
+            "best_next_action": None,
+            "storage": {},
+            "workspace": {},
+        }
+        with mock.patch.object(MODULE.aoe2_brain, "collect", return_value=brain), \
+             mock.patch.object(MODULE.aoe2_finish, "plan_payload", side_effect=AssertionError("SEAL preflight must not run")):
+            payload = MODULE.fast_payload()
+
+        self.assertEqual(payload["mode"], "FAST")
+        self.assertEqual(payload["status"], "READY")
+        self.assertEqual(payload["source_plan"]["mode"], "clean")
+        self.assertEqual(payload["seal_preflight"], "NOT_RUN")
+        self.assertTrue(payload["read_only"])
+        self.assertFalse(payload["runtime_mutated"])
+        self.assertFalse(payload["database_mutated"])
+        self.assertFalse(payload["wolo_mutated"])
+        self.assertEqual(payload["seal_command"], "aoe2war finish")
+
+    def test_fast_source_plan_detects_deploy_intent(self):
+        brain = {
+            "source": {
+                "local": {"head": "b" * 40, "clean": True},
+                "github": {"main_sha": "b" * 40},
+                "production": {"source_sha": "a" * 40, "clean": True},
+            },
+            "health": {"p0": 0, "p1": 0, "doctor_score": 100, "doctor_status": "HEALTHY"},
+            "storage": {}, "workspace": {},
+        }
+        with mock.patch.object(MODULE.aoe2_brain, "collect", return_value=brain):
+            payload = MODULE.fast_payload()
+        self.assertEqual(payload["source_plan"]["mode"], "clean")
+        self.assertTrue(payload["source_plan"]["deploy_expected"])
+
+    def test_fast_blocks_on_source_or_live_health(self):
+        brain = {
+            "source": {
+                "local": {"head": "a" * 40, "clean": True},
+                "github": {"main_sha": "a" * 40},
+                "production": {"source_sha": "a" * 40, "clean": True},
+            },
+            "health": {"p0": 1, "p1": 0, "doctor_score": 90, "doctor_status": "UNSAFE"},
+            "storage": {}, "workspace": {},
+        }
+        with mock.patch.object(MODULE.aoe2_brain, "collect", return_value=brain):
+            self.assertEqual(MODULE.fast_payload()["status"], "BLOCKED")
+
+        brain["health"] = {"p0": 0, "p1": 0, "doctor_score": 100, "doctor_status": "HEALTHY"}
+        brain["source"]["github"]["main_sha"] = ""
+        with mock.patch.object(MODULE.aoe2_brain, "collect", return_value=brain):
+            self.assertEqual(MODULE.fast_payload()["status"], "BLOCKED")
+
+    def test_fast_marks_advisory_findings_attention(self):
+        brain = {
+            "source": {
+                "local": {"head": "a" * 40, "clean": True},
+                "github": {"main_sha": "a" * 40},
+                "production": {"source_sha": "a" * 40, "clean": True},
+            },
+            "health": {"p0": 0, "p1": 2, "doctor_score": 96, "doctor_status": "ATTENTION"},
+            "storage": {}, "workspace": {},
+        }
+        with mock.patch.object(MODULE.aoe2_brain, "collect", return_value=brain):
+            self.assertEqual(MODULE.fast_payload()["status"], "ATTENTION")
+
     def test_refresh_is_documentation_only_and_verifies_final_audit(self):
         audit = mock.Mock()
         audit.payload.return_value = {"p0": 0, "p1": 0, "estate": "HEALTHY"}

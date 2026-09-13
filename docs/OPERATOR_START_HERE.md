@@ -73,6 +73,30 @@ keeps a version mismatch visible instead of silently treating PATH as authority.
 
 ## Refresh the kingdom's self-knowledge
 
+For the ordinary development loop, use the read-only FAST path:
+
+```bash
+aoe2war control fast
+```
+
+FAST collects one fresh shared Kingdom observation through Brain/Doctor/Council,
+reports current health and source/deploy intent, and measures its own wall-clock
+time. It deliberately does not run Finish's exhaustive documentation, storage,
+capacity, gate, deployment, or certification preflight. If FAST is clear enough
+to proceed, keep building. If it reports a blocker, address that blocker before
+trusting a release.
+
+The canonical SEAL path remains:
+
+```bash
+aoe2war finish
+```
+
+SEAL owns the full racetrack: storage/capacity safety, source reconciliation,
+hash-bound release validation, deployment when required, certification, final
+Audit/Doctor, documentation reconciliation, and bounded context evidence. There
+is no second seal implementation inside Control OS.
+
 When code is not being deployed but the operating handoff itself should become
 current, use:
 
