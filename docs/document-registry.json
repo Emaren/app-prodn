@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "27b86b44101d2fc1249979d54c21b77084407743906072fcdcfcc9a15501a9d2",
+      "sha256": "d8b5a2ac5b9832decbbdb348159f5f95e96ccb464bfc15f4fe57d09293fb245b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -958,7 +958,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-09",
       "sensitivity": "internal",
-      "sha256": "c7eb828b84a5d4e341360da2e5c964a24a1e9bb1b11ecb157bda99887f486651",
+      "sha256": "4ebf2750f5b3f292a2183900c01f19f2dee573c9ee4775e1801d41aa20bcf6e5",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/kingdom-command-telemetry-v1",
-    "commit": "2f802c656c792535a7820377b1fa60af00c29e8e"
+    "branch": "feature/kingdom-brain-pack-command-v1",
+    "commit": "42bdf56e2c60b637ceacefe65f5c794b5fe9f707"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
