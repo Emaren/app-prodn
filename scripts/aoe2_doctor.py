@@ -1470,6 +1470,22 @@ def check_production_summary(
         )
 
 
+def merge_doctor(target: Doctor, source: Doctor) -> None:
+    collisions = set(target.info).intersection(source.info)
+    if collisions:
+        raise RuntimeError(
+            "doctor info namespace collision: " + ", ".join(sorted(collisions))
+        )
+    target.findings.extend(source.findings)
+    target.info.update(source.info)
+
+
+def run_doctor_check(checker: Any, *args: Any) -> Doctor:
+    local = Doctor()
+    checker(local, *args)
+    return local
+
+
 def collect_doctor(
     *,
     estate_payload: dict[str, Any] | None = None,
@@ -1514,26 +1530,30 @@ def collect_doctor(
             print("→ Production: verifying certified runtime and Wolo boundary...", flush=True)
         release_data = aoe2_release.collect()
         check_production_summary(independent, release_data)
-        check_staking_custody(independent, contract)
-        check_replay_api(independent, contract)
 
         if progress:
-            print("→ Bridge: verifying Mac LaunchAgent + server control plane...", flush=True)
-        check_local_bridge(independent, contract)
-        check_host_and_server_bridge(independent, contract)
-        check_maintenance_safety(independent, contract)
+            print(
+                "→ Operations: running independent custody/API/bridge/host/toolchain/recovery probes in parallel...",
+                flush=True,
+            )
+        with ThreadPoolExecutor(
+            max_workers=8,
+            thread_name_prefix="aoe2war-doctor",
+        ) as pool:
+            ordered_futures = (
+                pool.submit(run_doctor_check, check_staking_custody, contract),
+                pool.submit(run_doctor_check, check_replay_api, contract),
+                pool.submit(run_doctor_check, check_local_bridge, contract),
+                pool.submit(run_doctor_check, check_host_and_server_bridge, contract),
+                pool.submit(run_doctor_check, check_maintenance_safety, contract),
+                pool.submit(run_doctor_check, check_toolchain, contract),
+                pool.submit(run_doctor_check, check_architecture, contract, release_data),
+                pool.submit(run_doctor_check, check_disaster_recovery, contract),
+            )
+            ordered_partials = tuple(future.result() for future in ordered_futures)
 
-        if progress:
-            print("→ Toolchain: comparing operator/VPS/package contract...", flush=True)
-        check_toolchain(independent, contract)
-
-        if progress:
-            print("→ Architecture: checking semantic maps and legacy deployment seams...", flush=True)
-        check_architecture(independent, contract, release_data)
-
-        if progress:
-            print("→ Recovery: checking off-host failure-domain coverage...", flush=True)
-        check_disaster_recovery(independent, contract)
+        for partial in ordered_partials:
+            merge_doctor(independent, partial)
 
         if estate_future is not None:
             estate_payload = estate_future.result()

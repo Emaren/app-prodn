@@ -114,6 +114,63 @@ class DoctorTests(unittest.TestCase):
         self.assertEqual(doctor.info["estate"]["p0"], 0)
         self.assertEqual(doctor.info["estate"]["p1"], 0)
 
+    def test_collect_doctor_parallelizes_independent_probes_and_preserves_order(self):
+        staking_started = threading.Event()
+        replay_started = threading.Event()
+
+        def add_marker(key, category="Host"):
+            def check(doctor, *args):
+                if key == "staking":
+                    staking_started.set()
+                    self.assertTrue(replay_started.wait(1.0))
+                elif key == "replay":
+                    replay_started.set()
+                    self.assertTrue(staking_started.wait(1.0))
+                doctor.add("WARN", category, key, key, 0)
+                doctor.info[key] = True
+            return check
+
+        with (
+            patch.object(MODULE, "load_contract", return_value={}),
+            patch.object(MODULE, "check_contract"),
+            patch.object(MODULE.aoe2_release, "collect", return_value={}),
+            patch.object(MODULE, "check_production_summary", side_effect=add_marker("production", "Production")),
+            patch.object(MODULE, "check_staking_custody", side_effect=add_marker("staking")),
+            patch.object(MODULE, "check_replay_api", side_effect=add_marker("replay")),
+            patch.object(MODULE, "check_local_bridge", side_effect=add_marker("local")),
+            patch.object(MODULE, "check_host_and_server_bridge", side_effect=add_marker("host")),
+            patch.object(MODULE, "check_maintenance_safety", side_effect=add_marker("maintenance")),
+            patch.object(MODULE, "check_toolchain", side_effect=add_marker("toolchain", "Toolchain")),
+            patch.object(MODULE, "check_architecture", side_effect=add_marker("architecture", "Architecture")),
+            patch.object(MODULE, "check_disaster_recovery", side_effect=add_marker("recovery", "Disaster Recovery")),
+        ):
+            doctor = MODULE.collect_doctor(
+                estate_payload={"p0": 0, "p1": 0, "estate": "HEALTHY"}
+            )
+
+        self.assertEqual(
+            [item.key for item in doctor.findings],
+            [
+                "production",
+                "staking",
+                "replay",
+                "local",
+                "host",
+                "maintenance",
+                "toolchain",
+                "architecture",
+                "recovery",
+            ],
+        )
+
+    def test_merge_doctor_rejects_info_collisions(self):
+        target = MODULE.Doctor()
+        source = MODULE.Doctor()
+        target.info["release"] = {"one": 1}
+        source.info["release"] = {"two": 2}
+        with self.assertRaisesRegex(RuntimeError, "namespace collision"):
+            MODULE.merge_doctor(target, source)
+
     def test_collect_doctor_uses_supplied_estate_without_new_audit(self):
         noops = [
             "check_contract",
