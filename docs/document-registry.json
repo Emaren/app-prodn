@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "eb0b98d625b966b8f6f574c2c06dc381ade48180ea53562d384a14509c42ab10",
+      "sha256": "4971f8f67e6621799f4d4fee76754602e8e612d21bc59f0ddf9c7705ecc4342d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1838,7 +1838,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/kingdom-audit-parallel-v1",
-    "commit": "77f0b28f3b916c975b40b560dff78b1b8ae78349"
+    "commit": "f6299bb533df58e5ed29ba3d0d6aa49de31ed44e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
