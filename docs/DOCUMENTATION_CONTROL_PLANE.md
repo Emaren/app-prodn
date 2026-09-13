@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/kingdom-control-v2` at `ba71e0514e9a125aff01df98935adbf472984ff9`
+Implementation baseline: `feature/kingdom-audit-parallel-v1` at `f6299bb533df58e5ed29ba3d0d6aa49de31ed44e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

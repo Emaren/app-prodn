@@ -200,7 +200,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-08-21",
       "sensitivity": "internal",
-      "sha256": "266a24ce4a7d409767809a257ac364ea234bb1cc61ad9801fe40b7d8d26b2d86",
+      "sha256": "30e1219b69d75ae8aaafaed0efe44bf5e321210f78d9b79d1ba0b8b418d93906",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "53d433966918ac9b08e56195b83832199980e67f9c315231790cf5ed90968313",
+      "sha256": "4971f8f67e6621799f4d4fee76754602e8e612d21bc59f0ddf9c7705ecc4342d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/kingdom-control-v2",
-    "commit": "ba71e0514e9a125aff01df98935adbf472984ff9"
+    "branch": "feature/kingdom-audit-parallel-v1",
+    "commit": "f6299bb533df58e5ed29ba3d0d6aa49de31ed44e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
