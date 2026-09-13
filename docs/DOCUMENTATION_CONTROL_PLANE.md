@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/kingdom-doctor-parallel-v2` at `f7a88e7140a934a4f25397c50a6af3c68055d149`
+Implementation baseline: `feature/kingdom-control-fast-v1` at `ed9666a4eca87540d208b148831a716a593e3e48`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4eba5e9248790e0e3be97f04e218355141168f7bfe9a9c3bfc2c3ae9e6dcbfad",
+      "sha256": "012e042c2e44b79152c4b935095f0705a5cb9bd2f51ebb08f37721005ff795b2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -958,7 +958,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-09",
       "sensitivity": "internal",
-      "sha256": "2e0195258a01893832e8e3dcb69f2444736dfb2d39086f0c9687cf3fa2430f36",
+      "sha256": "c7eb828b84a5d4e341360da2e5c964a24a1e9bb1b11ecb157bda99887f486651",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/kingdom-doctor-parallel-v2",
-    "commit": "f7a88e7140a934a4f25397c50a6af3c68055d149"
+    "branch": "feature/kingdom-control-fast-v1",
+    "commit": "ed9666a4eca87540d208b148831a716a593e3e48"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
