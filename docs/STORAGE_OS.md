@@ -190,6 +190,13 @@ has sealed its replacement receipt and released the release, retention and
 archive locks, but before the local batch orchestrator starts the next
 generation.
 
+Maintenance authority binds to the exact **active certified production**
+source SHA and BUILD_ID. Mac and GitHub `main` must still be clean, equal, and
+contain that production commit, but they may be newer. This lets Storage OS
+recover capacity when a finished source release is waiting behind the capacity
+gate; the worker continues proving the actual runtime serving users instead of
+pretending the unpublished source tree is production.
+
 Finish now reconciles the installed root-owned maintenance runner at exactly
 that serialized boundary. If a worker is still active, the same locks make the
 handoff fail closed. Once the seam is free, the new runner is atomically

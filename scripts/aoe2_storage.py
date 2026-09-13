@@ -430,16 +430,47 @@ def operator_baseline() -> tuple[str, str]:
     remote = run(["git", "-C", str(ROOT), "rev-parse", "origin/main"])
     if head != remote:
         raise StorageError(f"local HEAD {head} != origin/main {remote}")
+
     status = run([str(ROOT / "bin" / "aoe2war"), "status"], timeout=60)
-    if "State:          CERTIFIED" not in status:
-        raise StorageError("AoE2WAR status is not CERTIFIED")
-    for label in ("Mac HEAD:", "GitHub main:", "Prod source:"):
-        if f"{label:<16}{head[:10]}" not in status:
-            raise StorageError(f"AoE2WAR status does not bind current {label}")
-    match = re.search(r"^Active build:\s+(\S+)\s*$", status, re.MULTILINE)
-    if not match or not BUILD_RE.fullmatch(match.group(1)):
+    state = re.search(r"^State:\s+(\S+)\s*$", status, re.MULTILINE)
+    if not state or state.group(1) not in {"CERTIFIED", "PUBLISHED"}:
+        raise StorageError("AoE2WAR status must have a certified active runtime")
+    if not re.search(r"^Provenance:\s+CERTIFIED\b", status, re.MULTILINE):
+        raise StorageError("active production provenance is not CERTIFIED")
+
+    live = snapshot(measure=False)
+    runtime = live["runtime"]
+    release = str(runtime["source_sha"])
+    build = str(runtime["build_id"])
+    if not re.fullmatch(r"[0-9a-f]{40}", release):
+        raise StorageError("cannot resolve active certified production source")
+    if not BUILD_RE.fullmatch(build):
         raise StorageError("cannot resolve active certified BUILD_ID")
-    return head, match.group(1)
+    proc = subprocess.run(
+        ["git", "-C", str(ROOT), "merge-base", "--is-ancestor", release, remote],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise StorageError(
+            f"certified production {release} is not an ancestor of origin/main {remote}"
+        )
+
+    expected = {
+        "Mac HEAD:": head[:10],
+        "GitHub main:": remote[:10],
+        "Prod source:": release[:10],
+        "Active build:": build,
+    }
+    for label, value in expected.items():
+        if not re.search(
+            rf"^{re.escape(label)}\s+{re.escape(value)}(?:\s|$)",
+            status,
+            re.MULTILINE,
+        ):
+            raise StorageError(f"AoE2WAR status does not bind current {label}")
+    return release, build
 
 
 def invoke_worker(release: str, build: str, generation: str) -> None:

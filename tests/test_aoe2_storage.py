@@ -193,6 +193,75 @@ class StorageOSTests(unittest.TestCase):
         self.assertIn('"transaction_duration_seconds"', worker)
         self.assertIn("Transaction time:", worker)
 
+    def test_operator_baseline_binds_to_certified_production_when_main_is_ahead(self):
+        main_sha = "b" * 40
+        production_sha = "a" * 40
+        build_id = "certified-build"
+
+        def fake_run(args, **_kwargs):
+            if args[:5] == ["git", "-C", str(ROOT), "branch", "--show-current"]:
+                return "main"
+            if args[:5] == [
+                "git",
+                "--no-optional-locks",
+                "-C",
+                str(ROOT),
+                "status",
+            ]:
+                return ""
+            if args[:5] == ["git", "-C", str(ROOT), "fetch", "origin"]:
+                return ""
+            if args[:4] == ["git", "-C", str(ROOT), "rev-parse"]:
+                return main_sha
+            if args == [str(ROOT / "bin" / "aoe2war"), "status"]:
+                return (
+                    "State:          PUBLISHED\n"
+                    f"Mac HEAD:       {main_sha[:10]}  branch=main  dirty=0\n"
+                    f"GitHub main:    {main_sha[:10]}\n"
+                    f"Prod source:    {production_sha[:10]}  dirty=0\n"
+                    f"Active build:   {build_id}\n"
+                    f"Provenance:     CERTIFIED  release={production_sha}\n"
+                )
+            raise AssertionError(args)
+
+        with (
+            mock.patch.object(MODULE, "run", side_effect=fake_run),
+            mock.patch.object(
+                MODULE,
+                "snapshot",
+                return_value={
+                    "runtime": {
+                        "source_sha": production_sha,
+                        "build_id": build_id,
+                    }
+                },
+            ),
+            mock.patch.object(
+                MODULE.subprocess,
+                "run",
+                return_value=mock.Mock(returncode=0),
+            ) as ancestry,
+        ):
+            self.assertEqual(
+                MODULE.operator_baseline(),
+                (production_sha, build_id),
+            )
+
+        ancestry.assert_called_once_with(
+            [
+                "git",
+                "-C",
+                str(ROOT),
+                "merge-base",
+                "--is-ancestor",
+                production_sha,
+                main_sha,
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+
     def test_until_target_continues_through_watch_after_ready_start(self):
         plans = [
             {
