@@ -229,7 +229,8 @@ print(json.dumps({
     "legacy_directory_count": len(legacy),
     "protected_newest": protected,
     "eligible_expanded_count": len(eligible),
-    "archived_replaced_count": len(replaced),
+    "archived_replaced_count": len(archive_names),
+    "expired_archive_count": len(list(receipts.glob("*.expired.json"))),
     "verified_receipt_count": len(verified),
     "archive_file_count": len(archive_names),
     "inconsistent_expanded_archived": inconsistent,
@@ -279,7 +280,28 @@ for rp in sorted(receipts.glob("*.replaced.json")):
         if (rollbacks / gen).exists():
             ok = False
             detail.append("expanded generation still present")
-        if not archive.is_file() or sha(archive) != payload["archive_sha256"]:
+        expired_path = receipts / (gen + ".expired.json")
+        expired = False
+        if expired_path.is_file():
+            expiry = json.loads(expired_path.read_text())
+            ledger_path = Path(expiry["ledger_path"])
+            if (expiry.get("status") != "EXPIRED_SUPERSEDED_RUNTIME"
+                    or expiry.get("generation") != gen
+                    or expiry.get("path") != str(archive)
+                    or expiry.get("wolo_mutated") is not False
+                    or expiry["wolo_height_after"] <= expiry["wolo_height_before"]
+                    or expiry["object"]["archive_sha256"] != payload["archive_sha256"]
+                    or expiry["object"]["replaced_receipt_sha256"] != sha(rp)
+                    or not ledger_path.is_file()
+                    or sha(ledger_path) != expiry["ledger_sha256"]
+                    or archive.exists()):
+                raise ValueError("invalid archive expiry evidence")
+            ledger = json.loads(ledger_path.read_text())
+            if not any(row == expiry["object"] and row.get("action") == "EXPIRE" for row in ledger["rows"]):
+                raise ValueError("expired object absent from exact authorized ledger")
+            expired = True
+            detail.append("superseded runtime expired under verified lean ledger")
+        if not expired and (not archive.is_file() or sha(archive) != payload["archive_sha256"]):
             ok = False
             detail.append("archive hash mismatch")
         if not manifest.is_file() or sha(manifest) != payload["tree_manifest_sha256"]:
@@ -408,7 +430,7 @@ def print_plan(plan: dict[str, Any]) -> None:
     print(f"Healthy target:  < {plan['healthy_target_percent']}%")
     print(f"Maintenance due: ≥ {plan['maintenance_due_percent']}%")
     print(f"Candidate:       {plan['candidate'] or '—'}")
-    print("Selection:       next generation outside newest-five hot window")
+    print("Selection:       next generation outside configured hot window")
     if plan.get("candidate_allocated_kb"):
         print(f"Candidate size:  {plan['candidate_allocated_kb'] / 1048576:.2f} GiB")
     if plan.get("conservative_reclaim_estimate_kb"):
@@ -481,7 +503,7 @@ def invoke_worker(release: str, build: str, generation: str) -> None:
     cmd = [
         "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8",
         p["root_maintenance_host"],
-        "bash", "-s", "--", release, build, generation,
+        "bash", "-s", "--", release, build, generation, str(p["protected_newest"]),
     ]
     proc = subprocess.run(cmd, input=source, text=True, check=False)
     if proc.returncode != 0:
@@ -567,7 +589,7 @@ def verify_archives(*, json_mode: bool) -> int:
 def self_test() -> int:
     p = policy()
     assert (p["healthy_target"], p["maintenance_due"], p["automatic_threshold"], p["critical"]) == (78, 82, 85, 92)
-    assert p["protected_newest"] == 5
+    assert p["protected_newest"] == 2
     assert p["root_maintenance_host"] == "root@hel1"
     assert GENERATION_RE.fullmatch("activate-20260818T195631Z-005546f4068d")
     assert not GENERATION_RE.fullmatch("../activate-20260818T195631Z-005546f4068d")
@@ -600,6 +622,8 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("--force", action="store_true")
     q = sub.add_parser("verify")
     q.add_argument("--json", action="store_true")
+    q = sub.add_parser("expiry")
+    q.add_argument("expiry_args", nargs=argparse.REMAINDER)
     q = sub.add_parser("campaign")
     q.add_argument("campaign_args", nargs=argparse.REMAINDER)
     return p
@@ -625,6 +649,8 @@ def main() -> int:
         return maintain(apply=args.apply, until_target=args.until_target, max_generations=args.max_generations, force=args.force)
     if args.command == "verify":
         return verify_archives(json_mode=args.json)
+    if args.command == "expiry":
+        return subprocess.run([sys.executable, str(ROOT / "scripts" / "aoe2_storage_expire.py"), *args.expiry_args], cwd=ROOT, check=False).returncode
     if args.command == "campaign":
         cmd = [
             sys.executable,

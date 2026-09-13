@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2war","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "storage-operating-contract"
-reviewed_at: "2026-08-19"
+reviewed_at: "2026-09-13"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -40,8 +40,8 @@ primitive and never deletes durable rollback generations.
 ## Storage classes
 
 - **Live:** current runtime, databases, settlement state, parser state.
-- **Hot recovery:** newest five canonical durable activation rollbacks stay expanded.
-  The next archive candidate is the sixth-newest expanded generation: the
+- **Hot recovery:** newest two canonical durable activation rollbacks stay expanded.
+  The next archive candidate is the third-newest expanded generation: the
   generation that has just fallen out of the hot recovery window.
 - **Warm/cold recovery:** older canonical generations may become verified `.tar.zst`
   archives with exact manifests and immutable receipts.
@@ -159,27 +159,38 @@ or controller crash may require `resume`; if the previous interruption occurred
 inside a one-generation transaction and exact evidence cannot be re-established,
 resume remains blocked for explicit census/recovery rather than guessing.
 
-## Storage lifecycle direction
+## Lean retention policy — September 13, 2026
 
-Five expanded activation generations remain the hot rollback window. Keeping
-every older generation expanded is not a long-term retention strategy; older
-generations belong in exact verified cold form.
+Retain two complete immediate rollback generations and three verified compressed
+checkpoints: the newest archive in each of the latest two represented ISO weeks,
+plus the proven B2B2 pilot `activate-20260818T003527Z-1a4e983b86d4`.
+The active production runtime is additional to those recovery points.
 
-The next architectural step after the adaptive governor is to remove backlog
-creation itself:
+Superseded application runtimes are rebuildable from retained Git history.
+`aoe2war storage expiry` owns their explicit expiry contract:
 
-1. create/retain exact generation manifests at release time;
-2. when a generation falls out of the newest-five hot window, enqueue one
-   asynchronous verified cold-archive transaction rather than waiting for disk
-   pressure;
-3. preserve milestone releases and unique evidence explicitly;
-4. add an encrypted off-host evidence authority plus restore drill before any
-   policy is allowed to expire unique local cold archives;
-5. evaluate content-addressed/deduplicated generation storage so growth tracks
-   changed bytes rather than repeatedly storing identical dependency trees.
+- `inventory` is read-only and identifies every keep/expiry decision;
+- `prepare <canonical-campaign-directory>` seals a complete JSON deletion ledger,
+  hashes expanded content into compressed manifests, verifies cold archives and
+  their original receipts, and proves production identity;
+- `apply-one <ledger> <sha256> <generation>` expires exactly one approved runtime
+  body after rechecking the ledger, content identity, retained checkpoints,
+  source/build/services, release/retention/archive locks, and Wolo progression;
+- immutable intent and completion receipts supplement all existing evidence;
+- archive verification recognizes a valid expiry receipt and still verifies the
+  retained original tree manifest;
+- legacy metadata, source patches, credentials, databases, replay/parser evidence,
+  user media, settlement data, and Wolo state are never generic expiry targets.
 
-Until off-host authority and restore proof exist, unique verified archives are
-not automatic deletion candidates.
+Run this explicit, bounded maintenance lane after releases when a generation
+falls outside the two-generation window. Each campaign produces its exact ledger
+before expiry. Do not retain endless cold application bodies, and do not confuse
+an expired compiled runtime with deleted unique project evidence.
+
+## Deployment boundary
+
+Runtime expiry is serialized with deployment. Complete or stop the current
+one-generation transaction before running canonical `aoe2war finish`.
 
 
 ## Live handoff into a newer Storage OS
@@ -241,7 +252,7 @@ archival from intentionally mutating the recovery estate concurrently.
 
 - Wolo mutation forbidden.
 - Database mutation forbidden.
-- Legacy rollback mutation forbidden.
+- Legacy metadata and unique source/data mutation forbidden; generated runtime bodies require their own exact reviewed ledger.
 - Newest-five rollback mutation forbidden.
 - One archive transaction = one generation.
 - Missing/inconsistent evidence fails closed.
