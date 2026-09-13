@@ -1191,8 +1191,11 @@ def activity_24h(now: datetime) -> dict[str, Any]:
 
 def collect() -> dict[str, Any]:
     now = now_utc()
-    release = aoe2_release.collect()
     council = aoe2_council.collect()
+    release = council.get("release_snapshot")
+    if not isinstance(release, dict) or not isinstance(release.get("production"), dict):
+        # Backward-compatible fail-safe for older/external Council payloads.
+        release = aoe2_release.collect()
     source = source_summary(release)
     truth = latest_truth(now)
     performance = latest_performance(now)

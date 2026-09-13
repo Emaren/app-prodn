@@ -22,7 +22,31 @@ PROD_HOST = os.getenv("AOE2_RELEASE_HOST", "hel1")
 PROD_REPO = os.getenv("AOE2_RELEASE_PROD_REPO", "/var/www/AoE2HDBets/app-prodn")
 SERVICE = os.getenv("AOE2_RELEASE_SERVICE", "aoe2hdbets-web.service")
 PUBLIC = os.getenv("AOE2_RELEASE_PUBLIC_BASE", "https://aoe2war.com")
+
+
+def resolve_state_authority_root(root: Path = ROOT) -> Path:
+    override = os.getenv("AOE2_RELEASE_STATE_ROOT", "").strip()
+    if override:
+        return Path(override).expanduser().resolve()
+
+    contract = root / "config" / "aoe2war-operations.json"
+    try:
+        payload = json.loads(contract.read_text(encoding="utf-8"))
+        raw = (payload.get("canonical") or {}).get("operator_repo")
+        if raw:
+            candidate = Path(str(raw)).expanduser().resolve()
+            if candidate.is_dir():
+                return candidate
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        pass
+    return root.resolve()
+
+
+# Mutating scratch/locks remain worktree-local. Certified runtime evidence is a
+# single operator-plane authority shared by all worktrees of this repository.
 STATE_DIR = ROOT / ".aoe2war-release"
+STATE_AUTHORITY_ROOT = resolve_state_authority_root()
+RECEIPT_STATE_DIR = STATE_AUTHORITY_ROOT / ".aoe2war-release"
 DEPLOY_LOCK = STATE_DIR / "deploy.lock"
 GLOBAL_RELEASE_LOCK = Path(
     os.getenv(
@@ -408,7 +432,14 @@ def integer(value: str | None) -> int | None:
     return int(value) if value and value.isdigit() else None
 
 
-ACTIVATION_RECEIPT_DIR = STATE_DIR / "activation-receipts"
+ACTIVATION_RECEIPT_DIR = RECEIPT_STATE_DIR / "activation-receipts"
+
+
+def authority_display_path(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(STATE_AUTHORITY_ROOT.resolve()))
+    except (OSError, ValueError):
+        return str(path)
 
 
 def sha256_path(path: Path) -> str | None:
@@ -427,8 +458,8 @@ def receipt_evidence_ok(relative_path: object, expected_sha: object) -> bool:
     if not isinstance(relative_path, str) or not isinstance(expected_sha, str):
         return False
     try:
-        path = (ROOT / relative_path).resolve()
-        path.relative_to(ROOT.resolve())
+        path = (STATE_AUTHORITY_ROOT / relative_path).resolve()
+        path.relative_to(STATE_AUTHORITY_ROOT.resolve())
     except (OSError, ValueError):
         return False
     return path.is_file() and sha256_path(path) == expected_sha
@@ -481,7 +512,7 @@ def certified_runtime(production: dict) -> dict:
         return {
             "status": "CERTIFIED",
             "release_sha": payload.get("release_sha"),
-            "receipt_path": str(path.relative_to(ROOT)),
+            "receipt_path": authority_display_path(path),
             "artifact_sha256": payload.get("artifact_sha256"),
             "active_build_id": payload.get("active_build_id"),
             "build_version": version,
@@ -526,7 +557,7 @@ def release_history(limit: int = 10) -> list[dict]:
                 "build_version": payload.get("candidate_build_version"),
                 "fast_rollback": payload.get("fast_rollback"),
                 "durable_rollback": payload.get("durable_rollback"),
-                "receipt_path": str(path.relative_to(ROOT)),
+                "receipt_path": authority_display_path(path),
             }
         )
         if len(history) >= limit:

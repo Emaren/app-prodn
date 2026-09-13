@@ -35,6 +35,61 @@ def command_json(*args: str, timeout: int = 120) -> dict[str, Any]:
     return payload
 
 
+def _int_value(value: object) -> int:
+    try:
+        return int(str(value or "0"))
+    except (TypeError, ValueError):
+        return 0
+
+
+def host_from_doctor(doctor: dict[str, Any]) -> dict[str, Any] | None:
+    info = doctor.get("info") or {}
+    raw = info.get("host") or {}
+    required = {
+        "failed_transient",
+        "timer_enabled",
+        "timer_active",
+        "api",
+        "wolo8092",
+        "wolo8093",
+        "node_version",
+        "kernel",
+    }
+    if not isinstance(raw, dict) or not required.issubset(raw):
+        return None
+    release = info.get("release") or {}
+    production = release.get("production") or {}
+    host = str(production.get("host") or "hel1")
+    if "@" not in host:
+        host = f"root@{host}"
+    return {
+        "schema": 1,
+        "generated_at": doctor.get("generated_at"),
+        "host": host,
+        "reboot_required": str(raw.get("reboot_required")) == "1",
+        "updates": _int_value(raw.get("updates")),
+        "failed_all": _int_value(raw.get("failed_units")),
+        "failed_transient": _int_value(raw.get("failed_transient")),
+        "traffic_timer_enabled": raw.get("timer_enabled"),
+        "traffic_timer_active": raw.get("timer_active"),
+        "traffic_timer_next": raw.get("timer_next"),
+        "web": raw.get("service"),
+        "api": raw.get("api"),
+        "wolo_8092_count": _int_value(raw.get("wolo8092")),
+        "wolo_8093_count": _int_value(raw.get("wolo8093")),
+        "node": raw.get("node_version"),
+        "kernel": raw.get("kernel"),
+        "evidence_source": "doctor",
+    }
+
+
+def recovery_from_doctor(doctor: dict[str, Any]) -> dict[str, Any] | None:
+    value = (doctor.get("info") or {}).get("offsite_evidence")
+    if isinstance(value, dict) and value.get("status"):
+        return {**value, "evidence_source": "doctor"}
+    return None
+
+
 def docs_due() -> int | None:
     proc = subprocess.run(
         [str(CLI), "docs", "status"],
@@ -359,21 +414,15 @@ def build_recommendations(
 
 
 def collect() -> dict[str, Any]:
-    # These read-only probes are independent. Running them concurrently keeps
-    # Kingdom Intelligence bounded by the slowest probe instead of the sum of
-    # five SSH/local diagnostics.
-    with ThreadPoolExecutor(max_workers=5) as pool:
+    # Doctor now carries the same host/recovery observations Council needs.
+    # Run only the independent heavy probes in parallel, then reuse Doctor's
+    # proof. Older Doctor payloads fail safely to the standalone commands.
+    with ThreadPoolExecutor(max_workers=3) as pool:
         doctor_future = pool.submit(
             command_json, "doctor", "--json", timeout=180
         )
         storage_future = pool.submit(
             command_json, "storage", "status", "--json", timeout=90
-        )
-        host_future = pool.submit(
-            command_json, "host", "status", "--json", timeout=90
-        )
-        recovery_future = pool.submit(
-            command_json, "recovery", "status", "--json", timeout=30
         )
         workspace_future = pool.submit(
             command_json,
@@ -385,9 +434,14 @@ def collect() -> dict[str, Any]:
 
         doctor = doctor_future.result()
         storage = storage_future.result()
-        host = host_future.result()
-        recovery = recovery_future.result()
         workspace = workspace_future.result()
+
+    host = host_from_doctor(doctor)
+    if host is None:
+        host = command_json("host", "status", "--json", timeout=90)
+    recovery = recovery_from_doctor(doctor)
+    if recovery is None:
+        recovery = command_json("recovery", "status", "--json", timeout=30)
 
     audit = ((doctor.get("info") or {}).get("estate") or {})
     if not isinstance(audit, dict) or "p0" not in audit:
@@ -418,6 +472,9 @@ def collect() -> dict[str, Any]:
         "p1": int(audit.get("p1") or 0),
         "doctor_score": doctor.get("score"),
         "doctor_status": doctor.get("status"),
+        # Doctor already paid for this exact release observation. Preserve it
+        # so higher-level intelligence does not re-probe GitHub/VPS/public state.
+        "release_snapshot": (doctor.get("info") or {}).get("release"),
         "recommendations": recs,
         "best_next_action": recs[0] if recs else None,
         "storage": storage,

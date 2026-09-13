@@ -163,6 +163,25 @@ class KingdomIntelligenceTests(unittest.TestCase):
         self.assertFalse(behind["exact"])
         self.assertTrue(behind["production_behind_github"])
 
+    def test_collect_reuses_council_release_snapshot(self):
+        current_council = council()
+        current_council["release_snapshot"] = release()
+        with (
+            patch.object(MODULE.aoe2_council, "collect", return_value=current_council),
+            patch.object(MODULE.aoe2_release, "collect", side_effect=AssertionError("duplicate release probe")),
+            patch.object(MODULE, "latest_truth", return_value=truth()),
+            patch.object(MODULE, "latest_performance", return_value=performance()),
+            patch.object(MODULE, "latest_finish", return_value=finish()),
+            patch.object(MODULE, "control_summary", return_value=control()),
+            patch.object(MODULE, "storage_campaign_summary", return_value={"status": "NONE"}),
+            patch.object(MODULE, "recovery_campaign_summary", return_value={"status": "NONE"}),
+            patch.object(MODULE, "activity_24h", return_value={}),
+            patch.object(MODULE, "recent_source_activity", return_value=[]),
+            patch.object(MODULE, "memory_seals", return_value=[]),
+        ):
+            payload = MODULE.collect()
+        self.assertTrue(payload["source"]["exact"])
+
     def test_collect_returns_one_deterministic_operator_snapshot(self):
         now = datetime(2026, 9, 5, 21, 7, tzinfo=timezone.utc)
         with (

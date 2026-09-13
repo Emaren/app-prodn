@@ -663,6 +663,8 @@ Certification binds release SHA, implementation SHA, prior production SHA,
 previous/active build IDs, candidate build version, artifact SHA, manifest/gate
 evidence, durable/fast rollback identity, soak evidence, and WOLO continuity.
 
+Certified runtime evidence has one canonical local read authority: the configured operator repository. Feature worktrees keep their mutable build scratch, locks, and candidate state isolated, but read activation/certification receipts from that canonical operator state. This prevents two registered worktrees from disagreeing about the provenance of the same running production artifact while preserving worktree isolation for mutation. `AOE2_RELEASE_STATE_ROOT` is the explicit override; otherwise the operations contract's canonical operator repository is used when available, with the current worktree as a fail-safe fallback. Receipt paths and bound evidence hashes are resolved and validated against that authority root.
+
 ### 11. Verified fast-rollback retention
 
 Retention runs only after certification and is intentionally non-fatal.

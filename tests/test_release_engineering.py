@@ -48,6 +48,59 @@ class ReleaseEngineeringTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(out, " M file")
 
+    def test_state_authority_prefers_existing_canonical_operator_repo(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp) / "feature"
+            operator = pathlib.Path(temp) / "canonical"
+            (root / "config").mkdir(parents=True)
+            operator.mkdir()
+            (root / "config" / "aoe2war-operations.json").write_text(
+                json.dumps({"canonical": {"operator_repo": str(operator)}}),
+                encoding="utf-8",
+            )
+            with patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("AOE2_RELEASE_STATE_ROOT", None)
+                self.assertEqual(
+                    MODULE.resolve_state_authority_root(root),
+                    operator.resolve(),
+                )
+
+    def test_state_authority_falls_back_to_current_root(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            with patch.dict(os.environ, {}, clear=False):
+                os.environ.pop("AOE2_RELEASE_STATE_ROOT", None)
+                self.assertEqual(
+                    MODULE.resolve_state_authority_root(root),
+                    root.resolve(),
+                )
+
+    def test_receipt_evidence_uses_canonical_state_authority(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            evidence = root / ".aoe2war-release" / "gates" / "proof.json"
+            evidence.parent.mkdir(parents=True)
+            evidence.write_text("proof", encoding="utf-8")
+            import hashlib
+            expected = hashlib.sha256(b"proof").hexdigest()
+            with patch.object(MODULE, "STATE_AUTHORITY_ROOT", root):
+                self.assertTrue(
+                    MODULE.receipt_evidence_ok(
+                        ".aoe2war-release/gates/proof.json",
+                        expected,
+                    )
+                )
+
+    def test_authority_display_path_is_relative_to_canonical_root(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            path = root / ".aoe2war-release" / "activation-receipts" / "x.json"
+            with patch.object(MODULE, "STATE_AUTHORITY_ROOT", root):
+                self.assertEqual(
+                    MODULE.authority_display_path(path),
+                    ".aoe2war-release/activation-receipts/x.json",
+                )
+
 
     def test_docs_baseline_accepts_generated_branch_label(self):
         sha = "804cd13399c70e7f248c6e83beee425b92f242cd"

@@ -200,7 +200,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-08-21",
       "sensitivity": "internal",
-      "sha256": "af7305af46bd7a5a63dc4d55ace5113a7d899685c8c8e8f1e998fbfcd9c08bb3",
+      "sha256": "266a24ce4a7d409767809a257ac364ea234bb1cc61ad9801fe40b7d8d26b2d86",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9f2d8b22ba8f6962376885b8d3e9649bed048feab3d4c3a816eb4784e889559f",
+      "sha256": "53d433966918ac9b08e56195b83832199980e67f9c315231790cf5ed90968313",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1254,7 +1254,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-24",
       "sensitivity": "internal",
-      "sha256": "80ee6e634bc8f8fdc797e702050e4f30a503578bb5e72de1188dd46e9af2d148",
+      "sha256": "58211873da3f254a66fb8acc09557169a994ff279a0f883dbedb530e60e272c7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/storage-runtime-expiry-v1",
-    "commit": "a0a8dbcd55d2ac79613ab706c95c49ef3b921ab4"
+    "branch": "feature/kingdom-control-v2",
+    "commit": "ba71e0514e9a125aff01df98935adbf472984ff9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

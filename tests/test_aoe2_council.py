@@ -1,8 +1,38 @@
 import unittest
+from unittest.mock import patch
 import scripts.aoe2_council as council
 
 
 class CouncilTests(unittest.TestCase):
+    def test_collect_surfaces_doctor_release_snapshot(self):
+        release_snapshot = {"production": {"source_sha": "a" * 40}}
+        doctor = {
+            "score": 100,
+            "status": "HEALTHY",
+            "info": {
+                "estate": {"estate": "HEALTHY", "p0": 0, "p1": 0},
+                "release": release_snapshot,
+            },
+        }
+        responses = {
+            "doctor": doctor,
+            "storage": {"health": "HEALTHY"},
+            "host": {},
+            "recovery": {"status": "VERIFIED"},
+            "workspace": {"cleanup_candidates": [], "stale_metadata": []},
+        }
+        def fake_command(*args, **kwargs):
+            return responses[args[0]]
+        with (
+            patch.object(council, "command_json", side_effect=fake_command),
+            patch.object(council, "latest_pulse", return_value={"status": "PASS"}),
+            patch.object(council, "docs_due", return_value=0),
+            patch.object(council, "ready_coverage", return_value={"ready_routes": 0, "baseline_routes": 0}),
+            patch.object(council, "architecture_opportunities", return_value=[]),
+        ):
+            payload = council.collect()
+        self.assertEqual(payload["release_snapshot"], release_snapshot)
+
     def test_recovery_gap_ranks_ahead_of_reboot(self):
         recs = council.build_recommendations(
             audit={"p0": 0, "p1": 0},
