@@ -67,6 +67,10 @@ that sample is too small to identify a production latency bottleneck.
 
 The lobby and Council expose honest user-facing timing: a visible thinking counter while replies are pending and `Thought for Ns` after completion. Message actions are guarded while pending so Enter and button clicks cannot create duplicate sends.
 
+### Internal Kingdom proof reuse
+
+The operator-side Kingdom Intelligence path treats read-only operational evidence as reusable within one collection cycle. Doctor runs the exhaustive Estate audit in parallel with independent production, bridge, host, toolchain, and recovery probes, then preserves those observations in its payload. Council consumes Doctor's already-proven release, host, recovery, and Estate evidence instead of opening duplicate GitHub/VPS/Recovery probes; Brain in turn consumes Council's release snapshot instead of collecting release state a second time. Standalone `host`, `recovery`, `audit`, and release commands remain independent authorities and are used as fail-safe fallbacks when a supplied proof is absent or incomplete. This is proof sharing, not stale caching: mutating release commands and separate operator invocations continue to collect fresh evidence unless an explicit hash-bound reuse contract applies.
+
 ## Data model and routes
 
 - `AiAgent`: operator-owned configuration overlay; seeded with Scribe, Grimer, and Guy. `version` is the integer optimistic-lock token for admin edits. `PATCH /api/admin/ai-agents` requires the last loaded version, increments it atomically, and returns `409` on a stale save. Do not use `updated_at` as the lock token because PostgreSQL stores microseconds that JavaScript dates cannot preserve.
