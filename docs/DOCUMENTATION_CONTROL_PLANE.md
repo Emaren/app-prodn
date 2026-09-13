@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/workshop-brain-panel-v1` at `92216d24bfe42b141cfabc33ab9a19041455fac1`
+Implementation baseline: `fix/hero-studio-polish-v1` at `1a1f2a8cb6cbf1e5884b66c8ba1ec7176ff3688f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
