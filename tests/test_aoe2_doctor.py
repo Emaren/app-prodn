@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib.util
 import pathlib
 import sys
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -61,6 +62,86 @@ class DoctorTests(unittest.TestCase):
         doctor.add("BLOCKER", "Production", "down", "down", 10)
         self.assertEqual(doctor.status(), "UNSAFE")
         self.assertEqual(doctor.category_status("Production"), "FAIL")
+
+    def test_collect_doctor_overlaps_estate_audit_with_independent_checks(self):
+        audit_started = threading.Event()
+        release_seen = threading.Event()
+        allow_audit_finish = threading.Event()
+
+        class FakeAudit:
+            def payload(self):
+                return {"p0": 0, "p1": 0, "estate": "HEALTHY"}
+
+        def slow_audit():
+            audit_started.set()
+            self.assertTrue(release_seen.wait(1.0))
+            self.assertTrue(allow_audit_finish.wait(1.0))
+            return FakeAudit()
+
+        def release_collect():
+            self.assertTrue(audit_started.wait(1.0))
+            release_seen.set()
+            allow_audit_finish.set()
+            return {}
+
+        noops = [
+            "check_contract",
+            "check_production_summary",
+            "check_staking_custody",
+            "check_replay_api",
+            "check_local_bridge",
+            "check_host_and_server_bridge",
+            "check_maintenance_safety",
+            "check_toolchain",
+            "check_architecture",
+            "check_disaster_recovery",
+        ]
+        patches = [patch.object(MODULE, name) for name in noops]
+        started = [item.start() for item in patches]
+        try:
+            with (
+                patch.object(MODULE, "load_contract", return_value={}),
+                patch.object(MODULE.aoe2_audit, "collect_audit", side_effect=slow_audit),
+                patch.object(MODULE.aoe2_release, "collect", side_effect=release_collect),
+            ):
+                doctor = MODULE.collect_doctor()
+        finally:
+            for item in reversed(patches):
+                item.stop()
+
+        self.assertTrue(audit_started.is_set())
+        self.assertTrue(release_seen.is_set())
+        self.assertEqual(doctor.info["estate"]["p0"], 0)
+        self.assertEqual(doctor.info["estate"]["p1"], 0)
+
+    def test_collect_doctor_uses_supplied_estate_without_new_audit(self):
+        noops = [
+            "check_contract",
+            "check_production_summary",
+            "check_staking_custody",
+            "check_replay_api",
+            "check_local_bridge",
+            "check_host_and_server_bridge",
+            "check_maintenance_safety",
+            "check_toolchain",
+            "check_architecture",
+            "check_disaster_recovery",
+        ]
+        patches = [patch.object(MODULE, name) for name in noops]
+        [item.start() for item in patches]
+        try:
+            with (
+                patch.object(MODULE.aoe2_audit, "collect_audit", side_effect=AssertionError("unexpected audit")),
+                patch.object(MODULE.aoe2_release, "collect", return_value={}),
+            ):
+                doctor = MODULE.collect_doctor(
+                    estate_payload={"p0": 0, "p1": 0, "estate": "HEALTHY"}
+                )
+        finally:
+            for item in reversed(patches):
+                item.stop()
+
+        self.assertEqual(doctor.info["estate"]["estate"], "HEALTHY")
 
 
     def test_maintenance_safety_problems_exact(self):

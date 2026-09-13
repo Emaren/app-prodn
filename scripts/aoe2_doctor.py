@@ -10,6 +10,7 @@ import shlex
 import stat
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -474,10 +475,17 @@ def host_snapshot(contract: dict[str, Any]) -> dict[str, Any]:
 
     script = f"""
 set +e
+count_port() {{
+  ss -ltn 2>/dev/null | awk -v p=":$1" '$4 ~ p"$" {{c++}} END {{print c+0}}'
+}}
 root_line="$(df -Pk / 2>/dev/null | awk 'NR==2 {{print $2" "$3" "$4" "$5}}')"
 volume_line="$(df -Pk {shlex.quote(volume)} 2>/dev/null | awk 'NR==2 {{print $2" "$3" "$4" "$5}}')"
 updates="$(apt list --upgradable 2>/dev/null | tail -n +2 | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')"
 failed="$(systemctl --failed --no-legend --plain 2>/dev/null | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')"
+failed_transient="$(systemctl --failed --no-legend --plain 2>/dev/null | awk '/aoe2war-(build|deps)@/ {{c++}} END {{print c+0}}')"
+timer_enabled="$(systemctl is-enabled traffic-project-daily-rollups-aoe2hdbets.timer 2>/dev/null || true)"
+timer_active="$(systemctl is-active traffic-project-daily-rollups-aoe2hdbets.timer 2>/dev/null || true)"
+timer_next="$(systemctl show traffic-project-daily-rollups-aoe2hdbets.timer -p NextElapseUSecRealtime --value 2>/dev/null || true)"
 reboot=0
 test -e /var/run/reboot-required && reboot=1
 envfile_exists=0
@@ -502,6 +510,15 @@ printf 'root\\t%s\\n' "$root_line"
 printf 'volume\\t%s\\n' "$volume_line"
 printf 'updates\\t%s\\n' "$updates"
 printf 'failed_units\\t%s\\n' "$failed"
+printf 'failed_transient\\t%s\\n' "$failed_transient"
+printf 'timer_enabled\\t%s\\n' "$timer_enabled"
+printf 'timer_active\\t%s\\n' "$timer_active"
+printf 'timer_next\\t%s\\n' "$timer_next"
+printf 'api\\t%s\\n' "$(systemctl is-active aoe2hdbets-api.service 2>/dev/null || true)"
+printf 'wolo8092\\t%s\\n' "$(count_port 8092)"
+printf 'wolo8093\\t%s\\n' "$(count_port 8093)"
+printf 'node_version\\t%s\\n' "$(node --version 2>/dev/null || true)"
+printf 'kernel\\t%s\\n' "$(uname -r)"
 printf 'reboot_required\\t%s\\n' "$reboot"
 printf 'envfile_exists\\t%s\\n' "$envfile_exists"
 printf 'dropin_exists\\t%s\\n' "$dropin_exists"
@@ -1473,37 +1490,64 @@ def collect_doctor(
         return doctor
 
     check_contract(doctor, contract)
-    check_estate(
-        doctor,
-        estate_payload,
-        include_estate=include_estate,
-        progress=progress,
-    )
 
-    if progress:
-        print("→ Production: verifying certified runtime and Wolo boundary...", flush=True)
-    release_data = aoe2_release.collect()
-    check_production_summary(doctor, release_data)
-    check_staking_custody(doctor, contract)
-    check_replay_api(doctor, contract)
+    # The exhaustive estate audit is read-only and independent of the other
+    # Doctor probes. Run it concurrently, but collect the independent lane in a
+    # separate Doctor so the final finding/info order stays byte-stable with the
+    # historical serial contract: contract -> estate -> production/host/etc.
+    estate_executor: ThreadPoolExecutor | None = None
+    estate_future = None
+    if estate_payload is None and include_estate:
+        if progress:
+            print("→ Estate: running exhaustive read-only audit in parallel...", flush=True)
+        estate_executor = ThreadPoolExecutor(
+            max_workers=1,
+            thread_name_prefix="aoe2war-estate",
+        )
+        estate_future = estate_executor.submit(
+            lambda: aoe2_audit.collect_audit().payload()
+        )
 
-    if progress:
-        print("→ Bridge: verifying Mac LaunchAgent + server control plane...", flush=True)
-    check_local_bridge(doctor, contract)
-    check_host_and_server_bridge(doctor, contract)
-    check_maintenance_safety(doctor, contract)
+    independent = Doctor()
+    try:
+        if progress:
+            print("→ Production: verifying certified runtime and Wolo boundary...", flush=True)
+        release_data = aoe2_release.collect()
+        check_production_summary(independent, release_data)
+        check_staking_custody(independent, contract)
+        check_replay_api(independent, contract)
 
-    if progress:
-        print("→ Toolchain: comparing operator/VPS/package contract...", flush=True)
-    check_toolchain(doctor, contract)
+        if progress:
+            print("→ Bridge: verifying Mac LaunchAgent + server control plane...", flush=True)
+        check_local_bridge(independent, contract)
+        check_host_and_server_bridge(independent, contract)
+        check_maintenance_safety(independent, contract)
 
-    if progress:
-        print("→ Architecture: checking semantic maps and legacy deployment seams...", flush=True)
-    check_architecture(doctor, contract, release_data)
+        if progress:
+            print("→ Toolchain: comparing operator/VPS/package contract...", flush=True)
+        check_toolchain(independent, contract)
 
-    if progress:
-        print("→ Recovery: checking off-host failure-domain coverage...", flush=True)
-    check_disaster_recovery(doctor, contract)
+        if progress:
+            print("→ Architecture: checking semantic maps and legacy deployment seams...", flush=True)
+        check_architecture(independent, contract, release_data)
+
+        if progress:
+            print("→ Recovery: checking off-host failure-domain coverage...", flush=True)
+        check_disaster_recovery(independent, contract)
+
+        if estate_future is not None:
+            estate_payload = estate_future.result()
+        check_estate(
+            doctor,
+            estate_payload,
+            include_estate=include_estate,
+            progress=False,
+        )
+        doctor.findings.extend(independent.findings)
+        doctor.info.update(independent.info)
+    finally:
+        if estate_executor is not None:
+            estate_executor.shutdown(wait=True)
 
     return doctor
 
