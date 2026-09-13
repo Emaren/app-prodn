@@ -86,6 +86,18 @@ capacity, gate, deployment, or certification preflight. If FAST is clear enough
 to proceed, keep building. If it reports a blocker, address that blocker before
 trusting a release.
 
+For a lean AI resume/handoff pack, use:
+
+```bash
+aoe2war control brain-pack
+```
+
+This delegates to VPSSentry's bounded Daily Brain Pack. It captures fresh Brain
+truth, lean current source/worktree deltas, and the current control documents;
+raw replay/engine evidence and compiled/runtime bodies stay in the normal
+ops/forensic cameras. The pack is latest-only and fails closed if it exceeds its
+bounded payload budget.
+
 The canonical SEAL path remains:
 
 ```bash

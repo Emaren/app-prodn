@@ -115,6 +115,43 @@ class ControlDocsTests(unittest.TestCase):
         with mock.patch.object(MODULE.aoe2_brain, "collect", return_value=brain):
             self.assertEqual(MODULE.fast_payload()["status"], "ATTENTION")
 
+    def test_brain_pack_delegates_to_vpssentry_and_reports_bounded_latest(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            tool = root / "daily-brain-pack"
+            tool.write_text("#!/bin/sh\n", encoding="utf-8")
+            latest = root / "pack" / "latest"
+            latest.mkdir(parents=True)
+            (latest / "BRAIN.json").write_text("{}\n", encoding="utf-8")
+            (latest / "MANIFEST.tsv").write_text("file\tbytes\tsha256\n", encoding="utf-8")
+            (latest / "SUMMARY.md").write_text("# Daily Brain Pack\n", encoding="utf-8")
+            completed = mock.Mock(returncode=0, stdout="PASS\n", stderr="")
+            with mock.patch.object(MODULE, "BRAIN_PACK_TOOL", tool), \
+                 mock.patch.object(MODULE, "BRAIN_PACK_ROOT", root / "pack"), \
+                 mock.patch.object(MODULE.subprocess, "run", return_value=completed) as run:
+                payload = MODULE.brain_pack_payload()
+
+        self.assertEqual(payload["status"], "READY")
+        self.assertEqual(payload["files"], 3)
+        self.assertGreater(payload["bytes"], 0)
+        self.assertFalse(payload["production_mutated"])
+        self.assertFalse(payload["database_mutated"])
+        self.assertFalse(payload["wolo_mutated"])
+        self.assertTrue(payload["local_context_mutated"])
+        kwargs = run.call_args.kwargs
+        self.assertEqual(kwargs["env"]["AOE2WAR_APP_ROOT"], str(MODULE.ROOT))
+        self.assertEqual(kwargs["env"]["BRAIN_PACK_AOE2WAR_BIN"], str(MODULE.ROOT / "bin" / "aoe2war"))
+
+    def test_brain_pack_fails_closed_when_delegate_fails(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            tool = pathlib.Path(temporary) / "daily-brain-pack"
+            tool.write_text("#!/bin/sh\n", encoding="utf-8")
+            completed = mock.Mock(returncode=2, stdout="", stderr="budget exceeded")
+            with mock.patch.object(MODULE, "BRAIN_PACK_TOOL", tool), \
+                 mock.patch.object(MODULE.subprocess, "run", return_value=completed):
+                with self.assertRaisesRegex(MODULE.ControlError, "budget exceeded"):
+                    MODULE.brain_pack_payload()
+
     def test_refresh_is_documentation_only_and_verifies_final_audit(self):
         audit = mock.Mock()
         audit.payload.return_value = {"p0": 0, "p1": 0, "estate": "HEALTHY"}

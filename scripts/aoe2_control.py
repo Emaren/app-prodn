@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -18,6 +20,8 @@ import aoe2_update
 
 ROOT = Path(__file__).resolve().parents[1]
 RECEIPT_DIR = ROOT / ".aoe2war-release" / "control-receipts"
+BRAIN_PACK_TOOL = aoe2_update.VPSSENTRY / "bin" / "daily-brain-pack"
+BRAIN_PACK_ROOT = aoe2_update.VPSSENTRY / "context" / "daily-brain-pack"
 
 
 class ControlError(RuntimeError):
@@ -147,6 +151,50 @@ def fast_payload() -> dict[str, Any]:
     }
 
 
+def brain_pack_payload() -> dict[str, Any]:
+    """Delegate the bounded AI handoff pack to VPSSentry, its source authority."""
+    if not BRAIN_PACK_TOOL.is_file():
+        raise ControlError(f"daily brain pack tool is missing: {BRAIN_PACK_TOOL}")
+
+    env = os.environ.copy()
+    env["AOE2WAR_APP_ROOT"] = str(ROOT)
+    env["BRAIN_PACK_AOE2WAR_BIN"] = str(ROOT / "bin" / "aoe2war")
+    completed = subprocess.run(
+        [str(BRAIN_PACK_TOOL)],
+        cwd=str(aoe2_update.VPSSENTRY),
+        env=env,
+        text=True,
+        capture_output=True,
+    )
+    if completed.returncode != 0:
+        detail = (completed.stderr or completed.stdout or "unknown pack failure").strip()
+        raise ControlError(f"daily brain pack failed: {detail}")
+
+    latest = BRAIN_PACK_ROOT / "latest"
+    manifest = latest / "MANIFEST.tsv"
+    summary = latest / "SUMMARY.md"
+    if not latest.is_dir() or not manifest.is_file() or not summary.is_file():
+        raise ControlError(f"daily brain pack completed without a verified latest set: {latest}")
+
+    files = sorted(path for path in latest.iterdir() if path.is_file())
+    total_bytes = sum(path.stat().st_size for path in files)
+    return {
+        "schema": 1,
+        "kind": "aoe2war-control-brain-pack",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "status": "READY",
+        "path": str(latest),
+        "files": len(files),
+        "bytes": total_bytes,
+        "manifest": str(manifest),
+        "summary": str(summary),
+        "production_mutated": False,
+        "database_mutated": False,
+        "wolo_mutated": False,
+        "local_context_mutated": True,
+    }
+
+
 def refresh_control_state(
     *,
     progress: aoe2_update.Progress | None = None,
@@ -247,6 +295,11 @@ def main() -> int:
         help="run the read-only fast Kingdom loop; SEAL remains aoe2war finish",
     )
     fast.add_argument("--json", action="store_true")
+    brain_pack = sub.add_parser(
+        "brain-pack",
+        help="build the bounded Daily Brain Pack through canonical VPSSentry",
+    )
+    brain_pack.add_argument("--json", action="store_true")
     refresh = sub.add_parser("refresh")
     refresh.add_argument("--json", action="store_true")
     refresh.add_argument(
@@ -305,6 +358,21 @@ def main() -> int:
                 print()
                 print("SEAL:      aoe2war finish")
             return 2 if payload["status"] == "BLOCKED" else 1 if payload["status"] == "ATTENTION" else 0
+
+        if command == "brain-pack":
+            payload = brain_pack_payload()
+            if getattr(args, "json", False):
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                print("🧠 AOE2WAR DAILY BRAIN PACK")
+                print()
+                print(f"State:  {payload['status']}")
+                print(f"Path:   {payload['path']}")
+                print(f"Size:   {payload['bytes'] / (1024 * 1024):.2f} MiB")
+                print(f"Files:  {payload['files']}")
+                print("Scope:  current Brain + lean source/delta cameras + control docs")
+                print("Forensic evidence remains in the normal ops/forensic cameras.")
+            return 0
 
         if command == "refresh":
             progress = (
