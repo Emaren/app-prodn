@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/hero-studio-polish-v1` at `1a1f2a8cb6cbf1e5884b66c8ba1ec7176ff3688f`
+Implementation baseline: `fix/storage-lean-retention-v1` at `6455f000ed2e7ef23bef573590b9934aa863a032`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

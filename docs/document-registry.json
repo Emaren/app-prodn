@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e8841677178e59e269b265a50700ea52193b11407b7707421ae959cbc1dc9535",
+      "sha256": "9f933b10c8d29b596d3b9f85dcfaf02588f9dd5c458304cb16cf2cd1970fb13f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/hero-studio-polish-v1",
-    "commit": "1a1f2a8cb6cbf1e5884b66c8ba1ec7176ff3688f"
+    "branch": "fix/storage-lean-retention-v1",
+    "commit": "6455f000ed2e7ef23bef573590b9934aa863a032"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
