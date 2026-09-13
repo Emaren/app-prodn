@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/kingdom-control-fast-v1` at `ed9666a4eca87540d208b148831a716a593e3e48`
+Implementation baseline: `feature/kingdom-command-telemetry-v1` at `2f802c656c792535a7820377b1fa60af00c29e8e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

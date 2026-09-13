@@ -67,6 +67,16 @@ overrides exist for explicit operator/test isolation. They are not a mechanism f
 pointing release authority at arbitrary candidate source. Receipt references remain
 portable as `.aoe2war-release/...` regardless of which worktree invoked Speed OS.
 
+### Operator-loop timing
+
+The ordinary `aoe2war control fast` loop records one tiny Speed OS timing receipt
+after each completed fresh observation. These receipts contain command wall time,
+status and source identities only; they do not duplicate Brain/Doctor evidence.
+The shared store is bounded to the newest 64 samples, and `aoe2war speed status`
+shows the latest, p50 and p95 FAST wall time so internal control-plane regressions
+are visible without creating an unbounded telemetry archive. SEAL timing remains
+authoritative in existing Finish/release receipts.
+
 ## Edge Delivery audit rail
 
 `aoe2war speed edge audit` joins the latest full per-route cost-stack receipt to

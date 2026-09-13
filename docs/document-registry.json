@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "012e042c2e44b79152c4b935095f0705a5cb9bd2f51ebb08f37721005ff795b2",
+      "sha256": "27b86b44101d2fc1249979d54c21b77084407743906072fcdcfcc9a15501a9d2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1116,7 +1116,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "96acdab5a326eca3eeb88f780dcf24db9660ca3b85563baca34e5dae83453720",
+      "sha256": "1f7fab59c5459c4a6fd59987698f99ee5c3de0f3af769a89ff982a471ca24d22",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/kingdom-control-fast-v1",
-    "commit": "ed9666a4eca87540d208b148831a716a593e3e48"
+    "branch": "feature/kingdom-command-telemetry-v1",
+    "commit": "2f802c656c792535a7820377b1fa60af00c29e8e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

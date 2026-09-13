@@ -13,6 +13,7 @@ import aoe2_audit
 import aoe2_brain
 import aoe2_finish
 import aoe2_release
+import aoe2_speed
 import aoe2_update
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -274,6 +275,15 @@ def main() -> int:
 
         if command == "fast":
             payload = fast_payload()
+            source = (payload.get("brain") or {}).get("source") or {}
+            aoe2_speed.record_operator_timing(
+                command="control-fast",
+                elapsed_seconds=float((payload.get("timing") or {}).get("elapsed_seconds") or 0.0),
+                status=str(payload.get("status") or "UNKNOWN"),
+                generated_at=str(payload.get("generated_at") or "") or None,
+                operator_source_sha=str((source.get("local") or {}).get("head") or "") or None,
+                production_source_sha=str((source.get("production") or {}).get("source_sha") or "") or None,
+            )
             if getattr(args, "json", False):
                 print(json.dumps(payload, indent=2, sort_keys=True))
             else:

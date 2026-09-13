@@ -2,6 +2,7 @@ import importlib.util
 import json
 import pathlib
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -47,6 +48,27 @@ class PerformanceOSTests(unittest.TestCase):
             SPEED_MODULE.percentile([1.0, 2.0, 3.0], 0.5),
             2.0,
         )
+
+    def test_operator_timing_receipts_are_bounded_and_summarized(self):
+        with tempfile.TemporaryDirectory() as temporary, \
+             patch.object(SPEED_MODULE, "OPERATOR_TIMING_RECEIPTS", pathlib.Path(temporary)), \
+             patch.object(SPEED_MODULE, "OPERATOR_TIMING_KEEP", 3):
+            for value in (9.0, 10.0, 11.0, 12.0):
+                SPEED_MODULE.record_operator_timing(
+                    command="control-fast",
+                    elapsed_seconds=value,
+                    status="READY",
+                    operator_source_sha="a" * 40,
+                    production_source_sha="b" * 40,
+                )
+
+            receipts = sorted(pathlib.Path(temporary).glob("*.json"))
+            self.assertEqual(len(receipts), 3)
+            summary = SPEED_MODULE.operator_timing_summary("control-fast", limit=20)
+            self.assertEqual(summary["samples"], 3)
+            self.assertEqual(summary["latest_seconds"], 12.0)
+            self.assertEqual(summary["p50_seconds"], 11.0)
+            self.assertGreater(summary["p95_seconds"], 11.0)
 
     def test_cohort_summary_uses_route_medians(self):
         rows = [

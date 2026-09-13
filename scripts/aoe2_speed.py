@@ -75,6 +75,8 @@ STAGE_RECEIPTS = STATE / "stage-receipts"
 ACTIVATION_RECEIPTS = STATE / "activation-receipts"
 PERFORMANCE_RECEIPTS = STATE / "performance-receipts"
 PERFORMANCE_ATTEMPTS = STATE / "performance-attempts"
+OPERATOR_TIMING_RECEIPTS = STATE / "operator-timings"
+OPERATOR_TIMING_KEEP = 64
 BASELINE_DIR = STATE / "performance-baselines"
 
 
@@ -192,6 +194,69 @@ def percentile(values: list[float], pct: float) -> float:
         return ordered[low]
     weight = rank - low
     return ordered[low] * (1.0 - weight) + ordered[high] * weight
+
+
+def record_operator_timing(
+    *,
+    command: str,
+    elapsed_seconds: float,
+    status: str,
+    generated_at: str | None = None,
+    operator_source_sha: str | None = None,
+    production_source_sha: str | None = None,
+) -> dict[str, Any]:
+    """Persist one tiny bounded operator wall-time sample in shared Speed OS state."""
+    OPERATOR_TIMING_RECEIPTS.mkdir(parents=True, exist_ok=True)
+    now = datetime.now(timezone.utc)
+    payload = {
+        "schema": 1,
+        "kind": "aoe2war-operator-command-timing",
+        "generated_at": generated_at or now.isoformat(),
+        "command": command,
+        "elapsed_seconds": round(float(elapsed_seconds), 3),
+        "status": status,
+        "operator_source_sha": operator_source_sha,
+        "production_source_sha": production_source_sha,
+    }
+    safe = re.sub(r"[^a-z0-9-]+", "-", command.lower()).strip("-") or "command"
+    stamp = now.strftime("%Y%m%dT%H%M%S%fZ")
+    path = OPERATOR_TIMING_RECEIPTS / f"{stamp}-{safe}.json"
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    receipts = sorted(OPERATOR_TIMING_RECEIPTS.glob("*.json"))
+    for stale in receipts[:-OPERATOR_TIMING_KEEP]:
+        stale.unlink()
+    payload["_path"] = evidence_ref(path)
+    return payload
+
+
+def operator_timing_rows(command: str | None = None, *, limit: int = 20) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for path in sorted(OPERATOR_TIMING_RECEIPTS.glob("*.json")):
+        payload = safe_json(path)
+        if not payload or payload.get("kind") != "aoe2war-operator-command-timing":
+            continue
+        if command is not None and payload.get("command") != command:
+            continue
+        if not isinstance(payload.get("elapsed_seconds"), (int, float)):
+            continue
+        rows.append(payload)
+    return rows[-max(0, limit):] if limit else []
+
+
+def operator_timing_summary(command: str = "control-fast", *, limit: int = 20) -> dict[str, Any] | None:
+    rows = operator_timing_rows(command, limit=limit)
+    if not rows:
+        return None
+    values = [float(row["elapsed_seconds"]) for row in rows]
+    return {
+        "command": command,
+        "samples": len(values),
+        "latest_seconds": values[-1],
+        "p50_seconds": percentile(values, 0.50),
+        "p95_seconds": percentile(values, 0.95),
+        "latest_status": rows[-1].get("status"),
+    }
 
 
 def finish_history() -> list[dict[str, Any]]:
@@ -1804,6 +1869,7 @@ def print_status() -> None:
     perf = latest_performance_receipt()
     baseline = baseline_zero_summary()
     ready = ready_coverage()
+    operator_fast = operator_timing_summary("control-fast")
 
     print("⚔️  AOE2WAR PERFORMANCE OS")
     print()
@@ -1855,6 +1921,16 @@ def print_status() -> None:
         )
     else:
         print("HTTP benchmark:      none")
+
+    if operator_fast:
+        print(
+            f"FAST operator loop:   latest={operator_fast['latest_seconds']:.2f}s · "
+            f"p50={operator_fast['p50_seconds']:.2f}s · "
+            f"p95={operator_fast['p95_seconds']:.2f}s · "
+            f"n={operator_fast['samples']}"
+        )
+    else:
+        print("FAST operator loop:   no timing receipts yet")
 
     print(
         f"Ready coverage:       {ready['ready_route_count']} explicit routes · "
