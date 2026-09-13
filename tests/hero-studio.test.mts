@@ -8,6 +8,11 @@ import {
   isSafeHeroHref,
   normalizeHeroScreenConfig,
 } from "../lib/hero/types.ts";
+import {
+  heroStudioPreviewKey,
+  prependHeroItems,
+  reorderHeroItem,
+} from "../lib/hero/studioClient.ts";
 
 test("Hero Studio exposes the initial trusted screen and transition registry", () => {
   assert.deepEqual(HERO_SCREEN_TYPES, [
@@ -65,6 +70,110 @@ test("Hero config rejects unsafe media paths", () => {
         videoUrl: "javascript:alert(1)",
       }),
     /Hero media must use/
+  );
+});
+
+test("new Hero uploads prepend in file order and normalize every position", () => {
+  const current = [
+    { position: 0, screen: { id: 10 } },
+    { position: 1, screen: { id: 20 } },
+  ];
+  const incoming = [
+    { position: 99, screen: { id: 30 } },
+    { position: 99, screen: { id: 40 } },
+    { position: 99, screen: { id: 10 } },
+  ];
+
+  assert.deepEqual(
+    prependHeroItems(current, incoming).map((item) => [
+      item.screen.id,
+      item.position,
+    ]),
+    [
+      [30, 0],
+      [40, 1],
+      [10, 2],
+      [20, 3],
+    ]
+  );
+});
+
+test("drag reorder follows stable screen identity instead of a stale index", () => {
+  const items = [
+    { position: 0, screen: { id: 10 } },
+    { position: 1, screen: { id: 20 } },
+    { position: 2, screen: { id: 30 } },
+  ];
+
+  assert.deepEqual(
+    reorderHeroItem(items, 10, 2).map((item) => [
+      item.screen.id,
+      item.position,
+    ]),
+    [
+      [20, 0],
+      [30, 1],
+      [10, 2],
+    ]
+  );
+});
+
+test("preview identity changes with fit, viewport, and media treatment", () => {
+  const draft = {
+    id: 42,
+    type: "media_takeover" as const,
+    mediaAssetId: 7,
+    config: {
+      backgroundImageUrl: "/hero.png",
+      imageFit: "cover" as const,
+      overlayOpacity: 0,
+      pureImage: true,
+    },
+  };
+  const coverDesktop = heroStudioPreviewKey(draft, "desktop");
+
+  assert.notEqual(
+    coverDesktop,
+    heroStudioPreviewKey(
+      { ...draft, config: { ...draft.config, imageFit: "contain" } },
+      "desktop"
+    )
+  );
+  assert.notEqual(coverDesktop, heroStudioPreviewKey(draft, "mobile"));
+  assert.notEqual(
+    coverDesktop,
+    heroStudioPreviewKey(
+      { ...draft, config: { ...draft.config, overlayOpacity: 0.45 } },
+      "desktop"
+    )
+  );
+  assert.notEqual(
+    coverDesktop,
+    heroStudioPreviewKey(
+      {
+        ...draft,
+        config: { ...draft.config, backgroundImageUrl: "/hero-v2.png" },
+      },
+      "desktop"
+    )
+  );
+});
+
+test("Hero Studio exposes explicit reorder and reactive preview contracts", () => {
+  const studio = readFileSync(
+    new URL("../components/admin/hero/HeroStudio.tsx", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(studio, /key=\{previewKey\}/);
+  assert.match(studio, /key: target/);
+  assert.match(studio, /prependHeroItems\(current, newItems\)/);
+  assert.match(studio, /title="Drag to reorder"/);
+  assert.match(studio, /dataTransfer\.setData\([\s\S]*"text\/plain"/);
+  assert.match(studio, /New uploads land at #1/);
+  assert.match(
+    studio,
+    /if \(selectedInChain\) \{[\s\S]*await saveScreen\(\)[\s\S]*await saveChain\(\)/
   );
 });
 

@@ -36,6 +36,12 @@ import {
 
 import { HeroCarousel } from "@/components/hero/HeroCarousel";
 import {
+  heroStudioPreviewKey,
+  prependHeroItems,
+  reorderHeroItem,
+  type HeroStudioPreviewMode,
+} from "@/lib/hero/studioClient";
+import {
   HERO_SCREEN_TYPES,
   HERO_TRANSITION_STYLES,
   type HeroPlaylistItemView,
@@ -183,11 +189,17 @@ function Button({
   children,
   onClick,
   disabled,
+  ariaLabel,
+  pressed,
+  title,
   tone = "neutral",
 }: {
   children: ReactNode;
   onClick?: () => void;
   disabled?: boolean;
+  ariaLabel?: string;
+  pressed?: boolean;
+  title?: string;
   tone?: "neutral" | "gold" | "green" | "red";
 }) {
   const toneClass = {
@@ -202,6 +214,9 @@ function Button({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      aria-label={ariaLabel}
+      aria-pressed={pressed}
+      title={title}
       className={`inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-45 ${toneClass}`}
     >
       {children}
@@ -258,8 +273,10 @@ export default function HeroStudio() {
   const [draft, setDraft] = useState<HeroScreenDefinition>(() =>
     blankScreen("featured_event")
   );
-  const [previewMode, setPreviewMode] = useState<"desktop" | "mobile">("desktop");
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [previewMode, setPreviewMode] =
+    useState<HeroStudioPreviewMode>("desktop");
+  const [draggedScreenId, setDraggedScreenId] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -374,6 +391,11 @@ export default function HeroStudio() {
     };
   }, [draft, items, playlist, snapshot]);
 
+  const previewKey = useMemo(
+    () => heroStudioPreviewKey(draft, previewMode),
+    [draft, previewMode]
+  );
+
   function patchConfig(patch: Partial<HeroScreenConfig>) {
     setDraft((current) => ({
       ...current,
@@ -382,27 +404,15 @@ export default function HeroStudio() {
   }
 
   function moveItem(index: number, direction: number) {
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= items.length) return;
     setItems((current) => {
-      const next = [...current];
-      [next[index], next[nextIndex]] = [next[nextIndex], next[index]];
-      return next.map((item, position) => ({ ...item, position }));
+      const screenId = current[index]?.screen.id;
+      if (!screenId) return current;
+      return reorderHeroItem(current, screenId, index + direction);
     });
   }
 
-  function reorderItem(fromIndex: number, toIndex: number) {
-    if (fromIndex === toIndex) return;
-    if (fromIndex < 0 || toIndex < 0) return;
-    if (fromIndex >= items.length || toIndex >= items.length) return;
-
-    setItems((current) => {
-      const next = [...current];
-      const [moved] = next.splice(fromIndex, 1);
-      if (!moved) return current;
-      next.splice(toIndex, 0, moved);
-      return next.map((item, position) => ({ ...item, position }));
-    });
+  function reorderItem(screenId: number, toIndex: number) {
+    setItems((current) => reorderHeroItem(current, screenId, toIndex));
   }
 
   function updateItem(index: number, patch: Partial<HeroPlaylistItemView>) {
@@ -490,7 +500,7 @@ export default function HeroStudio() {
             action: "save_screen",
             ...base,
             name: mediaPayload.asset.label || label,
-            key: "",
+            key: target,
             status: "published",
             defaultHref: "/forum",
             ariaLabel: mediaPayload.asset.alt || mediaPayload.asset.label || label,
@@ -525,21 +535,25 @@ export default function HeroStudio() {
       }
 
       if (latestSnapshot) {
-        const createdScreens = latestSnapshot.screens.filter((screen) =>
-          createdIds.includes(screen.id)
+        const screensById = new Map(
+          latestSnapshot.screens.map((screen) => [screen.id, screen])
         );
+        const createdScreens = createdIds.flatMap((id) => {
+          const screen = screensById.get(id);
+          return screen ? [screen] : [];
+        });
 
-        applySnapshot(latestSnapshot, createdIds[createdIds.length - 1]);
+        applySnapshot(latestSnapshot, createdIds[0]);
 
         setItems((current) => {
           const existing = new Set(current.map((item) => item.screen.id));
           const newItems = createdScreens
             .filter((screen) => !existing.has(screen.id))
-            .map((screen, addIndex) => {
+            .map((screen) => {
               const resolved = clientResolvedScreen(screen, latestSnapshot as HeroStudioSnapshot);
               return {
                 id: -screen.id,
-                position: current.length + addIndex,
+                position: 0,
                 enabled: true,
                 startsAt: null,
                 endsAt: null,
@@ -550,13 +564,14 @@ export default function HeroStudio() {
               };
             });
 
-          return [...current, ...newItems].map((item, position) => ({
-            ...item,
-            position,
-          }));
+          return prependHeroItems(current, newItems);
         });
 
-        setNotice(`${files.length} image${files.length === 1 ? "" : "s"} added to the hero chain.`);
+        setNotice(
+          `${files.length} image${
+            files.length === 1 ? "" : "s"
+          } added to the top of the hero chain.`
+        );
       }
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Could not add images to the chain.");
@@ -566,7 +581,7 @@ export default function HeroStudio() {
   }
 
   async function saveScreen() {
-    await action(
+    return action(
       {
         action: "save_screen",
         ...draft,
@@ -594,6 +609,10 @@ export default function HeroStudio() {
   }
 
   async function publishChain() {
+    if (selectedInChain) {
+      const savedScreen = await saveScreen();
+      if (!savedScreen) return;
+    }
     const saved = await saveChain();
     if (!saved) return;
     await action(
@@ -629,6 +648,9 @@ export default function HeroStudio() {
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
               Build the homepage hero as one ordered chain. Hero Studio controls placement and timing; the Featured Event screen always follows the live event from Event Foundry automatically.
             </p>
+            <p className="mt-2 text-xs text-slate-500">
+              Publish live saves the selected in-chain screen and the full chain before release.
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => void load()} disabled={busy}>
@@ -662,12 +684,19 @@ export default function HeroStudio() {
       </section>
 
       {error ? (
-        <div className="rounded-2xl border border-rose-300/24 bg-rose-400/10 px-4 py-3 text-sm text-rose-100">
+        <div
+          role="alert"
+          className="rounded-2xl border border-rose-300/24 bg-rose-400/10 px-4 py-3 text-sm text-rose-100"
+        >
           {error}
         </div>
       ) : null}
       {notice ? (
-        <div className="rounded-2xl border border-emerald-300/24 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+        <div
+          role="status"
+          aria-live="polite"
+          className="rounded-2xl border border-emerald-300/24 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100"
+        >
           {notice}
         </div>
       ) : null}
@@ -743,7 +772,7 @@ export default function HeroStudio() {
                   Hero chain
                 </div>
                 <p className="mt-2 text-sm text-slate-500">
-                  Drag images in. Add saved elements. Reorder the live hero sequence.
+                  New uploads land at #1. Grab the numbered handle to reorder, or use its arrow keys.
                 </p>
               </div>
               {availableScreens.length ? (
@@ -769,14 +798,23 @@ export default function HeroStudio() {
 
             <label
               onDragOver={(event) => {
+                if (!Array.from(event.dataTransfer.types).includes("Files")) {
+                  return;
+                }
                 event.preventDefault();
                 event.dataTransfer.dropEffect = "copy";
               }}
               onDrop={(event) => {
+                if (!event.dataTransfer.files.length) return;
                 event.preventDefault();
+                if (busy) return;
                 void uploadImageFilesToChain(event.dataTransfer.files);
               }}
-              className="mt-5 flex cursor-pointer items-center justify-between gap-4 rounded-[1.6rem] border border-dashed border-amber-100/28 bg-[radial-gradient(circle_at_14%_0%,rgba(251,191,36,0.16),transparent_35%),rgba(255,255,255,0.03)] p-5 transition hover:border-amber-100/45 hover:bg-amber-300/[0.06]"
+              className={`mt-5 flex items-center justify-between gap-4 rounded-[1.6rem] border border-dashed border-amber-100/28 bg-[radial-gradient(circle_at_14%_0%,rgba(251,191,36,0.16),transparent_35%),rgba(255,255,255,0.03)] p-5 transition ${
+                busy
+                  ? "cursor-not-allowed opacity-55"
+                  : "cursor-pointer hover:border-amber-100/45 hover:bg-amber-300/[0.06]"
+              }`}
             >
               <span className="flex min-w-0 items-center gap-3">
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-amber-200/18 bg-amber-300/10 text-amber-100">
@@ -787,7 +825,7 @@ export default function HeroStudio() {
                     Drop images into the chain
                   </span>
                   <span className="mt-1 block text-xs text-slate-500">
-                    They become chain elements. Reorder, tune, publish once.
+                    PNG, JPG, WebP, or GIF · best near 16:9 · inserted at the top.
                   </span>
                 </span>
               </span>
@@ -798,6 +836,7 @@ export default function HeroStudio() {
                 type="file"
                 accept="image/png,image/jpeg,image/webp,image/gif"
                 multiple
+                disabled={busy}
                 className="hidden"
                 onChange={(event) => {
                   void uploadImageFilesToChain(event.target.files);
@@ -810,28 +849,75 @@ export default function HeroStudio() {
               {items.map((item, index) => (
                 <div
                   key={item.screen.id}
-                  draggable
-                  onDragStart={() => setDragIndex(index)}
                   onDragOver={(event) => {
+                    if (draggedScreenId === null) return;
                     event.preventDefault();
                     event.dataTransfer.dropEffect = "move";
+                    setDragOverIndex(index);
                   }}
                   onDrop={(event) => {
                     event.preventDefault();
-                    if (dragIndex !== null) reorderItem(dragIndex, index);
-                    setDragIndex(null);
+                    const transferredId = Number(
+                      event.dataTransfer.getData("text/plain")
+                    );
+                    const screenId =
+                      Number.isInteger(transferredId) && transferredId > 0
+                        ? transferredId
+                        : draggedScreenId;
+                    if (screenId !== null) reorderItem(screenId, index);
+                    setDraggedScreenId(null);
+                    setDragOverIndex(null);
                   }}
-                  onDragEnd={() => setDragIndex(null)}
                   className={`group rounded-[1.35rem] border p-3 transition ${
-                    dragIndex === index
+                    draggedScreenId === item.screen.id
                       ? "border-amber-200/45 bg-amber-300/10 opacity-75"
+                      : dragOverIndex === index
+                        ? "border-sky-200/55 bg-sky-300/[0.08] ring-2 ring-sky-300/20"
                       : "border-white/10 bg-white/[0.025] hover:border-amber-100/22 hover:bg-white/[0.04]"
                   }`}
                 >
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="grid h-10 w-10 shrink-0 cursor-grab place-items-center rounded-xl border border-amber-200/18 bg-amber-300/9 font-serif text-lg text-amber-100 active:cursor-grabbing">
-                      {index + 1}
-                    </span>
+                    <button
+                      type="button"
+                      draggable={!busy}
+                      disabled={busy}
+                      aria-label={`Drag ${item.screen.name} to reorder. Use the up and down arrow keys for keyboard reordering.`}
+                      title="Drag to reorder"
+                      onClick={() =>
+                        setDraft(
+                          snapshot.screens.find(
+                            (screen) => screen.id === item.screen.id
+                          ) || item.screen
+                        )
+                      }
+                      onKeyDown={(event) => {
+                        if (event.key === "ArrowUp") {
+                          event.preventDefault();
+                          moveItem(index, -1);
+                        }
+                        if (event.key === "ArrowDown") {
+                          event.preventDefault();
+                          moveItem(index, 1);
+                        }
+                      }}
+                      onDragStart={(event) => {
+                        event.dataTransfer.effectAllowed = "move";
+                        event.dataTransfer.setData(
+                          "text/plain",
+                          String(item.screen.id)
+                        );
+                        setDraggedScreenId(item.screen.id);
+                        setDragOverIndex(index);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedScreenId(null);
+                        setDragOverIndex(null);
+                      }}
+                      className="flex h-11 min-w-14 shrink-0 cursor-grab items-center justify-center gap-1 rounded-xl border border-amber-200/18 bg-amber-300/9 px-2 font-serif text-lg text-amber-100 outline-none transition hover:border-amber-100/40 hover:bg-amber-300/14 focus-visible:ring-2 focus-visible:ring-amber-200/50 active:cursor-grabbing"
+                    >
+                      <GripVertical className="h-4 w-4 text-amber-100/55" />
+                      <span>{index + 1}</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() =>
@@ -861,17 +947,27 @@ export default function HeroStudio() {
                       />
                       Enabled
                     </label>
-                    <Button onClick={() => moveItem(index, -1)} disabled={index === 0}>
+                    <Button
+                      onClick={() => moveItem(index, -1)}
+                      disabled={busy || index === 0}
+                      ariaLabel={`Move ${item.screen.name} up`}
+                      title="Move up"
+                    >
                       <ArrowUp className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       onClick={() => moveItem(index, 1)}
-                      disabled={index === items.length - 1}
+                      disabled={busy || index === items.length - 1}
+                      ariaLabel={`Move ${item.screen.name} down`}
+                      title="Move down"
                     >
                       <ArrowDown className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       tone="red"
+                      disabled={busy}
+                      ariaLabel={`Remove ${item.screen.name} from the chain`}
+                      title="Remove from chain"
                       onClick={() =>
                         setItems((current) =>
                           current
@@ -1074,6 +1170,7 @@ export default function HeroStudio() {
                 {draft.id ? (
                   <>
                     <Button
+                      disabled={busy}
                       onClick={() =>
                         void action(
                           { action: "duplicate_screen", id: draft.id },
@@ -1086,6 +1183,7 @@ export default function HeroStudio() {
                     </Button>
                     <Button
                       tone="red"
+                      disabled={busy}
                       onClick={() =>
                         void action(
                           { action: "archive_screen", id: draft.id },
@@ -1331,17 +1429,20 @@ export default function HeroStudio() {
                     <Button
                       tone={(draft.config.imageFit ?? "cover") === "cover" ? "gold" : "neutral"}
                       onClick={() => patchConfig({ imageFit: "cover" })}
+                      pressed={(draft.config.imageFit ?? "cover") === "cover"}
                     >
                       Fill tile
                     </Button>
                     <Button
                       tone={draft.config.imageFit === "contain" ? "gold" : "neutral"}
                       onClick={() => patchConfig({ imageFit: "contain" })}
+                      pressed={draft.config.imageFit === "contain"}
                     >
                       Full image + bars
                     </Button>
                     <Button
                       tone={(draft.config.overlayOpacity ?? 0) <= 0.01 ? "gold" : "neutral"}
+                      pressed={(draft.config.overlayOpacity ?? 0) <= 0.01}
                       onClick={() =>
                         patchConfig({
                           overlayOpacity: 0,
@@ -1358,12 +1459,14 @@ export default function HeroStudio() {
                     <Button
                       tone={(draft.config.overlayOpacity ?? 0) > 0.01 && (draft.config.overlayOpacity ?? 0) <= 0.28 ? "gold" : "neutral"}
                       onClick={() => patchConfig({ overlayOpacity: 0.24, pureImage: false })}
+                      pressed={(draft.config.overlayOpacity ?? 0) > 0.01 && (draft.config.overlayOpacity ?? 0) <= 0.28}
                     >
                       Soft veil
                     </Button>
                     <Button
                       tone={(draft.config.overlayOpacity ?? 0) > 0.28 ? "gold" : "neutral"}
                       onClick={() => patchConfig({ overlayOpacity: 0.45, pureImage: false })}
+                      pressed={(draft.config.overlayOpacity ?? 0) > 0.28}
                     >
                       Readable
                     </Button>
@@ -1395,15 +1498,15 @@ export default function HeroStudio() {
                   Exact public preview
                 </div>
                 <p className="mt-2 text-sm text-slate-500">
-                  Save a new screen and add it to the chain before previewing it here.
+                  Unsaved image treatment changes render here immediately. Save a new screen and add it to the chain first.
                 </p>
               </div>
               <div className="flex rounded-xl border border-white/10 bg-black/25 p-1">
-                <button type="button" onClick={() => setPreviewMode("desktop")} className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${previewMode === "desktop" ? "bg-amber-300 text-slate-950" : "text-slate-400"}`}>
+                <button type="button" aria-pressed={previewMode === "desktop"} onClick={() => setPreviewMode("desktop")} className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${previewMode === "desktop" ? "bg-amber-300 text-slate-950" : "text-slate-400"}`}>
                   <Monitor className="h-3.5 w-3.5" />
                   Desktop
                 </button>
-                <button type="button" onClick={() => setPreviewMode("mobile")} className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${previewMode === "mobile" ? "bg-amber-300 text-slate-950" : "text-slate-400"}`}>
+                <button type="button" aria-pressed={previewMode === "mobile"} onClick={() => setPreviewMode("mobile")} className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold ${previewMode === "mobile" ? "bg-amber-300 text-slate-950" : "text-slate-400"}`}>
                   <Smartphone className="h-3.5 w-3.5" />
                   Mobile
                 </button>
@@ -1411,7 +1514,18 @@ export default function HeroStudio() {
             </div>
             {previewPlaylist?.items.length ? (
               <div className={`mt-5 overflow-hidden rounded-[1.4rem] ${previewMode === "mobile" ? "mx-auto max-w-[24rem]" : "w-full max-w-[72rem]"}`}>
-                <HeroCarousel playlist={previewPlaylist} preview />
+                <div className="mb-2 flex justify-end">
+                  <span className="rounded-full border border-white/10 bg-black/30 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                    {draft.config.imageFit === "contain"
+                      ? "Full image + bars"
+                      : "Fill tile"}
+                  </span>
+                </div>
+                <HeroCarousel
+                  key={previewKey}
+                  playlist={previewPlaylist}
+                  preview
+                />
               </div>
             ) : (
               <div className="mt-5 rounded-2xl border border-dashed border-white/12 p-10 text-center text-sm text-slate-500">
