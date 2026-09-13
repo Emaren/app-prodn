@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9f933b10c8d29b596d3b9f85dcfaf02588f9dd5c458304cb16cf2cd1970fb13f",
+      "sha256": "eae31735cee8a9ae69bd7277d9052b9104c47c99ff61a932c810323e77a2e665",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1482,9 +1482,9 @@
       "owner": "aoe2war-web",
       "path": "docs/STORAGE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-19",
+      "reviewed_at": "2026-09-13",
       "sensitivity": "internal",
-      "sha256": "b287776db4b8ac454c7f608e1003b3e33fa8edb60e4c424f62c2ecdd857ed04f",
+      "sha256": "588accbe23db03ed908f496c8e70ef259bd983371a06972336b497e747471dc0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/storage-lean-retention-v1",
-    "commit": "6455f000ed2e7ef23bef573590b9934aa863a032"
+    "branch": "fix/storage-runtime-expiry-v1",
+    "commit": "72554362bb0afb40dcf8a4c5cebfa4ab1e198149"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
