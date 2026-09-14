@@ -198,9 +198,9 @@
       "owner": "aoe2war-web",
       "path": "docs/AI_COUNCIL_AND_COMMAND_CENTER.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-21",
+      "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "81e98a733da2a5e1a1d24272aed95c27aed77ffb6c07f92692ca5d9ab53a13d3",
+      "sha256": "ad02e0aedeb6f1aef800da96045a29338db415f78f05cea887d2305c526c639a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "009cee6e6dfc49f9b8dada36df0c29493c8cb14f98d4c8d11666acda892df65b",
+      "sha256": "2e91adf0931ba9cb464cf19483e38170bd93bff189ff915475c7c9cc1080188c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -563,9 +563,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-09-10",
+      "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "3ea5653f2e955b42ce12135d8e198e5d800f8c7a4bc9ab200cdb09a6f336d8e8",
+      "sha256": "0b8c36f7ad38ffd6cb74176f69143211bf0dde18703bf1b8d13937c4e04defb1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -701,9 +701,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HOST_MAINTENANCE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-18",
+      "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "eda7bf63d68ba9ffc0d8ac5585ffb9a7b4697f1861b13fbea451a1010eabfcbe",
+      "sha256": "bce1674f62cb0a26634125fd00e9f9c715b2ae76765a428fe8195c5cdaa4768e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -908,9 +908,9 @@
       "owner": "aoe2war-web",
       "path": "docs/MARKETPLACE_BUSINESS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-18",
+      "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "1628552d8406e71e89f5fe9d17be1616774e998e8d865fe4eecb1dd2f0c384d7",
+      "sha256": "15bd47868cc3566234a5ab79679a84ffb397d5d2f87eb7d12a56420d9fb6491d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1159,9 +1159,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PLAYER_WAR_ARCHIVE_OPERATIONS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-20",
+      "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "6d6b3ee30ddbc2bd0c6bd7128b5d2abd8d87929f2bb35f126474c125a34f53c4",
+      "sha256": "6ce59e175583b3c748883befb924609cdd50a45d76f239f227887608625d15cb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/wolo-snapshot-receipt-v1",
-    "commit": "bd1875028d4e8b06a745a12f0256db19b9bb76c8"
+    "branch": "feature/os-final-harmonization",
+    "commit": "0fd3e74a5dba9527d59a0de40e2cc1b402db5c51"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

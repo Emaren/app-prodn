@@ -111,17 +111,27 @@ export default function AgentConstellationPanel({
             typeof liveRecovery?.overallPercent === "number"
               ? liveRecovery.overallPercent
               : null;
+          const trustworthySnapshotProgress =
+            recoveryItem &&
+            typeof agent.progress === "number" &&
+            typeof agent.expectedBytes === "number" &&
+            agent.expectedBytes > 0 &&
+            agent.progressBasis === "sealed + active encrypted chunk bytes"
+              ? agent.progress
+              : null;
           const effectiveProgress = recoveryItem
-            ? trustworthyLiveProgress
+            ? trustworthyLiveProgress ?? trustworthySnapshotProgress
             : agent.progress;
-          const effectiveProgressLabel = recoveryLive
-            ? formatLiveRecoveryProgressLabel(
-                liveRecovery,
-                agent.progressLabel,
-              )
-            : recoveryItem
-              ? "live signal syncing"
-              : agent.progressLabel;
+          const effectiveProgressLabel = recoveryItem
+            ? trustworthyLiveProgress !== null
+              ? formatLiveRecoveryProgressLabel(
+                  liveRecovery,
+                  agent.progressLabel,
+                )
+              : trustworthySnapshotProgress !== null
+                ? agent.progressLabel
+                : "live signal syncing"
+            : agent.progressLabel;
 
           return (
           <div

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/wolo-snapshot-receipt-v1` at `bd1875028d4e8b06a745a12f0256db19b9bb76c8`
+Implementation baseline: `feature/os-final-harmonization` at `0fd3e74a5dba9527d59a0de40e2cc1b402db5c51`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

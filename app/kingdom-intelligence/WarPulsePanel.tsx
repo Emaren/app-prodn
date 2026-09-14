@@ -137,17 +137,27 @@ export default function WarPulsePanel({
               typeof liveRecovery?.overallPercent === "number"
                 ? liveRecovery.overallPercent
                 : null;
+            const trustworthySnapshotProgress =
+              recoveryItem &&
+              typeof item.progress === "number" &&
+              typeof item.expectedBytes === "number" &&
+              item.expectedBytes > 0 &&
+              item.progressBasis === "sealed + active encrypted chunk bytes"
+                ? item.progress
+                : null;
             const effectiveProgress = recoveryItem
-              ? trustworthyLiveProgress
+              ? trustworthyLiveProgress ?? trustworthySnapshotProgress
               : item.progress;
-            const effectiveProgressLabel = recoveryLive
-              ? formatLiveRecoveryProgressLabel(
-                  liveRecovery,
-                  item.progressLabel,
-                )
-              : recoveryItem
-                ? "live signal syncing"
-                : item.progressLabel;
+            const effectiveProgressLabel = recoveryItem
+              ? trustworthyLiveProgress !== null
+                ? formatLiveRecoveryProgressLabel(
+                    liveRecovery,
+                    item.progressLabel,
+                  )
+                : trustworthySnapshotProgress !== null
+                  ? item.progressLabel
+                  : "live signal syncing"
+              : item.progressLabel;
 
             return (
             <div

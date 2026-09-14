@@ -317,7 +317,27 @@ class KingdomIntelligenceTests(unittest.TestCase):
         recovery_agent = next(item for item in agents if item["key"] == "recovery")
         self.assertEqual(recovery_agent["state"], "ACTIVE")
         self.assertEqual(recovery_agent["progress_percent"], 20.0)
+        replay_agent = next(item for item in agents if item["key"] == "replay_truth")
+        self.assertEqual(replay_agent["state"], "HEALTHY")
+        self.assertLess(replay_agent["progress_percent"], 100)
+        self.assertIn("evidence-bounded unresolved", replay_agent["summary"])
         self.assertEqual(agents[-1]["label"], "System Doctor")
+
+        incomplete_truth = dict(current_truth)
+        incomplete_truth["complete"] = False
+        incomplete_agents = MODULE.system_agent_rows(
+            source=source,
+            council=current_council,
+            truth=incomplete_truth,
+            performance=perf,
+            control=control(),
+            storage_campaign={"status": "NONE"},
+            recovery_campaign={"status": "NONE"},
+        )
+        incomplete_replay = next(
+            item for item in incomplete_agents if item["key"] == "replay_truth"
+        )
+        self.assertEqual(incomplete_replay["state"], "ATTENTION")
 
         live_agents = MODULE.system_agent_rows(
             source=source,
@@ -351,9 +371,75 @@ class KingdomIntelligenceTests(unittest.TestCase):
         self.assertEqual(live_recovery["eta_seconds"], 1234)
         self.assertIn("7 chunks", live_recovery["progress_label"])
 
+        wolo_agents = MODULE.system_agent_rows(
+            source=source,
+            council=current_council,
+            truth=current_truth,
+            performance=perf,
+            control=control(),
+            storage_campaign={"status": "NONE"},
+            recovery_campaign={
+                "status": "WOLO_OFFHOST_CAPTURE_RUNNING",
+                "phase": "wolo_offhost",
+                "completed_classes": ["wolo_settlement_state"],
+                "classes": [
+                    "wolo_settlement_state",
+                    "wolo_consensus_recovery",
+                ],
+                "current_class": "wolo_consensus_recovery",
+                "live_capture": {
+                    "overall_percent": 78.4,
+                    "sealed_chunks": 17,
+                    "eta_seconds": 900,
+                    "elapsed_seconds": 3600,
+                    "observed_bytes": 4_000,
+                    "expected_bytes": 5_000,
+                    "throughput_bytes_per_second": 1.1,
+                    "progress_basis": "sealed + active encrypted chunk bytes",
+                },
+            },
+        )
+        wolo_recovery = next(
+            item for item in wolo_agents if item["key"] == "recovery"
+        )
+        self.assertEqual(wolo_recovery["state"], "ACTIVE")
+        self.assertEqual(wolo_recovery["progress_percent"], 78.4)
+        self.assertIn("Wolo encrypted capture 1/2", wolo_recovery["summary"])
+        self.assertIn("1/2 Wolo classes", wolo_recovery["progress_label"])
+
         external = MODULE.external_agent_rows(current_council)
         self.assertEqual(external[0]["name"], "Codex")
         self.assertEqual(external[0]["state"], "ACTIVE")
+
+    def test_recovery_campaign_summary_prefers_current_wolo_offhost_phase(self):
+        ordinary = {
+            "campaign_id": "campaign-1",
+            "status": "COMPLETE",
+            "completed_classes": ["ordinary"],
+            "ordinary_classes": ["ordinary"],
+        }
+        offhost = {
+            "campaign_id": "campaign-1",
+            "status": "WOLO_OFFHOST_CAPTURE_RUNNING",
+            "completed_classes": ["wolo_settlement_state"],
+            "classes": ["wolo_settlement_state", "wolo_consensus_recovery"],
+        }
+        with (
+            patch.object(
+                MODULE.aoe2_recovery_campaign,
+                "status_payload",
+                return_value=ordinary,
+            ),
+            patch.object(
+                MODULE.aoe2_recovery_campaign,
+                "wolo_offhost_status",
+                return_value=offhost,
+            ),
+        ):
+            payload = MODULE.recovery_campaign_summary()
+
+        self.assertEqual(payload["phase"], "wolo_offhost")
+        self.assertEqual(payload["status"], "WOLO_OFFHOST_CAPTURE_RUNNING")
 
     def test_source_system_classification_is_deterministic(self):
         self.assertEqual(

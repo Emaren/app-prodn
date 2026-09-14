@@ -692,7 +692,21 @@ def recovery_campaign_summary() -> dict[str, Any]:
             "status": "UNAVAILABLE",
             "error": str(exc),
         }
-    return payload if isinstance(payload, dict) else {"status": "UNAVAILABLE"}
+    if not isinstance(payload, dict):
+        return {"status": "UNAVAILABLE"}
+
+    campaign_id = str(payload.get("campaign_id") or "").strip()
+    if not campaign_id:
+        return payload
+
+    try:
+        offhost = aoe2_recovery_campaign.wolo_offhost_status(campaign_id)
+    except Exception:
+        return payload
+    if not isinstance(offhost, dict):
+        return payload
+
+    return {**offhost, "phase": "wolo_offhost"}
 
 
 def classify_source_system(paths: list[str], subject: str) -> str:
@@ -837,6 +851,8 @@ def system_agent_rows(
         "RUNNING_CAPTURE",
         "RESUME_REQUESTED",
         "CREATED",
+        "SPAWN_REQUESTED",
+        "WOLO_OFFHOST_CAPTURE_RUNNING",
     }
 
     source_state = (
@@ -901,6 +917,9 @@ def system_agent_rows(
 
     resolved = int(truth.get("resolved") or 0)
     final_games = int(truth.get("final_games") or 0)
+    unresolved = int(truth.get("unresolved") or max(final_games - resolved, 0))
+    accounted_percent = float(truth.get("accounted_percent") or 0)
+    unclassified = int(truth.get("unclassified") or 0)
     replay_percent = (
         round((resolved / final_games) * 100, 2)
         if final_games > 0
@@ -910,7 +929,8 @@ def system_agent_rows(
         "HEALTHY"
         if truth.get("complete") is True
         and truth.get("matches_current_release") is True
-        and replay_percent == 100
+        and accounted_percent == 100.0
+        and unclassified == 0
         else "ATTENTION"
     )
 
@@ -923,7 +943,13 @@ def system_agent_rows(
     )
 
     recovery_completed = len(recovery_campaign.get("completed_classes") or [])
-    recovery_total = len(recovery_campaign.get("ordinary_classes") or [])
+    recovery_classes = (
+        recovery_campaign.get("ordinary_classes")
+        or recovery_campaign.get("classes")
+        or []
+    )
+    recovery_total = len(recovery_classes)
+    recovery_phase = str(recovery_campaign.get("phase") or "ordinary")
     recovery_live = recovery_campaign.get("live_capture") or {}
     recovery_current_class = str(
         recovery_campaign.get("current_class") or ""
@@ -1015,12 +1041,28 @@ def system_agent_rows(
             "state": recovery_state,
             "summary": (
                 (
-                    f"Ordinary encrypted capture {recovery_completed}/{recovery_total}"
+                    (
+                        "Wolo encrypted capture"
+                        if recovery_phase == "wolo_offhost"
+                        else "Ordinary encrypted capture"
+                    )
+                    + f" {recovery_completed}/{recovery_total}"
                     + (
                         f" · {recovery_current_class}."
                         if recovery_current_class
                         else "."
                     )
+                )
+                if recovery_total and recovery_active
+                else f"Recovery proof: {recovery_status}."
+                if recovery_status == "VERIFIED"
+                else (
+                    (
+                        "Wolo encrypted capture"
+                        if recovery_phase == "wolo_offhost"
+                        else "Ordinary encrypted capture"
+                    )
+                    + f" {recovery_completed}/{recovery_total}."
                 )
                 if recovery_total
                 else f"Recovery proof: {recovery_status}."
@@ -1028,7 +1070,12 @@ def system_agent_rows(
             "progress_percent": recovery_progress_percent,
             "progress_label": (
                 (
-                    f"{recovery_completed}/{recovery_total} ordinary classes"
+                    f"{recovery_completed}/{recovery_total} "
+                    + (
+                        "Wolo classes"
+                        if recovery_phase == "wolo_offhost"
+                        else "ordinary classes"
+                    )
                     + (
                         f" · {int(recovery_live.get('sealed_chunks') or 0)} chunks"
                         if recovery_live.get("sealed_chunks") is not None
@@ -1086,7 +1133,8 @@ def system_agent_rows(
             "label": "Replay Truth OS",
             "state": replay_state,
             "summary": (
-                f"{resolved}/{final_games} final battles have resolved winner authority."
+                f"{resolved}/{final_games} final battles have resolved winner authority; "
+                f"{unresolved} are explicitly evidence-bounded unresolved."
                 if final_games
                 else "Replay certainty evidence is unavailable."
             ),
