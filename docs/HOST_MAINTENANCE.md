@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","wolochain","vps"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "host-maintenance-procedure"
-reviewed_at: "2026-08-18"
+reviewed_at: "2026-09-14"
 review_interval_days: 30
 sensitivity: "internal"
 ---

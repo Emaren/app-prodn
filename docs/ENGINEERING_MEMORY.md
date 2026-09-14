@@ -202,6 +202,8 @@ red for failed/blocked/unsafe, and slate for idle. External workers such as
 ChatGPT and Codex are separate from OS agents and appear only when Workspace OS
 or an authenticated heartbeat proves their activity.
 
+Replay Truth OS health is a certainty-accounting invariant, not a demand that every historical winner become knowable. When the current closure is complete, 100% of final battles are disposition-accounted, and zero remain unclassified, the OS is healthy even if the winner-authority progress bar remains below 100%. Explicitly evidence-bounded unresolved results are successful truth preservation. Never weaken ambiguity gates, synthesize a winner, or reopen a completed certainty closure merely to turn that progress gauge green.
+
 Chronology and memory are different layers. The War Pulse shows recent active
 or completed operating/source events. The Victory Ledger points to sealed Git
 changes. The Memory Vault points to Engineering Memory commits. A failed attempt

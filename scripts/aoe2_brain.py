@@ -901,6 +901,9 @@ def system_agent_rows(
 
     resolved = int(truth.get("resolved") or 0)
     final_games = int(truth.get("final_games") or 0)
+    unresolved = int(truth.get("unresolved") or max(final_games - resolved, 0))
+    accounted_percent = float(truth.get("accounted_percent") or 0)
+    unclassified = int(truth.get("unclassified") or 0)
     replay_percent = (
         round((resolved / final_games) * 100, 2)
         if final_games > 0
@@ -910,7 +913,8 @@ def system_agent_rows(
         "HEALTHY"
         if truth.get("complete") is True
         and truth.get("matches_current_release") is True
-        and replay_percent == 100
+        and accounted_percent == 100.0
+        and unclassified == 0
         else "ATTENTION"
     )
 
@@ -1086,7 +1090,8 @@ def system_agent_rows(
             "label": "Replay Truth OS",
             "state": replay_state,
             "summary": (
-                f"{resolved}/{final_games} final battles have resolved winner authority."
+                f"{resolved}/{final_games} final battles have resolved winner authority; "
+                f"{unresolved} are explicitly evidence-bounded unresolved."
                 if final_games
                 else "Replay certainty evidence is unavailable."
             ),

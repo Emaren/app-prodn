@@ -317,7 +317,27 @@ class KingdomIntelligenceTests(unittest.TestCase):
         recovery_agent = next(item for item in agents if item["key"] == "recovery")
         self.assertEqual(recovery_agent["state"], "ACTIVE")
         self.assertEqual(recovery_agent["progress_percent"], 20.0)
+        replay_agent = next(item for item in agents if item["key"] == "replay_truth")
+        self.assertEqual(replay_agent["state"], "HEALTHY")
+        self.assertLess(replay_agent["progress_percent"], 100)
+        self.assertIn("evidence-bounded unresolved", replay_agent["summary"])
         self.assertEqual(agents[-1]["label"], "System Doctor")
+
+        incomplete_truth = dict(current_truth)
+        incomplete_truth["complete"] = False
+        incomplete_agents = MODULE.system_agent_rows(
+            source=source,
+            council=current_council,
+            truth=incomplete_truth,
+            performance=perf,
+            control=control(),
+            storage_campaign={"status": "NONE"},
+            recovery_campaign={"status": "NONE"},
+        )
+        incomplete_replay = next(
+            item for item in incomplete_agents if item["key"] == "replay_truth"
+        )
+        self.assertEqual(incomplete_replay["state"], "ATTENTION")
 
         live_agents = MODULE.system_agent_rows(
             source=source,
