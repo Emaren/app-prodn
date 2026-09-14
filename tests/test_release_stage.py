@@ -152,6 +152,10 @@ class StageTests(unittest.TestCase):
             MODULE.BUILD_SANDBOX_UNIT_SOURCE.read_text(),
         )
         self.assertIn('git worktree add --detach "$build_worktree" "$RELEASE"', script)
+        self.assertIn('gate_proof="$build_worktree/.aoe2war-release-gate-receipt.json"', script)
+        self.assertIn("printf '%s' \"$GATE_CONTENT\" > \"$gate_proof\"", script)
+        self.assertIn('sha256sum "$gate_proof"', script)
+        self.assertLess(script.index('gate_proof="$build_worktree/'), script.index('systemctl start --wait "$build_unit"'))
         self.assertIn("/tmp/aoe2war-stage-XXXXXXXXXX", script)
         self.assertIn('${#build_worktree}', script)
         self.assertIn('${#LIVE_REPO}', script)
@@ -193,37 +197,36 @@ class StageTests(unittest.TestCase):
         self.assertIn("test ! -e .next-release", script)
         self.assertNotIn('git reset --hard "$RELEASE"', script)
 
-    def test_release_prebuild_skips_only_gate_owned_duplicate_validation(self):
+    def test_release_prebuild_skips_only_bound_gate_owned_duplicate_validation(self):
         import json
         import os
         import subprocess
+        import tempfile
 
         helper = MODULE.ROOT / "scripts" / "aoe2_release_prebuild_validation.mjs"
         package = json.loads((MODULE.ROOT / "package.json").read_text())
         self.assertIn("node scripts/aoe2_release_prebuild_validation.mjs", package["scripts"]["prebuild"])
         self.assertIn("prisma generate", package["scripts"]["prebuild"])
 
-        ordinary = subprocess.run(
-            ["node", str(helper), "--print-plan"],
-            cwd=MODULE.ROOT,
-            text=True,
-            stdout=subprocess.PIPE,
-            check=True,
-            env={k: v for k, v in os.environ.items() if k != "NEXT_DIST_DIR"},
-        )
-        self.assertEqual(json.loads(ordinary.stdout), [["next", ["lint"]], ["tsc", ["--noEmit"]]])
+        base_env = {k: v for k, v in os.environ.items() if k not in {"NEXT_DIST_DIR", "AOE2WAR_RELEASE_GATE_RECEIPT"}}
+        ordinary = subprocess.run(["node", str(helper), "--print-plan"], cwd=MODULE.ROOT, text=True, stdout=subprocess.PIPE, check=True, env=base_env)
+        expected = [["next", ["lint"]], ["tsc", ["--noEmit"]]]
+        self.assertEqual(json.loads(ordinary.stdout), expected)
 
-        release_env = os.environ.copy()
-        release_env["NEXT_DIST_DIR"] = ".next-release"
-        release = subprocess.run(
-            ["node", str(helper), "--print-plan"],
-            cwd=MODULE.ROOT,
-            text=True,
-            stdout=subprocess.PIPE,
-            check=True,
-            env=release_env,
-        )
-        self.assertEqual(json.loads(release.stdout), [])
+        release_env = {**base_env, "NEXT_DIST_DIR": ".next-release"}
+        unbound = subprocess.run(["node", str(helper), "--print-plan"], cwd=MODULE.ROOT, text=True, stdout=subprocess.PIPE, check=True, env=release_env)
+        self.assertEqual(json.loads(unbound.stdout), expected)
+
+        head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=MODULE.ROOT, text=True).strip()
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
+            json.dump({"status": "PASS", "target_sha": head, "scope_sha256": "a" * 64}, handle)
+            proof = handle.name
+        try:
+            bound_env = {**release_env, "AOE2WAR_RELEASE_GATE_RECEIPT": proof}
+            bound = subprocess.run(["node", str(helper), "--print-plan"], cwd=MODULE.ROOT, text=True, stdout=subprocess.PIPE, check=True, env=bound_env)
+            self.assertEqual(json.loads(bound.stdout), [])
+        finally:
+            os.unlink(proof)
 
     def test_build_sandbox_has_memory_headroom_for_next_workers(self):
         build_unit = MODULE.BUILD_SANDBOX_UNIT_SOURCE.read_text()

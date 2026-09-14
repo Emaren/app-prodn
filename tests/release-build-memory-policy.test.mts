@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { createRequire } from "node:module";
@@ -43,13 +44,30 @@ test("release build bounds aggregate Next memory without dropping validation", (
   );
 
   const prebuild = String(pkg.scripts?.prebuild || "");
-  assert.match(prebuild, /\bnext lint\b/);
-  assert.match(prebuild, /\btsc --noEmit\b/);
+  assert.match(prebuild, /aoe2_release_prebuild_validation\.mjs/);
 
-  assert.ok(
-    prebuild.indexOf("next lint") < prebuild.indexOf("tsc --noEmit"),
-    "lint and typecheck should run sequentially before next build"
+  const helper = path.join(root, "scripts", "aoe2_release_prebuild_validation.mjs");
+  const releaseEnv = { ...process.env, NEXT_DIST_DIR: ".next-release" };
+  delete releaseEnv.AOE2WAR_RELEASE_GATE_RECEIPT;
+  const releasePlan = JSON.parse(
+    execFileSync(process.execPath, [helper, "--print-plan"], {
+      cwd: root,
+      encoding: "utf8",
+      env: releaseEnv,
+    })
   );
+  assert.deepEqual(releasePlan, [["next", ["lint"]], ["tsc", ["--noEmit"]]]);
+
+  const ordinaryEnv = { ...process.env };
+  delete ordinaryEnv.NEXT_DIST_DIR;
+  const ordinaryPlan = JSON.parse(
+    execFileSync(process.execPath, [helper, "--print-plan"], {
+      cwd: root,
+      encoding: "utf8",
+      env: ordinaryEnv,
+    })
+  );
+  assert.deepEqual(ordinaryPlan, [["next", ["lint"]], ["tsc", ["--noEmit"]]]);
 });
 
 test("ordinary builds keep Next built-in validation enabled", () => {
