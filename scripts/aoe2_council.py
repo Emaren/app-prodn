@@ -42,6 +42,35 @@ def _int_value(value: object) -> int:
         return 0
 
 
+def host_update_counts(host: dict[str, Any]) -> dict[str, Any]:
+    total = _int_value(
+        host.get("updates_total")
+        if host.get("updates_total") is not None
+        else host.get("updates")
+    )
+    actionable = _int_value(
+        host.get("updates_actionable")
+        if host.get("updates_actionable") is not None
+        else host.get("updates")
+    )
+    phased = _int_value(host.get("updates_phased_deferred"))
+    other = _int_value(host.get("updates_other_deferred"))
+    probe_value = host.get("updates_probe_ok")
+    if probe_value is None:
+        probe_ok = True
+    elif isinstance(probe_value, bool):
+        probe_ok = probe_value
+    else:
+        probe_ok = str(probe_value).strip().lower() in {"1", "true", "yes"}
+    return {
+        "total": total,
+        "actionable": actionable,
+        "phased_deferred": phased,
+        "other_deferred": other,
+        "probe_ok": probe_ok,
+    }
+
+
 def host_from_doctor(doctor: dict[str, Any]) -> dict[str, Any] | None:
     info = doctor.get("info") or {}
     raw = info.get("host") or {}
@@ -68,6 +97,31 @@ def host_from_doctor(doctor: dict[str, Any]) -> dict[str, Any] | None:
         "host": host,
         "reboot_required": str(raw.get("reboot_required")) == "1",
         "updates": _int_value(raw.get("updates")),
+        "updates_total": _int_value(
+            raw.get("updates_total")
+            if raw.get("updates_total") not in (None, "")
+            else raw.get("updates")
+        ),
+        "updates_actionable": _int_value(
+            raw.get("updates_actionable")
+            if raw.get("updates_actionable") not in (None, "")
+            else raw.get("updates")
+        ),
+        "updates_phased_deferred": _int_value(raw.get("updates_phased_deferred")),
+        "updates_other_deferred": _int_value(raw.get("updates_other_deferred")),
+        "updates_probe_ok": (
+            True
+            if raw.get("updates_probe_ok") in (None, "")
+            else str(raw.get("updates_probe_ok")) == "1"
+        ),
+        "updates_phased_names": [
+            value for value in str(raw.get("updates_phased_names") or "").split(",") if value
+        ],
+        "updates_other_deferred_names": [
+            value
+            for value in str(raw.get("updates_other_deferred_names") or "").split(",")
+            if value
+        ],
         "failed_all": _int_value(raw.get("failed_units")),
         "failed_transient": _int_value(raw.get("failed_transient")),
         "traffic_timer_enabled": raw.get("timer_enabled"),
@@ -187,6 +241,7 @@ def build_recommendations(
     architecture: list[str],
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
+    update_counts = host_update_counts(host)
 
     if int(audit.get("p0") or 0):
         add(
@@ -281,6 +336,12 @@ def build_recommendations(
 
     if host.get("reboot_required"):
         waiting = recovery.get("status") != "VERIFIED"
+        phased_note = (
+            f" {update_counts['phased_deferred']} Ubuntu-phased update(s) "
+            "are intentionally deferred."
+            if update_counts["phased_deferred"]
+            else ""
+        )
         add(
             items,
             rank=30 if waiting else 15,
@@ -288,8 +349,26 @@ def build_recommendations(
             key="reboot-required",
             title="Perform protected host patch/reboot",
             reason=(
-                f"{host.get('updates', 0)} package updates pending; "
-                "reboot required."
+                f"{update_counts['actionable']} actionable package update(s) pending; "
+                f"reboot required.{phased_note}"
+            ),
+            action="aoe2war host maintenance-plan",
+        )
+    elif (
+        update_counts["actionable"]
+        or update_counts["other_deferred"]
+        or not update_counts["probe_ok"]
+    ):
+        add(
+            items,
+            rank=18,
+            level="DO NOW",
+            key="host-updates",
+            title="Perform protected host package maintenance",
+            reason=(
+                f"{update_counts['actionable']} actionable update(s); "
+                f"{update_counts['other_deferred']} non-phased deferred update(s); "
+                f"classification={'PASS' if update_counts['probe_ok'] else 'FAILED'}."
             ),
             action="aoe2war host maintenance-plan",
         )

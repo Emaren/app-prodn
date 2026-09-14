@@ -228,6 +228,69 @@ class CouncilTests(unittest.TestCase):
             )
         )
 
+    def test_host_update_counts_preserve_old_receipt_fallback(self):
+        counts = council.host_update_counts({"updates": 4})
+        self.assertEqual(counts["total"], 4)
+        self.assertEqual(counts["actionable"], 4)
+        self.assertEqual(counts["phased_deferred"], 0)
+        self.assertTrue(counts["probe_ok"])
+
+    def test_phased_only_update_creates_no_host_maintenance_recommendation(self):
+        recs = council.build_recommendations(
+            audit={"p0": 0, "p1": 0},
+            doctor={},
+            storage={"health": "HEALTHY"},
+            host={
+                "failed_transient": 0,
+                "traffic_timer_enabled": "enabled",
+                "traffic_timer_active": "active",
+                "reboot_required": False,
+                "updates": 1,
+                "updates_total": 1,
+                "updates_actionable": 0,
+                "updates_phased_deferred": 1,
+                "updates_other_deferred": 0,
+                "updates_probe_ok": True,
+            },
+            recovery={"status": "VERIFIED"},
+            workspace={"cleanup_candidates": [], "orphans": []},
+            pulse={"status": "PASS"},
+            due_docs=0,
+            ready={"ready_routes": 78, "baseline_routes": 78},
+            architecture=[],
+        )
+        self.assertFalse(
+            any(item["key"] in {"host-updates", "reboot-required"} for item in recs)
+        )
+
+    def test_actionable_update_without_reboot_is_recommended(self):
+        recs = council.build_recommendations(
+            audit={"p0": 0, "p1": 0},
+            doctor={},
+            storage={"health": "HEALTHY"},
+            host={
+                "failed_transient": 0,
+                "traffic_timer_enabled": "enabled",
+                "traffic_timer_active": "active",
+                "reboot_required": False,
+                "updates": 2,
+                "updates_total": 2,
+                "updates_actionable": 2,
+                "updates_phased_deferred": 0,
+                "updates_other_deferred": 0,
+                "updates_probe_ok": True,
+            },
+            recovery={"status": "VERIFIED"},
+            workspace={"cleanup_candidates": [], "orphans": []},
+            pulse={"status": "PASS"},
+            due_docs=0,
+            ready={"ready_routes": 78, "baseline_routes": 78},
+            architecture=[],
+        )
+        recommendation = next(item for item in recs if item["key"] == "host-updates")
+        self.assertEqual(recommendation["level"], "DO NOW")
+        self.assertIn("2 actionable", recommendation["reason"])
+
 
 if __name__ == "__main__":
     unittest.main()

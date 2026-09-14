@@ -82,14 +82,63 @@ count_port() {
 }
 reboot=0
 test -f /var/run/reboot-required && reboot=1
-updates="$(apt list --upgradable 2>/dev/null | sed '1d' | wc -l | tr -d ' ')"
+export LC_ALL=C
+mapfile -t upgradable_packages < <(
+  apt list --upgradable 2>/dev/null \
+  | sed '1d' \
+  | sed '/^[[:space:]]*$/d' \
+  | cut -d/ -f1
+)
+updates_total="${#upgradable_packages[@]}"
+updates_probe_ok=1
+upgrade_simulation="$(apt-get -s upgrade 2>/dev/null)" || updates_probe_ok=0
+declare -A actionable_packages=()
+if [ "$updates_probe_ok" = "1" ]; then
+  while IFS= read -r package; do
+    [ -n "$package" ] && actionable_packages["$package"]=1
+  done < <(printf '%s\n' "$upgrade_simulation" | awk '/^Inst / {print $2}')
+fi
+updates_actionable=0
+updates_phased_deferred=0
+updates_other_deferred=0
+phased_names=()
+other_deferred_names=()
+if [ "$updates_probe_ok" = "1" ]; then
+  for package in "${upgradable_packages[@]}"; do
+    if [ -n "${actionable_packages[$package]+x}" ]; then
+      updates_actionable=$((updates_actionable + 1))
+    else
+      package_policy="$(apt-cache policy "$package" 2>/dev/null || true)"
+      if grep -Eq '\(phased [0-9]+%\)' <<< "$package_policy"; then
+        updates_phased_deferred=$((updates_phased_deferred + 1))
+        phased_names+=("$package")
+      else
+        updates_other_deferred=$((updates_other_deferred + 1))
+        other_deferred_names+=("$package")
+      fi
+    fi
+  done
+else
+  # Fail safe: if apt simulation cannot classify the visible update set,
+  # keep every visible package actionable rather than hiding maintenance debt.
+  updates_actionable="$updates_total"
+fi
+phased_csv="$(IFS=,; echo "${phased_names[*]}")"
+other_deferred_csv="$(IFS=,; echo "${other_deferred_names[*]}")"
 failed_all="$(systemctl --failed --no-legend --plain 2>/dev/null | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')"
 failed_transient="$(systemctl --failed --no-legend --plain 2>/dev/null | awk '/aoe2war-(build|deps)@/ {c++} END {print c+0}')"
 timer_enabled="$(systemctl is-enabled traffic-project-daily-rollups-aoe2hdbets.timer 2>/dev/null || true)"
 timer_active="$(systemctl is-active traffic-project-daily-rollups-aoe2hdbets.timer 2>/dev/null || true)"
 timer_next="$(systemctl show traffic-project-daily-rollups-aoe2hdbets.timer -p NextElapseUSecRealtime --value 2>/dev/null || true)"
 printf 'reboot_required\t%s\n' "$reboot"
-printf 'updates\t%s\n' "$updates"
+printf 'updates\t%s\n' "$updates_total"
+printf 'updates_total\t%s\n' "$updates_total"
+printf 'updates_actionable\t%s\n' "$updates_actionable"
+printf 'updates_phased_deferred\t%s\n' "$updates_phased_deferred"
+printf 'updates_other_deferred\t%s\n' "$updates_other_deferred"
+printf 'updates_probe_ok\t%s\n' "$updates_probe_ok"
+printf 'updates_phased_names\t%s\n' "$phased_csv"
+printf 'updates_other_deferred_names\t%s\n' "$other_deferred_csv"
 printf 'failed_all\t%s\n' "$failed_all"
 printf 'failed_transient\t%s\n' "$failed_transient"
 printf 'timer_enabled\t%s\n' "$timer_enabled"
@@ -111,7 +160,22 @@ printf 'kernel\t%s\n' "$(uname -r)"
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "host": host_name(),
         "reboot_required": data.get("reboot_required") == "1",
+        # `updates` remains the total apt-visible count for receipt compatibility.
+        # Host health uses the classified actionable/deferred fields below.
         "updates": int(data.get("updates") or 0),
+        "updates_total": int(data.get("updates_total") or data.get("updates") or 0),
+        "updates_actionable": int(data.get("updates_actionable") or data.get("updates") or 0),
+        "updates_phased_deferred": int(data.get("updates_phased_deferred") or 0),
+        "updates_other_deferred": int(data.get("updates_other_deferred") or 0),
+        "updates_probe_ok": data.get("updates_probe_ok") == "1",
+        "updates_phased_names": [
+            value for value in (data.get("updates_phased_names") or "").split(",") if value
+        ],
+        "updates_other_deferred_names": [
+            value
+            for value in (data.get("updates_other_deferred_names") or "").split(",")
+            if value
+        ],
         "failed_all": int(data.get("failed_all") or 0),
         "failed_transient": int(data.get("failed_transient") or 0),
         "traffic_timer_enabled": data.get("timer_enabled"),
@@ -273,7 +337,15 @@ def print_status(payload: dict[str, Any]) -> None:
     print(f"Kernel:            {payload['kernel']}")
     print(f"Node:              {payload['node']}")
     print(f"Reboot required:   {'YES' if payload['reboot_required'] else 'no'}")
-    print(f"Updates pending:   {payload['updates']}")
+    print(
+        "Updates:           "
+        f"{payload['updates_actionable']} actionable · "
+        f"{payload['updates_phased_deferred']} Ubuntu-phased · "
+        f"{payload['updates_other_deferred']} other deferred · "
+        f"{payload['updates_total']} total"
+    )
+    if payload["updates_phased_names"]:
+        print("Phased deferral:   " + ", ".join(payload["updates_phased_names"]))
     print(
         f"Failed units:      {payload['failed_all']} total · "
         f"{payload['failed_transient']} AoE2WAR transient"
@@ -321,7 +393,13 @@ def main() -> int:
             print()
             print(f"Status:   {payload['status']}")
             print(f"Reason:   {payload['reason']}")
-            print(f"Updates:  {payload['host']['updates']}")
+            host = payload["host"]
+            print(
+                "Updates:  "
+                f"{host['updates_actionable']} actionable · "
+                f"{host['updates_phased_deferred']} Ubuntu-phased · "
+                f"{host['updates_other_deferred']} other deferred"
+            )
             print(
                 f"Reboot:   "
                 f"{'required' if payload['host']['reboot_required'] else 'not required'}"

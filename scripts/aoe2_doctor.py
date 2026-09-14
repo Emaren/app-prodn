@@ -480,7 +480,42 @@ count_port() {{
 }}
 root_line="$(df -Pk / 2>/dev/null | awk 'NR==2 {{print $2" "$3" "$4" "$5}}')"
 volume_line="$(df -Pk {shlex.quote(volume)} 2>/dev/null | awk 'NR==2 {{print $2" "$3" "$4" "$5}}')"
-updates="$(apt list --upgradable 2>/dev/null | tail -n +2 | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')"
+export LC_ALL=C
+upgradable_packages="$(
+  apt list --upgradable 2>/dev/null \
+  | tail -n +2 \
+  | sed '/^[[:space:]]*$/d' \
+  | cut -d/ -f1
+)"
+updates_total="$(printf '%s\n' "$upgradable_packages" | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')"
+updates_probe_ok=1
+upgrade_simulation="$(apt-get -s upgrade 2>/dev/null)" || updates_probe_ok=0
+actionable_packages="$(printf '%s\n' "$upgrade_simulation" | awk '/^Inst / {{print $2}}')"
+updates_actionable=0
+updates_phased_deferred=0
+updates_other_deferred=0
+phased_names=""
+other_deferred_names=""
+if [ "$updates_probe_ok" = "1" ]; then
+  while IFS= read -r package; do
+    [ -n "$package" ] || continue
+    if printf '%s\n' "$actionable_packages" | grep -Fxq -- "$package"; then
+      updates_actionable=$((updates_actionable + 1))
+    else
+      package_policy="$(apt-cache policy "$package" 2>/dev/null || true)"
+      if grep -Eq '\\(phased [0-9]+%\\)' <<< "$package_policy"; then
+        updates_phased_deferred=$((updates_phased_deferred + 1))
+        phased_names="${{phased_names:+$phased_names,}}$package"
+      else
+        updates_other_deferred=$((updates_other_deferred + 1))
+        other_deferred_names="${{other_deferred_names:+$other_deferred_names,}}$package"
+      fi
+    fi
+  done <<< "$upgradable_packages"
+else
+  # Fail safe: an unclassifiable visible update set remains actionable debt.
+  updates_actionable="$updates_total"
+fi
 failed="$(systemctl --failed --no-legend --plain 2>/dev/null | sed '/^[[:space:]]*$/d' | wc -l | tr -d ' ')"
 failed_transient="$(systemctl --failed --no-legend --plain 2>/dev/null | awk '/aoe2war-(build|deps)@/ {{c++}} END {{print c+0}}')"
 timer_enabled="$(systemctl is-enabled traffic-project-daily-rollups-aoe2hdbets.timer 2>/dev/null || true)"
@@ -508,7 +543,14 @@ fi
 printf 'service\\t%s\\n' "$(systemctl is-active {shlex.quote(service)} 2>/dev/null)"
 printf 'root\\t%s\\n' "$root_line"
 printf 'volume\\t%s\\n' "$volume_line"
-printf 'updates\\t%s\\n' "$updates"
+printf 'updates\\t%s\\n' "$updates_total"
+printf 'updates_total\\t%s\\n' "$updates_total"
+printf 'updates_actionable\\t%s\\n' "$updates_actionable"
+printf 'updates_phased_deferred\\t%s\\n' "$updates_phased_deferred"
+printf 'updates_other_deferred\\t%s\\n' "$updates_other_deferred"
+printf 'updates_probe_ok\\t%s\\n' "$updates_probe_ok"
+printf 'updates_phased_names\\t%s\\n' "$phased_names"
+printf 'updates_other_deferred_names\\t%s\\n' "$other_deferred_names"
 printf 'failed_units\\t%s\\n' "$failed"
 printf 'failed_transient\\t%s\\n' "$failed_transient"
 printf 'timer_enabled\\t%s\\n' "$timer_enabled"
@@ -556,6 +598,68 @@ def parse_df_line(value: str | None) -> dict[str, int | None]:
         }
     except ValueError:
         return {"total_kb": None, "used_kb": None, "free_kb": None, "used_percent": None}
+
+
+def add_host_update_findings(doctor: Doctor, snap: dict[str, Any]) -> None:
+    def update_count(key: str, fallback: str | None = None) -> int:
+        raw = snap.get(key)
+        if raw in (None, "") and fallback is not None:
+            raw = snap.get(fallback)
+        try:
+            return int(str(raw or "0"))
+        except ValueError:
+            return 0
+
+    updates_total = update_count("updates_total", "updates")
+    updates_actionable = update_count("updates_actionable", "updates")
+    updates_phased = update_count("updates_phased_deferred")
+    updates_other_deferred = update_count("updates_other_deferred")
+    probe_value = snap.get("updates_probe_ok")
+    updates_probe_ok = True if probe_value in (None, "") else probe_value == "1"
+
+    if not updates_probe_ok:
+        doctor.add(
+            "WARN",
+            "Host",
+            "updates-classification",
+            "apt update classification failed; visible updates remain fail-safe actionable",
+            0,
+        )
+    if updates_actionable:
+        doctor.add(
+            "WARN",
+            "Host",
+            "updates-pending",
+            f"{updates_actionable} actionable apt package update(s) are available",
+            0,
+        )
+    if updates_other_deferred:
+        names = str(snap.get("updates_other_deferred_names") or "").strip()
+        suffix = f": {names}" if names else ""
+        doctor.add(
+            "WARN",
+            "Host",
+            "updates-deferred-review",
+            f"{updates_other_deferred} non-phased apt update(s) are deferred and require review{suffix}",
+            0,
+        )
+    if updates_phased:
+        names = str(snap.get("updates_phased_names") or "").strip()
+        suffix = f": {names}" if names else ""
+        doctor.add(
+            "INFO",
+            "Host",
+            "updates-phased-deferred",
+            f"{updates_phased} apt update(s) are intentionally deferred by Ubuntu phased rollout{suffix}",
+            0,
+        )
+    doctor.info["host_update_classification"] = {
+        "total": updates_total,
+        "actionable": updates_actionable,
+        "phased_deferred": updates_phased,
+        "other_deferred": updates_other_deferred,
+        "probe_ok": updates_probe_ok,
+    }
 
 
 def check_host_and_server_bridge(
@@ -684,18 +788,7 @@ def check_host_and_server_bridge(
             1,
         )
 
-    try:
-        updates = int(str(snap.get("updates") or "0"))
-    except ValueError:
-        updates = 0
-    if updates:
-        doctor.add(
-            "WARN",
-            "Host",
-            "updates-pending",
-            f"{updates} apt package update(s) are available",
-            0,
-        )
+    add_host_update_findings(doctor, snap)
 
     try:
         failed_units = int(str(snap.get("failed_units") or "0"))

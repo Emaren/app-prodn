@@ -322,6 +322,83 @@ class DoctorTests(unittest.TestCase):
             "WARN",
         )
 
+    def test_phased_only_host_update_is_informational(self):
+        doctor = MODULE.Doctor()
+        MODULE.add_host_update_findings(
+            doctor,
+            {
+                "updates": "1",
+                "updates_total": "1",
+                "updates_actionable": "0",
+                "updates_phased_deferred": "1",
+                "updates_other_deferred": "0",
+                "updates_probe_ok": "1",
+                "updates_phased_names": "dnsmasq-base",
+            },
+        )
+
+        findings = {item.key: item for item in doctor.findings}
+        self.assertEqual(findings["updates-phased-deferred"].severity, "INFO")
+        self.assertNotIn("updates-pending", findings)
+        self.assertEqual(doctor.status(), "HEALTHY")
+        self.assertEqual(doctor.score(), 100)
+        self.assertEqual(doctor.info["host_update_classification"]["phased_deferred"], 1)
+
+    def test_actionable_host_update_remains_attention(self):
+        doctor = MODULE.Doctor()
+        MODULE.add_host_update_findings(
+            doctor,
+            {
+                "updates": "2",
+                "updates_total": "2",
+                "updates_actionable": "2",
+                "updates_phased_deferred": "0",
+                "updates_other_deferred": "0",
+                "updates_probe_ok": "1",
+            },
+        )
+
+        findings = {item.key: item for item in doctor.findings}
+        self.assertEqual(findings["updates-pending"].severity, "WARN")
+        self.assertEqual(doctor.status(), "ATTENTION")
+
+    def test_nonphased_deferred_update_requires_review(self):
+        doctor = MODULE.Doctor()
+        MODULE.add_host_update_findings(
+            doctor,
+            {
+                "updates": "1",
+                "updates_total": "1",
+                "updates_actionable": "0",
+                "updates_phased_deferred": "0",
+                "updates_other_deferred": "1",
+                "updates_probe_ok": "1",
+                "updates_other_deferred_names": "held-package",
+            },
+        )
+
+        findings = {item.key: item for item in doctor.findings}
+        self.assertEqual(findings["updates-deferred-review"].severity, "WARN")
+        self.assertIn("held-package", findings["updates-deferred-review"].detail)
+        self.assertEqual(doctor.status(), "ATTENTION")
+
+    def test_failed_update_classification_fails_safe(self):
+        doctor = MODULE.Doctor()
+        MODULE.add_host_update_findings(
+            doctor,
+            {
+                "updates": "3",
+                "updates_total": "3",
+                "updates_actionable": "3",
+                "updates_probe_ok": "0",
+            },
+        )
+
+        findings = {item.key: item for item in doctor.findings}
+        self.assertEqual(findings["updates-classification"].severity, "WARN")
+        self.assertEqual(findings["updates-pending"].severity, "WARN")
+        self.assertEqual(doctor.status(), "ATTENTION")
+
 
 if __name__ == "__main__":
     unittest.main()

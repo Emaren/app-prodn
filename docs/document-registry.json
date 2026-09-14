@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9363ea8e0df68980ed8b54b6312025d7368859b9102a0993d8cdf88f4a13112f",
+      "sha256": "8d753aa3577b0905d045770aad613667e3bc494dd2564543a7d11e76542bbd3c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "7e78d719f71756e5f92f9fb9910accc625a7f655294499dced74e7c13378c88c",
+      "sha256": "7317f0342e5750762f1a5f80f82c2d4ff9da799e227ae2bd8a4423385108fd6b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -703,7 +703,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "bce1674f62cb0a26634125fd00e9f9c715b2ae76765a428fe8195c5cdaa4768e",
+      "sha256": "7cded1cd2f493f0ae0660890391c5c11d9b5a2b0502bca8f147737a2cc81bdee",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/workshop-chronicler-ssh-retry-v1",
-    "commit": "ecab753f61e37d83e9b502fe97be7a95e82ca1fd"
+    "branch": "feature/host-phased-update-semantics-v1",
+    "commit": "924c45196b46d46dd4c3ef8f07acea527d06c24e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
