@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/workshop-chronicler-ssh-retry-v1` at `ecab753f61e37d83e9b502fe97be7a95e82ca1fd`
+Implementation baseline: `feature/host-phased-update-semantics-v1` at `924c45196b46d46dd4c3ef8f07acea527d06c24e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
