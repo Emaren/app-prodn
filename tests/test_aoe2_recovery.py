@@ -98,6 +98,30 @@ class RecoveryTests(unittest.TestCase):
             ],
         )
 
+    def test_campaign_wolo_key_custody_start_is_forwarded_verbatim(self):
+        completed = type("Completed", (), {"returncode": 0})()
+        with patch.object(recovery.subprocess, "run", return_value=completed) as run:
+            rc = recovery.forward_campaign_cli(
+                [
+                    "campaign",
+                    "wolo-key-custody-start",
+                    "ordinary-test",
+                    "--authorize-wolo-key-custody-capture",
+                    "--json",
+                ]
+            )
+
+        self.assertEqual(rc, 0)
+        self.assertEqual(
+            run.call_args.args[0][2:],
+            [
+                "wolo-key-custody-start",
+                "ordinary-test",
+                "--authorize-wolo-key-custody-capture",
+                "--json",
+            ],
+        )
+
     def test_campaign_plan_is_not_intercepted_by_forwarder(self):
         self.assertIsNone(
             recovery.forward_campaign_cli(["campaign", "plan", "--json"])
@@ -312,6 +336,29 @@ class RecoveryTests(unittest.TestCase):
         self.assertEqual(progress["proven_count"], 9)
         self.assertEqual(progress["required_count"], 10)
         self.assertEqual(progress["remaining_classes"], ["wolo_key_custody"])
+        self.assertTrue(progress["final_schema2_proof_required"])
+
+    def test_key_custody_completes_classes_but_still_requires_schema2(self):
+        pilot = {"status": "PILOT_VERIFIED"}
+        ordinary = {
+            "status": recovery.ORDINARY_RESTORE_SUMMARY_STATUS,
+            "verification_status": "VERIFIED",
+        }
+        wolo = {
+            "status": recovery.WOLO_OFFHOST_SUMMARY_STATUS,
+            "verification_status": "VERIFIED",
+        }
+        custody = {
+            "status": recovery.WOLO_KEY_CUSTODY_PROOF_STATUS,
+            "verification_status": "VERIFIED",
+        }
+        progress = recovery.recovery_progress(
+            pilot, ordinary, wolo, custody
+        )
+
+        self.assertEqual(progress["status"], "COMPLETE")
+        self.assertEqual(progress["proven_count"], 10)
+        self.assertEqual(progress["remaining_classes"], [])
         self.assertTrue(progress["final_schema2_proof_required"])
 
     def test_partial_progress_reduces_remaining_scope_to_wolo_classes(self):
