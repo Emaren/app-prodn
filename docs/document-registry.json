@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "400ae02f058e2b2bbe991d18b1c51302a36a6d78439b731658ef809a1f612d97",
+      "sha256": "6bc1773ec750d5e91ca10dc365159d53c4f8a2b53be09d03233c9e726d51bf03",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -590,7 +590,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-10",
       "sensitivity": "internal",
-      "sha256": "1d8794ae1fd70da02292b3c26f8c67c08e94843c69cf9605af048ce4081f558d",
+      "sha256": "414d5f22e8026e29efddef61da5047c9dabe5faa923e9ad3263cb567b727dac6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/recovery-key-custody-v1",
-    "commit": "d75d6bafa81fa55e6f35d5750f4b532d44edb2b2"
+    "branch": "feature/recovery-finalize-v1",
+    "commit": "05b7a1903e793d28b730083f12e7991186231360"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

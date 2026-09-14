@@ -427,6 +427,22 @@ KINGDOM INTELLIGENCE / HYGIENE
       result and secret-boundary flags. Class coverage may reach 10/10 while
       final schema-2 RECOVERY_VERIFIED assembly remains a separate gate.
 
+
+  aoe2war recovery campaign final-preflight CAMPAIGN
+      Require all ten recovery classes to be independently verified and bind
+      their exact non-secret proof sources. Makes no production, Wolo, host, or
+      operations-contract mutation.
+
+  aoe2war recovery campaign final-seal CAMPAIGN --authorize-final-recovery-proof
+      Assemble the ten verified class attestations plus the composite restore
+      drill into one schema-2 RECOVERY_VERIFIED receipt under the Mac recovery
+      vault, then run the existing verifier against that receipt. This seals
+      proof only; it does not enable the offsite-evidence operations contract.
+
+  aoe2war recovery campaign final-status CAMPAIGN
+      Re-verify the sealed schema-2 receipt and report whether the separate
+      reviewed operations-contract activation is still required.
+
 REPLAY TRUTH
 
   aoe2war truth status

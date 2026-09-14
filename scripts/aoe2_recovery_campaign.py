@@ -4829,6 +4829,283 @@ def wolo_key_custody_status(campaign_id: str) -> dict[str, Any]:
     verification = recovery.verify_wolo_key_custody_proof(proof_path)
     return {**payload, "verification": verification}
 
+
+FINAL_RECOVERY_STATE_DIR = CAMPAIGN_DIR / "final-recovery"
+FINAL_RECOVERY_AUTHORITY = "Mac encrypted survival vault"
+FINAL_RECOVERY_STATUS = "RECOVERY_VERIFIED_PROOF_SEALED"
+
+
+def final_recovery_state_path(campaign_id: str) -> Path:
+    state_path(campaign_id)
+    return FINAL_RECOVERY_STATE_DIR / f"{campaign_id}.json"
+
+
+def _verified_source_file(base: Path, relative: str, expected_sha: str) -> Path:
+    candidate = recovery._safe_bundle_file(base, relative)
+    if candidate is None or not candidate.is_file():
+        raise CampaignError(f"recovery source proof is missing: {relative}")
+    actual = recovery.sha256(candidate)
+    if actual != expected_sha:
+        raise CampaignError(
+            f"recovery source proof SHA mismatch: {relative} {actual}/{expected_sha}"
+        )
+    return candidate
+
+
+def _component_sources(status: dict[str, Any], campaign_id: str) -> dict[str, dict[str, Any]]:
+    progress = status.get("progress") or {}
+    if int(progress.get("proven_count") or 0) != len(recovery.REQUIRED_RECOVERY_CLASSES):
+        raise CampaignError(
+            "final Recovery proof requires all ten classes to be independently verified"
+        )
+    if progress.get("remaining_classes"):
+        raise CampaignError("final Recovery proof still has remaining class scope")
+
+    pilot = status.get("pilot")
+    ordinary = status.get("ordinary_restore")
+    wolo = status.get("wolo_offhost")
+    custody = status.get("wolo_key_custody")
+    if not isinstance(pilot, dict) or pilot.get("status") != "PILOT_VERIFIED":
+        raise CampaignError("verified database/operator pilot is required")
+    if not isinstance(ordinary, dict) or ordinary.get("verification_status") != "VERIFIED":
+        raise CampaignError("verified ordinary restore summary is required")
+    if str(ordinary.get("campaign_id") or campaign_id) != campaign_id:
+        raise CampaignError("ordinary restore campaign identity does not match")
+    if not isinstance(wolo, dict) or wolo.get("verification_status") != "VERIFIED":
+        raise CampaignError("verified Wolo off-host restore summary is required")
+    if str(wolo.get("campaign_id") or campaign_id) != campaign_id:
+        raise CampaignError("Wolo off-host campaign identity does not match")
+    if not isinstance(custody, dict) or custody.get("verification_status") != "VERIFIED":
+        raise CampaignError("verified Wolo key-custody proof is required")
+    if str(custody.get("campaign_id") or campaign_id) != campaign_id:
+        raise CampaignError("Wolo key-custody campaign identity does not match")
+
+    sources: dict[str, dict[str, Any]] = {}
+    pilot_path = Path(str(pilot.get("proof_path") or "")).resolve()
+    pilot_sha = str(pilot.get("proof_sha256") or "")
+    if not pilot_path.is_file() or len(pilot_sha) != 64 or recovery.sha256(pilot_path) != pilot_sha:
+        raise CampaignError("verified pilot proof is unavailable or changed")
+    for name in ("database", "operator_evidence"):
+        sources[name] = {
+            "source_kind": "aoe2war-recovery-pilot-proof",
+            "source_path": str(pilot_path),
+            "source_sha256": pilot_sha,
+        }
+
+    ordinary_coverage = ordinary.get("coverage") or {}
+    ordinary_root = Path(str(ordinary.get("proof_path") or "")).resolve().parent
+    for name in recovery.ORDINARY_RECOVERY_CLASSES:
+        item = ordinary_coverage.get(name) or {}
+        path = _verified_source_file(
+            ordinary_root,
+            str(item.get("proof_file") or ""),
+            str(item.get("proof_sha256") or ""),
+        )
+        sources[name] = {
+            "source_kind": "aoe2war-recovery-ordinary-class-proof",
+            "source_path": str(path),
+            "source_sha256": recovery.sha256(path),
+        }
+
+    wolo_coverage = wolo.get("coverage") or {}
+    wolo_root = Path(str(wolo.get("proof_path") or "")).resolve().parent
+    for name in recovery.WOLO_OFFHOST_RECOVERY_CLASSES:
+        item = wolo_coverage.get(name) or {}
+        path = _verified_source_file(
+            wolo_root,
+            str(item.get("proof_file") or ""),
+            str(item.get("proof_sha256") or ""),
+        )
+        sources[name] = {
+            "source_kind": "aoe2war-recovery-wolo-restore-class-proof",
+            "source_path": str(path),
+            "source_sha256": recovery.sha256(path),
+        }
+
+    custody_path = Path(str(custody.get("proof_path") or "")).resolve()
+    custody_sha = str(custody.get("proof_sha256") or "")
+    if not custody_path.is_file() or len(custody_sha) != 64 or recovery.sha256(custody_path) != custody_sha:
+        raise CampaignError("verified Wolo key-custody proof is unavailable or changed")
+    sources["wolo_key_custody"] = {
+        "source_kind": recovery.WOLO_KEY_CUSTODY_PROOF_KIND,
+        "source_path": str(custody_path),
+        "source_sha256": custody_sha,
+    }
+    return sources
+
+
+def final_recovery_preflight(campaign_id: str) -> dict[str, Any]:
+    source = source_identity()
+    status = recovery.evaluate()
+    sources = _component_sources(status, campaign_id)
+    return {
+        "schema": 1,
+        "kind": "aoe2war-recovery-final-preflight",
+        "status": "READY",
+        "campaign_id": campaign_id,
+        "generated_at": utc_now(),
+        "tool_source": source,
+        "authority": FINAL_RECOVERY_AUTHORITY,
+        "verified_classes": list(recovery.REQUIRED_RECOVERY_CLASSES),
+        "source_evidence": sources,
+        "production_mutated": False,
+        "wolo_mutated": False,
+        "operations_contract_mutated": False,
+        "authorization": {"final_recovery_proof": False},
+    }
+
+
+def seal_final_recovery_proof(
+    campaign_id: str,
+    *,
+    authorize_final_recovery_proof: bool,
+) -> dict[str, Any]:
+    if not authorize_final_recovery_proof:
+        raise CampaignError(
+            "final Recovery proof requires --authorize-final-recovery-proof"
+        )
+    preflight = final_recovery_preflight(campaign_id)
+    source = str(preflight["tool_source"])
+    bundle_id = f"{campaign_id}-schema2-{stamp()}-{source[:12]}"
+    bundle = recovery.RECOVERY_VAULT_ROOT / bundle_id
+    if bundle.exists():
+        raise CampaignError(f"final Recovery bundle already exists: {bundle}")
+    proofs = bundle / "proofs"
+    proofs.mkdir(parents=True, mode=0o700)
+
+    coverage: dict[str, dict[str, str]] = {}
+    for class_name in recovery.REQUIRED_RECOVERY_CLASSES:
+        source_item = preflight["source_evidence"][class_name]
+        attestation = {
+            "schema": 1,
+            "kind": "aoe2war-recovery-final-class-attestation",
+            "status": "PASS",
+            "class": class_name,
+            "created_at": utc_now(),
+            "source_kind": source_item["source_kind"],
+            "source_proof_path": source_item["source_path"],
+            "source_proof_sha256": source_item["source_sha256"],
+            "secret_material_in_attestation": False,
+        }
+        target = proofs / f"{class_name}.json"
+        digest = write_json_with_sidecar(target, attestation)
+        coverage[class_name] = {
+            "status": "PASS",
+            "proof_file": str(target.relative_to(bundle)),
+            "proof_sha256": digest,
+        }
+
+    status = recovery.evaluate()
+    component_proofs = []
+    for label, item in (
+        ("database_operator", status.get("pilot")),
+        ("ordinary_restore", status.get("ordinary_restore")),
+        ("wolo_offhost_restore", status.get("wolo_offhost")),
+        ("wolo_key_custody", status.get("wolo_key_custody")),
+    ):
+        if not isinstance(item, dict):
+            raise CampaignError(f"missing verified restore component: {label}")
+        component_proofs.append(
+            {
+                "component": label,
+                "proof_path": str(item.get("proof_path") or ""),
+                "proof_sha256": str(item.get("proof_sha256") or ""),
+            }
+        )
+    drill_path = proofs / "restore-drill.json"
+    drill_sha = write_json_with_sidecar(
+        drill_path,
+        {
+            "schema": 1,
+            "kind": "aoe2war-recovery-composite-restore-drill",
+            "status": "PASS",
+            "created_at": utc_now(),
+            "campaign_id": campaign_id,
+            "components": component_proofs,
+            "full_plaintext_archive_staged": False,
+            "production_mutated": False,
+            "wolo_mutated": False,
+        },
+    )
+
+    final_path = bundle / "restore-proof.json"
+    final_payload = {
+        "schema": recovery.FULL_PROOF_SCHEMA,
+        "kind": recovery.FULL_PROOF_KIND,
+        "status": recovery.FULL_PROOF_STATUS,
+        "authority": FINAL_RECOVERY_AUTHORITY,
+        "bundle_id": bundle_id,
+        "campaign_id": campaign_id,
+        "created_at": utc_now(),
+        "tool_source": source,
+        "coverage": coverage,
+        "restore_drill": {
+            "status": "PASS",
+            "proof_file": str(drill_path.relative_to(bundle)),
+            "proof_sha256": drill_sha,
+        },
+        "remaining_before_full_recovery_verification": [],
+        "secrets_policy": {
+            key: False for key in recovery.REQUIRED_FALSE_SECRET_FLAGS
+        },
+        "production_mutated": False,
+        "wolo_mutated": False,
+        "operations_contract_mutated": False,
+    }
+    final_sha = write_json_with_sidecar(final_path, final_payload)
+    verification = recovery.verify_configured_recovery(
+        {
+            "enabled": True,
+            "authority": FINAL_RECOVERY_AUTHORITY,
+            "restore_proof": str(final_path),
+        }
+    )
+    if verification.get("status") != "VERIFIED":
+        raise CampaignError(
+            "sealed final Recovery proof failed schema-2 verification: "
+            + "; ".join(str(x) for x in verification.get("blockers") or [])
+        )
+
+    state = {
+        "schema": 1,
+        "kind": "aoe2war-recovery-final-state",
+        "status": FINAL_RECOVERY_STATUS,
+        "campaign_id": campaign_id,
+        "created_at": utc_now(),
+        "bundle_id": bundle_id,
+        "proof_path": str(final_path),
+        "proof_sha256": final_sha,
+        "authority": FINAL_RECOVERY_AUTHORITY,
+        "verification": "VERIFIED",
+        "operations_contract_mutated": False,
+        "activation_required": True,
+        "production_mutated": False,
+        "wolo_mutated": False,
+    }
+    write_json_with_sidecar(final_recovery_state_path(campaign_id), state)
+    return state
+
+
+def final_recovery_status(campaign_id: str) -> dict[str, Any]:
+    state_file = final_recovery_state_path(campaign_id)
+    payload, state_sha, error = recovery._load_hashed_json(state_file)
+    if error or payload is None:
+        raise CampaignError(error or "final Recovery state is unavailable")
+    proof = Path(str(payload.get("proof_path") or "")).resolve()
+    verification = recovery.verify_configured_recovery(
+        {
+            "enabled": True,
+            "authority": str(payload.get("authority") or ""),
+            "restore_proof": str(proof),
+        }
+    )
+    return {
+        **payload,
+        "state_sha256": state_sha,
+        "proof_verification": verification["status"],
+        "proof_blockers": verification["blockers"],
+    }
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="AoE2WAR bounded ordinary recovery capture campaign"
@@ -4906,6 +5183,19 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("--json", action="store_true")
 
     q = sub.add_parser("wolo-key-custody-status")
+    q.add_argument("campaign_id")
+    q.add_argument("--json", action="store_true")
+
+    q = sub.add_parser("final-preflight")
+    q.add_argument("campaign_id")
+    q.add_argument("--json", action="store_true")
+
+    q = sub.add_parser("final-seal")
+    q.add_argument("campaign_id")
+    q.add_argument("--authorize-final-recovery-proof", action="store_true")
+    q.add_argument("--json", action="store_true")
+
+    q = sub.add_parser("final-status")
     q.add_argument("campaign_id")
     q.add_argument("--json", action="store_true")
 
@@ -5039,6 +5329,24 @@ def main() -> int:
         payload = wolo_key_custody_status(args.campaign_id)
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
+
+    if args.command == "final-preflight":
+        payload = final_recovery_preflight(args.campaign_id)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "final-seal":
+        payload = seal_final_recovery_proof(
+            args.campaign_id,
+            authorize_final_recovery_proof=args.authorize_final_recovery_proof,
+        )
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "final-status":
+        payload = final_recovery_status(args.campaign_id)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0 if payload.get("proof_verification") == "VERIFIED" else 1
 
     if args.command == "restore-start":
         payload = start_restore(
