@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2e91adf0931ba9cb464cf19483e38170bd93bff189ff915475c7c9cc1080188c",
+      "sha256": "c8dd5666df4a96bdc4bdd92c83bf44c8891f5a2e6480bb6cff8260611b354dd8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "0b8c36f7ad38ffd6cb74176f69143211bf0dde18703bf1b8d13937c4e04defb1",
+      "sha256": "c4763199a9a0fad965c5d8c0a66c4d43760af486106461b553b5df4c0a3e2094",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -588,9 +588,9 @@
       "owner": "aoe2war-web",
       "path": "docs/EVIDENCE_VAULT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-10",
+      "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "414d5f22e8026e29efddef61da5047c9dabe5faa923e9ad3263cb567b727dac6",
+      "sha256": "0f68c6a4fe68b4efff5d90e525652a4001afb8679af0c8484d1abc42d802581b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/os-final-harmonization",
-    "commit": "0fd3e74a5dba9527d59a0de40e2cc1b402db5c51"
+    "branch": "feature/recovery-verified-activation-v1",
+    "commit": "e55a8c8b1edc4be5bc131c24aa94055e2b35fb8a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
