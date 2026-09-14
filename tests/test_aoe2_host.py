@@ -69,6 +69,53 @@ class HostTests(unittest.TestCase):
         )
         self.assertNotIn('test -n "$next"', text)
 
+    def test_phasing_probe_avoids_pipefail_grep_short_circuit(self):
+        host_source = Path("scripts/aoe2_host.py").read_text(encoding="utf-8")
+        doctor_source = Path("scripts/aoe2_doctor.py").read_text(encoding="utf-8")
+        unsafe = 'apt-cache policy "$package" 2>/dev/null | grep -Eq'
+        for source in (host_source, doctor_source):
+            self.assertNotIn(unsafe, source)
+            self.assertIn('package_policy="$(apt-cache policy "$package" 2>/dev/null || true)"', source)
+            self.assertIn('<<< "$package_policy"', source)
+
+    def test_snapshot_distinguishes_actionable_and_phased_updates(self):
+        output = "\n".join(
+            [
+                "reboot_required\t1",
+                "updates\t8",
+                "updates_total\t8",
+                "updates_actionable\t7",
+                "updates_phased_deferred\t1",
+                "updates_other_deferred\t0",
+                "updates_probe_ok\t1",
+                "updates_phased_names\tdnsmasq-base",
+                "updates_other_deferred_names\t",
+                "failed_all\t0",
+                "failed_transient\t0",
+                "timer_enabled\tenabled",
+                "timer_active\tactive",
+                "timer_next\tsoon",
+                "web\tactive",
+                "api\tactive",
+                "wolo8092\t1",
+                "wolo8093\t1",
+                "node\tv22.23.2",
+                "kernel\t6.8.0-138-generic",
+            ]
+        )
+        with patch.object(host, "ssh_script", return_value=(0, output)), patch.object(
+            host, "host_name", return_value="root@hel1"
+        ):
+            payload = host.snapshot()
+
+        self.assertEqual(payload["updates"], 8)
+        self.assertEqual(payload["updates_total"], 8)
+        self.assertEqual(payload["updates_actionable"], 7)
+        self.assertEqual(payload["updates_phased_deferred"], 1)
+        self.assertEqual(payload["updates_other_deferred"], 0)
+        self.assertTrue(payload["updates_probe_ok"])
+        self.assertEqual(payload["updates_phased_names"], ["dnsmasq-base"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -883,9 +883,12 @@ def system_agent_rows(
         else "ATTENTION"
     )
 
+    host_updates = aoe2_council.host_update_counts(host)
     host_attention = bool(
         host.get("reboot_required")
-        or int(host.get("updates") or 0)
+        or host_updates["actionable"]
+        or host_updates["other_deferred"]
+        or not host_updates["probe_ok"]
         or int(host.get("failed_transient") or 0)
     )
     host_state = "ATTENTION" if host_attention else "HEALTHY"
@@ -1027,10 +1030,23 @@ def system_agent_rows(
             "label": "Host OS",
             "state": host_state,
             "summary": (
-                f"Maintenance pending: {int(host.get('updates') or 0)} update(s)"
-                + (" and reboot." if host.get("reboot_required") else ".")
+                (
+                    f"Maintenance pending: {host_updates['actionable']} actionable update(s)"
+                    + (
+                        f", {host_updates['other_deferred']} non-phased deferred update(s)"
+                        if host_updates["other_deferred"]
+                        else ""
+                    )
+                    + (" and reboot." if host.get("reboot_required") else ".")
+                )
                 if host_attention
-                else "Host hygiene is clear."
+                else (
+                    "Host hygiene is clear; "
+                    f"{host_updates['phased_deferred']} Ubuntu-phased update(s) "
+                    "intentionally deferred."
+                    if host_updates["phased_deferred"]
+                    else "Host hygiene is clear."
+                )
             ),
             "progress_percent": 100 if host_state == "HEALTHY" else None,
             "progress_label": "host hygiene",

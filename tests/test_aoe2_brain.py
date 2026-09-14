@@ -734,6 +734,66 @@ class KingdomIntelligenceTests(unittest.TestCase):
             "BLOCKED",
         )
 
+    def test_host_agent_treats_phased_only_update_as_healthy(self):
+        source = MODULE.source_summary(release())
+        perf = performance()
+        perf["matches_current_release"] = True
+        current_truth = truth()
+        current_truth["matches_current_release"] = True
+        current_council = council()
+        current_council["host"] = {
+            "reboot_required": False,
+            "updates": 1,
+            "updates_total": 1,
+            "updates_actionable": 0,
+            "updates_phased_deferred": 1,
+            "updates_other_deferred": 0,
+            "updates_probe_ok": True,
+            "failed_transient": 0,
+        }
+        agents = MODULE.system_agent_rows(
+            source=source,
+            council=current_council,
+            truth=current_truth,
+            performance=perf,
+            control=control(),
+            storage_campaign={"status": "NONE"},
+            recovery_campaign={"status": "NONE"},
+        )
+        host_agent = next(item for item in agents if item["key"] == "host")
+        self.assertEqual(host_agent["state"], "HEALTHY")
+        self.assertIn("Ubuntu-phased", host_agent["summary"])
+
+    def test_host_agent_keeps_actionable_update_in_attention(self):
+        source = MODULE.source_summary(release())
+        perf = performance()
+        perf["matches_current_release"] = True
+        current_truth = truth()
+        current_truth["matches_current_release"] = True
+        current_council = council()
+        current_council["host"] = {
+            "reboot_required": False,
+            "updates": 1,
+            "updates_total": 1,
+            "updates_actionable": 1,
+            "updates_phased_deferred": 0,
+            "updates_other_deferred": 0,
+            "updates_probe_ok": True,
+            "failed_transient": 0,
+        }
+        agents = MODULE.system_agent_rows(
+            source=source,
+            council=current_council,
+            truth=current_truth,
+            performance=perf,
+            control=control(),
+            storage_campaign={"status": "NONE"},
+            recovery_campaign={"status": "NONE"},
+        )
+        host_agent = next(item for item in agents if item["key"] == "host")
+        self.assertEqual(host_agent["state"], "ATTENTION")
+        self.assertIn("1 actionable", host_agent["summary"])
+
 
 if __name__ == "__main__":
     unittest.main()

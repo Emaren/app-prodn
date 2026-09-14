@@ -1082,3 +1082,23 @@ recognized SSH transport exit 255, bounded to three attempts with a short
 backoff. Timeouts, non-255 remote/application failures, malformed JSON, coverage
 gaps, and failed public verification remain fail-closed. Never broaden this into
 generic retry-on-error behavior.
+
+## 2026-09-14 — Package visibility is not package actionability
+
+The final Host OS preflight exposed a truth-model bug: `apt list --upgradable`
+reported eight visible candidates while Ubuntu's simulated normal upgrade would
+apply seven and intentionally defer `dnsmasq-base` at phased rollout 0%. Counting
+all eight as actionable would pressure operators to bypass distro rollout policy
+merely to make Host OS green.
+
+Durable rule: total visible update candidates, actionable updates, Ubuntu-phased
+deferrals, and other deferrals are separate facts. Host health is degraded by
+actionable updates, non-phased deferrals, classification failure, or a required
+reboot; phased-only deferral remains visible INFO and does not make the host
+unhealthy. Fail safe when classification cannot be proved. Do not override
+Ubuntu phasing for dashboard cosmetics.
+
+Shell lesson: under `pipefail`, `producer | grep -q` can report failure after a
+successful early match because the producer receives SIGPIPE. For maintenance
+authority probes, capture command output first and match the captured text; never
+let short-circuit pipeline behavior decide safety classification.

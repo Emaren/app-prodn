@@ -25,6 +25,15 @@ reboot-required marker and available package updates. The exact package count
 and reboot state are live facts: read them from `aoe2war doctor --json` and the
 host package manager rather than copying a number into documentation.
 
+Host update truth distinguishes **actionable** packages from distro-policy
+deferrals. `apt list --upgradable` is the total visible candidate set; a
+read-only `apt-get --simulate upgrade` determines what Ubuntu would actually
+apply now. A visible package omitted solely because Ubuntu phased rollout is
+not actionable maintenance debt: Host OS and Doctor report it as informational
+phased deferral and remain healthy when no other host work is pending. A
+non-phased deferral or failed classification remains attention-worthy. Never
+override Ubuntu phasing merely to clear a dashboard warning.
+
 `aoe2war finish` does not reboot the host, install or upgrade packages, change
 kernel state, enable unattended upgrades, run a distribution upgrade, apply a
 database migration, or mutate Wolo. A warning is a maintenance signal, not
@@ -178,7 +187,9 @@ captured output.
    `docs/EVIDENCE_VAULT.md`.
 3. Refresh package metadata only inside the approved window.
 4. Re-run the simulated transaction and compare it with the approved package
-   list. Stop on newly introduced packages or removals.
+   list. Stop on newly introduced packages or removals. Treat Ubuntu-phased
+   candidates omitted by the simulation as intentionally deferred; do not force
+   them into the transaction. Any other deferral requires review before mutation.
 5. Apply only the approved upgrade class. Do not improvise `dist-upgrade`,
    release upgrades, package removals, autoremove, or unattended-upgrade policy
    changes.
