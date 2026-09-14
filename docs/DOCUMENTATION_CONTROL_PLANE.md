@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/watcher-media-server-qos-v1` at `e6d025c0b0f27fc6b085342ecde659d87274046b`
+Implementation baseline: `release/watcher-1.5.11-app-metadata-v1` at `3145047487bdbed7e17a4af022a330d8f388344b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

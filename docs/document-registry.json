@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b476ab66b4948e16e4a47e86b6428fa8904fa4b9cef9e4e8aaaeaf03aad30a34",
+      "sha256": "3d9ca375a5ff67dda984a582d7bd0264eceb0b36cf0db3cde7459033f2d35d00",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1623,7 +1623,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-14",
       "sensitivity": "restricted",
-      "sha256": "b971cf0c65faf984f74e0f427c29c00a84a89d96a8a3c9f5f89003758ce5e4fe",
+      "sha256": "43e335f0239681cc2d674281c4e842709dfdc0e743f7f32e8e3b511c0ab91c1c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/watcher-media-server-qos-v1",
-    "commit": "e6d025c0b0f27fc6b085342ecde659d87274046b"
+    "branch": "release/watcher-1.5.11-app-metadata-v1",
+    "commit": "3145047487bdbed7e17a4af022a330d8f388344b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
