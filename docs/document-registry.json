@@ -198,9 +198,9 @@
       "owner": "aoe2war-web",
       "path": "docs/AI_COUNCIL_AND_COMMAND_CENTER.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-08-21",
+      "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "8a2d9db7ba8c74b9c74b42f781617a9644ca31e51635158fabe3737913193f7a",
+      "sha256": "ad02e0aedeb6f1aef800da96045a29338db415f78f05cea887d2305c526c639a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -563,9 +563,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-09-10",
+      "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "321efaf3e1492fce24af44e02a6fa3a847690eea255a70199594b25af80a2919",
+      "sha256": "f341fa6ccd3b02b19c6406881eabbcc25a86c613ed375d8a76f2d32fc8cdb1cb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

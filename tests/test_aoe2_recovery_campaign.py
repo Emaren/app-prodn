@@ -1644,6 +1644,46 @@ class RecoveryCampaignTests(unittest.TestCase):
             "sealed + active encrypted chunk bytes",
         )
 
+    def test_live_capture_progress_supports_wolo_offhost_phase(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            bundle = Path(temporary)
+            chunk_root = bundle / "wolo_consensus_recovery.cms.chunks"
+            chunk_root.mkdir(parents=True)
+
+            state = {
+                "current_class": "wolo_consensus_recovery",
+                "bundle_root": str(bundle),
+                "completed_classes": ["wolo_settlement_state"],
+                "classes": list(campaign.WOLO_OFFHOST_CLASSES),
+                "stages": [
+                    {
+                        "class": "wolo_consensus_recovery",
+                        "expected_plaintext_tar_bytes": 200,
+                    }
+                ],
+                "current_class_started_at": "2026-09-14T20:00:00+00:00",
+            }
+            receipts = [
+                {
+                    "plaintext_bytes": 100,
+                    "created_at": "2026-09-14T20:00:10+00:00",
+                }
+            ]
+
+            with patch.object(
+                campaign,
+                "_load_existing_chunk_receipts",
+                return_value=receipts,
+            ):
+                progress = campaign._live_capture_progress(state)
+
+        self.assertIsNotNone(progress)
+        assert progress is not None
+        self.assertEqual(progress["expected_bytes"], 200)
+        self.assertEqual(progress["class_percent"], 50.0)
+        self.assertEqual(progress["overall_percent"], 75.0)
+        self.assertEqual(progress["sealed_chunks"], 1)
+
     def test_resume_clears_durable_pause_marker(self):
         with tempfile.TemporaryDirectory() as temporary:
             campaign_dir = Path(temporary)

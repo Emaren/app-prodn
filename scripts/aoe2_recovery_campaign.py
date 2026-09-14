@@ -1924,6 +1924,7 @@ def wolo_offhost_status(campaign_id: str) -> dict[str, Any]:
     pid = state.get("pid")
     result = dict(state)
     result["process_alive"] = process_alive(pid if isinstance(pid, int) else None)
+    result["live_capture"] = _live_capture_progress(result)
     return result
 
 
@@ -4227,10 +4228,45 @@ def _parse_iso_epoch(value: object) -> float | None:
     return parsed.timestamp()
 
 
+def _capture_classes(state: dict[str, Any]) -> tuple[str, ...]:
+    values = state.get("ordinary_classes") or state.get("classes") or []
+    if not isinstance(values, (list, tuple)):
+        return ()
+    return tuple(str(item) for item in values if str(item).strip())
+
+
+def _positive_capture_bytes(value: object) -> int:
+    try:
+        parsed = int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+    return parsed if parsed > 0 else 0
+
+
+def _expected_capture_bytes(state: dict[str, Any], class_name: str) -> int:
+    estimates = state.get("ordinary_stage_estimates") or {}
+    if isinstance(estimates, dict):
+        expected = _positive_capture_bytes(estimates.get(class_name))
+        if expected:
+            return expected
+
+    stages = state.get("stages") or []
+    if isinstance(stages, list):
+        for stage in stages:
+            if not isinstance(stage, dict) or stage.get("class") != class_name:
+                continue
+            for key in ("expected_plaintext_tar_bytes", "estimated_bytes"):
+                expected = _positive_capture_bytes(stage.get(key))
+                if expected:
+                    return expected
+    return 0
+
+
 def _live_capture_progress(state: dict[str, Any]) -> dict[str, Any] | None:
     class_name = str(state.get("current_class") or "")
     bundle = str(state.get("bundle_root") or "")
-    if class_name not in ORDINARY_CLASSES or not bundle:
+    classes = _capture_classes(state)
+    if class_name not in classes or not bundle:
         return None
 
     root = _chunk_root(Path(bundle).expanduser().resolve(), class_name)
@@ -4263,11 +4299,10 @@ def _live_capture_progress(state: dict[str, Any]) -> dict[str, Any] | None:
                 continue
 
     observed_bytes = sealed_bytes + partial_bytes
-    estimates = state.get("ordinary_stage_estimates") or {}
-    expected_bytes = int(estimates.get(class_name) or 0)
+    expected_bytes = _expected_capture_bytes(state, class_name)
 
     completed = len(state.get("completed_classes") or [])
-    total = len(state.get("ordinary_classes") or [])
+    total = len(classes)
     class_fraction = (
         max(0.0, min(1.0, observed_bytes / expected_bytes))
         if expected_bytes > 0

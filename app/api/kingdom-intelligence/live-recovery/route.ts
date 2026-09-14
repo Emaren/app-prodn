@@ -56,40 +56,56 @@ function isoSeconds(value: unknown) {
 }
 
 async function latestRunningCampaign(root: string) {
-  const dir = path.join(root, ".aoe2war-release", "recovery-campaigns");
+  const campaignRoot = path.join(root, ".aoe2war-release", "recovery-campaigns");
+  const directories = [
+    campaignRoot,
+    path.join(campaignRoot, "wolo-offhost"),
+  ];
+  const runningStatuses = new Set([
+    "RUNNING",
+    "RUNNING_CAPTURE",
+    "RESUME_REQUESTED",
+    "SPAWN_REQUESTED",
+    "WOLO_OFFHOST_CAPTURE_RUNNING",
+  ]);
+  const rows: Array<Record<string, unknown>> = [];
 
-  let names: string[];
-  try {
-    names = await fs.readdir(dir);
-  } catch {
-    return null;
-  }
-
-  const candidates = names
-    .filter((name) => name.endsWith(".json"))
-    .sort()
-    .reverse();
-
-  for (const name of candidates) {
+  for (const dir of directories) {
+    let names: string[];
     try {
-      const raw = JSON.parse(
-        await fs.readFile(path.join(dir, name), "utf8"),
-      ) as Record<string, unknown>;
-
-      const status = String(raw.status ?? "").toUpperCase();
-      if (
-        status === "RUNNING" ||
-        status === "RUNNING_CAPTURE" ||
-        status === "RESUME_REQUESTED"
-      ) {
-        return raw;
-      }
+      names = await fs.readdir(dir);
     } catch {
       continue;
     }
+
+    for (const name of names.filter((item) => item.endsWith(".json"))) {
+      try {
+        const raw = JSON.parse(
+          await fs.readFile(path.join(dir, name), "utf8"),
+        ) as Record<string, unknown>;
+        if (runningStatuses.has(String(raw.status ?? "").toUpperCase())) {
+          rows.push(raw);
+        }
+      } catch {
+        continue;
+      }
+    }
   }
 
-  return null;
+  rows.sort((left, right) => {
+    const timestamp = (value: Record<string, unknown>) => {
+      const candidate =
+        value.updated_at ??
+        value.current_class_started_at ??
+        value.started_at ??
+        value.created_at;
+      const millis = new Date(String(candidate ?? "")).getTime();
+      return Number.isFinite(millis) ? millis : 0;
+    };
+    return timestamp(right) - timestamp(left);
+  });
+
+  return rows[0] ?? null;
 }
 
 async function legacyExpectedBytes(
@@ -292,7 +308,21 @@ export async function GET() {
         ? (campaign.ordinary_stage_estimates as Record<string, unknown>)
         : {};
 
-    const persistedEstimate = Number(stageEstimates[className] ?? 0);
+    const phaseStages = Array.isArray(campaign.stages)
+      ? (campaign.stages as Array<Record<string, unknown>>)
+      : [];
+    const currentStage = phaseStages.find(
+      (item) => String(item.class ?? "") === className,
+    );
+    const phaseEstimate = Number(
+      currentStage?.expected_plaintext_tar_bytes ??
+        currentStage?.estimated_bytes ??
+        0,
+    );
+    const persistedEstimate = Number(
+      stageEstimates[className] ??
+        (Number.isFinite(phaseEstimate) && phaseEstimate > 0 ? phaseEstimate : 0),
+    );
     const campaignId = String(campaign.campaign_id ?? "unknown");
     const legacyEstimate =
       persistedEstimate > 0
@@ -318,9 +348,12 @@ export async function GET() {
     const completed = Array.isArray(campaign.completed_classes)
       ? campaign.completed_classes.length
       : 0;
-    const total = Array.isArray(campaign.ordinary_classes)
-      ? campaign.ordinary_classes.length
-      : 0;
+    const phaseClasses = Array.isArray(campaign.ordinary_classes)
+      ? campaign.ordinary_classes
+      : Array.isArray(campaign.classes)
+        ? campaign.classes
+        : [];
+    const total = phaseClasses.length;
 
     const overallPercent =
       total > 0 && classFraction !== null

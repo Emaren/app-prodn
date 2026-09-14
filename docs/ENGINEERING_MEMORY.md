@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-09-10"
+reviewed_at: "2026-09-14"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -203,6 +203,8 @@ ChatGPT and Codex are separate from OS agents and appear only when Workspace OS
 or an authenticated heartbeat proves their activity.
 
 Replay Truth OS health is a certainty-accounting invariant, not a demand that every historical winner become knowable. When the current closure is complete, 100% of final battles are disposition-accounted, and zero remain unclassified, the OS is healthy even if the winner-authority progress bar remains below 100%. Explicitly evidence-bounded unresolved results are successful truth preservation. Never weaken ambiguity gates, synthesize a winner, or reopen a completed certainty closure merely to turn that progress gauge green.
+
+Recovery progress follows the same honesty rule: UI progress may come from a direct local sampler or the bridged Brain snapshot only when the active phase has an explicit persisted byte denominator. Wolo off-host capture is a first-class Recovery phase and must not disappear behind the completed ordinary 5/5 campaign. If denominator-backed progress is unavailable, show a syncing/unknown state rather than inventing a percentage.
 
 Chronology and memory are different layers. The War Pulse shows recent active
 or completed operating/source events. The Victory Ledger points to sealed Git

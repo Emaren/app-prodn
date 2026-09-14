@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-08-21"
+reviewed_at: "2026-09-14"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -72,6 +72,8 @@ The lobby and Council expose honest user-facing timing: a visible thinking count
 The operator-side Kingdom Intelligence path treats read-only operational evidence as reusable within one collection cycle. Doctor runs the exhaustive Estate audit in parallel with its operational lane; after one certified release observation, the independent custody, replay API, local bridge, host/server bridge, maintenance-safety, toolchain, architecture, and recovery probes also run concurrently in private Doctor fragments and merge in deterministic historical order. Estate Audit itself overlaps independent read-only repository, documentation, taxonomy, map, context, production, and Wolo observations; each worker owns private mutable audit state and results are merged in the historical serial order, with central-state validation waiting only on the exact source snapshots it consumes. Council consumes Doctor's already-proven release, host, recovery, and Estate evidence instead of opening duplicate GitHub/VPS/Recovery probes; Brain in turn consumes Council's release snapshot instead of collecting release state a second time. Standalone `host`, `recovery`, `audit`, and release commands remain independent authorities and are used as fail-safe fallbacks when a supplied proof is absent or incomplete. This is proof sharing and concurrent observation, not stale caching: mutating release commands and separate operator invocations continue to collect fresh evidence unless an explicit hash-bound reuse contract applies.
 
 Kingdom Intelligence separates **Replay Truth OS health** from **winner-coverage progress**. Replay Truth is healthy when the current closure accounts for the complete final corpus, leaves zero battles unclassified, and preserves every evidence-bounded unresolved result honestly. The progress bar may remain below 100% because it reports resolved winner authority. An unresolved winner is not an OS defect when the evidence has been completely classified; forcing a winner merely to make the gauge green would violate the replay-truth contract.
+
+Recovery activity uses the same evidence rule. Ordinary and Wolo off-host capture phases expose progress only when a persisted byte denominator exists. The operator-side Brain may publish that denominator-backed progress through the outbound bridge, and the browser may use it as a bounded fallback when the local-preview live sampler is unavailable. The browser must never substitute a coarse completed-class fraction and present it as byte-level live progress; absent denominator-backed evidence it displays `live signal syncing` instead.
 
 ## Data model and routes
 

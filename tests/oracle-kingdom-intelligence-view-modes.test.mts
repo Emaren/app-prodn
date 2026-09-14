@@ -239,10 +239,15 @@ test("Kingdom Intelligence samples live Recovery bytes every five seconds withou
   assert.match(pulse, /denominatorSource !== "unavailable"/);
   assert.match(agent, /live signal syncing/);
   assert.match(agent, /denominatorSource !== "unavailable"/);
+  assert.match(agent, /trustworthySnapshotProgress/);
+  assert.match(pulse, /trustworthySnapshotProgress/);
 
   assert.match(route, /AOE2WAR_PROD_DB_PREVIEW/);
   assert.match(route, /operator_preview_only/);
   assert.match(route, /ordinary_stage_estimates/);
+  assert.match(route, /wolo-offhost/);
+  assert.match(route, /expected_plaintext_tar_bytes/);
+  assert.match(route, /campaign\.classes/);
   assert.match(route, /sealedChunks/);
   assert.match(route, /observedBytes/);
   assert.match(route, /overallPercent/);
