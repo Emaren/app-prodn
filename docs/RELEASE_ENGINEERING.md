@@ -454,13 +454,11 @@ limits beyond safe host capacity.
 
 For release staging (`NEXT_DIST_DIR=.next-release`):
 
-- lint runs explicitly in `prebuild`;
-- TypeScript validation runs explicitly as `tsc --noEmit` in `prebuild`;
-- those checks are sequential and must pass before `next build`;
-- Next's duplicate in-build lint/type workers are disabled only for that
-  release-build mode, because equivalent checks already passed in the same
-  fail-closed build lifecycle;
-- ordinary/non-release builds retain Next's normal built-in lint/type behavior;
+- lint and TypeScript validation are owned by the cryptographically bound Release Gate before staging;
+- changed source files receive incremental ESLint plus full `tsc --noEmit`; lint/TypeScript/package/lock/Prisma configuration changes expand validation fail-closed;
+- candidate `prebuild` still generates the page-change manifest, build version, and Prisma client locally, but skips only the already-certified lint/type repeat;
+- Next's duplicate in-build lint/type workers remain disabled only for that release-build mode;
+- ordinary/non-release `yarn build` still runs lint plus `tsc --noEmit` in `prebuild` and retains strict local validation;
 - `experimental.webpackBuildWorker` is explicitly enabled because this repo has
   a custom `webpack()` hook;
 - `experimental.webpackMemoryOptimizations` is enabled;
