@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/kingdom-brain-pack-command-v1` at `42bdf56e2c60b637ceacefe65f5c794b5fe9f707`
+Implementation baseline: `feature/browser-truth-edge-v1` at `d489ea2c03d08166a0628e00b410193094ee18f8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

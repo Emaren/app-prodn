@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d8b5a2ac5b9832decbbdb348159f5f95e96ccb464bfc15f4fe57d09293fb245b",
+      "sha256": "fcfebf1cf53af260046d500ea437a766d9f8c025d48d5df43ce9e67c59f900ee",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1116,7 +1116,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "1f7fab59c5459c4a6fd59987698f99ee5c3de0f3af769a89ff982a471ca24d22",
+      "sha256": "1b4054a0a18f851bff29ed9342518e34d7a1a4b679c47fcebaeaa79cbbad2f93",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/kingdom-brain-pack-command-v1",
-    "commit": "42bdf56e2c60b637ceacefe65f5c794b5fe9f707"
+    "branch": "feature/browser-truth-edge-v1",
+    "commit": "d489ea2c03d08166a0628e00b410193094ee18f8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
