@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f072539053ec9f611844ee1f07c75f10025fa53f6324c7c319b02a5bf197b1cc",
+      "sha256": "400ae02f058e2b2bbe991d18b1c51302a36a6d78439b731658ef809a1f612d97",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -590,7 +590,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-10",
       "sensitivity": "internal",
-      "sha256": "32f3ffc92eb1cfa00629831676ba3a5c9091c200ee7fcb5cdfe3b770fd2913cf",
+      "sha256": "1d8794ae1fd70da02292b3c26f8c67c08e94843c69cf9605af048ce4081f558d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/release-critical-path-v2",
-    "commit": "c8d511a3ef5d86c1d9eed8a009b82c23e98eebc5"
+    "branch": "feature/recovery-key-custody-v1",
+    "commit": "d75d6bafa81fa55e6f35d5750f4b532d44edb2b2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
