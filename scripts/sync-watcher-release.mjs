@@ -25,6 +25,7 @@ const FEATURE_CHIPS = [
   "Replay folder self-healing",
   "Active replay-folder recovery",
   "Replay-priority streaming",
+  "Capability-negotiated media shedding",
   "Mid-game replay recovery",
   "Bounded monitor watchdog",
   "Privacy-safe rich heartbeat",
