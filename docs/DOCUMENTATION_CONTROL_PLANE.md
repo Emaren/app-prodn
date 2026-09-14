@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/recovery-verified-activation-v1` at `e55a8c8b1edc4be5bc131c24aa94055e2b35fb8a`
+Implementation baseline: `feature/workshop-chronicler-ssh-retry-v1` at `ecab753f61e37d83e9b502fe97be7a95e82ca1fd`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

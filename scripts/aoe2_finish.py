@@ -2560,38 +2560,60 @@ def run_workshop_chronicler(
         ]
     )
 
-    try:
-        process = subprocess.run(
-            [
-                "ssh",
-                "-T",
-                "-o",
-                "BatchMode=yes",
-                "-o",
-                "ConnectTimeout=8",
-                host,
-                "bash",
-                "-s",
-            ],
-            cwd=str(ROOT),
-            input=remote_script,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            timeout=300,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise FinishError(
-            "Workshop Chronicler timed out after certification"
-        ) from exc
+    transport_attempts = 3
+    process: subprocess.CompletedProcess[str] | None = None
+    output = ""
 
-    output = process.stdout or ""
+    for attempt in range(1, transport_attempts + 1):
+        try:
+            process = subprocess.run(
+                [
+                    "ssh",
+                    "-T",
+                    "-o",
+                    "BatchMode=yes",
+                    "-o",
+                    "ConnectTimeout=8",
+                    host,
+                    "bash",
+                    "-s",
+                ],
+                cwd=str(ROOT),
+                input=remote_script,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                timeout=300,
+                check=False,
+            )
+        except subprocess.TimeoutExpired as exc:
+            raise FinishError(
+                "Workshop Chronicler timed out after certification"
+            ) from exc
+
+        output = process.stdout or ""
+        if process.returncode != 255:
+            break
+        if attempt < transport_attempts:
+            progress.wait(
+                "Workshop Chronicler SSH transport returned 255; "
+                f"retrying ({attempt + 1}/{transport_attempts})..."
+            )
+            time.sleep(1)
+
+    if process is None:
+        raise FinishError("Workshop Chronicler did not start")
 
     if process.returncode != 0:
+        if process.returncode == 255:
+            raise FinishError(
+                "certified release is live, but Workshop Chronicle SSH "
+                f"transport failed after {transport_attempts} attempts: "
+                + output[-8000:]
+            )
         raise FinishError(
             "certified release is live, but Workshop Chronicle "
-            "publication failed: "
+            f"publication failed with exit {process.returncode}: "
             + output[-8000:]
         )
 
