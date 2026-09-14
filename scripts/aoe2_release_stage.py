@@ -298,6 +298,9 @@ rmdir "$build_worktree"
 git worktree add --detach "$build_worktree" "$RELEASE" \
   > "$RECEIPT/worktree-add.log" 2>&1
 test "$(git -C "$build_worktree" rev-parse HEAD)" = "$RELEASE"
+gate_proof="$build_worktree/.aoe2war-release-gate-receipt.json"
+printf '%s' "$GATE_CONTENT" > "$gate_proof"
+test "$(sha256sum "$gate_proof" | awk '{{print $1}}')" = "$GATE_SHA"
 
 # Candidate dependencies are fetched from the exact release lock in a
 # root-defined sandbox with network access but lifecycle scripts disabled.

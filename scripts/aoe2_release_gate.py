@@ -232,6 +232,7 @@ def path_risk(path: str) -> str:
         "scripts/aoe2_release_gate.py",
         "scripts/aoe2_release_ship.py",
         "scripts/aoe2_release_stage.py",
+        "scripts/aoe2_release_prebuild_validation.mjs",
         "scripts/aoe2_release_auto.py",
         "scripts/aoe2_release_rollback.py",
         "scripts/aoe2_audit.py",
@@ -316,6 +317,27 @@ def existing_lintable(paths: list[str]) -> list[str]:
         if path.is_file() and path.suffix.lower() in suffixes:
             result.append(rel)
     return sorted(set(result))
+
+
+def requires_typescript_validation(paths: list[str]) -> bool:
+    if existing_lintable(paths):
+        return True
+    exact = {
+        "package.json",
+        "yarn.lock",
+        "tsconfig.json",
+        "prisma/schema.prisma",
+    }
+    return any(path in exact for path in paths)
+
+
+def requires_full_eslint(paths: list[str]) -> bool:
+    exact = {"package.json", "yarn.lock", "tsconfig.json", ".eslintignore"}
+    for path in paths:
+        name = Path(path).name
+        if path in exact or name.startswith(".eslintrc") or name.startswith("eslint.config."):
+            return True
+    return False
 
 
 def focused_npm_tests(paths: list[str]) -> list[str]:
@@ -413,6 +435,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
             "scripts/aoe2_release_gate.py",
             "scripts/aoe2_release_ship.py",
             "scripts/aoe2_release_stage.py",
+            "scripts/aoe2_release_prebuild_validation.mjs",
             "scripts/aoe2_release_auto.py",
             "scripts/aoe2_release_rollback.py",
             "tests/test_release_engineering.py",
@@ -565,9 +588,11 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
         )
 
     lintable = existing_lintable(paths)
+    typescript_required = requires_typescript_validation(paths)
+    full_eslint_required = requires_full_eslint(paths)
     prisma_generate_added = False
 
-    if lintable and (ROOT / "prisma" / "schema.prisma").exists():
+    if typescript_required and (ROOT / "prisma" / "schema.prisma").exists():
         commands.append(
             (
                 "prisma-generate",
@@ -577,8 +602,12 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
         )
         prisma_generate_added = True
 
-    if lintable:
+    if typescript_required:
         commands.append(("typescript", ["npx", "tsc", "--noEmit"], 600))
+
+    if full_eslint_required:
+        commands.append(("eslint-full", ["npx", "next", "lint"], 600))
+    elif lintable:
         commands.append(("eslint-changed", ["npx", "eslint", *lintable], 600))
 
     if risk == "DATABASE":

@@ -62,6 +62,10 @@ class ReleaseGateTests(unittest.TestCase):
             MODULE.classify_risk(["scripts/aoe2_release_gate.py"]),
             "INFRASTRUCTURE",
         )
+        self.assertEqual(
+            MODULE.classify_risk(["scripts/aoe2_release_prebuild_validation.mjs"]),
+            "INFRASTRUCTURE",
+        )
 
     def test_presentation_risk(self):
         self.assertEqual(
@@ -83,6 +87,49 @@ class ReleaseGateTests(unittest.TestCase):
             ["lib/replay.ts", "tests/hd-replay-truth.test.mts"]
         )
         self.assertEqual(scripts.count("test:replay-truth"), 1)
+
+    def test_typescript_validation_expands_to_non_lintable_contract_changes(self):
+        for changed in (
+            ["tsconfig.json"],
+            ["prisma/schema.prisma"],
+            ["package.json"],
+            ["yarn.lock"],
+        ):
+            with self.subTest(changed=changed):
+                scope = {
+                    "mode": "committed",
+                    "base_sha": "a" * 40,
+                    "target_sha": "b" * 40,
+                    "changed_files": changed,
+                }
+                labels = [label for label, _args, _timeout in MODULE.command_plan(scope, MODULE.classify_risk(changed))]
+                self.assertIn("prisma-generate", labels)
+                self.assertIn("typescript", labels)
+
+    def test_lint_configuration_changes_run_full_lint(self):
+        for changed in (["tsconfig.json"], ["package.json"], ["yarn.lock"], [".eslintrc.json"]):
+            with self.subTest(changed=changed):
+                scope = {
+                    "mode": "committed",
+                    "base_sha": "a" * 40,
+                    "target_sha": "b" * 40,
+                    "changed_files": changed,
+                }
+                labels = [label for label, _args, _timeout in MODULE.command_plan(scope, MODULE.classify_risk(changed))]
+                self.assertIn("eslint-full", labels)
+                self.assertNotIn("eslint-changed", labels)
+
+    def test_changed_typescript_keeps_incremental_eslint_and_full_typecheck(self):
+        scope = {
+            "mode": "committed",
+            "base_sha": "a" * 40,
+            "target_sha": "b" * 40,
+            "changed_files": ["app/api/forum/route.ts"],
+        }
+        labels = [label for label, _args, _timeout in MODULE.command_plan(scope, "APPLICATION")]
+        self.assertIn("typescript", labels)
+        self.assertIn("eslint-changed", labels)
+        self.assertNotIn("eslint-full", labels)
 
 
     def test_storage_os_is_infrastructure_risk(self):
@@ -181,6 +228,17 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertEqual(len(compile_steps), 1)
         self.assertIn("tests/test_aoe2_docs.py", release_tests[0])
         self.assertIn("scripts/aoe2_docs.py", compile_steps[0])
+
+    def test_release_prebuild_helper_triggers_full_release_suite(self):
+        scope = {
+            "mode": "worktree",
+            "base_sha": "a",
+            "target_sha": "WORKTREE",
+            "changed_files": ["scripts/aoe2_release_prebuild_validation.mjs"],
+        }
+        plan = MODULE.command_plan(scope, "INFRASTRUCTURE")
+        labels = [label for label, _args, _timeout in plan]
+        self.assertIn("release-engineering-tests", labels)
 
     def test_operator_cli_is_infrastructure_risk(self):
         self.assertEqual(MODULE.path_risk("bin/aoe2war"), "INFRASTRUCTURE")
