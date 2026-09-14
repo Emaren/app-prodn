@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5d652a0b6f26e97cf9e70f869bd58e3928839a214904ed69513d3ed09612eab5",
+      "sha256": "f072539053ec9f611844ee1f07c75f10025fa53f6324c7c319b02a5bf197b1cc",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1254,7 +1254,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-24",
       "sensitivity": "internal",
-      "sha256": "521725318b2e974ac9daad3faf55ce0791f3b87358d7829efecd6eef38d19cee",
+      "sha256": "91f463ab63b20de107d7efb51bc39265fb7471e5707e32acf4c4d32c2177512d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1838,7 +1838,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/release-critical-path-v2",
-    "commit": "c9c14be871b1568c7516b066c3bb5db723204ada"
+    "commit": "c8d511a3ef5d86c1d9eed8a009b82c23e98eebc5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
