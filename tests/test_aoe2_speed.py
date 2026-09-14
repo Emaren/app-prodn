@@ -925,6 +925,62 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertIn("\\n", script)
         self.assertNotIn("\\\\n", script)
 
+    def test_browser_truth_cohort_is_bounded_unique_and_targets_critical_routes(self):
+        routes = SPEED_MODULE.BROWSER_TRUTH_ROUTES
+        self.assertEqual(len(routes), 15)
+        paths = [row["route"] for row in routes]
+        self.assertEqual(len(paths), len(set(paths)))
+        self.assertIn("/bets", paths)
+        self.assertIn("/live-games", paths)
+        self.assertIn("/kingdom-intelligence", paths)
+        self.assertIn("/leaderboard", paths)
+        self.assertTrue(next(row for row in routes if row["route"] == "/bets")["expect_ready"])
+
+    def test_browser_truth_seals_release_bound_nonmutating_receipt(self):
+        identity = {
+            "release_sha": "a" * 40,
+            "build_version": "build-v1",
+            "certification": "CERTIFIED",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            target = pathlib.Path(tmp) / "browser-truth"
+
+            def fake_run(command, **kwargs):
+                out_dir = pathlib.Path(command[command.index("--out-dir") + 1])
+                payload = {
+                    "schema": 1,
+                    "kind": "aoe2war-browser-truth",
+                    "release_sha": "a" * 40,
+                    "build_version": "build-v1",
+                    "production_mutated": False,
+                    "database_mutated": False,
+                    "wolo_mutated": False,
+                    "summary": {"pass": True, "passed": 30, "failed": 0},
+                    "rows": [],
+                }
+                (out_dir / "receipt.json").write_text(json.dumps(payload))
+                return type("Proc", (), {"returncode": 0, "stdout": ""})()
+
+            with patch.object(SPEED_MODULE, "collect_release_identity", return_value=identity), patch.object(
+                SPEED_MODULE.subprocess, "run", side_effect=fake_run
+            ):
+                payload = SPEED_MODULE.browser_truth(out_dir=target)
+
+            self.assertFalse(payload["production_mutated"])
+            self.assertFalse(payload["database_mutated"])
+            self.assertFalse(payload["wolo_mutated"])
+            self.assertTrue((target / "routes.json").is_file())
+            self.assertEqual(len(json.loads((target / "routes.json").read_text())), 15)
+
+    def test_browser_truth_requires_certified_release(self):
+        with patch.object(
+            SPEED_MODULE,
+            "collect_release_identity",
+            return_value={"release_sha": "a" * 40, "build_version": "b", "certification": "STAGED"},
+        ):
+            with self.assertRaises(SPEED_MODULE.SpeedError):
+                SPEED_MODULE.browser_truth(out_dir=pathlib.Path(tempfile.gettempdir()) / "never-created")
+
     def test_browser_route_group_matches_traffic_contract(self):
         self.assertEqual(SPEED_MODULE.browser_route_group("/"), "/")
         self.assertEqual(

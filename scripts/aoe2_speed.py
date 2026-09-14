@@ -78,6 +78,25 @@ PERFORMANCE_ATTEMPTS = STATE / "performance-attempts"
 OPERATOR_TIMING_RECEIPTS = STATE / "operator-timings"
 OPERATOR_TIMING_KEEP = 64
 BASELINE_DIR = STATE / "performance-baselines"
+BROWSER_TRUTH_ROOT = STATE / "performance-browser-truth"
+BROWSER_TRUTH_HELPER = ROOT / "scripts" / "aoe2_speed_browser_truth.mjs"
+BROWSER_TRUTH_ROUTES = [
+    {"route": "/", "expect_ready": True},
+    {"route": "/bets", "expect_ready": True},
+    {"route": "/players", "expect_ready": True},
+    {"route": "/players/u_626ea6497a984dabbc2338ef54c5d333", "expect_ready": False},
+    {"route": "/live-games", "expect_ready": True},
+    {"route": "/lobby", "expect_ready": False},
+    {"route": "/battle-archive", "expect_ready": True},
+    {"route": "/kingdom", "expect_ready": False},
+    {"route": "/kingdom-forge", "expect_ready": False},
+    {"route": "/clans/mystikal", "expect_ready": False},
+    {"route": "/war-chest", "expect_ready": True},
+    {"route": "/workshop", "expect_ready": False},
+    {"route": "/kingdom-intelligence", "expect_ready": True},
+    {"route": "/staking", "expect_ready": True},
+    {"route": "/leaderboard", "expect_ready": True},
+]
 
 
 def evidence_ref(path: str | Path) -> str:
@@ -2062,6 +2081,58 @@ def compare() -> None:
     )
 
 
+
+def browser_truth(
+    *,
+    base_url: str = PUBLIC_BASE,
+    out_dir: Path | None = None,
+) -> dict[str, Any]:
+    identity = collect_release_identity()
+    release_sha = str(identity.get("release_sha") or "")
+    build_version = str(identity.get("build_version") or "")
+    if identity.get("certification") != "CERTIFIED" or not release_sha or not build_version:
+        raise SpeedError("browser truth requires a certified production release")
+    if not BROWSER_TRUTH_HELPER.is_file():
+        raise SpeedError(f"browser truth helper missing: {BROWSER_TRUTH_HELPER}")
+
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    target = out_dir or (BROWSER_TRUTH_ROOT / f"{stamp}-{release_sha[:12]}")
+    target.mkdir(parents=True, exist_ok=False)
+    cohort_path = target / "routes.json"
+    cohort_path.write_text(json.dumps(BROWSER_TRUTH_ROUTES, indent=2) + "\n", encoding="utf-8")
+    command = [
+        "node",
+        str(BROWSER_TRUTH_HELPER),
+        "--base-url",
+        base_url.rstrip("/"),
+        "--routes-json",
+        str(cohort_path),
+        "--out-dir",
+        str(target),
+        "--release-sha",
+        release_sha,
+        "--build-version",
+        build_version,
+    ]
+    proc = subprocess.run(
+        command,
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        check=False,
+    )
+    receipt_path = target / "receipt.json"
+    if proc.returncode not in {0, 2} or not receipt_path.is_file():
+        raise SpeedError(
+            "browser truth harness failed before sealing a receipt"
+            + (f": {proc.stdout[-1000:]}" if proc.stdout else "")
+        )
+    payload = load_json(receipt_path)
+    if payload.get("release_sha") != release_sha or payload.get("build_version") != build_version:
+        raise SpeedError("browser truth receipt release identity mismatch")
+    payload["_path"] = str(receipt_path)
+    return payload
+
 def self_test() -> None:
     assert abs(percentile([1.0, 2.0, 3.0], 0.5) - 2.0) < 0.001
     assert QUICK_ROUTES[0] == "/"
@@ -2085,6 +2156,10 @@ def main() -> int:
     browser = sub.add_parser("browser")
     browser.add_argument("--build-version", default="")
     browser.add_argument("--since-hours", type=int, default=24)
+    browser_truth_parser = sub.add_parser("browser-truth")
+    browser_truth_parser.add_argument("--base-url", default=PUBLIC_BASE)
+    browser_truth_parser.add_argument("--out-dir", default="")
+    browser_truth_parser.add_argument("--json", action="store_true")
     sub.add_parser("diagnose")
     sub.add_parser("self-test")
     parser.add_argument("--self-test", action="store_true", dest="legacy_self_test")
@@ -2156,6 +2231,23 @@ def main() -> int:
         if args.command == "compare":
             compare()
             return 0
+        if args.command == "browser-truth":
+            target = Path(args.out_dir).expanduser().resolve() if args.out_dir else None
+            payload = browser_truth(base_url=args.base_url, out_dir=target)
+            if args.json:
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                summary = payload.get("summary") or {}
+                print("🧭 AOE2WAR BROWSER TRUTH")
+                print()
+                print(f"Release:         {str(payload.get('release_sha') or '')[:12]}")
+                print(f"Routes:          {payload.get('route_count')} × 2 viewports")
+                print(f"Observations:    {summary.get('passed')} pass / {summary.get('failed')} fail")
+                print(f"Ready:           {summary.get('ready_observed')}/{summary.get('ready_expected')} expected")
+                print(f"Overflow:        {summary.get('overflow_failures')} failure(s)")
+                print(f"Runtime errors:  {summary.get('runtime_error_failures')} failure(s)")
+                print(f"Receipt:         {evidence_ref(payload['_path'])}")
+            return 0 if (payload.get("summary") or {}).get("pass") else 1
         if args.command == "browser":
             identity = collect_release_identity()
             build_version = args.build_version or str(identity.get("build_version") or "")
