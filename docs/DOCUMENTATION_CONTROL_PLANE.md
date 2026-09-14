@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/browser-truth-edge-v1` at `d489ea2c03d08166a0628e00b410193094ee18f8`
+Implementation baseline: `feature/release-critical-path-v2` at `c9c14be871b1568c7516b066c3bb5db723204ada`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

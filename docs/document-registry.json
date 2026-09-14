@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fcfebf1cf53af260046d500ea437a766d9f8c025d48d5df43ce9e67c59f900ee",
+      "sha256": "5d652a0b6f26e97cf9e70f869bd58e3928839a214904ed69513d3ed09612eab5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1254,7 +1254,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-24",
       "sensitivity": "internal",
-      "sha256": "58211873da3f254a66fb8acc09557169a994ff279a0f883dbedb530e60e272c7",
+      "sha256": "521725318b2e974ac9daad3faf55ce0791f3b87358d7829efecd6eef38d19cee",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/browser-truth-edge-v1",
-    "commit": "d489ea2c03d08166a0628e00b410193094ee18f8"
+    "branch": "feature/release-critical-path-v2",
+    "commit": "c9c14be871b1568c7516b066c3bb5db723204ada"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
