@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/os-final-harmonization` at `0aff4bd15c4b4d846811b23c358e5906d5efe14a`
+Implementation baseline: `feature/os-final-harmonization` at `0fd3e74a5dba9527d59a0de40e2cc1b402db5c51`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

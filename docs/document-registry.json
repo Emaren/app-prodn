@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c1b1c7ee904741b7c1ac3efe4b7be3d48999b9cf09176d03060459fc34f3e7a7",
+      "sha256": "2e91adf0931ba9cb464cf19483e38170bd93bff189ff915475c7c9cc1080188c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1838,7 +1838,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/os-final-harmonization",
-    "commit": "0aff4bd15c4b4d846811b23c358e5906d5efe14a"
+    "commit": "0fd3e74a5dba9527d59a0de40e2cc1b402db5c51"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
