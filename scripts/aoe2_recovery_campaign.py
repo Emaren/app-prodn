@@ -1736,6 +1736,19 @@ def spawn_wolo_offhost(campaign_id: str) -> int:
     return int(proc.pid)
 
 
+def wolo_offhost_remaining_scope(campaign_id: str) -> list[str]:
+    custody = recovery.latest_verified_wolo_key_custody()
+    custody_current = (
+        isinstance(custody, dict)
+        and custody.get("verification_status") == "VERIFIED"
+        and str(custody.get("campaign_id") or campaign_id) == campaign_id
+    )
+    remaining = ["full_schema2_restore_proof"]
+    if not custody_current:
+        remaining.insert(0, "wolo_key_custody")
+    return remaining
+
+
 def run_wolo_offhost(campaign_id: str) -> int:
     WOLO_OFFHOST_STATE_DIR.mkdir(parents=True, exist_ok=True)
     lock_file = WOLO_OFFHOST_LOCK_PATH.open("a+")
@@ -1851,10 +1864,9 @@ def run_wolo_offhost(campaign_id: str) -> int:
             "production_mutated": False,
             "wolo_mutated": False,
             "wolo_quiesced_during_offhost_capture": False,
-            "remaining_before_full_recovery_verification": [
-                "wolo_key_custody",
-                "full_schema2_restore_proof",
-            ],
+            "remaining_before_full_recovery_verification": (
+                wolo_offhost_remaining_scope(campaign_id)
+            ),
             "secrets_policy": {
                 "database_credentials_included": False,
                 "environment_files_included": False,

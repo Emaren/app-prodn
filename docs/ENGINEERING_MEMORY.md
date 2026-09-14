@@ -206,6 +206,8 @@ Replay Truth OS health is a certainty-accounting invariant, not a demand that ev
 
 Recovery progress follows the same honesty rule: UI progress may come from a direct local sampler or the bridged Brain snapshot only when the active phase has an explicit persisted byte denominator. Wolo off-host capture is a first-class Recovery phase and must not disappear behind the completed ordinary 5/5 campaign. If denominator-backed progress is unavailable, show a syncing/unknown state rather than inventing a percentage.
 
+Recovery phase summaries must also derive remaining scope from current verified sibling proofs. In particular, once the campaign-bound Wolo key-custody proof is already VERIFIED, a later Wolo off-host summary must not keep advertising key custody as outstanding; only the genuinely remaining schema-2 assembly step belongs in that list.
+
 Chronology and memory are different layers. The War Pulse shows recent active
 or completed operating/source events. The Victory Ledger points to sealed Git
 changes. The Memory Vault points to Engineering Memory commits. A failed attempt

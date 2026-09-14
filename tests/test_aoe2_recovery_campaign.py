@@ -1080,6 +1080,30 @@ class RecoveryCampaignTests(unittest.TestCase):
         self.assertEqual(result["pid"], 777)
         self.assertEqual(result["spawned_pid"], 777)
 
+    def test_wolo_offhost_remaining_scope_respects_verified_key_custody(self):
+        with patch.object(
+            campaign.recovery,
+            "latest_verified_wolo_key_custody",
+            return_value={
+                "campaign_id": "ordinary-test",
+                "verification_status": "VERIFIED",
+            },
+        ):
+            current = campaign.wolo_offhost_remaining_scope("ordinary-test")
+
+        with patch.object(
+            campaign.recovery,
+            "latest_verified_wolo_key_custody",
+            return_value=None,
+        ):
+            missing = campaign.wolo_offhost_remaining_scope("ordinary-test")
+
+        self.assertEqual(current, ["full_schema2_restore_proof"])
+        self.assertEqual(
+            missing,
+            ["wolo_key_custody", "full_schema2_restore_proof"],
+        )
+
     def test_wolo_offhost_run_writes_two_class_verified_summary(self):
         snapshot = wolo_snapshot_fixture()
         stages = campaign.build_wolo_offhost_stages(snapshot)
