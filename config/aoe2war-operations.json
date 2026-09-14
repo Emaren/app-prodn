@@ -153,10 +153,10 @@
     ]
   },
   "offsite_evidence": {
-    "enabled": false,
-    "authority": null,
-    "restore_proof": null,
-    "note": "Pending high-ROI off-host encrypted evidence vault and restore drill."
+    "enabled": true,
+    "authority": "Mac encrypted survival vault",
+    "restore_proof": "20260907T123230Z-ordinary-fb7cb2eb5e6a-schema2-20260914T215004Z-f12ad2e4c533/restore-proof.json",
+    "note": "Recovery OS schema-2 VERIFIED proof sealed 2026-09-14; proof SHA-256 1e0d0651bc185377b2aaf78e266499bc2c8d735178346aa5be0ce7a492378804. Host maintenance remains separately authorized."
   },
   "legacy_deployment_artifacts": {
     "ecosystem.config.js": "must-be-absent",

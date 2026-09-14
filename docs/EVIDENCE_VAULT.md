@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","auditors","ai-agents"]
 source_of_truth: "git"
 authority: "disaster-recovery-contract"
-reviewed_at: "2026-09-10"
+reviewed_at: "2026-09-14"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -17,31 +17,27 @@ sensitivity: "internal"
 
 ## Current status
 
-The off-host Evidence Vault is **not configured**.
+The off-host Evidence Vault is **configured and evidence-verified**.
 
-The operations contract currently records `offsite_evidence.enabled=false`, no
-remote authority, and no restore proof. `aoe2war doctor` therefore reports a
-disaster-recovery warning: VPS root and
-`/mnt/HC_Volume_105319120` are durable in different filesystems but still share
-one host failure domain. GitHub source history is useful off-host protection,
-but it is not a backup of production receipts, database dumps, runtime
-provenance, or unique operational evidence.
+On 2026-09-14 the governed Recovery campaign closed all ten required recovery
+classes, including encrypted Wolo settlement and consensus recovery plus
+separate Wolo key custody. The final schema-2 `RECOVERY_VERIFIED` proof was
+sealed from canonical source `f12ad2e4c533924b7ddf60c225f0c27074da77bf` and
+independently re-verified with zero blockers.
 
-The full Evidence Vault authority is still not configured in the operations
-contract, but a real independent Mac database/operator-evidence pilot now
-exists. The pilot does not satisfy the complete vault contract because replay,
-media, Wolo settlement/consensus recovery, and independent key custody remain
-open.
+The operations contract now enables `offsite_evidence`, names
+`Mac encrypted survival vault` as the authority, and binds Recovery OS to the
+exact relative proof reference
+`20260907T123230Z-ordinary-fb7cb2eb5e6a-schema2-20260914T215004Z-f12ad2e4c533/restore-proof.json`.
+The sealed proof SHA-256 is
+`1e0d0651bc185377b2aaf78e266499bc2c8d735178346aa5be0ce7a492378804`.
+Relative proof references resolve beneath the canonical operator recovery vault
+root; they do not weaken the path-boundary check.
 
-The contract therefore correctly remains disabled while the proven pilot is
-recorded as partial recovery evidence rather than mislabeled as complete
-disaster recovery.
-
-Do not change the flag merely to silence Doctor. It may become enabled only
-after an actual encrypted upload, independent remote verification, and a
-successful isolated restore drill produce durable proof. Until then, a
-successful `aoe2war finish` certifies the application release, not complete
-off-host disaster recovery.
+This activation does not mutate Wolo, production data, settlement state, or host
+services. It only makes the already-sealed cryptographic Recovery proof the
+reviewed policy authority consumed by Recovery OS, Doctor and Host OS. Package
+updates and reboot remain a separate explicit maintenance authorization.
 
 ## Purpose and threat model
 
@@ -333,9 +329,9 @@ Successful completion writes
 `ORDINARY_RESTORE_VERIFIED`; the controller state closes separately with
 completion reason `ORDINARY_RESTORE_VERIFIED_WOLO_AUTHORIZATION_REQUIRED`.
 That proof covers the five ordinary non-Wolo classes only. It is deliberately
-not schema-2 `RECOVERY_VERIFIED`. Wolo
-settlement state, consistency-safe consensus recovery, separate Wolo key
-custody, and final schema-2 proof assembly remain explicit gates.
+not schema-2 `RECOVERY_VERIFIED`. At that campaign stage, Wolo settlement state,
+consistency-safe consensus recovery, separate Wolo key custody, and final
+schema-2 proof assembly were still explicit gates.
 
 Recovery OS consumes a hash-valid `ordinary-restore-summary.json` as partial
 evidence rather than ignoring it or promoting it to full verification. The
@@ -348,9 +344,9 @@ means Recovery OS can report seven of ten required recovery classes as proven
 while overall status remains `NOT_VERIFIED`.
 
 The campaign planner must reuse those seven proven classes instead of proposing
-another ordinary capture. After ordinary restore verification, only Wolo
-settlement state, consistency-safe Wolo consensus recovery, separate Wolo key
-custody, and final schema-2 proof assembly remain. The Wolo stages keep their
+another ordinary capture. At that seven-of-ten stage, the remaining gates were
+Wolo settlement state, consistency-safe Wolo consensus recovery, separate Wolo
+key custody, and final schema-2 proof assembly. The Wolo stages keep their
 explicit authorization requirements; partial proof recognition grants no Wolo
 mutation or service-quiesce authority.
 
@@ -492,9 +488,9 @@ After both classes pass isolated restore, the controller writes hashed
 OS independently verifies that summary and its two hashed class proofs before
 counting the classes. Combined with the database/operator pilot and five-class
 ordinary restore, this advances measured class coverage from seven of ten to
-**nine of ten**. Overall Recovery remains `NOT_VERIFIED`: separate
-`wolo_key_custody` and final schema-2 `RECOVERY_VERIFIED` proof assembly remain
-explicit gates. Off-host Wolo capture grants no package/reboot authorization and
+**nine of ten**. At that stage, overall Recovery remains `NOT_VERIFIED` until
+separate `wolo_key_custody` and final schema-2 `RECOVERY_VERIFIED` proof assembly
+close. Off-host Wolo capture grants no package/reboot authorization and
 performs no Wolo settlement, signer, chain-data or key-custody mutation.
 
 
@@ -672,5 +668,6 @@ Restore proof SHA-256:
 
 All temporary plaintext restore workspaces were removed afterward.
 
-This pilot materially improves total-Hetzner-loss recovery but does not make
-`offsite_evidence.enabled=true` truthful yet.
+This pilot materially improved total-Hetzner-loss recovery, but by itself it
+never made `offsite_evidence.enabled=true` truthful; full schema-2 proof was
+still required.

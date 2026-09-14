@@ -140,13 +140,16 @@ Restore proof SHA-256:
 
 Temporary plaintext restore workspaces were removed after proof.
 
-Remaining Recovery OS scope includes replay/archive evidence, selected Parser
-Engine evidence, managed/private media, Radio WOLO media, legacy direct-message
-attachments, Wolo settlement state, consistency-safe Wolo consensus recovery,
-and separate Wolo/recovery-key custody proof.
+That remaining Recovery OS scope is now closed. On 2026-09-14 the campaign
+proved all ten required classes, sealed the final schema-2 `RECOVERY_VERIFIED`
+proof, and re-verified it with zero blockers. The authoritative proof SHA-256 is
+`1e0d0651bc185377b2aaf78e266499bc2c8d735178346aa5be0ce7a492378804`.
+The reviewed operations contract binds to its relative path beneath the canonical
+Mac recovery vault.
 
-Never flip `offsite_evidence.enabled=true` merely because the database pilot is
-green.
+Never flip `offsite_evidence.enabled=true` from partial evidence. It is enabled
+now only because the complete schema-2 proof is sealed and independently
+verifiable; Host package/reboot mutation still requires its own authorization.
 
 Recovery OS V2 closes the prior configuration-only verification loophole.
 `enabled=true`, a non-empty authority, and a restore-proof string can no longer
