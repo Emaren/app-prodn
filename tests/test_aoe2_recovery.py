@@ -122,6 +122,29 @@ class RecoveryTests(unittest.TestCase):
             ],
         )
 
+    def test_campaign_final_seal_flags_are_forwarded_verbatim(self):
+        completed = type("Completed", (), {"returncode": 0})()
+        with patch.object(recovery.subprocess, "run", return_value=completed) as run:
+            rc = recovery.forward_campaign_cli(
+                [
+                    "campaign",
+                    "final-seal",
+                    "ordinary-test",
+                    "--authorize-final-recovery-proof",
+                    "--json",
+                ]
+            )
+        self.assertEqual(rc, 0)
+        self.assertEqual(
+            run.call_args.args[0][2:],
+            [
+                "final-seal",
+                "ordinary-test",
+                "--authorize-final-recovery-proof",
+                "--json",
+            ],
+        )
+
     def test_campaign_plan_is_not_intercepted_by_forwarder(self):
         self.assertIsNone(
             recovery.forward_campaign_cli(["campaign", "plan", "--json"])

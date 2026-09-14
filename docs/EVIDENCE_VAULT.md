@@ -548,6 +548,41 @@ verification**. Doctor remains blocked until the final schema-2
 plus the isolated restore-drill proof and the operations contract names that
 proof as the enabled off-host authority.
 
+
+## Final schema-2 Recovery proof assembly
+
+Ten independently proven classes are necessary but are not sufficient to turn
+Recovery OS green. The final proof lane is intentionally separate from every
+capture lane:
+
+```bash
+aoe2war recovery campaign final-preflight CAMPAIGN_ID
+aoe2war recovery campaign final-seal CAMPAIGN_ID \
+  --authorize-final-recovery-proof
+aoe2war recovery campaign final-status CAMPAIGN_ID
+```
+
+`final-preflight` requires all ten Recovery classes to be independently proven,
+revalidates the exact pilot, ordinary-restore, Wolo off-host restore and
+separate key-custody source proofs, and binds every class to its current source
+proof SHA-256. It performs no write to production, Wolo, host services or the
+operations contract.
+
+`final-seal` writes a new bundle beneath the independent Mac recovery vault. The
+bundle contains only non-secret class attestations plus one composite restore
+attestation binding the database/operator pilot, five-class ordinary restore,
+two-class Wolo off-host restore and separate key-custody restore proof. The
+schema-2 `aoe2war-recovery-proof` / `RECOVERY_VERIFIED` receipt is then passed
+back through the existing Recovery OS verifier before the state can close.
+
+Proof creation is not policy activation. The final receipt explicitly records
+`operations_contract_mutated=false` and `activation_required=true`. Recovery OS
+continues to report `NOT_VERIFIED` until a later reviewed source change sets
+`offsite_evidence.enabled=true`, names `Mac encrypted survival vault` as the
+authority, and points `restore_proof` at that exact hash-valid schema-2 receipt.
+This prevents a local file-creation operation from silently granting host
+package/reboot authority or Doctor disaster-recovery points.
+
 ## Restore drill
 
 1. Choose a sealed bundle and record its immutable remote version ID.

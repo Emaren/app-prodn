@@ -2164,5 +2164,126 @@ class RecoveryCampaignTests(unittest.TestCase):
                 campaign.resume("test-campaign")
 
 
+    def test_final_recovery_seal_requires_explicit_authorization(self):
+        with self.assertRaisesRegex(
+            campaign.CampaignError,
+            "--authorize-final-recovery-proof",
+        ):
+            campaign.seal_final_recovery_proof(
+                "final-test",
+                authorize_final_recovery_proof=False,
+            )
+
+    def test_final_recovery_preflight_requires_all_ten_classes(self):
+        status = {
+            "progress": {
+                "proven_count": 9,
+                "remaining_classes": ["wolo_consensus_recovery"],
+            }
+        }
+        with (
+            patch.object(campaign, "source_identity", return_value="a" * 40),
+            patch.object(campaign.recovery, "evaluate", return_value=status),
+        ):
+            with self.assertRaisesRegex(campaign.CampaignError, "all ten classes"):
+                campaign.final_recovery_preflight("final-test")
+
+    def test_final_recovery_seals_schema2_without_activating_contract(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            vault = root / "vault"
+            state_dir = root / "state"
+            pilot_dir = root / "pilot"
+            ordinary_dir = root / "ordinary"
+            wolo_dir = root / "wolo"
+            custody_dir = root / "custody"
+            for directory in (pilot_dir, ordinary_dir, wolo_dir, custody_dir):
+                directory.mkdir(parents=True)
+
+            def write_source(path: Path, payload: dict) -> str:
+                return campaign.write_json_with_sidecar(path, payload)
+
+            pilot_path = pilot_dir / "restore-proof.json"
+            pilot_sha = write_source(pilot_path, {"status": "PILOT_VERIFIED"})
+
+            ordinary_coverage = {}
+            for name in campaign.recovery.ORDINARY_RECOVERY_CLASSES:
+                path = ordinary_dir / "restore-proofs" / f"{name}.json"
+                sha = write_source(path, {"class": name, "status": "PASS"})
+                ordinary_coverage[name] = {
+                    "status": "PASS",
+                    "proof_file": str(path.relative_to(ordinary_dir)),
+                    "proof_sha256": sha,
+                }
+            ordinary_summary = ordinary_dir / "ordinary-restore-summary.json"
+            ordinary_sha = write_source(ordinary_summary, {"status": "PASS"})
+
+            wolo_coverage = {}
+            for name in campaign.recovery.WOLO_OFFHOST_RECOVERY_CLASSES:
+                path = wolo_dir / "restore-proofs" / f"{name}.json"
+                sha = write_source(path, {"class": name, "status": "PASS"})
+                wolo_coverage[name] = {
+                    "status": "PASS",
+                    "proof_file": str(path.relative_to(wolo_dir)),
+                    "proof_sha256": sha,
+                }
+            wolo_summary = wolo_dir / "wolo-offhost-summary.json"
+            wolo_sha = write_source(wolo_summary, {"status": "PASS"})
+
+            custody_path = custody_dir / "wolo-key-custody-proof.json"
+            custody_sha = write_source(custody_path, {"status": "PASS"})
+            campaign_id = "final-test"
+            status = {
+                "progress": {
+                    "proven_count": 10,
+                    "remaining_classes": [],
+                },
+                "pilot": {
+                    "status": "PILOT_VERIFIED",
+                    "proof_path": str(pilot_path),
+                    "proof_sha256": pilot_sha,
+                },
+                "ordinary_restore": {
+                    "campaign_id": campaign_id,
+                    "verification_status": "VERIFIED",
+                    "proof_path": str(ordinary_summary),
+                    "proof_sha256": ordinary_sha,
+                    "coverage": ordinary_coverage,
+                },
+                "wolo_offhost": {
+                    "campaign_id": campaign_id,
+                    "verification_status": "VERIFIED",
+                    "proof_path": str(wolo_summary),
+                    "proof_sha256": wolo_sha,
+                    "coverage": wolo_coverage,
+                },
+                "wolo_key_custody": {
+                    "campaign_id": campaign_id,
+                    "status": campaign.recovery.WOLO_KEY_CUSTODY_PROOF_STATUS,
+                    "verification_status": "VERIFIED",
+                    "proof_path": str(custody_path),
+                    "proof_sha256": custody_sha,
+                },
+            }
+            with (
+                patch.object(campaign, "source_identity", return_value="a" * 40),
+                patch.object(campaign.recovery, "evaluate", return_value=status),
+                patch.object(campaign.recovery, "RECOVERY_VAULT_ROOT", vault),
+                patch.object(campaign, "FINAL_RECOVERY_STATE_DIR", state_dir),
+            ):
+                result = campaign.seal_final_recovery_proof(
+                    campaign_id,
+                    authorize_final_recovery_proof=True,
+                )
+                checked = campaign.final_recovery_status(campaign_id)
+
+            self.assertEqual(result["status"], campaign.FINAL_RECOVERY_STATUS)
+            self.assertFalse(result["operations_contract_mutated"])
+            self.assertTrue(result["activation_required"])
+            self.assertFalse(result["production_mutated"])
+            self.assertFalse(result["wolo_mutated"])
+            self.assertEqual(checked["proof_verification"], "VERIFIED")
+
+
 if __name__ == "__main__":
     unittest.main()
