@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/recovery-key-custody-v1` at `d75d6bafa81fa55e6f35d5750f4b532d44edb2b2`
+Implementation baseline: `feature/recovery-finalize-v1` at `05b7a1903e793d28b730083f12e7991186231360`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
