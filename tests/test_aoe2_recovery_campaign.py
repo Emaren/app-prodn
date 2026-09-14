@@ -860,6 +860,18 @@ class RecoveryCampaignTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_wolo_snapshot_remote_receipt_python_is_valid(self):
+        script = campaign.wolo_snapshot_remote_script(
+            snapshot_id="campaign-wolo-python-receipt",
+            tool_source="a" * 40,
+        )
+        marker = "<<'PYREC'\n"
+        start = script.index(marker) + len(marker)
+        end = script.index("\nPYREC\n", start)
+        receipt_python = script[start:end]
+
+        compile(receipt_python, "<wolo-snapshot-PYREC>", "exec")
+
     def test_wolo_snapshot_script_seals_deterministic_static_tar_identities(self):
         script = campaign.wolo_snapshot_remote_script(
             snapshot_id="campaign-wolo-static-seal",
