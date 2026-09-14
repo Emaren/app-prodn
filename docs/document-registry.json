@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "009cee6e6dfc49f9b8dada36df0c29493c8cb14f98d4c8d11666acda892df65b",
+      "sha256": "acaef6af98bcc3c67d5c5f6fb4e0fa75422f325573b12493792d0c03573d7871",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/wolo-snapshot-receipt-v1",
-    "commit": "bd1875028d4e8b06a745a12f0256db19b9bb76c8"
+    "branch": "feature/os-final-harmonization",
+    "commit": "25bb2278483b55579c116279b450a28293324544"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
