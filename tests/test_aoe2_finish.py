@@ -21,6 +21,127 @@ SPEC.loader.exec_module(MODULE)
 
 
 class FinishTests(unittest.TestCase):
+    def workshop_contract(self):
+        return {
+            "finish": {"workshop_chronicler": {"enabled": True}},
+            "canonical": {
+                "production_host": "hel1",
+                "production_repo": "/var/www/AoE2HDBets/app-prodn",
+                "service": "aoe2hdbets-web.service",
+                "public_base_url": "https://aoe2war.com",
+            },
+        }
+
+    def workshop_release(self):
+        return {
+            "local": {"head": "a" * 40},
+            "production": {
+                "host": "hel1",
+                "repo": "/var/www/AoE2HDBets/app-prodn",
+            },
+        }
+
+    @staticmethod
+    def workshop_pass_output():
+        return MODULE.json.dumps(
+            {
+                "status": "PASS",
+                "mode": "PRODUCTION",
+                "mutation": {"created": 0, "updated": 2, "deleted": 0},
+                "coverage": {
+                    "commitDays": 42,
+                    "remainingGapDays": [],
+                    "currentDayPublicIds": [],
+                },
+            }
+        )
+
+    def test_workshop_chronicler_retries_ssh_255_then_passes(self):
+        failed = MODULE.subprocess.CompletedProcess(
+            args=["ssh"], returncode=255, stdout=""
+        )
+        passed = MODULE.subprocess.CompletedProcess(
+            args=["ssh"], returncode=0, stdout=self.workshop_pass_output()
+        )
+        with (
+            patch.object(
+                MODULE.aoe2_doctor,
+                "load_contract",
+                return_value=self.workshop_contract(),
+            ),
+            patch.object(
+                MODULE.subprocess,
+                "run",
+                side_effect=[failed, passed],
+            ) as run,
+            patch.object(MODULE.time, "sleep") as sleep,
+        ):
+            result = MODULE.run_workshop_chronicler(
+                certified_release=self.workshop_release(),
+                progress=MODULE.Progress(enabled=False),
+            )
+
+        self.assertEqual(result["status"], "PASS")
+        self.assertEqual(run.call_count, 2)
+        sleep.assert_called_once_with(1)
+
+    def test_workshop_chronicler_fails_after_three_ssh_255_results(self):
+        failed = MODULE.subprocess.CompletedProcess(
+            args=["ssh"], returncode=255, stdout="transport gone"
+        )
+        with (
+            patch.object(
+                MODULE.aoe2_doctor,
+                "load_contract",
+                return_value=self.workshop_contract(),
+            ),
+            patch.object(
+                MODULE.subprocess,
+                "run",
+                side_effect=[failed, failed, failed],
+            ) as run,
+            patch.object(MODULE.time, "sleep"),
+        ):
+            with self.assertRaisesRegex(
+                MODULE.FinishError,
+                "SSH transport failed after 3 attempts",
+            ):
+                MODULE.run_workshop_chronicler(
+                    certified_release=self.workshop_release(),
+                    progress=MODULE.Progress(enabled=False),
+                )
+
+        self.assertEqual(run.call_count, 3)
+
+    def test_workshop_chronicler_does_not_retry_application_failure(self):
+        failed = MODULE.subprocess.CompletedProcess(
+            args=["ssh"], returncode=1, stdout="database rejected write"
+        )
+        with (
+            patch.object(
+                MODULE.aoe2_doctor,
+                "load_contract",
+                return_value=self.workshop_contract(),
+            ),
+            patch.object(
+                MODULE.subprocess,
+                "run",
+                return_value=failed,
+            ) as run,
+            patch.object(MODULE.time, "sleep") as sleep,
+        ):
+            with self.assertRaisesRegex(
+                MODULE.FinishError,
+                "publication failed with exit 1",
+            ):
+                MODULE.run_workshop_chronicler(
+                    certified_release=self.workshop_release(),
+                    progress=MODULE.Progress(enabled=False),
+                )
+
+        self.assertEqual(run.call_count, 1)
+        sleep.assert_not_called()
+
     def test_forced_post_release_docs_refresh_even_when_plan_is_current(self):
         plan = {"blocked": False, "changes_needed": False}
         with patch.object(

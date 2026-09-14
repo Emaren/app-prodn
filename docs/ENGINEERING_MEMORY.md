@@ -1067,3 +1067,18 @@ proof kind. Two successful classes may advance Recovery OS from 7/10 to 9/10,
 never to full verification: Wolo key custody and final schema-2 proof remain
 separate authority seams. The Mac recovery private key never crosses to the VPS,
 and off-host capture must never require a second Wolo quiesce.
+
+## 2026-09-14 — Idempotent publication may absorb bounded SSH transport loss
+
+The final Recovery activation exposed a narrow post-certification seam: the app
+release could be fully CERTIFIED, Wolo healthy, and public Chronicle data correct
+while the one short-lived SSH session used by Finish returned exit 255. Re-running
+the same governed Chronicler proved the operation itself was healthy and
+idempotent.
+
+Durable rule: transport uncertainty is not application failure. A publication
+operation that is explicitly deterministic and idempotent may retry only the
+recognized SSH transport exit 255, bounded to three attempts with a short
+backoff. Timeouts, non-255 remote/application failures, malformed JSON, coverage
+gaps, and failed public verification remain fail-closed. Never broaden this into
+generic retry-on-error behavior.

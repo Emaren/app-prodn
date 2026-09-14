@@ -238,6 +238,12 @@ application is healthy but Chronicle reconciliation fails, release truth remains
 claiming complete closure. A later Finish run may safely resume the idempotent
 public-history reconciliation.
 
+The production Chronicler is idempotent, so Finish may retry a bounded transient
+SSH transport failure (`ssh` exit 255) without risking duplicate public history.
+Only that transport class retries, for at most three attempts with a one-second
+backoff. Chronicle timeouts and application/database failures remain immediate
+fail-closed errors; they are never converted into transport retries.
+
 The Workshop route itself must not make below-the-fold Chronicle history part of
 the initial navigation critical path. A real route-level Workshop hero paints
 immediately, while the Chronicle first page loads only as the reader approaches
