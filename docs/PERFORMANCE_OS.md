@@ -33,6 +33,7 @@ aoe2war speed release-history
 aoe2war speed benchmark
 aoe2war speed benchmark --full
 aoe2war speed compare
+aoe2war speed browser-truth
 aoe2war speed diagnose
 aoe2war speed inventory
 aoe2war speed campaign start
@@ -76,6 +77,26 @@ The shared store is bounded to the newest 64 samples, and `aoe2war speed status`
 shows the latest, p50 and p95 FAST wall time so internal control-plane regressions
 are visible without creating an unbounded telemetry archive. SEAL timing remains
 authoritative in existing Finish/release receipts.
+
+## Browser Truth rail
+
+`aoe2war speed browser-truth` drives the installed Google Chrome directly through
+Chrome DevTools Protocol; it does not add a browser-test dependency or create a new
+control-plane service. The cohort is intentionally bounded to 15 critical public
+routes and two fixed viewports (1440×900 desktop and 390×844 phone).
+
+The receipt is bound to the currently certified production source/build and records
+main-document status, the existing `SpeedReadyMarker` signal when expected, DOM/load
+timing, transfer/body size, horizontal-overflow evidence, JavaScript runtime
+exceptions, console/resource failures, and SHA-256-bound viewport screenshots.
+Receipts live in the shared ignored Speed OS evidence store. A run explicitly records
+`production_mutated: false`, `database_mutated: false`, and `wolo_mutated: false`.
+
+Browser Truth is a correctness/evidence gate, not an edge-cache authorization. A
+route that fails browser truth must be repaired and re-certified before an edge
+policy is broadened. The rail deliberately supplements source-contract tests: green
+build/tests and HTTP timing do not by themselves prove hydration, viewport fit, or
+real-browser runtime correctness.
 
 ## Edge Delivery audit rail
 

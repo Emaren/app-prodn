@@ -18,6 +18,8 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { WORKSHOP_TIME_ZONE } from "@/lib/workshopTime";
+
 type ChronicleEntry = {
   id: number;
   publicId: string;
@@ -137,8 +139,6 @@ function presentation(entry: ChronicleEntry) {
     }
   );
 }
-
-const WORKSHOP_TIME_ZONE = "America/Edmonton";
 
 const WORKSHOP_DAY_KEY_FORMATTER = new Intl.DateTimeFormat(
   "en-CA",

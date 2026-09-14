@@ -119,7 +119,7 @@ Usage:
   aoe2war update [--apply] [--json]
   aoe2war control <status|fast|refresh> [options]
   aoe2war docs <status|impact|audit|update> [options]
-  aoe2war speed [status|release-history|benchmark|compare|browser|diagnose|inventory|edge|build|campaign|pulse]
+  aoe2war speed [status|release-history|benchmark|compare|browser|browser-truth|diagnose|inventory|edge|build|campaign|pulse]
   aoe2war storage-retention [--apply] [--json]
   aoe2war storage <status|plan|maintain|verify> [options]
   aoe2war council [--json]
@@ -324,6 +324,12 @@ KINGDOM INTELLIGENCE / HYGIENE
       Inspect the completed Next production build for route-referenced JS/CSS,
       largest static artifacts and bundle-size hotspots. Raw build size is kept
       separate from browser/runtime transfer evidence.
+
+  aoe2war speed browser-truth
+      Run the bounded real-Chrome truth cohort against certified production: 15
+      critical public routes at desktop and phone viewports. Records explicit
+      Ready signals, runtime/console/resource failures, overflow and screenshot
+      hashes without mutating production, database, Wolo, or edge policy.
 
   aoe2war workspace status
       Classify registered worktrees as main, clean+merged cleanup candidates,

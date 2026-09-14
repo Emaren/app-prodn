@@ -9,6 +9,8 @@ function read(path: string) {
 const page = read("app/workshop/page.tsx");
 const loading = read("app/workshop/loading.tsx");
 const chronicle = read("components/workshop/WorkshopChronicle.tsx");
+const experience = read("components/workshop/WorkshopExperience.tsx");
+const workshopTime = read("lib/workshopTime.ts");
 const workshop = read("lib/workshop.ts");
 const chronicler = read("scripts/workshop_chronicler.mts");
 const finish = read("scripts/aoe2_finish.py");
@@ -46,8 +48,10 @@ test("Workshop data is available inside the safe production-shaped shadow", () =
   }
 });
 
-test("Chronicle uses one canonical Edmonton workday for every viewer", () => {
-  assert.match(chronicle, /WORKSHOP_TIME_ZONE = "America\/Edmonton"/);
+test("Workshop surfaces share one canonical Edmonton presentation timezone", () => {
+  assert.match(workshopTime, /WORKSHOP_TIME_ZONE = "America\/Edmonton"/);
+  assert.match(chronicle, /import \{ WORKSHOP_TIME_ZONE \} from "@\/lib\/workshopTime"/);
+  assert.match(experience, /import \{ formatWorkshopDateTime \} from "@\/lib\/workshopTime"/);
   assert.match(chronicle, /WORKSHOP_DAY_KEY_FORMATTER/);
   assert.match(chronicle, /timeZone: WORKSHOP_TIME_ZONE/);
 });

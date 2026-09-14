@@ -34,6 +34,7 @@ import {
 } from "@/lib/tileViewPreferences";
 import type { PublicWorkshop } from "@/lib/workshop";
 import type { WorkshopBrainSnapshot } from "@/lib/workshopBrain";
+import { formatWorkshopDateTime } from "@/lib/workshopTime";
 
 export type WorkshopDiagnostics = {
   generatedAt: string;
@@ -174,15 +175,6 @@ function bytes(value: number | null) {
   if (value >= 1024 ** 3) return `${(value / 1024 ** 3).toFixed(2)} GB`;
   if (value >= 1024 ** 2) return `${(value / 1024 ** 2).toFixed(1)} MB`;
   return `${Math.round(value / 1024).toLocaleString()} KB`;
-}
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  });
 }
 
 function statusLabel(data: PublicWorkshop) {
@@ -791,7 +783,7 @@ function Feed({ entries, concise, columns }: { entries: Entry[]; concise: boolea
 }
 
 function EntryCard({ entry, concise }: { entry: Entry; concise: boolean }) {
-  return <article id={entry.publicId} className="overflow-hidden rounded-[1.5rem] border border-white/9 bg-white/[0.028]"><div className="p-5"><div className="flex items-center justify-between gap-3"><div className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-100/58">{TYPE_LABELS[entry.entryType] || entry.entryType}</div><time className="text-[10px] text-slate-600">{formatDate(entry.occurredAt)}</time></div><h3 className="mt-3 text-xl font-semibold">{entry.title}</h3>{entry.summary ? <p className="mt-3 text-sm leading-6 text-slate-300">{entry.summary}</p> : null}{!concise && entry.body ? <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-400">{entry.body}</p> : null}{entry.mediaUrl ? entry.mediaKind === "video" ? <video className="mt-5 aspect-video w-full rounded-2xl border border-white/10 bg-black object-cover" controls preload="metadata" src={entry.mediaUrl} /> : entry.mediaKind === "audio" ? <audio className="mt-5 w-full" controls preload="none" src={entry.mediaUrl} /> : <Image className="mt-5 max-h-[30rem] w-full rounded-2xl border border-white/10 object-cover" src={entry.mediaUrl} alt={entry.mediaAlt || entry.title} width={1200} height={800} sizes="(max-width: 1024px) 100vw, 50vw" unoptimized /> : null}{entry.linkUrl ? <Link href={entry.linkUrl} className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-cyan-100 hover:text-white">{entry.linkLabel || "Open build"} <ArrowRight className="h-4 w-4" /></Link> : null}</div></article>;
+  return <article id={entry.publicId} className="overflow-hidden rounded-[1.5rem] border border-white/9 bg-white/[0.028]"><div className="p-5"><div className="flex items-center justify-between gap-3"><div className="text-[10px] font-bold uppercase tracking-[0.24em] text-orange-100/58">{TYPE_LABELS[entry.entryType] || entry.entryType}</div><time className="text-[10px] text-slate-600">{formatWorkshopDateTime(entry.occurredAt)}</time></div><h3 className="mt-3 text-xl font-semibold">{entry.title}</h3>{entry.summary ? <p className="mt-3 text-sm leading-6 text-slate-300">{entry.summary}</p> : null}{!concise && entry.body ? <p className="mt-4 whitespace-pre-wrap text-sm leading-7 text-slate-400">{entry.body}</p> : null}{entry.mediaUrl ? entry.mediaKind === "video" ? <video className="mt-5 aspect-video w-full rounded-2xl border border-white/10 bg-black object-cover" controls preload="metadata" src={entry.mediaUrl} /> : entry.mediaKind === "audio" ? <audio className="mt-5 w-full" controls preload="none" src={entry.mediaUrl} /> : <Image className="mt-5 max-h-[30rem] w-full rounded-2xl border border-white/10 object-cover" src={entry.mediaUrl} alt={entry.mediaAlt || entry.title} width={1200} height={800} sizes="(max-width: 1024px) 100vw, 50vw" unoptimized /> : null}{entry.linkUrl ? <Link href={entry.linkUrl} className="mt-5 inline-flex items-center gap-2 text-sm font-semibold text-cyan-100 hover:text-white">{entry.linkLabel || "Open build"} <ArrowRight className="h-4 w-4" /></Link> : null}</div></article>;
 }
 
 function LiveStream({ data }: { data: PublicWorkshop }) {
