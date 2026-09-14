@@ -1,6 +1,7 @@
 import hashlib
 import io
 import json
+import os
 import shutil
 import subprocess
 import tarfile
@@ -9,6 +10,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import scripts.aoe2_recovery as recovery
 import scripts.aoe2_recovery_campaign as campaign
 
 
@@ -2036,6 +2038,117 @@ class RecoveryCampaignTests(unittest.TestCase):
                 )
                 self.assertFalse(result["pause_requested"])
                 self.assertIsNone(result["pause_requested_at"])
+
+    def test_wolo_key_custody_requires_explicit_authorization(self):
+        with self.assertRaisesRegex(
+            campaign.CampaignError,
+            "--authorize-wolo-key-custody-capture",
+        ):
+            campaign.start_wolo_key_custody(
+                "ordinary-test",
+                authorize_wolo_key_custody_capture=False,
+            )
+
+    def test_wolo_key_custody_encrypted_restore_proves_public_identity_only(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            custody_root = root / "custody"
+            custody_root.mkdir(mode=0o700)
+            cert = root / "recipient.pem"
+            key = root / "private.pem"
+            subprocess.run(
+                [
+                    "openssl", "req", "-x509", "-newkey", "rsa:2048",
+                    "-keyout", str(key), "-out", str(cert), "-nodes",
+                    "-subj", "/CN=AoE2WAR Wolo Custody Test", "-days", "1",
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=True,
+            )
+            os.chmod(key, 0o600)
+            validator = "A" * 40
+            node_id = "b" * 40
+            tar_buffer = io.BytesIO()
+            with tarfile.open(fileobj=tar_buffer, mode="w") as archive:
+                files = {
+                    "config/priv_validator_key.json": json.dumps(
+                        {"address": validator, "priv_key": {"value": "SECRET"}}
+                    ).encode(),
+                    "config/node_key.json": b'{"priv_key":{"value":"SECRET"}}',
+                    "keyring-file/operator.info": b"SECRET-KEYRING",
+                }
+                for name, data in files.items():
+                    info = tarfile.TarInfo(name)
+                    info.size = len(data)
+                    archive.addfile(info, io.BytesIO(data))
+            payload = root / "custody.cms"
+            tar_source = root / "custody.tar"
+            tar_source.write_bytes(tar_buffer.getvalue())
+            campaign._encrypt_source_command_to_cms(
+                ["cat", str(tar_source)],
+                payload,
+                recipient_cert=cert,
+            )
+            self.assertEqual(payload.stat().st_mode & 0o777, 0o600)
+            fake = root / "wolochaind"
+            fake.write_text(
+                "#!/bin/sh\nprintf '%s\\n' '" + node_id + "'\n",
+                encoding="utf-8",
+            )
+            fake.chmod(0o700)
+            with patch.object(campaign, "WOLO_KEY_CUSTODY_ROOT", custody_root):
+                result = campaign._restore_wolo_custody_identity(
+                    payload,
+                    recipient_cert=cert,
+                    private_key=key,
+                    expected={
+                        "node_id": node_id,
+                        "validator_address": validator,
+                    },
+                    wolo_binary=fake,
+                )
+            self.assertEqual(result["node_id"], node_id)
+            self.assertEqual(result["validator_address"], validator)
+            self.assertEqual(result["keyring_file_count"], 1)
+            self.assertFalse(any(custody_root.iterdir()))
+
+    def test_wolo_key_custody_proof_verifier_binds_ciphertext_and_safety(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            custody_root = Path(temporary) / "custody"
+            bundle = custody_root / "proof-test"
+            bundle.mkdir(parents=True)
+            ciphertext = bundle / "wolo-key-custody.cms"
+            ciphertext.write_bytes(b"ciphertext-only")
+            proof = {
+                "schema": 1,
+                "kind": recovery.WOLO_KEY_CUSTODY_PROOF_KIND,
+                "status": recovery.WOLO_KEY_CUSTODY_PROOF_STATUS,
+                "authority": "Mac separate Wolo key-custody vault",
+                "isolated_restore_test": "PASS",
+                "ciphertext_file": ciphertext.name,
+                "ciphertext_bytes": ciphertext.stat().st_size,
+                "ciphertext_sha256": recovery.sha256(ciphertext),
+                "public_identity": {
+                    "node_id": "b" * 40,
+                    "validator_address": "A" * 40,
+                },
+                "keyring_file_count": 1,
+                "general_vault_payload": False,
+                "secret_contents_logged": False,
+                "secret_contents_in_receipt": False,
+                "plaintext_files_persisted_after_restore": False,
+                "private_recovery_key_transmitted_to_vps": False,
+                "production_mutated": False,
+                "wolo_mutated": False,
+                "wolo_service_quiesced": False,
+            }
+            proof_path = bundle / "wolo-key-custody-proof.json"
+            campaign.write_json_with_sidecar(proof_path, proof)
+            with patch.object(recovery, "WOLO_KEY_CUSTODY_ROOT", custody_root):
+                result = recovery.verify_wolo_key_custody_proof(proof_path)
+            self.assertEqual(result["status"], "VERIFIED")
+            self.assertEqual(result["blockers"], [])
 
     def test_resume_fails_closed_when_interrupted_inside_class(self):
         state = {

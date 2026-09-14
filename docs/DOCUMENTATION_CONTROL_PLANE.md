@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/release-critical-path-v2` at `c8d511a3ef5d86c1d9eed8a009b82c23e98eebc5`
+Implementation baseline: `feature/recovery-key-custody-v1` at `d75d6bafa81fa55e6f35d5750f4b532d44edb2b2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

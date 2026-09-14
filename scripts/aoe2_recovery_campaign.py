@@ -75,6 +75,15 @@ WOLO_PROTECTED_KEY_PATHS = (
     "config/node_key.json",
     "keyring-file",
 )
+WOLO_KEY_CUSTODY_ROOT = (
+    Path.home()
+    / "Library"
+    / "Application Support"
+    / "AoE2WAR Recovery"
+    / "wolo-key-custody"
+)
+WOLO_KEY_CUSTODY_STATE_DIR = CAMPAIGN_DIR / "wolo-key-custody"
+WOLO_KEY_CUSTODY_STATUS = "WOLO_KEY_CUSTODY_VERIFIED"
 
 # OpenSSL's CMS CLI still buffers inbound CMS content during parse/decrypt.
 # Keep every independently encrypted object comfortably below the multi-GiB
@@ -4400,6 +4409,426 @@ def print_status(payload: dict[str, Any]) -> None:
     print(f"Log:         {payload.get('log_path') or '—'}")
 
 
+
+def wolo_key_custody_state_path(campaign_id: str) -> Path:
+    state_path(campaign_id)
+    return WOLO_KEY_CUSTODY_STATE_DIR / f"{campaign_id}.json"
+
+
+def _production_wolo_public_identity() -> dict[str, str]:
+    proc = subprocess.run(
+        ["curl", "-fsS", "--max-time", "12", WOLO_RPC_STATUS_URL],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise CampaignError(
+            "Wolo public identity probe failed: " + proc.stderr.strip()
+        )
+    try:
+        payload = json.loads(proc.stdout)
+        result = payload["result"]
+        node_id = str(result["node_info"]["id"]).strip().lower()
+        validator_address = str(result["validator_info"]["address"]).strip().upper()
+    except Exception as exc:
+        raise CampaignError("Wolo RPC returned no usable public identity") from exc
+    if len(node_id) != 40 or len(validator_address) != 40:
+        raise CampaignError("Wolo public identity shape is invalid")
+    return {
+        "node_id": node_id,
+        "validator_address": validator_address,
+    }
+
+
+def _local_wolo_binary() -> Path:
+    candidates = (
+        ROOT.parent / "WoloChain-wolo-1" / "wolochaind",
+        ROOT.parent / "WoloChain" / "build" / "wolochaind",
+        Path.home() / "projects" / "WoloChain-wolo-1" / "wolochaind",
+        Path.home() / "projects" / "WoloChain" / "build" / "wolochaind",
+    )
+    for candidate in candidates:
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return candidate.resolve()
+    resolved = shutil.which("wolochaind")
+    if resolved:
+        return Path(resolved).resolve()
+    raise CampaignError("local Wolo binary is unavailable for custody restore proof")
+
+
+def _validate_wolo_custody_members(text: str) -> list[str]:
+    members = [line.strip().removeprefix("./") for line in text.splitlines() if line.strip()]
+    if not members:
+        raise CampaignError("Wolo key-custody restore contains no tar members")
+    required = {
+        "config/priv_validator_key.json",
+        "config/node_key.json",
+    }
+    seen = set(members)
+    if not required.issubset(seen):
+        raise CampaignError("Wolo key-custody restore is missing protected key files")
+    keyring_members = 0
+    for member in members:
+        path = Path(member)
+        if path.is_absolute() or ".." in path.parts:
+            raise CampaignError("Wolo key-custody tar contains unsafe member paths")
+        if member in required:
+            continue
+        if member == "keyring-file" or member == "keyring-file/":
+            continue
+        if member.startswith("keyring-file/"):
+            keyring_members += 1
+            continue
+        raise CampaignError(f"unexpected Wolo key-custody tar member: {member}")
+    if keyring_members <= 0:
+        raise CampaignError("Wolo key-custody restore contains no keyring payload")
+    return members
+
+
+def _decrypt_custody_listing(
+    payload: Path,
+    *,
+    recipient_cert: Path,
+    private_key: Path,
+) -> list[str]:
+    decrypt = subprocess.Popen(
+        cms_decrypt_command(recipient_cert, private_key, payload),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if decrypt.stdout is None:
+        raise CampaignError("failed to open Wolo custody decrypt stream")
+    tar = subprocess.Popen(
+        ["tar", "-tf", "-"],
+        stdin=decrypt.stdout,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    decrypt.stdout.close()
+    tar_stdout, tar_stderr = tar.communicate()
+    decrypt_stderr = decrypt.stderr.read() if decrypt.stderr is not None else b""
+    if decrypt.stderr is not None:
+        decrypt.stderr.close()
+    decrypt_rc = decrypt.wait()
+    if decrypt_rc != 0:
+        raise CampaignError(
+            "Wolo key-custody CMS decrypt failed: "
+            + decrypt_stderr.decode(errors="replace").strip()
+        )
+    if tar.returncode != 0:
+        raise CampaignError(
+            "Wolo key-custody tar inspection failed: " + tar_stderr.strip()
+        )
+    return _validate_wolo_custody_members(tar_stdout)
+
+
+def _restore_wolo_custody_identity(
+    payload: Path,
+    *,
+    recipient_cert: Path,
+    private_key: Path,
+    expected: dict[str, str],
+    wolo_binary: Path | None = None,
+) -> dict[str, Any]:
+    members = _decrypt_custody_listing(
+        payload,
+        recipient_cert=recipient_cert,
+        private_key=private_key,
+    )
+    binary = (wolo_binary or _local_wolo_binary()).resolve()
+    with tempfile.TemporaryDirectory(
+        prefix="aoe2war-wolo-key-custody-restore-",
+        dir=str(WOLO_KEY_CUSTODY_ROOT),
+    ) as temp_name:
+        temp = Path(temp_name)
+        os.chmod(temp, 0o700)
+        decrypt = subprocess.Popen(
+            cms_decrypt_command(recipient_cert, private_key, payload),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        if decrypt.stdout is None:
+            raise CampaignError("failed to open Wolo custody restore stream")
+        tar = subprocess.Popen(
+            ["tar", "-xf", "-", "-C", str(temp)],
+            stdin=decrypt.stdout,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        decrypt.stdout.close()
+        _, tar_stderr = tar.communicate()
+        decrypt_stderr = decrypt.stderr.read() if decrypt.stderr is not None else b""
+        if decrypt.stderr is not None:
+            decrypt.stderr.close()
+        decrypt_rc = decrypt.wait()
+        if decrypt_rc != 0 or tar.returncode != 0:
+            detail = decrypt_stderr.decode(errors="replace").strip()
+            if tar_stderr:
+                detail = (detail + " " + tar_stderr.decode(errors="replace").strip()).strip()
+            raise CampaignError("Wolo key-custody isolated restore failed: " + detail)
+
+        for item in temp.rglob("*"):
+            if item.is_symlink():
+                raise CampaignError("Wolo key-custody restore contains a symlink")
+            try:
+                item.resolve().relative_to(temp.resolve())
+            except ValueError as exc:
+                raise CampaignError("Wolo key-custody restore escaped workspace") from exc
+
+        validator_key = temp / "config" / "priv_validator_key.json"
+        node_key = temp / "config" / "node_key.json"
+        keyring = temp / "keyring-file"
+        if not validator_key.is_file() or not node_key.is_file() or not keyring.is_dir():
+            raise CampaignError("Wolo key-custody isolated restore is incomplete")
+        try:
+            validator_address = str(
+                json.loads(validator_key.read_text(encoding="utf-8"))["address"]
+            ).strip().upper()
+        except Exception as exc:
+            raise CampaignError("restored validator key has no public address") from exc
+        node = subprocess.run(
+            [str(binary), "tendermint", "show-node-id", "--home", str(temp)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        if node.returncode != 0:
+            raise CampaignError(
+                "restored node-key public identity check failed: " + node.stderr.strip()
+            )
+        node_id = node.stdout.strip().lower()
+        keyring_files = sum(1 for item in keyring.rglob("*") if item.is_file())
+        if node_id != expected["node_id"]:
+            raise CampaignError("restored Wolo node ID does not match production")
+        if validator_address != expected["validator_address"]:
+            raise CampaignError("restored Wolo validator address does not match production")
+        if keyring_files <= 0:
+            raise CampaignError("restored Wolo keyring contains no files")
+        return {
+            "node_id": node_id,
+            "validator_address": validator_address,
+            "keyring_file_count": keyring_files,
+            "tar_member_count": len(members),
+        }
+
+
+def wolo_key_custody_preflight(campaign_id: str) -> dict[str, Any]:
+    require_tools()
+    if shutil.which("curl") is None:
+        raise CampaignError("required local tool is missing: curl")
+    source = source_identity()
+    status = recovery.evaluate()
+    ordinary = status.get("ordinary_restore")
+    if not isinstance(ordinary, dict) or ordinary.get("verification_status") != "VERIFIED":
+        raise CampaignError("verified ordinary Recovery restore is required")
+    if str(ordinary.get("campaign_id") or "") != campaign_id:
+        raise CampaignError("Wolo key custody must use the verified ordinary campaign id")
+    pilot = status.get("pilot")
+    if not isinstance(pilot, dict):
+        raise CampaignError("verified database/operator pilot is required")
+    cert, fingerprint = resolve_recipient_certificate(None, pilot)
+    private_key = verify_canonical_private_key(cert)
+    wolo = wolo_preflight()
+    if wolo.get("status") != "READY":
+        raise CampaignError("Wolo preflight is not READY")
+    protected = (wolo.get("key_custody") or {}).get("protected_paths") or {}
+    for relative in WOLO_PROTECTED_KEY_PATHS:
+        item = protected.get(relative)
+        if not isinstance(item, dict) or item.get("exists") is not True:
+            raise CampaignError(f"Wolo custody source is missing: {relative}")
+    public_identity = _production_wolo_public_identity()
+    return {
+        "schema": 1,
+        "kind": "aoe2war-recovery-wolo-key-custody-preflight",
+        "generated_at": utc_now(),
+        "status": "READY",
+        "campaign_id": campaign_id,
+        "tool_source": source,
+        "authority": "Mac separate Wolo key-custody vault",
+        "custody_root": str(WOLO_KEY_CUSTODY_ROOT),
+        "recipient_certificate": str(cert),
+        "recipient_certificate_fingerprint": fingerprint,
+        "private_key_mode": private_key["mode"],
+        "production_public_identity": public_identity,
+        "protected_path_metadata": protected,
+        "authorization": {"wolo_key_custody_capture": False},
+        "general_vault_payload": False,
+        "secret_contents_logged": False,
+        "production_mutated": False,
+        "wolo_mutated": False,
+        "wolo_service_quiesced": False,
+    }
+
+
+def _encrypt_source_command_to_cms(
+    source_command: list[str],
+    output: Path,
+    *,
+    recipient_cert: Path,
+) -> None:
+    source = subprocess.Popen(
+        source_command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if source.stdout is None:
+        raise CampaignError("failed to open custody source stream")
+    encrypt = subprocess.Popen(
+        cms_encrypt_command(recipient_cert, output),
+        stdin=source.stdout,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+    )
+    source.stdout.close()
+    encrypt_stderr = encrypt.stderr.read() if encrypt.stderr is not None else b""
+    if encrypt.stderr is not None:
+        encrypt.stderr.close()
+    encrypt_rc = encrypt.wait()
+    source_stderr = source.stderr.read() if source.stderr is not None else b""
+    if source.stderr is not None:
+        source.stderr.close()
+    source_rc = source.wait()
+    if source_rc != 0:
+        raise CampaignError(
+            "custody source stream failed: "
+            + source_stderr.decode(errors="replace").strip()
+        )
+    if encrypt_rc != 0:
+        raise CampaignError(
+            "custody encryption failed: "
+            + encrypt_stderr.decode(errors="replace").strip()
+        )
+    if not output.is_file() or output.stat().st_size <= 0:
+        raise CampaignError("custody encryption produced no ciphertext")
+    os.chmod(output, 0o600)
+
+
+def _capture_wolo_key_custody_ciphertext(
+    output: Path,
+    *,
+    recipient_cert: Path,
+) -> None:
+    remote_script = " ".join(
+        [
+            "set -euo pipefail;",
+            "export LC_ALL=C;",
+            "tar --sort=name --mtime='UTC 1970-01-01' --numeric-owner",
+            f"-C {shlex.quote(WOLO_MAINNET_HOME)} -cf - --",
+            *(shlex.quote(item) for item in WOLO_PROTECTED_KEY_PATHS),
+        ]
+    )
+    _encrypt_source_command_to_cms(
+        [
+            "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8",
+            recovery._root_maintenance_host(),
+            "bash -lc " + shlex.quote(remote_script),
+        ],
+        output,
+        recipient_cert=recipient_cert,
+    )
+
+
+def start_wolo_key_custody(
+    campaign_id: str,
+    *,
+    authorize_wolo_key_custody_capture: bool,
+) -> dict[str, Any]:
+    if not authorize_wolo_key_custody_capture:
+        raise CampaignError(
+            "Wolo key-custody capture requires --authorize-wolo-key-custody-capture"
+        )
+    check = wolo_key_custody_preflight(campaign_id)
+    state_file = wolo_key_custody_state_path(campaign_id)
+    if state_file.exists():
+        raise CampaignError(f"Wolo key-custody state already exists: {campaign_id}")
+    WOLO_KEY_CUSTODY_ROOT.mkdir(parents=True, exist_ok=True)
+    os.chmod(WOLO_KEY_CUSTODY_ROOT, 0o700)
+    custody_id = f"{campaign_id}-keys-{stamp()}-{check['tool_source'][:12]}"
+    bundle = WOLO_KEY_CUSTODY_ROOT / custody_id
+    bundle.mkdir(mode=0o700)
+    payload = bundle / "wolo-key-custody.cms"
+    cert = Path(str(check["recipient_certificate"]))
+    private_key = CANONICAL_RECOVERY_PRIVATE_KEY
+    try:
+        _capture_wolo_key_custody_ciphertext(payload, recipient_cert=cert)
+        restore = _restore_wolo_custody_identity(
+            payload,
+            recipient_cert=cert,
+            private_key=private_key,
+            expected=dict(check["production_public_identity"]),
+        )
+        proof = {
+            "schema": 1,
+            "kind": "aoe2war-recovery-wolo-key-custody-proof",
+            "status": WOLO_KEY_CUSTODY_STATUS,
+            "created_at": utc_now(),
+            "campaign_id": campaign_id,
+            "custody_id": custody_id,
+            "authority": check["authority"],
+            "tool_source": check["tool_source"],
+            "ciphertext_file": payload.name,
+            "ciphertext_bytes": payload.stat().st_size,
+            "ciphertext_sha256": recovery.sha256(payload),
+            "recipient_certificate_fingerprint": check["recipient_certificate_fingerprint"],
+            "public_identity": {
+                "node_id": restore["node_id"],
+                "validator_address": restore["validator_address"],
+            },
+            "keyring_file_count": restore["keyring_file_count"],
+            "tar_member_count": restore["tar_member_count"],
+            "source_paths": list(WOLO_PROTECTED_KEY_PATHS),
+            "isolated_restore_test": "PASS",
+            "general_vault_payload": False,
+            "secret_contents_logged": False,
+            "secret_contents_in_receipt": False,
+            "plaintext_files_persisted_after_restore": False,
+            "private_recovery_key_transmitted_to_vps": False,
+            "production_mutated": False,
+            "wolo_mutated": False,
+            "wolo_service_quiesced": False,
+        }
+        proof_path = bundle / "wolo-key-custody-proof.json"
+        proof_sha = write_json_with_sidecar(proof_path, proof)
+        state = {
+            "schema": 1,
+            "kind": "aoe2war-recovery-wolo-key-custody-state",
+            "status": WOLO_KEY_CUSTODY_STATUS,
+            "campaign_id": campaign_id,
+            "custody_id": custody_id,
+            "created_at": utc_now(),
+            "proof_path": str(proof_path),
+            "proof_sha256": proof_sha,
+            "authorization": {"wolo_key_custody_capture": True},
+            "production_mutated": False,
+            "wolo_mutated": False,
+            "wolo_service_quiesced": False,
+        }
+        write_json_with_sidecar(state_file, state)
+        return state
+    except Exception:
+        if bundle.exists() and not (bundle / "wolo-key-custody-proof.json").exists():
+            shutil.rmtree(bundle, ignore_errors=True)
+        raise
+
+
+def wolo_key_custody_status(campaign_id: str) -> dict[str, Any]:
+    state_file = wolo_key_custody_state_path(campaign_id)
+    payload, _, error = recovery._load_hashed_json(state_file)
+    if error or payload is None:
+        raise CampaignError(error or "Wolo key-custody state is unavailable")
+    if (
+        payload.get("kind") != "aoe2war-recovery-wolo-key-custody-state"
+        or payload.get("campaign_id") != campaign_id
+    ):
+        raise CampaignError("invalid Wolo key-custody state")
+    proof_path = Path(str(payload.get("proof_path") or ""))
+    verification = recovery.verify_wolo_key_custody_proof(proof_path)
+    return {**payload, "verification": verification}
+
 def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description="AoE2WAR bounded ordinary recovery capture campaign"
@@ -4464,6 +4893,19 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("--json", action="store_true")
 
     q = sub.add_parser("wolo-offhost-resume")
+    q.add_argument("campaign_id")
+    q.add_argument("--json", action="store_true")
+
+    q = sub.add_parser("wolo-key-custody-preflight")
+    q.add_argument("campaign_id")
+    q.add_argument("--json", action="store_true")
+
+    q = sub.add_parser("wolo-key-custody-start")
+    q.add_argument("campaign_id")
+    q.add_argument("--authorize-wolo-key-custody-capture", action="store_true")
+    q.add_argument("--json", action="store_true")
+
+    q = sub.add_parser("wolo-key-custody-status")
     q.add_argument("campaign_id")
     q.add_argument("--json", action="store_true")
 
@@ -4575,6 +5017,26 @@ def main() -> int:
 
     if args.command == "wolo-offhost-resume":
         payload = resume_wolo_offhost(args.campaign_id)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "wolo-key-custody-preflight":
+        payload = wolo_key_custody_preflight(args.campaign_id)
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "wolo-key-custody-start":
+        payload = start_wolo_key_custody(
+            args.campaign_id,
+            authorize_wolo_key_custody_capture=(
+                args.authorize_wolo_key_custody_capture
+            ),
+        )
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return 0
+
+    if args.command == "wolo-key-custody-status":
+        payload = wolo_key_custody_status(args.campaign_id)
         print(json.dumps(payload, indent=2, sort_keys=True))
         return 0
 

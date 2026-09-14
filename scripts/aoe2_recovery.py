@@ -57,6 +57,15 @@ WOLO_OFFHOST_RECOVERY_CLASSES = (
     "wolo_settlement_state",
     "wolo_consensus_recovery",
 )
+WOLO_KEY_CUSTODY_ROOT = (
+    Path.home()
+    / "Library"
+    / "Application Support"
+    / "AoE2WAR Recovery"
+    / "wolo-key-custody"
+)
+WOLO_KEY_CUSTODY_PROOF_KIND = "aoe2war-recovery-wolo-key-custody-proof"
+WOLO_KEY_CUSTODY_PROOF_STATUS = "WOLO_KEY_CUSTODY_VERIFIED"
 
 
 def sha256(path: Path) -> str:
@@ -433,6 +442,100 @@ def verify_wolo_offhost_summary(proof: Path) -> dict[str, Any]:
     }
 
 
+
+def verify_wolo_key_custody_proof(proof: Path) -> dict[str, Any]:
+    payload, proof_sha, error = _load_hashed_json(proof)
+    blockers: list[str] = []
+    if error:
+        blockers.append(error)
+    if payload is None:
+        return {
+            "status": "NOT_VERIFIED",
+            "blockers": blockers,
+            "proof_path": str(proof),
+            "proof_sha256": proof_sha,
+            "proof": None,
+        }
+    try:
+        proof.resolve().relative_to(WOLO_KEY_CUSTODY_ROOT.resolve())
+    except ValueError:
+        blockers.append("Wolo key-custody proof is outside the separate custody root")
+    if payload.get("schema") != 1:
+        blockers.append("Wolo key-custody proof schema must be 1")
+    if payload.get("kind") != WOLO_KEY_CUSTODY_PROOF_KIND:
+        blockers.append("Wolo key-custody proof kind is invalid")
+    if payload.get("status") != WOLO_KEY_CUSTODY_PROOF_STATUS:
+        blockers.append("Wolo key-custody proof status is not verified")
+    if payload.get("authority") != "Mac separate Wolo key-custody vault":
+        blockers.append("Wolo key-custody proof authority is invalid")
+    if payload.get("isolated_restore_test") != "PASS":
+        blockers.append("Wolo key-custody isolated restore did not pass")
+    for key in (
+        "general_vault_payload",
+        "secret_contents_logged",
+        "secret_contents_in_receipt",
+        "plaintext_files_persisted_after_restore",
+        "private_recovery_key_transmitted_to_vps",
+        "production_mutated",
+        "wolo_mutated",
+        "wolo_service_quiesced",
+    ):
+        if payload.get(key) is not False:
+            blockers.append(f"Wolo key-custody safety boundary is not proven: {key}=false")
+    identity = payload.get("public_identity")
+    if not isinstance(identity, dict):
+        blockers.append("Wolo key-custody proof has no public identity")
+    else:
+        node_id = str(identity.get("node_id") or "")
+        validator = str(identity.get("validator_address") or "")
+        if len(node_id) != 40:
+            blockers.append("Wolo key-custody node ID is invalid")
+        if len(validator) != 40:
+            blockers.append("Wolo key-custody validator address is invalid")
+    if int(payload.get("keyring_file_count") or 0) <= 0:
+        blockers.append("Wolo key-custody proof has no restored keyring files")
+    ciphertext_file = payload.get("ciphertext_file")
+    ciphertext_sha = str(payload.get("ciphertext_sha256") or "")
+    ciphertext_bytes = int(payload.get("ciphertext_bytes") or 0)
+    if not isinstance(ciphertext_file, str) or not ciphertext_file:
+        blockers.append("Wolo key-custody proof has no ciphertext file")
+    else:
+        ciphertext = _safe_bundle_file(proof.parent, ciphertext_file)
+        if ciphertext is None or not ciphertext.is_file():
+            blockers.append("Wolo key-custody ciphertext is missing")
+        else:
+            if ciphertext_bytes != ciphertext.stat().st_size:
+                blockers.append("Wolo key-custody ciphertext byte size mismatch")
+            if len(ciphertext_sha) != 64 or sha256(ciphertext) != ciphertext_sha:
+                blockers.append("Wolo key-custody ciphertext SHA-256 mismatch")
+    return {
+        "status": "VERIFIED" if not blockers else "NOT_VERIFIED",
+        "blockers": blockers,
+        "proof_path": str(proof),
+        "proof_sha256": proof_sha,
+        "proof": payload,
+    }
+
+
+def latest_verified_wolo_key_custody() -> dict[str, Any] | None:
+    if not WOLO_KEY_CUSTODY_ROOT.is_dir():
+        return None
+    candidates: list[dict[str, Any]] = []
+    for proof in WOLO_KEY_CUSTODY_ROOT.glob("*/wolo-key-custody-proof.json"):
+        verification = verify_wolo_key_custody_proof(proof)
+        payload = verification.get("proof")
+        if verification.get("status") != "VERIFIED" or not isinstance(payload, dict):
+            continue
+        item = dict(payload)
+        item["proof_path"] = verification["proof_path"]
+        item["proof_sha256"] = verification["proof_sha256"]
+        item["verification_status"] = "VERIFIED"
+        candidates.append(item)
+    if not candidates:
+        return None
+    candidates.sort(key=lambda item: str(item.get("created_at") or ""), reverse=True)
+    return candidates[0]
+
 def latest_verified_wolo_offhost() -> dict[str, Any] | None:
     if not RECOVERY_VAULT_ROOT.is_dir():
         return None
@@ -486,6 +589,7 @@ def recovery_progress(
     pilot: dict[str, Any] | None,
     ordinary_restore: dict[str, Any] | None,
     wolo_offhost: dict[str, Any] | None = None,
+    wolo_key_custody: dict[str, Any] | None = None,
     verification: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     if (verification or {}).get("status") == "VERIFIED":
@@ -506,6 +610,12 @@ def recovery_progress(
             and (wolo_offhost or {}).get("verification_status") == "VERIFIED"
         ):
             proven.extend(WOLO_OFFHOST_RECOVERY_CLASSES)
+        if (
+            (wolo_key_custody or {}).get("status")
+            == WOLO_KEY_CUSTODY_PROOF_STATUS
+            and (wolo_key_custody or {}).get("verification_status") == "VERIFIED"
+        ):
+            proven.append("wolo_key_custody")
 
     proven_set = set(proven)
     ordered_proven = [
@@ -571,11 +681,13 @@ def evaluate() -> dict[str, Any]:
     pilot = latest_verified_pilot()
     ordinary_restore = latest_verified_ordinary_restore()
     wolo_offhost = latest_verified_wolo_offhost()
+    wolo_key_custody = latest_verified_wolo_key_custody()
     verification = verify_configured_recovery(evidence)
     progress = recovery_progress(
         pilot,
         ordinary_restore,
         wolo_offhost,
+        wolo_key_custody,
         verification,
     )
     usage = shutil.disk_usage(Path.home())
@@ -592,6 +704,7 @@ def evaluate() -> dict[str, Any]:
         "pilot": pilot,
         "ordinary_restore": ordinary_restore,
         "wolo_offhost": wolo_offhost,
+        "wolo_key_custody": wolo_key_custody,
         "progress": progress,
         "proven_recovery_classes": progress["proven_classes"],
         "remaining_recovery_classes": progress["remaining_classes"],
@@ -1300,6 +1413,9 @@ def forward_campaign_cli(argv: list[str]) -> int | None:
         "wolo-offhost-start",
         "wolo-offhost-status",
         "wolo-offhost-resume",
+        "wolo-key-custody-preflight",
+        "wolo-key-custody-start",
+        "wolo-key-custody-status",
         "restore-start",
         "restore-status",
         "restore-resume",
@@ -1345,6 +1461,9 @@ def main() -> int:
         "wolo-offhost-start",
         "wolo-offhost-status",
         "wolo-offhost-resume",
+        "wolo-key-custody-preflight",
+        "wolo-key-custody-start",
+        "wolo-key-custody-status",
         "restore-start",
         "restore-status",
         "restore-pause",

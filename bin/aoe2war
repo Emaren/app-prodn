@@ -410,6 +410,23 @@ KINGDOM INTELLIGENCE / HYGIENE
       Resume a paused or safely interrupted restore drill. Refuses ambiguity if
       the interrupted class already produced an immutable restore proof.
 
+  aoe2war recovery campaign wolo-key-custody-preflight CAMPAIGN
+      Prove the production Wolo public identity, protected-key metadata, clean
+      source and independent Mac recovery-key authority. Reads no secret values
+      and performs no Wolo/service mutation.
+
+  aoe2war recovery campaign wolo-key-custody-start CAMPAIGN --authorize-wolo-key-custody-capture
+      Stream only the validator key, node key and keyring-file through SSH into
+      one CMS-encrypted object in the separate Mac custody vault, restore it in
+      a disposable mode-0700 workspace, and require recovered public identities
+      to match production. Secret contents never enter receipts or the general
+      Evidence Vault; Wolo remains online and unmodified.
+
+  aoe2war recovery campaign wolo-key-custody-status CAMPAIGN
+      Verify the immutable custody proof, ciphertext hash/size, isolated restore
+      result and secret-boundary flags. Class coverage may reach 10/10 while
+      final schema-2 RECOVERY_VERIFIED assembly remains a separate gate.
+
 REPLAY TRUTH
 
   aoe2war truth status

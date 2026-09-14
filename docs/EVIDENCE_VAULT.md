@@ -497,6 +497,57 @@ ordinary restore, this advances measured class coverage from seven of ten to
 explicit gates. Off-host Wolo capture grants no package/reboot authorization and
 performs no Wolo settlement, signer, chain-data or key-custody mutation.
 
+
+## Separate Wolo key-custody proof
+
+`wolo_key_custody` is deliberately outside the general Evidence Vault. The
+production validator key, node key and `keyring-file/` are signer/identity
+material, not ordinary evidence, and must never be copied into the settlement,
+consensus, database, replay or operator-evidence bundles.
+
+The bounded read-only preflight is:
+
+```bash
+aoe2war recovery campaign wolo-key-custody-preflight CAMPAIGN_ID
+```
+
+It requires clean canonical `main`, the verified ordinary Recovery campaign,
+the pilot-bound Mac recovery certificate/private-key authority, a READY Wolo
+preflight and the current public Wolo node/validator identity. It consumes only
+protected-path metadata plus public RPC identity; no secret value is printed,
+hashed into ordinary receipts, or placed in the general vault.
+
+The mutating custody operation is separately authorized:
+
+```bash
+aoe2war recovery campaign wolo-key-custody-start CAMPAIGN_ID \
+  --authorize-wolo-key-custody-capture
+```
+
+This command does **not** mutate Wolo, quiesce services, change chain data or
+change settlement state. It streams exactly `config/priv_validator_key.json`,
+`config/node_key.json` and `keyring-file/` over SSH directly into one
+CMS-encrypted object beneath the dedicated mode-0700 Mac custody root at
+`~/Library/Application Support/AoE2WAR Recovery/wolo-key-custody`. The general
+Evidence Vault never receives those secrets, and the recovery private key never
+travels to the VPS.
+
+Before a custody proof is accepted, Recovery OS decrypts the ciphertext only
+inside a disposable mode-0700 local workspace, rejects unexpected tar members
+or symlinks, proves that the restored node ID and validator address match the
+current production public identities, requires restored keyring content, and
+removes the plaintext workspace. The durable proof records only ciphertext
+hash/size, public identities, bounded counts and explicit secret-boundary
+flags; secret values and plaintext secret hashes are not operational evidence.
+
+`wolo-key-custody-status` re-verifies the proof and ciphertext from the separate
+custody authority. A verified custody object can close the tenth measured
+recovery class, but **10/10 class coverage is still not final Recovery OS
+verification**. Doctor remains blocked until the final schema-2
+`RECOVERY_VERIFIED` receipt assembles hash-valid coverage for all ten classes
+plus the isolated restore-drill proof and the operations contract names that
+proof as the enabled off-host authority.
+
 ## Restore drill
 
 1. Choose a sealed bundle and record its immutable remote version ID.
