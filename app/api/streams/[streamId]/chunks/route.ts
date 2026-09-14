@@ -6,6 +6,7 @@ import {
   resolveStreamRequestActor,
 } from "@/lib/streamRequestAuth";
 import { normalizeStreamMediaMimeType } from "@/lib/streamMedia";
+import { currentStreamMediaAdmission } from "@/lib/streamMediaAdmission";
 import {
   StreamChunkConflictError,
   StreamStorageLimitError,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/streamStorage";
 import { maybeEndFinalizedStream } from "@/lib/streamFinalitySentinel";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
+import { recordWatcherClientEvent } from "@/lib/watcherTelemetry";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -98,6 +100,70 @@ export async function POST(
       { detail: "Only WebM stream media is accepted." },
       { status: 415, headers: NO_STORE_HEADERS }
     );
+  }
+
+
+  if (stream.sourceType === "watcher_native") {
+    const admission = currentStreamMediaAdmission(
+      request.headers.get("x-aoe2war-stream-capabilities"),
+    );
+    if (!admission.allow) {
+      const endedAt = new Date();
+      const ended = await prisma.gameWatchStream.updateMany({
+        where: { id, status: { in: ["starting", "live"] } },
+        data: { status: "ended", endedAt, isPrimary: false },
+      });
+
+      try {
+        if (ended.count === 1) await recordWatcherClientEvent(
+          prisma,
+          request,
+          {
+            eventType: "stream_media_shed",
+            platform: actor.authMode === "watcher_key" ? "watcher" : "browser",
+            artifact: "server_media_admission",
+            sessionId: `stream_${id}`,
+            parseSource: "watcher_native_stream",
+            parseReason: admission.reason,
+            metadata: {
+              authority: "server_media_admission",
+              streamId: id,
+              sessionKey: stream.sessionKey,
+              sequence,
+              reason: admission.reason,
+              retryAfterSeconds: admission.retryAfterSeconds,
+              activeReplayUploads: admission.activeReplayUploads,
+              operatorKillSwitch: admission.operatorKillSwitch,
+            },
+          },
+          { userId: actor.user.id, userUid: actor.user.uid, resolved: true },
+        );
+      } catch (error) {
+        console.warn("[streams/chunks] failed to record media shed telemetry", {
+          streamId: id,
+          reason: admission.reason,
+          error,
+        });
+      }
+
+      return NextResponse.json(
+        {
+          detail: "Watcher-native video was shed to protect replay and API traffic.",
+          code: admission.code,
+          terminal: true,
+          reason: admission.reason,
+          retryAfterSeconds: admission.retryAfterSeconds,
+        },
+        {
+          status: 409,
+          headers: {
+            ...NO_STORE_HEADERS,
+            "Retry-After": String(admission.retryAfterSeconds),
+            "X-AoE2WAR-Media-Shed-Reason": admission.reason,
+          },
+        },
+      );
+    }
   }
 
   const arrayBuffer = await request.arrayBuffer();

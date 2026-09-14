@@ -57,6 +57,7 @@ const STREAM_EVENTS = [
   "stream_started",
   "stream_chunk_uploaded",
   "stream_chunk_dropped",
+  "stream_media_shed",
   "stream_heartbeat",
   "stream_stopped",
   "stream_track_ended",
@@ -529,7 +530,7 @@ function buildStreamDiagnostics(events: FocusWatcherEventRow[]): WatcherFocusUse
   }
 
   const lastStartedAt = firstEventAt(streamEvents, ["stream_started"]);
-  const lastStoppedAt = firstEventAt(streamEvents, ["stream_stopped"]);
+  const lastStoppedAt = firstEventAt(streamEvents, ["stream_stopped", "stream_media_shed"]);
   const lastErrorAt = firstEventAt(streamEvents, STREAM_FAILURE_EVENTS);
   const hasActiveStart = Boolean(lastStartedAt && (!lastStoppedAt || lastStartedAt > lastStoppedAt));
   const hasCurrentIssue = Boolean(lastErrorAt && (!lastStartedAt || lastErrorAt >= lastStartedAt));

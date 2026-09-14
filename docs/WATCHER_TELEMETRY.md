@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-09-06"
+reviewed_at: "2026-09-14"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -42,6 +42,8 @@ The certified release inventory contains nine canonical entries: the five user-f
 Watcher 1.5.10 separates **structural folder validity** from **current replay activity**. A valid HD SaveGame directory is no longer assumed to be the active directory forever. The watchdog may switch away from a valid-but-stale folder only when a different proven HD candidate has materially fresher replay writes. This closes the Scavanger_Ab failure mode where the Watcher could stay green and monitor-attached while AoE2HD was writing the live replay into another Documents, OneDrive, or Steam-library SaveGame directory.
 
 Replay truth also has explicit network priority over optional native video. When a replay upload begins, the Watcher can abort an in-flight video chunk, invalidate queued stale video slices, drop newly recorded video slices while replay bytes own the lane, pause the recorder to reduce encoding pressure, and suppress thumbnail refresh. The lightweight stream heartbeat remains alive. Video resumes from fresh capture after replay transfer clears; stale backlog is not flushed into the same constrained upstream connection. Video is expendable; replay live/final delivery is not.
+
+The app also owns a server-side admission rail for watcher-native video. Before reading a watcher-native chunk body, the server may terminate that video stream with HTTP `409`, code `STREAM_MEDIA_SHED`, `terminal=true`, and bounded retry guidance when a replay proxy upload currently owns same-process priority **and** the client advertises `server-media-shed-v1`, or when the operator kill switch is enabled. The server records `stream_media_shed` itself; ordinary client-event ingress cannot forge that event. The updated desktop Watcher advertises that capability on stream requests, treats this response as a terminal video-only stop, preserves replay transport, and asks the user to start a fresh stream after the retry window. Older watchers do not opt into automatic replay-pressure shedding. This rail does not create replay-result, betting, settlement, database, or Wolo authority.
 
 The app-side ownership counterpart resolves Watcher replay ownership from the authenticated Watcher API key rather than trusting a client-supplied UID. A stale cached UID therefore cannot split telemetry ownership from final replay ownership.
 
@@ -234,6 +236,7 @@ Allowed `watcher_client_events.event_type` values:
 - `stream_started`
 - `stream_chunk_uploaded`
 - `stream_chunk_dropped`
+- `stream_media_shed`
 - `stream_heartbeat`
 - `stream_stopped`
 - `stream_track_ended`

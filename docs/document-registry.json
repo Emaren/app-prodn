@@ -37,7 +37,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-24",
       "sensitivity": "internal",
-      "sha256": "9cd35833fd2e447011a935eb0f8335d7a73eec13cac881c27d2375bf3e582d84",
+      "sha256": "7c227f4f119a71ec99989010eb6891d4c0cc19c31a97c377e40cf06899602c33",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -85,7 +85,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-08-20",
       "sensitivity": "internal",
-      "sha256": "6be43750885ad11a34eff99d53cf70da8b137e59cb0d2d7fb1f1d31966a9661f",
+      "sha256": "5163423ff984dcea29d6d1e05354b59b18eda69df6724fffc71e255ace6ae560",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6bc1773ec750d5e91ca10dc365159d53c4f8a2b53be09d03233c9e726d51bf03",
+      "sha256": "b476ab66b4948e16e4a47e86b6428fa8904fa4b9cef9e4e8aaaeaf03aad30a34",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1621,9 +1621,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-06",
+      "reviewed_at": "2026-09-14",
       "sensitivity": "restricted",
-      "sha256": "3be27a5de1817b7db642953e233bd824375c0ab23ce8d4dc0d0e4f57897aff26",
+      "sha256": "b971cf0c65faf984f74e0f427c29c00a84a89d96a8a3c9f5f89003758ce5e4fe",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/recovery-finalize-v1",
-    "commit": "05b7a1903e793d28b730083f12e7991186231360"
+    "branch": "fix/watcher-media-server-qos-v1",
+    "commit": "e6d025c0b0f27fc6b085342ecde659d87274046b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

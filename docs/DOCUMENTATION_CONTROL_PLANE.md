@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/recovery-finalize-v1` at `05b7a1903e793d28b730083f12e7991186231360`
+Implementation baseline: `fix/watcher-media-server-qos-v1` at `e6d025c0b0f27fc6b085342ecde659d87274046b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

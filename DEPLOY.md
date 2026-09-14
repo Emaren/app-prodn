@@ -1069,6 +1069,7 @@ Browser stream runtime notes:
 - `storage/live-streams/` is runtime media storage and must stay writable by the web service user.
 - Optional production override: `AOE2_STREAM_STORAGE_DIR=/path/to/stream-storage`.
 - Optional chunk retention override: `AOE2_STREAM_CHUNK_RETENTION_MS=21600000`; active-stream polling also ends stale browser streams and prunes old ended chunks.
+- Emergency watcher-native video kill switch: `AOE2_STREAM_MEDIA_KILL_SWITCH=1`. This does not disable replay upload/API traffic; it causes watcher-native chunk admission to return terminal `STREAM_MEDIA_SHED` before reading media bytes regardless of watcher capability. Automatic replay-pressure shedding is capability-gated to updated watchers advertising `server-media-shed-v1`. Clear the variable to restore ordinary admission.
 - AoE2WAR streaming is browser/watcher WebM chunk distribution with a rolling playback route. It is intentionally not WOLO-gated and does not require Twitch or OBS.
 - Watcher `1.5.0` can stream natively with watcher-key auth or open `/profile?watcher_stream=1&stream_session=...&stream_title=...` as a browser fallback. Unsigned macOS builds use manual download-and-replace updates until notarized; signed Windows builds can install in place when idle.
 
