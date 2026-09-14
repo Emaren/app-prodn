@@ -15,35 +15,37 @@ sensitivity: "restricted"
 
 # Watcher Telemetry
 
-## Production release identity — 2026-09-06
+## Production release identity — 2026-09-14
 
-The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. The Watcher 1.5.10 release contract requires the Windows, macOS, and Linux updater manifests to report `version: 1.5.10` before the web metadata is considered publishable.
+The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. The Watcher 1.5.11 release contract requires the Windows, macOS, and Linux updater manifests to report `version: 1.5.11` before the web metadata is considered publishable.
 
 Release evidence:
 
-- Watcher runtime source: `f499e5a64e48a048fe3506ab52a9681c8f3b5966`;
-- successful Windows Artifact Signing run: `34082963205`;
-- signed Windows build source: `56ac9abe0c0a4f9f089cd502cdeac5b509ada0f0`;
-- successful macOS/Linux release build run: `34083586837`;
-- macOS/Linux build source: `a4893a0b75c7dff4441d1a798842cdca3b0e9198`.
+- Watcher runtime source: `758804e673f2fd06460cb30919ddb7629c76a555`;
+- successful Windows Artifact Signing run: `34847268397`;
+- signed Windows build source: `758804e673f2fd06460cb30919ddb7629c76a555`;
+- successful macOS/Linux release build run: `34847268637`;
+- macOS/Linux build source: `758804e673f2fd06460cb30919ddb7629c76a555`.
 
 Verified release binary SHA-256 values:
 
-- Windows installer: `294b5b39f8347cf17c72ab992be79d55e0494f33c7432a9452d7e0b54154ab63`;
-- Windows portable EXE: `a389d4cedd11a354ab87f46175194b7030ccf45717c4d8907ddaa5eb6d637b81`;
-- Apple Silicon DMG: `93c580bd42727cb68c94e9c2959403703a874099f6b382214c058edef5d7fc14`;
-- macOS direct ZIP: `d4cc8dd10a3be7bae4c1027b4580d1d8595b6404252fcdafec3dc11ebba70a02`;
-- Linux AppImage: `f2511e68f383642b7478b08abc588201dbe30c1ba1640650b34d5ff1d7449421`.
+- Windows installer: `be936b480aca200d4cfdc8db1475715ff640e161771be85017828fdfcec2fcf5`;
+- Windows portable EXE: `25301abbc260ecb746a36f8e6466bdcc75840243a6b91bcf2a81558c8f4efda5`;
+- Apple Silicon DMG: `300b270298534b7753e2533fd114e445075dc750a309ef430f716e2982c249cb`;
+- macOS direct ZIP: `4d0530304ed4fa8c4b5dca1837f22fd0ed06901269325569f99aead598706985`;
+- Linux AppImage: `0e01f821fcfeafa2c7bbff654b1ba22260ac9c47c3878b776c5cd0d9f0d1e715`.
 
-The certified release inventory contains nine canonical entries: the five user-facing binaries, the macOS DMG blockmap, and `latest.yml`, `latest-mac.yml`, and `latest-linux.yml`. `SHA256SUMS-1.5.10.txt` and `watcher-release-manifest-1.5.10.json` are the authoritative inventory receipts. The Windows updater manifest is regenerated from the **signed** installer bytes so its SHA-512 and size cannot point at the pre-signing binary.
+The certified release inventory contains nine canonical entries: the five user-facing binaries, the macOS DMG blockmap, and `latest.yml`, `latest-mac.yml`, and `latest-linux.yml`. `SHA256SUMS-1.5.11.txt` and `watcher-release-manifest-1.5.11.json` are the authoritative inventory receipts. The Windows updater manifest is regenerated from the **signed** installer bytes so its SHA-512 and size cannot point at the pre-signing binary.
+
+## v1.5.11 capability-negotiated server media shedding
+
+The app owns a server-side admission rail for watcher-native video. Before reading a watcher-native chunk body, the server may terminate that video stream with HTTP `409`, code `STREAM_MEDIA_SHED`, `terminal=true`, and bounded retry guidance when a replay proxy upload currently owns same-process priority **and** the client advertises `server-media-shed-v1`, or when the operator kill switch is enabled. The server records `stream_media_shed` itself; ordinary client-event ingress cannot forge that event. Watcher 1.5.11 advertises that capability on stream requests, treats this response as a terminal video-only stop, preserves replay transport, and asks the user to start a fresh stream after the retry window. Older watchers do not opt into automatic replay-pressure shedding. This rail does not create replay-result, betting, settlement, database, or Wolo authority.
 
 ## v1.5.10 active-folder and replay-priority recovery
 
 Watcher 1.5.10 separates **structural folder validity** from **current replay activity**. A valid HD SaveGame directory is no longer assumed to be the active directory forever. The watchdog may switch away from a valid-but-stale folder only when a different proven HD candidate has materially fresher replay writes. This closes the Scavanger_Ab failure mode where the Watcher could stay green and monitor-attached while AoE2HD was writing the live replay into another Documents, OneDrive, or Steam-library SaveGame directory.
 
 Replay truth also has explicit network priority over optional native video. When a replay upload begins, the Watcher can abort an in-flight video chunk, invalidate queued stale video slices, drop newly recorded video slices while replay bytes own the lane, pause the recorder to reduce encoding pressure, and suppress thumbnail refresh. The lightweight stream heartbeat remains alive. Video resumes from fresh capture after replay transfer clears; stale backlog is not flushed into the same constrained upstream connection. Video is expendable; replay live/final delivery is not.
-
-The app also owns a server-side admission rail for watcher-native video. Before reading a watcher-native chunk body, the server may terminate that video stream with HTTP `409`, code `STREAM_MEDIA_SHED`, `terminal=true`, and bounded retry guidance when a replay proxy upload currently owns same-process priority **and** the client advertises `server-media-shed-v1`, or when the operator kill switch is enabled. The server records `stream_media_shed` itself; ordinary client-event ingress cannot forge that event. The updated desktop Watcher advertises that capability on stream requests, treats this response as a terminal video-only stop, preserves replay transport, and asks the user to start a fresh stream after the retry window. Older watchers do not opt into automatic replay-pressure shedding. This rail does not create replay-result, betting, settlement, database, or Wolo authority.
 
 The app-side ownership counterpart resolves Watcher replay ownership from the authenticated Watcher API key rather than trusting a client-supplied UID. A stale cached UID therefore cannot split telemetry ownership from final replay ownership.
 
