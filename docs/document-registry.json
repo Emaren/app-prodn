@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3d9ca375a5ff67dda984a582d7bd0264eceb0b36cf0db3cde7459033f2d35d00",
+      "sha256": "009cee6e6dfc49f9b8dada36df0c29493c8cb14f98d4c8d11666acda892df65b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "release/watcher-1.5.11-app-metadata-v1",
-    "commit": "3145047487bdbed7e17a4af022a330d8f388344b"
+    "branch": "fix/wolo-snapshot-receipt-v1",
+    "commit": "bd1875028d4e8b06a745a12f0256db19b9bb76c8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

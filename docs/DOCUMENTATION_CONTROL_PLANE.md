@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `release/watcher-1.5.11-app-metadata-v1` at `3145047487bdbed7e17a4af022a330d8f388344b`
+Implementation baseline: `fix/wolo-snapshot-receipt-v1` at `bd1875028d4e8b06a745a12f0256db19b9bb76c8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
