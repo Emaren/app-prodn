@@ -9,6 +9,7 @@ import {
   type ReplayPostIngestReport,
 } from "@/lib/replayPostIngest";
 import { recordUserActivity } from "@/lib/userExperience";
+import { withReplayUploadMediaPressure } from "@/lib/streamMediaAdmission";
 import {
   isWatcherApiKeyCandidate,
   resolveWatcherTelemetryIdentity,
@@ -186,7 +187,9 @@ export async function POST(request: NextRequest) {
     cache: "no-store",
   };
 
-  const upstreamResponse = await fetch(`${base}/api/replay/upload`, init);
+  const upstreamResponse = await withReplayUploadMediaPressure(() =>
+    fetch(`${base}/api/replay/upload`, init)
+  );
   const upstreamContentType = upstreamResponse.headers.get("content-type") || "application/json";
   const upstreamBody = await upstreamResponse.text();
   const upstreamPayload = parseJsonBody(upstreamBody, upstreamContentType);

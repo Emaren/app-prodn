@@ -78,6 +78,7 @@ export const WATCHER_CLIENT_EVENT_TYPES = [
   "stream_started",
   "stream_chunk_uploaded",
   "stream_chunk_dropped",
+  "stream_media_shed",
   "stream_heartbeat",
   "stream_stopped",
   "stream_track_ended",
