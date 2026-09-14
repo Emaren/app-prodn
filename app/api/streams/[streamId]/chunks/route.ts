@@ -104,7 +104,9 @@ export async function POST(
 
 
   if (stream.sourceType === "watcher_native") {
-    const admission = currentStreamMediaAdmission();
+    const admission = currentStreamMediaAdmission(
+      request.headers.get("x-aoe2war-stream-capabilities"),
+    );
     if (!admission.allow) {
       const endedAt = new Date();
       const ended = await prisma.gameWatchStream.updateMany({

@@ -1,4 +1,5 @@
 export const STREAM_MEDIA_SHED_CODE = "STREAM_MEDIA_SHED" as const;
+export const STREAM_MEDIA_SHED_CAPABILITY = "server-media-shed-v1" as const;
 
 export type StreamMediaShedReason =
   | "replay_upload_priority"
@@ -41,6 +42,7 @@ function envEnabled(value: string | undefined) {
 export function evaluateStreamMediaAdmission(input: {
   activeReplayUploads: number;
   operatorKillSwitch: boolean;
+  clientSupportsTerminalShed: boolean;
 }): StreamMediaAdmission {
   const activeReplayUploads = Math.max(0, Math.trunc(input.activeReplayUploads || 0));
   if (input.operatorKillSwitch) {
@@ -54,7 +56,7 @@ export function evaluateStreamMediaAdmission(input: {
       operatorKillSwitch: true,
     };
   }
-  if (activeReplayUploads > 0) {
+  if (activeReplayUploads > 0 && input.clientSupportsTerminalShed) {
     return {
       allow: false,
       terminal: true,
@@ -68,10 +70,18 @@ export function evaluateStreamMediaAdmission(input: {
   return { allow: true, activeReplayUploads, operatorKillSwitch: false };
 }
 
-export function currentStreamMediaAdmission() {
+export function supportsStreamMediaShed(value: string | null | undefined) {
+  return String(value || "")
+    .split(",")
+    .map((token) => token.trim())
+    .includes(STREAM_MEDIA_SHED_CAPABILITY);
+}
+
+export function currentStreamMediaAdmission(capabilitiesHeader?: string | null) {
   return evaluateStreamMediaAdmission({
     activeReplayUploads: state().activeReplayUploads,
     operatorKillSwitch: envEnabled(process.env.AOE2_STREAM_MEDIA_KILL_SWITCH),
+    clientSupportsTerminalShed: supportsStreamMediaShed(capabilitiesHeader),
   });
 }
 

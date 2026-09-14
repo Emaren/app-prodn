@@ -7,19 +7,21 @@ import {
   currentStreamMediaAdmission,
   evaluateStreamMediaAdmission,
   resetStreamMediaAdmissionForTests,
+  STREAM_MEDIA_SHED_CAPABILITY,
   STREAM_MEDIA_SHED_CODE,
+  supportsStreamMediaShed,
 } from "../lib/streamMediaAdmission.ts";
 
 test("stream media admission stays open without Tier-0 pressure", () => {
   assert.deepEqual(
-    evaluateStreamMediaAdmission({ activeReplayUploads: 0, operatorKillSwitch: false }),
+    evaluateStreamMediaAdmission({ activeReplayUploads: 0, operatorKillSwitch: false, clientSupportsTerminalShed: false }),
     { allow: true, activeReplayUploads: 0, operatorKillSwitch: false },
   );
 });
 
 test("active replay upload sheds native video with a terminal bounded retry", () => {
   assert.deepEqual(
-    evaluateStreamMediaAdmission({ activeReplayUploads: 2, operatorKillSwitch: false }),
+    evaluateStreamMediaAdmission({ activeReplayUploads: 2, operatorKillSwitch: false, clientSupportsTerminalShed: true }),
     {
       allow: false,
       terminal: true,
@@ -32,9 +34,22 @@ test("active replay upload sheds native video with a terminal bounded retry", ()
   );
 });
 
+test("legacy watcher without shed capability is not terminally shed by replay pressure", () => {
+  assert.deepEqual(
+    evaluateStreamMediaAdmission({ activeReplayUploads: 2, operatorKillSwitch: false, clientSupportsTerminalShed: false }),
+    { allow: true, activeReplayUploads: 2, operatorKillSwitch: false },
+  );
+});
+
+test("stream media shed capability is explicit and comma-list safe", () => {
+  assert.equal(supportsStreamMediaShed(`other, ${STREAM_MEDIA_SHED_CAPABILITY}`), true);
+  assert.equal(supportsStreamMediaShed("other"), false);
+  assert.equal(supportsStreamMediaShed(null), false);
+});
+
 test("operator kill switch sheds media without impersonating replay pressure", () => {
   assert.deepEqual(
-    evaluateStreamMediaAdmission({ activeReplayUploads: 0, operatorKillSwitch: true }),
+    evaluateStreamMediaAdmission({ activeReplayUploads: 0, operatorKillSwitch: true, clientSupportsTerminalShed: false }),
     {
       allow: false,
       terminal: true,
@@ -53,13 +68,13 @@ test("replay pressure lease is reference-counted and release is idempotent", () 
   resetStreamMediaAdmissionForTests();
   const releaseA = beginReplayUploadMediaPressure();
   const releaseB = beginReplayUploadMediaPressure();
-  assert.equal(currentStreamMediaAdmission().allow, false);
-  assert.equal(currentStreamMediaAdmission().activeReplayUploads, 2);
+  assert.equal(currentStreamMediaAdmission(STREAM_MEDIA_SHED_CAPABILITY).allow, false);
+  assert.equal(currentStreamMediaAdmission(STREAM_MEDIA_SHED_CAPABILITY).activeReplayUploads, 2);
   releaseA();
   releaseA();
-  assert.equal(currentStreamMediaAdmission().activeReplayUploads, 1);
+  assert.equal(currentStreamMediaAdmission(STREAM_MEDIA_SHED_CAPABILITY).activeReplayUploads, 1);
   releaseB();
-  assert.equal(currentStreamMediaAdmission().allow, true);
+  assert.equal(currentStreamMediaAdmission(STREAM_MEDIA_SHED_CAPABILITY).allow, true);
   if (previous === undefined) delete process.env.AOE2_STREAM_MEDIA_KILL_SWITCH;
   else process.env.AOE2_STREAM_MEDIA_KILL_SWITCH = previous;
 });
@@ -69,10 +84,11 @@ test("native chunk route sheds before body read and records server-owned telemet
     new URL("../app/api/streams/[streamId]/chunks/route.ts", import.meta.url),
     "utf8",
   );
-  const admissionOffset = route.indexOf("currentStreamMediaAdmission()");
+  const admissionOffset = route.indexOf("currentStreamMediaAdmission(");
   const bodyOffset = route.indexOf("request.arrayBuffer()");
   assert.ok(admissionOffset >= 0 && admissionOffset < bodyOffset);
   assert.match(route, /stream\.sourceType === "watcher_native"/);
+  assert.match(route, /x-aoe2war-stream-capabilities/);
   assert.match(route, /eventType: "stream_media_shed"/);
   assert.match(route, /authority: "server_media_admission"/);
   assert.match(route, /code: admission\.code/);
