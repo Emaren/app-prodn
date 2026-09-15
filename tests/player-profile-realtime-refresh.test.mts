@@ -82,7 +82,10 @@ test("profile cursor zero is authoritative and archive loads are generation-safe
   assert.match(client, /requestDataGeneration !== dataGenerationRef\.current/);
   assert.match(client, /responseGeneration !== appliedGenerationRef\.current/);
   assert.doesNotMatch(client, /\/api\/players\/generation\?refresh=/);
-  assert.match(profile, /const matchFeedGeneration = await loadPublicReplayGeneration\(prisma\)/);
+  assert.match(
+    profile,
+    /const \[matchFeedGeneration, exactSteamIndex\] = await Promise\.all\(\[[\s\S]*?loadPublicReplayGeneration\(prisma\)[\s\S]*?loadExactSteamCandidateIndex/,
+  );
   assert.match(profile, /createGenerationKeyedLoader/);
   assert.match(profile, /loadCandidateFinalGames\(\s*prisma,\s*matchFeedGeneration/);
   assert.match(profile, /loadCandidateFinalGames\(\s*prisma,\s*generation,\s*currentPlayer,\s*\)/);

@@ -56,10 +56,21 @@ test("historical exact-Steam aliases require membership in the cleaned profile c
   );
 });
 
+test("exact-Steam replay corpora are generation-keyed and bounded", () => {
+  assert.match(
+    source,
+    /const loadExactSteamProfileReplayCorpus = createGenerationKeyedLoader<[\s\S]*?>\(16\)/,
+  );
+  assert.match(
+    source,
+    /loadExactSteamProfileReplayCorpus\([\s\S]*?`\$\{generation\}:steam:\$\{exactSteamId\}`[\s\S]*?loadCandidateFinalGamesFresh\([\s\S]*?candidateGameIds/,
+  );
+});
+
 test("empty or unavailable snapshot candidates fail back to the whole-estate loader", () => {
   assert.match(
     source,
-    /candidateGameIds[\s\S]*?candidateGameIds\.length > 0[\s\S]*?loadCandidateFinalGamesFresh\([\s\S]*?candidateGameIds[\s\S]*?loadPlayerProfileReplayCorpus/,
+    /candidateGameIds[\s\S]*?candidateGameIds\.length > 0[\s\S]*?loadExactSteamProfileReplayCorpus\([\s\S]*?loadCandidateFinalGamesFresh\([\s\S]*?candidateGameIds[\s\S]*?loadPlayerProfileReplayCorpus/,
   );
 });
 

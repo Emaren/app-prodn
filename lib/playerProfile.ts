@@ -282,6 +282,14 @@ const loadPlayerProfileReplayCorpus = createGenerationKeyedLoader<
   PrismaClient,
   PlayerProfileGameRow[]
 >();
+// Exact-Steam profiles should not re-read the same replay-derived corpus on every
+// request. The authoritative replay generation participates in the cache key, so
+// any GameStats/projection/snapshot/adjudication/identity change creates a fresh
+// entry. Retain only a small recent-player working set to keep memory bounded.
+const loadExactSteamProfileReplayCorpus = createGenerationKeyedLoader<
+  PrismaClient,
+  PlayerProfileGameRow[]
+>(16);
 
 const RESOURCE_KEYS = {
   food: ["food", "food gathered", "food collected", "food_collected", "food_gathered", "total_food"],
@@ -1548,9 +1556,14 @@ async function loadCandidateFinalGames(
       candidateGameIds &&
       candidateGameIds.length > 0
     ) {
-      return loadCandidateFinalGamesFresh(
+      return loadExactSteamProfileReplayCorpus(
         prisma,
-        candidateGameIds,
+        `${generation}:steam:${exactSteamId}`,
+        () =>
+          loadCandidateFinalGamesFresh(
+            prisma,
+            candidateGameIds,
+          ),
       );
     }
   }
@@ -2033,14 +2046,18 @@ async function buildProfileFromPlayer(
 ): Promise<PlayerProfile> {
   // Read the watermark before the replay query. Truth that lands afterward is
   // guaranteed to produce a different client poll token and another refresh.
-  const matchFeedGeneration = await loadPublicReplayGeneration(prisma);
+  // The snapshot index is independent of the watermark read, so start both at
+  // once; the replay corpus still waits for both and remains generation-bound.
   const exactSteamId = input.currentPlayer.steamId?.trim();
-  const exactSteamIndex = exactSteamId
-    ? await loadExactSteamCandidateIndex(
-        prisma,
-        exactSteamId,
-      )
-    : undefined;
+  const [matchFeedGeneration, exactSteamIndex] = await Promise.all([
+    loadPublicReplayGeneration(prisma),
+    exactSteamId
+      ? loadExactSteamCandidateIndex(
+          prisma,
+          exactSteamId,
+        )
+      : Promise.resolve(undefined),
+  ]);
   const candidateGames = await loadCandidateFinalGames(
     prisma,
     matchFeedGeneration,

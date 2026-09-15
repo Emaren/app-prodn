@@ -52,3 +52,18 @@ test("the player directory preserves its generation-before-corpus watermark", ()
   );
   assert.doesNotMatch(directoryPage, /loadPublicPlayerDirectoryFresh/);
 });
+
+test("full exact-Steam profile overlaps replay watermark and snapshot-index reads", () => {
+  const start = profile.indexOf("async function buildProfileFromPlayer(");
+  const end = profile.indexOf("\nexport async function loadClaimedPlayerPreview(", start);
+  const loader = profile.slice(start, end);
+
+  assert.match(
+    loader,
+    /const \[matchFeedGeneration, exactSteamIndex\] = await Promise\.all\(\[[\s\S]*?loadPublicReplayGeneration\(prisma\)[\s\S]*?loadExactSteamCandidateIndex/,
+  );
+  assert.ok(
+    loader.indexOf("Promise.all([") < loader.indexOf("loadCandidateFinalGames("),
+    "the generation/index overlap must finish before the replay corpus read starts",
+  );
+});
