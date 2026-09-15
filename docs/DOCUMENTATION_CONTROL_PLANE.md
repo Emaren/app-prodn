@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/security-next-maintenance-v1` at `fd50fd59f7110696e270eb1e203a8ccf7f10dcdb`
+Implementation baseline: `feature/next-env-route-types-v1` at `0e5b7d4dc44fef0767ef996b1a07379a1ef2feb8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

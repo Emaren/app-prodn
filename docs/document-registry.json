@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3b5455e710b80532ea3c3184e62001203e4062399495af13298e15db1c8f26be",
+      "sha256": "e046b1fae2a26ceff71ac7eabad7b5a7b0cc5d6b75ba2aed475b362edb28cdc3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/security-next-maintenance-v1",
-    "commit": "fd50fd59f7110696e270eb1e203a8ccf7f10dcdb"
+    "branch": "feature/next-env-route-types-v1",
+    "commit": "0e5b7d4dc44fef0767ef996b1a07379a1ef2feb8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
