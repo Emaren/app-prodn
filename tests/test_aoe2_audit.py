@@ -52,6 +52,62 @@ class AuditCommandTests(unittest.TestCase):
         audit.add("P0", "Git", "broken", "test")
         self.assertEqual(audit.area_status("Git"), "FAIL")
 
+    def test_historical_closure_source_does_not_create_map_drift(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            context = root / "context"
+            context.mkdir()
+            source = "a" * 40
+            old_source = "b" * 40
+            living = (
+                "<!-- BEGIN AOE2WAR GENERATED CURRENT STATE -->\n"
+                f"- Current-state source SHA: `{source}`\n"
+                "<!-- END AOE2WAR GENERATED CURRENT STATE -->\n"
+            )
+            for name in ("SYSTEM_MAP.md", "SERVER_STORAGE_MAP.md"):
+                (context / name).write_text(living, encoding="utf-8")
+            closure = (
+                "---\nstatus: \"historical\"\n---\n"
+                "<!-- BEGIN AOE2WAR GENERATED CLOSURE STATE -->\n"
+                f"- Current-state source SHA: `{old_source}`\n"
+                "<!-- END AOE2WAR GENERATED CLOSURE STATE -->\n"
+            )
+            (context / "AOE2WAR_100_CLOSURE.md").write_text(
+                closure, encoding="utf-8"
+            )
+            audit = MODULE.Audit()
+            with patch.object(MODULE, "VPSSENTRY", root):
+                MODULE.check_maps(audit)
+            self.assertFalse(any(item.key == "control-source-drift" for item in audit.findings))
+            self.assertTrue(audit.info["estate_maps"]["AOE2WAR_100_CLOSURE"]["historical"])
+
+    def test_active_closure_source_still_creates_map_drift(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            context = root / "context"
+            context.mkdir()
+            source = "a" * 40
+            living = (
+                "<!-- BEGIN AOE2WAR GENERATED CURRENT STATE -->\n"
+                f"- Current-state source SHA: `{source}`\n"
+                "<!-- END AOE2WAR GENERATED CURRENT STATE -->\n"
+            )
+            for name in ("SYSTEM_MAP.md", "SERVER_STORAGE_MAP.md"):
+                (context / name).write_text(living, encoding="utf-8")
+            closure = (
+                "---\nstatus: \"active\"\n---\n"
+                "<!-- BEGIN AOE2WAR GENERATED CLOSURE STATE -->\n"
+                f"- Current-state source SHA: `{'b' * 40}`\n"
+                "<!-- END AOE2WAR GENERATED CLOSURE STATE -->\n"
+            )
+            (context / "AOE2WAR_100_CLOSURE.md").write_text(
+                closure, encoding="utf-8"
+            )
+            audit = MODULE.Audit()
+            with patch.object(MODULE, "VPSSENTRY", root):
+                MODULE.check_maps(audit)
+            self.assertTrue(any(item.key == "control-source-drift" for item in audit.findings))
+
     def test_manifest_entry_accepts_portable_basename(self):
         digest = "a" * 64
         self.assertEqual(

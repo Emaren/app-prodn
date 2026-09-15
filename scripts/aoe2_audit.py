@@ -490,11 +490,12 @@ def check_central_quality_gates(audit: Audit) -> None:
 
 
 def check_maps(audit: Audit) -> None:
-    """Validate the three canonical VPSSentry control documents.
+    """Validate canonical VPSSentry control documents.
 
-    Workspace-root map copies are retired. This audit checks only the
-    Git-authoritative files under VPSSentry/context and requires their generated
-    source identities to agree.
+    Workspace-root map copies are retired. The two living estate maps must
+    agree on generated source identity. A historical closure ledger remains
+    bounded and readable but is frozen evidence, so its older source identity
+    does not participate in mutable current-state convergence.
     """
     paths = {
         "SYSTEM_MAP": VPSSENTRY / "context" / "SYSTEM_MAP.md",
@@ -505,6 +506,7 @@ def check_maps(audit: Audit) -> None:
         r"^- Current-state source SHA: \`([0-9a-f]{40})\`$",
         re.MULTILINE,
     )
+    status_re = re.compile(r'^status:\s*"([^"]+)"\s*$', re.MULTILINE)
     results: dict[str, Any] = {}
     sources: set[str] = set()
 
@@ -537,10 +539,22 @@ def check_maps(audit: Audit) -> None:
             )
             continue
         source = matches[0]
-        sources.add(source)
+        frontmatter_status = None
+        if text.startswith("---\n"):
+            end = text.find("\n---\n", 4)
+            if end >= 0:
+                match = status_re.search(text[4:end])
+                frontmatter_status = match.group(1) if match else None
+        historical = (
+            label == "AOE2WAR_100_CLOSURE"
+            and frontmatter_status == "historical"
+        )
+        if not historical:
+            sources.add(source)
         results[label] = {
             "sha256": sha256(path),
             "current_source_sha": source,
+            "historical": historical,
             "path": str(path),
         }
 
