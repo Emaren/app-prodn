@@ -154,12 +154,23 @@ database failures remain retryable and are returned explicitly in the worker
 result.
 
 The protected endpoint requires `BET_STAKE_RECONCILE_TOKEN` or the existing
-`CRON_SECRET` fallback and uses constant-time token comparison. The production
-unit templates are `deploy/aoe2hdbets-bet-stake-reconcile.service` and `.timer`.
-The timer uses `OnUnitInactiveSec=5min`, so one service invocation cannot overlap
-its own next scheduled run, and it does not declare `Requires=` on the web
-service; reconciliation must fail rather than revive the application during an
-operator maintenance window.
+`CRON_SECRET` fallback and uses constant-time token comparison. Production uses
+a dedicated root-only `/etc/aoe2hdbets/aoe2hdbets-bet-stake-reconcile.env`;
+source-controlled systemd drop-ins attach that one-purpose secret to the web,
+plan and apply services without copying the broader web environment. The plan
+unit is `deploy/aoe2hdbets-bet-stake-reconcile-plan.service`; the recurring
+apply unit and timer are `deploy/aoe2hdbets-bet-stake-reconcile.service` and
+`.timer`. The timer uses `OnUnitInactiveSec=5min`, so one service invocation
+cannot overlap its own next scheduled run, and it does not declare `Requires=`
+on the web service; reconciliation must fail rather than revive the application
+during an operator maintenance window.
+
+The production activation on 2026-09-15 began with a PostgreSQL-enforced
+read-only census: zero already-bound candidates and zero unresolved discovery
+seed rows existed in the 24-hour window. The first explicit apply and the first
+timer-triggered apply each returned zero candidates, zero commits, zero review
+items and zero transient errors. The timer then reported `active (waiting)` with
+a finite next trigger while Wolo settlement listeners remained exactly `1/1`.
 
 Set `BET_STAKE_TICKETS_ENABLED=false` to fail the additive ticket endpoints
 closed. Legacy one-market stake-intent and wager endpoints remain available.

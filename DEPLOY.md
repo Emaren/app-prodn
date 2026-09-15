@@ -95,43 +95,62 @@ The signed-but-unrecorded stake reconciler is intentionally a two-step financial
 rail: read-only plan first, explicit apply second. Ordinary application release
 does not silently enable its systemd timer.
 
-After the feature release is certified, verify the authentication secret exists
-without printing it, then run the production-local plan:
+Use a dedicated one-purpose secret file rather than copying the broader web
+environment. Generate it without printing the token, install it root-only, and
+install the source-controlled systemd drop-ins plus plan/apply units:
 
 ```bash
-grep -qE '^(BET_STAKE_RECONCILE_TOKEN|CRON_SECRET)=' /etc/aoe2hdbets/aoe2hdbets-web.env
-npm run bets:stake:reconcile
-```
+umask 077
+tmp="$(mktemp)"
+printf 'BET_STAKE_RECONCILE_TOKEN=%s\n' "$(openssl rand -hex 32)" > "$tmp"
+sudo install -m 0600 -o root -g root "$tmp" /etc/aoe2hdbets/aoe2hdbets-bet-stake-reconcile.env
+rm -f "$tmp"
 
-Review the returned legacy intent and ticket candidate IDs. Plan mode does not
-refresh chain discovery and does not write database state. If the candidate set
-is coherent, run one explicit apply through the same canonical app endpoint:
-
-```bash
-npm run bets:stake:reconcile -- --apply
-```
-
-The apply path never broadcasts WOLO. It reuses the already-bound transaction
-hash and delegates to the existing chain-verifying wager/ticket commit paths.
-`409` or ambiguous financial state fails to `suspect`/operator review; transient
-errors remain retryable.
-
-Only after that bounded first apply is reviewed should the recurring units be
-installed and enabled:
-
-```bash
+sudo install -d -m 0755 /etc/systemd/system/aoe2hdbets-web.service.d
+sudo install -d -m 0755 /etc/systemd/system/aoe2hdbets-bet-stake-reconcile.service.d
+sudo install -d -m 0755 /etc/systemd/system/aoe2hdbets-bet-stake-reconcile-plan.service.d
+sudo install -m 0644 deploy/systemd/aoe2hdbets-web.service.d/bet-stake-reconcile.conf /etc/systemd/system/aoe2hdbets-web.service.d/bet-stake-reconcile.conf
+sudo install -m 0644 deploy/systemd/aoe2hdbets-bet-stake-reconcile.service.d/secret.conf /etc/systemd/system/aoe2hdbets-bet-stake-reconcile.service.d/secret.conf
+sudo install -m 0644 deploy/systemd/aoe2hdbets-bet-stake-reconcile-plan.service.d/secret.conf /etc/systemd/system/aoe2hdbets-bet-stake-reconcile-plan.service.d/secret.conf
+sudo install -m 0644 deploy/aoe2hdbets-bet-stake-reconcile-plan.service /etc/systemd/system/aoe2hdbets-bet-stake-reconcile-plan.service
 sudo install -m 0644 deploy/aoe2hdbets-bet-stake-reconcile.service /etc/systemd/system/aoe2hdbets-bet-stake-reconcile.service
 sudo install -m 0644 deploy/aoe2hdbets-bet-stake-reconcile.timer /etc/systemd/system/aoe2hdbets-bet-stake-reconcile.timer
 sudo systemctl daemon-reload
+sudo systemctl restart aoe2hdbets-web.service
+```
+
+The web restart loads the dedicated token but must not change the certified build
+identity. Re-prove public/internal version parity and Wolo listeners `8092/8093`
+before continuing. Then run the protected plan-only unit and review its bounded
+legacy intent and ticket candidate IDs:
+
+```bash
+sudo systemctl start aoe2hdbets-bet-stake-reconcile-plan.service
+sudo journalctl -u aoe2hdbets-bet-stake-reconcile-plan.service -n 80 --no-pager -o cat
+```
+
+Plan mode performs database reads only and does not refresh chain discovery. If
+the candidate set is coherent, run one explicit apply through the same canonical
+app endpoint, review the result, and only then enable recurrence:
+
+```bash
+sudo systemctl start aoe2hdbets-bet-stake-reconcile.service
+sudo journalctl -u aoe2hdbets-bet-stake-reconcile.service -n 80 --no-pager -o cat
 sudo systemctl enable --now aoe2hdbets-bet-stake-reconcile.timer
 systemctl is-enabled aoe2hdbets-bet-stake-reconcile.timer
 systemctl is-active aoe2hdbets-bet-stake-reconcile.timer
+systemctl list-timers aoe2hdbets-bet-stake-reconcile.timer --all --no-pager
 ```
 
-The service has no `Requires=aoe2hdbets-web.service`; a timer run during web
-maintenance fails instead of starting production unexpectedly. Verify the next
-completed service result and keep Wolo settlement listeners `8092/8093`
-observation-only throughout activation.
+Apply never broadcasts WOLO. It reuses already-proven escrow transfers through
+the existing wager/ticket commit fences; ambiguous financial state fails to
+operator review and transient infrastructure failure remains retryable. The
+service has no `Requires=aoe2hdbets-web.service`, so maintenance cannot be
+silently undone by the timer.
+
+Production activation on **2026-09-15** proved zero plan candidates, zero
+discovery seed rows, two zero-change apply runs, a successful service result,
+and a finite recurring next trigger. Wolo listeners remained exactly `1/1`.
 
 ### Interactive AI/operator shell discipline
 

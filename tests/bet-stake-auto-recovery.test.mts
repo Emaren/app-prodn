@@ -131,7 +131,7 @@ test("plan mode is read-only and exposes only bounded candidate identity", async
   const calls: string[] = [];
   const prisma = {
     betStakeIntent: {
-      findMany: async (args: any) => {
+      findMany: async (args: { where: { status: { in: string[] } }; take: number }) => {
         calls.push("intent.findMany");
         assert.deepEqual(args.where.status.in, [
           "broadcast_submitted",
@@ -143,7 +143,7 @@ test("plan mode is read-only and exposes only bounded candidate identity", async
       },
     },
     betStakeTicket: {
-      findMany: async (args: any) => {
+      findMany: async (args: { where: { status: { in: string[] } }; take: number }) => {
         calls.push("ticket.findMany");
         assert.equal(args.take, 3);
         return [{ id: 12, userId: 7, status: "broadcast_submitted" }];
@@ -214,7 +214,7 @@ test("already-related wager is idempotently marked recorded without recommit", a
   assert.equal(commits, 0);
   assert.deepEqual(result.intentAlreadyRecorded, [candidate.id]);
   assert.equal(intentUpdates.length, 1);
-  assert.equal((intentUpdates[0] as any).data.status, "recorded");
+  assert.equal((intentUpdates[0] as { data: { status: string } }).data.status, "recorded");
 });
 
 test("ambiguous duplicate never manufactures a wager and is escalated", async () => {
@@ -233,7 +233,7 @@ test("ambiguous duplicate never manufactures a wager and is escalated", async ()
   assert.equal(result.intentCommitted.length, 0);
   assert.equal(result.reviewRequired.length, 1);
   assert.match(result.reviewRequired[0].detail, /exact wager relation/i);
-  assert.equal((intentUpdates[0] as any).data.status, "suspect");
+  assert.equal((intentUpdates[0] as { data: { status: string } }).data.status, "suspect");
 });
 
 test("409 financial conflict fails closed to review while transient failure remains retryable", async () => {
@@ -248,7 +248,7 @@ test("409 financial conflict fails closed to review while transient failure rema
   });
   assert.equal(reviewed.reviewRequired.length, 1);
   assert.equal(reviewed.transientErrors.length, 0);
-  assert.equal((first.intentUpdates[0] as any).data.status, "suspect");
+  assert.equal((first.intentUpdates[0] as { data: { status: string } }).data.status, "suspect");
 
   const transientIntent = intent({ id: 302 });
   const second = fakePrisma({ intents: [transientIntent] });
@@ -317,8 +317,24 @@ test("discovery outage is observable but does not erase recoverable chain proof"
 test("production runner is authenticated, bounded and systemd-contained", () => {
   const route = readFileSync("app/api/bets/stake-reconciliation/route.ts", "utf8");
   const runner = readFileSync("scripts/run-bet-stake-reconciliation.mjs", "utf8");
+  const planService = readFileSync(
+    "deploy/aoe2hdbets-bet-stake-reconcile-plan.service",
+    "utf8"
+  );
   const service = readFileSync("deploy/aoe2hdbets-bet-stake-reconcile.service", "utf8");
   const timer = readFileSync("deploy/aoe2hdbets-bet-stake-reconcile.timer", "utf8");
+  const webSecretDropIn = readFileSync(
+    "deploy/systemd/aoe2hdbets-web.service.d/bet-stake-reconcile.conf",
+    "utf8"
+  );
+  const applySecretDropIn = readFileSync(
+    "deploy/systemd/aoe2hdbets-bet-stake-reconcile.service.d/secret.conf",
+    "utf8"
+  );
+  const planSecretDropIn = readFileSync(
+    "deploy/systemd/aoe2hdbets-bet-stake-reconcile-plan.service.d/secret.conf",
+    "utf8"
+  );
   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 
   assert.match(route, /timingSafeEqual/);
@@ -334,13 +350,26 @@ test("production runner is authenticated, bounded and systemd-contained", () => 
   assert.match(runner, /Math\.min\(rawTake, 50\)/);
   assert.equal(pkg.scripts["bets:stake:reconcile"], "node scripts/run-bet-stake-reconciliation.mjs");
 
-  assert.match(service, /^User=tony$/m);
-  assert.match(service, /^NoNewPrivileges=true$/m);
-  assert.match(service, /^ProtectSystem=strict$/m);
-  assert.match(service, /^PrivateDevices=true$/m);
-  assert.match(service, /^CapabilityBoundingSet=$/m);
+  for (const unit of [planService, service]) {
+    assert.match(unit, /^User=tony$/m);
+    assert.match(unit, /^NoNewPrivileges=true$/m);
+    assert.match(unit, /^ProtectSystem=strict$/m);
+    assert.match(unit, /^PrivateDevices=true$/m);
+    assert.match(unit, /^CapabilityBoundingSet=$/m);
+    assert.doesNotMatch(unit, /^Requires=aoe2hdbets-web\.service$/m);
+  }
+  assert.match(planService, /ExecStart=\/usr\/bin\/npm run bets:stake:reconcile$/m);
+  assert.doesNotMatch(planService, /--apply/);
   assert.match(service, /bets:stake:reconcile -- --apply/);
-  assert.doesNotMatch(service, /^Requires=aoe2hdbets-web\.service$/m);
+
+  for (const dropIn of [webSecretDropIn, applySecretDropIn, planSecretDropIn]) {
+    assert.match(
+      dropIn,
+      /^EnvironmentFile=\/etc\/aoe2hdbets\/aoe2hdbets-bet-stake-reconcile\.env$/m
+    );
+    assert.doesNotMatch(dropIn, /BET_STAKE_RECONCILE_TOKEN=/);
+  }
+
   assert.match(timer, /^OnUnitInactiveSec=5min$/m);
   assert.match(timer, /^Persistent=true$/m);
 });
