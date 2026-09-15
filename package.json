@@ -56,7 +56,7 @@
     "@cosmos-kit/keplr": "^2.15.0",
     "@cosmos-kit/react": "^2.22.0",
     "@prisma/adapter-pg": "^7.4.0",
-    "@prisma/client": "^7.4.0",
+    "@prisma/client": "^7.10.0",
     "@shadcn/ui": "^0.0.4",
     "@tanstack/react-query": "^5.76.1",
     "@walletconnect/client": "^1.8.0",
