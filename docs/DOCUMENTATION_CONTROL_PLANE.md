@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/release-live-hash-race-v1` at `0b0d5b69a84abaf3a0f04590b7540eaf72075779`
+Implementation baseline: `feature/bet-stake-auto-recovery-v1` at `445433bc4bd1683891820b332b292209b2a36907`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
