@@ -73,7 +73,7 @@
     "next-pwa": "^5.6.0",
     "openid-client": "^6.3.4",
     "passport-steam": "^1.0.18",
-    "pg": "^8.18.0",
+    "pg": "^8.23.0",
     "qrcode.react": "^4.2.0",
     "react": "19.1.9",
     "react-dom": "19.1.9",
