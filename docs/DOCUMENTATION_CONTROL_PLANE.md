@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/home-hydration-v1` at `ca32deca6bc1f9afd42350098905838d78df7cd6`
+Implementation baseline: `performance/player-profile-hotpath-v1` at `8355e727f02a968320b4359e0c02f55c195dafcf`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
