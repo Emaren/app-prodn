@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d973bdba34f588e67db53e4fc87766e6bb2ac99b2abc6a25d103d9783a40cd2d",
+      "sha256": "25dd8c48abd9e4a5f198c47176eac8a171b85c419b0e5f30bf2a331538d94380",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/post-freeze-control-convergence",
-    "commit": "82c53365d031218d25d9fd0e0b08f14df2cdd200"
+    "branch": "performance/home-hydration-v1",
+    "commit": "ca32deca6bc1f9afd42350098905838d78df7cd6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

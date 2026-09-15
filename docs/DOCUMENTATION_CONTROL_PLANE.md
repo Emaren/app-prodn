@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/post-freeze-control-convergence` at `82c53365d031218d25d9fd0e0b08f14df2cdd200`
+Implementation baseline: `performance/home-hydration-v1` at `ca32deca6bc1f9afd42350098905838d78df7cd6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
