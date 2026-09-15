@@ -297,3 +297,21 @@ Host OS therefore accepts either of two bounded rearm proofs:
 An empty next-elapse value by itself is not a failure while the triggered
 service is still executing. Core web/API service state and Wolo listener counts
 remain protected before and after host tidy.
+
+## VPSSentry security telemetry is a host-health authority
+
+Doctor must not report a healthy host while the canonical VPSSentry status
+artifact reports an active critical threat indicator. Doctor therefore reads
+`/var/lib/vps-sentry/public/status.json` through the normal production SSH
+authority and records the observation timestamp, age, critical-indicator count,
+and critical IDs.
+
+VPSSentry normally scans every five minutes with bounded jitter. Doctor treats
+telemetry older than twelve minutes as stale and warns fail-safe; missing or
+unparseable telemetry also prevents a clean HEALTHY result. A fresh critical
+indicator is a Host BLOCKER. Fresh non-critical VPSSentry warnings remain
+visible through VPSSentry itself but do not become Doctor blockers automatically.
+
+This rule exists because ordinary service, package, release, and capacity health
+can all be green while a security IOC is active. Never weaken or bypass this
+security authority merely to restore a 100/100 score.

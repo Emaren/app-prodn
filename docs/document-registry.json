@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8d753aa3577b0905d045770aad613667e3bc494dd2564543a7d11e76542bbd3c",
+      "sha256": "3b5455e710b80532ea3c3184e62001203e4062399495af13298e15db1c8f26be",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "7317f0342e5750762f1a5f80f82c2d4ff9da799e227ae2bd8a4423385108fd6b",
+      "sha256": "849b91c35c8020bca4cbadfe10140d7d1798dc3db6cba9edfc3e08234f2dbcd0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -703,7 +703,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "7cded1cd2f493f0ae0660890391c5c11d9b5a2b0502bca8f147737a2cc81bdee",
+      "sha256": "3885ecdce12af1213d3a9f302f77635f98d0c20d86241e14bc3eff2f61447669",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/host-phased-update-semantics-v1",
-    "commit": "924c45196b46d46dd4c3ef8f07acea527d06c24e"
+    "branch": "feature/security-next-maintenance-v1",
+    "commit": "fd50fd59f7110696e270eb1e203a8ccf7f10dcdb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
