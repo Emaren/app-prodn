@@ -1102,3 +1102,22 @@ Shell lesson: under `pipefail`, `producer | grep -q` can report failure after a
 successful early match because the producer receives SIGPIPE. For maintenance
 authority probes, capture command output first and match the captured text; never
 let short-circuit pipeline behavior decide safety classification.
+
+## 2026-09-15 — Security telemetry outranks cosmetic health scores
+
+A post-reboot forensic check found an active XMRig miner even though the normal
+AoE2WAR estate checks had reached Doctor 100/100. VPSSentry had already observed
+the suspicious process and related host drift, but Doctor did not consume that
+live security authority, so operational health and security truth could diverge.
+
+Durable rule: a health score is never allowed to overrule current critical
+security evidence. Doctor consumes VPSSentry's canonical live status artifact
+and fails closed when that telemetry is missing, unreadable, stale beyond two
+normal scan intervals, or reports an active critical threat indicator. A fresh
+critical VPSSentry indicator is a Host blocker, not an informational footnote.
+
+The incident also reinforced defense in depth: patch exposed framework runtimes,
+run public web services without root where possible, sandbox them with systemd,
+and keep remediation privilege out of ordinary public request handlers whenever
+the architecture permits. Monitoring is only useful when its findings can
+change control-plane decisions.

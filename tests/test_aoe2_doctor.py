@@ -399,6 +399,51 @@ class DoctorTests(unittest.TestCase):
         self.assertEqual(findings["updates-pending"].severity, "WARN")
         self.assertEqual(doctor.status(), "ATTENTION")
 
+    def test_fresh_clean_vpssentry_security_is_healthy(self):
+        doctor = MODULE.Doctor()
+        MODULE.add_vpssentry_security_findings(doctor, {
+            "vpssentry_probe_ok": "1",
+            "vpssentry_ts": "2026-09-15T01:00:00+00:00",
+            "vpssentry_age_seconds": "120",
+            "vpssentry_critical_count": "0",
+            "vpssentry_critical_ids": "",
+        })
+        self.assertEqual(doctor.status(), "HEALTHY")
+        self.assertEqual(doctor.score(), 100)
+        self.assertEqual(doctor.info["vpssentry_security"]["critical_count"], 0)
+
+    def test_critical_vpssentry_security_indicator_is_blocker(self):
+        doctor = MODULE.Doctor()
+        MODULE.add_vpssentry_security_findings(doctor, {
+            "vpssentry_probe_ok": "1",
+            "vpssentry_ts": "2026-09-15T01:00:00+00:00",
+            "vpssentry_age_seconds": "120",
+            "vpssentry_critical_count": "1",
+            "vpssentry_critical_ids": "service-hardening-gap",
+        })
+        findings = {item.key: item for item in doctor.findings}
+        self.assertEqual(findings["vpssentry-critical-threat"].severity, "BLOCKER")
+        self.assertIn("service-hardening-gap", findings["vpssentry-critical-threat"].detail)
+        self.assertEqual(doctor.status(), "UNSAFE")
+
+    def test_stale_vpssentry_security_telemetry_warns(self):
+        doctor = MODULE.Doctor()
+        MODULE.add_vpssentry_security_findings(doctor, {
+            "vpssentry_probe_ok": "1",
+            "vpssentry_age_seconds": "721",
+            "vpssentry_critical_count": "0",
+        })
+        findings = {item.key: item for item in doctor.findings}
+        self.assertEqual(findings["security-telemetry-stale"].severity, "WARN")
+        self.assertEqual(doctor.status(), "ATTENTION")
+
+    def test_unavailable_vpssentry_security_telemetry_warns(self):
+        doctor = MODULE.Doctor()
+        MODULE.add_vpssentry_security_findings(doctor, {"vpssentry_probe_ok": "0"})
+        findings = {item.key: item for item in doctor.findings}
+        self.assertEqual(findings["security-telemetry-unavailable"].severity, "WARN")
+        self.assertEqual(doctor.status(), "ATTENTION")
+
 
 if __name__ == "__main__":
     unittest.main()

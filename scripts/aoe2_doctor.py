@@ -569,6 +569,32 @@ printf 'runtime_token\\t%s\\n' "$runtime_token"
 printf 'effective_envfile\\t%s\\n' "$effective_envfile"
 printf 'environment_files\\t%s\\n' "$(systemctl show {shlex.quote(service)} -p EnvironmentFiles --value 2>/dev/null)"
 printf 'store_meta\\t%s\\n' "$(stat -c '%U:%G:%a' {shlex.quote(store)} 2>/dev/null)"
+python3 - <<'PY'
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+path = Path("/var/lib/vps-sentry/public/status.json")
+try:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    ts = str(data.get("ts") or "")
+    parsed = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    age = max(0, int((datetime.now(timezone.utc) - parsed).total_seconds()))
+    threat = data.get("threat") or dict()
+    indicators = threat.get("indicators") or list()
+    critical = [item for item in indicators if isinstance(item, dict) and str(item.get("severity") or "").lower() == "critical"]
+    ids = ",".join(str(item.get("id") or item.get("title") or "unknown") for item in critical)
+    print("vpssentry_probe_ok\t1")
+    print("vpssentry_ts\t%s" % ts)
+    print("vpssentry_age_seconds\t%s" % age)
+    print("vpssentry_critical_count\t%s" % len(critical))
+    print("vpssentry_critical_ids\t%s" % ids)
+except Exception as exc:
+    detail = str(exc).replace("\\n", " ")[:240]
+    print("vpssentry_probe_ok\t0")
+    print("vpssentry_error\t%s" % detail)
+PY
 """.strip()
 
     rc, output = ssh(host, script, timeout=30)
@@ -660,6 +686,54 @@ def add_host_update_findings(doctor: Doctor, snap: dict[str, Any]) -> None:
         "other_deferred": updates_other_deferred,
         "probe_ok": updates_probe_ok,
     }
+
+
+def add_vpssentry_security_findings(doctor: Doctor, snap: dict[str, Any]) -> None:
+    probe_ok = snap.get("vpssentry_probe_ok") == "1"
+    try:
+        age_seconds = int(str(snap.get("vpssentry_age_seconds") or "-1"))
+    except ValueError:
+        age_seconds = -1
+    try:
+        critical_count = int(str(snap.get("vpssentry_critical_count") or "0"))
+    except ValueError:
+        critical_count = 0
+    critical_ids = str(snap.get("vpssentry_critical_ids") or "").strip()
+
+    doctor.info["vpssentry_security"] = {
+        "probe_ok": probe_ok,
+        "timestamp": snap.get("vpssentry_ts"),
+        "age_seconds": age_seconds,
+        "critical_count": critical_count,
+        "critical_ids": critical_ids,
+    }
+
+    if not probe_ok:
+        doctor.add(
+            "WARN",
+            "Host",
+            "security-telemetry-unavailable",
+            "VPSSentry live security status is missing or unreadable",
+            3,
+        )
+        return
+    if age_seconds < 0 or age_seconds > 720:
+        doctor.add(
+            "WARN",
+            "Host",
+            "security-telemetry-stale",
+            f"VPSSentry live security status age={age_seconds}s exceeds 12-minute freshness window",
+            3,
+        )
+    if critical_count:
+        suffix = f": {critical_ids}" if critical_ids else ""
+        doctor.add(
+            "BLOCKER",
+            "Host",
+            "vpssentry-critical-threat",
+            f"VPSSentry reports {critical_count} active critical security indicator(s){suffix}",
+            20,
+        )
 
 
 def check_host_and_server_bridge(
@@ -789,6 +863,7 @@ def check_host_and_server_bridge(
         )
 
     add_host_update_findings(doctor, snap)
+    add_vpssentry_security_findings(doctor, snap)
 
     try:
         failed_units = int(str(snap.get("failed_units") or "0"))
