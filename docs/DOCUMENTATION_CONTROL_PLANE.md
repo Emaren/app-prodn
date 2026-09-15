@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/bet-stake-auto-recovery-v1` at `445433bc4bd1683891820b332b292209b2a36907`
+Implementation baseline: `feature/bet-stake-auto-recovery-v1` at `bfaf55b0ae032c9da091f2ee74443b1ed1c5213d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

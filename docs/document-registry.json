@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fb8b2c2f83e1ed2a561c8c40fea2b36a70b02f0a98d56e29d70eaca473f420bf",
+      "sha256": "bc7b30b96dd7695365fa27ddbc459b582b98c2958943869ae9a6aef8575c838a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1838,7 +1838,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/bet-stake-auto-recovery-v1",
-    "commit": "445433bc4bd1683891820b332b292209b2a36907"
+    "commit": "bfaf55b0ae032c9da091f2ee74443b1ed1c5213d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
