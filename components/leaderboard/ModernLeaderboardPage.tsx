@@ -36,8 +36,13 @@ import {
   type LeaderboardSortState,
 } from "@/lib/leaderboardSort";
 
-const RESET_PAGE_SIZE = 50;
-const SCROLL_PAGE_SIZE = 150;
+import {
+  LEADERBOARD_INITIAL_PAGE_SIZE,
+  LEADERBOARD_SCROLL_PAGE_SIZE,
+} from "@/lib/leaderboardPagination";
+
+const RESET_PAGE_SIZE = LEADERBOARD_INITIAL_PAGE_SIZE;
+const SCROLL_PAGE_SIZE = LEADERBOARD_SCROLL_PAGE_SIZE;
 const SPOTLIGHT_CONTEXT_ROWS = 50;
 const SPOTLIGHT_INITIAL_ROWS =
   SPOTLIGHT_CONTEXT_ROWS * 2 + 1;

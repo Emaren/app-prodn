@@ -93,7 +93,8 @@ test("players membership is complete, stable, and presence-aware", () => {
   assert.doesNotMatch(playersPage, /claimedEntries\.slice\(0,\s*18\)/);
   assert.match(playersPage, /directory\.claimedEntries\.map/);
   assert.match(playersPage, /PublicPresenceProvider/);
-  assert.match(playersPage, /PlayerPresenceOnly/);
+  assert.match(playersPage, /PlayerDirectoryOnlineNow/);
+  assert.doesNotMatch(playersPage, /PlayerPresenceOnly/);
   assert.match(playersPage, /PlayerPresenceStatus/);
 });
 

@@ -19,6 +19,7 @@ import {
   normalizeLeaderboardView,
 } from "@/lib/leaderboardViewPreference";
 import { getPrisma } from "@/lib/prisma";
+import { LEADERBOARD_INITIAL_PAGE_SIZE } from "@/lib/leaderboardPagination";
 import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
 import { buildPreviewDataUrl } from "@/lib/previewDataSource";
 
@@ -137,7 +138,7 @@ export default async function LeaderboardPage({
       );
       previewUrl.searchParams.set(
         "limit",
-        "50",
+        String(LEADERBOARD_INITIAL_PAGE_SIZE),
       );
 
       const response =
@@ -185,7 +186,7 @@ export default async function LeaderboardPage({
           {
             lane: preferredLane,
             offset: 0,
-            limit: 50,
+            limit: LEADERBOARD_INITIAL_PAGE_SIZE,
             includePendingClaimed:
               false,
             includeFeaturedClaimed:

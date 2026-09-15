@@ -68,8 +68,14 @@ test("critical performance safeguards stay wired into the public surfaces", () =
   assert.match(playerFeed, /rootMargin: "1600px 0px"/);
   assert.match(playerFeed, /\[content-visibility:auto\]/);
   assert.match(ogBoard, /rootMargin: "1800px 0px"/);
-  assert.ok(modernLeaderboard.includes("const RESET_PAGE_SIZE = 50;"));
-  assert.ok(modernLeaderboard.includes("const SCROLL_PAGE_SIZE = 150;"));
+  assert.ok(modernLeaderboard.includes("const RESET_PAGE_SIZE = LEADERBOARD_INITIAL_PAGE_SIZE;"));
+  assert.ok(modernLeaderboard.includes("const SCROLL_PAGE_SIZE = LEADERBOARD_SCROLL_PAGE_SIZE;"));
+  const leaderboardPagination = readFileSync(
+    new URL("../lib/leaderboardPagination.ts", import.meta.url),
+    "utf8"
+  );
+  assert.match(leaderboardPagination, /LEADERBOARD_INITIAL_PAGE_SIZE = 24/);
+  assert.match(leaderboardPagination, /LEADERBOARD_SCROLL_PAGE_SIZE = 75/);
   assert.match(
     modernLeaderboard,
     /const requestedLimit =[\s\S]*limitOverride \?\?[\s\S]*RESET_PAGE_SIZE[\s\S]*SCROLL_PAGE_SIZE/,

@@ -4,10 +4,11 @@ import type { ReactNode } from "react";
 import CommunityBadgePill from "@/components/contact/CommunityBadgePill";
 import {
   PlayerPresenceCount,
-  PlayerPresenceEmpty,
-  PlayerPresenceOnly,
   PlayerPresenceStatus,
 } from "@/components/players/PlayerDirectoryPresence";
+import PlayerDirectoryOnlineNow, {
+  type PlayerDirectoryOnlineEntry,
+} from "@/components/players/PlayerDirectoryOnlineNow";
 import PlayerDirectoryRealtimeRefresh from "@/components/players/PlayerDirectoryRealtimeRefresh";
 import { PublicPresenceProvider } from "@/components/presence/PublicPresenceProvider";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
@@ -43,6 +44,24 @@ export default async function PlayersDirectoryPage() {
   const claimedUids = directory.claimedEntries.flatMap((entry) =>
     entry.uid ? [entry.uid] : [],
   );
+  const onlineEntries: PlayerDirectoryOnlineEntry[] =
+    directory.claimedEntries.flatMap((entry) =>
+      entry.uid
+        ? [{
+            href: entry.href,
+            key: entry.key,
+            name: entry.name,
+            steamRmRating: entry.steamRmRating,
+            steamDmRating: entry.steamDmRating,
+            totalMatches: entry.totalMatches,
+            uid: entry.uid,
+            verified: entry.verified,
+            verificationLevel: entry.verificationLevel,
+            wins: entry.wins,
+            losses: entry.losses,
+          }]
+        : [],
+    );
   const claimableCount = Math.max(
     directory.replayEntries.length,
     boardCount - directory.claimedEntries.length
@@ -108,16 +127,7 @@ export default async function PlayersDirectoryPage() {
           count={<PlayerPresenceCount directoryUids={claimedUids} />}
           status={<LiveSignal label="Calculating live" />}
         >
-          <div className="space-y-3">
-            <PlayerPresenceEmpty directoryUids={claimedUids}>
-              <EmptyPanel message="No claimed players are live right now." />
-            </PlayerPresenceEmpty>
-            {directory.claimedEntries.map((entry) => (
-              <PlayerPresenceOnly key={entry.key} uid={entry.uid}>
-                <PlayerCard entry={entry} accent="emerald" />
-              </PlayerPresenceOnly>
-            ))}
-          </div>
+          <PlayerDirectoryOnlineNow entries={onlineEntries} />
         </Panel>
 
         <Panel
