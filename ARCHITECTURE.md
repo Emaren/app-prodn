@@ -620,7 +620,6 @@ Do not assume every visible issue is a page bug.
 - tournament depth is improving, but still not the full “event gravity” version
 - exact postgame achievement-table capture is still not part of the replay pipeline
 - `$WOLO` is still an app-level product rail, not full settlement infrastructure
-- signed-bet happy path is real now, but signed-but-unrecorded stake recovery is not yet reconciled automatically
 - Ledger and older-browser signer behavior is improved but still needs tighter client telemetry and user guidance
 - Challenge -> Bets scheduled/live bridging is healthier now, but very fast finishes and duplicate-looking settled history still deserve another pass
 - watcher behavior now looks healthier end-to-end, but the app should still document the live/final replay contract truthfully as it evolves
