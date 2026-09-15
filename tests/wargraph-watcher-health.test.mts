@@ -7,6 +7,9 @@ import {
   isWarGraphWatcherHeartbeatFresh,
   WARGRAPH_WATCHER_FRESH_MS,
 } from "../lib/wargraph/watcherHealthContract.ts";
+import {
+  retryPrismaWriteConflict,
+} from "../lib/wargraph/prismaRetry.ts";
 
 test("Watcher connection remains distinct from an attached HD monitor", () => {
   assert.deepEqual(
@@ -120,4 +123,72 @@ test("pairing READY requires fresh healthy authenticated Watcher evidence", () =
     }),
     false,
   );
+});
+
+
+test("Watcher health transaction retries bounded P2034 conflicts", async () => {
+  const delays: number[] = [];
+  let attempts = 0;
+
+  const result =
+    await retryPrismaWriteConflict(
+      async () => {
+        attempts += 1;
+        if (attempts < 3) {
+          throw Object.assign(new Error("write conflict"), { code: "P2034" });
+        }
+        return "projected";
+      },
+      async (delayMs) => {
+        delays.push(delayMs);
+      },
+    );
+
+  assert.equal(result, "projected");
+  assert.equal(attempts, 3);
+  assert.deepEqual(delays, [15, 30]);
+});
+
+test("Watcher health transaction does not retry non-P2034 errors", async () => {
+  const delays: number[] = [];
+  let attempts = 0;
+  const error = Object.assign(new Error("database unavailable"), { code: "P1001" });
+
+  await assert.rejects(
+    retryPrismaWriteConflict(
+      async () => {
+        attempts += 1;
+        throw error;
+      },
+      async (delayMs) => {
+        delays.push(delayMs);
+      },
+    ),
+    (caught: unknown) => caught === error,
+  );
+
+  assert.equal(attempts, 1);
+  assert.deepEqual(delays, []);
+});
+
+test("Watcher health transaction stops after four P2034 attempts", async () => {
+  const delays: number[] = [];
+  let attempts = 0;
+  const error = Object.assign(new Error("write conflict"), { code: "P2034" });
+
+  await assert.rejects(
+    retryPrismaWriteConflict(
+      async () => {
+        attempts += 1;
+        throw error;
+      },
+      async (delayMs) => {
+        delays.push(delayMs);
+      },
+    ),
+    (caught: unknown) => caught === error,
+  );
+
+  assert.equal(attempts, 4);
+  assert.deepEqual(delays, [15, 30, 45]);
 });
