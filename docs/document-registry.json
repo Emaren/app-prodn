@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "45924aa7b50cb6cd368995885b41171a85c5025528349fbf69274e7641aedfc6",
+      "sha256": "ba52d821ed92c3b69f531b80f57004585d94bbd549cc43c1ab47f8fee6e6958f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "performance/site-speed-major-v1",
-    "commit": "56a9df0194cfe8540541b11bb6fbe1523b963436"
+    "branch": "fix/post-freeze-control-convergence",
+    "commit": "d8b13e043b81b46391b0643c0db3261551906fe2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
