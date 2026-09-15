@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/host-phased-update-semantics-v1` at `924c45196b46d46dd4c3ef8f07acea527d06c24e`
+Implementation baseline: `feature/security-next-maintenance-v1` at `fd50fd59f7110696e270eb1e203a8ccf7f10dcdb`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
