@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/post-freeze-control-convergence` at `d8b13e043b81b46391b0643c0db3261551906fe2`
+Implementation baseline: `fix/post-freeze-control-convergence` at `82c53365d031218d25d9fd0e0b08f14df2cdd200`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

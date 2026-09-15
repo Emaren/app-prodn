@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ba52d821ed92c3b69f531b80f57004585d94bbd549cc43c1ab47f8fee6e6958f",
+      "sha256": "d973bdba34f588e67db53e4fc87766e6bb2ac99b2abc6a25d103d9783a40cd2d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1838,7 +1838,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/post-freeze-control-convergence",
-    "commit": "d8b13e043b81b46391b0643c0db3261551906fe2"
+    "commit": "82c53365d031218d25d9fd0e0b08f14df2cdd200"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
