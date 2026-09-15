@@ -1093,6 +1093,11 @@ rollback_activation() {{
     rb_build="$(cat .next/BUILD_ID 2>/dev/null || true)"
     rb_staged="$(cat .next-release/BUILD_ID 2>/dev/null || true)"
     rb_build_version_file="$(cat .aoe2war-build-version 2>/dev/null | tr -d '\\r\\n')"
+    rollback_staged_cache_cleanup_rc=0
+    if [ -e .next-release/cache ] || [ -L .next-release/cache ]; then
+      rm -rf -- .next-release/cache
+      rollback_staged_cache_cleanup_rc=$?
+    fi
     rb_staged_artifact=""
     if [ -d .next-release ]; then
       rb_staged_artifact="$(artifact_hash .next-release 2>/dev/null || true)"
@@ -1105,6 +1110,7 @@ rollback_activation() {{
       && [ "$rollback_source_reset_rc" = "0" ] \
       && [ "$rollback_prisma_generate_rc" = "0" ] \
       && [ "$rollback_release_only_cleanup_rc" = "0" ] \
+      && [ "$rollback_staged_cache_cleanup_rc" = "0" ] \
       && [ "$rb_dirty_rc" = "0" ] \
       && [ "$rb_source_state_rc" = "0" ] \
       && [ "$rb_head" = "$PREVIOUS" ] \
@@ -1129,6 +1135,7 @@ rollback_activation() {{
       "source_reset_exit_code=$rollback_source_reset_rc" \
       "source_prisma_generate_exit_code=$rollback_prisma_generate_rc" \
       "release_only_cleanup_exit_code=$rollback_release_only_cleanup_rc" \
+      "staged_cache_cleanup_exit_code=$rollback_staged_cache_cleanup_rc" \
       "source_sha=$rb_head" \
       "dirty_count=$rb_dirty" \
       "dirty_probe_exit_code=$rb_dirty_rc" \
@@ -1186,6 +1193,8 @@ test ! -e .node_modules-release
 test -d "$FAST_OLD"
 test "$(cat "$FAST_OLD/BUILD_ID")" = "$OLD_BUILD"
 test -d "$FAST_OLD_MODULES"
+activated_content_sha="$(content_hash .next)"
+test "$activated_content_sha" = "$candidate_content_sha"
 SOURCE_MUTATION_STARTED=1
 git reset --hard "$RELEASE"
 test "$(git rev-parse HEAD)" = "$RELEASE"
@@ -1214,7 +1223,6 @@ after_internal_version="$(curl -fsS --max-time 8 http://127.0.0.1:3030/api/deplo
 after_public_version="$(curl -fsS --max-time 10 "$PUBLIC/api/deployment-version" | build_version)"
 after_wolo8092="$(wolo_count 8092)"
 after_wolo8093="$(wolo_count 8093)"
-after_content_sha="$(content_hash .next)"
 
 test "$after_service" = "active"
 test -n "$after_pid"
@@ -1226,7 +1234,6 @@ test "$after_internal_version" = "$CANDIDATE_VERSION"
 test "$after_public_version" = "$CANDIDATE_VERSION"
 test "$after_wolo8092" = "$before_wolo8092"
 test "$after_wolo8093" = "$before_wolo8093"
-test "$after_content_sha" = "$candidate_content_sha"
 test ! -e .next-release
 test -d "$FAST_OLD"
 test "$(cat "$ROLLBACK/next/BUILD_ID")" = "$OLD_BUILD"
@@ -1389,7 +1396,7 @@ printf '%s\\n' \
   "artifact_sha256=$ARTIFACT" \
   "candidate_node_modules_sha256=$certified_dependency_artifact" \
   "previous_node_modules_sha256=$old_dependency_artifact" \
-  "content_sha256=$after_content_sha" \
+  "content_sha256=$activated_content_sha" \
   "manifest_sha256=$MANIFEST_SHA" \
   "gate_sha256=$GATE_SHA" \
   "stage_receipt_sha256=$STAGE_RECEIPT_SHA" \
@@ -1730,7 +1737,7 @@ printf 'candidate_build_version\\t%s\\n' "$after_internal_version"
 printf 'artifact_sha256\\t%s\\n' "$ARTIFACT"
 printf 'candidate_node_modules_sha256\\t%s\\n' "$certified_dependency_artifact"
 printf 'previous_node_modules_sha256\\t%s\\n' "$old_dependency_artifact"
-printf 'content_sha256\\t%s\\n' "$after_content_sha"
+printf 'content_sha256\\t%s\\n' "$activated_content_sha"
 printf 'wolo8092\\t%s\\n' "$after_wolo8092"
 printf 'wolo8093\\t%s\\n' "$after_wolo8093"
 printf 'soak_seconds\\t%s\\n' "$SOAK_SECONDS"
