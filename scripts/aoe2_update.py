@@ -71,6 +71,9 @@ CLOSURE_STATE_END = "<!-- END AOE2WAR GENERATED CLOSURE STATE -->"
 ESTATE_MAP_SOURCE_RE = re.compile(
     r"^- Current-state source SHA: `([0-9a-f]{40})`$", re.MULTILINE
 )
+FRONTMATTER_STATUS_RE = re.compile(
+    r'^status:\s*"([^"]+)"\s*$', re.MULTILINE
+)
 ESTATE_MAP_FILES = ("SYSTEM_MAP.md", "SERVER_STORAGE_MAP.md")
 CONTROL_DOC_FILES = (*ESTATE_MAP_FILES, "AOE2WAR_100_CLOSURE.md")
 ESTATE_MAP_ALLOWED_PATHS = {
@@ -436,6 +439,17 @@ def closure_state_source(path: Path) -> str:
     )
 
 
+def markdown_frontmatter_status(path: Path) -> str | None:
+    text = path.read_text(encoding="utf-8")
+    if not text.startswith("---\n"):
+        return None
+    end = text.find("\n---\n", 4)
+    if end < 0:
+        return None
+    match = FRONTMATTER_STATUS_RE.search(text[4:end])
+    return match.group(1) if match else None
+
+
 def estate_map_refresh_plan(
     release_data: dict[str, Any],
     *,
@@ -454,11 +468,10 @@ def estate_map_refresh_plan(
     try:
         for name in ESTATE_MAP_FILES:
             sources.add(estate_map_source(vpssentry / "context" / name))
-        sources.add(
-            closure_state_source(
-                vpssentry / "context" / "AOE2WAR_100_CLOSURE.md"
-            )
-        )
+        closure_path = vpssentry / "context" / "AOE2WAR_100_CLOSURE.md"
+        closure_source = closure_state_source(closure_path)
+        if markdown_frontmatter_status(closure_path) != "historical":
+            sources.add(closure_source)
     except (OSError, UpdateError) as exc:
         return {
             "status": "blocked",

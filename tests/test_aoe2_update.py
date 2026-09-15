@@ -288,6 +288,92 @@ class UpdateCommandTests(unittest.TestCase):
             )
             self.assertEqual(deferred["status"], "deferred")
 
+    def test_historical_closure_ledger_is_excluded_from_living_source_convergence(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            vpssentry = base / "VPSSentry"
+            (vpssentry / "context").mkdir(parents=True)
+
+            def estate_block(source: str) -> str:
+                return (
+                    MODULE.ESTATE_MAP_BEGIN
+                    + "\n## Generated\n\n"
+                    + f"- Current-state source SHA: `{source}`\n"
+                    + MODULE.ESTATE_MAP_END
+                    + "\n"
+                )
+
+            for name in MODULE.ESTATE_MAP_FILES:
+                (vpssentry / "context" / name).write_text(
+                    estate_block("d" * 40), encoding="utf-8"
+                )
+
+            frozen_closure = (
+                "---\nstatus: \"historical\"\n---\n\n"
+                + MODULE.CLOSURE_STATE_BEGIN
+                + "\n## Generated Closure\n\n"
+                + f"- Current-state source SHA: `{'e' * 40}`\n"
+                + MODULE.CLOSURE_STATE_END
+                + "\n"
+            )
+            closure_path = vpssentry / "context" / "AOE2WAR_100_CLOSURE.md"
+            closure_path.write_text(frozen_closure, encoding="utf-8")
+
+            refresh = MODULE.estate_map_refresh_plan(
+                certified_release(),
+                vpssentry=vpssentry,
+            )
+            self.assertEqual(refresh["status"], "refresh")
+            self.assertEqual(refresh["current_source_sha"], "d" * 40)
+
+            for name in MODULE.ESTATE_MAP_FILES:
+                (vpssentry / "context" / name).write_text(
+                    estate_block("a" * 40), encoding="utf-8"
+                )
+
+            current = MODULE.estate_map_refresh_plan(
+                certified_release(),
+                vpssentry=vpssentry,
+            )
+            self.assertEqual(current["status"], "current")
+            self.assertEqual(current["current_source_sha"], "a" * 40)
+            self.assertEqual(MODULE.closure_state_source(closure_path), "e" * 40)
+
+    def test_active_closure_ledger_still_participates_in_source_convergence(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = pathlib.Path(temporary)
+            vpssentry = base / "VPSSentry"
+            (vpssentry / "context").mkdir(parents=True)
+            block = (
+                MODULE.ESTATE_MAP_BEGIN
+                + "\n## Generated\n\n"
+                + f"- Current-state source SHA: `{'a' * 40}`\n"
+                + MODULE.ESTATE_MAP_END
+                + "\n"
+            )
+            for name in MODULE.ESTATE_MAP_FILES:
+                (vpssentry / "context" / name).write_text(
+                    block, encoding="utf-8"
+                )
+            active_closure = (
+                "---\nstatus: \"active\"\n---\n\n"
+                + MODULE.CLOSURE_STATE_BEGIN
+                + "\n## Generated Closure\n\n"
+                + f"- Current-state source SHA: `{'e' * 40}`\n"
+                + MODULE.CLOSURE_STATE_END
+                + "\n"
+            )
+            (vpssentry / "context" / "AOE2WAR_100_CLOSURE.md").write_text(
+                active_closure, encoding="utf-8"
+            )
+
+            plan = MODULE.estate_map_refresh_plan(
+                certified_release(),
+                vpssentry=vpssentry,
+            )
+            self.assertEqual(plan["status"], "blocked")
+            self.assertIn("disagree", plan["reason"])
+
     def test_estate_map_snapshot_uses_certification_receipt_evidence(self):
         receipt = {
             "generated_at": "2026-08-11T00:59:00.123Z",
