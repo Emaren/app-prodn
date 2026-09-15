@@ -145,8 +145,6 @@ const JULIO_FEATURED_SUBTITLE_LINES = [
   },
 ] as const;
 
-let julioFeaturedSubtitleCursor = 0;
-
 function isFiniteFeaturedNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
@@ -196,9 +194,8 @@ function featuredWarriorRankSubtitle(warrior: FeaturedWarrior) {
   return warrior.role || "Rank Pending";
 }
 
-function nextJulioFeaturedSubtitleLine(warrior: FeaturedWarrior) {
-  const line = JULIO_FEATURED_SUBTITLE_LINES[julioFeaturedSubtitleCursor % JULIO_FEATURED_SUBTITLE_LINES.length];
-  julioFeaturedSubtitleCursor += 1;
+function julioFeaturedSubtitleLine(warrior: FeaturedWarrior, lineIndex: number) {
+  const line = JULIO_FEATURED_SUBTITLE_LINES[lineIndex % JULIO_FEATURED_SUBTITLE_LINES.length];
 
   const text =
     line.key === "elo"
@@ -695,9 +692,10 @@ function pickRealFeaturedWarrior(
 
 function curatedFeaturedWarriorOpening(pool: FeaturedWarrior[], randomize = false) {
   const basePool = featuredWarriorBasePool(pool);
-  const avatarPool = shuffleFeaturedWarriors(
-    basePool.filter((warrior) => featuredWarriorHasRealAvatar(warrior) && !featuredWarriorIsMystery(warrior))
+  const realAvatarPool = basePool.filter(
+    (warrior) => featuredWarriorHasRealAvatar(warrior) && !featuredWarriorIsMystery(warrior)
   );
+  const avatarPool = randomize ? shuffleFeaturedWarriors(realAvatarPool) : realAvatarPool;
   const selected: FeaturedWarrior[] = [];
 
   for (const warrior of avatarPool) {
@@ -710,7 +708,7 @@ function curatedFeaturedWarriorOpening(pool: FeaturedWarrior[], randomize = fals
     basePool,
     new Set(selected.map((warrior) => warrior.key)),
     null,
-    true
+    randomize
   );
 
   const lineup = [...selected.slice(0, FEATURED_WARRIOR_SLOT_COUNT - 1), mystery].slice(
@@ -1074,11 +1072,17 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
 function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
   const h = useHomeCopy();
   const identity = normalizeFeaturedWarriorKey(warrior.lookupName || warrior.name);
-  const [julioLine] = useState(() =>
-    identity === "julio" || identity === "julio-alvarez" ? nextJulioFeaturedSubtitleLine(warrior) : null
-  );
+  const isJulio = identity === "julio" || identity === "julio-alvarez";
+  const [julioLineIndex, setJulioLineIndex] = useState(0);
 
-  if ((identity === "julio" || identity === "julio-alvarez") && julioLine) {
+  useEffect(() => {
+    if (!isJulio) return;
+    setJulioLineIndex(Math.floor(Math.random() * JULIO_FEATURED_SUBTITLE_LINES.length));
+  }, [isJulio]);
+
+  const julioLine = isJulio ? julioFeaturedSubtitleLine(warrior, julioLineIndex) : null;
+
+  if (isJulio && julioLine) {
     return (
       <div className={`mt-1 text-[9px] font-semibold uppercase tracking-[0.18em] ${julioLine.className}`}>
         {h(julioLine.text)}

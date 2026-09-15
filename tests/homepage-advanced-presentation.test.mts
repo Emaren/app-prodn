@@ -123,3 +123,15 @@ test(
     );
   },
 );
+
+test(
+  "Featured warrior subtitle hydration is deterministic before cosmetic rotation",
+  () => {
+    assert.doesNotMatch(homepage, /julioFeaturedSubtitleCursor/);
+    assert.match(homepage, /const \[julioLineIndex, setJulioLineIndex\] = useState\(0\)/);
+    assert.match(homepage, /useEffect\(\(\) => \{[\s\S]*setJulioLineIndex\(Math\.floor\(Math\.random\(\) \* JULIO_FEATURED_SUBTITLE_LINES\.length\)\)[\s\S]*\}, \[isJulio\]\)/);
+    assert.match(homepage, /const julioLine = isJulio \? julioFeaturedSubtitleLine\(warrior, julioLineIndex\) : null/);
+    assert.match(homepage, /const avatarPool = randomize \? shuffleFeaturedWarriors\(realAvatarPool\) : realAvatarPool/);
+    assert.match(homepage, /pickUnknownFeaturedWarrior\([\s\S]*?null,[\s\S]*?randomize[\s\S]*?\)/);
+  },
+);
