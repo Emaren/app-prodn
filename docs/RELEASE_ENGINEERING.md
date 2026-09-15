@@ -615,6 +615,14 @@ fast root copy named `.next-rollback-activate-<UTC>`, swaps `.next-release`
 into `.next`, advances the live checkout to the exact release SHA, writes the
 candidate `.aoe2war-build-version`, and then starts only the web service.
 
+Before the web service starts, the engine proves the activated `.next` tree
+against the cache-free staged content digest. It must not tar/hash live `.next`
+after startup, because Next may create or update rebuildable runtime cache while
+the proof is reading the tree. If activation later rolls back, only
+`.next-release/cache` is normalized away before the preserved candidate is
+re-proved against its sealed staged artifact digest; every other candidate byte
+must still match exactly.
+
 Until certification commits, any critical failure after mutation exits through
 the activation failure trap, which stops the service, preserves the exact
 candidate back in `.next-release`, restores the previous `.next`, resets source

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/post-release-wargraph-retry-next-contract-v1` at `894ad76149e6b7f11fc2bc579671de9eafef2c66`
+Implementation baseline: `feature/release-live-hash-race-v1` at `0b0d5b69a84abaf3a0f04590b7540eaf72075779`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

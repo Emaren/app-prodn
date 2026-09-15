@@ -847,13 +847,22 @@ class ShipTests(unittest.TestCase):
             script,
         )
         self.assertIn(
-            'after_content_sha="$(content_hash .next)"',
+            'activated_content_sha="$(content_hash .next)"',
             script,
         )
         self.assertIn(
-            'test "$after_content_sha" = "$candidate_content_sha"',
+            'test "$activated_content_sha" = "$candidate_content_sha"',
             script,
         )
+        activated_hash = script.index(
+            'activated_content_sha="$(content_hash .next)"'
+        )
+        service_start = script.index(
+            'sudo -n /usr/bin/systemctl start "$SERVICE"\n',
+            activated_hash,
+        )
+        self.assertLess(activated_hash, service_start)
+        self.assertNotIn('after_content_sha="$(content_hash .next)"', script)
         self.assertIn(
             'artifact_sha256=$ARTIFACT',
             script,
@@ -861,6 +870,30 @@ class ShipTests(unittest.TestCase):
         self.assertIn('-C "$1" -cf - .', script)
         self.assertIn("--exclude='./cache' --exclude='./cache/*'", script)
         self.assertNotIn("active_artifact_hash()", script)
+
+    def test_activation_rollback_normalizes_only_runtime_cache_before_artifact_proof(self):
+        script = render_activation_script()
+        rollback_start = script.index('rollback_status="ROLLBACK_FAILED"')
+        cache_cleanup = script.index(
+            'rm -rf -- .next-release/cache', rollback_start
+        )
+        artifact_proof = script.index(
+            'rb_staged_artifact="$(artifact_hash .next-release 2>/dev/null || true)"',
+            cache_cleanup,
+        )
+        rollback_certify = script.index(
+            'rollback_status="ROLLED_BACK"', artifact_proof
+        )
+        self.assertLess(cache_cleanup, artifact_proof)
+        self.assertLess(artifact_proof, rollback_certify)
+        self.assertIn(
+            '[ "$rollback_staged_cache_cleanup_rc" = "0" ]',
+            script[rollback_start:rollback_certify],
+        )
+        self.assertIn(
+            'staged_cache_cleanup_exit_code=$rollback_staged_cache_cleanup_rc',
+            script,
+        )
 
     def test_activation_advances_source_version_and_runtime_only_while_stopped(self):
         _, receipt, _ = activation_sample()
