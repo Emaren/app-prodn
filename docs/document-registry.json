@@ -35,9 +35,9 @@
       "owner": "aoe2war-web",
       "path": "DEPLOY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-24",
+      "reviewed_at": "2026-09-15",
       "sensitivity": "internal",
-      "sha256": "7c227f4f119a71ec99989010eb6891d4c0cc19c31a97c377e40cf06899602c33",
+      "sha256": "8c1bd728eaa4d7e061904eed4cc9edb0dbfd948c91985c538a0065faaf47a53f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -316,9 +316,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_STAKE_TICKETS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-08",
+      "reviewed_at": "2026-09-15",
       "sensitivity": "internal",
-      "sha256": "029b0295281c2e8fd75cd03601e93cdeadf7cd54ce8a5517f769eba72270bc06",
+      "sha256": "6ff26f3435d05a5a9665c16be1de5ba67d3a4dd9f1892d483a060c7138361167",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

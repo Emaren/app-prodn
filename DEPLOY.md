@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-08-24"
+reviewed_at: "2026-09-15"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -88,6 +88,50 @@ For browser-sensitive UI work, complete the relevant local browser smoke before
 calling `finish`. The local `aoe2hdbets_shadow` exists specifically so
 interaction and persistence behavior can be tested with production-shaped data
 without giving local application code a production write path.
+
+### Signed-bet automatic recovery activation
+
+The signed-but-unrecorded stake reconciler is intentionally a two-step financial
+rail: read-only plan first, explicit apply second. Ordinary application release
+does not silently enable its systemd timer.
+
+After the feature release is certified, verify the authentication secret exists
+without printing it, then run the production-local plan:
+
+```bash
+grep -qE '^(BET_STAKE_RECONCILE_TOKEN|CRON_SECRET)=' /etc/aoe2hdbets/aoe2hdbets-web.env
+npm run bets:stake:reconcile
+```
+
+Review the returned legacy intent and ticket candidate IDs. Plan mode does not
+refresh chain discovery and does not write database state. If the candidate set
+is coherent, run one explicit apply through the same canonical app endpoint:
+
+```bash
+npm run bets:stake:reconcile -- --apply
+```
+
+The apply path never broadcasts WOLO. It reuses the already-bound transaction
+hash and delegates to the existing chain-verifying wager/ticket commit paths.
+`409` or ambiguous financial state fails to `suspect`/operator review; transient
+errors remain retryable.
+
+Only after that bounded first apply is reviewed should the recurring units be
+installed and enabled:
+
+```bash
+sudo install -m 0644 deploy/aoe2hdbets-bet-stake-reconcile.service /etc/systemd/system/aoe2hdbets-bet-stake-reconcile.service
+sudo install -m 0644 deploy/aoe2hdbets-bet-stake-reconcile.timer /etc/systemd/system/aoe2hdbets-bet-stake-reconcile.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now aoe2hdbets-bet-stake-reconcile.timer
+systemctl is-enabled aoe2hdbets-bet-stake-reconcile.timer
+systemctl is-active aoe2hdbets-bet-stake-reconcile.timer
+```
+
+The service has no `Requires=aoe2hdbets-web.service`; a timer run during web
+maintenance fails instead of starting production unexpectedly. Verify the next
+completed service result and keep Wolo settlement listeners `8092/8093`
+observation-only throughout activation.
 
 ### Interactive AI/operator shell discipline
 

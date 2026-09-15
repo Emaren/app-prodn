@@ -1,0 +1,13 @@
+[Unit]
+Description=Reconcile signed-but-unrecorded AoE2WAR bet stakes every five minutes
+
+[Timer]
+OnBootSec=4min
+OnUnitInactiveSec=5min
+AccuracySec=5s
+RandomizedDelaySec=20s
+Persistent=true
+Unit=aoe2hdbets-bet-stake-reconcile.service
+
+[Install]
+WantedBy=timers.target

@@ -8,7 +8,7 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-09-08"
+reviewed_at: "2026-09-15"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -115,6 +115,51 @@ The board exposes unresolved tickets to their owner. For 24 hours the server
 also scans escrow deposits for the exact wallet, amount, and ticket memo, so a
 transaction that landed while the browser lost its response can be recovered.
 Unverified, suspect, or orphaned tickets never enter pools or settlement.
+
+## Automatic signed-but-unrecorded recovery
+
+The server has one bounded reconciliation worker for legacy `BetStakeIntent` and
+modern `BetStakeTicket` rows whose wallet transfer is already bound but whose app
+wager recording did not finish. The worker only considers recent rows in
+`broadcast_submitted`, `verified_unrecorded`, or `orphaned` state with a
+non-null transaction hash. It never signs, broadcasts, or moves WOLO.
+
+Before apply, operators can inspect the exact bounded candidate identity with:
+
+```text
+GET /api/bets/stake-reconciliation?take=20
+```
+
+or locally on production through the authenticated runner:
+
+```bash
+npm run bets:stake:reconcile
+```
+
+Plan mode performs database reads only. Apply is a separate authenticated POST
+and the runner requires an explicit flag:
+
+```bash
+npm run bets:stake:reconcile -- --apply
+```
+
+Apply first refreshes the existing chain-proof discovery rails, then delegates
+legacy recovery to `placePooledBetWager` and ticket recovery to
+`commitBetStakeTicket`. Those canonical operations re-check immutable market
+identity, transaction ownership, memo/amount/recipient proof, advisory locks,
+and duplicate-transfer fences. An exact already-recorded relation is
+idempotent. An ambiguous duplicate or `409` financial-authority conflict is
+marked `suspect` for operator review rather than guessed. Transient service or
+database failures remain retryable and are returned explicitly in the worker
+result.
+
+The protected endpoint requires `BET_STAKE_RECONCILE_TOKEN` or the existing
+`CRON_SECRET` fallback and uses constant-time token comparison. The production
+unit templates are `deploy/aoe2hdbets-bet-stake-reconcile.service` and `.timer`.
+The timer uses `OnUnitInactiveSec=5min`, so one service invocation cannot overlap
+its own next scheduled run, and it does not declare `Requires=` on the web
+service; reconciliation must fail rather than revive the application during an
+operator maintenance window.
 
 Set `BET_STAKE_TICKETS_ENABLED=false` to fail the additive ticket endpoints
 closed. Legacy one-market stake-intent and wager endpoints remain available.
