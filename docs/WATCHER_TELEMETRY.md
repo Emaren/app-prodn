@@ -250,6 +250,8 @@ Allowed `watcher_client_events.event_type` values:
 
 The watcher posts to `POST /api/watcher/events`. The endpoint accepts a single event object or `{ "events": [...] }` batches up to 25 events and returns `{ "ok": true }` on successful or non-blocking best-effort handling.
 
+Authenticated watcher telemetry may also project current Watcher health into WarGraph presence. That projection runs as a serializable transaction and treats Prisma `P2034` write-conflict/deadlock errors as narrowly retryable: at most four attempts with bounded 15/30/45 ms backoff. Other database errors fail immediately to the existing best-effort deferral path. Durable watcher telemetry remains successful if this optional WarGraph projection is deferred, and the retry rail creates no replay-result, betting, settlement, or Wolo authority.
+
 ## Identity
 
 If the watcher has an `x-api-key`, the server resolves `user_id` and `user_uid` from the existing watcher key model. The key is only sent as a request header and is never stored in telemetry rows.

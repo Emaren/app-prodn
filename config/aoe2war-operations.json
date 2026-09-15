@@ -53,7 +53,7 @@
     ],
     "python_major_minor": "3.13",
     "yarn": "1.22.22",
-    "next": "15.1.7",
+    "next": "15.5.24",
     "prisma": "7.4.0",
     "node_policy": "build-and-production-use-node-22; operator-node-22-or-24-supported",
     "build_node_min_version": "22.12.0"

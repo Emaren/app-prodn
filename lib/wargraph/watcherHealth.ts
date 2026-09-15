@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import { Prisma, type PrismaClient } from "../generated/prisma";
 
 import { lockWarGraphTransaction, WARGRAPH_SLUG } from "./foundation";
+import { retryPrismaWriteConflict } from "./prismaRetry";
 import { classifyWarGraphWatcherHealth } from "./watcherHealthContract";
 
 function identitySecret(): string {
@@ -66,46 +67,48 @@ export async function recordWarGraphWatcherHealth(input: {
     metadata: input.metadata,
   });
   const identityHash = watcherIdentityHash(input);
-  return input.prisma.$transaction(
-    async (tx) => {
-      await lockWarGraphTransaction(tx, graph.id);
-      const stillActive = await tx.warGraphMembership.findFirst({
-        where: {
-          id: membership.id,
-          graphId: graph.id,
-          userId: input.userId,
-          status: "active",
-        },
-        select: { id: true },
-      });
-      if (!stillActive) return false;
-      await tx.warGraphPresence.upsert({
-        where: { membershipId: membership.id },
-        update: {
-          watcherSeenAt: now,
-          watcherHealthy: health.monitorAttached,
-          watcherIdentityHash: identityHash,
-          version: { increment: 1 },
-        },
-        create: {
-          graphId: graph.id,
-          membershipId: membership.id,
-          watcherSeenAt: now,
-          watcherHealthy: health.monitorAttached,
-          watcherIdentityHash: identityHash,
-        },
-      });
-      await tx.warGraph.update({
-        where: { id: graph.id },
-        data: { projectionVersion: { increment: 1 } },
-      });
-      return true;
-    },
-    {
-      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-      maxWait: 5_000,
-      timeout: 10_000,
-    },
+  return retryPrismaWriteConflict(() =>
+    input.prisma.$transaction(
+      async (tx) => {
+        await lockWarGraphTransaction(tx, graph.id);
+        const stillActive = await tx.warGraphMembership.findFirst({
+          where: {
+            id: membership.id,
+            graphId: graph.id,
+            userId: input.userId,
+            status: "active",
+          },
+          select: { id: true },
+        });
+        if (!stillActive) return false;
+        await tx.warGraphPresence.upsert({
+          where: { membershipId: membership.id },
+          update: {
+            watcherSeenAt: now,
+            watcherHealthy: health.monitorAttached,
+            watcherIdentityHash: identityHash,
+            version: { increment: 1 },
+          },
+          create: {
+            graphId: graph.id,
+            membershipId: membership.id,
+            watcherSeenAt: now,
+            watcherHealthy: health.monitorAttached,
+            watcherIdentityHash: identityHash,
+          },
+        });
+        await tx.warGraph.update({
+          where: { id: graph.id },
+          data: { projectionVersion: { increment: 1 } },
+        });
+        return true;
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        maxWait: 5_000,
+        timeout: 10_000,
+      },
+    ),
   );
 }
 
