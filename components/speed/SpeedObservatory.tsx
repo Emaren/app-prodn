@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import SpeedObservatoryE2 from "@/components/speed/SpeedObservatoryE2";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import {
   getRecentSpeedSamples,
   SPEED_SAMPLE_UPDATED_EVENT,
@@ -659,6 +660,7 @@ export default function SpeedObservatory() {
   return (
     <>
       {content}
+      <SpeedReadyMarker route="/speed" />
       <SpeedViewRail viewVersion={viewVersion} setViewVersion={setViewVersion} />
     </>
   );
