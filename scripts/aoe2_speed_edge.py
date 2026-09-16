@@ -4,9 +4,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
+import shlex
 import subprocess
 import sys
+import tempfile
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -21,6 +25,13 @@ PUBLIC_BASE = "https://aoe2war.com"
 EDGE_RECEIPTS = speed.STATE / "performance-edge-receipts"
 EDGE_AUDIT_REUSE_SECONDS = 15 * 60
 SESSION_COOKIE_NAME = "aoe2hdbets_session"
+CLOUDFLARE_SSH = os.getenv("AOE2_SPEED_CLOUDFLARE_SSH", "hetzner-codex")
+CLOUDFLARE_UNIT = "aoe2war-speedos-cloudflare@{command}.service"
+CLOUDFLARE_REMOTE_STATE = "/var/lib/aoe2war-speedos/cloudflare"
+CLOUDFLARE_HELPER_LOCAL = ROOT / "scripts" / "aoe2_speed_cloudflare_remote.py"
+CLOUDFLARE_UNIT_LOCAL = ROOT / "deploy" / "aoe2war-speedos-cloudflare@.service"
+CLOUDFLARE_HELPER_REMOTE = "/usr/local/bin/aoe2war-speedos-cloudflare"
+CLOUDFLARE_UNIT_REMOTE = "/etc/systemd/system/aoe2war-speedos-cloudflare@.service"
 COOKIE_SCAN_ROOTS = (ROOT / "app", ROOT / "components", ROOT / "context", ROOT / "hooks", ROOT / "lib")
 
 
@@ -365,6 +376,7 @@ def build_cloudflare_plan(audit: dict[str, Any]) -> dict[str, Any]:
     expression = (
         '(http.host eq "aoe2war.com" and '
         'http.request.method in {"GET" "HEAD"} and '
+        'not http.request.uri.query contains "_rsc=" and '
         f'{cookie_bypass} and '
         f'http.request.uri.path in {{{quoted}}})'
     ) if eligible else None
@@ -373,6 +385,10 @@ def build_cloudflare_plan(audit: dict[str, Any]) -> dict[str, Any]:
         "kind": "aoe2war-speed-cloudflare-cache-plan",
         "generated_at": utc_now(),
         "mutation_authorized": False,
+        "benchmark_release_sha": audit.get("benchmark_release_sha"),
+        "operator_source_sha": audit.get("operator_source_sha"),
+        "edge_ttl_seconds": 300,
+        "rsc_cache_authorized": False,
         "session_cookie_bypass": SESSION_COOKIE_NAME,
         "cookie_bypass_names": cookie_names,
         "eligible_exact_routes": sorted(set(eligible)),
@@ -382,6 +398,7 @@ def build_cloudflare_plan(audit: dict[str, Any]) -> dict[str, Any]:
         "cache_behavior": "eligible_for_cache_respect_origin_ttl",
         "requirements": [
             "GET/HEAD only",
+            "HTML/document cohort only; bypass Next RSC query traffic until cache-key equivalence is proven",
             "bypass whenever any known AoE2WAR cookie is present",
             "preserve all /api/ cache-control and no-store contracts",
             "do not include server-personalized or runtime-cookie routes",
@@ -389,6 +406,272 @@ def build_cloudflare_plan(audit: dict[str, Any]) -> dict[str, Any]:
             "purge candidate URLs on every app deployment before certification",
         ],
     }
+
+
+
+
+def sha256_path(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def cloudflare_runtime_status() -> dict[str, Any]:
+    local = {
+        "helper_sha256": sha256_path(CLOUDFLARE_HELPER_LOCAL),
+        "unit_sha256": sha256_path(CLOUDFLARE_UNIT_LOCAL),
+    }
+    remote_command = (
+        f"set -e; sha256sum {shlex.quote(CLOUDFLARE_HELPER_REMOTE)} {shlex.quote(CLOUDFLARE_UNIT_REMOTE)}"
+    )
+    proc = subprocess.run(
+        ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", CLOUDFLARE_SSH, remote_command],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=20,
+        check=False,
+    )
+    remote: dict[str, str] = {}
+    if proc.returncode == 0:
+        for line in proc.stdout.splitlines():
+            fields = line.split()
+            if len(fields) < 2:
+                continue
+            digest, path = fields[0], fields[-1]
+            if path == CLOUDFLARE_HELPER_REMOTE:
+                remote["helper_sha256"] = digest
+            elif path == CLOUDFLARE_UNIT_REMOTE:
+                remote["unit_sha256"] = digest
+    return {
+        "local": local,
+        "remote": remote,
+        "exact": bool(remote) and remote == local,
+    }
+
+
+def require_cloudflare_runtime_exact() -> dict[str, Any]:
+    status = cloudflare_runtime_status()
+    if not status["exact"]:
+        raise EdgeAuditError("Cloudflare privileged runtime is not source-exact; run `aoe2war speed edge bootstrap`")
+    return status
+
+
+def bootstrap_cloudflare_runtime() -> dict[str, Any]:
+    helper_tmp = f"/tmp/aoe2war-speedos-cloudflare-helper-{os.getpid()}"
+    unit_tmp = f"/tmp/aoe2war-speedos-cloudflare-unit-{os.getpid()}"
+    transfers = [
+        (CLOUDFLARE_HELPER_LOCAL, helper_tmp),
+        (CLOUDFLARE_UNIT_LOCAL, unit_tmp),
+    ]
+    for local_path, remote_tmp in transfers:
+        proc = subprocess.run(
+            ["scp", "-q", str(local_path), f"{CLOUDFLARE_SSH}:{remote_tmp}"],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30,
+            check=False,
+        )
+        if proc.returncode != 0:
+            raise EdgeAuditError("Cloudflare runtime transfer failed: " + proc.stderr[-1000:])
+    remote = (
+        "set -e; "
+        f"sudo -n /usr/bin/install -d -o root -g root -m 0750 {shlex.quote(CLOUDFLARE_REMOTE_STATE)}; "
+        f"sudo -n /usr/bin/install -o root -g root -m 0755 {shlex.quote(helper_tmp)} {shlex.quote(CLOUDFLARE_HELPER_REMOTE)}; "
+        f"sudo -n /usr/bin/install -o root -g root -m 0644 {shlex.quote(unit_tmp)} {shlex.quote(CLOUDFLARE_UNIT_REMOTE)}; "
+        f"rm -f {shlex.quote(helper_tmp)} {shlex.quote(unit_tmp)}; "
+        "sudo -n /usr/bin/systemctl daemon-reload"
+    )
+    proc = subprocess.run(
+        ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", CLOUDFLARE_SSH, remote],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=45,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise EdgeAuditError("Cloudflare runtime install failed: " + (proc.stderr or proc.stdout)[-1500:])
+    status = cloudflare_runtime_status()
+    if not status["exact"]:
+        raise EdgeAuditError("Cloudflare runtime install completed but hash parity is not exact")
+    return status
+
+
+def remote_cloudflare_service(command: str) -> dict[str, Any]:
+    if command not in {"verify", "snapshot", "apply", "rollback"}:
+        raise EdgeAuditError(f"unsupported Cloudflare helper command: {command}")
+    unit = CLOUDFLARE_UNIT.format(command=command)
+    remote = (
+        f"set -e; sudo -n /usr/bin/systemctl reset-failed {shlex.quote(unit)} >/dev/null 2>&1 || true; "
+        f"sudo -n /usr/bin/systemctl start --wait {shlex.quote(unit)}; "
+        f"sudo -n /usr/bin/journalctl -u {shlex.quote(unit)} -n 30 --no-pager -o cat"
+    )
+    proc = subprocess.run(
+        ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", CLOUDFLARE_SSH, remote],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=90,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise EdgeAuditError(
+            f"Cloudflare helper {command} failed: " + (proc.stderr or proc.stdout)[-2000:].strip()
+        )
+    for line in reversed(proc.stdout.splitlines()):
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            payload = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if payload.get("command") == command:
+            if not payload.get("ok"):
+                raise EdgeAuditError(f"Cloudflare helper {command} rejected: {payload.get('error')}")
+            return payload
+    raise EdgeAuditError(f"Cloudflare helper {command} returned no machine-readable result")
+
+
+def stage_cloudflare_request(plan: dict[str, Any]) -> tuple[dict[str, Any], str]:
+    expression = plan.get("proposed_cache_rule_expression")
+    routes = plan.get("eligible_exact_routes") or []
+    cookie_names = plan.get("cookie_bypass_names") or []
+    discovered_cookie_names = discover_app_cookie_names()
+    if not expression or not routes:
+        raise EdgeAuditError("Cloudflare plan has no eligible exact-route cohort")
+    if cookie_names != discovered_cookie_names:
+        raise EdgeAuditError("Cloudflare plan cookie bypasses are stale relative to current source")
+    canonical_plan = json.dumps(plan, sort_keys=True, separators=(",", ":")).encode()
+    plan_sha = hashlib.sha256(canonical_plan).hexdigest()
+    request = {
+        "schema": 2,
+        "kind": "aoe2war-speedos-cloudflare-apply-request",
+        "generated_at": utc_now(),
+        "zone_name": "aoe2war.com",
+        "expression": expression,
+        "edge_ttl_seconds": int(plan.get("edge_ttl_seconds") or 300),
+        "eligible_exact_routes": routes,
+        "cookie_bypass_names": cookie_names,
+        "plan_sha256": plan_sha,
+        "operator_source_sha": speed.git_head(ROOT),
+    }
+    encoded = json.dumps(request, indent=2, sort_keys=True) + "\n"
+    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False, prefix="aoe2war-cf-", suffix=".json") as handle:
+        handle.write(encoded)
+        local_path = Path(handle.name)
+    remote_tmp = f"/tmp/aoe2war-speedos-cloudflare-request-{os.getpid()}.json"
+    try:
+        copy = subprocess.run(
+            ["scp", "-q", str(local_path), f"{CLOUDFLARE_SSH}:{remote_tmp}"],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30,
+            check=False,
+        )
+        if copy.returncode != 0:
+            raise EdgeAuditError("Cloudflare apply-request transfer failed: " + copy.stderr[-1000:])
+        install = subprocess.run(
+            [
+                "ssh", "-o", "BatchMode=yes", CLOUDFLARE_SSH,
+                "set -e; "
+                f"sudo -n /usr/bin/install -o root -g root -m 0600 {shlex.quote(remote_tmp)} "
+                f"{shlex.quote(CLOUDFLARE_REMOTE_STATE + '/request.json')}; "
+                f"rm -f {shlex.quote(remote_tmp)}",
+            ],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30,
+            check=False,
+        )
+        if install.returncode != 0:
+            raise EdgeAuditError("Cloudflare apply-request install failed: " + install.stderr[-1000:])
+    finally:
+        local_path.unlink(missing_ok=True)
+    return request, plan_sha
+
+
+def cache_status_probe(path: str, *, cookie: str | None = None, rsc: bool = False) -> dict[str, Any]:
+    target = PUBLIC_BASE + path + (("&" if "?" in path else "?") + "_rsc=speedos") if rsc else PUBLIC_BASE + path
+    command = [
+        "curl", "-sS", "--compressed", "--max-time", "15", "-D", "-", "-o", "/dev/null",
+        "-w", "\\n__AOE2_SPEED__%{http_code}\\t%{time_starttransfer}\\t%{time_total}\\n",
+    ]
+    if cookie:
+        command += ["-H", f"Cookie: {cookie}"]
+    if rsc:
+        command += ["-H", "RSC: 1"]
+    command.append(target)
+    proc = subprocess.run(command, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=20, check=False)
+    if proc.returncode != 0:
+        return {"ok": False, "error": (proc.stderr or "curl failed")[-500:]}
+    before, sep, tail = proc.stdout.rpartition("__AOE2_SPEED__")
+    headers = parse_final_header_block(before)
+    fields = tail.strip().split("\t") if sep else []
+    return {
+        "ok": bool(sep) and fields and fields[0] == "200",
+        "http_status": int(fields[0]) if fields and fields[0].isdigit() else 0,
+        "ttfb_ms": round(float(fields[1]) * 1000, 3) if len(fields) > 1 else None,
+        "total_ms": round(float(fields[2]) * 1000, 3) if len(fields) > 2 else None,
+        "cf_cache_status": str(headers.get("cf-cache-status") or "").upper() or None,
+        "age": headers.get("age"),
+    }
+
+
+def verify_cloudflare_apply(plan: dict[str, Any]) -> dict[str, Any]:
+    routes = list(plan.get("eligible_exact_routes") or [])
+    anonymous = []
+    failures = []
+    for route in routes:
+        attempts = []
+        for attempt in range(4):
+            probe = cache_status_probe(route)
+            attempts.append(probe)
+            if probe.get("ok") and probe.get("cf_cache_status") == "HIT":
+                break
+            if attempt < 3:
+                time.sleep(0.75)
+        final = attempts[-1]
+        row = {"route": route, "attempts": attempts, "final": final}
+        anonymous.append(row)
+        if not final.get("ok") or final.get("cf_cache_status") != "HIT":
+            failures.append(f"{route}: anonymous request did not converge to HIT")
+    bypass = []
+    for route in routes[: min(5, len(routes))]:
+        cookie = cache_status_probe(route, cookie=f"{SESSION_COOKIE_NAME}=speedos-proof")
+        rsc = cache_status_probe(route, rsc=True)
+        bypass.append({"route": route, "cookie": cookie, "rsc": rsc})
+        if cookie.get("cf_cache_status") == "HIT":
+            failures.append(f"{route}: session-cookie request incorrectly HIT shared cache")
+        if rsc.get("cf_cache_status") == "HIT":
+            failures.append(f"{route}: RSC request incorrectly HIT phase-1 shared cache")
+    api = cache_status_probe("/api/deployment-version")
+    if api.get("cf_cache_status") == "HIT":
+        failures.append("/api/deployment-version incorrectly HIT shared cache")
+    return {
+        "ok": not failures,
+        "generated_at": utc_now(),
+        "anonymous": anonymous,
+        "bypass_samples": bypass,
+        "api_probe": api,
+        "failures": failures,
+    }
+
+
+def write_edge_operation_receipt(label: str, payload: dict[str, Any]) -> Path:
+    EDGE_RECEIPTS.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    path = EDGE_RECEIPTS / f"{stamp}-cloudflare-{label}.json"
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path
 
 
 def write_receipt(payload: dict[str, Any]) -> Path:
@@ -431,7 +714,7 @@ def print_audit(payload: dict[str, Any], limit: int) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="aoe2war speed edge")
-    parser.add_argument("command", nargs="?", choices=["audit", "plan"], default="audit")
+    parser.add_argument("command", nargs="?", choices=["audit", "plan", "bootstrap", "authority", "snapshot", "apply", "rollback"], default="audit")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--no-receipt", action="store_true")
@@ -444,6 +727,29 @@ def main() -> int:
     if args.limit < 1 or args.limit > 100:
         print("STOP: --limit must be between 1 and 100", file=sys.stderr)
         return 2
+    if args.command in {"bootstrap", "authority", "snapshot", "rollback"}:
+        try:
+            if args.command == "bootstrap":
+                runtime = bootstrap_cloudflare_runtime()
+                result = {"ok": True, "command": "bootstrap", "runtime": runtime}
+            else:
+                runtime = require_cloudflare_runtime_exact()
+                helper_command = {"authority": "verify", "snapshot": "snapshot", "rollback": "rollback"}[args.command]
+                result = remote_cloudflare_service(helper_command)
+                result["runtime_exact"] = runtime["exact"]
+        except EdgeAuditError as exc:
+            print(f"STOP: {exc}", file=sys.stderr)
+            return 2
+        if args.json:
+            print(json.dumps(result, indent=2, sort_keys=True))
+        else:
+            print("⚔️  AOE2WAR SPEED CLOUDFLARE AUTHORITY")
+            print()
+            for key, value in result.items():
+                if key != "ok":
+                    print(f"{key}: {value}")
+        return 0
+
     try:
         source_inventory = inventory.snapshot()
         benchmark = latest_full_cost_stack()
@@ -462,8 +768,54 @@ def main() -> int:
     except (EdgeAuditError, inventory.InventoryError) as exc:
         print(f"STOP: {exc}", file=sys.stderr)
         return 2
-    if args.command == "plan":
+    if args.command in {"plan", "apply"}:
         plan = build_cloudflare_plan(payload)
+        if args.command == "apply":
+            try:
+                runtime = require_cloudflare_runtime_exact()
+                authority = remote_cloudflare_service("verify")
+                authority["runtime_exact"] = runtime["exact"]
+                snapshot_result = remote_cloudflare_service("snapshot")
+                request, plan_sha = stage_cloudflare_request(plan)
+                applied = remote_cloudflare_service("apply")
+                verification = verify_cloudflare_apply(plan)
+                receipt_payload = {
+                    "schema": 1,
+                    "kind": "aoe2war-speedos-cloudflare-apply",
+                    "generated_at": utc_now(),
+                    "authority": authority,
+                    "snapshot": snapshot_result,
+                    "plan": plan,
+                    "plan_sha256": plan_sha,
+                    "request": request,
+                    "apply": applied,
+                    "verification": verification,
+                    "rollback_performed": False,
+                }
+                if not verification.get("ok"):
+                    receipt_payload["rollback"] = remote_cloudflare_service("rollback")
+                    receipt_payload["rollback_performed"] = True
+                    receipt = write_edge_operation_receipt("apply-rolled-back", receipt_payload)
+                    raise EdgeAuditError(
+                        "Cloudflare post-apply verification failed and rollback completed: "
+                        + "; ".join(verification.get("failures") or [])
+                        + f" · receipt {speed.evidence_ref(receipt)}"
+                    )
+                receipt = write_edge_operation_receipt("apply", receipt_payload)
+            except EdgeAuditError as exc:
+                print(f"STOP: {exc}", file=sys.stderr)
+                return 2
+            if args.json:
+                print(json.dumps(receipt_payload, indent=2, sort_keys=True))
+            else:
+                print("⚔️  AOE2WAR SPEED CLOUDFLARE APPLY")
+                print()
+                print(f"Routes:        {len(plan['eligible_exact_routes'])}")
+                print(f"Edge TTL:      {plan['edge_ttl_seconds']}s")
+                print(f"Verification:  PASS")
+                print(f"Rollback:      NOT REQUIRED")
+                print(f"Receipt:       {speed.evidence_ref(receipt)}")
+            return 0
         plan["reused_fresh_audit"] = reused_audit
         if args.json:
             print(json.dumps(plan, indent=2, sort_keys=True))

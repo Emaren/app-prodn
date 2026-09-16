@@ -1,0 +1,28 @@
+[Unit]
+Description=AoE2WAR SpeedOS Cloudflare %i
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+EnvironmentFile=/etc/aoe2hdbets/aoe2war-speedos-cloudflare.env
+ExecStart=/usr/bin/flock -n /var/lib/aoe2war-speedos/cloudflare/operation.lock /usr/local/bin/aoe2war-speedos-cloudflare %i
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+ReadWritePaths=/var/lib/aoe2war-speedos
+
+[Install]
+WantedBy=multi-user.target

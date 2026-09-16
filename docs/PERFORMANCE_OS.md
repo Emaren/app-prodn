@@ -122,6 +122,36 @@ edge eligibility. The plan reuses a recent live audit only when the certified
 production release and a cache-safety source signature still match; `--refresh`
 forces a new live header census.
 
+### Governed Cloudflare authority and mutation rail
+
+The edge controller never reads Cloudflare credentials on the Mac or inside the web
+runtime. The scoped token lives only in the root-owned, mode-`0600` VPS file
+`/etc/aoe2hdbets/aoe2war-speedos-cloudflare.env`. A source-controlled hardened
+one-shot systemd helper is the only process that receives that environment. The Mac
+controller hash-proves the installed helper and unit against source before every
+privileged operation. All privileged helper commands serialize through one VPS file
+lock so verify/snapshot/apply/rollback operations cannot overlap.
+
+`aoe2war speed edge authority` verifies token/zone authority without exposing the
+token. `snapshot` captures the existing `http_request_cache_settings` entry point.
+`apply` regenerates a fresh live plan, stages an exact digest-bound root request,
+and requires the root helper to reconstruct the only permitted expression from the
+sorted exact-route allowlist and cookie-bypass contract. Before the first Cloudflare
+mutation the helper writes a mode-`0600` prepared rollback record. Mutation response
+shape is never trusted for identity: the helper re-reads the live ruleset after the
+operation. A lost/partial response or any other post-prepare failure triggers rollback
+inside the privileged helper before control returns. The controller then proves every
+anonymous route converges to `CF-Cache-Status: HIT`; session-cookie requests, Next RSC
+(`_rsc=`) traffic and `/api/` probes must remain outside shared cache. Any failed
+post-apply invariant also triggers the recorded rollback path. `rollback` restores the
+prior SpeedOS rule or removes the SpeedOS-created rule/ruleset as appropriate.
+
+Phase 1 deliberately caches HTML/document traffic only. RSC cache participation is
+unauthorized until the cache key is proven equivalent for the relevant Next router
+headers. Until the Cloudflare token also has explicit Cache Purge authority, edge
+TTL is capped at 300 seconds and non-2xx responses are not retained. Longer-lived
+edge caching requires deployment-integrated purge proof first.
+
 ## Edge-cache safety classification
 
 Speed OS never equates "delivery dominated" with "safe to cache." The source
