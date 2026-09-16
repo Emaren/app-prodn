@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `release/stage-volume-cache-v1` at `a7ee518726b86b94351d10a8386369420126117f`
+Implementation baseline: `main` at `df9f77206be67626aa465659fb82f7316c0df517`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
