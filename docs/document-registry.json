@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3e9f1e186b1f02d2fa6bc77367e73bb72f441e0b8395e4ae9abad3e5619faa05",
+      "sha256": "646e345f5c49160bb1ef050705e82c2ccc5f8494c424d1a191b5d2a019b1c009",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "96abc4aa08d500f03fbee1581a4dc272c1d0c192"
+    "branch": "performance/speed-observatory-ready-v1",
+    "commit": "f9dfca3a5d679bce724096d7890e310087b3031e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
