@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/speed-provenance-ba-v1` at `9c65d80c59c5e871f8ac69ec9cbb7d53e1e41e9c`
+Implementation baseline: `performance/cloudflare-edge-authority-v2` at `5fa0d4eca083dac53fb335c58cdcb1b6fe8efec8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

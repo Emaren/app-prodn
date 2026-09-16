@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a048cee1aa56573cdf7ca10a8c837e946b1bc1095a1024ba616066ae906cf0c2",
+      "sha256": "d6c9ed57876ddd11f1f3401faa7edda404bbb257b1d96fa25c7078c4b6fce6a3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "performance/speed-provenance-ba-v1",
-    "commit": "9c65d80c59c5e871f8ac69ec9cbb7d53e1e41e9c"
+    "branch": "performance/cloudflare-edge-authority-v2",
+    "commit": "5fa0d4eca083dac53fb335c58cdcb1b6fe8efec8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
