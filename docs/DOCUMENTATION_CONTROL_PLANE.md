@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `df9f77206be67626aa465659fb82f7316c0df517`
+Implementation baseline: `performance/battle-archive-pagination-v1` at `87e4551561506e7803d4e4b03c737db99e64dbe5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
