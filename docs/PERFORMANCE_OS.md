@@ -169,8 +169,11 @@ CERTIFIED release identity are exact. For each authorized route it samples publi
 Cloudflare HTML and direct loopback-origin HTML at t=0/15/30 seconds. Bodies are not
 normalized: decoded bytes are SHA-256 compared exactly. Every public and origin
 response must remain HTTP 200 HTML, emit no `Set-Cookie`, and produce one identical
-body hash across the full TTL window. A pre-existing edge HIT also blocks
-qualification so stale cache cannot masquerade as origin equivalence.
+body hash across the full TTL window. A pre-existing edge HIT is allowed only
+when those cached public bytes still equal the independently sampled direct origin
+at every point and the origin itself remains one stable hash across the window; a
+stale HIT therefore fails the same byte-equality proof instead of blocking cohort
+extension mechanically.
 
 `plan-dynamic` consumes only a current all-PASS qualification receipt and binds the
 plan to the policy SHA, qualification SHA, exact release/source identity, cookie
