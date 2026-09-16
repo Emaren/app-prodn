@@ -9,17 +9,7 @@ import {
   getRecentSpeedSamples,
   SPEED_SAMPLE_UPDATED_EVENT,
 } from "@/lib/speed/clientStore";
-import {
-  TILE_VIEW_MODES,
-  type TileViewMode,
-} from "@/lib/tileViewPreferences";
 import type { SpeedSample } from "@/lib/speed/types";
-
-const VIEW_LABELS: Record<TileViewMode, string> = {
-  basic: "Basic",
-  advanced: "Advanced",
-  extreme: "Extreme",
-};
 
 const CHART_WIDTH = 1120;
 const CHART_HEIGHT = 360;
@@ -69,38 +59,28 @@ function chartPolyline(
     .join(" ");
 }
 
-function ViewToggle({
-  viewMode,
-  setViewMode,
-  className = "",
+function MetricCard({
+  label,
+  value,
+  helper,
+  premium = false,
 }: {
-  viewMode: TileViewMode;
-  setViewMode: (mode: TileViewMode) => void;
-  className?: string;
+  label: string;
+  value: string;
+  helper: string;
+  premium?: boolean;
 }) {
   return (
     <div
-      className={`inline-flex items-center rounded-full border border-amber-200/20 bg-[#050910]/88 p-1 shadow-[0_12px_34px_rgba(0,0,0,0.42),0_0_30px_rgba(251,191,36,0.06)] backdrop-blur-xl ${className}`}
-      role="group"
-      aria-label="Speed Observatory view"
+      className={
+        premium
+          ? "rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.018))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_18px_55px_rgba(0,0,0,0.2)]"
+          : "rounded-3xl border border-white/10 bg-white/[0.035] p-5"
+      }
     >
-      {TILE_VIEW_MODES.map((mode) => (
-        <button
-          key={mode}
-          type="button"
-          onClick={() => setViewMode(mode)}
-          aria-pressed={viewMode === mode}
-          aria-label={`${VIEW_LABELS[mode]} Speed Observatory view`}
-          title={`${VIEW_LABELS[mode]} view`}
-          className={`flex h-8 min-w-8 cursor-pointer items-center justify-center rounded-full px-2 text-[11px] font-bold uppercase tracking-[0.16em] transition ${
-            viewMode === mode
-              ? "bg-amber-300 text-slate-950 shadow-[0_6px_20px_rgba(251,191,36,0.22)]"
-              : "text-slate-400 hover:bg-white/[0.07] hover:text-amber-50"
-          }`}
-        >
-          {mode[0]}
-        </button>
-      ))}
+      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/38">{label}</p>
+      <p className="mt-3 text-2xl font-semibold tracking-tight text-white">{value}</p>
+      <p className="mt-2 text-xs leading-5 text-white/45">{helper}</p>
     </div>
   );
 }
@@ -179,14 +159,10 @@ function MeasurementsTable({
 }
 
 function ObservatoryHeader({
-  viewMode,
-  setViewMode,
   checking,
   runLiveCheck,
   extreme = false,
 }: {
-  viewMode: TileViewMode;
-  setViewMode: (mode: TileViewMode) => void;
   checking: boolean;
   runLiveCheck: () => Promise<void>;
   extreme?: boolean;
@@ -231,7 +207,6 @@ function ObservatoryHeader({
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
         <Link
           href="/"
           className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-sm text-white/75 transition hover:border-white/20 hover:text-white"
@@ -251,9 +226,98 @@ function ObservatoryHeader({
   );
 }
 
+function BasicView({
+  metrics,
+  samples,
+  latest,
+  checking,
+  reporting,
+  reportMessage,
+  runLiveCheck,
+  sendReport,
+}: ViewProps) {
+  return (
+    <main className="min-h-screen bg-[#06070a] px-4 py-8 text-slate-100 sm:px-6" data-speed-view="basic">
+      <div className="mx-auto max-w-6xl">
+        <header className="rounded-[30px] border border-amber-300/15 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(255,255,255,0.025))] p-6 shadow-[0_25px_80px_rgba(0,0,0,0.42)] sm:p-8">
+          <ObservatoryHeader checking={checking} runLiveCheck={runLiveCheck} />
+        </header>
+
+        <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {metrics.map((metric) => <MetricCard key={metric.label} {...metric} />)}
+        </section>
+
+        <section className="mt-6 rounded-[30px] border border-white/10 bg-white/[0.03] p-5 sm:p-6">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-white">This tab’s recent measurements</h2>
+              <p className="mt-1 text-sm text-white/45">Up to 20 sanitized route samples are kept locally in this tab and relayed to the isolated Traffic performance store.</p>
+            </div>
+            <ReportAction latest={latest} reporting={reporting} reportMessage={reportMessage} sendReport={sendReport} />
+          </div>
+          <div className="mt-5"><MeasurementsTable samples={samples} /></div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
+function AdvancedView({
+  metrics,
+  samples,
+  latest,
+  checking,
+  reporting,
+  reportMessage,
+  runLiveCheck,
+  sendReport,
+}: ViewProps) {
+  return (
+    <main
+      className="min-h-screen bg-[radial-gradient(circle_at_18%_0%,rgba(180,128,45,0.12),transparent_32%),radial-gradient(circle_at_82%_8%,rgba(37,99,235,0.12),transparent_34%),#05070b] px-4 py-8 text-slate-100 sm:px-6 lg:px-8"
+      data-speed-view="advanced"
+    >
+      <div className="mx-auto max-w-[1380px]">
+        <header className="relative overflow-hidden rounded-[34px] border border-amber-200/16 bg-[linear-gradient(135deg,rgba(42,31,17,0.88),rgba(8,12,21,0.96)_46%,rgba(10,20,35,0.92))] p-7 shadow-[0_30px_90px_rgba(0,0,0,0.5)] sm:p-9">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_10%,rgba(56,189,248,0.08),transparent_28%)]" />
+          <div className="relative"><ObservatoryHeader checking={checking} runLiveCheck={runLiveCheck} /></div>
+        </header>
+
+        <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {metrics.map((metric) => <MetricCard key={metric.label} {...metric} premium />)}
+        </section>
+
+        <section className="mt-5 grid gap-5 xl:grid-cols-[0.78fr_2.22fr]">
+          <aside className="rounded-[30px] border border-amber-200/12 bg-[linear-gradient(180deg,rgba(245,158,11,0.055),rgba(255,255,255,0.02))] p-6 shadow-[0_20px_70px_rgba(0,0,0,0.32)]">
+            <p className="text-[10px] uppercase tracking-[0.26em] text-amber-200/55">Live truth</p>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Report what you actually felt.</h2>
+            <p className="mt-3 text-sm leading-7 text-white/48">
+              A Speed Report binds the exact navigation sample, signed-in identity, build, route, and diagnostics for operator review in Traffic.
+            </p>
+            <div className="mt-6 border-t border-white/8 pt-5">
+              <p className="text-xs text-white/35">Latest measured route</p>
+              <p className="mt-2 text-lg font-semibold text-white">{latest?.route || "No sample yet"}</p>
+              <p className="mt-1 text-sm text-white/45">{latest ? `${navigationLabel(latest.navigation_kind)} · ${formatDuration(latest.ready_ms)}` : "Navigate AoE2WAR to begin measuring."}</p>
+            </div>
+            <div className="mt-6">
+              <ReportAction latest={latest} reporting={reporting} reportMessage={reportMessage} sendReport={sendReport} />
+            </div>
+          </aside>
+
+          <div className="rounded-[30px] border border-white/10 bg-[#080b11]/94 p-5 shadow-[0_22px_75px_rgba(0,0,0,0.34)] sm:p-6">
+            <div className="mb-5">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-white/32">Session ledger</p>
+              <h2 className="mt-2 text-xl font-semibold text-white">Recent measurements</h2>
+            </div>
+            <MeasurementsTable samples={samples} dense />
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
 function ExtremeView({
-  viewMode,
-  setViewMode,
   metrics,
   samples,
   latest,
@@ -273,7 +337,7 @@ function ExtremeView({
         <section className="relative overflow-hidden rounded-[38px] border border-white/10 bg-[linear-gradient(135deg,rgba(31,22,14,0.72),rgba(4,8,15,0.97)_38%,rgba(5,11,21,0.97)_72%,rgba(16,22,43,0.9))] p-6 shadow-[0_35px_110px_rgba(0,0,0,0.58)] sm:p-8 lg:p-10">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_16%,rgba(245,158,11,0.085),transparent_24%),radial-gradient(circle_at_82%_0%,rgba(34,211,238,0.07),transparent_26%)]" />
           <div className="relative">
-            <ObservatoryHeader viewMode={viewMode} setViewMode={setViewMode} checking={checking} runLiveCheck={runLiveCheck} extreme />
+            <ObservatoryHeader checking={checking} runLiveCheck={runLiveCheck} extreme />
 
             <div className="mt-8 flex flex-wrap gap-2">
               {metrics.map((metric, index) => (
@@ -376,8 +440,6 @@ function ExtremeView({
 type Metric = { label: string; value: string; helper: string };
 type ChartModel = { readyPoints: string; ttfbPoints: string; lcpPoints: string; maxValue: number };
 type ViewProps = {
-  viewMode: TileViewMode;
-  setViewMode: (mode: TileViewMode) => void;
   metrics: Metric[];
   samples: SpeedSample[];
   latest: SpeedSample | null;
@@ -388,7 +450,7 @@ type ViewProps = {
   sendReport: () => Promise<void>;
 };
 
-type SpeedViewVersion = "e1" | "e2";
+type SpeedViewVersion = "b" | "a" | "e1" | "e2";
 
 const SPEED_VIEW_STORAGE_KEY = "aoe2hdbets:speed:view-version:v1";
 const SPEED_VIEW_ROLLOUT_KEY = "aoe2hdbets:speed:view-version-rollout";
@@ -413,8 +475,10 @@ function SpeedViewRail({
       <div className="mx-auto flex w-full max-w-[1840px] flex-wrap items-center gap-2 rounded-2xl border border-cyan-300/10 bg-[linear-gradient(90deg,rgba(5,12,23,.96),rgba(2,5,13,.98),rgba(12,6,25,.96))] px-3 py-2 shadow-[0_0_32px_rgba(34,211,238,.035)]">
         <span className="mr-1 font-mono text-[8px] uppercase tracking-[0.24em] text-slate-600">LAYOUT / PROVENANCE</span>
         {([
-          ["e1", "E1", "ORIGIN"],
-          ["e2", "E2", "OBSERVATORY · DEFAULT"],
+          ["b", "B", "BASIC · SLIM"],
+          ["a", "A", "ADVANCED · WIDE"],
+          ["e1", "E1", "EXTREME · FULL"],
+          ["e2", "E2", "OBSERVATORY · FULL · DEFAULT"],
         ] as const).map(([version, title, label]) => {
           const active = viewVersion === version;
           return (
@@ -466,7 +530,7 @@ export default function SpeedObservatory() {
         return;
       }
       const saved = window.localStorage.getItem(SPEED_VIEW_STORAGE_KEY);
-      setViewVersion(saved === "e1" ? "e1" : "e2");
+      setViewVersion(saved === "b" || saved === "a" || saved === "e1" ? saved : "e2");
     } catch {
       setViewVersion("e2");
     }
@@ -627,8 +691,6 @@ export default function SpeedObservatory() {
   }, [latest, samples]);
 
   const shared: ViewProps = {
-    viewMode: "extreme",
-    setViewMode: () => {},
     metrics,
     samples,
     latest,
@@ -639,7 +701,11 @@ export default function SpeedObservatory() {
     sendReport,
   };
 
-  const content = viewVersion === "e1" ? (
+  const content = viewVersion === "b" ? (
+    <BasicView {...shared} />
+  ) : viewVersion === "a" ? (
+    <AdvancedView {...shared} />
+  ) : viewVersion === "e1" ? (
     <ExtremeView {...shared} chart={chart} />
   ) : (
     <SpeedObservatoryE2

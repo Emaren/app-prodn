@@ -7,14 +7,28 @@ const e2 = fs.readFileSync("components/speed/SpeedObservatoryE2.tsx", "utf8");
 const e2Css = fs.readFileSync("components/speed/SpeedObservatoryE2.module.css", "utf8");
 const snapshot = fs.readFileSync("lib/speed/observatorySnapshot.ts", "utf8");
 
-test("Speed provenance is E1/E2 with E2 as the one-time rollout default", () => {
-  assert.match(observatory, /type SpeedViewVersion = "e1" \| "e2"/);
+test("Speed provenance preserves B/A/E1/E2 with E2 as the one-time rollout default", () => {
+  assert.match(observatory, /type SpeedViewVersion = "b" \| "a" \| "e1" \| "e2"/);
   assert.match(observatory, /aoe2hdbets:speed:view-version:v1/);
   assert.match(observatory, /aoe2hdbets:speed:view-version-rollout/);
   assert.match(observatory, /e2-default-v1/);
   assert.match(observatory, /useState<SpeedViewVersion>\("e2"\)/);
   assert.match(observatory, /rollout !== SPEED_VIEW_ROLLOUT_VERSION/);
-  assert.match(observatory, /setViewVersion\(saved === "e1" \? "e1" : "e2"\)/);
+  assert.match(observatory, /saved === "b" \|\| saved === "a" \|\| saved === "e1"/);
+  assert.match(observatory, /: "e2"\)/);
+});
+
+test("B and A preserve the historical slim and wide observatory generations", () => {
+  assert.match(observatory, /function BasicView\(/);
+  assert.match(observatory, /data-speed-view="basic"/);
+  assert.match(observatory, /max-w-6xl/);
+  assert.match(observatory, /This tab’s recent measurements/);
+  assert.match(observatory, /function AdvancedView\(/);
+  assert.match(observatory, /data-speed-view="advanced"/);
+  assert.match(observatory, /max-w-\[1380px\]/);
+  assert.match(observatory, /Live truth/);
+  assert.match(observatory, /Session ledger/);
+  assert.doesNotMatch(observatory, /<ViewToggle/);
 });
 
 test("E1 preserves the original full-width Extreme observatory", () => {
@@ -41,10 +55,12 @@ test("E2 is a real telemetry dashboard rather than explanatory SaaS copy", () =>
   assert.match(e2Css, /linear-gradient/);
 });
 
-test("Speed bottom rail exposes E1 origin and E2 Observatory default", () => {
+test("Speed bottom rail exposes B/A/E1 history with E2 Observatory default", () => {
   assert.match(observatory, /LAYOUT \/ PROVENANCE/);
-  assert.match(observatory, /"E1", "ORIGIN"/);
-  assert.match(observatory, /"E2", "OBSERVATORY · DEFAULT"/);
+  assert.match(observatory, /"B", "BASIC · SLIM"/);
+  assert.match(observatory, /"A", "ADVANCED · WIDE"/);
+  assert.match(observatory, /"E1", "EXTREME · FULL"/);
+  assert.match(observatory, /"E2", "OBSERVATORY · FULL · DEFAULT"/);
   assert.match(observatory, /RESET E2/);
   assert.match(observatory, /data-speed-view-rail/);
 });
