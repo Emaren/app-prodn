@@ -596,6 +596,9 @@ export function LobbyHero({
           aria-label={h("Open the full HD Leaderboard")}
           data-ignore-tile-toggle="true"
           onClick={handleExtremeLeaderboardClick}
+          onMouseEnter={() => router.prefetch("/leaderboard")}
+          onFocus={() => router.prefetch("/leaderboard")}
+          onPointerDown={() => router.prefetch("/leaderboard")}
           onKeyDown={handleExtremeLeaderboardKeyDown}
           className="relative cursor-pointer overflow-hidden rounded-[1.85rem] border border-amber-200/12 bg-[radial-gradient(circle_at_20%_0%,rgba(251,191,36,0.16),transparent_30%),radial-gradient(circle_at_86%_12%,rgba(59,130,246,0.12),transparent_28%),linear-gradient(135deg,rgba(5,11,21,0.96),rgba(1,5,14,0.98))] p-4 shadow-[0_30px_100px_rgba(0,0,0,0.34)] outline-none transition hover:-translate-y-0.5 hover:border-amber-200/24 focus-visible:ring-2 focus-visible:ring-amber-200/55 sm:p-5"
         >

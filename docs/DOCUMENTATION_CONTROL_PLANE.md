@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/performance-players-navigation-hotpath-v2` at `b47f814db31690bae4d7863f59767e042ef602f2`
+Implementation baseline: `feature/performance-leaderboard-navigation-hotpath-v1` at `42d9250f329399d9c34940fefcc2fa0be6238939`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
