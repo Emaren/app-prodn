@@ -148,6 +148,206 @@ class SpeedEdgeTests(unittest.TestCase):
         self.assertIn("aoe2hdbets_leaderboard_lane", plan["cookie_bypass_names"])
         self.assertFalse(plan["mutation_authorized"])
 
+
+    def _dynamic_source_inventory(self):
+        return {
+            "pages": [
+                {
+                    "template": route,
+                    "classification": "public",
+                    "benchmark_representative": route,
+                    "source_profile": {
+                        "source_path": f"app{route}/page.tsx",
+                        "edge_cache_classification": "anonymous_dynamic_candidate_review",
+                        "server_request_personalization_signal": False,
+                        "layout_server_personalization_signal": False,
+                    },
+                }
+                for route in ("/academy", "/champions", "/national-champions")
+            ]
+        }
+
+    def _dynamic_identity(self):
+        sha = "a" * 40
+        return {
+            "release_sha": sha,
+            "operator_source_sha": sha,
+            "github_main_sha": sha,
+            "build_id": "build",
+            "build_version": "version",
+            "certification": "CERTIFIED",
+        }
+
+    def test_dynamic_policy_is_bounded_to_exact_30_second_empty_query_routes(self):
+        policy = MODULE.load_dynamic_policy()
+        self.assertEqual(
+            [row["route"] for row in policy["routes"]],
+            ["/academy", "/champions", "/national-champions"],
+        )
+        self.assertTrue(all(row["ttl_seconds"] == 30 for row in policy["routes"]))
+        self.assertTrue(all(row["empty_query_only"] is True for row in policy["routes"]))
+
+    def test_dynamic_release_identity_requires_certified_clean_main_and_three_way_sha_parity(self):
+        original_identity = MODULE.speed.collect_release_identity
+        original_git = MODULE.operator_git_state
+        try:
+            MODULE.speed.collect_release_identity = lambda: self._dynamic_identity()
+            MODULE.operator_git_state = lambda: {"branch": "main", "clean": True, "dirty_paths": 0}
+            self.assertEqual(MODULE.require_dynamic_release_identity()["release_sha"], "a" * 40)
+
+            drift = self._dynamic_identity()
+            drift["github_main_sha"] = "b" * 40
+            MODULE.speed.collect_release_identity = lambda: drift
+            with self.assertRaises(MODULE.EdgeAuditError):
+                MODULE.require_dynamic_release_identity()
+
+            MODULE.speed.collect_release_identity = lambda: self._dynamic_identity()
+            MODULE.operator_git_state = lambda: {"branch": "performance/dynamic", "clean": False, "dirty_paths": 2}
+            with self.assertRaises(MODULE.EdgeAuditError):
+                MODULE.require_dynamic_release_identity()
+        finally:
+            MODULE.speed.collect_release_identity = original_identity
+            MODULE.operator_git_state = original_git
+
+    def test_dynamic_qualification_requires_public_origin_byte_stability_for_full_ttl(self):
+        original = MODULE.require_dynamic_release_identity
+        clock = [0.0]
+        try:
+            MODULE.require_dynamic_release_identity = lambda: self._dynamic_identity()
+
+            def monotonic():
+                return clock[0]
+
+            def sleep(seconds):
+                clock[0] += seconds
+
+            def probe(route):
+                digest = __import__("hashlib").sha256(route.encode()).hexdigest()
+                return {
+                    "available": True,
+                    "http_status": 200,
+                    "content_type": "text/html; charset=utf-8",
+                    "set_cookie": False,
+                    "body_sha256": digest,
+                    "effective_url": MODULE.PUBLIC_BASE + route,
+                    "cf_cache_status": "DYNAMIC",
+                }
+
+            def origin(route):
+                row = probe(route)
+                row["effective_url"] = MODULE.speed.ORIGIN_BASE + route
+                row["cf_cache_status"] = None
+                return row
+
+            result = MODULE.qualify_dynamic_edge(
+                self._dynamic_source_inventory(),
+                policy=MODULE.load_dynamic_policy(),
+                public_probe=probe,
+                origin_probe=origin,
+                sleep_fn=sleep,
+                monotonic_fn=monotonic,
+            )
+            self.assertTrue(result["all_qualified"])
+            self.assertEqual(result["qualified_count"], 3)
+            self.assertGreaterEqual(result["elapsed_seconds"], 30.0)
+            self.assertTrue(all(len(row["samples"]) == 3 for row in result["rows"]))
+        finally:
+            MODULE.require_dynamic_release_identity = original
+
+    def test_dynamic_qualification_holds_route_when_origin_changes_within_ttl(self):
+        original = MODULE.require_dynamic_release_identity
+        clock = [0.0]
+        calls = {"/champions": 0}
+        try:
+            MODULE.require_dynamic_release_identity = lambda: self._dynamic_identity()
+
+            def monotonic():
+                return clock[0]
+
+            def sleep(seconds):
+                clock[0] += seconds
+
+            def public(route):
+                digest = __import__("hashlib").sha256(route.encode()).hexdigest()
+                return {
+                    "available": True,
+                    "http_status": 200,
+                    "content_type": "text/html",
+                    "set_cookie": False,
+                    "body_sha256": digest,
+                    "effective_url": MODULE.PUBLIC_BASE + route,
+                    "cf_cache_status": "DYNAMIC",
+                }
+
+            def origin(route):
+                row = public(route)
+                row["effective_url"] = MODULE.speed.ORIGIN_BASE + route
+                row["cf_cache_status"] = None
+                if route == "/champions":
+                    calls[route] += 1
+                    if calls[route] == 3:
+                        row["body_sha256"] = "f" * 64
+                return row
+
+            result = MODULE.qualify_dynamic_edge(
+                self._dynamic_source_inventory(),
+                policy=MODULE.load_dynamic_policy(),
+                public_probe=public,
+                origin_probe=origin,
+                sleep_fn=sleep,
+                monotonic_fn=monotonic,
+            )
+            by_route = {row["route"]: row for row in result["rows"]}
+            self.assertFalse(result["all_qualified"])
+            self.assertFalse(by_route["/champions"]["qualified"])
+            self.assertTrue(any("origin body changed" in reason for reason in by_route["/champions"]["reasons"]))
+        finally:
+            MODULE.require_dynamic_release_identity = original
+
+    def test_dynamic_plan_binds_exact_expression_policy_and_qualification_digest(self):
+        original = MODULE.require_dynamic_release_identity
+        try:
+            MODULE.require_dynamic_release_identity = lambda: self._dynamic_identity()
+            policy = MODULE.load_dynamic_policy()
+            qualification = {
+                "schema": 1,
+                "kind": "aoe2war-speedos-dynamic-edge-qualification",
+                "release_identity": self._dynamic_identity(),
+                "operator_source_sha": "a" * 40,
+                "policy_sha256": __import__("hashlib").sha256(MODULE.DYNAMIC_POLICY_PATH.read_bytes()).hexdigest(),
+                "all_qualified": True,
+                "rows": [{"route": row["route"], "qualified": True} for row in policy["routes"]],
+            }
+            plan = MODULE.build_dynamic_cloudflare_plan(qualification)
+            self.assertEqual(plan["eligible_exact_routes"], ["/academy", "/champions", "/national-champions"])
+            self.assertEqual(plan["edge_ttl_seconds"], 30)
+            self.assertIn('http.request.uri.query eq ""', plan["expression"])
+            self.assertIn('not http.cookie contains "aoe2hdbets_session="', plan["expression"])
+            self.assertRegex(plan["qualification_sha256"], r"^[0-9a-f]{64}$")
+        finally:
+            MODULE.require_dynamic_release_identity = original
+
+    def test_dynamic_post_apply_verifier_preserves_static_hits_and_bypasses_variants(self):
+        original = MODULE.cache_status_probe
+        try:
+            def probe(path, *, cookie=None, rsc=False, query=None):
+                if path == "/api/deployment-version" or cookie or rsc or query:
+                    return {"ok": True, "cf_cache_status": "DYNAMIC"}
+                return {"ok": True, "cf_cache_status": "HIT"}
+
+            MODULE.cache_status_probe = probe
+            dynamic_plan = {
+                "eligible_exact_routes": ["/academy", "/champions"],
+                "cookie_bypass_names": ["aoe2hdbets_session", "aoe2war_language"],
+            }
+            static_plan = {"eligible_exact_routes": ["/download", "/app"]}
+            result = MODULE.verify_dynamic_cloudflare_apply(dynamic_plan, static_plan)
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["failures"], [])
+            self.assertEqual(len(result["static_cohort"]), 2)
+        finally:
+            MODULE.cache_status_probe = original
+
     def test_bin_exposes_edge_delivery_audit(self):
         source = (ROOT / "bin" / "aoe2war").read_text(encoding="utf-8")
         self.assertIn('SPEED_EDGE="$BIN_DIR/../scripts/aoe2_speed_edge.py"', source)

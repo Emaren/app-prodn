@@ -109,6 +109,7 @@ class CloudflareRemoteHelperTests(unittest.TestCase):
                 from unittest.mock import patch
 
                 with (
+                    patch.object(MODULE, "production_source_sha", return_value="d" * 40),
                     patch.object(MODULE, "resolve_zone", return_value=zone),
                     patch.object(MODULE, "snapshot", return_value=(state / "snapshot.json", prior)),
                     patch.object(MODULE, "phase_ruleset", return_value=current),
@@ -156,6 +157,7 @@ class CloudflareRemoteHelperTests(unittest.TestCase):
                 from unittest.mock import patch
 
                 with (
+                    patch.object(MODULE, "production_source_sha", return_value="d" * 40),
                     patch.object(MODULE, "resolve_zone", return_value=zone),
                     patch.object(MODULE, "snapshot", return_value=(state / "snapshot.json", prior)),
                     patch.object(MODULE, "phase_ruleset", return_value=current),
@@ -201,6 +203,160 @@ class CloudflareRemoteHelperTests(unittest.TestCase):
                         MODULE.cmd_rollback()
             finally:
                 MODULE.STATE, MODULE.REQUEST, MODULE.LAST_APPLY = old
+
+    def dynamic_request(self, **overrides):
+        routes = ["/academy", "/champions", "/national-champions"]
+        cookie_names = ["aoe2hdbets_session"]
+        base = {
+            "schema": 1,
+            "kind": "aoe2war-speedos-cloudflare-dynamic-apply-request",
+            "zone_name": "aoe2war.com",
+            "expression": MODULE.canonical_dynamic_expression(routes, cookie_names),
+            "edge_ttl_seconds": 30,
+            "eligible_exact_routes": routes,
+            "cookie_bypass_names": cookie_names,
+            "plan_sha256": "a" * 64,
+            "policy_sha256": "b" * 64,
+            "qualification_sha256": "c" * 64,
+            "operator_source_sha": "d" * 40,
+        }
+        base.update(overrides)
+        return base
+
+    def test_dynamic_request_is_root_allowlisted_empty_query_and_exact_30_seconds(self):
+        payload = self.dynamic_request()
+        validated = MODULE.validate_dynamic_request(payload)
+        self.assertEqual(validated["edge_ttl_seconds"], 30)
+        self.assertEqual(validated["eligible_exact_routes"], list(MODULE.DYNAMIC_ALLOWED_ROUTES))
+        self.assertIn('http.request.uri.query eq ""', validated["expression"])
+        self.assertEqual(MODULE.desired_dynamic_rule(validated)["description"], MODULE.DYNAMIC_RULE_DESCRIPTION)
+
+        widened = {**payload, "expression": payload["expression"] + " or true"}
+        unauthorized_routes = ["/academy", "/war-engine"]
+        unauthorized = {
+            **payload,
+            "eligible_exact_routes": unauthorized_routes,
+            "expression": MODULE.canonical_dynamic_expression(unauthorized_routes, ["aoe2hdbets_session"]),
+        }
+        for bad in (
+            {**payload, "edge_ttl_seconds": 31},
+            widened,
+            unauthorized,
+            {**payload, "qualification_sha256": "bad"},
+        ):
+            with self.assertRaises(MODULE.CloudflareError):
+                MODULE.validate_dynamic_request(bad)
+
+    def test_dynamic_apply_requires_static_rule_and_refetches_identity(self):
+        zone = {"id": "zone-1", "name": "aoe2war.com"}
+        static = {"id": "static-1", "description": MODULE.RULE_DESCRIPTION}
+        dynamic = {"id": "dyn-new", "description": MODULE.DYNAMIC_RULE_DESCRIPTION}
+        prior = {"id": "ruleset-1", "rules": [static]}
+        current = {"id": "ruleset-1", "rules": [static, dynamic]}
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            old = (MODULE.STATE, MODULE.DYNAMIC_REQUEST, MODULE.LAST_DYNAMIC_APPLY)
+            MODULE.STATE = state
+            MODULE.DYNAMIC_REQUEST = state / "dynamic-request.json"
+            MODULE.LAST_DYNAMIC_APPLY = state / "last-dynamic-apply.json"
+            MODULE.DYNAMIC_REQUEST.write_text(json.dumps(self.dynamic_request()))
+            try:
+                from unittest.mock import patch
+                with (
+                    patch.object(MODULE, "production_source_sha", return_value="d" * 40),
+                    patch.object(MODULE, "resolve_zone", return_value=zone),
+                    patch.object(MODULE, "snapshot", return_value=(state / "snapshot.json", prior)),
+                    patch.object(MODULE, "phase_ruleset", return_value=current),
+                    patch.object(MODULE, "api", return_value={"result": {"unexpected": "shape"}}),
+                ):
+                    result = MODULE.cmd_apply_dynamic()
+                record = json.loads(MODULE.LAST_DYNAMIC_APPLY.read_text())
+                self.assertTrue(result["ok"])
+                self.assertEqual(result["rule_id_suffix"], "dyn-new")
+                self.assertEqual(record["state"], "applied")
+                self.assertEqual(record["rule_id"], "dyn-new")
+            finally:
+                MODULE.STATE, MODULE.DYNAMIC_REQUEST, MODULE.LAST_DYNAMIC_APPLY = old
+
+    def test_dynamic_response_loss_rolls_back_only_dynamic_rule(self):
+        zone = {"id": "zone-1", "name": "aoe2war.com"}
+        static = {"id": "static-1", "description": MODULE.RULE_DESCRIPTION}
+        dynamic = {"id": "dyn-new", "description": MODULE.DYNAMIC_RULE_DESCRIPTION}
+        prior = {"id": "ruleset-1", "rules": [static]}
+        current = {"id": "ruleset-1", "rules": [static, dynamic]}
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            old = (MODULE.STATE, MODULE.DYNAMIC_REQUEST, MODULE.LAST_DYNAMIC_APPLY)
+            MODULE.STATE = state
+            MODULE.DYNAMIC_REQUEST = state / "dynamic-request.json"
+            MODULE.LAST_DYNAMIC_APPLY = state / "last-dynamic-apply.json"
+            MODULE.DYNAMIC_REQUEST.write_text(json.dumps(self.dynamic_request()))
+            calls = []
+            def fake_api(method, path, payload=None, *, allow_404=False):
+                calls.append((method, path))
+                if method == "POST" and path.endswith("/rules"):
+                    prepared = json.loads(MODULE.LAST_DYNAMIC_APPLY.read_text())
+                    self.assertEqual(prepared["state"], "prepared")
+                    raise MODULE.CloudflareError("simulated dynamic response loss")
+                return {"success": True}
+            try:
+                from unittest.mock import patch
+                with (
+                    patch.object(MODULE, "production_source_sha", return_value="d" * 40),
+                    patch.object(MODULE, "resolve_zone", return_value=zone),
+                    patch.object(MODULE, "snapshot", return_value=(state / "snapshot.json", prior)),
+                    patch.object(MODULE, "phase_ruleset", return_value=current),
+                    patch.object(MODULE, "api", side_effect=fake_api),
+                ):
+                    with self.assertRaisesRegex(MODULE.CloudflareError, "rollback completed"):
+                        MODULE.cmd_apply_dynamic()
+                record = json.loads(MODULE.LAST_DYNAMIC_APPLY.read_text())
+                self.assertEqual(record["state"], "rolled_back_after_apply_failure")
+                self.assertEqual(record["rollback_action"], "deleted_created_dynamic_rule")
+                deletes = [path for method, path in calls if method == "DELETE"]
+                self.assertEqual(deletes, ["/zones/zone-1/rulesets/ruleset-1/rules/dyn-new"])
+                self.assertNotIn("static-1", " ".join(deletes))
+            finally:
+                MODULE.STATE, MODULE.DYNAMIC_REQUEST, MODULE.LAST_DYNAMIC_APPLY = old
+
+    def test_dynamic_apply_refuses_missing_static_rule(self):
+        zone = {"id": "zone-1", "name": "aoe2war.com"}
+        prior = {"id": "ruleset-1", "rules": []}
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            old = (MODULE.STATE, MODULE.DYNAMIC_REQUEST, MODULE.LAST_DYNAMIC_APPLY)
+            MODULE.STATE = state
+            MODULE.DYNAMIC_REQUEST = state / "dynamic-request.json"
+            MODULE.LAST_DYNAMIC_APPLY = state / "last-dynamic-apply.json"
+            MODULE.DYNAMIC_REQUEST.write_text(json.dumps(self.dynamic_request()))
+            try:
+                from unittest.mock import patch
+                with (
+                    patch.object(MODULE, "production_source_sha", return_value="d" * 40),
+                    patch.object(MODULE, "resolve_zone", return_value=zone),
+                    patch.object(MODULE, "snapshot", return_value=(state / "snapshot.json", prior)),
+                ):
+                    with self.assertRaisesRegex(MODULE.CloudflareError, "requires the certified static"):
+                        MODULE.cmd_apply_dynamic()
+            finally:
+                MODULE.STATE, MODULE.DYNAMIC_REQUEST, MODULE.LAST_DYNAMIC_APPLY = old
+
+
+    def test_dynamic_apply_rejects_source_sha_not_matching_production(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            old = (MODULE.STATE, MODULE.DYNAMIC_REQUEST, MODULE.LAST_DYNAMIC_APPLY)
+            MODULE.STATE = state
+            MODULE.DYNAMIC_REQUEST = state / "dynamic-request.json"
+            MODULE.LAST_DYNAMIC_APPLY = state / "last-dynamic-apply.json"
+            MODULE.DYNAMIC_REQUEST.write_text(json.dumps(self.dynamic_request(operator_source_sha="d" * 40)))
+            try:
+                from unittest.mock import patch
+                with patch.object(MODULE, "production_source_sha", return_value="e" * 40):
+                    with self.assertRaisesRegex(MODULE.CloudflareError, "does not match production"):
+                        MODULE.cmd_apply_dynamic()
+            finally:
+                MODULE.STATE, MODULE.DYNAMIC_REQUEST, MODULE.LAST_DYNAMIC_APPLY = old
 
     def test_helper_never_serializes_token_into_results(self):
         source = (ROOT / "scripts" / "aoe2_speed_cloudflare_remote.py").read_text()
