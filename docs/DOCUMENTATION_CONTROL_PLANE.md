@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/speed-observatory-e2-v1` at `beca5c0a8c75dc56ad82d31ae5838142cd5f3cc8`
+Implementation baseline: `main` at `96abc4aa08d500f03fbee1581a4dc272c1d0c192`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
