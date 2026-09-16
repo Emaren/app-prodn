@@ -1,0 +1,136 @@
+.shell {
+  --speed-cyan: 34 211 238;
+  --speed-blue: 59 130 246;
+  --speed-violet: 139 92 246;
+  --speed-magenta: 217 70 239;
+  --speed-green: 52 211 153;
+  --speed-amber: 251 191 36;
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 9% 8%, rgb(var(--speed-blue) / .16), transparent 23rem),
+    radial-gradient(circle at 86% 6%, rgb(var(--speed-magenta) / .12), transparent 24rem),
+    radial-gradient(circle at 52% 48%, rgb(var(--speed-cyan) / .055), transparent 34rem),
+    #01040a;
+}
+
+.shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  opacity: .2;
+  background-image:
+    linear-gradient(rgb(34 211 238 / .16) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(59 130 246 / .13) 1px, transparent 1px);
+  background-size: 54px 54px;
+  mask-image: linear-gradient(to bottom, black, transparent 86%);
+}
+
+.shell::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  opacity: .035;
+  background: repeating-linear-gradient(to bottom, transparent 0 3px, white 4px);
+  mix-blend-mode: screen;
+}
+
+.heroHorizon {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.heroHorizon::before {
+  content: "";
+  position: absolute;
+  left: 3%;
+  right: 3%;
+  top: 67%;
+  height: 1px;
+  opacity: .72;
+  background: linear-gradient(90deg, transparent, rgb(34 211 238 / .72) 24%, rgb(99 102 241 / .86) 48%, rgb(217 70 239 / .72) 72%, transparent);
+  box-shadow: 0 0 12px rgb(34 211 238 / .36), 0 0 28px rgb(139 92 246 / .28);
+}
+
+.heroHorizon::after {
+  content: "";
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  bottom: -74px;
+  height: 146px;
+  opacity: .38;
+  background-image:
+    repeating-linear-gradient(90deg, transparent 0 42px, rgb(34 211 238 / .20) 43px 44px),
+    repeating-linear-gradient(0deg, transparent 0 22px, rgb(139 92 246 / .16) 23px 24px);
+  transform: perspective(280px) rotateX(62deg);
+  transform-origin: center bottom;
+  mask-image: linear-gradient(to bottom, transparent, black 36%, black);
+}
+
+.panel {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(103 232 249 / .16);
+  background: linear-gradient(145deg, rgb(4 12 25 / .94), rgb(2 5 14 / .985));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / .035),
+    0 22px 60px rgb(0 0 0 / .28),
+    0 0 36px rgb(34 211 238 / .035);
+}
+
+.panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgb(34 211 238 / .22), transparent 16%, transparent 84%, rgb(139 92 246 / .15)) top / 100% 1px no-repeat;
+}
+
+.laser {
+  box-shadow:
+    0 0 14px currentColor,
+    0 0 34px color-mix(in srgb, currentColor 32%, transparent);
+}
+
+.metricGlow {
+  text-shadow: 0 0 18px currentColor, 0 0 44px color-mix(in srgb, currentColor 34%, transparent);
+}
+
+.pulseDot {
+  animation: speed-pulse 2.2s ease-in-out infinite;
+}
+
+.scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(34 211 238 / .72), transparent);
+  box-shadow: 0 0 18px rgb(34 211 238 / .55);
+  animation: speed-scan 7s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes speed-pulse {
+  0%, 100% { opacity: .45; transform: scale(.8); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+@keyframes speed-scan {
+  0% { top: 4%; opacity: 0; }
+  8% { opacity: .8; }
+  92% { opacity: .8; }
+  100% { top: 96%; opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulseDot, .scan { animation: none; }
+}

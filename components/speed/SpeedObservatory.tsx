@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
+import SpeedObservatoryE2 from "@/components/speed/SpeedObservatoryE2";
 import {
   getRecentSpeedSamples,
   SPEED_SAMPLE_UPDATED_EVENT,
@@ -100,32 +100,6 @@ function ViewToggle({
           {mode[0]}
         </button>
       ))}
-    </div>
-  );
-}
-
-function MetricCard({
-  label,
-  value,
-  helper,
-  premium = false,
-}: {
-  label: string;
-  value: string;
-  helper: string;
-  premium?: boolean;
-}) {
-  return (
-    <div
-      className={
-        premium
-          ? "rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.055),rgba(255,255,255,0.018))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_18px_55px_rgba(0,0,0,0.2)]"
-          : "rounded-3xl border border-white/10 bg-white/[0.035] p-5"
-      }
-    >
-      <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/38">{label}</p>
-      <p className="mt-3 text-2xl font-semibold tracking-tight text-white">{value}</p>
-      <p className="mt-2 text-xs leading-5 text-white/45">{helper}</p>
     </div>
   );
 }
@@ -227,7 +201,6 @@ function ObservatoryHeader({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-          <ViewToggle viewMode={viewMode} setViewMode={setViewMode} />
           <Link
             href="/"
             className="rounded-full border border-white/10 bg-black/20 px-4 py-2 text-sm text-white/65 transition hover:border-white/20 hover:text-white"
@@ -274,101 +247,6 @@ function ObservatoryHeader({
         </button>
       </div>
     </div>
-  );
-}
-
-function BasicView({
-  viewMode,
-  setViewMode,
-  metrics,
-  samples,
-  latest,
-  checking,
-  reporting,
-  reportMessage,
-  runLiveCheck,
-  sendReport,
-}: ViewProps) {
-  return (
-    <main className="min-h-screen bg-[#06070a] px-4 py-8 text-slate-100 sm:px-6" data-speed-view="basic">
-      <div className="mx-auto max-w-6xl">
-        <header className="rounded-[30px] border border-amber-300/15 bg-[linear-gradient(180deg,rgba(245,158,11,0.08),rgba(255,255,255,0.025))] p-6 shadow-[0_25px_80px_rgba(0,0,0,0.42)] sm:p-8">
-          <ObservatoryHeader viewMode={viewMode} setViewMode={setViewMode} checking={checking} runLiveCheck={runLiveCheck} />
-        </header>
-
-        <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {metrics.map((metric) => <MetricCard key={metric.label} {...metric} />)}
-        </section>
-
-        <section className="mt-6 rounded-[30px] border border-white/10 bg-white/[0.03] p-5 sm:p-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-white">This tab’s recent measurements</h2>
-              <p className="mt-1 text-sm text-white/45">Up to 20 sanitized route samples are kept locally in this tab and relayed to the isolated Traffic performance store.</p>
-            </div>
-            <ReportAction latest={latest} reporting={reporting} reportMessage={reportMessage} sendReport={sendReport} />
-          </div>
-          <div className="mt-5"><MeasurementsTable samples={samples} /></div>
-        </section>
-      </div>
-    </main>
-  );
-}
-
-function AdvancedView({
-  viewMode,
-  setViewMode,
-  metrics,
-  samples,
-  latest,
-  checking,
-  reporting,
-  reportMessage,
-  runLiveCheck,
-  sendReport,
-}: ViewProps) {
-  return (
-    <main
-      className="min-h-screen bg-[radial-gradient(circle_at_18%_0%,rgba(180,128,45,0.12),transparent_32%),radial-gradient(circle_at_82%_8%,rgba(37,99,235,0.12),transparent_34%),#05070b] px-4 py-8 text-slate-100 sm:px-6 lg:px-8"
-      data-speed-view="advanced"
-    >
-      <div className="mx-auto max-w-[1380px]">
-        <header className="relative overflow-hidden rounded-[34px] border border-amber-200/16 bg-[linear-gradient(135deg,rgba(42,31,17,0.88),rgba(8,12,21,0.96)_46%,rgba(10,20,35,0.92))] p-7 shadow-[0_30px_90px_rgba(0,0,0,0.5)] sm:p-9">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_82%_10%,rgba(56,189,248,0.08),transparent_28%)]" />
-          <div className="relative"><ObservatoryHeader viewMode={viewMode} setViewMode={setViewMode} checking={checking} runLiveCheck={runLiveCheck} /></div>
-        </header>
-
-        <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {metrics.map((metric) => <MetricCard key={metric.label} {...metric} premium />)}
-        </section>
-
-        <section className="mt-5 grid gap-5 xl:grid-cols-[0.78fr_2.22fr]">
-          <aside className="rounded-[30px] border border-amber-200/12 bg-[linear-gradient(180deg,rgba(245,158,11,0.055),rgba(255,255,255,0.02))] p-6 shadow-[0_20px_70px_rgba(0,0,0,0.32)]">
-            <p className="text-[10px] uppercase tracking-[0.26em] text-amber-200/55">Live truth</p>
-            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Report what you actually felt.</h2>
-            <p className="mt-3 text-sm leading-7 text-white/48">
-              A Speed Report binds the exact navigation sample, signed-in identity, build, route, and diagnostics for operator review in Traffic.
-            </p>
-            <div className="mt-6 border-t border-white/8 pt-5">
-              <p className="text-xs text-white/35">Latest measured route</p>
-              <p className="mt-2 text-lg font-semibold text-white">{latest?.route || "No sample yet"}</p>
-              <p className="mt-1 text-sm text-white/45">{latest ? `${navigationLabel(latest.navigation_kind)} · ${formatDuration(latest.ready_ms)}` : "Navigate AoE2WAR to begin measuring."}</p>
-            </div>
-            <div className="mt-6">
-              <ReportAction latest={latest} reporting={reporting} reportMessage={reportMessage} sendReport={sendReport} />
-            </div>
-          </aside>
-
-          <div className="rounded-[30px] border border-white/10 bg-[#080b11]/94 p-5 shadow-[0_22px_75px_rgba(0,0,0,0.34)] sm:p-6">
-            <div className="mb-5">
-              <p className="text-[10px] uppercase tracking-[0.25em] text-white/32">Session ledger</p>
-              <h2 className="mt-2 text-xl font-semibold text-white">Recent measurements</h2>
-            </div>
-            <MeasurementsTable samples={samples} dense />
-          </div>
-        </section>
-      </div>
-    </main>
   );
 }
 
@@ -509,14 +387,89 @@ type ViewProps = {
   sendReport: () => Promise<void>;
 };
 
+type SpeedViewVersion = "e1" | "e2";
+
+const SPEED_VIEW_STORAGE_KEY = "aoe2hdbets:speed:view-version:v1";
+const SPEED_VIEW_ROLLOUT_KEY = "aoe2hdbets:speed:view-version-rollout";
+const SPEED_VIEW_ROLLOUT_VERSION = "e2-default-v1";
+
+function SpeedViewRail({
+  viewVersion,
+  setViewVersion,
+}: {
+  viewVersion: SpeedViewVersion;
+  setViewVersion: (version: SpeedViewVersion) => void;
+}) {
+  const select = (version: SpeedViewVersion) => {
+    setViewVersion(version);
+    try {
+      window.localStorage.setItem(SPEED_VIEW_STORAGE_KEY, version);
+      window.localStorage.setItem(SPEED_VIEW_ROLLOUT_KEY, SPEED_VIEW_ROLLOUT_VERSION);
+    } catch {}
+  };
+  return (
+    <div className="bg-[#01040a] px-3 pb-5 pt-2 text-slate-300 sm:px-5 lg:px-6" data-speed-view-rail>
+      <div className="mx-auto flex w-full max-w-[1840px] flex-wrap items-center gap-2 rounded-2xl border border-cyan-300/10 bg-[linear-gradient(90deg,rgba(5,12,23,.96),rgba(2,5,13,.98),rgba(12,6,25,.96))] px-3 py-2 shadow-[0_0_32px_rgba(34,211,238,.035)]">
+        <span className="mr-1 font-mono text-[8px] uppercase tracking-[0.24em] text-slate-600">LAYOUT / PROVENANCE</span>
+        {([
+          ["e1", "E1", "ORIGIN"],
+          ["e2", "E2", "OBSERVATORY · DEFAULT"],
+        ] as const).map(([version, title, label]) => {
+          const active = viewVersion === version;
+          return (
+            <button
+              key={version}
+              type="button"
+              onClick={() => select(version)}
+              aria-pressed={active}
+              className={`rounded-lg border px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.15em] transition ${
+                active
+                  ? version === "e2"
+                    ? "border-cyan-300/40 bg-cyan-300/10 text-cyan-200 shadow-[0_0_18px_rgba(34,211,238,.12)]"
+                    : "border-amber-300/35 bg-amber-300/[.08] text-amber-200"
+                  : "border-white/[.07] bg-white/[.02] text-slate-600 hover:border-cyan-300/20 hover:text-slate-300"
+              }`}
+            >
+              <span className="font-semibold">{title}</span> <span className="ml-1 opacity-60">{label}</span>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={() => select("e2")}
+          className="ml-auto rounded-lg border border-white/[.06] px-3 py-1.5 font-mono text-[8px] uppercase tracking-[0.18em] text-slate-700 transition hover:border-cyan-300/15 hover:text-cyan-300/70"
+        >
+          RESET E2
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function SpeedObservatory() {
-  const { viewMode, setViewMode } = useTileViewPreference("speed");
+  const [viewVersion, setViewVersion] = useState<SpeedViewVersion>("e2");
   const [samples, setSamples] = useState<SpeedSample[]>([]);
   const [checkMs, setCheckMs] = useState<number | null>(null);
   const [checkBuild, setCheckBuild] = useState("");
   const [checking, setChecking] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [reportMessage, setReportMessage] = useState("");
+
+  useEffect(() => {
+    try {
+      const rollout = window.localStorage.getItem(SPEED_VIEW_ROLLOUT_KEY);
+      if (rollout !== SPEED_VIEW_ROLLOUT_VERSION) {
+        window.localStorage.setItem(SPEED_VIEW_STORAGE_KEY, "e2");
+        window.localStorage.setItem(SPEED_VIEW_ROLLOUT_KEY, SPEED_VIEW_ROLLOUT_VERSION);
+        setViewVersion("e2");
+        return;
+      }
+      const saved = window.localStorage.getItem(SPEED_VIEW_STORAGE_KEY);
+      setViewVersion(saved === "e1" ? "e1" : "e2");
+    } catch {
+      setViewVersion("e2");
+    }
+  }, []);
 
   const refreshSamples = useCallback(() => {
     setSamples(getRecentSpeedSamples());
@@ -673,8 +626,8 @@ export default function SpeedObservatory() {
   }, [latest, samples]);
 
   const shared: ViewProps = {
-    viewMode,
-    setViewMode,
+    viewMode: "extreme",
+    setViewMode: () => {},
     metrics,
     samples,
     latest,
@@ -685,7 +638,29 @@ export default function SpeedObservatory() {
     sendReport,
   };
 
-  if (viewMode === "advanced") return <AdvancedView {...shared} />;
-  if (viewMode === "extreme") return <ExtremeView {...shared} chart={chart} />;
-  return <BasicView {...shared} />;
+  const content = viewVersion === "e1" ? (
+    <ExtremeView {...shared} chart={chart} />
+  ) : (
+    <SpeedObservatoryE2
+      samples={samples}
+      latest={latest}
+      sessionP50={p50}
+      sessionP75={p75}
+      checkMs={checkMs}
+      checkBuild={checkBuild}
+      checking={checking}
+      reporting={reporting}
+      reportMessage={reportMessage}
+      runLiveCheck={runLiveCheck}
+      sendReport={sendReport}
+    />
+  );
+
+  return (
+    <>
+      {content}
+      <SpeedViewRail viewVersion={viewVersion} setViewVersion={setViewVersion} />
+    </>
+  );
+
 }

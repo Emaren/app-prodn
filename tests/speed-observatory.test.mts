@@ -12,7 +12,8 @@ test("personal Speed Observatory reads only this browser tab's recent Speed samp
   assert.match(page, /SpeedObservatory/);
   assert.match(observatory, /getRecentSpeedSamples/);
   assert.match(observatory, /SPEED_SAMPLE_UPDATED_EVENT/);
-  assert.match(observatory, /Up to 20 sanitized route samples/);
+  assert.match(observatory, /getRecentSpeedSamples/);
+  assert.match(fs.readFileSync("components/speed/SpeedObservatoryE2.tsx", "utf8"), /Flight Recorder/);
 });
 
 test("live check is uncached and measures a same-origin round trip", () => {
