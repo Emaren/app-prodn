@@ -24,11 +24,19 @@ export default function PlayerDirectoryOnlineNow({
 }: {
   entries: PlayerDirectoryOnlineEntry[];
 }) {
-  const { onlineUidSet } = usePublicPresenceContext();
+  const { onlineUidSet, ready } = usePublicPresenceContext();
   const onlineEntries = useMemo(
     () => entries.filter((entry) => onlineUidSet.has(entry.uid)),
     [entries, onlineUidSet],
   );
+
+  if (!ready) {
+    return (
+      <div className="rounded-2xl border border-white/8 bg-white/5 px-4 py-5 text-sm text-slate-300">
+        Checking who is live right now…
+      </div>
+    );
+  }
 
   if (onlineEntries.length === 0) {
     return (

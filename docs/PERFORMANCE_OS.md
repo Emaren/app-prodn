@@ -157,8 +157,11 @@ edge caching requires deployment-integrated purge proof first.
 `anonymous_dynamic_candidate_review` is no longer a dead-end classification. A
 separate fail-closed lane can promote an explicitly governed subset without weakening
 the static cache rule. `config/speed-edge-dynamic-policy.json` is the source-controlled
-staleness authority; V1 authorizes only `/academy`, `/champions` and
-`/national-champions`, exactly 30 seconds, empty-query HTML only.
+staleness authority; the current bounded cohort authorizes `/academy`, `/champions`,
+`/national-champions` and `/players`, exactly 30 seconds, empty-query HTML only.
+`/players` is eligible because request-time presence was removed from the document;
+its live count/roster now starts as unknown and refreshes on the existing five-second
+client presence rail.
 
 `aoe2war speed edge qualify-dynamic` is observational. It is allowed to run only from
 a clean `main` worktree when production SHA, GitHub `main`, operator source SHA and
@@ -166,17 +169,21 @@ CERTIFIED release identity are exact. For each authorized route it samples publi
 Cloudflare HTML and direct loopback-origin HTML at t=0/15/30 seconds. Bodies are not
 normalized: decoded bytes are SHA-256 compared exactly. Every public and origin
 response must remain HTTP 200 HTML, emit no `Set-Cookie`, and produce one identical
-body hash across the full TTL window. A pre-existing edge HIT also blocks
-qualification so stale cache cannot masquerade as origin equivalence.
+body hash across the full TTL window. A pre-existing edge HIT is allowed only
+when those cached public bytes still equal the independently sampled direct origin
+at every point and the origin itself remains one stable hash across the window; a
+stale HIT therefore fails the same byte-equality proof instead of blocking cohort
+extension mechanically.
 
 `plan-dynamic` consumes only a current all-PASS qualification receipt and binds the
 plan to the policy SHA, qualification SHA, exact release/source identity, cookie
 bypass census and the independent 30-second rule. `apply-dynamic` stages a separate
 root request and can mutate only the independent Cloudflare rule
 `AOE2WAR SpeedOS qualified dynamic HTML v1`. The root helper has its own hardcoded
-three-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
+four-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
 requires the existing certified static SpeedOS rule, and proves the request source SHA
-against the live production checkout before touching Cloudflare.
+against the live production checkout before touching Cloudflare. The privileged
+allowlist contains the same four routes and cannot be broadened by the staged request.
 
 Post-apply proof is intentionally broader than the new rule: every qualified
 empty-query anonymous route must converge to HIT; every known AoE2WAR cookie, RSC
@@ -186,6 +193,22 @@ and the complete existing static exact-route cohort must remain HIT. Any failure
 static rollback record. The first live qualification must therefore be rerun after
 this controller itself is merged, released and certified; development-time proofs do
 not authorize mutation.
+
+### Player Registry navigation hot path
+
+`/players` is a top-level destination whose server origin is already fast, so browser
+navigation latency is dominated by the Next RSC flight and first route-chunk fetch.
+The visible global Players navigation therefore keeps ordinary hover/focus prefetch
+and additionally opts that one link into Next's viewport prefetch. The account-menu
+Players tile mirrors the same targeted policy. Other links remain `prefetch={false}`;
+this is not permission to preload the whole kingdom.
+
+The Player Registry document no longer samples public presence on the server request.
+It renders an explicit unknown/checking state, then the existing
+`/api/user/online_users` five-second no-store rail fills live counts and statuses.
+This keeps live truth fresh while removing volatile presence from the document/RSC
+critical path and makes the anonymous HTML snapshot eligible for the bounded dynamic
+edge qualification above.
 
 ## Edge-cache safety classification
 

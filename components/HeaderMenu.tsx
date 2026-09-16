@@ -394,6 +394,7 @@ function MenuTile({
   return (
     <Link
       href={entry.href}
+      prefetch={entry.href === "/players"}
       onClick={onNavigate}
       className={[
         `group/tile rounded-[1.15rem] border border-white/10 bg-white/[0.04] px-3 py-3 transition duration-200 hover:border-amber-200/20 hover:bg-amber-300/[0.065] ${

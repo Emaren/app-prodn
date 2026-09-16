@@ -43,8 +43,9 @@ test("Academy uses direct lightweight advisor evidence while Zodiac keeps the pr
 test("the player directory preserves its generation-before-corpus watermark", () => {
   assert.match(
     directoryPage,
-    /const \[initialGeneration, presence\] = await Promise\.all\(\[[\s\S]*?loadPublicReplayGeneration\(prisma\)[\s\S]*?loadPublicPresenceSnapshot\(prisma\)[\s\S]*?const directory = await loadPublicPlayerDirectory\(\s*prisma,\s*initialGeneration/,
+    /const initialGeneration = await loadPublicReplayGeneration\(prisma\);[\s\S]*?const directory = await loadPublicPlayerDirectory\(\s*prisma,\s*initialGeneration/,
   );
+  assert.doesNotMatch(directoryPage, /loadPublicPresenceSnapshot/);
   assert.ok(
     directoryPage.indexOf("loadPublicReplayGeneration(prisma)") <
       directoryPage.indexOf("loadPublicPlayerDirectory("),

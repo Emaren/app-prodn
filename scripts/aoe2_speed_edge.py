@@ -703,8 +703,6 @@ def qualify_dynamic_edge(
             if public.get("available"):
                 if public.get("effective_url") != PUBLIC_BASE + route:
                     reasons.append(f"round {sample['round']} public: redirected")
-                if public.get("cf_cache_status") == "HIT":
-                    reasons.append(f"round {sample['round']} public: already edge HIT")
         if len(public_hashes) != 1:
             reasons.append(f"public body changed across window ({len(public_hashes)} hashes)")
         if len(origin_hashes) != 1:
