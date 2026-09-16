@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/cloudflare-edge-authority-v2` at `5fa0d4eca083dac53fb335c58cdcb1b6fe8efec8`
+Implementation baseline: `release/stage-volume-cache-v1` at `a7ee518726b86b94351d10a8386369420126117f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
