@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "eef473ded1043e3f1fa6886b8fa7395a55b30af4859c356c55c48c4c2d1c210f",
+      "sha256": "31f0f5b6ee9302d1695a28c6284345753a330daa945d5a0f6ecf363a6b0d818e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "performance/player-profile-hotpath-v1",
-    "commit": "8355e727f02a968320b4359e0c02f55c195dafcf"
+    "branch": "performance/speed-observatory-e2-v1",
+    "commit": "beca5c0a8c75dc56ad82d31ae5838142cd5f3cc8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

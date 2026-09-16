@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/player-profile-hotpath-v1` at `8355e727f02a968320b4359e0c02f55c195dafcf`
+Implementation baseline: `performance/speed-observatory-e2-v1` at `beca5c0a8c75dc56ad82d31ae5838142cd5f3cc8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
