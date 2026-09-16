@@ -1194,7 +1194,7 @@ p={{
 }}
 path=Path(receipt)
 tmp=path.with_name(path.name+f".partial.{{os.getpid()}}")
-tmp.write_text(json.dumps(p,indent=2,sort_keys=True)+"\n")
+tmp.write_text(json.dumps(p,indent=2,sort_keys=True)+"\\n")
 os.chmod(tmp,0o444)
 os.replace(tmp,path)
 print(f"status\t{{p['status']}}")

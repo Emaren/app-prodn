@@ -746,6 +746,16 @@ class RootControlAssetReconciliationTests(unittest.TestCase):
         self.assertIn("root-control-asset-sync-receipts", command)
         self.assertIn("release lease ownership mismatch", command)
 
+        rendered = MODULE.shlex.split(command)[2]
+        marker = "<<'PYRECEIPT'\n"
+        self.assertIn(marker, rendered)
+        receipt_python = rendered.rsplit(marker, 1)[1].split("\nPYRECEIPT\n", 1)[0]
+        compile(receipt_python, "<root-control-receipt-heredoc>", "exec")
+        self.assertIn(
+            'tmp.write_text(json.dumps(p,indent=2,sort_keys=True)+"\\n")',
+            receipt_python,
+        )
+
     def test_root_control_reconciliation_refuses_without_inherited_lease(self):
         with patch.dict(
             MODULE.os.environ,
