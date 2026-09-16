@@ -485,7 +485,7 @@ function HeaderPillLink({
     <Link
       href={href}
       data-presence-door={presenceDoorForHref(href)}
-      prefetch={false}
+      prefetch={href === "/players"}
       onMouseEnter={() => router.prefetch(href)}
       onFocus={() => router.prefetch(href)}
       onClick={(event) => {

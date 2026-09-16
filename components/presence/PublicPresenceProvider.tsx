@@ -19,6 +19,7 @@ type PublicPresenceState = {
   activePlayers: number;
   onlineUidSet: Set<string>;
   onlineUsers: LobbyOnlineUser[];
+  ready: boolean;
 };
 
 function presenceFingerprint(users: LobbyOnlineUser[]) {
@@ -47,10 +48,11 @@ function isLobbyOnlineUser(value: unknown): value is LobbyOnlineUser {
 }
 
 export function usePublicPresence(
-  initialOnlineUsers: LobbyOnlineUser[],
+  initialOnlineUsers: LobbyOnlineUser[] | null,
 ): PublicPresenceState {
   const [onlineUsers, setOnlineUsers] =
-    useState<LobbyOnlineUser[]>(initialOnlineUsers);
+    useState<LobbyOnlineUser[]>(initialOnlineUsers ?? []);
+  const [ready, setReady] = useState(initialOnlineUsers !== null);
   const refreshInFlightRef = useRef(false);
 
   const refreshPresence = useCallback(async () => {
@@ -75,6 +77,7 @@ export function usePublicPresence(
       if (!Array.isArray(payload)) return;
 
       const nextOnlineUsers = payload.filter(isLobbyOnlineUser);
+      setReady(true);
 
       setOnlineUsers((current) =>
         presenceFingerprint(current) === presenceFingerprint(nextOnlineUsers)
@@ -122,6 +125,7 @@ export function usePublicPresence(
     activePlayers: onlineUsers.length,
     onlineUidSet,
     onlineUsers,
+    ready,
   };
 }
 
@@ -133,7 +137,7 @@ export function PublicPresenceProvider({
   initialOnlineUsers,
 }: {
   children: ReactNode;
-  initialOnlineUsers: LobbyOnlineUser[];
+  initialOnlineUsers: LobbyOnlineUser[] | null;
 }) {
   const presence = usePublicPresence(initialOnlineUsers);
 

@@ -19,14 +19,15 @@ export function PlayerPresenceCount({
 }: {
   directoryUids: string[];
 }) {
-  const { onlineUidSet } = usePublicPresenceContext();
+  const { onlineUidSet, ready } = usePublicPresenceContext();
 
-  return directoryPresenceCount(onlineUidSet, directoryUids);
+  return ready ? directoryPresenceCount(onlineUidSet, directoryUids) : "—";
 }
 
 export function PlayerPresenceStatus({ uid }: { uid: string | null }) {
-  const { onlineUidSet } = usePublicPresenceContext();
+  const { onlineUidSet, ready } = usePublicPresenceContext();
 
+  if (!ready) return "Checking";
   return uid && onlineUidSet.has(uid) ? "Online" : "Profile";
 }
 
@@ -49,8 +50,9 @@ export function PlayerPresenceEmpty({
   children: ReactNode;
   directoryUids: string[];
 }) {
-  const { onlineUidSet } = usePublicPresenceContext();
+  const { onlineUidSet, ready } = usePublicPresenceContext();
 
+  if (!ready) return null;
   return directoryPresenceCount(onlineUidSet, directoryUids) === 0
     ? children
     : null;

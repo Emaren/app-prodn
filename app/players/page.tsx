@@ -18,7 +18,6 @@ import {
   loadPublicPlayerDirectory,
   type PublicPlayerDirectoryEntry,
 } from "@/lib/publicPlayerDirectory";
-import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
 import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
 
 export const dynamic = "force-dynamic";
@@ -29,10 +28,7 @@ export default async function PlayersDirectoryPage() {
   // between these reads, the client observes a later generation and refreshes;
   // reading both concurrently can stamp an older directory with a newer
   // generation and suppress that corrective refresh.
-  const [initialGeneration, presence] = await Promise.all([
-    loadPublicReplayGeneration(prisma),
-    loadPublicPresenceSnapshot(prisma),
-  ]);
+  const initialGeneration = await loadPublicReplayGeneration(prisma);
   // Bind the directory cache to the same replay-generation watermark. This
   // preserves corrective client refreshes while avoiding a full corpus rebuild
   // on every request inside one unchanged replay generation.
@@ -68,7 +64,7 @@ export default async function PlayersDirectoryPage() {
   );
 
   return (
-    <PublicPresenceProvider initialOnlineUsers={presence.onlineUsers}>
+    <PublicPresenceProvider initialOnlineUsers={null}>
       <main className="space-y-5 py-5 text-white sm:space-y-6 sm:py-6">
       <PlayerDirectoryRealtimeRefresh initialGeneration={initialGeneration} />
       <SpeedReadyMarker route="/players" />
