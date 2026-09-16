@@ -179,13 +179,23 @@ test("archive route pages canonical database battles instead of loading a bounde
 });
 
 
-test("battle archive page uses database-grain paging instead of whole-corpus compatibility loader", async () => {
+test("battle archive page uses bounded database-grain pages instead of a 120-card first render", async () => {
   const source = await readFile("app/battle-archive/page.tsx", "utf8");
 
+  assert.match(source, /const BATTLE_ARCHIVE_PAGE_SIZE = 24/);
+  assert.match(source, /searchParams\?: Promise<\{ page\?: string \| string\[] \}>/);
+  assert.match(source, /const offset = \(page - 1\) \* BATTLE_ARCHIVE_PAGE_SIZE/);
   assert.match(source, /loadPublicBattleArchivePage\(prisma/);
-  assert.match(source, /buildPublicRivalryActivity\(/);
+  assert.match(source, /offset,\s*limit: BATTLE_ARCHIVE_PAGE_SIZE/);
+  assert.match(source, /buildPublicRivalryActivity\([\s\S]*BATTLE_ARCHIVE_PAGE_SIZE/);
+  assert.match(source, /total - offset - index/);
+  assert.match(source, /data-battle-archive-pagination/);
+  assert.match(source, /Older/);
+  assert.match(source, /Newer/);
   assert.match(source, /<SpeedReadyMarker route="\/battle-archive" \/>/);
   assert.doesNotMatch(source, /loadPublicBattleArchive\(/);
+  assert.doesNotMatch(source, /limit:\s*120/);
+  assert.doesNotMatch(source, /archive\.rows,\s*120/);
 });
 
 test("archive SQL mirrors public identity and eligibility normalization", async () => {

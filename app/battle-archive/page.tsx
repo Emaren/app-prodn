@@ -13,16 +13,83 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export default async function BattleArchivePage() {
+const BATTLE_ARCHIVE_PAGE_SIZE = 24;
+
+type BattleArchivePageProps = {
+  searchParams?: Promise<{ page?: string | string[] }>;
+};
+
+function requestedPageNumber(value: string | string[] | undefined) {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const parsed = Number.parseInt(raw || "1", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function archivePageHref(page: number) {
+  return page <= 1 ? "/battle-archive" : `/battle-archive?page=${page}`;
+}
+
+function ArchivePagination({
+  page,
+  totalPages,
+  totalBattles,
+}: {
+  page: number;
+  totalPages: number;
+  totalBattles: number;
+}) {
+  if (totalPages <= 1) return null;
+
+  const first = (page - 1) * BATTLE_ARCHIVE_PAGE_SIZE + 1;
+  const last = Math.min(totalBattles, page * BATTLE_ARCHIVE_PAGE_SIZE);
+
+  return (
+    <nav
+      aria-label="Battle archive pages"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-[1.35rem] border border-white/[0.08] bg-black/20 px-4 py-3 text-sm text-slate-400"
+      data-battle-archive-pagination
+    >
+      <span className="tabular-nums">
+        {first.toLocaleString()}–{last.toLocaleString()} of {totalBattles.toLocaleString()}
+      </span>
+      <div className="flex items-center gap-2">
+        {page > 1 ? (
+          <Link
+            href={archivePageHref(page - 1)}
+            className="rounded-full border border-white/10 px-4 py-2 font-semibold text-slate-200 transition hover:border-amber-100/30 hover:text-amber-50"
+          >
+            Newer
+          </Link>
+        ) : null}
+        <span className="px-2 text-[10px] uppercase tracking-[0.2em] text-slate-600">
+          Page {page} / {totalPages}
+        </span>
+        {page < totalPages ? (
+          <Link
+            href={archivePageHref(page + 1)}
+            className="rounded-full border border-amber-100/18 bg-amber-100/[0.045] px-4 py-2 font-semibold text-amber-50/80 transition hover:border-amber-100/38 hover:bg-amber-100/[0.085]"
+          >
+            Older
+          </Link>
+        ) : null}
+      </div>
+    </nav>
+  );
+}
+
+export default async function BattleArchivePage({ searchParams }: BattleArchivePageProps) {
   const prisma = getPrisma();
+  const resolvedSearchParams = searchParams ? await searchParams : {};
+  const page = requestedPageNumber(resolvedSearchParams.page);
+  const offset = (page - 1) * BATTLE_ARCHIVE_PAGE_SIZE;
   const archive = await loadPublicBattleArchivePage(prisma, {
-    offset: 0,
-    limit: 120,
+    offset,
+    limit: BATTLE_ARCHIVE_PAGE_SIZE,
   });
   const entries = await buildPublicRivalryActivity(
     prisma,
     archive.rows,
-    120,
+    BATTLE_ARCHIVE_PAGE_SIZE,
   );
   const {
     total,
@@ -31,6 +98,7 @@ export default async function BattleArchivePage() {
     finalReplayRecords,
     excludedFinalRecords,
   } = archive;
+  const totalPages = Math.max(1, Math.ceil(total / BATTLE_ARCHIVE_PAGE_SIZE));
 
   return (
     <main
@@ -147,6 +215,14 @@ export default async function BattleArchivePage() {
           </div>
         </div>
 
+        <div className="mt-6">
+          <ArchivePagination
+            page={page}
+            totalPages={totalPages}
+            totalBattles={total}
+          />
+        </div>
+
         {entries.length === 0 ? (
           <div className="mt-6 rounded-2xl border border-white/[0.08] bg-white/[0.025] px-5 py-6 text-sm text-slate-300">
             Waiting for the first completed replay.
@@ -161,7 +237,7 @@ export default async function BattleArchivePage() {
                   vaultNumber={
                     Math.max(
                       1,
-                      total - index
+                      total - offset - index
                     )
                   }
                 />
@@ -169,6 +245,14 @@ export default async function BattleArchivePage() {
             )}
           </div>
         )}
+
+        <div className="mt-5">
+          <ArchivePagination
+            page={page}
+            totalPages={totalPages}
+            totalBattles={total}
+          />
+        </div>
       </section>
     </main>
   );
