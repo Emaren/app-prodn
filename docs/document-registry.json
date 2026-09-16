@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9720df80b4fb7a74045c324c1a3547598ee37b70047c2bfe760cb7978a567e61",
+      "sha256": "b11451d0e694af18b07946460e70f05110b077ad137a3da7c3aab80489423659",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1116,7 +1116,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "c6b2a8d4133c2f9b6cbabab84eec511f468166d85f252af47abb199bfcb85e55",
+      "sha256": "e4733438a3402ea42ab5b04774f338ae99159c0bbad4d65cd2e09af0891c34ed",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/speedos-cloudflare-safe-directory-v1",
-    "commit": "318e2c26c5f06ec42a262d559804a5894f523ee7"
+    "branch": "feature/performance-players-navigation-hotpath-v2",
+    "commit": "2e44e8de4482cf61ec0a183628a8e18c3f10ff5e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

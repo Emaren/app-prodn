@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/speedos-cloudflare-safe-directory-v1` at `318e2c26c5f06ec42a262d559804a5894f523ee7`
+Implementation baseline: `feature/performance-players-navigation-hotpath-v2` at `2e44e8de4482cf61ec0a183628a8e18c3f10ff5e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
