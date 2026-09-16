@@ -544,7 +544,15 @@ def cmd_rollback() -> dict[str, Any]:
 
 def production_source_sha() -> str:
     proc = subprocess.run(
-        ["git", "-C", str(PRODUCTION_APP_ROOT), "rev-parse", "HEAD"],
+        [
+            "git",
+            "-c",
+            f"safe.directory={PRODUCTION_APP_ROOT}",
+            "-C",
+            str(PRODUCTION_APP_ROOT),
+            "rev-parse",
+            "HEAD",
+        ],
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

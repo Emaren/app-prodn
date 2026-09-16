@@ -86,6 +86,32 @@ class CloudflareRemoteHelperTests(unittest.TestCase):
         self.assertEqual(ttl["status_code_ttl"][1]["value"], 0)
         self.assertEqual(ttl["status_code_ttl"][2]["value"], -1)
 
+    def test_production_source_sha_marks_canonical_repo_safe_for_root_git(self):
+        from unittest.mock import patch
+
+        completed = MODULE.subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout="d" * 40 + "\n",
+            stderr="",
+        )
+        with patch.object(MODULE.subprocess, "run", return_value=completed) as run:
+            self.assertEqual(MODULE.production_source_sha(), "d" * 40)
+
+        command = run.call_args.args[0]
+        self.assertEqual(
+            command,
+            [
+                "git",
+                "-c",
+                f"safe.directory={MODULE.PRODUCTION_APP_ROOT}",
+                "-C",
+                str(MODULE.PRODUCTION_APP_ROOT),
+                "rev-parse",
+                "HEAD",
+            ],
+        )
+
     def test_apply_refetches_authoritative_rule_identity_after_mutation(self):
         zone = {"id": "zone-1", "name": "aoe2war.com"}
         prior = {"id": "ruleset-1", "rules": []}
