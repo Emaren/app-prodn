@@ -515,6 +515,7 @@ function KingdomNavItem({
   activeEffectClass?: string;
 }) {
   const t = useTranslations("Shell");
+  const router = useRouter();
   const hasUnseenPageChanges = unseenPageChanges.size > 0;
   const [open, setOpen] = React.useState(false);
   const [portalReady, setPortalReady] = React.useState(false);
@@ -532,8 +533,9 @@ function KingdomNavItem({
 
   const openMenu = React.useCallback(() => {
     clearCloseTimer();
+    router.prefetch("/leaderboard");
     setOpen(true);
-  }, [clearCloseTimer]);
+  }, [clearCloseTimer, router]);
 
   const scheduleClose = React.useCallback(() => {
     desktopClickLatchRef.current = false;
@@ -716,7 +718,7 @@ function KingdomMenuPanel({
               key={item.href}
               href={item.href}
               data-presence-door={presenceDoorForHref(item.href)}
-              prefetch={false}
+              prefetch={item.href === "/leaderboard"}
               onMouseEnter={() => router.prefetch(item.href)}
               onFocus={() => router.prefetch(item.href)}
               role="menuitem"

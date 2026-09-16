@@ -321,6 +321,9 @@ export function LeaderboardPanel({
       tabIndex={0}
       aria-label={h("Open the full HD Leaderboard")}
       onClick={handlePanelClick}
+      onMouseEnter={() => router.prefetch("/leaderboard")}
+      onFocus={() => router.prefetch("/leaderboard")}
+      onPointerDown={() => router.prefetch("/leaderboard")}
       onKeyDown={handlePanelKeyDown}
       className={leaderboardPanelShellClassName}
     >
