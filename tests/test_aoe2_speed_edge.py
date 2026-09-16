@@ -254,6 +254,69 @@ class SpeedEdgeTests(unittest.TestCase):
         finally:
             MODULE.require_dynamic_release_identity = original
 
+
+    def test_dynamic_qualification_allows_matching_existing_hit_but_rejects_stale_hit(self):
+        original = MODULE.require_dynamic_release_identity
+        clock = [0.0]
+        try:
+            MODULE.require_dynamic_release_identity = lambda: self._dynamic_identity()
+
+            def monotonic():
+                return clock[0]
+
+            def sleep(seconds):
+                clock[0] += seconds
+
+            def public(route):
+                return {
+                    "available": True,
+                    "route": route,
+                    "url": MODULE.PUBLIC_BASE + route,
+                    "effective_url": MODULE.PUBLIC_BASE + route,
+                    "http_status": 200,
+                    "content_type": "text/html; charset=utf-8",
+                    "set_cookie": False,
+                    "body_sha256": "e" * 64,
+                    "cf_cache_status": "HIT",
+                }
+
+            def origin(route):
+                row = public(route)
+                row["url"] = MODULE.speed.ORIGIN_BASE + route
+                row["effective_url"] = MODULE.speed.ORIGIN_BASE + route
+                row["cf_cache_status"] = None
+                return row
+
+            result = MODULE.qualify_dynamic_edge(
+                self._dynamic_source_inventory(),
+                public_probe=public,
+                origin_probe=origin,
+                sleep_fn=sleep,
+                monotonic_fn=monotonic,
+            )
+            self.assertTrue(result["all_qualified"])
+
+            def stale_origin(route):
+                row = origin(route)
+                if route == "/academy":
+                    row["body_sha256"] = "f" * 64
+                return row
+
+            clock[0] = 0.0
+            stale = MODULE.qualify_dynamic_edge(
+                self._dynamic_source_inventory(),
+                public_probe=public,
+                origin_probe=stale_origin,
+                sleep_fn=sleep,
+                monotonic_fn=monotonic,
+            )
+            academy = next(row for row in stale["rows"] if row["route"] == "/academy")
+            self.assertFalse(stale["all_qualified"])
+            self.assertFalse(academy["qualified"])
+            self.assertTrue(any("public/origin byte equality failed" in reason for reason in academy["reasons"]))
+        finally:
+            MODULE.require_dynamic_release_identity = original
+
     def test_dynamic_qualification_holds_route_when_origin_changes_within_ttl(self):
         original = MODULE.require_dynamic_release_identity
         clock = [0.0]
