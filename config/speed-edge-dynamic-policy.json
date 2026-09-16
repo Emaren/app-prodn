@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "kind": "aoe2war-speedos-dynamic-edge-policy",
+  "routes": [
+    {
+      "route": "/academy",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public academy snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window."
+    },
+    {
+      "route": "/champions",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public champion snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window."
+    },
+    {
+      "route": "/national-champions",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public national-title snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window."
+    }
+  ]
+}

@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import os
+import subprocess
 import sys
 import urllib.error
 import urllib.parse
@@ -17,10 +18,15 @@ API_BASE = "https://api.cloudflare.com/client/v4"
 ZONE_NAME = "aoe2war.com"
 PHASE = "http_request_cache_settings"
 RULE_DESCRIPTION = "AOE2WAR SpeedOS exact public HTML v1"
+DYNAMIC_RULE_DESCRIPTION = "AOE2WAR SpeedOS qualified dynamic HTML v1"
 SESSION_COOKIE_NAME = "aoe2hdbets_session"
+DYNAMIC_ALLOWED_ROUTES = ("/academy", "/champions", "/national-champions")
 STATE = Path("/var/lib/aoe2war-speedos/cloudflare")
 REQUEST = STATE / "request.json"
 LAST_APPLY = STATE / "last-apply.json"
+DYNAMIC_REQUEST = STATE / "dynamic-request.json"
+LAST_DYNAMIC_APPLY = STATE / "last-dynamic-apply.json"
+PRODUCTION_APP_ROOT = Path("/var/www/AoE2HDBets/app-prodn")
 
 
 class CloudflareError(RuntimeError):
@@ -136,6 +142,20 @@ def canonical_expression(routes: list[str], cookie_names: list[str]) -> str:
     )
 
 
+def canonical_dynamic_expression(routes: list[str], cookie_names: list[str]) -> str:
+    quoted = " ".join(json.dumps(path) for path in routes)
+    cookie_bypass = " and ".join(
+        f'not http.cookie contains "{name}="' for name in cookie_names
+    )
+    return (
+        '(http.host eq "aoe2war.com" and '
+        'http.request.method in {"GET" "HEAD"} and '
+        'http.request.uri.query eq "" and '
+        f'{cookie_bypass} and '
+        f'http.request.uri.path in {{{quoted}}})'
+    )
+
+
 def is_lower_hex(value: Any, length: int) -> bool:
     text = str(value or "")
     return len(text) == length and all(ch in "0123456789abcdef" for ch in text)
@@ -202,6 +222,85 @@ def validate_request(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def validate_dynamic_request(payload: dict[str, Any]) -> dict[str, Any]:
+    if payload.get("schema") != 1:
+        raise CloudflareError("unsupported dynamic apply request schema")
+    if payload.get("kind") != "aoe2war-speedos-cloudflare-dynamic-apply-request":
+        raise CloudflareError("invalid dynamic apply request kind")
+    if payload.get("zone_name") != ZONE_NAME:
+        raise CloudflareError("dynamic apply request targets the wrong zone")
+
+    routes = payload.get("eligible_exact_routes") or []
+    if (
+        not isinstance(routes, list)
+        or not routes
+        or routes != sorted(set(routes))
+        or any(route not in DYNAMIC_ALLOWED_ROUTES for route in routes)
+    ):
+        raise CloudflareError("dynamic apply request contains unauthorized routes")
+
+    cookie_names = payload.get("cookie_bypass_names") or []
+    if (
+        not isinstance(cookie_names, list)
+        or not cookie_names
+        or cookie_names != sorted(set(cookie_names))
+        or SESSION_COOKIE_NAME not in cookie_names
+        or any(
+            not isinstance(name, str)
+            or not name
+            or len(name) > 128
+            or any(not (ch.isalnum() or ch in "_-.") for ch in name)
+            for name in cookie_names
+        )
+    ):
+        raise CloudflareError("dynamic apply request has an invalid cookie-bypass contract")
+
+    ttl = int(payload.get("edge_ttl_seconds") or 0)
+    if ttl != 30:
+        raise CloudflareError("dynamic edge TTL must be exactly 30 seconds")
+
+    expression = str(payload.get("expression") or "").strip()
+    if expression != canonical_dynamic_expression(routes, cookie_names):
+        raise CloudflareError("dynamic expression does not exactly match bounded request metadata")
+
+    for key, length in (
+        ("plan_sha256", 64),
+        ("policy_sha256", 64),
+        ("qualification_sha256", 64),
+        ("operator_source_sha", 40),
+    ):
+        if not is_lower_hex(payload.get(key), length):
+            raise CloudflareError(f"dynamic request {key} is invalid")
+    return {
+        **payload,
+        "expression": expression,
+        "edge_ttl_seconds": ttl,
+        "eligible_exact_routes": routes,
+        "cookie_bypass_names": cookie_names,
+    }
+
+
+def desired_dynamic_rule(request: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "action": "set_cache_settings",
+        "action_parameters": {
+            "cache": True,
+            "edge_ttl": {
+                "mode": "override_origin",
+                "default": 0,
+                "status_code_ttl": [
+                    {"status_code_range": {"from": 200, "to": 299}, "value": 30},
+                    {"status_code_range": {"from": 300, "to": 499}, "value": 0},
+                    {"status_code_range": {"from": 500, "to": 999}, "value": -1},
+                ],
+            },
+        },
+        "expression": request["expression"],
+        "description": DYNAMIC_RULE_DESCRIPTION,
+        "enabled": True,
+    }
+
+
 def desired_rule(request: dict[str, Any]) -> dict[str, Any]:
     ttl = request["edge_ttl_seconds"]
     return {
@@ -253,15 +352,23 @@ def cmd_snapshot() -> dict[str, Any]:
     }
 
 
-def find_speedos_rule(ruleset: dict[str, Any] | None) -> dict[str, Any] | None:
+def find_rule(ruleset: dict[str, Any] | None, description: str) -> dict[str, Any] | None:
     return next(
         (
             rule
             for rule in ((ruleset or {}).get("rules") or [])
-            if rule.get("description") == RULE_DESCRIPTION
+            if rule.get("description") == description
         ),
         None,
     )
+
+
+def find_speedos_rule(ruleset: dict[str, Any] | None) -> dict[str, Any] | None:
+    return find_rule(ruleset, RULE_DESCRIPTION)
+
+
+def find_dynamic_rule(ruleset: dict[str, Any] | None) -> dict[str, Any] | None:
+    return find_rule(ruleset, DYNAMIC_RULE_DESCRIPTION)
 
 
 def write_apply_record(record: dict[str, Any]) -> None:
@@ -434,9 +541,159 @@ def cmd_rollback() -> dict[str, Any]:
     return rollback_record(record, zone)
 
 
+
+def production_source_sha() -> str:
+    proc = subprocess.run(
+        ["git", "-C", str(PRODUCTION_APP_ROOT), "rev-parse", "HEAD"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        timeout=10,
+    )
+    value = proc.stdout.strip().lower()
+    if proc.returncode != 0 or not is_lower_hex(value, 40):
+        raise CloudflareError("cannot prove current production source SHA")
+    return value
+
+def write_dynamic_apply_record(record: dict[str, Any]) -> None:
+    STATE.mkdir(parents=True, exist_ok=True)
+    LAST_DYNAMIC_APPLY.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    os.chmod(LAST_DYNAMIC_APPLY, 0o600)
+
+
+def rollback_dynamic_record(record: dict[str, Any], zone: dict[str, Any]) -> dict[str, Any]:
+    if record.get("schema") != 1 or record.get("kind") != "aoe2war-speedos-cloudflare-dynamic-apply-record":
+        raise CloudflareError("dynamic rollback refuses legacy or unrecognized apply record")
+    if zone["id"] != record.get("zone_id"):
+        raise CloudflareError("dynamic rollback zone identity mismatch")
+    current = phase_ruleset(zone["id"])
+    if not current:
+        raise CloudflareError("dynamic rollback cannot find cache ruleset")
+    prior = record.get("prior_dynamic_rule")
+    prior_id = record.get("prior_dynamic_rule_id")
+    current_dynamic = find_dynamic_rule(current)
+    if prior:
+        if not prior_id:
+            raise CloudflareError("dynamic rollback lacks prior rule identity")
+        restored = api(
+            "PATCH",
+            f"/zones/{zone['id']}/rulesets/{current['id']}/rules/{prior_id}",
+            prior,
+            allow_404=True,
+        )
+        if restored is None:
+            api("POST", f"/zones/{zone['id']}/rulesets/{current['id']}/rules", prior)
+            action = "recreated_prior_dynamic_rule"
+        else:
+            action = "restored_prior_dynamic_rule"
+    elif current_dynamic:
+        api("DELETE", f"/zones/{zone['id']}/rulesets/{current['id']}/rules/{current_dynamic['id']}")
+        action = "deleted_created_dynamic_rule"
+    else:
+        action = "no_dynamic_rule_present"
+    record["state"] = "rolled_back"
+    record["rolled_back_at"] = now()
+    record["rollback_action"] = action
+    write_dynamic_apply_record(record)
+    return {"ok": True, "command": "rollback-dynamic", "action": action, "snapshot": record.get("snapshot")}
+
+
+def cmd_apply_dynamic() -> dict[str, Any]:
+    request = validate_dynamic_request(json.loads(DYNAMIC_REQUEST.read_text()))
+    live_source = production_source_sha()
+    if request["operator_source_sha"] != live_source:
+        raise CloudflareError("dynamic apply request source SHA does not match production")
+    zone = resolve_zone()
+    snapshot_path, prior_ruleset = snapshot(zone)
+    if not prior_ruleset:
+        raise CloudflareError("dynamic apply requires an existing cache ruleset")
+    if not find_speedos_rule(prior_ruleset):
+        raise CloudflareError("dynamic apply requires the certified static SpeedOS rule")
+    prior_dynamic = find_dynamic_rule(prior_ruleset)
+    record = {
+        "schema": 1,
+        "kind": "aoe2war-speedos-cloudflare-dynamic-apply-record",
+        "generated_at": now(),
+        "state": "prepared",
+        "zone_id": zone["id"],
+        "zone_name": zone["name"],
+        "snapshot": str(snapshot_path),
+        "ruleset_id": prior_ruleset["id"],
+        "prior_dynamic_rule_id": (prior_dynamic or {}).get("id"),
+        "prior_dynamic_rule": safe_rule(prior_dynamic),
+        "request_sha256": hashlib.sha256(DYNAMIC_REQUEST.read_bytes()).hexdigest(),
+        "plan_sha256": request["plan_sha256"],
+        "policy_sha256": request["policy_sha256"],
+        "qualification_sha256": request["qualification_sha256"],
+        "edge_ttl_seconds": 30,
+        "eligible_route_count": len(request["eligible_exact_routes"]),
+    }
+    write_dynamic_apply_record(record)
+    try:
+        rule = desired_dynamic_rule(request)
+        if prior_dynamic:
+            api("PATCH", f"/zones/{zone['id']}/rulesets/{prior_ruleset['id']}/rules/{prior_dynamic['id']}", rule)
+        else:
+            api("POST", f"/zones/{zone['id']}/rulesets/{prior_ruleset['id']}/rules", rule)
+        current = phase_ruleset(zone["id"])
+        dynamic = find_dynamic_rule(current)
+        if not current or not dynamic:
+            raise CloudflareError("dynamic apply did not produce a readable dynamic SpeedOS rule")
+        if not find_speedos_rule(current):
+            raise CloudflareError("dynamic apply lost the static SpeedOS rule")
+        record.update({
+            "state": "applied",
+            "applied_at": now(),
+            "rule_id": dynamic["id"],
+        })
+        write_dynamic_apply_record(record)
+    except Exception as exc:
+        try:
+            rollback = rollback_dynamic_record(record, zone)
+        except Exception as rollback_exc:
+            record["state"] = "rollback_failed"
+            record["apply_error"] = str(exc)
+            record["rollback_error"] = str(rollback_exc)
+            write_dynamic_apply_record(record)
+            raise CloudflareError(
+                f"dynamic apply failed and rollback also failed: apply={exc}; rollback={rollback_exc}"
+            ) from None
+        record["state"] = "rolled_back_after_apply_failure"
+        record["apply_error"] = str(exc)
+        record["rollback_action"] = rollback["action"]
+        write_dynamic_apply_record(record)
+        raise CloudflareError(
+            f"dynamic apply failed after prepare; rollback completed ({rollback['action']}): {exc}"
+        ) from None
+    return {
+        "ok": True,
+        "command": "apply-dynamic",
+        "rule_id_suffix": str(record["rule_id"])[-8:],
+        "edge_ttl_seconds": 30,
+        "eligible_route_count": record["eligible_route_count"],
+        "snapshot": str(snapshot_path),
+    }
+
+
+def cmd_rollback_dynamic() -> dict[str, Any]:
+    if not LAST_DYNAMIC_APPLY.exists():
+        raise CloudflareError("no dynamic Cloudflare apply record exists to roll back")
+    record = json.loads(LAST_DYNAMIC_APPLY.read_text())
+    zone = resolve_zone()
+    if str(record.get("state") or "").startswith("rolled_back"):
+        return {
+            "ok": True,
+            "command": "rollback-dynamic",
+            "action": "already_rolled_back",
+            "snapshot": record.get("snapshot"),
+        }
+    return rollback_dynamic_record(record, zone)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(prog="aoe2war-speedos-cloudflare")
-    parser.add_argument("command", choices=["verify", "snapshot", "apply", "rollback"])
+    parser.add_argument("command", choices=["verify", "snapshot", "apply", "rollback", "apply-dynamic", "rollback-dynamic"])
     args = parser.parse_args()
     try:
         result = {
@@ -444,6 +701,8 @@ def main() -> int:
             "snapshot": cmd_snapshot,
             "apply": cmd_apply,
             "rollback": cmd_rollback,
+            "apply-dynamic": cmd_apply_dynamic,
+            "rollback-dynamic": cmd_rollback_dynamic,
         }[args.command]()
     except (CloudflareError, OSError, ValueError, json.JSONDecodeError) as exc:
         print(json.dumps({"ok": False, "command": args.command, "error": str(exc)}))

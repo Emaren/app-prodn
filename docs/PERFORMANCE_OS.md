@@ -152,6 +152,41 @@ headers. Until the Cloudflare token also has explicit Cache Purge authority, edg
 TTL is capped at 300 seconds and non-2xx responses are not retained. Longer-lived
 edge caching requires deployment-integrated purge proof first.
 
+### Qualified dynamic HTML lane
+
+`anonymous_dynamic_candidate_review` is no longer a dead-end classification. A
+separate fail-closed lane can promote an explicitly governed subset without weakening
+the static cache rule. `config/speed-edge-dynamic-policy.json` is the source-controlled
+staleness authority; V1 authorizes only `/academy`, `/champions` and
+`/national-champions`, exactly 30 seconds, empty-query HTML only.
+
+`aoe2war speed edge qualify-dynamic` is observational. It is allowed to run only from
+a clean `main` worktree when production SHA, GitHub `main`, operator source SHA and
+CERTIFIED release identity are exact. For each authorized route it samples public
+Cloudflare HTML and direct loopback-origin HTML at t=0/15/30 seconds. Bodies are not
+normalized: decoded bytes are SHA-256 compared exactly. Every public and origin
+response must remain HTTP 200 HTML, emit no `Set-Cookie`, and produce one identical
+body hash across the full TTL window. A pre-existing edge HIT also blocks
+qualification so stale cache cannot masquerade as origin equivalence.
+
+`plan-dynamic` consumes only a current all-PASS qualification receipt and binds the
+plan to the policy SHA, qualification SHA, exact release/source identity, cookie
+bypass census and the independent 30-second rule. `apply-dynamic` stages a separate
+root request and can mutate only the independent Cloudflare rule
+`AOE2WAR SpeedOS qualified dynamic HTML v1`. The root helper has its own hardcoded
+three-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
+requires the existing certified static SpeedOS rule, and proves the request source SHA
+against the live production checkout before touching Cloudflare.
+
+Post-apply proof is intentionally broader than the new rule: every qualified
+empty-query anonymous route must converge to HIT; every known AoE2WAR cookie, RSC
+request, arbitrary query and `/api/deployment-version` must stay outside shared cache;
+and the complete existing static exact-route cohort must remain HIT. Any failure calls
+`rollback-dynamic`, which restores/removes only the dynamic rule and never uses the
+static rollback record. The first live qualification must therefore be rerun after
+this controller itself is merged, released and certified; development-time proofs do
+not authorize mutation.
+
 ## Edge-cache safety classification
 
 Speed OS never equates "delivery dominated" with "safe to cache." The source
