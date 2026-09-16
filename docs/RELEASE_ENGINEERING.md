@@ -66,9 +66,41 @@ disagree, stop and reconcile them before production mutation.
     release state without conversational memory.
 15. Dependency-contract changes are supported only by the candidate-owned
     dependency lane: frozen-lockfile network fetch with lifecycle scripts
-    disabled, then lifecycle/build work in the offline/private sandbox.
-    Candidate `node_modules` is hash-bound, staged beside live, atomically
-    activated with `.next`, and rolled back as one runtime bundle.
+    disabled, then lifecycle/build work in the offline/private sandbox. The
+    equal-length candidate worktree remains root-local for deterministic Next
+    path relocation, while the disposable Yarn package cache is bind-mounted
+    from the governed mounted-volume build scratch. Candidate `node_modules` is
+    hash-bound, staged beside live, atomically activated with `.next`, and rolled
+    back as one runtime bundle. Root and mounted-volume capacity are preflighted
+    independently before candidate materialization.
+16. Before operational Doctor/staging, Finish reconciles the source-controlled
+    build/dependency sandbox units and SpeedOS Cloudflare helper/unit onto the
+    VPS through the inherited root release channel. Installation is hash-bound,
+    atomically replaced, daemon-reloaded without service restart, Wolo-guarded,
+    and durably receipted. The build-scratch parent is root-created but owned by
+    the unprivileged release user with mode `0750`.
+
+## Root control assets and mounted build scratch
+
+`aoe2war finish` owns the root-controlled release helpers needed by staging.
+Under the inherited global release lease it converges the exact source bytes for
+`aoe2war-build@.service`, `aoe2war-deps@.service`, the SpeedOS Cloudflare helper
+and its one-shot unit, then proves Wolo PID/restart/listener continuity before
+Doctor proceeds. This reconciliation never starts or restarts those helpers.
+
+The isolated release worktree remains `/tmp/aoe2war-stage-<instance>` because
+Next embeds absolute project paths and the disposable path must match the live
+repository byte length. Only `.yarn-cache` is moved off root: each sandbox gets a
+unit-private bind mount from
+`/mnt/HC_Volume_105319120/aoe2war/build-scratch/<instance>`. The original mounted
+volume path remains inaccessible inside both sandboxes, so package/build code can
+see the cache mount but cannot browse rollback, receipt, replay or other volume
+evidence. The outer stage transaction creates and removes the per-instance cache
+and its failure trap cleans it on every exit.
+
+Stage preflight records independent root and volume headroom requirements. A
+completed stage receipt must prove `dependency_cache_on_volume=1` and record the
+observed package-cache size.
 
 ## Operator command surface
 

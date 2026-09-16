@@ -24,6 +24,7 @@ RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 # Writable only inside the disposable detached worktree.
 ProtectSystem=strict
 ReadWritePaths=/tmp/aoe2war-stage-%i
+BindPaths=/mnt/HC_Volume_105319120/aoe2war/build-scratch/%i:/tmp/aoe2war-stage-%i/.yarn-cache
 ProtectHome=yes
 InaccessiblePaths=/etc/aoe2hdbets
 InaccessiblePaths=/mnt/HC_Volume_105319120

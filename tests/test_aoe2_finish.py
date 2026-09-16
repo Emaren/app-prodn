@@ -651,6 +651,118 @@ class MaintenanceRunnerHandoffTests(unittest.TestCase):
 
 
 
+class RootControlAssetReconciliationTests(unittest.TestCase):
+    def test_root_control_assets_run_before_operational_doctor(self):
+        import inspect
+        source = inspect.getsource(MODULE.execute_finish)
+        self.assertIn('"root_control_asset_reconciliation"', source)
+        self.assertIn("reconcile_root_control_assets", source)
+        self.assertLess(
+            source.index('"maintenance_runner_reconciliation"'),
+            source.index('"root_control_asset_reconciliation"'),
+        )
+        self.assertLess(
+            source.index('"root_control_asset_reconciliation"'),
+            source.index('"operational_preflight"'),
+        )
+
+    def test_root_control_reconciliation_is_lease_serialized_and_wolo_guarded(self):
+        import inspect
+        source = inspect.getsource(MODULE.reconcile_root_control_assets)
+        self.assertIn("GLOBAL_LEASE_ENV", source)
+        self.assertIn("GLOBAL_LEASE_OWNER_ENV", source)
+        self.assertIn('exec 8<>"$RELEASE_LOCK"', source)
+        self.assertIn('exec 7<>"$RETENTION_LOCK"', source)
+        self.assertIn('exec 9<>"$ARCHIVE_LOCK"', source)
+        self.assertIn('test "$(listener_count 8092)" = "1"', source)
+        self.assertIn('test "$(listener_count 8093)" = "1"', source)
+        self.assertIn('test "$PID_AFTER" = "$PID_BEFORE"', source)
+        self.assertIn('test "$RESTART_AFTER" = "$RESTART_BEFORE"', source)
+        self.assertIn('test "$H2" -gt "$H1"', source)
+        self.assertIn("systemctl daemon-reload", source)
+        self.assertNotIn("systemctl restart", source)
+
+    def test_root_control_contract_names_exact_assets_and_volume_scratch(self):
+        contract_path = pathlib.Path(__file__).resolve().parents[1] / "config" / "aoe2war-operations.json"
+        contract = MODULE.json.loads(contract_path.read_text(encoding="utf-8"))
+        finish = contract["finish"]
+        self.assertIs(finish["auto_root_control_asset_reconcile"], True)
+        assets = {(a["source"], a["installed"], a["mode"], a["kind"]) for a in finish["root_control_assets"]}
+        self.assertEqual(
+            assets,
+            {
+                ("deploy/aoe2war-build@.service", "/etc/systemd/system/aoe2war-build@.service", "0644", "systemd-unit"),
+                ("deploy/aoe2war-deps@.service", "/etc/systemd/system/aoe2war-deps@.service", "0644", "systemd-unit"),
+                ("scripts/aoe2_speed_cloudflare_remote.py", "/usr/local/bin/aoe2war-speedos-cloudflare", "0755", "python-helper"),
+                ("deploy/aoe2war-speedos-cloudflare@.service", "/etc/systemd/system/aoe2war-speedos-cloudflare@.service", "0644", "systemd-unit"),
+            },
+        )
+        self.assertEqual(
+            finish["release_build_scratch"],
+            {
+                "path": "/mnt/HC_Volume_105319120/aoe2war/build-scratch",
+                "owner": "tony",
+                "group": "tony",
+                "mode": "0750",
+            },
+        )
+
+    def test_root_control_reconciliation_renders_payload_and_requires_receipt(self):
+        completed = mock.Mock(
+            returncode=0,
+            stdout=(
+                "status\tUPDATED\n"
+                "asset_count\t4\n"
+                "updated_count\t4\n"
+                "receipt_path\t"
+                "/mnt/control/root-control-asset-sync-receipts/test.json\n"
+            ),
+        )
+        with patch.object(MODULE, "git_output", return_value="a" * 40), patch.dict(
+            MODULE.os.environ,
+            {
+                MODULE.aoe2_release.GLOBAL_LEASE_ENV: "lease-token",
+                MODULE.aoe2_release.GLOBAL_LEASE_OWNER_ENV: "4242",
+            },
+            clear=False,
+        ), patch.object(MODULE.subprocess, "run", return_value=completed) as run_remote:
+            result = MODULE.reconcile_root_control_assets(
+                progress=MODULE.Progress(enabled=False),
+            )
+
+        self.assertEqual(result["status"], "UPDATED")
+        self.assertEqual(result["asset_count"], "4")
+        call = run_remote.call_args
+        payload = MODULE.json.loads(call.kwargs["input"])
+        self.assertEqual(payload["kind"], "aoe2war-root-control-assets")
+        self.assertEqual(len(payload["assets"]), 4)
+        self.assertEqual(
+            payload["scratch"]["path"],
+            "/mnt/HC_Volume_105319120/aoe2war/build-scratch",
+        )
+        self.assertTrue(all(len(a["sha256"]) == 64 for a in payload["assets"]))
+        command = call.args[0][-1]
+        self.assertIn("systemd-analyze", command)
+        self.assertIn("root-control-asset-sync-receipts", command)
+        self.assertIn("release lease ownership mismatch", command)
+
+    def test_root_control_reconciliation_refuses_without_inherited_lease(self):
+        with patch.dict(
+            MODULE.os.environ,
+            {
+                MODULE.aoe2_release.GLOBAL_LEASE_ENV: "",
+                MODULE.aoe2_release.GLOBAL_LEASE_OWNER_ENV: "",
+            },
+            clear=False,
+        ):
+            with self.assertRaisesRegex(MODULE.FinishError, "requires the canonical release lease"):
+                MODULE.reconcile_root_control_assets(
+                    progress=MODULE.Progress(enabled=False),
+                )
+
+
+
+
 class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
     def contract(self):
         return {

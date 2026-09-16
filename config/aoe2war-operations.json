@@ -140,7 +140,40 @@
     },
     "auto_root_headroom_recovery": true,
     "root_headroom_journal_limit_mib": 100,
-    "auto_maintenance_runner_reconcile": true
+    "auto_maintenance_runner_reconcile": true,
+    "auto_root_control_asset_reconcile": true,
+    "root_control_assets": [
+      {
+        "source": "deploy/aoe2war-build@.service",
+        "installed": "/etc/systemd/system/aoe2war-build@.service",
+        "mode": "0644",
+        "kind": "systemd-unit"
+      },
+      {
+        "source": "deploy/aoe2war-deps@.service",
+        "installed": "/etc/systemd/system/aoe2war-deps@.service",
+        "mode": "0644",
+        "kind": "systemd-unit"
+      },
+      {
+        "source": "scripts/aoe2_speed_cloudflare_remote.py",
+        "installed": "/usr/local/bin/aoe2war-speedos-cloudflare",
+        "mode": "0755",
+        "kind": "python-helper"
+      },
+      {
+        "source": "deploy/aoe2war-speedos-cloudflare@.service",
+        "installed": "/etc/systemd/system/aoe2war-speedos-cloudflare@.service",
+        "mode": "0644",
+        "kind": "systemd-unit"
+      }
+    ],
+    "release_build_scratch": {
+      "path": "/mnt/HC_Volume_105319120/aoe2war/build-scratch",
+      "owner": "tony",
+      "group": "tony",
+      "mode": "0750"
+    }
   },
   "semantic_maps": {
     "required_terms": [

@@ -942,6 +942,299 @@ printf 'wolo_height_after\t%s\n' "$H4"
     return result
 
 
+
+def reconcile_root_control_assets(
+    *,
+    progress: Progress,
+) -> dict[str, Any]:
+    """Converge inert root-owned release/SpeedOS control assets before Doctor/stage."""
+    contract = aoe2_doctor.load_contract()
+    finish = contract.get("finish") or {}
+    if not bool(finish.get("auto_root_control_asset_reconcile", False)):
+        return {"status": "DISABLED"}
+
+    raw_assets = finish.get("root_control_assets") or []
+    scratch = finish.get("release_build_scratch") or {}
+    canonical = contract.get("canonical") or {}
+    archive = contract.get("rollback_archive") or {}
+    release_lock = str(canonical.get("global_release_lock") or "")
+    retention_lock = str(
+        (contract.get("storage_retention") or {}).get("lock_path") or ""
+    )
+    archive_lock = str(archive.get("lock_path") or "")
+    control_store = str(canonical.get("control_store") or "")
+    wolo_service = str((contract.get("maintenance_safety") or {}).get("wolo_service") or "")
+
+    if not raw_assets or not release_lock or not retention_lock or not archive_lock or not control_store or not wolo_service:
+        raise FinishError("root control-asset reconciliation contract is incomplete")
+
+    allowed_kinds = {"systemd-unit", "python-helper"}
+    assets: list[dict[str, Any]] = []
+    for item in raw_assets:
+        source_rel = str(item.get("source") or "")
+        installed = str(item.get("installed") or "")
+        mode = str(item.get("mode") or "")
+        kind = str(item.get("kind") or "")
+        if not source_rel or not installed.startswith("/") or mode not in {"0644", "0755"} or kind not in allowed_kinds:
+            raise FinishError("root control-asset entry is invalid")
+        source = (ROOT / source_rel).resolve()
+        try:
+            source.relative_to(ROOT.resolve())
+        except ValueError as exc:
+            raise FinishError(f"root control-asset source escapes repository: {source_rel}") from exc
+        if not source.is_file():
+            raise FinishError(f"root control-asset source is missing: {source_rel}")
+        content = source.read_text(encoding="utf-8")
+        if kind == "python-helper":
+            compile(content, str(source), "exec")
+        assets.append(
+            {
+                "source": source_rel,
+                "installed": installed,
+                "mode": mode,
+                "kind": kind,
+                "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest(),
+                "content": content,
+            }
+        )
+
+    scratch_path = str(scratch.get("path") or "")
+    scratch_owner = str(scratch.get("owner") or "")
+    scratch_group = str(scratch.get("group") or "")
+    scratch_mode = str(scratch.get("mode") or "")
+    volume_mount = str(canonical.get("volume_mount") or "")
+    if (
+        not scratch_path.startswith(volume_mount.rstrip("/") + "/")
+        or scratch_owner != "tony"
+        or scratch_group != "tony"
+        or scratch_mode != "0750"
+    ):
+        raise FinishError("release build-scratch contract is invalid")
+
+    release_sha = git_output("rev-parse", "HEAD")
+    lease_token = os.getenv(aoe2_release.GLOBAL_LEASE_ENV, "").strip()
+    lease_owner_pid = os.getenv(aoe2_release.GLOBAL_LEASE_OWNER_ENV, "").strip()
+    if not lease_token or not lease_owner_pid.isdigit():
+        raise FinishError(
+            "root control-asset reconciliation requires the canonical release lease"
+        )
+
+    payload = {
+        "schema": 1,
+        "kind": "aoe2war-root-control-assets",
+        "release_sha": release_sha,
+        "assets": assets,
+        "scratch": {
+            "path": scratch_path,
+            "owner": scratch_owner,
+            "group": scratch_group,
+            "mode": scratch_mode,
+        },
+    }
+    receipt_root = control_store.rstrip("/") + "/root-control-asset-sync-receipts"
+    release_meta = release_lock + ".meta"
+    q = shlex.quote
+    remote = f"""
+set -euo pipefail
+RELEASE_SHA={q(release_sha)}
+RELEASE_LOCK={q(release_lock)}
+RELEASE_META={q(release_meta)}
+LEASE_TOKEN={q(lease_token)}
+LEASE_OWNER_PID={q(lease_owner_pid)}
+RETENTION_LOCK={q(retention_lock)}
+ARCHIVE_LOCK={q(archive_lock)}
+RECEIPT_ROOT={q(receipt_root)}
+WOLO_SERVICE={q(wolo_service)}
+PAYLOAD="$(mktemp /tmp/aoe2war-root-assets.XXXXXX)"
+RESULT="$(mktemp /tmp/aoe2war-root-assets-result.XXXXXX)"
+trap 'rm -f "$PAYLOAD" "$RESULT"' EXIT
+cat > "$PAYLOAD"
+
+listener_count() {{
+  ss -ltnH "sport = :$1" | awk 'NF {{n++}} END {{print n+0}}'
+}}
+height_now() {{
+  curl -fsS --max-time 4 http://127.0.0.1:27657/status | python3 -c '
+import json,sys
+p=json.load(sys.stdin)
+s=p["result"]["sync_info"]
+if bool(s.get("catching_up")):
+    raise SystemExit(41)
+print(int(s["latest_block_height"]))
+'
+}}
+
+test -f "$RELEASE_LOCK"
+exec 8<>"$RELEASE_LOCK"
+if flock -n 8; then
+  flock -u 8
+  echo "STOP: canonical release lease is unexpectedly free" >&2
+  exit 75
+fi
+python3 - "$RELEASE_META" "$LEASE_TOKEN" "$LEASE_OWNER_PID" <<'PYLEASE'
+import json,sys
+from pathlib import Path
+meta,token,pid=sys.argv[1:]
+p=json.loads(Path(meta).read_text())
+if p.get("token") != token or str(p.get("pid")) != pid:
+    raise SystemExit("release lease ownership mismatch")
+PYLEASE
+exec 7<>"$RETENTION_LOCK"
+flock -w 15 7
+exec 9<>"$ARCHIVE_LOCK"
+flock -w 15 9
+
+test "$(systemctl is-active "$WOLO_SERVICE")" = "active"
+test "$(listener_count 8092)" = "1"
+test "$(listener_count 8093)" = "1"
+PID_BEFORE="$(systemctl show "$WOLO_SERVICE" -p MainPID --value)"
+RESTART_BEFORE="$(systemctl show "$WOLO_SERVICE" -p NRestarts --value)"
+H1="$(height_now)"
+
+python3 - "$PAYLOAD" "$RESULT" <<'PYASSETS'
+import hashlib,json,os,pwd,grp,sys,tempfile
+from pathlib import Path
+payload_path,result_path=sys.argv[1:]
+payload=json.loads(Path(payload_path).read_text())
+if payload.get("schema") != 1 or payload.get("kind") != "aoe2war-root-control-assets":
+    raise SystemExit("invalid root-control payload")
+changed=[]
+rows=[]
+for asset in payload.get("assets") or []:
+    target=Path(asset["installed"])
+    content=asset["content"].encode()
+    expected=asset["sha256"]
+    if hashlib.sha256(content).hexdigest() != expected:
+        raise SystemExit(f"source digest mismatch: {{asset['source']}}")
+    mode=int(asset["mode"],8)
+    current=None
+    if target.is_file():
+        current=hashlib.sha256(target.read_bytes()).hexdigest()
+    if current != expected:
+        target.parent.mkdir(parents=True,exist_ok=True)
+        fd,tmp_name=tempfile.mkstemp(prefix=target.name+".partial.",dir=str(target.parent))
+        try:
+            with os.fdopen(fd,"wb") as handle:
+                handle.write(content)
+                handle.flush()
+                os.fsync(handle.fileno())
+            if asset["kind"] == "python-helper":
+                compile(content.decode(), asset["source"], "exec")
+            os.chown(tmp_name,0,0)
+            os.chmod(tmp_name,mode)
+            os.replace(tmp_name,target)
+        finally:
+            if os.path.exists(tmp_name):
+                os.unlink(tmp_name)
+        changed.append(asset["installed"])
+    actual=hashlib.sha256(target.read_bytes()).hexdigest()
+    st=target.stat()
+    if actual != expected or st.st_uid != 0 or st.st_gid != 0 or (st.st_mode & 0o777) != mode:
+        raise SystemExit(f"installed control asset mismatch: {{target}}")
+    rows.append({{"path":str(target),"sha256":actual,"mode":oct(mode),"changed":asset["installed"] in changed}})
+
+scratch=payload["scratch"]
+sp=Path(scratch["path"])
+sp.mkdir(parents=True,exist_ok=True)
+uid=pwd.getpwnam(scratch["owner"]).pw_uid
+gid=grp.getgrnam(scratch["group"]).gr_gid
+os.chown(sp,uid,gid)
+os.chmod(sp,int(scratch["mode"],8))
+st=sp.stat()
+if st.st_uid != uid or st.st_gid != gid or (st.st_mode & 0o777) != int(scratch["mode"],8):
+    raise SystemExit("release build-scratch metadata mismatch")
+Path(result_path).write_text(json.dumps({{"assets":rows,"changed":changed,"scratch":scratch}},sort_keys=True))
+PYASSETS
+
+# Parse/validate all systemd unit files before reloading manager state.
+python3 - "$PAYLOAD" <<'PYUNITS'
+import json,subprocess,sys
+from pathlib import Path
+p=json.loads(Path(sys.argv[1]).read_text())
+for a in p.get("assets") or []:
+    if a.get("kind") == "systemd-unit":
+        subprocess.run(["systemd-analyze","verify",a["installed"]],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.PIPE,text=True)
+PYUNITS
+systemctl daemon-reload
+
+test "$(systemctl is-active "$WOLO_SERVICE")" = "active"
+test "$(listener_count 8092)" = "1"
+test "$(listener_count 8093)" = "1"
+PID_AFTER="$(systemctl show "$WOLO_SERVICE" -p MainPID --value)"
+RESTART_AFTER="$(systemctl show "$WOLO_SERVICE" -p NRestarts --value)"
+test "$PID_AFTER" = "$PID_BEFORE"
+test "$RESTART_AFTER" = "$RESTART_BEFORE"
+sleep 4
+H2="$(height_now)"
+test "$H2" -gt "$H1"
+
+install -d -o root -g root -m 0750 "$RECEIPT_ROOT"
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+RECEIPT="$RECEIPT_ROOT/$STAMP-${{RELEASE_SHA:0:12}}.json"
+python3 - "$RESULT" "$RECEIPT" "$RELEASE_SHA" "$PID_BEFORE" "$RESTART_BEFORE" "$H1" "$H2" <<'PYRECEIPT'
+import json,os,sys
+from datetime import datetime,timezone
+from pathlib import Path
+result_path,receipt,release,pid,restarts,h1,h2=sys.argv[1:]
+r=json.loads(Path(result_path).read_text())
+p={{
+  "schema":1,
+  "kind":"aoe2war-root-control-asset-reconciliation",
+  "status":"UPDATED" if r["changed"] else "NOOP",
+  "release_sha":release,
+  "assets":r["assets"],
+  "changed_paths":r["changed"],
+  "scratch":r["scratch"],
+  "wolo_pid":int(pid),
+  "wolo_restart_counter":int(restarts),
+  "wolo_height_before":int(h1),
+  "wolo_height_after":int(h2),
+  "wolo_mutated":False,
+  "reconciled_at":datetime.now(timezone.utc).isoformat(),
+}}
+path=Path(receipt)
+tmp=path.with_name(path.name+f".partial.{{os.getpid()}}")
+tmp.write_text(json.dumps(p,indent=2,sort_keys=True)+"\n")
+os.chmod(tmp,0o444)
+os.replace(tmp,path)
+print(f"status\t{{p['status']}}")
+print(f"asset_count\t{{len(p['assets'])}}")
+print(f"updated_count\t{{len(p['changed_paths'])}}")
+print(f"receipt_path\t{{path}}")
+PYRECEIPT
+"""
+
+    progress.start("Reconciling root-owned release + SpeedOS control assets...")
+    process = subprocess.run(
+        ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", ROOT_SSH, "bash -lc " + shlex.quote(remote)],
+        input=json.dumps(payload, sort_keys=True),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=120,
+        check=False,
+    )
+    output = process.stdout or ""
+    if process.returncode != 0:
+        raise FinishError("root control-asset reconciliation failed: " + output[-6000:])
+    result: dict[str, str] = {}
+    for line in output.splitlines():
+        if "\t" in line:
+            key, value = line.split("\t", 1)
+            result[key] = value
+    if result.get("status") not in {"NOOP", "UPDATED"}:
+        raise FinishError("root control-asset reconciliation returned invalid status")
+    if int(result.get("asset_count") or 0) != len(assets):
+        raise FinishError("root control-asset reconciliation asset count mismatch")
+    if "/root-control-asset-sync-receipts/" not in result.get("receipt_path", ""):
+        raise FinishError("root control-asset reconciliation returned no durable receipt")
+    progress.done(
+        "Root control assets "
+        + ("already exact" if result["status"] == "NOOP" else f"updated ({result.get('updated_count','0')})")
+        + " · Wolo advancing"
+    )
+    return result
+
 def production_capacity_snapshot() -> dict[str, Any]:
     contract = aoe2_doctor.load_contract()
     volume = str(contract["canonical"]["volume_mount"])
@@ -3154,6 +3447,16 @@ def execute_finish(
     finish_phase(
         receipt,
         "maintenance_runner_reconciliation",
+        checkpoint,
+    )
+
+    start_phase(receipt, "root_control_asset_reconciliation", checkpoint)
+    receipt["root_control_asset_reconciliation"] = reconcile_root_control_assets(
+        progress=progress,
+    )
+    finish_phase(
+        receipt,
+        "root_control_asset_reconciliation",
         checkpoint,
     )
 

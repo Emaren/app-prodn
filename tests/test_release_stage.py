@@ -50,6 +50,8 @@ def sample():
         "dependency_fetch_sandboxed": "1",
         "dependency_fetch_scripts_disabled": "1",
         "dependency_build_offline": "1",
+        "dependency_cache_on_volume": "1",
+        "dependency_cache_kb": "234567",
         "dependency_contract_unchanged": "1",
         "dependency_lock_changed": "1",
         "cache_free_artifact": "1",
@@ -86,7 +88,19 @@ class StageTests(unittest.TestCase):
             script,
         )
         self.assertIn(
+            'volume_required_kb=$((live_dependency_kb * 3 + 1048576))',
+            script,
+        )
+        self.assertIn(
+            'volume_available_kb="$(df -Pk "$BUILD_SCRATCH_ROOT"',
+            script,
+        )
+        self.assertIn(
             'test "$root_available_kb" -ge "$root_required_kb"',
+            script,
+        )
+        self.assertIn(
+            'test "$volume_available_kb" -ge "$volume_required_kb"',
             script,
         )
 
@@ -105,6 +119,14 @@ class StageTests(unittest.TestCase):
             MODULE.validate_stage_result(data, manifest, result),
             [],
         )
+
+    def test_stage_result_requires_volume_dependency_cache_evidence(self):
+        data, manifest, result = sample()
+        result["dependency_cache_on_volume"] = "0"
+        result["dependency_cache_kb"] = "0"
+        errors = MODULE.validate_stage_result(data, manifest, result)
+        self.assertTrue(any("dependency_cache_on_volume" in e for e in errors))
+        self.assertIn("dependency cache size is invalid", errors)
 
     def test_active_runtime_change_blocks_result(self):
         data, manifest, result = sample()
@@ -245,39 +267,39 @@ class StageTests(unittest.TestCase):
         # do not broaden that sandbox unnecessarily.
         self.assertIn("MemoryMax=3G", deps_unit)
 
-    def test_build_sandbox_releases_yarn_cache_before_next_build(self):
+    def test_build_sandboxes_bind_volume_cache_and_outer_stage_cleans_it(self):
         build_unit = MODULE.BUILD_SANDBOX_UNIT_SOURCE.read_text()
-
-        install_marker = (
-            "ExecStart=/usr/bin/node "
-            "/tmp/aoe2war-stage-%i/.yarn-runtime/bin/yarn.js install "
-            "--frozen-lockfile --offline --force --non-interactive "
-            "--cache-folder /tmp/aoe2war-stage-%i/.yarn-cache"
-        )
-        cache_release_marker = (
-            "ExecStart=/usr/bin/rm -rf "
+        deps_unit = MODULE.DEPS_SANDBOX_UNIT_SOURCE.read_text()
+        bind = (
+            "BindPaths=/mnt/HC_Volume_105319120/aoe2war/build-scratch/%i:"
             "/tmp/aoe2war-stage-%i/.yarn-cache"
         )
-        build_marker = (
-            "ExecStart=/usr/bin/node "
-            "/tmp/aoe2war-stage-%i/.yarn-runtime/bin/yarn.js build"
+        for unit in (build_unit, deps_unit):
+            self.assertIn(bind, unit)
+            self.assertIn("InaccessiblePaths=/mnt/HC_Volume_105319120", unit)
+        self.assertNotIn(
+            "ExecStart=/usr/bin/rm -rf /tmp/aoe2war-stage-%i/.yarn-cache",
+            build_unit,
         )
 
-        self.assertIn(install_marker, build_unit)
-        self.assertIn(cache_release_marker, build_unit)
-        self.assertIn(build_marker, build_unit)
-
-        self.assertEqual(
-            build_unit.count(cache_release_marker),
-            1,
+        script = MODULE.remote_stage_script(
+            release_sha="b" * 40,
+            previous_sha="a" * 40,
+            manifest_sha="c" * 64,
+            gate_sha="d" * 64,
+            receipt_dir="/mnt/receipt",
         )
+        self.assertIn(
+            'build_cache="$BUILD_SCRATCH_ROOT/$build_instance"',
+            script,
+        )
+        self.assertIn('install -d -m 0700 "$build_cache"', script)
+        self.assertIn('dependency_cache_kb="$(du -sk "$build_cache"', script)
+        self.assertIn('rm -rf -- "$build_cache"', script)
+        self.assertIn('dependency_cache_on_volume=1', script)
+        self.assertIn("dependency_cache_on_volume=1", script)
+        self.assertIn("dependency_cache_kb=$dependency_cache_kb", script)
 
-        install_pos = build_unit.index(install_marker)
-        release_pos = build_unit.index(cache_release_marker)
-        build_pos = build_unit.index(build_marker)
-
-        self.assertLess(install_pos, release_pos)
-        self.assertLess(release_pos, build_pos)
 
     def test_stage_script_persists_evidence_before_isolated_build_and_copy(self):
         script = MODULE.remote_stage_script(

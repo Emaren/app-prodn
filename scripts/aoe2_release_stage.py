@@ -28,6 +28,7 @@ from aoe2_release_ship import (
 
 STAGE_RECEIPT_DIR = ROOT / ".aoe2war-release" / "stage-receipts"
 REMOTE_RECEIPT_ROOT = "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts"
+REMOTE_BUILD_SCRATCH_ROOT = "/mnt/HC_Volume_105319120/aoe2war/build-scratch"
 BUILD_SANDBOX_UNIT_SOURCE = ROOT / "deploy" / "aoe2war-build@.service"
 BUILD_SANDBOX_UNIT = "/etc/systemd/system/aoe2war-build@.service"
 DEPS_SANDBOX_UNIT_SOURCE = ROOT / "deploy" / "aoe2war-deps@.service"
@@ -89,6 +90,7 @@ PREVIOUS={q(previous_sha)}
 MANIFEST_SHA={q(manifest_sha)}
 GATE_SHA={q(gate_sha)}
 RECEIPT={q(receipt_dir)}
+BUILD_SCRATCH_ROOT={q(REMOTE_BUILD_SCRATCH_ROOT)}
 BUILD_UNIT_TEMPLATE={q(BUILD_SANDBOX_UNIT)}
 BUILD_UNIT_SHA={q(build_unit_sha)}
 DEPS_UNIT_TEMPLATE={q(DEPS_SANDBOX_UNIT)}
@@ -123,6 +125,7 @@ timing_record() {{
 mutation_started=0
 build_parent=""
 build_worktree=""
+build_cache=""
 
 # Runtime bundles are deployment state, not source state. This filtering must
 # work even while production is still checked out at a commit whose .gitignore
@@ -148,6 +151,16 @@ cleanup_build_worktree() {{
   fi
   if [ -n "$build_parent" ] && [ -d "$build_parent" ]; then
     rm -rf -- "$build_parent" >/dev/null 2>&1 || true
+  fi
+  if [ -n "$build_cache" ]; then
+    case "$build_cache" in
+      "$BUILD_SCRATCH_ROOT"/[A-Za-z0-9]*)
+        rm -rf -- "$build_cache" >/dev/null 2>&1 || true
+        ;;
+      *)
+        echo "refusing unexpected build-cache cleanup path: $build_cache" >&2
+        ;;
+    esac
   fi
   git worktree prune >/dev/null 2>&1 || true
 }}
@@ -264,29 +277,41 @@ grep -F -- "--frozen-lockfile --offline --force" "$BUILD_UNIT_TEMPLATE" >/dev/nu
 grep -Fx "PrivateNetwork=yes" "$BUILD_UNIT_TEMPLATE" >/dev/null
 grep -Fx "InaccessiblePaths=/etc/aoe2hdbets" "$DEPS_UNIT_TEMPLATE" >/dev/null
 grep -Fx "InaccessiblePaths=/mnt/HC_Volume_105319120" "$DEPS_UNIT_TEMPLATE" >/dev/null
+grep -Fx "InaccessiblePaths=/mnt/HC_Volume_105319120" "$BUILD_UNIT_TEMPLATE" >/dev/null
+grep -Fx "BindPaths=$BUILD_SCRATCH_ROOT/%i:/tmp/aoe2war-stage-%i/.yarn-cache" "$DEPS_UNIT_TEMPLATE" >/dev/null
+grep -Fx "BindPaths=$BUILD_SCRATCH_ROOT/%i:/tmp/aoe2war-stage-%i/.yarn-cache" "$BUILD_UNIT_TEMPLATE" >/dev/null
 
 YARN_RUNTIME=/home/tony/.cache/node/corepack/v1/yarn/1.22.22
 test -f "$YARN_RUNTIME/bin/yarn.js"
 test "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$YARN_RUNTIME/package.json")" = "1.22.22"
 
 # Fail closed before creating candidate worktrees or fetching dependencies.
-# Free-space policy reserves two live dependency-tree equivalents plus 1 GiB
-# for candidate materialization, Yarn cache, build output, and staging overhead.
+# Root hosts the equal-length worktree, candidate node_modules, and build output.
+# The disposable Yarn package cache lives on the mounted build-scratch volume.
 test -d "$LIVE_REPO/node_modules"
 test -x "$LIVE_PRISMA_SCHEMA_ENGINE"
+test -d "$BUILD_SCRATCH_ROOT"
+test "$(stat -c '%U:%G:%a' "$BUILD_SCRATCH_ROOT")" = "tony:tony:750"
 live_dependency_kb="$(du -sk "$LIVE_REPO/node_modules" | awk '{{print $1}}')"
 root_available_kb="$(df -Pk "$LIVE_REPO" | awk 'NR==2 {{print $4}}')"
+volume_available_kb="$(df -Pk "$BUILD_SCRATCH_ROOT" | awk 'NR==2 {{print $4}}')"
 test "$live_dependency_kb" -gt 0
 test "$root_available_kb" -gt 0
+test "$volume_available_kb" -gt 0
 root_required_kb=$((live_dependency_kb * 2 + 1048576))
+volume_required_kb=$((live_dependency_kb * 3 + 1048576))
 
 printf '%s\n' \
   "live_dependency_kb=$live_dependency_kb" \
   "root_available_kb=$root_available_kb" \
   "root_required_kb=$root_required_kb" \
+  "volume_available_kb=$volume_available_kb" \
+  "volume_required_kb=$volume_required_kb" \
+  "build_scratch_root=$BUILD_SCRATCH_ROOT" \
   > "$RECEIPT/disk-preflight.txt"
 
 test "$root_available_kb" -ge "$root_required_kb"
+test "$volume_available_kb" -ge "$volume_required_kb"
 
 worktree_setup_started="$(timing_now_ns)"
 build_parent="$(mktemp -d {q('/var/www/AoE2HDBets/.aoe2war-stage-XXXXXX')})"
@@ -306,6 +331,13 @@ test "$(sha256sum "$gate_proof" | awk '{{print $1}}')" = "$GATE_SHA"
 # root-defined sandbox with network access but lifecycle scripts disabled.
 # The fetch-created node_modules tree is discarded; the build sandbox then
 # rematerializes the exact tree offline with lifecycle scripts enabled.
+build_instance="${{build_worktree#/tmp/aoe2war-stage-}}"
+[[ "$build_instance" =~ ^[A-Za-z0-9]{{10}}$ ]]
+build_cache="$BUILD_SCRATCH_ROOT/$build_instance"
+test ! -e "$build_cache"
+install -d -m 0700 "$build_cache"
+test "$(stat -c '%U:%G:%a' "$build_cache")" = "tony:tony:700"
+
 cp -a "$YARN_RUNTIME" "$build_worktree/.yarn-runtime"
 install -d -m 0700 \
   "$build_worktree/.sandbox-home" \
@@ -314,8 +346,6 @@ install -d -m 0700 \
   "$build_worktree/.tmp" \
   "$build_worktree/.yarn-cache"
 
-build_instance="${{build_worktree#/tmp/aoe2war-stage-}}"
-[[ "$build_instance" =~ ^[A-Za-z0-9]{{10}}$ ]]
 deps_unit="aoe2war-deps@${{build_instance}}.service"
 build_unit="aoe2war-build@${{build_instance}}.service"
 
@@ -339,6 +369,9 @@ sudo -n /usr/bin/journalctl -u "$deps_unit" \
 test "$(systemctl show "$deps_unit" -p Result --value)" = "success"
 test "$(systemctl show "$deps_unit" -p ExecMainStatus --value)" = "0"
 test -d "$build_worktree/node_modules"
+test -d "$build_cache"
+dependency_cache_kb="$(du -sk "$build_cache" | awk '{{print $1}}')"
+test "$dependency_cache_kb" -gt 0
 timing_record dependency_fetch "$dependency_fetch_started"
 
 # The build sandbox deliberately has no network. Prove that its live bootstrap
@@ -378,6 +411,10 @@ sudo -n /usr/bin/journalctl -u "$build_unit" \
 test "$(systemctl show "$build_unit" -p Result --value)" = "success"
 test "$(systemctl show "$build_unit" -p ExecMainStatus --value)" = "0"
 test -d "$build_worktree/node_modules"
+test -d "$build_cache"
+rm -rf -- "$build_cache"
+test ! -e "$build_cache"
+build_cache=""
 timing_record offline_build "$offline_build_started"
 
 # Prisma's postinstall cannot download inside the network-private build unit.
@@ -580,6 +617,8 @@ printf '%s\n' \
   "dependency_fetch_sandboxed=1" \
   "dependency_fetch_scripts_disabled=1" \
   "dependency_build_offline=1" \
+  "dependency_cache_on_volume=1" \
+  "dependency_cache_kb=$dependency_cache_kb" \
   "dependency_contract_unchanged=$dependency_contract_unchanged" \
   "dependency_lock_changed=$dependency_lock_changed" \
   "cache_free_artifact=1" \
@@ -618,6 +657,8 @@ printf 'build_secret_paths_inaccessible\t1\n'
 printf 'dependency_fetch_sandboxed\t1\n'
 printf 'dependency_fetch_scripts_disabled\t1\n'
 printf 'dependency_build_offline\t1\n'
+printf 'dependency_cache_on_volume\t1\n'
+printf 'dependency_cache_kb\t%s\n' "$dependency_cache_kb"
 printf 'dependency_contract_unchanged\t%s\n' "$dependency_contract_unchanged"
 printf 'dependency_lock_changed\t%s\n' "$dependency_lock_changed"
 printf 'cache_free_artifact\t1\n'
@@ -678,6 +719,13 @@ def validate_stage_result(
     if dependency_kb <= 0:
         errors.append("candidate node_modules size is invalid")
 
+    try:
+        dependency_cache_kb = int(result.get("dependency_cache_kb") or "0")
+    except ValueError:
+        dependency_cache_kb = 0
+    if dependency_cache_kb <= 0:
+        errors.append("dependency cache size is invalid")
+
     engine_commit = result.get("prisma_schema_engine_commit") or ""
     if len(engine_commit) != 40 or any(
         c not in "0123456789abcdef" for c in engine_commit
@@ -704,6 +752,7 @@ def validate_stage_result(
         ("dependency_fetch_sandboxed", "1"),
         ("dependency_fetch_scripts_disabled", "1"),
         ("dependency_build_offline", "1"),
+        ("dependency_cache_on_volume", "1"),
         ("prisma_schema_engine_seeded", "1"),
         ("cache_free_artifact", "1"),
         ("artifact_path_relocated", "1"),
