@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "68c2c84344c981cc37e909b37768423f92d638db29f64b8aad8b0670e0e075d8",
+      "sha256": "3282bcb647976e6d10ff3cbdc74dc367dfff8e0aae4ec7d18a1af9f83c791794",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/performance-leaderboard-navigation-hotpath-v1",
-    "commit": "42d9250f329399d9c34940fefcc2fa0be6238939"
+    "branch": "feature/performance-leaderboard-code-warm-v1",
+    "commit": "dfd96a988d984d5a1bdfd2a3a8be4750a372d46d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
