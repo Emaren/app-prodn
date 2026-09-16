@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8c49ae2ba67f82ec50e1931ef6c346cba856e83f5050d139410aebfc9659e1f1",
+      "sha256": "1c0e700e7a6be9193036282ed5c8696d32fc2796e22f6beef9e7bb534891f883",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "performance/battle-archive-pagination-v1",
-    "commit": "87e4551561506e7803d4e4b03c737db99e64dbe5"
+    "branch": "performance/dynamic-edge-qualification-v1",
+    "commit": "3c9f9f177151d2195cc1ac5475634a7d154171df"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

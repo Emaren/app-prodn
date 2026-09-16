@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/battle-archive-pagination-v1` at `87e4551561506e7803d4e4b03c737db99e64dbe5`
+Implementation baseline: `performance/dynamic-edge-qualification-v1` at `3c9f9f177151d2195cc1ac5475634a7d154171df`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
