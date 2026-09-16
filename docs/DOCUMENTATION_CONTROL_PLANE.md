@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/dynamic-edge-qualification-v1` at `3c9f9f177151d2195cc1ac5475634a7d154171df`
+Implementation baseline: `fix/speedos-cloudflare-safe-directory-v1` at `318e2c26c5f06ec42a262d559804a5894f523ee7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
