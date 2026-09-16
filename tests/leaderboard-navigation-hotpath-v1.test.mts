@@ -18,11 +18,37 @@ test("home Leaderboard surfaces prime navigation on user intent", () => {
     "components/lobby/LeaderboardPanel.tsx",
   ]) {
     const page = source(path);
-    assert.match(page, /onMouseEnter=\{\(\) => router\.prefetch\("\/leaderboard"\)\}/);
-    assert.match(page, /onFocus=\{\(\) => router\.prefetch\("\/leaderboard"\)\}/);
-    assert.match(page, /onPointerDown=\{\(\) => router\.prefetch\("\/leaderboard"\)\}/);
+    assert.match(page, /onMouseEnter=\{\(\) => \{[\s\S]*router\.prefetch\("\/leaderboard"\);[\s\S]*warmLeaderboardClient\(\);[\s\S]*\}\}/);
+    assert.match(page, /onFocus=\{\(\) => \{[\s\S]*router\.prefetch\("\/leaderboard"\);[\s\S]*warmLeaderboardClient\(\);[\s\S]*\}\}/);
+    assert.match(page, /onPointerDown=\{\(\) => \{[\s\S]*router\.prefetch\("\/leaderboard"\);[\s\S]*warmLeaderboardClient\(\);[\s\S]*\}\}/);
     assert.match(page, /router\.push\("\/leaderboard"\)/);
   }
+});
+
+test("Leaderboard client code is warmed through one cached dynamic import", () => {
+  const helper = source("lib/leaderboardNavigationWarmup.ts");
+  const shell = source("app/AppShell.tsx");
+
+  assert.match(helper, /leaderboardClientWarmPromise \?\?= import\(/);
+  assert.match(helper, /ModernLeaderboardPage/);
+  const page = source("app/leaderboard/page.tsx");
+  assert.match(page, /import \{ ModernLeaderboardPage \}/);
+  assert.match(shell, /router\.prefetch\("\/leaderboard"\);[\s\S]*warmLeaderboardClient\(\);[\s\S]*setOpen\(true\);/);
+});
+
+test("server-initialized Leaderboard truth survives preference hydration without a duplicate first-page reload", () => {
+  const page = source("components/leaderboard/ModernLeaderboardPage.tsx");
+
+  assert.match(page, /previousPreferencesReadyRef = useRef\(livingPreferencesReady\)/);
+  assert.match(page, /preferencesJustBecameReady[\s\S]*initialLeaderboard[\s\S]*lane === initialLeaderboard\.lane[\s\S]*scope === initialLeaderboard\.scope[\s\S]*!query[\s\S]*!sortRef\.current\.key[\s\S]*return;/);
+});
+
+test("Leaderboard gets one bandwidth-aware idle warm before Kingdom intent", () => {
+  const shell = source("app/AppShell.tsx");
+
+  assert.match(shell, /leaderboardIdleWarmRef = React\.useRef\(false\)/);
+  assert.match(shell, /connection\?\.saveData[\s\S]*\/\(\^\|-\)2g\$\/[\s\S]*router\.prefetch\("\/leaderboard"\);[\s\S]*warmLeaderboardClient\(\)/);
+  assert.match(shell, /requestIdleCallback\([\s\S]*warmLeaderboardNavigation[\s\S]*timeout: 500/);
 });
 
 test("the existing Player Registry prefetch contract stays intact", () => {

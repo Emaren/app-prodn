@@ -168,6 +168,7 @@ export function ModernLeaderboardPage({
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(initialLeaderboard ? null : "The ranked board is temporarily unavailable.");
   const firstEffect = useRef(true);
+  const previousPreferencesReadyRef = useRef(livingPreferencesReady);
   const sortRef = useRef<LeaderboardSortState>({
     key: null,
     direction: null,
@@ -751,6 +752,27 @@ export function ModernLeaderboardPage({
       return;
     }
 
+    const preferencesJustBecameReady =
+      !previousPreferencesReadyRef.current &&
+      livingPreferencesReady;
+
+    previousPreferencesReadyRef.current =
+      livingPreferencesReady;
+
+    // The server already supplied the canonical first page. Local/account
+    // preference hydration alone does not invalidate that truth, and the
+    // personal-view effect below owns any real rank-window transition.
+    if (
+      preferencesJustBecameReady &&
+      initialLeaderboard &&
+      lane === initialLeaderboard.lane &&
+      scope === initialLeaderboard.scope &&
+      !query &&
+      !sortRef.current.key
+    ) {
+      return;
+    }
+
     if (
       skipNextViewModeReloadRef.current
     ) {
@@ -793,6 +815,7 @@ export function ModernLeaderboardPage({
     livingPreferences.spotlightMode,
     livingPreferencesReady,
     query,
+    scope,
     loadPage,
   ]);
 

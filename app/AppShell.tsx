@@ -24,6 +24,7 @@ import {
 } from "@/components/lobby/LobbyAppearanceContext";
 import { getTileViewMode } from "@/lib/tileViewPreferences";
 import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
+import { warmLeaderboardClient } from "@/lib/leaderboardNavigationWarmup";
 import {
   PAGE_CHANGE_NOTICE_STORAGE_KEY,
   getUnseenPageChangeHrefs,
@@ -534,6 +535,7 @@ function KingdomNavItem({
   const openMenu = React.useCallback(() => {
     clearCloseTimer();
     router.prefetch("/leaderboard");
+    void warmLeaderboardClient();
     setOpen(true);
   }, [clearCloseTimer, router]);
 
@@ -865,6 +867,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const [deferredClientsReady, setDeferredClientsReady] = React.useState(false);
   const [footerReady, setFooterReady] = React.useState(false);
   const footerWarmupRef = React.useRef<HTMLDivElement | null>(null);
+  const leaderboardIdleWarmRef = React.useRef(false);
 
   React.useEffect(() => {
     try {
@@ -947,6 +950,68 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       if (idleHandle !== null) idleWindow.cancelIdleCallback?.(idleHandle);
     };
   }, []);
+
+  React.useEffect(() => {
+    if (pathname === "/leaderboard" || leaderboardIdleWarmRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+    let timer: number | null = null;
+    let idleHandle: number | null = null;
+    const idleWindow = window as Window & {
+      requestIdleCallback?: (
+        callback: IdleRequestCallback,
+        options?: IdleRequestOptions
+      ) => number;
+      cancelIdleCallback?: (handle: number) => void;
+    };
+    const connection = (
+      navigator as Navigator & {
+        connection?: { saveData?: boolean; effectiveType?: string };
+      }
+    ).connection;
+
+    const warmLeaderboardNavigation = () => {
+      if (
+        cancelled ||
+        leaderboardIdleWarmRef.current ||
+        document.visibilityState !== "visible" ||
+        connection?.saveData ||
+        /(^|-)2g$/.test(connection?.effectiveType ?? "")
+      ) {
+        return;
+      }
+
+      leaderboardIdleWarmRef.current = true;
+      router.prefetch("/leaderboard");
+      void warmLeaderboardClient();
+    };
+
+    const schedule = () => {
+      if (idleWindow.requestIdleCallback) {
+        idleHandle = idleWindow.requestIdleCallback(
+          warmLeaderboardNavigation,
+          { timeout: 500 },
+        );
+      } else {
+        timer = window.setTimeout(warmLeaderboardNavigation, 500);
+      }
+    };
+
+    if (document.readyState === "complete") {
+      schedule();
+    } else {
+      window.addEventListener("load", schedule, { once: true });
+    }
+
+    return () => {
+      cancelled = true;
+      window.removeEventListener("load", schedule);
+      if (timer !== null) window.clearTimeout(timer);
+      if (idleHandle !== null) idleWindow.cancelIdleCallback?.(idleHandle);
+    };
+  }, [pathname, router]);
 
   const isExtremePlayerProfileSurface =
     isPlayerProfileSurface && playerProfileViewMode !== "basic" && playerProfileViewMode !== "advanced";

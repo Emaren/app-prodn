@@ -24,6 +24,7 @@ import { LobbyViewToggle } from "@/components/lobby/LobbyAppearanceControls";
 import type { LobbyLeaderboardSummary } from "@/lib/lobby";
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
 import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
+import { warmLeaderboardClient } from "@/lib/leaderboardNavigationWarmup";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
 
 type LeaderboardPanelProps = {
@@ -321,9 +322,9 @@ export function LeaderboardPanel({
       tabIndex={0}
       aria-label={h("Open the full HD Leaderboard")}
       onClick={handlePanelClick}
-      onMouseEnter={() => router.prefetch("/leaderboard")}
-      onFocus={() => router.prefetch("/leaderboard")}
-      onPointerDown={() => router.prefetch("/leaderboard")}
+      onMouseEnter={() => { router.prefetch("/leaderboard"); void warmLeaderboardClient(); }}
+      onFocus={() => { router.prefetch("/leaderboard"); void warmLeaderboardClient(); }}
+      onPointerDown={() => { router.prefetch("/leaderboard"); void warmLeaderboardClient(); }}
       onKeyDown={handlePanelKeyDown}
       className={leaderboardPanelShellClassName}
     >
