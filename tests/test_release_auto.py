@@ -572,11 +572,16 @@ class AutoShipTests(unittest.TestCase):
             ".aoe2war-release/patch-backups/example/docs/"
             "DOCUMENTATION_CONTROL_PLANE.md"
         )
+        workspace = pathlib.PurePosixPath(
+            ".aoe2war-workspaces/app-prodn/performance-speed-observatory-e2-v1/"
+            "docs/DOCUMENTATION_CONTROL_PLANE.md"
+        )
         canonical = pathlib.PurePosixPath(
             "docs/DOCUMENTATION_CONTROL_PLANE.md"
         )
 
         self.assertTrue(DOCS.is_excluded(operational))
+        self.assertTrue(DOCS.is_excluded(workspace))
         self.assertFalse(DOCS.is_excluded(canonical))
 
 
