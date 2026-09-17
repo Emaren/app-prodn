@@ -235,7 +235,7 @@ class SpeedEdgeTests(unittest.TestCase):
         policy = MODULE.load_dynamic_policy()
         self.assertEqual(
             [row["route"] for row in policy["routes"]],
-            ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/forum", "/game-stats/16218/review", "/leaderboard/og", "/market", "/market/shops/chat-effects", "/matchups/c_u_0df73bdbb64646c19e4a9bfd225b3285/n_Seedy_SI69", "/matchups/team/WyJjX3VfMGRmNzNiZGJiNjQ2NDZjMTllNGE5YmZkMjI1YjMyODUiLCJjX3VfMTc4MTYzODQzNjFmNGM4YThkNTdjNjkzNDI2NTEwMGIiLCJuX2NvcHBlcl9oZWFkX3JvYWQiXQ/WyJuX2Nhcmxvc2lzbSIsIm5fUm9NYV9WaWNUb1JfIiwibl9UYW5rVG9wTWFzdGVyIl0", "/national-champions", "/players/by-name/Emaren", "/players/u_626ea6497a984dabbc2338ef54c5d333", "/radio", "/traffic"],
+            ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/forum", "/game-stats/16218/review", "/leaderboard/og", "/market", "/market/shops/chat-effects", "/matchups/c_u_0df73bdbb64646c19e4a9bfd225b3285/n_Seedy_SI69", "/matchups/team/WyJjX3VfMGRmNzNiZGJiNjQ2NDZjMTllNGE5YmZkMjI1YjMyODUiLCJjX3VfMTc4MTYzODQzNjFmNGM4YThkNTdjNjkzNDI2NTEwMGIiLCJuX2NvcHBlcl9oZWFkX3JvYWQiXQ/WyJuX2Nhcmxvc2lzbSIsIm5fUm9NYV9WaWNUb1JfIiwibl9UYW5rVG9wTWFzdGVyIl0", "/national-champions", "/players/by-name/Emaren", "/radio", "/traffic"],
         )
         self.assertTrue(all(row["ttl_seconds"] == 30 for row in policy["routes"]))
         self.assertTrue(all(row["empty_query_only"] is True for row in policy["routes"]))
@@ -244,6 +244,7 @@ class SpeedEdgeTests(unittest.TestCase):
         self.assertEqual(admissions["/forum"], "request_time_public")
         self.assertEqual(admissions["/academy"], "anonymous_dynamic")
         self.assertNotIn("/kingdom", [row["route"] for row in policy["routes"]])
+        self.assertNotIn("/players/u_626ea6497a984dabbc2338ef54c5d333", [row["route"] for row in policy["routes"]])
 
     def test_dynamic_apply_static_authority_uses_latest_successful_static_apply_receipt(self):
         old_receipts = MODULE.EDGE_RECEIPTS

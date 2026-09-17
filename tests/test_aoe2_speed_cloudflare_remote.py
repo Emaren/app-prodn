@@ -231,7 +231,7 @@ class CloudflareRemoteHelperTests(unittest.TestCase):
                 MODULE.STATE, MODULE.REQUEST, MODULE.LAST_APPLY = old
 
     def dynamic_request(self, **overrides):
-        routes = ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/forum", "/game-stats/16218/review", "/leaderboard/og", "/market", "/market/shops/chat-effects", "/matchups/c_u_0df73bdbb64646c19e4a9bfd225b3285/n_Seedy_SI69", "/matchups/team/WyJjX3VfMGRmNzNiZGJiNjQ2NDZjMTllNGE5YmZkMjI1YjMyODUiLCJjX3VfMTc4MTYzODQzNjFmNGM4YThkNTdjNjkzNDI2NTEwMGIiLCJuX2NvcHBlcl9oZWFkX3JvYWQiXQ/WyJuX2Nhcmxvc2lzbSIsIm5fUm9NYV9WaWNUb1JfIiwibl9UYW5rVG9wTWFzdGVyIl0", "/national-champions", "/players/by-name/Emaren", "/players/u_626ea6497a984dabbc2338ef54c5d333", "/radio", "/traffic"]
+        routes = ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/forum", "/game-stats/16218/review", "/leaderboard/og", "/market", "/market/shops/chat-effects", "/matchups/c_u_0df73bdbb64646c19e4a9bfd225b3285/n_Seedy_SI69", "/matchups/team/WyJjX3VfMGRmNzNiZGJiNjQ2NDZjMTllNGE5YmZkMjI1YjMyODUiLCJjX3VfMTc4MTYzODQzNjFmNGM4YThkNTdjNjkzNDI2NTEwMGIiLCJuX2NvcHBlcl9oZWFkX3JvYWQiXQ/WyJuX2Nhcmxvc2lzbSIsIm5fUm9NYV9WaWNUb1JfIiwibl9UYW5rVG9wTWFzdGVyIl0", "/national-champions", "/players/by-name/Emaren", "/radio", "/traffic"]
         cookie_names = ["aoe2hdbets_session"]
         base = {
             "schema": 1,
