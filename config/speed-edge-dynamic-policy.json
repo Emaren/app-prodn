@@ -59,6 +59,13 @@
       "rationale": "Anonymous empty-query forum shell; live community state is fetched client-side, while server HTML was byte-identical public/origin and stable across a full 30-second proof window."
     },
     {
+      "route": "/game-stats/16218/review",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public replay-review shell; the server document contains only the public review workspace boundary, while exact public/origin HTML bytes were stable across a full 30-second proof window.",
+      "admission": "anonymous_dynamic"
+    },
+    {
       "route": "/leaderboard/og",
       "ttl_seconds": 30,
       "empty_query_only": true,
@@ -80,6 +87,20 @@
       "rationale": "Anonymous public merchant storefront shell; payment and inquiry verification remain on no-store API rails, while storefront HTML was byte-identical public/origin and stable across a full 30-second proof window."
     },
     {
+      "route": "/matchups/c_u_0df73bdbb64646c19e4a9bfd225b3285/n_Seedy_SI69",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public player-matchup history; read-only rivalry presentation with exact public/origin HTML bytes stable across a full 30-second proof window.",
+      "admission": "anonymous_dynamic"
+    },
+    {
+      "route": "/matchups/team/WyJjX3VfMGRmNzNiZGJiNjQ2NDZjMTllNGE5YmZkMjI1YjMyODUiLCJjX3VfMTc4MTYzODQzNjFmNGM4YThkNTdjNjkzNDI2NTEwMGIiLCJuX2NvcHBlcl9oZWFkX3JvYWQiXQ/WyJuX2Nhcmxvc2lzbSIsIm5fUm9NYV9WaWNUb1JfIiwibl9UYW5rVG9wTWFzdGVyIl0",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public team-matchup history; read-only rivalry presentation with exact public/origin HTML bytes stable across a full 30-second proof window.",
+      "admission": "anonymous_dynamic"
+    },
+    {
       "route": "/national-champions",
       "ttl_seconds": 30,
       "empty_query_only": true,
@@ -91,6 +112,27 @@
       "ttl_seconds": 30,
       "empty_query_only": true,
       "rationale": "Anonymous public player profile; read-only profile presentation with exact public/origin HTML bytes stable across a full 30-second proof window.",
+      "admission": "anonymous_dynamic"
+    },
+    {
+      "route": "/players/u_626ea6497a984dabbc2338ef54c5d333",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public claimed-player profile; read-only profile presentation with exact public/origin HTML bytes stable across a full 30-second proof window.",
+      "admission": "anonymous_dynamic"
+    },
+    {
+      "route": "/radio",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public Radio WOLO catalog; only explicitly published tracks are rendered, private submission/review stays off-page, and exact public/origin HTML bytes were stable across a full 30-second proof window.",
+      "admission": "anonymous_dynamic"
+    },
+    {
+      "route": "/traffic",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public traffic-observatory snapshot; read-only aggregate analytics with exact public/origin HTML bytes stable across a full 30-second proof window.",
       "admission": "anonymous_dynamic"
     }
   ]

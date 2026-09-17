@@ -198,31 +198,25 @@ class SpeedEdgeTests(unittest.TestCase):
 
 
     def _dynamic_source_inventory(self):
-        anonymous_dynamic = {
-            "/academy", "/ai", "/battle-archive", "/bounties", "/champions",
-            "/champions/world", "/clans", "/leaderboard/og",
-            "/national-champions", "/players/by-name/Emaren",
-        }
-        request_time_public = {"/forum", "/market", "/market/shops/chat-effects"}
-        routes = sorted(anonymous_dynamic | request_time_public)
+        policy = MODULE.load_dynamic_policy()
         return {
             "pages": [
                 {
-                    "template": route,
+                    "template": row["route"],
                     "classification": "public",
-                    "benchmark_representative": route,
+                    "benchmark_representative": row["route"],
                     "source_profile": {
-                        "source_path": f"app{route}/page.tsx",
+                        "source_path": f"app{row['route']}/page.tsx",
                         "edge_cache_classification": (
                             "anonymous_dynamic_candidate_review"
-                            if route in anonymous_dynamic
+                            if row["admission"] == "anonymous_dynamic"
                             else "static_or_revalidated_public_candidate"
                         ),
                         "server_request_personalization_signal": False,
                         "layout_server_personalization_signal": False,
                     },
                 }
-                for route in routes
+                for row in policy["routes"]
             ]
         }
 
@@ -241,7 +235,7 @@ class SpeedEdgeTests(unittest.TestCase):
         policy = MODULE.load_dynamic_policy()
         self.assertEqual(
             [row["route"] for row in policy["routes"]],
-            ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/forum", "/leaderboard/og", "/market", "/market/shops/chat-effects", "/national-champions", "/players/by-name/Emaren"],
+            ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/forum", "/game-stats/16218/review", "/leaderboard/og", "/market", "/market/shops/chat-effects", "/matchups/c_u_0df73bdbb64646c19e4a9bfd225b3285/n_Seedy_SI69", "/matchups/team/WyJjX3VfMGRmNzNiZGJiNjQ2NDZjMTllNGE5YmZkMjI1YjMyODUiLCJjX3VfMTc4MTYzODQzNjFmNGM4YThkNTdjNjkzNDI2NTEwMGIiLCJuX2NvcHBlcl9oZWFkX3JvYWQiXQ/WyJuX2Nhcmxvc2lzbSIsIm5fUm9NYV9WaWNUb1JfIiwibl9UYW5rVG9wTWFzdGVyIl0", "/national-champions", "/players/by-name/Emaren", "/players/u_626ea6497a984dabbc2338ef54c5d333", "/radio", "/traffic"],
         )
         self.assertTrue(all(row["ttl_seconds"] == 30 for row in policy["routes"]))
         self.assertTrue(all(row["empty_query_only"] is True for row in policy["routes"]))
@@ -523,7 +517,7 @@ class SpeedEdgeTests(unittest.TestCase):
                 "rows": [{"route": row["route"], "qualified": True} for row in policy["routes"]],
             }
             plan = MODULE.build_dynamic_cloudflare_plan(qualification)
-            self.assertEqual(plan["eligible_exact_routes"], ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/forum", "/leaderboard/og", "/market", "/market/shops/chat-effects", "/national-champions", "/players/by-name/Emaren"])
+            self.assertEqual(plan["eligible_exact_routes"], [row["route"] for row in policy["routes"]])
             self.assertEqual(plan["edge_ttl_seconds"], 30)
             self.assertIn('http.request.uri.query eq ""', plan["expression"])
             self.assertIn('not http.cookie contains "aoe2hdbets_session="', plan["expression"])
