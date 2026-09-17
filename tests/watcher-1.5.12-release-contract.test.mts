@@ -31,9 +31,9 @@ const reliabilityEvents = [
   "watch_folder_auto_repair_failed",
 ];
 
-test("Watcher 1.5.11 public release identity is exact", () => {
-  assert.match(release, /version: "1\.5\.11"/);
-  assert.match(release, /releasedOn: "Sep 14, 2026"/);
+test("Watcher 1.5.12 public release identity is exact", () => {
+  assert.match(release, /version: "1\.5\.12"/);
+  assert.match(release, /releasedOn: "Sep 16, 2026"/);
   assert.match(release, /Active replay-folder recovery/);
   assert.match(release, /Replay-priority streaming/);
   assert.doesNotMatch(release, /version: "1\.5\.9"/);
@@ -57,18 +57,18 @@ test("Watcher reliability telemetry remains admitted server-side", () => {
   }
 });
 
-test("Watcher 1.5.11 docs bind public metadata to certified artifacts", () => {
-  assert.match(docs, /version: 1\.5\.11/);
-  assert.match(docs, /758804e673f2fd06460cb30919ddb7629c76a555/);
-  assert.match(docs, /34847268397/);
-  assert.match(docs, /34847268637/);
+test("Watcher 1.5.12 docs bind public metadata to certified artifacts", () => {
+  assert.match(docs, /version: 1\.5\.12/);
+  assert.match(docs, /329d0e99924126b0fc13f31ddcc26f81607b35cd/);
+  assert.match(docs, /35165618190/);
+  assert.match(docs, /35165618193/);
 
   for (const hash of [
-    "be936b480aca200d4cfdc8db1475715ff640e161771be85017828fdfcec2fcf5",
-    "25301abbc260ecb746a36f8e6466bdcc75840243a6b91bcf2a81558c8f4efda5",
-    "300b270298534b7753e2533fd114e445075dc750a309ef430f716e2982c249cb",
-    "4d0530304ed4fa8c4b5dca1837f22fd0ed06901269325569f99aead598706985",
-    "0e01f821fcfeafa2c7bbff654b1ba22260ac9c47c3878b776c5cd0d9f0d1e715",
+    "611a98f710c42bf3c4486cca68bad6036662943cb0fbc67d0945ec9496509bf0",
+    "d2d771b7cdc6abacca4b2ca6128ac16004d51cf151d286d5c87323721ce52d37",
+    "68b18066888fc60392921b6dc44d66c0a32f23fc70556d2e4a0c7fed98f14ac3",
+    "cdfdfbc9180bb403086d98009cb3516f2b81ba05488742fb4f01ea1e2dc694f4",
+    "f53318079f00de092c93a5d3fbf0a747b0dfd520d736dfbddf4fa0629ac58057",
   ]) {
     assert.match(docs, new RegExp(hash));
   }

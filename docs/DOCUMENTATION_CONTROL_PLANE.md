@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/performance-leaderboard-code-warm-v1` at `dfd96a988d984d5a1bdfd2a3a8be4750a372d46d`
+Implementation baseline: `feature/watcher-folder-diagnostics-v1` at `9a431a7b70cfe4866b1b0922bf6b9ea4eea444e7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

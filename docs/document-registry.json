@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3282bcb647976e6d10ff3cbdc74dc367dfff8e0aae4ec7d18a1af9f83c791794",
+      "sha256": "b806afd933abed7f0e8a388142d2e59f312a8a9125359b61e3b1027f64c0e038",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1621,9 +1621,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-14",
+      "reviewed_at": "2026-09-16",
       "sensitivity": "restricted",
-      "sha256": "dac8c105735cd72013e1a9a7082fd44577ab8dd6441c82f38d9e707c3ac6e342",
+      "sha256": "b2c3031adafa1f5ec07aa134c5e7122588ed632bb891fc5065b1430132d64f63",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/performance-leaderboard-code-warm-v1",
-    "commit": "dfd96a988d984d5a1bdfd2a3a8be4750a372d46d"
+    "branch": "feature/watcher-folder-diagnostics-v1",
+    "commit": "9a431a7b70cfe4866b1b0922bf6b9ea4eea444e7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
