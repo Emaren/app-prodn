@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7810f239af649672967f01876ac9fd0627cea77a6ef9e80c33d7be13e6797727",
+      "sha256": "89880c7bceb3a429a0c0b14ef3eab973dacb027c2fb93e9f4ac49a11f4d5408b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/performance-bets-navigation-hotpath-v1",
-    "commit": "9a1bb25b8d0d232d02290ca90a39b2da6123d78e"
+    "branch": "feature/performance-bets-handoff-priority-v2",
+    "commit": "a4c3ab42625ac19b9a9a5090f1c279f6f2188374"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
