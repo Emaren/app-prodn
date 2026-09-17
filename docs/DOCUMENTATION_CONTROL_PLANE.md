@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/speed-edge-public-runtime-v2` at `e6475b04de603b2ff09fee2c9ea52bb23c447d25`
+Implementation baseline: `speed/dynamic-edge-cohort-19` at `d771606375a54454e04e8e0d2d407c336eb55020`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
