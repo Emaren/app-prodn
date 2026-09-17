@@ -80,6 +80,32 @@ def latest_edge_audit() -> dict[str, Any] | None:
     return None
 
 
+def latest_successful_static_apply() -> dict[str, Any] | None:
+    """Return the receipt that authoritatively describes the installed static SpeedOS rule."""
+    if not EDGE_RECEIPTS.is_dir():
+        return None
+    paths = sorted(
+        EDGE_RECEIPTS.glob("*-cloudflare-apply.json"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for path in paths:
+        payload = speed.safe_json(path)
+        if not payload or payload.get("kind") != "aoe2war-speedos-cloudflare-apply":
+            continue
+        if payload.get("rollback_performed"):
+            continue
+        if not (payload.get("verification") or {}).get("ok"):
+            continue
+        plan = payload.get("plan") or {}
+        routes = plan.get("eligible_exact_routes")
+        if not isinstance(routes, list) or not routes:
+            continue
+        payload["_path"] = str(path)
+        return payload
+    return None
+
+
 def reusable_edge_audit(
     audit: dict[str, Any] | None,
     source_inventory: dict[str, Any],
@@ -1318,15 +1344,13 @@ def main() -> int:
                     print(dynamic_plan["expression"])
                 return 0
 
-            benchmark = latest_full_cost_stack()
-            if not benchmark:
-                raise EdgeAuditError("no full per-route Speed OS cost-stack receipt exists")
-            prior_audit = latest_edge_audit()
-            if reusable_edge_audit(prior_audit, source_inventory, benchmark):
-                static_audit = prior_audit
-            else:
-                static_audit = build_audit(source_inventory=source_inventory, benchmark=benchmark)
-            static_plan = build_cloudflare_plan(static_audit)
+            static_authority = latest_successful_static_apply()
+            if not static_authority:
+                raise EdgeAuditError(
+                    "no successful static Cloudflare apply receipt exists; apply the static SpeedOS rule first"
+                )
+            static_plan = static_authority.get("plan") or {}
+            static_authority_path = Path(str(static_authority.get("_path") or ""))
             runtime = require_cloudflare_runtime_exact()
             authority = remote_cloudflare_service("verify")
             authority["runtime_exact"] = runtime["exact"]
@@ -1342,6 +1366,7 @@ def main() -> int:
                 "snapshot": snapshot_result,
                 "dynamic_plan": dynamic_plan,
                 "static_plan": static_plan,
+                "static_plan_authority_receipt": speed.evidence_ref(static_authority_path),
                 "plan_sha256": plan_sha,
                 "request": request,
                 "apply": applied,
