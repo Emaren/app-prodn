@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/performance-bets-handoff-priority-v2` at `a4c3ab42625ac19b9a9a5090f1c279f6f2188374`
+Implementation baseline: `performance/dynamic-edge-cohort-v2` at `fbf2ce9f7e9930c280f337da7ba9c8b7406d5339`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
