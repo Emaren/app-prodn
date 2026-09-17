@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "22c49e444b6e937ee761c308487ac0992d9d270957b40758cfd6bd76774df6d6",
+      "sha256": "098e1e94d23150596ce87213c4c58b5f0d79e74f7ef9e82c3313ff3641293290",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "performance/dynamic-edge-players-hold-v1",
-    "commit": "edf24a019d798acc97d7f2d9db2a1498be84974c"
+    "branch": "codex/speed-edge-public-runtime-v2",
+    "commit": "e6475b04de603b2ff09fee2c9ea52bb23c447d25"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
