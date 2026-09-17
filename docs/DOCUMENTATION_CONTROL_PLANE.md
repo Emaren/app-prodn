@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/watcher-context-camera-v1` at `cbca36957a3a48bfb98d9e4cdbf1ce6ae7f61947`
+Implementation baseline: `feature/performance-bets-navigation-hotpath-v1` at `9a1bb25b8d0d232d02290ca90a39b2da6123d78e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
