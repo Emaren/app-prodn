@@ -374,14 +374,40 @@ def discover_app_cookie_names() -> list[str]:
     return sorted(names)
 
 
-def build_cloudflare_plan(audit: dict[str, Any]) -> dict[str, Any]:
+def build_cloudflare_plan(
+    audit: dict[str, Any],
+    *,
+    installed_plan: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    installed = set((installed_plan or {}).get("eligible_exact_routes") or [])
     eligible: list[str] = []
     blocked: list[str] = []
     review: list[str] = []
+    preserved: list[str] = []
+    newly_eligible: list[str] = []
+    revoked: list[str] = []
+
     for row in audit.get("rows") or []:
         route = str(row.get("route") or "")
         priority = str(row.get("priority") or "")
+        source_class = str(row.get("source_cache_classification") or "")
         live = row.get("live") or {}
+        was_installed = route in installed
+        static_source_safe = source_class in {
+            "static_client_shell_candidate",
+            "static_or_revalidated_public_candidate",
+        }
+        runtime_prohibited = bool(
+            live.get("set_cookie") or live.get("shared_cache_prohibited")
+        )
+
+        if was_installed:
+            if static_source_safe and not runtime_prohibited and not priority.startswith("blocked"):
+                eligible.append(route)
+                preserved.append(route)
+                continue
+            revoked.append(route)
+
         if priority.startswith("blocked") or live.get("set_cookie"):
             blocked.append(route)
             continue
@@ -395,10 +421,18 @@ def build_cloudflare_plan(audit: dict[str, Any]) -> dict[str, Any]:
                 and not live.get("set_cookie")
             ):
                 eligible.append(route)
+                if not was_installed:
+                    newly_eligible.append(route)
             else:
                 review.append(route)
+        elif priority in {"already_edge_cached_shell", "already_edge_cached_public"}:
+            # An edge HIT not owned by the installed SpeedOS receipt is not adoption authority.
+            review.append(route)
+        elif route:
+            review.append(route)
 
-    quoted = " ".join(json.dumps(path) for path in sorted(set(eligible)))
+    eligible_routes = sorted(set(eligible))
+    quoted = " ".join(json.dumps(path) for path in eligible_routes)
     cookie_names = discover_app_cookie_names()
     cookie_bypass = " and ".join(
         f'not http.cookie contains "{name}="' for name in cookie_names
@@ -409,7 +443,7 @@ def build_cloudflare_plan(audit: dict[str, Any]) -> dict[str, Any]:
         'not http.request.uri.query contains "_rsc=" and '
         f'{cookie_bypass} and '
         f'http.request.uri.path in {{{quoted}}})'
-    ) if eligible else None
+    ) if eligible_routes else None
     return {
         "schema": 1,
         "kind": "aoe2war-speed-cloudflare-cache-plan",
@@ -421,7 +455,11 @@ def build_cloudflare_plan(audit: dict[str, Any]) -> dict[str, Any]:
         "rsc_cache_authorized": False,
         "session_cookie_bypass": SESSION_COOKIE_NAME,
         "cookie_bypass_names": cookie_names,
-        "eligible_exact_routes": sorted(set(eligible)),
+        "eligible_exact_routes": eligible_routes,
+        "installed_exact_routes_before": sorted(installed),
+        "preserved_installed_routes": sorted(set(preserved)),
+        "newly_eligible_routes": sorted(set(newly_eligible)),
+        "revoked_installed_routes": sorted(set(revoked)),
         "blocked_routes": sorted(set(blocked)),
         "review_routes": sorted(set(review)),
         "proposed_cache_rule_expression": expression,
@@ -432,11 +470,12 @@ def build_cloudflare_plan(audit: dict[str, Any]) -> dict[str, Any]:
             "bypass whenever any known AoE2WAR cookie is present",
             "preserve all /api/ cache-control and no-store contracts",
             "do not include server-personalized or runtime-cookie routes",
+            "preserve previously installed static routes while source/runtime cache safety remains valid",
+            "require fresh x-nextjs-cache HIT evidence before adding a new static route",
             "verify anonymous HTML/RSC equivalence before enabling any new route",
             "purge candidate URLs on every app deployment before certification",
         ],
     }
-
 
 
 
@@ -1418,7 +1457,13 @@ def main() -> int:
         print(f"STOP: {exc}", file=sys.stderr)
         return 2
     if args.command in {"plan", "apply"}:
-        plan = build_cloudflare_plan(payload)
+        static_authority = latest_successful_static_apply()
+        installed_plan = (static_authority or {}).get("plan") or {}
+        plan = build_cloudflare_plan(payload, installed_plan=installed_plan)
+        if static_authority and static_authority.get("_path"):
+            plan["installed_plan_authority_receipt"] = speed.evidence_ref(
+                Path(str(static_authority["_path"]))
+            )
         if args.command == "apply":
             try:
                 runtime = require_cloudflare_runtime_exact()
@@ -1472,6 +1517,10 @@ def main() -> int:
             print("⚔️  AOE2WAR SPEED CLOUDFLARE PLAN")
             print()
             print(f"Eligible exact routes: {len(plan['eligible_exact_routes'])}")
+            print(f"Installed before:      {len(plan['installed_exact_routes_before'])}")
+            print(f"Preserved installed:   {len(plan['preserved_installed_routes'])}")
+            print(f"Newly eligible:        {len(plan['newly_eligible_routes'])}")
+            print(f"Revoked installed:     {len(plan['revoked_installed_routes'])}")
             print(f"Blocked routes:        {len(plan['blocked_routes'])}")
             print(f"Review routes:         {len(plan['review_routes'])}")
             print(f"Cookie bypasses:       {len(plan['cookie_bypass_names'])}")
